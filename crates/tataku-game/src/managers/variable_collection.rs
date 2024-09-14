@@ -172,7 +172,7 @@ mod old {
                 // .ok_or_else(|| ShuntingYardError::EntryDoesntExist(key.to_owned()))
         }
 
-        pub fn get_bool<'a>(&self, key: &str) -> Result<bool, ShuntingYardError> {
+        pub fn get_bool(&self, key: &str) -> Result<bool, ShuntingYardError> {
             match self.get_raw(key) {
                 Ok(TatakuVariable { value: TatakuValue::Bool(b), .. }) => Ok(*b),
                 Ok(_) => Err(ShuntingYardError::ValueIsntABool),

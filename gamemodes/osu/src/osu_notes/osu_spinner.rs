@@ -180,15 +180,13 @@ impl HitObject for OsuSpinner {
         if let Some(mut i) = self.spinner_bottom.clone() {
             i.scale = scale;
             list.push(i)
-        } else {
-            if !(self.spinner_approach.is_some() || self.spinner_circle.is_some()) {
-                list.push(Circle::new(
-                    self.pos,
-                    SPINNER_RADIUS,
-                    Color::YELLOW,
-                    border.clone()
-                ));
-            }
+        } else if !(self.spinner_approach.is_some() || self.spinner_circle.is_some()) {
+            list.push(Circle::new(
+                self.pos,
+                SPINNER_RADIUS,
+                Color::YELLOW,
+                border
+            ));
         }
 
 
@@ -201,7 +199,7 @@ impl HitObject for OsuSpinner {
                 self.pos,
                 SPINNER_RADIUS * (self.rotations_completed as f32 / self.rotations_required as f32).min(1.0),
                 Color::WHITE,
-                border.clone()
+                border
             ));
         }
 
@@ -315,10 +313,9 @@ impl OsuHitObject for OsuSpinner {
             &mut self.spinner_background,
             &mut self.spinner_approach,
         ] {
-            if let Some(i) = i {
-                i.pos = self.pos;
-                i.scale = scale;
-            }
+            let Some(i) = i else { continue };
+            i.pos = self.pos;
+            i.scale = scale;
         }
 
     }

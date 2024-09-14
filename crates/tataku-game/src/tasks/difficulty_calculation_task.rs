@@ -52,7 +52,11 @@ impl TatakuTask for DiffCalcTask {
 
         // TODO: move this to another thread ?
         if let Some(mods) = self.iter.next() {
-            let diff_key = DifficultyEntry::new(self.beatmap.beatmap_hash, &mods);
+            let diff_key = DifficultyEntry::new(
+                md5(self.info.id), 
+                self.beatmap.beatmap_hash, 
+                &mods
+            );
             // if existing.contains_key(&diff_key) { continue }
 
             // try to load the calc once

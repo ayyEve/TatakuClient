@@ -100,10 +100,7 @@ impl OsuGameInfo {
 
 
     fn can_load_beatmap(map: &BeatmapType) -> bool { 
-        match map {
-            BeatmapType::Osu => true,
-            _ => false
-        }
+        matches!(map, BeatmapType::Osu)
     }
 
     fn get_diff_string(info: &BeatmapMetaWithDiff, mods: &ModManager) -> String {
@@ -138,7 +135,7 @@ impl OsuGameInfo {
         if let Some(diff) = &info.diff {
             txt += &format!(", Diff: {:.2}", diff);
         } else {
-            txt += &format!(", Diff: ...");
+            txt += ", Diff: ...";
         }
 
         txt

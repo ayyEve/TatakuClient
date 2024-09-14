@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+pub type RenderTargetDraw = Box<dyn FnOnce(&mut dyn GraphicsEngine, Matrix)>;
+pub type ScreenshotCallback = Box<dyn FnOnce((Vec<u8>, [u32; 2]))+Send+Sync>;
 
 pub trait GraphicsEngine {
     fn is_dummy(&self) -> bool { false }
@@ -15,12 +17,12 @@ pub trait GraphicsEngine {
         &mut self, 
         size: [u32; 2], 
         clear_color: Color, 
-        do_render: Box<dyn FnOnce(&mut dyn GraphicsEngine, Matrix)>,
+        do_render: RenderTargetDraw,
     ) -> Option<RenderTarget>;
     fn update_render_target(
         &mut self, 
         target: RenderTarget, 
-        do_render: Box<dyn FnOnce(&mut dyn GraphicsEngine, Matrix)>,
+        do_render: RenderTargetDraw,
     );
 
     // texture things
@@ -29,13 +31,13 @@ pub trait GraphicsEngine {
     fn load_texture_bytes(&mut self, data: &[u8]) -> TatakuResult<TextureReference>;
 
     /// load a texture from RGBA bytes
-    fn load_texture_rgba(&mut self, data: &Vec<u8>, size: [u32; 2]) -> TatakuResult<TextureReference>;
+    fn load_texture_rgba(&mut self, data: &[u8], size: [u32; 2]) -> TatakuResult<TextureReference>;
 
     /// free a texture
     fn free_tex(&mut self, tex: TextureReference);
 
     /// take a screenshot, returning the data via callback
-    fn screenshot(&mut self, callback: Box<dyn FnOnce((Vec<u8>, [u32; 2]))+Send+Sync>);
+    fn screenshot(&mut self, callback: ScreenshotCallback);
 
 
 

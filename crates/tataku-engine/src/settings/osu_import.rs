@@ -27,14 +27,13 @@ pub async fn load_osu_skins(path: impl AsRef<Path>) {
 pub async fn load_osu_settings(path: impl AsRef<Path>, settings: &mut Settings) -> Result<(), TatakuError> {
     let path = path.as_ref();
     let data = Io::read_lines_resolved(path)?
-        .map(|i| {
+        .flat_map(|i| {
             let mut s = i.split("=");
             s
                 .next()
                 .zip(s.next())
                 .map(|(key, val)| (key.to_owned(), val.to_owned()))
         })
-        .filter_map(|i|i)
         .collect::<HashMap<String, String>>();
 
 
@@ -196,7 +195,7 @@ pub async fn load_osu_settings(path: impl AsRef<Path>, settings: &mut Settings) 
     }
 
 
-    let songs_folder = data.get(&"BeatmapDirectory".to_owned()).cloned().or_else(||Some("Songs".to_owned())).unwrap();
+    let songs_folder = data.get("BeatmapDirectory").cloned().unwrap_or("Songs".to_owned());
     let songs_folder = path.parent().unwrap().join(&songs_folder).to_string_lossy().to_string();
     if !settings.external_games_folders.contains(&songs_folder) {
         settings.external_games_folders.push(songs_folder);

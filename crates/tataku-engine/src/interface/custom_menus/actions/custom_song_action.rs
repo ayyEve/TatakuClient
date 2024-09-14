@@ -33,9 +33,9 @@ impl CustomMenuSongAction {
             Self::Pause => Some(SongAction::Pause),
             Self::Toggle => Some(SongAction::Toggle),
             Self::Restart => Some(SongAction::Restart),
-            Self::Seek(n) => n.resolve(values, None).and_then(|n| n.as_f32().ok()).map(|n|SongAction::SeekBy(n)),
-            Self::SetPosition(n) => n.resolve(values, None).and_then(|n| n.as_f32().ok()).map(|n| SongAction::SetPosition(n)),
-            Self::SetRate(n) => n.resolve(values, None).and_then(|n| n.as_f32().ok()).map(|n| SongAction::SetRate(n)),
+            Self::Seek(n) => n.resolve(values, None).and_then(|n| n.as_f32().ok()).map(SongAction::SeekBy),
+            Self::SetPosition(n) => n.resolve(values, None).and_then(|n| n.as_f32().ok()).map(SongAction::SetPosition),
+            Self::SetRate(n) => n.resolve(values, None).and_then(|n| n.as_f32().ok()).map(SongAction::SetRate),
         }
     }
 
@@ -73,7 +73,7 @@ impl<'lua> FromLua<'lua> for CustomMenuSongAction {
                     Err(FromLuaConversionError { 
                         from: "table", 
                         to: "CustomMenuSongAction", 
-                        message: Some(format!("couldn't determine song action")) 
+                        message: Some("couldn't determine song action".to_string()) 
                     })
                 }
             }

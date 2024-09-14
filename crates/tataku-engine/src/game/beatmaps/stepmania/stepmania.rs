@@ -48,8 +48,10 @@ pub struct StepmaniaBeatmap {
 
 impl StepmaniaBeatmap {
     pub fn load_multiple<P:AsRef<Path>>(path:P) -> TatakuResult<Vec<Self>> {
-        let mut map = Self::default();
-        map.file_path = path.as_ref().to_string_lossy().to_string();
+        let mut map = Self {
+            file_path: path.as_ref().to_string_lossy().to_string(),
+            ..Default::default()
+        };
 
         let mut maps = Vec::new();
         let parent = path.as_ref().parent().unwrap();
@@ -66,7 +68,7 @@ impl StepmaniaBeatmap {
         while let Some(line) = lines.next() {
             // trim out comments
             let line = line.split("//").next().unwrap();
-            if line.len() == 0 {continue}
+            if line.is_empty() {continue}
 
             if line.starts_with("#") {
                 let mut split = line.trim_end_matches(";").split(":");
@@ -78,9 +80,9 @@ impl StepmaniaBeatmap {
                     "#SUBTITLE" => map.subtitle = value.to_owned(),
                     "#ARTIST" => map.artist = value.to_owned(),
 
-                    "#TITLETRANSLIT" if value.len() > 0 => map.title_translated = Some(value.to_owned()),
-                    "#SUBTITLETRANSLIT" if value.len() > 0 => map.subtitle_translated = Some(value.to_owned()),
-                    "#ARTISTTRANSLIT" if value.len() > 0 => map.artist_translated = Some(value.to_owned()),
+                    "#TITLETRANSLIT" if !value.is_empty() => map.title_translated = Some(value.to_owned()),
+                    "#SUBTITLETRANSLIT" if !value.is_empty() => map.subtitle_translated = Some(value.to_owned()),
+                    "#ARTISTTRANSLIT" if !value.is_empty() => map.artist_translated = Some(value.to_owned()),
 
                     "#GENRE" => map.genre = value.to_owned(),
                     "#CREDIT" => map.credit = value.to_owned(),
@@ -118,7 +120,7 @@ impl StepmaniaBeatmap {
                     "#NOTES" => {
                         // read chart into lines, ensures split is correct
                         let mut chart_info = value.to_owned();
-                        while let Some(line) = lines.next() {
+                        for line in lines.by_ref() {
                             chart_info += &line;
                             if line.ends_with(";") {break}
                         }
@@ -158,7 +160,7 @@ impl StepmaniaBeatmap {
                         for (i, (time, _)) in beat_lengths.iter_mut().enumerate() {
                             // time is actually the beat number
                             // need to convert it to ms
-                            *time = beat_lens_clone.get(i).unwrap_or(&(0.0, -map.audio_offset * 1000.0)).1 * *time;
+                            *time *= beat_lens_clone.get(i).unwrap_or(&(0.0, -map.audio_offset * 1000.0)).1;
                         }
                         map.beat_lengths = beat_lengths.clone();
                         let mut beat_length_index = 0;
@@ -173,7 +175,7 @@ impl StepmaniaBeatmap {
 
                         // turn the bars into columns of known note types at their specified times
                         for bar in bars {
-                            let notes:Vec<StepmaniaTempNoteType> = bar.chars().map(|c|StepmaniaTempNoteType::from(c)).collect();
+                            let notes:Vec<StepmaniaTempNoteType> = bar.chars().map(StepmaniaTempNoteType::from).collect();
 
                             let note_snapping = notes.len() as f32 / 16.0;
                             let mut time_step = beat_lengths[beat_length_index].1 / note_snapping;
@@ -309,7 +311,7 @@ impl TatakuBeatmap for StepmaniaBeatmap {
     fn get_beatmap_meta(&self) -> Arc<BeatmapMeta> {
         Arc::new(BeatmapMeta {
             file_path: self.file_path.clone(),
-            beatmap_hash: self.hash.clone(),
+            beatmap_hash: self.hash,
             beatmap_type: BeatmapType::Stepmania,
             mode: self.playmode(String::new()),
             artist: self.artist.clone(),

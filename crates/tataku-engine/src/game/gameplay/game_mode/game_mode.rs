@@ -36,7 +36,7 @@ pub trait GameMode: GameModeInput + GameModeProperties + Send + Sync {
     
     async fn force_update_settings(&mut self, settings: &Settings);
     #[cfg(feature="graphics")]
-    async fn reload_skin(&mut self, beatmap_path: &String, skin_manager: &mut dyn SkinProvider) -> TextureSource;
+    async fn reload_skin(&mut self, beatmap_path: &str, skin_manager: &mut dyn SkinProvider) -> TextureSource;
 
     async fn time_jump(&mut self, _new_time: f32) {}
     async fn apply_mods(&mut self, mods: Arc<ModManager>);

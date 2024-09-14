@@ -36,7 +36,7 @@ impl IngameScore {
             ReplayLocation::Local => get_local_replay_for_score(&self.score),
             ReplayLocation::Online(downloader) => downloader.get_replay(settings).await,
             // TODO: replay button should be hidden in this case, but im bad coder
-            ReplayLocation::OnlineNotExist => Err(TatakuError::String(format!("Replay is not available :c"))),
+            ReplayLocation::OnlineNotExist => Err("Replay is not available :c".into()),
         }
     }
 

@@ -494,7 +494,7 @@ impl Widget<Message, iced::Theme, IcedRenderer> for PanelScroll {
 
         // if we have a cursor pos, and the event is a mouse event, do our checks first
         if let (Some(cursor_pos), Event::Mouse(e)) = (cursor.position(), &event) {
-            if self.handle_mouse_event(tree, cursor_pos, &e, layout, renderer) { 
+            if self.handle_mouse_event(tree, cursor_pos, e, layout, renderer) { 
                 return event::Status::Captured;
             }
         }

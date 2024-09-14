@@ -169,7 +169,7 @@ impl OnlineManager {
     async fn reset(&mut self) {
         // if we currently have a connection, close it
         if let Some(writer) = &self.writer {
-            let _ = writer.lock().await.close();
+            let _ = writer.lock().await.close().await;
         }
 
         // reset most values
@@ -458,13 +458,13 @@ impl OnlineManager {
     pub fn set_action(action_info: SetAction, incoming_mode: Option<String>) {
         tokio::spawn(async move {
             let s = OnlineManager::get().await;
-            let mode = incoming_mode.clone().unwrap_or(String::new());
+            let mode = incoming_mode.clone().unwrap_or_default();
 
 
             let action = action_info.get_action();
             let action_text = match &action_info {
-                SetAction::Idle => format!("Idle"),
-                SetAction::Closing => format!("Closing"),
+                SetAction::Idle => "Idle".to_string(),
+                SetAction::Closing => "Closing".to_string(),
 
                 SetAction::Listening { artist, title, .. } => format!("Listening to {artist} - {title}"),
                 SetAction::Spectating { player, artist, title, version, creator:_ } => format!("Watching {player} play {artist} - {title}[{version}]"),

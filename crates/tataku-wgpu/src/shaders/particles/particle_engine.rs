@@ -94,7 +94,7 @@ impl ParticleSystem {
 
     /// returns the buffer if it should be unmapped
     fn receive_from_gpu(&self, index: usize, written_size: usize) -> Option<&ParticleBuffer> {
-        let Some(buffer) = self.get_buffer_from_index(index) else { return None };
+        let buffer = self.get_buffer_from_index(index)?;
 
         // this shouldnt happen (anymore) but is here as a failsafe
         if GpuParticle::count_size(buffer.particle_count) != written_size {

@@ -43,8 +43,8 @@ impl FontAwesome {
     }
 }
 
-impl ToString for FontAwesome {
-    fn to_string(&self) -> String {
-        self.get_char().to_string()
+impl std::fmt::Display for FontAwesome {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.get_char().fmt(f)
     }
 }

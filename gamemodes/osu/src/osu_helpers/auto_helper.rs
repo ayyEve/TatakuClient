@@ -41,7 +41,7 @@ impl StandardAutoHelper {
         }
     }
 
-    pub fn update(&mut self, time:f32, notes: &Vec<Box<dyn OsuHitObject>>, scaling_helper: &Arc<ScalingHelper>, frames: &mut Vec<ReplayAction>) {
+    pub fn update(&mut self, time:f32, notes: &[Box<dyn OsuHitObject>], scaling_helper: &Arc<ScalingHelper>, frames: &mut Vec<ReplayAction>) {
         let mut any_checked = false;
 
         let map_over = time > notes.last().map(|n| n.end_time(100.0)).unwrap_or(0.0);

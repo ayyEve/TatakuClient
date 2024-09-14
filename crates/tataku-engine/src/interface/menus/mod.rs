@@ -14,7 +14,7 @@ pub enum MenuType {
 }
 #[cfg(feature="graphics")]
 impl MenuType {
-    pub fn from_menu(menu: &Box<dyn AsyncMenu>) -> Self {
+    pub fn from_menu(menu: &dyn AsyncMenu) -> Self {
         let Some(custom) = menu.get_custom_name() else { return Self::Internal(menu.get_name()) };
         Self::Custom(custom.clone())
     }

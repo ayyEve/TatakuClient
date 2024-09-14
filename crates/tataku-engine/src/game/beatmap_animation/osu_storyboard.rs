@@ -182,7 +182,7 @@ impl Element {
                 // }
 
                 layer = sprite.layer;
-                blend_mode.map(|b| image.set_blend_mode(b));
+                if let Some(b) = blend_mode { image.set_blend_mode(b) }
 
                 if sprite.filepath == "sb\\glow.png" {
                     image.draw_debug = true;
@@ -216,7 +216,7 @@ impl Element {
                     frames.push(image.tex);
                     counter += 1;
                 }
-                if frames.len() == 0 { return Err(TatakuError::String("anim has no frames!".to_owned())) }
+                if frames.is_empty() { return Err(TatakuError::String("anim has no frames!".to_owned())) }
 
                 let delays = vec![anim.frame_delay; frames.len()];
                 let tex_size = Vector2::new(frames[0].width as f32, frames[0].height as f32);
@@ -224,7 +224,7 @@ impl Element {
                 animation.scale = Vector2::ONE;
                 // animation.free_on_drop = true;
                 animation.draw_debug = true;
-                blend_mode.map(|b| animation.set_blend_mode(b));
+                if let Some(b) = blend_mode { animation.set_blend_mode(b) }
                 
                 animation.origin = anim.origin.resolve(tex_size);
 
@@ -351,7 +351,7 @@ impl Element {
                 } 
                 StoryboardEvent::Loop { loop_count:_ } => continue,
 
-                _ => continue
+                // _ => continue
             };
 
             self.group.transforms.push(Transformation::new(

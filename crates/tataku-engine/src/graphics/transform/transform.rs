@@ -1,7 +1,6 @@
 #![allow(dead_code)]
+
 use crate::prelude::*;
-
-
 #[derive(Copy, Clone, Default)]
 pub struct Transformation {
     /// how long to wait before this transform is started
@@ -69,9 +68,9 @@ pub enum TransformValueResult {
     F64(f64),
     Color(Color)
 }
-impl Into<Vector2> for TransformValueResult {
-    fn into(self) -> Vector2 {
-        if let Self::Vector2(v) = self {
+impl From<TransformValueResult> for Vector2 {
+    fn from(val: TransformValueResult) -> Self {
+        if let TransformValueResult::Vector2(v) = val {
             v
         } else {
             // we want to crash here
@@ -80,9 +79,9 @@ impl Into<Vector2> for TransformValueResult {
         }
     }
 }
-impl Into<f64> for TransformValueResult {
-    fn into(self) -> f64 {
-        if let Self::F64(v) = self {
+impl From<TransformValueResult> for f64 {
+    fn from(val: TransformValueResult) -> Self {
+        if let TransformValueResult::F64(v) = val {
             v
         } else {
             // we want to crash here
@@ -91,9 +90,9 @@ impl Into<f64> for TransformValueResult {
         }
     }
 }
-impl Into<Color> for TransformValueResult {
-    fn into(self) -> Color {
-        if let Self::Color(v) = self {
+impl From<TransformValueResult> for Color {
+    fn from(val: TransformValueResult) -> Self {
+        if let TransformValueResult::Color(v) = val {
             v
         } else {
             // we want to crash here
@@ -104,9 +103,10 @@ impl Into<Color> for TransformValueResult {
 }
 
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 pub enum TransformType {
-    None, // default
+    #[default]
+    None,
     VectorScale { start: Vector2, end: Vector2 },
     Scale {start: f32, end: f32},
     Rotation {start: f32, end: f32},
@@ -117,11 +117,6 @@ pub enum TransformType {
     PositionX {start: f32, end: f32},
     PositionY {start: f32, end: f32},
     BorderTransparency {start: f32, end: f32},
-}
-impl Default for TransformType {
-    fn default() -> Self {
-        TransformType::None
-    }
 }
 
 

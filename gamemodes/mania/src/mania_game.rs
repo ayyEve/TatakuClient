@@ -937,7 +937,7 @@ impl GameMode for ManiaGame {
 
         // setup timing bars
         //TODO: it would be cool if we didnt actually need timing bar objects, and could just draw them
-        if self.timing_bars.len() == 0 {
+        if self.timing_bars.is_empty() {
             // load timing bars
             let parent_tps = timing_points.iter().filter(|t|!t.is_inherited()).collect::<Vec<&TimingPoint>>();
             let mut time = parent_tps[0].time;
@@ -1017,8 +1017,8 @@ impl GameMode for ManiaGame {
     
     async fn force_update_settings(&mut self, _settings: &Settings) {}
     
-    async fn reload_skin(&mut self, beatmap_path: &String, skin_manager: &mut dyn SkinProvider) -> TextureSource {
-        let source = TextureSource::Beatmap(beatmap_path.clone()); // TODO: add setting option
+    async fn reload_skin(&mut self, beatmap_path: &str, skin_manager: &mut dyn SkinProvider) -> TextureSource {
+        let source = TextureSource::Beatmap(beatmap_path.to_owned()); // TODO: add setting option
 
         // reload skin settings
         let all_mania_skin_settings = &skin_manager.skin().mania_settings;

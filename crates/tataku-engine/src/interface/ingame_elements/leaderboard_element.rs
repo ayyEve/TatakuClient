@@ -58,7 +58,7 @@ impl InnerUIElement for LeaderboardElement {
 
         let mut base_pos = pos_offset;
         for score in self.scores.iter() {
-            let mut l = LeaderboardItem::new(score.clone(), self.info.clone());
+            let mut l = LeaderboardItem::new(score.clone(), self.info);
             l.image = self.image.clone();
             l.ui_scale_changed(scale);
 
@@ -73,9 +73,9 @@ impl InnerUIElement for LeaderboardElement {
                 }
             }
 
-            l.set_pos(base_pos);
+            l.pos = base_pos;
             l.draw(Vector2::ZERO, list);
-            base_pos += Vector2::with_y(l.size().y + 5.0) * scale;
+            base_pos += Vector2::with_y(l.size.y + 5.0) * scale;
         }
 
     }
@@ -87,7 +87,6 @@ impl InnerUIElement for LeaderboardElement {
 }
 
 
-#[derive(ScrollableGettersSetters)]
 pub struct LeaderboardItem {
     pos: Vector2,
     size: Vector2,
@@ -149,7 +148,8 @@ impl LeaderboardItem {
         self
     }
 }
-impl ScrollableItem for LeaderboardItem {
+
+impl LeaderboardItem {
     fn ui_scale_changed(&mut self, scale: Vector2) {
         self.ui_scale = scale;
         self.size = LEADERBOARD_ITEM_SIZE * scale;
@@ -210,7 +210,7 @@ impl ScrollableItem for LeaderboardItem {
             15.0 * self.ui_scale.y,
             format!("{}: {}", self.score.username, format_number(self.score.score.score)),
             text_color,
-            self.font.clone()
+            self.font
         ));
 
         // combo text
@@ -219,7 +219,7 @@ impl ScrollableItem for LeaderboardItem {
             12.0 * self.ui_scale.y,
             format!("{}x, {:.2}%, {}{time_diff_str}", format_number(self.score.max_combo), self.info.calc_acc(&self.score) * 100.0, self.score_mods),
             text_color,
-            self.font.clone()
+            self.font
         ));
     }
 

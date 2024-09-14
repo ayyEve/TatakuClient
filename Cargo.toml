@@ -137,9 +137,6 @@ rlua = { version = "0.20.0" }
 # tataku-logging = { version = "0.3.0", registry = "tataku-registry", path = "/home/ayyeve/Desktop/projects/tataku/tataku-logging" }
 # log = "0.4.16" # todo: nuke before commit
 tracing = "0.1.40"
-# todo: move out of workspace?
-tracing-subscriber = "0.3.18"
-tracing-appender = "0.2.3"
 num-format = "0.4.4"
 strfmt = "0.2.4"
 

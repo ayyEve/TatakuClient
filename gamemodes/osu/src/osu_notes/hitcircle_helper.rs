@@ -201,7 +201,7 @@ impl HitCircleImageHelper {
             group.push(overlay);
         }
         
-        if group.items.len() == 0 {
+        if group.items.is_empty() {
             group.push(Circle::new(
                 Vector2::ZERO,
                 self.scaling_helper.scaled_cs,

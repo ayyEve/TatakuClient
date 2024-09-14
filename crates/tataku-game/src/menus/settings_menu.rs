@@ -104,17 +104,17 @@ impl Dialog for SettingsMenu {
 
         let items = builder.categories
             .into_iter()
-            .filter(|(_,(a,_))|!a.is_empty())
-            .map(|(name, (props, vals))|
+            .filter(|sc| !sc.properties.is_empty())
+            .flat_map(|sc|
             [
                 // space
                 row!( Text::new(" ").size(40.0); ),
                 // category name
-                row!( Text::new(name).size(40.0); ),
+                row!( Text::new(sc.name).size(40.0); ),
                 // settings
                 CullingColumn::with_children(
-                    props.into_iter()
-                        .zip(vals.into_iter())
+                    sc.properties.into_iter()
+                        .zip(sc.values)
                         .map(|(p,v)| 
                             row!(p, v; align_items = Alignment::Center, spacing = 5.0))
                         .collect()
@@ -122,7 +122,7 @@ impl Dialog for SettingsMenu {
                 .spacing(5.0)
                 .into_element()
             ]
-        ).flatten().collect();
+        ).collect();
 
         let window_size = WindowSize::get().0;
         

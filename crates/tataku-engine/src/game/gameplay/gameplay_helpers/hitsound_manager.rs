@@ -54,18 +54,18 @@ impl HitsoundManager {
         let mut beatmap_sounds = HashMap::new();
         if settings.beatmap_hitsounds {
             for file in map_files {
-                if let Ok(file) = file {
-                    let file_name = file.file_name().to_string_lossy().to_lowercase();
-                    if file_name.ends_with(".wav") {
-                        let filename = file_name.trim_end_matches(".wav").to_owned();
-                        load_sound(
-                            file.path().to_string_lossy().trim_end_matches(".wav"),
-                            filename, 
-                            &mut beatmap_sounds,
-                            actions
-                        ).await;
-                    }
+                let Ok(file) = file else { continue };
+                let file_name = file.file_name().to_string_lossy().to_lowercase();
+                if file_name.ends_with(".wav") {
+                    let filename = file_name.trim_end_matches(".wav").to_owned();
+                    load_sound(
+                        file.path().to_string_lossy().trim_end_matches(".wav"),
+                        filename, 
+                        &mut beatmap_sounds,
+                        actions
+                    ).await;
                 }
+                
             }
             // error!("beatmap: {:?}", beatmap_sounds.keys());
         }
@@ -74,7 +74,7 @@ impl HitsoundManager {
         self.sounds.insert(HitsoundSource::Beatmap, beatmap_sounds);
 
         // handle loading the rest here so we avoid duplicate code
-        self.reload_skin(&settings, actions).await;
+        self.reload_skin(settings, actions).await;
     } 
 
     async fn load_hitsound(
@@ -97,7 +97,7 @@ impl HitsoundManager {
         // }
         
         // check for playmode override
-        if self.playmode_prefix.len() > 0 {
+        if !self.playmode_prefix.is_empty() {
             let filename = format!("{}-{filename}", self.playmode_prefix);
 
             // skin
@@ -110,7 +110,7 @@ impl HitsoundManager {
         }
     }
 
-    pub fn play_sound(&self, hitsounds: &Vec<Hitsound>, vol: f32) {
+    pub fn play_sound(&self, hitsounds: &[Hitsound], vol: f32) {
         if !self.enabled { return }
 
         // The sound file is loaded from the first of the following directories that contains a matching filename:
@@ -125,10 +125,8 @@ impl HitsoundManager {
             let name = &sound.filename;
 
             // if theres is a playmode prefix, try to play a prefixed sound first
-            if !self.playmode_prefix.is_empty() {
-                if self.play_sound_single(sound, Some(&self.playmode_prefix), vol) {
-                    return;
-                }
+            if !self.playmode_prefix.is_empty() && self.play_sound_single(sound, Some(&self.playmode_prefix), vol) {
+                return;
             }
 
             // if that failed, try without the prefix

@@ -117,7 +117,7 @@ impl LuaAction {
             }
 
             Self::Multiple(list) => {
-                let list = list.iter().map(|a| a.resolve(owner, values, passed_in.clone())).filter_map(|m|m).collect::<Vec<_>>();
+                let list = list.iter().map(|a| a.resolve(owner, values, passed_in.clone())).flatten().collect::<Vec<_>>();
                 (!list.is_empty()).then(|| Message::new(owner, "", MessageType::Multi(list)))
             }
 
@@ -129,7 +129,7 @@ impl<'lua> FromLua<'lua> for LuaAction {
         #[cfg(feature="debug_custom_menus")] info!("Reading ButtonAction");
         let Value::Table(table) = lua_value else { return Err(FromLuaConversionError { from: lua_value.type_name(), to: "ButtonAction", message: Some("Not a table".to_owned()) }) };
 
-        if let Ok(_) = table.get::<_, Self>(0) {
+        if table.get::<_, Self>(0).is_ok() {
             let mut list = Vec::new();
 
             for i in 0.. {
@@ -190,30 +190,26 @@ impl CustomEventValueType {
 
     /// pre-emptively resolve variables. used when the element's event requires values to be moved
     pub fn resolve_pre(&mut self, values: &dyn Reflect) {
-        match self {
-            Self::Variable(var) => {
-                let Ok(val) = values.impl_get(ReflectPath::new(var)) else {
-                    error!("custom event value is none! {var}");
+        if let Self::Variable(var) = self {
+            let Ok(val) = values.impl_get(ReflectPath::new(var)) else {
+                error!("custom event value is none! {var}");
+                *self = Self::None;
+                return;
+            };
+            let value = match TatakuValue::from_reflection(val) {
+                Ok(v) => v,
+                Err(e) => {
+                    error!("custom event value error: {var}, {e:?}");
                     *self = Self::None;
-                    return;
-                };
-                let value = match TatakuValue::from_reflection(val) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        error!("custom event value error: {var}, {e:?}");
-                        *self = Self::None;
-                        return
-                    }
-                };
+                    return
+                }
+            };
 
-                *self = Self::Value(value)
-            }
-            // Self::None and Self::Passed are ignored, nothing to do here for Self::Value
-            _ => {}
+            *self = Self::Value(value)
         }
     }
 
-    pub fn resolve<'a>(&self, values: &'a dyn Reflect, passed_in: Option<TatakuValue>) -> Option<TatakuValue> {
+    pub fn resolve(&self, values: &dyn Reflect, passed_in: Option<TatakuValue>) -> Option<TatakuValue> {
         match self {
             Self::None => None,
             Self::Value(val) => Some(val.clone()),
@@ -241,7 +237,7 @@ impl CustomEventValueType {
             Ok(Self::Value(value))
         } else if let Some(var) = table.get::<_, Option<String>>("variable")? {
             Ok(Self::Variable(var))
-        } else if let Some(_) = table.get::<_, Option<bool>>("passed_in")? {
+        } else if table.get::<_, Option<bool>>("passed_in")?.is_some() {
             Ok(Self::PassedIn)
         } else {
             Ok(Self::None)
@@ -260,7 +256,7 @@ impl<'lua> FromLua<'lua> for CustomEventValueType {
             Value::Number(n) => Ok(Self::new_value(n as f32)),
             Value::Integer(n) => Ok(Self::new_value(n as u64)),
 
-            other =>  Err(FromLuaConversionError { from: other.type_name(), to: THIS_TYPE, message: Some(format!("Bad type")) })
+            other =>  Err(FromLuaConversionError { from: other.type_name(), to: THIS_TYPE, message: Some("Bad type".to_string()) })
         }
     }
 }
@@ -276,7 +272,7 @@ impl<'a, T: ?Sized> Deref for MaybeOwned<'a, T> {
 
     fn deref(&self) -> &Self::Target {
         match self {
-            Self::Owned(t) => &t,
+            Self::Owned(t) => t,
             Self::Borrowed(t) => t,
         }
     }

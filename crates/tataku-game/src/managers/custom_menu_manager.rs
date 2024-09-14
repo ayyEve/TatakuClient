@@ -1,14 +1,12 @@
 use crate::prelude::*;
 
-
+#[derive(Default)]
 pub struct CustomMenuManager {
     menu_list: Vec<CustomMenuEntry>,
 }
 impl CustomMenuManager {
     pub fn new() -> Self {
-        Self {
-            menu_list: Vec::new(),
-        }
+        Self::default()
     }
 
 
@@ -123,7 +121,7 @@ impl CustomMenuManager {
 
         for i in self.menu_list.iter_mut().filter(|m| !m.source.check(&source) ) {
             let Some(path) = &i.path else { continue };
-            let Ok(bytes) = std::fs::read(&path) else { continue };
+            let Ok(bytes) = std::fs::read(path) else { continue };
 
             match Self::load_menu_inner(
                 Some(path.clone()), 

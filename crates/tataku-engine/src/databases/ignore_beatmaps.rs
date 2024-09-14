@@ -26,7 +26,7 @@ impl Database {
         let query = "INSERT INTO ignore_maps (beatmap_path, beatmap_hash) VALUES (?, '')";
 
         let db = Self::get().await;
-        let res = db.prepare(&query).expect(&query).execute([path]);
+        let res = db.prepare(query).expect(query).execute([path]);
         if let Err(e) = res {
             error!("error inserting metadata: {}", e);
         }

@@ -213,12 +213,12 @@ impl OsuGame {
 
     #[inline]
     pub fn get_cs(meta: &BeatmapMeta, mods: &ModManager) -> f32 {
-        Self::scale_by_mods(meta.cs, 0.5, 1.3, &mods).clamp(1.0, 10.0)
+        Self::scale_by_mods(meta.cs, 0.5, 1.3, mods).clamp(1.0, 10.0)
     }
 
     fn draw_follow_points(&mut self, time: f32, list: &mut RenderableCollection) {
         if !self.game_settings.draw_follow_points { return; }
-        if self.notes.len() == 0 { return }
+        if self.notes.is_empty() { return }
 
         let follow_dot_size = 3.0 * self.scaling_helper.scale;
         let follow_dot_distance = 20.0 * self.scaling_helper.scale;
@@ -419,10 +419,10 @@ impl GameMode for OsuGame {
                     all_items.push((None, Some(slider), None));
         
                     // can this be improved somehow?
-                    if slider.curve_points.len() == 0 || slider.length == 0.0 {
+                    if slider.curve_points.is_empty() || slider.length == 0.0 {
                         s.end_time = s.end_time.max(slider.time);
                     } else {
-                        let curve = get_curve(slider, &map, &timing_points);
+                        let curve = get_curve(slider, map, &timing_points);
                         s.end_time = s.end_time.max(curve.end_time);
                     }
                 }
@@ -451,9 +451,8 @@ impl GameMode for OsuGame {
 
                 // add notes
                 let mut combo_num = 0;
-                let mut counter = 0;
         
-                for (note, slider, spinner) in all_items {
+                for (counter, (note, slider, spinner)) in all_items.into_iter().enumerate() {
                     // check for new combo
                     if let Some(note) = note { if note.new_combo { combo_num = 0 } }
                     if let Some(slider) = slider { if slider.new_combo { combo_num = 0 } }
@@ -479,7 +478,7 @@ impl GameMode for OsuGame {
                     }
                     if let Some(slider) = slider {
                         // invisible note
-                        if slider.curve_points.len() == 0 || slider.length == 0.0 {
+                        if slider.curve_points.is_empty() || slider.length == 0.0 {
                             let note = NoteDef {
                                 pos: slider.pos,
                                 time: slider.time,
@@ -499,7 +498,7 @@ impl GameMode for OsuGame {
                                 hitsounds,
                             ).await));
                         } else {
-                            let curve = get_curve(slider, &map, &timing_points);
+                            let curve = get_curve(slider, map, &timing_points);
                             s.notes.push(Box::new(OsuSlider::new(
                                 slider.clone(),
                                 curve,
@@ -533,8 +532,6 @@ impl GameMode for OsuGame {
                             spins_required
                         ).await))
                     }
-                    
-                    counter += 1;
                 }
         
                 s
@@ -652,7 +649,7 @@ impl GameMode for OsuGame {
                     KeyPress::Left | KeyPress::LeftMouse => self.cursor.left_pressed(false),
                     KeyPress::Right | KeyPress::RightMouse => self.cursor.right_pressed(false),
                     KeyPress::Dash => {
-                        self.smoke_emitter.as_mut().map(|i| i.should_emit = false);
+                        if let Some(i) = self.smoke_emitter.as_mut() { i.should_emit = false; }
                         return;
                     }
                     _ => {}
@@ -722,7 +719,7 @@ impl GameMode for OsuGame {
         }
 
         // update emitter
-        self.smoke_emitter.as_mut().map(|e| e.update(state.time));
+        if let Some(e) = self.smoke_emitter.as_mut() { e.update(state.time) }
 
         // if the map is over, say it is
         if state.time >= self.end_time {
@@ -827,7 +824,7 @@ impl GameMode for OsuGame {
                         let judge = note.check_release_points(state.time);
                         state.add_judgment(judge);
                         
-                        if !(judge == OsuHitJudgments::X300 && !self.game_settings.show_300s) {
+                        if judge != OsuHitJudgments::X300 || self.game_settings.show_300s {
                             Self::add_judgement_indicator(
                                 note.point_draw_pos(state.time), 
                                 &judge, 
@@ -899,7 +896,7 @@ impl GameMode for OsuGame {
         // draw the playfield
         if !state.gameplay_mode.is_preview() {
             let alpha = self.game_settings.playfield_alpha;
-            let mut playfield = self.scaling_helper.playfield_scaled_with_cs_border.clone();
+            let mut playfield = self.scaling_helper.playfield_scaled_with_cs_border;
             playfield.color.a = alpha;
 
             if self.move_playfield.is_some() {
@@ -1013,13 +1010,13 @@ impl GameMode for OsuGame {
         }
 
         // reset the smoke particles
-        self.smoke_emitter.as_mut().map(|e|e.reset(0.0));
+        if let Some(e) = self.smoke_emitter.as_mut() { e.reset(0.0) }
 
         self.cursor.reset()
     }
 
     fn skip_intro(&mut self, game_time: f32) -> Option<f32> {
-        if self.notes.len() == 0 { return None }
+        if self.notes.is_empty() { return None }
 
         let time = self.notes[0].time() - self.notes[0].get_preempt();
         if time < game_time || time < 0.0 { return None }
@@ -1062,19 +1059,19 @@ impl GameMode for OsuGame {
     }
 
     #[cfg(feature="graphics")]
-    async fn reload_skin(&mut self, beatmap_path: &String, skin_manager: &mut dyn SkinProvider) -> TextureSource {
-        let source = if self.game_settings.beatmap_skin { TextureSource::Beatmap(beatmap_path.clone()) } else { TextureSource::Skin };
+    async fn reload_skin(&mut self, beatmap_path: &str, skin_manager: &mut dyn SkinProvider) -> TextureSource {
+        let source = if self.game_settings.beatmap_skin { TextureSource::Beatmap(beatmap_path.to_owned()) } else { TextureSource::Skin };
 
         self.cursor.reload_skin(skin_manager).await;
         self.judgment_helper.reload_skin(skin_manager).await;
         self.follow_point_image = skin_manager.get_texture("followpoint", &source, SkinUsage::Gamemode, false).await;
 
-        let combo_colors = if self.game_settings.use_beatmap_combo_colors && self.beatmap_combo_colors.len() > 0 {
+        let combo_colors = if self.game_settings.use_beatmap_combo_colors && !self.beatmap_combo_colors.is_empty() {
             self.beatmap_combo_colors.clone()
-        } else if skin_manager.skin().combo_colors.len() > 0 {
+        } else if !skin_manager.skin().combo_colors.is_empty() {
             skin_manager.skin().combo_colors.clone()
         } else {
-            self.game_settings.combo_colors.iter().map(|c| Color::from_hex(c)).collect()
+            self.game_settings.combo_colors.iter().map(Color::from_hex).collect()
         };
 
         self.apply_combo_colors(combo_colors);
@@ -1198,7 +1195,7 @@ impl GameMode for OsuGame {
         
         if has_otb != had_otb {
             if has_otb {
-                let timing_points = self.timing_points.iter().filter(|t|!t.is_inherited()).map(|t|t.clone()).collect::<Vec<_>>();
+                let timing_points = self.timing_points.iter().filter(|t| !t.is_inherited()).cloned().collect::<Vec<_>>();
                 let mut index = 0;
                 // info!("tp: {} -> {}", timing_points[index].time, timing_points[index].beat_length);
                 
@@ -1323,7 +1320,7 @@ impl GameModeInput for OsuGame {
         
         if let Some((original, mouse_start)) = self.move_playfield {
             
-            let mut settings = (&*self.game_settings).clone();
+            let mut settings = (*self.game_settings).clone();
             let mut change = original + (pos - mouse_start);
 
             // check playfield snapping
@@ -1356,7 +1353,7 @@ impl GameModeInput for OsuGame {
 
         // convert window pos to playfield pos
         let pos = self.scaling_helper.descale_coords(pos);
-        Some(ReplayAction::MousePos(pos.x as f32, pos.y as f32))
+        Some(ReplayAction::MousePos(pos.x, pos.y))
     }
     
     async fn mouse_down(&mut self, btn: MouseButton) -> Option<ReplayAction> {
@@ -1392,7 +1389,7 @@ impl GameModeInput for OsuGame {
     async fn mouse_scroll(&mut self, delta: f32) -> Option<ReplayAction> {
         if self.move_playfield.is_some() {
             let delta = delta / 40.0;
-            let mut a = (&*self.game_settings).clone();
+            let mut a = (*self.game_settings).clone();
             a.playfield_scale += delta;
             self.game_settings = Arc::new(a);
 

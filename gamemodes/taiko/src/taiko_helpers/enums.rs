@@ -14,9 +14,9 @@ pub enum HitType {
     Don,
     Kat
 }
-impl Into<HitType> for KeyPress {
-    fn into(self) -> HitType {
-        match self {
+impl From<KeyPress> for HitType {
+    fn from(val: KeyPress) -> Self {
+        match val {
             KeyPress::LeftKat|KeyPress::RightKat => HitType::Kat,
             KeyPress::LeftDon|KeyPress::RightDon => HitType::Don,
             _ => { panic!("non-taiko key while playing taiko") }

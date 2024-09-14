@@ -17,7 +17,7 @@ impl TaikoAutoHelper {
         }
     }
 
-    pub fn update(&mut self, time: f32, queues: &mut Vec<TaikoNoteQueue>, frames: &mut Vec<ReplayAction>) {
+    pub fn update(&mut self, time: f32, queues: &mut [TaikoNoteQueue], frames: &mut Vec<ReplayAction>) {
         let catching_up = time - self.last_update > 20.0;
         self.last_update = time;
 

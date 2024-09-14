@@ -54,16 +54,14 @@ impl DonChan {
 
     pub fn set_offset(&mut self, offset: f32) {
         for i in self.all_anims() {
-            if let Some(anim) = i {
-                anim.frame_start_time = offset;
-            }
+            let Some(anim) = i else { continue };
+            anim.frame_start_time = offset;
         }
     }
     pub fn update_delays(&mut self, timing_point: &TimingPoint) {
         for i in self.all_anims() {
-            if let Some(anim) = i {
-                anim.frame_delays.iter_mut().for_each(|d| *d = timing_point.beat_length)
-            }
+            let Some(anim) = i else { continue };
+            anim.frame_delays.iter_mut().for_each(|d| *d = timing_point.beat_length)
         }
     }
 
@@ -93,11 +91,9 @@ impl InnerUIElement for DonChan {
 
         // check timing point change
         let current_tp = manager.current_timing_point();
-        if !current_tp.is_inherited() {
-            if self.current_timing_point_time != current_tp.time {
-                self.current_timing_point_time = current_tp.time;
-                self.update_delays(current_tp);
-            }
+        if !current_tp.is_inherited() && self.current_timing_point_time != current_tp.time {
+            self.current_timing_point_time = current_tp.time;
+            self.update_delays(current_tp);
         }
 
         // check kiai update
@@ -143,9 +139,8 @@ impl InnerUIElement for DonChan {
 
         // update all anims
         for i in self.all_anims() {
-            if let Some(anim) = i {
-                anim.update(time);
-            }
+            let Some(anim) = i else { continue };
+            anim.update(time);
         }
     }
 
@@ -160,14 +155,13 @@ impl InnerUIElement for DonChan {
                         anim.scale *= scale;
                         list.push(anim)
                     }
-                } else {
-                    if let Some(anim) = &self.normal_anim {
-                        let mut anim = anim.clone();
-                        anim.pos = pos_offset;
-                        anim.scale *= scale;
-                        list.push(anim)
-                    }
+                } else if let Some(anim) = &self.normal_anim {
+                    let mut anim = anim.clone();
+                    anim.pos = pos_offset;
+                    anim.scale *= scale;
+                    list.push(anim)
                 }
+                
             }
             DonChanState::ComboMilestone => {
                 if let Some(anim) = &self.combo_anim {
@@ -222,7 +216,7 @@ async fn load_anim(
         frames.push(tex.tex);
     }
 
-    if frames.len() == 0 {
+    if frames.is_empty() {
         None
     } else {
         let delays = vec![50.0; frames.len()];

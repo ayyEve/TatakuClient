@@ -37,7 +37,7 @@ fn read_osu_replay(file: impl AsRef<Path>) -> TatakuResult<OsuReplay> {
 
     let data_len = read_int(file, &mut offset)? as usize;
     
-    if offset + (data_len - 1) >= file.len() { return Err(TatakuError::String(format!("buffer overflow"))) }
+    if offset + (data_len - 1) >= file.len() { return Err("buffer overflow".into()) }
     let mut replay_data = &file[offset..(offset + data_len)]; offset += data_len;
 
     let score_id = read_long(file, &mut offset)?;
@@ -55,7 +55,7 @@ fn read_osu_replay(file: impl AsRef<Path>) -> TatakuResult<OsuReplay> {
     // Life bar graph: comma separated pairs u/v, where u is the time in milliseconds into the song and v is a floating point value from 0 - 1 that represents the amount of life you have at the given time (0 = life bar is empty, 1= life bar is full)
     let mut health = Vec::new();
     for i in health_str.split(",") {
-        if i.len() == 0 { continue }
+        if i.is_empty() { continue }
         let mut split2 = i.split("|");
 
         macro_rules! parse {
@@ -123,7 +123,7 @@ fn parse_lzma_stream(lzma: &mut impl std::io::BufRead) -> TatakuResult<Vec<OsuRe
     let mut replay_frames = Vec::new();
     let mut accumulated_time = 0;
     for i in replay_str.split(",") {
-        if i.len() == 0 { continue }
+        if i.is_empty() { continue }
         let mut split2 = i.split("|");
 
         macro_rules! parse {
@@ -172,7 +172,7 @@ macro_rules! read_num {
 }
 
 fn read_byte(bytes: &[u8], offset:&mut usize) -> TatakuResult<u8> {
-    if *offset >= bytes.len() { return Err(TatakuError::String(format!("buffer overflow"))); }
+    if *offset >= bytes.len() { return Err("buffer overflow".into()); }
 
     let b = bytes[*offset];
     *offset += 1;
@@ -319,7 +319,7 @@ impl OsuReplay {
     }
 
 
-    fn parse_frames(game_mode: &String, replay_frames: &Vec<OsuReplayFrame>) -> Replay {
+    fn parse_frames(game_mode: &String, replay_frames: &[OsuReplayFrame]) -> Replay {
         let mut replay = Replay::new();
 
         // mania keys are stored in the x pos as bitflags
@@ -370,14 +370,14 @@ impl OsuReplay {
 
                     // press 
                     if !last_keys.contains(k) && f.keys.contains(k) {
-                        let key = k.to_keypress(&game_mode);
+                        let key = k.to_keypress(game_mode);
 
                         replay.frames.push(ReplayFrame::new(f.time as f32, ReplayAction::Press(key)));
                     }
                     
                     // release 
                     if last_keys.contains(k) && !f.keys.contains(k) && game_mode != "taiko" {
-                        let key = k.to_keypress(&game_mode);
+                        let key = k.to_keypress(game_mode);
 
                         replay.frames.push(ReplayFrame::new(f.time as f32, ReplayAction::Release(key)));
                     }
@@ -510,7 +510,7 @@ impl OsuKeys {
         }
     }
 
-    fn to_keypress(&self, playmode:&String) -> KeyPress {
+    fn to_keypress(self, playmode: &String) -> KeyPress {
         match (&**playmode, self) {
             // osu
             ("osu", Self::M1) => KeyPress::LeftMouse,

@@ -59,7 +59,7 @@ impl MouseInputHelper {
         let size = window.inner_size();
         let pos = Vector2::new(size.width as f32, size.height as f32) / 2.0;
         
-        if let Ok(_) = window.set_cursor_position(winit::dpi::LogicalPosition::new(pos.x as f64, pos.y as f64)) {
+        if window.set_cursor_position(winit::dpi::LogicalPosition::new(pos.x as f64, pos.y as f64)).is_ok() {
             self.mouse_pos = pos;
         }
     }

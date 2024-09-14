@@ -65,8 +65,8 @@ impl ElementDef {
             }
 
             ElementIdentifier::TextInput { on_input, on_submit, .. } => {
-                on_input.as_mut().map(|i| i.build());
-                on_submit.as_mut().map(|i| i.build());
+                if let Some(i) = on_input.as_mut() { i.build() }
+                if let Some(i) = on_submit.as_mut() { i.build() }
             }
 
             ElementIdentifier::Conditional { cond, if_true, if_false } => {
@@ -83,7 +83,7 @@ impl ElementDef {
             }
 
             ElementIdentifier::Dropdown { on_select, .. } => {
-                on_select.as_mut().map(|a| a.build());
+                if let Some(a) = on_select.as_mut() { a.build() }
             }
 
             _ => {},
@@ -255,7 +255,7 @@ impl<'lua> FromLua<'lua> for ElementDef {
                         .ok_or(rlua::Error::FromLuaConversionError { 
                             from: "_", 
                             to: "list", 
-                            message: Some(format!("variable parameter not provided"))
+                            message: Some("variable parameter not provided".to_string())
                         })?,
                 },
                 width: width.unwrap_or(Length::Fill),
@@ -293,7 +293,7 @@ pub enum ElementPadding {
     Quad([f32; 4])
 }
 impl ElementPadding {
-    fn value_to_float<'lua>(value: Value<'lua>) -> rlua::Result<f32> {
+    fn value_to_float(value: Value<'_>) -> rlua::Result<f32> {
         match value {
             Value::Integer(i) => Ok(i as f32),
             Value::Number(n) => Ok(n as f32),
@@ -301,12 +301,12 @@ impl ElementPadding {
         }
     }
 }
-impl Into<iced::Padding> for ElementPadding {
-    fn into(self) -> iced::Padding {
-        match self {
-            Self::Single(f) => iced::Padding::new(f),
-            Self::Double(a) => iced::Padding::from(a),
-            Self::Quad(a) => iced::Padding::from(a),
+impl From<ElementPadding> for iced::Padding {
+    fn from(val: ElementPadding) -> Self {
+        match val {
+            ElementPadding::Single(f) => iced::Padding::new(f),
+            ElementPadding::Double(a) => iced::Padding::from(a),
+            ElementPadding::Quad(a) => iced::Padding::from(a),
         }
     }
 }

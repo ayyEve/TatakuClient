@@ -38,10 +38,7 @@ impl UTypingGameInfo {
     }
 
     fn can_load_beatmap(map: &BeatmapType) -> bool { 
-        match map {
-            BeatmapType::UTyping => true,
-            _ => false
-        }
+        matches!(map, BeatmapType::UTyping)
     }
 
     fn get_diff_string(info: &BeatmapMetaWithDiff, mods: &ModManager) -> String {
@@ -73,7 +70,7 @@ impl UTypingGameInfo {
         if let Some(diff) = &info.diff {
             txt += &format!(", Diff: {:.2}", diff);
         } else {
-            txt += &format!(", Diff: ...");
+            txt += ", Diff: ...";
         }
 
         txt

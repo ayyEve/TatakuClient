@@ -107,7 +107,7 @@ impl MediaControlsManager {
             }
         }
 
-        if !self.enabled { return }
+        // if !self.enabled { return }
     }
 
 

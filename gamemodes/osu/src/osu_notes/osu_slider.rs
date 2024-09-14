@@ -247,7 +247,6 @@ impl OsuSlider {
 
         if USE_NEW_SLIDER_RENDERING {
             let mut line_segments: Vec<LineSegment> = self.curve.segments.iter().flat_map(|segment| {
-            let mut line_segments: Vec<LineSegment> = self.curve.segments.iter().flat_map(|segment| {
                 let points = segment.all_points();
 
                 if points.is_empty() { return Vec::new(); }
@@ -271,9 +270,7 @@ impl OsuSlider {
                     max_pos.y = max_pos.y.max(p2.y);
 
                     LineSegment { p1, p2 }
-                    LineSegment { p1, p2 }
                 }).collect::<Vec<_>>() // todo: avoid too many allocations here
-            }).collect();
             }).collect();
 
             min_pos -= self.radius;

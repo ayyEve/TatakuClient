@@ -81,7 +81,7 @@ impl TimingPointHelper {
 
     // moved here from the beatmap object because its annoying having things in multiple places
     pub fn beat_length_at(&self, time:f32, allow_multiplier:bool) -> f32 {
-        if self.timing_points.len() == 0 { return 0.0 }
+        if self.timing_points.is_empty() { return 0.0 }
 
         // this isnt always a control point, need to find the first non-inherited point
         let mut point = self.timing_points.iter().find(|t|!t.is_inherited());
@@ -114,14 +114,14 @@ impl TimingPointHelper {
     }
     pub fn control_point_at(&self, time:f32) -> TimingPoint {
         // panic as this should be dealt with earlier in the code
-        if self.timing_points.len() == 0 { panic!("beatmap has no timing points!"); }
+        if self.timing_points.is_empty() { panic!("beatmap has no timing points!"); }
 
         let mut point = self.timing_points[0];
         for tp in self.timing_points.iter() {
             if tp.time <= time {point = *tp}
         }
 
-        point.into()
+        point
     }
 
 

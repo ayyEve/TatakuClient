@@ -8,15 +8,15 @@ impl Database {
         s.query_map([], row_into_metadata).unwrap()
             .filter_map(|m|{
                 if let Err(e) = &m {error!("DB Err: {}", e)}
-                m.map(|b|Arc::new(b)).ok()
+                m.map(Arc::new).ok()
             })
             .collect::<Vec<Arc<BeatmapMeta>>>()
     }
 
     pub async fn clear_all_maps() {
         let db = Self::get().await;
-        let statement = format!("DELETE FROM beatmaps");
-        let res = db.prepare(&statement).expect(&statement).execute([]);
+        let statement = "DELETE FROM beatmaps";
+        let res = db.prepare(statement).expect(statement).execute([]);
         if let Err(e) = res {
             error!("error deleting beatmap meta from db: {}", e);
         }
@@ -28,7 +28,7 @@ impl Database {
 
         for map_group in maps_iter {
             let statement = get_beatmap_insert();
-            let map_strs = map_group.into_iter().map(insert_beatmap_values).collect::<Vec<String>>().join(",\n");
+            let map_strs = map_group.iter().map(insert_beatmap_values).collect::<Vec<String>>().join(",\n");
             let query = statement + &map_strs;
 
             let db = Self::get().await;
@@ -112,7 +112,7 @@ fn insert_beatmap_values(map: impl AsRef<BeatmapMeta>) -> String {
 
         {}, {}
     )",
-        map.file_path, map.beatmap_hash.to_string(), beatmap_type,
+        map.file_path, map.beatmap_hash, beatmap_type,
 
         map.mode,
         map.artist.replace("\"", "\"\""), map.artist_unicode.replace("\"", "\"\""),

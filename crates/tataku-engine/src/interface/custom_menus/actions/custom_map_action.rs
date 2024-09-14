@@ -38,7 +38,7 @@ pub enum CustomMenuMapAction {
     PrevSet,
 }
 impl CustomMenuMapAction {
-    pub fn into_action<'a>(self, values: &mut dyn Reflect, passed_in: Option<TatakuValue>) -> Option<BeatmapAction> {
+    pub fn into_action(self, values: &mut dyn Reflect, passed_in: Option<TatakuValue>) -> Option<BeatmapAction> {
         match self {
             Self::Play => Some(BeatmapAction::PlaySelected),
             Self::Next => Some(BeatmapAction::Next),

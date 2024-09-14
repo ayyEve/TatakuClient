@@ -229,7 +229,7 @@ impl InputManager {
     }
 
     /// is the key currently down (not up)
-    pub fn key_down(&self, k:Key) -> bool { self.keys.iter().find(|ki|ki.is_key(k)).is_some() }
+    pub fn key_down(&self, k:Key) -> bool { self.keys.iter().any(|ki|ki.is_key(k)) }
     pub fn get_key_mods(&self) -> KeyModifiers {
         KeyModifiers {
             ctrl: self.key_down(Key::LControl) || self.key_down(Key::RControl),

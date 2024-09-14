@@ -199,7 +199,7 @@ impl Database {
                         // if error, probably exists, update instead
                         if let Err(e) = res {
                             if let Some(sql) = &sql_if_failed {
-                                let mut s = db.prepare(&sql).unwrap();
+                                let mut s = db.prepare(sql).unwrap();
                                 let res = s.execute([]);
 
                                 if let Err(e) = res {

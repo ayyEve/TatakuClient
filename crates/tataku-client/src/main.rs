@@ -83,7 +83,7 @@ fn main() {
 
 
 #[cfg(feature="gameplay")]
-fn start_game<'window>(
+fn start_game(
     runtime: &tokio::runtime::Runtime,
 ) {
     // let main_thread = tokio::task::LocalSet::new();
@@ -307,7 +307,7 @@ fn init_logging() -> LogGuard {
         rolling::{ RollingFileAppender, Rotation },
     };
 
-    const LOG_DIR: &'static str = "game/logs/";
+    const LOG_DIR: &str = "game/logs/";
     const MAX_DAYS: usize = 2;
 
     let trace_file = RollingFileAppender::builder()
@@ -323,22 +323,25 @@ fn init_logging() -> LogGuard {
     let (stdout, stdout_guard) = non_blocking(std::io::stdout());
 
     let tataku_crates = [
-        "tataku-client",
-        "tataku-game",
-        "tataku-engine",
-        "tataku-wgpu",
-        "tataku-bass",
-        "tataku-common",
-        "gamemode-osu",
-        "gamemode-taiko",
-        "gamemode-mania",
-        "gamemode-utyping"
+        "tataku_client",
+        "tataku_game",
+        "tataku_engine",
+        "tataku_wgpu",
+        "tataku_bass",
+        "tataku_common",
+        "gamemode_osu",
+        "gamemode_taiko",
+        "gamemode_mania",
+        "gamemode_utyping"
     ];
+
+    let date_format = tracing_subscriber::fmt::time::ChronoLocal::new("%H:%M:%S %z".to_string());
 
     tracing_subscriber::registry()
         .with(Layer::new()
             .pretty()
             .with_ansi(false)
+            .with_timer(date_format.clone())
             .with_writer(trace_file)
             .with_filter(Targets::new()
                 .with_default(LevelFilter::INFO)
@@ -348,6 +351,7 @@ fn init_logging() -> LogGuard {
         .with(Layer::new()
             .pretty()
             .with_ansi(true)
+            .with_timer(date_format.clone())
             .with_writer(stdout)
             .with_filter(Targets::new()
                 .with_default(LevelFilter::INFO)

@@ -34,7 +34,7 @@ impl DirectApi for QuaverDirect {
         let url = format!(
             "https://api.quavergame.com/v1/mapsets/maps/search?page={}{}{}",
             search_params.page,
-            if params.len() > 0 {"&"} else {""},
+            if !params.is_empty() {"&"} else {""},
             params.join("&")
         );
 
@@ -162,10 +162,10 @@ enum QuaverRankedStatus {
     // DanCourse
     Other
 }
-impl Into<QuaverRankedStatus> for MapStatus {
+impl From<MapStatus> for QuaverRankedStatus {
     // pain
-    fn into(self) -> QuaverRankedStatus {
-        match self {
+    fn from(val: MapStatus) -> Self {
+        match val {
             MapStatus::Pending
             | MapStatus::Graveyarded 
                 => QuaverRankedStatus::Unranked,

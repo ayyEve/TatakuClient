@@ -1,15 +1,13 @@
 use crate::prelude::*;
 
+#[derive(Default)]
 pub struct SongManager {
     song_queue: Vec<SongData>,
     current_song: Option<SongData>
 }
 impl SongManager {
     pub fn new() -> Self {
-        Self {
-            song_queue: Vec::new(),
-            current_song: None,
-        }
+        Self::default()
     }
 
     pub fn handle_song_set_action(&mut self, action: SongMenuSetAction) -> TatakuResult {

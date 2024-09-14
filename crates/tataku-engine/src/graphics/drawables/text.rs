@@ -84,7 +84,7 @@ impl Text {
     }
     #[cfg(feature = "graphics")]
     pub fn measure_text_raw(fonts: &[Font], font_size: f32, text: &str, scale: Vector2, line_spacing: f32) -> Vector2 {
-        if fonts.len() == 0 { return Vector2::ZERO }
+        if fonts.is_empty() { return Vector2::ZERO }
 
         let mut max_width:f32 = 0.0;
         let mut current_width = 0.0;
@@ -136,7 +136,7 @@ impl TatakuRenderable for Text {
         mut transform: Matrix, 
         g: &mut dyn GraphicsEngine
     ) {
-        if self.fonts.len() == 0 { return error!("NO FONT FOR TEXT {}", self.text); }
+        if self.fonts.is_empty() { return error!("NO FONT FOR TEXT {}", self.text); }
 
         let color = options.color_with_alpha(self.color);
         let scale = self.scale * self.text_scale;
@@ -149,15 +149,14 @@ impl TatakuRenderable for Text {
         ;
 
 
-        let text:Vec<(char, Color)>;
-        if self.text_colors.is_empty() {
-            text = self.text.chars().map(|c| (c, color)).collect();
+        let text:Vec<(char, Color)> = if self.text_colors.is_empty() {
+            self.text.chars().map(|c| (c, color)).collect()
         } else {
-            text = self.text.chars().enumerate().map(|(i, c)| {
+            self.text.chars().enumerate().map(|(i, c)| {
                 let color = self.text_colors[i % self.text_colors.len()];
                 (c, color.alpha(options.alpha(color.a)))
-            }).collect();
-        }
+            }).collect()
+        };
 
         let mut x = 0.0;
         let mut y = self.font_size * scale.y;

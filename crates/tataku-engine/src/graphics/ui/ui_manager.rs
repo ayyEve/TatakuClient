@@ -45,7 +45,7 @@ impl<T:Reflect> UiManager<T> {
         }
     }
     pub fn set_menu(&mut self, menu: Box<dyn AsyncMenu>) {
-        self.current_menu = MenuType::from_menu(&menu);
+        self.current_menu = MenuType::from_menu(&*menu);
         self.application.as_mut().unwrap().menu = menu;
         self.messages.retain(|m| !m.owner.is_menu())
     }
@@ -68,9 +68,9 @@ impl<T:Reflect> UiManager<T> {
 
         // do we rebuild the ui next frame? (required if the ui was updated, adding new items to the view)
         let mut rebuild_next = false;
-        let mut needs_render = true;
+        // let mut needs_render = true;
         let mut last_menu = String::new();
-        let mut last_draw = TransformGroup::new(Vector2::ZERO);
+        let mut last_draw;
         let mut mouse_pos = iced::Point::ORIGIN;
 
 
@@ -96,7 +96,7 @@ impl<T:Reflect> UiManager<T> {
                     if force_refresh || rebuild_next || application.menu.get_name() != last_menu {
                         last_menu = application.menu.get_name().to_owned();
                         rebuild_next = false;
-                        needs_render = true;
+                        // needs_render = true;
 
                         ui = user_interface::UserInterface::build(
                             application.view(&mut values),
@@ -136,8 +136,8 @@ impl<T:Reflect> UiManager<T> {
                     });
                 }
                 UiAction::Draw { application, callback } => {
-                    if needs_render || true {
-                        needs_render = false;
+                    // if needs_render {
+                        // needs_render = false;
 
                         ui.draw(
                             &mut renderer, 
@@ -149,7 +149,7 @@ impl<T:Reflect> UiManager<T> {
                         // renderer.with_primitives(|_b, p| p.iter().for_each(|p| group.push_arced(into_renderable(p))));
                         last_draw = renderer.finish();
                         // last_draw.raw_draw = true;
-                    }
+                    // }
 
                     let _ = callback.send(UiDrawData {
                         application,

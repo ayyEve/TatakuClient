@@ -1,6 +1,7 @@
 use syn::*;
 use quote::*;
 
+#[allow(clippy::useless_format)]
 pub(crate) fn impl_settings_deserializer(ast: &syn::DeriveInput) -> proc_macro::TokenStream {
     let struct_name = ast.ident.to_string();
     let de_struct_name = format!("{struct_name}Deserializer");
@@ -17,7 +18,7 @@ pub(crate) fn impl_settings_deserializer(ast: &syn::DeriveInput) -> proc_macro::
 
     if let Data::Struct(s) = &ast.data {
         for f in &s.fields {
-            if f.attrs.iter().find(|a|a.path.is_ident("serde") && a.tokens.to_string().contains("skip")).is_some() { continue }
+            if f.attrs.iter().any(|a|a.path.is_ident("serde") && a.tokens.to_string().contains("skip")) { continue }
             let ident = f.ident.as_ref().unwrap().to_string();
             let ty = f.ty.to_token_stream().to_string();
             de_impl.push(format!("{ident}: TatakuSettingOptional<{ty}>,"));

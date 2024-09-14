@@ -37,11 +37,11 @@ impl ModManager {
     }
 
     pub fn short_mods_string(
-        mods: &Vec<ModDefinition>, 
+        mods: &[ModDefinition], 
         none_if_empty: bool, 
         mode: &GameModeInfo,
     ) -> String {
-        if mods.len() == 0 {
+        if mods.is_empty() {
             if none_if_empty { return "None".to_owned() }
             return String::new();
         }
@@ -169,7 +169,7 @@ impl ModManager {
     }
     /// remove a mod
     pub fn remove_mod(&mut self, m: impl AsRef<str>) {
-        self.mods.remove(&m.as_ref().to_owned());
+        self.mods.remove(m.as_ref());
     }
     // toggle a mod, returns if the mod is now enabled or not
     pub fn toggle_mod(&mut self, m: impl AsRef<str>) -> bool {
@@ -209,7 +209,7 @@ impl ModManager {
 
     pub fn as_md5(&self) -> Md5Hash {
         let mods = self.mods_sorted();
-        let mods_str = format!("{}{}", mods.join(""), self.speed.as_u16().to_string());
+        let mods_str = format!("{}{}", mods.join(""), self.speed.as_u16());
         md5(mods_str)
         // u128::from_str_radix(&md5(mods_str).to_string(), 16).unwrap_or_default()
     }
@@ -228,26 +228,26 @@ impl Hash for ModManager {
 impl TryFrom<&TatakuValue> for ModManager {
     type Error = String;
     fn try_from(value: &TatakuValue) -> Result<Self, Self::Error> {
-        let TatakuValue::Map(map) = value else { return Err(format!("Not a map")) };
+        let TatakuValue::Map(map) = value else { return Err("Not a map".to_string()) };
 
-        let Some(speed) = map.get("speed") else { return Err(format!("No speed entry")) };
-        let TatakuValue::U32(speed) = &speed.value else { return Err(format!("speed entry is wrong type")) };
+        let Some(speed) = map.get("speed") else { return Err("No speed entry".to_string()) };
+        let TatakuValue::U32(speed) = &speed.value else { return Err("speed entry is wrong type".to_string()) };
 
-        let Some(mods) = map.get("mods") else { return Err(format!("No mods entry")) };
-        let TatakuValue::List(mods) = &mods.value else { return Err(format!("Mods entry wrong type")) };
+        let Some(mods) = map.get("mods") else { return Err("No mods entry".to_string()) };
+        let TatakuValue::List(mods) = &mods.value else { return Err("Mods entry wrong type".to_string()) };
 
         Ok(Self {
             speed: GameSpeed::from_u16(*speed as u16),
-            mods: mods.into_iter().map(|d|d.as_string()).collect()
+            mods: mods.iter().map(|d| d.as_string()).collect()
         })
     }
 }
 
-impl Into<TatakuValue> for ModManager {
-    fn into(self) -> TatakuValue {
+impl From<ModManager> for TatakuValue {
+    fn from(val: ModManager) -> Self {
         let mut map = HashMap::default();
-        map.set_value("speed", TatakuVariable::new_game(TatakuValue::U32(self.speed.as_u16() as u32)));
-        map.set_value("mods", TatakuVariable::new_game((TatakuVariableAccess::GameOnly, self.mods.iter().collect::<Vec<_>>())));
+        map.set_value("speed", TatakuVariable::new_game(TatakuValue::U32(val.speed.as_u16() as u32)));
+        map.set_value("mods", TatakuVariable::new_game((TatakuVariableAccess::GameOnly, val.mods.iter().collect::<Vec<_>>())));
         TatakuValue::Map(map)
     }
 }

@@ -66,7 +66,7 @@ impl<'lua> FromLua<'lua> for CustomModAction {
                 Err(FromLuaConversionError { 
                     from: "table", 
                     to: "CustomModAction", 
-                    message: Some(format!("couldn't determine mod action")) 
+                    message: Some("couldn't determine mod action".to_string()) 
                 })
             }
 

@@ -198,7 +198,7 @@ impl GameplayManager {
             health: Box::new(DefaultHealthManager::new()),
             key_counter,
 
-            judgments: gamemode_info.judgments.into_iter().copied().collect(),
+            judgments: gamemode_info.judgments.to_vec(),
             score: IngameScore::new(score, true, false),
 
             beatmap,
@@ -788,7 +788,6 @@ impl GameplayManager {
         // draw animation
         self.animation.draw(list).await;
 
-
         // draw gamemode
         if let Some(bounds) = self.fit_to_bounds { list.push_scissor([bounds.pos.x, bounds.pos.y, bounds.size.x, bounds.size.y]); }
 
@@ -878,7 +877,7 @@ impl GameplayManager {
                 };
 
                 match score {
-                    score @ i32::MIN..=0 => self.score.score.score -= score.abs() as u64,
+                    score @ i32::MIN..=0 => self.score.score.score -= score.unsigned_abs() as u64,
                     score @ 1.. => self.score.score.score += score as u64,
                 }
 
@@ -977,8 +976,7 @@ impl GameplayManager {
     }
 
     pub fn should_save_score(&self) -> bool {
-        let should = !(self.gameplay_mode.is_replay() || self.current_mods.has_autoplay() || self.ui_changed);
-        should
+        !(self.gameplay_mode.is_replay() || self.current_mods.has_autoplay() || self.ui_changed)
     }
 
     // is this game pausable
@@ -1302,26 +1300,20 @@ impl GameplayManager {
         self.actions.push(CursorAction::OverrideRippleRadius(None));
 
         #[cfg(feature="gameplay")]
-        match &mut *self.gameplay_mode {
-            GameplayModeInner::Spectator {
-                buffered_score_frames,
-                ..
-            } => {
-                // if we have a score frame we havent dealt with yet, its most likely the score frame sent once the map has ended
-                if !buffered_score_frames.is_empty() {
-                    self.score.score = buffered_score_frames.last().cloned().unwrap().1;
-                }
-
-
-                // let mut score_menu = ScoreMenu::new(&manager.score, manager.metadata.clone(), false);
-                // score_menu.dont_close_on_back = true;
-                // self.score_menu = Some(score_menu);
+        if let GameplayModeInner::Spectator {
+            buffered_score_frames, ..
+        } = &mut *self.gameplay_mode {
+            // if we have a score frame we havent dealt with yet, its most likely the score frame sent once the map has ended
+            if !buffered_score_frames.is_empty() {
+                self.score.score = buffered_score_frames.last().cloned().unwrap().1;
             }
 
-            _ => {}
+
+            // let mut score_menu = ScoreMenu::new(&manager.score, manager.metadata.clone(), false);
+            // score_menu.dont_close_on_back = true;
+            // self.score_menu = Some(score_menu);
         }
     }
-
 
     /// using a getter for this since we dont want anything to directly change it
     pub fn get_mode(&self) -> &GameplayModeInner {
@@ -1415,11 +1407,9 @@ impl GameplayManager {
             if let Some(mut time) = self.gamemode.skip_intro(self.time()) {
 
                 // really not sure whats happening here lol
-                if self.lead_in_time > 0.0 {
-                    if time > self.lead_in_time {
-                        time -= self.lead_in_time - 0.01;
-                        self.lead_in_time = 0.01;
-                    }
+                if self.lead_in_time > 0.0 && time > self.lead_in_time {
+                    time -= self.lead_in_time - 0.01;
+                    self.lead_in_time = 0.01;
                 }
 
                 self.actions.push(SongAction::SetPosition(time));
@@ -1449,7 +1439,7 @@ impl GameplayManager {
             }
 
             if add_frames && should_add {
-                self.score.replay.as_mut().map(|r| r.frames.push(frame));
+                if let Some(r) = self.score.replay.as_mut() { r.frames.push(frame) }
                 #[cfg(feature="gameplay")]
                 self.outgoing_spectator_frame(
                     SpectatorFrame::new(time, SpectatorAction::ReplayAction { action: frame.action }),
@@ -1592,7 +1582,7 @@ impl GameplayManager {
     }
     pub async fn on_text(
         &mut self, 
-        text: &String, 
+        text: &str, 
         mods: &KeyModifiers,
         settings: &Settings,
     ) {
@@ -1746,10 +1736,8 @@ impl GameplayManager {
         // info!("window focus changed");
         if got_focus {
             self.pause_pending = false
-        } else {
-            if self.can_pause() {
-                if self.in_break() { self.pause_pending = true } else { self.should_pause = true }
-            }
+        } else if self.can_pause() {
+            if self.in_break() { self.pause_pending = true } else { self.should_pause = true }
         }
     }
 
@@ -1830,7 +1818,7 @@ impl GameplayManager {
     fn in_break(&self) -> bool {
         let time = self.time();
         #[allow(irrefutable_let_patterns)]
-        self.events.iter().find(|f| if let IngameEvent::Break { start, end } = f { time >= *start && time < *end } else { false }).is_some()
+        self.events.iter().any(|f| if let IngameEvent::Break { start, end } = f { time >= *start && time < *end } else { false })
     }
 
 }
@@ -1882,11 +1870,11 @@ impl GameplayManagerOnline for DummyOnlineThing {
 }
 
 pub trait DifficultyProvider: Send + Sync {
-    fn get_diff(&mut self, map: &Arc<BeatmapMeta>, playmode: &String, mods: &ModManager) -> TatakuResult<f32>;
+    fn get_diff(&mut self, map: &Arc<BeatmapMeta>, playmode: &str, mods: &ModManager) -> TatakuResult<f32>;
 }
 struct DummyDiffProvider;
 impl DifficultyProvider for DummyDiffProvider {
-    fn get_diff(&mut self, _: &Arc<BeatmapMeta>, _: &String, _: &ModManager) -> TatakuResult<f32> {
+    fn get_diff(&mut self, _: &Arc<BeatmapMeta>, _: &str, _: &ModManager) -> TatakuResult<f32> {
         Ok(-1.0)
     }
 }
@@ -1972,10 +1960,10 @@ pub enum GameplayModeInner {
 impl GameplayModeInner {
 
     // convenience fns
-    pub fn is_preview(&self) -> bool { if let &Self::Preview = self { true } else { false } }
+    pub fn is_preview(&self) -> bool { matches!(self, &Self::Preview) }
     #[cfg(feature="gameplay")]
-    pub fn is_multi(&self) -> bool { if let &Self::Multiplayer {..} = self { true } else { false } }
-    pub fn is_replay(&self) -> bool { if let &Self::Replaying {..} = self { true } else { false } }
+    pub fn is_multi(&self) -> bool { matches!(self, &Self::Preview) }
+    pub fn is_replay(&self) -> bool { matches!(self, &Self::Replaying {..}) }
 
     #[cfg(feature="gameplay")]
     fn should_load_scores(&self) -> bool {
@@ -1996,10 +1984,7 @@ impl GameplayModeInner {
 
     #[cfg(feature="gameplay")]
     fn skip_input(&self) -> bool {
-        match self {
-            Self::Replaying { .. } | Self::Preview { .. } | Self::Spectator { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Replaying { .. } | Self::Preview { .. } | Self::Spectator { .. })
     }
 }
 
@@ -2009,16 +1994,16 @@ impl From<GameplayMode> for GameplayModeInner {
             GameplayMode::Normal => Self::Normal,
             GameplayMode::Preview => Self::Preview,
             GameplayMode::Multiplayer => Self::Multiplayer { last_escape_press: Instant::now(), score_send_timer: Instant::now() },
-            GameplayMode::Replay(score) => Self::Replaying { score, current_frame: 0 },
-            GameplayMode::Spectator { host_id, host_username, pending_frames, spectators } => Self::Spectator {
+            GameplayMode::Replay(score) => Self::Replaying { score: *score, current_frame: 0 },
+            GameplayMode::Spectator(a) => Self::Spectator {
                 state: SpectatorState::None,
-                frames: pending_frames,
-                host_id,
-                host_username,
+                frames: a.pending_frames,
+                host_id: a.host_id,
+                host_username: a.host_username,
                 replay_frames: Vec::new(),
                 current_frame: 0,
                 good_until: 0.0,
-                spectators,
+                spectators: a.spectators,
                 buffered_score_frames: Vec::new()
             }
         }
@@ -2030,7 +2015,7 @@ impl From<GameplayMode> for GameplayModeInner {
 // TODO: rename this
 pub struct GameplayStateForDraw<'a> {
     pub time: f32,
-    pub gameplay_mode: &'a Box<GameplayModeInner>,
+    pub gameplay_mode: &'a GameplayModeInner,
     pub current_timing_point: &'a TimingPoint,
     pub mods: &'a ModManager,
     pub score: &'a IngameScore,
@@ -2055,7 +2040,7 @@ pub struct GameplayStateForUpdate<'a> {
     pub current_timing_point: &'a TimingPoint,
 
     /// the current gameplay mode
-    pub gameplay_mode: &'a Box<GameplayModeInner>,
+    pub gameplay_mode: &'a GameplayModeInner,
 
     /// our current score
     pub score: &'a IngameScore,
@@ -2152,7 +2137,7 @@ impl<'a> GameplayStateForUpdate<'a> {
     /// check and add to hit timings if found
     pub async fn check_judgment<'j>(
         &mut self,
-        windows: &'j Vec<(HitJudgment, Range<f32>)>,
+        windows: &'j [(HitJudgment, Range<f32>)],
         time: f32,
         note_time: f32
     ) -> Option<&'j HitJudgment> {
@@ -2186,7 +2171,7 @@ impl<'a> GameplayStateForUpdate<'a> {
 
     pub async fn check_judgment_condition<'j>(
         &mut self,
-        windows: &'j Vec<(HitJudgment, Range<f32>)>,
+        windows: &'j [(HitJudgment, Range<f32>)],
         time: f32,
         note_time: f32,
         cond: impl Fn() -> bool,
@@ -2236,7 +2221,7 @@ impl<'a> GameplayStateForUpdate<'a> {
     /// only check if the note + hit fit into a window, and if so, return the corresponding judgment
     pub fn check_judgment_only<'j>(
         &self,
-        windows: &'j Vec<(HitJudgment, Range<f32>)>,
+        windows: &'j [(HitJudgment, Range<f32>)],
         time: f32,
         note_time: f32
     ) -> Option<&'j HitJudgment> {

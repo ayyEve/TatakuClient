@@ -5,7 +5,7 @@ use crate::prelude::*;
 pub trait GameModeInput: Send + Sync {
     async fn key_down(&mut self, key:Key) -> Option<ReplayAction>;
     async fn key_up(&mut self, key:Key) -> Option<ReplayAction>;
-    async fn on_text(&mut self, _text: &String, _mods: &KeyModifiers) -> Option<ReplayAction> { None }
+    async fn on_text(&mut self, _text: &str, _mods: &KeyModifiers) -> Option<ReplayAction> { None }
 
 
     async fn mouse_move(&mut self, _pos:Vector2) -> Option<ReplayAction> { None }

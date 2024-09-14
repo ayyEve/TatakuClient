@@ -6,7 +6,7 @@ impl<T> Pool<T> {
     pub fn new(size: usize, init: impl Fn(usize) -> T) -> Self {
         if size == 0 { panic!("tried to create a pool of size 0"); }
 
-        let mut items:Vec<PoolEntry<T>> = (0..size).into_iter().map(|i| PoolEntry::new(init(i), i)).collect();
+        let mut items:Vec<PoolEntry<T>> = (0..size).map(|i| PoolEntry::new(init(i), i)).collect();
         items.last_mut().unwrap().set_next(None);
 
         Self {
@@ -18,6 +18,7 @@ impl<T> Pool<T> {
     /// Returns the next free item in the list (if available)
     /// 
     /// Note that the returned element has not been cleared since is previous use
+    #[allow(clippy::should_implement_trait, reason = "switch to lending iterator")]
     pub fn next(&mut self) -> Option<&mut PoolEntry<T>> {
         if let Some(next) = self.next_available {
             let next = &mut self.items[next];
@@ -65,6 +66,8 @@ impl<T:Clone> Pool<T> {
         Self::new(size, |_|init.clone())
     }
 }
+
+
 
 #[derive(Debug)]
 pub struct PoolEntry<T> {

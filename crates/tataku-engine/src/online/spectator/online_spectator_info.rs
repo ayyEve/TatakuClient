@@ -33,7 +33,7 @@ impl OnlineSpectatorInfo {
     }
 
     pub fn currently_spectating(&self) -> Vec<u32> {
-        self.incoming_frames.keys().map(|i|*i).collect()
+        self.incoming_frames.keys().copied().collect()
     }
 
     pub fn our_spectator_list(&mut self) -> Option<&mut SpectatorList> {

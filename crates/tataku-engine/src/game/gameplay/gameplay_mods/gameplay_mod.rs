@@ -33,39 +33,15 @@ pub struct GameplayMod {
 }
 impl GameplayMod {
     pub const DEFAULT:Self = Self {
-        name: "",
-        short_name: "",
-        display_name: "",
+        name: "none",
+        short_name: "NOPE",
+        display_name: "None",
         description: "",
         texture_name: "",
         adjusts_difficulty: false,
         score_multiplier: 1.0,
         removes: &[]
     };
-
-    pub const fn new(
-        name: &'static str,
-        short_name: &'static str,
-        display_name: &'static str,
-        texture_name: &'static str,
-
-        description: &'static str,
-
-        adjusts_difficulty: bool,
-        score_multiplier: f32,
-        removes: &'static [&'static str]
-    ) -> Self { 
-        Self {
-            name,
-            short_name,
-            display_name,
-            description,
-            texture_name,
-            adjusts_difficulty,
-            score_multiplier,
-            removes
-        }
-    }
 }
 impl Default for GameplayMod {
     fn default() -> Self { Self::DEFAULT }
@@ -84,14 +60,14 @@ impl std::fmt::Display for GameplayMod {
     }
 }
 
-impl Into<ModDefinition> for GameplayMod {
-    fn into(self) -> ModDefinition {
+impl From<GameplayMod> for ModDefinition {
+    fn from(val: GameplayMod) -> Self {
         ModDefinition {
-            name: self.name.to_owned(),
-            short_name: self.short_name.to_owned(),
-            display_name: self.display_name.to_owned(),
-            adjusts_difficulty: self.adjusts_difficulty,
-            score_multiplier: self.score_multiplier,
+            name: val.name.to_owned(),
+            short_name: val.short_name.to_owned(),
+            display_name: val.display_name.to_owned(),
+            adjusts_difficulty: val.adjusts_difficulty,
+            score_multiplier: val.score_multiplier,
         }
     }
 }

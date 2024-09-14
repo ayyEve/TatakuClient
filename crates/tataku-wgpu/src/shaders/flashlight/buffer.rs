@@ -120,7 +120,7 @@ impl<'a> FlashlightReserveData<'a> {
     pub fn copy_in(&mut self, vtx: &[FlashlightVertex], flashlight_data: FlashlightData) {
         let offset = self.idx_offset as u32;
         let idx:&[u32] = &[
-            0 + offset,
+            offset,
             2 + offset,
             1 + offset,
 

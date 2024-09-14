@@ -177,7 +177,7 @@ impl SkinProvider for SkinManager {
     fn free_by_usage(&mut self, usage: SkinUsage) {
         let mut warned = false;
 
-        for entry in self.textures.values_mut().map(HashMap::values_mut).flatten() {
+        for entry in self.textures.values_mut().flat_map(HashMap::values_mut) {
             if entry.usage != usage { continue }
 
             if let TextureState::Success(i) = &entry.image {
@@ -198,7 +198,7 @@ impl SkinProvider for SkinManager {
     }
 
     fn free_all_unused(&mut self) {
-        for i in self.textures.values_mut().map(HashMap::values_mut).flatten() {
+        for i in self.textures.values_mut().flat_map(HashMap::values_mut) {
             if let TextureState::Success(im) = &i.image {
                 if im.reference_count() > 1 { continue }
                 GameWindow::free_texture(*im.tex);

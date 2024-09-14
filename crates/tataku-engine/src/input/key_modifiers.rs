@@ -6,13 +6,13 @@ pub struct KeyModifiers {
 }
 
 #[cfg(feature="graphics")] 
-impl Into<iced::keyboard::Modifiers> for KeyModifiers {
-    fn into(self) -> iced::keyboard::Modifiers {
+impl From<KeyModifiers> for iced::keyboard::Modifiers {
+    fn from(val: KeyModifiers) -> Self {
         use iced::keyboard::Modifiers;
         let mut mods = Modifiers::empty();
-        mods.set(Modifiers::CTRL, self.ctrl);
-        mods.set(Modifiers::ALT, self.alt);
-        mods.set(Modifiers::SHIFT, self.shift);
+        mods.set(Modifiers::CTRL, val.ctrl);
+        mods.set(Modifiers::ALT, val.alt);
+        mods.set(Modifiers::SHIFT, val.shift);
         mods
     }
 }

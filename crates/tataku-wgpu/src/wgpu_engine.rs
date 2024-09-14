@@ -62,7 +62,10 @@ pub struct WgpuEngine<'window> {
 impl<'window> WgpuEngine<'window> {
 
     // Creating some of the wgpu types requires async code
-    pub async fn new<W:HasWindowHandle + HasDisplayHandle + Sync>(window: &'window W, settings: &DisplaySettings) -> Box<dyn GraphicsEngine + 'window> {
+    pub async fn create<W:HasWindowHandle + HasDisplayHandle + Sync>(
+        window: &'window W, 
+        settings: &DisplaySettings
+    ) -> Box<dyn GraphicsEngine + 'window> {
         use wgpu::PipelineCompilationOptions;
 
         let window_size = settings.window_size; //window.inner_size();
@@ -431,11 +434,11 @@ impl<'window> WgpuEngine<'window> {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &renderable.texture,
+                    view: renderable.texture,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(renderable.get_clear_color()),
-                        store: renderable.render_target.then_some(wgpu::StoreOp::Store).unwrap_or(wgpu::StoreOp::Discard) , // must be store for render targets to work apparently
+                        store: if renderable.render_target { wgpu::StoreOp::Store } else { wgpu::StoreOp::Discard } , // must be store for render targets to work apparently
                     },
                 })],
                 depth_stencil_attachment: None,
@@ -473,7 +476,7 @@ impl<'window> WgpuEngine<'window> {
                         continue
                     };
 
-                    render_pass.set_pipeline(&pipeline);
+                    render_pass.set_pipeline(pipeline);
                     render_pass.set_bind_group(0, &self.projection_matrix_bind_group, &[]);
 
                     if let RenderBufferType::Vertex(_) = i {
@@ -602,7 +605,7 @@ impl<'w> WgpuEngine<'w> {
         #[cfg(feature="texture_arrays")]
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("texture array bind group"),
-            layout: &layout,
+            layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
@@ -618,7 +621,7 @@ impl<'w> WgpuEngine<'w> {
         #[cfg(not(feature="texture_arrays"))]
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("texture array bind group"),
-            layout: &layout,
+            layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
@@ -684,7 +687,7 @@ impl<'w> WgpuEngine<'w> {
             queue.submit(None);
 
             r.await.unwrap();
-            let data = slice.get_mapped_range().chunks_exact(4).map(|b|cast_to_rgba_bytes(b, format)).flatten().collect();
+            let data = slice.get_mapped_range().chunks_exact(4).flat_map(|b| cast_to_rgba_bytes(b, format)).collect();
 
             callback((data, [w, h]));
         });
@@ -727,7 +730,7 @@ impl<'w> WgpuEngine<'w> {
 
         let mut recording_buffer = vertex_buffer_queue.recording_buffer().expect("didnt get vertex recording buffer");
         let blend_mode_check = recording_buffer.blend_mode == blend_mode || recording_buffer.blend_mode == BlendMode::None;
-        let scissor_check = recording_buffer.scissor == Some(scissor) || recording_buffer.scissor == None;
+        let scissor_check = recording_buffer.scissor == Some(scissor) || recording_buffer.scissor.is_none();
         // if !blend_mode_check { info!("blend mode changed from {:?} to {blend_mode:?}", recording_buffer.blend_mode) }
 
         if !blend_mode_check
@@ -779,10 +782,10 @@ impl<'w> WgpuEngine<'w> {
         let [x, y, w, h] = rect;
         let color = color.into();
 
-        let mut tl = tex.uvs.tl.into();
-        let mut tr = tex.uvs.tr.into();
-        let mut bl = tex.uvs.bl.into();
-        let mut br = tex.uvs.br.into();
+        let mut tl = tex.uvs.tl;
+        let mut tr = tex.uvs.tr;
+        let mut bl = tex.uvs.bl;
+        let mut br = tex.uvs.br;
 
         if h_flip {
             std::mem::swap(&mut tl, &mut tr);
@@ -824,7 +827,7 @@ impl<'w> WgpuEngine<'w> {
                 color,
             }
         ], &[
-            0 + offset,
+            offset,
             2 + offset,
             1 + offset,
             1 + offset,
@@ -853,7 +856,7 @@ impl<'w> WgpuEngine<'w> {
 
         let offset = reserved.idx_offset as u32;
         reserved.copy_in(&vertices, &[
-            0 + offset,
+            offset,
             2 + offset,
             1 + offset,
 
@@ -877,7 +880,7 @@ impl<'w> WgpuEngine<'w> {
         // if let Some(RenderBufferQueueType::Slider(b)) = &mut self.last_drawn {b} else {panic!("wrong buffer type")};
 
         let mut recording_buffer = slider_buffer_queue.recording_buffer().expect("didnt get slider recording buffer");
-        let scissor_check = recording_buffer.scissor == Some(scissor) || recording_buffer.scissor == None;
+        let scissor_check = recording_buffer.scissor == Some(scissor) || recording_buffer.scissor.is_none();
 
 
         let vtx_count = 4;
@@ -948,7 +951,7 @@ impl<'w> WgpuEngine<'w> {
         // if let Some(RenderBufferQueueType::Slider(b)) = &mut self.last_drawn {b} else {panic!("wrong buffer type")};
 
         let mut recording_buffer = buffer_queue.recording_buffer().expect("didnt get flashlight recording buffer");
-        let scissor_check = recording_buffer.scissor == Some(scissor) || recording_buffer.scissor == None;
+        let scissor_check = recording_buffer.scissor == Some(scissor) || recording_buffer.scissor.is_none();
 
         let vtx_count = 4;
         let idx_count = 6;
@@ -1011,7 +1014,7 @@ impl<'w> WgpuEngine<'w> {
         }
     }
 
-    fn tessellate_polygon(&mut self, polygon: &Vec<Vector2>, color: Color, border: Option<f32>, transform: Matrix, blend_mode: BlendMode) {
+    fn tessellate_polygon(&mut self, polygon: &[Vector2], color: Color, border: Option<f32>, transform: Matrix, blend_mode: BlendMode) {
         let mut polygon = polygon.iter();
         let mut path = lyon_tessellation::path::Path::builder();
         path.begin(polygon.next().map(|p|Point::new(p.x, p.y)).unwrap());
@@ -1064,7 +1067,7 @@ impl<'w> WgpuEngine<'w> {
         let mut reserved = self.reserve_vertex(buffers.vertices.len() as u64, buffers.indices.len() as u64, blend_mode).expect("nope");
 
         // convert vertices and indices to their proper values
-        let mut vertices = buffers.vertices.into_iter().map(|n| Vertex {
+        let vertices = buffers.vertices.into_iter().map(|n| Vertex {
                 position: [n.x, n.y],
                 color: [color.r, color.g, color.b, color.a],
                 // scissor_index: reserved.scissor_index,
@@ -1073,8 +1076,8 @@ impl<'w> WgpuEngine<'w> {
         ).collect::<Vec<_>>();
 
         // insert the vertices and indices into the render buffer
-        let mut indices = buffers.indices.into_iter().map(|a|reserved.idx_offset as u32 + a as u32).collect::<Vec<_>>();
-        reserved.copy_in(&mut vertices, &mut indices);
+        let indices = buffers.indices.into_iter().map(|a|reserved.idx_offset as u32 + a as u32).collect::<Vec<_>>();
+        reserved.copy_in(&vertices, &indices);
     }
 }
 
@@ -1101,7 +1104,7 @@ impl<'w> GraphicsEngine for WgpuEngine<'w> {
 
 
 
-    fn create_render_target(&mut self, [w, h]: [u32; 2], clear_color: Color, do_render: Box<dyn FnOnce(&mut dyn GraphicsEngine, Matrix)>) -> Option<RenderTarget> {
+    fn create_render_target(&mut self, [w, h]: [u32; 2], clear_color: Color, do_render: RenderTargetDraw) -> Option<RenderTarget> {
         // find space in the render target atlas
         let atlased = self.atlas.try_insert(w, h)?;
 
@@ -1115,7 +1118,7 @@ impl<'w> GraphicsEngine for WgpuEngine<'w> {
         // return the new render target
         Some(target)
     }
-    fn update_render_target(&mut self, target: RenderTarget, do_render: Box<dyn FnOnce(&mut dyn GraphicsEngine, Matrix)>) {
+    fn update_render_target(&mut self, target: RenderTarget, do_render: RenderTargetDraw) {
         // get the texture this target was written to
         let textures = self.atlas_texture.textures.clone();
         let Some((atlas_tex, _)) = textures.get(target.image.tex.layer as usize) else { return };
@@ -1203,10 +1206,10 @@ impl<'w> GraphicsEngine for WgpuEngine<'w> {
         use image::GenericImageView;
         let (width, height) = diffuse_image.dimensions();
 
-        self.load_texture_rgba(&diffuse_rgba.to_vec(), [width, height])
+        self.load_texture_rgba(&diffuse_rgba, [width, height])
     }
 
-    fn load_texture_rgba(&mut self, data: &Vec<u8>, [width, height]: [u32; 2]) -> TatakuResult<TextureReference> {
+    fn load_texture_rgba(&mut self, data: &[u8], [width, height]: [u32; 2]) -> TatakuResult<TextureReference> {
         let Some(info) = self.atlas.try_insert(width, height) else { return Err(TatakuError::String("no space in atlas".to_owned())); };
         if info.is_empty() { return Ok(info) }
 
@@ -1214,7 +1217,7 @@ impl<'w> GraphicsEngine for WgpuEngine<'w> {
 
         let data = data
         // cast to bgra
-        .chunks_exact(4).map(|b|cast_from_rgba_bytes(b, self.config.format)).flatten().collect::<Vec<_>>()
+        .chunks_exact(4).flat_map(|b| cast_from_rgba_bytes(b, self.config.format)).collect::<Vec<_>>()
         // // add padding bytes to both left and right side
         // .chunks_exact(4 * width as usize).map(|b|[&padding_bytes[..], b, &padding_bytes[..]]).flatten()
         // // collect into Vec<u8>
@@ -1307,7 +1310,7 @@ impl<'w> GraphicsEngine for WgpuEngine<'w> {
         self.atlas.remove_entry(tex);
     }
 
-    fn screenshot(&mut self, callback: Box<dyn FnOnce((Vec<u8>, [u32; 2]))+Send+Sync>) {
+    fn screenshot(&mut self, callback: ScreenshotCallback) {
         self.screenshot_pending = Some(Box::new(callback));
     }
 
@@ -1467,7 +1470,7 @@ impl<'w> GraphicsEngine for WgpuEngine<'w> {
 
     fn draw_tex(&mut self, tex: &TextureReference, color: Color, h_flip: bool, v_flip: bool, transform: Matrix, blend_mode: BlendMode) {
         let rect = [0.0, 0.0, tex.width as f32, tex.height as f32];
-        self.reserve_tex_quad(&tex, rect, color, h_flip, v_flip, transform, blend_mode);
+        self.reserve_tex_quad(tex, rect, color, h_flip, v_flip, transform, blend_mode);
     }
 
 
@@ -1570,14 +1573,14 @@ impl VsyncUtils {
         }
     }
 
-    fn to_okay(vsync: Vsync, present_modes: &Vec<Vsync>, ) -> Vsync {
+    fn to_okay(vsync: Vsync, present_modes: &[Vsync]) -> Vsync {
         if Self::is_okay(&vsync, present_modes) {
             vsync
         } else {
             Self::get_fallback(vsync)
         }
     }
-    fn is_okay(vsync: &Vsync, present_modes: &Vec<Vsync>) -> bool {
+    fn is_okay(vsync: &Vsync, present_modes: &[Vsync]) -> bool {
         present_modes.contains(vsync)
     }
     fn get_fallback(vsync: Vsync) -> Vsync {

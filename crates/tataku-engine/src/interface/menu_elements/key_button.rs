@@ -44,7 +44,7 @@ impl KeyButton {
     }
 }
 impl ScrollableItem for KeyButton {
-    fn get_value(&self) -> Box<dyn std::any::Any> {Box::new(self.key.clone())}
+    fn get_value(&self) -> Box<dyn std::any::Any> { Box::new(self.key) }
     fn draw(&mut self, pos_offset:Vector2, list:&mut RenderableCollection) {
         let border = Rectangle::new(
             self.pos + pos_offset,
@@ -59,7 +59,7 @@ impl ScrollableItem for KeyButton {
             self.font_size,
             format!("{}: {}", self.prefix, self.text()),
             Color::BLACK,
-            self.font.clone()
+            self.font
         );
         list.push(text);
     }
@@ -75,8 +75,8 @@ impl ScrollableItem for KeyButton {
             return true;
         }
 
-        if self.hover {self.selected = true}
-        return self.hover
+        if self.hover { self.selected = true }
+        self.hover
     }
 
     fn on_key_press(&mut self, key:Key, _mods:KeyModifiers) -> bool {

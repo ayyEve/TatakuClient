@@ -77,13 +77,13 @@ impl Zip {
             let Some(outpath) = file.enclosed_name() else { continue };
             let outpath = dir.join(outpath);
 
-            if (&*file.name()).ends_with('/') {
+            if file.name().ends_with('/') {
                 debug!("File {i} extracted to \"{outpath:?}\"");
                 std::fs::create_dir_all(&outpath).unwrap();
             } else {
                 debug!("File {i} extracted to \"{outpath:?}\" ({} bytes)", file.size());
                 if let Some(p) = outpath.parent() {
-                    if !p.exists() { std::fs::create_dir_all(&p).unwrap() }
+                    if !p.exists() { std::fs::create_dir_all(p).unwrap() }
                 }
                 let mut outfile = std::fs::File::create(&outpath).unwrap();
                 std::io::copy(&mut file, &mut outfile).unwrap();

@@ -67,26 +67,25 @@ discord-rich-presence = { workspace = true, optional = true }
 
 # serde
 serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
-serde_yaml = { workspace = true }
+serde_json.workspace = true
+serde_yaml.workspace = true
 
 # decoding/encoding/zip stuff
-encoding_rs = { workspace = true }
+encoding_rs.workspace = true
 
-native-tls = { workspace = true }
-tokio-native-tls = { workspace = true }
+native-tls.workspace = true
+tokio-native-tls.workspace = true
 
 # other stuff
-rand = { workspace = true }
-chrono = { workspace = true }
+rand.workspace = true
+chrono.workspace = true
 
 
 # logging
-# tataku-logging = { workspace = true }
-# log = { workspace = true } # todo: nuke before commit
 tracing.workspace = true
-tracing-subscriber.workspace = true
-tracing-appender.workspace = true
+tracing-subscriber = { version =  "0.3.18", features = [ "chrono" ] }
+tracing-appender = "0.2.3"
+
 num-format = { workspace = true }
 strfmt = { workspace = true }
 

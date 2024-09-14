@@ -105,9 +105,10 @@ impl Io {
         Ok(BufReader::new(file).lines())
     }
 
+    #[allow(clippy::lines_filter_map_ok)]
     pub fn read_lines_resolved(filename: impl AsRef<Path>) -> io::Result<impl Iterator<Item = String>> {
         let file = Self::open_file(filename)?;
-        let lines = BufReader::new(file).lines().filter_map(|f|f.ok());
+        let lines = BufReader::new(file).lines().filter_map(|f| f.ok());
         Ok(lines)
     }
 
@@ -119,7 +120,7 @@ pub async fn _download_file(url: impl reqwest::IntoUrl, download_path: impl AsRe
     let bytes = reqwest::get(url).await?.bytes().await?;
     
     // check if the received data 
-    if bytes.len() == 0 {
+    if bytes.is_empty() {
         return Err(TatakuError::String("Downloaded file was empty".to_owned()));
     }
 

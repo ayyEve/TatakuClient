@@ -28,10 +28,10 @@ impl Default for CursorSettings {
         Self {
             cursor_scale: 1.0,
             cursor_border: 1.5,
-            cursor_color: Color::from_hex("#ffff32".to_owned()).into(),
-            cursor_border_color: Color::from_hex("#000".to_owned()).into(),
+            cursor_color: Color::from_hex("#ffff32").into(),
+            cursor_border_color: Color::from_hex("#000").into(),
             cursor_ripples: true,
-            cursor_ripple_color: Color::from_hex("#000".to_owned()).into(),
+            cursor_ripple_color: Color::from_hex("#000").into(),
             cursor_ripple_final_scale: 1.5,
             beatmap_cursor: true,
         }

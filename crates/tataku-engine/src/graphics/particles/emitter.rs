@@ -50,8 +50,10 @@ impl Emitter {
     ) -> Self {
         let capacity = (life.end * spawn_delay) as usize;
 
-        let mut particle = Particle::default();
-        particle.image = *image;
+        let particle = Particle {
+            image: *image,
+            ..Default::default()
+        };
         let pool = Arc::new(RwLock::new(Pool::new_cloning(capacity, particle)));
         
 

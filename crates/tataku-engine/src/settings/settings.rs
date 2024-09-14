@@ -7,6 +7,7 @@ const SETTINGS_FILE:&str = "settings.json";
 #[cfg_attr(feature="graphics", derive(Settings))]
 #[derive(SettingsDeserialize, Reflect)]
 #[serde(default)]
+#[allow(clippy::manual_non_exhaustive)]
 pub struct Settings {
     #[serde(skip)]
     pub save_path: String,
@@ -166,8 +167,8 @@ impl Settings {
     pub fn get_music_vol(&self) -> f32 { self.music_vol * self.master_vol }
 
     pub fn check_hashes(&mut self) {
-        if self.osu_password.len() > 0 { self.osu_password = check_md5(self.osu_password.clone()) }
-        if self.password.len() > 0 { self.password = check_sha512(self.password.clone()) }
+        if !self.osu_password.is_empty() { self.osu_password = check_md5(self.osu_password.clone()) }
+        if !self.password.is_empty() { self.password = check_sha512(self.password.clone()) }
     }
 
     // make a backup of the setting before they're overwritten (when the file fails to load)
@@ -347,9 +348,9 @@ impl TryFrom<&TatakuValue> for ScoreRetreivalMethod {
         }
     }
 }
-impl Into<TatakuValue> for ScoreRetreivalMethod {
-    fn into(self) -> TatakuValue {
-        TatakuValue::String(format!("{self:?}"))
+impl From<ScoreRetreivalMethod> for TatakuValue {
+    fn from(val: ScoreRetreivalMethod) -> Self {
+        TatakuValue::String(format!("{val:?}"))
     }
 }
 

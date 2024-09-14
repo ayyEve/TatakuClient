@@ -51,16 +51,18 @@ impl UTypingBeatmap {
             }
         }
 
-        let mut map = Self::default();
-        map.title =      next!(lines);
-        map.artist =     next!(lines);
-        map.creator =    next!(lines);
-        map.difficulty = next!(lines);
+        let mut map = Self {
+            title: next!(lines),
+            artist: next!(lines),
+            creator: next!(lines),
+            difficulty: next!(lines),
+            ..Default::default()
+        };
 
         let data_filename = next!(lines); 
         let data_filepath = Path::new(&parent_folder).join(data_filename);
         let map_data = encoding_rs::SHIFT_JIS.decode(Io::read_file(&data_filepath)?.as_slice()).0.to_string().replace("\r","");
-        if map_data.chars().next() != Some('@') { return Err(TatakuError::Beatmap(BeatmapError::InvalidFile))}
+        if map_data.starts_with('@') { return Err(TatakuError::Beatmap(BeatmapError::InvalidFile))}
 
         let map_data_lines = map_data.split("\n");
         for line in map_data_lines {
@@ -101,7 +103,7 @@ impl UTypingBeatmap {
                     let time = next!(split).parse::<f32>().unwrap_or(0.0) * 1000.0;
                     let mut text = next!(split);
                     // add any cut off (NOTE: ptyping code doesnt do this)
-                    while let Some(t) = split.next() {
+                    for t in split {
                         text += &format!(" {t}")
                     }
 
@@ -165,7 +167,7 @@ impl UTypingBeatmap {
         // finish up processing
 
         // get the map's beat length
-        let list = map.events.iter().filter_map(|e|if e.event_type == UTypingEventType::BeatlineBar {Some(e)} else {None}).collect::<Vec<&UTypingEvent>>();
+        let list = map.events.iter().filter(|e| e.event_type == UTypingEventType::BeatlineBar).collect::<Vec<&UTypingEvent>>();
         if list.len() < 2 {
             warn!("Map does not have enough bar lines?");
             return Err(TatakuError::Beatmap(BeatmapError::InvalidFile));
@@ -196,7 +198,7 @@ impl TatakuBeatmap for UTypingBeatmap {
         let bpm = 60_000.0 / self.beat_length;
         Arc::new(BeatmapMeta { 
             file_path: self.file_path.clone(), 
-            beatmap_hash: self.hash.clone(), 
+            beatmap_hash: self.hash, 
             beatmap_type: BeatmapType::UTyping,
             mode: "utyping".to_owned(), 
             artist: self.artist.clone(), 

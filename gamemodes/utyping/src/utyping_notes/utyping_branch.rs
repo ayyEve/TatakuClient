@@ -139,12 +139,11 @@ impl Branch {
         .unwrap_or_else(||
             text
             .chars()
-            .into_iter()
             .map(|c|
                 CHAR_MAPPING
                 .get(&*c.to_string())
                 .cloned()
-                .unwrap_or_else(||vec![CharVariant::new(&[c])])
+                .unwrap_or_else(||vec![CharVariant::new([c])])
             )
             .collect()
         );
@@ -154,7 +153,7 @@ impl Branch {
         // branch 3: [chi, na, i]
         // branch 4: [chi, na, a]
         let branches = cartesian_product(&branches_per_char);
-        let branches: Vec<TextVariant> = branches.into_iter().map(|b|TextVariant::new(b)).collect();
+        let branches: Vec<TextVariant> = branches.into_iter().map(TextVariant::new).collect();
 
         Self {
             available_branches: branches.clone(),
@@ -251,13 +250,13 @@ impl TextVariant {
 pub struct CharVariant(Vec<char>);
 impl CharVariant {
     pub fn new(chars: impl AsRef<[char]>) -> Self {
-        Self(Vec::from_iter(chars.as_ref().iter().map(|c|*c)))
+        Self(Vec::from_iter(chars.as_ref().iter().copied()))
     }
 }
 
 
 // from https://rosettacode.org/wiki/Category:Rust
-fn cartesian_product<T:Clone>(lists: &Vec<Vec<T>>) -> Vec<Vec<T>> {
+fn cartesian_product<T:Clone>(lists: &[Vec<T>]) -> Vec<Vec<T>> {
     let mut res = Vec::new();
 
     let mut list_iter = lists.iter();

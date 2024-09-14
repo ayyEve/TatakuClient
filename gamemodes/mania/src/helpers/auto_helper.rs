@@ -16,7 +16,7 @@ impl ManiaAutoHelper {
         ((col + base_key as usize) as u8).into()
     }
 
-    pub fn update(&mut self, columns: &Vec<Vec<Box<dyn ManiaHitObject>>>, column_indices: &mut Vec<usize>, time: f32, list: &mut Vec<ReplayAction>) {
+    pub fn update(&mut self, columns: &[Vec<Box<dyn ManiaHitObject>>], column_indices: &mut [usize], time: f32, list: &mut Vec<ReplayAction>) {
         if self.states.len() != columns.len() {
             let new_len = columns.len();
             self.states.resize(new_len, AutoplayColumnState::default());

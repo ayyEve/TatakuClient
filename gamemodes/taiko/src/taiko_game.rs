@@ -68,13 +68,12 @@ impl TaikoGame {
         hit_type: HitType, 
         finisher: bool,
     ) {
-        let hitsound;
-        match (hit_type, finisher) {
-            (HitType::Don, false) => hitsound = 1, // normal is don
-            (HitType::Don, true)  => hitsound = 4, // finish is bigdon
-            (HitType::Kat, false) => hitsound = 8, // clap is kat
-            (HitType::Kat, true)  => hitsound = 2, // whistle is bigkat
-        }
+        let hitsound = match (hit_type, finisher) {
+            (HitType::Don, false) => 1, // normal is don
+            (HitType::Don, true)  => 4, // finish is bigdon
+            (HitType::Kat, false) => 8, // clap is kat
+            (HitType::Kat, true)  => 2, // whistle is bigkat
+        };
 
         let samples = HitSamples {
             normal_set: 0,
@@ -224,7 +223,8 @@ impl TaikoGame {
 
         // update hit indicator sprite positions
         for i in [ &mut self.left_kat_image, &mut self.left_don_image, &mut self.right_don_image, &mut self.right_kat_image ] {
-            i.as_mut().map(|i|i.pos = self.playfield.hit_position);
+            let Some(i) = i else { continue };
+            i.pos = self.playfield.hit_position;
         }
     }
 }
@@ -323,7 +323,7 @@ impl GameMode for TaikoGame {
                             sound_types.push((hit_type, finisher));
                         }
                         
-                        let unified_sound_addition = sound_types.len() == 0;
+                        let unified_sound_addition = sound_types.is_empty();
                         if unified_sound_addition {
                             sound_types.push((HitType::Don, false));
                         }
@@ -343,7 +343,7 @@ impl GameMode for TaikoGame {
                             if !unified_sound_addition { i = (i + 1) % sound_types.len() }
 
                             j += skip_period;
-                            if !(j < end_time + skip_period / 8.0) { break }
+                            if j >= end_time + skip_period / 8.0 { break }
                         }
                     } else {
                         s.other_notes.push(Box::new(TaikoDrumroll::new(
@@ -442,10 +442,8 @@ impl GameMode for TaikoGame {
         else { state.add_stat(TaikoStatRightPresses, 1.0) }
 
         // check fullalt
-        if state.mods.has_mod(FullAlt) {
-            if !self.counter.add_hit(taiko_hit_type) {
-                return;
-            }
+        if state.mods.has_mod(FullAlt) && !self.counter.add_hit(taiko_hit_type) {
+            return;
         }
 
         let mut hit_type:HitType = key.into();
@@ -823,7 +821,7 @@ impl GameMode for TaikoGame {
         self.counter = FullAltCounter::new();
 
         // setup timing bars
-        if self.timing_bars.len() == 0 {
+        if self.timing_bars.is_empty() {
             // load timing bars
             let parent_tps = timing_points.iter().filter(|t|!t.is_inherited()).collect::<Vec<&TimingPoint>>();
             let mut sv = self.taiko_settings.sv_multiplier;
@@ -902,7 +900,7 @@ impl GameMode for TaikoGame {
     async fn force_update_settings(&mut self, settings: &Settings) {
         let settings = settings.taiko_settings.clone();
 
-        if &settings == &*self.taiko_settings { return }
+        if settings == *self.taiko_settings { return }
         let settings = Arc::new(settings);
         let playfield = Arc::new(Self::get_taiko_playfield(&settings, self.playfield.bounds));
         self.playfield = playfield.clone();
@@ -955,25 +953,22 @@ impl GameMode for TaikoGame {
         let scale = Vector2::ONE * (radius * 2.0) / TAIKO_HIT_INDICATOR_TEX_SIZE.x;
 
         for i in [ &mut self.left_don_image, &mut self.right_kat_image ] {
-            if let Some(i) = i {
-                i.scale = scale;
-                i.pos = self.playfield.hit_position;
-            }
+            let Some(i) = i else { continue };
+            i.scale = scale;
+            i.pos = self.playfield.hit_position;
         }
         
         for i in [ &mut self.left_kat_image, &mut self.right_don_image] {
-            let scale = scale * Vector2::new(-1.0, 1.0);
-            if let Some(i) = i {
-                i.scale = scale;
-                i.pos = self.playfield.hit_position;
-            }
+            let Some(i) = i else { continue };
+            i.scale = scale * Vector2::new(-1.0, 1.0);
+            i.pos = self.playfield.hit_position;
         }
 
     }
     
     #[cfg(feature="graphics")]
-    async fn reload_skin(&mut self, beatmap_path: &String, skin_manager: &mut dyn SkinProvider) -> TextureSource {
-        let source = TextureSource::Beatmap(beatmap_path.clone()); // TODO: yeah
+    async fn reload_skin(&mut self, beatmap_path: &str, skin_manager: &mut dyn SkinProvider) -> TextureSource {
+        let source = TextureSource::Beatmap(beatmap_path.to_owned()); // TODO: yeah
 
         let radius = self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult;
         let scale = Vector2::ONE * (radius * 2.0) / TAIKO_HIT_INDICATOR_TEX_SIZE.x;

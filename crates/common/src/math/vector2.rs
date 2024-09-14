@@ -88,9 +88,9 @@ impl From<[f32;2]> for Vector2 {
         Self::new(value[0], value[1])
     }
 }
-impl Into<[f32;2]> for Vector2 {
-    fn into(self) -> [f32;2] {
-        [self.x, self.y]
+impl From<Vector2> for [f32; 2] {
+    fn from(value: Vector2) -> Self {
+        [value.x, value.y]
     }
 }
 

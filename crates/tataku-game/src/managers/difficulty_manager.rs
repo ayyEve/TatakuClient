@@ -6,7 +6,30 @@ const DIFF_FILE:&str = "diffs.db";
 //     pub static ref BEATMAP_DIFFICULTIES: Arc<HashMap<String, ShardedLock<HashMap<DifficultyEntry, f32>>>> = Arc::new(AVAILABLE_PLAYMODES.iter().map(|i|(i.to_owned().to_owned(), ShardedLock::new(HashMap::new()))).collect());
 // }
 
+#[derive(Default)]
+pub struct DifficultyManager {
+    difficulties: HashMap<DifficultyEntry, f32>,
+}
+impl DifficultyProvider for DifficultyManager {
+    fn get_diff(&mut self, map: &Arc<BeatmapMeta>, playmode: &str, mods: &ModManager) -> TatakuResult<f32> {
+        Ok(0.0)
+        // if !AVAILABLE_PLAYMODES.contains(&&**playmode) { return Some(-1.0) }
 
+        // // we dont have mod mutations setup yet so we need to clear mods before we get the diff for a map
+        // let mut mods = mods.clone();
+        // mods.mods.clear();
+
+        // let diff_key = DifficultyEntry::new(map.beatmap_hash, &mods);
+        // BEATMAP_DIFFICULTIES.get(playmode)?.read().unwrap().get(&diff_key).cloned()
+    }
+}
+
+impl DifficultyManager {
+
+}
+
+
+// TODO: move to task
 pub async fn init_diffs(status: Option<Arc<RwLock<LoadingStatus>>>) {
     // if let Some(status) = &status {
     //     status.write().custom_message = "Reading file...".to_owned();
@@ -54,19 +77,6 @@ pub async fn init_diffs(status: Option<Arc<RwLock<LoadingStatus>>>) {
 }
 
 
-pub fn get_diff(map: &BeatmapMeta, playmode: &String, mods: &ModManager) -> Option<f32> {
-    None
-
-
-    // if !AVAILABLE_PLAYMODES.contains(&&**playmode) { return Some(-1.0) }
-
-    // // we dont have mod mutations setup yet so we need to clear mods before we get the diff for a map
-    // let mut mods = mods.clone();
-    // mods.mods.clear();
-
-    // let diff_key = DifficultyEntry::new(map.beatmap_hash, &mods);
-    // BEATMAP_DIFFICULTIES.get(playmode)?.read().unwrap().get(&diff_key).cloned()
-}
 
 /*
 pub async fn do_diffcalc(playmode: String) {
@@ -171,35 +181,39 @@ fn save_all_diffs() -> TatakuResult<()> {
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct DifficultyEntry {
+    pub playmode: Md5Hash,
     pub map_hash: Md5Hash,
     pub mods: Md5Hash,
 }
 
 impl DifficultyEntry {
-    pub fn new(map_hash: Md5Hash, mods: &ModManager) -> Self {
-        // let map_hash = Md5Hash::try_from(map_).unwrap();//u128::from_str_radix(&map_hash, 16).unwrap();
-        let mods = mods.as_md5();
+    pub fn new(playmode: impl Into<Md5Hash>, map_hash: Md5Hash, mods: &ModManager) -> Self {
         Self {
+            playmode: playmode.into(),
             map_hash,
-            mods
+            mods: mods.as_md5()
         }
     }
 }
 
 impl Serializable for DifficultyEntry {
     fn read(sr:&mut SerializationReader) -> SerializationResult<Self> where Self: Sized {
+        let playmode = sr.read::<u128>("map_hash")?.into();
         let map_hash = sr.read::<u128>("map_hash")?.into();
         let mods = sr.read::<u128>("mods")?.into();
 
         Ok(Self {
+            playmode,
             map_hash,
             mods
         })
     }
 
     fn write(&self, sw:&mut SerializationWriter) {
+        let playmode = self.map_hash.as_ref();
         let map_hash = self.map_hash.as_ref();
         let mods = self.mods.as_ref();
+        sw.write(playmode);
         sw.write(map_hash);
         sw.write(mods);
         // sw.write(self.mods.speed);

@@ -48,7 +48,7 @@ impl CustomElementText {
                     // }
                     Err(e) => {
                         error!("Error with shunting yard calc. calc: '{calc_str}', error: {e:?}");
-                        format!("Calc error! See console.")
+                        "Calc error! See console.".to_string()
                     }
                 }
             }
@@ -60,7 +60,7 @@ impl CustomElementText {
                     .iter()
                     .map(|i| i.to_string(values))
                     .collect::<Vec<_>>()
-                    .join(&join_str)
+                    .join(join_str)
             }
         }
     }

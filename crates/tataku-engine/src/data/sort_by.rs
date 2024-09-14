@@ -44,12 +44,11 @@ impl TryFrom<&TatakuValue> for SortBy {
     }
 }
 
-impl Into<TatakuValue> for SortBy {
-    fn into(self) -> TatakuValue {
-        TatakuValue::String(self.to_string())
+impl From<SortBy> for TatakuValue {
+    fn from(value: SortBy) -> Self {
+        TatakuValue::String(value.to_string())
     }
 }
-
 impl SortBy {
     pub fn list() -> Vec<Self> {
         vec![
@@ -60,9 +59,9 @@ impl SortBy {
         ]
     }
 
-    pub fn to_string(&self) -> String {
-        format!("{self:?}")
-    }
+    // pub fn to_string(&self) -> String {
+    //     format!("{self:?}")
+    // }
 
     // pub fn from_str(s: &String) -> Option<Self> {
     //     for i in Self::list() {

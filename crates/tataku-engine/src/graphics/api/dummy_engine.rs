@@ -12,26 +12,26 @@ impl GraphicsEngine for DummyGraphicsEngine {
         &mut self, 
         _size: [u32; 2], 
         _clear_color: Color, 
-        _do_render: Box<dyn FnOnce(&mut dyn GraphicsEngine, Matrix)>
+        _do_render: RenderTargetDraw
     ) -> Option<RenderTarget> { None }
 
     fn update_render_target(
         &mut self, 
         _target: RenderTarget, 
-        _do_render: Box<dyn FnOnce(&mut dyn GraphicsEngine, Matrix)>
+        _do_render: RenderTargetDraw
     ) {}
 
     fn load_texture_bytes(&mut self, _data: &[u8]) -> TatakuResult<TextureReference> {
         Err(TatakuError::Graphics(GraphicsError::DummyEngine))
     }
 
-    fn load_texture_rgba(&mut self, _data: &Vec<u8>, _size: [u32; 2]) -> TatakuResult<TextureReference> {
+    fn load_texture_rgba(&mut self, _data: &[u8], _size: [u32; 2]) -> TatakuResult<TextureReference> {
         Err(TatakuError::Graphics(GraphicsError::DummyEngine))
     }
 
     fn free_tex(&mut self, _tex: TextureReference) {}
 
-    fn screenshot(&mut self, _callback: Box<dyn FnOnce((Vec<u8>, [u32; 2]))+Send+Sync>) {}
+    fn screenshot(&mut self, _callback: ScreenshotCallback) {}
 
     fn begin_render(&mut self) {}
     fn end_render(&mut self) {}

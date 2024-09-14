@@ -11,7 +11,7 @@ pub(crate) fn create_bezier(input: Vec<Vector2>, wrong: bool) -> Vec<Vector2> {
 
     let points = SLIDER_DETAIL_LEVEL * count as u32;
     for iteration in 0..(if wrong {points} else {points+1}) {
-        for i in 0..count {working[i] = input[i]}
+        working[..count].copy_from_slice(&input[..count]);
         for level in 0..count {
             for i in 0..count - level - 1 {
                 working[i] = Vector2::lerp(working[i], working[i+1], iteration as f32 / points as f32);

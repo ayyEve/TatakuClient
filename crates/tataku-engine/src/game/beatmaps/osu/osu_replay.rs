@@ -21,7 +21,7 @@ impl ReplayDownloader for OsuReplayDownloader {
         let bytes = reqwest::get(url).await?.bytes().await?;
     
         // check if the received data 
-        if bytes.len() == 0 {
+        if bytes.is_empty() {
             return Err(TatakuError::String("Downloaded file was empty".to_owned()));
         }
 

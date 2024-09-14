@@ -11,7 +11,7 @@ use discord_rich_presence::{
 
 // use tokio::sync::mpsc::{ Sender, Receiver, channel };
 
-const APP_ID:&'static str = "857981337423577109";
+const APP_ID:&str = "857981337423577109";
 const RECONNECT_INTERVAL: f32 = 5_000.0; // every 5 seconds try again
 
 

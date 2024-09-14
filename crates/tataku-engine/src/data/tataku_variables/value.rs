@@ -19,11 +19,7 @@ pub enum TatakuValue {
 }
 impl TatakuValue {
     pub fn is_none(&self) -> bool {
-        if let Self::None = self {
-            true
-        } else {
-            false
-        }
+        matches!(self, Self::None)
     }
 
     pub fn as_bool(&self) -> bool {
@@ -67,7 +63,7 @@ impl TatakuValue {
             Self::Reflect(r) => Ok(Self::from_reflection(&**r)?.as_u32()?),
 
             Self::None => Err(ShuntingYardError::ValueIsNone),
-            _ => Err(ShuntingYardError::ConversionError(format!("Not castable to u32")))
+            _ => Err(ShuntingYardError::ConversionError("Not castable to u32".to_string()))
         }
     }
     pub fn as_u64(&self) -> Result<u64, ShuntingYardError> {
@@ -79,13 +75,13 @@ impl TatakuValue {
             Self::Reflect(r) => Ok(Self::from_reflection(&**r)?.as_u64()?),
 
             Self::None => Err(ShuntingYardError::ValueIsNone),
-            _ => Err(ShuntingYardError::ConversionError(format!("Not castable to u64")))
+            _ => Err(ShuntingYardError::ConversionError("Not castable to u64".to_string()))
         }
     }
 
     pub fn as_string(&self) -> String {
         match self {
-            Self::None => format!("None"),
+            Self::None => "None".to_owned(),
             // Self::I32(i) => format!("{i}"),
             // Self::I64(i) => format!("{i}"),
             Self::U32(i) => format!("{i}"),
@@ -260,14 +256,14 @@ impl From<HashMap<String, TatakuVariable>> for TatakuValue {
     }
 }
 
-impl Into<Option<Box<dyn Reflect>>> for TatakuValue {
-    fn into(self) -> Option<Box<dyn Reflect>> {
-        match self {
-            Self::Bool(b) => Some(Box::new(b)),
-            Self::F32(n) => Some(Box::new(n)),
-            Self::U32(n) => Some(Box::new(n)),
-            Self::U64(n) => Some(Box::new(n)),
-            Self::String(s) => Some(Box::new(s)),
+impl From<TatakuValue> for Option<Box<dyn Reflect>> {
+    fn from(val: TatakuValue) -> Self {
+        match val {
+            TatakuValue::Bool(b) => Some(Box::new(b)),
+            TatakuValue::F32(n) => Some(Box::new(n)),
+            TatakuValue::U32(n) => Some(Box::new(n)),
+            TatakuValue::U64(n) => Some(Box::new(n)),
+            TatakuValue::String(s) => Some(Box::new(s)),
 
             _ => None
         }
@@ -500,7 +496,7 @@ impl<T:Into<TatakuValue>> From<(TatakuVariableAccess, Vec<T>)> for TatakuValue {
 }
 impl<T:Into<TatakuValue>+Clone> From<(TatakuVariableAccess, &[T])> for TatakuValue {
     fn from((access, value): (TatakuVariableAccess, &[T])) -> Self {
-        Self::List(value.into_iter().cloned().map(|t| TatakuVariable::new(t.into()).access(access)).collect())
+        Self::List(value.iter().cloned().map(|t| TatakuVariable::new(t.into()).access(access)).collect())
         // Self::List(value.into_iter().cloned().map(|t| t.into()).collect())
     }
 }
@@ -520,7 +516,7 @@ where
     type Error = String;
 
     fn try_from(value: &'a TatakuValue) -> Result<Self, Self::Error> {
-        let TatakuValue::List(list) = value else { return Err(format!("Value is not a list")) };
+        let TatakuValue::List(list) = value else { return Err("Value is not a list".to_string()) };
 
         let mut output = Vec::new();
         for i in list {

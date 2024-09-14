@@ -32,9 +32,9 @@ pub enum MediaPlaybackState {
     Stopped,
 }
 #[cfg(feature="graphics")]
-impl Into<souvlaki::MediaPlayback> for MediaPlaybackState {
-    fn into(self) -> souvlaki::MediaPlayback {
-        match self {
+impl From<MediaPlaybackState> for souvlaki::MediaPlayback {
+    fn from(val: MediaPlaybackState) -> Self {
+        match val {
             MediaPlaybackState::Playing(time) => souvlaki::MediaPlayback::Playing { progress: Some(souvlaki::MediaPosition(Duration::from_millis(time as u64))) },
             MediaPlaybackState::Paused(time) => souvlaki::MediaPlayback::Paused { progress: Some(souvlaki::MediaPosition(Duration::from_millis(time as u64))) },
             MediaPlaybackState::Stopped => souvlaki::MediaPlayback::Stopped,
@@ -51,14 +51,14 @@ pub struct MediaControlMetadata {
     pub duration: Option<f32>,
 }
 #[cfg(feature="graphics")]
-impl<'a> Into<souvlaki::MediaMetadata<'a>> for &'a MediaControlMetadata {
-    fn into(self) -> souvlaki::MediaMetadata<'a> {
+impl<'a> From<&'a MediaControlMetadata> for souvlaki::MediaMetadata<'a> {
+    fn from(val: &'a MediaControlMetadata) -> Self {
         souvlaki::MediaMetadata {
-            title: self.title.as_ref().map(Cow::as_ref),
+            title: val.title.as_ref().map(Cow::as_ref),
             album: None,
-            artist: self.artist.as_ref().map(Cow::as_ref),
-            cover_url: self.cover_url.as_ref().map(Cow::as_ref),
-            duration: self.duration.map(|ms| Duration::from_secs_f32(ms * 1000.0)),
+            artist: val.artist.as_ref().map(Cow::as_ref),
+            cover_url: val.cover_url.as_ref().map(Cow::as_ref),
+            duration: val.duration.map(|ms| Duration::from_secs_f32(ms * 1000.0)),
         }
     }
 }

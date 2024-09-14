@@ -1,5 +1,6 @@
 use crate::prelude::*;
 
+#[derive(Default)]
 pub struct EmptyMenu;
 impl EmptyMenu {
     pub fn new() -> Self { Self }

@@ -5,7 +5,7 @@ pub struct DraggableDialogElement {
     dialog_content: IcedElement,
 }
 impl DraggableDialogElement {
-    pub fn new(dialog: &Box<dyn Dialog>, values: &mut dyn Reflect) -> Self {
+    pub fn new(dialog: &dyn Dialog, values: &mut dyn Reflect) -> Self {
         // use iced::widget::Tooltip;
         let view = dialog.view(values);
 
@@ -60,7 +60,7 @@ impl Widget<Message, iced::Theme, IcedRenderer> for DraggableDialogElement {
         _renderer: &IcedRenderer,
         offset: iced::Vector,
     ) -> Option<iced_core::overlay::Element<'a, Message, iced::Theme, IcedRenderer>> {
-        let state2 = state.state.downcast_ref::<DraggableState>();
+        // let state2 = state.state.downcast_ref::<DraggableState>();
 
         Some(IcedOverlay::new(Box::new(DraggableOverlay {
             content: self,
@@ -85,8 +85,7 @@ struct DraggableOverlay<'a> {
 impl<'a> DraggableOverlay<'a> {
     fn viewport(&self) -> iced::Rectangle {
         let state = self.tree.state.downcast_ref::<DraggableState>();
-        let viewport = iced::Rectangle::new(state.pos, state.size);
-        viewport
+        iced::Rectangle::new(state.pos, state.size)
     }
 }
 

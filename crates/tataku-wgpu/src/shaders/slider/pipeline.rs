@@ -71,14 +71,14 @@ pub fn create_slider_pipeline(
     let slider_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("Slider Pipeline Layout"),
         bind_group_layouts: &[
-            &projection_matrix_bind_group_layout,
+            projection_matrix_bind_group_layout,
             SLIDER_BIND_GROUP_LAYOUT.get().unwrap(),
         ],
         push_constant_ranges: &[],
     });
 
-    let slider_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some(&format!("Slider Pipeline")),
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("Slider Pipeline"),
         layout: Some(&slider_pipeline_layout),
         vertex: wgpu::VertexState {
             module: &slider_shader,
@@ -112,7 +112,5 @@ pub fn create_slider_pipeline(
             alpha_to_coverage_enabled: false,
         },
         multiview: None,
-    });
-
-    slider_pipeline
+    })
 }

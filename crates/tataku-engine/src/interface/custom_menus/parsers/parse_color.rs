@@ -32,7 +32,7 @@ impl<'lua> FromLua<'lua> for LuaColor {
 }
 
 
-fn color_handle_value<'lua>(value: Value<'lua>) -> LuaResult<f32> {
+fn color_handle_value(value: Value<'_>) -> LuaResult<f32> {
     match value {
         Value::Integer(i) => Ok(i as f32 / 255.0),
         Value::Number(f) => Ok(f as f32),

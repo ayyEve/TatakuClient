@@ -68,7 +68,7 @@ impl ScoreMenu {
             let txt = judge.display_name;
             if txt.is_empty() { continue }
 
-            let count = score.judgments.get(judge.id).map(|n|*n).unwrap_or_default();
+            let count = score.judgments.get(judge.id).copied().unwrap_or_default();
 
             let mut color = judge.color;
             if color.a == 0.0 { color = Color::BLACK }
@@ -82,10 +82,10 @@ impl ScoreMenu {
 
             // extract mods
             score_mods = ModManager::short_mods_string(&score.mods, false, gamemode_info);
-            if score_mods.len() > 0 { score_mods = format!("Mods: {score_mods}"); }
+            if !score_mods.is_empty() { score_mods = format!("Mods: {score_mods}"); }
 
 
-            let mut groups = gamemode_info.stat_groups.iter().copied().collect::<Vec<_>>();
+            let mut groups = gamemode_info.stat_groups.to_vec();
             groups.extend(default_stat_groups());
             let data = score.stats_into_groups(&groups);
 
@@ -183,7 +183,7 @@ impl ScoreMenu {
             let txt = judge.display_name;
             if txt.is_empty() { continue }
 
-            let count = score.judgments.get(judge.id).map(|n|*n).unwrap_or_default();
+            let count = score.judgments.get(judge.id).copied().unwrap_or_default();
 
             let mut color = judge.color;
             if color.a == 0.0 { color = Color::BLACK }
@@ -198,10 +198,10 @@ impl ScoreMenu {
         if let Ok(gamemode_info) = self.infos.get_info(&score.playmode) {
             // mods
             self.score_mods = ModManager::short_mods_string(&score.mods, false, gamemode_info);
-            if self.score_mods.len() > 0 { self.score_mods = format!("Mods: {}", self.score_mods); }
+            if !self.score_mods.is_empty() { self.score_mods = format!("Mods: {}", self.score_mods); }
             
             // stats
-            let mut groups = gamemode_info.stat_groups.iter().copied().collect::<Vec<_>>();
+            let mut groups = gamemode_info.stat_groups.to_vec();
             groups.extend(default_stat_groups().clone());
             let data = score.stats_into_groups(&groups);
 
@@ -268,7 +268,7 @@ impl ScoreMenu {
                 let export_path = Path::new(&export_path);
 
                 // ensure export dir exists
-                match std::fs::create_dir_all(&export_path.parent().unwrap()) {
+                match std::fs::create_dir_all(export_path.parent().unwrap()) {
                     Ok(_) => {
                         // copy the file from the saved_path to the exports file
                         if let Err(e) = std::fs::copy(saved_path, export_path) {
@@ -564,7 +564,7 @@ enum ScoreMenuType {
 }
 impl ScoreMenuType {
     fn is_lobby(&self) -> bool {
-        if let Self::Multiplayer { .. } = self { true } else { false }
+        matches!(self, Self::Multiplayer { .. })
     }
 }
 

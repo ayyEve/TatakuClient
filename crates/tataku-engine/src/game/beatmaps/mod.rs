@@ -56,7 +56,7 @@ impl Beatmap {
         if path.extension().is_none() {
             // check for ptyping file (it has no extention)
             // println!("path: {path:?}");
-            if path.file_name().unwrap().to_string_lossy().to_string() == "song" {
+            if path.file_name().unwrap().to_string_lossy() == "song" {
                 return Ok(ptyping::PTypingBeatmap::load_multiple(path)?.into_iter().map(|b|Beatmap::PTyping(Box::new(b))).collect())
             } else {
                 return Err(TatakuError::Beatmap(BeatmapError::InvalidFile))
@@ -89,7 +89,7 @@ impl Beatmap {
             "osu" => Ok(Beatmap::Osu(Box::new(osu::OsuBeatmap::load(path.to_str().unwrap().to_owned())?))),
             "qua" => Ok(Beatmap::Quaver(Box::new(quaver::QuaverBeatmap::load(path.to_str().unwrap().to_owned())?))),
             "adofai" => Ok(Beatmap::Adofai(Box::new(adofai::AdofaiBeatmap::load(path.to_str().unwrap().to_owned())))),
-            "txt" => Ok(Beatmap::UTyping(Box::new(u_typing::UTypingBeatmap::load(path.to_str().unwrap().to_owned())?))),
+            "txt" => Ok(Beatmap::UTyping(Box::new(u_typing::UTypingBeatmap::load(path.to_str().unwrap())?))),
             "ssc" | "sm" => Ok(Beatmap::Stepmania(Box::new(stepmania::StepmaniaBeatmap::load_single(path, meta)?))),
             "tja" => Ok(Beatmap::Tja(Box::new(tja::TjaBeatmap::load_single(path, meta)?))),
             
@@ -110,7 +110,7 @@ impl Beatmap {
         } 
         
         match path.extension().unwrap().to_str().unwrap() {
-            "osu" => Ok(vec![osu::OsuBeatmap::load_metadata(path.to_str().unwrap().to_owned())?]),
+            "osu" => Ok(vec![osu::OsuBeatmap::load_metadata(path.to_str().unwrap())?]),
             "qua" => Ok(vec![quaver::QuaverBeatmap::load(path.to_str().unwrap().to_owned())?.get_beatmap_meta()]),
             "adofai" => Ok(vec![adofai::AdofaiBeatmap::load(path.to_str().unwrap().to_owned()).get_beatmap_meta()]),
             "txt" => Ok(vec![u_typing::UTypingBeatmap::load(path)?.get_beatmap_meta()]),

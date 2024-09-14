@@ -136,10 +136,7 @@ impl<'window> GameWindow<'window> {
         // check gamepad events
         while let Some(event) = self.controller_input.next_event() {
             let info = self.controller_input.gamepad(event.id);
-            match event.event {
-                gilrs::EventType::Connected => info!("new controller: {}", info.name()),
-                _ => {}
-            }
+            if event.event == gilrs::EventType::Connected { info!("new controller: {}", info.name()) }
             
             self.send_game_event(Window2GameEvent::ControllerEvent(event, Arc::new(info.name().to_owned()), info.power_info()));
         }
@@ -172,7 +169,7 @@ impl<'window> GameWindow<'window> {
                     // bitmap is a vec of grayscale pixels
                     
                     // // we need to turn that into rgba bytes
-                    let data = bitmap.into_iter().map(|gray| [255,255,255, gray]).flatten().collect::<Vec<_>>();
+                    let data = bitmap.into_iter().flat_map(|gray| [255,255,255, gray]).collect::<Vec<_>>();
                     // let mut data = Vec::with_capacity(bitmap.len() * 4);
                     // bitmap.into_iter().for_each(|gray| {
                     //     data.push(255); // r
@@ -201,11 +198,11 @@ impl<'window> GameWindow<'window> {
 
             LoadImage::CreateRenderTarget((w, h), on_done, callback) => {
                 let rt = self.graphics.create_render_target([w, h], Color::TRANSPARENT_WHITE, callback);
-                on_done.send(rt.ok_or(TatakuError::String("failed".to_owned()))).ok().expect("uh oh");
+                on_done.send(rt.ok_or("failed".into())).expect("uh oh");
             }
             LoadImage::UpdateRenderTarget(target, on_done, callback) => {
                 self.graphics.update_render_target(target, callback);
-                on_done.send(()).ok().expect("uh oh");
+                on_done.send(()).expect("uh oh");
             }
 
         }
@@ -431,10 +428,7 @@ impl<'window> GameWindow<'window> {
             Self::send_event(Game2WindowEvent::LoadImage(LoadImage::Font(font, size, Some(sender))));
 
             loop {
-                match receiver.try_recv() {
-                    Ok(_t) => return Ok(()),
-                    Err(_) => {},
-                }
+                if let Ok(_t) = receiver.try_recv() { return Ok(()) }
             }
         } else {
             Self::send_event(Game2WindowEvent::LoadImage(LoadImage::Font(font, size, None)));

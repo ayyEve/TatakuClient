@@ -14,10 +14,10 @@ impl UTypingNoteQueue {
         &mut self, 
         input: char, 
         time: f32, 
-        windows: &Vec<(HitJudgment, Range<f32>)>, 
+        windows: &[(HitJudgment, Range<f32>)], 
         state: &GameplayStateForUpdate<'_>,
     ) -> Option<HitJudgment> {
-        let Some(current_note) = self.current_note() else { return None };
+        let current_note = self.current_note()?;
 
         let hit_ok = current_note.check_char(&input);
         
@@ -26,9 +26,9 @@ impl UTypingNoteQueue {
             let judgment = state.check_judgment_only(windows, time, current_note.time());
 
             // this is the first time this note has been hit
-            let Some(judgment) = judgment else { return None }; // its not time to hit this note yet
+            let judgment = judgment?; // its not time to hit this note yet
 
-            if !hit_ok || hit_ok && judgment == &UTypingHitJudgment::Miss {
+            if !hit_ok || judgment == &UTypingHitJudgment::Miss {
                 // insta miss
                 current_note.miss(time);
 

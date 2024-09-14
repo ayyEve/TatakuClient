@@ -33,14 +33,14 @@ pub fn create_flashlight_pipeline(
     let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("Flashlight Pipeline Layout"),
         bind_group_layouts: &[
-            &projection_matrix_bind_group_layout,
+            projection_matrix_bind_group_layout,
             FLASHLIGHT_BIND_GROUP_LAYOUT.get().unwrap(),
         ],
         push_constant_ranges: &[],
     });
 
-    let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some(&format!("Flashlight Pipeline")),
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("Flashlight Pipeline"),
         layout: Some(&pipeline_layout),
         vertex: wgpu::VertexState {
             module: &shader,
@@ -74,8 +74,6 @@ pub fn create_flashlight_pipeline(
             alpha_to_coverage_enabled: false,
         },
         multiview: None,
-    });
-
-    pipeline
+    })
 }
 

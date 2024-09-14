@@ -100,7 +100,7 @@ impl iced::advanced::Widget<Message, iced::Theme, IcedRenderer> for ProgressBarW
 
         let x = pos.x / bounds.width;
         let amount = self.range.start() + x * self.range.end();
-        let message = Message::new(owner.clone(), tag.clone(), MessageType::Float(amount));
+        let message = Message::new(*owner, tag.clone(), MessageType::Float(amount));
         shell.publish(message);
 
         iced::event::Status::Captured

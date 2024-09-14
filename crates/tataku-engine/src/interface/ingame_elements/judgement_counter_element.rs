@@ -39,7 +39,7 @@ impl InnerUIElement for JudgementCounterElement {
             let txt = judge.display_name;
             if txt.is_empty() { continue }
 
-            let count = score.judgments.get(judge.id).map(|n|*n).unwrap_or_default();
+            let count = score.judgments.get(judge.id).cloned().unwrap_or_default();
             self.hit_counts.push((txt.to_owned(), count as u32));
 
             if load_colors {

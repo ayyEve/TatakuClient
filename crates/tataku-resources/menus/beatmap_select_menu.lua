@@ -178,7 +178,7 @@ local menu = {
 
                 on_input = map_action("refresh_list"),
                 placeholder = "search",
-                variable = "beatmap_list.search_text",
+                variable = "beatmaps.filter_text",
             },
         }),
 

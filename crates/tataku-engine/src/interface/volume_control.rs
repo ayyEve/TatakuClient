@@ -186,23 +186,22 @@ impl VolumeControl {
         let music_pos:Vector2 = Vector2::new(self.window_size.x - 300.0, self.window_size.y - 30.0);
 
         // check if mouse moved over a volume button
-        if self.vol_selected_time > 0 && elapsed as f64 - (self.vol_selected_time as f64) < VOLUME_CHANGE_DISPLAY_TIME as f64 {
-            if mouse_pos.x >= master_pos.x {
-                if mouse_pos.y >= music_pos.y {
-                    self.vol_selected_index = 2;
-                    self.vol_selected_time = elapsed;
-                } else if mouse_pos.y >= effect_pos.y {
-                    self.vol_selected_index = 1;
-                    self.vol_selected_time = elapsed;
-                } else if mouse_pos.y >= master_pos.y {
-                    self.vol_selected_index = 0;
-                    self.vol_selected_time = elapsed;
-                }
+        if mouse_pos.x >= master_pos.x && self.vol_selected_time > 0 && elapsed as f64 - (self.vol_selected_time as f64) < VOLUME_CHANGE_DISPLAY_TIME as f64 {
+            if mouse_pos.y >= music_pos.y {
+                self.vol_selected_index = 2;
+                self.vol_selected_time = elapsed;
+            } else if mouse_pos.y >= effect_pos.y {
+                self.vol_selected_index = 1;
+                self.vol_selected_time = elapsed;
+            } else if mouse_pos.y >= master_pos.y {
+                self.vol_selected_index = 0;
+                self.vol_selected_time = elapsed;
+            
             }
         }
     }
 
-    pub async fn on_mouse_wheel(&mut self, delta:f32, mods:KeyModifiers, settings: &mut Settings) -> Option<SongAction> {
+    pub async fn on_mouse_wheel(&mut self, delta: f32, mods: KeyModifiers, settings: &mut Settings) -> Option<SongAction> {
         if mods.alt {
             self.change(delta / 10.0, settings).await
         } else {
@@ -211,11 +210,11 @@ impl VolumeControl {
     }
 
     #[cfg(feature="graphics")]
-    pub async fn on_key_press(&mut self, keys: &mut KeyCollection, mods:KeyModifiers, settings: &mut Settings) -> bool {
+    pub async fn on_key_press(&mut self, keys: &mut KeyCollection, mods: KeyModifiers, settings: &mut Settings) -> bool {
         let elapsed = self.elapsed();
 
         if mods.alt {
-            let mut changed = false;
+            // let mut changed = false;
 
             if keys.has_and_remove(Key::Right) {
                 self.change(0.1, settings).await;

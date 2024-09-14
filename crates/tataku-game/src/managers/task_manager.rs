@@ -54,7 +54,11 @@ impl TaskManager {
         actions.take()
     }
 }
-
+impl Default for TaskManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 
 struct TaskInner {

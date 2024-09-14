@@ -24,7 +24,7 @@ pub trait Visualization: Send + Sync {
         let should_lerp = self.should_lerp();
         let lerp_factor = self.lerp_factor();
         let data = self.data();
-        if should_lerp && data.len() > 0 {
+        if should_lerp && !data.is_empty() {
             let factor = lerp_factor * elapsed;
             data.resize(audio_data.len(), FFTData::default());
             for i in 0..audio_data.len() {

@@ -74,11 +74,11 @@ struct RawOsuApiBeatmap {
     download_unavailable: String, // 0, 1
     audio_unavailable: String, // 0, 1
 }
-impl Into<OsuApiBeatmap> for RawOsuApiBeatmap {
-    fn into(self) -> OsuApiBeatmap {
+impl From<RawOsuApiBeatmap> for OsuApiBeatmap {
+    fn from(val: RawOsuApiBeatmap) -> Self {
         OsuApiBeatmap {
-            beatmap_id: self.beatmap_id.parse().unwrap_or_default(),
-            beatmapset_id: self.beatmapset_id.parse().unwrap_or_default(),
+            beatmap_id: val.beatmap_id.parse().unwrap_or_default(),
+            beatmapset_id: val.beatmapset_id.parse().unwrap_or_default(),
 
         }
     }

@@ -134,7 +134,7 @@ impl HitObject for ManiaHold {
                     self.pos,
                     self.playfield.note_size(),
                     color,
-                    border.clone()
+                    border
                 ));
             }
 
@@ -144,7 +144,7 @@ impl HitObject for ManiaHold {
                     Vector2::new(self.pos.x, self.end_y),
                     self.playfield.note_size(),
                     color,
-                    border.clone()
+                    border
                 ));
             }
         } else {
@@ -160,7 +160,7 @@ impl HitObject for ManiaHold {
                         Vector2::new(self.pos.x, y),
                         Vector2::new(self.playfield.column_width, self.end_y - y),
                         color,
-                        border.clone()
+                        border
                     ));
                 }
             }
@@ -174,7 +174,7 @@ impl HitObject for ManiaHold {
                         self.pos,
                         self.playfield.note_size(),
                         color,
-                        border.clone()
+                        border
                     ));
                 }
             }
@@ -189,7 +189,7 @@ impl HitObject for ManiaHold {
                         Vector2::new(self.pos.x, self.end_y + note_size.y),
                         self.playfield.note_size(),
                         color,
-                        border.clone()
+                        border
                     ));
                 }
             }
@@ -264,7 +264,7 @@ impl HitObject for ManiaHold {
 }
 impl ManiaHitObject for ManiaHold {
     fn was_hit(&self) -> bool {
-        self.hold_starts.len() > 0  
+        !self.hold_starts.is_empty()  
     }
 
     // key pressed

@@ -24,7 +24,7 @@ impl DialogManager {
 
     pub async fn handle_message(&mut self, message: Message, values: &mut dyn Reflect) {
         for d in self.dialogs.iter_mut() {
-            if message.owner.check_dialog(d) {
+            if message.owner.check_dialog(&mut **d) {
                 d.handle_message(message, values).await;
                 return
             }
@@ -51,7 +51,12 @@ impl DialogManager {
     pub fn view(&self, values: &mut dyn Reflect) -> IcedElement {
         use iced_elements::*;
 
-        let dialogs = self.dialogs.iter().map(|d| DraggableDialogElement::new(d, values).into_element()).collect::<Vec<_>>();
+        let dialogs = self.dialogs
+            .iter()
+            .map(|d| DraggableDialogElement::new(&**d, values)
+            .into_element())
+            .collect::<Vec<_>>();
+        
         col!(
             dialogs,
         )

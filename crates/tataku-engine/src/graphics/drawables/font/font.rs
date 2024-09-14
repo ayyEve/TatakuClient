@@ -60,15 +60,14 @@ impl ActualFont {
                 warn!("waiting for font {} to load with size {}", self.name, font_size.f32());
                 while !self.loaded_sizes.read().contains(&font_size.u32()) {}
             }
+        } else if self.queued_for_load.read().contains(&font_size.u32()) {
+            // if we're already waiting to load this font, exit
+            return
         } else {
-            if self.queued_for_load.read().contains(&font_size.u32()) {
-                // if we're already waiting to load this font, exit
-                return
-            } else {
-                warn!("Queuing font load {} with size {}", self.name, font_size.f32());
-                self.queued_for_load.write().insert(font_size.u32());
-            }
+            warn!("Queuing font load {} with size {}", self.name, font_size.f32());
+            self.queued_for_load.write().insert(font_size.u32());
         }
+        
 
         
         // send tex load request to main thread, and wait for it to complete

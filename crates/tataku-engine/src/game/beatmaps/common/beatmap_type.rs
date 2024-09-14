@@ -17,9 +17,9 @@ impl Default for BeatmapType {
     }
 }
 
-impl Into<u8> for BeatmapType {
-    fn into(self) -> u8 {
-        match self {
+impl From<BeatmapType> for u8 {
+    fn from(val: BeatmapType) -> Self {
+        match val {
             BeatmapType::Unknown => 0,
             BeatmapType::Adofai => 1,
             BeatmapType::Osu => 2,
@@ -45,9 +45,9 @@ impl From<u8> for BeatmapType {
     }
 }
 
-impl Into<MapGame> for BeatmapType {
-    fn into(self) -> MapGame {
-        match self {
+impl From<BeatmapType> for MapGame {
+    fn from(val: BeatmapType) -> Self {
+        match val {
             BeatmapType::Osu => MapGame::Osu,
             BeatmapType::Quaver => MapGame::Quaver,
             other => MapGame::Other(format!("{other:?}").to_lowercase())

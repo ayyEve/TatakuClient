@@ -26,6 +26,8 @@ ui = [ "iced", "iced_runtime", "rlua", "triple_buffer" ]
 # removes as much graphics-side stuff as possible
 graphics = [ "winit", "ui", "clipboard", "raw-window-handle", "fontdue", "image" ]
 
+dynamic_gamemodes = []
+
 [dependencies]
 tataku-common = { workspace = true }
 tataku-client-proc-macros = { workspace = true }

@@ -68,25 +68,25 @@ pub enum StoryboardElementDef {
     Animation(StoryboardAnimationDef)
 }
 impl StoryboardElementDef {
-    pub fn read(line: &String) -> Option<Self> {
+    pub fn read(line: &str) -> Option<Self> {
         if line.starts_with('_') || line.starts_with(' ') { return None; }
 
         let mut split = line.split(",");
-        let Some(ele) = split.next() else { return None };
-        let Some(layer) = split.next().and_then(|i|Layer::from_str(i)) else { return None };
-        let Some(origin) = split.next().and_then(|i|Origin::from_str(i)) else { return None };
-        let Some(filepath) = split.next() else { return None };
-        let Some(x) = split.next().and_then(|s| s.parse::<i32>().ok()) else { return None };
-        let Some(y) = split.next().and_then(|s| s.parse::<i32>().ok()) else { return None };
+        let ele = split.next()?;
+        let layer = split.next().and_then(Layer::from_str)?;
+        let origin = split.next().and_then(Origin::from_str)?;
+        let filepath = split.next()?;
+        let x = split.next()?.parse::<i32>().ok()?;
+        let y = split.next()?.parse::<i32>().ok()?;
         let pos = Vector2::new(x as f32, y as f32);
         let filepath = filepath.trim_matches('"').to_owned();
 
         match ele {
             "Sprite" => Some(StoryboardElementDef::Sprite(StoryboardSpriteDef { layer, origin, filepath, pos })),
             "Animation" => {
-                let Some(frame_count) = split.next().and_then(|s| s.parse::<u16>().ok()) else { return None };
-                let Some(frame_delay) = split.next().and_then(|s| s.parse::<f32>().ok()) else { return None };
-                let loop_type = split.next().and_then(|i| LoopType::from_str(i)).unwrap_or(LoopType::LoopForever);
+                let frame_count = split.next()?.parse::<u16>().ok()?;
+                let frame_delay = split.next()?.parse::<f32>().ok()?;
+                let loop_type = split.next().and_then(LoopType::from_str).unwrap_or(LoopType::LoopForever);
 
                 Some(StoryboardElementDef::Animation(StoryboardAnimationDef { layer, origin, filepath, pos, frame_count, frame_delay, loop_type }))
             }
@@ -229,7 +229,7 @@ impl StoryboardDef {
         let mut trigger_def: Option<usize> = None;
 
         for (n, line) in lines.into_iter().enumerate() {
-            if line.len() == 0 || line.starts_with("//") { continue }
+            if line.is_empty() || line.starts_with("//") { continue }
 
             // check if there's a new element
             if let Some(new_ele) = StoryboardElementDef::read(&line) {

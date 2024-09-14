@@ -1,56 +1,5 @@
 use crate::prelude::*;
 
-// pub trait HitJudgments: Send + Sync {
-//     /// list of all judgments (in display order)
-//     fn variants(&self) -> Vec<Box<dyn HitJudgments>>;
-
-//     /// how much health should be gained/lost for this judgment
-//     fn get_health(&self) -> f32;
-
-//     /// how does this judgment affect the combo
-//     fn affects_combo(&self) -> AffectsCombo;
-
-//     /// how much score is this judgment worth (at the combo provided)
-//     fn get_score(&self, combo: u16) -> i32;
-
-//     /// internal str for this judgment
-//     fn as_str_internal(&self) -> &'static str;
-
-//     /// what does this judgment look like when displayed?
-//     fn as_str_display(&self) -> &'static str;
-
-//     /// what color is this judgment?
-//     fn color(&self) -> Color;
-
-//     /// what is the texture name for this judgment?
-//     fn tex_name(&self) -> &'static str { "" }
-
-//     /// does this judgment fail a perfect score?
-//     fn fails_perfect(&self) -> bool { false }
-
-//     /// does this judgment fail a sudden death score?
-//     fn fails_sudden_death(&self) -> bool { false }
-// }
-
-
-// pub enum DefaultHitJudgments {
-//     None
-// }
-// impl HitJudgments for DefaultHitJudgments {
-//     fn variants(&self) -> Vec<Box<dyn HitJudgments>> { vec![] }
-//     fn get_health(&self) -> f32 { 0.0 }
-//     fn affects_combo(&self) -> AffectsCombo { AffectsCombo::Ignore }
-//     fn get_score(&self, _combo: u16) -> i32 { 0 }
-//     fn as_str_internal(&self) -> &'static str { "" }
-//     fn as_str_display(&self) -> &'static str { "" }
-
-//     fn color(&self) -> Color { Color::new(0.0, 0.0, 0.0, 0.0) }
-// }
-
-
-
-
-
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default)]
 pub struct HitJudgment {

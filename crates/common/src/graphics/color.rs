@@ -105,7 +105,9 @@ impl Color {
         format!("#{r:02X}{g:02X}{b:02X}{a:02X}")
     }
 }
+
 // list of colors generated from the table found at https://www.computerhope.com/htmcolor.htm
+#[allow(clippy::excessive_precision)]
 impl Color {
     // probably dont need black but w/e
     pub const TRANSPARENT_WHITE:Color = Color {r:1.0,g:1.0,b:1.0,a:0.0};
@@ -710,9 +712,9 @@ impl From<String> for Color {
         Self::from_hex(s)
     }
 }
-impl Into<String> for Color {
-    fn into(self) -> String {
-        self.to_hex()
+impl From<Color> for String {
+    fn from(value: Color) -> Self {
+        value.to_hex()
     }
 }
 
@@ -729,16 +731,15 @@ impl From<&iced::Color> for Color {
     }
 }
 #[cfg(feature="ui")]
-impl Into<iced::Color> for Color {
-    fn into(self) -> iced::Color {
-        iced::Color::from_rgba(self.r, self.g, self.b, self.a)
+impl From<Color> for iced::Color {
+    fn from(c: Color) -> Self {
+        iced::Color::from_rgba(c.r, c.g, c.b, c.a)
     }
 }
 
-
-impl Into<[f32;4]> for Color {
-    fn into(self) -> [f32;4] {
-        [self.r,self.g,self.b,self.a]
+impl From<Color> for [f32; 4] {
+    fn from(c: Color) -> Self {
+        [c.r,c.g,c.b,c.a]
     }
 }
 

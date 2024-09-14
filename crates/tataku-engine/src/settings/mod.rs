@@ -66,7 +66,7 @@ impl ItemFilter {
 
 #[derive(Default)]
 pub struct SettingsBuilder {
-    pub categories: Vec<(String, (Vec<IcedElement>, Vec<IcedElement>))>,
+    pub categories: Vec<SettingsCategory>, //Vec<(String, (Vec<IcedElement>, Vec<IcedElement>))>,
 }
 impl SettingsBuilder {
     pub fn add_item(
@@ -74,15 +74,25 @@ impl SettingsBuilder {
         prop: impl Into<IcedElement>,
         val: impl Into<IcedElement>,
     ) {
-        let (_, (p, v)) = self.categories.last_mut().unwrap();
-        p.push(prop.into());
-        v.push(val.into());
+        let sc = self.categories.last_mut().unwrap();
+        sc.properties.push(prop.into());
+        sc.values.push(val.into());
     }
 
     pub fn add_category(
         &mut self, 
         category: impl ToString,
     ) {
-        self.categories.push((category.to_string(), (Vec::new(), Vec::new())));
+        self.categories.push(SettingsCategory {
+            name: category.to_string(),
+            ..Default::default()
+        });
     }
+}
+
+#[derive(Default)]
+pub struct SettingsCategory {
+    pub name: String,
+    pub properties: Vec<IcedElement>, 
+    pub values: Vec<IcedElement>,
 }

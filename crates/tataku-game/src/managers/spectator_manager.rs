@@ -83,12 +83,12 @@ impl SpectatorManager {
             Ok(mut manager) => {
                 // set manager things
                 manager.handle_action(GameplayAction::ApplyMods(mods), &values.settings).await;
-                manager.set_mode(GameplayMode::Spectator { 
+                manager.set_mode(GameplayMode::Spectator(Box::new(SpectatorGameplayInfo { 
                     host_id: self.host_id,
                     host_username: self.host_username.clone(),
                     pending_frames: self.frames.take(),
                     spectators: self.spectator_cache.clone()
-                });
+                })));
                 // manager.replay.score_data = Some(Score::new(map.beatmap_hash, self.host_username.clone(), mode.clone()));
                 manager.on_start = Box::new(move |manager| {
                     trace!("Jumping to time {current_time}");
@@ -172,8 +172,6 @@ impl SpectatorManager {
             match action {
                 SpectatorAction::Play { beatmap_hash, mode, mods, speed, map_game, map_link:_} => {
                     info!("got play: {beatmap_hash}, {mode}, {mods:?}");
-                    let beatmap_hash = beatmap_hash.try_into().unwrap();
-
 
                     self.host_map = Some(HostMap { map_hash: beatmap_hash, playmode: mode, mods: ModManager::new().with_speed(speed).with_mods(mods.iter()) });
                     self.actions.push(BeatmapAction::SetFromHash(beatmap_hash, SetBeatmapOptions::new().restart_song(true)));

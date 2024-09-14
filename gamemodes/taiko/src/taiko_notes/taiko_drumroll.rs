@@ -78,7 +78,7 @@ impl HitObject for TaikoDrumroll {
                 self.pos,
                 Vector2::new(self.end_x - self.pos.x, self.radius * 2.0),
                 color,
-                border.clone()
+                border
             ));
         }
 
@@ -102,7 +102,7 @@ impl HitObject for TaikoDrumroll {
                 self.pos + Vector2::new(0.0, self.radius),
                 self.radius,
                 color,
-                border.clone()
+                border
             ));
             
             // end circle
@@ -110,7 +110,7 @@ impl HitObject for TaikoDrumroll {
                 Vector2::new(self.end_x, self.pos.y + self.radius),
                 self.radius,
                 color,
-                border.clone()
+                border
             ));
         }
 
@@ -190,10 +190,9 @@ impl TaikoHitObject for TaikoDrumroll {
         self.settings = settings;
 
         for i in [&mut self.middle_image, &mut self.end_image] {
-            if let Some(i) = i {
-                // let radius = self.settings.note_radius * if self.finisher {self.settings.big_note_multiplier} else {1.0};
-                i.scale = Vector2::ONE * (self.radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
-            }
+            let Some(i) = i else { continue };
+            // let radius = self.settings.note_radius * if self.finisher {self.settings.big_note_multiplier} else {1.0};
+            i.scale = Vector2::ONE * (self.radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
         }
     }
     

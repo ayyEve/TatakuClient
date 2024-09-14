@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct ScissorGroup {
     pub items: Vec<Arc<dyn TatakuRenderable>>,
     pub scissor: Scissor,
@@ -9,12 +9,7 @@ pub struct ScissorGroup {
 }
 impl ScissorGroup {
     pub fn new() -> Self {
-        Self {
-            items: Vec::new(),
-
-            scissor: None,
-            size: Vector2::ZERO,
-        }
+        Self::default()
     }
 
     pub fn from_collection(list: RenderableCollection) -> Self {

@@ -72,7 +72,7 @@ impl SkinSettings {
             // split out comments, and trim wacky chars
             let line = line.split("//").next().unwrap().trim();
             // ignore empty lines (and comment-only lines)
-            if line.len() == 0 { continue }
+            if line.is_empty() { continue }
             
             // check for section change
             if line.starts_with("[") {
@@ -82,8 +82,10 @@ impl SkinSettings {
                     "[Fonts]" => current_area = SkinSection::Fonts,
                     "[Mania]" => {
                         current_area = SkinSection::Mania;
-                        let mut ms = ManiaSkinSettings::default();
-                        ms.is_osu = true;
+                        let ms = ManiaSkinSettings {
+                            is_osu: true,
+                            ..Default::default()
+                        };
                         s.mania_settings.push(ms);
                     },
 
@@ -113,7 +115,7 @@ impl SkinSettings {
                         "animationframerate" => s.animation_framerate = val.parse().unwrap_or(12),
                         "hitcircleoverlayabovenumer" | "hitcircleoverlayabovenumber" => s.hit_circle_overlay_above_number = vbool(),
                         "sliderstyle" => s.slider_style = val.parse().unwrap_or_default(),
-                        "allowsliderballTtint" => s.allow_sliderball_tint = vbool(),
+                        "allowsliderballtint" => s.allow_sliderball_tint = vbool(),
                         "spinnerfadeplayfield" => s.spinner_fade_playfield = vbool(),
                         _ => {}
                     }
@@ -189,7 +191,7 @@ impl SkinSettings {
                             s.note_image.insert(num, val);
                         }
                     } else {
-                        match &*key {
+                        match key {
                             "Keys" => {
                                 s.keys = val.parse().unwrap_or_default();
                                 // pre-populate the image paths with defaults

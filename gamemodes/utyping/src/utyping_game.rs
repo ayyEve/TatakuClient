@@ -199,21 +199,18 @@ impl GameMode for UTypingGame {
                     state.add_replay_action(ReplayAction::MousePos(char as u8 as f32, 0.0));
                 }
 
-                if queue.len() == 0 {
+                if queue.is_empty() {
                     self.autoplay_queue = None;
                 }
-            } else {
-                if let Some(current_note) = self.notes.current_note() {
-                    if current_note.time() <= state.time {
-                        let chars = current_note.get_chars();
-                        let len = (chars.len() * 2 + 1) as f32;
+            } else if let Some(current_note) = self.notes.current_note() {
+                if current_note.time() <= state.time {
+                    let chars = current_note.get_chars();
+                    let len = (chars.len() * 2 + 1) as f32;
 
-                        if next_note_time == 0.0 { next_note_time = current_note.time() + 500.0; }
-                        let delay = (next_note_time - current_note.time()) / len;
+                    if next_note_time == 0.0 { next_note_time = current_note.time() + 500.0; }
+                    let delay = (next_note_time - current_note.time()) / len;
 
-                        self.autoplay_queue = Some((chars, delay, state.time - delay));
-                    }
-
+                    self.autoplay_queue = Some((chars, delay, state.time - delay));
                 }
             }
             // let mut pending_frames = Vec::new();
@@ -313,7 +310,7 @@ impl GameMode for UTypingGame {
 
         // setup timing bars
         //TODO: it would be cool if we didnt actually need timing bar objects, and could just draw them
-        if self.timing_bars.len() == 0 {
+        if self.timing_bars.is_empty() {
             // load timing bars
             let parent_tps = timing_points.iter().filter(|t|!t.is_inherited()).collect::<Vec<&TimingPoint>>();
             let mut sv; // = self.game_settings.sv_multiplier;
@@ -400,7 +397,7 @@ impl GameMode for UTypingGame {
     
     async fn force_update_settings(&mut self, _settings: &Settings) {}
     #[cfg(feature="graphics")]
-    async fn reload_skin(&mut self, _beatmap_path: &String, skin_manager: &mut dyn SkinProvider) -> TextureSource {
+    async fn reload_skin(&mut self, _beatmap_path: &str, skin_manager: &mut dyn SkinProvider) -> TextureSource {
         for i in self.notes.iter_mut() {
             i.reload_skin(&TextureSource::Skin, skin_manager).await;
         }
@@ -420,12 +417,9 @@ impl GameModeInput for UTypingGame {
     
     async fn key_up(&mut self, _key:Key) -> Option<ReplayAction> { None }
 
-    async fn on_text(&mut self, text: &String, _mods: &KeyModifiers) -> Option<ReplayAction> {
-        if let Some(c) = text.chars().next() {
-            Some(ReplayAction::MousePos(c as u8 as f32, 0.0))
-        } else {
-            None
-        }
+    async fn on_text(&mut self, text: &str, _mods: &KeyModifiers) -> Option<ReplayAction> {
+        let c = text.chars().next()?;
+        Some(ReplayAction::MousePos(c as u8 as f32, 0.0))
     }
 }
 
@@ -433,8 +427,8 @@ impl GameModeInput for UTypingGame {
 impl GameModeInput for UTypingGame {}
 
 impl GameModeProperties for UTypingGame {
-    fn playmode(&self) -> Cow<'static, str> { Cow::Borrowed("utyping") }
-    fn end_time(&self) -> f32 {self.end_time}
+    fn playmode(&self) -> Cow<'static, str> { "utyping".into() }
+    fn end_time(&self) -> f32 { self.end_time }
 
     fn get_info(&self) -> GameModeInfo { crate::GAME_INFO }
 

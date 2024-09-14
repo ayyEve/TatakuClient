@@ -67,7 +67,7 @@ impl InnerUIElement for HealthBarElement {
 
         if self.health_ratio < self.last_health_ratio {
             let ratio_diff = (self.last_health_ratio - self.health_ratio).max(0.05) * time_diff * HEALTH_DAMP / 1000.0;
-            self.last_health_ratio = self.last_health_ratio - ratio_diff;
+            self.last_health_ratio -= ratio_diff;
         } else {
             self.last_health_ratio = self.health_ratio;
         }

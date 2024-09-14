@@ -44,11 +44,7 @@ pub static GAME_INFO: GameModeInfo = GameModeInfo {
     stats_from_groups: TaikoGameInfo::stats_from_groups,
     create_game: TaikoGameInfo::create_game,
     create_diffcalc: TaikoGameInfo::create_diffcalc,
-    can_load_beatmap: |map| match map {
-            BeatmapType::Osu => true,
-            BeatmapType::Tja => true,
-            _ => false
-    },
+    can_load_beatmap: |map| matches!(map, BeatmapType::Osu | BeatmapType::Tja),
 
     ..GameModeInfo::DEFAULT
 };
@@ -95,7 +91,7 @@ impl TaikoGameInfo {
         if let Some(diff) = &info.diff {
             txt += &format!(", Diff: {:.2}", diff);
         } else {
-            txt += &format!(", Diff: ...");
+            txt += ", Diff: ...";
         }
 
         txt

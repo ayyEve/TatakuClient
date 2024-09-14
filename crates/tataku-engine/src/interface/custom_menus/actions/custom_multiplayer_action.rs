@@ -45,13 +45,9 @@ impl CustomMenuMultiplayerAction {
     }
     
     pub fn build(&mut self, values: &dyn Reflect) {
-        match self {
-            Self::SlotAction(slot_action) => {
-                slot_action.slot.resolve_pre(values);
-                // slot_action.build(values, passed_in);
-            }
-
-            _ => {}
+        if let Self::SlotAction(slot_action) = self {
+            slot_action.slot.resolve_pre(values);
+            // slot_action.build(values, passed_in);
         }
     }
 }
@@ -117,7 +113,7 @@ impl CustomMultiplayerSlot {
         let slot_table = table.get("slot")?;
         let slot = CustomEventValueType::from_lua(&slot_table)?;
 
-        match &*id {
+        match id {
             "show_slot_profile" => Ok(Self {
                 action: CustomMultiplayerSlotAction::ShowSlotProfile,
                 slot

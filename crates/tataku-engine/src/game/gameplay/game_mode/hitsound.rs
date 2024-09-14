@@ -74,7 +74,7 @@ impl Hitsound {
 
         // if the hitsound is being overridden
         if let Some(name) = hitsamples.filename {
-            if name.len() > 0 {
+            if !name.is_empty() {
                 #[cfg(feature="debug_hitsounds")]
                 debug!("got custom sound: {}", name);
 

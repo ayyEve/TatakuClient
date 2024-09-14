@@ -19,7 +19,7 @@ impl GameMode for NoMode {
     async fn force_update_settings(&mut self, _: &Settings) {}
     
     #[cfg(feature="graphics")]
-    async fn reload_skin(&mut self, _beatmap_folder: &String, _skin_manager: &mut dyn SkinProvider) -> TextureSource { TextureSource::Raw }
+    async fn reload_skin(&mut self, _beatmap_folder: &str, _skin_manager: &mut dyn SkinProvider) -> TextureSource { TextureSource::Raw }
     async fn apply_mods(&mut self, _: Arc<ModManager>) {}
 
     

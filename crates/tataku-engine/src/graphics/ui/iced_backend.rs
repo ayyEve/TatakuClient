@@ -1,16 +1,13 @@
 use crate::prelude::*;
 
-
+#[derive(Default)]
 pub struct IcedRenderer {
     renderables: Vec<Arc<dyn TatakuRenderable>>,
     object_stack: Vec<TransformGroup>
 }
 impl IcedRenderer {
     pub fn new() -> Self {
-        Self {
-            renderables: Vec::new(),
-            object_stack: Vec::new(),
-        }
+        Self::default()
     }
 
     pub fn finish(&mut self) -> TransformGroup {
@@ -101,7 +98,7 @@ impl iced::advanced::text::Renderer for IcedRenderer {
             let mut out_text = Text::new(
                 pos,
                 text.font_size.0,
-                &line,
+                line,
                 color.into(),
                 text.font
             );

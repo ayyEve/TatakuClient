@@ -154,9 +154,7 @@ impl MessageType {
 
     pub fn as_number2(&self) -> Option<usize> {
         if let Some(num) = self.as_number_ref() { return Some(*num) }
-
-        let Some(val) = self.as_value_ref() else { return None };
-        match val {
+        match self.as_value_ref()? {
             TatakuValue::U32(n) => Some(*n as usize),
             TatakuValue::U64(n) => Some(*n as usize),
 
@@ -193,13 +191,10 @@ impl MessageOwner {
     }
 
     pub fn is_menu(&self) -> bool {
-        match self {
-            Self::Menu => true,
-            _ => false
-        }
+        matches!(self, Self::Menu)
     }
 
-    pub fn check_dialog(&self, dialog: &Box<dyn Dialog>) -> bool {
+    pub fn check_dialog(&self, dialog: &dyn Dialog) -> bool {
         let Self::Dialog(name, number) = self else { return false };
         name == &dialog.name() && number == &dialog.get_num()
     }

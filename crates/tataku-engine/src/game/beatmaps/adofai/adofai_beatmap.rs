@@ -33,7 +33,7 @@ impl AdofaiBeatmap {
             '"', '[',']', ':', '{', '}', '\\', '/', '\'', ',', '\n', ' ', '_', '.', '-', '!'
         ];
 
-        let file_contents:String = file_contents.chars().filter(|c|c.is_alphanumeric() || allowed_chars.contains(&c)).collect();
+        let file_contents:String = file_contents.chars().filter(|c|c.is_alphanumeric() || allowed_chars.contains(c)).collect();
 
         let mut map:AdofaiBeatmap = match serde_json::from_str(&file_contents) {
             Ok(m) => m,
@@ -325,21 +325,17 @@ pub enum AdofaiEventType {
     AnimateTrack,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 pub enum Enabled {
     Enabled,
+    #[default]
     Disabled
 }
-impl Into<bool> for Enabled {
-    fn into(self) -> bool {
-        match self {
+impl From<Enabled> for bool {
+    fn from(val: Enabled) -> Self {
+        match val {
             Enabled::Enabled => true,
             Enabled::Disabled => false,
         }
-    }
-}
-impl Default for Enabled {
-    fn default() -> Self {
-        Enabled::Disabled
     }
 }

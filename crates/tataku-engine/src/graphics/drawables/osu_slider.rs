@@ -17,7 +17,7 @@ pub struct SliderDrawable {
     pub line_segments: Vec<LineSegment>,
 }
 impl TatakuRenderable for SliderDrawable {
-    fn get_bounds(&self) -> Bounds { Bounds::new(self.slider_data.grid_origin.into(), self.size) }
+    fn get_bounds(&self) -> Bounds { Bounds::new(self.slider_data.grid_origin, self.size) }
 
     fn get_blend_mode(&self) -> BlendMode { BlendMode::Slider }
     fn set_blend_mode(&mut self, _blend_mode: BlendMode) {}
@@ -37,9 +37,9 @@ impl TatakuRenderable for SliderDrawable {
 
         let transform = transform * Matrix::identity()
             .scale(self.size)
-            .trans(Vector2::from(self.slider_data.grid_origin));
+            .trans(self.slider_data.grid_origin);
 
-        let mut slider_data = self.slider_data.clone();
+        let mut slider_data = self.slider_data;
         slider_data.body_color.a *= self.alpha;
         slider_data.border_color.a *= self.alpha;
 

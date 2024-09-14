@@ -133,7 +133,7 @@ impl AudioInstance for SampleChannelInstance {
         self.data().channel
         .get_data(DataType::FFT2048, 1024u32).unwrap_or_default()
         .into_iter()
-        .map(|a|FFTData::AmplitudeOnly(a))
+        .map(FFTData::AmplitudeOnly)
         .collect()
     }
 
@@ -188,7 +188,7 @@ impl AudioInstance for StreamChannelInstance {
     fn get_data(&self) -> Vec<FFTData> {
         self.0.get_data(DataType::FFT2048, 1024u32).unwrap_or_default()
         .into_iter()
-        .map(|a|FFTData::AmplitudeOnly(a))
+        .map(FFTData::AmplitudeOnly)
         .collect()
     }
 

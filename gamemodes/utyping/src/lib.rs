@@ -17,6 +17,4 @@ mod prelude {
     pub use super::utyping_notes::*;
     pub use super::utyping_game::UTypingGame;
     pub use super::diff_calc::UTypingDifficultyCalculator;
-
-    pub use tracing::*;
 }

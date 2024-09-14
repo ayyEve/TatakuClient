@@ -31,7 +31,7 @@ impl PTypingBeatmap {
         let mut data = std::fs::read(path)?;
         // while data[0] != 0x7b {data = data[1..].to_vec()}
         // if theres random useless bom data, remove it
-        if &data[0..3] == &[0xEF, 0xBB, 0xBF] {
+        if data[0..3] == [0xEF, 0xBB, 0xBF] {
             data = data[3..].to_vec();
         }
 

@@ -42,7 +42,7 @@ impl TjaBeatmap {
 
         let mut data = std::fs::read(path)?;
         // if theres random useless bom data, remove it
-        if &data[0..3] == &[0xEF, 0xBB, 0xBF] {
+        if data[0..3] == [0xEF, 0xBB, 0xBF] {
             data = data[3..].to_vec();
         }
 
@@ -119,19 +119,19 @@ impl TatakuBeatmap for TjaBeatmap {
             self.circles.first().map(|b|b.time).unwrap_or(999999.9) as i32,
             self.drumrolls.first().map(|b|b.time).unwrap_or(999999.9) as i32,
             self.balloons.first().map(|b|b.time).unwrap_or(999999.9) as i32,
-        ].iter().min().map(|i|*i).unwrap_or(0) as f32;
+        ].iter().min().copied().unwrap_or(0) as f32;
 
         let end = [
             self.circles.last().map(|b|b.time).unwrap_or_default() as i32,
             self.drumrolls.last().map(|b|b.end_time).unwrap_or_default() as i32,
             self.balloons.last().map(|b|b.end_time).unwrap_or_default() as i32,
-        ].iter().max().map(|i|*i).unwrap_or(0) as f32;
+        ].iter().max().copied().unwrap_or(0) as f32;
         let duration = end - start;
 
         let timing_points = self.get_timing_points();
         let mut bl_min:f32 = 99999.0;
         let mut bl_max:f32 = 0.0;
-        for tp in timing_points.iter().filter(|i|i.beat_length > 0.0) {
+        for tp in timing_points.iter().filter(|i| i.beat_length > 0.0) {
             bl_min = bl_min.min(tp.beat_length);
             bl_max = bl_max.max(tp.beat_length);
         }

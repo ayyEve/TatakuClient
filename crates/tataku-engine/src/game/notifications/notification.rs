@@ -32,7 +32,7 @@ impl Notification {
 
     pub fn new_error(text: impl ToString, err: impl Into<TatakuError>) -> Self {
         Self::new(
-            text.to_string(),
+            format!("{}\n{:?}", text.to_string(), err.into()),
             Color::RED,
             5_000.0, 
             NotificationOnClick::None,

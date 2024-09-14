@@ -20,7 +20,7 @@ impl<'lua> rlua::FromLua<'lua> for CustomMenuEvent {
         let actions: Option<Vec<LuaAction>> = table.get("actions")?;
 
         let mut actions = actions.unwrap_or_default();
-        action.map(|a| actions.push(a));
+        if let Some(a) = action { actions.push(a) }
 
         Ok(Self {
             event_type: table.get("event")?,

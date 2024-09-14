@@ -116,9 +116,9 @@ impl StoryboardEasing {
     }
 }
 
-impl Into<Easing> for StoryboardEasing {
-    fn into(self) -> Easing {
-        match self {
+impl From<StoryboardEasing> for Easing {
+    fn from(val: StoryboardEasing) -> Self {
+        match val {
             StoryboardEasing::Linear => Easing::Linear,
             StoryboardEasing::EaseOut => Easing::EaseOutCubic,
             StoryboardEasing::EaseIn => Easing::EaseInCubic,

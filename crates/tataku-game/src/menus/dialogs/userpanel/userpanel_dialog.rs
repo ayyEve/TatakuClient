@@ -139,7 +139,7 @@ impl Dialog for UserPanel {
         
         // update users from online manager
         if let Some(om) = OnlineManager::try_get() {
-            for (_, user) in &om.users {
+            for user in om.users.values() {
                 if let Ok(u) = user.try_lock() {
                     if !self.users.contains_key(&u.user_id) {
                         self.users.insert(u.user_id, PanelUser::new(u.clone()));

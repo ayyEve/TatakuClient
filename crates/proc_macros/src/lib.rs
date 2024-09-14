@@ -20,6 +20,7 @@ pub fn create_setting(input: proc_macro::TokenStream) -> proc_macro::TokenStream
 
 /// allowed enum attribute values:
 /// - debug
+/// 
 /// allowed variant attribute values:
 /// - ignore
 /// - display = String (default is variant name)
@@ -191,11 +192,11 @@ pub fn scrollable_getters_setters(input: TokenStream) -> TokenStream {
     if let Data::Struct(s) = &ast.data {
         for f in &s.fields {
             if let Some(ident) = &f.ident {
-                has_size |= ident.to_string() == "size";
-                has_pos |= ident.to_string() == "pos";
-                has_tag |= ident.to_string() == "tag";
-                has_hover |= ident.to_string() == "hover";
-                has_selected |= ident.to_string() == "selected";
+                has_size |= *ident == "size";
+                has_pos |= *ident == "pos";
+                has_tag |= *ident == "tag";
+                has_hover |= *ident == "hover";
+                has_selected |= *ident == "selected";
             }
             if has_pos && has_tag && has_hover && has_selected {break}
         }
@@ -203,10 +204,10 @@ pub fn scrollable_getters_setters(input: TokenStream) -> TokenStream {
     if !has_size {panic!("Scrollable does not have a size field")}
 
     let generics = {
-        if generics.len() > 0 {format!("<{generics}>")}
+        if !generics.is_empty() {format!("<{generics}>")}
         else {String::new()}
     };
-    let generics2 = generics.split(",").map(|g|g.split(":").next().unwrap()).collect::<Vec<_>>().join(",") + if generics.len() > 0 {">"} else {""};
+    let generics2 = generics.split(",").map(|g|g.split(":").next().unwrap()).collect::<Vec<_>>().join(",") + if !generics.is_empty() {">"} else {""};
 
     let struct_name = ast.ident.to_string();
 
@@ -245,11 +246,8 @@ pub fn impl_settings_deserializer(input: proc_macro::TokenStream) -> proc_macro:
     // Parse the string representation
     let ast = syn::parse(input).unwrap();
 
-    // Build the impl
-    let gen = settings_deserializer::impl_settings_deserializer(&ast);
-
-    // Return the generated impl
-    proc_macro::TokenStream::from(gen)
+    // Build and return the impl
+    settings_deserializer::impl_settings_deserializer(&ast)
 }
 
 
@@ -267,7 +265,7 @@ pub fn impl_chainable_initializer(input: proc_macro::TokenStream) -> proc_macro:
     let mut idents_maybe = Vec::new();
 
     for f in s.fields.iter() {
-        if !f.attrs.iter().find(|a|a.path.is_ident("chain")).is_some() { continue }
+        if !f.attrs.iter().any(|a| a.path.is_ident("chain")) { continue }
         tys.push(&f.ty);
         idents.push(f.ident.as_ref().unwrap());
         idents_maybe.push(format_ident!("{}_maybe", f.ident.as_ref().unwrap()))

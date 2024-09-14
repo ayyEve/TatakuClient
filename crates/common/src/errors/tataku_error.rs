@@ -36,6 +36,11 @@ impl TatakuError {
         Self::String(format!("{e}"))
     }
 }
+impl From<&str> for TatakuError {
+    fn from(value: &str) -> Self {
+        TatakuError::String(value.to_owned())
+    }
+}
 
 
 impl Display for TatakuError {

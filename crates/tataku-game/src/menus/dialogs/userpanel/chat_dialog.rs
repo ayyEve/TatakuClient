@@ -455,84 +455,84 @@ impl ChatChannel {
 
 
 
-#[derive(ScrollableGettersSetters)]
-#[Scrollable(selectable)]
-struct ChannelScroll {
-    pos: Vector2,
-    size: Vector2,
-    hover: bool,
-    selected: bool,
-    tag: String,
+// // #[derive(ScrollableGettersSetters)]
+// #[Scrollable(selectable)]
+// struct ChannelScroll {
+//     pos: Vector2,
+//     size: Vector2,
+//     hover: bool,
+//     selected: bool,
+//     tag: String,
 
-    channel: ChatChannel,
-    font_size: f32,
-    font: Font,
-}
-impl ChannelScroll {
-    fn new(channel: ChatChannel, width: f32, font_size: f32) -> Self {
-        Self {
-            tag: channel.get_name(),
-            channel,
-            font_size,
+//     channel: ChatChannel,
+//     font_size: f32,
+//     font: Font,
+// }
+// impl ChannelScroll {
+//     fn new(channel: ChatChannel, width: f32, font_size: f32) -> Self {
+//         Self {
+//             tag: channel.get_name(),
+//             channel,
+//             font_size,
 
-            hover: false,
-            selected: false,
-            pos: Vector2::ZERO,
-            size: Vector2::new(width, font_size),
-            font: Font::Main,
-        }
-    }
-}
-impl ScrollableItem for ChannelScroll {
-    fn draw(&mut self, pos_offset:Vector2, list: &mut RenderableCollection) {
+//             hover: false,
+//             selected: false,
+//             pos: Vector2::ZERO,
+//             size: Vector2::new(width, font_size),
+//             font: Font::Main,
+//         }
+//     }
+// }
+// impl ScrollableItem for ChannelScroll {
+//     fn draw(&mut self, pos_offset:Vector2, list: &mut RenderableCollection) {
 
-        let text = Text::new(
-            self.pos + pos_offset,
-            self.font_size,
-            self.channel.get_name(),
-            if self.hover {Color::RED} else if self.selected {Color::BLUE} else {Color::BLACK},
-            self.font.clone()
-        );
-        list.push(text);
-    }
-}
+//         let text = Text::new(
+//             self.pos + pos_offset,
+//             self.font_size,
+//             self.channel.get_name(),
+//             if self.hover {Color::RED} else if self.selected {Color::BLUE} else {Color::BLACK},
+//             self.font
+//         );
+//         list.push(text);
+//     }
+// }
 
 
-#[derive(ScrollableGettersSetters)]
-struct MessageScroll {
-    pos: Vector2,
-    size: Vector2,
-    hover: bool,
+// #[derive(ScrollableGettersSetters)]
+// struct MessageScroll {
+//     pos: Vector2,
+//     size: Vector2,
+//     hover: bool,
 
-    message: ChatMessage,
-    font_size: f32,
-    font: Font,
-}
-impl MessageScroll {
-    fn new(message: ChatMessage, width: f32, font_size: f32) -> Self {
-        Self {
-            message,
-            font_size,
+//     message: ChatMessage,
+//     font_size: f32,
+//     font: Font,
+// }
+// impl MessageScroll {
+//     fn new(message: ChatMessage, width: f32, font_size: f32) -> Self {
+//         Self {
+//             message,
+//             font_size,
 
-            hover: false,
-            pos: Vector2::ZERO,
-            size: Vector2::new(width, font_size),
-            font: Font::Main,
-        }
-    }
-}
-impl ScrollableItem for MessageScroll {
-    fn draw(&mut self, pos_offset:Vector2, list: &mut RenderableCollection) {
-        let text = Text::new(
-            self.pos + pos_offset,
-            self.font_size,
-            self.message.get_formatted_text(),
-            Color::BLACK,
-            self.font.clone()
-        );
-        list.push(text);
-    }
-}
+//             hover: false,
+//             pos: Vector2::ZERO,
+//             size: Vector2::new(width, font_size),
+//             font: Font::Main,
+//         }
+//     }
+// }
+// impl ScrollableItem for MessageScroll {
+//     fn draw(&mut self, pos_offset:Vector2, list: &mut RenderableCollection) {
+//         let text = Text::new(
+//             self.pos + pos_offset,
+//             self.font_size,
+//             self.message.get_formatted_text(),
+//             Color::BLACK,
+//             self.font
+//         );
+//         list.push(text);
+//     }
+// }
 
 
 

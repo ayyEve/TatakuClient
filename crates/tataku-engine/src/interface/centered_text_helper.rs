@@ -41,7 +41,7 @@ impl CenteredTextHelper {
                 32.0,
                 self.text.clone(),
                 Color::BLACK,
-                self.font.clone()
+                self.font
             );
             
             let text_width = offset_text.measure_text().x + TEXT_HPADDING;

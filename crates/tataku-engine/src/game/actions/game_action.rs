@@ -51,7 +51,6 @@ pub enum GameAction {
     /// Set the actual playmode for the current beatmap
     UpdatePlaymodeActual(String),
 
-    ///
     #[cfg(feature="graphics")]
     NewGameplayManager(NewManager),
     DropGameplayManager(GameplayId),
@@ -143,12 +142,14 @@ pub enum GameplayMode {
     Normal,
     Preview,
     Multiplayer,
-    Replay(Score),
-    Spectator {
-        host_id: u32,
-        host_username: String,
+    Replay(Box<Score>),
+    Spectator(Box<SpectatorGameplayInfo>),
+}
+#[derive(Debug, Clone, Default)]
+pub struct SpectatorGameplayInfo {
+    pub host_id: u32,
+    pub host_username: String,
 
-        pending_frames: VecDeque<SpectatorFrame>,
-        spectators: HashMap<u32, String>,
-    }
+    pub pending_frames: VecDeque<SpectatorFrame>,
+    pub spectators: HashMap<u32, String>,
 }

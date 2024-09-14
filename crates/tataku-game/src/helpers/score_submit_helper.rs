@@ -50,7 +50,7 @@ impl ScoreSubmitHelper {
             // };
             let map_info = ScoreMapInfo {
                 game: self.beatmap_type.into(),
-                map_hash: self.score.beatmap_hash.clone(),
+                map_hash: self.score.beatmap_hash,
                 playmode: self.score.playmode.clone(),
             };
             let score_submit = ScoreSubmit {

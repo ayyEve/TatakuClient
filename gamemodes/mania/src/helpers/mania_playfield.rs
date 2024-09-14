@@ -56,8 +56,7 @@ impl ManiaPlayfield {
         let tex_size = img.tex_size();
         // img.origin = Vector2::with_y(tex_size.y - self.skin_hit_pos);
         
-        let a = self.column_origin.load(Ordering::Relaxed);
-        let a:f32 = unsafe {std::mem::transmute(a)};
+        let a = f32::from_bits(self.column_origin.load(Ordering::Relaxed));
         img.origin = Vector2::with_y(a + tex_size.y / 2.0);
 
         img.scale = Vector2::ONE * (self.column_width / tex_size.x);

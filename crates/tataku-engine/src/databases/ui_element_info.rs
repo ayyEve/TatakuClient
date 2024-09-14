@@ -25,7 +25,7 @@ impl Database {
         let mut s = db.prepare(&sql).unwrap();
 
         // error is entry already exists
-        if let Err(_) = s.execute([]) {
+        if s.execute([]).is_err() {
             // trance!("updating diff: {diff}");
             let sql = format!(
                 "UPDATE ui_elements SET pos_x={}, pos_y={}, scale_x={}, scale_y={}, window_size_x={}, window_size_y={}, visible={visible} WHERE name='{name}'", 

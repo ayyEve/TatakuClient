@@ -4,6 +4,7 @@ use crate::prelude::*;
 #[derive(Clone, Serialize, PartialEq, Debug)]
 #[cfg_attr(feature="graphics", derive(Settings))]
 #[derive(Reflect, SettingsDeserialize)]
+#[allow(clippy::manual_non_exhaustive)]
 #[serde(default)]
 pub struct DisplaySettings {
     pub window_pos: [i32; 2],

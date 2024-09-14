@@ -1,5 +1,3 @@
-use crate::prelude::*;
-
 mod score_submit_helper;
 pub use score_submit_helper::*;
 
@@ -54,7 +52,7 @@ pub trait CopyDefault<T> {
 }
 impl<T:Copy+Default> CopyDefault<T> for Option<&T> {
     fn copy_or_default(&self) -> T {
-        self.map(|n|*n).unwrap_or_default()
+        self.copied().unwrap_or_default()
     }
 }
 

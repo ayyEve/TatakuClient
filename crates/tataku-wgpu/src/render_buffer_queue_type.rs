@@ -10,16 +10,16 @@ impl RenderBufferQueueType {
     /// also sets up the next recording buffer (creating one if one is not available in the queue)
     pub fn dump_and_next(&mut self, queue: &wgpu::Queue, device: &wgpu::Device) -> Option<RenderBufferType> {
         match self {
-            Self::Slider(s) => s.dump_and_next(queue, device).map(|b|RenderBufferType::Slider(b)),
-            Self::Vertex(v) => v.dump_and_next(queue, device).map(|b|RenderBufferType::Vertex(b)),
-            Self::Flashlight(f) => f.dump_and_next(queue, device).map(|b|RenderBufferType::Flashlight(b)),
+            Self::Slider(s) => s.dump_and_next(queue, device).map(RenderBufferType::Slider),
+            Self::Vertex(v) => v.dump_and_next(queue, device).map(RenderBufferType::Vertex),
+            Self::Flashlight(f) => f.dump_and_next(queue, device).map(RenderBufferType::Flashlight),
         }
     }
     pub fn end(&mut self, queue: &wgpu::Queue) -> Option<RenderBufferType> {
         match self {
-            Self::Slider(s) => s.end(queue).map(|b|RenderBufferType::Slider(b)),
-            Self::Vertex(v) => v.end(queue).map(|b|RenderBufferType::Vertex(b)),
-            Self::Flashlight(f) => f.end(queue).map(|b|RenderBufferType::Flashlight(b)),
+            Self::Slider(s) => s.end(queue).map(RenderBufferType::Slider),
+            Self::Vertex(v) => v.end(queue).map(RenderBufferType::Vertex),
+            Self::Flashlight(f) => f.end(queue).map(RenderBufferType::Flashlight),
         }
     }
 

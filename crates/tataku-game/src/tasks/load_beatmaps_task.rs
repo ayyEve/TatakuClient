@@ -64,7 +64,7 @@ impl TatakuTask for LoadBeatmapsTask {
 
         // look through the songs folder to make sure everything is already added
         // only run if we don't have any maps loaded beforehand
-        if self.existing_maps.len() == 0 {
+        if self.existing_maps.is_empty() {
 
             // // get existing dirs
             // let mut existing_paths = HashSet::new();

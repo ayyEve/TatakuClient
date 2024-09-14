@@ -44,7 +44,7 @@ impl ScoreManager {
         }
     }
 
-    fn check_mods(score_mods: &Vec<ModDefinition>, mod_manager: &ModManager) -> bool {
+    fn check_mods(score_mods: &[ModDefinition], mod_manager: &ModManager) -> bool {
         if score_mods.len() != mod_manager.mods.len() { return false }
 
         for i in score_mods.iter() {
@@ -69,6 +69,7 @@ impl ScoreManager {
         let playmode = self.playmode.try_get()?.clone();
         let map_hash:Md5Hash = *self.beatmap.try_get()?;
         let method = self.score_method();
+        let infos = values.global.gamemode_infos.clone();
 
         let scores = Arc::new(AsyncRwLock::new(ScoreLoaderHelper::default()));
         self.current_loader = Some(scores.clone());
@@ -81,7 +82,7 @@ impl ScoreManager {
 
                 let handle = tokio::spawn(async move {
                     let map_hash = map_hash.to_string();
-                    let mut local_scores = Database::get_scores(&map_hash, playmode).await;
+                    let mut local_scores = Database::get_scores(&map_hash, playmode, infos).await;
 
                     if method.filter_by_mods() {
                         local_scores.retain(|s| Self::check_mods(&s.mods, &mods));
@@ -122,7 +123,7 @@ impl ScoreManager {
                     .current_beatmap
                     .as_ref()
                     .map(|b| b.beatmap_type)
-                    .ok_or(TatakuError::String(format!("no beatmap")))?;
+                    .ok_or("no beatmap")?;
                 
                 let osu_api_key = values.settings.osu_api_key.clone();
                 let infos = self.infos.clone();
@@ -366,7 +367,7 @@ mod osu {
         } else {
             let hash = hash.to_string();
             // need to fetch the beatmap id, because peppy doesnt allow getting scores by hash :/
-            if let Some(id) = fetch_beatmap_id(&osu_api_key, &hash).await {
+            if let Some(id) = fetch_beatmap_id(osu_api_key, &hash).await {
                 let url = format!("https://osu.ppy.sh/api/get_scores?k={osu_api_key}&b={id}&m={mode}");
 
                 let bytes = reqwest::get(url).await?.bytes().await?;
@@ -498,14 +499,16 @@ mod quaver {
             judgments.insert("xmiss".to_owned(), s.count_miss as u16);
 
 
-            let mut score = Score::default();
-            score.username = s.user.username.clone();
-            score.score = s.total_score;
-            score.combo = s.max_combo as u16;
-            score.max_combo = s.max_combo as u16;
-            score.judgments = judgments;
-            score.speed = GameSpeed::default();
-            score.accuracy = s.accuracy / 100.0;
+            let mut score = Score {
+                username: s.user.username.clone(),
+                score: s.total_score,
+                combo: s.max_combo as u16,
+                max_combo: s.max_combo as u16,
+                judgments,
+                speed: GameSpeed::default(),
+                accuracy: s.accuracy / 100.0,
+                ..Score::default()
+            };
 
             // check mods
             for m in s.mods_string.split(", ") {

@@ -58,7 +58,7 @@ impl OsuBeatmap {
 
         let file_path = file_path.as_os_str().to_string_lossy().to_string();
         let mut current_area = BeatmapSection::Version;
-        let mut metadata = BeatmapMeta::new(file_path.clone(), hash.clone(), BeatmapType::Osu);
+        let mut metadata = BeatmapMeta::new(file_path.clone(), hash, BeatmapType::Osu);
 
         let mut storyboard_lines = Vec::new();
 
@@ -119,7 +119,7 @@ impl OsuBeatmap {
                     let key = split.next().unwrap().trim();
                     let val = split.next().unwrap().trim();
 
-                    match &*key {
+                    match key {
                         "AudioFilename" => metadata.audio_filename = parent_dir.join(val).to_str().unwrap().to_owned(),
                         "PreviewTime" => metadata.audio_preview = val.parse().unwrap_or(0.0),
                         "StackLeniency" => beatmap.stack_leniency = val.parse().unwrap_or(0.0),
@@ -133,7 +133,7 @@ impl OsuBeatmap {
                     let key = split.next().unwrap().trim();
                     let val = split.collect::<Vec<&str>>().join(":");
                     
-                    match &*key {
+                    match key {
                         "Title" => metadata.title = val.to_owned(), 
                         "TitleUnicode" => metadata.title_unicode = val.to_owned(), 
                         "Artist" => metadata.artist = val.to_owned(), 
@@ -148,7 +148,7 @@ impl OsuBeatmap {
                     let key = split.next().unwrap().trim();
                     let val = split.next().unwrap().trim().parse::<f32>().unwrap();
 
-                    match &*key {
+                    match key {
                         "HPDrainRate" => metadata.hp = val, 
                         "CircleSize" => metadata.cs = val, 
                         "OverallDifficulty" => metadata.od = val, 
@@ -223,7 +223,7 @@ impl OsuBeatmap {
                         warn!("error parsing hitsound: {} (line: {})", e, line)
                     }
                     
-                    let hitsound = hitsound.unwrap_or(0).abs() as u8; // 0 = normal, 2 = whistle, 4 = finish, 8 = clap
+                    let hitsound = hitsound.unwrap_or(0).unsigned_abs(); // 0 = normal, 2 = whistle, 4 = finish, 8 = clap
                     let hitsound_str = &*hitsound.to_string();
 
                     // read type:
@@ -264,7 +264,7 @@ impl OsuBeatmap {
                             .collect();
 
 
-                        let curve_type = match &*curve.next().unwrap() {
+                        let curve_type = match curve.next().unwrap() {
                             "B" => CurveType::Bézier,
                             "P" => CurveType::Perfect,
                             "C" => CurveType::Catmull,
@@ -273,7 +273,7 @@ impl OsuBeatmap {
                         };
 
                         let mut curve_points = Vec::new();
-                        while let Some(pair) = curve.next() {
+                        for pair in curve {
                             let mut s = pair.split(':');
                             curve_points.push(Vector2::new(
                                 s.next().unwrap().parse().unwrap(),
@@ -436,8 +436,8 @@ impl TatakuBeatmap for OsuBeatmap {
 
     fn get_timing_points(&self) -> Vec<TimingPoint> {
         self.timing_points
-            .iter()
-            .map(|t|t.clone().into())
+            .iter().copied()
+            .map(|t| t.into())
             .collect()
     }
 
@@ -513,7 +513,8 @@ pub struct OsuTimingPoint {
     pub sample_index: u8
 }
 impl OsuTimingPoint {
-    pub fn from_str(str:&str) -> Self {
+    #[allow(clippy::should_implement_trait)]
+    pub fn from_str(str: &str) -> Self {
         // time,beatLength,meter,sampleSet,sampleIndex,volume,uninherited,effects
         // debug!("{}", str.clone());
         let mut split = str.split(',');
@@ -533,8 +534,8 @@ impl OsuTimingPoint {
             None => 0
         };
 
-        let kiai = (effects & 1) == 1;
-        let skip_first_barline = (effects & 8) == 1;
+        let kiai = (effects & 1) != 0;
+        let skip_first_barline = (effects & 8) != 0;
 
         Self {
             time, 
@@ -551,7 +552,7 @@ impl OsuTimingPoint {
     }
 
     pub fn is_inherited(&self) -> bool {
-        return self.beat_length < 0.0;
+        self.beat_length < 0.0
     }
     
     pub fn bpm_multiplier(&self) -> f32 {
@@ -559,17 +560,18 @@ impl OsuTimingPoint {
         else {self.beat_length.abs().clamp(10.0, 1000.0) / 100.0}
     }
 }
-impl Into<TimingPoint> for OsuTimingPoint {
-    fn into(self) -> TimingPoint {
-        TimingPoint {
-            time: self.time,
-            beat_length: self.beat_length,
-            volume: self.volume,
-            meter: self.meter,
-            kiai: self.kiai,
-            skip_first_barline: self.skip_first_barline,
-            sample_set: self.sample_set,
-            sample_index: self.sample_index,
+
+impl From<OsuTimingPoint> for TimingPoint {
+    fn from(value: OsuTimingPoint) -> Self {
+        Self {
+            time: value.time,
+            beat_length: value.beat_length,
+            volume: value.volume,
+            meter: value.meter,
+            kiai: value.kiai,
+            skip_first_barline: value.skip_first_barline,
+            sample_set: value.sample_set,
+            sample_index: value.sample_index,
         }
     }
 }
@@ -603,26 +605,26 @@ impl FromStr for OsuEvent {
         let mut split = s.split(",");
         match split.next() {
             Some("0") | Some("Background") => {
-                let start_time = split.next().ok_or_else(||TatakuError::String("missing time".to_owned()))?.parse::<i32>().map_err(|_|TatakuError::String("bad time value".to_owned()))?;
-                let filename = split.next().ok_or_else(||TatakuError::String("missing filename".to_owned()))?.to_owned();
+                let start_time = split.next().ok_or("missing time")?.parse::<i32>().map_err(|_| "bad time value")?;
+                let filename = split.next().ok_or("missing filename")?.to_owned();
 
-                let x_offset = split.next().unwrap_or("0").parse::<i32>().map_err(|_|TatakuError::String("bad x_offset".to_owned()))?;
-                let y_offset = split.next().unwrap_or("0").parse::<i32>().map_err(|_|TatakuError::String("bad y_offset".to_owned()))?;
+                let x_offset = split.next().unwrap_or("0").parse::<i32>().map_err(|_| "bad x_offset")?;
+                let y_offset = split.next().unwrap_or("0").parse::<i32>().map_err(|_| "bad y_offset")?;
                 Ok(OsuEvent::Background { start_time, filename, x_offset, y_offset })
             }
 
             Some("1") | Some("Video") => {
-                let start_time = split.next().ok_or_else(||TatakuError::String("missing time".to_owned()))?.parse::<i32>().map_err(|_|TatakuError::String("bad time value".to_owned()))?;
-                let filename = split.next().ok_or_else(||TatakuError::String("missing filename".to_owned()))?.to_owned();
+                let start_time = split.next().ok_or("missing time")?.parse::<i32>().map_err(|_| "bad time value")?;
+                let filename = split.next().ok_or("missing filename")?.to_owned();
 
-                let x_offset = split.next().unwrap_or("0").parse::<i32>().map_err(|_|TatakuError::String("bad x_offset".to_owned()))?;
-                let y_offset = split.next().unwrap_or("0").parse::<i32>().map_err(|_|TatakuError::String("bad y_offset".to_owned()))?;
+                let x_offset = split.next().unwrap_or("0").parse::<i32>().map_err(|_| "bad x_offset")?;
+                let y_offset = split.next().unwrap_or("0").parse::<i32>().map_err(|_| "bad y_offset")?;
                 Ok(OsuEvent::Video { start_time, filename, x_offset, y_offset })
             }
 
             Some("2") | Some("Break") => {
-                let start_time = split.next().ok_or_else(||TatakuError::String("missing time".to_owned()))?.parse::<i32>().map_err(|_|TatakuError::String("bad start time value".to_owned()))?;
-                let end_time = split.next().ok_or_else(||TatakuError::String("missing time".to_owned()))?.parse::<i32>().map_err(|_|TatakuError::String("bad end time value".to_owned()))?;
+                let start_time = split.next().ok_or("missing time")?.parse::<i32>().map_err(|_| "bad start time value")?;
+                let end_time = split.next().ok_or("missing time")?.parse::<i32>().map_err(|_| "bad end time value")?;
                 Ok(OsuEvent::Break { start_time, end_time })
             }
 

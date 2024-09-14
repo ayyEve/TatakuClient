@@ -160,7 +160,7 @@ impl MultiplayerManager {
                 if &self.lobby.info.id != lobby_id { return Ok(()) }
                 self.lobby.info.players.push(LobbyUser { user_id: *user_id, ..Default::default() });
 
-                let Some(user) = OnlineManager::get().await.users.get(&user_id).cloned() else { 
+                let Some(user) = OnlineManager::get().await.users.get(user_id).cloned() else { 
                     NotificationManager::add_text_notification(format!("user with id {} joined the match", user_id), 3000.0, Color::PURPLE).await;
                     self.update_values(values);
                     return Ok(())
@@ -180,13 +180,13 @@ impl MultiplayerManager {
                 self.lobby.slots.values_mut().find(|s| **s == LobbySlot::Filled{user: *user_id}).ok_do_mut(|s|**s = LobbySlot::Empty);
                 
                 if user_id != &self.lobby.our_user_id {
-                    let username = self.lobby.player_usernames.remove(&user_id).unwrap_or_default();
+                    let username = self.lobby.player_usernames.remove(user_id).unwrap_or_default();
                     NotificationManager::add_text_notification(format!("{username} left the match"), 3000.0, Color::PURPLE).await;
                 }
             }
 
             MultiplayerPacket::Server_LobbySlotChange { slot, new_status } => {
-                self.lobby.info.slots.get_mut(&slot).ok_do_mut(|s| **s = *new_status);
+                self.lobby.info.slots.get_mut(slot).ok_do_mut(|s| **s = *new_status);
             }
 
             MultiplayerPacket::Server_LobbyUserState { user_id, new_state } => {

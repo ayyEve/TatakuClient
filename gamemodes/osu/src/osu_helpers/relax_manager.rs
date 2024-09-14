@@ -14,7 +14,7 @@ pub struct RelaxManager {
 impl RelaxManager {
     pub fn new() -> Self {
         Self {
-            key_states: USABLE_KEYS.into_iter().map(|k| (*k, KeyState::Unpressed)).collect()
+            key_states: USABLE_KEYS.iter().map(|k| (*k, KeyState::Unpressed)).collect()
         }
     }
 

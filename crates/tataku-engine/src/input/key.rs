@@ -390,7 +390,7 @@ impl KeyCollection {
     }
 
     pub fn has_key(&self, key: Key) -> bool {
-        self.0.iter().find(|i| i.is_key(key)).is_some()
+        self.0.iter().any(|i| i.is_key(key))
     }
     pub fn remove_key(&mut self, key: Key) {
         self.0.retain(|k| !k.is_key(key));

@@ -279,10 +279,7 @@ impl SYOperator {
     }
 
     fn is_left_associative(&self) -> bool {
-        match self {
-            Self::Pow => false,
-            _ => true
-        }
+        !matches!(self, Self::Pow)
     }
 }
 
@@ -293,7 +290,7 @@ enum MathFunction {
     Tan
 }
 impl MathFunction {
-    fn run<'a>(self, val: Cow<'a, TatakuVariable>) -> ShuntingYardResult<Cow<'a, TatakuVariable>> {
+    fn run(self, val: Cow<'_, TatakuVariable>) -> ShuntingYardResult<Cow<'_, TatakuVariable>> {
         let num = val.as_number().ok_or_else(|| ShuntingYardError::NumberIsntANumber(val.as_string()))?;
 
         let mut new = val.into_owned();

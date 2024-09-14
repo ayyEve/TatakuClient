@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
+use std::{str::FromStr, sync::atomic::{AtomicBool, Ordering::SeqCst}};
 
 
 pub struct OsuDirect;
@@ -49,7 +49,7 @@ impl DirectApi for OsuDirect {
         let mut items = Vec::new();
         for line in lines {
             if line.len() < 5 {continue}
-            if let Some(dl) = OsuDirectDownloadable::from_str(line) {
+            if let Ok(dl) = OsuDirectDownloadable::from_str(line) {
                 // why does this work
                 items.push(Arc::new(dl) as Arc<dyn DirectDownloadable>)
             }
@@ -71,45 +71,6 @@ pub struct OsuDirectDownloadable {
 
     progress: Arc<RwLock<DownloadProgress>>,
     downloading: Arc<AtomicBool>,
-}
-impl OsuDirectDownloadable {
-    pub fn from_str(str:&str) -> Option<Self> {
-        // trace!("reading {}", str);
-        let mut split = str.split('|');
-
-        // 867737.osz|The Quick Brown Fox|The Big Black|Mismagius|1|9.37143|2021-06-25T02:25:11+00:00|867737|820065|||0||Easy ★1.9@0,Normal ★2.5@0,Advanced ★3.2@0,Hard ★3.6@0,Insane ★4.8@0,Extra ★5.6@0,Extreme ★6.6@0,Remastered Extreme ★6.9@0,Riddle me this riddle me that... ★7.5@0
-        // filename, artist, title, creator, ranking_status, rating, last_update, beatmapset_id, thread_id, video, storyboard, filesize, filesize_novideo||filesize, difficulty_names
-
-        macro_rules! next {
-            () => {
-                if let Some(v) = split.next() {
-                    v.to_owned()
-                } else {
-                    return None
-                }
-            }
-        }
-
-        let filename = next!();
-        let artist = next!();
-        let title = next!();
-        let creator = next!();
-        let _ranking_status = next!();
-        let _rating = next!();
-        let _last_update = next!();
-        let set_id = next!();
-
-        Some(Self {
-            set_id,
-            filename,
-            artist,
-            title,
-            creator,
-            
-            progress: Default::default(),
-            downloading: Arc::new(AtomicBool::new(false))
-        })
-    }
 }
 impl DirectDownloadable for OsuDirectDownloadable {
     fn download(&self, settings: &Settings) {
@@ -140,6 +101,47 @@ impl DirectDownloadable for OsuDirectDownloadable {
     fn is_downloading(&self) -> bool { self.downloading.load(SeqCst) }
 }
 
+impl FromStr for OsuDirectDownloadable {
+    type Err = ();
+    fn from_str(str: &str) -> Result<Self, Self::Err> {
+        
+        // trace!("reading {}", str);
+        let mut split = str.split('|');
+
+        // 867737.osz|The Quick Brown Fox|The Big Black|Mismagius|1|9.37143|2021-06-25T02:25:11+00:00|867737|820065|||0||Easy ★1.9@0,Normal ★2.5@0,Advanced ★3.2@0,Hard ★3.6@0,Insane ★4.8@0,Extra ★5.6@0,Extreme ★6.6@0,Remastered Extreme ★6.9@0,Riddle me this riddle me that... ★7.5@0
+        // filename, artist, title, creator, ranking_status, rating, last_update, beatmapset_id, thread_id, video, storyboard, filesize, filesize_novideo||filesize, difficulty_names
+
+        macro_rules! next {
+            () => {
+                if let Some(v) = split.next() {
+                    v.to_owned()
+                } else {
+                    return Err(())
+                }
+            }
+        }
+
+        let filename = next!();
+        let artist = next!();
+        let title = next!();
+        let creator = next!();
+        let _ranking_status = next!();
+        let _rating = next!();
+        let _last_update = next!();
+        let set_id = next!();
+
+        Ok(Self {
+            set_id,
+            filename,
+            artist,
+            title,
+            creator,
+            
+            progress: Default::default(),
+            downloading: Arc::new(AtomicBool::new(false))
+        })
+    }
+}
 
 #[repr(i8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -152,10 +154,10 @@ pub enum OsuMapStatus {
     Approved = 6,
     Loved = 8,
 }
-impl Into<OsuMapStatus> for MapStatus {
+impl From<MapStatus> for OsuMapStatus {
     // pain
-    fn into(self) -> OsuMapStatus {
-        match self {
+    fn from(val: MapStatus) -> Self {
+        match val {
             MapStatus::All => OsuMapStatus::All,
             MapStatus::Ranked => OsuMapStatus::Ranked,
             MapStatus::Pending => OsuMapStatus::Pending,

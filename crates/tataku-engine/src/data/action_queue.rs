@@ -15,6 +15,6 @@ impl ActionQueue {
         self.0.push(action.into())
     }
     pub fn extend(&mut self, actions: Vec<TatakuAction>) {
-        self.0.extend(actions.into_iter())
+        self.0.extend(actions)
     }
 }

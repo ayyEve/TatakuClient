@@ -44,7 +44,7 @@ impl TatakuTask for BeatmapDownloadsCheckTask {
             let Some(file) = file.to_str() else { return };
             info!("file ok {file}");
             
-            if AVAILABLE_MAP_EXTENSIONS.iter().find(|e| file.ends_with(**e)).is_some() {
+            if AVAILABLE_MAP_EXTENSIONS.iter().any(|e| file.ends_with(e)) {
                 // // check file paths first
                 // if ignore_paths.contains(file) {
                 //     continue
@@ -90,12 +90,11 @@ impl TatakuTask for BeatmapDownloadsCheckTask {
             .filter(|p| p.exists() && p.is_dir()) // make sure exists and is a directory
             .filter_map(|p| std::fs::read_dir(p).map_err(|e| error!("Error reading extracted path: {e:?}")).ok()) // read files in the path, make sure the read was okay
             
-            .map(|f| f
+            .flat_map(|f| f
                 // files in the folder
                 .filter_map(|f| f.map_err(|e| error!("Error reading extracted file: {e:?}")).ok()) // make sure file read is okay
                 .map(|f| f.path()) // map to path
             )
-            .flatten() // flatten all dirs into one iter
         );
     }
 }

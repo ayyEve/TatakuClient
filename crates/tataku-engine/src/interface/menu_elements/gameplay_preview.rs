@@ -371,7 +371,7 @@ impl iced::advanced::Widget<Message, iced::Theme, IcedRenderer> for GameplayPrev
         let state = tree.state.downcast_ref::<GameplayWidgetState>();
         let bounds = layout.bounds();
         let mut state_bounds = state.bounds.lock();
-        if &*state_bounds != &bounds {
+        if *state_bounds != bounds {
             *state_bounds = bounds;
             let _ = self.event_sender.try_send(bounds.into());
         }
@@ -380,9 +380,9 @@ impl iced::advanced::Widget<Message, iced::Theme, IcedRenderer> for GameplayPrev
     }
 }
 
-impl Into<IcedElement> for GameplayPreviewWidget {
-    fn into(self) -> IcedElement {
-        IcedElement::new(self)
+impl From<GameplayPreviewWidget> for IcedElement {
+    fn from(val: GameplayPreviewWidget) -> Self {
+        IcedElement::new(val)
     }
 }
 

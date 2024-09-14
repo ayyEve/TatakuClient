@@ -109,7 +109,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
                             _ => {}
                         }
                         
-                        panic!("Unknown parameter {}={}", name_value.path.get_ident().unwrap().to_string(), name_value.lit.to_token_stream().to_string())
+                        panic!("Unknown parameter {}={}", name_value.path.get_ident().unwrap(), name_value.lit.to_token_stream())
                     }
                 
                 }
@@ -480,9 +480,9 @@ enum SettingsType {
 }
 impl SettingsType {
     fn from(s:Option<&Ident>) -> Self {
-        if let None = s { return Self::Unknown }
+        let Some(s) = s else { return Self::Unknown };
 
-        match &*s.unwrap().to_string() {
+        match &*s.to_string() {
             "bool" => Self::Bool,
             "u32"  => Self::U32,
             "u64"  => Self::U64,
@@ -509,10 +509,7 @@ impl SettingsType {
     }
 
     fn is_float(&self) -> bool {
-        match self {
-            Self::F32 | Self::F64 => true,
-            _ => false,
-        }
+        matches!(self, Self::F32 | Self::F64)
     }
 }
 
