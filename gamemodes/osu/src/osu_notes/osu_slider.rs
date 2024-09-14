@@ -108,7 +108,16 @@ pub struct OsuSlider {
     skin: Arc<SkinSettings>,
 }
 impl OsuSlider {
-    pub async fn new(def:SliderDef, curve:Curve, ar:f32, combo_num: u16, scaling_helper:Arc<ScalingHelper>, standard_settings:Arc<OsuSettings>, hitsound_fn: impl Fn(f32, u8, HitSamples)->Vec<Hitsound>, velocity: f32) -> Self {
+    pub async fn new(
+        def: SliderDef, 
+        curve: Curve, 
+        ar: f32, 
+        combo_num: u16, 
+        scaling_helper: Arc<ScalingHelper>, 
+        standard_settings: Arc<OsuSettings>, 
+        hitsound_fn: impl Fn(f32, u8, HitSamples) -> Vec<Hitsound>, 
+        velocity: f32
+    ) -> Self {
         let time = def.time;
         let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
 
@@ -238,8 +247,10 @@ impl OsuSlider {
 
         if USE_NEW_SLIDER_RENDERING {
             let mut line_segments: Vec<LineSegment> = self.curve.segments.iter().flat_map(|segment| {
+            let mut line_segments: Vec<LineSegment> = self.curve.segments.iter().flat_map(|segment| {
                 let points = segment.all_points();
 
+                if points.is_empty() { return Vec::new(); }
                 if points.is_empty() { return Vec::new(); }
 
                 // Calculate bounds of first point
@@ -260,7 +271,9 @@ impl OsuSlider {
                     max_pos.y = max_pos.y.max(p2.y);
 
                     LineSegment { p1, p2 }
+                    LineSegment { p1, p2 }
                 }).collect::<Vec<_>>() // todo: avoid too many allocations here
+            }).collect();
             }).collect();
 
             min_pos -= self.radius;
@@ -879,7 +892,7 @@ impl HitObject for OsuSlider {
             i += 1;
         }
 
-        if images.len() > 0 {
+        if !images.is_empty() {
             let size = images[0].tex_size();
             let base_scale = images[0].base_scale;
 
