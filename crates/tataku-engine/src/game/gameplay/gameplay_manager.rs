@@ -519,7 +519,7 @@ impl GameplayManager {
         // update score stuff now that gamemode has been updated
         
         self.score.accuracy = self.gamemode_info.calc_acc(&self.score);
-        self.score.performance = self.gamemode_info.calc_perf( CalcPerfInfo {
+        self.score.performance = self.gamemode_info.calc_perf(CalcPerfInfo {
             score: &self.score,
             map_difficulty: self.map_diff, 
             accuracy: self.score.accuracy

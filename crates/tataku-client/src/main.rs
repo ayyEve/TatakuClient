@@ -49,39 +49,6 @@ fn main() {
     start_game(&runtime);
 }
 
-// // actuial main fn
-// fn game_main(runtime: &tokio::runtime::Runtime) {
-//     let mut play_game = true;
-
-//     let mut args = std::env::args().map(|s|s.to_string());
-//     args.next(); // skip the file param
-
-//     // let path = std::env::current_exe().unwrap();
-//     // println!("file hash: {}", get_file_hash(&path).unwrap());
-
-//     // TODO: reimplement this? or do we want to bother
-//     // it might be nicer to have a server-side api for it
-//     /*
-//     if let Some(param1) = args.next() {
-//         match &*param1 {
-//             "--diff_calc" | "--diffcalc" | "-d" => {
-//                 play_game = false;
-//                 diff_calc_cli(&mut args).await;
-//             }
-
-//             _ => {}
-//         }
-//     }
-//     */
-
-//     if play_game {
-//         start_game(runtime);
-//         info!("byebye!");
-//     }
-
-// }
-
-
 #[cfg(feature="gameplay")]
 fn start_game(
     runtime: &tokio::runtime::Runtime,
@@ -114,7 +81,7 @@ fn start_game(
         let gamemodes;
         #[cfg(feature="dynamic_gamemodes")] {
             gamemodes = vec![
-                    GamemodeLibrary::load_gamemode("/home/ayyeve/Desktop/projects/tataku/tataku-client/target/release/gamemode_taiko").unwrap(),
+                GamemodeLibrary::load_gamemode("/home/ayyeve/Desktop/projects/tataku/tataku-client/target/release/gamemode_taiko").unwrap(),
             ];
         }
 

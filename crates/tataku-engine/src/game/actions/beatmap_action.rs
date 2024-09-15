@@ -84,16 +84,27 @@ pub enum MapActionIfNone {
 
 
 /// An action that affects the list of beatmaps
-// TODO: add descriptions 
 #[derive(Clone, Debug)]
 pub enum BeatmapListAction {
+    /// Select the next map in the list
     NextMap,
+
+    /// Select the previous map in the list
     PrevMap,
+
+    /// Select the next set in the list
     NextSet,
+
+    /// Select the previous set in the list
     PrevSet,
+
+    /// Select the specified set number
     SelectSet(usize),
 
+    /// Refresh the list
     Refresh,
+
+    /// Apply a filter
     ApplyFilter {
         filter: Option<String>,
     },

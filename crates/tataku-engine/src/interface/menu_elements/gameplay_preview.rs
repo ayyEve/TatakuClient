@@ -265,10 +265,6 @@ impl GameplayPreview {
     async fn draw(&mut self) {
         let mut list = RenderableCollection::new();
 
-        // if let Some(manager) = &mut self.manager {
-        //     manager.draw(&mut list).await;
-        // }
-
         // draw visualization if it exists
         if let Some((vis, bounds)) = self.visualization.as_mut().zip(self.fit_to) {
             vis.draw(bounds, &mut list).await;
@@ -279,28 +275,12 @@ impl GameplayPreview {
         self.widget_sender.lock().write(Arc::new(group));
     }
 
-    // pub async fn key_down(&mut self, key:KeyInput, mods:KeyModifiers) {
-    //     let Some(manager) = self.manager.as_mut() else { return };
-    //     manager.key_down(key, mods).await
-    // }
-
-    // pub async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-    //     let Some(manager) = self.manager.as_mut() else { return };
-    //     manager.window_size_changed(window_size).await
-    // }
-
     pub async fn fit_to_area(&mut self, bounds: Bounds) {
         // info!("fitting to area {bounds:?}");
         self.fit_to = Some(bounds);
 
         let Some(manager) = self.manager.as_ref() else { return };
         self.actions.push(GameAction::GameplayAction(manager.clone(), GameplayAction::FitToArea(bounds)));
-    }
-
-    pub async fn skin_changed(&mut self, skin_manager: &mut dyn SkinProvider) {
-        if let Some(vis) = &mut self.visualization {
-            vis.reload_skin(skin_manager).await;
-        }
     }
 
 }
@@ -402,7 +382,6 @@ impl Widgetable for GameplayPreview {
         self.manager = Some(id.clone());
 
         self.actions.push(GameAction::GameplayAction(id.clone(), GameplayAction::Resume));
-
         self.actions.take()
     }
 
@@ -412,5 +391,13 @@ impl Widgetable for GameplayPreview {
     }
     fn view(&self, _owner: MessageOwner, _values: &mut dyn Reflect) -> IcedElement {
         self.widget.clone().into()
+    }
+
+
+    async fn reload_skin(&mut self, skin_manager: &mut dyn SkinProvider) {
+        println!("reloading vis skin");
+        if let Some(vis) = &mut self.visualization {
+            vis.reload_skin(skin_manager).await;
+        }
     }
 }

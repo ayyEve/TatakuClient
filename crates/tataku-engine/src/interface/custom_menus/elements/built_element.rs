@@ -335,6 +335,8 @@ pub trait Widgetable: Send + Sync {
     fn view(&self, _owner: MessageOwner, _values: &mut dyn Reflect) -> IcedElement { EmptyElement.into_element() }
 
     async fn handle_message(&mut self, _message: &Message, _values: &mut dyn Reflect) -> Vec<TatakuAction> { Vec::new() }
+
+    async fn reload_skin(&mut self, _skin_manager: &mut dyn SkinProvider) {}
 }
 
 

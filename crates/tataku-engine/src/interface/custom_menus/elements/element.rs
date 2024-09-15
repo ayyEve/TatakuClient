@@ -24,6 +24,7 @@ impl ElementDef {
                 let mut gameplay = GameplayPreview::new(true, true, Arc::new(|_| true), owner)
                     .width(self.width)
                     .height(self.height);
+                gameplay.reload_skin(skin_manager).await;
                 
                 if let Some(vis) = visualization {
                     match &**vis {
@@ -87,6 +88,10 @@ impl ElementDef {
             }
 
             _ => {},
+        }
+
+        for e in built.children.iter_mut() {
+            e.reload_skin(skin_manager);
         }
 
         Box::new(built)

@@ -246,6 +246,7 @@ impl Visualization for MenuVisualization {
         if let Some(cookie) = skin_manager.get_texture("menu-osu", &TextureSource::Skin, SkinUsage::Game, false).await {
             self.cookie = Some(cookie);
         } else {
+            println!("{:?}", std::fs::canonicalize("./resources/icon.png"));
             self.cookie = skin_manager.get_texture("./resources/icon.png", &TextureSource::Raw, SkinUsage::Game, false).await;
         }
     }
