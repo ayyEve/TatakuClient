@@ -40,7 +40,9 @@ type_complexity = "allow"
 # graphics = [ "wgpu_graphics", "winit", "ui", "clipboard", "raw-window-handle", "guillotiere", "fontdue", "png", "image" ]
 
 [workspace.dependencies]
-tataku-common = { version = "0.13.2", path = "../tataku-common/tataku-common", registry = "tataku-registry" }
+# tataku-common = { version = "0.14.0", path = "../tataku-common/tataku-common", registry = "tataku-registry" }
+tataku-common = { version = "0.14.0", registry = "tataku-registry" }
+
 # tataku-common-proc-macros = { version = "0.3.2", registry = "tataku-registry", path = "../tataku-common/tataku-common" }
 
 tataku-client-proc-macros = { version = "0.1.1", path = "crates/proc_macros", registry = "tataku-registry" }
