@@ -11,9 +11,9 @@ local scores_list = {
     element = button(
         col({ width = "fill", height = "shrink" }, {
             -- username and score
-            row({ width = "fill" }, { text(text_list({variable("_score.username"), ": ", calc("display(_score.score)")}), 16.0, WHITE) }),
+            row({ width = "fill" }, { text(text_list({variable("_score.score.username"), ": ", calc("display(_score.score.score)")}), 16.0, WHITE) }),
             -- combo, acc, mods
-            row({ width = "fill" }, { text(text_list({calc("display(_score.max_combo)"), "x, ", calc("display(_score.accuracy)"), "% ", calc("display(_score.mods)")}), 16.0, WHITE) }),
+            row({ width = "fill" }, { text(text_list({calc("display(_score.score.max_combo)"), "x, ", calc("display(_score.score.accuracy * 100.0)"), "% ", calc("display(_score.score.mods)")}), 16.0, WHITE) }),
         }),
         game_action("view_score", { score_id = variable("_score.id") }),
         "fill",
@@ -28,7 +28,7 @@ local beatmap_list = {
     width = "fill",
     height = "shrink",
 
-    list = "beatmaps.groups", --"beatmaps.groups",
+    list = "beatmaps.groups",
     variable = "_group",
     scroll = true,
 
@@ -40,7 +40,8 @@ local beatmap_list = {
             map_action("select_group", { group_id = variable("_group.id") }),
             "fill",
             "shrink",
-            5.0
+            5.0,
+            "_group.selected"
         ),
 
         -- map items
@@ -76,7 +77,8 @@ local beatmap_list = {
                             ),
                             "fill",
                             "shrink",
-                            5.0
+                            5.0,
+                            "beatmaps.current_beatmap.map.beatmap_hash == _map.meta.beatmap_hash"
                         )
                         -- diff info here
                     })
@@ -96,7 +98,7 @@ local menu = {
         {
             event = "menu_enter",
             actions = {
-                song_action({ rate = 1.0 }),
+                -- song_action({ rate = 1.0 }),
                 cond("!song.playing", song_action("play")),
                 cursor_action("show"), -- also make sure the cursor is visible
             }
@@ -106,7 +108,7 @@ local menu = {
         {
             event = "song_end",
             actions = {
-                song_action({ position = variable("beatmaps.current.map.preview_time")}),
+                song_action({ position = variable("beatmaps.current.map.preview")}),
                 song_action("play")
             }
         },
@@ -179,7 +181,7 @@ local menu = {
                 on_input = map_action("refresh_list"),
                 placeholder = "search",
                 variable = "beatmaps.filter_text",
-            },
+            }
         }),
 
         -- the next row has the score list, gameplay preview, and beatmap list
@@ -195,33 +197,38 @@ local menu = {
 
                 element = cond(
                     "!score_list.loaded", -- if not loaded...
-                    text("Loading..."), -- show loading text
+                    text("Loading...", 16.0, WHITE), -- show loading text
                     cond( -- otherwise,
-                        "score_list.empty", -- if empty
-                        text("No scores"), -- show no scores text
+                        "score_list.scores.is_empty", -- if empty
+                        text("No scores", 16.0, WHITE), -- show no scores text
                         scores_list -- otherwise, show score list
                     )
                 )
             },
 
-            -- preview
-            {
-                id = "gameplay_preview",
-                debug_name = "gameplay_preview",
-                width = "fill_portion(4)",
-                height = "fill"
-            },
-
-            -- beatmap list
-            {
-                id = "styled_content",
-                debug_name = "beatmap list styled",
-                color = color(1.0, 1.0, 1.0, 0.1),
-                shape = { round = 5.0 },
-                width = "fill_portion(4)",
+            drag_scroll({
+                width = "fill_portion(8)",
                 height = "fill",
-                element = beatmap_list
-            },
+            }, {
+                -- preview
+                {
+                    id = "gameplay_preview",
+                    debug_name = "gameplay_preview",
+                    width = "fill", --"fill_portion(4)",
+                    height = "fill"
+                },
+
+                -- beatmap list
+                {
+                    id = "styled_content",
+                    debug_name = "beatmap list styled",
+                    color = color(1.0, 1.0, 1.0, 0.1),
+                    shape = { round = 5.0 },
+                    width = "fill", -- fill_portion(4)
+                    height = "fill",
+                    element = beatmap_list
+                }
+            }),
         }),
 
     })

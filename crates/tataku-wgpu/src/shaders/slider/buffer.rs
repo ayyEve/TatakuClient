@@ -14,7 +14,7 @@ const QUAD_PER_BUF:u64 = 3000;
 const VTX_PER_BUF:u64 = QUAD_PER_BUF * 4;
 const IDX_PER_BUF:u64 = QUAD_PER_BUF * 6;
 
-pub const EXPECTED_SLIDER_COUNT:u64 = 10;
+pub const EXPECTED_SLIDER_COUNT:u64 = 15;
 pub const SLIDER_GRID_COUNT:u64 = EXPECTED_SLIDER_COUNT * 32;
 pub const GRID_CELL_COUNT:u64 = SLIDER_GRID_COUNT * 16;
 pub const LINE_SEGMENT_COUNT:u64 = GRID_CELL_COUNT * 2;
@@ -169,7 +169,7 @@ pub struct SliderReserveData<'a> {
     pub line_segment_offset: u32,
 }
 
-impl<'a> SliderReserveData<'a> {
+impl SliderReserveData<'_> {
     pub fn copy_in(
         &mut self, 
         vtx: &[SliderVertex], 

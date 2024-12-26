@@ -90,7 +90,7 @@ impl GameplayPreview {
         let settings = values.reflect_get::<Settings>("settings").unwrap();
 
         // make sure we're enabled before doing anything else
-        if !self.is_enabled(settings) { return }
+        if !self.is_enabled(&settings) { return }
 
         // // get the map hash and path
         // let Ok(hash) = Md5Hash::try_from(self.beatmap.as_string()) else { return trace!("manager no map") };
@@ -152,7 +152,7 @@ impl GameplayPreview {
         let settings = values.reflect_get::<Settings>("settings").unwrap();
         
         // check for settings changes
-        if !self.is_enabled(settings) && self.manager.is_some() {
+        if !self.is_enabled(&settings) && self.manager.is_some() {
             self.manager = None;
         }
 
@@ -199,17 +199,17 @@ impl GameplayPreview {
 
         // check for state update
         if self.handle_song_restart {
-            let stopped = values.reflect_get::<bool>("song.stopped").copied().unwrap_or_default();
-            let playing = values.reflect_get::<bool>("song.playing").copied().unwrap_or_default();
-            let paused = values.reflect_get::<bool>("song.paused").copied().unwrap_or_default();
+            let stopped = values.reflect_get::<bool>("song.stopped").map(|i| *i).unwrap_or_default();
+            let playing = values.reflect_get::<bool>("song.playing").map(|i| *i).unwrap_or_default();
+            let paused = values.reflect_get::<bool>("song.paused").map(|i| *i).unwrap_or_default();
             let exists = stopped || playing || paused;
 
             let speed = self.mods.as_ref().map(|m| m.get_speed()).unwrap_or(1.0);
 
             if exists {
                 if stopped {
-                    if let Ok(&preview) = values.reflect_get::<f32>("beatmaps.current.map.preview") {
-                        actions.push(SongAction::SetPosition(preview));
+                    if let Ok(preview) = values.reflect_get::<f32>("beatmaps.current.map.preview") {
+                        actions.push(SongAction::SetPosition(*preview));
                         if self.apply_rate {
                             actions.push(SongAction::SetRate(speed));
                         }
@@ -222,7 +222,7 @@ impl GameplayPreview {
                 let audio_path = values.reflect_get::<String>("beatmaps.current.map.audio_path").ok();
                 
                 if let Some((path, preview)) = audio_path.zip(preview_time) {
-                    actions.push(SongAction::Set(SongMenuSetAction::FromFile(path.clone(), SongPlayData {
+                    actions.push(SongAction::Set(SongMenuSetAction::FromFile(path.deref().clone(), SongPlayData {
                         play: true,
                         position: Some(*preview),
                         rate: self.apply_rate.then_some(speed),

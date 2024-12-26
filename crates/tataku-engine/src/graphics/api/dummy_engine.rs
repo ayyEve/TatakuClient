@@ -69,6 +69,6 @@ impl GraphicsEngine for DummyGraphicsEngine {
         _flashlight_data: FlashlightData
     ) {}
 
-    fn add_emitter(&mut self, _emitter: Box<dyn EmitterReference>) {}
+    fn add_emitter(&mut self, _emitter: EmitterReference) {}
     fn update_emitters(&mut self) {}
 }

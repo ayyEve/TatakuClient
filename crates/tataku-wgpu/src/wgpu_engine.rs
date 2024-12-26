@@ -51,7 +51,7 @@ pub struct WgpuEngine<'window> {
     atlas: Atlas,
     atlas_texture: WgpuTexture,
 
-    screenshot_pending: Option<Box<dyn FnOnce((Vec<u8>, [u32; 2]))+Send+Sync>>,
+    screenshot_pending: Option<ScreenshotCallback>,
 
     particle_system: ParticleSystem,
 
@@ -525,7 +525,7 @@ impl<'window> WgpuEngine<'window> {
 }
 
 // texture stuff
-impl<'w> WgpuEngine<'w> {
+impl WgpuEngine<'_> {
     fn create_texture(device: &wgpu::Device, layout: &wgpu::BindGroupLayout, sampler: &wgpu::Sampler, width:u32, height:u32, format: wgpu::TextureFormat) -> WgpuTexture {
         let texture_size = wgpu::Extent3d {
             width,
@@ -645,6 +645,7 @@ impl<'w> WgpuEngine<'w> {
                 },
             ],
         });
+        
         WgpuTexture {
             textures: Arc::new(textures),
             bind_group
@@ -652,11 +653,11 @@ impl<'w> WgpuEngine<'w> {
     }
 
 
-    fn finish_screenshot(&mut self, texture: wgpu::Texture, callback: Box<dyn FnOnce((Vec<u8>, [u32;2])) + Send + Sync>) {
+    fn finish_screenshot(&mut self, texture: wgpu::Texture, callback: ScreenshotCallback) {
         let (w, h) = (texture.width(), texture.height());
-        let format = texture.format();
 
-        let size = (w * h * 4) as u64;
+        let fuck = align(w * 4);
+        let size = (fuck * h) as u64; //(w * h * 4) as u64;
         let buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Screenshot Buffer"),
             usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
@@ -664,13 +665,12 @@ impl<'w> WgpuEngine<'w> {
             mapped_at_creation: false,
         });
 
-
         let tex_buffer = ImageCopyBuffer {
             buffer: &buffer,
             layout: wgpu::ImageDataLayout {
                 offset: 0,
-                bytes_per_row: Some(align(w*4)),
-                rows_per_image: Some(h)
+                bytes_per_row: Some(fuck),
+                rows_per_image: None
             }
         };
 
@@ -679,24 +679,47 @@ impl<'w> WgpuEngine<'w> {
         self.queue.submit(Some(encoder.finish()));
         let queue = self.queue.clone();
 
-        tokio::spawn(async move {
+        std::thread::spawn(move || {
             let slice = buffer.slice(..);
 
-            let (s, r) = tokio::sync::oneshot::channel();
+            let (s, mut r) = tokio::sync::oneshot::channel();
             slice.map_async(wgpu::MapMode::Read, move |_result| s.send(()).unwrap());
             queue.submit(None);
 
-            r.await.unwrap();
-            let data = slice.get_mapped_range().chunks_exact(4).flat_map(|b| cast_to_rgba_bytes(b, format)).collect();
+            loop {
+                match r.try_recv() {
+                    Ok(_) => break,
+                    Err(_) => std::thread::yield_now(),
+                }
+            }
 
-            callback((data, [w, h]));
+            let data = slice
+                .get_mapped_range()
+                .chunks_exact(4)
+                .flat_map(|b| cast_to_rgba_bytes(b, texture.format()))
+                .collect();
+
+            callback((data, [fuck / 4, h]));
         });
+
+        // tokio::spawn(async move {
+        //     let slice = buffer.slice(..);
+
+        //     let (s, r) = tokio::sync::oneshot::channel();
+        //     slice.map_async(wgpu::MapMode::Read, move |_result| s.send(()).unwrap());
+        //     queue.submit(None);
+
+        //     r.await.unwrap();
+        //     let data = slice.get_mapped_range().chunks_exact(4).flat_map(|b| cast_to_rgba_bytes(b, format)).collect();
+
+        //     callback((data, [w, h]));
+        // });
     }
 }
 
 
 // render code
-impl<'w> WgpuEngine<'w> {
+impl WgpuEngine<'_> {
 
     fn dump_last_drawn(&mut self) {
         let Some(mut last_drawn) = std::mem::take(&mut self.current_render_buffer) else { return };
@@ -710,7 +733,10 @@ impl<'w> WgpuEngine<'w> {
         }
 
         self.dump_last_drawn();
-        self.current_render_buffer = Some(self.buffer_queues.remove(&to_draw).expect(&format!("buffer queue did not have a queue for type {to_draw:?}. Did you forget to create a buffer queue for it?")));
+        self.current_render_buffer = Some(self.buffer_queues
+            .remove(&to_draw)
+            .expect(&format!("buffer queue did not have a queue for type {to_draw:?}. Did you forget to create a buffer queue for it?"))
+        );
     }
 
 
@@ -766,6 +792,7 @@ impl<'w> WgpuEngine<'w> {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn reserve_tex_quad(
         &mut self,
         tex: &TextureReference,
@@ -993,7 +1020,7 @@ impl<'w> WgpuEngine<'w> {
 
 
 // draw helpers
-impl<'w> WgpuEngine<'w> {
+impl WgpuEngine<'_> {
     pub fn map_blend_mode(blend_mode: BlendMode) -> wgpu::BlendState {
         match blend_mode {
             BlendMode::AlphaBlending => wgpu::BlendState::ALPHA_BLENDING,
@@ -1083,7 +1110,7 @@ impl<'w> WgpuEngine<'w> {
 
 
 
-impl<'w> GraphicsEngine for WgpuEngine<'w> {
+impl GraphicsEngine for WgpuEngine<'_> {
 
     fn resize(&mut self, [width, height]: [u32; 2]) {
         if width == 0 || height == 0 { return }
@@ -1539,7 +1566,7 @@ impl<'w> GraphicsEngine for WgpuEngine<'w> {
 
 
     // particle engine stuff
-    fn add_emitter(&mut self, emitter: Box<dyn EmitterReference>) {
+    fn add_emitter(&mut self, emitter: EmitterReference) {
         self.particle_system.add(emitter);
     }
 
@@ -1643,13 +1670,18 @@ fn cast_to_rgba_bytes(bytes: &[u8], _format: wgpu::TextureFormat) -> [u8; 4] {
 
 /// pad `num` to align with `wgpu::COPY_BYTES_PER_ROW_ALIGNMENT`
 fn align(num: u32) -> u32 {
-    let m = num % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
+    num.div_ceil(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT) * wgpu::COPY_BYTES_PER_ROW_ALIGNMENT
+    // let m = num % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
 
-    if m == 0 {
-        num
-    } else {
-        num + (wgpu::COPY_BYTES_PER_ROW_ALIGNMENT - m)
-    }
+    // let a = if m == 0 {
+    //     num
+    // } else {
+    //     num + (wgpu::COPY_BYTES_PER_ROW_ALIGNMENT - m)
+    // };
+
+    // assert!(a % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT == 0);
+
+    // a
 }
 
 

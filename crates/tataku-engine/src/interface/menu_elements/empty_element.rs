@@ -1,10 +1,13 @@
 use crate::prelude::*;
 
+
 /// literally an empty element
 pub struct EmptyElement;
 
 impl iced::advanced::Widget<Message, iced::Theme, IcedRenderer> for EmptyElement {
-    fn size(&self) -> iced::Size<iced::Length> { iced::Size::new(iced::Length::Fixed(0.0), iced::Length::Fixed(0.0)) }
+    fn size(&self) -> iced::Size<iced::Length> { 
+        iced::Size::new(iced::Length::Fixed(0.0), iced::Length::Fixed(0.0)) 
+    }
 
     fn layout(
         &self,

@@ -13,8 +13,9 @@ pub struct BeatmapManager {
     #[reflect(skip)]
     pub infos: GamemodeInfos,
 
-    // #[reflect(rename = "current")]
+    #[reflect(alias("current"))]
     pub current_beatmap: Option<BeatmapWithData>,
+    
     #[reflect(flatten)]
     pub beatmaps: Vec<Arc<BeatmapMeta>>,
     pub beatmaps_by_hash: HashMap<Md5Hash, Arc<BeatmapMeta>>,
@@ -30,7 +31,7 @@ pub struct BeatmapManager {
     // list stuff
     pub filter_text: String,
 
-    /// cache of groups before we filter them, saved from rebuilding this list every filter update
+    /// cache of groups before we filter them, saves from rebuilding this list every filter update
     #[reflect(skip)]
     unfiltered_groups: Vec<BeatmapGroup>,
     groups: Vec<BeatmapListGroup>,

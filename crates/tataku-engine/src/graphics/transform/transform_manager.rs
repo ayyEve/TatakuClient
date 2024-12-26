@@ -297,3 +297,8 @@ impl TransformManager {
     }
 }
 
+impl Default for TransformManager {
+    fn default() -> Self {
+        Self::new(Vector2::ZERO)
+    }
+}

@@ -1,6 +1,8 @@
 use crate::prelude::*;
 
 pub struct ModDialog {
+    actions: ActionQueue,
+    
     num: usize,
     should_close: bool,
     mod_groups: Vec<GameplayModGroup>,
@@ -36,6 +38,7 @@ impl ModDialog {
         // }
 
         Self {
+            actions: ActionQueue::new(),
             num: 0,
             should_close: false,
             mod_groups: new_groups,
@@ -69,13 +72,13 @@ impl ModDialog {
     //     }
     // }
 
-    fn toggle_mod(&self, m: GameplayMod, values: &mut dyn Reflect) {
-        let removes:HashSet<String> = m.removes.iter().map(|m| m.to_string()).collect();
+    // fn toggle_mod(&self, m: GameplayMod, values: &mut dyn Reflect) {
+    //     let removes:HashSet<String> = m.removes.iter().map(|m| m.to_string()).collect();
 
-        let mods = values.reflect_get_mut::<ModManager>("global.mods").unwrap();
-        mods.toggle_mod(m);
-        mods.mods.retain(|m| !removes.contains(m));
-    }
+    //     let mods = values.reflect_get_mut::<ModManager>("global.mods").unwrap();
+    //     mods.toggle_mod(m);
+    //     mods.mods.retain(|m| !removes.contains(m));
+    // }
 }
 
 #[async_trait]
@@ -88,9 +91,18 @@ impl Dialog for ModDialog {
     async fn force_close(&mut self) { self.should_close = true; }
 
     
-    async fn handle_message(&mut self, message: Message, values: &mut dyn Reflect) {
+    async fn update(&mut self, _values: &mut dyn Reflect) -> Vec<TatakuAction> { 
+        self.actions.take()
+    }
+    
+    async fn handle_message(&mut self, message: Message, _values: &mut dyn Reflect) {
         let MessageTag::GameplayMod(m) = message.tag else { return };
-        self.toggle_mod(m, values);
+
+        self.actions.push(ModAction::ToggleMod(m.name.to_owned()));
+        for m in m.removes {
+            self.actions.push(ModAction::RemoveMod((*m).to_owned()));
+        }
+        // self.toggle_mod(m, values);
     }
 
     fn view(&self, values: &mut dyn Reflect) -> IcedElement {
@@ -103,7 +115,6 @@ impl Dialog for ModDialog {
             items.push(Text::new(group.name).width(Fill).into_element());
             items.push(Text::new("   ").width(Fill).into_element());
 
-
             for m in group.mods {
                 items.push(row!(
                     Checkbox::new(m.name, mods.has_mod(m)).on_toggle(move|_| Message::new(owner, m, MessageType::Click)).text_size(30.0).width(Fill),
@@ -113,7 +124,9 @@ impl Dialog for ModDialog {
             }
         }
 
-        make_scrollable(items, "mods_list").into_element()
+        DraggingScroll::with_children(vec![
+            make_scrollable(items, "mods_list").into_element()
+        ]).into_element()
     }
 
 

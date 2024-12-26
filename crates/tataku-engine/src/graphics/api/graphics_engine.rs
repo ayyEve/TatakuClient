@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-pub type RenderTargetDraw = Box<dyn FnOnce(&mut dyn GraphicsEngine, Matrix)>;
+pub type RenderTargetDraw = Box<dyn FnOnce(&mut dyn GraphicsEngine, Matrix) + Send>;
 pub type ScreenshotCallback = Box<dyn FnOnce((Vec<u8>, [u32; 2]))+Send+Sync>;
 
 pub trait GraphicsEngine {
@@ -62,19 +62,60 @@ pub trait GraphicsEngine {
     // drawing
 
     /// draw an arc with the center at 0,0
-    fn draw_arc(&mut self, start: f32, end: f32, radius: f32, color: Color, resolution: u32, transform: Matrix, blend_mode: BlendMode);
+    #[allow(clippy::too_many_arguments)]
+    fn draw_arc(
+        &mut self, 
+        start: f32, 
+        end: f32, 
+        radius: f32, 
+        color: Color, 
+        resolution: u32, 
+        transform: Matrix, 
+        blend_mode: BlendMode
+    );
 
     /// draw a circle with the center at 0,0
-    fn draw_circle(&mut self, radius: f32, color: Color, border: Option<Border>, resolution: u32, transform: Matrix, blend_mode: BlendMode);
+    fn draw_circle(
+        &mut self, 
+        radius: f32, 
+        color: Color, 
+        border: Option<Border>, 
+        resolution: u32, 
+        transform: Matrix, 
+        blend_mode: BlendMode
+    );
 
     /// draw a line from 0,0 to p
-    fn draw_line(&mut self, p: Vector2, thickness: f32, color: Color, transform: Matrix, blend_mode: BlendMode);
+    fn draw_line(
+        &mut self, 
+        p: Vector2, 
+        thickness: f32, 
+        color: Color, 
+        transform: Matrix, 
+        blend_mode: BlendMode
+    );
 
     /// draw a rectangle
-    fn draw_rect(&mut self, rect: [f32; 4], border: Option<Border>, shape: Shape, color: Color, transform: Matrix, blend_mode: BlendMode);
+    fn draw_rect(
+        &mut self, 
+        rect: [f32; 4], 
+        border: Option<Border>, 
+        shape: Shape, 
+        color: Color, 
+        transform: Matrix, 
+        blend_mode: BlendMode
+    );
 
     /// draw a texture with top left at 0,0
-    fn draw_tex(&mut self, tex: &TextureReference, color: Color, h_flip: bool, v_flip: bool, transform: Matrix, blend_mode: BlendMode);
+    fn draw_tex(
+        &mut self, 
+        tex: &TextureReference, 
+        color: Color, 
+        h_flip: bool, 
+        v_flip: bool, 
+        transform: Matrix, 
+        blend_mode: BlendMode
+    );
 
     /// draw a slider
     fn draw_slider(
@@ -98,6 +139,43 @@ pub trait GraphicsEngine {
 
 
     // particle engine stuff
-    fn add_emitter(&mut self, emitter: Box<dyn EmitterReference>);
+    fn add_emitter(&mut self, emitter: EmitterReference);
     fn update_emitters(&mut self);
+}
+
+
+#[derive(Copy, Clone, Debug)]
+pub struct TextureDraw<'a> {
+    pub tex: &'a TextureReference, 
+    pub color: Color, 
+    pub h_flip: bool, 
+    pub v_flip: bool, 
+    pub transform: Matrix, 
+    pub blend_mode: BlendMode,
+}
+impl<'a> TextureDraw<'a> {
+    pub fn new(
+        tex: &'a TextureReference, 
+        color: Color, 
+        transform: Matrix, 
+        blend_mode: BlendMode,
+    ) -> Self {
+        Self {
+            tex,
+            color,
+            transform,
+            blend_mode,
+            h_flip: false,
+            v_flip: false
+        }
+    }
+
+    pub fn with_hflip(mut self, hflip: bool) -> Self {
+        self.h_flip = hflip;
+        self
+    } 
+    pub fn with_vflip(mut self, vflip: bool) -> Self {
+        self.v_flip = vflip;
+        self
+    } 
 }

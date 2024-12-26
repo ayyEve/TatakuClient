@@ -24,7 +24,7 @@ impl DialogManager {
 
     pub async fn handle_message(&mut self, message: Message, values: &mut dyn Reflect) {
         for d in self.dialogs.iter_mut() {
-            if message.owner.check_dialog(&mut **d) {
+            if message.owner.check_dialog(&**d) {
                 d.handle_message(message, values).await;
                 return
             }

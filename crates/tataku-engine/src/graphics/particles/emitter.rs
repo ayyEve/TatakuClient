@@ -56,7 +56,6 @@ impl Emitter {
         };
         let pool = Arc::new(RwLock::new(Pool::new_cloning(capacity, particle)));
         
-
         Self {
             should_emit: true,
             spawn_delay,
@@ -131,12 +130,14 @@ impl Emitter {
         self.last_time = time;
     }
 
-    //     // TODO: !!!!!!!!!!!!!!
-    // pub fn get_ref(&self) -> Box<dyn EmitterReference> {
-    //     let info = EmitterInfo::new(&self.scale, &self.opacity, &self.rotation);
-    //     let a = Arc::downgrade(&self.pool) //, info);
-    //     Box::new(EmitterRef(a, info))
-    // }
+    pub fn get_ref(&self) -> EmitterReference {
+        let info = EmitterInfo::new(&self.scale, &self.opacity, &self.rotation);
+        let pool = Arc::downgrade(&self.pool);
+        EmitterReference {
+            info,
+            pool
+        }
+    }
 }
 
 // struct EmitterRef(Weak<RwLock<Pool<Particle>>>, EmitterInfo);

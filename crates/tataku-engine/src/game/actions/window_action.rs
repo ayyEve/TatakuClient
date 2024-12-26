@@ -3,6 +3,7 @@ use crate::prelude::*;
 #[derive(Debug)]
 pub enum WindowAction {
     MediaControlAction(MediaControlAction),
+    AddEmitter(EmitterReference),
 }
 impl From<WindowAction> for TatakuAction {
     fn from(value: WindowAction) -> Self {

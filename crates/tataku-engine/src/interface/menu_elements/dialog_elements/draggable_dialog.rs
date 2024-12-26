@@ -82,14 +82,14 @@ struct DraggableOverlay<'a> {
     tree: &'a mut iced_core::widget::Tree,
     offset: iced::Vector
 }
-impl<'a> DraggableOverlay<'a> {
+impl DraggableOverlay<'_> {
     fn viewport(&self) -> iced::Rectangle {
         let state = self.tree.state.downcast_ref::<DraggableState>();
         iced::Rectangle::new(state.pos, state.size)
     }
 }
 
-impl<'a> Overlay<Message, iced::Theme, IcedRenderer> for DraggableOverlay<'a> {
+impl Overlay<Message, iced::Theme, IcedRenderer> for DraggableOverlay<'_> {
     fn layout(
         &mut self,
         renderer: &IcedRenderer,
@@ -176,7 +176,7 @@ impl<'a> Overlay<Message, iced::Theme, IcedRenderer> for DraggableOverlay<'a> {
         &mut self,
         layout: iced_core::Layout<'_>,
         renderer: &IcedRenderer,
-        operation: &mut dyn iced_core::widget::Operation<Message>,
+        operation: &mut dyn iced_core::widget::Operation,
     ) {
         self.content.dialog_content.as_widget_mut().operate(
             &mut self.tree.children[0], 

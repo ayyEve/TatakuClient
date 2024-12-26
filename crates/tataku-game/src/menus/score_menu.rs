@@ -476,7 +476,7 @@ impl AsyncMenu for ScoreMenu {
                         lobby_items.iter().map(|l| l.view()).collect::<Vec<_>>(),
                         width = FillPortion(1),
                         height = Fill,
-                        align_items = Alignment::End
+                        align_x = Alignment::End
                     )
                 } else {
                     EmptyElement.into_element()
@@ -505,7 +505,7 @@ impl AsyncMenu for ScoreMenu {
         let Some(tag) = message.tag.as_string() else { return };
         match &*tag {
             "retry" => self.retry().await,
-            "replay" => self.replay(values.reflect_get::<Settings>("settings").unwrap()).await,
+            "replay" => self.replay(&values.reflect_get::<Settings>("settings").unwrap()).await,
             "back" => self.close().await,
             "score" => if let MessageType::Number(num) = message.message_type {
                 if let ScoreMenuType::Multiplayer { lobby_items, .. } = &*self.menu_type {

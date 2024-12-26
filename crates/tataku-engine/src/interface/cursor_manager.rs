@@ -227,7 +227,10 @@ impl CursorManager {
     pub fn handle_cursor_action(&mut self, action: CursorAction) {
         match action {
             CursorAction::OverrideRippleRadius(radius_maybe) => self.ripple_radius_override = radius_maybe,
-            CursorAction::SetVisible(show) => self.visible = show,
+            CursorAction::SetVisible(show) => {
+                println!("setting cursor visible = {show}");
+                self.visible = show
+            },
         }
     }
 }

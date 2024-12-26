@@ -98,7 +98,10 @@ impl SkinnedButton {
 
     /// set this button's image
     pub fn image(mut self, mut image: Option<Image>) -> Self {
-        image.as_mut().map(|i| i.origin = Vector2::ZERO);
+        if let Some(i) = &mut image {
+            i.origin = Vector2::ZERO
+        }
+
         self.image = image;
         self
     }
@@ -184,7 +187,7 @@ impl iced::advanced::Widget<Message, iced::Theme, IcedRenderer> for SkinnedButto
         tree: &mut Tree,
         layout: Layout<'_>,
         renderer: &IcedRenderer,
-        operation: &mut dyn Operation<Message>,
+        operation: &mut dyn Operation,
     ) {
         operation.container(None, layout.bounds(), &mut |operation| {
             self.content.as_widget().operate(

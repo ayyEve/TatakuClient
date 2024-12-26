@@ -42,7 +42,9 @@ impl LuaAction {
             Self::Conditional { cond, if_true, if_false } => {
                 cond.build();
                 if_true.build();
-                if_false.as_mut().map(|f| f.build());
+                if let Some(i) = if_false {
+                    i.build()
+                }
             }
             Self::Multiple(list) => list.iter_mut().for_each(|a| a.build()),
             _ => {}
@@ -60,7 +62,9 @@ impl LuaAction {
             }
             Self::Conditional { if_true, if_false, .. } => {
                 if_true.resolve_variables(values);
-                if_false.as_mut().map(|f| f.resolve_variables(values));
+                if let Some(i) = if_false {
+                    i.resolve_variables(values);
+                }
 
                 // Self::Conditional { cond, if_true, if_false }
             }
@@ -117,7 +121,7 @@ impl LuaAction {
             }
 
             Self::Multiple(list) => {
-                let list = list.iter().map(|a| a.resolve(owner, values, passed_in.clone())).flatten().collect::<Vec<_>>();
+                let list = list.iter().filter_map(|a| a.resolve(owner, values, passed_in.clone())).collect::<Vec<_>>();
                 (!list.is_empty()).then(|| Message::new(owner, "", MessageType::Multi(list)))
             }
 
@@ -263,17 +267,17 @@ impl<'lua> FromLua<'lua> for CustomEventValueType {
 
 
 
-pub enum MaybeOwned<'a, T: ?Sized> {
-    Owned(Box<T>),
-    Borrowed(&'a T)
-}
-impl<'a, T: ?Sized> Deref for MaybeOwned<'a, T> {
-    type Target = T;
+// pub enum MaybeOwned<'a, T: ?Sized> {
+//     Owned(Box<T>),
+//     Borrowed(&'a T)
+// }
+// impl<T: ?Sized> Deref for MaybeOwned<'_, T> {
+//     type Target = T;
 
-    fn deref(&self) -> &Self::Target {
-        match self {
-            Self::Owned(t) => t,
-            Self::Borrowed(t) => t,
-        }
-    }
-}
+//     fn deref(&self) -> &Self::Target {
+//         match self {
+//             Self::Owned(t) => t,
+//             Self::Borrowed(t) => t,
+//         }
+//     }
+// }

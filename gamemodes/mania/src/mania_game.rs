@@ -306,6 +306,27 @@ impl ManiaGame {
             }
         }
     }
+
+    fn key_to_game_key(&self, key: Key) -> Option<KeyPress> {
+        let keys = &self.game_settings.keys[(self.column_count-1) as usize];
+        let base_key = KeyPress::Mania1 as u8;
+
+        keys
+            .iter()
+            .enumerate()
+            .find_map(|(col, k)| (k == &key)
+                .then_some(col)
+            )
+            .map(|i| ((base_key as usize + i) as u8).into())
+
+        // for col in 0..self.column_count as usize {
+        //     if keys[col] == key {
+        //         return Some(((col + base_key as usize) as u8).into());
+        //     }
+        // }
+
+        // None
+    }
     
 }
 
@@ -1055,7 +1076,7 @@ impl GameMode for ManiaGame {
 #[async_trait]
 impl GameModeInput for ManiaGame {
 
-    async fn key_down(&mut self, key:Key) -> Option<ReplayAction> {
+    async fn key_down(&mut self, key: Key) -> Option<ReplayAction> {
         // check sv change keys
         if key == Key::F4 || key == Key::F3 {
             if key == Key::F4 {
@@ -1070,36 +1091,41 @@ impl GameModeInput for ManiaGame {
             return None;
         }
 
-        let mut game_key = KeyPress::RightDon;
+
+        let game_key = self.key_to_game_key(key)?;
+        // let mut game_key = KeyPress::RightDon;
     
-        let keys = &self.game_settings.keys[(self.column_count-1) as usize];
-        let base_key = KeyPress::Mania1 as u8;
-        for col in 0..self.column_count as usize {
-            let k = keys[col];
-            if k == key {
-                game_key = ((col + base_key as usize) as u8).into();
-                break;
-            }
-        }
-        
-        if game_key == KeyPress::RightDon { return None }
+        // let keys = &self.game_settings.keys[(self.column_count-1) as usize];
+        // let base_key = KeyPress::Mania1 as u8;
+        // for col in 0..self.column_count as usize {
+        //     let k = keys[col];
+        //     if k == key {
+        //         game_key = ((col + base_key as usize) as u8).into();
+        //         break;
+        //     }
+        // }
+        // if game_key == KeyPress::RightDon { return None }
+
         Some(ReplayAction::Press(game_key))
     }
     
-    async fn key_up(&mut self, key:Key) -> Option<ReplayAction> {
-        let mut game_key = KeyPress::RightDon;
+    async fn key_up(&mut self, key: Key) -> Option<ReplayAction> {
+        // let mut game_key = KeyPress::RightDon;
 
-        let keys = &self.game_settings.keys[(self.column_count-1) as usize];
-        let base_key = KeyPress::Mania1 as u8;
-        for col in 0..self.column_count as usize {
-            let k = keys[col];
-            if k == key {
-                game_key = ((col + base_key as usize) as u8).into();
-                break;
-            }
-        }
+        // let keys = &self.game_settings.keys[(self.column_count-1) as usize];
+        // let base_key = KeyPress::Mania1 as u8;
+        // for col in 0..self.column_count as usize {
+        //     let k = keys[col];
+        //     if k == key {
+        //         game_key = ((col + base_key as usize) as u8).into();
+        //         break;
+        //     }
+        // }
 
-        if game_key == KeyPress::RightDon { return None } 
+        // if game_key == KeyPress::RightDon { return None } 
+
+        let game_key = self.key_to_game_key(key)?;
+
         Some(ReplayAction::Release(game_key))
     }
 

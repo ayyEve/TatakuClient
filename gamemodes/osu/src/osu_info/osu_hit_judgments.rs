@@ -115,7 +115,7 @@ impl OsuHitJudgments {
         AffectsCombo::Reset,
         0,
         ComboMultiplier::None,
-        Color::new(0.0, 0.0, 0.0, 0.0),
+        Color::new(0.9, 0.05, 0.05, 1.0),
         "hit0",
         true, 
         true,

@@ -362,6 +362,8 @@ impl GameMode for OsuGame {
 
         let parent_dir = map.get_parent_dir().unwrap_or_default().to_string_lossy().to_string();
         let cursor = OsuCursor::new(scaling_helper.scaled_circle_size.x / 2.0, SkinSettings::default(), parent_dir, settings).await;
+        let mut actions = ActionQueue::new();
+        cursor.init(&mut actions);
 
         let mut s = match map {
             Beatmap::Osu(beatmap) => {
@@ -374,7 +376,7 @@ impl GameMode for OsuGame {
                 };
 
                 let mut s = Self {
-                    actions: ActionQueue::new(),
+                    actions,
                     notes: Vec::new(),
                     mouse_pos: Vector2::ZERO,
                     window_mouse_pos: Vector2::ZERO,
@@ -407,78 +409,86 @@ impl GameMode for OsuGame {
 
                     beatmap_combo_colors: beatmap.combo_colors.clone()
                 };
-                
-                // join notes and sliders into a single array
-                // needed because of combo counts
-                let mut all_items = Vec::new();
-                for note in beatmap.notes.iter() {
-                    all_items.push((Some(note), None, None));
-                    s.end_time = s.end_time.max(note.time);
+
+
+                enum Thing<'a> {
+                    Note(&'a NoteDef),
+                    Slider(&'a SliderDef, Option<Box<Curve>>),
+                    Spinner(&'a SpinnerDef),
                 }
-                for slider in beatmap.sliders.iter() {
-                    all_items.push((None, Some(slider), None));
-        
-                    // can this be improved somehow?
-                    if slider.curve_points.is_empty() || slider.length == 0.0 {
-                        s.end_time = s.end_time.max(slider.time);
-                    } else {
-                        let curve = get_curve(slider, map, &timing_points);
-                        s.end_time = s.end_time.max(curve.end_time);
+                impl Thing<'_> {
+                    fn time(&self) -> f32 {
+                        match self {
+                            Self::Note(n) => n.time,
+                            Self::Slider(s, _) => s.time,
+                            Self::Spinner(s) => s.time,
+                        }
+                    }
+                    fn end_time(&self) -> f32 {
+                        match self {
+                            Self::Note(n) => n.time,
+                            Self::Slider(s, None) => s.time, // invisible note
+                            Self::Slider(_, Some(c)) => c.end_time,
+                            Self::Spinner(s) => s.end_time,
+                        }
+                    }
+                    fn new_combo(&self) -> bool {
+                        match self {
+                            Self::Note(n) => n.new_combo,
+                            Self::Slider(s, _) => s.new_combo,
+                            Self::Spinner(_) => true,
+                        }
+                    }
+                    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+                        self
+                            .time()
+                            .partial_cmp(&other.time())
+                            .unwrap_or(std::cmp::Ordering::Equal)
                     }
                 }
-                for spinner in beatmap.spinners.iter() {
-                    all_items.push((None, None, Some(spinner)));
-                    s.end_time = s.end_time.max(spinner.end_time);
-                }
-                // sort
-                all_items.sort_by(|a, b| {
-                    let a_time = match a {
-                        (Some(note), None, None) => note.time,
-                        (None, Some(slider), None) => slider.time,
-                        (None, None, Some(spinner)) => spinner.time,
-                        _ => 0.0
-                    };
-                    let b_time = match b {
-                        (Some(note), None, None) => note.time,
-                        (None, Some(slider), None) => slider.time,
-                        (None, None, Some(spinner)) => spinner.time,
-                        _ => 0.0
-                    };
-        
-                    a_time.partial_cmp(&b_time).unwrap()
-                });
-        
+
+                let mut all_items = 
+                    beatmap.notes.iter().map(Thing::Note)
+                    .chain(beatmap.sliders.iter().map(|s| Thing::Slider(s, if s.curve_points.is_empty() || s.length == 0.0 { None } else { Some(Box::new(get_curve(s, map, &timing_points))) } )))
+                    .chain(beatmap.spinners.iter().map(Thing::Spinner))
+                    .collect::<Vec<_>>()
+                ;
+
+                // sort all the notes
+                all_items.sort_by(|a, b| a.cmp(b));
 
                 // add notes
                 let mut combo_num = 0;
-        
-                for (counter, (note, slider, spinner)) in all_items.into_iter().enumerate() {
-                    // check for new combo
-                    if let Some(note) = note { if note.new_combo { combo_num = 0 } }
-                    if let Some(slider) = slider { if slider.new_combo { combo_num = 0 } }
-                    if let Some(_spinner) = spinner { combo_num = 0 }
-        
-                    // if new combo, increment new combo counter
+                for (counter, i) in all_items.into_iter().enumerate() {
+
+                    // update end time
+                    s.end_time = s.end_time.max(i.end_time());
+
+                    // reset combo if hitobject says so
+                    if i.new_combo() { combo_num = 0 }
+
+                    // if new combo, add counter to combo
                     if combo_num == 0 {
                         s.new_combos.push(counter);
                     }
-                    // get color
+
                     // update combo number
                     combo_num += 1;
-        
-                    if let Some(note) = note {
-                        s.notes.push(Box::new(OsuNote::new(
-                            note.clone(),
-                            ar,
-                            combo_num as u16,
-                            scaling_helper.clone(),
-                            std_settings.clone(),
-                            get_hitsounds(note.time, note.hitsound, note.hitsamples.clone())
-                        ).await));
-                    }
-                    if let Some(slider) = slider {
-                        // invisible note
-                        if slider.curve_points.is_empty() || slider.length == 0.0 {
+
+                    // add the hitobject
+                    match i {
+                        Thing::Note(note) => {
+                            s.notes.push(Box::new(OsuNote::new(
+                                note.clone(),
+                                ar,
+                                combo_num as u16,
+                                scaling_helper.clone(),
+                                std_settings.clone(),
+                                get_hitsounds(note.time, note.hitsound, note.hitsamples.clone())
+                            ).await));
+                        }
+
+                        Thing::Slider(slider, None) => {
                             let note = NoteDef {
                                 pos: slider.pos,
                                 time: slider.time,
@@ -497,42 +507,174 @@ impl GameMode for OsuGame {
                                 std_settings.clone(),
                                 hitsounds,
                             ).await));
-                        } else {
-                            let curve = get_curve(slider, map, &timing_points);
+                        }
+
+                        Thing::Slider(slider, Some(curve)) => {
                             s.notes.push(Box::new(OsuSlider::new(
                                 slider.clone(),
-                                curve,
+                                *curve,
                                 ar,
                                 combo_num as u16,
                                 scaling_helper.clone(),
                                 std_settings.clone(),
                                 get_hitsounds,
                                 timing_points.slider_velocity_at(slider.time)
+                            ).await));
+                        }
+
+
+                        Thing::Spinner(spinner) => {
+                            let duration = spinner.end_time - spinner.time;
+                            let min_rps = map_difficulty(od, 2.0, 4.0, 6.0) * 0.6;
+
+                            let mut spins_required = (duration / 1000.0 * min_rps) as u16;
+                            // fudge until we can properly calculate
+                            if spins_required < 10 {
+                                if spins_required > 2 {
+                                    spins_required = 2;
+                                } else {
+                                    spins_required = 0;
+                                }
+                            }
+                            
+                            s.notes.push(Box::new(OsuSpinner::new(
+                                spinner.clone(),
+                                scaling_helper.clone(),
+                                spins_required
                             ).await))
                         }
-                        
-                    }
-                    if let Some(spinner) = spinner {
-                        let duration = spinner.end_time - spinner.time;
-                        let min_rps = map_difficulty(od, 2.0, 4.0, 6.0) * 0.6;
-
-                        let mut spins_required = (duration / 1000.0 * min_rps) as u16;
-                        // fudge until we can properly calculate
-                        if spins_required < 10 {
-                            if spins_required > 2 {
-                                spins_required = 2;
-                            } else {
-                                spins_required = 0;
-                            }
-                        }
-                        
-                        s.notes.push(Box::new(OsuSpinner::new(
-                            spinner.clone(),
-                            scaling_helper.clone(),
-                            spins_required
-                        ).await))
                     }
                 }
+
+
+
+                
+                // // join notes and sliders into a single array
+                // // needed because of combo counts
+                // let mut all_items = Vec::new();
+                // for note in beatmap.notes.iter() {
+                //     all_items.push((Some(note), None, None));
+                //     s.end_time = s.end_time.max(note.time);
+                // }
+                // for slider in beatmap.sliders.iter() {
+                //     all_items.push((None, Some(slider), None));
+        
+                //     // can this be improved somehow?
+                //     if slider.curve_points.is_empty() || slider.length == 0.0 {
+                //         s.end_time = s.end_time.max(slider.time);
+                //     } else {
+                //         let curve = get_curve(slider, map, &timing_points);
+                //         s.end_time = s.end_time.max(curve.end_time);
+                //     }
+                // }
+                // for spinner in beatmap.spinners.iter() {
+                //     all_items.push((None, None, Some(spinner)));
+                //     s.end_time = s.end_time.max(spinner.end_time);
+                // }
+
+                // // sort
+                // all_items.sort_by(|a, b| {
+                //     let a_time = match a {
+                //         (Some(note), None, None) => note.time,
+                //         (None, Some(slider), None) => slider.time,
+                //         (None, None, Some(spinner)) => spinner.time,
+                //         _ => 0.0
+                //     };
+                //     let b_time = match b {
+                //         (Some(note), None, None) => note.time,
+                //         (None, Some(slider), None) => slider.time,
+                //         (None, None, Some(spinner)) => spinner.time,
+                //         _ => 0.0
+                //     };
+        
+                //     a_time.partial_cmp(&b_time).unwrap()
+                // });
+        
+
+                // // add notes
+                // let mut combo_num = 0;
+        
+                // for (counter, (note, slider, spinner)) in all_items.into_iter().enumerate() {
+                //     // check for new combo
+                //     if let Some(note) = note { if note.new_combo { combo_num = 0 } }
+                //     if let Some(slider) = slider { if slider.new_combo { combo_num = 0 } }
+                //     if let Some(_spinner) = spinner { combo_num = 0 }
+        
+                //     // if new combo, increment new combo counter
+                //     if combo_num == 0 {
+                //         s.new_combos.push(counter);
+                //     }
+                //     // get color
+                //     // update combo number
+                //     combo_num += 1;
+        
+                //     if let Some(note) = note {
+                //         s.notes.push(Box::new(OsuNote::new(
+                //             note.clone(),
+                //             ar,
+                //             combo_num as u16,
+                //             scaling_helper.clone(),
+                //             std_settings.clone(),
+                //             get_hitsounds(note.time, note.hitsound, note.hitsamples.clone())
+                //         ).await));
+                //     }
+                //     if let Some(slider) = slider {
+                //         // invisible note
+                //         if slider.curve_points.is_empty() || slider.length == 0.0 {
+                //             let note = NoteDef {
+                //                 pos: slider.pos,
+                //                 time: slider.time,
+                //                 hitsound: slider.hitsound,
+                //                 hitsamples: slider.hitsamples.clone(),
+                //                 new_combo: slider.new_combo,
+                //                 color_skip: slider.color_skip,
+                //             };
+        
+                //             let hitsounds = get_hitsounds(note.time, note.hitsound, note.hitsamples.clone());
+                //             s.notes.push(Box::new(OsuNote::new(
+                //                 note,
+                //                 ar,
+                //                 combo_num as u16,
+                //                 scaling_helper.clone(),
+                //                 std_settings.clone(),
+                //                 hitsounds,
+                //             ).await));
+                //         } else {
+                //             let curve = get_curve(slider, map, &timing_points);
+                //             s.notes.push(Box::new(OsuSlider::new(
+                //                 slider.clone(),
+                //                 curve,
+                //                 ar,
+                //                 combo_num as u16,
+                //                 scaling_helper.clone(),
+                //                 std_settings.clone(),
+                //                 get_hitsounds,
+                //                 timing_points.slider_velocity_at(slider.time)
+                //             ).await))
+                //         }
+                        
+                //     }
+                //     if let Some(spinner) = spinner {
+                //         let duration = spinner.end_time - spinner.time;
+                //         let min_rps = map_difficulty(od, 2.0, 4.0, 6.0) * 0.6;
+
+                //         let mut spins_required = (duration / 1000.0 * min_rps) as u16;
+                //         // fudge until we can properly calculate
+                //         if spins_required < 10 {
+                //             if spins_required > 2 {
+                //                 spins_required = 2;
+                //             } else {
+                //                 spins_required = 0;
+                //             }
+                //         }
+                        
+                //         s.notes.push(Box::new(OsuSpinner::new(
+                //             spinner.clone(),
+                //             scaling_helper.clone(),
+                //             spins_required
+                //         ).await))
+                //     }
+                // }
         
                 s
             }
@@ -569,7 +711,9 @@ impl GameMode for OsuGame {
                     KeyPress::Left | KeyPress::LeftMouse => self.cursor.left_pressed(true),
                     KeyPress::Right | KeyPress::RightMouse => self.cursor.right_pressed(true),
                     KeyPress::Dash => {
-                        self.smoke_emitter.iter_mut().for_each(|i|i.should_emit = true);
+                        for i in self.smoke_emitter.iter_mut() {
+                            i.should_emit = true
+                        }
                         return;
                     }
                     _ => {}
@@ -688,6 +832,8 @@ impl GameMode for OsuGame {
         &mut self, 
         state: &mut GameplayStateForUpdate<'a>,
     ) {
+        state.action_queue.extend(self.actions.take());
+
         // let mut pending_frames = Vec::new();
 
         // disable the cursor particle emitter if this is a menu game
@@ -991,7 +1137,9 @@ impl GameMode for OsuGame {
         }
 
         // need to draw the smoke particles on top of everything
-        self.smoke_emitter.as_ref().map(|e| e.draw(list));
+        if let Some(e) = self.smoke_emitter.as_ref() { 
+            e.draw(list) 
+        }
 
         // draw the cursor on top of smoke tho
         self.cursor.draw_above(list).await;
@@ -1040,9 +1188,25 @@ impl GameMode for OsuGame {
         ))).await;
     }
 
-    async fn time_jump(&mut self, new_time:f32) {
+    async fn time_jump<'a>(
+        &mut self, 
+        new_time: f32,
+        state: &mut GameplayStateForUpdate<'a>
+    ) {
         for n in self.notes.iter_mut() {
             n.time_jump(new_time).await;
+        }
+
+        let mut pending_frames = Vec::new();
+        self.auto_helper.time_skip(
+            new_time, 
+            &self.notes, 
+            &self.scaling_helper, 
+            &mut pending_frames
+        );
+
+        for i in pending_frames {
+            state.add_replay_action(i);
         }
     }
     
@@ -1289,7 +1453,7 @@ impl GameModeInput for OsuGame {
         Some(ReplayAction::Press(key))
     }
     
-    async fn key_up(&mut self, key:Key) -> Option<ReplayAction> {
+    async fn key_up(&mut self, key: Key) -> Option<ReplayAction> {
         // playfield adjustment
         if key == Key::LControl {
             self.move_playfield = None;
@@ -1371,7 +1535,7 @@ impl GameModeInput for OsuGame {
         Some(ReplayAction::Press(button))
     }
     
-    async fn mouse_up(&mut self, btn:MouseButton) -> Option<ReplayAction> {
+    async fn mouse_up(&mut self, btn: MouseButton) -> Option<ReplayAction> {
         // if the user has mouse input disabled, return
         if self.game_settings.ignore_mouse_buttons { return None }
 
@@ -1402,7 +1566,7 @@ impl GameModeInput for OsuGame {
     }
 
 
-    async fn controller_press(&mut self, _:&GamepadInfo, btn:ControllerButton) -> Option<ReplayAction> {
+    async fn controller_press(&mut self, _: &GamepadInfo, btn: ControllerButton) -> Option<ReplayAction> {
         // if relax is enabled, and the user doesn't want manual input, return
         if self.mods.has_mod(Relax) && !self.game_settings.manual_input_with_relax { return None; }
 
@@ -1413,7 +1577,7 @@ impl GameModeInput for OsuGame {
         }
     }
     
-    async fn controller_release(&mut self, _:&GamepadInfo, btn:ControllerButton) -> Option<ReplayAction> {
+    async fn controller_release(&mut self, _: &GamepadInfo, btn: ControllerButton) -> Option<ReplayAction> {
         // if relax is enabled, and the user doesn't want manual input, return
         if self.mods.has_mod(Relax) && !self.game_settings.manual_input_with_relax { return None; }
 
@@ -1424,7 +1588,7 @@ impl GameModeInput for OsuGame {
         }
     }
     
-    async fn controller_axis(&mut self, _:&GamepadInfo, axis_data:HashMap<Axis, (bool, f32)>) -> Option<ReplayAction> {
+    async fn controller_axis(&mut self, _: &GamepadInfo, axis_data: HashMap<Axis, (bool, f32)>) -> Option<ReplayAction> {
         if !self.use_controller_cursor {
             // info!("switched to controller input");
             // CursorManager::set_gamemode_override(true);

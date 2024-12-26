@@ -1917,9 +1917,9 @@ impl Game {
         // let f = self.skin_manager.get_texture_noskin(&filename, false);
         // self.background_loader = Some(AsyncLoader::new(f));
         self.background_image = self.skin_manager.get_texture(&filename, &TextureSource::Raw, SkinUsage::Background, false).await;
-        self.background_image.ok_do_mut(|i| {
+        if let Some(i) = &mut self.background_image {
             i.origin = Vector2::ZERO;
-        });
+        }
 
         self.resize_bg();
     }
@@ -2066,6 +2066,7 @@ impl Game {
         manager.on_complete();
         manager.score.time = chrono::Utc::now().timestamp() as u64;
         self.actions.push(TatakuEvent::BeatmapEnded);
+        self.actions.push(CursorAction::SetVisible(true));
 
         if manager.failed {
             trace!("player failed");
@@ -2086,7 +2087,7 @@ impl Game {
                 // save score
                 Database::save_score(&score).await;
                 match save_replay(&score) {
-                    Ok(_)=> trace!("replay saved ok"),
+                    Ok(_) => trace!("replay saved ok"),
                     Err(e) => NotificationManager::add_error_notification("error saving replay", e).await,
                 }
 
@@ -2140,7 +2141,12 @@ impl Game {
 
 
     #[cfg(feature="graphics")]
-    async fn finish_screenshot(&mut self, bytes: Vec<u8>, [width, height]: [u32; 2], info: ScreenshotInfo) -> TatakuResult {
+    async fn finish_screenshot(
+        &mut self, 
+        bytes: Vec<u8>, 
+        [width, height]: [u32; 2], 
+        info: ScreenshotInfo
+    ) -> TatakuResult {
 
         // create file
         let date = chrono::Local::now();
@@ -2246,8 +2252,9 @@ impl Game {
             }
 
             MultiplayerPacket::Server_LobbyUserJoined { lobby_id, user_id } => {
-                self.multiplayer_data.lobbies.get_mut(&lobby_id)
-                    .ok_do_mut(|l| l.players.push(user_id));
+                if let Some(l) = self.multiplayer_data.lobbies.get_mut(&lobby_id) { 
+                    l.players.push(user_id) 
+                }
             }
 
             MultiplayerPacket::Server_LobbyUserLeft { lobby_id, user_id } => {
@@ -2265,15 +2272,21 @@ impl Game {
 
 
             MultiplayerPacket::Server_LobbyMapChange { lobby_id, new_map } => {
-                self.multiplayer_data.lobbies.get_mut(&lobby_id).ok_do_mut(|l| l.current_beatmap = Some(new_map.title.clone()));
+                if let Some(l) = self.multiplayer_data.lobbies.get_mut(&lobby_id) { 
+                    l.current_beatmap = Some(new_map.title.clone())
+                };
             }
 
             MultiplayerPacket::Server_LobbyStateChange { lobby_id, new_state } => {
-                self.multiplayer_data.lobbies.get_mut(&lobby_id).ok_do_mut(|l| l.state = new_state);
+                if let Some(l) = self.multiplayer_data.lobbies.get_mut(&lobby_id) { 
+                    l.state = new_state 
+                }
             }
 
             MultiplayerPacket::Server_LobbyInvite { inviter_id, lobby } => {
-                self.multiplayer_data.lobbies.get_mut(&lobby.id).ok_do_mut(|l| l.has_password = false);
+                if let Some(l) = self.multiplayer_data.lobbies.get_mut(&lobby.id) { 
+                    l.has_password = false 
+                }
 
                 let Some(inviter) = OnlineManager::get().await.users.get(&inviter_id).cloned() else { return Ok(()) };
                 let inviter = inviter.lock().await;

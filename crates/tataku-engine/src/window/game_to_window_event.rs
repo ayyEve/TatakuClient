@@ -14,7 +14,6 @@ pub enum Game2WindowEvent {
 
     RefreshMonitors,
 
-    AddEmitter(Box<dyn EmitterReference>),
     RenderData(Vec<Arc<dyn TatakuRenderable>>),
 
     SettingsUpdated(DisplaySettings),
@@ -36,8 +35,8 @@ pub enum LoadImage {
     Font(ActualFont, f32, Option<UnboundedSender<TatakuResult<()>>>),
     FreeTexture(TextureReference),
 
-    CreateRenderTarget((u32, u32), UnboundedSender<TatakuResult<RenderTarget>>, Box<dyn FnOnce(&mut dyn GraphicsEngine, Matrix) + Send>),
-    UpdateRenderTarget(RenderTarget, UnboundedSender<()>, Box<dyn FnOnce(&mut dyn GraphicsEngine, Matrix) + Send>),
+    CreateRenderTarget((u32, u32), UnboundedSender<TatakuResult<RenderTarget>>, RenderTargetDraw),
+    UpdateRenderTarget(RenderTarget, UnboundedSender<()>, RenderTargetDraw),
 }
 
 

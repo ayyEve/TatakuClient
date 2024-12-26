@@ -35,7 +35,7 @@ impl CustomElementText {
 
     pub fn to_string(&self, values: &dyn Reflect) -> String {
         match self {
-            Self::Variable(t) => values.reflect_get::<String>(t).cloned().unwrap_or_else(|_| format!("Invalid property: '{t}'")),
+            Self::Variable(t) => values.reflect_get::<String>(t).as_deref().cloned().unwrap_or_else(|_| format!("Invalid property: '{t}'")),
             Self::Text(t) | Self::Locale(t) => t.clone(),
 
             Self::CalcParsed(calc, calc_str) => {

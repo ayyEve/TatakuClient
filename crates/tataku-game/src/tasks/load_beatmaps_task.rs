@@ -104,5 +104,7 @@ impl TatakuTask for LoadBeatmapsTask {
         actions.push(BeatmapAction::InitializeManager);
         self.status.write().complete = true;
         self.state = TatakuTaskState::Complete;
+
+        actions.push(TaskAction::AddTask(Box::new(CheckBeatmapFoldersTask::new())));
     }
 }

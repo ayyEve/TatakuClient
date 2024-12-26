@@ -54,7 +54,19 @@ impl EmitterInfo {
 }
 
 use crate::prelude::*;
-pub trait EmitterReference: Send + Sync {
-    fn get_info(&self) -> EmitterInfo;
-    fn get_pool(&self) -> Option<&mut Pool<Particle>>;
+// pub trait EmitterReference: Send + Sync {
+//     fn get_info(&self) -> EmitterInfo;
+//     fn get_pool(&self) -> Option<&mut Pool<Particle>>;
+// }
+
+
+pub struct EmitterReference {
+    pub info: EmitterInfo,
+    pub pool: std::sync::Weak<parking_lot::RwLock<Pool<Particle>>>
+}
+impl std::fmt::Debug for EmitterReference {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.info.fmt(f)
+        // f.debug_struct("EmitterReference").field("info", &self.info).finish()
+    }
 }

@@ -177,7 +177,7 @@ impl MultiplayerManager {
                 self.lobby.players.retain(|u| &u.user_id != user_id);
 
                 // find the slot that had this user and set it to empty (server will update its proper status next update)
-                self.lobby.slots.values_mut().find(|s| **s == LobbySlot::Filled{user: *user_id}).ok_do_mut(|s|**s = LobbySlot::Empty);
+                self.lobby.slots.values_mut().find(|s| **s == LobbySlot::Filled{user: *user_id}).map(|s| *s = LobbySlot::Empty);
                 
                 if user_id != &self.lobby.our_user_id {
                     let username = self.lobby.player_usernames.remove(user_id).unwrap_or_default();
@@ -186,14 +186,14 @@ impl MultiplayerManager {
             }
 
             MultiplayerPacket::Server_LobbySlotChange { slot, new_status } => {
-                self.lobby.info.slots.get_mut(slot).ok_do_mut(|s| **s = *new_status);
+                self.lobby.info.slots.get_mut(slot).map(|s| *s = *new_status);
             }
 
             MultiplayerPacket::Server_LobbyUserState { user_id, new_state } => {
                 self.lobby.info.players
                     .iter_mut()
                     .find(|u| &u.user_id == user_id)
-                    .ok_do_mut(|u| u.state = *new_state);
+                    .map(|u| u.state = *new_state);
             }
 
 
@@ -301,7 +301,7 @@ impl MultiplayerManager {
             }
 
             MultiplayerPacket::Server_LobbyUserModsChanged { user_id, mods, speed } => {
-                self.lobby.players.iter_mut().find(|u| &u.user_id == user_id).ok_do_mut(|u| {
+                self.lobby.players.iter_mut().find(|u| &u.user_id == user_id).map(|u| {
                     u.mods = mods.clone();
                     u.speed = *speed;
                 });

@@ -1059,7 +1059,7 @@ impl GameMode for TaikoGame {
     }
 
     
-    async fn time_jump(&mut self, new_time: f32) {
+    async fn time_jump<'a>(&mut self, new_time: f32, _state: &mut GameplayStateForUpdate<'a>) {
         let mut latest_time = 0f32;
         for i in self.hit_cache.values() { latest_time = latest_time.max(*i) }
         // info!("{new_time} < {latest_time}");

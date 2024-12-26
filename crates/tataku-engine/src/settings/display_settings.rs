@@ -1,6 +1,5 @@
 use crate::prelude::*;
 
-
 #[derive(Clone, Serialize, PartialEq, Debug)]
 #[cfg_attr(feature="graphics", derive(Settings))]
 #[derive(Reflect, SettingsDeserialize)]
@@ -65,8 +64,8 @@ impl Default for DisplaySettings {
 
 
 #[derive(Copy, Clone, Serialize, Deserialize, Debug, Eq, PartialEq)]
-#[cfg_attr(feature="graphics", derive(Dropdown))]
 #[derive(Reflect)]
+#[cfg_attr(feature="graphics", derive(Dropdown))]
 pub enum PerformanceMode {
     PowerSaver,
     HighPerformance,

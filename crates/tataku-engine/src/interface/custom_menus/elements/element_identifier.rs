@@ -16,8 +16,8 @@ pub enum ElementIdentifier {
         margin: Option<f32>,
     },
 
-    /// id = panel_scroll
-    PanelScroll {
+    /// id = drag_scroll
+    DraggingScroll {
         elements: Vec<ElementDef>,
         padding: Option<ElementPadding>,
         margin: Option<f32>,
@@ -31,6 +31,9 @@ pub enum ElementIdentifier {
         element: Box<ElementDef>,
         action: LuaAction,
         padding: Option<ElementPadding>,
+
+        // TODO: rename
+        pressed: Option<ElementCondition>
     },
 
     /// id = text
@@ -136,7 +139,7 @@ impl ElementCondition {
                     Ok(true) => ElementResolve::True,
                     Ok(false) => ElementResolve::False,
                     Err(e) => {
-                        error!("Error with shunting yard calc. calc: '{calc_str}', error: {e:?}");
+                        error!("Error with shunting yard calc. calc_str: '{calc_str}' calc: {calc:?}, error: {e:?}");
                         ElementResolve::Error(e)
                     }
                 }

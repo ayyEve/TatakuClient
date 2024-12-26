@@ -21,7 +21,7 @@ load_internal_menus_from_file = [] # whether to load builtin menus at runtime (i
 storyboards = []
 texture_arrays = []
 media_control = [ "souvlaki" ]
-ui = [ "iced", "iced_runtime", "rlua", "triple_buffer" ]
+ui = [ "iced", "iced_runtime", "rlua", "triple_buffer", "iced_winit" ]
 
 # removes as much graphics-side stuff as possible
 graphics = [ "winit", "ui", "clipboard", "raw-window-handle", "fontdue", "image" ]
@@ -71,7 +71,7 @@ souvlaki = { workspace = true, default-features = false, features = ["use_zbus"]
 # gui
 iced = { workspace = true, features = ["canvas", "tokio", "debug", "image", "advanced", "lazy", "wgpu"], default-features = false, optional = true }
 iced_runtime = { workspace = true, optional = true }
-# iced_winit = { workspace = true, optional = true }
+iced_winit = { workspace = true, optional = true }
 
 # networking
 sha2 = { workspace = true }

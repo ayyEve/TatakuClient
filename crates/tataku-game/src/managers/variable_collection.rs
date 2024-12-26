@@ -216,6 +216,7 @@ pub struct GameValues {
     pub beatmap_manager: BeatmapManager,
 
     /// list of retreived scored 
+    #[reflect(alias("scores_list"))]
     pub score_list: ScoreList,
 }
 impl GameValues {
@@ -270,7 +271,7 @@ impl DerefMut for ValueCollection {
 }
 
 impl Reflect for ValueCollection {
-    fn impl_get<'v>(&self, path: ReflectPath<'v>) -> Result<&dyn Reflect, ReflectError<'v>> {
+    fn impl_get<'v, 's>(&'s self, path: ReflectPath<'v>) -> ReflectResult<'v, MaybeOwnedReflect<'s>> {
         // debug!("impl_get: {path:?}");
         self
             .values

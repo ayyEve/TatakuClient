@@ -7,7 +7,7 @@ pub struct BuiltElementDef {
 }
 impl BuiltElementDef {
     /// get the view from the nth child, or an empty view if none exist
-    fn nth_child_view(&self, n:usize, owner: MessageOwner, values: &mut dyn Reflect) -> IcedElement {
+    fn nth_child_view(&self, n: usize, owner: MessageOwner, values: &mut dyn Reflect) -> IcedElement {
         let Some(child) = self.children.get(n) else { return EmptyElement.into_element() };
         child.view(owner, values)
     }
@@ -44,12 +44,25 @@ impl Widgetable for BuiltElementDef {
     fn view(&self, owner: MessageOwner, values: &mut dyn Reflect) -> IcedElement {
         match &self.element.element {
             ElementIdentifier::Space => Space::new(self.element.width, self.element.height).into_element(),
-            ElementIdentifier::Button { padding,  action, ..} => {
+            ElementIdentifier::Button { padding, action, pressed, ..} => {
+                let mut is_pressed = false;
+                if let Some(pressed) = pressed {
+                    match pressed.resolve(values) {
+                        ElementResolve::Failed | ElementResolve::Error(_) => {},
+                        ElementResolve::Unbuilt(_) => panic!("conditional element not built!"),
+                        ElementResolve::True => is_pressed = true,
+                        ElementResolve::False => {},
+                    }
+                }
+
                 Button::new(self.first_child_view(owner, values))
                     .on_press_maybe(action.resolve(owner, values, None))
                     .width(self.element.width)
                     .height(self.element.height)
-                    .chain_maybe(*padding, |s, p| s.padding(p))
+                    .chain_maybe(*padding, |b, p| b.padding(p))
+                    .chain_maybe(is_pressed.then_some(()), |b, _| 
+                        b.style(iced::widget::button::danger)
+                    )
                     .into_element()
             }
             ElementIdentifier::Text { text, color, font_size, font }  => {
@@ -63,12 +76,14 @@ impl Widgetable for BuiltElementDef {
             }
             ElementIdentifier::TextInput { placeholder, variable,  on_input, on_submit,is_password } => {
                 let placeholder = placeholder.to_string(values);
-                let value = values.reflect_get::<String>(variable).cloned().unwrap_or_default();
+                let value = (values.reflect_get::<String>(variable).as_deref()).cloned().unwrap_or_default();
                 // let value = values.get_string(&variable).unwrap_or_default();.unwrap_or_default();
                 let variable = variable.clone();
 
                 let mut input_action = on_input.clone();
-                input_action.as_mut().map(|a| a.resolve_variables(values)); 
+                if let Some(i) = &mut input_action {
+                    i.resolve_variables(values)
+                }
 
                 let on_input:Box<dyn Fn(String) -> Message> = match input_action {
                     Some(on_input) => {
@@ -197,9 +212,9 @@ impl Widgetable for BuiltElementDef {
                     value: Box<dyn Reflect>,
                     display: String,
                 }
-                impl ToString for Test {
-                    fn to_string(&self) -> String {
-                        self.display.clone()
+                impl core::fmt::Display for Test {
+                    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                        self.display.fmt(f)
                     }
                 }
                 impl PartialEq for Test {
@@ -272,7 +287,9 @@ impl Widgetable for BuiltElementDef {
 
                 // println!("a: {on_select:?}");
                 let mut on_select = on_select.clone();
-                on_select.as_mut().map(|on_select| on_select.resolve_variables(values));
+                if let Some(i) = &mut on_select {
+                    i.resolve_variables(values)
+                }
 
                 let on_select:Box<dyn Fn(Test)->Message> = match on_select.clone() {
                     Some(action) => Box::new(move |t: Test| 
@@ -301,13 +318,14 @@ impl Widgetable for BuiltElementDef {
                 .into_element()
             }
 
-            ElementIdentifier::PanelScroll { padding, margin, .. } => {
-                make_panel_scroll(
+            ElementIdentifier::DraggingScroll { padding, margin, .. } => {
+                DraggingScroll::with_children(
                     self.children.iter()
                         .map(|e| e.view(owner, values))
                         .collect(),
-                    Cow::Owned(self.element.id.clone())
+                    // Cow::Owned(self.element.id.clone())
                 )
+                // .id(Cow::Owned(self.element.id.clone()).into())
                 .width(self.element.width)
                 .height(self.element.height)
                 .chain_maybe(padding.as_ref(), |panel, pad| panel.padding(*pad))

@@ -69,15 +69,30 @@ function text_list(list)
 end
 
 -- helper for making a button
-function button(ele, action, width, height, padding)
+function button(ele, action, width, height, padding, pressed)
     return {
         id = "button",
         element = ele,
         action = action,
         width = width,
         height = height,
-        padding = padding
+        padding = padding,
+        pressed = pressed 
     }
+end
+
+-- helper for making draggable lists
+function drag_scroll(config, elements) 
+    if not elements then
+        return {
+            id = "drag_scroll",
+            elements = config,
+        }
+    else 
+        config.id = "drag_scroll"
+        config.elements = elements
+        return config
+    end
 end
 
 function key_event(key, mods, action) 

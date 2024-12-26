@@ -155,7 +155,7 @@ impl<'window> GameWindow<'window> {
     
     fn run_load_image_event(&mut self, event: LoadImage) {
         match event {
-            LoadImage::Image(data, on_done) => on_done.send(self.graphics.load_texture_rgba(&data.to_vec(), [data.width(), data.height()])).expect("poopy"),
+            LoadImage::Image(data, on_done) => on_done.send(self.graphics.load_texture_rgba(&data, [data.width(), data.height()])).expect("poopy"),
             
             LoadImage::Font(font, font_size, on_done) => {
                 info!("Loading font {} with size {}", font.name, font_size);
@@ -288,7 +288,7 @@ impl<'window> GameWindow<'window> {
 }
 
 // input and state stuff
-impl<'window> GameWindow<'window> {
+impl GameWindow<'_> {
     fn refresh_monitors_inner(&mut self) {
         *MONITORS.write() = self.window().available_monitors().filter_map(|m|m.name()).collect();
     }
@@ -316,10 +316,10 @@ impl<'window> GameWindow<'window> {
         use clipboard::{ClipboardProvider, ClipboardContext};
         let ctx:Result<ClipboardContext, Box<dyn std::error::Error>> = ClipboardProvider::new();
         
-        Ok(ctx
-            .map_err(|e|TatakuError::String(e.to_string()))
-            .and_then(|mut ctx| ctx.set_contents(content).map_err(|e|TatakuError::String(e.to_string())))?)
-    }
+        ctx
+            .map_err(|e| TatakuError::String(e.to_string()))
+            .and_then(|mut ctx| ctx.set_contents(content).map_err(|e| TatakuError::String(e.to_string())))
+        }
 
 
     fn handle_touch_event(&mut self, touch: Touch) -> Option<Window2GameEvent> {
@@ -464,7 +464,7 @@ impl<'window> GameWindow<'window> {
 
 
 #[cfg(feature="graphics")]
-impl<'window> winit::application::ApplicationHandler<Game2WindowEvent> for GameWindow<'window> {
+impl winit::application::ApplicationHandler<Game2WindowEvent> for GameWindow<'_> {
     fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
         if self.window.get().is_some() { return }
         event_loop.set_control_flow(ControlFlow::Poll);
@@ -541,7 +541,11 @@ impl<'window> winit::application::ApplicationHandler<Game2WindowEvent> for GameW
         self.update();
     }
 
-    fn user_event(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop, event: Game2WindowEvent) {
+    fn user_event(
+        &mut self, 
+        _event_loop: &winit::event_loop::ActiveEventLoop, 
+        event: Game2WindowEvent
+    ) {
         match event {
             Game2WindowEvent::LoadImage(event) => self.run_load_image_event(event),
             Game2WindowEvent::ShowCursor => { 
@@ -561,13 +565,17 @@ impl<'window> winit::application::ApplicationHandler<Game2WindowEvent> for GameW
                 let _ = self.game_event_sender.try_send(Window2GameEvent::Closed);
             }
 
-            Game2WindowEvent::TakeScreenshot(info) => self.graphics.screenshot(Box::new(move |(window_data, [width, height])| { 
-                // let _ = fuze.send((window_data, width, height)); 
-                todo!()
-            })),
-            Game2WindowEvent::RefreshMonitors => self.refresh_monitors_inner(),
+            Game2WindowEvent::TakeScreenshot(info) => {
+                let sender = self.game_event_sender.clone();
 
-            Game2WindowEvent::AddEmitter(emitter) => self.graphics.add_emitter(emitter),
+                self.graphics.screenshot(Box::new(move |(data, size)| { 
+                    // let _ = fuze.send((window_data, width, height)); 
+                    // tokio::spawn(async move {
+                    let _ = sender.try_send(Window2GameEvent::ScreenshotComplete(data, size, info));
+                    // });
+                }))
+            },
+            Game2WindowEvent::RefreshMonitors => self.refresh_monitors_inner(),
 
             Game2WindowEvent::RenderData(data) => {
                 self.render_data = data;
@@ -613,6 +621,7 @@ impl<'window> winit::application::ApplicationHandler<Game2WindowEvent> for GameW
                                 MediaControlAction::SetMetadata(meta) => media_controls.set_metadata((&meta).into()).nope(),
                             }
                         },
+                    WindowAction::AddEmitter(emitter) => self.graphics.add_emitter(emitter),
                 }
             }
 

@@ -37,7 +37,7 @@ impl ElementDef {
             }
             ElementIdentifier::Column { elements, .. }
             | ElementIdentifier::Row { elements, .. } 
-            | ElementIdentifier::PanelScroll { elements, .. }
+            | ElementIdentifier::DraggingScroll { elements, .. }
                 => for i in elements.iter() {
                     built.children.push(i.build(skin_manager, owner).await);
                 }
@@ -53,8 +53,11 @@ impl ElementDef {
                     built.children.push(element.build(skin_manager, owner).await)
                 },
             
-            ElementIdentifier::Button { element, action, .. } 
+            ElementIdentifier::Button { element, action, pressed, .. } 
                 => {
+                    if let Some(pressed) = pressed {
+                        pressed.build();
+                    }
                     action.build();
                     built.children.push(element.build(skin_manager, owner).await)
                 }
@@ -91,7 +94,7 @@ impl ElementDef {
         }
 
         for e in built.children.iter_mut() {
-            e.reload_skin(skin_manager);
+            e.reload_skin(skin_manager).await;
         }
 
         Box::new(built)
@@ -141,9 +144,11 @@ impl<'lua> FromLua<'lua> for ElementDef {
                 debug_color,
             }),
 
-            "panel_scroll" => Ok(Self {
+            "dragging_scroll"
+            | "drag_scroll"
+            | "panel_scroll" => Ok(Self {
                 id,
-                element: ElementIdentifier::PanelScroll { 
+                element: ElementIdentifier::DraggingScroll { 
                     elements: table.get("elements")?,
                     padding: table.get("padding")?,
                     margin: parse_from_multiple(&table, &["margin", "spacing"])?,
@@ -194,6 +199,7 @@ impl<'lua> FromLua<'lua> for ElementDef {
                     element: Box::new(table.get("element")?),
                     padding: table.get("padding")?,
                     action: table.get("action")?,
+                    pressed: parse_from_multiple(&table, &["cond", "condition", "pressed"])?.map(ElementCondition::Unbuilt),
                 },
                 width: width.unwrap_or(Length::Shrink),
                 height: height.unwrap_or(Length::Shrink),
@@ -311,7 +317,7 @@ impl From<ElementPadding> for iced::Padding {
         match val {
             ElementPadding::Single(f) => iced::Padding::new(f),
             ElementPadding::Double(a) => iced::Padding::from(a),
-            ElementPadding::Quad(a) => iced::Padding::from(a),
+            ElementPadding::Quad([t, l, b, r]) => iced::Padding::default().top(t).left(l).bottom(b).right(r),
         }
     }
 }

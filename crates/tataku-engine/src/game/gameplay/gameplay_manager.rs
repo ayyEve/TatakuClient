@@ -39,7 +39,8 @@ macro_rules! create_update_state {
             gameplay_mode: &$self.gameplay_mode,
             score: &$self.score,
             actions: Vec::new(),
-            settings: $settings
+            settings: $settings,
+            action_queue: &mut $self.actions
         }
     }
 }
@@ -388,7 +389,9 @@ impl GameplayManager {
         if let Some(time) = self.pending_time_jump {
             self.hitsound_manager.enabled = false; // try to mitigate spamming the user's ears with hitsounds
             self.pending_time_jump = None;
-            self.gamemode.time_jump(time).await;
+
+            let mut state = create_update_state!(self, time, &settings);
+            self.gamemode.time_jump(time, &mut state).await;
         }
 
         // check map restart
@@ -476,7 +479,7 @@ impl GameplayManager {
         let scores_loaded = *values.reflect_get::<bool>("score_list.loaded").unwrap();
 
         if !self.scores_loaded && self.gameplay_mode.should_load_scores() && scores_loaded {
-            self.score_list = scores_list.clone();
+            self.score_list = (*scores_list).clone();
             self.scores_loaded = true;
 
             for s in self.score_list.iter_mut() {
@@ -500,12 +503,12 @@ impl GameplayManager {
         self.judgement_indicators.retain(|a| a.should_keep(time));
 
         // update gamemode
-        let mut state = create_update_state!(self, time, settings);
+        let mut state = create_update_state!(self, time, &settings);
 
 
         self.gamemode.update(&mut state).await;
         for action in state.actions {
-            self.handle_gamemode_action(action, settings).await;
+            self.handle_gamemode_action(action, &settings).await;
         }
         //.into_iter().map(|f| ReplayFrame::new(time, f));
 
@@ -613,7 +616,7 @@ impl GameplayManager {
                 // }
 
                 // handle pending frames
-                while let Some(SpectatorFrame { time:frame_time, action }) = frames.pop_front() {
+                while let Some(SpectatorFrame { time: frame_time, action }) = frames.pop_front() {
                     *good_until = good_until.max(frame_time);
 
                     // debug!("Packet: {action:?}");
@@ -719,7 +722,7 @@ impl GameplayManager {
 
         // handle any pending gameplay actions
         for a in self.gameplay_actions.take() {
-            self.handle_action(a, settings).await;
+            self.handle_action(a, &settings).await;
         }
 
         // TODO: rework this? 
@@ -748,7 +751,7 @@ impl GameplayManager {
 
         // handle any frames
         for ReplayFrame { time, action } in self.pending_frames.take() {
-            self.handle_frame(action, true, Some(time), true, settings).await;
+            self.handle_frame(action, true, Some(time), true, &settings).await;
         }
 
 
@@ -2055,7 +2058,11 @@ pub struct GameplayStateForUpdate<'a> {
     /// list of actions to be performed
     actions: Vec<GamemodeAction>,
 
+    /// Game settings
     pub settings: &'a Settings,
+
+    /// Action queue
+    pub action_queue: &'a mut ActionQueue
 }
 impl<'a> GameplayStateForUpdate<'a> {
     /// does the manager believe the map has been completed?

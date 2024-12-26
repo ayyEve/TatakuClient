@@ -107,6 +107,10 @@ impl OsuCursor {
         }
     }
 
+    pub fn init(&self, actions: &mut ActionQueue) {
+        actions.push(WindowAction::AddEmitter(self.left_emitter.get_ref()));
+        actions.push(WindowAction::AddEmitter(self.right_emitter.get_ref()));
+    }
 
     fn add_ripple(&mut self) {
         let mut group = TransformGroup::new(self.pos).alpha(0.0).border_alpha(1.0);
@@ -198,7 +202,7 @@ impl CustomCursor for OsuCursor {
         self.pos = pos;
     }
 
-    async fn update(&mut self, _time: f32, settings: &Settings) {
+    async fn update(&mut self, _time: f32, _settings: &Settings) {
         let time = self.time.as_millis();
 
         if self.emitter_enabled {
@@ -237,7 +241,7 @@ impl CustomCursor for OsuCursor {
         // check if we should add a new trail
         let is_solid_trail = self.cursor_middle_image.is_some();
 
-        if let Some(trail) = self.cursor_trail_image.as_ref().filter(|_|self.last_pos != self.pos) {
+        if let Some(trail) = self.cursor_trail_image.as_ref().filter(|_| self.last_pos != self.pos) {
             let scale = Vector2::ONE * self.settings.cursor_scale;
 
             if is_solid_trail {

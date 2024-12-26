@@ -2,15 +2,15 @@ use crate::prelude::*;
 
 pub struct UploadScreenshotTask {
     state: TatakuTaskState,
-    screenshot_path: String,
+    data: ScreenshotData,
 
     task: Option<AsyncLoader<Result<String, Notification>>>,
 }
 impl UploadScreenshotTask {
-    pub fn new(screenshot_path: String) -> Self {
+    pub fn new(data: impl Into<ScreenshotData>) -> Self {
         Self {
             state: TatakuTaskState::NotStarted,
-            screenshot_path,
+            data: data.into(),
             task: None
         }
     }
@@ -19,12 +19,16 @@ impl UploadScreenshotTask {
         score_url: String, 
         username: String, 
         password: String,
-        screenshot_path: String,
+        data: ScreenshotData,
     ) -> Result<String, Notification> {
         let url = format!("{score_url}/screenshots?username={username}&password={password}");
 
-        let data = Io::read_file_async(screenshot_path).await
-            .map_err(|e| Notification::new_error("Error loading screenshot to send to server", e))?;
+        let data = match data {
+            ScreenshotData::Raw(data) => data,
+            ScreenshotData::Path(path) => Io::read_file_async(path)
+                .await
+                .map_err(|e| Notification::new_error("Error loading screenshot to send to server", e))?,
+        };
 
         let r = reqwest::Client::new().post(url).body(data).send().await
             .map_err(|e| Notification::new_error("Error sending screenshot request", e.to_string()))?;
@@ -42,7 +46,7 @@ impl UploadScreenshotTask {
 
 #[async_trait]
 impl TatakuTask for UploadScreenshotTask {
-    fn get_name(&self) -> Cow<'static, str> { Cow::Borrowed("Upload Screentho") }
+    fn get_name(&self) -> Cow<'static, str> { Cow::Borrowed("Upload Screenshot") }
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Once }
     fn get_state(&self) -> TatakuTaskState { self.state }
 
@@ -54,12 +58,13 @@ impl TatakuTask for UploadScreenshotTask {
                 "Uploading screenshot...", Color::YELLOW, 5000.0
             )));
 
+            let data = self.data.clone();
             let settings = values.reflect_get::<Settings>("settings").unwrap();
             self.task = Some(AsyncLoader::new(Self::upload(
                 settings.score_url.clone(),
                 settings.username.clone(),
                 settings.password.clone(),
-                self.screenshot_path.clone(),
+                data,
             )));
 
             return;
@@ -81,5 +86,21 @@ impl TatakuTask for UploadScreenshotTask {
         }
 
         self.state = TatakuTaskState::Complete;
+    }
+}
+
+#[derive(Clone)]
+pub enum ScreenshotData {
+    Raw(Vec<u8>),
+    Path(String),
+}
+impl From<String> for ScreenshotData {
+    fn from(value: String) -> Self {
+        Self::Path(value)
+    }
+}
+impl From<Vec<u8>> for ScreenshotData {
+    fn from(value: Vec<u8>) -> Self {
+        Self::Raw(value)
     }
 }

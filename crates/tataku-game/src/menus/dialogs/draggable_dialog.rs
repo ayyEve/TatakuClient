@@ -57,6 +57,7 @@ impl Dialog for DraggableDialog {
             ;
         )
     }
+    
     async fn handle_message(&mut self, message: Message, values: &mut dyn Reflect) { 
         if let Some(tag) = message.tag.clone().as_string() {
             if tag == "close_dialog" {
@@ -251,5 +252,3 @@ impl From<Vector2> for DraggablePosition {
         Self::Custom(value)
     }
 }
-
-

@@ -15,6 +15,7 @@ impl<T: Reflect + Clone + PartialEq> SyValueHelper<T> {
 
     pub fn update(&mut self, values: &dyn Reflect) -> Result<Option<&T>, ReflectError<'_>> {
         let value = values.reflect_get::<T>(&self.key)?;
+        let value = &*value;
         if Some(value) == self.value.as_ref() { return Ok(None) }
 
         self.value = Some(value.clone());

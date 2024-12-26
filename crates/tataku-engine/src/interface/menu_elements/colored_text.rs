@@ -4,7 +4,7 @@ pub trait SetColor {
     fn color(self, color: Color) -> Self;
 }
 
-impl<'a> SetColor for iced::widget::Text<'a, iced::Theme, IcedRenderer> {
+impl SetColor for iced::widget::Text<'_, iced::Theme, IcedRenderer> {
     fn color(self, color: Color) -> Self {
         let style = iced::widget::text::Style {
             color: Some(iced::Color::new(color.r, color.g, color.b, color.a)),

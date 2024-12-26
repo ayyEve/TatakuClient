@@ -10,7 +10,7 @@ use wgpu::{
 use std::{collections::HashMap, sync::mpsc::{sync_channel, Receiver, SyncSender}};
 
 pub struct ParticleSystem {
-    emitters: Vec<Box<dyn EmitterReference>>,
+    emitters: Vec<EmitterReference>,
     last_update: Instant,
 
     pipeline: wgpu::ComputePipeline,
@@ -70,7 +70,7 @@ impl ParticleSystem {
             available_buffers: Vec::new(),
         }
     }
-    pub fn add(&mut self, emitter: Box<dyn EmitterReference>) {
+    pub fn add(&mut self, emitter: EmitterReference) {
         self.emitters.push(emitter);
     }
 
@@ -109,11 +109,13 @@ impl ParticleSystem {
             .emitters
             .iter()
             .enumerate()
-            .map(|(n, i)| (n, i.get_pool()))
+            .map(|(n, i)| (n, i.pool.upgrade()))
             .collect::<HashMap<_,_>>();
 
         for particle in particles {
             let Some(Some(pool)) = emitters.get_mut(&(particle.emitter_index as usize)) else { continue };
+
+            let mut pool = pool.write();
             if particle.lifetime <= 0.0 { pool.remove(particle.particle_index as usize); continue }
 
             let Some(cpu_p) = pool.get(particle.particle_index as usize) else { continue };
@@ -142,8 +144,9 @@ impl ParticleSystem {
         let mut emitters = std::mem::take(&mut self.emitters);
         let mut emitter_index = 0;
         emitters.retain(|emitter| {
-            let info = emitter.get_info().into();
-            let Some(pool) = emitter.get_pool() else { return false };
+            let info = emitter.info.into();
+            let Some(pool) = emitter.pool.upgrade() else { return false };
+            let pool = pool.read();
 
             if self.cpu_particle_buffer.len() as u64 + 1 >= SIZE {
                 self.next_buffer(device, queue, delta);

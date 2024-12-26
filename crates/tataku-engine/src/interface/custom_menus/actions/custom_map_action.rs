@@ -57,7 +57,7 @@ impl CustomMenuMapAction {
             Self::SetPlaymode(CustomEventValueType::Value(v)) => Some(BeatmapAction::SetPlaymode(v.string_maybe()?.clone())),
             Self::SetPlaymode(CustomEventValueType::Variable(var)) => {
                 let val = values.reflect_get::<String>(&var).ok()?;
-                Some(BeatmapAction::SetPlaymode(val.clone()))
+                Some(BeatmapAction::SetPlaymode((*val).clone()))
             },
             Self::SetPlaymode(CustomEventValueType::PassedIn) => {
                 let val = passed_in?.string_maybe()?.clone();

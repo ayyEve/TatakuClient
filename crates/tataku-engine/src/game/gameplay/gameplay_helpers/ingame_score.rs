@@ -4,6 +4,12 @@ use crate::prelude::*;
 #[derive(Clone, Debug, Default)]
 #[derive(Reflect)]
 pub struct IngameScore {
+    /// internal id used for score lists
+    pub id: usize,
+
+    // short mods list string
+    
+    #[reflect(flatten)]
     pub score: Score,
 
     pub health: f32,
@@ -21,6 +27,7 @@ pub struct IngameScore {
 impl IngameScore {
     pub fn new(score: Score, is_current: bool, is_previous: bool) -> Self {
         Self {
+            id: 0,
             score, 
             health: 1.0,
             is_current,

@@ -197,7 +197,7 @@ pub enum CustomMultiplayerSlotAction {
     /// Show the user profile for a slot
     ShowSlotProfile,
 
-    ///
+    /// 
     MoveToSlot,
 
     /// 

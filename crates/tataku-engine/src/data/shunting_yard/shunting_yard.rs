@@ -99,7 +99,30 @@ impl ShuntingYard {
                         "sin" => stack.push(MathFunction::Sin.run(n)?),
                         "cos" => stack.push(MathFunction::Cos.run(n)?),
                         "tan" => stack.push(MathFunction::Tan.run(n)?),
-                        "display" => stack.push(Cow::Owned(TatakuVariable::new_any(n.get_display()))),
+
+
+                        "display" => {
+                            let str = match &n.value {
+                                TatakuValue::None => "None".to_owned(),
+                                TatakuValue::F32(n) => format_float(n, 2),
+                                TatakuValue::U32(n) => format_number(*n),
+                                TatakuValue::U64(n) => format_number(*n),
+                                TatakuValue::Bool(b) => format!("{b}"),
+                                TatakuValue::String(s) => s.clone(),
+                                TatakuValue::Reflect(_reflect) => "?".to_owned(),
+                                // TODO: this is shit
+                                TatakuValue::List(vec) => vec.iter().map(|i| i.as_string()).collect::<Vec<_>>().join(", "),
+                                TatakuValue::Map(_hash_map) => "some map or smth".to_owned(),
+                            };
+
+                            stack.push(Cow::Owned(TatakuVariable::new_any(str)));
+                            // stack.push(Cow::Owned(TatakuVariable::new_any(n.get_display())));
+                        }
+                        
+
+                        
+                        "is_empty" => stack.push(Cow::Owned(TatakuVariable::new_any(n.is_empty()))),
+                        "len"|"length" => stack.push(Cow::Owned(TatakuVariable::new_any(n.get_length() as u64))),
 
                         other => return Err(ShuntingYardError::InvalidFunction(other.to_string())),
                     }

@@ -116,7 +116,7 @@ pub struct FlashlightReserveData<'a> {
     pub idx_offset: u64,
     pub flashlight_index: u32
 }
-impl<'a> FlashlightReserveData<'a> {
+impl FlashlightReserveData<'_> {
     pub fn copy_in(&mut self, vtx: &[FlashlightVertex], flashlight_data: FlashlightData) {
         let offset = self.idx_offset as u32;
         let idx:&[u32] = &[

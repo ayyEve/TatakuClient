@@ -53,7 +53,7 @@ pub fn vsync_reader<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result
     use Vsync::*;
 
     struct VsyncReader;
-    impl<'de> Visitor<'de> for VsyncReader {
+    impl Visitor<'_> for VsyncReader {
         type Value = Vsync;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

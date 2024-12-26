@@ -11,9 +11,8 @@ use iced::advanced::graphics::core::{
     widget::operation::Operation,
     widget::tree::Tree,
     
-    Clipboard, Layout, Length, Point,
+    Clipboard, Layout, Length, 
     Rectangle, Shell, Padding, Pixels,
-    Alignment
 };
 use iced_core::layout::padded;
 
@@ -66,7 +65,9 @@ impl ContentBackground {
     
     /// set this content's background image
     pub fn image(mut self, mut image: Option<Image>) -> Self {
-        image.as_mut().map(|i| i.origin = Vector2::ZERO);
+        if let Some(i) = &mut image {
+            i.origin = Vector2::ZERO
+        }
         self.image = image;
         self
     }
@@ -164,7 +165,7 @@ impl iced::advanced::Widget<Message, iced::Theme, IcedRenderer> for ContentBackg
         tree: &mut Tree,
         layout: Layout<'_>,
         renderer: &IcedRenderer,
-        operation: &mut dyn Operation<Message>,
+        operation: &mut dyn Operation,
     ) {
         operation.container(None, layout.bounds(), &mut |operation| {
             self.content.as_widget().operate(

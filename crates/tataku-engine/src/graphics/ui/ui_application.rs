@@ -8,6 +8,7 @@ pub struct UiApplication {
     pub dialog_manager: DialogManager,
 }
 impl UiApplication {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             menu: Box::new(EmptyMenu::new()),
@@ -42,10 +43,10 @@ impl UiApplication {
             width = Fill,
             height = Fill
         ))
-            .width(Fill)
-            .height(Fill)
-            .center_x()
-            .center_y()
+            // .width(Fill)
+            // .height(Fill)
+            .center_x(Fill)
+            .center_y(Fill)
             .into_element()
     }
 

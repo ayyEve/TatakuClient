@@ -5,6 +5,7 @@ const SPECTATOR_ITEM_SIZE:Vector2 = Vector2::new(100.0, 40.0);
 const PADDING:f32 = 4.0;
 
 
+#[derive(Default)]
 pub struct SpectatorsElement {
     spectators: SpectatorList
 }

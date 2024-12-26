@@ -81,7 +81,7 @@ pub struct VertexReserveData<'a> {
     pub idx: &'a mut [u32],
     pub idx_offset: u64,
 }
-impl<'a> VertexReserveData<'a> {
+impl VertexReserveData<'_> {
     pub fn copy_in(&mut self, vtx: &[Vertex], idx: &[u32]) {
         self.vtx.copy_from_slice(vtx);
         self.idx.copy_from_slice(idx);

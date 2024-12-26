@@ -13,7 +13,13 @@ pub struct ManiaPlayfield {
     column_origin: Arc<AtomicU32>,
 }
 impl ManiaPlayfield {
-    pub fn new(mut settings: ManiaPlayfieldSettings, bounds: Bounds, col_count: u8, skin_hit_pos: f32) -> Self {
+    pub fn new(
+        mut settings: ManiaPlayfieldSettings, 
+        bounds: Bounds, 
+        col_count: u8, 
+        skin_hit_pos: f32
+    ) -> Self {
+
         let window_size = WindowSize::get().0;
         let total_width = col_count as f32 * settings.column_width;
 

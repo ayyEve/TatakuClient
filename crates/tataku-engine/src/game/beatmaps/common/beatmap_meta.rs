@@ -23,7 +23,7 @@ pub struct BeatmapMeta {
     pub audio_filename: String,
     #[reflect(alias("image_path"))]
     pub image_filename: String,
-    #[reflect(alias("preview"))]
+    #[reflect(alias("preview", "preview_time"))]
     pub audio_preview: f32,
 
     pub duration: f32, // time in ms from first note to last note
@@ -36,7 +36,7 @@ pub struct BeatmapMeta {
     pub bpm_max: f32,
 }
 impl BeatmapMeta {
-    pub fn new(file_path:String, beatmap_hash:Md5Hash, beatmap_type:BeatmapType) -> BeatmapMeta {
+    pub fn new(file_path: String, beatmap_hash: Md5Hash, beatmap_type: BeatmapType) -> BeatmapMeta {
         let unknown = "Unknown".to_owned();
 
         BeatmapMeta {
@@ -89,10 +89,10 @@ impl BeatmapMeta {
 
 // getter helpers
 impl BeatmapMeta {
-    pub fn mins(&self, speed:f32) -> f32 {
+    pub fn mins(&self, speed: f32) -> f32 {
         ((self.duration / speed) / 60000.0).floor() 
     }
-    pub fn secs(&self, speed:f32) -> f32 {
+    pub fn secs(&self, speed: f32) -> f32 {
         let mins = self.mins(speed);
         let remaining_ms = (self.duration / speed) - mins * 60000.0;
         (remaining_ms / 1000.0).floor()

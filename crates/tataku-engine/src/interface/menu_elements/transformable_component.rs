@@ -2,6 +2,8 @@ use crate::prelude::*;
 
 pub type ContentFn = Box<dyn Fn(&TransformGroup) -> IcedElement>;
 
+
+#[derive(Default)]
 pub struct TransformableComponent {
     /// we let a TransformGroup handle the transforms to avoid duplicating code
     manager: TransformManager,
@@ -57,7 +59,7 @@ impl iced::advanced::Widget<Message, iced::Theme, IcedRenderer> for Transformabl
         state: &mut iced_core::widget::Tree,
         layout: iced_core::Layout<'_>,
         renderer: &IcedRenderer,
-        operation: &mut dyn iced_core::widget::Operation<Message>,
+        operation: &mut dyn iced_core::widget::Operation,
     ) {
         operation.container(None, layout.bounds(), &mut |operation| {
             self.content.as_widget().operate(

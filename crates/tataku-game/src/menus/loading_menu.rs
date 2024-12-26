@@ -35,12 +35,17 @@ impl LoadingMenu {
             let status = Arc::new(RwLock::new(LoadingStatus::new(LoadingStage::Beatmaps)));
             self.actions.push(TaskAction::AddTask(Box::new(LoadBeatmapsTask::new(status.clone()))));
             self.statuses.push(status);
+
+            
+            // let status = Arc::new(RwLock::new(LoadingStatus::new(LoadingStage::Beatmaps)));
+            // self.actions.push(TaskAction::AddTask(Box::new(CheckBeatmapFoldersTask::new(status.clone()))));
+            // self.statuses.push(status);
         }
 
         // init integrations
         {
             let settings = settings.clone();
-            let status = Arc::new(RwLock::new(LoadingStatus::new(LoadingStage::Beatmaps)));
+            let status = Arc::new(RwLock::new(LoadingStatus::new(LoadingStage::Integrations)));
             tokio::spawn(Self::init_integrations(status.clone(), settings));
             self.statuses.push(status);
         }
@@ -239,7 +244,7 @@ impl AsyncMenu for LoadingMenu {
             
             width = Fill,
             height = Fill,
-            align_items = Alignment::Center
+            align_y = Alignment::Center
         )
     }
     

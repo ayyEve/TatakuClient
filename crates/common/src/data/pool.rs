@@ -56,8 +56,8 @@ impl<T> Pool<T> {
 
     /// resets the pool, removing all used entries
     pub fn clear(&mut self) {
-        let to_remove = self.iter_used().map(|p|p.get_index()).collect::<Vec<_>>();
-        to_remove.into_iter().for_each(|p|self.remove(p));
+        let to_remove = self.iter_used().map(|p| p.get_index()).collect::<Vec<_>>();
+        to_remove.into_iter().for_each(|p| self.remove(p));
     }
 }
 impl<T:Clone> Pool<T> {

@@ -101,6 +101,13 @@ impl Chat {
     }
 }
 
+impl Default for Chat {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+
 #[async_trait]
 impl Dialog for Chat {
     fn name(&self) -> &'static str { "chat_dialog" }

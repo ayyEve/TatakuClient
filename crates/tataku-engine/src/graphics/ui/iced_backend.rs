@@ -210,12 +210,12 @@ impl iced::advanced::text::Paragraph for IcedParagraph {
         self.bounds = new_bounds;
     }
 
-    fn compare(&self, text: iced_core::Text<&str, Self::Font>) -> iced_core::text::Difference {
-        if text.content != self.text_raw
-        || (text.horizontal_alignment, text.vertical_alignment) != self.alignment
+    fn compare(&self, text: iced_core::Text<(), Self::Font>) -> iced_core::text::Difference {
+        if (text.horizontal_alignment, text.vertical_alignment) != self.alignment
         || text.font != self.font
         || text.size != self.font_size
         || text.line_height != self.line_height
+        // || text.content != self.text_raw
         {
             return iced_core::text::Difference::Shape;
         }
@@ -295,6 +295,38 @@ impl iced::advanced::text::Paragraph for IcedParagraph {
             self.line_height.to_absolute(self.font_size).0 * (line as f32)
         ))
     }
+    
+    fn with_spans<Link>(
+        text: iced_core::Text<&[iced_core::text::Span<'_, Link, Self::Font>], Self::Font>,
+    ) -> Self {
+        let a = text.content
+            .iter()
+            .map(|a| a.text.clone().into_owned())
+            .collect::<Vec<_>>()
+            .join("");
+
+        Self::with_text(iced_core::Text {
+            content: &a,
+            bounds: text.bounds,
+            size: text.size,
+            line_height: text.line_height,
+            font: text.font,
+            horizontal_alignment: text.horizontal_alignment,
+            vertical_alignment: text.vertical_alignment,
+            shaping: text.shaping,
+            wrapping: text.wrapping,
+        })
+    }
+    
+    // TODO!
+    fn hit_span(&self, _point: iced::Point) -> Option<usize> {
+        None
+    }
+    
+    // TODO!
+    fn span_bounds(&self, _index: usize) -> Vec<iced::Rectangle> {
+        vec![iced::Rectangle::new(iced::Point::default(), self.bounds)]
+    }
 }
 impl Default for IcedParagraph {
     fn default() -> Self {
@@ -358,6 +390,7 @@ impl iced::advanced::text::Editor for IcedEditor {
         _new_font: Self::Font,
         _new_size: iced::Pixels,
         _new_line_height: iced_core::text::LineHeight,
+        _new_wrapping: iced_core::text::Wrapping,
         _new_highlighter: &mut impl iced_core::text::Highlighter,
     ) {
         self.bounds = new_bounds;
@@ -369,4 +402,8 @@ impl iced::advanced::text::Editor for IcedEditor {
         _highlighter: &mut H,
         _format_highlight: impl Fn(&H::Highlight) -> iced_core::text::highlighter::Format<Self::Font>,
     ) { }
+    
+    fn is_empty(&self) -> bool {
+        true
+    }
 }

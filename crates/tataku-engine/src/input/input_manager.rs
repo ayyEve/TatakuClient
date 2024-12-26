@@ -2,6 +2,7 @@ use gilrs::PowerInfo;
 
 use crate::prelude::*;
 
+#[derive(Default)]
 pub struct InputManager {
     pub mouse_pos: Vector2,
     pub scroll_delta: f32,
@@ -43,51 +44,25 @@ pub struct InputManager {
 }
 
 impl InputManager {
-    pub fn new() -> InputManager {
-        InputManager {
-            mouse_pos: Vector2::ZERO,
-            scroll_delta: 0.0,
-            mouse_moved: false,
-            register_times: Vec::new(),
-
-            mouse_buttons: HashSet::new(),
-            mouse_down: HashSet::new(),
-            mouse_up: HashSet::new(),
-
-            keys: HashSet::new(),
-            keys_down: HashSet::new(),
-            keys_up:  HashSet::new(),
-
-            
-            controller_info: HashMap::new(),
-            controller_buttons: HashMap::new(),
-            controller_down: HashMap::new(),
-            controller_up: HashMap::new(),
-            controller_axis: HashMap::new(),
-
-
-            text_cache: String::new(),
-            window_change_focus: None,
-
-            double_tap_protection: None,
-            last_key_press: HashMap::new(),
-        }
+    pub fn new() -> Self {
+        Self::default()
     }
 
     
     fn verify_controller_index_exists(&mut self, id: GamepadId, name: Arc<String>, power_info: PowerInfo) {
-        if !self.controller_info.contains_key(&id) {
-            // window.joystick_deadzone = 0.01;
-            debug!("New controller: {}", name);
-            self.controller_info.insert(id, GamepadInfo {
-                id,
-                name,
-                power_info,
-                connected: true,
-            });
-        } else {
+        if self.controller_info.contains_key(&id) {
             return;
         }
+
+        // window.joystick_deadzone = 0.01;
+        debug!("New controller: {}", name);
+        self.controller_info.insert(id, GamepadInfo {
+            id,
+            name,
+            power_info,
+            connected: true,
+        });
+        
 
         self.controller_buttons.insert(id, HashSet::new());
         self.controller_down.insert(id, HashSet::new());

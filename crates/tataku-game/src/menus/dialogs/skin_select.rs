@@ -69,10 +69,10 @@ impl Dialog for SkinSelect {
 
     fn view(&self, values: &mut dyn Reflect) -> IcedElement {
         use iced_elements::*;
-        let current_skin = values.reflect_get::<String>("settings.current_skin").unwrap().clone();
+        let current_skin = values.reflect_get::<String>("settings.current_skin").unwrap().deref().clone();
         
         let owner = MessageOwner::new_dialog(self);
-        Dropdown::new(AVAILABLE_SKINS.read().clone(), Some(current_skin), move|s|Message::new(owner, "selected_skin", MessageType::Dropdown(s)))
+        Dropdown::new(AVAILABLE_SKINS.read().clone(), Some(current_skin), move|s| Message::new(owner, "selected_skin", MessageType::Dropdown(s)))
         .into_element()
     }
 

@@ -61,7 +61,7 @@ impl SongManager {
                 let song = AudioManager::load_song(&path)?;
 
                 // stop the current audio
-                self.current_song.ok_do(|s| s.instance.stop());
+                self.current_song.as_ref().map(|s| s.instance.stop());
                 
                 // apply params
                 Self::apply_params(&song, params);
@@ -86,7 +86,7 @@ impl SongManager {
                 let song = AudioManager::load_song_raw(data)?;
 
                 // stop the current audio
-                self.current_song.ok_do(|s| s.instance.stop());
+                self.current_song.as_ref().map(|s| s.instance.stop());
 
                 // apply params
                 Self::apply_params(&song, params);

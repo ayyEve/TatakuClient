@@ -116,7 +116,7 @@ impl Dialog for SettingsMenu {
                     sc.properties.into_iter()
                         .zip(sc.values)
                         .map(|(p,v)| 
-                            row!(p, v; align_items = Alignment::Center, spacing = 5.0))
+                            row!(p, v; align_y = Alignment::Center, spacing = 5.0))
                         .collect()
                 )
                 .spacing(5.0)

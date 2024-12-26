@@ -16,7 +16,7 @@ pub struct Color {
 #[allow(dead_code)]
 impl Color {
     #[inline]
-    pub const fn new(r:f32, g:f32, b:f32, a:f32) -> Self {Self{r, g, b, a}}
+    pub const fn new(r:f32, g:f32, b:f32, a:f32) -> Self { Self{r, g, b, a} }
 
     pub fn alpha(mut self, a:f32) -> Color {
         self.a = a;
@@ -86,13 +86,21 @@ impl Color {
         }
     }
 
-    #[inline(always)]
-    pub fn from_rgb8(r:u8, g:u8, b:u8) -> Color {
+    pub const fn from_rgb8(r:u8, g:u8, b:u8) -> Color {
         Color::new(
             r as f32 / 255.0,
             g as f32 / 255.0,
             b as f32 / 255.0,
             1.0
+        )
+    }
+    
+    pub const fn from_rgba8(r: u8, g: u8, b: u8, a: u8) -> Color {
+        Color::new(
+            r as f32 / 255.0,
+            g as f32 / 255.0,
+            b as f32 / 255.0,
+            a as f32 / 255.0,
         )
     }
 

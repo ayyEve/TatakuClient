@@ -72,7 +72,7 @@ impl TatakuTask for DiffCalcTask {
                 let settings = values.reflect_get("settings").unwrap();
 
                 // otherwise, try to get the diff calc
-                match self.info.create_diffcalc(&self.beatmap, settings).await {
+                match self.info.create_diffcalc(&self.beatmap, &settings).await {
                     Ok(c) => self.diff_calc = Some(c),
                     Err(e) => {
                         error!("couldnt get calc: {e}");
@@ -83,7 +83,18 @@ impl TatakuTask for DiffCalcTask {
                 }
             }
             
-            let diff = self.diff_calc.as_mut().unwrap().calc(&mods).await.unwrap_or_default().diff.normal_or(0.0);
+            let mut diff = self
+                .diff_calc
+                .as_mut()
+                .unwrap()
+                .calc(&mods)
+                .await
+                .unwrap_or_default()
+                .diff;
+            
+            if !diff.is_normal() {
+                diff = 0.0
+            }
             
             #[cfg(feature="debug_perf_rating")]
             info!("[calc] {diff_key:?} -> {diff}");

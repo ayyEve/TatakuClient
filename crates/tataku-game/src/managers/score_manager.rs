@@ -6,7 +6,8 @@ use tokio::task::AbortHandle;
 #[derive(Debug, Clone)]
 pub struct ScoreManager {
     pub scores: Vec<IngameScore>,
-    pub loaded: bool,
+    // pub loaded: bool,
+
     #[reflect(skip)]
     pub infos: GamemodeInfos,
 
@@ -30,14 +31,14 @@ impl ScoreManager {
     pub fn new(infos: GamemodeInfos) -> Self {
         Self {
             scores: Vec::new(),
-            loaded: false,
+            // loaded: false,
             infos,
 
             current_loader: None,
             abort_handle: None,
             force_update: false,
 
-            beatmap: SyValueHelper::new("beatmaps.current_beatmap.map.beatmap_hash"),
+            beatmap: SyValueHelper::new("beatmaps.current.map.hash"),
             playmode: SyValueHelper::new("global.playmode_actual"),
             score_method: SyValueHelper::new("settings.score_method"),
             mods: SyValueHelper::new("global.mods"),
@@ -202,8 +203,10 @@ impl ScoreManager {
 
             // clear scores and update values
             self.scores.clear();
-            self.loaded = false;
-
+            // self.loaded = false;
+            values.score_list.scores.clear();
+            values.score_list.loaded = false;
+            
             // and then get new scores
             if let Err(e) = self.get_scores(values).await {
                 warn!("error getting scores: {e}");
@@ -214,10 +217,18 @@ impl ScoreManager {
             if let Ok(loader) = loader.try_read() {
                 if !loader.done { return } 
 
-                self.scores = loader.scores.clone();
+                let mut scores = loader.scores.clone();
+                scores
+                    .iter_mut()
+                    .enumerate()
+                    .for_each(|(n, s)| s.id = n);
+
                 self.current_loader = None;
                 self.abort_handle = None;
-                self.loaded = true;
+                self.scores = scores.clone();
+                values.score_list.scores = scores;
+                values.score_list.loaded = true;
+                info!("scores loaded: {:?}", self.scores);
             }
         }
 
