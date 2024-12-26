@@ -8,7 +8,7 @@ use tataku_engine::prelude::{
     TatakuResult,
     AudioError,
     AudioInstance,
-    FFTData
+    FFTEntry
 };
 
 
@@ -129,12 +129,13 @@ impl AudioInstance for SampleChannelInstance {
         self.data_mut().set_vol(vol);
     }
 
-    fn get_data(&self) -> Vec<FFTData> {
+    fn get_data(&self) -> Vec<FFTEntry> {
         self.data().channel
-        .get_data(DataType::FFT2048, 1024u32).unwrap_or_default()
-        .into_iter()
-        .map(FFTData::AmplitudeOnly)
-        .collect()
+            .get_data(DataType::FFT2048, 1024u32)
+            .unwrap_or_default()
+            .into_iter()
+            .map(FFTEntry::AmplitudeOnly)
+            .collect()
     }
 
     fn get_duration(&self) -> f32 {
@@ -185,10 +186,10 @@ impl AudioInstance for StreamChannelInstance {
         let _ = self.0.set_volume(vol);
     }
 
-    fn get_data(&self) -> Vec<FFTData> {
+    fn get_data(&self) -> Vec<FFTEntry> {
         self.0.get_data(DataType::FFT2048, 1024u32).unwrap_or_default()
         .into_iter()
-        .map(FFTData::AmplitudeOnly)
+        .map(FFTEntry::AmplitudeOnly)
         .collect()
     }
 

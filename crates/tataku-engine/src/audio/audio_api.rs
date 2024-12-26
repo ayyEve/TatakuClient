@@ -40,7 +40,7 @@ pub trait AudioInstance: Send + Sync {
     fn set_volume(&self, vol: f32);
     fn set_rate(&self, rate: f32);
 
-    fn get_data(&self) -> Vec<FFTData>;
+    fn get_data(&self) -> Vec<FFTEntry>;
 
     fn get_duration(&self) -> f32;
 
@@ -68,36 +68,36 @@ pub enum AudioState {
 }
 
 
-#[derive(Copy, Clone)]
-pub enum FFTData {
+#[derive(Copy, Clone, Debug)]
+pub enum FFTEntry {
     AmplitudeOnly(f32),
     AmplitudeAndFrequency(f32, f32)
 }
-impl FFTData {
+impl FFTEntry {
     pub fn amplitude(self) -> f32 {
         match self {
-            FFTData::AmplitudeOnly(a) => a,
-            FFTData::AmplitudeAndFrequency(_, a) => a,
+            FFTEntry::AmplitudeOnly(a) => a,
+            FFTEntry::AmplitudeAndFrequency(_, a) => a,
         }
     }
     pub fn set_amplitude(&mut self, na: f32) {
         match self {
-            FFTData::AmplitudeOnly(a) => *a = na,
-            FFTData::AmplitudeAndFrequency(_, a) => *a = na,
+            FFTEntry::AmplitudeOnly(a) => *a = na,
+            FFTEntry::AmplitudeAndFrequency(_, a) => *a = na,
         }
     }
 }
-impl From<f32> for FFTData {
+impl From<f32> for FFTEntry {
     fn from(a: f32) -> Self {
         Self::AmplitudeOnly(a)
     }
 }
-impl From<(f32, f32)> for FFTData {
+impl From<(f32, f32)> for FFTEntry {
     fn from((f, a): (f32, f32)) -> Self {
         Self::AmplitudeAndFrequency(f, a)
     }
 }
-impl Default for FFTData {
+impl Default for FFTEntry {
     fn default() -> Self {
         Self::AmplitudeAndFrequency(0.0, 0.0)
     }

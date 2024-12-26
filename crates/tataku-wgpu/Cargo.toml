@@ -21,6 +21,5 @@ cgmath = { workspace = true }
 
 # wgpu
 bytemuck = { workspace = true }
-wgpu = { version = "0.20.1" }
+wgpu = { workspace = true }
 lyon_tessellation = { workspace = true }
-

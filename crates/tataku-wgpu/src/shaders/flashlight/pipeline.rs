@@ -42,15 +42,16 @@ pub fn create_flashlight_pipeline(
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("Flashlight Pipeline"),
         layout: Some(&pipeline_layout),
+        cache: None,
         vertex: wgpu::VertexState {
             module: &shader,
-            entry_point: "flashlight_vs_main",
+            entry_point: Some("flashlight_vs_main"),
             buffers: &[ FlashlightVertex::desc() ],
             compilation_options: wgpu::PipelineCompilationOptions::default(),
         },
         fragment: Some(wgpu::FragmentState {
             module: &shader,
-            entry_point: "flashlight_fs_main",
+            entry_point: Some("flashlight_fs_main"),
             targets: &[Some(wgpu::ColorTargetState {
                 format: config.format,
                 blend: Some(WgpuEngine::map_blend_mode(BlendMode::AlphaBlending)),

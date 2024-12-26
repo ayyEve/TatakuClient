@@ -28,7 +28,7 @@ impl ElementDef {
                 
                 if let Some(vis) = visualization {
                     match &**vis {
-                        "menu_visualization" => gameplay.visualization = Some(Box::new(MenuVisualization::new().await)),
+                        "menu_visualization" => gameplay.visualization = Some(MenuVisualization::new().await),
                         _ => warn!("Unknown gameplay visualization: {vis}"),
                     }
                 }

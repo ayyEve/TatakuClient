@@ -8,6 +8,8 @@ pub const FIELD_SIZE:Vector2 = Vector2::new(512.0, 384.0); // 4:3
 
 #[derive(Copy, Clone)]
 pub struct ScalingHelper {
+    pub matrix: Matrix,
+
     /// scale setting in settings
     pub settings_scale: f32,
     /// playfield offset in settings
@@ -50,7 +52,7 @@ impl ScalingHelper {
         Self::new_offset_scale_custom_size(cs, window_size, settings_offset, settings_scale, flip_vertical, FIELD_SIZE)
     }
 
-    pub fn new_offset_scale_custom_size(cs:f32, window_size: Vector2, settings_offset: Vector2, settings_scale: f32, flip_vertical: bool, playfield_size: Vector2) -> Self {
+    pub fn new_offset_scale_custom_size(cs: f32, window_size: Vector2, settings_offset: Vector2, settings_scale: f32, flip_vertical: bool, playfield_size: Vector2) -> Self {
         let circle_size = CIRCLE_RADIUS_BASE;
         let border_size = OSU_NOTE_BORDER_SIZE;
 
@@ -71,7 +73,13 @@ impl ScalingHelper {
             None
         );
 
+        let matrix = Matrix::identity()
+            .trans(settings_offset)
+            .scale(Vector2::ONE * scale)
+            ;
+
         Self {
+            matrix,
             settings_scale,
             settings_offset,
             scale,

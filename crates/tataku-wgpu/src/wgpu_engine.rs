@@ -99,6 +99,7 @@ impl<'window> WgpuEngine<'window> {
                 #[cfg(not(feature="texture_arrays"))]
                 required_features: wgpu::Features::default(),
                 required_limits: wgpu::Limits::default(),
+                memory_hints: wgpu::MemoryHints::Performance,
                 label: None,
             },
             None,
@@ -277,15 +278,16 @@ impl<'window> WgpuEngine<'window> {
             let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: Some(&format!("{blend_mode:?} Pipeline")),
                 layout: Some(&render_pipeline_layout),
+                cache: None,
                 vertex: wgpu::VertexState {
                     module: &shader,
-                    entry_point: "vs_main",
+                    entry_point: Some("vs_main"),
                     buffers: &[ Vertex::desc() ],
                     compilation_options: PipelineCompilationOptions::default(),
                 },
                 fragment: Some(wgpu::FragmentState {
                     module: &shader,
-                    entry_point: "fs_main",
+                    entry_point: Some("fs_main"),
                     targets: &[Some(wgpu::ColorTargetState {
                         format: config.format,
                         blend: Some(blend_state),

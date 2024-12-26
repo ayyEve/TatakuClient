@@ -80,15 +80,16 @@ pub fn create_slider_pipeline(
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("Slider Pipeline"),
         layout: Some(&slider_pipeline_layout),
+        cache: None,
         vertex: wgpu::VertexState {
             module: &slider_shader,
-            entry_point: "slider_vs_main",
+            entry_point: Some("slider_vs_main"),
             buffers: &[ SliderVertex::desc() ],
             compilation_options: wgpu::PipelineCompilationOptions::default(),
         },
         fragment: Some(wgpu::FragmentState {
             module: &slider_shader,
-            entry_point: "slider_fs_main",
+            entry_point: Some("slider_fs_main"),
             targets: &[Some(wgpu::ColorTargetState {
                 format: config.format,
                 blend: Some(WgpuEngine::map_blend_mode(BlendMode::AlphaBlending)),

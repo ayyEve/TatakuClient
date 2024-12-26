@@ -47,7 +47,8 @@ impl ParticleSystem {
             label: Some("Particle compute pipeline"),
             layout: Some(&pipeline_layout),
             module: &particle_compute_shader,
-            entry_point: "main",
+            entry_point: Some("main"),
+            cache: None,
             compilation_options: wgpu::PipelineCompilationOptions::default(),
         });
 

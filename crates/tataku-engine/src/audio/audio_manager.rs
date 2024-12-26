@@ -51,4 +51,5 @@ impl AudioManager {
     pub fn load(path: impl AsRef<Path>) -> TatakuResult<Arc<dyn AudioInstance>> {
         CURRENT_API.read().load_sample_path(path.as_ref())
     }
+
 }

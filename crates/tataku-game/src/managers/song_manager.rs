@@ -3,11 +3,69 @@ use crate::prelude::*;
 #[derive(Default)]
 pub struct SongManager {
     song_queue: Vec<SongData>,
-    current_song: Option<SongData>
+    current_song: Option<SongData>,
+
+    fft_hooks: Vec<Weak<FFTHook>>,
 }
 impl SongManager {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    fn play_song(
+        &mut self, 
+        key: String, 
+        mut params: SongPlayData, 
+        load_song: impl FnOnce() -> TatakuResult<Arc<dyn AudioInstance>>
+    ) -> TatakuResult<()> {
+        // check if the key is the same as current
+        if let Some(song) = self.current_song.as_ref().filter(|s| s.id == key) {
+            trace!("Trying to set the same song as current");
+            if params.restart {
+                params.play = true;
+                Self::apply_params(&song.instance, params);
+            }
+
+            return Ok(());
+        }
+
+        // try to load the provided audio
+        let song = load_song()?;
+        // let song = AudioManager::load_song_raw(data)?;
+
+        // stop the current audio
+        if let Some(s) = self.current_song.as_ref() { 
+            s.instance.stop() 
+        }
+
+        // apply params
+        Self::apply_params(&song, params);
+
+        // set our current song to the loaded audio
+        self.current_song = Some(SongData::new(song, key));
+
+        Ok(())
+    }
+
+    fn update_ffts(&mut self) {
+        if self.fft_hooks.is_empty() { return }
+        let Some(song) = &self.current_song else { return };
+        let amp_mult = AudioManager::amplitude_multiplier();
+
+        let data = song.instance.get_data();
+        self.fft_hooks.retain(|h| {
+            let Some(hook) = h.upgrade() else { return false };
+            if let Some(mut a) = hook.try_write() {
+                a.amplitude_multiplier = amp_mult;
+                a.data = data.clone();
+            }
+
+            true
+        });
+    }
+
+    pub fn update(&mut self) {
+        self.update_ffts();
     }
 
     pub fn handle_song_set_action(&mut self, action: SongMenuSetAction) -> TatakuResult {
@@ -38,62 +96,17 @@ impl SongManager {
                 }
             }
 
-
-            SongMenuSetAction::FromFile(path, mut params) => {
-                // make sure the file exists
-                if !Io::exists(&path) {
-                    error!("Song file does not exist! {path}");
-                    return TatakuResult::Err(TatakuError::Audio(AudioError::FileDoesntExist))
-                }
-
-                // check if the file is the same as current
-                if let Some(song) = self.current_song.as_ref().filter(|s|s.id == path) {
-                    trace!("Trying to set the same song as current");
-                    if params.restart {
-                        params.play = true;
-                        Self::apply_params(&song.instance, params);
-                    }
-
-                    return Ok(());
-                }
-
-                // try to load the provided audio
-                let song = AudioManager::load_song(&path)?;
-
-                // stop the current audio
-                self.current_song.as_ref().map(|s| s.instance.stop());
-                
-                // apply params
-                Self::apply_params(&song, params);
-
-                // set our current song to the loaded audio
-                self.current_song = Some(SongData::new(song, path));
-            }
-
-            SongMenuSetAction::FromData(data, key, mut params) => {
-                // check if the key is the same as current
-                if let Some(song) = self.current_song.as_ref().filter(|s|s.id == key) {
-                    trace!("Trying to set the same song as current");
-                    if params.restart {
-                        params.play = true;
-                        Self::apply_params(&song.instance, params);
-                    }
-
-                    return Ok(());
-                }
-
-                // try to load the provided audio
-                let song = AudioManager::load_song_raw(data)?;
-
-                // stop the current audio
-                self.current_song.as_ref().map(|s| s.instance.stop());
-
-                // apply params
-                Self::apply_params(&song, params);
-                
-                // set our current song to the loaded audio
-                self.current_song = Some(SongData::new(song, key));
-            }
+            SongMenuSetAction::FromFile(path, params) => self.play_song(
+                path.clone(), 
+                params, 
+                move || AudioManager::load_song(&path)
+            )?,
+            
+            SongMenuSetAction::FromData(data, key, params) => self.play_song(
+                key, 
+                params, 
+                move || AudioManager::load_song_raw(data)
+            )?,
         }
 
         Ok(())
@@ -102,11 +115,14 @@ impl SongManager {
     fn apply_params(song: &Arc<dyn AudioInstance>, params: SongPlayData) {
         trace!("Using params: {params:?}");
         if params.play { song.play(params.restart) }
-        params.position.map(|pos| song.set_position(pos));
-        params.rate.map(|rate| song.set_rate(rate));
-        params.volume.map(|vol| song.set_volume(vol));
+        if let Some(pos) = params.position { song.set_position(pos) }
+        if let Some(rate) = params.rate { song.set_rate(rate) }
+        if let Some(vol) = params.volume { song.set_volume(vol) }
     }
 
+    pub fn hook_fft(&mut self, hook: Weak<FFTHook>) {
+        self.fft_hooks.push(hook);
+    }
 
     pub fn position(&self) -> f32 {
         let Some(song) = &self.current_song else { return 0.0 };
@@ -135,4 +151,3 @@ impl SongData {
         }
     }
 }
-

@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use super::Visualization;
+// use super::Visualization;
 
 const CUTOFF:f32 = 0.1;
 pub const VISUALIZATION_SIZE_FACTOR:f32 = 1.2;
@@ -15,8 +15,9 @@ lazy_static::lazy_static! {
 
 
 pub struct MenuVisualization {
-    data: Vec<FFTData>,
-    timer: Instant, // external use only
+    actions: ActionQueue,
+    // data: Vec<FFTEntry>,
+    // timer: Instant, // external use only
 
     bar_height: f32,
     rotation: f32,
@@ -39,22 +40,35 @@ pub struct MenuVisualization {
 
     // index to use for bass
     pub index: usize,
+
+    pub vis_data: VisualizationData,
 }
 impl MenuVisualization {
     pub async fn new() -> Self {
-        let window_size = WindowSizeHelper::new();
-        let initial_inner_radius = window_size.y / 6.0;
+        // let window_size = WindowSizeHelper::new();
+        // let initial_inner_radius = window_size.y / 6.0;
+        
+        let vis_data = VisualizationData::new(VisualizationConfig {
+            should_lerp: true,
+            lerp_factor: 10.0
+        });
+        let mut actions = ActionQueue::new();
+        actions.push(SongAction::HookFFT(vis_data.get_hook()));
 
         Self {
+            actions,
+
             rotation: 0.0,
-            data: Vec::new(),
-            timer: Instant::now(),
+            // data: Vec::new(),
+            // timer: Instant::now(),
             other_timer: Instant::now(),
             cookie: None,
 
+            vis_data,
+
             bar_height: 1.0,
             // initial_inner_radius,
-            current_inner_radius: initial_inner_radius,
+            current_inner_radius: 100.0,
 
             // ripple things
             ripples: Vec::new(),
@@ -107,44 +121,42 @@ impl MenuVisualization {
 
     pub fn draw_cookie(&mut self, list: &mut RenderableCollection) {
         let Some(mut cookie) = self.cookie.clone() else { return };
-
-        let pos = self.bounds_center();
-        let inner_radius = self.inner_radius();
-
-        cookie.pos = pos;
+        cookie.pos = self.bounds_center();
         cookie.rotation = self.rotation * 2.0;
         // cookie.set_size(Vector2::ONE * self.initial_inner_radius);
-        cookie.set_size(Vector2::ONE * inner_radius * 2.05);
+        cookie.set_size(Vector2::ONE * self.current_inner_radius * 2.05);
         list.push(cookie);
     }
 
     pub async fn draw_vis(&mut self, list: &mut RenderableCollection) {
         let pos = self.bounds_center();
-        let inner_radius = self.inner_radius();
 
         // draw ripples
-        self.ripples.iter().for_each(|r|list.push(r.clone()));
+        self
+            .ripples
+            .iter()
+            .cloned()
+            .for_each(|r| list.push(r));
 
-        let since_last = self.timer.elapsed().as_secs_f32(); // not ms
-        self.update_data().await;
-        if self.data.len() < 3 { return }
-    
+        // let since_last = self.vis_data.timer.elapsed().as_secs_f32(); // not ms
+        // self.update_data().await;
 
+        let data = &self.vis_data.data;
+        if data.len() < 3 { return }
+
+        let inner_radius = self.inner_radius();
         let min = inner_radius / VISUALIZATION_SIZE_FACTOR;
         let max = inner_radius * VISUALIZATION_SIZE_FACTOR;
-        let val = self.data[self.index].amplitude() / 500.0;
+        let val = data[self.index].amplitude() / 500.0;
         let inner_radius = f32::lerp(min, max, val).clamp(min, max);
-
-        let rotation_increment = 0.2;
-        self.rotation += rotation_increment * since_last;
+        self.current_inner_radius = inner_radius;
 
         // bars
-        let a = (2.0 * PI) / self.data.len() as f32;
-        let n = (2.0 * PI * inner_radius) / self.data.len() as f32 / 2.0;
+        let a = (2.0 * PI) / data.len() as f32;
+        let n = (2.0 * PI * inner_radius) / data.len() as f32 / 2.0;
         const BAR_MULT:f32 = 1.5;
 
-        for i in 1..self.data.len() {
-            let val = self.data[i].amplitude();
+        for (i, val) in data.iter().map(|a| a.amplitude()).enumerate() {
             if val <= CUTOFF { continue }
 
             let factor = (i as f32 + 2.0).log10();
@@ -178,32 +190,32 @@ impl MenuVisualization {
         }
         
     }
-}
 
-#[async_trait]
-impl Visualization for MenuVisualization {
-    fn lerp_factor(&self) -> f32 { 10.0 } // 15
-    fn data(&mut self) -> &mut Vec<FFTData> { &mut self.data }
-    fn timer(&mut self) -> &mut Instant { &mut self.timer }
 
-    async fn draw(&mut self, bounds: Bounds, list: &mut RenderableCollection) {
+    pub async fn draw(&mut self, bounds: Bounds, list: &mut RenderableCollection) {
         self.bounds = bounds;
 
         self.draw_vis(list).await;
         self.draw_cookie(list);
     }
 
-    async fn update(&mut self) {
+    pub async fn update(&mut self, actions: &mut ActionQueue) {
+        actions.extend(self.actions.take());
+
+        let rotation_increment = 0.2;
+        self.rotation += rotation_increment * self.vis_data.timer.as_millis() / 1000.0;
+
+        self.vis_data.update();
         // if self.bounds.update() {
         //     self.initial_inner_radius = self.bounds.size.y / 6.0;
         // }
 
 
         // see if we should add a ripple
-        if self.data.len() >= self.index {
+        if self.vis_data.data.len() >= self.index {
 
             // current bass
-            let current_bass = self.data[self.index].amplitude();
+            let current_bass = self.vis_data.data[self.index].amplitude();
             let time = self.other_timer.as_millis();
 
             // we've fallen below the amplitude threshold from the previous ripple to now, where we can reset the created flag
@@ -242,7 +254,7 @@ impl Visualization for MenuVisualization {
     }
 
     #[cfg(feature="graphics")]
-    async fn reload_skin(&mut self, skin_manager: &mut dyn SkinProvider) {
+    pub async fn reload_skin(&mut self, skin_manager: &mut dyn SkinProvider) {
         if let Some(cookie) = skin_manager.get_texture("menu-osu", &TextureSource::Skin, SkinUsage::Game, false).await {
             self.cookie = Some(cookie);
         } else {
@@ -251,7 +263,7 @@ impl Visualization for MenuVisualization {
         }
     }
 
-    fn song_changed(&mut self) {
+    pub fn song_changed(&mut self) {
         self.ripples.clear();
         self.last_bass = 0.0;
         self.last_ripple = 0.0;
@@ -259,9 +271,96 @@ impl Visualization for MenuVisualization {
     }
 
 
-    fn reset(&mut self) {
-        self.data.clear();
+    pub fn reset(&mut self) {
+        self.vis_data.reset();
         self.ripples.clear();
         // self.timer = Instant::now();
     }
 }
+
+
+// #[async_trait]
+// impl Visualization for MenuVisualization {
+//     fn lerp_factor(&self) -> f32 { 10.0 } // 15
+//     fn data(&mut self) -> &mut Vec<FFTEntry> { &mut self.data }
+//     fn timer(&mut self) -> &mut Instant { &mut self.timer }
+
+//     async fn draw(&mut self, bounds: Bounds, list: &mut RenderableCollection) {
+//         self.bounds = bounds;
+
+//         self.draw_vis(list).await;
+//         self.draw_cookie(list);
+//     }
+
+//     async fn update(&mut self) {
+//         // if self.bounds.update() {
+//         //     self.initial_inner_radius = self.bounds.size.y / 6.0;
+//         // }
+
+
+//         // see if we should add a ripple
+//         if self.data.len() >= self.index {
+
+//             // current bass
+//             let current_bass = self.data[self.index].amplitude();
+//             let time = self.other_timer.as_millis();
+
+//             // we've fallen below the amplitude threshold from the previous ripple to now, where we can reset the created flag
+//             let fall_ok = self.last_ripple - current_bass < RIPPLE_RESET;
+
+//             // the current amplitude is high enough that we can create a ripple
+//             let meets_min = current_bass >= RIPPLE_MIN;
+
+//             // has it been long enough since the last ripple? (at the very least, this helps prevent ripple spam)
+//             let timer_okay = time - self.last_created > 150.0;
+            
+//             // is the amplitude falling?
+//             let falling = current_bass <= self.last_bass;
+
+
+//             if fall_ok && falling {
+//                 self.created_ripple = false;
+//             }
+
+//             if meets_min && timer_okay && !falling && !self.created_ripple {
+//                 self.add_ripple();
+//                 self.last_created = time;
+//                 self.created_ripple = true;
+//                 self.last_ripple = current_bass;
+//             }
+
+//             self.last_bass = current_bass;
+//         }
+
+        
+//         let time = self.other_timer.as_millis();
+//         self.ripples.retain_mut(|ripple| {
+//             ripple.update(time);
+//             ripple.visible()
+//         });
+//     }
+
+//     #[cfg(feature="graphics")]
+//     async fn reload_skin(&mut self, skin_manager: &mut dyn SkinProvider) {
+//         if let Some(cookie) = skin_manager.get_texture("menu-osu", &TextureSource::Skin, SkinUsage::Game, false).await {
+//             self.cookie = Some(cookie);
+//         } else {
+//             println!("{:?}", std::fs::canonicalize("./resources/icon.png"));
+//             self.cookie = skin_manager.get_texture("./resources/icon.png", &TextureSource::Raw, SkinUsage::Game, false).await;
+//         }
+//     }
+
+//     fn song_changed(&mut self) {
+//         self.ripples.clear();
+//         self.last_bass = 0.0;
+//         self.last_ripple = 0.0;
+//         self.created_ripple = false;
+//     }
+
+
+//     fn reset(&mut self) {
+//         self.data.clear();
+//         self.ripples.clear();
+//         // self.timer = Instant::now();
+//     }
+// }

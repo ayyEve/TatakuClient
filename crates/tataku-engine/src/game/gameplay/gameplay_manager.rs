@@ -48,7 +48,6 @@ macro_rules! create_update_state {
 pub struct GameplayManager {
     pub actions: ActionQueue,
 
-
     pub beatmap: Beatmap,
     pub metadata: Arc<BeatmapMeta>,
     pub gamemode: Box<dyn GameMode>,
@@ -598,7 +597,7 @@ impl GameplayManager {
                 replay_frames,
                 current_frame,
 
-                host_id,
+                // host_id,
                 // host_username,
                 good_until,
                 // spectators,

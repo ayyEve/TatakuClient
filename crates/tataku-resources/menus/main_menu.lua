@@ -82,7 +82,7 @@ local exit_game = game_action("quit")
 local notify_now_playing = { 
     event = "song_start", 
     action = game_action("show_notification", { 
-        text = text_list({ "Now playing: ", variable("beatmaps.current_beatmap.map.title"), " by ", variable("beatmaps.current_beatmap.map.artist")}),
+        text = text_list({ "Now playing: ", variable("beatmaps.current.map.title"), " by ", variable("beatmaps.current_beatmap.map.artist")}),
         duration = 10000, -- ms
         color = TEAL,
     })

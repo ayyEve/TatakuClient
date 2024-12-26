@@ -14,7 +14,7 @@ pub struct GameplayPreview {
 
     owner: MessageOwner,
 
-    pub visualization: Option<Box<dyn Visualization>>,
+    pub visualization: Option<MenuVisualization>,
 
     /// area to fit to
     pub fit_to: Option<Bounds>,
@@ -29,7 +29,7 @@ pub struct GameplayPreview {
 
     // loader: Option<AsyncLoader<TatakuResult<IngameManager>>>,
 
-    widget_sender: Arc<Mutex<TripleBufferSender<Arc<dyn TatakuRenderable>>>>,
+    widget_sender: Arc<Mutex<TripleBufferSender<[Arc<dyn TatakuRenderable>; 2]>>>,
     event_receiver: AsyncReceiver<Bounds>,
 
     widget: GameplayPreviewWidget
@@ -37,7 +37,8 @@ pub struct GameplayPreview {
 impl GameplayPreview {
     pub fn new(use_global_playmode: bool, apply_rate: bool, check_enabled: Arc<dyn Fn(&Settings) -> bool + Send + Sync>, owner: MessageOwner) -> Self {
         let a: Arc<dyn TatakuRenderable> = Arc::new(TransformGroup::new(Vector2::ZERO));
-        let (widget_sender, widget_receiver) = TripleBuffer::new(&a).split();
+        let b : Arc<dyn TatakuRenderable> = Arc::new(TransformGroup::new(Vector2::ZERO));
+        let (widget_sender, widget_receiver) = TripleBuffer::new(&[a, b]).split();
         let (event_sender, event_receiver) = async_channel(5);
 
         let widget = GameplayPreviewWidget::new(widget_receiver, event_sender);
@@ -120,7 +121,11 @@ impl GameplayPreview {
             playmode: (!self.use_global_playmode).then(|| settings.background_game_settings.mode.clone()),
             gameplay_mode: Some(GameplayMode::Preview),
             area: self.fit_to,
-            draw_function: Some(Arc::new(move |group| draw_sender.lock().write(Arc::new(group)))),
+            draw_function: Some(Arc::new(move |group| {
+                let mut lock = draw_sender.lock();
+                lock.input_buffer()[0] = Arc::new(group);
+                lock.publish();
+            })),
 
             ..Default::default()
         }));
@@ -194,7 +199,7 @@ impl GameplayPreview {
 
         // update vis
         if let Some(vis) = &mut self.visualization {
-            vis.update().await;
+            vis.update(actions).await;
         }
 
         // check for state update
@@ -272,7 +277,9 @@ impl GameplayPreview {
 
         let mut group = TransformGroup::from_collection(Vector2::ZERO, list);
         group.set_scissor(self.fit_to.map(|b| b.into_scissor()));
-        self.widget_sender.lock().write(Arc::new(group));
+        let mut lock = self.widget_sender.lock();
+        lock.input_buffer()[1] = Arc::new(group);
+        lock.publish();
     }
 
     pub async fn fit_to_area(&mut self, bounds: Bounds) {
@@ -304,11 +311,11 @@ struct GameplayPreviewWidget {
     width: iced::Length,
     height: iced::Length,
 
-    draw_data: Arc<Mutex<TripleBufferReceiver<Arc<dyn TatakuRenderable>>>>,
+    draw_data: Arc<Mutex<TripleBufferReceiver<[Arc<dyn TatakuRenderable>; 2]>>>,
     event_sender: AsyncSender<Bounds>,
 }
 impl GameplayPreviewWidget {
-    fn new(draw_data: TripleBufferReceiver<Arc<dyn TatakuRenderable>>, event_sender: AsyncSender<Bounds>) -> Self {
+    fn new(draw_data: TripleBufferReceiver<[Arc<dyn TatakuRenderable>; 2]>, event_sender: AsyncSender<Bounds>) -> Self {
         Self {
             width: iced::Length::Fill,
             height: iced::Length::Fill,
@@ -356,7 +363,14 @@ impl iced::advanced::Widget<Message, iced::Theme, IcedRenderer> for GameplayPrev
             let _ = self.event_sender.try_send(bounds.into());
         }
 
-        renderer.add_renderable(self.draw_data.lock().read().clone());
+        let [game, vis] = self
+            .draw_data
+            .lock()
+            .read()
+            .clone();
+        
+        renderer.add_renderable(game);
+        renderer.add_renderable(vis);
     }
 }
 

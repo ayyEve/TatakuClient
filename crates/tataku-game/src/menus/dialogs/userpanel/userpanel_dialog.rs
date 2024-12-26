@@ -112,7 +112,7 @@ impl Dialog for UserPanel {
                 let MessageType::Number(friend_id) = message.message_type else { return };
                 let friend_id = friend_id as u32;
 
-                let manager = OnlineManager::get().await;
+                let mut manager = OnlineManager::get_mut().await;
                 let is_friend = !manager.friends.contains(&friend_id);
 
                 manager.send_packet(ChatPacket::Client_UpdateFriend {friend_id, is_friend}).await;

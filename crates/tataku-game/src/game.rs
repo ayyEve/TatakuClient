@@ -805,6 +805,9 @@ impl Game {
         // update score manager
         self.score_manager.update(&mut self.values).await;
 
+        // update song manager
+        self.song_manager.update();
+
         // handle menu actions
         let game_state = TaskGameState {
             ingame: self.current_state.is_ingame(),
@@ -1022,6 +1025,7 @@ impl Game {
                 error!("Error handling multiplayer packet: {e:?}");
             }
         }
+
 
 
         // let elapsed = timer.elapsed().as_secs_f32() * 1000.0;
@@ -1671,6 +1675,9 @@ impl Game {
                             }
                         }
                     }
+                    SongAction::HookFFT(hook) => {
+                        self.song_manager.hook_fft(hook);
+                    }
 
                     other => {
                         let Some(audio) = self.song_manager.instance() else { return };
@@ -1685,8 +1692,9 @@ impl Game {
                             SongAction::SetPosition(pos) => audio.set_position(pos),
                             SongAction::SetRate(rate) => audio.set_rate(rate),
                             SongAction::SetVolume(vol) => audio.set_volume(vol),
+                            
                             // handled above
-                            SongAction::Set(_) => unreachable!()
+                            _other => unreachable!()
                         }
                     }
                 }

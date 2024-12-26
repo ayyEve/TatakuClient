@@ -468,13 +468,29 @@ impl winit::application::ApplicationHandler<Game2WindowEvent> for GameWindow<'_>
     fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
         if self.window.get().is_some() { return }
         event_loop.set_control_flow(ControlFlow::Poll);
-        
-        let window = event_loop.create_window(
-            winit::window::WindowAttributes::default()
+
+        #[allow(unused_mut)]
+        let mut attribs = winit::window::WindowAttributes::default()
             .with_title("Tataku!")
             .with_min_inner_size(to_size(Vector2::ONE))
-            .with_inner_size(to_size(self.settings.window_size.into()))
-        ).expect("Unable to create window");
+            .with_inner_size(to_size(self.settings.window_size.into()));
+
+
+        #[cfg(target_os="linux")] {
+            use winit::platform::{ 
+                wayland::WindowAttributesExtWayland, 
+                x11::WindowAttributesExtX11
+            };
+
+            let name = "tataku-client";
+            // probably only need one of these actually but whatever
+            attribs = WindowAttributesExtWayland::with_name(attribs, name, name);
+            attribs = WindowAttributesExtX11::with_name(attribs, name, name);
+        }
+
+        
+        let window = event_loop.create_window(attribs)
+            .expect("Unable to create window");
         window.set_cursor_visible(false);
 
 
