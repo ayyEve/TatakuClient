@@ -1665,7 +1665,7 @@ impl Game {
                 match song_action {
                     // needs to be before trying to get the audio because audio might be none when this is run
                     SongAction::Set(action) => {
-                        if let Err(e) = self.song_manager.handle_song_set_action(action) {
+                        if let Err(e) = self.song_manager.handle_song_set_action(action, &mut self.actions) {
                             error!("Error handling SongMenuSetAction: {e:?}");
                         }
 

@@ -110,7 +110,7 @@ impl<'lua> FromLua<'lua> for ElementDef {
         
         
         #[cfg(feature="debug_custom_menus")] 
-        table.get::<_, Option<String>>("debug_name")?.ok_do(|name| debug!("Name: {name}"));
+        table.get::<_, Option<String>>("debug_name")?.map(|name| debug!("Name: {name}"));
         
 
         let element:String = table.get("id")?;

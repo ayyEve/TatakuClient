@@ -67,8 +67,8 @@ impl<'lua> FromLua<'lua> for CustomMenuSongAction {
                     Ok(Self::Seek(seek))
                 } else if let Some(pos) = table.get("position")? {
                     Ok(Self::SetPosition(pos))
-                } else if let Some(pos) = table.get("rate")? {
-                    Ok(Self::SetRate(pos))
+                } else if let Some(rate) = table.get("rate")? {
+                    Ok(Self::SetRate(rate))
                 } else {
                     Err(FromLuaConversionError { 
                         from: "table", 

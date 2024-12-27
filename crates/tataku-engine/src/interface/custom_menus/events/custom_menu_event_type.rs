@@ -76,10 +76,10 @@ pub struct CustomMenuKeyEvent {
 }
 impl<'lua> rlua::FromLua<'lua> for CustomMenuKeyEvent {
     fn from_lua(lua_value: Value<'lua>, _lua: rlua::Context<'lua>) -> rlua::Result<Self> {
-        #[cfg(feature="debug_custom_menus")] info!("Reading CustomMenuKeyEvent");
+        #[cfg(feature="debug_custom_menus")] crate::info!("Reading CustomMenuKeyEvent");
         let Value::Table(table) = lua_value else { return Err(FromLuaConversionError { from: lua_value.type_name(), to: "CustomMenuKeyEvent", message: None }) }; 
         
-        #[cfg(feature="debug_custom_menus")] info!("Reading key");
+        #[cfg(feature="debug_custom_menus")] crate::info!("Reading key");
         let key = table.get("key")?;
         let key = serde_json::from_value(serde_json::Value::String(key))
             .map_err(|e| FromLuaConversionError { from: "String", to: "Key", message: Some(e.to_string()) })?;
@@ -91,7 +91,7 @@ impl<'lua> rlua::FromLua<'lua> for CustomMenuKeyEvent {
             shift: false,
         };
 
-        #[cfg(feature="debug_custom_menus")] info!("Reading mods");
+        #[cfg(feature="debug_custom_menus")] crate::info!("Reading mods");
         if let Some(incoming_mods) = table.get::<_, Option<Vec<String>>>("mods")? {
             for m in incoming_mods { 
                 match &*m {

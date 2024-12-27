@@ -8,11 +8,11 @@ impl CustomMenuParser {
     pub fn new() -> TatakuResult<Self> {
         let lua =  Lua::new();
 
-        #[cfg(feature="debug_custom_menus")] {
-            let bytes = std::fs::read("../menus/init.lua").unwrap();
-            lua.load(&bytes).set_name("lua_init").exec()?;
-        }
-        #[cfg(not(feature="debug_custom_menus"))]
+        // #[cfg(feature="debug_custom_menus")] {
+        //     let bytes = std::fs::read("../menus/init.lua").unwrap();
+        //     lua.load(&bytes).set_name("lua_init").exec()?;
+        // }
+        // #[cfg(not(feature="debug_custom_menus"))]
         lua.load(tataku_resources::menus::LUA_INIT).set_name("lua_init").exec()?;
 
         Ok(Self {

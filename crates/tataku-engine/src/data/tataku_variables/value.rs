@@ -134,6 +134,8 @@ impl TatakuValue {
             Ok(Self::String(s.to_string()))
         } else if let Some(s) = value.downcast_ref::<SortBy>() {
             Ok(Self::String(s.to_string()))
+        } else if let Some(s) = value.downcast_ref::<GameSpeed>() {
+            Ok(Self::F32(s.as_f32()))
         }
         
         

@@ -2,7 +2,6 @@ use crate::prelude::*;
 use super::parse_from_multiple;
 use rlua::{ Value, FromLua, Error::FromLuaConversionError, Table };
 
-// TODO: rename this, its not just used by buttons
 #[derive(Debug, Clone)]
 pub enum LuaAction {
     /// Set a value
@@ -133,10 +132,11 @@ impl<'lua> FromLua<'lua> for LuaAction {
         #[cfg(feature="debug_custom_menus")] info!("Reading ButtonAction");
         let Value::Table(table) = lua_value else { return Err(FromLuaConversionError { from: lua_value.type_name(), to: "ButtonAction", message: Some("Not a table".to_owned()) }) };
 
-        if table.get::<_, Self>(0).is_ok() {
+        if table.get::<_, Self>(1).is_ok() {
+            #[cfg(feature="debug_custom_menus")] info!("Is list");
             let mut list = Vec::new();
 
-            for i in 0.. {
+            for i in 1.. {
                 let Ok(item) = table.get::<_, Self>(i) else { break };
                 list.push(Box::new(item));
             }

@@ -79,7 +79,6 @@ local beatmap_list = {
                                     )
                                 ),
                                 
-
                                 -- map diff info
                                 text(
                                     variable("_map.diff_info"),
@@ -91,7 +90,7 @@ local beatmap_list = {
                                 "beatmaps.current.map.beatmap_hash == _map.map.beatmap_hash", -- if the map is selected
                                 -- confirm it
                                 map_action("confirm"),
-                                -- otherwise, set it as the selected map
+                                -- otherwise, set it as the selected map 
                                 map_action("select_map", { map_hash = variable("_map.map.beatmap_hash")})
                             ),
                             "fill",
@@ -112,13 +111,14 @@ local menu = {
     id = "beatmap_select",
 
     events = {
-        -- on entering menu, make sure song is playing, and is also at a rate of 1.0
+        -- on entering menu, make sure song is playing, and is also at the proper rate
         {
             event = "menu_enter",
             actions = {
                 -- song_action({ rate = 1.0 }),
                 cond("!song.playing", song_action("play")),
                 cursor_action("show"), -- also make sure the cursor is visible
+                song_action({ rate = variable("global.mods.speed")})
             }
         },
 
@@ -134,6 +134,8 @@ local menu = {
         -- automatically select new maps
         { event = "map_added", action = map_action("select_map", { map_hash = passed_in() }) },
 
+        -- make sure new songs are set with the correct rate
+        { event = "song_start", action = song_action({ rate = variable("global.mods.speed")}) },
 
         --[[previous set]] key_event("Left", map_action("previous_set")),
         --[[next set]] key_event("Right", map_action("next_set")),
@@ -144,7 +146,7 @@ local menu = {
         --[[mods dialog]] key_event("M", {"ctrl"}, dialog_action("mods")),
 
         -- mods
-        --[[nofail]] key_event("N", {"ctrl"}, mod_action({ toggle = "no_fail" })),
+        --[[nofail]] key_event("N", {"ctrl"}, { mod_action({ toggle = "no_fail" }), }),
         --[[autoplay]] key_event("A", {"ctrl"}, mod_action({ toggle = "autoplay" })),
 
         --[[add speed]] key_event("Equals", {"ctrl"}, mod_action({ add_speed = 0.1 })),

@@ -16,7 +16,8 @@ impl SongManager {
         &mut self, 
         key: String, 
         mut params: SongPlayData, 
-        load_song: impl FnOnce() -> TatakuResult<Arc<dyn AudioInstance>>
+        load_song: impl FnOnce() -> TatakuResult<Arc<dyn AudioInstance>>,
+        actions: &mut ActionQueue
     ) -> TatakuResult<()> {
         // check if the key is the same as current
         if let Some(song) = self.current_song.as_ref().filter(|s| s.id == key) {
@@ -26,6 +27,7 @@ impl SongManager {
                 Self::apply_params(&song.instance, params);
             }
 
+            actions.push(GameAction::HandleEvent(TatakuEventType::SongStart, None));
             return Ok(());
         }
 
@@ -44,6 +46,7 @@ impl SongManager {
         // set our current song to the loaded audio
         self.current_song = Some(SongData::new(song, key));
 
+        actions.push(GameAction::HandleEvent(TatakuEventType::SongStart, None));
         Ok(())
     }
 
@@ -68,7 +71,11 @@ impl SongManager {
         self.update_ffts();
     }
 
-    pub fn handle_song_set_action(&mut self, action: SongMenuSetAction) -> TatakuResult {
+    pub fn handle_song_set_action(
+        &mut self, 
+        action: SongMenuSetAction,
+        actions: &mut ActionQueue,
+    ) -> TatakuResult {
         trace!("Set song: {action:?}");
 
         match action {
@@ -99,13 +106,15 @@ impl SongManager {
             SongMenuSetAction::FromFile(path, params) => self.play_song(
                 path.clone(), 
                 params, 
-                move || AudioManager::load_song(&path)
+                move || AudioManager::load_song(&path),
+                actions,
             )?,
             
             SongMenuSetAction::FromData(data, key, params) => self.play_song(
                 key, 
                 params, 
-                move || AudioManager::load_song_raw(data)
+                move || AudioManager::load_song_raw(data),
+                actions,
             )?,
         }
 
