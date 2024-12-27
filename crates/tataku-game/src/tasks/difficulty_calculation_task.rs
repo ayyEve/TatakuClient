@@ -130,6 +130,7 @@ impl DiffCalcTask {
 
 #[async_trait]
 impl TatakuTask for DiffCalcTask {
+    fn get_id(&self) -> Cow<'static, str> { Cow::Borrowed("diff_calc") }
     fn get_name(&self) -> Cow<'static, str> { Cow::Owned(format!("Diff Calc for beatmap: {} and mode {}", self.beatmap.beatmap_hash, self.info.display_name)) }
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Once }
     fn get_state(&self) -> TatakuTaskState { self.state }

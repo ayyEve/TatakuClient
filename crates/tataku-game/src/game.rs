@@ -1821,7 +1821,12 @@ impl Game {
             TatakuAction::Event(e) => self.handle_event(e),
 
             // task actions
-            TatakuAction::Task(TaskAction::AddTask(task)) => self.task_manager.add_task(task),
+            TatakuAction::Task(TaskAction::AddTask(task)) => {
+                if !self.values.settings.enable_diffcalc && task.get_id() == Cow::Borrowed("diff_calc") {
+                    return
+                }
+                self.task_manager.add_task(task);
+            },
 
             // cursor action
             #[cfg(feature="graphics")]
@@ -1891,7 +1896,12 @@ impl Game {
                 self.queued_events.push((TatakuEventType::MenuEnter, None));
             }
             GameState::InMenu(_) => {}
-            state => {
+            mut state => {
+                if let Some(game) = state.get_ingame() {
+                    let meta = game.beatmap.get_beatmap_meta();
+                    debug!("Starting/resuming game: {} ({})", meta.version_string(), meta.beatmap_hash);
+                }
+
                 // set the menu to an empty menu, hiding it
                 self.ui_manager.set_menu(Box::new(EmptyMenu::new()));
                 self.queued_state = state;
@@ -2403,7 +2413,6 @@ pub enum GameState {
     InMenu(MenuType),
 }
 impl GameState {
-    /// spec_check means if we're spectator, check the inner game
     fn is_ingame(&self) -> bool {
         matches!(self, Self::Ingame(_))
     }

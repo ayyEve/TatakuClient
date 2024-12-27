@@ -3,7 +3,8 @@ use crate::prelude::*;
 
 
 #[async_trait]
-pub trait TatakuTask: Send + Sync  {
+pub trait TatakuTask: Send + Sync {
+    fn get_id(&self) -> Cow<'static, str> { self.get_name() }
     fn get_name(&self) -> Cow<'static, str>;
     fn get_type(&self) -> TatakuTaskType;
     fn get_state(&self) -> TatakuTaskState;
