@@ -5,6 +5,10 @@ local menu = {
     components = {
         "lobby_list"
     },
+    
+    events = {
+        key_event("Escape", { id = "action", menu = "main_menu" }),
+    },
 
     element = col({ width = "fill", height = "fill" }, {
         -- list

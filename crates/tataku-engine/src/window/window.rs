@@ -473,7 +473,9 @@ impl winit::application::ApplicationHandler<Game2WindowEvent> for GameWindow<'_>
         let mut attribs = winit::window::WindowAttributes::default()
             .with_title("Tataku!")
             .with_min_inner_size(to_size(Vector2::ONE))
-            .with_inner_size(to_size(self.settings.window_size.into()));
+            .with_inner_size(to_size(self.settings.window_size.into()))
+            .with_decorations(!self.settings.hide_decorations)
+            ;
 
 
         #[cfg(target_os="linux")] {
@@ -610,6 +612,9 @@ impl winit::application::ApplicationHandler<Game2WindowEvent> for GameWindow<'_>
             Game2WindowEvent::SettingsUpdated(settings) => {
                 if self.settings.fullscreen_monitor != settings.fullscreen_monitor {
                     self.set_fullscreen(settings.fullscreen_monitor);
+                }
+                if self.settings.hide_decorations != settings.hide_decorations {
+                    self.window().set_decorations(!settings.hide_decorations);
                 }
     
                 if self.settings.vsync != settings.vsync {

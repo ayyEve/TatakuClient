@@ -1,35 +1,92 @@
 use crate::prelude::*;
 
-const DIFF_FILE:&str = "diffs.db";
-
+const DIFF_FILE:&str = "diffs.db2";
 
 #[derive(Default)]
-pub struct DifficultyManager {
-    difficulties: HashMap<DifficultyEntry, f32>,
-}
+pub struct DifficultyManager;
 impl DifficultyManager {
+    pub async fn save_diff(
+        map: &Arc<BeatmapMeta>, 
+        playmode: &str, 
+        mods: &ModManager,
+        diff: f32
+    ) -> TatakuResult {
+        Self::save_diff_entry(
+            DifficultyEntry::new(
+            md5(playmode), 
+            map.beatmap_hash, 
+                mods
+            ), 
+            diff
+        ).await
+    }
 
-    pub fn save_all_diffs(&self) -> TatakuResult<()> {
-        let mut writer = SerializationWriter::new();
-
-        for (entry, value) in self.difficulties.iter() {
-            writer.write(entry);
-            writer.write(value);
-        }
+    pub async fn save_diff_entry(
+        entry: DifficultyEntry,
+        diff: f32
+    ) -> TatakuResult {
+        let key = entry.as_key();
         
-        std::fs::write(DIFF_FILE, writer.data())?;
-
-        Ok(())
+        cacache::write(DIFF_FILE, key, diff.to_le_bytes())
+            .await
+            .map_err(|e| TatakuError::String(e.to_string()))
+            .map(|_| ())
     }
 }
+
+
+// #[derive(Default)]
+// pub struct DifficultyManager {
+//     difficulties: HashMap<DifficultyEntry, f32>,
+// }
+// impl DifficultyManager {
+
+//     pub fn save_all_diffs(&self) -> TatakuResult<()> {
+//         let mut writer = SerializationWriter::new();
+
+//         for (entry, value) in self.difficulties.iter() {
+//             writer.write(entry);
+//             writer.write(value);
+//         }
+        
+//         std::fs::write(DIFF_FILE, writer.data())?;
+
+//         Ok(())
+//     }
+// }
+
+
 impl DifficultyProvider for DifficultyManager {
-    fn get_diff(&mut self, map: &Arc<BeatmapMeta>, playmode: &str, mods: &ModManager) -> TatakuResult<f32> {
-        let playmode_hash = md5(playmode);
-        let diff_entry = DifficultyEntry::new(playmode_hash, map.beatmap_hash, mods);
-        self.difficulties
-            .get(&diff_entry)
-            .copied()
-            .ok_or("No Diff".into())
+    fn get_diff(
+        &mut self, 
+        map: &Arc<BeatmapMeta>, 
+        playmode: &str, 
+        mods: &ModManager
+    ) -> TatakuResult<f32> {
+        let diff_entry = DifficultyEntry::new(
+            md5(playmode), 
+            map.beatmap_hash, 
+            mods
+        );
+
+        let val = match cacache::read_sync(DIFF_FILE, diff_entry.as_key()) {
+            Ok(v) => v,
+            Err(cacache::Error::EntryNotFound(_, _)) => {
+                return Err(TatakuError::DiffCalcError(DiffCalcError::NoDiff));
+            }
+            Err(e) => return Err(TatakuError::String(e.to_string())),
+        };
+
+        if val.len() < 4 { return Err(TatakuError::String("not enough bytes".to_owned())) }
+
+        Ok(f32::from_le_bytes([
+            val[0], val[1], val[2], val[3]
+        ]))
+
+        // self.difficulties
+        //     .get(&diff_entry)
+        //     .copied()
+        //     .ok_or("No Diff".into())
         // if !AVAILABLE_PLAYMODES.contains(&&**playmode) { return Some(-1.0) }
 
         // // we dont have mod mutations setup yet so we need to clear mods before we get the diff for a map
@@ -42,52 +99,52 @@ impl DifficultyProvider for DifficultyManager {
 }
 
 
-// TODO: move to task
-pub async fn init_diffs(status: Option<Arc<RwLock<LoadingStatus>>>) {
-    // if let Some(status) = &status {
-    //     status.write().custom_message = "Reading file...".to_owned();
-    // }
+// // TODO: move to task
+// pub async fn init_diffs(status: Option<Arc<RwLock<LoadingStatus>>>) {
+//     // if let Some(status) = &status {
+//     //     status.write().custom_message = "Reading file...".to_owned();
+//     // }
 
-    // info!("loading diffs");
-    // let all_diffs = match load_all_diffs() {
-    //     Ok(d) => d,
-    //     Err(e) => {
-    //         error!("error loading diffs: {e}");
-    //         let _ = std::fs::rename(DIFF_FILE, DIFF_FILE.to_owned() + "_failed");
-    //         Default::default()
-    //     }
-    // };
-    // if let Some(status) = &status {
-    //     let mut status = status.write();
-    //     status.custom_message.clear();
+//     // info!("loading diffs");
+//     // let all_diffs = match load_all_diffs() {
+//     //     Ok(d) => d,
+//     //     Err(e) => {
+//     //         error!("error loading diffs: {e}");
+//     //         let _ = std::fs::rename(DIFF_FILE, DIFF_FILE.to_owned() + "_failed");
+//     //         Default::default()
+//     //     }
+//     // };
+//     // if let Some(status) = &status {
+//     //     let mut status = status.write();
+//     //     status.custom_message.clear();
         
-    //     for i in all_diffs.values() {
-    //         status.item_count += i.len();
-    //     }
-    // }
+//     //     for i in all_diffs.values() {
+//     //         status.item_count += i.len();
+//     //     }
+//     // }
 
-    // #[cfg(feature="debug_perf_rating")]
-    // for (k, v) in &all_diffs {
-    //     info!("{k:?} -> {v}")
-    // }
+//     // #[cfg(feature="debug_perf_rating")]
+//     // for (k, v) in &all_diffs {
+//     //     info!("{k:?} -> {v}")
+//     // }
 
-    // for (mode, diffs) in BEATMAP_DIFFICULTIES.iter() {
-    //     if !AVAILABLE_PLAYMODES.contains(&&**mode) { continue }
-    //     if let Some(loaded_diffs) = all_diffs.get(mode).cloned() {
-    //         let len = loaded_diffs.len();
+//     // for (mode, diffs) in BEATMAP_DIFFICULTIES.iter() {
+//     //     if !AVAILABLE_PLAYMODES.contains(&&**mode) { continue }
+//     //     if let Some(loaded_diffs) = all_diffs.get(mode).cloned() {
+//     //         let len = loaded_diffs.len();
 
-    //         *diffs.write().unwrap() = loaded_diffs;
+//     //         *diffs.write().unwrap() = loaded_diffs;
                 
-    //         if let Some(status) = &status {
-    //             status.write().items_complete += len;
-    //         }
-    //     }
+//     //         if let Some(status) = &status {
+//     //             status.write().items_complete += len;
+//     //         }
+//     //     }
 
-    // }
+//     // }
 
-    // // *BEATMAP_DIFFICULTIES.write().unwrap() = all_diffs;
-    // info!("loading diffs done")
-}
+//     // // *BEATMAP_DIFFICULTIES.write().unwrap() = all_diffs;
+//     // info!("loading diffs done")
+// }
 
 
 
@@ -171,15 +228,15 @@ pub async fn do_diffcalc(playmode: String) {
 */
 
 
-fn load_all_diffs() -> TatakuResult<HashMap<String, HashMap<DifficultyEntry, f32>>> {
-    if Io::exists(DIFF_FILE) {
-        let data = Io::read_file(DIFF_FILE)?;
-        let mut reader = SerializationReader::new(data);
-        Ok(reader.read("diffs")?)
-    } else {
-        Ok(Default::default())
-    }
-}
+// fn load_all_diffs() -> TatakuResult<HashMap<String, HashMap<DifficultyEntry, f32>>> {
+//     if Io::exists(DIFF_FILE) {
+//         let data = Io::read_file(DIFF_FILE)?;
+//         let mut reader = SerializationReader::new(data);
+//         Ok(reader.read("diffs")?)
+//     } else {
+//         Ok(Default::default())
+//     }
+// }
 
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
@@ -196,6 +253,15 @@ impl DifficultyEntry {
             map_hash,
             mods: mods.as_md5()
         }
+    }
+
+    pub fn as_key(&self) -> String {
+        format!(
+            "{}-{}-{}",
+            self.playmode,
+            self.map_hash,
+            self.mods
+        )
     }
 }
 

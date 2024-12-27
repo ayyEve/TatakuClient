@@ -128,6 +128,7 @@ impl BeatmapMetaWithDiff {
             sort_pending: true,
         }
     }
+
     pub fn _set_diff(&mut self, new_diff: Option<f32>) {
         self.diff = new_diff
     }

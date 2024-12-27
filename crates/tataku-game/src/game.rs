@@ -1427,12 +1427,18 @@ impl Game {
                                 let mods = self.global.mods.clone();
                                 let playmode = self.global.playmode.clone();
                                 let sort_by = self.values.settings.sort_by;
-                                self.values.beatmap_manager.refresh_maps(
-                                    &mods, 
-                                    &playmode, 
+                                self.values.beatmap_manager.apply_filter(
+                                    &mods,
+                                    &playmode,
                                     sort_by,
-                                    &mut self.difficulty_manager,
+                                    &mut self.difficulty_manager
                                 ).await;
+                                // self.values.beatmap_manager.refresh_maps(
+                                //     &mods, 
+                                //     &playmode, 
+                                //     sort_by,
+                                //     &mut self.difficulty_manager,
+                                // ).await;
                             }
                             BeatmapListAction::NextMap => self.beatmap_manager.next_map(),
                             BeatmapListAction::PrevMap => self.beatmap_manager.prev_map(),
@@ -1793,6 +1799,18 @@ impl Game {
                     if i.mods.is_some() { continue }
                     m.apply_mods(self.values.global.mods.clone()).await;
                 }
+
+                // update the beatmap groupings to update the diffs
+
+                let mods = self.global.mods.clone();
+                let playmode = self.global.playmode.clone();
+                let sort_by = self.values.settings.sort_by;
+                self.values.beatmap_manager.apply_filter(
+                    &mods, 
+                    &playmode, 
+                    sort_by,
+                    &mut self.difficulty_manager,
+                ).await;
             }
 
             // events

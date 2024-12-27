@@ -93,7 +93,7 @@ tokio-native-tls = { workspace = true }
 rand = { workspace = true }
 chrono = { workspace = true }
 fs_extra = { workspace = true }
-
+cacache = { workspace = true }
 
 # logging
 # tataku-logging = { workspace = true }

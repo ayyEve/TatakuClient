@@ -288,7 +288,8 @@ impl BeatmapManager {
             let diff_info = if let Ok(info) = self.infos.get_info(actual_mode) {
                 let diff_meta = BeatmapMetaWithDiff::new(beatmap.clone(), diff);
 
-                info.diff_values.iter()
+                info.diff_values
+                    .iter()
                     .map(|dv| dv.format((dv.get_diff_value)(&diff_meta, &config.mods)))
                     .collect::<Vec<_>>()
                     .join(" | ")
@@ -489,10 +490,44 @@ impl BeatmapManager {
             // let mut selected = false;
             let mut maps = group.maps.iter().map(|m| {
                 let mode = self.infos.get_playmode_actual(playmode, Some(m));
-                let diff = diff_manager.get_diff(m, mode, mods);
+                let diff = diff_manager
+                    .get_diff(m, mode, mods);
+
+                let Ok(info) = self.infos.get_info(mode) else {
+                    return BeatmapWithData {
+                        map: m.clone(),
+                        diff_rating: 0.0,
+                        diff_info: String::new(),
+                    }
+                };
+
+                if let Err(TatakuError::DiffCalcError(DiffCalcError::NoDiff)) = &diff {
+                    self.actions.push(TaskAction::AddTask(Box::new(DiffCalcTask::new(m.clone(), *info))));
+                }
+
+                let diff = diff.ok();
+                let diff_meta = BeatmapMetaWithDiff::new(m.clone(), diff);
+                
+                let diff_info = if let Ok(info) = self.infos.get_info(playmode) {
+                    info.diff_values
+                        .iter()
+                        .map(|dv| dv.format((dv.get_diff_value)(&diff_meta, mods)))
+                        .collect::<Vec<_>>()
+                        .join(" | ")
+                } else {
+                    String::new()
+                    // map2.set_value("diff_info", TatakuVariable::new_game(String::new()));
+                };
+
+
                 // selected |= self.current_beatmap.as_ref().filter(|b| b.beatmap_hash == m.beatmap_hash).is_some();
 
-                BeatmapMetaWithDiff::new(m.clone(), diff.ok())
+                // BeatmapMetaWithDiff::new(m.clone(), diff.ok())
+                BeatmapWithData {
+                    map: m.clone(),
+                    diff_rating: diff.unwrap_or_default(),
+                    diff_info,
+                }
             }).collect::<Vec<_>>();
 
             // apply filter
@@ -533,7 +568,7 @@ impl BeatmapManager {
             SortBy::Title => sort!(title, String),
             SortBy::Artist => sort!(artist, String),
             SortBy::Creator => sort!(creator, String),
-            SortBy::Difficulty => sort!(diff, Float),
+            SortBy::Difficulty => sort!(diff_rating, Float),
         }
 
         let mut selected = false;
@@ -584,7 +619,7 @@ impl BeatmapManager {
 
         let Some(set) = self.groups.get(self.selected_set) else { return };
         if let Some(map) = set.maps.get(self.selected_map) {
-            self.actions.push(BeatmapAction::Set(map.meta.clone(), SetBeatmapOptions::new().use_preview_point(true)));
+            self.actions.push(BeatmapAction::Set(map.map.clone(), SetBeatmapOptions::new().use_preview_point(true)));
         }
     }
     pub fn next_map(&mut self) {
@@ -725,6 +760,12 @@ pub struct BeatmapWithData {
     pub diff_rating: f32,
     pub diff_info: String,
 }
+impl BeatmapWithData {
+    fn filter(&self, filter: &str) -> bool {
+        BeatmapMetaWithDiff::new(self.map.clone(), Some(self.diff_rating))
+            .filter(filter)
+    }
+}
 impl Deref for BeatmapWithData {
     type Target = Arc<BeatmapMeta>;
     fn deref(&self) -> &Self::Target {
@@ -740,7 +781,7 @@ pub struct BeatmapListGroup {
     pub id: usize,
     pub selected: bool,
     pub name: String,
-    pub maps: Vec<BeatmapMetaWithDiff>,
+    pub maps: Vec<BeatmapWithData>,
 }
 impl BeatmapListGroup {
     fn has_hash(&self, hash: &Md5Hash) -> Option<usize> {

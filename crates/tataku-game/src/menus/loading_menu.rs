@@ -26,8 +26,8 @@ impl LoadingMenu {
             }}
         }
 
-        // load difficulties
-        add!(load_difficulties, Difficulties);
+        // // load difficulties
+        // add!(load_difficulties, Difficulties);
 
         // // load beatmaps
         // add!(load_beatmaps, Beatmaps);
@@ -55,15 +55,15 @@ impl LoadingMenu {
     }
 
     // loaders
-    async fn load_difficulties(status: Arc<RwLock<LoadingStatus>>) {
-        // trace!("loading difficulties");
-        // status.lock().await.stage = LoadingStage::Difficulties;
+    // async fn load_difficulties(status: Arc<RwLock<LoadingStatus>>) {
+    //     // trace!("loading difficulties");
+    //     // status.lock().await.stage = LoadingStage::Difficulties;
         
-        // init diff manager
-        init_diffs(Some(status.clone())).await;
+    //     // init diff manager
+    //     init_diffs(Some(status.clone())).await;
 
-        status.write().complete = true;
-    }
+    //     status.write().complete = true;
+    // }
 
     /*
     async fn load_beatmaps(status: Arc<RwLock<LoadingStatus>>) {

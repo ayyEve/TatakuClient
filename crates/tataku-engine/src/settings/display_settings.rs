@@ -37,6 +37,9 @@ pub struct DisplaySettings {
     #[reflect(skip)]
     #[cfg_attr(feature="graphics", Setting(text="Refresh Monitors", action="GameWindow::refresh_monitors()"))]
     refresh_monitors_button: (),
+
+    #[cfg_attr(feature="graphics", Setting(text="Hide Decorations"))]
+    pub hide_decorations: bool,
 }
 
 impl Default for DisplaySettings {
@@ -58,6 +61,8 @@ impl Default for DisplaySettings {
             fullscreen_windowed: false,
             fullscreen_center: true,
             refresh_monitors_button: (),
+
+            hide_decorations: false,
         }
     }
 }

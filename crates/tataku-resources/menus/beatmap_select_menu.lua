@@ -63,24 +63,42 @@ local beatmap_list = {
                     -- and the rest of the list
                     col({ width = "fill_portion(10)", height = "shrink", spacing = 5.0, debug_name = "song text" }, {
                         button(
-                            text(
-                                text_list({ calc("_map.meta.mode"), " - ", variable("_map.meta.version") }), -- display(_map.meta.playmode)
-                                20,
-                                WHITE
-                            ),
+                            col({ width = "fill", height = "shrink", spacing = 5.0 }, {
+                                -- title and stuff
+                                cond(
+                                    "_map.diff_rating > 0.0",
+                                    text(
+                                        text_list({ variable("_map.map.mode"), " - ", variable("_map.map.version"), " (diff: ", calc("display(_map.diff_rating)"), ")" }), -- display(_map.map.playmode)
+                                        20,
+                                        WHITE
+                                    ),
+                                    text(
+                                        text_list({ variable("_map.map.mode"), " - ", variable("_map.map.version") }), -- display(_map.map.playmode)
+                                        20,
+                                        WHITE
+                                    )
+                                ),
+                                
+
+                                -- map diff info
+                                text(
+                                    variable("_map.diff_info"),
+                                    20,
+                                    WHITE
+                                )
+                            }),
                             cond(
-                                "beatmaps.current_beatmap.map.beatmap_hash == _map.meta.beatmap_hash", -- if the map is selected
+                                "beatmaps.current.map.beatmap_hash == _map.map.beatmap_hash", -- if the map is selected
                                 -- confirm it
                                 map_action("confirm"),
                                 -- otherwise, set it as the selected map
-                                map_action("select_map", { map_hash = variable("_map.meta.beatmap_hash")})
+                                map_action("select_map", { map_hash = variable("_map.map.beatmap_hash")})
                             ),
                             "fill",
                             "shrink",
                             5.0,
-                            "beatmaps.current_beatmap.map.beatmap_hash == _map.meta.beatmap_hash"
+                            "beatmaps.current.map.beatmap_hash == _map.map.beatmap_hash"
                         )
-                        -- diff info here
                     })
 
                 })

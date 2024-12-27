@@ -24,6 +24,8 @@ pub enum TatakuError {
     ReqwestError(reqwest::Error),
     DownloadError(DownloadError),
 
+    DiffCalcError(DiffCalcError),
+
     // ShuntingYardError(ShuntingYardError),
 
     #[cfg(feature = "ui")]
@@ -59,6 +61,8 @@ impl Display for TatakuError {
             Self::DownloadError(e) => write!(f, "{:?}", e),
             Self::Graphics(e) => write!(f, "{:?}", e),
             // Self::ShuntingYardError(e) => write!(f, "{:?}", e),
+            Self::DiffCalcError(e) => write!(f, "{:?}", e),
+            
             #[cfg(feature = "ui")]
             Self::Lua(e) => write!(f, "{:?}", e),
             Self::ReflectError(e) => write!(f, "{:?}", e),
@@ -102,6 +106,11 @@ impl From<DownloadError> for TatakuError {
 // impl From<ShuntingYardError> for TatakuError {
 //     fn from(value: ShuntingYardError) -> Self { Self::ShuntingYardError(value) }
 // }
+impl From<DiffCalcError> for TatakuError {
+    fn from(value: DiffCalcError) -> Self {
+        Self::DiffCalcError(value)
+    }
+}
 
 #[cfg(feature = "ui")]
 impl From<rlua::Error> for TatakuError {
