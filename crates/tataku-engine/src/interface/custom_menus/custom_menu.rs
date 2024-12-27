@@ -66,7 +66,15 @@ impl AsyncMenu for BuiltCustomMenu {
     fn get_custom_name(&self) -> Option<&String> { Some(&self.id) }
 
     fn view(&self, values: &mut dyn Reflect) -> IcedElement {
-        let view = self.element.view(MessageOwner::Menu, values);
+        let ui_scale = values
+        .reflect_get::<f32>("settings.ui_scale")
+        .map(|i| match i {
+            MaybeOwned::Borrowed(n) => *n,
+            MaybeOwned::Owned(n) => n
+        })
+        .unwrap_or(1.0);
+
+        let view = self.element.view(MessageOwner::Menu, ui_scale, values);
 
         if let Some(debug_color) = self.element.element.debug_color {
             view

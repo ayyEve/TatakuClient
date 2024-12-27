@@ -57,7 +57,7 @@ impl InnerUIElement for ElapsedElement {
 
         let mut text = Text::new(
             Vector2::ZERO,
-            30.0 * scale.x,
+            30.0 * scale.y,
             format!("{mins:02}:{secs:02}"),
             Color::WHITE,
             Font::Main

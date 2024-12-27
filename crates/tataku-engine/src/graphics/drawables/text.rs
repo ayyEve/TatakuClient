@@ -10,7 +10,7 @@ pub struct Text {
 
     // pub origin: Vector2,
 
-    text_scale: f32,
+    // text_scale: f32,
 
     font_size: f32,
     pub text: String,
@@ -21,24 +21,25 @@ pub struct Text {
     blend_mode: BlendMode,
 }
 impl Text {
-    pub fn new(pos: Vector2, font_size: f32, text: impl ToString, color:Color, font: Font) -> Text {
+    pub fn new(pos: Vector2, font_size: f32, text: impl ToString, color: Color, font: Font) -> Text {
         let fonts = vec![font, Font::Fallback];
 
         // let text_size = Self::measure_text_internal(&fonts, font_size, &text, Vector2::ONE, 2.0);
         // let origin = text_size / 2.0;
 
-        let base_size = 30.0;
-        let text_scale = font_size / base_size;
+        // let base_size = 30.0;
+        // let text_scale = font_size / base_size;
 
         Text {
             color,
             pos,
             scale: Vector2::ONE,
             rotation: 0.0,
-            text_scale,
+            // text_scale,
 
             // origin,
-            font_size: base_size,
+            // font_size: base_size,
+            font_size,
             text: text.to_string(),
             fonts,
             text_colors: Vec::new(),
@@ -47,15 +48,23 @@ impl Text {
         }
     }
 
-    pub fn set_font_size(&mut self, size: f32) {
+    //
+    pub fn get_font_size_scaled(font_size: f32) -> (f32, f32) {
         let base_size = 30.0;
-        self.text_scale = size / base_size;
+        let text_scale = font_size / base_size;
+        (base_size, text_scale)
+    }
+
+    pub fn set_font_size(&mut self, size: f32) {
+        self.font_size = size;
+        // let base_size = 30.0;
+        // self.text_scale = size / base_size;
     }
     
     pub fn measure_text(&self) -> Vector2 {
-        Self::measure_text_raw(&self.fonts, self.font_size, &self.text, self.scale * self.text_scale, 2.0) 
+        Self::measure_text_raw(&self.fonts, self.font_size, &self.text, self.scale, 2.0) 
     }
-    pub fn center_text(&mut self, rect:&Bounds) {
+    pub fn center_text(&mut self, rect: &Bounds) {
         let text_size = self.measure_text();
         self.pos = rect.pos + (rect.size * rect.scale - text_size) / 2.0;
     }
@@ -73,7 +82,6 @@ impl Text {
     //     // find the scale
     //     let size = self.measure_text();
     //     let scale = area.size / size;
-
     // }
 
     
@@ -83,10 +91,19 @@ impl Text {
         Vector2::ZERO
     }
     #[cfg(feature = "graphics")]
-    pub fn measure_text_raw(fonts: &[Font], font_size: f32, text: &str, scale: Vector2, line_spacing: f32) -> Vector2 {
+    pub fn measure_text_raw(
+        fonts: &[Font], 
+        font_size: f32, 
+        text: &str, 
+        mut scale: Vector2, 
+        line_spacing: f32
+    ) -> Vector2 {
         if fonts.is_empty() { return Vector2::ZERO }
 
-        let mut max_width:f32 = 0.0;
+        let (font_size, text_scale) = Self::get_font_size_scaled(font_size);
+        scale *= text_scale;
+
+        let mut max_width: f32 = 0.0;
         let mut current_width = 0.0;
         let mut line_count = 1;
 
@@ -113,7 +130,7 @@ impl Text {
 
 }
 impl TatakuRenderable for Text {
-    fn get_name(&self) -> String { format!("Text '{}' with fonts {} and size {}", self.text, self.fonts.iter().map(|f|format!("{f:?}")).collect::<Vec<String>>().join(", "), self.font_size) }
+    fn get_name(&self) -> String { format!("Text '{}' with fonts {} and size {}", self.text, self.fonts.iter().map(|f| format!("{f:?}")).collect::<Vec<String>>().join(", "), self.font_size) }
     fn get_bounds(&self) -> Bounds { Bounds::new(self.pos, self.measure_text()) }
     
     
@@ -138,8 +155,11 @@ impl TatakuRenderable for Text {
     ) {
         if self.fonts.is_empty() { return error!("NO FONT FOR TEXT {}", self.text); }
 
+        let (font_size, text_scale) = Self::get_font_size_scaled(self.font_size);
+
         let color = options.color_with_alpha(self.color);
-        let scale = self.scale * self.text_scale;
+        // let scale = self.scale * self.text_scale;
+        let scale = self.scale * text_scale;
 
         transform = transform * Matrix::identity()
             // .trans(-self.origin) // apply origin
@@ -159,13 +179,13 @@ impl TatakuRenderable for Text {
         };
 
         let mut x = 0.0;
-        let mut y = self.font_size * scale.y;
+        let mut y = font_size * scale.y;
 
         // debug!("attempting to draw text");
         for (ch, color) in text {
             if ch == '\n' {
                 // move the line down
-                y += (self.font_size + 2.0) * self.scale.y;
+                y += (font_size + 2.0) * self.scale.y;
 
                 // reset x pos
                 x = 0.0;
@@ -174,9 +194,9 @@ impl TatakuRenderable for Text {
 
             'find_font: for i in self.fonts.iter() {
                 // if its not loaded, we want to skip because otherwise we lock the main thread and break everything
-                if !i.has_char_loaded(ch, self.font_size) { continue }
+                if !i.has_char_loaded(ch, font_size) { continue }
                 i.draw_character_image(
-                    self.font_size, 
+                    font_size, 
                     ch, 
                     [&mut x, &mut y], 
                     scale,

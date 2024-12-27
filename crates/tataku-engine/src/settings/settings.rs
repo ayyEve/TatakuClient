@@ -86,8 +86,8 @@ pub struct Settings {
     #[cfg_attr(feature="graphics", Setting(text="Theme", dropdown="SelectedTheme"))]
     pub theme: SelectedTheme,
 
-    // #[Setting(text="UI Scale")] // not ready yet
-    pub ui_scale: f64,
+    #[cfg_attr(feature="graphics", Setting(text="UI Scale", min=0.1, max=4.0))] // not ready yet
+    pub ui_scale: f32,
     #[cfg_attr(feature="graphics", Setting(text="Background Dim", min=0, max=1))]
     pub background_dim: f32,
 

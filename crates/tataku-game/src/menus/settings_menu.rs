@@ -9,21 +9,17 @@ use crate::prelude::*;
 
 pub struct SettingsMenu {
     num: usize, 
-
     filter_text: String,
+    old_settings: Settings,
+    should_close: bool,
 
     // scroll_area: ScrollableArea,
     // search_text: TextInput,
 
-    old_settings: Settings,
-
     // window_size: Arc<WindowSize>,
     // change_receiver: AsyncMutex<Receiver<()>>,
-    mouse_pos: Vector2,
-
-    should_close: bool,
-
-    last_click_was_us: bool,
+    // mouse_pos: Vector2,
+    // last_click_was_us: bool,
 }
 impl SettingsMenu {
     pub async fn new(settings: &Settings) -> SettingsMenu {
@@ -32,23 +28,24 @@ impl SettingsMenu {
             filter_text: String::new(),
             old_settings: settings.clone(),
             should_close: false,
-            mouse_pos: Vector2::ZERO,
-            last_click_was_us: false
+            // mouse_pos: Vector2::ZERO,
+            // last_click_was_us: false
         }
     }
 
-    pub fn revert(&mut self) { 
+    pub fn revert(&mut self, settings: &mut Settings) { 
         // let mut s = Settings::get_mut();
-        // *s = self.old_settings.clone();
+        *settings = self.old_settings.clone();
         // s.skip_autosaveing = false;
 
         self.should_close = true;
     }
-    pub fn finalize(&mut self) {
+    pub fn finalize(&mut self, settings: &mut Settings) {
         // self.update_settings().await;
         // let mut settings = Settings::get_mut();
         // settings.skip_autosaveing = false;
-        // settings.check_hashes();
+        settings.check_hashes();
+
 
         self.should_close = true;
     }
@@ -61,27 +58,28 @@ impl Dialog for SettingsMenu {
     fn get_num(&self) -> usize { self.num }
     fn set_num(&mut self, num: usize) { self.num = num }
     fn should_close(&self) -> bool { self.should_close }
-    async fn force_close(&mut self) { self.finalize() }
+    async fn force_close(&mut self) { self.should_close = true; }
 
 
 
-    async fn handle_message(&mut self, message: Message, _values: &mut dyn Reflect) {
+    async fn handle_message(&mut self, message: Message, values: &mut dyn Reflect) {
         let Some(tag) = message.tag.clone().as_string() else { return };
         let mut tags = tag.split(".");
         
         let Some(first) = tags.next() else { return println!("no first?") };
-        // if first != "settings" { return println!("first not settings?") };
-
-        // let Some(prop) = props.next() else { return println!("no second?") };
 
 
-        // match first {
-        //     "done" => self.finalize(),
-        //     "revert" => self.revert(),
-        //     "search" => if let Some(text) = message.message_type.as_text() { self.filter_text = text; },
+        let settings = values
+            .reflect_get_mut::<Settings>("settings")
+            .unwrap();
 
-        //     _ => Settings::get_mut().from_elements(&mut tags, message),
-        // }
+        match first {
+            "done" => self.finalize(settings),
+            "revert" => self.revert(settings),
+            "search" => if let Some(text) = message.message_type.as_text() { self.filter_text = text; },
+
+            _ => settings.from_elements(&mut tags, message),
+        }
 
     }
     
@@ -112,12 +110,12 @@ impl Dialog for SettingsMenu {
                 // category name
                 row!( Text::new(sc.name).size(40.0); ),
                 // settings
-                CullingColumn::with_children(
+                Column::with_children(
                     sc.properties.into_iter()
                         .zip(sc.values)
                         .map(|(p,v)| 
                             row!(p, v; align_y = Alignment::Center, spacing = 5.0))
-                        .collect()
+                        // .collect()
                 )
                 .spacing(5.0)
                 .into_element()
@@ -141,9 +139,9 @@ impl Dialog for SettingsMenu {
             Text::new(" ").size(40.0),
 
             // items
-            make_panel_scroll(items, "settings_list")
+            make_scrollable(items, "settings_list")
                 .width(Shrink)
-                .axis(iced::advanced::layout::flex::Axis::Vertical)
+                // .axis(iced::advanced::layout::flex::Axis::Vertical)
             ,
 
             // revert

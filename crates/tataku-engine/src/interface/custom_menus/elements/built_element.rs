@@ -7,15 +7,15 @@ pub struct BuiltElementDef {
 }
 impl BuiltElementDef {
     /// get the view from the nth child, or an empty view if none exist
-    fn nth_child_view(&self, n: usize, owner: MessageOwner, values: &mut dyn Reflect) -> IcedElement {
+    fn nth_child_view(&self, n: usize, owner: MessageOwner, ui_scale: f32, values: &mut dyn Reflect) -> IcedElement {
         let Some(child) = self.children.get(n) else { return EmptyElement.into_element() };
-        child.view(owner, values)
+        child.view(owner, ui_scale, values)
     }
 
     /// get the view from the first child, or an empty view if none exist
-    fn first_child_view(&self, owner: MessageOwner, values: &mut dyn Reflect) -> IcedElement {
+    fn first_child_view(&self, owner: MessageOwner, ui_scale: f32, values: &mut dyn Reflect) -> IcedElement {
         let Some(child) = self.children.first() else { return EmptyElement.into_element() };
-        child.view(owner, values)
+        child.view(owner, ui_scale, values)
     }
 }
 
@@ -41,7 +41,7 @@ impl Widgetable for BuiltElementDef {
         actions
     }
     
-    fn view(&self, owner: MessageOwner, values: &mut dyn Reflect) -> IcedElement {
+    fn view(&self, owner: MessageOwner, ui_scale: f32, values: &mut dyn Reflect) -> IcedElement {
         match &self.element.element {
             ElementIdentifier::Space => Space::new(self.element.width, self.element.height).into_element(),
             ElementIdentifier::Button { padding, action, pressed, ..} => {
@@ -55,7 +55,7 @@ impl Widgetable for BuiltElementDef {
                     }
                 }
 
-                Button::new(self.first_child_view(owner, values))
+                Button::new(self.first_child_view(owner, ui_scale, values))
                     .on_press_maybe(action.resolve(owner, values, None))
                     .width(self.element.width)
                     .height(self.element.height)
@@ -66,15 +66,20 @@ impl Widgetable for BuiltElementDef {
                     .into_element()
             }
             ElementIdentifier::Text { text, color, font_size, font }  => {
+                // let font_size = font_size.map(|f| f * ui_scale);
+                let font_size = font_size
+                    .unwrap_or(DEFAULT_FONT_SIZE) * ui_scale;
+
                 iced_elements::Text::new(text.to_string(values))
                     .width(self.element.width)
                     .height(self.element.height)
+                    .size(font_size)
                     .chain_maybe(*color, |s, c| s.color(c))
-                    .chain_maybe(*font_size, |s, f| s.size(f))
+                    // .chain_maybe(font_size, |s, f| s.size(f))
                     .chain_maybe(font.as_ref().and_then(map_font), |s, font| s.font(font))
                     .into_element()
             }
-            ElementIdentifier::TextInput { placeholder, variable,  on_input, on_submit,is_password } => {
+            ElementIdentifier::TextInput { placeholder, variable,  on_input, on_submit, is_password } => {
                 let placeholder = placeholder.to_string(values);
                 let value = (values.reflect_get::<String>(variable).as_deref()).cloned().unwrap_or_default();
                 // let value = values.get_string(&variable).unwrap_or_default();.unwrap_or_default();
@@ -103,16 +108,19 @@ impl Widgetable for BuiltElementDef {
                 };
 
 
+                let font_size = DEFAULT_FONT_SIZE * ui_scale;
+
                 iced_elements::TextInput::new(&placeholder, &value)
                     .on_input(on_input)
                     .width(self.element.width)
+                    .size(font_size)
                     .secure(*is_password)
                     .chain_maybe(on_submit.as_ref().and_then(|e| e.resolve(owner, values, None)), |t, m| t.on_submit(m))
                     .into_element()
             }
 
             ElementIdentifier::Row { padding, margin, .. } => {
-                Row::with_children(self.children.iter().map(|e| e.view(owner, values)).collect::<Vec<_>>())
+                Row::with_children(self.children.iter().map(|e| e.view(owner, ui_scale, values)).collect::<Vec<_>>())
                     .width(self.element.width)
                     .height(self.element.height)
                     .chain_maybe(*padding, |s, p| s.padding(p))
@@ -120,7 +128,7 @@ impl Widgetable for BuiltElementDef {
                     .into_element()
             }
             ElementIdentifier::Column { padding, margin, .. } => {
-                Column::with_children(self.children.iter().map(|e| e.view(owner, values)).collect::<Vec<_>>())
+                Column::with_children(self.children.iter().map(|e| e.view(owner, ui_scale, values)).collect::<Vec<_>>())
                     .width(self.element.width)
                     .height(self.element.height)
                     .chain_maybe(*padding, |s, p| s.padding(p))
@@ -129,7 +137,7 @@ impl Widgetable for BuiltElementDef {
             }
 
             ElementIdentifier::StyledContent { padding, color, border, shape, built_image, .. } => {
-                ContentBackground::new(self.first_child_view(owner, values))
+                ContentBackground::new(self.first_child_view(owner, ui_scale, values))
                     .width(self.element.width)
                     .height(self.element.height)
                     .border(*border)
@@ -144,8 +152,8 @@ impl Widgetable for BuiltElementDef {
                 match cond.resolve(values) {
                     ElementResolve::Failed | ElementResolve::Error(_) => EmptyElement.into_element(),
                     ElementResolve::Unbuilt(_) => panic!("conditional element not built!"),
-                    ElementResolve::True => self.nth_child_view(0, owner, values),
-                    ElementResolve::False => self.nth_child_view(1, owner, values),
+                    ElementResolve::True => self.nth_child_view(0, owner, ui_scale, values),
+                    ElementResolve::False => self.nth_child_view(1, owner, ui_scale, values),
                 }
             }
 
@@ -170,7 +178,7 @@ impl Widgetable for BuiltElementDef {
                         error!("{e:?}");
                         return EmptyElement.into_element() 
                     }
-                    children.push(ele.view(owner, values));
+                    children.push(ele.view(owner, ui_scale, values));
                 }
                 // values.remove(&var);
 
@@ -310,6 +318,7 @@ impl Widgetable for BuiltElementDef {
                     on_select,
                 )
                 .width(self.element.width)
+                .text_size(DEFAULT_FONT_SIZE * ui_scale)
                 .chain_maybe(padding.as_ref(), |t, p| t.padding(*p))
                 .chain_maybe(placeholder.as_ref(), |t, p| t.placeholder(p))
                 .chain_maybe(font_size.as_ref(), |t, f| t.text_size(*f))
@@ -321,7 +330,7 @@ impl Widgetable for BuiltElementDef {
             ElementIdentifier::DraggingScroll { padding, margin, .. } => {
                 DraggingScroll::with_children(
                     self.children.iter()
-                        .map(|e| e.view(owner, values))
+                        .map(|e| e.view(owner, ui_scale, values))
                         .collect(),
                     // Cow::Owned(self.element.id.clone())
                 )
@@ -336,7 +345,7 @@ impl Widgetable for BuiltElementDef {
 
             _ => {
                 // warn!("missed object? {:?}", self.element.id);
-                self.first_child_view(owner, values)
+                self.first_child_view(owner, ui_scale, values)
                 // panic!("you missed something")
             }
         }
@@ -350,7 +359,12 @@ impl Widgetable for BuiltElementDef {
 #[async_trait]
 pub trait Widgetable: Send + Sync {
     async fn update(&mut self, _values: &mut dyn Reflect, _actions: &mut ActionQueue) {}
-    fn view(&self, _owner: MessageOwner, _values: &mut dyn Reflect) -> IcedElement { EmptyElement.into_element() }
+    fn view(
+        &self, 
+        _owner: MessageOwner, 
+        _ui_scale: f32,
+        _values: &mut dyn Reflect
+    ) -> IcedElement { EmptyElement.into_element() }
 
     async fn handle_message(&mut self, _message: &Message, _values: &mut dyn Reflect) -> Vec<TatakuAction> { Vec::new() }
 

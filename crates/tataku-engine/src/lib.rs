@@ -1,3 +1,9 @@
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::type_complexity)]
+#![allow(clippy::module_inception)]
+#![allow(clippy::new_without_default)]
+
+
 mod io;
 mod game;
 mod data;

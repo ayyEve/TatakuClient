@@ -259,8 +259,8 @@ impl ScoreMenu {
                 let playmode = self.infos.get_info(playmode).unwrap().display_name;
 
                 let mut date = String::new();
-                if let Some(datetime) = NaiveDateTime::from_timestamp_opt(*time as i64, 0) {
-                    let score_time = datetime.and_local_timezone(Local).unwrap();
+                if let Some(datetime) = chrono::DateTime::from_timestamp(*time as i64, 0) {
+                    let score_time = datetime.with_timezone(&Local);
                     date = score_time.date_naive().format("%d-%m-%Y").to_string();
                 }
 

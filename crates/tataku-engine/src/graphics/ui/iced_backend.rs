@@ -1,9 +1,12 @@
 use crate::prelude::*;
 
+pub const DEFAULT_FONT_SIZE: f32 = 25.0;
+
 #[derive(Default)]
 pub struct IcedRenderer {
     renderables: Vec<Arc<dyn TatakuRenderable>>,
-    object_stack: Vec<TransformGroup>
+    object_stack: Vec<TransformGroup>,
+    pub ui_scale: f32,
 }
 impl IcedRenderer {
     pub fn new() -> Self {
@@ -82,7 +85,7 @@ impl iced::advanced::text::Renderer for IcedRenderer {
     const ARROW_DOWN_ICON: char = '▼';
 
     fn default_font(&self) -> Self::Font { Font::Main }
-    fn default_size(&self) -> iced::Pixels { iced::Pixels(25.0) }
+    fn default_size(&self) -> iced::Pixels { iced::Pixels(DEFAULT_FONT_SIZE) }
 
     fn fill_paragraph(
         &mut self,
@@ -190,7 +193,13 @@ impl iced::advanced::text::Paragraph for IcedParagraph {
     type Font = Font;
 
     fn with_text(text: iced_core::Text<&str, Self::Font>) -> Self {
-        let size = Text::measure_text_raw(&[text.font], text.size.0, text.content, Vector2::ONE, text.line_height.to_absolute(text.size).0 - text.size.0);
+        let size = Text::measure_text_raw(
+            &[text.font], 
+            text.size.0, 
+            text.content, 
+            Vector2::ONE, 
+            text.line_height.to_absolute(text.size).0 - text.size.0
+        );
 
         Self {
             text_raw: text.content.to_owned(),
@@ -247,6 +256,8 @@ impl iced::advanced::text::Paragraph for IcedParagraph {
         //     return None;
         // }
 
+        let (font_size, text_scale) = Text::get_font_size_scaled(self.font_size.0);
+
         use iced_core::text::Hit::CharOffset;
         //TODO: eventually we will need to care about y coords here as well.
 
@@ -261,9 +272,9 @@ impl iced::advanced::text::Paragraph for IcedParagraph {
 
         for (counter, char) in self.text_raw.char_indices() {
             // get the font character
-            let Some(c) = self.font.get_character(self.font_size.0, char) else { continue };
+            let Some(c) = self.font.get_character(font_size, char) else { continue };
 
-            let a = c.advance_width() / 2.0;
+            let a = c.advance_width() * text_scale / 2.0;
 
             width += a;
             
@@ -280,19 +291,20 @@ impl iced::advanced::text::Paragraph for IcedParagraph {
         
         // cumulative width
         let mut width = 0.0;
+        let (font_size, text_scale) = Text::get_font_size_scaled(self.font_size.0);
 
         for (counter, char) in text.char_indices() {
             if counter == index { break }
 
             // get the font character
-            let Some(c) = self.font.get_character(self.font_size.0, char) else { continue };
+            let Some(c) = self.font.get_character(font_size, char) else { continue };
             
-            width += c.advance_width();
+            width += c.advance_width() * text_scale;
         }
 
         Some(iced::Point::new(
             width, 
-            self.line_height.to_absolute(self.font_size).0 * (line as f32)
+            self.line_height.to_absolute(iced::Pixels(font_size)).0 * text_scale * (line as f32)
         ))
     }
     

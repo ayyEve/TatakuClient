@@ -403,7 +403,7 @@ impl Widgetable for GameplayPreview {
         GameplayPreview::update(self, values, actions).await
         // (self as &mut GameplayPreview).update().await
     }
-    fn view(&self, _owner: MessageOwner, _values: &mut dyn Reflect) -> IcedElement {
+    fn view(&self, _owner: MessageOwner, _ui_scale: f32, _values: &mut dyn Reflect) -> IcedElement {
         self.widget.clone().into()
     }
 

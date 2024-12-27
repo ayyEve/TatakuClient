@@ -24,7 +24,7 @@ pub struct FpsDisplay {
 }
 impl FpsDisplay {
     /// name is what to display in text, count is which fps counter is this (only affects position)
-    pub async fn new(name:&str, pos_count:u8) -> Self {
+    pub async fn new(name: &str, pos_count: u8) -> Self {
         let window_size = WindowSizeHelper::new();
         let pos = Vector2::new(window_size.x - SIZE.x, window_size.y - SIZE.y * (pos_count+1) as f32);
 
@@ -78,7 +78,7 @@ impl FpsDisplay {
         self.frametime_last = self.frametime_last.max(self.frametime_timer.elapsed().as_secs_f32() * 1000.0);
         self.frametime_timer = Instant::now();
     }
-    pub fn draw(&self, list:&mut RenderableCollection) {
+    pub fn draw(&self, list: &mut RenderableCollection) {
         list.push(visibility_bg(self.pos, SIZE));
 
         list.push(Text::new(

@@ -5,22 +5,22 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
     let mut settings:Vec<SettingsItem> = Vec::new();
     // let mut categories = HashMap::new();
 
-    let mut get_items_extra = None;
-    let mut from_menu_extra = None;
+    // let mut get_items_extra = None;
+    // let mut from_menu_extra = None;
 
-    for attr in &ast.attrs {
-        if attr.path.is_ident("Setting") {
-            if let Ok(Meta::List(list)) = attr.parse_meta() {
-                for name_value in recurse_meta(list) {
-                    match &name_value.lit {
-                        Lit::Str(str) if name_value.path.is_ident("get_items") => get_items_extra = Some(str.value()),
-                        Lit::Str(str) if name_value.path.is_ident("from_menu") => from_menu_extra = Some(str.value()),
-                        _ => {}
-                    }
-                }
-            }
-        }
-    }
+    // for attr in &ast.attrs {
+    //     if attr.path.is_ident("Setting") {
+    //         if let Ok(Meta::List(list)) = attr.parse_meta() {
+    //             for name_value in recurse_meta(list) {
+    //                 match &name_value.lit {
+    //                     Lit::Str(str) if name_value.path.is_ident("get_items") => get_items_extra = Some(str.value()),
+    //                     Lit::Str(str) if name_value.path.is_ident("from_menu") => from_menu_extra = Some(str.value()),
+    //                     _ => {}
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 
     if let Data::Struct(data) = &ast.data {
         // go through settings

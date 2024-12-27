@@ -177,7 +177,9 @@ impl MultiplayerManager {
                 self.lobby.players.retain(|u| &u.user_id != user_id);
 
                 // find the slot that had this user and set it to empty (server will update its proper status next update)
-                self.lobby.slots.values_mut().find(|s| **s == LobbySlot::Filled{user: *user_id}).map(|s| *s = LobbySlot::Empty);
+                if let Some(slot) = self.lobby.slots.values_mut().find(|s| **s == LobbySlot::Filled{user: *user_id}) {
+                    *slot = LobbySlot::Empty;
+                }
                 
                 if user_id != &self.lobby.our_user_id {
                     let username = self.lobby.player_usernames.remove(user_id).unwrap_or_default();
@@ -186,14 +188,18 @@ impl MultiplayerManager {
             }
 
             MultiplayerPacket::Server_LobbySlotChange { slot, new_status } => {
-                self.lobby.info.slots.get_mut(slot).map(|s| *s = *new_status);
+                if let Some(slot) = self.lobby.info.slots.get_mut(slot) {
+                    *slot = *new_status
+                }
             }
 
             MultiplayerPacket::Server_LobbyUserState { user_id, new_state } => {
+                if let Some(user) = 
                 self.lobby.info.players
                     .iter_mut()
-                    .find(|u| &u.user_id == user_id)
-                    .map(|u| u.state = *new_state);
+                    .find(|u| &u.user_id == user_id) {
+                    user.state = *new_state;
+                }
             }
 
 

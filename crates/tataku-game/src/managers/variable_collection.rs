@@ -391,6 +391,7 @@ pub struct GlobalInfo {
 
     pub username: String,
     pub user_id: u32,
+    pub logged_in: bool,
     pub menu_list: Vec<String>,
 
     pub new_beatmap_hash: Option<Md5Hash>,

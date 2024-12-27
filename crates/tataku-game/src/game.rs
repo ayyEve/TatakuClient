@@ -127,7 +127,7 @@ impl Game {
             window_size: WindowSizeHelper::new(),
             spectator_manager: None,
             multiplayer_manager: None,
-            difficulty_manager: DifficultyManager::default(),
+            difficulty_manager: DifficultyManager,
             multiplayer_data: MultiplayerData::default(),
 
             song_manager: SongManager::new(),
@@ -989,9 +989,13 @@ impl Game {
 
         let mut multi_packets = Vec::new();
         if let Some(mut manager) = OnlineManager::try_get_mut() {
+            self.values.global.logged_in = manager.logged_in;
 
             if manager.logged_in && manager.user_id > 0 && self.values.global.user_id == 0 {
                 self.values.global.user_id = manager.user_id;
+                if let Some(us) = manager.users.get(&manager.user_id) {
+                    self.values.global.username = us.lock().await.username.clone()
+                }
             }
 
 

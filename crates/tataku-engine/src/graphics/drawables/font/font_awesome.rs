@@ -39,7 +39,7 @@ pub enum FontAwesome {
 impl FontAwesome {
     pub fn get_char(&self) -> char {
         let c = *self as u32;
-        char::from_u32(c).expect(&format!("invalid char: {c:#06x}"))
+        char::from_u32(c).unwrap_or_else(|| panic!("invalid char: {c:#06x}"))
     }
 }
 

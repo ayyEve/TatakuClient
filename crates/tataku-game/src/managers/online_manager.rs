@@ -523,7 +523,7 @@ impl OnlineManager {
         }
     }
 
-    pub fn send_spec_frames(frames:Vec<SpectatorFrame>, force_send: bool) {
+    pub fn send_spec_frames(frames: Vec<SpectatorFrame>, force_send: bool) {
         tokio::spawn(async move {
             let mut lock = Self::get_mut().await;
             // if we arent speccing, exit

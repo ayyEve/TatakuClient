@@ -51,7 +51,7 @@ impl ActualFont {
         // if this font is already loaded, exit
         if self.loaded_sizes.read().contains(&font_size.u32()) { return }
 
-        // if we're not going to wait for this to load
+        // if we're going to wait for this to load
         if wait {
             if self.queued_for_load.read().contains(&font_size.u32()) {
                 // found a race condition

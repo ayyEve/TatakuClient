@@ -93,6 +93,16 @@ impl<T:Reflect> UiManager<T> {
                     mut values ,
                     force_refresh,
                 } => {
+
+                    if let Ok(scale) = values.impl_get(ReflectPath::new("settings.ui_scale")) {
+                        let scale = scale.as_ref();
+                        if let Some(scale) = scale.downcast_ref() {
+                            if renderer.ui_scale != *scale {
+                                renderer.ui_scale = *scale;
+                            }
+                        }
+                    }
+
                     // rebuild ui with the new application
                     if force_refresh || rebuild_next || application.menu.get_name() != last_menu {
                         last_menu = application.menu.get_name().to_owned();
