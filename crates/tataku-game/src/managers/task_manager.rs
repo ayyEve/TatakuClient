@@ -47,7 +47,6 @@ impl TaskManager {
             // run the task
             task.run(values, &state, &mut actions).await;
 
-            
             if task.get_state() == TatakuTaskState::Complete {
                 info!("Task complete {}", task.get_name())
             }

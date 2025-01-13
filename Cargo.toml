@@ -117,6 +117,7 @@ iced_winit = { version = "0.13.0" }
 # rustfft = { version = "6.0" }
 
 # networking
+rustls = "0.23.21"
 sha2 = "0.10.8"
 tokio-tungstenite = { version = "0.26.1", features = ["rustls-tls-native-roots"] }
 reqwest = { version = "0.12.10", features = ["json"] }

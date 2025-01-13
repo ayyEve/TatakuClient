@@ -51,6 +51,11 @@ pub struct OnlineManager {
 impl OnlineManager {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
+        
+        // idk why this is suddenly required but whatever
+        let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+
+
         #[cfg(feature="graphics")]
         let mut messages = HashMap::new();
         #[cfg(feature="graphics")]
