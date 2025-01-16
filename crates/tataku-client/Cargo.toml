@@ -7,13 +7,14 @@ edition.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 #  TODO: we should always assume gameplay and graphics here lol
 [features]
-default = [ "gameplay" ]
+default = [ "gameplay", "storyboards" ]
 bass_audio = [ "tataku-bass" ]
 as_crate = []
 gameplay = [ "graphics", "bass_audio", "discord", "gilrs", "media_control", "tokio-tungstenite", "ipc-channel" ]
 discord = [ "discord-rich-presence" ]
 media_control = [ "souvlaki" ]
 ui = [ "iced", "triple_buffer" ]
+storyboards = [ "tataku-game/storyboards" ]
 
 # # removes as much graphics-side stuff as possible
 graphics = [ "winit", "ui", "image" ]

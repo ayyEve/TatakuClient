@@ -283,13 +283,13 @@ impl StoryboardDef {
             // helper because this code was already ugly
             macro_rules! parse_or_continue {
                 ($name: ident, $T:ty) => {
-                    let Some($name) = split.next().and_then(|s| s.parse::<$T>().ok()) else { error!("error reading {}, line {n}", stringify!($name)); continue };
+                    let Some($name) = split.next().and_then(|s| s.parse::<$T>().ok()) else { error!("error reading {}, line {n}: {line}", stringify!($name), ); continue };
                 };
                 ($name: ident, $T:ty, $default: ident) => {
                     let $name = split.next().and_then(|s| s.parse::<$T>().ok()).unwrap_or($default);
                 };
                 ($name: ident, $T:ty, _) => {
-                    let Some($name) = split.next().and_then(|s| <$T>::from_str(s)) else { error!("error reading {}, line {n}", stringify!($name)); continue };
+                    let Some($name) = split.next().and_then(|s| <$T>::from_str(s)) else { error!("error reading {}, line {n}: {line}", stringify!($name)); continue };
                 };
             }
 

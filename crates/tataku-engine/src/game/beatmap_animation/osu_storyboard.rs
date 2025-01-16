@@ -25,7 +25,7 @@ impl OsuStoryboard {
         for e in def.entries.clone() {
             elements.push(Element::new(e, &dir, &mut image_cache, &scaling_helper, skin_manager).await?);
         }
-        elements.reverse();
+        // elements.reverse();
         elements.sort_by(Element::sort);
 
         for i in elements.iter_mut() {
@@ -56,12 +56,12 @@ impl BeatmapAnimation for OsuStoryboard {
 
     async fn draw(&self, list: &mut RenderableCollection) {
         for i in self.elements.iter() {
-            // if self.time < i.start_time || !i.group.visible() { continue } // || (i.end_time < self.time && !i.group.visible()) { continue }
+            if self.time < i.start_time || !i.group.visible() { continue } // || (i.end_time < self.time && !i.group.visible()) { continue }
             // if !i.group.visible() { continue } // || (i.end_time < self.time && !i.group.visible()) { continue }
 
             let mut g = i.group.clone();
 
-            g.pos.current = self.scaling_helper.scale_coords(g.pos.current);
+            // g.pos.current = self.scaling_helper.scale_coords(g.pos.current);
             // g.scale.current *= self.scaling_helper.scale;
 
             list.push(g)
@@ -120,7 +120,9 @@ impl Element {
         let mut blend_mode = None;
         for i in def.commands.iter() {
             if let StoryboardEvent::Parameter { param: Param::AdditiveBlending } = i.event {
-                blend_mode = Some(BlendMode::AdditiveBlending);
+                // if i.start_time as i32 == i.end_time as i32 {
+                    blend_mode = Some(BlendMode::OsuAdditiveBlending);
+                // }
                 break;
             }
         }
@@ -164,29 +166,13 @@ impl Element {
                 // apply origin
                 image.origin = sprite.origin.resolve(image.tex_size());
 
-                // let size = image.tex_size();
-                // match sprite.origin {
-                //     Origin::Custom => image.origin = Vector2::ZERO,
-
-                //     Origin::TopCentre => image.origin.y = 0.0,
-                //     Origin::TopLeft => image.origin = Vector2::ZERO,
-                //     Origin::TopRight => image.origin = Vector2::new(size.x, 0.0),
-
-                //     Origin::CentreLeft => image.origin.x = 0.0,
-                //     Origin::Centre => image.origin = size / 2.0, // default
-                //     Origin::CentreRight => image.origin.x = size.x,
-                    
-                //     Origin::BottomLeft => image.origin = Vector2::new(0.0, size.y),
-                //     Origin::BottomCentre => image.origin.y = size.y,
-                //     Origin::BottomRight => image.origin = size,
-                // }
-
                 layer = sprite.layer;
+                error!("has blend: {}", blend_mode.is_some());
                 if let Some(b) = blend_mode { image.set_blend_mode(b) }
 
-                if sprite.filepath == "sb\\glow.png" {
-                    image.draw_debug = true;
-                }
+                // if sprite.filepath == "sb\\glow.png" {
+                //     image.draw_debug = true;
+                // }
 
                 group.items.push(Arc::new(image.clone()));
                 ElementImage::Sprite(image)
@@ -223,7 +209,7 @@ impl Element {
                 let mut animation = Animation::new(Vector2::ZERO, Vector2::ONE, frames, delays, Vector2::ONE);
                 animation.scale = Vector2::ONE;
                 // animation.free_on_drop = true;
-                animation.draw_debug = true;
+                // animation.draw_debug = true;
                 if let Some(b) = blend_mode { animation.set_blend_mode(b) }
                 
                 animation.origin = anim.origin.resolve(tex_size);
@@ -256,7 +242,7 @@ impl Element {
             StoryboardElementDef::Sprite(s) => s.pos,
             StoryboardElementDef::Animation(a) => a.pos,
         };
-        self.group.pos.current = pos;
+        self.group.pos.current = scale.scale_coords(pos);
 
         // let origin = match &self.element_image {
         //     ElementImage::Sprite(i) => i.origin,
@@ -433,7 +419,14 @@ enum ElementImage {
     Sprite(Image),
     Anim(Animation),
 }
-
+impl ElementImage {
+    fn size(&self) -> Vector2 {
+        match self {
+            Self::Sprite(s) => s.size(),
+            Self::Anim(a) => a.size(),
+        }
+    }
+}
 
 async fn try_load_image(
     filepath: &String,

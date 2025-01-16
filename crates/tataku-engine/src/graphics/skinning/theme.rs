@@ -258,7 +258,7 @@ pub enum SelectedTheme {
 impl tataku_client_common::Dropdownable2 for SelectedTheme {
     type T = Self;
     fn variants() -> Vec<Self::T> {
-        [Self::Tataku, Self::Osu].into_iter().chain(THEMES.clone().into_iter().map(|t|Self::Custom(t.0, t.1))).collect()
+        [Self::Tataku, Self::Osu].into_iter().chain(THEMES.clone().into_iter().map(|t| Self::Custom(t.0, t.1))).collect()
     }
 
     // fn display_text(&self) -> String {

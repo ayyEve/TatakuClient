@@ -271,6 +271,7 @@ impl<'window> WgpuEngine<'window> {
             BlendMode::AlphaOverwrite,
             BlendMode::PremultipliedAlpha,
             BlendMode::AdditiveBlending,
+            BlendMode::OsuAdditiveBlending,
             BlendMode::SourceAlphaBlending,
         ] {
             let blend_state = Self::map_blend_mode(blend_mode);
@@ -737,7 +738,7 @@ impl WgpuEngine<'_> {
         self.dump_last_drawn();
         self.current_render_buffer = Some(self.buffer_queues
             .remove(&to_draw)
-            .expect(&format!("buffer queue did not have a queue for type {to_draw:?}. Did you forget to create a buffer queue for it?"))
+            .unwrap_or_else(|| panic!("buffer queue did not have a queue for type {to_draw:?}. Did you forget to create a buffer queue for it?"))
         );
     }
 
@@ -1030,6 +1031,10 @@ impl WgpuEngine<'_> {
             BlendMode::PremultipliedAlpha => wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING,
             BlendMode::AdditiveBlending => wgpu::BlendState {
                 color: wgpu::BlendComponent { src_factor: wgpu::BlendFactor::One, dst_factor: wgpu::BlendFactor::One, operation: wgpu::BlendOperation::Add },
+                alpha: wgpu::BlendComponent { src_factor: wgpu::BlendFactor::One, dst_factor: wgpu::BlendFactor::One, operation: wgpu::BlendOperation::Add }
+            },
+            BlendMode::OsuAdditiveBlending => wgpu::BlendState {
+                color: wgpu::BlendComponent { src_factor: wgpu::BlendFactor::SrcAlpha, dst_factor: wgpu::BlendFactor::One, operation: wgpu::BlendOperation::Add },
                 alpha: wgpu::BlendComponent { src_factor: wgpu::BlendFactor::One, dst_factor: wgpu::BlendFactor::One, operation: wgpu::BlendOperation::Add }
             },
             BlendMode::SourceAlphaBlending => wgpu::BlendState {

@@ -20,7 +20,7 @@ load_internal_menus_from_file = [] # whether to load builtin menus at runtime (i
 dynamic_gamemodes = [ "libloading" ]
 
 
-storyboards = []
+storyboards = [ "tataku-engine/storyboards" ]
 texture_arrays = []
 media_control = [ "souvlaki" ]
 # wgpu_graphics = [ "wgpu", "lyon_tessellation", "bytemuck" ]

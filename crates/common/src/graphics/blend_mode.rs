@@ -12,6 +12,9 @@ pub enum BlendMode {
     AdditiveBlending,
     SourceAlphaBlending,
 
+    /// because peppy stupid
+    OsuAdditiveBlending,
+
     /// special cases
     Slider,
     Flashlight,
