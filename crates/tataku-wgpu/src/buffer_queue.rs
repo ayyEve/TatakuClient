@@ -24,10 +24,10 @@ impl<B:RenderBufferable> RenderBufferQueue<B> {
 
     /// set up the buffers to be writable
     pub fn begin(&mut self, mut recorded: Vec<Box<B>>) {
-        recorded.iter_mut().for_each(|b|b.reset());
+        recorded.iter_mut().for_each(|b| b.reset());
         self.queued_buffers.extend(recorded);
 
-        // the recording buffer can still be some if it was not used in the previous draw call
+        // the recording buffer can be <Some> if it was not used in the previous draw call
         if self.recording_buffer.is_none() {
             self.recording_buffer = self.queued_buffers.pop();
         }
@@ -51,7 +51,9 @@ impl<B:RenderBufferable> RenderBufferQueue<B> {
     }
 
     /// get the current recording buffer
-    pub fn recording_buffer(&mut self) -> Option<&mut Box<B>> { self.recording_buffer.as_mut() }
+    pub fn recording_buffer(&mut self) -> Option<&mut Box<B>> { 
+        self.recording_buffer.as_mut() 
+    }
 
     /// create a render buffer on the gpu
     pub fn create_render_buffer(&mut self, device: &Device) {

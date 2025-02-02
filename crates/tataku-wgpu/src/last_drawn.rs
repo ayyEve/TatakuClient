@@ -3,7 +3,7 @@
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum LastDrawn {
     // None,
-    Vertex,
+    Standard,
     Slider,
     Flashlight
 }

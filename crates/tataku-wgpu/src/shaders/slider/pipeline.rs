@@ -1,4 +1,3 @@
-
 use crate::prelude::*;
 use tataku_client_common::prelude::*;
 
@@ -7,7 +6,6 @@ pub fn create_slider_pipeline(
     config: &wgpu::SurfaceConfiguration,
     projection_matrix_bind_group_layout: &wgpu::BindGroupLayout,
 ) -> wgpu::RenderPipeline {
-
     let slider_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("Slider Shader"),
         source: wgpu::ShaderSource::Wgsl(crate::shader_files::SLIDER.into()),

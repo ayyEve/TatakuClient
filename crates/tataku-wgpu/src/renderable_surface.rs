@@ -1,6 +1,5 @@
 use tataku_client_common::prelude::*;
 
-
 pub struct RenderableSurface<'a> {
     pub texture: &'a wgpu::TextureView,
     pub size: Vector2,

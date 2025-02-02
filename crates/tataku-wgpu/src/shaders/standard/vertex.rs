@@ -3,17 +3,16 @@ use tataku_client_common::prelude::Matrix;
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[derive(bytemuck::Pod, bytemuck::Zeroable)]
-pub struct Vertex {
+pub struct StandardVertex {
     pub position: [f32; 2],
     pub tex_coords: [f32; 2],
     pub tex_index: i32,
     pub color: [f32; 4],
-    // pub scissor_index: u32
 }
-impl Vertex {
+impl StandardVertex {
     pub fn desc() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
+            array_stride: std::mem::size_of::<StandardVertex>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Vertex,
             attributes: &[
                 // position
@@ -40,12 +39,6 @@ impl Vertex {
                     shader_location: 3,
                     format: wgpu::VertexFormat::Float32x4,
                 },
-                // // scissor index
-                // wgpu::VertexAttribute {
-                //     offset: (std::mem::size_of::<[f32;2]>() + std::mem::size_of::<[f32;2]>() + std::mem::size_of::<i32>() + std::mem::size_of::<[f32;4]>()) as wgpu::BufferAddress,
-                //     shader_location: 4,
-                //     format: wgpu::VertexFormat::Uint32,
-                // },
             ]
         }
     }
@@ -60,7 +53,7 @@ impl Vertex {
     }
 }
 
-impl Default for Vertex {
+impl Default for StandardVertex {
     fn default() -> Self {
         Self {
             position: [0.0; 2],
