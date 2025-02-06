@@ -24,7 +24,7 @@ impl Vector2 {
         self.y.atan2(self.x)
     }
 
-    pub fn from_angle(a:f32) -> Self {
+    pub fn from_angle(a: f32) -> Self {
         Self::new(a.cos(), a.sin())
     }
     
@@ -52,12 +52,14 @@ impl Vector2 {
         (direction.x / direction.length()).acos()
     }
     
-    // get only this vector's x value
+    /// Get only this vector's x value
+    /// This is horribly named
     pub fn x_portion(mut self) -> Self {
         self.y = 0.0;
         self
     }
-    // get only this vector's y value
+    /// Get only this vector's y value
+    /// This is horribly named
     pub fn y_portion(mut self) -> Self {
         self.x = 0.0;
         self
@@ -68,6 +70,20 @@ impl Vector2 {
     }
     pub fn dot(self, other: Self) -> f32 {
         self.x * other.x + self.y * other.y
+    }
+
+    /// Gets the x or y component, whichever is smaller
+    /// 
+    /// Can be used for scaling to maintain aspect ratio
+    pub fn min_component(self) -> f32 {
+        self.x.min(self.y)
+    }
+
+    /// Gets the x or y component, whichever is bigger
+    /// 
+    /// Can be used for scaling to maintain aspect ratio
+    pub fn max_component(self) -> f32 {
+        self.x.max(self.y)
     }
 }
 

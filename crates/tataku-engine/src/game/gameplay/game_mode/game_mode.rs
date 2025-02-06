@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 #[async_trait]
-pub trait GameMode: GameModeInput + GameModeProperties + Send + Sync {
+pub trait GameMode: GameModeInput + Send + Sync {
     async fn new(
         beatmap: &Beatmap, 
         diff_calc_only: bool,
@@ -32,7 +32,6 @@ pub trait GameMode: GameModeInput + GameModeProperties + Send + Sync {
 
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>);
     async fn fit_to_area(&mut self, bounds: Bounds);
-
     
     async fn force_update_settings(&mut self, settings: &Settings);
     #[cfg(feature="graphics")]
@@ -46,5 +45,16 @@ pub trait GameMode: GameModeInput + GameModeProperties + Send + Sync {
     async fn beat_happened(&mut self, pulse_length: f32);
     /// happens right when kiai changes
     async fn kiai_changed(&mut self, is_kiai: bool);
+
+    fn properties(&self) -> GameModeProperties;
+
+    fn get_playfield(&self) -> PlayfieldNonsense;
+
+    /// setup any gamemode specific ui elements for this gamemode
+    /// ie combo and leaderboard, since the pos is different per-mode
+    async fn get_ui_elements(
+        &self, 
+        _loader: &mut dyn UiElementLoader,
+    ) {}
 
 }

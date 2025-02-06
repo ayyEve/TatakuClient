@@ -332,7 +332,7 @@ impl ManiaGame {
 
 #[async_trait]
 impl GameMode for ManiaGame {
-    async fn new(beatmap:&Beatmap, _: bool, settings: &Settings) -> TatakuResult<Self> {
+    async fn new(beatmap: &Beatmap, _: bool, settings: &Settings) -> TatakuResult<Self> {
         let metadata = beatmap.get_beatmap_meta();
 
         let game_settings = settings.mania_settings.clone();
@@ -1069,6 +1069,68 @@ impl GameMode for ManiaGame {
     async fn kiai_changed(&mut self, is_kiai: bool) {
         self.columns.iter_mut().flatten().for_each(|n|n.kiai_changed(is_kiai))
     }
+
+
+    async fn get_ui_elements(
+        &self, 
+        loader: &mut dyn UiElementLoader
+    ) {
+        // combo
+        loader.change_default_layout(
+            "combo",
+            UiElementLayout::new_default( // centered on the playfield
+                UiElementAnchor::Playfield {
+                    saved_size: None,
+                    relative: UiElementAlign::Inside,
+                },
+                Alignment::CENTER,
+                None,
+                None,
+            )
+        ).await;
+
+        // Leaderboard
+        loader.change_default_layout(
+            "leaderboard", 
+            UiElementLayout::new_default(
+                UiElementAnchor::Screen,
+                Alignment::CENTER_LEFT,
+                None,
+                None,
+            )
+        ).await;
+    }
+
+
+    fn get_playfield(&self) -> PlayfieldNonsense {
+        PlayfieldNonsense::new_simple(self.playfield.bounds)
+    }
+    fn properties(&self) -> GameModeProperties {
+        const KEY_LIST: &[(KeyPress, &str)] = &[
+            (KeyPress::Mania1, "K1"),
+            (KeyPress::Mania2, "K2"),
+            (KeyPress::Mania3, "K3"),
+            (KeyPress::Mania4, "K4"),
+            (KeyPress::Mania5, "K5"),
+            (KeyPress::Mania6, "K6"),
+            (KeyPress::Mania7, "K7"),
+            (KeyPress::Mania8, "K8"),
+            (KeyPress::Mania9, "K9"),
+        ];
+
+        GameModeProperties { 
+            info: &crate::GAME_INFO, 
+            // playmode: Cow::Borrowed("mania"), 
+            keys: KEY_LIST[0..((self.column_count as usize).min(KEY_LIST.len()))].to_vec(), 
+            end_time: self.end_time, 
+            show_cursor: false, 
+            audio_prefix: "mania".to_owned(),
+            timing_bar_things: self.hit_windows
+                .iter()
+                .map(|(j, w)| (w.end, j.color))
+                .collect(), 
+        }
+    }
 }
 
 
@@ -1091,41 +1153,12 @@ impl GameModeInput for ManiaGame {
             return None;
         }
 
-
         let game_key = self.key_to_game_key(key)?;
-        // let mut game_key = KeyPress::RightDon;
-    
-        // let keys = &self.game_settings.keys[(self.column_count-1) as usize];
-        // let base_key = KeyPress::Mania1 as u8;
-        // for col in 0..self.column_count as usize {
-        //     let k = keys[col];
-        //     if k == key {
-        //         game_key = ((col + base_key as usize) as u8).into();
-        //         break;
-        //     }
-        // }
-        // if game_key == KeyPress::RightDon { return None }
-
         Some(ReplayAction::Press(game_key))
     }
     
     async fn key_up(&mut self, key: Key) -> Option<ReplayAction> {
-        // let mut game_key = KeyPress::RightDon;
-
-        // let keys = &self.game_settings.keys[(self.column_count-1) as usize];
-        // let base_key = KeyPress::Mania1 as u8;
-        // for col in 0..self.column_count as usize {
-        //     let k = keys[col];
-        //     if k == key {
-        //         game_key = ((col + base_key as usize) as u8).into();
-        //         break;
-        //     }
-        // }
-
-        // if game_key == KeyPress::RightDon { return None } 
-
         let game_key = self.key_to_game_key(key)?;
-
         Some(ReplayAction::Release(game_key))
     }
 
@@ -1137,78 +1170,6 @@ impl GameModeInput for ManiaGame {
 
 
 
-#[async_trait]
-impl GameModeProperties for ManiaGame {
-    fn playmode(&self) -> Cow<'static, str> { Cow::Borrowed("mania") }
-    fn get_info(&self) -> GameModeInfo { crate::GAME_INFO }
-
-    fn end_time(&self) -> f32 { self.end_time }
-
-    
-    fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {
-        let mut list = Vec::new();
-        for i in 0..self.column_count {
-            match i {
-                0 => list.push((KeyPress::Mania1, "K1")),
-                1 => list.push((KeyPress::Mania2, "K2")),
-                2 => list.push((KeyPress::Mania3, "K3")),
-                3 => list.push((KeyPress::Mania4, "K4")),
-                4 => list.push((KeyPress::Mania5, "K5")),
-                5 => list.push((KeyPress::Mania6, "K6")),
-                6 => list.push((KeyPress::Mania7, "K7")),
-                7 => list.push((KeyPress::Mania8, "K8")),
-                8 => list.push((KeyPress::Mania9, "K9")),
-                _ => {}
-            }
-        }
-        
-        list
-    }
-
-    fn timing_bar_things(&self) -> Vec<(f32, Color)> {
-        self.hit_windows
-            .iter()
-            .map(|(j, w)| (w.end, j.color))
-            .collect()
-    }
-
-    async fn get_ui_elements(
-        &self, 
-        window_size: Vector2, 
-        ui_elements: &mut Vec<UIElement>,
-        loader: &mut dyn UiElementLoader
-    ) {
-        let playmode = self.playmode();
-        let get_name = |name| {
-            format!("{playmode}_{name}")
-        };
-
-
-        let start_x = self.playfield.col_pos(0);
-        let width = self.playfield.col_pos(self.column_count) - start_x;
-
-        let combo_bounds = Bounds::new(
-            Vector2::ZERO,
-            Vector2::new(width, 30.0)
-        );
-        
-        // combo
-        ui_elements.push(loader.load(
-            &get_name("combo".to_owned()),
-            Vector2::new(start_x, window_size.y * (1.0/3.0)),
-            Box::new(ComboElement::new(combo_bounds).await)
-        ).await);
-
-        // Leaderboard
-        ui_elements.push(loader.load(
-            &get_name("leaderboard".to_owned()),
-            Vector2::with_y(window_size.y / 3.0),
-            Box::new(LeaderboardElement::new(crate::GAME_INFO).await)
-        ).await);
-        
-    }
-
-}
 
 // when the game is dropped, save settings
 // this is better than saving the update every time the values change

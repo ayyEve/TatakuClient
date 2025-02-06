@@ -862,8 +862,8 @@ impl Game {
                             manager.controller_release(&c, b, &self.settings).await;
                         }
                     }
-                    for (c, b) in controller_axis {
-                        manager.controller_axis(&c, b, &self.settings).await;
+                    for (c, axes) in controller_axis {
+                        manager.controller_axis(&c, axes, &self.settings).await;
                     }
 
 
@@ -1629,12 +1629,13 @@ impl Game {
                         }
                         manager.reset().await;
 
-                        let id = Arc::new(self.gameplay_managers.keys().max().map(|a| **a + 1).unwrap_or_default());
+                        let id = self.next_gameplay_id();
                         self.ui_manager.add_message(Message::new(
                             config.owner, "gameplay_manager_create", MessageType::GameplayManagerId(id.clone())
                         ));
+                        manager.set_id(id.clone());
 
-                        self.gameplay_managers.insert(id.clone(), (manager, config));
+                        self.gameplay_managers.insert(id, (manager, config));
                     }
 
                     Err(e) => error!("Error creating gameplay manager: {e}"),
@@ -1648,8 +1649,19 @@ impl Game {
 
             #[cfg(feature="graphics")]
             TatakuAction::Game(GameAction::GameplayAction(id, action)) => {
-                let Some((gameplay, _)) = self.gameplay_managers.get_mut(&id) else { return };
-                gameplay.handle_action(action, &self.values.settings).await;
+                let Some(gameplay) = (if *id == u32::MAX {
+                    debug!("gameplay is state");
+                    self.current_state.get_ingame().map(|a| &mut **a)
+                } else {
+                    self.gameplay_managers.get_mut(&id).map(|a| &mut a.0)
+                }) else { return };
+
+                
+                if let &GameplayAction::RequestDifficulty = &action {
+                    gameplay.update_difficulty(&mut self.difficulty_manager);
+                } else {
+                    gameplay.handle_action(action, &self.values.settings).await;
+                }
             }
             #[cfg(feature="graphics")]
             TatakuAction::Game(GameAction::FreeGameplay(mut gameplay)) => {
@@ -1845,6 +1857,10 @@ impl Game {
         }
     }
 
+    fn next_gameplay_id(&self) -> GameplayId {
+        Arc::new(self.gameplay_managers.keys().max().map(|a| **a + 1).unwrap_or_default())
+    }
+
     #[cfg(feature="graphics")]
     async fn handle_custom_menu(&mut self, id: impl ToString) {
 
@@ -1988,6 +2004,7 @@ impl Game {
         dialog_manager.add_dialog(dialog)
     }
 
+    /// Drag and Drop
     #[cfg(feature="graphics")]
     pub async fn handle_file_drop(&mut self, path: impl AsRef<Path>) {
         let path = path.as_ref();

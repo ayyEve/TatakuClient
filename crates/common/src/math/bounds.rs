@@ -15,7 +15,7 @@ impl Bounds {
         }
     }
     /// check if these bounds contain a point
-    pub fn contains(&self, p:Vector2) -> bool {
+    pub fn contains(&self, p: Vector2) -> bool {
         p.x > self.pos.x && p.x < self.pos.x + self.size.x && p.y > self.pos.y && p.y < self.pos.y + self.size.y
     }
 

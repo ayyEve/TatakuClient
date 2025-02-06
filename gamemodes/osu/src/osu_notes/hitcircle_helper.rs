@@ -54,17 +54,17 @@ impl HitCircleImageHelper {
     #[cfg(feature="graphics")]
     pub async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
         self.skin_settings = skin_manager.skin().clone();
-        let radius = CIRCLE_RADIUS_BASE * self.scaling_helper.scaled_cs;
+        let radius = CIRCLE_RADIUS_BASE * self.scaling_helper.cs;
 
         self.circle = skin_manager.get_texture_then("hitcircle", source, SkinUsage::Gamemode, false, |i| {
             i.pos = self.pos;
-            i.scale = Vector2::ONE * self.scaling_helper.scaled_cs;
+            i.scale = Vector2::ONE * self.scaling_helper.cs;
             i.color = self.color;
         }).await;
         
         self.overlay = skin_manager.get_texture_then("hitcircleoverlay", source, SkinUsage::Gamemode, false, |i| {
             i.pos = self.pos;
-            i.scale = Vector2::ONE * self.scaling_helper.scaled_cs;
+            i.scale = Vector2::ONE * self.scaling_helper.cs;
         }).await;
         
         self.combo_image = SkinnedNumber::new(
@@ -83,7 +83,7 @@ impl HitCircleImageHelper {
         let rect = Bounds::new(self.pos - Vector2::ONE * radius / 2.0, Vector2::ONE * radius);
         if let Some(combo) = &mut self.combo_image {
             combo.spacing_override = Some(-(self.skin_settings.hitcircle_overlap as f32));
-            combo.scale = Vector2::ONE * self.scaling_helper.scaled_cs * TEXT_SCALE;
+            combo.scale = Vector2::ONE * self.scaling_helper.cs * TEXT_SCALE;
             combo.center_text(&rect);
             self.combo_text = None;
         } else if self.combo_text.is_none() {
@@ -103,7 +103,7 @@ impl HitCircleImageHelper {
     
     pub fn playfield_changed(&mut self, new_scale: &Arc<ScalingHelper>) {
         self.pos = new_scale.scale_coords(self.base_pos);
-        let scale = Vector2::ONE * new_scale.scaled_cs;
+        let scale = Vector2::ONE * new_scale.cs;
         self.scaling_helper = new_scale.clone();
 
         // update circle positions
@@ -117,7 +117,7 @@ impl HitCircleImageHelper {
         }
 
         // update combo text position
-        let radius = CIRCLE_RADIUS_BASE * new_scale.scaled_cs;
+        let radius = CIRCLE_RADIUS_BASE * new_scale.cs;
         let rect = Bounds::new(self.pos - Vector2::ONE * radius / 2.0, Vector2::ONE * radius);
         
         if let Some(image) = &mut self.combo_image {
@@ -137,7 +137,9 @@ impl HitCircleImageHelper {
     }
     pub fn set_color(&mut self, color: Color) {
         self.color = color;
-        self.circle.as_mut().map(|c| c.color = color);
+        if let Some(circle) = &mut self.circle {
+            circle.color = color
+        }
     }
 
     pub fn update(&mut self, time: f32) {
@@ -162,11 +164,11 @@ impl HitCircleImageHelper {
         } else {
             list.push(Circle::new(
                 self.pos,
-                CIRCLE_RADIUS_BASE * self.scaling_helper.scaled_cs,
+                CIRCLE_RADIUS_BASE * self.scaling_helper.cs,
                 self.color.alpha(self.alpha),
                 Some(Border::new(
                     Color::WHITE.alpha(self.alpha),
-                    self.scaling_helper.border_scaled
+                    self.scaling_helper.border_width
                 ))
             ));
         }
@@ -204,18 +206,18 @@ impl HitCircleImageHelper {
         if group.items.is_empty() {
             group.push(Circle::new(
                 Vector2::ZERO,
-                self.scaling_helper.scaled_cs,
+                self.scaling_helper.cs,
                 self.color,
                 Some(Border::new(
                     Color::BLACK,
-                    self.scaling_helper.border_scaled
+                    self.scaling_helper.border_width
                 ))
             ));
         }
 
         if include_combo_num {
             // let radius = CIRCLE_RADIUS_BASE * self.scaling_helper.scaled_cs;
-            let size = self.scaling_helper.scaled_circle_size;
+            let size = self.scaling_helper.circle_size;
             let rect = Bounds::new(-size / 2.0, size);
 
             if let Some(mut image) = self.combo_image.clone() {

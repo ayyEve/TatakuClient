@@ -18,11 +18,8 @@ impl DurationBarElement {
 impl InnerUIElement for DurationBarElement {
     fn display_name(&self) -> &'static str { "Duration Bar" }
 
-    fn get_bounds(&self) -> Bounds {
-        Bounds::new(
-            Vector2::with_y(-(DURATION_HEIGHT + 3.0)),
-            Vector2::new(self.window_size.x, DURATION_HEIGHT)
-        )
+    fn max_size(&self) -> Vector2 {
+        Vector2::new(self.window_size.x, DURATION_HEIGHT)
     }
 
     fn update(&mut self, manager: &mut GameplayManager) {
@@ -31,10 +28,16 @@ impl InnerUIElement for DurationBarElement {
     }
 
     #[cfg(feature="graphics")]
-    fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
+    fn draw(
+        &mut self, 
+        pos_offset: Vector2, 
+        scale: Vector2, 
+        _align: Alignment,
+        list: &mut RenderableCollection
+    ) {
         // fill
         list.push(Rectangle::new(
-            pos_offset - Vector2::with_y(DURATION_HEIGHT + 3.0),
+            pos_offset, // - Vector2::with_y(DURATION_HEIGHT + 3.0),
             Vector2::new(self.window_size.x * self.duration_ratio, DURATION_HEIGHT) * scale,
             self.common_game_settings.duration_color_full,
             None
@@ -42,7 +45,7 @@ impl InnerUIElement for DurationBarElement {
 
         // border
         list.push(Rectangle::new(
-            pos_offset + Vector2::with_y(-(DURATION_HEIGHT + 3.0)),
+            pos_offset, // + Vector2::with_y(-(DURATION_HEIGHT + 3.0)),
             Vector2::new(self.window_size.x, DURATION_HEIGHT) * scale,
             self.common_game_settings.duration_color,
             Some(Border::new(self.common_game_settings.duration_border_color, 1.8 * scale.x))

@@ -6,7 +6,7 @@ pub trait JudgementIndicator: Send + Sync{
     fn should_keep(&self, map_time: f32) -> bool;
     fn set_start_time(&mut self, time: f32);
     fn set_draw_duration(&mut self, duration: f32, settings: &Settings);
-    fn draw(&mut self, map_time: f32, list: &mut RenderableCollection);
+    fn draw(&self, map_time: f32, list: &mut RenderableCollection);
 }
 
 
@@ -62,12 +62,11 @@ impl JudgementIndicator for BasicJudgementIndicator {
         map_time < self.time + self.draw_duration
     }
 
-    fn draw(&mut self, map_time: f32, list: &mut RenderableCollection) {
+    fn draw(&self, map_time: f32, list: &mut RenderableCollection) {
         let fade_duration = self.draw_duration / 2.0;
         let alpha = (1.0 - (map_time - (self.time + (self.draw_duration - fade_duration))) / fade_duration).clamp(0.0, 1.0);
         
-        if let Some(img) = &self.image {
-            let mut img = img.clone();
+        if let Some(mut img) = self.image.clone() {
             img.update(map_time);
             if img.frames.len() == 1 {
                 img.color.a = alpha;

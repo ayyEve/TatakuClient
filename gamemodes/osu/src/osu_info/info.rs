@@ -103,43 +103,43 @@ impl OsuGameInfo {
         matches!(map, BeatmapType::Osu)
     }
 
-    fn get_diff_string(info: &BeatmapMetaWithDiff, mods: &ModManager) -> String {
-        let speed = mods.get_speed();
-        let symb = if speed > 1.0 {"+"} else if speed < 1.0 {"-"} else {""};
+    // fn get_diff_string(info: &BeatmapMetaWithDiff, mods: &ModManager) -> String {
+    //     let speed = mods.get_speed();
+    //     let symb = if speed > 1.0 {"+"} else if speed < 1.0 {"-"} else {""};
 
-        let mut secs = format!("{}", info.secs(speed));
-        if secs.len() == 1 {secs = format!("0{}", secs)}
+    //     let mut secs = format!("{}", info.secs(speed));
+    //     if secs.len() == 1 {secs = format!("0{}", secs)}
 
-        let mut txt = format!(
-            "OD: {:.2}{symb} CS: {:.2}{symb} AR: {:.2}{symb} HP: {:.2}{symb}, Len: {}:{}", 
-            OsuGame::get_od(info, mods),
-            OsuGame::get_cs(info, mods),
-            OsuGame::get_ar(info, mods),
-            info.get_hp(mods),
-            info.mins(speed), secs
-        );
+    //     let mut txt = format!(
+    //         "OD: {:.2}{symb} CS: {:.2}{symb} AR: {:.2}{symb} HP: {:.2}{symb}, Len: {}:{}", 
+    //         OsuGame::get_od(info, mods),
+    //         OsuGame::get_cs(info, mods),
+    //         OsuGame::get_ar(info, mods),
+    //         info.get_hp(mods),
+    //         info.mins(speed), secs
+    //     );
 
-        // make sure at least one has a value
-        if info.bpm_min != 0.0 || info.bpm_max != 0.0 {
-            // one bpm
-            if info.bpm_min == info.bpm_max {
-                txt += &format!(" BPM: {:.2}", info.bpm_min * speed);
-            } else { // multi bpm
-                // i think i had it backwards when setting, just make sure its the right way :/
-                let min = info.bpm_min.min(info.bpm_max);
-                let max = info.bpm_max.max(info.bpm_min);
-                txt += &format!(" BPM: {:.2}-{:.2}", min * speed, max * speed);
-            }
-        }
+    //     // make sure at least one has a value
+    //     if info.bpm_min != 0.0 || info.bpm_max != 0.0 {
+    //         // one bpm
+    //         if info.bpm_min == info.bpm_max {
+    //             txt += &format!(" BPM: {:.2}", info.bpm_min * speed);
+    //         } else { // multi bpm
+    //             // i think i had it backwards when setting, just make sure its the right way :/
+    //             let min = info.bpm_min.min(info.bpm_max);
+    //             let max = info.bpm_max.max(info.bpm_min);
+    //             txt += &format!(" BPM: {:.2}-{:.2}", min * speed, max * speed);
+    //         }
+    //     }
 
-        if let Some(diff) = &info.diff {
-            txt += &format!(", Diff: {:.2}", diff);
-        } else {
-            txt += ", Diff: ...";
-        }
+    //     if let Some(diff) = &info.diff {
+    //         txt += &format!(", Diff: {:.2}", diff);
+    //     } else {
+    //         txt += ", Diff: ...";
+    //     }
 
-        txt
-    }
+    //     txt
+    // }
 
     fn create_game<'a>(beatmap: &'a Beatmap, settings: &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn GameMode>>> {
         Box::pin(async {

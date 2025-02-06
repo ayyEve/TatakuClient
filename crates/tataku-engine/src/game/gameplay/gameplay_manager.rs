@@ -46,12 +46,15 @@ macro_rules! create_update_state {
 }
 
 pub struct GameplayManager {
+    pub id: GameplayId,
     pub actions: ActionQueue,
 
     pub beatmap: Beatmap,
     pub metadata: Arc<BeatmapMeta>,
     pub gamemode: Box<dyn GameMode>,
-    pub gamemode_info: GameModeInfo,
+    // pub gamemode_info: GameModeInfo,
+    pub gamemode_properties: GameModeProperties,
+
     pub current_mods: Arc<ModManager>,
     pub beatmap_preferences: BeatmapPreferences,
 
@@ -125,7 +128,6 @@ pub struct GameplayManager {
     pub spectator_info: GameplaySpectatorInfo,
 
     frame_sender: Box<dyn GameplayManagerOnline>,
-    diff_provider: Box<dyn DifficultyProvider>,
 
     /// what should the game do on start?
     /// mainly a helper for spectator
@@ -149,77 +151,59 @@ impl GameplayManager {
         mut current_mods: ModManager,
         settings: &Settings,
     ) -> Self {
-        let playmode = gamemode.playmode();
+        let properties = gamemode.properties();
+        let playmode = properties.playmode();
         let metadata = beatmap.get_beatmap_meta();
-
-        let beatmap_preferences = Database::get_beatmap_prefs(metadata.beatmap_hash).await;
-
-        let timing_points = beatmap.get_timing_points();
-
 
         if current_mods.get_speed() == 0.0 { current_mods.set_speed(1.0); }
         let current_mods = Arc::new(current_mods);
 
-        let mut score =  Score::new(beatmap.hash(), settings.username.clone(), playmode.clone().into_owned());
+        let mut score = Score::new(beatmap.hash(), settings.username.clone(), playmode.to_string());
         score.speed = current_mods.speed;
 
-
-        // let score_loader = Some(SCORE_HELPER.read().await.get_scores(metadata.beatmap_hash, &playmode).await);
-        let key_counter = KeyCounter::new(gamemode.get_possible_keys().into_iter().map(|a| (a.0, a.1.to_owned())).collect());
-
-        // hardcode for now
-        let audio_playmode_prefix = match &*playmode {
-            "taiko" => "taiko".to_owned(),
-            "mania" => "mania".to_owned(),
-            _ => String::new(),
-        };
-
+        
         let mut actions = ActionQueue::new();
-        let gamemode_info = gamemode.get_info();
-
-        let mut hitsound_manager = HitsoundManager::new(audio_playmode_prefix);
+        let mut hitsound_manager = HitsoundManager::new(properties.audio_prefix.clone());
         hitsound_manager.init(&metadata, &mut actions, settings).await;
-
-        let events = beatmap.get_events();
-        // println!("loaded events {events:?}");
 
         // make sure the gamemode has the correct mods applied
         gamemode.apply_mods(current_mods.clone()).await;
 
-        Self {
+        let mut gm = Self {
+            id: Arc::new(u32::MAX),
             actions,
             frame_sender: Box::new(DummyOnlineThing),
-            diff_provider: Box::new(DummyDiffProvider),
             
-            metadata,
-            timing_points: TimingPointHelper::new(timing_points, beatmap.slider_velocity()),
+            timing_points: TimingPointHelper::new_from_beatmap(&beatmap),
             // hitsound_cache,
             current_mods,
             health: Box::new(DefaultHealthManager::new()),
-            key_counter,
+            key_counter: KeyCounter::new(&properties.keys),
 
-            judgments: gamemode_info.judgments.to_vec(),
+            judgments: properties.info.judgments.to_vec(),
             score: IngameScore::new(score, true, false),
 
-            beatmap,
             #[cfg(feature="graphics")]
             animation: Box::new(EmptyAnimation),
 
             hitsound_manager,
-            gamemode_info,
+            events: beatmap.get_events(),
             // song,
 
             lead_in_time: LEAD_IN_TIME,
             lead_in_timer: Instant::now(),
-            end_time: gamemode.end_time(),
+            end_time: properties.end_time,
             global_offset: settings.global_offset,
 
             center_text_helper: CenteredTextHelper::new(CENTER_TEXT_DRAW_TIME).await,
-            beatmap_preferences,
+            beatmap_preferences: Database::get_beatmap_prefs(metadata.beatmap_hash).await,
 
             common_game_settings: Arc::new(settings.common_game_settings.clone()),
 
+            metadata,
+            beatmap,
             gamemode,
+            gamemode_properties: properties,
 
             scores_loaded: false,
             score_list: Vec::new(),
@@ -227,7 +211,6 @@ impl GameplayManager {
             window_size: WindowSize::get(),
             start_time: chrono::Utc::now().timestamp(),
 
-            events,
 
 
             judgement_indicators: Vec::new(),
@@ -258,107 +241,208 @@ impl GameplayManager {
             map_diff: 0.0,
             pause_start: None,
             song_time: 0.0,
-        }
+        };
+
+        gm.init_ui().await;
+
+        gm
     }
 
     #[cfg(feature="graphics")]
     async fn init_ui(&mut self) {
-        let mut loader = DefaultUiElementLoader;
+        let layouts = std::fs::read("ui_layouts.json").ok()
+            .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+            .unwrap_or_default();
+
+        let mut loader = DefaultUiElementLoader::new(
+            self.gamemode_properties.playmode(),
+            layouts
+        );
         // if self.ui_editor.is_some() { return }
 
-        let playmode = self.gamemode.playmode();
-        let get_name = |name| {
-            format!("{playmode}_{name}")
-        };
+        // Score
+        loader.load(
+            "score",
+            UiElementLayout::new_default(
+                UiElementAnchor::Screen,
+                Alignment::TOP_RIGHT,
+                None,
+                None,
+            ),
+            Box::new(ScoreElement::new())
+        ).await;
 
-        // score
-        self.ui_elements.push(loader.load(
-            &get_name("score"),
-            Vector2::new(self.window_size.x, 0.0),
-            Box::new(ScoreElement::new().await)
-        ).await);
+        // Combo
+        loader.load(
+            "combo",
+            UiElementLayout::new_default(
+                UiElementAnchor::element("duration_bar", UiElementAlign::Above),
+                Alignment::TOP_LEFT,
+                None,
+                None,
+            ),
+            Box::new(ComboElement::new())
+        ).await;
 
-        // Acc
-        self.ui_elements.push(loader.load(
-            &get_name("acc"),
-            Vector2::new(self.window_size.x, 40.0),
-            Box::new(AccuracyElement::new().await)
-        ).await);
+        // Leaderboard
+        loader.load(
+            "leaderboard",
+            UiElementLayout::new_default(
+                UiElementAnchor::Screen,
+                Alignment::CENTER_LEFT,
+                None,
+                None,
+            ),
+            // Vector2::with_y(window_size.y / 3.0),
+            Box::new(LeaderboardElement::new(*self.gamemode_properties.info))
+        ).await;
+
+        // Accuracy
+        loader.load(
+            "accuracy", 
+            // below score
+            UiElementLayout::new_default(
+                UiElementAnchor::element("score", UiElementAlign::Below), 
+                Alignment::BOTTOM_RIGHT,
+                None,
+                None,
+            ),
+            Box::new(AccuracyElement::new())
+        ).await;
 
         // Performance
         // TODO: calc diff before starting somehow?
-        self.ui_elements.push(loader.load(
-            &get_name("perf"),
-            Vector2::new(self.window_size.x, 80.0),
-            Box::new(PerformanceElement::new().await)
-        ).await);
+        loader.load(
+            "perf",
+            // below acc
+            UiElementLayout::new_default(
+                UiElementAnchor::element("accuracy", UiElementAlign::Below), 
+                Alignment::BOTTOM_RIGHT,
+                None,
+                None,
+            ),
+            Box::new(PerformanceElement::new())
+        ).await;
 
         // Healthbar
-        self.ui_elements.push(loader.load(
-            &get_name("healthbar"),
-            Vector2::ZERO,
-            Box::new(HealthBarElement::new(self.common_game_settings.clone()).await)
-        ).await);
+        loader.load(
+            "health_bar",
+            UiElementLayout::new_default(
+                UiElementAnchor::Screen, 
+                Alignment::TOP_LEFT,
+                None,
+                None,
+            ),
+            Box::new(HealthBarElement::new(self.common_game_settings.clone()))
+        ).await;
 
         // Duration Bar
-        self.ui_elements.push(loader.load(
-            &get_name("durationbar"),
-            Vector2::new(0.0, self.window_size.y),
+        loader.load(
+            "duration_bar",
+            UiElementLayout::new_default(
+                UiElementAnchor::Screen, 
+                Alignment::BOTTOM_LEFT,
+                None,
+                None,
+            ),
             Box::new(DurationBarElement::new(self.common_game_settings.clone()))
-        ).await);
+        ).await;
 
         // Judgement Bar
-        self.ui_elements.push(loader.load(
-            &get_name("judgementbar"),
-            Vector2::new(self.window_size.x/2.0, self.window_size.y),
-            Box::new(JudgementBarElement::new(self.gamemode.timing_bar_things()))
-        ).await);
+        loader.load(
+            "judgement_bar",
+            UiElementLayout::new_default(
+                UiElementAnchor::element("duration_bar", UiElementAlign::Above), 
+                Alignment::TOP_CENTER,
+                None,
+                None,
+            ),
+            Box::new(JudgementBarElement::new(self.gamemode_properties.timing_bar_things.clone()))
+        ).await;
 
         // Key Counter
-        self.ui_elements.push(loader.load(
-            &get_name("key_counter"),
-            Vector2::new(self.window_size.x, self.window_size.y/2.0),
-            Box::new(KeyCounterElement::new().await)
-        ).await);
-
-        // Spectators
-        self.ui_elements.push(loader.load(
-            &get_name("spectators"),
-            Vector2::new(0.0, self.window_size.y/3.0),
-            Box::new(SpectatorsElement::new())
-        ).await);
-
-        // judgement counter
-        self.ui_elements.push(loader.load(
-            &get_name("judgement_counter"),
-            Vector2::new(self.window_size.x, self.window_size.y * (2.0/3.0)),
-            Box::new(JudgementCounterElement::new().await)
-        ).await);
-
-
-
-        // elapsed timer
-        self.ui_elements.push(loader.load(
-            &get_name("elapsed_timer"),
-            Vector2::new(30.0, self.window_size.y - 150.0),
-            Box::new(ElapsedElement::new().await)
-        ).await);
-
-        // remaining timer
-        self.ui_elements.push(loader.load(
-            &get_name("remaining_timer"),
-            Vector2::new(self.window_size.x - 300.0, self.window_size.y - 150.0),
-            Box::new(RemainingElement::new().await)
-        ).await);
-
-
-
-        // anything in the gamemode itself
-        self.gamemode.get_ui_elements(
-            self.window_size.0, 
-            &mut self.ui_elements,
-            &mut loader,
+        loader.load(
+            "key_counter",
+            UiElementLayout::new_default(
+                UiElementAnchor::Screen, 
+                Alignment::CENTER_RIGHT,
+                None,
+                None,
+            ),
+            Box::new(KeyCounterElement::new())
         ).await;
+
+        // Judgement counter
+        loader.load(
+            "judgement_counter",
+            UiElementLayout::new_default(
+                UiElementAnchor::element("key_counter", UiElementAlign::Below), 
+                Alignment::BOTTOM_LEFT,
+                None,
+                None,
+            ),
+            Box::new(JudgementCounterElement::new())
+        ).await;
+        
+        // Spectators
+        loader.load(
+            "spectators",
+            UiElementLayout::new_default(
+                UiElementAnchor::element("health_bar", UiElementAlign::Below), 
+                Alignment::TOP_LEFT,
+                None,
+                None,
+            ),
+            Box::new(SpectatorsElement::new())
+        ).await;
+
+
+        // Elapsed timer
+        loader.load(
+            "elapsed_timer",
+            UiElementLayout::new_default(
+                UiElementAnchor::element("judgement_bar", UiElementAlign::Left), 
+                Alignment::CENTER_LEFT,
+                Some(Alignment::CENTER_RIGHT),
+                None,
+            ),
+            Box::new(ElapsedElement::new())
+        ).await;
+
+        // Remaining timer
+        loader.load(
+            "remaining_timer",
+            UiElementLayout::new_default(
+                UiElementAnchor::element("judgement_bar", UiElementAlign::Right), 
+                Alignment::CENTER_RIGHT,
+                Some(Alignment::CENTER_LEFT),
+                None,
+            ),
+            Box::new(RemainingElement::new())
+        ).await;
+
+
+        // Anything in the gamemode itself
+        self.gamemode.get_ui_elements(&mut loader).await;
+
+        // update every ui element so they're all initialized
+        loader.elements.iter_mut()
+            .for_each(|e| e.update(self));
+
+        // update our list
+        self.ui_elements = loader.elements;
+
+        // layout will be performed on game start (and skin load)
+    }
+
+    fn layout_ui(&mut self) {
+        if let Err(e) = UiElementLayoutinator::layout(
+            &mut self.ui_elements,
+            self.gamemode.get_playfield().bounds,
+            self.window_size.0
+        ) {
+            error!("error laying out ui elements! {e:?}")
+        }
     }
 
     pub async fn apply_mods(&mut self, mut mods: ModManager) {
@@ -520,8 +604,9 @@ impl GameplayManager {
 
         // update score stuff now that gamemode has been updated
         
-        self.score.accuracy = self.gamemode_info.calc_acc(&self.score);
-        self.score.performance = self.gamemode_info.calc_perf(CalcPerfInfo {
+        let info = self.gamemode_properties.info;
+        self.score.accuracy = info.calc_acc(&self.score);
+        self.score.performance = info.calc_perf(CalcPerfInfo {
             score: &self.score,
             map_difficulty: self.map_diff, 
             accuracy: self.score.accuracy
@@ -756,9 +841,10 @@ impl GameplayManager {
 
         // handle animation
         #[cfg(feature="graphics")] {
-            let mut anim = std::mem::replace(&mut self.animation, Box::new(EmptyAnimation));
-            anim.update(time).await;
-            self.animation = anim;
+            // let mut anim = std::mem::replace(&mut self.animation, Box::new(EmptyAnimation));
+            // anim.update(time).await;
+            // self.animation = anim;
+            self.animation.update(time).await;
         }
 
         // update value collection
@@ -791,7 +877,9 @@ impl GameplayManager {
         self.animation.draw(list).await;
 
         // draw gamemode
-        if let Some(bounds) = self.fit_to_bounds { list.push_scissor([bounds.pos.x, bounds.pos.y, bounds.size.x, bounds.size.y]); }
+        if let Some(bounds) = self.fit_to_bounds { 
+            list.push_scissor(bounds.into_scissor()); 
+        }
 
         let state = GameplayStateForDraw {
             time,
@@ -803,15 +891,16 @@ impl GameplayManager {
         self.gamemode.draw(state, list).await;
 
 
-        if self.fit_to_bounds.is_some() { list.pop_scissor(); }
-
+        if self.fit_to_bounds.is_some() { 
+            list.pop_scissor(); 
+        }
 
         // dont draw score, combo, etc if this is a menu bg
         if self.gameplay_mode.is_preview() { return }
 
 
         // judgement indicators
-        for indicator in self.judgement_indicators.iter_mut() {
+        for indicator in self.judgement_indicators.iter() {
             indicator.draw(time, list);
         }
 
@@ -829,6 +918,17 @@ impl GameplayManager {
 
         // draw center text
         self.center_text_helper.draw(time, list);
+
+
+        // // draw playfield border (debug)
+        // let b = self.gamemode.get_playfield();
+        // list.push(Rectangle::new(
+        //     b.pos,
+        //     b.size,
+        //     Color::TRANSPARENT_WHITE,
+        //     Some(Border::new(Color::AQUA, 2.0))
+        // ))
+
     }
 
     pub async fn handle_action(
@@ -846,6 +946,9 @@ impl GameplayManager {
 
             GameplayAction::AddReplayAction { action, should_save } => self.handle_frame(action, true, Some(self.time()), should_save, settings).await,
             GameplayAction::SetHitsoundsEnabled(enabled) => self.hitsound_manager.enabled = enabled,
+        
+            // not used here
+            GameplayAction::RequestDifficulty => {}
         }
     }
 
@@ -952,6 +1055,15 @@ impl GameplayManager {
             GamemodeAction::ResetHealth => self.health.reset(),
             GamemodeAction::ReplaceHealth(new_health) => self.health = new_health,
             GamemodeAction::MapComplete => self.completed = true,
+
+
+            GamemodeAction::PlayfieldChanged => {
+                if self.animation.use_gamemode_playfield(self.gamemode_properties.info) {
+                    self.animation.fit_to_area(self.gamemode.get_playfield());
+                }
+
+                self.layout_ui();
+            }
         }
     }
 }
@@ -959,15 +1071,19 @@ impl GameplayManager {
 // getters, setters, properties
 impl GameplayManager {
     pub fn all_scores(&self) -> Vec<&IngameScore> {
-        let mut list = Vec::new();
-        for score in self.score_list.iter() {
-            list.push(score)
-        }
+        // let mut list = Vec::new();
+        // for score in self.score_list.iter() {
+        //     list.push(score)
+        // }
+        // list.push(&self.score);
 
-        list.push(&self.score);
+        let mut list = self.score_list
+            .iter()
+            .chain([&self.score])
+            .collect::<Vec<_>>();
 
         // sort by points
-        list.sort_by(|a,b| b.score.score.cmp(&a.score.score));
+        list.sort_by(|a, b| b.score.score.cmp(&a.score.score));
 
         list
     }
@@ -981,7 +1097,7 @@ impl GameplayManager {
         !(self.gameplay_mode.is_replay() || self.current_mods.has_autoplay() || self.ui_changed)
     }
 
-    // is this game pausable
+    /// is this game pausable
     pub fn can_pause(&mut self) -> bool {
         // never allow pausing in multi
         #[cfg(feature="gameplay")]
@@ -998,35 +1114,45 @@ impl GameplayManager {
         }
     }
 
-
-    pub fn current_timing_point(&self) -> &TimingPoint {
-        self.timing_points.timing_point()
-        // &self.timing_points[self.timing_point_index]
-    }
-    pub fn timing_point_at(&self, time: f32, allow_inherited: bool) -> &TimingPoint {
-        self.timing_points.timing_point_at(time, allow_inherited)
-    }
-
-
     pub fn should_hide_cursor(&self) -> bool {
-        !(
-            self.gamemode.show_cursor()
-            || self.gameplay_mode.is_preview()
-            || self.gameplay_mode.is_replay()
-        )
+        if self.gameplay_mode.is_preview()
+        || self.gameplay_mode.is_replay() {
+            false
+        } else {
+            !self.gamemode_properties.show_cursor
+        }
     }
+
+
+    pub fn set_id(&mut self, id: GameplayId) {
+        // make sure we dont add a reference count to our copy of the id
+        // this makes sure things are cleaned up properly when the manager is dropped
+        self.id = Arc::new(*id);
+    }
+
+    pub fn update_difficulty(&mut self, provider: &mut dyn DifficultyProvider) {
+        self.map_diff = provider.get_diff(
+            &self.beatmap.get_beatmap_meta(), 
+            self.gamemode_properties.playmode(), 
+            &self.current_mods
+        ).unwrap_or_default();
+
+        debug!("Updated diff: {}", self.map_diff);
+    }
+
+    pub fn set_online(&mut self, sender: Box<dyn GameplayManagerOnline>) {
+        self.frame_sender = sender;
+    }
+
 }
 
 // Events and States
 impl GameplayManager {
     // can be from either paused or new
-    pub async fn start(
-        &mut self,
-    ) {
+    pub async fn start(&mut self) {
         // if !self.gameplay_mode.is_preview() {
         //     self.hitsound_manager.enabled = false;
         // }
-
 
         if self.should_hide_cursor() {
             self.actions.push(CursorAction::SetVisible(false));
@@ -1055,10 +1181,11 @@ impl GameplayManager {
             self.start_time += chrono::Utc::now().timestamp() - pause_time
         }
 
-        // re init ui because pointers may not be valid anymore
-        self.ui_elements.clear();
-        #[cfg(feature="graphics")]
-        self.init_ui().await;
+        // // re init ui
+        // self.ui_elements.clear();
+        // #[cfg(feature="graphics")]
+        // self.init_ui().await;
+        self.layout_ui();
 
         if !self.started {
             self.reset().await;
@@ -1068,13 +1195,12 @@ impl GameplayManager {
                 #[cfg(feature="gameplay")]
                 self.outgoing_spectator_frame(SpectatorFrame::new(0.0, SpectatorAction::Play {
                     beatmap_hash: self.beatmap.hash(),
-                    mode: self.gamemode.playmode().clone().into_owned(),
+                    mode: self.gamemode_properties.playmode().to_string(),
                     mods: self.score.mods.clone(),
                     speed: self.current_mods.speed.as_u16(),
                     map_game: self.metadata.beatmap_type.into(),
                     map_link: None
-                })
-            );
+                }));
 
                 // self.outgoing_spectator_frame(SpectatorFrame::new(0.0, SpectatorAction::MapInfo {
                 //     beatmap_hash: self.beatmap.hash(),
@@ -1124,6 +1250,8 @@ impl GameplayManager {
 
             self.gamemode.unpause();
         }
+    
+        self.layout_ui();
     }
     pub fn pause(&mut self) {
         // make sure the cursor is visible
@@ -1152,9 +1280,7 @@ impl GameplayManager {
 
         self.gamemode.pause();
     }
-    pub async fn reset(
-        &mut self,
-    ) {
+    pub async fn reset(&mut self) {
         self.gamemode.reset(&self.beatmap).await;
         self.health.reset();
         self.key_counter.reset();
@@ -1184,23 +1310,20 @@ impl GameplayManager {
         self.lead_in_timer = Instant::now();
 
 
-        let playmode = self.gamemode.playmode().into_owned();
-        self.map_diff = self.diff_provider.get_diff(
-            &self.beatmap.get_beatmap_meta(), 
-            &playmode, 
-            &self.current_mods
-        ).unwrap_or_default();
+        let playmode = self.gamemode_properties.playmode().to_string();
+
+        self.actions.push(GameAction::from((self.id.clone(), GameplayAction::RequestDifficulty)));
 
         let username = self.score.username.clone();
         self.score = IngameScore::new(Score::new(self.beatmap.hash(), username, playmode), true, false);
         self.score.speed = self.current_mods.speed;
-        self.score_multiplier = 1.0;
         self.timing_points.reset();
 
+        // get all available mods for this playmode
         {
-            // get all available mods for this playmode
+            self.score_multiplier = 1.0;
 
-            self.score.mods = self.current_mods.map_mods_to_thing(&self.gamemode_info);
+            self.score.mods = self.current_mods.map_mods_to_thing(self.gamemode_properties.info);
             for m in &self.score.mods {
                 self.score_multiplier *= m.score_multiplier;
             }
@@ -1337,7 +1460,7 @@ impl GameplayManager {
                 };
                 self.current_mods = Arc::new(mods);
 
-                self.score.mods = self.current_mods.map_mods_to_thing(&self.gamemode_info);
+                self.score.mods = self.current_mods.map_mods_to_thing(self.gamemode_properties.info);
                 self.score.username = score.username.clone();
 
                 // if let Some(score) = &replay.score_data {
@@ -1381,8 +1504,15 @@ impl GameplayManager {
         // info!("fitting to area: {bounds:?}");
         self.fit_to_bounds = Some(bounds);
         self.gamemode.fit_to_area(bounds).await;
+
         #[cfg(feature="graphics")]
-        self.animation.fit_to_area(bounds);
+        if self.animation.use_gamemode_playfield(self.gamemode_properties.info) {
+            self.animation.fit_to_area(self.gamemode.get_playfield());
+        } else {
+            self.animation.fit_to_area(PlayfieldNonsense::new_simple(bounds));
+        }
+
+        // self.layout_ui();
     }
 
     #[cfg(feature="graphics")]
@@ -1390,6 +1520,7 @@ impl GameplayManager {
         // drop all texture references by dropping the gamemode
         // this should be fine since we shouldnt be re-using this gamemode at this time anyways
         self.gamemode = Box::new(NoMode);
+        self.gamemode_properties = self.gamemode.properties();
         skin_manager.free_by_usage(SkinUsage::Beatmap);
 
         let path = self.beatmap.get_parent_dir().unwrap().to_string_lossy().to_string();
@@ -1448,11 +1579,6 @@ impl GameplayManager {
                 );
             }
         }
-    }
-
-
-    pub fn set_diff_provider(&mut self, provider: Box<dyn DifficultyProvider>) {
-        self.diff_provider = provider;
     }
 }
 
@@ -1724,7 +1850,7 @@ impl GameplayManager {
     pub async fn controller_axis(
         &mut self, 
         c: &GamepadInfo, 
-        axis_data: HashMap<Axis, (bool, f32)>,
+        axis_data: HashMap<Axis, AxisState>,
         settings: &Settings,
     ) {
         if self.should_skip_input() { return }
@@ -1752,17 +1878,14 @@ impl GameplayManager {
     pub async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
         self.window_size = window_size.clone();
         self.gamemode.window_size_changed(window_size).await;
-        self.animation.window_size_changed(self.window_size.0);
 
-        // // TODO: relocate ui elements properly
-        // if let Some(mut editor) = std::mem::take(&mut self.ui_editor) {
-        //     self.init_ui().await;
-        //     editor.elements = std::mem::take(&mut self.ui_elements);
-        //     self.ui_editor = Some(editor);
-        // } else {
-        //     self.ui_elements.clear();
-        //     self.init_ui().await;
-        // }
+        if self.animation.use_gamemode_playfield(self.gamemode_properties.info) {
+            self.animation.fit_to_area(self.gamemode.get_playfield());
+        } else {
+            self.animation.window_size_changed(self.window_size.0);
+        }
+
+        self.layout_ui();
     }
 }
 
@@ -1775,7 +1898,7 @@ impl GameplayManager {
         self.failed || self.gameplay_mode.skip_input()
     }
 
-    pub async fn increment_offset(&mut self, delta:f32) {
+    pub async fn increment_offset(&mut self, delta: f32) {
         let time = self.time();
         self.beatmap_preferences.audio_offset += delta;
         self.center_text_helper.set_value(format!("Offset: {:.2}ms", self.beatmap_preferences.audio_offset), time);
@@ -1786,7 +1909,7 @@ impl GameplayManager {
         tokio::spawn(async move { Database::save_beatmap_prefs(hash, &new_prefs); });
     }
 
-    pub async fn increment_global_offset(&mut self, delta:f32) {
+    pub async fn increment_global_offset(&mut self, delta: f32) {
         let time = self.time();
         // let mut settings = Settings::get_mut();
         // settings.global_offset += delta;
@@ -1813,12 +1936,20 @@ impl GameplayManager {
         #[cfg(feature="storyboards")]
         if let Some(anim) = self.beatmap.get_animation(skin_manager).await {
             self.animation = anim;
+
+            if self.animation.use_gamemode_playfield(self.gamemode_properties.info) {
+                self.animation.fit_to_area(self.gamemode.get_playfield());
+            } else {
+                self.animation.window_size_changed(self.window_size.0);
+            }
         }
         // self.animation = beatmap.get_animation().await.unwrap_or_else(|| Box::new(EmptyAnimation));
 
         for i in self.ui_elements.iter_mut() {
             i.reload_skin(&source, skin_manager).await;
         }
+
+        self.layout_ui();
     }
 
     fn in_break(&self) -> bool {
@@ -1848,6 +1979,17 @@ impl GameplayManager {
     }
 }
 
+impl Drop for GameplayManager {
+    fn drop(&mut self) {
+        if self.gamemode_properties.playmode() != "none" {
+            error!("gameplay manager dropped without cleaning up textures !!!!!!!!!!!");
+        }
+    }
+}
+
+
+
+
 pub trait GameplayManagerOnline: Send + Sync {
     fn send_spec_frames(&mut self, frames: Vec<SpectatorFrame>, force: bool);
     fn get_pending_frames(&mut self) -> Vec<SpectatorFrame>;
@@ -1856,42 +1998,19 @@ pub trait GameplayManagerOnline: Send + Sync {
 }
 struct DummyOnlineThing;
 impl GameplayManagerOnline for DummyOnlineThing {
-    fn send_spec_frames(&mut self, _frames: Vec<SpectatorFrame>, _force: bool) {
-        // unimplemented!("DummyOnlineThing")
-    }
-
-    fn get_pending_frames(&mut self) -> Vec<SpectatorFrame> {
-        // unimplemented!("DummyOnlineThing")
-        Vec::new()
-    }
-
-    fn update_lobby_score(&mut self, _score: Score) {
-        // unimplemented!("DummyOnlineThing")
-    }
-
-    fn our_spectator_list(&mut self) -> Option<SpectatorList> {
-        // unimplemented!("DummyOnlineThing")
-        None
-    }
+    fn send_spec_frames(&mut self, _frames: Vec<SpectatorFrame>, _force: bool) {}
+    fn get_pending_frames(&mut self) -> Vec<SpectatorFrame> { Vec::new() }
+    fn update_lobby_score(&mut self, _score: Score) { }
+    fn our_spectator_list(&mut self) -> Option<SpectatorList> { None }
 }
 
 pub trait DifficultyProvider: Send + Sync {
-    fn get_diff(&mut self, map: &Arc<BeatmapMeta>, playmode: &str, mods: &ModManager) -> TatakuResult<f32>;
-}
-struct DummyDiffProvider;
-impl DifficultyProvider for DummyDiffProvider {
-    fn get_diff(&mut self, _: &Arc<BeatmapMeta>, _: &str, _: &ModManager) -> TatakuResult<f32> {
-        Ok(-1.0)
-    }
-}
-
-
-impl Drop for GameplayManager {
-    fn drop(&mut self) {
-        if self.gamemode.playmode() != "none" {
-            error!("gameplay manager dropped without cleaning up textures !!!!!!!!!!!");
-        }
-    }
+    fn get_diff(
+        &mut self, 
+        map: &Arc<BeatmapMeta>, 
+        playmode: &str, 
+        mods: &ModManager
+    ) -> TatakuResult<f32>;
 }
 
 
@@ -2027,7 +2146,7 @@ pub struct GameplayStateForDraw<'a> {
     pub score: &'a IngameScore,
 }
 
-//TODO: rename this please god
+// TODO: rename this please god
 pub struct GameplayStateForUpdate<'a> {
     /// current map time
     pub time: f32,

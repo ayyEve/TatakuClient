@@ -47,7 +47,7 @@ impl OsuNote {
         let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
 
         let pos = scaling_helper.scale_coords(def.pos);
-        let radius = CIRCLE_RADIUS_BASE * scaling_helper.scaled_cs;
+        let radius = CIRCLE_RADIUS_BASE * scaling_helper.cs;
         
         let approach_circle = ApproachCircle::new(def.pos, time, radius, time_preempt, scaling_helper.clone());
         let circle_image = HitCircleImageHelper::new(
@@ -220,7 +220,7 @@ impl OsuHitObject for OsuNote {
 
     async fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {
         self.pos = new_scale.scale_coords(self.def.pos);
-        self.radius = CIRCLE_RADIUS_BASE * new_scale.scaled_cs;
+        self.radius = CIRCLE_RADIUS_BASE * new_scale.cs;
         self.scaling_helper = new_scale.clone();
         self.approach_circle.scale_changed(new_scale, self.radius);
         self.circle_image.playfield_changed(&self.scaling_helper);

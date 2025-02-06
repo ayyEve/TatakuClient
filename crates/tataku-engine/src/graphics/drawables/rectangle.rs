@@ -16,8 +16,12 @@ pub struct Rectangle {
 }
 impl Rectangle {
     pub fn new(pos: Vector2, size: Vector2, color: Color, border: Option<Border>) -> Self {
-        Rectangle {
-            inner: Bounds {pos, size, scale: Vector2::ONE},
+        Self::new_bounds(Bounds::new(pos, size), color, border)
+    }
+
+    pub fn new_bounds(bounds: Bounds, color: Color, border: Option<Border>) -> Self {
+        Self {
+            inner: bounds,
 
             color,
             rotation: 0.0,
@@ -26,7 +30,7 @@ impl Rectangle {
             blend_mode: BlendMode::AlphaBlending,
 
             border,
-            origin: size / 2.0,
+            origin: bounds.size / 2.0,
         }
     }
 
@@ -48,15 +52,10 @@ impl TatakuRenderable for Rectangle {
     fn get_name(&self) -> String { "Rectangle".to_owned() }
     fn get_bounds(&self) -> Bounds { self.inner }
 
-    fn get_scissor(&self) -> Scissor {self.scissor}
-    fn set_scissor(&mut self, s:Scissor) {self.scissor = s}
+    fn get_scissor(&self) -> Scissor { self.scissor }
+    fn set_scissor(&mut self, s: Scissor) { self.scissor = s }
     fn get_blend_mode(&self) -> BlendMode { self.blend_mode }
     fn set_blend_mode(&mut self, blend_mode: BlendMode) { self.blend_mode = blend_mode }
-
-    // fn draw(&self, transform: Matrix, g: &mut dyn GraphicsEngine) {
-    //     let border_alpha = self.border.map(|b|b.color.a).unwrap_or_default();
-    //     self.draw_with_transparency(self.color.a, border_alpha, transform, g)
-    // }
 
     fn draw(
         &self, 
@@ -66,7 +65,7 @@ impl TatakuRenderable for Rectangle {
     ) {
         let color = options.color_with_alpha(self.color);
         
-        let border = self.border.map(|mut b|{ b.color = options.border_color_with_alpha(b.color); b });
+        let border = self.border.map(|mut b| { b.color = options.border_color_with_alpha(b.color); b });
         
         let transform = transform * Matrix::identity()
             .trans(-self.origin) // apply origin

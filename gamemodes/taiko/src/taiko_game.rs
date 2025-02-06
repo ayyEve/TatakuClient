@@ -1088,6 +1088,77 @@ impl GameMode for TaikoGame {
     async fn kiai_changed(&mut self, is_kiai: bool) {
         self.notes.iter_mut().chain(self.other_notes.iter_mut()).for_each(|n|n.kiai_changed(is_kiai))
     }
+
+
+    async fn get_ui_elements(
+        &self, 
+        loader: &mut dyn UiElementLoader
+    ) {
+        // combo
+        loader.change_default_layout(
+            "combo",
+            UiElementLayout::new_default(
+                UiElementAnchor::Playfield {
+                    saved_size: None,
+                    relative: UiElementAlign::Inside,
+                },
+                Alignment::CENTER_LEFT,
+                None,
+                None,
+            ),
+        ).await;
+
+        // Leaderboard
+        loader.change_default_layout(
+            "leaderboard",
+            UiElementLayout::new_default(
+                UiElementAnchor::Playfield {
+                    saved_size: None,
+                    relative: UiElementAlign::Below
+                },
+                Alignment::BOTTOM_LEFT,
+                None,
+                None,
+            ),
+        ).await;
+
+        // don chan
+        loader.load(
+            "don_chan",
+            UiElementLayout::new_default(
+                UiElementAnchor::Playfield {
+                    saved_size: None,
+                    relative: UiElementAlign::Above
+                },
+                Alignment::TOP_LEFT,
+                None,
+                None,
+            ),
+            Box::new(DonChan::new().await)
+        ).await;
+    }
+
+
+    fn get_playfield(&self) -> PlayfieldNonsense {
+        PlayfieldNonsense::new_simple(self.playfield.get_playfield_bounds())
+    }
+    fn properties(&self) -> GameModeProperties {
+        GameModeProperties { 
+            info: &crate::GAME_INFO, 
+            keys: vec![
+                (KeyPress::LeftKat, "LK"),
+                (KeyPress::LeftDon, "LD"),
+                (KeyPress::RightDon, "RD"),
+                (KeyPress::RightKat, "RK"),
+            ], 
+            end_time: self.end_time, 
+            show_cursor: false, 
+            audio_prefix: "taiko".to_owned(),
+            timing_bar_things: self.hit_windows.iter()
+                .map(|(j, w)| (w.end, j.color))
+                .collect(), 
+        }
+    }
 }
 
 #[async_trait]
@@ -1233,66 +1304,3 @@ impl GameModeInput for TaikoGame {
 
 #[cfg(not(feature="graphics"))]
 impl GameModeInput for TaikoGame {}
-
-#[async_trait]
-impl GameModeProperties for TaikoGame {
-    fn playmode(&self) -> Cow<'static, str> { Cow::Borrowed("taiko") }
-    fn end_time(&self) -> f32 {self.end_time}
-
-    fn get_info(&self) -> GameModeInfo { super::GAME_INFO }
- 
-    fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {
-        vec![
-            (KeyPress::LeftKat, "LK"),
-            (KeyPress::LeftDon, "LD"),
-            (KeyPress::RightDon, "RD"),
-            (KeyPress::RightKat, "RK"),
-        ]
-    }
-
-    fn timing_bar_things(&self) -> Vec<(f32, Color)> {
-        self.hit_windows
-            .iter()
-            .map(|(j, w)| (w.end, j.color))
-            .collect()
-    }
-
-    async fn get_ui_elements(
-        &self, 
-        _window_size: Vector2, 
-        ui_elements: &mut Vec<UIElement>,
-        loader: &mut dyn UiElementLoader
-    ) {
-        let playmode = self.playmode();
-        let get_name = |name| {
-            format!("{playmode}_{name}")
-        };
-
-        let combo_bounds = Bounds::new(
-            Vector2::ZERO,
-            Vector2::new(self.playfield.hit_position.x - self.taiko_settings.note_radius, self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult)
-        );
-        
-        // combo
-        ui_elements.push(loader.load(
-            &get_name("combo".to_owned()),
-            Vector2::new(0.0, self.playfield.hit_position.y - self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult/2.0),
-            Box::new(ComboElement::new(combo_bounds).await)
-        ).await);
-
-        // Leaderboard
-        ui_elements.push(loader.load(
-            &get_name("leaderboard".to_owned()),
-            Vector2::with_y(self.playfield.hit_position.y + self.taiko_settings.note_radius * self.taiko_settings.big_note_multiplier + 50.0),
-            Box::new(LeaderboardElement::new(crate::GAME_INFO).await)
-        ).await);
-
-        // don chan
-        ui_elements.push(loader.load(
-            &get_name("don_chan".to_owned()),
-            self.playfield.pos,
-            Box::new(DonChan::new().await)
-        ).await);
-    }
-
-}

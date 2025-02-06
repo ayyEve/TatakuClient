@@ -51,10 +51,8 @@ pub struct OnlineManager {
 impl OnlineManager {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
-        
         // idk why this is suddenly required but whatever
         let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
-
 
         #[cfg(feature="graphics")]
         let mut messages = HashMap::new();
@@ -96,13 +94,13 @@ impl OnlineManager {
 
     #[cfg(feature="gameplay")]
     pub async fn start(settings: Settings) {
-        info!("starting network connection");
 
         // // insert multiplayer data
         // GlobalValueManager::update(Arc::new(MultiplayerData::default()));
         // GlobalValueManager::update::<Option<CurrentLobbyInfo>>(Arc::new(None));
 
         let server_url = settings.server_url.clone();
+        info!("Starting websocket connection to url: {server_url}");
 
         // initialize the connection
         match tokio_tungstenite::connect_async(settings.server_url.clone()).await {
@@ -163,7 +161,7 @@ impl OnlineManager {
             }
             Err(oof) => {
                 // s.write().await.connected = false;
-                warn!("Could not accept connection: {}", oof);
+                warn!("Could not accept connection: {oof:?}");
             }
         }
     }

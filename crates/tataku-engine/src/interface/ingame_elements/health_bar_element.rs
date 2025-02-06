@@ -14,7 +14,7 @@ pub struct HealthBarElement {
     healthbar_bg_image: Option<Image>,
 }
 impl HealthBarElement {
-    pub async fn new(common_game_settings: Arc<CommonGameplaySettings>) -> Self {
+    pub fn new(common_game_settings: Arc<CommonGameplaySettings>) -> Self {
         Self {
             common_game_settings,
             health_ratio: 0.0,
@@ -32,11 +32,8 @@ impl HealthBarElement {
 impl InnerUIElement for HealthBarElement {
     fn display_name(&self) -> &'static str { "Health Bar" }
 
-    fn get_bounds(&self) -> Bounds {
-        Bounds::new(
-            Vector2::ZERO,
-            Vector2::new(self.window_size.x / 2.0, DURATION_HEIGHT)
-        )
+    fn max_size(&self) -> Vector2 {
+        Vector2::new(self.window_size.x / 2.0, DURATION_HEIGHT)
     }
 
     #[cfg(feature="graphics")]
@@ -74,7 +71,13 @@ impl InnerUIElement for HealthBarElement {
     }
 
     #[cfg(feature="graphics")]
-    fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
+    fn draw(
+        &mut self, 
+        pos_offset: Vector2, 
+        scale: Vector2, 
+        _align: Alignment,
+        list: &mut RenderableCollection
+    ) {
         let percent = self.health_ratio;
         let bg_size = Vector2::new(self.window_size.x / 2.0, DURATION_HEIGHT) * scale;
 

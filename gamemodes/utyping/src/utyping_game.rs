@@ -71,7 +71,7 @@ impl UTypingGame {
 
 #[async_trait]
 impl GameMode for UTypingGame {
-    async fn new(beatmap:&Beatmap, _:bool, settings: &Settings) -> TatakuResult<Self> {
+    async fn new(beatmap: &Beatmap, _:bool, settings: &Settings) -> TatakuResult<Self> {
         let settings = Arc::new(settings.taiko_settings.clone());
         let playfield = Arc::new(Self::get_playfield(&settings, Bounds::new(Vector2::ZERO, WindowSize::get().0)));
 
@@ -265,7 +265,7 @@ impl GameMode for UTypingGame {
         // TODO: might move tbs to a (time, speed) tuple
         for tb in self.timing_bars.iter_mut() { tb.update(state.time); }
     }
-    async fn draw<'a>(&mut self, state:GameplayStateForDraw<'a>, list: &mut RenderableCollection) {
+    async fn draw<'a>(&mut self, state: GameplayStateForDraw<'a>, list: &mut RenderableCollection) {
 
         // draw the playfield
         list.push(self.playfield.get_rectangle(state.current_timing_point.kiai));
@@ -286,7 +286,7 @@ impl GameMode for UTypingGame {
     }
 
 
-    async fn reset(&mut self, beatmap:&Beatmap) {
+    async fn reset(&mut self, beatmap: &Beatmap) {
         let timing_points = TimingPointHelper::new(beatmap.get_timing_points(), beatmap.slider_velocity());
         
         for note in self.notes.iter_mut() {
@@ -408,14 +408,33 @@ impl GameMode for UTypingGame {
     
     async fn beat_happened(&mut self, _pulse_length: f32) {}
     async fn kiai_changed(&mut self, _is_kiai: bool) {}
+
+
+    fn get_playfield(&self) -> PlayfieldNonsense {
+        PlayfieldNonsense::new_simple(self.playfield.bounds)
+    }
+    fn properties(&self) -> GameModeProperties {
+        GameModeProperties { 
+            info: &crate::GAME_INFO, 
+            keys: Vec::new(), 
+            end_time: self.end_time, 
+            show_cursor: false, 
+            audio_prefix: String::new(),
+            timing_bar_things: vec![
+                (self.hitwindow_100,  Color::new(0.3411, 0.8901, 0.0745, 1.0)),
+                (self.hitwindow_300,  Color::new(0.1960, 0.7372, 0.9058, 1.0)),
+                (self.hitwindow_miss, Color::new(0.8549, 0.6823, 0.2745, 1.0))
+            ], 
+        }
+    }
 }
 
 #[cfg(feature="graphics")]
 #[async_trait]
 impl GameModeInput for UTypingGame {
-    async fn key_down(&mut self, _key:Key) -> Option<ReplayAction> { None }
+    async fn key_down(&mut self, _key: Key) -> Option<ReplayAction> { None }
     
-    async fn key_up(&mut self, _key:Key) -> Option<ReplayAction> { None }
+    async fn key_up(&mut self, _key: Key) -> Option<ReplayAction> { None }
 
     async fn on_text(&mut self, text: &str, _mods: &KeyModifiers) -> Option<ReplayAction> {
         let c = text.chars().next()?;
@@ -425,21 +444,3 @@ impl GameModeInput for UTypingGame {
 
 #[cfg(not(feature="graphics"))]
 impl GameModeInput for UTypingGame {}
-
-impl GameModeProperties for UTypingGame {
-    fn playmode(&self) -> Cow<'static, str> { "utyping".into() }
-    fn end_time(&self) -> f32 { self.end_time }
-
-    fn get_info(&self) -> GameModeInfo { crate::GAME_INFO }
-
-    fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {Vec::new()}
-
-    fn timing_bar_things(&self) -> Vec<(f32, Color)> {
-        vec![
-            (self.hitwindow_100,  Color::new(0.3411, 0.8901, 0.0745, 1.0)),
-            (self.hitwindow_300,  Color::new(0.1960, 0.7372, 0.9058, 1.0)),
-            (self.hitwindow_miss, Color::new(0.8549, 0.6823, 0.2745, 1.0))
-        ]
-    }
-    
-}

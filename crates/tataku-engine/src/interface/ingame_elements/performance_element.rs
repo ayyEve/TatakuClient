@@ -11,7 +11,7 @@ pub struct PerformanceElement {
     bounds_size: Vector2,
 }
 impl PerformanceElement {
-    pub async fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             bounds_size: Text::measure_text_raw(&[Font::Main], 30.0, &format_float(NUMBER, 2), Vector2::ONE, 0.0),
             perf_image: None,
@@ -26,7 +26,7 @@ impl InnerUIElement for PerformanceElement {
 
     fn get_bounds(&self) -> Bounds {
         Bounds::new(
-            -self.bounds_size.x_portion() - PADDING,
+            Vector2::ZERO, //-self.bounds_size.x_portion() - PADDING,
             self.bounds_size + PADDING * 2.0
         )
     }
@@ -37,7 +37,7 @@ impl InnerUIElement for PerformanceElement {
 
     #[cfg(feature="graphics")]
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
-        let bounds_x = self.bounds_size.x_portion();
+        // let bounds_x = self.bounds_size.x_portion();
 
         if let Some(perf) = &mut self.perf_image {
             perf.number = self.perf as f64;
@@ -48,7 +48,8 @@ impl InnerUIElement for PerformanceElement {
 
             // right align
             let size = perf.measure_text();
-            perf.pos = pos_offset-bounds_x + ((self.bounds_size * scale).x_portion() - size.x_portion());
+            perf.pos = pos_offset // - bounds_x
+            + ((self.bounds_size * scale).x_portion() - size.x_portion());
 
             // let size = acc.measure_text();
             // perf.current_pos = pos_offset - bounds_x;
@@ -57,7 +58,7 @@ impl InnerUIElement for PerformanceElement {
 
             // score bg
             let mut text = Text::new(
-                pos_offset - self.bounds_size.x_portion(),
+                pos_offset, //- bounds_x,
                 30.0 * scale.y,
                 format!("{:.2}", self.perf),
                 if WHITE_TEXT { Color::WHITE } else { Color::BLACK },
@@ -68,7 +69,9 @@ impl InnerUIElement for PerformanceElement {
             let text_size = text.measure_text();
             let right_align = self.bounds_size.x - text_size.x;
             // offset text position to account for right alrign
-            text.pos.x = pos_offset.x - self.bounds_size.x + right_align;
+            text.pos.x = pos_offset.x
+                // - self.bounds_size.x 
+                + right_align;
 
             if !WHITE_TEXT {
                 list.push(visibility_bg(

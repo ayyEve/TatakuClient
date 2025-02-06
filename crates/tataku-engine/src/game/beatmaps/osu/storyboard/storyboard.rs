@@ -76,9 +76,9 @@ impl StoryboardElementDef {
         let layer = split.next().and_then(Layer::from_str)?;
         let origin = split.next().and_then(Origin::from_str)?;
         let filepath = split.next()?;
-        let x = split.next()?.parse::<i32>().ok()?;
-        let y = split.next()?.parse::<i32>().ok()?;
-        let pos = Vector2::new(x as f32, y as f32);
+        let x = split.next()?.parse::<f32>().ok()?;
+        let y = split.next()?.parse::<f32>().ok()?;
+        let pos = Vector2::new(x, y);
         let filepath = filepath.trim_matches('"').to_owned();
 
         match ele {

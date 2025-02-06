@@ -34,7 +34,7 @@ pub struct ManiaHold {
 }
 impl ManiaHold {
     pub async fn new(
-        time:f32, end_time:f32, column: u8, color: Color, x:f32, 
+        time: f32, end_time: f32, column: u8, color: Color, x: f32, 
         
         sv_mult: f32,
         
@@ -300,7 +300,7 @@ impl ManiaHitObject for ManiaHold {
             self.playfield.note_image(img);
             if flip { img.scale.y *= -1.0; }
         }
-        self.middle_image.as_mut().map(|img|img.scale.x = self.playfield.column_width / img.tex_size().x);
+        self.middle_image.as_mut().map(|img| img.scale.x = self.playfield.column_width / img.tex_size().x);
     }
 
     fn get_hitsound(&self) -> &Vec<Hitsound> {

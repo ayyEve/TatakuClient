@@ -22,22 +22,24 @@ fn check_all_hex(s: &str) -> bool {
         'a','b','c','d','e','f',
         'A','B','C','D','E','F',
     ];
-    for c in s.chars() {
-        if !HEX_CHARS.contains(&c) { return false }
-    }
 
-    true
+    s.chars().all(|c| HEX_CHARS.contains(&c))
+    // for c in s.chars() {
+    //     if !HEX_CHARS.contains(&c) { return false }
+    // }
+
+    // true
 }
 
 
-pub fn check_md5(s:String) -> String {
+pub fn check_md5(s: String) -> String {
     if s.len() != 32 || !check_all_hex(&s) {
         md5(s).to_string()
     } else {
         s
     }
 }
-pub fn check_sha512(s:String) -> String {
+pub fn check_sha512(s: String) -> String {
     if s.len() != 128 || !check_all_hex(&s) {
         sha512(s)
     } else {
@@ -48,5 +50,7 @@ pub fn check_sha512(s:String) -> String {
 
 pub fn decode_base64(data: impl AsRef<[u8]>) -> TatakuResult<Vec<u8>>{
     use base64::Engine;
-    base64::engine::general_purpose::STANDARD.decode(data).map_err(|e| TatakuError::String(e.to_string()))
+    base64::engine::general_purpose::STANDARD
+        .decode(data)
+        .map_err(TatakuError::from_err)
 }

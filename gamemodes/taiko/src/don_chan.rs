@@ -71,11 +71,8 @@ impl DonChan {
 impl InnerUIElement for DonChan {
     fn display_name(&self) -> &'static str { "DonChan" }
 
-    fn get_bounds(&self) -> Bounds {
-        Bounds::new(
-            -Vector2::with_y(DEFAULT_DONCHAN_SIZE.y / 2.0), 
-            DEFAULT_DONCHAN_SIZE / 2.0
-        )
+    fn max_size(&self) -> Vector2 {
+        DEFAULT_DONCHAN_SIZE
     }
 
     fn update(&mut self, manager: &mut GameplayManager) {
@@ -83,14 +80,14 @@ impl InnerUIElement for DonChan {
 
         // check init
         if !self.init {
-            let tp = manager.timing_point_at(0.0, false);
+            let tp = manager.timing_points.timing_point_at(0.0, false);
             self.set_offset(tp.time - tp.beat_length * 4.0);
             self.update_delays(tp);
             self.init = true;
         }
 
         // check timing point change
-        let current_tp = manager.current_timing_point();
+        let current_tp = manager.timing_points.timing_point();
         if !current_tp.is_inherited() && self.current_timing_point_time != current_tp.time {
             self.current_timing_point_time = current_tp.time;
             self.update_delays(current_tp);
@@ -145,7 +142,13 @@ impl InnerUIElement for DonChan {
     }
 
     // #[cfg(feature="graphics")]
-    fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
+    fn draw(
+        &mut self, 
+        pos_offset: Vector2, 
+        scale: Vector2, 
+        _align: Alignment,
+        list: &mut RenderableCollection,
+    ) {
         match self.state {
             DonChanState::Normal => {
                 if self.kiai {

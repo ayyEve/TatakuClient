@@ -39,6 +39,9 @@ pub enum GamemodeAction {
 
     /// let the manager know the map has no more notes
     MapComplete,
+
+    /// let the manager know the gamemode's playfield has changed
+    PlayfieldChanged,
 }
 
 impl GamemodeAction {

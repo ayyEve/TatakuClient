@@ -8,10 +8,12 @@ pub struct Image {
     pub base_scale: Vector2,
 
     /// origin of rotation in px, relative to image position
+    /// 
+    /// BEFORE SCALE
     pub origin: Vector2,
 
-    scissor: Scissor,
-    blend_mode: BlendMode,
+    pub scissor: Scissor,
+    pub blend_mode: BlendMode,
 
     pub color: Color,
     pub pos: Vector2,

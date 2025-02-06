@@ -24,7 +24,7 @@ pub struct ManiaNote {
 }
 impl ManiaNote {
     pub async fn new(
-        time:f32, column:u8, color: Color, x:f32, 
+        time: f32, column: u8, color: Color, x: f32, 
         sv_mult: f32,
         playfield: Arc<ManiaPlayfield>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
 

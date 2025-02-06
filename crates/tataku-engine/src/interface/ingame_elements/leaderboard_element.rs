@@ -8,7 +8,7 @@ pub struct LeaderboardElement {
     info: GameModeInfo,
 }
 impl LeaderboardElement {
-    pub async fn new(info: GameModeInfo) -> Self {
+    pub fn new(info: GameModeInfo) -> Self {
         Self {
             scores: Vec::new(),
             image: None,
@@ -20,18 +20,11 @@ impl LeaderboardElement {
 impl InnerUIElement for LeaderboardElement {
     fn display_name(&self) -> &'static str { "Leaderboard" }
 
-    fn get_bounds(&self) -> Bounds {
-        #[cfg(feature="graphics")]
-        return Bounds::new(
-            Vector2::ZERO,
-            Vector2::new(
-                LEADERBOARD_ITEM_SIZE.x,
-                LEADERBOARD_ITEM_SIZE.y * 10.0
-            )
-        );
-
-        #[cfg(not(feature="graphics"))]
-        Bounds::default()
+    fn max_size(&self) -> Vector2 {
+        Vector2::new(
+            LEADERBOARD_ITEM_SIZE.x,
+            LEADERBOARD_ITEM_SIZE.y * 10.0
+        )
     }
 
 
@@ -45,7 +38,8 @@ impl InnerUIElement for LeaderboardElement {
         &mut self, 
         pos_offset: Vector2, 
         scale: Vector2, 
-        list: &mut RenderableCollection
+        _align: Alignment,
+        list: &mut RenderableCollection,
     ) {
         // draw scores
         // let args = RenderArgs {

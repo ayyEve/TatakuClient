@@ -6,7 +6,7 @@ const SIZE:Vector2 = Vector2::new(FONT_SIZE * MAX_CHARS as f32, FONT_SIZE);
 
 pub struct ElapsedElement {
     // elapsed_image: Option<SkinnedNumber>,
-    elapsed_bounds: Bounds,
+    // elapsed_bounds: Bounds,
 
     speed: f32,
     start_time: f32,
@@ -15,10 +15,10 @@ pub struct ElapsedElement {
     elapsed: f32,
 }
 impl ElapsedElement {
-    pub async fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             // elapsed_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::ZERO, 0.0, "normal", None, 0).await.ok(),
-            elapsed_bounds: Bounds::new(Vector2::ZERO, SIZE),
+            // elapsed_bounds: Bounds::new(Vector2::ZERO, SIZE),
             
             speed: 1.0,
             start_time: -1.0,
@@ -31,7 +31,7 @@ impl ElapsedElement {
 #[async_trait]
 impl InnerUIElement for ElapsedElement {
     fn display_name(&self) -> &'static str { "Time Elapsed" }
-    fn get_bounds(&self) -> Bounds { self.elapsed_bounds }
+    fn max_size(&self) -> Vector2 { SIZE }
 
     fn update(&mut self, manager: &mut GameplayManager) {
         // if the values arent set yet, set them
@@ -45,24 +45,31 @@ impl InnerUIElement for ElapsedElement {
     }
 
     #[cfg(feature="graphics")]
-    fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
-        let mut bounds = self.elapsed_bounds;
-        bounds.pos = pos_offset;
-        bounds.size *= scale;
+    fn draw(
+        &mut self, 
+        pos_offset: Vector2, 
+        scale: Vector2, 
+        _align: Alignment,
+        list: &mut RenderableCollection,
+    ) {
+        // let bounds = Bounds::new(
+        //     pos_offset,
+        //     SIZE * scale
+        // );
 
         let diff = self.elapsed - self.start_time;
         let secs = (diff / 1000.0).floor();
         let mins = (secs / 60.0).floor() as i16;
         let secs = secs as i16 % 60;
 
-        let mut text = Text::new(
-            Vector2::ZERO,
+        let text = Text::new(
+            pos_offset,
             30.0 * scale.y,
             format!("{mins:02}:{secs:02}"),
             Color::WHITE,
             Font::Main
         );
-        text.center_text(&bounds);
+        // text.center_text(&bounds);
         list.push(text);
     }
 

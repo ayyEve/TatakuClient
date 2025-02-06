@@ -124,7 +124,7 @@ impl OsuSlider {
         let pos = scaling_helper.scale_coords(def.pos);
         let visual_end_pos = scaling_helper.scale_coords(curve.curve_lines.last().unwrap().p2);
         let time_end_pos = if def.slides % 2 == 1 {visual_end_pos} else {pos};
-        let radius = CIRCLE_RADIUS_BASE * scaling_helper.scaled_cs;
+        let radius = CIRCLE_RADIUS_BASE * scaling_helper.cs;
 
         const SAMPLE_SETS:[&str; 4] = ["normal", "normal", "soft", "drum"];
         let sliderdot_hitsound = Hitsound::new_simple(format!("{}-slidertick", SAMPLE_SETS[def.hitsamples.addition_set as usize]));
@@ -236,7 +236,7 @@ impl OsuSlider {
         color.a = self.standard_settings.slider_body_alpha;
 
         let border_color = BORDER_COLOR.alpha(self.standard_settings.slider_border_alpha); //self.skin.slider_border.unwrap_or(BORDER_COLOR);
-        let border_radius = BORDER_RADIUS * self.scaling_helper.scaled_cs;
+        let border_radius = BORDER_RADIUS * self.scaling_helper.cs;
 
         let mut min_pos = window_size;
         let mut max_pos = Vector2::ZERO;
@@ -296,6 +296,7 @@ impl OsuSlider {
                     let (mut grid_x, mut grid_y) = (grid_coord.x.floor() as u32, grid_coord.y.floor() as u32);
 
                     let p1_grid_index = grid_y * grid_size[0] + grid_x;
+                    if grid_cells.len() <= p1_grid_index as usize { return }
                     grid_cells[p1_grid_index as usize].push(i as u32);
 
                     let grid_coord_p2 = s.p2 / cell_size;
@@ -715,7 +716,7 @@ impl HitObject for OsuSlider {
                 color,
                 Some(Border::new(
                     if end_repeat { Color::YELLOW } else { Color::WHITE }.alpha(alpha),
-                    self.scaling_helper.border_scaled
+                    self.scaling_helper.border_width
                 ))
             ));
         }
@@ -724,7 +725,7 @@ impl HitObject for OsuSlider {
             if let Some(mut reverse_arrow) = self.slider_reverse_image.clone() {
                 reverse_arrow.pos = self.visual_end_pos;
                 reverse_arrow.color.a = alpha;
-                reverse_arrow.scale = Vector2::ONE * self.beat_scale * self.scaling_helper.scaled_cs;
+                reverse_arrow.scale = Vector2::ONE * self.beat_scale * self.scaling_helper.cs;
 
                 let l = self.curve.curve_lines.last().unwrap();
                 reverse_arrow.rotation = (l.p1 - l.p2).atan2_wrong();
@@ -754,7 +755,7 @@ impl HitObject for OsuSlider {
                     self.color.alpha(alpha),
                     Some(Border::new(
                         if start_repeat { Color::YELLOW } else { Color::WHITE }.alpha(alpha),
-                        self.scaling_helper.border_scaled
+                        self.scaling_helper.border_width
                     ))
                 ));
             }
@@ -763,7 +764,7 @@ impl HitObject for OsuSlider {
                 if let Some(mut reverse_arrow) = self.slider_reverse_image.clone() {
                     reverse_arrow.pos = self.pos;
                     reverse_arrow.color.a = alpha;
-                    reverse_arrow.scale = Vector2::ONE * self.beat_scale * self.scaling_helper.scaled_cs;
+                    reverse_arrow.scale = Vector2::ONE * self.beat_scale * self.scaling_helper.cs;
 
                     let l = self.curve.curve_lines.first().unwrap();
                     reverse_arrow.rotation = (l.p2 - l.p1).atan2_wrong();
@@ -777,7 +778,7 @@ impl HitObject for OsuSlider {
         if self.map_time < self.curve.end_time && self.map_time >= self.time {
             let rotation = PI * 2.0 - (self.pos_at(self.map_time + 0.1) - self.slider_ball_pos).atan2();
 
-            let scale = Vector2::ONE * self.scaling_helper.scaled_cs;
+            let scale = Vector2::ONE * self.scaling_helper.cs;
 
             // under
             if let Some(mut ball) = self.sliderball_under_image.clone() {
@@ -1012,7 +1013,7 @@ impl OsuHitObject for OsuSlider {
     async fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {
         self.scaling_helper = new_scale.clone();
         self.pos = self.scaling_helper.scale_coords(self.def.pos);
-        self.radius = CIRCLE_RADIUS_BASE * self.scaling_helper.scaled_cs;
+        self.radius = CIRCLE_RADIUS_BASE * self.scaling_helper.cs;
         self.visual_end_pos =  self.scaling_helper.scale_coords(self.curve.position_at_length(self.curve.length()));
         self.time_end_pos = if self.def.slides % 2 == 1 {self.visual_end_pos} else {self.pos};
 
@@ -1021,7 +1022,7 @@ impl OsuHitObject for OsuSlider {
 
         if let Some(image) = &mut self.end_circle_image {
            image.pos = self.scaling_helper.scale_coords(self.visual_end_pos);
-           image.scale = Vector2::ONE * self.scaling_helper.scaled_cs;
+           image.scale = Vector2::ONE * self.scaling_helper.cs;
         }
 
         if self.slider_body_render_target.is_some() || (!self.standard_settings.slider_render_targets && USE_NEW_SLIDER_RENDERING) {

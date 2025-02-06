@@ -146,12 +146,12 @@ impl CursorManager {
         } else {
             // use font awesome as fallback
             let (c, align) = match self.cursor_mode {
-                CursorMode::Normal => (FontAwesome::ArrowPointer, Align::TopLeft),
-                CursorMode::HorizontalResize => (FontAwesome::LeftRight, Align::CenterMiddle),
-                CursorMode::VerticalResize => (FontAwesome::UpDown, Align::CenterMiddle),
-                CursorMode::Resize => (FontAwesome::UpDownLeftRight, Align::CenterMiddle),
-                CursorMode::Pointer => (FontAwesome::HandPointer, Align::TopLeft),
-                CursorMode::Text => (FontAwesome::ICursor, Align::CenterMiddle),
+                CursorMode::Normal => (FontAwesome::ArrowPointer, Alignment::TOP_LEFT),
+                CursorMode::HorizontalResize => (FontAwesome::LeftRight, Alignment::CENTER),
+                CursorMode::VerticalResize => (FontAwesome::UpDown, Alignment::CENTER),
+                CursorMode::Resize => (FontAwesome::UpDownLeftRight, Alignment::CENTER),
+                CursorMode::Pointer => (FontAwesome::HandPointer, Alignment::TOP_LEFT),
+                CursorMode::Text => (FontAwesome::ICursor, Alignment::CENTER),
             };
 
             let mut text = Text::new(
@@ -163,7 +163,7 @@ impl CursorManager {
             );
             text.rotation = self.cursor_rotation;
 
-            if align == Align::CenterMiddle {
+            if align == Alignment::CENTER {
                 let size = text.measure_text();
                 text.pos -= size / 2.0;
             }

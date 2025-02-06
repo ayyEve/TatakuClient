@@ -166,7 +166,7 @@ impl HitObject for OsuSpinner {
 
     async fn draw(&mut self, time: f32, list: &mut RenderableCollection) {
         if !(time >= self.time && time <= self.end_time) { return }
-        let scale = Vector2::ONE * self.scaling_helper.scaled_cs;
+        let scale = Vector2::ONE * self.scaling_helper.cs;
 
         let border = Some(Border::new(Color::BLACK, OSU_NOTE_BORDER_SIZE));
 

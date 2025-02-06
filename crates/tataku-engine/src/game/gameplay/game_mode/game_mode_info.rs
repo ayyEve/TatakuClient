@@ -48,15 +48,6 @@ impl GameModeInfo {
         create_diffcalc: |_,_| Box::pin(async { Err(GameModeError::UnknownGameMode.into()) }),
     };
 
-    // fn dummy_calc_acc(_:&Score) -> f32 { 0.0 }
-    // fn dummy_calc_perf(_:CalcPerfInfo<'_>) -> f32 { 0.0 }
-    // fn dummy_diff_str(_: &BeatmapMetaWithDiff, _: &ModManager) -> String { String::new() }
-    // fn dummy_stats(_: &HashMap<String, HashMap<String, Vec<f32>>>) -> Vec<MenuStatsInfo> { Vec::new() }
-    // fn dummy_can_load_beatmap(_: &BeatmapType) -> bool { false }
-
-    // fn dummy_create_game<'a>(_: &'a Beatmap, _: &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn GameMode>>> { Box::pin(async { Err(GameModeError::UnknownGameMode.into()) }) }
-    // fn dummy_create_diffcalc<'a>(_: &'a BeatmapMeta, _: &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn DiffCalc>>> { Box::pin(async { Err(GameModeError::UnknownGameMode.into()) }) }
-
     pub fn calc_acc(&self, score: &Score) -> f32 {
         (self.calc_acc)(score)
     }
@@ -64,9 +55,6 @@ impl GameModeInfo {
         (self.calc_perf)(data)
     }
 
-    // pub fn get_diff_string(&self, map: &BeatmapMetaWithDiff, mods: &ModManager) -> String {
-    //     (self.get_diff_string)(map, mods)
-    // }
     pub fn stats_from_groups(&self, stats: &HashMap<String, HashMap<String, Vec<f32>>>) -> Vec<MenuStatsInfo> {
         (self.stats_from_groups)(stats)
     }
@@ -76,7 +64,6 @@ impl GameModeInfo {
     }
 
 
-
     pub async fn create_game(&self, map: &Beatmap, settings: &Settings) -> TatakuResult<Box<dyn GameMode>> {
         (self.create_game)(map, settings).await
     }
@@ -84,8 +71,6 @@ impl GameModeInfo {
     pub async fn create_diffcalc(&self, map: &BeatmapMeta, settings: &Settings) -> TatakuResult<Box<dyn DiffCalc>> {
         (self.create_diffcalc)(map, settings).await
     }
-
-
 }
 impl Default for GameModeInfo {
     fn default() -> Self {
@@ -115,25 +100,8 @@ impl std::fmt::Debug for GameModeInfo {
     }
 }
 
-
 pub struct CalcPerfInfo<'a> {
     pub score: &'a Score,
     pub accuracy: f32,
     pub map_difficulty: f32,
 }
-
-// const TEST: GameModeInfoTest = GameModeInfoTest {
-//     id: "",
-//     display_name: "",
-//     about: "",
-//     author: "",
-//     author_contact: "",
-//     bug_report_url: "",
-
-//     calc_acc: &calc_acc_test,
-
-// };
-
-// fn calc_acc_test(score: &Score) -> f32 {
-//     0.0
-// }

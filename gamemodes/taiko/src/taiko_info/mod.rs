@@ -1,9 +1,9 @@
-mod taiko_info;
-mod taiko_mods;
-mod taiko_stats;
-mod taiko_hit_judgments;
+mod info;
+mod mods;
+mod stats;
+mod hit_judgments;
 
-pub use taiko_info::*;
-pub use taiko_mods::*;
-pub use taiko_stats::*;
-pub use taiko_hit_judgments::*;
+pub use info::*;
+pub use mods::*;
+pub use stats::*;
+pub use hit_judgments::*;

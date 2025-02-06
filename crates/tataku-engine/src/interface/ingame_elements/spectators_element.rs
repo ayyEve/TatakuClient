@@ -1,4 +1,3 @@
-
 use crate::prelude::*;
 
 const SPECTATOR_ITEM_SIZE:Vector2 = Vector2::new(100.0, 40.0);
@@ -20,14 +19,11 @@ impl SpectatorsElement {
 impl InnerUIElement for SpectatorsElement {
     fn display_name(&self) -> &'static str { "Spectators" }
 
-    fn get_bounds(&self) -> Bounds {
-        Bounds::new(
-            Vector2::ZERO,
-            // TODO: setup a proper size
-            Vector2::new(
-                SPECTATOR_ITEM_SIZE.x,
-                (SPECTATOR_ITEM_SIZE.y + PADDING) * 5.0 - PADDING
-            )
+    fn max_size(&self) -> Vector2 {
+        // TODO: setup a proper size
+        Vector2::new(
+            SPECTATOR_ITEM_SIZE.x,
+            (SPECTATOR_ITEM_SIZE.y + PADDING) * 5.0 - PADDING
         )
     }
 
@@ -41,7 +37,13 @@ impl InnerUIElement for SpectatorsElement {
     }
 
     #[cfg(feature="graphics")]
-    fn draw(&mut self, pos_offset:Vector2, scale:Vector2, list: &mut RenderableCollection) {
+    fn draw(
+        &mut self, 
+        pos_offset: Vector2, 
+        scale: Vector2, 
+        _align: Alignment,
+        list: &mut RenderableCollection
+    ) {
         if self.spectators.list.is_empty() { return }
 
         // draw spectators

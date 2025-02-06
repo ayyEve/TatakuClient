@@ -29,14 +29,14 @@ impl OsuStoryboard {
         elements.sort_by(Element::sort);
 
         for i in elements.iter_mut() {
-            i.window_size_changed(&scaling_helper);
+            i.playfield_changed(&scaling_helper);
         }
 
         Ok(Self {
             time: 0.0,
             scaling_helper,
             settings,
-            elements
+            elements,
         })
     }
 
@@ -46,6 +46,11 @@ impl OsuStoryboard {
 
 #[async_trait]
 impl BeatmapAnimation for OsuStoryboard {
+    fn use_gamemode_playfield(&self, gamemode: &GameModeInfo) -> bool {
+        gamemode.id == "osu"
+    }
+
+
     async fn update(&mut self, time: f32) {
         self.time = time;
         for i in self.elements.iter_mut() {
@@ -55,46 +60,58 @@ impl BeatmapAnimation for OsuStoryboard {
     }
 
     async fn draw(&self, list: &mut RenderableCollection) {
+        // list.push_scissor(self.bounds.into_scissor());
+        let bounds = self.scaling_helper.playfield;
+
+        let scissor = bounds.into_scissor();
+
         for i in self.elements.iter() {
             if self.time < i.start_time || !i.group.visible() { continue } // || (i.end_time < self.time && !i.group.visible()) { continue }
             // if !i.group.visible() { continue } // || (i.end_time < self.time && !i.group.visible()) { continue }
-
-            let mut g = i.group.clone();
-
-            // g.pos.current = self.scaling_helper.scale_coords(g.pos.current);
-            // g.scale.current *= self.scaling_helper.scale;
-
-            list.push(g)
+            let mut group = i.group.clone();
+            group.scissor = Some(scissor);
+            list.push(group)
         }
+
+        list.push(Rectangle::new_bounds(
+            bounds, 
+            Color::TRANSPARENT_WHITE, 
+            Some(Border::new(Color::GREEN, 2.0))
+        ));
+
+        // list.pop_scissor();
     }
 
     fn window_size_changed(&mut self, size: Vector2) {
         self.scaling_helper = Arc::new(ScalingHelper::new_with_settings(&self.settings, 0.0, size, false));
 
         for i in self.elements.iter_mut() {
-            i.window_size_changed(&self.scaling_helper)
+            i.playfield_changed(&self.scaling_helper)
         }
     }
 
-    fn fit_to_area(&mut self, bounds: Bounds) {
-        self.scaling_helper = Arc::new(ScalingHelper::new_offset_scale(
-            5.0, 
-            bounds.size, 
-            bounds.pos, 
-            0.5, 
+    fn fit_to_area(&mut self, nonsense: PlayfieldNonsense) {
+        // self.scaling_helper = Arc::new(ScalingHelper::new_offset_scale(
+        //     5.0, 
+        //     bounds.size, 
+        //     bounds.pos, 
+        //     0.5, 
+        //     false,
+        // ));
+        self.scaling_helper = Arc::new(ScalingHelper::fit_to_playfield(
+            nonsense,
             false,
         ));
 
         for i in self.elements.iter_mut() {
-            i.window_size_changed(&self.scaling_helper)
+            i.playfield_changed(&self.scaling_helper)
         }
     }
 
     fn reset(&mut self) {
-        for i in self.elements.iter_mut() {
-            i.reset();
-        }
+        self.elements.iter_mut().for_each(Element::reset);
     }
+
 }
 
 struct Element {
@@ -119,12 +136,11 @@ impl Element {
 
         let mut blend_mode = None;
         for i in def.commands.iter() {
-            if let StoryboardEvent::Parameter { param: Param::AdditiveBlending } = i.event {
-                // if i.start_time as i32 == i.end_time as i32 {
-                    blend_mode = Some(BlendMode::OsuAdditiveBlending);
-                // }
-                break;
-            }
+            let StoryboardEvent::Parameter { param: Param::AdditiveBlending } = i.event else { continue };
+            // if i.start_time as i32 == i.end_time as i32 {
+                blend_mode = Some(BlendMode::OsuAdditiveBlending);
+            // }
+            break;
         }
 
         
@@ -167,12 +183,7 @@ impl Element {
                 image.origin = sprite.origin.resolve(image.tex_size());
 
                 layer = sprite.layer;
-                error!("has blend: {}", blend_mode.is_some());
                 if let Some(b) = blend_mode { image.set_blend_mode(b) }
-
-                // if sprite.filepath == "sb\\glow.png" {
-                //     image.draw_debug = true;
-                // }
 
                 group.items.push(Arc::new(image.clone()));
                 ElementImage::Sprite(image)
@@ -208,13 +219,12 @@ impl Element {
                 let tex_size = Vector2::new(frames[0].width as f32, frames[0].height as f32);
                 let mut animation = Animation::new(Vector2::ZERO, Vector2::ONE, frames, delays, Vector2::ONE);
                 animation.scale = Vector2::ONE;
-                // animation.free_on_drop = true;
-                // animation.draw_debug = true;
+                animation.draw_debug = true;
                 if let Some(b) = blend_mode { animation.set_blend_mode(b) }
                 
                 animation.origin = anim.origin.resolve(tex_size);
-
                 layer = anim.layer;
+
                 group.items.push(Arc::new(animation.clone()));
                 ElementImage::Anim(animation)
             }
@@ -244,29 +254,6 @@ impl Element {
         };
         self.group.pos.current = scale.scale_coords(pos);
 
-        // let origin = match &self.element_image {
-        //     ElementImage::Sprite(i) => i.origin,
-        //     ElementImage::Anim(a) => a.origin,
-        // };
-
-        // TODO: 
-        // //if these are wrong, they will be updated next frame anyways
-        // self.group.pos.both(scale.scale_coords(pos));
-        // self.group.scale.both(Vector2::ONE * scale.scale);
-
-        // match &mut self.element_image {
-        //     ElementImage::Sprite(image) => {
-        //         // image.scale = Vector2::ONE * scale.scale;
-        //         image.pos = scale.scale_coords(pos);
-        //         self.group.items = vec![Arc::new(image.clone())]
-        //     }
-        //     ElementImage::Anim(anim) => {
-        //         anim.scale = Vector2::ONE * scale.scale;
-        //         anim.pos = scale.scale_coords(pos);
-        //         self.group.items = vec![Arc::new(anim.clone())]
-        //     }
-        // }
-
         let mut earliest_start:f32 = f32::MAX;
         let mut latest_end:f32 = 0.0;
 
@@ -287,11 +274,6 @@ impl Element {
 
 
             let trans_type = match i.event {
-                // // raw
-                // StoryboardEvent::Move { start, end } => TransformType::Position { start, end },
-                // StoryboardEvent::MoveX { start_x, end_x } => TransformType::PositionX { start: start_x, end: end_x },
-                // StoryboardEvent::MoveY { start_y, end_y } => TransformType::PositionY { start: start_y, end: end_y },
-
                 // scaling
                 StoryboardEvent::Move { start, end } => TransformType::Position { 
                     start: scale.scale_coords(start), 
@@ -306,25 +288,14 @@ impl Element {
                     end:   scale.scale_coords(Vector2::with_y(end_y)).y 
                 },
 
-                // // scaling + origin offset 
-                // StoryboardEvent::Move { start, end } => TransformType::Position { 
-                //     start: scale.scale_coords(start - origin), 
-                //     end:   scale.scale_coords(end - origin)
-                // },
-                // StoryboardEvent::MoveX { start_x, end_x } => TransformType::PositionX { 
-                //     start: scale.scale_coords(Vector2::with_x(start_x) - origin).x, 
-                //     end:   scale.scale_coords(Vector2::with_x(end_x) - origin).x 
-                // },
-                // StoryboardEvent::MoveY { start_y, end_y } => TransformType::PositionY { 
-                //     start: scale.scale_coords(Vector2::with_y(start_y) - origin).y, 
-                //     end:   scale.scale_coords(Vector2::with_y(end_y) - origin).y 
-                // },
-
-
-                // StoryboardEvent::Scale { start_scale, end_scale } => TransformType::Scale { start: start_scale, end: end_scale },
-                // StoryboardEvent::VectorScale { start_scale, end_scale } => TransformType::VectorScale { start: start_scale, end: end_scale },
-                StoryboardEvent::Scale { start_scale, end_scale } => TransformType::Scale { start: start_scale * scale.scale, end: end_scale * scale.scale },
-                StoryboardEvent::VectorScale { start_scale, end_scale } => TransformType::VectorScale { start: start_scale * scale.scale, end: end_scale * scale.scale },
+                StoryboardEvent::Scale { start_scale, end_scale } => TransformType::Scale { 
+                    start: start_scale * scale.scale, 
+                    end: end_scale * scale.scale 
+                },
+                StoryboardEvent::VectorScale { start_scale, end_scale } => TransformType::VectorScale { 
+                    start: start_scale * scale.scale, 
+                    end: end_scale * scale.scale 
+                },
 
                 StoryboardEvent::Fade { start, end } => TransformType::Transparency { start, end },
 
@@ -364,14 +335,15 @@ impl Element {
             anim.update(time);
 
             if anim.frame_index != old_frame {
-                self.group.items = vec![Arc::new(anim.clone())]
+                // only
+                self.group.items = vec![Arc::new(anim.current_frame_as_image())]
             }
         }
 
         self.group.update(time)
     }
 
-    fn window_size_changed(&mut self, scale: &Arc<ScalingHelper>) {
+    fn playfield_changed(&mut self, scale: &Arc<ScalingHelper>) {
         self.apply_commands(scale);
     }
 
@@ -398,22 +370,6 @@ impl Element {
     }
 
 }
-
-// impl Drop for Element {
-//     fn drop(&mut self) {
-//         match &self.element_image {
-//             ElementImage::Sprite(i) => {
-//                 GameWindow::free_texture(i.tex);
-//             }
-//             ElementImage::Anim(a) => {
-//                 for i in &a.frames {
-//                     GameWindow::free_texture(*i);
-//                 }
-//             },
-//         }
-//     }
-// }
-
 
 enum ElementImage {
     Sprite(Image),

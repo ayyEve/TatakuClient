@@ -1,92 +1,143 @@
 use crate::prelude::*;
 
-#[async_trait]
-pub trait GameModeProperties: Send + Sync {
-    /// playmode for this game mode
-    fn playmode(&self) -> Cow<'static, str>;
-    /// should the cursor be visible (ie, osu yes, taiko/mania no)
-    fn show_cursor(&self) -> bool { false }
-    
-    /// what ms does this map end?
-    fn end_time(&self) -> f32;
+// #[async_trait]
+// pub trait GameModeProperties: Send + Sync {
+//     /// playmode for this game mode
+//     fn playmode(&self) -> Cow<'static, str>;
 
-    /// what key presses are valid, as well as what they should be named as
-    /// used for the key counter
-    fn get_possible_keys(&self) -> Vec<(KeyPress, &str)>;
+//     /// should the cursor be visible (ie, osu yes, taiko/mania no)
+//     fn show_cursor(&self) -> bool { false }
+    
+//     /// what ms does this map end?
+//     fn end_time(&self) -> f32;
 
-    /// setup any gamemode specific ui elements for this gamemode
-    /// ie combo and leaderboard, since the pos is different per-mode
-    async fn get_ui_elements(
-        &self, 
-        _window_size: Vector2, 
-        _ui_elements: &mut Vec<UIElement>,
-        _loader: &mut dyn UiElementLoader,
-    ) {}
+//     /// what key presses are valid, as well as what they should be named as
+//     /// used for the key counter
+//     fn get_possible_keys(&self) -> Vec<(KeyPress, &str)>;
+
+//     /// setup any gamemode specific ui elements for this gamemode
+//     /// ie combo and leaderboard, since the pos is different per-mode
+//     async fn get_ui_elements(
+//         &self, 
+//         _loader: &mut dyn UiElementLoader,
+//     ) {}
+
+//     fn get_playfield(&self) -> Bounds;
     
-    /// f32 is hitwindow, color is color for that window
-    fn timing_bar_things(&self) -> Vec<(f32, Color)>;
+//     /// f32 is hitwindow, color is color for that window
+//     fn timing_bar_things(&self) -> Vec<(f32, Color)>;
     
-    fn get_info(&self) -> GameModeInfo;
+//     fn get_info(&self) -> GameModeInfo;
+// }
+
+pub struct GameModeProperties {
+    pub info: &'static GameModeInfo,
+    // pub playmode: Cow<'static, str>,
+    pub keys: Vec<(KeyPress, &'static str)>,
+    pub end_time: f32,
+    pub show_cursor: bool,
+    pub timing_bar_things: Vec<(f32, Color)>,
+
+    pub audio_prefix: String,
 }
+impl GameModeProperties {
+    pub fn playmode(&self) -> &'static str {
+        self.info.id
+    }
+}
+impl Default for GameModeProperties {
+    fn default() -> Self {
+        Self {
+            info: &GameModeInfo::DEFAULT,
+            // playmode: Cow::Borrowed("none"),
+            keys: Vec::new(),
+            end_time: 0.0,
+            show_cursor: false,
+            timing_bar_things: Vec::new(),
+            audio_prefix: String::new(),
+        }
+    }
+}
+
 
 
 #[async_trait]
 pub trait UiElementLoader: Send + Sync {
+    /// Load a ui element
     async fn load(
         &mut self, 
         name: &str, 
-        default_pos: Vector2, 
+        default_layout: UiElementLayout, 
         inner: Box<dyn InnerUIElement>
-    ) -> UIElement;
+    );
+
+    /// Change the default layout for a ui element
+    async fn change_default_layout(
+        &mut self,
+        name: &str, 
+        layout: UiElementLayout, 
+    );
 }
 
-pub struct DefaultUiElementLoader;
-
+#[derive(Default)]
+pub struct DefaultUiElementLoader {
+    pub layouts: HashMap<String, UiElementLayout>,
+    pub elements: Vec<UIElement>,
+    pub playmode: Cow<'static, str>,
+}
+impl DefaultUiElementLoader {
+    pub fn new(
+        playmode: impl Into<Cow<'static, str>>, 
+        layouts: HashMap<String, UiElementLayout>
+    ) -> Self {
+        Self {
+            playmode: playmode.into(),
+            elements: Vec::new(),
+            layouts,
+        }
+    }
+}
 #[async_trait]
 impl UiElementLoader for DefaultUiElementLoader {
     async fn load(
         &mut self, 
         name: &str, 
-        default_pos: Vector2, 
+        default_layout: UiElementLayout, 
         inner: Box<dyn InnerUIElement>
-    ) -> UIElement {
-        let element_name = name.to_owned();
-        let mut pos_offset = default_pos;
-        let mut scale = Vector2::ONE;
-        let mut visible = true;
-        
-        if let Some((stored_pos, stored_scale, stored_window_size, stored_visible)) = Database::get_element_info(&element_name).await {
-            pos_offset = stored_pos;
-            scale = stored_scale;
-            visible = stored_visible;
-            
-            if stored_window_size.length() > 0.0 {
-                // debug!("got stored window size {stored_window_size:?}");
-                do_scale(&mut pos_offset, &mut scale, stored_window_size, WindowSize::get().0);
-            }
-        }
+    ) {
+        let mut layout = self.layouts
+            .get(&format!("{}_{name}", self.playmode)).cloned()
+            .unwrap_or_else(|| default_layout.clone())
+            ;
 
-        if scale.x.abs() < 0.01 { scale.x = 1.0 }
-        if scale.y.abs() < 0.01 { scale.y = 1.0 }
+        if layout.scale.x.abs() < 0.01 { layout.scale.x = 1.0 }
+        if layout.scale.y.abs() < 0.01 { layout.scale.y = 1.0 }
 
-        UIElement {
-            default_pos,
-            element_name,
-            pos_offset,
-            scale,
+        self.elements.push(UIElement {
+            layout,
+            default_layout,
+            element_name: name.to_string(),
+            pos_offset: Vector2::ZERO,
+            scale: Vector2::ONE,
             inner,
-            visible
+        });
+    }
+
+    async fn change_default_layout(
+        &mut self,
+        name: &str, 
+        layout: UiElementLayout, 
+    ) {
+        // let name = format!("{}_{name}", self.playmode);
+        let Some(element) = self.elements.iter_mut().find(|e| e.element_name == name) else { 
+            return warn!("ele not found: {name}")
+        };
+        
+        // TODO: is there a better way? this is kinda silly
+        if element.default_layout == element.layout {
+            element.layout = layout.clone()
         }
 
+        element.default_layout = layout;
     }
-}
-
-#[allow(unused)]
-fn do_scale(pos: &mut Vector2, scale: &mut Vector2, old_window_size: Vector2, new_window_size: Vector2) {
-    // TODO:
-    // let new_scale = new_window_size / old_window_size;
-    // let scaled_pos_offset = new_window_size - old_window_size * new_scale;
-
-    // *pos = scaled_pos_offset + *pos * new_scale;
-    // *scale *= new_scale
 }

@@ -91,6 +91,21 @@ impl Animation {
         self.frame_start_time = time;
     }
 
+    pub fn current_frame_as_image(&self) -> Image {
+        Image {
+            tex: self.frames[self.frame_index].clone(),
+            base_scale: self.base_scale,
+            origin: self.origin,
+            scissor: self.scissor,
+            blend_mode: self.blend_mode,
+            color: self.color,
+            pos: self.pos,
+            scale: self.scale,
+            rotation: self.rotation,
+            draw_debug: self.draw_debug,
+        }
+    }
+
 }
 
 impl TatakuRenderable for Animation {

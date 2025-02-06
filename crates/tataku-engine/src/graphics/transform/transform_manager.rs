@@ -73,7 +73,6 @@ impl TransformManager {
             let start_time = transform.start_time();
             let end_time = start_time + transform.duration;
 
-
             if game_time >= end_time {
                 let trans_val = transform.get_value(end_time);
                 self.apply_transform(transform, trans_val);
