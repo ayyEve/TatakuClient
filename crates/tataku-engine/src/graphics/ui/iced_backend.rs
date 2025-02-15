@@ -31,6 +31,15 @@ impl IcedRenderer {
         let Some(a) = self.object_stack.pop() else { return };
         self.add_renderable(Arc::new(a));
     }
+
+
+    pub fn start_transform(&mut self, transform: &Transform) {
+        self.object_stack.push(TransformGroup::from_transform(transform));
+    }
+
+    pub fn end_transform(&mut self) {
+        self.pop_last();
+    }
 }
 
 impl iced::advanced::Renderer for IcedRenderer {
@@ -117,11 +126,11 @@ impl iced::advanced::text::Renderer for IcedRenderer {
                 iced::alignment::Vertical::Center => out_text.pos.y -= height / 2.0,
                 iced::alignment::Vertical::Top => {}
             }
-            
+
             self.add_renderable(Arc::new(out_text));
             pos.y += height;
         }
-        
+
     }
 
     /// i'm not convinced this is actuall used by my code
@@ -131,7 +140,7 @@ impl iced::advanced::text::Renderer for IcedRenderer {
         _position: iced::Point,
         _color: iced::Color,
         _clip_bounds: iced::Rectangle,
-    ) { 
+    ) {
         todo!("not using multiline editors yet (iced::widget::TextEditor")
     }
 
@@ -143,7 +152,7 @@ impl iced::advanced::text::Renderer for IcedRenderer {
         _clip_bounds: iced::Rectangle,
     ) {
         let height = text.line_height.to_absolute(text.size).0;
-        
+
         let mut out_text = Text::new(
             position.into(),
             text.size.0,
@@ -163,18 +172,10 @@ impl iced::advanced::text::Renderer for IcedRenderer {
             iced::alignment::Horizontal::Center => out_text.pos.x += text.bounds.width - out_text.measure_text().x / 2.0,
             iced::alignment::Horizontal::Right => out_text.pos.x += text.bounds.width - out_text.measure_text().x,
         }
-        
+
         self.add_renderable(Arc::new(out_text))
     }
 }
-
-// impl backend::Image for IcedBackend {
-//     fn dimensions(&self, _handle: &iced::advanced::image::Handle) -> iced::Size<u32> {
-//         println!("image dimensions");
-//         iced::Size::new(1, 1)
-//         // todo!()
-//     }
-// }
 
 pub struct IcedParagraph {
     text_raw: String,
@@ -194,10 +195,10 @@ impl iced::advanced::text::Paragraph for IcedParagraph {
 
     fn with_text(text: iced_core::Text<&str, Self::Font>) -> Self {
         let size = Text::measure_text_raw(
-            &[text.font], 
-            text.size.0, 
-            text.content, 
-            Vector2::ONE, 
+            &[text.font],
+            text.size.0,
+            text.content,
+            Vector2::ONE,
             text.line_height.to_absolute(text.size).0 - text.size.0
         );
 
@@ -277,7 +278,7 @@ impl iced::advanced::text::Paragraph for IcedParagraph {
             let a = c.advance_width() * text_scale / 2.0;
 
             width += a;
-            
+
             if point.x < width { return Some(CharOffset(counter)); }
 
             width += a;
@@ -288,7 +289,7 @@ impl iced::advanced::text::Paragraph for IcedParagraph {
 
     fn grapheme_position(&self, line: usize, index: usize) -> Option<iced::Point> {
         let text = self.lines.get(line)?;
-        
+
         // cumulative width
         let mut width = 0.0;
         let (font_size, text_scale) = Text::get_font_size_scaled(self.font_size.0);
@@ -298,16 +299,16 @@ impl iced::advanced::text::Paragraph for IcedParagraph {
 
             // get the font character
             let Some(c) = self.font.get_character(font_size, char) else { continue };
-            
+
             width += c.advance_width() * text_scale;
         }
 
         Some(iced::Point::new(
-            width, 
+            width,
             self.line_height.to_absolute(iced::Pixels(font_size)).0 * text_scale * (line as f32)
         ))
     }
-    
+
     fn with_spans<Link>(
         text: iced_core::Text<&[iced_core::text::Span<'_, Link, Self::Font>], Self::Font>,
     ) -> Self {
@@ -329,12 +330,12 @@ impl iced::advanced::text::Paragraph for IcedParagraph {
             wrapping: text.wrapping,
         })
     }
-    
+
     // TODO!
     fn hit_span(&self, _point: iced::Point) -> Option<usize> {
         None
     }
-    
+
     // TODO!
     fn span_bounds(&self, _index: usize) -> Vec<iced::Rectangle> {
         vec![iced::Rectangle::new(iced::Point::default(), self.bounds)]
@@ -346,7 +347,7 @@ impl Default for IcedParagraph {
             text_raw: String::new(),
             lines: Vec::new(),
             text_size: Vector2::ZERO,
-        
+
             font: Font::Main,
             font_size: iced::Pixels(25.0),
             line_height: iced_core::text::LineHeight::default(),
@@ -395,7 +396,7 @@ impl iced::advanced::text::Editor for IcedEditor {
     fn bounds(&self) -> iced::Size { self.bounds }
 
     fn min_bounds(&self) -> iced::Size { self.bounds }
- 
+
     fn update(
         &mut self,
         new_bounds: iced::Size,
@@ -414,7 +415,7 @@ impl iced::advanced::text::Editor for IcedEditor {
         _highlighter: &mut H,
         _format_highlight: impl Fn(&H::Highlight) -> iced_core::text::highlighter::Format<Self::Font>,
     ) { }
-    
+
     fn is_empty(&self) -> bool {
         true
     }

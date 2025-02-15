@@ -1,5 +1,6 @@
 use crate::prelude::*;
-#[derive(Copy, Clone, Default)]
+
+#[derive(Copy, Clone, Debug, Default)]
 pub struct Transform {
     pub pos: Vector2,
     pub scale: Vector2,
@@ -16,11 +17,67 @@ impl Transform {
         }
     }
 
+    pub fn from_manager(manager: &TransformManager) -> Self {
+        Self::new(
+            manager.pos,
+            manager.scale,
+            manager.rotation,
+            manager.origin
+        )
+    }
+
     pub fn matrix(&self) -> Matrix {
         Matrix::identity()
             .trans(-self.origin) // apply origin
             .rot(self.rotation) // rotate
             .scale(self.scale) // scale
             .trans(self.pos) // move to pos
+    }
+}
+
+pub struct TransformedDrawable {
+    pub transform: Transform,
+    pub drawable: Box<dyn TatakuRenderable>
+}
+impl TransformedDrawable {
+    pub fn new(
+        transform: Transform,
+        drawable: Box<dyn TatakuRenderable>
+    ) -> Self {
+        Self {
+            transform,
+            drawable
+        }
+    }
+}
+
+impl TatakuRenderable for TransformedDrawable {
+    fn get_bounds(&self) -> Bounds {
+        self.drawable.get_bounds()
+    }
+
+    fn get_blend_mode(&self) -> BlendMode {
+        self.drawable.get_blend_mode()
+    }
+
+    fn set_blend_mode(&mut self, blend_mode: BlendMode) {
+        self.drawable.set_blend_mode(blend_mode);
+    }
+
+    fn get_scissor(&self) -> Scissor {
+        self.drawable.get_scissor()
+    }
+    fn set_scissor(&mut self, c: Scissor) {
+        self.drawable.set_scissor(c);
+    }
+
+    fn draw(
+        &self,
+        options: &DrawOptions,
+        mut transform: Matrix,
+        g: &mut dyn GraphicsEngine,
+    ) {
+        transform = transform * self.transform.matrix();
+        self.drawable.draw(options, transform, g)
     }
 }

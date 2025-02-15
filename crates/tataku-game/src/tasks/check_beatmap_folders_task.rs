@@ -42,7 +42,7 @@ impl TatakuTask for CheckBeatmapFoldersTask {
                     self.existing_paths.insert(parent.to_string_lossy().to_string());
                 }
             }
-            
+
             // filter out folders that already exist
             let folders = BeatmapManager::folders_to_check(&settings);
             self.folders = folders
@@ -58,7 +58,7 @@ impl TatakuTask for CheckBeatmapFoldersTask {
             //     lock.item_count = self.folders.len();
             //     lock.custom_message = "Checking folders...".to_owned();
             // }
-            
+
             self.state = TatakuTaskState::Running;
             debug!("Got existing maps");
             return;
@@ -67,7 +67,7 @@ impl TatakuTask for CheckBeatmapFoldersTask {
         trace!("Loading from the disk");
         if let Some(folder) = self.folders.pop() {
             let manager = values.reflect_get_mut::<BeatmapManager>("beatmap_manager").expect("nope");
-        
+
             manager.check_folder(folder, true).await;
             // self.status.write().items_complete += 1;
             return

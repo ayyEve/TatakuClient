@@ -1466,7 +1466,8 @@ impl GameMode for OsuGame {
         PlayfieldNonsense::new(
             self.scaling_helper.playfield,
             self.scaling_helper.scale,
-            self.scaling_helper.circle_size
+            self.scaling_helper.circle_size,
+            self.mods.has_mod(HardRock)
         )
     }
     fn properties(&self) -> GameModeProperties {

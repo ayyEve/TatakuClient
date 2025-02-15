@@ -24,7 +24,7 @@ pub struct OsuBeatmap {
 
     pub storyboard: Option<StoryboardDef>
 }
-impl OsuBeatmap { 
+impl OsuBeatmap {
     pub fn load(file_path:String) -> TatakuResult<OsuBeatmap> {
         Self::base_loader(file_path, false)
     }
@@ -98,7 +98,7 @@ impl OsuBeatmap {
                     "[HitObjects]" => {
                         // sort timing points before moving onto hitobjects
                         beatmap.timing_points.sort_by(|a, b| a.time.partial_cmp(&b.time).unwrap());
-                        current_area = BeatmapSection::HitObjects; 
+                        current_area = BeatmapSection::HitObjects;
                     }
                     _ => {}
                 }
@@ -132,14 +132,14 @@ impl OsuBeatmap {
                     let mut split = line.split(":");
                     let key = split.next().unwrap().trim();
                     let val = split.collect::<Vec<&str>>().join(":");
-                    
+
                     match key {
-                        "Title" => metadata.title = val.to_owned(), 
-                        "TitleUnicode" => metadata.title_unicode = val.to_owned(), 
-                        "Artist" => metadata.artist = val.to_owned(), 
-                        "ArtistUnicode" => metadata.artist_unicode = val.to_owned(), 
-                        "Creator" => metadata.creator = val.to_owned(), 
-                        "Version" => metadata.version = val.to_owned(), 
+                        "Title" => metadata.title = val.to_owned(),
+                        "TitleUnicode" => metadata.title_unicode = val.to_owned(),
+                        "Artist" => metadata.artist = val.to_owned(),
+                        "ArtistUnicode" => metadata.artist_unicode = val.to_owned(),
+                        "Creator" => metadata.creator = val.to_owned(),
+                        "Version" => metadata.version = val.to_owned(),
                         _ => {}
                     }
                 }
@@ -149,12 +149,12 @@ impl OsuBeatmap {
                     let val = split.next().unwrap().trim().parse::<f32>().unwrap();
 
                     match key {
-                        "HPDrainRate" => metadata.hp = val, 
-                        "CircleSize" => metadata.cs = val, 
-                        "OverallDifficulty" => metadata.od = val, 
-                        "ApproachRate" => metadata.ar = val, 
-                        "SliderMultiplier" => beatmap.slider_multiplier = val, 
-                        "SliderTickRate" => beatmap.slider_tick_rate = val, 
+                        "HPDrainRate" => metadata.hp = val,
+                        "CircleSize" => metadata.cs = val,
+                        "OverallDifficulty" => metadata.od = val,
+                        "ApproachRate" => metadata.ar = val,
+                        "SliderMultiplier" => beatmap.slider_multiplier = val,
+                        "SliderTickRate" => beatmap.slider_tick_rate = val,
                         _ => {}
                     }
                 }
@@ -171,7 +171,7 @@ impl OsuBeatmap {
                     // }
 
                     if line.starts_with("//") { continue }
-                    
+
                     match OsuEvent::from_str(&line) {
                         Ok(event) => {
                             if let OsuEvent::Background { filename, start_time: 0, .. } = &event {
@@ -183,7 +183,7 @@ impl OsuBeatmap {
                             if !metadata_only {
                                 beatmap.events.push(event);
                             }
-                        } 
+                        }
                         Err(_e) => {
                             if !metadata_only {
                                 storyboard_lines.push(line);
@@ -222,7 +222,7 @@ impl OsuBeatmap {
                     if let Err(e) = &hitsound {
                         warn!("error parsing hitsound: {} (line: {})", e, line)
                     }
-                    
+
                     let hitsound = hitsound.unwrap_or(0).unsigned_abs(); // 0 = normal, 2 = whistle, 4 = finish, 8 = clap
                     let hitsound_str = &*hitsound.to_string();
 
@@ -235,9 +235,9 @@ impl OsuBeatmap {
                     // g = spinner
                     // h = mania hold
                     let new_combo = (read_type & 4) > 0;
-                    let color_skip = 
-                          if (read_type & 16) > 0 {1} else {0} 
-                        + if (read_type & 32) > 0 {2} else {0} 
+                    let color_skip =
+                          if (read_type & 16) > 0 {1} else {0}
+                        + if (read_type & 32) > 0 {2} else {0}
                         + if (read_type & 64) > 0 {4} else {0};
 
                     if (read_type & 2) > 0 { // slider
@@ -369,7 +369,7 @@ impl OsuBeatmap {
             if let Some(storyboard_file) = osb_file {
                 storyboard_lines.extend(Io::read_lines_resolved(storyboard_file.path()).unwrap())
             }
-            
+
             match StoryboardDef::read(storyboard_lines) {
                 Ok(s) => beatmap.storyboard = Some(s),
                 Err(e) => error!("error reading storyboard file: {e}")
@@ -454,7 +454,7 @@ impl TatakuBeatmap for OsuBeatmap {
     }
 
 
-    
+
     fn get_events(&self) -> Vec<IngameEvent> {
         self.events.iter().filter_map(|i| match i {
             OsuEvent::Break { start_time, end_time } => Some(IngameEvent::Break { start: *start_time as f32, end: *end_time as f32 }),
@@ -462,12 +462,12 @@ impl TatakuBeatmap for OsuBeatmap {
         }).collect()
     }
     #[cfg(feature="graphics")]
-    async fn get_animation(&self, skin_manager: &mut dyn SkinProvider) -> Option<Box<dyn BeatmapAnimation>> {     
+    async fn get_animation(&self, skin_manager: &mut dyn SkinProvider) -> Option<Box<dyn BeatmapAnimation>> {
         let Some(storyboard) = &self.storyboard else { return None };
         let parent_dir = Path::new(&self.metadata.file_path).parent()?.to_string_lossy().to_string();
         match OsuStoryboard::new(
-            storyboard.clone(), 
-            parent_dir, 
+            storyboard.clone(),
+            parent_dir,
             skin_manager,
             OsuSettings::default(), // TODO: !!!!!
         ).await {
@@ -538,9 +538,9 @@ impl OsuTimingPoint {
         let skip_first_barline = (effects & 8) != 0;
 
         Self {
-            time, 
-            beat_length, 
-            volume, 
+            time,
+            beat_length,
+            volume,
             meter,
 
             sample_set,
@@ -554,7 +554,7 @@ impl OsuTimingPoint {
     pub fn is_inherited(&self) -> bool {
         self.beat_length < 0.0
     }
-    
+
     pub fn bpm_multiplier(&self) -> f32 {
         if !self.is_inherited() {1.0}
         else {self.beat_length.abs().clamp(10.0, 1000.0) / 100.0}
@@ -595,7 +595,7 @@ pub enum OsuEvent {
 
     Break {
         start_time: i32,
-        end_time: i32, 
+        end_time: i32,
     }
 }
 impl FromStr for OsuEvent {

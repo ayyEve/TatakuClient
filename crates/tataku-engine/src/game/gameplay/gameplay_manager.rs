@@ -1116,7 +1116,8 @@ impl GameplayManager {
 
     pub fn should_hide_cursor(&self) -> bool {
         if self.gameplay_mode.is_preview()
-        || self.gameplay_mode.is_replay() {
+        || self.gameplay_mode.is_replay() 
+        || self.current_mods.has_autoplay() {
             false
         } else {
             !self.gamemode_properties.show_cursor
@@ -1505,14 +1506,13 @@ impl GameplayManager {
         self.fit_to_bounds = Some(bounds);
         self.gamemode.fit_to_area(bounds).await;
 
+        // if the anim uses the gamemode playfield, it will get updated once the gamemode's playfield is updated
         #[cfg(feature="graphics")]
-        if self.animation.use_gamemode_playfield(self.gamemode_properties.info) {
-            self.animation.fit_to_area(self.gamemode.get_playfield());
-        } else {
+        if !self.animation.use_gamemode_playfield(self.gamemode_properties.info) {
             self.animation.fit_to_area(PlayfieldNonsense::new_simple(bounds));
         }
 
-        // self.layout_ui();
+        self.layout_ui();
     }
 
     #[cfg(feature="graphics")]

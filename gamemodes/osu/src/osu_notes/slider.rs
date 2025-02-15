@@ -108,14 +108,15 @@ pub struct OsuSlider {
     skin: Arc<SkinSettings>,
 }
 impl OsuSlider {
+    #[allow(clippy::too_many_arguments)]
     pub async fn new(
-        def: SliderDef, 
-        curve: Curve, 
-        ar: f32, 
-        combo_num: u16, 
-        scaling_helper: Arc<ScalingHelper>, 
-        standard_settings: Arc<OsuSettings>, 
-        hitsound_fn: impl Fn(f32, u8, HitSamples) -> Vec<Hitsound>, 
+        def: SliderDef,
+        curve: Curve,
+        ar: f32,
+        combo_num: u16,
+        scaling_helper: Arc<ScalingHelper>,
+        standard_settings: Arc<OsuSettings>,
+        hitsound_fn: impl Fn(f32, u8, HitSamples) -> Vec<Hitsound>,
         velocity: f32
     ) -> Self {
         let time = def.time;
@@ -522,7 +523,7 @@ impl OsuSlider {
     fn add_ripple(&mut self, time: f32, pos: Vector2, is_tick: bool) {
         if self.standard_settings.hit_ripples {
             let mut group = TransformGroup::new(pos).alpha(0.0).border_alpha(1.0);
-            group.alpha.current = 0.0;
+            group.alpha = 0.0;
 
             // border is white if ripple caused by slider tick
             let border_color = if is_tick { Color::WHITE } else { self.color };
@@ -705,10 +706,9 @@ impl HitObject for OsuSlider {
 
 
         // end pos
-        if let Some(end_circle) = &self.end_circle_image {
-            let mut im = end_circle.clone();
-            im.color.a = alpha;
-            list.push(im);
+        if let Some(mut end_circle) = self.end_circle_image.clone() {
+            end_circle.color.a = alpha;
+            list.push(end_circle);
         } else if self.start_circle_image.circle.is_none() {
             list.push(Circle::new(
                 self.visual_end_pos,
@@ -1014,8 +1014,9 @@ impl OsuHitObject for OsuSlider {
         self.scaling_helper = new_scale.clone();
         self.pos = self.scaling_helper.scale_coords(self.def.pos);
         self.radius = CIRCLE_RADIUS_BASE * self.scaling_helper.cs;
-        self.visual_end_pos =  self.scaling_helper.scale_coords(self.curve.position_at_length(self.curve.length()));
-        self.time_end_pos = if self.def.slides % 2 == 1 {self.visual_end_pos} else {self.pos};
+
+        self.visual_end_pos = self.scaling_helper.scale_coords(self.curve.curve_lines.last().unwrap().p2);//.scale_coords(self.curve.position_at_length(self.curve.length()));
+        self.time_end_pos = if self.def.slides % 2 == 1 { self.visual_end_pos } else { self.pos };
 
         self.approach_circle.scale_changed(new_scale, self.radius);
         self.start_circle_image.playfield_changed(&self.scaling_helper);

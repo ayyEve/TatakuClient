@@ -339,20 +339,20 @@ impl StoryboardDef {
                     StoryboardEvent::Move { start, end }
                 }
                 "MX" => {
-                    parse_or_continue!(start_x, f32);
-                    parse_or_continue!(end_x, f32, start_x);
-                    StoryboardEvent::MoveX { start_x, end_x }
+                    parse_or_continue!(start, f32);
+                    parse_or_continue!(end, f32, start);
+                    StoryboardEvent::MoveX { start, end }
                 }
                 "MY" => {
-                    parse_or_continue!(start_y, f32);
-                    parse_or_continue!(end_y, f32, start_y);
-                    StoryboardEvent::MoveY { start_y, end_y }
+                    parse_or_continue!(start, f32);
+                    parse_or_continue!(end, f32, start);
+                    StoryboardEvent::MoveY { start, end }
                 }
 
                 "S" => {
                     parse_or_continue!(start_scale, f32);
                     parse_or_continue!(end_scale, f32, start_scale);
-                    StoryboardEvent::Scale { start_scale, end_scale }
+                    StoryboardEvent::Scale { start: start_scale, end: end_scale }
                 }
 
                 "V" => {
@@ -360,15 +360,15 @@ impl StoryboardDef {
                     parse_or_continue!(start_scale_y, f32);
                     parse_or_continue!(end_scale_x, f32, start_scale_x);
                     parse_or_continue!(end_scale_y, f32, start_scale_y);
-                    let start_scale = Vector2::new(start_scale_x, start_scale_y);
-                    let end_scale = Vector2::new(end_scale_x, end_scale_y);
-                    StoryboardEvent::VectorScale { start_scale, end_scale}
+                    let start = Vector2::new(start_scale_x, start_scale_y);
+                    let end = Vector2::new(end_scale_x, end_scale_y);
+                    StoryboardEvent::VectorScale { start, end }
                 }
                 
                 "R" => {
-                    parse_or_continue!(start_rotation, f32);
-                    parse_or_continue!(end_rotation, f32, start_rotation);
-                    StoryboardEvent::Rotate { start_rotation, end_rotation }
+                    parse_or_continue!(start, f32);
+                    parse_or_continue!(end, f32, start);
+                    StoryboardEvent::Rotate { start, end }
                 }
 
                 "C" => {
@@ -379,9 +379,9 @@ impl StoryboardDef {
                     parse_or_continue!(end_r, u8, start_r);
                     parse_or_continue!(end_g, u8, start_g);
                     parse_or_continue!(end_b, u8, start_b);
-                    let start_color = Color::from_rgb8(start_r, start_g, start_b);
-                    let end_color = Color::from_rgb8(end_r, end_g, end_b);
-                    StoryboardEvent::Color { start_color, end_color }
+                    let start = Color::from_rgb8(start_r, start_g, start_b);
+                    let end = Color::from_rgb8(end_r, end_g, end_b);
+                    StoryboardEvent::Color { start, end }
                 }
 
                 "P" => {

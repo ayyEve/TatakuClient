@@ -1,9 +1,14 @@
 use crate::prelude::*;
 
 const GAME_SIZE: Vector2 = Vector2::new(640.0, 480.0);
+const OFFSET: Vector2 = Vector2::new(64.0, 56.0);
 
 pub struct OsuStoryboard {
-    scaling_helper: Arc<ScalingHelper>,
+    // scaling_helper: Arc<ScalingHelper>,
+    playfield_size: Vector2,
+    transform: Transform,
+    playfield: Bounds,
+
     settings: OsuSettings,
 
     elements: Vec<Element>,
@@ -12,31 +17,42 @@ pub struct OsuStoryboard {
 
 impl OsuStoryboard {
     pub async fn new(
-        def: StoryboardDef, 
-        dir: String, 
+        def: StoryboardDef,
+        dir: String,
         skin_manager: &mut dyn SkinProvider,
         settings: OsuSettings,
     ) -> TatakuResult<Self> {
-        let window_size = WindowSize::get();
-        let scaling_helper = Arc::new(ScalingHelper::new_with_settings_custom_size(&settings, 0.0, window_size.0, false, GAME_SIZE));
+        let playfield_size = GAME_SIZE;
+
+        let transform = Transform::default();
+        let playfield = Bounds::new(
+            transform.matrix() * Vector2::ZERO,
+            transform.matrix() * playfield_size
+        );
+
+        // let window_size = WindowSize::get();
+        // let scaling_helper = Arc::new(ScalingHelper::new_with_settings_custom_size(&settings, 0.0, window_size.0, false, GAME_SIZE));
 
         let mut image_cache = HashMap::new();
         let mut elements = Vec::new();
         for e in def.entries.clone() {
-            elements.push(Element::new(e, &dir, &mut image_cache, &scaling_helper, skin_manager).await?);
+            elements.push(Element::new(e, &dir, &mut image_cache,  skin_manager).await?);
         }
         // elements.reverse();
         elements.sort_by(Element::sort);
 
         for i in elements.iter_mut() {
-            i.playfield_changed(&scaling_helper);
+            i.apply_commands();
         }
 
         Ok(Self {
             time: 0.0,
-            scaling_helper,
             settings,
             elements,
+            playfield_size,
+
+            transform,
+            playfield,
         })
     }
 
@@ -61,7 +77,7 @@ impl BeatmapAnimation for OsuStoryboard {
 
     async fn draw(&self, list: &mut RenderableCollection) {
         // list.push_scissor(self.bounds.into_scissor());
-        let bounds = self.scaling_helper.playfield;
+        let bounds = self.playfield;
 
         let scissor = bounds.into_scissor();
 
@@ -70,12 +86,12 @@ impl BeatmapAnimation for OsuStoryboard {
             // if !i.group.visible() { continue } // || (i.end_time < self.time && !i.group.visible()) { continue }
             let mut group = i.group.clone();
             group.scissor = Some(scissor);
-            list.push(group)
+            list.push(TransformedDrawable::new(self.transform, Box::new(group)));
         }
 
         list.push(Rectangle::new_bounds(
-            bounds, 
-            Color::TRANSPARENT_WHITE, 
+            bounds,
+            Color::TRANSPARENT_WHITE,
             Some(Border::new(Color::GREEN, 2.0))
         ));
 
@@ -83,29 +99,71 @@ impl BeatmapAnimation for OsuStoryboard {
     }
 
     fn window_size_changed(&mut self, size: Vector2) {
-        self.scaling_helper = Arc::new(ScalingHelper::new_with_settings(&self.settings, 0.0, size, false));
+        // debug!("window size: {size}");
+        let nonsense = PlayfieldNonsense::new(
+            Bounds::new(Vector2::ZERO, size),
+            1.0,
+            Vector2::ZERO,
+            false
+        );
+        self.fit_to_area(nonsense);
 
-        for i in self.elements.iter_mut() {
-            i.playfield_changed(&self.scaling_helper)
-        }
+
+        // let (scale, pos) = self.settings.get_playfield();
+
+        // self.transform = ScalingHelper::new_transform(
+        //     size,
+        //     pos,
+        //     scale,
+        //     false,
+        //     None
+        // );
+
+        // self.playfield = Bounds::new(
+        //     self.transform.matrix() * Vector2::ZERO,
+        //     self.transform.matrix() * self.playfield_size
+        // );
     }
 
     fn fit_to_area(&mut self, nonsense: PlayfieldNonsense) {
         // self.scaling_helper = Arc::new(ScalingHelper::new_offset_scale(
-        //     5.0, 
-        //     bounds.size, 
-        //     bounds.pos, 
-        //     0.5, 
+        //     5.0,
+        //     bounds.size,
+        //     bounds.pos,
+        //     0.5,
         //     false,
         // ));
-        self.scaling_helper = Arc::new(ScalingHelper::fit_to_playfield(
-            nonsense,
-            false,
-        ));
 
-        for i in self.elements.iter_mut() {
-            i.playfield_changed(&self.scaling_helper)
-        }
+        let transform = Transform::new(
+            nonsense.bounds.pos + if nonsense.flip_vertical { Vector2::new(0.0, nonsense.bounds.size.y) } else { Vector2::ZERO },
+            Vector2::new(1.0, if nonsense.flip_vertical { -1.0 } else { 1.0 }) * nonsense.scale,
+            0.0,
+            OFFSET,
+        );
+
+        self.transform = transform;
+
+        // self.transform = ScalingHelper::transform_padded(
+        //     transform,
+        //     nonsense.circle_size.x,
+        //     None
+        // );
+
+        let tl = transform.matrix() * Vector2::ZERO;
+        let br = transform.matrix() * self.playfield_size;
+
+        self.playfield = Bounds::new(
+            tl,
+            br - tl
+        );
+
+        // debug!("{nonsense:#?}, playfield: {:?}", self.playfield_size);
+        // debug!("transform: {transform:?}, bounds: {:?}", self.playfield);
+
+        // self.scaling_helper = Arc::new(ScalingHelper::fit_to_playfield(
+        //     nonsense,
+        //     false,
+        // ));
     }
 
     fn reset(&mut self) {
@@ -126,10 +184,9 @@ struct Element {
 }
 impl Element {
     async fn new(
-        def: StoryboardEntryDef, 
-        parent_dir: &String, 
-        image_cache: &mut HashMap<String, Image>, 
-        scale: &ScalingHelper, 
+        def: StoryboardEntryDef,
+        parent_dir: &String,
+        image_cache: &mut HashMap<String, Image>,
         skin_manager: &mut dyn SkinProvider
     ) -> TatakuResult<Self> {
         let layer;
@@ -143,7 +200,7 @@ impl Element {
             break;
         }
 
-        
+
         let mut group = TransformGroup::new(Vector2::ZERO).border_alpha(0.0).alpha(0.0);
         let image = match def.element.clone() {
             StoryboardElementDef::Sprite(sprite) => {
@@ -179,8 +236,11 @@ impl Element {
                 //     image
                 // };
 
-                // apply origin
-                image.origin = sprite.origin.resolve(image.tex_size());
+                image.origin = Vector2::ZERO;
+                image.pos = Vector2::ZERO;
+
+                group.pos = sprite.pos;
+                group.origin = sprite.origin.resolve(image.tex_size());
 
                 layer = sprite.layer;
                 if let Some(b) = blend_mode { image.set_blend_mode(b) }
@@ -205,9 +265,9 @@ impl Element {
                         .replace("\\", "/")
                     ;
 
-                    let Ok(image) = try_load_image(&filepath, image_cache, skin_manager).await else { 
+                    let Ok(image) = try_load_image(&filepath, image_cache, skin_manager).await else {
                         if counter == 0 { error!("image not found: {filepath}"); }
-                        break 
+                        break
                     };
 
                     frames.push(image.tex);
@@ -218,11 +278,14 @@ impl Element {
                 let delays = vec![anim.frame_delay; frames.len()];
                 let tex_size = Vector2::new(frames[0].width as f32, frames[0].height as f32);
                 let mut animation = Animation::new(Vector2::ZERO, Vector2::ONE, frames, delays, Vector2::ONE);
+                animation.origin = Vector2::ZERO;
                 animation.scale = Vector2::ONE;
                 animation.draw_debug = true;
                 if let Some(b) = blend_mode { animation.set_blend_mode(b) }
-                
-                animation.origin = anim.origin.resolve(tex_size);
+
+
+                group.pos = anim.pos;
+                group.origin = anim.origin.resolve(tex_size);
                 layer = anim.layer;
 
                 group.items.push(Arc::new(animation.clone()));
@@ -240,19 +303,13 @@ impl Element {
             // command_index: 0,
             group,
         };
-        s.apply_commands(scale);
+        s.apply_commands();
 
         Ok(s)
     }
 
-    fn apply_commands(&mut self, scale: &ScalingHelper) {
+    fn apply_commands(&mut self) {
         self.group.transforms.clear();
-
-        let pos = match &self.def {
-            StoryboardElementDef::Sprite(s) => s.pos,
-            StoryboardElementDef::Animation(a) => a.pos,
-        };
-        self.group.pos.current = scale.scale_coords(pos);
 
         let mut earliest_start:f32 = f32::MAX;
         let mut latest_end:f32 = 0.0;
@@ -275,44 +332,30 @@ impl Element {
 
             let trans_type = match i.event {
                 // scaling
-                StoryboardEvent::Move { start, end } => TransformType::Position { 
-                    start: scale.scale_coords(start), 
-                    end:   scale.scale_coords(end)
-                },
-                StoryboardEvent::MoveX { start_x, end_x } => TransformType::PositionX { 
-                    start: scale.scale_coords(Vector2::with_x(start_x)).x, 
-                    end:   scale.scale_coords(Vector2::with_x(end_x)).x 
-                },
-                StoryboardEvent::MoveY { start_y, end_y } => TransformType::PositionY { 
-                    start: scale.scale_coords(Vector2::with_y(start_y)).y, 
-                    end:   scale.scale_coords(Vector2::with_y(end_y)).y 
-                },
+                StoryboardEvent::Move { start, end } => TransformType::Position { start, end },
+                StoryboardEvent::MoveX { start, end } => TransformType::PositionX { start, end },
+                StoryboardEvent::MoveY { start, end } => TransformType::PositionY { start, end },
 
-                StoryboardEvent::Scale { start_scale, end_scale } => TransformType::Scale { 
-                    start: start_scale * scale.scale, 
-                    end: end_scale * scale.scale 
-                },
-                StoryboardEvent::VectorScale { start_scale, end_scale } => TransformType::VectorScale { 
-                    start: start_scale * scale.scale, 
-                    end: end_scale * scale.scale 
-                },
+                StoryboardEvent::Scale { start, end } => TransformType::Scale { start, end },
+                StoryboardEvent::VectorScale { start, end } => TransformType::VectorScale { start, end },
 
                 StoryboardEvent::Fade { start, end } => TransformType::Transparency { start, end },
 
-                StoryboardEvent::Rotate { start_rotation, end_rotation } => TransformType::Rotation { start: start_rotation, end: end_rotation },
-                StoryboardEvent::Color { start_color, end_color } => TransformType::Color { start: start_color, end: end_color },
+                StoryboardEvent::Rotate { start, end } => TransformType::Rotation { start, end },
+                StoryboardEvent::Color { start, end } => TransformType::Color { start, end },
+
                 StoryboardEvent::Parameter { param } => match param {
                     Param::FlipHorizontal => { self.group.image_flip_horizonal = true; continue; },
                     Param::FlipVertial => { self.group.image_flip_vertical = true; continue; },
                     _ => continue
-                } 
-                StoryboardEvent::Loop { loop_count:_ } => continue,
+                }
+                StoryboardEvent::Loop { count:_ } => continue,
 
                 // _ => continue
             };
 
             self.group.transforms.push(Transformation::new(
-                offset, 
+                offset,
                 duration,
                 trans_type,
                 i.easing.into(),
@@ -325,9 +368,9 @@ impl Element {
     }
 
     fn update(&mut self, time: f32) {
-        // if time < self.start_time || time > self.end_time { 
+        // if time < self.start_time || time > self.end_time {
         //     self.group.update(time as f64);
-        //     return 
+        //     return
         // }
 
         if let ElementImage::Anim(anim) = &mut self.element_image {
@@ -343,9 +386,9 @@ impl Element {
         self.group.update(time)
     }
 
-    fn playfield_changed(&mut self, scale: &Arc<ScalingHelper>) {
-        self.apply_commands(scale);
-    }
+    // fn playfield_changed(&mut self) {
+    //     self.apply_commands();
+    // }
 
     fn reset(&mut self) {
         if let ElementImage::Anim(anim) = &mut self.element_image {
@@ -363,7 +406,7 @@ impl Element {
         //     ElementImage::Anim(a) => a.size(),
         // };
 
-        // if size > 
+        // if size >
 
         // b.layer.cmp(&a.layer) // should be correct // was not correct
         a.layer.cmp(&b.layer)
@@ -386,7 +429,7 @@ impl ElementImage {
 
 async fn try_load_image(
     filepath: &String,
-    image_cache: &mut HashMap<String, Image>, 
+    image_cache: &mut HashMap<String, Image>,
     skin_manager: &mut dyn SkinProvider
 ) -> TatakuResult<Image> {
     if let Some(image) = image_cache.get(filepath).cloned() {
@@ -455,9 +498,9 @@ async fn try_load_image(
 //     } else {
 //         let s = 1.70158* 1.525;
 //         let change = target - current;
-        
+
 //         // i dont know how this is supposed to happen since amount should generally be between 0.0 and 1.0
-//         if (amount / 2.0) < 1.0 { 
+//         if (amount / 2.0) < 1.0 {
 //             current + change / 2.0 * (amount.powi(2) * ((s + 1.0) * amount - s))
 //         } else {
 //             let amount = amount - 2.0;

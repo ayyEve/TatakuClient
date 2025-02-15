@@ -37,7 +37,7 @@ impl<'lua> rlua::FromLua<'lua> for CustomMenu {
         #[cfg(feature="debug_custom_menus")] info!("=======================");
         #[cfg(feature="debug_custom_menus")] info!("Reading CustomMenu");
         #[cfg(feature="debug_custom_menus")] info!("=======================");
-        
+
         let rlua::Value::Table(table) = lua_value else { return Err(rlua::Error::ToLuaConversionError { from: lua_value.type_name(), to: "CustomMenu", message: Some("Not a table".to_owned()) }) };
         let id = table.get("id")?;
         #[cfg(feature="debug_custom_menus")] info!("Got id '{id}'");
@@ -98,7 +98,7 @@ impl AsyncMenu for BuiltCustomMenu {
             .components
             .iter_mut()
             .map(|i| &mut **i)
-            .chain(std::iter::once(&mut self.element as &mut dyn Widgetable)) 
+            .chain(std::iter::once(&mut self.element as &mut dyn Widgetable))
             {
             let actions = i.handle_message(&message, values).await;
             if !actions.is_empty() {
@@ -106,12 +106,12 @@ impl AsyncMenu for BuiltCustomMenu {
                 return;
             }
         }
-        
+
         match message.message_type {
             MessageType::Value(TatakuValue::Reflect(value)) => {
                 let Some(variable) = message.tag.as_string() else { return };
                 // values.update_or_insert(&variable, TatakuVariableWriteSource::Menu, incoming, || TatakuVariable::new_any(TatakuValue::None));
-                
+
                 if let Err(e) = values.reflect_insert(&variable, value) {
                     error!("error inserting into values: {e:?}");
                 }
@@ -148,7 +148,7 @@ impl AsyncMenu for BuiltCustomMenu {
 
         for i in events.iter() {
             let Some(message) = i.resolve(MessageOwner::Menu, values, event_value.clone()) else { continue };
-            
+
             match message.message_type {
                 MessageType::CustomMenuAction(action, passed_in) => {
                     let Some(a) = action.into_action(values, passed_in) else { continue };
@@ -158,6 +158,8 @@ impl AsyncMenu for BuiltCustomMenu {
                 _ => self.actions.push(TatakuAction::Game(GameAction::HandleMessage(message))),
             }
         }
+
+
 
     }
 }

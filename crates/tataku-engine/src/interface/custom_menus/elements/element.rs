@@ -42,8 +42,11 @@ impl ElementDef {
                     built.children.push(i.build(skin_manager, owner).await);
                 }
 
-            ElementIdentifier::Animatable { triggers:_, actions:_, element }
-                => built.children.push(element.build(skin_manager, owner).await),
+            ElementIdentifier::Animatable { element, triggers, actions }
+                => {
+                    built.children.push(Box::new(TransformableComponent::new(triggers.clone(), actions.clone())));
+                    built.children.push(element.build(skin_manager, owner).await);
+                },
 
             ElementIdentifier::StyledContent { element, image, built_image, .. } 
                 => {

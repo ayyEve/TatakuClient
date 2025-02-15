@@ -1,5 +1,4 @@
 use gilrs::PowerInfo;
-
 use crate::prelude::*;
 
 #[derive(Default)]
@@ -12,21 +11,11 @@ pub struct InputManager {
     pub mouse_down: HashSet<(MouseButton, Instant)>,
     pub mouse_up: HashSet<(MouseButton, Instant)>,
 
-
     pub controllers: HashMap<GamepadId, GamepadState>,
 
-    // /// controller names
-    // pub controller_info: HashMap<GamepadId, GamepadInfo>,
+    pub using_controller_input: bool,
+    pub controller_cursor_pos: Vector2,
 
-    // /// index is controller id
-    // pub controller_buttons: HashMap<GamepadId, HashSet<ControllerButton>>,
-    // /// index is controller id
-    // pub controller_down: HashMap<GamepadId, HashSet<ControllerButton>>,
-    // /// index is controller id
-    // pub controller_up: HashMap<GamepadId, HashSet<ControllerButton>>,
-    // /// index is controller id
-    // /// value index is axis id, value value is (changed, value)
-    // pub controller_axis: HashMap<GamepadId, HashMap<Axis, (bool, f32)>>,
 
     /// currently pressed keys
     keys: HashSet<KeyInput>,
@@ -41,6 +30,8 @@ pub struct InputManager {
 
     /// do we try to protect against double taps? if so, whats the duration we should check for?
     pub double_tap_protection: Option<f32>,
+
+    pub controller_menu_button_config: ControllerButtonMenuConfig,
     
     /// last key pressed, time it was pressed, was it a double tap? (need to know if it was a double tap for release check)
     last_key_press: HashMap<KeyInput, (Instant, bool)>,
@@ -63,17 +54,13 @@ impl InputManager {
         }
 
         // window.joystick_deadzone = 0.01;
-        debug!("New controller: {}", name);
-        let info = GamepadInfo {
+        debug!("New controller: {name}");
+        self.controllers.insert(id, GamepadState::new(GamepadInfo {
             id,
             name,
             power_info,
             connected: true,
-        };
-
-        self.controllers.insert(id, GamepadState::new(info));
-
-        // self.controller.insert(id, );
+        }));
         
 
         // self.controller_buttons.insert(id, HashSet::new());
@@ -94,27 +81,12 @@ impl InputManager {
         self.double_tap_protection = protection;
     }
 
-    pub fn handle_events(&mut self, e: Window2GameEvent) {
+    fn handle_input(&mut self, e: WindowInputEvent) {
+        use WindowInputEvent as Input;
 
         match e {
-            // window events
-            Window2GameEvent::GotFocus => self.window_change_focus = Some(true),
-            Window2GameEvent::LostFocus => {
-                self.window_change_focus = Some(false);
-
-                // forcefully release all keys. horrible workaround but its good enough
-                for key in std::mem::take(&mut self.keys) {
-                    self.keys_up.insert((key, Instant::now()));
-                }
-            }
-
-            // GameWindowEvent::Minimized => {},
-            // GameWindowEvent::Closed => {}
-            // GameWindowEvent::FileHover(_) => {},
-            // GameWindowEvent::FileDrop(_) => {},
-
             // keyboard input
-            Window2GameEvent::KeyPress(key) if !self.keys.contains(&key) => {
+            Input::KeyPress(key) if !self.keys.contains(&key) => {
                 let mut ok_to_continue = true;
 
                 if let Some(check) = self.double_tap_protection {
@@ -138,7 +110,7 @@ impl InputManager {
                     self.last_key_press.insert(key, (Instant::now(), false));
                 }
             }
-            Window2GameEvent::KeyRelease(key) => {
+            Input::KeyRelease(key) => {
                 let mut ok_to_continue = true;
 
                 if self.double_tap_protection.is_some() {
@@ -160,37 +132,36 @@ impl InputManager {
 
 
             // mouse input
-            Window2GameEvent::MousePress(mb) => {
+            Input::MousePress(mb) => {
                 self.mouse_buttons.insert(mb);
                 self.mouse_down.insert((mb, Instant::now()));
             }
-            Window2GameEvent::MouseRelease(mb) => {
+            Input::MouseRelease(mb) => {
                 self.mouse_buttons.remove(&mb);
                 self.mouse_up.insert((mb, Instant::now()));
             }
-            Window2GameEvent::MouseMove(mouse_pos) => {
+            Input::MouseMove(mouse_pos) => {
                 if mouse_pos == self.mouse_pos { return }
                 self.mouse_moved = true;
                 self.mouse_pos = mouse_pos;
             }
-            Window2GameEvent::MouseScroll(delta) => self.scroll_delta += delta,
+            Input::MouseScroll(delta) => self.scroll_delta += delta,
 
-            Window2GameEvent::ControllerEvent(event, name, power_info) => {
-                let id = event.id;
-
-                self.verify_controller_index_exists(id, name, power_info);
-
-                let Some(controller) = self.controllers.get_mut(&id) else { return };
+            Input::ControllerEvent(event, name, power_info) => {
+                self.verify_controller_index_exists(event.id, name, power_info);
+                let Some(controller) = self.controllers.get_mut(&event.id) else { return };
 
                 match event.event {
                     // gilrs::EventType::Connected => self.verify_controller_index_exists(id, name, power_info),
                     // gilrs::EventType::Disconnected => todo!(),
 
                     gilrs::EventType::ButtonPressed(b, _) => {
+                        let b = b.into();
                         controller.buttons_down.insert(b);
                         controller.buttons.insert(b);
                     }
                     gilrs::EventType::ButtonReleased(b, _) => {
+                        let b = b.into();
                         controller.buttons_up.insert(b);
                         controller.buttons.remove(&b);
                     }
@@ -215,7 +186,30 @@ impl InputManager {
                     _ => {}
                 }
             }
+        
+            _ => {}
+        }
+    }
 
+    pub fn handle_events(&mut self, e: Window2GameEvent) {
+        match e {
+            // window events
+            Window2GameEvent::GotFocus => self.window_change_focus = Some(true),
+            Window2GameEvent::LostFocus => {
+                self.window_change_focus = Some(false);
+
+                // forcefully release all keys. horrible workaround but its good enough
+                for key in std::mem::take(&mut self.keys) {
+                    self.keys_up.insert((key, Instant::now()));
+                }
+            }
+
+            Window2GameEvent::Input(input) => self.handle_input(input),
+
+            // GameWindowEvent::Minimized => {},
+            // GameWindowEvent::Closed => {}
+            // GameWindowEvent::FileHover(_) => {},
+            // GameWindowEvent::FileDrop(_) => {},
 
             _ => {}
         }
@@ -386,92 +380,24 @@ impl InputManager {
 pub struct InputBinding {
     pub keyboard: Option<winit::keyboard::PhysicalKey>,
     pub mouse: Option<winit::event::MouseButton>,
+    pub controller: Option<ControllerBinding>,
 }
 
-
-
-#[derive(Clone, Debug)]
-pub struct GamepadState {
-    pub info: GamepadInfo,
-    pub buttons: HashSet<ControllerButton>,
-    pub buttons_up: HashSet<ControllerButton>,
-    pub buttons_down: HashSet<ControllerButton>,
-    pub axis: HashMap<gilrs::Axis, AxisState>
+// TODO: rename lol
+#[derive(Copy, Clone, Default, Debug, Eq, PartialEq, Hash)]
+#[derive(Serialize, Deserialize)]
+pub enum ControllerButtonMenuConfig {
+    /// Standard menu enter and menu back buttons
+    /// ie, on playstation, circle = back and x = enter
+    #[default]
+    Standard,
+    
+    /// Swap the menu back and menu enter buttons
+    /// ie, on playstation, circle = enter and x = back
+    Japanese,
 }
-impl GamepadState {
-    fn new(info: GamepadInfo) -> Self {
-        Self {
-            info,
-            buttons: HashSet::new(),
-            buttons_up: HashSet::new(),
-            buttons_down: HashSet::new(),
-            axis: [
-                Axis::LeftStickX, Axis::LeftStickY, Axis::LeftZ,
-                Axis::RightStickX, Axis::RightStickY, Axis::RightZ,
-                Axis::DPadX, Axis::DPadY
-            ].into_iter().map(|a| (a, AxisState::default())).collect()
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug, Default)]
-pub struct AxisState {
-    pub value: f32,
-    pub changed: bool,
-}
-
-
-#[derive(Clone, Debug)]
-pub struct GamepadInfo {
-    pub id: GamepadId,
-    pub name: Arc<String>,
-    pub power_info: gilrs::PowerInfo,
-    pub connected: bool,
-}
-
-
-
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct AxisConfig {
-    pub axis_id: Axis,
-    pub threshhold: f64
-}
-
-#[derive(Copy, Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
-pub struct ControllerInputConfig {
-    pub button: Option<ControllerButton>,
-    pub axis: Option<AxisConfig>
-}
-impl ControllerInputConfig {
-    pub fn new(button: Option<ControllerButton>, axis: Option<AxisConfig>) -> Self {
-        Self {
-            button, 
-            axis
-        }
-    }
-
-    pub fn check_button(&self, button: ControllerButton) -> bool {
-        if let Some(b) = self.button {
-            b == button
-        } else {
-            false
-        }
-    }
-}
-
-impl From<Axis> for ControllerInputConfig {
-    fn from(value: Axis) -> Self {
-        Self {
-            button: None,
-            axis: Some(AxisConfig {axis_id: value, threshhold: 0.0})
-        }
-    }
-}
-impl From<ControllerButton> for ControllerInputConfig {
-    fn from(value: ControllerButton) -> Self {
-        Self {
-            button: Some(value),
-            axis: None,
-        }
+impl ControllerButtonMenuConfig {
+    pub fn is_standard(self) -> bool {
+        matches!(self, Self::Standard)
     }
 }

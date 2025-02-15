@@ -1,6 +1,5 @@
 use crate::prelude::*;
 
-
 pub const CIRCLE_RADIUS_BASE:f32 = 64.0;
 pub const OSU_NOTE_BORDER_SIZE:f32 = 2.0;
 
@@ -40,45 +39,45 @@ pub struct ScalingHelper {
 impl ScalingHelper {
 
     pub fn new_transform(
-        window_size: Vector2, 
-        settings_offset: Vector2, 
-        settings_scale: f32, 
-        flip_vertical: bool, 
+        window_size: Vector2,
+        settings_offset: Vector2,
+        settings_scale: f32,
+        flip_vertical: bool,
         playfield_size: Option<Vector2>,
     ) -> Transform {
         let playfield_size = playfield_size.unwrap_or(FIELD_SIZE);
 
-        // 
+        //
         let settings_offset = settings_offset + (playfield_size - FIELD_SIZE) / 2.0; // make sure the other thing is centered as well // what other thing ??
-        
+
         let scale = (window_size / playfield_size).min_component() * settings_scale;
 
         // get where the playfield should be on the screen
         let pos = settings_offset + (window_size - playfield_size * scale) / 2.0;
 
         Transform::new(
-            pos,
-            Vector2::new(scale, scale * if flip_vertical { -1.0 } else { 1.0 }),
+            pos + if flip_vertical { Vector2::new(0.0, window_size.y) } else { Vector2::ZERO },
+            Vector2::new(scale, scale * if flip_vertical { -1.0 } else { 1.0 }), // FIXME:
             0.0,
             Vector2::ZERO
         )
     }
 
-    pub fn padding_transform(
-        cs: f32, 
-        scale: f32, 
+    pub fn transform_padded(
+        mut transform: Transform,
+        cs: f32,
+        playfield_size: Option<Vector2>,
     ) -> Transform {
+        let playfield_size = playfield_size.unwrap_or(FIELD_SIZE) * transform.scale.x;
+
         let cs_base = (1.0 - 0.7 * (cs - 5.0) / 5.0) / 2.0;
-        let scaled_cs = cs_base * scale;
-        let border_scaled = OSU_NOTE_BORDER_SIZE * scale;
+        let scaled_cs = cs_base * transform.scale.x;
         let circle_size = Vector2::ONE * CIRCLE_RADIUS_BASE * scaled_cs;
 
-        Transform::new(
-            -circle_size,
-            Vector2::ONE * scale,
-            0.0,
-            Vector2::ZERO
-        )
+        transform.pos -= circle_size;
+        transform.scale = (playfield_size + circle_size * 2.0) / playfield_size;
+
+        transform
     }
 
 
@@ -96,7 +95,7 @@ impl ScalingHelper {
 
     /// makes a lot of assumptions about things
     pub fn fit_to_playfield(
-        playfield: PlayfieldNonsense, 
+        playfield: PlayfieldNonsense,
         flip_vertical: bool,
     ) -> Self {
         let playfield_with_padding = Bounds::new(
@@ -119,19 +118,19 @@ impl ScalingHelper {
     }
 
     pub fn new_offset_scale_custom_size(
-        cs: f32, 
-        window_size: Vector2, 
-        settings_offset: Vector2, 
-        settings_scale: f32, 
-        flip_vertical: bool, 
+        cs: f32,
+        window_size: Vector2,
+        settings_offset: Vector2,
+        settings_scale: f32,
+        flip_vertical: bool,
         playfield_size: Vector2,
     ) -> Self {
         let circle_size = CIRCLE_RADIUS_BASE;
         let border_size = OSU_NOTE_BORDER_SIZE;
 
-        // 
+        //
         let settings_offset = settings_offset + (playfield_size - FIELD_SIZE) / 2.0; // make sure the other thing is centered as well // what other thing ??
-        
+
         let scale = (window_size / playfield_size).min_component() * settings_scale;
 
         // get where the playfield should be on the screen
@@ -186,19 +185,27 @@ pub struct PlayfieldNonsense {
     pub bounds: Bounds,
     pub scale: f32,
     pub circle_size: Vector2,
+    pub flip_vertical: bool
 }
 impl PlayfieldNonsense {
-    pub fn new(bounds: Bounds, scale: f32, circle_size: Vector2) -> Self {
+    pub fn new(
+        bounds: Bounds, 
+        scale: f32, 
+        circle_size: Vector2,
+        flip_vertical: bool,
+    ) -> Self {
         Self {
             bounds,
-            scale, 
-            circle_size
+            scale,
+            circle_size,
+            flip_vertical,
         }
     }
 
     pub fn new_simple(bounds: Bounds) -> Self {
         Self {
             bounds,
+            scale: 1.0,
             ..Default::default()
         }
     }

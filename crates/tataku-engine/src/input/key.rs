@@ -1,6 +1,5 @@
 use crate::prelude::*;
 
-
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[derive(Serialize, Deserialize)]
 #[derive(Reflect)]

@@ -42,7 +42,7 @@ pub use parking_lot::{ Mutex, RwLock };
 pub use serde::{ Serialize, Deserialize };
 
 #[cfg(feature = "gameplay")]
-pub use gilrs::{ Axis, Button as ControllerButton, GamepadId };
+pub use gilrs::{ Axis, GamepadId };
 
 #[cfg(feature="graphics")]
 pub use iced::advanced::graphics::core as iced_core;

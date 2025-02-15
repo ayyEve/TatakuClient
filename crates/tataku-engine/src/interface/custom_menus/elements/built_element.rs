@@ -157,7 +157,12 @@ impl Widgetable for BuiltElementDef {
                 }
             }
 
-            ElementIdentifier::List { list_var, scrollable, variable, .. } => {
+            ElementIdentifier::List { 
+                list_var, 
+                scrollable, 
+                variable, 
+                .. 
+            } => {
                 // info!("using variable: {variable}");
 
                 let ele = self.children.first().unwrap();
@@ -327,7 +332,11 @@ impl Widgetable for BuiltElementDef {
                 .into_element()
             }
 
-            ElementIdentifier::DraggingScroll { padding, margin, .. } => {
+            ElementIdentifier::DraggingScroll { 
+                padding, 
+                margin, 
+                .. 
+            } => {
                 DraggingScroll::with_children(
                     self.children.iter()
                         .map(|e| e.view(owner, ui_scale, values))
@@ -340,6 +349,18 @@ impl Widgetable for BuiltElementDef {
                 .chain_maybe(padding.as_ref(), |panel, pad| panel.padding(*pad))
                 .chain_maybe(margin.as_ref(), |panel, margin| panel.padding(*margin))
                 .into_element()
+            }
+
+            ElementIdentifier::Animatable { 
+                // triggers, 
+                // actions, 
+                .. 
+            } => {
+                let transformable = self.children.first().unwrap();
+                let component = transformable.downcast_ref::<TransformableComponent>().unwrap();
+                let view = component.view(self.nth_child_view(1, owner, ui_scale, values));
+
+                view.into_element()
             }
 
 
@@ -357,7 +378,7 @@ impl Widgetable for BuiltElementDef {
 
 // TODO: come up with a better name for this
 #[async_trait]
-pub trait Widgetable: Send + Sync {
+pub trait Widgetable: Send + Sync + DowncastSync {
     async fn update(&mut self, _values: &mut dyn Reflect, _actions: &mut ActionQueue) {}
     fn view(
         &self, 
@@ -367,9 +388,11 @@ pub trait Widgetable: Send + Sync {
     ) -> IcedElement { EmptyElement.into_element() }
 
     async fn handle_message(&mut self, _message: &Message, _values: &mut dyn Reflect) -> Vec<TatakuAction> { Vec::new() }
+    async fn handle_event(&mut self, _event: TatakuEvent, _event_value: Option<TatakuValue>, _values: &mut dyn Reflect) {}
 
     async fn reload_skin(&mut self, _skin_manager: &mut dyn SkinProvider) {}
 }
+impl_downcast!(Widgetable);
 
 
 pub trait ChainMaybe:Sized {

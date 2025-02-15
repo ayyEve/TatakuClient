@@ -116,12 +116,20 @@ impl From<iced::Vector> for Vector2 {
         Self::new(value.x, value.y)
     }
 }
+
+
 #[cfg(feature="ui")]
 impl From<iced::Point> for Vector2 {
     fn from(value: iced::Point) -> Self {
         Self::new(value.x, value.y)
     }
 }
+impl From<Vector2> for iced::Point {
+    fn from(value: Vector2) -> Self {
+        iced::Point::new(value.x, value.y)
+    }
+}
+
 #[cfg(feature="ui")]
 impl From<iced::Size> for Vector2 {
     fn from(value: iced::Size) -> Self {

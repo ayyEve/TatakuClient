@@ -15,6 +15,8 @@ pub enum AnimatableTriggerEvent {
     Click,
     ClickHold { duration: f32 }, 
     Unclick,
+
+    Event(TatakuEvent)
 }
 
 #[derive(Clone, Debug)]

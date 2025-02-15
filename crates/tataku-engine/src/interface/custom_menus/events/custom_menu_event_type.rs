@@ -1,3 +1,4 @@
+use crate::prelude::*;
 use rlua::{ Value, prelude::LuaResult, Error::FromLuaConversionError };
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -14,15 +15,20 @@ pub enum TatakuEventType {
     /// Menu was entered
     MenuEnter,
     
+    /// A new beatmap has been added
+    MapAdded,
 
     /// A key press
     KeyPress(CustomMenuKeyEvent),
 
-    /// a key release
+    /// A key release
     KeyRelease(CustomMenuKeyEvent),
 
-    /// a new beatmap has been added
-    MapAdded
+    /// A controller button was pressed
+    ControllerPress(CustomMenuControllerEvent),
+
+    /// A controller button was released
+    ControllerRelease(CustomMenuControllerEvent),
 }
 impl<'lua> rlua::FromLua<'lua> for TatakuEventType {
     fn from_lua(lua_value: Value<'lua>, _lua: rlua::Context<'lua>) -> LuaResult<Self> {
@@ -44,11 +50,20 @@ impl<'lua> rlua::FromLua<'lua> for TatakuEventType {
             }
 
             Value::Table(table) => {
+                // key
                 if let Ok(e) = table.get::<_, CustomMenuKeyEvent>("key_press") {
                     Ok(Self::KeyPress(e))
                 } else if let Ok(e) = table.get::<_, CustomMenuKeyEvent>("key_release") {
                     Ok(Self::KeyRelease(e))
-                } else{ 
+                } 
+                // controller
+                else if let Ok(e) = table.get::<_, CustomMenuControllerEvent>("controller_press") {
+                    Ok(Self::ControllerPress(e))
+                } else if let Ok(e) = table.get::<_, CustomMenuControllerEvent>("controller_release") {
+                    Ok(Self::ControllerRelease(e))
+                } 
+                
+                else{ 
                     Err(FromLuaConversionError { from: "Table", to: "TatakuEventType", message: Some("Unknown event type".to_owned()) })
                 }
             }
@@ -62,16 +77,16 @@ impl<'lua> rlua::FromLua<'lua> for TatakuEventType {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct CustomMenuKeyEvent {
-    /// what key?
+    /// What key?
     pub key: crate::prelude::Key,
 
-    /// must control be pressed
+    /// Must control be pressed?
     pub control: bool,
 
-    /// must alt be pressed
+    /// Must alt be pressed?
     pub alt: bool,
 
-    /// must shift be pressed
+    /// Must shift be pressed?
     pub shift: bool,
 }
 impl<'lua> rlua::FromLua<'lua> for CustomMenuKeyEvent {
@@ -106,3 +121,38 @@ impl<'lua> rlua::FromLua<'lua> for CustomMenuKeyEvent {
         Ok(out)
     }
 }
+
+
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub struct CustomMenuControllerEvent {
+    pub button: ControllerButton,
+}
+impl<'lua> rlua::FromLua<'lua> for CustomMenuControllerEvent {
+    fn from_lua(lua_value: Value<'lua>, _lua: rlua::Context<'lua>) -> rlua::Result<Self> {
+        const SELF: &str = "CustomMenuControllerEvent";
+        #[cfg(feature="debug_custom_menus")] crate::info!("Reading {SELF}");
+
+        match lua_value {
+            Value::String(s) => {
+                let s = s.to_str()?;
+                let button = ControllerButton::from_string(s);
+                if button == ControllerButton::Unknown {
+                    return Err(FromLuaConversionError { 
+                        from: "String", 
+                        to: "ControllerButton", 
+                        message: Some(format!("Invalid value {s}")) 
+                    });
+                }
+                
+                Ok(Self {
+                    button,
+                })
+            }
+            
+            other => Err(FromLuaConversionError { from: other.type_name(), to: SELF, message: Some("invalid type".to_string()) }),
+        }
+
+    }
+}
+

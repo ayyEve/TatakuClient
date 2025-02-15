@@ -14,6 +14,11 @@ pub enum Window2GameEvent {
 
     ScreenshotComplete(Vec<u8>, [u32; 2], ScreenshotInfo),
     
+    Input(WindowInputEvent),
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub enum WindowInputEvent {
 
     // keyboard input
     KeyPress(KeyInput),

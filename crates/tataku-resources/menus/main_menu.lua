@@ -1,5 +1,5 @@
 -- helper for the song controls
-local function fa_button(char, action) 
+local function fa_button(char, action)
     return {
         id = "styled_content",
         debug_name = "fa_button",
@@ -64,7 +64,7 @@ local song_display = {
             padding = 8.0,
 
             element = text(
-                text_list({ variable("beatmaps.current_beatmap.map.artist"), " - ", variable("beatmaps.current_beatmap.map.title") }),
+                text_list({ variable("beatmaps.current.map.artist"), " - ", variable("beatmaps.current.map.title") }),
                 30,
                 WHITE
             )
@@ -79,10 +79,10 @@ local exit_game = game_action("quit")
 
 
 -- notification example
-local notify_now_playing = { 
-    event = "song_start", 
-    action = game_action("show_notification", { 
-        text = text_list({ "Now playing: ", variable("beatmaps.current.map.title"), " by ", variable("beatmaps.current_beatmap.map.artist")}),
+local notify_now_playing = {
+    event = "song_start",
+    action = game_action("show_notification", {
+        text = text_list({ "Now playing: ", variable("beatmaps.current.map.title"), " by ", variable("beatmaps.current.map.artist")}),
         duration = 10000, -- ms
         color = TEAL,
     })
@@ -92,7 +92,7 @@ local notify_now_playing = {
 local menu = {
     id = "main_menu",
 
-    events = { 
+    events = {
         -- on song end, play next song
         { event = "song_end", action = map_action("next") },
 
@@ -107,8 +107,8 @@ local menu = {
     -- the current main menu is broken up into rows
     element = col({ width = "fill", height = "fill", debug_name = "main_menu" }, {
         -- the first row contains the song display
-        row({ width = "fill", height = "fill", debug_name = "main_menu_row1" }, { 
-            song_display 
+        row({ width = "fill", height = "fill", debug_name = "main_menu_row1" }, {
+            song_display
         }),
 
         -- the next row is the preview and menu buttons
@@ -123,9 +123,9 @@ local menu = {
 
             -- buttons, but inside an animatable element (to hide/unhide)
             {
-                id = "animatable", -- not implemented yet because animating iced elements is pain
+                id = "animatable", 
                 debug_name = "animatable",
-                width = "shrink", 
+                width = "shrink",
                 height = "shrink",
 
                 triggers = {
@@ -148,22 +148,22 @@ local menu = {
                         { action = "opacity", start = "current", stop = 1.0, duration = 1000.0 }
                     }
                 },
-                element = col({ width = "fill", height = "fill", spacing = 5.0, debug_name = "main_menu_buttons_list" }, {
-                    --[[ Singleplayer ]] button(text("Play"), start_singleplayer), 
+                element = col({ width = "shrink", height = "fill", spacing = 5.0, debug_name = "main_menu_buttons_list" }, {
+                    --[[ Singleplayer ]] button(text("Play"), start_singleplayer),
                     --[[ Multiplayer ]] button(text("Multiplayer"), start_multiplayer),
                     --[[ Settings ]] button(text("Settings"), { id = "action", dialog = "settings" } ),
                     --[[ Quit ]] button(text("Quit"), exit_game),
                 })
             }
         }),
-        
+
         -- the next row is the media controls
         row({ width = "fill", height = "fill" }, {
             song_controls
         }),
 
     })
-    
+
 }
 
 add_menu(menu)

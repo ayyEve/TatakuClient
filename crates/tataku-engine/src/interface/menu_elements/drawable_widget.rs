@@ -14,7 +14,7 @@ impl DrawableComponent {
         let (event_sender, event_receiver) = async_channel(5);
 
         let widget = DrawableComponentWidget::new(widget_receiver, event_sender);
-        
+
         Self {
             widget_sender,
             event_receiver,
@@ -30,10 +30,10 @@ impl DrawableComponent {
 
         self.bounds
     }
-    
+
     pub fn set_draw(&mut self, list: RenderableCollection) {
         let mut group = TransformGroup::new(Vector2::ZERO);
-        list.take().into_iter().for_each(|i|group.push_arced(i));
+        list.take().into_iter().for_each(|i| group.push_arced(i));
 
         self.widget_sender.write(Arc::new(group));
     }
