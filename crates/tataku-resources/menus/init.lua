@@ -53,13 +53,14 @@ function space(width, height)
 end
 
 -- helper for making a text object
-function text(txt, font_size, color, font)
+function text(txt, font_size, color, font, align)
     return {
         id = "text",
         text = txt,
         font_size = font_size,
         color = color,
-        font = font
+        font = font,
+        align = align,
     }
 end
 function text_list(list)
@@ -69,16 +70,29 @@ function text_list(list)
 end
 
 -- helper for making a button
-function button(ele, action, width, height, padding, pressed)
-    return {
-        id = "button",
-        element = ele,
-        action = action,
-        width = width,
-        height = height,
-        padding = padding,
-        pressed = pressed 
-    }
+-- function button(ele, action, width, height, padding, pressed)
+function button(config, ele, action)
+    if not action then
+        return {
+            id = "button",
+            element = config,
+            action = ele,
+        }
+    end
+
+    config.id = "button"
+    config.element = ele;
+    config.action = action;
+    return config
+    -- return {
+    --     id = "button",
+    --     element = ele,
+    --     action = action,
+    --     width = width,
+    --     height = height,
+    --     padding = padding,
+    --     pressed = pressed 
+    -- }
 end
 
 -- helper for making draggable lists
@@ -212,6 +226,14 @@ end
 function variable(var) 
     return {
         variable = var
+    }
+end
+
+function text_iter(var, prop, join) 
+    return {
+        variable = var,
+        property = prop,
+        join = join
     }
 end
 

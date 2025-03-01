@@ -9,7 +9,7 @@ pub struct OnlineSpectatorInfo {
     pub outgoing_frames: Vec<SpectatorFrame>,
 
     /// when was the last spectator frame sent?
-    pub last_sent_frame: Instant,
+    pub last_sent_frame: TatakuInstant,
 
     /// list of incoming spectator frames, indexed by host_id
     pub incoming_frames: HashMap<u32, Vec<SpectatorFrame>>,
@@ -75,4 +75,3 @@ impl OnlineSpectatorInfo {
         self.spectator_list.remove(&host_id);
     }
 }
-

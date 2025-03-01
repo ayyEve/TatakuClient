@@ -11,7 +11,7 @@ pub enum TatakuAction {
     Menu(MenuAction),
 
     /// Perform a game operation
-    Game(GameAction),
+    Game(Box<GameAction>),
 
     /// Perform a beatmap operation
     Beatmap(BeatmapAction),
@@ -22,9 +22,8 @@ pub enum TatakuAction {
     /// Perform a mods action
     Mods(ModAction),
 
-    #[cfg(feature="graphics")]
-    /// Perform a widget operation
-    PerformOperation(IcedOperation),
+    /// Perform an action on the Ui
+    Ui(UiAction),
 
     /// Perform a multiplayer action
     Multiplayer(MultiplayerAction),
@@ -39,7 +38,7 @@ pub enum TatakuAction {
     WindowAction(WindowAction),
 
     /// Handle an event
-    Event(TatakuEvent)
+    Event(TatakuIntegrationEvent),
 }
 impl std::fmt::Debug for TatakuAction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -50,8 +49,9 @@ impl std::fmt::Debug for TatakuAction {
             Self::Beatmap(map) => write!(f, "Beatmap({map:?})"),
             Self::Song(song) => write!(f, "Song({song:?})"),
             Self::Mods(mods) => write!(f, "Mods({mods:?})"),
+            Self::Ui(action) => write!(f, "Ui({action:?})"),
             #[cfg(feature="graphics")]
-            Self::PerformOperation(_) => write!(f, "PerformOperation"),
+            // Self::PerformOperation(_) => write!(f, "PerformOperation"),
             Self::Multiplayer(multi) => write!(f, "Multiplayer({multi:?})"),
             Self::Task(task) => write!(f, "Task({task:?})"),
             Self::CursorAction(action) => write!(f, "CursorAction({action:?})"),
@@ -63,12 +63,12 @@ impl std::fmt::Debug for TatakuAction {
 
 impl From<Notification> for TatakuAction {
     fn from(value: Notification) -> Self {
-        Self::Game(GameAction::AddNotification(value))
+        Self::Game(Box::new(GameAction::AddNotification(value)))
     }
 }
 
-impl From<TatakuEvent> for TatakuAction {
-    fn from(value: TatakuEvent) -> Self {
+impl From<TatakuIntegrationEvent> for TatakuAction {
+    fn from(value: TatakuIntegrationEvent) -> Self {
         Self::Event(value)
     }
 }

@@ -33,7 +33,6 @@ impl SongManager {
 
         // try to load the provided audio
         let song = load_song()?;
-        // let song = AudioManager::load_song_raw(data)?;
 
         // stop the current audio
         if let Some(s) = self.current_song.as_ref() { 

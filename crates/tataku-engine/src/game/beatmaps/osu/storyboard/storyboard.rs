@@ -73,8 +73,8 @@ impl StoryboardElementDef {
 
         let mut split = line.split(",");
         let ele = split.next()?;
-        let layer = split.next().and_then(Layer::from_str)?;
-        let origin = split.next().and_then(Origin::from_str)?;
+        let layer = split.next().and_then(Layer::from_string)?;
+        let origin = split.next().and_then(Origin::from_string)?;
         let filepath = split.next()?;
         let x = split.next()?.parse::<f32>().ok()?;
         let y = split.next()?.parse::<f32>().ok()?;
@@ -86,7 +86,7 @@ impl StoryboardElementDef {
             "Animation" => {
                 let frame_count = split.next()?.parse::<u16>().ok()?;
                 let frame_delay = split.next()?.parse::<f32>().ok()?;
-                let loop_type = split.next().and_then(LoopType::from_str).unwrap_or(LoopType::LoopForever);
+                let loop_type = split.next().and_then(LoopType::from_string).unwrap_or(LoopType::LoopForever);
 
                 Some(StoryboardElementDef::Animation(StoryboardAnimationDef { layer, origin, filepath, pos, frame_count, frame_delay, loop_type }))
             }
@@ -111,7 +111,7 @@ pub enum Origin {
     BottomRight = 9
 }
 impl Origin {
-    pub fn from_str(str: &str) -> Option<Self> {
+    pub fn from_string(str: &str) -> Option<Self> {
         match str {
             "0" | "TopLeft" => Some(Self::TopLeft),
             "1" | "Centre" => Some(Self::Centre),
@@ -149,7 +149,7 @@ pub enum LoopType {
     LoopOnce = 1
 }
 impl LoopType {
-    pub fn from_str(str: &str) -> Option<Self> {
+    pub fn from_string(str: &str) -> Option<Self> {
         match str {
             "0" | "LoopForever" => Some(Self::LoopForever),
             "1" | "LoopOnce" => Some(Self::LoopOnce),
@@ -166,7 +166,7 @@ pub enum Layer {
     Foreground = 3
 }
 impl Layer {
-    pub fn from_str(str: &str) -> Option<Self> {
+    pub fn from_string(str: &str) -> Option<Self> {
         match str {
             "0" | "Background" => Some(Self::Background),
             "1" | "Fail" => Some(Self::Fail),
@@ -289,7 +289,7 @@ impl StoryboardDef {
                     let $name = split.next().and_then(|s| s.parse::<$T>().ok()).unwrap_or($default);
                 };
                 ($name: ident, $T:ty, _) => {
-                    let Some($name) = split.next().and_then(|s| <$T>::from_str(s)) else { error!("error reading {}, line {n}: {line}", stringify!($name)); continue };
+                    let Some($name) = split.next().and_then(|s| <$T>::from_string(s)) else { error!("error reading {}, line {n}: {line}", stringify!($name)); continue };
                 };
             }
 

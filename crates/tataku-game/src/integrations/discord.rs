@@ -1,3 +1,5 @@
+// TODO: move this to its own crate one integration stuff is good
+
 use crate::prelude::*;
 use discord_rich_presence::{
     DiscordIpc, 
@@ -24,7 +26,7 @@ pub struct Discord {
     // receiver: Receiver<DiscordThreadMessage>,
 
     client: DiscordIpcClient,
-    last_connection_attempt: Option<Instant>,
+    last_connection_attempt: Option<TatakuInstant>,
 
     enabled: bool,
     connected: bool,
@@ -210,7 +212,7 @@ impl Discord {
                 return Ok(()) 
             }
         }
-        self.last_connection_attempt = Some(Instant::now());
+        self.last_connection_attempt = Some(TatakuInstant::now());
 
         // attempt to reconnect
         self.client.connect().map_err(DiscordError)?;
@@ -253,7 +255,7 @@ impl TatakuIntegration for Discord {
 
     fn handle_event(
         &mut self, 
-        event: &TatakuEvent,
+        event: &TatakuIntegrationEvent,
         values: &ValueCollection
     ) {
         if !self.enabled || !self.connected { return }
@@ -265,7 +267,7 @@ impl TatakuIntegration for Discord {
             .large_text(&values.global.username); // TODO: make the username of the logged-in user
 
         match event {
-            TatakuEvent::BeatmapStarted { 
+            TatakuIntegrationEvent::BeatmapStarted { 
                 start_time,
                 beatmap, 
                 playmode, 
@@ -299,7 +301,7 @@ impl TatakuIntegration for Discord {
                         .details(format!("{version} by {creator}"))
                 }
             }
-            TatakuEvent::SongChanged { 
+            TatakuIntegrationEvent::SongChanged { 
                 artist,
                 title,
                 elapsed,
@@ -314,7 +316,7 @@ impl TatakuIntegration for Discord {
                     .state(format!("Listening to {artist} - {title}"))
                 ;
             }
-            TatakuEvent::BeatmapEnded => {
+            TatakuIntegrationEvent::BeatmapEnded => {
                 activity = activity
                     .state("Idle")
                 ;

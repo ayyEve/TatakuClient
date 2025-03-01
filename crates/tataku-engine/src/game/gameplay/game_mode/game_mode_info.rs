@@ -1,9 +1,14 @@
 use crate::prelude::*;
-use futures_util::future::BoxFuture;
+
+pub trait GamemodeSettings: Reflect + MakeSettingsMenu + std::fmt::Debug {
+    fn to_value(&self) -> serde_json::Value;
+}
+impl_downcast!(GamemodeSettings);
 
 #[repr(C)]
+#[derive(Reflect)]
 #[derive(Copy, Clone)]
-pub struct GameModeInfo {
+pub struct GamemodeInfo {
     pub id: &'static str,
     pub display_name: &'static str,
     pub about: &'static str,
@@ -15,19 +20,35 @@ pub struct GameModeInfo {
     pub stat_groups: &'static [StatGroup],
     pub judgments: &'static [HitJudgment],
     pub diff_values: &'static [DifficultyValue],
+    pub available_widgets: &'static [GameplayWidgetBuilder],
 
+    #[reflect(skip)]
     pub calc_acc: fn(&Score) -> f32,
+    #[reflect(skip)]
     pub calc_perf: fn(CalcPerfInfo<'_>) -> f32,
 
+    #[reflect(skip)]
     pub can_load_beatmap: fn(&BeatmapType) -> bool,
 
+
     // pub get_diff_string: fn(&BeatmapMetaWithDiff, &ModManager) -> String,
+    
+    #[reflect(skip)]
     pub stats_from_groups: fn(&HashMap<String, HashMap<String, Vec<f32>>>) -> Vec<MenuStatsInfo>,
 
+    #[reflect(skip)]
     pub create_game: for<'a> fn(&'a Beatmap, &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn GameMode>>>,
+    #[reflect(skip)]
     pub create_diffcalc: for<'a> fn(&'a BeatmapMeta, &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn DiffCalc>>>,
+
+
+    #[reflect(skip)]
+    pub deserialize_settings: fn(serde_json::Value) -> Option<Box<dyn GamemodeSettings>>,
+    
+    #[reflect(skip)]
+    pub serialize_settings: fn(Box<dyn GamemodeSettings>) -> serde_json::Value,
 }
-impl GameModeInfo {
+impl GamemodeInfo {
     pub const DEFAULT: Self = Self {
         id: "none",
         display_name: "None",
@@ -39,6 +60,7 @@ impl GameModeInfo {
         stat_groups: &[],
         judgments: &[],
         diff_values: &[],
+        available_widgets: &[],
         calc_acc: |_| 0.0,
         calc_perf: |_| 0.0,
         // get_diff_string: Self::dummy_diff_str,
@@ -46,6 +68,8 @@ impl GameModeInfo {
         can_load_beatmap: |_| false,
         create_game: |_, _| Box::pin(async { Err(GameModeError::UnknownGameMode.into()) }),
         create_diffcalc: |_,_| Box::pin(async { Err(GameModeError::UnknownGameMode.into()) }),
+        deserialize_settings: |_| None, 
+        serialize_settings: |_| panic!("serialize_settings not implemented!")
     };
 
     pub fn calc_acc(&self, score: &Score) -> f32 {
@@ -71,14 +95,28 @@ impl GameModeInfo {
     pub async fn create_diffcalc(&self, map: &BeatmapMeta, settings: &Settings) -> TatakuResult<Box<dyn DiffCalc>> {
         (self.create_diffcalc)(map, settings).await
     }
+
+
+    pub fn deserialize_settings(&self, value: serde_json::Value) -> Option<Box<dyn GamemodeSettings>> {
+        (self.deserialize_settings)(value)
+    }
+    pub fn serialize_settings(&self, s: Box<dyn GamemodeSettings>) -> serde_json::Value {
+        (self.serialize_settings)(s)
+    }
 }
-impl Default for GameModeInfo {
+impl Default for GamemodeInfo {
     fn default() -> Self {
         Self::DEFAULT
     }
 }
 
-impl std::fmt::Debug for GameModeInfo {
+impl AsRef<str> for GamemodeInfo {
+    fn as_ref(&self) -> &str {
+        self.id
+    }
+}
+
+impl std::fmt::Debug for GamemodeInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("GameModeInfo")
             .field("id", &self.id)

@@ -62,7 +62,7 @@ pub enum StoryboardEasing {
     BounceInOut,
 }
 impl StoryboardEasing {
-    pub fn from_str(str: &str) -> Option<Self> {
+    pub fn from_string(str: &str) -> Option<Self> {
         match str {
             "0" => Some(Self::Linear),
 
@@ -191,7 +191,7 @@ pub enum Param {
     AdditiveBlending
 }
 impl Param {
-    pub fn from_str(str: &str) -> Option<Self> {
+    pub fn from_string(str: &str) -> Option<Self> {
         match str {
             "0" | "H" => Some(Self::FlipHorizontal),
             "1" | "V" => Some(Self::FlipVertial),
@@ -201,6 +201,7 @@ impl Param {
     }
 }
 
+// TODO: implement this (;-;)
 // #[derive(Copy, Clone, Debug)]
 // pub enum TriggerType {
 //     Hitsound {

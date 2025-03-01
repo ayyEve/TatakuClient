@@ -11,8 +11,8 @@ pub enum ShuntingYardError {
     EntryDoesntExist(String),
     ValueIsntANumber(String),
     ValueIsntABool,
-    MissingLeftSide(SYOperator),
-    MissingRightSide(SYOperator),
+    MissingLeftSide(Operator),
+    MissingRightSide(Operator),
     MissingFunctionArgument(String),
     NumberIsntANumber(String),
 

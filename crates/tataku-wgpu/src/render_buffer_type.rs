@@ -21,14 +21,14 @@ impl RenderBufferType {
             Self::Flashlight(_f) => BlendMode::Flashlight,
         }
     }
-    pub fn get_vertex_buffer(&self) -> &wgpu::Buffer {
+    pub fn get_vertex_buffer(&self) -> &Buffer {
         match self {
             Self::Standard(v) => &v.vertex_buffer,
             Self::Slider(s) => &s.vertex_buffer,
             Self::Flashlight(f) => &f.vertex_buffer
         }
     }
-    pub fn get_index_buffer(&self) -> &wgpu::Buffer {
+    pub fn get_index_buffer(&self) -> &Buffer {
         match self {
             Self::Standard(v) => &v.index_buffer,
             Self::Slider(s) => &s.index_buffer,

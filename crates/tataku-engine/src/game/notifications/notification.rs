@@ -2,18 +2,19 @@ use crate::prelude::*;
 
 static ID_COUNTER:AtomicUsize = AtomicUsize::new(0);
 
+#[derive(ChainableInitializer)]
 #[derive(Clone, Debug)]
 pub struct Notification {
     /// id number for this notification
     pub id: usize,
     /// text to display
-    pub text: String,
+    #[chain] pub text: String,
     /// color of the bounding box
-    pub color: Color,
+    #[chain] pub color: Color,
     /// how long this message should last, in ms
-    pub duration: f32,
+    #[chain] pub duration: f32,
     /// what shold happen on click?
-    pub onclick: NotificationOnClick
+    #[chain] pub onclick: NotificationOnClick
 }
 impl Notification {
     pub fn new(text: String, color: Color, duration: f32, onclick: NotificationOnClick) -> Self {
@@ -37,5 +38,18 @@ impl Notification {
             5_000.0, 
             NotificationOnClick::None,
         )
+    }
+}
+
+impl Default for Notification {
+    fn default() -> Self {
+        let id = ID_COUNTER.fetch_add(1, Ordering::AcqRel);
+        Self {
+            id,
+            text: String::new(),
+            color: Color::WHITE,
+            duration: 0.0,
+            onclick: NotificationOnClick::None,
+        }
     }
 }

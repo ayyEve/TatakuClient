@@ -7,17 +7,23 @@ pub struct SliderDrawable {
     /// alpha of whole drawable, mainly used for fade in
     pub alpha: f32,
 
+
     /// slider data to be passed onto the shader
     pub slider_data: SliderData,
+
     /// slider grid data to be passed onto the shader
     pub slider_grids: Vec<GridCell>,
+
     /// slider grid cells to be passed onto the shader
     pub grid_cells: Vec<u32>,
+
     /// slider line segments to be passed onto the shader
     pub line_segments: Vec<LineSegment>,
 }
 impl TatakuRenderable for SliderDrawable {
-    fn get_bounds(&self) -> Bounds { Bounds::new(self.slider_data.grid_origin, self.size) }
+    fn get_bounds(&self) -> Bounds { 
+        Bounds::new(self.slider_data.grid_origin, self.size) 
+    }
 
     fn get_blend_mode(&self) -> BlendMode { BlendMode::Slider }
     fn set_blend_mode(&mut self, _blend_mode: BlendMode) {}

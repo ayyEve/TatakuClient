@@ -80,8 +80,7 @@ impl BarGraph {
                     let mut prev_y = mapped_points[0];
                     let x_step = size.x / mapped_points.len() as f32;
 
-                    for n in 1..mapped_points.len() {
-                        let new_y = mapped_points[n];
+                    for (n, new_y) in mapped_points.iter().copied().enumerate().skip(1) {
                         group.push(Line::new(
                             Vector2::new(x_step * (n-1) as f32, prev_y),
                             Vector2::new(x_step * n as f32, new_y),

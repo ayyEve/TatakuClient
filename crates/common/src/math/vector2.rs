@@ -1,5 +1,4 @@
 pub type Vector3 = cgmath::Vector3<f32>;
-
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(from = "[f32;2]", into = "[f32;2]")]
@@ -85,6 +84,14 @@ impl Vector2 {
     pub fn max_component(self) -> f32 {
         self.x.max(self.y)
     }
+
+
+    /// more cursed eve bullshit
+    pub fn clamp(mut self, min: Self, max: Self) -> Self {
+        self.x = self.x.clamp(min.x, max.x);
+        self.y = self.y.clamp(min.y, max.y);
+        self
+    }
 }
 
 impl std::ops::Deref for Vector2 {
@@ -111,31 +118,38 @@ impl From<Vector2> for [f32; 2] {
 }
 
 #[cfg(feature="ui")]
-impl From<iced::Vector> for Vector2 {
-    fn from(value: iced::Vector) -> Self {
+impl From<taffy::geometry::Point<f32>> for Vector2 {
+    fn from(value: taffy::geometry::Point<f32>) -> Self {
         Self::new(value.x, value.y)
     }
 }
 
 
 #[cfg(feature="ui")]
-impl From<iced::Point> for Vector2 {
-    fn from(value: iced::Point) -> Self {
-        Self::new(value.x, value.y)
-    }
-}
-impl From<Vector2> for iced::Point {
-    fn from(value: Vector2) -> Self {
-        iced::Point::new(value.x, value.y)
-    }
-}
-
-#[cfg(feature="ui")]
-impl From<iced::Size> for Vector2 {
-    fn from(value: iced::Size) -> Self {
+impl From<taffy::geometry::Size<f32>> for Vector2 {
+    fn from(value: taffy::geometry::Size<f32>) -> Self {
         Self::new(value.width, value.height)
     }
 }
+#[cfg(feature="ui")]
+impl From<Vector2> for taffy::geometry::Point<f32> {
+    fn from(value: Vector2) -> Self {
+        taffy::geometry::Point {
+            x: value.x,
+            y: value.y
+        }
+    }
+}
+#[cfg(feature="ui")]
+impl From<Vector2> for taffy::geometry::Size<f32> {
+    fn from(value: Vector2) -> Self {
+        taffy::geometry::Size {
+            width: value.x,
+            height: value.y
+        }
+    }
+}
+
 
 impl Default for Vector2 {
     fn default() -> Self { Self::new(0.0, 0.0) }
@@ -146,6 +160,82 @@ impl std::fmt::Display for Vector2 {
         write!(f, "x: {}, y: {}", self.x, self.y)
     }
 }
+
+
+use tataku_common::prelude::{
+    Reflect,
+    ReflectPath,
+    ReflectError,
+    ReflectResult,
+    MaybeOwnedReflect,
+};
+impl Reflect for Vector2 {
+    fn impl_get<'s, 'v>(&'s self, mut path: ReflectPath<'v>) -> ReflectResult<'v, MaybeOwnedReflect<'s>> {
+        let next = path.next()
+            .ok_or(ReflectError::entry_not_exist("??????"))?;
+        
+        match next {
+            "x" => Ok(MaybeOwnedReflect::Owned(Box::new(self.x))),
+            "y" => Ok(MaybeOwnedReflect::Owned(Box::new(self.y))),
+
+            other => Err(ReflectError::entry_not_exist(other))
+        }
+    }
+
+    fn impl_get_mut<'s, 'v>(&'s mut self, mut path: ReflectPath<'v>) -> ReflectResult<'v, &'s mut dyn Reflect> {
+        let next = path.next()
+            .ok_or(ReflectError::entry_not_exist("??????"))?;
+        
+        match next {
+            "x" => Ok(&mut self.x),
+            "y" => Ok(&mut self.y),
+
+            other => Err(ReflectError::entry_not_exist(other))
+        }
+    }
+
+    fn impl_insert<'v>(
+        &mut self, 
+        mut path: ReflectPath<'v>, 
+        mut value: Box<dyn Reflect>
+    ) -> ReflectResult<'v, ()> {
+        let Some(next) = path.next() else {
+            macro_rules! a {
+                ($self:ident, $t: ty) => {
+                    match value.downcast::<$t>() {
+                        Ok(v) => {
+                            *$self = (*v).into(); 
+                            return Ok(())
+                        }
+                        Err(e) => value = e
+                    }
+                }
+            }
+            a!(self, [f32; 2]);
+            a!(self, Vector2);
+            
+            return Err(ReflectError::wrong_type(value.type_name(), "Vector2"));
+        };
+        
+        let value = *value.downcast::<f32>()
+            .map_err(|e| ReflectError::wrong_type(e.type_name(), "f32"))?;
+        
+        match next {
+            "x" => { self.x = value; Ok(()) }
+            "y" => { self.x = value; Ok(()) }
+            other => Err(ReflectError::entry_not_exist(other))
+        }
+    }
+
+    fn duplicate(&self) -> Option<Box<dyn Reflect>> {
+        Some(Box::new(*self))
+    }
+
+    fn from_string(_str: &str) -> ReflectResult<'_, Box<dyn Reflect>> where Self:Sized {
+        Err(ReflectError::NoFromString)
+    }
+}
+
 
 // negative nancy
 impl Neg for Vector2 {

@@ -12,8 +12,8 @@ pub fn set_time(t: Duration) {
 
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct Instant(u64);
-impl Instant {
+pub struct TatakuInstant(u64);
+impl TatakuInstant {
     pub fn now() -> Self {
         Self (get_time())
     }
@@ -32,13 +32,13 @@ impl Instant {
     }
 
     pub fn elapsed_and_reset(&mut self) -> f32 {
-        let now = Instant::now();
+        let now = TatakuInstant::now();
         let dur = now.duration_since(*self).as_secs_f32() * 1000.0;
         *self = now;
         dur
     }
 }
-impl Default for Instant {
+impl Default for TatakuInstant {
     fn default() -> Self {
         Self::now()
     }

@@ -34,7 +34,7 @@ impl RelaxManager {
         note_end_time: f32, // passing this in because its already calculated
         note: &mut Box<dyn OsuHitObject>,
         note_index: usize,
-        state: &mut GameplayStateForUpdate<'_>
+        state: &mut GameplayUpdateShell<'_>
     ) {
         // if its time to hit the note, the not hasnt been hit yet, and we're within the note's radius
         if state.time >= note.time() && state.time < note_end_time && !note.was_hit() && note.check_distance(mouse_pos) {

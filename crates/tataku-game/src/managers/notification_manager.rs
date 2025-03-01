@@ -31,7 +31,7 @@ pub struct NotificationManager {
     processed_notifs: Vec<ProcessedNotif>,
     pending_notifs: Vec<Arc<Notification>>,
     
-    window_size: WindowSizeHelper,
+    // window_size: WindowSizeHelper,
     notification_image: Option<Image>,
 
     queued_actions: Vec<NotificationOnClick>
@@ -43,7 +43,7 @@ impl NotificationManager {
             processed_notifs: Vec::new(),
             pending_notifs: Vec::new(),
             
-            window_size: WindowSizeHelper::new(),
+            // window_size: WindowSizeHelper::new(),
             notification_image: None,
             queued_actions: Vec::new(),
         }
@@ -76,8 +76,6 @@ impl NotificationManager {
 
 
     pub async fn update(&mut self, game: &mut Game) {
-        self.window_size.update();
-
         for notif in std::mem::take(&mut self.pending_notifs) {
             // trace!("adding notif");
             let new = ProcessedNotif::new(notif);
@@ -98,8 +96,8 @@ impl NotificationManager {
         self.notification_image = skin_manager.get_texture("notification", &TextureSource::Skin, SkinUsage::Game, true).await;
     }
 
-    pub fn draw(&self, list: &mut RenderableCollection) {
-        let mut current_pos = self.window_size.0;
+    pub fn draw(&self, window_size: Vector2, list: &mut RenderableCollection) {
+        let mut current_pos = window_size;
 
         for i in self.processed_notifs.iter().rev() {
             i.draw(current_pos, &self.notification_image, list);
@@ -108,8 +106,8 @@ impl NotificationManager {
     }
 
 
-    pub async fn on_click(&mut self, mouse_pos: Vector2, game: &mut Game) -> bool {
-        let mut current_pos = self.window_size.0;
+    pub async fn on_click(&mut self, window_size: Vector2, mouse_pos: Vector2, game: &mut Game) -> bool {
+        let mut current_pos = window_size;
         
         for n in self.processed_notifs.iter_mut() {
             let pos = current_pos - Vector2::new(n.size.x + NOTIF_MARGIN.x, NOTIF_Y_OFFSET + n.size.y);
@@ -141,7 +139,7 @@ impl NotificationManager {
 #[derive(Clone)]
 struct ProcessedNotif {
     size: Vector2,
-    time: Instant,
+    time: TatakuInstant,
     text: Text,
     notification: Arc<Notification>,
     remove: bool
@@ -161,7 +159,7 @@ impl ProcessedNotif {
 
         Self {
             size,
-            time: Instant::now(),
+            time: TatakuInstant::now(),
             text,
             notification,
             remove: false

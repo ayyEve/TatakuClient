@@ -2,13 +2,11 @@ use crate::prelude::*;
 use std::{ fs::File, path::Path };
 use std::io::{ self, BufRead, BufReader, Lines };
 
-
 pub struct Io;
 impl Io {
-
     /// read a file into bytes
     pub fn read_file(path: impl AsRef<Path>) -> io::Result<Vec<u8>> {
-        let time = Instant::now();
+        let time = TatakuInstant::now();
         let f = std::fs::read(&path);
 
         let duration = time.as_millis();
@@ -19,7 +17,7 @@ impl Io {
     }
     /// read a file into bytes
     pub async fn read_file_async(path: impl AsRef<Path>) -> io::Result<Vec<u8>> {
-        let time = Instant::now();
+        let time = TatakuInstant::now();
         let f = tokio::fs::read(&path).await;
 
         let duration = time.as_millis();
@@ -31,7 +29,7 @@ impl Io {
 
     /// helper for the read_lines functions
     fn open_file(path: impl AsRef<Path>) -> io::Result<File>{
-        let time = Instant::now();
+        let time = TatakuInstant::now();
         let f = File::open(&path);
 
         let duration = time.as_millis();
@@ -45,12 +43,6 @@ impl Io {
     pub fn get_file_hash<P:AsRef<Path>>(file_path:P) -> TatakuResult<Md5Hash> {
         Ok(md5(Self::read_file(file_path)?))
     }
-
-    // pub fn get_file_with_hash(path: impl AsRef<Path>) -> TatakuResult<(String, Vec<u8>)> {
-    //     let bytes = Self::read_file(path)?;
-    //     let hash = md5(&bytes);
-    //     Ok((hash, bytes))
-    // }
 
     // check if file or folder exists
     pub fn exists<P: AsRef<Path>>(path: P) -> bool {
@@ -126,7 +118,6 @@ pub async fn _download_file(url: impl reqwest::IntoUrl, download_path: impl AsRe
 
     std::fs::write(download_path, bytes)?;
 
-
     Ok(())
 }
 
@@ -140,7 +131,13 @@ pub async fn read_replay_path(
     match path.extension().and_then(|s| s.to_str()) {
 
         // tataku replay
-        Some("ttkr") => Ok(Replay::try_read_replay(&mut open_database(path.to_str().unwrap())?).map_err(|e| TatakuError::String(format!("{e:?}")))?),
+        Some("ttkr") => {
+            let replay = std::fs::read(path)?;
+            Ok(
+                Replay::try_read_replay(&mut SerializationReader::new(replay))
+                .map_err(|e| TatakuError::String(format!("{e:?}")))?
+            )
+        },
 
         // osu replay
         Some("osr") => Ok(convert_osu_replay(path, infos)?),
@@ -203,8 +200,6 @@ pub fn open_link(url: String) {
 
 
 
-
-
 #[derive(Clone)]
 pub struct AsyncLoader<T> {
     value: Arc<AsyncMutex<Option<T>>>,
@@ -248,7 +243,6 @@ impl<T:Send + Sync + 'static> AsyncLoader<T> {
         }
     }
 }
-
 impl<T> std::fmt::Debug for AsyncLoader<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "AsyncLoader")

@@ -7,6 +7,7 @@ use winit::{
 };
 use souvlaki::{ MediaControls, PlatformConfig };
 use tokio::sync::mpsc::{ unbounded_channel, Sender };
+use tataku_input::prelude::MouseButton;
 
 static WINDOW_PROXY: OnceCell<winit::event_loop::EventLoopProxy<Game2WindowEvent>> = OnceCell::const_new();
 
@@ -35,14 +36,13 @@ pub struct GameWindow<'window> {
     game_event_sender: Arc<Sender<Window2GameEvent>>,
     render_data: Vec<Arc<dyn TatakuRenderable>>,
 
-    frametime_timer: Instant,
-    input_timer: Instant,
+    frametime_timer: TatakuInstant,
+    input_timer: TatakuInstant,
 
     close_pending: bool,
     queued_events: Vec<Window2GameEvent>,
 
     // input
-    mouse_helper: MouseInputHelper,
     controller_input: gilrs::Gilrs,
     /// what finger ids are currently active
     finger_touches: HashSet<u64>,
@@ -83,8 +83,8 @@ impl<'window> GameWindow<'window> {
             // window_event_receiver,
             render_data: Vec::new(),
 
-            frametime_timer: Instant::now(),
-            input_timer: Instant::now(),
+            frametime_timer: TatakuInstant::now(),
+            input_timer: TatakuInstant::now(),
 
             close_pending: false,
             queued_events: Vec::new(),
@@ -92,7 +92,6 @@ impl<'window> GameWindow<'window> {
             init_graphics: init,
 
             // input
-            mouse_helper: MouseInputHelper::default(),
             controller_input: gilrs::Gilrs::new().unwrap(),
             finger_touches: HashSet::new(),
             touch_pos: None,
@@ -105,8 +104,7 @@ impl<'window> GameWindow<'window> {
 
     pub fn run(mut self, event_loop: winit::event_loop::EventLoop<Game2WindowEvent>) {
         WINDOW_PROXY.set(event_loop.create_proxy()).unwrap();
-        GlobalValueManager::update(Arc::new(WindowSize(self.settings.window_size.into())));
-
+        // GlobalValueManager::update(Arc::new(WindowSize(self.settings.window_size.into())));
         event_loop.run_app(&mut self).expect("nope");
     }
 
@@ -138,7 +136,7 @@ impl<'window> GameWindow<'window> {
             let info = self.controller_input.gamepad(event.id);
             if event.event == gilrs::EventType::Connected { info!("new controller: {}", info.name()) }
 
-            self.send_game_event(Window2GameEvent::Input(WindowInputEvent::ControllerEvent(event, Arc::new(info.name().to_owned()), info.power_info())));
+            self.send_game_event(Window2GameEvent::Input(InputType::RawControllerEvent(event, Arc::new(info.name().to_owned()), info.power_info())));
         }
 
         // send as many queued requests as we can
@@ -247,7 +245,7 @@ impl<'window> GameWindow<'window> {
         self.graphics.update_emitters();
     }
 
-
+    // TODO: move this out of here
     fn init_media_controls(_window: &WinitWindow) -> MediaControls {
         info!("init media controls");
         #[cfg(not(target_os = "windows"))]
@@ -319,7 +317,7 @@ impl GameWindow<'_> {
         ctx
             .map_err(|e| TatakuError::String(e.to_string()))
             .and_then(|mut ctx| ctx.set_contents(content).map_err(|e| TatakuError::String(e.to_string())))
-        }
+    }
 
 
     fn handle_touch_event(&mut self, touch: Touch) -> Option<Window2GameEvent> {
@@ -336,8 +334,8 @@ impl GameWindow<'_> {
                 if self.finger_touches.len() == 1 {
                     self.touch_pos = Some((id, touch_pos));
 
-                    self.send_game_event(Window2GameEvent::Input(WindowInputEvent::MouseMove(Vector2::new(location.x as f32, location.y as f32))));
-                    Some(Window2GameEvent::Input(WindowInputEvent::MousePress(MouseButton::Left)))
+                    self.send_game_event(Window2GameEvent::Input(InputType::MouseMove(Vector2::new(location.x as f32, location.y as f32))));
+                    Some(Window2GameEvent::Input(InputType::MousePress(MouseButton::Left)))
                 } else {
                     None
                 }
@@ -355,7 +353,7 @@ impl GameWindow<'_> {
                     if id == start_id {
                         self.touch_pos = None;
 
-                        return Some(Window2GameEvent::Input(WindowInputEvent::MouseRelease(MouseButton::Left)))
+                        return Some(Window2GameEvent::Input(InputType::MouseRelease(MouseButton::Left)))
                     }
                 }
 
@@ -373,37 +371,24 @@ impl GameWindow<'_> {
                         let y_scroll = delta.y / 10.0;
                         *pos = touch_pos;
 
-                        return Some(Window2GameEvent::Input(WindowInputEvent::MouseScroll(y_scroll)))
+                        return Some(Window2GameEvent::Input(InputType::MouseScroll(y_scroll)))
                     }
                 }
 
-                Some(Window2GameEvent::Input(WindowInputEvent::MouseMove(touch_pos)))
+                Some(Window2GameEvent::Input(InputType::MouseMove(touch_pos)))
             }
 
             _ => None,
         }
     }
 
-    fn post_cursor_move(&mut self) {
-        // if self.mouse_helper.check_bounds(&self.window) {
-        //     let Ok(pos) = self.window.inner_position() else { return };
-        //     let size = self.window.inner_size();
-        //     let x = pos.x as f64 + size.width as f64 / 2.0;
-        //     let y = pos.y as f64 + size.height as f64 / 2.0;
-
-        //     let _ = self.window.set_cursor_position(winit::dpi::LogicalPosition::new(x, y));
-        // }
-    }
-
 }
 
 // static fns
-impl<'window> GameWindow<'window> {
+impl GameWindow<'_> {
     pub fn send_event(event: Game2WindowEvent) {
-        // tokio::sync::mpsc::UnboundedReceiver::poll_recv(&mut self, cx)
         let Some(proxy) = WINDOW_PROXY.get() else { return };
         let _ = proxy.send_event(event);
-        // WINDOW_EVENT_QUEUE.get().unwrap().send(event).ok().unwrap();
     }
 
     pub fn refresh_monitors() {
@@ -551,6 +536,7 @@ impl winit::application::ApplicationHandler<Game2WindowEvent> for GameWindow<'_>
         self.refresh_monitors_inner();
         self.set_fullscreen(self.settings.fullscreen_monitor);
         self.set_vsync(self.settings.vsync);
+        self.send_game_event(Window2GameEvent::SizeChanged(self.settings.window_size.into()));
     }
 
 
@@ -567,11 +553,9 @@ impl winit::application::ApplicationHandler<Game2WindowEvent> for GameWindow<'_>
         match event {
             Game2WindowEvent::LoadImage(event) => self.run_load_image_event(event),
             Game2WindowEvent::ShowCursor => {
-                self.mouse_helper.set_system_cursor(true);
                 self.window().set_cursor_visible(true);
             }
             Game2WindowEvent::HideCursor => {
-                self.mouse_helper.set_system_cursor(false);
                 self.window().set_cursor_visible(false);
             }
 
@@ -621,8 +605,6 @@ impl winit::application::ApplicationHandler<Game2WindowEvent> for GameWindow<'_>
                     self.set_vsync(settings.vsync);
                 }
 
-                self.mouse_helper.set_raw_input(settings.raw_mouse_input);
-
                 self.settings = settings;
             }
 
@@ -646,7 +628,7 @@ impl winit::application::ApplicationHandler<Game2WindowEvent> for GameWindow<'_>
                 }
             }
 
-            Game2WindowEvent::MediaControlEvent(event) => {
+            Game2WindowEvent::MediaControlEvent(_event) => {
 
                 // match event {
                 //     souvlaki::MediaControlEvent::Play => todo!(),
@@ -671,22 +653,22 @@ impl winit::application::ApplicationHandler<Game2WindowEvent> for GameWindow<'_>
         &mut self,
         _event_loop: &winit::event_loop::ActiveEventLoop,
         _device_id: DeviceId,
-        event: DeviceEvent,
+        _event: DeviceEvent,
     ) {
-        let event = match event {
-            DeviceEvent::MouseMotion { delta: (x, y) } => {
-                if let Some(new_pos) = self.mouse_helper.device_mouse_moved((x as f32, y as f32), self.window()) {
-                    self.post_cursor_move();
-                    Some(Window2GameEvent::Input(WindowInputEvent::MouseMove(new_pos)))
-                } else {
-                    None
-                }
-            }
+        // let event = match event {
+        //     DeviceEvent::MouseMotion { delta: (x, y) } => {
+        //         if let Some(new_pos) = self.mouse_helper.device_mouse_moved((x as f32, y as f32), self.window()) {
+        //             self.post_cursor_move();
+        //             Some(Window2GameEvent::Input(InputType::MouseMove(new_pos)))
+        //         } else {
+        //             None
+        //         }
+        //     }
 
-            _ => None
-        };
+        //     _ => None
+        // };
 
-        if let Some(event) = event { self.send_game_event(event); }
+        // if let Some(event) = event { self.send_game_event(event); }
     }
 
     fn window_event(
@@ -697,13 +679,13 @@ impl winit::application::ApplicationHandler<Game2WindowEvent> for GameWindow<'_>
     ) {
         if self.close_pending { event_loop.exit(); }
 
-        let event =  match event {
+        let event = match event {
             WindowEvent::Resized(new_size) => {
                 self.graphics.resize([new_size.width, new_size.height]);
                 let new_size = Vector2::new(new_size.width as f32, new_size.height as f32);
 
                 if new_size != Vector2::ZERO {
-                    GlobalValueManager::update(Arc::new(WindowSize(new_size)));
+                    self.send_game_event(Window2GameEvent::SizeChanged(new_size));
                 }
 
                 None
@@ -719,7 +701,6 @@ impl winit::application::ApplicationHandler<Game2WindowEvent> for GameWindow<'_>
             WindowEvent::HoveredFile(d) => Some(Window2GameEvent::FileHover(d)),
             // winit::event::WindowEvent::HoveredFileCancelled => todo!(),
             WindowEvent::Focused(has_focus) => {
-                self.mouse_helper.set_focus(has_focus, self.window());
                 if has_focus {
                     Some(Window2GameEvent::GotFocus)
                 } else {
@@ -727,54 +708,35 @@ impl winit::application::ApplicationHandler<Game2WindowEvent> for GameWindow<'_>
                 }
             }
 
-            // WindowEvent::ReceivedCharacter(c) if !c.is_control() => Some(Window2GameEvent::Char(c)),
-            // WindowEvent::KeyboardInput {
-            //     event: winit::event::KeyEvent {
-            //         logical_key: winit::keyboard::Key::Character(c),
-            //         state: ElementState::Pressed, ..
-            //     }, ..
-            // } if c.len() == 1 => {
-            //     Some(Window2GameEvent::Char(c.chars().next().unwrap()))
-            // }
-
-            // WindowEvent::KeyboardInput {
-            //     event: winit::event::KeyEvent {
-            //         logical_key: winit::keyboard::Key::Named(winit::keyboard::NamedKey::Home),
-            //         state: ElementState::Pressed, ..
-            //     }, ..
-            // } => {
-            //     self.mouse_helper.reset_cursor_pos(self.window());
-            //     Some(Window2GameEvent::MouseMove(Vector2::ZERO))
-            // }
-
             WindowEvent::KeyboardInput {
                 event: e @ winit::event::KeyEvent {
                     state: ElementState::Pressed, ..
                 }, ..
-            } => Some(Window2GameEvent::Input(WindowInputEvent::KeyPress(KeyInput::from_event(e)))),
+            } => Some(Window2GameEvent::Input(InputType::KeyPress(KeyInput::from_event(e)))),
             WindowEvent::KeyboardInput {
                 event: e @  winit::event::KeyEvent {
                     state: ElementState::Released, ..
                 }, ..
-            } => Some(Window2GameEvent::Input(WindowInputEvent::KeyRelease(KeyInput::from_event(e)))),
+            } => Some(Window2GameEvent::Input(InputType::KeyRelease(KeyInput::from_event(e)))),
 
-            // winit::event::WindowEvent::ModifiersChanged(_) => todo!(),
             // winit::event::WindowEvent::Ime(_) => todo!(),
-            WindowEvent::CursorMoved { position, .. } => if let Some(new_pos) = self.mouse_helper.display_mouse_moved(Vector2::new(position.x as f32, position.y as f32)) {
-                self.post_cursor_move();
-                Some(Window2GameEvent::Input(WindowInputEvent::MouseMove(new_pos)))
-            } else {
-                None
-            }
+            // WindowEvent::CursorMoved { position, .. } => if let Some(new_pos) = self.mouse_helper.display_mouse_moved(Vector2::new(position.x as f32, position.y as f32)) {
+            //     self.post_cursor_move();
+            //     Some(Window2GameEvent::Input(InputType::MouseMove(new_pos)))
+            // } else {
+            //     None
+            // }
+            WindowEvent::CursorMoved { position, .. } => 
+                Some(Window2GameEvent::Input(InputType::MouseMove(Vector2::new(position.x as f32, position.y as f32)))),
+
             // winit::event::WindowEvent::CursorEntered { device_id:_ } => todo!(),
             // winit::event::WindowEvent::CursorLeft { device_id:_ } => { self.mouse_pos = None; return },
-            WindowEvent::MouseWheel { delta, .. } => Some(Window2GameEvent::Input(WindowInputEvent::MouseScroll(delta2f32(delta)))),
-            WindowEvent::MouseInput { state: ElementState::Pressed, button, .. }  => Some(Window2GameEvent::Input(WindowInputEvent::MousePress(button))),
-            WindowEvent::MouseInput { state: ElementState::Released, button, .. } => Some(Window2GameEvent::Input(WindowInputEvent::MouseRelease(button))),
+            WindowEvent::MouseWheel { delta, .. } => Some(Window2GameEvent::Input(InputType::MouseScroll(delta2f32(delta)))),
+            WindowEvent::MouseInput { state: ElementState::Pressed, button, .. }  => Some(Window2GameEvent::Input(InputType::MousePress(button.into()))),
+            WindowEvent::MouseInput { state: ElementState::Released, button, .. } => Some(Window2GameEvent::Input(InputType::MouseRelease(button.into()))),
             // winit::event::WindowEvent::TouchpadPressure { device_id, pressure, stage } => todo!();
 
             WindowEvent::Touch(touch) => self.handle_touch_event(touch),
-
             WindowEvent::Occluded(_) => todo!(),
 
             WindowEvent::RedrawRequested => {

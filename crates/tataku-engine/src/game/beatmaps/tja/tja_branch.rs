@@ -17,8 +17,6 @@ pub struct TjaBranch {
     pub balloons: Vec<TjaBalloon>,
 }
 
-
-
 #[derive(Copy, Clone, Debug, Default)]
 /// the requirements for the branches
 pub struct BranchRequirement {

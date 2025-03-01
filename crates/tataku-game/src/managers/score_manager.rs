@@ -64,9 +64,6 @@ impl ScoreManager {
         }
         let settings = values.settings.clone();
 
-        // let playmode = values.get_string("global.playmode_actual").ok()?;
-        // let map_hash = values.try_get::<Md5Hash>("map.hash").ok()?;
-        // let method = values.try_get("settings.score_method").unwrap_or_default();
         let playmode = self.playmode.try_get()?.clone();
         let map_hash:Md5Hash = *self.beatmap.try_get()?;
         let method = self.score_method();
@@ -171,22 +168,6 @@ impl ScoreManager {
     fn score_method(&self) -> ScoreRetreivalMethod {
         self.score_method.as_ref().copied().unwrap_or_default()
     }
-
-    // fn update_values(&self, values: &mut ValueCollection, loaded: bool) {
-    //     let list = self.current_scores.iter().enumerate().map(|(n, score)| {
-    //         let score:TatakuValue = score.into();
-    //         let mut data = score.to_map();
-    //         data.set_value("id", TatakuVariable::new(n as u64));
-
-    //         TatakuVariable::new_game(data)
-    //     }).collect::<Vec<_>>();
-
-    //     let mut score_list = HashMap::default();
-    //     score_list.set_value("loaded", TatakuVariable::new_game(loaded));
-    //     score_list.set_value("empty", TatakuVariable::new_game(list.is_empty()));
-    //     score_list.set_value("scores", TatakuVariable::new_game(TatakuValue::List(list)));
-    //     values.set("score_list", TatakuVariable::new_game(score_list));
-    // }
     
     pub async fn update(&mut self, values: &mut ValueCollection) {
         let did_update = 
@@ -259,7 +240,7 @@ pub struct ScoreLoaderHelper {
 
 
 
-//TODO: use the api crates?
+// TODO: use the api crates?
 
 mod osu {
     use crate::prelude::*;

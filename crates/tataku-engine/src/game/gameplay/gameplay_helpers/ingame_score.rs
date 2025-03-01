@@ -7,8 +7,8 @@ pub struct IngameScore {
     /// internal id used for score lists
     pub id: usize,
 
-    // short mods list string
-    
+    // TODO: short mods list string
+
     #[reflect(flatten)]
     pub score: Score,
 
@@ -42,7 +42,6 @@ impl IngameScore {
         match &self.replay_location {
             ReplayLocation::Local => get_local_replay_for_score(&self.score),
             ReplayLocation::Online(downloader) => downloader.get_replay(settings).await,
-            // TODO: replay button should be hidden in this case, but im bad coder
             ReplayLocation::OnlineNotExist => Err("Replay is not available :c".into()),
         }
     }
@@ -79,20 +78,6 @@ impl IngameScore {
 
 }
 
-// impl From<&IngameScore> for TatakuValue {
-//     fn from(score: &IngameScore) -> Self {
-
-//         // let the score parser handle most of the work
-//         let score:TatakuValue = (&score.score).into();
-
-//         // TODO: add more things?
-
-//         score
-//     }
-// }
-
-
-
 #[derive(Clone, Debug, Default)]
 pub enum ReplayLocation {
     #[default]
@@ -101,8 +86,6 @@ pub enum ReplayLocation {
     Online(Arc<dyn ReplayDownloader>),
     OnlineNotExist,
 }
-
-
 
 impl core::ops::Deref for IngameScore {
     type Target = Score;

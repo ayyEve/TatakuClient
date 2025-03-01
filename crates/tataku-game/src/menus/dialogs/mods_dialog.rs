@@ -1,11 +1,11 @@
 use crate::prelude::*;
+use crate::prelude::ui::*;
 
 pub struct ModDialog {
-    actions: ActionQueue,
-    
-    num: usize,
-    should_close: bool,
     mod_groups: Vec<GameplayModGroup>,
+
+    node: Box<dyn Widget>,
+    node_id: NodeId,
 }
 impl ModDialog {
     pub async fn new(groups: Vec<GameplayModGroup>) -> Self {
@@ -38,141 +38,209 @@ impl ModDialog {
         // }
 
         Self {
-            actions: ActionQueue::new(),
-            num: 0,
-            should_close: false,
             mod_groups: new_groups,
             // scroll,
             // window_size,
-            // selected_index: 0
+            // selected_index: 0,
+
+
+            node: Box::new(EmptyWidget::new()),
+            node_id: EMPTY_NODE,
         }
     }
 
-    // fn increment_index(&mut self) {
-    //     // if self.scroll.items.len() == 0 { return } // should never happen but just to be safe
+    fn build_view(&self, shell: &mut LayoutShell<'_>) -> Box<dyn Widget> {
+        // let mods = shell.values.reflect_get::<ModManager>("global.mods").unwrap();
+        let owner = shell.owner;
 
-    //     // let old = self.selected_index;
-    //     // self.selected_index = (self.selected_index + 1) % self.scroll.items.len();
+        let mut items:Vec<Box<dyn Widget>> = Vec::new();
+        for group in self.mod_groups.clone() {
+            items.push(TextWidget::new(group.name).width(FILL).boxed());
+            items.push(TextWidget::new(" ").width(FILL).boxed());
 
-    //     // self.scroll.items.get_mut(old).unwrap().set_selected(false);
-    //     // self.scroll.items.get_mut(self.selected_index).unwrap().set_selected(true);
-    // }
-    // fn deincrement_index(&mut self) {
-    //     // if self.scroll.items.len() == 0 { return } // should never happen but just to be safe
+            for m in group.mods {
+                let cond = ElementCondition::Unbuilt(format!("global.mods.{}", m.name));
 
-    //     // let old = self.selected_index;
-    //     // self.selected_index = if self.selected_index == 0 { self.scroll.items.len() - 1 } else { self.selected_index - 1 };
+                items.push(row!(
+                    Checkbox::new(m.name, cond).on_toggle(move |_| Message::new(owner, m, MessageValue::Click)).font_size(30.0).width(FILL).boxed(),
+                    TextWidget::new(m.description).width(FILL).font_size(30.0).boxed();
+                    width = FILL
+                ));
+            }
+        }
 
-    //     // self.scroll.items.get_mut(old).unwrap().set_selected(false);
-    //     // self.scroll.items.get_mut(self.selected_index).unwrap().set_selected(true);
-    // }
-    // fn toggle_current(&mut self) {
-    //     if let Some(i) = self.scroll.items.get_mut(self.selected_index) {
-    //         i.on_key_press(Key::Space, Default::default());
-    //     }
-    // }
-
-    // fn toggle_mod(&self, m: GameplayMod, values: &mut dyn Reflect) {
-    //     let removes:HashSet<String> = m.removes.iter().map(|m| m.to_string()).collect();
-
-    //     let mods = values.reflect_get_mut::<ModManager>("global.mods").unwrap();
-    //     mods.toggle_mod(m);
-    //     mods.mods.retain(|m| !removes.contains(m));
-    // }
+        Container::new(items)
+            .id("mods_list")
+            .scrollable(true)
+            .drag_scroll(true)
+            .flex_direction(FlexDirection::Column)
+            .vertical_overflow(taffy::Overflow::Scroll)
+            .boxed()
+    }
 }
 
+
 #[async_trait]
-impl Dialog for ModDialog {
-    fn name(&self) -> &'static str { "mod_menu" }
-    fn get_num(&self) -> usize { self.num }
-    fn set_num(&mut self, num: usize) { self.num = num }
+impl Widget for ModDialog {
+    fn name(&self) -> Cow<'static,str> { "mod_dialog".into() }
+    fn node_id(&self) -> NodeId { self.node_id }
 
-    fn should_close(&self) -> bool { self.should_close }
-    async fn force_close(&mut self) { self.should_close = true; }
+    fn layout(
+        &mut self, 
+        shell: &mut LayoutShell<'_>
+    ) -> TaffyResult<NodeId> {
+        self.node = self.build_view(shell);
+        let child = self.node.layout(shell)?;
+        self.node_id = shell.tree.new_with_children(
+            Style::default(), 
+            &[ child ]
+        )?;
 
-    
-    async fn update(&mut self, _values: &mut dyn Reflect) -> Vec<TatakuAction> { 
-        self.actions.take()
+        Ok(self.node_id)
+    }
+
+    fn input(
+        &mut self, 
+        event: &InputEvent,
+        shell: &mut InputShell<'_>,
+    ) {
+        self.node.input(event, shell);
+    }
+
+    fn draw(&self, shell: &mut DrawShell<'_>) {
+        self.node.draw(shell);
+    }
+
+    fn update(
+        &mut self, 
+        shell: &mut UpdateShell<'_>,
+        actions: &mut ActionQueue,
+    ) { 
+        self.node.update(shell, actions)
     }
     
-    async fn handle_message(&mut self, message: Message, _values: &mut dyn Reflect) {
+    async fn handle_message(
+        &mut self, 
+        message: &Message, 
+        _values: &mut dyn Reflect,
+        actions: &mut ActionQueue,
+    ) {
         let MessageTag::GameplayMod(m) = message.tag else { return };
 
-        self.actions.push(ModAction::ToggleMod(m.name.to_owned()));
+        actions.push(ModAction::ToggleMod(m.name.to_owned()));
         for m in m.removes {
-            self.actions.push(ModAction::RemoveMod((*m).to_owned()));
+            actions.push(ModAction::RemoveMod((*m).to_owned()));
         }
         // self.toggle_mod(m, values);
     }
 
-    fn view(&self, values: &mut dyn Reflect) -> IcedElement {
-        use iced_elements::*;
-        let mods = values.reflect_get::<ModManager>("global.mods").unwrap();
-        let owner = MessageOwner::new_dialog(self);
-
-        let mut items = Vec::new();
-        for group in self.mod_groups.clone() {
-            items.push(Text::new(group.name).width(Fill).into_element());
-            items.push(Text::new("   ").width(Fill).into_element());
-
-            for m in group.mods {
-                items.push(row!(
-                    Checkbox::new(m.name, mods.has_mod(m)).on_toggle(move|_| Message::new(owner, m, MessageType::Click)).text_size(30.0).width(Fill),
-                    Text::new(m.description).width(Fill).size(30.0);
-                    width = Fill
-                ))
-            }
-        }
-
-        DraggingScroll::with_children(vec![
-            make_scrollable(items, "mods_list").into_element()
-        ]).into_element()
-    }
-
-
-    // async fn update(&mut self, _g: &mut Game) {
-    //     self.scroll.update();
-    // }
-    
-    // async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection) {
-    //     self.draw_background(Color::BLACK, offset, list);
-    //     self.scroll.draw(offset, list);
-    // }
-
-    // async fn on_key_press(&mut self, key:Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
-    //     match key {
-    //         Key::Up => {
-    //             self.deincrement_index();
-    //             true
-    //         }
-    //         Key::Down => {
-    //             self.increment_index();
-    //             true
-    //         }
-    //         Key::Space | Key::Return => {
-    //             self.toggle_current();
-    //             true
-    //         }
-
-    //         _ => false
-    //     }
-    // }
-
-    // async fn on_mouse_move(&mut self, pos:Vector2, _g:&mut Game) {
-    //     self.scroll.on_mouse_move(pos);
-    // }
-
-    // async fn on_mouse_down(&mut self, pos:Vector2, button:MouseButton, mods:&KeyModifiers, _g:&mut Game) -> bool {
-    //     self.scroll.on_click(pos, button, *mods);
-    //     true
-    // }
-
-    // async fn on_mouse_up(&mut self, pos:Vector2, button:MouseButton, _mods:&KeyModifiers, _g:&mut Game) -> bool {
-    //     self.scroll.on_click_release(pos, button);
-    //     true
-    // }
-
 }
+
+
+// struct ModButton {
+//     m: GameplayMod,
+
+//     node_id: NodeId,
+//     node: Box<dyn Widget>
+// }
+// impl ModButton {
+//     fn new(m: GameplayMod) -> Self {
+//         let cond = ElementCondition::Unbuilt("".into());
+
+//         let node = row!(
+//             Checkbox::new(m.name, cond).on_toggle(move|_| Message::new(owner, m, MessageValue::Click)).font_size(30.0).width(FILL).boxed(),
+//             TextWidget::new(m.description).width(FILL).font_size(30.0).boxed();
+//             width = FILL
+//         );
+
+//         Self {
+//             m,
+//             node_id: EMPTY_NODE,
+//             node,
+//         }
+//     }
+// }
+// // #[async_trait]
+// impl Widget for ModButton {
+//     fn name(&self) -> Cow<'static, str> { format!("mod_{}", self.m.name) }
+//     fn node_id(&self) -> NodeId { self.node_id }
+
+//     fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId>  {
+//         let child = self.node.layout(shell)?;
+//         self.node_id = shell.tree.new_with_children(
+//             Style::DEFAULT, 
+//             &[ child ]
+//         )?;
+
+//         Ok(self.node_id)
+//     }
+
+//     fn input(&mut self, event: &InputEvent, shell: &mut InputShell<'_>) {
+//         self.node.input(event, shell);
+//     }
+
+//     fn draw(&self, shell: &mut DrawShell<'_> ,) {
+//         self.node.draw(shell)
+//     }
+    
+// }
+
+
+
+// impl Dialog for ModDialog {
+//     fn get_num(&self) -> usize { self.num }
+//     fn set_num(&mut self, num: usize) { self.num = num }
+
+//     fn should_close(&self) -> bool { self.should_close }
+//     fn force_close(&mut self) { self.should_close = true; }
+
+    
+
+
+
+//     // async fn update(&mut self, _g: &mut Game) {
+//     //     self.scroll.update();
+//     // }
+    
+//     // async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection) {
+//     //     self.draw_background(Color::BLACK, offset, list);
+//     //     self.scroll.draw(offset, list);
+//     // }
+
+//     // async fn on_key_press(&mut self, key:Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
+//     //     match key {
+//     //         Key::Up => {
+//     //             self.deincrement_index();
+//     //             true
+//     //         }
+//     //         Key::Down => {
+//     //             self.increment_index();
+//     //             true
+//     //         }
+//     //         Key::Space | Key::Return => {
+//     //             self.toggle_current();
+//     //             true
+//     //         }
+
+//     //         _ => false
+//     //     }
+//     // }
+
+//     // async fn on_mouse_move(&mut self, pos:Vector2, _g:&mut Game) {
+//     //     self.scroll.on_mouse_move(pos);
+//     // }
+
+//     // async fn on_mouse_down(&mut self, pos:Vector2, button:MouseButton, mods:&KeyModifiers, _g:&mut Game) -> bool {
+//     //     self.scroll.on_click(pos, button, *mods);
+//     //     true
+//     // }
+
+//     // async fn on_mouse_up(&mut self, pos:Vector2, button:MouseButton, _mods:&KeyModifiers, _g:&mut Game) -> bool {
+//     //     self.scroll.on_click_release(pos, button);
+//     //     true
+//     // }
+
+// }
 
 // #[derive(ScrollableGettersSetters)]
 // struct ModButton {

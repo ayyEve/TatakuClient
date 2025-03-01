@@ -12,7 +12,6 @@ pub trait GraphicsEngine {
     /// set the vsync mode
     fn set_vsync(&mut self, vsync: Vsync);
 
-
     fn create_render_target(
         &mut self, 
         size: [u32; 2], 
@@ -136,7 +135,6 @@ pub trait GraphicsEngine {
         transform: Matrix,
         flashlight_data: FlashlightData
     );
-
 
     // particle engine stuff
     fn add_emitter(&mut self, emitter: EmitterReference);

@@ -8,6 +8,8 @@ mod render_buffer_type;
 mod render_buffer_queue_type;
 
 mod prelude {
+    pub(crate) use wgpu::*;
+
     pub use crate::shaders::*;
     pub use crate::texture::*;
     pub use crate::last_drawn::*;

@@ -157,7 +157,9 @@ pub fn save_replay(score: &Score) -> TatakuResult<String> {
     let actual_hash = format!("{:x}", md5::compute(hash));
     let filename = format!("{}/{}.ttkr", REPLAYS_DIR, actual_hash);
     // info!("Saving replay as {}, judgments: {}", filename, s.judgment_string());
-    save_database(&filename, writer)?;
+
+    // save the database
+    std::fs::write(&filename, writer.data())?;
     Ok(filename)
 }
 
@@ -165,8 +167,9 @@ pub fn get_local_replay(score_hash: String) -> TatakuResult<Score> {
     let actual_hash = format!("{:x}", md5::compute(score_hash));
     let fullpath = format!("{}/{}.ttkr", REPLAYS_DIR, actual_hash);
     // info!("loading replay: {fullpath}");
-    
-    let mut reader = open_database(&fullpath)?;
+
+    let data = std::fs::read(&fullpath)?;
+    let mut reader = SerializationReader::new(data);
     Ok(reader.read("score")?)
 }
 

@@ -12,7 +12,7 @@ pub struct DiffCalcTask {
     state: TatakuTaskState,
 
     beatmap: Arc<BeatmapMeta>,
-    info: GameModeInfo,
+    info: GamemodeInfo,
 
     diff_calc: Option<Box<dyn DiffCalc>>,
     failed_to_get_diff_calc: bool,
@@ -28,7 +28,7 @@ pub struct DiffCalcTask {
 impl DiffCalcTask {
     pub fn new(
         beatmap: Arc<BeatmapMeta>, 
-        info: GameModeInfo,
+        info: GamemodeInfo,
     ) -> Self {
         let mod_mutations = vec![HashSet::new()];
 

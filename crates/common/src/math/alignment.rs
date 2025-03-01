@@ -133,19 +133,47 @@ impl std::str::FromStr for Alignment {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match &*s.to_lowercase() {
-            "top_left" | "topleft" => Ok(Self::TOP_LEFT),
-            "top_center" | "topcenter" | "top_middle" | "topmiddle" => Ok(Self::TOP_CENTER),
-            "top_right" | "topright" => Ok(Self::TOP_RIGHT),
+            "top-left" | "top_left" | "topleft" => Ok(Self::TOP_LEFT),
+            "top-center" | "top_center" | "topcenter" | "top-middle" | "top_middle" | "topmiddle" => Ok(Self::TOP_CENTER),
+            "top-right" | "top_right" | "topright" => Ok(Self::TOP_RIGHT),
 
-            "center_left" | "centerleft" => Ok(Self::CENTER_LEFT),
+            "center-left" | "center_left" | "centerleft" => Ok(Self::CENTER_LEFT),
             "center" => Ok(Self::CENTER),
-            "center_right" | "centerright" => Ok(Self::CENTER_RIGHT),
+            "center-right" |  "center_right" | "centerright" => Ok(Self::CENTER_RIGHT),
 
-            "bottom_left" | "bottomleft" => Ok(Self::BOTTOM_LEFT),
-            "bottom_center" | "bottomcenter" | "bottom_middle" | "bottommiddle" => Ok(Self::BOTTOM_MIDDLE),
-            "bottom_right" | "bottomright" => Ok(Self::BOTTOM_RIGHT),
+            "bottom-left" | "bottom_left" | "bottomleft" => Ok(Self::BOTTOM_LEFT),
+            "bottom-center" | "bottom_center" | "bottomcenter" | "bottom_middle" | "bottommiddle" => Ok(Self::BOTTOM_MIDDLE),
+            "bottom-right" | "bottom_right" | "bottomright" => Ok(Self::BOTTOM_RIGHT),
             
             _ => Err("Unknown Value")
+        }
+    }
+}
+
+mod lua {
+    use crate::prelude::lua::*;
+    use super::*;
+
+    impl FromLua for Alignment {
+        fn from_lua(value: LuaValue, _: &Lua) -> LuaResult<Self> {
+            let LuaValue::String(s) = value else {
+                return Err(FromLuaConversionError { 
+                    from: value.type_name(), 
+                    to: "Alignment".to_owned(), 
+                    message: None 
+                });
+            };
+
+            let s = s.to_str()?;
+            let Ok(a) = s.parse() else {
+                return Err(FromLuaConversionError { 
+                    from: "String", 
+                    to: "Alignment".to_owned(), 
+                    message: Some(format!("Unknown value: {s}")) 
+                });
+            };
+
+            Ok(a)
         }
     }
 }

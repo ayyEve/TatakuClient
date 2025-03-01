@@ -1,5 +1,6 @@
 use crate::prelude::*;
 
+#[derive(Default)]
 pub struct CheckBeatmapFoldersTask {
     state: TatakuTaskState,
     // status: Arc<RwLock<LoadingStatus>>,
@@ -8,19 +9,6 @@ pub struct CheckBeatmapFoldersTask {
     existing_paths: HashSet<String>,
 
     folders: Vec<String>
-}
-impl CheckBeatmapFoldersTask {
-    pub fn new(
-        // status: Arc<RwLock<LoadingStatus>>
-    ) -> Self {
-        Self {
-            state: TatakuTaskState::NotStarted,
-            // status,
-
-            existing_paths: HashSet::new(),
-            folders: Vec::new()
-        }
-    }
 }
 
 #[async_trait]

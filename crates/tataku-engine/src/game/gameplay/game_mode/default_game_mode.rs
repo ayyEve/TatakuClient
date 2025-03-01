@@ -9,13 +9,12 @@ pub struct NoMode;
 impl GameMode for NoMode {
     async fn new(_: &Beatmap, _: bool, _: &Settings) -> Result<Self, TatakuError> where Self: Sized {Ok(Self {})}
 
-    async fn handle_replay_frame<'a>(&mut self, _: ReplayFrame, _: &mut GameplayStateForUpdate<'a>) {}
-    async fn update<'a>(&mut self, _: &mut GameplayStateForUpdate<'a>) { }
-    async fn draw<'a>(&mut self, _: GameplayStateForDraw<'a>, _: &mut RenderableCollection) {}
+    async fn handle_replay_frame<'a>(&mut self, _: ReplayFrame, _: &mut GameplayUpdateShell<'a>) {}
+    async fn update<'a>(&mut self, _: &mut GameplayUpdateShell<'a>) { }
+    async fn draw<'a>(&mut self, _: GameplayDrawShell<'a>, _: &mut RenderableCollection) {}
     fn skip_intro(&mut self, _: f32) -> Option<f32> { None }
     async fn reset(&mut self, _: &Beatmap) {}
-    async fn window_size_changed(&mut self, _: Arc<WindowSize>) {}
-    async fn fit_to_area(&mut self, _: Bounds) {}
+    fn set_bounds(&mut self, _: Bounds, _: bool) {}
     async fn force_update_settings(&mut self, _: &Settings) {}
     
     #[cfg(feature="graphics")]
@@ -29,29 +28,6 @@ impl GameMode for NoMode {
 
     fn get_playfield(&self) -> PlayfieldNonsense { Default::default() }
     fn properties(&self) -> GameModeProperties { GameModeProperties::default() }
+
+    async fn handle_input(&mut self, _input: InputEvent) -> Option<ReplayAction> { None }
 }
-
-#[cfg(feature="graphics")]
-#[async_trait]
-impl GameModeInput for NoMode {
-    async fn key_down(&mut self, _: Key) -> Option<ReplayAction> { None }
-    async fn key_up(&mut self, _: Key) -> Option<ReplayAction> { None }
-}
-#[cfg(not(feature="graphics"))]
-impl GameModeInput for NoMode {}
-
-
-// impl GameModeProperties for NoMode {
-//     fn playmode(&self) -> Cow<'static, str> { Cow::Borrowed("none") }
-//     fn end_time(&self) -> f32 {0.0}
-    
-//     // fn combo_bounds(&self) -> Rectangle {SimpleRectangle::new(Vector2::ZERO, Vector2::ZERO)}
-//     fn timing_bar_things(&self) -> Vec<(f32,Color)> { Vec::new() }
-//     fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> { Vec::new() }
-//     // fn score_hit_string(_hit:&ScoreHit) -> String where Self: Sized { String::new() }
-//     fn get_info(&self) -> GameModeInfo {
-//         GameModeInfo::default()
-//     }
-
-//     fn get_playfield(&self) -> Bounds { Bounds::default() }
-// }

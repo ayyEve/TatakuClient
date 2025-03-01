@@ -7,8 +7,8 @@ use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 pub struct QuaverDirect;
 #[async_trait]
 impl DirectApi for QuaverDirect {
-    fn api_name(&self) -> &'static str {"Quaver"}
-    fn supported_modes(&self) -> Vec<String> {vec!["mania".to_owned()]}
+    fn api_name(&self) -> &'static str { "Quaver" }
+    fn supported_modes(&self) -> Vec<String> { vec!["mania".to_owned()] }
 
     async fn do_search(&mut self, search_params:SearchParams, _settings: &Settings) -> Vec<Arc<dyn DirectDownloadable>> {
         trace!("Searching");

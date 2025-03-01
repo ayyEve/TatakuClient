@@ -108,9 +108,6 @@ fn start_game(
         trace!("running game");
         game.game_loop().await;
         warn!("game closed");
-
-        // this shouldnt be necessary but its here commented out just in case
-        // GameWindow::send_event(Game2WindowEvent::CloseGame);
     });
 
 
@@ -118,14 +115,15 @@ fn start_game(
 
     // setup window
     #[cfg(feature="graphics")]
-    let game_window = window_runtime.block_on(async {
+    let runtime2 = window_runtime.clone();
+    let game_window = window_runtime.block_on(async move {
         info!("creating window");
         let settings = Settings::load(&mut ActionQueue::new()).await;
 
         GameWindow::new(
             game_event_sender,
             &WINDOW,
-            window_runtime.clone(),
+            runtime2,
             window_side_barrier,
             &settings,
             vec![
@@ -291,11 +289,15 @@ fn init_logging() -> LogGuard {
 
     let tataku_crates = [
         "tataku_client",
+        "tataku_client_common",
         "tataku_game",
         "tataku_engine",
         "tataku_wgpu",
         "tataku_bass",
         "tataku_common",
+        "tataku_input",
+        "tataku_interface",
+
         "gamemode_osu",
         "gamemode_taiko",
         "gamemode_mania",

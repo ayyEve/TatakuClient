@@ -8,7 +8,7 @@ pub trait HitObject: Send + Sync {
     /// time in ms of this hit object
     fn time(&self) -> f32;
     /// when should the hitobject be considered "finished", should the miss hitwindow be applied (specifically for notes)
-    fn end_time(&self, hitwindow_miss:f32) -> f32;
+    fn end_time(&self, hitwindow_miss: f32) -> f32;
 
     async fn update(&mut self, time: f32);
     async fn draw(&mut self, time: f32, list: &mut RenderableCollection);

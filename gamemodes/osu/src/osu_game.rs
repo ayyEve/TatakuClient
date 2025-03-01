@@ -42,7 +42,7 @@ pub struct OsuGame {
     beatmap_combo_colors: Vec<Color>,
 
     use_controller_cursor: bool,
-    window_size: Arc<WindowSize>,
+    // window_size: Arc<WindowSize>,
     end_time: f32,
 
     follow_point_image: Option<Image>,
@@ -59,24 +59,24 @@ pub struct OsuGame {
     new_playfield_pending: bool,
 }
 impl OsuGame {
-    async fn recalculate_playfield(&mut self) {
+    fn recalculate_playfield(&mut self, window_size: Vector2) {
         let new_scale = Arc::new(ScalingHelper::new_with_settings(
             &self.game_settings, 
             self.cs, 
-            self.window_size.0, 
+            window_size, 
             self.mods.has_mod(HardRock)
         ));
         
         self.new_playfield_pending = true;
-        self.apply_playfield(new_scale).await;
+        self.apply_playfield(new_scale);
     }
-    async fn apply_playfield(&mut self, playfield: Arc<ScalingHelper>) {
+    fn apply_playfield(&mut self, playfield: Arc<ScalingHelper>) {
         self.scaling_helper = playfield.clone();
         self.cursor.note_radius = self.scaling_helper.circle_size.x / 2.0;
 
         // update playfield for notes
         for note in self.notes.iter_mut() {
-            note.playfield_changed(playfield.clone()).await;
+            note.playfield_changed(playfield.clone());
         }
     }
 
@@ -171,7 +171,7 @@ impl OsuGame {
         scaling_helper: &Arc<ScalingHelper>, 
         judgment_helper: &JudgmentImageHelper, 
         settings: &OsuSettings, 
-        state: &mut GameplayStateForUpdate<'_>
+        state: &mut GameplayUpdateShell<'_>
     ) {
         if hit_value.tex_name.is_empty() { return }
 
@@ -257,7 +257,7 @@ impl OsuGame {
 
             let direction = PI * 2.0 - Vector2::atan2(n2_pos - n1_pos);
             let follow_dot_count = distance / follow_dot_distance;
-            for i in 1..(follow_dot_count as u64 - 1) {
+            for i in 1..(follow_dot_count.min(1.0) as u64 - 1) {
                 let lerp_amount = i as f32 / follow_dot_count;
                 let time_at_this_point = f32::lerp(n1_time, n2_time, lerp_amount);
                 let point = Vector2::lerp(n1_pos, n2_pos, lerp_amount);
@@ -349,10 +349,11 @@ impl GameMode for OsuGame {
     ) -> TatakuResult<Self> {
         let metadata = map.get_beatmap_meta();
         let mods = Arc::new(Default::default());
-        let window_size = WindowSize::get();
-        let effective_window_size = if diff_calc_only { super::diff_calc::WINDOW_SIZE } else { window_size.0 };
+        // let window_size = WindowSize::get();
+        let effective_window_size = super::diff_calc::WINDOW_SIZE; //if diff_calc_only { super::diff_calc::WINDOW_SIZE } else { window_size.0 };
         
-        let game_settings = settings.osu_settings.clone();
+        let game_settings = settings.gamemode_settings(crate::GAME_INFO).unwrap_or_default();
+        // settings.osu_settings.clone();
 
         let cs = Self::get_cs(&metadata, &mods);
         let ar = Self::get_ar(&metadata, &mods);
@@ -401,7 +402,7 @@ impl GameMode for OsuGame {
                     
                     new_combos: Vec::new(),
                     stack_leniency,
-                    window_size,
+                    // window_size,
                     follow_point_image: None,
                     judgment_helper,
                     metadata,
@@ -697,7 +698,7 @@ impl GameMode for OsuGame {
     async fn handle_replay_frame<'a>(
         &mut self, 
         frame: ReplayFrame, 
-        state: &mut GameplayStateForUpdate<'a>
+        state: &mut GameplayUpdateShell<'a>
     ) {
         const ALLOWED_PRESSES:&[KeyPress] = &[
             KeyPress::Left, 
@@ -836,7 +837,7 @@ impl GameMode for OsuGame {
 
     async fn update<'a>(
         &mut self, 
-        state: &mut GameplayStateForUpdate<'a>,
+        state: &mut GameplayUpdateShell<'a>,
     ) {
         state.action_queue.extend(self.actions.take());
 
@@ -852,7 +853,7 @@ impl GameMode for OsuGame {
         if state.gameplay_mode.is_preview() && self.cursor.emitter_enabled {
             self.cursor.emitter_enabled = false;
         }
-        self.cursor.update(state.time, state.settings).await;
+        self.cursor.update().await;
 
         let has_autoplay = state.mods.has_autoplay();
         let has_relax = state.mods.has_mod(Relax);
@@ -1047,9 +1048,10 @@ impl GameMode for OsuGame {
     
     async fn draw<'a>(
         &mut self, 
-        state: GameplayStateForDraw<'a>, 
+        state: GameplayDrawShell<'a>, 
         list: &mut RenderableCollection
     ) {
+        let window_size = state.window_size;
         // draw the playfield
         if !state.gameplay_mode.is_preview() {
             let alpha = self.game_settings.playfield_alpha;
@@ -1076,14 +1078,14 @@ impl GameMode for OsuGame {
                 );
 
                 let wx_line = Line::new(
-                    Vector2::new(0.0, self.window_size.y/2.0),
-                    Vector2::new(self.window_size.x, self.window_size.y/2.0),
+                    Vector2::new(0.0, window_size.y/2.0),
+                    Vector2::new(window_size.x, window_size.y/2.0),
                     line_size,
                     Color::WHITE
                 );
                 let wy_line = Line::new(
-                    Vector2::new(self.window_size.x/2.0, 0.0),
-                    Vector2::new(self.window_size.x/2.0, self.window_size.y),
+                    Vector2::new(window_size.x/2.0, 0.0),
+                    Vector2::new(window_size.x/2.0, window_size.y),
                     line_size, 
                     Color::WHITE
                 );
@@ -1107,7 +1109,7 @@ impl GameMode for OsuGame {
         }
 
         // draw cursor ripples
-        self.cursor.draw_below(list).await;
+        self.cursor.draw_below(list);
 
         // draw follow points
         self.draw_follow_points(state.time, list);
@@ -1153,7 +1155,7 @@ impl GameMode for OsuGame {
         }
 
         // draw the cursor on top of smoke tho
-        self.cursor.draw_above(list).await;
+        self.cursor.draw_above(list);
     }
 
     
@@ -1183,26 +1185,25 @@ impl GameMode for OsuGame {
         Some(time)
     }
 
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        self.window_size = window_size;
-        self.recalculate_playfield().await;
-    }
-
-
-    async fn fit_to_area(&mut self, bounds: Bounds) {
-        self.apply_playfield(Arc::new(ScalingHelper::new_offset_scale(
-            self.cs, 
-            bounds.size, 
-            bounds.pos, 
-            0.5, 
-            self.mods.has_mod(HardRock)
-        ))).await;
+    fn set_bounds(&mut self, bounds: Bounds, full_window: bool) {
+        if full_window {
+            // self.window_size = window_size;
+            self.recalculate_playfield(bounds.size);
+        } else {
+            self.apply_playfield(Arc::new(ScalingHelper::new_offset_scale(
+                self.cs, 
+                bounds.size, 
+                bounds.pos, 
+                0.80, 
+                self.mods.has_mod(HardRock)
+            )));
+        }
     }
 
     async fn time_jump<'a>(
         &mut self, 
         new_time: f32,
-        state: &mut GameplayStateForUpdate<'a>
+        state: &mut GameplayUpdateShell<'a>
     ) {
         for n in self.notes.iter_mut() {
             n.time_jump(new_time).await;
@@ -1222,7 +1223,8 @@ impl GameMode for OsuGame {
     }
     
     async fn force_update_settings(&mut self, settings: &Settings) {
-        let settings = settings.osu_settings.clone();
+        let settings = settings.gamemode_settings::<OsuSettings>(crate::GAME_INFO).unwrap_or_default();
+        // let settings = settings.osu_settings.clone();
         let settings = Arc::new(settings);
 
         if self.game_settings == settings { return }
@@ -1320,8 +1322,7 @@ impl GameMode for OsuGame {
 
             // self.apply_playfield(Arc::new(ScalingHelper::new_offset_scale(cs, size, pos, scale, has_hr))).await;
 
-            self.recalculate_playfield().await;
-
+            self.recalculate_playfield(self.scaling_helper.window_size);
             self.setup_hitwindows();
 
             set_ar = Some(ar);
@@ -1436,6 +1437,205 @@ impl GameMode for OsuGame {
         // }
     }
 
+    async fn handle_input(&mut self, input: InputEvent) -> Option<ReplayAction> {
+        match input.event {
+            InputType::KeyPress(press) => {
+                let key = press.as_key()?;
+
+                // playfield adjustment
+                if key == Key::LControl {
+                    let old = self.game_settings.get_playfield();
+                    self.move_playfield = Some((old.1, self.window_mouse_pos));
+                    return None;
+                }
+
+                let key = self.map_key(&key)?;
+
+                // if relax is enabled, and the user doesn't want manual input, return
+                if self.mods.has_mod(Relax) {
+                    if !self.game_settings.manual_input_with_relax { return None; }
+                    self.relax_manager.key_pressed(key);
+                }
+
+                Some(ReplayAction::Press(key))
+            }
+
+            InputType::KeyRelease(release) => {
+                let key = release.as_key()?;
+
+                // playfield adjustment
+                if key == Key::LControl {
+                    self.move_playfield = None;
+                    return None;
+                }
+
+                let key = self.map_key(&key)?;
+
+                // if relax is enabled, and the user doesn't want manual input, return
+                if self.mods.has_mod(Relax) {
+                    if !self.game_settings.manual_input_with_relax { return None; }
+                    self.relax_manager.key_released(key);
+                }
+
+                Some(ReplayAction::Release(key))
+            }
+
+            InputType::MouseMove(pos) => {
+                if self.use_controller_cursor {
+                    // info!("switched to mouse");
+                    self.use_controller_cursor = false;
+                }
+                self.window_mouse_pos = pos;
+                
+                if let Some((original, mouse_start)) = self.move_playfield {
+                    
+                    let mut settings = (*self.game_settings).clone();
+                    let mut change = original + (pos - mouse_start);
+
+                    // check playfield snapping
+                    // TODO: can this be simplified?
+                    let playfield_size = self.scaling_helper.playfield_with_padding.size;
+
+                    // what the offset should be if playfield is centered
+                    let center_offset = (self.scaling_helper.window_size - FIELD_SIZE * self.scaling_helper.scale) / 2.0 - (self.scaling_helper.window_size - playfield_size) / 2.0;
+
+                    let snap_threshold = settings.playfield_snap;
+                    if (center_offset.x - change.x).abs() < snap_threshold {
+                        change.x = center_offset.x;
+                    }
+                    if (center_offset.y - change.y).abs() < snap_threshold {
+                        change.y = center_offset.y;
+                    }
+
+                    settings.playfield_x_offset = change.x;
+                    settings.playfield_y_offset = change.y;
+                    
+                    
+                    let settings2 = settings.clone();
+                    self.actions.push(GameAction::UpdateSettings(Box::new(move |settings| settings.update_gamemode_settings(GAME_INFO, settings2) )));
+
+                    self.game_settings = Arc::new(settings);
+                    self.recalculate_playfield(self.scaling_helper.window_size);
+                    return None;
+                }
+                
+
+                // convert window pos to playfield pos
+                let pos = self.scaling_helper.descale_coords(pos);
+                Some(ReplayAction::MousePos(pos.x, pos.y))
+            }
+
+            InputType::MousePress(btn) => {
+                // if the user has mouse input disabled, return
+                if self.game_settings.ignore_mouse_buttons { return None }
+                
+                let button = self.map_btn(&btn)?;
+
+                // if relax is enabled, and the user doesn't want manual input, return
+                if self.mods.has_mod(Relax) {
+                    if !self.game_settings.manual_input_with_relax { return None; }
+                    self.relax_manager.key_pressed(button);
+                }
+
+                Some(ReplayAction::Press(button))
+            }
+
+            InputType::MouseRelease(btn) => {
+                // if the user has mouse input disabled, return
+                if self.game_settings.ignore_mouse_buttons { return None }
+
+                let button = self.map_btn(&btn)?;
+
+                // if relax is enabled, and the user doesn't want manual input, return
+                if self.mods.has_mod(Relax) {
+                    if !self.game_settings.manual_input_with_relax { return None; }
+                    self.relax_manager.key_released(button);
+                }
+
+                Some(ReplayAction::Release(button))
+            }
+
+            InputType::MouseScroll(delta) => {
+                if self.move_playfield.is_some() {
+                    let delta = delta / 40.0;
+                    let mut a = (*self.game_settings).clone();
+                    a.playfield_scale += delta;
+                    self.game_settings = Arc::new(a.clone());
+
+                    self.actions.push(GameAction::UpdateSettings(Box::new(move |settings| settings.update_gamemode_settings(GAME_INFO, a) )));
+
+                    self.recalculate_playfield(self.scaling_helper.window_size);
+                }
+
+                None
+            }
+
+            InputType::ControllerPress(btn, _id, _name) => {
+                // if relax is enabled, and the user doesn't want manual input, return
+                if self.mods.has_mod(Relax) && !self.game_settings.manual_input_with_relax { return None; }
+
+                match btn {
+                    ControllerButton::LeftTrigger => Some(ReplayAction::Press(KeyPress::Left)),
+                    ControllerButton::RightTrigger => Some(ReplayAction::Press(KeyPress::Right)),
+                    _ => None
+                }
+            }
+
+            InputType::ControllerRelease(btn, _id, _name) => {
+                // if relax is enabled, and the user doesn't want manual input, return
+                if self.mods.has_mod(Relax) && !self.game_settings.manual_input_with_relax { return None; }
+
+                match btn {
+                    ControllerButton::LeftTrigger => Some(ReplayAction::Release(KeyPress::Left)),
+                    ControllerButton::RightTrigger => Some(ReplayAction::Release(KeyPress::Right)),
+                    _ => None
+                }
+            }
+
+            InputType::ControllerAxis(Axis::LeftStickX, value, _id, _name) => {
+                // -1.0 to 1.0
+                // where -1 is 0, and 1 is scaling_helper.playfield_scaled_with_cs_border.whatever
+                
+                if !self.use_controller_cursor {
+                    // info!("switched to controller input");
+                    self.use_controller_cursor = true;
+                }
+
+                let mut new_pos = self.mouse_pos;
+                let scaling_helper = self.scaling_helper.clone();
+                let playfield = scaling_helper.playfield_with_padding;
+
+                let normalized = (value + 1.0) / 2.0;
+                new_pos.x = playfield.pos.x + f32::lerp(0.0, playfield.size.x, normalized);
+                        
+                let new_pos = scaling_helper.descale_coords(new_pos);
+                Some(ReplayAction::MousePos(new_pos.x, new_pos.y))
+            }
+
+            InputType::ControllerAxis(Axis::LeftStickY, value, _id, _name) => {
+                // y is upside down in gilrs i guess?
+
+                if !self.use_controller_cursor {
+                    // info!("switched to controller input");
+                    self.use_controller_cursor = true;
+                }
+                
+
+                let mut new_pos = self.mouse_pos;
+                let scaling_helper = self.scaling_helper.clone();
+                let playfield = scaling_helper.playfield_with_padding;
+
+                let normalized = (value + 1.0) / 2.0;
+                new_pos.y = playfield.pos.y + f32::lerp(playfield.size.y, 0.0, normalized);
+
+                let new_pos = scaling_helper.descale_coords(new_pos);
+                Some(ReplayAction::MousePos(new_pos.x, new_pos.y))
+            }
+
+            _ => None
+        }
+    }
+
     
     async fn beat_happened(&mut self, pulse_length: f32) {
         self.notes.iter_mut().for_each(|n|n.beat_happened(pulse_length));
@@ -1444,22 +1644,20 @@ impl GameMode for OsuGame {
         self.notes.iter_mut().for_each(|n|n.kiai_changed(is_kiai));
     }
 
-
-
-    async fn get_ui_elements(
+    async fn build_widgets(
         &self, 
         loader: &mut dyn UiElementLoader
     ) {
         // combo
         loader.change_default_layout(
             "combo", 
-            UiElementLayout::new_default(
-                UiElementAnchor::element("duration_bar", UiElementAlign::Above),
+            GameplayWidgetLayout::new_default(
+                GameplayWidgetAnchor::element("duration_bar", GameplayWidgetAlign::Above),
                 Alignment::TOP_LEFT,
                 None,
                 None,
             )
-        ).await;
+        );
     }
 
     fn get_playfield(&self) -> PlayfieldNonsense {
@@ -1489,201 +1687,3 @@ impl GameMode for OsuGame {
         }
     }
 }
-
-#[async_trait]
-#[cfg(feature="graphics")]
-impl GameModeInput for OsuGame {
-    async fn key_down(&mut self, key: Key) -> Option<ReplayAction> {
-        // playfield adjustment
-        if key == Key::LControl {
-            let old = self.game_settings.get_playfield();
-            self.move_playfield = Some((old.1, self.window_mouse_pos));
-            return None;
-        }
-
-        let key = self.map_key(&key)?;
-
-        // if relax is enabled, and the user doesn't want manual input, return
-        if self.mods.has_mod(Relax) {
-            if !self.game_settings.manual_input_with_relax { return None; }
-            self.relax_manager.key_pressed(key);
-        }
-
-        Some(ReplayAction::Press(key))
-    }
-    
-    async fn key_up(&mut self, key: Key) -> Option<ReplayAction> {
-        // playfield adjustment
-        if key == Key::LControl {
-            self.move_playfield = None;
-            return None;
-        }
-
-        let key = self.map_key(&key)?;
-
-        // if relax is enabled, and the user doesn't want manual input, return
-        if self.mods.has_mod(Relax) {
-            if !self.game_settings.manual_input_with_relax { return None; }
-            self.relax_manager.key_released(key);
-        }
-
-        Some(ReplayAction::Release(key))
-    }
-    
-
-    async fn mouse_move(
-        &mut self, 
-        pos: Vector2
-    ) -> Option<ReplayAction> {
-        if self.use_controller_cursor {
-            // info!("switched to mouse");
-            self.use_controller_cursor = false;
-        }
-        self.window_mouse_pos = pos;
-        
-        if let Some((original, mouse_start)) = self.move_playfield {
-            
-            let mut settings = (*self.game_settings).clone();
-            let mut change = original + (pos - mouse_start);
-
-            // check playfield snapping
-            // TODO: can this be simplified?
-            let playfield_size = self.scaling_helper.playfield_with_padding.size;
-
-            // what the offset should be if playfield is centered
-            let center_offset = (self.window_size.0 - FIELD_SIZE * self.scaling_helper.scale) / 2.0 - (self.window_size.0 - playfield_size) / 2.0;
-
-            let snap_threshold = settings.playfield_snap;
-            if (center_offset.x - change.x).abs() < snap_threshold {
-                change.x = center_offset.x;
-            }
-            if (center_offset.y - change.y).abs() < snap_threshold {
-                change.y = center_offset.y;
-            }
-
-            settings.playfield_x_offset = change.x;
-            settings.playfield_y_offset = change.y;
-            
-            
-            let settings2 = settings.clone();
-            self.actions.push(GameAction::UpdateSettings(Box::new(move |settings| settings.osu_settings = settings2 )));
-
-            self.game_settings = Arc::new(settings);
-            self.recalculate_playfield().await;
-            return None;
-        }
-        
-
-        // convert window pos to playfield pos
-        let pos = self.scaling_helper.descale_coords(pos);
-        Some(ReplayAction::MousePos(pos.x, pos.y))
-    }
-    
-    async fn mouse_down(&mut self, btn: MouseButton) -> Option<ReplayAction> {
-        // if the user has mouse input disabled, return
-        if self.game_settings.ignore_mouse_buttons { return None }
-        
-        let button = self.map_btn(&btn)?;
-
-        // if relax is enabled, and the user doesn't want manual input, return
-        if self.mods.has_mod(Relax) {
-            if !self.game_settings.manual_input_with_relax { return None; }
-            self.relax_manager.key_pressed(button);
-        }
-
-        Some(ReplayAction::Press(button))
-    }
-    
-    async fn mouse_up(&mut self, btn: MouseButton) -> Option<ReplayAction> {
-        // if the user has mouse input disabled, return
-        if self.game_settings.ignore_mouse_buttons { return None }
-
-        let button = self.map_btn(&btn)?;
-
-        // if relax is enabled, and the user doesn't want manual input, return
-        if self.mods.has_mod(Relax) {
-            if !self.game_settings.manual_input_with_relax { return None; }
-            self.relax_manager.key_released(button);
-        }
-
-        Some(ReplayAction::Release(button))
-    }
-
-    async fn mouse_scroll(&mut self, delta: f32) -> Option<ReplayAction> {
-        if self.move_playfield.is_some() {
-            let delta = delta / 40.0;
-            let mut a = (*self.game_settings).clone();
-            a.playfield_scale += delta;
-            self.game_settings = Arc::new(a);
-
-            self.actions.push(GameAction::UpdateSettings(Box::new(move |settings| settings.osu_settings.playfield_scale += delta )));
-
-            self.recalculate_playfield().await;
-        }
-
-        None
-    }
-
-
-    async fn controller_press(&mut self, _: &GamepadInfo, btn: ControllerButton) -> Option<ReplayAction> {
-        // if relax is enabled, and the user doesn't want manual input, return
-        if self.mods.has_mod(Relax) && !self.game_settings.manual_input_with_relax { return None; }
-
-        match btn {
-            ControllerButton::LeftTrigger => Some(ReplayAction::Press(KeyPress::Left)),
-            ControllerButton::RightTrigger => Some(ReplayAction::Press(KeyPress::Right)),
-            _ => None
-        }
-    }
-    
-    async fn controller_release(&mut self, _: &GamepadInfo, btn: ControllerButton) -> Option<ReplayAction> {
-        // if relax is enabled, and the user doesn't want manual input, return
-        if self.mods.has_mod(Relax) && !self.game_settings.manual_input_with_relax { return None; }
-
-        match btn {
-            ControllerButton::LeftTrigger => Some(ReplayAction::Release(KeyPress::Left)),
-            ControllerButton::RightTrigger => Some(ReplayAction::Release(KeyPress::Right)),
-            _ => None
-        }
-    }
-    
-    async fn controller_axis(&mut self, _: &GamepadInfo, axis_data: HashMap<Axis, AxisState>) -> Option<ReplayAction> {
-        if !self.use_controller_cursor {
-            // info!("switched to controller input");
-            // CursorManager::set_gamemode_override(true);
-            self.use_controller_cursor = true;
-        }
-
-        let mut new_pos = self.mouse_pos;
-        let scaling_helper = self.scaling_helper.clone();
-        let playfield = scaling_helper.playfield_with_padding;
-
-        for (axis, &state) in axis_data.iter() {
-            if !state.changed { continue }
-
-            match *axis {
-                Axis::LeftStickX => {
-                    // -1.0 to 1.0
-                    // where -1 is 0, and 1 is scaling_helper.playfield_scaled_with_cs_border.whatever
-                    let normalized = (state.value + 1.0) / 2.0;
-                    new_pos.x = playfield.pos.x + f32::lerp(0.0, playfield.size.x, normalized);
-                }
-                Axis::LeftStickY => {
-                    // y is upside down in gilrs i guess?
-                    let normalized = (state.value + 1.0) / 2.0;
-                    new_pos.y = playfield.pos.y + f32::lerp(playfield.size.y, 0.0, normalized);
-                }
-                _ => {},
-            }
-        }
-
-        let new_pos = scaling_helper.descale_coords(new_pos);
-        Some(ReplayAction::MousePos(new_pos.x, new_pos.y))
-    }
-
-
-}
-
-
-#[cfg(not(feature="graphics"))]
-impl GameModeInput for OsuGame {}

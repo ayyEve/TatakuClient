@@ -9,17 +9,16 @@ default = [ "texture_arrays" ]
 texture_arrays = []
 
 [dependencies]
-tataku-engine = { workspace = true }
-tataku-resources = { workspace = true }
-tataku-client-common = { workspace = true }
+tataku-engine.workspace = true
+tataku-client-common.workspace = true
 
-tokio = { workspace = true }
+tokio.workspace = true
 tracing.workspace = true
-winit = { workspace = true }
-image = { workspace = true }
-cgmath = { workspace = true }
+winit.workspace = true
+image.workspace = true
+cgmath.workspace = true
 
 # wgpu
-bytemuck = { workspace = true }
-wgpu = { workspace = true }
-lyon_tessellation = { workspace = true }
+bytemuck.workspace = true
+wgpu.workspace = true
+lyon_tessellation.workspace = true

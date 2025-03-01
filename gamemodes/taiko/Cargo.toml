@@ -12,11 +12,11 @@ default = [ "graphics" ]
 graphics = []
 
 [dependencies]
-tracing.workspace = true
-async-trait.workspace = true
-futures-util.workspace = true
-
 tataku-common.workspace = true
-
 tataku-engine.workspace = true
 tataku-client-common.workspace = true
+tataku-client-proc-macros.workspace = true
+
+tracing.workspace = true
+async-trait.workspace = true
+serde.workspace = true

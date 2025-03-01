@@ -1,19 +1,20 @@
-
 use crate::prelude::*;
 use tataku_client_common::prelude::*;
 
-use wgpu::{
-    ComputePassDescriptor,
-    PipelineLayoutDescriptor,
+use std::{
+    collections::HashMap, 
+    sync::mpsc::{ 
+        Receiver, 
+        SyncSender,
+        sync_channel, 
+    }
 };
-
-use std::{collections::HashMap, sync::mpsc::{sync_channel, Receiver, SyncSender}};
 
 pub struct ParticleSystem {
     emitters: Vec<EmitterReference>,
-    last_update: Instant,
+    last_update: TatakuInstant,
 
-    pipeline: wgpu::ComputePipeline,
+    pipeline: ComputePipeline,
 
     // are we waiting for the gpu to compute?
     datas_pending: usize,
@@ -29,10 +30,10 @@ pub struct ParticleSystem {
 }
 
 impl ParticleSystem {
-    pub fn new(device: &wgpu::Device) -> Self {
-        let particle_compute_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+    pub fn new(device: &Device) -> Self {
+        let particle_compute_shader = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("Particle Compute Shader"),
-            source: wgpu::ShaderSource::Wgsl(crate::shader_files::PARTICLES.into()),
+            source: ShaderSource::Wgsl(crate::shader_files::PARTICLES.into()),
         });
 
         let buffer = ParticleBuffer::new(device, 0);
@@ -43,19 +44,19 @@ impl ParticleSystem {
             push_constant_ranges: &[],
         });
 
-        let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+        let pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
             label: Some("Particle compute pipeline"),
             layout: Some(&pipeline_layout),
             module: &particle_compute_shader,
             entry_point: Some("main"),
             cache: None,
-            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            compilation_options: PipelineCompilationOptions::default(),
         });
 
         let (sender, receiver) = sync_channel(1000);
         Self {
             emitters: Vec::new(),
-            last_update: Instant::now(),
+            last_update: TatakuInstant::now(),
 
             pipeline,
 
@@ -75,7 +76,7 @@ impl ParticleSystem {
         self.emitters.push(emitter);
     }
 
-    pub fn update(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
+    pub fn update(&mut self, device: &Device, queue: &Queue) {
         if self.datas_pending > 0 {
             if let Ok((index, written_size)) = self.receiver.try_recv() {
                 if let Some(buffer) = self.receive_from_gpu(index, written_size) {
@@ -133,7 +134,7 @@ impl ParticleSystem {
     }
 
 
-    fn send_to_gpu(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
+    fn send_to_gpu(&mut self, device: &Device, queue: &Queue) {
         let delta = self.last_update.elapsed_and_reset();
         self.available_buffers.extend(std::mem::take(&mut self.used_buffers));
         if self.current_buffer.is_none() {
@@ -176,7 +177,7 @@ impl ParticleSystem {
 
         if self.used_buffers.is_empty() { return; }
 
-        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("Render Encoder") });
+        let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor { label: Some("Render Encoder") });
 
         for buffer in &self.used_buffers {
             {
@@ -187,7 +188,7 @@ impl ParticleSystem {
             }
 
             let write_size = GpuParticle::count_size(buffer.particle_count);
-            encoder.copy_buffer_to_buffer(&buffer.particle_buffer, 0, &buffer.readable_particle_buffer, 0, write_size as wgpu::BufferAddress);
+            encoder.copy_buffer_to_buffer(&buffer.particle_buffer, 0, &buffer.readable_particle_buffer, 0, write_size as BufferAddress);
         }
 
         queue.submit([encoder.finish()]);
@@ -198,13 +199,13 @@ impl ParticleSystem {
             let s = self.sender.clone();
 
             buffer.readable_particle_buffer.slice(..write_size as u64)
-                .map_async(wgpu::MapMode::Read, move |_|s.send((index, write_size)).unwrap());
+                .map_async(MapMode::Read, move |_|s.send((index, write_size)).unwrap());
         }
 
         self.datas_pending = self.used_buffers.len();
     }
 
-    fn next_buffer(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, delta: f32) {
+    fn next_buffer(&mut self, device: &Device, queue: &Queue, delta: f32) {
         if self.cpu_particle_buffer.is_empty() { return }
 
         let mut buffer = std::mem::take(&mut self.current_buffer).unwrap_or_else(|| ParticleBuffer::new(device, self.used_buffers.len()));

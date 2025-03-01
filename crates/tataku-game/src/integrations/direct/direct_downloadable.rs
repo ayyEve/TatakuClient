@@ -1,5 +1,6 @@
 use crate::prelude::*;
 
+/// TODO: move this to a struct, with the download fn being a boxed fn that returns the download progress
 /// this item will always be in an arc
 /// so nothing will be directly mutable
 pub trait DirectDownloadable: Send + Sync {

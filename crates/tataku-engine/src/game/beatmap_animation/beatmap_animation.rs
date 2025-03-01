@@ -10,7 +10,7 @@ pub trait BeatmapAnimation: Send + Sync {
 
     fn reset(&mut self);
 
-    fn use_gamemode_playfield(&self, gamemode: &GameModeInfo) -> bool;
+    fn use_gamemode_playfield(&self, gamemode: &GamemodeInfo) -> bool;
 }
 
 #[derive(Default, Copy, Clone)]
@@ -22,5 +22,5 @@ impl BeatmapAnimation for EmptyAnimation {
     async fn draw(&self, _: &mut RenderableCollection) {}
     fn reset(&mut self) {}
 
-    fn use_gamemode_playfield(&self, _gamemode: &GameModeInfo) -> bool { false }
+    fn use_gamemode_playfield(&self, _gamemode: &GamemodeInfo) -> bool { false }
 }

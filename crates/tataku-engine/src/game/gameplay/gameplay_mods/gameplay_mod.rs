@@ -2,6 +2,7 @@
 use crate::prelude::*;
 
 #[repr(C)]
+#[derive(Reflect)]
 #[derive(Copy, Clone, Debug)]
 pub struct GameplayMod {
     /// mod identifier, used in the mods hashmap

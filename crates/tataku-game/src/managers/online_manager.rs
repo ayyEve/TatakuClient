@@ -170,9 +170,6 @@ impl OnlineManager {
     pub fn restart() {
         tokio::spawn(async {
             Self::get_mut().await.reset().await;
-
-            // // re-establish the connection
-            // Self::start().await;
         });
     }
 
@@ -207,7 +204,7 @@ impl OnlineManager {
     #[cfg(feature="gameplay")]
     async fn handle_packet(data:Vec<u8>, log_settings: &LoggingSettings) -> TatakuResult<()> {
         let mut reader = SerializationReader::new(data);
-
+        
         while reader.can_read() {
             // info!("reading packet from server");
             let packet:PacketId = reader.read("packet id")?;
@@ -471,7 +468,6 @@ impl OnlineManager {
             let mut s = Self::get_mut().await;
             let mode = incoming_mode.clone().unwrap_or_default();
 
-
             let action = action_info.get_action();
             let action_text = match &action_info {
                 SetAction::Idle => "Idle".to_string(),
@@ -482,28 +478,10 @@ impl OnlineManager {
                 SetAction::Playing { artist, title, version, .. } => format!("Playing {artist} - {title}[{version}]"),
             };
 
-
             s.send_packet(PacketId::Client_StatusUpdate { action, action_text: action_text.clone(), mode }).await;
             if action == UserAction::Leaving {
                 s.send_packet(PacketId::Client_LogOut).await;
             }
-
-
-            // #[cfg(feature = "discord")]
-            // if let Some(discord) = &s.discord {
-            //     discord.change_status(&action_info, incoming_mode).await;
-            // }
-
-            // if Settings::get().integrations.lastfm {
-            //     match &action_info {
-            //         SetAction::Listening { artist, title, .. } 
-            //         | SetAction::Playing { artist, title, .. } 
-            //         | SetAction::Spectating { artist, title, .. } => {
-            //             LastFmIntegration::update(title.clone(), artist.clone()).await;
-            //         }
-            //         _ => {}
-            //     }
-            // }
 
         });
     }
@@ -529,9 +507,6 @@ impl OnlineManager {
     pub fn send_spec_frames(frames: Vec<SpectatorFrame>, force_send: bool) {
         tokio::spawn(async move {
             let mut lock = Self::get_mut().await;
-            // if we arent speccing, exit
-            // hopefully resolves a bug
-            // if !lock.spectating {return}
 
             lock.spectator_info.outgoing_frames.extend(frames);
             // wait at most 1s before sending packets
@@ -543,7 +518,7 @@ impl OnlineManager {
                 // info!("Sending {} spec packets", frames.len());
                 let id = lock.user_id;
                 lock.send_packet(SpectatorPacket::Client_SpectatorFrames {frames}.with_host(id)).await;
-                lock.spectator_info.last_sent_frame = Instant::now();
+                lock.spectator_info.last_sent_frame = TatakuInstant::now();
             }
         });
 
@@ -767,4 +742,3 @@ impl SetAction {
         }
     }
 }
-

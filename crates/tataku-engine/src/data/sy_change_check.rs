@@ -1,5 +1,6 @@
 use crate::prelude::*;
 
+// TODO: rename this, and also maybe just remove it lol
 #[derive(Clone, Debug)]
 pub struct SyValueHelper<T: Reflect + Clone + PartialEq> {
     key: String,

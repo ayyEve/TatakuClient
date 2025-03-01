@@ -1,6 +1,5 @@
 use crate::prelude::*;
 
-
 #[async_trait]
 pub trait ReplayDownloader: Send + Sync + std::fmt::Debug {
     async fn get_replay(&self, settings: &Settings) -> TatakuResult<Score>;
@@ -14,7 +13,6 @@ impl TatakuReplayDownloader {
         Self(id, hash)
     }
 }
-
 
 #[async_trait]
 impl ReplayDownloader for TatakuReplayDownloader {

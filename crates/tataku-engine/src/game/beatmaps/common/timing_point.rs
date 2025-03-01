@@ -66,7 +66,6 @@ impl Eq for TimingPoint {}
 impl Ord for TimingPoint {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.time.partial_cmp(&other.time)
-
             // if the time is equal, whichever is the control point should be first
             .unwrap_or_else(|| if !self.is_inherited() {
                 std::cmp::Ordering::Greater

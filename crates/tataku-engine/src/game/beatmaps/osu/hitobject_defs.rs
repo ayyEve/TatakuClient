@@ -90,7 +90,7 @@ pub struct HitSamples {
     pub filename: Option<String>
 }
 impl HitSamples {
-    pub fn from_str(str:Option<&str>) -> Self {
+    pub fn from_string(str: Option<&str>) -> Self {
 
         macro_rules! read_val {
             ($split:expr) => {

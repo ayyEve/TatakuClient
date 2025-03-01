@@ -10,8 +10,8 @@ pub struct BeatmapDownloadsCheckTask {
 
     files: Box<dyn Iterator<Item = PathBuf> + Send + Sync>,
 }
-impl BeatmapDownloadsCheckTask {
-    pub fn new() -> Self {
+impl Default for BeatmapDownloadsCheckTask {
+    fn default() -> Self {
         Self {
             last_check: 0,
 

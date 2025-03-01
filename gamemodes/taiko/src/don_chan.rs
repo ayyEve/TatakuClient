@@ -23,8 +23,11 @@ pub struct DonChan {
     combo_anim_last_index: usize
 }
 impl DonChan {
-    pub async fn new() -> Self {
-        Self {
+    fn build(
+        _: &GamemodeInfo,
+        _: &Arc<CommonGameplaySettings>
+    ) -> Box<dyn GameplayWidget> {
+        Box::new(Self {
             state: DonChanState::Normal,
 
             normal_anim: None,
@@ -41,7 +44,7 @@ impl DonChan {
             last_score: 0,
 
             combo_anim_last_index: 0,
-        }
+        })
     }
     fn all_anims(&mut self) -> Vec<&mut Option<Animation>> {
         vec![
@@ -68,26 +71,26 @@ impl DonChan {
 }
 
 #[async_trait]
-impl InnerUIElement for DonChan {
+impl GameplayWidget for DonChan {
     fn display_name(&self) -> &'static str { "DonChan" }
 
     fn max_size(&self) -> Vector2 {
         DEFAULT_DONCHAN_SIZE
     }
 
-    fn update(&mut self, manager: &mut GameplayManager) {
+    fn update(&mut self, manager: &mut dyn GameplayManagerTrait) {
         let time = manager.time(); 
 
         // check init
         if !self.init {
-            let tp = manager.timing_points.timing_point_at(0.0, false);
+            let tp = manager.timing_points().timing_point_at(0.0, false);
             self.set_offset(tp.time - tp.beat_length * 4.0);
             self.update_delays(tp);
             self.init = true;
         }
 
         // check timing point change
-        let current_tp = manager.timing_points.timing_point();
+        let current_tp = manager.timing_points().timing_point();
         if !current_tp.is_inherited() && self.current_timing_point_time != current_tp.time {
             self.current_timing_point_time = current_tp.time;
             self.update_delays(current_tp);
@@ -111,14 +114,14 @@ impl InnerUIElement for DonChan {
         // }
 
         // check fail anim
-        let xmiss = manager.score.judgments.get("xmiss").copied().unwrap_or_default();
+        let xmiss = manager.score().judgments.get("xmiss").copied().unwrap_or_default();
         if self.last_miss_count < xmiss {
             self.state = DonChanState::Fail;
             self.last_miss_count = xmiss;
-        } else if self.last_score != manager.score.score.score && self.state == DonChanState::Fail {
+        } else if self.last_score != manager.score().score.score && self.state == DonChanState::Fail {
             self.state = DonChanState::Normal;
         }
-        self.last_score = manager.score.score.score;
+        self.last_score = manager.score().score.score;
         
 
         // check if combo milestone anim has finished
@@ -244,3 +247,18 @@ pub enum DonChanState {
     ComboMilestone,
     Fail
 }
+
+
+pub const DON_CHAN: GameplayWidgetBuilder = GameplayWidgetBuilder {
+    name: "don_chan",
+    default_layout: GameplayWidgetLayout::new_default(
+        GameplayWidgetAnchor::Playfield {
+            saved_size: None,
+            relative: GameplayWidgetAlign::Above
+        },
+        Alignment::TOP_LEFT,
+        None,
+        None,
+    ),
+    build: DonChan::build,
+};

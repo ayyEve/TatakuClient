@@ -7,19 +7,16 @@ local menu = {
         {
             id = "list",
             width = "fill",
-            height = "shrink",
+            height = "auto",
 
             list = "global.menu_list",
             variable = "_menu",
             scroll = true,
 
-            element = row({ width = "fill", height = "shrink", spacing = 10.0 }, {
-                button(
+            element = row({ width = "fill", height = "auto", margin = 10.0 }, {
+                button({ width = "fill", height = "auto", padding = 10.0 }, 
                     text(variable("_menu")),
-                    menu_action(variable("_menu")),
-                    "fill",
-                    "shrink",
-                    10.0
+                    menu_action(variable("_menu"))
                 )
             })
         }

@@ -8,37 +8,37 @@ use crate::prelude::*;
 pub struct DisplaySettings {
     pub window_pos: [i32; 2],
     pub window_size: [f32; 2],
-    #[cfg_attr(feature="graphics", Setting(text="FPS Limit", min=15, max=1_000, category="Window Settings"))]
+    #[cfg_attr(feature="graphics", setting(text="FPS Limit", min=15, max=1_000, category="Window Settings"))]
     pub fps_target: u64,
-    #[cfg_attr(feature="graphics", Setting(text="Vsync", dropdown="Vsync"))]
+    #[cfg_attr(feature="graphics", setting(text="Vsync", dropdown="Vsync"))]
     #[serde(deserialize_with = "vsync_reader")]
     pub vsync: Vsync,
-    #[cfg_attr(feature="graphics", Setting(text="Update Limit", min=500, max=10_000))]
+    #[cfg_attr(feature="graphics", setting(text="Update Limit", min=500, max=10_000))]
     pub update_target: u64,
     
     /// should the game pause when focus is lost?
-    #[cfg_attr(feature="graphics", Setting(text="Pause on Focus Loss"))]
+    #[cfg_attr(feature="graphics", setting(text="Pause on Focus Loss"))]
     pub pause_on_focus_lost: bool,
-    #[cfg_attr(feature="graphics", Setting(text="Raw Mouse Input (requires restart)"))]
+    #[cfg_attr(feature="graphics", setting(text="Raw Mouse Input (requires restart)"))]
     pub raw_mouse_input: bool,
-    #[cfg_attr(feature="graphics", Setting(text="Scroll Sensitivity", min=0.1, max=5.0))]
+    #[cfg_attr(feature="graphics", setting(text="Scroll Sensitivity", min=0.1, max=5.0))]
     pub scroll_sensitivity: f32,
 
-    #[cfg_attr(feature="graphics", Setting(text="Fullscreen", dropdown="FullscreenMonitor"))]
+    #[cfg_attr(feature="graphics", setting(text="Fullscreen", dropdown="FullscreenMonitor"))]
     pub fullscreen_monitor: FullscreenMonitor,
     pub fullscreen_windowed: bool, // render at window_size?
     pub fullscreen_center: bool, // when rendering at window_size, center?
 
     
-    #[cfg_attr(feature="graphics", Setting(text="Performance Mode (requires restart)", dropdown="PerformanceMode"))]
+    #[cfg_attr(feature="graphics", setting(text="Performance Mode (requires restart)", dropdown="PerformanceMode"))]
     pub performance_mode: PerformanceMode,
     
     #[serde(skip)]
     #[reflect(skip)]
-    #[cfg_attr(feature="graphics", Setting(text="Refresh Monitors", action="GameWindow::refresh_monitors()"))]
+    #[cfg_attr(feature="graphics", setting(text="Refresh Monitors", action="GameWindow::refresh_monitors()"))]
     refresh_monitors_button: (),
 
-    #[cfg_attr(feature="graphics", Setting(text="Hide Decorations"))]
+    #[cfg_attr(feature="graphics", setting(text="Hide Decorations"))]
     pub hide_decorations: bool,
 }
 
@@ -70,6 +70,7 @@ impl Default for DisplaySettings {
 
 #[derive(Copy, Clone, Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[derive(Reflect)]
+#[reflect(display = "display")]
 #[cfg_attr(feature="graphics", derive(Dropdown))]
 pub enum PerformanceMode {
     PowerSaver,

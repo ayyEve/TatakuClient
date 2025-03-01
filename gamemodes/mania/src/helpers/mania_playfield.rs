@@ -11,19 +11,19 @@ pub struct ManiaPlayfield {
     pub skin_hit_pos: f32,
 
     column_origin: Arc<AtomicU32>,
+    full_window: bool,
 }
 impl ManiaPlayfield {
     pub fn new(
         mut settings: ManiaPlayfieldSettings, 
         bounds: Bounds, 
         col_count: u8, 
-        skin_hit_pos: f32
+        skin_hit_pos: f32,
+        full_window: bool,
     ) -> Self {
-
-        let window_size = WindowSize::get().0;
         let total_width = col_count as f32 * settings.column_width;
 
-        if bounds.size != window_size {
+        if !full_window {
             // if we're not fullscreen, center the playfield
             settings.x_offset = bounds.pos.x + (total_width - bounds.size.x) / 2.0;
         }
@@ -35,7 +35,8 @@ impl ManiaPlayfield {
             total_width,
 
             skin_hit_pos,
-            column_origin: Arc::new(AtomicU32::new(0))
+            column_origin: Arc::new(AtomicU32::new(0)),
+            full_window
         }
     }
 

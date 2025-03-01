@@ -40,7 +40,6 @@ impl MatrixHelpers for Matrix {
         let len = len.sqrt();
         let c = pos.x / len;
         let s = pos.y / len;
-        // [[c, -s, 0.0], [s, c, 0.0]]
         [
             [c,  -s,   0.0, 0.0],
             [s,   c,   0.0, 0.0],

@@ -3,10 +3,10 @@ use crate::prelude::*;
 
 
 // default fns for serde
-fn one() -> f64 {1.0}
-fn nan64() -> f64 {f64::NAN}
-fn nan32() -> f32 {f32::NAN}
-fn default_diff_name() -> String {"default diff name".to_owned()}
+fn one() -> f64 { 1.0 }
+fn nan64() -> f64 { f64::NAN }
+fn nan32() -> f32 { f32::NAN }
+fn default_diff_name() -> String { "default diff name".to_owned() }
 
 
 #[derive(Deserialize)]
@@ -19,24 +19,19 @@ pub struct QuaverBeatmap {
     pub background_file: String,
 
     // dunno if they can be negative
-    #[serde(default)]
-    pub map_id: i32,
-    #[serde(default)]
-    pub set_id: i32,
+    #[serde(default)] pub map_id: i32,
+    #[serde(default)] pub set_id: i32,
 
     pub mode: QuaverKeys,
 
     pub title: String,
     pub artist: String,
-    #[serde(default)]
-    pub source: String,
-    #[serde(default)]
-    pub tags: String,
+    #[serde(default)] pub source: String,
+    #[serde(default)] pub tags: String,
     pub creator: String,
-    #[serde(default="default_diff_name")]
+    #[serde(default="default_diff_name")] 
     pub difficulty_name: String,
-    #[serde(default)]
-    pub description: String,
+    #[serde(default)] pub description: String,
 
     // pub editor_layers: Vec<?>,
     // pub audio_samples: Vec<?>,
@@ -50,10 +45,8 @@ pub struct QuaverBeatmap {
     pub hit_objects: Vec<QuaverNote>,
 
     // extra info added later
-    #[serde(default)]
-    hash: Md5Hash,
-    #[serde(default)]
-    path: String,
+    #[serde(default)] hash: Md5Hash,
+    #[serde(default)] path: String,
 }
 impl QuaverBeatmap {
     pub fn load(path: String) -> TatakuResult<Self> {

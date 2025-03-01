@@ -6,7 +6,7 @@ pub struct OsuDirect;
 
 #[async_trait]
 impl DirectApi for OsuDirect {
-    fn api_name(&self) -> &'static str {"Osu"}
+    fn api_name(&self) -> &'static str { "Osu" }
     fn supported_modes(&self) -> Vec<String> {
         vec![
             "osu".to_owned(),
@@ -16,12 +16,12 @@ impl DirectApi for OsuDirect {
         ]
     }
 
-    async fn do_search(&mut self, search_params:SearchParams, settings: &Settings) -> Vec<Arc<dyn DirectDownloadable>> {
+    async fn do_search(&mut self, search_params: SearchParams, settings: &Settings) -> Vec<Arc<dyn DirectDownloadable>> {
         trace!("Searching");
 
         // TODO: do a proper sort (and convert from generic sort to osu sort number)
         let sort = search_params.sort.unwrap_or_default() as u8;
-        let status:OsuMapStatus = search_params.map_status.unwrap_or_default().into();
+        let status: OsuMapStatus = search_params.map_status.unwrap_or_default().into();
 
         
         // url = "https://osu.ppy.sh/web/osu-search.php?u=[]&h=[]".to_owned();

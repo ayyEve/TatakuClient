@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+// FIXME: literally all if this. it was an idea and it should have stayed that way
+
 #[derive(Reflect)]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Theme {
@@ -244,8 +246,10 @@ lazy_static::lazy_static! {
     };
 }
 
-#[derive(Clone, Serialize, Deserialize, Eq, PartialEq, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 #[derive(Reflect)]
+#[derive(Serialize, Deserialize)]
+#[reflect(display = "display")]
 pub enum SelectedTheme {
     Tataku,
     Osu,

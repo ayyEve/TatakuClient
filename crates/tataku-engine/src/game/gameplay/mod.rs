@@ -2,6 +2,7 @@
 mod stats;
 mod game_mode;
 mod gameplay_mods;
+mod gameplay_widgets;
 mod gameplay_manager;
 mod gameplay_helpers;
 #[cfg(feature="dynamic_gamemodes")]
@@ -10,6 +11,7 @@ mod gamemode_library;
 pub use stats::*;
 pub use game_mode::*;
 pub use gameplay_mods::*;
+pub use gameplay_widgets::*;
 pub use gameplay_manager::*;
 pub use gameplay_helpers::*;
 
@@ -37,30 +39,19 @@ impl DiffCalcSummary {
     }
 }
 
-
-// pub fn calc_acc(score: &Score) -> f32 {
-//     get_gamemode_info(&score.playmode)
-//         .map(|i| i.calc_acc(score))
-//         .unwrap_or_default()
-//         .normal_or(1.0)
-// }
-
-// pub fn gamemode_display_name(playmode: &str) -> &'static str {
-//     get_gamemode_info(playmode)
-//         .map(|i| i.display_name())
-//         .unwrap_or("Unknown")
-// }
 #[derive(Default, Debug, Clone)]
+#[derive(Reflect)]
 pub struct GamemodeInfos {
-    pub by_id: Arc<HashMap<&'static str, GameModeInfo>>,
-    pub by_num: Arc<Vec<GameModeInfo>>,
+    #[reflect(skip)]
+    pub by_id: Arc<HashMap<&'static str, GamemodeInfo>>,
+    pub by_num: Arc<Vec<GamemodeInfo>>,
 
     #[cfg(feature="dynamic_gamemodes")]
     _libraries: Arc<Vec<libloading::Library>>,
 }
 impl GamemodeInfos {
     #[cfg(not(feature="dynamic_gamemodes"))]
-    pub fn new(list: Vec<GameModeInfo>) -> Self {
+    pub fn new(list: Vec<GamemodeInfo>) -> Self {
         Self {
             by_id: Arc::new(list.iter()
                 .map(|i| (i.id, *i))
@@ -73,7 +64,7 @@ impl GamemodeInfos {
     #[cfg(feature="dynamic_gamemodes")]
     pub fn new(list: Vec<GamemodeLibrary>) -> Self {
 
-        let (libraries, by_num): (_, Vec<GameModeInfo>) = list.into_iter()
+        let (libraries, by_num): (_, Vec<GamemodeInfo>) = list.into_iter()
             .map(|i| (i._lib, i.info))
             .unzip();
 
@@ -86,7 +77,7 @@ impl GamemodeInfos {
             _libraries: Arc::new(libraries),
         }
     }
-    pub fn get_info(&self, gamemode: &str) -> TatakuResult<&GameModeInfo> {
+    pub fn get_info(&self, gamemode: &str) -> TatakuResult<&GamemodeInfo> {
         self.by_id
             .get(gamemode)
             .ok_or(TatakuError::GameMode(GameModeError::UnknownGameMode))
@@ -101,64 +92,3 @@ impl GamemodeInfos {
             .unwrap_or(playmode)
     }
 }
-
-pub async fn manager_from_playmode_path_hash<'a>(
-    infos: &GamemodeInfos,
-    incoming_mode: &str,
-    map_path: String,
-    map_hash: Md5Hash,
-    mods: ModManager,
-    settings: &Settings,
-) -> TatakuResult<GameplayManager> {
-    let beatmap = Beatmap::from_path_and_hash(map_path, map_hash)?;
-    let playmode = beatmap.playmode(incoming_mode.to_owned());
-
-    let info = infos.get_info(&playmode)?;
-
-    let gamemode = info.create_game(&beatmap, settings).await?;
-    Ok(GameplayManager::new(beatmap, gamemode, mods, settings).await)
-}
-
-pub async fn manager_from_playmode(
-    infos: &GamemodeInfos,
-    incoming_mode: &str,
-    beatmap: &BeatmapMeta,
-    mods: ModManager,
-    settings: &Settings,
-) -> TatakuResult<GameplayManager> {
-    let beatmap = Beatmap::from_metadata(beatmap)?;
-    let playmode = beatmap.playmode(incoming_mode.to_owned());
-
-    let info = infos.get_info(&playmode)?;
-
-    let gamemode = info.create_game(&beatmap, settings).await?;
-
-    Ok(GameplayManager::new(beatmap, gamemode, mods, settings).await)
-}
-
-
-// pub fn perfcalc_for_playmode(
-//     playmode: &str
-// ) -> PerformanceCalc {{
-//     get_gamemode_info(playmode)
-//         .map(|i| i.get_perf_calc())
-//         .unwrap_or(Box::new(|diff, acc| {
-//             let perf = diff * (acc / 0.99).powi(6);
-//             #[cfg(feature="debug_perf_rating")]
-//             println!("diff:{diff}, acc: {acc} = perf {perf}");
-//             perf
-//         }))
-// }}
-
-
-// pub async fn calc_diff(
-//     map: &BeatmapMeta, 
-//     mode_override: String
-// ) -> TatakuResult<Box<dyn DiffCalc>> {{
-//     let playmode = map.check_mode_override(mode_override);
-
-//     get_gamemode_info(&playmode)
-//         .ok_or_else(|| TatakuError::GameMode(GameModeError::UnknownGameMode))?
-//         .create_diffcalc(map).await
-// }}
-

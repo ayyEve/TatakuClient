@@ -23,6 +23,7 @@ pub struct ManiaNote {
     hitsounds: Vec<Hitsound>
 }
 impl ManiaNote {
+    #[allow(clippy::too_many_arguments)]
     pub async fn new(
         time: f32, column: u8, color: Color, x: f32, 
         sv_mult: f32,

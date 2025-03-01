@@ -1,3 +1,5 @@
+// Authored by ~nebula~
+
 use crate::prelude::*;
 
 pub struct SliderRender {

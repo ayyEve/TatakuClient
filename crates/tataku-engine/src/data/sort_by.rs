@@ -1,8 +1,10 @@
 use crate::prelude::*;
 
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[derive(Reflect)]
 #[reflect(from_string = "auto")]
+#[reflect(display = "display")]
+#[derive(Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub enum SortBy {
     #[default]
     Title,
@@ -58,15 +60,4 @@ impl SortBy {
             Self::Difficulty
         ]
     }
-
-    // pub fn to_string(&self) -> String {
-    //     format!("{self:?}")
-    // }
-
-    // pub fn from_str(s: &String) -> Option<Self> {
-    //     for i in Self::list() {
-    //         if s == &format!("{i:?}") { return Some(i) };
-    //     }
-    //     None
-    // }
 }

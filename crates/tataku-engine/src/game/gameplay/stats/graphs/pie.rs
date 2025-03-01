@@ -21,7 +21,6 @@ impl PieGraph {
         }
     }
 
-    
     pub fn draw(&self, bounds: &Bounds) -> TransformGroup {
         let mut group = TransformGroup::new(bounds.pos);
         let size = bounds.size;

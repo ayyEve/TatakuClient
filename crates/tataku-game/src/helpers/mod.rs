@@ -1,6 +1,10 @@
+mod multiplayer_data;
 mod score_submit_helper;
+
+pub use multiplayer_data::*;
 pub use score_submit_helper::*;
 
+// FIXME: move this to common
 #[macro_export]
 macro_rules! async_retain {
     ($list:ident, $item:ident, $check_fn:expr) => {{

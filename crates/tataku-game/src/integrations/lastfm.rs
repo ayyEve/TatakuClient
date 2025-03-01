@@ -1,7 +1,6 @@
 use crate::prelude::*;
 
 pub struct LastFmIntegration;
-
 impl LastFmIntegration {
     pub async fn check(settings: &Settings) {
         let username = settings.username.clone();
@@ -55,10 +54,10 @@ impl TatakuIntegration for LastFmIntegration {
 
     fn handle_event(
         &mut self, 
-        event: &TatakuEvent,
+        event: &TatakuIntegrationEvent,
         values: &ValueCollection
     ) {
-        let TatakuEvent::SongChanged { artist, title, .. } = event else { return };
+        let TatakuIntegrationEvent::SongChanged { artist, title, .. } = event else { return };
         let settings = &values.settings;
 
         let track = title.clone();
@@ -80,10 +79,7 @@ impl TatakuIntegration for LastFmIntegration {
         });
     }
 
-
 }
-
-
 
 #[derive(Serialize)]
 struct LastFmNowPlayingRequest {
@@ -92,7 +88,6 @@ struct LastFmNowPlayingRequest {
     artist: String,
     track: String
 }
-
 
 #[derive(Serialize)]
 pub struct LastFmAuthRequest {

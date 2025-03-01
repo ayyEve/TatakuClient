@@ -10,7 +10,7 @@ pub trait OsuHitObject: HitObject {
 
     fn pending_combo(&mut self) -> Vec<(HitJudgment, Vector2)> { Vec::new() }
 
-    async fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>);
+    fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>);
     async fn set_settings(&mut self, settings: Arc<OsuSettings>);
 
     fn press(&mut self, _time:f32) {}

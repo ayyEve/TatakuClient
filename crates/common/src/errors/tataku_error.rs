@@ -1,7 +1,7 @@
 use std::{ fmt::Display, io::Error as IOError };
 
 use serde_json::Error as JsonError;
-use tataku_common::*;
+use tataku_common::prelude::*;
 
 use super::*;
 pub type TatakuResult<T=()> = Result<T, TatakuError>;
@@ -26,11 +26,6 @@ pub enum TatakuError {
 
     DiffCalcError(DiffCalcError),
 
-    // ShuntingYardError(ShuntingYardError),
-
-    #[cfg(feature = "ui")]
-    Lua(rlua::Error),
-
     ReflectError(ReflectError<'static>)
 }
 impl TatakuError {
@@ -43,8 +38,6 @@ impl From<&str> for TatakuError {
         TatakuError::String(value.to_owned())
     }
 }
-
-
 impl Display for TatakuError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self {
@@ -63,13 +56,12 @@ impl Display for TatakuError {
             // Self::ShuntingYardError(e) => write!(f, "{:?}", e),
             Self::DiffCalcError(e) => write!(f, "{:?}", e),
             
-            #[cfg(feature = "ui")]
-            Self::Lua(e) => write!(f, "{:?}", e),
+            // #[cfg(feature = "ui")]
+            // Self::Lua(e) => write!(f, "{:?}", e),
             Self::ReflectError(e) => write!(f, "{:?}", e),
         }
     }
 }
-
 
 impl From<JsonError> for TatakuError {
     fn from(e: JsonError) -> Self {Self::Serde(e)}
@@ -103,9 +95,6 @@ impl From<reqwest::Error> for TatakuError {
 impl From<DownloadError> for TatakuError {
     fn from(e: DownloadError) -> Self {Self::DownloadError(e)}
 }
-// impl From<ShuntingYardError> for TatakuError {
-//     fn from(value: ShuntingYardError) -> Self { Self::ShuntingYardError(value) }
-// }
 impl From<DiffCalcError> for TatakuError {
     fn from(value: DiffCalcError) -> Self {
         Self::DiffCalcError(value)
@@ -113,8 +102,10 @@ impl From<DiffCalcError> for TatakuError {
 }
 
 #[cfg(feature = "ui")]
-impl From<rlua::Error> for TatakuError {
-    fn from(value: rlua::Error) -> Self { Self::Lua(value) }
+impl From<mlua::Error> for TatakuError {
+    fn from(value: mlua::Error) -> Self { 
+        Self::String(value.to_string()) 
+    }
 }
 impl From<GraphicsError> for TatakuError {
     fn from(value: GraphicsError) -> Self { Self::Graphics(value) }

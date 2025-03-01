@@ -9,27 +9,12 @@ pub enum Window2GameEvent {
     Minimized,
     Closed,
 
+    SizeChanged(Vector2),
+
     FileHover(PathBuf),
     FileDrop(PathBuf),
 
     ScreenshotComplete(Vec<u8>, [u32; 2], ScreenshotInfo),
     
-    Input(WindowInputEvent),
-}
-
-#[derive(Clone, PartialEq, Debug)]
-pub enum WindowInputEvent {
-
-    // keyboard input
-    KeyPress(KeyInput),
-    KeyRelease(KeyInput),
-
-    // mouse input
-    MousePress(MouseButton),
-    MouseRelease(MouseButton),
-    MouseMove(Vector2),
-    MouseScroll(f32),
-
-    // controller input
-    ControllerEvent(gilrs::Event, Arc<String>, gilrs::PowerInfo)
+    Input(InputType),
 }

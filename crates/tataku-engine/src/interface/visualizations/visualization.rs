@@ -1,8 +1,7 @@
 use crate::prelude::*;
-// use tataku_client_common::math::Interpolation;
-
 pub type FFTHook = RwLock<FFTData>;
 
+// TODO: i still think i want to keep this, just maybe not as-is
 // #[async_trait]
 // pub trait Visualization: Send + Sync {
 //     fn should_lerp(&self) -> bool { true }
@@ -57,7 +56,7 @@ pub struct VisualizationData {
 
     pub data: Vec<FFTEntry>,
 
-    pub timer: Instant,
+    pub timer: TatakuInstant,
 }
 impl VisualizationData {
     pub fn new(config: VisualizationConfig) -> Self {
@@ -65,7 +64,7 @@ impl VisualizationData {
             config,
             hook: Default::default(),
             data: Vec::new(),
-            timer: Instant::now()
+            timer: TatakuInstant::now()
         }
     }
     pub fn reset(&mut self) {
@@ -79,23 +78,6 @@ impl VisualizationData {
 
     pub fn update(&mut self) {
         let data = self.hook.read();
-        // let Some(data) = self.hook.try_read() else { return };
-
-        // // let Some(mut audio_data) = AudioManager::get_song().await.map(|f|f.get_data()) else { return };
-        // let mut audio_data = vec![FFTEntry::default(); 2048];
-
-
-        // let mult = AudioManager::amplitude_multiplier();
-        // let should_lerp = self.should_lerp();
-        // let lerp_factor = self.lerp_factor();
-        // if should_lerp && !data.is_empty() {
-        //     let factor = lerp_factor * elapsed;
-        //     data.resize(audio_data.len(), FFTEntry::default());
-        //     for i in 0..audio_data.len() {
-        //         let v = audio_data[i].amplitude() * mult;
-        //         audio_data[i].set_amplitude(lerp(data[i].amplitude(), v, factor));
-        //     }
-        // }
 
         let elapsed = self.timer.elapsed_and_reset() / 1000.0;
         let mut audio_data = data.data.clone();

@@ -1,37 +1,7 @@
 use crate::prelude::*;
 
-// #[async_trait]
-// pub trait GameModeProperties: Send + Sync {
-//     /// playmode for this game mode
-//     fn playmode(&self) -> Cow<'static, str>;
-
-//     /// should the cursor be visible (ie, osu yes, taiko/mania no)
-//     fn show_cursor(&self) -> bool { false }
-    
-//     /// what ms does this map end?
-//     fn end_time(&self) -> f32;
-
-//     /// what key presses are valid, as well as what they should be named as
-//     /// used for the key counter
-//     fn get_possible_keys(&self) -> Vec<(KeyPress, &str)>;
-
-//     /// setup any gamemode specific ui elements for this gamemode
-//     /// ie combo and leaderboard, since the pos is different per-mode
-//     async fn get_ui_elements(
-//         &self, 
-//         _loader: &mut dyn UiElementLoader,
-//     ) {}
-
-//     fn get_playfield(&self) -> Bounds;
-    
-//     /// f32 is hitwindow, color is color for that window
-//     fn timing_bar_things(&self) -> Vec<(f32, Color)>;
-    
-//     fn get_info(&self) -> GameModeInfo;
-// }
-
 pub struct GameModeProperties {
-    pub info: &'static GameModeInfo,
+    pub info: &'static GamemodeInfo,
     // pub playmode: Cow<'static, str>,
     pub keys: Vec<(KeyPress, &'static str)>,
     pub end_time: f32,
@@ -48,7 +18,7 @@ impl GameModeProperties {
 impl Default for GameModeProperties {
     fn default() -> Self {
         Self {
-            info: &GameModeInfo::DEFAULT,
+            info: &GamemodeInfo::DEFAULT,
             // playmode: Cow::Borrowed("none"),
             keys: Vec::new(),
             end_time: 0.0,
@@ -60,51 +30,69 @@ impl Default for GameModeProperties {
 }
 
 
-
-#[async_trait]
 pub trait UiElementLoader: Send + Sync {
     /// Load a ui element
-    async fn load(
+    fn load(
         &mut self, 
         name: &str, 
-        default_layout: UiElementLayout, 
-        inner: Box<dyn InnerUIElement>
     );
 
     /// Change the default layout for a ui element
-    async fn change_default_layout(
+    fn change_default_layout(
         &mut self,
         name: &str, 
-        layout: UiElementLayout, 
+        layout: GameplayWidgetLayout, 
     );
 }
 
-#[derive(Default)]
 pub struct DefaultUiElementLoader {
-    pub layouts: HashMap<String, UiElementLayout>,
-    pub elements: Vec<UIElement>,
+    pub layouts: HashMap<String, GameplayWidgetLayout>,
+    pub elements: Vec<GameplayWidgetContainer>,
     pub playmode: Cow<'static, str>,
+
+    pub widget_builders: Vec<GameplayWidgetBuilder>,
+
+    info: GamemodeInfo,
+    settings: Arc<CommonGameplaySettings>,
 }
 impl DefaultUiElementLoader {
     pub fn new(
         playmode: impl Into<Cow<'static, str>>, 
-        layouts: HashMap<String, UiElementLayout>
+        layouts: HashMap<String, GameplayWidgetLayout>,
+        widget_builders: Vec<GameplayWidgetBuilder>,
+        
+        info: GamemodeInfo,
+        settings: Arc<CommonGameplaySettings>,
     ) -> Self {
         Self {
+            widget_builders,
             playmode: playmode.into(),
             elements: Vec::new(),
             layouts,
+
+            info, 
+            settings,
         }
     }
 }
-#[async_trait]
+
 impl UiElementLoader for DefaultUiElementLoader {
-    async fn load(
+    fn load(
         &mut self, 
         name: &str, 
-        default_layout: UiElementLayout, 
-        inner: Box<dyn InnerUIElement>
     ) {
+        let Some(builder) = self.widget_builders
+            .iter()
+            .find(|i| i.name == name)
+        else { 
+            warn!("gameplay widget {name} not found");
+            return 
+        };
+
+
+        let inner = builder.build(&self.info, &self.settings);
+        let default_layout = builder.default_layout.clone();
+
         let mut layout = self.layouts
             .get(&format!("{}_{name}", self.playmode)).cloned()
             .unwrap_or_else(|| default_layout.clone())
@@ -113,7 +101,7 @@ impl UiElementLoader for DefaultUiElementLoader {
         if layout.scale.x.abs() < 0.01 { layout.scale.x = 1.0 }
         if layout.scale.y.abs() < 0.01 { layout.scale.y = 1.0 }
 
-        self.elements.push(UIElement {
+        self.elements.push(GameplayWidgetContainer {
             layout,
             default_layout,
             element_name: name.to_string(),
@@ -123,10 +111,10 @@ impl UiElementLoader for DefaultUiElementLoader {
         });
     }
 
-    async fn change_default_layout(
+    fn change_default_layout(
         &mut self,
         name: &str, 
-        layout: UiElementLayout, 
+        layout: GameplayWidgetLayout, 
     ) {
         // let name = format!("{}_{name}", self.playmode);
         let Some(element) = self.elements.iter_mut().find(|e| e.element_name == name) else { 

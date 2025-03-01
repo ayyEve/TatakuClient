@@ -1,4 +1,3 @@
-mod cli;
 mod game;
 mod tasks;
 #[cfg(feature="graphics")]
@@ -10,8 +9,10 @@ mod integrations;
 
 
 use prelude::*;
+
+// TODO: move this to Io?
 /// perform a download on another thread
-pub(crate) fn perform_download(url:String, path:String, progress: Arc<RwLock<DownloadProgress>>) {
+pub(crate) fn perform_download(url: String, path: String, progress: Arc<RwLock<DownloadProgress>>) {
     debug!("Downloading '{url}' to '{path}'");
 
     tokio::spawn(async move {

@@ -1,5 +1,8 @@
 use crate::prelude::*;
 
+
+/// TODO: remove this, 
+/// reimplement display as a function on reflect that takes an Option<usize> for precision (only used for floats)
 #[derive(Clone, Debug, ChainableInitializer)]
 pub struct TatakuVariable {
     /// The actual underlying value
@@ -10,12 +13,10 @@ pub struct TatakuVariable {
     pub display: Option<Cow<'static, str>>,
 
     /// Should this variable persist through game state changes?
-    #[chain]
-    pub persist: bool,
+    #[chain] pub persist: bool,
 
     /// Who can write to this variable?
-    #[chain]
-    pub access: TatakuVariableAccess,
+    #[chain] pub access: TatakuVariableAccess,
 }
 impl TatakuVariable {
     pub fn new(value: impl Into<TatakuValue>) -> Self {

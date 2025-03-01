@@ -4,18 +4,11 @@ use super::shaders::*;
 use tataku_engine::prelude::*;
 use lyon_tessellation::{ 
     geom::{ Box2D, Point }, 
-    path::builder::BorderRadii 
+    path::builder::BorderRadii,
 };
 
-use wgpu::{ 
-    Extent3d, 
-    BufferBinding, 
-    ImageCopyBuffer, 
-    util::DeviceExt, 
-    TextureViewDescriptor,
-    TextureViewDimension, 
-};
-
+use tataku_client_common::prelude::Color;
+use wgpu::util::DeviceExt as _;
 use winit::raw_window_handle::{ HasWindowHandle, HasDisplayHandle };
 
 // must not go past 16
@@ -33,20 +26,20 @@ macro_rules! get_render_buffer {
 }
 
 pub struct WgpuEngine<'window> {
-    surface: wgpu::Surface<'window>,
-    device: wgpu::Device,
-    queue: Arc<wgpu::Queue>,
-    config: wgpu::SurfaceConfiguration,
+    surface: Surface<'window>,
+    device: Device,
+    queue: Arc<Queue>,
+    config: SurfaceConfiguration,
 
-    pipelines: HashMap<BlendMode, wgpu::RenderPipeline>,
+    pipelines: HashMap<BlendMode, RenderPipeline>,
 
     buffer_queues: HashMap<LastDrawn, Box<RenderBufferQueueType>>,
     completed_buffers: Vec<RenderBufferType>,
     current_render_buffer: Option<Box<RenderBufferQueueType>>,
 
     projection_matrix: Matrix,
-    projection_matrix_buffer: wgpu::Buffer,
-    projection_matrix_bind_group: wgpu::BindGroup,
+    projection_matrix_buffer: Buffer,
+    projection_matrix_bind_group: BindGroup,
 
     atlas: Atlas,
     atlas_texture: WgpuTexture,
@@ -69,21 +62,21 @@ impl<'window> WgpuEngine<'window> {
         let window_size = settings.window_size; //window.inner_size();
 
         // create a wgpu instance
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::VULKAN | wgpu::Backends::METAL, // | wgpu::Backends::GL,
-            flags: wgpu::InstanceFlags::empty(),
-            gles_minor_version: wgpu::Gles3MinorVersion::Automatic,
+        let instance = Instance::new(InstanceDescriptor {
+            backends: Backends::VULKAN | Backends::METAL, // | Backends::GL,
+            flags: InstanceFlags::empty(),
+            gles_minor_version: Gles3MinorVersion::Automatic,
             dx12_shader_compiler: Default::default(),
         });
 
         // create the surface
-        let surface: wgpu::Surface<'window> = instance.create_surface(window).unwrap();
+        let surface: Surface<'window> = instance.create_surface(window).unwrap();
 
         // create the adapter
-        let adapter = instance.request_adapter(&wgpu::RequestAdapterOptions {
+        let adapter = instance.request_adapter(&RequestAdapterOptions {
             power_preference: match settings.performance_mode {
-                PerformanceMode::HighPerformance => wgpu::PowerPreference::HighPerformance,
-                PerformanceMode::PowerSaver => wgpu::PowerPreference::LowPower,
+                PerformanceMode::HighPerformance => PowerPreference::HighPerformance,
+                PerformanceMode::PowerSaver => PowerPreference::LowPower,
             },
             compatible_surface: Some(&surface),
             force_fallback_adapter: false,
@@ -91,13 +84,13 @@ impl<'window> WgpuEngine<'window> {
 
         // create device and queue
         let (device, queue) = adapter.request_device(
-            &wgpu::DeviceDescriptor {
+            &DeviceDescriptor {
                 #[cfg(feature="texture_arrays")]
-                required_features: wgpu::Features::TEXTURE_BINDING_ARRAY | wgpu::Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING,
+                required_features: Features::TEXTURE_BINDING_ARRAY | Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING,
                 #[cfg(not(feature="texture_arrays"))]
-                required_features: wgpu::Features::default(),
-                required_limits: wgpu::Limits::default(),
-                memory_hints: wgpu::MemoryHints::Performance,
+                required_features: Features::default(),
+                required_limits: Limits::default(),
+                memory_hints: MemoryHints::Performance,
                 label: None,
             },
             None,
@@ -115,12 +108,12 @@ impl<'window> WgpuEngine<'window> {
             .copied()
             .find(|f| f.is_srgb())
             .unwrap_or(surface_caps.formats[0]);
-        let config = wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT, // | wgpu::TextureUsages::COPY_SRC,
+        let config = SurfaceConfiguration {
+            usage: TextureUsages::RENDER_ATTACHMENT, // | TextureUsages::COPY_SRC,
             format: surface_format,
             width: window_size[0] as u32,
             height: window_size[1] as u32,
-            present_mode: wgpu::PresentMode::AutoNoVsync, //surface_caps.present_modes[0],
+            present_mode: PresentMode::AutoNoVsync, //surface_caps.present_modes[0],
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
 
@@ -129,75 +122,75 @@ impl<'window> WgpuEngine<'window> {
         surface.configure(&device, &config);
 
         #[cfg(feature="texture_arrays")]
-        let texture_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        let texture_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("atlas group layout"),
             entries: &[
-                wgpu::BindGroupLayoutEntry {
+                BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        view_dimension: wgpu::TextureViewDimension::D2,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Texture {
+                        sample_type: TextureSampleType::Float { filterable: true },
+                        view_dimension: TextureViewDimension::D2,
                         multisampled: false,
                     },
                     // count: None,
                     count: std::num::NonZeroU32::new(LAYER_COUNT),
                 },
-                wgpu::BindGroupLayoutEntry {
+                BindGroupLayoutEntry {
                     binding: 1,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Sampler(SamplerBindingType::Filtering),
                     count: None,
                 },
             ],
         });
 
         #[cfg(not(feature="texture_arrays"))]
-        let texture_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        let texture_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("atlas group layout"),
             entries: &[
-                wgpu::BindGroupLayoutEntry {
+                BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Sampler(SamplerBindingType::Filtering),
                     count: None,
                 },
-                wgpu::BindGroupLayoutEntry {
+                BindGroupLayoutEntry {
                     binding: 1,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        view_dimension: wgpu::TextureViewDimension::D2,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Texture {
+                        sample_type: TextureSampleType::Float { filterable: true },
+                        view_dimension: TextureViewDimension::D2,
                         multisampled: false,
                     },
                     count: None,
                 },
-                wgpu::BindGroupLayoutEntry {
+                BindGroupLayoutEntry {
                     binding: 2,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        view_dimension: wgpu::TextureViewDimension::D2,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Texture {
+                        sample_type: TextureSampleType::Float { filterable: true },
+                        view_dimension: TextureViewDimension::D2,
                         multisampled: false,
                     },
                     count: None,
                 },
-                wgpu::BindGroupLayoutEntry {
+                BindGroupLayoutEntry {
                     binding: 3,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        view_dimension: wgpu::TextureViewDimension::D2,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Texture {
+                        sample_type: TextureSampleType::Float { filterable: true },
+                        view_dimension: TextureViewDimension::D2,
                         multisampled: false,
                     },
                     count: None,
                 },
-                wgpu::BindGroupLayoutEntry {
+                BindGroupLayoutEntry {
                     binding: 4,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        view_dimension: wgpu::TextureViewDimension::D2,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Texture {
+                        sample_type: TextureSampleType::Float { filterable: true },
+                        view_dimension: TextureViewDimension::D2,
                         multisampled: false,
                     },
                     count: None,
@@ -206,14 +199,14 @@ impl<'window> WgpuEngine<'window> {
         });
 
         let proj_matrix_size = std::mem::size_of::<[[f32; 4]; 4]>() as u64;
-        let projection_matrix_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        let projection_matrix_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("Texture/Sampler bind group layout"),
             entries: &[
-                wgpu::BindGroupLayoutEntry {
+                BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
+                    visibility: ShaderStages::VERTEX,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Uniform,
                         has_dynamic_offset: false,
                         min_binding_size: std::num::NonZeroU64::new(proj_matrix_size)
                     },
@@ -224,19 +217,19 @@ impl<'window> WgpuEngine<'window> {
 
         let window_size = Vector2::new(window_size[0], window_size[1]);
         let projection_matrix = Self::create_projection(window_size);
-        let projection_matrix_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let projection_matrix_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("Projection Matrix Buffer"),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
             contents: bytemuck::cast_slice(&projection_matrix.to_raw()),
         });
 
-        let projection_matrix_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let projection_matrix_bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("diffuse_bind_group"),
             layout: &projection_matrix_bind_group_layout,
             entries: &[
-                wgpu::BindGroupEntry {
+                BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::Buffer(BufferBinding {
+                    resource: BindingResource::Buffer(BufferBinding {
                         buffer: &projection_matrix_buffer,
                         offset: 0,
                         size: std::num::NonZeroU64::new(proj_matrix_size)
@@ -260,13 +253,13 @@ impl<'window> WgpuEngine<'window> {
         pipelines.insert(BlendMode::Flashlight, create_flashlight_pipeline(&device, &config, &projection_matrix_bind_group_layout));
 
 
-        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::FilterMode::Nearest,
+        let sampler = device.create_sampler(&SamplerDescriptor {
+            address_mode_u: AddressMode::ClampToEdge,
+            address_mode_v: AddressMode::ClampToEdge,
+            address_mode_w: AddressMode::ClampToEdge,
+            mag_filter: FilterMode::Linear,
+            min_filter: FilterMode::Nearest,
+            mipmap_filter: FilterMode::Nearest,
             ..Default::default()
         });
 
@@ -306,9 +299,9 @@ impl<'window> WgpuEngine<'window> {
         })
     }
 
-    pub fn render_current_surface(&mut self) -> Result<(), wgpu::SurfaceError> {
+    pub fn render_current_surface(&mut self) -> Result<(), SurfaceError> {
         let output = self.surface.get_current_texture()?;
-        let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let view = output.texture.create_view(&TextureViewDescriptor::default());
         let size = output.texture.size();
 
         // don't draw if our draw surface has no area
@@ -327,7 +320,7 @@ impl<'window> WgpuEngine<'window> {
         output.present();
 
         if let Some(screenshot) = std::mem::take(&mut self.screenshot_pending) {
-            let texture = self.device.create_texture(&wgpu::TextureDescriptor {
+            let texture = self.device.create_texture(&TextureDescriptor {
                 label: Some("Screenshot Texture"),
                 size: Extent3d {
                     width,
@@ -336,9 +329,9 @@ impl<'window> WgpuEngine<'window> {
                 },
                 mip_level_count: 1,
                 sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::Bgra8UnormSrgb,
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+                dimension: TextureDimension::D2,
+                format: TextureFormat::Bgra8UnormSrgb,
+                usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::COPY_SRC,
                 view_formats: &[]
             });
             let view = texture.create_view(&TextureViewDescriptor {
@@ -363,18 +356,18 @@ impl<'window> WgpuEngine<'window> {
         Ok(())
     }
 
-    fn render(&self, renderable: RenderableSurface) -> Result<(), wgpu::SurfaceError> {
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("Render Encoder") });
+    fn render(&self, renderable: RenderableSurface) -> Result<(), SurfaceError> {
+        let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor { label: Some("Render Encoder") });
 
         {
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
                 label: Some("Render Pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                color_attachments: &[Some(RenderPassColorAttachment {
                     view: renderable.texture,
                     resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(renderable.get_clear_color()),
-                        store: if renderable.render_target { wgpu::StoreOp::Store } else { wgpu::StoreOp::Discard } , // must be store for render targets to work apparently
+                    ops: Operations {
+                        load: LoadOp::Clear(renderable.get_clear_color()),
+                        store: if renderable.render_target { StoreOp::Store } else { StoreOp::Discard } , // must be store for render targets to work apparently
                     },
                 })],
                 depth_stencil_attachment: None,
@@ -428,7 +421,7 @@ impl<'window> WgpuEngine<'window> {
                 }
 
                 render_pass.set_vertex_buffer(0, i.get_vertex_buffer().slice(..));
-                render_pass.set_index_buffer(i.get_index_buffer().slice(..), wgpu::IndexFormat::Uint32);
+                render_pass.set_index_buffer(i.get_index_buffer().slice(..), IndexFormat::Uint32);
                 render_pass.draw_indexed(0..i.get_used_indices() as u32, 0, 0..1);
             }
 
@@ -461,8 +454,8 @@ impl<'window> WgpuEngine<'window> {
 
 // texture stuff
 impl WgpuEngine<'_> {
-    fn create_texture(device: &wgpu::Device, layout: &wgpu::BindGroupLayout, sampler: &wgpu::Sampler, width:u32, height:u32, format: wgpu::TextureFormat) -> WgpuTexture {
-        let texture_size = wgpu::Extent3d {
+    fn create_texture(device: &Device, layout: &BindGroupLayout, sampler: &Sampler, width:u32, height:u32, format: TextureFormat) -> WgpuTexture {
+        let texture_size = Extent3d {
             width,
             height,
             depth_or_array_layers: 1,
@@ -470,16 +463,16 @@ impl WgpuEngine<'_> {
 
         let textures = (0..LAYER_COUNT).map(|_| {
             let texture = device.create_texture(
-                &wgpu::TextureDescriptor {
+                &TextureDescriptor {
                     size: texture_size,
                     mip_level_count: 1,
                     sample_count: 1,
-                    dimension: wgpu::TextureDimension::D2,
+                    dimension: TextureDimension::D2,
                     // Most images are stored using sRGB so we need to reflect that here.
-                    format, //wgpu::TextureFormat::Rgba8UnormSrgb,
+                    format, //TextureFormat::Rgba8UnormSrgb,
                     // TEXTURE_BINDING tells wgpu that we want to use this texture in shaders
                     // COPY_DST means that we want to copy data to this texture
-                    usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::RENDER_ATTACHMENT,
+                    usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST | TextureUsages::RENDER_ATTACHMENT,
                     label: Some("atlas_texture"),
                     // This is the same as with the SurfaceConfig. It
                     // specifies what texture formats can be used to
@@ -492,7 +485,7 @@ impl WgpuEngine<'_> {
                 }
             );
 
-            let view = texture.create_view(&wgpu::TextureViewDescriptor {
+            let view = texture.create_view(&TextureViewDescriptor {
                 label: Some("atlas_texture_view"),
                 dimension: Some(TextureViewDimension::D2),
                 base_array_layer: 0,
@@ -507,45 +500,45 @@ impl WgpuEngine<'_> {
         #[cfg(feature="texture_arrays")]
         let view_list = textures.iter().map(|a|&a.1).collect::<Vec<_>>();
         #[cfg(feature="texture_arrays")]
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("texture array bind group"),
             layout,
             entries: &[
-                wgpu::BindGroupEntry {
+                BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::TextureViewArray(&view_list),
+                    resource: BindingResource::TextureViewArray(&view_list),
                 },
-                wgpu::BindGroupEntry {
+                BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::Sampler(sampler),
+                    resource: BindingResource::Sampler(sampler),
                 }
             ],
         });
 
         #[cfg(not(feature="texture_arrays"))]
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("texture array bind group"),
             layout,
             entries: &[
-                wgpu::BindGroupEntry {
+                BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::Sampler(sampler),
+                    resource: BindingResource::Sampler(sampler),
                 },
-                wgpu::BindGroupEntry {
+                BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&textures[0].1),
+                    resource: BindingResource::TextureView(&textures[0].1),
                 },
-                wgpu::BindGroupEntry {
+                BindGroupEntry {
                     binding: 2,
-                    resource: wgpu::BindingResource::TextureView(&textures[1].1),
+                    resource: BindingResource::TextureView(&textures[1].1),
                 },
-                wgpu::BindGroupEntry {
+                BindGroupEntry {
                     binding: 3,
-                    resource: wgpu::BindingResource::TextureView(&textures[2].1),
+                    resource: BindingResource::TextureView(&textures[2].1),
                 },
-                wgpu::BindGroupEntry {
+                BindGroupEntry {
                     binding: 4,
-                    resource: wgpu::BindingResource::TextureView(&textures[3].1),
+                    resource: BindingResource::TextureView(&textures[3].1),
                 },
             ],
         });
@@ -556,28 +549,28 @@ impl WgpuEngine<'_> {
         }
     }
 
-    fn finish_screenshot(&mut self, texture: wgpu::Texture, callback: ScreenshotCallback) {
+    fn finish_screenshot(&mut self, texture: Texture, callback: ScreenshotCallback) {
         let (w, h) = (texture.width(), texture.height());
 
-        let fuck = (w * 4).div_ceil(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT) * wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
+        let fuck = (w * 4).div_ceil(COPY_BYTES_PER_ROW_ALIGNMENT) * COPY_BYTES_PER_ROW_ALIGNMENT;
         let size = (fuck * h) as u64; //(w * h * 4) as u64;
-        let buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+        let buffer = self.device.create_buffer(&BufferDescriptor {
             label: Some("Screenshot Buffer"),
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST,
             size,
             mapped_at_creation: false,
         });
 
         let tex_buffer = ImageCopyBuffer {
             buffer: &buffer,
-            layout: wgpu::ImageDataLayout {
+            layout: ImageDataLayout {
                 offset: 0,
                 bytes_per_row: Some(fuck),
                 rows_per_image: None
             }
         };
 
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("screenshot encoder") });
+        let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor { label: Some("screenshot encoder") });
         encoder.copy_texture_to_buffer(texture.as_image_copy(), tex_buffer, Extent3d { width: w, height: h, depth_or_array_layers: 1 });
         self.queue.submit(Some(encoder.finish()));
         let queue = self.queue.clone();
@@ -586,7 +579,7 @@ impl WgpuEngine<'_> {
             let slice = buffer.slice(..);
 
             let (s, mut r) = tokio::sync::oneshot::channel();
-            slice.map_async(wgpu::MapMode::Read, move |_result| s.send(()).unwrap());
+            slice.map_async(MapMode::Read, move |_result| s.send(()).unwrap());
             queue.submit(None);
 
             loop {
@@ -910,22 +903,22 @@ impl WgpuEngine<'_> {
 
 // draw helpers
 impl WgpuEngine<'_> {
-    pub(crate) fn map_blend_mode(blend_mode: BlendMode) -> wgpu::BlendState {
+    pub(crate) fn map_blend_mode(blend_mode: BlendMode) -> BlendState {
         match blend_mode {
-            BlendMode::AlphaBlending => wgpu::BlendState::ALPHA_BLENDING,
-            BlendMode::AlphaOverwrite => wgpu::BlendState::REPLACE,
-            BlendMode::PremultipliedAlpha => wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING,
-            BlendMode::AdditiveBlending => wgpu::BlendState {
-                color: wgpu::BlendComponent { src_factor: wgpu::BlendFactor::One, dst_factor: wgpu::BlendFactor::One, operation: wgpu::BlendOperation::Add },
-                alpha: wgpu::BlendComponent { src_factor: wgpu::BlendFactor::One, dst_factor: wgpu::BlendFactor::One, operation: wgpu::BlendOperation::Add }
+            BlendMode::AlphaBlending => BlendState::ALPHA_BLENDING,
+            BlendMode::AlphaOverwrite => BlendState::REPLACE,
+            BlendMode::PremultipliedAlpha => BlendState::PREMULTIPLIED_ALPHA_BLENDING,
+            BlendMode::AdditiveBlending => BlendState {
+                color: BlendComponent { src_factor: BlendFactor::One, dst_factor: BlendFactor::One, operation: BlendOperation::Add },
+                alpha: BlendComponent { src_factor: BlendFactor::One, dst_factor: BlendFactor::One, operation: BlendOperation::Add }
             },
-            BlendMode::OsuAdditiveBlending => wgpu::BlendState {
-                color: wgpu::BlendComponent { src_factor: wgpu::BlendFactor::SrcAlpha, dst_factor: wgpu::BlendFactor::One, operation: wgpu::BlendOperation::Add },
-                alpha: wgpu::BlendComponent { src_factor: wgpu::BlendFactor::One, dst_factor: wgpu::BlendFactor::One, operation: wgpu::BlendOperation::Add }
+            BlendMode::OsuAdditiveBlending => BlendState {
+                color: BlendComponent { src_factor: BlendFactor::SrcAlpha, dst_factor: BlendFactor::One, operation: BlendOperation::Add },
+                alpha: BlendComponent { src_factor: BlendFactor::One, dst_factor: BlendFactor::One, operation: BlendOperation::Add }
             },
-            BlendMode::SourceAlphaBlending => wgpu::BlendState {
-                color: wgpu::BlendComponent { src_factor: wgpu::BlendFactor::SrcAlpha, dst_factor: wgpu::BlendFactor::One, operation: wgpu::BlendOperation::Add },
-                alpha: wgpu::BlendComponent { src_factor: wgpu::BlendFactor::SrcAlpha, dst_factor: wgpu::BlendFactor::One, operation: wgpu::BlendOperation::Add }
+            BlendMode::SourceAlphaBlending => BlendState {
+                color: BlendComponent { src_factor: BlendFactor::SrcAlpha, dst_factor: BlendFactor::One, operation: BlendOperation::Add },
+                alpha: BlendComponent { src_factor: BlendFactor::SrcAlpha, dst_factor: BlendFactor::One, operation: BlendOperation::Add }
             },
 
             BlendMode::None
@@ -1024,13 +1017,31 @@ impl GraphicsEngine for WgpuEngine<'_> {
 
 
 
-    fn create_render_target(&mut self, [w, h]: [u32; 2], clear_color: Color, do_render: RenderTargetDraw) -> Option<RenderTarget> {
+    fn create_render_target(
+        &mut self, 
+        [width, height]: [u32; 2], 
+        clear_color: Color, 
+        do_render: RenderTargetDraw
+    ) -> Option<RenderTarget> {
         // find space in the render target atlas
-        let atlased = self.atlas.try_insert(w, h)?;
+        let atlased = self.atlas.try_insert(width, height)?;
 
         // create a projection and render target
-        let projection = Self::create_projection(Vector2::new(w as f32, h as f32));
-        let target = RenderTarget::new_main_thread(w, h, Arc::new(atlased), projection, clear_color);
+        let projection = Self::create_projection(Vector2::new(width as f32, height as f32));
+        let target = RenderTarget {
+            width,
+            height,
+            projection,
+            clear_color,
+            image: Image::new(
+                Vector2::ZERO,
+                Arc::new(atlased),
+                Vector2::ONE
+            ),
+
+            // drop_check: Arc::new(()),
+            // image: Image::new()
+        };
 
         // queue rendering the data to it
         self.update_render_target(target.clone(), do_render);
@@ -1052,23 +1063,23 @@ impl GraphicsEngine for WgpuEngine<'_> {
 
         // create a temporary texture to render to this target to
         let texture = self.device.create_texture(
-            &wgpu::TextureDescriptor {
-                size: wgpu::Extent3d {
+            &TextureDescriptor {
+                size: Extent3d {
                     width,
                     height,
                     depth_or_array_layers: 1,
                 },
                 mip_level_count: 1,
                 sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
+                dimension: TextureDimension::D2,
                 format: self.config.format,
-                usage: wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::RENDER_ATTACHMENT,
+                usage: TextureUsages::COPY_SRC | TextureUsages::RENDER_ATTACHMENT,
                 label: Some("render_target_temp_tex"),
                 view_formats: &[],
             }
         );
 
-        let view = texture.create_view(&wgpu::TextureViewDescriptor {
+        let view = texture.create_view(&TextureViewDescriptor {
             label: Some("render_target_temp_tex_view"),
             dimension: Some(TextureViewDimension::D2),
             base_array_layer: 0,
@@ -1101,7 +1112,7 @@ impl GraphicsEngine for WgpuEngine<'_> {
 
 
         // copy render to atlas
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("render_target copy encoder") });
+        let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor { label: Some("render_target copy encoder") });
 
         let mut dest = atlas_tex.as_image_copy();
         dest.origin.x = target.image.tex.x;
@@ -1140,25 +1151,25 @@ impl GraphicsEngine for WgpuEngine<'_> {
             .collect::<Vec<_>>()
         ;
 
-        let texture_size = wgpu::Extent3d {
+        let texture_size = Extent3d {
             width,
             height,
             depth_or_array_layers: 1,
         };
 
         self.queue.write_texture(
-            wgpu::ImageCopyTexture {
+            ImageCopyTexture {
                 texture: &self.atlas_texture.textures.get(info.layer as usize).unwrap().0,
                 mip_level: 0,
-                origin: wgpu::Origin3d {
+                origin: Origin3d {
                     x: info.x,
                     y: info.y,
                     z: 0
                 },
-                aspect: wgpu::TextureAspect::All,
+                aspect: TextureAspect::All,
             },
             &data,
-            wgpu::ImageDataLayout {
+            ImageDataLayout {
                 offset: 0,
                 bytes_per_row: Some(4 * width),
                 rows_per_image: Some(height),
@@ -1181,25 +1192,25 @@ impl GraphicsEngine for WgpuEngine<'_> {
 
         self.queue.write_texture(
             // Tells wgpu where to copy the pixel data
-            wgpu::ImageCopyTexture {
+            ImageCopyTexture {
                 texture: &self.atlas_texture.textures.get(tex.layer as usize).unwrap().0,
                 mip_level: 0,
-                origin: wgpu::Origin3d {
+                origin: Origin3d {
                     x: tex.x - ATLAS_PADDING,
                     y: tex.y - ATLAS_PADDING,
                     z: 0
                 },
-                aspect: wgpu::TextureAspect::All,
+                aspect: TextureAspect::All,
             },
             // The actual pixel data
             &data,
             // The layout of the texture
-            wgpu::ImageDataLayout {
+            ImageDataLayout {
                 offset: 0,
                 bytes_per_row: Some(4 * width),
                 rows_per_image: Some(height),
             },
-            wgpu::Extent3d {
+            Extent3d {
                 width,
                 height,
                 depth_or_array_layers: 1,
@@ -1453,24 +1464,24 @@ impl GraphicsEngine for WgpuEngine<'_> {
 struct VsyncUtils;
 impl VsyncUtils {
 
-    fn map_to_vsync(present_mode: wgpu::PresentMode) -> Vsync {
+    fn map_to_vsync(present_mode: PresentMode) -> Vsync {
         match present_mode {
-            wgpu::PresentMode::AutoVsync => Vsync::AutoVsync,
-            wgpu::PresentMode::AutoNoVsync => Vsync::AutoNoVsync,
-            wgpu::PresentMode::Fifo => Vsync::Fifo,
-            wgpu::PresentMode::FifoRelaxed => Vsync::FifoRelaxed,
-            wgpu::PresentMode::Immediate => Vsync::Immediate,
-            wgpu::PresentMode::Mailbox => Vsync::Mailbox,
+            PresentMode::AutoVsync => Vsync::AutoVsync,
+            PresentMode::AutoNoVsync => Vsync::AutoNoVsync,
+            PresentMode::Fifo => Vsync::Fifo,
+            PresentMode::FifoRelaxed => Vsync::FifoRelaxed,
+            PresentMode::Immediate => Vsync::Immediate,
+            PresentMode::Mailbox => Vsync::Mailbox,
         }
     }
-    fn map_from_vsync(vsync: Vsync) -> wgpu::PresentMode {
+    fn map_from_vsync(vsync: Vsync) -> PresentMode {
         match vsync {
-            Vsync::AutoVsync => wgpu::PresentMode::AutoVsync,
-            Vsync::AutoNoVsync => wgpu::PresentMode::AutoNoVsync,
-            Vsync::Fifo => wgpu::PresentMode::Fifo,
-            Vsync::FifoRelaxed => wgpu::PresentMode::FifoRelaxed,
-            Vsync::Immediate => wgpu::PresentMode::Immediate,
-            Vsync::Mailbox => wgpu::PresentMode::Mailbox,
+            Vsync::AutoVsync => PresentMode::AutoVsync,
+            Vsync::AutoNoVsync => PresentMode::AutoNoVsync,
+            Vsync::Fifo => PresentMode::Fifo,
+            Vsync::FifoRelaxed => PresentMode::FifoRelaxed,
+            Vsync::Immediate => PresentMode::Immediate,
+            Vsync::Mailbox => PresentMode::Mailbox,
         }
     }
 
@@ -1500,7 +1511,7 @@ impl VsyncUtils {
 }
 
 
-fn cast_from_rgba_bytes(bytes: &[u8], format: wgpu::TextureFormat) -> [u8; 4] {
+fn cast_from_rgba_bytes(bytes: &[u8], format: TextureFormat) -> [u8; 4] {
     // incoming is rgba8
     #[allow(clippy::get_first)] // get(0) keeps things lined up here
     let r = bytes.get(0).cloned().unwrap_or_default();
@@ -1510,8 +1521,8 @@ fn cast_from_rgba_bytes(bytes: &[u8], format: wgpu::TextureFormat) -> [u8; 4] {
 
     match format {
         // pretend this is all it can be for now
-        wgpu::TextureFormat::Bgra8Unorm
-        | wgpu::TextureFormat::Bgra8UnormSrgb => [b, g, r, a],
+        TextureFormat::Bgra8Unorm
+        | TextureFormat::Bgra8UnormSrgb => [b, g, r, a],
 
         // just default to rgba otherwise and cry if its not
         _ => [r, g, b, a]
@@ -1519,7 +1530,7 @@ fn cast_from_rgba_bytes(bytes: &[u8], format: wgpu::TextureFormat) -> [u8; 4] {
 
 }
 
-fn cast_to_rgba_bytes(bytes: &[u8], _format: wgpu::TextureFormat) -> [u8; 4] {
+fn cast_to_rgba_bytes(bytes: &[u8], _format: TextureFormat) -> [u8; 4] {
     // pretend incoming is bgra8
     #[allow(clippy::get_first)]
     let b = bytes.get(0).cloned().unwrap_or_default();
@@ -1531,9 +1542,9 @@ fn cast_to_rgba_bytes(bytes: &[u8], _format: wgpu::TextureFormat) -> [u8; 4] {
 
     // match format {
     //     // pretend this is all it can be for now
-    //     wgpu::TextureFormat::Bgra8Unorm
-    //     | wgpu::TextureFormat::Bgra8UnormSrgb => [b, g, r, a],
-    //     wgpu::TextureFormat::Rgba8Unorm
+    //     TextureFormat::Bgra8Unorm
+    //     | TextureFormat::Bgra8UnormSrgb => [b, g, r, a],
+    //     TextureFormat::Rgba8Unorm
 
     //     // just default to rgba otherwise and cry if its not
     //     _ => [r, g, b, a]

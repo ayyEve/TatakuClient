@@ -161,7 +161,12 @@ impl MultiplayerManager {
                 self.lobby.info.players.push(LobbyUser { user_id: *user_id, ..Default::default() });
 
                 let Some(user) = OnlineManager::get().await.users.get(user_id).cloned() else { 
-                    NotificationManager::add_text_notification(format!("user with id {} joined the match", user_id), 3000.0, Color::PURPLE).await;
+                    self.actions.push(
+                        Notification::default()
+                        .text(format!("user with id {} joined the match", user_id))
+                        .duration(3000.0)
+                        .color(Color::PURPLE)
+                    );
                     self.update_values(values);
                     return Ok(())
                 };
@@ -169,7 +174,12 @@ impl MultiplayerManager {
                 let user = user.lock().await;
                 self.lobby.player_usernames.insert(*user_id, user.username.clone());
                 
-                NotificationManager::add_text_notification(format!("{} joined the match", user.username), 3000.0, Color::PURPLE).await;
+                self.actions.push(
+                    Notification::default()
+                    .text(format!("{} joined the match", user.username))
+                    .duration(3000.0)
+                    .color(Color::PURPLE)
+                );
             }
             MultiplayerPacket::Server_LobbyUserLeft { lobby_id, user_id } => {
                 if &self.lobby.id != lobby_id { return Ok(()); }
@@ -183,7 +193,12 @@ impl MultiplayerManager {
                 
                 if user_id != &self.lobby.our_user_id {
                     let username = self.lobby.player_usernames.remove(user_id).unwrap_or_default();
-                    NotificationManager::add_text_notification(format!("{username} left the match"), 3000.0, Color::PURPLE).await;
+                    self.actions.push(
+                        Notification::default()
+                        .text(format!("{username} left the match"))
+                        .duration(3000.0)
+                        .color(Color::PURPLE)
+                    );
                 }
             }
 
@@ -245,15 +260,21 @@ impl MultiplayerManager {
             MultiplayerPacket::Server_LobbyBeginRound => {
                 self.lobby.should_play = true;
 
+                // TODO!!!!
                 // if we're not playing yet
                 if manager.is_none() {
-                    if let Some(loader) = &self.beatmap_loader {
-                        if let Some(Ok(mut manager)) = loader.check().await {
-                            manager.set_mode(GameplayMode::Multiplayer);
-                            self.actions.push(GameAction::StartGame(Box::new(manager)));
-                            tokio::spawn(OnlineManager::update_lobby_state(LobbyUserState::InGame));
-                        }
-                    }
+                    // if let Some(loader) = &self.beatmap_loader {
+                    //     if let Some(Ok(mut manager)) = loader.check().await {
+
+                    //         GameAction::NewGameplayManager(NewManager {
+                    //             owner: MessageOwner::Dialog(())
+                    //         });
+
+                    //         manager.set_mode(GameplayMode::Multiplayer.into());
+                    //         self.actions.push(GameAction::StartGame(Box::new(manager)));
+                    //         tokio::spawn(OnlineManager::update_lobby_state(LobbyUserState::InGame));
+                    //     }
+                    // }
                     self.beatmap_loader = None;
                     self.load_complete_sent = false;
 
@@ -269,7 +290,6 @@ impl MultiplayerManager {
                 if let Some(beatmap) = &self.lobby.current_beatmap {
                     // self.selected_beatmap = BEATMAP_MANAGER.read().await.get_by_hash(&beatmap.hash);
                     // self.selected_mode = Some(beatmap.mode.clone());
-                    // GlobalValueManager::update(Arc::new(CurrentPlaymode(beatmap.mode.clone())));
 
                     self.selected_mode = Some(beatmap.mode.clone());
                     // update the playmode
@@ -344,7 +364,12 @@ impl MultiplayerManager {
 
                 // if we just became the host, show a notif
                 if self.is_host() && !was_host {
-                    NotificationManager::add_text_notification("You are now the host!", 3000.0, Color::PURPLE_AMETHYST).await;
+                    self.actions.push(
+                        Notification::default()
+                        .text("You are now the host!")
+                        .duration(3000.0)
+                        .color(Color::PURPLE_AMETHYST)
+                    );
                 }
             }
 
@@ -370,24 +395,32 @@ impl MultiplayerManager {
                 let hash = beatmap.hash;
                 let score_url = settings.score_url.clone();
 
-                tokio::spawn(async move {
-                    let req = reqwest::get(format!("{score_url}/api/get_beatmap_url?hash={hash}")).await;
-                    match req {
-                        Err(e) => NotificationManager::add_error_notification("Error with beatmap url request", e.to_string()).await,
-                        Ok(resp) => {
-                            #[allow(unused)] #[derive(Deserialize)]
-                            struct Resp { error: Option<String>, url: Option<String> }
-                            
-                            let Ok(body) = resp.text().await else { NotificationManager::add_text_notification("shit", 3000.0, Color::RED).await; return; };
-                            info!("url resp: {body}");
 
-                            match serde_json::from_str(&body) {
-                                Ok(Resp {url: Some(url), ..}) => open_link(url),
-                                _ => error!("some shit broke i dont care")
-                            }
+                // TODO: maybe move to a task?
+                let req = reqwest::get(format!("{score_url}/api/get_beatmap_url?hash={hash}")).await;
+                match req {
+                    Err(e) => NotificationManager::add_error_notification("Error with beatmap url request", e.to_string()).await,
+                    Ok(resp) => {
+                        #[allow(unused)] #[derive(Deserialize)]
+                        struct Resp { error: Option<String>, url: Option<String> }
+                        
+                        let Ok(body) = resp.text().await else { 
+                            self.actions.push(
+                                Notification::default()
+                                .text("shit")
+                                .duration(3000.0)
+                                .color(Color::RED)
+                            );
+                            return; 
+                        };
+                        info!("url resp: {body}");
+
+                        match serde_json::from_str(&body) {
+                            Ok(Resp {url: Some(url), ..}) => open_link(url),
+                            _ => error!("some shit broke i dont care")
                         }
                     }
-                });
+                }
             }
 
             // slot actions

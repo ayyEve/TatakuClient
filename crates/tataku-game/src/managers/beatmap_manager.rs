@@ -2,7 +2,6 @@ use rand::Rng;
 use crate::prelude::*;
 use std::fs::read_dir;
 
-// const DOWNLOAD_CHECK_INTERVAL:u64 = 10_000;
 #[derive(Default, Debug)]
 #[derive(Reflect)]
 #[reflect(dont_clone)]
@@ -196,7 +195,7 @@ impl BeatmapManager {
                 tokio::spawn(Database::add_ignored(beatmap.file_path.clone()));
             }
 
-            debug!("map already added");
+            trace!("map already added");
             return;
         }
 
@@ -207,7 +206,6 @@ impl BeatmapManager {
 
         if self.initialized {
             debug!("adding beatmap {}", beatmap.version_string());
-            // values.global.new_beatmap_hash = Some(beatmap.beatmap_hash);
 
             #[cfg(feature="graphics")]
             self.actions.push(GameAction::HandleEvent(TatakuEventType::MapAdded, Some(beatmap.beatmap_hash.to_string().into())));
@@ -342,7 +340,7 @@ impl BeatmapManager {
             }
         }
 
-        self.actions.push(GameAction::ForceUiRefresh);
+        // self.actions.push(UiAction::Refresh);
     }
 
     pub async fn remove_current_beatmap(&mut self) {
@@ -388,7 +386,7 @@ impl BeatmapManager {
 
     pub fn random_beatmap(&self) -> Option<Arc<BeatmapMeta>> {
         if !self.beatmaps.is_empty() {
-            let ind = rand::thread_rng().gen_range(0..self.beatmaps.len());
+            let ind = rand::rng().random_range(0..self.beatmaps.len());
             let map = self.beatmaps[ind].clone();
             Some(map)
         } else {
@@ -597,15 +595,16 @@ impl BeatmapManager {
         self.selected_set = set_num;
         self.select_map(0);
 
-        #[cfg(feature="graphics")]
-        self.actions.push(TatakuAction::PerformOperation(
-            snap_to_id(
-            "beatmap_scroll",
-            iced::widget::scrollable::RelativeOffset {
-                x: 0.0,
-                y: set_num as f32 / self.groups.len() as f32
-            })
-        ))
+        // FIXME: !!!
+        // #[cfg(feature="graphics")]
+        // self.actions.push(TatakuAction::PerformOperation(
+        //     snap_to_id(
+        //     "beatmap_scroll",
+        //     iced::widget::scrollable::RelativeOffset {
+        //         x: 0.0,
+        //         y: set_num as f32 / self.groups.len() as f32
+        //     })
+        // ))
     }
     pub fn next_set(&mut self) {
         self.select_set(self.selected_set.wrapping_add_1(self.groups.len()))
@@ -790,29 +789,4 @@ impl BeatmapListGroup {
         }
         None
     }
-
-    // pub fn into_map(&self, current_hash: Md5Hash) -> TatakuValue {
-    //     let mut is_selected = false;
-
-    //     let maps:Vec<TatakuValue> = self.maps.iter().map(|beatmap| {
-    //         let map_is_selected = beatmap.comp_hash(current_hash);
-    //         if map_is_selected { is_selected = true }
-
-    //         let map:TatakuValue = beatmap.deref().deref().into();
-    //         TatakuValue::Map(
-    //             map.to_map()
-    //                 .insert_value("diff_rating", TatakuVariable::new(beatmap.diff.unwrap_or_default()))
-    //                 .insert_value("is_selected", TatakuVariable::new(map_is_selected))
-    //         )
-    //     }).collect();
-
-    //     let group = HashMap::default()
-    //         .insert_value("maps", TatakuVariable::new((TatakuVariableAccess::GameOnly, maps)))
-    //         .insert_value("selected", TatakuVariable::new_game(is_selected))
-    //         .insert_value("name", TatakuVariable::new(&self.name))
-    //         .insert_value("id", TatakuVariable::new(self.number as u64));
-
-    //     TatakuValue::Map(group)
-    // }
-
 }

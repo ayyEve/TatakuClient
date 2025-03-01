@@ -40,7 +40,6 @@ impl NotificationsDialog {
 }
 
 
-#[async_trait]
 impl Dialog for NotificationsDialog {
     fn name(&self) -> &'static str { "notifications_dialog" }
     fn get_num(&self) -> usize { self.num }
@@ -48,13 +47,13 @@ impl Dialog for NotificationsDialog {
 
     fn should_close(&self) -> bool { self.should_close }
     // fn get_bounds(&self) -> Bounds { self.bounds }
-    async fn force_close(&mut self) { self.should_close = true; }
+    fn force_close(&mut self) { self.should_close = true; }
 
     
     async fn handle_message(&mut self, message: Message, _values: &mut dyn Reflect) {
         let Some(id) = message.tag.as_number() else { return };
 
-        if let MessageType::Click = &message.message_type {
+        if let MessageValue::Click = &message.message_type {
             NotificationManager::activate_notification(id).await;
         } else {
             let mut notif_manager = NOTIFICATION_MANAGER.write().await;

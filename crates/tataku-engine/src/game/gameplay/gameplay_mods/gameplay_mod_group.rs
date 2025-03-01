@@ -2,6 +2,7 @@ use crate::prelude::*;
 
 
 #[repr(C)]
+#[derive(Reflect)]
 #[derive(Copy, Clone, Debug)]
 pub struct GameplayModGroupStatic {
     pub name: &'static str,
@@ -34,7 +35,6 @@ impl GameplayModGroup {
     }
 
 }
-
 
 pub fn default_mod_groups() -> Vec<GameplayModGroup> {
     vec![

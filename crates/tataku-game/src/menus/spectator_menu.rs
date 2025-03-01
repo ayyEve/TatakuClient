@@ -1,29 +1,27 @@
 use crate::prelude::*;
+use crate::prelude::ui::*;
 
+#[derive(Default)]
 pub struct SpectatorMenu {
-
+    node_id: NodeId
 }
-
 impl SpectatorMenu {
     pub fn new() -> Self {
         Self {
-            
+            node_id: EMPTY_NODE,
         }
     }
 }
 
-#[async_trait]
-impl AsyncMenu for SpectatorMenu {
-    fn get_name(&self) -> &'static str { "spectator_menu" }
+// FIXME: all this
+// #[async_trait]
+impl Widget for SpectatorMenu {
+    fn name(&self) -> Cow<'static, str> { Cow::Borrowed("spectator_menu") }
+    fn node_id(&self) -> NodeId { self.node_id }
 
-    fn view(&self, _values: &mut dyn Reflect) -> IcedElement {
-        EmptyElement.into_element()
+    fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
+        self.node_id = shell.tree.new_leaf(Style::DEFAULT)?;
+        Ok(self.node_id)
     }
-    
-    async fn handle_message(&mut self, _message: Message, _values: &mut dyn Reflect) {
-
-    }
-    async fn update(&mut self, _values: &mut dyn Reflect) -> Vec<TatakuAction> { 
-        Vec::new() 
-    }
+    fn draw(&self, _shell: &mut DrawShell<'_>) {}
 }

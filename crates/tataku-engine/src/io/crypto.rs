@@ -24,11 +24,6 @@ fn check_all_hex(s: &str) -> bool {
     ];
 
     s.chars().all(|c| HEX_CHARS.contains(&c))
-    // for c in s.chars() {
-    //     if !HEX_CHARS.contains(&c) { return false }
-    // }
-
-    // true
 }
 
 

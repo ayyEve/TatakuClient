@@ -15,7 +15,7 @@ impl UTypingNoteQueue {
         input: char, 
         time: f32, 
         windows: &[(HitJudgment, Range<f32>)], 
-        state: &GameplayStateForUpdate<'_>,
+        state: &GameplayUpdateShell<'_>,
     ) -> Option<HitJudgment> {
         let current_note = self.current_note()?;
 

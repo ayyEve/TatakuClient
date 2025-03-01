@@ -1,6 +1,7 @@
 #![allow(dead_code, unused, non_snake_case)]
 use futures_util::SinkExt;
 use crate::prelude::*;
+use crate::prelude::ui::*;
 
 //TODO: proper window size
 
@@ -43,11 +44,16 @@ pub struct Chat {
     width_resize_hover: bool,
     height_resize_hover: bool,
 
-    window_size: Arc<WindowSize>,
+    // window_size: Arc<WindowSize>,
+
+    node: Box<dyn Widget>,
+    node_id: NodeId,
 }
 impl Chat {
     pub fn new() -> Self {
-        let window_size = WindowSize::get();
+        // FIXME: 
+        let window_size = Vector2::ZERO;
+        // let window_size = WindowSize::get();
 
         let chat_height = window_size.y / 3.0 - INPUT_HEIGHT;
         let channel_list_width = window_size.x / 5.0;
@@ -88,7 +94,10 @@ impl Chat {
             height_resize: false,
             width_resize_hover:  false,
             height_resize_hover: false,
-            window_size
+            // window_size,
+
+            node: Box::new(EmptyWidget::new()),
+            node_id: EMPTY_NODE
         }
     }
 
@@ -99,6 +108,48 @@ impl Chat {
         // // do a negative max scroll
         // self.message_scroll.on_scroll(-f32::MAX);
     }
+
+
+    fn build_view(&self) -> Box<dyn Widget> {
+        col!(
+            // channel scroll
+            Container::new(
+                self.messages.keys()
+                    .map(|c| TextWidget::new(c.get_name().into_owned()).font_size(30.0).width(FILL).boxed())
+                    .collect()
+            )
+            .flex_direction(FlexDirection::Column)
+            .scrollable(true)
+            .id("channel_scroll")
+            .boxed(),
+
+            // message scroll
+            self.selected_channel.as_ref()
+            .map(|c| Container::new(self.messages.get(c).unwrap()
+                    .iter()
+                    .map(|c| TextWidget::new(c.text.clone())
+                        .font_size(30.0)
+                        .width(FILL)
+                        .boxed()
+                    )
+                    .collect()
+                )
+                .flex_direction(FlexDirection::Column)
+                .scrollable(true)
+                .id("message_scroll")
+                .boxed()
+            )
+            .unwrap_or_else(|| EmptyWidget::new_boxed()),
+
+            // message text input
+            TextInput::new("Chat:", self.current_message.clone()).font_size(INPUT_FONT_SIZE).boxed()
+            ;
+            // // key input
+            // self.key_handler.handler();
+
+            width = FILL
+        )
+    }
 }
 
 impl Default for Chat {
@@ -107,29 +158,46 @@ impl Default for Chat {
     }
 }
 
-
 #[async_trait]
-impl Dialog for Chat {
-    fn name(&self) -> &'static str { "chat_dialog" }
-    fn get_num(&self) -> usize { self.num }
-    fn set_num(&mut self, num: usize) { self.num = num }
+impl Widget for Chat {
+    fn name(&self) -> Cow<'static, str> { "chat_dialog".into() }
+    fn node_id(&self) -> NodeId { self.node_id }
 
+    fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
+        self.node = self.build_view();
+        let child = self.node.layout(shell)?;
 
-    fn should_close(&self) -> bool { self.should_close }
-    async fn force_close(&mut self) { self.should_close = true; }
+        self.node_id = shell.tree.new_with_children(
+            Style::default(), 
+            &[child]
+        )?;
+        
+        Ok(self.node_id)
+    }
 
-    
-    async fn handle_message(&mut self, message: Message, _values: &mut dyn Reflect) {
+    fn draw(
+        &self,
+        shell: &mut DrawShell<'_>,
+    ) {
+        todo!()
+    }
+
+    async fn handle_message(
+        &mut self, 
+        message: &Message, 
+        _values: &mut dyn Reflect,
+        _actions: &mut ActionQueue,
+    ) {
         let Some(tag) = message.tag.as_string() else { return }; 
 
-        match &*tag {
+        match &**tag {
             // a channel was clicked
             "channel" => {
-                let Some(channel_name) = message.message_type.as_text() else { return }; 
+                let Some(channel_name) = message.value.as_text_ref() else { return }; 
                 
                 // find the channel name in the list
                 for (channel, message_list) in self.messages.iter() {
-                    if channel.get_name() != channel_name { continue }
+                    if channel.get_name() != &**channel_name { continue }
 
                     // set our current channel
                     self.selected_channel = Some(channel.clone());
@@ -152,7 +220,11 @@ impl Dialog for Chat {
     }
 
     
-    async fn update(&mut self, _values: &mut dyn Reflect) -> Vec<TatakuAction> { 
+    fn update(
+        &mut self, 
+        _shell: &mut UpdateShell<'_>,
+        _actions: &mut ActionQueue,
+    ) { 
         // get new messages
         if let Some(mut online_manager) = OnlineManager::try_get_mut() {
             let mut scroll_pending = false;
@@ -193,7 +265,7 @@ impl Dialog for Chat {
                     if channel.get_name() == current_channel.get_name() {
                         let cached_messages = self.messages.get_mut(channel).unwrap();
 
-                        let window_size = self.window_size.0;
+                        // let window_size = self.window_size.0;
                         for message in online_manager.chat_messages.get(channel).unwrap() {
                             if !cached_messages.contains(message) {
                                 // cached_messages.push(message.clone())
@@ -239,135 +311,119 @@ impl Dialog for Chat {
         //         _ => {}
         //     }
         // }
-
-
-        Vec::new()
     }
 
 
-    fn view(&self, _values: &mut dyn Reflect) -> IcedElement {
-        use iced_elements::*;
-        
-        col!(
-            
-            // channel scroll
-            make_scrollable(
-                self.messages.keys().map(|c|Text::new(c.get_name()).size(30.0).width(Fill).into_element()).collect(),
-                "channel_scroll"
-            ),
-
-            // message scroll
-            self.selected_channel.as_ref().map(|c|make_scrollable(
-                self.messages.get(c).unwrap().iter().map(|c|Text::new(c.text.clone()).size(30.0).width(Fill).into_element()).collect(),
-                "message_scroll"
-            ).into_element()).unwrap_or_else(||EmptyElement.into_element()),
-
-            // message text input
-            TextInput::new("Chat:", &self.current_message).size(INPUT_FONT_SIZE)
-            ;
-            // // key input
-            // self.key_handler.handler();
-
-            width = Fill
-        )
-    }
-
-
-
-
-    // async fn on_mouse_move(&mut self, pos:Vector2, _g:&mut Game) {
-    //     self.channel_scroll.on_mouse_move(pos);
-    //     self.message_scroll.on_mouse_move(pos);
-
-    //     let window_size = self.window_size.0;
-    //     // self.width_resize_hover = (pos.x - (self.channel_list_width)).powi(2) < RESIZE_LENIENCE.powi(2);
-    //     self.height_resize_hover = (pos.y - (window_size.y - self.chat_height)).powi(2) < RESIZE_LENIENCE.powi(2);
-
-    //     if self.height_resize {
-    //         self.chat_height = window_size.y - pos.y;
-
-    //         self.channel_scroll.set_pos(Vector2::new(
-    //             self.channel_scroll.get_pos().x,
-    //             window_size.y - self.chat_height
-    //         ));
-    //         self.channel_scroll.set_size(Vector2::new(
-    //             self.channel_scroll.size().x,
-    //             self.chat_height
-    //         ));
-
-    //         self.message_scroll.set_pos(Vector2::new(
-    //             self.message_scroll.get_pos().x,
-    //             window_size.y - self.chat_height
-    //         ));
-    //         self.message_scroll.set_size(Vector2::new(
-    //             self.message_scroll.size().x,
-    //             self.chat_height - INPUT_HEIGHT
-    //         ));
-    //     }
-    //     if self.width_resize {
-    //         self.channel_list_width = pos.x;
-
-    //         self.channel_scroll.set_size(Vector2::new(
-    //             self.channel_list_width,
-    //             self.channel_scroll.size().y
-    //         ));
-
-    //         self.input.set_pos(Vector2::new(
-    //             self.channel_list_width,
-    //             self.input.get_pos().y
-    //         ));
-    //         self.message_scroll.set_pos(Vector2::new(
-    //             self.channel_list_width,
-    //             self.message_scroll.get_pos().y
-    //         ));
-    //         self.message_scroll.set_size(Vector2::new(
-    //             window_size.x - self.channel_list_width,
-    //             self.message_scroll.size().x
-    //         ));
-    //     }
-    // }
-
-    // async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection) {
-    //     let window_size = self.window_size.0;
-
-    //     // draw backgrounds
-    //     list.push(Rectangle::new(
-    //         self.channel_scroll.get_pos() + offset,
-    //         self.channel_scroll.size(),
-    //         Color::WHITE.alpha(0.85),
-    //         Some(Border::new(Color::BLACK, 2.0))
-    //     ));
-    //     list.push(Rectangle::new(
-    //         self.message_scroll.get_pos() + offset,
-    //         self.message_scroll.size(), //+ Vector2::new(0.0, INPUT_HEIGHT),
-    //         Color::WHITE.alpha(0.85),
-    //         Some(Border::new(Color::BLACK, 2.0))
-    //     ));
-
-    //     if self.width_resize_hover {
-    //         // red line at width
-    //         list.push(Line::new(
-    //             Vector2::new(self.channel_list_width, window_size.y) + offset,
-    //             Vector2::new(self.channel_list_width, window_size.y - self.chat_height) + offset,
-    //             2.0,
-    //             Color::RED
-    //         ))
-    //     }
-    //     if self.height_resize_hover {
-    //         // red line at height
-    //         list.push(Line::new(
-    //             Vector2::new(0.0, window_size.y - self.chat_height) + offset,
-    //             Vector2::new(window_size.x, window_size.y - self.chat_height) + offset,
-    //             2.0,
-    //             Color::RED
-    //         ))
-    //     }
-
-    //     self.channel_scroll.draw(offset, list);
-    //     self.message_scroll.draw(offset, list);
-    //     self.input.draw(offset, list);
-    // }
 }
+
+
+// impl Dialog for Chat {
+//     fn get_num(&self) -> usize { self.num }
+//     fn set_num(&mut self, num: usize) { self.num = num }
+
+
+//     fn should_close(&self) -> bool { self.should_close }
+//     fn force_close(&mut self) { self.should_close = true; }
+
+    
+
+
+
+
+
+//     // async fn on_mouse_move(&mut self, pos:Vector2, _g:&mut Game) {
+//     //     self.channel_scroll.on_mouse_move(pos);
+//     //     self.message_scroll.on_mouse_move(pos);
+
+//     //     let window_size = self.window_size.0;
+//     //     // self.width_resize_hover = (pos.x - (self.channel_list_width)).powi(2) < RESIZE_LENIENCE.powi(2);
+//     //     self.height_resize_hover = (pos.y - (window_size.y - self.chat_height)).powi(2) < RESIZE_LENIENCE.powi(2);
+
+//     //     if self.height_resize {
+//     //         self.chat_height = window_size.y - pos.y;
+
+//     //         self.channel_scroll.set_pos(Vector2::new(
+//     //             self.channel_scroll.get_pos().x,
+//     //             window_size.y - self.chat_height
+//     //         ));
+//     //         self.channel_scroll.set_size(Vector2::new(
+//     //             self.channel_scroll.size().x,
+//     //             self.chat_height
+//     //         ));
+
+//     //         self.message_scroll.set_pos(Vector2::new(
+//     //             self.message_scroll.get_pos().x,
+//     //             window_size.y - self.chat_height
+//     //         ));
+//     //         self.message_scroll.set_size(Vector2::new(
+//     //             self.message_scroll.size().x,
+//     //             self.chat_height - INPUT_HEIGHT
+//     //         ));
+//     //     }
+//     //     if self.width_resize {
+//     //         self.channel_list_width = pos.x;
+
+//     //         self.channel_scroll.set_size(Vector2::new(
+//     //             self.channel_list_width,
+//     //             self.channel_scroll.size().y
+//     //         ));
+
+//     //         self.input.set_pos(Vector2::new(
+//     //             self.channel_list_width,
+//     //             self.input.get_pos().y
+//     //         ));
+//     //         self.message_scroll.set_pos(Vector2::new(
+//     //             self.channel_list_width,
+//     //             self.message_scroll.get_pos().y
+//     //         ));
+//     //         self.message_scroll.set_size(Vector2::new(
+//     //             window_size.x - self.channel_list_width,
+//     //             self.message_scroll.size().x
+//     //         ));
+//     //     }
+//     // }
+
+//     // async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection) {
+//     //     let window_size = self.window_size.0;
+
+//     //     // draw backgrounds
+//     //     list.push(Rectangle::new(
+//     //         self.channel_scroll.get_pos() + offset,
+//     //         self.channel_scroll.size(),
+//     //         Color::WHITE.alpha(0.85),
+//     //         Some(Border::new(Color::BLACK, 2.0))
+//     //     ));
+//     //     list.push(Rectangle::new(
+//     //         self.message_scroll.get_pos() + offset,
+//     //         self.message_scroll.size(), //+ Vector2::new(0.0, INPUT_HEIGHT),
+//     //         Color::WHITE.alpha(0.85),
+//     //         Some(Border::new(Color::BLACK, 2.0))
+//     //     ));
+
+//     //     if self.width_resize_hover {
+//     //         // red line at width
+//     //         list.push(Line::new(
+//     //             Vector2::new(self.channel_list_width, window_size.y) + offset,
+//     //             Vector2::new(self.channel_list_width, window_size.y - self.chat_height) + offset,
+//     //             2.0,
+//     //             Color::RED
+//     //         ))
+//     //     }
+//     //     if self.height_resize_hover {
+//     //         // red line at height
+//     //         list.push(Line::new(
+//     //             Vector2::new(0.0, window_size.y - self.chat_height) + offset,
+//     //             Vector2::new(window_size.x, window_size.y - self.chat_height) + offset,
+//     //             2.0,
+//     //             Color::RED
+//     //         ))
+//     //     }
+
+//     //     self.channel_scroll.draw(offset, list);
+//     //     self.message_scroll.draw(offset, list);
+//     //     self.input.draw(offset, list);
+//     // }
+// }
 
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -423,15 +479,15 @@ pub enum ChatChannel {
 impl ChatChannel {
     pub fn from_name(name:String) -> ChatChannel {
         if name.starts_with("#") {
-            ChatChannel::Channel{name}
+            ChatChannel::Channel { name }
         } else {
-            ChatChannel::User{username: name}
+            ChatChannel::User { username: name }
         }
     }
-    pub fn get_name(&self) -> String {
+    pub fn get_name(&self) -> Cow<'_, str> {
         match self {
-            ChatChannel::Channel { name } => format!("#{}", name),
-            ChatChannel::User { username } => username.clone(),
+            ChatChannel::Channel { name } => Cow::Owned(format!("#{}", name)),
+            ChatChannel::User { username } => Cow::Borrowed(&username),
         }
     }
 }

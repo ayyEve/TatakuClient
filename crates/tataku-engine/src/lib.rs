@@ -8,7 +8,6 @@ mod io;
 mod game;
 mod data;
 mod audio;
-mod input;
 mod online;
 mod window;
 mod locale;
@@ -17,6 +16,7 @@ mod settings;
 mod interface;
 mod databases;
 mod tataku_event;
+mod tataku_integration_event;
 pub mod prelude;
 
 
@@ -30,15 +30,18 @@ pub const REPLAYS_DIR:&str = "replays";
 pub const SKINS_FOLDER:&str = "skins";
 pub const REPLAY_EXPORTS_DIR:&str = "../replays";
 
+
+// FIXME: move this to common
 /// format a number into a locale string ie 1000000 -> 1,000,000
 pub fn format_number(num: impl num_format::ToFormattedStr) -> String {
-    use num_format::{Buffer, Locale};
+    use num_format::{ Buffer, Locale };
     let mut buf = Buffer::default();
     buf.write_formatted(&num, &Locale::en);
 
     buf.as_str().to_owned()
 }
 
+// FIXME: this too
 /// format a float into a locale string ie 1000.1 -> 1,000.100
 pub fn format_float(num: impl ToString, precis: usize) -> String {
     let num = num.to_string();
@@ -58,7 +61,7 @@ pub fn format_float(num: impl ToString, precis: usize) -> String {
     format!("{num}.{dec}")
 }
 
-
+/// FIXME: stop using this
 use crate::prelude::*;
 pub fn visibility_bg(pos:Vector2, size:Vector2) -> impl TatakuRenderable {
     Rectangle::new(

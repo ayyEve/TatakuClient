@@ -25,34 +25,34 @@ impl MenuStatsInfo {
         }
     }
 
-    pub fn view(&self) -> IcedElement {
-        use crate::prelude::iced_elements::*;
+    // pub fn view(&self) -> Box<dyn Widget> {
+    //     use crate::prelude::iced_elements::*;
 
-        col!(
-            // display name should be at the top (TODO: with some margin above and below )
-            Text::new(self.display_name.clone()).size(30.0).color(Color::BLACK).width(Fill),
+    //     col!(
+    //         // display name should be at the top (TODO: with some margin above and below )
+    //         Text::new(self.display_name.clone()).size(30.0).color(Color::BLACK).width(Fill),
 
-            // ~half the remaining vertical should be for listing the values 
-            col!(
-                self.data.iter().filter(|i|i.show_in_list).map(|i|{
-                    let text = format!("{}: {}", i.name, format_float(i.get_value(), 2));
-                    Text::new(text).size(20.0).color(i.color).width(Fill).into_element()
-                }).collect::<Vec<_>>(),
+    //         // ~half the remaining vertical should be for listing the values 
+    //         col!(
+    //             self.data.iter().filter(|i|i.show_in_list).map(|i|{
+    //                 let text = format!("{}: {}", i.name, format_float(i.get_value(), 2));
+    //                 Text::new(text).size(20.0).color(i.color).width(Fill).into_element()
+    //             }).collect::<Vec<_>>(),
 
-                width = Fill,
-                spacing = 5.0
-            ),
+    //             width = Fill,
+    //             spacing = 5.0
+    //         ),
 
-            // there should be some margin between the list and the graph
-            Space::new(Fill, Fixed(20.0)),
+    //         // there should be some margin between the list and the graph
+    //         Space::new(Fill, Fixed(20.0)),
             
-            // the remaining space should be used for the graph
-            self.graph.view().width(Fill).height(Fill);
+    //         // the remaining space should be used for the graph
+    //         self.graph.view().width(Fill).height(Fill);
 
-            width = Fill,
-            height = Fill
-        )
-    }
+    //         width = Fill,
+    //         height = Fill
+    //     )
+    // }
 }
 
 
@@ -137,8 +137,10 @@ impl MenuStatsEntry {
 pub enum ConcatMethod {
     /// total the values
     Sum,
+    
     /// get the mean average
     Mean,
+
     /// get the standard dev
     StandardDeviation
 }
@@ -148,4 +150,3 @@ pub enum MenuStatsValue {
     Single(f32),
     List(Vec<f32>)
 }
-

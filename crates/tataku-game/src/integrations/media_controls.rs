@@ -238,13 +238,13 @@ impl MediaControlsManager {
 // }
 
 struct LastEventHelper {
-    time: Instant,
+    time: TatakuInstant,
     event: MediaControlEvent,
 }
 impl LastEventHelper {
     fn new(event: MediaControlEvent) -> Self {
         Self {
-            time: Instant::now(),
+            time: TatakuInstant::now(),
             event,
         }
     }
@@ -252,7 +252,7 @@ impl LastEventHelper {
 impl Default for LastEventHelper {
     fn default() -> Self {
         Self {
-            time: Instant::now(),
+            time: TatakuInstant::now(),
             event: MediaControlEvent::Pause,
         }
     }

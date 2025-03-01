@@ -301,7 +301,7 @@ impl OsuHitObject for OsuSpinner {
     fn new_combo(&self) -> bool { true }
     fn set_combo_color(&mut self, _color: Color) {}
 
-    async fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {
+    fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {
         let scale = Vector2::ONE * new_scale.scale;
 
         self.pos = new_scale.scale_coords(FIELD_SIZE / 2.0);
@@ -317,7 +317,6 @@ impl OsuHitObject for OsuSpinner {
             i.pos = self.pos;
             i.scale = scale;
         }
-
     }
 
     fn pos_at(&self, time: f32) -> Vector2 {

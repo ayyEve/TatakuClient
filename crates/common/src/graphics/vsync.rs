@@ -6,6 +6,7 @@ use serde::{ Serialize, Deserialize };
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 #[derive(Serialize, Deserialize)]
 #[derive(Reflect)]
+#[reflect(display = "debug")]
 pub enum Vsync {
     AutoVsync,
     #[default]
@@ -22,7 +23,7 @@ impl crate::Dropdownable2 for Vsync {
         vec![
             Self::AutoVsync,
             Self::AutoNoVsync,
-            // TODO: fix this
+            // FIXME: fix this
             Self::Fifo,
             Self::FifoRelaxed,
             Self::Immediate,

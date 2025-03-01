@@ -290,7 +290,7 @@ impl OsuBeatmap {
                             slides,
                             length,
                             hitsound,
-                            hitsamples: HitSamples::from_str(split.next()),
+                            hitsamples: HitSamples::from_string(split.next()),
                             edge_sounds,
                             edge_sets,
                             new_combo,
@@ -307,7 +307,7 @@ impl OsuBeatmap {
                             time,
                             end_time,
                             hitsound,
-                            hitsamples: HitSamples::from_str(split.next()),
+                            hitsamples: HitSamples::from_string(split.next()),
                             new_combo,
                             color_skip
                         });
@@ -322,14 +322,14 @@ impl OsuBeatmap {
                             time,
                             end_time,
                             hitsound,
-                            hitsamples: HitSamples::from_str(split.next()),
+                            hitsamples: HitSamples::from_string(split.next()),
                         });
                     } else { // note
                         beatmap.notes.push(NoteDef {
                             pos: Vector2::new(x, y),
                             time,
                             hitsound,
-                            hitsamples: HitSamples::from_str(split.next()),
+                            hitsamples: HitSamples::from_string(split.next()),
                             new_combo,
                             color_skip
                         });
@@ -469,10 +469,10 @@ impl TatakuBeatmap for OsuBeatmap {
             storyboard.clone(),
             parent_dir,
             skin_manager,
-            OsuSettings::default(), // TODO: !!!!!
+            // OsuSettings::default(), // TODO: !!!!!
         ).await {
             Ok(sb) => {
-                info!("made anim");
+                trace!("made anim");
                 Some(Box::new(sb))
             }
             Err(e) => {

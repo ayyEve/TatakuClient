@@ -8,16 +8,64 @@ local scores_list = {
     variable = "_score",
     scroll = true,
 
-    element = button(
-        col({ width = "fill", height = "shrink" }, {
-            -- username and score
-            row({ width = "fill" }, { text(text_list({variable("_score.score.username"), ": ", calc("display(_score.score.score)")}), 16.0, WHITE) }),
+    element = button({ width = "fill", height = "auto", margin = 5.0 }, 
+        col({ width = "fill", height = "auto" }, {
+            -- username and score 
+            row({ width = "fill" }, { text(text_list({ variable("_score.score.username"), ": ", calc("display(_score.score.score)")}), 16.0, WHITE) }),
             -- combo, acc, mods
-            row({ width = "fill" }, { text(text_list({calc("display(_score.score.max_combo)"), "x, ", calc("display(_score.score.accuracy * 100.0)"), "% ", calc("display(_score.score.mods)")}), 16.0, WHITE) }),
+            row({ width = "fill" }, { text(text_list({ calc("display(_score.score.max_combo)"), "x, ", calc("display(_score.score.accuracy * 100.0)"), "% ", text_iter("_score.score.mods", ".display_name", ",")}), 16.0, WHITE) }),
         }),
-        game_action("view_score", { score_id = variable("_score.id") }),
-        "fill",
-        "shrink"
+        game_action("view_score", { score_id = variable("_score.id") })
+    )
+}
+
+local map_list = {
+    id = "list",
+    debug_name = "map_list",
+    width = "auto",
+    height = "auto",
+    margin = 2.0,
+    justify_content = "space-around",
+    align_content = "flex-end",
+
+    list = "_group.maps",
+    variable = "_map",
+    element = button({ width = "auto", height = "auto", padding = 5.0, margin = 2.0, active_cond = "beatmaps.current.map.beatmap_hash == _map.map.beatmap_hash" },
+        col({ width = "auto", height = "auto" }, {
+            -- title and stuff
+            cond(
+                "_map.diff_rating > 0.0",
+                text(
+                    text_list({ 
+                        variable("_map.map.mode"), 
+                        " - ", 
+                        variable("_map.map.version"), 
+                        " (diff: ", calc("display(_map.diff_rating)"), ")" 
+                    }), -- display(_map.map.playmode)
+                    20,
+                    WHITE
+                ),
+                text(
+                    text_list({ variable("_map.map.mode"), " - ", variable("_map.map.version") }), -- display(_map.map.playmode)
+                    20,
+                    WHITE
+                )
+            ),
+            
+            -- map diff info
+            text(
+                variable("_map.diff_info"),
+                20,
+                WHITE
+            )
+        }),
+        cond(
+            "beatmaps.current.map.beatmap_hash == _map.map.beatmap_hash", -- if the map is selected
+            -- confirm it
+            map_action("confirm"),
+            -- otherwise, set it as the selected map 
+            map_action("select_map", { map_hash = variable("_map.map.beatmap_hash")})
+        )
     )
 }
 
@@ -26,83 +74,25 @@ local beatmap_list = {
     id = "list",
     debug_name = "groups list",
     width = "fill",
-    height = "shrink",
+    height = "auto",
 
     list = "beatmaps.groups",
     variable = "_group",
     scroll = true,
 
-    element = col({ width = "fill", height = "shrink", spacing = 5.0, debug_name = "col" }, {
+    element = col({ width = "fill", height = "auto", padding = 5.0, margin = 2.0, debug_name = "beatmaplist_col" }, {
         -- set info
-        button(
+        button({ width = "fill", height = "auto", padding = 5.0, active_cond = "_group.selected" }, 
             text(variable("_group.name"), 20.0, WHITE),
             -- set this as the selected set
-            map_action("select_group", { group_id = variable("_group.id") }),
-            "fill",
-            "shrink",
-            5.0,
-            "_group.selected"
+            map_action("select_group", { group_id = variable("_group.id") })
         ),
 
         -- map items
         cond(
             "_group.selected", -- if this group is selected
             -- show a list of maps
-            {
-                id = "list",
-                debug_name = "song list",
-                width = "fill",
-                height = "shrink",
-
-                list = "_group.maps",
-                variable = "_map",
-                element = row({ width = "fill", height = "shrink", spacing = 2.0 }, {
-                    -- add some space to indent the list
-                    space("fill_portion(1)", "shrink"),
-
-                    -- and the rest of the list
-                    col({ width = "fill_portion(10)", height = "shrink", spacing = 5.0, debug_name = "song text" }, {
-                        button(
-                            col({ width = "fill", height = "shrink", spacing = 5.0 }, {
-                                -- title and stuff
-                                cond(
-                                    "_map.diff_rating > 0.0",
-                                    text(
-                                        text_list({ variable("_map.map.mode"), " - ", variable("_map.map.version"), " (diff: ", calc("display(_map.diff_rating)"), ")" }), -- display(_map.map.playmode)
-                                        20,
-                                        WHITE
-                                    ),
-                                    text(
-                                        text_list({ variable("_map.map.mode"), " - ", variable("_map.map.version") }), -- display(_map.map.playmode)
-                                        20,
-                                        WHITE
-                                    )
-                                ),
-                                
-                                -- map diff info
-                                text(
-                                    variable("_map.diff_info"),
-                                    20,
-                                    WHITE
-                                )
-                            }),
-                            cond(
-                                "beatmaps.current.map.beatmap_hash == _map.map.beatmap_hash", -- if the map is selected
-                                -- confirm it
-                                map_action("confirm"),
-                                -- otherwise, set it as the selected map 
-                                map_action("select_map", { map_hash = variable("_map.map.beatmap_hash")})
-                            ),
-                            "fill",
-                            "shrink",
-                            5.0,
-                            "beatmaps.current.map.beatmap_hash == _map.map.beatmap_hash"
-                        )
-                    })
-
-                })
-
-            }
+            map_list
         )
     })
 }
@@ -141,12 +131,12 @@ local menu = {
         --[[next set]] key_event("Right", map_action("next_set")),
         --[[previous map]] key_event("Up", map_action("previous_map")),
         --[[next map]] key_event("Down", map_action("next_map")),
-        --[[next map]] key_event("Escape", { id = "action", menu = "main_menu" }),
+        --[[back to main menu]] key_event("Escape", menu_action("main_menu")),
 
         --[[mods dialog]] key_event("M", {"ctrl"}, dialog_action("mods")),
 
         -- mods
-        --[[nofail]] key_event("N", {"ctrl"}, { mod_action({ toggle = "no_fail" }), }),
+        --[[nofail]] key_event("N", {"ctrl"}, mod_action({ toggle = "no_fail" }) ),
         --[[autoplay]] key_event("A", {"ctrl"}, mod_action({ toggle = "autoplay" })),
 
         --[[add speed]] key_event("Equals", {"ctrl"}, mod_action({ add_speed = 0.1 })),
@@ -154,24 +144,25 @@ local menu = {
     },
 
     -- the beatmap select menu is broken up into rows
-    element = col({ width = "fill", height = "fill", spacing = 10.0 }, {
+    element = col({ width = "fill", height = "fill" }, {
         -- the first row contains the dropdowns and search
-        row({ width = "fill", height = "shrink", spacing = 10.0, debug_name="dropdowns" }, {
+        row({ width = "fill", height = "auto", justify_content = "space-between", debug_name="dropdowns" }, {
             -- score get method dropdown
             {
                 id = "dropdown",
                 debug_name = "score method dropdown",
-                width = "fill",
+                width = "percent(20.0)",
                 font_size = 25.0,
 
                 options_key = "enums.score_methods",
                 selected_key = "settings.score_method",
+                on_select = { id = "set_value", key = "settings.score_method", passed_in = true },
             },
             -- mode dropdown
             {
                 id = "dropdown",
                 debug_name = "playmode dropdown",
-                width = "fill",
+                width = "percent(20.0)",
                 font_size = 25.0,
 
                 placeholder = "Mode",
@@ -184,19 +175,21 @@ local menu = {
             {
                 id = "dropdown",
                 debug_name = "sort_by dropdown",
-                width = "fill",
+                width = "percent(20.0)",
                 font_size = 25.0,
 
                 placeholder = "Sort",
 
                 options_key = "enums.sort_by",
                 selected_key = "settings.sort_by",
+                on_select = { id = "set_value", key = "settings.sort_by", passed_in = true },
             },
 
             -- filter text input
             {
                 id = "text_input",
-                width = "fill",
+                width = "percent(20.0)",
+                font_size = 25.0,
 
                 on_input = map_action("refresh_list"),
                 placeholder = "search",
@@ -204,37 +197,41 @@ local menu = {
             }
         }),
 
-        -- the next row has the score list, gameplay preview, and beatmap list
-        row({ width = "fill", height = "fill", debug_name = "score list" }, {
-            -- score list
-            {
-                id = "styled_content",
-                debug_name = "scores list styled",
-                color = color(1.0, 1.0, 1.0, 0.1),
-                shape = { round = 5.0 },
-                width = "fill",
-                height = "fill",
+        -- the next row has the score list + back button, gameplay preview, and beatmap list
+        row({ width = "fill", height = "fill" }, {
+            -- score list and back back button
+            col({ width = "percent(10.0)", height = "percent(95.0)", justify_content = "space-between", debug_name = "score_list"  }, {
+                {
+                    id = "styled_content",
+                    debug_name = "scores list styled",
+                    color = color(1.0, 1.0, 1.0, 0.1),
+                    shape = { round = 5.0 },
+                    width = "fill",
+                    height = "fill",
 
-                element = cond(
-                    "!score_list.loaded", -- if not loaded...
-                    text("Loading...", 16.0, WHITE), -- show loading text
-                    cond( -- otherwise,
-                        "score_list.scores.is_empty", -- if empty
-                        text("No scores", 16.0, WHITE), -- show no scores text
-                        scores_list -- otherwise, show score list
+                    element = cond(
+                        "!score_list.loaded", -- if not loaded...
+                        text("Loading...", 16.0, WHITE), -- show loading text
+                        cond( -- otherwise,
+                            "score_list.scores.is_empty", -- if empty
+                            text("No scores", 16.0, WHITE), -- show no scores text
+                            scores_list -- otherwise, show score list
+                        )
                     )
-                )
-            },
+                },
 
-            drag_scroll({
-                width = "fill_portion(8)",
-                height = "fill",
-            }, {
+                -- back button
+                row({ width = "fill", height = "auto" }, {
+                    button(text("Back"), menu_action("main_menu"))
+                })
+            }),
+
+            drag_scroll({ width = "percent(90.0)", height = "fill" }, {
                 -- preview
                 {
                     id = "gameplay_preview",
                     debug_name = "gameplay_preview",
-                    width = "fill", --"fill_portion(4)",
+                    width = "percent(40.0)",
                     height = "fill"
                 },
 
@@ -244,8 +241,8 @@ local menu = {
                     debug_name = "beatmap list styled",
                     color = color(1.0, 1.0, 1.0, 0.1),
                     shape = { round = 5.0 },
-                    width = "fill", -- fill_portion(4)
-                    height = "fill",
+                    width = "percent(60.0)",
+                    height = "auto",
                     element = beatmap_list
                 }
             }),

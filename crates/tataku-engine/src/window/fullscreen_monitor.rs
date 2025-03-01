@@ -5,6 +5,7 @@ use crate::prelude::*;
 
 #[derive(Copy, Clone, Serialize, Deserialize, Eq, PartialEq, Debug)]
 #[derive(Reflect)]
+#[reflect(display = "display")]
 pub enum FullscreenMonitor {
     None,
     Monitor(usize),

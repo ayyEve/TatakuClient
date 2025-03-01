@@ -5,12 +5,13 @@ pub struct TaikoPlayfield {
     pub height: f32,
 
     pub hit_position: Vector2,
+
+    pub full_window: bool,
 }
 
 impl TaikoPlayfield {
     pub fn get_rectangle(&self, kiai: bool) -> Rectangle {
         let bounds = self.get_playfield_bounds();
-
         Rectangle::new(
             bounds.pos,
             bounds.size,

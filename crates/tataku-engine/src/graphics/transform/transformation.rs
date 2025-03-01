@@ -45,6 +45,8 @@ impl Transformation {
                 TransformValueResult::Vector2(self.easing_type.run_easing(start, end, factor)),
 
             TransformType::Scale { start, end }
+            | TransformType::ScaleX { start, end }
+            | TransformType::ScaleY { start, end }
             | TransformType::BorderSize { start, end } 
             | TransformType::Rotation { start, end }
             | TransformType::Transparency { start, end } 
@@ -108,24 +110,15 @@ pub enum TransformType {
     #[default]
     None,
     VectorScale { start: Vector2, end: Vector2 },
-    Scale {start: f32, end: f32},
-    Rotation {start: f32, end: f32},
-    Color {start: Color, end: Color},
-    BorderSize {start: f32, end: f32},
-    Transparency {start: f32, end: f32},
-    Position {start: Vector2, end: Vector2},
-    PositionX {start: f32, end: f32},
-    PositionY {start: f32, end: f32},
-    BorderTransparency {start: f32, end: f32},
-}
-
-
-pub trait Transformable: TatakuRenderable {
-    fn apply_transform(&mut self, transform: &Transformation, value: TransformValueResult);
-
-    /// is this item visible
-    fn visible(&self) -> bool;
-
-    /// should this item be removed from the draw list?
-    fn should_remove(&self) -> bool {false}
+    ScaleX { start: f32, end: f32 },
+    ScaleY { start: f32, end: f32 },
+    Scale { start: f32, end: f32 },
+    Rotation { start: f32, end: f32 },
+    Color { start: Color, end: Color },
+    BorderSize { start: f32, end: f32 },
+    Transparency { start: f32, end: f32 },
+    Position { start: Vector2, end: Vector2 },
+    PositionX { start: f32, end: f32 },
+    PositionY { start: f32, end: f32 },
+    BorderTransparency { start: f32, end: f32 },
 }

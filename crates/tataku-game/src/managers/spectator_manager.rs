@@ -88,14 +88,15 @@ impl SpectatorManager {
                     host_username: self.host_username.clone(),
                     pending_frames: self.frames.take(),
                     spectators: self.spectator_cache.clone()
-                })));
+                })).into());
                 // manager.replay.score_data = Some(Score::new(map.beatmap_hash, self.host_username.clone(), mode.clone()));
                 manager.on_start = Box::new(move |manager| {
                     trace!("Jumping to time {current_time}");
                     manager.jump_to_time(current_time.max(0.0), current_time > 0.0);
                 });
                 
-                self.actions.push(GameAction::StartGame(Box::new(manager)));
+                // TODO!
+                // self.actions.push(GameAction::StartGame(Box::new(manager)));
             }
             Err(e) => NotificationManager::add_error_notification("Error loading spec beatmap", e).await
         }

@@ -1,6 +1,7 @@
-// use crate::prelude::*;
+use crate::prelude::*;
 
 #[repr(C)]
+#[derive(Reflect)]
 #[derive(Copy, Clone, Debug)]
 pub struct GameModeStat {
     pub name: &'static str,

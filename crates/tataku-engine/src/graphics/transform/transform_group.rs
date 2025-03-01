@@ -9,8 +9,6 @@ pub struct TransformGroup {
     pub scissor: Scissor,
     pub blend_mode: BlendMode,
 
-    // pub raw_draw: bool,
-
     size: Vector2,
 }
 impl TransformGroup {
@@ -22,7 +20,6 @@ impl TransformGroup {
             scissor: None,
             blend_mode: BlendMode::AlphaBlending,
             size: Vector2::ZERO,
-            // raw_draw: false,
         }
     }
     pub fn from_transform(transform: &Transform) -> Self {
@@ -50,7 +47,6 @@ impl TransformGroup {
             scissor: None,
             blend_mode: BlendMode::AlphaBlending,
             size: Vector2::ZERO,
-            // raw_draw: true,
         }
     }
 
@@ -83,11 +79,9 @@ impl TransformGroup {
 
     pub fn push(&mut self, r: impl TatakuRenderable + 'static) {
         self.items.push(Arc::new(r));
-        // self.recalc_size();
     }
     pub fn push_arced(&mut self, r: Arc<dyn TatakuRenderable>) {
         self.items.push(r);
-        // self.recalc_size();
     }
 }
 
@@ -103,7 +97,6 @@ impl TatakuRenderable for TransformGroup {
     fn get_blend_mode(&self) -> BlendMode { self.blend_mode }
     fn set_blend_mode(&mut self, blend_mode: BlendMode) { self.blend_mode = blend_mode; }
 
-
     fn draw(
         &self,
         options: &DrawOptions,
@@ -116,7 +109,6 @@ impl TatakuRenderable for TransformGroup {
 
             color: self.color,
             border_color: None,
-            // border_color: self.border_color,
         });
 
         transform = transform * self.transform_manager.matrix();
@@ -134,12 +126,7 @@ impl TatakuRenderable for TransformGroup {
             }
         });
     }
-
-    // fn draw_with_transparency(&self, _alpha: f32, _border_alpha: f32, transform: Matrix, g: &mut dyn GraphicsEngine) {
-    //     self.draw(transform, g)
-    // }
 }
-
 
 impl Deref for TransformGroup {
     type Target = TransformManager;

@@ -158,7 +158,6 @@ impl TatakuBeatmap for TjaBeatmap {
         })
     }
 
-
     fn get_events(&self) -> Vec<IngameEvent> { Vec::new() }
 }
 
@@ -187,8 +186,6 @@ pub enum TjaCourseEventType {
     /// branch start
     Branch,
 }
-
-
 
 #[test]
 fn test() {

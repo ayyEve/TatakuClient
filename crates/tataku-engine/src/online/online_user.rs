@@ -14,7 +14,7 @@ pub struct OnlineUser {
     pub friend: bool,
 }
 impl OnlineUser {
-    pub fn new(user_id:u32, username:String) -> Self {
+    pub fn new(user_id: u32, username: String) -> Self {
         Self {
             user_id,
             username,

@@ -2,23 +2,16 @@ use crate::prelude::*;
 
 #[derive(Debug)]
 pub enum MenuAction {
-    // /// Set the current menu
-    // SetMenu(Box<dyn AsyncMenu>),
-
-    /// Set the menu to a custom menu with the provided identifier
+    /// Set the menu to the provided menu identifier
     SetMenu(Cow<'static, str>),
 
     /// Go to the previous menu
     /// 
-    /// This is mainly a helper fn for spec and multi
-    PreviousMenu(&'static str),
+    /// NOTE these are predefined previous menus, not built on a stack
+    /// TODO: should we make it a stack?
+    PreviousMenu(Cow<'static, str>),
 
-    // /// Add a dialog
-    // /// 
-    // /// dialog, allow_duplicates
-    // AddDialog(Box<dyn Dialog>, bool),
-
-    /// Set the menu to a custom menu with the provided identifier
+    /// Add a custom dialog with the provided identifier, and if multiple of the same dialog are allowed
     AddDialogCustom(String, bool),
 }
 impl MenuAction {

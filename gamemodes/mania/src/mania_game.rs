@@ -213,7 +213,7 @@ impl ManiaGame {
         column_count: u8, 
         game_settings: &Arc<ManiaSettings>, 
         playfield: &Arc<ManiaPlayfield>, 
-        state: &mut GameplayStateForUpdate<'_>
+        state: &mut GameplayUpdateShell<'_>
     ) {
         let color = hit_value.color;
         let image = None;
@@ -335,10 +335,11 @@ impl GameMode for ManiaGame {
     async fn new(beatmap: &Beatmap, _: bool, settings: &Settings) -> TatakuResult<Self> {
         let metadata = beatmap.get_beatmap_meta();
 
-        let game_settings = settings.mania_settings.clone();
+        let game_settings = settings.gamemode_settings::<ManiaSettings>(GAME_INFO).unwrap_or_default();
+        // let game_settings = settings.mania_settings.clone();
         let playfields = &game_settings.playfield_settings.clone();
         let auto_helper = ManiaAutoHelper::new();
-        let window_size = WindowSize::get();
+        // let window_size = WindowSize::get();
 
         // let all_mania_skin_settings = &SkinManager::skin().await.mania_settings;
         let map_preferences = Database::get_beatmap_mode_prefs(metadata.beatmap_hash, &"mania".to_owned()).await;
@@ -433,9 +434,10 @@ impl GameMode for ManiaGame {
 
                 let playfield = Arc::new(ManiaPlayfield::new(
                     playfields[(column_count - 1) as usize].clone(), 
-                    Bounds::new(Vector2::ZERO, window_size.0), 
+                    Bounds::new(Vector2::ZERO, OSU_SIZE), 
                     column_count,
                     0.0,
+                    true,
                     // mania_skin_settings.as_ref().map(|s|OSU_SIZE.y - s.hit_position).unwrap_or_default()
                 ));
 
@@ -547,9 +549,10 @@ impl GameMode for ManiaGame {
 
                 let playfield = Arc::new(ManiaPlayfield::new(
                     playfields[(column_count - 1) as usize].clone(), 
-                    Bounds::new(Vector2::ZERO, window_size.0), 
+                    Bounds::new(Vector2::ZERO, OSU_SIZE), 
                     column_count,
-                    0.0
+                    0.0,
+                    true
                     // mania_skin_settings.as_ref().map(|s|OSU_SIZE.y - s.hit_position).unwrap_or_default(),
                 ));
 
@@ -636,9 +639,10 @@ impl GameMode for ManiaGame {
 
                 let playfield = Arc::new(ManiaPlayfield::new(
                     playfields[(column_count - 1) as usize].clone(), 
-                    Bounds::new(Vector2::ZERO, window_size.0), 
+                    Bounds::new(Vector2::ZERO, OSU_SIZE), 
                     column_count,
-                    0.0
+                    0.0,
+                    true
                     // mania_skin_settings.as_ref().map(|s|OSU_SIZE.y - s.hit_position).unwrap_or_default()
                 ));
 
@@ -734,7 +738,7 @@ impl GameMode for ManiaGame {
     async fn handle_replay_frame<'a>(
         &mut self, 
         frame: ReplayFrame, 
-        state: &mut GameplayStateForUpdate<'a>
+        state: &mut GameplayUpdateShell<'a>
     ) {
         match frame.action {
             ReplayAction::Press(key) => {
@@ -853,7 +857,7 @@ impl GameMode for ManiaGame {
 
     async fn update<'a>(
         &mut self, 
-        state: &mut GameplayStateForUpdate<'a>
+        state: &mut GameplayUpdateShell<'a>
     ) {
         if state.mods.has_autoplay() {
             let mut frames = Vec::new();
@@ -897,7 +901,7 @@ impl GameMode for ManiaGame {
         for tb in self.timing_bars.iter_mut() { tb.update(state.time) }
     }
     
-    async fn draw<'a>(&mut self, state:GameplayStateForDraw<'a>, list: &mut RenderableCollection) {
+    async fn draw<'a>(&mut self, state:GameplayDrawShell<'a>, list: &mut RenderableCollection) {
         let bounds = self.playfield.bounds;
 
         // playfield
@@ -1003,35 +1007,24 @@ impl GameMode for ManiaGame {
         }
     }
 
-    
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        let playfield = Arc::new(ManiaPlayfield::new(
-            self.game_settings.playfield_settings[(self.column_count - 1) as usize].clone(), 
-            Bounds::new(Vector2::ZERO, window_size.0), 
-            self.column_count,
-            self.mania_skin_settings.as_ref().map(|s|OSU_SIZE.y - s.hit_position).unwrap_or_default()
-        ));
-        self.apply_new_playfield(playfield);
-    }
-
-
-    async fn fit_to_area(&mut self, bounds: Bounds) {
+    fn set_bounds(&mut self, bounds: Bounds, full_window: bool) {
         let mut playfield = ManiaPlayfield::new(
             self.game_settings.playfield_settings[(self.column_count - 1) as usize].clone(), 
             bounds, 
             self.column_count,
-            self.mania_skin_settings.as_ref().map(|s|OSU_SIZE.y - s.hit_position).unwrap_or_default()
+            self.mania_skin_settings.as_ref().map(|s| OSU_SIZE.y - s.hit_position).unwrap_or_default(),
+            full_window
         );
 
-        playfield.settings.x_offset = bounds.pos.x;
+        if !full_window {
+            playfield.settings.x_offset = bounds.pos.x;
+        }
 
         // if playfield.upside_down {
         //     playfield.settings.hit_pos -= pos.y
         // } else {
         //     playfield.settings.hit_pos += pos.y
         // }
-        
-
         self.apply_new_playfield(Arc::new(playfield));
     }
 
@@ -1063,6 +1056,41 @@ impl GameMode for ManiaGame {
 
     async fn apply_mods(&mut self, _mods: Arc<ModManager>) { }
 
+    async fn handle_input(&mut self, input: InputEvent) -> Option<ReplayAction> {
+        match input.event {
+            InputType::KeyPress(press) => {
+                let key = press.as_key()?;
+
+                // check sv change keys
+                if key == Key::F4 || key == Key::F3 {
+                    if key == Key::F4 {
+                        self.sv_mult += self.game_settings.sv_change_delta;
+                    } else {
+                        self.sv_mult -= self.game_settings.sv_change_delta;
+                    }
+                    self.map_preferences.scroll_speed = self.sv_mult;
+
+                    self.set_sv_mult_notes();
+
+                    return None;
+                }
+
+                let game_key = self.key_to_game_key(key)?;
+                Some(ReplayAction::Press(game_key))
+            }
+
+
+            InputType::KeyRelease(release) => {
+                let key = release.as_key()?;
+                let game_key = self.key_to_game_key(key)?;
+                Some(ReplayAction::Release(game_key))
+            }
+
+            _ => None
+        }
+    }
+
+
     async fn beat_happened(&mut self, pulse_length: f32) {
         self.columns.iter_mut().flatten().for_each(|n|n.beat_happened(pulse_length))
     }
@@ -1071,34 +1099,34 @@ impl GameMode for ManiaGame {
     }
 
 
-    async fn get_ui_elements(
+    async fn build_widgets(
         &self, 
         loader: &mut dyn UiElementLoader
     ) {
         // combo
         loader.change_default_layout(
             "combo",
-            UiElementLayout::new_default( // centered on the playfield
-                UiElementAnchor::Playfield {
+            GameplayWidgetLayout::new_default( // centered on the playfield
+                GameplayWidgetAnchor::Playfield {
                     saved_size: None,
-                    relative: UiElementAlign::Inside,
+                    relative: GameplayWidgetAlign::Inside,
                 },
                 Alignment::CENTER,
                 None,
                 None,
             )
-        ).await;
+        );
 
         // Leaderboard
         loader.change_default_layout(
             "leaderboard", 
-            UiElementLayout::new_default(
-                UiElementAnchor::Screen,
+            GameplayWidgetLayout::new_default(
+                GameplayWidgetAnchor::Screen,
                 Alignment::CENTER_LEFT,
                 None,
                 None,
             )
-        ).await;
+        );
     }
 
 
@@ -1132,44 +1160,6 @@ impl GameMode for ManiaGame {
         }
     }
 }
-
-
-// #[cfg(feature="graphics")]
-#[async_trait]
-impl GameModeInput for ManiaGame {
-
-    async fn key_down(&mut self, key: Key) -> Option<ReplayAction> {
-        // check sv change keys
-        if key == Key::F4 || key == Key::F3 {
-            if key == Key::F4 {
-                self.sv_mult += self.game_settings.sv_change_delta;
-            } else {
-                self.sv_mult -= self.game_settings.sv_change_delta;
-            }
-            self.map_preferences.scroll_speed = self.sv_mult;
-
-            self.set_sv_mult_notes();
-
-            return None;
-        }
-
-        let game_key = self.key_to_game_key(key)?;
-        Some(ReplayAction::Press(game_key))
-    }
-    
-    async fn key_up(&mut self, key: Key) -> Option<ReplayAction> {
-        let game_key = self.key_to_game_key(key)?;
-        Some(ReplayAction::Release(game_key))
-    }
-
-}
-
-
-// #[cfg(not(feature="graphics"))]
-// impl GameModeInput for ManiaGame {}
-
-
-
 
 // when the game is dropped, save settings
 // this is better than saving the update every time the values change

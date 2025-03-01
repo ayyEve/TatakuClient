@@ -1,1 +1,0 @@
-pub type Scissor = Option<[f32; 4]>;

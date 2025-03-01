@@ -1,7 +1,6 @@
 use crate::prelude::*;
-use futures_util::future::BoxFuture;
 
-pub static GAME_INFO: GameModeInfo = GameModeInfo {
+pub static GAME_INFO: GamemodeInfo = GamemodeInfo {
     id: "taiko",
     display_name: "Taiko",
     about: "Taiko!",
@@ -37,6 +36,8 @@ pub static GAME_INFO: GameModeInfo = GameModeInfo {
     stat_groups: &[
         TaikoPressCounterStatGroup
     ],
+    available_widgets: &[ DON_CHAN ],
+
     judgments: super::TaikoHitJudgments::variants(),
 
     calc_acc: TaikoGameInfo::calc_acc,
@@ -46,7 +47,10 @@ pub static GAME_INFO: GameModeInfo = GameModeInfo {
     create_diffcalc: TaikoGameInfo::create_diffcalc,
     can_load_beatmap: |map| matches!(map, BeatmapType::Osu | BeatmapType::Tja),
 
-    ..GameModeInfo::DEFAULT
+    serialize_settings: TaikoGameInfo::serialize_settings,
+    deserialize_settings: TaikoGameInfo::deserialize_settings,
+
+    ..GamemodeInfo::DEFAULT
 };
 
 
@@ -133,6 +137,21 @@ impl TaikoGameInfo {
         })
     }
 
+
+    fn deserialize_settings(value: serde_json::Value) -> Option<Box<dyn GamemodeSettings>> {
+        if value.is_null() {
+            let settings: Box<dyn GamemodeSettings> = Box::new(TaikoSettings::default());
+            return Some(settings);
+        }
+
+        let parsed = serde_json::from_value::<TaikoSettings>(value).ok()?; 
+        let a: Box<dyn GamemodeSettings> = Box::new(parsed);
+        Some(a)
+    }
+    fn serialize_settings(s: Box<dyn GamemodeSettings>) -> serde_json::Value {
+        let s = *s.downcast::<TaikoSettings>().unwrap();
+        serde_json::to_value(&s).unwrap()
+    }
 }
 
 

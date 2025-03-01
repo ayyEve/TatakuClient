@@ -147,4 +147,3 @@ fn test() {
 
     for i in pool.iter_used() { }
 }
-

@@ -1,6 +1,7 @@
 use crate::prelude::*;
 
 #[derive(Copy, Clone, Debug)]
+#[derive(Reflect)]
 pub struct DifficultyValue {
     /// internal id of this value
     pub id: &'static str,
@@ -27,6 +28,7 @@ pub struct DifficultyValue {
     pub unit: Option<&'static str>,
 
     /// get the value for this from the map and mods provided
+    #[reflect(skip)]
     pub get_diff_value: fn(&BeatmapMetaWithDiff, &ModManager) -> f32,
 }
 impl DifficultyValue {
@@ -68,6 +70,7 @@ impl std::hash::Hash for DifficultyValue {
     }
 }
 
+#[derive(Reflect)]
 #[derive(Copy, Clone, Debug)]
 pub enum DifficultyNumberType {
     WholeNumber,
@@ -89,8 +92,6 @@ pub const DIFFICULTY_DIFF_VALUE: DifficultyValue = DifficultyValue {
     get_diff_value: |map, _| map.diff.unwrap_or_default(),
 };
 
-
-
 pub const BPM_DIFF_VALUE: DifficultyValue = DifficultyValue {
     id: "bpm",
     name: "BPM",
@@ -100,7 +101,7 @@ pub const BPM_DIFF_VALUE: DifficultyValue = DifficultyValue {
     max: 999999.0,
     step: None,
     unit: Some("bpm"),
-    get_diff_value: |map, _|map.bpm_min,
+    get_diff_value: |map, mods| map.bpm_min * mods.get_speed(),
 };
 
 pub const DURATION_DIFF_VALUE: DifficultyValue = DifficultyValue {

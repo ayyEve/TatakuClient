@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use crate::prelude::ui::*;
 
 const TOOLBAR_HEIGHT:f32 = 40.0;
 const BUTTON_MARGIN:f32 = 4.0;
@@ -7,18 +8,88 @@ const TITLE_FONT_SIZE:f32 = TOOLBAR_HEIGHT * 0.8;
 
 pub struct DraggableDialog {
     inner: Box<dyn Dialog>,
+
+    node_id: NodeId
 }
 impl DraggableDialog {
     pub fn new(_pos: impl Into<DraggablePosition>, inner: Box<dyn Dialog>) -> Self {
         Self {
             inner,
+            node_id: EMPTY_NODE
         }
+    }
+
+    fn build_view(&self) -> Box<dyn Widget> { 
+        col!(
+            // top bar
+            row!(
+                // title
+                TextWidget::new(self.title()).font_size(TITLE_FONT_SIZE).boxed(),
+
+                // space
+                Space::new(FILL, SHRINK).boxed(),
+
+                // close button
+                Button::new(Box::new(TextWidget::new("X").font_size(TITLE_FONT_SIZE / 2.0)))
+                    .padding(LengthPercentage::Length(5.0))
+                    .on_press(Message::new_dialog(self, "close_dialog", MessageValue::Click))
+                    .boxed()
+                ;
+
+                width = FILL,
+                height = SHRINK
+            )
+
+            // content
+            // ManuallyHandled::new(self.inner.node_id())
+            ;
+        )
+    }
+    
+}
+
+
+#[async_trait]
+impl Widget for DraggableDialog {
+    fn name(&self) -> Cow<'static, str> { self.inner.name() }
+    fn node_id(&self) -> NodeId { self.node_id }
+
+    fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId>  {
+        
+        todo!()
+    }
+
+    fn draw(&self, shell: &mut DrawShell<'_>) {
+        todo!()
+    }
+
+
+    async fn handle_message(
+        &mut self, 
+        message: &Message, 
+        values: &mut dyn Reflect,
+        actions: &mut ActionQueue
+    ) { 
+        if let Some(tag) = message.tag.as_string() {
+            if tag == "close_dialog" {
+                self.force_close();
+                return 
+            }
+        }
+
+        self.inner.handle_message(message, values, actions).await 
+    }
+    
+    async fn update(
+        &mut self, 
+        shell: &mut UpdateShell<'_>,
+        actions: &mut ActionQueue,
+    ) { 
+        self.inner.update(shell, actions).await;
     }
 }
 
-#[async_trait]
 impl Dialog for DraggableDialog {
-    fn name(&self) -> &'static str { self.inner.name() }
     fn title(&self) -> &'static str { self.inner.title() }
     fn get_num(&self) -> usize { self.inner.get_num() }
     fn set_num(&mut self, num: usize) { self.inner.set_num(num) }
@@ -26,52 +97,7 @@ impl Dialog for DraggableDialog {
     fn should_close(&self) -> bool { self.inner.should_close() }
     fn is_draggable(&self) -> bool { true }
     fn resizable(&self) -> bool { self.inner.resizable() }
-    async fn force_close(&mut self) { self.inner.force_close().await }
-
-
-
-    fn view(&self, values: &mut dyn Reflect) -> IcedElement { 
-        use iced_elements::*;
-
-        col!(
-            // top bar
-            row!(
-                // title
-                Text::new(self.title()).size(TITLE_FONT_SIZE),
-
-                // space
-                Space::new(Fill, Shrink),
-
-                // close button
-                Button::new(Text::new("X").size(TITLE_FONT_SIZE / 2.0))
-                    .padding(5.0)
-                    .on_press(Message::new_dialog(self, "close_dialog", MessageType::Click))
-                ;
-
-                width = Fill,
-                height = Shrink
-            ),
-
-            // content
-            self.inner.view(values)
-            ;
-        )
-    }
-    
-    async fn handle_message(&mut self, message: Message, values: &mut dyn Reflect) { 
-        if let Some(tag) = message.tag.clone().as_string() {
-            if tag == "close_dialog" {
-                self.force_close().await;
-                return 
-            }
-        }
-
-        self.inner.handle_message(message, values).await 
-    }
-    
-    async fn update(&mut self, values: &mut dyn Reflect) -> Vec<TatakuAction> { 
-        self.inner.update(values).await 
-    }
+    fn force_close(&mut self) { self.inner.force_close() }
 }
 
 

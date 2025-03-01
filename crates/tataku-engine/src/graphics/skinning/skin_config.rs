@@ -58,11 +58,7 @@ impl SkinSettings {
         let mut s = Self::default();
 
         // return defaults if skin does not exist
-        if !Io::exists(&path) {
-            return Ok(s)
-        }
-
-
+        if !Io::exists(&path) { return Ok(s) }
 
         // read lines
         let mut current_area = SkinSection::General;
@@ -126,7 +122,13 @@ impl SkinSettings {
                     let key = split.next().unwrap().trim();
                     let val = split.next().unwrap_or_default().trim();
 
-                    let val2 = Some(col(&val.split(",").map(|s|s.parse::<u8>().unwrap_or_default()).collect::<Vec<u8>>()));
+                    let val2 = Some(col(
+                            &val
+                            .split(",")
+                            .map(|s| s.parse::<u8>()
+                            .unwrap_or_default()
+                        ).collect::<Vec<u8>>()
+                    ));
                     
                     match &*key.to_lowercase() {
                         "songselectactivetext" => s.song_select_active_text = val2,
@@ -264,10 +266,10 @@ impl Default for SkinSettings {
 
             // colors
             combo_colors: vec![
-                col(&[0,255,0]),
-                col(&[0,255,255]),
-                col(&[255,128,255]),
-                col(&[255,255,0]),
+                Color::from_rgb8(0, 255, 0),
+                Color::from_rgb8(0, 255, 255),
+                Color::from_rgb8(255, 128, 255),
+                Color::from_rgb8(255, 255, 0),
             ],
             slider_border: None,
             slider_track_override: None,
@@ -291,13 +293,9 @@ impl Default for SkinSettings {
     }
 }
 
-fn col(b:&[u8]) -> Color {
-    Color::new(
-        b[0] as f32 / 255.0, 
-        b[1] as f32 / 255.0, 
-        b[2] as f32 / 255.0, 
-        1.0
-    )
+#[inline]
+fn col(c: &[u8]) -> Color {
+    Color::from_rgb8(c[0], c[1], c[2])
 }
 
 #[derive(Clone, Default, Debug)]

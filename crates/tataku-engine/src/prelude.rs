@@ -18,18 +18,13 @@ pub use async_trait::async_trait;
 
 // triple buffer imports
 #[cfg(feature = "ui")]
-pub use triple_buffer::TripleBuffer;
-#[cfg(feature = "ui")]
-pub use triple_buffer::Input as TripleBufferSender;
-#[cfg(feature = "ui")]
-pub use triple_buffer::Output as TripleBufferReceiver;
+pub use triple_buffer::{
+    TripleBuffer,
+    Input as TripleBufferSender,
+    Output as TripleBufferReceiver
+};
 
 pub use crossbeam::sync::{ ShardedLock, ShardedLockReadGuard, ShardedLockWriteGuard };
-pub use global_value_manager::{ GlobalValue, GlobalValueManager, GlobalValueMut };
-
-// winit imports
-#[cfg(feature="graphics")]
-pub use winit::event::MouseButton;
 
 // tokio imports
 pub use tokio::sync::{ OnceCell, Mutex as AsyncMutex, RwLock as AsyncRwLock };
@@ -44,21 +39,22 @@ pub use serde::{ Serialize, Deserialize };
 #[cfg(feature = "gameplay")]
 pub use gilrs::{ Axis, GamepadId };
 
-#[cfg(feature="graphics")]
-pub use iced::advanced::graphics::core as iced_core;
-
 // logging
 pub use tracing::*;
 
-// tataku-common imports
+// tataku imports
 pub use tataku_common::types::*;
+pub use tataku_input::prelude::*;
+pub use tataku_common::prelude::*;
+pub use tataku_client_proc_macros::*;
+pub use tataku_client_common::prelude::*;
 
 // folder imports
+pub use crate::*;
 pub use crate::io::*;
 pub use crate::game::*;
 pub use crate::data::*;
 pub use crate::audio::*;
-pub use crate::input::*;
 pub use crate::online::*;
 pub use crate::window::*;
 pub use crate::locale::*;
@@ -67,39 +63,70 @@ pub use crate::graphics::*;
 pub use crate::databases::*;
 pub use crate::interface::*;
 pub use crate::tataku_event::*;
+pub use crate::tataku_integration_event::*;
 
-// general game imports
-pub use tataku_client_proc_macros::*;
-pub use crate::*;
+/// ui imports, in its own mod 
+/// 
+/// \* \~ **Organization!** \~ *
+#[cfg(feature="ui")]
+pub mod ui {
+    pub use taffy::LengthPercentageAuto;
+    pub use taffy::LengthPercentage;
+    pub use taffy::FlexDirection;
+    pub use taffy::AlignContent;
+    pub use taffy::TaffyResult;
+    pub use taffy::TaffyTree;
+    pub use taffy::Dimension;
+    pub use taffy::Display;
+    pub use taffy::NodeId as TaffyNodeId;
+    pub use taffy::Layout;
+    pub use taffy::Style;
+    pub use taffy::Size;
 
-pub use tataku_common::prelude::*;
-pub use tataku_client_common::prelude::*;
 
+    pub const EMPTY_NODE: super::NodeId = super::NodeId {
+        node_id: TaffyNodeId::new(u64::MAX),
+        owner: super::MessageOwner::Any,
+    };
+    pub const FILL: Dimension = Dimension::Percent(1.0);
+    pub const SHRINK: Dimension = Dimension::Auto;
+    
+    /// generic layout for menus
+    pub fn menu_layout() -> Style {
+        use taffy::prelude::*;
+        Style {
+            display: Display::Flex,
+            flex_direction: FlexDirection::Column,
+            box_sizing: taffy::BoxSizing::ContentBox,
+            position: taffy::Position::Relative,
+            overflow: taffy::Point {
+                x: taffy::Overflow::Hidden,
+                y: taffy::Overflow::Hidden,
+            },
+            
+            align_self: None,
+            align_items: Some(AlignItems::Stretch),
+            align_content: Some(AlignContent::SpaceBetween),
 
-// iced imports, in its own mod since it has some conflicting names
-#[cfg(feature="graphics")]
-pub mod iced_elements {
-    // macro imports
-    pub use crate::row;
-    pub use crate::col;
+            justify_self: None,
+            justify_items: Some(AlignItems::Stretch),
+            justify_content: Some(AlignContent::SpaceBetween),
+            
+            size: Size::from_percent(1.0, 1.0),
+            min_size: Size::from_percent(1.0, 1.0),
+            max_size: Size::from_percent(1.0, 1.0),
 
-    // common structs/enums used by iced
-    pub use iced::Length;
-    pub use iced::Length::{Fill, FillPortion, Shrink, Fixed};
-    pub use iced::Alignment;
-    pub use iced::Rectangle;
-    pub use iced::alignment::Horizontal;
-    pub use iced::alignment::Vertical;
+            ..Default::default()
+        }
+    }
 
-    // widgets
-    pub use iced::widget::Row;
-    pub use iced::widget::Text;
-    pub use iced::widget::Space;
-    pub use iced::widget::Button;
-    pub use iced::widget::Column;
-    pub use iced::widget::Checkbox;
-    pub use iced::widget::TextInput;
-    pub use iced::widget::Container;
-    pub use iced::widget::Slider;
-    pub use iced::widget::PickList as Dropdown;
+}
+
+pub mod lua {
+    pub use mlua::Value as LuaValue;
+    pub use mlua::Table as LuaTable;
+    pub use mlua::FromLua;
+    pub use mlua::Error::FromLuaConversionError;
+    pub use mlua::prelude::LuaResult;
+    pub use mlua::Lua;
 }

@@ -3,31 +3,18 @@ use crate::prelude::*;
 #[derive(Clone)]
 #[derive(ChainableInitializer)]
 pub struct TransformManager {
-    #[chain]
-    pub pos: Vector2,
-    #[chain]
-    pub scale: Vector2,
-    #[chain]
-    pub rotation: f32,
-    #[chain]
-    pub origin: Vector2,
+    #[chain] pub pos: Vector2,
+    #[chain] pub scale: Vector2,
+    #[chain] pub rotation: f32,
+    #[chain] pub origin: Vector2,
 
-    #[chain]
-    pub alpha: f32,
-    #[chain]
-    pub border_alpha: f32,
+    #[chain] pub alpha: f32,
+    #[chain] pub border_alpha: f32,
+    #[chain] pub color: Option<Color>,
+    #[chain] pub border_color: Option<Color>,
 
-    #[chain]
-    pub color: Option<Color>,
-    #[chain]
-    pub border_color: Option<Color>,
-
-
-    #[chain]
-    pub image_flip_horizonal: bool,
-    #[chain]
-    pub image_flip_vertical: bool,
-
+    #[chain] pub image_flip_horizonal: bool,
+    #[chain] pub image_flip_vertical: bool,
 
     pub transforms: Vec<Transformation>,
 }
@@ -78,8 +65,15 @@ impl TransformManager {
         self.transforms = transforms;
     }
 
-    fn apply_transform(&mut self, transform: &Transformation, val: TransformValueResult) {
+    fn apply_transform(
+        &mut self, 
+        transform: &Transformation, 
+        val: TransformValueResult
+    ) {
         match transform.trans_type {
+            TransformType::None => {},
+            TransformType::BorderSize { .. } => {}
+
             TransformType::Position { .. } => {
                 let val:Vector2 = val.into();
                 self.pos = val;
@@ -99,6 +93,22 @@ impl TransformManager {
                 if self.image_flip_horizonal {
                     self.scale.x *= -1.0;
                 }
+                if self.image_flip_vertical {
+                    self.scale.y *= -1.0;
+                }
+            }
+            TransformType::ScaleX { .. } => {
+                let val:f64 = val.into();
+                self.scale.x = val as f32;
+
+                if self.image_flip_horizonal {
+                    self.scale.x *= -1.0;
+                }
+            }
+            TransformType::ScaleY { .. } => {
+                let val:f64 = val.into();
+                self.scale.y = val as f32;
+
                 if self.image_flip_vertical {
                     self.scale.y *= -1.0;
                 }
@@ -136,7 +146,7 @@ impl TransformManager {
                 }
             }
 
-            _ => {}
+            // _ => {}
         }
     }
 
@@ -157,8 +167,15 @@ impl TransformManager {
 
 // premade transforms
 impl TransformManager {
-    pub fn ripple(&mut self, offset:f32, duration:f32, time: f32, end_scale: f32, do_border_size: bool, do_transparency: Option<f32>) {
-
+    pub fn ripple(
+        &mut self, 
+        offset: f32, 
+        duration: f32, 
+        time: f32, 
+        end_scale: f32, 
+        do_border_size: bool, 
+        do_transparency: Option<f32>
+    ) {
         // transparency
         if let Some(start_a) = do_transparency {
             self.transforms.push(Transformation::new(
@@ -200,7 +217,15 @@ impl TransformManager {
         }
     }
 
-    pub fn ripple_scale_range(&mut self, offset:f32, duration:f32, time: f32, scale: Range<f32>, border_size: Option<Range<f32>>, do_transparency: Option<f32>) {
+    pub fn ripple_scale_range(
+        &mut self, 
+        offset: f32, 
+        duration: f32, 
+        time: f32, 
+        scale: Range<f32>, 
+        border_size: Option<Range<f32>>, 
+        do_transparency: Option<f32>
+    ) {
         // transparency
         if let Some(start_a) = do_transparency {
             self.transforms.push(Transformation::new(
@@ -242,7 +267,14 @@ impl TransformManager {
         }
     }
 
-    pub fn shake(&mut self, offset:f32, time: f32, shake_amount: Vector2, time_between_shakes: f32, shake_count: usize) {
+    pub fn shake(
+        &mut self, 
+        offset:f32, 
+        time: f32, 
+        shake_amount: Vector2, 
+        time_between_shakes: f32, 
+        shake_count: usize
+    ) {
         self.transforms.reserve(shake_count);
 
         self.transforms.push(Transformation::new(

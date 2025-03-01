@@ -1,3 +1,4 @@
+mod widget_impls;
 mod settings_menu;
 mod settings_deserializer;
 
@@ -5,16 +6,24 @@ use proc_macro::TokenStream;
 use quote::*;
 use syn::*;
 
-#[proc_macro_derive(Settings, attributes(Setting, Subsetting))]
-pub fn create_setting(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+#[proc_macro_derive(Widget, attributes(widget))]
+pub fn impl_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // Parse the string representation
     let ast = syn::parse(input).unwrap();
 
     // Build the impl
-    let gen = settings_menu::impl_settings(&ast);
+    widget_impls::derive(&ast).into()
+}
 
-    // Return the generated impl
-    proc_macro::TokenStream::from(gen)
+#[proc_macro_derive(Settings, attributes(setting, subsetting))]
+pub fn create_setting(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    // Parse the string representation
+    let ast = syn::parse(input).unwrap();
+
+    match settings_menu::impl_settings(&ast) {
+        Ok(tokens) => proc_macro::TokenStream::from(tokens),
+        Err(e) => proc_macro::TokenStream::from(e.into_compile_error()),
+    }
 }
 
 
@@ -36,21 +45,15 @@ pub fn dropdown(input: TokenStream) -> TokenStream {
             let mut ignore = false;
 
             // find the id of the packet
-            for a in v.attrs.iter() {
-                if !a.path.is_ident("Dropdown") { continue }
+            for attr in v.attrs.iter() {
+                if !attr.path().is_ident("Dropdown") { continue }
 
-                if let Ok(Meta::List(list)) = a.parse_meta() {
-                    for i in list.nested {
-                        // ignore
-                        if let NestedMeta::Meta(Meta::Path(name)) = &i {
-                            if name.is_ident("ignore") {
-                                ignore = true;
-                                break
-                            }
-                        }
-
+                let _ = attr.parse_nested_meta(|meta| {
+                    if meta.path.is_ident("ignore") {
+                        ignore = true;
                     }
-                }
+                    Ok(())
+                });
             }
 
             // skip this variant if it should be ignored
@@ -84,7 +87,10 @@ pub fn impl_settings_deserializer(input: proc_macro::TokenStream) -> proc_macro:
     let ast = syn::parse(input).unwrap();
 
     // Build and return the impl
-    settings_deserializer::impl_settings_deserializer(&ast)
+    match settings_deserializer::impl_settings_deserializer(&ast) {
+        Ok(tokens) => proc_macro::TokenStream::from(tokens),
+        Err(e) => proc_macro::TokenStream::from(e.into_compile_error()),
+    }
 }
 
 
@@ -102,7 +108,7 @@ pub fn impl_chainable_initializer(input: proc_macro::TokenStream) -> proc_macro:
     let mut idents_maybe = Vec::new();
 
     for f in s.fields.iter() {
-        if !f.attrs.iter().any(|a| a.path.is_ident("chain")) { continue }
+        if !f.attrs.iter().any(|a| a.path().is_ident("chain")) { continue }
         let Some(ident) = &f.ident else { panic!("ghjskslgd") }; 
         tys.push(&f.ty);
         idents.push(ident);

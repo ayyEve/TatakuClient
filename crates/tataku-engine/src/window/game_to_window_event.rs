@@ -43,6 +43,5 @@ pub enum LoadImage {
 #[derive(Clone, Default, PartialEq, Debug)]
 pub struct ScreenshotInfo {
     pub upload: bool,
-
     // pub region: Option<Bounds>,
 }

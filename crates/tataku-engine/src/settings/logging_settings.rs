@@ -7,7 +7,7 @@ use tataku_client_proc_macros::Settings;
 #[derive(Reflect, SettingsDeserialize)]
 #[serde(default)]
 pub struct LoggingSettings {
-    #[cfg_attr(feature="graphics", Setting(text="Extra Online Logging"))]
+    #[cfg_attr(feature="graphics", setting(text="Extra Online Logging"))]
     pub extra_online_logging: bool,
     pub render_update_logging: bool,
 }

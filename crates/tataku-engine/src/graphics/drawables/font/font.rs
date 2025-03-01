@@ -68,8 +68,6 @@ impl ActualFont {
             self.queued_for_load.write().insert(font_size.u32());
         }
         
-
-        
         // send tex load request to main thread, and wait for it to complete
         if let Err(e) = GameWindow::load_font_data(self.clone(), font_size.f32(), wait) {
             error!("Error loading font {}", e);

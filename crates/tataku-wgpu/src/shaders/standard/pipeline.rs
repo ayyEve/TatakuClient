@@ -1,20 +1,19 @@
 use crate::prelude::*;
 use tataku_engine::prelude::*;
-use wgpu::PipelineCompilationOptions;
 
 pub fn create_standard_pipeline(
-    device: &wgpu::Device,
-    config: &wgpu::SurfaceConfiguration,
-    projection_matrix_bind_group_layout: &wgpu::BindGroupLayout,
-    texture_bind_group_layout: &wgpu::BindGroupLayout,
-) -> HashMap<BlendMode, wgpu::RenderPipeline> {
-    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+    device: &Device,
+    config: &SurfaceConfiguration,
+    projection_matrix_bind_group_layout: &BindGroupLayout,
+    texture_bind_group_layout: &BindGroupLayout,
+) -> HashMap<BlendMode, RenderPipeline> {
+    let shader = device.create_shader_module(ShaderModuleDescriptor {
         label: Some("Standard Shader"),
-        #[cfg(feature="texture_arrays")] source: wgpu::ShaderSource::Wgsl(crate::shader_files::SHADER_TEX_ARRAY.into()),
-        #[cfg(not(feature="texture_arrays"))] source: wgpu::ShaderSource::Wgsl(crate::shader_files::SHADER.into()),
+        #[cfg(feature="texture_arrays")] source: ShaderSource::Wgsl(crate::shader_files::SHADER_TEX_ARRAY.into()),
+        #[cfg(not(feature="texture_arrays"))] source: ShaderSource::Wgsl(crate::shader_files::SHADER.into()),
     });
 
-    let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+    let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
         label: Some("Standard Render Pipeline Layout"),
         bind_group_layouts: &[
             projection_matrix_bind_group_layout,
@@ -35,37 +34,37 @@ pub fn create_standard_pipeline(
     ] {
         let blend_state = WgpuEngine::map_blend_mode(blend_mode);
 
-        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
             label: Some(&format!("{blend_mode:?} Pipeline")),
             layout: Some(&render_pipeline_layout),
             cache: None,
-            vertex: wgpu::VertexState {
+            vertex: VertexState {
                 module: &shader,
                 entry_point: Some("vs_main"),
                 buffers: &[ StandardVertex::desc() ],
                 compilation_options: PipelineCompilationOptions::default(),
             },
-            fragment: Some(wgpu::FragmentState {
+            fragment: Some(FragmentState {
                 module: &shader,
                 entry_point: Some("fs_main"),
-                targets: &[Some(wgpu::ColorTargetState {
+                targets: &[Some(ColorTargetState {
                     format: config.format,
                     blend: Some(blend_state),
-                    write_mask: wgpu::ColorWrites::ALL,
+                    write_mask: ColorWrites::ALL,
                 })],
                 compilation_options: PipelineCompilationOptions::default(),
             }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
+            primitive: PrimitiveState {
+                topology: PrimitiveTopology::TriangleList,
                 strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw,
+                front_face: FrontFace::Ccw,
                 cull_mode: None,
-                polygon_mode: wgpu::PolygonMode::Fill,
+                polygon_mode: PolygonMode::Fill,
                 unclipped_depth: false,
                 conservative: false,
             },
             depth_stencil: None,
-            multisample: wgpu::MultisampleState {
+            multisample: MultisampleState {
                 count: 1,
                 mask: !0,
                 alpha_to_coverage_enabled: false,

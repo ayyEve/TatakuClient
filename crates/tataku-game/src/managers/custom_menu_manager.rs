@@ -5,11 +5,6 @@ pub struct CustomMenuManager {
     menu_list: Vec<CustomMenuEntry>,
 }
 impl CustomMenuManager {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-
     fn load_menu_inner(
         path: Option<String>, 
         name: Option<String>, 
@@ -41,24 +36,8 @@ impl CustomMenuManager {
 
         self.menu_list.push(menu);
         Ok(())
-
-        // let mut parser = CustomMenuParser::new()?;
-        // match parser.load_menu_from_bytes(&bytes, &path) {
-        //     Ok(menu) => {
-        //         self.menu_list.push(CustomMenuEntry {
-        //             path: Some(path),
-        //             source,
-        //             menu,
-        //             bytes,
-        //         })
-        //     }
-        //     Err(e) => error!("error loading custom menu: {path}: {e}"),
-        // }
-        
-        // Ok(())
     }
     pub fn load_menu_from_bytes(&mut self, bytes: &[u8], name: String, source: CustomMenuSource) -> TatakuResult {
-        
         let menu = Self::load_menu_inner(
             None, 
             Some(name), 
@@ -68,21 +47,6 @@ impl CustomMenuManager {
 
         self.menu_list.push(menu);
         Ok(())
-        
-
-        
-        // let mut parser = CustomMenuParser::new()?;
-        // match parser.load_menu_from_bytes(bytes, &name) {
-        //     Ok(menu) => self.menu_list.push(CustomMenuEntry {
-        //         path: None,
-        //         source,
-        //         menu,
-        //         bytes: bytes.to_vec(),
-        //     }),
-        //     Err(e) => error!("error loading custom menu: {name}: {e}"),
-        // }
-        
-        // Ok(())
     }
 
     pub fn load_menu_from_bytes_and_path(
@@ -92,7 +56,7 @@ impl CustomMenuManager {
         source: CustomMenuSource
     ) -> TatakuResult {
         let menu = Self::load_menu_inner(
-            Some(path), 
+            None, // Some(path), 
             None, 
             bytes.to_vec(), 
             source
@@ -102,8 +66,6 @@ impl CustomMenuManager {
         Ok(())
     }
     
-
-
     pub fn get_menu(&self, selector: impl Into<CustomMenuSelector>) -> Option<&CustomMenu> {
         let selector: CustomMenuSelector = selector.into();
 
@@ -158,13 +120,6 @@ impl CustomMenuManager {
             .map(|m| m.menu.id.clone())
             .collect::<Vec<_>>();
         values.global.menu_list = menu_names;
-
-        // values.update_or_insert(
-        //     "global.menu_list", 
-        //     TatakuVariableWriteSource::Game, 
-        //     (TatakuVariableAccess::GameOnly, menu_names),
-        //     || TatakuVariable::new_game(TatakuValue::None)
-        // );
     }
 }
 
@@ -230,4 +185,3 @@ impl CustomMenuSource {
         self == other
     }
 }
-

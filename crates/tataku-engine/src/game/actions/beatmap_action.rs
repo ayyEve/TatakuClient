@@ -111,18 +111,15 @@ pub enum BeatmapListAction {
 }
 
 
-#[derive(Copy, Clone, Debug, Default, ChainableInitializer)]
+#[derive(Copy, Clone, Debug, Default)]
+#[derive(ChainableInitializer)]
 pub struct SetBeatmapOptions {
-    #[chain]
-    pub use_preview_point: bool,
-    #[chain]
-    pub restart_song: bool,
-    #[chain]
-    pub if_none: MapActionIfNone
+    #[chain] pub use_preview_point: bool,
+    #[chain] pub restart_song: bool,
+    #[chain] pub if_none: MapActionIfNone
 }
 impl SetBeatmapOptions {
     pub fn new() -> Self {
         Self::default()
     }
 }
-

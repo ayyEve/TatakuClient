@@ -96,6 +96,7 @@ pub struct OsuSlider {
     approach_circle: ApproachCircle,
     slider_body_render_target: Option<RenderTarget>,
     slider_body_render_target_failed: Option<f32>,
+    slider_body_loader: SliderBodyLoader,
 
     hitsounds: Vec<Vec<Hitsound>>,
     sliderdot_hitsound: Hitsound,
@@ -192,6 +193,7 @@ impl OsuSlider {
             slider_reverse_image: None,
             slider_body_render_target: None,
             slider_body_render_target_failed: None,
+            slider_body_loader: SliderBodyLoader::None,
             follow_circle_image: None,
             sliderball_image: None,
             sliderball_under_image: None,
@@ -215,16 +217,15 @@ impl OsuSlider {
         self.standard_settings.slider_render_targets || !USE_NEW_SLIDER_RENDERING
     }
 
-    async fn make_body(&mut self) {
+    fn make_body(&mut self) {
         // TODO: check if we should try again
         if self.slider_body_render_target_failed.is_some() {
             return
         }
 
-        // let mut list:Vec<Box<dyn TatakuRenderable>> = Vec::new();
-        let window_size = WindowSize::get().0;
+        // wait for other load operations to complete first
+        if !self.slider_body_loader.is_none() { return }
 
-        // info!("{:?}", skin.slider_track_override);
         let mut color = self.skin.slider_track_override.filter(|c|c != &Color::BLACK && self.standard_settings.use_skin_slider_body_color).unwrap_or_else(|| {
             let mut color = self.color;
             const DARKER:f32 = 2.0/3.0;
@@ -239,7 +240,7 @@ impl OsuSlider {
         let border_color = BORDER_COLOR.alpha(self.standard_settings.slider_border_alpha); //self.skin.slider_border.unwrap_or(BORDER_COLOR);
         let border_radius = BORDER_RADIUS * self.scaling_helper.cs;
 
-        let mut min_pos = window_size;
+        let mut min_pos = self.scaling_helper.window_size;
         let mut max_pos = Vector2::ZERO;
         let size;
 
@@ -247,6 +248,10 @@ impl OsuSlider {
         let mut offset = Vector2::ZERO;
 
         if USE_NEW_SLIDER_RENDERING {
+
+            // FIXME: figure out why radius is 0?
+            if self.radius <= 0.01 { return }
+
             let mut line_segments: Vec<LineSegment> = self.curve.segments.iter().flat_map(|segment| {
                 let points = segment.all_points();
 
@@ -457,37 +462,38 @@ impl OsuSlider {
 
         // draw it to the render target
         #[cfg(feature="graphics")]
-        if self.use_render_targets() {
-            let options = DrawOptions::default();
-            if let Some(target) = self.slider_body_render_target.clone() {
+        if !self.use_render_targets() { return }
+
+        let options = DrawOptions::default();
+        if let Some(target) = self.slider_body_render_target.clone() {
+            self.slider_body_loader = SliderBodyLoader::Update(AsyncLoader::new(async move {
                 GameWindow::update_render_target(target, Box::new(move |g: &mut dyn GraphicsEngine, mut transform: Matrix| {
                     transform = transform.trans(offset);
                     drawables.into_iter().for_each(|d| d.draw(&options, transform, g))
-                })).await;
-            } else {
-                let rt = RenderTarget::new(
+                })).await
+            }));
+        } else {
+            let loader = AsyncLoader::new(async move {
+                RenderTarget::new(
                     size.x as u32,
                     size.y as u32,
                     Box::new(move |g: &mut dyn GraphicsEngine, mut transform: Matrix| {
                         transform = transform.trans(offset);
                         drawables.into_iter().for_each(|d| d.draw(&options, transform, g))
                     })
-                ).await;
+                ).await
+            });
 
-                if let Ok(mut slider_body_render_target) = rt {
-                    slider_body_render_target.image.pos = min_pos;
-                    slider_body_render_target.image.origin = Vector2::ZERO;
-                    self.slider_body_render_target = Some(slider_body_render_target);
-                } else {
-                    warn!("failed to slider");
-                    self.slider_body_render_target_failed = Some(self.map_time);
-                }
-            }
+            self.slider_body_loader = SliderBodyLoader::New {
+                min_pos,
+                loader,
+            };
         }
+        
 
     }
 
-    async fn make_dots(&mut self) {
+    fn make_dots(&mut self) {
         self.hit_dots.clear();
         self.dot_count = 0;
 
@@ -506,14 +512,14 @@ impl OsuSlider {
             }
 
             // dont add dot if it conflicts with the end circle
-            if *t == self.end_time(0.0) {continue}
+            if *t == self.end_time(0.0) { continue }
 
             let dot = SliderDot::new(
                 *t,
                 self.scaling_helper.scale_coords(self.curve.position_at_time(*t)),
                 self.scaling_helper.scale,
                 slide_counter
-            ).await;
+            );
 
             self.dot_count += 1;
             self.hit_dots.push(dot);
@@ -598,6 +604,30 @@ impl HitObject for OsuSlider {
             return
         }
 
+        match &self.slider_body_loader {
+            SliderBodyLoader::New { min_pos, loader } => if loader.is_complete() {
+                let value = loader.check().await.unwrap();
+
+                if let Ok(mut slider_body_render_target) = value {
+                    slider_body_render_target.image.pos = *min_pos;
+                    slider_body_render_target.image.origin = Vector2::ZERO;
+                    self.slider_body_render_target = Some(slider_body_render_target);
+                } else {
+                    warn!("failed to slider");
+                    self.slider_body_render_target_failed = Some(self.map_time);
+                }
+                
+                self.slider_body_loader = SliderBodyLoader::None;
+            }
+            SliderBodyLoader::Update(new) => if new.is_complete() {
+                
+                self.slider_body_loader = SliderBodyLoader::None;
+            }
+            _ => {}
+        }
+
+
+
         // check if the start of the slider was missed.
         // if it was, perform a miss
         if !self.start_checked && beatmap_time >= self.time + self.hitwindow_miss {
@@ -658,7 +688,7 @@ impl HitObject for OsuSlider {
         self.hit_dots = dots;
 
         if alpha > 0.0 && self.slider_body_render_target.is_none() && (self.use_render_targets() || self.slider_body.slider_data.circle_radius == 0.0) {
-            self.make_body().await;
+            self.make_body();
         }
 
         if let Some(ball) = &mut self.sliderball_image {
@@ -850,7 +880,7 @@ impl HitObject for OsuSlider {
         self.dot_count = 0;
         self.start_judgment = OsuHitJudgments::Miss;
 
-        self.make_dots().await;
+        self.make_dots();
     }
 
     async fn time_jump(&mut self, new_time: f32) {
@@ -1010,7 +1040,7 @@ impl OsuHitObject for OsuSlider {
     }
 
 
-    async fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {
+    fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {
         self.scaling_helper = new_scale.clone();
         self.pos = self.scaling_helper.scale_coords(self.def.pos);
         self.radius = CIRCLE_RADIUS_BASE * self.scaling_helper.cs;
@@ -1029,9 +1059,9 @@ impl OsuHitObject for OsuSlider {
         if self.slider_body_render_target.is_some() || (!self.standard_settings.slider_render_targets && USE_NEW_SLIDER_RENDERING) {
             // if the playfield was resized, if we dont set this to none it will use the old size and then be wrong
             self.slider_body_render_target = None;
-            self.make_body().await;
+            self.make_body();
         }
-        self.make_dots().await;
+        self.make_dots();
     }
 
     fn pos_at(&self, time: f32) -> Vector2 {
@@ -1049,7 +1079,7 @@ impl OsuHitObject for OsuSlider {
         self.standard_settings = settings;
 
         if (self.slider_body_render_target.is_some() || (!self.standard_settings.slider_render_targets && USE_NEW_SLIDER_RENDERING)) && (self.standard_settings.slider_body_alpha != old_body_alpha || old_border_alpha != self.standard_settings.slider_border_alpha) {
-            self.make_body().await;
+            self.make_body();
         }
     }
 
@@ -1089,8 +1119,8 @@ struct SliderDot {
 
 }
 impl SliderDot {
-    pub async fn new(time:f32, pos:Vector2, scale: f32, slide_layer: u64) -> SliderDot {
-        SliderDot {
+    pub fn new(time: f32, pos: Vector2, scale: f32, slide_layer: u64) -> Self {
+        Self {
             time,
             pos,
             scale,
@@ -1102,7 +1132,7 @@ impl SliderDot {
         }
     }
     /// returns true if the hitsound should play
-    pub fn update(&mut self, beatmap_time:f32, mouse_down: bool, mouse_pos: Vector2, slider_radius:f32) -> Option<bool> {
+    pub fn update(&mut self, beatmap_time: f32, mouse_down: bool, mouse_pos: Vector2, slider_radius: f32) -> Option<bool> {
         if beatmap_time >= self.time && !self.checked {
             self.checked = true;
             self.hit = mouse_down && mouse_pos.distance(self.pos) < slider_radius * OK_TICK_RADIUS_MULT;
@@ -1133,5 +1163,22 @@ impl SliderDot {
     #[cfg(feature="graphics")]
     pub async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
         self.dot_image = skin_manager.get_texture("sliderscorepoint", source, SkinUsage::Gamemode, false).await;
+    }
+}
+
+
+
+
+enum SliderBodyLoader {
+    None,
+    New {
+        min_pos: Vector2,
+        loader: AsyncLoader<TatakuResult<RenderTarget>>,
+    },
+    Update(AsyncLoader<()>),
+}
+impl SliderBodyLoader {
+    fn is_none(&self) -> bool {
+        matches!(self, Self::None)
     }
 }

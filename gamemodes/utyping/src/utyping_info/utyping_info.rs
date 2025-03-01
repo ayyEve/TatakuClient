@@ -1,8 +1,7 @@
 use crate::prelude::*;
-use futures_util::future::BoxFuture;
 
 
-pub const GAME_INFO: GameModeInfo = GameModeInfo {
+pub const GAME_INFO: GamemodeInfo = GamemodeInfo {
     id: "utyping",
     display_name: "uTyping",
     about: "utyping",
@@ -10,7 +9,6 @@ pub const GAME_INFO: GameModeInfo = GameModeInfo {
 
     mods: &[],
     diff_values: &[
-
         BPM_DIFF_VALUE,
         DURATION_DIFF_VALUE,
     ],
@@ -22,7 +20,10 @@ pub const GAME_INFO: GameModeInfo = GameModeInfo {
     create_diffcalc: UTypingGameInfo::create_diffcalc,
     can_load_beatmap: UTypingGameInfo::can_load_beatmap,
 
-    .. GameModeInfo::DEFAULT
+    serialize_settings: UTypingGameInfo::serialize_settings,
+    deserialize_settings: UTypingGameInfo::deserialize_settings,
+
+    .. GamemodeInfo::DEFAULT
 };
 
 
@@ -41,41 +42,6 @@ impl UTypingGameInfo {
         matches!(map, BeatmapType::UTyping)
     }
 
-    fn get_diff_string(info: &BeatmapMetaWithDiff, mods: &ModManager) -> String {
-        let speed = mods.get_speed();
-        let symb = if speed > 1.0 {"+"} else if speed < 1.0 {"-"} else {""};
-
-        let mut secs = format!("{}", info.secs(speed));
-        if secs.len() == 1 {secs = format!("0{}", secs)}
-
-        let mut txt = format!(
-            "HP: {:.2}{symb}, Len: {}:{}", 
-            info.get_hp(mods),
-            info.mins(speed), secs
-        );
-
-        // make sure at least one has a value
-        if info.bpm_min != 0.0 || info.bpm_max != 0.0 {
-            // one bpm
-            if info.bpm_min == info.bpm_max {
-                txt += &format!(" BPM: {:.2}", info.bpm_min * speed);
-            } else { // multi bpm
-                // i think i had it backwards when setting, just make sure its the right way :/
-                let min = info.bpm_min.min(info.bpm_max);
-                let max = info.bpm_max.max(info.bpm_min);
-                txt += &format!(" BPM: {:.2}-{:.2}", min * speed, max * speed);
-            }
-        }
-
-        if let Some(diff) = &info.diff {
-            txt += &format!(", Diff: {:.2}", diff);
-        } else {
-            txt += ", Diff: ...";
-        }
-
-        txt
-    }
-
     fn create_game<'a>(beatmap: &'a Beatmap, settings: &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn GameMode>>> {
         Box::pin(async {
             let game:Box<dyn GameMode> = Box::new(UTypingGame::new(beatmap, false, settings).await?);
@@ -88,4 +54,21 @@ impl UTypingGameInfo {
             Ok(calc)
         })
     }
+
+
+    fn deserialize_settings(value: serde_json::Value) -> Option<Box<dyn GamemodeSettings>> {
+        if value.is_null() {
+            let settings: Box<dyn GamemodeSettings> = Box::new(TaikoSettings::default());
+            return Some(settings);
+        }
+
+        let parsed = serde_json::from_value::<TaikoSettings>(value).ok()?; 
+        let a: Box<dyn GamemodeSettings> = Box::new(parsed);
+        Some(a)
+    }
+    fn serialize_settings(s: Box<dyn GamemodeSettings>) -> serde_json::Value {
+        let s = *s.downcast::<TaikoSettings>().unwrap();
+        serde_json::to_value(&s).unwrap()
+    }
+
 }

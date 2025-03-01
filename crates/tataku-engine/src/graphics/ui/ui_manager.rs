@@ -1,462 +1,665 @@
-
 use crate::prelude::*;
-use tokio::sync::oneshot;
-use iced::Event;
-use iced_runtime::{ user_interface, UserInterface };
-
-use iced::advanced::widget::Operation; 
-use iced_winit::conversion::key as conv_key;
-
-pub type IcedElement = iced::Element<'static, Message, iced::Theme, IcedRenderer>;
-pub type IcedOverlay<'a> = iced::overlay::Element<'a, Message, iced::Theme, IcedRenderer>;
-pub type IcedOperation = Box<dyn Operation + Send + Sync>;
-
-pub struct UiManager<T:Reflect> {
-    pub force_refresh: bool,
-    message_channel: (AsyncSender<Message>, AsyncReceiver<Message>),
-    ui_sender: Sender<UiAction<T>>,
-
-    application: Option<UiApplication>,
-    messages: Vec<Message>,
-    current_menu: MenuType,
-
-    queued_operations: Vec<IcedOperation>,
-}
-impl<T:Reflect> UiManager<T> {
-    #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
-        let (ui_sender, ui_receiver) = channel();
-
-        // todo: store handle?
-        tokio::task::spawn_blocking(move || { // std::thread::spawn(move || {
-            Self::handle_actions(ui_receiver);
-        });
-
-        Self {
-            // ui
-            force_refresh: false,
-            message_channel: async_channel(10),
-            ui_sender,
-
-            application: Some(UiApplication::new()),
-            messages: Vec::new(),
-            current_menu: MenuType::Internal("None"),
-
-            queued_operations: Vec::new()
-        }
-    }
-    pub fn set_menu(&mut self, menu: Box<dyn AsyncMenu>) {
-        self.current_menu = MenuType::from_menu(&*menu);
-        self.application.as_mut().unwrap().menu = menu;
-        self.messages.retain(|m| !m.owner.is_menu())
-    }
-
-    pub fn get_menu(&self) -> MenuType {
-        self.current_menu.clone()
-    }
-    pub fn add_message(&mut self, message: Message) {
-        self.messages.push(message);
-    } 
+use crate::prelude::ui::*;
 
 
-    pub fn add_operation(&mut self, operation: IcedOperation) {
-        self.queued_operations.push(operation)
-    }
-
-    fn handle_actions(ui_receiver: Receiver<UiAction<T>>) {
-        let mut renderer = IcedRenderer::new();
-        let mut window_size = WindowSizeHelper::new();
-
-        // do we rebuild the ui next frame? (required if the ui was updated, adding new items to the view)
-        let mut rebuild_next = false;
-        // let mut needs_render = true;
-        let mut last_menu = String::new();
-        let mut last_draw;
-        let mut mouse_pos = iced::Point::ORIGIN;
-
-
-        let mut ui: UserInterface<Message, iced::Theme, IcedRenderer> = user_interface::UserInterface::build(
-            iced::widget::Column::new().into_element(),
-            iced::Size::new(window_size.x, window_size.y),
-            iced_runtime::user_interface::Cache::default(),
-            &mut renderer,
-        );
-
-        while let Ok(ui_action) = ui_receiver.recv() {
-            match ui_action {
-                UiAction::Update { 
-                    application, 
-                    callback, 
-                    mut messages, 
-                    events, 
-                    operations, 
-                    mut values ,
-                    force_refresh,
-                } => {
-
-                    if let Ok(scale) = values.impl_get(ReflectPath::new("settings.ui_scale")) {
-                        let scale = scale.as_ref();
-                        if let Some(scale) = scale.downcast_ref() {
-                            if renderer.ui_scale != *scale {
-                                renderer.ui_scale = *scale;
-                            }
-                        }
-                    }
-
-                    // rebuild ui with the new application
-                    if force_refresh || rebuild_next || application.menu.get_name() != last_menu {
-                        last_menu = application.menu.get_name().to_owned();
-                        rebuild_next = false;
-                        // needs_render = true;
-
-                        ui = user_interface::UserInterface::build(
-                            application.view(&mut values),
-                            iced::Size::new(window_size.x, window_size.y),
-                            ui.into_cache(), 
-                            &mut renderer,
-                        );
-                    }
-
-                    // update bounds
-                    if window_size.update() {
-                        ui = ui.relayout(iced::Size::new(window_size.x, window_size.y), &mut renderer);
-                    }
-
-                    // perform operations
-                    for mut operation in operations {
-                        ui.operate(&renderer, &mut *operation)
-                    }
-
-                    mouse_pos = iced::Point::new(events.mouse_pos.x, events.mouse_pos.y);
-                    let (_s, e) = ui.update(
-                        &events.window_events,
-                        iced::mouse::Cursor::Available(mouse_pos),
-                        &mut renderer,
-                        &mut iced_core::clipboard::Null,
-                        &mut messages
-                    );
-
-                    if events.force_refresh || !e.is_empty() {
-                        rebuild_next = true;
-                    }
-
-                    let _ = callback.send(UiUpdateData {
-                        application,
-                        messages,
-                        values
-                    });
-                }
-                UiAction::Draw { application, callback } => {
-                    // if needs_render {
-                        // needs_render = false;
-
-                        ui.draw(
-                            &mut renderer, 
-                            &iced::Theme::Dark, 
-                            &Default::default(), 
-                            iced::mouse::Cursor::Available(mouse_pos)
-                        );
-
-                        // renderer.with_primitives(|_b, p| p.iter().for_each(|p| group.push_arced(into_renderable(p))));
-                        last_draw = renderer.finish();
-                        // last_draw.raw_draw = true;
-                    // }
-
-                    let _ = callback.send(UiDrawData {
-                        application,
-                        transform_group: last_draw.clone()
-                    });
-                }
-            }
-        }
-    }
-
-    pub async fn update<'a>(
-        &mut self, 
-        state: CurrentInputState<'a>, 
-        tataku_events: Vec<(TatakuEventType, Option<TatakuValue>)>,
-        values: T,
-    ) -> (Vec<TatakuAction>, T) {
-        while let Ok(e) = self.message_channel.1.try_recv() {
-            // info!("adding message: {e:?}");
-            self.messages.push(e);
-        }
-
-        let (sender, callback) = oneshot::channel();
-
-        let Ok(_) = self.ui_sender.send(UiAction::Update {
-            application: self.application.take().unwrap(),
-            callback: sender,
-            messages: self.messages.take(),
-            events: state.into_events(),
-            operations: self.queued_operations.take(),
-            values,
-            force_refresh: self.force_refresh,
-            // we should probably return an error instead
-        }) else { panic!("fucked up"); };
-        self.force_refresh = false;
-
-        // we should probably return an error instead
-        let Ok(UiUpdateData { application, messages, mut values }) = callback.await else { 
-            panic!("fucked up"); 
-        };
-
-        std::mem::swap(&mut self.application, &mut Some(application));
-
-        let app = self.application();
-        for m in messages {
-            app.handle_message(m, &mut values).await;
-        }
-
-        for (event, param) in tataku_events {
-            // debug!("handling event {event:?}");
-            app.handle_event(event, param, &mut values).await;
-        }
-
-        let mut list = app.update(&mut values).await;
-        list.extend(app.dialog_manager.update(&mut values).await);
-        (list, values)
-    }
-
-    pub async fn draw(&mut self, list: &mut RenderableCollection) {
-        let (sender, callback) = oneshot::channel();
-
-        let Ok(_) = self.ui_sender.send(UiAction::Draw {
-            application: self.application.take().unwrap(),
-            callback: sender
-        }) else { return; };
-
-        let Ok(UiDrawData { application, transform_group }) = callback.await else { return; };
-
-        std::mem::swap(&mut self.application, &mut Some(application));
-
-        list.push(transform_group);
-    }
-
-    pub fn application(&mut self) -> &mut UiApplication {
-        self.application.as_mut().unwrap()
-    }
-}
-
-enum UiAction<T:Reflect> {
-    Update {
-        application: UiApplication,
-        callback: oneshot::Sender<UiUpdateData<T>>,
-        messages: Vec<Message>,
-        events: SendEvents,
-        operations: Vec<IcedOperation>,
-
-        values: T,
-        force_refresh: bool,
-    },
-    Draw {
-        application: UiApplication,
-        callback: oneshot::Sender<UiDrawData>,
-    }
-}
-
-struct UiUpdateData<T: Reflect> {
-    application: UiApplication,
-    messages: Vec<Message>,
-    values: T,
-}
-
-struct UiDrawData {
-    application: UiApplication,
-    transform_group: TransformGroup,
-}
-
-pub struct CurrentInputState<'a> {
+pub struct CurrentInputState {
     pub mouse_pos: Vector2,
     pub mouse_moved: bool,
     pub scroll_delta: f32,
 
-    pub mouse_down: &'a Vec<MouseButton>,
-    pub mouse_up: &'a Vec<MouseButton>,
+    pub mouse_down: Vec<MouseButton>,
+    pub mouse_up: Vec<MouseButton>,
 
-    pub keys_down: &'a KeyCollection,
-    pub keys_up: &'a KeyCollection,
+    pub keys_down: KeyCollection,
+    pub keys_up: KeyCollection,
+
+    pub controller_down: Vec<(ControllerButton, GamepadId, Arc<String>)>,
+    pub controller_up: Vec<(ControllerButton, GamepadId, Arc<String>)>,
+    pub controller_axes: Vec<(Axis, f32, GamepadId, Arc<String>)>,
 
     pub mods: KeyModifiers,
 }
-impl CurrentInputState<'_> {
-    fn into_events(self) -> SendEvents {
-        use iced::mouse::Event as MouseEvent;
-        use iced::keyboard::Event as KeyboardEvent;
-
-        let mut force_refresh = false;
-        force_refresh |= !self.mouse_down.is_empty();
-        force_refresh |= !self.mouse_up.is_empty();
-        force_refresh |= !self.keys_down.0.is_empty();
-        force_refresh |= !self.keys_up.0.is_empty();
-
-        let mut events = Vec::new();
-        if self.mouse_moved {
-            events.push(Event::Mouse(MouseEvent::CursorMoved {
-                position: iced::Point::new(self.mouse_pos.x, self.mouse_pos.y)
-            }));
-        }
-        if self.scroll_delta != 0.0 {
-            events.push(Event::Mouse(MouseEvent::WheelScrolled {
-                delta: iced::mouse::ScrollDelta::Lines { x: 0.0, y: self.scroll_delta }
-            }));
-        }
-
-
-        for i in self.mouse_down.iter().filter_map(mouse_button) {
-            events.push(Event::Mouse(MouseEvent::ButtonPressed(i)));
-        }
-        for i in self.mouse_up.iter().filter_map(mouse_button) {
-            events.push(Event::Mouse(MouseEvent::ButtonReleased(i)));
-        }
-
-        let modifiers = self.mods.into();
-        for key in &self.keys_down.0 {
-            events.push(Event::Keyboard(KeyboardEvent::KeyPressed { 
-                modified_key: conv_key(key.logical.clone()),
-                physical_key: iced_winit::conversion::physical_key(key.physical), //conv_key(key.physical.clone()),
-                key: conv_key(key.logical.clone()), 
-                location: conv_location(key.location), 
-                text: key.text.clone(),
-                modifiers,
-            }));
-        }
-        for key in &self.keys_up.0 {
-            events.push(Event::Keyboard(KeyboardEvent::KeyReleased { 
-                key: conv_key(key.logical.clone()), 
-                location: conv_location(key.location), 
-                modifiers,
-            }));
-        }
-
-        SendEvents {
+impl CurrentInputState {
+    fn make_input(&self, event: InputType) -> InputEvent {
+        InputEvent {
+            event,
             mouse_pos: self.mouse_pos,
-            window_events: events,
-            force_refresh,
+            key_mods: self.mods,
+        }
+    }
+
+    pub fn into_events(self) -> Vec<InputEvent> {
+        [
+            self.mouse_moved.then_some(InputType::MouseMove(self.mouse_pos)),
+            (self.scroll_delta > f32::EPSILON).then_some(InputType::MouseScroll(self.scroll_delta))
+        ]
+            .into_iter()
+            .flatten()
+            .chain(self.mouse_down.into_iter().map(InputType::MousePress))
+            .chain(self.mouse_up.into_iter().map(InputType::MouseRelease))
+            .chain(self.keys_down.0.into_iter().map(InputType::KeyPress))
+            .chain(self.keys_up.0.into_iter().map(InputType::KeyRelease))
+            
+            .chain(self.controller_down.into_iter().map(|(a, b, c)| InputType::ControllerPress(a, b, c)))
+            .chain(self.controller_up.into_iter().map(|(a, b, c)| InputType::ControllerRelease(a, b, c)))
+            .chain(self.controller_axes.into_iter().map(|(a, b, c, d)| InputType::ControllerAxis(a, b, c, d)))
+
+            .map(|event| InputEvent { event, mouse_pos: self.mouse_pos, key_mods: self.mods })
+            .collect()
+    }
+}
+
+
+pub struct GeneralUiTheme {
+    pub background_color: Color,
+    pub default_color: Color,
+    pub hover_color: Color,
+    pub active_color: Color,
+}
+impl GeneralUiTheme {
+    pub fn get_color(&self, active: bool, hover: bool) -> Color {
+        if active {
+            self.active_color
+        } else if hover {
+            self.hover_color
+        } else {
+            self.default_color
+        }
+    }
+}
+impl Default for GeneralUiTheme {
+    fn default() -> Self {
+        Self {
+            background_color: Color::BLACK.alpha(0.8),
+            default_color: Color::WHITE,
+            hover_color: Color::CYAN,
+            active_color: Color::YELLOW,
         }
     }
 }
 
-struct SendEvents {
-    mouse_pos: Vector2,
-    window_events: Vec<Event>,
-    force_refresh: bool,
-}
 
-
-/// Replaces the regular [`Into`] trait for types that can be converted
-/// to an element. This is necessary, because the `Into` trait does not
-/// assume the renderer type needs to match, after all, you could write an
-/// `Into` trait implementation to convert between those types. This trait,
-/// unlike `Into`, will propagate and infer the correct renderer type.
-pub trait IntoElement where Self: 'static {
-    fn into_element(self) -> IcedElement;
-}
-
-impl<T> IntoElement for T where
-    IcedElement: From<T>,
-    T: 'static
-{
-    fn into_element(self) -> IcedElement {
-        IcedElement::from(self)
-    }
-}
-
-fn mouse_button(mb: &MouseButton) -> Option<iced::mouse::Button> {
-    match mb {
-        MouseButton::Left => Some(iced::mouse::Button::Left),
-        MouseButton::Right => Some(iced::mouse::Button::Right),
-        MouseButton::Middle => Some(iced::mouse::Button::Middle),
-        MouseButton::Other(i) => Some(iced::mouse::Button::Other(*i)),
-        _ => None,
-    }
-}
-
-
-// fuck you
-
-fn conv_location(location: winit::keyboard::KeyLocation) -> iced::keyboard::Location {
-    match location {
-        winit::keyboard::KeyLocation::Standard => iced::keyboard::Location::Standard,
-        winit::keyboard::KeyLocation::Left => iced::keyboard::Location::Left,
-        winit::keyboard::KeyLocation::Right => iced::keyboard::Location::Right,
-        winit::keyboard::KeyLocation::Numpad => iced::keyboard::Location::Numpad,
-    }
-}
-
-mod macros {
-    // idk why this says its unused, if i remove it everything cries
-    #[allow(unused)]
-    use crate::prelude::*;
+pub struct Tree {
+    tree: TaffyTree<TreeData>,
+    pub node: Box<dyn Widget>,
+    root: NodeId,
     
-    #[macro_export]
-    macro_rules! row {
-        ($($i:expr),*;$($t:ident = $v:expr),*) => {
-            iced::widget::Row::with_children(vec![
-                $(
-                    $i.into_element(),
-                )*
-            ]) 
-            $(
-                .$t($v)
-            )*
+    pub bounds: Bounds,
+    pub owner: MessageOwner,
+    should_refresh: bool,
 
-            .into_element()
-        };
+    /// a list of all children in the tree
+    all_children: HashSet<TaffyNodeId>,
 
-        ($vec:expr, $($t:ident = $v:expr),*) => {
-            iced::widget::Row::with_children($vec)
-            $(
-                .$t($v)
-            )*
+    selected_node: SelectedNode,
+}
+impl Tree {
+    pub fn with_capacity(
+        cap: usize,
+        owner: MessageOwner,
+    ) -> Self {
+        let mut tree = TaffyTree::with_capacity(cap);
+        
+        let root = tree.new_leaf(
+            Style {
+                size: Size {
+                    width: Dimension::Percent(1.0),
+                    height: Dimension::Percent(1.0),
+                },
+                ..Default::default()
+            }
+        ).unwrap();
+        tree.set_node_context(root, Some(TreeData::default())).unwrap();
 
-            .into_element()
+        Self {
+            tree,
+            node: EmptyWidget::new_boxed(),
+            root: NodeId::new(root, owner),
+            bounds: Bounds::default(),
+            should_refresh: false,
+
+            owner,
+            selected_node: SelectedNode::default(),
+            all_children: HashSet::new(),
         }
     }
 
-    #[macro_export]
-    macro_rules! col {
-        ($($i:expr),*;$($t:ident = $v:expr),*) => {
-            iced::widget::Column::with_children(vec![
-                $(
-                    $i.into_element(),
-                )*
-            ]) 
-            $(
-                .$t($v)
-            )*
+    pub fn has_node(&self, node: NodeId) -> bool {
+        node.owner == self.owner
+    }
 
-            .into_element()
+    pub fn set_node(
+        &mut self, 
+        mut node: Box<dyn Widget>,
+        values: &mut dyn Reflect,
+    ) {
+        // clear the tree and all our children
+        self.tree.clear();
+        self.all_children.clear();
+
+        // TODO: refresh layout when scale changes
+        let ui_scale = values.reflect_get::<f32>("settings.ui_scale").map(|i| *i).unwrap_or(1.0);
+        
+        // layout the new node
+        let mut shell = LayoutShell {
+            owner: self.owner,
+            tree: self,
+            values,
+            ui_scale,
         };
 
-        ($vec:expr, $($t:ident = $v:expr),*) => {
-            iced::widget::Column::with_children($vec)
-            $(
-                .$t($v)
-            )*
+        let new = node.layout(&mut shell).expect("failed to layout new node?");
+        self.node = node;
 
-            .into_element()
+        self.root = self.new_with_children(
+            Style {
+                size: Size {
+                    width: Dimension::Percent(1.0),
+                    height: Dimension::Percent(1.0),
+                    // width: Dimension::Length(self.bounds.size.x),
+                    // height: Dimension::Length(self.bounds.size.y),
+                },
+                ..Default::default()
+            }, 
+            &[ new ]
+        ).unwrap();
+        self.all_children.insert(self.root.node_id);
+        self.tree.set_node_context(self.root.node_id, Some(TreeData::default())).unwrap();
+        
+        self.update_layout();
+    }
+
+    #[allow(clippy::borrowed_box)]
+    pub fn get_node(&self) -> &Box<dyn Widget> { &self.node }
+    pub fn mark_refresh(&mut self, _s: &str) {
+        self.should_refresh = true
+    }
+
+
+    pub fn update_bounds(
+        &mut self, 
+        bounds: Bounds,
+    ) {
+        if bounds == self.bounds { return }
+        self.bounds = bounds;
+        self.update_layout();
+    }
+
+    pub fn update_layout(&mut self) {
+        // debug!("{:?} doing layout", self.owner);s
+        self.should_refresh = false;
+        use taffy::AvailableSpace::*;
+        let space = Size {
+            width: Definite(self.bounds.size.x),
+            height: Definite(self.bounds.size.y),
+        };
+
+        // i dont think dirty actually does anything taffy-side
+        self.tree.mark_dirty(self.root.node_id).expect("failed to mark dirty?");
+        self.tree
+            .compute_layout(self.root.node_id, space)
+            .expect("failed to compute layout?");
+
+        self.update_contexts();
+    }
+
+
+    pub fn update_contexts(&mut self) {
+        // update absolute positions and matrices
+        let matrix = Matrix::identity().trans(self.bounds.pos);
+        self.recurse_update_context(self.root.node_id, matrix);
+
+        // update spatial navigation
+        SpatialNagivation::new(self)
+            .run(NavigateConfig::default());
+    }
+
+    fn recurse_update_context(&mut self, node: TaffyNodeId, mut matrix: Matrix) {
+        let layout = self.tree.layout(node).unwrap();
+        let bounds = Bounds::new(
+            Vector2::new(
+                layout.location.x,
+                layout.location.y
+            ),
+            Vector2::new(
+                layout.size.width,
+                layout.size.height,
+            )
+        );
+
+        let context = self.tree.get_node_context_mut(node).unwrap();
+        context.absolute_bounds = matrix * bounds;
+        context.global_transform = matrix;
+
+        if context.needs_inverse_transform {
+            context.inverse_global_transform = context
+                .global_transform
+                .inverse()
+                .unwrap_or_else(|| {
+                    eprintln!("could not invert transform: {:#?}", context.global_transform); 
+                    context.global_transform 
+                })
+            ;
+        }
+
+        matrix = matrix * context.local_transform.matrix() * Matrix::identity().trans(bounds.pos);
+        for child in self.tree.children(node).unwrap() {
+            self.recurse_update_context(child, matrix);
         }
     }
 
-    #[cfg(test)]
-    #[allow(unused)]
-    fn test() {
-        use crate::prelude::iced_elements::*;
+    pub fn update_context(&mut self, node: impl HasNodeId) {
+        let node = node.get_id();
 
-        let row = row!(
-            Space::new(Fill, Fill),
-            Space::new(Fill, Fill);
-            width = Fill,
-            height = Fill
-        );
+        let our_matrix = self.get_context(node)
+            .map(|p| p.global_transform)
+            .unwrap_or_else(|| Matrix::identity().trans(self.bounds.pos));
 
-        let col = col!(
-            Space::new(Fill, Fill),
-            Space::new(Fill, Fill);
-            width = Fill,
-            height = Fill
-        );
+        self.recurse_update_context(node, our_matrix);
+    }
+    
+    pub fn absolute_bounds(&self, node: impl HasNodeId) -> Option<Bounds> {
+        self.get_context(node).map(|i| i.absolute_bounds)
     }
 
+    pub fn content_bounds(&self, node: impl HasNodeId) -> Option<Bounds> {
+        let layout = self.get_layout(node)?;
+        
+        Some(Bounds::new(
+            Vector2::new(
+                layout.content_box_x(),
+                layout.content_box_y(),
+            ),
+            Vector2::new(
+                layout.content_box_width(),
+                layout.content_box_height(),
+            )
+        ))
+    }
+    pub fn bounds(&self, node: impl HasNodeId) -> Option<Bounds> {
+        let layout = self.get_layout(node)?;
+        
+        Some(Bounds::new(
+            Vector2::new(
+                layout.location.x,
+                layout.location.y,
+            ),
+            Vector2::new(
+                layout.size.width,
+                layout.size.height,
+            )
+        ))
+    }
+
+    pub fn all_children(&self) -> impl Iterator<Item = TaffyNodeId> {
+        self.all_children.iter().copied().filter(|i| i != &EMPTY_NODE.node_id)
+    }
+
+
+
+    fn with_node<T>(&mut self, mut f: impl FnMut(&mut Tree, &mut Box<dyn Widget>) -> T + Send + Sync) -> T {
+        let mut temp: Box<dyn Widget> = Box::new(EmptyWidget(self.node.node_id()));
+        std::mem::swap(&mut self.node, &mut temp);
+
+        let t = f(self, &mut temp);
+
+        self.node = temp;
+        t
+    }
+
+    pub fn handle_inputs(
+        &mut self,
+        input_state: &mut CurrentInputState,
+        values: &mut dyn Reflect,
+        actions: &mut ActionQueue,
+        messages: &mut Vec<Message>
+    ) {
+        // let mouse_pos = input_state.mouse_pos;
+        self.with_node(|tree, node| {
+            let bounds = tree.bounds;
+            let mut shell = InputShell {
+                owner: tree.owner,
+                messages,
+                actions,
+                tree,
+                values,
+                mouse_pos: input_state.mouse_pos,
+                event_consumed: false,
+            };
+
+            if input_state.mouse_moved {
+                let pos = input_state.mouse_pos - bounds.pos;
+
+                node.input(
+                    &input_state.make_input(InputType::MouseMove(pos)),
+                    &mut shell
+                );
+            }
+            if input_state.scroll_delta.abs() > f32::EPSILON {
+                node.input(
+                    &input_state.make_input(InputType::MouseScroll(input_state.scroll_delta)),
+                    &mut shell
+                );
+            }
+
+            let mouse_pos = input_state.mouse_pos;
+            let key_mods = input_state.mods;
+
+            macro_rules! handle_event {
+                ($list: expr, $map: ident) => {
+                    $list.retain(|a| {
+                        node.input(
+                            &InputEvent {
+                                event: InputType::$map(a.clone()),
+                                key_mods,
+                                mouse_pos,
+                            },
+                            &mut shell
+                        );
+                        !std::mem::take(&mut shell.event_consumed)
+                    });
+                }
+            }
+
+            handle_event!(input_state.keys_down.0, KeyPress);
+            handle_event!(input_state.keys_up.0, KeyRelease);
+            handle_event!(input_state.mouse_down, MousePress);
+            handle_event!(input_state.mouse_up, MouseRelease);
+
+            input_state.controller_down.retain(|(a, id, name)| {
+                node.input(
+                    &InputEvent {
+                        event: InputType::ControllerPress(*a, *id, name.clone()),
+                        key_mods,
+                        mouse_pos,
+                    },
+                    &mut shell
+                );
+                !std::mem::take(&mut shell.event_consumed)
+            });
+
+            input_state.controller_up.retain(|(a, id, name)| {
+                node.input(
+                    &InputEvent {
+                        event: InputType::ControllerRelease(*a, *id, name.clone()),
+                        key_mods,
+                        mouse_pos,
+                    },
+                    &mut shell
+                );
+                !std::mem::take(&mut shell.event_consumed)
+            });
+
+            input_state.controller_axes.retain(|(a, value, id, name)| {
+                node.input(
+                    &InputEvent {
+                        event: InputType::ControllerAxis(*a, *value, *id, name.clone()),
+                        key_mods,
+                        mouse_pos,
+                    },
+                    &mut shell
+                );
+                !std::mem::take(&mut shell.event_consumed)
+            });
+        });
+
+        for (key, direction) in [
+            (Key::Left, Direction::Left),
+            (Key::Right, Direction::Right),
+            (Key::Up, Direction::Up),
+            (Key::Down, Direction::Down),
+            (Key::Tab, Direction::Down),
+        ] {
+            if !input_state.keys_down.has_key(key) { continue }
+
+            if !self.selected_node.active {
+                self.enable_navigation();
+                input_state.keys_down.remove_key(key);
+                // return since this was just to enable navigation
+                // otherwise we'd immediate select the next node, without selecting the current node
+                break;
+            }
+
+            let Some(current) = self.selected_node.node else { 
+                warn!("No active node to navigate from ??");
+                break
+            };
+
+            if let Some(node) = self.tree.get_node_context(current.node_id).and_then(|i| i.node_direction(direction)) {
+                self.context_mut(current).selected = Some(false);
+                self.context_mut(node).selected = Some(true);
+                input_state.keys_down.remove_key(key);
+            }
+
+            break
+        }
+    }
+
+    fn enable_navigation(&mut self) {
+        self.selected_node.active = true;
+
+        // try to make sure we have a selected node to start with
+        if self.selected_node.node.is_none() {
+            // find the first selectable node
+            self.selected_node.node = self.find_child(self.root, Rc::new(|tree, node| {
+                tree.context(node).selectable()
+            }));
+
+            if let Some(node) = self.selected_node.node {
+                self.context_mut(node).selected = Some(true)
+            }
+        }
+
+    }
+
+    // helpers for when we're certain the node is in the tree
+    // private for that reason too
+    fn context(&self, node: impl HasNodeId) -> &TreeData {
+        self.get_context(node.get_id()).unwrap()
+    }
+    fn context_mut(&mut self, node: impl HasNodeId) -> &mut TreeData {
+        self.get_context_mut(node.get_id()).unwrap()
+    }
+
+    /// this isnt the most efficient thing ever but hopefully its not used too often
+    fn find_child(&self, parent: impl HasNodeId, f: Rc<dyn Fn(&Self, TaffyNodeId) -> bool>) -> Option<NodeId> {
+        let parent = parent.get_id();
+        if f(self, parent) { return Some(NodeId::new(parent, self.owner)) }
+        for child in self.tree.children(parent).ok()? {
+            if let Some(node) = self.find_child(child, f.clone()) { 
+                return Some(node) 
+            }
+        }
+        None
+    }
+
+
+    pub fn update(
+        &mut self,
+        values: &mut dyn Reflect,
+        actions: &mut ActionQueue,
+        messages: &mut Vec<Message>,
+    ) {
+        if self.should_refresh {
+            self.update_layout();
+        }
+
+        let mut node: Box<dyn Widget> = Box::new(EmptyWidget(self.node.node_id()));
+        std::mem::swap(&mut self.node, &mut node);
+
+        // update the root widget
+        let mut shell = UpdateShell {
+            owner: self.owner,
+            tree: self,
+            values,
+            messages,
+        };
+        node.update(&mut shell, actions);
+
+        self.node = node;
+    }
+
+
+    pub fn draw(&mut self, list: &mut RenderableCollection) {
+        self.with_node(|tree, node| {
+            let mut shell = DrawShell {
+                tree,
+                list,
+                // TODO: make customizable
+                general_theme: GeneralUiTheme::default(),
+            };
+            node.draw(&mut shell);
+        });
+    }
+
+
+    // TaffyTree things
+    pub fn new_leaf(&mut self, style: Style) -> TaffyResult<NodeId> {
+        let id = self.tree.new_leaf(style)?;
+
+        if self.all_children.insert(id) {
+            self.tree.set_node_context(id, Some(TreeData::default()))?;
+        }
+
+        let id = NodeId::new(id, self.owner);
+        Ok(id)
+    }
+
+    pub fn new_with_children(&mut self, style: Style, children: &[NodeId]) -> TaffyResult<NodeId> {
+        let id = self.new_leaf(style)?;
+        let children = children.iter().map(|i| i.node_id).collect::<Vec<_>>();
+        self.tree.set_children(id.node_id, &children)?;
+        Ok(id)
+    }
+
+    pub fn add_child(&mut self, parent: impl HasNodeId, child: impl HasNodeId) {
+        let _ = self.tree.add_child(parent.get_id(), child.get_id());
+    }
+
+    pub fn remove(&mut self, node: impl HasNodeId) {
+        let id = node.get_id();
+        let _ = self.tree.remove(id);
+        self.all_children.remove(&id);
+    }
+
+    pub fn get_layout(&self, node: impl HasNodeId) -> Option<&Layout> {
+        self.tree.layout(node.get_id()).ok()
+    }
+
+    pub fn parent(&self, node: impl HasNodeId) -> Option<NodeId> {
+        self.tree.parent(node.get_id())
+            .map(|i| NodeId::new(i, self.owner))
+    }
+
+
+    pub fn get_context(&self, node: impl HasNodeId) -> Option<&TreeData> {
+        self.tree.get_node_context(node.get_id())
+    }
+    pub fn get_context_mut(&mut self, node: impl HasNodeId) -> Option<&mut TreeData> {
+        self.tree.get_node_context_mut(node.get_id())
+    }
+
+    pub fn mark_dirty(&mut self, node: impl HasNodeId) {
+        let _ = self.tree.mark_dirty(node.get_id());
+    }
+
+
+    pub fn get_style(&self, node: impl HasNodeId) -> Option<&Style> {
+        self.tree.style(node.get_id()).ok()
+    }
+    pub fn set_style(&mut self, node: impl HasNodeId, style: Style) {
+        let _ = self.tree.set_style(node.get_id(), style);
+    }
+}
+
+
+#[derive(Copy, Clone)]
+pub struct TreeData {
+    // pub bounds: Bounds,
+    pub absolute_bounds: Bounds,
+    pub local_transform: Transform,
+    pub global_transform: Matrix,
+    pub inverse_global_transform: Matrix,
+    pub needs_inverse_transform: bool,
+
+    pub selected: Option<bool>,
+    pub node_left: Option<TaffyNodeId>,
+    pub node_right: Option<TaffyNodeId>,
+    pub node_above: Option<TaffyNodeId>,
+    pub node_below: Option<TaffyNodeId>,
+}
+impl Default for TreeData {
+    fn default() -> Self {
+        Self { 
+            // bounds: Bounds::default(),
+            absolute_bounds: Bounds::default(), 
+            local_transform: Transform::default(), 
+            global_transform: Matrix::identity(), 
+            inverse_global_transform: Matrix::identity(), 
+            needs_inverse_transform: false,
+
+            selected: None, 
+            node_left: None, 
+            node_right: None, 
+            node_above: None, 
+            node_below: None, 
+        }
+    }
+}
+impl TreeData {
+    pub fn selectable(&self) -> bool {
+        self.selected.is_some()
+    }
+    pub fn set_selectable(&mut self, selectable: bool) {
+        self.selected = selectable.then_some(false);
+    }
+
+    pub fn node_direction(&self, direction: Direction) -> Option<TaffyNodeId> {
+        match direction {
+            Direction::Up => self.node_above,
+            Direction::Down => self.node_below,
+            Direction::Left => self.node_left,
+            Direction::Right => self.node_right,
+        }
+    }
+}
+
+
+#[derive(Copy, Clone, Debug, Default)]
+struct SelectedNode {
+    node: Option<NodeId>,
+    active: bool,
+}
+
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
+pub struct NodeId {
+    pub node_id: TaffyNodeId,
+    pub owner: MessageOwner,
+}
+impl NodeId {
+    pub fn new(id: TaffyNodeId, owner: MessageOwner) -> Self {
+        Self {
+            node_id: id,
+            owner,
+        }
+    }
+}
+impl Default for NodeId {
+    fn default() -> Self { EMPTY_NODE }
+}
+
+
+#[derive(Clone, Debug)]
+pub enum MenuType {
+    Internal(&'static str),
+    Custom(String)
+}
+#[cfg(feature="graphics")]
+impl MenuType {
+    pub fn from_menu(menu: &dyn crate::prelude::Widget) -> Self {
+        match menu.name() {
+            Cow::Borrowed(name) => Self::Internal(name),
+            Cow::Owned(name) => Self::Custom(name.clone())
+        }
+    }
 }

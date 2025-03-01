@@ -1,9 +1,5 @@
 use crate::prelude::*;
 use tataku_client_common::prelude::*;
-use wgpu::{
-    Buffer,
-    Device
-};
 
 const QUAD_PER_BUF:u64 = 3000;
 
@@ -31,7 +27,7 @@ impl RenderBufferable for StandardBuffer {
         self.used_vertices = 0;
     }
 
-    fn dump(&mut self, queue: &wgpu::Queue, cache: &Self::Cache) {
+    fn dump(&mut self, queue: &Queue, cache: &Self::Cache) {
         queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&cache.cpu_vtx));
         queue.write_buffer(&self.index_buffer, 0, bytemuck::cast_slice(&cache.cpu_idx));
     }
@@ -40,15 +36,15 @@ impl RenderBufferable for StandardBuffer {
         StandardBuffer {
             blend_mode: BlendMode::None,
             scissor: None,
-            vertex_buffer: device.create_buffer(&wgpu::BufferDescriptor {
+            vertex_buffer: device.create_buffer(&BufferDescriptor {
                 label: Some("Vertex Buffer"),
-                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
                 size: Self::VTX_PER_BUF * std::mem::size_of::<StandardVertex>() as u64,
                 mapped_at_creation: false,
             }),
-            index_buffer: device.create_buffer(&wgpu::BufferDescriptor {
+            index_buffer: device.create_buffer(&BufferDescriptor {
                 label: Some("Index Buffer"),
-                usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
+                usage: BufferUsages::INDEX | BufferUsages::COPY_DST,
                 size: Self::IDX_PER_BUF * std::mem::size_of::<u32>() as u64,
                 mapped_at_creation: false,
             }),

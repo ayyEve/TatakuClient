@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-use tokio::{ net::TcpStream, io::{AsyncReadExt, AsyncWriteExt} };
+use tokio::{ net::TcpStream, io::{ AsyncReadExt, AsyncWriteExt } };
 
 pub struct Downloader;
 impl Downloader {
@@ -256,7 +256,7 @@ impl TcpConnection {
 #[tokio::test]
 async fn test() -> TatakuResult {
     let file = "eveflatshading.png1";
-    let url = format!("https://cdn.ayyeve.xyz/{file}");
+    let url = format!("https://cdn.ayyeve.dev/{file}");
     println!("downloading {file} from url {url}");
 
     let options = DownloadOptions {

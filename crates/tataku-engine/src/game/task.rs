@@ -1,7 +1,5 @@
 use crate::prelude::*;
 
-
-
 #[async_trait]
 pub trait TatakuTask: Send + Sync {
     fn get_id(&self) -> Cow<'static, str> { self.get_name() }

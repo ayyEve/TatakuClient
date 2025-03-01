@@ -1,128 +1,118 @@
 use crate::prelude::*;
+use crate::prelude::ui::*;
+
+const LOBBY_NAME_PATH: &str = "new_lobby.name";
+const LOBBY_PASSWORD_PATH: &str = "new_lobby.password";
+const LOBBY_PRIVATE_PATH: &str = "new_lobby.private";
 
 pub struct CreateLobbyDialog {
-    actions: ActionQueue,
-    num: usize, 
+    // name_text: String,
+    // password_text: String,
+    // is_private: bool, 
 
-    // scrollable: ScrollableArea,
-    should_close: bool,
-
-
-    name_text: String,
-    password_text: String,
-    is_private: bool, 
+    node: Box<dyn Widget>,
+    node_id: NodeId
 }
 impl CreateLobbyDialog {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
-        // const WIDTH:f32 = 500.0; 
-        // let mut scrollable = ScrollableArea::new(Vector2::ZERO, Vector2::ZERO, ListMode::VerticalList);
-
-        // // name
-        // scrollable.add_item(Box::new(TextInput::new(Vector2::ZERO, Vector2::new(WIDTH, 50.0), "Lobby Name", "", Font::Main).with_tag("name")));
-
-        // // password
-        // scrollable.add_item(Box::new(TextInput::new(Vector2::ZERO, Vector2::new(WIDTH, 50.0), "Password", "", Font::Main).with_tag("password")));
-
-        // // private
-        // scrollable.add_item(Box::new(Checkbox::new(Vector2::ZERO, Vector2::new(WIDTH, 50.0), "Private", false, Font::Main).with_tag("private")));
-
-        // // done and close buttons 
-        // {
-        //     let mut button_scrollable = ScrollableArea::new(Vector2::ZERO, Vector2::new(WIDTH, 50.0), ListMode::Grid(GridSettings::new(Vector2::ZERO, HorizontalAlign::Center)));
-        //     button_scrollable.add_item(Box::new(MenuButton::new(Vector2::ZERO, Vector2::new(100.0, 50.0), "Done", Font::Main).with_tag("done")));
-        //     button_scrollable.add_item(Box::new(MenuButton::new(Vector2::ZERO, Vector2::new(100.0, 50.0), "Close", Font::Main).with_tag("close")));
-        //     scrollable.add_item(Box::new(button_scrollable));
-        // }
-        // scrollable.set_size(Vector2::new(WIDTH, scrollable.get_elements_height()));
+        let node = col!(
+            TextWidget::new("Create Lobby: ").boxed(),
+            TextWidget::new(" ").boxed(),
+            
+            TextInput::new("Lobby Name", CustomElementText::Variable(LOBBY_NAME_PATH.to_string())).on_input(move |t: &str| Message::new_dialog("lobby_name", MessageValue::Text(t.to_string()))).boxed(),
+            TextInput::new("Lobby Password", CustomElementText::Variable(LOBBY_PASSWORD_PATH.to_string())).on_input(move |t: &str| Message::new_dialog("lobby_password", MessageValue::Text(t.to_string()))).boxed(),
+            Checkbox::new("Private", ElementCondition::Unbuilt(LOBBY_PRIVATE_PATH.to_owned())).on_toggle(move |v| Message::new_dialog("lobby_private", MessageValue::Toggle(v))).boxed(),
+            
+            row!(
+                Button::new(TextWidget::new("Done").boxed()).on_press(Message::new_dialog("done", MessageValue::Click)).boxed(),
+                Button::new(TextWidget::new("Close").boxed()).on_press(Message::new_dialog("close", MessageValue::Click)).boxed()
+                ;
+                width = FILL
+            );
+        );
 
         Self {
-            actions: ActionQueue::new(),
-            num: 0,
-            // scrollable,
-            should_close: false,
+            // name_text: String::new(),
+            // password_text: String::new(),
+            // is_private: false,
 
-            name_text: String::new(),
-            password_text: String::new(),
-            is_private: false,
+            node,
+            node_id: EMPTY_NODE
         }
     }
-
 }
 
 #[async_trait]
-impl Dialog for CreateLobbyDialog {
-    fn name(&self) -> &'static str { "create_lobby_dialog" }
-    fn title(&self) -> &'static str { "Create a Lobby" }
-    fn get_num(&self) -> usize { self.num }
-    fn set_num(&mut self, num: usize) { self.num = num }
+impl Widget for CreateLobbyDialog {
+    fn name(&self) -> Cow<'static, str> { "create_lobby_dialog".into() }
+    fn node_id(&self) -> NodeId { self.node_id }
+    
+    fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId>  {
+        let child = self.node.layout(shell)?;
+        self.node_id = shell.tree.new_with_children(
+            Style::default(), 
+            &[ child ]
+        )?;
 
-    fn should_close(&self) -> bool { self.should_close }
-    // fn get_bounds(&self) -> Bounds { Bounds::new(Vector2::ZERO, self.scrollable.size()) }
-    async fn force_close(&mut self) { self.should_close = true; }
-
-
-    async fn handle_message(&mut self, message: Message, _values: &mut dyn Reflect) {
+        Ok(self.node_id)
+    }
+    
+    fn draw(&self, shell: &mut DrawShell<'_>) {
+        self.node.draw(shell);
+    }
+    
+    async fn handle_message(
+        &mut self, 
+        message: &Message, 
+        values: &mut dyn Reflect,
+        actions: &mut ActionQueue,
+    ) {
         let Some(tag) = message.tag.as_string() else { return }; 
 
-        match &*tag {
+        match &**tag {
             "lobby_name" => {
-                let Some(text) = message.message_type.as_text() else { return };
-                self.name_text = text;
+                let Some(text) = message.value.as_text_ref() else { return };
+                if let Err(e) = values.reflect_insert(LOBBY_NAME_PATH, text.to_owned()) {
+                    error!("{e:?}");
+                }
             }
             "lobby_password" => {
-                let Some(text) = message.message_type.as_text() else { return };
-                self.password_text = text;
+                let Some(text) = message.value.as_text_ref() else { return };
+                if let Err(e) = values.reflect_insert(LOBBY_PASSWORD_PATH, text.to_owned()) {
+                    error!("{e:?}");
+                }
             }
             "lobby_private" => {
-                let Some(val) = message.message_type.as_toggle() else { return };
-                self.is_private = val;
+                let Some(val) = message.value.as_toggle_ref() else { return };
+                if let Err(e) = values.reflect_insert(LOBBY_PRIVATE_PATH, *val) {
+                    error!("{e:?}");
+                }
             }
 
             "done" => {
-                let name = self.name_text.clone();
-                let password = self.password_text.clone();
-                let private = self.is_private;
+                let name = get(values, LOBBY_NAME_PATH);
+                let password = get(values, LOBBY_PASSWORD_PATH);
+                let private = get(values, LOBBY_PRIVATE_PATH);
                 let players = 16;
+
                 
-                self.actions.push(MultiplayerAction::CreateLobby { name, password, private, players });
-                // tokio::spawn(async move {
-                //     OnlineManager::create_lobby(name, password, private, players).await
-                // });
-                self.should_close = true;
+                actions.push(MultiplayerAction::CreateLobby { name, password, private, players });
+                actions.push(UiAction::new(self.node_id, DialogAction::Close));
             }
 
-            "close" => self.should_close = true,
+            "close" => actions.push(UiAction::new(self.node_id, DialogAction::Close)),
             
-
             _ => {}
         }
 
     }
-
-    
-    async fn update(&mut self, _values: &mut dyn Reflect) -> Vec<TatakuAction> { 
-        self.actions.take()
-    }
+}
 
 
-    fn view(&self, _values: &mut dyn Reflect) -> IcedElement {
-        use iced_elements::*;
-        let owner = MessageOwner::new_dialog(self);
-        col!(
-            Text::new("Create Lobby: "),
-            Text::new("    "),
-            
-            TextInput::new("Lobby Name", &self.name_text).on_input(move|t|Message::new(owner, "lobby_name", MessageType::Text(t))),
-            TextInput::new("Lobby Password", &self.password_text).on_input(move|t|Message::new(owner, "lobby_password", MessageType::Text(t))),
-            Checkbox::new("Private", self.is_private).on_toggle(move|v|Message::new(owner, "lobby_private", MessageType::Toggle(v))),
-
-            row!(
-                Button::new(Text::new("Done")).on_press(Message::new_dialog(self, "done", MessageType::Click)),
-                Button::new(Text::new("Close")).on_press(Message::new_dialog(self, "close", MessageType::Click))
-                ;
-                width = Fill
-            );
-
-        )
-    }
+fn get<T: Reflect + Clone + Default + 'static>(values: &mut dyn Reflect, path: &str) -> T {
+    values.reflect_get::<T>(path)
+        .inspect_err(|e| warn!("{e:?}"))
+        .map(|a| (*a).clone())
+        .unwrap_or_default()
 }

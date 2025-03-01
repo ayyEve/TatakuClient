@@ -4,38 +4,38 @@ use crate::prelude::*;
 pub struct Message {
     pub owner: MessageOwner,
     pub tag: MessageTag,
-    pub message_type: MessageType,
+    pub value: MessageValue,
 }
 impl Message {
-    pub fn new(owner: MessageOwner, item_tag: impl Into<MessageTag>, message: MessageType) -> Self {
+    pub fn new(owner: MessageOwner, item_tag: impl Into<MessageTag>, message: MessageValue) -> Self {
         Self {
             owner,
             tag: item_tag.into(),
-            message_type: message,
+            value: message,
         }
     }
 
-    pub fn new_dialog(dialog: &impl Dialog, item_tag: impl Into<MessageTag>, message: MessageType) -> Self {
+    pub fn new_dialog(item_tag: impl Into<MessageTag>, message: MessageValue) -> Self {
         Self {
-            owner: MessageOwner::new_dialog(dialog),
+            owner: MessageOwner::DialogUnset,
             tag: item_tag.into(),
-            message_type: message,
+            value: message,
         }
     }
 
     /// helper to make a click message for the given menu and item tag
     pub fn click(owner: MessageOwner, item_tag: impl Into<MessageTag>) -> Self {
-        Self::new(owner, item_tag, MessageType::Click)
+        Self::new(owner, item_tag, MessageValue::Click)
     }
 
 
-    pub fn with_type(mut self, message: MessageType) -> Self {
-        self.message_type = message;
+    pub fn with_type(mut self, message: MessageValue) -> Self {
+        self.value = message;
         self
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum MessageTag {
     Number(usize),
     String(String),
@@ -43,16 +43,16 @@ pub enum MessageTag {
     GameplayMod(GameplayMod)
 }
 impl MessageTag {
-    pub fn as_string(self) -> Option<String> {
+    pub fn as_string(&self) -> Option<&String> {
         match self {
             Self::String(s) => Some(s),
             _ => None
         }
     }
 
-    pub fn as_number(self) -> Option<usize> {
+    pub fn as_number(&self) -> Option<usize> {
         match self {
-            Self::Number(n) => Some(n),
+            Self::Number(n) => Some(*n),
             _ => None
         }
     }
@@ -126,7 +126,7 @@ macro_rules! message_type {
 }
 
 #[derive(Debug, Clone)]
-pub enum MessageType {
+pub enum MessageValue {
     Click,
     Text(String),
     Key(Key),
@@ -138,12 +138,14 @@ pub enum MessageType {
     Value(TatakuValue),
     Multi(Vec<Message>),
 
+    SetValue(String, TatakuValue),
+
     Custom(Arc<dyn std::any::Any + Send + Sync>),
     GameplayManagerId(Arc<u32>),
-    CustomMenuAction(CustomMenuAction, Option<TatakuValue>),
+    // CustomMenuAction(CustomMenuAction, Option<TatakuValue>),
 }
 #[allow(unused)]
-impl MessageType {
+impl MessageValue {
     message_type!(as_text, as_text_ref, Text, String, String);
     message_type!(as_key, as_key_ref, Key, Key);
     message_type!(as_number, as_number_ref, Number, usize);
@@ -162,16 +164,16 @@ impl MessageType {
         }
     }
 
-    pub fn downcast<T:Send+Sync+'static>(self) -> Arc<T> {
+    pub fn downcast<T:Send+Sync+'static>(&self) -> Arc<T> {
         let Self::Custom(t) = self else { panic!("nope") };
-        t.downcast().unwrap()
+        t.clone().downcast().unwrap()
     }
     pub fn try_downcast<T:Send+Sync+'static>(self) -> Option<Arc<T>> {
         let Self::Custom(t) = self else { return None };
         t.downcast().ok()
     }
 
-    pub fn try_downcast_ref<T:Send+Sync+'static>(&self) -> Option<&Arc<T>> {
+    pub fn try_downcast_ref<T:Send+Sync+'static>(&self) -> Option<&T> {
         let Self::Custom(t) = self else { return None };
         t.downcast_ref()
     }
@@ -179,24 +181,29 @@ impl MessageType {
 
 
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
 pub enum MessageOwner {
+    Any,
     #[default]
     Menu,
-    Dialog(&'static str, usize),
+    DialogUnset,
+    Dialog(usize),
 }
 impl MessageOwner {
-    pub fn new_dialog(dialog: &impl Dialog) -> Self {
-        Self::Dialog(dialog.name(), dialog.get_num())
-    }
-
     pub fn is_menu(&self) -> bool {
-        matches!(self, Self::Menu)
+        matches!(self, Self::Menu | Self::Any)
     }
 
-    pub fn check_dialog(&self, dialog: &dyn Dialog) -> bool {
-        let Self::Dialog(name, number) = self else { return false };
-        name == &dialog.name() && number == &dialog.get_num()
+    pub fn is_eq(self, other: Self) -> bool {
+        match (self, other) {
+            (Self::Any, _) => true,
+            (_, Self::Any) => true,
+            (Self::Menu, Self::Menu) => true,
+            (Self::Dialog(_), Self::DialogUnset) => true,
+            (Self::DialogUnset, Self::Dialog(_)) => true,
+            (Self::Dialog(n), Self::Dialog(n2)) => n == n2,
+            _ => false,
+        }
     }
 
     /// Click message helper
@@ -205,6 +212,6 @@ impl MessageOwner {
     }
     /// Float message helper
     pub fn float(self, tag: impl Into<MessageTag>, val: f32) -> Message {
-        Message::new(self, tag, MessageType::Float(val))
+        Message::new(self, tag, MessageValue::Float(val))
     }
 }

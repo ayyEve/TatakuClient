@@ -8,12 +8,10 @@ edition.workspace = true
 [features]
 default = [ "graphics" ]
 graphics = []
-debug_sliders = []
 
 [dependencies]
 tracing.workspace = true
 async-trait.workspace = true
-
 tataku-common.workspace = true
 
 tataku-engine.workspace = true
