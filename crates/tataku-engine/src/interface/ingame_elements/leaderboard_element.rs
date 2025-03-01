@@ -8,7 +8,7 @@ pub struct LeaderboardElement {
     info: GameModeInfo,
 }
 impl LeaderboardElement {
-    pub fn new(info: GameModeInfo) -> Self {
+    pub async fn new(info: GameModeInfo) -> Self {
         Self {
             scores: Vec::new(),
             image: None,
@@ -20,11 +20,18 @@ impl LeaderboardElement {
 impl InnerUIElement for LeaderboardElement {
     fn display_name(&self) -> &'static str { "Leaderboard" }
 
-    fn max_size(&self) -> Vector2 {
-        Vector2::new(
-            LEADERBOARD_ITEM_SIZE.x,
-            LEADERBOARD_ITEM_SIZE.y * 10.0
-        )
+    fn get_bounds(&self) -> Bounds {
+        #[cfg(feature="graphics")]
+        return Bounds::new(
+            Vector2::ZERO,
+            Vector2::new(
+                LEADERBOARD_ITEM_SIZE.x,
+                LEADERBOARD_ITEM_SIZE.y * 10.0
+            )
+        );
+
+        #[cfg(not(feature="graphics"))]
+        Bounds::default()
     }
 
 
@@ -38,8 +45,7 @@ impl InnerUIElement for LeaderboardElement {
         &mut self, 
         pos_offset: Vector2, 
         scale: Vector2, 
-        _align: Alignment,
-        list: &mut RenderableCollection,
+        list: &mut RenderableCollection
     ) {
         // draw scores
         // let args = RenderArgs {
@@ -52,7 +58,7 @@ impl InnerUIElement for LeaderboardElement {
 
         let mut base_pos = pos_offset;
         for score in self.scores.iter() {
-            let mut l = LeaderboardItem::new(score.clone(), self.info);
+            let mut l = LeaderboardItem::new(score.clone(), self.info.clone());
             l.image = self.image.clone();
             l.ui_scale_changed(scale);
 
@@ -67,9 +73,9 @@ impl InnerUIElement for LeaderboardElement {
                 }
             }
 
-            l.pos = base_pos;
+            l.set_pos(base_pos);
             l.draw(Vector2::ZERO, list);
-            base_pos += Vector2::with_y(l.size.y + 5.0) * scale;
+            base_pos += Vector2::with_y(l.size().y + 5.0) * scale;
         }
 
     }
@@ -81,6 +87,7 @@ impl InnerUIElement for LeaderboardElement {
 }
 
 
+#[derive(ScrollableGettersSetters)]
 pub struct LeaderboardItem {
     pos: Vector2,
     size: Vector2,
@@ -142,8 +149,7 @@ impl LeaderboardItem {
         self
     }
 }
-
-impl LeaderboardItem {
+impl ScrollableItem for LeaderboardItem {
     fn ui_scale_changed(&mut self, scale: Vector2) {
         self.ui_scale = scale;
         self.size = LEADERBOARD_ITEM_SIZE * scale;
@@ -204,7 +210,7 @@ impl LeaderboardItem {
             15.0 * self.ui_scale.y,
             format!("{}: {}", self.score.username, format_number(self.score.score.score)),
             text_color,
-            self.font
+            self.font.clone()
         ));
 
         // combo text
@@ -213,7 +219,7 @@ impl LeaderboardItem {
             12.0 * self.ui_scale.y,
             format!("{}x, {:.2}%, {}{time_diff_str}", format_number(self.score.max_combo), self.info.calc_acc(&self.score) * 100.0, self.score_mods),
             text_color,
-            self.font
+            self.font.clone()
         ));
     }
 
