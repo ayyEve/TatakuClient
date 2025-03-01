@@ -4,23 +4,15 @@ use super::shaders::*;
 use tataku_engine::prelude::*;
 use lyon_tessellation::{ 
     geom::{ Box2D, Point }, 
-    path::builder::BorderRadii 
+    path::builder::BorderRadii,
 };
 
-use wgpu::{ 
-    Extent3d, 
-    BufferBinding, 
-    ImageCopyBuffer, 
-    util::DeviceExt, 
-    TextureViewDescriptor,
-    TextureViewDimension, 
-};
-
+use tataku_client_common::prelude::Color;
+use wgpu::util::DeviceExt as _;
 use winit::raw_window_handle::{ HasWindowHandle, HasDisplayHandle };
 
-// the sum of these two must not go past 16
-const LAYER_COUNT:u32 = 2;
-const RENDER_TARGET_LAYERS:u32 = 2;
+// must not go past 16
+const LAYER_COUNT:u32 = 4;
 const MAX_DEPTH:f32 = 8192.0 * 8192.0;
 
 /// background color
@@ -34,26 +26,25 @@ macro_rules! get_render_buffer {
 }
 
 pub struct WgpuEngine<'window> {
-    surface: wgpu::Surface<'window>,
-    device: wgpu::Device,
-    queue: Arc<wgpu::Queue>,
-    config: wgpu::SurfaceConfiguration,
+    surface: Surface<'window>,
+    device: Device,
+    queue: Arc<Queue>,
+    config: SurfaceConfiguration,
 
-    pipelines: HashMap<BlendMode, wgpu::RenderPipeline>,
+    pipelines: HashMap<BlendMode, RenderPipeline>,
 
     buffer_queues: HashMap<LastDrawn, Box<RenderBufferQueueType>>,
     completed_buffers: Vec<RenderBufferType>,
     current_render_buffer: Option<Box<RenderBufferQueueType>>,
 
     projection_matrix: Matrix,
-    projection_matrix_buffer: wgpu::Buffer,
-    projection_matrix_bind_group: wgpu::BindGroup,
+    projection_matrix_buffer: Buffer,
+    projection_matrix_bind_group: BindGroup,
 
     atlas: Atlas,
-    render_target_atlas: Atlas,
     atlas_texture: WgpuTexture,
 
-    screenshot_pending: Option<Box<dyn FnOnce((Vec<u8>, [u32; 2]))+Send+Sync>>,
+    screenshot_pending: Option<ScreenshotCallback>,
 
     particle_system: ParticleSystem,
 
@@ -64,27 +55,28 @@ pub struct WgpuEngine<'window> {
 impl<'window> WgpuEngine<'window> {
 
     // Creating some of the wgpu types requires async code
-    pub async fn new<W:HasWindowHandle + HasDisplayHandle + Sync>(window: &'window W, settings: &DisplaySettings) -> Box<dyn GraphicsEngine + 'window> {
-        use wgpu::PipelineCompilationOptions;
-
+    pub async fn create<W:HasWindowHandle + HasDisplayHandle + Sync>(
+        window: &'window W, 
+        settings: &DisplaySettings,
+    ) -> Box<dyn GraphicsEngine + 'window> {
         let window_size = settings.window_size; //window.inner_size();
 
         // create a wgpu instance
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::VULKAN | wgpu::Backends::METAL, // | wgpu::Backends::GL,
-            flags: wgpu::InstanceFlags::empty(),
-            gles_minor_version: wgpu::Gles3MinorVersion::Automatic,
+        let instance = Instance::new(InstanceDescriptor {
+            backends: Backends::VULKAN | Backends::METAL, // | Backends::GL,
+            flags: InstanceFlags::empty(),
+            gles_minor_version: Gles3MinorVersion::Automatic,
             dx12_shader_compiler: Default::default(),
         });
 
-        // create the serface
-        let surface: wgpu::Surface<'window> = instance.create_surface(window).unwrap();
+        // create the surface
+        let surface: Surface<'window> = instance.create_surface(window).unwrap();
 
         // create the adapter
-        let adapter = instance.request_adapter(&wgpu::RequestAdapterOptions {
+        let adapter = instance.request_adapter(&RequestAdapterOptions {
             power_preference: match settings.performance_mode {
-                PerformanceMode::HighPerformance => wgpu::PowerPreference::HighPerformance,
-                PerformanceMode::PowerSaver => wgpu::PowerPreference::LowPower,
+                PerformanceMode::HighPerformance => PowerPreference::HighPerformance,
+                PerformanceMode::PowerSaver => PowerPreference::LowPower,
             },
             compatible_surface: Some(&surface),
             force_fallback_adapter: false,
@@ -92,12 +84,13 @@ impl<'window> WgpuEngine<'window> {
 
         // create device and queue
         let (device, queue) = adapter.request_device(
-            &wgpu::DeviceDescriptor {
+            &DeviceDescriptor {
                 #[cfg(feature="texture_arrays")]
-                features: wgpu::Features::TEXTURE_BINDING_ARRAY | wgpu::Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING,
+                required_features: Features::TEXTURE_BINDING_ARRAY | Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING,
                 #[cfg(not(feature="texture_arrays"))]
-                required_features: wgpu::Features::default(),
-                required_limits: wgpu::Limits::default(),
+                required_features: Features::default(),
+                required_limits: Limits::default(),
+                memory_hints: MemoryHints::Performance,
                 label: None,
             },
             None,
@@ -115,12 +108,12 @@ impl<'window> WgpuEngine<'window> {
             .copied()
             .find(|f| f.is_srgb())
             .unwrap_or(surface_caps.formats[0]);
-        let config = wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT, // | wgpu::TextureUsages::COPY_SRC,
+        let config = SurfaceConfiguration {
+            usage: TextureUsages::RENDER_ATTACHMENT, // | TextureUsages::COPY_SRC,
             format: surface_format,
             width: window_size[0] as u32,
             height: window_size[1] as u32,
-            present_mode: wgpu::PresentMode::AutoNoVsync, //surface_caps.present_modes[0],
+            present_mode: PresentMode::AutoNoVsync, //surface_caps.present_modes[0],
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
 
@@ -128,84 +121,76 @@ impl<'window> WgpuEngine<'window> {
         };
         surface.configure(&device, &config);
 
-
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("Shader"),
-            #[cfg(feature="texture_arrays")] source: wgpu::ShaderSource::Wgsl(tataku_resources::shaders::SHADER_TEX_ARRAY.into()),
-            #[cfg(not(feature="texture_arrays"))] source: wgpu::ShaderSource::Wgsl(tataku_resources::shaders::SHADER.into()),
-        });
-
-
         #[cfg(feature="texture_arrays")]
-        let texture_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        let texture_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("atlas group layout"),
             entries: &[
-                wgpu::BindGroupLayoutEntry {
+                BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        view_dimension: wgpu::TextureViewDimension::D2,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Texture {
+                        sample_type: TextureSampleType::Float { filterable: true },
+                        view_dimension: TextureViewDimension::D2,
                         multisampled: false,
                     },
                     // count: None,
-                    count: std::num::NonZeroU32::new(LAYER_COUNT + RENDER_TARGET_LAYERS),
+                    count: std::num::NonZeroU32::new(LAYER_COUNT),
                 },
-                wgpu::BindGroupLayoutEntry {
+                BindGroupLayoutEntry {
                     binding: 1,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Sampler(SamplerBindingType::Filtering),
                     count: None,
                 },
             ],
         });
 
         #[cfg(not(feature="texture_arrays"))]
-        let texture_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        let texture_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("atlas group layout"),
             entries: &[
-                wgpu::BindGroupLayoutEntry {
+                BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Sampler(SamplerBindingType::Filtering),
                     count: None,
                 },
-                wgpu::BindGroupLayoutEntry {
+                BindGroupLayoutEntry {
                     binding: 1,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        view_dimension: wgpu::TextureViewDimension::D2,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Texture {
+                        sample_type: TextureSampleType::Float { filterable: true },
+                        view_dimension: TextureViewDimension::D2,
                         multisampled: false,
                     },
                     count: None,
                 },
-                wgpu::BindGroupLayoutEntry {
+                BindGroupLayoutEntry {
                     binding: 2,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        view_dimension: wgpu::TextureViewDimension::D2,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Texture {
+                        sample_type: TextureSampleType::Float { filterable: true },
+                        view_dimension: TextureViewDimension::D2,
                         multisampled: false,
                     },
                     count: None,
                 },
-                wgpu::BindGroupLayoutEntry {
+                BindGroupLayoutEntry {
                     binding: 3,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        view_dimension: wgpu::TextureViewDimension::D2,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Texture {
+                        sample_type: TextureSampleType::Float { filterable: true },
+                        view_dimension: TextureViewDimension::D2,
                         multisampled: false,
                     },
                     count: None,
                 },
-                wgpu::BindGroupLayoutEntry {
+                BindGroupLayoutEntry {
                     binding: 4,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        view_dimension: wgpu::TextureViewDimension::D2,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Texture {
+                        sample_type: TextureSampleType::Float { filterable: true },
+                        view_dimension: TextureViewDimension::D2,
                         multisampled: false,
                     },
                     count: None,
@@ -214,14 +199,14 @@ impl<'window> WgpuEngine<'window> {
         });
 
         let proj_matrix_size = std::mem::size_of::<[[f32; 4]; 4]>() as u64;
-        let projection_matrix_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        let projection_matrix_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("Texture/Sampler bind group layout"),
             entries: &[
-                wgpu::BindGroupLayoutEntry {
+                BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
+                    visibility: ShaderStages::VERTEX,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Uniform,
                         has_dynamic_offset: false,
                         min_binding_size: std::num::NonZeroU64::new(proj_matrix_size)
                     },
@@ -232,19 +217,19 @@ impl<'window> WgpuEngine<'window> {
 
         let window_size = Vector2::new(window_size[0], window_size[1]);
         let projection_matrix = Self::create_projection(window_size);
-        let projection_matrix_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let projection_matrix_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("Projection Matrix Buffer"),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
             contents: bytemuck::cast_slice(&projection_matrix.to_raw()),
         });
 
-        let projection_matrix_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let projection_matrix_bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("diffuse_bind_group"),
             layout: &projection_matrix_bind_group_layout,
             entries: &[
-                wgpu::BindGroupEntry {
+                BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::Buffer(BufferBinding {
+                    resource: BindingResource::Buffer(BufferBinding {
                         buffer: &projection_matrix_buffer,
                         offset: 0,
                         size: std::num::NonZeroU64::new(proj_matrix_size)
@@ -253,65 +238,13 @@ impl<'window> WgpuEngine<'window> {
             ],
         });
 
-        let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Render Pipeline Layout"),
-            bind_group_layouts: &[
-                &projection_matrix_bind_group_layout,
-                &texture_bind_group_layout,
-            ],
-            push_constant_ranges: &[],
-        });
+        let mut pipelines = create_standard_pipeline(
+            &device, 
+            &config, 
+            &projection_matrix_bind_group_layout, 
+            &texture_bind_group_layout
+        );
 
-
-        let mut pipelines = HashMap::new();
-        for blend_mode in [
-            BlendMode::AlphaBlending,
-            BlendMode::AlphaOverwrite,
-            BlendMode::PremultipliedAlpha,
-            BlendMode::AdditiveBlending,
-            BlendMode::SourceAlphaBlending,
-        ] {
-            let blend_state = Self::map_blend_mode(blend_mode);
-
-            let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some(&format!("{blend_mode:?} Pipeline")),
-                layout: Some(&render_pipeline_layout),
-                vertex: wgpu::VertexState {
-                    module: &shader,
-                    entry_point: "vs_main",
-                    buffers: &[ Vertex::desc() ],
-                    compilation_options: PipelineCompilationOptions::default(),
-                },
-                fragment: Some(wgpu::FragmentState {
-                    module: &shader,
-                    entry_point: "fs_main",
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format: config.format,
-                        blend: Some(blend_state),
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                    compilation_options: PipelineCompilationOptions::default(),
-                }),
-                primitive: wgpu::PrimitiveState {
-                    topology: wgpu::PrimitiveTopology::TriangleList,
-                    strip_index_format: None,
-                    front_face: wgpu::FrontFace::Ccw,
-                    cull_mode: None,
-                    polygon_mode: wgpu::PolygonMode::Fill,
-                    unclipped_depth: false,
-                    conservative: false,
-                },
-                depth_stencil: None,
-                multisample: wgpu::MultisampleState {
-                    count: 1,
-                    mask: !0,
-                    alpha_to_coverage_enabled: false,
-                },
-                multiview: None,
-            });
-
-            pipelines.insert(blend_mode, pipeline);
-        }
 
         // create slider pipeline
         pipelines.insert(BlendMode::Slider, create_slider_pipeline(&device, &config, &projection_matrix_bind_group_layout));
@@ -320,13 +253,13 @@ impl<'window> WgpuEngine<'window> {
         pipelines.insert(BlendMode::Flashlight, create_flashlight_pipeline(&device, &config, &projection_matrix_bind_group_layout));
 
 
-        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::FilterMode::Nearest,
+        let sampler = device.create_sampler(&SamplerDescriptor {
+            address_mode_u: AddressMode::ClampToEdge,
+            address_mode_v: AddressMode::ClampToEdge,
+            address_mode_w: AddressMode::ClampToEdge,
+            mag_filter: FilterMode::Linear,
+            min_filter: FilterMode::Nearest,
+            mipmap_filter: FilterMode::Nearest,
             ..Default::default()
         });
 
@@ -334,13 +267,12 @@ impl<'window> WgpuEngine<'window> {
         let atlas_texture = Self::create_texture(&device, &texture_bind_group_layout, &sampler, atlas_size, atlas_size, config.format);
 
         let atlas = Atlas::new(atlas_size, atlas_size, LAYER_COUNT);
-        let render_target_atlas = Atlas::new(atlas_size, atlas_size, RENDER_TARGET_LAYERS);
 
         let particle_system = ParticleSystem::new(&device);
 
         let buffer_queues = [
             (LastDrawn::Slider, Box::new(RenderBufferQueueType::Slider(RenderBufferQueue::new().init(&device)))),
-            (LastDrawn::Vertex, Box::new(RenderBufferQueueType::Vertex(RenderBufferQueue::new().init(&device)))),
+            (LastDrawn::Standard, Box::new(RenderBufferQueueType::Standard(RenderBufferQueue::new().init(&device)))),
             (LastDrawn::Flashlight, Box::new(RenderBufferQueueType::Flashlight(RenderBufferQueue::new().init(&device)))),
         ].into_iter().collect();
 
@@ -351,7 +283,6 @@ impl<'window> WgpuEngine<'window> {
             config,
             pipelines,
             atlas,
-            render_target_atlas,
             atlas_texture,
 
             current_render_buffer: None,
@@ -368,18 +299,20 @@ impl<'window> WgpuEngine<'window> {
         })
     }
 
-
-
-
-    pub fn render_current_surface(&mut self) -> Result<(), wgpu::SurfaceError> {
+    pub fn render_current_surface(&mut self) -> Result<(), SurfaceError> {
         let output = self.surface.get_current_texture()?;
-        let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let view = output.texture.create_view(&TextureViewDescriptor::default());
         let size = output.texture.size();
 
         // don't draw if our draw surface has no area
         if size.width == 0 || size.height == 0 { return Ok(()) }
 
-        self.render(&RenderableSurface::new(&view, GFX_CLEAR_COLOR, Vector2::new(size.width as f32, size.height as f32)))?;
+        self.render(RenderableSurface::new(
+            &view, 
+            GFX_CLEAR_COLOR, 
+            Vector2::new(size.width as f32, size.height as f32),
+            false,
+        ))?;
 
         let width = output.texture.width();
         let height = output.texture.height();
@@ -387,7 +320,7 @@ impl<'window> WgpuEngine<'window> {
         output.present();
 
         if let Some(screenshot) = std::mem::take(&mut self.screenshot_pending) {
-            let texture = self.device.create_texture(&wgpu::TextureDescriptor {
+            let texture = self.device.create_texture(&TextureDescriptor {
                 label: Some("Screenshot Texture"),
                 size: Extent3d {
                     width,
@@ -396,9 +329,9 @@ impl<'window> WgpuEngine<'window> {
                 },
                 mip_level_count: 1,
                 sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::Bgra8UnormSrgb,
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+                dimension: TextureDimension::D2,
+                format: TextureFormat::Bgra8UnormSrgb,
+                usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::COPY_SRC,
                 view_formats: &[]
             });
             let view = texture.create_view(&TextureViewDescriptor {
@@ -409,7 +342,12 @@ impl<'window> WgpuEngine<'window> {
                 ..Default::default()
             });
 
-            self.render(&RenderableSurface::new(&view, GFX_CLEAR_COLOR, Vector2::new(width as f32, height as f32)))?;
+            self.render(RenderableSurface::new(
+                &view, 
+                GFX_CLEAR_COLOR, 
+                Vector2::new(width as f32, height as f32), 
+                true
+            ))?;
 
             self.finish_screenshot(texture, screenshot);
         }
@@ -418,18 +356,18 @@ impl<'window> WgpuEngine<'window> {
         Ok(())
     }
 
-    fn render(&self, renderable: &RenderableSurface) -> Result<(), wgpu::SurfaceError> {
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("Render Encoder") });
+    fn render(&self, renderable: RenderableSurface) -> Result<(), SurfaceError> {
+        let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor { label: Some("Render Encoder") });
 
         {
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
                 label: Some("Render Pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &renderable.texture,
+                color_attachments: &[Some(RenderPassColorAttachment {
+                    view: renderable.texture,
                     resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(renderable.get_clear_color()),
-                        store: wgpu::StoreOp::Store, // must be store for render targets to work apparently
+                    ops: Operations {
+                        load: LoadOp::Clear(renderable.get_clear_color()),
+                        store: if renderable.render_target { StoreOp::Store } else { StoreOp::Discard } , // must be store for render targets to work apparently
                     },
                 })],
                 depth_stencil_attachment: None,
@@ -467,10 +405,10 @@ impl<'window> WgpuEngine<'window> {
                         continue
                     };
 
-                    render_pass.set_pipeline(&pipeline);
+                    render_pass.set_pipeline(pipeline);
                     render_pass.set_bind_group(0, &self.projection_matrix_bind_group, &[]);
 
-                    if let RenderBufferType::Vertex(_) = i {
+                    if let RenderBufferType::Standard(_) = i {
                         render_pass.set_bind_group(1, &self.atlas_texture.bind_group, &[]);
                     }
                 }
@@ -483,7 +421,7 @@ impl<'window> WgpuEngine<'window> {
                 }
 
                 render_pass.set_vertex_buffer(0, i.get_vertex_buffer().slice(..));
-                render_pass.set_index_buffer(i.get_index_buffer().slice(..), wgpu::IndexFormat::Uint32);
+                render_pass.set_index_buffer(i.get_index_buffer().slice(..), IndexFormat::Uint32);
                 render_pass.draw_indexed(0..i.get_used_indices() as u32, 0, 0..1);
             }
 
@@ -494,7 +432,6 @@ impl<'window> WgpuEngine<'window> {
 
         Ok(())
     }
-
 
     fn create_projection(draw_size: Vector2) -> Matrix {
         let sx = 2.0 / draw_size.x;
@@ -516,26 +453,26 @@ impl<'window> WgpuEngine<'window> {
 }
 
 // texture stuff
-impl<'w> WgpuEngine<'w> {
-    fn create_texture(device: &wgpu::Device, layout: &wgpu::BindGroupLayout, sampler: &wgpu::Sampler, width:u32, height:u32, format: wgpu::TextureFormat) -> WgpuTexture {
-        let texture_size = wgpu::Extent3d {
+impl WgpuEngine<'_> {
+    fn create_texture(device: &Device, layout: &BindGroupLayout, sampler: &Sampler, width:u32, height:u32, format: TextureFormat) -> WgpuTexture {
+        let texture_size = Extent3d {
             width,
             height,
             depth_or_array_layers: 1,
         };
 
-        let textures = (0..(LAYER_COUNT+RENDER_TARGET_LAYERS)).map(|_| {
+        let textures = (0..LAYER_COUNT).map(|_| {
             let texture = device.create_texture(
-                &wgpu::TextureDescriptor {
+                &TextureDescriptor {
                     size: texture_size,
                     mip_level_count: 1,
                     sample_count: 1,
-                    dimension: wgpu::TextureDimension::D2,
+                    dimension: TextureDimension::D2,
                     // Most images are stored using sRGB so we need to reflect that here.
-                    format, //wgpu::TextureFormat::Rgba8UnormSrgb,
+                    format, //TextureFormat::Rgba8UnormSrgb,
                     // TEXTURE_BINDING tells wgpu that we want to use this texture in shaders
                     // COPY_DST means that we want to copy data to this texture
-                    usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::RENDER_ATTACHMENT,
+                    usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST | TextureUsages::RENDER_ATTACHMENT,
                     label: Some("atlas_texture"),
                     // This is the same as with the SurfaceConfig. It
                     // specifies what texture formats can be used to
@@ -548,7 +485,7 @@ impl<'w> WgpuEngine<'w> {
                 }
             );
 
-            let view = texture.create_view(&wgpu::TextureViewDescriptor {
+            let view = texture.create_view(&TextureViewDescriptor {
                 label: Some("atlas_texture_view"),
                 dimension: Some(TextureViewDimension::D2),
                 base_array_layer: 0,
@@ -557,137 +494,116 @@ impl<'w> WgpuEngine<'w> {
             });
             (texture, view)
         })
-        // .chain((0..RENDER_TARGET_LAYERS).map(|_| {
-        //     let texture = device.create_texture(
-        //         &wgpu::TextureDescriptor {
-        //             size: texture_size,
-        //             mip_level_count: 1,
-        //             sample_count: 1,
-        //             dimension: wgpu::TextureDimension::D2,
-        //             // Most images are stored using sRGB so we need to reflect that here.
-        //             format,
-        //             // TEXTURE_BINDING tells wgpu that we want to use this texture in shaders
-        //             // COPY_DST means that we want to copy data to this texture
-        //             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-        //             label: Some("render_target_texture_atlas"),
-        //             // This is the same as with the SurfaceConfig. It
-        //             // specifies what texture formats can be used to
-        //             // create TextureViews for this texture. The base
-        //             // texture format (Rgba8UnormSrgb in this case) is
-        //             // always supported. Note that using a different
-        //             // texture format is not supported on the WebGL2
-        //             // backend.
-        //             view_formats: &[],
-        //         }
-        //     );
-        //     let view = texture.create_view(&wgpu::TextureViewDescriptor {
-        //         label: Some("pain and suffering"),
-        //         dimension: Some(TextureViewDimension::D2),
-        //         base_array_layer: 0,
-        //         ..Default::default()
-        //     });
-        //     (texture, view)
-        // }))
         .collect::<Vec<_>>();
 
 
         #[cfg(feature="texture_arrays")]
         let view_list = textures.iter().map(|a|&a.1).collect::<Vec<_>>();
         #[cfg(feature="texture_arrays")]
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("texture array bind group"),
-            layout: &layout,
+            layout,
             entries: &[
-                wgpu::BindGroupEntry {
+                BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::TextureViewArray(&view_list),
+                    resource: BindingResource::TextureViewArray(&view_list),
                 },
-                wgpu::BindGroupEntry {
+                BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::Sampler(sampler),
+                    resource: BindingResource::Sampler(sampler),
                 }
             ],
         });
 
         #[cfg(not(feature="texture_arrays"))]
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("texture array bind group"),
-            layout: &layout,
+            layout,
             entries: &[
-                wgpu::BindGroupEntry {
+                BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::Sampler(sampler),
+                    resource: BindingResource::Sampler(sampler),
                 },
-                wgpu::BindGroupEntry {
+                BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&textures[0].1),
+                    resource: BindingResource::TextureView(&textures[0].1),
                 },
-                wgpu::BindGroupEntry {
+                BindGroupEntry {
                     binding: 2,
-                    resource: wgpu::BindingResource::TextureView(&textures[1].1),
+                    resource: BindingResource::TextureView(&textures[1].1),
                 },
-                wgpu::BindGroupEntry {
+                BindGroupEntry {
                     binding: 3,
-                    resource: wgpu::BindingResource::TextureView(&textures[2].1),
+                    resource: BindingResource::TextureView(&textures[2].1),
                 },
-                wgpu::BindGroupEntry {
+                BindGroupEntry {
                     binding: 4,
-                    resource: wgpu::BindingResource::TextureView(&textures[3].1),
+                    resource: BindingResource::TextureView(&textures[3].1),
                 },
             ],
         });
+        
         WgpuTexture {
             textures: Arc::new(textures),
             bind_group
         }
     }
 
-
-    fn finish_screenshot(&mut self, texture: wgpu::Texture, callback: Box<dyn FnOnce((Vec<u8>, [u32;2])) + Send + Sync>) {
+    fn finish_screenshot(&mut self, texture: Texture, callback: ScreenshotCallback) {
         let (w, h) = (texture.width(), texture.height());
-        let format = texture.format();
 
-        let size = (w * h * 4) as u64;
-        let buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+        let fuck = (w * 4).div_ceil(COPY_BYTES_PER_ROW_ALIGNMENT) * COPY_BYTES_PER_ROW_ALIGNMENT;
+        let size = (fuck * h) as u64; //(w * h * 4) as u64;
+        let buffer = self.device.create_buffer(&BufferDescriptor {
             label: Some("Screenshot Buffer"),
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST,
             size,
             mapped_at_creation: false,
         });
 
-
         let tex_buffer = ImageCopyBuffer {
             buffer: &buffer,
-            layout: wgpu::ImageDataLayout {
+            layout: ImageDataLayout {
                 offset: 0,
-                bytes_per_row: Some(align(w*4)),
-                rows_per_image: Some(h)
+                bytes_per_row: Some(fuck),
+                rows_per_image: None
             }
         };
 
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("screenshot encoder") });
+        let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor { label: Some("screenshot encoder") });
         encoder.copy_texture_to_buffer(texture.as_image_copy(), tex_buffer, Extent3d { width: w, height: h, depth_or_array_layers: 1 });
         self.queue.submit(Some(encoder.finish()));
         let queue = self.queue.clone();
 
-        tokio::spawn(async move {
+        std::thread::spawn(move || {
             let slice = buffer.slice(..);
 
-            let (s, r) = tokio::sync::oneshot::channel();
-            slice.map_async(wgpu::MapMode::Read, move |_result| s.send(()).unwrap());
+            let (s, mut r) = tokio::sync::oneshot::channel();
+            slice.map_async(MapMode::Read, move |_result| s.send(()).unwrap());
             queue.submit(None);
 
-            r.await.unwrap();
-            let data = slice.get_mapped_range().chunks_exact(4).map(|b|cast_to_rgba_bytes(b, format)).flatten().collect();
+            loop {
+                match r.try_recv() {
+                    Ok(_) => break,
+                    Err(_) => std::thread::yield_now(),
+                }
+            }
 
-            callback((data, [w, h]));
+            let data = slice
+                .get_mapped_range()
+                .chunks_exact(4)
+                .flat_map(|b| cast_to_rgba_bytes(b, texture.format()))
+                .collect();
+
+            callback((data, [fuck / 4, h]));
         });
+
     }
 }
 
 
 // render code
-impl<'w> WgpuEngine<'w> {
+impl WgpuEngine<'_> {
 
     fn dump_last_drawn(&mut self) {
         let Some(mut last_drawn) = std::mem::take(&mut self.current_render_buffer) else { return };
@@ -701,35 +617,36 @@ impl<'w> WgpuEngine<'w> {
         }
 
         self.dump_last_drawn();
-        self.current_render_buffer = Some(self.buffer_queues.remove(&to_draw).expect(&format!("buffer queue did not have a queue for type {to_draw:?}. Did you forget to create a buffer queue for it?")));
+        self.current_render_buffer = Some(self.buffer_queues
+            .remove(&to_draw)
+            .unwrap_or_else(|| panic!("buffer queue did not have a queue for type {to_draw:?}. Did you forget to create a buffer queue for it?"))
+        );
     }
 
-
-
     /// returns reserve data
-    fn reserve_vertex(
+    fn reserve_standard(
         &mut self,
         vtx_count: u64,
         idx_count: u64,
         blend_mode: BlendMode
-    ) -> Option<VertexReserveData> {
+    ) -> Option<StandardReserveData> {
         let scissor = self.scissors.current_scissor();
-        self.check_dump_and_next(LastDrawn::Vertex);
+        self.check_dump_and_next(LastDrawn::Standard);
 
-        let vertex_buffer_queue = get_render_buffer!(self, Vertex);
+        let vertex_buffer_queue = get_render_buffer!(self, Standard);
         // if let Some(RenderBufferQueueType::Vertex(b)) = &mut self.last_drawn {b} else {panic!("wrong buffer type")};
 
         let mut recording_buffer = vertex_buffer_queue.recording_buffer().expect("didnt get vertex recording buffer");
         let blend_mode_check = recording_buffer.blend_mode == blend_mode || recording_buffer.blend_mode == BlendMode::None;
-        let scissor_check = recording_buffer.scissor == Some(scissor) || recording_buffer.scissor == None;
+        let scissor_check = recording_buffer.scissor == Some(scissor) || recording_buffer.scissor.is_none();
         // if !blend_mode_check { info!("blend mode changed from {:?} to {blend_mode:?}", recording_buffer.blend_mode) }
 
         if !blend_mode_check
         || !scissor_check
-        || recording_buffer.used_vertices + vtx_count > VertexBuffer::VTX_PER_BUF
-        || recording_buffer.used_indices + idx_count > VertexBuffer::IDX_PER_BUF {
+        || recording_buffer.used_vertices + vtx_count > StandardBuffer::VTX_PER_BUF
+        || recording_buffer.used_indices + idx_count > StandardBuffer::IDX_PER_BUF {
             if let Some(b) = vertex_buffer_queue.dump_and_next(&self.queue, &self.device) {
-                self.completed_buffers.push(RenderBufferType::Vertex(b))
+                self.completed_buffers.push(RenderBufferType::Standard(b))
             }
 
             recording_buffer = vertex_buffer_queue.recording_buffer()?;
@@ -750,13 +667,14 @@ impl<'w> WgpuEngine<'w> {
         let used_indices = recording_buffer.used_indices;
 
         let cache = &mut vertex_buffer_queue.cpu_cache;
-        Some(VertexReserveData {
+        Some(StandardReserveData {
             vtx: &mut cache.cpu_vtx[(used_vertices - vtx_count) as usize .. used_vertices as usize],
             idx: &mut cache.cpu_idx[(used_indices - idx_count) as usize .. used_indices as usize],
             idx_offset: used_vertices - vtx_count,
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn reserve_tex_quad(
         &mut self,
         tex: &TextureReference,
@@ -768,15 +686,15 @@ impl<'w> WgpuEngine<'w> {
         blend_mode: BlendMode,
     ) {
         // let Some(mut reserved) = self.reserve_vertex(4, 6, scissor, blend_mode) else { return };
-        let Some(mut reserved) = self.reserve_vertex(4, 6, blend_mode) else { return };
+        let Some(mut reserved) = self.reserve_standard(4, 6, blend_mode) else { return };
 
         let [x, y, w, h] = rect;
         let color = color.into();
 
-        let mut tl = tex.uvs.tl.into();
-        let mut tr = tex.uvs.tr.into();
-        let mut bl = tex.uvs.bl.into();
-        let mut br = tex.uvs.br.into();
+        let mut tl = tex.uvs.tl;
+        let mut tr = tex.uvs.tr;
+        let mut bl = tex.uvs.bl;
+        let mut br = tex.uvs.br;
 
         if h_flip {
             std::mem::swap(&mut tl, &mut tr);
@@ -790,27 +708,27 @@ impl<'w> WgpuEngine<'w> {
         let tex_index = tex.layer as i32;
         let offset = reserved.idx_offset as u32;
         reserved.copy_in(&[
-            Vertex {
+            StandardVertex {
                 position: transform.mul_v2(Vector2::new(x, y)).into(),
                 tex_coords: tl,
                 tex_index,
                 color,
             },
-            Vertex {
+            StandardVertex {
                 // .position = position + (Gfx.Vector2{ size[0], 0 } * scale),
                 position: transform.mul_v2(Vector2::new(x+w, y)).into(),
                 tex_coords: tr,
                 tex_index,
                 color,
             },
-            Vertex {
+            StandardVertex {
                 // .position = position + (Gfx.Vector2{ 0, size[1] } * scale),
                 position: transform.mul_v2(Vector2::new(x, y+h)).into(),
                 tex_coords: bl,
                 tex_index,
                 color,
             },
-            Vertex {
+            StandardVertex {
                 //     .position = position + (size * scale),
                 position: transform.mul_v2(Vector2::new(x+w, y+h)).into(),
                 tex_coords: br,
@@ -818,7 +736,7 @@ impl<'w> WgpuEngine<'w> {
                 color,
             }
         ], &[
-            0 + offset,
+            offset,
             2 + offset,
             1 + offset,
             1 + offset,
@@ -836,10 +754,10 @@ impl<'w> WgpuEngine<'w> {
         blend_mode: BlendMode,
     ) {
         // let Some(mut reserved) = self.reserve_vertex(4, 6, scissor, blend_mode) else { return };
-        let Some(mut reserved) = self.reserve_vertex(4, 6, blend_mode) else { return };
+        let Some(mut reserved) = self.reserve_standard(4, 6, blend_mode) else { return };
         let color = color.into();
 
-        let vertices = quad.into_iter().map(|p: Vector2|Vertex {
+        let vertices = quad.into_iter().map(|p: Vector2|StandardVertex {
             position: transform.mul_v2(p).into(),
             color,
             ..Default::default()
@@ -847,7 +765,7 @@ impl<'w> WgpuEngine<'w> {
 
         let offset = reserved.idx_offset as u32;
         reserved.copy_in(&vertices, &[
-            0 + offset,
+            offset,
             2 + offset,
             1 + offset,
 
@@ -871,7 +789,7 @@ impl<'w> WgpuEngine<'w> {
         // if let Some(RenderBufferQueueType::Slider(b)) = &mut self.last_drawn {b} else {panic!("wrong buffer type")};
 
         let mut recording_buffer = slider_buffer_queue.recording_buffer().expect("didnt get slider recording buffer");
-        let scissor_check = recording_buffer.scissor == Some(scissor) || recording_buffer.scissor == None;
+        let scissor_check = recording_buffer.scissor == Some(scissor) || recording_buffer.scissor.is_none();
 
 
         let vtx_count = 4;
@@ -942,7 +860,7 @@ impl<'w> WgpuEngine<'w> {
         // if let Some(RenderBufferQueueType::Slider(b)) = &mut self.last_drawn {b} else {panic!("wrong buffer type")};
 
         let mut recording_buffer = buffer_queue.recording_buffer().expect("didnt get flashlight recording buffer");
-        let scissor_check = recording_buffer.scissor == Some(scissor) || recording_buffer.scissor == None;
+        let scissor_check = recording_buffer.scissor == Some(scissor) || recording_buffer.scissor.is_none();
 
         let vtx_count = 4;
         let idx_count = 6;
@@ -984,19 +902,23 @@ impl<'w> WgpuEngine<'w> {
 
 
 // draw helpers
-impl<'w> WgpuEngine<'w> {
-    pub fn map_blend_mode(blend_mode: BlendMode) -> wgpu::BlendState {
+impl WgpuEngine<'_> {
+    pub(crate) fn map_blend_mode(blend_mode: BlendMode) -> BlendState {
         match blend_mode {
-            BlendMode::AlphaBlending => wgpu::BlendState::ALPHA_BLENDING,
-            BlendMode::AlphaOverwrite => wgpu::BlendState::REPLACE,
-            BlendMode::PremultipliedAlpha => wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING,
-            BlendMode::AdditiveBlending => wgpu::BlendState {
-                color: wgpu::BlendComponent { src_factor: wgpu::BlendFactor::One, dst_factor: wgpu::BlendFactor::One, operation: wgpu::BlendOperation::Add },
-                alpha: wgpu::BlendComponent { src_factor: wgpu::BlendFactor::One, dst_factor: wgpu::BlendFactor::One, operation: wgpu::BlendOperation::Add }
+            BlendMode::AlphaBlending => BlendState::ALPHA_BLENDING,
+            BlendMode::AlphaOverwrite => BlendState::REPLACE,
+            BlendMode::PremultipliedAlpha => BlendState::PREMULTIPLIED_ALPHA_BLENDING,
+            BlendMode::AdditiveBlending => BlendState {
+                color: BlendComponent { src_factor: BlendFactor::One, dst_factor: BlendFactor::One, operation: BlendOperation::Add },
+                alpha: BlendComponent { src_factor: BlendFactor::One, dst_factor: BlendFactor::One, operation: BlendOperation::Add }
             },
-            BlendMode::SourceAlphaBlending => wgpu::BlendState {
-                color: wgpu::BlendComponent { src_factor: wgpu::BlendFactor::SrcAlpha, dst_factor: wgpu::BlendFactor::One, operation: wgpu::BlendOperation::Add },
-                alpha: wgpu::BlendComponent { src_factor: wgpu::BlendFactor::SrcAlpha, dst_factor: wgpu::BlendFactor::One, operation: wgpu::BlendOperation::Add }
+            BlendMode::OsuAdditiveBlending => BlendState {
+                color: BlendComponent { src_factor: BlendFactor::SrcAlpha, dst_factor: BlendFactor::One, operation: BlendOperation::Add },
+                alpha: BlendComponent { src_factor: BlendFactor::One, dst_factor: BlendFactor::One, operation: BlendOperation::Add }
+            },
+            BlendMode::SourceAlphaBlending => BlendState {
+                color: BlendComponent { src_factor: BlendFactor::SrcAlpha, dst_factor: BlendFactor::One, operation: BlendOperation::Add },
+                alpha: BlendComponent { src_factor: BlendFactor::SrcAlpha, dst_factor: BlendFactor::One, operation: BlendOperation::Add }
             },
 
             BlendMode::None
@@ -1005,7 +927,7 @@ impl<'w> WgpuEngine<'w> {
         }
     }
 
-    fn tessellate_polygon(&mut self, polygon: &Vec<Vector2>, color: Color, border: Option<f32>, transform: Matrix, blend_mode: BlendMode) {
+    fn tessellate_polygon(&mut self, polygon: &[Vector2], color: Color, border: Option<f32>, transform: Matrix, blend_mode: BlendMode) {
         let mut polygon = polygon.iter();
         let mut path = lyon_tessellation::path::Path::builder();
         path.begin(polygon.next().map(|p|Point::new(p.x, p.y)).unwrap());
@@ -1055,10 +977,10 @@ impl<'w> WgpuEngine<'w> {
         }
 
         // let mut reserved = self.reserve_vertex(buffers.vertices.len() as u64, buffers.indices.len() as u64, scissor, blend_mode).expect("nope");
-        let mut reserved = self.reserve_vertex(buffers.vertices.len() as u64, buffers.indices.len() as u64, blend_mode).expect("nope");
+        let mut reserved = self.reserve_standard(buffers.vertices.len() as u64, buffers.indices.len() as u64, blend_mode).expect("nope");
 
         // convert vertices and indices to their proper values
-        let mut vertices = buffers.vertices.into_iter().map(|n| Vertex {
+        let vertices = buffers.vertices.into_iter().map(|n| StandardVertex {
                 position: [n.x, n.y],
                 color: [color.r, color.g, color.b, color.a],
                 // scissor_index: reserved.scissor_index,
@@ -1067,14 +989,14 @@ impl<'w> WgpuEngine<'w> {
         ).collect::<Vec<_>>();
 
         // insert the vertices and indices into the render buffer
-        let mut indices = buffers.indices.into_iter().map(|a|reserved.idx_offset as u32 + a as u32).collect::<Vec<_>>();
-        reserved.copy_in(&mut vertices, &mut indices);
+        let indices = buffers.indices.into_iter().map(|a| reserved.idx_offset as u32 + a as u32).collect::<Vec<_>>();
+        reserved.copy_in(&vertices, &indices);
     }
 }
 
 
 
-impl<'w> GraphicsEngine for WgpuEngine<'w> {
+impl GraphicsEngine for WgpuEngine<'_> {
 
     fn resize(&mut self, [width, height]: [u32; 2]) {
         if width == 0 || height == 0 { return }
@@ -1095,16 +1017,31 @@ impl<'w> GraphicsEngine for WgpuEngine<'w> {
 
 
 
-    fn create_render_target(&mut self, [w, h]: [u32; 2], clear_color: Color, do_render: Box<dyn FnOnce(&mut dyn GraphicsEngine, Matrix)>) -> Option<RenderTarget> {
+    fn create_render_target(
+        &mut self, 
+        [width, height]: [u32; 2], 
+        clear_color: Color, 
+        do_render: RenderTargetDraw
+    ) -> Option<RenderTarget> {
         // find space in the render target atlas
-        let mut atlased = self.render_target_atlas.try_insert(w, h)?;
-
-        // offset the texture layer so it accesses the render target atlas
-        atlased.layer += LAYER_COUNT;
+        let atlased = self.atlas.try_insert(width, height)?;
 
         // create a projection and render target
-        let projection = Self::create_projection(Vector2::new(w as f32, h as f32));
-        let target = RenderTarget::new_main_thread(w, h, Arc::new(atlased), projection, clear_color);
+        let projection = Self::create_projection(Vector2::new(width as f32, height as f32));
+        let target = RenderTarget {
+            width,
+            height,
+            projection,
+            clear_color,
+            image: Image::new(
+                Vector2::ZERO,
+                Arc::new(atlased),
+                Vector2::ONE
+            ),
+
+            // drop_check: Arc::new(()),
+            // image: Image::new()
+        };
 
         // queue rendering the data to it
         self.update_render_target(target.clone(), do_render);
@@ -1112,37 +1049,37 @@ impl<'w> GraphicsEngine for WgpuEngine<'w> {
         // return the new render target
         Some(target)
     }
-    fn update_render_target(&mut self, target: RenderTarget, do_render: Box<dyn FnOnce(&mut dyn GraphicsEngine, Matrix)>) {
+    fn update_render_target(&mut self, target: RenderTarget, do_render: RenderTargetDraw) {
         // get the texture this target was written to
         let textures = self.atlas_texture.textures.clone();
         let Some((atlas_tex, _)) = textures.get(target.image.tex.layer as usize) else { return };
 
         // write the projection matrix
         self.queue.write_buffer(&self.projection_matrix_buffer, 0, bytemuck::cast_slice(&target.projection.to_raw()));
-        self.queue.submit([].into_iter());
+        self.queue.submit([]);
 
         let width = target.width;
         let height = target.height;
 
         // create a temporary texture to render to this target to
         let texture = self.device.create_texture(
-            &wgpu::TextureDescriptor {
-                size: wgpu::Extent3d {
+            &TextureDescriptor {
+                size: Extent3d {
                     width,
                     height,
                     depth_or_array_layers: 1,
                 },
                 mip_level_count: 1,
                 sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
+                dimension: TextureDimension::D2,
                 format: self.config.format,
-                usage: wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::RENDER_ATTACHMENT,
+                usage: TextureUsages::COPY_SRC | TextureUsages::RENDER_ATTACHMENT,
                 label: Some("render_target_temp_tex"),
                 view_formats: &[],
             }
         );
 
-        let view = texture.create_view(&wgpu::TextureViewDescriptor {
+        let view = texture.create_view(&TextureViewDescriptor {
             label: Some("render_target_temp_tex_view"),
             dimension: Some(TextureViewDimension::D2),
             base_array_layer: 0,
@@ -1151,7 +1088,12 @@ impl<'w> GraphicsEngine for WgpuEngine<'w> {
         });
 
         // create renderable surface
-        let renderable = RenderableSurface::new(&view, target.clear_color, Vector2::new(width as f32, height as f32));
+        let renderable = RenderableSurface::new(
+            &view, 
+            target.clear_color, 
+            Vector2::new(width as f32, height as f32),
+            true
+        );
 
         // clear buffers
         self.begin_render();
@@ -1164,13 +1106,13 @@ impl<'w> GraphicsEngine for WgpuEngine<'w> {
         self.end_render();
 
         // perform render
-        if let Err(e) = self.render(&renderable) {
+        if let Err(e) = self.render(renderable) {
             error!("Error rendering render target: {e:?}")
         }
 
 
         // copy render to atlas
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("render_target copy encoder") });
+        let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor { label: Some("render_target copy encoder") });
 
         let mut dest = atlas_tex.as_image_copy();
         dest.origin.x = target.image.tex.x;
@@ -1195,59 +1137,39 @@ impl<'w> GraphicsEngine for WgpuEngine<'w> {
         use image::GenericImageView;
         let (width, height) = diffuse_image.dimensions();
 
-        self.load_texture_rgba(&diffuse_rgba.to_vec(), [width, height])
+        self.load_texture_rgba(&diffuse_rgba, [width, height])
     }
 
-    fn load_texture_rgba(&mut self, data: &Vec<u8>, [width, height]: [u32; 2]) -> TatakuResult<TextureReference> {
+    fn load_texture_rgba(&mut self, data: &[u8], [width, height]: [u32; 2]) -> TatakuResult<TextureReference> {
         let Some(info) = self.atlas.try_insert(width, height) else { return Err(TatakuError::String("no space in atlas".to_owned())); };
         if info.is_empty() { return Ok(info) }
 
-        // let padding_bytes = (0..ATLAS_PADDING).map(|_|[0u8;4]).flatten().collect::<Vec<u8>>();
-
-        let data = data
         // cast to bgra
-        .chunks_exact(4).map(|b|cast_from_rgba_bytes(b, self.config.format)).flatten().collect::<Vec<_>>()
-        // // add padding bytes to both left and right side
-        // .chunks_exact(4 * width as usize).map(|b|[&padding_bytes[..], b, &padding_bytes[..]]).flatten()
-        // // collect into Vec<u8>
-        // .flatten()
-        // .map(|b|*b)
-        // .collect::<Vec<_>>()
+        let data = data
+            .chunks_exact(4)
+            .flat_map(|b| cast_from_rgba_bytes(b, self.config.format))
+            .collect::<Vec<_>>()
         ;
 
-
-        // let width = width + ATLAS_PADDING * 2;
-        // let height = height + ATLAS_PADDING * 2;
-
-        let texture_size = wgpu::Extent3d {
+        let texture_size = Extent3d {
             width,
             height,
             depth_or_array_layers: 1,
         };
 
-
-        // let vertical_padding = vec![0u8; (width * 4 * ATLAS_PADDING) as usize];
-        // let mut data2 = vertical_padding.clone();
-        // data2.extend(data.into_iter());
-        // data2.extend(vertical_padding.into_iter());
-
-
         self.queue.write_texture(
-            // Tells wgpu where to copy the pixel data
-            wgpu::ImageCopyTexture {
+            ImageCopyTexture {
                 texture: &self.atlas_texture.textures.get(info.layer as usize).unwrap().0,
                 mip_level: 0,
-                origin: wgpu::Origin3d {
-                    x: info.x, // x: info.x - ATLAS_PADDING,
-                    y: info.y, // y: info.y - ATLAS_PADDING,
+                origin: Origin3d {
+                    x: info.x,
+                    y: info.y,
                     z: 0
                 },
-                aspect: wgpu::TextureAspect::All,
+                aspect: TextureAspect::All,
             },
-            // The actual pixel data
             &data,
-            // The layout of the texture
-            wgpu::ImageDataLayout {
+            ImageDataLayout {
                 offset: 0,
                 bytes_per_row: Some(4 * width),
                 rows_per_image: Some(height),
@@ -1258,7 +1180,7 @@ impl<'w> GraphicsEngine for WgpuEngine<'w> {
         Ok(info)
     }
 
-    fn free_tex(&mut self, mut tex: TextureReference) {
+    fn free_tex(&mut self, tex: TextureReference) {
         if tex.is_empty() { return }
 
         // write empty data to where the texture was
@@ -1270,25 +1192,25 @@ impl<'w> GraphicsEngine for WgpuEngine<'w> {
 
         self.queue.write_texture(
             // Tells wgpu where to copy the pixel data
-            wgpu::ImageCopyTexture {
+            ImageCopyTexture {
                 texture: &self.atlas_texture.textures.get(tex.layer as usize).unwrap().0,
                 mip_level: 0,
-                origin: wgpu::Origin3d {
+                origin: Origin3d {
                     x: tex.x - ATLAS_PADDING,
                     y: tex.y - ATLAS_PADDING,
                     z: 0
                 },
-                aspect: wgpu::TextureAspect::All,
+                aspect: TextureAspect::All,
             },
             // The actual pixel data
             &data,
             // The layout of the texture
-            wgpu::ImageDataLayout {
+            ImageDataLayout {
                 offset: 0,
                 bytes_per_row: Some(4 * width),
                 rows_per_image: Some(height),
             },
-            wgpu::Extent3d {
+            Extent3d {
                 width,
                 height,
                 depth_or_array_layers: 1,
@@ -1296,15 +1218,10 @@ impl<'w> GraphicsEngine for WgpuEngine<'w> {
         );
 
         // remove from texture atlas
-        if tex.layer >= LAYER_COUNT {
-            tex.layer -= LAYER_COUNT;
-            self.render_target_atlas.remove_entry(tex);
-        } else {
-            self.atlas.remove_entry(tex);
-        }
+        self.atlas.remove_entry(tex);
     }
 
-    fn screenshot(&mut self, callback: Box<dyn FnOnce((Vec<u8>, [u32; 2]))+Send+Sync>) {
+    fn screenshot(&mut self, callback: ScreenshotCallback) {
         self.screenshot_pending = Some(Box::new(callback));
     }
 
@@ -1314,13 +1231,13 @@ impl<'w> GraphicsEngine for WgpuEngine<'w> {
         // if self.last_drawn is not None at this point, something went wrong
         assert!(self.current_render_buffer.is_none());
 
-        let mut vertex_buffers = Vec::new();
+        let mut standard_buffers = Vec::new();
         let mut slider_buffers = Vec::new();
         let mut flashlight_buffers = Vec::new();
 
         for i in std::mem::take(&mut self.completed_buffers) {
             match i {
-                RenderBufferType::Vertex(v) => vertex_buffers.push(v),
+                RenderBufferType::Standard(v) => standard_buffers.push(v),
                 RenderBufferType::Slider(s) => slider_buffers.push(s),
                 RenderBufferType::Flashlight(f) => flashlight_buffers.push(f),
             }
@@ -1329,7 +1246,7 @@ impl<'w> GraphicsEngine for WgpuEngine<'w> {
         for i in self.buffer_queues.values_mut() {
             match &mut **i {
                 RenderBufferQueueType::Slider(s) => s.begin(std::mem::take(&mut slider_buffers)),
-                RenderBufferQueueType::Vertex(v) => v.begin(std::mem::take(&mut vertex_buffers)),
+                RenderBufferQueueType::Standard(v) => v.begin(std::mem::take(&mut standard_buffers)),
                 RenderBufferQueueType::Flashlight(f) => f.begin(std::mem::take(&mut flashlight_buffers)),
             }
         }
@@ -1436,7 +1353,7 @@ impl<'w> GraphicsEngine for WgpuEngine<'w> {
     /// rect is [x,y,w,h]
     fn draw_rect(&mut self, rect: [f32; 4], border: Option<Border>, shape: Shape, color: Color, transform: Matrix, blend_mode: BlendMode) {
         // for some reason something gets set to infinity on screen resize and panics the tesselator, this prevents that
-        if rect.iter().any(|n|!n.is_normal() && *n != 0.0) { return }
+        if rect.iter().any(|n| !n.is_normal() && *n != 0.0) { return }
 
         let [x, y, w, h] = rect;
         let rect = Box2D::new(Point::new(x, y), Point::new(x+w, y+h));
@@ -1464,7 +1381,7 @@ impl<'w> GraphicsEngine for WgpuEngine<'w> {
 
     fn draw_tex(&mut self, tex: &TextureReference, color: Color, h_flip: bool, v_flip: bool, transform: Matrix, blend_mode: BlendMode) {
         let rect = [0.0, 0.0, tex.width as f32, tex.height as f32];
-        self.reserve_tex_quad(&tex, rect, color, h_flip, v_flip, transform, blend_mode);
+        self.reserve_tex_quad(tex, rect, color, h_flip, v_flip, transform, blend_mode);
     }
 
 
@@ -1497,6 +1414,7 @@ impl<'w> GraphicsEngine for WgpuEngine<'w> {
 
         let offset = reserved.idx_offset as u32;
         slider_data.grid_index += reserved.slider_grid_offset;
+        #[allow(clippy::identity_op)] // 0 + offset is nice
         reserved.copy_in(
             &vertices,
             &[
@@ -1533,7 +1451,7 @@ impl<'w> GraphicsEngine for WgpuEngine<'w> {
 
 
     // particle engine stuff
-    fn add_emitter(&mut self, emitter: Box<dyn EmitterReference>) {
+    fn add_emitter(&mut self, emitter: EmitterReference) {
         self.particle_system.add(emitter);
     }
 
@@ -1546,35 +1464,35 @@ impl<'w> GraphicsEngine for WgpuEngine<'w> {
 struct VsyncUtils;
 impl VsyncUtils {
 
-    fn map_to_vsync(present_mode: wgpu::PresentMode) -> Vsync {
+    fn map_to_vsync(present_mode: PresentMode) -> Vsync {
         match present_mode {
-            wgpu::PresentMode::AutoVsync => Vsync::AutoVsync,
-            wgpu::PresentMode::AutoNoVsync => Vsync::AutoNoVsync,
-            wgpu::PresentMode::Fifo => Vsync::Fifo,
-            wgpu::PresentMode::FifoRelaxed => Vsync::FifoRelaxed,
-            wgpu::PresentMode::Immediate => Vsync::Immediate,
-            wgpu::PresentMode::Mailbox => Vsync::Mailbox,
+            PresentMode::AutoVsync => Vsync::AutoVsync,
+            PresentMode::AutoNoVsync => Vsync::AutoNoVsync,
+            PresentMode::Fifo => Vsync::Fifo,
+            PresentMode::FifoRelaxed => Vsync::FifoRelaxed,
+            PresentMode::Immediate => Vsync::Immediate,
+            PresentMode::Mailbox => Vsync::Mailbox,
         }
     }
-    fn map_from_vsync(vsync: Vsync) -> wgpu::PresentMode {
+    fn map_from_vsync(vsync: Vsync) -> PresentMode {
         match vsync {
-            Vsync::AutoVsync => wgpu::PresentMode::AutoVsync,
-            Vsync::AutoNoVsync => wgpu::PresentMode::AutoNoVsync,
-            Vsync::Fifo => wgpu::PresentMode::Fifo,
-            Vsync::FifoRelaxed => wgpu::PresentMode::FifoRelaxed,
-            Vsync::Immediate => wgpu::PresentMode::Immediate,
-            Vsync::Mailbox => wgpu::PresentMode::Mailbox,
+            Vsync::AutoVsync => PresentMode::AutoVsync,
+            Vsync::AutoNoVsync => PresentMode::AutoNoVsync,
+            Vsync::Fifo => PresentMode::Fifo,
+            Vsync::FifoRelaxed => PresentMode::FifoRelaxed,
+            Vsync::Immediate => PresentMode::Immediate,
+            Vsync::Mailbox => PresentMode::Mailbox,
         }
     }
 
-    fn to_okay(vsync: Vsync, present_modes: &Vec<Vsync>, ) -> Vsync {
+    fn to_okay(vsync: Vsync, present_modes: &[Vsync]) -> Vsync {
         if Self::is_okay(&vsync, present_modes) {
             vsync
         } else {
             Self::get_fallback(vsync)
         }
     }
-    fn is_okay(vsync: &Vsync, present_modes: &Vec<Vsync>) -> bool {
+    fn is_okay(vsync: &Vsync, present_modes: &[Vsync]) -> bool {
         present_modes.contains(vsync)
     }
     fn get_fallback(vsync: Vsync) -> Vsync {
@@ -1593,11 +1511,9 @@ impl VsyncUtils {
 }
 
 
-
-
-
-fn cast_from_rgba_bytes(bytes: &[u8], format: wgpu::TextureFormat) -> [u8; 4] {
+fn cast_from_rgba_bytes(bytes: &[u8], format: TextureFormat) -> [u8; 4] {
     // incoming is rgba8
+    #[allow(clippy::get_first)] // get(0) keeps things lined up here
     let r = bytes.get(0).cloned().unwrap_or_default();
     let g = bytes.get(1).cloned().unwrap_or_default();
     let b = bytes.get(2).cloned().unwrap_or_default();
@@ -1605,8 +1521,8 @@ fn cast_from_rgba_bytes(bytes: &[u8], format: wgpu::TextureFormat) -> [u8; 4] {
 
     match format {
         // pretend this is all it can be for now
-        wgpu::TextureFormat::Bgra8Unorm
-        | wgpu::TextureFormat::Bgra8UnormSrgb => [b, g, r, a],
+        TextureFormat::Bgra8Unorm
+        | TextureFormat::Bgra8UnormSrgb => [b, g, r, a],
 
         // just default to rgba otherwise and cry if its not
         _ => [r, g, b, a]
@@ -1614,36 +1530,24 @@ fn cast_from_rgba_bytes(bytes: &[u8], format: wgpu::TextureFormat) -> [u8; 4] {
 
 }
 
-fn cast_to_rgba_bytes(bytes: &[u8], _format: wgpu::TextureFormat) -> [u8; 4] {
+fn cast_to_rgba_bytes(bytes: &[u8], _format: TextureFormat) -> [u8; 4] {
     // pretend incoming is bgra8
-    let b = bytes.get(1).cloned().unwrap_or_default();
+    #[allow(clippy::get_first)]
+    let b = bytes.get(0).cloned().unwrap_or_default();
     let g = bytes.get(1).cloned().unwrap_or_default();
     let r = bytes.get(2).cloned().unwrap_or_default();
     let a = bytes.get(3).cloned().unwrap_or_default();
 
-    [r,g,b,a]
+    [r, g, b, a]
 
     // match format {
     //     // pretend this is all it can be for now
-    //     wgpu::TextureFormat::Bgra8Unorm
-    //     | wgpu::TextureFormat::Bgra8UnormSrgb => [b, g, r, a],
-    //     wgpu::TextureFormat::Rgba8Unorm
+    //     TextureFormat::Bgra8Unorm
+    //     | TextureFormat::Bgra8UnormSrgb => [b, g, r, a],
+    //     TextureFormat::Rgba8Unorm
 
     //     // just default to rgba otherwise and cry if its not
     //     _ => [r, g, b, a]
     // }
 
 }
-
-/// pad `num` to align with `wgpu::COPY_BYTES_PER_ROW_ALIGNMENT`
-fn align(num: u32) -> u32 {
-    let m = num % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
-
-    if m == 0 {
-        num
-    } else {
-        num + (wgpu::COPY_BYTES_PER_ROW_ALIGNMENT - m)
-    }
-}
-
-

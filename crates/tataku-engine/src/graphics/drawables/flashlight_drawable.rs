@@ -11,7 +11,13 @@ pub struct FlashlightDrawable {
     scissor: Scissor,
 }
 impl FlashlightDrawable {
-    pub fn new(pos: Vector2, radius: f32, fade_radius: f32, bounds: Bounds, color: Color) -> Self {
+    pub fn new(
+        pos: Vector2, 
+        radius: f32, 
+        fade_radius: f32, 
+        bounds: Bounds, 
+        color: Color
+    ) -> Self {
         Self {
             pos, 
             radius, 
@@ -25,10 +31,12 @@ impl FlashlightDrawable {
 
 impl TatakuRenderable for FlashlightDrawable {
     fn get_name(&self) -> String { "Flashlight".to_owned() }
-    fn get_bounds(&self) -> Bounds { Bounds::new(self.pos, Vector2::ONE * self.radius) }
+    fn get_bounds(&self) -> Bounds { 
+        Bounds::new(self.pos, Vector2::ONE * self.radius) 
+    }
 
-    fn get_scissor(&self) -> Scissor {self.scissor}
-    fn set_scissor(&mut self, s:Scissor) {self.scissor = s}
+    fn get_scissor(&self) -> Scissor { self.scissor }
+    fn set_scissor(&mut self, s: Scissor) { self.scissor = s }
     fn get_blend_mode(&self) -> BlendMode { BlendMode::Flashlight }
     fn set_blend_mode(&mut self, _blend_mode: BlendMode) { }
 
@@ -44,10 +52,10 @@ impl TatakuRenderable for FlashlightDrawable {
             self.bounds.into_quad(), 
             transform, 
             FlashlightData {
-                cursor_pos: self.pos.into(),
+                cursor_pos: self.pos,
                 flashlight_radius: self.radius,
                 fade_radius: self.fade_radius,
-                color: self.color.into(),
+                color: self.color,
             }
         );
     }

@@ -53,13 +53,14 @@ function space(width, height)
 end
 
 -- helper for making a text object
-function text(txt, font_size, color, font)
+function text(txt, font_size, color, font, align)
     return {
         id = "text",
         text = txt,
         font_size = font_size,
         color = color,
-        font = font
+        font = font,
+        align = align,
     }
 end
 function text_list(list)
@@ -69,15 +70,43 @@ function text_list(list)
 end
 
 -- helper for making a button
-function button(ele, action, width, height, padding)
-    return {
-        id = "button",
-        element = ele,
-        action = action,
-        width = width,
-        height = height,
-        padding = padding
-    }
+-- function button(ele, action, width, height, padding, pressed)
+function button(config, ele, action)
+    if not action then
+        return {
+            id = "button",
+            element = config,
+            action = ele,
+        }
+    end
+
+    config.id = "button"
+    config.element = ele;
+    config.action = action;
+    return config
+    -- return {
+    --     id = "button",
+    --     element = ele,
+    --     action = action,
+    --     width = width,
+    --     height = height,
+    --     padding = padding,
+    --     pressed = pressed 
+    -- }
+end
+
+-- helper for making draggable lists
+function drag_scroll(config, elements) 
+    if not elements then
+        return {
+            id = "drag_scroll",
+            elements = config,
+        }
+    else 
+        config.id = "drag_scroll"
+        config.elements = elements
+        return config
+    end
 end
 
 function key_event(key, mods, action) 
@@ -180,6 +209,12 @@ function mod_action(mods)
         mods = mods
     }
 end
+function cursor_action(tag)
+    return {
+        id = "action",
+        cursor = tag
+    }
+end
 function no_action()
     return {
         id = "none",
@@ -187,9 +222,18 @@ function no_action()
 end
 
 
+
 function variable(var) 
     return {
         variable = var
+    }
+end
+
+function text_iter(var, prop, join) 
+    return {
+        variable = var,
+        property = prop,
+        join = join
     }
 end
 

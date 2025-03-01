@@ -10,7 +10,7 @@ pub fn create_flashlight_pipeline(
 
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("Flashlight Shader"),
-        source: wgpu::ShaderSource::Wgsl(tataku_resources::shaders::FLASHLIGHT.into()),
+        source: wgpu::ShaderSource::Wgsl(crate::shader_files::FLASHLIGHT.into()),
     });
 
     let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -33,24 +33,25 @@ pub fn create_flashlight_pipeline(
     let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("Flashlight Pipeline Layout"),
         bind_group_layouts: &[
-            &projection_matrix_bind_group_layout,
+            projection_matrix_bind_group_layout,
             FLASHLIGHT_BIND_GROUP_LAYOUT.get().unwrap(),
         ],
         push_constant_ranges: &[],
     });
 
-    let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some(&format!("Flashlight Pipeline")),
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("Flashlight Pipeline"),
         layout: Some(&pipeline_layout),
+        cache: None,
         vertex: wgpu::VertexState {
             module: &shader,
-            entry_point: "flashlight_vs_main",
+            entry_point: Some("flashlight_vs_main"),
             buffers: &[ FlashlightVertex::desc() ],
             compilation_options: wgpu::PipelineCompilationOptions::default(),
         },
         fragment: Some(wgpu::FragmentState {
             module: &shader,
-            entry_point: "flashlight_fs_main",
+            entry_point: Some("flashlight_fs_main"),
             targets: &[Some(wgpu::ColorTargetState {
                 format: config.format,
                 blend: Some(WgpuEngine::map_blend_mode(BlendMode::AlphaBlending)),
@@ -74,8 +75,6 @@ pub fn create_flashlight_pipeline(
             alpha_to_coverage_enabled: false,
         },
         multiview: None,
-    });
-
-    pipeline
+    })
 }
 

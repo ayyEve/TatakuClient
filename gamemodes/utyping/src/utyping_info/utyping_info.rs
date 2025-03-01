@@ -1,14 +1,35 @@
 use crate::prelude::*;
 
-#[derive(Debug)]
-pub struct UTypingGameInfo;
-#[async_trait]
-impl GameModeInfo for UTypingGameInfo {
-    fn new() -> Self { Self }
-    fn id(&self) -> &'static str { "utyping" }
-    fn display_name(&self) -> &'static str { "UTyping" }
 
-    fn calc_acc(&self, score: &Score) -> f32 {
+pub const GAME_INFO: GamemodeInfo = GamemodeInfo {
+    id: "utyping",
+    display_name: "uTyping",
+    about: "utyping",
+    author: "ayyEve",
+
+    mods: &[],
+    diff_values: &[
+        BPM_DIFF_VALUE,
+        DURATION_DIFF_VALUE,
+    ],
+
+    judgments: UTypingHitJudgment::variants(),
+    calc_acc: UTypingGameInfo::calc_acc,
+    // get_diff_string: UTypingGameInfo::get_diff_string,
+    create_game: UTypingGameInfo::create_game,
+    create_diffcalc: UTypingGameInfo::create_diffcalc,
+    can_load_beatmap: UTypingGameInfo::can_load_beatmap,
+
+    serialize_settings: UTypingGameInfo::serialize_settings,
+    deserialize_settings: UTypingGameInfo::deserialize_settings,
+
+    .. GamemodeInfo::DEFAULT
+};
+
+
+struct UTypingGameInfo;
+impl UTypingGameInfo {
+    fn calc_acc(score: &Score) -> f32 {
         let x100 = score.judgments.get("x100").copied().unwrap_or_default() as f32;
         let x300 = score.judgments.get("x300").copied().unwrap_or_default() as f32;
         let miss = score.judgments.get("xmiss").copied().unwrap_or_default() as f32;
@@ -17,73 +38,37 @@ impl GameModeInfo for UTypingGameInfo {
         / (miss + x100 + x300)
     }
 
-    fn get_mods(&self) -> Vec<GameplayModGroup> { 
-        vec![
-            // GameplayModGroup::new("Skill")
-            //     .with_mod(super::FullAlt)
-            //     .with_mod(super::Relax)
-            //     .with_mod(super::NoFinisher)
-            // ,
-            // GameplayModGroup::new("Difficulty")
-            //     .with_mod(super::HardRock)
-            //     .with_mod(super::Easy)
-            //     .with_mod(super::NoBattery)
-            // ,
-        ]
+    fn can_load_beatmap(map: &BeatmapType) -> bool { 
+        matches!(map, BeatmapType::UTyping)
     }
 
-    fn get_stat_groups(&self) -> Vec<StatGroup> {
-        vec![
-            // StatGroup::new("press_counters", "Press Counts")
-            //     .with_stat(TaikoStatLeftPresses)
-            //     .with_stat(TaikoStatRightPresses)
-        ]
+    fn create_game<'a>(beatmap: &'a Beatmap, settings: &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn GameMode>>> {
+        Box::pin(async {
+            let game:Box<dyn GameMode> = Box::new(UTypingGame::new(beatmap, false, settings).await?);
+            Ok(game)
+        })
+    }
+    fn create_diffcalc<'a>(map: &'a BeatmapMeta, settings: &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn DiffCalc>>> {
+        Box::pin(async {
+            let calc:Box<dyn DiffCalc> = Box::new(UTypingDifficultyCalculator::new(map, settings).await?);
+            Ok(calc)
+        })
     }
 
-    fn get_diff_string(&self, info: &BeatmapMetaWithDiff, mods: &ModManager) -> String {
-        let speed = mods.get_speed();
-        let symb = if speed > 1.0 {"+"} else if speed < 1.0 {"-"} else {""};
 
-        let mut secs = format!("{}", info.secs(speed));
-        if secs.len() == 1 {secs = format!("0{}", secs)}
-
-        let mut txt = format!(
-            "HP: {:.2}{symb}, Len: {}:{}", 
-            info.get_hp(mods),
-            info.mins(speed), secs
-        );
-
-        // make sure at least one has a value
-        if info.bpm_min != 0.0 || info.bpm_max != 0.0 {
-            // one bpm
-            if info.bpm_min == info.bpm_max {
-                txt += &format!(" BPM: {:.2}", info.bpm_min * speed);
-            } else { // multi bpm
-                // i think i had it backwards when setting, just make sure its the right way :/
-                let min = info.bpm_min.min(info.bpm_max);
-                let max = info.bpm_max.max(info.bpm_min);
-                txt += &format!(" BPM: {:.2}-{:.2}", min * speed, max * speed);
-            }
+    fn deserialize_settings(value: serde_json::Value) -> Option<Box<dyn GamemodeSettings>> {
+        if value.is_null() {
+            let settings: Box<dyn GamemodeSettings> = Box::new(TaikoSettings::default());
+            return Some(settings);
         }
 
-        if let Some(diff) = &info.diff {
-            txt += &format!(", Diff: {:.2}", diff);
-        } else {
-            txt += &format!(", Diff: ...");
-        }
-
-        txt
+        let parsed = serde_json::from_value::<TaikoSettings>(value).ok()?; 
+        let a: Box<dyn GamemodeSettings> = Box::new(parsed);
+        Some(a)
+    }
+    fn serialize_settings(s: Box<dyn GamemodeSettings>) -> serde_json::Value {
+        let s = *s.downcast::<TaikoSettings>().unwrap();
+        serde_json::to_value(&s).unwrap()
     }
 
-    fn get_judgments(&self) -> Vec<HitJudgment> {
-        UTypingHitJudgment::variants().to_vec()
-    }
-    async fn create_game(&self, beatmap: &Beatmap) -> TatakuResult<Box<dyn GameMode>> {
-        let game = UTypingGame::new(beatmap, false).await?;
-        Ok(Box::new(game))
-    }
-    async fn create_diffcalc(&self, map: &BeatmapMeta) -> TatakuResult<Box<dyn DiffCalc>> {
-        let calc = UTypingDifficultyCalculator::new(map).await?;
-        Ok(Box::new(calc))
-    }
 }

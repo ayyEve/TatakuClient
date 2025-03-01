@@ -1,69 +1,83 @@
 use crate::prelude::*;
+use crate::prelude::ui::*;
 
 pub struct BeatmapDialog {
-    actions: ActionQueue,
-    num: usize,
     target_map: Md5Hash,
-    should_close: bool,
+
+    node_id: NodeId,
+    node: Box<dyn Widget>,
 }
 impl BeatmapDialog {
     pub fn new(target_map: Md5Hash) -> Self {
+        let node = col!(
+            // delete map
+            Button::new(TextWidget::new("Delete Map").boxed()).on_press(Message::new(MessageOwner::DialogUnset, "delete", MessageValue::Click)).boxed(),
+
+            // copy_hash
+            Button::new(TextWidget::new("Copy Hash").boxed()).on_press(Message::new(MessageOwner::DialogUnset, "copy_hash", MessageValue::Click)).boxed();
+
+            height = Dimension::Percent(1.0)
+        );
+
         Self {
-            actions: ActionQueue::new(),
-            num: 0,
-            
             target_map,
-            should_close: false
+
+            node,
+            node_id: EMPTY_NODE,
         }
     }
 }
 
 #[async_trait]
-impl Dialog for BeatmapDialog {
-    fn get_num(&self) -> usize { self.num }
-    fn set_num(&mut self, num: usize) { self.num = num }
+impl Widget for BeatmapDialog {
+    fn name(&self) -> Cow<'static, str> { "beatmap_dialog".into() }
+    fn node_id(&self) -> NodeId { self.node_id }
 
-    fn should_close(&self) -> bool { self.should_close }
-    async fn force_close(&mut self) { self.should_close = true; }
-
-
-    fn view(&self, _values: &mut dyn Reflect) -> IcedElement {
-        use iced_elements::*;
-
-        col!(
-            // delete map
-            Button::new(Text::new("Delete Map")).on_press(Message::new_dialog(self, "delete", MessageType::Click)),
-
-            // copy_hash
-            Button::new(Text::new("Copy Hash")).on_press(Message::new_dialog(self, "copy_hash", MessageType::Click));
-
-            height = Fill
-        )
-
+    fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId>  {
+        let child = self.node.layout(shell)?;
+        self.node_id = shell.tree.new_with_children(
+            Style::default(), 
+            &[ child ]
+        )?;
+        Ok(self.node_id)
+    }
+    fn input(
+        &mut self,
+        event: &InputEvent,
+        shell: &mut InputShell<'_>,
+    ) {
+        self.node.input(event, shell);
     }
 
-    async fn handle_message(&mut self, message: Message, _values: &mut dyn Reflect) {
+    fn draw(&self, shell: &mut DrawShell<'_>) {
+        self.node.draw(shell)
+    }
+
+    async fn handle_message(
+        &mut self, 
+        message: &Message, 
+        _values: &mut dyn Reflect,
+        actions: &mut ActionQueue,
+    ) {
         let Some(tag) = message.tag.as_string() else { return }; 
 
-        match &*tag {
+        match &**tag {
             "delete" => {
-                self.actions.push(BeatmapAction::Delete(self.target_map));
-                self.should_close = true;
+                actions.push(BeatmapAction::Delete(self.target_map));
+                actions.push(UiAction::new(self.node_id, DialogAction::Close));
             }
 
             "copy_hash" => {
                 trace!("copy hash map {}", self.target_map);
                 match GameWindow::set_clipboard(self.target_map.to_string()) {
-                    Ok(_) => NotificationManager::add_text_notification("Hash copied to clipboard!", 3000.0, Color::LIGHT_BLUE).await,
-                    Err(e) => NotificationManager::add_error_notification("Failed to copy hash to clipboard", e).await,
+                    Ok(_) => actions.push(Notification::default().text("Hash copied to clipboard!").duration(3000.0).color(Color::LIGHT_BLUE)),
+                    Err(e) => actions.push(Notification::new_error("Failed to copy hash to clipboard", e)),
                 }
 
-                self.should_close = true;
+                actions.push(UiAction::new(self.node_id, DialogAction::Close));
             }
 
             _ => {}
         }
     }
-    
-    async fn update(&mut self, _values: &mut dyn Reflect) -> Vec<TatakuAction> { self.actions.take() }
 }

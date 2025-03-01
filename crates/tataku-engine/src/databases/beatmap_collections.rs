@@ -39,7 +39,7 @@ impl Database {
     pub async fn get_beatmap_collections() -> Vec<BeatmapCollection> {
         let db = Self::get().await;
 
-        let query = format!("SELECT * FROM beatmap_collections");
+        let query = "SELECT * FROM beatmap_collections".to_string();
         let mut s = db.prepare(&query).unwrap();
         let res = s.query_map([], BeatmapCollectionEntry::from_row);
 

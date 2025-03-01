@@ -7,8 +7,6 @@ pub struct FlashlightVertex {
 }
 impl FlashlightVertex {
     pub fn desc() -> wgpu::VertexBufferLayout<'static> {
-        // todo: convert to macro
-
         wgpu::VertexBufferLayout {
             array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Vertex,

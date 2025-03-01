@@ -200,7 +200,7 @@ impl LobbyMenu {
         };
 
         Button::new(content)
-            .on_press(Message::new_menu(self, "beatmap_select", MessageType::Click))
+            .on_press(Message::new_menu(self, "beatmap_select", MessageValue::Click))
             .into_element()
     }
 }

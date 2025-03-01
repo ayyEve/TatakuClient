@@ -4,12 +4,6 @@ pub enum GameAction {
     /// Fully quit the game
     Quit,
 
-    /// Start a game with the provided ingame manager
-    StartGame(Box<GameplayManager>),
-
-    /// Resume a map
-    ResumeMap(Box<GameplayManager>),
-
     /// Watch a replay
     WatchReplay(Box<Score>),
 
@@ -42,35 +36,32 @@ pub enum GameAction {
     /// Copy some text to the clipboard
     CopyToClipboard(String),
 
-    /// Force a refresh of the ui, ie if the values map changed
-    ForceUiRefresh,
-
     /// Force a refresh of global.playmode and global.playmode_actual (+display) variables
     RefreshPlaymodeValues,
 
     /// Set the actual playmode for the current beatmap
     UpdatePlaymodeActual(String),
 
-    ///
     #[cfg(feature="graphics")]
     NewGameplayManager(NewManager),
     DropGameplayManager(GameplayId),
     GameplayAction(GameplayId, GameplayAction),
 
-    /// free up an existing gameplay manager (clean up its textures)
-    FreeGameplay(Box<GameplayManager>),
+
+    CurrentGameAction(CurrentGameAction),
+
+    /// update settings with the provided function
+    UpdateSettings(Box<dyn FnOnce(&mut Settings) + Send + Sync>),
 }
 
 impl From<GameAction> for TatakuAction {
-    fn from(value: GameAction) -> Self { Self::Game(value) }
+    fn from(value: GameAction) -> Self { Self::Game(Box::new(value)) }
 }
 
 impl core::fmt::Debug for GameAction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Quit => write!(f, "Quit"),
-            Self::StartGame(_) => write!(f, "StartGame"),
-            Self::ResumeMap(_) => write!(f, "ResumeMap"),
             Self::WatchReplay(_) => write!(f, "WatchReplay"),
             Self::SetValue(arg0, arg1) => f.debug_tuple("SetValue").field(arg0).field(arg1).finish(),
             Self::ViewScore(arg0) => write!(f, "ViewScore {}", arg0.hash()),
@@ -87,13 +78,40 @@ impl core::fmt::Debug for GameAction {
             Self::NewGameplayManager(arg0) => f.debug_tuple("NewGameplayManager").field(arg0).finish(),
             Self::DropGameplayManager(arg0) => f.debug_tuple("DropGameplayManager").field(arg0).finish(),
             Self::GameplayAction(arg0, arg1) => f.debug_tuple("GameplayAction").field(arg0).field(arg1).finish(),
-            Self::FreeGameplay(_) => write!(f, "FreeGameplay"),
-            Self::ForceUiRefresh => write!(f, "ForceUiRefresh"),
             Self::RefreshPlaymodeValues => write!(f, "RefreshPlaymodeValues"),
             Self::UpdatePlaymodeActual(arg0) => f.debug_tuple("UpdatePlaymodeActual").field(arg0).finish(),
+            Self::UpdateSettings(_)=> write!(f, "UpdateSettings"),
+
+            Self::CurrentGameAction(action) => f.debug_tuple("CurrentGameAction").field(action).finish(),
+
+            // Self::ForceUiRefresh => write!(f, "ForceUiRefresh"),
+            // Self::UiNodeDirty(_) => write!(f, "UiNodeDirty"),
         }
     }
 }
+
+#[derive(Clone, Debug)]
+pub enum CurrentGameAction {
+    /// Start whatever game is saved
+    Start,
+
+    /// Resume a game
+    Resume,
+
+    /// Pause the current game and open the provided menu
+    Pause(String),
+
+    Restart,
+
+    Free,
+}
+impl From<CurrentGameAction> for TatakuAction {
+    fn from(value: CurrentGameAction) -> Self {
+        Self::Game(Box::new(GameAction::CurrentGameAction(value)))
+    }
+}
+
+
 pub type GameplayId = Arc<u32>;
 
 
@@ -121,15 +139,15 @@ pub struct NewManager {
 impl std::fmt::Debug for NewManager {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("NewManager")
-            .field("owner", &self.owner)
-            .field("mods", &self.mods)
-            .field("map_hash", &self.map_hash)
-            .field("path", &self.path)
-            .field("playmode", &self.playmode)
-            .field("gameplay_mode", &self.gameplay_mode)
-            .field("area", &self.area)
-            .field("draw_function", &self.draw_function.is_some())
-            .finish()
+        .field("owner", &self.owner)
+        .field("mods", &self.mods)
+        .field("map_hash", &self.map_hash)
+        .field("path", &self.path)
+        .field("playmode", &self.playmode)
+        .field("gameplay_mode", &self.gameplay_mode)
+        .field("area", &self.area)
+        .field("draw_function", &self.draw_function.is_some())
+        .finish()
     }
 }
 
@@ -139,12 +157,15 @@ pub enum GameplayMode {
     Normal,
     Preview,
     Multiplayer,
-    Replay(Score),
-    Spectator {
-        host_id: u32,
-        host_username: String,
-
-        pending_frames: VecDeque<SpectatorFrame>,
-        spectators: HashMap<u32, String>,
-    }
+    Replay(Box<Score>),
+    Spectator(Box<SpectatorGameplayInfo>),
 }
+#[derive(Debug, Clone, Default)]
+pub struct SpectatorGameplayInfo {
+    pub host_id: u32,
+    pub host_username: String,
+
+    pub pending_frames: VecDeque<SpectatorFrame>,
+    pub spectators: HashMap<u32, String>,
+}
+

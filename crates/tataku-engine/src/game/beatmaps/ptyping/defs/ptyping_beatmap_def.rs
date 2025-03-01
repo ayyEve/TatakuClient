@@ -46,7 +46,7 @@ fn infinity_reader<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<
     use serde::de::{self, Visitor};
 
     struct InfinityReader;
-    impl<'de> Visitor<'de> for InfinityReader {
+    impl Visitor<'_> for InfinityReader {
         type Value = f64;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

@@ -31,6 +31,9 @@ pub enum SongAction {
 
     /// change the current song. you probably dont want to touch this in custom code
     Set(SongMenuSetAction),
+
+    /// Add a hook to fft data
+    HookFFT(Weak<FFTHook>)
 }
 
 #[derive(Clone, Debug)]

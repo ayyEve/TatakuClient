@@ -16,34 +16,32 @@ impl ModManager {
         Self::default()
     }
 
-    pub fn mods_for_playmode(
-        mode: &Arc<dyn GameModeInfo>
-    ) -> Vec<GameplayMod> {
+    fn iter_mods(mode: &GamemodeInfo) -> impl Iterator<Item=GameplayMod> {
         default_mod_groups()
             .into_iter()
-            .chain(mode.get_mods().into_iter())
-            .map(|m| m.mods)
-            .flatten()
-            .collect::<Vec<_>>()
+            .chain(mode.mods.iter().map(GameplayModGroup::from_static))
+            .flat_map(|m| m.mods)
+    }
+
+    pub fn mods_for_playmode(
+        mode: &GamemodeInfo
+    ) -> Vec<GameplayMod> {
+        Self::iter_mods(mode).collect()
     }
     pub fn mods_for_playmode_as_hashmap(
-        mode: &Arc<dyn GameModeInfo>
+        mode: &GamemodeInfo
     ) -> HashMap<String, GameplayMod> {
-        default_mod_groups()
-            .into_iter()
-            .chain(mode.get_mods().into_iter())
-            .map(|m| m.mods)
-            .flatten()
+        Self::iter_mods(mode)
             .map(|m| (m.name.to_owned(), m))
             .collect()
     }
 
     pub fn short_mods_string(
-        mods: &Vec<ModDefinition>, 
+        mods: &[ModDefinition], 
         none_if_empty: bool, 
-        mode: &Arc<dyn GameModeInfo>,
+        mode: &GamemodeInfo,
     ) -> String {
-        if mods.len() == 0 {
+        if mods.is_empty() {
             if none_if_empty { return "None".to_owned() }
             return String::new();
         }
@@ -84,7 +82,7 @@ impl ModManager {
 
     pub fn map_mods_to_thing(
         &self, 
-        mode: &Arc<dyn GameModeInfo>,
+        mode: &GamemodeInfo,
     ) -> Vec<ModDefinition> {
         let ok_mods = ModManager::mods_for_playmode_as_hashmap(mode);
 
@@ -108,13 +106,12 @@ impl ModManager {
     fn mods_list(
         &self, 
         include_speed: bool, 
-        mode: &Arc<dyn GameModeInfo>,
+        mode: &GamemodeInfo,
     ) -> String {
-        let mod_groups = mode.get_mods();
+        let mod_groups = mode.mods;
         let mods = mod_groups
             .iter()
-            .map(|mg| &mg.mods)
-            .flatten()
+            .flat_map(|mg| mg.mods)
             .map(|m| (m.name, m))
             .collect::<HashMap<_,_>>();
 
@@ -138,13 +135,13 @@ impl ModManager {
 
     pub fn mods_list_string(
         &self, 
-        mode: &Arc<dyn GameModeInfo>,
+        mode: &GamemodeInfo,
     ) -> String {
         self.mods_list(true, mode)
     }
     pub fn mods_list_string_no_speed(
         &self, 
-        mode: &Arc<dyn GameModeInfo>,
+        mode: &GamemodeInfo,
     ) -> String {
         self.mods_list(false, mode)
     }
@@ -172,7 +169,7 @@ impl ModManager {
     }
     /// remove a mod
     pub fn remove_mod(&mut self, m: impl AsRef<str>) {
-        self.mods.remove(&m.as_ref().to_owned());
+        self.mods.remove(m.as_ref());
     }
     // toggle a mod, returns if the mod is now enabled or not
     pub fn toggle_mod(&mut self, m: impl AsRef<str>) -> bool {
@@ -212,7 +209,7 @@ impl ModManager {
 
     pub fn as_md5(&self) -> Md5Hash {
         let mods = self.mods_sorted();
-        let mods_str = format!("{}{}", mods.join(""), self.speed.as_u16().to_string());
+        let mods_str = format!("{}{}", mods.join(""), self.speed.as_u16());
         md5(mods_str)
         // u128::from_str_radix(&md5(mods_str).to_string(), 16).unwrap_or_default()
     }
@@ -224,33 +221,5 @@ impl Hash for ModManager {
         self.speed.hash(state);
         let mods = self.mods_sorted();
         mods.hash(state);
-    }
-}
-
-
-impl TryFrom<&TatakuValue> for ModManager {
-    type Error = String;
-    fn try_from(value: &TatakuValue) -> Result<Self, Self::Error> {
-        let TatakuValue::Map(map) = value else { return Err(format!("Not a map")) };
-
-        let Some(speed) = map.get("speed") else { return Err(format!("No speed entry")) };
-        let TatakuValue::U32(speed) = &speed.value else { return Err(format!("speed entry is wrong type")) };
-
-        let Some(mods) = map.get("mods") else { return Err(format!("No mods entry")) };
-        let TatakuValue::List(mods) = &mods.value else { return Err(format!("Mods entry wrong type")) };
-
-        Ok(Self {
-            speed: GameSpeed::from_u16(*speed as u16),
-            mods: mods.into_iter().map(|d|d.as_string()).collect()
-        })
-    }
-}
-
-impl Into<TatakuValue> for ModManager {
-    fn into(self) -> TatakuValue {
-        let mut map = HashMap::default();
-        map.set_value("speed", TatakuVariable::new_game(TatakuValue::U32(self.speed.as_u16() as u32)));
-        map.set_value("mods", TatakuVariable::new_game((TatakuVariableAccess::GameOnly, self.mods.iter().collect::<Vec<_>>())));
-        TatakuValue::Map(map)
     }
 }

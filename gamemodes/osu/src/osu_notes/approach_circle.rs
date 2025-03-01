@@ -70,7 +70,7 @@ impl ApproachCircle {
         if let Some(mut tex) = self.image.clone() {
             tex.pos = self.pos;
             tex.color = self.color.alpha(self.alpha);
-            tex.scale = Vector2::ONE * self.scaling_helper.scaled_cs * scale * APPROACH_CIRCLE_SCALE;
+            tex.scale = Vector2::ONE * self.scaling_helper.cs * scale * APPROACH_CIRCLE_SCALE;
 
             list.push(tex)
         } else {
@@ -78,7 +78,7 @@ impl ApproachCircle {
                 self.pos,
                 self.radius * scale, // self.radius is already accounting for the scaled_cs
                 Color::TRANSPARENT_WHITE,
-                Some(Border::new(self.color.alpha(self.alpha), OSU_NOTE_BORDER_SIZE * self.scaling_helper.scaled_cs))
+                Some(Border::new(self.color.alpha(self.alpha), OSU_NOTE_BORDER_SIZE * self.scaling_helper.cs))
             ))
         }
     }

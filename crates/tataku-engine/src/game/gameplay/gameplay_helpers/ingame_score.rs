@@ -4,6 +4,12 @@ use crate::prelude::*;
 #[derive(Clone, Debug, Default)]
 #[derive(Reflect)]
 pub struct IngameScore {
+    /// internal id used for score lists
+    pub id: usize,
+
+    // TODO: short mods list string
+
+    #[reflect(flatten)]
     pub score: Score,
 
     pub health: f32,
@@ -21,6 +27,7 @@ pub struct IngameScore {
 impl IngameScore {
     pub fn new(score: Score, is_current: bool, is_previous: bool) -> Self {
         Self {
+            id: 0,
             score, 
             health: 1.0,
             is_current,
@@ -29,14 +36,13 @@ impl IngameScore {
         }
     }
 
-    pub async fn get_replay(&self) -> TatakuResult<Score> {
+    pub async fn get_replay(&self, settings: &Settings) -> TatakuResult<Score> {
         info!("downloading: {:#?}", self.replay_location);
 
         match &self.replay_location {
             ReplayLocation::Local => get_local_replay_for_score(&self.score),
-            ReplayLocation::Online(downloader) => downloader.get_replay().await,
-            // TODO: replay button should be hidden in this case, but im bad coder
-            ReplayLocation::OnlineNotExist => Err(TatakuError::String(format!("Replay is not available :c"))),
+            ReplayLocation::Online(downloader) => downloader.get_replay(settings).await,
+            ReplayLocation::OnlineNotExist => Err("Replay is not available :c".into()),
         }
     }
 
@@ -72,20 +78,6 @@ impl IngameScore {
 
 }
 
-// impl From<&IngameScore> for TatakuValue {
-//     fn from(score: &IngameScore) -> Self {
-
-//         // let the score parser handle most of the work
-//         let score:TatakuValue = (&score.score).into();
-
-//         // TODO: add more things?
-
-//         score
-//     }
-// }
-
-
-
 #[derive(Clone, Debug, Default)]
 pub enum ReplayLocation {
     #[default]
@@ -94,8 +86,6 @@ pub enum ReplayLocation {
     Online(Arc<dyn ReplayDownloader>),
     OnlineNotExist,
 }
-
-
 
 impl core::ops::Deref for IngameScore {
     type Target = Score;

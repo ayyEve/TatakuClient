@@ -1,3 +1,4 @@
+use crate::prelude::*;
 
 /// Vertex buffer layout for sliders
 #[repr(C)]
@@ -5,28 +6,25 @@
 #[derive(bytemuck::Pod, bytemuck::Zeroable)]
 pub struct SliderVertex {
     pub position: [f32; 2],
-
     pub slider_index: u32,
 }
 impl SliderVertex {
-    pub fn desc() -> wgpu::VertexBufferLayout<'static> {
-        // todo: convert to macro
-
-        wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
-            step_mode: wgpu::VertexStepMode::Vertex,
+    pub fn desc() -> VertexBufferLayout<'static> {
+        VertexBufferLayout {
+            array_stride: std::mem::size_of::<Self>() as BufferAddress,
+            step_mode: VertexStepMode::Vertex,
             attributes: &[
                 // position
-                wgpu::VertexAttribute {
+                VertexAttribute {
                     offset: 0,
                     shader_location: 0,
-                    format: wgpu::VertexFormat::Float32x2,
+                    format: VertexFormat::Float32x2,
                 },
                 // slider index
-                wgpu::VertexAttribute {
-                    offset: std::mem::size_of::<[f32; 2]>() as wgpu::BufferAddress,
+                VertexAttribute {
+                    offset: std::mem::size_of::<[f32; 2]>() as BufferAddress,
                     shader_location: 1,
-                    format: wgpu::VertexFormat::Uint32,
+                    format: VertexFormat::Uint32,
                 },
             ]
         }

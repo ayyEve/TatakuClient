@@ -1,136 +1,145 @@
-#![allow(dead_code)]
 use crate::prelude::*;
 
-
-#[derive(Copy, Clone, Default)]
-pub struct Transformation {
-    /// how long to wait before this transform is started
-    pub offset: f32,
-    /// how long the tranform lasts
-    pub duration: f32,
-    pub trans_type: TransformType,
-    pub easing_type: Easing,
-    
-    /// when was this transform crated? (ms)
-    pub create_time: f32,
-}
-impl Transformation {
-    pub fn new(offset: f32, duration: f32, trans_type: TransformType, easing_type: Easing, create_time: f32) -> Self {
-        Self {
-            offset,
-            duration,
-            trans_type,
-            easing_type,
-            create_time
-        }
-    }
-    pub fn start_time(&self) -> f32 {
-        self.create_time + self.offset
-    }
-    
-    pub fn get_value(&self, current_game_time: f32) -> TransformValueResult {
-        // when this transform should start
-        let begin_time = self.start_time();
-        // how long has elapsed? (minimum 0ms, max self.duration)
-        let elapsed = (current_game_time - begin_time).clamp(0.0, self.duration);
-
-        // % for interpolation
-        let mut factor = elapsed / self.duration;
-        if self.duration == 0.0 {
-            factor = 1.0;
-        }
-
-        match self.trans_type {
-            TransformType::Position { start, end }
-            | TransformType::VectorScale { start, end } => 
-                TransformValueResult::Vector2(self.easing_type.run_easing(start, end, factor)),
-
-            TransformType::Scale { start, end }
-            | TransformType::BorderSize { start, end } 
-            | TransformType::Rotation { start, end }
-            | TransformType::Transparency { start, end } 
-            | TransformType::BorderTransparency { start, end }
-            | TransformType::PositionX { start, end }
-            | TransformType::PositionY { start, end }
-            => TransformValueResult::F64(self.easing_type.run_easing(start, end, factor) as f64),
-
-            TransformType::Color { start, end } 
-            => TransformValueResult::Color(self.easing_type.run_easing( start, end, factor)),
-
-            TransformType::None => TransformValueResult::None,
-        }
-    }
-}
-
-#[derive(Copy, Clone)]
-pub enum TransformValueResult {
-    None,
-    Vector2(Vector2),
-    F64(f64),
-    Color(Color)
-}
-impl Into<Vector2> for TransformValueResult {
-    fn into(self) -> Vector2 {
-        if let Self::Vector2(v) = self {
-            v
-        } else {
-            // we want to crash here
-            // if we get here its an issue in my code, and must be fixed
-            panic!("NOT A VECTOR2!!")
-        }
-    }
-}
-impl Into<f64> for TransformValueResult {
-    fn into(self) -> f64 {
-        if let Self::F64(v) = self {
-            v
-        } else {
-            // we want to crash here
-            // if we get here its an issue in my code, and must be fixed
-            panic!("NOT AN f64!!")
-        }
-    }
-}
-impl Into<Color> for TransformValueResult {
-    fn into(self) -> Color {
-        if let Self::Color(v) = self {
-            v
-        } else {
-            // we want to crash here
-            // if we get here its an issue in my code, and must be fixed
-            panic!("NOT AN f64!!")
-        }
-    }
-}
-
-
 #[derive(Copy, Clone, Debug)]
-pub enum TransformType {
-    None, // default
-    VectorScale { start: Vector2, end: Vector2 },
-    Scale {start: f32, end: f32},
-    Rotation {start: f32, end: f32},
-    Color {start: Color, end: Color},
-    BorderSize {start: f32, end: f32},
-    Transparency {start: f32, end: f32},
-    Position {start: Vector2, end: Vector2},
-    PositionX {start: f32, end: f32},
-    PositionY {start: f32, end: f32},
-    BorderTransparency {start: f32, end: f32},
+pub struct Transform {
+    pub pos: Vector2,
+    pub scale: Vector2,
+    pub rotation: f32,
+    pub origin: Vector2,
 }
-impl Default for TransformType {
+impl Transform {
+    pub fn new(
+        pos: Vector2, 
+        scale: Vector2, 
+        rotation: f32, 
+        origin: Vector2
+    ) -> Self {
+        Self {
+            pos,
+            scale,
+            rotation,
+            origin
+        }
+    }
+
+    pub fn from_manager(manager: &TransformManager) -> Self {
+        Self::new(
+            manager.pos,
+            manager.scale,
+            manager.rotation,
+            manager.origin
+        )
+    }
+
+    pub fn matrix(&self) -> Matrix {
+        Matrix::identity()
+            .trans(-self.origin) // apply origin
+            .rot(self.rotation) // rotate
+            .scale(self.scale) // scale
+            .trans(self.pos) // move to pos
+    }
+}
+impl Default for Transform {
     fn default() -> Self {
-        TransformType::None
+        Self {
+            pos: Vector2::ZERO,
+            scale: Vector2::ONE,
+            rotation: 0.0,
+            origin: Vector2::ZERO
+        }
+    }
+}
+
+pub struct TransformedDrawable {
+    pub transform: Transform,
+    pub drawable: Box<dyn TatakuRenderable>
+}
+impl TransformedDrawable {
+    pub fn new(
+        transform: Transform,
+        drawable: Box<dyn TatakuRenderable>
+    ) -> Self {
+        Self {
+            transform,
+            drawable
+        }
+    }
+}
+impl TatakuRenderable for TransformedDrawable {
+    fn get_bounds(&self) -> Bounds {
+        self.drawable.get_bounds()
+    }
+
+    fn get_blend_mode(&self) -> BlendMode {
+        self.drawable.get_blend_mode()
+    }
+
+    fn set_blend_mode(&mut self, blend_mode: BlendMode) {
+        self.drawable.set_blend_mode(blend_mode);
+    }
+
+    fn get_scissor(&self) -> Scissor {
+        self.drawable.get_scissor()
+    }
+    fn set_scissor(&mut self, c: Scissor) {
+        self.drawable.set_scissor(c);
+    }
+
+    fn draw(
+        &self,
+        options: &DrawOptions,
+        mut transform: Matrix,
+        g: &mut dyn GraphicsEngine,
+    ) {
+        transform = transform * self.transform.matrix();
+        self.drawable.draw(options, transform, g)
     }
 }
 
 
-pub trait Transformable: TatakuRenderable {
-    fn apply_transform(&mut self, transform: &Transformation, value: TransformValueResult);
+pub struct ScissoredDrawable {
+    pub scissor: [f32; 4],
+    pub drawable: Box<dyn TatakuRenderable>
+}
+impl ScissoredDrawable {
+    pub fn new(
+        scissor: [f32; 4],
+        drawable: Box<dyn TatakuRenderable>
+    ) -> Self {
+        Self {
+            scissor,
+            drawable
+        }
+    }
+}
+impl TatakuRenderable for ScissoredDrawable {
+    fn get_bounds(&self) -> Bounds {
+        self.drawable.get_bounds()
+    }
 
-    /// is this item visible
-    fn visible(&self) -> bool;
+    fn get_blend_mode(&self) -> BlendMode {
+        self.drawable.get_blend_mode()
+    }
 
-    /// should this item be removed from the draw list?
-    fn should_remove(&self) -> bool {false}
+    fn set_blend_mode(&mut self, blend_mode: BlendMode) {
+        self.drawable.set_blend_mode(blend_mode);
+    }
+
+    fn get_scissor(&self) -> Scissor {
+        Some(self.scissor)
+    }
+    fn set_scissor(&mut self, s: Scissor) {
+        self.drawable.set_scissor(s);
+    }
+
+    fn draw(
+        &self,
+        options: &DrawOptions,
+        transform: Matrix,
+        g: &mut dyn GraphicsEngine,
+    ) {
+        g.push_scissor(self.scissor);
+        self.drawable.draw(options, transform, g);
+        g.pop_scissor();
+    }
 }

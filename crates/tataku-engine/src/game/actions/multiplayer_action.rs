@@ -81,3 +81,9 @@ pub enum LobbySlotAction {
     /// Show the profile for the user in the provided slot
     ShowProfile(u8),
 }
+
+impl From<LobbyAction> for TatakuAction {
+    fn from(value: LobbyAction) -> Self {
+        Self::Multiplayer(MultiplayerAction::LobbyAction(value))
+    }
+}

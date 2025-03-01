@@ -7,10 +7,10 @@ use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 pub struct QuaverDirect;
 #[async_trait]
 impl DirectApi for QuaverDirect {
-    fn api_name(&self) -> &'static str {"Quaver"}
-    fn supported_modes(&self) -> Vec<String> {vec!["mania".to_owned()]}
+    fn api_name(&self) -> &'static str { "Quaver" }
+    fn supported_modes(&self) -> Vec<String> { vec!["mania".to_owned()] }
 
-    async fn do_search(&mut self, search_params:SearchParams) -> Vec<Arc<dyn DirectDownloadable>> {
+    async fn do_search(&mut self, search_params:SearchParams, _settings: &Settings) -> Vec<Arc<dyn DirectDownloadable>> {
         trace!("Searching");
 
         let mut params = Vec::new();
@@ -34,7 +34,7 @@ impl DirectApi for QuaverDirect {
         let url = format!(
             "https://api.quavergame.com/v1/mapsets/maps/search?page={}{}{}",
             search_params.page,
-            if params.len() > 0 {"&"} else {""},
+            if !params.is_empty() {"&"} else {""},
             params.join("&")
         );
 
@@ -80,7 +80,7 @@ impl QuaverDirectDownloadable {
     }
 }
 impl DirectDownloadable for QuaverDirectDownloadable {
-    fn download(&self) {
+    fn download(&self, _settings: &Settings) {
         // if self.is_downloading() { return }
         // self.downloading.store(true, SeqCst);
         
@@ -162,10 +162,10 @@ enum QuaverRankedStatus {
     // DanCourse
     Other
 }
-impl Into<QuaverRankedStatus> for MapStatus {
+impl From<MapStatus> for QuaverRankedStatus {
     // pain
-    fn into(self) -> QuaverRankedStatus {
-        match self {
+    fn from(val: MapStatus) -> Self {
+        match val {
             MapStatus::Pending
             | MapStatus::Graveyarded 
                 => QuaverRankedStatus::Unranked,

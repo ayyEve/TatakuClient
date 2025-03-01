@@ -1,200 +1,5 @@
 use crate::prelude::*;
 
-#[allow(unused)]
-#[cfg(test)]
-mod old {
-    use crate::prelude::*;
-
-    #[derive(Default, Debug)]
-    pub struct ValueCollection(HashMap<String, TatakuVariable>);
-    impl ValueCollection {
-        // initialize with some basic values
-        pub fn new() -> Self {
-            Self::default()
-                .set_chained("true", TatakuVariable::new(true))
-                .set_chained("false", TatakuVariable::new(false))
-        }
-
-
-        pub fn set_chained(mut self, key: impl ToString, value: TatakuVariable) -> Self {
-            self.set(key, value);
-            self
-        }
-
-        pub fn set(&mut self, key: impl ToString, value: TatakuVariable) {
-            let key = key.to_string();
-
-            // // we shouldnt do thing.thing.thing inserts anymore, it should always be { map { map { value }}}
-            // check_key(&key);
-
-            let val = self.ensure_tree(&key, || value.clone());
-            *val = value;
-
-            // self.0.insert(key, value);
-        }
-
-        pub fn update_multiple(&mut self, access: TatakuVariableWriteSource, list: impl Iterator<Item=(impl AsRef<str>, impl Into<TatakuValue>)>) {
-            for (key, value) in list {
-                self.update(key.as_ref(), access, value.into());
-            }
-        }
-
-        pub fn remove(&mut self, key: &str) { self.0.remove(key); }
-        pub fn exists(&self, key: &str) -> bool { self.get_raw(key).is_ok() }
-
-
-
-        /// set the value in insert to None, this will set it after
-        pub fn update_or_insert(&mut self, key: &str, access: TatakuVariableWriteSource, value: impl Into<TatakuValue>, insert: impl Fn() -> TatakuVariable) {
-            let Ok(variable) = self.get_raw_mut(key) else {
-                // check_key(key);
-                let val = self.ensure_tree(key, insert);
-                val.value = value.into();
-                return;
-            };
-
-            if !variable.access.check_access(&access) { return warn!("{access:?} trying to write to variable {key}") }
-            variable.value = value.into();
-        }
-
-        pub fn update(&mut self, key: &str, access: TatakuVariableWriteSource, value: impl Into<TatakuValue>) {
-            let Ok(variable) = self.get_raw_mut(key) else { return error!("value {key} doesnt exist in collection") };
-            if !variable.access.check_access(&access) { return warn!("{access:?} trying to write to variable {key}") }
-            variable.value = value.into()
-        }
-        pub fn update_display(&mut self, key: &str, access: TatakuVariableWriteSource, value: impl Into<TatakuValue>, display: Option<impl Into<Cow<'static, str>>>) {
-            let Ok(variable) = self.get_raw_mut(key) else { return error!("value {key} doesnt exist in collection") };
-            if !variable.access.check_access(&access) { return warn!("{access:?} trying to write to variable {key}") }
-            variable.value = value.into();
-            variable.display = display.map(|d| d.into());
-        }
-
-
-        pub fn ensure_tree(&mut self, key: &str, insert: impl Fn() -> TatakuVariable) -> &mut TatakuVariable {
-            let mut split = key.split(".").collect::<VecDeque<_>>();
-            let first = split.pop_front().unwrap().to_owned();
-            // let _ = split.pop_back(); // remove the variable portion to make sure we dont accidentally set it
-
-            let mut last = self.0.entry(first).or_insert(insert());
-
-            while let Some(i) = split.pop_front() {
-                let map = match &mut last.value {
-                    TatakuValue::Map(m) => m,
-                    val @ TatakuValue::None => {
-                        warn!("creating {i}");
-                        *val = TatakuValue::Map(HashMap::new());
-                        let TatakuValue::Map(m) = val else { unreachable!("how??") };
-                        m
-                    }
-
-                    _ => panic!("trying to create property on non-map")
-                };
-
-                last = map.entry(i.to_owned()).or_insert(insert());
-            }
-
-            last
-        }
-
-    }
-
-    // getters
-    impl ValueCollection {
-        pub fn get_raw_mut(&mut self, key: &str) -> Result<&mut TatakuVariable, ShuntingYardError> {
-            // if let Some(v) = self.0.get_mut(key) { return Ok(v) }
-
-            let mut split = key.split(".").collect::<VecDeque<_>>();
-            let mut last = self.0.get_mut(split.pop_front().unwrap());
-
-            while let Some(i) = split.pop_front() {
-                let Some(TatakuVariable { value: TatakuValue::Map(map), ..}) = last else { 
-                    return Err(ShuntingYardError::EntryDoesntExist(key.to_owned())) 
-                };
-                last = map.get_mut(i);
-            }
-
-            last.ok_or_else(|| ShuntingYardError::EntryDoesntExist(key.to_owned()))
-        }
-
-
-        pub fn get_raw(&self, key: &str) -> Result<&TatakuVariable, ShuntingYardError> {
-            // debug!("got {key}");
-            let mut split = key.split(".").collect::<VecDeque<_>>();
-            let mut last = self.0.get(split.pop_front().unwrap());
-
-            while let Some(i) = split.pop_front() {
-                // debug!("checking > {i}");
-                let Some(TatakuVariable { value: TatakuValue::Map(map), ..}) = last else { return Err(ShuntingYardError::EntryDoesntExist(key.to_owned())) };
-                last = map.get(i);
-                // if last.is_none() { debug!("failed.") }
-            }
-
-            last.ok_or_else(|| ShuntingYardError::EntryDoesntExist(key.to_owned()))
-
-            // if let Some(v) = self.0.get(key) {
-            //     return Ok(v)
-            // }
-
-            // // TODO: optimize this, this is quite bad
-            // let mut remaining = key.split(".").collect::<Vec<_>>();
-            // if remaining.len() > 1 {
-            //     let k2 = remaining.pop().unwrap();
-            //     let key = remaining.join(".");
-
-            //     if let TatakuValue::Map(m) = &self.get_raw(&key)?.value {
-            //         if let Some(v) = m.get(k2) {
-            //             return Ok(v);
-            //         }
-            //     }
-            // }
-
-            // Err(ShuntingYardError::EntryDoesntExist(key.to_owned()))
-        }
-
-        pub fn get_f32(&self, key: &str) -> Result<f32, ShuntingYardError> {
-            match self.get_raw(key) {
-                Ok(TatakuVariable { value: TatakuValue::String(_), .. }) => Err(ShuntingYardError::ValueIsntANumber(key.to_owned())),
-                Ok(other) => other.as_f32(),
-                Err(_) => Err(ShuntingYardError::EntryDoesntExist(key.to_owned()))
-            }
-        }
-        pub fn get_u32(&self, key: &str) -> Result<u32, ShuntingYardError> {
-            match self.get_raw(key) {
-                Ok(TatakuVariable { value: TatakuValue::U32(n), .. }) => Ok(*n),
-                Ok(_) => Err(ShuntingYardError::ValueIsntANumber(key.to_owned())),
-                Err(_) => Err(ShuntingYardError::EntryDoesntExist(key.to_owned()))
-            }
-        }
-        pub fn get_string(&self, key: &str) -> Result<String, ShuntingYardError> {
-            self
-                .get_raw(key)
-                .map(|i| i.as_string())
-                // .ok_or_else(|| ShuntingYardError::EntryDoesntExist(key.to_owned()))
-        }
-
-        pub fn get_bool<'a>(&self, key: &str) -> Result<bool, ShuntingYardError> {
-            match self.get_raw(key) {
-                Ok(TatakuVariable { value: TatakuValue::Bool(b), .. }) => Ok(*b),
-                Ok(_) => Err(ShuntingYardError::ValueIsntABool),
-                _ => Err(ShuntingYardError::EntryDoesntExist(key.to_owned()))
-            }
-        }
-
-
-        pub fn try_get<'a, T>(&'a self, key: &str) -> Result<T, ShuntingYardError>
-            where
-                &'a TatakuValue: TryInto<T>,
-                <&'a TatakuValue as TryInto<T>>::Error: ToString
-        {
-            let raw = self.get_raw(key)?;
-            (&raw.value).try_into().map_err(|e| ShuntingYardError::ConversionError(e.to_string()))
-        }
-
-    }
-
-
-}
-
 #[derive(Reflect)]
 #[derive(Debug, Default)]
 #[reflect(dont_clone)]
@@ -216,6 +21,7 @@ pub struct GameValues {
     pub beatmap_manager: BeatmapManager,
 
     /// list of retreived scored 
+    #[reflect(alias("scores_list"))]
     pub score_list: ScoreList,
 }
 impl GameValues {
@@ -269,22 +75,23 @@ impl DerefMut for ValueCollection {
     }
 }
 
+// TODO: forward the error from values and not the dynmap (or both?)
 impl Reflect for ValueCollection {
-    fn impl_get<'v>(&self, path: ReflectPath<'v>) -> Result<&dyn Reflect, ReflectError<'v>> {
-        // debug!("impl_get: {path:?}");
+    fn impl_get<'v, 's>(&'s self, path: ReflectPath<'v>) -> ReflectResult<'v, MaybeOwnedReflect<'s>> {
         self
             .values
             .impl_get(path.clone())
+            // .inspect_err(|e| println!("{e:?}"))
             .or_else(|_| self.custom.impl_get(path))
     }
 
-    fn impl_get_mut<'v>(&mut self, path: ReflectPath<'v>) -> Result<&mut dyn Reflect, ReflectError<'v>> {
+    fn impl_get_mut<'v>(&mut self, path: ReflectPath<'v>) -> ReflectResult<'v, &mut dyn Reflect> {
         // debug!("impl_get_mut: {path:?}");
         self.values.impl_get_mut(path.clone())
             .or_else(|_| self.custom.impl_get_mut(path))
     }
 
-    fn impl_insert<'v>(&mut self, path: ReflectPath<'v>, value: Box<dyn Reflect>) -> Result<(), ReflectError<'v>> {
+    fn impl_insert<'v>(&mut self, path: ReflectPath<'v>, value: Box<dyn Reflect>) -> ReflectResult<'v, ()> {
         // debug!("impl_insert: {path:?}");
         if self.values.impl_get(path.clone()).is_ok() {
             self.values.impl_insert(path, value)
@@ -293,7 +100,7 @@ impl Reflect for ValueCollection {
         }
     }
 
-    fn impl_iter<'v>(&self, path: ReflectPath<'v>) -> Result<IterThing<'_>, ReflectError<'v>> {
+    fn impl_iter<'v>(&self, path: ReflectPath<'v>) -> ReflectResult<'v, ReflectIter<'_>> {
         // debug!("impl_iter: {path:?}");
         match (self.values.impl_iter(path.clone()), self.custom.impl_iter(path)) {
             (Ok(v), Ok(c)) => Ok(v.chain(c).collect::<Vec<_>>().into()),
@@ -306,7 +113,7 @@ impl Reflect for ValueCollection {
         }
     }
 
-    fn impl_iter_mut<'v>(&mut self, path: ReflectPath<'v>) -> Result<IterThingMut<'_>, ReflectError<'v>> {
+    fn impl_iter_mut<'v>(&mut self, path: ReflectPath<'v>) -> ReflectResult<'v, ReflectIterMut<'_>> {
         // debug!("impl_iter_mut: {path:?}");
         match (self.values.impl_iter_mut(path.clone()), self.custom.impl_iter_mut(path)) {
             (Ok(v), Ok(c)) => Ok(v.chain(c).collect::<Vec<_>>().into()),
@@ -319,9 +126,7 @@ impl Reflect for ValueCollection {
         }
     }
 
-    fn duplicate(&self) -> Option<Box<dyn Reflect>> {
-        None
-    }
+    fn duplicate(&self) -> Option<Box<dyn Reflect>> { None }
 
     fn from_string(_: &str) -> ReflectResult<'_, Box<dyn Reflect>> where Self:Sized {
         Err(ReflectError::NoFromString)
@@ -370,6 +175,7 @@ impl SongInfo {
 #[derive(Default, Debug, Copy, Clone)]
 pub struct GameInfo {
     pub time: f32,
+    pub window_size: Vector2,
 }
 
 
@@ -380,7 +186,7 @@ pub struct GlobalInfo {
 
     pub lobbies: Vec<LobbyInfo>,
 
-    #[reflect(skip)]
+    #[reflect(alias("infos"))]
     pub gamemode_infos: GamemodeInfos,
 
     pub playmode: String,
@@ -390,6 +196,7 @@ pub struct GlobalInfo {
 
     pub username: String,
     pub user_id: u32,
+    pub logged_in: bool,
     pub menu_list: Vec<String>,
 
     pub new_beatmap_hash: Option<Md5Hash>,
@@ -416,7 +223,7 @@ impl GlobalInfo {
     ) {
         self.playmode = playmode.clone();
         let Ok(info) = self.gamemode_infos.get_info(&playmode) else { return };
-        self.playmode_display = info.display_name().to_owned();
+        self.playmode_display = info.display_name.to_owned();
     }
     pub fn update_playmode_actual(
         &mut self, 
@@ -424,7 +231,7 @@ impl GlobalInfo {
     ) {
         self.playmode_actual = playmode.clone();
         let Ok(info) = self.gamemode_infos.get_info(&playmode) else { return };
-        self.playmode_actual_display = info.display_name().to_owned();
+        self.playmode_actual_display = info.display_name.to_owned();
     }
 }
 
@@ -441,9 +248,9 @@ pub struct EnumInfo {
 }
 impl EnumInfo {
     pub fn new(infos: &GamemodeInfos) -> Self {
-        let playmodes = infos.by_num.iter().map(|g| g.id().to_string()).collect::<Vec<_>>();
+        let playmodes = infos.by_num.iter().map(|g| g.id.to_string()).collect::<Vec<_>>();
         let playmodes_display = infos.by_num.iter()
-            .map(|s| s.display_name().to_owned())
+            .map(|s| s.display_name.to_owned())
             .collect();
 
         Self {

@@ -213,7 +213,7 @@ impl ManiaGame {
         column_count: u8, 
         game_settings: &Arc<ManiaSettings>, 
         playfield: &Arc<ManiaPlayfield>, 
-        state: &mut GameplayStateForUpdate<'_>
+        state: &mut GameplayUpdateShell<'_>
     ) {
         let color = hit_value.color;
         let image = None;
@@ -306,18 +306,40 @@ impl ManiaGame {
             }
         }
     }
+
+    fn key_to_game_key(&self, key: Key) -> Option<KeyPress> {
+        let keys = &self.game_settings.keys[(self.column_count-1) as usize];
+        let base_key = KeyPress::Mania1 as u8;
+
+        keys
+            .iter()
+            .enumerate()
+            .find_map(|(col, k)| (k == &key)
+                .then_some(col)
+            )
+            .map(|i| ((base_key as usize + i) as u8).into())
+
+        // for col in 0..self.column_count as usize {
+        //     if keys[col] == key {
+        //         return Some(((col + base_key as usize) as u8).into());
+        //     }
+        // }
+
+        // None
+    }
     
 }
 
 #[async_trait]
 impl GameMode for ManiaGame {
-    async fn new(beatmap:&Beatmap, _: bool) -> TatakuResult<Self> {
+    async fn new(beatmap: &Beatmap, _: bool, settings: &Settings) -> TatakuResult<Self> {
         let metadata = beatmap.get_beatmap_meta();
 
-        let game_settings = Settings::get().mania_settings.clone();
+        let game_settings = settings.gamemode_settings::<ManiaSettings>(GAME_INFO).unwrap_or_default();
+        // let game_settings = settings.mania_settings.clone();
         let playfields = &game_settings.playfield_settings.clone();
         let auto_helper = ManiaAutoHelper::new();
-        let window_size = WindowSize::get();
+        // let window_size = WindowSize::get();
 
         // let all_mania_skin_settings = &SkinManager::skin().await.mania_settings;
         let map_preferences = Database::get_beatmap_mode_prefs(metadata.beatmap_hash, &"mania".to_owned()).await;
@@ -412,9 +434,10 @@ impl GameMode for ManiaGame {
 
                 let playfield = Arc::new(ManiaPlayfield::new(
                     playfields[(column_count - 1) as usize].clone(), 
-                    Bounds::new(Vector2::ZERO, window_size.0), 
+                    Bounds::new(Vector2::ZERO, OSU_SIZE), 
                     column_count,
                     0.0,
+                    true,
                     // mania_skin_settings.as_ref().map(|s|OSU_SIZE.y - s.hit_position).unwrap_or_default()
                 ));
 
@@ -526,9 +549,10 @@ impl GameMode for ManiaGame {
 
                 let playfield = Arc::new(ManiaPlayfield::new(
                     playfields[(column_count - 1) as usize].clone(), 
-                    Bounds::new(Vector2::ZERO, window_size.0), 
+                    Bounds::new(Vector2::ZERO, OSU_SIZE), 
                     column_count,
-                    0.0
+                    0.0,
+                    true
                     // mania_skin_settings.as_ref().map(|s|OSU_SIZE.y - s.hit_position).unwrap_or_default(),
                 ));
 
@@ -615,9 +639,10 @@ impl GameMode for ManiaGame {
 
                 let playfield = Arc::new(ManiaPlayfield::new(
                     playfields[(column_count - 1) as usize].clone(), 
-                    Bounds::new(Vector2::ZERO, window_size.0), 
+                    Bounds::new(Vector2::ZERO, OSU_SIZE), 
                     column_count,
-                    0.0
+                    0.0,
+                    true
                     // mania_skin_settings.as_ref().map(|s|OSU_SIZE.y - s.hit_position).unwrap_or_default()
                 ));
 
@@ -713,7 +738,7 @@ impl GameMode for ManiaGame {
     async fn handle_replay_frame<'a>(
         &mut self, 
         frame: ReplayFrame, 
-        state: &mut GameplayStateForUpdate<'a>
+        state: &mut GameplayUpdateShell<'a>
     ) {
         match frame.action {
             ReplayAction::Press(key) => {
@@ -832,7 +857,7 @@ impl GameMode for ManiaGame {
 
     async fn update<'a>(
         &mut self, 
-        state: &mut GameplayStateForUpdate<'a>
+        state: &mut GameplayUpdateShell<'a>
     ) {
         if state.mods.has_autoplay() {
             let mut frames = Vec::new();
@@ -876,7 +901,7 @@ impl GameMode for ManiaGame {
         for tb in self.timing_bars.iter_mut() { tb.update(state.time) }
     }
     
-    async fn draw<'a>(&mut self, state:GameplayStateForDraw<'a>, list: &mut RenderableCollection) {
+    async fn draw<'a>(&mut self, state:GameplayDrawShell<'a>, list: &mut RenderableCollection) {
         let bounds = self.playfield.bounds;
 
         // playfield
@@ -937,7 +962,7 @@ impl GameMode for ManiaGame {
 
         // setup timing bars
         //TODO: it would be cool if we didnt actually need timing bar objects, and could just draw them
-        if self.timing_bars.len() == 0 {
+        if self.timing_bars.is_empty() {
             // load timing bars
             let parent_tps = timing_points.iter().filter(|t|!t.is_inherited()).collect::<Vec<&TimingPoint>>();
             let mut time = parent_tps[0].time;
@@ -982,43 +1007,32 @@ impl GameMode for ManiaGame {
         }
     }
 
-    
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        let playfield = Arc::new(ManiaPlayfield::new(
-            self.game_settings.playfield_settings[(self.column_count - 1) as usize].clone(), 
-            Bounds::new(Vector2::ZERO, window_size.0), 
-            self.column_count,
-            self.mania_skin_settings.as_ref().map(|s|OSU_SIZE.y - s.hit_position).unwrap_or_default()
-        ));
-        self.apply_new_playfield(playfield);
-    }
-
-
-    async fn fit_to_area(&mut self, bounds: Bounds) {
+    fn set_bounds(&mut self, bounds: Bounds, full_window: bool) {
         let mut playfield = ManiaPlayfield::new(
             self.game_settings.playfield_settings[(self.column_count - 1) as usize].clone(), 
             bounds, 
             self.column_count,
-            self.mania_skin_settings.as_ref().map(|s|OSU_SIZE.y - s.hit_position).unwrap_or_default()
+            self.mania_skin_settings.as_ref().map(|s| OSU_SIZE.y - s.hit_position).unwrap_or_default(),
+            full_window
         );
 
-        playfield.settings.x_offset = bounds.pos.x;
+        if !full_window {
+            playfield.settings.x_offset = bounds.pos.x;
+        }
 
         // if playfield.upside_down {
         //     playfield.settings.hit_pos -= pos.y
         // } else {
         //     playfield.settings.hit_pos += pos.y
         // }
-        
-
         self.apply_new_playfield(Arc::new(playfield));
     }
 
     
     async fn force_update_settings(&mut self, _settings: &Settings) {}
     
-    async fn reload_skin(&mut self, beatmap_path: &String, skin_manager: &mut dyn SkinProvider) -> TextureSource {
-        let source = TextureSource::Beatmap(beatmap_path.clone()); // TODO: add setting option
+    async fn reload_skin(&mut self, beatmap_path: &str, skin_manager: &mut dyn SkinProvider) -> TextureSource {
+        let source = TextureSource::Beatmap(beatmap_path.to_owned()); // TODO: add setting option
 
         // reload skin settings
         let all_mania_skin_settings = &skin_manager.skin().mania_settings;
@@ -1042,144 +1056,109 @@ impl GameMode for ManiaGame {
 
     async fn apply_mods(&mut self, _mods: Arc<ModManager>) { }
 
+    async fn handle_input(&mut self, input: InputEvent) -> Option<ReplayAction> {
+        match input.event {
+            InputType::KeyPress(press) => {
+                let key = press.as_key()?;
+
+                // check sv change keys
+                if key == Key::F4 || key == Key::F3 {
+                    if key == Key::F4 {
+                        self.sv_mult += self.game_settings.sv_change_delta;
+                    } else {
+                        self.sv_mult -= self.game_settings.sv_change_delta;
+                    }
+                    self.map_preferences.scroll_speed = self.sv_mult;
+
+                    self.set_sv_mult_notes();
+
+                    return None;
+                }
+
+                let game_key = self.key_to_game_key(key)?;
+                Some(ReplayAction::Press(game_key))
+            }
+
+
+            InputType::KeyRelease(release) => {
+                let key = release.as_key()?;
+                let game_key = self.key_to_game_key(key)?;
+                Some(ReplayAction::Release(game_key))
+            }
+
+            _ => None
+        }
+    }
+
+
     async fn beat_happened(&mut self, pulse_length: f32) {
         self.columns.iter_mut().flatten().for_each(|n|n.beat_happened(pulse_length))
     }
     async fn kiai_changed(&mut self, is_kiai: bool) {
         self.columns.iter_mut().flatten().for_each(|n|n.kiai_changed(is_kiai))
     }
-}
 
 
-// #[cfg(feature="graphics")]
-#[async_trait]
-impl GameModeInput for ManiaGame {
-
-    async fn key_down(&mut self, key:Key) -> Option<ReplayAction> {
-        // check sv change keys
-        if key == Key::F4 || key == Key::F3 {
-            if key == Key::F4 {
-                self.sv_mult += self.game_settings.sv_change_delta;
-            } else {
-                self.sv_mult -= self.game_settings.sv_change_delta;
-            }
-            self.map_preferences.scroll_speed = self.sv_mult;
-
-            self.set_sv_mult_notes();
-
-            return None;
-        }
-
-        let mut game_key = KeyPress::RightDon;
-    
-        let keys = &self.game_settings.keys[(self.column_count-1) as usize];
-        let base_key = KeyPress::Mania1 as u8;
-        for col in 0..self.column_count as usize {
-            let k = keys[col];
-            if k == key {
-                game_key = ((col + base_key as usize) as u8).into();
-                break;
-            }
-        }
-        
-        if game_key == KeyPress::RightDon { return None }
-        Some(ReplayAction::Press(game_key))
-    }
-    
-    async fn key_up(&mut self, key:Key) -> Option<ReplayAction> {
-        let mut game_key = KeyPress::RightDon;
-
-        let keys = &self.game_settings.keys[(self.column_count-1) as usize];
-        let base_key = KeyPress::Mania1 as u8;
-        for col in 0..self.column_count as usize {
-            let k = keys[col];
-            if k == key {
-                game_key = ((col + base_key as usize) as u8).into();
-                break;
-            }
-        }
-
-        if game_key == KeyPress::RightDon { return None } 
-        Some(ReplayAction::Release(game_key))
-    }
-
-}
-
-
-// #[cfg(not(feature="graphics"))]
-// impl GameModeInput for ManiaGame {}
-
-
-
-#[async_trait]
-impl GameModeProperties for ManiaGame {
-    fn playmode(&self) -> Cow<'static, str> { Cow::Borrowed("mania") }
-
-    fn end_time(&self) -> f32 { self.end_time }
-
-    fn get_info(&self) -> Arc<dyn GameModeInfo> {
-        Arc::new(super::GameInfo)
-    }
-    
-    fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {
-        let mut list = Vec::new();
-        for i in 0..self.column_count {
-            match i {
-                0 => list.push((KeyPress::Mania1, "K1")),
-                1 => list.push((KeyPress::Mania2, "K2")),
-                2 => list.push((KeyPress::Mania3, "K3")),
-                3 => list.push((KeyPress::Mania4, "K4")),
-                4 => list.push((KeyPress::Mania5, "K5")),
-                5 => list.push((KeyPress::Mania6, "K6")),
-                6 => list.push((KeyPress::Mania7, "K7")),
-                7 => list.push((KeyPress::Mania8, "K8")),
-                8 => list.push((KeyPress::Mania9, "K9")),
-                _ => {}
-            }
-        }
-        
-        list
-    }
-
-    fn timing_bar_things(&self) -> Vec<(f32, Color)> {
-        self.hit_windows
-            .iter()
-            .map(|(j, w)| (w.end, j.color))
-            .collect()
-    }
-
-    async fn get_ui_elements(&self, window_size: Vector2, ui_elements: &mut Vec<UIElement>) {
-        let playmode = self.playmode();
-        let get_name = |name| {
-            format!("{playmode}_{name}")
-        };
-
-
-        let start_x = self.playfield.col_pos(0);
-        let width = self.playfield.col_pos(self.column_count) - start_x;
-
-        let combo_bounds = Bounds::new(
-            Vector2::ZERO,
-            Vector2::new(width, 30.0)
-        );
-        
+    async fn build_widgets(
+        &self, 
+        loader: &mut dyn UiElementLoader
+    ) {
         // combo
-        ui_elements.push(UIElement::new(
-            &get_name("combo".to_owned()),
-            Vector2::new(start_x, window_size.y * (1.0/3.0)),
-            ComboElement::new(combo_bounds).await
-        ).await);
+        loader.change_default_layout(
+            "combo",
+            GameplayWidgetLayout::new_default( // centered on the playfield
+                GameplayWidgetAnchor::Playfield {
+                    saved_size: None,
+                    relative: GameplayWidgetAlign::Inside,
+                },
+                Alignment::CENTER,
+                None,
+                None,
+            )
+        );
 
-        // TODO: !!!
-        // // Leaderboard
-        // ui_elements.push(UIElement::new(
-        //     &get_name("leaderboard".to_owned()),
-        //     Vector2::with_y(window_size.y / 3.0),
-        //     LeaderboardElement::new().await
-        // ).await);
-        
+        // Leaderboard
+        loader.change_default_layout(
+            "leaderboard", 
+            GameplayWidgetLayout::new_default(
+                GameplayWidgetAnchor::Screen,
+                Alignment::CENTER_LEFT,
+                None,
+                None,
+            )
+        );
     }
 
+
+    fn get_playfield(&self) -> PlayfieldNonsense {
+        PlayfieldNonsense::new_simple(self.playfield.bounds)
+    }
+    fn properties(&self) -> GameModeProperties {
+        const KEY_LIST: &[(KeyPress, &str)] = &[
+            (KeyPress::Mania1, "K1"),
+            (KeyPress::Mania2, "K2"),
+            (KeyPress::Mania3, "K3"),
+            (KeyPress::Mania4, "K4"),
+            (KeyPress::Mania5, "K5"),
+            (KeyPress::Mania6, "K6"),
+            (KeyPress::Mania7, "K7"),
+            (KeyPress::Mania8, "K8"),
+            (KeyPress::Mania9, "K9"),
+        ];
+
+        GameModeProperties { 
+            info: &crate::GAME_INFO, 
+            // playmode: Cow::Borrowed("mania"), 
+            keys: KEY_LIST[0..((self.column_count as usize).min(KEY_LIST.len()))].to_vec(), 
+            end_time: self.end_time, 
+            show_cursor: false, 
+            audio_prefix: "mania".to_owned(),
+            timing_bar_things: self.hit_windows
+                .iter()
+                .map(|(j, w)| (w.end, j.color))
+                .collect(), 
+        }
+    }
 }
 
 // when the game is dropped, save settings

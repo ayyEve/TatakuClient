@@ -90,7 +90,7 @@ pub struct HitSamples {
     pub filename: Option<String>
 }
 impl HitSamples {
-    pub fn from_str(str:Option<&str>) -> Self {
+    pub fn from_string(str: Option<&str>) -> Self {
 
         macro_rules! read_val {
             ($split:expr) => {
@@ -108,7 +108,7 @@ impl HitSamples {
                 let index = split.next().unwrap_or("0").parse().unwrap_or(0);
                 let volume = split.next().unwrap_or("0").parse().unwrap_or(0);
                 // i wonder if this can be simplified
-                let filename = match split.next() {Some(s) => Some(s.to_owned()), None => None};
+                let filename = split.next().map(|s| s.to_owned());
                 Self {
                     normal_set,
                     addition_set,

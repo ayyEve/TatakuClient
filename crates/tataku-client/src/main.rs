@@ -1,8 +1,6 @@
 #![cfg_attr(not(feature="graphics"), allow(unused))]
 use tataku_game::prelude::*;
 
-#[macro_use] extern crate log;
-
 
 const DOWNLOAD_URL_BASE:&str = "https://cdn.ayyeve.dev/tataku";
 
@@ -42,6 +40,8 @@ fn main() {
         .build()
         .unwrap();
 
+    let _guards = init_logging();
+
     // initialize the game
     runtime.block_on(startup());
 
@@ -49,42 +49,9 @@ fn main() {
     start_game(&runtime);
 }
 
-// // actuial main fn
-// fn game_main(runtime: &tokio::runtime::Runtime) {
-//     let mut play_game = true;
-
-//     let mut args = std::env::args().map(|s|s.to_string());
-//     args.next(); // skip the file param
-
-//     // let path = std::env::current_exe().unwrap();
-//     // println!("file hash: {}", get_file_hash(&path).unwrap());
-
-//     // TODO: reimplement this? or do we want to bother
-//     // it might be nicer to have a server-side api for it
-//     /*
-//     if let Some(param1) = args.next() {
-//         match &*param1 {
-//             "--diff_calc" | "--diffcalc" | "-d" => {
-//                 play_game = false;
-//                 diff_calc_cli(&mut args).await;
-//             }
-
-//             _ => {}
-//         }
-//     }
-//     */
-
-//     if play_game {
-//         start_game(runtime);
-//         info!("byebye!");
-//     }
-
-// }
-
-
 #[cfg(feature="gameplay")]
-fn start_game<'window>(
-    runtime: &tokio::runtime::Runtime, 
+fn start_game(
+    runtime: &tokio::runtime::Runtime,
 ) {
     // let main_thread = tokio::task::LocalSet::new();
     let window_runtime = Rc::new(tokio::runtime::Builder::new_current_thread()
@@ -110,27 +77,37 @@ fn start_game<'window>(
             trace!("window ready");
         }
 
+
+        let gamemodes;
+        #[cfg(feature="dynamic_gamemodes")] {
+            gamemodes = vec![
+                GamemodeLibrary::load_gamemode("/home/ayyeve/Desktop/projects/tataku/tataku-client/target/release/gamemode_taiko").unwrap(),
+            ];
+        }
+
+        #[cfg(not(feature="dynamic_gamemodes"))] {
+            gamemodes = vec![
+                gamemode_osu::GAME_INFO,
+                gamemode_taiko::GAME_INFO,
+                gamemode_mania::GAME_INFO,
+                gamemode_utyping::GAME_INFO,
+            ]
+        }
+
+
         // start the game
         trace!("creating game");
         let game = Game::new(
-            game_event_receiver, 
+            game_event_receiver,
             proxy,
             vec![
                 #[cfg(feature="bass_audio")] Box::new(tataku_bass::BassAudioInit),
             ],
-            vec![
-                Arc::new(gamemode_osu::GameInfo),
-                Arc::new(gamemode_taiko::GameInfo),
-                Arc::new(gamemode_mania::GameInfo),
-                Arc::new(gamemode_utyping::GameInfo),
-            ]
+            gamemodes,
         ).await;
         trace!("running game");
         game.game_loop().await;
         warn!("game closed");
-
-        // this shouldnt be necessary but its here commented out just in case
-        // GameWindow::send_event(Game2WindowEvent::CloseGame);
     });
 
 
@@ -138,14 +115,15 @@ fn start_game<'window>(
 
     // setup window
     #[cfg(feature="graphics")]
-    let game_window = window_runtime.block_on(async {
+    let runtime2 = window_runtime.clone();
+    let game_window = window_runtime.block_on(async move {
         info!("creating window");
-        let settings = Settings::get();
+        let settings = Settings::load(&mut ActionQueue::new()).await;
 
         GameWindow::new(
-            game_event_sender, 
-            &WINDOW, 
-            window_runtime.clone(), 
+            game_event_sender,
+            &WINDOW,
+            runtime2,
             window_side_barrier,
             &settings,
             vec![
@@ -154,7 +132,7 @@ fn start_game<'window>(
         ).await
     });
 
-    
+
     trace!("window running");
     #[cfg(feature="graphics")]
     game_window.run(e);
@@ -180,9 +158,6 @@ async fn startup() {
     if let Err(e) = std::env::set_current_dir(GAME_DIR) {
         println!("Error changing current dir: {e}");
     }
-
-    // setup logging
-    init_logging();
 
     // finish setting up
     setup().await;
@@ -223,7 +198,7 @@ async fn setup() {
             }
         }
     }
-    
+
     // check if songs folder is empty
     if std::fs::read_dir(SONGS_DIR).unwrap().count() == 0 {
         // no songs, download some
@@ -250,7 +225,7 @@ async fn setup() {
 async fn check_bass() {
     #[cfg(target_os = "windows")]
     let filename = "bass.dll";
-    
+
     #[cfg(target_os = "linux")]
     let filename = "libbass.so";
 
@@ -264,7 +239,7 @@ async fn check_bass() {
         // check if already exists
         if library_path.exists() { return }
         info!("{:?} not found, attempting to find or download", library_path);
-        
+
         // if linux, check for lib in /usr/lib
         #[cfg(target_os = "linux")]
         if Io::exists(format!("/usr/lib/{}", filename)) {
@@ -281,30 +256,81 @@ async fn check_bass() {
     }
 }
 
+#[must_use]
+struct LogGuard {
+    _guards: [tracing_appender::non_blocking::WorkerGuard; 2],
+}
 
-pub fn init_logging() {
-    // start log handler
-    tataku_logging::init_with_level(
-        "logs/", 
-        log::Level::Debug, 
-        Some("crates/".to_owned()
-    )).unwrap();
+fn init_logging() -> LogGuard {
+    use tracing_subscriber::{
+        fmt::Layer, layer::SubscriberExt, prelude::*,
+        filter::{ LevelFilter, Targets },
+    };
 
-    // clean up any old log files
-    let Ok(files) = std::fs::read_dir("logs/") else { return };
-    let today = chrono::Utc::now().date_naive();
-    let Some(remove_date) = today.checked_sub_days(chrono::Days::new(5)) else { return warn!("Unable to determine log remove date")};
+    use tracing_appender::{
+        non_blocking,
+        rolling::{ RollingFileAppender, Rotation },
+    };
 
-    for file in files.filter_map(|f|f.ok()) {
-        let filename = file.file_name();
-        let Some(date) = filename.to_str().and_then(|s|s.split("--").next()) else { continue };
-        let Ok(date) = chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d") else { continue };
+    const LOG_DIR: &str = "game/logs/";
+    const MAX_DAYS: usize = 2;
 
-        if date <= remove_date {
-            if let Err(e) = std::fs::remove_file(file.path()) {
-                error!("Error removing log file: {e}");
-            }
-        }
+    let trace_file = RollingFileAppender::builder()
+        .rotation(Rotation::DAILY)
+        .filename_prefix("trace-log")
+        .filename_suffix(".ttk_log")
+        .max_log_files(MAX_DAYS)
+        .build(LOG_DIR)
+        .unwrap();
+
+    let (trace_file, trace_guard) = non_blocking(trace_file);
+
+    let (stdout, stdout_guard) = non_blocking(std::io::stdout());
+
+    let tataku_crates = [
+        "tataku_client",
+        "tataku_client_common",
+        "tataku_game",
+        "tataku_engine",
+        "tataku_wgpu",
+        "tataku_bass",
+        "tataku_common",
+        "tataku_input",
+        "tataku_interface",
+
+        "gamemode_osu",
+        "gamemode_taiko",
+        "gamemode_mania",
+        "gamemode_utyping"
+    ];
+
+    let date_format = tracing_subscriber::fmt::time::ChronoLocal::new("%H:%M:%S %z".to_string());
+
+    tracing_subscriber::registry()
+        .with(Layer::new()
+            .pretty()
+            .with_ansi(false)
+            .with_timer(date_format.clone())
+            .with_writer(trace_file)
+            .with_filter(Targets::new()
+                .with_default(LevelFilter::INFO)
+                .with_targets(tataku_crates.iter().map(|&c| (c, LevelFilter::TRACE)))
+            )
+        )
+        .with(Layer::new()
+            .pretty()
+            .with_ansi(true)
+            .with_timer(date_format.clone())
+            .with_writer(stdout)
+            .with_filter(Targets::new()
+                .with_default(LevelFilter::INFO)
+                .with_targets(tataku_crates.iter().map(|&c| (c, LevelFilter::DEBUG)))
+            )
+        )
+        .init();
+
+    LogGuard {
+        _guards: [ trace_guard, stdout_guard ]
     }
 }
 

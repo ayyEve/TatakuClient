@@ -63,18 +63,17 @@ pub struct TaikoGame {
 impl TaikoGame {
     async fn play_sound (
         &self, 
-        state: &mut GameplayStateForUpdate<'_>, 
+        state: &mut GameplayUpdateShell<'_>, 
         note_time: f32, 
         hit_type: HitType, 
         finisher: bool,
     ) {
-        let hitsound;
-        match (hit_type, finisher) {
-            (HitType::Don, false) => hitsound = 1, // normal is don
-            (HitType::Don, true)  => hitsound = 4, // finish is bigdon
-            (HitType::Kat, false) => hitsound = 8, // clap is kat
-            (HitType::Kat, true)  => hitsound = 2, // whistle is bigkat
-        }
+        let hitsound = match (hit_type, finisher) {
+            (HitType::Don, false) => 1, // normal is don
+            (HitType::Don, true)  => 4, // finish is bigdon
+            (HitType::Kat, false) => 8, // clap is kat
+            (HitType::Kat, true)  => 2, // whistle is bigkat
+        };
 
         let samples = HitSamples {
             normal_set: 0,
@@ -127,7 +126,7 @@ impl TaikoGame {
         game_settings: &TaikoSettings, 
         playfield: &TaikoPlayfield,
         judgment_helper: &JudgmentImageHelper, 
-        state: &mut GameplayStateForUpdate<'_>
+        state: &mut GameplayUpdateShell<'_>
     ) {
         let pos = playfield.hit_position + Vector2::with_y(game_settings.judgement_indicator_offset);
 
@@ -182,14 +181,18 @@ impl TaikoGame {
 
     
 
-    pub fn get_taiko_playfield(settings: &TaikoSettings, bounds: Bounds) -> TaikoPlayfield {
+    pub fn get_taiko_playfield(
+        settings: &TaikoSettings, 
+        bounds: Bounds, 
+        full_window: bool
+    ) -> TaikoPlayfield {
         let half_note_width = settings.note_radius * settings.big_note_multiplier;
         let height = half_note_width * 2.0 + settings.playfield_height_padding;
 
         let mut x_offset = settings.playfield_x_offset;
         let mut y_offset = settings.playfield_y_offset;
         // if not fullscreen, remove the x and y offsets
-        if bounds.size != WindowSize::get().0 {
+        if !full_window {
             x_offset = 0.0;
             y_offset = 0.0;
         }
@@ -205,12 +208,13 @@ impl TaikoGame {
         TaikoPlayfield {
             bounds,
             height,
-            hit_position
+            hit_position,
+            full_window
         }
     } 
 
-    fn update_playfield(&mut self, bounds: Bounds) {
-        self.playfield = Arc::new(Self::get_taiko_playfield(&self.taiko_settings, bounds));
+    fn update_playfield(&mut self, bounds: Bounds, full_window: bool) {
+        self.playfield = Arc::new(Self::get_taiko_playfield(&self.taiko_settings, bounds, full_window));
 
         // update notes
         for note in self.notes.iter_mut().chain(self.other_notes.iter_mut()) { 
@@ -224,18 +228,25 @@ impl TaikoGame {
 
         // update hit indicator sprite positions
         for i in [ &mut self.left_kat_image, &mut self.left_don_image, &mut self.right_don_image, &mut self.right_kat_image ] {
-            i.as_mut().map(|i|i.pos = self.playfield.hit_position);
+            let Some(i) = i else { continue };
+            i.pos = self.playfield.hit_position;
         }
     }
 }
 
 #[async_trait]
 impl GameMode for TaikoGame {
-    async fn new(beatmap:&Beatmap, _diff_calc_only:bool) -> TatakuResult<Self> {
+    async fn new(
+        beatmap: &Beatmap, 
+        _diff_calc_only: bool, 
+        settings: &Settings
+    ) -> TatakuResult<Self> {
         let metadata = beatmap.get_beatmap_meta();
-        let settings = Arc::new(Settings::get().taiko_settings.clone());
 
-        let playfield = Arc::new(Self::get_taiko_playfield(&settings, Bounds::new(Vector2::ZERO, WindowSize::get().0)));
+        let settings = settings.gamemode_settings(GAME_INFO).unwrap_or_default();
+        let settings = Arc::new(settings);
+
+        let playfield = Arc::new(Self::get_taiko_playfield(&settings, Bounds::new(Vector2::ZERO, Vector2::new(1920.0, 1080.0)), true));
 
         let mut hit_cache = HashMap::new();
         let left_kat_image = None;
@@ -323,7 +334,7 @@ impl GameMode for TaikoGame {
                             sound_types.push((hit_type, finisher));
                         }
                         
-                        let unified_sound_addition = sound_types.len() == 0;
+                        let unified_sound_addition = sound_types.is_empty();
                         if unified_sound_addition {
                             sound_types.push((HitType::Don, false));
                         }
@@ -343,7 +354,7 @@ impl GameMode for TaikoGame {
                             if !unified_sound_addition { i = (i + 1) % sound_types.len() }
 
                             j += skip_period;
-                            if !(j < end_time + skip_period / 8.0) { break }
+                            if j >= end_time + skip_period / 8.0 { break }
                         }
                     } else {
                         s.other_notes.push(Box::new(TaikoDrumroll::new(
@@ -424,7 +435,7 @@ impl GameMode for TaikoGame {
     async fn handle_replay_frame<'a>(
         &mut self, 
         frame: ReplayFrame, 
-        state: &mut GameplayStateForUpdate<'a>
+        state: &mut GameplayUpdateShell<'a>
     ) {
         let ReplayAction::Press(key) = frame.action else { return };
 
@@ -442,10 +453,8 @@ impl GameMode for TaikoGame {
         else { state.add_stat(TaikoStatRightPresses, 1.0) }
 
         // check fullalt
-        if state.mods.has_mod(FullAlt) {
-            if !self.counter.add_hit(taiko_hit_type) {
-                return;
-            }
+        if state.mods.has_mod(FullAlt) && !self.counter.add_hit(taiko_hit_type) {
+            return;
         }
 
         let mut hit_type:HitType = key.into();
@@ -565,7 +574,7 @@ impl GameMode for TaikoGame {
     }
 
 
-    async fn update<'a>(&mut self, state: &mut GameplayStateForUpdate<'a>) {
+    async fn update<'a>(&mut self, state: &mut GameplayUpdateShell<'a>) {
 
         // check healthbar swap
         if self.healthbar_swap_pending {
@@ -686,7 +695,7 @@ impl GameMode for TaikoGame {
 
     }
     
-    async fn draw<'a>(&mut self, state: GameplayStateForDraw<'a>, list: &mut RenderableCollection) {
+    async fn draw<'a>(&mut self, state: GameplayDrawShell<'a>, list: &mut RenderableCollection) {
 
         // draw the playfield
         list.push(self.playfield.get_rectangle(state.current_timing_point.kiai));
@@ -823,7 +832,7 @@ impl GameMode for TaikoGame {
         self.counter = FullAltCounter::new();
 
         // setup timing bars
-        if self.timing_bars.len() == 0 {
+        if self.timing_bars.is_empty() {
             // load timing bars
             let parent_tps = timing_points.iter().filter(|t|!t.is_inherited()).collect::<Vec<&TimingPoint>>();
             let mut sv = self.taiko_settings.sv_multiplier;
@@ -890,21 +899,16 @@ impl GameMode for TaikoGame {
         Some(time)
     }
 
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        self.update_playfield(Bounds::new(Vector2::ZERO, window_size.0));
+    fn set_bounds(&mut self, bounds: Bounds, full_window: bool) {
+        self.update_playfield(bounds, full_window);
     }
-
-    async fn fit_to_area(&mut self, bounds: Bounds) {
-        self.update_playfield(bounds);
-    }
-
 
     async fn force_update_settings(&mut self, settings: &Settings) {
-        let settings = settings.taiko_settings.clone();
+        let settings = settings.gamemode_settings(GAME_INFO).unwrap_or_default();
 
-        if &settings == &*self.taiko_settings { return }
+        if settings == *self.taiko_settings { return }
         let settings = Arc::new(settings);
-        let playfield = Arc::new(Self::get_taiko_playfield(&settings, self.playfield.bounds));
+        let playfield = Arc::new(Self::get_taiko_playfield(&settings, self.playfield.bounds, false));
         self.playfield = playfield.clone();
 
         let old_sv_mult = self.taiko_settings.sv_multiplier;
@@ -955,25 +959,22 @@ impl GameMode for TaikoGame {
         let scale = Vector2::ONE * (radius * 2.0) / TAIKO_HIT_INDICATOR_TEX_SIZE.x;
 
         for i in [ &mut self.left_don_image, &mut self.right_kat_image ] {
-            if let Some(i) = i {
-                i.scale = scale;
-                i.pos = self.playfield.hit_position;
-            }
+            let Some(i) = i else { continue };
+            i.scale = scale;
+            i.pos = self.playfield.hit_position;
         }
         
         for i in [ &mut self.left_kat_image, &mut self.right_don_image] {
-            let scale = scale * Vector2::new(-1.0, 1.0);
-            if let Some(i) = i {
-                i.scale = scale;
-                i.pos = self.playfield.hit_position;
-            }
+            let Some(i) = i else { continue };
+            i.scale = scale * Vector2::new(-1.0, 1.0);
+            i.pos = self.playfield.hit_position;
         }
 
     }
     
     #[cfg(feature="graphics")]
-    async fn reload_skin(&mut self, beatmap_path: &String, skin_manager: &mut dyn SkinProvider) -> TextureSource {
-        let source = TextureSource::Beatmap(beatmap_path.clone()); // TODO: yeah
+    async fn reload_skin(&mut self, beatmap_path: &str, skin_manager: &mut dyn SkinProvider) -> TextureSource {
+        let source = TextureSource::Beatmap(beatmap_path.to_owned()); // TODO: yeah
 
         let radius = self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult;
         let scale = Vector2::ONE * (radius * 2.0) / TAIKO_HIT_INDICATOR_TEX_SIZE.x;
@@ -1064,7 +1065,7 @@ impl GameMode for TaikoGame {
     }
 
     
-    async fn time_jump(&mut self, new_time: f32) {
+    async fn time_jump<'a>(&mut self, new_time: f32, _state: &mut GameplayUpdateShell<'a>) {
         let mut latest_time = 0f32;
         for i in self.hit_cache.values() { latest_time = latest_time.max(*i) }
         // info!("{new_time} < {latest_time}");
@@ -1093,209 +1094,212 @@ impl GameMode for TaikoGame {
     async fn kiai_changed(&mut self, is_kiai: bool) {
         self.notes.iter_mut().chain(self.other_notes.iter_mut()).for_each(|n|n.kiai_changed(is_kiai))
     }
-}
-
-#[async_trait]
-#[cfg(feature="graphics")]
-impl GameModeInput for TaikoGame {
-    async fn key_down(&mut self, key:Key) -> Option<ReplayAction> {
-        // // dont accept key input when autoplay is enabled, or a replay is being watched
-        // if manager.current_mods.has_autoplay() || manager.replaying {
-        //     return;
-        // }
-
-        if key == self.taiko_settings.left_kat {
-            Some(ReplayAction::Press(KeyPress::LeftKat))
-        } else if key == self.taiko_settings.left_don {
-            Some(ReplayAction::Press(KeyPress::LeftDon))
-        } else if key == self.taiko_settings.right_don {
-            Some(ReplayAction::Press(KeyPress::RightDon))
-        } else if key == self.taiko_settings.right_kat {
-            Some(ReplayAction::Press(KeyPress::RightKat))
-        } else {
-            None
-        }
-    }
-    
-    async fn key_up(&mut self, key:Key) -> Option<ReplayAction> {
-
-        if key == self.taiko_settings.left_kat {
-            Some(ReplayAction::Release(KeyPress::LeftKat))
-        } else if key == self.taiko_settings.left_don {
-            Some(ReplayAction::Release(KeyPress::LeftDon))
-        } else if key == self.taiko_settings.right_don {
-            Some(ReplayAction::Release(KeyPress::RightDon))
-        } else if key == self.taiko_settings.right_kat {
-            Some(ReplayAction::Release(KeyPress::RightKat))
-        } else {
-            None
-        }
-    }
 
 
-    async fn mouse_down(&mut self, btn:MouseButton) -> Option<ReplayAction> {
-        if self.taiko_settings.ignore_mouse_buttons { return None }
-        
-        match btn {
-            MouseButton::Left  => Some(ReplayAction::Press(KeyPress::LeftDon)),
-            MouseButton::Right => Some(ReplayAction::Press(KeyPress::LeftKat)),
-            _ => None
-        }
-    }
-
-    async fn mouse_up(&mut self, btn:MouseButton) -> Option<ReplayAction> {
-        if self.taiko_settings.ignore_mouse_buttons { return None }
-        
-        match btn {
-            MouseButton::Left =>  Some(ReplayAction::Release(KeyPress::LeftDon)),
-            MouseButton::Right => Some(ReplayAction::Release(KeyPress::LeftKat)),
-            _ => None
-        }
-    }
-
-
-    async fn controller_press(&mut self, c: &GamepadInfo, btn: ControllerButton) -> Option<ReplayAction> {
-
-        if let Some(c_config) = self.taiko_settings.controller_config.get(&*c.name) {
-
-            // skip
-            if ControllerButton::North == btn {
-                Some(ReplayAction::Press(KeyPress::SkipIntro))
-            } else if c_config.left_kat.check_button(btn) {
-                Some(ReplayAction::Press(KeyPress::LeftKat))
-            } else if c_config.left_don.check_button(btn) {
-                Some(ReplayAction::Press(KeyPress::LeftDon))
-            } else if c_config.right_don.check_button(btn) {
-                Some(ReplayAction::Press(KeyPress::RightDon))
-            } else if c_config.right_kat.check_button(btn) {
-                Some(ReplayAction::Press(KeyPress::RightKat))
-            } else {
-                None
-            }
-
-        } else {
-            trace!("Controller with no setup");
-
-            // TODO: if this is slow, we should store controller configs separately
-            // but i dont think this will be an issue, as its unlikely to happen in the first place,
-            // and if there is lag, the user is likely to retry the man anyways
-            trace!("Setting up new controller");
-            let mut new_settings = self.taiko_settings.as_ref().clone();
-            new_settings.controller_config.insert((*c.name).clone(), TaikoControllerConfig::defaults(c.name.clone()));
-
-            // update the global settings
-            {
-                let mut settings = Settings::get_mut();
-                settings.taiko_settings = new_settings.clone();
-                // settings.save().await;
-            }
-            
-            self.taiko_settings = Arc::new(new_settings);
-            // rerun the handler now that the thing is setup
-            self.controller_press(c, btn).await
-        }
-    }
-
-    async fn controller_release(&mut self, c: &GamepadInfo, btn: ControllerButton) -> Option<ReplayAction> {
-        if let Some(c_config) = self.taiko_settings.controller_config.get(&*c.name) {
-            if c_config.left_kat.check_button(btn) {
-                Some(ReplayAction::Release(KeyPress::LeftKat))
-            } else if c_config.left_don.check_button(btn) {
-                Some(ReplayAction::Release(KeyPress::LeftDon))
-            } else if c_config.right_don.check_button(btn) {
-                Some(ReplayAction::Release(KeyPress::RightDon))
-            } else if c_config.right_kat.check_button(btn) {
-                Some(ReplayAction::Release(KeyPress::RightKat))
-            } else {
-                None
-            }
-
-        } else {
-            trace!("Controller with no setup");
-
-            // TODO: if this is slow, we should store controller configs separately
-            // but i dont think this will be an issue, as its unlikely to happen in the first place,
-            // and if there is lag, the user is likely to retry the man anyways
-            trace!("Setting up new controller");
-            let mut new_settings = self.taiko_settings.as_ref().clone();
-            new_settings.controller_config.insert((*c.name).clone(), TaikoControllerConfig::defaults(c.name.clone()));
-
-            // update the global settings
-            {
-                let mut settings = Settings::get_mut();
-                settings.taiko_settings = new_settings.clone();
-                // settings.save(&mut self.actions);
-            }
-            
-            self.taiko_settings = Arc::new(new_settings);
-            // rerun the handler now that the thing is setup
-            self.controller_release(c, btn).await
-        }
-    }
-
-}
-
-
-#[cfg(not(feature="graphics"))]
-impl GameModeInput for TaikoGame {}
-
-#[async_trait]
-impl GameModeProperties for TaikoGame {
-    fn playmode(&self) -> Cow<'static, str> { Cow::Borrowed("taiko") }
-    fn end_time(&self) -> f32 {self.end_time}
-
-    fn get_info(&self) -> Arc<dyn GameModeInfo> {
-        Arc::new(super::GameInfo)
-    }
- 
-    fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {
-        vec![
-            (KeyPress::LeftKat, "LK"),
-            (KeyPress::LeftDon, "LD"),
-            (KeyPress::RightDon, "RD"),
-            (KeyPress::RightKat, "RK"),
-        ]
-    }
-
-    fn timing_bar_things(&self) -> Vec<(f32, Color)> {
-        self.hit_windows
-            .iter()
-            .map(|(j, w)| (w.end, j.color))
-            .collect()
-    }
-
-    async fn get_ui_elements(&self, _window_size: Vector2, ui_elements: &mut Vec<UIElement>) {
-        let playmode = self.playmode();
-        let get_name = |name| {
-            format!("{playmode}_{name}")
-        };
-
-        let combo_bounds = Bounds::new(
-            Vector2::ZERO,
-            Vector2::new(self.playfield.hit_position.x - self.taiko_settings.note_radius, self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult)
-        );
-        
+    async fn build_widgets(
+        &self, 
+        loader: &mut dyn UiElementLoader
+    ) {
         // combo
-        ui_elements.push(UIElement::new(
-            &get_name("combo".to_owned()),
-            Vector2::new(0.0, self.playfield.hit_position.y - self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult/2.0),
-            ComboElement::new(combo_bounds).await
-        ).await);
+        loader.change_default_layout(
+            "combo",
+            GameplayWidgetLayout::new_default(
+                GameplayWidgetAnchor::Playfield {
+                    saved_size: None,
+                    relative: GameplayWidgetAlign::Inside,
+                },
+                Alignment::CENTER_LEFT,
+                None,
+                None,
+            ),
+        );
 
-        // TODO: !!!!!
-        // // Leaderboard
-        // ui_elements.push(UIElement::new(
-        //     &get_name("leaderboard".to_owned()),
-        //     Vector2::with_y(self.playfield.hit_position.y + self.taiko_settings.note_radius * self.taiko_settings.big_note_multiplier + 50.0),
-        //     LeaderboardElement::new().await
-        // ).await);
+        // Leaderboard
+        loader.change_default_layout(
+            "leaderboard",
+            GameplayWidgetLayout::new_default(
+                GameplayWidgetAnchor::Playfield {
+                    saved_size: None,
+                    relative: GameplayWidgetAlign::Below
+                },
+                Alignment::BOTTOM_LEFT,
+                None,
+                None,
+            ),
+        );
 
         // don chan
-        ui_elements.push(UIElement::new(
-            &get_name("don_chan".to_owned()),
-            self.playfield.pos,
-            DonChan::new().await
-        ).await);
+        loader.load(
+            "don_chan",
+        );
     }
 
+
+    fn get_playfield(&self) -> PlayfieldNonsense {
+        PlayfieldNonsense::new_simple(self.playfield.get_playfield_bounds())
+    }
+    fn properties(&self) -> GameModeProperties {
+        GameModeProperties { 
+            info: &crate::GAME_INFO, 
+            keys: vec![
+                (KeyPress::LeftKat, "LK"),
+                (KeyPress::LeftDon, "LD"),
+                (KeyPress::RightDon, "RD"),
+                (KeyPress::RightKat, "RK"),
+            ], 
+            end_time: self.end_time, 
+            show_cursor: false, 
+            audio_prefix: "taiko".to_owned(),
+            timing_bar_things: self.hit_windows.iter()
+                .map(|(j, w)| (w.end, j.color))
+                .collect(), 
+        }
+    }
+
+
+    
+    async fn handle_input(&mut self, input: InputEvent) -> Option<ReplayAction> {
+        match input.event {
+            InputType::KeyPress(key) => {
+                let key = key.as_key()?;
+
+                if key == self.taiko_settings.left_kat {
+                    Some(ReplayAction::Press(KeyPress::LeftKat))
+                } else if key == self.taiko_settings.left_don {
+                    Some(ReplayAction::Press(KeyPress::LeftDon))
+                } else if key == self.taiko_settings.right_don {
+                    Some(ReplayAction::Press(KeyPress::RightDon))
+                } else if key == self.taiko_settings.right_kat {
+                    Some(ReplayAction::Press(KeyPress::RightKat))
+                } else {
+                    None
+                }
+            }
+
+            InputType::KeyRelease(key) => {
+                let key = key.as_key()?;
+                
+                if key == self.taiko_settings.left_kat {
+                    Some(ReplayAction::Release(KeyPress::LeftKat))
+                } else if key == self.taiko_settings.left_don {
+                    Some(ReplayAction::Release(KeyPress::LeftDon))
+                } else if key == self.taiko_settings.right_don {
+                    Some(ReplayAction::Release(KeyPress::RightDon))
+                } else if key == self.taiko_settings.right_kat {
+                    Some(ReplayAction::Release(KeyPress::RightKat))
+                } else {
+                    None
+                }
+            }
+
+            InputType::MousePress(btn) => {
+                if self.taiko_settings.ignore_mouse_buttons { return None }
+                
+                match btn {
+                    MouseButton::Left => Some(ReplayAction::Press(KeyPress::LeftDon)),
+                    MouseButton::Right => Some(ReplayAction::Press(KeyPress::LeftKat)),
+                    _ => None
+                }
+            }
+
+            InputType::MouseRelease(btn) => {
+                if self.taiko_settings.ignore_mouse_buttons { return None }
+                
+                match btn {
+                    MouseButton::Left => Some(ReplayAction::Release(KeyPress::LeftDon)),
+                    MouseButton::Right => Some(ReplayAction::Release(KeyPress::LeftKat)),
+                    _ => None
+                }
+            }
+
+            InputType::ControllerPress(btn, id, name) => {
+                if let Some(c_config) = self.taiko_settings.controller_config.get(&*name) {
+                    if ControllerButton::North == btn { // skip
+                        Some(ReplayAction::Press(KeyPress::SkipIntro))
+                    } else if c_config.left_kat.check_button(btn) {
+                        Some(ReplayAction::Press(KeyPress::LeftKat))
+                    } else if c_config.left_don.check_button(btn) {
+                        Some(ReplayAction::Press(KeyPress::LeftDon))
+                    } else if c_config.right_don.check_button(btn) {
+                        Some(ReplayAction::Press(KeyPress::RightDon))
+                    } else if c_config.right_kat.check_button(btn) {
+                        Some(ReplayAction::Press(KeyPress::RightKat))
+                    } else {
+                        None
+                    }
+                } else {
+                    trace!("Controller with no setup");
+
+                    // TODO: if this is slow, we should store controller configs separately
+                    // but i dont think this will be an issue, as its unlikely to happen in the first place,
+                    // and if there is lag, the user is likely to retry the man anyways
+                    trace!("Setting up new controller");
+                    let mut new_settings = self.taiko_settings.as_ref().clone();
+                    new_settings.controller_config.insert((*name).clone(), TaikoControllerConfig::defaults(name.clone()));
+
+                    // // update the global settings
+                    // {
+                    //     let mut settings = Settings::get_mut();
+                    //     settings.taiko_settings = new_settings.clone();
+                    //     // settings.save().await;
+                    // }
+                    
+                    self.taiko_settings = Arc::new(new_settings);
+                    // rerun the handler now that the thing is setup
+                    self.handle_input(
+                        InputEvent {
+                            event: InputType::ControllerPress(btn, id, name),
+                            ..input
+                        }
+                    ).await
+                }
+            }
+
+            InputType::ControllerRelease(btn, id, name) => {
+                if let Some(c_config) = self.taiko_settings.controller_config.get(&*name) {
+                    if c_config.left_kat.check_button(btn) {
+                        Some(ReplayAction::Release(KeyPress::LeftKat))
+                    } else if c_config.left_don.check_button(btn) {
+                        Some(ReplayAction::Release(KeyPress::LeftDon))
+                    } else if c_config.right_don.check_button(btn) {
+                        Some(ReplayAction::Release(KeyPress::RightDon))
+                    } else if c_config.right_kat.check_button(btn) {
+                        Some(ReplayAction::Release(KeyPress::RightKat))
+                    } else {
+                        None
+                    }
+
+                } else {
+                    trace!("Controller with no setup");
+
+                    // TODO: if this is slow, we should store controller configs separately
+                    // but i dont think this will be an issue, as its unlikely to happen in the first place,
+                    // and if there is lag, the user is likely to retry the map anyways
+                    trace!("Setting up new controller");
+                    let mut new_settings = self.taiko_settings.as_ref().clone();
+                    new_settings.controller_config.insert((*name).clone(), TaikoControllerConfig::defaults(name.clone()));
+
+                    // // update the global settings
+                    // {
+                    //     let mut settings = Settings::get_mut();
+                    //     settings.taiko_settings = new_settings.clone();
+                    //     // settings.save(&mut self.actions);
+                    // }
+                    
+                    self.taiko_settings = Arc::new(new_settings);
+
+                    // rerun the handler now that the thing is setup
+                    self.handle_input(
+                        InputEvent {
+                            event: InputType::ControllerRelease(btn, id, name),
+                            ..input
+                        }
+                    ).await
+                }
+            }
+            
+
+            _ => None
+        }
+    }
 }

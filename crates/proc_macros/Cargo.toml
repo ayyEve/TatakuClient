@@ -1,6 +1,6 @@
 [package]
 name = "tataku-client-proc-macros"
-version = "0.1.1"
+version = "0.2.0"
 authors.workspace = true
 edition.workspace = true
 
@@ -13,7 +13,6 @@ proc-macro = true
 extra_debugging = []
 
 [dependencies]
-syn = "1.0"
+syn = "2.0"
 quote = "*"
 proc-macro2 = "*"
-# lazy_static = "*"

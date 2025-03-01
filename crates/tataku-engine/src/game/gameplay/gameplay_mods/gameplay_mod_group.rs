@@ -1,5 +1,9 @@
 use crate::prelude::*;
 
+
+#[repr(C)]
+#[derive(Reflect)]
+#[derive(Copy, Clone, Debug)]
 pub struct GameplayModGroupStatic {
     pub name: &'static str,
     pub mods: &'static [GameplayMod],
@@ -22,8 +26,15 @@ impl GameplayModGroup {
         self.mods.push(m);
         self
     }
-}
 
+    pub fn from_static(group: &GameplayModGroupStatic) -> Self {
+        Self {
+            name: group.name.to_string(),
+            mods: group.mods.to_vec()
+        }
+    }
+
+}
 
 pub fn default_mod_groups() -> Vec<GameplayModGroup> {
     vec![

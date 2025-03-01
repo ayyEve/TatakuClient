@@ -145,14 +145,14 @@ impl TaikoDifficultyCalculator {
 
 #[async_trait]
 impl DiffCalc for TaikoDifficultyCalculator {
-    async fn new(g: &BeatmapMeta) -> TatakuResult<Self> {
+    async fn new(g: &BeatmapMeta, settings: &Settings) -> TatakuResult<Self> {
         let g = Beatmap::from_metadata(g)?;
-        let g = TaikoGame::new(&g, true).await?;
+        let g = TaikoGame::new(&g, true, settings).await?;
         if g.notes.is_empty() { return Err(BeatmapError::InvalidFile.into()) }
         
         let mut difficulty_hitobjects:Vec<DifficultyHitObject> = Vec::new();
         for n in g.notes.iter().chain(g.other_notes.iter()) {
-            let x = DifficultyHitObject::new(n);
+            let x = DifficultyHitObject::new(&**n);
             difficulty_hitobjects.push(x);
         }
         
@@ -207,8 +207,8 @@ impl DiffCalc for TaikoDifficultyCalculator {
 
         // TEMP: for writing to csv, nicer graphs
         if WRITE_DEBUG_FILES {
-            for i in 1..lines.len() {
-                lines[i] += &format!(",{}", difficulty);
+            for line in lines.iter_mut().skip(1) {
+                *line += &format!(",{}", difficulty);
             }
             let file_name = self
                 .version_string
@@ -241,7 +241,7 @@ impl DiffCalc for TaikoDifficultyCalculator {
                     let split = line.split(",");
 
                     if i == 0 {
-                        for (_n, c) in split.into_iter().enumerate() {
+                        for c in split.into_iter() {
                             labels.push(c);
                         }
                     } else {
@@ -275,7 +275,7 @@ impl DiffCalc for TaikoDifficultyCalculator {
                 }
 
 
-                let x_line = (0..lines.len()-1).into_iter().fold(String::new(), |f, g| format!("{}'{}',", f, g));
+                let x_line = (0..lines.len()-1).fold(String::new(), |f, g| format!("{}'{}',", f, g));
 
                 let datasets = data_sets.join(",");
                 let all_data = format!(r#"

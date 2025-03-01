@@ -41,6 +41,12 @@ impl TestDialog {
         }
     }
 }
+impl Default for TestDialog {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 
 #[async_trait]
 impl Dialog for TestDialog {

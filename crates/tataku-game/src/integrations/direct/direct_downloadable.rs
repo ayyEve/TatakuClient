@@ -1,10 +1,11 @@
 use crate::prelude::*;
 
+/// TODO: move this to a struct, with the download fn being a boxed fn that returns the download progress
 /// this item will always be in an arc
 /// so nothing will be directly mutable
 pub trait DirectDownloadable: Send + Sync {
     /// perform the download
-    fn download(&self);
+    fn download(&self, settings: &Settings);
 
     // get if this item is downloading
     fn is_downloading(&self) -> bool;

@@ -18,7 +18,7 @@ pub const VarianceStatGroup: StatGroup = StatGroup {
 };
 
 /// all default stat groups
-const DEFAULT_STAT_GROUPS: &'static [StatGroup] = &[
+const DEFAULT_STAT_GROUPS: &[StatGroup] = &[
     VarianceStatGroup,
 ];
 

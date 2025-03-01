@@ -50,7 +50,7 @@ local function beatmap_info_text(has_map, map_exists, line)
     return {
         id = "text",
         width = "fill",
-        height = "fill_portion(2)",
+        height = "percent(20.0)",
 
         text = text_list(text)
     }
@@ -113,23 +113,23 @@ end
 local menu = {
     id = "lobby_menu",
 
-    element = row({ width = "fill", height = "fill", spacing = 5.0 }, { 
+    element = row({ width = "fill", height = "fill" }, { 
 
         -- slot list
-        col({ width = "fill", height = "fill", spacing = 5.0 }, {
+        col({ width = "fill", height = "fill", margin = 5.0 }, {
             {
                 id = "list",
                 debug_name = "slot list",
                 width = "fill",
-                height = "shrink",
+                height = "auto",
                 
                 list = "lobby.slots",
                 variable = "_slot",
-                scroll = true;
+                scroll = true,
 
-                element = row({ width = "fill", height = "shrink", spacing = 5.0 }, {
+                element = row({ width = "fill", height = "auto", margin = 5.0 }, {
                     -- icon
-                    button(
+                    button({ width = "auto", height = "auto", margin = 5.0, padding = padding }, 
                         -- element
                         cond(
                             "_slot.is_host",
@@ -159,15 +159,11 @@ local menu = {
                             ),
                             -- if we're not the host, don't perform any action
                             no_action()
-                        ),
-                        
-                        "shrink",
-                        "shrink",
-                        padding
+                        )
                     ),
 
                     -- slot state
-                    button(
+                    button({ width = "fill", height = "auto", padding = padding },
                         cond(
                             "_slot.filled", -- if the slot has someone, show their username and status
                             {
@@ -190,10 +186,7 @@ local menu = {
                                 multiplayer_action("move_to_slot", variable("_slot.id")),
                                 no_action()
                             )
-                        ),
-                        "fill",
-                        "shrink",
-                        padding
+                        )
                     )
                 })
             }
@@ -222,7 +215,7 @@ local menu = {
                 id = "gameplay_preview",
                 debug_name = "gameplay_preview",
                 width = "fill",
-                height = "fill_portion(4)"
+                height = "fill"
             }
 
 

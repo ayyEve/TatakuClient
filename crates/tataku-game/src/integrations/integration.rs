@@ -1,5 +1,8 @@
 use crate::prelude::*;
 
+
+
+// TODO: replace check_enabled with a set_enabled, and in settings have the integrations in a HashMap<integration-name, enabled>
 pub trait TatakuIntegration: Send + Sync {
     fn name(&self) -> Cow<'static, str>;
 
@@ -20,7 +23,7 @@ pub trait TatakuIntegration: Send + Sync {
     ) -> TatakuResult<()>;
 
     /// handle a tataku event 
-    fn handle_event(&mut self, _event: &TatakuEvent) {}
+    fn handle_event(&mut self, _event: &TatakuIntegrationEvent, _values: &ValueCollection) {}
 
     /// update the integration
     fn update(

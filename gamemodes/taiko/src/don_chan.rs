@@ -23,8 +23,11 @@ pub struct DonChan {
     combo_anim_last_index: usize
 }
 impl DonChan {
-    pub async fn new() -> Self {
-        Self {
+    fn build(
+        _: &GamemodeInfo,
+        _: &Arc<CommonGameplaySettings>
+    ) -> Box<dyn GameplayWidget> {
+        Box::new(Self {
             state: DonChanState::Normal,
 
             normal_anim: None,
@@ -41,7 +44,7 @@ impl DonChan {
             last_score: 0,
 
             combo_anim_last_index: 0,
-        }
+        })
     }
     fn all_anims(&mut self) -> Vec<&mut Option<Animation>> {
         vec![
@@ -54,50 +57,43 @@ impl DonChan {
 
     pub fn set_offset(&mut self, offset: f32) {
         for i in self.all_anims() {
-            if let Some(anim) = i {
-                anim.frame_start_time = offset;
-            }
+            let Some(anim) = i else { continue };
+            anim.frame_start_time = offset;
         }
     }
     pub fn update_delays(&mut self, timing_point: &TimingPoint) {
         for i in self.all_anims() {
-            if let Some(anim) = i {
-                anim.frame_delays.iter_mut().for_each(|d| *d = timing_point.beat_length)
-            }
+            let Some(anim) = i else { continue };
+            anim.frame_delays.iter_mut().for_each(|d| *d = timing_point.beat_length)
         }
     }
 
 }
 
 #[async_trait]
-impl InnerUIElement for DonChan {
+impl GameplayWidget for DonChan {
     fn display_name(&self) -> &'static str { "DonChan" }
 
-    fn get_bounds(&self) -> Bounds {
-        Bounds::new(
-            -Vector2::with_y(DEFAULT_DONCHAN_SIZE.y / 2.0), 
-            DEFAULT_DONCHAN_SIZE / 2.0
-        )
+    fn max_size(&self) -> Vector2 {
+        DEFAULT_DONCHAN_SIZE
     }
 
-    fn update(&mut self, manager: &mut GameplayManager) {
+    fn update(&mut self, manager: &mut dyn GameplayManagerTrait) {
         let time = manager.time(); 
 
         // check init
         if !self.init {
-            let tp = manager.timing_point_at(0.0, false);
+            let tp = manager.timing_points().timing_point_at(0.0, false);
             self.set_offset(tp.time - tp.beat_length * 4.0);
             self.update_delays(tp);
             self.init = true;
         }
 
         // check timing point change
-        let current_tp = manager.current_timing_point();
-        if !current_tp.is_inherited() {
-            if self.current_timing_point_time != current_tp.time {
-                self.current_timing_point_time = current_tp.time;
-                self.update_delays(current_tp);
-            }
+        let current_tp = manager.timing_points().timing_point();
+        if !current_tp.is_inherited() && self.current_timing_point_time != current_tp.time {
+            self.current_timing_point_time = current_tp.time;
+            self.update_delays(current_tp);
         }
 
         // check kiai update
@@ -118,14 +114,14 @@ impl InnerUIElement for DonChan {
         // }
 
         // check fail anim
-        let xmiss = manager.score.judgments.get("xmiss").copied().unwrap_or_default();
+        let xmiss = manager.score().judgments.get("xmiss").copied().unwrap_or_default();
         if self.last_miss_count < xmiss {
             self.state = DonChanState::Fail;
             self.last_miss_count = xmiss;
-        } else if self.last_score != manager.score.score.score && self.state == DonChanState::Fail {
+        } else if self.last_score != manager.score().score.score && self.state == DonChanState::Fail {
             self.state = DonChanState::Normal;
         }
-        self.last_score = manager.score.score.score;
+        self.last_score = manager.score().score.score;
         
 
         // check if combo milestone anim has finished
@@ -143,14 +139,19 @@ impl InnerUIElement for DonChan {
 
         // update all anims
         for i in self.all_anims() {
-            if let Some(anim) = i {
-                anim.update(time);
-            }
+            let Some(anim) = i else { continue };
+            anim.update(time);
         }
     }
 
     // #[cfg(feature="graphics")]
-    fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
+    fn draw(
+        &mut self, 
+        pos_offset: Vector2, 
+        scale: Vector2, 
+        _align: Alignment,
+        list: &mut RenderableCollection,
+    ) {
         match self.state {
             DonChanState::Normal => {
                 if self.kiai {
@@ -160,14 +161,13 @@ impl InnerUIElement for DonChan {
                         anim.scale *= scale;
                         list.push(anim)
                     }
-                } else {
-                    if let Some(anim) = &self.normal_anim {
-                        let mut anim = anim.clone();
-                        anim.pos = pos_offset;
-                        anim.scale *= scale;
-                        list.push(anim)
-                    }
+                } else if let Some(anim) = &self.normal_anim {
+                    let mut anim = anim.clone();
+                    anim.pos = pos_offset;
+                    anim.scale *= scale;
+                    list.push(anim)
                 }
+                
             }
             DonChanState::ComboMilestone => {
                 if let Some(anim) = &self.combo_anim {
@@ -222,7 +222,7 @@ async fn load_anim(
         frames.push(tex.tex);
     }
 
-    if frames.len() == 0 {
+    if frames.is_empty() {
         None
     } else {
         let delays = vec![50.0; frames.len()];
@@ -247,3 +247,18 @@ pub enum DonChanState {
     ComboMilestone,
     Fail
 }
+
+
+pub const DON_CHAN: GameplayWidgetBuilder = GameplayWidgetBuilder {
+    name: "don_chan",
+    default_layout: GameplayWidgetLayout::new_default(
+        GameplayWidgetAnchor::Playfield {
+            saved_size: None,
+            relative: GameplayWidgetAlign::Above
+        },
+        Alignment::TOP_LEFT,
+        None,
+        None,
+    ),
+    build: DonChan::build,
+};

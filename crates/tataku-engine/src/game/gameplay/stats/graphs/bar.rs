@@ -36,7 +36,7 @@ impl BarGraph {
     fn map_point(&self, point: f32, size: Vector2) -> f32 {
         (self.max - point.clamp(self.min, self.max)) * size.y / (self.max - self.min).abs()
     }
-    fn map_points(&self, data: &Vec<f32>, size: Vector2) -> Vec<f32> {
+    fn map_points(&self, data: &[f32], size: Vector2) -> Vec<f32> {
         data.iter().map(|x| (self.max - x.clamp(self.min, self.max)) * size.y / (self.max - self.min).abs()).collect()
     }
 
@@ -75,13 +75,12 @@ impl BarGraph {
                     ))
                 }
                 MenuStatsValue::List(points) => {
-                    let mapped_points = self.map_points(&points, size);
+                    let mapped_points = self.map_points(points, size);
                     
                     let mut prev_y = mapped_points[0];
                     let x_step = size.x / mapped_points.len() as f32;
 
-                    for n in 1..mapped_points.len() {
-                        let new_y = mapped_points[n];
+                    for (n, new_y) in mapped_points.iter().copied().enumerate().skip(1) {
                         group.push(Line::new(
                             Vector2::new(x_step * (n-1) as f32, prev_y),
                             Vector2::new(x_step * n as f32, new_y),

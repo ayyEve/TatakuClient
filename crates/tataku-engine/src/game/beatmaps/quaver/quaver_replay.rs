@@ -1,5 +1,6 @@
 use crate::prelude::*;
 
+#[allow(unused)]
 #[derive(Debug)]
 pub struct QuaverReplayDownloader(Score, u32);
 
@@ -10,9 +11,10 @@ impl QuaverReplayDownloader {
 }
 
 
+// TODO: this
 #[async_trait]
 impl ReplayDownloader for QuaverReplayDownloader {
-    async fn get_replay(&self) -> TatakuResult<Score> {
+    async fn get_replay(&self, _settings: &Settings) -> TatakuResult<Score> {
         Err(TatakuError::String("Not Implemented".to_owned()))
         // https://quavergame.com/download/replay/48727123
 
@@ -26,7 +28,7 @@ impl ReplayDownloader for QuaverReplayDownloader {
         //     return Err(TatakuError::String("Downloaded file was empty".to_owned()));
         // }
 
-        // // TODO! parse replay
+        // // TODO: parse replay
         // Ok(replay)
     }
 }

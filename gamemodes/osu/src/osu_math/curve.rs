@@ -68,7 +68,7 @@ impl Curve {
         if pos % 2.0 > 1.0 {
             pos = 1.0 - (pos % 1.0);
         } else {
-            pos = pos % 1.0;
+            pos %= 1.0;
         }
 
         self.lengths.last().unwrap() * pos
@@ -76,7 +76,7 @@ impl Curve {
     
     pub fn position_at_time(&self, time:f32) -> Vector2 {
         // if (this.sliderCurveSmoothLines == null) this.UpdateCalculations();
-        if self.lengths.len() == 0 { return self.slider.pos }
+        if self.lengths.is_empty() { return self.slider.pos }
         if time < self.slider.time { return self.slider.pos }
         if time > self.end_time { return self.position_at_length(self.length()) }
 
@@ -87,7 +87,7 @@ impl Curve {
 
     pub fn position_at_length(&self, length:f32) -> Vector2 {
         // if (this.sliderCurveSmoothLines == null || this.cumulativeLengths == null) this.UpdateCalculations();
-        if self.curve_lines.len() == 0 || self.lengths.len() == 0 {return self.slider.pos}
+        if self.curve_lines.is_empty() || self.lengths.is_empty() {return self.slider.pos}
         
         if length == 0.0 {return self.curve_lines[0].p1}
         
@@ -110,7 +110,7 @@ impl Curve {
         if length_next != length_previous {
             let n = (self.curve_lines[i].p2 - self.curve_lines[i].p1) 
                 * ((length - length_previous) / (length_next - length_previous));
-            res = res + n;
+            res += n;
         }
 
         res
@@ -334,6 +334,7 @@ fn catmull_rom(value1:Vector2, value2:Vector2, value3:Vector2, value4:Vector2, a
 
     result.y = 0.5 * (2.0 * value2.y + (-value1.y + value3.y) * amount + (2.0 * value1.y - 5.0 * value2.y + 4.0 * value3.y - value4.y) * num +
         (-value1.y + 3.0 * value2.y - 3.0 * value3.y + value4.y) * num2);
-    return result;
+    
+    result
 }
 

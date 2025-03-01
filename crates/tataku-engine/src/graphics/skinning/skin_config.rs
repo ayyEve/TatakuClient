@@ -58,11 +58,7 @@ impl SkinSettings {
         let mut s = Self::default();
 
         // return defaults if skin does not exist
-        if !Io::exists(&path) {
-            return Ok(s)
-        }
-
-
+        if !Io::exists(&path) { return Ok(s) }
 
         // read lines
         let mut current_area = SkinSection::General;
@@ -72,7 +68,7 @@ impl SkinSettings {
             // split out comments, and trim wacky chars
             let line = line.split("//").next().unwrap().trim();
             // ignore empty lines (and comment-only lines)
-            if line.len() == 0 { continue }
+            if line.is_empty() { continue }
             
             // check for section change
             if line.starts_with("[") {
@@ -82,8 +78,10 @@ impl SkinSettings {
                     "[Fonts]" => current_area = SkinSection::Fonts,
                     "[Mania]" => {
                         current_area = SkinSection::Mania;
-                        let mut ms = ManiaSkinSettings::default();
-                        ms.is_osu = true;
+                        let ms = ManiaSkinSettings {
+                            is_osu: true,
+                            ..Default::default()
+                        };
                         s.mania_settings.push(ms);
                     },
 
@@ -113,7 +111,7 @@ impl SkinSettings {
                         "animationframerate" => s.animation_framerate = val.parse().unwrap_or(12),
                         "hitcircleoverlayabovenumer" | "hitcircleoverlayabovenumber" => s.hit_circle_overlay_above_number = vbool(),
                         "sliderstyle" => s.slider_style = val.parse().unwrap_or_default(),
-                        "allowsliderballTtint" => s.allow_sliderball_tint = vbool(),
+                        "allowsliderballtint" => s.allow_sliderball_tint = vbool(),
                         "spinnerfadeplayfield" => s.spinner_fade_playfield = vbool(),
                         _ => {}
                     }
@@ -124,7 +122,13 @@ impl SkinSettings {
                     let key = split.next().unwrap().trim();
                     let val = split.next().unwrap_or_default().trim();
 
-                    let val2 = Some(col(&val.split(",").map(|s|s.parse::<u8>().unwrap_or_default()).collect::<Vec<u8>>()));
+                    let val2 = Some(col(
+                            &val
+                            .split(",")
+                            .map(|s| s.parse::<u8>()
+                            .unwrap_or_default()
+                        ).collect::<Vec<u8>>()
+                    ));
                     
                     match &*key.to_lowercase() {
                         "songselectactivetext" => s.song_select_active_text = val2,
@@ -189,7 +193,7 @@ impl SkinSettings {
                             s.note_image.insert(num, val);
                         }
                     } else {
-                        match &*key {
+                        match key {
                             "Keys" => {
                                 s.keys = val.parse().unwrap_or_default();
                                 // pre-populate the image paths with defaults
@@ -262,10 +266,10 @@ impl Default for SkinSettings {
 
             // colors
             combo_colors: vec![
-                col(&[0,255,0]),
-                col(&[0,255,255]),
-                col(&[255,128,255]),
-                col(&[255,255,0]),
+                Color::from_rgb8(0, 255, 0),
+                Color::from_rgb8(0, 255, 255),
+                Color::from_rgb8(255, 128, 255),
+                Color::from_rgb8(255, 255, 0),
             ],
             slider_border: None,
             slider_track_override: None,
@@ -289,13 +293,9 @@ impl Default for SkinSettings {
     }
 }
 
-fn col(b:&[u8]) -> Color {
-    Color::new(
-        b[0] as f32 / 255.0, 
-        b[1] as f32 / 255.0, 
-        b[2] as f32 / 255.0, 
-        1.0
-    )
+#[inline]
+fn col(c: &[u8]) -> Color {
+    Color::from_rgb8(c[0], c[1], c[2])
 }
 
 #[derive(Clone, Default, Debug)]

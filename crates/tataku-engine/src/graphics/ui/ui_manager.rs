@@ -1,869 +1,665 @@
-
 use crate::prelude::*;
-use tokio::sync::oneshot;
-use iced::Event;
-// use iced::advanced::graphics::Primitive;
-use iced_runtime::{ user_interface, UserInterface };
-
-use iced::advanced::widget::Operation; 
-
-pub type IcedElement = iced::Element<'static, Message, iced::Theme, IcedRenderer>;
-pub type IcedOverlay<'a> = iced::overlay::Element<'a, Message, iced::Theme, IcedRenderer>;
-pub type IcedOperation = Box<dyn Operation<Message> + Send + Sync>;
-
-pub struct UiManager<T:Reflect> {
-    pub force_refresh: bool,
-    message_channel: (AsyncSender<Message>, AsyncReceiver<Message>),
-    ui_sender: Sender<UiAction<T>>,
-
-    application: Option<UiApplication>,
-    messages: Vec<Message>,
-    current_menu: MenuType,
-
-    queued_operations: Vec<IcedOperation>,
-}
-impl<T:Reflect> UiManager<T> {
-    pub fn new() -> Self {
-        let (ui_sender, ui_receiver) = channel();
-
-        // todo: store handle?
-        tokio::task::spawn_blocking(move || { // std::thread::spawn(move || {
-            Self::handle_actions(ui_receiver);
-        });
-
-        Self {
-            // ui
-            force_refresh: false,
-            message_channel: async_channel(10),
-            ui_sender,
-
-            application: Some(UiApplication::new()),
-            messages: Vec::new(),
-            current_menu: MenuType::Internal("None"),
-
-            queued_operations: Vec::new()
-        }
-    }
-    pub fn set_menu(&mut self, menu: Box<dyn AsyncMenu>) {
-        self.current_menu = MenuType::from_menu(&menu);
-        self.application.as_mut().unwrap().menu = menu;
-        self.messages.retain(|m| !m.owner.is_menu())
-    }
-
-    pub fn get_menu(&self) -> MenuType {
-        self.current_menu.clone()
-    }
-    pub fn add_message(&mut self, message: Message) {
-        self.messages.push(message);
-    } 
+use crate::prelude::ui::*;
 
 
-    pub fn add_operation(&mut self, operation: IcedOperation) {
-        self.queued_operations.push(operation)
-    }
-
-    fn handle_actions(ui_receiver: Receiver<UiAction<T>>) {
-        let mut renderer = IcedRenderer::new();
-        let mut window_size = WindowSizeHelper::new();
-
-        // do we rebuild the ui next frame? (required if the ui was updated, adding new items to the view)
-        let mut rebuild_next = false;
-        let mut needs_render = true;
-        let mut last_menu = String::new();
-        let mut last_draw = TransformGroup::new(Vector2::ZERO);
-        let mut mouse_pos = iced::Point::ORIGIN;
-
-
-        let mut ui: UserInterface<Message, iced::Theme, IcedRenderer> = user_interface::UserInterface::build(
-            iced::widget::Column::new().into_element(),
-            iced::Size::new(window_size.x, window_size.y),
-            iced_runtime::user_interface::Cache::default(),
-            &mut renderer,
-        );
-
-        while let Ok(ui_action) = ui_receiver.recv() {
-            match ui_action {
-                UiAction::Update { 
-                    application, 
-                    callback, 
-                    mut messages, 
-                    events, 
-                    operations, 
-                    mut values ,
-                    force_refresh,
-                } => {
-                    // rebuild ui with the new application
-                    if force_refresh || rebuild_next || application.menu.get_name() != last_menu {
-                        last_menu = application.menu.get_name().to_owned();
-                        rebuild_next = false;
-                        needs_render = true;
-
-                        ui = user_interface::UserInterface::build(
-                            application.view(&mut values),
-                            iced::Size::new(window_size.x, window_size.y),
-                            ui.into_cache(), 
-                            &mut renderer,
-                        );
-                    }
-
-                    // update bounds
-                    if window_size.update() {
-                        ui = ui.relayout(iced::Size::new(window_size.x, window_size.y), &mut renderer);
-                    }
-
-                    // perform operations
-                    for mut operation in operations {
-                        ui.operate(&renderer, &mut *operation)
-                    }
-
-                    mouse_pos = iced::Point::new(events.mouse_pos.x, events.mouse_pos.y);
-                    let (_s, e) = ui.update(
-                        &events.window_events,
-                        iced::mouse::Cursor::Available(mouse_pos),
-                        &mut renderer,
-                        &mut iced_core::clipboard::Null,
-                        &mut messages
-                    );
-
-                    if events.force_refresh || !e.is_empty() {
-                        rebuild_next = true;
-                    }
-
-                    let _ = callback.send(UiUpdateData {
-                        application,
-                        messages,
-                        values
-                    });
-                }
-                UiAction::Draw { application, callback } => {
-                    if needs_render || true {
-                        needs_render = false;
-
-                        ui.draw(
-                            &mut renderer, 
-                            &iced::Theme::Dark, 
-                            &Default::default(), 
-                            iced::mouse::Cursor::Available(mouse_pos)
-                        );
-
-                        // renderer.with_primitives(|_b, p| p.iter().for_each(|p| group.push_arced(into_renderable(p))));
-                        last_draw = renderer.finish();
-                        // last_draw.raw_draw = true;
-                    }
-
-                    let _ = callback.send(UiDrawData {
-                        application,
-                        transform_group: last_draw.clone()
-                    });
-                }
-            }
-        }
-    }
-
-    pub async fn update<'a>(
-        &mut self, 
-        state: CurrentInputState<'a>, 
-        tataku_events: Vec<(TatakuEventType, Option<TatakuValue>)>,
-        values: T,
-    ) -> (Vec<TatakuAction>, T) {
-        while let Ok(e) = self.message_channel.1.try_recv() {
-            // info!("adding message: {e:?}");
-            self.messages.push(e);
-        }
-
-        let (sender, callback) = oneshot::channel();
-
-        let Ok(_) = self.ui_sender.send(UiAction::Update {
-            application: self.application.take().unwrap(),
-            callback: sender,
-            messages: self.messages.take(),
-            events: state.into_events(),
-            operations: self.queued_operations.take(),
-            values,
-            force_refresh: self.force_refresh,
-            // we should probably return an error instead
-        }) else { panic!("fucked up"); };
-        self.force_refresh = false;
-
-        // we should probably return an error instead
-        let Ok(UiUpdateData { application, messages, mut values }) = callback.await else { 
-            panic!("fucked up"); 
-        };
-
-        std::mem::swap(&mut self.application, &mut Some(application));
-
-        let app = self.application();
-        for m in messages {
-            app.handle_message(m, &mut values).await;
-        }
-
-        for (event, param) in tataku_events {
-            // debug!("handling event {event:?}");
-            app.handle_event(event, param, &mut values).await;
-        }
-
-        let mut list = app.update(&mut values).await;
-        list.extend(app.dialog_manager.update(&mut values).await);
-        (list, values)
-    }
-
-    pub async fn draw(&mut self, list: &mut RenderableCollection) {
-        let (sender, callback) = oneshot::channel();
-
-        let Ok(_) = self.ui_sender.send(UiAction::Draw {
-            application: self.application.take().unwrap(),
-            callback: sender
-        }) else { return; };
-
-        let Ok(UiDrawData { application, transform_group }) = callback.await else { return; };
-
-        std::mem::swap(&mut self.application, &mut Some(application));
-
-        list.push(transform_group);
-    }
-
-    pub fn application(&mut self) -> &mut UiApplication {
-        self.application.as_mut().unwrap()
-    }
-}
-
-// fn into_renderable(p: &Primitive<Arc<dyn TatakuRenderable>>) -> Arc<dyn TatakuRenderable> {
-//     match p {
-//         iced::advanced::graphics::Primitive::Text {
-//             content,
-//             bounds,
-//             color,
-//             size: font_size,
-//             line_height,
-//             font,
-//             horizontal_alignment,
-//             vertical_alignment,
-//             shaping: _,
-//         } => {
-//             let height = line_height.to_absolute(iced::Pixels(*font_size)).0;
-            
-//             let mut text = Text::new(
-//                 Vector2::new(bounds.x, bounds.y),
-//                 *font_size,
-//                 content,
-//                 Color::new(color.r, color.g, color.b, color.a),
-//                 crate::prelude::Font::from_iced(font)
-//             );
-
-//             match vertical_alignment {
-//                 iced::alignment::Vertical::Bottom => text.pos.y -= height,
-//                 iced::alignment::Vertical::Center => text.pos.y -= height / 2.0,
-//                 iced::alignment::Vertical::Top => {}
-//             }
-//             match horizontal_alignment {
-//                 iced::alignment::Horizontal::Left => {}
-//                 iced::alignment::Horizontal::Center => text.pos.x += bounds.x - text.measure_text().x / 2.0,
-//                 iced::alignment::Horizontal::Right => text.pos.x += bounds.x - text.measure_text().x,
-//             }
-            
-//             Arc::new(text)
-//         }
-//         iced::advanced::graphics::Primitive::Quad { 
-//             bounds, 
-//             background, 
-//             border_radius, 
-//             border_width, 
-//             border_color ,
-//         } => {
-//             Arc::new(Rectangle::new(
-//                 Vector2::new(bounds.x, bounds.y),
-//                 Vector2::new(bounds.width, bounds.height),
-//                 match background {
-//                     iced::Background::Color(color) => color.into(),
-//                     _ => Color::TRANSPARENT_WHITE,
-//                 },
-//                 Some(Border::new(border_color.into(), *border_width))
-//             ).shape(Shape::RoundSep(*border_radius)))
-//         }
-//         iced::advanced::graphics::Primitive::Group { primitives } => {
-//             let mut group = TransformGroup::new(Vector2::ZERO);
-//             group.items.reserve(primitives.len());
-//             for p in primitives {
-//                 group.push_arced(into_renderable(p))
-//             }
-
-//             Arc::new(group)
-//         }
-//         iced::advanced::graphics::Primitive::Clip { bounds, content } => {
-//             let mut group = ScissorGroup::new();
-//             // group.set_scissor(Some([bounds.x, bounds.y, bounds.width, bounds.height]));
-//             group.push_arced(into_renderable(content));
-//             Arc::new(group)
-//         }
-//         iced::advanced::graphics::Primitive::Translate { translation, content } => {
-//             let mut group = TransformGroup::new(Vector2::new(translation.x, translation.y));
-//             group.push_arced(into_renderable(content));
-//             Arc::new(group)
-//         }
-
-//         iced::advanced::graphics::Primitive::Cache { content } => {
-//             into_renderable(content)
-//         }
-//         // iced::advanced::graphics::Primitive::Image { handle, bounds } => {}
-//         iced::advanced::graphics::Primitive::Custom(i) => {
-//             i.clone()
-//         }
-        
-//         _ => {
-//             Arc::new(TransformGroup::new(Vector2::ZERO))
-//         }
-//     }
-// }
-
-
-enum UiAction<T:Reflect> {
-    Update {
-        application: UiApplication,
-        callback: oneshot::Sender<UiUpdateData<T>>,
-        messages: Vec<Message>,
-        events: SendEvents,
-        operations: Vec<IcedOperation>,
-
-        values: T,
-        force_refresh: bool,
-    },
-    Draw {
-        application: UiApplication,
-        callback: oneshot::Sender<UiDrawData>,
-    }
-}
-
-struct UiUpdateData<T: Reflect> {
-    application: UiApplication,
-    messages: Vec<Message>,
-    values: T,
-}
-
-struct UiDrawData {
-    application: UiApplication,
-    transform_group: TransformGroup,
-}
-
-pub struct CurrentInputState<'a> {
+pub struct CurrentInputState {
     pub mouse_pos: Vector2,
     pub mouse_moved: bool,
     pub scroll_delta: f32,
 
-    pub mouse_down: &'a Vec<MouseButton>,
-    pub mouse_up: &'a Vec<MouseButton>,
+    pub mouse_down: Vec<MouseButton>,
+    pub mouse_up: Vec<MouseButton>,
 
-    pub keys_down: &'a KeyCollection,
-    pub keys_up: &'a KeyCollection,
+    pub keys_down: KeyCollection,
+    pub keys_up: KeyCollection,
+
+    pub controller_down: Vec<(ControllerButton, GamepadId, Arc<String>)>,
+    pub controller_up: Vec<(ControllerButton, GamepadId, Arc<String>)>,
+    pub controller_axes: Vec<(Axis, f32, GamepadId, Arc<String>)>,
 
     pub mods: KeyModifiers,
 }
-impl<'a> CurrentInputState<'a> {
-    fn into_events(self) -> SendEvents {
-        use iced::mouse::Event as MouseEvent;
-        use iced::keyboard::Event as KeyboardEvent;
-
-        let mut force_refresh = false;
-        force_refresh |= !self.mouse_down.is_empty();
-        force_refresh |= !self.mouse_up.is_empty();
-        force_refresh |= !self.keys_down.0.is_empty();
-        force_refresh |= !self.keys_up.0.is_empty();
-
-        let mut events = Vec::new();
-        if self.mouse_moved {
-            events.push(Event::Mouse(MouseEvent::CursorMoved {
-                position: iced::Point::new(self.mouse_pos.x, self.mouse_pos.y)
-            }));
-        }
-        if self.scroll_delta != 0.0 {
-            events.push(Event::Mouse(MouseEvent::WheelScrolled {
-                delta: iced::mouse::ScrollDelta::Lines { x: 0.0, y: self.scroll_delta }
-            }));
-        }
-
-
-        for i in self.mouse_down.iter().filter_map(mouse_button) {
-            events.push(Event::Mouse(MouseEvent::ButtonPressed(i)));
-        }
-        for i in self.mouse_up.iter().filter_map(mouse_button) {
-            events.push(Event::Mouse(MouseEvent::ButtonReleased(i)));
-        }
-
-        let modifiers = self.mods.into();
-        for key in &self.keys_down.0 {
-            events.push(Event::Keyboard(KeyboardEvent::KeyPressed { 
-                key: conv_key(key.logical.clone()), 
-                location: conv_location(key.location), 
-                text: key.text.clone(),
-                modifiers,
-            }));
-        }
-        for key in &self.keys_up.0 {
-            events.push(Event::Keyboard(KeyboardEvent::KeyReleased { 
-                key: conv_key(key.logical.clone()), 
-                location: conv_location(key.location), 
-                modifiers,
-            }));
-        }
-
-        SendEvents {
+impl CurrentInputState {
+    fn make_input(&self, event: InputType) -> InputEvent {
+        InputEvent {
+            event,
             mouse_pos: self.mouse_pos,
-            window_events: events,
-            force_refresh,
+            key_mods: self.mods,
+        }
+    }
+
+    pub fn into_events(self) -> Vec<InputEvent> {
+        [
+            self.mouse_moved.then_some(InputType::MouseMove(self.mouse_pos)),
+            (self.scroll_delta > f32::EPSILON).then_some(InputType::MouseScroll(self.scroll_delta))
+        ]
+            .into_iter()
+            .flatten()
+            .chain(self.mouse_down.into_iter().map(InputType::MousePress))
+            .chain(self.mouse_up.into_iter().map(InputType::MouseRelease))
+            .chain(self.keys_down.0.into_iter().map(InputType::KeyPress))
+            .chain(self.keys_up.0.into_iter().map(InputType::KeyRelease))
+            
+            .chain(self.controller_down.into_iter().map(|(a, b, c)| InputType::ControllerPress(a, b, c)))
+            .chain(self.controller_up.into_iter().map(|(a, b, c)| InputType::ControllerRelease(a, b, c)))
+            .chain(self.controller_axes.into_iter().map(|(a, b, c, d)| InputType::ControllerAxis(a, b, c, d)))
+
+            .map(|event| InputEvent { event, mouse_pos: self.mouse_pos, key_mods: self.mods })
+            .collect()
+    }
+}
+
+
+pub struct GeneralUiTheme {
+    pub background_color: Color,
+    pub default_color: Color,
+    pub hover_color: Color,
+    pub active_color: Color,
+}
+impl GeneralUiTheme {
+    pub fn get_color(&self, active: bool, hover: bool) -> Color {
+        if active {
+            self.active_color
+        } else if hover {
+            self.hover_color
+        } else {
+            self.default_color
+        }
+    }
+}
+impl Default for GeneralUiTheme {
+    fn default() -> Self {
+        Self {
+            background_color: Color::BLACK.alpha(0.8),
+            default_color: Color::WHITE,
+            hover_color: Color::CYAN,
+            active_color: Color::YELLOW,
         }
     }
 }
 
-struct SendEvents {
-    mouse_pos: Vector2,
-    window_events: Vec<Event>,
-    force_refresh: bool,
-}
 
-
-/// Replaces the regular [`Into`] trait for types that can be converted
-/// to an element. This is necessary, because the `Into` trait does not
-/// assume the renderer type needs to match, after all, you could write an
-/// `Into` trait implementation to convert between those types. This trait,
-/// unlike `Into`, will propagate and infer the correct renderer type.
-pub trait IntoElement where Self: 'static {
-    fn into_element(self) -> IcedElement;
-}
-
-impl<T> IntoElement for T where
-    IcedElement: From<T>,
-    T: 'static
-{
-    fn into_element(self) -> IcedElement {
-        IcedElement::from(self)
-    }
-}
-
-fn mouse_button(mb: &MouseButton) -> Option<iced::mouse::Button> {
-    match mb {
-        MouseButton::Left => Some(iced::mouse::Button::Left),
-        MouseButton::Right => Some(iced::mouse::Button::Right),
-        MouseButton::Middle => Some(iced::mouse::Button::Middle),
-        MouseButton::Other(i) => Some(iced::mouse::Button::Other(*i)),
-        _ => None,
-    }
-}
-
-
-// fuck you
-fn conv_key(key: winit::keyboard::Key) -> iced::keyboard::Key {
-    use iced::keyboard::key::Named;
-    use winit::keyboard::NamedKey;
-
-    match key {
-        winit::keyboard::Key::Character(c) => iced::keyboard::Key::Character(c),
-        winit::keyboard::Key::Named(named_key) => {
-            iced::keyboard::Key::Named(match named_key {
-                NamedKey::Alt => Named::Alt,
-                NamedKey::AltGraph => Named::AltGraph,
-                NamedKey::CapsLock => Named::CapsLock,
-                NamedKey::Control => Named::Control,
-                NamedKey::Fn => Named::Fn,
-                NamedKey::FnLock => Named::FnLock,
-                NamedKey::NumLock => Named::NumLock,
-                NamedKey::ScrollLock => Named::ScrollLock,
-                NamedKey::Shift => Named::Shift,
-                NamedKey::Symbol => Named::Symbol,
-                NamedKey::SymbolLock => Named::SymbolLock,
-                NamedKey::Meta => Named::Meta,
-                NamedKey::Hyper => Named::Hyper,
-                NamedKey::Super => Named::Super,
-                NamedKey::Enter => Named::Enter,
-                NamedKey::Tab => Named::Tab,
-                NamedKey::Space => Named::Space,
-                NamedKey::ArrowDown => Named::ArrowDown,
-                NamedKey::ArrowLeft => Named::ArrowLeft,
-                NamedKey::ArrowRight => Named::ArrowRight,
-                NamedKey::ArrowUp => Named::ArrowUp,
-                NamedKey::End => Named::End,
-                NamedKey::Home => Named::Home,
-                NamedKey::PageDown => Named::PageDown,
-                NamedKey::PageUp => Named::PageUp,
-                NamedKey::Backspace => Named::Backspace,
-                NamedKey::Clear => Named::Clear,
-                NamedKey::Copy => Named::Copy,
-                NamedKey::CrSel => Named::CrSel,
-                NamedKey::Cut => Named::Cut,
-                NamedKey::Delete => Named::Delete,
-                NamedKey::EraseEof => Named::EraseEof,
-                NamedKey::ExSel => Named::ExSel,
-                NamedKey::Insert => Named::Insert,
-                NamedKey::Paste => Named::Paste,
-                NamedKey::Redo => Named::Redo,
-                NamedKey::Undo => Named::Undo,
-                NamedKey::Accept => Named::Accept,
-                NamedKey::Again => Named::Again,
-                NamedKey::Attn => Named::Attn,
-                NamedKey::Cancel => Named::Cancel,
-                NamedKey::ContextMenu => Named::ContextMenu,
-                NamedKey::Escape => Named::Escape,
-                NamedKey::Execute => Named::Execute,
-                NamedKey::Find => Named::Find,
-                NamedKey::Help => Named::Help,
-                NamedKey::Pause => Named::Pause,
-                NamedKey::Play => Named::Play,
-                NamedKey::Props => Named::Props,
-                NamedKey::Select => Named::Select,
-                NamedKey::ZoomIn => Named::ZoomIn,
-                NamedKey::ZoomOut => Named::ZoomOut,
-                NamedKey::BrightnessDown => Named::BrightnessDown,
-                NamedKey::BrightnessUp => Named::BrightnessUp,
-                NamedKey::Eject => Named::Eject,
-                NamedKey::LogOff => Named::LogOff,
-                NamedKey::Power => Named::Power,
-                NamedKey::PowerOff => Named::PowerOff,
-                NamedKey::PrintScreen => Named::PrintScreen,
-                NamedKey::Hibernate => Named::Hibernate,
-                NamedKey::Standby => Named::Standby,
-                NamedKey::WakeUp => Named::WakeUp,
-                NamedKey::AllCandidates => Named::AllCandidates,
-                NamedKey::Alphanumeric => Named::Alphanumeric,
-                NamedKey::CodeInput => Named::CodeInput,
-                NamedKey::Compose => Named::Compose,
-                NamedKey::Convert => Named::Convert,
-                NamedKey::FinalMode => Named::FinalMode,
-                NamedKey::GroupFirst => Named::GroupFirst,
-                NamedKey::GroupLast => Named::GroupLast,
-                NamedKey::GroupNext => Named::GroupNext,
-                NamedKey::GroupPrevious => Named::GroupPrevious,
-                NamedKey::ModeChange => Named::ModeChange,
-                NamedKey::NextCandidate => Named::NextCandidate,
-                NamedKey::NonConvert => Named::NonConvert,
-                NamedKey::PreviousCandidate => Named::PreviousCandidate,
-                NamedKey::Process => Named::Process,
-                NamedKey::SingleCandidate => Named::SingleCandidate,
-                NamedKey::HangulMode => Named::HangulMode,
-                NamedKey::HanjaMode => Named::HanjaMode,
-                NamedKey::JunjaMode => Named::JunjaMode,
-                NamedKey::Eisu => Named::Eisu,
-                NamedKey::Hankaku => Named::Hankaku,
-                NamedKey::Hiragana => Named::Hiragana,
-                NamedKey::HiraganaKatakana => Named::HiraganaKatakana,
-                NamedKey::KanaMode => Named::KanaMode,
-                NamedKey::KanjiMode => Named::KanjiMode,
-                NamedKey::Katakana => Named::Katakana,
-                NamedKey::Romaji => Named::Romaji,
-                NamedKey::Zenkaku => Named::Zenkaku,
-                NamedKey::ZenkakuHankaku => Named::ZenkakuHankaku,
-                NamedKey::Soft1 => Named::Soft1,
-                NamedKey::Soft2 => Named::Soft2,
-                NamedKey::Soft3 => Named::Soft3,
-                NamedKey::Soft4 => Named::Soft4,
-                NamedKey::ChannelDown => Named::ChannelDown,
-                NamedKey::ChannelUp => Named::ChannelUp,
-                NamedKey::Close => Named::Close,
-                NamedKey::MailForward => Named::MailForward,
-                NamedKey::MailReply => Named::MailReply,
-                NamedKey::MailSend => Named::MailSend,
-                NamedKey::MediaClose => Named::MediaClose,
-                NamedKey::MediaFastForward => Named::MediaFastForward,
-                NamedKey::MediaPause => Named::MediaPause,
-                NamedKey::MediaPlay => Named::MediaPlay,
-                NamedKey::MediaPlayPause => Named::MediaPlayPause,
-                NamedKey::MediaRecord => Named::MediaRecord,
-                NamedKey::MediaRewind => Named::MediaRewind,
-                NamedKey::MediaStop => Named::MediaStop,
-                NamedKey::MediaTrackNext => Named::MediaTrackNext,
-                NamedKey::MediaTrackPrevious => Named::MediaTrackPrevious,
-                NamedKey::New => Named::New,
-                NamedKey::Open => Named::Open,
-                NamedKey::Print => Named::Print,
-                NamedKey::Save => Named::Save,
-                NamedKey::SpellCheck => Named::SpellCheck,
-                NamedKey::Key11 => Named::Key11,
-                NamedKey::Key12 => Named::Key12,
-                NamedKey::AudioBalanceLeft => Named::AudioBalanceLeft,
-                NamedKey::AudioBalanceRight => Named::AudioBalanceRight,
-                NamedKey::AudioBassBoostDown => Named::AudioBassBoostDown,
-                NamedKey::AudioBassBoostToggle => Named::AudioBassBoostToggle,
-                NamedKey::AudioBassBoostUp => Named::AudioBassBoostUp,
-                NamedKey::AudioFaderFront => Named::AudioFaderFront,
-                NamedKey::AudioFaderRear => Named::AudioFaderRear,
-                NamedKey::AudioSurroundModeNext => Named::AudioSurroundModeNext,
-                NamedKey::AudioTrebleDown => Named::AudioTrebleDown,
-                NamedKey::AudioTrebleUp => Named::AudioTrebleUp,
-                NamedKey::AudioVolumeDown => Named::AudioVolumeDown,
-                NamedKey::AudioVolumeUp => Named::AudioVolumeUp,
-                NamedKey::AudioVolumeMute => Named::AudioVolumeMute,
-                NamedKey::MicrophoneToggle => Named::MicrophoneToggle,
-                NamedKey::MicrophoneVolumeDown => Named::MicrophoneVolumeDown,
-                NamedKey::MicrophoneVolumeUp => Named::MicrophoneVolumeUp,
-                NamedKey::MicrophoneVolumeMute => Named::MicrophoneVolumeMute,
-                NamedKey::SpeechCorrectionList => Named::SpeechCorrectionList,
-                NamedKey::SpeechInputToggle => Named::SpeechInputToggle,
-                NamedKey::LaunchApplication1 => Named::LaunchApplication1,
-                NamedKey::LaunchApplication2 => Named::LaunchApplication2,
-                NamedKey::LaunchCalendar => Named::LaunchCalendar,
-                NamedKey::LaunchContacts => Named::LaunchContacts,
-                NamedKey::LaunchMail => Named::LaunchMail,
-                NamedKey::LaunchMediaPlayer => Named::LaunchMediaPlayer,
-                NamedKey::LaunchMusicPlayer => Named::LaunchMusicPlayer,
-                NamedKey::LaunchPhone => Named::LaunchPhone,
-                NamedKey::LaunchScreenSaver => Named::LaunchScreenSaver,
-                NamedKey::LaunchSpreadsheet => Named::LaunchSpreadsheet,
-                NamedKey::LaunchWebBrowser => Named::LaunchWebBrowser,
-                NamedKey::LaunchWebCam => Named::LaunchWebCam,
-                NamedKey::LaunchWordProcessor => Named::LaunchWordProcessor,
-                NamedKey::BrowserBack => Named::BrowserBack,
-                NamedKey::BrowserFavorites => Named::BrowserFavorites,
-                NamedKey::BrowserForward => Named::BrowserForward,
-                NamedKey::BrowserHome => Named::BrowserHome,
-                NamedKey::BrowserRefresh => Named::BrowserRefresh,
-                NamedKey::BrowserSearch => Named::BrowserSearch,
-                NamedKey::BrowserStop => Named::BrowserStop,
-                NamedKey::AppSwitch => Named::AppSwitch,
-                NamedKey::Call => Named::Call,
-                NamedKey::Camera => Named::Camera,
-                NamedKey::CameraFocus => Named::CameraFocus,
-                NamedKey::EndCall => Named::EndCall,
-                NamedKey::GoBack => Named::GoBack,
-                NamedKey::GoHome => Named::GoHome,
-                NamedKey::HeadsetHook => Named::HeadsetHook,
-                NamedKey::LastNumberRedial => Named::LastNumberRedial,
-                NamedKey::Notification => Named::Notification,
-                NamedKey::MannerMode => Named::MannerMode,
-                NamedKey::VoiceDial => Named::VoiceDial,
-                NamedKey::TV => Named::TV,
-                NamedKey::TV3DMode => Named::TV3DMode,
-                NamedKey::TVAntennaCable => Named::TVAntennaCable,
-                NamedKey::TVAudioDescription => Named::TVAudioDescription,
-                NamedKey::TVAudioDescriptionMixDown => {
-                    Named::TVAudioDescriptionMixDown
-                }
-                NamedKey::TVAudioDescriptionMixUp => {
-                    Named::TVAudioDescriptionMixUp
-                }
-                NamedKey::TVContentsMenu => Named::TVContentsMenu,
-                NamedKey::TVDataService => Named::TVDataService,
-                NamedKey::TVInput => Named::TVInput,
-                NamedKey::TVInputComponent1 => Named::TVInputComponent1,
-                NamedKey::TVInputComponent2 => Named::TVInputComponent2,
-                NamedKey::TVInputComposite1 => Named::TVInputComposite1,
-                NamedKey::TVInputComposite2 => Named::TVInputComposite2,
-                NamedKey::TVInputHDMI1 => Named::TVInputHDMI1,
-                NamedKey::TVInputHDMI2 => Named::TVInputHDMI2,
-                NamedKey::TVInputHDMI3 => Named::TVInputHDMI3,
-                NamedKey::TVInputHDMI4 => Named::TVInputHDMI4,
-                NamedKey::TVInputVGA1 => Named::TVInputVGA1,
-                NamedKey::TVMediaContext => Named::TVMediaContext,
-                NamedKey::TVNetwork => Named::TVNetwork,
-                NamedKey::TVNumberEntry => Named::TVNumberEntry,
-                NamedKey::TVPower => Named::TVPower,
-                NamedKey::TVRadioService => Named::TVRadioService,
-                NamedKey::TVSatellite => Named::TVSatellite,
-                NamedKey::TVSatelliteBS => Named::TVSatelliteBS,
-                NamedKey::TVSatelliteCS => Named::TVSatelliteCS,
-                NamedKey::TVSatelliteToggle => Named::TVSatelliteToggle,
-                NamedKey::TVTerrestrialAnalog => Named::TVTerrestrialAnalog,
-                NamedKey::TVTerrestrialDigital => Named::TVTerrestrialDigital,
-                NamedKey::TVTimer => Named::TVTimer,
-                NamedKey::AVRInput => Named::AVRInput,
-                NamedKey::AVRPower => Named::AVRPower,
-                NamedKey::ColorF0Red => Named::ColorF0Red,
-                NamedKey::ColorF1Green => Named::ColorF1Green,
-                NamedKey::ColorF2Yellow => Named::ColorF2Yellow,
-                NamedKey::ColorF3Blue => Named::ColorF3Blue,
-                NamedKey::ColorF4Grey => Named::ColorF4Grey,
-                NamedKey::ColorF5Brown => Named::ColorF5Brown,
-                NamedKey::ClosedCaptionToggle => Named::ClosedCaptionToggle,
-                NamedKey::Dimmer => Named::Dimmer,
-                NamedKey::DisplaySwap => Named::DisplaySwap,
-                NamedKey::DVR => Named::DVR,
-                NamedKey::Exit => Named::Exit,
-                NamedKey::FavoriteClear0 => Named::FavoriteClear0,
-                NamedKey::FavoriteClear1 => Named::FavoriteClear1,
-                NamedKey::FavoriteClear2 => Named::FavoriteClear2,
-                NamedKey::FavoriteClear3 => Named::FavoriteClear3,
-                NamedKey::FavoriteRecall0 => Named::FavoriteRecall0,
-                NamedKey::FavoriteRecall1 => Named::FavoriteRecall1,
-                NamedKey::FavoriteRecall2 => Named::FavoriteRecall2,
-                NamedKey::FavoriteRecall3 => Named::FavoriteRecall3,
-                NamedKey::FavoriteStore0 => Named::FavoriteStore0,
-                NamedKey::FavoriteStore1 => Named::FavoriteStore1,
-                NamedKey::FavoriteStore2 => Named::FavoriteStore2,
-                NamedKey::FavoriteStore3 => Named::FavoriteStore3,
-                NamedKey::Guide => Named::Guide,
-                NamedKey::GuideNextDay => Named::GuideNextDay,
-                NamedKey::GuidePreviousDay => Named::GuidePreviousDay,
-                NamedKey::Info => Named::Info,
-                NamedKey::InstantReplay => Named::InstantReplay,
-                NamedKey::Link => Named::Link,
-                NamedKey::ListProgram => Named::ListProgram,
-                NamedKey::LiveContent => Named::LiveContent,
-                NamedKey::Lock => Named::Lock,
-                NamedKey::MediaApps => Named::MediaApps,
-                NamedKey::MediaAudioTrack => Named::MediaAudioTrack,
-                NamedKey::MediaLast => Named::MediaLast,
-                NamedKey::MediaSkipBackward => Named::MediaSkipBackward,
-                NamedKey::MediaSkipForward => Named::MediaSkipForward,
-                NamedKey::MediaStepBackward => Named::MediaStepBackward,
-                NamedKey::MediaStepForward => Named::MediaStepForward,
-                NamedKey::MediaTopMenu => Named::MediaTopMenu,
-                NamedKey::NavigateIn => Named::NavigateIn,
-                NamedKey::NavigateNext => Named::NavigateNext,
-                NamedKey::NavigateOut => Named::NavigateOut,
-                NamedKey::NavigatePrevious => Named::NavigatePrevious,
-                NamedKey::NextFavoriteChannel => Named::NextFavoriteChannel,
-                NamedKey::NextUserProfile => Named::NextUserProfile,
-                NamedKey::OnDemand => Named::OnDemand,
-                NamedKey::Pairing => Named::Pairing,
-                NamedKey::PinPDown => Named::PinPDown,
-                NamedKey::PinPMove => Named::PinPMove,
-                NamedKey::PinPToggle => Named::PinPToggle,
-                NamedKey::PinPUp => Named::PinPUp,
-                NamedKey::PlaySpeedDown => Named::PlaySpeedDown,
-                NamedKey::PlaySpeedReset => Named::PlaySpeedReset,
-                NamedKey::PlaySpeedUp => Named::PlaySpeedUp,
-                NamedKey::RandomToggle => Named::RandomToggle,
-                NamedKey::RcLowBattery => Named::RcLowBattery,
-                NamedKey::RecordSpeedNext => Named::RecordSpeedNext,
-                NamedKey::RfBypass => Named::RfBypass,
-                NamedKey::ScanChannelsToggle => Named::ScanChannelsToggle,
-                NamedKey::ScreenModeNext => Named::ScreenModeNext,
-                NamedKey::Settings => Named::Settings,
-                NamedKey::SplitScreenToggle => Named::SplitScreenToggle,
-                NamedKey::STBInput => Named::STBInput,
-                NamedKey::STBPower => Named::STBPower,
-                NamedKey::Subtitle => Named::Subtitle,
-                NamedKey::Teletext => Named::Teletext,
-                NamedKey::VideoModeNext => Named::VideoModeNext,
-                NamedKey::Wink => Named::Wink,
-                NamedKey::ZoomToggle => Named::ZoomToggle,
-                NamedKey::F1 => Named::F1,
-                NamedKey::F2 => Named::F2,
-                NamedKey::F3 => Named::F3,
-                NamedKey::F4 => Named::F4,
-                NamedKey::F5 => Named::F5,
-                NamedKey::F6 => Named::F6,
-                NamedKey::F7 => Named::F7,
-                NamedKey::F8 => Named::F8,
-                NamedKey::F9 => Named::F9,
-                NamedKey::F10 => Named::F10,
-                NamedKey::F11 => Named::F11,
-                NamedKey::F12 => Named::F12,
-                NamedKey::F13 => Named::F13,
-                NamedKey::F14 => Named::F14,
-                NamedKey::F15 => Named::F15,
-                NamedKey::F16 => Named::F16,
-                NamedKey::F17 => Named::F17,
-                NamedKey::F18 => Named::F18,
-                NamedKey::F19 => Named::F19,
-                NamedKey::F20 => Named::F20,
-                NamedKey::F21 => Named::F21,
-                NamedKey::F22 => Named::F22,
-                NamedKey::F23 => Named::F23,
-                NamedKey::F24 => Named::F24,
-                NamedKey::F25 => Named::F25,
-                NamedKey::F26 => Named::F26,
-                NamedKey::F27 => Named::F27,
-                NamedKey::F28 => Named::F28,
-                NamedKey::F29 => Named::F29,
-                NamedKey::F30 => Named::F30,
-                NamedKey::F31 => Named::F31,
-                NamedKey::F32 => Named::F32,
-                NamedKey::F33 => Named::F33,
-                NamedKey::F34 => Named::F34,
-                NamedKey::F35 => Named::F35,
-                _ => return iced::keyboard::Key::Unidentified,
-            })
-        }
-        _ => iced::keyboard::Key::Unidentified,
-    }
-}
-
-fn conv_location(location: winit::keyboard::KeyLocation) -> iced::keyboard::Location {
-    match location {
-        winit::keyboard::KeyLocation::Standard => iced::keyboard::Location::Standard,
-        winit::keyboard::KeyLocation::Left => iced::keyboard::Location::Left,
-        winit::keyboard::KeyLocation::Right => iced::keyboard::Location::Right,
-        winit::keyboard::KeyLocation::Numpad => iced::keyboard::Location::Numpad,
-    }
-}
-
-
-
-mod macros {
-    // idk why this says its unused, if i remove it everything cries
-    #[allow(unused)]
-    use crate::prelude::*;
+pub struct Tree {
+    tree: TaffyTree<TreeData>,
+    pub node: Box<dyn Widget>,
+    root: NodeId,
     
-    #[macro_export]
-    macro_rules! row {
-        ($($i:expr),*;$($t:ident = $v:expr),*) => {
-            iced::widget::Row::with_children(vec![
-                $(
-                    $i.into_element(),
-                )*
-            ]) 
-            $(
-                .$t($v)
-            )*
+    pub bounds: Bounds,
+    pub owner: MessageOwner,
+    should_refresh: bool,
 
-            .into_element()
-        };
+    /// a list of all children in the tree
+    all_children: HashSet<TaffyNodeId>,
 
-        ($vec:expr, $($t:ident = $v:expr),*) => {
-            iced::widget::Row::with_children($vec)
-            $(
-                .$t($v)
-            )*
+    selected_node: SelectedNode,
+}
+impl Tree {
+    pub fn with_capacity(
+        cap: usize,
+        owner: MessageOwner,
+    ) -> Self {
+        let mut tree = TaffyTree::with_capacity(cap);
+        
+        let root = tree.new_leaf(
+            Style {
+                size: Size {
+                    width: Dimension::Percent(1.0),
+                    height: Dimension::Percent(1.0),
+                },
+                ..Default::default()
+            }
+        ).unwrap();
+        tree.set_node_context(root, Some(TreeData::default())).unwrap();
 
-            .into_element()
+        Self {
+            tree,
+            node: EmptyWidget::new_boxed(),
+            root: NodeId::new(root, owner),
+            bounds: Bounds::default(),
+            should_refresh: false,
+
+            owner,
+            selected_node: SelectedNode::default(),
+            all_children: HashSet::new(),
         }
     }
 
-    #[macro_export]
-    macro_rules! col {
-        ($($i:expr),*;$($t:ident = $v:expr),*) => {
-            iced::widget::Column::with_children(vec![
-                $(
-                    $i.into_element(),
-                )*
-            ]) 
-            $(
-                .$t($v)
-            )*
+    pub fn has_node(&self, node: NodeId) -> bool {
+        node.owner == self.owner
+    }
 
-            .into_element()
+    pub fn set_node(
+        &mut self, 
+        mut node: Box<dyn Widget>,
+        values: &mut dyn Reflect,
+    ) {
+        // clear the tree and all our children
+        self.tree.clear();
+        self.all_children.clear();
+
+        // TODO: refresh layout when scale changes
+        let ui_scale = values.reflect_get::<f32>("settings.ui_scale").map(|i| *i).unwrap_or(1.0);
+        
+        // layout the new node
+        let mut shell = LayoutShell {
+            owner: self.owner,
+            tree: self,
+            values,
+            ui_scale,
         };
 
-        ($vec:expr, $($t:ident = $v:expr),*) => {
-            iced::widget::Column::with_children($vec)
-            $(
-                .$t($v)
-            )*
+        let new = node.layout(&mut shell).expect("failed to layout new node?");
+        self.node = node;
 
-            .into_element()
+        self.root = self.new_with_children(
+            Style {
+                size: Size {
+                    width: Dimension::Percent(1.0),
+                    height: Dimension::Percent(1.0),
+                    // width: Dimension::Length(self.bounds.size.x),
+                    // height: Dimension::Length(self.bounds.size.y),
+                },
+                ..Default::default()
+            }, 
+            &[ new ]
+        ).unwrap();
+        self.all_children.insert(self.root.node_id);
+        self.tree.set_node_context(self.root.node_id, Some(TreeData::default())).unwrap();
+        
+        self.update_layout();
+    }
+
+    #[allow(clippy::borrowed_box)]
+    pub fn get_node(&self) -> &Box<dyn Widget> { &self.node }
+    pub fn mark_refresh(&mut self, _s: &str) {
+        self.should_refresh = true
+    }
+
+
+    pub fn update_bounds(
+        &mut self, 
+        bounds: Bounds,
+    ) {
+        if bounds == self.bounds { return }
+        self.bounds = bounds;
+        self.update_layout();
+    }
+
+    pub fn update_layout(&mut self) {
+        // debug!("{:?} doing layout", self.owner);s
+        self.should_refresh = false;
+        use taffy::AvailableSpace::*;
+        let space = Size {
+            width: Definite(self.bounds.size.x),
+            height: Definite(self.bounds.size.y),
+        };
+
+        // i dont think dirty actually does anything taffy-side
+        self.tree.mark_dirty(self.root.node_id).expect("failed to mark dirty?");
+        self.tree
+            .compute_layout(self.root.node_id, space)
+            .expect("failed to compute layout?");
+
+        self.update_contexts();
+    }
+
+
+    pub fn update_contexts(&mut self) {
+        // update absolute positions and matrices
+        let matrix = Matrix::identity().trans(self.bounds.pos);
+        self.recurse_update_context(self.root.node_id, matrix);
+
+        // update spatial navigation
+        SpatialNagivation::new(self)
+            .run(NavigateConfig::default());
+    }
+
+    fn recurse_update_context(&mut self, node: TaffyNodeId, mut matrix: Matrix) {
+        let layout = self.tree.layout(node).unwrap();
+        let bounds = Bounds::new(
+            Vector2::new(
+                layout.location.x,
+                layout.location.y
+            ),
+            Vector2::new(
+                layout.size.width,
+                layout.size.height,
+            )
+        );
+
+        let context = self.tree.get_node_context_mut(node).unwrap();
+        context.absolute_bounds = matrix * bounds;
+        context.global_transform = matrix;
+
+        if context.needs_inverse_transform {
+            context.inverse_global_transform = context
+                .global_transform
+                .inverse()
+                .unwrap_or_else(|| {
+                    eprintln!("could not invert transform: {:#?}", context.global_transform); 
+                    context.global_transform 
+                })
+            ;
+        }
+
+        matrix = matrix * context.local_transform.matrix() * Matrix::identity().trans(bounds.pos);
+        for child in self.tree.children(node).unwrap() {
+            self.recurse_update_context(child, matrix);
         }
     }
 
-    #[cfg(test)]
-    #[allow(unused)]
-    fn test() {
-        use crate::prelude::iced_elements::*;
+    pub fn update_context(&mut self, node: impl HasNodeId) {
+        let node = node.get_id();
 
-        let row = row!(
-            Space::new(Fill, Fill),
-            Space::new(Fill, Fill);
-            width = Fill,
-            height = Fill
-        );
+        let our_matrix = self.get_context(node)
+            .map(|p| p.global_transform)
+            .unwrap_or_else(|| Matrix::identity().trans(self.bounds.pos));
 
-        let col = col!(
-            Space::new(Fill, Fill),
-            Space::new(Fill, Fill);
-            width = Fill,
-            height = Fill
-        );
+        self.recurse_update_context(node, our_matrix);
+    }
+    
+    pub fn absolute_bounds(&self, node: impl HasNodeId) -> Option<Bounds> {
+        self.get_context(node).map(|i| i.absolute_bounds)
     }
 
+    pub fn content_bounds(&self, node: impl HasNodeId) -> Option<Bounds> {
+        let layout = self.get_layout(node)?;
+        
+        Some(Bounds::new(
+            Vector2::new(
+                layout.content_box_x(),
+                layout.content_box_y(),
+            ),
+            Vector2::new(
+                layout.content_box_width(),
+                layout.content_box_height(),
+            )
+        ))
+    }
+    pub fn bounds(&self, node: impl HasNodeId) -> Option<Bounds> {
+        let layout = self.get_layout(node)?;
+        
+        Some(Bounds::new(
+            Vector2::new(
+                layout.location.x,
+                layout.location.y,
+            ),
+            Vector2::new(
+                layout.size.width,
+                layout.size.height,
+            )
+        ))
+    }
+
+    pub fn all_children(&self) -> impl Iterator<Item = TaffyNodeId> {
+        self.all_children.iter().copied().filter(|i| i != &EMPTY_NODE.node_id)
+    }
+
+
+
+    fn with_node<T>(&mut self, mut f: impl FnMut(&mut Tree, &mut Box<dyn Widget>) -> T + Send + Sync) -> T {
+        let mut temp: Box<dyn Widget> = Box::new(EmptyWidget(self.node.node_id()));
+        std::mem::swap(&mut self.node, &mut temp);
+
+        let t = f(self, &mut temp);
+
+        self.node = temp;
+        t
+    }
+
+    pub fn handle_inputs(
+        &mut self,
+        input_state: &mut CurrentInputState,
+        values: &mut dyn Reflect,
+        actions: &mut ActionQueue,
+        messages: &mut Vec<Message>
+    ) {
+        // let mouse_pos = input_state.mouse_pos;
+        self.with_node(|tree, node| {
+            let bounds = tree.bounds;
+            let mut shell = InputShell {
+                owner: tree.owner,
+                messages,
+                actions,
+                tree,
+                values,
+                mouse_pos: input_state.mouse_pos,
+                event_consumed: false,
+            };
+
+            if input_state.mouse_moved {
+                let pos = input_state.mouse_pos - bounds.pos;
+
+                node.input(
+                    &input_state.make_input(InputType::MouseMove(pos)),
+                    &mut shell
+                );
+            }
+            if input_state.scroll_delta.abs() > f32::EPSILON {
+                node.input(
+                    &input_state.make_input(InputType::MouseScroll(input_state.scroll_delta)),
+                    &mut shell
+                );
+            }
+
+            let mouse_pos = input_state.mouse_pos;
+            let key_mods = input_state.mods;
+
+            macro_rules! handle_event {
+                ($list: expr, $map: ident) => {
+                    $list.retain(|a| {
+                        node.input(
+                            &InputEvent {
+                                event: InputType::$map(a.clone()),
+                                key_mods,
+                                mouse_pos,
+                            },
+                            &mut shell
+                        );
+                        !std::mem::take(&mut shell.event_consumed)
+                    });
+                }
+            }
+
+            handle_event!(input_state.keys_down.0, KeyPress);
+            handle_event!(input_state.keys_up.0, KeyRelease);
+            handle_event!(input_state.mouse_down, MousePress);
+            handle_event!(input_state.mouse_up, MouseRelease);
+
+            input_state.controller_down.retain(|(a, id, name)| {
+                node.input(
+                    &InputEvent {
+                        event: InputType::ControllerPress(*a, *id, name.clone()),
+                        key_mods,
+                        mouse_pos,
+                    },
+                    &mut shell
+                );
+                !std::mem::take(&mut shell.event_consumed)
+            });
+
+            input_state.controller_up.retain(|(a, id, name)| {
+                node.input(
+                    &InputEvent {
+                        event: InputType::ControllerRelease(*a, *id, name.clone()),
+                        key_mods,
+                        mouse_pos,
+                    },
+                    &mut shell
+                );
+                !std::mem::take(&mut shell.event_consumed)
+            });
+
+            input_state.controller_axes.retain(|(a, value, id, name)| {
+                node.input(
+                    &InputEvent {
+                        event: InputType::ControllerAxis(*a, *value, *id, name.clone()),
+                        key_mods,
+                        mouse_pos,
+                    },
+                    &mut shell
+                );
+                !std::mem::take(&mut shell.event_consumed)
+            });
+        });
+
+        for (key, direction) in [
+            (Key::Left, Direction::Left),
+            (Key::Right, Direction::Right),
+            (Key::Up, Direction::Up),
+            (Key::Down, Direction::Down),
+            (Key::Tab, Direction::Down),
+        ] {
+            if !input_state.keys_down.has_key(key) { continue }
+
+            if !self.selected_node.active {
+                self.enable_navigation();
+                input_state.keys_down.remove_key(key);
+                // return since this was just to enable navigation
+                // otherwise we'd immediate select the next node, without selecting the current node
+                break;
+            }
+
+            let Some(current) = self.selected_node.node else { 
+                warn!("No active node to navigate from ??");
+                break
+            };
+
+            if let Some(node) = self.tree.get_node_context(current.node_id).and_then(|i| i.node_direction(direction)) {
+                self.context_mut(current).selected = Some(false);
+                self.context_mut(node).selected = Some(true);
+                input_state.keys_down.remove_key(key);
+            }
+
+            break
+        }
+    }
+
+    fn enable_navigation(&mut self) {
+        self.selected_node.active = true;
+
+        // try to make sure we have a selected node to start with
+        if self.selected_node.node.is_none() {
+            // find the first selectable node
+            self.selected_node.node = self.find_child(self.root, Rc::new(|tree, node| {
+                tree.context(node).selectable()
+            }));
+
+            if let Some(node) = self.selected_node.node {
+                self.context_mut(node).selected = Some(true)
+            }
+        }
+
+    }
+
+    // helpers for when we're certain the node is in the tree
+    // private for that reason too
+    fn context(&self, node: impl HasNodeId) -> &TreeData {
+        self.get_context(node.get_id()).unwrap()
+    }
+    fn context_mut(&mut self, node: impl HasNodeId) -> &mut TreeData {
+        self.get_context_mut(node.get_id()).unwrap()
+    }
+
+    /// this isnt the most efficient thing ever but hopefully its not used too often
+    fn find_child(&self, parent: impl HasNodeId, f: Rc<dyn Fn(&Self, TaffyNodeId) -> bool>) -> Option<NodeId> {
+        let parent = parent.get_id();
+        if f(self, parent) { return Some(NodeId::new(parent, self.owner)) }
+        for child in self.tree.children(parent).ok()? {
+            if let Some(node) = self.find_child(child, f.clone()) { 
+                return Some(node) 
+            }
+        }
+        None
+    }
+
+
+    pub fn update(
+        &mut self,
+        values: &mut dyn Reflect,
+        actions: &mut ActionQueue,
+        messages: &mut Vec<Message>,
+    ) {
+        if self.should_refresh {
+            self.update_layout();
+        }
+
+        let mut node: Box<dyn Widget> = Box::new(EmptyWidget(self.node.node_id()));
+        std::mem::swap(&mut self.node, &mut node);
+
+        // update the root widget
+        let mut shell = UpdateShell {
+            owner: self.owner,
+            tree: self,
+            values,
+            messages,
+        };
+        node.update(&mut shell, actions);
+
+        self.node = node;
+    }
+
+
+    pub fn draw(&mut self, list: &mut RenderableCollection) {
+        self.with_node(|tree, node| {
+            let mut shell = DrawShell {
+                tree,
+                list,
+                // TODO: make customizable
+                general_theme: GeneralUiTheme::default(),
+            };
+            node.draw(&mut shell);
+        });
+    }
+
+
+    // TaffyTree things
+    pub fn new_leaf(&mut self, style: Style) -> TaffyResult<NodeId> {
+        let id = self.tree.new_leaf(style)?;
+
+        if self.all_children.insert(id) {
+            self.tree.set_node_context(id, Some(TreeData::default()))?;
+        }
+
+        let id = NodeId::new(id, self.owner);
+        Ok(id)
+    }
+
+    pub fn new_with_children(&mut self, style: Style, children: &[NodeId]) -> TaffyResult<NodeId> {
+        let id = self.new_leaf(style)?;
+        let children = children.iter().map(|i| i.node_id).collect::<Vec<_>>();
+        self.tree.set_children(id.node_id, &children)?;
+        Ok(id)
+    }
+
+    pub fn add_child(&mut self, parent: impl HasNodeId, child: impl HasNodeId) {
+        let _ = self.tree.add_child(parent.get_id(), child.get_id());
+    }
+
+    pub fn remove(&mut self, node: impl HasNodeId) {
+        let id = node.get_id();
+        let _ = self.tree.remove(id);
+        self.all_children.remove(&id);
+    }
+
+    pub fn get_layout(&self, node: impl HasNodeId) -> Option<&Layout> {
+        self.tree.layout(node.get_id()).ok()
+    }
+
+    pub fn parent(&self, node: impl HasNodeId) -> Option<NodeId> {
+        self.tree.parent(node.get_id())
+            .map(|i| NodeId::new(i, self.owner))
+    }
+
+
+    pub fn get_context(&self, node: impl HasNodeId) -> Option<&TreeData> {
+        self.tree.get_node_context(node.get_id())
+    }
+    pub fn get_context_mut(&mut self, node: impl HasNodeId) -> Option<&mut TreeData> {
+        self.tree.get_node_context_mut(node.get_id())
+    }
+
+    pub fn mark_dirty(&mut self, node: impl HasNodeId) {
+        let _ = self.tree.mark_dirty(node.get_id());
+    }
+
+
+    pub fn get_style(&self, node: impl HasNodeId) -> Option<&Style> {
+        self.tree.style(node.get_id()).ok()
+    }
+    pub fn set_style(&mut self, node: impl HasNodeId, style: Style) {
+        let _ = self.tree.set_style(node.get_id(), style);
+    }
 }
 
 
+#[derive(Copy, Clone)]
+pub struct TreeData {
+    // pub bounds: Bounds,
+    pub absolute_bounds: Bounds,
+    pub local_transform: Transform,
+    pub global_transform: Matrix,
+    pub inverse_global_transform: Matrix,
+    pub needs_inverse_transform: bool,
+
+    pub selected: Option<bool>,
+    pub node_left: Option<TaffyNodeId>,
+    pub node_right: Option<TaffyNodeId>,
+    pub node_above: Option<TaffyNodeId>,
+    pub node_below: Option<TaffyNodeId>,
+}
+impl Default for TreeData {
+    fn default() -> Self {
+        Self { 
+            // bounds: Bounds::default(),
+            absolute_bounds: Bounds::default(), 
+            local_transform: Transform::default(), 
+            global_transform: Matrix::identity(), 
+            inverse_global_transform: Matrix::identity(), 
+            needs_inverse_transform: false,
+
+            selected: None, 
+            node_left: None, 
+            node_right: None, 
+            node_above: None, 
+            node_below: None, 
+        }
+    }
+}
+impl TreeData {
+    pub fn selectable(&self) -> bool {
+        self.selected.is_some()
+    }
+    pub fn set_selectable(&mut self, selectable: bool) {
+        self.selected = selectable.then_some(false);
+    }
+
+    pub fn node_direction(&self, direction: Direction) -> Option<TaffyNodeId> {
+        match direction {
+            Direction::Up => self.node_above,
+            Direction::Down => self.node_below,
+            Direction::Left => self.node_left,
+            Direction::Right => self.node_right,
+        }
+    }
+}
 
 
+#[derive(Copy, Clone, Debug, Default)]
+struct SelectedNode {
+    node: Option<NodeId>,
+    active: bool,
+}
 
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
+pub struct NodeId {
+    pub node_id: TaffyNodeId,
+    pub owner: MessageOwner,
+}
+impl NodeId {
+    pub fn new(id: TaffyNodeId, owner: MessageOwner) -> Self {
+        Self {
+            node_id: id,
+            owner,
+        }
+    }
+}
+impl Default for NodeId {
+    fn default() -> Self { EMPTY_NODE }
+}
+
+
+#[derive(Clone, Debug)]
+pub enum MenuType {
+    Internal(&'static str),
+    Custom(String)
+}
+#[cfg(feature="graphics")]
+impl MenuType {
+    pub fn from_menu(menu: &dyn crate::prelude::Widget) -> Self {
+        match menu.name() {
+            Cow::Borrowed(name) => Self::Internal(name),
+            Cow::Owned(name) => Self::Custom(name.clone())
+        }
+    }
+}

@@ -1,11 +1,3 @@
-use wgpu::{
-    Device,
-    Buffer,
-    BindGroup,
-    BufferUsages,
-    BindGroupEntry,
-    BindGroupLayout, 
-};
 use crate::prelude::*;
 use tokio::sync::OnceCell;
 use tataku_client_common::prelude::*;
@@ -14,7 +6,7 @@ const QUAD_PER_BUF:u64 = 3000;
 const VTX_PER_BUF:u64 = QUAD_PER_BUF * 4;
 const IDX_PER_BUF:u64 = QUAD_PER_BUF * 6;
 
-pub const EXPECTED_SLIDER_COUNT:u64 = 10;
+pub const EXPECTED_SLIDER_COUNT:u64 = 15;
 pub const SLIDER_GRID_COUNT:u64 = EXPECTED_SLIDER_COUNT * 32;
 pub const GRID_CELL_COUNT:u64 = SLIDER_GRID_COUNT * 16;
 pub const LINE_SEGMENT_COUNT:u64 = GRID_CELL_COUNT * 2;
@@ -48,7 +40,7 @@ impl RenderBufferable for SliderRenderBuffer {
     const VTX_PER_BUF: u64 = VTX_PER_BUF;
     const IDX_PER_BUF: u64 = IDX_PER_BUF;
     
-    fn name() -> &'static str { "slider buffer" }
+    // fn name() -> &'static str { "slider buffer" }
 
     fn reset(&mut self) {
         self.scissor = None;
@@ -61,7 +53,7 @@ impl RenderBufferable for SliderRenderBuffer {
         self.used_line_segments = 0;
     }
 
-    fn dump(&mut self, queue: &wgpu::Queue, cache: &Self::Cache) {
+    fn dump(&mut self, queue: &Queue, cache: &Self::Cache) {
         queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&cache.cpu_vtx));
         queue.write_buffer(&self.index_buffer, 0, bytemuck::cast_slice(&cache.cpu_idx));
 
@@ -83,7 +75,7 @@ impl RenderBufferable for SliderRenderBuffer {
         let grid_cells = create_buffer::<u32>(device, BufferUsages::STORAGE, GRID_CELL_COUNT);
         let line_segments = create_buffer::<LineSegment>(device, BufferUsages::STORAGE, LINE_SEGMENT_COUNT);
 
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("slider bind group"),
             layout: bind_group_layout,
             entries: &[
@@ -119,9 +111,9 @@ impl RenderBufferable for SliderRenderBuffer {
 
 /// helper for creating buffers, since SliderRenderBuffer has so goddamn many
 fn create_buffer<T>(device: &Device, t: BufferUsages, count: u64) -> Buffer {
-    device.create_buffer(&wgpu::BufferDescriptor {
+    device.create_buffer(&BufferDescriptor {
         label: Some("Slider Buffer"),
-        usage: t | wgpu::BufferUsages::COPY_DST,
+        usage: t | BufferUsages::COPY_DST,
         size: count * std::mem::size_of::<T>() as u64,
         mapped_at_creation: false,
     })
@@ -169,7 +161,7 @@ pub struct SliderReserveData<'a> {
     pub line_segment_offset: u32,
 }
 
-impl<'a> SliderReserveData<'a> {
+impl SliderReserveData<'_> {
     pub fn copy_in(
         &mut self, 
         vtx: &[SliderVertex], 

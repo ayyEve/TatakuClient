@@ -1,5 +1,5 @@
 mod curve;
-mod osu_math;
+mod peppy_math;
 
 pub use curve::*;
-pub use osu_math::*;
+pub use peppy_math::*;

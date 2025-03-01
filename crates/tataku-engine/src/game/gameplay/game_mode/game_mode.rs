@@ -1,26 +1,27 @@
 use crate::prelude::*;
 
 #[async_trait]
-pub trait GameMode: GameModeInput + GameModeProperties + Send + Sync {
+pub trait GameMode: Send + Sync {
     async fn new(
         beatmap: &Beatmap, 
-        diff_calc_only: bool
+        diff_calc_only: bool,
+        settings: &Settings,
     ) -> Result<Self, TatakuError> where Self:Sized;
 
     async fn handle_replay_frame<'a>(
         &mut self, 
         frame: ReplayFrame, 
-        state: &mut GameplayStateForUpdate<'a>
+        state: &mut GameplayUpdateShell<'a>
     );
 
     async fn update<'a>(
         &mut self, 
-        state: &mut GameplayStateForUpdate<'a>
+        state: &mut GameplayUpdateShell<'a>
     );
 
     async fn draw<'a>(
         &mut self, 
-        state: GameplayStateForDraw<'a>, 
+        state: GameplayDrawShell<'a>, 
         list: &mut RenderableCollection,
     );
 
@@ -29,15 +30,13 @@ pub trait GameMode: GameModeInput + GameModeProperties + Send + Sync {
     fn unpause(&mut self) {}
     async fn reset(&mut self, beatmap: &Beatmap);
 
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>);
-    async fn fit_to_area(&mut self, bounds: Bounds);
-
+    fn set_bounds(&mut self, bounds: Bounds, full_window: bool);
     
     async fn force_update_settings(&mut self, settings: &Settings);
     #[cfg(feature="graphics")]
-    async fn reload_skin(&mut self, beatmap_path: &String, skin_manager: &mut dyn SkinProvider) -> TextureSource;
+    async fn reload_skin(&mut self, beatmap_path: &str, skin_manager: &mut dyn SkinProvider) -> TextureSource;
 
-    async fn time_jump(&mut self, _new_time: f32) {}
+    async fn time_jump<'a>(&mut self, _new_time: f32, _state: &mut GameplayUpdateShell<'a>) {}
     async fn apply_mods(&mut self, mods: Arc<ModManager>);
     // fn apply_auto(&mut self, settings: &BackgroundGameSettings);
 
@@ -46,4 +45,52 @@ pub trait GameMode: GameModeInput + GameModeProperties + Send + Sync {
     /// happens right when kiai changes
     async fn kiai_changed(&mut self, is_kiai: bool);
 
+    fn properties(&self) -> GameModeProperties;
+
+    fn get_playfield(&self) -> PlayfieldNonsense;
+
+    /// setup any gamemode specific ui elements for this gamemode
+    /// ie combo and leaderboard, since the pos is different per-mode
+    async fn build_widgets(
+        &self, 
+        _loader: &mut dyn UiElementLoader,
+    ) {}
+
+
+    async fn handle_input(&mut self, input: InputEvent) -> Option<ReplayAction>;
+}
+
+
+#[derive(ChainableInitializer)]
+#[derive(Copy, Clone, Debug, Default)]
+pub struct PlayfieldNonsense {
+    pub bounds: Bounds,
+    #[chain] pub scale: f32,
+    #[chain] pub circle_size: Vector2,
+    #[chain] pub flip_vertical: bool,
+    #[chain] pub is_fullscreen: bool,
+}
+impl PlayfieldNonsense {
+    pub fn new(
+        bounds: Bounds, 
+        scale: f32, 
+        circle_size: Vector2,
+        flip_vertical: bool,
+    ) -> Self {
+        Self {
+            bounds,
+            scale,
+            circle_size,
+            flip_vertical,
+            is_fullscreen: false,
+        }
+    }
+
+    pub fn new_simple(bounds: Bounds) -> Self {
+        Self {
+            bounds,
+            scale: 1.0,
+            ..Default::default()
+        }
+    }
 }

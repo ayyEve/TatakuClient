@@ -19,7 +19,7 @@ impl TaskManager {
 
         self.tasks.push(TaskInner {
             task,
-            started: Instant::now(),
+            started: TatakuInstant::now(),
         })
     }
 
@@ -40,8 +40,16 @@ impl TaskManager {
             task_count += 1;
             if task_count > self.max_tasks { break }
 
+            if task.get_state() == TatakuTaskState::NotStarted {
+                info!("Starting task {}", task.get_name())
+            }
+
             // run the task
             task.run(values, &state, &mut actions).await;
+
+            if task.get_state() == TatakuTaskState::Complete {
+                info!("Task complete {}", task.get_name())
+            }
 
             // if task.get_type() == TatakuTaskType::Once && task.started.as_millis() > 60_000 {
             //     warn!("task has taken a long time: {}", task.get_name());
@@ -54,7 +62,11 @@ impl TaskManager {
         actions.take()
     }
 }
-
+impl Default for TaskManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 
 struct TaskInner {
@@ -62,7 +74,7 @@ struct TaskInner {
     task: Box<dyn TatakuTask>,
 
     /// When did it start?
-    started: Instant,
+    started: TatakuInstant,
 }
 impl Deref for TaskInner {
     type Target = Box<dyn TatakuTask>;

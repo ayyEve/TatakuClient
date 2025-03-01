@@ -1,18 +1,20 @@
 use crate::prelude::*;
 
+
+/// TODO: is it worth moving everything into just a vec instead of using a hashmap?
 #[derive(Default, Clone)]
 pub struct KeyCounter {
     pub keys: HashMap<KeyPress, KeyInfo>,
     pub key_order: Vec<KeyPress>,
 }
 impl KeyCounter {
-    pub fn new(key_defs:Vec<(KeyPress, String)>) -> Self {
+    pub fn new(key_defs: &[(KeyPress, &str)]) -> Self {
         let mut key_order = Vec::new();
         let mut keys = HashMap::new();
 
-        for (key, label) in key_defs {
+        for &(key, label) in key_defs {
             key_order.push(key);
-            keys.insert(key, KeyInfo::new(label));
+            keys.insert(key, KeyInfo::new(label.to_owned()));
         }
 
         Self {
@@ -22,15 +24,13 @@ impl KeyCounter {
     }
 
     pub fn key_down(&mut self, key: KeyPress) {
-        if let Some(info) = self.keys.get_mut(&key) {
-            info.count += 1;
-            info.held = true;
-        }
+        let Some(info) = self.keys.get_mut(&key) else { return };
+        info.count += 1;
+        info.held = true;
     }
     pub fn key_up(&mut self, key: KeyPress) {
-        if let Some(info) = self.keys.get_mut(&key) {
-            info.held = false;
-        }
+        let Some(info) = self.keys.get_mut(&key) else { return };
+        info.held = false;
     }
 
     pub fn reset(&mut self) {

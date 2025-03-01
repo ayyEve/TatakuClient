@@ -33,5 +33,5 @@ impl AudioInstance for NullAudioInstance {
     fn set_volume(&self, _: f32) {}
     fn set_position(&self, _: f32) {}
 
-    fn get_data(&self) -> Vec<FFTData> { vec![] }
+    fn get_data(&self) -> Vec<FFTEntry> { vec![] }
 }

@@ -12,8 +12,8 @@ impl OsuReplayDownloader {
 
 #[async_trait]
 impl ReplayDownloader for OsuReplayDownloader {
-    async fn get_replay(&self) -> TatakuResult<Score> {
-        let key = Settings::get().osu_api_key.clone();
+    async fn get_replay(&self, settings: &Settings) -> TatakuResult<Score> {
+        let key = settings.osu_api_key.clone();
 
         let url = format!("https://osu.ppy.sh//api/get_replay?k={key}&s={}", self.1);
 
@@ -21,7 +21,7 @@ impl ReplayDownloader for OsuReplayDownloader {
         let bytes = reqwest::get(url).await?.bytes().await?;
     
         // check if the received data 
-        if bytes.len() == 0 {
+        if bytes.is_empty() {
             return Err(TatakuError::String("Downloaded file was empty".to_owned()));
         }
 

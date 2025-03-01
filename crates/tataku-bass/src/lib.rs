@@ -1,14 +1,14 @@
-#[macro_use] extern crate log;
+use tracing::*;
 
 use std::sync::Arc;
 use bass_rs::prelude::*;
 use tataku_engine::prelude::{
     AudioApi,
     AudioApiInit,
-    TatakuResult, 
+    TatakuResult,
     AudioError,
     AudioInstance,
-    FFTData
+    FFTEntry
 };
 
 
@@ -87,8 +87,8 @@ impl AudioInstance for SampleChannelInstance {
     }
     fn play(&self, restart: bool) {
         let mut data = self.data_mut();
-        
-        let Ok(new_channel) = data.channel.get_channel() else { warn!("couldnt get new channel"); return }; 
+
+        let Ok(new_channel) = data.channel.get_channel() else { warn!("couldnt get new channel"); return };
         // make sure the new channel has the correct volume and rate set
         let _ = new_channel.set_rate(data.rate);
         let _ = new_channel.set_volume(data.volume);
@@ -129,12 +129,13 @@ impl AudioInstance for SampleChannelInstance {
         self.data_mut().set_vol(vol);
     }
 
-    fn get_data(&self) -> Vec<FFTData> {
+    fn get_data(&self) -> Vec<FFTEntry> {
         self.data().channel
-        .get_data(DataType::FFT2048, 1024u32).unwrap_or_default()
-        .into_iter()
-        .map(|a|FFTData::AmplitudeOnly(a))
-        .collect()
+            .get_data(DataType::FFT2048, 1024u32)
+            .unwrap_or_default()
+            .into_iter()
+            .map(FFTEntry::AmplitudeOnly)
+            .collect()
     }
 
     fn get_duration(&self) -> f32 {
@@ -152,11 +153,11 @@ impl AudioInstance for StreamChannelInstance {
     }
 
     fn pause(&self) {
-        let _ = self.0.pause(); 
+        let _ = self.0.pause();
     }
 
     fn stop(&self) {
-        let _ = self.0.stop(); 
+        let _ = self.0.stop();
     }
 
     fn is_playing(&self) -> bool {
@@ -185,10 +186,10 @@ impl AudioInstance for StreamChannelInstance {
         let _ = self.0.set_volume(vol);
     }
 
-    fn get_data(&self) -> Vec<FFTData> {
+    fn get_data(&self) -> Vec<FFTEntry> {
         self.0.get_data(DataType::FFT2048, 1024u32).unwrap_or_default()
         .into_iter()
-        .map(|a|FFTData::AmplitudeOnly(a))
+        .map(FFTEntry::AmplitudeOnly)
         .collect()
     }
 

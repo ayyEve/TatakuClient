@@ -3,14 +3,15 @@ use tataku_client_proc_macros::Settings;
 
 const SETTINGS_FILE:&str = "settings.json";
 
-#[derive(Clone, Serialize, PartialEq, Debug)]
+#[derive(Serialize)]
+#[derive(Clone, PartialEq, Debug)]
 #[cfg_attr(feature="graphics", derive(Settings))]
 #[derive(SettingsDeserialize, Reflect)]
 #[serde(default)]
+#[allow(clippy::manual_non_exhaustive)]
 pub struct Settings {
     #[serde(skip)]
     pub save_path: String,
-
 
     // audio
     // #[Setting(text="Master Volume", category="Audio Settings")]
@@ -19,75 +20,56 @@ pub struct Settings {
     pub music_vol: f32,
     // #[Setting(text="Effect Volume")]
     pub effect_vol: f32,
-    #[cfg_attr(feature="graphics", Setting(text="Global Offset", min=-100.0, max=100.0, category="Audio Settings"))]
+    #[cfg_attr(feature="graphics", setting(text="Global Offset", min=-100.0, max=100.0, category="Audio Settings"))]
     pub global_offset: f32,
     
     // login
-    #[cfg_attr(feature="graphics", Setting(text="Tataku Username", category="Tataku Server Settings"))]
+    #[cfg_attr(feature="graphics", setting(text="Tataku Username", category="Tataku Server Settings"))]
     pub username: String,
-    #[cfg_attr(feature="graphics", Setting(text="Tataku Password", password=true))]
+    #[cfg_attr(feature="graphics", setting(text="Tataku Password", password=true))]
     pub password: String,
-    #[cfg_attr(feature="graphics", Setting(text="Tataku Server Url"))]
+    #[cfg_attr(feature="graphics", setting(text="Tataku Server Url"))]
     pub server_url: String,
-    #[cfg_attr(feature="graphics", Setting(text="Tataku Score Url"))]
+    #[cfg_attr(feature="graphics", setting(text="Tataku Score Url"))]
     pub score_url: String,
     
     // osu login (for direct)
-    #[cfg_attr(feature="graphics", Setting(text="Osu Username", category="Osu Integration"))]
+    #[cfg_attr(feature="graphics", setting(text="Osu Username", category="Osu Integration"))]
     pub osu_username: String,
-    #[cfg_attr(feature="graphics", Setting(text="Osu Password", password=true))]
+    #[cfg_attr(feature="graphics", setting(text="Osu Password", password=true))]
     pub osu_password: String,
-    #[cfg_attr(feature="graphics", Setting(text="Osu Api Key", password=true))]
+    #[cfg_attr(feature="graphics", setting(text="Osu Api Key", password=true))]
     pub osu_api_key: String,
     
     // game settings
-    #[serde(alias="standard_settings")]
-    #[cfg_attr(feature="graphics", Subsetting(category="Osu Settings"))]
-    pub osu_settings: OsuSettings,
-    #[cfg_attr(feature="graphics", Subsetting(category="Taiko Settings"))]
-    pub taiko_settings: TaikoSettings,
-    // #[Subsetting(category="Catch Settings")]
-    pub catch_settings: CatchSettings,
-    #[cfg_attr(feature="graphics", Subsetting(category="Mania Settings"))]
-    pub mania_settings: ManiaSettings,
-    #[cfg_attr(feature="graphics", Subsetting(category="Background Game Settings"))]
+    #[reflect(skip)]
+    #[cfg_attr(feature="graphics", subsetting(category="Gamemodes"))]
+    pub gamemode_settings: GamemodeSettingsCollection,
+
+    #[cfg_attr(feature="graphics", subsetting(category="Background Game Settings"))]
     pub background_game_settings: BackgroundGameSettings,
-    #[cfg_attr(feature="graphics", Subsetting(category="Common Game Settings"))]
+    #[cfg_attr(feature="graphics", subsetting(category="Common Game Settings"))]
     pub common_game_settings: CommonGameplaySettings,
 
     pub last_played_mode: String,
     pub score_method: ScoreRetreivalMethod,
     pub sort_by: SortBy,
     
-    #[cfg_attr(feature="graphics", Setting(text="Beatmap Hitsounds"))]
+    #[cfg_attr(feature="graphics", setting(text="Beatmap Hitsounds"))]
     pub beatmap_hitsounds: bool,
 
-    #[cfg_attr(feature="graphics", Setting(text="Enable Difficulty Calculation"))]
+    #[cfg_attr(feature="graphics", setting(text="Enable Difficulty Calculation"))]
     pub enable_diffcalc: bool,
 
-    #[cfg_attr(feature="graphics", Subsetting(category="Display Settings"))]
+    #[cfg_attr(feature="graphics", subsetting(category="Display Settings"))]
     pub display_settings: DisplaySettings,
     
 
     // cursor
-    #[cfg_attr(feature="graphics", Setting(text="Cursor Color", category="Cursor Settings"))]
-    pub cursor_color: SettingsColor,
-    #[cfg_attr(feature="graphics", Setting(text="Cursor Scale", min=0.1, max=10.0))]
-    pub cursor_scale: f32,
-    #[cfg_attr(feature="graphics", Setting(text="Cursor Border", min=0.1, max=5.0))]
-    pub cursor_border: f32,
-    #[cfg_attr(feature="graphics", Setting(text="Cursor Border Color"))]
-    pub cursor_border_color: SettingsColor,
-
-    #[cfg_attr(feature="graphics", Setting(text="Cursor Ripples"))]
-    pub cursor_ripples: bool,
-    #[cfg_attr(feature="graphics", Setting(text="Cursor Ripple Color"))]
-    pub cursor_ripple_color: SettingsColor,
-    #[cfg_attr(feature="graphics", Setting(text="Cursor Ripple Scale"))]
-    pub cursor_ripple_final_scale: f32,
+    pub cursor_settings: CursorSettings,
 
     // skin settings
-    #[cfg_attr(feature="graphics", Setting(text="Skin", dropdown="SkinDropdownable", category="Skin Settings"))]
+    #[cfg_attr(feature="graphics", setting(text="Skin", dropdown="SkinDropdownable", category="Skin Settings"))]
     pub current_skin: String,
 
     // TODO
@@ -96,27 +78,27 @@ pub struct Settings {
     // #[cfg_attr(feature="graphics", Setting(text="Refresh Skins", action="SkinManager::refresh_skins()"))]
     refresh_skins_button: (),
 
-    #[cfg_attr(feature="graphics", Setting(text="Theme", dropdown="SelectedTheme"))]
+    #[cfg_attr(feature="graphics", setting(text="Theme", dropdown="SelectedTheme"))]
     pub theme: SelectedTheme,
 
-    // #[Setting(text="UI Scale")] // not ready yet
-    pub ui_scale: f64,
-    #[cfg_attr(feature="graphics", Setting(text="Background Dim", min=0, max=1))]
+    #[cfg_attr(feature="graphics", setting(text="UI Scale", min=0.1, max=4.0))] // not ready yet
+    pub ui_scale: f32,
+    #[cfg_attr(feature="graphics", setting(text="Background Dim", min=0, max=1))]
     pub background_dim: f32,
 
     // misc keybinds
-    #[cfg_attr(feature="graphics", Setting(text="User Panel Key", category="Common Keybinds"))]
+    #[cfg_attr(feature="graphics", setting(text="User Panel Key", category="Common Keybinds"))]
     pub key_user_panel: Key,
 
     // double tap protection
-    #[cfg_attr(feature="graphics", Setting(text="Enable DoubleTap Protection", category="DoubleTap Protection"))]
+    #[cfg_attr(feature="graphics", setting(text="Enable DoubleTap Protection", category="DoubleTap Protection"))]
     pub enable_double_tap_protection: bool,
-    #[cfg_attr(feature="graphics", Setting(text="DoubleTap Protection Leniency", min=10.0, max=200.0))]
+    #[cfg_attr(feature="graphics", setting(text="DoubleTap Protection Leniency", min=10.0, max=200.0))]
     pub double_tap_protection_duration: f32,
 
 
     // integrations
-    #[cfg_attr(feature="graphics", Subsetting(category="Integrations"))]
+    #[cfg_attr(feature="graphics", subsetting(category="Integrations"))]
     pub integrations: IntegrationSettings,
 
 
@@ -124,21 +106,13 @@ pub struct Settings {
     pub last_git_hash: String,
     pub external_games_folders: Vec<String>,
     
-    #[cfg_attr(feature="graphics", Subsetting(category="Log Settings"))]
+    #[cfg_attr(feature="graphics", subsetting(category="Log Settings"))]
     pub logging_settings: LoggingSettings,
 
     #[serde(skip)]
     pub skip_autosaveing: bool,
 }
 impl Settings {
-    pub fn get() -> Arc<Self> {
-        GlobalValueManager::get::<Settings>().unwrap()
-    }
-    pub fn get_mut() -> GlobalValueMut<Self> {
-        GlobalValueManager::get_mut::<Settings>().unwrap()
-    }
-
-
     pub async fn load(actions: &mut ActionQueue) -> Self {
         Self::load_from(SETTINGS_FILE, actions).await
     }
@@ -161,16 +135,13 @@ impl Settings {
         // check password hashes
         s.check_hashes();
         
-        GlobalValueManager::update(Arc::new(s.clone()));
-        GlobalValueManager::update(Arc::new(WindowSize(s.display_settings.window_size.into())));
-
         // save after loading.
         // writes file if it doesnt exist, and writes new values from updates
         s.save(actions);
         s
     }
 
-    pub  fn save(
+    pub fn save(
         &self,
         actions: &mut ActionQueue,
     ) {
@@ -182,14 +153,26 @@ impl Settings {
         }
     }
 
+    // TODO
+    pub fn gamemode_settings<G: serde::de::DeserializeOwned>(&self, gamemode: impl AsRef<str>) -> Option<G> {
+        serde_json::from_value(self.gamemode_settings.get(gamemode.as_ref())?.clone()).ok()
+    }
+
+    pub fn update_gamemode_settings<G: serde::Serialize>(&mut self, gamemode: impl AsRef<str>, settings: G) {
+        *self.gamemode_settings
+            .entry(gamemode.as_ref().to_owned())
+            .or_default()
+            = serde_json::to_value(settings)
+            .expect("couldnt serialize game settings?")
+    }
 
 
     pub fn get_effect_vol(&self) -> f32 { self.effect_vol * self.master_vol }
     pub fn get_music_vol(&self) -> f32 { self.music_vol * self.master_vol }
 
     pub fn check_hashes(&mut self) {
-        if self.osu_password.len() > 0 { self.osu_password = check_md5(self.osu_password.clone()) }
-        if self.password.len() > 0 { self.password = check_sha512(self.password.clone()) }
+        if !self.osu_password.is_empty() { self.osu_password = check_md5(self.osu_password.clone()) }
+        if !self.password.is_empty() { self.password = check_sha512(self.password.clone()) }
     }
 
     // make a backup of the setting before they're overwritten (when the file fails to load)
@@ -242,10 +225,11 @@ impl Default for Settings {
 
             // game settings
             logging_settings: LoggingSettings::default(),
-            osu_settings: OsuSettings::default(),
-            taiko_settings: TaikoSettings::default(),
-            catch_settings: CatchSettings::default(),
-            mania_settings: ManiaSettings::default(),
+            gamemode_settings: Default::default(),
+            // osu_settings: OsuSettings::default(),
+            // taiko_settings: TaikoSettings::default(),
+            // catch_settings: CatchSettings::default(),
+            // mania_settings: ManiaSettings::default(),
             background_game_settings: BackgroundGameSettings::default(),
             common_game_settings: CommonGameplaySettings::default(),
             last_played_mode: "osu".to_owned(),
@@ -254,15 +238,7 @@ impl Default for Settings {
             beatmap_hitsounds: true,
             enable_diffcalc: true,
 
-
-            // cursor
-            cursor_scale: 1.0,
-            cursor_border: 1.5,
-            cursor_color: Color::from_hex("#ffff32".to_owned()).into(),
-            cursor_border_color: Color::from_hex("#000".to_owned()).into(),
-            cursor_ripples: true,
-            cursor_ripple_color: Color::from_hex("#000".to_owned()).into(),
-            cursor_ripple_final_scale: 1.5,
+            cursor_settings: Default::default(),
             
             // keybinds
             key_user_panel: Key::F8,
@@ -377,9 +353,9 @@ impl TryFrom<&TatakuValue> for ScoreRetreivalMethod {
         }
     }
 }
-impl Into<TatakuValue> for ScoreRetreivalMethod {
-    fn into(self) -> TatakuValue {
-        TatakuValue::String(format!("{self:?}"))
+impl From<ScoreRetreivalMethod> for TatakuValue {
+    fn from(val: ScoreRetreivalMethod) -> Self {
+        TatakuValue::String(format!("{val:?}"))
     }
 }
 

@@ -34,7 +34,6 @@ pub struct HitsoundManager {
         HashMap<String, Arc<dyn AudioInstance>>
     >,
     playmode_prefix: String,
-
     pub enabled: bool,
 }
 impl HitsoundManager {
@@ -46,27 +45,27 @@ impl HitsoundManager {
         &mut self, 
         beatmap: &Arc<BeatmapMeta>,
         actions: &mut ActionQueue,
+        settings: &Settings,
     ) {
         let map_folder = Path::new(&*beatmap.file_path).parent().unwrap();
         let map_files = map_folder.read_dir().unwrap();
-        let settings = Settings::get();
 
         // load beatmap sounds first (if enabled)
         let mut beatmap_sounds = HashMap::new();
         if settings.beatmap_hitsounds {
             for file in map_files {
-                if let Ok(file) = file {
-                    let file_name = file.file_name().to_string_lossy().to_lowercase();
-                    if file_name.ends_with(".wav") {
-                        let filename = file_name.trim_end_matches(".wav").to_owned();
-                        load_sound(
-                            file.path().to_string_lossy().trim_end_matches(".wav"),
-                            filename, 
-                            &mut beatmap_sounds,
-                            actions
-                        ).await;
-                    }
+                let Ok(file) = file else { continue };
+                let file_name = file.file_name().to_string_lossy().to_lowercase();
+                if file_name.ends_with(".wav") {
+                    let filename = file_name.trim_end_matches(".wav").to_owned();
+                    load_sound(
+                        file.path().to_string_lossy().trim_end_matches(".wav"),
+                        filename, 
+                        &mut beatmap_sounds,
+                        actions
+                    ).await;
                 }
+                
             }
             // error!("beatmap: {:?}", beatmap_sounds.keys());
         }
@@ -75,7 +74,7 @@ impl HitsoundManager {
         self.sounds.insert(HitsoundSource::Beatmap, beatmap_sounds);
 
         // handle loading the rest here so we avoid duplicate code
-        self.reload_skin(&settings, actions).await;
+        self.reload_skin(settings, actions).await;
     } 
 
     async fn load_hitsound(
@@ -98,7 +97,7 @@ impl HitsoundManager {
         // }
         
         // check for playmode override
-        if self.playmode_prefix.len() > 0 {
+        if !self.playmode_prefix.is_empty() {
             let filename = format!("{}-{filename}", self.playmode_prefix);
 
             // skin
@@ -111,7 +110,7 @@ impl HitsoundManager {
         }
     }
 
-    pub fn play_sound(&self, hitsounds: &Vec<Hitsound>, vol: f32) {
+    pub fn play_sound(&self, hitsounds: &[Hitsound], vol: f32) {
         if !self.enabled { return }
 
         // The sound file is loaded from the first of the following directories that contains a matching filename:
@@ -119,17 +118,13 @@ impl HitsoundManager {
         // Skin, with the index removed
         // Default osu! resources, with the index removed
         // When filename is given, no addition sounds will be played, and this file in the beatmap directory is played instead.
-
-
         for sound in hitsounds.iter() {
             let vol = sound.volume * vol;
             let name = &sound.filename;
 
             // if theres is a playmode prefix, try to play a prefixed sound first
-            if !self.playmode_prefix.is_empty() {
-                if self.play_sound_single(sound, Some(&self.playmode_prefix), vol) {
-                    return;
-                }
+            if !self.playmode_prefix.is_empty() && self.play_sound_single(sound, Some(&self.playmode_prefix), vol) {
+                return;
             }
 
             // if that failed, try without the prefix
@@ -140,36 +135,12 @@ impl HitsoundManager {
 
     }
 
-    // pub fn play_sound_old(&self, hitsounds: &Vec<Hitsound>, vol: f32) {
-    //     if !self.enabled { return }
-
-    //     // The sound file is loaded from the first of the following directories that contains a matching filename:
-    //     // Beatmap, if index is not 0
-    //     // Skin, with the index removed
-    //     // Default osu! resources, with the index removed
-    //     // When filename is given, no addition sounds will be played, and this file in the beatmap directory is played instead.
-
-    //     for sound in hitsounds.iter() {
-    //         let vol = sound.volume * vol;
-    //         let name = &sound.filename;
-
-    //         // if theres no playmode prefix, dont try to play a prefixed sound first
-    //         if self.playmode_prefix.is_empty() {
-    //             if !self.play_sound_single(sound, None, vol) {
-    //                 warn!("unable to play sound {name}");
-    //             }
-    //         } else {
-    //             // if there is a prefix, try to play that first, otherwise try without the prefix
-    //             if !self.play_sound_single(sound, Some(&self.playmode_prefix), vol) {
-    //                 if !self.play_sound_single(sound, None, vol) {
-    //                     warn!("unable to play sound {name}");
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-
-    pub fn play_sound_single(&self, sound: &Hitsound, prefix: Option<&String>, vol: f32) -> bool {
+    pub fn play_sound_single(
+        &self, 
+        sound: &Hitsound, 
+        prefix: Option<&String>, 
+        vol: f32,
+    ) -> bool {
         if !self.enabled { return false }
         // let mut play_sound = None;
 
@@ -211,99 +182,7 @@ impl HitsoundManager {
 
         false
 
-        // if let Some(sound) = play_sound {
-        //     sound.set_volume(vol);
-        //     sound.set_position(0.0);
-        //     sound.play(true);
-        //     true
-        // } else if let Some(backup) = &sound.filename_backup {
-        //     let name = if let Some(prefix) = prefix {
-        //         format!("{prefix}-{backup}")
-        //     } else {
-        //         backup.clone()
-        //     };
-            
-        //     for source in [
-        //         HitsoundSource::Beatmap,
-        //         HitsoundSource::Skin,
-        //         HitsoundSource::Default
-        //     ] {
-        //         if play_sound.is_none() && sound.allowed_sources.contains(&source) {
-        //             play_sound = self.sounds[&source].get(&name);
-        //         }
-        //     }
-            
-        //     if let Some(sound) = play_sound {
-        //         sound.set_volume(vol);
-        //         sound.set_position(0.0);
-        //         sound.play(true);
-        //         true
-        //     } else {
-        //         false
-        //     }
-
-        // } else {
-        //     false
-        // }
     }
-
-
-    // pub fn play_sound_single_old(&self, sound: &Hitsound, prefix: Option<&String>, vol: f32) -> bool {
-    //     let mut play_sound = None;
-    //     let name = if let Some(prefix) = prefix {
-    //         format!("{prefix}-{}", sound.filename)
-    //     } else {
-    //         sound.filename.clone()
-    //     };
-    //     // info!("attempting to play sound {name} with volume {vol}");
-
-    //     for source in [
-    //         HitsoundSource::Beatmap,
-    //         HitsoundSource::Skin,
-    //         HitsoundSource::Default
-    //     ] {
-    //         if play_sound.is_none() && sound.allowed_sources.contains(&source) {
-    //             play_sound = self.sounds[&source].get(&name);
-    //         }
-    //     }
-
-    //     if let Some(sound) = play_sound {
-    //         sound.set_volume(vol);
-    //         sound.set_position(0.0);
-    //         sound.play(true);
-    //         true
-    //     } else if let Some(backup) = &sound.filename_backup {
-    //         let name = if let Some(prefix) = prefix {
-    //             format!("{prefix}-{backup}")
-    //         } else {
-    //             backup.clone()
-    //         };
-            
-    //         for source in [
-    //             HitsoundSource::Beatmap,
-    //             HitsoundSource::Skin,
-    //             HitsoundSource::Default
-    //         ] {
-    //             if play_sound.is_none() && sound.allowed_sources.contains(&source) {
-    //                 play_sound = self.sounds[&source].get(&name);
-    //             }
-    //         }
-            
-    //         if let Some(sound) = play_sound {
-    //             sound.set_volume(vol);
-    //             sound.set_position(0.0);
-    //             sound.play(true);
-    //             true
-    //         } else {
-    //             false
-    //         }
-
-    //     } else {
-    //         false
-    //     }
-    // }
-
-    
 
 
     pub async fn reload_skin(

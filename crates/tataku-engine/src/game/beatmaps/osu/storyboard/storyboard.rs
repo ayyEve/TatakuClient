@@ -68,25 +68,25 @@ pub enum StoryboardElementDef {
     Animation(StoryboardAnimationDef)
 }
 impl StoryboardElementDef {
-    pub fn read(line: &String) -> Option<Self> {
+    pub fn read(line: &str) -> Option<Self> {
         if line.starts_with('_') || line.starts_with(' ') { return None; }
 
         let mut split = line.split(",");
-        let Some(ele) = split.next() else { return None };
-        let Some(layer) = split.next().and_then(|i|Layer::from_str(i)) else { return None };
-        let Some(origin) = split.next().and_then(|i|Origin::from_str(i)) else { return None };
-        let Some(filepath) = split.next() else { return None };
-        let Some(x) = split.next().and_then(|s| s.parse::<i32>().ok()) else { return None };
-        let Some(y) = split.next().and_then(|s| s.parse::<i32>().ok()) else { return None };
-        let pos = Vector2::new(x as f32, y as f32);
+        let ele = split.next()?;
+        let layer = split.next().and_then(Layer::from_string)?;
+        let origin = split.next().and_then(Origin::from_string)?;
+        let filepath = split.next()?;
+        let x = split.next()?.parse::<f32>().ok()?;
+        let y = split.next()?.parse::<f32>().ok()?;
+        let pos = Vector2::new(x, y);
         let filepath = filepath.trim_matches('"').to_owned();
 
         match ele {
             "Sprite" => Some(StoryboardElementDef::Sprite(StoryboardSpriteDef { layer, origin, filepath, pos })),
             "Animation" => {
-                let Some(frame_count) = split.next().and_then(|s| s.parse::<u16>().ok()) else { return None };
-                let Some(frame_delay) = split.next().and_then(|s| s.parse::<f32>().ok()) else { return None };
-                let loop_type = split.next().and_then(|i| LoopType::from_str(i)).unwrap_or(LoopType::LoopForever);
+                let frame_count = split.next()?.parse::<u16>().ok()?;
+                let frame_delay = split.next()?.parse::<f32>().ok()?;
+                let loop_type = split.next().and_then(LoopType::from_string).unwrap_or(LoopType::LoopForever);
 
                 Some(StoryboardElementDef::Animation(StoryboardAnimationDef { layer, origin, filepath, pos, frame_count, frame_delay, loop_type }))
             }
@@ -111,7 +111,7 @@ pub enum Origin {
     BottomRight = 9
 }
 impl Origin {
-    pub fn from_str(str: &str) -> Option<Self> {
+    pub fn from_string(str: &str) -> Option<Self> {
         match str {
             "0" | "TopLeft" => Some(Self::TopLeft),
             "1" | "Centre" => Some(Self::Centre),
@@ -149,7 +149,7 @@ pub enum LoopType {
     LoopOnce = 1
 }
 impl LoopType {
-    pub fn from_str(str: &str) -> Option<Self> {
+    pub fn from_string(str: &str) -> Option<Self> {
         match str {
             "0" | "LoopForever" => Some(Self::LoopForever),
             "1" | "LoopOnce" => Some(Self::LoopOnce),
@@ -166,7 +166,7 @@ pub enum Layer {
     Foreground = 3
 }
 impl Layer {
-    pub fn from_str(str: &str) -> Option<Self> {
+    pub fn from_string(str: &str) -> Option<Self> {
         match str {
             "0" | "Background" => Some(Self::Background),
             "1" | "Fail" => Some(Self::Fail),
@@ -229,7 +229,7 @@ impl StoryboardDef {
         let mut trigger_def: Option<usize> = None;
 
         for (n, line) in lines.into_iter().enumerate() {
-            if line.len() == 0 || line.starts_with("//") { continue }
+            if line.is_empty() || line.starts_with("//") { continue }
 
             // check if there's a new element
             if let Some(new_ele) = StoryboardElementDef::read(&line) {
@@ -283,13 +283,13 @@ impl StoryboardDef {
             // helper because this code was already ugly
             macro_rules! parse_or_continue {
                 ($name: ident, $T:ty) => {
-                    let Some($name) = split.next().and_then(|s| s.parse::<$T>().ok()) else { error!("error reading {}, line {n}", stringify!($name)); continue };
+                    let Some($name) = split.next().and_then(|s| s.parse::<$T>().ok()) else { error!("error reading {}, line {n}: {line}", stringify!($name), ); continue };
                 };
                 ($name: ident, $T:ty, $default: ident) => {
                     let $name = split.next().and_then(|s| s.parse::<$T>().ok()).unwrap_or($default);
                 };
                 ($name: ident, $T:ty, _) => {
-                    let Some($name) = split.next().and_then(|s| <$T>::from_str(s)) else { error!("error reading {}, line {n}", stringify!($name)); continue };
+                    let Some($name) = split.next().and_then(|s| <$T>::from_string(s)) else { error!("error reading {}, line {n}: {line}", stringify!($name)); continue };
                 };
             }
 
@@ -339,20 +339,20 @@ impl StoryboardDef {
                     StoryboardEvent::Move { start, end }
                 }
                 "MX" => {
-                    parse_or_continue!(start_x, f32);
-                    parse_or_continue!(end_x, f32, start_x);
-                    StoryboardEvent::MoveX { start_x, end_x }
+                    parse_or_continue!(start, f32);
+                    parse_or_continue!(end, f32, start);
+                    StoryboardEvent::MoveX { start, end }
                 }
                 "MY" => {
-                    parse_or_continue!(start_y, f32);
-                    parse_or_continue!(end_y, f32, start_y);
-                    StoryboardEvent::MoveY { start_y, end_y }
+                    parse_or_continue!(start, f32);
+                    parse_or_continue!(end, f32, start);
+                    StoryboardEvent::MoveY { start, end }
                 }
 
                 "S" => {
                     parse_or_continue!(start_scale, f32);
                     parse_or_continue!(end_scale, f32, start_scale);
-                    StoryboardEvent::Scale { start_scale, end_scale }
+                    StoryboardEvent::Scale { start: start_scale, end: end_scale }
                 }
 
                 "V" => {
@@ -360,15 +360,15 @@ impl StoryboardDef {
                     parse_or_continue!(start_scale_y, f32);
                     parse_or_continue!(end_scale_x, f32, start_scale_x);
                     parse_or_continue!(end_scale_y, f32, start_scale_y);
-                    let start_scale = Vector2::new(start_scale_x, start_scale_y);
-                    let end_scale = Vector2::new(end_scale_x, end_scale_y);
-                    StoryboardEvent::VectorScale { start_scale, end_scale}
+                    let start = Vector2::new(start_scale_x, start_scale_y);
+                    let end = Vector2::new(end_scale_x, end_scale_y);
+                    StoryboardEvent::VectorScale { start, end }
                 }
                 
                 "R" => {
-                    parse_or_continue!(start_rotation, f32);
-                    parse_or_continue!(end_rotation, f32, start_rotation);
-                    StoryboardEvent::Rotate { start_rotation, end_rotation }
+                    parse_or_continue!(start, f32);
+                    parse_or_continue!(end, f32, start);
+                    StoryboardEvent::Rotate { start, end }
                 }
 
                 "C" => {
@@ -379,9 +379,9 @@ impl StoryboardDef {
                     parse_or_continue!(end_r, u8, start_r);
                     parse_or_continue!(end_g, u8, start_g);
                     parse_or_continue!(end_b, u8, start_b);
-                    let start_color = Color::from_rgb8(start_r, start_g, start_b);
-                    let end_color = Color::from_rgb8(end_r, end_g, end_b);
-                    StoryboardEvent::Color { start_color, end_color }
+                    let start = Color::from_rgb8(start_r, start_g, start_b);
+                    let end = Color::from_rgb8(end_r, end_g, end_b);
+                    StoryboardEvent::Color { start, end }
                 }
 
                 "P" => {

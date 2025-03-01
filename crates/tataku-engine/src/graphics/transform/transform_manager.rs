@@ -1,21 +1,20 @@
 use crate::prelude::*;
 
 #[derive(Clone)]
+#[derive(ChainableInitializer)]
 pub struct TransformManager {
-    pub pos: InitialCurrent<Vector2>,
-    pub scale: InitialCurrent<Vector2>,
-    pub rotation: InitialCurrent<f32>,
-    pub alpha: InitialCurrent<f32>,
-    pub border_alpha: InitialCurrent<f32>,
+    #[chain] pub pos: Vector2,
+    #[chain] pub scale: Vector2,
+    #[chain] pub rotation: f32,
+    #[chain] pub origin: Vector2,
 
-    pub color: Option<InitialCurrent<Color>>,
-    pub border_color: Option<InitialCurrent<Color>>,
+    #[chain] pub alpha: f32,
+    #[chain] pub border_alpha: f32,
+    #[chain] pub color: Option<Color>,
+    #[chain] pub border_color: Option<Color>,
 
-    pub origin: Vector2,
-
-    pub image_flip_horizonal: bool,
-    pub image_flip_vertical: bool,
-
+    #[chain] pub image_flip_horizonal: bool,
+    #[chain] pub image_flip_vertical: bool,
 
     pub transforms: Vec<Transformation>,
 }
@@ -23,56 +22,34 @@ pub struct TransformManager {
 impl TransformManager {
     pub fn new(pos: Vector2) -> Self {
         Self {
-            pos: InitialCurrent::new(pos),
-            scale: InitialCurrent::new(Vector2::ONE),
-            rotation: InitialCurrent::new(0.0),
-            alpha: InitialCurrent::new(1.0),
-            border_alpha: InitialCurrent::new(1.0),
+            pos,
+            scale: Vector2::ONE,
+            rotation: 0.0,
+            alpha: 1.0,
+            border_alpha: 1.0,
 
             color: None,
             border_color: None,
 
             origin: Vector2::ZERO,
-            
+
             image_flip_horizonal: false,
             image_flip_vertical: false,
-            
+
             transforms: Vec::new(),
         }
-    }
-
-    pub fn pos(mut self, pos: Vector2) -> Self {
-        self.pos.both(pos);
-        self
-    }
-    pub fn scale(mut self, scale: Vector2) -> Self {
-        self.scale.both(scale);
-        self
-    }
-    pub fn rotation(mut self, rotation: f32) -> Self {
-        self.rotation.both(rotation);
-        self
-    }
-    pub fn alpha(mut self, alpha: f32) -> Self {
-        self.alpha.both(alpha);
-        self
-    }
-    pub fn border_alpha(mut self, alpha: f32) -> Self {
-        self.border_alpha.both(alpha);
-        self
     }
 
 
     pub fn push_transform(&mut self, transform: Transformation) {
         self.transforms.push(transform);
-    } 
+    }
 
     pub fn update(&mut self, game_time: f32) {
         let mut transforms = self.transforms.take();
         transforms.retain(|transform| {
             let start_time = transform.start_time();
             let end_time = start_time + transform.duration;
-
 
             if game_time >= end_time {
                 let trans_val = transform.get_value(end_time);
@@ -88,87 +65,117 @@ impl TransformManager {
         self.transforms = transforms;
     }
 
-    fn apply_transform(&mut self, transform: &Transformation, val: TransformValueResult) {
+    fn apply_transform(
+        &mut self, 
+        transform: &Transformation, 
+        val: TransformValueResult
+    ) {
         match transform.trans_type {
+            TransformType::None => {},
+            TransformType::BorderSize { .. } => {}
+
             TransformType::Position { .. } => {
                 let val:Vector2 = val.into();
-                self.pos.current = self.pos.initial + val;
+                self.pos = val;
             }
             TransformType::PositionX { .. } => {
                 let val:f64 = val.into();
-                self.pos.current.x = self.pos.initial.x + val as f32;
+                self.pos.x = val as f32;
             }
             TransformType::PositionY { .. } => {
                 let val:f64 = val.into();
-                self.pos.current.y = self.pos.initial.y + val as f32;
+                self.pos.y = val as f32;
             }
             TransformType::Scale { .. } => {
                 let val:f64 = val.into();
-                self.scale.current = Vector2::ONE * val as f32;
+                self.scale = Vector2::ONE * val as f32;
 
                 if self.image_flip_horizonal {
-                    self.scale.current.x *= -1.0;
+                    self.scale.x *= -1.0;
                 }
                 if self.image_flip_vertical {
-                    self.scale.current.y *= -1.0;
+                    self.scale.y *= -1.0;
+                }
+            }
+            TransformType::ScaleX { .. } => {
+                let val:f64 = val.into();
+                self.scale.x = val as f32;
+
+                if self.image_flip_horizonal {
+                    self.scale.x *= -1.0;
+                }
+            }
+            TransformType::ScaleY { .. } => {
+                let val:f64 = val.into();
+                self.scale.y = val as f32;
+
+                if self.image_flip_vertical {
+                    self.scale.y *= -1.0;
                 }
             }
             TransformType::VectorScale { .. } => {
                 let val:Vector2 = val.into();
-                self.scale.current = val;
+                self.scale = val;
 
                 if self.image_flip_horizonal {
-                    self.scale.current.x *= -1.0;
+                    self.scale.x *= -1.0;
                 }
                 if self.image_flip_vertical {
-                    self.scale.current.y *= -1.0;
+                    self.scale.y *= -1.0;
                 }
             }
             TransformType::Rotation { .. } => {
                 let val:f64 = val.into();
-                self.rotation.current = self.rotation.initial + val as f32;
+                self.rotation = val as f32;
             }
 
             TransformType::Transparency { .. } => {
                 let val:f64 = val.into();
-                self.alpha.current = val as f32;
+                self.alpha = val as f32;
             }
             TransformType::BorderTransparency { .. } => {
                 let val:f64 = val.into();
-                self.border_alpha.current = val as f32;
+                self.border_alpha = val as f32;
             }
 
             TransformType::Color { .. } => {
                 let color:Color = val.into();
                 match &mut self.color {
-                    Some(a) => a.current = color,
-                    None => self.color = Some(InitialCurrent::new(color)),
+                    Some(a) => *a = color,
+                    None => self.color = Some(color),
                 }
             }
 
-            _ => {}
+            // _ => {}
         }
     }
 
 
     pub fn visible(&self) -> bool {
-        self.scale.length_squared() != 0.0 && (*self.alpha > 0.0 || *self.border_alpha > 0.0)
+        self.scale.length_squared() != 0.0 && (self.alpha > 0.0 || self.border_alpha > 0.0)
     }
 
     pub fn matrix(&self) -> Matrix {
         Matrix::identity()
             .trans(-self.origin) // apply origin
-            .rot(*self.rotation) // rotate
-            .scale(*self.scale) // scale
-            .trans(*self.pos) // move to pos
+            .rot(self.rotation) // rotate
+            .scale(self.scale) // scale
+            .trans(self.pos) // move to pos
     }
 }
 
 
 // premade transforms
 impl TransformManager {
-    pub fn ripple(&mut self, offset:f32, duration:f32, time: f32, end_scale: f32, do_border_size: bool, do_transparency: Option<f32>) {
-        
+    pub fn ripple(
+        &mut self, 
+        offset: f32, 
+        duration: f32, 
+        time: f32, 
+        end_scale: f32, 
+        do_border_size: bool, 
+        do_transparency: Option<f32>
+    ) {
         // transparency
         if let Some(start_a) = do_transparency {
             self.transforms.push(Transformation::new(
@@ -179,7 +186,7 @@ impl TransformManager {
                 time
             ));
         }
-        
+
         // border transparency
         self.transforms.push(Transformation::new(
             offset,
@@ -210,7 +217,15 @@ impl TransformManager {
         }
     }
 
-    pub fn ripple_scale_range(&mut self, offset:f32, duration:f32, time: f32, scale: Range<f32>, border_size: Option<Range<f32>>, do_transparency: Option<f32>) {
+    pub fn ripple_scale_range(
+        &mut self, 
+        offset: f32, 
+        duration: f32, 
+        time: f32, 
+        scale: Range<f32>, 
+        border_size: Option<Range<f32>>, 
+        do_transparency: Option<f32>
+    ) {
         // transparency
         if let Some(start_a) = do_transparency {
             self.transforms.push(Transformation::new(
@@ -252,9 +267,16 @@ impl TransformManager {
         }
     }
 
-    pub fn shake(&mut self, offset:f32, time: f32, shake_amount: Vector2, time_between_shakes: f32, shake_count: usize) {
+    pub fn shake(
+        &mut self, 
+        offset:f32, 
+        time: f32, 
+        shake_amount: Vector2, 
+        time_between_shakes: f32, 
+        shake_count: usize
+    ) {
         self.transforms.reserve(shake_count);
-        
+
         self.transforms.push(Transformation::new(
             offset,
             time_between_shakes,
@@ -265,9 +287,9 @@ impl TransformManager {
 
         if shake_count > 2 {
             for i in 0..shake_count-2 {
-                let pos = if i % 2 == 0 { 
+                let pos = if i % 2 == 0 {
                     TransformType::Position { start: shake_amount, end: -shake_amount }
-                } else { 
+                } else {
                     TransformType::Position { start: -shake_amount, end: shake_amount }
                 };
 
@@ -281,9 +303,9 @@ impl TransformManager {
             }
         }
 
-        let end_pos = if shake_count % 2 == 0 { 
+        let end_pos = if shake_count % 2 == 0 {
             TransformType::Position { start: -shake_amount, end: Vector2::ZERO }
-        } else { 
+        } else {
             TransformType::Position { start: shake_amount, end: Vector2::ZERO }
         };
 
@@ -297,3 +319,8 @@ impl TransformManager {
     }
 }
 
+impl Default for TransformManager {
+    fn default() -> Self {
+        Self::new(Vector2::ZERO)
+    }
+}

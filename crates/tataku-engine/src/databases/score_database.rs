@@ -2,7 +2,11 @@ use crate::prelude::*;
 use crate::REPLAYS_DIR;
 
 impl Database {
-    pub async fn get_scores(hash:&String, playmode:String) -> Vec<Score> {
+    pub async fn get_scores(
+        hash: &String, 
+        playmode: String,
+        infos: GamemodeInfos
+    ) -> Vec<Score> {
         let db = Self::get().await;
         let mut s = db.prepare(&format!("SELECT * FROM scores WHERE map_hash='{}' AND playmode='{}'", hash, playmode)).unwrap();
 
@@ -39,23 +43,31 @@ impl Database {
                 }
             }
 
-            let mut score = Score::default();
-            score.version = r.get("version").unwrap_or(1); // v1 didnt include version in the table
-            score.username = r.get("username")?;
-            score.playmode = r.get("playmode")?;
-            score.time = r.get("time").unwrap_or(0);
-            score.score = r.get("score")?;
-            score.combo = r.get("combo")?;
-            score.max_combo = r.get("max_combo")?;
-            score.accuracy = r.get("accuracy").unwrap_or_default();
-            score.beatmap_hash = r.get::<&str, String>("map_hash")?.try_into().unwrap();
-            score.speed = r.get::<&str, f32>("speed").map(|s|GameSpeed::from_f32(s)).unwrap_or_default();
-            score.hit_timings = Vec::new();
-            score.judgments = judgments;
+            let mut score = Score {
+                version: r.get("version").unwrap_or(1), // v1 didnt include version in the table
+                username: r.get("username")?,
+                playmode: r.get("playmode")?,
+                time: r.get("time").unwrap_or(0),
+                score: r.get("score")?,
+                combo: r.get("combo")?,
+                max_combo: r.get("max_combo")?,
+                accuracy: r.get("accuracy").unwrap_or_default(),
+                beatmap_hash: r.get::<&str, String>("map_hash")?.try_into().unwrap(),
+                speed: r.get::<&str, f32>("speed").map(GameSpeed::from_f32).unwrap_or_default(),
+                hit_timings: Vec::new(),
+                judgments,
+                ..Default::default()
+            };
 
 
-            // TODO: reimplement
-            if let Some(mods_string) = mods_string {
+            // this is bad but its fineee
+            if let Some((mods_string, info)) = mods_string.zip(infos.get_info(&playmode).ok()) {
+                let mods = mods_string.split("|");
+                let all_mods = ModManager::mods_for_playmode_as_hashmap(info);
+                for m in mods {
+                    let Some(m) = all_mods.get(m) else { continue };
+                    score.mods.push((*m).into());
+                }
                 // // old mods format, json
                 // if mods_string.contains("{") {
                 //     *score.mods_mut() = Score::mods_from_old_string(mods_string);
@@ -145,7 +157,9 @@ pub fn save_replay(score: &Score) -> TatakuResult<String> {
     let actual_hash = format!("{:x}", md5::compute(hash));
     let filename = format!("{}/{}.ttkr", REPLAYS_DIR, actual_hash);
     // info!("Saving replay as {}, judgments: {}", filename, s.judgment_string());
-    save_database(&filename, writer)?;
+
+    // save the database
+    std::fs::write(&filename, writer.data())?;
     Ok(filename)
 }
 
@@ -153,8 +167,9 @@ pub fn get_local_replay(score_hash: String) -> TatakuResult<Score> {
     let actual_hash = format!("{:x}", md5::compute(score_hash));
     let fullpath = format!("{}/{}.ttkr", REPLAYS_DIR, actual_hash);
     // info!("loading replay: {fullpath}");
-    
-    let mut reader = open_database(&fullpath)?;
+
+    let data = std::fs::read(&fullpath)?;
+    let mut reader = SerializationReader::new(data);
     Ok(reader.read("score")?)
 }
 

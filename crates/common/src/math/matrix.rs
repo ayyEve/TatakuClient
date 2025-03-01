@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use cgmath::One;
+use cgmath::SquareMatrix;
 
 /// Column Major
 pub type Matrix = cgmath::Matrix4<f32>;
@@ -7,6 +8,8 @@ pub type Matrix = cgmath::Matrix4<f32>;
 pub trait MatrixHelpers {
     fn identity() -> Self where Self:Sized;
     fn to_raw(&self) -> [[f32; 4]; 4];
+
+    fn inverse(&self) -> Option<Self> where Self: Sized;
 
     fn from_orient(pos: Vector2) -> Self where Self: Sized;
 
@@ -26,14 +29,17 @@ impl MatrixHelpers for Matrix {
         (*self).into()
     }
 
+    fn inverse(&self) -> Option<Self> {
+        self.invert()
+    }
+
     fn from_orient(pos: Vector2) -> Self where Self: Sized {
         let len = pos.x * pos.x + pos.y * pos.y;
-        if len == 0.0 { return Self::identity() }
+        if len == 0.0 { return <Self as MatrixHelpers>::identity() }
 
         let len = len.sqrt();
         let c = pos.x / len;
         let s = pos.y / len;
-        // [[c, -s, 0.0], [s, c, 0.0]]
         [
             [c,  -s,   0.0, 0.0],
             [s,   c,   0.0, 0.0],
@@ -56,7 +62,7 @@ impl MatrixHelpers for Matrix {
 
     fn trans(self, p: Vector2) -> Self {
         let v3 = Vector3::new(p.x, p.y, 0.0);
-        Matrix::from_translation(v3) * self 
+        Matrix::from_translation(v3) * self
     }
     fn rot(self, rads: f32) -> Self {
         Matrix::from_angle_z(cgmath::Rad(rads)) * self
@@ -66,3 +72,11 @@ impl MatrixHelpers for Matrix {
     }
 }
 
+
+impl std::ops::Mul<Vector2> for Matrix {
+    type Output = Vector2;
+
+    fn mul(self, rhs: Vector2) -> Self::Output {
+        self.mul_v2(rhs)
+    }
+}

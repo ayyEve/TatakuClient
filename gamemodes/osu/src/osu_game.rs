@@ -9,6 +9,8 @@ pub struct OsuGame {
     // lists
     pub notes: Vec<Box<dyn OsuHitObject>>,
 
+    actions: ActionQueue,
+
     // hit timing bar stuff
     hit_windows: Vec<(HitJudgment, Range<f32>)>,
     miss_window: f32,
@@ -40,7 +42,7 @@ pub struct OsuGame {
     beatmap_combo_colors: Vec<Color>,
 
     use_controller_cursor: bool,
-    window_size: Arc<WindowSize>,
+    // window_size: Arc<WindowSize>,
     end_time: f32,
 
     follow_point_image: Option<Image>,
@@ -53,26 +55,35 @@ pub struct OsuGame {
     smoke_emitter: Option<Emitter>,
 
     cursor: OsuCursor,
+
+    new_playfield_pending: bool,
 }
 impl OsuGame {
-    async fn recalculate_playfield(&mut self) {
-        let new_scale = Arc::new(ScalingHelper::new(self.cs, self.window_size.0, self.mods.has_mod(HardRock)).await);
-        self.apply_playfield(new_scale).await
+    fn recalculate_playfield(&mut self, window_size: Vector2) {
+        let new_scale = Arc::new(ScalingHelper::new_with_settings(
+            &self.game_settings, 
+            self.cs, 
+            window_size, 
+            self.mods.has_mod(HardRock)
+        ));
+        
+        self.new_playfield_pending = true;
+        self.apply_playfield(new_scale);
     }
-    async fn apply_playfield(&mut self, playfield: Arc<ScalingHelper>) {
+    fn apply_playfield(&mut self, playfield: Arc<ScalingHelper>) {
         self.scaling_helper = playfield.clone();
-        self.cursor.note_radius = self.scaling_helper.scaled_circle_size.x / 2.0;
+        self.cursor.note_radius = self.scaling_helper.circle_size.x / 2.0;
 
         // update playfield for notes
         for note in self.notes.iter_mut() {
-            note.playfield_changed(playfield.clone()).await;
+            note.playfield_changed(playfield.clone());
         }
     }
 
     // TODO: finish this
     #[allow(dead_code, unused_variables)]
     fn apply_stacking(&mut self) {
-        let stack_offset = self.scaling_helper.scaled_cs / 10.0;
+        let stack_offset = self.scaling_helper.cs / 10.0;
 
         let stack_vector = Vector2::ONE * stack_offset;
 
@@ -160,7 +171,7 @@ impl OsuGame {
         scaling_helper: &Arc<ScalingHelper>, 
         judgment_helper: &JudgmentImageHelper, 
         settings: &OsuSettings, 
-        state: &mut GameplayStateForUpdate<'_>
+        state: &mut GameplayUpdateShell<'_>
     ) {
         if hit_value.tex_name.is_empty() { return }
 
@@ -168,14 +179,14 @@ impl OsuGame {
         let mut image = if settings.use_skin_judgments { judgment_helper.get_from_scorehit(hit_value) } else { None };
         if let Some(image) = &mut image {
             image.pos = pos;
-            let scale = Vector2::ONE * scaling_helper.scaled_cs;
+            let scale = Vector2::ONE * scaling_helper.cs;
             image.scale = scale;
         }
 
         state.add_indicator(BasicJudgementIndicator::new(
             pos, 
             state.time,
-            CIRCLE_RADIUS_BASE * scaling_helper.scaled_cs * (1.0/3.0),
+            CIRCLE_RADIUS_BASE * scaling_helper.cs * (1.0/3.0),
             color,
             image
         ))
@@ -205,12 +216,12 @@ impl OsuGame {
 
     #[inline]
     pub fn get_cs(meta: &BeatmapMeta, mods: &ModManager) -> f32 {
-        Self::scale_by_mods(meta.cs, 0.5, 1.3, &mods).clamp(1.0, 10.0)
+        Self::scale_by_mods(meta.cs, 0.5, 1.3, mods).clamp(1.0, 10.0)
     }
 
     fn draw_follow_points(&mut self, time: f32, list: &mut RenderableCollection) {
         if !self.game_settings.draw_follow_points { return; }
-        if self.notes.len() == 0 { return }
+        if self.notes.is_empty() { return }
 
         let follow_dot_size = 3.0 * self.scaling_helper.scale;
         let follow_dot_distance = 20.0 * self.scaling_helper.scale;
@@ -246,14 +257,14 @@ impl OsuGame {
 
             let direction = PI * 2.0 - Vector2::atan2(n2_pos - n1_pos);
             let follow_dot_count = distance / follow_dot_distance;
-            for i in 1..(follow_dot_count as u64 - 1) {
+            for i in 1..(follow_dot_count.min(1.0) as u64 - 1) {
                 let lerp_amount = i as f32 / follow_dot_count;
                 let time_at_this_point = f32::lerp(n1_time, n2_time, lerp_amount);
                 let point = Vector2::lerp(n1_pos, n2_pos, lerp_amount);
                 
                 // get the alpha
                 let alpha_lerp_amount = (time_at_this_point - time) / (n2_time - n1_time);
-                let alpha = if alpha_lerp_amount > 2.0 || alpha_lerp_amount < 0.0 {
+                let alpha = if !(0.0..=2.0).contains(&alpha_lerp_amount) {
                     0.0
                 } else if alpha_lerp_amount > 1.0 {
                     f32::easeout_sine(1.0, 0.0, alpha_lerp_amount - 1.0)
@@ -331,30 +342,37 @@ impl OsuGame {
 
 #[async_trait]
 impl GameMode for OsuGame {
-    async fn new(map: &Beatmap, diff_calc_only: bool) -> TatakuResult<Self> {
+    async fn new(
+        map: &Beatmap, 
+        diff_calc_only: bool,
+        settings: &Settings,
+    ) -> TatakuResult<Self> {
         let metadata = map.get_beatmap_meta();
         let mods = Arc::new(Default::default());
-        let window_size = WindowSize::get();
-        let effective_window_size = if diff_calc_only { super::diff_calc::WINDOW_SIZE } else { window_size.0 };
+        // let window_size = WindowSize::get();
+        let effective_window_size = super::diff_calc::WINDOW_SIZE; //if diff_calc_only { super::diff_calc::WINDOW_SIZE } else { window_size.0 };
         
-        let settings = Settings::get().osu_settings.clone();
+        let game_settings = settings.gamemode_settings(crate::GAME_INFO).unwrap_or_default();
+        // settings.osu_settings.clone();
 
         let cs = Self::get_cs(&metadata, &mods);
         let ar = Self::get_ar(&metadata, &mods);
         let od = Self::get_od(&metadata, &mods);
-        let scaling_helper = Arc::new(ScalingHelper::new(cs, effective_window_size, mods.has_mod(HardRock)).await);
+        let scaling_helper = Arc::new(ScalingHelper::new_with_settings(&game_settings, cs, effective_window_size, mods.has_mod(HardRock)));
 
         let judgment_helper = JudgmentImageHelper::new(OsuHitJudgments::variants().to_vec()).await;
 
         let timing_points = TimingPointHelper::new(map.get_timing_points(), map.slider_velocity());
 
         let parent_dir = map.get_parent_dir().unwrap_or_default().to_string_lossy().to_string();
-        let cursor = OsuCursor::new(scaling_helper.scaled_circle_size.x / 2.0, SkinSettings::default(), parent_dir).await;
+        let cursor = OsuCursor::new(scaling_helper.circle_size.x / 2.0, SkinSettings::default(), parent_dir, settings).await;
+        let mut actions = ActionQueue::new();
+        cursor.init(&mut actions);
 
         let mut s = match map {
             Beatmap::Osu(beatmap) => {
                 let stack_leniency = beatmap.stack_leniency;
-                let std_settings = Arc::new(settings);
+                let std_settings = Arc::new(game_settings);
 
                 let get_hitsounds = |time, hitsound, hitsamples| {
                     let tp = timing_points.timing_point_at(time, true);
@@ -362,6 +380,7 @@ impl GameMode for OsuGame {
                 };
 
                 let mut s = Self {
+                    actions,
                     notes: Vec::new(),
                     mouse_pos: Vector2::ZERO,
                     window_mouse_pos: Vector2::ZERO,
@@ -383,7 +402,7 @@ impl GameMode for OsuGame {
                     
                     new_combos: Vec::new(),
                     stack_leniency,
-                    window_size,
+                    // window_size,
                     follow_point_image: None,
                     judgment_helper,
                     metadata,
@@ -392,81 +411,89 @@ impl GameMode for OsuGame {
                     smoke_emitter: None,
                     cursor,
 
-                    beatmap_combo_colors: beatmap.combo_colors.clone()
+                    beatmap_combo_colors: beatmap.combo_colors.clone(),
+                    new_playfield_pending: false,
                 };
-                
-                // join notes and sliders into a single array
-                // needed because of combo counts
-                let mut all_items = Vec::new();
-                for note in beatmap.notes.iter() {
-                    all_items.push((Some(note), None, None));
-                    s.end_time = s.end_time.max(note.time);
+
+
+                enum Thing<'a> {
+                    Note(&'a NoteDef),
+                    Slider(&'a SliderDef, Option<Box<Curve>>),
+                    Spinner(&'a SpinnerDef),
                 }
-                for slider in beatmap.sliders.iter() {
-                    all_items.push((None, Some(slider), None));
-        
-                    // can this be improved somehow?
-                    if slider.curve_points.len() == 0 || slider.length == 0.0 {
-                        s.end_time = s.end_time.max(slider.time);
-                    } else {
-                        let curve = get_curve(slider, &map, &timing_points);
-                        s.end_time = s.end_time.max(curve.end_time);
+                impl Thing<'_> {
+                    fn time(&self) -> f32 {
+                        match self {
+                            Self::Note(n) => n.time,
+                            Self::Slider(s, _) => s.time,
+                            Self::Spinner(s) => s.time,
+                        }
+                    }
+                    fn end_time(&self) -> f32 {
+                        match self {
+                            Self::Note(n) => n.time,
+                            Self::Slider(s, None) => s.time, // invisible note
+                            Self::Slider(_, Some(c)) => c.end_time,
+                            Self::Spinner(s) => s.end_time,
+                        }
+                    }
+                    fn new_combo(&self) -> bool {
+                        match self {
+                            Self::Note(n) => n.new_combo,
+                            Self::Slider(s, _) => s.new_combo,
+                            Self::Spinner(_) => true,
+                        }
+                    }
+                    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+                        self
+                            .time()
+                            .partial_cmp(&other.time())
+                            .unwrap_or(std::cmp::Ordering::Equal)
                     }
                 }
-                for spinner in beatmap.spinners.iter() {
-                    all_items.push((None, None, Some(spinner)));
-                    s.end_time = s.end_time.max(spinner.end_time);
-                }
-                // sort
-                all_items.sort_by(|a, b| {
-                    let a_time = match a {
-                        (Some(note), None, None) => note.time,
-                        (None, Some(slider), None) => slider.time,
-                        (None, None, Some(spinner)) => spinner.time,
-                        _ => 0.0
-                    };
-                    let b_time = match b {
-                        (Some(note), None, None) => note.time,
-                        (None, Some(slider), None) => slider.time,
-                        (None, None, Some(spinner)) => spinner.time,
-                        _ => 0.0
-                    };
-        
-                    a_time.partial_cmp(&b_time).unwrap()
-                });
-        
+
+                let mut all_items = 
+                    beatmap.notes.iter().map(Thing::Note)
+                    .chain(beatmap.sliders.iter().map(|s| Thing::Slider(s, if s.curve_points.is_empty() || s.length == 0.0 { None } else { Some(Box::new(get_curve(s, map, &timing_points))) } )))
+                    .chain(beatmap.spinners.iter().map(Thing::Spinner))
+                    .collect::<Vec<_>>()
+                ;
+
+                // sort all the notes
+                all_items.sort_by(|a, b| a.cmp(b));
 
                 // add notes
                 let mut combo_num = 0;
-                let mut counter = 0;
-        
-                for (note, slider, spinner) in all_items {
-                    // check for new combo
-                    if let Some(note) = note { if note.new_combo { combo_num = 0 } }
-                    if let Some(slider) = slider { if slider.new_combo { combo_num = 0 } }
-                    if let Some(_spinner) = spinner { combo_num = 0 }
-        
-                    // if new combo, increment new combo counter
+                for (counter, i) in all_items.into_iter().enumerate() {
+
+                    // update end time
+                    s.end_time = s.end_time.max(i.end_time());
+
+                    // reset combo if hitobject says so
+                    if i.new_combo() { combo_num = 0 }
+
+                    // if new combo, add counter to combo
                     if combo_num == 0 {
                         s.new_combos.push(counter);
                     }
-                    // get color
+
                     // update combo number
                     combo_num += 1;
-        
-                    if let Some(note) = note {
-                        s.notes.push(Box::new(OsuNote::new(
-                            note.clone(),
-                            ar,
-                            combo_num as u16,
-                            scaling_helper.clone(),
-                            std_settings.clone(),
-                            get_hitsounds(note.time, note.hitsound, note.hitsamples.clone())
-                        ).await));
-                    }
-                    if let Some(slider) = slider {
-                        // invisible note
-                        if slider.curve_points.len() == 0 || slider.length == 0.0 {
+
+                    // add the hitobject
+                    match i {
+                        Thing::Note(note) => {
+                            s.notes.push(Box::new(OsuNote::new(
+                                note.clone(),
+                                ar,
+                                combo_num as u16,
+                                scaling_helper.clone(),
+                                std_settings.clone(),
+                                get_hitsounds(note.time, note.hitsound, note.hitsamples.clone())
+                            ).await));
+                        }
+
+                        Thing::Slider(slider, None) => {
                             let note = NoteDef {
                                 pos: slider.pos,
                                 time: slider.time,
@@ -485,44 +512,174 @@ impl GameMode for OsuGame {
                                 std_settings.clone(),
                                 hitsounds,
                             ).await));
-                        } else {
-                            let curve = get_curve(slider, &map, &timing_points);
+                        }
+
+                        Thing::Slider(slider, Some(curve)) => {
                             s.notes.push(Box::new(OsuSlider::new(
                                 slider.clone(),
-                                curve,
+                                *curve,
                                 ar,
                                 combo_num as u16,
                                 scaling_helper.clone(),
                                 std_settings.clone(),
                                 get_hitsounds,
                                 timing_points.slider_velocity_at(slider.time)
+                            ).await));
+                        }
+
+
+                        Thing::Spinner(spinner) => {
+                            let duration = spinner.end_time - spinner.time;
+                            let min_rps = map_difficulty(od, 2.0, 4.0, 6.0) * 0.6;
+
+                            let mut spins_required = (duration / 1000.0 * min_rps) as u16;
+                            // fudge until we can properly calculate
+                            if spins_required < 10 {
+                                if spins_required > 2 {
+                                    spins_required = 2;
+                                } else {
+                                    spins_required = 0;
+                                }
+                            }
+                            
+                            s.notes.push(Box::new(OsuSpinner::new(
+                                spinner.clone(),
+                                scaling_helper.clone(),
+                                spins_required
                             ).await))
                         }
-                        
                     }
-                    if let Some(spinner) = spinner {
-                        let duration = spinner.end_time - spinner.time;
-                        let min_rps = map_difficulty(od, 2.0, 4.0, 6.0) * 0.6;
-
-                        let mut spins_required = (duration / 1000.0 * min_rps) as u16;
-                        // fudge until we can properly calculate
-                        if spins_required < 10 {
-                            if spins_required > 2 {
-                                spins_required = 2;
-                            } else {
-                                spins_required = 0;
-                            }
-                        }
-                        
-                        s.notes.push(Box::new(OsuSpinner::new(
-                            spinner.clone(),
-                            scaling_helper.clone(),
-                            spins_required
-                        ).await))
-                    }
-                    
-                    counter += 1;
                 }
+
+
+
+                
+                // // join notes and sliders into a single array
+                // // needed because of combo counts
+                // let mut all_items = Vec::new();
+                // for note in beatmap.notes.iter() {
+                //     all_items.push((Some(note), None, None));
+                //     s.end_time = s.end_time.max(note.time);
+                // }
+                // for slider in beatmap.sliders.iter() {
+                //     all_items.push((None, Some(slider), None));
+        
+                //     // can this be improved somehow?
+                //     if slider.curve_points.is_empty() || slider.length == 0.0 {
+                //         s.end_time = s.end_time.max(slider.time);
+                //     } else {
+                //         let curve = get_curve(slider, map, &timing_points);
+                //         s.end_time = s.end_time.max(curve.end_time);
+                //     }
+                // }
+                // for spinner in beatmap.spinners.iter() {
+                //     all_items.push((None, None, Some(spinner)));
+                //     s.end_time = s.end_time.max(spinner.end_time);
+                // }
+
+                // // sort
+                // all_items.sort_by(|a, b| {
+                //     let a_time = match a {
+                //         (Some(note), None, None) => note.time,
+                //         (None, Some(slider), None) => slider.time,
+                //         (None, None, Some(spinner)) => spinner.time,
+                //         _ => 0.0
+                //     };
+                //     let b_time = match b {
+                //         (Some(note), None, None) => note.time,
+                //         (None, Some(slider), None) => slider.time,
+                //         (None, None, Some(spinner)) => spinner.time,
+                //         _ => 0.0
+                //     };
+        
+                //     a_time.partial_cmp(&b_time).unwrap()
+                // });
+        
+
+                // // add notes
+                // let mut combo_num = 0;
+        
+                // for (counter, (note, slider, spinner)) in all_items.into_iter().enumerate() {
+                //     // check for new combo
+                //     if let Some(note) = note { if note.new_combo { combo_num = 0 } }
+                //     if let Some(slider) = slider { if slider.new_combo { combo_num = 0 } }
+                //     if let Some(_spinner) = spinner { combo_num = 0 }
+        
+                //     // if new combo, increment new combo counter
+                //     if combo_num == 0 {
+                //         s.new_combos.push(counter);
+                //     }
+                //     // get color
+                //     // update combo number
+                //     combo_num += 1;
+        
+                //     if let Some(note) = note {
+                //         s.notes.push(Box::new(OsuNote::new(
+                //             note.clone(),
+                //             ar,
+                //             combo_num as u16,
+                //             scaling_helper.clone(),
+                //             std_settings.clone(),
+                //             get_hitsounds(note.time, note.hitsound, note.hitsamples.clone())
+                //         ).await));
+                //     }
+                //     if let Some(slider) = slider {
+                //         // invisible note
+                //         if slider.curve_points.is_empty() || slider.length == 0.0 {
+                //             let note = NoteDef {
+                //                 pos: slider.pos,
+                //                 time: slider.time,
+                //                 hitsound: slider.hitsound,
+                //                 hitsamples: slider.hitsamples.clone(),
+                //                 new_combo: slider.new_combo,
+                //                 color_skip: slider.color_skip,
+                //             };
+        
+                //             let hitsounds = get_hitsounds(note.time, note.hitsound, note.hitsamples.clone());
+                //             s.notes.push(Box::new(OsuNote::new(
+                //                 note,
+                //                 ar,
+                //                 combo_num as u16,
+                //                 scaling_helper.clone(),
+                //                 std_settings.clone(),
+                //                 hitsounds,
+                //             ).await));
+                //         } else {
+                //             let curve = get_curve(slider, map, &timing_points);
+                //             s.notes.push(Box::new(OsuSlider::new(
+                //                 slider.clone(),
+                //                 curve,
+                //                 ar,
+                //                 combo_num as u16,
+                //                 scaling_helper.clone(),
+                //                 std_settings.clone(),
+                //                 get_hitsounds,
+                //                 timing_points.slider_velocity_at(slider.time)
+                //             ).await))
+                //         }
+                        
+                //     }
+                //     if let Some(spinner) = spinner {
+                //         let duration = spinner.end_time - spinner.time;
+                //         let min_rps = map_difficulty(od, 2.0, 4.0, 6.0) * 0.6;
+
+                //         let mut spins_required = (duration / 1000.0 * min_rps) as u16;
+                //         // fudge until we can properly calculate
+                //         if spins_required < 10 {
+                //             if spins_required > 2 {
+                //                 spins_required = 2;
+                //             } else {
+                //                 spins_required = 0;
+                //             }
+                //         }
+                        
+                //         s.notes.push(Box::new(OsuSpinner::new(
+                //             spinner.clone(),
+                //             scaling_helper.clone(),
+                //             spins_required
+                //         ).await))
+                //     }
+                // }
         
                 s
             }
@@ -541,7 +698,7 @@ impl GameMode for OsuGame {
     async fn handle_replay_frame<'a>(
         &mut self, 
         frame: ReplayFrame, 
-        state: &mut GameplayStateForUpdate<'a>
+        state: &mut GameplayUpdateShell<'a>
     ) {
         const ALLOWED_PRESSES:&[KeyPress] = &[
             KeyPress::Left, 
@@ -559,7 +716,9 @@ impl GameMode for OsuGame {
                     KeyPress::Left | KeyPress::LeftMouse => self.cursor.left_pressed(true),
                     KeyPress::Right | KeyPress::RightMouse => self.cursor.right_pressed(true),
                     KeyPress::Dash => {
-                        self.smoke_emitter.iter_mut().for_each(|i|i.should_emit = true);
+                        for i in self.smoke_emitter.iter_mut() {
+                            i.should_emit = true
+                        }
                         return;
                     }
                     _ => {}
@@ -639,7 +798,7 @@ impl GameMode for OsuGame {
                     KeyPress::Left | KeyPress::LeftMouse => self.cursor.left_pressed(false),
                     KeyPress::Right | KeyPress::RightMouse => self.cursor.right_pressed(false),
                     KeyPress::Dash => {
-                        self.smoke_emitter.as_mut().map(|i| i.should_emit = false);
+                        if let Some(i) = self.smoke_emitter.as_mut() { i.should_emit = false; }
                         return;
                     }
                     _ => {}
@@ -662,7 +821,9 @@ impl GameMode for OsuGame {
                 // scale the coords from playfield to window
                 let pos = self.scaling_helper.scale_coords(Vector2::new(x, y));
                 self.mouse_pos = pos;
-                self.smoke_emitter.as_mut().map(|i| i.position = pos);
+                if let Some(emitter) = &mut self.smoke_emitter {
+                    emitter.position = pos
+                }
                 self.cursor.cursor_pos(pos);
 
                 for note in self.notes.iter_mut() {
@@ -676,8 +837,15 @@ impl GameMode for OsuGame {
 
     async fn update<'a>(
         &mut self, 
-        state: &mut GameplayStateForUpdate<'a>
+        state: &mut GameplayUpdateShell<'a>,
     ) {
+        state.action_queue.extend(self.actions.take());
+
+        if self.new_playfield_pending {
+            self.new_playfield_pending = false;
+            state.add_action(GamemodeAction::PlayfieldChanged);
+        }
+
         // let mut pending_frames = Vec::new();
 
         // disable the cursor particle emitter if this is a menu game
@@ -685,7 +853,7 @@ impl GameMode for OsuGame {
         if state.gameplay_mode.is_preview() && self.cursor.emitter_enabled {
             self.cursor.emitter_enabled = false;
         }
-        self.cursor.update(state.time).await;
+        self.cursor.update().await;
 
         let has_autoplay = state.mods.has_autoplay();
         let has_relax = state.mods.has_mod(Relax);
@@ -709,7 +877,7 @@ impl GameMode for OsuGame {
         }
 
         // update emitter
-        self.smoke_emitter.as_mut().map(|e| e.update(state.time));
+        if let Some(e) = self.smoke_emitter.as_mut() { e.update(state.time) }
 
         // if the map is over, say it is
         if state.time >= self.end_time {
@@ -814,7 +982,7 @@ impl GameMode for OsuGame {
                         let judge = note.check_release_points(state.time);
                         state.add_judgment(judge);
                         
-                        if !(judge == OsuHitJudgments::X300 && !self.game_settings.show_300s) {
+                        if judge != OsuHitJudgments::X300 || self.game_settings.show_300s {
                             Self::add_judgement_indicator(
                                 note.point_draw_pos(state.time), 
                                 &judge, 
@@ -880,14 +1048,18 @@ impl GameMode for OsuGame {
     
     async fn draw<'a>(
         &mut self, 
-        state: GameplayStateForDraw<'a>, 
+        state: GameplayDrawShell<'a>, 
         list: &mut RenderableCollection
     ) {
+        let window_size = state.window_size;
         // draw the playfield
         if !state.gameplay_mode.is_preview() {
             let alpha = self.game_settings.playfield_alpha;
-            let mut playfield = self.scaling_helper.playfield_scaled_with_cs_border.clone();
-            playfield.color.a = alpha;
+            let mut playfield = Rectangle::new_bounds(
+                self.scaling_helper.playfield_with_padding, 
+                Color::BLACK.alpha(alpha), 
+                state.current_timing_point.kiai.then_some(Border::new(Color::YELLOW.alpha(alpha), 2.0))
+            );
 
             if self.move_playfield.is_some() {
                 let line_size = self.game_settings.playfield_movelines_thickness;
@@ -906,14 +1078,14 @@ impl GameMode for OsuGame {
                 );
 
                 let wx_line = Line::new(
-                    Vector2::new(0.0, self.window_size.y/2.0),
-                    Vector2::new(self.window_size.x, self.window_size.y/2.0),
+                    Vector2::new(0.0, window_size.y/2.0),
+                    Vector2::new(window_size.x, window_size.y/2.0),
                     line_size,
                     Color::WHITE
                 );
                 let wy_line = Line::new(
-                    Vector2::new(self.window_size.x/2.0, 0.0),
-                    Vector2::new(self.window_size.x/2.0, self.window_size.y),
+                    Vector2::new(window_size.x/2.0, 0.0),
+                    Vector2::new(window_size.x/2.0, window_size.y),
                     line_size, 
                     Color::WHITE
                 );
@@ -926,9 +1098,6 @@ impl GameMode for OsuGame {
                 list.push(py_line);
             }
 
-            if state.current_timing_point.kiai {
-                playfield.border = Some(Border::new(Color::YELLOW.alpha(alpha), 2.0));
-            }
             list.push(playfield);
         }
 
@@ -936,11 +1105,11 @@ impl GameMode for OsuGame {
         // if flashlight is enabled, we want to scissor all items by the playfield
         // this prevents things like approach circles and ripples from showing up outside the flashlight radius
         if has_flashlight {
-            list.push_scissor(self.scaling_helper.playfield_scaled_with_cs_border.into_scissor())
+            list.push_scissor(self.scaling_helper.playfield_with_padding.into_scissor())
         }
 
         // draw cursor ripples
-        self.cursor.draw_below(list).await;
+        self.cursor.draw_below(list);
 
         // draw follow points
         self.draw_follow_points(state.time, list);
@@ -969,7 +1138,7 @@ impl GameMode for OsuGame {
                 self.mouse_pos,
                 radius - fade_radius,
                 fade_radius,
-                *self.scaling_helper.playfield_scaled_with_cs_border,
+                self.scaling_helper.playfield_with_padding,
                 Color::BLACK
             ));
         }
@@ -981,10 +1150,12 @@ impl GameMode for OsuGame {
         }
 
         // need to draw the smoke particles on top of everything
-        self.smoke_emitter.as_ref().map(|e| e.draw(list));
+        if let Some(e) = self.smoke_emitter.as_ref() { 
+            e.draw(list) 
+        }
 
         // draw the cursor on top of smoke tho
-        self.cursor.draw_above(list).await;
+        self.cursor.draw_above(list);
     }
 
     
@@ -1000,13 +1171,13 @@ impl GameMode for OsuGame {
         }
 
         // reset the smoke particles
-        self.smoke_emitter.as_mut().map(|e|e.reset(0.0));
+        if let Some(e) = self.smoke_emitter.as_mut() { e.reset(0.0) }
 
         self.cursor.reset()
     }
 
     fn skip_intro(&mut self, game_time: f32) -> Option<f32> {
-        if self.notes.len() == 0 { return None }
+        if self.notes.is_empty() { return None }
 
         let time = self.notes[0].time() - self.notes[0].get_preempt();
         if time < game_time || time < 0.0 { return None }
@@ -1014,30 +1185,46 @@ impl GameMode for OsuGame {
         Some(time)
     }
 
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        self.window_size = window_size;
-        self.recalculate_playfield().await;
+    fn set_bounds(&mut self, bounds: Bounds, full_window: bool) {
+        if full_window {
+            // self.window_size = window_size;
+            self.recalculate_playfield(bounds.size);
+        } else {
+            self.apply_playfield(Arc::new(ScalingHelper::new_offset_scale(
+                self.cs, 
+                bounds.size, 
+                bounds.pos, 
+                0.80, 
+                self.mods.has_mod(HardRock)
+            )));
+        }
     }
 
-
-    async fn fit_to_area(&mut self, bounds: Bounds) {
-        self.apply_playfield(Arc::new(ScalingHelper::new_offset_scale(
-            self.cs, 
-            bounds.size, 
-            bounds.pos, 
-            0.5, 
-            self.mods.has_mod(HardRock)
-        ))).await;
-    }
-
-    async fn time_jump(&mut self, new_time:f32) {
+    async fn time_jump<'a>(
+        &mut self, 
+        new_time: f32,
+        state: &mut GameplayUpdateShell<'a>
+    ) {
         for n in self.notes.iter_mut() {
             n.time_jump(new_time).await;
+        }
+
+        let mut pending_frames = Vec::new();
+        self.auto_helper.time_skip(
+            new_time, 
+            &self.notes, 
+            &self.scaling_helper, 
+            &mut pending_frames
+        );
+
+        for i in pending_frames {
+            state.add_replay_action(i);
         }
     }
     
     async fn force_update_settings(&mut self, settings: &Settings) {
-        let settings = settings.osu_settings.clone();
+        let settings = settings.gamemode_settings::<OsuSettings>(crate::GAME_INFO).unwrap_or_default();
+        // let settings = settings.osu_settings.clone();
         let settings = Arc::new(settings);
 
         if self.game_settings == settings { return }
@@ -1049,19 +1236,19 @@ impl GameMode for OsuGame {
     }
 
     #[cfg(feature="graphics")]
-    async fn reload_skin(&mut self, beatmap_path: &String, skin_manager: &mut dyn SkinProvider) -> TextureSource {
-        let source = if self.game_settings.beatmap_skin { TextureSource::Beatmap(beatmap_path.clone()) } else { TextureSource::Skin };
+    async fn reload_skin(&mut self, beatmap_path: &str, skin_manager: &mut dyn SkinProvider) -> TextureSource {
+        let source = if self.game_settings.beatmap_skin { TextureSource::Beatmap(beatmap_path.to_owned()) } else { TextureSource::Skin };
 
         self.cursor.reload_skin(skin_manager).await;
         self.judgment_helper.reload_skin(skin_manager).await;
         self.follow_point_image = skin_manager.get_texture("followpoint", &source, SkinUsage::Gamemode, false).await;
 
-        let combo_colors = if self.game_settings.use_beatmap_combo_colors && self.beatmap_combo_colors.len() > 0 {
+        let combo_colors = if self.game_settings.use_beatmap_combo_colors && !self.beatmap_combo_colors.is_empty() {
             self.beatmap_combo_colors.clone()
-        } else if skin_manager.skin().combo_colors.len() > 0 {
+        } else if !skin_manager.skin().combo_colors.is_empty() {
             skin_manager.skin().combo_colors.clone()
         } else {
-            self.game_settings.combo_colors.iter().map(|c| Color::from_hex(c)).collect()
+            self.game_settings.combo_colors.iter().map(Color::from_hex).collect()
         };
 
         self.apply_combo_colors(combo_colors);
@@ -1128,12 +1315,14 @@ impl GameMode for OsuGame {
             let cs = Self::get_cs(&self.metadata, &self.mods);
             let ar = Self::get_ar(&self.metadata, &self.mods);
             
-            // use existing settings, we only want to change the cs
-            let pos = self.scaling_helper.settings_offset;
-            let size = self.scaling_helper.window_size;
-            let scale = self.scaling_helper.settings_scale;
+            // // use existing settings, we only want to change the cs
+            // let pos = self.scaling_helper.settings_pos;
+            // let size = self.scaling_helper.window_size;
+            // let scale = self.scaling_helper.settings_scale;
 
-            self.apply_playfield(Arc::new(ScalingHelper::new_offset_scale(cs, size, pos, scale, has_hr))).await;
+            // self.apply_playfield(Arc::new(ScalingHelper::new_offset_scale(cs, size, pos, scale, has_hr))).await;
+
+            self.recalculate_playfield(self.scaling_helper.window_size);
             self.setup_hitwindows();
 
             set_ar = Some(ar);
@@ -1185,7 +1374,7 @@ impl GameMode for OsuGame {
         
         if has_otb != had_otb {
             if has_otb {
-                let timing_points = self.timing_points.iter().filter(|t|!t.is_inherited()).map(|t|t.clone()).collect::<Vec<_>>();
+                let timing_points = self.timing_points.iter().filter(|t| !t.is_inherited()).cloned().collect::<Vec<_>>();
                 let mut index = 0;
                 // info!("tp: {} -> {}", timing_points[index].time, timing_points[index].beat_length);
                 
@@ -1248,6 +1437,205 @@ impl GameMode for OsuGame {
         // }
     }
 
+    async fn handle_input(&mut self, input: InputEvent) -> Option<ReplayAction> {
+        match input.event {
+            InputType::KeyPress(press) => {
+                let key = press.as_key()?;
+
+                // playfield adjustment
+                if key == Key::LControl {
+                    let old = self.game_settings.get_playfield();
+                    self.move_playfield = Some((old.1, self.window_mouse_pos));
+                    return None;
+                }
+
+                let key = self.map_key(&key)?;
+
+                // if relax is enabled, and the user doesn't want manual input, return
+                if self.mods.has_mod(Relax) {
+                    if !self.game_settings.manual_input_with_relax { return None; }
+                    self.relax_manager.key_pressed(key);
+                }
+
+                Some(ReplayAction::Press(key))
+            }
+
+            InputType::KeyRelease(release) => {
+                let key = release.as_key()?;
+
+                // playfield adjustment
+                if key == Key::LControl {
+                    self.move_playfield = None;
+                    return None;
+                }
+
+                let key = self.map_key(&key)?;
+
+                // if relax is enabled, and the user doesn't want manual input, return
+                if self.mods.has_mod(Relax) {
+                    if !self.game_settings.manual_input_with_relax { return None; }
+                    self.relax_manager.key_released(key);
+                }
+
+                Some(ReplayAction::Release(key))
+            }
+
+            InputType::MouseMove(pos) => {
+                if self.use_controller_cursor {
+                    // info!("switched to mouse");
+                    self.use_controller_cursor = false;
+                }
+                self.window_mouse_pos = pos;
+                
+                if let Some((original, mouse_start)) = self.move_playfield {
+                    
+                    let mut settings = (*self.game_settings).clone();
+                    let mut change = original + (pos - mouse_start);
+
+                    // check playfield snapping
+                    // TODO: can this be simplified?
+                    let playfield_size = self.scaling_helper.playfield_with_padding.size;
+
+                    // what the offset should be if playfield is centered
+                    let center_offset = (self.scaling_helper.window_size - FIELD_SIZE * self.scaling_helper.scale) / 2.0 - (self.scaling_helper.window_size - playfield_size) / 2.0;
+
+                    let snap_threshold = settings.playfield_snap;
+                    if (center_offset.x - change.x).abs() < snap_threshold {
+                        change.x = center_offset.x;
+                    }
+                    if (center_offset.y - change.y).abs() < snap_threshold {
+                        change.y = center_offset.y;
+                    }
+
+                    settings.playfield_x_offset = change.x;
+                    settings.playfield_y_offset = change.y;
+                    
+                    
+                    let settings2 = settings.clone();
+                    self.actions.push(GameAction::UpdateSettings(Box::new(move |settings| settings.update_gamemode_settings(GAME_INFO, settings2) )));
+
+                    self.game_settings = Arc::new(settings);
+                    self.recalculate_playfield(self.scaling_helper.window_size);
+                    return None;
+                }
+                
+
+                // convert window pos to playfield pos
+                let pos = self.scaling_helper.descale_coords(pos);
+                Some(ReplayAction::MousePos(pos.x, pos.y))
+            }
+
+            InputType::MousePress(btn) => {
+                // if the user has mouse input disabled, return
+                if self.game_settings.ignore_mouse_buttons { return None }
+                
+                let button = self.map_btn(&btn)?;
+
+                // if relax is enabled, and the user doesn't want manual input, return
+                if self.mods.has_mod(Relax) {
+                    if !self.game_settings.manual_input_with_relax { return None; }
+                    self.relax_manager.key_pressed(button);
+                }
+
+                Some(ReplayAction::Press(button))
+            }
+
+            InputType::MouseRelease(btn) => {
+                // if the user has mouse input disabled, return
+                if self.game_settings.ignore_mouse_buttons { return None }
+
+                let button = self.map_btn(&btn)?;
+
+                // if relax is enabled, and the user doesn't want manual input, return
+                if self.mods.has_mod(Relax) {
+                    if !self.game_settings.manual_input_with_relax { return None; }
+                    self.relax_manager.key_released(button);
+                }
+
+                Some(ReplayAction::Release(button))
+            }
+
+            InputType::MouseScroll(delta) => {
+                if self.move_playfield.is_some() {
+                    let delta = delta / 40.0;
+                    let mut a = (*self.game_settings).clone();
+                    a.playfield_scale += delta;
+                    self.game_settings = Arc::new(a.clone());
+
+                    self.actions.push(GameAction::UpdateSettings(Box::new(move |settings| settings.update_gamemode_settings(GAME_INFO, a) )));
+
+                    self.recalculate_playfield(self.scaling_helper.window_size);
+                }
+
+                None
+            }
+
+            InputType::ControllerPress(btn, _id, _name) => {
+                // if relax is enabled, and the user doesn't want manual input, return
+                if self.mods.has_mod(Relax) && !self.game_settings.manual_input_with_relax { return None; }
+
+                match btn {
+                    ControllerButton::LeftTrigger => Some(ReplayAction::Press(KeyPress::Left)),
+                    ControllerButton::RightTrigger => Some(ReplayAction::Press(KeyPress::Right)),
+                    _ => None
+                }
+            }
+
+            InputType::ControllerRelease(btn, _id, _name) => {
+                // if relax is enabled, and the user doesn't want manual input, return
+                if self.mods.has_mod(Relax) && !self.game_settings.manual_input_with_relax { return None; }
+
+                match btn {
+                    ControllerButton::LeftTrigger => Some(ReplayAction::Release(KeyPress::Left)),
+                    ControllerButton::RightTrigger => Some(ReplayAction::Release(KeyPress::Right)),
+                    _ => None
+                }
+            }
+
+            InputType::ControllerAxis(Axis::LeftStickX, value, _id, _name) => {
+                // -1.0 to 1.0
+                // where -1 is 0, and 1 is scaling_helper.playfield_scaled_with_cs_border.whatever
+                
+                if !self.use_controller_cursor {
+                    // info!("switched to controller input");
+                    self.use_controller_cursor = true;
+                }
+
+                let mut new_pos = self.mouse_pos;
+                let scaling_helper = self.scaling_helper.clone();
+                let playfield = scaling_helper.playfield_with_padding;
+
+                let normalized = (value + 1.0) / 2.0;
+                new_pos.x = playfield.pos.x + f32::lerp(0.0, playfield.size.x, normalized);
+                        
+                let new_pos = scaling_helper.descale_coords(new_pos);
+                Some(ReplayAction::MousePos(new_pos.x, new_pos.y))
+            }
+
+            InputType::ControllerAxis(Axis::LeftStickY, value, _id, _name) => {
+                // y is upside down in gilrs i guess?
+
+                if !self.use_controller_cursor {
+                    // info!("switched to controller input");
+                    self.use_controller_cursor = true;
+                }
+                
+
+                let mut new_pos = self.mouse_pos;
+                let scaling_helper = self.scaling_helper.clone();
+                let playfield = scaling_helper.playfield_with_padding;
+
+                let normalized = (value + 1.0) / 2.0;
+                new_pos.y = playfield.pos.y + f32::lerp(playfield.size.y, 0.0, normalized);
+
+                let new_pos = scaling_helper.descale_coords(new_pos);
+                Some(ReplayAction::MousePos(new_pos.x, new_pos.y))
+            }
+
+            _ => None
+        }
+    }
+
     
     async fn beat_happened(&mut self, pulse_length: f32) {
         self.notes.iter_mut().for_each(|n|n.beat_happened(pulse_length));
@@ -1255,249 +1643,47 @@ impl GameMode for OsuGame {
     async fn kiai_changed(&mut self, is_kiai: bool) {
         self.notes.iter_mut().for_each(|n|n.kiai_changed(is_kiai));
     }
-}
 
-#[async_trait]
-#[cfg(feature="graphics")]
-impl GameModeInput for OsuGame {
-    async fn key_down(&mut self, key: Key) -> Option<ReplayAction> {
-        // playfield adjustment
-        if key == Key::LControl {
-            let old = self.game_settings.get_playfield();
-            self.move_playfield = Some((old.1, self.window_mouse_pos));
-            return None;
-        }
-
-        let key = self.map_key(&key)?;
-
-        // if relax is enabled, and the user doesn't want manual input, return
-        if self.mods.has_mod(Relax) {
-            if !self.game_settings.manual_input_with_relax { return None; }
-            self.relax_manager.key_pressed(key);
-        }
-
-        Some(ReplayAction::Press(key))
-    }
-    
-    async fn key_up(&mut self, key:Key) -> Option<ReplayAction> {
-        // playfield adjustment
-        if key == Key::LControl {
-            self.move_playfield = None;
-            return None;
-        }
-
-        let key = self.map_key(&key)?;
-
-        // if relax is enabled, and the user doesn't want manual input, return
-        if self.mods.has_mod(Relax) {
-            if !self.game_settings.manual_input_with_relax { return None; }
-            self.relax_manager.key_released(key);
-        }
-
-        Some(ReplayAction::Release(key))
-    }
-    
-
-    async fn mouse_move(&mut self, pos: Vector2) -> Option<ReplayAction> {
-        if self.use_controller_cursor {
-            // info!("switched to mouse");
-            self.use_controller_cursor = false;
-        }
-        self.window_mouse_pos = pos;
-        
-        if let Some((original, mouse_start)) = self.move_playfield {
-            {
-                let settings = &mut Settings::get_mut().osu_settings;
-                let mut change = original + (pos - mouse_start);
-
-                // check playfield snapping
-                // TODO: can this be simplified?
-                let playfield_size = self.scaling_helper.playfield_scaled_with_cs_border.size;
-
-                // what the offset should be if playfield is centered
-                let center_offset = (self.window_size.0 - FIELD_SIZE * self.scaling_helper.scale) / 2.0 - (self.window_size.0 - playfield_size) / 2.0;
-
-                let snap_threshold = settings.playfield_snap;
-                if (center_offset.x - change.x).abs() < snap_threshold {
-                    change.x = center_offset.x;
-                }
-                if (center_offset.y - change.y).abs() < snap_threshold {
-                    change.y = center_offset.y;
-                }
-
-                settings.playfield_x_offset = change.x;
-                settings.playfield_y_offset = change.y;
-            }
-
-            self.recalculate_playfield().await;
-            return None;
-        }
-        
-
-        // convert window pos to playfield pos
-        let pos = self.scaling_helper.descale_coords(pos);
-        Some(ReplayAction::MousePos(pos.x as f32, pos.y as f32))
-    }
-    
-    async fn mouse_down(&mut self, btn: MouseButton) -> Option<ReplayAction> {
-        // if the user has mouse input disabled, return
-        if self.game_settings.ignore_mouse_buttons { return None }
-        
-        let button = self.map_btn(&btn)?;
-
-        // if relax is enabled, and the user doesn't want manual input, return
-        if self.mods.has_mod(Relax) {
-            if !self.game_settings.manual_input_with_relax { return None; }
-            self.relax_manager.key_pressed(button);
-        }
-
-        Some(ReplayAction::Press(button))
-    }
-    
-    async fn mouse_up(&mut self, btn:MouseButton) -> Option<ReplayAction> {
-        // if the user has mouse input disabled, return
-        if self.game_settings.ignore_mouse_buttons { return None }
-
-        let button = self.map_btn(&btn)?;
-
-        // if relax is enabled, and the user doesn't want manual input, return
-        if self.mods.has_mod(Relax) {
-            if !self.game_settings.manual_input_with_relax { return None; }
-            self.relax_manager.key_released(button);
-        }
-
-        Some(ReplayAction::Release(button))
-    }
-
-    async fn mouse_scroll(&mut self, delta:f32) -> Option<ReplayAction> {
-        if self.move_playfield.is_some() {
-            {
-                let settings = &mut Settings::get_mut().osu_settings;
-                settings.playfield_scale += delta / 40.0;
-            }
-
-            self.recalculate_playfield().await;
-        }
-
-        None
-    }
-
-
-    async fn controller_press(&mut self, _:&GamepadInfo, btn:ControllerButton) -> Option<ReplayAction> {
-        // if relax is enabled, and the user doesn't want manual input, return
-        if self.mods.has_mod(Relax) && !self.game_settings.manual_input_with_relax { return None; }
-
-        match btn {
-            ControllerButton::LeftTrigger => Some(ReplayAction::Press(KeyPress::Left)),
-            ControllerButton::RightTrigger => Some(ReplayAction::Press(KeyPress::Right)),
-            _ => None
-        }
-    }
-    
-    async fn controller_release(&mut self, _:&GamepadInfo, btn:ControllerButton) -> Option<ReplayAction> {
-        // if relax is enabled, and the user doesn't want manual input, return
-        if self.mods.has_mod(Relax) && !self.game_settings.manual_input_with_relax { return None; }
-
-        match btn {
-            ControllerButton::LeftTrigger => Some(ReplayAction::Release(KeyPress::Left)),
-            ControllerButton::RightTrigger => Some(ReplayAction::Release(KeyPress::Right)),
-            _ => None
-        }
-    }
-    
-    async fn controller_axis(&mut self, _:&GamepadInfo, axis_data:HashMap<Axis, (bool, f32)>) -> Option<ReplayAction> {
-        if !self.use_controller_cursor {
-            // info!("switched to controller input");
-            // CursorManager::set_gamemode_override(true);
-            self.use_controller_cursor = true;
-        }
-
-        let mut new_pos = self.mouse_pos;
-        let scaling_helper = self.scaling_helper.clone();
-        let playfield = scaling_helper.playfield_scaled_with_cs_border;
-
-        for (axis, &(new, value)) in axis_data.iter() {
-            if new {
-                match *axis {
-                    Axis::LeftStickX => {
-                        // -1.0 to 1.0
-                        // where -1 is 0, and 1 is scaling_helper.playfield_scaled_with_cs_border.whatever
-                        let normalized = (value + 1.0) / 2.0;
-                        new_pos.x = playfield.pos.x + f32::lerp(0.0, playfield.size.x, normalized);
-                    }
-                    Axis::LeftStickY => {
-                        // y is upside down in gilrs i guess?
-                        let normalized = (value + 1.0) / 2.0;
-                        new_pos.y = playfield.pos.y + f32::lerp(playfield.size.y, 0.0, normalized);
-                    }
-                    _ => {},
-                }
-            }
-        }
-
-        let new_pos = scaling_helper.descale_coords(new_pos);
-        Some(ReplayAction::MousePos(new_pos.x, new_pos.y))
-    }
-
-}
-
-
-#[cfg(not(feature="graphics"))]
-impl GameModeInput for OsuGame {}
-
-#[async_trait]
-impl GameModeProperties for OsuGame {
-    fn playmode(&self) -> Cow<'static, str> { Cow::Borrowed("osu") }
-    fn end_time(&self) -> f32 { self.end_time }
-    fn show_cursor(&self) -> bool { false } // we have our own cursor
-
-    fn get_info(&self) -> Arc<dyn GameModeInfo> {
-        Arc::new(super::GameInfo)
-    }
-
-    fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {
-        vec![
-            (KeyPress::Left, "L"),
-            (KeyPress::Right, "R"),
-            (KeyPress::LeftMouse, "M1"),
-            (KeyPress::RightMouse, "M2"),
-        ]
-    }
-
-    fn timing_bar_things(&self) -> Vec<(f32, Color)> {
-        self.hit_windows
-            .iter()
-            .map(|(j, w)| (w.end, j.color))
-            .collect()
-    }
-
-    async fn get_ui_elements(&self, window_size: Vector2, ui_elements: &mut Vec<UIElement>) {
-        let playmode = self.playmode();
-        let get_name = |name| {
-            format!("{playmode}_{name}")
-        };
-
-        let size = Vector2::new(100.0, 30.0);
-        let combo_bounds = Bounds::new(
-            Vector2::ZERO,
-            size
-        );
-        
+    async fn build_widgets(
+        &self, 
+        loader: &mut dyn UiElementLoader
+    ) {
         // combo
-        ui_elements.push(UIElement::new(
-            &get_name("combo".to_owned()),
-            Vector2::new(0.0, window_size.y - (size.y + DURATION_HEIGHT + 10.0)),
-            ComboElement::new(combo_bounds).await
-        ).await);
-
-        // TODO: !!!!!!!
-        // // Leaderboard
-        // ui_elements.push(UIElement::new(
-        //     &get_name("leaderboard".to_owned()),
-        //     Vector2::with_y(window_size.y / 3.0),
-        //     LeaderboardElement::new().await
-        // ).await);
-        
+        loader.change_default_layout(
+            "combo", 
+            GameplayWidgetLayout::new_default(
+                GameplayWidgetAnchor::element("duration_bar", GameplayWidgetAlign::Above),
+                Alignment::TOP_LEFT,
+                None,
+                None,
+            )
+        );
     }
-    
+
+    fn get_playfield(&self) -> PlayfieldNonsense {
+        PlayfieldNonsense::new(
+            self.scaling_helper.playfield,
+            self.scaling_helper.scale,
+            self.scaling_helper.circle_size,
+            self.mods.has_mod(HardRock)
+        )
+    }
+    fn properties(&self) -> GameModeProperties {
+        GameModeProperties { 
+            info: &crate::GAME_INFO, 
+            keys: vec![
+                (KeyPress::Left, "L"),
+                (KeyPress::Right, "R"),
+                (KeyPress::LeftMouse, "M1"),
+                (KeyPress::RightMouse, "M2"),
+            ], 
+            end_time: self.end_time, 
+            show_cursor: false, 
+            audio_prefix: String::new(),
+            timing_bar_things: self.hit_windows
+                .iter()
+                .map(|(j, w)| (w.end, j.color))
+                .collect(), 
+        }
+    }
 }

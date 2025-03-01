@@ -83,8 +83,8 @@ impl AsyncMenu for LobbySelect {
 
             // buttons
             row!(
-                Button::new(Text::new("Create Lobby")).on_press(Message::new_menu(self, "create_lobby", MessageType::Click)),
-                Button::new(Text::new("Back")).on_press(Message::new_menu(self, "back", MessageType::Click));
+                Button::new(Text::new("Create Lobby")).on_press(Message::new_menu(self, "create_lobby", MessageValue::Click)),
+                Button::new(Text::new("Back")).on_press(Message::new_menu(self, "back", MessageValue::Click));
             )
             ;
         )

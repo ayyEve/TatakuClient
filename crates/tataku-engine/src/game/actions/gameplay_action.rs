@@ -31,4 +31,13 @@ pub enum GameplayAction {
     FitToArea(Bounds),
 
     SetHitsoundsEnabled(bool),
+
+    /// The gameplay manager is requesting an update to the difficulty
+    RequestDifficulty,
+}
+
+impl From<(GameplayId, GameplayAction)> for GameAction {
+    fn from((id, action): (GameplayId, GameplayAction)) -> Self {
+        Self::GameplayAction(id, action)
+    }
 }

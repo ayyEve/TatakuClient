@@ -84,34 +84,42 @@ pub enum MapActionIfNone {
 
 
 /// An action that affects the list of beatmaps
-// TODO: add descriptions 
 #[derive(Clone, Debug)]
 pub enum BeatmapListAction {
+    /// Select the next map in the list
     NextMap,
+
+    /// Select the previous map in the list
     PrevMap,
+
+    /// Select the next set in the list
     NextSet,
+
+    /// Select the previous set in the list
     PrevSet,
+
+    /// Select the specified set number
     SelectSet(usize),
 
+    /// Refresh the list
     Refresh,
+
+    /// Apply a filter
     ApplyFilter {
         filter: Option<String>,
     },
 }
 
 
-#[derive(Copy, Clone, Debug, Default, ChainableInitializer)]
+#[derive(Copy, Clone, Debug, Default)]
+#[derive(ChainableInitializer)]
 pub struct SetBeatmapOptions {
-    #[chain]
-    pub use_preview_point: bool,
-    #[chain]
-    pub restart_song: bool,
-    #[chain]
-    pub if_none: MapActionIfNone
+    #[chain] pub use_preview_point: bool,
+    #[chain] pub restart_song: bool,
+    #[chain] pub if_none: MapActionIfNone
 }
 impl SetBeatmapOptions {
     pub fn new() -> Self {
         Self::default()
     }
 }
-

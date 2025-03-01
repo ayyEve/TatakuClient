@@ -1,3 +1,5 @@
+// TODO: move this to its own crate one integration stuff is good
+
 use crate::prelude::*;
 use discord_rich_presence::{
     DiscordIpc, 
@@ -11,7 +13,7 @@ use discord_rich_presence::{
 
 // use tokio::sync::mpsc::{ Sender, Receiver, channel };
 
-const APP_ID:&'static str = "857981337423577109";
+const APP_ID:&str = "857981337423577109";
 const RECONNECT_INTERVAL: f32 = 5_000.0; // every 5 seconds try again
 
 
@@ -24,7 +26,7 @@ pub struct Discord {
     // receiver: Receiver<DiscordThreadMessage>,
 
     client: DiscordIpcClient,
-    last_connection_attempt: Option<Instant>,
+    last_connection_attempt: Option<TatakuInstant>,
 
     enabled: bool,
     connected: bool,
@@ -210,7 +212,7 @@ impl Discord {
                 return Ok(()) 
             }
         }
-        self.last_connection_attempt = Some(Instant::now());
+        self.last_connection_attempt = Some(TatakuInstant::now());
 
         // attempt to reconnect
         self.client.connect().map_err(DiscordError)?;
@@ -253,7 +255,8 @@ impl TatakuIntegration for Discord {
 
     fn handle_event(
         &mut self, 
-        event: &TatakuEvent
+        event: &TatakuIntegrationEvent,
+        values: &ValueCollection
     ) {
         if !self.enabled || !self.connected { return }
 
@@ -261,10 +264,10 @@ impl TatakuIntegration for Discord {
 
         let mut assets = Assets::new()
             .large_image("icon-new")
-            .large_text("Tataku!"); // TODO: make the username of the logged-in user
+            .large_text(&values.global.username); // TODO: make the username of the logged-in user
 
         match event {
-            TatakuEvent::BeatmapStarted { 
+            TatakuIntegrationEvent::BeatmapStarted { 
                 start_time,
                 beatmap, 
                 playmode, 
@@ -277,11 +280,9 @@ impl TatakuIntegration for Discord {
                 let creator = &beatmap.creator;
                 let version = &beatmap.version;
 
-                // TODO:!!!!!
-                // assets = assets
-                //     .small_image("icon") // TODO: use a url for the image, where if it doesnt exist, it gives some default, so we always have the mode text
-                //     .small_text(gamemode_display_name(&**playmode));
-
+                assets = assets
+                    .small_image("icon") // TODO: use a url for the image, where if it doesnt exist, it gives some default, so we always have the mode text
+                    .small_text(values.global.gamemode_infos.get_info(playmode).map(|a| a.display_name.to_owned()).unwrap_or(playmode.to_owned()));
 
                 activity = if let Some(player) = spectator {
                     activity
@@ -300,7 +301,7 @@ impl TatakuIntegration for Discord {
                         .details(format!("{version} by {creator}"))
                 }
             }
-            TatakuEvent::SongChanged { 
+            TatakuIntegrationEvent::SongChanged { 
                 artist,
                 title,
                 elapsed,
@@ -312,10 +313,10 @@ impl TatakuIntegration for Discord {
                 let end = start + (duration / 1000.0) as i64;
                 activity = activity
                     .timestamps(Timestamps::new().start(start).end(end))
-                    .state(format!("{artist} - {title}"))
+                    .state(format!("Listening to {artist} - {title}"))
                 ;
             }
-            TatakuEvent::BeatmapEnded => {
+            TatakuIntegrationEvent::BeatmapEnded => {
                 activity = activity
                     .state("Idle")
                 ;

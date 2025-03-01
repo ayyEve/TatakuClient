@@ -1,33 +1,52 @@
 use quote::*;
-use syn::*;
+use syn::{ spanned::Spanned, * };
 
-pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
-    let mut settings:Vec<SettingsItem> = Vec::new();
+
+const CATEGORY_ATTRIBUTE:&str = "category";
+const TEXT_ATTRIBUTE:&str = "text";
+const DROPDOWN_ATTRIBUTE:&str = "dropdown";
+const ACTION_ATTRIBUTE:&str = "action";
+
+const MIN_ATTRIBUTE:&str = "min";
+const MAX_ATTRIBUTE:&str = "max";
+const WIDTH_ATTRIBUTE:&str = "width";
+const PASSWORD_ATTRIBUTE:&str = "password";
+
+
+const SETTING_ATTRIBUTE:&str = "setting";
+const SUBSETTING_ATTRIBUTE:&str = "subsetting";
+
+
+pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> Result<proc_macro2::TokenStream> {
+    let mut settings: Vec<SettingsItem> = Vec::new();
+
     // let mut categories = HashMap::new();
 
-    let mut get_items_extra = None;
-    let mut from_menu_extra = None;
+    // let mut get_items_extra = None;
+    // let mut from_menu_extra = None;
 
-    for attr in &ast.attrs {
-        if attr.path.is_ident("Setting") {
-            if let Ok(Meta::List(list)) = attr.parse_meta() {
-                for name_value in recurse_meta(list) {
-                    match &name_value.lit {
-                        Lit::Str(str) if name_value.path.is_ident("get_items") => get_items_extra = Some(str.value()),
-                        Lit::Str(str) if name_value.path.is_ident("from_menu") => from_menu_extra = Some(str.value()),
-                        _ => {}
-                    }
-                }
-            }
-        }
-    }
+    // for attr in &ast.attrs {
+    //     if attr.path.is_ident("Setting") {
+    //         if let Ok(Meta::List(list)) = attr.parse_meta() {
+    //             for name_value in recurse_meta(list) {
+    //                 match &name_value.lit {
+    //                     Lit::Str(str) if name_value.path.is_ident("get_items") => get_items_extra = Some(str.value()),
+    //                     Lit::Str(str) if name_value.path.is_ident("from_menu") => from_menu_extra = Some(str.value()),
+    //                     _ => {}
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 
     if let Data::Struct(data) = &ast.data {
         // go through settings
         for f in data.fields.iter() {
-            let mut setting = SettingsItem::default();
-            let field_name = f.ident.as_ref().unwrap().to_string();
-            setting.setting_name = field_name.clone();
+            let Some(field_name) = f.ident.as_ref() else { continue };
+            let mut setting = SettingsItem {
+                setting_name: Some(field_name.clone()),
+                ..Default::default()
+            };
 
             // read the type
             match &f.ty {
@@ -38,155 +57,134 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
         
             // read the attributes
             for attr in &f.attrs {
-                if attr.path.is_ident("Subsetting") { 
-                    setting.setting_type = SettingsType::SubSetting;
+                let path = attr.path();
+                if !(path.is_ident(SUBSETTING_ATTRIBUTE) || path.is_ident(SETTING_ATTRIBUTE)) { continue }
 
-                    // check for category
-                    if let Ok(Meta::List(list)) = attr.parse_meta() {
-                        for name_value in recurse_meta(list) {
-                            match &name_value.lit {
-                                Lit::Str(str) if name_value.path.is_ident("category") => setting.category = Some(str.value()),
-                                _ => {}
-                            }
+                attr.parse_nested_meta(|meta| {
+                    if meta.path.is_ident(CATEGORY_ATTRIBUTE) {
+                        let _ = meta.value()?;
+                        let name: LitStr = meta.input.parse()?;
+
+                        setting.category = Some(name.value());
+                    }
+                    else if meta.path.is_ident(TEXT_ATTRIBUTE) {
+                        let _ = meta.value()?;
+                        let value: LitStr = meta.input.parse()?;
+
+                        setting.setting_text = Some(value.value());
+                    }
+                    else if meta.path.is_ident(ACTION_ATTRIBUTE) {
+                        let _ = meta.value()?;
+                        let value: LitStr = meta.input.parse()?;
+
+                        setting.action = Some(value.value());
+                    }
+                    else if meta.path.is_ident(DROPDOWN_ATTRIBUTE) {
+                        let _ = meta.value()?;
+                        let value: LitStr = meta.input.parse()?;
+
+                        setting.setting_type = SettingsType::Dropdown(value.value());
+                    }
+
+                    else if meta.path.is_ident(MIN_ATTRIBUTE) {
+                        let _ = meta.value()?;
+
+                        if let Ok(value) = meta.input.parse::<LitInt>() {
+                            setting.range_min = Some(value.base10_parse::<u64>()? as f64);
+                        } else if let Ok(value) = meta.input.parse::<LitFloat>() {
+                            setting.range_min = Some(value.base10_parse::<f64>()?);
                         }
                     }
+                    else if meta.path.is_ident(MAX_ATTRIBUTE) {
+                        let _ = meta.value()?;
+
+                        if let Ok(value) = meta.input.parse::<LitInt>() {
+                            setting.range_max = Some(value.base10_parse::<u64>()? as f64);
+                        } else if let Ok(value) = meta.input.parse::<LitFloat>() {
+                            setting.range_max = Some(value.base10_parse::<f64>()?);
+                        }
+                    }
+                    else if meta.path.is_ident(WIDTH_ATTRIBUTE) {
+                        let _ = meta.value()?;
+
+                        if let Ok(value) = meta.input.parse::<LitInt>() {
+                            setting.width = Some(value.base10_parse::<u64>()? as f64);
+                        } else if let Ok(value) = meta.input.parse::<LitFloat>() {
+                            setting.width = Some(value.base10_parse::<f64>()?);
+                        }
+                    }
+                    else if meta.path.is_ident(PASSWORD_ATTRIBUTE) {
+                        let _ = meta.value()?;
+
+                        if let Ok(value) = meta.input.parse::<LitBool>() {
+                            setting.password_input = Some(value.value);
+                        }
+                    }
+
+                    Ok(())
+                })?;
+
+
+                if attr.path().is_ident(SUBSETTING_ATTRIBUTE) { 
+                    setting.setting_type = SettingsType::SubSetting;
 
                     settings.push(setting);
                     break;
                 }
 
-                if !attr.path.is_ident("Setting") { continue }
-
-                if let Ok(Meta::List(list)) = attr.parse_meta() {
-
-                    for name_value in recurse_meta(list) {
-                        macro_rules! check {
-                            ($val:expr, $setting:ident, $ident:expr) => {
-                                if name_value.path.is_ident($ident) {
-                                    setting.$setting = Some($val.clone());
-                                    continue;
-                                }
-                            };
-
-                            ($i:expr, $setting:ident, $ident:expr, $n:ident) => {
-                                if name_value.path.is_ident($ident) {
-                                    setting.$setting = Some($i.base10_parse::<$n>().unwrap());
-                                    continue;
-                                }
-                            }
-                        }
-
-                        match &name_value.lit {
-                            Lit::Str(str) => {
-                                let val = str.value();
-
-                                // check!(val, setting_path, "path");
-                                check!(val, category, "category");
-                                check!(val, setting_text, "text");
-                                // check!(val, dropdown_value, "dropdown_value");
-                                check!(val, action, "action");
-
-                                if name_value.path.is_ident("dropdown") {
-                                    setting.setting_type = SettingsType::Dropdown(val);
-                                    continue;
-                                }
-                            }
-                            Lit::Int(i) => {
-                                check!(i, range_min, "min", f64);
-                                check!(i, range_max, "max", f64);
-                                check!(i, width, "width", f64);
-                            }
-                            Lit::Float(f) => {
-                                check!(f, range_min, "min", f64);
-                                check!(f, range_max, "max", f64);
-                                check!(f, width, "width", f64);
-                            }
-                            Lit::Bool(b) => {
-                                let val = b.value;
-                                check!(val, password_input, "password");
-                            },
-                            
-                            _ => {}
-                        }
-                        
-                        panic!("Unknown parameter {}={}", name_value.path.get_ident().unwrap().to_string(), name_value.lit.to_token_stream().to_string())
-                    }
-                
-                }
-                // println!("{:#?}", setting);
-
                 settings.push(setting);
                 break;
             }
-        
         }
     } else {
-        panic!("tf you doin")
+        return Err(Error::new(ast.span(), "Settings can only be derived on a struct"));
     }
 
 
-    let struct_name = ast.ident.to_string();
-    let mut into_elements_lines = vec!["
-        pub fn into_elements(
-            &self, 
-            prefix: String,
-            filter: &ItemFilter, 
-            owner: MessageOwner, 
-            builder: &mut SettingsBuilder,
-        ) {
-            use crate::prelude::iced_elements::*;
-            const FONT_SIZE:f32 = 30.0;
-    ".to_owned()];
-    
-    // pulling vals back from the menu
-    let mut from_elements_lines = vec!["
-        pub fn from_elements<'a>(
-            &mut self,
-            // tags of the current property, with all previous prefixes removed 
-            tags: &mut impl Iterator<Item = &'a str>,
-            // message that contains the data
-            message: Message,
-        ) {
-            let Some(tag) = tags.next() else { return };
-            match tag {
-    ".to_owned()];
+    let struct_name = &ast.ident;
+    let mut into_elements_lines = proc_macro2::TokenStream::new();
+    let mut from_elements_lines = proc_macro2::TokenStream::new();
 
     for setting in settings {
         let text = setting.setting_text.unwrap_or_default();
-        let property = setting.setting_name.clone();
+        let property = setting.setting_name.clone().unwrap();
 
         if let Some(category) = setting.category {
-            into_elements_lines.push(format!(r#"builder.add_category("{category}");"#));
+            into_elements_lines.extend(quote!{
+                builder.add_category(#category);
+            });
         }
 
-        // comment what this item is
-        into_elements_lines.push(format!("\n// {property}"));
-        from_elements_lines.push(format!("\n// {property}"));
+        let prop_string = property.to_string();
 
         match setting.setting_type {
             // checkbox
             SettingsType::Bool => {
-                into_elements_lines.push(format!(r#"
-                    if filter.check("{text}") {{
-                        let prefix = prefix.clone();
+                into_elements_lines.extend(quote! {{
+                    let prefix = prefix.clone();
 
-                        builder.add_item(
-                            // Text::new("{text}").size(FONT_SIZE).into_element(),
-                            Checkbox::new(
-                                "{text}",
-                                self.{property}
-                            )
-                            .on_toggle(move|b| Message::new(owner, format!("{{prefix}}.{property}"), MessageType::Toggle(b)))
-                            .text_size(FONT_SIZE)
-                            .into_element(),
-                            Space::new(Shrink, Shrink).into_element(),
-                        );
-                    }}
-                "#));
+                    let prop_str = format!("{prefix}.{}", #prop_string);
+
+                    let checkbox = builder.create_checkbox(
+                        CheckboxBuilder::new(
+                            #text,
+                            prop_str.clone()
+                        )
+                        .on_change(Box::new(move |b| Message::new(
+                            owner, 
+                            prop_str.clone(), 
+                            MessageValue::Toggle(b)
+                        )))
+                        .font_size(FONT_SIZE)
+                    );
+
+                    let other = builder.create_empty();
+                    builder.add_item(checkbox, other, #text);
+                }});
                 
-                from_elements_lines.push(format!(r#"
-                    "{property}" => if let Some(b) = message.message_type.as_toggle() {{ self.{property} = b }},
-                "#));
+                from_elements_lines.extend(quote! {
+                    #prop_string => if let Some(b) = message.value.as_toggle() { self.#property = b },
+                });
             }
 
             // slider
@@ -196,109 +194,127 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
             | SettingsType::Usize 
             | SettingsType::F32 
             | SettingsType::F64) => {
-                let ty = f.to_str();
+                let ty = format_ident!("{}", f.to_str());
 
                 let min = setting.range_min.unwrap_or(0.0);
                 let max = setting.range_max.unwrap_or(100.0);
                 
-                let step = if f.is_float() {"0.01"} else {"1.0"};
+                let step = if f.is_float() {0.01f32} else {1.0};
+                into_elements_lines.extend(quote! {{
+                    let prefix = prefix.clone();
 
+                    let text = builder.create_text(
+                        TextBuilder::new(
+                            TextBuilderValue::List(vec![
+                                TextBuilderValue::Static(format!("{} (", #text)),
+                                TextBuilderValue::Calc(format!("{prefix}.{}", #prop_string)),
+                                TextBuilderValue::Static(String::from(")")),
+                            ], String::new())
+                        )
+                        .font_size(FONT_SIZE)
+                    );
+                    let prop_str = format!("{prefix}.{}", #prop_string);
+                    let prop_str2 = prop_str.clone();
 
-                // TODO: step?
-                into_elements_lines.push(format!(r#"
-                    if filter.check("{text}") {{
-                        let prefix = prefix.clone();
-                        
-                        builder.add_item(
-                            Text::new(format!("{text} ({{:.2}})", self.{property})).size(FONT_SIZE).into_element(),
-                            Slider::new(
-                                ({min}f32)..=({max}f32),
-                                self.{property} as f32,
-                                move|v| Message::new(owner, format!("{{prefix}}.{property}"), MessageType::Float(v))
-                            )
-                            .step({step})
-                            .into_element()
-                        );
-                    }}
-                "#));
+                    let b: Box<dyn Fn(f32) -> Message + Send + Sync> = Box::new(move |v| Message::new(owner, prop_str.clone(), MessageValue::Float(v)));
+                    let slider = builder.create_slider(
+                        SliderBuilder::new(
+                            (#min as f32)..=(#max as f32),
+                            prop_str2,
+                        )
+                        .on_change(b)
+                        .step(#step) 
+                    );
+                    builder.add_item(text, slider, #text);
+                }});
                 
-                from_elements_lines.push(format!(r#"
-                    "{property}" => if let Some(n) = message.message_type.as_float() {{ self.{property} = n as {ty} }},
-                "#));
+                from_elements_lines.extend(quote! {
+                    #prop_string => if let Some(n) = message.value.as_float() { self.#property = n as #ty },
+                });
             }
 
             // text input
             SettingsType::String => {
-                let do_password = if setting.password_input == Some(true) {"true"} else {"false"};
+                let do_password = setting.password_input == Some(true);
                 
-                into_elements_lines.push(format!(r#"
-                    if filter.check("{text}") {{
-                        let prefix = prefix.clone();
-                        
-                        builder.add_item(
-                            Text::new("{text}").size(FONT_SIZE).into_element(),
-                            TextInput::new(
-                                "  ", // no placeholder
-                                &self.{property},
-                            )
-                            .size(FONT_SIZE)
-                            .on_input(move|t| Message::new(owner, format!("{{prefix}}.{property}"), MessageType::Text(t)))
-                            .secure({do_password})
-                            .into_element()
-                        );
-                    }}
-                "#));
+                into_elements_lines.extend(quote! {{
+                    let prefix = prefix.clone();
                 
-                from_elements_lines.push(format!(r#"
-                    "{property}" => if let Some(t) = message.message_type.as_text() {{ self.{property} = t }},
-                "#));
+                    let text = builder.create_text(
+                        TextBuilder::new(#text)
+                        .font_size(FONT_SIZE)
+                    );
+
+                    let prop_str = format!("{prefix}.{}", #prop_string);
+                    let prop_str2 = prop_str.clone();
+                    let b:Box<dyn Fn(&str) -> Message + Send + Sync> = Box::new(move |t| Message::new(
+                        owner, 
+                        prop_str.clone(), 
+                        MessageValue::Text(t.to_string())
+                    ));
+
+                    let input = builder.create_text_input(
+                        TextInputBuilder::new("", TextBuilderValue::Variable(prop_str2))
+                        .on_input(b)
+                        .secure(#do_password)
+                        .font_size(FONT_SIZE)
+                    );
+                    builder.add_item(text, input, #text);
+                }});
+                
+                from_elements_lines.extend(quote! {
+                    #prop_string => if let Some(t) = message.value.as_text() { self.#property = t },
+                });
             }
 
             // color input
             SettingsType::Color => {
-                into_elements_lines.push(format!(r#"
-                    if filter.check("{text}") {{
-                        let prefix = prefix.clone();
-                        let color:String = self.{property}.into();
+                into_elements_lines.extend(quote! {{
+                    let prefix = prefix.clone();
+                    let color:String = self.#property.into();
 
-                        builder.add_item(
-                            Text::new("{text}").size(FONT_SIZE).into_element(),
-                            TextInput::new(
-                                "  ", // no placeholder
-                                &color,
-                            )
-                            .size(FONT_SIZE)
-                            .on_input(move|t| Message::new(owner, format!("{{prefix}}.{property}"), MessageType::Text(t)))
-                            .into_element()
-                        );
-                    }}
-                "#));
+                    let text = builder.create_text(
+                        TextBuilder::new(#text)
+                        .font_size(FONT_SIZE)
+                    );
 
-                from_elements_lines.push(format!(r#"
-                    "{property}" => if let Some(t) = message.message_type.as_text() {{ self.{property} = Color::from_hex(t) }},
-                "#));
+                    let b:Box<dyn Fn(&str) -> Message + Send + Sync> = Box::new(move|t| Message::new(owner, format!("{prefix}.{}", #prop_string), MessageValue::Text(t.to_string())));
+                    // TODO: 
+                    let input = builder.create_text_input(
+                        TextInputBuilder::new("", color)
+                        .on_input(b)
+                        .font_size(FONT_SIZE)
+                    );
+                    builder.add_item(text, input, #text);
+                }});
+
+                from_elements_lines.extend(quote! { 
+                    #prop_string => if let Some(t) = message.value.as_text() { self.#property = Color::from_hex(t) },
+                });
             }
             SettingsType::SettingsColor => {
-                into_elements_lines.push(format!(r#"
-                    if filter.check("{text}") {{
-                        let prefix = prefix.clone();
-                        
-                        builder.add_item(
-                            Text::new("{text}").size(FONT_SIZE).into_element(),
-                            TextInput::new(
-                                "  ", // no placeholder
-                                &self.{property}.string,
-                            )
-                            .size(FONT_SIZE)
-                            .on_input(move|t| Message::new(owner, format!("{{prefix}}.{property}"), MessageType::Text(t)))
-                            .into_element()
-                        );
-                    }}
-                "#));
+                into_elements_lines.extend(quote! {{
+                    let prefix = prefix.clone();
 
-                from_elements_lines.push(format!(r#"
-                    "{property}" => if let Some(t) = message.message_type.as_text() {{ self.{property}.update(t) }},
-                "#));
+                    let text = builder.create_text(
+                        TextBuilder::new(#text)
+                        .font_size(FONT_SIZE)
+                    );
+
+                    let b:Box<dyn Fn(&str) -> Message + Send + Sync> = Box::new(move|t| Message::new(owner, format!("{prefix}.{}", #prop_string), MessageValue::Text(t.to_string())));
+
+                    // TODO: impl reflect on settings color (?)
+                    let input = builder.create_text_input(
+                        TextInputBuilder::new("", &self.#property.string)
+                        .on_input(b)
+                        .font_size(FONT_SIZE)
+                    );
+                    builder.add_item(text, input, #text);
+                }});
+
+                from_elements_lines.extend(quote! {
+                    #prop_string => if let Some(t) = message.value.as_text() { self.#property.update(t) },
+                });
             }
 
             // 
@@ -317,69 +333,87 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
             // dropdown menu
             SettingsType::Dropdown(enum_name) => {
                 // let enum_name = setting.dropdown_value.unwrap_or(enum_name);
+                let enum_ident = format_ident!("{enum_name}");
 
-                into_elements_lines.push(format!(r#"
-                    if filter.check("{text}") {{
-                        let prefix = prefix.clone();
-                        
-                        builder.add_item(
-                            Text::new("{text}").size(FONT_SIZE).into_element(),
-                            Dropdown::new(
-                                {enum_name}::variants(),
-                                Some(self.{property}.clone()),
-                                move|v| Message::new(owner, format!("{{prefix}}.{property}"), MessageType::Custom(Arc::new(v)))
-                            )
-                            .text_size(FONT_SIZE)
-                            .into_element()
-                        );
-                    }}
-                "#));
+                into_elements_lines.extend(quote! {{
+                    let prefix = prefix.clone();
+                    let prefix2 = prefix.clone();
 
-                from_elements_lines.push(format!(r#"
-                    "{property}" => {{
-                        let v = message.message_type.downcast::<<{enum_name} as Dropdownable2>::T>();
-                        self.{property} = (*v).clone();
-                    }}
-                "#));
+                    let text = builder.create_text(
+                        TextBuilder::new(#text)
+                            .font_size(FONT_SIZE)
+                    );
+
+                    let variants = #enum_ident::variants();
+                    let texts = variants.iter().map(|i| format!("{i}")).collect::<Vec<_>>();
+
+                    // let current = variants.iter().enumerate()
+                    //     .find(|(_, i)| *i == &self.#property)
+                    //     .map(|(n,_)|n)
+                    //     ;
+                    let change: Box<dyn Fn(usize) -> Message + Send + Sync> = 
+                        Box::new(move |i| Message::new(owner, format!("{prefix2}.{}", #prop_string), MessageValue::Custom(Arc::new(variants[i].clone()))));
+
+                    let dropdown = builder.create_dropdown(
+                        DropdownBuilder::new(
+                            texts,
+                            format!("{prefix}.{}", #prop_string)
+                        )
+                        .on_change(change)
+                        .font_size(FONT_SIZE)
+                    );
+
+                    builder.add_item(text, dropdown, #text);
+                }});
+
+                from_elements_lines.extend(quote! {
+                    #prop_string => {
+                        let v = message.value.downcast::<<#enum_ident as Dropdownable2>::T>();
+                        self.#property = (*v).clone();
+                    }
+                });
             }
 
             // sub settings, ie mania or taiko settings
             SettingsType::SubSetting => {
-                into_elements_lines.push(format!(r#"
-                    self.{property}.into_elements(
-                        format!("{{prefix}}.{property}"),
-                        filter,
+                into_elements_lines.extend(quote! { 
+                    self.#property.into_elements(
+                        format!("{prefix}.{}", #prop_string),
                         owner,
                         builder,
                     );
-                "#));
+                });
 
-                from_elements_lines.push(format!(r#"
-                    "{property}" => self.{property}.from_elements(tags, message),
-                "#));
+                from_elements_lines.extend(quote! { 
+                    #prop_string => self.#property.from_elements(tags, message, extras),
+                });
             }
 
             // button that performs an action
             SettingsType::Button => {
-                into_elements_lines.push(format!(r#"
-                    if filter.check("{text}") {{
-                        let prefix = prefix.clone();
-                        
-                        builder.add_item(
-                            Text::new(" ").size(FONT_SIZE).into_element(),
-                            Button::new(Text::new("{text}").size(FONT_SIZE))
-                            .on_press(Message::new(owner, format!("{{prefix}}.{property}"), MessageType::Click))
-                            .into_element()
-                        );
-                    }}
-                "#));
+                into_elements_lines.extend(quote! { 
+                    let prefix = prefix.clone();
+                    
+                    let empty = builder.create_empty();
+                    let text = builder.create_text(
+                        TextBuilder::new(#text)
+                        .font_size(FONT_SIZE)
+                    );
+
+                    let button = builder.create_button(
+                        ButtonBuilder::new(text)
+                        .on_press(Message::new(owner, format!("{prefix}.{}", #prop_string), MessageValue::Click))
+                    );
+
+                    builder.add_item(empty, button, #text);
+                });
 
                 if let Some(action) = setting.action {
-                    from_elements_lines.push(format!(r#"
-                        "{property}" => {{ {action}; }},
-                    "#));
+                    let action = action.parse::<proc_macro2::TokenStream>().unwrap();
+                    from_elements_lines.extend(quote! { 
+                        #prop_string => { #action; },
+                    });
                 }
-
             }
 
             // shrug
@@ -392,36 +426,46 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
     // if let Some(extra) = get_items_extra { get_menu_items_lines.push("list.extend(self.".to_owned() + &extra + "(p, prefix, sender));"); }
     // if let Some(extra) = from_menu_extra { from_menu_lines.push("self.".to_owned() + &extra + "(prefix, list);"); }
 
-    into_elements_lines.push("}".to_owned());
-    let into_elements_lines = into_elements_lines.join("\n");
 
-
-    from_elements_lines.push(" _ => {}".to_owned());
-    from_elements_lines.push("}".to_owned());
-    from_elements_lines.push("}".to_owned());
-    let from_elements_lines = from_elements_lines.join("\n");
-    
-    // from_menu_lines.push("}".to_owned());
-    // get_menu_items_lines.extend(from_menu_lines);
-
-    // get_menu_items_lines.push("}".to_owned());
-    // let all_lines = get_menu_items_lines.join("\n");
-
-    let all_lines = format!(r#"
-        impl {struct_name} {{
-            {into_elements_lines}
+    let all_lines = quote!{
+        impl MakeSettingsMenu for #struct_name {
+            fn into_elements(
+                &self, 
+                prefix: String,
+                owner: MessageOwner, 
+                builder: &mut SettingsBuilder<'_>,
+            ) {
+                use crate::prelude::*;
+                use crate::prelude::ui::*;
+                const FONT_SIZE:f32 = 30.0;
+                #into_elements_lines
+            }
             
-            {from_elements_lines}
-        }}
-    "#);
+            fn from_elements<'a>(
+                &mut self,
+                // tags of the current property, with all previous prefixes removed 
+                tags: &mut ReflectPath,//impl Iterator<Item = &'a str>,
+                // message that contains the data
+                message: Message,
+                extras: &mut FromElementsExtra<'_>
+            ) {
+                use crate::prelude::*;
+                use crate::prelude::ui::*;
+                let Some(tag) = tags.next() else { return };
+                match tag {
+                    #from_elements_lines
+                    
+                    _ => {}
+                }
+            }
+        }
+    };
 
-    #[cfg(feature="extra_debugging")] {
-        std::fs::create_dir_all("./debug").unwrap();
-        std::fs::write(format!("./debug/{struct_name}-settings_impl.rs", ), &all_lines).unwrap();
-    }
-
-    let impl_tokens = all_lines.parse::<proc_macro2::TokenStream>().unwrap();
-    quote! { #impl_tokens }
+    
+    std::fs::create_dir_all("./debug").unwrap();
+    std::fs::write(format!("./debug/{struct_name}-settings_impl.rs"), all_lines.to_string()).unwrap();
+    
+    Ok(all_lines)
 }
 
 
@@ -431,7 +475,7 @@ struct SettingsItem {
     setting_type: SettingsType, 
 
     /// what is the name of the setting? 
-    setting_name: String,
+    setting_name: Option<Ident>,
 
     /// what text to display
     setting_text: Option<String>,
@@ -479,10 +523,10 @@ enum SettingsType {
     Unknown
 }
 impl SettingsType {
-    fn from(s:Option<&Ident>) -> Self {
-        if let None = s { return Self::Unknown }
+    fn from(s: Option<&Ident>) -> Self {
+        let Some(s) = s else { return Self::Unknown };
 
-        match &*s.unwrap().to_string() {
+        match &*s.to_string() {
             "bool" => Self::Bool,
             "u32"  => Self::U32,
             "u64"  => Self::U64,
@@ -509,30 +553,7 @@ impl SettingsType {
     }
 
     fn is_float(&self) -> bool {
-        match self {
-            Self::F32 | Self::F64 => true,
-            _ => false,
-        }
+        matches!(self, Self::F32 | Self::F64)
     }
 }
 
-
-
-fn recurse_meta(meta: MetaList) -> Vec<MetaNameValue> {
-    let mut list = Vec::new();
-
-    for i in meta.nested {
-        if let NestedMeta::Meta(m) = i {
-            // println!("meta: {}", m.to_token_stream().to_string());
-            match m {
-                Meta::List(l) => list.extend(recurse_meta(l)),
-                Meta::NameValue(nv) => { list.push(nv) }
-                _o => {
-                    // println!("got other: {}", _o.to_token_stream().to_string())
-                }
-            }
-        }
-    }
-    
-    list
-}

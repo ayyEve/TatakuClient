@@ -14,15 +14,7 @@ impl ShuntingYard {
 
             match c {
                 '0'..='9'|'a'..='z'|'.'|'_' => current_thing.push(c),
-
-                // '+' | '-' | '*' | '/' | '^' => {
-                //     current_thing.add(&mut output_queue, &mut operator_stack, false)?;
-                //     while operator_stack.last().filter(|c2| Self::check_op(c, c2)).is_some() {
-                //         output_queue.push(operator_stack.pop().unwrap());
-                //     }
-                //     operator_stack.push(ShuntingYardToken::Operator(c))
-                // }
-
+                
                 '(' => {
                     // if current_thing is a variable, it is actually a function
                     // this is because if there was an operation between it and this, current_thing should be none
@@ -43,7 +35,7 @@ impl ShuntingYard {
                 }
 
                 _ => {
-                    match SYOperator::from_chars(c, c2) {
+                    match Operator::from_chars(c, c2) {
                         // ignore warnings for space, equals, and pipes (OR operator)
                         Err(ShuntingYardError::InvalidOperator(' ')) // ignore warnings for spaces
                         | Err(ShuntingYardError::InvalidOperator('=')) // and equals (EQ)
@@ -99,7 +91,30 @@ impl ShuntingYard {
                         "sin" => stack.push(MathFunction::Sin.run(n)?),
                         "cos" => stack.push(MathFunction::Cos.run(n)?),
                         "tan" => stack.push(MathFunction::Tan.run(n)?),
-                        "display" => stack.push(Cow::Owned(TatakuVariable::new_any(n.get_display()))),
+
+
+                        "display" => {
+                            let str = match &n.value {
+                                TatakuValue::None => "None".to_owned(),
+                                TatakuValue::F32(n) => format_float(n, 2),
+                                TatakuValue::U32(n) => format_number(*n),
+                                TatakuValue::U64(n) => format_number(*n),
+                                TatakuValue::Bool(b) => format!("{b}"),
+                                TatakuValue::String(s) => s.clone(),
+                                TatakuValue::Reflect(reflect) => reflect.reflect_display("", Some(2)).unwrap_or("?".to_owned()),
+                                // FIXME: this is shit
+                                TatakuValue::List(vec) => vec.iter().map(|i| i.as_string()).collect::<Vec<_>>().join(", "),
+                                TatakuValue::Map(_hash_map) => "some map or smth".to_owned(),
+                            };
+
+                            stack.push(Cow::Owned(TatakuVariable::new_any(str)));
+                            // stack.push(Cow::Owned(TatakuVariable::new_any(n.get_display())));
+                        }
+                        
+
+                        
+                        "is_empty" => stack.push(Cow::Owned(TatakuVariable::new_any(n.is_empty()))),
+                        "len"|"length" => stack.push(Cow::Owned(TatakuVariable::new_any(n.get_length() as u64))),
 
                         other => return Err(ShuntingYardError::InvalidFunction(other.to_string())),
                     }
@@ -108,7 +123,7 @@ impl ShuntingYard {
                 ShuntingYardToken::Operator(op) => {
                     let right = stack.pop().ok_or(ShuntingYardError::MissingRightSide(*op))?;
                     // "Not" is a special case, we only care about the right side
-                    if let SYOperator::Not = op {
+                    if let Operator::Not = op {
                         stack.push(op.perform(right, Cow::Owned(TatakuVariable::new_any(TatakuValue::None))));
                         continue;
                     }
@@ -124,7 +139,7 @@ impl ShuntingYard {
         stack.pop().ok_or(ShuntingYardError::NoMath)
     }
 
-    fn check_op(c1: SYOperator, c2: &ShuntingYardToken) -> bool {
+    fn check_op(c1: Operator, c2: &ShuntingYardToken) -> bool {
         let ShuntingYardToken::Operator(c2) = c2 else { return false };
         let p1 = c1.precedence();
         let p2 = c2.precedence();
@@ -179,7 +194,7 @@ impl CurrentThing {
 
 
 #[derive(Copy, Clone, Debug)]
-pub enum SYOperator {
+pub enum Operator {
     // math
     Add,
     Sub,
@@ -200,7 +215,7 @@ pub enum SYOperator {
     Or,
     Not,
 }
-impl SYOperator {
+impl Operator {
     fn from_chars(c1: char, c2: char) -> ShuntingYardResult<Self> {
         match (c1, c2) {
             // math
@@ -279,10 +294,7 @@ impl SYOperator {
     }
 
     fn is_left_associative(&self) -> bool {
-        match self {
-            Self::Pow => false,
-            _ => true
-        }
+        !matches!(self, Self::Pow)
     }
 }
 
@@ -293,7 +305,7 @@ enum MathFunction {
     Tan
 }
 impl MathFunction {
-    fn run<'a>(self, val: Cow<'a, TatakuVariable>) -> ShuntingYardResult<Cow<'a, TatakuVariable>> {
+    fn run(self, val: Cow<'_, TatakuVariable>) -> ShuntingYardResult<Cow<'_, TatakuVariable>> {
         let num = val.as_number().ok_or_else(|| ShuntingYardError::NumberIsntANumber(val.as_string()))?;
 
         let mut new = val.into_owned();

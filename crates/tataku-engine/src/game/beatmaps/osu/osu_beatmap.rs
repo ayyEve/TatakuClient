@@ -24,7 +24,7 @@ pub struct OsuBeatmap {
 
     pub storyboard: Option<StoryboardDef>
 }
-impl OsuBeatmap { 
+impl OsuBeatmap {
     pub fn load(file_path:String) -> TatakuResult<OsuBeatmap> {
         Self::base_loader(file_path, false)
     }
@@ -58,7 +58,7 @@ impl OsuBeatmap {
 
         let file_path = file_path.as_os_str().to_string_lossy().to_string();
         let mut current_area = BeatmapSection::Version;
-        let mut metadata = BeatmapMeta::new(file_path.clone(), hash.clone(), BeatmapType::Osu);
+        let mut metadata = BeatmapMeta::new(file_path.clone(), hash, BeatmapType::Osu);
 
         let mut storyboard_lines = Vec::new();
 
@@ -98,7 +98,7 @@ impl OsuBeatmap {
                     "[HitObjects]" => {
                         // sort timing points before moving onto hitobjects
                         beatmap.timing_points.sort_by(|a, b| a.time.partial_cmp(&b.time).unwrap());
-                        current_area = BeatmapSection::HitObjects; 
+                        current_area = BeatmapSection::HitObjects;
                     }
                     _ => {}
                 }
@@ -119,7 +119,7 @@ impl OsuBeatmap {
                     let key = split.next().unwrap().trim();
                     let val = split.next().unwrap().trim();
 
-                    match &*key {
+                    match key {
                         "AudioFilename" => metadata.audio_filename = parent_dir.join(val).to_str().unwrap().to_owned(),
                         "PreviewTime" => metadata.audio_preview = val.parse().unwrap_or(0.0),
                         "StackLeniency" => beatmap.stack_leniency = val.parse().unwrap_or(0.0),
@@ -132,14 +132,14 @@ impl OsuBeatmap {
                     let mut split = line.split(":");
                     let key = split.next().unwrap().trim();
                     let val = split.collect::<Vec<&str>>().join(":");
-                    
-                    match &*key {
-                        "Title" => metadata.title = val.to_owned(), 
-                        "TitleUnicode" => metadata.title_unicode = val.to_owned(), 
-                        "Artist" => metadata.artist = val.to_owned(), 
-                        "ArtistUnicode" => metadata.artist_unicode = val.to_owned(), 
-                        "Creator" => metadata.creator = val.to_owned(), 
-                        "Version" => metadata.version = val.to_owned(), 
+
+                    match key {
+                        "Title" => metadata.title = val.to_owned(),
+                        "TitleUnicode" => metadata.title_unicode = val.to_owned(),
+                        "Artist" => metadata.artist = val.to_owned(),
+                        "ArtistUnicode" => metadata.artist_unicode = val.to_owned(),
+                        "Creator" => metadata.creator = val.to_owned(),
+                        "Version" => metadata.version = val.to_owned(),
                         _ => {}
                     }
                 }
@@ -148,13 +148,13 @@ impl OsuBeatmap {
                     let key = split.next().unwrap().trim();
                     let val = split.next().unwrap().trim().parse::<f32>().unwrap();
 
-                    match &*key {
-                        "HPDrainRate" => metadata.hp = val, 
-                        "CircleSize" => metadata.cs = val, 
-                        "OverallDifficulty" => metadata.od = val, 
-                        "ApproachRate" => metadata.ar = val, 
-                        "SliderMultiplier" => beatmap.slider_multiplier = val, 
-                        "SliderTickRate" => beatmap.slider_tick_rate = val, 
+                    match key {
+                        "HPDrainRate" => metadata.hp = val,
+                        "CircleSize" => metadata.cs = val,
+                        "OverallDifficulty" => metadata.od = val,
+                        "ApproachRate" => metadata.ar = val,
+                        "SliderMultiplier" => beatmap.slider_multiplier = val,
+                        "SliderTickRate" => beatmap.slider_tick_rate = val,
                         _ => {}
                     }
                 }
@@ -171,7 +171,7 @@ impl OsuBeatmap {
                     // }
 
                     if line.starts_with("//") { continue }
-                    
+
                     match OsuEvent::from_str(&line) {
                         Ok(event) => {
                             if let OsuEvent::Background { filename, start_time: 0, .. } = &event {
@@ -183,7 +183,7 @@ impl OsuBeatmap {
                             if !metadata_only {
                                 beatmap.events.push(event);
                             }
-                        } 
+                        }
                         Err(_e) => {
                             if !metadata_only {
                                 storyboard_lines.push(line);
@@ -222,8 +222,8 @@ impl OsuBeatmap {
                     if let Err(e) = &hitsound {
                         warn!("error parsing hitsound: {} (line: {})", e, line)
                     }
-                    
-                    let hitsound = hitsound.unwrap_or(0).abs() as u8; // 0 = normal, 2 = whistle, 4 = finish, 8 = clap
+
+                    let hitsound = hitsound.unwrap_or(0).unsigned_abs(); // 0 = normal, 2 = whistle, 4 = finish, 8 = clap
                     let hitsound_str = &*hitsound.to_string();
 
                     // read type:
@@ -235,9 +235,9 @@ impl OsuBeatmap {
                     // g = spinner
                     // h = mania hold
                     let new_combo = (read_type & 4) > 0;
-                    let color_skip = 
-                          if (read_type & 16) > 0 {1} else {0} 
-                        + if (read_type & 32) > 0 {2} else {0} 
+                    let color_skip =
+                          if (read_type & 16) > 0 {1} else {0}
+                        + if (read_type & 32) > 0 {2} else {0}
                         + if (read_type & 64) > 0 {4} else {0};
 
                     if (read_type & 2) > 0 { // slider
@@ -264,7 +264,7 @@ impl OsuBeatmap {
                             .collect();
 
 
-                        let curve_type = match &*curve.next().unwrap() {
+                        let curve_type = match curve.next().unwrap() {
                             "B" => CurveType::Bézier,
                             "P" => CurveType::Perfect,
                             "C" => CurveType::Catmull,
@@ -273,7 +273,7 @@ impl OsuBeatmap {
                         };
 
                         let mut curve_points = Vec::new();
-                        while let Some(pair) = curve.next() {
+                        for pair in curve {
                             let mut s = pair.split(':');
                             curve_points.push(Vector2::new(
                                 s.next().unwrap().parse().unwrap(),
@@ -290,7 +290,7 @@ impl OsuBeatmap {
                             slides,
                             length,
                             hitsound,
-                            hitsamples: HitSamples::from_str(split.next()),
+                            hitsamples: HitSamples::from_string(split.next()),
                             edge_sounds,
                             edge_sets,
                             new_combo,
@@ -307,7 +307,7 @@ impl OsuBeatmap {
                             time,
                             end_time,
                             hitsound,
-                            hitsamples: HitSamples::from_str(split.next()),
+                            hitsamples: HitSamples::from_string(split.next()),
                             new_combo,
                             color_skip
                         });
@@ -322,14 +322,14 @@ impl OsuBeatmap {
                             time,
                             end_time,
                             hitsound,
-                            hitsamples: HitSamples::from_str(split.next()),
+                            hitsamples: HitSamples::from_string(split.next()),
                         });
                     } else { // note
                         beatmap.notes.push(NoteDef {
                             pos: Vector2::new(x, y),
                             time,
                             hitsound,
-                            hitsamples: HitSamples::from_str(split.next()),
+                            hitsamples: HitSamples::from_string(split.next()),
                             new_combo,
                             color_skip
                         });
@@ -369,7 +369,7 @@ impl OsuBeatmap {
             if let Some(storyboard_file) = osb_file {
                 storyboard_lines.extend(Io::read_lines_resolved(storyboard_file.path()).unwrap())
             }
-            
+
             match StoryboardDef::read(storyboard_lines) {
                 Ok(s) => beatmap.storyboard = Some(s),
                 Err(e) => error!("error reading storyboard file: {e}")
@@ -436,8 +436,8 @@ impl TatakuBeatmap for OsuBeatmap {
 
     fn get_timing_points(&self) -> Vec<TimingPoint> {
         self.timing_points
-            .iter()
-            .map(|t|t.clone().into())
+            .iter().copied()
+            .map(|t| t.into())
             .collect()
     }
 
@@ -454,7 +454,7 @@ impl TatakuBeatmap for OsuBeatmap {
     }
 
 
-    
+
     fn get_events(&self) -> Vec<IngameEvent> {
         self.events.iter().filter_map(|i| match i {
             OsuEvent::Break { start_time, end_time } => Some(IngameEvent::Break { start: *start_time as f32, end: *end_time as f32 }),
@@ -462,16 +462,17 @@ impl TatakuBeatmap for OsuBeatmap {
         }).collect()
     }
     #[cfg(feature="graphics")]
-    async fn get_animation(&self, skin_manager: &mut dyn SkinProvider) -> Option<Box<dyn BeatmapAnimation>> {     
+    async fn get_animation(&self, skin_manager: &mut dyn SkinProvider) -> Option<Box<dyn BeatmapAnimation>> {
         let Some(storyboard) = &self.storyboard else { return None };
         let parent_dir = Path::new(&self.metadata.file_path).parent()?.to_string_lossy().to_string();
         match OsuStoryboard::new(
-            storyboard.clone(), 
-            parent_dir, 
+            storyboard.clone(),
+            parent_dir,
             skin_manager,
+            // OsuSettings::default(), // TODO: !!!!!
         ).await {
             Ok(sb) => {
-                info!("made anim");
+                trace!("made anim");
                 Some(Box::new(sb))
             }
             Err(e) => {
@@ -512,7 +513,8 @@ pub struct OsuTimingPoint {
     pub sample_index: u8
 }
 impl OsuTimingPoint {
-    pub fn from_str(str:&str) -> Self {
+    #[allow(clippy::should_implement_trait)]
+    pub fn from_str(str: &str) -> Self {
         // time,beatLength,meter,sampleSet,sampleIndex,volume,uninherited,effects
         // debug!("{}", str.clone());
         let mut split = str.split(',');
@@ -532,13 +534,13 @@ impl OsuTimingPoint {
             None => 0
         };
 
-        let kiai = (effects & 1) == 1;
-        let skip_first_barline = (effects & 8) == 1;
+        let kiai = (effects & 1) != 0;
+        let skip_first_barline = (effects & 8) != 0;
 
         Self {
-            time, 
-            beat_length, 
-            volume, 
+            time,
+            beat_length,
+            volume,
             meter,
 
             sample_set,
@@ -550,25 +552,26 @@ impl OsuTimingPoint {
     }
 
     pub fn is_inherited(&self) -> bool {
-        return self.beat_length < 0.0;
+        self.beat_length < 0.0
     }
-    
+
     pub fn bpm_multiplier(&self) -> f32 {
         if !self.is_inherited() {1.0}
         else {self.beat_length.abs().clamp(10.0, 1000.0) / 100.0}
     }
 }
-impl Into<TimingPoint> for OsuTimingPoint {
-    fn into(self) -> TimingPoint {
-        TimingPoint {
-            time: self.time,
-            beat_length: self.beat_length,
-            volume: self.volume,
-            meter: self.meter,
-            kiai: self.kiai,
-            skip_first_barline: self.skip_first_barline,
-            sample_set: self.sample_set,
-            sample_index: self.sample_index,
+
+impl From<OsuTimingPoint> for TimingPoint {
+    fn from(value: OsuTimingPoint) -> Self {
+        Self {
+            time: value.time,
+            beat_length: value.beat_length,
+            volume: value.volume,
+            meter: value.meter,
+            kiai: value.kiai,
+            skip_first_barline: value.skip_first_barline,
+            sample_set: value.sample_set,
+            sample_index: value.sample_index,
         }
     }
 }
@@ -592,7 +595,7 @@ pub enum OsuEvent {
 
     Break {
         start_time: i32,
-        end_time: i32, 
+        end_time: i32,
     }
 }
 impl FromStr for OsuEvent {
@@ -602,26 +605,26 @@ impl FromStr for OsuEvent {
         let mut split = s.split(",");
         match split.next() {
             Some("0") | Some("Background") => {
-                let start_time = split.next().ok_or_else(||TatakuError::String("missing time".to_owned()))?.parse::<i32>().map_err(|_|TatakuError::String("bad time value".to_owned()))?;
-                let filename = split.next().ok_or_else(||TatakuError::String("missing filename".to_owned()))?.to_owned();
+                let start_time = split.next().ok_or("missing time")?.parse::<i32>().map_err(|_| "bad time value")?;
+                let filename = split.next().ok_or("missing filename")?.to_owned();
 
-                let x_offset = split.next().unwrap_or("0").parse::<i32>().map_err(|_|TatakuError::String("bad x_offset".to_owned()))?;
-                let y_offset = split.next().unwrap_or("0").parse::<i32>().map_err(|_|TatakuError::String("bad y_offset".to_owned()))?;
+                let x_offset = split.next().unwrap_or("0").parse::<i32>().map_err(|_| "bad x_offset")?;
+                let y_offset = split.next().unwrap_or("0").parse::<i32>().map_err(|_| "bad y_offset")?;
                 Ok(OsuEvent::Background { start_time, filename, x_offset, y_offset })
             }
 
             Some("1") | Some("Video") => {
-                let start_time = split.next().ok_or_else(||TatakuError::String("missing time".to_owned()))?.parse::<i32>().map_err(|_|TatakuError::String("bad time value".to_owned()))?;
-                let filename = split.next().ok_or_else(||TatakuError::String("missing filename".to_owned()))?.to_owned();
+                let start_time = split.next().ok_or("missing time")?.parse::<i32>().map_err(|_| "bad time value")?;
+                let filename = split.next().ok_or("missing filename")?.to_owned();
 
-                let x_offset = split.next().unwrap_or("0").parse::<i32>().map_err(|_|TatakuError::String("bad x_offset".to_owned()))?;
-                let y_offset = split.next().unwrap_or("0").parse::<i32>().map_err(|_|TatakuError::String("bad y_offset".to_owned()))?;
+                let x_offset = split.next().unwrap_or("0").parse::<i32>().map_err(|_| "bad x_offset")?;
+                let y_offset = split.next().unwrap_or("0").parse::<i32>().map_err(|_| "bad y_offset")?;
                 Ok(OsuEvent::Video { start_time, filename, x_offset, y_offset })
             }
 
             Some("2") | Some("Break") => {
-                let start_time = split.next().ok_or_else(||TatakuError::String("missing time".to_owned()))?.parse::<i32>().map_err(|_|TatakuError::String("bad start time value".to_owned()))?;
-                let end_time = split.next().ok_or_else(||TatakuError::String("missing time".to_owned()))?.parse::<i32>().map_err(|_|TatakuError::String("bad end time value".to_owned()))?;
+                let start_time = split.next().ok_or("missing time")?.parse::<i32>().map_err(|_| "bad start time value")?;
+                let end_time = split.next().ok_or("missing time")?.parse::<i32>().map_err(|_| "bad end time value")?;
                 Ok(OsuEvent::Break { start_time, end_time })
             }
 

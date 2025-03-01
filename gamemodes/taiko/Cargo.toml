@@ -4,16 +4,19 @@ version = "0.1.0"
 authors.workspace = true
 edition.workspace = true
 
+# [lib]
+# crate-type = ["cdylib"]
 
 [features]
 default = [ "graphics" ]
 graphics = []
 
 [dependencies]
-log.workspace = true
-async-trait.workspace = true
-
 tataku-common.workspace = true
-
 tataku-engine.workspace = true
 tataku-client-common.workspace = true
+tataku-client-proc-macros.workspace = true
+
+tracing.workspace = true
+async-trait.workspace = true
+serde.workspace = true

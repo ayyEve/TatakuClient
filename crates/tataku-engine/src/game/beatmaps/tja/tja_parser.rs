@@ -458,7 +458,7 @@ enum ExistingLongType<'a> {
     Drumroll(&'a mut TjaDrumroll),
     Balloon(&'a mut TjaBalloon),
 }
-impl<'a> ExistingLongType<'a> {
+impl ExistingLongType<'_> {
     fn set_end_time(&mut self, time: f32) {
         match self {
             Self::Balloon(b) => b.end_time = time,

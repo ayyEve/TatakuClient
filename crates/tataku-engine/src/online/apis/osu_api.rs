@@ -1,13 +1,15 @@
+// FIXME: use the tataku-osu-api or whatever. dont duplicate code
+
 use crate::prelude::*;
 
 
 pub struct OsuApi;
 impl OsuApi {
-    pub async fn get_beatmap_by_hash(hash: impl Display) -> TatakuResult<Option<OsuApiBeatmap>> {
+    pub async fn get_beatmap_by_hash(hash: impl Display, settings: &Settings) -> TatakuResult<Option<OsuApiBeatmap>> {
         // let hash = hash.as_ref();
         
         // need to query the osu api to get the set id for this hashmap
-        let key = Settings::get().osu_api_key.clone();
+        let key = settings.osu_api_key.clone();
 
         // if no key, return error
         if key.is_empty() { return TatakuResult::Err(TatakuError::String("no osu api key".to_owned())) }
@@ -74,11 +76,11 @@ struct RawOsuApiBeatmap {
     download_unavailable: String, // 0, 1
     audio_unavailable: String, // 0, 1
 }
-impl Into<OsuApiBeatmap> for RawOsuApiBeatmap {
-    fn into(self) -> OsuApiBeatmap {
+impl From<RawOsuApiBeatmap> for OsuApiBeatmap {
+    fn from(val: RawOsuApiBeatmap) -> Self {
         OsuApiBeatmap {
-            beatmap_id: self.beatmap_id.parse().unwrap_or_default(),
-            beatmapset_id: self.beatmapset_id.parse().unwrap_or_default(),
+            beatmap_id: val.beatmap_id.parse().unwrap_or_default(),
+            beatmapset_id: val.beatmapset_id.parse().unwrap_or_default(),
 
         }
     }
@@ -95,9 +97,9 @@ fn test() {
     let r = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
 
     r.block_on(async {
-        Settings::load(&mut ActionQueue::new()).await;
+        let settings = Settings::load(&mut ActionQueue::new()).await;
 
-        let x = OsuApi::get_beatmap_by_hash("b512dc9b054db498689150556bce5533").await;
+        let x = OsuApi::get_beatmap_by_hash("b512dc9b054db498689150556bce5533", &settings).await;
         println!("{x:?}")
     });
 }

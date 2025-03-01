@@ -3,7 +3,7 @@ use crate::prelude::*;
 pub const USER_ITEM_SIZE:Vector2 = Vector2::new(300.0, 100.0);
 pub const USERNAME_OFFSET:Vector2 = Vector2::new(5.0, 5.0);
 
-#[derive(Clone, ScrollableGettersSetters)]
+#[derive(Clone)]
 pub struct PanelUser {
     pos: Vector2,
     size: Vector2,
@@ -39,41 +39,41 @@ impl Default for PanelUser {
     }
 }
 
-impl ScrollableItem for PanelUser {
-    fn get_keywords(&self) -> Vec<String> { self.user.username.split(" ").map(|a|a.to_lowercase().to_owned()).collect() }
+// impl ScrollableItem for PanelUser {
+//     fn get_keywords(&self) -> Vec<String> { self.user.username.split(" ").map(|a|a.to_lowercase().to_owned()).collect() }
 
-    fn draw(&mut self, pos:Vector2, list: &mut RenderableCollection) {
-        let pos = self.pos + pos;
+//     fn draw(&mut self, pos:Vector2, list: &mut RenderableCollection) {
+//         let pos = self.pos + pos;
 
-        // bounding box
-        list.push(Rectangle::new(
-            pos,
-            USER_ITEM_SIZE,
-            Color::new(0.5, 0.5, 0.5, 0.75),
-            Some(Border::new(if self.hover {Color::RED} else {Color::new(0.75, 0.75, 0.75, 0.75)}, 2.0))
-        ));
+//         // bounding box
+//         list.push(Rectangle::new(
+//             pos,
+//             USER_ITEM_SIZE,
+//             Color::new(0.5, 0.5, 0.5, 0.75),
+//             Some(Border::new(if self.hover {Color::RED} else {Color::new(0.75, 0.75, 0.75, 0.75)}, 2.0))
+//         ));
 
-        // username
-        list.push(Text::new(
-            pos + USERNAME_OFFSET,
-            20.0,
-            self.user.username.clone(),
-            Color::WHITE,
-            Font::Main
-        ));
+//         // username
+//         list.push(Text::new(
+//             pos + USERNAME_OFFSET,
+//             20.0,
+//             self.user.username.clone(),
+//             Color::WHITE,
+//             Font::Main
+//         ));
 
-        // status
-        if let Some(_action) = &self.user.action {
+//         // status
+//         if let Some(_action) = &self.user.action {
             
-        }
-        if let Some(action_text) = &self.user.action_text {
-            list.push(Text::new(
-                pos + USERNAME_OFFSET + Vector2::new(0.0, 20.0),
-                20.0,
-                action_text.clone(),
-                Color::BLACK,
-                Font::Main
-            ));
-        }
-    }
-}
+//         }
+//         if let Some(action_text) = &self.user.action_text {
+//             list.push(Text::new(
+//                 pos + USERNAME_OFFSET + Vector2::new(0.0, 20.0),
+//                 20.0,
+//                 action_text.clone(),
+//                 Color::BLACK,
+//                 Font::Main
+//             ));
+//         }
+//     }
+// }

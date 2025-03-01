@@ -34,6 +34,11 @@ impl DefaultHealthManager {
         }
     }
 }
+impl Default for DefaultHealthManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl HealthManager for DefaultHealthManager {
     fn is_dead(&self, _song_over: bool) -> bool {
         self.current_health <= 0.0

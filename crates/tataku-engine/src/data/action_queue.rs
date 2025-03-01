@@ -7,6 +7,10 @@ impl ActionQueue {
     pub fn new() -> Self {
         Self(Vec::new())
     }
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
     pub fn take(&mut self) -> Vec<TatakuAction> {
         self.0.take()
     }
@@ -15,6 +19,6 @@ impl ActionQueue {
         self.0.push(action.into())
     }
     pub fn extend(&mut self, actions: Vec<TatakuAction>) {
-        self.0.extend(actions.into_iter())
+        self.0.extend(actions)
     }
 }

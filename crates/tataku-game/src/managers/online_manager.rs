@@ -3,7 +3,14 @@ use tataku_common::*;
 use crate::prelude::*;
 use tokio::{ sync::Mutex, net::TcpStream };
 use futures_util::{ SinkExt, StreamExt, stream::SplitSink };
-use tokio_tungstenite::{ MaybeTlsStream, WebSocketStream, tungstenite::protocol::Message };
+use tokio_tungstenite::{ 
+    MaybeTlsStream, 
+    WebSocketStream, 
+    tungstenite::{
+        Bytes,
+        protocol::Message,
+    }
+};
 
 type WsWriter = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
 
@@ -11,12 +18,11 @@ type WsWriter = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
 // how many frames do we buffer before sending?
 // higher means less packet spam
 const SPECTATOR_BUFFER_FLUSH_SIZE: usize = 20;
-type ThreadSafeSelf = Arc<AsyncRwLock<OnlineManager>>;
 
 lazy_static::lazy_static! {
-    static ref ONLINE_MANAGER:ThreadSafeSelf = Arc::new(AsyncRwLock::new(OnlineManager::new()));
+    static ref ONLINE_MANAGER:Arc<AsyncRwLock<OnlineManager>> = Arc::new(AsyncRwLock::new(OnlineManager::new()));
 }
-///
+
 pub struct OnlineManager {
     pub connected: bool,
     pub users: HashMap<u32, Arc<Mutex<OnlineUser>>>, // user id is key
@@ -29,7 +35,7 @@ pub struct OnlineManager {
     pub logged_in: bool,
 
     /// socket writer
-    pub writer: Option<Arc<Mutex<WsWriter>>>,
+    pub writer: Option<WsWriter>,
 
     // ====== chat ======
     #[cfg(feature="graphics")]
@@ -43,7 +49,11 @@ pub struct OnlineManager {
 }
 
 impl OnlineManager {
-    pub fn new() -> OnlineManager {
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
+        // idk why this is suddenly required but whatever
+        let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+
         #[cfg(feature="graphics")]
         let mut messages = HashMap::new();
         #[cfg(feature="graphics")]
@@ -56,7 +66,7 @@ impl OnlineManager {
             "this is a test message".to_owned()
         )]);
 
-        OnlineManager {
+        Self {
             user_id: 0,
             logged_in: false,
             users: HashMap::new(),
@@ -77,31 +87,30 @@ impl OnlineManager {
     #[cfg(feature = "discord")]
     pub async fn init_discord() {
         match Discord::new() {
-            Ok(discord) => OnlineManager::get_mut().await.discord = Some(discord),
+            Ok(discord) => Self::get_mut().await.discord = Some(discord),
             Err(e) => error!("discord error: {e}"),
         }
     }
 
     #[cfg(feature="gameplay")]
-    pub async fn start() {
-        info!("starting network connection");
-        let mut settings = SettingsHelper::new();
+    pub async fn start(settings: Settings) {
 
         // // insert multiplayer data
         // GlobalValueManager::update(Arc::new(MultiplayerData::default()));
         // GlobalValueManager::update::<Option<CurrentLobbyInfo>>(Arc::new(None));
 
         let server_url = settings.server_url.clone();
+        info!("Starting websocket connection to url: {server_url}");
 
         // initialize the connection
         match tokio_tungstenite::connect_async(settings.server_url.clone()).await {
             Ok((ws_stream, _)) => {
                 let (writer, mut reader) = ws_stream.split();
-                let writer = Arc::new(Mutex::new(writer));
+                // let writer = Arc::new(Mutex::new(writer));
 
                 // send login
                 {
-                    let mut s = OnlineManager::get_mut().await;
+                    let mut s = Self::get_mut().await;
                     s.writer = Some(writer);
                     s.connected = true;
 
@@ -115,23 +124,22 @@ impl OnlineManager {
                 }
 
                 while let Some(message) = reader.next().await {
-                    if settings.update() {
-                        if settings.server_url != server_url {
-                            info!("server url changed, restarting network manager");
-                            Self::restart();
-                            return;
-                        }
+                    if settings.server_url != server_url {
+                        info!("server url changed, restarting network manager");
+                        Self::restart();
+                        return;
                     }
 
                     match message {
                         Ok(Message::Binary(data)) => {
-                            if let Err(e) = OnlineManager::handle_packet(data, &settings.logging_settings).await {
+                            let data = data.to_vec();
+                            if let Err(e) = Self::handle_packet(data, &settings.logging_settings).await {
                                 error!("Error with packet: {}", e);
                             }
                         }
                         Ok(Message::Ping(_)) => {
-                            if let Some(writer) = &OnlineManager::get().await.writer {
-                                let _ = writer.lock().await.send(Message::Pong(Vec::new())).await;
+                            if let Some(writer) = &mut Self::get_mut().await.writer {
+                                let _ = writer.send(Message::Pong(Bytes::from_static(&[]))).await;
                             }
                         }
 
@@ -153,7 +161,7 @@ impl OnlineManager {
             }
             Err(oof) => {
                 // s.write().await.connected = false;
-                warn!("Could not accept connection: {}", oof);
+                warn!("Could not accept connection: {oof:?}");
             }
         }
     }
@@ -161,18 +169,15 @@ impl OnlineManager {
     /// disconnect and reset everything
     pub fn restart() {
         tokio::spawn(async {
-            OnlineManager::get_mut().await.reset().await;
-
-            // // re-establish the connection
-            // Self::start().await;
+            Self::get_mut().await.reset().await;
         });
     }
 
     /// disconnect and reset everything
     async fn reset(&mut self) {
         // if we currently have a connection, close it
-        if let Some(writer) = &self.writer {
-            let _ = writer.lock().await.close();
+        if let Some(writer) = &mut self.writer {
+            let _ = writer.close().await;
         }
 
         // reset most values
@@ -189,7 +194,7 @@ impl OnlineManager {
 
     /// disconnect without resetting anything
     async fn disconnect() {
-        let mut s = OnlineManager::get_mut().await;
+        let mut s = Self::get_mut().await;
         s.writer = None;
         s.connected = false;
         s.logged_in = false;
@@ -199,7 +204,7 @@ impl OnlineManager {
     #[cfg(feature="gameplay")]
     async fn handle_packet(data:Vec<u8>, log_settings: &LoggingSettings) -> TatakuResult<()> {
         let mut reader = SerializationReader::new(data);
-
+        
         while reader.can_read() {
             // info!("reading packet from server");
             let packet:PacketId = reader.read("packet id")?;
@@ -207,7 +212,7 @@ impl OnlineManager {
 
             match packet {
                 // ===== ping/pong =====
-                PacketId::Ping => { OnlineManager::get().await.send_packet(Pong).await; },
+                PacketId::Ping => { Self::get_mut().await.send_packet(Pong).await; },
                 PacketId::Pong => {/* trace!("Got pong from server"); */},
 
                 // login
@@ -232,7 +237,7 @@ impl OnlineManager {
                         LoginStatus::Ok => {
                             trace!("Success, got user_id: {}", user_id);
                             {
-                                let mut om = OnlineManager::get_mut().await;
+                                let mut om = Self::get_mut().await;
                                 om.user_id = user_id;
                                 om.logged_in = true;
                                 om.spectator_info = OnlineSpectatorInfo::new(user_id);
@@ -242,7 +247,7 @@ impl OnlineManager {
                             ping_handler();
 
                             // request friends list
-                            OnlineManager::get().await.send_packet(ChatPacket::Client_GetFriends).await;
+                            Self::get_mut().await.send_packet(ChatPacket::Client_GetFriends).await;
                         }
                     }
                 }
@@ -269,16 +274,16 @@ impl OnlineManager {
                     let mut user = OnlineUser::new(user_id, username.clone());
                     user.game = game;
 
-                    let mut s = OnlineManager::get_mut().await;
+                    let mut s = Self::get_mut().await;
                     s.users.insert(user_id, Arc::new(Mutex::new(user)));
 
-                    // if this is us, make sure we have the correct username text
-                    if s.user_id == user_id {
-                        let mut settings = Settings::get_mut();
-                        if settings.username != username {
-                            settings.username = username.clone()
-                        }
-                    }
+                    // // if this is us, make sure we have the correct username text
+                    // if s.user_id == user_id {
+                    //     let mut settings = Settings::get_mut();
+                    //     if settings.username != username {
+                    //         settings.username = username.clone()
+                    //     }
+                    // }
 
                     if s.friends.contains(&user_id) {
                         NotificationManager::add_text_notification(format!("{username} is online"), 5000.0, Color::BLUE).await;
@@ -287,7 +292,7 @@ impl OnlineManager {
                 PacketId::Server_UserLeft {user_id} => {
                     if log_settings.extra_online_logging { debug!("User id {user_id} left"); };
 
-                    let mut lock = OnlineManager::get_mut().await;
+                    let mut lock = Self::get_mut().await;
                     // remove from online users
                     if let Some(u) = lock.users.remove(&user_id) {
                         let l = u.lock().await;
@@ -303,7 +308,7 @@ impl OnlineManager {
                 PacketId::Server_UserStatusUpdate { user_id, action, action_text, mode } => {
                     // debug!("Got user status update: {}, {:?}, {} ({:?})", user_id, action, action_text, mode);
                     
-                    if let Some(e) = OnlineManager::get().await.users.get(&user_id) {
+                    if let Some(e) = Self::get().await.users.get(&user_id) {
                         let mut a = e.lock().await;
                         a.action = Some(action);
                         a.action_text = Some(action_text);
@@ -351,7 +356,7 @@ impl OnlineManager {
                     ChatChannel::User {username: channel}
                 };
 
-                let mut lock = OnlineManager::get_mut().await;
+                let mut lock = Self::get_mut().await;
                 let sender = lock.find_user_by_id(sender_id).unwrap_or_default().lock().await.username.clone();
                 let chat_messages = &mut lock.chat_messages;
                 // if the list doesnt include the channel, add it
@@ -372,7 +377,7 @@ impl OnlineManager {
 
             // friends list received from server
             ChatPacket::Server_FriendsList { friend_ids } => {
-                let mut s = OnlineManager::get_mut().await;
+                let mut s = Self::get_mut().await;
                 for i in friend_ids.iter() {
                     if let Some(u) = s.users.get_mut(i) {
                         u.lock().await.friend = true;
@@ -384,7 +389,7 @@ impl OnlineManager {
             }
 
             ChatPacket::Server_UpdateFriend { friend_id, is_friend } => {
-                let mut s = OnlineManager::get_mut().await;
+                let mut s = Self::get_mut().await;
                 if let Some(u) = s.users.get_mut(&friend_id) {
                     u.lock().await.friend = is_friend;
                 }
@@ -408,7 +413,7 @@ impl OnlineManager {
         match packet {
             SpectatorPacket::Server_SpectatorFrames { frames: new_frames } => {
                 // debug!("Got {} spectator frames from the server", frames.len());
-                let mut lock = OnlineManager::get_mut().await;
+                let mut lock = Self::get_mut().await;
                 if let Some(frames) = lock.spectator_info.incoming_frames.get_mut(&host_id) {
                     frames.extend(new_frames);
                 } else {
@@ -417,23 +422,23 @@ impl OnlineManager {
             }
             // spec join/leave
             SpectatorPacket::Server_SpectatorJoined { user_id, username }=> {
-                OnlineManager::get_mut().await.spectator_info.add_spec(host_id, user_id, username.clone());
+                Self::get_mut().await.spectator_info.add_spec(host_id, user_id, username.clone());
                 NotificationManager::add_text_notification(format!("{username} is now spectating"), 2000.0, Color::GREEN).await;
             }
             SpectatorPacket::Server_SpectatorLeft { user_id } => {
-                let user = if let Some(u) = OnlineManager::get().await.find_user_by_id(user_id) {
+                let user = if let Some(u) = Self::get().await.find_user_by_id(user_id) {
                     u.lock().await.username.clone()
                 } else {
                     "A user".to_owned()
                 };
-                OnlineManager::get_mut().await.spectator_info.remove_spec(host_id, user_id);
+                Self::get_mut().await.spectator_info.remove_spec(host_id, user_id);
                 
                 NotificationManager::add_text_notification(format!("{user} stopped spectating"), 2000.0, Color::GREEN).await;
             }
             SpectatorPacket::Server_SpectateResult { result} => {
                 trace!("Got spec result {result:?}");
                 match result {
-                    SpectateResult::Ok => OnlineManager::get_mut().await.spectator_info.add_host(host_id),
+                    SpectateResult::Ok => Self::get_mut().await.spectator_info.add_host(host_id),
                     SpectateResult::Error_SpectatingBot => NotificationManager::add_text_notification("You cannot spectate a bot!", 3000.0, Color::RED).await,
                     SpectateResult::Error_HostOffline => NotificationManager::add_text_notification("Spectate host is offline!", 3000.0, Color::RED).await,
                     SpectateResult::Error_SpectatingYourself => NotificationManager::add_text_notification("You cannot spectate yourself!", 3000.0, Color::RED).await,
@@ -451,7 +456,7 @@ impl OnlineManager {
         debug!("got multi packet: {packet:?}");
         
         // the game handles these now
-        OnlineManager::get_mut().await.multiplayer_packet_queue.push(packet);
+        Self::get_mut().await.multiplayer_packet_queue.push(packet);
         Ok(())
     }
 
@@ -460,41 +465,22 @@ impl OnlineManager {
     /// set our user's action for the server and any enabled integrations
     pub fn set_action(action_info: SetAction, incoming_mode: Option<String>) {
         tokio::spawn(async move {
-            let s = OnlineManager::get().await;
-            let mode = incoming_mode.clone().unwrap_or(String::new());
-
+            let mut s = Self::get_mut().await;
+            let mode = incoming_mode.clone().unwrap_or_default();
 
             let action = action_info.get_action();
             let action_text = match &action_info {
-                SetAction::Idle => format!("Idle"),
-                SetAction::Closing => format!("Closing"),
+                SetAction::Idle => "Idle".to_string(),
+                SetAction::Closing => "Closing".to_string(),
 
                 SetAction::Listening { artist, title, .. } => format!("Listening to {artist} - {title}"),
                 SetAction::Spectating { player, artist, title, version, creator:_ } => format!("Watching {player} play {artist} - {title}[{version}]"),
                 SetAction::Playing { artist, title, version, .. } => format!("Playing {artist} - {title}[{version}]"),
             };
 
-
             s.send_packet(PacketId::Client_StatusUpdate { action, action_text: action_text.clone(), mode }).await;
             if action == UserAction::Leaving {
                 s.send_packet(PacketId::Client_LogOut).await;
-            }
-
-
-            // #[cfg(feature = "discord")]
-            // if let Some(discord) = &s.discord {
-            //     discord.change_status(&action_info, incoming_mode).await;
-            // }
-
-            if Settings::get().integrations.lastfm {
-                match &action_info {
-                    SetAction::Listening { artist, title, .. } 
-                    | SetAction::Playing { artist, title, .. } 
-                    | SetAction::Spectating { artist, title, .. } => {
-                        LastFmIntegration::update(title.clone(), artist.clone()).await;
-                    }
-                    _ => {}
-                }
             }
 
         });
@@ -506,12 +492,10 @@ impl OnlineManager {
 }
 
 // spectator functions
-
-
 impl OnlineManager {
     pub async fn update_usernames(data: &mut CurrentLobbyInfo) {
         data.player_usernames.clear();
-        let om = OnlineManager::get().await;
+        let om = Self::get().await;
 
         for user in data.info.players.iter() {
             let Some(user) = om.users.get(&user.user_id) else { continue };
@@ -520,12 +504,9 @@ impl OnlineManager {
         }
     }
 
-    pub fn send_spec_frames(frames:Vec<SpectatorFrame>, force_send: bool) {
+    pub fn send_spec_frames(frames: Vec<SpectatorFrame>, force_send: bool) {
         tokio::spawn(async move {
-            let mut lock = OnlineManager::get_mut().await;
-            // if we arent speccing, exit
-            // hopefully resolves a bug
-            // if !lock.spectating {return}
+            let mut lock = Self::get_mut().await;
 
             lock.spectator_info.outgoing_frames.extend(frames);
             // wait at most 1s before sending packets
@@ -535,8 +516,9 @@ impl OnlineManager {
                 let frames = std::mem::take(&mut lock.spectator_info.outgoing_frames);
                 
                 // info!("Sending {} spec packets", frames.len());
-                lock.send_packet(SpectatorPacket::Client_SpectatorFrames {frames}.with_host(lock.user_id)).await;
-                lock.spectator_info.last_sent_frame = Instant::now();
+                let id = lock.user_id;
+                lock.send_packet(SpectatorPacket::Client_SpectatorFrames {frames}.with_host(id)).await;
+                lock.spectator_info.last_sent_frame = TatakuInstant::now();
             }
         });
 
@@ -548,7 +530,7 @@ impl OnlineManager {
     /// the process starts when the spec is approved
     pub fn start_spectating(host_id: u32) {
         tokio::spawn(async move {
-            let s = OnlineManager::get().await;
+            let mut s = Self::get_mut().await;
             s.send_packet(SpectatorPacket::Client_Spectate.with_host(host_id)).await;
         });
     }
@@ -557,7 +539,7 @@ impl OnlineManager {
         info!("Request to stop speccing {host_id}");
         tokio::spawn(async move {
             trace!("Attempting to stop speccing {host_id}");
-            let mut s = OnlineManager::get_mut().await;
+            let mut s = Self::get_mut().await;
             s.spectator_info.remove_host(host_id);
             s.send_packet(SpectatorPacket::Client_LeaveSpectator.with_host(host_id)).await;
             trace!("Stopped speccing {host_id}");
@@ -574,25 +556,25 @@ impl OnlineManager {
 impl OnlineManager {
     pub async fn add_lobby_listener() {
         // info!("add lobby listener");
-        let s = OnlineManager::get().await;
+        let mut s = Self::get_mut().await;
         s.send_packet(MultiplayerPacket::Client_AddLobbyListener).await;
         s.send_packet(MultiplayerPacket::Client_LobbyList).await;
     }
     pub async fn remove_lobby_listener() {
         // info!("remove lobby listener");
-        let s = OnlineManager::get().await;
+        let mut s = Self::get_mut().await;
         s.send_packet(MultiplayerPacket::Client_AddLobbyListener).await;
     }
 
     pub async fn invite_user(user_id: u32) {
         // info!("inviting user {user_id}");
-        let s = OnlineManager::get().await;
+        let mut s = Self::get_mut().await;
         s.send_packet(MultiplayerPacket::Client_LobbyInvite { user_id } ).await;
     }
 
     pub async fn update_lobby_beatmap(beatmap: Arc<BeatmapMeta>, mode: String) {
         // info!("update lobby beatmap: {beatmap:?}, {mode}");
-        let s = OnlineManager::get().await;
+        let mut s = Self::get_mut().await;
         s.send_packet(MultiplayerPacket::Client_LobbyMapChange { 
             new_map: LobbyBeatmap { 
                 title: beatmap.version_string(), 
@@ -605,55 +587,55 @@ impl OnlineManager {
 
     pub async fn move_lobby_slot(new_slot: u8) {
         // info!("move slot");
-        let s = OnlineManager::get().await;
+        let mut s = Self::get_mut().await;
         let our_id = s.user_id;
         s.send_packet(MultiplayerPacket::Client_LobbySlotChange { slot: new_slot, new_status: LobbySlot::Filled {user: our_id} } ).await;
     }
     pub async fn update_lobby_slot(slot: u8, new_state: LobbySlot) {
         // info!("update slot");
-        let s = OnlineManager::get().await;
+        let mut s = Self::get_mut().await;
         s.send_packet(MultiplayerPacket::Client_LobbySlotChange { slot, new_status: new_state } ).await;
     }
 
     pub async fn update_lobby_state(new_state: LobbyUserState) {
         // info!("update our user state: {new_state:?}");
-        let s = OnlineManager::get().await;
+        let mut s = Self::get_mut().await;
         s.send_packet(MultiplayerPacket::Client_LobbyUserState { new_state } ).await;
     }
 
     pub async fn lobby_load_complete() {
         // info!("sending load complete");
-        let s = OnlineManager::get().await;
+        let mut s = Self::get_mut().await;
         s.send_packet(MultiplayerPacket::Client_LobbyMapLoaded).await;
     }
 
     pub async fn lobby_map_complete(score: Score) {
         // info!("sending map complete");
-        let s = OnlineManager::get().await;
+        let mut s = Self::get_mut().await;
         s.send_packet(MultiplayerPacket::Client_LobbyMapComplete { score }).await;
     }
 
     pub async fn lobby_map_start() {
         // info!("sending map start");
-        let s = OnlineManager::get().await;
+        let mut s = Self::get_mut().await;
         s.send_packet(MultiplayerPacket::Client_LobbyStart).await;
     }
 
     pub async fn lobby_update_score(score: Score) {
         // info!("update lobby score");
-        let s = OnlineManager::get().await;
+        let mut s = Self::get_mut().await;
         s.send_packet(MultiplayerPacket::Client_LobbyScoreUpdate { score }).await;
     }
 
     pub async fn lobby_change_host(new_host: u32) {
         // info!("change lobby host");
-        let s = OnlineManager::get().await;
+        let mut s = Self::get_mut().await;
         s.send_packet(MultiplayerPacket::Client_LobbyChangeHost { new_host }).await;
     }
 
     pub async fn lobby_update_mods(mods: HashSet<String>, speed: u16) {
         // info!("update mods and speed");
-        let s = OnlineManager::get().await;
+        let mut s = Self::get_mut().await;
         s.send_packet(MultiplayerPacket::Client_LobbyUserModsChanged { mods, speed }).await;
     }
 }
@@ -677,15 +659,16 @@ impl OnlineManager {
     }
 
     
-    pub async fn send_packet(&self, packet: impl Into<PacketId>) -> bool { 
-        let Some(writer) = &self.writer else { return false }; 
+    pub async fn send_packet(&mut self, packet: impl Into<PacketId>) -> bool { 
+        let Some(writer) = &mut self.writer else { return false }; 
 
         let data = SimpleWriter::new().write(packet.into()).done();
-        match writer.lock().await.send(tokio_tungstenite::tungstenite::protocol::Message::Binary(data)).await {
+        let data = Bytes::from_owner(data);
+        match writer.send(Message::Binary(data)).await {
             Ok(_) => true,
             Err(e) => {
                 error!("Error sending data ({}:{}): {}", file!(), line!(), e);
-                if let Err(e) = writer.lock().await.close().await {
+                if let Err(e) = writer.close().await {
                     error!("Error closing connection: {}", e);
                 }
                 false
@@ -696,7 +679,7 @@ impl OnlineManager {
 
     pub fn send_packet_static(packet: impl Into<PacketId> + Send + Sync + 'static) {
         tokio::spawn(async move {
-            let om = OnlineManager::get().await;
+            let mut om = Self::get_mut().await;
             om.send_packet(packet).await;
         });
     }
@@ -711,7 +694,7 @@ fn ping_handler() {
         loop {
             tokio::time::sleep(duration).await;
             if LOG_PINGS { trace!("Sending ping"); };
-            let s = OnlineManager::get().await;
+            let mut s = OnlineManager::get_mut().await;
             if s.writer.is_none() { return; }
             s.send_packet(PacketId::Ping).await;
         }
@@ -759,4 +742,3 @@ impl SetAction {
         }
     }
 }
-

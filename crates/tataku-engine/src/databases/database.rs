@@ -1,6 +1,9 @@
+// TODO: move this to tataku-game, using a provider to save/load scores/replays etc
+
 use crate::prelude::*;
 use rusqlite::Connection;
-use tokio::sync::mpsc::{channel, Sender};
+use tokio::sync::mpsc::{ channel, Sender };
+
 
 lazy_static::lazy_static! {
     pub static ref DATABASE: Arc<Database> = Database::new();
@@ -61,7 +64,7 @@ pub struct Database {
 }
 impl Database {
     pub async fn get<'a>() -> tokio::sync::MutexGuard<'a, Connection> {
-        let now = Instant::now();
+        let now = TatakuInstant::now();
         let a = DATABASE.connection.lock().await;
         let duration = now.as_millis();
         if duration > 100.0 {info!("db lock took {:.4}ms to aquire", duration)};
@@ -199,7 +202,7 @@ impl Database {
                         // if error, probably exists, update instead
                         if let Err(e) = res {
                             if let Some(sql) = &sql_if_failed {
-                                let mut s = db.prepare(&sql).unwrap();
+                                let mut s = db.prepare(sql).unwrap();
                                 let res = s.execute([]);
 
                                 if let Err(e) = res {

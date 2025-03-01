@@ -1,17 +1,24 @@
-use tataku_client_common::prelude::*;
-
+use crate::prelude::*;
+use tataku_client_common::prelude::{ *, Color,};
 
 pub struct RenderableSurface<'a> {
-    pub texture: &'a wgpu::TextureView,
+    pub texture: &'a TextureView,
     pub size: Vector2,
     pub clear_color: Color,
+    pub render_target: bool,
 }
 impl<'a> RenderableSurface<'a> {
-    pub fn new(texture: &'a wgpu::TextureView, clear_color: Color, size: Vector2) -> Self {
+    pub fn new(
+        texture: &'a TextureView, 
+        clear_color: Color, 
+        size: Vector2,
+        render_target: bool,
+    ) -> Self {
         Self {
             texture,
             size,
-            clear_color
+            clear_color,
+            render_target
         }
     }
     pub fn get_clear_color(&self) -> wgpu::Color {

@@ -1,4 +1,4 @@
-use serde::de::{Deserialize, Deserializer};
+use serde::de::{ Deserialize, Deserializer };
 
 #[derive(Debug, Default)]
 pub enum TatakuSettingOptional<T> {

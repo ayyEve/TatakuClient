@@ -13,6 +13,7 @@ pub struct EmitterInfoInner {
     pub rotation_start: f32,
     pub rotation_end: f32,
 
+    // TODO: is there a way to not do this?
     _1: f32,
     _2: f32,
 }

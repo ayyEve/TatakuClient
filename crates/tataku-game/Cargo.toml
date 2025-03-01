@@ -8,98 +8,75 @@ edition.workspace = true
 
 [features]
 default = [ "gameplay" ]
-as_crate = []
-gameplay = [ "graphics", "discord", "gilrs", "media_control", "tokio-tungstenite", "ipc-channel" ]
+gameplay = [ "graphics", "discord", "gilrs", "media_control", "tokio-tungstenite", "ipc-channel", "tataku-engine/gameplay" ]
 discord = [ "discord-rich-presence" ]
 # kira_audio = ["rustfft", "uuid"]
-debug_sliders = []
-debug_hitsounds = []
+debug_hitsounds = [ "tataku-engine/debug_hitsounds" ]
 debug_perf_rating = []
-debug_custom_menus = []
-load_internal_menus_from_file = [] # whether to load builtin menus at runtime (if off, they're compiled into the game)
+debug_custom_menus = [ "tataku-interface/debug_custom_menus" ]
+dynamic_gamemodes = [ "libloading", "tataku-engine/dynamic_gamemodes" ]
 
-storyboards = []
-texture_arrays = []
+
+storyboards = [ "tataku-engine/storyboards" ]
 media_control = [ "souvlaki" ]
-# wgpu_graphics = [ "wgpu", "lyon_tessellation", "bytemuck" ]
-ui = [ "iced", "iced_winit", "iced_runtime", "triple_buffer" ]
+ui = [ "taffy", "triple_buffer" ]
 
 # removes as much graphics-side stuff as possible
-graphics = [ "winit", "ui", "raw-window-handle", "fontdue", "png", "image" ]
+graphics = [ "winit", "ui", "png", "image" ]
 
 [dependencies]
-tataku-common = { workspace = true }
-tataku-client-proc-macros = { workspace = true }
-
-tataku-engine = { workspace = true }
-tataku-resources = { workspace = true }
+tataku-common.workspace = true
+tataku-engine.workspace = true
+tataku-resources.workspace = true
+tataku-interface.workspace = true
+tataku-client-proc-macros.workspace = true
 
 # framework stuff
-lazy_static =  { workspace = true }
-parking_lot = { workspace = true }
-tokio = { workspace = true, features = ["full"] }
-rusqlite = { workspace = true, features = ["bundled"] }
-futures-util = { workspace = true, features = ["async-await", "sink", "std"] }
-async-trait = { workspace = true }
-async-recursion = { workspace = true }
+tokio = { workspace = true, features = [ "full" ] }
+futures-util = { workspace = true, features = [ "async-await", "sink", "std" ] }
+lazy_static.workspace = true
+async-trait.workspace = true
+async-recursion.workspace = true
+
 triple_buffer = { workspace = true, optional = true }
-crossbeam = { workspace = true }
-global_value_manager = { workspace = true }
 ipc-channel = { workspace = true, optional = true }
+libloading = { workspace = true, optional = true }
 
 # image stuff
 png = { workspace = true, optional = true }
 image = { workspace = true, optional = true }
-fontdue = { workspace = true, optional = true }
-
 
 # windowing
 winit = { workspace = true, features = ["serde"], optional = true }
-raw-window-handle = { workspace = true, optional = true }
 
 # gamepad input
 gilrs = { workspace = true, features = ["serde-serialize"], optional = true }
 # media controls
-souvlaki = { workspace = true, default-features = false, features = ["use_zbus"], optional = true }
+souvlaki = { workspace = true, default-features = false, features = [ "use_zbus" ], optional = true }
 
 # gui
-iced = { workspace = true, features = ["canvas", "tokio", "debug", "image", "advanced", "lazy", "wgpu"], default-features = false, optional = true }
-iced_runtime = { workspace = true, optional = true }
-iced_winit = { workspace = true, optional = true }
+taffy = { workspace = true, optional = true }
 
 
 # networking
-sha2 = { workspace = true }
-tokio-tungstenite = { workspace = true, features = ["rustls-tls-native-roots"], optional = true }
+tokio-tungstenite = { workspace = true, features = [ "rustls-tls-native-roots" ], optional = true }
 reqwest = { workspace = true, features = ["json"] }
 discord-rich-presence = { workspace = true, optional = true }
+rustls.workspace = true
+native-tls.workspace = true
+tokio-native-tls.workspace = true
 
 # serde
 serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
-serde_yaml = { workspace = true }
-
-# decoding/encoding/zip stuff
-zip = { workspace = true }
-encoding_rs = { workspace = true }
-
-native-tls = { workspace = true }
-tokio-native-tls = { workspace = true }
+serde_json.workspace = true
 
 # other stuff
-rand = { workspace = true }
-chrono = { workspace = true }
-fs_extra = { workspace = true }
-
+rand.workspace = true
+chrono.workspace = true
+cacache.workspace = true
 
 # logging
-tataku-logging = { workspace = true }
-log = { workspace = true }
-num-format = { workspace = true }
-strfmt = { workspace = true }
-
-# battery_level = { git = "https://gitlab.ayyeve.dev/ayyEve/battery-level-rs" }
-
+tracing.workspace = true
 
 [build-dependencies]
-tataku-common = { workspace = true }
+tataku-common.workspace = true

@@ -39,12 +39,12 @@ pub enum FontAwesome {
 impl FontAwesome {
     pub fn get_char(&self) -> char {
         let c = *self as u32;
-        char::from_u32(c).expect(&format!("invalid char: {c:#06x}"))
+        char::from_u32(c).unwrap_or_else(|| panic!("invalid char: {c:#06x}"))
     }
 }
 
-impl ToString for FontAwesome {
-    fn to_string(&self) -> String {
-        self.get_char().to_string()
+impl std::fmt::Display for FontAwesome {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.get_char().fmt(f)
     }
 }

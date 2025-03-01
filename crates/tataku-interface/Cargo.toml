@@ -1,0 +1,25 @@
+[package]
+name = "tataku-interface"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+
+[features]
+# default = ["debug_custom_menus"]
+debug_custom_menus = [ "tataku-client-common/debug_custom_menus" ]
+
+[lints]
+workspace = true
+
+
+[dependencies]
+tataku-client-common = { workspace = true, optional = true }
+tataku-engine.workspace = true
+tataku-resources.workspace = true
+
+taffy.workspace = true
+async-recursion.workspace = true
+mlua.workspace = true
+uuid.workspace = true
+
+chrono.workspace = true

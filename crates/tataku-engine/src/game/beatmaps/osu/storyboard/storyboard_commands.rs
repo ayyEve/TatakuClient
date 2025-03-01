@@ -62,7 +62,7 @@ pub enum StoryboardEasing {
     BounceInOut,
 }
 impl StoryboardEasing {
-    pub fn from_str(str: &str) -> Option<Self> {
+    pub fn from_string(str: &str) -> Option<Self> {
         match str {
             "0" => Some(Self::Linear),
 
@@ -116,9 +116,9 @@ impl StoryboardEasing {
     }
 }
 
-impl Into<Easing> for StoryboardEasing {
-    fn into(self) -> Easing {
-        match self {
+impl From<StoryboardEasing> for Easing {
+    fn from(val: StoryboardEasing) -> Self {
+        match val {
             StoryboardEasing::Linear => Easing::Linear,
             StoryboardEasing::EaseOut => Easing::EaseOutCubic,
             StoryboardEasing::EaseIn => Easing::EaseInCubic,
@@ -166,19 +166,19 @@ pub enum StoryboardEvent {
     Fade { start: f32, end: f32 }, // F
 
     Move { start: Vector2, end: Vector2 }, // M
-    MoveX { start_x: f32, end_x: f32 }, // MX
-    MoveY { start_y: f32, end_y: f32 }, // MY
+    MoveX { start: f32, end: f32 }, // MX
+    MoveY { start: f32, end: f32 }, // MY
 
-    Scale { start_scale: f32, end_scale: f32 }, // S
-    VectorScale { start_scale: Vector2, end_scale: Vector2 }, // V
+    Scale { start: f32, end: f32 }, // S
+    VectorScale { start: Vector2, end: Vector2 }, // V
 
     /// radians
-    Rotate { start_rotation: f32, end_rotation: f32 }, // R
-    Color { start_color: Color, end_color: Color }, // C
+    Rotate { start: f32, end: f32 }, // R
+    Color { start: Color, end: Color }, // C
     Parameter { param: Param }, // P
 
     /// this isnt used here, its automatically calculated during parsing
-    Loop { loop_count: u32 }, // L
+    Loop { count: u32 }, // L
 
     // fuck this shit oh my god
     // Trigger { trigger_type: TriggerType}, // T
@@ -191,7 +191,7 @@ pub enum Param {
     AdditiveBlending
 }
 impl Param {
-    pub fn from_str(str: &str) -> Option<Self> {
+    pub fn from_string(str: &str) -> Option<Self> {
         match str {
             "0" | "H" => Some(Self::FlipHorizontal),
             "1" | "V" => Some(Self::FlipVertial),
@@ -201,6 +201,7 @@ impl Param {
     }
 }
 
+// TODO: implement this (;-;)
 // #[derive(Copy, Clone, Debug)]
 // pub enum TriggerType {
 //     Hitsound {

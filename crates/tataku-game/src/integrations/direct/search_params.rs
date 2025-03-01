@@ -1,25 +1,28 @@
+use tataku_client_proc_macros::ChainableInitializer;
 
+
+#[derive(ChainableInitializer)]
 #[derive(Clone, Default)]
 pub struct SearchParams {
     // used by osu/common
-    pub mode: Option<String>,
-    pub page: u16,
-    pub sort: Option<SortMethod>,
-    pub map_status: Option<MapStatus>,
+    #[chain] pub mode: Option<String>,
+    #[chain] pub page: u16,
+    #[chain] pub sort: Option<SortMethod>,
+    #[chain] pub map_status: Option<MapStatus>,
 
     // used by quaver
-    pub min_diff: Option<f32>,
-    pub max_diff: Option<f32>,
-    pub min_length: Option<f32>,
-    pub max_length: Option<f32>,
-    pub min_lns: Option<f32>,
-    pub max_lns: Option<f32>,
+    #[chain] pub min_diff: Option<f32>,
+    #[chain] pub max_diff: Option<f32>,
+    #[chain] pub min_length: Option<f32>,
+    #[chain] pub max_length: Option<f32>,
+    #[chain] pub min_lns: Option<f32>,
+    #[chain] pub max_lns: Option<f32>,
     // excluding date stuff for now
-    pub min_combo: Option<f32>,
-    pub max_combo: Option<f32>,
+    #[chain] pub min_combo: Option<f32>,
+    #[chain] pub max_combo: Option<f32>,
 
     // text to search
-    pub text: Option<String>
+    #[chain] pub text: Option<String>
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]

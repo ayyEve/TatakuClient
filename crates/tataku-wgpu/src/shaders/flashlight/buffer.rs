@@ -32,7 +32,7 @@ impl RenderBufferable for FlashlightBuffer {
     const VTX_PER_BUF: u64 = VTX_PER_BUF;
     const IDX_PER_BUF: u64 = IDX_PER_BUF;
 
-    fn name() -> &'static str { "Flashlight buffer" }
+    // fn name() -> &'static str { "Flashlight buffer" }
     fn should_write(&self) -> bool { self.used_flashlights > 0 }
 
     fn reset(&mut self) {
@@ -116,11 +116,11 @@ pub struct FlashlightReserveData<'a> {
     pub idx_offset: u64,
     pub flashlight_index: u32
 }
-impl<'a> FlashlightReserveData<'a> {
+impl FlashlightReserveData<'_> {
     pub fn copy_in(&mut self, vtx: &[FlashlightVertex], flashlight_data: FlashlightData) {
         let offset = self.idx_offset as u32;
         let idx:&[u32] = &[
-            0 + offset,
+            offset,
             2 + offset,
             1 + offset,
 

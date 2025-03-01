@@ -24,21 +24,18 @@ pub async fn load_osu_skins(path: impl AsRef<Path>) {
     }
 }
 
-pub async fn load_osu_settings(path: impl AsRef<Path>) -> Result<(), TatakuError> {
+pub async fn load_osu_settings(path: impl AsRef<Path>, settings: &mut Settings) -> Result<(), TatakuError> {
     let path = path.as_ref();
     let data = Io::read_lines_resolved(path)?
-        .map(|i| {
+        .flat_map(|i| {
             let mut s = i.split("=");
             s
                 .next()
                 .zip(s.next())
                 .map(|(key, val)| (key.to_owned(), val.to_owned()))
         })
-        .filter_map(|i|i)
         .collect::<HashMap<String, String>>();
 
-
-    let mut settings = Settings::get_mut();
 
     // read bool from map
     macro_rules! bool {
@@ -121,11 +118,11 @@ pub async fn load_osu_settings(path: impl AsRef<Path>) -> Result<(), TatakuError
     num_big!("VolumeUniversal", master_vol, f32);
     num_big!("VolumeEffect", effect_vol, f32);
     num_big!("VolumeMusic", music_vol, f32);
-    bool!("CursorRipple", cursor_ripples);
+    bool!("CursorRipple", cursor_settings, cursor_ripples);
     bool_rev!("IgnoreBeatmapSamples", beatmap_hitsounds);
     // bool_rev!("IgnoreBeatmapSkins", beatmap_skins);
     string_lower!("LastPlayMode", last_played_mode);
-    bool!("MouseDisableButtons", osu_settings, ignore_mouse_buttons);
+    // bool!("MouseDisableButtons", osu_settings, ignore_mouse_buttons);
     num!("Offset", global_offset, f32);
     if let Some((width, height)) = num!("Width", f32).zip(num!("Height", f32)) {
         settings.display_settings.window_size = [width, height] 
@@ -156,14 +153,14 @@ pub async fn load_osu_settings(path: impl AsRef<Path>) -> Result<(), TatakuError
         }
     }
     
-    key!("keyOsuLeft", osu_settings, left_key);
-    key!("keyOsuRight", osu_settings, right_key);
-    // key!("keyOsuSmoke", standard_settings, smoke_key);
+    // key!("keyOsuLeft", osu_settings, left_key);
+    // key!("keyOsuRight", osu_settings, right_key);
+    // key!("keyOsuSmoke", osu_settings, smoke_key);
 
-    key!("keyTaikoOuterLeft", taiko_settings, left_kat);
-    key!("keyTaikoInnerLeft", taiko_settings, left_don);
-    key!("keyTaikoInnerRight", taiko_settings, right_don);
-    key!("keyTaikoOuterRight", taiko_settings, right_kat);
+    // key!("keyTaikoOuterLeft", taiko_settings, left_kat);
+    // key!("keyTaikoInnerLeft", taiko_settings, left_don);
+    // key!("keyTaikoInnerRight", taiko_settings, right_don);
+    // key!("keyTaikoOuterRight", taiko_settings, right_kat);
 
     // key!("keyPause", pause_key);
     // key!("keySkip", skip_key);
@@ -191,14 +188,14 @@ pub async fn load_osu_settings(path: impl AsRef<Path>) -> Result<(), TatakuError
             }
 
             if keys.len() == c {
-                settings.mania_settings.keys[c-1] = keys
+                // settings.mania_settings.keys[c-1] = keys
             }
         }
         
     }
 
 
-    let songs_folder = data.get(&"BeatmapDirectory".to_owned()).cloned().or_else(||Some("Songs".to_owned())).unwrap();
+    let songs_folder = data.get("BeatmapDirectory").cloned().unwrap_or("Songs".to_owned());
     let songs_folder = path.parent().unwrap().join(&songs_folder).to_string_lossy().to_string();
     if !settings.external_games_folders.contains(&songs_folder) {
         settings.external_games_folders.push(songs_folder);
@@ -209,7 +206,7 @@ pub async fn load_osu_settings(path: impl AsRef<Path>) -> Result<(), TatakuError
 
 
 fn parse_key(k: &String) -> Option<Key> {
-    use crate::input::Key::*;
+    use crate::Key::*;
 
     match &**k {
         "LeftShift" => Some(LShift),

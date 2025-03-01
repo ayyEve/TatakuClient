@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+// FIXME: literally all if this. it was an idea and it should have stayed that way
+
 #[derive(Reflect)]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Theme {
@@ -244,8 +246,10 @@ lazy_static::lazy_static! {
     };
 }
 
-#[derive(Clone, Serialize, Deserialize, Eq, PartialEq, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 #[derive(Reflect)]
+#[derive(Serialize, Deserialize)]
+#[reflect(display = "display")]
 pub enum SelectedTheme {
     Tataku,
     Osu,
@@ -258,7 +262,7 @@ pub enum SelectedTheme {
 impl tataku_client_common::Dropdownable2 for SelectedTheme {
     type T = Self;
     fn variants() -> Vec<Self::T> {
-        [Self::Tataku, Self::Osu].into_iter().chain(THEMES.clone().into_iter().map(|t|Self::Custom(t.0, t.1))).collect()
+        [Self::Tataku, Self::Osu].into_iter().chain(THEMES.clone().into_iter().map(|t| Self::Custom(t.0, t.1))).collect()
     }
 
     // fn display_text(&self) -> String {

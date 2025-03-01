@@ -6,17 +6,17 @@ use tataku_client_proc_macros::Settings;
 #[derive(Reflect, SettingsDeserialize)]
 #[serde(default)]
 pub struct CommonGameplaySettings {
-    #[cfg_attr(feature="graphics", Setting(text="Increase Offset"))]
+    #[cfg_attr(feature="graphics", setting(text="Increase Offset"))]
     pub key_offset_up: Key,
-    #[cfg_attr(feature="graphics", Setting(text="Decrease Offset"))]
+    #[cfg_attr(feature="graphics", setting(text="Decrease Offset"))]
     pub key_offset_down: Key,
 
-    #[cfg_attr(feature="graphics", Setting(text="Restart Map Key"))]
+    #[cfg_attr(feature="graphics", setting(text="Restart Map Key"))]
     pub map_restart_key: Key,
-    #[cfg_attr(feature="graphics", Setting(text="Restart Map Hold Time", min=0, max=1000))]
+    #[cfg_attr(feature="graphics", setting(text="Restart Map Hold Time", min=0, max=1000))]
     pub map_restart_delay: f32,
 
-    #[cfg_attr(feature="graphics", Setting(text="Allow Settings Menu In-Game"))]
+    #[cfg_attr(feature="graphics", setting(text="Allow Settings Menu In-Game"))]
     pub allow_ingame_settings: bool,
 
     // duration bar settings
@@ -40,10 +40,10 @@ pub struct CommonGameplaySettings {
 
     // hit indicators
     /// how long should a hit indicator be drawn for?
-    #[cfg_attr(feature="graphics", Setting(text="Hit Indicator Draw Time", min=100, max=1000))]
+    #[cfg_attr(feature="graphics", setting(text="Hit Indicator Draw Time", min=100, max=1000))]
     pub hit_indicator_draw_duration: f32,
     /// how long should a hit indicator be drawn for?
-    #[cfg_attr(feature="graphics", Setting(text="Use Draw Time for Animations"))]
+    #[cfg_attr(feature="graphics", setting(text="Use Draw Time for Animations"))]
     pub use_indicator_draw_duration_for_animations: bool,
 }
 

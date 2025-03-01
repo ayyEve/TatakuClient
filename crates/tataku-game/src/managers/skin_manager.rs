@@ -2,7 +2,6 @@ use crate::prelude::*;
 
 const DEFAULT_SKIN:&str = "default";
 
-
 #[cfg(feature="graphics")]
 pub struct SkinManager {
     skin_name: String,
@@ -106,44 +105,12 @@ impl SkinManager {
                     let tex = GameWindow::load_texture_data(img).await.expect("no atlas");
                     let image = Image::new(Vector2::ZERO, Arc::new(tex), scale);
                     return TextureState::Success(image);
-
-                    // // create image from the texture
-                    // let _image = Image::new(Vector2::ZERO, tex, scale);
-                    // if image.is_none() { image = Some(_image.clone()) };
-
-                    // // insert an entry for the image
-                    // entries.insert(source, TextureEntry {
-                    //     // source,
-                    //     usage,
-                    //     image: Some(_image),
-                    // }); 
                 }
             }
-
-            // if let Some(maybe_img) = Self::load_image_inner(&tex_path, grayscale, scale).await {
-            //     trace!("loaded tex {tex_path}");
-            //     self.texture_cache.insert(name.clone(), Some(maybe_img.clone()));
-            //     return Some(maybe_img)
-            // }
         }
 
         TextureState::Failed
     }
-
-
-    // pub async fn load_texture_async(
-    //     &self, 
-    //     source: &TextureSource,
-    //     name: impl AsRef<str> + Send + Sync, 
-    //     grayscale: bool,
-    // ) -> AsyncTextureLoader {
-    //     let f = async move {
-
-    //     };
-
-
-    // }
-
 }
 
 #[async_trait]
@@ -151,7 +118,6 @@ impl SkinProvider for SkinManager {
     fn skin(&self) -> &Arc<SkinSettings> {
         &self.current_skin_config
     }
-
 
     fn free_by_source(&mut self, source: TextureSource) {
         let mut warned = false;
@@ -177,7 +143,7 @@ impl SkinProvider for SkinManager {
     fn free_by_usage(&mut self, usage: SkinUsage) {
         let mut warned = false;
 
-        for entry in self.textures.values_mut().map(HashMap::values_mut).flatten() {
+        for entry in self.textures.values_mut().flat_map(HashMap::values_mut) {
             if entry.usage != usage { continue }
 
             if let TextureState::Success(i) = &entry.image {
@@ -198,7 +164,7 @@ impl SkinProvider for SkinManager {
     }
 
     fn free_all_unused(&mut self) {
-        for i in self.textures.values_mut().map(HashMap::values_mut).flatten() {
+        for i in self.textures.values_mut().flat_map(HashMap::values_mut) {
             if let TextureState::Success(im) = &i.image {
                 if im.reference_count() > 1 { continue }
                 GameWindow::free_texture(*im.tex);
@@ -254,18 +220,3 @@ impl SkinProvider for SkinManager {
         None
     }
 }
-
-
-// #[derive(Default)]
-// pub struct AsyncTextureLoader {
-//     loader: AsyncLoader<Vec<(TextureSource, TextureLoadState)>>,
-// }
-// impl AsyncTextureLoader {
-//     pub async fn check(&mut self, skin_manager: &mut SkinManager) -> Option<Image> {
-//         let Some(result) = self.loader.check().await else { return None };
-
-//     }
-// }
-
-
-

@@ -3,10 +3,10 @@ use crate::prelude::*;
 
 
 // default fns for serde
-fn one() -> f64 {1.0}
-fn nan64() -> f64 {f64::NAN}
-fn nan32() -> f32 {f32::NAN}
-fn default_diff_name() -> String {"default diff name".to_owned()}
+fn one() -> f64 { 1.0 }
+fn nan64() -> f64 { f64::NAN }
+fn nan32() -> f32 { f32::NAN }
+fn default_diff_name() -> String { "default diff name".to_owned() }
 
 
 #[derive(Deserialize)]
@@ -19,24 +19,19 @@ pub struct QuaverBeatmap {
     pub background_file: String,
 
     // dunno if they can be negative
-    #[serde(default)]
-    pub map_id: i32,
-    #[serde(default)]
-    pub set_id: i32,
+    #[serde(default)] pub map_id: i32,
+    #[serde(default)] pub set_id: i32,
 
     pub mode: QuaverKeys,
 
     pub title: String,
     pub artist: String,
-    #[serde(default)]
-    pub source: String,
-    #[serde(default)]
-    pub tags: String,
+    #[serde(default)] pub source: String,
+    #[serde(default)] pub tags: String,
     pub creator: String,
-    #[serde(default="default_diff_name")]
+    #[serde(default="default_diff_name")] 
     pub difficulty_name: String,
-    #[serde(default)]
-    pub description: String,
+    #[serde(default)] pub description: String,
 
     // pub editor_layers: Vec<?>,
     // pub audio_samples: Vec<?>,
@@ -50,10 +45,8 @@ pub struct QuaverBeatmap {
     pub hit_objects: Vec<QuaverNote>,
 
     // extra info added later
-    #[serde(default)]
-    hash: Md5Hash,
-    #[serde(default)]
-    path: String,
+    #[serde(default)] hash: Md5Hash,
+    #[serde(default)] path: String,
 }
 impl QuaverBeatmap {
     pub fn load(path: String) -> TatakuResult<Self> {
@@ -70,16 +63,16 @@ impl QuaverBeatmap {
 
         // fix bpms
         // skip any NaN bpms before a valid point, as we need a valid bpm to base any future bpms off of
-        while s.timing_points.len() > 0 && s.timing_points[0].bpm.is_nan() { s.timing_points.remove(0); }
-        if s.timing_points.len() == 0 {return Err(BeatmapError::NoTimingPoints.into())}
+        while !s.timing_points.is_empty() && s.timing_points[0].bpm.is_nan() { s.timing_points.remove(0); }
+        if s.timing_points.is_empty() {return Err(BeatmapError::NoTimingPoints.into())}
 
-        let first_bpm = s.timing_points.get(0).unwrap().bpm;
+        let first_bpm = s.timing_points.first().unwrap().bpm;
         for tp in s.timing_points.iter_mut().filter(|t|t.bpm.is_nan()) {
             tp.bpm = first_bpm;
         }
 
         // fix note times
-        let first_timingpoint_time = s.timing_points.get(0).unwrap().start_time;
+        let first_timingpoint_time = s.timing_points.first().unwrap().start_time;
         for note in s.hit_objects.iter_mut().filter(|n|n.start_time.is_nan()) {
             note.start_time = first_timingpoint_time;
         }
@@ -103,7 +96,7 @@ impl TatakuBeatmap for QuaverBeatmap {
     fn get_timing_points(&self) -> Vec<TimingPoint> {
         self.timing_points
             .iter()
-            .map(|t|t.clone().into())
+            .map(|t| (*t).into())
             .collect()
     }
 
@@ -124,7 +117,7 @@ impl TatakuBeatmap for QuaverBeatmap {
 
         let mut meta = BeatmapMeta { 
             file_path: self.path.clone(), 
-            beatmap_hash: self.hash.clone(), 
+            beatmap_hash: self.hash, 
             beatmap_type: BeatmapType::Quaver,
             mode: "mania".to_owned(), 
             artist: self.artist.clone(), 
@@ -174,9 +167,9 @@ pub enum QuaverKeys {
     Keys5,
     Keys7,
 }
-impl Into<u8> for QuaverKeys {
-    fn into(self) -> u8 {
-        match self {
+impl From<QuaverKeys> for u8 {
+    fn from(val: QuaverKeys) -> Self {
+        match val {
             QuaverKeys::Keys4 => 4,
             QuaverKeys::Keys5 => 5,
             QuaverKeys::Keys7 => 7,
@@ -193,11 +186,11 @@ pub struct QuaverTimingPoint {
     #[serde(default="nan32")]
     pub bpm: f32
 }
-impl Into<TimingPoint> for QuaverTimingPoint {
-    fn into(self) -> TimingPoint {
+impl From<QuaverTimingPoint> for TimingPoint {
+    fn from(val: QuaverTimingPoint) -> Self {
         TimingPoint {
-            time: self.start_time,
-            beat_length: 60_000.0 / self.bpm,
+            time: val.start_time,
+            beat_length: 60_000.0 / val.bpm,
             ..Default::default()
         }
     }

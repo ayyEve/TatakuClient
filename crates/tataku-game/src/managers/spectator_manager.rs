@@ -79,23 +79,23 @@ impl SpectatorManager {
         let hash = map.beatmap_hash;
         if hash != map_hash { return }
 
-        match manager_from_playmode_path_hash(&self.infos, &playmode, map_path, hash, mods.clone()).await {
+        match manager_from_playmode_path_hash(&self.infos, &playmode, map_path, hash, mods.clone(), &values.settings).await {
             Ok(mut manager) => {
                 // set manager things
-                manager.handle_action(GameplayAction::ApplyMods(mods)).await;
-                manager.set_mode(GameplayMode::Spectator { 
+                manager.handle_action(GameplayAction::ApplyMods(mods), &values.settings).await;
+                manager.set_mode(GameplayMode::Spectator(Box::new(SpectatorGameplayInfo { 
                     host_id: self.host_id,
                     host_username: self.host_username.clone(),
                     pending_frames: self.frames.take(),
                     spectators: self.spectator_cache.clone()
-                });
+                })).into());
                 // manager.replay.score_data = Some(Score::new(map.beatmap_hash, self.host_username.clone(), mode.clone()));
                 manager.on_start = Box::new(move |manager| {
                     trace!("Jumping to time {current_time}");
                     manager.jump_to_time(current_time.max(0.0), current_time > 0.0);
                 });
                 
-                // TODO: !!!!
+                // TODO!
                 // self.actions.push(GameAction::StartGame(Box::new(manager)));
             }
             Err(e) => NotificationManager::add_error_notification("Error loading spec beatmap", e).await
@@ -173,8 +173,6 @@ impl SpectatorManager {
             match action {
                 SpectatorAction::Play { beatmap_hash, mode, mods, speed, map_game, map_link:_} => {
                     info!("got play: {beatmap_hash}, {mode}, {mods:?}");
-                    let beatmap_hash = beatmap_hash.try_into().unwrap();
-
 
                     self.host_map = Some(HostMap { map_hash: beatmap_hash, playmode: mode, mods: ModManager::new().with_speed(speed).with_mods(mods.iter()) });
                     self.actions.push(BeatmapAction::SetFromHash(beatmap_hash, SetBeatmapOptions::new().restart_song(true)));
@@ -239,15 +237,14 @@ impl SpectatorManager {
     }
 
 
-    async fn download_beatmap(&self, beatmap_hash: Md5Hash, map_game: MapGame) {
+    async fn download_beatmap(&self, beatmap_hash: Md5Hash, map_game: MapGame, settings: &Settings) {
 
         match map_game {
             MapGame::Osu => {
                 // need to query the osu api to get the set id for this hashmap
-                match OsuApi::get_beatmap_by_hash(&beatmap_hash).await {
+                match OsuApi::get_beatmap_by_hash(&beatmap_hash, settings).await {
                     Ok(Some(map_info)) => {
                         // we have a thing! lets download it
-                        let settings = Settings::get();
                         let username = &settings.osu_username;
                         let password = &settings.osu_password;
 

@@ -1,78 +1,90 @@
 use crate::prelude::*;
+use crate::prelude::ui::*;
 // const BUTTON_SIZE:Vector2 = Vector2::new(300.0, 50.0);
 
 pub struct LobbyPlayerDialog {
-    actions: ActionQueue,
-    num: usize,
-
     user_id: u32,
     slot_id: u8,
-    should_close: bool,
     is_self: bool,
     we_are_host: bool,
+
+
+    node: Box<dyn Widget>,
+    node_id: NodeId,
 }
 impl LobbyPlayerDialog {
-    pub fn new(user_id: u32, slot_id: u8, is_self: bool, we_are_host: bool) -> Self {
+    pub fn new(
+        user_id: u32, 
+        slot_id: u8, 
+        is_self: bool, 
+        we_are_host: bool
+    ) -> Self {
+        let node = col!(
+            // make host
+            (we_are_host && !is_self)
+                .then(|| Button::new(TextWidget::new("Transfer Host").boxed()).on_press(Message::new_dialog("make_host", MessageValue::Click)).boxed())
+                .unwrap_or_else(|| EmptyWidget::new_boxed()),
+            // kick
+            (we_are_host && !is_self)
+                .then(|| Button::new(TextWidget::new("Kick").boxed()).on_press(Message::new_dialog("kick", MessageValue::Click)).boxed())
+                .unwrap_or_else(|| EmptyWidget::new_boxed()),
+            // close
+            Button::new(TextWidget::new("Close").boxed()).on_press(Message::new_dialog("close", MessageValue::Click)).boxed();
+        );
+
         Self {
-            actions: ActionQueue::new(),
-            num: 0,
             user_id,
             slot_id,
-            should_close: false,
 
             is_self,
             we_are_host,
+
+            node,
+            node_id: EMPTY_NODE
         }
     }
 }
 
 #[async_trait]
-impl Dialog for LobbyPlayerDialog {
-    fn name(&self) -> &'static str { "lobby_player_dialog" }
-    fn get_num(&self) -> usize { self.num }
-    fn set_num(&mut self, num: usize) { self.num = num }
-    fn should_close(&self) -> bool { self.should_close }
-    async fn force_close(&mut self) { self.should_close = true; }
+impl Widget for LobbyPlayerDialog {
+    fn name(&self) -> Cow<'static, str> { "lobby_player_dialog".into() }
+    fn node_id(&self) -> NodeId { self.node_id }
+    
+    fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
+        let child = self.node.layout(shell)?;
+        self.node_id = shell.tree.new_with_children(
+            Style::DEFAULT, 
+            &[ child ]
+        )?;
 
+        Ok(self.node_id)
+    }
+    
+    fn draw(&self, shell: &mut DrawShell<'_>) {
+        self.node.draw(shell);
+    }
 
-    async fn handle_message(&mut self, message: Message, _values: &mut dyn Reflect) {
+    
+    async fn handle_message(
+        &mut self, 
+        message: &Message, 
+        _values: &mut dyn Reflect,
+        actions: &mut ActionQueue,
+    ) {
         let Some(tag) = message.tag.as_string() else { return }; 
 
-        match &*tag {
-            "close" => self.should_close = true,
+        match &**tag {
+            "close" => actions.push(UiAction::new(self.node_id, DialogAction::Close)),
             "make_host" => {
                 tokio::spawn(OnlineManager::lobby_change_host(self.user_id));
-                self.should_close = true;
+                actions.push(UiAction::new(self.node_id, DialogAction::Close))
             }
             "kick" => {
-                self.actions.push(
-                    MultiplayerAction::LobbyAction(LobbyAction::SlotAction(LobbySlotAction::Kick(self.slot_id)))
-                    // MultiplayerAction::KickUser { user_id: self.user_id }
-                );
-                self.should_close = true;
+                actions.push(LobbyAction::SlotAction(LobbySlotAction::Kick(self.slot_id)));
+                actions.push(UiAction::new(self.node_id, DialogAction::Close))
             }
 
             _ => {}
         }
-    }
-    
-    async fn update(&mut self, _values: &mut dyn Reflect) -> Vec<TatakuAction> { 
-        self.actions.take()
-    }
-    
-    fn view(&self, _values: &mut dyn Reflect) -> IcedElement {
-        use iced_elements::*;
-
-        col!(
-            // make host
-            (self.we_are_host && !self.is_self).then(||Button::new(Text::new("Transfer Host")).on_press(Message::new_dialog(self, "make_host", MessageType::Click)).into_element())
-                .unwrap_or_else(||EmptyElement.into_element()),
-            // kick
-            (self.we_are_host && !self.is_self).then(||Button::new(Text::new("Kick")).on_press(Message::new_dialog(self, "kick", MessageType::Click)).into_element())
-                .unwrap_or_else(||EmptyElement.into_element()),
-            // close
-            Button::new(Text::new("Close")).on_press(Message::new_dialog(self, "close", MessageType::Click));
-        )
-
     }
 }

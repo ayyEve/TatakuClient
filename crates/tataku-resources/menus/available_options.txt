@@ -1,4 +1,5 @@
 todo: dear god update this
+todo: maybe make this a nice markdown page or something?
 
 Notes:
     - Unless otherwise specified, the default value of a property is nil (non-existant)

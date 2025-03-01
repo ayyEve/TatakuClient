@@ -1,11 +1,5 @@
-
 use crate::prelude::*;
-
-// pub trait StatsGraph: Send + Sync {
-//     fn draw(&self, bounds: &Bounds, list: &mut RenderableCollection);
-// }
-
-use iced::advanced::Widget;
+use crate::prelude::ui::*;
 
 #[derive(Clone)]
 pub enum StatsGraph {
@@ -24,70 +18,46 @@ impl StatsGraph {
         Arc::new(group)
     }
 
-    pub fn view(&self) -> StatsGraphElement {
-        StatsGraphElement::new(self.clone())
+    pub fn view(&self) -> StatsGraphWidget {
+        StatsGraphWidget::new(self.clone())
     }
 }
 
-
-pub struct StatsGraphElement {
+pub struct StatsGraphWidget {
     graph: StatsGraph,
-    width: iced::Length,
-    height: iced::Length,
+    style: Style,
+    node_id: NodeId,
 }
-impl StatsGraphElement {
+impl StatsGraphWidget {
     pub fn new(graph: StatsGraph) -> Self {
         Self {
             graph, 
-            width: iced::Length::Fill,
-            height: iced::Length::Fill,
+            style: Style {
+                size: Size {
+                    width: Dimension::Percent(1.0),
+                    height: Dimension::Percent(1.0),
+                },
+                ..Default::default()
+            },
+            node_id: Default::default(),
         }
     }
-
-    pub fn width(mut self, w: impl Into<iced::Length>) -> Self {
-        self.width = w.into();
-        self
-    }
-    pub fn height(mut self, h: impl Into<iced::Length>) -> Self {
-        self.height = h.into();
-        self
-    }
 }
 
-
-impl Widget<Message, iced::Theme, IcedRenderer> for StatsGraphElement {
-    fn size(&self) -> iced::Size<iced::Length> { iced::Size::new(self.width, self.height) }
-
+impl Widget for StatsGraphWidget {
+    fn name(&self) -> Cow<'static, str> { "stats_graph_widget".into() }
+    fn node_id(&self) -> NodeId { self.node_id }
+    
     fn layout(
-        &self,
-        _tree: &mut iced_core::widget::Tree,
-        _renderer: &IcedRenderer,
-        limits: &iced_core::layout::Limits,
-    ) -> iced_core::layout::Node {
-        let limits = limits
-            .width(self.width)
-            .height(self.height);
-
-        iced_core::layout::Node::new(limits.max())
+        &mut self, 
+        shell: &mut LayoutShell<'_>
+    ) -> TaffyResult<NodeId> {
+        self.node_id = shell.tree.new_leaf(self.style.clone())?;
+        Ok(self.node_id)
     }
-
-    fn draw(
-        &self,
-        _state: &iced_core::widget::Tree,
-        renderer: &mut IcedRenderer,
-        _theme: &iced::Theme,
-        _style: &iced_core::renderer::Style,
-        layout: iced_core::Layout<'_>,
-        _cursor: iced_core::mouse::Cursor,
-        _viewport: &iced::Rectangle,
-    ) {
-        let bounds:Bounds = layout.bounds().into();
-        renderer.add_renderable(self.graph.draw(&bounds));
-    }
-}
-
-impl From<StatsGraphElement> for IcedElement {
-    fn from(value: StatsGraphElement) -> Self {
-        IcedElement::new(value)
+    
+    fn draw(&self, shell: &mut DrawShell<'_>) {
+        let Some(bounds) = shell.tree.absolute_bounds(self.node_id) else { return };
+        shell.list.push_arced(self.graph.draw(&bounds));
     }
 }

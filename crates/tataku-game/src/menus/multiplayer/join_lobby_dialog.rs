@@ -1,93 +1,92 @@
 use crate::prelude::*;
+use crate::prelude::ui::*;
+
+const PASSWORD_PATH: &str = "join_lobby.password";
 
 pub struct JoinLobbyDialog {
-    actions: ActionQueue,
-    num: usize,
     lobby_id: u32,
-    // scrollable: ScrollableArea,
-    should_close: bool,
 
-    password: String,
+    node: Box<dyn Widget>,
+    node_id: NodeId,
 }
 impl JoinLobbyDialog {
     pub fn new(lobby_id: u32) -> Self {
-        // const WIDTH:f32 = 500.0; 
-        // let mut scrollable = ScrollableArea::new(Vector2::ZERO, Vector2::ZERO, ListMode::VerticalList);
+        let node = col!(
+            TextWidget::new("Enter Password:").boxed(),
+            TextInput::new("Password:", CustomElementText::Variable(PASSWORD_PATH.to_string())).on_input(move |t: &str| Message::new_dialog("password", MessageValue::Text(t.to_string()))).boxed(),
 
-        // // password
-        // scrollable.add_item(Box::new(TextInput::new(Vector2::ZERO, Vector2::new(WIDTH, 50.0), "Password", "", Font::Main).with_tag("password")));
-
-        // // done and close buttons 
-        // {
-        //     let mut button_scrollable = ScrollableArea::new(Vector2::ZERO, Vector2::new(WIDTH, 50.0), ListMode::Grid(GridSettings::new(Vector2::ZERO, HorizontalAlign::Center)));
-        //     button_scrollable.add_item(Box::new(MenuButton::new(Vector2::ZERO, Vector2::new(100.0, 50.0), "Done", Font::Main).with_tag("done")));
-        //     button_scrollable.add_item(Box::new(MenuButton::new(Vector2::ZERO, Vector2::new(100.0, 50.0), "Close", Font::Main).with_tag("close")));
-        //     scrollable.add_item(Box::new(button_scrollable));
-        // }
-        // scrollable.set_size(Vector2::new(WIDTH, scrollable.get_elements_height()));
+            row!(
+                Button::new(TextWidget::new("Join").boxed()).on_press(Message::new_dialog("done", MessageValue::Click)).boxed(),
+                Button::new(TextWidget::new("Cancel").boxed()).on_press(Message::new_dialog("close", MessageValue::Click)).boxed();
+                width = FILL
+            );
+        );
 
         Self {
-            actions: ActionQueue::new(),
-            num: 0,
             lobby_id,
-            // scrollable,
-            password: String::new(),
-            should_close: false,
+
+            node,
+            node_id: EMPTY_NODE
         }
     }
-
 }
 
 #[async_trait]
-impl Dialog for JoinLobbyDialog {
-    fn name(&self) -> &'static str { "join_lobby_dialog" }
-    fn title(&self) -> &'static str { "Join Lobby" }
-    fn get_num(&self) -> usize { self.num }
-    fn set_num(&mut self, num: usize) { self.num = num }
-    fn should_close(&self) -> bool { self.should_close }
-    async fn force_close(&mut self) { self.should_close = true; }
+impl Widget for JoinLobbyDialog {
+    fn name(&self) -> Cow<'static, str> { "join_lobby_dialog".into() }
+    fn node_id(&self) -> NodeId { self.node_id }
+    
+    fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId>  {
+        let child = self.node.layout(shell)?;
+        self.node_id = shell.tree.new_with_children(
+            Style::default(), 
+            &[ child ]
+        )?;
 
+        Ok(self.node_id)
+    }
+    
+    fn draw(&self, shell: &mut DrawShell<'_>) {
+        self.node.draw(shell);
+    }
 
-    async fn handle_message(&mut self, message: Message, _values: &mut dyn Reflect) {
+    
+    async fn handle_message(
+        &mut self, 
+        message: &Message, 
+        values: &mut dyn Reflect,
+        actions: &mut ActionQueue
+    ) {
         let Some(tag) = message.tag.as_string() else { return }; 
 
-        match &*tag {
-            "done" => {
-                let lobby_id = self.lobby_id;
-                let password = self.password.clone(); //get_value::<String>("password");
-                // tokio::spawn(async move { OnlineManager::join_lobby(id, password).await; });
-                self.actions.push(MultiplayerAction::JoinLobby{lobby_id, password});
-                self.should_close = true;
+        match &**tag {
+            "password" => {
+                let Some(text) = message.value.as_text_ref() else { return };
+                if let Err(e) = values.reflect_insert(PASSWORD_PATH, text.to_owned()) {
+                    error!("{e:?}");
+                }
             }
 
-            "close" => self.should_close = true,
+            "done" => {
+                let lobby_id = self.lobby_id;
+                let password = values
+                    .reflect_get::<String>(PASSWORD_PATH)
+                    .inspect_err(|e| warn!("{e:?}"))
+                    .map(|a| (*a).clone())
+                    .unwrap_or_default();
+                // self.password.clone(); //get_value::<String>("password");
+                // tokio::spawn(async move { OnlineManager::join_lobby(id, password).await; });
+                actions.push(MultiplayerAction::JoinLobby {
+                    lobby_id, 
+                    password,
+                });
+                actions.push(UiAction::new(self.node_id, DialogAction::Close));
+            }
+
+            "close" => actions.push(UiAction::new(self.node_id, DialogAction::Close)),
 
             _ => {}
         }
     }
-
-    
-    async fn update(&mut self, _values: &mut dyn Reflect) -> Vec<TatakuAction> { 
-        self.actions.take()
-    }
-
-    
-    
-    fn view(&self, _values: &mut dyn Reflect) -> IcedElement {
-        use iced_elements::*;
-        
-        let owner = MessageOwner::new_dialog(self);
-        col!(
-            Text::new("Enter Password:"),
-
-            TextInput::new("Password:", &self.password).on_input(move|t|Message::new(owner, "password", MessageType::Text(t))),
-
-            row!(
-                Button::new(Text::new("Join")).on_press(Message::new_dialog(self, "done", MessageType::Click)),
-                Button::new(Text::new("Cancel")).on_press(Message::new_dialog(self, "close", MessageType::Click));
-                width = Fill
-            );
-
-        )
-    }
 }
+

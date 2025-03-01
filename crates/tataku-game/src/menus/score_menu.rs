@@ -1,10 +1,7 @@
+use chrono::Local;
 use crate::prelude::*;
+use crate::prelude::ui::*;
 use crate::REPLAY_EXPORTS_DIR;
-use chrono::{ NaiveDateTime, Local };
-
-// const MENU_ITEM_COUNT:usize = 2;
-// const TITLE_STRING_Y:f32 = 20.0;
-// const TITLE_STRING_FONT_SIZE:f32 = 30.0;
 
 pub struct ScoreMenu {
     actions: ActionQueue,
@@ -47,6 +44,9 @@ pub struct ScoreMenu {
     // lobby_helper: CurrentLobbyDataHelper,
     // lobby_items: Vec<LeaderboardComponent>,
     // close_sender: Option<AsyncSender<()>>,
+
+    node: Box<dyn Widget>,
+    node_id: NodeId,
 }
 impl ScoreMenu {
     pub fn new(
@@ -57,7 +57,10 @@ impl ScoreMenu {
     ) -> ScoreMenu {
         let hit_error = score.hit_error();
 
-        let judgments = infos.get_info(&score.playmode).map(|i| i.get_judgments()).unwrap_or_default();
+        let judgments = infos
+            .get_info(&score.playmode)
+            .map(|i| i.judgments)
+            .unwrap_or_default();
         
         // map hit types to a display string
         let mut hit_counts = Vec::new();
@@ -65,7 +68,7 @@ impl ScoreMenu {
             let txt = judge.display_name;
             if txt.is_empty() { continue }
 
-            let count = score.judgments.get(judge.id).map(|n|*n).unwrap_or_default();
+            let count = score.judgments.get(judge.id).copied().unwrap_or_default();
 
             let mut color = judge.color;
             if color.a == 0.0 { color = Color::BLACK }
@@ -79,10 +82,10 @@ impl ScoreMenu {
 
             // extract mods
             score_mods = ModManager::short_mods_string(&score.mods, false, gamemode_info);
-            if score_mods.len() > 0 { score_mods = format!("Mods: {score_mods}"); }
+            if !score_mods.is_empty() { score_mods = format!("Mods: {score_mods}"); }
 
 
-            let mut groups = gamemode_info.get_stat_groups();
+            let mut groups = gamemode_info.stat_groups.to_vec();
             groups.extend(default_stat_groups());
             let data = score.stats_into_groups(&groups);
 
@@ -117,11 +120,72 @@ impl ScoreMenu {
             // lobby_helper: CurrentLobbyDataHelper::new(),
             // lobby_items: Vec::new(),
             // close_sender: None,
+
+            node: Box::new(EmptyWidget::new()),
+            node_id: EMPTY_NODE
         }
     }
 
+
+    fn build_view(&mut self) -> Box<dyn Widget> {
+        // score info
+        let beatmap_label = format!("{} ({}) (x{:.2})", self.beatmap.version_string(), self.infos.get_info(&self.score.playmode).unwrap().display_name, self.score.speed);
+        col!(
+            // beatmap label
+            TextWidget::new(beatmap_label).width(FILL).boxed(),
+            
+            // data
+            row!(
+                // score info
+                row!(
+                    // score values
+                    col!(
+                        self.score_lines(),
+                        width = Dimension::Percent(0.5),
+                        height = FILL
+                    ),
+
+                    // stats
+                    self.get_stats_view();
+
+                    width = Dimension::Percent(0.5),
+                    height = FILL
+                ),
+
+                // multi scores
+                if let ScoreMenuType::Multiplayer {lobby_items, ..} = &*self.menu_type {
+                    col!(
+                        lobby_items.iter().map(|l| l.view()).collect::<Vec<_>>(),
+                        width = FILL, // FillPortion(1)
+                        height = FILL,
+                        horizontal_align = AlignContent::End
+                    )
+                } else {
+                    EmptyWidget::new_boxed()
+                };
+
+                width = FILL,
+                height = FILL
+            ),
+
+            // buttons
+            col!(
+                self.get_buttons(),
+                width = FILL,
+                height = SHRINK
+            )
+
+            // // key event helper
+            // self.key_handler.handler();
+            ;
+
+            width = FILL,
+            height = FILL
+        )
+    }
+
     async fn close(&mut self) {
-        self.actions.push(MenuAction::PreviousMenu(self.get_name()));
+        self.actions.push(MenuAction::PreviousMenu(self.name()));
 
         // let menu: Box<dyn AsyncMenu>;
         // match &*self.menu_type {
@@ -137,11 +201,11 @@ impl ScoreMenu {
         // }
     }
 
-    async fn replay(&mut self) {
+    async fn replay(&mut self, settings: &Settings) {
         if self.score.replay.is_some() {
             self.do_replay((*self.score).clone()).await;
         } else {
-            match self.score.get_replay().await {
+            match self.score.get_replay(settings).await {
                 Ok(score) => self.do_replay(score).await,
                 Err(e) => self.actions.push(GameAction::AddNotification(Notification::new_error("Error loading replay", e))),
             }
@@ -172,7 +236,7 @@ impl ScoreMenu {
     async fn change_score(&mut self, score: IngameScore) {
         self.hit_error = score.hit_error();
 
-        let judgments = self.infos.get_info(&score.playmode).map(|i| i.get_judgments()).unwrap_or_default();
+        let judgments = self.infos.get_info(&score.playmode).map(|i| i.judgments).unwrap_or_default();
         
         // map hit types to a display string
         self.hit_counts.clear();
@@ -180,7 +244,7 @@ impl ScoreMenu {
             let txt = judge.display_name;
             if txt.is_empty() { continue }
 
-            let count = score.judgments.get(judge.id).map(|n|*n).unwrap_or_default();
+            let count = score.judgments.get(judge.id).copied().unwrap_or_default();
 
             let mut color = judge.color;
             if color.a == 0.0 { color = Color::BLACK }
@@ -195,10 +259,10 @@ impl ScoreMenu {
         if let Ok(gamemode_info) = self.infos.get_info(&score.playmode) {
             // mods
             self.score_mods = ModManager::short_mods_string(&score.mods, false, gamemode_info);
-            if self.score_mods.len() > 0 { self.score_mods = format!("Mods: {}", self.score_mods); }
+            if !self.score_mods.is_empty() { self.score_mods = format!("Mods: {}", self.score_mods); }
             
             // stats
-            let mut groups = gamemode_info.get_stat_groups();
+            let mut groups = gamemode_info.stat_groups.to_vec();
             groups.extend(default_stat_groups().clone());
             let data = score.stats_into_groups(&groups);
 
@@ -241,8 +305,13 @@ impl ScoreMenu {
     }
   
     async fn save_replay(&mut self) {
-        let Some(replay) = &self.score.replay else { 
-            NotificationManager::add_text_notification("There is no replay to save!", 5_000.0, Color::RED).await;
+        if self.score.replay.is_none() { 
+            self.actions.push(
+                Notification::default()
+                .text("There is no replay to save!")
+                .duration(5_000.0)
+                .color(Color::RED)
+            );
             return;
         };
         
@@ -253,11 +322,11 @@ impl ScoreMenu {
 
                 let BeatmapMeta { artist, title, version, .. } = &*self.beatmap;
                 let Score { playmode, username, time, .. } = &self.score.score;
-                let playmode = self.infos.get_info(playmode).unwrap().display_name();
+                let playmode = self.infos.get_info(playmode).unwrap().display_name;
 
                 let mut date = String::new();
-                if let Some(datetime) = NaiveDateTime::from_timestamp_opt(*time as i64, 0) {
-                    let score_time = datetime.and_local_timezone(Local).unwrap();
+                if let Some(datetime) = chrono::DateTime::from_timestamp(*time as i64, 0) {
+                    let score_time = datetime.with_timezone(&Local);
                     date = score_time.date_naive().format("%d-%m-%Y").to_string();
                 }
 
@@ -265,13 +334,18 @@ impl ScoreMenu {
                 let export_path = Path::new(&export_path);
 
                 // ensure export dir exists
-                match std::fs::create_dir_all(&export_path.parent().unwrap()) {
+                match std::fs::create_dir_all(export_path.parent().unwrap()) {
                     Ok(_) => {
                         // copy the file from the saved_path to the exports file
                         if let Err(e) = std::fs::copy(saved_path, export_path) {
                             NotificationManager::add_error_notification("Error exporting replay", e).await;
                         } else {
-                            NotificationManager::add_text_notification("Replay exported!", 5000.0, Color::BLUE).await;
+                            self.actions.push(
+                                Notification::default()
+                                .text("Replay exported!")
+                                .duration(5000.0)
+                                .color(Color::BLUE)
+                            );
                         }
                     }
                     Err(e) => NotificationManager::add_error_notification("Error creating exports directory", e).await,
@@ -283,25 +357,23 @@ impl ScoreMenu {
 
 
 
-    fn score_lines(&self) -> Vec<IcedElement> {
-        use crate::prelude::iced_elements::*;
-
+    fn score_lines(&self) -> Vec<Box<dyn Widget>> {
         let mut lines = Vec::with_capacity(20);
         let font_size = 30.0;
 
         macro_rules! add {
             ($s: expr, $color: expr) => {
                 lines.push(
-                    Text::new($s)
-                        .color($color)
-                        .size(font_size)
-                        .width(Fill)
-                        .into_element()
+                    TextWidget::new($s)
+                    .text_color($color)
+                    .font_size(font_size)
+                    .width(FILL)
+                    .boxed()
                 )
             };
 
             ($s: expr) => {
-                lines.push(Space::new(Fill, Fixed($s)).into_element());
+                lines.push(Space::new(FILL, Dimension::Length($s)).boxed());
             }
         }
 
@@ -359,50 +431,52 @@ impl ScoreMenu {
         lines
     }
 
-    fn get_stats_view(&self) -> IcedElement {
-        use crate::prelude::iced_elements::*;
+    fn get_stats_view(&self) -> Box<dyn Widget> {
+        EmptyWidget::new_boxed()
 
-        // draw stats graphs
-        if let Some(stat) = self.stats.get(self.selected_stat) {
-            // const PAD:f32 = 20.0;
-            // let pos = Vector2::new(self.window_size.x / 2.0, TITLE_STRING_Y + TITLE_STRING_FONT_SIZE + PAD);
-            // let size = Vector2::new(self.window_size.x * 2.0/3.0 - pos.x, self.window_size.y - (pos.y + PAD * 2.0));
+        // TODO!!!!
+        // // draw stats graphs
+        // if let Some(stat) = self.stats.get(self.selected_stat) {
+        //     // const PAD:f32 = 20.0;
+        //     // let pos = Vector2::new(self.window_size.x / 2.0, TITLE_STRING_Y + TITLE_STRING_FONT_SIZE + PAD);
+        //     // let size = Vector2::new(self.window_size.x * 2.0/3.0 - pos.x, self.window_size.y - (pos.y + PAD * 2.0));
 
-            // let bounds = Bounds::new(pos, size);
-            // stat.draw(&bounds, list)
-            stat.view()
-        } else {
-            Column::new().width(Fill).height(Fill).into_element()
-        }
+        //     // let bounds = Bounds::new(pos, size);
+        //     // stat.draw(&bounds, list)
+        //     stat.view()
+        // } else {
+        //     Box::new(Column::new()
+        //         .width(Dimension::Percent(1.0))
+        //         .height(Dimension::Percent(1.0))
+        //     )
+        // }
     }
 
-    fn get_buttons(&self) -> Vec<IcedElement> {
-        use iced::widget::Text;
-        use iced::widget::Button;
+    fn get_buttons(&self) -> Vec<Box<dyn Widget>> {
         let mut buttons = Vec::with_capacity(2);
         
         // retry button
         if self.allow_retry {
             buttons.push(
-                Button::new(Text::new("Retry"))
+                Button::new(TextWidget::new("Retry").boxed())
                     .on_press(Message::click(MessageOwner::Menu, "retry"))
-                    .into_element()
+                    .boxed()
             );
         }
 
         // replay button
         if !self.menu_type.is_lobby() {
             buttons.push(
-                Button::new(Text::new("Replay"))
+                Button::new(TextWidget::new("Replay").boxed())
                     .on_press(Message::click(MessageOwner::Menu, "replay"))
-                    .into_element()
+                    .boxed()
             );
         }
 
         buttons.push(
-            Button::new(Text::new("Back"))
-                .on_press(Message::new(MessageOwner::Menu, "back", MessageType::Click))
-                .into_element()
+            Button::new(TextWidget::new("Back").boxed())
+                .on_press(Message::new(MessageOwner::Menu, "back", MessageValue::Click))
+                .boxed()
         );
 
         buttons
@@ -410,20 +484,39 @@ impl ScoreMenu {
 }
 
 #[async_trait]
-impl AsyncMenu for ScoreMenu {
-    fn get_name(&self) -> &'static str { "score" }
+impl Widget for ScoreMenu {
+    fn name(&self) -> Cow<'static, str> { "score_menu".into() }
+    fn node_id(&self) -> NodeId { self.node_id }
 
-    async fn update(&mut self, values: &mut dyn Reflect) -> Vec<TatakuAction> {
-        if self.score_submit_response.is_none() {
-            if let Some(t) = &self.score_submit {
-                if let Some(r) = t.response.read().await.as_ref() {
-                    self.score_submit_response = Some(r.clone());
-                }
-            }
-        }
+
+    fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
+        self.node = self.build_view();
+
+        let child = self.node.layout(shell)?;
+        self.node_id = shell.tree.new_with_children(
+            Style::DEFAULT, 
+            &[child]
+        )?;
+
+        Ok(self.node_id)
+    }
+
+    fn update(
+        &mut self, 
+        shell: &mut UpdateShell<'_>, 
+        actions: &mut ActionQueue
+    ) {
+        // FIXME: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        // if self.score_submit_response.is_none() {
+        //     if let Some(t) = &self.score_submit {
+        //         if let Some(r) = t.response.read().await.as_ref() {
+        //             self.score_submit_response = Some(r.clone());
+        //         }
+        //     }
+        // }
 
         // update lobby scores
-        self.update_lobby(values);
+        self.update_lobby(shell.values);
         
         // while let Some(event) = self.key_handler.check_events() {
         //     match event {
@@ -436,75 +529,25 @@ impl AsyncMenu for ScoreMenu {
         //     }
         // }
 
-        self.actions.take()
+        self.node.update(shell, actions);
+        actions.extend(self.actions.take());
     }
 
     
-    fn view(&self, _values: &mut dyn Reflect) -> IcedElement {
-        use crate::prelude::iced_elements::*;
+    async fn handle_message(
+        &mut self, 
+        message: &Message, 
+        values: &mut dyn Reflect,
+        actions: &mut ActionQueue
+    ) {
+        self.node.handle_message(message, values, actions).await;
 
-        // score info
-        let beatmap_label = format!("{} ({}) (x{:.2})", self.beatmap.version_string(), self.infos.get_info(&self.score.playmode).unwrap().display_name(), self.score.speed);
-        col!(
-            // beatmap label
-            Text::new(beatmap_label).width(Fill),
-            
-            // data
-            row!(
-                // score info
-                row!(
-                    // score values
-                    col!(
-                        self.score_lines(),
-                        width = FillPortion(2),
-                        height = Fill
-                    ),
-
-                    // stats
-                    self.get_stats_view();
-
-                    width = FillPortion(2),
-                    height = Fill
-                ),
-
-                // multi scores
-                if let ScoreMenuType::Multiplayer {lobby_items, ..} = &*self.menu_type {
-                    col!(
-                        lobby_items.iter().map(|l| l.view()).collect::<Vec<_>>(),
-                        width = FillPortion(1),
-                        height = Fill,
-                        align_items = Alignment::End
-                    )
-                } else {
-                    EmptyElement.into_element()
-                };
-
-                width = Fill,
-                height = Fill
-            ),
-
-            // buttons
-            col!(
-                self.get_buttons(),
-                width = Fill,
-                height = Shrink
-            );
-
-            // // key event helper
-            // self.key_handler.handler();
-
-            width = Fill,
-            height = Fill
-        )
-    }
-    
-    async fn handle_message(&mut self, message: Message, _values: &mut dyn Reflect) {
         let Some(tag) = message.tag.as_string() else { return };
-        match &*tag {
+        match &**tag {
             "retry" => self.retry().await,
-            "replay" => self.replay().await,
+            "replay" => self.replay(&values.reflect_get::<Settings>("settings").unwrap()).await,
             "back" => self.close().await,
-            "score" => if let MessageType::Number(num) = message.message_type {
+            "score" => if let MessageValue::Number(num) = message.value {
                 if let ScoreMenuType::Multiplayer { lobby_items, .. } = &*self.menu_type {
                     if let Some(score) = lobby_items.get(num) {
                         self.change_score(score.score.clone()).await;
@@ -513,6 +556,31 @@ impl AsyncMenu for ScoreMenu {
             }
             _ => {}
         }
+    }
+
+    fn draw(
+        &self,
+        shell: &mut DrawShell<'_>,
+    ) {
+        self.node.draw(shell)
+    }
+
+
+    async fn handle_event(
+        &mut self, 
+        event: TatakuEventType, 
+        event_value: Option<TatakuValue>, 
+        values: &mut dyn Reflect
+    ) {
+        self.node.handle_event(event, event_value, values).await
+    }
+
+    fn input(
+        &mut self, 
+        event: &InputEvent, 
+        shell: &mut InputShell<'_>
+    ) {
+        self.node.input(event, shell);
     }
 
     // async fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
@@ -561,7 +629,7 @@ enum ScoreMenuType {
 }
 impl ScoreMenuType {
     fn is_lobby(&self) -> bool {
-        if let Self::Multiplayer { .. } = self { true } else { false }
+        matches!(self, Self::Multiplayer { .. })
     }
 }
 
@@ -608,4 +676,67 @@ pub fn default_stats_from_groups(data: &HashMap<String, HashMap<String, Vec<f32>
     }
 
     info
+}
+
+
+
+#[derive(Clone)]
+pub struct LeaderboardComponent {
+    pub num: usize,
+    pub score: IngameScore,
+    score_mods: String,
+    acc: f32,
+}
+impl LeaderboardComponent {
+    pub fn new(
+        num: usize, 
+        score: IngameScore,
+        infos: &GamemodeInfos,
+    ) -> Self {
+
+        let info = infos.get_info(&score.playmode).unwrap();
+        let score_mods = ModManager::short_mods_string(
+            &score.mods, 
+            false, 
+            info
+        );
+        let acc = info.calc_acc(&score) * 100.0;
+
+
+        Self {
+            num,
+            score,
+            score_mods,
+            acc
+        }
+    }
+    pub fn view(&self) -> Box<dyn Widget> {
+        use crate::prelude::ui::*;
+        
+        let score_mods = &self.score_mods;
+        let acc = self.acc;
+
+        let now = chrono::Utc::now().timestamp() as u64;
+        let time_diff = now as i64 - self.score.time as i64;
+        let time_diff_str = if time_diff < 60 * 5 {
+            format!(" | {time_diff}s")
+        } else {
+            String::new()
+        };
+
+        // TODO: cache this ??
+        Button::new(col!(
+            TextWidget::new(format!("{}: {}", self.score.username, format_number(self.score.score.score)))
+                .width(FILL)
+                .font_size(16.0)
+                .boxed(),
+            TextWidget::new(format!("{}x, {acc:.2}%, {score_mods}{time_diff_str}", format_number(self.score.max_combo)))
+                .width(FILL)
+                .font_size(16.0)
+                .boxed();
+        ))
+        .width(FILL)
+        .on_press(Message::new(MessageOwner::Menu, "score", MessageValue::Number(self.num)))
+        .boxed()
+    }
 }
