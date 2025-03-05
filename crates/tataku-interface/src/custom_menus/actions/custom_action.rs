@@ -53,7 +53,7 @@ impl CustomMenuAction {
             
             Self::Song(action) => action.into_action(values).map(TatakuAction::Song),
             Self::Game(action) => action.into_action(values, passed_in).map(Box::new).map(TatakuAction::Game),
-            Self::Multiplayer(action) => action.into_action(values).map(TatakuAction::Multiplayer),
+            Self::Multiplayer(action) => action.into_action(values, passed_in).map(TatakuAction::Multiplayer),
             Self::Cursor(action) => action.into_action(values, passed_in).map(TatakuAction::CursorAction),
 
             Self::SetValue(key, val) => val

@@ -1,6 +1,5 @@
 use crate::prelude::*;
 
-
 /// how much time should pass at beatmap start before audio begins playing (and the map "starts")
 pub const LEAD_IN_TIME:f32 = 1000.0;
 
@@ -144,6 +143,8 @@ pub enum GameplayModeInner {
         /// when was escape pressed last
         last_escape_press: TatakuInstant,
         score_send_timer: TatakuInstant,
+
+        
     },
 }
 impl GameplayModeInner {
@@ -151,7 +152,7 @@ impl GameplayModeInner {
     // convenience fns
     pub fn is_preview(&self) -> bool { matches!(self, &Self::Preview) }
     #[cfg(feature="gameplay")]
-    pub fn is_multi(&self) -> bool { matches!(self, &Self::Preview) }
+    pub fn is_multi(&self) -> bool { matches!(self, &Self::Multiplayer { .. }) }
     pub fn is_replay(&self) -> bool { matches!(self, &Self::Replaying {..}) }
 
     #[cfg(feature="gameplay")]

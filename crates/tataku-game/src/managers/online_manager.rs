@@ -1,5 +1,4 @@
 use PacketId::*;
-use tataku_common::*;
 use crate::prelude::*;
 use tokio::{ sync::Mutex, net::TcpStream };
 use futures_util::{ SinkExt, StreamExt, stream::SplitSink };
@@ -27,8 +26,6 @@ pub struct OnlineManager {
     pub connected: bool,
     pub users: HashMap<u32, Arc<Mutex<OnlineUser>>>, // user id is key
     pub friends: HashSet<u32>, // userid is key
-    #[cfg(feature = "discord")]
-    pub discord: Option<Discord>,
 
     pub user_id: u32, // this user's id
     /// are we successfully logged in?
@@ -71,8 +68,6 @@ impl OnlineManager {
             logged_in: false,
             users: HashMap::new(),
             friends: HashSet::new(),
-            #[cfg(feature = "discord")]
-            discord: None,
             // chat: Chat::new(),
             writer: None,
             connected: false,
@@ -81,14 +76,6 @@ impl OnlineManager {
             spectator_info: OnlineSpectatorInfo::new(0),
 
             multiplayer_packet_queue: Vec::new(),
-        }
-    }
-
-    #[cfg(feature = "discord")]
-    pub async fn init_discord() {
-        match Discord::new() {
-            Ok(discord) => Self::get_mut().await.discord = Some(discord),
-            Err(e) => error!("discord error: {e}"),
         }
     }
 
@@ -453,8 +440,6 @@ impl OnlineManager {
     }
 
     async fn handle_multi_packet(packet: MultiplayerPacket, _log_settings: &LoggingSettings) -> TatakuResult<()> {
-        debug!("got multi packet: {packet:?}");
-        
         // the game handles these now
         Self::get_mut().await.multiplayer_packet_queue.push(packet);
         Ok(())
@@ -661,10 +646,10 @@ impl OnlineManager {
     
     pub async fn send_packet(&mut self, packet: impl Into<PacketId>) -> bool { 
         let Some(writer) = &mut self.writer else { return false }; 
+        let packet = packet.into();
 
-        let data = SimpleWriter::new().write(packet.into()).done();
-        let data = Bytes::from_owner(data);
-        match writer.send(Message::Binary(data)).await {
+        let data = SimpleWriter::new().write(packet).done();
+        match writer.send(Message::Binary(Bytes::from_owner(data))).await {
             Ok(_) => true,
             Err(e) => {
                 error!("Error sending data ({}:{}): {}", file!(), line!(), e);

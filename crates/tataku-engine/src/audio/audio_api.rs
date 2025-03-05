@@ -59,6 +59,7 @@ pub trait AudioInstance: Send + Sync {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
 #[derive(Reflect)]
+#[reflect(display = "debug")]
 pub enum AudioState {
     Playing,
     Paused,

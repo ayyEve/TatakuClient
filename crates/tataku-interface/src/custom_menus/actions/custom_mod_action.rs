@@ -1,23 +1,22 @@
 use crate::prelude::*;
 use lua::*;
 
-
-/// An action that deals with the Song
+/// An action that deals with the Mod manager
 #[derive(Clone, Debug)]
 pub enum CustomModAction {
-    /// Play/resume the song
+    /// Add the specified mod
     AddMod(CustomEventValueType),
 
-    /// Pause the song
+    /// Remove the specified mod
     RemoveMod(CustomEventValueType),
 
-    /// Toggle the song (pause if playing, play if paused)
+    /// Toggle the specified mod
     ToggleMod(CustomEventValueType),
 
-    /// Seek by the specified number of ms
+    /// Set the gameplay speed to the specified value
     SetSpeed(CustomEventValueType),
 
-    /// Set the song's position
+    /// add/subtract to/from the gameplay speed by the specified amount
     AddSpeed(CustomEventValueType),
 }
 impl CustomModAction {
@@ -30,7 +29,6 @@ impl CustomModAction {
             Self::AddSpeed(n) => n.resolve(values, None).and_then(|n| n.as_f32().ok()).map(ModAction::AddSpeed),
         }
     }
-
 
     pub fn build(&mut self, values: &dyn Reflect) {
         match self {
@@ -47,29 +45,24 @@ impl FromLua for CustomModAction {
         #[cfg(feature="debug_custom_menus")] info!("Reading CustomModAction");
         match lua_value {
             LuaValue::Table(table) => {
+                type F = fn(CustomEventValueType) -> CustomModAction;
+                for (i, e) in [
+                    ("add", Self::AddMod as F),
+                    ("remove", Self::RemoveMod as F),
+                    ("toggle", Self::ToggleMod as F),
 
-                macro_rules! check {
-                    ($i: expr, $e: ident) => {
-                        if let Some(n) = table.get($i)? {
-                            return Ok(Self::$e(n))
-                        }
-                    }
+                    ("set_speed", Self::SetSpeed as F),
+                    ("add_speed", Self::AddSpeed as F),
+                ] {
+                    let Some(n) = table.get(i)? else { continue };
+                    return Ok(e(n))
                 }
-
-                check!("add", AddMod);
-                check!("remove", RemoveMod);
-                check!("toggle", ToggleMod);
-
-                check!("set_speed", SetSpeed);
-                check!("add_speed", AddSpeed);
-
                 Err(FromLuaConversionError { 
                     from: "table", 
                     to: "CustomModAction".to_owned(), 
                     message: Some("couldn't determine mod action".to_string()) 
                 })
             }
-
 
             other => Err(FromLuaConversionError { 
                 from: other.type_name(), 

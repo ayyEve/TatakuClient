@@ -213,10 +213,6 @@ impl LoadingMenu {
         }
         status.write().items_complete += 1;
 
-        if settings.integrations.discord {
-            OnlineManager::init_discord().await;
-        }
-
         status.write().complete = true;
     }
 

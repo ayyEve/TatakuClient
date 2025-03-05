@@ -247,7 +247,7 @@ impl Element {
 
             // i wonder if durations that are less than 0 should be run immediately?
             if duration < 0.0 {
-                warn!("duration < 0.0: command: {i:?}");
+                // warn!("duration < 0.0: command: {i:?}");
                 duration = duration.abs();
             }
 

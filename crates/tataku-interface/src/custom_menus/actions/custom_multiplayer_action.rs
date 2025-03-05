@@ -3,11 +3,17 @@ use lua::*;
 
 #[derive(Clone, Debug)]
 pub enum CustomMenuMultiplayerAction {
-    // /// Join a lobby
-    // JoinLobby { lobby_id: u32, password: Option<String> },
+    /// Join a lobby
+    JoinLobby { 
+        lobby_id: CustomEventValueType, 
+        password: Option<CustomEventValueType> 
+    },
 
     /// Open the link to the lobby's beatmap
     OpenMapLink,
+
+    /// Start the match
+    StartMatch,
 
     /// Ready up
     Ready,
@@ -21,13 +27,18 @@ pub enum CustomMenuMultiplayerAction {
     /// Quit multiplayer
     Quit,
 
+    /// start multiplayer
+    StartMultiplayer,
 
     // slot actions
-    SlotAction(CustomMultiplayerSlot)
+    SlotAction(CustomMultiplayerSlot),
+
 }
 impl CustomMenuMultiplayerAction {
-    pub fn into_action(self, _values: &mut dyn Reflect) -> Option<MultiplayerAction> {
+    pub fn into_action(self, values: &mut dyn Reflect, passed_in: Option<TatakuValue>) -> Option<MultiplayerAction> {
         match self {
+            Self::StartMultiplayer => Some(MultiplayerAction::StartMultiplayer),
+            Self::StartMatch => Some(MultiplayerAction::LobbyAction(LobbyAction::Start)),
             Self::OpenMapLink => Some(MultiplayerAction::LobbyAction(LobbyAction::OpenMapLink)),
             Self::Leave => Some(MultiplayerAction::LobbyAction(LobbyAction::Leave)),
             Self::Quit => Some(MultiplayerAction::ExitMultiplayer),
@@ -39,15 +50,31 @@ impl CustomMenuMultiplayerAction {
                     .get_action()
                     .map(|action| MultiplayerAction::LobbyAction(LobbyAction::SlotAction(action)))
             }
-            // TODO!!!! 
-            // Self::JoinLobby { lobby_id } => MultiplayerAction::JoinLobby { lobby_id, password: String::new() },
+            
+            Self::JoinLobby { lobby_id, password } => Some(MultiplayerAction::JoinLobby { 
+                lobby_id: lobby_id.resolve(values, passed_in.clone())?.as_u32().ok()?, 
+                password: password.and_then(|i| i.resolve(values, passed_in)).map(|i| i.as_string()).unwrap_or_default(),
+            }),
         }
     }
     
     pub fn build(&mut self, values: &dyn Reflect) {
-        if let Self::SlotAction(slot_action) = self {
-            slot_action.slot.resolve_pre(values);
-            // slot_action.build(values, passed_in);
+        match self {
+            Self::SlotAction(slot_action) => {
+                slot_action.slot.resolve_pre(values);
+            }
+
+            Self::JoinLobby { 
+                lobby_id, 
+                password 
+            } => {
+                lobby_id.resolve_pre(values);
+                if let Some(password) = password.as_mut() {
+                    password.resolve_pre(values);
+                }
+            }
+
+            _ => {}
         }
     }
 }
@@ -60,11 +87,14 @@ impl FromLua for CustomMenuMultiplayerAction {
             LuaValue::String(str) => {
                 #[cfg(feature="debug_custom_menus")] info!("Is String");
                 match &*str.to_str()? {
+                    "start_match" => Ok(Self::StartMatch),
                     "leave" => Ok(Self::Leave),
-                    "quit" => Ok(Self::Quit),
                     "ready" => Ok(Self::Ready),
                     "unready" => Ok(Self::Unready),
                     "open_map_link" => Ok(Self::OpenMapLink),
+
+                    "start" => Ok(Self::StartMultiplayer),
+                    "quit" => Ok(Self::Quit),
 
                     other => Err(FromLuaConversionError { 
                         from: "String", 
@@ -78,12 +108,18 @@ impl FromLua for CustomMenuMultiplayerAction {
                 
                 let id = table.get::<String>("id")?;
                 match &*id {
+                    "start_match" => Ok(Self::StartMatch),
                     "leave" => Ok(Self::Leave),
                     "quit" => Ok(Self::Quit),
 
                     "ready" => Ok(Self::Ready),
                     "unready" => Ok(Self::Unready),
                     "open_map_link" => Ok(Self::OpenMapLink),
+
+                    "join_lobby" => Ok(Self::JoinLobby { 
+                        lobby_id: table.get("lobby_id")?, 
+                        password: table.get("password")?,
+                    }),
 
                     other => {
                         // try to get a slot action

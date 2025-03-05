@@ -150,12 +150,15 @@ async fn startup() {
     // enter game dir
     const GAME_DIR:&str = "./game";
 
-    if !Io::exists(GAME_DIR) {
-        if let Err(e) = std::fs::create_dir_all(GAME_DIR) {
+    let game_dir = std::env::var("GAME_DIR")
+        .unwrap_or(GAME_DIR.to_owned());
+
+    if !Io::exists(&game_dir) {
+        if let Err(e) = std::fs::create_dir_all(&game_dir) {
             println!("Error creating game dir: {e}");
         }
     }
-    if let Err(e) = std::env::set_current_dir(GAME_DIR) {
+    if let Err(e) = std::env::set_current_dir(&game_dir) {
         println!("Error changing current dir: {e}");
     }
 

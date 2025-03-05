@@ -74,7 +74,6 @@ impl Widget for DialogWidget {
             .filter(|m| m.owner == MessageOwner::DialogUnset);
 
         for m in to_update {
-            println!("updating {m:?}");
             m.owner = MessageOwner::Dialog(self.num);
         }
     }

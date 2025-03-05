@@ -47,6 +47,9 @@ impl From<MultiplayerAction> for TatakuAction {
 #[derive(Debug)]
 pub enum LobbyAction {
 
+    /// Start the match
+    Start,
+
     /// Ready up
     Ready,
     
@@ -58,6 +61,12 @@ pub enum LobbyAction {
 
     /// Open a link to the lobby's beatmap
     OpenMapLink,
+
+    /// send a skip request
+    SendSkipRequest,
+
+    /// notify the lobby that we've completed the map
+    MapComplete(Box<Score>),
 
     /// Perform an action on a slot
     SlotAction(LobbySlotAction),

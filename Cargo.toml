@@ -16,8 +16,8 @@ module_inception = "allow"
 type_complexity = "allow"
 
 [workspace.dependencies]
-# tataku-common = { version = "0.15.0", path = "../tataku-common/tataku-common", registry = "tataku-registry" }
-tataku-common = { version = "0.15.0", registry = "tataku-registry" }
+# tataku-common = { version = "0.16.0", path = "../tataku-common/tataku-common", registry = "tataku-registry" }
+tataku-common = { version = "0.16.0", registry = "tataku-registry" }
 
 # tataku-common-proc-macros = { version = "0.3.2", registry = "tataku-registry", path = "../tataku-common/tataku-common" }
 

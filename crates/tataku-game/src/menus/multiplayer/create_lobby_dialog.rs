@@ -49,6 +49,11 @@ impl Widget for CreateLobbyDialog {
     fn node_id(&self) -> NodeId { self.node_id }
     
     fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId>  {
+        // insert/clear our values
+        shell.values.reflect_insert(LOBBY_NAME_PATH, String::new()).unwrap();
+        shell.values.reflect_insert(LOBBY_PASSWORD_PATH, String::new()).unwrap();
+        shell.values.reflect_insert(LOBBY_PRIVATE_PATH, true).unwrap();
+
         let child = self.node.layout(shell)?;
         self.node_id = shell.tree.new_with_children(
             Style::default(), 
@@ -57,10 +62,27 @@ impl Widget for CreateLobbyDialog {
 
         Ok(self.node_id)
     }
+
+    fn input(
+        &mut self, 
+        event: &InputEvent, 
+        shell: &mut InputShell<'_>,
+    ) {
+        self.node.input(event, shell);
+    }
+
+    fn update(
+        &mut self, 
+        shell: &mut UpdateShell<'_>, 
+        actions: &mut ActionQueue,
+    ) {
+        self.node.update(shell, actions);
+    }
     
     fn draw(&self, shell: &mut DrawShell<'_>) {
         self.node.draw(shell);
     }
+
     
     async fn handle_message(
         &mut self, 

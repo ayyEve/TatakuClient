@@ -3,6 +3,7 @@ use crate::prelude::*;
 
 #[derive(Clone, Default, PartialEq, Serialize, Deserialize, Eq, Debug)]
 #[derive(Reflect)]
+#[reflect(display="debug")]
 #[serde(default)]
 pub struct ModManager {
     /// use get/set_speed instead of direct access to this

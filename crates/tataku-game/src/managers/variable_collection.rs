@@ -136,6 +136,7 @@ impl Reflect for ValueCollection {
 
 #[derive(Reflect)]
 #[derive(Default, Debug, Copy, Clone)]
+#[reflect(display = "debug")]
 pub struct SongInfo {
     pub position: f32,
     pub paused: bool,
@@ -172,6 +173,7 @@ impl SongInfo {
 }
 
 #[derive(Reflect)]
+#[reflect(display = "debug")]
 #[derive(Default, Debug, Copy, Clone)]
 pub struct GameInfo {
     pub time: f32,
@@ -180,6 +182,7 @@ pub struct GameInfo {
 
 
 #[derive(Reflect)]
+#[reflect(display = "debug")]
 #[derive(Default, Debug, Clone)]
 pub struct GlobalInfo {
     pub mods: ModManager,
@@ -237,6 +240,7 @@ impl GlobalInfo {
 
 
 #[derive(Reflect)]
+#[reflect(display = "debug")]
 #[derive(Debug, Clone, Default)]
 pub struct EnumInfo {
     pub sort_by: Vec<SortBy>,

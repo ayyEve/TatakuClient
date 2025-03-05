@@ -166,14 +166,13 @@ function game_action(action, data)
         }
     end
 end
-function multiplayer_action(action, slot)
-    if slot then 
+function multiplayer_action(action, data)
+    if data then 
+        data.id = action;
+        
         return {
             id = "action",
-            multiplayer = {
-                id = action,
-                slot = slot
-            }
+            multiplayer = data
         }
     else
         return {

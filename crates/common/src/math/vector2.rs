@@ -231,6 +231,18 @@ impl Reflect for Vector2 {
         Some(Box::new(*self))
     }
 
+    fn impl_display<'v>(&self, mut path: ReflectPath<'v>, precision: Option<usize>) -> ReflectResult<'v, String> {
+        let Some(next) = path.next() else {
+            return Ok(self.to_string());
+        };
+        
+        match next {
+            "x" => self.x.as_dyn().reflect_display(path, precision),
+            "y" => self.y.as_dyn().reflect_display(path, precision),
+            other => Err(ReflectError::entry_not_exist(other))
+        }
+    }
+
     fn from_string(_str: &str) -> ReflectResult<'_, Box<dyn Reflect>> where Self:Sized {
         Err(ReflectError::NoFromString)
     }

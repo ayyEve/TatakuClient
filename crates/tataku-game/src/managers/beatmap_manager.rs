@@ -753,6 +753,7 @@ impl SelectBeatmapConfig {
 
 #[derive(Clone, Debug, Default)]
 #[derive(Reflect)]
+#[reflect(display="debug")]
 pub struct BeatmapWithData {
     #[reflect(flatten)]
     pub map: Arc<BeatmapMeta>,
@@ -772,6 +773,11 @@ impl Deref for BeatmapWithData {
     }
 }
 
+impl PartialEq for BeatmapWithData {
+    fn eq(&self, other: &Self) -> bool {
+        self.beatmap_hash == other.beatmap_hash
+    }
+}
 
 
 #[derive(Reflect)]

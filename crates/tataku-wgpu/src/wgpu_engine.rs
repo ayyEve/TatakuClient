@@ -795,6 +795,18 @@ impl WgpuEngine<'_> {
         let vtx_count = 4;
         let idx_count = 6;
 
+
+        // FIXME:
+        // assert!(slider_grid_count < SLIDER_GRID_COUNT);
+        // assert!(grid_cell_count < GRID_CELL_COUNT);
+        // assert!(line_segment_count < LINE_SEGMENT_COUNT);
+
+        if slider_grid_count > SLIDER_GRID_COUNT
+        || grid_cell_count > GRID_CELL_COUNT
+        || line_segment_count > LINE_SEGMENT_COUNT {
+            return None
+        }
+
         if !scissor_check
         || recording_buffer.used_vertices + vtx_count > SliderRenderBuffer::VTX_PER_BUF
         || recording_buffer.used_indices + idx_count > SliderRenderBuffer::IDX_PER_BUF

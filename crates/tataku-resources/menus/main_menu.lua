@@ -63,7 +63,7 @@ local song_display = {
 
 
 local start_singleplayer = menu_action("beatmap_select")
-local start_multiplayer = menu_action("lobby_select")
+local start_multiplayer = multiplayer_action("start")
 local exit_game = game_action("quit")
 
 

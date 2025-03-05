@@ -14,6 +14,12 @@ impl ShuntingYard {
 
             match c {
                 '0'..='9'|'a'..='z'|'.'|'_' => current_thing.push(c),
+                '\'' => if matches!(current_thing, CurrentThing::StringLiteral(_)) {
+                    current_thing.add(&mut output_queue, &mut operator_stack, false)?;
+
+                } else {
+                    current_thing = CurrentThing::StringLiteral(String::new())
+                },
                 
                 '(' => {
                     // if current_thing is a variable, it is actually a function
@@ -74,6 +80,7 @@ impl ShuntingYard {
         for token in rpn {
             match token {
                 ShuntingYardToken::Number(num) => stack.push(Cow::Owned(TatakuVariable::new_any(*num))),
+                ShuntingYardToken::StringLiteral(s) => stack.push(Cow::Owned(TatakuVariable::new_any(s.clone()))),
                 ShuntingYardToken::Variable(var) => stack.push(Cow::Owned(TatakuVariable::new_any(
                     match &**var {
                         "true" => TatakuValue::Bool(true),
@@ -151,6 +158,7 @@ impl ShuntingYard {
 enum CurrentThing {
     None,
     Number(String),
+    StringLiteral(String),
     Variable(String),
 }
 impl CurrentThing {
@@ -163,6 +171,7 @@ impl CurrentThing {
             }
             Self::Number(s) => s.push(c),
             Self::Variable(s) => s.push(c),
+            Self::StringLiteral(s) => s.push(c),
         }
     }
     fn add(
@@ -184,6 +193,9 @@ impl CurrentThing {
             }
             Self::Variable(s) => {
                 output_queue.push(ShuntingYardToken::Variable(s.take()));
+            }
+            Self::StringLiteral(s) => {
+                output_queue.push(ShuntingYardToken::StringLiteral(s.take()));
             }
         }
 

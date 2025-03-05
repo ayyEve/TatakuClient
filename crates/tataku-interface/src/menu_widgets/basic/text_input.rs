@@ -15,7 +15,6 @@ const TOKENS: &[char] = &[
 ];
 
 // TODO: add copy/paste support
-// TODO: add click to move cursor support
 // TODO: blinky cursor?
 // TODO: make sure the forward-select stuff is all correct
 // TODO: cache selected text sizes?
@@ -434,6 +433,45 @@ impl TextInput {
 
         value.len()
     }
+
+    fn handle_action(
+        &self, 
+        owner: MessageOwner,
+        action: &TextInputAction,
+        actions: &mut ActionQueue,
+        values: &mut dyn Reflect,
+        messages: &mut Vec<Message>
+    ) {
+        match action {
+            TextInputAction::Message(None) => {},
+            TextInputAction::Message(Some(message)) => {
+                messages.push(message.clone());
+            }
+            TextInputAction::MessageCallback(cb) => {
+                let message = cb(&self.value.get());
+                messages.push(message);
+            }
+            TextInputAction::ActionCallback(cb) => {
+                let action = cb(&self.value.get());
+                actions.push(action);
+            }
+            TextInputAction::ReflectCallback(cb) => {
+                cb(&self.value.get(), values);
+            }
+            TextInputAction::Custom(lua_action) => {
+                let value = TatakuValue::String(self.value.get().clone().into_owned());
+                if let Some(message) = lua_action.resolve(owner, values, Some(value)) {
+                    messages.push(message);
+                }
+            }
+
+            TextInputAction::Multi(multi_actions) => {
+                for action in multi_actions {
+                    self.handle_action(owner, action, actions, values, messages);
+                }
+            }
+        }
+    }
 }
 
 
@@ -471,22 +509,13 @@ impl Widget for TextInput {
         match &event.event {
             InputType::KeyPress(press) if self.active => {
                 if let Some(Key::Enter) = press.as_key() {
-                    match &self.on_input {
-                        TextInputAction::Message(Some(message)) => {
-                            shell.messages.push(message.clone());
-                        }
-                        TextInputAction::Callback(cb) => {
-                            let message = cb(&self.value.get());
-                            shell.messages.push(message);
-                        }
-                        TextInputAction::Custom(lua_action) => {
-                            if let Some(message) = lua_action.resolve(shell.owner, shell.values, Some(TatakuValue::String(self.value.get().clone().into_owned()))) {
-                                shell.messages.push(message);
-                            }
-                        },
-
-                        _ => {}
-                    }
+                    self.handle_action(
+                        shell.owner,
+                        &self.on_submit, 
+                        shell.actions, 
+                        shell.values, 
+                        shell.messages
+                    );
                     
                     shell.event_consumed = true;
                     self.active = false;
@@ -513,23 +542,14 @@ impl Widget for TextInput {
                                 .reflect_insert(var, cached.clone())
                                 .inspect_err(|e| warn!("{e:?}"));
                         }
-                        
-                        match &self.on_input {
-                            TextInputAction::Message(Some(message)) => {
-                                shell.messages.push(message.clone());
-                            }
-                            TextInputAction::Callback(cb) => {
-                                let message = cb(&self.value.get());
-                                shell.messages.push(message);
-                            }
-                            TextInputAction::Custom(lua_action) => {
-                                if let Some(message) = lua_action.resolve(shell.owner, shell.values, Some(TatakuValue::String(self.value.get().clone().into_owned()))) {
-                                    shell.messages.push(message);
-                                }
-                            }
-
-                            _ => {}
-                        }
+                            
+                        self.handle_action(
+                            shell.owner,
+                            &self.on_input, 
+                            shell.actions, 
+                            shell.values, 
+                            shell.messages
+                        );
                     }
                 }
             }
@@ -706,12 +726,19 @@ impl Cursor {
 }
 
 
-type TextInputCallback = Box<dyn Fn(&str) -> Message + Send + Sync>;
+type TextInputMessageCallback = Box<dyn Fn(&str) -> Message + Send + Sync>;
+type TextInputActionCallback = Box<dyn Fn(&str) -> TatakuAction + Send + Sync>;
+type TextInputReflectCallback = Box<dyn Fn(&str, &mut dyn Reflect) + Send + Sync>;
 
 pub enum TextInputAction {
     Message(Option<Message>),
-    Callback(TextInputCallback),
-    Custom(LuaAction)
+    MessageCallback(TextInputMessageCallback),
+    ActionCallback(TextInputActionCallback),
+    ReflectCallback(TextInputReflectCallback),
+
+    Custom(LuaAction),
+
+    Multi(Vec<Self>),
 }
 impl Default for TextInputAction {
     fn default() -> Self { Self::Message(None) }
@@ -737,13 +764,13 @@ impl From<TextInputBuilderInput> for TextInputAction {
     fn from(value: TextInputBuilderInput) -> Self {
         match value {
             TextInputBuilderInput::Message(message) => Self::Message(message),
-            TextInputBuilderInput::Callback(cb) => Self::Callback(cb),
+            TextInputBuilderInput::Callback(cb) => Self::MessageCallback(cb),
         }
     }
 }
 impl<T: Fn(&str) -> Message + Send + Sync + 'static> From<T> for TextInputAction {
     fn from(value: T) -> Self {
-        Self::Callback(Box::new(value))
+        Self::MessageCallback(Box::new(value))
     }
 }
 

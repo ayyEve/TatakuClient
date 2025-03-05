@@ -258,70 +258,6 @@ impl GameplayManager {
             loader.load(i);
         }
 
-        // // Score
-        // loader.load(
-        //     "score",
-        // );
-
-        // // Combo
-        // loader.load(
-        //     "combo",
-        // );
-
-        // // Leaderboard
-        // loader.load(
-        //     "leaderboard",
-        // );
-
-        // // Accuracy
-        // loader.load(
-        //     "accuracy", 
-        // );
-
-        // // Performance
-        // // TODO: calc diff before starting somehow?
-        // loader.load("performance");
-
-        // // Healthbar
-        // loader.load("health_bar");
-
-        // // Duration Bar
-        // loader.load(
-        //     "duration_bar",
-        // );
-
-        // // Judgement Bar
-        // loader.load(
-        //     "judgement_bar",
-        // );
-
-        // // Key Counter
-        // loader.load(
-        //     "key_counter",
-        // );
-
-        // // Judgement counter
-        // loader.load(
-        //     "judgement_counter",
-        // );
-        
-        // // Spectators
-        // loader.load(
-        //     "spectators",
-        // );
-
-
-        // // Elapsed timer
-        // loader.load(
-        //     "elapsed_timer",
-        // );
-
-        // // Remaining timer
-        // loader.load(
-        //     "remaining_timer",
-        // );
-
-
         // Anything in the gamemode itself
         self.gamemode.build_widgets(&mut loader).await;
 
@@ -346,6 +282,17 @@ impl GameplayManager {
         }
     }
 
+    pub fn skip_intro(&mut self) {
+        let Some(mut time) = self.gamemode.skip_intro(self.time()) else { return };
+
+        // really not sure whats happening here lol
+        if self.lead_in_time > 0.0 && time > self.lead_in_time {
+            time -= self.lead_in_time - 0.01;
+            self.lead_in_time = 0.01;
+        }
+
+        self.actions.push(SongAction::SetPosition(time));
+    }
 }
 
 // getters, setters, properties
@@ -410,17 +357,12 @@ impl GameplayManager {
     ) {
         // note to self: force is used when the frames are from the gamemode's update function
         if let ReplayAction::Press(KeyPress::SkipIntro) = frame {
-            if let Some(mut time) = self.gamemode.skip_intro(self.time()) {
-
-                // really not sure whats happening here lol
-                if self.lead_in_time > 0.0 && time > self.lead_in_time {
-                    time -= self.lead_in_time - 0.01;
-                    self.lead_in_time = 0.01;
-                }
-
-                self.actions.push(SongAction::SetPosition(time));
+            if self.gameplay_mode.is_multi() {
+                self.actions.push(LobbyAction::SendSkipRequest);
+            } else {
+                self.skip_intro();
             }
-
+            
             // more to do?
             return;
         }
@@ -465,6 +407,7 @@ impl GameplayManager {
         mods: KeyModifiers,
         settings: &Settings,
     ) -> bool {
+        if key_input.repeat { return false }
         let Some(key) = key_input.as_key() else { return false };
 
         if (self.gameplay_mode.is_replay() || self.current_mods.has_autoplay()) && !self.gameplay_mode.is_preview() {
@@ -477,17 +420,17 @@ impl GameplayManager {
         }
 
         // check map restart key
-        if key == self.common_game_settings.map_restart_key {
+        if key == self.common_game_settings.map_restart_key && !self.gameplay_mode.is_multi() {
             self.restart_key_hold_start = Some(TatakuInstant::now());
             return true;
         }
 
-        if self.failed && key == Key::Escape {
+        if self.failed && key == Key::Escape && !self.gameplay_mode.is_multi() {
             // set the failed time to negative, so it triggers the end
             self.failed_time = -1000.0;
         }
 
-        if self.should_skip_input() { return false}
+        if self.should_skip_input() { return false }
 
 
         if key == Key::Escape {
@@ -497,7 +440,7 @@ impl GameplayManager {
                 if last_escape_press.elapsed_and_reset() < 3_000.0 {
                     self.actions.push(MultiplayerAction::ExitMultiplayer);
                 } else {
-                    self.actions.push(Notification::new_text("Press escape again to quit the lobby", Color::BLUE, 3_000.0));
+                    self.actions.push(Notification::new_text("Press escape again to quit the lobby", Color::RED, 3_000.0));
                 }
                 
                 return true;
@@ -575,7 +518,6 @@ impl GameplayManager {
 
     #[cfg(feature="graphics")]
     pub async fn window_size_changed(&mut self, window_size: Vector2) {
-        println!("new window size: {window_size}");
         self.window_size = window_size;
         if self.fit_to_bounds.is_none() {
             self.gamemode.set_bounds(Bounds::new(Vector2::ZERO, window_size), true);
@@ -596,7 +538,6 @@ impl GameplayManager {
         // if let Some(ui_editor) = &mut self.ui_editor {
         //     if ui_editor.handle_input(&input).await { return}
         // }
-
 
         match &input.event {
             InputType::KeyPress(key_input) => {
@@ -915,6 +856,11 @@ impl GameplayManagerTrait for GameplayManager {
 
             #[cfg(feature="gameplay")]
             self.outgoing_spectator_frame_force(SpectatorFrame::new(self.end_time + 10.0, SpectatorAction::Buffer));
+
+
+            if self.gameplay_mode.is_multi() {
+                self.actions.push(LobbyAction::MapComplete(Box::new(self.score.score.clone())));
+            } 
 
             // check if we failed
             if self.health.is_dead(true) && !self.failed {
@@ -1444,19 +1390,6 @@ impl GameplayManagerTrait for GameplayManager {
             self.actions.push(CursorAction::SetVisible(true));
         }
 
-        // if !self.gamemode.show_cursor() {
-        //     if !self.menu_background {
-        //         CursorManager::set_visible(false)
-        //     } else {
-        //         CursorManager::set_visible(true);
-        //     }
-        // } else if self.gameplay_mode.is_replay() || self.current_mods.has_autoplay() {
-        //     CursorManager::show_system_cursor(true)
-        // } else {
-        //     CursorManager::set_visible(true);
-        //     CursorManager::show_system_cursor(false);
-        // }
-
         self.pause_pending = false;
         self.should_pause = false;
 
@@ -1465,10 +1398,7 @@ impl GameplayManagerTrait for GameplayManager {
             self.start_time += chrono::Utc::now().timestamp() - pause_time
         }
 
-        // // re init ui
-        // self.ui_elements.clear();
-        // #[cfg(feature="graphics")]
-        // self.init_ui().await;
+        // re init ui
         self.layout_ui();
 
         if !self.started {
@@ -1494,19 +1424,9 @@ impl GameplayManagerTrait for GameplayManager {
             }
 
             if self.gameplay_mode.is_preview() {
-                // dont reset the song, and dont do lead in
+                // dont do lead in
                 self.lead_in_time = 0.0;
             } else {
-                // self.actions.push(SongMenuAction::Restart);
-                // self.actions.push(SongMenuAction::Pause);
-                // self.actions.push(SongMenuAction::SetPosition(0.0));
-                // self.actions.push(SongMenuAction::SetRate(self.game_speed()));
-
-                // self.song.set_position(0.0);
-                // if self.song.is_stopped() { self.song.play(true); }
-                // self.song.pause();
-                // self.song.set_rate(self.current_mods.get_speed());
-
                 self.lead_in_timer = TatakuInstant::now();
                 self.lead_in_time = LEAD_IN_TIME;
             }
@@ -1520,18 +1440,12 @@ impl GameplayManagerTrait for GameplayManager {
             on_start(self);
 
         } else if self.lead_in_time <= 0.0 {
-            // if this is the menu, dont do anything
+            // if this is a preview, dont do anything
             if self.gameplay_mode.is_preview() { return }
 
-            let frame = SpectatorAction::UnPause;
-            let time = self.time();
             #[cfg(feature="gameplay")]
-            self.outgoing_spectator_frame(
-                SpectatorFrame::new(time, frame),
-            );
+            self.outgoing_spectator_frame(SpectatorFrame::new(self.time(), SpectatorAction::UnPause));
             self.actions.push(SongAction::Play);
-            // self.song.play(false);
-
             self.gamemode.unpause();
         }
     
@@ -1667,7 +1581,14 @@ impl GameplayManagerTrait for GameplayManager {
 
     }
     fn fail(&mut self) {
-        if self.failed || self.current_mods.has_nofail() || self.current_mods.has_autoplay() || self.gameplay_mode.is_preview() { return }
+        if self.failed 
+            || self.current_mods.has_nofail() 
+            || self.current_mods.has_autoplay() 
+            || self.gameplay_mode.is_preview() 
+            || self.gameplay_mode.is_multi() { 
+            return
+        }
+        
         self.failed = true;
         self.failed_time = self.time();
         debug!("failed");
@@ -1733,6 +1654,8 @@ impl GameplayManagerTrait for GameplayManager {
         &self.gameplay_mode
     }
     fn set_mode(&mut self, mode: GameplayModeInner) {
+        println!("setting gameplay mode to {mode:?}");
+
         match &mode {
             GameplayModeInner::Normal => {
                 // dont think there's anything to do for this one, since its the default

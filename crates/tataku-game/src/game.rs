@@ -56,14 +56,10 @@ pub struct Game {
 
 
     // fps
-    #[cfg(feature="graphics")]
-    fps_display: FpsDisplay,
-    #[cfg(feature="graphics")]
-    update_display: FpsDisplay,
-    #[cfg(feature="graphics")]
-    render_display: AsyncFpsDisplay,
-    #[cfg(feature="graphics")]
-    input_display: AsyncFpsDisplay,
+    #[cfg(feature="graphics")] fps_display: FpsDisplay,
+    #[cfg(feature="graphics")] update_display: FpsDisplay,
+    #[cfg(feature="graphics")] render_display: AsyncFpsDisplay,
+    #[cfg(feature="graphics")] input_display: AsyncFpsDisplay,
 
     // transition
     transition: Option<GameState>,
@@ -291,9 +287,6 @@ impl Game {
         });
 
         self.load_theme();
-
-        // set the current leaderboard filter
-        // this is here so it happens before anything else
         self.last_skin = self.settings.current_skin.clone();
 
         // setup double tap protection
@@ -378,12 +371,12 @@ impl Game {
                         }
                     }
 
-                    // update discord
-                    match (settings.integrations.discord, self.settings.integrations.discord) {
-                        (true, false) => OnlineManager::get_mut().await.discord = None,
-                        (false, true) => OnlineManager::init_discord().await,
-                        _ => {}
-                    }
+                    // // update discord
+                    // match (settings.integrations.discord, self.settings.integrations.discord) {
+                    //     (true, false) => OnlineManager::get_mut().await.discord = None,
+                    //     (false, true) => OnlineManager::init_discord().await,
+                    //     _ => {}
+                    // }
 
                     // integrations = self.settings.integrations.clone();
                     self.window_proxy.send_event(Game2WindowEvent::IntegrationsChanged(self.settings.integrations.clone())).unwrap();
@@ -649,13 +642,28 @@ impl Game {
         // custom menu list
         if keys_down.has_key(Key::M) && mods.ctrl && mods.shift {
             keys_down.remove_key(Key::M);
-            self.actions.push(MenuAction::set_menu("menu_list"));
+
+        
+            self.actions.push(MultiplayerAction::CreateLobby { 
+                name: "a".to_string(), 
+                password: String::new(), 
+                private: false, 
+                players: 5
+            });
+
+            // self.actions.push(MenuAction::set_menu("menu_list"));
             // self.add_dialog(Box::new(DraggableDialog::new(Vector2::ZERO, Box::new(StupidDialog::new().await))), true);
         }
         if keys_down.has_key(Key::H) && mods.ctrl && mods.shift {
             keys_down.remove_key(Key::H);
             warn!("{:#?}", self.values.values);
         }
+
+        if keys_down.has_and_remove(Key::Grave) {
+            let d = DialogWidget::new("Console", false, false, ConsoleDialog::new().boxed()).boxed();
+            self.ui_manager.add_dialog(d, &mut self.values, &mut self.actions).await;
+        }
+
 
         // update any dialogs
         if keys_down.has_key(Key::Escape) && self.ui_manager.close_latest(&mut self.values, &mut self.actions).await {
@@ -669,7 +677,7 @@ impl Game {
             self.beatmap_manager.full_refresh(&settings).await;
         }
 
-
+        // FIXME: move to menus??
         for (key, index) in [
             (Key::Key1, 1),
             (Key::Key2, 2),
@@ -1029,10 +1037,14 @@ impl Game {
             multi_packets = manager.multiplayer_packet_queue.take()
         }
 
+        let update = !multi_packets.is_empty();
         for packet in multi_packets {
             if let Err(e) = self.handle_multiplayer_packet(packet).await {
                 error!("Error handling multiplayer packet: {e:?}");
             }
+        }
+        if update {
+            self.multiplayer_data.update_values(&mut self.values);
         }
 
 
@@ -1243,7 +1255,6 @@ impl Game {
             match &*id {
                 "none" => {}
                 "main_menu" => panic!("Main menu could not be loaded. did eve fuck up the main_menu.lua?"),
-                // "beatmap_select" => self.queue_state_change(GameState::SetMenu(Box::new(BeatmapSelectMenu::new().await))),
                 _ => {
                     error!("custom menu not found! {id}, going to main menu instead");
                     self.actions.push(MenuAction::set_menu("main_menu"));
@@ -1625,13 +1636,17 @@ impl Game {
         // if we have a multi manager, pass the packet onto it as well
         if let Some(multi_manager) = &mut self.multiplayer_manager {
             let ig_manager = self.current_state.get_ingame();
-            multi_manager.handle_packet(&mut self.values, &packet, ig_manager).await?;
+            let manager_maybe = multi_manager.handle_packet(&mut self.values, &packet, ig_manager).await?;
+            if let Some(manager) = manager_maybe {
+                // start the manager
+                println!("multi starting gameplay");
+                self.queue_state_change(GameState::Ingame(Box::new(manager)));
+            }
         }
 
         match packet {
             MultiplayerPacket::Server_LobbyList { lobbies } => {
-                self.multiplayer_data.lobbies = lobbies.into_iter().map(|l|(l.id, l)).collect();
-                // TODO: update our values
+                self.multiplayer_data.lobbies = lobbies.into_iter().map(|l| (l.id, l)).collect();
             }
 
             MultiplayerPacket::Server_CreateLobby { success, lobby } => {
@@ -1691,7 +1706,7 @@ impl Game {
 
             MultiplayerPacket::Server_LobbyUserLeft { lobby_id, user_id } => {
                 if let Some(l) = self.multiplayer_data.lobbies.get_mut(&lobby_id) { 
-                    l.players.retain(|u|u != &user_id) 
+                    l.players.retain(|u| u != &user_id) 
                 }
 
                 if let Some(manager) = &self.multiplayer_manager {
@@ -1730,7 +1745,7 @@ impl Game {
                 let text = format!("{} has invited you to a multiplayer match", inviter.username);
 
                 let notif = Notification::new(text, Color::PURPLE_AMETHYST, 10_000.0, NotificationOnClick::MultiplayerLobby(lobby.id));
-                NotificationManager::add_notification(notif).await;
+                self.actions.push(notif);
             }
 
             _ => {}
@@ -1873,6 +1888,7 @@ impl Game {
             ModAction::ToggleMod(mod_name) => mods.toggle_mod(mod_name).nope(),
             ModAction::SetSpeed(speed) => mods.set_speed(speed),
             ModAction::AddSpeed(speed) => mods.set_speed(mods.get_speed() + speed),
+            ModAction::SetMods(new_mods) => mods.mods = new_mods,
         }
 
         // update the song's rate
@@ -2443,9 +2459,14 @@ impl Game {
                 if !self.current_state.is_ingame() {
                     self.handle_custom_menu("main_menu").await;
                 }
+
+                tokio::spawn(OnlineManager::remove_lobby_listener());
             }
             #[cfg(feature="graphics")]
-            MultiplayerAction::StartMultiplayer => self.handle_custom_menu("lobby_select").await,
+            MultiplayerAction::StartMultiplayer => {
+                tokio::spawn(OnlineManager::add_lobby_listener());
+                self.handle_custom_menu("lobby_select").await;
+            },
 
             #[cfg(feature="gameplay")]
             MultiplayerAction::CreateLobby { 
@@ -2481,7 +2502,7 @@ impl Game {
             #[cfg(feature="gameplay")]
             MultiplayerAction::SetBeatmap { hash, mode } => {
                 let Some(map) = self.beatmap_manager.get_by_hash(&hash) else { return };
-                let mode = mode.unwrap_or_default();
+                let mode = mode.unwrap_or_else(|| self.values.global.playmode_actual.clone());
                 tokio::spawn(OnlineManager::update_lobby_beatmap(map, mode));
             }
 

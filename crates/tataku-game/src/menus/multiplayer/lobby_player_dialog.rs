@@ -59,6 +59,22 @@ impl Widget for LobbyPlayerDialog {
 
         Ok(self.node_id)
     }
+
+    fn input(
+        &mut self, 
+        event: &InputEvent, 
+        shell: &mut InputShell<'_>,
+    ) {
+        self.node.input(event, shell);
+    }
+    
+    fn update(
+        &mut self, 
+        shell: &mut UpdateShell<'_>, 
+        actions: &mut ActionQueue
+    ) {
+        self.node.update(shell, actions);
+    }
     
     fn draw(&self, shell: &mut DrawShell<'_>) {
         self.node.draw(shell);

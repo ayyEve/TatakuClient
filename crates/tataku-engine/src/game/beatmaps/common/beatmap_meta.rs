@@ -3,6 +3,7 @@ use crate::prelude::*;
 // contains beatmap info unrelated to notes and timing points, etc
 #[derive(Clone, Debug, Default)]
 #[derive(Reflect)]
+#[reflect(display="debug")]
 pub struct BeatmapMeta {
     #[reflect(alias("path"))]
     pub file_path: String,
@@ -36,10 +37,10 @@ pub struct BeatmapMeta {
     pub bpm_max: f32,
 }
 impl BeatmapMeta {
-    pub fn new(file_path: String, beatmap_hash: Md5Hash, beatmap_type: BeatmapType) -> BeatmapMeta {
+    pub fn new(file_path: String, beatmap_hash: Md5Hash, beatmap_type: BeatmapType) -> Self {
         let unknown = "Unknown".to_owned();
 
-        BeatmapMeta {
+        Self {
             file_path,
             beatmap_hash,
             beatmap_type,

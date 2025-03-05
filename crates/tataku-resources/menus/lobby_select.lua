@@ -1,11 +1,7 @@
 
 local menu = {
     id = "lobby_select",
-    
-    components = {
-        "lobby_list"
-    },
-    
+
     events = {
         key_event("Escape", { id = "action", menu = "main_menu" }),
     },
@@ -18,10 +14,13 @@ local menu = {
             
             list = "global.lobbies",
             variable = "_lobby",
+            scroll = true,
+            width = "fill",
+            height = "auto",
 
             element = button({ width = "fill", height = "auto", padding = 5.0 },
                 text(variable("_lobby.name"), 30.0),
-                custom_action("lobby.join", variable("_lobby.id"))
+                multiplayer_action("join_lobby", { lobby_id = variable("_lobby.id") })
             )
         },
 

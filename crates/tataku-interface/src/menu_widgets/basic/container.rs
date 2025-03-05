@@ -237,7 +237,6 @@ impl Widget for Container {
                     for _ in 0..diff.abs() {
                         // create the new element
                         let mut e = BuiltCustomMenu::build_element(data.template.clone(), layout_shell.owner);
-                        println!("list created widget {}", e.name());
 
                         // add it to the tree
                         let child = match e.layout(&mut layout_shell) {
