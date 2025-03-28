@@ -33,6 +33,7 @@ impl TaikoNoteQueue {
         self.notes.get_mut(self.index)
     }
     #[inline]
+    #[allow(clippy::borrowed_box)]
     pub fn previous_note(&self) -> Option<&Box<dyn TaikoHitObject>> {
         self.notes.get(self.index - 1)
     }

@@ -122,7 +122,7 @@ impl Settings {
         let mut s = match std::fs::read_to_string(path).map(|s| serde_json::from_str::<Settings>(&s).map_err(|e| e.to_string())).map_err(|e| e.to_string()) {
             Ok(Ok(settings)) => settings,
             Err(e) | Ok(Err(e)) => {
-                // NotificationManager::add_error_notification("Error reading settings.json\nLoading defaults", e).await;
+                actions.push(Notification::new_error("Error reading settings.json\nLoading defaults", e.clone()));
                 warn!("Error reading settings.json\nLoading defaults, {e}");
                 if let Some(saved_as) = Self::backup_settings(path).await {
                     info!("Old settings saved to {saved_as}");

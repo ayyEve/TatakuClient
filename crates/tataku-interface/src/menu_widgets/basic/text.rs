@@ -71,14 +71,15 @@ impl Widget for TextWidget {
 }
 
 
+#[derive(ChainableInitializer)]
 #[derive(Clone)]
 pub struct TextStyle {
-    pub font: Font,
-    pub font_size: f32,
-    pub color: Color,
-    pub line_height: f32,
+    #[chain] pub font: Font,
+    #[chain] pub font_size: f32,
+    #[chain] pub color: Color,
+    #[chain] pub line_height: f32,
 
-    pub alignment: Alignment,
+    #[chain] pub alignment: Alignment,
 }
 impl TextStyle {
     pub fn measure_text(

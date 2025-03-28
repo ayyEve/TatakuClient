@@ -3,6 +3,7 @@ local scores_list = {
     debug_name = "scores list",
     width = "fill",
     height = "fill",
+    flex_direction = "column",
 
     list = "score_list.scores",
     variable = "_score",
@@ -22,19 +23,27 @@ local scores_list = {
 local map_list = {
     id = "list",
     debug_name = "map_list",
-    width = "auto",
+    width = "fill",
     height = "auto",
     margin = 2.0,
+    
     justify_content = "space-around",
-    align_content = "flex-end",
+    align_content = "end",
+    flex_wrap = "wrap",
+    flex_direction = "column",
+    flex_shrink = 0.0,
+    -- align_content = "space-around",
+    -- justify_content = "end",
+    -- flex_wrap = "wrap",
+    -- flex_direction = "row",
 
     list = "_group.maps",
     variable = "_map",
-    element = button({ width = "auto", height = "auto", padding = 5.0, margin = 2.0, active_cond = "beatmaps.current.map.beatmap_hash == _map.map.beatmap_hash" },
-        col({ width = "auto", height = "auto" }, {
+    element = button({ width = "auto", height = "auto", flex_shrink = 0.0, padding = 5.0, margin = 2.0, active_cond = "beatmaps.current.map.beatmap_hash == _map.map.beatmap_hash" },
+        col({ width = "fill", height = "auto" }, {
             -- title and stuff
-            cond(
-                "_map.diff_rating > 0.0",
+            -- cond(
+            --     "_map.diff_rating > 0.0",
                 text(
                     text_list({ 
                         variable("_map.map.mode"), 
@@ -45,12 +54,12 @@ local map_list = {
                     20,
                     WHITE
                 ),
-                text(
-                    text_list({ variable("_map.map.mode"), " - ", variable("_map.map.version") }), -- display(_map.map.playmode)
-                    20,
-                    WHITE
-                )
-            ),
+            --     text(
+            --         text_list({ variable("_map.map.mode"), " - ", variable("_map.map.version") }), -- display(_map.map.playmode)
+            --         20,
+            --         WHITE
+            --     )
+            -- ),
             
             -- map diff info
             text(
@@ -75,12 +84,14 @@ local beatmap_list = {
     debug_name = "groups list",
     width = "fill",
     height = "auto",
+    flex_direction = "column",
+    flex_shrink = 0.0,
 
     list = "beatmaps.groups",
     variable = "_group",
     scroll = true,
 
-    element = col({ width = "fill", height = "auto", padding = 5.0, margin = 2.0, debug_name = "beatmaplist_col" }, {
+    element = col({ width = "fill", height = "auto", padding = 5.0, flex_shrink = 0.0, margin = 2.0, debug_name = "beatmaplist_col" }, {
         -- set info
         button({ width = "fill", height = "auto", padding = 5.0, active_cond = "_group.selected" }, 
             text(variable("_group.name"), 20.0, WHITE),
@@ -226,7 +237,8 @@ local menu = {
                 })
             }),
 
-            drag_scroll({ width = "percent(90.0)", height = "fill" }, {
+            --- panel scroll
+            row({ width = "percent(90.0)", height = "fill" }, {
                 -- preview
                 {
                     id = "gameplay_preview",
@@ -242,7 +254,7 @@ local menu = {
                     color = color(1.0, 1.0, 1.0, 0.1),
                     shape = { round = 5.0 },
                     width = "percent(60.0)",
-                    height = "auto",
+                    height = "fill",
                     element = beatmap_list
                 }
             }),

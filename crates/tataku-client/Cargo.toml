@@ -5,17 +5,22 @@ authors.workspace = true
 edition.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-#  TODO: we should always assume gameplay and graphics here lol
 [features]
-default = [ "gameplay", "storyboards" ]
-gameplay = [ "graphics", "bass_audio", "media_control", "ipc-channel" ]
-bass_audio = [ "tataku-bass" ]
-media_control = []
-ui = []
-storyboards = [ "tataku-game/storyboards" ]
+default = [ "storyboards", "bass_audio", "all_integrations" ]
 
-# removes as much graphics-side stuff as possible
-graphics = [ "winit", "ui", ]
+# integrations
+all_integrations = [ "discord", "lastfm", "media_controls" ]
+discord = [ "integration-discord" ]
+lastfm = [ "integration-lastfm" ]
+media_controls = [ "integration-media-controls" ]
+# ipc = [ "integration-ipc" ]
+
+# audio
+bass_audio = [ "tataku-bass" ]
+kira_audio = [ "tataku-kira" ]
+
+
+storyboards = [ "tataku-game/storyboards" ]
 dynamic_gamemodes = [ "tataku-game/dynamic_gamemodes" ]
 
 texture_arrays = [ "tataku-wgpu/texture_arrays" ]
@@ -23,23 +28,29 @@ debug_sliders = [ "gamemode-osu/debug_sliders" ]
 
 [dependencies]
 tataku-common.workspace = true
-
 tataku-game.workspace = true
 tataku-wgpu.workspace = true
 tataku-bass = { workspace = true, optional = true }
+tataku-kira = { workspace = true, optional = true }
 
+# Gamemodes
 gamemode-osu.workspace = true
 gamemode-taiko.workspace = true
 gamemode-mania.workspace = true
 gamemode-utyping.workspace = true
 
+# Integrations
+integration-discord = { workspace = true, optional = true }
+integration-lastfm = { workspace = true, optional = true }
+integration-media-controls = { workspace = true, optional = true }
+
+
 
 # framework stuff
 tokio = { workspace = true, features = ["full"] }
-ipc-channel = { workspace = true, optional = true }
 
 # windowing
-winit = { workspace = true, features = ["serde"], optional = true }
+winit = { workspace = true, features = ["serde"] }
 
 # serde
 serde = { workspace = true, features = ["derive"] }

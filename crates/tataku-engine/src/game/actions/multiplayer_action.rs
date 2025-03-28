@@ -68,6 +68,9 @@ pub enum LobbyAction {
     /// notify the lobby that we've completed the map
     MapComplete(Box<Score>),
 
+    /// notify the lobby of our current score data
+    ScoreUpdate(Box<Score>),
+
     /// Perform an action on a slot
     SlotAction(LobbySlotAction),
 }

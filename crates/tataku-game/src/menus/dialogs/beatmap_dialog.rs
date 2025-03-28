@@ -9,20 +9,10 @@ pub struct BeatmapDialog {
 }
 impl BeatmapDialog {
     pub fn new(target_map: Md5Hash) -> Self {
-        let node = col!(
-            // delete map
-            Button::new(TextWidget::new("Delete Map").boxed()).on_press(Message::new(MessageOwner::DialogUnset, "delete", MessageValue::Click)).boxed(),
-
-            // copy_hash
-            Button::new(TextWidget::new("Copy Hash").boxed()).on_press(Message::new(MessageOwner::DialogUnset, "copy_hash", MessageValue::Click)).boxed();
-
-            height = Dimension::Percent(1.0)
-        );
-
         Self {
             target_map,
 
-            node,
+            node: EmptyWidget::new_boxed(),
             node_id: EMPTY_NODE,
         }
     }
@@ -33,7 +23,17 @@ impl Widget for BeatmapDialog {
     fn name(&self) -> Cow<'static, str> { "beatmap_dialog".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId>  {
+    fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
+        self.node = col!(
+            // delete map
+            Button::new(TextWidget::new("Delete Map").boxed()).on_press(Message::new(shell.owner, "delete", MessageValue::Click)).boxed(),
+
+            // copy_hash
+            Button::new(TextWidget::new("Copy Hash").boxed()).on_press(Message::new(shell.owner, "copy_hash", MessageValue::Click)).boxed();
+
+            height = Dimension::Percent(1.0)
+        );
+
         let child = self.node.layout(shell)?;
         self.node_id = shell.tree.new_with_children(
             Style::default(), 

@@ -19,13 +19,13 @@ pub struct ScoreManager {
     pub force_update: bool,
 
     #[reflect(skip)]
-    beatmap: SyValueHelper<Md5Hash>,
+    beatmap: ValueChangeHelper<Md5Hash>,
     #[reflect(skip)]
-    playmode: SyValueHelper<String>,
+    playmode: ValueChangeHelper<String>,
     #[reflect(skip)]
-    score_method: SyValueHelper<ScoreRetreivalMethod>,
+    score_method: ValueChangeHelper<ScoreRetreivalMethod>,
     #[reflect(skip)]
-    mods: SyValueHelper<ModManager>,
+    mods: ValueChangeHelper<ModManager>,
 }
 impl ScoreManager {
     pub fn new(infos: GamemodeInfos) -> Self {
@@ -38,10 +38,10 @@ impl ScoreManager {
             abort_handle: None,
             force_update: false,
 
-            beatmap: SyValueHelper::new("beatmaps.current.map.hash"),
-            playmode: SyValueHelper::new("global.playmode_actual"),
-            score_method: SyValueHelper::new("settings.score_method"),
-            mods: SyValueHelper::new("global.mods"),
+            beatmap: ValueChangeHelper::new("beatmaps.current.map.hash"),
+            playmode: ValueChangeHelper::new("global.playmode_actual"),
+            score_method: ValueChangeHelper::new("settings.score_method"),
+            mods: ValueChangeHelper::new("global.mods"),
         }
     }
 
@@ -354,7 +354,7 @@ mod osu {
 
         // let key = Settings::get().osu_api_key.clone();
         if osu_api_key.is_empty() {
-            NotificationManager::add_text_notification("You need to supply an osu api key in settings.json", 5000.0, Color::RED).await;
+            // NotificationManager::add_text_notification("You need to supply an osu api key in settings.json", 5000.0, Color::RED).await;
             Err(TatakuError::String("no api key".to_owned()))
         } else {
             let hash = hash.to_string();

@@ -1,11 +1,13 @@
 use crate::prelude::*;
 use crate::prelude::ui::*;
 
-
+#[derive(ChainableInitializer)]
 pub struct ConditionalWidget {
     if_true: Box<dyn Widget>,
     if_false: Option<Box<dyn Widget>>,
     cond: ElementCondition,
+
+    #[chain] style: Style,
 
     value: bool,
     node_id: NodeId,
@@ -23,6 +25,7 @@ impl ConditionalWidget {
             if_true,
             if_false,
             cond,
+            style: Style::default(),
 
             value: false,
 
@@ -61,7 +64,7 @@ impl Widget for ConditionalWidget {
         }
 
         self.node_id = shell.tree.new_with_children(
-            Style::DEFAULT, 
+            self.style.clone(), 
             &children
         )?;
 

@@ -21,7 +21,7 @@ impl PauseMenu {
             is_fail_menu,
             bg: None,
 
-            node: Box::new(EmptyWidget::new()),
+            node: EmptyWidget::new_boxed(),
             node_id: EMPTY_NODE
         }
     }

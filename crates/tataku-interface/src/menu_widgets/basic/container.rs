@@ -163,6 +163,10 @@ impl Widget for Container {
             &children
         )?;
 
+        shell.with_context(self.node_id, |ctx| {
+            ctx.needs_inverse_transform = true;
+        });
+
         Ok(self.node_id)
     }
 

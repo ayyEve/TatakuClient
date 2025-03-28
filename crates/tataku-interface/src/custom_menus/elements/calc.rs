@@ -17,7 +17,7 @@ impl CustomElementCalc {
         Ok(Self(tokens))
     }
 
-    pub fn resolve<'a> (&self, values: &'a dyn Reflect) -> ShuntingYardResult<Cow<'a, TatakuVariable>> {
+    pub fn resolve<'a> (&self, values: &'a dyn Reflect) -> ShuntingYardResult<Cow<'a, TatakuValue>> {
         ShuntingYard::evaluate_rpn(&self.0, values)
     }
 }

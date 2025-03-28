@@ -74,7 +74,6 @@ impl Io {
         }
     }
 
-
     pub fn sanitize_filename(filename: impl AsRef<str>) -> String {
         filename.as_ref()
             .replace("\\", "") 
@@ -218,6 +217,7 @@ impl<T:Send + Sync + 'static> AsyncLoader<T> {
             *val.lock().await = Some(v);
             wrote.store(true, Ordering::Release)
         });
+
         let abort_handle = Arc::new(task.abort_handle());
 
         Self {

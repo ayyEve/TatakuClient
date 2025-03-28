@@ -748,11 +748,9 @@ impl GameMode for ManiaGame {
                 // if theres no more notes to hit, return after playing the sound
                 if self.column_indices[col] >= self.columns[col].len() {
                     // we need a hitsound though
-                    let thing = self.columns[col].iter().last().unwrap();
+                    let thing = self.columns[col].last().unwrap();
 
-                    state.play_note_sound(thing.get_hitsound().clone());
-
-                    // play_sound!(sound);
+                    state.play_hitsounds(thing.get_hitsound(), false);
                     return;
                 }
                 let note = &mut self.columns[col][self.column_indices[col]];
@@ -776,7 +774,7 @@ impl GameMode for ManiaGame {
                     );
                     
                     // play the hit sound
-                    state.play_note_sound(note.get_hitsound().clone());
+                    state.play_hitsounds(note.get_hitsound(), false);
                     // play_sound!(sound);
 
                     // incrememnt note index if this is not a slider
@@ -797,7 +795,7 @@ impl GameMode for ManiaGame {
                     let thing = &self.columns[col][self.column_indices[col]];
 
                     // play_sound!(sound);
-                    state.play_note_sound(thing.get_hitsound().clone());
+                    state.play_hitsounds(thing.get_hitsound(), false);
                 }
             }
             ReplayAction::Release(key) => {
@@ -845,7 +843,7 @@ impl GameMode for ManiaGame {
                         let thing = &self.columns[col][self.column_indices[col]];
 
                         // play_sound!(sound);
-                        state.play_note_sound(thing.get_hitsound().clone());
+                        state.play_hitsounds(thing.get_hitsound(), false);
                     }
                 }
             }
@@ -1145,6 +1143,16 @@ impl GameMode for ManiaGame {
             (KeyPress::Mania8, "K8"),
             (KeyPress::Mania9, "K9"),
         ];
+        let mut sound_list = HashMap::new();
+        for col in self.columns.iter() {
+            for note in col.iter() {
+                let hitsounds = note.get_hitsound();
+                for hitsound in hitsounds {
+                    sound_list.insert(hitsound.get_id(), hitsound.load_data(Some("mania-")));
+                }
+            }
+        }
+
 
         GameModeProperties { 
             info: &crate::GAME_INFO, 
@@ -1157,6 +1165,8 @@ impl GameMode for ManiaGame {
                 .iter()
                 .map(|(j, w)| (w.end, j.color))
                 .collect(), 
+
+            sound_list: sound_list.into_iter().collect(),
         }
     }
 }

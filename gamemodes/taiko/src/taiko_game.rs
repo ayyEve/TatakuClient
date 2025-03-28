@@ -89,7 +89,7 @@ impl TaikoGame {
             false, 
             state.timing_points.timing_point_at(note_time, true)
         );
-        state.add_action(GamemodeAction::play_hitsounds(hitsound));
+        state.play_hitsounds(&hitsound, false);
         // manager.play_note_sound(&hitsound).await;
     }
 
@@ -1139,6 +1139,21 @@ impl GameMode for TaikoGame {
         PlayfieldNonsense::new_simple(self.playfield.get_playfield_bounds())
     }
     fn properties(&self) -> GameModeProperties {
+
+        // TODO: is there a less cancer way of doing this?
+        let mut sound_list = HashMap::new();
+        for hitsound in [0, 1, 2, 4, 8] {
+            let hitsound = Hitsound::from_hitsamples(
+                hitsound, 
+                Default::default(), 
+                false, 
+                &TimingPoint::default(),
+            );
+            for i in hitsound {
+                sound_list.insert(i.get_id(), i.load_data(Some("taiko-")));
+            }
+        }
+
         GameModeProperties { 
             info: &crate::GAME_INFO, 
             keys: vec![
@@ -1153,6 +1168,7 @@ impl GameMode for TaikoGame {
             timing_bar_things: self.hit_windows.iter()
                 .map(|(j, w)| (w.end, j.color))
                 .collect(), 
+            sound_list: sound_list.into_iter().collect()
         }
     }
 

@@ -89,7 +89,7 @@ pub struct GameplayManager {
     restart_key_hold_start: Option<TatakuInstant>,
 
     pub timing_points: TimingPointHelper,
-    pub hitsound_manager: HitsoundManager,
+    // pub hitsound_manager: HitsoundManager,
 
     /// center text helper (ie, for offset and global offset)
     pub center_text_helper: CenteredTextHelper,
@@ -106,8 +106,6 @@ pub struct GameplayManager {
 
     // spectator info
     pub spectator_info: GameplaySpectatorInfo,
-
-    frame_sender: Box<dyn GameplayManagerOnline>,
 
     /// what should the game do on start?
     /// mainly a helper for spectator
@@ -143,8 +141,18 @@ impl GameplayManager {
 
         
         let mut actions = ActionQueue::new();
-        let mut hitsound_manager = HitsoundManager::new(properties.audio_prefix.clone());
-        hitsound_manager.init(&metadata, &mut actions, settings).await;
+    
+        for (id, list) in properties.sound_list.clone() {
+            actions.push(AudioAction::new(id, AudioActionType::Load { list }));
+        }
+        // combo break sound
+        actions.push(AudioAction::new("combobreak", AudioActionType::Load { 
+            list: AudioLoadData::new_multi_source("combobreak", None::<String>, &[HitsoundSource::Beatmap, HitsoundSource::Skin, HitsoundSource::Default])
+        }));
+
+
+        // let mut hitsound_manager = HitsoundManager::new(properties.audio_prefix.clone());
+        // hitsound_manager.init(&metadata, &mut actions, settings).await;
 
         // make sure the gamemode has the correct mods applied
         gamemode.apply_mods(current_mods.clone()).await;
@@ -152,8 +160,7 @@ impl GameplayManager {
         let mut gm = Self {
             id: Arc::new(u32::MAX),
             actions,
-            frame_sender: Box::new(DummyOnlineThing),
-            
+
             timing_points: TimingPointHelper::new_from_beatmap(&beatmap),
             // hitsound_cache,
             current_mods,
@@ -166,7 +173,7 @@ impl GameplayManager {
             #[cfg(feature="graphics")]
             animation: Box::new(EmptyAnimation),
 
-            hitsound_manager,
+            // hitsound_manager,
             events: beatmap.get_events(),
             // song,
 
@@ -227,9 +234,7 @@ impl GameplayManager {
     }
 
     #[cfg(feature="graphics")]
-    async fn init_ui(
-        &mut self
-    ) {
+    async fn init_ui(&mut self) {
         let layouts = std::fs::read("ui_layouts.json").ok()
             .and_then(|bytes| serde_json::from_slice(&bytes).ok())
             .unwrap_or_default();
@@ -338,10 +343,6 @@ impl GameplayManager {
         ).unwrap_or_default();
 
         debug!("Updated diff: {}", self.map_diff);
-    }
-
-    fn set_online(&mut self, sender: Box<dyn GameplayManagerOnline>) {
-        self.frame_sender = sender;
     }
 }
 
@@ -623,7 +624,10 @@ impl GameplayManager {
         frame: SpectatorFrame,
     ) {
         if !self.gameplay_mode.should_send_spec_frames() { return }
-        self.frame_sender.send_spec_frames(vec![frame], false);
+        self.actions.push(OnlineAction::SendSpectatorFrame {
+            frame: Box::new(frame),
+            force: false
+        });
     }
 
     pub fn outgoing_spectator_frame_force(
@@ -631,7 +635,22 @@ impl GameplayManager {
         frame: SpectatorFrame,
     ) {
         if !self.gameplay_mode.should_send_spec_frames() { return }
-        self.frame_sender.send_spec_frames(vec![frame], true);
+        self.actions.push(OnlineAction::SendSpectatorFrame {
+            frame: Box::new(frame),
+            force: true
+        });
+    }
+
+    pub fn add_spec_frame(&mut self, frame_host_id: u32, frame: SpectatorFrame) {
+        let GameplayModeInner::Spectator { 
+            frames, 
+            host_id, 
+            ..
+        } = &mut *self.gameplay_mode else { return };
+
+        if *host_id == frame_host_id {
+            frames.push_back(frame);
+        } 
     }
 }
 
@@ -666,23 +685,24 @@ impl GameplayManagerTrait for GameplayManager {
         self.gamemode.apply_mods(self.current_mods.clone()).await;
     }
 
-    async fn update(&mut self, values: &mut dyn Reflect) -> Vec<TatakuAction> {
+    async fn update(
+        &mut self, 
+        values: &mut dyn Reflect,
+        actions: &mut ActionQueue,
+    ) {
         let new_time = *values.reflect_get::<f32>("song.position").unwrap();
         let settings = values.reflect_get::<Settings>("settings").unwrap();
 
-        // if theres a time difference of over a second from when the last update was, pause the hitsound manager because there might be audio spam
-        if new_time - self.song_time > 1000.0 {
-            self.hitsound_manager.enabled = false;
-        }
+        // // if theres a time difference of over a second from when the last update was, pause the hitsound manager because there might be audio spam
+        // if new_time - self.song_time > 1000.0 {
+        //     self.hitsound_manager.enabled = false;
+        // }
 
         self.song_time = new_time;
 
-        // // update settings
-        // self.settings.update();
-
         // make sure we jump to the time we're supposed to be at
         if let Some(time) = self.pending_time_jump {
-            self.hitsound_manager.enabled = false; // try to mitigate spamming the user's ears with hitsounds
+            // self.hitsound_manager.enabled = false; // try to mitigate spamming the user's ears with hitsounds
             self.pending_time_jump = None;
 
             let mut state = create_update_state!(self, time, &settings);
@@ -693,7 +713,8 @@ impl GameplayManagerTrait for GameplayManager {
         if let Some(press_time) = self.restart_key_hold_start {
             if press_time.as_millis() >= self.common_game_settings.map_restart_delay {
                 self.reset().await;
-                return self.actions.take();
+                actions.extend(self.actions.take());
+                return
             }
         }
 
@@ -843,7 +864,7 @@ impl GameplayManagerTrait for GameplayManager {
                 // self.song.set_rate(new_rate);
             }
 
-            return self.actions.take();
+            actions.extend(self.actions.take());
         }
 
         // send map completed packets
@@ -909,12 +930,6 @@ impl GameplayManagerTrait for GameplayManager {
             } => {
                 // buffer twice as long as we need
                 let buffer_duration = (time + SPECTATOR_BUFFER_OK_DURATION * 2.0).clamp(0.0, self.end_time);
-
-                // try to read new frames from the online manager
-                frames.extend(self.frame_sender.get_pending_frames());
-                // if let Some(mut online_manager) = OnlineManager::try_get_mut() {
-                //     online_manager.get_pending_spec_frames(*host_id);
-                // }
 
                 // handle pending frames
                 while let Some(SpectatorFrame { time: frame_time, action }) = frames.pop_front() {
@@ -1014,7 +1029,8 @@ impl GameplayManagerTrait for GameplayManager {
                 if score_send_timer.as_millis() >= SCORE_SEND_TIME {
                     score_send_timer.elapsed_and_reset();
                     let score = self.score.score.clone();
-                    self.frame_sender.update_lobby_score(score);
+                    self.actions.push(LobbyAction::ScoreUpdate(Box::new(score)));
+                    // self.frame_sender.update_lobby_score(score);
                 }
             }
 
@@ -1024,18 +1040,6 @@ impl GameplayManagerTrait for GameplayManager {
         // handle any pending gameplay actions
         for a in self.gameplay_actions.take() {
             self.handle_action(a, &settings).await;
-        }
-
-        // TODO: rework this? 
-        #[cfg(feature="gameplay")]
-        // update our spectator list if we can
-        if let Some(our_list) = self.frame_sender.our_spectator_list() {
-            if our_list.updated || self.spectator_info.spectators.list.len() != our_list.list.len() {
-                info!("updated ingame spectator list");
-                self.spectator_info.spectators = our_list.clone();
-                self.spectator_info.spectators.updated = true; // make sure this update gets propogated to the spectator element
-                // our_list.updated = false
-            }
         }
 
         // if its time to send another score sync packet
@@ -1078,12 +1082,12 @@ impl GameplayManagerTrait for GameplayManager {
 
         // unpause the hitsound manager next frame if it was paused earlier this frame
         // hopefully this helps with the osu note spam sounds. i think the OsuHitObject::get_pending_combo is whats spamming audio
-        if !self.hitsound_manager.enabled {
-            // self.hitsound_manager.enabled = false;
-            self.gameplay_actions.push(GameplayAction::SetHitsoundsEnabled(true));
-        }
+        // if !self.hitsound_manager.enabled {
+        //     // self.hitsound_manager.enabled = false;
+        //     self.gameplay_actions.push(GameplayAction::SetHitsoundsEnabled(true));
+        // }
 
-        self.actions.take()
+        actions.extend(self.actions.take());
     }
 
     #[cfg(feature="graphics")]
@@ -1163,7 +1167,7 @@ impl GameplayManagerTrait for GameplayManager {
             GameplayAction::SetMode(mode) => self.set_mode(mode.into()),
 
             GameplayAction::AddReplayAction { action, should_save } => self.handle_frame(action, true, Some(self.time()), should_save, settings).await,
-            GameplayAction::SetHitsoundsEnabled(enabled) => self.hitsound_manager.enabled = enabled,
+            // GameplayAction::SetHitsoundsEnabled(enabled) => self.hitsound_manager.enabled = enabled,
         
             // not used here
             GameplayAction::RequestDifficulty => {}
@@ -1209,7 +1213,7 @@ impl GameplayManagerTrait for GameplayManager {
                         self.score.combo += 1;
                         self.score.max_combo = self.score.max_combo.max(self.score.combo);
                     }
-                    AffectsCombo::Reset => self.combo_break(settings), // self.actions.push(GamemodeAction::ComboBreak),
+                    AffectsCombo::Reset => self.combo_break(), // self.actions.push(GamemodeAction::ComboBreak),
                     AffectsCombo::Ignore => {},
                 }
 
@@ -1234,19 +1238,16 @@ impl GameplayManagerTrait for GameplayManager {
                     self.fail()
                 }
             }
-            GamemodeAction::PlayHitsounds(sounds) => {
-                // TODO: old note?
-                // have a hitsound manager trait and hitsound_type trait, and have this pass the hitsound trait to a fn to get a sound, then play it
-                // essentially the same thing as judgments
+            GamemodeAction::PlayHitsound { id, volume, repeat } => {
+                self.actions.push(AudioAction::new(id, AudioActionType::Play { volume, repeat, restart: true }))
 
+                // // let timing_point = self.beatmap.control_point_at(note_time);
 
-                // let timing_point = self.beatmap.control_point_at(note_time);
+                // // get volume
+                // let mut vol = settings.get_effect_vol();
+                // if self.gameplay_mode.is_preview() { vol *= settings.background_game_settings.hitsound_volume };
 
-                // get volume
-                let mut vol = settings.get_effect_vol();
-                if self.gameplay_mode.is_preview() { vol *= settings.background_game_settings.hitsound_volume };
-
-                self.hitsound_manager.play_sound(&sounds, vol);
+                // self.hitsound_manager.play_sound(&sounds, vol);
             }
 
 
@@ -1266,7 +1267,7 @@ impl GameplayManagerTrait for GameplayManager {
 
             GamemodeAction::AddStat { stat, value } => self.score.insert_stat(stat, value),
             GamemodeAction::RemoveLastJudgment => self.judgement_indicators.pop().nope(),
-            GamemodeAction::ComboBreak => self.combo_break(settings),
+            GamemodeAction::ComboBreak => self.combo_break(),
             GamemodeAction::FailGame => self.fail(),
             GamemodeAction::ReplayAction(frame) => self.handle_frame(frame.action, true, Some(frame.time), true, settings).await,
             GamemodeAction::ResetHealth => self.health.reset(),
@@ -1306,11 +1307,15 @@ impl GameplayManagerTrait for GameplayManager {
     async fn reload_skin(
         &mut self, 
         skin_manager: &mut dyn SkinProvider,
-        settings: &Settings,
+        _settings: &Settings,
     ) {
         let parent_folder = self.beatmap.get_parent_dir().unwrap().to_string_lossy().to_string();
         let source = self.gamemode.reload_skin(&parent_folder, skin_manager).await;
-        self.hitsound_manager.reload_skin(settings, &mut self.actions).await;
+        // self.hitsound_manager.reload_skin(settings, &mut self.actions).await;
+
+        for (id, list) in self.properties().sound_list.clone() {
+            self.actions.push(AudioAction::new(id, AudioActionType::Load { list }));
+        }
 
         #[cfg(feature="storyboards")]
         if let Some(anim) = self.beatmap.get_animation(skin_manager).await {
@@ -1594,15 +1599,10 @@ impl GameplayManagerTrait for GameplayManager {
         debug!("failed");
     }
 
-    fn combo_break(
-        &mut self,
-        settings: &Settings
-    ) {
+    fn combo_break(&mut self) {
         // play hitsound
         if self.score.combo >= 20 && !self.gameplay_mode.is_preview() {
-            let combobreak = Hitsound::new_simple("combobreak");
-            // index of 1 because we want to try beatmap sounds
-            self.hitsound_manager.play_sound_single(&combobreak, None, settings.get_effect_vol());
+            self.actions.push(AudioAction::new("combobreak", AudioActionType::Play { volume: 1.0, repeat: false, restart: true }));
         }
 
         // reset combo to 0
@@ -1725,14 +1725,6 @@ impl Drop for GameplayManager {
             error!("gameplay manager dropped without cleaning up textures !!!!!!!!!!!");
         }
     }
-}
-
-struct DummyOnlineThing;
-impl GameplayManagerOnline for DummyOnlineThing {
-    fn send_spec_frames(&mut self, _frames: Vec<SpectatorFrame>, _force: bool) {}
-    fn get_pending_frames(&mut self) -> Vec<SpectatorFrame> { Vec::new() }
-    fn update_lobby_score(&mut self, _score: Score) { }
-    fn our_spectator_list(&mut self) -> Option<SpectatorList> { None }
 }
 
 #[derive(Default)]

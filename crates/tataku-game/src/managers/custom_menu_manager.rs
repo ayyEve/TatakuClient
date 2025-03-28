@@ -52,7 +52,7 @@ impl CustomMenuManager {
     pub fn load_menu_from_bytes_and_path(
         &mut self, 
         bytes: &[u8], 
-        path: String, 
+        _path: String, 
         source: CustomMenuSource
     ) -> TatakuResult {
         let menu = Self::load_menu_inner(

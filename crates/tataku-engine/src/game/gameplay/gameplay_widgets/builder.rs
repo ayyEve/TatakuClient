@@ -4,8 +4,10 @@ use crate::prelude::*;
 #[derive(Reflect)]
 pub struct GameplayWidgetBuilder {
     pub name: &'static str,
+    
     #[reflect(skip)]
     pub default_layout: GameplayWidgetLayout,
+
     #[reflect(skip)]
     pub build: fn(&GamemodeInfo, &Arc<CommonGameplaySettings>) -> Box<dyn GameplayWidget>,
 }

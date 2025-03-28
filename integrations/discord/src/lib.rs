@@ -1,6 +1,5 @@
-// TODO: move this to its own crate one integration stuff is good
+use tataku_engine::prelude::*;
 
-use crate::prelude::*;
 use discord_rich_presence::{
     DiscordIpc, 
     DiscordIpcClient,
@@ -34,7 +33,7 @@ pub struct Discord {
     // last_status: (String, String),
 }
 impl Discord {
-    pub fn new() -> TatakuResult<Self> {
+    fn build() -> TatakuResult<Box<dyn TatakuIntegration>> {
         // let (sender, thread_receiver) = channel(5);
         // let (thread_sender, receiver) = channel(5);
 
@@ -72,7 +71,7 @@ impl Discord {
         //     last_status: Arc::new(AsyncMutex::new((String::new(), String::new())))
         // })
 
-        Ok(Self {
+        Ok(Box::new(Self {
             // sender: thread_sender,
             // receiver: thread_receiver,
 
@@ -81,7 +80,14 @@ impl Discord {
             enabled: false,
             last_connection_attempt: None,
             // last_status: Default::default()
-        })
+        }))
+    }
+
+    pub fn builder() -> TatakuIntegrationBuilder {
+        TatakuIntegrationBuilder {
+            name: "Discord",
+            build: Self::build
+        }
     }
 
     // fn create_thread(
@@ -199,9 +205,6 @@ impl Discord {
 
     /// attempt to reconnect
     fn reconnect(&mut self) -> TatakuResult {
-        // dont connect if not gameplaying
-        #[cfg(not(feature="gameplay"))] return Ok(());
-        
         // dont connect if we aren't enabled, or if we're already connected
         if !self.enabled || self.connected { return Ok(()) }
 
@@ -228,9 +231,9 @@ impl TatakuIntegration for Discord {
     fn name(&self) -> Cow<'static, str> { Cow::Borrowed("Discord") }
     fn init(
         &mut self, 
-        settings: &Settings,
+        _window_handle: raw_window_handle::WindowHandle<'_>,
     ) -> TatakuResult<()> {
-        self.check_enabled(settings)
+        Ok(())
     }
 
     fn check_enabled(
@@ -256,15 +259,22 @@ impl TatakuIntegration for Discord {
     fn handle_event(
         &mut self, 
         event: &TatakuIntegrationEvent,
-        values: &ValueCollection
+        values: &dyn Reflect,
+        _actions: &mut ActionQueue,
     ) {
         if !self.enabled || !self.connected { return }
+
+        let Ok(username) = values
+            .reflect_get::<String>("global.username")
+            .map(|u| u.cloned())
+            else { return };
+
 
         let mut activity = Activity::new();
 
         let mut assets = Assets::new()
             .large_image("icon-new")
-            .large_text(&values.global.username); // TODO: make the username of the logged-in user
+            .large_text(&username); // TODO: make the username of the logged-in user
 
         match event {
             TatakuIntegrationEvent::BeatmapStarted { 
@@ -280,9 +290,17 @@ impl TatakuIntegration for Discord {
                 let creator = &beatmap.creator;
                 let version = &beatmap.version;
 
+                let infos = values.reflect_get::<GamemodeInfos>("global.infos").unwrap();
+
+                let playmode_display = infos
+                    .get_info(playmode)
+                    .map(|i| i.display_name.to_owned())
+                    .unwrap_or_else(|_| playmode.to_owned())
+                    ;
+
                 assets = assets
                     .small_image("icon") // TODO: use a url for the image, where if it doesnt exist, it gives some default, so we always have the mode text
-                    .small_text(values.global.gamemode_infos.get_info(playmode).map(|a| a.display_name.to_owned()).unwrap_or(playmode.to_owned()));
+                    .small_text(playmode_display); //values.global.gamemode_infos.get_info(playmode).map(|a| a.display_name.to_owned()).unwrap_or(playmode.to_owned()));
 
                 activity = if let Some(player) = spectator {
                     activity

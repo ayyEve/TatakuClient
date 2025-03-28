@@ -19,7 +19,7 @@ impl TaskManager {
 
         self.tasks.push(TaskInner {
             task,
-            started: TatakuInstant::now(),
+            // started: TatakuInstant::now(),
         })
     }
 
@@ -73,8 +73,8 @@ struct TaskInner {
     /// What is this task?
     task: Box<dyn TatakuTask>,
 
-    /// When did it start?
-    started: TatakuInstant,
+    // /// When did it start?
+    // started: TatakuInstant,
 }
 impl Deref for TaskInner {
     type Target = Box<dyn TatakuTask>;

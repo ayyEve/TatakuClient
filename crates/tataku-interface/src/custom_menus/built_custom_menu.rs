@@ -102,6 +102,7 @@ impl BuiltCustomMenu {
                 .width(element.width)
                 .height(element.height)
                 .flex_direction(FlexDirection::Row)
+                .vertical_overflow(taffy::Overflow::Clip)
                 // .chain_maybe(padding, |s, p| s.padding(p))
                 // .chain_maybe(margin, |s, m| s.spacing(LengthPercentage::Length(m)))
                 .boxed(),
@@ -116,6 +117,7 @@ impl BuiltCustomMenu {
                 .width(element.width)
                 .height(element.height)
                 .flex_direction(FlexDirection::Column)
+                .vertical_overflow(taffy::Overflow::Clip)
                 // .chain_maybe(padding, |s, p| s.padding(p))
                 // .chain_maybe(margin, |s, m| s.margin(LengthPercentageAuto::Length(m)))
                 .boxed(),
@@ -192,6 +194,7 @@ impl BuiltCustomMenu {
                     if_false.map(|f | Self::build_element(*f, owner)),
                     cond
                 )
+                .style(element.style)
                 .boxed(),
 
             ElementIdentifier::List {
@@ -206,7 +209,8 @@ impl BuiltCustomMenu {
                 .id(id)
                 .scrollable(scrollable).drag_scroll(scrollable)
                 .make_programmatic(ProgrammaticListData::new(*template, list_var, variable))
-                .flex_direction(FlexDirection::Column)
+                .vertical_overflow(taffy::Overflow::Clip)
+                // .flex_direction(FlexDirection::Column)
                 .boxed(),
 
             ElementIdentifier::Dropdown {
@@ -229,7 +233,7 @@ impl BuiltCustomMenu {
                 .style(element.style)
                 .width(element.width)
                 .font_size_maybe(font_size)
-                // .chain_maybe(padding, |t, p| t.padding(p))
+                .chain_maybe(padding, |t, p| t.padding(p))
                 .chain_maybe(font.as_ref().and_then(map_font), |s, font| s.font(font))
                 .boxed(),
         }

@@ -1,12 +1,11 @@
 use crate::prelude::*;
 
-
 #[repr(C)]
 #[derive(Reflect)]
 #[derive(Copy, Clone, Debug)]
 pub struct GameplayModGroupStatic {
     pub name: &'static str,
-    pub mods: &'static [GameplayMod],
+    pub mods: &'static [ GameplayMod ],
 }
 
 #[derive(Clone)]
@@ -33,7 +32,6 @@ impl GameplayModGroup {
             mods: group.mods.to_vec()
         }
     }
-
 }
 
 pub fn default_mod_groups() -> Vec<GameplayModGroup> {

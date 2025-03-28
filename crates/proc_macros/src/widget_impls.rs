@@ -46,17 +46,18 @@ pub fn derive(derive: &syn::DeriveInput) -> proc_macro2::TokenStream {
             self.#style_path size.height = height.into();
             self
         }
+
+        pub fn margin(mut self, margin: impl Into<Margin>) -> Self {
+            self.#style_path margin = margin.into().0;
+            self
+        }
+        pub fn padding(mut self, padding: impl Into<Padding>) -> Self {
+            self.#style_path padding = padding.into().0;
+            self
+        }
     });
     if global_attributes.global_container {
         tokens.extend(quote! {
-            pub fn margin(mut self, margin: impl Into<Margin>) -> Self {
-                self.#style_path margin = margin.into().0;
-                self
-            }
-            pub fn padding(mut self, padding: impl Into<Padding>) -> Self {
-                self.#style_path padding = padding.into().0;
-                self
-            }
 
             pub fn spacing(mut self, amount: LengthPercentage) -> Self {
                 // TODO!!!!!!!!!
@@ -116,7 +117,6 @@ pub fn derive(derive: &syn::DeriveInput) -> proc_macro2::TokenStream {
                 }
 
                 self
-            
             }
 
             pub fn horizontal_overflow(mut self, overflow: taffy::Overflow) -> Self {
@@ -128,10 +128,18 @@ pub fn derive(derive: &syn::DeriveInput) -> proc_macro2::TokenStream {
                 self
             }
 
+            pub fn flex_wrap(mut self, wrap: taffy::FlexWrap) -> Self {
+                self.#style_path flex_wrap = wrap;
+                self
+            }
+            
             pub fn scrollbar_width(mut self, width: f32) -> Self {
                 self.#style_path scrollbar_width = width;
                 self
             }
+
+
+
         });
     }
 

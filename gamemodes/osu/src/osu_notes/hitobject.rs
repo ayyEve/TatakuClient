@@ -23,6 +23,7 @@ pub trait OsuHitObject: HitObject {
     fn was_hit(&self) -> bool;
 
     fn get_hitsound(&self) -> Vec<Hitsound>;
+    fn get_all_hitsounds(&self) -> Vec<Vec<Hitsound>> { vec![ self.get_hitsound() ] }
     fn get_sound_queue(&mut self) -> Vec<Vec<Hitsound>> { vec![] }
 
     fn set_hitwindow_miss(&mut self, window: f32);

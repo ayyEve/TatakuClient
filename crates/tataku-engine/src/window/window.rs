@@ -1,15 +1,28 @@
 use crate::prelude::*;
 use image::RgbaImage;
+use raw_window_handle::HasWindowHandle;
 use winit::{
-    event::*,
-    event_loop::ControlFlow,
     window::Window as WinitWindow,
+    event::{
+        WindowEvent as WinitWindowEvent,
+        StartCause,
+        DeviceEvent,
+        DeviceId,
+        Touch,
+        TouchPhase,
+        ElementState
+    },
+    event_loop::{ 
+        ControlFlow, 
+        EventLoopProxy,
+        ActiveEventLoop,
+    },
 };
-use souvlaki::{ MediaControls, PlatformConfig };
-use tokio::sync::mpsc::{ unbounded_channel, Sender };
+use tokio::sync::mpsc::Sender;
+use tokio::sync::oneshot::channel as oneshot_channel;
 use tataku_input::prelude::MouseButton;
 
-static WINDOW_PROXY: OnceCell<winit::event_loop::EventLoopProxy<Game2WindowEvent>> = OnceCell::const_new();
+static WINDOW_PROXY: OnceCell<EventLoopProxy<WindowAction>> = OnceCell::const_new();
 
 
 lazy_static::lazy_static! {
@@ -31,16 +44,15 @@ pub struct GameWindow<'window> {
 
     graphics: Box<dyn GraphicsEngine + 'window>,
     pub settings: DisplaySettings,
-    integration_settings: IntegrationSettings,
 
-    game_event_sender: Arc<Sender<Window2GameEvent>>,
+    game_event_sender: Arc<Sender<WindowEvent>>,
     render_data: Vec<Arc<dyn TatakuRenderable>>,
 
     frametime_timer: TatakuInstant,
     input_timer: TatakuInstant,
 
     close_pending: bool,
-    queued_events: Vec<Window2GameEvent>,
+    queued_events: Vec<WindowEvent>,
 
     // input
     controller_input: gilrs::Gilrs,
@@ -49,9 +61,8 @@ pub struct GameWindow<'window> {
     // what finger id started the touch, and where is the floating touch location
     touch_pos: Option<(u64, Vector2)>,
 
-    media_controls: Option<MediaControls>,
-
     pub init_graphics: Vec<Box<dyn GraphicsInitializer<'window>>>,
+    integration_builders: Vec<TatakuIntegrationBuilder>,
 
     #[cfg(not(feature = "graphics"))]
     _phantom_data: std::marker::PhantomData<&'window ()>,
@@ -59,13 +70,13 @@ pub struct GameWindow<'window> {
 impl<'window> GameWindow<'window> {
 
     pub async fn new(
-        game_event_sender: Sender<Window2GameEvent>,
+        game_event_sender: Sender<WindowEvent>,
         window: &'window OnceCell<WinitWindow>,
         runtime: Rc<tokio::runtime::Runtime>,
         window_creation_barrier: Arc<tokio::sync::Barrier>,
         settings: &Settings,
 
-        init: Vec<Box<dyn GraphicsInitializer<'window>>>
+        init: WindowInitializers<'window>,
     ) -> Self {
         let now = std::time::Instant::now();
 
@@ -76,8 +87,6 @@ impl<'window> GameWindow<'window> {
 
             graphics: Box::new(DummyGraphicsEngine),
             settings: settings.display_settings.clone(),
-            integration_settings: settings.integrations.clone(),
-            media_controls: None,
 
             game_event_sender: Arc::new(game_event_sender),
             // window_event_receiver,
@@ -89,8 +98,9 @@ impl<'window> GameWindow<'window> {
             close_pending: false,
             queued_events: Vec::new(),
 
-            init_graphics: init,
-
+            init_graphics: init.graphics_init,
+            integration_builders: init.integrations,
+            
             // input
             controller_input: gilrs::Gilrs::new().unwrap(),
             finger_touches: HashSet::new(),
@@ -102,13 +112,13 @@ impl<'window> GameWindow<'window> {
         s
     }
 
-    pub fn run(mut self, event_loop: winit::event_loop::EventLoop<Game2WindowEvent>) {
+    pub fn run(mut self, event_loop: winit::event_loop::EventLoop<WindowAction>) {
         WINDOW_PROXY.set(event_loop.create_proxy()).unwrap();
         // GlobalValueManager::update(Arc::new(WindowSize(self.settings.window_size.into())));
         event_loop.run_app(&mut self).expect("nope");
     }
 
-    fn send_game_event(&mut self, event: Window2GameEvent) {
+    fn send_game_event(&mut self, event: WindowEvent) {
         // try to send without spawning a task.
         if let Err(tokio::sync::mpsc::error::TrySendError::Full(event)) = self.game_event_sender.try_send(event) {
 
@@ -136,7 +146,7 @@ impl<'window> GameWindow<'window> {
             let info = self.controller_input.gamepad(event.id);
             if event.event == gilrs::EventType::Connected { info!("new controller: {}", info.name()) }
 
-            self.send_game_event(Window2GameEvent::Input(InputType::RawControllerEvent(event, Arc::new(info.name().to_owned()), info.power_info())));
+            self.send_game_event(WindowEvent::Input(InputType::RawControllerEvent(event, Arc::new(info.name().to_owned()), info.power_info())));
         }
 
         // send as many queued requests as we can
@@ -160,21 +170,16 @@ impl<'window> GameWindow<'window> {
                 let font_size = FontSize::new(font_size);
                 let mut characters = font.characters.write();
 
-                for (&char, _codepoint) in font.font.chars() {
+                for (&char, _) in font.font.chars() {
                     // generate glyph data
                     let (metrics, bitmap) = font.font.rasterize(char, font_size.f32());
 
                     // bitmap is a vec of grayscale pixels
-
-                    // // we need to turn that into rgba bytes
-                    let data = bitmap.into_iter().flat_map(|gray| [255,255,255, gray]).collect::<Vec<_>>();
-                    // let mut data = Vec::with_capacity(bitmap.len() * 4);
-                    // bitmap.into_iter().for_each(|gray| {
-                    //     data.push(255); // r
-                    //     data.push(255); // g
-                    //     data.push(255); // b
-                    //     data.push(gray); // a
-                    // });
+                    // we need to turn that into rgba bytes
+                    let data = bitmap
+                        .into_iter()
+                        .flat_map(|gray| [255,255,255, gray])
+                        .collect::<Vec<_>>();
 
                     let Ok(texture) = self.graphics.load_texture_rgba(&data, [metrics.width as u32, metrics.height as u32]) else { panic!("eve broke fonts") };
 
@@ -186,7 +191,7 @@ impl<'window> GameWindow<'window> {
                 font.loaded_sizes.write().insert(font_size.u32());
 
                 if let Some(on_done) = on_done {
-                    on_done.send(Ok(())).expect("uh oh");
+                    let _ = on_done.send(Ok(()));
                 }
             }
 
@@ -196,11 +201,11 @@ impl<'window> GameWindow<'window> {
 
             LoadImage::CreateRenderTarget((w, h), on_done, callback) => {
                 let rt = self.graphics.create_render_target([w, h], Color::TRANSPARENT_WHITE, callback);
-                on_done.send(rt.ok_or("failed".into())).expect("uh oh");
+                let _ = on_done.send(rt.ok_or("failed".into()));
             }
             LoadImage::UpdateRenderTarget(target, on_done, callback) => {
                 self.graphics.update_render_target(target, callback);
-                on_done.send(()).expect("uh oh");
+                let _ = on_done.send(());
             }
 
         }
@@ -237,42 +242,10 @@ impl<'window> GameWindow<'window> {
         self.graphics.end_render();
 
         // apply
-        // self.window().pre_present_notify();
         let _ = self.graphics.present();
-
 
         // update
         self.graphics.update_emitters();
-    }
-
-    // TODO: move this out of here
-    fn init_media_controls(_window: &WinitWindow) -> MediaControls {
-        info!("init media controls");
-        #[cfg(not(target_os = "windows"))]
-        let hwnd = None;
-
-        #[cfg(target_os = "windows")]
-        let hwnd = {
-            use raw_window_handle::{ HasWindowHandle, RawWindowHandle };
-            let handle = match _window.get().unwrap().window_handle() {
-                Ok(h) =>  match h.as_raw() {
-                    RawWindowHandle::Win32(h) => h,
-                    // RawWindowHandle::WinRt(h) => h,
-                    _ => unreachable!(),
-                }
-                Err(e) => {
-                    error!("error getting raw window handle: {e:?}");
-                    return
-                }
-            };
-            Some(handle.hwnd.get() as *mut std::ffi::c_void)
-        };
-
-        MediaControls::new(PlatformConfig {
-            dbus_name: "tataku.player",
-            display_name: "Tataku!",
-            hwnd,
-        }).unwrap()
     }
 
 
@@ -320,7 +293,7 @@ impl GameWindow<'_> {
     }
 
 
-    fn handle_touch_event(&mut self, touch: Touch) -> Option<Window2GameEvent> {
+    fn handle_touch_event(&mut self, touch: Touch) -> Option<WindowEvent> {
         match touch {
             Touch { phase:TouchPhase::Started, location, id, .. } => {
                 // info!("+ touch id: {id}");
@@ -334,8 +307,8 @@ impl GameWindow<'_> {
                 if self.finger_touches.len() == 1 {
                     self.touch_pos = Some((id, touch_pos));
 
-                    self.send_game_event(Window2GameEvent::Input(InputType::MouseMove(Vector2::new(location.x as f32, location.y as f32))));
-                    Some(Window2GameEvent::Input(InputType::MousePress(MouseButton::Left)))
+                    self.send_game_event(WindowEvent::Input(InputType::MouseMove(Vector2::new(location.x as f32, location.y as f32))));
+                    Some(WindowEvent::Input(InputType::MousePress(MouseButton::Left)))
                 } else {
                     None
                 }
@@ -353,7 +326,7 @@ impl GameWindow<'_> {
                     if id == start_id {
                         self.touch_pos = None;
 
-                        return Some(Window2GameEvent::Input(InputType::MouseRelease(MouseButton::Left)))
+                        return Some(WindowEvent::Input(InputType::MouseRelease(MouseButton::Left)))
                     }
                 }
 
@@ -371,11 +344,11 @@ impl GameWindow<'_> {
                         let y_scroll = delta.y / 10.0;
                         *pos = touch_pos;
 
-                        return Some(Window2GameEvent::Input(InputType::MouseScroll(y_scroll)))
+                        return Some(WindowEvent::Input(InputType::MouseScroll(y_scroll)))
                     }
                 }
 
-                Some(Window2GameEvent::Input(InputType::MouseMove(touch_pos)))
+                Some(WindowEvent::Input(InputType::MouseMove(touch_pos)))
             }
 
             _ => None,
@@ -386,71 +359,71 @@ impl GameWindow<'_> {
 
 // static fns
 impl GameWindow<'_> {
-    pub fn send_event(event: Game2WindowEvent) {
+    pub fn send_event(event: WindowAction) {
         let Some(proxy) = WINDOW_PROXY.get() else { return };
         let _ = proxy.send_event(event);
     }
 
     pub fn refresh_monitors() {
-        Self::send_event(Game2WindowEvent::RefreshMonitors);
+        Self::send_event(WindowAction::RefreshMonitors);
     }
 
     pub async fn load_texture_data(data: RgbaImage) -> TatakuResult<TextureReference> {
         trace!("loading tex data");
 
-        let (sender, mut receiver) = unbounded_channel();
-        Self::send_event(Game2WindowEvent::LoadImage(LoadImage::Image(data, sender)));
+        let (sender, receiver) = oneshot_channel();
+        Self::send_event(WindowAction::LoadImage(LoadImage::Image(data, sender)));
 
         // if this unwrap fails, the receiver was dropped, meaning it was never sent, which means the thread is dead, which means give up
-        receiver.recv().await.unwrap()
+        receiver.await.unwrap()
     }
 
     // this is called from functions without real access to async, so we have to be dumb here
-    pub fn load_font_data(font: ActualFont, size:f32, wait_for_complete: bool) -> TatakuResult<()> {
+    pub fn load_font_data(font: ActualFont, size: f32, wait_for_complete: bool) -> TatakuResult<()> {
         // NOTE: this will hang the main thread if this is run there
         if wait_for_complete {
-            let (sender, mut receiver) = unbounded_channel();
-            Self::send_event(Game2WindowEvent::LoadImage(LoadImage::Font(font, size, Some(sender))));
+            let (sender, mut receiver) = oneshot_channel();
+            Self::send_event(WindowAction::LoadImage(LoadImage::Font(font, size, Some(sender))));
 
             loop {
                 if let Ok(_t) = receiver.try_recv() { return Ok(()) }
             }
         } else {
-            Self::send_event(Game2WindowEvent::LoadImage(LoadImage::Font(font, size, None)));
+            Self::send_event(WindowAction::LoadImage(LoadImage::Font(font, size, None)));
         }
         Ok(())
     }
 
 
-    pub async fn create_render_target(size: (u32, u32), callback: impl FnOnce(&mut dyn GraphicsEngine, Matrix) + Send + 'static) -> TatakuResult<RenderTarget> {
+    pub async fn create_render_target(size: (u32, u32), callback: impl FnOnce(&mut dyn GraphicsEngine, Matrix) + Send + Sync + 'static) -> TatakuResult<RenderTarget> {
         trace!("create render target");
 
-        let (sender, mut receiver) = unbounded_channel();
-        Self::send_event(Game2WindowEvent::LoadImage(LoadImage::CreateRenderTarget(size, sender, Box::new(callback))));
+        let (sender, receiver) = oneshot_channel();
+        Self::send_event(WindowAction::LoadImage(LoadImage::CreateRenderTarget(size, sender, Box::new(callback))));
 
-        receiver.recv().await.unwrap()
+        receiver.await.unwrap()
     }
 
     #[allow(unused)]
-    pub async fn update_render_target(rt:RenderTarget, callback: impl FnOnce(&mut dyn GraphicsEngine, Matrix) + Send + 'static) {
+    pub async fn update_render_target(rt: RenderTarget, callback: impl FnOnce(&mut dyn GraphicsEngine, Matrix) + Send + Sync + 'static) {
         trace!("update render target");
 
-        let (sender, mut receiver) = unbounded_channel();
-        Self::send_event(Game2WindowEvent::LoadImage(LoadImage::UpdateRenderTarget(rt, sender, Box::new(callback))));
+        let (sender, mut receiver) = oneshot_channel();
+        Self::send_event(WindowAction::LoadImage(LoadImage::UpdateRenderTarget(rt, sender, Box::new(callback))));
 
-        receiver.recv().await;
+        receiver.await;
     }
 
 
     pub fn free_texture(tex: TextureReference) {
-        Self::send_event(Game2WindowEvent::LoadImage(LoadImage::FreeTexture(tex)));
+        Self::send_event(WindowAction::LoadImage(LoadImage::FreeTexture(tex)));
     }
 }
 
 
 #[cfg(feature="graphics")]
-impl winit::application::ApplicationHandler<Game2WindowEvent> for GameWindow<'_> {
-    fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
+impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if self.window.get().is_some() { return }
         event_loop.set_control_flow(ControlFlow::Poll);
 
@@ -503,7 +476,6 @@ impl winit::application::ApplicationHandler<Game2WindowEvent> for GameWindow<'_>
         }
 
         self.window.set(window).unwrap();
-        self.media_controls = Some(Self::init_media_controls(self.window.get().unwrap()));
         info!("Window created");
 
 
@@ -531,16 +503,29 @@ impl winit::application::ApplicationHandler<Game2WindowEvent> for GameWindow<'_>
         });
 
 
+        let mut integrations = Vec::new();
+        let window_handle = self.window().window_handle().unwrap();
+        for integration in self.integration_builders.take() {
+            let Ok(mut i) = (integration.build)() else { continue };
+            if let Err(e) = i.init(window_handle) {
+                error!("failed to initialize {}: {e:?}", integration.name);
+                continue;
+            }
+            integrations.push(i);
+        }
+
+
         // self.init_media_controls();
         self.window().set_min_inner_size(Some(to_size(self.settings.window_size.into())));
         self.refresh_monitors_inner();
         self.set_fullscreen(self.settings.fullscreen_monitor);
         self.set_vsync(self.settings.vsync);
-        self.send_game_event(Window2GameEvent::SizeChanged(self.settings.window_size.into()));
+        self.send_game_event(WindowEvent::SizeChanged(self.settings.window_size.into()));
+        self.send_game_event(WindowEvent::IntegrationsLoaded(integrations));
     }
 
 
-    fn new_events(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop, _cause: StartCause) {
+    fn new_events(&mut self, _event_loop: &ActiveEventLoop, _cause: StartCause) {
         if self.window.get().is_none() { return }
         self.update();
     }
@@ -548,52 +533,43 @@ impl winit::application::ApplicationHandler<Game2WindowEvent> for GameWindow<'_>
     fn user_event(
         &mut self,
         _event_loop: &winit::event_loop::ActiveEventLoop,
-        event: Game2WindowEvent
+        event: WindowAction
     ) {
         match event {
-            Game2WindowEvent::LoadImage(event) => self.run_load_image_event(event),
-            Game2WindowEvent::ShowCursor => {
+            WindowAction::LoadImage(event) => self.run_load_image_event(event),
+            WindowAction::ShowCursor => {
                 self.window().set_cursor_visible(true);
             }
-            Game2WindowEvent::HideCursor => {
+            WindowAction::HideCursor => {
                 self.window().set_cursor_visible(false);
             }
 
-            Game2WindowEvent::RequestAttention => self.window().request_user_attention(Some(winit::window::UserAttentionType::Informational)),
+            WindowAction::RequestAttention => self.window().request_user_attention(Some(winit::window::UserAttentionType::Informational)),
 
-            Game2WindowEvent::CloseGame => {
+            WindowAction::CloseGame => {
                 self.close_pending = true;
                 // try send because the game might already be dead at this point
-                let _ = self.game_event_sender.try_send(Window2GameEvent::Closed);
+                let _ = self.game_event_sender.try_send(WindowEvent::Closed);
             }
 
-            Game2WindowEvent::TakeScreenshot(info) => {
+            WindowAction::TakeScreenshot(info) => {
                 let sender = self.game_event_sender.clone();
 
                 self.graphics.screenshot(Box::new(move |(data, size)| {
                     // let _ = fuze.send((window_data, width, height));
                     // tokio::spawn(async move {
-                    let _ = sender.try_send(Window2GameEvent::ScreenshotComplete(data, size, info));
+                    let _ = sender.try_send(WindowEvent::ScreenshotComplete(data, size, info));
                     // });
                 }))
             },
-            Game2WindowEvent::RefreshMonitors => self.refresh_monitors_inner(),
+            WindowAction::RefreshMonitors => self.refresh_monitors_inner(),
 
-            Game2WindowEvent::RenderData(data) => {
+            WindowAction::RenderData(data) => {
                 self.render_data = data;
                 self.window().request_redraw();
             }
 
-            Game2WindowEvent::IntegrationsChanged(integrations) => {
-                // if integrations.media_controls && !self.integration_settings.media_controls {
-                //     MediaControlHelper::set_metadata(&Default::default());
-                //     MediaControlHelper::set_playback(souvlaki::MediaPlayback::Stopped);
-                //     let _ = MEDIA_CONTROLS.get().unwrap().lock().detach();
-                // }
-                // self.integration_settings = integrations;
-            }
-
-            Game2WindowEvent::SettingsUpdated(settings) => {
+            WindowAction::SettingsUpdated(settings) => {
                 if self.settings.fullscreen_monitor != settings.fullscreen_monitor {
                     self.set_fullscreen(settings.fullscreen_monitor);
                 }
@@ -608,50 +584,17 @@ impl winit::application::ApplicationHandler<Game2WindowEvent> for GameWindow<'_>
                 self.settings = settings;
             }
 
-            Game2WindowEvent::CopyToClipboard(text) => if let Err(e) = Self::set_clipboard(text) {
+            WindowAction::CopyToClipboard(text) => if let Err(e) = Self::set_clipboard(text) {
                 error!("error copying to clipboard: {e:?}")
             }
 
-            Game2WindowEvent::WindowAction(action) => {
-                match action {
-                    WindowAction::MediaControlAction(action) =>
-                        if let Some(media_controls) = &mut self.media_controls {
-                            match action {
-                                MediaControlAction::Attach => media_controls.attach(|e| WINDOW_PROXY.get().unwrap().send_event(Game2WindowEvent::MediaControlEvent(e)).nope()).nope(),
-
-                                MediaControlAction::Detatch => media_controls.detach().nope(),
-                                MediaControlAction::SetPlayback(playback) => media_controls.set_playback(playback.into()).nope(),
-                                MediaControlAction::SetMetadata(meta) => media_controls.set_metadata((&meta).into()).nope(),
-                            }
-                        },
-                    WindowAction::AddEmitter(emitter) => self.graphics.add_emitter(emitter),
-                }
-            }
-
-            Game2WindowEvent::MediaControlEvent(_event) => {
-
-                // match event {
-                //     souvlaki::MediaControlEvent::Play => todo!(),
-                //     souvlaki::MediaControlEvent::Pause => todo!(),
-                //     souvlaki::MediaControlEvent::Toggle => todo!(),
-                //     souvlaki::MediaControlEvent::Next => todo!(),
-                //     souvlaki::MediaControlEvent::Previous => todo!(),
-                //     souvlaki::MediaControlEvent::Stop => todo!(),
-                //     souvlaki::MediaControlEvent::Seek(seek_direction) => todo!(),
-                //     souvlaki::MediaControlEvent::SeekBy(seek_direction, duration) => todo!(),
-                //     souvlaki::MediaControlEvent::SetPosition(media_position) => todo!(),
-                //     souvlaki::MediaControlEvent::SetVolume(_) => todo!(),
-                //     souvlaki::MediaControlEvent::OpenUri(_) => todo!(),
-                //     souvlaki::MediaControlEvent::Raise => todo!(),
-                //     souvlaki::MediaControlEvent::Quit => todo!(),
-                // }
-            }
+            WindowAction::AddEmitter(emitter) => self.graphics.add_emitter(emitter), 
         }
     }
 
     fn device_event(
         &mut self,
-        _event_loop: &winit::event_loop::ActiveEventLoop,
+        _event_loop: &ActiveEventLoop,
         _device_id: DeviceId,
         _event: DeviceEvent,
     ) {
@@ -675,17 +618,17 @@ impl winit::application::ApplicationHandler<Game2WindowEvent> for GameWindow<'_>
         &mut self,
         event_loop: &winit::event_loop::ActiveEventLoop,
         _window_id: winit::window::WindowId,
-        event: WindowEvent,
+        event: WinitWindowEvent,
     ) {
         if self.close_pending { event_loop.exit(); }
 
         let event = match event {
-            WindowEvent::Resized(new_size) => {
+            WinitWindowEvent::Resized(new_size) => {
                 self.graphics.resize([new_size.width, new_size.height]);
                 let new_size = Vector2::new(new_size.width as f32, new_size.height as f32);
 
                 if new_size != Vector2::ZERO {
-                    self.send_game_event(Window2GameEvent::SizeChanged(new_size));
+                    self.send_game_event(WindowEvent::SizeChanged(new_size));
                 }
 
                 None
@@ -693,31 +636,31 @@ impl winit::application::ApplicationHandler<Game2WindowEvent> for GameWindow<'_>
 
             // winit::event::WindowEvent::Moved(_) => todo!(),
             // winit::event::WindowEvent::Destroyed => todo!(),
-            WindowEvent::CloseRequested => {
+            WinitWindowEvent::CloseRequested => {
                 event_loop.exit();
-                Some(Window2GameEvent::Closed)
+                Some(WindowEvent::Closed)
             }
-            WindowEvent::DroppedFile(d) => Some(Window2GameEvent::FileDrop(d)),
-            WindowEvent::HoveredFile(d) => Some(Window2GameEvent::FileHover(d)),
+            WinitWindowEvent::DroppedFile(d) => Some(WindowEvent::FileDrop(d)),
+            WinitWindowEvent::HoveredFile(d) => Some(WindowEvent::FileHover(d)),
             // winit::event::WindowEvent::HoveredFileCancelled => todo!(),
-            WindowEvent::Focused(has_focus) => {
+            WinitWindowEvent::Focused(has_focus) => {
                 if has_focus {
-                    Some(Window2GameEvent::GotFocus)
+                    Some(WindowEvent::GotFocus)
                 } else {
-                    Some(Window2GameEvent::LostFocus)
+                    Some(WindowEvent::LostFocus)
                 }
             }
 
-            WindowEvent::KeyboardInput {
+            WinitWindowEvent::KeyboardInput {
                 event: e @ winit::event::KeyEvent {
                     state: ElementState::Pressed, ..
                 }, ..
-            } => Some(Window2GameEvent::Input(InputType::KeyPress(KeyInput::from_event(e)))),
-            WindowEvent::KeyboardInput {
+            } => Some(WindowEvent::Input(InputType::KeyPress(KeyInput::from_event(e)))),
+            WinitWindowEvent::KeyboardInput {
                 event: e @  winit::event::KeyEvent {
                     state: ElementState::Released, ..
                 }, ..
-            } => Some(Window2GameEvent::Input(InputType::KeyRelease(KeyInput::from_event(e)))),
+            } => Some(WindowEvent::Input(InputType::KeyRelease(KeyInput::from_event(e)))),
 
             // winit::event::WindowEvent::Ime(_) => todo!(),
             // WindowEvent::CursorMoved { position, .. } => if let Some(new_pos) = self.mouse_helper.display_mouse_moved(Vector2::new(position.x as f32, position.y as f32)) {
@@ -726,20 +669,20 @@ impl winit::application::ApplicationHandler<Game2WindowEvent> for GameWindow<'_>
             // } else {
             //     None
             // }
-            WindowEvent::CursorMoved { position, .. } => 
-                Some(Window2GameEvent::Input(InputType::MouseMove(Vector2::new(position.x as f32, position.y as f32)))),
+            WinitWindowEvent::CursorMoved { position, .. } => 
+                Some(WindowEvent::Input(InputType::MouseMove(Vector2::new(position.x as f32, position.y as f32)))),
 
             // winit::event::WindowEvent::CursorEntered { device_id:_ } => todo!(),
             // winit::event::WindowEvent::CursorLeft { device_id:_ } => { self.mouse_pos = None; return },
-            WindowEvent::MouseWheel { delta, .. } => Some(Window2GameEvent::Input(InputType::MouseScroll(delta2f32(delta)))),
-            WindowEvent::MouseInput { state: ElementState::Pressed, button, .. }  => Some(Window2GameEvent::Input(InputType::MousePress(button.into()))),
-            WindowEvent::MouseInput { state: ElementState::Released, button, .. } => Some(Window2GameEvent::Input(InputType::MouseRelease(button.into()))),
+            WinitWindowEvent::MouseWheel { delta, .. } => Some(WindowEvent::Input(InputType::MouseScroll(delta2f32(delta)))),
+            WinitWindowEvent::MouseInput { state: ElementState::Pressed, button, .. }  => Some(WindowEvent::Input(InputType::MousePress(button.into()))),
+            WinitWindowEvent::MouseInput { state: ElementState::Released, button, .. } => Some(WindowEvent::Input(InputType::MouseRelease(button.into()))),
             // winit::event::WindowEvent::TouchpadPressure { device_id, pressure, stage } => todo!();
 
-            WindowEvent::Touch(touch) => self.handle_touch_event(touch),
-            WindowEvent::Occluded(_) => todo!(),
+            WinitWindowEvent::Touch(touch) => self.handle_touch_event(touch),
+            WinitWindowEvent::Occluded(_) => todo!(),
 
-            WindowEvent::RedrawRequested => {
+            WinitWindowEvent::RedrawRequested => {
                 self.render();
                 None
             }
@@ -756,13 +699,6 @@ impl winit::application::ApplicationHandler<Game2WindowEvent> for GameWindow<'_>
     }
 }
 
-impl Drop for GameWindow<'_> {
-    fn drop(&mut self) {
-        if let Some(media_controls) = &mut self.media_controls {
-            media_controls.detach().nope();
-        }
-    }
-}
 
 
 
@@ -788,4 +724,11 @@ pub trait GraphicsInitializer<'window> {
         window: &'window winit::window::Window,
         settings: DisplaySettings
     ) -> TatakuResult<Box<dyn GraphicsEngine + 'window>>;
+}
+
+
+
+pub struct WindowInitializers<'a> {
+    pub integrations: Vec<TatakuIntegrationBuilder>,
+    pub graphics_init: Vec<Box<dyn GraphicsInitializer<'a>>>,
 }

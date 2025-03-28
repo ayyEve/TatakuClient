@@ -23,6 +23,9 @@ pub struct GameValues {
     /// list of retreived scored 
     #[reflect(alias("scores_list"))]
     pub score_list: ScoreList,
+
+    #[reflect(alias("downloads"))]
+    pub download_manager: DownloadManager,
 }
 impl GameValues {
     pub fn new(
@@ -144,7 +147,7 @@ pub struct SongInfo {
     pub stopped: bool,
     pub exists: bool,
 
-    pub state: AudioState
+    pub state: AudioState,
 }
 impl SongInfo {
     pub fn update(&mut self, audio: Option<Arc<dyn AudioInstance>>) {

@@ -245,18 +245,18 @@ pub enum CustomMultiplayerSlotAction {
     /// Show the user profile for a slot
     ShowSlotProfile,
 
-    /// 
+    /// Move yourself to the slot
     MoveToSlot,
 
-    /// 
+    /// Transfer host to the user in the slot
     TransferHostToSlot,
 
-    ///
+    /// Lock the slot
     LockSlot,
     
-    ///
+    /// Unlock the slot
     UnlockSlot,
 
-    ///
+    /// Kick the user in the slot
     KickSlot,
 }

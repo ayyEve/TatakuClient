@@ -9,16 +9,16 @@ pub struct MultiplayerManager {
     pub lobby: CurrentLobbyInfo,
 
     /// what is the current beatmap we have selected?
-    current_beatmap: SyValueHelper<Md5Hash>,
+    current_beatmap: ValueChangeHelper<Md5Hash>,
     
     /// what playmode is selected by the host?
     selected_mode: Option<String>,
 
     /// what mods are currently enabled?
-    current_mods: SyValueHelper<ModManager>,
+    current_mods: ValueChangeHelper<ModManager>,
 
     /// helper to get new beatmaps
-    new_beatmap_helper: SyValueHelper<Md5Hash>,
+    new_beatmap_helper: ValueChangeHelper<Md5Hash>,
 
     /// async beatmap loader
     beatmap_loader: Option<AsyncLoader<TatakuResult<GameplayManager>>>,
@@ -51,11 +51,11 @@ impl MultiplayerManager {
             actions,
             lobby,
             infos,
-            current_beatmap: SyValueHelper::new("beatmaps.current.map.beatmap_hash"),
+            current_beatmap: ValueChangeHelper::new("beatmaps.current.map.beatmap_hash"),
             selected_mode: None,
-            current_mods: SyValueHelper::new("global.mods"),
+            current_mods: ValueChangeHelper::new("global.mods"),
 
-            new_beatmap_helper: SyValueHelper::new("global.new_map_hash"),
+            new_beatmap_helper: ValueChangeHelper::new("global.new_map_hash"),
 
             beatmap_loader: None,
             load_complete_sent: false,
@@ -239,7 +239,7 @@ impl MultiplayerManager {
                 if &self.lobby.info.id != lobby_id { return Ok(None) }
                 self.lobby.info.players.push(LobbyUser { user_id: *user_id, ..Default::default() });
 
-                let Some(user) = OnlineManager::get().await.users.get(user_id).cloned() else { 
+                let Some(user) = OnlineManager::get_user(*user_id).await else { 
                     self.actions.push(
                         Notification::default()
                         .text(format!("User with id {user_id} joined the match"))
@@ -250,15 +250,14 @@ impl MultiplayerManager {
                     return Ok(None)
                 };
 
-                let user = user.lock().await;
-                self.lobby.player_usernames.insert(*user_id, user.username.clone());
-                
                 self.actions.push(
                     Notification::default()
                     .text(format!("{} joined the match", user.username))
                     .duration(3000.0)
                     .color(Color::PURPLE)
                 );
+
+                self.lobby.player_usernames.insert(*user_id, user.username);
             }
             MultiplayerPacket::Server_LobbyUserLeft { lobby_id, user_id } => {
                 if &self.lobby.id != lobby_id { return Ok(None); }
@@ -493,7 +492,7 @@ impl MultiplayerManager {
                 // or maybe readd direct????
                 let req = reqwest::get(format!("{score_url}/api/get_beatmap_url?hash={hash}")).await;
                 match req {
-                    Err(e) => NotificationManager::add_error_notification("Error with beatmap url request", e.to_string()).await,
+                    Err(e) => self.actions.push(Notification::new_error("Error with beatmap url request", e.to_string())),
                     Ok(resp) => {
                         #[allow(unused)] #[derive(Deserialize)]
                         struct Resp { error: Option<String>, url: Option<String> }

@@ -15,18 +15,18 @@ use tataku_engine::prelude::{
 lazy_static::lazy_static! {
     // wave file bytes with ~1 sample
     // TODO: shouldnt it be possible to make an empty stream directly from bass? should maybe add that to the lib
-    static ref EMPTY_STREAM:Arc<StreamChannelInstance> = Arc::new(StreamChannelInstance(StreamChannel::load_from_memory(vec![0x52,0x49,0x46,0x46,0x28,0x00,0x00,0x00,0x57,0x41,0x56,0x45,0x66,0x6D,0x74,0x20,0x10,0x00,0x00,0x00,0x01,0x00,0x02,0x00,0x44,0xAC,0x00,0x00,0x88,0x58,0x01,0x00,0x02,0x00,0x08,0x00,0x64,0x61,0x74,0x61,0x04,0x00,0x00,0x00,0x80,0x80,0x80,0x80], 0i32).expect("error creating empty StreamChannel")));
+    static ref EMPTY_STREAM:Arc<StreamChannelInstance> = Arc::new(StreamChannelInstance(StreamChannel::load_from_memory(vec![0x52,0x49,0x46,0x46,0x28,0x00,0x00,0x00,0x57,0x41,0x56,0x45,0x66,0x6D,0x74,0x20,0x10,0x00,0x00,0x00,0x01,0x00,0x02,0x00,0x44,0xAC,0x00,0x00,0x88,0x58,0x01,0x00,0x02,0x00,0x08,0x00,0x64,0x61,0x74,0x61,0x04,0x00,0x00,0x00,0x80,0x80,0x80,0x80], 0, StreamFlags::Prescan).expect("error creating empty StreamChannel")));
 }
 
 
 pub struct BassAudio(bass_rs::Bass);
 impl AudioApi for BassAudio {
     fn load_sample_data(&self, data: Vec<u8>) -> TatakuResult<Arc<dyn AudioInstance>> {
-        let channel = SampleChannel::load_from_memory(data, 0i32, 64).map_err(map_bass_err)?;
+        let channel = SampleChannel::load_from_memory(data, 0, 64, NewSampleFlags::Override_Position).map_err(map_bass_err)?;
         Ok(Arc::new(SampleChannelInstance::new(channel)))
     }
     fn load_stream_data(&self, data: Vec<u8>) -> TatakuResult<Arc<dyn AudioInstance>> {
-        let channel = StreamChannel::load_from_memory(data, 0i32).map_err(map_bass_err)?;
+        let channel = StreamChannel::load_from_memory(data, 0, StreamFlags::Prescan).map_err(map_bass_err)?;
         Ok(Arc::new(StreamChannelInstance(channel)))
     }
 
@@ -40,9 +40,11 @@ impl AudioApi for BassAudio {
 }
 
 pub struct BassAudioInit;
+#[tataku_engine::prelude::async_trait]
 impl AudioApiInit for BassAudioInit {
     fn name(&self) -> &'static str { "Bass Audio" }
-    fn init(&self) -> TatakuResult<Arc<dyn AudioApi>> {
+    async fn init(&self) -> TatakuResult<Arc<dyn AudioApi>> {
+        check_bass().await;
         Ok(Arc::new(BassAudio(bass_rs::Bass::init_default().map_err(map_bass_err)?)))
     }
 }
@@ -128,10 +130,20 @@ impl AudioInstance for SampleChannelInstance {
     fn set_volume(&self, vol: f32) {
         self.data_mut().set_vol(vol);
     }
+    
+    fn set_repeat(&self, repeat: bool) {
+        let channel = self.data().channel.clone();
+
+        if repeat {
+            channel.add_flags(ChannelFlags::Sample_Loop).unwrap()
+        } else {
+            channel.remove_flags(ChannelFlags::Sample_Loop).unwrap()
+        }
+    }
 
     fn get_data(&self) -> Vec<FFTEntry> {
         self.data().channel
-            .get_data(DataType::FFT2048, 1024u32)
+            .get_data(DataType::FFT2048, 1024)
             .unwrap_or_default()
             .into_iter()
             .map(FFTEntry::AmplitudeOnly)
@@ -186,8 +198,12 @@ impl AudioInstance for StreamChannelInstance {
         let _ = self.0.set_volume(vol);
     }
 
+    /// stream channels dont repeat
+    fn set_repeat(&self, _: bool) {}
+
+
     fn get_data(&self) -> Vec<FFTEntry> {
-        self.0.get_data(DataType::FFT2048, 1024u32).unwrap_or_default()
+        self.0.get_data(DataType::FFT2048, 1024).unwrap_or_default()
         .into_iter()
         .map(FFTEntry::AmplitudeOnly)
         .collect()
@@ -209,3 +225,42 @@ fn map_bass_err(e: BassError) -> AudioError {
     }
 }
 
+
+
+/// check for the bass lib
+/// if not found, will be downloaded
+async fn check_bass() {
+    use tataku_engine::prelude::Io;
+
+    #[cfg(target_os = "windows")]
+    let filename = "bass.dll";
+
+    #[cfg(target_os = "linux")]
+    let filename = "libbass.so";
+
+    #[cfg(target_os = "macos")]
+    let filename = "libbass.dylib";
+
+    if let Ok(mut library_path) = std::env::current_exe() {
+        library_path.pop();
+        library_path.push(filename);
+
+        // check if already exists
+        if library_path.exists() { return }
+        info!("{library_path:?} not found, attempting to find or download");
+
+        // if linux, check for lib in /usr/lib
+        #[cfg(target_os = "linux")]
+        if Io::exists(format!("/usr/lib/{filename}")) {
+            match std::fs::copy(filename, &library_path) {
+                Ok(_) => return info!("Found in /usr/lib"),
+                Err(e) => warn!("Found in /usr/lib, but couldnt copy: {e}")
+            }
+        }
+
+        // download it from the web
+        Io::check_file(&library_path, &format!("https://cdn.ayyeve.dev/tataku/lib/bass/{filename}")).await;
+    } else {
+        warn!("error getting current executable dir, assuming things are good...")
+    }
+}

@@ -50,6 +50,16 @@ impl FromLua for ElementDef {
         if let Some(value) = read_align_items(table.get("justify_items")?) {
             style.justify_items = Some(value);
         }
+        if let Some(value) = read_flex_wrap(table.get("flex_wrap")?) {
+            style.flex_wrap = value;
+        }
+        if let Some(value) = read_flex_direction(table.get("flex_direction")?) {
+            style.flex_direction = value;
+        }
+
+        if let Some(value) = table.get::<Option<_>>("flex_shrink")? {
+            style.flex_shrink = value;
+        }
 
         if let Some(padding) = table.get::<Option<ElementPadding>>("padding")? {
             style.padding = match padding {
@@ -421,5 +431,27 @@ pub fn read_align_items(value: Option<String>) -> Option<taffy::AlignItems> {
             warn!("unknown align_items value: {other}");
             None
         }
+    }
+}
+
+pub fn read_flex_wrap(value: Option<String>) -> Option<taffy::FlexWrap> {
+    match &*value?.to_lowercase() {
+        "no_wrap" | "no-wrap" | "nowrap" => Some(taffy::FlexWrap::NoWrap),
+        "wrap" => Some(taffy::FlexWrap::Wrap),
+
+        "wrap_reverse" | "wrap-reverse" | "wrapreverse" | "reverse" |
+        "reverse_wrap" | "reverse-wrap" | "reversewrap"
+        => Some(taffy::FlexWrap::WrapReverse),
+
+        _ => None
+    }
+}
+
+pub fn read_flex_direction(value: Option<String>) -> Option<FlexDirection> {
+    match &*value?.to_lowercase() {
+        "row" => Some(FlexDirection::Row),
+        "column" => Some(FlexDirection::Column),
+
+        _ => None
     }
 }

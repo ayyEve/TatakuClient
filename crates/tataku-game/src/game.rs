@@ -17,10 +17,13 @@ pub struct Game {
     current_state: GameState,
     queued_state: GameState,
     #[cfg(feature="graphics")]
-    game_event_receiver: tokio::sync::mpsc::Receiver<Window2GameEvent>,
+    window_event_receiver: tokio::sync::mpsc::Receiver<WindowEvent>,
+
+    online_event_receiver: AsyncUnboundedReceiver<OnlineEvent>,
+    online_action_sender: AsyncUnboundedSender<OnlineAction>,
 
     #[cfg(feature="graphics")]
-    window_proxy: winit::event_loop::EventLoopProxy<Game2WindowEvent>,
+    window_proxy: winit::event_loop::EventLoopProxy<WindowAction>,
 
     // managers
 
@@ -35,25 +38,24 @@ pub struct Game {
     #[cfg(feature="graphics")]
     skin_manager: SkinManager,
     pub song_manager: SongManager,
+    pub audio_manager: AudioManager,
+    pub sound_manager: SoundManager,
     pub task_manager: TaskManager,
+    notification_manager: NotificationManager,
+
     difficulty_manager: DifficultyManager,
     #[cfg(feature="graphics")]
     custom_menu_manager: CustomMenuManager,
 
     #[cfg(feature="graphics")]
     gameplay_managers: HashMap<GameplayId, (GameplayManager, NewManager)>,
-
-
     pending_gameplay_manager: Option<Box<GameplayManager>>,
 
     #[cfg(feature="graphics")]
     ui_manager: UiManager,
-
     score_manager: ScoreManager,
 
     integrations: Vec<Box<dyn TatakuIntegration>>,
-    media_controls: MediaControlsManager,
-
 
     // fps
     #[cfg(feature="graphics")] fps_display: FpsDisplay,
@@ -89,8 +91,8 @@ pub struct Game {
 impl Game {
     #[cfg(feature="graphics")]
     pub async fn new(
-        game_event_receiver: tokio::sync::mpsc::Receiver<Window2GameEvent>,
-        window_proxy: winit::event_loop::EventLoopProxy<Game2WindowEvent>,
+        game_event_receiver: tokio::sync::mpsc::Receiver<WindowEvent>,
+        window_proxy: winit::event_loop::EventLoopProxy<WindowAction>,
         audio_engines: Vec<Box<dyn AudioApiInit>>,
         gamemodes: Vec<IncomingGamemode>,
     ) -> Self {
@@ -99,16 +101,14 @@ impl Game {
 
         let skin_manager = SkinManager::new(&settings);
         let skin = skin_manager.skin().clone();
-
-        let mut integrations = Vec::<Box<dyn TatakuIntegration>>::new();
-
-        #[cfg(feature="discord")]
-        if let Err(e) = Discord::new().map(|discord| integrations.push(Box::new(discord))) {
-            error!("error initializing discord: {e:?}")
-        };
-
         let infos = GamemodeInfos::new(gamemodes); 
         let values = GameValues::new(infos.clone(), &settings);
+
+
+        let (online_event_sender, online_event_receiver) = async_unbounded_channel();
+        let (online_action_sender, _online_action_receiver) = async_unbounded_channel();
+
+        OnlineManager::build(online_event_sender);
 
         let mut g = Self {
             actions,
@@ -124,18 +124,23 @@ impl Game {
             multiplayer_manager: None,
             difficulty_manager: DifficultyManager,
             multiplayer_data: MultiplayerData::default(),
+            online_action_sender,
+            online_event_receiver,
 
             song_manager: SongManager::new(),
+            sound_manager: SoundManager::new(),
+            audio_manager: AudioManager::init_audio(audio_engines).await.expect("failed to initialize audio engine!"),
             score_manager: ScoreManager::new(values.global.gamemode_infos.clone()),
             task_manager: TaskManager::new(),
             custom_menu_manager: CustomMenuManager::default(),
             skin_manager,
             cursor_manager: CursorManager::new(skin, settings.cursor_settings.clone()).await,
+            notification_manager: NotificationManager::default(),
+
             gameplay_managers: HashMap::new(),
             pending_gameplay_manager: None,
 
-            integrations,
-            media_controls: MediaControlsManager::new(),
+            integrations: Vec::new(),
 
             // menus: HashMap::new(),
             current_state: GameState::None,
@@ -156,7 +161,7 @@ impl Game {
             // misc
             game_start: TatakuInstant::now(),
             // register_timings: (0.0,0.0,0.0),
-            game_event_receiver,
+            window_event_receiver: game_event_receiver,
             last_skin: String::new(),
             background_loader: None,
 
@@ -169,7 +174,7 @@ impl Game {
             },
         };
 
-        g.init(audio_engines).await;
+        g.init().await;
 
         g
     }
@@ -264,30 +269,23 @@ impl Game {
         debug!("Done loading custom menus");
     }
 
-    pub async fn init(
-        &mut self,
-        audio_engines: Vec<Box<dyn AudioApiInit>>,
-    ) {
+    fn init_online(&mut self) {
+        let (online_action_sender, online_action_receiver) = async_unbounded_channel();
+
+        self.online_action_sender = online_action_sender;
+        OnlineManager::start(&self.settings, online_action_receiver);
+    }
+
+    pub async fn init(&mut self) {
         #[cfg(feature="graphics")]
         self.load_custom_menus();
 
-        // init audio
-        AudioManager::init_audio(audio_engines).expect("error initializing audio");
-
         let now = std::time::Instant::now();
-
-        // online loop
-        let settings = self.settings.clone();
-        #[cfg(feature="gameplay")]
-        tokio::spawn(async move {
-            loop {
-                OnlineManager::start(settings.clone()).await;
-                tokio::time::sleep(Duration::from_millis(1_000)).await;
-            }
-        });
 
         self.load_theme();
         self.last_skin = self.settings.current_skin.clone();
+
+        self.init_online();
 
         // setup double tap protection
         #[cfg(feature="gameplay")]
@@ -304,11 +302,42 @@ impl Game {
 
         debug!("game init took {:.2}", now.elapsed().as_secs_f32() * 1000.0);
 
-        for i in self.integrations.iter_mut() {
-            if let Err(e) = i.init(&self.values.settings) {
-                error!("error initializing integration: {e}");
+
+
+
+        // download first maps
+        {
+            const FIRST_MAPS: &[u32] = &[
+                75, // disco prince (osu)
+                905576, // triumph and regret (mania)
+                1605148, // mayday (osu)
+                727903, // galaxy collapse (taiko)
+            ];
+        
+            // check if songs folder is empty
+            if std::fs::read_dir(SONGS_DIR).unwrap().count() == 0 {
+                // no songs, download some
+                for id in FIRST_MAPS {
+                    let downloadable = Downloadable {
+                        filename: format!("{}/{}.osz", DOWNLOADS_DIR, id),
+                        download_progress: None,
+                        download: Arc::new(move ||
+                            Downloader::download(DownloadOptions::new(format!("https://cdn.ayyeve.dev/tataku/maps/{id}.osz"), 0))
+                        ),
+                        on_complete: None,
+                    };
+
+                    self.download_manager.add_download(downloadable);
+                }
             }
+
+
+            // TODO: REMOVE
+            self.download_manager.add_download(Downloadable::fake_download());
         }
+
+
+
 
         #[cfg(feature="graphics")]
         self.queue_state_change(GameState::SetMenu(Box::new(loading_menu)));
@@ -334,7 +363,7 @@ impl Game {
                 if self.settings.display_settings != settings.display_settings {
                     render_rate = 1.0 / self.settings.display_settings.fps_target as f64;
                     update_target = 1.0 / self.settings.display_settings.update_target as f64;
-                    self.window_proxy.send_event(Game2WindowEvent::SettingsUpdated(self.settings.display_settings.clone())).unwrap();
+                    self.window_proxy.send_event(WindowAction::SettingsUpdated(self.settings.display_settings.clone())).unwrap();
                 }
 
                 // update our timer
@@ -364,22 +393,11 @@ impl Game {
                 }
 
                 if self.settings.integrations != settings.integrations {
-
                     for i in self.integrations.iter_mut() {
                         if let Err(e) = i.check_enabled(&self.values.settings) {
                             warn!("Integration error ({}): {e:?}", i.name())
                         }
                     }
-
-                    // // update discord
-                    // match (settings.integrations.discord, self.settings.integrations.discord) {
-                    //     (true, false) => OnlineManager::get_mut().await.discord = None,
-                    //     (false, true) => OnlineManager::init_discord().await,
-                    //     _ => {}
-                    // }
-
-                    // integrations = self.settings.integrations.clone();
-                    self.window_proxy.send_event(Game2WindowEvent::IntegrationsChanged(self.settings.integrations.clone())).unwrap();
                 }
 
 
@@ -459,20 +477,28 @@ impl Game {
         self.values.game.time = elapsed;
 
         let mut window_size = self.values.game.window_size;
-        while let Ok(e) = self.game_event_receiver.try_recv() {
+        while let Ok(e) = self.window_event_receiver.try_recv() {
             match e {
                 #[cfg(feature="graphics")]
-                Window2GameEvent::FileDrop(path) => self.handle_file_drop(path).await,
-                Window2GameEvent::Closed => { self.close_game(); return true }
-                Window2GameEvent::ScreenshotComplete(bytes, size, info) => if let Err(e) = self.finish_screenshot(bytes, size, info).await {
+                WindowEvent::FileDrop(path) => self.handle_file_drop(path).await,
+                WindowEvent::Closed => { self.close_game(); return true }
+                WindowEvent::ScreenshotComplete(bytes, size, info) => if let Err(e) = self.finish_screenshot(bytes, size, info).await {
                     self.actions.push(GameAction::AddNotification(Notification::new_error("Screenshot Error", e)));
                 }
 
-                Window2GameEvent::GotFocus => self.input_manager.set_window_focus(true),
-                Window2GameEvent::LostFocus => self.input_manager.set_window_focus(false),
-                Window2GameEvent::Input(i) => self.input_manager.handle_input(i),
+                WindowEvent::GotFocus => self.input_manager.set_window_focus(true),
+                WindowEvent::LostFocus => self.input_manager.set_window_focus(false),
+                WindowEvent::Input(i) => self.input_manager.handle_input(i),
                 
-                Window2GameEvent::SizeChanged(new_size) => window_size = new_size,
+                WindowEvent::SizeChanged(new_size) => window_size = new_size,
+
+                WindowEvent::IntegrationsLoaded(mut integrations) => {
+                    for i in &mut integrations {
+                        i.check_enabled(&self.settings).unwrap();
+                    }
+                    
+                    self.integrations = integrations;
+                }
 
                 _ => {}
             }
@@ -568,7 +594,7 @@ impl Game {
 
         if !mouse_down.is_empty() {
             // check notifs
-            if NOTIFICATION_MANAGER.write().await.on_click(self.values.game.window_size, mouse_pos, self).await {
+            if self.notification_manager.on_click(self.values.game.window_size, mouse_pos, &mut self.actions).await {
                 mouse_down.clear();
             }
         }
@@ -591,7 +617,7 @@ impl Game {
 
         // screenshot
         if keys_down.has_and_remove(Key::F12) {
-            self.window_proxy.send_event(Game2WindowEvent::TakeScreenshot(ScreenshotInfo {
+            self.window_proxy.send_event(WindowAction::TakeScreenshot(ScreenshotInfo {
                 // if shift is pressed, upload to server, and get link
                 upload: mods.shift,
             })).unwrap();
@@ -642,8 +668,7 @@ impl Game {
         // custom menu list
         if keys_down.has_key(Key::M) && mods.ctrl && mods.shift {
             keys_down.remove_key(Key::M);
-
-        
+            
             self.actions.push(MultiplayerAction::CreateLobby { 
                 name: "a".to_string(), 
                 password: String::new(), 
@@ -726,32 +751,13 @@ impl Game {
                 continue;
             }
 
-            manager.update(&mut self.values).await;
+            manager.update(&mut self.values, &mut self.actions).await;
 
             if manager.completed {
                 manager.on_complete()
             }
         }
         self.gameplay_managers.retain(|a, _| Arc::strong_count(a) > 1);
-
-        // // update the ui
-        // this is built into UiManager now
-        // for key in keys_down.0.iter().filter_map(|i| i.as_key()) {
-        //     self.queued_events.push((TatakuEventType::KeyPress(CustomMenuKeyEvent {
-        //         key,
-        //         control: mods.ctrl,
-        //         alt: mods.alt,
-        //         shift: mods.shift,
-        //     }), None));
-        // }
-        // for key in keys_up.0.iter().filter_map(|i| i.as_key()) {
-        //     self.queued_events.push((TatakuEventType::KeyRelease(CustomMenuKeyEvent {
-        //         key,
-        //         control: mods.ctrl,
-        //         alt: mods.alt,
-        //         shift: mods.shift,
-        //     }), None));
-        // }
 
         let mut input_state = CurrentInputState {
             mouse_pos,
@@ -804,7 +810,9 @@ impl Game {
         // update spec and multi managers
         if let Some(spec) = &mut self.spectator_manager {
             let manager = self.current_state.get_ingame();
-            self.actions.extend(spec.update(manager, &mut self.values).await);
+            if let Some(manager) = spec.update(manager, &mut self.values, &mut self.actions).await {
+                self.queue_state_change(GameState::Ingame(manager));
+            }
         }
         if let Some(multi) = &mut self.multiplayer_manager {
             let manager = self.current_state.get_ingame();
@@ -816,7 +824,10 @@ impl Game {
         self.score_manager.update(&mut self.values).await;
 
         // update song manager
-        self.song_manager.update();
+        self.song_manager.update(&mut self.audio_manager);
+
+        // update download manager
+        self.values.download_manager.update(&mut self.actions);
 
         // handle menu actions
         let game_state = TaskGameState {
@@ -879,8 +890,8 @@ impl Game {
 
 
                     // update, then check if complete
-                    let actions = manager.update(&mut self.values).await;
-                    self.handle_actions(actions).await;
+                    manager.update(&mut self.values, &mut self.actions).await;
+                    // self.handle_actions(actions).await;
                     if manager.completed {
                         self.ingame_complete(manager).await;
                         // a menu is queued up, we dont need to reapply current_state
@@ -909,7 +920,7 @@ impl Game {
             GameState::Closing => {
                 self.settings.clone().save(&mut self.actions);
                 self.current_state = GameState::Closing;
-                let _ = self.window_proxy.send_event(Game2WindowEvent::CloseGame);
+                let _ = self.window_proxy.send_event(WindowAction::CloseGame);
 
                 // send logoff
                 OnlineManager::set_action(SetAction::Closing, None);
@@ -998,56 +1009,116 @@ impl Game {
         }
 
         // update the notification manager
-        NOTIFICATION_MANAGER.write().await.update(self).await;
+        self.notification_manager.update().await;
+        
+        if let Ok(online_event) = self.online_event_receiver.try_recv() {
+            match online_event {
+                OnlineEvent::TatakuAction(action) => self.actions.push(action),
 
-        let mut multi_packets = Vec::new();
-        if let Some(mut manager) = OnlineManager::try_get_mut() {
-            self.values.global.logged_in = manager.logged_in;
+                OnlineEvent::LoggedIn { user_id, username } => {
+                    self.values.global.logged_in = true;
+                    self.values.global.user_id = user_id;
+                    self.values.global.username = username;
+                }
 
-            if manager.logged_in && manager.user_id > 0 && self.values.global.user_id == 0 {
-                self.values.global.user_id = manager.user_id;
-                if let Some(us) = manager.users.get(&manager.user_id) {
-                    self.values.global.username = us.lock().await.username.clone()
+                OnlineEvent::MultiplayerLobbyInvite { 
+                    inviter_username, 
+                    lobby,
+                    ..
+                } => {
+                    // mark the lobby we have saved as without password, so the user isnt prompted to enter the password
+                    // since we were invited, we can join without the password
+                    if let Some(l) = self.multiplayer_data.lobbies.get_mut(&lobby.id) { 
+                        l.has_password = false 
+                    }
+
+                    self.actions.push(
+                        Notification::default()
+                        .text(format!("{inviter_username} has invited you to a multiplayer match"))
+                        .color(Color::PURPLE_AMETHYST)
+                        .duration(10_000.0)
+                        .onclick(NotificationOnClick::MultiplayerLobby(lobby.id))
+                    );
+                }
+
+                OnlineEvent::Disconnected => {
+                    let global = &mut self.values.global;
+                    if global.user_id > 0 {
+                        global.logged_in = false;
+                        global.user_id = 0;
+                        // dont nuke username because we used to be logged
+                    }
+
+                    self.task_manager.add_task(Box::new(DelayTask::new(
+                        ActionTask::new(GameAction::RestartOnline),
+                        10_000
+                    )));
+                }
+                OnlineEvent::SpectatorEvent(spectator_event) => {
+
+                    match spectator_event {
+                        SpectatorEvent::SpectatingHost { host_id, host_username } => {
+                            // if let SpectatorWatchAction::FullMenu = self.spec_watch_action {
+                            //     // stop spectating everyone else
+                            //     for other_host_id in manager.spectator_info.currently_spectating() {
+                            //         if other_host_id == host_id { continue }
+                            //         OnlineManager::stop_spectating(other_host_id);
+                            //     }
+                            //     let username = if let Some(u) = manager.users.get(&host_id) {
+                            //         u.lock().await.username.clone()
+                            //     } else {
+                            //         "Host".to_owned()
+                            //     };
+                            //     self.spectator_manager = Some(Box::new(SpectatorManager::new(host_id, username, self.global.gamemode_infos.clone()).await));
+
+                            //     // self.queue_state_change(GameState::Spectating(Box::new()));
+                            // };
+
+                            self.spectator_manager = Some(Box::new(SpectatorManager::new(host_id, host_username, self.values.global.gamemode_infos.clone()).await))
+                        }
+                        SpectatorEvent::SpectatorJoined { user_id, username } => {
+                            if let Some(specman) = self.spectator_manager.as_mut() {
+                                specman.spectator_cache.insert(user_id, username.clone());
+                            }
+
+                            if let Some(manager) = self.current_state.get_ingame() {
+                                manager.spectator_info.spectators.add(SpectatingUser::new(user_id, username));
+                            }
+                        }
+                        SpectatorEvent::SpectatorLeft { user_id } => {
+                            if let Some(specman) = self.spectator_manager.as_mut() {
+                                specman.spectator_cache.remove(&user_id);
+                            }
+
+                            if let Some(manager) = self.current_state.get_ingame() {
+                                manager.spectator_info.spectators.remove(user_id);
+                            }
+                        }
+                        SpectatorEvent::SpectatorFrame { host, frame } => {
+                            let frame = *frame;
+                            if let Some(specman) = self.spectator_manager.as_mut() {
+                                specman.add_frame(frame.clone());
+                            }
+                            
+                            if let Some(manager) = self.current_state.get_ingame() {
+                                manager.add_spec_frame(host, frame);
+                            }
+                        },
+                    }
+                }
+                OnlineEvent::MultiplayerPacket(packet) => {
+                    if let Err(e) = self.handle_multiplayer_packet(*packet).await {
+                        error!("Error handling multiplayer packet: {e:?}");
+                    }
+
+                    self.multiplayer_data.update_values(&mut self.values);
                 }
             }
-
-
-            for host_id in manager.spectator_info.spectate_pending.take() {
-                trace!("Speccing {host_id}");
-                manager.spectator_info.outgoing_frames.clear();
-                manager.spectator_info.incoming_frames.insert(host_id, Vec::new());
-
-                if let SpectatorWatchAction::FullMenu = self.spec_watch_action {
-                    // stop spectating everyone else
-                    for other_host_id in manager.spectator_info.currently_spectating() {
-                        if other_host_id == host_id { continue }
-                        OnlineManager::stop_spectating(other_host_id);
-                    }
-                    let username = if let Some(u) = manager.users.get(&host_id) {
-                        u.lock().await.username.clone()
-                    } else {
-                        "Host".to_owned()
-                    };
-                    self.spectator_manager = Some(Box::new(SpectatorManager::new(host_id, username, self.global.gamemode_infos.clone()).await));
-
-                    // self.queue_state_change(GameState::Spectating(Box::new()));
-                };
-            }
-
-            multi_packets = manager.multiplayer_packet_queue.take()
         }
 
-        let update = !multi_packets.is_empty();
-        for packet in multi_packets {
-            if let Err(e) = self.handle_multiplayer_packet(packet).await {
-                error!("Error handling multiplayer packet: {e:?}");
-            }
+        for integration in self.integrations.iter_mut() {
+            integration.update(&mut self.values, &mut self.actions);
         }
-        if update {
-            self.multiplayer_data.update_values(&mut self.values);
-        }
-
-
 
         // let elapsed = timer.elapsed().as_secs_f32() * 1000.0;
         // if elapsed > 1.0 {warn!("update took a while: {elapsed}");}
@@ -1127,30 +1198,26 @@ impl Game {
             ));
         }
 
-        // // draw any dialogs
-        // let mut dialog_list = std::mem::take(&mut self.dialogs);
-        // for d in dialog_list.iter_mut() { //.rev() {
-        //     d.draw(Vector2::ZERO, &mut render_queue).await;
-        // }
-        // self.dialogs = dialog_list;
-
         // draw fps's
         self.fps_display.draw(&mut render_queue);
         self.update_display.draw(&mut render_queue);
         self.render_display.draw(&mut render_queue);
         self.input_display.draw(&mut render_queue);
 
-        // volume control
-        self.volume_controller.draw(&mut render_queue).await;
+        // draw the download manager
+        self.download_manager.draw(self.values.game.window_size, &mut render_queue);
 
         // draw the notification manager
-        NOTIFICATION_MANAGER.read().await.draw(self.values.game.window_size, &mut render_queue);
+        self.notification_manager.draw(self.values.game.window_size, &mut render_queue);
+
+        // volume control
+        self.volume_controller.draw(&mut render_queue).await;
 
         // draw cursor
         self.cursor_manager.draw(&mut render_queue);
 
         // toss the items to the window to render
-        let _ = self.window_proxy.send_event(Game2WindowEvent::RenderData(render_queue.take()));
+        let _ = self.window_proxy.send_event(WindowAction::RenderData(render_queue.take()));
 
         self.fps_display.increment();
 
@@ -1193,22 +1260,17 @@ impl Game {
 
         match action {
             TatakuAction::None => return,
+            TatakuAction::Online(action) => self.online_action_sender.send(action).nope(),
 
             TatakuAction::Menu(action) => self.handle_menu_action(action).await,
-
-            // beatmap actions
+            TatakuAction::Audio(action) => self.sound_manager.handle_action(action, &mut self.values, &mut self.audio_manager),
             TatakuAction::Beatmap(action) => self.handle_beatmap_action(action).await,
-
             TatakuAction::Game(action) => self.handle_game_action(*action).await,
-
             TatakuAction::Multiplayer(action) => self.handle_multiplayer_action(action).await,
-
             TatakuAction::Song(action) => self.handle_song_action(action).await,
-
-
             TatakuAction::Mods(action) => self.handle_mod_action(action).await,
-            
             TatakuAction::Event(e) => self.handle_event(e),
+            TatakuAction::Download(dl) => self.download_manager.add_download(*dl),
 
             // task actions
             TatakuAction::Task(TaskAction::AddTask(task)) => {
@@ -1218,13 +1280,11 @@ impl Game {
                 self.task_manager.add_task(task);
             },
 
-            // cursor action
             #[cfg(feature="graphics")]
             TatakuAction::CursorAction(action) => self.cursor_manager.handle_cursor_action(action),
 
-            
             #[cfg(feature="graphics")]
-            TatakuAction::WindowAction(action) => self.window_proxy.send_event(Game2WindowEvent::WindowAction(action)).nope(),
+            TatakuAction::WindowAction(action) => self.window_proxy.send_event(action).nope(),
 
 
             TatakuAction::Ui(action) => self.ui_manager.handle_ui_action(
@@ -1345,7 +1405,7 @@ impl Game {
 
     pub fn handle_event(&mut self, event: TatakuIntegrationEvent) {
         for i in self.integrations.iter_mut() {
-            i.handle_event(&event, &self.values)
+            i.handle_event(&event, &self.values, &mut self.actions)
         }
     }
 
@@ -1398,7 +1458,7 @@ impl Game {
                 // osu | quaver | ptyping zipped set file
                 "osz" | "qp" | "ptm" => {
                     match Zip::extract_single(path.to_path_buf(), SONGS_DIR, true, ArchiveDelete::Always).await {
-                        Err(e) => NotificationManager::add_error_notification("Error extracting file",  e).await,
+                        Err(e) => self.actions.push(Notification::new_error("Error extracting file", e)),
                         Ok(path) => {
                             // load the map
                             let Some(last) = self.beatmap_manager.check_folder(
@@ -1439,7 +1499,7 @@ impl Game {
                 // osu skin file
                 "osk" => {
                     match Zip::extract_single(path.to_path_buf(), SKINS_FOLDER, true, ArchiveDelete::Never).await {
-                        Err(e) => NotificationManager::add_error_notification("Error extracting file",  e).await,
+                        Err(e) => self.actions.push(Notification::new_error("Error extracting file",  e)),
                         Ok(path) => {
                             // set as current skin
                             if let Some(folder) = Path::new(&path).file_name() {
@@ -1455,7 +1515,7 @@ impl Game {
                 "ttkr" | "osr" => {
                     match read_replay_path(path, &self.global.gamemode_infos).await {
                         Ok(score) => self.try_open_replay(score).await,
-                        Err(e) => NotificationManager::add_error_notification("Error opening replay", e).await,
+                        Err(e) => self.actions.push(Notification::new_error("Error opening replay", e)),
                     }
                 }
 
@@ -1472,11 +1532,6 @@ impl Game {
 
     #[cfg(feature="graphics")]
     pub async fn try_open_replay(&mut self, score: Score) {
-        // let Some(score) = &replay.score_data else {
-        //     NotificationManager::add_text_notification("Replay does not contain score data (too old?)", 5_000.0, Color::RED).await;
-        //     return;
-        // };
-
         let Some(map) = self.beatmap_manager.get_by_hash(&score.beatmap_hash) else {
             self.actions.push(
                 Notification::default()
@@ -1533,20 +1588,19 @@ impl Game {
                 Database::save_score(&score).await;
                 match save_replay(&score) {
                     Ok(_) => trace!("replay saved ok"),
-                    Err(e) => NotificationManager::add_error_notification("error saving replay", e).await,
+                    Err(e) => self.actions.push(Notification::new_error("error saving replay", e)),
                 }
 
                 let Some(map) = self.beatmap_manager.get_by_hash(&score.beatmap_hash) else { return warn!("no map ???") };
 
                 // submit score
-                let submit = ScoreSubmitHelper::new(
+                let submit_task = UploadScoreTask::new(
                     (*score).clone(),
-                    &self.settings,
-                    &map
+                    &map,
+                    &self.settings
                 );
-
-                submit.clone().submit();
-                score_submit = Some(submit);
+                score_submit = Some(submit_task.get_path().to_owned());
+                self.actions.push(TaskAction::AddTask(Box::new(submit_task)));
             }
 
             match manager.get_mode() {
@@ -1590,7 +1644,6 @@ impl Game {
         [width, height]: [u32; 2], 
         info: ScreenshotInfo
     ) -> TatakuResult {
-
         // create file
         let date = chrono::Local::now();
         let year = date.year();
@@ -1604,15 +1657,15 @@ impl Game {
         let path = Path::new(&file);
 
         std::fs::create_dir_all(path.parent().unwrap())?;
-        let file = std::fs::File::create(path)?;
 
         // save as png
-        let w = &mut std::io::BufWriter::new(file);
-        let mut encoder = png::Encoder::new(w, width, height);
-        encoder.set_color(png::ColorType::Rgba);
-
-        let mut writer = encoder.write_header().map_err(|e| TatakuError::String(format!("{e}")))?;
-        writer.write_image_data(&bytes).map_err(|e| TatakuError::String(format!("{e}")))?;
+        image::save_buffer(
+            path, 
+            &bytes, 
+            width, 
+            height, 
+            image::ExtendedColorType::Rgba8
+        )?;
 
         // notify user
         let full_path = std::env::current_dir().unwrap().join(path).to_string_lossy().to_string();
@@ -1735,19 +1788,6 @@ impl Game {
                 }
             }
 
-            MultiplayerPacket::Server_LobbyInvite { inviter_id, lobby } => {
-                if let Some(l) = self.multiplayer_data.lobbies.get_mut(&lobby.id) { 
-                    l.has_password = false 
-                }
-
-                let Some(inviter) = OnlineManager::get().await.users.get(&inviter_id).cloned() else { return Ok(()) };
-                let inviter = inviter.lock().await;
-                let text = format!("{} has invited you to a multiplayer match", inviter.username);
-
-                let notif = Notification::new(text, Color::PURPLE_AMETHYST, 10_000.0, NotificationOnClick::MultiplayerLobby(lobby.id));
-                self.actions.push(notif);
-            }
-
             _ => {}
         }
 
@@ -1826,7 +1866,7 @@ impl Game {
         match action {
             // needs to be before trying to get the audio because audio might be none when this is run
             SongAction::Set(action) => {
-                if let Err(e) = self.song_manager.handle_song_set_action(action, &mut self.actions) {
+                if let Err(e) = self.song_manager.handle_song_set_action(action, &mut self.actions, &mut self.audio_manager) {
                     error!("Error handling SongMenuSetAction: {e:?}");
                 }
 
@@ -1947,7 +1987,7 @@ impl Game {
                             spectator: self.spectator_manager.as_ref().map(|s| s.host_username.clone())
                         })
                     }
-                    Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
+                    Err(e) => self.actions.push(Notification::new_error("Error loading beatmap", e)),
                 }
             }
 
@@ -2246,28 +2286,14 @@ impl Game {
             #[cfg(feature="gameplay")]
             GameAction::Quit => self.queue_state_change(GameState::Closing),
 
+            GameAction::RestartOnline => self.init_online(),
 
             GameAction::CurrentGameAction(action) => self.handle_current_game_action(action).await,
-            // // TODO!!!
-            // #[cfg(feature="gameplay")]
-            // GameAction::ResumeMap(manager) => {
 
-            //     // self.queue_state_change(GameState::Ingame(manager));
-            // }
-            // #[cfg(feature="gameplay")]
-            // GameAction::StartGame(mut manager) => {
-            //     // manager.start().await;
-            //     // self.queue_state_change(GameState::Ingame(manager));
-            // }
             #[cfg(feature="gameplay")]
             GameAction::WatchReplay(score) => {
                 let map = score.beatmap_hash;
                 let mode = &score.playmode;
-
-                // let Some((map, mode)) = replay.score_data.as_ref().map(|s|(s.beatmap_hash, s.playmode.clone())) else {
-                //     NotificationManager::add_text_notification("Replay has no score data", 5000.0, Color::RED).await;
-                //     return;
-                // };
 
                 let Some(beatmap) = self.beatmap_manager.get_by_hash(&map) else {
                     self.actions.push(
@@ -2293,7 +2319,7 @@ impl Game {
                         manager.set_mode(GameplayMode::Replay(score).into());
                         self.queue_state_change(GameState::Ingame(Box::new(manager)));
                     }
-                    Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
+                    Err(e) => self.actions.push(Notification::new_error("Error loading beatmap", e)),
                 }
             }
             GameAction::SetValue(key, value) => {
@@ -2338,12 +2364,12 @@ impl Game {
             }
             #[cfg(feature="graphics")]
             GameAction::HandleEvent(event, param) => self.queued_events.push((event, param)),
-            GameAction::AddNotification(notif) => NotificationManager::add_notification(notif).await,
+            GameAction::AddNotification(notif) => self.notification_manager.add_notification(notif),
 
             #[cfg(feature="graphics")]
             GameAction::UpdateBackground => self.set_background_beatmap().await,
             #[cfg(feature="graphics")]
-            GameAction::CopyToClipboard(text) => { let _ = self.window_proxy.send_event(Game2WindowEvent::CopyToClipboard(text)); }
+            GameAction::CopyToClipboard(text) => { let _ = self.window_proxy.send_event(WindowAction::CopyToClipboard(text)); }
 
             GameAction::RefreshPlaymodeValues => {
                 let playmode = self.global.playmode.clone();

@@ -99,7 +99,7 @@ pub struct OsuSlider {
     slider_body_loader: SliderBodyLoader,
 
     hitsounds: Vec<Vec<Hitsound>>,
-    sliderdot_hitsound: Hitsound,
+    pub(crate) sliderdot_hitsound: Hitsound,
 
     last_beat: f32,
     pulse_length: f32,
@@ -1097,6 +1097,10 @@ impl OsuHitObject for OsuSlider {
         let index = self.sound_index.min(self.def.edge_sets.len() - 1);
         self.hitsounds[index].clone()
     }
+    fn get_all_hitsounds(&self) -> Vec<Vec<Hitsound>> { vec![ 
+        self.get_hitsound(),
+        vec![ self.sliderdot_hitsound.clone() ]
+    ] }
     fn get_sound_queue(&mut self) -> Vec<Vec<Hitsound>> {
         std::mem::take(&mut self.sound_queue)
     }

@@ -4,9 +4,6 @@ use tokio::sync::mpsc::{ Sender, Receiver, channel };
 
 // TODO: move to Messages and not use a channel
 pub struct YesNoDialog {
-    num: usize,
-
-    should_close: bool,
     title: &'static str,
     prompt: String,
 
@@ -25,8 +22,6 @@ impl YesNoDialog {
 
         // create the dialog
         (receiver, Self {
-            num: 0,
-            should_close: false,
             title,
             prompt,
             show_cancel,
@@ -39,21 +34,21 @@ impl YesNoDialog {
 
 
 
-    fn view(&self) -> Box<dyn Widget> {
+    fn view(&self, owner: MessageOwner) -> Box<dyn Widget> {
         col!(
             // prompt
             TextWidget::new(self.prompt.clone()).boxed(),
             row!(
                 // yes button
-                Button::new(TextWidget::new("Yes").boxed()).on_press(Message::new_dialog("yes", MessageValue::Click)).boxed(),
+                Button::new(TextWidget::new("Yes").boxed()).on_press(Message::new(owner, "yes", MessageValue::Click)).boxed(),
                 // no button
-                Button::new(TextWidget::new("No").boxed()).on_press(Message::new_dialog("no", MessageValue::Click)).boxed(),
+                Button::new(TextWidget::new("No").boxed()).on_press(Message::new(owner, "no", MessageValue::Click)).boxed(),
                 // cancel
                 self.show_cancel.then(|| 
                     Button::new(
                         TextWidget::new("Cancel").boxed()
                     )
-                    .on_press(Message::new_dialog("cancel", MessageValue::Click))
+                    .on_press(Message::new(owner, "cancel", MessageValue::Click))
                     .boxed()
                 ).unwrap_or_else(|| EmptyWidget::new_boxed())
                 ;
@@ -74,22 +69,25 @@ impl Widget for YesNoDialog {
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
+        self.node = self.view(shell.owner);
+        let child = self.node.layout(shell)?;
+        self.node_id = shell.tree.new_with_children(Style::default(), &[child])?;
         
-        todo!()
+        Ok(self.node_id)
     }
 
     fn draw(
         &self, 
         shell: &mut DrawShell<'_>, 
     ) {
-        todo!()
+        self.node.draw(shell);
     }
 
     async fn handle_message(
         &mut self, 
         message: &Message, 
         _values: &mut dyn Reflect,
-        _actions: &mut ActionQueue,
+        actions: &mut ActionQueue,
     ) {
         let Some(tag) = message.tag.as_string() else { return }; 
 
@@ -100,15 +98,15 @@ impl Widget for YesNoDialog {
 
             "yes" => {
                 self.sender.try_send(YesNoResult::Yes).unwrap();
-                self.should_close = true;
+                actions.push(UiAction::new(self.node_id, DialogAction::Close));
             }
             "no" => {
                 self.sender.try_send(YesNoResult::No).unwrap();
-                self.should_close = true;
+                actions.push(UiAction::new(self.node_id, DialogAction::Close));
             }
             "cancel" => {
                 self.sender.try_send(YesNoResult::Cancel).unwrap();
-                self.should_close = true;
+                actions.push(UiAction::new(self.node_id, DialogAction::Close));
             }
 
             _ => {}

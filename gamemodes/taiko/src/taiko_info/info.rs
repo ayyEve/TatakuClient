@@ -65,44 +65,8 @@ impl TaikoGameInfo {
         / (miss + x100 + x300)
     }
 
-    fn get_diff_string(info: &BeatmapMetaWithDiff, mods: &ModManager) -> String {
-        let speed = mods.get_speed();
-        let symb = if speed > 1.0 {"+"} else if speed < 1.0 {"-"} else {""};
-
-        let mut secs = format!("{}", info.secs(speed));
-        if secs.len() == 1 {secs = format!("0{}", secs)}
-
-        let mut txt = format!(
-            "OD: {:.2}{symb} HP: {:.2}{symb}, Len: {}:{}", 
-            TaikoGame::get_od(info, mods),
-            info.get_hp(mods),
-            info.mins(speed), secs
-        );
-
-        // make sure at least one has a value
-        if info.bpm_min != 0.0 || info.bpm_max != 0.0 {
-            // one bpm
-            if info.bpm_min == info.bpm_max {
-                txt += &format!(" BPM: {:.2}", info.bpm_min * speed);
-            } else { // multi bpm
-                // i think i had it backwards when setting, just make sure its the right way :/
-                let min = info.bpm_min.min(info.bpm_max);
-                let max = info.bpm_max.max(info.bpm_min);
-                txt += &format!(" BPM: {:.2}-{:.2}", min * speed, max * speed);
-            }
-        }
-
-        if let Some(diff) = &info.diff {
-            txt += &format!(", Diff: {:.2}", diff);
-        } else {
-            txt += ", Diff: ...";
-        }
-
-        txt
-    }
-
     #[cfg(feature="graphics")]
-    fn stats_from_groups(data: &HashMap<String, HashMap<String, Vec<f32>>>) -> Vec<MenuStatsInfo> { 
+    fn stats_from_groups(data: &HashMap<String, HashMap<String, Vec<f32>>>) -> Vec<StatsInfo> { 
         let mut info = Vec::new();
 
         macro_rules! get_or_return {
@@ -114,9 +78,9 @@ impl TaikoGameInfo {
         if let Some(press_counters) = data.get(&"press_counters".to_owned()) {
             let left_presses:f32 = get_or_return!(press_counters, TaikoStatLeftPresses).iter().sum();
             let right_presses:f32 = get_or_return!(press_counters, TaikoStatRightPresses).iter().sum();
-            info.push(MenuStatsInfo::new("Presses", GraphType::Pie, vec![
-                MenuStatsEntry::new_f32("Left Presses", left_presses, Color::BLUE, true, true),
-                MenuStatsEntry::new_f32("Right Presses", right_presses, Color::RED, true, true),
+            info.push(StatsInfo::new("Presses", GraphType::Pie, vec![
+                StatsEntry::new_f32("Left Presses", left_presses, Color::BLUE, true, true),
+                StatsEntry::new_f32("Right Presses", right_presses, Color::RED, true, true),
             ]))
         }
 

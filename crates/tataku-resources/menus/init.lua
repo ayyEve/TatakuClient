@@ -126,7 +126,9 @@ function cond(cond, if_true, if_false)
         id = "conditional",
         cond = cond,
         if_true = if_true,
-        if_false = if_false
+        if_false = if_false,
+
+        flex_shrink = 0.0,
     }
 end
 

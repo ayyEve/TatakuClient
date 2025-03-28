@@ -1,6 +1,9 @@
 use std::hash::Hash;
 use crate::prelude::*;
 
+
+pub const SPEED_STEP: u16 = 5;
+
 #[derive(Clone, Default, PartialEq, Serialize, Deserialize, Eq, Debug)]
 #[derive(Reflect)]
 #[reflect(display="debug")]
@@ -101,7 +104,9 @@ impl ModManager {
     }
     pub fn set_speed(&mut self, speed: impl Into<GameSpeed>) {
         self.speed = speed.into();
-        // error!("set speed: {speed} -> {}", self.speed);
+        let a = self.speed.as_u16();
+        let speed_fixed = a - a % SPEED_STEP;
+        self.speed = GameSpeed::from_u16(speed_fixed);
     }
 
     fn mods_list(
@@ -212,7 +217,6 @@ impl ModManager {
         let mods = self.mods_sorted();
         let mods_str = format!("{}{}", mods.join(""), self.speed.as_u16());
         md5(mods_str)
-        // u128::from_str_radix(&md5(mods_str).to_string(), 16).unwrap_or_default()
     }
 }
 

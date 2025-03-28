@@ -23,6 +23,8 @@ pub enum GameAction {
     /// Refresh the scores list
     RefreshScores,
 
+    RestartOnline,
+
     /// Handle an event
     #[cfg(feature="graphics")]
     HandleEvent(TatakuEventType, Option<TatakuValue>),
@@ -46,11 +48,9 @@ pub enum GameAction {
     NewGameplayManager(NewManager),
     DropGameplayManager(GameplayId),
     GameplayAction(GameplayId, GameplayAction),
-
-
     CurrentGameAction(CurrentGameAction),
 
-    /// update settings with the provided function
+    /// update settings with the provided callback
     UpdateSettings(Box<dyn FnOnce(&mut Settings) + Send + Sync>),
 }
 
@@ -74,6 +74,9 @@ impl core::fmt::Debug for GameAction {
             Self::AddNotification(arg0) => f.debug_tuple("AddNotification").field(arg0).finish(),
             Self::UpdateBackground => write!(f, "UpdateBackground"),
             Self::CopyToClipboard(arg0) => f.debug_tuple("CopyToClipboard").field(arg0).finish(),
+            
+            Self::RestartOnline => write!(f, "RestartOnline"),
+
             #[cfg(feature="graphics")]
             Self::NewGameplayManager(arg0) => f.debug_tuple("NewGameplayManager").field(arg0).finish(),
             Self::DropGameplayManager(arg0) => f.debug_tuple("DropGameplayManager").field(arg0).finish(),

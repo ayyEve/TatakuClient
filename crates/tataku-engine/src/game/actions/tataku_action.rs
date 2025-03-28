@@ -7,11 +7,18 @@ pub enum TatakuAction {
     #[default]
     None,
 
+    /// Perform an audio action
+    Audio(AudioAction),
+
     /// Perform a menu operation
     Menu(MenuAction),
 
+
     /// Perform a game operation
     Game(Box<GameAction>),
+
+    /// Perform a game operation
+    Online(OnlineAction),
 
     /// Perform a beatmap operation
     Beatmap(BeatmapAction),
@@ -37,6 +44,9 @@ pub enum TatakuAction {
     /// Perform a window action
     WindowAction(WindowAction),
 
+    /// Download a file
+    Download(Box<Downloadable>),
+
     /// Handle an event
     Event(TatakuIntegrationEvent),
 }
@@ -45,11 +55,14 @@ impl std::fmt::Debug for TatakuAction {
         match self {
             Self::None => write!(f, "None"),
             Self::Menu(menu) => write!(f, "Menu({menu:?})"),
+            Self::Audio(action) => write!(f, "Audio({action:?})"),
             Self::Game(game) => write!(f, "Game({game:?})"),
             Self::Beatmap(map) => write!(f, "Beatmap({map:?})"),
             Self::Song(song) => write!(f, "Song({song:?})"),
             Self::Mods(mods) => write!(f, "Mods({mods:?})"),
+            Self::Online(action) => write!(f, "Online({action:?})"),
             Self::Ui(action) => write!(f, "Ui({action:?})"),
+            Self::Download(action) => write!(f, "Download({action:?})"),
             #[cfg(feature="graphics")]
             // Self::PerformOperation(_) => write!(f, "PerformOperation"),
             Self::Multiplayer(multi) => write!(f, "Multiplayer({multi:?})"),

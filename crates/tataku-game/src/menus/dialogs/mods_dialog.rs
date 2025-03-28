@@ -44,7 +44,7 @@ impl ModDialog {
             // selected_index: 0,
 
 
-            node: Box::new(EmptyWidget::new()),
+            node: EmptyWidget::new_boxed(),
             node_id: EMPTY_NODE,
         }
     }

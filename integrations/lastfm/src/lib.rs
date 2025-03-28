@@ -1,7 +1,20 @@
-use crate::prelude::*;
+use serde::Serialize;
+use tataku_engine::prelude::*;
 
-pub struct LastFmIntegration;
-impl LastFmIntegration {
+pub struct LastFm;
+impl LastFm {
+    fn build() -> TatakuResult<Box<dyn TatakuIntegration>> {
+        Ok(Box::new(Self))
+    }
+
+    pub fn builder() -> TatakuIntegrationBuilder {
+        TatakuIntegrationBuilder {
+            name: "LastFM",
+            build: Self::build
+        }
+    }
+
+
     pub async fn check(settings: &Settings) {
         let username = settings.username.clone();
         let password = settings.password.clone();
@@ -35,12 +48,12 @@ impl LastFmIntegration {
         // info!("{}", req.text().await.unwrap())
     }
 }
-impl TatakuIntegration for LastFmIntegration {
+impl TatakuIntegration for LastFm {
     fn name(&self) -> Cow<'static, str> { "LastFm".into() }
 
     fn init(
         &mut self, 
-        _settings: &Settings
+        _window_handle: raw_window_handle::WindowHandle<'_>,
     ) -> TatakuResult<()> {
         Ok(())
     }
@@ -55,10 +68,11 @@ impl TatakuIntegration for LastFmIntegration {
     fn handle_event(
         &mut self, 
         event: &TatakuIntegrationEvent,
-        values: &ValueCollection
+        values: &dyn Reflect,
+        _actions: &mut ActionQueue,
     ) {
         let TatakuIntegrationEvent::SongChanged { artist, title, .. } = event else { return };
-        let settings = &values.settings;
+        let settings = values.reflect_get::<Settings>("settings").unwrap();
 
         let track = title.clone();
         let artist = artist.clone();

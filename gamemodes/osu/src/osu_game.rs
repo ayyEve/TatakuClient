@@ -344,7 +344,7 @@ impl OsuGame {
 impl GameMode for OsuGame {
     async fn new(
         map: &Beatmap, 
-        diff_calc_only: bool,
+        _diff_calc_only: bool,
         settings: &Settings,
     ) -> TatakuResult<Self> {
         let metadata = map.get_beatmap_meta();
@@ -774,7 +774,7 @@ impl GameMode for OsuGame {
                             note.hit(frame.time);
 
                             // play the sound
-                            state.play_note_sound(note.get_hitsound());
+                            state.play_hitsounds(&note.get_hitsound(), false);
                         }
 
                         return;
@@ -895,7 +895,7 @@ impl GameMode for OsuGame {
 
             // play queued sounds
             for hitsound in note.get_sound_queue() {
-                state.play_note_sound(hitsound);
+                state.play_hitsounds(&hitsound, false);
             }
 
             for (judgment, pos) in note.pending_combo() {
@@ -1004,7 +1004,7 @@ impl GameMode for OsuGame {
 
                             // play the sound
                             // let hitsamples = note.get_hitsamples().clone();
-                            state.play_note_sound(note.get_hitsound());
+                            state.play_hitsounds(&note.get_hitsound(), false);
                         }
                     }
 
@@ -1312,7 +1312,7 @@ impl GameMode for OsuGame {
         let mut set_easing = None;
 
         if has_easy_or_hr || had_easy_or_hr != has_easy_or_hr {
-            let cs = Self::get_cs(&self.metadata, &self.mods);
+            self.cs = Self::get_cs(&self.metadata, &self.mods);
             let ar = Self::get_ar(&self.metadata, &self.mods);
             
             // // use existing settings, we only want to change the cs
@@ -1669,6 +1669,13 @@ impl GameMode for OsuGame {
         )
     }
     fn properties(&self) -> GameModeProperties {
+        let mut sound_list = HashMap::new();
+        for note in self.notes.iter() {
+            for hitsound in note.get_all_hitsounds().iter().flatten() {
+                sound_list.insert(hitsound.get_id(), hitsound.load_data(None::<String>));
+            }
+        }
+
         GameModeProperties { 
             info: &crate::GAME_INFO, 
             keys: vec![
@@ -1684,6 +1691,8 @@ impl GameMode for OsuGame {
                 .iter()
                 .map(|(j, w)| (w.end, j.color))
                 .collect(), 
+
+            sound_list: sound_list.into_iter().collect(),
         }
     }
 }

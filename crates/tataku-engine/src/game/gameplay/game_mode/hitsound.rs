@@ -1,5 +1,6 @@
 use crate::prelude::*;
 
+/// TODO: nuke this probably, or at least change how its being used
 #[derive(Clone)]
 pub struct Hitsound {
     pub volume: f32,
@@ -27,7 +28,12 @@ impl Hitsound {
     }
 
     
-    pub fn from_hitsamples(hitsound: u8, mut hitsamples:HitSamples, normal_by_default: bool, timing_point: &TimingPoint) -> Vec<Self> {
+    pub fn from_hitsamples(
+        hitsound: u8, 
+        mut hitsamples: HitSamples, 
+        normal_by_default: bool, 
+        timing_point: &TimingPoint
+    ) -> Vec<Self> {
         let mut play_normal = normal_by_default || (hitsound & 1) > 0; // 0: Normal
         let mut play_whistle = (hitsound & 2) > 0; // 1: Whistle
         let mut play_finish = (hitsound & 4) > 0; // 2: Finish
@@ -102,6 +108,46 @@ impl Hitsound {
         }
 
         list
+    }
+
+    pub fn load_data(&self, prefix: Option<impl AsRef<str>>) -> Vec<AudioLoadData> {
+        let mut list = Vec::new();
+        
+        if let Some(prefix) = prefix {
+            let prefix = prefix.as_ref().to_owned();
+
+            for &i in &self.allowed_sources {
+                list.push(AudioLoadData::new(prefix.clone() + &Self::fix_filename(&self.filename), i));
+            }
+            if let Some(backup) = &self.filename_backup {
+                for &i in &self.allowed_sources {
+                    list.push(AudioLoadData::new(prefix.clone() + &Self::fix_filename(backup), i));
+                }
+            } 
+        }
+
+        for &i in &self.allowed_sources {
+            list.push(AudioLoadData::new(Self::fix_filename(&self.filename), i));
+        }
+        if let Some(backup) = &self.filename_backup {
+            for &i in &self.allowed_sources {
+                list.push(AudioLoadData::new(Self::fix_filename(backup), i));
+            }
+        } 
+
+        list
+    }
+
+    pub fn get_id(&self) -> String {
+        Self::fix_filename(&self.filename)
+    }
+
+    fn fix_filename(filename: &str) -> String {
+        filename
+            .trim_end_matches(".mp3")
+            .trim_end_matches(".ogg")
+            .trim_end_matches(".wav")
+            .to_owned()
     }
 }
 

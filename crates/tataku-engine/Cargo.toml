@@ -8,7 +8,7 @@ edition.workspace = true
 
 [features]
 default = [ "gameplay" ]
-gameplay = [ "graphics", "gilrs", "media_control", "ipc-channel" ]
+gameplay = [ "graphics", "gilrs" ]
 # kira_audio = ["rustfft", "uuid"]
 debug_hitsounds = []
 debug_perf_rating = []
@@ -16,7 +16,6 @@ debug_custom_menus = []
 
 storyboards = []
 texture_arrays = []
-media_control = [ "souvlaki" ]
 ui = [ "taffy", "mlua", "triple_buffer" ]
 
 # removes as much graphics-side stuff as possible
@@ -39,7 +38,6 @@ async-trait.workspace = true
 tokio = { workspace = true, features = [ "full" ] }
 rusqlite = { workspace = true, features = [ "bundled" ] }
 triple_buffer = { workspace = true, optional = true }
-ipc-channel = { workspace = true, optional = true }
 
 libloading = { workspace = true, optional = true }
 
@@ -54,8 +52,6 @@ clipboard = { workspace = true, optional = true }
 
 # gamepad input
 gilrs = { workspace = true, features = ["serde-serialize"], optional = true }
-# media controls
-souvlaki = { workspace = true, default-features = false, features = ["use_zbus"], optional = true }
 
 # gui
 taffy = { workspace = true, optional = true }

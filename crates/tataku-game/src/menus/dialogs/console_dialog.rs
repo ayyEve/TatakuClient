@@ -144,7 +144,7 @@ fn parse_line(_owner: MessageOwner) -> TextInputAction {
         TextInputAction::ReflectCallback(Box::new(move |s, r| {
             let output = match CustomElementCalc::parse(s) {
                 Ok(cec) => match cec.resolve(r) {
-                    Ok(s) => s.value.as_string(),
+                    Ok(s) => s.as_string(),
                     Err(e) => format!("{e:?}")
                 }
                 Err(e) => format!("{e:?}")

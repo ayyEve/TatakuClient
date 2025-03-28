@@ -18,16 +18,21 @@ type WsWriter = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
 // higher means less packet spam
 const SPECTATOR_BUFFER_FLUSH_SIZE: usize = 20;
 
-lazy_static::lazy_static! {
-    static ref ONLINE_MANAGER:Arc<AsyncRwLock<OnlineManager>> = Arc::new(AsyncRwLock::new(OnlineManager::new()));
-}
+// lazy_static::lazy_static! {
+//     static ref ONLINE_MANAGER: Arc<AsyncRwLock<OnlineManager>> = Arc::new(AsyncRwLock::new(OnlineManager::new()));
+// }
+
+static ONLINE_MANAGER: OnceCell<Arc<AsyncRwLock<OnlineManager>>> = OnceCell::const_new();
+
 
 pub struct OnlineManager {
     pub connected: bool,
     pub users: HashMap<u32, Arc<Mutex<OnlineUser>>>, // user id is key
     pub friends: HashSet<u32>, // userid is key
 
-    pub user_id: u32, // this user's id
+    /// our user's id
+    pub user_id: u32,
+
     /// are we successfully logged in?
     pub logged_in: bool,
 
@@ -39,22 +44,34 @@ pub struct OnlineManager {
     pub chat_messages: HashMap<ChatChannel, Vec<ChatMessage>>,
 
     // ====== spectator ======
-    pub spectator_info: OnlineSpectatorInfo,
+    spectator_info: OnlineSpectatorInfo,
 
-    // ====== spectator ======
-    pub multiplayer_packet_queue: Vec<MultiplayerPacket>,
+    // ====== multiplayer ======
+    multiplayer_packet_queue: Vec<MultiplayerPacket>,
+
+    event_sender: AsyncUnboundedSender<OnlineEvent>,
 }
 
 impl OnlineManager {
-    #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
+    pub fn build(
+        event_sender: AsyncUnboundedSender<OnlineEvent>,
+    ) {
+        if ONLINE_MANAGER.initialized() { panic!("???") }
+
+        let a = Self::new(event_sender);
+        let _ = ONLINE_MANAGER.set(Arc::new(AsyncRwLock::new(a)));
+    }
+
+    fn new(
+        event_sender: AsyncUnboundedSender<OnlineEvent>,
+    ) -> Self {
         // idk why this is suddenly required but whatever
         let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
 
-        #[cfg(feature="graphics")]
+        #[cfg(feature="graphics")] 
         let mut messages = HashMap::new();
         #[cfg(feature="graphics")]
-        let channel = ChatChannel::Channel{name: "general".to_owned()};
+        let channel = ChatChannel::Channel { name: "general".to_owned() };
         #[cfg(feature="graphics")]
         messages.insert(channel.clone(), vec![ChatMessage::new(
             "System".to_owned(),
@@ -68,7 +85,6 @@ impl OnlineManager {
             logged_in: false,
             users: HashMap::new(),
             friends: HashSet::new(),
-            // chat: Chat::new(),
             writer: None,
             connected: false,
             #[cfg(feature="graphics")]
@@ -76,81 +92,102 @@ impl OnlineManager {
             spectator_info: OnlineSpectatorInfo::new(0),
 
             multiplayer_packet_queue: Vec::new(),
+            event_sender,
         }
     }
 
     #[cfg(feature="gameplay")]
-    pub async fn start(settings: Settings) {
-
-        // // insert multiplayer data
-        // GlobalValueManager::update(Arc::new(MultiplayerData::default()));
-        // GlobalValueManager::update::<Option<CurrentLobbyInfo>>(Arc::new(None));
-
+    pub fn start(
+        settings: &Settings,
+        mut action_receiver: AsyncUnboundedReceiver<OnlineAction>,
+    ) {
         let server_url = settings.server_url.clone();
-        info!("Starting websocket connection to url: {server_url}");
+        let username = settings.username.clone();
+        let password = settings.password.clone();
+        let logging_settings = settings.logging_settings;
+        
+        
+        tokio::spawn(async move {
+            info!("Starting websocket connection to url: {server_url}");
+            
+            // initialize the connection
+            match tokio_tungstenite::connect_async(server_url).await {
+                Ok((ws_stream, _)) => {
+                    let (writer, mut reader) = ws_stream.split();
+                    // let writer = Arc::new(Mutex::new(writer));
 
-        // initialize the connection
-        match tokio_tungstenite::connect_async(settings.server_url.clone()).await {
-            Ok((ws_stream, _)) => {
-                let (writer, mut reader) = ws_stream.split();
-                // let writer = Arc::new(Mutex::new(writer));
+                    // send login
+                    {
+                        let mut s = Self::get_mut().await;
+                        s.writer = Some(writer);
+                        s.connected = true;
 
-                // send login
-                {
-                    let mut s = Self::get_mut().await;
-                    s.writer = Some(writer);
-                    s.connected = true;
-
-                    // send login packet
-                    s.send_packet(Client_UserLogin {
-                        protocol_version: 1,
-                        game: "Tataku\n0.1.0".to_owned(),
-                        username: settings.username.clone(),
-                        password: settings.password.clone()
-                    }).await;
-                }
-
-                while let Some(message) = reader.next().await {
-                    if settings.server_url != server_url {
-                        info!("server url changed, restarting network manager");
-                        Self::restart();
-                        return;
+                        // send login packet
+                        s.send_packet(Client_UserLogin {
+                            protocol_version: 1,
+                            game: "Tataku\n0.1.0".to_owned(),
+                            username: username.clone(),
+                            password: password.clone()
+                        }).await;
                     }
 
-                    match message {
-                        Ok(Message::Binary(data)) => {
-                            let data = data.to_vec();
-                            if let Err(e) = Self::handle_packet(data, &settings.logging_settings).await {
-                                error!("Error with packet: {}", e);
-                            }
-                        }
-                        Ok(Message::Ping(_)) => {
-                            if let Some(writer) = &mut Self::get_mut().await.writer {
-                                let _ = writer.send(Message::Pong(Bytes::from_static(&[]))).await;
+                    
+                    loop { tokio::select! {
+                        message = action_receiver.recv() => {
+                            let Some(message) = message else { continue };
+                            match message {
+                                OnlineAction::SpectateHost { host_id } => Self::start_spectating(host_id),
+                                OnlineAction::StopSpectating { host_id } => Self::stop_spectating(host_id),
+                                OnlineAction::SendSpectatorFrame { frame, force } => Self::send_spec_frames(vec![*frame], force),
                             }
                         }
 
-                        Ok(Message::Close(_)) => {
-                            NotificationManager::add_text_notification("Disconnected from server", 5000.0, Color::RED).await;
-                            Self::disconnect().await;
-                        }
-                        Ok(message) => if settings.logging_settings.extra_online_logging { warn!("Got other network message: {message:?}"); },
+                        message = reader.next() => {
+                            let Some(message) = message else { return };
 
-                        Err(oof) => {
-                            error!("network connection error: {oof}\nAttempting to reconnect");
-                            Self::disconnect().await;
+                            match message {
+                                Ok(Message::Binary(data)) => {
+                                    let data = data.to_vec();
+                                    if let Err(e) = Self::handle_packet(data, &logging_settings).await {
+                                        error!("Error with packet: {}", e);
+                                    }
+                                }
+                                Ok(Message::Ping(_)) => {
+                                    if let Some(writer) = &mut Self::get_mut().await.writer {
+                                        let _ = writer.send(Message::Pong(Bytes::from_static(&[]))).await;
+                                    }
+                                }
 
-                            // reconnect handled by caller
-                            break;
+                                Ok(Message::Close(_)) => {
+                                    Self::send_notification(
+                                        Notification::default()
+                                        .text("Disconnected from server")
+                                        .color(Color::RED)
+                                        .duration(5000.0)
+                                    ).await;
+
+                                    Self::disconnect().await;
+                                }
+                                Ok(message) => if logging_settings.extra_online_logging { warn!("Got other network message: {message:?}"); },
+
+                                Err(oof) => {
+                                    error!("network connection error: {oof}\nAttempting to reconnect");
+                                    Self::disconnect().await;
+
+                                    // reconnect handled by caller
+                                    break;
+                                }
+                            }
                         }
-                    }
+
+                    } }
+                }
+                Err(oof) => {
+                    // s.write().await.connected = false;
+                    warn!("Could not accept connection: {oof:?}");
                 }
             }
-            Err(oof) => {
-                // s.write().await.connected = false;
-                warn!("Could not accept connection: {oof:?}");
-            }
-        }
+        });
     }
 
     /// disconnect and reset everything
@@ -177,6 +214,7 @@ impl OnlineManager {
 
         self.spectator_info = OnlineSpectatorInfo::default();
         self.multiplayer_packet_queue.clear();
+        self.event_sender.send(OnlineEvent::Disconnected).unwrap();
     }
 
     /// disconnect without resetting anything
@@ -185,11 +223,12 @@ impl OnlineManager {
         s.writer = None;
         s.connected = false;
         s.logged_in = false;
+        s.event_sender.send(OnlineEvent::Disconnected).unwrap();
     }
 
     /// handle an incoming server packet
     #[cfg(feature="gameplay")]
-    async fn handle_packet(data:Vec<u8>, log_settings: &LoggingSettings) -> TatakuResult<()> {
+    async fn handle_packet(data: Vec<u8>, log_settings: &LoggingSettings) -> TatakuResult<()> {
         let mut reader = SerializationReader::new(data);
         
         while reader.can_read() {
@@ -204,32 +243,67 @@ impl OnlineManager {
 
                 // login
                 PacketId::Server_LoginResponse { status, user_id } => {
+
                     match status {
                         LoginStatus::UnknownError => {
                             trace!("Unknown Error");
-                            NotificationManager::add_text_notification("[Login] Unknown error logging in", 5000.0, Color::RED).await;
+                                
+                            Self::send_notification(
+                                Notification::default()
+                                .text("[Login] Unknown error logging in")
+                                .color(Color::RED)
+                                .duration(5000.0)
+                            ).await;
                         }
                         LoginStatus::BadPassword => {
-                            trace!("Auth failed");
-                            NotificationManager::add_text_notification("[Login] Authentication failed", 5000.0, Color::RED).await;
+                            trace!("Auth failed");    
+                            Self::send_notification(
+                                Notification::default()
+                                .text("[Login] Authentication failed")
+                                .color(Color::RED)
+                                .duration(5000.0)
+                            ).await;
                         }
                         LoginStatus::NoUser => {
                             trace!("User not found");
-                            NotificationManager::add_text_notification("[Login] Authentication failed", 5000.0, Color::RED).await;
+                                
+                            Self::send_notification(
+                                Notification::default()
+                                .text("[Login] Authentication failed")
+                                .color(Color::RED)
+                                .duration(5000.0)
+                            ).await;
                         }
                         LoginStatus::NotActivated => {
                             trace!("User not activated");
-                            NotificationManager::add_text_notification("[Login] Your account is pending activation", 5000.0, Color::YELLOW).await;
+                                
+                            Self::send_notification(
+                                Notification::default()
+                                .text("[Login] Your account is pending activation")
+                                .color(Color::YELLOW)
+                                .duration(5000.0)
+                            ).await;
                         }
                         LoginStatus::Ok => {
-                            trace!("Success, got user_id: {}", user_id);
+                            trace!("Success, got user_id: {user_id}");
                             {
                                 let mut om = Self::get_mut().await;
                                 om.user_id = user_id;
                                 om.logged_in = true;
                                 om.spectator_info = OnlineSpectatorInfo::new(user_id);
                             }
-                            NotificationManager::add_text_notification("[Login] Logged in!", 2000.0, Color::GREEN).await;
+                                
+                            Self::send_notification(
+                                Notification::default()
+                                .text("[Login] Logged in!")
+                                .color(Color::GREEN)
+                                .duration(2000.0)
+                            ).await;
+
+                            Self::send_event(OnlineEvent::LoggedIn { 
+                                user_id, 
+                                username: String::new()
+                            }).await;
 
                             ping_handler();
 
@@ -247,7 +321,11 @@ impl OnlineManager {
                         Severity::Error => (Color::RED, 7000.0),
                     };
 
-                    NotificationManager::add_text_notification(&message, duration, color).await;
+                    Self::send_notification(Notification::default()
+                        .text(message)
+                        .color(color)
+                        .duration(duration)
+                    ).await;
                 }
                 // server error
                 PacketId::Server_Error { code, error } => {
@@ -273,10 +351,15 @@ impl OnlineManager {
                     // }
 
                     if s.friends.contains(&user_id) {
-                        NotificationManager::add_text_notification(format!("{username} is online"), 5000.0, Color::BLUE).await;
+                        Self::send_notification(
+                            Notification::default()
+                            .text(format!("{username} is online"))
+                            .duration(5000.0)
+                            .color(Color::BLUE)
+                        ).await;
                     }
                 }
-                PacketId::Server_UserLeft {user_id} => {
+                PacketId::Server_UserLeft { user_id } => {
                     if log_settings.extra_online_logging { debug!("User id {user_id} left"); };
 
                     let mut lock = Self::get_mut().await;
@@ -285,7 +368,12 @@ impl OnlineManager {
                         let l = u.lock().await;
                         let username = &l.username;
                         if lock.friends.contains(&user_id) {
-                            NotificationManager::add_text_notification(format!("{username} is offline"), 5000.0, Color::BLUE).await;
+                            Self::send_notification(
+                                Notification::default()
+                                .text(format!("{username} is offline"))
+                                .color(Color::BLUE)
+                                .duration(5000.0)
+                            ).await;
                         }
                     }
 
@@ -410,7 +498,13 @@ impl OnlineManager {
             // spec join/leave
             SpectatorPacket::Server_SpectatorJoined { user_id, username }=> {
                 Self::get_mut().await.spectator_info.add_spec(host_id, user_id, username.clone());
-                NotificationManager::add_text_notification(format!("{username} is now spectating"), 2000.0, Color::GREEN).await;
+                Self::send_notification(
+                    Notification::default()
+                    .text(format!("{username} is now spectating"))
+                    .color(Color::GREEN)
+                    .duration(2000.0)
+                ).await;
+                Self::send_event(OnlineEvent::SpectatorEvent(SpectatorEvent::SpectatorJoined { user_id, username })).await;
             }
             SpectatorPacket::Server_SpectatorLeft { user_id } => {
                 let user = if let Some(u) = Self::get().await.find_user_by_id(user_id) {
@@ -419,17 +513,28 @@ impl OnlineManager {
                     "A user".to_owned()
                 };
                 Self::get_mut().await.spectator_info.remove_spec(host_id, user_id);
+                Self::send_notification(
+                    Notification::default()
+                    .text(format!("{user} stopped spectating"))
+                    .color(Color::GREEN)
+                    .duration(2000.0)
+                ).await;
                 
-                NotificationManager::add_text_notification(format!("{user} stopped spectating"), 2000.0, Color::GREEN).await;
+                Self::send_event(OnlineEvent::SpectatorEvent(SpectatorEvent::SpectatorLeft { user_id })).await;
             }
             SpectatorPacket::Server_SpectateResult { result} => {
                 trace!("Got spec result {result:?}");
+                let mut notif = None;
                 match result {
                     SpectateResult::Ok => Self::get_mut().await.spectator_info.add_host(host_id),
-                    SpectateResult::Error_SpectatingBot => NotificationManager::add_text_notification("You cannot spectate a bot!", 3000.0, Color::RED).await,
-                    SpectateResult::Error_HostOffline => NotificationManager::add_text_notification("Spectate host is offline!", 3000.0, Color::RED).await,
-                    SpectateResult::Error_SpectatingYourself => NotificationManager::add_text_notification("You cannot spectate yourself!", 3000.0, Color::RED).await,
-                    SpectateResult::Error_Unknown => NotificationManager::add_text_notification("Unknown error trying to spectate!", 3000.0, Color::RED).await,
+                    SpectateResult::Error_SpectatingBot => notif = Some(Notification::new_text("You cannot spectate a bot!", Color::RED, 3000.0)),
+                    SpectateResult::Error_HostOffline => notif = Some(Notification::new_text("Spectate host is offline!", Color::RED, 3000.0)),
+                    SpectateResult::Error_SpectatingYourself => notif = Some(Notification::new_text("You cannot spectate yourself!", Color::RED, 3000.0)),
+                    SpectateResult::Error_Unknown => notif = Some(Notification::new_text("Unknown error trying to spectate!", Color::RED, 3000.0)),
+                }
+
+                if let Some(notif) = notif {
+                    Self::send_notification(notif).await;
                 }
             }
 
@@ -441,7 +546,25 @@ impl OnlineManager {
 
     async fn handle_multi_packet(packet: MultiplayerPacket, _log_settings: &LoggingSettings) -> TatakuResult<()> {
         // the game handles these now
-        Self::get_mut().await.multiplayer_packet_queue.push(packet);
+
+        let mut online = Self::get_mut().await;
+
+        match packet {
+            MultiplayerPacket::Server_LobbyInvite { inviter_id, lobby } => {
+                let username = if let Some(user) = online.users.get(&inviter_id) {
+                    user.lock().await.username.clone()
+                } else {
+                    "A user".to_owned()
+                };
+
+                online.event_sender.send(OnlineEvent::MultiplayerLobbyInvite { 
+                    inviter_id, 
+                    inviter_username: username, 
+                    lobby 
+                }).unwrap();
+            }
+            other => online.multiplayer_packet_queue.push(other),
+        }
         Ok(())
     }
 
@@ -627,20 +750,23 @@ impl OnlineManager {
 
 impl OnlineManager {
     /// opens a read lock on the online manager
-    pub async fn get<'a>() -> tokio::sync::RwLockReadGuard<'a, Self> {
-        ONLINE_MANAGER.read().await
+    async fn get<'a>() -> tokio::sync::RwLockReadGuard<'a, Self> {
+        ONLINE_MANAGER.get().unwrap().read().await
     }
     /// opens a write lock on the online manager
-    pub async fn get_mut<'a>() -> tokio::sync::RwLockWriteGuard<'a, Self> {
-        ONLINE_MANAGER.write().await
+    async fn get_mut<'a>() -> tokio::sync::RwLockWriteGuard<'a, Self> {
+        ONLINE_MANAGER.get().unwrap().write().await
     }
-    /// try to open a read lock on the online manager, returning None if the lock was unsuccessful
-    pub fn try_get<'a>() -> Option<tokio::sync::RwLockReadGuard<'a, Self>> {
-        ONLINE_MANAGER.try_read().ok()
+
+    pub async fn get_user(id: u32) -> Option<OnlineUser> {
+        Some(Self::get().await.users.get(&id)?.lock().await.clone())
     }
-    /// try to open a write lock on the online manager, returning None if the lock was unsuccessful
-    pub fn try_get_mut<'a>() -> Option<tokio::sync::RwLockWriteGuard<'a, Self>> {
-        ONLINE_MANAGER.try_write().ok()
+
+    async fn send_event(event: OnlineEvent) {
+        Self::get().await.event_sender.send(event).unwrap();
+    }
+    async fn send_notification(notif: Notification) {
+        Self::send_event(OnlineEvent::TatakuAction(notif.into())).await
     }
 
     

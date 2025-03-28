@@ -1,4 +1,6 @@
 #![allow(unused)]
+use std::str::FromStr;
+
 use crate::prelude::*;
 
 
@@ -206,7 +208,7 @@ pub async fn load_osu_settings(path: impl AsRef<Path>, settings: &mut Settings) 
 
 
 fn parse_key(k: &String) -> Option<Key> {
-    use crate::Key::*;
+    use crate::prelude::Key::*;
 
     match &**k {
         "LeftShift" => Some(LShift),
@@ -214,9 +216,6 @@ fn parse_key(k: &String) -> Option<Key> {
         "OemSemicolon" => Some(Semicolon),
         // "OemTilde" => Some(Key::),
 
-        other => serde_json::from_str(&format!("{{\"k\":\"{other}\"}}")).ok(),
+        other => serde_json::from_value(serde_json::Value::String(other.to_owned())).ok(),
     }
 }
-
-#[derive(Deserialize)]
-struct K { k: Key }

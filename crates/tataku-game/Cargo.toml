@@ -8,8 +8,7 @@ edition.workspace = true
 
 [features]
 default = [ "gameplay" ]
-gameplay = [ "graphics", "discord", "gilrs", "media_control", "tokio-tungstenite", "ipc-channel", "tataku-engine/gameplay" ]
-discord = [ "discord-rich-presence" ]
+gameplay = [ "graphics", "gilrs", "tokio-tungstenite", "tataku-engine/gameplay" ]
 # kira_audio = ["rustfft", "uuid"]
 debug_hitsounds = [ "tataku-engine/debug_hitsounds" ]
 debug_perf_rating = []
@@ -18,11 +17,10 @@ dynamic_gamemodes = [ "libloading", "tataku-engine/dynamic_gamemodes" ]
 
 
 storyboards = [ "tataku-engine/storyboards" ]
-media_control = [ "souvlaki" ]
 ui = [ "taffy", "triple_buffer" ]
 
 # removes as much graphics-side stuff as possible
-graphics = [ "winit", "ui", "png", "image" ]
+graphics = [ "winit", "ui", "image" ]
 
 [dependencies]
 tataku-common.workspace = true
@@ -39,11 +37,9 @@ async-trait.workspace = true
 async-recursion.workspace = true
 
 triple_buffer = { workspace = true, optional = true }
-ipc-channel = { workspace = true, optional = true }
 libloading = { workspace = true, optional = true }
 
 # image stuff
-png = { workspace = true, optional = true }
 image = { workspace = true, optional = true }
 
 # windowing
@@ -51,8 +47,6 @@ winit = { workspace = true, features = ["serde"], optional = true }
 
 # gamepad input
 gilrs = { workspace = true, features = ["serde-serialize"], optional = true }
-# media controls
-souvlaki = { workspace = true, default-features = false, features = [ "use_zbus" ], optional = true }
 
 # gui
 taffy = { workspace = true, optional = true }
@@ -61,7 +55,6 @@ taffy = { workspace = true, optional = true }
 # networking
 tokio-tungstenite = { workspace = true, features = [ "rustls-tls-native-roots" ], optional = true }
 reqwest = { workspace = true, features = ["json"] }
-discord-rich-presence = { workspace = true, optional = true }
 rustls.workspace = true
 native-tls.workspace = true
 tokio-native-tls.workspace = true

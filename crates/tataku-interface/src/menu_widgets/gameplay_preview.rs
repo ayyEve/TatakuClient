@@ -2,10 +2,10 @@ use crate::prelude::*;
 use crate::prelude::ui::*;
 
 pub struct GameplayPreview {
-    beatmap: SyValueHelper<String>,
-    playmode: SyValueHelper<String>,
-    mods: SyValueHelper<ModManager>,
-    song_time: SyValueHelper<f32>,
+    beatmap: ValueChangeHelper<String>,
+    playmode: ValueChangeHelper<String>,
+    mods: ValueChangeHelper<ModManager>,
+    song_time: ValueChangeHelper<f32>,
 
     manager: Option<GameplayId>,
     owner: MessageOwner,
@@ -41,10 +41,10 @@ impl GameplayPreview {
 
         Self {
             // current_mods: ModManagerHelper::new(),
-            beatmap: SyValueHelper::new("beatmaps.current_beatmap.map.file_path"),
-            playmode: SyValueHelper::new("global.playmode_actual"),
-            mods: SyValueHelper::new("global.mods"),
-            song_time: SyValueHelper::new("song.position"),
+            beatmap: ValueChangeHelper::new("beatmaps.current_beatmap.map.file_path"),
+            playmode: ValueChangeHelper::new("global.playmode_actual"),
+            mods: ValueChangeHelper::new("global.mods"),
+            song_time: ValueChangeHelper::new("song.position"),
 
             visualization: None,
             handle_song_restart: false,

@@ -30,7 +30,7 @@ pub enum GameplayAction {
     SetMode(GameplayMode),
     FitToArea(Bounds),
 
-    SetHitsoundsEnabled(bool),
+    // SetHitsoundsEnabled(bool),
 
     /// The gameplay manager is requesting an update to the difficulty
     RequestDifficulty,

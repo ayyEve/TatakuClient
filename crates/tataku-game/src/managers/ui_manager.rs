@@ -59,7 +59,7 @@ impl UiManager {
         tree.set_node(dialog, values);
         tree.node.handle_message(
             &Message::new(
-                MessageOwner::Any, 
+                tree.owner, 
                 "set_num",
                 MessageValue::Number(num),
             ), 

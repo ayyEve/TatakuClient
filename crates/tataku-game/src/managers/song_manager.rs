@@ -16,8 +16,9 @@ impl SongManager {
         &mut self, 
         key: String, 
         mut params: SongPlayData, 
-        load_song: impl FnOnce() -> TatakuResult<Arc<dyn AudioInstance>>,
-        actions: &mut ActionQueue
+        load_song: impl FnOnce(&mut AudioManager) -> TatakuResult<Arc<dyn AudioInstance>>,
+        actions: &mut ActionQueue,
+        engine: &mut AudioManager,
     ) -> TatakuResult<()> {
         // check if the key is the same as current
         if let Some(song) = self.current_song.as_ref().filter(|s| s.id == key) {
@@ -32,7 +33,7 @@ impl SongManager {
         }
 
         // try to load the provided audio
-        let song = load_song()?;
+        let song = load_song(engine)?;
 
         // stop the current audio
         if let Some(s) = self.current_song.as_ref() { 
@@ -49,10 +50,10 @@ impl SongManager {
         Ok(())
     }
 
-    fn update_ffts(&mut self) {
+    fn update_ffts(&mut self, engine: &mut AudioManager) {
         if self.fft_hooks.is_empty() { return }
         let Some(song) = &self.current_song else { return };
-        let amp_mult = AudioManager::amplitude_multiplier();
+        let amp_mult = engine.amplitude_multiplier();
 
         let data = song.instance.get_data();
         self.fft_hooks.retain(|h| {
@@ -66,14 +67,15 @@ impl SongManager {
         });
     }
 
-    pub fn update(&mut self) {
-        self.update_ffts();
+    pub fn update(&mut self, engine: &mut AudioManager) {
+        self.update_ffts(engine);
     }
 
     pub fn handle_song_set_action(
         &mut self, 
         action: SongMenuSetAction,
         actions: &mut ActionQueue,
+        engine: &mut AudioManager,
     ) -> TatakuResult {
         trace!("Set song: {action:?}");
 
@@ -105,15 +107,17 @@ impl SongManager {
             SongMenuSetAction::FromFile(path, params) => self.play_song(
                 path.clone(), 
                 params, 
-                move || AudioManager::load_song(&path),
+                move |engine| engine.load_song(&path),
                 actions,
+                engine,
             )?,
             
             SongMenuSetAction::FromData(data, key, params) => self.play_song(
                 key, 
                 params, 
-                move || AudioManager::load_song_raw(data),
+                move |engine| engine.load_song_raw(data),
                 actions,
+                engine,
             )?,
         }
 

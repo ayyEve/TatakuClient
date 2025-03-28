@@ -68,14 +68,6 @@ impl Widget for DialogWidget {
         shell: &mut InputShell<'_>,
     ) {
         self.node.input(event, shell);
-
-        let to_update = shell.messages
-            .iter_mut()
-            .filter(|m| m.owner == MessageOwner::DialogUnset);
-
-        for m in to_update {
-            m.owner = MessageOwner::Dialog(self.num);
-        }
     }
 
     fn draw(
@@ -109,9 +101,7 @@ impl Widget for DialogWidget {
     ) {
         match message.owner {
             MessageOwner::Menu => return,
-            MessageOwner::DialogUnset => panic!("got unset dialog message owner"),
             MessageOwner::Dialog(num) => if num != self.num { return }
-            MessageOwner::Any => {}
         }
 
         if let Some(str) = message.tag.as_string() {

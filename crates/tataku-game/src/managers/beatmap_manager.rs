@@ -234,7 +234,7 @@ impl BeatmapManager {
 
                 // delete the file
                 if let Err(e) = std::fs::remove_file(&old_map.file_path) {
-                    NotificationManager::add_error_notification("Error deleting map", e).await;
+                    self.actions.push(Notification::new_error("Error deleting map", e));
                 }
                 // TODO: should check if this is the last beatmap in this folder
                 // if so, delete the parent dir

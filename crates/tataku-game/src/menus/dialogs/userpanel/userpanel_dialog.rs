@@ -12,8 +12,11 @@ pub struct UserPanel {
 
     node: Box<dyn Widget>,
     node_id: NodeId,
+
+    owner: MessageOwner,
 }
 impl UserPanel {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             actions: ActionQueue::new(),
@@ -24,6 +27,7 @@ impl UserPanel {
 
             node: EmptyWidget::new_boxed(),
             node_id: EMPTY_NODE,
+            owner: MessageOwner::Menu,
         }
     }
 
@@ -46,6 +50,7 @@ impl Widget for UserPanel {
 
     fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId>  {
         let child = self.node.layout(shell)?;
+        self.owner = shell.owner;
         
         self.node_id = shell.tree.new_with_children(
             Style::default(), 
@@ -70,6 +75,7 @@ impl Widget for UserPanel {
     ) {
         let Some(tag) = message.tag.as_string() else { return }; 
 
+        let owner = self.owner;
         match &**tag {
             "user" => {
                 let user = message.value.downcast::<OnlineUser>();
@@ -79,8 +85,6 @@ impl Widget for UserPanel {
 
                 // user menu dialog
                 let mut user_menu_dialog = GenericDialog::new("User Options");
-
-                let owner = MessageOwner::DialogUnset;
                 let node_id = self.node_id;
 
                 // spectate
@@ -104,7 +108,7 @@ impl Widget for UserPanel {
                 }));
 
                 // add/remove friend
-                let is_friend = OnlineManager::get().await.friends.contains(&user_id);
+                let is_friend = false;  // FIXME: OnlineManager::get().await.friends.contains(&user_id);
                 let friend_txt = if is_friend {"Remove Friend"} else {"Add Friend"};
                 user_menu_dialog.add_button(friend_txt, Arc::new(move |_, actions| {
                     actions.push(GameAction::HandleMessage(Message::new(
@@ -142,10 +146,11 @@ impl Widget for UserPanel {
                 let MessageValue::Number(friend_id) = message.value else { return };
                 let friend_id = friend_id as u32;
 
-                let mut manager = OnlineManager::get_mut().await;
-                let is_friend = !manager.friends.contains(&friend_id);
+                // FIXME:
+                // let mut manager = OnlineManager::get_mut().await;
+                // let is_friend = !manager.friends.contains(&friend_id);
 
-                manager.send_packet(ChatPacket::Client_UpdateFriend {friend_id, is_friend}).await;
+                // manager.send_packet(ChatPacket::Client_UpdateFriend {friend_id, is_friend}).await;
             }
             _ => {}
         }
@@ -160,18 +165,19 @@ impl Widget for UserPanel {
     ) { 
         self.chat.update(shell, actions);
         
-        // update users from online manager
-        if let Some(om) = OnlineManager::try_get() {
-            for user in om.users.values() {
-                if let Ok(u) = user.try_lock() {
-                    if let std::collections::hash_map::Entry::Vacant(e) = self.users.entry(u.user_id) {
-                        e.insert(PanelUser::new(u.clone()));
-                    } else {
-                        self.users.get_mut(&u.user_id).unwrap().user = u.clone()
-                    }
-                }
-            }
-        }
+        // FIXME:
+        // // update users from online manager
+        // if let Some(om) = OnlineManager::try_get() {
+        //     for user in om.users.values() {
+        //         if let Ok(u) = user.try_lock() {
+        //             if let std::collections::hash_map::Entry::Vacant(e) = self.users.entry(u.user_id) {
+        //                 e.insert(PanelUser::new(u.clone()));
+        //             } else {
+        //                 self.users.get_mut(&u.user_id).unwrap().user = u.clone()
+        //             }
+        //         }
+        //     }
+        // }
 
         actions.extend(self.actions.take())
     }
