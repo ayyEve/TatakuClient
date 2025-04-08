@@ -45,9 +45,9 @@ impl JudgementIndicator for BasicJudgementIndicator {
             
             if (count > 1 && settings.common_game_settings.use_indicator_draw_duration_for_animations) || count == 1 {
                 let frametime = duration / count as f32;
-                anim.frame_delays = vec![frametime; count];
+                anim.frame_delay = frametime;
             } else {
-                duration = anim.frame_delays.first().cloned().unwrap_or_default() * count as f32
+                duration = anim.frame_delay * count as f32
             }
         }
 

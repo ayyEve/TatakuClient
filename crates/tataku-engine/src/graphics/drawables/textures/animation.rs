@@ -16,7 +16,7 @@ pub struct Animation {
     pub frame_start_time: f32,
     pub frames: Vec<Arc<TextureReference>>,
     pub frame_index: usize,
-    pub frame_delays: Vec<f32>,
+    pub frame_delay: f32,
 
     scissor: Scissor,
     blend_mode: BlendMode,
@@ -34,7 +34,7 @@ impl Animation {
         pos: Vector2, 
         size: Vector2, 
         frames: Vec<Arc<TextureReference>>, 
-        frame_delays: Vec<f32>, 
+        frame_delay: f32, 
         base_scale: Vector2
     ) -> Self {
         // let scale = Vector2::new(tex.get_width() as f64 / size.x, tex.get_height() as f64 / size.y);
@@ -56,7 +56,7 @@ impl Animation {
 
             frames,
             frame_index: 0,
-            frame_delays,
+            frame_delay,
             frame_start_time: 0.0,
 
             size: tex_size,
@@ -72,15 +72,12 @@ impl Animation {
 
         // update index
         loop {
-            // how long the current frame should last
-            let next_delay = self.frame_delays[self.frame_index];
-
             // if its time for the next frame
-            if delta_time >= next_delay {
+            if delta_time >= self.frame_delay {
                 // update the index
                 self.frame_index = (self.frame_index + 1) % self.frames.len();
                 // subtract from the delta
-                delta_time -= next_delay;
+                delta_time -= self.frame_delay;
                 self.frame_start_time = time - delta_time;
             } else {
                 // nothing else to do, exit loop

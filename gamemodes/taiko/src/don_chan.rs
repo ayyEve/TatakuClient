@@ -64,7 +64,7 @@ impl DonChan {
     pub fn update_delays(&mut self, timing_point: &TimingPoint) {
         for i in self.all_anims() {
             let Some(anim) = i else { continue };
-            anim.frame_delays.iter_mut().for_each(|d| *d = timing_point.beat_length)
+            anim.frame_delay.iter_mut().for_each(|d| *d = timing_point.beat_length)
         }
     }
 
