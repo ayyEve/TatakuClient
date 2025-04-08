@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 #[async_trait]
-pub trait TatakuBeatmap:Send+Sync {
+pub trait TatakuBeatmap: Send+Sync {
     fn hash(&self) -> Md5Hash;
     fn playmode(&self, incoming: String) -> String;
 

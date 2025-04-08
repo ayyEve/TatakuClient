@@ -200,7 +200,7 @@ impl<'window> GameWindow<'window> {
             }
 
             LoadImage::CreateRenderTarget((w, h), on_done, callback) => {
-                let rt = self.graphics.create_render_target([w, h], Color::TRANSPARENT_WHITE, callback);
+                let rt = self.graphics.create_render_target([w, h], Color::TRANSPARENT, callback);
                 let _ = on_done.send(rt.ok_or("failed".into()));
             }
             LoadImage::UpdateRenderTarget(target, on_done, callback) => {

@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-// FIXME: literally all if this. it was an idea and it should have stayed that way
+// FIXME: literally all of this. it was an idea and it should have stayed that way
 
 #[derive(Reflect)]
 #[derive(Debug, Serialize, Deserialize, Clone)]

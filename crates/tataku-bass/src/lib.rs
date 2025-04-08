@@ -203,7 +203,9 @@ impl AudioInstance for StreamChannelInstance {
 
 
     fn get_data(&self) -> Vec<FFTEntry> {
-        self.0.get_data(DataType::FFT2048, 1024).unwrap_or_default()
+        self.0
+        .get_data(DataType::FFT2048, 1024)
+        .unwrap_or_default()
         .into_iter()
         .map(FFTEntry::AmplitudeOnly)
         .collect()
@@ -232,14 +234,9 @@ fn map_bass_err(e: BassError) -> AudioError {
 async fn check_bass() {
     use tataku_engine::prelude::Io;
 
-    #[cfg(target_os = "windows")]
-    let filename = "bass.dll";
-
-    #[cfg(target_os = "linux")]
-    let filename = "libbass.so";
-
-    #[cfg(target_os = "macos")]
-    let filename = "libbass.dylib";
+    #[cfg(target_os = "windows")] let filename = "bass.dll";
+    #[cfg(target_os = "linux")] let filename = "libbass.so";
+    #[cfg(target_os = "macos")] let filename = "libbass.dylib";
 
     if let Ok(mut library_path) = std::env::current_exe() {
         library_path.pop();
@@ -256,7 +253,7 @@ async fn check_bass() {
                 Ok(_) => return info!("Found in /usr/lib"),
                 Err(e) => warn!("Found in /usr/lib, but couldnt copy: {e}")
             }
-        }
+        } 
 
         // download it from the web
         Io::check_file(&library_path, &format!("https://cdn.ayyeve.dev/tataku/lib/bass/{filename}")).await;

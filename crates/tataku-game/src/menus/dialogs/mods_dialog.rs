@@ -59,7 +59,7 @@ impl ModDialog {
             items.push(TextWidget::new(" ").width(FILL).boxed());
 
             for m in group.mods {
-                let cond = ElementCondition::Unbuilt(format!("global.mods.{}", m.name));
+                let cond = BuildableCondition::Unbuilt(format!("global.mods.{}", m.name));
 
                 items.push(row!(
                     Checkbox::new(m.name, cond).on_toggle(move |_| Message::new(owner, m, MessageValue::Click)).font_size(30.0).width(FILL).boxed(),
@@ -85,6 +85,10 @@ impl Widget for ModDialog {
     fn name(&self) -> Cow<'static,str> { "mod_dialog".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
+    fn update_styles(&mut self, tree: &mut Tree, resolver: &mut CssResolver, display_override: Option<ui::Display>) {
+        self.node.update_styles(tree, resolver, display_override);
+    }
+    
     fn layout(
         &mut self, 
         shell: &mut LayoutShell<'_>

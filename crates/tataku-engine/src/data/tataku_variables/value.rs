@@ -13,12 +13,75 @@ pub enum TatakuValue {
 
     Bool(bool),
     String(String),
-
     Reflect(Box<dyn Reflect>),
-
-    // List(Vec<Self>),
-    // Map(HashMap<String, Self>),
 }
+
+impl<'de> serde::Deserialize<'de> for TatakuValue {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where D: serde::Deserializer<'de> {
+        use serde::de::Error;
+
+        struct Visitor;
+        impl<'de> serde::de::Visitor<'de> for Visitor {
+            type Value = TatakuValue;
+        
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                write!(formatter, "one of: f32, f64, u16, u32, u64, bool, &str, String")
+            }
+
+            fn visit_bool<E: Error>(self, v: bool) -> Result<Self::Value, E> {
+                Ok(v.into())
+            }
+
+            fn visit_f32<E: Error>(self, v: f32) -> Result<Self::Value, E> {
+                Ok(v.into())
+            }
+            fn visit_f64<E: Error>(self, v: f64) -> Result<Self::Value, E> {
+                Ok((v as f32).into())
+            }
+
+            fn visit_u16<E: Error>(self, v: u16) -> Result<Self::Value, E> {
+                Ok((v as u32).into())
+            }
+            fn visit_u32<E: Error>(self, v: u32) -> Result<Self::Value, E> {
+                Ok(v.into())
+            }
+            fn visit_u64<E: Error>(self, v: u64) -> Result<Self::Value, E> {
+                Ok(v.into())
+            }
+            fn visit_str<E: Error>(self, v: &str) -> Result<Self::Value, E> {
+                // FIXME: this is shit
+                if let Ok(n) = v.parse::<u32>() {
+                    Ok(n.into())
+                } else if let Ok(n) = v.parse::<u64>() {
+                    Ok(n.into())
+                } else if let Ok(n) = v.parse::<f32>() {
+                    Ok(n.into())
+                } else if let Ok(n) = v.parse::<bool>() {
+                    Ok(n.into())
+                } 
+                
+                else {
+                    Ok(v.into())
+                }
+            }
+            fn visit_map<A: serde::de::MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
+                let _key = map.next_key::<String>().unwrap();
+                // println!("key: {_key:?}");
+
+                let val = map.next_value().unwrap();
+                let _ = map.next_key::<String>().unwrap();
+                
+                Ok(val)
+            }
+                
+        }
+
+        deserializer.deserialize_any(Visitor)
+    }
+}
+
+
 impl TatakuValue {
     pub fn is_none(&self) -> bool {
         matches!(self, Self::None)
@@ -352,29 +415,6 @@ impl PartialOrd for TatakuValue {
 
             _ => Ordering::Equal
         })
-    }
-}
-
-use lua::*;
-impl FromLua for TatakuValue {
-    fn from_lua(lua_value: LuaValue, _lua: &Lua) -> LuaResult<Self> {
-        #[cfg(feature="debug_custom_menus")] info!("Reading TatakuValue");
-
-        match &lua_value {
-            LuaValue::Boolean(b) => Ok(Self::Bool(*b)),
-            // Value::Integer(i) => Ok(Self::I64(*i)),
-            LuaValue::Number(f) => Ok(Self::F32(*f as f32)),
-            LuaValue::String(s) => Ok(Self::String(s.to_str()?.to_owned())),
-            // Value::Table(table) => {
-            //     if let Ok(list) = table.get()
-            // }
-            other => Err(FromLuaConversionError { 
-                from: other.type_name(), 
-                to: "TatakuValue".to_owned(), 
-                message: None 
-            }),
-        }
-
     }
 }
 

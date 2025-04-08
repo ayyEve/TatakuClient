@@ -10,10 +10,6 @@ Pre-built Elements
         - elements: Array<Element> -> The elements contained in the row
         - width: Length -> How wide is the space? (Default "fill")
         - height: Length -> How tall is the space? (Default "fill")
-
-    - "space" -> Empty space, helpful for alignment
-        - width: Length -> How wide is the space? (Default "shrink")
-        - height: Length -> How tall is the space? (Default "shrink")
     
     - "button -> A simple button which performs an action
         - text: String (Required) -> text to display. 
@@ -21,10 +17,8 @@ Pre-built Elements
         - action: ButtonAction -> Action to perform when clicked
             - NOTE: If no action is provided, the button will do nothing! (A warning will be logged when this is parsed)
 
-    - "song-display" -> Displays the name of the current song
-
-    - "gameplay-preview" -> A preview of the gameplay
-        - visualization: Visualization|Nil -> What visualization to show on top of the gameplay?
+    - "gameplayPreview" -> A preview of the gameplay
+        - visualization?: Visualization -> What visualization to show on top of the gameplay?
 
     - "animatable" -> An animatable Element
         - triggers: Array<TriggerDef>

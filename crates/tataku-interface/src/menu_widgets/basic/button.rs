@@ -8,25 +8,19 @@ pub struct Button {
     #[chain] pub style: Style,
     #[chain] pub on_press: ButtonOnClick,
     pub child: Box<dyn Widget>,
-
-
+    
     visual_active_cond: VisuallyActive,
 
-    /// did a click start on us (+ the cursor has not moved)
+    /// did a click start on us (and the cursor has not moved)
     active: bool,
     hovered: bool,
-
-    // pub state: ButtonState,
 
     node_id: NodeId,
 }
 impl Button {
     pub fn new(child: Box<dyn Widget>) -> Self {
         Self {
-            style: Style {
-                display: ui::Display::Flex,
-                ..Style::DEFAULT
-            },
+            style: Style::DEFAULT,
             child,
             node_id: EMPTY_NODE,
             on_press: ButtonOnClick::Message(None),
@@ -37,13 +31,13 @@ impl Button {
         }
     }
 
-    pub fn active_condition(mut self, mut cond: ElementCondition) -> Self {
+    pub fn active_condition(mut self, mut cond: BuildableCondition) -> Self {
         cond.build();
         self.visual_active_cond = VisuallyActive::Condition { cond, value: false };
         self
     }
 
-    pub fn active_condition_maybe(self, cond: Option<ElementCondition>) -> Self {
+    pub fn active_condition_maybe(self, cond: Option<BuildableCondition>) -> Self {
         let Some(cond) = cond else { return self };
         self.active_condition(cond)
     }
@@ -54,6 +48,10 @@ impl Button {
 impl Widget for Button {
     fn name(&self) -> Cow<'static, str> { "button_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
+
+    fn update_styles(&mut self, tree: &mut Tree, resolver: &mut CssResolver, display_override: Option<ui::Display>) {
+        self.child.update_styles(tree, resolver, display_override);
+    }
 
     fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId>  {
         let child = self.child.layout(shell)?;
@@ -94,7 +92,10 @@ impl Widget for Button {
                     None,
                     shell.values
                 ) {
-                    shell.publish(message);
+                    match message {
+                        ActionResponse::Message(message) => shell.publish(message),
+                        ActionResponse::Action(action) => shell.actions.push(action),
+                    }
                     // shell.event_consumed = true;
                     return;
                 }
@@ -154,30 +155,33 @@ impl Widget for Button {
         self.child.handle_event(event, event_value, values).await
     }
 
-    async fn reload_skin(&mut self, skin_manager: &mut dyn SkinProvider) {
-        self.child.reload_skin(skin_manager).await
+    async fn reload_skin(&mut self, shell: &mut UpdateShell) {
+        self.child.reload_skin(shell).await
     }
 }
 
 
 type OnClickCallback = Box<dyn Fn() -> Option<Message> + Send + Sync>;
+
+#[derive(Debug2)]
 pub enum ButtonOnClick {
     Message(Option<Message>),
-    LuaAction(LuaAction),
+    BuildableAction(BuildableAction),
+    #[debug(skip)] 
     Callback(OnClickCallback),
     // ActionCallback(OnClickaActionCallback),
 }
 impl ButtonOnClick {
     pub fn resolve(
         &self, 
-        owner: MessageOwner,
+        _owner: MessageOwner,
         passed_in: Option<TatakuValue>,
         values: &mut dyn Reflect
-    ) -> Option<Message> {
+    ) -> Option<ActionResponse> {
         match self {
-            Self::Message(m) => m.clone(),
-            Self::LuaAction(action) => action.resolve(owner, values, passed_in),
-            Self::Callback(cb) => (cb)()
+            Self::Message(m) => m.clone().map(ActionResponse::Message),
+            Self::BuildableAction(action) => action.clone().into_action(values, passed_in).map(ActionResponse::Action),
+            Self::Callback(cb) => (cb)().map(ActionResponse::Message),
         }
     }
 }
@@ -192,10 +196,13 @@ impl From<Message> for ButtonOnClick {
         Self::Message(Some(value))
     }
 }
-impl From<LuaAction> for ButtonOnClick {
-    fn from(mut value: LuaAction) -> Self {
-        value.build();
-        Self::LuaAction(value)
+impl From<BuildableAction> for ButtonOnClick {
+    fn from(mut value: BuildableAction) -> Self {
+        if let BuildableAction::Conditional { cond, .. } = &mut value {
+            cond.build();
+        }
+
+        Self::BuildableAction(value)
     }
 }
 impl From<OnClickCallback> for ButtonOnClick {
@@ -212,12 +219,11 @@ impl From<ButtonBuilderOnClick> for ButtonOnClick {
     }
 }
 
-
 // TODO: rename? 
 enum VisuallyActive {
     None,
     Condition {
-        cond: ElementCondition,
+        cond: BuildableCondition,
         value: bool,
     }
 }
@@ -225,13 +231,13 @@ impl VisuallyActive {
     fn update(&mut self, values: &dyn Reflect) {
         let Self::Condition { cond, value } = self else { return };
         match cond.resolve(values) {
-            ElementResolve::Failed => {},
-            ElementResolve::Unbuilt(_) => unreachable!("should be built"),
-            ElementResolve::True => *value = true,
-            ElementResolve::False => *value = false,
-            ElementResolve::Error(shunting_yard_error) => {
+            BuildableConditionResult::Failed => {},
+            BuildableConditionResult::Unbuilt(_) => unreachable!("should be built"),
+            BuildableConditionResult::True => *value = true,
+            BuildableConditionResult::False => *value = false,
+            BuildableConditionResult::Error(shunting_yard_error) => {
                 error!("Error with shunting yeard: {shunting_yard_error:?}");
-                *cond = ElementCondition::Failed;
+                *cond = BuildableCondition::Failed;
             }
         }
     } 
@@ -241,4 +247,11 @@ impl VisuallyActive {
             Self::Condition { value, .. } => *value,
         }
     }
+}
+
+
+#[derive(Debug)]
+pub enum ActionResponse {
+    Message(Message),
+    Action(TatakuAction),
 }

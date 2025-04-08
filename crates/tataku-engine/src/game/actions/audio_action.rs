@@ -16,6 +16,7 @@ impl AudioAction {
 
 #[derive(Clone, Debug)]
 pub enum AudioActionType {
+    /// Play a sound
     Play {
         /// volume as a %
         volume: f32,
@@ -70,16 +71,16 @@ impl AudioLoadData {
             let prefix= prefix.into();
             list = list
             .into_iter()
-                .chain(
-                sources
-                    .iter()
-                    .copied()
-                    .map(|source| {
-                        // let p = patj // TODO: account for directories in path
-                        Self::new(format!("{prefix}-{path}"), source)
-                    })
-                )
-                .collect()
+            .chain(
+            sources
+                .iter()
+                .copied()
+                .map(|source| {
+                    // TODO: account for directories in path
+                    Self::new(format!("{prefix}-{path}"), source)
+                })
+            )
+            .collect()
         }
 
         list
@@ -90,8 +91,6 @@ impl From<AudioAction> for TatakuAction {
         Self::Audio(value)
     }
 }
-
-
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum HitsoundSource {

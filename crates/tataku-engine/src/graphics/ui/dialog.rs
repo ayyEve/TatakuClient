@@ -50,7 +50,11 @@ impl DialogWidget {
 impl Widget for DialogWidget {
     fn name(&self) -> Cow<'static, str> { format!("{}{}", self.title, if self.draggable { " (Draggable)" } else { "" } ).into() }
     fn node_id(&self) -> NodeId { self.node_id }
-    
+
+    fn update_styles(&mut self, tree: &mut Tree, resolver: &mut CssResolver, _display_override: Option<ui::Display>) {
+        self.node.update_styles(tree, resolver, None);
+    }
+
     fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId>  {
         let child = self.node.layout(shell)?;
         self.node_id = shell.tree.new_with_children(
@@ -136,8 +140,8 @@ impl Widget for DialogWidget {
 
     async fn reload_skin(
         &mut self, 
-        skin_manager: &mut dyn SkinProvider,
+        shell: &mut UpdateShell,
     ) {
-        self.node.reload_skin(skin_manager).await;
+        self.node.reload_skin(shell).await;
     }
 }

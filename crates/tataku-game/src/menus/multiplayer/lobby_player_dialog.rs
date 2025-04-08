@@ -37,6 +37,9 @@ impl Widget for LobbyPlayerDialog {
     fn name(&self) -> Cow<'static, str> { "lobby_player_dialog".into() }
     fn node_id(&self) -> NodeId { self.node_id }
     
+    fn update_styles(&mut self, tree: &mut Tree, resolver: &mut CssResolver, display_override: Option<ui::Display>) {
+        self.node.update_styles(tree, resolver, display_override);
+    }
     fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
         let owner = shell.owner;
         self.node = col!(

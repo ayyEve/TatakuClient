@@ -23,6 +23,11 @@ impl Widget for ConsoleDialog {
     fn name(&self) -> Cow<'static, str> { "console_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
+
+    fn update_styles(&mut self, tree: &mut Tree, resolver: &mut CssResolver, display_override: Option<ui::Display>) {
+        self.node.update_styles(tree, resolver, display_override);
+    }
+
     fn layout(&mut self, shell: &mut LayoutShell<'_>) -> ui::TaffyResult<NodeId> {
 
         if shell.values.reflect_get::<Vec<String>>(OUTPUT_PATH).is_err() {
@@ -36,21 +41,25 @@ impl Widget for ConsoleDialog {
 
         let output = Container::new(Vec::new())
             .make_programmatic(ProgrammaticListData::new(
-                ElementDef {
-                    id: String::new(),
-                    element: ElementIdentifier::Text {
-                        text: CustomElementText::Variable("_line".to_string()),
-                        color: None,
-                        font_size: None,
-                        font: None,
-                        align: None,
-                    },
-                    debug_color: None,
-                    debug_name: None,
-                    width: Dimension::Percent(1.0),
-                    height: Dimension::Auto,
-                    style: Style::default(),
-                },
+                Element::Text(Box::new(TextElement {
+                    text: BuildableTextInner::Variable("_line".to_string()).into(),
+                    ..Default::default()
+                })),
+                // ElementDef {
+                //     id: String::new(),
+                //     element: ElementIdentifier::Text {
+                //         text: 
+                //         color: None,
+                //         font_size: None,
+                //         font: None,
+                //         align: None,
+                //     },
+                //     debug_color: None,
+                //     debug_name: None,
+                //     width: Dimension::Percent(1.0),
+                //     height: Dimension::Auto,
+                //     style: Style::default(),
+                // },
                 OUTPUT_PATH.to_string(),
                 "_line".to_string()
             ))
@@ -61,7 +70,7 @@ impl Widget for ConsoleDialog {
             .height(SHRINK)
             .boxed();
 
-        let input = TextInput::new("Command:", WidgetText::Custom { custom: CustomElementText::Variable(INPUT_PATH.to_owned()), cached: String::new() })
+        let input = TextInput::new("Command:", WidgetText::Custom { custom: BuildableTextInner::Variable(INPUT_PATH.to_owned()).as_buildable(), cached: String::new() })
             .on_submit(parse_line(shell.owner))
             .width(FILL)
             .height(SHRINK)
@@ -114,9 +123,9 @@ impl Widget for ConsoleDialog {
 
     async fn reload_skin(
         &mut self, 
-        skin_manager: &mut dyn SkinProvider,
+        shell: &mut UpdateShell,
     ) {
-        self.node.reload_skin(skin_manager).await
+        self.node.reload_skin(shell).await
     }
 
 }
@@ -142,7 +151,7 @@ fn parse_line(_owner: MessageOwner) -> TextInputAction {
         )),
         
         TextInputAction::ReflectCallback(Box::new(move |s, r| {
-            let output = match CustomElementCalc::parse(s) {
+            let output = match BuildableCalc::parse(s) {
                 Ok(cec) => match cec.resolve(r) {
                     Ok(s) => s.as_string(),
                     Err(e) => format!("{e:?}")

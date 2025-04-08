@@ -1,0 +1,285 @@
+<?xml version="1.0"?>
+
+<xs:schema 
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  targetNamespace="tataku/actions"
+  xmlns:actions="tataku/actions"
+  xmlns:buildable-value="tataku/buildable-value"
+  xmlns:text="tataku/text"
+>
+
+<xs:import namespace="tataku/buildable-value" schemaLocation="buildable_value.xsd"/>
+<xs:import namespace="tataku/text" schemaLocation="text.xsd"/>
+
+<xs:group name="action-type">
+  <xs:choice>
+      <xs:element name="setMenu" type="buildable-value:buildableValueElement"/>
+      <xs:element name="addDialog" type="buildable-value:buildableValueElement"/>
+      <xs:element name="setValue">
+        <xs:complexType>
+          <xs:group ref="buildable-value:buildableValue"/>
+          <xs:attribute name="key" type="xs:string"/>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="map"> 
+        <xs:complexType>
+          <xs:group ref="actions:map-action"/>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="game">
+        <xs:complexType>
+          <xs:group ref="actions:game-action"/>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="mod">
+        <xs:complexType>
+          <xs:group ref="actions:mod-action"/>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="mods">
+        <xs:complexType>
+          <xs:group ref="actions:mod-action"/>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="song">
+        <xs:complexType>
+          <xs:group ref="actions:song-action"/>
+        </xs:complexType>
+      </xs:element>
+      
+      <xs:element name="multiplayer">
+        <xs:complexType>
+          <xs:group ref="actions:multiplayer-action"/>
+        </xs:complexType>
+      </xs:element>
+
+
+      <xs:element name="cursor">
+        <xs:complexType>
+          <xs:group ref="actions:cursor-action"/>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="gameplay">
+        <xs:complexType>
+          <xs:group ref="actions:gameplay-action"/>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="conditional">
+        <xs:complexType>
+          <xs:choice>
+            <xs:group ref="actions:action-cond-specified"/>
+            <xs:group ref="actions:action-type"/>
+          </xs:choice>
+          <xs:attribute name="cond" type="xs:string"/>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="list">
+        <xs:complexType>
+            <xs:group ref="actions:action-type" maxOccurs="unbounded"/>
+        </xs:complexType>
+      </xs:element>
+      
+  </xs:choice>
+</xs:group>
+
+<xs:group name="action-cond-specified">
+  <xs:sequence>
+    <xs:element name="true" minOccurs="1" maxOccurs="1">
+      <xs:complexType>
+        <xs:group ref="actions:action-type"/>
+      </xs:complexType>
+    </xs:element>
+
+    <xs:element name="false" minOccurs="0" maxOccurs="1">
+      <xs:complexType>
+        <xs:group ref="actions:action-type"/>
+      </xs:complexType>
+    </xs:element>
+  </xs:sequence>
+</xs:group>
+
+
+<!-- Map Actions -->
+<xs:group name="map-action">
+  <xs:choice>
+      <xs:element name="play"/>
+      <xs:element name="confirm"/>
+      <xs:element name="next"/>
+      <xs:element name="previous">
+        <xs:complexType>
+          <xs:group ref="actions:map-action-if-none" minOccurs="0" maxOccurs="1"/>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="random">  
+        <xs:complexType>
+          <xs:attribute name="use_preview" type="xs:boolean"/>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="selectGroup" type="buildable-value:buildableValueElement"/>
+      <xs:element name="selectMap" type="buildable-value:buildableValueElement"/>
+      <xs:element name="setPlaymode" type="buildable-value:buildableValueElement"/>
+
+      <xs:element name="refreshList"/>
+      
+      <xs:element name="nextMap"/>
+      <xs:element name="nextSet"/>
+      <xs:element name="previousMap"/>
+      <xs:element name="previousSet"/>
+
+  </xs:choice>
+</xs:group>
+
+<xs:group name="map-action-if-none">
+  <xs:choice>
+    <xs:element name="continueCurrent"/>
+    <xs:element name="setNone"/>
+    <xs:element name="random"> 
+      <xs:complexType>
+        <xs:attribute name="use_preview" type="xs:boolean"/>
+      </xs:complexType>
+    </xs:element>
+  </xs:choice>
+</xs:group>
+
+
+<!-- Song Actions -->
+<xs:group name="song-action">
+  <xs:choice>
+    <xs:element name="play"/>
+    <xs:element name="pause"/>
+    <xs:element name="toggle"/>
+    <xs:element name="restart"/>
+    <xs:element name="seek" type="buildable-value:buildableValueElement"/>
+    <xs:element name="position" type="buildable-value:buildableValueElement"/>
+    <xs:element name="rate" type="buildable-value:buildableValueElement"/>
+  </xs:choice>
+</xs:group>
+
+
+<!-- Gameplay Actions -->
+<xs:group name="gameplay-action">
+  <xs:choice>
+    <xs:element name="resume"/>
+    <xs:element name="pause"/>
+    <xs:element name="quit"/>
+    <xs:element name="retry"/>
+  </xs:choice>
+</xs:group>
+
+<!-- Cursor Actions -->
+<xs:group name="cursor-action">
+  <xs:choice>
+    <xs:element name="show"/>
+    <xs:element name="hide"/>
+  </xs:choice>
+</xs:group>
+
+<!-- Game Actions -->
+<xs:group name="game-action">
+  <xs:choice>
+      <xs:element name="quit"/>
+      <xs:element name="viewScore" type="buildable-value:buildableValueElement"/>
+      <xs:element name="notification">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="color" type="xs:string" minOccurs="0"/>
+            <xs:element name="duration" minOccurs="1" maxOccurs="1"> 
+              <xs:complexType mixed="true">
+                <xs:group ref="buildable-value:buildableValue"/>
+              </xs:complexType>
+            </xs:element>
+
+            <xs:element name="text" minOccurs="1" maxOccurs="1"> 
+              <xs:complexType>
+                <xs:group ref="text:text" />
+              </xs:complexType>
+            </xs:element>
+          </xs:sequence>
+          <xs:attribute name="color" type="xs:string"/>
+        </xs:complexType>
+      </xs:element>
+  </xs:choice>
+</xs:group>
+
+<!-- Multiplayer Actions -->
+<xs:group name="multiplayer-action">
+  <xs:choice>
+    <xs:element name="joinLobby">
+      <xs:complexType>
+        <xs:choice>
+          <xs:group ref="buildable-value:buildableValue"/>
+          <xs:sequence>
+            <xs:element name="lobby_id" type="buildable-value:buildableValueElement" minOccurs="1" maxOccurs="1"/>
+            <xs:element name="password" type="buildable-value:buildableValueElement" minOccurs="0" maxOccurs="1"/>
+          </xs:sequence>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+
+    <xs:element name="openMapLink"/>
+    <xs:element name="startMatch"/>
+    <xs:element name="ready"/>
+    <xs:element name="unready"/>
+    <xs:element name="leave"/>
+    <xs:element name="quit"/>
+    <xs:element name="start"/>
+    
+    <xs:element name="slot">
+      <xs:complexType>
+        <xs:group ref="actions:slot-action" minOccurs="1" maxOccurs="1"/>
+      </xs:complexType>
+    </xs:element>
+    
+  </xs:choice>
+</xs:group>
+
+<!-- Slot Actions -->
+<xs:group name="slot-action">
+  <xs:sequence>
+    <xs:element name="slot" type="buildable-value:buildableValueElement"/>
+    <xs:choice>
+      <xs:group ref="actions:slot-action-type"/>
+      <xs:element name="action">
+        <xs:complexType>
+          <xs:group ref="actions:slot-action-type"/>
+        </xs:complexType>
+      </xs:element>
+    </xs:choice>
+  </xs:sequence>
+</xs:group>
+
+
+<xs:group name="slot-action-type">
+  <xs:choice>
+    <xs:element name="showProfile"/>
+    <xs:element name="move"/>
+    <xs:element name="transferHost"/>
+    <xs:element name="lock"/>
+    <xs:element name="unlock"/>
+    <xs:element name="kick"/>
+  </xs:choice>
+</xs:group>
+
+
+<!-- Mod Actions -->
+<xs:group name="mod-action">
+  <xs:choice>
+      <xs:element name="addMod" type="buildable-value:buildableValueElement"/>
+      <xs:element name="removeMod" type="buildable-value:buildableValueElement"/>
+      <xs:element name="toggleMod" type="buildable-value:buildableValueElement"/>
+
+      <xs:element name="setSpeed" type="buildable-value:buildableValueElement"/>
+      <xs:element name="addSpeed" type="buildable-value:buildableValueElement"/>
+  </xs:choice>
+</xs:group>
+
+
+</xs:schema>

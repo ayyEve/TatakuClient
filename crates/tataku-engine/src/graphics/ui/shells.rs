@@ -27,6 +27,7 @@ pub struct UpdateShell<'a> {
 
     pub owner: MessageOwner,
     pub messages: &'a mut Vec<Message>,
+    pub skin_manager: &'a mut dyn SkinProvider
 }
 
 

@@ -39,7 +39,6 @@ pub struct GameplayManager {
     pub beatmap: Beatmap,
     pub metadata: Arc<BeatmapMeta>,
     pub gamemode: Box<dyn GameMode>,
-    // pub gamemode_info: GameModeInfo,
     pub gamemode_properties: GameModeProperties,
 
     pub current_mods: Arc<ModManager>,
@@ -62,9 +61,8 @@ pub struct GameplayManager {
 
     pub score_list: Vec<IngameScore>,
     scores_loaded: bool,
-    // score_loader: Option<Arc<AsyncRwLock<ScoreLoaderHelper>>>,
 
-    // used for discord rich presence
+    /// used for discord rich presence
     pub start_time: i64,
     pub started: bool,
     pub completed: bool,
@@ -89,13 +87,12 @@ pub struct GameplayManager {
     restart_key_hold_start: Option<TatakuInstant>,
 
     pub timing_points: TimingPointHelper,
-    // pub hitsound_manager: HitsoundManager,
 
     /// center text helper (ie, for offset and global offset)
     pub center_text_helper: CenteredTextHelper,
 
     /// (map.time, note.time - hit.time)
-    pub hitbar_timings: Vec<(f32, f32)>,
+    hitbar_timings: Vec<(f32, f32)>,
 
     /// list of judgement indicators to draw
     pub judgement_indicators: Vec<Box<dyn JudgementIndicator>>,
@@ -149,10 +146,6 @@ impl GameplayManager {
         actions.push(AudioAction::new("combobreak", AudioActionType::Load { 
             list: AudioLoadData::new_multi_source("combobreak", None::<String>, &[HitsoundSource::Beatmap, HitsoundSource::Skin, HitsoundSource::Default])
         }));
-
-
-        // let mut hitsound_manager = HitsoundManager::new(properties.audio_prefix.clone());
-        // hitsound_manager.init(&metadata, &mut actions, settings).await;
 
         // make sure the gamemode has the correct mods applied
         gamemode.apply_mods(current_mods.clone()).await;
@@ -693,11 +686,6 @@ impl GameplayManagerTrait for GameplayManager {
         let new_time = *values.reflect_get::<f32>("song.position").unwrap();
         let settings = values.reflect_get::<Settings>("settings").unwrap();
 
-        // // if theres a time difference of over a second from when the last update was, pause the hitsound manager because there might be audio spam
-        // if new_time - self.song_time > 1000.0 {
-        //     self.hitsound_manager.enabled = false;
-        // }
-
         self.song_time = new_time;
 
         // make sure we jump to the time we're supposed to be at
@@ -725,13 +713,6 @@ impl GameplayManagerTrait for GameplayManager {
             self.pause_pending = false;
             self.should_pause = true;
         }
-        // // i'm not sure whats happening here?
-        // if self.should_pause && self.in_break() {
-        //     info!("pausing");
-        //     self.pause();
-        //     self.should_pause = false;
-        // }
-
 
         // update ui elements
         if !self.gameplay_mode.is_preview() {
@@ -771,25 +752,10 @@ impl GameplayManagerTrait for GameplayManager {
                 self.actions.push(SongAction::SetVolume(settings.get_music_vol()));
                 self.actions.push(SongAction::SetPosition(-self.lead_in_time));
                 self.actions.push(SongAction::Play);
-
-                // self.song.set_position(-self.lead_in_time);
-                // self.song.set_volume(self.settings.get_music_vol());
-                // self.song.set_rate(self.game_speed());
-                // self.song.play(true);
-
                 self.lead_in_time = 0.0;
             }
         }
 
-
-        // check if scores have been loaded
-        // if let Some(loader) = self.score_loader.clone() {
-        //     let loader = loader.read().await;
-        //     if loader.done {
-        //         self.score_list = loader.scores.iter().map(|s| { let mut s = s.clone(); s.is_previous = s.username == self.score.username; s }).collect();
-        //         self.score_loader = None;
-        //     }
-        // }
         #[cfg(feature="gameplay")]
         let scores_list = values.reflect_get::<Vec<IngameScore>>("score_list.scores").unwrap();
         let scores_loaded = *values.reflect_get::<bool>("score_list.loaded").unwrap();
@@ -826,17 +792,8 @@ impl GameplayManagerTrait for GameplayManager {
         for action in state.actions {
             self.handle_gamemode_action(action, &settings).await;
         }
-        //.into_iter().map(|f| ReplayFrame::new(time, f));
-
-
-
-        // if self.lead_in_time == 0.0 && values.get_bool("song.stopped").unwrap_or_default() {
-        //     debug!("Song over, saying map is complete");
-        //     self.completed = true;
-        // }
 
         // update score stuff now that gamemode has been updated
-        
         let info = self.gamemode_properties.info;
         self.score.accuracy = info.calc_acc(&self.score);
         self.score.performance = info.calc_perf(CalcPerfInfo {
@@ -861,7 +818,6 @@ impl GameplayManagerTrait for GameplayManager {
                 trace!("show fail menu");
             } else {
                 self.actions.push(SongAction::SetRate(new_rate));
-                // self.song.set_rate(new_rate);
             }
 
             actions.extend(self.actions.take());
@@ -1030,7 +986,6 @@ impl GameplayManagerTrait for GameplayManager {
                     score_send_timer.elapsed_and_reset();
                     let score = self.score.score.clone();
                     self.actions.push(LobbyAction::ScoreUpdate(Box::new(score)));
-                    // self.frame_sender.update_lobby_score(score);
                 }
             }
 
@@ -1070,22 +1025,9 @@ impl GameplayManagerTrait for GameplayManager {
 
         // update value collection
         {
-            // let score:TatakuValue = (&self.score).into();
-            // let mut score_data = score.to_map();
-
-            // score_data.set_value("health", TatakuVariable::new_game(self.health.get_ratio()));
             // TODO: placing
             values.reflect_insert("score", self.score.clone()).unwrap();
-            // values.set("score", TatakuVariable::new_game(score_data));
         }
-
-
-        // unpause the hitsound manager next frame if it was paused earlier this frame
-        // hopefully this helps with the osu note spam sounds. i think the OsuHitObject::get_pending_combo is whats spamming audio
-        // if !self.hitsound_manager.enabled {
-        //     // self.hitsound_manager.enabled = false;
-        //     self.gameplay_actions.push(GameplayAction::SetHitsoundsEnabled(true));
-        // }
 
         actions.extend(self.actions.take());
     }
@@ -1167,7 +1109,6 @@ impl GameplayManagerTrait for GameplayManager {
             GameplayAction::SetMode(mode) => self.set_mode(mode.into()),
 
             GameplayAction::AddReplayAction { action, should_save } => self.handle_frame(action, true, Some(self.time()), should_save, settings).await,
-            // GameplayAction::SetHitsoundsEnabled(enabled) => self.hitsound_manager.enabled = enabled,
         
             // not used here
             GameplayAction::RequestDifficulty => {}
@@ -1223,39 +1164,29 @@ impl GameplayManagerTrait for GameplayManager {
 
                 // check health
                 if self.health.is_dead(false) {
-                    // self.actions.push(GamemodeAction::FailGame);
                     self.fail();
                 }
 
                 // check sd/pf mods
-                //TODO: if this happens, change the judgment to a miss
                 if self.current_mods.has_sudden_death() && judgment.fails_sudden_death {
-                    // self.actions.push(GamemodeAction::FailGame);
+                    // TODO: change the judgment to a miss
                     self.fail()
                 }
                 if self.current_mods.has_perfect() && judgment.fails_perfect {
-                    // self.actions.push(GamemodeAction::FailGame);
                     self.fail()
                 }
             }
             GamemodeAction::PlayHitsound { id, volume, repeat } => {
-                self.actions.push(AudioAction::new(id, AudioActionType::Play { volume, repeat, restart: true }))
-
-                // // let timing_point = self.beatmap.control_point_at(note_time);
-
-                // // get volume
-                // let mut vol = settings.get_effect_vol();
+                // TODO: timing point volume?
+                // let timing_point = self.beatmap.control_point_at(note_time);
                 // if self.gameplay_mode.is_preview() { vol *= settings.background_game_settings.hitsound_volume };
-
-                // self.hitsound_manager.play_sound(&sounds, vol);
+                self.actions.push(AudioAction::new(id, AudioActionType::Play { volume, repeat, restart: true }))
             }
 
 
             GamemodeAction::AddTiming { hit_time, note_time } => {
                 let diff = hit_time - note_time;
                 self.score.insert_stat(HitVarianceStat, diff);
-                // self.add_stat(HitVarianceStat, diff);
-                // $self.score.hit_timings.push(diff);
                 self.hitbar_timings.push((hit_time, diff));
             }
 
@@ -1311,7 +1242,6 @@ impl GameplayManagerTrait for GameplayManager {
     ) {
         let parent_folder = self.beatmap.get_parent_dir().unwrap().to_string_lossy().to_string();
         let source = self.gamemode.reload_skin(&parent_folder, skin_manager).await;
-        // self.hitsound_manager.reload_skin(settings, &mut self.actions).await;
 
         for (id, list) in self.properties().sound_list.clone() {
             self.actions.push(AudioAction::new(id, AudioActionType::Load { list }));
@@ -1380,9 +1310,6 @@ impl GameplayManagerTrait for GameplayManager {
 
     // can be from either paused or new
     async fn start(&mut self) {
-        // if !self.gameplay_mode.is_preview() {
-        //     self.hitsound_manager.enabled = false;
-        // }
         if let Some(bounds) = self.fit_to_bounds {
             self.gamemode.set_bounds(bounds, false);
         } else {
@@ -1462,11 +1389,6 @@ impl GameplayManagerTrait for GameplayManager {
         // undo any cursor override
         self.actions.push(CursorAction::OverrideRippleRadius(None));
 
-        // // make sure the cursor is visible
-        // CursorManager::set_visible(true);
-        // // undo any cursor override
-        // CursorManager::set_ripple_override(None);
-
         // self.song.pause();
         self.actions.push(SongAction::Pause);
         self.pause_start = Some(chrono::Utc::now().timestamp());
@@ -1474,7 +1396,6 @@ impl GameplayManagerTrait for GameplayManager {
         // is there anything else we need to do?
 
         // might mess with lead-in but meh
-
         let time = self.time();
         #[cfg(feature="gameplay")]
         self.outgoing_spectator_frame_force(
@@ -1499,11 +1420,6 @@ impl GameplayManagerTrait for GameplayManager {
             self.actions.push(SongAction::Pause);
             self.actions.push(SongAction::SetPosition(0.0));
             self.actions.push(SongAction::SetRate(self.game_speed()));
-
-            // self.song.set_rate(self.game_speed());
-            // self.song.set_position(0.0);
-            // if self.song.is_stopped() { self.song.play(true); }
-            // self.song.pause();
         }
 
         self.completed = false;
@@ -1514,7 +1430,6 @@ impl GameplayManagerTrait for GameplayManager {
 
 
         let playmode = self.gamemode_properties.playmode().to_string();
-
         self.actions.push(GameAction::from((self.id.clone(), GameplayAction::RequestDifficulty)));
 
         let username = self.score.username.clone();
@@ -1527,34 +1442,9 @@ impl GameplayManagerTrait for GameplayManager {
             self.score_multiplier = 1.0;
 
             self.score.mods = self.current_mods.map_mods_to_thing(self.gamemode_properties.info);
-            for m in &self.score.mods {
+            for m in self.score.mods.iter() {
                 self.score_multiplier *= m.score_multiplier;
             }
-
-            // let ok_mods = ModManager::mods_for_playmode_as_hashmap(&playmode);
-
-            // for i in self.current_mods.mods.iter() {
-            //     let Some(m) = ok_mods.get(i) else { continue };
-            //     self.score.mods.push((*m).into());
-            //     self.score_multiplier *= m.score_multiplier;
-            // }
-
-
-            // self.score.mods = self.current_mods.mods.iter().map(ModDefinition::from).collect();
-            // let playmode = self.gamemode.playmode();
-
-            // // get all available mods for this playmode
-            // let ok_mods = ModManager::mods_for_playmode_as_hashmap(&playmode);
-
-            // // purge any non-gamemode mods, and get the score multiplier for mods that are enabled
-            // self.score.mods.retain(|m| {
-            //     if let Some(m) = ok_mods.get(m) {
-            //         self.score_multiplier *= m.score_multiplier;
-            //         true
-            //     } else {
-            //         false
-            //     }
-            // });
         }
         if self.score.replay.is_none() {
             self.score.replay = Some(Replay::new());
@@ -1563,7 +1453,6 @@ impl GameplayManagerTrait for GameplayManager {
         if !self.gameplay_mode.is_replay() {
             // only reset the replay if we arent replaying
             self.score.replay = Some(Replay::new());
-            // self.replay = Replay::new();
             self.score.speed = self.current_mods.speed;
         } else {
             // if let Some(score) = &self.replay.score_data {
@@ -1620,17 +1509,13 @@ impl GameplayManagerTrait for GameplayManager {
         }
 
         self.actions.push(SongAction::SetPosition(time));
-        // self.song.set_position(time);
-
         self.pending_time_jump = Some(time);
     }
 
     fn on_complete(&mut self) {
         // make sure the cursor is visible
-        // CursorManager::set_visible(true);
         self.actions.push(CursorAction::SetVisible(true));
         // undo any cursor override
-        // CursorManager::set_ripple_override(None);
         self.actions.push(CursorAction::OverrideRippleRadius(None));
 
         #[cfg(feature="gameplay")]
@@ -1641,7 +1526,6 @@ impl GameplayManagerTrait for GameplayManager {
             if !buffered_score_frames.is_empty() {
                 self.score.score = buffered_score_frames.last().cloned().unwrap().1;
             }
-
 
             // let mut score_menu = ScoreMenu::new(&manager.score, manager.metadata.clone(), false);
             // score_menu.dont_close_on_back = true;
@@ -1702,7 +1586,6 @@ impl GameplayManagerTrait for GameplayManager {
             #[cfg(feature="gameplay")]
             GameplayModeInner::Spectator { host_username, .. } => {
                 self.score.username = host_username.clone();
-                // self.replay.score_data.as_mut().unwrap().username = host_username.clone();
             }
         }
 
@@ -1716,8 +1599,6 @@ impl GameplayManagerTrait for GameplayManager {
     }
 
 }
-
-
 
 impl Drop for GameplayManager {
     fn drop(&mut self) {

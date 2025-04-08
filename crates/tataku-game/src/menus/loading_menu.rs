@@ -71,16 +71,17 @@ impl LoadingMenu {
         }).collect::<Vec<_>>();
 
         row!(
-            Space::new(FILL, FILL).boxed(),
+            // Space::new(FILL, FILL).boxed(),
 
             col!(
                 elements,
                 width = FILL,
                 height = FILL
                 // spacing = 5.0
-            ),
+            )
 
-            Space::new(FILL, FILL).boxed();
+            // Space::new(FILL, FILL).boxed()
+            ;
             
             width = FILL,
             height = FILL,
@@ -211,6 +212,10 @@ impl LoadingMenu {
 impl Widget for LoadingMenu {
     fn name(&self) -> Cow<'static, str> { Cow::Borrowed("loading_menu") }
     fn node_id(&self) -> NodeId { self.node_id }
+
+    fn update_styles(&mut self, tree: &mut Tree, resolver: &mut CssResolver, display_override: Option<ui::Display>) {
+        self.node.update_styles(tree, resolver, display_override);
+    }
 
     fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
         self.node = self.build_view();

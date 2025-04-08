@@ -12,7 +12,7 @@ pub struct FlashlightDataInner {
 impl From<FlashlightData> for FlashlightDataInner {
     fn from(value: FlashlightData) -> Self {
         Self {
-            cursor_pos:value.cursor_pos.into(),
+            cursor_pos:value.center.into(),
             flashlight_radius: value.flashlight_radius,
             fade_radius: value.fade_radius,
             color: value.color.into()

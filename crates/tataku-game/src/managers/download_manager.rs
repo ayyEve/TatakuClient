@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use tataku_engine::prelude::ui::TextStyle;
 
 #[derive(Default, Debug)]
 #[derive(Reflect)]
@@ -73,7 +74,7 @@ impl DownloadManager {
                     SIZE.x * i.progress,
                     SIZE.y
                 ),
-                Color::TRANSPARENT_WHITE,
+                Color::TRANSPARENT,
                 None
             ));
 
@@ -81,7 +82,7 @@ impl DownloadManager {
             list.push(Rectangle::new(
                 pos, 
                 SIZE,
-                Color::TRANSPARENT_WHITE,
+                Color::TRANSPARENT,
                 Some(Border::new(Color::BLACK, 2.0))
             ));
 

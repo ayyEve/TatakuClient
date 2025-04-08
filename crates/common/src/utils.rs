@@ -15,8 +15,6 @@ macro_rules! async_retain {
     }}
 }
 
-
-
 /// format a number into a locale string ie 1000000 -> 1,000,000
 pub fn format_number(num: impl num_format::ToFormattedStr) -> String {
     use num_format::{ Buffer, Locale };
@@ -28,7 +26,6 @@ pub fn format_number(num: impl num_format::ToFormattedStr) -> String {
 
 /// format a float into a locale string ie 1000.1 -> 1,000.100
 pub fn format_float(num: impl ToString, precis: usize) -> String {
-
     let num = num.to_string();
     let mut split = num.split(".");
     let Some(num) = split.next().and_then(|a| a.parse::<i64>().ok()).map(format_number) else { return String::new() };
@@ -45,4 +42,3 @@ pub fn format_float(num: impl ToString, precis: usize) -> String {
 
     format!("{num}.{dec}")
 }
-

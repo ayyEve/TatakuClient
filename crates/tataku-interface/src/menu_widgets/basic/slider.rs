@@ -155,7 +155,7 @@ impl Widget for Slider {
     ) {
         let Some(bounds) = shell.tree.absolute_bounds(self.node_id) else { return };
 
-        shell.list.push(Rectangle::new_bounds(bounds, Color::TRANSPARENT_WHITE, Some(Border::new(Color::PUMPKIN_ORANGE, 2.0))));
+        shell.list.push(Rectangle::new_bounds(bounds, Color::TRANSPARENT, Some(Border::new(Color::PUMPKIN_ORANGE, 2.0))));
 
         // draw track
         let track = Bounds::new(
@@ -273,7 +273,7 @@ type OnChangeCallback = Box<dyn Fn(f32) -> Message + Send + Sync>;
 
 pub enum SliderOnChange {
     Message(Option<Message>),
-    Action(LuaAction),
+    Action(BuildableAction),
     Callback(OnChangeCallback),
 }
 impl SliderOnChange {
@@ -301,8 +301,12 @@ impl From<Message> for SliderOnChange {
         Self::Message(Some(value))
     }
 }
-impl From<LuaAction> for SliderOnChange {
-    fn from(value: LuaAction) -> Self {
+impl From<BuildableAction> for SliderOnChange {
+    fn from(mut value: BuildableAction) -> Self {
+        if let BuildableAction::Conditional { cond, .. } = &mut value {
+            cond.build();
+        }
+
         Self::Action(value)
     }
 }

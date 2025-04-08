@@ -7,7 +7,7 @@ pub struct Image {
     /// underlying scale of this image, mainly used for 2x res sprites
     pub base_scale: Vector2,
 
-    /// origin of rotation in px, relative to image position
+    /// origin of rotation/scale in px, relative to image position
     /// 
     /// BEFORE SCALE
     pub origin: Vector2,
@@ -27,7 +27,7 @@ impl Image {
         pos: Vector2, 
         tex: Arc<TextureReference>, 
         base_scale: Vector2
-    ) -> Image {
+    ) -> Self {
         // let scale = Vector2::new(tex.get_width() as f64 / size.x, tex.get_height() as f64 / size.y);
         let tex_size = Vector2::new(tex.width as f32, tex.height as f32);
 
@@ -36,7 +36,7 @@ impl Image {
 
         let origin = tex_size / 2.0;
 
-        Image {
+        Self {
             pos,
             scale: Vector2::ONE,
             rotation,
@@ -67,32 +67,71 @@ impl Image {
         self.raw_tex_size() * self.base_scale
     }
 
-    pub fn fit_to_bg_size(&mut self, size: Vector2, center: bool) {
-        // resize to maintain aspect ratio
+    pub fn centered(&mut self) {
+        self.origin = self.raw_tex_size() / 2.0;
+        self.pos = self.size() / 2.0;
+    }
+
+    // NOTE: this will change the origin to top-left
+    pub fn fit_to(&mut self, fit: ImageFit, bounds: Bounds) {
         let image_size = self.tex_size();
-        let ratio = image_size.y / image_size.x;
+        let size = bounds.size;
 
-        if image_size.x > image_size.y {
-            // use width as base
-            self.set_size(Vector2::new(
-                size.x,
-                size.x * ratio
-            ));
-        } else {
-            // use height as base
-            self.set_size(Vector2::new(
-                size.y * ratio,
-                size.y
-            ));
-        }
+        match fit {
+            ImageFit::Fill => {
+                self.set_size(bounds.size);
+            }
+            ImageFit::Contain => {
+                // resize to maintain aspect ratio
+                let ratio = image_size.y / image_size.x;
+                
+                let new_size = if image_size.x > image_size.y {
+                    // use width as base
+                    Vector2::new(
+                        size.x, 
+                        size.x * ratio
+                    )
+                } else {
+                    // use height as base
+                    Vector2::new(
+                        size.y * ratio,
+                        size.y
+                    )
+                };
 
-        if center {
-            self.origin = self.raw_tex_size() / 2.0;
-            self.pos = size / 2.0;
-        } else {
-            self.origin = Vector2::ZERO;
-            self.pos = (size - self.size()) / 2.0;
+                // transform to Contain
+
+                self.set_size(new_size);
+            }
+            ImageFit::Cover => {
+                // resize to maintain aspect ratio
+                let ratio = image_size.y / image_size.x;
+
+                let new_size = if image_size.x > image_size.y {
+                    // use width as base
+                    Vector2::new(
+                        size.x, 
+                        size.x * ratio
+                    )
+                } else {
+                    // use height as base
+                    Vector2::new(
+                        size.y * ratio,
+                        size.y
+                    )
+                };
+                
+                // TODO: transform to Cover
+                self.set_size(new_size);
+            }
+            ImageFit::None => {},
         }
+    }
+
+    pub fn fit_to_bg_size(&mut self, size: Vector2) {
+        self.fit_to(ImageFit::Contain, Bounds::new(Vector2::ZERO, size));
+        self.origin = Vector2::ZERO;
+        self.pos = (size - self.size()) / 2.0;
     }
 
     pub fn reference_count(&self) -> usize {
@@ -161,4 +200,23 @@ impl TatakuRenderable for Image {
         //     )
         // }
     }
+}
+
+
+
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
+pub enum ImageFit {
+    /// The image is resized to fill the given dimension. 
+    /// 
+    /// If necessary, the image will be stretched or squished to fit
+    #[default] Fill,
+    
+    /// The image keeps its aspect ratio, but is resized to fit within the given dimension
+    Contain,
+
+    /// The image keeps its aspect ratio and fills the given dimension. The image will be clipped to fit
+    Cover,
+
+    /// The image is not resized
+    None,
 }

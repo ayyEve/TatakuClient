@@ -52,7 +52,7 @@ impl TatakuRenderable for FlashlightDrawable {
             self.bounds.into_quad(), 
             transform, 
             FlashlightData {
-                cursor_pos: self.pos,
+                center: self.pos,
                 flashlight_radius: self.radius,
                 fade_radius: self.fade_radius,
                 color: self.color,

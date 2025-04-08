@@ -37,7 +37,10 @@ impl SoundManager {
                         _ => continue, // FIXME: need a way to get the current skin path easily
                     };
 
-                    let Ok(sound) = engine.load(&path) else { error!("sound not found {path}"); continue };
+                    let Ok(sound) = engine.load(&path) else { 
+                        // error!("sound not found {path}"); 
+                        continue 
+                    };
                     self.sounds.insert(action.id, SoundEntry { sound, source: i.source });
                     break;
                 }

@@ -69,6 +69,10 @@ impl Widget for StatsGraphWidget {
     fn name(&self) -> Cow<'static, str> { "stats_graph_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
+    fn update_styles(&mut self, tree: &mut Tree, resolver: &mut CssResolver, display_override: Option<ui::Display>) {
+        self.node.update_styles(tree, resolver, display_override);
+    }
+
     fn layout(
         &mut self,
         shell: &mut LayoutShell<'_>
@@ -114,6 +118,8 @@ impl GraphWidget {
 impl Widget for GraphWidget {
     fn name(&self) -> Cow<'static, str> { "stats_graph_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
+
+    fn update_styles(&mut self, _tree: &mut Tree, _resolver: &mut CssResolver, _display_override: Option<ui::Display>) {}
     
     fn layout(
         &mut self, 

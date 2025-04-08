@@ -6,6 +6,10 @@ pub trait Widget: Send + Sync {
     fn name(&self) -> Cow<'static, str>;
     fn node_id(&self) -> NodeId;
 
+    fn get_style_str(&self) -> String { String::new() }
+    fn set_text_style(&mut self, _style: TextStyle) {}
+    fn update_styles(&mut self, _tree: &mut Tree, _resolver: &mut CssResolver, _display_override: Option<ui::Display>) {}
+
     fn layout(
         &mut self, 
         shell: &mut LayoutShell<'_>
@@ -45,7 +49,7 @@ pub trait Widget: Send + Sync {
 
     async fn reload_skin(
         &mut self, 
-        _skin_manager: &mut dyn SkinProvider,
+        _shell: &mut UpdateShell,
     ) {}
 
 

@@ -1,0 +1,417 @@
+<?xml version="1.0"?>
+<?xml-model href="../xsd/menu.xsd"?>
+
+<menu id = "beatmap_select">
+    <style>
+        .map-list {
+            width: fill;
+            height: auto;
+            margin: 2px;
+            
+            justify-content: space-around; 
+            align-content: end; 
+            flex-wrap: wrap; 
+            flex-direction: column; 
+        }
+        .map-item {
+            width: auto;
+            height: auto;
+            flex-shrink: 0.0;
+            padding: 5px;
+            margin: 2px;
+        }
+        .map-item-inner {
+            width: fill; 
+            height: fill; 
+            padding: 5px; 
+            margin: 2px;
+        }
+
+        .diff-info {
+            font-size: 14px;
+        }
+    </style>
+
+    <events>
+        <!-- on entering menu, make sure song is playing, and is also at the proper rate -->
+        <event>
+            <menuEnter/>
+            <actions>
+                <conditional cond = "!song.playing">
+                    <true><song><play/></song></true>
+                </conditional>
+                <song><rate><variable>global.mods.speed</variable></rate></song>
+
+                <!-- also make sure the cursor is visible -->
+                <cursor><show/></cursor>
+            </actions>
+        </event>
+    
+        <!-- on song end, restart song at preview point -->
+        <event>
+            <songEnd/>
+            <actions>
+                <!-- set position to the preview point -->
+                <song><position><variable>beatmaps.current.map.preview</variable></position></song>
+                <!-- play -->
+                <song><play/></song>
+            </actions>
+        </event>
+
+        <!-- when a new map is added, select it -->
+        <event>
+            <mapAdded/>
+            <actions>
+                <map><selectMap><passedIn/></selectMap></map>
+            </actions>
+        </event>
+
+        <!-- make sure new songs are set with the correct rate -->
+        <event>
+            <songStart/>
+            <actions>
+                <song><rate><variable>global.mods.speed</variable></rate></song>
+            </actions>
+        </event>
+
+        <!-- key events -->
+
+        
+        <!-- select set -->
+        <event>
+            <keyPress key="Enter"/>
+            <actions> <map> <confirm/> </map> </actions>
+        </event>
+
+        <!-- previous set -->
+        <event>
+            <keyPress key="Left"/>
+            <actions> <map> <previousSet/> </map> </actions>
+        </event>
+
+        <!-- next set -->
+        <event>
+            <keyPress key="Right"/>
+            <actions> <map> <nextSet/> </map> </actions>
+        </event>
+
+        <!-- previous map -->
+        <event>
+            <keyPress key="Up"/>
+            <actions> <map> <previousMap/> </map> </actions>
+        </event>
+
+        <!-- next map -->
+        <event>
+            <keyPress key="Down"/>
+            <actions> <map> <nextMap/> </map> </actions>
+        </event>
+
+        <!-- back to main menu -->
+        <event>
+            <keyPress key="Escape"/>
+            <actions> <setMenu><value>main_menu</value></setMenu> </actions>
+        </event>
+
+        <!-- open mods dialog -->
+        <event>
+            <keyPress key="M" ctrl="true" />
+            <actions> <addDialog><value>mods_dialog</value></addDialog> </actions>
+        </event>
+    
+        <!-- nofail -->
+        <event>
+            <keyPress key="N" ctrl = "true" />
+            <actions> <mods> <toggleMod><value>no_fail</value></toggleMod> </mods> </actions>
+        </event>
+
+        <!-- autoplay -->
+        <event>
+            <keyPress key = "A" ctrl = "true" />
+            <actions> <mods> <toggleMod><value>autoplay</value></toggleMod> </mods> </actions>
+        </event>
+
+        <!-- speed up -->
+        <event>
+            <keyPress key = "Equals" ctrl = "true" />
+            <actions> 
+                <mods> <addSpeed> <value>0.1</value> </addSpeed> </mods> 
+                <!-- notify user of speed -->
+                <game>
+                    <notification color = "#FFFFFF">
+                        <duration>10000</duration>
+                        <text>
+                            <list join=" ">
+                                <text>speed:</text>
+                                <variable>mods.speed</variable>
+                            </list>
+                        </text>
+                    </notification>
+                </game>
+            </actions>
+        </event>
+
+        <!-- speed down -->
+        <event>
+            <keyPress key = "Minus" ctrl = "true" />
+            <actions> 
+                <mods> <addSpeed><value>-0.1</value></addSpeed> </mods> 
+                <!-- notify user of speed -->
+                <game>
+                    <notification color = "#FFFFFF">
+                        <duration>10000</duration>
+                        <text>
+                            <list join=" ">
+                                <text>speed:</text>
+                                <variable>mods.speed</variable>
+                            </list>
+                        </text>
+                    </notification>
+                </game>
+            </actions>
+        </event>
+    </events>
+
+    <element>
+        <!-- the beatmap select menu is broken up into rows -->
+        <column style = "width: fill; height: fill;">
+            <!-- the first row contains the dropdowns and search -->
+            <row id = "dropdowns" style = "width: fill; height: auto; justify-content: space-between;">
+                <!-- score method -->
+                <dropdown 
+                    id = "score_method_dropdown" 
+                    options_path = "enums.score_methods" 
+                    selected_path = "settings.score_method"
+                    style = "width: 20%; font-size: 25px;"
+                >
+                    <onSelect>
+                        <setValue key = "settings.score_method">
+                            <passedIn/>
+                        </setValue>
+                    </onSelect>
+                </dropdown>
+
+                <!-- playmode -->
+                <dropdown 
+                    id = "playmode_dropdown" 
+                    options_path = "enums.playmodes" 
+                    selected_path = "global.playmode"
+                    style = "width: 20%; font-size: 25px;"
+                    placeholder = "Play Mode"
+                >
+                    <onSelect>
+                        <map> <setPlaymode> <passedIn/> </setPlaymode> </map>
+                    </onSelect>
+                </dropdown>
+
+                <!-- sort by -->
+                <dropdown 
+                    id = "sort_by_dropdown" 
+                    options_path = "enums.sort_by" 
+                    selected_path = "settings.sort_by"
+                    style = "width: 20%; font-size: 25px;"
+                    placeholder = "Sort"
+                >
+                    <onSelect>
+                        <setValue key = "settings.sort_by">
+                            <passedIn/>
+                        </setValue>
+                    </onSelect>
+                </dropdown>
+
+                <!-- Filter text -->
+                <textInput 
+                    style = "width: 20%; font_size: 20px;"
+                    variable = "beatmaps.filter_text"
+                >
+                    <placeholder>
+                        <text>Search</text>
+                    </placeholder>
+                    <onInput>
+                        <map><refreshList/></map>
+                    </onInput>
+                </textInput>
+            
+            </row>
+
+            <!-- the next row has the score list + back button, gameplay preview, and beatmap list -->
+            <row style = "width: fill; height: fill;">
+                <!-- score list and back back button -->
+                <column id="score_list" style="width: 10%; height: 90%; justify-content: space-between;">
+                    <!-- score list -->
+                    <conditional id = "scores_list" cond="score_list.loaded">
+                        <true>
+                            <conditional cond="score_list.scores.is_empty">
+                                <true>
+                                    <text>
+                                        <text>No scores</text>
+                                    </text>
+                                </true>
+                                <false>
+                                    <list 
+                                        list = "score_list.scores"
+                                        variable = "_score"
+                                        scrollable = "true"
+                                        style = "flex-direction: column; width: fill; height: fill"
+                                    >
+                                    <button style = "width: fill; height: auto; margin: 5px">
+                                        <action>
+                                            <game><viewScore><variable>_score.id</variable></viewScore></game>
+                                        </action>
+
+                                        <element>
+                                            <column style = "width: fill; height: auto">
+                                                <!-- username and score  -->
+                                                <row style = "width: fill;">
+                                                    <text>
+                                                        <list join = ": ">
+                                                            <variable>_score.score.username</variable>
+                                                            <calc>display(_score.score.score)</calc>
+                                                        </list>
+                                                    </text>
+                                                </row>
+                                                
+                                                <!-- combo, acc, mods -->
+                                                <row style = "width: fill;">
+                                                    <text>
+                                                        <list join="">
+                                                            <calc>display(_score.score.max_combo)</calc>
+                                                            <text>x, </text>
+                                                            <calc>display(_score.score.accuracy * 100.0)</calc>
+                                                            <text>% </text>
+                                                            <textIter
+                                                                variable = "_score.score.mods"
+                                                                property = ".display_name"
+                                                                join = ", "
+                                                            />
+                                                        </list>
+                                                    </text>
+                                                </row>
+                                            </column>
+                                    
+                                        </element>
+                                    </button>
+
+                                    </list>
+                                </false>
+                            </conditional>
+                        </true>
+                        <false>
+                            <text>
+                                <text>Loading...</text>
+                            </text>
+                        </false>
+                    </conditional>
+
+                    <!-- back button -->
+                    <row style = "width: fill; height: auto">
+                        <button>
+                            <action> <setMenu>main_menu</setMenu> </action>
+                            <element>
+                                <text>
+                                    <text>Back</text>
+                                </text>
+                            </element>
+                        </button>
+                    </row>
+
+                </column>
+
+                <!-- gameplay preview and map list -->
+                <row style = "width: 95%">
+                    <gameplayPreview style = "width: 40%; height: fill"/>
+
+                    <!-- beatmap list -->
+                    <list
+                        style = "width: 60%; height: fill; flex-direction: column;"
+                        list = "beatmaps.groups"
+                        variable = "_group"
+                        scrollable = "true"
+                    >
+                        <!-- this column isnt shrinking --> 
+                        <column style = 'width: fill; height: auto; padding: 5px; margin: 2px;'>
+                            <!-- set info -->
+                            <button active = "_group.selected">
+                                <action>
+                                    <map> <selectGroup><variable>_group.id</variable></selectGroup> </map>
+                                </action>
+                                <element>
+                                    <text>
+                                        <list> <variable>_group.name</variable> </list>
+                                    </text>
+                                </element>
+                            </button>
+
+                            <!-- map items -->
+                            <conditional cond = "_group.selected">
+                                <list 
+                                    style = "width: fill; height: auto; margin: 2px; flex-direction: column;"
+                                    list = "_group.maps"
+                                    variable = "_map"
+                                > 
+                                    <column class = "map-list">
+                                        <button 
+                                            class = "map-item" 
+                                            active = "beatmaps.current.map.beatmap_hash == _map.map.beatmap_hash"
+                                        >
+                                            <action>
+                                                <conditional cond="beatmaps.current.map.beatmap_hash == _map.map.beatmap_hash">
+                                                    <!-- if the map is selected -->
+                                                    <true>
+                                                        <!-- confirm it -->
+                                                        <map> <confirm/> </map>
+                                                    </true>
+                                                    <!-- otherwise, set it as the selected map  -->
+                                                    <false>
+                                                        <map>
+                                                            <selectMap><variable>_map.map.beatmap_hash</variable></selectMap>
+                                                        </map>
+                                                    </false>
+                                                </conditional>
+                                            </action>
+                                            <element>
+                                                <column class="map-item-inner">
+                                                    <!-- title and stuff -->
+                                                    <conditional cond = "_map.diff_rating > 0.0">
+                                                        <true>
+                                                            <text style = "flex-shrink: 0.0">
+                                                                <list join = " ">
+                                                                    <calc>display(_map.map.playmode)</calc>
+                                                                    <text> - </text>
+                                                                    <variable>_map.map.version</variable>
+                                                                    <text> (diff: </text>
+                                                                        <calc>display(_map.diff_rating)</calc>
+                                                                    <text>)</text>
+                                                                </list>
+                                                            </text>
+                                                        </true>
+                                                        <false>
+                                                            <text>
+                                                                <list join=" - ">
+                                                                    <calc>display(_map.map.playmode) </calc>
+                                                                    <variable>_map.map.version</variable>
+                                                                </list>
+                                                            </text>
+                                                        </false>
+                                                    </conditional>
+
+                                                    <!-- diff info -->
+                                                    <text class = "diff-info">
+                                                        <list>
+                                                            <variable>_map.diff_info</variable>
+                                                        </list>
+                                                    </text>
+                                                </column>
+                                            </element>
+                                        </button>
+                                    </column>
+                                </list>
+                            </conditional>
+                        </column>
+
+                    </list>
+                </row>
+            </row>
+        </column>
+    </element>
+</menu>

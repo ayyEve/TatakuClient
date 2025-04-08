@@ -5,7 +5,7 @@ use crate::prelude::ui::*;
 pub struct ConditionalWidget {
     if_true: Box<dyn Widget>,
     if_false: Option<Box<dyn Widget>>,
-    cond: ElementCondition,
+    cond: BuildableCondition,
 
     #[chain] style: Style,
 
@@ -16,7 +16,7 @@ impl ConditionalWidget {
     pub fn new(
         if_true: Box<dyn Widget>,
         if_false: Option<Box<dyn Widget>>,
-        mut cond: ElementCondition,
+        mut cond: BuildableCondition,
     ) -> Self {
         // make sure the condition is built
         cond.build();
@@ -49,12 +49,25 @@ impl ConditionalWidget {
             self.if_false.as_mut()
         }
     }
+
+    fn update_node_display(tree: &mut Tree, node: NodeId) {
+        let mut style = tree.get_style(node).cloned().unwrap();
+        style.display = ui::Display::None;
+        tree.set_style(node, style);
+    }
 }
 
 #[async_trait]
 impl Widget for ConditionalWidget {
     fn name(&self) -> Cow<'static, str>  { "conditional_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
+
+    fn update_styles(&mut self, tree: &mut Tree, resolver: &mut CssResolver, _display_override: Option<ui::Display>) {
+        self.if_true.update_styles(tree, resolver, (!self.value).then_some(ui::Display::None));
+        if let Some(if_false) = &mut self.if_false {
+            if_false.update_styles(tree, resolver, self.value.then_some(ui::Display::None));
+        }
+    }
 
     fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId>  {
         let mut children = Vec::with_capacity(2);
@@ -73,12 +86,7 @@ impl Widget for ConditionalWidget {
 
     fn draw(&self, shell: &mut DrawShell<'_>) {
         let Some(child) = self.get_ele() else { return };
-
-        // let Some(bounds) = shell.tree.relative_bounds(self) else { return };
-        // let trans = Matrix::identity().trans(bounds.pos);
         child.draw(shell);
-        // shell.with_transform(trans, |shell| {
-        // });
     }
 
     fn input(
@@ -98,25 +106,25 @@ impl Widget for ConditionalWidget {
         actions: &mut ActionQueue,
     ) {
         match self.cond.resolve(shell.values) {
-            ElementResolve::Error(e) => {
+            BuildableConditionResult::Error(e) => {
                 error!("!!!!!!!");
                 error!("error with cond {:?}", self.cond);
                 error!("{e:?}");
                 error!("!!!!!!!");
-                self.cond = ElementCondition::Failed;
+                self.cond = BuildableCondition::Failed;
                 return;
             }
-            ElementResolve::True if !self.value => {
+            BuildableConditionResult::True if !self.value => {
                 self.value = true;
                 if let Some(child) = self.if_false.as_ref() {
                     actions.push(UiAction::new(child.node_id(), UiActionType::UpdateDisplay(ui::Display::None)));
                 }
 
                 actions.push(UiAction::new(self.if_true.node_id(), UiActionType::UpdateDisplay(ui::Display::Flex)));
-                actions.push(UiAction::new(self.node_id, UiActionType::MarkDirty));
+                actions.push(UiAction::new(self.node_id, UiActionType::Refresh));
             }
 
-            ElementResolve::False if self.value => {
+            BuildableConditionResult::False if self.value => {
                 self.value = false;
 
                 if let Some(child) = self.if_false.as_ref() {
@@ -124,7 +132,7 @@ impl Widget for ConditionalWidget {
                 }
 
                 actions.push(UiAction::new(self.if_true.node_id(), UiActionType::UpdateDisplay(ui::Display::None)));
-                actions.push(UiAction::new(self.node_id, UiActionType::MarkDirty));
+                actions.push(UiAction::new(self.node_id, UiActionType::Refresh));
             }
 
             _ => {}
@@ -156,11 +164,11 @@ impl Widget for ConditionalWidget {
 
     async fn reload_skin(
         &mut self, 
-        skin_manager: &mut dyn SkinProvider,
+        shell: &mut UpdateShell,
     ) {
-        self.if_true.reload_skin(skin_manager).await;
+        self.if_true.reload_skin(shell).await;
         if let Some(if_false) = self.if_false.as_mut() {
-            if_false.reload_skin(skin_manager).await;
+            if_false.reload_skin(shell).await;
         }
     }
 }

@@ -149,7 +149,7 @@ impl TatakuRenderable for Animation {
                 [ self.pos.x, self.pos.y, size.x, size.y ], 
                 Some(Border::new(Color::CYAN, 5.0)), 
                 Shape::Square, 
-                Color::TRANSPARENT_WHITE, 
+                Color::TRANSPARENT, 
                 transform, 
                 BlendMode::AlphaBlending
             )

@@ -45,6 +45,7 @@ pub use crate::tasks::*;
 pub use crate::menus::*;
 pub use crate::helpers::*;
 pub use crate::managers::*;
+pub use crate::database::*;
 pub use crate::integrations::*;
 
 // tataku-client imports

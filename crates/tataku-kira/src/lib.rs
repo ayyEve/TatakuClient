@@ -12,7 +12,11 @@ use kira::{
         PlaybackState,
     },
 };
-const NO_TWEEN:Tween = Tween { start_time: kira::StartTime::Immediate, duration: Duration::ZERO, easing: kira::Easing::Linear };
+const NO_TWEEN:Tween = Tween { 
+    start_time: kira::StartTime::Immediate, 
+    duration: Duration::ZERO, 
+    easing: kira::Easing::Linear 
+};
 
 pub struct KiraAudio(Mutex<KiraAudioManager<CpalBackend>>);
 impl AudioApi for KiraAudio {
@@ -45,10 +49,6 @@ impl AudioApiInit for KiraAudioInit {
         Ok(Arc::new(KiraAudio(Mutex::new(manager))))
     }
 }
-
-// struct StreamData {
-//     handle: Option<> 
-// }
 
 struct KiraStreamAudioInstance(RwLock<StreamingSoundHandle<FromFileError>>);
 impl KiraStreamAudioInstance {
@@ -106,7 +106,7 @@ impl AudioInstance for KiraStreamAudioInstance {
 
     fn set_volume(&self, vol: f32) {
         let mut handle = self.0.write();
-        handle.set_volume(vol * -20.0, NO_TWEEN);
+        handle.set_volume(volume_to_decibels(vol), NO_TWEEN);
     }
 
     fn set_rate(&self, rate: f32) {
@@ -129,6 +129,10 @@ impl AudioInstance for KiraStreamAudioInstance {
     fn get_duration(&self) -> f32 {
         1.0
     }
+}
+
+fn volume_to_decibels(percent: f32) -> f32 {
+    percent.log10() * 10.0
 }
 
 

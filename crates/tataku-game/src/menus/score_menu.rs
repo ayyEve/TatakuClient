@@ -171,11 +171,22 @@ impl ScoreMenu {
         // }
     }
 
+
+    pub async fn get_replay(&self, settings: &Settings) -> TatakuResult<Score> {
+        info!("Getting replay from {:#?}", self.score.replay_location);
+
+        match &self.score.replay_location {
+            ReplayLocation::Local => get_local_replay_for_score(&self.score),
+            ReplayLocation::Online(downloader) => downloader.get_replay(settings).await,
+            ReplayLocation::OnlineNotExist => Err("Replay is not available :c".into()),
+        }
+    }
+
     async fn replay(&mut self, settings: &Settings) {
         if self.score.replay.is_some() {
             self.do_replay((*self.score).clone()).await;
         } else {
-            match self.score.get_replay(settings).await {
+            match self.get_replay(settings).await {
                 Ok(score) => self.do_replay(score).await,
                 Err(e) => self.actions.push(GameAction::AddNotification(Notification::new_error("Error loading replay", e))),
             }
@@ -337,7 +348,7 @@ impl ScoreMenu {
             };
 
             ($s: expr) => {
-                lines.push(Space::new(FILL, Dimension::Length($s)).boxed());
+                // lines.push(Space::new(FILL, Dimension::Length($s)).boxed());
             }
         }
 
@@ -460,6 +471,9 @@ impl Widget for ScoreMenu {
     fn node_id(&self) -> NodeId { self.node_id }
 
 
+    fn update_styles(&mut self, tree: &mut Tree, resolver: &mut CssResolver, display_override: Option<ui::Display>) {
+        self.node.update_styles(tree, resolver, display_override);
+    }
     fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
         self.node = self.build_view();
 
@@ -672,7 +686,6 @@ impl LeaderboardComponent {
             info
         );
         let acc = info.calc_acc(&score) * 100.0;
-
 
         Self {
             num,

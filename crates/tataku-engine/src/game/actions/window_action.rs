@@ -3,38 +3,55 @@ use image::RgbaImage;
 use tokio::sync::oneshot::Sender as OneshotSender;
 
 #[allow(unused)]
+#[derive(Debug2)]
 pub enum WindowAction {
+    /// Show the system cursor
     ShowCursor,
+
+    /// Hide the system cursor
     HideCursor,
+
+    /// Request the user's attention
     RequestAttention,
+
+    /// Close the game
     CloseGame,
+
+    /// Take a screenshot
     TakeScreenshot(ScreenshotInfo),
+
+    /// Load an image
     LoadImage(LoadImage),
+
+    /// Copy some text to the clipboard
     CopyToClipboard(String),
 
+    /// Refresh available monitors
     RefreshMonitors,
 
-    RenderData(Vec<Arc<dyn TatakuRenderable>>),
+    /// Update the data to render
+    RenderData(#[debug(skip)] Vec<Arc<dyn TatakuRenderable>>),
+
+    /// Update the display to match the settings
     SettingsUpdated(DisplaySettings),
 
+    /// Add a particle emitter
     AddEmitter(EmitterReference),
-    // MediaControlEvent(souvlaki::MediaControlEvent),
 }
-
-impl std::fmt::Debug for WindowAction {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "WindowAction")
+impl From<WindowAction> for TatakuAction {
+    fn from(value: WindowAction) -> Self {
+        Self::WindowAction(value)
     }
 }
 
-
+#[derive(Debug2)]
 pub enum LoadImage {
-    Image(RgbaImage, OneshotSender<TatakuResult<TextureReference>>),
-    Font(ActualFont, f32, Option<OneshotSender<TatakuResult<()>>>),
+    #[debug(skip)] Image(RgbaImage, OneshotSender<TatakuResult<TextureReference>>),
+    Font(ActualFont, f32, #[debug(skip)] Option<OneshotSender<TatakuResult<()>>>),
     FreeTexture(TextureReference),
 
-    CreateRenderTarget((u32, u32), OneshotSender<TatakuResult<RenderTarget>>, RenderTargetDraw),
-    UpdateRenderTarget(RenderTarget, OneshotSender<()>, RenderTargetDraw),
+    #[debug(skip)] CreateRenderTarget((u32, u32), OneshotSender<TatakuResult<RenderTarget>>, RenderTargetDraw),
+    #[debug(skip)] UpdateRenderTarget(RenderTarget, OneshotSender<()>, RenderTargetDraw),
 }
 
 
@@ -42,10 +59,4 @@ pub enum LoadImage {
 pub struct ScreenshotInfo {
     pub upload: bool,
     // pub region: Option<Bounds>,
-}
-
-impl From<WindowAction> for TatakuAction {
-    fn from(value: WindowAction) -> Self {
-        Self::WindowAction(value)
-    }
 }

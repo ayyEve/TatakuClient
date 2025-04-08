@@ -11,8 +11,6 @@ pub use tataku_replay::*;
 pub use tataku_beatmap::*;
 
 
-
-
 // stolen from peppy, /shrug
 pub fn map_difficulty(diff:f32, min:f32, mid:f32, max:f32) -> f32 {
     if diff > 5.0 {
@@ -31,6 +29,5 @@ pub enum NoteType {
     Note,
     Slider,
     Spinner,
-    /// mania only
     Hold
 }

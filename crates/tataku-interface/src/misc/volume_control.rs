@@ -87,7 +87,7 @@ impl VolumeControl {
             let master_border = Rectangle::new(
                 self.window_size - Vector2::new(border_size.x + border_padding, 90.0),
                 border_size,
-                Color::TRANSPARENT_WHITE,
+                Color::TRANSPARENT,
                 Some(Border::new(Color::RED, 1.0))
             );
             // fill
@@ -111,7 +111,7 @@ impl VolumeControl {
             let effect_border = Rectangle::new(
                 self.window_size - Vector2::new(border_size.x + border_padding, 60.0),
                 border_size,
-                Color::TRANSPARENT_WHITE,
+                Color::TRANSPARENT,
                 Some(Border::new(Color::RED, 1.0))
             );
             // fill
@@ -135,7 +135,7 @@ impl VolumeControl {
             let music_border = Rectangle::new(
                 self.window_size - Vector2::new(border_size.x + border_padding, 30.0),
                 border_size,
-                Color::TRANSPARENT_WHITE,
+                Color::TRANSPARENT,
                 Some(Border::new(Color::RED, 1.0))
             );
             // fill

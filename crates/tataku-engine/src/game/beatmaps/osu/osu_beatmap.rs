@@ -159,17 +159,6 @@ impl OsuBeatmap {
                     }
                 }
                 BeatmapSection::Events => {
-                    // let mut split = line.split(',');
-                    // // eventType,startTime,eventParams
-                    // // 0,0,filename,xOffset,yOffset
-                    // let event_type = split.next().unwrap();
-
-                    // if event_type == "0" && split.next().unwrap() == "0" {
-                    //     let filename = split.next().unwrap().to_owned();
-                    //     let filename = filename.trim_matches('"');
-                    //     metadata.image_filename = parent_dir.join(filename).to_str().unwrap().to_owned();
-                    // }
-
                     if line.starts_with("//") { continue }
 
                     match OsuEvent::from_str(&line) {
@@ -187,11 +176,8 @@ impl OsuBeatmap {
                         Err(_e) => {
                             if !metadata_only {
                                 storyboard_lines.push(line);
+                                //error!("error parsing event: {e}")
                             }
-
-                            // if !metadata_only {
-                            //     error!("error parsing event: {e}")
-                            // }
                         }
                     }
                 }
@@ -311,10 +297,6 @@ impl OsuBeatmap {
                             new_combo,
                             color_skip
                         });
-                        // let diff_map = map_difficulty_range(beatmap.metadata.od as f64, 3.0, 5.0, 7.5);
-                        // let hits_required:u16 = ((length / 1000.0 * diff_map) * 1.65).max(1.0) as u16; // ((this.Length / 1000.0 * this.MapDifficultyRange(od, 3.0, 5.0, 7.5)) * 1.65).max(1.0)
-                        // let spinner = Spinner::new(time, end_time, sv, hits_required);
-                        // beatmap.notes.lock().push(Box::new(spinner));
                     } else if (read_type & 2u64.pow(7)) > 0 { // mania hold
                         let end_time = split.next().unwrap().split(":").next().unwrap().parse::<f32>().unwrap();
                         beatmap.holds.push(HoldDef {
@@ -424,10 +406,6 @@ impl OsuBeatmap {
         b
     }
 
-    // pub fn bpm_multiplier_at(&self, time:f32) -> f32 {
-    //     self.control_point_at(time).bpm_multiplier()
-    // }
-
 }
 #[async_trait]
 impl TatakuBeatmap for OsuBeatmap {
@@ -516,7 +494,6 @@ impl OsuTimingPoint {
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(str: &str) -> Self {
         // time,beatLength,meter,sampleSet,sampleIndex,volume,uninherited,effects
-        // debug!("{}", str.clone());
         let mut split = str.split(',');
         let time = split.next().unwrap_or("0").parse::<f32>().unwrap_or(0.0);
         let beat_length = split.next().unwrap_or("0").parse::<f32>().unwrap_or(0.0);

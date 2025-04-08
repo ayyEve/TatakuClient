@@ -80,6 +80,10 @@ impl Widget for GenericDialog {
     fn name(&self) -> Cow<'static, str> { "generic_dialog".into() }
     fn node_id(&self) -> NodeId { self.node_id }
     
+    fn update_styles(&mut self, tree: &mut Tree, resolver: &mut CssResolver, display_override: Option<ui::Display>) {
+        self.node.update_styles(tree, resolver, display_override);
+    }
+    
     fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
         self.node = self.build_view(shell.owner);
         let child = self.node.layout(shell)?;

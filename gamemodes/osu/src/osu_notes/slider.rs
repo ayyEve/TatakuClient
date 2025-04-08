@@ -333,6 +333,16 @@ impl OsuSlider {
 
                     let mut distance_along_segment_next_cell = distance_next_cell / dir;
 
+
+
+                    // FIXME: NEB !!?!?!?!!!?!!????!?!?!!!?!?!?!?!?!?!??????!?!!!?!?!?!?
+                    if distance_along_segment_next_cell.x == -0.0 {
+                        distance_along_segment_next_cell.x = 0.0
+                    }
+                    if distance_along_segment_next_cell.y == -0.0 {
+                        distance_along_segment_next_cell.y = 0.0
+                    }
+
                     debug_assert!(distance_along_segment_next_cell.x.is_sign_positive());
                     debug_assert!(distance_along_segment_next_cell.y.is_sign_positive());
 
@@ -537,7 +547,7 @@ impl OsuSlider {
             group.push(Circle::new(
                 Vector2::ZERO,
                 self.radius,
-                Color::TRANSPARENT_WHITE,
+                Color::TRANSPARENT,
                 Some(Border::new(border_color, 2.0))
             ));
 
@@ -849,7 +859,7 @@ impl HitObject for OsuSlider {
                 list.push(Circle::new(
                     self.slider_ball_pos,
                     self.radius * OK_TICK_RADIUS_MULT,
-                    Color::TRANSPARENT_WHITE,
+                    Color::TRANSPARENT,
                     Some(Border::new(if self.sliding_ok {Color::LIME} else {Color::RED}.alpha(alpha), 2.0)
                 )));
             }

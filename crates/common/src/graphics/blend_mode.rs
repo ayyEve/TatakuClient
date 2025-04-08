@@ -15,7 +15,11 @@ pub enum BlendMode {
     /// because peppy stupid
     OsuAdditiveBlending,
 
-    /// special cases
+    // special cases
+
+    /// The slider shader
     Slider,
+
+    /// The flashlight shader
     Flashlight,
 }

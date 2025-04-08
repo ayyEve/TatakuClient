@@ -1,10 +1,30 @@
+mod css_parse;
 mod widget_impls;
 mod settings_menu;
+mod custom_debug;
 mod settings_deserializer;
 
 use proc_macro::TokenStream;
 use quote::*;
 use syn::*;
+
+#[proc_macro_derive(Debug2, attributes(debug))]
+pub fn impl_debug2(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    // Parse the string representation
+    let ast = syn::parse(input).unwrap();
+
+    // Build the impl
+    custom_debug::derive(&ast).into()
+}
+
+#[proc_macro_derive(ParseCss, attributes(css))]
+pub fn impl_parse_css(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    // Parse the string representation
+    let ast = syn::parse(input).unwrap();
+
+    // Build the impl
+    css_parse::derive(&ast).into()
+}
 
 #[proc_macro_derive(Widget, attributes(widget))]
 pub fn impl_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {

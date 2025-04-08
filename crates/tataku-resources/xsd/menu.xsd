@@ -1,0 +1,68 @@
+<?xml version="1.0"?>
+<xs:schema 
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:actions="tataku/actions"
+  xmlns:events="tataku/events"
+  xmlns:elements="tataku/elements"
+>
+
+<!-- imports -->
+<xs:import namespace="tataku/actions" schemaLocation="actions.xsd"/>
+<xs:import namespace="tataku/events" schemaLocation="events.xsd"/>
+<xs:import namespace="tataku/elements" schemaLocation="elements.xsd"/>
+
+
+<!-- entry point definition -->
+<xs:element name="menu">
+  <xs:complexType>
+    <xs:sequence>
+      <xs:element name="style" type="xs:string" minOccurs="0"/>
+      <xs:element name="events" type="event-list" minOccurs="0"/>
+
+      <xs:element name="element">
+        <xs:complexType>
+          <xs:group ref="elements:element"/>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:string" use="required"/>
+  </xs:complexType>
+</xs:element>
+
+
+
+<xs:complexType name="event-list">
+<xs:sequence>
+    <xs:element name="event" maxOccurs="unbounded">
+      <xs:complexType>
+        <xs:sequence>
+          <xs:choice>
+            <xs:group ref="events:event-type"/>
+            <xs:element name="event"> 
+              <xs:complexType>
+                <xs:group ref="events:event-type"/>
+              </xs:complexType>
+            </xs:element>
+          </xs:choice>
+
+          <xs:element name="actions" type="action-list"/>
+        </xs:sequence>
+      </xs:complexType>
+    </xs:element>
+</xs:sequence>
+</xs:complexType>
+
+
+<xs:complexType name="action-list">
+  <xs:choice maxOccurs="unbounded">
+      <xs:group ref="actions:action-type"/>
+      <xs:element name="action">
+        <xs:complexType>
+          <xs:group ref="actions:action-type"/>
+        </xs:complexType>
+      </xs:element>
+  </xs:choice>
+</xs:complexType>
+
+
+</xs:schema> 

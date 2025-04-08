@@ -635,16 +635,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bstr"
-version = "1.11.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "531a9155a481e2ee699d4f98f43c0ca4ff8ee1bfd55c31e9e98fb29d2b176fe0"
-dependencies = [
- "memchr",
- "serde",
-]
-
-[[package]]
 name = "bumpalo"
 version = "3.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2807,31 +2797,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mlua"
-version = "0.10.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3f763c1041eff92ffb5d7169968a327e1ed2ebfe425dac0ee5a35f29082534b"
-dependencies = [
- "bstr",
- "either",
- "mlua-sys",
- "num-traits",
- "parking_lot",
- "rustc-hash 2.1.1",
-]
-
-[[package]]
-name = "mlua-sys"
-version = "0.6.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1901c1a635a22fe9250ffcc4fcc937c16b47c2e9e71adba8784af8bca1f69594"
-dependencies = [
- "cc",
- "cfg-if",
- "pkg-config",
-]
-
-[[package]]
 name = "naga"
 version = "23.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3590,6 +3555,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "165859e9e55f79d67b96c5d96f4e88b6f2695a1972849c15a6a3f5c59fc2c003"
 dependencies = [
  "memchr",
+ "serde",
 ]
 
 [[package]]
@@ -4150,6 +4116,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d66dc143e6b11c1eddc06d5c423cfc97062865baf299914ab64caa38182078fe"
 
 [[package]]
+name = "simplecss"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a9c6883ca9c3c7c90e888de77b7a5c849c779d25d74a1269b0218b14e8b136c"
+dependencies = [
+ "log",
+]
+
+[[package]]
 name = "slab"
 version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4547,9 +4522,9 @@ dependencies = [
  "cgmath",
  "guillotiere",
  "image",
- "mlua",
  "num-format",
  "parking_lot",
+ "paste",
  "rand 0.9.0",
  "reqwest",
  "serde",
@@ -4596,6 +4571,7 @@ version = "0.5.0"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
+ "bitflags 2.9.0",
  "clipboard",
  "crossbeam",
  "encoding_rs",
@@ -4607,18 +4583,17 @@ dependencies = [
  "libloading",
  "lzma-rs",
  "md5",
- "mlua",
  "native-tls",
  "num-format",
  "parking_lot",
  "rand 0.9.0",
  "raw-window-handle",
  "reqwest",
- "rusqlite",
  "serde",
  "serde_json",
  "serde_yaml",
  "sha2",
+ "simplecss",
  "strfmt",
  "taffy",
  "tataku-client-common",
@@ -4647,8 +4622,10 @@ dependencies = [
  "lazy_static",
  "libloading",
  "native-tls",
+ "quick-xml",
  "rand 0.9.0",
  "reqwest",
+ "rusqlite",
  "rustls",
  "serde",
  "serde_json",
@@ -4684,12 +4661,13 @@ version = "0.1.0"
 dependencies = [
  "async-recursion",
  "chrono",
- "mlua",
+ "quick-xml",
+ "serde",
+ "simplecss",
  "taffy",
  "tataku-client-common",
  "tataku-engine",
  "tataku-resources",
- "uuid 1.14.0",
 ]
 
 [[package]]

@@ -12,7 +12,6 @@ mod window;
 mod locale;
 mod graphics;
 mod settings;
-mod databases;
 mod tataku_event;
 mod tataku_integration_event;
 pub mod prelude;

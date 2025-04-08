@@ -121,7 +121,7 @@ impl HitObject for UTypingNote {
             list.push(Circle::new(
                 self.pos,
                 self.settings.note_radius,
-                Color::TRANSPARENT_WHITE,
+                Color::TRANSPARENT,
                 Some(Border::new(Color::RED, NOTE_BORDER_SIZE))
             ));
         }

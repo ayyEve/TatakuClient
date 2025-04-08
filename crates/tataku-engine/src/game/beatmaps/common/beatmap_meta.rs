@@ -5,27 +5,20 @@ use crate::prelude::*;
 #[derive(Reflect)]
 #[reflect(display="debug")]
 pub struct BeatmapMeta {
-    #[reflect(alias("path"))]
-    pub file_path: String,
-    #[reflect(alias("hash"))]
-    pub beatmap_hash: Md5Hash,
-    #[reflect(alias("type"))]
-    pub beatmap_type: BeatmapType,
+    #[reflect(alias("path"))] pub file_path: String,
+    #[reflect(alias("hash"))] pub beatmap_hash: Md5Hash,
+    #[reflect(alias("type"))] pub beatmap_type: BeatmapType,
 
-    #[reflect(alias("playmode"))]
-    pub mode: String,
+    #[reflect(alias("playmode"))] pub mode: String,
     pub artist: String,
     pub title: String,
     pub artist_unicode: String,
     pub title_unicode: String,
     pub creator: String,
     pub version: String,
-    #[reflect(alias("audio_path"))]
-    pub audio_filename: String,
-    #[reflect(alias("image_path"))]
-    pub image_filename: String,
-    #[reflect(alias("preview", "preview_time"))]
-    pub audio_preview: f32,
+    #[reflect(alias("audio_path"))] pub audio_filename: String,
+    #[reflect(alias("image_path"))] pub image_filename: String,
+    #[reflect(alias("preview", "preview_time"))] pub audio_preview: f32,
 
     pub duration: f32, // time in ms from first note to last note
 
@@ -71,9 +64,9 @@ impl BeatmapMeta {
 
     /// get the title string with the version
     pub fn version_string(&self) -> String {
-        let artist = if self.artist.is_empty() {&self.artist_unicode} else {&self.artist};
-        let title = if self.title.is_empty() {&self.title_unicode} else {&self.title};
-        format!("{} - {} [{}]", artist, title, self.version)  
+        let artist = if self.artist.is_empty() { &self.artist_unicode } else { &self.artist };
+        let title = if self.title.is_empty() { &self.title_unicode } else { &self.title };
+        format!("{artist} - {title} [{}]", self.version)  
     }
 
     

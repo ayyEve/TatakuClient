@@ -22,20 +22,25 @@ impl TextWidget {
         }
     }
 
-    fn get_style(&self) -> Style {
-        let text_size = self.text_style
+    fn min_size(&self, tree: &Tree) -> Size<Dimension> {
+        let text_size = tree.get_context(self.node_id).unwrap()
+            .element_data.style()
+            .0.text_style()
             .measure_text(&self.text.get(), None)
             ;
-        
-        Style {
-            min_size: Size {
-                width: Dimension::Length(text_size.x),
-                height: Dimension::Length(text_size.y),
-            },
 
-            ..self.style.clone()
+        Size {
+            width: Dimension::Length(text_size.x),
+            height: Dimension::Length(text_size.y),
         }
     }
+
+    // fn get_style(&self) -> Style {
+    //     Style {
+    //         min_size: self.min_size(),
+    //         ..self.style.clone()
+    //     }
+    // }
 }
 
 
@@ -44,9 +49,18 @@ impl Widget for TextWidget {
     fn name(&self) -> Cow<'static, str> { "text_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
+    fn update_styles(&mut self, tree: &mut Tree, _resolver: &mut CssResolver, _display_override: Option<ui::Display>) {
+        let mut style = tree.get_style(self.node_id).unwrap().clone();
+        style.min_size = self.min_size(tree);
+        tree.set_style(self.node_id, style);
+    }
+    // fn set_text_style(&mut self, style: TextStyle) {
+    //     self.text_style = style;
+    // }
+
     fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
-        self.text_style.font_size *= shell.ui_scale;
-        self.node_id = shell.tree.new_leaf(self.get_style())?;
+        // self.text_style.font_size *= shell.ui_scale;
+        self.node_id = shell.tree.new_leaf(Style::default())?;
         Ok(self.node_id)
     }
 
@@ -56,7 +70,8 @@ impl Widget for TextWidget {
         actions: &mut ActionQueue
     ) {
         if self.text.update(shell.values) {
-            actions.push(UiAction::new(self.node_id, UiActionType::UpdateStyle(Box::new(self.get_style()))));
+            let min = self.min_size(shell.tree);
+            actions.push(UiAction::new(self.node_id, UiActionType::UpdateStyleWith(Box::new(move |style| style.min_size = min))));
             actions.push(UiAction::new(self.node_id, UiActionType::MarkDirty));
         }
     }
@@ -66,73 +81,10 @@ impl Widget for TextWidget {
         shell: &mut DrawShell<'_>, 
     ) {
         let Some(bounds) = shell.tree.absolute_bounds(self) else { return };
-        shell.list.push(self.text_style.create_text(self.text.get().clone().into_owned(), bounds));
-    }
-}
+        let Some(ctx) = shell.tree.get_context(self.node_id) else { return };
+        let style = ctx.element_data.style().0.text_style();
 
-
-#[derive(ChainableInitializer)]
-#[derive(Clone)]
-pub struct TextStyle {
-    #[chain] pub font: Font,
-    #[chain] pub font_size: f32,
-    #[chain] pub color: Color,
-    #[chain] pub line_height: f32,
-
-    #[chain] pub alignment: Alignment,
-}
-impl TextStyle {
-    pub fn measure_text(
-        &self, 
-        text: &str, 
-        scale: Option<Vector2>
-    ) -> Vector2 {
-        Text::measure_text_raw(
-            &[self.font],
-            self.font_size,
-            text,
-            scale.unwrap_or(Vector2::ONE),
-            self.line_height - self.font_size
-        )
-    }
-
-    /// create and layout some text within the provided bounds
-    pub fn create_text(&self, text: String, bounds: Bounds) -> Text {
-        let mut text = Text::new(
-            Vector2::ZERO,
-            self.font_size,
-            text,
-            self.color,
-            self.font
-        );
-        text.line_spacing = self.line_height - self.font_size;
-
-        let offset = self.alignment.resolve(
-            &bounds, 
-            text.measure_text(), 
-            true, 
-            true
-        );
-
-        text.pos = offset;
-
-        text
-    }
-
-}
-
-impl Default for TextStyle {
-    fn default() -> Self {
-        Self { 
-            font: Font::Main, 
-            font_size: 32.0, 
-            color: Color::WHITE, 
-
-            // idk what a sane default for this is
-            line_height: 32.0,
-
-            alignment: Alignment::CENTER_LEFT,
-        }
+        shell.list.push(style.create_text(self.text.get().clone().into_owned(), bounds));
     }
 }
 
@@ -140,7 +92,7 @@ impl Default for TextStyle {
 pub enum WidgetText {
     String(Cow<'static, str>),
     Custom {
-        custom: CustomElementText,
+        custom: BuildableText,
         cached: String,
     },
 }
@@ -183,9 +135,9 @@ impl From<String> for WidgetText {
         Self::String(value.into())
     }
 }
-impl From<CustomElementText> for WidgetText {
-    fn from(mut value: CustomElementText) -> Self {
-        if let Err(e) = value.parse() {
+impl From<BuildableText> for WidgetText {
+    fn from(mut value: BuildableText) -> Self {
+        if let Err(e) = value.compute() {
             error!("error parsing CustomElementText: {e:?}");
         }
 
@@ -197,19 +149,31 @@ impl From<CustomElementText> for WidgetText {
 }
 impl From<TextBuilderValue> for WidgetText {
     fn from(value: TextBuilderValue) -> Self {
-        let val: CustomElementText = value.into();
+        let val: BuildableText = value.into();
         val.into()
     }
 }
 
-impl From<TextBuilderValue> for CustomElementText {
+impl From<TextBuilderValue> for BuildableTextInner {
     fn from(value: TextBuilderValue) -> Self {
         match value {
-            TextBuilderValue::Static(s) => Self::Text(s),
-            TextBuilderValue::Variable(v) => Self::Variable(v),
-            TextBuilderValue::Calc(c) => Self::Calc(c),
-            TextBuilderValue::List(list, join) => 
-                Self::List(list.into_iter().map(|i| i.into()).collect(), join),
+            TextBuilderValue::Static(s) => BuildableTextInner::Text(s),
+            TextBuilderValue::Variable(v) => BuildableTextInner::Variable(v),
+            TextBuilderValue::Calc(c) => BuildableTextInner::Calc(c),
+            TextBuilderValue::List(_list, _join) => panic!("nested list is unsupported!"),
+        }
+    }
+}
+impl From<TextBuilderValue> for BuildableText {
+    fn from(value: TextBuilderValue) -> Self {
+        match value {
+            TextBuilderValue::Static(s) => BuildableTextInner::Text(s).into(),
+            TextBuilderValue::Variable(v) => BuildableTextInner::Variable(v).into(),
+            TextBuilderValue::Calc(c) => BuildableTextInner::Calc(c).into(),
+            TextBuilderValue::List(list, join) => BuildableText {
+                join: Some(join),
+                text: list.into_iter().map(|i| i.into()).collect()
+            },
         }
     }
 }

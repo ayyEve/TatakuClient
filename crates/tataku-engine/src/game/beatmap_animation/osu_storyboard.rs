@@ -350,10 +350,6 @@ async fn try_load_image(
             // let filename = file.file_name().to_str().unwrap();
             let filepath2 = parent.join(file.file_name()).to_string_lossy().to_string();
             found = skin_manager.get_texture(&filepath2, &TextureSource::Raw, SkinUsage::Beatmap, false).await;
-            // if found.is_some() {
-            //     warn!("using file {filepath2} instead of {filepath} for storyboard");
-            // }
-
             break;
         }
 

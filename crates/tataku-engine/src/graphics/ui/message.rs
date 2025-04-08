@@ -27,11 +27,12 @@ impl Message {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize)]
 pub enum MessageTag {
     Number(usize),
     String(String),
-    Beatmap(Arc<BeatmapMeta>),
-    GameplayMod(GameplayMod)
+    #[serde(skip)] Beatmap(Arc<BeatmapMeta>),
+    #[serde(skip)] GameplayMod(GameplayMod)
 }
 impl MessageTag {
     pub fn as_string(&self) -> Option<&String> {

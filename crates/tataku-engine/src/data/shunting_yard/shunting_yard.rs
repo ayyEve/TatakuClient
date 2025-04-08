@@ -200,7 +200,7 @@ impl CurrentThing {
 }
 
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Operator {
     // math
     Add,
@@ -309,7 +309,7 @@ enum MathFunction {
     Abs,
     Sin,
     Cos,
-    Tan
+    Tan,
 }
 impl MathFunction {
     fn run(self, val: Cow<'_, TatakuValue>) -> ShuntingYardResult<Cow<'_, TatakuValue>> {

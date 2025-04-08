@@ -1,18 +1,16 @@
 use crate::prelude::*;
 
 /// An action from a menu (or dialog) to tell the game to do something
-#[derive(Default)]
+#[derive(Default, Debug2)]
 pub enum TatakuAction {
     /// Don't do anything (this is a helper)
-    #[default]
-    None,
+    #[default] None,
 
     /// Perform an audio action
     Audio(AudioAction),
 
     /// Perform a menu operation
     Menu(MenuAction),
-
 
     /// Perform a game operation
     Game(Box<GameAction>),
@@ -45,33 +43,13 @@ pub enum TatakuAction {
     WindowAction(WindowAction),
 
     /// Download a file
-    Download(Box<Downloadable>),
+    Download(#[debug(skip)] Box<Downloadable>),
 
     /// Handle an event
     Event(TatakuIntegrationEvent),
-}
-impl std::fmt::Debug for TatakuAction {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::None => write!(f, "None"),
-            Self::Menu(menu) => write!(f, "Menu({menu:?})"),
-            Self::Audio(action) => write!(f, "Audio({action:?})"),
-            Self::Game(game) => write!(f, "Game({game:?})"),
-            Self::Beatmap(map) => write!(f, "Beatmap({map:?})"),
-            Self::Song(song) => write!(f, "Song({song:?})"),
-            Self::Mods(mods) => write!(f, "Mods({mods:?})"),
-            Self::Online(action) => write!(f, "Online({action:?})"),
-            Self::Ui(action) => write!(f, "Ui({action:?})"),
-            Self::Download(action) => write!(f, "Download({action:?})"),
-            #[cfg(feature="graphics")]
-            // Self::PerformOperation(_) => write!(f, "PerformOperation"),
-            Self::Multiplayer(multi) => write!(f, "Multiplayer({multi:?})"),
-            Self::Task(task) => write!(f, "Task({task:?})"),
-            Self::CursorAction(action) => write!(f, "CursorAction({action:?})"),
-            Self::WindowAction(action) => write!(f, "WindowAction({action:?})"),
-            Self::Event(e) => write!(f, "Event({e:?})"),
-        }
-    }
+
+    /// Handle multiple actions
+    Multiple(Vec<Self>)
 }
 
 impl From<Notification> for TatakuAction {

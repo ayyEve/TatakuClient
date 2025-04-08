@@ -143,6 +143,7 @@ impl UiManager {
         mut tataku_events: Vec<(TatakuEventType, Option<TatakuValue>)>,
         values: &mut dyn Reflect,
         actions: &mut ActionQueue,
+        skin_manager: &mut dyn SkinProvider,
     ) {
         self.handle_inputs(input_state, values, actions);
 
@@ -197,11 +198,11 @@ impl UiManager {
 
         // update dialogs
         for dialog in self.dialogs.iter_mut().rev() {
-            dialog.update(values, actions, &mut self.messages);
+            dialog.update(values, actions, &mut self.messages, skin_manager);
         }
 
         // update the root widget
-        self.root_tree.update(values, actions, &mut self.messages);
+        self.root_tree.update(values, actions, &mut self.messages, skin_manager);
         
         
         // im leaving this in
@@ -241,11 +242,11 @@ impl UiManager {
         };
 
         match action {
-            UiActionType::Refresh => tree.mark_refresh("refresh"),
+            UiActionType::Refresh => tree.mark_refresh("Refresh"),
 
             UiActionType::MarkDirty => {
                 tree.mark_dirty(node);
-                tree.mark_refresh("mark dirty");
+                tree.mark_refresh("MarkDirty");
             }
 
             UiActionType::ContextChanged => {
@@ -255,14 +256,21 @@ impl UiManager {
 
             UiActionType::UpdateStyle(style) => {
                 tree.set_style(node, *style);
-                tree.mark_refresh("update style");
+                tree.mark_refresh("UpdateStyle");
+            }
+
+            UiActionType::UpdateStyleWith(f) => {
+                let Some(mut style) = tree.get_style(node).cloned() else { return };
+                f(&mut style);
+                tree.set_style(node, style);
+                tree.mark_refresh("UpdateStyleWith");
             }
 
             UiActionType::UpdateDisplay(display) => {
-                let Some(mut style) = tree.get_style(node).cloned() else { return };
+                let Some(mut style) = tree.get_style(node).cloned() else { return warn!("style not found for node: {node:?}")};
                 style.display = display;
                 tree.set_style(node, style);
-                tree.mark_refresh("update display");
+                tree.mark_refresh("UpdateDisplay");
             }
 
             UiActionType::DialogAction(action) if num > 0 => {
@@ -299,6 +307,28 @@ impl UiManager {
             UiActionType::DialogAction(action) => {
                 warn!("trying to run dialog action {action:?} on menu!");
             }
+        }
+    }
+
+
+
+    pub async fn reload_skin(
+        &mut self, 
+        values: &mut dyn Reflect,
+        skin_manager: &mut dyn SkinProvider,
+    ) {
+        self.root_tree.reload_skin(
+            values,
+            &mut self.messages,
+            skin_manager
+        ).await;
+        
+        for i in self.dialogs.iter_mut() {
+            i.reload_skin(
+                values,
+                &mut self.messages,
+                skin_manager
+            ).await
         }
     }
 

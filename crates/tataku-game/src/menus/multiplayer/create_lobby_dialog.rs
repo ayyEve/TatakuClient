@@ -31,9 +31,9 @@ impl CreateLobbyDialog {
             TextWidget::new("Create Lobby: ").boxed(),
             TextWidget::new(" ").boxed(),
             
-            TextInput::new("Lobby Name", CustomElementText::Variable(LOBBY_NAME_PATH.to_string())).on_input(move |t: &str| Message::new(owner, "lobby_name", MessageValue::Text(t.to_string()))).boxed(),
-            TextInput::new("Lobby Password", CustomElementText::Variable(LOBBY_PASSWORD_PATH.to_string())).on_input(move |t: &str| Message::new(owner, "lobby_password", MessageValue::Text(t.to_string()))).boxed(),
-            Checkbox::new("Private", ElementCondition::Unbuilt(LOBBY_PRIVATE_PATH.to_owned())).on_toggle(move |v| Message::new(owner, "lobby_private", MessageValue::Toggle(v))).boxed(),
+            TextInput::new("Lobby Name", BuildableTextInner::Variable(LOBBY_NAME_PATH.to_string()).as_buildable()).on_input(move |t: &str| Message::new(owner, "lobby_name", MessageValue::Text(t.to_string()))).boxed(),
+            TextInput::new("Lobby Password", BuildableTextInner::Variable(LOBBY_PASSWORD_PATH.to_string()).as_buildable()).on_input(move |t: &str| Message::new(owner, "lobby_password", MessageValue::Text(t.to_string()))).boxed(),
+            Checkbox::new("Private", BuildableCondition::Unbuilt(LOBBY_PRIVATE_PATH.to_owned())).on_toggle(move |v| Message::new(owner, "lobby_private", MessageValue::Toggle(v))).boxed(),
             
             row!(
                 Button::new(TextWidget::new("Done").boxed()).on_press(Message::new(owner, "done", MessageValue::Click)).boxed(),
@@ -50,6 +50,9 @@ impl Widget for CreateLobbyDialog {
     fn name(&self) -> Cow<'static, str> { "create_lobby_dialog".into() }
     fn node_id(&self) -> NodeId { self.node_id }
     
+    fn update_styles(&mut self, tree: &mut Tree, resolver: &mut CssResolver, display_override: Option<ui::Display>) {
+        self.node.update_styles(tree, resolver, display_override);
+    }
     fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId>  {
         // insert/clear our values
         shell.values.reflect_insert(LOBBY_NAME_PATH, String::new()).unwrap();

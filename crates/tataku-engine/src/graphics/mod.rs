@@ -1,6 +1,6 @@
 
 #[cfg(feature="graphics")]
-mod ui;
+pub mod ui;
 mod api;
 mod skinning;
 mod transform;

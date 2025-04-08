@@ -46,7 +46,6 @@ impl From<MultiplayerAction> for TatakuAction {
 
 #[derive(Debug)]
 pub enum LobbyAction {
-
     /// Start the match
     Start,
 
@@ -86,8 +85,10 @@ pub enum LobbySlotAction {
     /// Move to the provided slot
     MoveTo(u8),
 
+    /// Lock the provided slot
     Lock(u8),
     
+    /// Unlock the provided slot
     Unlock(u8),
 
     /// Show the profile for the user in the provided slot

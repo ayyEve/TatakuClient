@@ -6,7 +6,12 @@ edition.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
-default = [ "storyboards", "bass_audio", "all_integrations" ]
+default = [
+    "storyboards",
+    "bass_audio",
+    # "kira_audio",
+    "all_integrations"
+]
 
 # integrations
 all_integrations = [ "discord", "lastfm", "media_controls" ]
@@ -25,6 +30,8 @@ dynamic_gamemodes = [ "tataku-game/dynamic_gamemodes" ]
 
 texture_arrays = [ "tataku-wgpu/texture_arrays" ]
 debug_sliders = [ "gamemode-osu/debug_sliders" ]
+
+
 
 [dependencies]
 tataku-common.workspace = true

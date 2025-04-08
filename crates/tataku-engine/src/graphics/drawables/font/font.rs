@@ -27,6 +27,12 @@ pub struct ActualFont {
     // if the size is loaded but the char isnt found, dont try to load the font
     queued_for_load: Arc<RwLock<HashSet<u32>>>,
 }
+impl std::fmt::Debug for ActualFont {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(&self.name, f)
+    }
+}
+
 #[cfg(feature = "graphics")]
 impl ActualFont {
     pub fn load(path: impl AsRef<Path>) -> Option<Self> {
@@ -132,14 +138,13 @@ impl ActualFont {
 
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
+#[derive(Deserialize)]
+#[serde(rename_all="camelCase")]
 pub enum Font {
     #[default]
     Main,
     Fallback,
     FontAwesome,
-    // // boxed to keep the Font type small (16 vs 48)
-    // #[allow(unused)]
-    // Custom(Box<ActualFont>)
 }
 #[cfg(feature = "graphics")]
 impl Deref for Font {
@@ -149,7 +154,6 @@ impl Deref for Font {
             Self::Main => &MAIN_FONT,
             Self::Fallback => &FALLBACK_FONT,
             Self::FontAwesome => &FONT_AWESOME,
-            // Self::Custom(font) => font
         }
     }
 }

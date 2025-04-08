@@ -33,11 +33,11 @@ impl AdofaiBeatmap {
             '"', '[',']', ':', '{', '}', '\\', '/', '\'', ',', '\n', ' ', '_', '.', '-', '!'
         ];
 
-        let file_contents:String = file_contents.chars().filter(|c|c.is_alphanumeric() || allowed_chars.contains(c)).collect();
+        let file_contents:String = file_contents.chars().filter(|c| c.is_alphanumeric() || allowed_chars.contains(c)).collect();
 
         let mut map:AdofaiBeatmap = match serde_json::from_str(&file_contents) {
             Ok(m) => m,
-            Err(e) => panic!("error reading adofai map '{}': {}", path, e),
+            Err(e) => panic!("error reading adofai map '{path}': {e}"),
         };
 
         map.hash = Io::get_file_hash(&path).unwrap();
@@ -160,14 +160,14 @@ impl TatakuBeatmap for AdofaiBeatmap {
     }
 
     fn playmode(&self, _incoming:String) -> String {
-        //TODO
+        // TODO: 
         "taiko".to_owned()
     }
 
     fn slider_velocity(&self) -> f32 { 1.0 }
 }
 
-fn char2beat(c:char) -> f32 {
+fn char2beat(c: char) -> f32 {
     match c {
         '!' => -1.0, // hold, 8/8
         'R' => 0.0, // 8/8
@@ -188,7 +188,7 @@ fn char2beat(c:char) -> f32 {
         'J' => 1.875, // 15/8
 
         _ => {
-            warn!("unknown char '{}'", &c);
+            warn!("unknown char '{c}'");
             0.0
         }
     }
@@ -328,8 +328,8 @@ pub enum AdofaiEventType {
 #[derive(Deserialize, Default)]
 pub enum Enabled {
     Enabled,
-    #[default]
-    Disabled
+    
+    #[default] Disabled
 }
 impl From<Enabled> for bool {
     fn from(val: Enabled) -> Self {

@@ -30,7 +30,6 @@ impl Circle {
             blend_mode: BlendMode::AlphaBlending,
 
             border,
-            // draw_state: None,
             resolution: 128,
         }
     }

@@ -473,11 +473,35 @@ impl TextInput {
         }
     }
 }
-
-
 impl Widget for TextInput {
     fn name(&self) -> Cow<'static, str> { "text_input_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
+
+    fn update_styles(
+        &mut self, 
+        tree: &mut Tree, 
+        _resolver: &mut CssResolver, 
+        _display_override: Option<ui::Display>
+    ) {
+        let text_size = tree
+            .get_context(self.node_id)
+            .unwrap()
+            .element_data.style()
+            .0.text_style()
+            .measure_text(&self.get_text(), None)
+            ;
+
+        let mut style = tree.get_style(self.node_id).unwrap().clone();
+        style.min_size = Size {
+            width: Dimension::Length(text_size.x),
+            height: Dimension::Length(text_size.y),
+        };
+        tree.set_style(self.node_id, style);
+    }
+
+    fn set_text_style(&mut self, style: TextStyle) {
+        self.text_style = style;
+    }
 
     fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
         // let min_size = self.text_style.measure_text(&self.get_text(), None);
@@ -535,12 +559,18 @@ impl Widget for TextInput {
 
                     if text_changed {
                         if let WidgetText::Custom { 
-                            custom: CustomElementText::Variable(var), 
+                            custom,
+                            // : BuildableText {
+                            //     text: vec! [ BuildableTextInner::Variable(var) ], 
+                            //     ..
+                            // },
                             cached 
                         } = &self.value {
-                            let _ = shell.values
-                                .reflect_insert(var, cached.clone())
-                                .inspect_err(|e| warn!("{e:?}"));
+                            if let Some(BuildableTextInner::Variable(var)) = custom.text.get(0) {
+                                let _ = shell.values
+                                    .reflect_insert(var, cached.clone())
+                                    .inspect_err(|e| warn!("{e:?}"));
+                            }
                         }
                             
                         self.handle_action(
@@ -736,7 +766,7 @@ pub enum TextInputAction {
     ActionCallback(TextInputActionCallback),
     ReflectCallback(TextInputReflectCallback),
 
-    Custom(LuaAction),
+    Custom(BuildableAction),
 
     Multi(Vec<Self>),
 }
@@ -754,9 +784,12 @@ impl From<Message> for TextInputAction {
         Self::Message(Some(value))
     }
 }
-impl From<LuaAction> for TextInputAction {
-    fn from(mut value: LuaAction) -> Self {
-        value.build();
+impl From<BuildableAction> for TextInputAction {
+    fn from(mut value: BuildableAction) -> Self {
+        if let BuildableAction::Conditional { cond, .. } = &mut value {
+            cond.build();
+        }
+
         Self::Custom(value)
     }
 }
@@ -789,8 +822,6 @@ impl ControlAction {
         matches!(self, Self::Delete | Self::Backspace)
     }
 }
-
-
 
 #[test]
 /// these tests verify cursor navigation and text input all function as expected

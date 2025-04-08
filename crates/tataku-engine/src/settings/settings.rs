@@ -271,6 +271,7 @@ impl Default for Settings {
 
 #[derive(Reflect)]
 #[reflect(from_string = "auto")]
+#[reflect(display = "display")]
 #[derive(Serialize, Deserialize)]
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub enum ScoreRetreivalMethod {
@@ -317,45 +318,6 @@ impl ScoreRetreivalMethod {
 impl Display for ScoreRetreivalMethod {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self:?}")
-    }
-}
-impl TryFrom<&TatakuValue> for ScoreRetreivalMethod {
-    type Error = String;
-    fn try_from(value: &TatakuValue) -> Result<Self, Self::Error> {
-        match value {
-            TatakuValue::String(s) => {
-                match &**s {
-                    "Local" | "local" => Ok(Self::Local),
-                    "LocalMods" | "local_mods" => Ok(Self::LocalMods),
-
-                    "Global" | "global" => Ok(Self::Global),
-                    "GlobalMods" | "global_mods" => Ok(Self::GlobalMods),
-
-                    "OgGame" | "og_game" => Ok(Self::OgGame),
-                    "OgGameMods" | "og_game_mods" => Ok(Self::OgGameMods),
-
-                    other => Err(format!("invalid ScoreRetreivalMethod str: '{other}'"))
-                }
-            }
-            TatakuValue::U64(n) => {
-                match *n {
-                    0 => Ok(Self::Local),
-                    1 => Ok(Self::LocalMods),
-                    2 => Ok(Self::Global),
-                    3 => Ok(Self::GlobalMods),
-                    4 => Ok(Self::OgGame),
-                    5 => Ok(Self::OgGameMods),
-                    other => Err(format!("Invalid ScoreRetreivalMethod number: {other}")),
-                }
-            }
-
-            other => Err(format!("Invalid ScoreRetreivalMethod value: {other:?}"))
-        }
-    }
-}
-impl From<ScoreRetreivalMethod> for TatakuValue {
-    fn from(val: ScoreRetreivalMethod) -> Self {
-        TatakuValue::String(format!("{val:?}"))
     }
 }
 

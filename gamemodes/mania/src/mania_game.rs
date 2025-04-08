@@ -33,7 +33,7 @@ pub struct ManiaGame {
     game_settings: Arc<ManiaSettings>,
 
     mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
-    map_preferences: BeatmapPlaymodePreferences,
+    // map_preferences: BeatmapPlaymodePreferences,
 
     key_images_up: HashMap<u8, Image>,
     key_images_down: HashMap<u8, Image>,
@@ -300,7 +300,7 @@ impl ManiaGame {
                 list.push(Rectangle::new(
                     Vector2::new(x, self.playfield.hit_y()),
                     self.playfield.note_size(),
-                    if self.column_states[col as usize] { self.get_color(col) } else { Color::TRANSPARENT_WHITE },
+                    if self.column_states[col as usize] { self.get_color(col) } else { Color::TRANSPARENT },
                     Some(Border::new(Color::RED, self.playfield.note_border_width))
                 ));
             }
@@ -342,7 +342,7 @@ impl GameMode for ManiaGame {
         // let window_size = WindowSize::get();
 
         // let all_mania_skin_settings = &SkinManager::skin().await.mania_settings;
-        let map_preferences = Database::get_beatmap_mode_prefs(metadata.beatmap_hash, &"mania".to_owned()).await;
+        // let map_preferences = Database::get_beatmap_mode_prefs(metadata.beatmap_hash, &"mania".to_owned()).await;
         
         // windows
         let hit_windows = vec![
@@ -455,13 +455,14 @@ impl GameMode for ManiaGame {
 
                     end_time: 0.0,
 
-                    sv_mult: map_preferences.scroll_speed,
+                    sv_mult: 1.0,
+                    // sv_mult: map_preferences.scroll_speed,
                     column_count,
 
                     auto_helper,
                     playfield,
                     mania_skin_settings: None,
-                    map_preferences,
+                    // map_preferences,
                     game_settings: Arc::new(game_settings),
                     key_images_up: HashMap::new(),
                     key_images_down: HashMap::new(),
@@ -572,14 +573,14 @@ impl GameMode for ManiaGame {
                     position_function: Arc::new(Vec::new()),
                     
                     end_time: 0.0,
-
-                    sv_mult: map_preferences.scroll_speed,
+                    sv_mult: 1.0,
+                    // sv_mult: map_preferences.scroll_speed,
                     column_count,
 
                     auto_helper,
                     playfield,
                     mania_skin_settings: None,
-                    map_preferences,
+                    // map_preferences,
                     game_settings: Arc::new(game_settings),
                     
                     key_images_up:HashMap::new(),
@@ -663,13 +664,14 @@ impl GameMode for ManiaGame {
                     
                     end_time: 0.0,
 
-                    sv_mult: map_preferences.scroll_speed,
+                    sv_mult: 1.0,
+                    // sv_mult: map_preferences.scroll_speed,
                     column_count,
 
                     auto_helper,
                     playfield,
                     mania_skin_settings: None,
-                    map_preferences,
+                    // map_preferences,
                     game_settings: Arc::new(game_settings),
                     
                     key_images_up:HashMap::new(),
@@ -1066,7 +1068,7 @@ impl GameMode for ManiaGame {
                     } else {
                         self.sv_mult -= self.game_settings.sv_change_delta;
                     }
-                    self.map_preferences.scroll_speed = self.sv_mult;
+                    // self.map_preferences.scroll_speed = self.sv_mult;
 
                     self.set_sv_mult_notes();
 
@@ -1090,10 +1092,10 @@ impl GameMode for ManiaGame {
 
 
     async fn beat_happened(&mut self, pulse_length: f32) {
-        self.columns.iter_mut().flatten().for_each(|n|n.beat_happened(pulse_length))
+        self.columns.iter_mut().flatten().for_each(|n| n.beat_happened(pulse_length))
     }
     async fn kiai_changed(&mut self, is_kiai: bool) {
-        self.columns.iter_mut().flatten().for_each(|n|n.kiai_changed(is_kiai))
+        self.columns.iter_mut().flatten().for_each(|n| n.kiai_changed(is_kiai))
     }
 
 
@@ -1171,11 +1173,11 @@ impl GameMode for ManiaGame {
     }
 }
 
-// when the game is dropped, save settings
-// this is better than saving the update every time the values change
-impl Drop for ManiaGame {
-    fn drop(&mut self) {
-        Database::save_beatmap_mode_prefs(self.map_meta.beatmap_hash, &"mania".to_owned(), &self.map_preferences);
-    }
-}
+// // when the game is dropped, save settings
+// // this is better than saving the update every time the values change
+// impl Drop for ManiaGame {
+//     fn drop(&mut self) {
+//         Database::save_beatmap_mode_prefs(self.map_meta.beatmap_hash, &"mania".to_owned(), &self.map_preferences);
+//     }
+// }
 
