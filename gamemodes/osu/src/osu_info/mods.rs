@@ -1,8 +1,6 @@
 #![allow(non_upper_case_globals)]
 use crate::prelude::*;
 
-// pub struct Hidden;
-
 pub const Flashlight: GameplayMod = GameplayMod {
     name: "flashlight",
     short_name: "FL",

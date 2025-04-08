@@ -166,12 +166,7 @@ mod fuck {
             if let PseudoClass::FirstChild = class {
                 return self.child_index() == Some(0)
             }
-
-            // let Some(ctx) = self.tree.get_context(self.node) else {
-            //     return false
-            // };
-
-            // let state = &ctx.element_data.state;
+            
             let state = self.state;
             match class {
                 PseudoClass::Active => state.contains(ElementState::Active),

@@ -63,16 +63,10 @@ pub struct Game {
     #[cfg(feature="graphics")] render_display: AsyncFpsDisplay,
     #[cfg(feature="graphics")] input_display: AsyncFpsDisplay,
 
-    // transition
-    // transition: Option<GameState>,
-    // transition_last: Option<GameState>,
-    // transition_timer: f32,
-
     // misc
     game_start: TatakuInstant,
     background_image: Option<Image>,
     wallpapers: Vec<Image>,
-    // register_timings: (f32,f32,f32),
 
 
     #[cfg(feature="graphics")]
@@ -117,7 +111,6 @@ impl Game {
             window_proxy,
             input_manager: InputManager::new(),
             volume_controller: VolumeControl::new().await,
-            // dialogs: Vec::new(),
             background_image: None,
             wallpapers: Vec::new(),
             spectator_manager: None,
@@ -142,7 +135,6 @@ impl Game {
 
             integrations: Vec::new(),
 
-            // menus: HashMap::new(),
             current_state: GameState::None,
             queued_state: GameState::None,
             spec_watch_action: SpectatorWatchAction::FullMenu,
@@ -153,14 +145,8 @@ impl Game {
             update_display: FpsDisplay::new("updates/s", 1),
             input_display: AsyncFpsDisplay::new("inputs/s", 0, INPUT_COUNT.clone(), INPUT_FRAMETIME.clone()),
 
-            // // transition
-            // transition: None,
-            // transition_last: None,
-            // transition_timer: 0.0,
-
             // misc
             game_start: TatakuInstant::now(),
-            // register_timings: (0.0,0.0,0.0),
             window_event_receiver: game_event_receiver,
             last_skin: String::new(),
             background_loader: None,
@@ -185,7 +171,6 @@ impl Game {
 
         let mut g = Self {
             volume_controller: VolumeControl::new().await,
-            // dialogs: Vec::new(),
             background_image: None,
             wallpapers: Vec::new(),
             settings: SettingsHelper::new(),
@@ -206,14 +191,8 @@ impl Game {
             queued_state: GameState::None,
             spec_watch_action: SpectatorWatchAction::FullMenu,
 
-            // transition
-            transition: None,
-            transition_last: None,
-            transition_timer: 0.0,
-
             // misc
             game_start: TatakuInstant::now(),
-            // register_timings: (0.0,0.0,0.0),
             last_skin: String::new(),
             background_loader: None,
 
@@ -329,12 +308,9 @@ impl Game {
             }
 
 
-            // // TODO: REMOVE
+            // // TODO: remove when done testing downloads stuff
             // self.download_manager.add_download(Downloadable::fake_download());
         }
-
-
-
 
         #[cfg(feature="graphics")]
         self.queue_state_change(GameState::SetMenu(Box::new(loading_menu))).await;
@@ -582,13 +558,6 @@ impl Game {
 
         let controller_pause = controller_down.iter().any(|(_,a)| a.contains(&ControllerButton::Start));
 
-        // prevent the list from building up and just wasting memory.
-        // not nuking the code because it might be a useful stat in the future
-        let _register_timings = self.input_manager.get_register_delay();
-        // if keys_up.len()+keys_down.len() > 0 {
-        //     info!("register times: min:{:.2}, max: {:.2}, avg:{:.2}", _register_timings.0, _register_timings.1, _register_timings.2);
-        // }
-
         if !mouse_down.is_empty() {
             // check notifs
             if self.notification_manager.on_click(self.values.game.window_size, mouse_pos, &mut self.actions).await {
@@ -619,23 +588,6 @@ impl Game {
                 upload: mods.shift,
             })).unwrap();
         }
-
-        // // direct downloads
-        // if keys_down.contains(&Key::D) && mods.ctrl {
-        //     self.queue_state_change(GameState::InMenu(Box::new(DirectMenu::new("osu".to_string()).await)));
-        //     // self.add_dialog(Box::new(NotificationsDialog::new().await), false);
-        // }
-        // // direct downloads dialog
-        // if keys_down.contains(&Key::J) && mods.ctrl {
-        //     self.add_dialog(Box::new(DirectDownloadDialog::new()), false);
-        // }
-
-
-        // // notfications menu
-        // if keys_down.has_key(Key::B) && mods.ctrl {
-        //     keys_down.remove_key(Key::B);
-        //     self.add_dialog(Box::new(NotificationsDialog::new().await), false);
-        // }
 
         // settings menu
         if keys_down.has_key(Key::O) && mods.ctrl {
@@ -928,14 +880,6 @@ impl Game {
                     };
                 }
             }
-            // GameState::None => {
-            //     // might be transitioning
-            //     if self.transition.is_some() && elapsed - self.transition_timer > TRANSITION_TIME / 2.0 {
-            //         let trans = self.transition.take();
-            //         self.queue_state_change(trans.unwrap());
-            //         self.transition_timer = elapsed;
-            //     }
-            // }
 
             other => self.current_state = other
         }
@@ -957,13 +901,6 @@ impl Game {
             _ => {
                 // force close all dialogs
                 self.ui_manager.force_close_all(&mut self.values, &mut self.actions).await;
-
-                // // handle cleaup of the old state
-                // match &mut current_state {
-                //     GameState::SetMenu(menu) => menu.on_change(false).await,
-                //     // GameState::Spectating(spectator_manager) => spectator_manager.stop(),
-                //     _ => {}
-                // }
 
                 match &mut self.queued_state {
                     GameState::Ingame(manager) => {
@@ -1029,20 +966,9 @@ impl Game {
                         from, 
                         timer: elapsed
                     };
-                    
-                    // self.transition = Some(self.queued_state.take());
-                    // self.transition_timer = elapsed;
-                    // self.transition_last = Some(self.current_state.take());
-
-                    // self.queued_state = GameState::None;
-                    // self.current_state = GameState::None;
                 } else {
                     // old mode was none, or was pause menu, transition to new mode
                     std::mem::swap(&mut self.queued_state, &mut self.current_state);
-
-                    // if let GameState::SetMenu(menu) = &mut self.current_state {
-                    //     menu.on_change(true).await;
-                    // }
                 }
             }
         }
@@ -1257,31 +1183,6 @@ impl Game {
             _ => {}
         }
 
-
-        // // transition
-        // if self.transition_timer > 0.0 && elapsed - self.transition_timer < TRANSITION_TIME {
-        //     // probably transitioning
-
-        //     // // draw old mode
-        //     // match (&self.current_state, &mut self.transition_last) {
-        //     //     // (GameState::None, Some(GameState::InMenu(menu))) => menu.draw(&mut render_queue).await,
-        //     //     _ => {}
-        //     // }
-
-        //     // draw fade in rect
-        //     let diff = elapsed - self.transition_timer;
-
-        //     let mut alpha = diff / (TRANSITION_TIME / 2.0);
-        //     if self.transition.is_none() {alpha = 1.0 - diff / TRANSITION_TIME}
-
-        //     render_queue.push(Rectangle::new(
-        //         Vector2::ZERO,
-        //         self.game.window_size,
-        //         Color::new(0.0, 0.0, 0.0, alpha),
-        //         None
-        //     ));
-        // }
-
         // draw fps's
         self.fps_display.draw(&mut render_queue);
         self.update_display.draw(&mut render_queue);
@@ -1487,11 +1388,6 @@ impl Game {
         } else {
             self.ui_manager.dialogs.retain(|d| d.get_node().name() != "user_panel");
         }
-
-        // if let Some(chat) = Chat::new() {
-        //     self.add_dialog(Box::new(chat));
-        // }
-        // trace!("Show user list: {}", self.show_user_list);
     }
 
     pub fn handle_event(&mut self, event: TatakuIntegrationEvent) {
@@ -1505,8 +1401,6 @@ impl Game {
     #[cfg(feature="graphics")]
     pub async fn set_background_beatmap(&mut self) {
         let Some(filename) = self.values.current_beatmap_prop(|b| b.image_filename.clone()) else { return };
-        // let f = self.skin_manager.get_texture_noskin(&filename, false);
-        // self.background_loader = Some(AsyncLoader::new(f));
         self.background_image = self.skin_manager.get_texture(&filename, &TextureSource::Raw, SkinUsage::Background, false).await;
         if let Some(i) = &mut self.background_image {
             i.origin = Vector2::ZERO;
@@ -1573,15 +1467,6 @@ impl Game {
                                         .use_preview_point(use_preview_time)
                                         .restart_song(false)
                                 ));
-                                // let mods = self.mods.clone();
-                                // self.beatmap_manager.set_current_beatmap(
-                                //     &last,
-                                //     SelectCurrentBeatmapConfig::new(
-                                //         mods,
-                                //         false,
-                                //         use_preview_time
-                                //     )
-                                // ).await;
                             }
                         }
                     }
@@ -1645,7 +1530,6 @@ impl Game {
         // move to a score menu with this as the score
         let score = IngameScore::new(score, false, false);
         let menu = ScoreMenu::new(&score, map, false, self.global.gamemode_infos.clone());
-        // menu.replay = Some(replay);
         self.queued_state = GameState::SetMenu(Box::new(menu));
     }
 
@@ -1669,10 +1553,6 @@ impl Game {
         } else {
             let mut score = manager.score.clone();
             score.accuracy = self.global.gamemode_infos.get_info(&score.playmode).unwrap().calc_acc(&score);
-
-            // let mut replay = manager.score.replay.clone().unwrap();
-            // replay.score_data = Some(score.score.clone());
-
 
             let mut score_submit = None;
             if manager.should_save_score() {
@@ -1699,15 +1579,12 @@ impl Game {
                 // go back to beatmap select
                 GameplayModeInner::Replaying {..} => {
                     self.handle_custom_menu("beatmap_select").await;
-                    // let menu = BeatmapSelectMenu::new().await;
-                    // self.queue_state_change(GameState::SetMenu(Box::new(menu)));
                 }
                 GameplayModeInner::Multiplayer { .. } => {}
 
                 _ => {
                     // show score menu
                     let mut menu = ScoreMenu::new(&score, manager.metadata.clone(), true, self.global.gamemode_infos.clone());
-                    // menu.replay = Some(replay.clone());
                     menu.score_submit = score_submit;
                     self.queue_state_change(GameState::SetMenu(Box::new(menu))).await;
                 }
@@ -1803,7 +1680,6 @@ impl Game {
 
                 let mut info = CurrentLobbyInfo::new(lobby, our_id);
                 OnlineManager::update_usernames(&mut info).await;
-                // info.update_usernames().await;
 
                 let manager = MultiplayerManager::new(info, self.global.gamemode_infos.clone());
                 manager.update_values(&mut self.values);
@@ -1888,10 +1764,8 @@ impl Game {
 
 
     fn update_playmode(&mut self, playmode: String) {
-
         // ensure lowercase
         let playmode = playmode.to_lowercase();
-        // warn!("setting playmode: {new_mode}");
 
         // ensure playmode exists
         let Ok(info) = self.global.gamemode_infos.get_info(&playmode).cloned() else { 
@@ -1913,8 +1787,7 @@ impl Game {
 
         self.values.global.update_playmode_actual(actual_playmode);
 
-        // update mods list as well
-
+        // TODO: update mods list as well?
     }
 
 
@@ -1997,16 +1870,6 @@ impl Game {
                 }
             }
         }
-
-        // update discord presence
-        // if let Some(song) = AudioManager::get_song().await {
-        //     OnlineManager::set_action(SetAction::Listening {
-        //         artist: map.artist.clone(),
-        //         title: map.title.clone(),
-        //         elapsed: song.get_position(),
-        //         duration: song.get_duration()
-        //     }, None);
-        // }
 
         // update song state
         self.values.song.update(self.song_manager.instance());
@@ -2094,10 +1957,6 @@ impl Game {
 
                     if !multi.is_host() { return warn!("trying to set lobby beatmap while not the host ??") };
 
-                    // let Ok(map_hash) = self.values.try_get::<Md5Hash>("map.hash") else { return warn!("no/bad map.hash") };
-                    // let Ok(playmode) = self.values.get_string("global.playmode") else { return warn!("no/bad global.playmode") };
-                    // let Some(map) = self.beatmap_manager.get_by_hash(&map_hash) else { return warn!("no map?") };
-
                     let Some(map) = self.values.beatmap_manager.current_beatmap.clone() else { return };
                     let playmode = self.values.global.playmode.clone();
 
@@ -2109,8 +1968,6 @@ impl Game {
             }
 
             BeatmapAction::Set(beatmap, options) => {
-                // self.beatmap_manager.set_current_beatmap(&mut self.values, &beatmap, options.use_preview_point, options.restart_song).await;
-                // warn!("setting beatmap: {}", beatmap.version_string());
                 self.handle_action(BeatmapAction::SetFromHash(beatmap.beatmap_hash, options)).await;
             }
             BeatmapAction::SetFromHash(hash, options) => {
@@ -2132,14 +1989,13 @@ impl Game {
                 #[cfg(feature="gameplay")]
                 if self.multiplayer_manager.is_some() {
                     // if we're in a multiplayer lobby, and the map doesnt exist, remove the map
-                    // self.beatmap_manager.remove_current_beatmap(&mut self.values).await;
                     self.handle_action(BeatmapAction::Remove).await;
                     return
                 }
 
                 match options.if_none {
                     MapActionIfNone::ContinueCurrent => {},
-                    MapActionIfNone::SetNone => self.handle_action(BeatmapAction::Remove).await, //self.beatmap_manager.remove_current_beatmap(&mut self.values).await,
+                    MapActionIfNone::SetNone => self.handle_action(BeatmapAction::Remove).await, 
                     MapActionIfNone::Random(preview) => {
                         let Some(map) = self.beatmap_manager.random_beatmap() else { return };
                         self.handle_action(BeatmapAction::SetFromHash(map.beatmap_hash, options.use_preview_point(preview))).await;
@@ -2294,12 +2150,6 @@ impl Game {
                             sort_by,
                             &mut self.difficulty_manager
                         ).await;
-                        // self.values.beatmap_manager.refresh_maps(
-                        //     &mods, 
-                        //     &playmode, 
-                        //     sort_by,
-                        //     &mut self.difficulty_manager,
-                        // ).await;
                     }
                     BeatmapListAction::NextMap => self.beatmap_manager.next_map(),
                     BeatmapListAction::PrevMap => self.beatmap_manager.prev_map(),
@@ -2314,16 +2164,6 @@ impl Game {
             #[cfg(not(feature="gameplay"))]
             _ => {}
         }
-
-        // if self.value_checker.beatmap.check(&self.values) {
-        //     let hash = self.values.try_get::<Md5Hash>("map.hash");
-        //     if let Ok(_hash) = hash {
-        //         self.set_background_beatmap().await;
-        //     } else {
-        //         // map was removed
-        //         self.remove_background_beatmap().await;
-        //     }
-        // }
 
         // handle beatmap manager actions
         let bm_actions = self.beatmap_manager.actions.take();
@@ -2431,10 +2271,6 @@ impl Game {
                 if let Err(e) = r {
                     error!("error updating values: {e:?}")
                 }
-
-                // self.values.update_or_insert(&key, TatakuVariableWriteSource::Menu, value, || TatakuVariable::new_any(TatakuValue::None));
-                // self.values.try_insert(&key, || TatakuVariable::new(value, None, true, TatakuVariableAccess::Any));
-                // self.values.update(&key, TatakuVariableWriteSource::Menu, value);
             }
             #[cfg(feature="graphics")]
             GameAction::ViewScore(score) => {
@@ -2640,8 +2476,7 @@ impl Game {
             }
 
             // ignore unhandled messages when either of these features arent enabled
-            #[cfg(any(not(feature="gameplay"), not(feature="graphics")))]
-            _ => {}
+            #[cfg(any(not(feature="gameplay"), not(feature="graphics")))] _ => {}
         }
     }
 

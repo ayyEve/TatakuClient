@@ -20,7 +20,6 @@ impl ManiaAutoHelper {
         if self.states.len() != columns.len() {
             let new_len = columns.len();
             self.states.resize(new_len, AutoplayColumnState::default());
-            // self.notes_hit.resize(new_len, Vec::new());
         }
 
         for c in 0..columns.len() {
@@ -46,7 +45,6 @@ impl ManiaAutoHelper {
             let note = &columns[c][column_indices[c]];
             if time >= note.time() && !note.was_hit() {
                 // if the key is already down, dont press it again
-                // if timer.0 == note.end_time(15.0) && 
                 if state.pressed { continue }
 
                 // press the key, and hold it until the note's end time

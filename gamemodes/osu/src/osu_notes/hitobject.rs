@@ -2,8 +2,8 @@ use crate::prelude::*;
 
 #[async_trait]
 pub trait OsuHitObject: HitObject {
-    /// return the window-scaled coords of this object at time
-    fn pos_at(&self, time:f32) -> Vector2;
+    /// return the window-scaled coords of this object at `time`
+    fn pos_at(&self, time: f32) -> Vector2;
 
     fn new_combo(&self) -> bool;
     fn set_combo_color(&mut self, color: Color);

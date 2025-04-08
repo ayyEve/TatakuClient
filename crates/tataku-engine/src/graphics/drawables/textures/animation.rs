@@ -1,6 +1,5 @@
 use crate::prelude::*;
 
-// TODO: should we change frame delays from a vec to just an f32? seems pointless as-is
 #[derive(Clone)]
 pub struct Animation {
     pub size: Vector2,
@@ -139,18 +138,17 @@ impl TatakuRenderable for Animation {
         let image = &self.frames[self.frame_index];
         g.draw_tex(image, color, false, false, transform, self.blend_mode);
 
-        if self.draw_debug {
-            let size = self.size();
+        // if self.draw_debug {
+        //     let size = self.size();
 
-            g.draw_rect(
-                [ self.pos.x, self.pos.y, size.x, size.y ], 
-                Some(Border::new(Color::CYAN, 5.0)), 
-                Shape::Square, 
-                Color::TRANSPARENT, 
-                transform, 
-                BlendMode::AlphaBlending
-            )
-        }
+        //     g.draw_rect(
+        //         [ self.pos.x, self.pos.y, size.x, size.y ], 
+        //         Some(Border::new(Color::CYAN, 5.0)), 
+        //         Shape::Square, 
+        //         Color::TRANSPARENT, 
+        //         transform, 
+        //         BlendMode::AlphaBlending
+        //     )
+        // }
     }
 }
-

@@ -216,7 +216,6 @@ impl HitCircleImageHelper {
         }
 
         if include_combo_num {
-            // let radius = CIRCLE_RADIUS_BASE * self.scaling_helper.scaled_cs;
             let size = self.scaling_helper.circle_size;
             let rect = Bounds::new(-size / 2.0, size);
 

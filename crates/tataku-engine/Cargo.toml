@@ -8,7 +8,7 @@ edition.workspace = true
 
 [features]
 default = [ "gameplay" ]
-gameplay = [ "graphics", "gilrs" ]
+gameplay = [ "graphics" ]
 # kira_audio = ["rustfft", "uuid"]
 debug_hitsounds = []
 debug_perf_rating = []
@@ -49,9 +49,6 @@ fontdue = { workspace = true, optional = true }
 winit = { workspace = true, features = ["serde"], optional = true }
 raw-window-handle = { workspace = true, optional = true }
 clipboard = { workspace = true, optional = true }
-
-# gamepad input
-gilrs = { workspace = true, features = ["serde-serialize"], optional = true }
 
 # gui
 taffy = { workspace = true, optional = true }

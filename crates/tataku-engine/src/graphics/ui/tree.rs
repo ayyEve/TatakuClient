@@ -14,8 +14,6 @@ pub struct Tree {
     all_children: HashSet<TaffyNodeId>,
 
     selected_node: SelectedNode,
-
-    initialized: bool,
 }
 impl Tree {
     pub fn with_capacity(
@@ -45,7 +43,6 @@ impl Tree {
             owner,
             selected_node: SelectedNode::default(),
             all_children: HashSet::new(),
-            initialized: false,
         }
     }
 
@@ -91,7 +88,6 @@ impl Tree {
         self.all_children.insert(self.root.node_id);
         self.tree.set_node_context(self.root.node_id, Some(TreeData::default())).unwrap();
         
-        self.initialized = false;
         self.update_layout();
     }
 
@@ -120,19 +116,13 @@ impl Tree {
             height: Definite(self.bounds.size.y),
         };
 
-        // TODO: self.initialized fixes conditional's display overrides getting reset, but does this cause any other issues?
-        // if !self.initialized 
-        {
-            // self.initialized = true;
-
-            // before we compute the layout we need to update all the css styles
-            // these should save the results in the context
-            let style = self.node.get_style_str();
-            let mut resolver= CssResolver::new(&style);
-            self.with_node(|tree, node| {
-                node.update_styles(tree, &mut resolver, None);
-            });
-        }
+        // before we compute the layout we need to update all the css styles
+        // these should save the results in the context
+        let style = self.node.get_style_str();
+        let mut resolver= CssResolver::new(&style);
+        self.with_node(|tree, node| {
+            node.update_styles(tree, &mut resolver, None);
+        });
 
         self.tree.mark_dirty(self.root.node_id).expect("failed to mark dirty?");
         self.tree

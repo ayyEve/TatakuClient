@@ -155,7 +155,6 @@ impl GameplayManager {
             actions,
 
             timing_points: TimingPointHelper::new_from_beatmap(&beatmap),
-            // hitsound_cache,
             current_mods,
             health: Box::new(DefaultHealthManager::new()),
             key_counter: KeyCounter::new(&properties.keys),
@@ -165,10 +164,7 @@ impl GameplayManager {
 
             #[cfg(feature="graphics")]
             animation: Box::new(EmptyAnimation),
-
-            // hitsound_manager,
             events: beatmap.get_events(),
-            // song,
 
             lead_in_time: LEAD_IN_TIME,
             lead_in_timer: TatakuInstant::now(),
@@ -208,8 +204,7 @@ impl GameplayManager {
             should_pause: false,
             pause_pending: false,
             ui_elements: Vec::new(),
-            // #[cfg(feature="graphics")]
-            // ui_editor: None,
+            // #[cfg(feature="graphics")] ui_editor: None,
             ui_changed: false,
 
             pending_time_jump: None,
@@ -589,14 +584,11 @@ impl GameplayManager {
 
     pub async fn increment_global_offset(&mut self, delta: f32) {
         let time = self.time();
-        // let mut settings = Settings::get_mut();
-        // settings.global_offset += delta;
         self.global_offset += delta;
         self.center_text_helper.set_value(format!("Global Offset: {:.2}ms", self.global_offset), time);
     }
 
     pub async fn force_update_settings(&mut self, settings: &Settings) {
-        // self.settings.update();
         self.gamemode.force_update_settings(settings).await;
         self.global_offset = settings.global_offset;
     }
@@ -690,7 +682,6 @@ impl GameplayManagerTrait for GameplayManager {
 
         // make sure we jump to the time we're supposed to be at
         if let Some(time) = self.pending_time_jump {
-            // self.hitsound_manager.enabled = false; // try to mitigate spamming the user's ears with hitsounds
             self.pending_time_jump = None;
 
             let mut state = create_update_state!(self, time, &settings);
@@ -863,7 +854,6 @@ impl GameplayManagerTrait for GameplayManager {
                     if frame.time > time { break }
 
                     self.pending_frames.push(frame);
-
                     *current_frame += 1;
                 }
             }
@@ -1017,9 +1007,6 @@ impl GameplayManagerTrait for GameplayManager {
 
         // handle animation
         #[cfg(feature="graphics")] {
-            // let mut anim = std::mem::replace(&mut self.animation, Box::new(EmptyAnimation));
-            // anim.update(time).await;
-            // self.animation = anim;
             self.animation.update(time).await;
         }
 
@@ -1092,7 +1079,6 @@ impl GameplayManagerTrait for GameplayManager {
         //     Color::TRANSPARENT_WHITE,
         //     Some(Border::new(Color::AQUA, 2.0))
         // ))
-
     }
 
     async fn handle_action(
@@ -1347,12 +1333,6 @@ impl GameplayManagerTrait for GameplayManager {
                     map_game: self.metadata.beatmap_type.into(),
                     map_link: None
                 }));
-
-                // self.outgoing_spectator_frame(SpectatorFrame::new(0.0, SpectatorAction::MapInfo {
-                //     beatmap_hash: self.beatmap.hash(),
-                //     game: format!("{:?}", self.metadata.beatmap_type).to_lowercase(),
-                //     download_link: None
-                // }));
             }
 
             if self.gameplay_mode.is_preview() {

@@ -24,7 +24,7 @@ pub struct TaikoDrumroll {
     end_image: Option<Image>,
 }
 impl TaikoDrumroll {
-    pub async fn new(time:f32, end_time:f32, finisher:bool, settings:Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>) -> Self {
+    pub async fn new(time: f32, end_time: f32, finisher: bool, settings: Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>) -> Self {
         let radius = if finisher { settings.note_radius * settings.big_note_multiplier } else { settings.note_radius };
 
         let middle_image = None;

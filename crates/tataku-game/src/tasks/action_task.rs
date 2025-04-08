@@ -1,6 +1,5 @@
 use crate::prelude::*;
 
-
 /// just runs the action, primarily used with the DelayedTask to run actions after a certain amount of time
 pub struct ActionTask {
     state: TatakuTaskState,

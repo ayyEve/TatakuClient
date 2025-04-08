@@ -2,7 +2,6 @@ use crate::prelude::*;
 
 const DOWNLOAD_CHECK_INTERVAL:u64 = 10_000;
 
-
 pub struct BeatmapDownloadsCheckTask {
     last_check: u64,
 

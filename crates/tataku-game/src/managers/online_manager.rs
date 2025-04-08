@@ -18,10 +18,6 @@ type WsWriter = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
 // higher means less packet spam
 const SPECTATOR_BUFFER_FLUSH_SIZE: usize = 20;
 
-// lazy_static::lazy_static! {
-//     static ref ONLINE_MANAGER: Arc<AsyncRwLock<OnlineManager>> = Arc::new(AsyncRwLock::new(OnlineManager::new()));
-// }
-
 static ONLINE_MANAGER: OnceCell<Arc<AsyncRwLock<OnlineManager>>> = OnceCell::const_new();
 
 
@@ -114,7 +110,6 @@ impl OnlineManager {
             match tokio_tungstenite::connect_async(server_url).await {
                 Ok((ws_stream, _)) => {
                     let (writer, mut reader) = ws_stream.split();
-                    // let writer = Arc::new(Mutex::new(writer));
 
                     // send login
                     {
@@ -183,7 +178,6 @@ impl OnlineManager {
                     } }
                 }
                 Err(oof) => {
-                    // s.write().await.connected = false;
                     warn!("Could not accept connection: {oof:?}");
                 }
             }
@@ -232,7 +226,7 @@ impl OnlineManager {
         let mut reader = SerializationReader::new(data);
         
         while reader.can_read() {
-            // info!("reading packet from server");
+            // trace!("reading packet from server");
             let packet:PacketId = reader.read("packet id")?;
             // if log_settings.extra_online_logging { info!("Got packet {:?}", packet); };
 
@@ -335,20 +329,12 @@ impl OnlineManager {
 
                 // ===== user updates =====
                 PacketId::Server_UserJoined { user_id, username, game } => {
-                    if log_settings.extra_online_logging { debug!("User {} joined (id: {}, game: {})", username, user_id, game); };
+                    if log_settings.extra_online_logging { debug!("User {username} joined (id: {user_id}, game: {game})"); };
                     let mut user = OnlineUser::new(user_id, username.clone());
                     user.game = game;
 
                     let mut s = Self::get_mut().await;
                     s.users.insert(user_id, Arc::new(Mutex::new(user)));
-
-                    // // if this is us, make sure we have the correct username text
-                    // if s.user_id == user_id {
-                    //     let mut settings = Settings::get_mut();
-                    //     if settings.username != username {
-                    //         settings.username = username.clone()
-                    //     }
-                    // }
 
                     if s.friends.contains(&user_id) {
                         Self::send_notification(
@@ -663,13 +649,11 @@ impl OnlineManager {
 // multiplayer functions
 impl OnlineManager {
     pub async fn add_lobby_listener() {
-        // info!("add lobby listener");
         let mut s = Self::get_mut().await;
         s.send_packet(MultiplayerPacket::Client_AddLobbyListener).await;
         s.send_packet(MultiplayerPacket::Client_LobbyList).await;
     }
     pub async fn remove_lobby_listener() {
-        // info!("remove lobby listener");
         let mut s = Self::get_mut().await;
         s.send_packet(MultiplayerPacket::Client_AddLobbyListener).await;
     }

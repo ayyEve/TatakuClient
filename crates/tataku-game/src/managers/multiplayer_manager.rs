@@ -140,11 +140,6 @@ impl MultiplayerManager {
     }
 
     pub fn update_values(&self, values: &mut ValueCollection) {
-        // let lobby_info:TatakuValue = (&self.lobby).into();
-        // let mut map = lobby_info.to_map();
-        // map.set_value("has_beatmap", TatakuVariable::new_game(self.current_beatmap_is_selected()));
-        // values.set("lobby", TatakuVariable::new_game(map));
-
         values.lobby = Some(self.lobby.clone());
         let Some(our_user) = self.lobby.our_user() else { return };
 
@@ -155,7 +150,7 @@ impl MultiplayerManager {
 
         values.reflect_insert("lobby.map", self.lobby.current_beatmap.clone()).unwrap();
         values.reflect_insert("lobby.we_have_beatmap", self.current_beatmap.is_some()).unwrap();
-    
+
 
         // TODO: this is shit
         {

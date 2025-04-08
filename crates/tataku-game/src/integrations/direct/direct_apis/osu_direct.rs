@@ -43,7 +43,7 @@ impl DirectApi for OsuDirect {
 
         let mut lines = body.split('\n');
         let count = lines.next().unwrap_or("0").parse::<i32>().unwrap_or(0);
-        trace!("Got {} items", count);
+        trace!("Got {count} items");
 
         // parse items into list, and return list
         let mut items = Vec::new();

@@ -52,8 +52,6 @@ pub trait Widget: Send + Sync {
         _shell: &mut UpdateShell,
     ) {}
 
-
-
     fn boxed(self) -> Box<dyn Widget> where Self:Sized + 'static {
         Box::new(self)
     }

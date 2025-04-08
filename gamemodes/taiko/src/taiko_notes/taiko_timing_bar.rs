@@ -17,10 +17,10 @@ pub struct TimingBar {
     pub playfield: Arc<TaikoPlayfield>,
 }
 impl TimingBar {
-    pub fn new(time:f32, speed:f32, playfield: Arc<TaikoPlayfield>) -> TimingBar {
+    pub fn new(time: f32, speed: f32, playfield: Arc<TaikoPlayfield>) -> Self {
         let size = Vector2::new(BAR_WIDTH, playfield.height);
 
-        TimingBar {
+        Self {
             time, 
             speed,
             pos: Vector2::new(0.0, playfield.hit_position.y - size.y/2.0),
@@ -29,14 +29,14 @@ impl TimingBar {
         }
     }
 
-    pub fn update(&mut self, time:f32) {
+    pub fn update(&mut self, time: f32) {
         self.pos.x = self.playfield.hit_position.x + self.x_at(time) - BAR_WIDTH / 2.0;
     }
 
     fn x_at(&self, time: f32) -> f32 {
         ((self.time - time) / SV_OVERRIDE) * self.speed * self.playfield.size.x
     }
-    pub fn draw(&mut self, list: &mut RenderableCollection){
+    pub fn draw(&mut self, list: &mut RenderableCollection) {
         if self.pos.x + BAR_WIDTH < self.playfield.pos.x || self.pos.x - BAR_WIDTH > self.playfield.pos.x + self.playfield.size.x { return }
 
         list.push(Rectangle::new(

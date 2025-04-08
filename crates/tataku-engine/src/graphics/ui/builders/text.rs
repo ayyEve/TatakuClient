@@ -43,8 +43,3 @@ impl From<String> for TextBuilderValue {
         Self::Static(value)
     }
 }
-// impl<T:Into<Self>> From<Vec<T>> for TextBuilderValue {
-//     fn from(value: Vec<T>) -> Self {
-//         Self::List(value.into_iter().map(|i| i.into()).collect())
-//     }
-// }

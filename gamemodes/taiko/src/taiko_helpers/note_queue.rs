@@ -51,4 +51,3 @@ impl DerefMut for TaikoNoteQueue {
         &mut self.notes
     }
 }
-

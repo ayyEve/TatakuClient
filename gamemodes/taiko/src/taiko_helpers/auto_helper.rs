@@ -41,16 +41,6 @@ impl TaikoAutoHelper {
                     continue;
                 }
 
-                // // otherwise it spams sliders even after it has finished
-                // if let NoteType::Slider = note.note_type() {
-                //     if time > note.end_time(0.0) {
-                //         if i == queue_index {
-                //             queue_index += 1;
-                //         }
-                //         continue 'notes;
-                //     }
-                // }
-
                 if note.note_type() != NoteType::Note {
                     // this is a drumroll or a spinner
                     let end_time = note.end_time(0.0);

@@ -38,20 +38,16 @@ impl Curve {
 
         let l = slider.length * 1.4 * slider.slides as f32;
         let v2 = 100.0 * slider_multiplier * 1.4;
-        // let l = slider.length * slider.slides as f32;
-        // let v2 = 100.0 * beatmap.metadata.slider_multiplier;
         let bl = timing_points.beat_length_at(slider.time, true);
-        let end_time = slider.time + (l / v2 * bl) - 1.0;
 
-        let velocity = timing_points.slider_velocity_at(slider.time);
         Self {
             segments: path,
-            slider,
-            velocity,
-            end_time,
+            velocity: timing_points.slider_velocity_at(slider.time),
+            end_time: slider.time + (l / v2 * bl) - 1.0,
             curve_lines: Vec::new(),
             lengths: Vec::new(),
-            score_times: Vec::new()
+            score_times: Vec::new(),
+            slider,
         }
     }
 
@@ -75,22 +71,16 @@ impl Curve {
     }
     
     pub fn position_at_time(&self, time:f32) -> Vector2 {
-        // if (this.sliderCurveSmoothLines == null) this.UpdateCalculations();
         if self.lengths.is_empty() { return self.slider.pos }
         if time < self.slider.time { return self.slider.pos }
         if time > self.end_time { return self.position_at_length(self.length()) }
-
-        // if (this.sliderCurveSmoothLines == null) this.UpdateCalculations();
-
         self.position_at_length(self.get_length_required(time))
     }
 
     pub fn position_at_length(&self, length:f32) -> Vector2 {
-        // if (this.sliderCurveSmoothLines == null || this.cumulativeLengths == null) this.UpdateCalculations();
         if self.curve_lines.is_empty() || self.lengths.is_empty() {return self.slider.pos}
         
         if length == 0.0 {return self.curve_lines[0].p1}
-        
         let end = *self.lengths.last().unwrap();
 
         if length > end {
@@ -122,7 +112,6 @@ impl Curve {
 pub enum CurveSegment {
     Bezier {
         curve: Vec<Vector2>, 
-        // control_points: Vec<Vector2>
     },
 
     Linear {
@@ -151,13 +140,11 @@ impl CurveSegment {
 
 
 
-pub fn get_curve(slider:&SliderDef, beatmap: &Beatmap, timing_points: &TimingPointHelper) -> Curve {
+pub fn get_curve(slider: &SliderDef, beatmap: &Beatmap, timing_points: &TimingPointHelper) -> Curve {
     let mut points = slider.curve_points.clone();
     points.insert(0, slider.pos);
 
     let mut path = Vec::new();
-
-    // let metadata = beatmap.get_beatmap_meta();
 
     let mut beatmap_version = 10;
     let mut slider_tick_rate = 1.0;
@@ -165,7 +152,6 @@ pub fn get_curve(slider:&SliderDef, beatmap: &Beatmap, timing_points: &TimingPoi
         beatmap_version = map.beatmap_version;
         slider_tick_rate = map.slider_tick_rate;
     }
-
 
     match slider.curve_type {
         CurveType::Catmull => {

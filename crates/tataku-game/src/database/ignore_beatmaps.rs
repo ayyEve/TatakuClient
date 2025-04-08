@@ -13,15 +13,6 @@ impl Database {
         .collect::<Vec<String>>()
     }
 
-    // pub async fn clear_all_ignored() {
-    //     let db = Self::get().await;
-    //     let statement = format!("DELETE FROM ignore_maps");
-    //     let res = db.prepare(&statement).expect(&statement).execute([]);
-    //     if let Err(e) = res {
-    //         error!("error deleting beatmap meta from db: {}", e);
-    //     }
-    // }
-
     pub async fn add_ignored(path: String) {
         let query = "INSERT INTO ignore_maps (beatmap_path, beatmap_hash) VALUES (?, '')";
 

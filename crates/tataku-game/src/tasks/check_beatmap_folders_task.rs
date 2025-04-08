@@ -3,11 +3,7 @@ use crate::prelude::*;
 #[derive(Default)]
 pub struct CheckBeatmapFoldersTask {
     state: TatakuTaskState,
-    // status: Arc<RwLock<LoadingStatus>>,
-
-
     existing_paths: HashSet<String>,
-
     folders: Vec<String>
 }
 
@@ -39,14 +35,6 @@ impl TatakuTask for CheckBeatmapFoldersTask {
                 .filter(|f| !self.existing_paths.contains(f))
                 .collect();
 
-
-            // {
-            //     let mut lock = self.status.write();
-            //     lock.items_complete = 0;
-            //     lock.item_count = self.folders.len();
-            //     lock.custom_message = "Checking folders...".to_owned();
-            // }
-
             self.state = TatakuTaskState::Running;
             debug!("Got existing maps");
             return;
@@ -57,17 +45,10 @@ impl TatakuTask for CheckBeatmapFoldersTask {
             let manager = values.reflect_get_mut::<BeatmapManager>("beatmap_manager").expect("nope");
 
             manager.check_folder(folder, true).await;
-            // self.status.write().items_complete += 1;
             return
         }
 
-        // let nlen = manager.beatmaps.len();
-        // debug!("loaded {nlen} beatmaps ({} new)", nlen - existing_len);
-
-
-        // otherwise, we're done!
         debug!("Done checking maps folders");
-        // self.status.write().complete = true;
         self.state = TatakuTaskState::Complete;
     }
 }

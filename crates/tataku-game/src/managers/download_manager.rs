@@ -121,6 +121,4 @@ pub struct DownloadStatus {
     pub downloading: bool,
     pub completed: bool,
     pub progress: f32,
-
-    // pub complete_since: u64,
 }

@@ -20,7 +20,6 @@ impl ButtonBuilder {
 
 
 type OnClickCallback = Box<dyn Fn() -> Option<Message> + Send + Sync>;
-// type OnClickActionCallback = Box<dyn Fn() -> Option<TatakuAction> + Send + Sync>;
 pub enum ButtonBuilderOnClick {
     Message(Option<Message>),
     Callback(OnClickCallback),

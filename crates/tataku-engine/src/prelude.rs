@@ -36,9 +36,6 @@ pub use parking_lot::{ Mutex, RwLock };
 // serde imports
 pub use serde::{ Serialize, Deserialize };
 
-#[cfg(feature = "gameplay")]
-pub use gilrs::{ Axis, GamepadId };
-
 // logging
 pub use tracing::*;
 

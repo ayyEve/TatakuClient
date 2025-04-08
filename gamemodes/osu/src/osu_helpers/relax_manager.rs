@@ -44,25 +44,15 @@ impl RelaxManager {
                 NoteType::Note => {
                     *self.key_states.get_mut(&key).unwrap() = KeyState::PressedNote(state.time);
                     state.add_replay_action(ReplayAction::Press(key));
-                    // pending_frames.push(ReplayAction::Press(key));
-                    // pending_frames.push(ReplayAction::Release(key));
                 }
                 NoteType::Slider | NoteType::Spinner | NoteType::Hold => {
                     *self.key_states.get_mut(&key).unwrap() = KeyState::PressedSlider(note_index);
                     state.add_replay_action(ReplayAction::Press(key));
-
-                    // // make sure we're not already holding
-                    // if let Some(false) = state.key_counter.keys.get(&key).map(|a| a.held) {
-                    //     state.add_replay_action(ReplayAction::Press(key));
-                    //     // pending_frames.push(ReplayAction::Press(key));
-                    // }
                 }
             }
         }
 
         if state.time >= note_end_time && !note.was_hit() {
-            // let key = KeyPress::LeftMouse;
-
             match note.note_type() {
                 NoteType::Note => {}
                 NoteType::Slider | NoteType::Spinner | NoteType::Hold => {
@@ -74,10 +64,6 @@ impl RelaxManager {
                         state.add_replay_action(ReplayAction::Release(*key));
                         break;
                     }
-
-                    // assume we're holding i guess?
-                    // state.add_replay_action(ReplayAction::Release(key));
-                    // pending_frames.push(ReplayAction::Release(key));
                 }
             }
         }
@@ -108,8 +94,7 @@ impl RelaxManager {
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 enum KeyState {
     /// key is not pressed
-    #[default]
-    Unpressed,
+    #[default] Unpressed,
     
     /// key is pressed by us (RelaxManager) for a note
     PressedNote(f32),
@@ -126,4 +111,3 @@ impl KeyState {
         true
     }
 }
-

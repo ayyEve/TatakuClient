@@ -19,4 +19,3 @@ impl From<FlashlightData> for FlashlightDataInner {
         }
     }
 }
-

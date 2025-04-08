@@ -28,21 +28,14 @@ impl Image {
         tex: Arc<TextureReference>, 
         base_scale: Vector2
     ) -> Self {
-        // let scale = Vector2::new(tex.get_width() as f64 / size.x, tex.get_height() as f64 / size.y);
         let tex_size = Vector2::new(tex.width as f32, tex.height as f32);
-
-        let rotation = 0.0;
-        let color = Color::WHITE;
-
         let origin = tex_size / 2.0;
 
         Self {
             pos,
             scale: Vector2::ONE,
-            rotation,
-            color,
-
-            // size: tex_size,
+            rotation: 0.0,
+            color: Color::WHITE,
             origin,
             tex,
             scissor: None,
@@ -72,7 +65,7 @@ impl Image {
         self.pos = self.size() / 2.0;
     }
 
-    // NOTE: this will change the origin to top-left
+    /// NOTE: this will change the origin to top-left
     pub fn fit_to(&mut self, fit: ImageFit, bounds: Bounds) {
         let image_size = self.tex_size();
         let size = bounds.size;
@@ -99,7 +92,7 @@ impl Image {
                     )
                 };
 
-                // transform to Contain
+                // TODO: transform to Contain
 
                 self.set_size(new_size);
             }

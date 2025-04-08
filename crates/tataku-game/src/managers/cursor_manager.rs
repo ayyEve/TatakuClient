@@ -22,11 +22,9 @@ pub struct CursorManager {
     left_pressed: bool,
     right_pressed: bool,
 
-    // settings: SettingsHelper,
     current_skin: Arc<SkinSettings>,
 
     ripples: Vec<TransformGroup>,
-    // time: Instant,
     time: f32,
 
     settings: CursorSettings,
@@ -117,8 +115,6 @@ impl CursorManager {
         if let Some(mut cursor) = self.get_cursor_image().cloned() {
             cursor.pos = self.pos;
             cursor.rotation = self.cursor_rotation;
-            // cursor.current_color = self.color;
-            
             list.push(cursor.clone());
         } else {
             // use font awesome as fallback
@@ -154,7 +150,6 @@ impl CursorManager {
         // let time = self.time.as_millis();
 
         // if let Some(mut ripple) = self.ripple_image.clone() {
-
         //     ripple.color.a = self.ripple_color.a;
         //     ripple.pos = self.pos;
 

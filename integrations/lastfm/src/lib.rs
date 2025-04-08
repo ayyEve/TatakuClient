@@ -14,7 +14,6 @@ impl LastFm {
         }
     }
 
-
     pub async fn check(settings: &Settings) {
         let username = settings.username.clone();
         let password = settings.password.clone();
@@ -44,8 +43,6 @@ impl LastFm {
             .header("Content-Type", "application/json")
             .body(body)
             .send().await else { return };
-
-        // info!("{}", req.text().await.unwrap())
     }
 }
 impl TatakuIntegration for LastFm {
@@ -88,8 +85,6 @@ impl TatakuIntegration for LastFm {
                 .header("Content-Type", "application/json")
                 .body(body)
                 .send().await else { return };
-
-            // info!("{}", req.text().await.unwrap())
         });
     }
 

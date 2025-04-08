@@ -6,8 +6,6 @@ use winit::{
     event::{
         WindowEvent as WinitWindowEvent,
         StartCause,
-        DeviceEvent,
-        DeviceId,
         Touch,
         TouchPhase,
         ElementState
@@ -121,17 +119,8 @@ impl<'window> GameWindow<'window> {
     fn send_game_event(&mut self, event: WindowEvent) {
         // try to send without spawning a task.
         if let Err(tokio::sync::mpsc::error::TrySendError::Full(event)) = self.game_event_sender.try_send(event) {
-
-            // // if this is a mouse pos event, clear all previous mouse pos events since we only care about the final mouse position
-            // if let GameEvent::WindowEvent(Window2GameEvent::MouseMove(_)) = &event {
-            //     self.queued_events.retain(|e|e)
-            // }
-
             // warn!("Game event queue full, event is getting queued: {event:?}");
             self.queued_events.push(event);
-            // // if the receiver is full, we spawn the sender off and wait for it to be sent
-            // let game_event_sender = self.game_event_sender.clone();
-            // tokio::spawn(async move { let _ = game_event_sender.send(event).await; });
         }
     }
 
@@ -166,7 +155,7 @@ impl<'window> GameWindow<'window> {
             LoadImage::Image(data, on_done) => on_done.send(self.graphics.load_texture_rgba(&data, [data.width(), data.height()])).expect("poopy"),
 
             LoadImage::Font(font, font_size, on_done) => {
-                info!("Loading font {} with size {}", font.name, font_size);
+                debug!("Loading font {} with size {font_size}", font.name);
                 let font_size = FontSize::new(font_size);
                 let mut characters = font.characters.write();
 
@@ -273,7 +262,6 @@ impl GameWindow<'_> {
         }
 
         // either its not fullscreen, or the monitor wasnt found, so default to windowed
-        // self.window.apply_windowed();
         let [x,y] = self.settings.window_pos;
         self.window().set_fullscreen(None);
         self.window().set_outer_position(winit::dpi::PhysicalPosition::new(x, y))
@@ -437,15 +425,10 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
 
 
         #[cfg(target_os="linux")] {
-            use winit::platform::{
-                wayland::WindowAttributesExtWayland,
-                x11::WindowAttributesExtX11
-            };
+            use winit::platform::wayland::WindowAttributesExtWayland;
 
             let name = "tataku-client";
-            // probably only need one of these actually but whatever
             attribs = WindowAttributesExtWayland::with_name(attribs, name, name);
-            attribs = WindowAttributesExtX11::with_name(attribs, name, name);
         }
 
 
@@ -493,9 +476,6 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
                 }
             }
 
-            // // let graphics = GraphicsState::new(self.window(), &self.settings).await;
-            // // self.graphics = Box::new(graphics);
-            // self.graphics = self.init_graphics(self.window(), &self.settings).await;
             debug!("done graphics");
 
             // let the game side know the window is good to go
@@ -556,10 +536,7 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
                 let sender = self.game_event_sender.clone();
 
                 self.graphics.screenshot(Box::new(move |(data, size)| {
-                    // let _ = fuze.send((window_data, width, height));
-                    // tokio::spawn(async move {
                     let _ = sender.try_send(WindowEvent::ScreenshotComplete(data, size, info));
-                    // });
                 }))
             },
             WindowAction::RefreshMonitors => self.refresh_monitors_inner(),
@@ -592,28 +569,6 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
         }
     }
 
-    fn device_event(
-        &mut self,
-        _event_loop: &ActiveEventLoop,
-        _device_id: DeviceId,
-        _event: DeviceEvent,
-    ) {
-        // let event = match event {
-        //     DeviceEvent::MouseMotion { delta: (x, y) } => {
-        //         if let Some(new_pos) = self.mouse_helper.device_mouse_moved((x as f32, y as f32), self.window()) {
-        //             self.post_cursor_move();
-        //             Some(Window2GameEvent::Input(InputType::MouseMove(new_pos)))
-        //         } else {
-        //             None
-        //         }
-        //     }
-
-        //     _ => None
-        // };
-
-        // if let Some(event) = event { self.send_game_event(event); }
-    }
-
     fn window_event(
         &mut self,
         event_loop: &winit::event_loop::ActiveEventLoop,
@@ -634,15 +589,12 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
                 None
             }
 
-            // winit::event::WindowEvent::Moved(_) => todo!(),
-            // winit::event::WindowEvent::Destroyed => todo!(),
             WinitWindowEvent::CloseRequested => {
                 event_loop.exit();
                 Some(WindowEvent::Closed)
             }
             WinitWindowEvent::DroppedFile(d) => Some(WindowEvent::FileDrop(d)),
             WinitWindowEvent::HoveredFile(d) => Some(WindowEvent::FileHover(d)),
-            // winit::event::WindowEvent::HoveredFileCancelled => todo!(),
             WinitWindowEvent::Focused(has_focus) => {
                 if has_focus {
                     Some(WindowEvent::GotFocus)
@@ -662,22 +614,12 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
                 }, ..
             } => Some(WindowEvent::Input(InputType::KeyRelease(KeyInput::from_event(e)))),
 
-            // winit::event::WindowEvent::Ime(_) => todo!(),
-            // WindowEvent::CursorMoved { position, .. } => if let Some(new_pos) = self.mouse_helper.display_mouse_moved(Vector2::new(position.x as f32, position.y as f32)) {
-            //     self.post_cursor_move();
-            //     Some(Window2GameEvent::Input(InputType::MouseMove(new_pos)))
-            // } else {
-            //     None
-            // }
             WinitWindowEvent::CursorMoved { position, .. } => 
                 Some(WindowEvent::Input(InputType::MouseMove(Vector2::new(position.x as f32, position.y as f32)))),
 
-            // winit::event::WindowEvent::CursorEntered { device_id:_ } => todo!(),
-            // winit::event::WindowEvent::CursorLeft { device_id:_ } => { self.mouse_pos = None; return },
             WinitWindowEvent::MouseWheel { delta, .. } => Some(WindowEvent::Input(InputType::MouseScroll(delta2f32(delta)))),
             WinitWindowEvent::MouseInput { state: ElementState::Pressed, button, .. }  => Some(WindowEvent::Input(InputType::MousePress(button.into()))),
             WinitWindowEvent::MouseInput { state: ElementState::Released, button, .. } => Some(WindowEvent::Input(InputType::MouseRelease(button.into()))),
-            // winit::event::WindowEvent::TouchpadPressure { device_id, pressure, stage } => todo!();
 
             WinitWindowEvent::Touch(touch) => self.handle_touch_event(touch),
             WinitWindowEvent::Occluded(_) => todo!(),

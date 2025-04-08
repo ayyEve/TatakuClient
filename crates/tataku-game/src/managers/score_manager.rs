@@ -6,7 +6,6 @@ use tokio::task::AbortHandle;
 #[derive(Debug, Clone)]
 pub struct ScoreManager {
     pub scores: Vec<IngameScore>,
-    // pub loaded: bool,
 
     #[reflect(skip)]
     pub infos: GamemodeInfos,
@@ -31,7 +30,6 @@ impl ScoreManager {
     pub fn new(infos: GamemodeInfos) -> Self {
         Self {
             scores: Vec::new(),
-            // loaded: false,
             infos,
 
             current_loader: None,
@@ -96,7 +94,6 @@ impl ScoreManager {
             ScoreRetreivalMethod::Global
             | ScoreRetreivalMethod::GlobalMods => {
                 let mods = self.mods.as_ref().cloned().unwrap_or_default();
-                // let beatmap_type = values.try_get::<BeatmapType>("map.beatmap_type")?;
 
                 let handle = tokio::spawn(async move {
                     let map_hash = map_hash.to_string();

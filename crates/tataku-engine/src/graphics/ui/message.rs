@@ -134,7 +134,6 @@ pub enum MessageValue {
 
     Custom(Arc<dyn std::any::Any + Send + Sync>),
     GameplayManagerId(Arc<u32>),
-    // CustomMenuAction(CustomMenuAction, Option<TatakuValue>),
 }
 #[allow(unused)]
 impl MessageValue {

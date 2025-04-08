@@ -8,7 +8,7 @@ edition.workspace = true
 
 [features]
 default = [ "gameplay" ]
-gameplay = [ "graphics", "gilrs", "tokio-tungstenite", "tataku-engine/gameplay" ]
+gameplay = [ "graphics", "tokio-tungstenite", "tataku-engine/gameplay" ]
 # kira_audio = ["rustfft", "uuid"]
 debug_hitsounds = [ "tataku-engine/debug_hitsounds" ]
 debug_perf_rating = []
@@ -45,9 +45,6 @@ image = { workspace = true, optional = true }
 
 # windowing
 winit = { workspace = true, features = ["serde"], optional = true }
-
-# gamepad input
-gilrs = { workspace = true, features = ["serde-serialize"], optional = true }
 
 # gui
 taffy = { workspace = true, optional = true }

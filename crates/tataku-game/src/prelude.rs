@@ -32,9 +32,6 @@ pub use tokio::sync::mpsc::{ Sender as AsyncSender, Receiver as AsyncReceiver, c
 // serde imports
 pub use serde::{ Serialize, Deserialize };
 
-#[cfg(feature = "gameplay")]
-pub use gilrs::{ Axis, GamepadId };
-
 // logging
 pub use tracing::*;
 

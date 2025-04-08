@@ -71,8 +71,6 @@ impl OsuCursor {
         let right_emitter = builder.clone().build(0.0);
         let left_emitter = builder.angle(EmitterVal::init_only(-a-PI..a-PI)).build(0.0);
 
-        // let skin = CurrentSkinHelper::new();
-
         Self {
             pos: Vector2::ZERO,
             last_pos: Vector2::ZERO,
@@ -297,7 +295,6 @@ impl OsuCursor {
         if self.cursor_trail_image.is_some() {
             // draw the transforms
             for i in self.trail_images.iter().cloned() {
-                // i.draw(list);
                 list.push(i)
             }
         }
@@ -312,7 +309,7 @@ impl OsuCursor {
         if let Some(mut cursor) = self.cursor_image.clone() {
             cursor.pos = self.pos;
             cursor.rotation = self.cursor_rotation;
-            // cursor.current_color = self.color;
+            // cursor.color = self.color;
             
             if self.left_pressed || self.right_pressed {
                 cursor.scale = Vector2::ONE * PRESSED_CURSOR_SCALE * self.settings.cursor_scale;

@@ -35,7 +35,6 @@ pub const GAME_INFO: GamemodeInfo = GamemodeInfo {
 
     judgments: OsuHitJudgments::variants(),
     calc_acc: OsuGameInfo::calc_acc,
-    // get_diff_string: OsuGameInfo::get_diff_string,
     create_game: OsuGameInfo::create_game,
     create_diffcalc: OsuGameInfo::create_diffcalc,
     can_load_beatmap: OsuGameInfo::can_load_beatmap,

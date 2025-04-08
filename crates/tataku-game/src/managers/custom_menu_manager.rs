@@ -159,8 +159,7 @@ impl From<&str> for CustomMenuSelector {
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
 pub enum CustomMenuSource {
     /// Will pick the last loaded menu from the list 
-    #[default]
-    Any,
+    #[default] Any,
 
     /// Will explicitly load the menu from the skin
     Skin,

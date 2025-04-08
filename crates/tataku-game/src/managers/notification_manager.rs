@@ -1,10 +1,8 @@
 use crate::prelude::*;
 
 
-// const NOTIF_WIDTH:f64 = 300.0; // TODO: have this as the max width instead
 const NOTIF_Y_OFFSET:f32 = 100.0; // window_size().y - this
 const NOTIF_TEXT_SIZE:f32 = 15.0;
-// const NOTIF_TEXT_HEIGHT:f64 = 20.0;
 
 /// how many pixels of space should there be between notifications?
 const NOTIF_MARGIN:Vector2 = Vector2::new(5.0, 5.0);
@@ -67,7 +65,6 @@ impl NotificationManager {
     }
 
     pub fn add_notification(&mut self, notif: Notification) {
-        // trace!("adding notif");
         self.notifications.push(ProcessedNotif::new(notif));
     }
 }
@@ -90,12 +87,9 @@ impl ProcessedNotif {
             Color::WHITE,
             Font::Main
         );
-
-        let size = text.measure_text() + NOTIF_PADDING * 2.0;
-        // let pos = window_size - Vector2::new(size.x + NOTIF_MARGIN.x, NOTIF_Y_OFFSET + size.y);
-
+        
         Self {
-            size,
+            size: text.measure_text() + NOTIF_PADDING * 2.0,
             time: TatakuInstant::now(),
             text,
             notification,

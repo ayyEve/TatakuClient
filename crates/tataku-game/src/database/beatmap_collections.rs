@@ -1,7 +1,6 @@
 #![allow(unused)]
 use crate::prelude::*;
 
-
 pub struct BeatmapCollection {
     pub collection_name: String,
     pub beatmaps: Vec<String>
@@ -19,7 +18,6 @@ impl BeatmapCollectionEntry {
         })
     }
 }
-
 
 impl Database {
     pub fn init_beatmap_collection(connection: &rusqlite::Connection) {

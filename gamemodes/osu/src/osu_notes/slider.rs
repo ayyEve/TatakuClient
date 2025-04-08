@@ -130,7 +130,6 @@ impl OsuSlider {
 
         const SAMPLE_SETS:[&str; 4] = ["normal", "normal", "soft", "drum"];
         let sliderdot_hitsound = Hitsound::new_simple(format!("{}-slidertick", SAMPLE_SETS[def.hitsamples.addition_set as usize]));
-        // sliderdot_hitsound.volume = def.hitsamples.volume as f32 / 100.0;
 
         let hitsounds = def.edge_sets.iter().enumerate().map(|(n, &[normal_set, addition_set])| {
             let mut samples = def.hitsamples.clone();
@@ -1178,9 +1177,6 @@ impl SliderDot {
         self.dot_image = skin_manager.get_texture("sliderscorepoint", source, SkinUsage::Gamemode, false).await;
     }
 }
-
-
-
 
 enum SliderBodyLoader {
     None,

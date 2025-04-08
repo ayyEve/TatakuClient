@@ -68,12 +68,6 @@ impl Database {
                     let Some(m) = all_mods.get(m) else { continue };
                     score.mods.push((*m).into());
                 }
-                // // old mods format, json
-                // if mods_string.contains("{") {
-                //     *score.mods_mut() = Score::mods_from_old_string(mods_string);
-                // } else {
-                //     *score.mods_mut() = Score::mods_from_string(mods_string);
-                // }
             }
 
 
@@ -144,19 +138,12 @@ impl Database {
 
 /// returns the path of the replay
 pub fn save_replay(score: &Score) -> TatakuResult<String> {
-    // make sure the replay has score data set
-    // let mut r = r.clone();
-    // if r.score_data.is_none() {
-    //     r.score_data = Some(s.clone());
-    // }
-
     let mut writer = SerializationWriter::new();
     writer.write(score);
 
     let hash = score.hash();
     let actual_hash = md5(hash);
     let filename = format!("{REPLAYS_DIR}/{actual_hash}.ttkr");
-    // info!("Saving replay as {}, judgments: {}", filename, s.judgment_string());
 
     // save the database
     std::fs::write(&filename, writer.data())?;
@@ -174,6 +161,5 @@ pub fn get_local_replay(score_hash: String) -> TatakuResult<Score> {
 }
 
 pub fn get_local_replay_for_score(score: &Score) -> TatakuResult<Score> {
-    // info!("Loading replay, judgments: {:#?}", score.hash());
     get_local_replay(score.hash())
 }

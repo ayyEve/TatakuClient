@@ -7,7 +7,6 @@ mod mania_settings;
 
 pub use info::GAME_INFO;
 
-
 mod prelude {
     pub use async_trait::async_trait;
     pub use tataku_engine::prelude::*;
