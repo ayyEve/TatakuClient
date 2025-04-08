@@ -940,9 +940,8 @@ impl HitObject for OsuSlider {
             let frametime = 1000.0 / 60.0;
             let velocity = self.velocity;
             let frametime = ((150.0 / velocity) * frametime).max(frametime);
-            let frametimes = vec![frametime; images.len()];
 
-            let mut animation = Animation::new(Vector2::ZERO, size, images, frametimes, base_scale);
+            let mut animation = Animation::new(Vector2::ZERO, size, images, frametime, base_scale);
             animation.scale = Vector2::ONE;
 
             self.sliderball_image = Some(animation);
