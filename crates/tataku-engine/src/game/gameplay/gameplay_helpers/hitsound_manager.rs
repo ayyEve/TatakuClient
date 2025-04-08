@@ -20,7 +20,7 @@ async fn load_sound(
             Err(TatakuError::Audio(AudioError::Empty)) => {
                 // ignore these errors, just means the file provided was empty (probably)
             }
-            Err(e) => actions.push(GameAction::AddNotification(Notification::new_error(format!("Error loading sound {}", path), e))),
+            Err(e) => actions.push(Notification::new_error(format!("Error loading sound {}", path), e)),
         }
     }
 
@@ -65,7 +65,6 @@ impl HitsoundManager {
                         actions
                     ).await;
                 }
-                
             }
             // error!("beatmap: {:?}", beatmap_sounds.keys());
         }
@@ -215,11 +214,4 @@ impl HitsoundManager {
         }
     }
 
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub enum HitsoundSource {
-    Skin,
-    Beatmap,
-    Default
 }

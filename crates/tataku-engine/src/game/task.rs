@@ -31,8 +31,7 @@ pub enum TatakuTaskType {
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub enum TatakuTaskState {
     /// This task hasn't started yet
-    #[default]
-    NotStarted,
+    #[default] NotStarted,
 
     /// This task is currently running
     Running,

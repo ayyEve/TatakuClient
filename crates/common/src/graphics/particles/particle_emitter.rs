@@ -32,6 +32,7 @@ pub struct EmitterInfo {
     pub rotation_start: f32,
     pub rotation_end: f32,
 
+    // FIXME: remove this shit?
     _1: f32,
     _2: f32,
 }

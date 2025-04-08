@@ -67,11 +67,12 @@ pub enum PostDelete {
 
 
 /// What to do if the desired action isnt possible
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum MapActionIfNone {
     /// Continue with the current map (ie dont change)
-    #[default]
-    ContinueCurrent,
+    #[default] ContinueCurrent,
 
     /// Remove the current beatmap
     SetNone,
@@ -79,7 +80,7 @@ pub enum MapActionIfNone {
     /// Set a random map
     /// 
     /// use preview time?
-    Random(bool),
+    Random(#[serde(rename="@preview_time", default)] bool),
 }
 
 

@@ -31,8 +31,7 @@ pub struct BeatmapManager {
     pub filter_text: String,
 
     /// cache of groups before we filter them, saves from rebuilding this list every filter update
-    #[reflect(skip)]
-    unfiltered_groups: Vec<BeatmapGroup>,
+    #[reflect(skip)] unfiltered_groups: Vec<BeatmapGroup>,
     groups: Vec<BeatmapListGroup>,
 
     selected_set: usize,
@@ -85,8 +84,7 @@ impl BeatmapManager {
             .collect()
     }
 
-    /// clear the cache and db,
-    /// and do a full rescan of the songs folder
+    /// clear the cache and db, and do a full rescan of the songs folder
     pub async fn full_refresh(&mut self, settings: &Settings) {
         self.beatmaps.clear();
         self.beatmaps_by_hash.clear();
@@ -234,7 +232,7 @@ impl BeatmapManager {
 
                 // delete the file
                 if let Err(e) = std::fs::remove_file(&old_map.file_path) {
-                    NotificationManager::add_error_notification("Error deleting map", e).await;
+                    self.actions.push(Notification::new_error("Error deleting map", e));
                 }
                 // TODO: should check if this is the last beatmap in this folder
                 // if so, delete the parent dir
@@ -276,8 +274,6 @@ impl BeatmapManager {
 
         // update value collection
         {
-            // let mut map: TatakuValue = beatmap.deref().into();
-            // let map2 = map.as_map_mut().unwrap();
             let actual_mode = self.infos.get_playmode_actual(&config.playmode, Some(beatmap));
 
             // let mods = &values.mods;
@@ -293,7 +289,6 @@ impl BeatmapManager {
                     .join(" | ")
             } else {
                 String::new()
-                // map2.set_value("diff_info", TatakuVariable::new_game(String::new()));
             };
 
             self.current_beatmap = Some(BeatmapWithData {
@@ -301,19 +296,8 @@ impl BeatmapManager {
                 diff_rating: diff.unwrap_or_default(),
                 diff_info
             });
-            // values.current_beatmap = Some(data);
-
-
-            // map2.set_value("diff_rating", TatakuVariable::new_game(diff.unwrap_or(0.0)));
-
-
-            // values.set("map", TatakuVariable::new_game(map));
-            // let display = gamemode_display_name(&actual_mode);
+            
             self.actions.push(GameAction::UpdatePlaymodeActual(actual_mode.clone()));
-
-            // values.update_display("global.playmode_actual", TatakuVariableWriteSource::Game, &actual_mode, Some(display));
-            // values.set("global.playmode_actual", &actual_mode);
-            // values.set("global.playmode_actual_display", );
         }
 
         // set the song
@@ -339,8 +323,6 @@ impl BeatmapManager {
                 i.selected = true;
             }
         }
-
-        // self.actions.push(UiAction::Refresh);
     }
 
     pub async fn remove_current_beatmap(&mut self) {
@@ -368,13 +350,6 @@ impl BeatmapManager {
                 group.maps.push(beatmap);
                 set_map.insert(key, group);
             }
-
-            // set_map
-            //     .entry(key.clone())
-            //     .or_insert_with(|| BeatmapGroup::default())
-
-            // if !set_map.contains_key(&key) { set_map.insert(key.clone(), Vec::new()) }
-            // set_map.get_mut(&key).unwrap().push(beatmap.clone());
         }
 
         set_map.into_values().collect()
@@ -400,8 +375,6 @@ impl BeatmapManager {
         settings: &Settings,
         diff_manager: &mut impl DifficultyProvider,
     ) -> bool {
-        // println!("i: {}", self.play_index);
-
         match self.played.get(self.play_index + 1).cloned() {
             Some(map) => {
                 self.set_current_beatmap(&map, config, settings, diff_manager).await;
@@ -417,14 +390,6 @@ impl BeatmapManager {
                 false
             }
         }
-
-
-        // if self.play_index < self.played.len() {
-        //     let hash = self.played[self.play_index].clone();
-        //     self.get_by_hash(&hash).clone()
-        // } else {
-        //     self.random_beatmap()
-        // }
     }
 
     pub async fn previous_beatmap(
@@ -434,7 +399,6 @@ impl BeatmapManager {
         diff_manager: &mut impl DifficultyProvider,
     ) -> bool {
         if self.play_index == 0 { return false }
-        // println!("i: {}", self.play_index);
 
         match self.played.get(self.play_index - 1).cloned() {
             Some(map) => {
@@ -514,13 +478,8 @@ impl BeatmapManager {
                         .join(" | ")
                 } else {
                     String::new()
-                    // map2.set_value("diff_info", TatakuVariable::new_game(String::new()));
                 };
 
-
-                // selected |= self.current_beatmap.as_ref().filter(|b| b.beatmap_hash == m.beatmap_hash).is_some();
-
-                // BeatmapMetaWithDiff::new(m.clone(), diff.ok())
                 BeatmapWithData {
                     map: m.clone(),
                     diff_rating: diff.unwrap_or_default(),
@@ -559,8 +518,6 @@ impl BeatmapManager {
                 self.groups.sort_by(|a, b| a.maps[0].$property.partial_cmp(&b.maps[0].$property).unwrap())
             }
         }
-
-        // let sort_by = values.settings.sort_by;
 
         match sort_by {
             SortBy::Title => sort!(title, String),
@@ -753,6 +710,7 @@ impl SelectBeatmapConfig {
 
 #[derive(Clone, Debug, Default)]
 #[derive(Reflect)]
+#[reflect(display="debug")]
 pub struct BeatmapWithData {
     #[reflect(flatten)]
     pub map: Arc<BeatmapMeta>,
@@ -772,6 +730,11 @@ impl Deref for BeatmapWithData {
     }
 }
 
+impl PartialEq for BeatmapWithData {
+    fn eq(&self, other: &Self) -> bool {
+        self.beatmap_hash == other.beatmap_hash
+    }
+}
 
 
 #[derive(Reflect)]

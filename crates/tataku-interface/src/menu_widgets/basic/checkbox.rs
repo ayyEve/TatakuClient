@@ -65,6 +65,10 @@ impl Widget for Checkbox {
     fn name(&self) -> Cow<'static, str> { "checkbox_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
+    fn set_text_style(&mut self, style: TextStyle) {
+        self.text_style = style;
+    }
+
     fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
         let mut size = self.text_style.measure_text(&self.text, None);
         size += self.box_size() + self.box_padding();
@@ -152,7 +156,7 @@ impl Widget for Checkbox {
         let rect = Rectangle::new(
             box_pos,
             box_size,
-            if self.value.get() { shell.general_theme.active_color } else { Color::TRANSPARENT_WHITE },
+            if self.value.get() { shell.general_theme.active_color } else { Color::TRANSPARENT },
             Some(Border::new(shell.general_theme.get_color(self.active, self.hovered), 2.0))
         ).shape(Shape::Round(2.0));
         shell.list.push(rect);
@@ -183,7 +187,7 @@ impl Widget for Checkbox {
 
 pub enum CheckboxValue {
     Static(bool),
-    Variable(ElementCondition, bool),
+    Variable(BuildableCondition, bool),
 }
 impl CheckboxValue {
     fn get(&self) -> bool {
@@ -195,14 +199,14 @@ impl CheckboxValue {
     fn update(&mut self, values: &mut dyn Reflect) {
         let Self::Variable(e, value) = self else { return };
         match e.resolve(values) {
-            ElementResolve::Failed => *value = false,
-            ElementResolve::Unbuilt(_) => unreachable!("should be built"),
-            ElementResolve::True => *value = true,
-            ElementResolve::False => *value = false,
-            ElementResolve::Error(shunting_yard_error) => {
+            BuildableConditionResult::Failed => *value = false,
+            BuildableConditionResult::Unbuilt(_) => unreachable!("should be built"),
+            BuildableConditionResult::True => *value = true,
+            BuildableConditionResult::False => *value = false,
+            BuildableConditionResult::Error(shunting_yard_error) => {
                 error!("{shunting_yard_error:?}");
                 *value = false;
-                *e = ElementCondition::Failed;
+                *e = BuildableCondition::Failed;
             },
         }
     }
@@ -212,8 +216,8 @@ impl From<bool> for CheckboxValue {
         Self::Static(value)
     }
 }
-impl From<ElementCondition> for CheckboxValue {
-    fn from(mut value: ElementCondition) -> Self {
+impl From<BuildableCondition> for CheckboxValue {
+    fn from(mut value: BuildableCondition) -> Self {
         value.build();
         Self::Variable(value, false)
     }
@@ -222,7 +226,7 @@ impl From<CheckboxBuilderValue> for CheckboxValue {
     fn from(value: CheckboxBuilderValue) -> Self {
         match value {
             CheckboxBuilderValue::Static(b) => Self::Static(b),
-            CheckboxBuilderValue::Variable(v) => ElementCondition::Unbuilt(v).into(),
+            CheckboxBuilderValue::Variable(v) => BuildableCondition::Unbuilt(v).into(),
         }
     }
 }

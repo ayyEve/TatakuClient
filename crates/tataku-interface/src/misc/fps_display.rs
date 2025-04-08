@@ -74,7 +74,7 @@ impl FpsDisplay {
         self.frametime_timer = TatakuInstant::now();
     }
     pub fn draw(&self, list: &mut RenderableCollection) {
-        list.push(visibility_bg(self.pos, SIZE));
+        list.push(Rectangle::new(self.pos, SIZE, Color::WHITE.alpha(0.8), None));
 
         list.push(Text::new(
             self.pos + TEXT_PADDING,
@@ -138,7 +138,7 @@ impl AsyncFpsDisplay {
     }
 
     pub fn draw(&self, list: &mut RenderableCollection) {
-        list.push(visibility_bg(self.pos, SIZE));
+        list.push(Rectangle::new(self.pos, SIZE, Color::WHITE.alpha(0.8), None));
 
         list.push(Text::new(
             self.pos + TEXT_PADDING,

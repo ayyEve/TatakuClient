@@ -33,7 +33,7 @@ pub struct ManiaGame {
     game_settings: Arc<ManiaSettings>,
 
     mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
-    map_preferences: BeatmapPlaymodePreferences,
+    // map_preferences: BeatmapPlaymodePreferences,
 
     key_images_up: HashMap<u8, Image>,
     key_images_down: HashMap<u8, Image>,
@@ -91,9 +91,7 @@ impl ManiaGame {
             let last_pos = position_function.last().unwrap();
 
             let dt = sv.time - last_pos.time;
-            
             let dy = last_velocity * dt;
-
             let y = last_pos.position;
 
             last_velocity = sv.slider_velocity;
@@ -197,7 +195,6 @@ impl ManiaGame {
             .unwrap_or_else(|| {
                 (position_function.len() - 1, position_function.last().unwrap())
             });
-        // warn!("time: {time}");
         *current_index = index;
         if index == 0 { return 0.0 }; // bad fix while neb fixes this
         let a = &position_function[index - 1];
@@ -217,13 +214,6 @@ impl ManiaGame {
     ) {
         let color = hit_value.color;
         let image = None;
-        // let (color, image) = match hit_value {
-        //     Miss => (Color::RED, None),
-        //     Okay | Good => (Color::LIME, None),
-        //     Great | Marvelous => (Color::new(0.0, 0.7647, 1.0, 1.0), None),
-        //     Perfect => Color::new(),
-        // };
-
         let bounds = playfield.bounds;
         
         let total_width = column_count as f32 * playfield.column_width;
@@ -238,7 +228,6 @@ impl ManiaGame {
 
             if playfield.upside_down {playfield.hit_pos + game_settings.judgement_indicator_offset} else {bounds.size.y - playfield.hit_pos - game_settings.judgement_indicator_offset}
         );
-
 
         state.add_indicator(BasicJudgementIndicator::new(
             pos, 
@@ -292,15 +281,12 @@ impl ManiaGame {
             let map = if self.column_states[col as usize] { &self.key_images_down } else { &self.key_images_up };
 
             if let Some(img) = map.get(&col) {
-                // let mut img = img.clone();
-                // img.pos = Vector2::new(x, self.playfield.hit_y());
-                
                 list.push(img.clone());
             } else {
                 list.push(Rectangle::new(
                     Vector2::new(x, self.playfield.hit_y()),
                     self.playfield.note_size(),
-                    if self.column_states[col as usize] { self.get_color(col) } else { Color::TRANSPARENT_WHITE },
+                    if self.column_states[col as usize] { self.get_color(col) } else { Color::TRANSPARENT },
                     Some(Border::new(Color::RED, self.playfield.note_border_width))
                 ));
             }
@@ -318,14 +304,6 @@ impl ManiaGame {
                 .then_some(col)
             )
             .map(|i| ((base_key as usize + i) as u8).into())
-
-        // for col in 0..self.column_count as usize {
-        //     if keys[col] == key {
-        //         return Some(((col + base_key as usize) as u8).into());
-        //     }
-        // }
-
-        // None
     }
     
 }
@@ -336,13 +314,8 @@ impl GameMode for ManiaGame {
         let metadata = beatmap.get_beatmap_meta();
 
         let game_settings = settings.gamemode_settings::<ManiaSettings>(GAME_INFO).unwrap_or_default();
-        // let game_settings = settings.mania_settings.clone();
         let playfields = &game_settings.playfield_settings.clone();
         let auto_helper = ManiaAutoHelper::new();
-        // let window_size = WindowSize::get();
-
-        // let all_mania_skin_settings = &SkinManager::skin().await.mania_settings;
-        let map_preferences = Database::get_beatmap_mode_prefs(metadata.beatmap_hash, &"mania".to_owned()).await;
         
         // windows
         let hit_windows = vec![
@@ -425,12 +398,6 @@ impl GameMode for ManiaGame {
                     let tp = timing_points.timing_point_at(time);
                     Hitsound::from_hitsamples(hitsound, hitsamples, true, tp)
                 };
-                // for i in all_mania_skin_settings.iter() {
-                //     if i.keys == column_count {
-                //         mania_skin_settings = Some(Arc::new(i.clone()));
-                //         break;
-                //     }
-                // }
 
                 let playfield = Arc::new(ManiaPlayfield::new(
                     playfields[(column_count - 1) as usize].clone(), 
@@ -438,7 +405,6 @@ impl GameMode for ManiaGame {
                     column_count,
                     0.0,
                     true,
-                    // mania_skin_settings.as_ref().map(|s|OSU_SIZE.y - s.hit_position).unwrap_or_default()
                 ));
 
 
@@ -455,13 +421,12 @@ impl GameMode for ManiaGame {
 
                     end_time: 0.0,
 
-                    sv_mult: map_preferences.scroll_speed,
+                    sv_mult: 1.0,
                     column_count,
 
                     auto_helper,
                     playfield,
                     mania_skin_settings: None,
-                    map_preferences,
                     game_settings: Arc::new(game_settings),
                     key_images_up: HashMap::new(),
                     key_images_down: HashMap::new(),
@@ -477,59 +442,32 @@ impl GameMode for ManiaGame {
 
                 // add notes
                 for note in beatmap.notes.iter() {
-                    // if metadata.mode == "mania" {
-                        let column = ((note.pos.x * s.column_count as f32 / 512.0).floor() as u8).min(column_count - 1);
-                        let x = s.playfield.col_pos(column);
-                        // warn!("{}, {:?}", note.hitsound, note.hitsamples);
+                    let column = ((note.pos.x * s.column_count as f32 / 512.0).floor() as u8).min(column_count - 1);
 
-                        s.columns[column as usize].push(Box::new(ManiaNote::new(
-                            note.time,
-                            column,
-                            get_color(note.time),
-                            x,
-                            s.sv_mult,
-                            s.playfield.clone(),
-                            s.mania_skin_settings.clone(),
-                            get_hitsounds(note.time, note.hitsound, note.hitsamples.clone())
-                        ).await));
-                    // }
+                    s.columns[column as usize].push(Box::new(ManiaNote::new(
+                        note.time,
+                        column,
+                        get_color(note.time),
+                        s.playfield.col_pos(column),
+                        s.sv_mult,
+                        s.playfield.clone(),
+                        s.mania_skin_settings.clone(),
+                        get_hitsounds(note.time, note.hitsound, note.hitsamples.clone())
+                    ).await));
                 }
                 for hold in beatmap.holds.iter() {
                     let column = (hold.pos.x * s.column_count as f32 / 512.0).floor() as u8;
-                    let x = s.playfield.col_pos(column);
                     s.columns[column as usize].push(Box::new(ManiaHold::new(
                         hold.time,
                         hold.end_time,
                         column,
                         get_color(hold.time),
-                        x,
+                        s.playfield.col_pos(column),
                         s.sv_mult,
                         s.playfield.clone(),
                         s.mania_skin_settings.clone(),
                         get_hitsounds(hold.time, hold.hitsound, hold.hitsamples.clone())
                     ).await));
-                }
-
-                for _slider in beatmap.sliders.iter() {
-                    // let SliderDef {pos, time, slides, length, ..} = slider.to_owned();
-                    // let time = time as u64;
-                    
-                    // let l = (length * 1.4) * slides as f64;
-                    // let v2 = 100.0 * (beatmap.metadata.slider_multiplier as f64 * 1.4);
-                    // let bl = beatmap.beat_length_at(time as f64, true);
-                    // let end_time = time + (l / v2 * bl) as u64;
-            
-                    // let column = (pos.x * s.column_count as f64 / 512.0).floor() as u8;
-                    // let x = s.col_pos(column);
-                    // s.columns[column as usize].push(Box::new(ManiaHold::new(
-                    //     time as u64,
-                    //     end_time as u64,
-                    //     x
-                    // )));
-                }
-                for _spinner in beatmap.spinners.iter() {
-                    // let SpinnerDef {time, end_time, ..} = spinner;
-                    //TODO
                 }
 
                 s.integrate_velocity(beatmap.timing_points.iter().filter(|b| b.is_inherited()).map(|&b| SliderVelocity {
@@ -541,19 +479,12 @@ impl GameMode for ManiaGame {
             }
             Beatmap::Quaver(beatmap) => {
                 let column_count = beatmap.mode.into();
-                // for i in all_mania_skin_settings.iter() {
-                //     if i.keys == column_count {
-                //         mania_skin_settings = Some(Arc::new(i.clone()));
-                //     }
-                // }
-
                 let playfield = Arc::new(ManiaPlayfield::new(
                     playfields[(column_count - 1) as usize].clone(), 
                     Bounds::new(Vector2::ZERO, OSU_SIZE), 
                     column_count,
                     0.0,
                     true
-                    // mania_skin_settings.as_ref().map(|s|OSU_SIZE.y - s.hit_position).unwrap_or_default(),
                 ));
 
                 let get_hitsounds = || {
@@ -572,14 +503,12 @@ impl GameMode for ManiaGame {
                     position_function: Arc::new(Vec::new()),
                     
                     end_time: 0.0,
-
-                    sv_mult: map_preferences.scroll_speed,
+                    sv_mult: 1.0,
                     column_count,
 
                     auto_helper,
                     playfield,
                     mania_skin_settings: None,
-                    map_preferences,
                     game_settings: Arc::new(game_settings),
                     
                     key_images_up:HashMap::new(),
@@ -631,19 +560,12 @@ impl GameMode for ManiaGame {
             Beatmap::Stepmania(beatmap) => {
                 // stepmania maps are always 4k
                 let column_count = 4;
-                // for i in all_mania_skin_settings.iter() {
-                //     if i.keys == column_count {
-                //         mania_skin_settings = Some(Arc::new(i.clone()));
-                //     }
-                // }
-
                 let playfield = Arc::new(ManiaPlayfield::new(
                     playfields[(column_count - 1) as usize].clone(), 
                     Bounds::new(Vector2::ZERO, OSU_SIZE), 
                     column_count,
                     0.0,
                     true
-                    // mania_skin_settings.as_ref().map(|s|OSU_SIZE.y - s.hit_position).unwrap_or_default()
                 ));
 
                 let get_hitsounds = || {
@@ -663,13 +585,12 @@ impl GameMode for ManiaGame {
                     
                     end_time: 0.0,
 
-                    sv_mult: map_preferences.scroll_speed,
+                    sv_mult: 1.0,
                     column_count,
 
                     auto_helper,
                     playfield,
                     mania_skin_settings: None,
-                    map_preferences,
                     game_settings: Arc::new(game_settings),
                     
                     key_images_up:HashMap::new(),
@@ -743,16 +664,13 @@ impl GameMode for ManiaGame {
         match frame.action {
             ReplayAction::Press(key) => {
                 let Some(col) = Self::keypress2col(key) else { return };
-                // let hit_volume = Settings::get().get_effect_vol() * (manager.beatmap.timing_points[self.timing_point_index].volume as f32 / 100.0);
 
                 // if theres no more notes to hit, return after playing the sound
                 if self.column_indices[col] >= self.columns[col].len() {
                     // we need a hitsound though
-                    let thing = self.columns[col].iter().last().unwrap();
+                    let thing = self.columns[col].last().unwrap();
 
-                    state.play_note_sound(thing.get_hitsound().clone());
-
-                    // play_sound!(sound);
+                    state.play_hitsounds(thing.get_hitsound(), false);
                     return;
                 }
                 let note = &mut self.columns[col][self.column_indices[col]];
@@ -760,8 +678,6 @@ impl GameMode for ManiaGame {
                 *self.column_states.get_mut(col).unwrap() = true;
 
                 if let Some(&judge) = state.check_judgment(&self.hit_windows, frame.time, note_time).await {
-                    // use ManiaHitJudgments::*;
-
                     // tell the note it was hit
                     note.hit(frame.time);
 
@@ -776,28 +692,14 @@ impl GameMode for ManiaGame {
                     );
                     
                     // play the hit sound
-                    state.play_note_sound(note.get_hitsound().clone());
-                    // play_sound!(sound);
+                    state.play_hitsounds(note.get_hitsound(), false);
 
                     // incrememnt note index if this is not a slider
                     if note.note_type() != NoteType::Hold { self.next_note(col); }
-
-
-                    // TODO: is this necessary? 
-                    // this should be handled by the gameplay manager, not sure why its here
-                    
-                    // // if this was a miss, check if we failed
-                    // if judge == ManiaHitJudgments::Miss {
-                    //     if manager.health.is_dead() {
-                    //         manager.fail();
-                    //     }
-                    // }
                 } else { // outside of any window, ignore
                     // play sound
                     let thing = &self.columns[col][self.column_indices[col]];
-
-                    // play_sound!(sound);
-                    state.play_note_sound(thing.get_hitsound().clone());
+                    state.play_hitsounds(thing.get_hitsound(), false);
                 }
             }
             ReplayAction::Release(key) => {
@@ -827,25 +729,13 @@ impl GameMode for ManiaGame {
                             &self.playfield, 
                             state
                         );
-                        
-                        // // play the hit sound
-                        // play_sound!(sound);
     
                         // increment note index 
                         self.next_note(col);
-    
-                        // TODO: again, is this necessary?
-
-                        // // if this was a miss, check if we failed
-                        // if judge == ManiaHitJudgments::Miss && manager.health.is_dead() {
-                        //     manager.fail();
-                        // }
                     } else { // outside of any window, ignore
                         // play sound
                         let thing = &self.columns[col][self.column_indices[col]];
-
-                        // play_sound!(sound);
-                        state.play_note_sound(thing.get_hitsound().clone());
+                        state.play_hitsounds(thing.get_hitsound(), false);
                     }
                 }
             }
@@ -876,7 +766,6 @@ impl GameMode for ManiaGame {
         if state.time >= self.end_time {
             if !state.complete() {
                 state.add_action(GamemodeAction::MapComplete);
-                // manager.completed = true;
             }
             return;
         }
@@ -937,13 +826,6 @@ impl GameMode for ManiaGame {
         if time < 0.0 { return None }
         if game_time >= time { return None }
 
-        // if manager.lead_in_time > 0.0 {
-        //     if time > manager.lead_in_time {
-        //         time -= manager.lead_in_time - 0.01;
-        //         manager.lead_in_time = 0.01;
-        //     }
-        // }
-
         Some(time)
     }
 
@@ -999,7 +881,7 @@ impl GameMode for ManiaGame {
                 if time >= self.end_time || time.is_nan() {break}
             }
 
-            debug!("created {} timing bars", self.timing_bars.len());
+            trace!("created {} timing bars", self.timing_bars.len());
         } else {
             for t in self.timing_bars.iter_mut() {
                 t.reset();
@@ -1068,7 +950,6 @@ impl GameMode for ManiaGame {
                     } else {
                         self.sv_mult -= self.game_settings.sv_change_delta;
                     }
-                    self.map_preferences.scroll_speed = self.sv_mult;
 
                     self.set_sv_mult_notes();
 
@@ -1092,10 +973,10 @@ impl GameMode for ManiaGame {
 
 
     async fn beat_happened(&mut self, pulse_length: f32) {
-        self.columns.iter_mut().flatten().for_each(|n|n.beat_happened(pulse_length))
+        self.columns.iter_mut().flatten().for_each(|n| n.beat_happened(pulse_length))
     }
     async fn kiai_changed(&mut self, is_kiai: bool) {
-        self.columns.iter_mut().flatten().for_each(|n|n.kiai_changed(is_kiai))
+        self.columns.iter_mut().flatten().for_each(|n| n.kiai_changed(is_kiai))
     }
 
 
@@ -1145,10 +1026,19 @@ impl GameMode for ManiaGame {
             (KeyPress::Mania8, "K8"),
             (KeyPress::Mania9, "K9"),
         ];
+        let mut sound_list = HashMap::new();
+        for col in self.columns.iter() {
+            for note in col.iter() {
+                let hitsounds = note.get_hitsound();
+                for hitsound in hitsounds {
+                    sound_list.insert(hitsound.get_id(), hitsound.load_data(Some("mania-")));
+                }
+            }
+        }
+
 
         GameModeProperties { 
             info: &crate::GAME_INFO, 
-            // playmode: Cow::Borrowed("mania"), 
             keys: KEY_LIST[0..((self.column_count as usize).min(KEY_LIST.len()))].to_vec(), 
             end_time: self.end_time, 
             show_cursor: false, 
@@ -1157,15 +1047,8 @@ impl GameMode for ManiaGame {
                 .iter()
                 .map(|(j, w)| (w.end, j.color))
                 .collect(), 
+
+            sound_list: sound_list.into_iter().collect(),
         }
     }
 }
-
-// when the game is dropped, save settings
-// this is better than saving the update every time the values change
-impl Drop for ManiaGame {
-    fn drop(&mut self) {
-        Database::save_beatmap_mode_prefs(self.map_meta.beatmap_hash, &"mania".to_owned(), &self.map_preferences);
-    }
-}
-

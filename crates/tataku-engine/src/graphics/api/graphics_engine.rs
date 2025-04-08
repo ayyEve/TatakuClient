@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
-pub type RenderTargetDraw = Box<dyn FnOnce(&mut dyn GraphicsEngine, Matrix) + Send>;
-pub type ScreenshotCallback = Box<dyn FnOnce((Vec<u8>, [u32; 2]))+Send+Sync>;
+pub type RenderTargetDraw = Box<dyn FnOnce(&mut dyn GraphicsEngine, Matrix) + Send + Sync>;
+pub type ScreenshotCallback = Box<dyn FnOnce((Vec<u8>, [u32; 2])) + Send + Sync>;
 
 pub trait GraphicsEngine {
     fn is_dummy(&self) -> bool { false }

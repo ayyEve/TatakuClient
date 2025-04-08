@@ -1,6 +1,5 @@
 use crate::prelude::*;
 
-
 pub enum TaskAction {
     AddTask(Box<dyn TatakuTask>),
 }

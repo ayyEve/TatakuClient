@@ -41,8 +41,8 @@ impl Transformation {
 
         match self.trans_type {
             TransformType::Position { start, end }
-            | TransformType::VectorScale { start, end } => 
-                TransformValueResult::Vector2(self.easing_type.run_easing(start, end, factor)),
+            | TransformType::VectorScale { start, end } 
+            => TransformValueResult::Vector2(self.easing_type.run_easing(start, end, factor)),
 
             TransformType::Scale { start, end }
             | TransformType::ScaleX { start, end }
@@ -77,7 +77,7 @@ impl From<TransformValueResult> for Vector2 {
         } else {
             // we want to crash here
             // if we get here its an issue in my code, and must be fixed
-            panic!("NOT A VECTOR2!!")
+            unreachable!("NOT A VECTOR2!!")
         }
     }
 }
@@ -88,7 +88,7 @@ impl From<TransformValueResult> for f64 {
         } else {
             // we want to crash here
             // if we get here its an issue in my code, and must be fixed
-            panic!("NOT AN f64!!")
+            unreachable!("NOT AN f64!!")
         }
     }
 }
@@ -99,16 +99,16 @@ impl From<TransformValueResult> for Color {
         } else {
             // we want to crash here
             // if we get here its an issue in my code, and must be fixed
-            panic!("NOT AN f64!!")
+            unreachable!("NOT AN f64!!")
         }
     }
 }
 
 
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
+#[derive(Deserialize)]
 pub enum TransformType {
-    #[default]
-    None,
+    #[default] None,
     VectorScale { start: Vector2, end: Vector2 },
     ScaleX { start: f32, end: f32 },
     ScaleY { start: f32, end: f32 },

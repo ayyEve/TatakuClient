@@ -2,21 +2,23 @@ use crate::prelude::*;
 
 #[derive(Debug)]
 pub enum ModAction {
-    /// add a mod
+    /// Add a mod
     AddMod(String),
 
-    /// remove a mod
+    /// Remove a mod
     RemoveMod(String),
 
-    /// toggle a mod
+    /// Toggle a mod
     ToggleMod(String),
 
-
-    /// set the speed
+    /// Set the speed
     SetSpeed(f32),
 
-    /// add/remove to the speed
-    AddSpeed(f32)
+    /// Add/remove to the speed
+    AddSpeed(f32),
+
+    /// Set all mods that are active
+    SetMods(HashSet<String>)
 }
 impl From<ModAction> for TatakuAction {
     fn from(value: ModAction) -> Self {

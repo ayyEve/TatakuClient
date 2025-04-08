@@ -34,7 +34,7 @@ pub struct GamemodeInfo {
     // pub get_diff_string: fn(&BeatmapMetaWithDiff, &ModManager) -> String,
     
     #[reflect(skip)]
-    pub stats_from_groups: fn(&HashMap<String, HashMap<String, Vec<f32>>>) -> Vec<MenuStatsInfo>,
+    pub stats_from_groups: fn(&HashMap<String, HashMap<String, Vec<f32>>>) -> Vec<StatsInfo>,
 
     #[reflect(skip)]
     pub create_game: for<'a> fn(&'a Beatmap, &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn GameMode>>>,
@@ -79,7 +79,7 @@ impl GamemodeInfo {
         (self.calc_perf)(data)
     }
 
-    pub fn stats_from_groups(&self, stats: &HashMap<String, HashMap<String, Vec<f32>>>) -> Vec<MenuStatsInfo> {
+    pub fn stats_from_groups(&self, stats: &HashMap<String, HashMap<String, Vec<f32>>>) -> Vec<StatsInfo> {
         (self.stats_from_groups)(stats)
     }
 

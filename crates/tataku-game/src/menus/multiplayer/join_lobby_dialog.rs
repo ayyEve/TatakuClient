@@ -11,21 +11,10 @@ pub struct JoinLobbyDialog {
 }
 impl JoinLobbyDialog {
     pub fn new(lobby_id: u32) -> Self {
-        let node = col!(
-            TextWidget::new("Enter Password:").boxed(),
-            TextInput::new("Password:", CustomElementText::Variable(PASSWORD_PATH.to_string())).on_input(move |t: &str| Message::new_dialog("password", MessageValue::Text(t.to_string()))).boxed(),
-
-            row!(
-                Button::new(TextWidget::new("Join").boxed()).on_press(Message::new_dialog("done", MessageValue::Click)).boxed(),
-                Button::new(TextWidget::new("Cancel").boxed()).on_press(Message::new_dialog("close", MessageValue::Click)).boxed();
-                width = FILL
-            );
-        );
-
         Self {
             lobby_id,
 
-            node,
+            node: EmptyWidget::new_boxed(),
             node_id: EMPTY_NODE
         }
     }
@@ -36,7 +25,22 @@ impl Widget for JoinLobbyDialog {
     fn name(&self) -> Cow<'static, str> { "join_lobby_dialog".into() }
     fn node_id(&self) -> NodeId { self.node_id }
     
+    fn update_styles(&mut self, tree: &mut Tree, resolver: &mut CssResolver, display_override: Option<ui::Display>) {
+        self.node.update_styles(tree, resolver, display_override);
+    }
     fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId>  {
+        let owner = shell.owner;
+        self.node = col!(
+            TextWidget::new("Enter Password:").boxed(),
+            TextInput::new("Password:", BuildableTextInner::Variable(PASSWORD_PATH.to_string()).as_buildable()).on_input(move |t: &str| Message::new(owner, "password", MessageValue::Text(t.to_string()))).boxed(),
+
+            row!(
+                Button::new(TextWidget::new("Join").boxed()).on_press(Message::new(owner, "done", MessageValue::Click)).boxed(),
+                Button::new(TextWidget::new("Cancel").boxed()).on_press(Message::new(owner, "close", MessageValue::Click)).boxed();
+                width = FILL
+            );
+        );
+
         let child = self.node.layout(shell)?;
         self.node_id = shell.tree.new_with_children(
             Style::default(), 
@@ -44,6 +48,22 @@ impl Widget for JoinLobbyDialog {
         )?;
 
         Ok(self.node_id)
+    }
+    
+    fn input(
+        &mut self, 
+        event: &InputEvent, 
+        shell: &mut InputShell<'_>,
+    ) {
+        self.node.input(event, shell);
+    }
+    
+    fn update(
+        &mut self, 
+        shell: &mut UpdateShell<'_>, 
+        actions: &mut ActionQueue
+    ) {
+        self.node.update(shell, actions);
     }
     
     fn draw(&self, shell: &mut DrawShell<'_>) {

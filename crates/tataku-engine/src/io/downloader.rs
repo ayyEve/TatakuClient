@@ -253,6 +253,47 @@ impl TcpConnection {
 }
 
 
+#[derive(ChainableInitializer)]
+pub struct Downloadable {
+    /// filename for this downloadable
+    pub filename: String,
+    
+    // download progress data for this item
+    pub download_progress: Option<Arc<RwLock<DownloadProgress>>>,
+    pub download: Arc<dyn Fn() -> Arc<RwLock<DownloadProgress>> + Send + Sync>,
+    #[chain] pub on_complete: Option<TatakuAction>,
+}
+impl Downloadable {
+    pub fn new(
+        path: String,
+        download_fn: impl Fn() -> Arc<RwLock<DownloadProgress>> + Send + Sync + 'static
+    ) -> Self {
+        Self {
+            filename: path,
+            download_progress: None,
+            download: Arc::new(download_fn),
+            on_complete: None
+        }
+    }
+
+
+    pub fn fake_download() -> Self {
+        Self {
+            filename: "/tmp/hi".to_owned(),
+            download_progress: None,
+            download: Arc::new(|| Arc::new(RwLock::new(DownloadProgress::default()))),
+            on_complete: None,
+        }
+    }
+
+}
+impl std::fmt::Debug for Downloadable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Downloadable({})", self.filename)
+    }
+}
+
+
 #[tokio::test]
 async fn test() -> TatakuResult {
     let file = "eveflatshading.png1";

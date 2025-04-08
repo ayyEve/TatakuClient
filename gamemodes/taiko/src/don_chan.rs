@@ -64,7 +64,7 @@ impl DonChan {
     pub fn update_delays(&mut self, timing_point: &TimingPoint) {
         for i in self.all_anims() {
             let Some(anim) = i else { continue };
-            anim.frame_delays.iter_mut().for_each(|d| *d = timing_point.beat_length)
+            anim.frame_delay = timing_point.beat_length;
         }
     }
 
@@ -225,12 +225,11 @@ async fn load_anim(
     if frames.is_empty() {
         None
     } else {
-        let delays = vec![50.0; frames.len()];
         let mut anim = Animation::new(
             Vector2::ZERO,
             DEFAULT_DONCHAN_SIZE / 2.0,
             frames,
-            delays,
+            50.0, // this is getting overwritten later anyways
             Vector2::ONE
         );
         anim.origin.x = 0.0;

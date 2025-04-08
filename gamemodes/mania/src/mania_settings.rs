@@ -1,10 +1,5 @@
 use crate::prelude::*;
 
-const WIDTH:f32 = 600.0;
-const WIDTH2:f32 = 550.0;
-const OFFSET:f32 = 25.0;
-const OFFSET2:f32 = 5.0;
-
 #[derive(Clone, Debug, Serialize, PartialEq)]
 #[cfg_attr(feature="graphics", derive(Settings))]
 // #[cfg_attr(feature="graphics", setting(get_items="get_key_items", from_menu="keys_from_menu"))]

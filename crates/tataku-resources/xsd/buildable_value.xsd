@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+
+<xs:schema 
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  targetNamespace="tataku/buildable-value"
+  xmlns:buildable-value="tataku/buildable-value"
+>
+<xs:group name="buildableValue">
+    <xs:choice>
+        <xs:element name="none"/>
+        <xs:element name="value" type="xs:anySimpleType"/>
+        <xs:element name="variable" type="xs:string"/>
+        <xs:element name="passedIn"/>
+        <xs:any minOccurs="0"/>
+    </xs:choice>
+</xs:group>
+
+<xs:complexType name="buildableValueElement" mixed="true">
+    <xs:group ref="buildable-value:buildableValue"/>
+</xs:complexType>
+
+</xs:schema>

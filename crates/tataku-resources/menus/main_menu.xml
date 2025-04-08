@@ -1,0 +1,225 @@
+<?xml version="1.0"?>
+<?xml-model href="../xsd/menu.xsd"?>
+
+<menu id = "main_menu">
+    <style>
+        .fa-button {
+            padding: 5px;
+            border-radius: 5px;
+        }
+
+        .fa-button text {
+            font: icon;
+        }
+
+        #song-display {
+            width: fill; 
+            height: auto; 
+            padding: 8px; 
+            border-radius: 5px; 
+
+            align-content: end; 
+            background: #FFFFFF11;
+        }
+    </style>
+
+    <events>
+        <!-- when a new map is added, select it -->
+        <event>
+            <mapAdded/>
+            <actions>
+                <map><selectMap><passedIn/></selectMap></map>
+            </actions>
+        </event>
+
+        <!-- play the next map once the song ends -->
+        <event>
+            <songEnd/>
+            <actions>
+                <map><next/></map>
+            </actions>
+        </event>
+        
+        <!-- when a song starts playing, send a notification -->
+        <event>
+            <songStart/>
+            <actions>
+                <game>
+                    <notification>
+                        <color>teal</color> 
+                        <duration>10000</duration>
+                        <text>
+                            <list join=" ">
+                                <text>Now playing: </text>
+                                <variable>beatmaps.current.map.title</variable>
+                                <text> by </text>
+                                <variable>beatmaps.current.map.artist</variable>
+                            </list>
+                        </text>
+                    </notification>
+                </game>
+            </actions>
+        </event>
+
+        
+        <!-- previous set -->
+        <event>
+            <keyPress key="Left"/>
+            <actions> <map> <previousSet/> </map> </actions>
+        </event>
+
+        <!-- next set -->
+        <event>
+            <keyPress key="Right"/>
+            <actions> <map> <nextSet/> </map> </actions>
+        </event>
+
+    </events>
+
+    <!-- the current main menu is broken up into rows -->
+    <element>
+        <column style = "width: fill; height: fill">
+            <!-- the first row contains the song display -->
+            <row id = "song-display">
+                <text style = "font-size: 30px; color: #FFFF;">
+                    <list join = " ">
+                        <variable>beatmaps.current.map.artist</variable>
+                        <text> - </text>
+                        <variable>beatmaps.current.map.title</variable>
+                    </list>
+                </text>
+            </row> 
+
+            <!-- the next row is the preview and menu buttons -->
+            <row id = "main_menu_row2" style = "width: fill; height: fill;">
+                <gameplayPreview visualization = "menu_visualization" style = "width: 80%; height: fill;"/>
+                <animatable id = "animatable" style = "width: 20%; height: fill;">
+                    <!-- TODO: fix animations!! -->
+                    <!-- <triggers>
+                        <trigger action="unhide"> <input/> </trigger>
+                        <trigger action="hide"> <noInput duration = "5000" /> </trigger>
+                    </triggers>
+                    <actions>
+                        <action id="hide">
+                            <action duration = "1000.0" >
+                                <scaleX start="0.0" end="1.0" />
+                            </action>
+                        </action>
+                        <action id="unhide">
+                            <action duration = "1000.0">
+                                <scaleX start="1.0" end="0.0"/>
+                            </action>
+                        </action>
+                    </actions> -->
+
+                    <element>
+                        <column id = "main_menu_buttons_list" style = "width: fill; height: fill;">
+                            <!-- Singleplayer --> 
+                            <button> 
+                                <action>
+                                    <setMenu>beatmap_select</setMenu>
+                                </action> 
+                                <element>
+                                    <text><text>Play</text></text>
+                                </element>
+                            </button>
+
+                            <!-- Multiplayer --> 
+                            <button> 
+                                <action>
+                                    <multiplayer><start/></multiplayer> 
+                                </action>
+                                <element>
+                                    <text><text>Multiplayer</text></text>
+                                </element>
+                            </button>
+
+                            <!-- Settings --> 
+                            <button> 
+                                <action>
+                                    <addDialog>settings</addDialog>
+                                </action>
+                                <element>
+                                    <text><text>Settings</text></text>
+                                </element>
+                            </button>
+
+                            <!-- Quit --> 
+                            <button> 
+                                <action>
+                                    <game><quit/></game>
+                                </action>
+                                <element>
+                                    <text><text>Quit</text></text>
+                                </element>
+                            </button>
+                        </column>
+                    </element>
+                </animatable>
+            </row>
+
+            <!-- the next row is the media controls -->
+            <row id = "media-controls" style = "width: fill; height: auto;">
+                <!-- an inner row so the buttons arent spread out over the whole width -->
+                <row id = "song-controls" style = "width: 30%; height: fill; align-content: space-evenly">
+                    <!-- previous song -->
+                    <button class = "fa-button">
+                        <action> <map><previous/></map> </action>
+                        <element>
+                            <text><text>&#xF04A;</text></text>
+                        </element>
+                    </button>
+
+                    <!-- seek backwards -->
+                    <button class = "fa-button">
+                        <action> <song><seek><value>-500.0</value></seek></song> </action>
+                        <element>
+                            <text><text>&#xF048;</text></text>
+                        </element>
+                    </button>
+
+                    <!-- play/pause button -->
+                    <conditional cond = "song.playing">
+                        <!-- pause -->
+                        <true>
+                            <button class = "fa-button">
+                                <action> <song><pause/></song> </action>
+                                <element>
+                                    <text><text>&#xF04C;</text></text>
+                                </element>
+                            </button>
+                        </true>
+
+                        <!-- play -->
+                        <false>
+                            <button class="fa-button">
+                                <action> <song><play/></song> </action>
+                                <element>
+                                    <text><text>&#xF04B;</text></text>
+                                </element>
+                            </button>
+                        </false>
+                    </conditional>
+    
+                    
+                    <!-- seek forwards -->
+                    <button class="fa-button">
+                        <action> <song><seek><value>500.0</value></seek></song> </action>
+                        <element>
+                            <text><text>&#xF051;</text></text>
+                        </element>
+                    </button>
+
+                    <!-- next song -->
+                    <button class="fa-button">
+                        <action> <map><next/></map> </action>
+                        <element>
+                            <text><text>&#xF04E;</text></text>
+                        </element>
+                    </button>
+                </row>
+            </row>
+            
+        </column>
+    </element>
+</menu>

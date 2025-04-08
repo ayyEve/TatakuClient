@@ -88,8 +88,6 @@ impl RenderBufferable for FlashlightBuffer {
             used_flashlights: 0,
         }
     }
-
-
 }
 
 pub struct CpuFlashlightBuffer {

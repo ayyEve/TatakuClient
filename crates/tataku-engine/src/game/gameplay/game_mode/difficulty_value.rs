@@ -46,8 +46,8 @@ impl DifficultyValue {
 
     pub fn format(&self, num: f32) -> String {
         let num = match self.number_type {
-            DifficultyNumberType::Float => crate::format_float(num, 2),
-            DifficultyNumberType::WholeNumber => crate::format_number(num as u64),
+            DifficultyNumberType::Float => format_float(num, 2),
+            DifficultyNumberType::WholeNumber => format_number(num as u64),
         };
         format!("{}: {num}{}", self.name, self.unit.unwrap_or_default())
     }

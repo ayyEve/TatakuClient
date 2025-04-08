@@ -9,6 +9,7 @@ pub struct GameModeProperties {
     pub timing_bar_things: Vec<(f32, Color)>,
 
     pub audio_prefix: String,
+    pub sound_list: Vec<(String, Vec<AudioLoadData>)>,
 }
 impl GameModeProperties {
     pub fn playmode(&self) -> &'static str {
@@ -25,6 +26,7 @@ impl Default for GameModeProperties {
             show_cursor: false,
             timing_bar_things: Vec::new(),
             audio_prefix: String::new(),
+            sound_list: Vec::new(),
         }
     }
 }

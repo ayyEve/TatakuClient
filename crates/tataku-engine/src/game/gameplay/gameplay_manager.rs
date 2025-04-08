@@ -1,6 +1,5 @@
 use crate::prelude::*;
 
-
 /// how much time should pass at beatmap start before audio begins playing (and the map "starts")
 pub const LEAD_IN_TIME:f32 = 1000.0;
 
@@ -28,7 +27,7 @@ pub trait GameplayManagerTrait {
     fn bounds(&self) -> Bounds;
 
     async fn apply_mods(&mut self, mut mods: ModManager);
-    async fn update(&mut self, values: &mut dyn Reflect) -> Vec<TatakuAction>;
+    async fn update(&mut self, values: &mut dyn Reflect, actions: &mut ActionQueue);
     async fn draw(&mut self, list: &mut RenderableCollection);
     async fn handle_action(
         &mut self, 
@@ -54,10 +53,7 @@ pub trait GameplayManagerTrait {
 
     fn on_complete(&mut self);
     fn jump_to_time(&mut self, time: f32, skip_intro: bool);
-    fn combo_break(
-        &mut self,
-        settings: &Settings
-    );
+    fn combo_break(&mut self);
 
     fn set_id(&mut self, id: GameplayId);
 
@@ -73,9 +69,6 @@ pub trait GameplayManagerTrait {
 }
 
 pub trait GameplayManagerOnline: Send + Sync {
-    fn send_spec_frames(&mut self, frames: Vec<SpectatorFrame>, force: bool);
-    fn get_pending_frames(&mut self) -> Vec<SpectatorFrame>;
-    fn update_lobby_score(&mut self, score: Score);
     fn our_spectator_list(&mut self) -> Option<SpectatorList>;
 }
 
@@ -144,6 +137,8 @@ pub enum GameplayModeInner {
         /// when was escape pressed last
         last_escape_press: TatakuInstant,
         score_send_timer: TatakuInstant,
+
+        
     },
 }
 impl GameplayModeInner {
@@ -151,7 +146,7 @@ impl GameplayModeInner {
     // convenience fns
     pub fn is_preview(&self) -> bool { matches!(self, &Self::Preview) }
     #[cfg(feature="gameplay")]
-    pub fn is_multi(&self) -> bool { matches!(self, &Self::Preview) }
+    pub fn is_multi(&self) -> bool { matches!(self, &Self::Multiplayer { .. }) }
     pub fn is_replay(&self) -> bool { matches!(self, &Self::Replaying {..}) }
 
     #[cfg(feature="gameplay")]
@@ -326,8 +321,14 @@ impl GameplayUpdateShell<'_> {
         self.actions.push(GamemodeAction::AddStat { stat, value });
     }
 
-    pub fn play_note_sound(&mut self, hitsounds: Vec<Hitsound>) {
-        self.actions.push(GamemodeAction::PlayHitsounds(hitsounds));
+    // pub fn play_note_sound(&mut self, hitsounds: Vec<Hitsound>) {
+    //     self.actions.push(GamemodeAction::PlayHitsounds(hitsounds));
+    // }
+
+    pub fn play_hitsounds(&mut self, sounds: &[Hitsound], repeat: bool) {
+        for i in sounds {
+            self.action_queue.push(AudioAction::new(i.get_id(), AudioActionType::Play { volume: i.volume, repeat, restart: true }));
+        }
     }
 
 }

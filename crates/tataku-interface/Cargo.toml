@@ -18,8 +18,10 @@ tataku-engine.workspace = true
 tataku-resources.workspace = true
 
 taffy.workspace = true
+
 async-recursion.workspace = true
-mlua.workspace = true
-uuid.workspace = true
 
 chrono.workspace = true
+serde.workspace = true
+simplecss.workspace = true
+quick-xml.workspace = true

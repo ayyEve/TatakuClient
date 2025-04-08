@@ -43,7 +43,7 @@ impl DirectApi for OsuDirect {
 
         let mut lines = body.split('\n');
         let count = lines.next().unwrap_or("0").parse::<i32>().unwrap_or(0);
-        trace!("Got {} items", count);
+        trace!("Got {count} items");
 
         // parse items into list, and return list
         let mut items = Vec::new();
@@ -82,7 +82,7 @@ impl DirectDownloadable for OsuDirectDownloadable {
         
         let username = &settings.osu_username;
         let password = &settings.osu_password;
-        let url = format!("https://osu.ppy.sh/d/{}?u={}&h={}", self.filename, username, password);
+        let url = format!("https://osu.ppy.sh/d/{}?u={username}&h={password}", self.filename);
 
         crate::perform_download(url, download_dir, self.progress.clone());
     }

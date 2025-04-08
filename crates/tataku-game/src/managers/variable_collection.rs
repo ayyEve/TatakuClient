@@ -17,12 +17,11 @@ pub struct GameValues {
     pub score: IngameScore,
 
     /// Beatmap manager, its here instead of in Game to keep the lists in one place
-    #[reflect(alias("beatmaps"))]
-    pub beatmap_manager: BeatmapManager,
+    #[reflect(alias("beatmaps"))] pub beatmap_manager: BeatmapManager,
 
     /// list of retreived scored 
-    #[reflect(alias("scores_list"))]
-    pub score_list: ScoreList,
+    #[reflect(alias("scores_list"))] pub score_list: ScoreList,
+    #[reflect(alias("downloads"))] pub download_manager: DownloadManager,
 }
 impl GameValues {
     pub fn new(
@@ -81,18 +80,15 @@ impl Reflect for ValueCollection {
         self
             .values
             .impl_get(path.clone())
-            // .inspect_err(|e| println!("{e:?}"))
             .or_else(|_| self.custom.impl_get(path))
     }
 
     fn impl_get_mut<'v>(&mut self, path: ReflectPath<'v>) -> ReflectResult<'v, &mut dyn Reflect> {
-        // debug!("impl_get_mut: {path:?}");
         self.values.impl_get_mut(path.clone())
             .or_else(|_| self.custom.impl_get_mut(path))
     }
 
     fn impl_insert<'v>(&mut self, path: ReflectPath<'v>, value: Box<dyn Reflect>) -> ReflectResult<'v, ()> {
-        // debug!("impl_insert: {path:?}");
         if self.values.impl_get(path.clone()).is_ok() {
             self.values.impl_insert(path, value)
         } else {
@@ -101,7 +97,6 @@ impl Reflect for ValueCollection {
     }
 
     fn impl_iter<'v>(&self, path: ReflectPath<'v>) -> ReflectResult<'v, ReflectIter<'_>> {
-        // debug!("impl_iter: {path:?}");
         match (self.values.impl_iter(path.clone()), self.custom.impl_iter(path)) {
             (Ok(v), Ok(c)) => Ok(v.chain(c).collect::<Vec<_>>().into()),
             (Ok(v), Err(_)) => Ok(v),
@@ -114,7 +109,6 @@ impl Reflect for ValueCollection {
     }
 
     fn impl_iter_mut<'v>(&mut self, path: ReflectPath<'v>) -> ReflectResult<'v, ReflectIterMut<'_>> {
-        // debug!("impl_iter_mut: {path:?}");
         match (self.values.impl_iter_mut(path.clone()), self.custom.impl_iter_mut(path)) {
             (Ok(v), Ok(c)) => Ok(v.chain(c).collect::<Vec<_>>().into()),
             (Ok(v), Err(_)) => Ok(v),
@@ -136,6 +130,7 @@ impl Reflect for ValueCollection {
 
 #[derive(Reflect)]
 #[derive(Default, Debug, Copy, Clone)]
+#[reflect(display = "debug")]
 pub struct SongInfo {
     pub position: f32,
     pub paused: bool,
@@ -143,7 +138,7 @@ pub struct SongInfo {
     pub stopped: bool,
     pub exists: bool,
 
-    pub state: AudioState
+    pub state: AudioState,
 }
 impl SongInfo {
     pub fn update(&mut self, audio: Option<Arc<dyn AudioInstance>>) {
@@ -172,6 +167,7 @@ impl SongInfo {
 }
 
 #[derive(Reflect)]
+#[reflect(display = "debug")]
 #[derive(Default, Debug, Copy, Clone)]
 pub struct GameInfo {
     pub time: f32,
@@ -180,6 +176,7 @@ pub struct GameInfo {
 
 
 #[derive(Reflect)]
+#[reflect(display = "debug")]
 #[derive(Default, Debug, Clone)]
 pub struct GlobalInfo {
     pub mods: ModManager,
@@ -237,6 +234,7 @@ impl GlobalInfo {
 
 
 #[derive(Reflect)]
+#[reflect(display = "debug")]
 #[derive(Debug, Clone, Default)]
 pub struct EnumInfo {
     pub sort_by: Vec<SortBy>,
@@ -263,24 +261,3 @@ impl EnumInfo {
         }
     }
 }
-
-
-// #[test]
-// fn test() {
-//     let mut map = HashMap::default();
-//     map.set_value("hi", TatakuVariable::new("test"));
-
-//     let count = 1_000;
-//     let key = "hi.".repeat(count) + "hi";
-
-//     for _ in 0..count {
-//         let mut map2 = HashMap::default();
-//         map2.set_value("hi", TatakuVariable::new(map));
-//         map = map2
-//     }
-
-//     let values = ValueCollection(map);
-
-//     let val = values.get_raw(&key).expect("nope");
-//     println!("val: {val:?}");
-// }

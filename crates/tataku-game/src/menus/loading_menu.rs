@@ -17,12 +17,12 @@ impl LoadingMenu {
         Self {
             actions: ActionQueue::new(),
             statuses: Vec::new(),
-            node: Box::new(EmptyWidget::new()),
+            node: EmptyWidget::new_boxed(),
             node_id: EMPTY_NODE
             // window_size: WindowSize::get(),
         }
     }
-    pub async fn load(&mut self, settings: &Settings) {
+    pub async fn load(&mut self, _settings: &Settings) {
         macro_rules! add {
             ($fn: ident, $stage: expr) => {{
                 let status = Arc::new(RwLock::new(LoadingStatus::new($stage)));
@@ -34,14 +34,6 @@ impl LoadingMenu {
         {
             let status = Arc::new(RwLock::new(LoadingStatus::new("Loading beatmaps")));
             self.actions.push(TaskAction::AddTask(Box::new(LoadBeatmapsTask::new(status.clone()))));
-            self.statuses.push(status);
-        }
-
-        // init integrations
-        {
-            let settings = settings.clone();
-            let status = Arc::new(RwLock::new(LoadingStatus::new("Initializing integrations")));
-            tokio::spawn(Self::init_integrations(status.clone(), settings));
             self.statuses.push(status);
         }
 
@@ -79,16 +71,17 @@ impl LoadingMenu {
         }).collect::<Vec<_>>();
 
         row!(
-            Space::new(FILL, FILL).boxed(),
+            // Space::new(FILL, FILL).boxed(),
 
             col!(
                 elements,
                 width = FILL,
                 height = FILL
                 // spacing = 5.0
-            ),
+            )
 
-            Space::new(FILL, FILL).boxed();
+            // Space::new(FILL, FILL).boxed()
+            ;
             
             width = FILL,
             height = FILL,
@@ -204,22 +197,7 @@ impl LoadingMenu {
         status.write().complete = true;
     }
     */
-
-    async fn init_integrations(status: Arc<RwLock<LoadingStatus>>, settings: Settings) {
-        status.write().item_count = 2;
-
-        if settings.integrations.lastfm {
-            LastFmIntegration::check(&settings).await;
-        }
-        status.write().items_complete += 1;
-
-        if settings.integrations.discord {
-            OnlineManager::init_discord().await;
-        }
-
-        status.write().complete = true;
-    }
-
+    
     async fn init_fonts(status: Arc<RwLock<LoadingStatus>>) {
         status.write().item_count = 3;
 
@@ -234,6 +212,10 @@ impl LoadingMenu {
 impl Widget for LoadingMenu {
     fn name(&self) -> Cow<'static, str> { Cow::Borrowed("loading_menu") }
     fn node_id(&self) -> NodeId { self.node_id }
+
+    fn update_styles(&mut self, tree: &mut Tree, resolver: &mut CssResolver, display_override: Option<ui::Display>) {
+        self.node.update_styles(tree, resolver, display_override);
+    }
 
     fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
         self.node = self.build_view();

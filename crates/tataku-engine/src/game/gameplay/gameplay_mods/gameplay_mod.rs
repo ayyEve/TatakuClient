@@ -63,7 +63,7 @@ impl std::fmt::Display for GameplayMod {
 
 impl From<GameplayMod> for ModDefinition {
     fn from(val: GameplayMod) -> Self {
-        ModDefinition {
+        Self {
             name: val.name.to_owned(),
             short_name: val.short_name.to_owned(),
             display_name: val.display_name.to_owned(),

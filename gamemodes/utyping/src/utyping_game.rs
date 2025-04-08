@@ -424,6 +424,7 @@ impl GameMode for UTypingGame {
                 (self.hitwindow_300,  Color::new(0.1960, 0.7372, 0.9058, 1.0)),
                 (self.hitwindow_miss, Color::new(0.8549, 0.6823, 0.2745, 1.0))
             ], 
+            sound_list: Vec::new(),
         }
     }
 

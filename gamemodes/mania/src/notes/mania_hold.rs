@@ -199,21 +199,6 @@ impl HitObject for ManiaHold {
 
         }
 
-        // draw hold fragments
-        // for i in 0..self.hold_ends.len() {
-        //     let start = self.hold_starts[i];
-        //     let end = self.hold_ends[i];
-        //     let y = hit_y() - (end - start) * self.speed;
-
-        //     list.push(Box::new(Rectangle::new(
-        //         Color::YELLOW,
-        //         -100.0,
-        //         Vector2::new(self.pos.x, y),
-        //         Vector2::new(COLUMN_WIDTH, self.end_y - y),
-        //         Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE))
-        //     )));
-        // }
-
     }
 
 

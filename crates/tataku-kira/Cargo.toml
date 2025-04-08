@@ -1,0 +1,13 @@
+[package]
+name = "tataku-kira"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+tokio.workspace = true
+tataku-engine.workspace = true
+kira = { git = "https://github.com/ayyEve/kira.git" }

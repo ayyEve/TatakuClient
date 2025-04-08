@@ -15,32 +15,24 @@ impl Message {
         }
     }
 
-    pub fn new_dialog(item_tag: impl Into<MessageTag>, message: MessageValue) -> Self {
-        Self {
-            owner: MessageOwner::DialogUnset,
-            tag: item_tag.into(),
-            value: message,
-        }
-    }
-
     /// helper to make a click message for the given menu and item tag
     pub fn click(owner: MessageOwner, item_tag: impl Into<MessageTag>) -> Self {
         Self::new(owner, item_tag, MessageValue::Click)
     }
 
-
-    pub fn with_type(mut self, message: MessageValue) -> Self {
+    pub fn with_value(mut self, message: MessageValue) -> Self {
         self.value = message;
         self
     }
 }
 
 #[derive(Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize)]
 pub enum MessageTag {
     Number(usize),
     String(String),
-    Beatmap(Arc<BeatmapMeta>),
-    GameplayMod(GameplayMod)
+    #[serde(skip)] Beatmap(Arc<BeatmapMeta>),
+    #[serde(skip)] GameplayMod(GameplayMod)
 }
 impl MessageTag {
     pub fn as_string(&self) -> Option<&String> {
@@ -142,7 +134,6 @@ pub enum MessageValue {
 
     Custom(Arc<dyn std::any::Any + Send + Sync>),
     GameplayManagerId(Arc<u32>),
-    // CustomMenuAction(CustomMenuAction, Option<TatakuValue>),
 }
 #[allow(unused)]
 impl MessageValue {
@@ -183,24 +174,18 @@ impl MessageValue {
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
 pub enum MessageOwner {
-    Any,
     #[default]
     Menu,
-    DialogUnset,
     Dialog(usize),
 }
 impl MessageOwner {
     pub fn is_menu(&self) -> bool {
-        matches!(self, Self::Menu | Self::Any)
+        matches!(self, Self::Menu)
     }
 
     pub fn is_eq(self, other: Self) -> bool {
         match (self, other) {
-            (Self::Any, _) => true,
-            (_, Self::Any) => true,
             (Self::Menu, Self::Menu) => true,
-            (Self::Dialog(_), Self::DialogUnset) => true,
-            (Self::DialogUnset, Self::Dialog(_)) => true,
             (Self::Dialog(n), Self::Dialog(n2)) => n == n2,
             _ => false,
         }

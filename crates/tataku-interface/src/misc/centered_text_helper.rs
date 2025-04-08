@@ -48,7 +48,7 @@ impl CenteredTextHelper {
             );
             offset_text.center_text(&rect);
             // add
-            list.push(visibility_bg(rect.pos, rect.size));
+            list.push(Rectangle::new(rect.pos, rect.size, Color::WHITE.alpha(0.8), None));
             list.push(offset_text);
         }
     }

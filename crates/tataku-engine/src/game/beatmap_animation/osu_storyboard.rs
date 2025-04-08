@@ -204,9 +204,8 @@ impl Element {
                 }
                 if frames.is_empty() { return Err(TatakuError::String("anim has no frames!".to_owned())) }
 
-                let delays = vec![anim.frame_delay; frames.len()];
                 let tex_size = Vector2::new(frames[0].width as f32, frames[0].height as f32);
-                let mut animation = Animation::new(Vector2::ZERO, Vector2::ONE, frames, delays, Vector2::ONE);
+                let mut animation = Animation::new(Vector2::ZERO, Vector2::ONE, frames, anim.frame_delay, Vector2::ONE);
                 animation.origin = Vector2::ZERO;
                 animation.scale = Vector2::ONE;
                 animation.draw_debug = true;
@@ -247,7 +246,7 @@ impl Element {
 
             // i wonder if durations that are less than 0 should be run immediately?
             if duration < 0.0 {
-                warn!("duration < 0.0: command: {i:?}");
+                // warn!("duration < 0.0: command: {i:?}");
                 duration = duration.abs();
             }
 
@@ -350,10 +349,6 @@ async fn try_load_image(
             // let filename = file.file_name().to_str().unwrap();
             let filepath2 = parent.join(file.file_name()).to_string_lossy().to_string();
             found = skin_manager.get_texture(&filepath2, &TextureSource::Raw, SkinUsage::Beatmap, false).await;
-            // if found.is_some() {
-            //     warn!("using file {filepath2} instead of {filepath} for storyboard");
-            // }
-
             break;
         }
 

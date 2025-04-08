@@ -10,15 +10,15 @@ ui = [ "taffy" ]
 debug_custom_menus = []
 
 [dependencies]
-tataku-common = { workspace = true }
-
 taffy = { workspace = true, optional = true }
-parking_lot = { workspace = true }
+tataku-common.workspace = true
+parking_lot.workspace = true
 
-cgmath = { workspace = true }
-serde = { workspace = true }
-guillotiere = { workspace = true }
-reqwest = { workspace = true }
-mlua = { workspace = true }
-image = { workspace = true }
-rand = { workspace = true }
+cgmath.workspace = true
+serde.workspace = true
+guillotiere.workspace = true
+reqwest.workspace = true
+image.workspace = true
+rand.workspace = true
+num-format.workspace = true
+paste.workspace = true

@@ -130,7 +130,8 @@ impl DerefMut for Rectangle {
 
 
 /// The shape of the rectangle corners
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(serde::Deserialize)]
 pub enum Shape {
     /// Square corners
     Square,
@@ -140,39 +141,10 @@ pub enum Shape {
 
     /// Round corners with separate vals
     /// tl,tr, bl,br
-    RoundSep([f32;4]),
+    RoundSep([f32; 4]),
 }
-
 impl From<[f32;4]> for Shape {
     fn from(value: [f32;4]) -> Self {
         Self::RoundSep(value)
-    }
-}
-
-mod lua {
-    use crate::prelude::*;
-    use lua::*;
-    impl FromLua for Shape {
-        fn from_lua(lua_value: LuaValue, _lua: &Lua) -> LuaResult<Self> {
-            #[cfg(feature="debug_custom_menus")] info!("Reading Shape");
-            match lua_value {
-                LuaValue::Integer(i) => Ok(Self::Round(i as f32)),
-                LuaValue::Number(n) => Ok(Self::Round(n as f32)),
-                LuaValue::Table(table) => {
-                    if let Some(round) = table.get("round")? {
-                        Ok(Self::Round(round))
-                    } else {
-                        todo!("i got lazy")
-                    }
-
-                }
-
-                other => Err(FromLuaConversionError { 
-                    from: other.type_name(), 
-                    to: "Shape".to_owned(), 
-                    message: Some("Invalid type".to_owned()) 
-                })
-            }
-        }
     }
 }

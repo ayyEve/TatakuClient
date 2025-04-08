@@ -1,12 +1,12 @@
 use crate::prelude::*;
 
-// TODO: rename this, and also maybe just remove it lol
+// TODO: rename this
 #[derive(Clone, Debug)]
-pub struct SyValueHelper<T: Reflect + Clone + PartialEq> {
+pub struct ValueChangeHelper<T: Reflect + Clone + PartialEq> {
     key: String,
     value: Option<T>,
 }
-impl<T: Reflect + Clone + PartialEq> SyValueHelper<T> {
+impl<T: Reflect + Clone + PartialEq> ValueChangeHelper<T> {
     pub fn new(key: impl ToString) -> Self {
         Self {
             key: key.to_string(),
@@ -28,7 +28,7 @@ impl<T: Reflect + Clone + PartialEq> SyValueHelper<T> {
     }
 }
 
-impl<T: Reflect + Clone + PartialEq> Deref for SyValueHelper<T> {
+impl<T: Reflect + Clone + PartialEq> Deref for ValueChangeHelper<T> {
     type Target = Option<T>;
     fn deref(&self) -> &Self::Target {
         &self.value

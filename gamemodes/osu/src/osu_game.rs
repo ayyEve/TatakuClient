@@ -1,5 +1,5 @@
+use gilrs::Axis;
 use std::ops::Range;
-
 use crate::prelude::*;
 
 const STACK_LENIENCY:u32 = 3;
@@ -236,13 +236,6 @@ impl OsuGame {
             if n1.note_type() == NoteType::Spinner { continue }
             if n2.note_type() == NoteType::Spinner { continue }
 
-            // old code as backup
-            // let preempt = n2.get_preempt();
-            // let n1_time = n1.time();
-            // if time < n1_time - preempt { continue } //|| time > n2.end_time(0.0) {continue}
-            // let n2_time = n2.time();
-            // if time >= n2_time { continue }//|| time <= n1_time {continue}
-
             let preempt = n2.get_preempt();
             let n1_time = n1.time();
             if time < n1_time - preempt { continue } //|| time > n2.end_time(0.0) {continue}
@@ -344,7 +337,7 @@ impl OsuGame {
 impl GameMode for OsuGame {
     async fn new(
         map: &Beatmap, 
-        diff_calc_only: bool,
+        _diff_calc_only: bool,
         settings: &Settings,
     ) -> TatakuResult<Self> {
         let metadata = map.get_beatmap_meta();
@@ -551,136 +544,6 @@ impl GameMode for OsuGame {
                     }
                 }
 
-
-
-                
-                // // join notes and sliders into a single array
-                // // needed because of combo counts
-                // let mut all_items = Vec::new();
-                // for note in beatmap.notes.iter() {
-                //     all_items.push((Some(note), None, None));
-                //     s.end_time = s.end_time.max(note.time);
-                // }
-                // for slider in beatmap.sliders.iter() {
-                //     all_items.push((None, Some(slider), None));
-        
-                //     // can this be improved somehow?
-                //     if slider.curve_points.is_empty() || slider.length == 0.0 {
-                //         s.end_time = s.end_time.max(slider.time);
-                //     } else {
-                //         let curve = get_curve(slider, map, &timing_points);
-                //         s.end_time = s.end_time.max(curve.end_time);
-                //     }
-                // }
-                // for spinner in beatmap.spinners.iter() {
-                //     all_items.push((None, None, Some(spinner)));
-                //     s.end_time = s.end_time.max(spinner.end_time);
-                // }
-
-                // // sort
-                // all_items.sort_by(|a, b| {
-                //     let a_time = match a {
-                //         (Some(note), None, None) => note.time,
-                //         (None, Some(slider), None) => slider.time,
-                //         (None, None, Some(spinner)) => spinner.time,
-                //         _ => 0.0
-                //     };
-                //     let b_time = match b {
-                //         (Some(note), None, None) => note.time,
-                //         (None, Some(slider), None) => slider.time,
-                //         (None, None, Some(spinner)) => spinner.time,
-                //         _ => 0.0
-                //     };
-        
-                //     a_time.partial_cmp(&b_time).unwrap()
-                // });
-        
-
-                // // add notes
-                // let mut combo_num = 0;
-        
-                // for (counter, (note, slider, spinner)) in all_items.into_iter().enumerate() {
-                //     // check for new combo
-                //     if let Some(note) = note { if note.new_combo { combo_num = 0 } }
-                //     if let Some(slider) = slider { if slider.new_combo { combo_num = 0 } }
-                //     if let Some(_spinner) = spinner { combo_num = 0 }
-        
-                //     // if new combo, increment new combo counter
-                //     if combo_num == 0 {
-                //         s.new_combos.push(counter);
-                //     }
-                //     // get color
-                //     // update combo number
-                //     combo_num += 1;
-        
-                //     if let Some(note) = note {
-                //         s.notes.push(Box::new(OsuNote::new(
-                //             note.clone(),
-                //             ar,
-                //             combo_num as u16,
-                //             scaling_helper.clone(),
-                //             std_settings.clone(),
-                //             get_hitsounds(note.time, note.hitsound, note.hitsamples.clone())
-                //         ).await));
-                //     }
-                //     if let Some(slider) = slider {
-                //         // invisible note
-                //         if slider.curve_points.is_empty() || slider.length == 0.0 {
-                //             let note = NoteDef {
-                //                 pos: slider.pos,
-                //                 time: slider.time,
-                //                 hitsound: slider.hitsound,
-                //                 hitsamples: slider.hitsamples.clone(),
-                //                 new_combo: slider.new_combo,
-                //                 color_skip: slider.color_skip,
-                //             };
-        
-                //             let hitsounds = get_hitsounds(note.time, note.hitsound, note.hitsamples.clone());
-                //             s.notes.push(Box::new(OsuNote::new(
-                //                 note,
-                //                 ar,
-                //                 combo_num as u16,
-                //                 scaling_helper.clone(),
-                //                 std_settings.clone(),
-                //                 hitsounds,
-                //             ).await));
-                //         } else {
-                //             let curve = get_curve(slider, map, &timing_points);
-                //             s.notes.push(Box::new(OsuSlider::new(
-                //                 slider.clone(),
-                //                 curve,
-                //                 ar,
-                //                 combo_num as u16,
-                //                 scaling_helper.clone(),
-                //                 std_settings.clone(),
-                //                 get_hitsounds,
-                //                 timing_points.slider_velocity_at(slider.time)
-                //             ).await))
-                //         }
-                        
-                //     }
-                //     if let Some(spinner) = spinner {
-                //         let duration = spinner.end_time - spinner.time;
-                //         let min_rps = map_difficulty(od, 2.0, 4.0, 6.0) * 0.6;
-
-                //         let mut spins_required = (duration / 1000.0 * min_rps) as u16;
-                //         // fudge until we can properly calculate
-                //         if spins_required < 10 {
-                //             if spins_required > 2 {
-                //                 spins_required = 2;
-                //             } else {
-                //                 spins_required = 0;
-                //             }
-                //         }
-                        
-                //         s.notes.push(Box::new(OsuSpinner::new(
-                //             spinner.clone(),
-                //             scaling_helper.clone(),
-                //             spins_required
-                //         ).await))
-                //     }
-                // }
-        
                 s
             }
             
@@ -774,7 +637,7 @@ impl GameMode for OsuGame {
                             note.hit(frame.time);
 
                             // play the sound
-                            state.play_note_sound(note.get_hitsound());
+                            state.play_hitsounds(&note.get_hitsound(), false);
                         }
 
                         return;
@@ -804,17 +667,11 @@ impl GameMode for OsuGame {
                     _ => {}
                 }
 
-                // let mut check_notes = Vec::new();
                 for note in self.notes.iter_mut() {
                     // if this is the last key to be released
                     if self.hold_count == 0 {
                         note.release(frame.time)
                     }
-
-                    // // check if note is in hitwindow
-                    // if time >= note.end_time(self.miss_window) && !note.was_hit() && note.note_type() == NoteType::Slider {
-                    //     check_notes.push(note);
-                    // }
                 }
             }
             ReplayAction::MousePos(x, y) => {
@@ -846,8 +703,6 @@ impl GameMode for OsuGame {
             state.add_action(GamemodeAction::PlayfieldChanged);
         }
 
-        // let mut pending_frames = Vec::new();
-
         // disable the cursor particle emitter if this is a menu game
         // the emitter nukes perf so its best to keep it off unless needed
         if state.gameplay_mode.is_preview() && self.cursor.emitter_enabled {
@@ -867,9 +722,6 @@ impl GameMode for OsuGame {
             for action in pending_frames {
                 state.add_replay_action(action);
             }
-            // for frame in pending_frames.iter() {
-            //     self.handle_replay_frame(*frame, time, manager).await;
-            // }
         }
         
         if has_relax {
@@ -883,7 +735,6 @@ impl GameMode for OsuGame {
         if state.time >= self.end_time {
             if !state.complete() {
                 state.add_action(GamemodeAction::MapComplete);
-                // manager.completed = true;
             }
             return;
         }
@@ -895,7 +746,7 @@ impl GameMode for OsuGame {
 
             // play queued sounds
             for hitsound in note.get_sound_queue() {
-                state.play_note_sound(hitsound);
+                state.play_hitsounds(&hitsound, false);
             }
 
             for (judgment, pos) in note.pending_combo() {
@@ -919,38 +770,6 @@ impl GameMode for OsuGame {
                     note_index,
                     state,
                 );
-
-                // // if its time to hit the note, the not hasnt been hit yet, and we're within the note's radius
-                // if state.time >= note.time() && state.time < end_time && !note.was_hit() && note.check_distance(self.mouse_pos) {
-                //     let key = KeyPress::LeftMouse;
-
-                //     match note.note_type() {
-                //         NoteType::Note => {
-                //             pending_frames.push(ReplayAction::Press(key));
-                //             pending_frames.push(ReplayAction::Release(key));
-                //         }
-                //         NoteType::Slider | NoteType::Spinner | NoteType::Hold => {
-                //             // make sure we're not already holding
-                //             if let Some(false) = state.key_counter.keys.get(&key).map(|a| a.held) {
-                //                 state.add_replay_action(ReplayAction::Press(key));
-                //                 // pending_frames.push(ReplayAction::Press(key));
-                //             }
-                //         }
-                //     }
-                // }
-
-                // if state.time >= end_time && !note.was_hit() {
-                //     let key = KeyPress::LeftMouse;
-
-                //     match note.note_type() {
-                //         NoteType::Note => {}
-                //         NoteType::Slider | NoteType::Spinner | NoteType::Hold => {
-                //             // assume we're holding i guess?
-                //             state.add_replay_action(ReplayAction::Release(key));
-                //             // pending_frames.push(ReplayAction::Release(key));
-                //         }
-                //     }
-                // }
             }
 
             // check if note was missed
@@ -993,18 +812,12 @@ impl GameMode for OsuGame {
                             );
                         }
 
-                        if judge == OsuHitJudgments::Miss {
-                            // // tell the note it was missed
-                            // unecessary bc its told it was missed later lol
-                            // info!("missed slider");
-                            // note.miss();
-                        } else {
+                        if judge != OsuHitJudgments::Miss {
                             // tell the note it was hit
                             note.hit(state.time);
 
                             // play the sound
-                            // let hitsamples = note.get_hitsamples().clone();
-                            state.play_note_sound(note.get_hitsound());
+                            state.play_hitsounds(&note.get_hitsound(), false);
                         }
                     }
 
@@ -1038,10 +851,6 @@ impl GameMode for OsuGame {
             for action in self.auto_helper.get_release_queue() {
                 state.add_replay_action(action);
             }
-            // pending_frames.extend();
-            // for frame in self.auto_helper.get_release_queue() {
-            //     self.handle_replay_frame(frame, time, manager).await;
-            // }
         }
 
     }
@@ -1312,16 +1121,9 @@ impl GameMode for OsuGame {
         let mut set_easing = None;
 
         if has_easy_or_hr || had_easy_or_hr != has_easy_or_hr {
-            let cs = Self::get_cs(&self.metadata, &self.mods);
+            self.cs = Self::get_cs(&self.metadata, &self.mods);
             let ar = Self::get_ar(&self.metadata, &self.mods);
             
-            // // use existing settings, we only want to change the cs
-            // let pos = self.scaling_helper.settings_pos;
-            // let size = self.scaling_helper.window_size;
-            // let scale = self.scaling_helper.settings_scale;
-
-            // self.apply_playfield(Arc::new(ScalingHelper::new_offset_scale(cs, size, pos, scale, has_hr))).await;
-
             self.recalculate_playfield(self.scaling_helper.window_size);
             self.setup_hitwindows();
 
@@ -1669,6 +1471,13 @@ impl GameMode for OsuGame {
         )
     }
     fn properties(&self) -> GameModeProperties {
+        let mut sound_list = HashMap::new();
+        for note in self.notes.iter() {
+            for hitsound in note.get_all_hitsounds().iter().flatten() {
+                sound_list.insert(hitsound.get_id(), hitsound.load_data(None::<String>));
+            }
+        }
+
         GameModeProperties { 
             info: &crate::GAME_INFO, 
             keys: vec![
@@ -1684,6 +1493,8 @@ impl GameMode for OsuGame {
                 .iter()
                 .map(|(j, w)| (w.end, j.color))
                 .collect(), 
+
+            sound_list: sound_list.into_iter().collect(),
         }
     }
 }

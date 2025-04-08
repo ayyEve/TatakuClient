@@ -49,9 +49,11 @@ impl GameplayWidget for SpectatorsElement {
         if self.spectators.list.is_empty() { return }
 
         // draw spectators
-        list.push(visibility_bg(
+        list.push(Rectangle::new(
             pos_offset,
             Vector2::new(SPECTATOR_ITEM_SIZE.x, (SPECTATOR_ITEM_SIZE.y + PADDING) * self.spectators.list.len() as f32) * scale,
+            Color::WHITE.alpha(0.8),
+            None
         ));
 
         for (i, user) in self.spectators.list.iter().enumerate() {

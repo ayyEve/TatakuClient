@@ -1,0 +1,53 @@
+<?xml version="1.0"?>
+<?xml-model href="../xsd/menu.xsd"?>
+<menu id="lobby_select">
+    <style>
+    </style>
+
+    <events>
+        <!-- leave menu with escape -->
+        <event>
+            <keyPress key="Escape"/>
+            <actions>
+                <setMenu>main_menu</setMenu>
+            </actions>
+        </event>
+    </events>
+
+    <element>
+        <column style="width: fill; height: fill; align-content: space-between">
+            <!-- list of lobbies -->
+            <list
+                id = "lobby_list"
+                list = "global.lobbies"
+                variable = "_lobby"
+                scrollable = "true"
+            >
+                <button style = "width: fill; height: auto; padding: 5px">
+                    <action>
+                        <multiplayer>
+                            <joinLobby><variable>_lobby.id</variable></joinLobby>
+                        </multiplayer>
+                    </action>
+                    <element>
+                        <text>
+                            <variable>_lobby.name</variable>
+                        </text>
+                    </element>
+                </button>
+            </list>
+
+            <!-- buttons -->
+            <row style = "width: fill; height: auto;">
+                <button>
+                    <action><addDialog>create_lobby</addDialog></action>
+                    <element>
+                        <text>
+                            <text>Create Lobby</text>
+                        </text>
+                    </element>
+                </button>
+            </row>
+        </column>
+    </element>
+</menu>

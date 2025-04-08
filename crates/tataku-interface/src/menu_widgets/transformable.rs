@@ -3,8 +3,9 @@ use crate::prelude::ui::*;
 
 #[derive(Widget)]
 #[widget(type("container"))]
+#[derive(ChainableInitializer)]
 pub struct TransformableWidget {
-    style: Style,
+    #[chain] style: Style,
     child: Box<dyn Widget>,
     
     /// we let a TransformGroup handle the transforms to avoid duplicating code
@@ -64,7 +65,7 @@ impl TransformableWidget {
                 self.manager.push_transform(Transformation::new(
                     0.0,
                     action.duration,
-                    action.action,
+                    action.action.into(),
                     // TODO: action.easing,
                     Easing::Linear,
                     time
@@ -80,6 +81,10 @@ impl TransformableWidget {
 impl Widget for TransformableWidget {
     fn name(&self) -> Cow<'static, str> { "transformable_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
+
+    fn update_styles(&mut self, tree: &mut Tree, resolver: &mut CssResolver, display_override: Option<ui::Display>) {
+        self.child.update_styles(tree, resolver, display_override);
+    }
     
     fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId>  {
         let child = self.child.layout(shell)?;
@@ -252,8 +257,8 @@ impl Widget for TransformableWidget {
 
     async fn reload_skin(
         &mut self, 
-        skin_manager: &mut dyn SkinProvider,
+        shell: &mut UpdateShell,
     ) {
-        self.child.reload_skin(skin_manager).await;
+        self.child.reload_skin(shell).await;
     }
 }

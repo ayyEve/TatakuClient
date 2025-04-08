@@ -1,16 +1,17 @@
 use crate::prelude::*;
 use crate::prelude::ui::*;
 
+#[derive(ChainableInitializer)]
 pub struct GameplayPreview {
-    beatmap: SyValueHelper<String>,
-    playmode: SyValueHelper<String>,
-    mods: SyValueHelper<ModManager>,
-    song_time: SyValueHelper<f32>,
+    beatmap: ValueChangeHelper<String>,
+    playmode: ValueChangeHelper<String>,
+    mods: ValueChangeHelper<ModManager>,
+    song_time: ValueChangeHelper<f32>,
 
     manager: Option<GameplayId>,
     owner: MessageOwner,
 
-    pub visualization: Option<MenuVisualization>,
+    #[chain] pub visualization: Option<MenuVisualization>,
 
     /// area to fit to
     pub fit_to: Option<Bounds>,
@@ -26,7 +27,7 @@ pub struct GameplayPreview {
     widget_sender: Arc<Mutex<TripleBufferSender<Arc<dyn TatakuRenderable>>>>,
     widget_receiver: TripleBufferReceiver<Arc<dyn TatakuRenderable>>,
 
-    style: Style,
+    #[chain] style: Style,
     node_id: NodeId,
 }
 impl GameplayPreview {
@@ -41,10 +42,10 @@ impl GameplayPreview {
 
         Self {
             // current_mods: ModManagerHelper::new(),
-            beatmap: SyValueHelper::new("beatmaps.current_beatmap.map.file_path"),
-            playmode: SyValueHelper::new("global.playmode_actual"),
-            mods: SyValueHelper::new("global.mods"),
-            song_time: SyValueHelper::new("song.position"),
+            beatmap: ValueChangeHelper::new("beatmaps.current_beatmap.map.file_path"),
+            playmode: ValueChangeHelper::new("global.playmode_actual"),
+            mods: ValueChangeHelper::new("global.mods"),
+            song_time: ValueChangeHelper::new("song.position"),
 
             visualization: None,
             handle_song_restart: false,
@@ -110,6 +111,8 @@ impl GameplayPreview {
 impl Widget for GameplayPreview {
     fn name(&self) -> Cow<'static, str> { "gameplay_preview_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
+
+    fn update_styles(&mut self, _tree: &mut Tree, _resolver: &mut CssResolver, _display_override: Option<ui::Display>) {}
 
     fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
         self.node_id = shell.tree.new_leaf(self.style.clone())?;
@@ -234,10 +237,10 @@ impl Widget for GameplayPreview {
     }
 
 
-    async fn reload_skin(&mut self, skin_manager: &mut dyn SkinProvider) {
+    async fn reload_skin(&mut self, shell: &mut UpdateShell) {
         if let Some(vis) = &mut self.visualization {
             debug!("reloading vis skin");
-            vis.reload_skin(skin_manager).await;
+            vis.reload_skin(shell.skin_manager).await;
         }
     }
 }

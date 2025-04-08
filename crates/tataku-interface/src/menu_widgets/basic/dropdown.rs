@@ -72,7 +72,7 @@ impl Dropdown {
                 width: Dimension::Length(largest_text.x),
                 height: Dimension::Length(largest_text.y)
             },
-            padding: Padding::from(ElementPadding::Single(5.0)).0,
+            // padding: Padding::from(ElementPadding::Single(5.0)).0,
 
             ..self.style.clone()
         }
@@ -90,7 +90,7 @@ impl Dropdown {
 
         let message = match &self.on_change {
             DropdownOnChange::Message(message) => message.clone(),
-            DropdownOnChange::Lua(lua_action) => {
+            DropdownOnChange::Buildable(lua_action) => {
                 lua_action.resolve(
                     shell.owner, 
                     shell.values, 
@@ -118,6 +118,39 @@ impl Dropdown {
 impl Widget for Dropdown {
     fn name(&self) -> Cow<'static, str> { "dropdown_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
+
+
+    fn update_styles(
+        &mut self, 
+        tree: &mut Tree, 
+        _resolver: &mut CssResolver, 
+        _display_override: Option<ui::Display>
+    ) {
+        let text_style = tree
+            .get_context(self.node_id)
+            .unwrap()
+            .element_data.style()
+            .0.text_style();
+        
+        let placeholder_size = text_style.measure_text(&self.placeholder, None);
+        
+        let largest_text = self.variants.get_displays()
+            .iter()
+            .map(|a| text_style.measure_text(a, None))
+            .fold(placeholder_size, |a, b| Vector2::new(a.x.max(b.x), a.y.max(b.y)))
+            ;
+
+        let mut style = tree.get_style(self.node_id).unwrap().clone();
+        style.min_size = Size {
+            width: Dimension::Length(largest_text.x),
+            height: Dimension::Length(largest_text.y),
+        };
+        tree.set_style(self.node_id, style);
+    }
+
+    fn set_text_style(&mut self, style: TextStyle) {
+        self.text_style = style;
+    }
 
     fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
         let style = self.get_style(Some(Vector2::ONE * shell.ui_scale));
@@ -337,7 +370,7 @@ impl Widget for Dropdown {
 type OnChange = Box<dyn Fn(usize) -> Message + Send + Sync>;
 pub enum DropdownOnChange {
     Message(Option<Message>),
-    Lua(LuaAction),
+    Buildable(BuildableAction),
     Callback(OnChange),
 }
 impl <T: Into<DropdownOnChange>> From<Option<T>> for DropdownOnChange {
@@ -356,10 +389,13 @@ impl From<OnChange> for DropdownOnChange {
         Self::Callback(value)
     }
 }
-impl From<LuaAction> for DropdownOnChange {
-    fn from(mut value: LuaAction) -> Self {
-        value.build();
-        Self::Lua(value)
+impl From<BuildableAction> for DropdownOnChange {
+    fn from(mut value: BuildableAction) -> Self {
+        if let BuildableAction::Conditional { cond, .. } = &mut value {
+            cond.build();
+        }
+
+        Self::Buildable(value)
     }
 }
 impl From<DropdownBuilderOnChange> for DropdownOnChange {
@@ -391,7 +427,7 @@ impl DropdownVariants {
         let items = iter.filter_map(|value| {
             let id = TatakuValue::from_reflection(value).ok()?.as_string();
             Some(DropdownWrapper {
-                display: id.clone(), // TODO:
+                display: value.impl_display(ReflectPath::new(""), None).unwrap_or_else(|_| id.clone()), 
                 id,
                 value: value.duplicate().expect("Value in dropdown not clonable"),
                 // id.downcast_ref::<String>()?.clone(),

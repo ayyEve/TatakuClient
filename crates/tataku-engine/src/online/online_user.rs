@@ -18,7 +18,7 @@ impl OnlineUser {
         Self {
             user_id,
             username,
-            action:None,
+            action: None,
             action_text: None,
             mode: None,
             game: String::new(),

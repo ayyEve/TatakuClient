@@ -1,9 +1,9 @@
 use crate::prelude::*;
 
 pub trait ManiaHitObject: HitObject {
-    fn hit(&mut self, time:f32);
-    fn release(&mut self, _time:f32) {}
-    fn miss(&mut self, time:f32);
+    fn hit(&mut self, time: f32);
+    fn release(&mut self, _time: f32) {}
+    fn miss(&mut self, time: f32);
     fn was_hit(&self) -> bool { false }
     fn get_hitsound(&self) -> &Vec<Hitsound>;
 

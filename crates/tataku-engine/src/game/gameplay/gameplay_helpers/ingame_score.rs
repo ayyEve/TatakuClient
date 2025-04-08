@@ -36,16 +36,6 @@ impl IngameScore {
         }
     }
 
-    pub async fn get_replay(&self, settings: &Settings) -> TatakuResult<Score> {
-        info!("downloading: {:#?}", self.replay_location);
-
-        match &self.replay_location {
-            ReplayLocation::Local => get_local_replay_for_score(&self.score),
-            ReplayLocation::Online(downloader) => downloader.get_replay(settings).await,
-            ReplayLocation::OnlineNotExist => Err("Replay is not available :c".into()),
-        }
-    }
-
     pub fn insert_stat(&mut self, stat: GameModeStat, value: f32) {
         let key = stat.name.to_owned();
 

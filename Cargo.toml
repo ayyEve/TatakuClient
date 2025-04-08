@@ -6,7 +6,7 @@ authors = [
 edition = "2024"
 
 [workspace]
-members = [ "crates/*", "gamemodes/*" ]
+members = [ "crates/*", "gamemodes/*" , "integrations/*"]
 default-members = [ "crates/tataku-client" ]
 resolver = "2"
 
@@ -16,8 +16,8 @@ module_inception = "allow"
 type_complexity = "allow"
 
 [workspace.dependencies]
-# tataku-common = { version = "0.15.0", path = "../tataku-common/tataku-common", registry = "tataku-registry" }
-tataku-common = { version = "0.15.0", registry = "tataku-registry" }
+# tataku-common = { version = "0.16.0", path = "../tataku-common/tataku-common", registry = "tataku-registry" }
+tataku-common = { version = "0.16.0", registry = "tataku-registry" }
 
 # tataku-common-proc-macros = { version = "0.3.2", registry = "tataku-registry", path = "../tataku-common/tataku-common" }
 
@@ -33,32 +33,37 @@ tataku-input.path = "crates/tataku-input"
 
 tataku-wgpu.path = "crates/tataku-wgpu"
 tataku-bass.path = "crates/tataku-bass"
+tataku-kira.path = "crates/tataku-kira"
 
-
+# Gamemodes
 gamemode-osu.path = "gamemodes/osu"
 gamemode-taiko.path = "gamemodes/taiko"
 gamemode-mania.path = "gamemodes/mania"
 gamemode-utyping.path = "gamemodes/utyping"
+
+# Integrations
+integration-discord.path = "integrations/discord"
+integration-lastfm.path = "integrations/lastfm"
+integration-media-controls.path = "integrations/media_controls"
 
 
 
 # framework stuff
 lazy_static = "1.5.0"
 parking_lot = "0.12.3"
-tokio = { version = "1.43.0", features = [ "full" ] }
-rusqlite = { version = "0.33.0", features = [ "bundled" ] }
+tokio = { version = "1.44.0", features = [ "full" ] }
+rusqlite = { version = "0.34.0", features = [ "bundled" ] }
 futures-util = { version = "0.3.31", features = [ "async-await", "sink", "std" ] }
-async-trait = "0.1.86"
+async-trait = "0.1.87"
 async-recursion = "1.1.1"
 triple_buffer = "8.1.0"
 crossbeam = "0.8.4"
-ipc-channel = "0.19.0"
+bitflags = "2.9"
 
 libloading = "0.8.6"
 
 # image stuff
-png = "0.17.16"
-image = "0.25.5"
+image = { version = "0.25.5", default-features = false, features = [ "png", "jpeg", "gif" ]}
 fontdue = "0.9.2"
 
 # math stuff
@@ -75,15 +80,11 @@ wgpu = "23.0.1"
 
 # gamepad input
 gilrs = { version = "0.11.0", features = [ "serde-serialize" ] }
-# media controls TODO:!! update this when fixing media controls
-souvlaki = { version = "0.7.3", default-features = false, features = [ "use_zbus" ] }
 
 # gui
-taffy = { version = "0.7.6", features = [ "serde" ] }
-
-# other audio
-# kira = "0.7"
-# rustfft = { version = "6.0" }
+taffy = { version = "0.7.7", features = [ "serde" ] }
+simplecss = "0.2.2"
+quick-xml = { version = "0.37", features = [ "serialize" ]}
 
 # networking
 rustls = "0.23.23"
@@ -91,7 +92,6 @@ native-tls = "0.2.12"
 tokio-native-tls = "0.3.1"
 tokio-tungstenite = { version = "0.26.2", features = [ "rustls-tls-native-roots" ] }
 reqwest = { version = "0.12.12", features = [ "json" ] }
-discord-rich-presence = { version = "0.2.4", registry = "tataku-registry" }
 
 # serde
 serde = { version = "1.0.218", features = [ "derive" ] }
@@ -100,11 +100,11 @@ serde_yaml = "0.9.34"
 
 # decoding/encoding/zip stuff
 sha2 = "0.10.8"
-zip = "2.2.2"
+zip = { version = "2.2.3", default-features = false, features = [ "deflate", "deflate64", "bzip2" ] }
 md5 = "0.7.0"
 lzma-rs = "0.3.0"
 base64 = "0.22.1"
-encoding_rs = "0.8.35"
+encoding_rs = { version = "0.8.35" }
 
 
 # other stuff
@@ -113,7 +113,7 @@ chrono = "0.4.39"
 fs_extra = "1.3.0"
 cacache = "13.1.0"
 uuid = { version = "1.11.0", features = [ "v4" ] }
-mlua = { version = "0.10.3", features = [ "lua54" ] }
+paste = "1.0"
 
 
 # logging

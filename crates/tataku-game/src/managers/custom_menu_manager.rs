@@ -7,14 +7,11 @@ pub struct CustomMenuManager {
 impl CustomMenuManager {
     fn load_menu_inner(
         path: Option<String>, 
-        name: Option<String>, 
         bytes: Vec<u8>, 
         source: CustomMenuSource
     ) -> TatakuResult<CustomMenuEntry> {
-        let mut parser = CustomMenuParser::new()?;
-        let name = name.unwrap_or_else(|| path.clone().unwrap_or_default());
-
-        let menu = parser.load_menu_from_bytes(&bytes, &name)?;
+        let menu = quick_xml::de::from_reader(std::io::Cursor::new(&bytes))
+            .map_err(TatakuError::from_err)?;
 
         Ok(CustomMenuEntry {
             path,
@@ -29,7 +26,6 @@ impl CustomMenuManager {
 
         let menu = Self::load_menu_inner(
             Some(path),
-            None,
             bytes,
             source
         )?;
@@ -37,10 +33,9 @@ impl CustomMenuManager {
         self.menu_list.push(menu);
         Ok(())
     }
-    pub fn load_menu_from_bytes(&mut self, bytes: &[u8], name: String, source: CustomMenuSource) -> TatakuResult {
+    pub fn load_menu_from_bytes(&mut self, bytes: &[u8], _name: String, source: CustomMenuSource) -> TatakuResult {
         let menu = Self::load_menu_inner(
             None, 
-            Some(name), 
             bytes.to_vec(), 
             source
         )?;
@@ -52,12 +47,11 @@ impl CustomMenuManager {
     pub fn load_menu_from_bytes_and_path(
         &mut self, 
         bytes: &[u8], 
-        path: String, 
+        _path: String, 
         source: CustomMenuSource
     ) -> TatakuResult {
         let menu = Self::load_menu_inner(
             None, // Some(path), 
-            None, 
             bytes.to_vec(), 
             source
         )?;
@@ -87,7 +81,6 @@ impl CustomMenuManager {
 
             match Self::load_menu_inner(
                 Some(path.clone()), 
-                None, 
                 bytes, 
                 i.source
             ) {
@@ -166,8 +159,7 @@ impl From<&str> for CustomMenuSelector {
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
 pub enum CustomMenuSource {
     /// Will pick the last loaded menu from the list 
-    #[default]
-    Any,
+    #[default] Any,
 
     /// Will explicitly load the menu from the skin
     Skin,

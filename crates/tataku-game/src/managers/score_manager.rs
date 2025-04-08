@@ -6,7 +6,6 @@ use tokio::task::AbortHandle;
 #[derive(Debug, Clone)]
 pub struct ScoreManager {
     pub scores: Vec<IngameScore>,
-    // pub loaded: bool,
 
     #[reflect(skip)]
     pub infos: GamemodeInfos,
@@ -19,29 +18,28 @@ pub struct ScoreManager {
     pub force_update: bool,
 
     #[reflect(skip)]
-    beatmap: SyValueHelper<Md5Hash>,
+    beatmap: ValueChangeHelper<Md5Hash>,
     #[reflect(skip)]
-    playmode: SyValueHelper<String>,
+    playmode: ValueChangeHelper<String>,
     #[reflect(skip)]
-    score_method: SyValueHelper<ScoreRetreivalMethod>,
+    score_method: ValueChangeHelper<ScoreRetreivalMethod>,
     #[reflect(skip)]
-    mods: SyValueHelper<ModManager>,
+    mods: ValueChangeHelper<ModManager>,
 }
 impl ScoreManager {
     pub fn new(infos: GamemodeInfos) -> Self {
         Self {
             scores: Vec::new(),
-            // loaded: false,
             infos,
 
             current_loader: None,
             abort_handle: None,
             force_update: false,
 
-            beatmap: SyValueHelper::new("beatmaps.current.map.hash"),
-            playmode: SyValueHelper::new("global.playmode_actual"),
-            score_method: SyValueHelper::new("settings.score_method"),
-            mods: SyValueHelper::new("global.mods"),
+            beatmap: ValueChangeHelper::new("beatmaps.current.map.hash"),
+            playmode: ValueChangeHelper::new("global.playmode_actual"),
+            score_method: ValueChangeHelper::new("settings.score_method"),
+            mods: ValueChangeHelper::new("global.mods"),
         }
     }
 
@@ -96,7 +94,6 @@ impl ScoreManager {
             ScoreRetreivalMethod::Global
             | ScoreRetreivalMethod::GlobalMods => {
                 let mods = self.mods.as_ref().cloned().unwrap_or_default();
-                // let beatmap_type = values.try_get::<BeatmapType>("map.beatmap_type")?;
 
                 let handle = tokio::spawn(async move {
                     let map_hash = map_hash.to_string();
@@ -354,7 +351,7 @@ mod osu {
 
         // let key = Settings::get().osu_api_key.clone();
         if osu_api_key.is_empty() {
-            NotificationManager::add_text_notification("You need to supply an osu api key in settings.json", 5000.0, Color::RED).await;
+            // NotificationManager::add_text_notification("You need to supply an osu api key in settings.json", 5000.0, Color::RED).await;
             Err(TatakuError::String("no api key".to_owned()))
         } else {
             let hash = hash.to_string();

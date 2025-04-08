@@ -3,12 +3,12 @@ use tataku_client_common::prelude::*;
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct GpuParticle {
-    // how much life did this start out with?
+    /// how much life did this start out with?
     pub life_max: f32,
-    // how much life is left
+    /// how much life is left
     pub lifetime: f32,
 
-    // when i had these as [f32;2], it broke thing and idk why
+    /// when i had these as [f32;2], it broke thing and idk why
     pub pos_x: f32,
     pub pos_y: f32,
     pub velocity_x: f32,

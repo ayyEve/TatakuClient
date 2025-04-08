@@ -4,20 +4,20 @@ use crate::prelude::*;
 pub struct ScatterGraph {
     min: f32,
     max: f32,
-    data: Arc<Vec<MenuStatsEntry>>,
+    data: Arc<Vec<StatsEntry>>,
 }
 impl ScatterGraph {
-    pub fn new(data: Arc<Vec<MenuStatsEntry>>) -> Self {
+    pub fn new(data: Arc<Vec<StatsEntry>>) -> Self {
         let mut min = f32::MAX;
         let mut max = f32::MIN;
 
         for i in data.iter() {
             match &i.value {
-                MenuStatsValue::Single(val) => {
+                StatsValue::Single(val) => {
                     min = min.min(*val);
                     max = max.max(*val);
                 }
-                MenuStatsValue::List(list) => {
+                StatsValue::List(list) => {
                     for val in list {
                         min = min.min(*val);
                         max = max.max(*val);
@@ -64,7 +64,7 @@ impl ScatterGraph {
 
         for i in self.data.iter() {
             match &i.value {
-                MenuStatsValue::Single(v) => {
+                StatsValue::Single(v) => {
                     let v = self.map_point(*v, size);
 
                     group.push(Line::new(
@@ -74,7 +74,7 @@ impl ScatterGraph {
                         i.color,
                     ))
                 }
-                MenuStatsValue::List(points) => {
+                StatsValue::List(points) => {
                     let mapped_points = self.map_points(points, size);
                     let x_step = size.x / mapped_points.len() as f32;
 

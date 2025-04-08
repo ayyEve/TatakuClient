@@ -47,7 +47,7 @@ mod test2 {
 
     #[test]
     fn test() {
-        let test = "{\"a\":\"Text\", \"b\":100}";
+        let test = r#"{"a":"Text", "b":100}"#;
         let a: Test = serde_json::from_str(test).expect("nope");
         println!("1: {a:?}");
 

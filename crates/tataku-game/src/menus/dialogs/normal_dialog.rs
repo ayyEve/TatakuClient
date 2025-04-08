@@ -59,12 +59,12 @@ impl GenericDialog {
     }
 
     
-    fn build_view(&self) -> Box<dyn Widget> {
+    fn build_view(&self, owner: MessageOwner) -> Box<dyn Widget> {
         let buttons = self.button_actions.keys()
             .map(|s| Button::new(
                 TextWidget::new(s.clone()).boxed()
             )
-            .on_press(Message::new_dialog(s, MessageValue::Click))
+            .on_press(Message::new(owner, s, MessageValue::Click))
             .boxed()
         );
 
@@ -80,8 +80,12 @@ impl Widget for GenericDialog {
     fn name(&self) -> Cow<'static, str> { "generic_dialog".into() }
     fn node_id(&self) -> NodeId { self.node_id }
     
+    fn update_styles(&mut self, tree: &mut Tree, resolver: &mut CssResolver, display_override: Option<ui::Display>) {
+        self.node.update_styles(tree, resolver, display_override);
+    }
+    
     fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
-        self.node = self.build_view();
+        self.node = self.build_view(shell.owner);
         let child = self.node.layout(shell)?;
         self.node_id = shell.tree.new_with_children(Style::default(), &[child])?;
         Ok(self.node_id)

@@ -3,6 +3,7 @@ use crate::prelude::*;
 // you might be wondering why i dont just use gilrs::Button
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all="camelCase")]
 pub enum ControllerButton {
     // action buttons
     North,

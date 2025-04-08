@@ -24,7 +24,6 @@ impl Zip {
                 Ok(path) => paths.push(path),
                 Err(e) => {
                     error!("Error extracting zip archive: {e}");
-                    // NotificationManager::add_text_notification("Error extracting file\nSee console for details", 3000.0, Color::RED).await;
                 }
             }
 

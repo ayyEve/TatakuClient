@@ -516,6 +516,7 @@ impl Default for NavigateConfig {
     }
 }
 
+#[allow(unused)]
 struct ConfigPrevious {
     target: TaffyNodeId,
     element: TaffyNodeId,

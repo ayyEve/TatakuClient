@@ -121,7 +121,7 @@ impl HitObject for UTypingNote {
             list.push(Circle::new(
                 self.pos,
                 self.settings.note_radius,
-                Color::TRANSPARENT_WHITE,
+                Color::TRANSPARENT,
                 Some(Border::new(Color::RED, NOTE_BORDER_SIZE))
             ));
         }
@@ -154,6 +154,7 @@ impl HitObject for UTypingNote {
         const MAX_COUNT: usize = 5;
         let over_max = lines.len() > MAX_COUNT;
 
+        #[allow(clippy::needless_range_loop)]
         for i in 0..lines.len().min(MAX_COUNT) {
             let i = &lines[i];
             let len = i.len();

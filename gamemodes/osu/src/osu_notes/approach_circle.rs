@@ -77,7 +77,7 @@ impl ApproachCircle {
             list.push(Circle::new(
                 self.pos,
                 self.radius * scale, // self.radius is already accounting for the scaled_cs
-                Color::TRANSPARENT_WHITE,
+                Color::TRANSPARENT,
                 Some(Border::new(self.color.alpha(self.alpha), OSU_NOTE_BORDER_SIZE * self.scaling_helper.cs))
             ))
         }

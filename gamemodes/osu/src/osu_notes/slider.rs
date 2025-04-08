@@ -99,7 +99,7 @@ pub struct OsuSlider {
     slider_body_loader: SliderBodyLoader,
 
     hitsounds: Vec<Vec<Hitsound>>,
-    sliderdot_hitsound: Hitsound,
+    pub(crate) sliderdot_hitsound: Hitsound,
 
     last_beat: f32,
     pulse_length: f32,
@@ -130,7 +130,6 @@ impl OsuSlider {
 
         const SAMPLE_SETS:[&str; 4] = ["normal", "normal", "soft", "drum"];
         let sliderdot_hitsound = Hitsound::new_simple(format!("{}-slidertick", SAMPLE_SETS[def.hitsamples.addition_set as usize]));
-        // sliderdot_hitsound.volume = def.hitsamples.volume as f32 / 100.0;
 
         let hitsounds = def.edge_sets.iter().enumerate().map(|(n, &[normal_set, addition_set])| {
             let mut samples = def.hitsamples.clone();
@@ -332,6 +331,16 @@ impl OsuSlider {
                     ) - pos_in_cell;
 
                     let mut distance_along_segment_next_cell = distance_next_cell / dir;
+
+
+
+                    // FIXME: NEB !!?!?!?!!!?!!????!?!?!!!?!?!?!?!?!?!??????!?!!!?!?!?!?
+                    if distance_along_segment_next_cell.x == -0.0 {
+                        distance_along_segment_next_cell.x = 0.0
+                    }
+                    if distance_along_segment_next_cell.y == -0.0 {
+                        distance_along_segment_next_cell.y = 0.0
+                    }
 
                     debug_assert!(distance_along_segment_next_cell.x.is_sign_positive());
                     debug_assert!(distance_along_segment_next_cell.y.is_sign_positive());
@@ -537,7 +546,7 @@ impl OsuSlider {
             group.push(Circle::new(
                 Vector2::ZERO,
                 self.radius,
-                Color::TRANSPARENT_WHITE,
+                Color::TRANSPARENT,
                 Some(Border::new(border_color, 2.0))
             ));
 
@@ -849,7 +858,7 @@ impl HitObject for OsuSlider {
                 list.push(Circle::new(
                     self.slider_ball_pos,
                     self.radius * OK_TICK_RADIUS_MULT,
-                    Color::TRANSPARENT_WHITE,
+                    Color::TRANSPARENT,
                     Some(Border::new(if self.sliding_ok {Color::LIME} else {Color::RED}.alpha(alpha), 2.0)
                 )));
             }
@@ -930,9 +939,8 @@ impl HitObject for OsuSlider {
             let frametime = 1000.0 / 60.0;
             let velocity = self.velocity;
             let frametime = ((150.0 / velocity) * frametime).max(frametime);
-            let frametimes = vec![frametime; images.len()];
 
-            let mut animation = Animation::new(Vector2::ZERO, size, images, frametimes, base_scale);
+            let mut animation = Animation::new(Vector2::ZERO, size, images, frametime, base_scale);
             animation.scale = Vector2::ONE;
 
             self.sliderball_image = Some(animation);
@@ -1097,6 +1105,10 @@ impl OsuHitObject for OsuSlider {
         let index = self.sound_index.min(self.def.edge_sets.len() - 1);
         self.hitsounds[index].clone()
     }
+    fn get_all_hitsounds(&self) -> Vec<Vec<Hitsound>> { vec![ 
+        self.get_hitsound(),
+        vec![ self.sliderdot_hitsound.clone() ]
+    ] }
     fn get_sound_queue(&mut self) -> Vec<Vec<Hitsound>> {
         std::mem::take(&mut self.sound_queue)
     }
@@ -1165,9 +1177,6 @@ impl SliderDot {
         self.dot_image = skin_manager.get_texture("sliderscorepoint", source, SkinUsage::Gamemode, false).await;
     }
 }
-
-
-
 
 enum SliderBodyLoader {
     None,

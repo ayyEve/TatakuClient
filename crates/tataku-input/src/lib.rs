@@ -17,8 +17,9 @@ pub mod prelude {
     pub(crate) use std::collections::{ HashSet, HashMap };
     
     
-    pub(crate) use serde::{ Serialize, Deserialize };
+    pub use gilrs;
     pub(crate) use gilrs::*;
+    pub(crate) use serde::{ Serialize, Deserialize };
 
 
     pub(crate) use tataku_common::prelude::*;
@@ -33,6 +34,4 @@ pub mod prelude {
     #[cfg(feature = "gameplay")]
     pub use crate::input_manager::*;
     pub use crate::key_modifiers::*;
-
-    // TODO: re-export gilrs things?
 }

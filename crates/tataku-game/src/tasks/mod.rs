@@ -1,5 +1,6 @@
 mod delay_task;
 mod action_task;
+mod upload_score;
 mod load_beatmaps_task;
 mod beatmap_downloads_task;
 mod upload_screenshot_task;
@@ -8,6 +9,7 @@ mod difficulty_calculation_task;
 
 pub use delay_task::*;
 pub use action_task::*;
+pub use upload_score::*;
 pub use load_beatmaps_task::*;
 pub use beatmap_downloads_task::*;
 pub use upload_screenshot_task::*;

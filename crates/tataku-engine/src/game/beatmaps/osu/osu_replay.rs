@@ -9,7 +9,6 @@ impl OsuReplayDownloader {
     }
 }
 
-
 #[async_trait]
 impl ReplayDownloader for OsuReplayDownloader {
     async fn get_replay(&self, settings: &Settings) -> TatakuResult<Score> {

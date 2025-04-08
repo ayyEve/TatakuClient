@@ -96,7 +96,7 @@ impl Chat {
             height_resize_hover: false,
             // window_size,
 
-            node: Box::new(EmptyWidget::new()),
+            node: EmptyWidget::new_boxed(),
             node_id: EMPTY_NODE
         }
     }
@@ -197,7 +197,7 @@ impl Widget for Chat {
                 
                 // find the channel name in the list
                 for (channel, message_list) in self.messages.iter() {
-                    if channel.get_name() != &**channel_name { continue }
+                    if channel.get_name() != **channel_name { continue }
 
                     // set our current channel
                     self.selected_channel = Some(channel.clone());
@@ -225,70 +225,70 @@ impl Widget for Chat {
         _shell: &mut UpdateShell<'_>,
         _actions: &mut ActionQueue,
     ) { 
-        // get new messages
-        if let Some(mut online_manager) = OnlineManager::try_get_mut() {
-            let mut scroll_pending = false;
+        // // get new messages
+        // if let Some(mut online_manager) = OnlineManager::try_get_mut() {
+        //     let mut scroll_pending = false;
 
-            if let Some(selected_channel) = &self.selected_channel {
-                if !online_manager.chat_messages.contains_key(selected_channel) {
-                    online_manager.chat_messages.insert(selected_channel.clone(), Vec::new());
-                }
+        //     if let Some(selected_channel) = &self.selected_channel {
+        //         if !online_manager.chat_messages.contains_key(selected_channel) {
+        //             online_manager.chat_messages.insert(selected_channel.clone(), Vec::new());
+        //         }
 
-                // ensure the selected channel is actually selected
-                let selected_name = selected_channel.get_name();
-                // for i in self.channel_scroll.items.iter_mut() {
-                //     if i.get_selected() && i.get_tag() != selected_name {
-                //         i.set_selected(false)
-                //     }
+        //         // ensure the selected channel is actually selected
+        //         let selected_name = selected_channel.get_name();
+        //         // for i in self.channel_scroll.items.iter_mut() {
+        //         //     if i.get_selected() && i.get_tag() != selected_name {
+        //         //         i.set_selected(false)
+        //         //     }
 
-                //     if !i.get_selected() && i.get_tag() == selected_name {
-                //         i.set_selected(true)
-                //     }
-                // }
+        //         //     if !i.get_selected() && i.get_tag() == selected_name {
+        //         //         i.set_selected(true)
+        //         //     }
+        //         // }
 
-            }
+        //     }
 
-            // get chat messages
-            for (channel, messages) in online_manager.chat_messages.iter() {
-                if !self.messages.contains_key(channel) {
-                    self.messages.insert(channel.clone(), messages.clone());
-                    // self.channel_scroll.add_item(Box::new(ChannelScroll::new(
-                    //     channel.clone(), 
-                    //     self.channel_list_width, 
-                    //     30.0
-                    // )));
-                    continue;
-                }
+        //     // get chat messages
+        //     for (channel, messages) in online_manager.chat_messages.iter() {
+        //         if !self.messages.contains_key(channel) {
+        //             self.messages.insert(channel.clone(), messages.clone());
+        //             // self.channel_scroll.add_item(Box::new(ChannelScroll::new(
+        //             //     channel.clone(), 
+        //             //     self.channel_list_width, 
+        //             //     30.0
+        //             // )));
+        //             continue;
+        //         }
 
-                // update the messages list if there was a new message in the currently selected channel
-                if let Some(current_channel) = &self.selected_channel {
-                    if channel.get_name() == current_channel.get_name() {
-                        let cached_messages = self.messages.get_mut(channel).unwrap();
+        //         // update the messages list if there was a new message in the currently selected channel
+        //         if let Some(current_channel) = &self.selected_channel {
+        //             if channel.get_name() == current_channel.get_name() {
+        //                 let cached_messages = self.messages.get_mut(channel).unwrap();
 
-                        // let window_size = self.window_size.0;
-                        for message in online_manager.chat_messages.get(channel).unwrap() {
-                            if !cached_messages.contains(message) {
-                                // cached_messages.push(message.clone())
-                                // self.message_scroll.add_item(Box::new(MessageScroll::new(
-                                //     message.clone(),
-                                //     window_size.x - self.channel_list_width,
-                                //     30.0
-                                // )));
-                                scroll_pending = true;
-                            }
-                        }
-                    }
-                }
-            }
+        //                 // let window_size = self.window_size.0;
+        //                 for message in online_manager.chat_messages.get(channel).unwrap() {
+        //                     if !cached_messages.contains(message) {
+        //                         // cached_messages.push(message.clone())
+        //                         // self.message_scroll.add_item(Box::new(MessageScroll::new(
+        //                         //     message.clone(),
+        //                         //     window_size.x - self.channel_list_width,
+        //                         //     30.0
+        //                         // )));
+        //                         scroll_pending = true;
+        //                     }
+        //                 }
+        //             }
+        //         }
+        //     }
 
 
-            // scroll to the bottom
-            if scroll_pending {
-                self.scroll_to_new_message();
-            }
+        //     // scroll to the bottom
+        //     if scroll_pending {
+        //         self.scroll_to_new_message();
+        //     }
 
-            self.messages = online_manager.chat_messages.clone();
-        }
+        //     self.messages = online_manager.chat_messages.clone();
+        // }
 
         // // handle key presses
         // while let Some(key_event) = self.key_handler.check_events() {
@@ -487,7 +487,7 @@ impl ChatChannel {
     pub fn get_name(&self) -> Cow<'_, str> {
         match self {
             ChatChannel::Channel { name } => Cow::Owned(format!("#{}", name)),
-            ChatChannel::User { username } => Cow::Borrowed(&username),
+            ChatChannel::User { username } => Cow::Borrowed(username),
         }
     }
 }

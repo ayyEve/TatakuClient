@@ -80,7 +80,7 @@ impl SkinManager {
 
             // read the file bytes as an image
             match image::load_from_memory(&buf) {
-                Err(e) => NotificationManager::add_error_notification(format!("Error loading image: {path:?}"), e).await,
+                Err(e) => error!("Error loading image {path:?}: {e}"), 
                 
                 Ok(img) => {
                     let mut img = img.into_rgba8();

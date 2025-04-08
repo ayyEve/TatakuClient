@@ -99,7 +99,11 @@ impl SettingsMenu {
             .filter(|sc| !sc.properties.is_empty())
             .flat_map(|sc| [
                 // space
-                row!( Space::new(FILL, Dimension::Length(40.0)).boxed(); ),
+                Container::new(Vec::new()).flex_direction(FlexDirection::Row).width(FILL).boxed(),
+                // row!( 
+                //     // Space::new(FILL, Dimension::Length(40.0)).boxed();
+                // ),
+
                 // category name
                 row!( TextWidget::new(sc.name).font_size(40.0).boxed(); ),
                 // settings
@@ -135,8 +139,8 @@ impl SettingsMenu {
         let everything = Container::new(vec![
             TextWidget::new("Settings").font_size(40.0).boxed(),
 
-            // space
-            Space::new(FILL, Dimension::Length(10.0)).boxed(),
+            // // space
+            // Space::new(FILL, Dimension::Length(10.0)).boxed(),
 
             // search text
             TextInput::new("Search", self.filter_text.clone())
@@ -144,8 +148,8 @@ impl SettingsMenu {
                 .on_input(move |t: &str| Message::new(owner, "search", MessageValue::Text(t.to_string())))
                 .boxed(),
 
-            // space
-            Space::new(FILL, Dimension::Length(40.0)).boxed(),
+            // // space
+            // Space::new(FILL, Dimension::Length(40.0)).boxed(),
 
             // items
             Container::new(items)
@@ -181,9 +185,9 @@ impl SettingsMenu {
                 }
             ],
             [("close_dialog".to_owned(), vec![AnimatableAction {
-                action: TransformType::VectorScale { start: Vector2::new(1.0, 1.0), end: Vector2::new(0.0, 1.0) },
-                start: AnimatableTransformValue::Current,
-                stop: AnimatableTransformValue::Current,
+                action: TransformTypeTag::VectorScale { start: Vector2::new(1.0, 1.0), end: Vector2::new(0.0, 1.0) },
+                // start: AnimatableTransformValue::Current,
+                // stop: AnimatableTransformValue::Current,
                 duration: 200.0,
             }])].into_iter().collect(),
             everything
@@ -206,6 +210,10 @@ impl SettingsMenu {
 impl Widget for SettingsMenu {
     fn name(&self) -> Cow<'static, str> { "settings_menu".into() }
     fn node_id(&self) -> NodeId { self.node_id }
+
+    fn update_styles(&mut self, tree: &mut Tree, resolver: &mut CssResolver, display_override: Option<ui::Display>) {
+        self.node.update_styles(tree, resolver, display_override);
+    }
 
     fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
         self.node = self.view(shell.values, shell.owner);

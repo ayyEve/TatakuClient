@@ -8,7 +8,7 @@ edition.workspace = true
 
 [features]
 default = [ "gameplay" ]
-gameplay = [ "graphics", "gilrs", "media_control", "ipc-channel" ]
+gameplay = [ "graphics" ]
 # kira_audio = ["rustfft", "uuid"]
 debug_hitsounds = []
 debug_perf_rating = []
@@ -16,8 +16,7 @@ debug_custom_menus = []
 
 storyboards = []
 texture_arrays = []
-media_control = [ "souvlaki" ]
-ui = [ "taffy", "mlua", "triple_buffer" ]
+ui = [ "taffy", "triple_buffer", "simplecss" ]
 
 # removes as much graphics-side stuff as possible
 graphics = [ "winit", "ui", "clipboard", "raw-window-handle", "fontdue", "image" ]
@@ -35,11 +34,10 @@ lazy_static.workspace = true
 parking_lot.workspace = true
 crossbeam.workspace = true
 async-trait.workspace = true
+bitflags.workspace = true
 
-tokio = { workspace = true, features = [ "full" ] }
-rusqlite = { workspace = true, features = [ "bundled" ] }
+tokio. workspace = true
 triple_buffer = { workspace = true, optional = true }
-ipc-channel = { workspace = true, optional = true }
 
 libloading = { workspace = true, optional = true }
 
@@ -52,13 +50,9 @@ winit = { workspace = true, features = ["serde"], optional = true }
 raw-window-handle = { workspace = true, optional = true }
 clipboard = { workspace = true, optional = true }
 
-# gamepad input
-gilrs = { workspace = true, features = ["serde-serialize"], optional = true }
-# media controls
-souvlaki = { workspace = true, default-features = false, features = ["use_zbus"], optional = true }
-
 # gui
 taffy = { workspace = true, optional = true }
+simplecss = { workspace = true, optional = true }
 
 # networking
 reqwest = { workspace = true, features = ["json"] }
@@ -82,7 +76,6 @@ sha2.workspace = true
 # other stuff
 rand.workspace = true
 fs_extra.workspace = true
-mlua = { workspace = true, optional = true }
 
 
 # logging

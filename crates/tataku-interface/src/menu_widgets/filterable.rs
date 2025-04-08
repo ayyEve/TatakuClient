@@ -34,6 +34,10 @@ impl Widget for FilterableWidget {
     fn name(&self) -> Cow<'static, str>  { "filterable_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
+    fn update_styles(&mut self, tree: &mut Tree, resolver: &mut CssResolver, _display_override: Option<ui::Display>) {
+        self.node.update_styles(tree, resolver, None);
+    }
+
     fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId>  {
         let mut children = Vec::with_capacity(2);
         children.push(self.node.layout(shell)?);
@@ -105,8 +109,8 @@ impl Widget for FilterableWidget {
 
     async fn reload_skin(
         &mut self, 
-        skin_manager: &mut dyn SkinProvider,
+        shell: &mut UpdateShell,
     ) {
-        self.node.reload_skin(skin_manager).await
+        self.node.reload_skin(shell).await
     }
 }

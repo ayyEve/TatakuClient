@@ -2,7 +2,9 @@ use crate::prelude::*;
 
 #[derive(Copy, Clone, Debug)]
 pub enum CursorAction {
+    /// Set if the cursor is visible or not
     SetVisible(bool),
+    /// Set/remove an override for the Cursor's ripple radius
     OverrideRippleRadius(Option<f32>),
 }
 impl From<CursorAction> for TatakuAction {
@@ -19,10 +21,13 @@ pub enum CursorMode {
     Normal,
     HorizontalResize,
     VerticalResize,
-    /// both horizontal and vertical resize
+    
+    /// Both horizontal and vertical resize
     Resize,
-    /// hand pointing at thing
+
+    /// Hand pointing at thing
     Pointer,
+
     /// text cursor
     Text,
 }

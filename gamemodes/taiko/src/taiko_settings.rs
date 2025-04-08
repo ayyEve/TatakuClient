@@ -17,7 +17,6 @@ pub struct TaikoSettings {
     pub right_kat: Key,
     #[cfg_attr(feature="graphics", setting(text="Ignore Mouse Buttons"))]
     pub ignore_mouse_buttons: bool,
-    // #[cfg(feature = "gameplay")]
     #[reflect(skip)] // TaikoControllerConfig isnt reflectable
     pub controller_config: HashMap<String, TaikoControllerConfig>,
 
@@ -31,9 +30,6 @@ pub struct TaikoSettings {
     #[cfg_attr(feature="graphics", setting(text="Big Note Scale", min=1, max=5))]
     pub big_note_multiplier: f32,
 
-    // /// hit area, but calculated before use
-    // #[serde(skip)]
-    // pub hit_position: Vector2,
     pub hit_position_relative_to_window_size: bool,
     pub hit_position_relative_height_div: f32,
     #[cfg_attr(feature="graphics", setting(text="Playfield Horizontal Offset", min=0, max=500))]
@@ -46,8 +42,8 @@ pub struct TaikoSettings {
     pub hit_area_radius_mult: f32,
     /// playfield = note_radius * max(hit_area_radius_mult, big_note_mult) + this
     #[cfg_attr(feature="graphics", setting(text="Playfield Vertical Padding", min=0, max=20))]
-    pub playfield_height_padding: f32,
     /// playfield = note_radius * max(hit_area_radius_mult, big_note_mult) + this
+    pub playfield_height_padding: f32,
 
     #[cfg_attr(feature="graphics", setting(text="Don Color"))]
     pub don_color: SettingsColor,
@@ -61,19 +57,6 @@ pub struct TaikoSettings {
     #[cfg_attr(feature="graphics", setting(text="Hit Judgment Y-Offset", min=0, max=100))]
     pub judgement_indicator_offset: f32,
 }
-// impl TaikoSettings {
-//     pub fn get_playfield(&self, width: f32, kiai: bool) -> Rectangle {
-//         let height = self.note_radius * self.big_note_multiplier * 2.0 + self.playfield_height_padding;
-//         Rectangle::new(
-//             Vector2::new(0.0, self.hit_position.y - height / 2.0),
-//             Vector2::new(width, height),
-//             Color::new(0.1, 0.1, 0.1, 1.0),
-//             if kiai {
-//                 Some(Border::new(Color::YELLOW, 2.0))
-//             } else {None}
-//         )
-//     }
-// }
 impl Default for TaikoSettings {
     fn default() -> Self {
         Self {
@@ -83,7 +66,6 @@ impl Default for TaikoSettings {
             right_don: Key::J,
             right_kat: Key::K,
             ignore_mouse_buttons: false,
-            // #[cfg(feature = "gameplay")]
             controller_config: HashMap::new(),
 
             // sv
@@ -95,7 +77,6 @@ impl Default for TaikoSettings {
             hit_area_radius_mult: 1.2,
             playfield_height_padding: 8.0,
             // hit area stuff
-            // hit_position: Vector2::ZERO,
             hit_position_relative_to_window_size: true,
             hit_position_relative_height_div: 1.375, // 3/8s the way down the screen
             playfield_x_offset: 200.0,
@@ -141,12 +122,6 @@ impl TaikoControllerConfig {
             // "Wireless Controller"|"Sony Interactive Entertainment Wireless Controller" => Self::new_default(17, 15, 0, 2),
 
             _ => Self::new_default(ControllerButton::LeftBumper, ControllerButton::LeftThumb, ControllerButton::RightThumb, ControllerButton::RightBumper)
-            // _ => Self {
-            //     left_kat: ControllerInputConfig::new(None, None),
-            //     left_don: ControllerInputConfig::new(None, None),
-            //     right_don:ControllerInputConfig::new(None, None),
-            //     right_kat:ControllerInputConfig::new(None, None),
-            // }
         }
     }
 }

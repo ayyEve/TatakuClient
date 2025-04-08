@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<xs:schema 
+    xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    xmlns:text="tataku/text"
+    targetNamespace="tataku/text"
+>
+
+<xs:group name="text">
+    <xs:choice>
+        <xs:group ref="text:text-type"/>
+        <xs:sequence>
+            <xs:element name="list" minOccurs="0" maxOccurs="1">
+                <xs:complexType mixed="true">
+                    <xs:sequence>
+                        <xs:group ref="text:text-type" minOccurs="1" maxOccurs="unbounded"/>
+                    </xs:sequence>
+                    <xs:attribute name="join" type="xs:string"/>
+                </xs:complexType>
+            </xs:element>
+        </xs:sequence>
+    </xs:choice>
+</xs:group>
+
+<xs:group name="text-type">
+    <xs:choice>
+        <xs:element name="text" type="xs:string"/>
+        <xs:element name="locale" type="xs:string"/>
+        <xs:element name="variable" type="xs:string"/>
+        <xs:element name="calc" type="xs:string"/>
+        <xs:element name="textIter">
+            <xs:complexType>
+                <xs:attribute name="variable" type="xs:string" use="required"/>
+                <xs:attribute name="property" type="xs:string"/>
+                <xs:attribute name="join" type="xs:string" use="required"/>
+            </xs:complexType>
+        </xs:element>
+    </xs:choice>
+</xs:group>
+
+
+</xs:schema>

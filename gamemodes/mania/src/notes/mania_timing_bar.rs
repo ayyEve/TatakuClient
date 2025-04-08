@@ -55,9 +55,6 @@ impl TimingBar {
 
     pub fn update(&mut self, time:f32) {
         self.pos.y = self.y_at(time);
-        
-        // (self.playfield.hit_y() + self.playfield.note_size().y-self.size.y) - ((self.time - time) * self.speed) as f64;
-        // self.pos = HIT_POSITION + Vector2::new(( - BAR_WIDTH / 2.0, -PLAYFIELD_RADIUS);
     }
 
     pub fn draw(&mut self, list: &mut RenderableCollection) {

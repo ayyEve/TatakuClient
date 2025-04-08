@@ -51,7 +51,7 @@ pub struct AtlasData {
     pub uvs: Uvs,
 }
 impl AtlasData {
-    fn new(alloc_info: Allocation, layer: u32, total_width: u32, total_height:u32) -> Self {
+    fn new(alloc_info: Allocation, layer: u32, total_width: u32, total_height: u32) -> Self {
         let [x, y] = alloc_info.rectangle.min.to_array();
         let [x2, y2] = alloc_info.rectangle.max.to_array();
         let [x, y, x2, y2] = [x as u32 + ATLAS_PADDING, y as u32 + ATLAS_PADDING, x2 as u32 - ATLAS_PADDING, y2 as u32 - ATLAS_PADDING];
@@ -59,7 +59,7 @@ impl AtlasData {
         let w = x2 - x;
         let h = y2 - y;
         
-        AtlasData {
+        Self {
             id: alloc_info.id,
 
             x,
@@ -103,7 +103,7 @@ pub struct Uvs {
     pub br: [f32; 2],
 }
 impl Uvs {
-    fn new(x:u32, y:u32, w:u32, h:u32, total_w:u32, total_h:u32) -> Self {
+    fn new(x: u32, y: u32, w: u32, h: u32, total_w: u32, total_h: u32) -> Self {
         let [x, y, w, h] = [x as f32, y as f32, w as f32, h as f32];
 
         Self {
@@ -113,6 +113,7 @@ impl Uvs {
             br: [x + w, y + h],
         }.div([total_w as f32, total_h as f32])
     }
+
     fn div(mut self, max_size: [f32; 2]) -> Self {
         self.tl = div(self.tl, max_size);
         self.tr = div(self.tr, max_size);
@@ -122,7 +123,7 @@ impl Uvs {
     }
 }
 
-fn div(a: [f32;2], b: [f32;2]) -> [f32;2] {
+fn div(a: [f32; 2], b: [f32; 2]) -> [f32; 2] {
     [
         a[0] / b[0],
         a[1] / b[1]

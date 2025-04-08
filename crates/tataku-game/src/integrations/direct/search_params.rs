@@ -28,8 +28,7 @@ pub struct SearchParams {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum MapStatus {
     All,
-    #[default]
-    Ranked,
+    #[default] Ranked,
     Pending,
     Graveyarded,
     Approved,
@@ -39,6 +38,5 @@ pub enum MapStatus {
 
 #[derive(Clone, Default)]
 pub enum SortMethod {
-    #[default]
-    Default
+    #[default] Default
 }

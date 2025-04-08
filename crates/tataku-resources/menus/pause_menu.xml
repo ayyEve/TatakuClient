@@ -1,0 +1,60 @@
+<?xml version="1.0"?>
+<?xml-model href="../xsd/menu.xsd"?>
+
+<menu id="pause_menu">
+    <style> 
+        .menu {
+            width: auto; 
+            height: auto; 
+            align-content: center;
+            
+            image: "pause-overlay";
+            image-source: skin;
+            image-stretch: fit;
+        }
+    </style>
+
+    <element>
+        <column class="menu">
+            <!-- resume button -->
+            <button>
+                <action>
+                    <gameplay><resume/></gameplay>
+                </action>
+                <element>
+                    <text>
+                        <text>Resume</text>
+                    </text>
+                </element>
+            </button>
+
+            <!-- retry button -->
+            <button>
+                <action>    
+                    <gameplay><retry/></gameplay>
+                </action>
+                <element>
+                    <text>
+                        <text>Retry</text>
+                    </text>
+                </element>
+            </button>
+
+            <!-- quit button -->
+            <button>
+                <action>
+                    <list>
+                        <gameplay><quit/></gameplay>
+                        <setMenu><value>beatmap_select</value></setMenu>
+                    </list>
+                </action>
+                <element>
+                    <text>
+                        <text>Quit</text>
+                    </text>
+                </element>
+            </button>
+
+        </column>
+    </element>
+</menu>

@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<?xml-model href="../xsd/menu.xsd"?>
+<menu id="menu_list">
+    <style>
+    </style>
+    
+    <events>
+        <!-- leave menu with -->
+        <event>
+            <keyPress key="Escape"/>
+            <actions>
+                <setMenu>main_menu</setMenu>
+            </actions>
+        </event>
+    </events>
+
+    <element>
+        <column style = "width: fill; height: fill">
+            <text><text>Menu List</text></text>
+            <list
+                style = "width: fill; height: auto"
+                list = "global.menu_list"
+                variable = "_menu"
+                scrollable = "true"
+            >
+                <row style = "width: fill; height: auto; margin: 10px">
+                    <button style = "width: fill; height: auto; margin: 10px">
+                        <action>
+                            <setMenu><variable>_menu</variable></setMenu>
+                        </action>
+                        <element>
+                            <text><variable>_menu</variable></text>
+                        </element>
+                    </button>
+                </row>
+            </list>
+        </column>
+    </element>
+
+</menu>

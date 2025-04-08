@@ -3,28 +3,22 @@ use crate::prelude::*;
 // contains beatmap info unrelated to notes and timing points, etc
 #[derive(Clone, Debug, Default)]
 #[derive(Reflect)]
+#[reflect(display="debug")]
 pub struct BeatmapMeta {
-    #[reflect(alias("path"))]
-    pub file_path: String,
-    #[reflect(alias("hash"))]
-    pub beatmap_hash: Md5Hash,
-    #[reflect(alias("type"))]
-    pub beatmap_type: BeatmapType,
+    #[reflect(alias("path"))] pub file_path: String,
+    #[reflect(alias("hash"))] pub beatmap_hash: Md5Hash,
+    #[reflect(alias("type"))] pub beatmap_type: BeatmapType,
 
-    #[reflect(alias("playmode"))]
-    pub mode: String,
+    #[reflect(alias("playmode"))] pub mode: String,
     pub artist: String,
     pub title: String,
     pub artist_unicode: String,
     pub title_unicode: String,
     pub creator: String,
     pub version: String,
-    #[reflect(alias("audio_path"))]
-    pub audio_filename: String,
-    #[reflect(alias("image_path"))]
-    pub image_filename: String,
-    #[reflect(alias("preview", "preview_time"))]
-    pub audio_preview: f32,
+    #[reflect(alias("audio_path"))] pub audio_filename: String,
+    #[reflect(alias("image_path"))] pub image_filename: String,
+    #[reflect(alias("preview", "preview_time"))] pub audio_preview: f32,
 
     pub duration: f32, // time in ms from first note to last note
 
@@ -36,10 +30,10 @@ pub struct BeatmapMeta {
     pub bpm_max: f32,
 }
 impl BeatmapMeta {
-    pub fn new(file_path: String, beatmap_hash: Md5Hash, beatmap_type: BeatmapType) -> BeatmapMeta {
+    pub fn new(file_path: String, beatmap_hash: Md5Hash, beatmap_type: BeatmapType) -> Self {
         let unknown = "Unknown".to_owned();
 
-        BeatmapMeta {
+        Self {
             file_path,
             beatmap_hash,
             beatmap_type,
@@ -70,9 +64,9 @@ impl BeatmapMeta {
 
     /// get the title string with the version
     pub fn version_string(&self) -> String {
-        let artist = if self.artist.is_empty() {&self.artist_unicode} else {&self.artist};
-        let title = if self.title.is_empty() {&self.title_unicode} else {&self.title};
-        format!("{} - {} [{}]", artist, title, self.version)  
+        let artist = if self.artist.is_empty() { &self.artist_unicode } else { &self.artist };
+        let title = if self.title.is_empty() { &self.title_unicode } else { &self.title };
+        format!("{artist} - {title} [{}]", self.version)  
     }
 
     

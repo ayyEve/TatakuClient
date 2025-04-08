@@ -1,0 +1,321 @@
+<?xml version="1.0"?>
+
+<xs:schema 
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  targetNamespace="tataku/elements"
+  xmlns:elements="tataku/elements"
+  xmlns:text="tataku/text"
+  xmlns:actions="tataku/actions"
+  xmlns:events="tataku/events"
+>
+
+<xs:import namespace="tataku/text" schemaLocation="text.xsd"/>
+<xs:import namespace="tataku/actions" schemaLocation="actions.xsd"/>
+<xs:import namespace="tataku/events" schemaLocation="events.xsd"/>
+
+<xs:complexType name="generic">
+  <xs:attribute name="id" type="xs:string"/>
+  <xs:attribute name="class" type="xs:string"/>
+  <xs:attribute name="style" type="xs:string"/>
+</xs:complexType>
+
+<xs:group name="element">
+  <xs:choice>
+    <xs:element name="column" type="elements:column-element"/>
+    <xs:element name="row" type="elements:row-element"/>
+    <xs:element name="button" type="elements:button-element"/>
+    <xs:element name="gameplayPreview" type="elements:gameplay-preview-element"/>
+    <xs:element name="text" type="elements:text-element"/>
+    <xs:element name="textInput" type="elements:text-input-element"/>
+    <xs:element name="animatable" type="elements:animatable-element"/>
+    <xs:element name="dropdown" type="elements:dropdown-element"/>
+    <xs:element name="list" type="elements:list-element"/>
+    <xs:element name="conditional" type="elements:conditional-element"/>
+  </xs:choice>
+</xs:group>
+
+
+<!-- column element-->
+<xs:complexType name="column-element">
+  <xs:complexContent>
+    <xs:extension base="elements:generic">
+      <xs:sequence>
+        <xs:group ref="elements:element" minOccurs="1" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+<!-- row element -->
+<xs:complexType name="row-element">
+  <xs:complexContent>
+    <xs:extension base="elements:generic">
+      <xs:sequence>
+        <xs:group ref="elements:element" minOccurs="1" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+<!-- button element -->
+<xs:complexType name="button-element">
+  <xs:complexContent>
+    <xs:extension base="elements:generic">
+      <xs:all>
+        <xs:element name="action">
+          <xs:complexType>
+            <xs:group ref="actions:action-type"/>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="element">
+          <xs:complexType>
+            <xs:group ref="elements:element"/>
+          </xs:complexType>
+        </xs:element>
+      </xs:all>
+      <xs:attribute name="active" type="xs:string"/>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+<!-- gameplay preview element -->
+<xs:complexType name="gameplay-preview-element">
+  <xs:complexContent>
+    <xs:extension base="elements:generic">
+      <xs:attribute name="visualization" type="xs:string"/>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+<!-- text element -->
+<xs:complexType name="text-element">
+  <xs:complexContent>
+    <xs:extension base="elements:generic">
+      <xs:sequence>
+        <xs:group ref="text:text" minOccurs="1"/>
+      </xs:sequence>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+<!-- text input element -->
+<xs:complexType name="text-input-element">
+  <xs:complexContent>
+    <xs:extension base="elements:generic">
+      <xs:all>
+        <xs:element name="placeholder" minOccurs="0">
+          <xs:complexType>
+            <xs:group ref="text:text"/>
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="onInput" minOccurs="0">
+          <xs:complexType>
+            <xs:group ref="actions:action-type"/>
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="onSubmit" minOccurs="0">
+          <xs:complexType>
+            <xs:group ref="actions:action-type"/>
+          </xs:complexType>
+        </xs:element>
+      </xs:all>
+      <xs:attribute name="variable" type="xs:string" use="required"/>
+      <xs:attribute name="password" type="xs:boolean" default="false"/>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+
+<!-- animatable element -->
+<xs:complexType name="animatable-element">
+  <xs:complexContent>
+    <xs:extension base="elements:generic">
+      <xs:sequence>
+
+        <xs:element name="triggers" minOccurs="0" maxOccurs="1">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="trigger" type="elements:animatable-trigger" maxOccurs="unbounded"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="actions" minOccurs="0" maxOccurs="1">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:group ref="elements:animatable-action" maxOccurs="unbounded"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="element">
+          <xs:complexType>
+            <xs:group ref="elements:element"/>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+
+<!-- dropdown element -->
+<xs:complexType name="dropdown-element">
+  <xs:complexContent>
+    <xs:extension base="elements:generic">
+      <xs:sequence>
+        <xs:element name="onSelect" minOccurs="1" maxOccurs="1">
+          <xs:complexType>
+            <xs:group ref="actions:action-type"/>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+
+      <xs:attribute name="options_path" type="xs:string" use="required"/>
+      <xs:attribute name="options_display_path" type="xs:string"/>
+      <xs:attribute name="selected_path" type="xs:string" use="required"/>
+      <xs:attribute name="placeholder" type="xs:string"/>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+
+<!-- list element -->
+<xs:complexType name="list-element">
+  <xs:complexContent>
+    <xs:extension base="elements:generic">
+      <xs:sequence>
+        <xs:group ref="elements:element" minOccurs="1" maxOccurs="1"/>
+      </xs:sequence>
+
+      <xs:attribute name="list" type="xs:string" use="required"/>
+      <xs:attribute name="variable" type="xs:string" use="required"/>
+      <xs:attribute name="scrollable" type="xs:boolean" default="false"/>
+      <xs:attribute name="scroll" type="xs:boolean" default="false"/>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+<!-- conditional element -->
+<xs:complexType name="conditional-element">
+  <xs:complexContent>
+    <xs:extension base="elements:generic">
+      <xs:choice>
+        <xs:group ref="elements:conditional-element-both"/>
+        <xs:group ref="elements:conditional-element-true-only"/>
+        <xs:group ref="elements:element"/>
+      </xs:choice>
+      <xs:attribute name="cond" type="xs:string" use="required"/>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+<xs:group name="conditional-element-true-only">
+  <xs:sequence>
+    <xs:element name="true"> 
+      <xs:complexType>
+        <xs:group ref="elements:element"/>
+      </xs:complexType>
+    </xs:element>
+  </xs:sequence>
+</xs:group>
+<xs:group name="conditional-element-both">
+  <xs:sequence>
+    <xs:element name="true"> 
+      <xs:complexType>
+        <xs:group ref="elements:element"/>
+      </xs:complexType>
+    </xs:element>
+    <xs:element name="false">
+      <xs:complexType>
+        <xs:group ref="elements:element"/>
+      </xs:complexType>
+    </xs:element>
+  </xs:sequence>
+</xs:group>
+
+
+
+<xs:group name="animatable-action">
+  <xs:sequence>
+    <xs:element name="action">
+        <xs:complexType>
+          <xs:group ref="elements:transform-type" minOccurs="1" maxOccurs="1"/>
+          <xs:attribute name="id" type="xs:string" use="required"/>
+        </xs:complexType>
+    </xs:element>
+  </xs:sequence>
+</xs:group>
+
+
+
+<xs:group name="transform-type">
+  <xs:choice>
+    <xs:element name="position" type="elements:transform-vector2"/>
+    <xs:element name="positionX" type="elements:transform-float"/>
+    <xs:element name="positionY" type="elements:transform-float"/>
+
+    <xs:element name="vectorScale" type="elements:transform-vector2"/>
+    <xs:element name="scale" type="elements:transform-float"/>
+    <xs:element name="scaleX" type="elements:transform-float"/>
+    <xs:element name="scaleY" type="elements:transform-float"/>
+
+    <xs:element name="rotation" type="elements:transform-float"/>
+    <xs:element name="color" type="elements:transform-color"/>
+
+    <xs:element name="borderSize" type="elements:transform-float"/>
+    <xs:element name="transparency" type="elements:transform-float"/>
+  </xs:choice>
+</xs:group>
+<xs:complexType name="transform-float">
+  <xs:attribute name="start" type="xs:float" use="required"/>
+  <xs:attribute name="any" type="xs:float" use="required"/>
+</xs:complexType>
+<xs:complexType name="transform-color">
+  <xs:attribute name="start" type="xs:string" use="required"/>
+  <xs:attribute name="any" type="xs:string" use="required"/>
+</xs:complexType>
+<xs:complexType name="transform-vector2">
+  <xs:attribute name="start" type="xs:string" use="required"/>
+  <xs:attribute name="any" type="xs:string" use="required"/>
+</xs:complexType>
+
+
+<xs:complexType name="animatable-trigger">
+  <xs:sequence>
+    <xs:group ref="elements:trigger-event-type"/>
+  </xs:sequence>
+  <xs:attribute name="action" type="xs:string" use="required"/>
+</xs:complexType>
+
+<xs:group name="trigger-event-type">
+  <xs:choice>
+    <xs:element name="input"/>
+    <xs:element name="noInput">
+      <xs:complexType>
+        <xs:attribute name="duration" type="xs:float" use="required"/>
+      </xs:complexType>
+    </xs:element>
+
+    <xs:element name="hover"/>
+    <xs:element name="unhover"/>
+    <xs:element name="click"/>
+    <xs:element name="clickHold">
+      <xs:complexType>
+        <xs:attribute name="duration" type="xs:float" use="required"/>
+      </xs:complexType>
+    </xs:element>
+    <xs:element name="unclick"/>
+    <xs:element name="event">
+      <xs:complexType>
+        <xs:group ref="events:event-type"/>
+      </xs:complexType>
+    </xs:element>
+    
+    <!-- TODO: add message tag? -->
+  </xs:choice>
+</xs:group>
+
+</xs:schema>

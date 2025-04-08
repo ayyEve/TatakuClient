@@ -205,7 +205,7 @@ impl OsuHitObject for OsuNote {
             group.push(Circle::new(
                 Vector2::ZERO,
                 self.radius,
-                Color::TRANSPARENT_WHITE,
+                Color::TRANSPARENT,
                 Some(Border::new(self.color, 2.0))
             ));
 

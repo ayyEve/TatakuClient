@@ -26,7 +26,9 @@ pub enum TatakuError {
 
     DiffCalcError(DiffCalcError),
 
-    ReflectError(ReflectError<'static>)
+    ReflectError(ReflectError<'static>),
+
+    CustomMenuError(CustomMenuError),
 }
 impl TatakuError {
     pub fn from_err(e: impl std::error::Error) -> Self {
@@ -40,25 +42,22 @@ impl From<&str> for TatakuError {
 }
 impl Display for TatakuError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self {
-            Self::Beatmap(e) => write!(f, "{:?}", e),
-            Self::Serde(e) => write!(f, "{:?}", e),
-            Self::IO(e) => write!(f, "{}", e),
-            // #[cfg(feature = "graphics")]
-            Self::Image(e) => write!(f, "{:?}", e),
-            Self::Audio(e) => write!(f, "{:?}", e),
-            Self::String(e) => write!(f, "{:?}", e),
-            Self::GameMode(e) => write!(f, "{:?}", e),
-            Self::SerializationError(e) => write!(f, "{:?}", e),
-            Self::ReqwestError(e) => write!(f, "{:?}", e),
-            Self::DownloadError(e) => write!(f, "{:?}", e),
-            Self::Graphics(e) => write!(f, "{:?}", e),
-            // Self::ShuntingYardError(e) => write!(f, "{:?}", e),
-            Self::DiffCalcError(e) => write!(f, "{:?}", e),
+        match self {
+            Self::Beatmap(e) => write!(f, "{e:?}"),
+            Self::Serde(e) => write!(f, "{e:?}"),
+            Self::IO(e) => write!(f, "{e}"),
+            Self::Image(e) => write!(f, "{e:?}"),
+            Self::Audio(e) => write!(f, "{e:?}"),
+            Self::String(e) => write!(f, "{e:?}"),
+            Self::GameMode(e) => write!(f, "{e:?}"),
+            Self::SerializationError(e) => write!(f, "{e:?}"),
+            Self::ReqwestError(e) => write!(f, "{e:?}"),
+            Self::DownloadError(e) => write!(f, "{e:?}"),
+            Self::Graphics(e) => write!(f, "{e:?}"),
+            Self::DiffCalcError(e) => write!(f, "{e:?}"),
             
-            // #[cfg(feature = "ui")]
-            // Self::Lua(e) => write!(f, "{:?}", e),
-            Self::ReflectError(e) => write!(f, "{:?}", e),
+            Self::ReflectError(e) => write!(f, "{e:?}"),
+            Self::CustomMenuError(e) => write!(f, "{e:?}"),
         }
     }
 }
@@ -101,12 +100,6 @@ impl From<DiffCalcError> for TatakuError {
     }
 }
 
-#[cfg(feature = "ui")]
-impl From<mlua::Error> for TatakuError {
-    fn from(value: mlua::Error) -> Self { 
-        Self::String(value.to_string()) 
-    }
-}
 impl From<GraphicsError> for TatakuError {
     fn from(value: GraphicsError) -> Self { Self::Graphics(value) }
 }

@@ -1,5 +1,5 @@
 mod text;
-mod space;
+// mod space;
 mod button;
 mod slider;
 mod checkbox;
@@ -8,7 +8,7 @@ mod container;
 mod text_input;
 
 pub use text::*;
-pub use space::*;
+// pub use space::*;
 pub use button::*;
 pub use slider::*;
 pub use checkbox::*;

@@ -39,8 +39,6 @@ impl RenderBufferable for SliderRenderBuffer {
     type Cache = CpuSliderRenderBuffer;
     const VTX_PER_BUF: u64 = VTX_PER_BUF;
     const IDX_PER_BUF: u64 = IDX_PER_BUF;
-    
-    // fn name() -> &'static str { "slider buffer" }
 
     fn reset(&mut self) {
         self.scissor = None;

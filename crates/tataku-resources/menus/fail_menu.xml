@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+<?xml-model href="../xsd/menu.xsd"?>
+
+<menu id = "fail_menu">
+    <style> 
+        .menu {
+            width: auto; 
+            height: auto; 
+            align-content: center;
+            
+            image: "fail-background";
+            image-source: skin;
+            image-stretch: fit;
+        }
+    </style>
+
+    <element>
+        <column class="menu">
+            <!-- retry button -->
+            <button>
+                <action>    
+                    <gameplay><retry/></gameplay>
+                </action>
+                <element>
+                    <text>
+                        <text>Retry</text>
+                    </text>
+                </element>
+            </button>
+
+            <!-- quit button -->
+            <button>
+                <action>
+                    <list>
+                        <setMenu><value>beatmap_select</value></setMenu>
+                        <gameplay><quit/></gameplay>
+                    </list>
+                </action>
+                <element>
+                    <text>
+                        <text>Quit</text>
+                    </text>
+                </element>
+            </button>
+
+        </column>
+    </element>
+</menu>

@@ -4,7 +4,7 @@ pub trait AudioApi: Send + Sync {
     fn load_sample_data(&self, data: Vec<u8>) -> TatakuResult<Arc<dyn AudioInstance>>;
     fn load_stream_data(&self, data: Vec<u8>) -> TatakuResult<Arc<dyn AudioInstance>>;
 
-    fn load_sample_path(&self, path: &Path) -> TatakuResult<Arc<dyn AudioInstance>> {
+    fn load_sample_path(&self, path: &str) -> TatakuResult<Arc<dyn AudioInstance>> {
         let data = Io::read_file(path)?;
         self.load_sample_data(data)
     }
@@ -17,9 +17,10 @@ pub trait AudioApi: Send + Sync {
     fn amplitude_multiplier(&self) -> f32 { 1.0 }
 }
 
+#[async_trait]
 pub trait AudioApiInit: Send + Sync {
     fn name(&self) -> &'static str;
-    fn init(&self) -> TatakuResult<Arc<dyn AudioApi>>;
+    async fn init(&self) -> TatakuResult<Arc<dyn AudioApi>>;
 }
 
 
@@ -28,6 +29,7 @@ pub trait AudioInstance: Send + Sync {
     fn play(&self, restart: bool);
     fn pause(&self);
     fn stop(&self);
+
 
     fn is_playing(&self) -> bool;
     fn is_paused(&self) -> bool;
@@ -40,8 +42,8 @@ pub trait AudioInstance: Send + Sync {
     fn set_volume(&self, vol: f32);
     fn set_rate(&self, rate: f32);
 
+    fn set_repeat(&self, repeat: bool);
     fn get_data(&self) -> Vec<FFTEntry>;
-
     fn get_duration(&self) -> f32;
 
     fn get_state(&self) -> AudioState {
@@ -59,10 +61,12 @@ pub trait AudioInstance: Send + Sync {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
 #[derive(Reflect)]
+#[reflect(display = "debug")]
 pub enum AudioState {
     Playing,
     Paused,
     Stopped,
+    
     #[default]
     Unknown,
 }

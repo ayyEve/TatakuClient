@@ -50,7 +50,11 @@ impl DialogWidget {
 impl Widget for DialogWidget {
     fn name(&self) -> Cow<'static, str> { format!("{}{}", self.title, if self.draggable { " (Draggable)" } else { "" } ).into() }
     fn node_id(&self) -> NodeId { self.node_id }
-    
+
+    fn update_styles(&mut self, tree: &mut Tree, resolver: &mut CssResolver, _display_override: Option<ui::Display>) {
+        self.node.update_styles(tree, resolver, None);
+    }
+
     fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId>  {
         let child = self.node.layout(shell)?;
         self.node_id = shell.tree.new_with_children(
@@ -68,15 +72,6 @@ impl Widget for DialogWidget {
         shell: &mut InputShell<'_>,
     ) {
         self.node.input(event, shell);
-
-        let to_update = shell.messages
-            .iter_mut()
-            .filter(|m| m.owner == MessageOwner::DialogUnset);
-
-        for m in to_update {
-            println!("updating {m:?}");
-            m.owner = MessageOwner::Dialog(self.num);
-        }
     }
 
     fn draw(
@@ -110,9 +105,7 @@ impl Widget for DialogWidget {
     ) {
         match message.owner {
             MessageOwner::Menu => return,
-            MessageOwner::DialogUnset => panic!("got unset dialog message owner"),
             MessageOwner::Dialog(num) => if num != self.num { return }
-            MessageOwner::Any => {}
         }
 
         if let Some(str) = message.tag.as_string() {
@@ -147,8 +140,8 @@ impl Widget for DialogWidget {
 
     async fn reload_skin(
         &mut self, 
-        skin_manager: &mut dyn SkinProvider,
+        shell: &mut UpdateShell,
     ) {
-        self.node.reload_skin(skin_manager).await;
+        self.node.reload_skin(shell).await;
     }
 }

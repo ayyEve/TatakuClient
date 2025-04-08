@@ -1,8 +1,41 @@
 use crate::prelude::*;
+use image::RgbaImage;
+use tokio::sync::oneshot::Sender as OneshotSender;
 
-#[derive(Debug)]
+#[allow(unused)]
+#[derive(Debug2)]
 pub enum WindowAction {
-    MediaControlAction(MediaControlAction),
+    /// Show the system cursor
+    ShowCursor,
+
+    /// Hide the system cursor
+    HideCursor,
+
+    /// Request the user's attention
+    RequestAttention,
+
+    /// Close the game
+    CloseGame,
+
+    /// Take a screenshot
+    TakeScreenshot(ScreenshotInfo),
+
+    /// Load an image
+    LoadImage(LoadImage),
+
+    /// Copy some text to the clipboard
+    CopyToClipboard(String),
+
+    /// Refresh available monitors
+    RefreshMonitors,
+
+    /// Update the data to render
+    RenderData(#[debug(skip)] Vec<Arc<dyn TatakuRenderable>>),
+
+    /// Update the display to match the settings
+    SettingsUpdated(DisplaySettings),
+
+    /// Add a particle emitter
     AddEmitter(EmitterReference),
 }
 impl From<WindowAction> for TatakuAction {
@@ -11,55 +44,19 @@ impl From<WindowAction> for TatakuAction {
     }
 }
 
-#[derive(Debug)]
-pub enum MediaControlAction {
-    Attach,
-    Detatch,
-    SetPlayback(MediaPlaybackState),
-    SetMetadata(MediaControlMetadata),
-}
+#[derive(Debug2)]
+pub enum LoadImage {
+    #[debug(skip)] Image(RgbaImage, OneshotSender<TatakuResult<TextureReference>>),
+    Font(ActualFont, f32, #[debug(skip)] Option<OneshotSender<TatakuResult<()>>>),
+    FreeTexture(TextureReference),
 
-impl From<MediaControlAction> for TatakuAction {
-    fn from(value: MediaControlAction) -> Self {
-        Self::WindowAction(WindowAction::MediaControlAction(value))
-    }
+    #[debug(skip)] CreateRenderTarget((u32, u32), OneshotSender<TatakuResult<RenderTarget>>, RenderTargetDraw),
+    #[debug(skip)] UpdateRenderTarget(RenderTarget, OneshotSender<()>, RenderTargetDraw),
 }
 
 
-#[derive(PartialEq, Copy, Clone, Debug)]
-pub enum MediaPlaybackState {
-    Playing(f32),
-    Paused(f32),
-    Stopped,
-}
-#[cfg(feature="graphics")]
-impl From<MediaPlaybackState> for souvlaki::MediaPlayback {
-    fn from(val: MediaPlaybackState) -> Self {
-        match val {
-            MediaPlaybackState::Playing(time) => souvlaki::MediaPlayback::Playing { progress: Some(souvlaki::MediaPosition(Duration::from_millis(time as u64))) },
-            MediaPlaybackState::Paused(time) => souvlaki::MediaPlayback::Paused { progress: Some(souvlaki::MediaPosition(Duration::from_millis(time as u64))) },
-            MediaPlaybackState::Stopped => souvlaki::MediaPlayback::Stopped,
-        }
-    }
-}
-
-
-#[derive(Clone, Debug, Default)]
-pub struct MediaControlMetadata {
-    pub title: Option<Cow<'static, str>>,
-    pub artist: Option<Cow<'static, str>>,
-    pub cover_url: Option<Cow<'static, str>>,
-    pub duration: Option<f32>,
-}
-#[cfg(feature="graphics")]
-impl<'a> From<&'a MediaControlMetadata> for souvlaki::MediaMetadata<'a> {
-    fn from(val: &'a MediaControlMetadata) -> Self {
-        souvlaki::MediaMetadata {
-            title: val.title.as_ref().map(Cow::as_ref),
-            album: None,
-            artist: val.artist.as_ref().map(Cow::as_ref),
-            cover_url: val.cover_url.as_ref().map(Cow::as_ref),
-            duration: val.duration.map(|ms| Duration::from_secs_f32(ms * 1000.0)),
-        }
-    }
+#[derive(Clone, Default, PartialEq, Debug)]
+pub struct ScreenshotInfo {
+    pub upload: bool,
+    // pub region: Option<Bounds>,
 }

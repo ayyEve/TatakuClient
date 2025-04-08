@@ -89,8 +89,7 @@ impl TaikoGame {
             false, 
             state.timing_points.timing_point_at(note_time, true)
         );
-        state.add_action(GamemodeAction::play_hitsounds(hitsound));
-        // manager.play_note_sound(&hitsound).await;
+        state.play_hitsounds(&hitsound, false);
     }
 
     async fn setup_hitwindows(&mut self) {
@@ -134,7 +133,6 @@ impl TaikoGame {
         if finisher_hit {
             // remove the normal hit indicator, its being replaced with a finisher
             state.add_action(GamemodeAction::RemoveLastJudgment);
-            // manager.judgement_indicators.pop();
 
             if hit_value == &TaikoHitJudgments::X100 {
                 hit_value = &TaikoHitJudgments::Katu;
@@ -177,8 +175,6 @@ impl TaikoGame {
     pub fn get_od(meta: &BeatmapMeta, mods: &ModManager) -> f32 {
         Self::scale_by_mods(meta.od, 0.5, 1.4, mods).clamp(1.0, 10.0)
     }
-
-
     
 
     pub fn get_taiko_playfield(
@@ -426,9 +422,6 @@ impl GameMode for TaikoGame {
 
         s.setup_hitwindows().await;
 
-        // // i wonder if not doing this has been causing issues
-        // s.apply_mods(s.current_mods.clone()).await;
-
         Ok(s)
     }
 
@@ -551,7 +544,6 @@ impl GameMode for TaikoGame {
                 // if was hit, the sound already played
                 if !did_hit {
                     hit_time = note_time;
-                    // self.play_sound(manager, note_time, hit_type, finisher_sound).await;
                 }
             }
             
@@ -575,11 +567,9 @@ impl GameMode for TaikoGame {
 
 
     async fn update<'a>(&mut self, state: &mut GameplayUpdateShell<'a>) {
-
         // check healthbar swap
         if self.healthbar_swap_pending {
             self.healthbar_swap_pending = false;
-            // println!("swapping health");
 
             // reset health helper to default
             state.add_action(GamemodeAction::ResetHealth); // manager.health = Default::default();
@@ -593,46 +583,19 @@ impl GameMode for TaikoGame {
                 // this is essentially stolen from peppy's 2016 osu code
                 let normal_health = MAX_HEALTH / (0.06 * 6.0 * note_count * map_difficulty(self.metadata.hp, 0.5, 0.75, 0.98));
                 
-                // println!("normal health: {normal_health}");
-                
                 // random fudge because osu makes no sense
                 const FACTOR: f32 = 15.0;
                 let normal_health = normal_health / FACTOR;
-                // println!("normal health: {normal_health}");
 
                 let health_per_300 = normal_health * 6.0;
                 let health_per_100 = normal_health * map_difficulty(self.metadata.hp, 6.0, 2.2, 2.2);
                 let health_per_miss = map_difficulty(self.metadata.hp, -6.0, -25.0, -40.0) / FACTOR;
-
-                
-                // println!("note count: {note_count}");
-                // println!("health_per_300: {health_per_300}");
-                // println!("health_per_100: {health_per_100}");
-                // println!("health_per_miss: {health_per_miss}");
 
                 state.add_action(GamemodeAction::replace_health(TaikoBatteryHealthManager::new(
                     health_per_300,
                     health_per_100,
                     health_per_miss
                 )));
-
-                // let health = &mut manager.health;
-                // health.max_health = MAX_HEALTH;
-                // health.current_health = 0.0;
-                // health.initial_health = 0.0;
-                // health.check_fail_at_end = true;
-
-                // health.check_fail = Arc::new(move |s| s.current_health < PASS_HEALTH);
-                // health.do_health = Arc::new(move |s, j, _score| {
-                //     s.current_health += match j.id {
-                //         "x300" => health_per_300,
-                //         "x100" => health_per_100,
-                //         "xmiss" => health_per_miss,
-                //         _ => return
-                //     };
-
-                //     s.validate_health()
-                // });
             }
         }
 
@@ -1139,6 +1102,21 @@ impl GameMode for TaikoGame {
         PlayfieldNonsense::new_simple(self.playfield.get_playfield_bounds())
     }
     fn properties(&self) -> GameModeProperties {
+
+        // TODO: is there a less cancer way of doing this?
+        let mut sound_list = HashMap::new();
+        for hitsound in [0, 1, 2, 4, 8] {
+            let hitsound = Hitsound::from_hitsamples(
+                hitsound, 
+                Default::default(), 
+                false, 
+                &TimingPoint::default(),
+            );
+            for i in hitsound {
+                sound_list.insert(i.get_id(), i.load_data(Some("taiko-")));
+            }
+        }
+
         GameModeProperties { 
             info: &crate::GAME_INFO, 
             keys: vec![
@@ -1153,6 +1131,7 @@ impl GameMode for TaikoGame {
             timing_bar_things: self.hit_windows.iter()
                 .map(|(j, w)| (w.end, j.color))
                 .collect(), 
+            sound_list: sound_list.into_iter().collect()
         }
     }
 

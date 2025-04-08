@@ -104,8 +104,8 @@ impl HitCircleImageHelper {
     }
 
     pub fn set_pos(&mut self, pos: Vector2) {
-        self.circle.pos  = pos; // truncate(pos);
-        self.overlay.pos = pos; // truncate(pos);
+        self.circle.pos  = pos; 
+        self.overlay.pos = pos; 
     }
     pub fn draw(&mut self, list: &mut RenderableCollection) {
         list.push(self.circle.clone());
@@ -124,13 +124,3 @@ impl HitCircleImageHelper {
         self.overlay.scale = scale;
     }
 }
-
-
-
-
-// fn truncate(v: Vector2) -> Vector2 {
-//     Vector2::new(
-//         v.x.trunc(),
-//         v.y.trunc()
-//     )
-// }

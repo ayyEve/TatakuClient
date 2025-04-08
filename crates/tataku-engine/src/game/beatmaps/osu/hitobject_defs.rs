@@ -17,7 +17,7 @@ pub struct NoteDef {
 
 #[derive(Clone, Debug)]
 pub struct SliderDef {
-    // x,y,time,type,hitSound,curveType|curvePoints,slides,length,edgeSounds,edgeSets,hitSample
+    /// x,y,time,type,hitSound,curveType|curvePoints,slides,length,edgeSounds,edgeSets,hitSample
     pub raw: String,
 
     /// Position in osu! pixels of the object.

@@ -5,7 +5,11 @@ pub enum GamemodeAction {
     AddStat { stat: GameModeStat, value: f32 },
 
     /// Play a hitsound
-    PlayHitsounds(Vec<Hitsound>),
+    PlayHitsound{
+        id: String,
+        volume: f32,
+        repeat: bool,
+    },
 
     /// add a hit judgment
     AddJudgment(HitJudgment),
@@ -49,7 +53,7 @@ impl GamemodeAction {
         Self::ReplaceHealth(Box::new(health))
     }
 
-    pub fn play_hitsounds(sounds: Vec<Hitsound>) -> Self {
-        Self::PlayHitsounds(sounds)
-    }
+    // pub fn play_hitsounds(sounds: Vec<Hitsound>) -> Self {
+    //     Self::PlayHitsounds(sounds)
+    // }
 }

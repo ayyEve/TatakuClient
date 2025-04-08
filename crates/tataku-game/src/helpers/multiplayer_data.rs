@@ -1,7 +1,8 @@
 use crate::prelude::*;
 
-#[derive(Default, Clone, Debug)]
 #[derive(Reflect)]
+#[reflect(display = "debug")]
+#[derive(Default, Clone, Debug)]
 pub struct MultiplayerData {
     pub lobbies: HashMap<u32, LobbyInfo>,
 
@@ -19,14 +20,12 @@ impl MultiplayerData {
         if let Err(e) = values.reflect_insert("global.lobbies", self.lobbies.values().cloned().collect::<Vec<_>>()) {
             error!("error updating global.lobbies: {e:?}");
         }
-
-        // values.global.lobbies = self.lobbies.values().cloned().collect();
-        // values.set("global.lobbies", TatakuVariable::new_game((TatakuVariableAccess::GameOnly, lobbies)));
     }
 }
 
-#[derive(Clone, Default, Debug)]
 #[derive(Reflect)]
+#[reflect(display = "debug")]
+#[derive(Clone, Default, Debug)]
 pub struct CurrentLobbyInfo {
     /// what is our user id?
     pub our_user_id: u32,
@@ -66,7 +65,6 @@ impl CurrentLobbyInfo {
     }
 
 }
-
 impl Deref for CurrentLobbyInfo {
     type Target = FullLobbyInfo;
     fn deref(&self) -> &Self::Target {

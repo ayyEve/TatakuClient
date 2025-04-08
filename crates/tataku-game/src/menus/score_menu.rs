@@ -6,14 +6,11 @@ use crate::REPLAY_EXPORTS_DIR;
 pub struct ScoreMenu {
     actions: ActionQueue,
     infos: GamemodeInfos,
-    // key_handler: KeyEventsHandlerGroup<ScoreMenuKeys>,
 
     score: IngameScore,
     beatmap: Arc<BeatmapMeta>,
-    // pub replay: Option<Replay>,
 
     menu_type: Box<ScoreMenuType>,
-
 
     /// can the user retry?
     allow_retry: bool,
@@ -22,28 +19,12 @@ pub struct ScoreMenu {
     score_mods: String,
     hit_error: HitError,
     hit_counts: Vec<(String, u32, Color)>,
-    stats: Vec<MenuStatsInfo>,
-
-    // pub dont_close_on_back: bool,
-    // pub should_close: bool,
+    stats: Vec<StatsInfo>,
 
     /// what stat is selected?
     selected_stat: usize,
 
-
-
-
-    // score submit stuff
-    pub score_submit: Option<Arc<ScoreSubmitHelper>>,
-    score_submit_response: Option<SubmitResponse>,
-
-
-    // lobby stuff
-    // /// is this score menu being shown in a lobby?
-    // is_lobby: bool,
-    // lobby_helper: CurrentLobbyDataHelper,
-    // lobby_items: Vec<LeaderboardComponent>,
-    // close_sender: Option<AsyncSender<()>>,
+    pub score_submit: Option<String>,
 
     node: Box<dyn Widget>,
     node_id: NodeId,
@@ -96,32 +77,21 @@ impl ScoreMenu {
         ScoreMenu {
             actions: ActionQueue::new(),
             infos,
-            // key_handler: KeyEventsHandlerGroup::new(),
             menu_type: Box::new(ScoreMenuType::Normal),
                 
             score: score.clone(),
             score_mods,
-            // replay: None,
             beatmap,
             hit_error,
-
-            // dont_close_on_back: false,
-            // should_close: false,
             allow_retry,
 
             hit_counts,
             score_submit: None,
-            score_submit_response: None,
 
             selected_stat: 0,
             stats,
 
-            // is_lobby: false,
-            // lobby_helper: CurrentLobbyDataHelper::new(),
-            // lobby_items: Vec::new(),
-            // close_sender: None,
-
-            node: Box::new(EmptyWidget::new()),
+            node: EmptyWidget::new_boxed(),
             node_id: EMPTY_NODE
         }
     }
@@ -201,11 +171,22 @@ impl ScoreMenu {
         // }
     }
 
+
+    pub async fn get_replay(&self, settings: &Settings) -> TatakuResult<Score> {
+        info!("Getting replay from {:#?}", self.score.replay_location);
+
+        match &self.score.replay_location {
+            ReplayLocation::Local => get_local_replay_for_score(&self.score),
+            ReplayLocation::Online(downloader) => downloader.get_replay(settings).await,
+            ReplayLocation::OnlineNotExist => Err("Replay is not available :c".into()),
+        }
+    }
+
     async fn replay(&mut self, settings: &Settings) {
         if self.score.replay.is_some() {
             self.do_replay((*self.score).clone()).await;
         } else {
-            match self.score.get_replay(settings).await {
+            match self.get_replay(settings).await {
                 Ok(score) => self.do_replay(score).await,
                 Err(e) => self.actions.push(GameAction::AddNotification(Notification::new_error("Error loading replay", e))),
             }
@@ -220,12 +201,6 @@ impl ScoreMenu {
         // }
 
         self.actions.push(GameAction::WatchReplay(Box::new(score)));
-        // match manager_from_playmode(self.score.playmode.clone(), &self.beatmap).await {
-        //     Ok(mut manager) => {
-        //         manager.set_replay(replay);
-        //     }
-        //     Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
-        // }
     }
 
     async fn retry(&mut self) {
@@ -338,7 +313,7 @@ impl ScoreMenu {
                     Ok(_) => {
                         // copy the file from the saved_path to the exports file
                         if let Err(e) = std::fs::copy(saved_path, export_path) {
-                            NotificationManager::add_error_notification("Error exporting replay", e).await;
+                            self.actions.push(Notification::new_error("Error exporting replay", e));
                         } else {
                             self.actions.push(
                                 Notification::default()
@@ -348,10 +323,10 @@ impl ScoreMenu {
                             );
                         }
                     }
-                    Err(e) => NotificationManager::add_error_notification("Error creating exports directory", e).await,
+                    Err(e) => self.actions.push(Notification::new_error("Error creating exports directory", e)),
                 }
             }
-            Err(e) => NotificationManager::add_error_notification("Error saving replay", e).await,
+            Err(e) => self.actions.push(Notification::new_error("Error saving replay", e)),
         };
     }
 
@@ -373,7 +348,7 @@ impl ScoreMenu {
             };
 
             ($s: expr) => {
-                lines.push(Space::new(FILL, Dimension::Length($s)).boxed());
+                // lines.push(Space::new(FILL, Dimension::Length($s)).boxed());
             }
         }
 
@@ -408,25 +383,32 @@ impl ScoreMenu {
             }
         }
 
-        if let Some(sub) = &self.score_submit_response {
-            add!(font_size / 2.0);
-
-            match sub {
-                SubmitResponse::NotSubmitted(_, str) => {
-                    add!(format!("Score not submitted: {str}"), Color::BLACK);
-                }
-
-                SubmitResponse::Submitted { score_id:_, placing, performance_rating } => {
-                    for str in [
-                        format!("Map Ranking: #{}", format_number(*placing)),
-                        format!("Performance: {}pr", format_float(*performance_rating, 2)),
-                    ] {
-                        add!(str, Color::BLACK);
-                        add!(font_size);
-                    }
-                }
-            }
+        if let Some(path) = &self.score_submit {
+            lines.push(
+                ScoreSubmitWidget::default()
+                .score_submit_path(path.clone())
+                .boxed()
+            )
         }
+        // if let Some(sub) = &self.score_submit_response {
+        //     add!(font_size / 2.0);
+
+        //     match sub {
+        //         SubmitResponse::NotSubmitted(_, str) => {
+        //             add!(format!("Score not submitted: {str}"), Color::BLACK);
+        //         }
+
+        //         SubmitResponse::Submitted { score_id:_, placing, performance_rating } => {
+        //             for str in [
+        //                 format!("Map Ranking: #{}", format_number(*placing)),
+        //                 format!("Performance: {}pr", format_float(*performance_rating, 2)),
+        //             ] {
+        //                 add!(str, Color::BLACK);
+        //                 add!(font_size);
+        //             }
+        //         }
+        //     }
+        // }
 
         lines
     }
@@ -489,6 +471,9 @@ impl Widget for ScoreMenu {
     fn node_id(&self) -> NodeId { self.node_id }
 
 
+    fn update_styles(&mut self, tree: &mut Tree, resolver: &mut CssResolver, display_override: Option<ui::Display>) {
+        self.node.update_styles(tree, resolver, display_override);
+    }
     fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
         self.node = self.build_view();
 
@@ -636,7 +621,7 @@ impl ScoreMenuType {
 
 
 #[cfg(feature="graphics")]
-pub fn default_stats_from_groups(data: &HashMap<String, HashMap<String, Vec<f32>>>) -> Vec<MenuStatsInfo> { 
+pub fn default_stats_from_groups(data: &HashMap<String, HashMap<String, Vec<f32>>>) -> Vec<StatsInfo> { 
     let mut info = Vec::new();
 
     if let Some(variance) = data.get(&VarianceStatGroup.name()) {
@@ -664,14 +649,14 @@ pub fn default_stats_from_groups(data: &HashMap<String, HashMap<String, Vec<f32>
             let early = early_total / early_count as f32;
             let late = late_total / late_count as f32;
 
-            list.push(MenuStatsEntry::new_list("Variance", variance_values.clone(), Color::PURPLE, true, true, ConcatMethod::StandardDeviation));
-            list.push(MenuStatsEntry::new_f32("Mean", mean, Color::WHITE, true, true));
+            list.push(StatsEntry::new_list("Variance", variance_values.clone(), Color::PURPLE, true, true, ConcatMethod::StandardDeviation));
+            list.push(StatsEntry::new_f32("Mean", mean, Color::WHITE, true, true));
 
-            list.push(MenuStatsEntry::new_f32("Early", early, Color::BLUE, true, true));
-            list.push(MenuStatsEntry::new_f32("Late", late, Color::RED, true, true));
+            list.push(StatsEntry::new_f32("Early", early, Color::BLUE, true, true));
+            list.push(StatsEntry::new_f32("Late", late, Color::RED, true, true));
 
 
-            info.push(MenuStatsInfo::new("Hit Variance", GraphType::Scatter, list))
+            info.push(StatsInfo::new("Hit Variance", GraphType::Scatter, list))
         }
     }
 
@@ -701,7 +686,6 @@ impl LeaderboardComponent {
             info
         );
         let acc = info.calc_acc(&score) * 100.0;
-
 
         Self {
             num,
@@ -739,4 +723,50 @@ impl LeaderboardComponent {
         .on_press(Message::new(MessageOwner::Menu, "score", MessageValue::Number(self.num)))
         .boxed()
     }
+}
+
+
+#[derive(Default)]
+#[derive(ChainableInitializer)]
+struct ScoreSubmitWidget {
+    #[chain] score_submit_path: String,
+    style: Style,
+    text_style: TextStyle,
+    data: ScoreSubmitResponse,
+
+    node_id: NodeId,
+}
+impl Widget for ScoreSubmitWidget {
+    fn name(&self) -> Cow<'static, str> { "score_submit_widget".into() }
+    fn node_id(&self) -> NodeId { self.node_id }
+
+    fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
+        self.node_id = shell.tree.new_leaf(self.style.clone())?;
+        Ok(self.node_id)
+    }
+
+    fn update(
+        &mut self,
+        shell: &mut UpdateShell<'_>,
+        _actions: &mut ActionQueue,
+    ) {
+        let Ok(data) = shell.values.reflect_get::<ScoreSubmitResponse>(&self.score_submit_path) else { return };
+        if data.completed {
+            self.data = data.cloned();
+        }
+    }
+
+    fn draw(&self, shell: &mut DrawShell<'_>) {
+        let Some(bounds) = shell.tree.absolute_bounds(self.node_id) else { return };
+        
+        let text = if self.data.completed {
+            let text = format!("Placing: {}\nPerformance: {:.2}pr", self.data.placing, self.data.performance_rating);
+            self.text_style.create_text(text, bounds)
+        } else {
+            self.text_style.create_text("Score uploading...".to_owned(), bounds)
+        };
+
+        shell.list.push(text);
+    }
+
 }

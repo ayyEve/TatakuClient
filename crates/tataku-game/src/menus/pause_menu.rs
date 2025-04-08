@@ -3,9 +3,6 @@ use crate::prelude::ui::*;
 
 pub struct PauseMenu {
     actions: ActionQueue,
-
-    // beatmap: Arc<Mutex<Beatmap>>,
-    // manager: Option<Box<GameplayManager>>,
     is_fail_menu: bool,
 
     bg: Option<Image>,
@@ -21,7 +18,7 @@ impl PauseMenu {
             is_fail_menu,
             bg: None,
 
-            node: Box::new(EmptyWidget::new()),
+            node: EmptyWidget::new_boxed(),
             node_id: EMPTY_NODE
         }
     }
@@ -139,13 +136,13 @@ impl Widget for PauseMenu {
     }
     
 
-    async fn reload_skin(&mut self, skin_manager: &mut dyn SkinProvider) {
-        self.node.reload_skin(skin_manager).await;
+    async fn reload_skin(&mut self, shell: &mut UpdateShell) {
+        self.node.reload_skin(shell).await;
 
         if self.is_fail_menu {
-            self.bg = skin_manager.get_texture("fail-background", &TextureSource::Skin, SkinUsage::Game, false).await
+            self.bg = shell.skin_manager.get_texture("fail-background", &TextureSource::Skin, SkinUsage::Game, false).await
         } else {
-            self.bg = skin_manager.get_texture("pause-overlay", &TextureSource::Skin, SkinUsage::Game, false).await
+            self.bg = shell.skin_manager.get_texture("pause-overlay", &TextureSource::Skin, SkinUsage::Game, false).await
         }
 
         // FIXME: need to reimplement

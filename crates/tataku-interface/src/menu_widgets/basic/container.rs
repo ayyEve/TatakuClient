@@ -78,6 +78,11 @@ impl Widget for Container {
     fn name(&self) -> Cow<'static, str> { "container_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
+    fn update_styles(&mut self, tree: &mut Tree, resolver: &mut CssResolver, _display_override: Option<ui::Display>) {
+        for i in self.children.iter_mut() {
+            i.update_styles(tree, resolver, None);  
+        }
+    }
     fn input(
         &mut self, 
         event: &InputEvent,
@@ -163,6 +168,10 @@ impl Widget for Container {
             &children
         )?;
 
+        shell.with_context(self.node_id, |ctx| {
+            ctx.needs_inverse_transform = true;
+        });
+
         Ok(self.node_id)
     }
 
@@ -234,10 +243,14 @@ impl Widget for Container {
                         ui_scale: 1.0, // TODO:!
                     };
 
+                    let mut build_shell = ElementBuildShell {
+                        owner: shell.owner,
+                        _empty: std::marker::PhantomData
+                    };
+
                     for _ in 0..diff.abs() {
                         // create the new element
-                        let mut e = BuiltCustomMenu::build_element(data.template.clone(), layout_shell.owner);
-                        println!("list created widget {}", e.name());
+                        let mut e = data.template.build(&mut build_shell);
 
                         // add it to the tree
                         let child = match e.layout(&mut layout_shell) {
@@ -349,9 +362,9 @@ impl Widget for Container {
         }
     }
 
-    async fn reload_skin(&mut self, skin_manager: &mut dyn SkinProvider) {
+    async fn reload_skin(&mut self, shell: &mut UpdateShell) {
         for i in self.children.iter_mut() {
-            i.reload_skin(skin_manager).await
+            i.reload_skin(shell).await
         }
     }
 }
@@ -359,7 +372,7 @@ impl Widget for Container {
 #[derive(ChainableInitializer)]
 pub struct ProgrammaticListData {
     /// what element to build for each iteration
-    #[chain] pub template: ElementDef,
+    #[chain] pub template: Element,
 
     /// what variable to iterate over
     #[chain] pub list_var: String,
@@ -370,7 +383,7 @@ pub struct ProgrammaticListData {
     error_printed: bool,
 }
 impl ProgrammaticListData {
-    pub fn new(template: ElementDef, list_var: String, variable: String) -> Self {
+    pub fn new(template: Element, list_var: String, variable: String) -> Self {
         Self {
             template,
             list_var,
@@ -435,27 +448,6 @@ mod macros {
             .flex_direction(FlexDirection::Column)
             .boxed()
         }
-    }
-
-    #[cfg(test)]
-    #[allow(unused)]
-    fn test() {
-        use crate::prelude::*;
-        use crate::prelude::ui::*;
-
-        let row = row!(
-            Space::new(FILL, FILL).boxed(),
-            Space::new(FILL, FILL).boxed();
-            width = FILL,
-            height = FILL
-        );
-
-        let col = col!(
-            Space::new(FILL, FILL).boxed(),
-            Space::new(FILL, FILL).boxed();
-            width = FILL,
-            height = FILL
-        );
     }
 
 }

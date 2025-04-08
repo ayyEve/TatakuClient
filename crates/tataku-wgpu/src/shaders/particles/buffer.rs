@@ -1,4 +1,3 @@
-
 use crate::prelude::*;
 
 pub const SIZE:u64 = 300;
@@ -11,12 +10,8 @@ pub struct ParticleBuffer {
     pub layout: BindGroupLayout,
 
     pub readable_particle_buffer: Buffer,
-
     pub index: usize,
-
     pub particle_count: usize,
-
-    // recording_periods_since_last_use: usize
 }
 
 impl ParticleBuffer {

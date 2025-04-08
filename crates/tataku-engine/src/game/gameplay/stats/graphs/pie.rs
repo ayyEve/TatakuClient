@@ -4,10 +4,10 @@ use crate::prelude::*;
 pub struct PieGraph {
     // min: f32,
     sum: f32,
-    data: Arc<Vec<MenuStatsEntry>>,
+    data: Arc<Vec<StatsEntry>>,
 }
 impl PieGraph {
-    pub fn new(data: Arc<Vec<MenuStatsEntry>>) -> Self {
+    pub fn new(data: Arc<Vec<StatsEntry>>) -> Self {
         // let mut min = f32::MAX;
         let mut sum = 0.0;
 

@@ -15,15 +15,18 @@ impl UiAction {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug2)]
 pub enum UiActionType {
     Refresh,
     MarkDirty,
     UpdateStyle(Box<Style>),
+    UpdateStyleWith(#[debug(skip)] Box<dyn Fn(&mut Style) + Send + Sync>),
 
-    /// only update the display of a node. 
+    /// Only update the display of a node. 
     /// 
-    /// this should hopefully be cheaper than updating an entire style
+    /// This should hopefully be cheaper than updating an entire style
+    /// 
+    /// ^ Currently it isnt, but hopefully in the future it is
     UpdateDisplay(ui::Display),
 
     /// rebuild the contexts for this node and its children

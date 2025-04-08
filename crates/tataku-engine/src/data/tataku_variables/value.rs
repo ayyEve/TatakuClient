@@ -4,8 +4,8 @@ use crate::prelude::*;
 // TODO: nuke this now that we have reflect
 #[derive(Debug, Default)]
 pub enum TatakuValue {
-    #[default]
-    None,
+    #[default] None,
+
     // I64(i64),
     F32(f32),
     U32(u32),
@@ -13,12 +13,75 @@ pub enum TatakuValue {
 
     Bool(bool),
     String(String),
-
     Reflect(Box<dyn Reflect>),
-
-    List(Vec<TatakuVariable>),
-    Map(HashMap<String, TatakuVariable>),
 }
+
+impl<'de> serde::Deserialize<'de> for TatakuValue {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where D: serde::Deserializer<'de> {
+        use serde::de::Error;
+
+        struct Visitor;
+        impl<'de> serde::de::Visitor<'de> for Visitor {
+            type Value = TatakuValue;
+        
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                write!(formatter, "one of: f32, f64, u16, u32, u64, bool, &str, String")
+            }
+
+            fn visit_bool<E: Error>(self, v: bool) -> Result<Self::Value, E> {
+                Ok(v.into())
+            }
+
+            fn visit_f32<E: Error>(self, v: f32) -> Result<Self::Value, E> {
+                Ok(v.into())
+            }
+            fn visit_f64<E: Error>(self, v: f64) -> Result<Self::Value, E> {
+                Ok((v as f32).into())
+            }
+
+            fn visit_u16<E: Error>(self, v: u16) -> Result<Self::Value, E> {
+                Ok((v as u32).into())
+            }
+            fn visit_u32<E: Error>(self, v: u32) -> Result<Self::Value, E> {
+                Ok(v.into())
+            }
+            fn visit_u64<E: Error>(self, v: u64) -> Result<Self::Value, E> {
+                Ok(v.into())
+            }
+            fn visit_str<E: Error>(self, v: &str) -> Result<Self::Value, E> {
+                // FIXME: this is shit
+                if let Ok(n) = v.parse::<u32>() {
+                    Ok(n.into())
+                } else if let Ok(n) = v.parse::<u64>() {
+                    Ok(n.into())
+                } else if let Ok(n) = v.parse::<f32>() {
+                    Ok(n.into())
+                } else if let Ok(n) = v.parse::<bool>() {
+                    Ok(n.into())
+                } 
+                
+                else {
+                    Ok(v.into())
+                }
+            }
+            fn visit_map<A: serde::de::MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
+                let _key = map.next_key::<String>().unwrap();
+                // println!("key: {_key:?}");
+
+                let val = map.next_value().unwrap();
+                let _ = map.next_key::<String>().unwrap();
+                
+                Ok(val)
+            }
+                
+        }
+
+        deserializer.deserialize_any(Visitor)
+    }
+}
+
+
 impl TatakuValue {
     pub fn is_none(&self) -> bool {
         matches!(self, Self::None)
@@ -31,9 +94,9 @@ impl TatakuValue {
             Self::U32(n) => *n != 0,
             Self::U64(n) => *n != 0,
             Self::F32(n) => *n > 0.0,
-            Self::List(list) => !list.is_empty(),
+            // Self::List(list) => !list.is_empty(),
             Self::String(s) => !s.is_empty(),
-            Self::Map(m) => !m.is_empty(),
+            // Self::Map(m) => !m.is_empty(),
 
             Self::Reflect(r) => if let Some(a) = r.downcast_ref::<bool>() {
                 *a
@@ -58,8 +121,8 @@ impl TatakuValue {
 
             Self::None => Err(ShuntingYardError::ValueIsNone),
             Self::String(s) => Err(ShuntingYardError::ValueIsntANumber(s.clone())),
-            Self::List(_) => Err(ShuntingYardError::ValueIsntANumber("<vec>".to_owned())),
-            Self::Map(_) => Err(ShuntingYardError::ValueIsntANumber("<map>".to_owned())),
+            // Self::List(_) => Err(ShuntingYardError::ValueIsntANumber("<vec>".to_owned())),
+            // Self::Map(_) => Err(ShuntingYardError::ValueIsntANumber("<map>".to_owned())),
             
             Self::Reflect(r) => Ok(r.reflect_as_number("")?.into()),
         }
@@ -104,8 +167,8 @@ impl TatakuValue {
 
             // Self::Reflect(r) => Self::from_reflection(&**r).map(|a| a.as_string()).unwrap_or_default(),
 
-            Self::List(a) => a.iter().map(|a| a.as_string()).collect::<Vec<_>>().join(" "),
-            Self::Map(a) => a.iter().map(|(a, b)| format!("({a}: {})", b.as_string())).collect::<Vec<_>>().join(" "),
+            // Self::List(a) => a.iter().map(|a| a.as_string()).collect::<Vec<_>>().join(" "),
+            // Self::Map(a) => a.iter().map(|(a, b)| format!("({a}: {})", b.as_string())).collect::<Vec<_>>().join(" "),
         }
     }
     pub fn as_number(&self) -> Option<TatakuNumber> {
@@ -172,8 +235,8 @@ impl TatakuValue {
 
     pub fn is_empty(&self) -> bool {
         match self {
-            Self::List(l) => l.is_empty(),
-            Self::Map(m) => m.is_empty(),
+            // Self::List(l) => l.is_empty(),
+            // Self::Map(m) => m.is_empty(),
             Self::String(s) => s.is_empty(),
             // Self::Reflect(r) => {r.}
             
@@ -183,8 +246,8 @@ impl TatakuValue {
 
     pub fn get_length(&self) -> usize {
         match self {
-            Self::List(l) => l.len(),
-            Self::Map(m) => m.len(),
+            // Self::List(l) => l.len(),
+            // Self::Map(m) => m.len(),
             Self::String(s) => s.len(),
 
             _ => 0
@@ -199,8 +262,8 @@ impl TatakuValue {
             Self::U64(_) => "u64",
             Self::Bool(_) => "Bool",
             Self::String(_) => "String",
-            Self::List(_) => "List",
-            Self::Map(_) => "Map",
+            // Self::List(_) => "List",
+            // Self::Map(_) => "Map",
             Self::Reflect(_) => "Reflect",
         }
     }
@@ -217,8 +280,8 @@ impl Clone for TatakuValue {
             TatakuValue::String(a) => Self::String(a.clone()),
             TatakuValue::Reflect(a) => 
                 a.duplicate().map(Self::Reflect).unwrap_or_default(),
-            TatakuValue::List(l) => Self::List(l.clone()),
-            TatakuValue::Map(m) => Self::Map(m.clone()),
+            // TatakuValue::List(l) => Self::List(l.clone()),
+            // TatakuValue::Map(m) => Self::Map(m.clone()),
         }
     }
 }
@@ -232,8 +295,8 @@ impl PartialEq for TatakuValue {
             (Self::U64(n), Self::U64(n2)) => n == n2,
             (Self::Bool(n), Self::Bool(n2)) => n == n2,
             (Self::String(n), Self::String(n2)) => n == n2,
-            (Self::List(n), Self::List(n2)) => n == n2,
-            (Self::Map(n), Self::Map(n2)) => n == n2,
+            // (Self::List(n), Self::List(n2)) => n == n2,
+            // (Self::Map(n), Self::Map(n2)) => n == n2,
 
             // TODO: ??
             (Self::Reflect(_), Self::Reflect(_)) => true,
@@ -275,11 +338,11 @@ impl From<TatakuNumber> for TatakuValue {
         }
     }
 }
-impl From<HashMap<String, TatakuVariable>> for TatakuValue {
-    fn from(value: HashMap<String, TatakuVariable>) -> Self {
-        Self::Map(value)
-    }
-}
+// impl From<HashMap<String, TatakuValue>> for TatakuValue {
+//     fn from(value: HashMap<String, TatakuValue>) -> Self {
+//         Self::Map(value)
+//     }
+// }
 
 macro_rules! impl_math {
     ($trait: ident, $func: ident) => {
@@ -355,29 +418,6 @@ impl PartialOrd for TatakuValue {
     }
 }
 
-use lua::*;
-impl FromLua for TatakuValue {
-    fn from_lua(lua_value: LuaValue, _lua: &Lua) -> LuaResult<Self> {
-        #[cfg(feature="debug_custom_menus")] info!("Reading TatakuValue");
-
-        match &lua_value {
-            LuaValue::Boolean(b) => Ok(Self::Bool(*b)),
-            // Value::Integer(i) => Ok(Self::I64(*i)),
-            LuaValue::Number(f) => Ok(Self::F32(*f as f32)),
-            LuaValue::String(s) => Ok(Self::String(s.to_str()?.to_owned())),
-            // Value::Table(table) => {
-            //     if let Ok(list) = table.get()
-            // }
-            other => Err(FromLuaConversionError { 
-                from: other.type_name(), 
-                to: "TatakuValue".to_owned(), 
-                message: None 
-            }),
-        }
-
-    }
-}
-
 #[derive(Copy, Clone, Debug)]
 pub enum TatakuNumber {
     F32(f32),
@@ -448,14 +488,6 @@ macro_rules! impl_from {
         impl From<&$t> for TatakuValue {
             fn from(value: &$t) -> Self { Self::$e(value.clone()) }
         }
-
-        impl From<$t> for TatakuVariable {
-            fn from(value: $t) -> Self { Self::new_game(TatakuValue::$e(value)) }
-        }
-        impl From<&$t> for TatakuVariable {
-            fn from(value: &$t) -> Self { Self::new_game(TatakuValue::$e(value.clone())) }
-        }
-
         impl<'a> TryFrom<&'a TatakuValue> for $t {
             type Error = TatakuValueError<'a>;
 
@@ -485,33 +517,6 @@ macro_rules! impl_from {
         }
 
 
-        impl<'a> TryFrom<&'a TatakuVariable> for $t {
-            type Error = TatakuValueError<'a>;
-
-            fn try_from(value: &'a TatakuVariable) -> Result<Self, Self::Error> {
-                match &value.value {
-                    TatakuValue::$e(v) => Ok(v.clone()),
-                    _ => Err(Self::Error::ValueWrongType {
-                        expected: Cow::Borrowed(stringify!($t)),
-                        received: Cow::Borrowed(value.type_name())
-                    })
-                }
-            }
-        }
-
-        impl<'a> TryFrom<&'a TatakuVariable> for &'a $t {
-            type Error = TatakuValueError<'a>;
-
-            fn try_from(value: &'a TatakuVariable) -> Result<Self, Self::Error> {
-                match &value.value {
-                    TatakuValue::$e(v) => Ok(v),
-                    _ => Err(Self::Error::ValueWrongType {
-                        expected: Cow::Borrowed(stringify!($t)),
-                        received: Cow::Borrowed(value.type_name())
-                    })
-                }
-            }
-        }
     };
 
     ($t:ty, $e: ident, $t2: ty) => {
@@ -522,34 +527,12 @@ macro_rules! impl_from {
             fn from(value: &$t) -> Self { Self::$e(value.clone() as $t2) }
         }
 
-        impl From<$t> for TatakuVariable {
-            fn from(value: $t) -> Self { Self::new_game(TatakuValue::$e(value as $t2)) }
-        }
-        impl From<&$t> for TatakuVariable {
-            fn from(value: &$t) -> Self { Self::new_game(TatakuValue::$e(value.clone() as $t2)) }
-        }
-
         impl<'a> TryFrom<&'a TatakuValue> for $t {
             type Error = TatakuValueError<'a>;
 
             fn try_from(value: &'a TatakuValue) -> Result<Self, Self::Error> {
                 match value {
                     TatakuValue::$e(v) => Ok(*v as $t),
-                    _ => Err(Self::Error::ValueWrongType {
-                        expected: Cow::Borrowed(stringify!($t)),
-                        received: Cow::Borrowed(value.type_name())
-                    })
-                }
-            }
-        }
-
-
-        impl<'a> TryFrom<&'a TatakuVariable> for $t {
-            type Error = TatakuValueError<'a>;
-
-            fn try_from(value: &'a TatakuVariable) -> Result<Self, Self::Error> {
-                match &value.value {
-                    TatakuValue::$e(v) => Ok(v.clone() as $t),
                     _ => Err(Self::Error::ValueWrongType {
                         expected: Cow::Borrowed(stringify!($t)),
                         received: Cow::Borrowed(value.type_name())
@@ -571,53 +554,3 @@ impl_from!(f64, F32, f32);
 impl_from!(bool, Bool);
 impl_from!(String, String);
 
-impl<T:Into<TatakuValue>> From<(TatakuVariableAccess, Vec<T>)> for TatakuValue {
-    fn from((access, value): (TatakuVariableAccess, Vec<T>)) -> Self {
-        Self::List(value.into_iter().map(|t| TatakuVariable::new(t.into()).access(access)).collect())
-    }
-}
-impl<T:Into<TatakuValue>+Clone> From<(TatakuVariableAccess, &[T])> for TatakuValue {
-    fn from((access, value): (TatakuVariableAccess, &[T])) -> Self {
-        Self::List(value.iter().cloned().map(|t| TatakuVariable::new(t.into()).access(access)).collect())
-    }
-}
-
-impl<'a, T> TryFrom<&'a TatakuValue> for Vec<T>
-where
-    &'a TatakuValue: TryInto<T>,
-    <&'a TatakuValue as TryInto<T>>::Error: ToString
-{
-    type Error = String;
-
-    fn try_from(value: &'a TatakuValue) -> Result<Self, Self::Error> {
-        let TatakuValue::List(list) = value else { return Err("Value is not a list".to_string()) };
-
-        let mut output = Vec::new();
-        for i in list {
-            output.push((&i.value).try_into().map_err(|e| e.to_string())?)
-        }
-
-        Ok(output)
-    }
-}
-
-pub trait TatakuVariableMap {
-    fn set_value(&mut self, key: impl ToString, val: impl Into<TatakuVariable>);
-    fn insert_value(mut self, key: impl ToString, val: impl Into<TatakuVariable>) -> Self where Self:Sized {
-        self.set_value(key, val);
-        self
-    }
-
-    fn try_get<'a, T: TryFrom<&'a TatakuValue, Error=TatakuValueError<'a>>>(&'a self, key: &str) -> Result<T, TatakuValueError<'a>>;
-}
-
-impl TatakuVariableMap for HashMap<String, TatakuVariable> {
-    fn set_value(&mut self, key: impl ToString, val: impl Into<TatakuVariable>) {
-        self.insert(key.to_string(), val.into());
-    }
-
-    fn try_get<'a, T: TryFrom<&'a TatakuValue, Error=TatakuValueError<'a>>>(&'a self, key: &str) -> Result<T, TatakuValueError<'a>> {
-        let entry = self.get(key).ok_or_else(|| TatakuValueError::EntryDoesntExist { entry: Cow::Owned(key.to_owned()) })?;
-        T::try_from(&entry.value)
-    }
-}

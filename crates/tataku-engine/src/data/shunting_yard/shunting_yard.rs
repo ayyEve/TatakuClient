@@ -14,6 +14,12 @@ impl ShuntingYard {
 
             match c {
                 '0'..='9'|'a'..='z'|'.'|'_' => current_thing.push(c),
+                '\'' => if matches!(current_thing, CurrentThing::StringLiteral(_)) {
+                    current_thing.add(&mut output_queue, &mut operator_stack, false)?;
+
+                } else {
+                    current_thing = CurrentThing::StringLiteral(String::new())
+                },
                 
                 '(' => {
                     // if current_thing is a variable, it is actually a function
@@ -39,7 +45,7 @@ impl ShuntingYard {
                         // ignore warnings for space, equals, and pipes (OR operator)
                         Err(ShuntingYardError::InvalidOperator(' ')) // ignore warnings for spaces
                         | Err(ShuntingYardError::InvalidOperator('=')) // and equals (EQ)
-                        | Err(ShuntingYardError::InvalidOperator('&')) // and apersands (AND)
+                        | Err(ShuntingYardError::InvalidOperator('&')) // and ampersands (AND)
                         | Err(ShuntingYardError::InvalidOperator('|')) // and pipes (OR)
                         => {}
 
@@ -68,19 +74,20 @@ impl ShuntingYard {
         Ok(output_queue)
     }
 
-    pub fn evaluate_rpn<'a>(rpn: &[ShuntingYardToken], values: &'a dyn Reflect) -> ShuntingYardResult<Cow<'a, TatakuVariable>> {
+    pub fn evaluate_rpn<'a>(rpn: &[ShuntingYardToken], values: &'a dyn Reflect) -> ShuntingYardResult<Cow<'a, TatakuValue>> {
         let mut stack = Vec::new();
 
         for token in rpn {
             match token {
-                ShuntingYardToken::Number(num) => stack.push(Cow::Owned(TatakuVariable::new_any(*num))),
-                ShuntingYardToken::Variable(var) => stack.push(Cow::Owned(TatakuVariable::new_any(
+                ShuntingYardToken::Number(num) => stack.push(Cow::Owned(TatakuValue::from(*num))),
+                ShuntingYardToken::StringLiteral(s) => stack.push(Cow::Owned(TatakuValue::from(s.clone()))),
+                ShuntingYardToken::Variable(var) => stack.push(Cow::Owned(
                     match &**var {
                         "true" => TatakuValue::Bool(true),
                         "false" => TatakuValue::Bool(false),
                         _ => TatakuValue::from_reflection(values.impl_get(ReflectPath::new(var))?)?
                     }
-                ))),
+                )),
 
                 ShuntingYardToken::Function(func) => {
                     let n = stack.pop().ok_or(ShuntingYardError::MissingFunctionArgument(func.clone()))?;
@@ -94,7 +101,7 @@ impl ShuntingYard {
 
 
                         "display" => {
-                            let str = match &n.value {
+                            let str = match &*n {
                                 TatakuValue::None => "None".to_owned(),
                                 TatakuValue::F32(n) => format_float(n, 2),
                                 TatakuValue::U32(n) => format_number(*n),
@@ -102,19 +109,14 @@ impl ShuntingYard {
                                 TatakuValue::Bool(b) => format!("{b}"),
                                 TatakuValue::String(s) => s.clone(),
                                 TatakuValue::Reflect(reflect) => reflect.reflect_display("", Some(2)).unwrap_or("?".to_owned()),
-                                // FIXME: this is shit
-                                TatakuValue::List(vec) => vec.iter().map(|i| i.as_string()).collect::<Vec<_>>().join(", "),
-                                TatakuValue::Map(_hash_map) => "some map or smth".to_owned(),
                             };
 
-                            stack.push(Cow::Owned(TatakuVariable::new_any(str)));
-                            // stack.push(Cow::Owned(TatakuVariable::new_any(n.get_display())));
+                            stack.push(Cow::Owned(TatakuValue::from(str)));
                         }
                         
 
-                        
-                        "is_empty" => stack.push(Cow::Owned(TatakuVariable::new_any(n.is_empty()))),
-                        "len"|"length" => stack.push(Cow::Owned(TatakuVariable::new_any(n.get_length() as u64))),
+                        "is_empty" => stack.push(Cow::Owned(TatakuValue::from(n.is_empty()))),
+                        "len"|"length" => stack.push(Cow::Owned(TatakuValue::from(n.get_length() as u64))),
 
                         other => return Err(ShuntingYardError::InvalidFunction(other.to_string())),
                     }
@@ -124,7 +126,7 @@ impl ShuntingYard {
                     let right = stack.pop().ok_or(ShuntingYardError::MissingRightSide(*op))?;
                     // "Not" is a special case, we only care about the right side
                     if let Operator::Not = op {
-                        stack.push(op.perform(right, Cow::Owned(TatakuVariable::new_any(TatakuValue::None))));
+                        stack.push(op.perform(right, Cow::Owned(TatakuValue::None)));
                         continue;
                     }
 
@@ -151,6 +153,7 @@ impl ShuntingYard {
 enum CurrentThing {
     None,
     Number(String),
+    StringLiteral(String),
     Variable(String),
 }
 impl CurrentThing {
@@ -163,6 +166,7 @@ impl CurrentThing {
             }
             Self::Number(s) => s.push(c),
             Self::Variable(s) => s.push(c),
+            Self::StringLiteral(s) => s.push(c),
         }
     }
     fn add(
@@ -185,6 +189,9 @@ impl CurrentThing {
             Self::Variable(s) => {
                 output_queue.push(ShuntingYardToken::Variable(s.take()));
             }
+            Self::StringLiteral(s) => {
+                output_queue.push(ShuntingYardToken::StringLiteral(s.take()));
+            }
         }
 
         *self = Self::None;
@@ -193,7 +200,7 @@ impl CurrentThing {
 }
 
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Operator {
     // math
     Add,
@@ -219,11 +226,11 @@ impl Operator {
     fn from_chars(c1: char, c2: char) -> ShuntingYardResult<Self> {
         match (c1, c2) {
             // math
+            ('*', '*') => Ok(Self::Pow), 
             ('+', _) => Ok(Self::Add),
             ('-', _) => Ok(Self::Sub),
             ('*', _) => Ok(Self::Mul),
             ('/', _) => Ok(Self::Div),
-            ('^', _) => Ok(Self::Pow),
 
             // comparison
             ('=', '=') => Ok(Self::Eq),
@@ -243,11 +250,11 @@ impl Operator {
         }
     }
 
-    fn perform<'a> (&self, right: Cow<'a, TatakuVariable>, left: Cow<'a, TatakuVariable>) -> Cow<'a, TatakuVariable> {
+    fn perform<'a>(&self, right: Cow<'a, TatakuValue>, left: Cow<'a, TatakuValue>) -> Cow<'a, TatakuValue> {
         // debug!("");
         // debug!("perform: {left:?} {self:?} {right:?}");
-        let left = &left.value;
-        let right = &right.value;
+        let left = left.as_ref();
+        let right = right.as_ref();
 
         let res = match self {
             // math
@@ -273,7 +280,7 @@ impl Operator {
         // debug!("res: {res:?}");
         // debug!("");
 
-        Cow::Owned(TatakuVariable::new_any(res))
+        Cow::Owned(res)
     }
 
     fn precedence(&self) -> u8 {
@@ -302,21 +309,18 @@ enum MathFunction {
     Abs,
     Sin,
     Cos,
-    Tan
+    Tan,
 }
 impl MathFunction {
-    fn run(self, val: Cow<'_, TatakuVariable>) -> ShuntingYardResult<Cow<'_, TatakuVariable>> {
+    fn run(self, val: Cow<'_, TatakuValue>) -> ShuntingYardResult<Cow<'_, TatakuValue>> {
         let num = val.as_number().ok_or_else(|| ShuntingYardError::NumberIsntANumber(val.as_string()))?;
 
-        let mut new = val.into_owned();
-        new.value = match self {
+        Ok(Cow::Owned(match self {
             Self::Abs => num.abs(),
             Self::Sin => num.sin(),
             Self::Cos => num.cos(),
             Self::Tan => num.tan(),
-        }.into();
-
-        Ok(Cow::Owned(new))
+        }.into()))
     }
 }
 
@@ -345,7 +349,7 @@ mod shunting_yard_tests {
         let result = ShuntingYard::evaluate_rpn(&tokens, &values).unwrap();
         println!("Result: {result:?}");
         let ok = TatakuValue::F32(test.sin() + 4.0 * (2.0 - 7.0) / test_1 + 100.5);
-        assert_eq!(result.value, ok);
+        assert_eq!(*result, ok);
     }
 
 
@@ -367,7 +371,7 @@ mod shunting_yard_tests {
 
         let result = ShuntingYard::evaluate_rpn(&tokens, &values).unwrap();
         println!("Result: {result:?}");
-        assert_eq!(result.value, TatakuValue::Bool(100 == 100 && !(test == test_1)));
+        assert_eq!(*result, TatakuValue::Bool(100 == 100 && !(test == test_1)));
     }
 
     #[test]
@@ -385,6 +389,6 @@ mod shunting_yard_tests {
 
         let result = ShuntingYard::evaluate_rpn(&tokens, &values).unwrap();
         println!("Result: {result:?}");
-        assert_eq!(result.value, TatakuValue::Bool(test));
+        assert_eq!(*result, TatakuValue::Bool(test));
     }
 }

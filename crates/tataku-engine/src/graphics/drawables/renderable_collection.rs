@@ -26,5 +26,4 @@ impl RenderableCollection {
     pub fn take(self) -> Vec<Arc<dyn TatakuRenderable>> {
         self.list
     }
-
 }

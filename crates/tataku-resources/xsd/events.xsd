@@ -1,0 +1,61 @@
+<?xml version="1.0"?>
+<xs:schema 
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  targetNamespace="tataku/events"
+  xmlns:events="tataku/events"
+>
+
+<xs:group name="event-type">
+  <xs:choice>
+      <xs:element name="songEnd"/>
+      <xs:element name="songPause"/>
+      <xs:element name="songStart"/>
+
+      <xs:element name="menuEnter"/>
+      <xs:element name="menuLeave"/>
+
+      <xs:element name="mapAdded"/>
+
+      <xs:element name="keyPress">
+        <xs:complexType>
+          <xs:attribute name="key" type="xs:string" use="required" />
+          <xs:attribute name="ctrl" type="xs:boolean" />
+          <xs:attribute name="alt" type="xs:boolean" />
+          <xs:attribute name="shift" type="xs:boolean" />
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="keyRelease">
+        <xs:complexType>
+          <xs:attribute name="key" type="xs:string" use="required" />
+          <xs:attribute name="ctrl" type="xs:boolean" />
+          <xs:attribute name="alt" type="xs:boolean" />
+          <xs:attribute name="shift" type="xs:boolean" />
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="controllerPress">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="button" type="events:controller-button" />
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="controllerRelease">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="button" type="events:controller-button" />
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+  </xs:choice>
+</xs:group>
+
+
+
+<xs:complexType name="controller-button">
+  <xs:choice>
+
+  </xs:choice>
+</xs:complexType>
+
+</xs:schema>

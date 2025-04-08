@@ -1,20 +1,15 @@
 use crate::prelude::*;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 #[derive(Reflect)]
 pub enum BeatmapType {
-    Unknown,
+    #[default] Unknown,
     Adofai,
     Osu,
     Quaver,
     Stepmania,
     Tja,
     UTyping
-}
-impl Default for BeatmapType {
-    fn default() -> Self {
-        Self::Unknown
-    }
 }
 
 impl From<BeatmapType> for u8 {
