@@ -55,7 +55,8 @@ pub struct WgpuEngine<'window> {
 
     scissors: ScissorManager,
 
-    present_modes: Vec<Vsync>
+    present_modes: Vec<Vsync>,
+    can_blur: bool,
 }
 impl<'window> WgpuEngine<'window> {
 
@@ -100,6 +101,11 @@ impl<'window> WgpuEngine<'window> {
             },
             None,
         ).await.unwrap();
+
+        let can_blur = device.features().contains(Features::BGRA8UNORM_STORAGE);
+        if !can_blur {
+            warn!("Blur unsupported on this device!")
+        }
 
         // no more comments good luck!
         let surface_caps = surface.get_capabilities(&adapter);
@@ -269,7 +275,7 @@ impl<'window> WgpuEngine<'window> {
             ..Default::default()
         });
 
-        let blur_shader = BlurShader::new(&device, &sampler);
+        let blur_shader = BlurShader::new(&device);
         let render_image_shader = RenderImageShader::new(
             &device, 
             &queue, 
@@ -285,10 +291,10 @@ impl<'window> WgpuEngine<'window> {
         let particle_system = ParticleSystem::new(&device);
 
         let buffer_queues = [
-            (LastDrawn::Slider, Box::new(RenderBufferQueueType::Slider(RenderBufferQueue::new().init(&device)))),
-            (LastDrawn::Standard, Box::new(RenderBufferQueueType::Standard(RenderBufferQueue::new().init(&device)))),
-            (LastDrawn::Flashlight, Box::new(RenderBufferQueueType::Flashlight(RenderBufferQueue::new().init(&device)))),
-            (LastDrawn::Blur, Box::new(RenderBufferQueueType::Blur(RenderBufferQueue::new().init(&device)))),
+            (LastDrawn::Slider, Box::new(RenderBufferQueueType::Slider(RenderBufferQueue::new().init(&device, pipelines.get(&BlendMode::Slider).unwrap())))),
+            (LastDrawn::Standard, Box::new(RenderBufferQueueType::Standard(RenderBufferQueue::new().init(&device, pipelines.get(&BlendMode::AlphaBlending).unwrap())))),
+            (LastDrawn::Flashlight, Box::new(RenderBufferQueueType::Flashlight(RenderBufferQueue::new().init(&device, pipelines.get(&BlendMode::Flashlight).unwrap())))),
+            (LastDrawn::Blur, Box::new(RenderBufferQueueType::Blur(RenderBufferQueue::new().init(&device, &blur_shader.blur_pipeline)))),
         ].into_iter().collect();
 
 
@@ -317,13 +323,14 @@ impl<'window> WgpuEngine<'window> {
             scissors: ScissorManager::default(),
             present_modes,
             sampler,
+            can_blur,
         })
     }
 
     pub fn render_current_surface(&mut self) -> Result<(), SurfaceError> {
-        let output = self.surface.get_current_texture()?;
+        let swapchain = self.surface.get_current_texture()?;
         // let view = output.texture.create_view(&TextureViewDescriptor::default());
-        let size = output.texture.size();
+        let size = swapchain.texture.size();
 
         // don't draw if our draw surface has no area
         if size.width == 0 || size.height == 0 { return Ok(()) }
@@ -357,6 +364,7 @@ impl<'window> WgpuEngine<'window> {
 
         self.render(RenderableSurface::new(
             &view, 
+            &texture,
             GFX_CLEAR_COLOR, 
             Vector2::new(size.width as f32, size.height as f32), 
             true
@@ -367,7 +375,7 @@ impl<'window> WgpuEngine<'window> {
         let mut encoder = self.device.create_command_encoder(&Default::default());
 
         {
-            let output_view = output.texture.create_view(&Default::default());
+            let output_view = swapchain.texture.create_view(&Default::default());
 
             let mut render = encoder.begin_render_pass(&RenderPassDescriptor {
                 label: None,
@@ -376,7 +384,7 @@ impl<'window> WgpuEngine<'window> {
                         view: &output_view,
                         resolve_target: None,
                         ops: Operations {
-                            load: LoadOp::Clear(wgpu::Color::RED),
+                            load: LoadOp::Clear(wgpu::Color::BLACK),
                             store: StoreOp::Store,
                         }
                     })
@@ -415,7 +423,7 @@ impl<'window> WgpuEngine<'window> {
             render.draw(0..6, 0..1);
         }        
         self.queue.submit([encoder.finish()]);
-        output.present();
+        swapchain.present();
 
 
 
@@ -473,18 +481,18 @@ impl<'window> WgpuEngine<'window> {
         Ok(())
     }
 
-    fn render(&self, renderable: RenderableSurface) -> Result<(), SurfaceError> {
+    fn render(&mut self, renderable: RenderableSurface) -> Result<(), SurfaceError> {
         let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor { label: Some("Render Encoder") });
 
         {
             let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[Some(RenderPassColorAttachment {
-                    view: renderable.texture,
+                    view: renderable.view,
                     resolve_target: None,
                     ops: Operations {
                         load: LoadOp::Clear(renderable.get_clear_color()),
-                        store: if renderable.render_target { StoreOp::Store } else { StoreOp::Discard } , // must be store for render targets to work apparently
+                        store: if renderable.render_target { StoreOp::Store } else { StoreOp::Discard }, // must be store for render targets to work apparently
                     },
                 })],
                 depth_stencil_attachment: None,
@@ -495,93 +503,40 @@ impl<'window> WgpuEngine<'window> {
             let mut current_blend_mode = BlendMode::None;
             let mut current_scissor: Scissor = None;
 
-            for i in self.completed_buffers.iter() {
+            for i in self.completed_buffers.iter_mut() {
                 // blur is a special case, because its a compute shader and not a fragment shader
                 if i.get_blend_mode() == BlendMode::Blur {
-                    println!("blur");
+                    if !self.can_blur { continue }
+
+                    drop(render_pass);
                     self.queue.submit([encoder.finish()]);
                     
-                    let mut encoder2 = self.device.create_command_encoder(&CommandEncoderDescriptor { label: Some("Blur Encoder") });
-                    let mut compute = encoder2.begin_compute_pass(&ComputePassDescriptor {
-                        label: Some("Blur shader"),
-                        timestamp_writes: None,
-                    });
-                    
-                    compute.set_pipeline(&self.blur_shader.pipeline);
+                    let RenderBufferType::Blur(buffer) = i else { unreachable!() };
+                    BlurShader::perform(
+                        &self.blur_shader,
+                        &self.device, 
+                        &self.queue, 
+                        renderable.texture,
+                        buffer
+                    );
 
-
-                    // create input texture
-                    let output_tex = self.device.create_texture(&TextureDescriptor { 
-                        label: Some("blur output tex"), 
-                        size: Extent3d {
-                            width: renderable.size.x as u32,
-                            height: renderable.size.y as u32,
-                            depth_or_array_layers: 1,
-                        }, 
-                        mip_level_count: 0, 
-                        sample_count: 1, 
-                        dimension: TextureDimension::D2, 
-                        format: TextureFormat::Bgra8UnormSrgb, 
-                        usage: TextureUsages::STORAGE_BINDING | TextureUsages::COPY_SRC, 
-                        view_formats: &[ TextureFormat::Bgra8Unorm ]
-                    });
-                    let output_view = output_tex.create_view(&TextureViewDescriptor {
-                        label: Some("blur output tex view"),
-                        format: Some(TextureFormat::Bgra8UnormSrgb),
-                        dimension: Some(TextureViewDimension::D2),
-                        aspect: TextureAspect::All,
-                        base_mip_level: 0,
-                        mip_level_count: None,
-                        base_array_layer: 0,
-                        array_layer_count: None,
-                    });
-
-                    let tex_group = self.device.create_bind_group(&BindGroupDescriptor {
-                        label: Some("blur textures group"),
-                        layout: &self.blur_shader.texture_bind_group_layout,
-                        entries: &[
-                            // input
-                            BindGroupEntry {
-                                binding: 0,
-                                resource: BindingResource::TextureView(renderable.texture),
-                            },
-                            // output
-                            BindGroupEntry {
-                                binding: 0,
-                                resource: BindingResource::TextureView(&output_view),
-                            },
-                        ],
-                    });
-
-                    let RenderBufferType::Blur(blur) = i else { unreachable!() };
-                    compute.set_bind_group(0, &self.blur_shader.sampler_bind_group, &[]);
-                    compute.set_bind_group(1, &blur.bind_group, &[]);
-                    compute.set_bind_group(2, &tex_group, &[]);
-                    
-                    // add to commands list
-                    self.queue.submit([encoder2.finish()]);
-
-                    // FIXME: copy the texture back to the view
-
-                    // 
-
-                    
                     // back to our regularly scheduled programming
                     encoder = self.device.create_command_encoder(&CommandEncoderDescriptor { label: Some("Render Encoder") });
                     render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
                         label: Some("Render Pass"),
                         color_attachments: &[Some(RenderPassColorAttachment {
-                            view: renderable.texture,
+                            view: renderable.view,
                             resolve_target: None,
                             ops: Operations {
-                                load: LoadOp::Clear(renderable.get_clear_color()),
-                                store: if renderable.render_target { StoreOp::Store } else { StoreOp::Discard } , // must be store for render targets to work apparently
+                                load: LoadOp::Load,
+                                store: StoreOp::Store, // must be store for render targets to work apparently
                             },
                         })],
                         depth_stencil_attachment: None,
                         timestamp_writes: None,
                         occlusion_query_set: None,
                     });
+                    current_blend_mode = BlendMode::None;
                     continue 
                 }
 
@@ -604,6 +559,7 @@ impl<'window> WgpuEngine<'window> {
                 }
 
                 let blend_mode = i.get_blend_mode();
+                
                 if blend_mode != current_blend_mode {
                     current_blend_mode = blend_mode;
                     let Some(pipeline) = self.pipelines.get(&blend_mode) else {
@@ -812,9 +768,17 @@ impl WgpuEngine<'_> {
 // render code
 impl WgpuEngine<'_> {
 
+    fn get_pipeline(&self, blend_mode: BlendMode) -> WgpuPipeline {
+        match blend_mode {
+            BlendMode::Blur => WgpuPipeline::Compute(&self.blur_shader.blur_pipeline),
+            other => WgpuPipeline::Render(self.pipelines.get(&other).unwrap()),
+        }
+    }
+
     fn dump_last_drawn(&mut self) {
         let Some(mut last_drawn) = std::mem::take(&mut self.current_render_buffer) else { return };
-        if let Some(b) = last_drawn.dump_and_next(&self.queue, &self.device) { self.completed_buffers.push(b); };
+        let pipeline = self.get_pipeline(last_drawn.draw_type().as_blendmode());
+        if let Some(b) = last_drawn.dump_and_next(&self.queue, &self.device, pipeline) { self.completed_buffers.push(b); };
         self.buffer_queues.insert(last_drawn.draw_type(), last_drawn);
     }
 
@@ -841,18 +805,17 @@ impl WgpuEngine<'_> {
         self.check_dump_and_next(LastDrawn::Standard);
 
         let vertex_buffer_queue = get_render_buffer!(self, Standard);
-        // if let Some(RenderBufferQueueType::Vertex(b)) = &mut self.last_drawn {b} else {panic!("wrong buffer type")};
 
         let mut recording_buffer = vertex_buffer_queue.recording_buffer().expect("didnt get vertex recording buffer");
         let blend_mode_check = recording_buffer.blend_mode == blend_mode || recording_buffer.blend_mode == BlendMode::None;
         let scissor_check = recording_buffer.scissor == Some(scissor) || recording_buffer.scissor.is_none();
-        // if !blend_mode_check { info!("blend mode changed from {:?} to {blend_mode:?}", recording_buffer.blend_mode) }
 
         if !blend_mode_check
         || !scissor_check
         || recording_buffer.used_vertices + vtx_count > StandardBuffer::VTX_PER_BUF
         || recording_buffer.used_indices + idx_count > StandardBuffer::IDX_PER_BUF {
-            if let Some(b) = vertex_buffer_queue.dump_and_next(&self.queue, &self.device) {
+            let pipeline = WgpuPipeline::Render(self.pipelines.get(&blend_mode).unwrap());
+            if let Some(b) = vertex_buffer_queue.dump_and_next(&self.queue, &self.device, pipeline) {
                 self.completed_buffers.push(RenderBufferType::Standard(b))
             }
 
@@ -913,6 +876,7 @@ impl WgpuEngine<'_> {
 
         let tex_index = tex.layer as i32;
         let offset = reserved.idx_offset as u32;
+        #[allow(clippy::identity_op, reason = "lines the values up nicely")]
         reserved.copy_in(&[
             StandardVertex {
                 position: transform.mul_v2(Vector2::new(x, y)).into(),
@@ -968,6 +932,7 @@ impl WgpuEngine<'_> {
         }).collect::<Vec<_>>();
 
         let offset = reserved.idx_offset as u32;
+        #[allow(clippy::identity_op, reason = "lines the values up nicely")]
         reserved.copy_in(&vertices, &[
             0 + offset,
             2 + offset,
@@ -1019,7 +984,8 @@ impl WgpuEngine<'_> {
         || recording_buffer.used_grid_cells + grid_cell_count > GRID_CELL_COUNT
         || recording_buffer.used_line_segments + line_segment_count > LINE_SEGMENT_COUNT
         {
-            if let Some(b) = slider_buffer_queue.dump_and_next(&self.queue, &self.device) {
+            let pipeline = WgpuPipeline::Render(self.pipelines.get(&BlendMode::Slider).unwrap());
+            if let Some(b) = slider_buffer_queue.dump_and_next(&self.queue, &self.device, pipeline) {
                 self.completed_buffers.push(RenderBufferType::Slider(b))
             }
             recording_buffer = slider_buffer_queue.recording_buffer()?;
@@ -1085,7 +1051,8 @@ impl WgpuEngine<'_> {
         || recording_buffer.used_vertices + vtx_count > SliderRenderBuffer::VTX_PER_BUF
         || recording_buffer.used_indices + idx_count > SliderRenderBuffer::IDX_PER_BUF
         {
-            if let Some(b) = buffer_queue.dump_and_next(&self.queue, &self.device) {
+            let pipeline = WgpuPipeline::Render(self.pipelines.get(&BlendMode::Flashlight).unwrap());
+            if let Some(b) = buffer_queue.dump_and_next(&self.queue, &self.device, pipeline) {
                 self.completed_buffers.push(RenderBufferType::Flashlight(b))
             }
             recording_buffer = buffer_queue.recording_buffer()?;
@@ -1119,7 +1086,7 @@ impl WgpuEngine<'_> {
         &mut self,
     ) -> Option<BlurReserveData> {
         let scissor = self.scissors.current_scissor();
-        self.check_dump_and_next(LastDrawn::Flashlight);
+        self.check_dump_and_next(LastDrawn::Blur);
 
         let buffer_queue = get_render_buffer!(self, Blur);
 
@@ -1128,9 +1095,10 @@ impl WgpuEngine<'_> {
 
 
         if !scissor_check
-        || recording_buffer.used > BlurBuffer::VTX_PER_BUF
+        || recording_buffer.used + 1 > BlurBuffer::VTX_PER_BUF
         {
-            if let Some(b) = buffer_queue.dump_and_next(&self.queue, &self.device) {
+            let pipeline = WgpuPipeline::Compute(&self.blur_shader.blur_pipeline);
+            if let Some(b) = buffer_queue.dump_and_next(&self.queue, &self.device, pipeline) {
                 self.completed_buffers.push(RenderBufferType::Blur(b))
             }
             recording_buffer = buffer_queue.recording_buffer()?;
@@ -1140,16 +1108,12 @@ impl WgpuEngine<'_> {
         }
 
         recording_buffer.used += 1;
-
-        // reserve flashlight vertex data
         let index = recording_buffer.used - 1;
 
         let cache = &mut buffer_queue.cpu_cache;
         Some(BlurReserveData {
             data: &mut cache.cpu_blurs[index as usize],
-
-            // idx_offset: used_vertices - vtx_count,
-            blur_index: index as u32,
+            _blur_index: index as u32,
         })
     }
     
@@ -1293,9 +1257,6 @@ impl GraphicsEngine for WgpuEngine<'_> {
                 Arc::new(atlased),
                 Vector2::ONE
             ),
-
-            // drop_check: Arc::new(()),
-            // image: Image::new()
         };
 
         // queue rendering the data to it
@@ -1345,6 +1306,7 @@ impl GraphicsEngine for WgpuEngine<'_> {
         // create renderable surface
         let renderable = RenderableSurface::new(
             &view, 
+            &texture,
             target.clear_color, 
             Vector2::new(width as f32, height as f32),
             true
@@ -1580,15 +1542,6 @@ impl GraphicsEngine for WgpuEngine<'_> {
 
         // border
         if let Some(border) = border.filter(|b|b.color.a > 0.0) {
-            // let radius = radius + border.radius;
-            // let (x, y, w, h) = (-radius, -radius, 2.0 * radius, 2.0 * radius);
-            // let (cw, ch) = (0.5 * w, 0.5 * h);
-            // let (cx, cy) = (x + cw, y + ch);
-            // let points = (0..n).map(|i| {
-            //     let angle = i as f32 / n as f32 * (PI * 2.0);
-            //     Vector2::new(cx + angle.cos() * cw, cy + angle.sin() * ch)
-            // });
-
             self.tessellate_polygon(&points, border.color, Some(border.radius), transform, blend_mode);
         }
 
@@ -1712,19 +1665,17 @@ impl GraphicsEngine for WgpuEngine<'_> {
     fn draw_blur(
         &mut self,
         bounds: Bounds,
-        _rounds: u32, // FIXME: 
+        sigma: f32,
+        _rounds: u32,
     ) {
         let Some(mut reserve) = self.reserve_blur() else { return };
-        let params = BlurParams {
-            x: bounds.pos.x,
-            y: bounds.pos.y,
-            width: bounds.size.x,
-            height: bounds.size.y,
-
-            filter_dim: 9,
-            block_dim: 10,
-            flip: 0
-        };
+        let params = BlurParams::new(
+            bounds.pos.x,
+            bounds.pos.y,
+            bounds.size.x,
+            bounds.size.y,
+            sigma,
+        );
 
         reserve.copy_in(params);
     }
@@ -1828,4 +1779,28 @@ fn cast_to_rgba_bytes(bytes: &[u8], _format: TextureFormat) -> [u8; 4] {
     //     _ => [r, g, b, a]
     // }
 
+}
+
+#[derive(Copy, Clone)]
+pub(crate) enum WgpuPipeline<'a> {
+    Render(&'a RenderPipeline),
+    Compute(&'a ComputePipeline),
+}
+impl WgpuPipeline<'_> {
+    pub fn get_bind_group_layout(&self, index: u32) -> BindGroupLayout {
+        match self {
+            Self::Render(p) => p.get_bind_group_layout(index),
+            Self::Compute(p) => p.get_bind_group_layout(index),
+        }
+    }
+}
+impl<'a> From<&'a ComputePipeline> for WgpuPipeline<'a> {
+    fn from(value: &'a ComputePipeline) -> Self {
+        Self::Compute(value)
+    }
+}
+impl<'a> From<&'a RenderPipeline> for WgpuPipeline<'a> {
+    fn from(value: &'a RenderPipeline) -> Self {
+        Self::Render(value)
+    }
 }

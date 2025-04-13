@@ -65,7 +65,8 @@ impl GraphicsEngine for DummyGraphicsEngine {
     fn draw_blur(
         &mut self,
         _bounds: Bounds,
-        rounds: u32,
+        _sigma: f32,
+        _rounds: u32,
     ) {}
     
 

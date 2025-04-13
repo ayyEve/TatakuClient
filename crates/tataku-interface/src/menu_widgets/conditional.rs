@@ -49,12 +49,6 @@ impl ConditionalWidget {
             self.if_false.as_mut()
         }
     }
-
-    fn update_node_display(tree: &mut Tree, node: NodeId) {
-        let mut style = tree.get_style(node).cloned().unwrap();
-        style.display = ui::Display::None;
-        tree.set_style(node, style);
-    }
 }
 
 #[async_trait]

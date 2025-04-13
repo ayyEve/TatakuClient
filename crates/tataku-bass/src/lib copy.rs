@@ -15,18 +15,18 @@ use tataku_engine::prelude::{
 lazy_static::lazy_static! {
     // wave file bytes with ~1 sample
     // TODO: shouldnt it be possible to make an empty stream directly from bass? should maybe add that to the lib
-    static ref EMPTY_STREAM:Arc<StreamChannelInstance> = Arc::new(StreamChannelInstance(StreamChannel::load_from_memory(vec![0x52,0x49,0x46,0x46,0x28,0x00,0x00,0x00,0x57,0x41,0x56,0x45,0x66,0x6D,0x74,0x20,0x10,0x00,0x00,0x00,0x01,0x00,0x02,0x00,0x44,0xAC,0x00,0x00,0x88,0x58,0x01,0x00,0x02,0x00,0x08,0x00,0x64,0x61,0x74,0x61,0x04,0x00,0x00,0x00,0x80,0x80,0x80,0x80], 0).expect("error creating empty StreamChannel")));
+    static ref EMPTY_STREAM:Arc<StreamChannelInstance> = Arc::new(StreamChannelInstance(StreamChannel::load_from_memory(vec![0x52,0x49,0x46,0x46,0x28,0x00,0x00,0x00,0x57,0x41,0x56,0x45,0x66,0x6D,0x74,0x20,0x10,0x00,0x00,0x00,0x01,0x00,0x02,0x00,0x44,0xAC,0x00,0x00,0x88,0x58,0x01,0x00,0x02,0x00,0x08,0x00,0x64,0x61,0x74,0x61,0x04,0x00,0x00,0x00,0x80,0x80,0x80,0x80], 0, StreamFlags::Prescan).expect("error creating empty StreamChannel")));
 }
 
 
 pub struct BassAudio(bass_rs::Bass);
 impl AudioApi for BassAudio {
     fn load_sample_data(&self, data: Vec<u8>) -> TatakuResult<Arc<dyn AudioInstance>> {
-        let channel = SampleChannel::load_from_memory(data, 0, 64).map_err(map_bass_err)?;
+        let channel = SampleChannel::load_from_memory(data, 0, 64, NewSampleFlags::Override_Position).map_err(map_bass_err)?;
         Ok(Arc::new(SampleChannelInstance::new(channel)))
     }
     fn load_stream_data(&self, data: Vec<u8>) -> TatakuResult<Arc<dyn AudioInstance>> {
-        let channel = StreamChannel::load_from_memory(data, 0).map_err(map_bass_err)?;
+        let channel = StreamChannel::load_from_memory(data, 0, StreamFlags::Prescan).map_err(map_bass_err)?;
         Ok(Arc::new(StreamChannelInstance(channel)))
     }
 
@@ -131,14 +131,14 @@ impl AudioInstance for SampleChannelInstance {
         self.data_mut().set_vol(vol);
     }
     
-    fn set_repeat(&self, _repeat: bool) {
-        // let channel = self.data().channel.clone();
+    fn set_repeat(&self, repeat: bool) {
+        let channel = self.data().channel.clone();
 
-        // if repeat {
-        //     channel.add_flags(ChannelFlags::Sample_Loop).unwrap()
-        // } else {
-        //     channel.remove_flags(ChannelFlags::Sample_Loop).unwrap()
-        // }
+        if repeat {
+            channel.add_flags(ChannelFlags::Sample_Loop).unwrap()
+        } else {
+            channel.remove_flags(ChannelFlags::Sample_Loop).unwrap()
+        }
     }
 
     fn get_data(&self) -> Vec<FFTEntry> {

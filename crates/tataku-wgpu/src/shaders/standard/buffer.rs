@@ -32,8 +32,8 @@ impl RenderBufferable for StandardBuffer {
         queue.write_buffer(&self.index_buffer, 0, bytemuck::cast_slice(&cache.cpu_idx));
     }
 
-    fn create_new_buffer(device: &Device) -> Self {
-        StandardBuffer {
+    fn create_new_buffer(device: &Device, _: WgpuPipeline) -> Self {
+        Self {
             blend_mode: BlendMode::None,
             scissor: None,
             vertex_buffer: device.create_buffer(&BufferDescriptor {

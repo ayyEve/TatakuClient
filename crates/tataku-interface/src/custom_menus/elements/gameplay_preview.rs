@@ -9,6 +9,8 @@ pub struct GameplayPreviewElement {
     /// unparsed style string, parsed when the element is built
     #[serde(rename = "@style", default)] style: String,
     #[serde(rename = "@visualization", default)] visualization: Option<String>,
+    
+    #[serde(rename = "@blur", default)] blur: f32,
 }
 impl CustomElement for GameplayPreviewElement {
     fn build(&self, shell: &mut ElementBuildShell<'_>) -> Box<dyn Widget> {
@@ -23,6 +25,7 @@ impl CustomElement for GameplayPreviewElement {
                 Arc::new(|_| true), 
                 shell.owner,
             )
+            .blur(self.blur)
             .visualization(if let Some(vis) = &self.visualization {
                 match &**vis {
                     "menu_visualization" => Some(MenuVisualization::new()),

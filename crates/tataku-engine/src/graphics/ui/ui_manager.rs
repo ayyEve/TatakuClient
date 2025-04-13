@@ -80,7 +80,6 @@ impl Default for GeneralUiTheme {
 
 
 
-
 bitflags::bitflags! {
     #[derive(Copy, Clone, PartialEq, Debug, Default)]
     pub struct ElementState:u8 {

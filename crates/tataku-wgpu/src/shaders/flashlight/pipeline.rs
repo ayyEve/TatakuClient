@@ -6,8 +6,6 @@ pub fn create_flashlight_pipeline(
     config: &wgpu::SurfaceConfiguration,
     projection_matrix_bind_group_layout: &wgpu::BindGroupLayout,
 ) -> wgpu::RenderPipeline {
-    use super::FLASHLIGHT_BIND_GROUP_LAYOUT;
-
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("Flashlight Shader"),
         source: wgpu::ShaderSource::Wgsl(crate::shader_files::FLASHLIGHT.into()),
@@ -28,13 +26,12 @@ pub fn create_flashlight_pipeline(
             },
         ],
     });
-    FLASHLIGHT_BIND_GROUP_LAYOUT.set(bind_group_layout).unwrap();
 
     let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("Flashlight Pipeline Layout"),
         bind_group_layouts: &[
             projection_matrix_bind_group_layout,
-            FLASHLIGHT_BIND_GROUP_LAYOUT.get().unwrap(),
+            &bind_group_layout,
         ],
         push_constant_ranges: &[],
     });

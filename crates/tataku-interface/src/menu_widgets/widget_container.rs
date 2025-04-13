@@ -163,7 +163,20 @@ impl Widget for WidgetContainer {
             shell.list.push(image);
         }
 
+        // blur
+        let blur_amount = style.blur.value().copied().unwrap_or_default();
+        let blur_location = style.blur_location.value().copied().unwrap_or_default();
+        let should_blur = blur_amount > 0.0;
+        if should_blur && blur_location == BlurLocation::Below {
+            shell.list.push(Blur::new(bounds, blur_amount));
+        }
+
         self.inner.draw(shell);
+
+        if should_blur && blur_location == BlurLocation::Above {
+            shell.list.push(Blur::new(bounds, blur_amount));
+        }
+
     }
     
     fn update(&mut self, shell: &mut UpdateShell<'_>, actions: &mut ActionQueue) {

@@ -2,19 +2,22 @@ use crate::prelude::*;
 use tataku_client_common::prelude::{ *, Color,};
 
 pub struct RenderableSurface<'a> {
-    pub texture: &'a TextureView,
+    pub texture: &'a Texture,
+    pub view: &'a TextureView,
     pub size: Vector2,
     pub clear_color: Color,
     pub render_target: bool,
 }
 impl<'a> RenderableSurface<'a> {
     pub fn new(
-        texture: &'a TextureView, 
+        view: &'a TextureView, 
+        texture: &'a Texture,
         clear_color: Color, 
         size: Vector2,
         render_target: bool,
     ) -> Self {
         Self {
+            view,
             texture,
             size,
             clear_color,

@@ -622,7 +622,7 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
             WinitWindowEvent::MouseInput { state: ElementState::Released, button, .. } => Some(WindowEvent::Input(InputType::MouseRelease(button.into()))),
 
             WinitWindowEvent::Touch(touch) => self.handle_touch_event(touch),
-            WinitWindowEvent::Occluded(_) => todo!(),
+            // WinitWindowEvent::Occluded(_) => todo!(),
 
             WinitWindowEvent::RedrawRequested => {
                 self.render();

@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use tokio::sync::OnceCell;
 use tataku_client_common::prelude::*;
 
 const QUAD_PER_BUF:u64 = 3000;
@@ -10,8 +9,6 @@ pub const EXPECTED_SLIDER_COUNT:u64 = 15;
 pub const SLIDER_GRID_COUNT:u64 = EXPECTED_SLIDER_COUNT * 32;
 pub const GRID_CELL_COUNT:u64 = SLIDER_GRID_COUNT * 16;
 pub const LINE_SEGMENT_COUNT:u64 = GRID_CELL_COUNT * 2;
-
-pub static SLIDER_BIND_GROUP_LAYOUT: OnceCell<BindGroupLayout> = OnceCell::const_new();
 
 pub struct SliderRenderBuffer {
     pub vertex_buffer: Buffer,
@@ -65,9 +62,7 @@ impl RenderBufferable for SliderRenderBuffer {
         self.used_slider_data > 0
     }
 
-    fn create_new_buffer(device: &Device) -> Self {
-        let bind_group_layout = SLIDER_BIND_GROUP_LAYOUT.get().unwrap();
-
+    fn create_new_buffer(device: &Device, pipeline: WgpuPipeline) -> Self {
         let slider_data = create_buffer::<SliderData>(device, BufferUsages::STORAGE, EXPECTED_SLIDER_COUNT);
         let slider_grids = create_buffer::<GridCell>(device, BufferUsages::STORAGE, SLIDER_GRID_COUNT);
         let grid_cells = create_buffer::<u32>(device, BufferUsages::STORAGE, GRID_CELL_COUNT);
@@ -75,7 +70,7 @@ impl RenderBufferable for SliderRenderBuffer {
 
         let bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("slider bind group"),
-            layout: bind_group_layout,
+            layout: &pipeline.get_bind_group_layout(1),
             entries: &[
                 BindGroupEntry { binding: 0, resource: slider_data.as_entire_binding() },
                 BindGroupEntry { binding: 1, resource: slider_grids.as_entire_binding() },

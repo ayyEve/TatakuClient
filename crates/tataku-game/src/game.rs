@@ -173,7 +173,6 @@ impl Game {
             volume_controller: VolumeControl::new().await,
             background_image: None,
             wallpapers: Vec::new(),
-            settings: SettingsHelper::new(),
             #[cfg(feature="gameplay")]
             spectator_manager: None,
             #[cfg(feature="gameplay")]

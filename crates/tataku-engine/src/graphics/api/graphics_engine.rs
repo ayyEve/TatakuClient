@@ -139,6 +139,7 @@ pub trait GraphicsEngine {
     fn draw_blur(
         &mut self,
         bounds: Bounds,
+        sigma: f32,
         rounds: u32,
     );
 

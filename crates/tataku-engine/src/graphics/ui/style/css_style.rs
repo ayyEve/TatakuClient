@@ -52,7 +52,7 @@ macro_rules! impl_parse {
     }
 }
 
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 #[derive(Deserialize)]
 pub enum DisplayType {
     Block,
@@ -185,12 +185,14 @@ pub struct CssStyle {
     #[css(parse_with = "Self::parse_rect_length_percentage")]
     pub border: CssValue<Rect<LengthPercentage>>,
 
-    // #[css(parse_with = "Self::parse_f32")]
+    /// The border radius in px
     pub border_radius: CssValue<f32>,
 
+    /// The border color
     #[css(parse_with = "Self::parse_color")]
     pub border_color: CssValue<Color>,
 
+    /// The background color
     #[css(parse_with = "Self::parse_color")]
     pub background: CssValue<Color>,
 
@@ -269,15 +271,47 @@ pub struct CssStyle {
 
 
     // image properties
+
+    /// What image should be used
     pub image: CssValue<String>,
+
+    /// How should the image be aligned
     pub image_alignment: CssValue<Alignment>,
+
+    /// How should the element fit inside the container
     #[css(parse_with = "Self::parse_image_fit")]
     pub image_fit: CssValue<ImageFit>,
+
+    /// Where should the image be loaded from
     #[css(parse_with = "Self::parse_image_source")]
     pub image_source: CssValue<TextureSource>,
 
-    /// should the image be grayscale
+    /// Should the image be grayscale
     pub image_grayscale: CssValue<bool>,
+
+
+    // animation properties
+
+    /// Name of the animation
+    pub animation_name: CssValue<String>,
+    /// Duration of the animation (in seconds)
+    pub animation_duration: CssValue<f32>,
+    /// How long to wait before running the animation (in seconds)
+    pub animation_delay: CssValue<f32>,
+
+    pub animation_iteration_count: CssValue<AnimationIterationCount>,
+
+
+
+    // blur properties
+
+
+    /// How much to blur, 0 is none
+    pub blur: CssValue<f32>,
+
+    /// Should the blur be applied above or below the element its on (above means it would blur itself)
+    pub blur_location: CssValue<BlurLocation>,
+
 
     // TODO: figure out the best way to parse this
     // // Grid container properies
@@ -562,4 +596,172 @@ impl CssStyle {
         ("space-event", SpaceEvenly);
         ("space-between", SpaceBetween)
     );
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum AnimationIterationCount {
+    Value(u32),
+    Infinite
+}
+impl std::str::FromStr for AnimationIterationCount {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match &*s.to_lowercase() {
+            "infinite" => Ok(Self::Infinite),
+
+            other => other.parse().map_err(|_| ()),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
+pub enum AnimationDirection {
+    /// The animation is played as normal (forwards). This is default
+    #[default]
+    Normal,
+    /// The animation is played in reverse direction (backwards)
+    Reverse,
+    /// The animation is played forwards first, then backwards
+    Alternate,
+    /// The animation is played backwards first, then forwards
+    AlternateReverse,
+}
+
+impl std::str::FromStr for AnimationDirection {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "normal" => Ok(Self::Normal),
+            "reverse" => Ok(Self::Reverse),
+            "alternate" => Ok(Self::Alternate),
+            "alternate-reverse" => Ok(Self::AlternateReverse),
+            _ => Err(()),
+        }
+    }
+}
+
+
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
+pub enum AnimationTimingFunction {
+    /// Specifies an animation with the same speed from start to end
+    Linear,
+
+    /// Specifies an animation with a slow start, then fast, then end slowly
+    #[default]
+    Ease,
+
+    /// Specifies an animation with a slow start
+    EaseIn,
+
+    /// Specifies an animation with a slow end
+    EaseOut,
+
+    /// Specifies an animation with a slow start and end
+    EaseInOut, 
+    
+    /// Lets you define your own values in a cubic-bezier function
+    CubicBezier(u32, u32, u32, u32),
+}
+impl std::str::FromStr for AnimationTimingFunction {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "linear" => Ok(Self::Linear),
+            "ease" => Ok(Self::Ease),
+            "ease-in" => Ok(Self::EaseIn),
+            "ease-out" => Ok(Self::EaseOut),
+            "ease-in-out" => Ok(Self::EaseInOut),
+            other if other.starts_with("cubic-bezier") => {
+                let mut parser = CssValueParser::new(other.trim_start_matches("cubic-bezier"));
+                parser.skip_spaces();
+
+                parser.advance(1); // skip the opening (
+                parser.skip_spaces(); // skip spaces between ( and first number
+                let n1 = parser.read_until(|c| c == ',').trim(); // read first value
+                parser.skip_spaces(); // skip spaces between values
+                let n2 = parser.read_until(|c| c == ',').trim(); // read value
+                parser.skip_spaces(); // skip spaces between values
+                let n3 = parser.read_until(|c| c == ',').trim(); // read value
+                parser.skip_spaces(); // skip spaces between values
+                let n4 = parser.read_until(|c| c == ')').trim(); // read value
+                Ok(Self::CubicBezier(
+                    n1.parse().map_err(|_| ())?,
+                    n2.parse().map_err(|_| ())?,
+                    n3.parse().map_err(|_| ())?,
+                    n4.parse().map_err(|_| ())?,
+                ))
+            },
+
+            _ => Err(()),
+        }
+    }
+}
+
+
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
+pub enum BlurLocation {
+    Above,
+    #[default]
+    Below,
+}
+impl std::str::FromStr for BlurLocation {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "above" => Ok(Self::Above),
+            "below" => Ok(Self::Below),
+            _ => Err(()),
+        }
+    }
+}
+
+
+struct CssValueParser<'a> {
+    s: &'a str,
+    pos: usize,
+    length: usize,
+}
+impl<'a> CssValueParser<'a> {
+    fn new(s: &'a str) -> Self {
+        Self {
+            s,
+            pos: 0,
+            length: s.chars().count()
+        }
+    }
+
+    fn chars(&self) -> std::str::Chars<'a> {
+        self.s[self.pos..].chars()
+    }
+    fn advance(&mut self, n: usize) {
+        self.pos = self.length.min(self.pos + n);
+    }
+    fn char(&self) -> Option<char> {
+        self.chars().next()
+    }
+
+    fn skip_spaces(&mut self) {
+        let chars = self.chars().enumerate();
+        for (n, c) in chars {
+            if !c.is_whitespace() {
+                self.pos += n;
+                break;
+            }
+        }
+    }
+    fn slice(&self, start: usize, end: usize) -> &'a str {
+        &self.s[start..end]
+    }
+
+    fn read_until(&self, f: impl Fn(char) -> bool) -> &'a str {
+        let start = self.pos;
+        while let Some(char) = self.char() {
+            if f(char) {
+                break;
+            }
+        }
+
+        self.slice(start, self.pos)
+    }
 }

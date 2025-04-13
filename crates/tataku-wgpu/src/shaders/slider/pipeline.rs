@@ -64,13 +64,12 @@ pub fn create_slider_pipeline(
 
         ],
     });
-    SLIDER_BIND_GROUP_LAYOUT.set(slider_bind_group_layout).unwrap();
 
     let slider_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
         label: Some("Slider Pipeline Layout"),
         bind_group_layouts: &[
             projection_matrix_bind_group_layout,
-            SLIDER_BIND_GROUP_LAYOUT.get().unwrap(),
+            &slider_bind_group_layout,
         ],
         push_constant_ranges: &[],
     });

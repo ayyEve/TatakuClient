@@ -1,9 +1,5 @@
 use crate::prelude::*;
-use tokio::sync::OnceCell;
 use tataku_client_common::prelude::*;
-
-
-pub static FLASHLIGHT_BIND_GROUP_LAYOUT: OnceCell<wgpu::BindGroupLayout> = OnceCell::const_new();
 
 const FLASHLIGHT_PER_BUF: u64 = 4; // even if we're drawing multiple flashlights, they wont be drawn consecutively
 const VTX_PER_BUF:u64 = FLASHLIGHT_PER_BUF * 4;
@@ -42,9 +38,7 @@ impl RenderBufferable for FlashlightBuffer {
         queue.write_buffer(&self.flashlight_buffer, 0, bytemuck::cast_slice(&cache.cpu_flashlights));
     }
 
-    fn create_new_buffer(device: &Device) -> Self {
-        let bind_group_layout = FLASHLIGHT_BIND_GROUP_LAYOUT.get().unwrap();
-
+    fn create_new_buffer(device: &Device, pipeline: WgpuPipeline) -> Self {
         let flashlight_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Flashlight Data Buffer"),
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
@@ -54,7 +48,7 @@ impl RenderBufferable for FlashlightBuffer {
 
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("flashlight bind group"),
-            layout: bind_group_layout,
+            layout: &pipeline.get_bind_group_layout(1),
             entries: &[
                 wgpu::BindGroupEntry { 
                     binding: 0, 

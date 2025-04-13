@@ -7,7 +7,8 @@ edition.workspace = true
 [dependencies]
 tataku-engine.workspace = true
 
-bass-rs = { version = "0.3.0", path = "/home/ayyeve/Desktop/projects/bass-rs" }
+# bass-rs = { version = "0.3.0", path = "/home/ayyeve/Desktop/projects/bass-rs" }
+bass-rs = { version = "0.2.3" }
 
 lazy_static.workspace = true
 parking_lot.workspace = true

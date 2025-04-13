@@ -27,6 +27,8 @@ pub struct GameplayPreview {
     widget_sender: Arc<Mutex<TripleBufferSender<Arc<dyn TatakuRenderable>>>>,
     widget_receiver: TripleBufferReceiver<Arc<dyn TatakuRenderable>>,
 
+
+    #[chain] blur: f32,
     #[chain] style: Style,
     node_id: NodeId,
 }
@@ -64,6 +66,7 @@ impl GameplayPreview {
             // event_receiver,
             // widget
 
+            blur: 0.0,
             style: Style {
                 size: Size {
                     width: FILL,
@@ -226,6 +229,11 @@ impl Widget for GameplayPreview {
     ) {
         // add gameplay
         shell.list.push_arced(self.widget_receiver.peek_output_buffer().clone());
+
+        if self.blur > 0.0 {
+            let bounds = shell.tree.absolute_bounds(self.node_id).unwrap();
+            shell.list.push(Blur::new(bounds, self.blur));
+        }
 
         // draw visualization
         if let Some(vis) = &self.visualization {

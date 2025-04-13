@@ -83,6 +83,7 @@
   <xs:complexContent>
     <xs:extension base="elements:generic">
       <xs:attribute name="visualization" type="xs:string"/>
+      <xs:attribute name="blur" type="xs:float"/>
     </xs:extension>
   </xs:complexContent>
 </xs:complexType>

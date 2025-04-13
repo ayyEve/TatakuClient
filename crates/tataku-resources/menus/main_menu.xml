@@ -92,7 +92,7 @@
 
             <!-- the next row is the preview and menu buttons -->
             <row id = "main_menu_row2" style = "width: fill; height: fill;">
-                <gameplayPreview visualization = "menu_visualization" style = "width: 80%; height: fill;"/>
+                <gameplayPreview visualization = "menu_visualization" blur="10.0" style = "width: 80%; height: fill; blur-location: below"/>
                 <animatable id = "animatable" style = "width: 20%; height: fill;">
                     <!-- TODO: fix animations!! -->
                     <!-- <triggers>
