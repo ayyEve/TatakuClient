@@ -21,7 +21,7 @@ struct Kernel {
 @group(0) @binding(0) var<uniform> settings: Settings;
 @group(0) @binding(1) var<storage, read> kernel: Kernel;
 @group(1) @binding(0) var input_texture: texture_2d<f32>;
-@group(1) @binding(1) var output_texture: texture_storage_2d<rgba8unorm, write>;
+@group(1) @binding(1) var output_texture: texture_storage_2d<bgra8unorm, write>;
 @group(1) @binding(2) var<uniform> orientation: Orientation;
 
 @compute

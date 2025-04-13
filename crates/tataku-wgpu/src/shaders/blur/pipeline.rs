@@ -1,38 +1,110 @@
+use crate::prelude::*;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 
-use crate::prelude::*;
 const NAME: &str = "gaussian blur";
 
 pub struct BlurShader {
-    pub blur_pipeline: ComputePipeline,
-    convert_pipeline: ComputePipeline,
-}
+    pub pipeline: ComputePipeline,
 
+    vertical: BlurBindings,
+    horizontal: BlurBindings,
+}
 impl BlurShader {
     pub fn new(device: &Device) -> Self {
+        let pipeline = Self::gaussian_blur(device);
+
+        // some default size, will get updated later
+        let size = Extent3d { width: 1, height: 1, depth_or_array_layers: 1 };
+
+        let vertical_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("Orientation"),
+            contents: bytemuck::cast_slice(&[1u32]),
+            usage: BufferUsages::UNIFORM,
+        });
+        let horizontal_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("Orientation"),
+            contents: bytemuck::cast_slice(&[0u32]),
+            usage: BufferUsages::UNIFORM,
+        });
+
+
+        let desc = TextureDescriptor {
+            label: None,
+            size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: TextureDimension::D2,
+            format: TextureFormat::Bgra8Unorm,
+            usage: TextureUsages::TEXTURE_BINDING
+                | TextureUsages::COPY_SRC
+                | TextureUsages::STORAGE_BINDING,
+            view_formats: &[],
+        };
+
+        let vertical_texture = device.create_texture(&desc);
+        let horizontal_texture = device.create_texture(&desc);
+
+        let vertical_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Texture bind group"),
+            layout: &pipeline.get_bind_group_layout(1),
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: BindingResource::TextureView(
+                        // NOTE!: this should be the output texture, but thats not accessible here
+                        &vertical_texture.create_view(&TextureViewDescriptor::default()),
+                    ),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: BindingResource::TextureView(
+                        &vertical_texture.create_view(&TextureViewDescriptor::default()),
+                    ),
+                },
+                BindGroupEntry {
+                    binding: 2,
+                    resource: vertical_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let horizontal_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Texture bind group"),
+            layout: &pipeline.get_bind_group_layout(1),
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: BindingResource::TextureView(
+                        &vertical_texture.create_view(&TextureViewDescriptor::default()),
+                    ),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: BindingResource::TextureView(
+                        &horizontal_texture.create_view(&TextureViewDescriptor::default()),
+                    ),
+                },
+                BindGroupEntry {
+                    binding: 2,
+                    resource: horizontal_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
         Self {
-            blur_pipeline: Self::gaussian_blur(device),
-            convert_pipeline: Self::convert_pipeline(device),
+            pipeline,
+
+            horizontal: BlurBindings {
+                buffer: horizontal_buffer,
+                texture: horizontal_texture,
+                bind_group: horizontal_bind_group
+            },
+            vertical: BlurBindings {
+                buffer: vertical_buffer,
+                texture: vertical_texture,
+                bind_group: vertical_bind_group
+            },
         }
-    }
-
-    fn convert_pipeline(device: &Device) -> ComputePipeline {
-        const NAME: &str = "convert";
-        let shader = device.create_shader_module(ShaderModuleDescriptor {
-            label: Some(format!("{NAME} shader").as_str()),
-            source: ShaderSource::Wgsl(crate::shader_files::CONVERT.into()),
-        });
-
-        let pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
-            label: Some(format!("{NAME} pipeline").as_str()),
-            layout: None,
-            module: &shader,
-            entry_point: Some("main"),
-            compilation_options: PipelineCompilationOptions::default(),
-            cache: None,
-        });
-
-        pipeline
     }
 
     fn gaussian_blur(device: &Device) -> ComputePipeline {
@@ -54,210 +126,131 @@ impl BlurShader {
     }
 
     fn resize(
-        &self,
+        &mut self,
         device: &Device,
-        output: &Texture,
-        data: &mut BlurBuffer,
+        output: &WgpuTextureReference,
     ) {
-        let size = output.size();
-
-        data.vertical.texture = device.create_texture(&TextureDescriptor {
+        let desc = TextureDescriptor {
             label: None,
-            size,
+            size: output.size,
             mip_level_count: 1,
             sample_count: 1,
             dimension: TextureDimension::D2,
-            format: TextureFormat::Rgba8Unorm,
+            format: TextureFormat::Bgra8Unorm,
             usage: TextureUsages::TEXTURE_BINDING
                 | TextureUsages::COPY_SRC
                 | TextureUsages::STORAGE_BINDING,
             view_formats: &[],
-        });
-        data.horizontal.texture = device.create_texture(&TextureDescriptor {
-            label: None,
-            size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: TextureDimension::D2,
-            format: TextureFormat::Rgba8Unorm,
-            usage: TextureUsages::TEXTURE_BINDING
-                | TextureUsages::COPY_SRC
-                | TextureUsages::STORAGE_BINDING,
-            view_formats: &[],
-        });
+        };
 
-        data.horizontal.bind_group = device.create_bind_group(&BindGroupDescriptor {
+
+        self.vertical.texture = device.create_texture(&desc);
+        self.horizontal.texture = device.create_texture(&desc);
+
+        let view_desc = TextureViewDescriptor::default();
+        self.horizontal.bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("Texture bind group"),
-            layout: &self.blur_pipeline.get_bind_group_layout(1),
+            layout: &self.pipeline.get_bind_group_layout(1),
             entries: &[
                 BindGroupEntry {
                     binding: 0,
                     resource: BindingResource::TextureView(
-                        &data.vertical.texture.create_view(&TextureViewDescriptor::default()),
+                        &self.vertical.texture.create_view(&view_desc),
                     ),
                 },
                 BindGroupEntry {
                     binding: 1,
                     resource: BindingResource::TextureView(
-                        &data.horizontal.texture.create_view(&TextureViewDescriptor::default()),
+                        &self.horizontal.texture.create_view(&view_desc),
                     ),
                 },
                 BindGroupEntry {
                     binding: 2,
-                    resource: data.horizontal.buffer.as_entire_binding(),
+                    resource: self.horizontal.buffer.as_entire_binding(),
                 },
             ],
         });
 
-        // vertical is updated every draw since it needs the new "swapchain" texture reference
+        self.vertical.bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Texture bind group"),
+            layout: &self.pipeline.get_bind_group_layout(1),
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: BindingResource::TextureView(&output.view),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: BindingResource::TextureView(
+                        &self.vertical.texture.create_view(&view_desc),
+                    ),
+                },
+                BindGroupEntry {
+                    binding: 2,
+                    resource: self.vertical.buffer.as_entire_binding(),
+                },
+            ],
+        });
     }
 
     pub fn perform(
-        &self,
+        &mut self,
         device: &Device,
         queue: &Queue,
-        output: &Texture,
-        data: &mut BlurBuffer,
+        output: &WgpuTextureReference,
+        data: &BlurBuffer,
     ) {
-        let hs = data.horizontal.texture.size();
-        if hs != output.size() {
-            self.resize(device, output, data);
+        let hs = self.horizontal.texture.size();
+        if hs != output.size {
+            self.resize(device, output);
         }
 
-        data.vertical.bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("Texture bind group"),
-            layout: &self.blur_pipeline.get_bind_group_layout(1),
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: BindingResource::TextureView(
-                        &output.create_view(&TextureViewDescriptor::default()),
-                    ),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: BindingResource::TextureView(
-                        &data.vertical.texture.create_view(&TextureViewDescriptor::default()),
-                    ),
-                },
-                BindGroupEntry {
-                    binding: 2,
-                    resource: data.vertical.buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-
+        // perform the blur
         let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor { label: None });
         {
             let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
                 timestamp_writes: None,
                 label: Some(format!("{NAME} pass").as_str()),
             });
-            compute_pass.set_pipeline(&self.blur_pipeline);
+            compute_pass.set_pipeline(&self.pipeline);
             compute_pass.set_bind_group(0, &data.compute_constants, &[]);
-            compute_pass.set_bind_group(1, &data.vertical.bind_group, &[]);
+            compute_pass.set_bind_group(1, &self.vertical.bind_group, &[]);
             let (dispatch_width, dispatch_height) = compute_work_group_count(
-                (output.width(), output.height()),
+                (output.size.width, output.size.height),
                 (128, 1),
             );
             compute_pass.dispatch_workgroups(dispatch_width, dispatch_height, 1);
-            compute_pass.set_bind_group(1, &data.horizontal.bind_group, &[]);
+            compute_pass.set_bind_group(1, &self.horizontal.bind_group, &[]);
             let (dispatch_height, dispatch_width) = compute_work_group_count(
-                (output.width(), output.height()),
+                (output.size.width, output.size.height),
                 (1, 128),
             );
             compute_pass.dispatch_workgroups(dispatch_width, dispatch_height, 1);
         }
 
-        self.copy_tex_to_tex(
-            &mut encoder, 
-            device, 
-            &data.horizontal.texture, 
-            output
+        encoder.copy_texture_to_texture(
+            self.horizontal.texture.as_image_copy(), 
+            output.copy, 
+            output.size,
         );
 
         queue.submit(Some(encoder.finish()));
     }
 
+}
 
-    fn copy_tex_to_tex(
-        &self,
-        encoder: &mut CommandEncoder,
-        device: &Device,
-        source: &Texture,
-        dest: &Texture,
-    ) {
-
-        let size = source.size();
-        // need to read texture data then map from rgba8 to bgra8
-        let w = size.width;
-        let h = size.height;
-        let fuck = (w * 4).div_ceil(COPY_BYTES_PER_ROW_ALIGNMENT) * COPY_BYTES_PER_ROW_ALIGNMENT;
-        let size = (fuck * h) as u64; //(w * h * 4) as u64;
-
-        let buffer = device.create_buffer(&BufferDescriptor { 
-            label: Some("hjkgfdhjklgsd"), 
-            size, 
-            usage: BufferUsages::COPY_SRC | BufferUsages::COPY_DST | BufferUsages::STORAGE, 
-            mapped_at_creation: false
-        });
-
-        encoder.copy_texture_to_buffer(
-            source.as_image_copy(), 
-            ImageCopyBuffer { 
-                buffer: &buffer, 
-                layout: ImageDataLayout { 
-                    offset: 0, 
-                    bytes_per_row: Some(fuck), 
-                    rows_per_image: None
-                }
-            }, 
-            source.size()
-        );
-
-        if false
-        {
-            let width = source.size().width;
-
-            let buffer2 = device.create_buffer_init(&BufferInitDescriptor {
-                label: None,
-                contents: bytemuck::cast_slice(&[width]),
-                usage: BufferUsages::UNIFORM,
-            });
-
-            let mut convert = encoder.begin_compute_pass(&ComputePassDescriptor { label: None, timestamp_writes: None });
-            convert.set_pipeline(&self.convert_pipeline);
-            let bind_group = device.create_bind_group(&BindGroupDescriptor { 
-                label: None, 
-                layout: &self.convert_pipeline.get_bind_group_layout(0), 
-                entries: &[
-                    BindGroupEntry {
-                        binding: 0,
-                        resource: buffer.as_entire_binding(),
-                    },
-                    BindGroupEntry {
-                        binding: 1,
-                        resource: buffer2.as_entire_binding(),
-                    },
-                ]
-            });
-            convert.set_bind_group(0, &bind_group, &[]);
-            convert.dispatch_workgroups(width, source.size().height, 1);
+pub struct WgpuTextureReference<'a> {
+    pub view: TextureView,
+    pub size: Extent3d,
+    pub copy: ImageCopyTexture<'a>,
+}
+impl<'a> WgpuTextureReference<'a> {
+    pub fn new(texture: &'a Texture) -> Self {
+        Self {
+            view: texture.create_view(&Default::default()),
+            size: texture.size(),
+            copy: texture.as_image_copy(),
         }
-
-        encoder.copy_buffer_to_texture(
-            ImageCopyBuffer { 
-                buffer: &buffer, 
-                layout: ImageDataLayout { 
-                    offset: 0, 
-                    bytes_per_row: Some(fuck), 
-                    rows_per_image: None
-                }
-            }, 
-            dest.as_image_copy(), 
-            source.size()
-        );
     }
 }
 
@@ -304,6 +297,15 @@ pub(super) fn kernel(sigma: f32) -> Kernel {
 fn normalized_probablility_density_function(x: f32, sigma: f32) -> f32 {
     0.39894 * (-0.5 * x * x / (sigma * sigma)).exp() / sigma
 }
+
+
+
+struct BlurBindings {
+    buffer: Buffer,
+    texture: Texture,
+    bind_group: BindGroup,
+}
+
 
 
 

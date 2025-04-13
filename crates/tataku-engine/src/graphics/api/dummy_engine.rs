@@ -6,6 +6,7 @@ impl GraphicsEngine for DummyGraphicsEngine {
     fn resize(&mut self, _: [u32; 2]) {}
 
     fn set_vsync(&mut self, _: Vsync) {}
+    fn set_blur(&mut self, _: bool) {}
 
     fn create_render_target(
         &mut self, 

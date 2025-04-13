@@ -40,6 +40,9 @@ pub struct DisplaySettings {
 
     #[cfg_attr(feature="graphics", setting(text="Hide Decorations"))]
     pub hide_decorations: bool,
+
+    #[cfg_attr(feature="graphics", setting(text="Blur Enabled"))]
+    pub enable_blur: bool,
 }
 
 impl Default for DisplaySettings {
@@ -63,6 +66,7 @@ impl Default for DisplaySettings {
             refresh_monitors_button: (),
 
             hide_decorations: false,
+            enable_blur: true,
         }
     }
 }

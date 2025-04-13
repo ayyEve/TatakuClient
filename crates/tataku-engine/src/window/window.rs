@@ -557,6 +557,9 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
                 if self.settings.vsync != settings.vsync {
                     self.set_vsync(settings.vsync);
                 }
+                if self.settings.enable_blur != settings.enable_blur {
+                    self.graphics.set_blur(settings.enable_blur);
+                }
 
                 self.settings = settings;
             }

@@ -13,15 +13,7 @@ pub struct BlurBuffer {
     settings: Buffer,
     kernel_buffer: Buffer,
 
-    pub vertical: BlurBindings,
-    pub horizontal: BlurBindings,
     pub compute_constants: BindGroup,
-}
-
-pub struct BlurBindings {
-    pub buffer: Buffer,
-    pub texture: Texture,
-    pub bind_group: BindGroup,
 }
 
 impl RenderBufferable for BlurBuffer {
@@ -58,8 +50,6 @@ impl RenderBufferable for BlurBuffer {
     }
 
     fn create_new_buffer(device: &Device, pipeline: WgpuPipeline) -> Self {
-        // some default size, will get updated later
-        let size = Extent3d { width: 1, height: 1, depth_or_array_layers: 1 };
         let sigma = 100.0; // this affects the size of the buffer, so we start with an unreasonably high number to hopefully prevent crashes when its changed later
 
         let kernel = kernel(sigma);
@@ -92,92 +82,6 @@ impl RenderBufferable for BlurBuffer {
             ],
         });
 
-
-        let vertical_buffer = device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("Orientation"),
-            contents: bytemuck::cast_slice(&[1u32]),
-            usage: BufferUsages::UNIFORM,
-        });
-        let horizontal_buffer = device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("Orientation"),
-            contents: bytemuck::cast_slice(&[0u32]),
-            usage: BufferUsages::UNIFORM,
-        });
-
-
-        let vertical_texture = device.create_texture(&TextureDescriptor {
-            label: None,
-            size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: TextureDimension::D2,
-            format: TextureFormat::Rgba8Unorm,
-            usage: TextureUsages::TEXTURE_BINDING
-                | TextureUsages::COPY_SRC
-                | TextureUsages::STORAGE_BINDING,
-            view_formats: &[],
-        });
-        let horizontal_texture = device.create_texture(&TextureDescriptor {
-            label: None,
-            size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: TextureDimension::D2,
-            format: TextureFormat::Rgba8Unorm,
-            usage: TextureUsages::TEXTURE_BINDING
-                | TextureUsages::COPY_SRC
-                | TextureUsages::STORAGE_BINDING,
-            view_formats: &[],
-        });
-
-        let vertical_bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("Texture bind group"),
-            layout: &pipeline.get_bind_group_layout(1),
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: BindingResource::TextureView(
-                        // NOTE!: this should be the output texture, but thats not accessible here
-                        &vertical_texture.create_view(&TextureViewDescriptor::default()),
-                    ),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: BindingResource::TextureView(
-                        &vertical_texture.create_view(&TextureViewDescriptor::default()),
-                    ),
-                },
-                BindGroupEntry {
-                    binding: 2,
-                    resource: vertical_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        let horizontal_bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("Texture bind group"),
-            layout: &pipeline.get_bind_group_layout(1),
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: BindingResource::TextureView(
-                        &vertical_texture.create_view(&TextureViewDescriptor::default()),
-                    ),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: BindingResource::TextureView(
-                        &horizontal_texture.create_view(&TextureViewDescriptor::default()),
-                    ),
-                },
-                BindGroupEntry {
-                    binding: 2,
-                    resource: horizontal_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-
         Self {
             scissor: None,
             used: 0,
@@ -186,17 +90,6 @@ impl RenderBufferable for BlurBuffer {
             settings,
             kernel_buffer: kernel,
             compute_constants,
-
-            horizontal: BlurBindings {
-                buffer: horizontal_buffer,
-                texture: horizontal_texture,
-                bind_group: horizontal_bind_group
-            },
-            vertical: BlurBindings {
-                buffer: vertical_buffer,
-                texture: vertical_texture,
-                bind_group: vertical_bind_group
-            },
         }
     }
 
@@ -206,15 +99,11 @@ impl RenderBufferable for BlurBuffer {
 
 
 pub struct CpuBlurBuffer {
-    // pub cpu_vtx: Vec<BlurVertex>,
-    // pub cpu_idx: Vec<u32>,
     pub cpu_blurs: Vec<BlurParams>,
 }
 impl Default for CpuBlurBuffer {
     fn default() -> Self {
         Self {
-            // cpu_vtx: vec![FlashlightVertex::default(); VTX_PER_BUF as usize],
-            // cpu_idx: vec![0; 1 as usize],
             cpu_blurs: vec![BlurParams::default(); BLURS_PER_BUF as usize],
         }
     }
@@ -223,14 +112,11 @@ impl Default for CpuBlurBuffer {
 
 pub struct BlurReserveData<'a> {
     pub data: &'a mut BlurParams,
-
-    // pub idx_offset: u64,
     pub _blur_index: u32,
 }
 impl BlurReserveData<'_> {
     pub fn copy_in(
         &mut self, 
-        // vtx: &[BlurVertex], 
         data: BlurParams
     ) {
         *self.data = data;

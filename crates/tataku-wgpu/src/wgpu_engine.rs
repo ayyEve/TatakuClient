@@ -50,13 +50,16 @@ pub struct WgpuEngine<'window> {
 
     sampler: Sampler,
     particle_system: ParticleSystem,
-    blur_shader: BlurShader,
+    blur_shader: RefCell<BlurShader>,
     render_image_shader: RenderImageShader,
 
     scissors: ScissorManager,
 
     present_modes: Vec<Vsync>,
     can_blur: bool,
+    blur_enabled: bool,
+
+    intermediate_texture: Texture,
 }
 impl<'window> WgpuEngine<'window> {
 
@@ -65,7 +68,7 @@ impl<'window> WgpuEngine<'window> {
         window: &'window W, 
         settings: &DisplaySettings,
     ) -> Box<dyn GraphicsEngine + 'window> {
-        let window_size = settings.window_size; //window.inner_size();
+        let window_size = settings.window_size;
 
         // create a wgpu instance
         let instance = Instance::new(InstanceDescriptor {
@@ -92,7 +95,7 @@ impl<'window> WgpuEngine<'window> {
         let (device, queue) = adapter.request_device(
             &DeviceDescriptor {
                 #[cfg(feature="texture_arrays")]
-                required_features: Features::TEXTURE_BINDING_ARRAY | Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING,
+                required_features: Features::TEXTURE_BINDING_ARRAY | Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING | Features::BGRA8UNORM_STORAGE,
                 #[cfg(not(feature="texture_arrays"))]
                 required_features: Features::default(),
                 required_limits: Limits::default(),
@@ -294,9 +297,22 @@ impl<'window> WgpuEngine<'window> {
             (LastDrawn::Slider, Box::new(RenderBufferQueueType::Slider(RenderBufferQueue::new().init(&device, pipelines.get(&BlendMode::Slider).unwrap())))),
             (LastDrawn::Standard, Box::new(RenderBufferQueueType::Standard(RenderBufferQueue::new().init(&device, pipelines.get(&BlendMode::AlphaBlending).unwrap())))),
             (LastDrawn::Flashlight, Box::new(RenderBufferQueueType::Flashlight(RenderBufferQueue::new().init(&device, pipelines.get(&BlendMode::Flashlight).unwrap())))),
-            (LastDrawn::Blur, Box::new(RenderBufferQueueType::Blur(RenderBufferQueue::new().init(&device, &blur_shader.blur_pipeline)))),
+            (LastDrawn::Blur, Box::new(RenderBufferQueueType::Blur(RenderBufferQueue::new().init(&device, &blur_shader.pipeline)))),
         ].into_iter().collect();
 
+
+        // because the swapchain texture can only have RenderAttachment (**annoy**)
+        // we render to an intermediary texture, which can have blur applied and used for screenshots
+        let intermediate_texture = device.create_texture(&TextureDescriptor { 
+            label: Some("Render Texture"),
+            size: Extent3d { width: config.width, height: config.height, depth_or_array_layers: 1 },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: TextureDimension::D2,
+            format: TextureFormat::Bgra8UnormSrgb,
+            usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::COPY_SRC | TextureUsages::COPY_DST | TextureUsages::TEXTURE_BINDING,
+            view_formats: &[ TextureFormat::Bgra8Unorm ]
+        });
 
         Box::new(Self {
             surface,
@@ -317,13 +333,15 @@ impl<'window> WgpuEngine<'window> {
             screenshot_pending: None,
 
             particle_system,
-            blur_shader,
+            blur_shader: RefCell::new(blur_shader),
             render_image_shader,
 
             scissors: ScissorManager::default(),
             present_modes,
             sampler,
             can_blur,
+            blur_enabled: true,
+            intermediate_texture,
         })
     }
 
@@ -335,36 +353,23 @@ impl<'window> WgpuEngine<'window> {
         // don't draw if our draw surface has no area
         if size.width == 0 || size.height == 0 { return Ok(()) }
 
+        if self.intermediate_texture.size() != size {
+            self.intermediate_texture = self.device.create_texture(&TextureDescriptor {
+                label: Some("Render Texture"),
+                size,
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: TextureDimension::D2,
+                format: TextureFormat::Bgra8UnormSrgb,
+                usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::COPY_SRC | TextureUsages::COPY_DST | TextureUsages::TEXTURE_BINDING,
+                view_formats: &[ TextureFormat::Bgra8Unorm ]
+            });
+        }
 
-
-        // because the swapchain texture can only have RenderAttachment (**annoy**)
-        // we render to an intermediary texture, which can have blur applied and used for screenshots
-        // TODO: have it so we only create the texture when the window size changes?
-
-        let texture = self.device.create_texture(&TextureDescriptor {
-            label: Some("Render Texture"),
-            size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: TextureDimension::D2,
-            format: TextureFormat::Bgra8UnormSrgb,
-            usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::COPY_SRC | TextureUsages::COPY_DST | TextureUsages::TEXTURE_BINDING,
-            view_formats: &[ TextureFormat::Bgra8Unorm ]
-        });
-        let view = texture.create_view(&TextureViewDescriptor {
-            label: Some("Render Texture View"),
-            dimension: Some(TextureViewDimension::D2),
-            base_array_layer: 0,
-            format: None,
-            aspect: TextureAspect::All,
-            base_mip_level: 0,
-            mip_level_count: None,
-            array_layer_count: None,
-        });
-
+        
+        let tex = WgpuTextureReference::new(&self.intermediate_texture);
         self.render(RenderableSurface::new(
-            &view, 
-            &texture,
+            &tex,
             GFX_CLEAR_COLOR, 
             Vector2::new(size.width as f32, size.height as f32), 
             true
@@ -405,7 +410,7 @@ impl<'window> WgpuEngine<'window> {
                     },
                     BindGroupEntry {
                         binding: 1,
-                        resource: BindingResource::TextureView(&view),
+                        resource: BindingResource::TextureView(&tex.view),
                     },
                 ]
             });
@@ -474,21 +479,21 @@ impl<'window> WgpuEngine<'window> {
             //     true
             // ))?;
 
-            self.finish_screenshot(texture, screenshot);
+            self.finish_screenshot(screenshot);
         }
 
 
         Ok(())
     }
 
-    fn render(&mut self, renderable: RenderableSurface) -> Result<(), SurfaceError> {
+    fn render(&self, renderable: RenderableSurface) -> Result<(), SurfaceError> {
         let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor { label: Some("Render Encoder") });
 
         {
             let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[Some(RenderPassColorAttachment {
-                    view: renderable.view,
+                    view: &renderable.texture.view,
                     resolve_target: None,
                     ops: Operations {
                         load: LoadOp::Clear(renderable.get_clear_color()),
@@ -503,17 +508,16 @@ impl<'window> WgpuEngine<'window> {
             let mut current_blend_mode = BlendMode::None;
             let mut current_scissor: Scissor = None;
 
-            for i in self.completed_buffers.iter_mut() {
+            for i in self.completed_buffers.iter() {
                 // blur is a special case, because its a compute shader and not a fragment shader
                 if i.get_blend_mode() == BlendMode::Blur {
-                    if !self.can_blur { continue }
+                    if !self.can_blur || !self.blur_enabled { continue }
 
                     drop(render_pass);
                     self.queue.submit([encoder.finish()]);
                     
                     let RenderBufferType::Blur(buffer) = i else { unreachable!() };
-                    BlurShader::perform(
-                        &self.blur_shader,
+                    self.blur_shader.borrow_mut().perform(
                         &self.device, 
                         &self.queue, 
                         renderable.texture,
@@ -525,7 +529,7 @@ impl<'window> WgpuEngine<'window> {
                     render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
                         label: Some("Render Pass"),
                         color_attachments: &[Some(RenderPassColorAttachment {
-                            view: renderable.view,
+                            view: &renderable.texture.view,
                             resolve_target: None,
                             ops: Operations {
                                 load: LoadOp::Load,
@@ -617,7 +621,14 @@ impl<'window> WgpuEngine<'window> {
 
 // texture stuff
 impl WgpuEngine<'_> {
-    fn create_texture(device: &Device, layout: &BindGroupLayout, sampler: &Sampler, width:u32, height:u32, format: TextureFormat) -> WgpuTexture {
+    fn create_texture(
+        device: &Device, 
+        layout: &BindGroupLayout, 
+        sampler: &Sampler, 
+        width: u32, 
+        height: u32, 
+        format: TextureFormat,
+    ) -> WgpuTexture {
         let texture_size = Extent3d {
             width,
             height,
@@ -712,7 +723,8 @@ impl WgpuEngine<'_> {
         }
     }
 
-    fn finish_screenshot(&mut self, texture: Texture, callback: ScreenshotCallback) {
+    fn finish_screenshot(&mut self, callback: ScreenshotCallback) {
+        let texture = &self.intermediate_texture;
         let (w, h) = (texture.width(), texture.height());
 
         let fuck = (w * 4).div_ceil(COPY_BYTES_PER_ROW_ALIGNMENT) * COPY_BYTES_PER_ROW_ALIGNMENT;
@@ -734,50 +746,34 @@ impl WgpuEngine<'_> {
         };
 
         let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor { label: Some("screenshot encoder") });
-        encoder.copy_texture_to_buffer(texture.as_image_copy(), tex_buffer, Extent3d { width: w, height: h, depth_or_array_layers: 1 });
+        encoder.copy_texture_to_buffer(texture.as_image_copy(), tex_buffer, texture.size());
         self.queue.submit(Some(encoder.finish()));
-        let queue = self.queue.clone();
 
-        std::thread::spawn(move || {
-            let slice = buffer.slice(..);
+        let slice = buffer.slice(..);
+        slice.map_async(MapMode::Read, |_| {});
+        let index = self.queue.submit(None);
+        self.device.poll(MaintainBase::WaitForSubmissionIndex(index));
+    
+        let data = slice
+            .get_mapped_range()
+            .chunks_exact(4)
+            .flat_map(|b| cast_to_rgba_bytes(b, texture.format()))
+            .collect();
 
-            let (s, mut r) = tokio::sync::oneshot::channel();
-            slice.map_async(MapMode::Read, move |_result| s.send(()).unwrap());
-            queue.submit(None);
-
-            loop {
-                match r.try_recv() {
-                    Ok(_) => break,
-                    Err(_) => std::thread::yield_now(),
-                }
-            }
-
-            let data = slice
-                .get_mapped_range()
-                .chunks_exact(4)
-                .flat_map(|b| cast_to_rgba_bytes(b, texture.format()))
-                .collect();
-
-            callback((data, [fuck / 4, h]));
-        });
-
+        callback((data, [fuck / 4, h]));
     }
 }
 
 
 // render code
 impl WgpuEngine<'_> {
-
-    fn get_pipeline(&self, blend_mode: BlendMode) -> WgpuPipeline {
-        match blend_mode {
-            BlendMode::Blur => WgpuPipeline::Compute(&self.blur_shader.blur_pipeline),
-            other => WgpuPipeline::Render(self.pipelines.get(&other).unwrap()),
-        }
-    }
-
     fn dump_last_drawn(&mut self) {
         let Some(mut last_drawn) = std::mem::take(&mut self.current_render_buffer) else { return };
-        let pipeline = self.get_pipeline(last_drawn.draw_type().as_blendmode());
+        let blur = self.blur_shader.borrow();
+        let pipeline = match last_drawn.draw_type().as_blendmode() {
+            BlendMode::Blur => WgpuPipeline::Compute(&blur.pipeline),
+            other => WgpuPipeline::Render(self.pipelines.get(&other).unwrap()),
+        };
         if let Some(b) = last_drawn.dump_and_next(&self.queue, &self.device, pipeline) { self.completed_buffers.push(b); };
         self.buffer_queues.insert(last_drawn.draw_type(), last_drawn);
     }
@@ -1093,11 +1089,11 @@ impl WgpuEngine<'_> {
         let mut recording_buffer = buffer_queue.recording_buffer().expect("didnt get blur recording buffer");
         let scissor_check = recording_buffer.scissor == Some(scissor) || recording_buffer.scissor.is_none();
 
-
         if !scissor_check
         || recording_buffer.used + 1 > BlurBuffer::VTX_PER_BUF
         {
-            let pipeline = WgpuPipeline::Compute(&self.blur_shader.blur_pipeline);
+            let blur = self.blur_shader.borrow();
+            let pipeline = WgpuPipeline::Compute(&blur.pipeline);
             if let Some(b) = buffer_queue.dump_and_next(&self.queue, &self.device, pipeline) {
                 self.completed_buffers.push(RenderBufferType::Blur(b))
             }
@@ -1235,6 +1231,10 @@ impl GraphicsEngine for WgpuEngine<'_> {
     }
 
 
+    fn set_blur(&mut self, enabled: bool) {
+        self.blur_enabled = enabled;
+    }
+
 
     fn create_render_target(
         &mut self, 
@@ -1295,18 +1295,10 @@ impl GraphicsEngine for WgpuEngine<'_> {
             }
         );
 
-        let view = texture.create_view(&TextureViewDescriptor {
-            label: Some("render_target_temp_tex_view"),
-            dimension: Some(TextureViewDimension::D2),
-            base_array_layer: 0,
-
-            ..Default::default()
-        });
-
         // create renderable surface
+        let tex = WgpuTextureReference::new(&texture);
         let renderable = RenderableSurface::new(
-            &view, 
-            &texture,
+            &tex,
             target.clear_color, 
             Vector2::new(width as f32, height as f32),
             true
