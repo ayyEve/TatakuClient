@@ -623,7 +623,7 @@ impl Game {
         }
         if keys_down.has_key(Key::H) && mods.ctrl && mods.shift {
             keys_down.remove_key(Key::H);
-            warn!("{:#?}", self.values.values);
+            warn!("{:#?}", self.ui_manager.root_tree.print());
         }
 
         if keys_down.has_key(Key::T) && mods.ctrl && mods.shift {

@@ -266,6 +266,7 @@ impl Widget for Container {
                     }
                     
                     // mark the tree as dirty
+                    actions.push(UiAction::new(self.node_id, UiActionType::MarkDirty));
                     actions.push(UiAction::new(self.node_id, UiActionType::Refresh));
                 }
                 diff @ (0..) => {
@@ -279,6 +280,7 @@ impl Widget for Container {
                     }
                 
                     // mark the tree as dirty
+                    actions.push(UiAction::new(self.node_id, UiActionType::MarkDirty));
                     actions.push(UiAction::new(self.node_id, UiActionType::Refresh));
                 }
             }

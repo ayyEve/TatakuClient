@@ -1,7 +1,8 @@
 use tataku_client_common::prelude::*;
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, Debug)]
+#[derive(bytemuck::Pod, bytemuck::Zeroable)]
 pub struct GpuParticle {
     /// how much life did this start out with?
     pub life_max: f32,
@@ -46,7 +47,7 @@ impl GpuParticle {
         }
     }
 
-    pub const fn count_size(count:usize) -> usize {
+    pub const fn count_size(count: usize) -> usize {
         std::mem::size_of::<Self>() * count
     }
 }

@@ -1,9 +1,3 @@
-use wgpu::{
-    BindGroup,
-    Buffer,
-    Device
-};
-
 use crate::prelude::*;
 use tokio::sync::OnceCell;
 use tataku_client_common::prelude::*;
@@ -62,7 +56,10 @@ impl RenderBufferable for FlashlightBuffer {
             label: Some("flashlight bind group"),
             layout: bind_group_layout,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: flashlight_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { 
+                    binding: 0, 
+                    resource: flashlight_buffer.as_entire_binding() 
+                },
             ]
         });
 

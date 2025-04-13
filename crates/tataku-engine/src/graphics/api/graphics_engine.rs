@@ -136,6 +136,12 @@ pub trait GraphicsEngine {
         flashlight_data: FlashlightData
     );
 
+    fn draw_blur(
+        &mut self,
+        bounds: Bounds,
+        rounds: u32,
+    );
+
     // particle engine stuff
     fn add_emitter(&mut self, emitter: EmitterReference);
     fn update_emitters(&mut self);

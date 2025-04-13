@@ -21,6 +21,7 @@ impl<'a> RenderableSurface<'a> {
             render_target
         }
     }
+    
     pub fn get_clear_color(&self) -> wgpu::Color {
         wgpu::Color {
             r: self.clear_color.r as f64,

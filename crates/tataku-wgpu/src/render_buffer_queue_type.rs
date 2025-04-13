@@ -4,6 +4,7 @@ pub enum RenderBufferQueueType {
     Standard(RenderBufferQueue<StandardBuffer>),
     Slider(RenderBufferQueue<SliderRenderBuffer>),
     Flashlight(RenderBufferQueue<FlashlightBuffer>),
+    Blur(RenderBufferQueue<BlurBuffer>)
 }
 impl RenderBufferQueueType {
     /// dumps the cached data to the gpu, and returns the buffers which contained that data
@@ -13,6 +14,7 @@ impl RenderBufferQueueType {
             Self::Slider(s) => s.dump_and_next(queue, device).map(RenderBufferType::Slider),
             Self::Standard(v) => v.dump_and_next(queue, device).map(RenderBufferType::Standard),
             Self::Flashlight(f) => f.dump_and_next(queue, device).map(RenderBufferType::Flashlight),
+            Self::Blur(f) => f.dump_and_next(queue, device).map(RenderBufferType::Blur),
         }
     }
     pub fn end(&mut self, queue: &Queue) -> Option<RenderBufferType> {
@@ -20,6 +22,7 @@ impl RenderBufferQueueType {
             Self::Slider(s) => s.end(queue).map(RenderBufferType::Slider),
             Self::Standard(v) => v.end(queue).map(RenderBufferType::Standard),
             Self::Flashlight(f) => f.end(queue).map(RenderBufferType::Flashlight),
+            Self::Blur(f) => f.end(queue).map(RenderBufferType::Blur),
         }
     }
 
@@ -27,7 +30,8 @@ impl RenderBufferQueueType {
         match self {
             Self::Slider(_) => LastDrawn::Slider,
             Self::Standard(_) => LastDrawn::Standard,
-            Self::Flashlight(_) => LastDrawn::Flashlight
+            Self::Flashlight(_) => LastDrawn::Flashlight,
+            Self::Blur(_) => LastDrawn::Blur,
         }
     }
 }

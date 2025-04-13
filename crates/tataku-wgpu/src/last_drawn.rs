@@ -4,5 +4,8 @@
 pub enum LastDrawn {
     Standard,
     Slider,
-    Flashlight
+    Flashlight,
+
+    // special
+    Blur,
 }

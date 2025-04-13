@@ -24,7 +24,6 @@ pub use triple_buffer::{
     Output as TripleBufferReceiver
 };
 
-pub use crossbeam::sync::{ ShardedLock, ShardedLockReadGuard, ShardedLockWriteGuard };
 
 // tokio imports
 pub use tokio::sync::{ OnceCell, Mutex as AsyncMutex, RwLock as AsyncRwLock };

@@ -55,7 +55,9 @@ impl Widget for Button {
 
     fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId>  {
         let child = self.child.layout(shell)?;
-        self.node_id = shell.tree.new_with_children(self.style.clone(), &[ child ])?;
+        self.node_id = shell.tree.new_with_children(Style { 
+            ..self.style.clone()
+        }, &[ child ])?;
         
         shell.with_context(self.node_id, |ctx| {
             ctx.needs_inverse_transform = true;

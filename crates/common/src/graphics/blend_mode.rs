@@ -22,4 +22,7 @@ pub enum BlendMode {
 
     /// The flashlight shader
     Flashlight,
+
+    /// The blur shader
+    Blur,
 }

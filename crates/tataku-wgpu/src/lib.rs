@@ -23,6 +23,8 @@ mod prelude {
 }
 
 mod shader_files {
+    pub const BLUR: &str = include_str!("../shaders/blur.wgsl");
+    pub const RENDER_IMAGE: &str = include_str!("../shaders/render_image.wgsl");
     pub const FLASHLIGHT: &str = include_str!("../shaders/flashlight.wgsl");
     pub const PARTICLES: &str = include_str!("../shaders/particles.wgsl");
     #[cfg(feature="texture_arrays")] 

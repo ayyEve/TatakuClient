@@ -62,6 +62,13 @@ impl GraphicsEngine for DummyGraphicsEngine {
         _flashlight_data: FlashlightData
     ) {}
 
+    fn draw_blur(
+        &mut self,
+        _bounds: Bounds,
+        rounds: u32,
+    ) {}
+    
+
     fn add_emitter(&mut self, _emitter: EmitterReference) {}
     fn update_emitters(&mut self) {}
 }
