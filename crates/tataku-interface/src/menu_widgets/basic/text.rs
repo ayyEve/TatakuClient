@@ -34,13 +34,6 @@ impl TextWidget {
             height: Dimension::Length(text_size.y),
         }
     }
-
-    // fn get_style(&self) -> Style {
-    //     Style {
-    //         min_size: self.min_size(),
-    //         ..self.style.clone()
-    //     }
-    // }
 }
 
 
@@ -87,6 +80,7 @@ impl Widget for TextWidget {
         shell.list.push(style.create_text(self.text.get().clone().into_owned(), bounds));
     }
 }
+
 
 // TODO: rename?
 pub enum WidgetText {

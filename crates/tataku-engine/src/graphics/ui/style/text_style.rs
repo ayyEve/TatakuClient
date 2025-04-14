@@ -14,14 +14,14 @@ impl TextStyle {
     pub fn measure_text(
         &self, 
         text: &str, 
-        scale: Option<Vector2>
+        scale: Option<Vector2>,
     ) -> Vector2 {
         Text::measure_text_raw(
             &[self.font],
             self.font_size,
             text,
             scale.unwrap_or(Vector2::ONE),
-            self.line_height - self.font_size
+            self.line_height
         )
     }
 
@@ -34,16 +34,14 @@ impl TextStyle {
             self.color,
             self.font
         );
-        text.line_spacing = self.line_height - self.font_size;
+        text.line_height = self.line_height;
 
-        let offset = self.alignment.resolve(
+        text.pos = self.alignment.resolve(
             &bounds, 
-            text.measure_text(), 
+            self.measure_text(&text.text, None), 
             true, 
             true
         );
-
-        text.pos = offset;
 
         text
     }
@@ -58,7 +56,7 @@ impl Default for TextStyle {
             color: Color::WHITE, 
 
             // idk what a sane default for this is
-            line_height: 32.0,
+            line_height: 35.0,
 
             alignment: Alignment::CENTER_LEFT,
         }

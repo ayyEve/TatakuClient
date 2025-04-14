@@ -11,7 +11,7 @@ pub struct Text {
     // pub origin: Vector2,
 
     font_size: f32,
-    pub line_spacing: f32,
+    pub line_height: f32,
 
     pub text: String,
     pub text_colors: Vec<Color>,
@@ -29,14 +29,14 @@ impl Text {
         font: Font
     ) -> Self {
         Self {
-            color,
             pos,
+            color,
             scale: Vector2::ONE,
             rotation: 0.0,
 
             // origin,
             font_size,
-            line_spacing: 2.0,
+            line_height: font_size + 3.0,
             text: text.to_string(),
             fonts: vec![font, Font::Fallback],
             text_colors: Vec::new(),
@@ -54,12 +54,16 @@ impl Text {
 
     pub fn set_font_size(&mut self, size: f32) {
         self.font_size = size;
-        // let base_size = 30.0;
-        // self.text_scale = size / base_size;
     }
     
     pub fn measure_text(&self) -> Vector2 {
-        Self::measure_text_raw(&self.fonts, self.font_size, &self.text, self.scale, self.line_spacing) 
+        Self::measure_text_raw(
+            &self.fonts, 
+            self.font_size, 
+            &self.text, 
+            self.scale, 
+            self.line_height
+        ) 
     }
     pub fn center_text(&mut self, rect: &Bounds) {
         let text_size = self.measure_text();
@@ -85,13 +89,11 @@ impl Text {
         font_size: f32, 
         text: &str, 
         scale: Vector2, 
-        line_spacing: f32
+        line_height: f32
     ) -> Vector2 {
         if fonts.is_empty() { return Vector2::ZERO }
 
         let (font_size, text_scale) = Self::get_font_size_scaled(font_size);
-
-        let mut line_height = font_size;
         let mut max_width: f32 = 0.0;
         let mut current_width = 0.0;
         let mut line_count = 1;
@@ -107,14 +109,13 @@ impl Text {
             for i in fonts {
                 let Some(data) = i.get_character(font_size, ch) else { continue };
                 current_width += data.advance_width();
-                line_height = line_height.max(data.metrics.height as f32 + data.metrics.ymin as f32);
                 break;
             };
         }
 
         Vector2::new(
             max_width.max(current_width),
-            (line_height + line_spacing) * line_count as f32 - line_spacing
+            line_height * line_count.min(1) as f32
         ) * scale * text_scale
     }
 
@@ -169,7 +170,7 @@ impl TatakuRenderable for Text {
         for (ch, color) in text {
             if ch == '\n' {
                 // move the line down
-                y += (font_size + self.line_spacing) * self.scale.y;
+                y += self.line_height * self.scale.y;
 
                 // reset x pos
                 x = 0.0;

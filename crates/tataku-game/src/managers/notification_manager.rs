@@ -1,8 +1,7 @@
 use crate::prelude::*;
 
-
 const NOTIF_Y_OFFSET:f32 = 100.0; // window_size().y - this
-const NOTIF_TEXT_SIZE:f32 = 15.0;
+const NOTIF_TEXT_SIZE:f32 = 25.0;
 
 /// how many pixels of space should there be between notifications?
 const NOTIF_MARGIN:Vector2 = Vector2::new(5.0, 5.0);
@@ -103,10 +102,16 @@ impl ProcessedNotif {
         self.time.elapsed().as_secs_f32() * 1000.0 < self.notification.duration
     }
 
-    fn draw(&self, pos_offset: Vector2, image: &Option<Image>, list: &mut RenderableCollection) {
-        let pos = pos_offset - Vector2::new(self.size.x + NOTIF_MARGIN.x, NOTIF_Y_OFFSET + self.size.y);
+    fn draw(
+        &self, 
+        pos_offset: Vector2, 
+        image: &Option<Image>, 
+        list: &mut RenderableCollection
+    ) {
+        let pos = pos_offset - (self.size + Vector2::new(NOTIF_MARGIN.x, NOTIF_Y_OFFSET));
 
         // bg
+        let bounds = Bounds::new(pos, self.size);
         if let Some(mut image) = image.clone() {
             image.pos = pos;
             image.set_size(self.size);
@@ -114,9 +119,8 @@ impl ProcessedNotif {
 
             list.push(image);
         } else {
-            list.push(Rectangle::new(
-                pos,
-                self.size,
+            list.push(Rectangle::new_bounds(
+                bounds,
                 NOTIF_BG_COLOR,
                 Some(Border::new(
                     self.notification.color,
@@ -125,8 +129,6 @@ impl ProcessedNotif {
             ).shape(Shape::Round(NOTIF_BORDER_ROUNDING)));
         }
 
-        let mut text = self.text.clone();
-        text.pos = pos + NOTIF_PADDING;
-        list.push(text);
+        list.push(self.text.clone().centered(&bounds));
     }
 }
