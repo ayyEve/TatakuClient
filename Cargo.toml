@@ -15,6 +15,9 @@ too_many_arguments = "allow"
 module_inception = "allow"
 type_complexity = "allow"
 
+[workspace.lints.rust]
+unused_must_use = "deny"
+
 [workspace.dependencies]
 # tataku-common = { version = "0.16.0", path = "../tataku-common/tataku-common", registry = "tataku-registry" }
 tataku-common = { version = "0.16.0", registry = "tataku-registry" }

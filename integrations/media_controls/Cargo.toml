@@ -14,4 +14,4 @@ tokio.workspace = true
 
 
 # media controls 
-souvlaki = { version = "0.8.1", default-features = false, features = [ "use_zbus" ] }
+souvlaki = { version = "0.8.2", default-features = false, features = [ "use_zbus" ] }

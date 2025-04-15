@@ -4,12 +4,12 @@ version = "0.5.0"
 authors.workspace = true
 edition.workspace = true
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lints]
+workspace = true
 
 [features]
 default = [ "gameplay" ]
 gameplay = [ "graphics" ]
-# kira_audio = ["rustfft", "uuid"]
 debug_hitsounds = []
 debug_perf_rating = []
 debug_custom_menus = []
