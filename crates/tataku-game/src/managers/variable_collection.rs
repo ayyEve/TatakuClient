@@ -3,7 +3,7 @@ use crate::prelude::*;
 #[derive(Reflect)]
 #[derive(Debug, Default)]
 #[reflect(dont_clone)]
-// #[reflect(alias("map" => "beatmap_manager.current_beatmap.map"))]
+// #[reflect(remap("map" => "self.beatmap_manager.current_beatmap.map"))]
 pub struct GameValues {
     pub settings: Settings,
 
@@ -103,7 +103,7 @@ impl Reflect for ValueCollection {
             (Err(_), Ok(c)) => Ok(c),
             (Err(ReflectError::EntryNotExist { .. }), Err(e)) => Err(e),
             (Err(e), Err(ReflectError::EntryNotExist { .. })) => Err(e),
-            // todo: is this correct?
+            // TODO: is this correct?
             (Err(e), Err(_)) => Err(e),
         }
     }
@@ -115,7 +115,7 @@ impl Reflect for ValueCollection {
             (Err(_), Ok(c)) => Ok(c),
             (Err(ReflectError::EntryNotExist { .. }), Err(e)) => Err(e),
             (Err(e), Err(ReflectError::EntryNotExist { .. })) => Err(e),
-            // todo: is this correct?
+            // TODO: is this correct?
             (Err(e), Err(_)) => Err(e),
         }
     }

@@ -14,7 +14,6 @@ pub struct Text {
     pub line_height: f32,
 
     pub text: String,
-    pub text_colors: Vec<Color>,
     pub fonts: Vec<Font>,
 
     scissor: Scissor,
@@ -39,7 +38,6 @@ impl Text {
             line_height: font_size + 3.0,
             text: text.to_string(),
             fonts: vec![font, Font::Fallback],
-            text_colors: Vec::new(),
             scissor: None,
             blend_mode: BlendMode::AlphaBlending,
         }
@@ -73,10 +71,6 @@ impl Text {
     pub fn centered(mut self, bounds: &Bounds) -> Self {
         self.center_text(bounds);
         self
-    }
-
-    pub fn set_text_colors(&mut self, colors: Vec<Color>) {
-        self.text_colors = colors
     }
     
     #[cfg(not(feature = "graphics"))]
@@ -153,21 +147,9 @@ impl TatakuRenderable for Text {
             .trans(self.pos) // move to pos
         ;
 
-
-        let text:Vec<(char, Color)> = if self.text_colors.is_empty() {
-            self.text.chars().map(|c| (c, color)).collect()
-        } else {
-            self.text.chars().enumerate().map(|(i, c)| {
-                let color = self.text_colors[i % self.text_colors.len()];
-                (c, color.alpha(options.alpha(color.a)))
-            }).collect()
-        };
-
         let mut x = 0.0;
         let mut y = font_size * scale.y;
-
-        // debug!("attempting to draw text");
-        for (ch, color) in text {
+        for ch in self.text.chars() {
             if ch == '\n' {
                 // move the line down
                 y += self.line_height * self.scale.y;

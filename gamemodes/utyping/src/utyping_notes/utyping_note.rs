@@ -168,7 +168,8 @@ impl HitObject for UTypingNote {
                 Font::Fallback
             );
 
-            t.text_colors = (0..completed_len).map(|_|complete_color).chain((0..(len - completed_len)).map(|_|incomplete_color)).collect();
+            // FIXME: reimplement this once text spans are added
+            // t.text_colors = (0..completed_len).map(|_|complete_color).chain((0..(len - completed_len)).map(|_| incomplete_color)).collect();
             t.center_text(&rect);
             rect.pos.y += t.measure_text().y + 5.0;
             list.push(t);

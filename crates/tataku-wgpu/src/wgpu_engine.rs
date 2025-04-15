@@ -148,7 +148,6 @@ impl<'window> WgpuEngine<'window> {
                         view_dimension: TextureViewDimension::D2,
                         multisampled: false,
                     },
-                    // count: None,
                     count: std::num::NonZeroU32::new(LAYER_COUNT),
                 },
                 BindGroupLayoutEntry {

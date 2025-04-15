@@ -184,7 +184,7 @@ impl TatakuRenderable for SkinnedNumber {
         ;
 
 
-        //TODO: cache `s`
+        // TODO: cache `s`
         let s = self.number_as_text();
         let mut current_pos = Vector2::ZERO;
 

@@ -42,7 +42,10 @@ impl OnlineSpectatorInfo {
 
     pub fn add_spec(&mut self, host_id: u32, user_id: u32, username: String) {
         trace!("Adding spec {user_id} to host {host_id}");
-        self.spectator_list.entry(host_id).or_default().add(SpectatingUser::new(user_id, username));
+        self.spectator_list
+            .entry(host_id)
+            .or_default()
+            .add(SpectatingUser::new(user_id, username));
     }
     pub fn remove_spec(&mut self, host_id: u32, removed_user: u32) {
         trace!("Removing spec {removed_user} from host {host_id}");

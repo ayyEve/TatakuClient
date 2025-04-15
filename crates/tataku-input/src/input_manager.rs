@@ -61,20 +61,6 @@ impl InputManager {
             power_info,
             connected: true,
         }));
-        
-
-        // self.controller_buttons.insert(id, HashSet::new());
-        // self.controller_down.insert(id, HashSet::new());
-
-        // self.controller_up.insert(id, HashSet::new());
-
-        // let data = [
-        //     Axis::LeftStickX, Axis::LeftStickY, Axis::LeftZ,
-        //     Axis::RightStickX, Axis::RightStickY, Axis::RightZ,
-        //     Axis::DPadX, Axis::DPadY
-        // ].into_iter().map(|a|(a, (false, 0.0))).collect();
-
-        // self.controller_axis.insert(id, data);
     }
 
     pub fn set_double_tap_protection(&mut self, protection: Option<f32>) {
@@ -152,9 +138,6 @@ impl InputManager {
                 let Some(controller) = self.controllers.get_mut(&event.id) else { return };
 
                 match event.event {
-                    // gilrs::EventType::Connected => self.verify_controller_index_exists(id, name, power_info),
-                    // gilrs::EventType::Disconnected => todo!(),
-
                     gilrs::EventType::ButtonPressed(b, _) => {
                         let b = b.into();
                         controller.buttons_down.insert(b);
@@ -173,12 +156,8 @@ impl InputManager {
                         }
                     }
 
-
                     // is this like, for ps2 analog buttons?
                     // gilrs::EventType::ButtonChanged(_, _, _) => todo!(),
-
-                    // ignore because it should be ignored
-                    // gilrs::EventType::Dropped => todo!(),
 
                     // cheating (?)
                     // gilrs::EventType::ButtonRepeated(_, _) => todo!(),
@@ -202,26 +181,6 @@ impl InputManager {
             }
         }
     }
-    // pub fn handle_events(&mut self, e: Window2GameEvent) {
-    //     match e {
-    //         // window events
-    //         Window2GameEvent::GotFocus => self.window_change_focus = Some(true),
-    //         Window2GameEvent::LostFocus => {
-    //             self.window_change_focus = Some(false);
-
-    //         }
-
-    //         Window2GameEvent::Input(input) => self.handle_input(input),
-
-    //         // GameWindowEvent::Minimized => {},
-    //         // GameWindowEvent::Closed => {}
-    //         // GameWindowEvent::FileHover(_) => {},
-    //         // GameWindowEvent::FileDrop(_) => {},
-
-    //         _ => {}
-    //     }
-
-    // }
 
     /// is the key currently down (not up)
     pub fn key_down(&self, k:Key) -> bool { self.keys.iter().any(|ki|ki.is_key(k)) }
@@ -282,46 +241,14 @@ impl InputManager {
     /// get all pressed controller buttons, and reset the pressed array
     /// (controller_id, button_id)
     pub fn get_controller_down(&mut self) -> Vec<(GamepadInfo, HashSet<ControllerButton>)> {
-        // let mut down = Vec::new();
-        // for (c, buttons) in self.controller_down.iter_mut() {
-        //     let name = self.controller_names.get(c).unwrap();
-           
-        //     for b in buttons.iter() {
-        //         let controller = make_controller(*c, name.clone());
-        //         down.push((controller, *b));
-        //     }
-        //     buttons.clear()
-        // }
-        // down
-
         self.controllers.values_mut()
             .map(|c| (c.info.clone(), std::mem::take(&mut c.buttons_down)))
             .collect()
-
-        // let down = self.controller_down.iter().map(|(g, i)|(self.get_controller_info(*g).unwrap(), i.clone())).collect();
-        // self.controller_down.iter_mut().for_each(|(_, i)| i.clear());
-        // down
     }
 
     /// get all released controller buttons, and reset the pressed array
     /// (controller_id, button_id)
     pub fn get_controller_up(&mut self) -> Vec<(GamepadInfo, HashSet<ControllerButton>)> {
-        // let mut up = Vec::new();
-        // for (c, buttons) in self.controller_up.iter_mut() {
-        //     let name = self.controller_names.get(c).unwrap();
-            
-        //     for b in buttons.iter() {
-        //         // let controller = make_controller(*c, name.clone());
-        //         up.push((*c, *b));
-        //     }
-        //     buttons.clear()
-        // }
-        // up
-        // let up = self.controller_up.iter().map(|(g, i)|(self.get_controller_info(*g).unwrap(), i.clone())).collect();
-        // self.controller_up.iter_mut().for_each(|(_, i)|i.clear());
-        // up
-
-
         self.controllers.values_mut()
             .map(|c| (c.info.clone(), std::mem::take(&mut c.buttons_up)))
             .collect()
@@ -338,20 +265,6 @@ impl InputManager {
         }
 
         axes
-
-        // for (c, axis_data) in self.controller_axis.iter_mut() {
-        //     // let name = self.controller_names.get(c).unwrap();
-        //     // let controller = make_controller(*c, name.clone());
-        //     // axis.push((controller, axis_data.clone()));
-        //     axis.push((self.controller_info.get(c).cloned().unwrap(), axis_data.clone()));
-
-        //     // update all the changed to false, since we've now checked them
-        //     for (_, (changed, _)) in axis_data.iter_mut() {
-        //         *changed = false
-        //     }
-        // }
-
-        // axis
     }
     
     /// gets any text typed since the last check

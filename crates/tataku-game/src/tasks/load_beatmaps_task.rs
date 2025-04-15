@@ -28,7 +28,12 @@ impl TatakuTask for LoadBeatmapsTask {
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Once }
     fn get_state(&self) -> TatakuTaskState { self.state }
 
-    async fn run(&mut self, _values: &mut dyn Reflect, _state: &TaskGameState, actions: &mut ActionQueue) {
+    async fn run(
+        &mut self, 
+        _values: &mut dyn Reflect, 
+        _state: &TaskGameState, 
+        actions: &mut ActionQueue
+    ) {
 
         // if we havent started yet, initialize our values
         if self.state == TatakuTaskState::NotStarted {

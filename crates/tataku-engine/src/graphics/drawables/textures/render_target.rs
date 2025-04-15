@@ -26,7 +26,6 @@ impl RenderTarget {
 impl Drop for RenderTarget {
     fn drop(&mut self) {
         if self.image.reference_count() == 1 {
-            // trace!("render target dropped");
             GameWindow::free_texture(*self.image.tex);
         }
     }

@@ -88,7 +88,7 @@ impl DifficultyEntry {
 
 impl Serializable for DifficultyEntry {
     fn read(sr: &mut SerializationReader) -> SerializationResult<Self> where Self: Sized {
-        let playmode = sr.read::<u128>("map_hash")?.into();
+        let playmode = sr.read::<u128>("playmode")?.into();
         let map_hash = sr.read::<u128>("map_hash")?.into();
         let mods = sr.read::<u128>("mods")?.into();
 
@@ -99,8 +99,8 @@ impl Serializable for DifficultyEntry {
         })
     }
 
-    fn write(&self, sw:&mut SerializationWriter) {
-        let playmode = self.map_hash.as_ref();
+    fn write(&self, sw: &mut SerializationWriter) {
+        let playmode = self.playmode.as_ref();
         let map_hash = self.map_hash.as_ref();
         let mods = self.mods.as_ref();
         sw.write(playmode);

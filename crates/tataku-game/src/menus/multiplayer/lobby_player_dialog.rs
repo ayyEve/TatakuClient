@@ -8,7 +8,6 @@ pub struct LobbyPlayerDialog {
     is_self: bool,
     we_are_host: bool,
 
-
     node: Box<dyn Widget>,
     node_id: NodeId,
 }

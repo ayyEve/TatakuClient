@@ -112,7 +112,6 @@ impl<'window> GameWindow<'window> {
 
     pub fn run(mut self, event_loop: winit::event_loop::EventLoop<WindowAction>) {
         WINDOW_PROXY.set(event_loop.create_proxy()).unwrap();
-        // GlobalValueManager::update(Arc::new(WindowSize(self.settings.window_size.into())));
         event_loop.run_app(&mut self).expect("nope");
     }
 
@@ -276,8 +275,8 @@ impl GameWindow<'_> {
         let ctx:Result<ClipboardContext, Box<dyn std::error::Error>> = ClipboardProvider::new();
 
         ctx
-            .map_err(|e| TatakuError::String(e.to_string()))
-            .and_then(|mut ctx| ctx.set_contents(content).map_err(|e| TatakuError::String(e.to_string())))
+            .map_err(TatakuError::from_boxed_err)
+            .and_then(|mut ctx| ctx.set_contents(content).map_err(TatakuError::from_boxed_err))
     }
 
 
@@ -461,7 +460,7 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
         self.window.set(window).unwrap();
         info!("Window created");
 
-
+        // initialize graphics
         self.runtime.clone().block_on(async {
             while let Some(graphics_init) = self.init_graphics.pop() {
                 let window = self.window();
@@ -494,8 +493,6 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
             integrations.push(i);
         }
 
-
-        // self.init_media_controls();
         self.window().set_min_inner_size(Some(to_size(self.settings.window_size.into())));
         self.refresh_monitors_inner();
         self.set_fullscreen(self.settings.fullscreen_monitor);
@@ -670,8 +667,6 @@ pub trait GraphicsInitializer<'window> {
         settings: DisplaySettings
     ) -> TatakuResult<Box<dyn GraphicsEngine + 'window>>;
 }
-
-
 
 pub struct WindowInitializers<'a> {
     pub integrations: Vec<TatakuIntegrationBuilder>,

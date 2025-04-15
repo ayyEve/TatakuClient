@@ -13,8 +13,12 @@ impl TatakuTask for CheckBeatmapFoldersTask {
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Once }
     fn get_state(&self) -> TatakuTaskState { self.state }
 
-    async fn run(&mut self, values: &mut dyn Reflect, _state: &TaskGameState, _actions: &mut ActionQueue) {
-
+    async fn run(
+        &mut self, 
+        values: &mut dyn Reflect, 
+        _state: &TaskGameState,
+        _actions: &mut ActionQueue
+    ) {
         // if we havent started yet, initialize our values
         if self.state == TatakuTaskState::NotStarted {
             let beatmap_manager = values.reflect_get::<BeatmapManager>("beatmaps").expect("nope");

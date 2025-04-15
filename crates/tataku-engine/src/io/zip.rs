@@ -7,7 +7,6 @@ impl Zip {
         in_folder: impl AsRef<Path>, 
         out_folder: impl AsRef<Path>, 
         delete_archive: ArchiveDelete,
-        
     ) -> Vec<String> {
         let in_folder = in_folder.as_ref();
         let out_folder = out_folder.as_ref();
@@ -32,7 +31,12 @@ impl Zip {
         paths
     }
 
-    pub async fn extract_single(zip: impl AsRef<Path>, dir: impl AsRef<Path>, extract_to_folder: bool, delete_file: ArchiveDelete) -> TatakuResult<String> {
+    pub async fn extract_single(
+        zip: impl AsRef<Path>, 
+        dir: impl AsRef<Path>, 
+        extract_to_folder: bool, 
+        delete_file: ArchiveDelete
+    ) -> TatakuResult<String> {
         let zip = zip.as_ref();
         let dir = dir.as_ref();
 

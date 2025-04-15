@@ -29,7 +29,6 @@ pub struct CursorManager {
 
     settings: CursorSettings,
 }
-
 impl CursorManager {
     pub async fn new(skin: Arc<SkinSettings>, settings: CursorSettings) -> Self {
         Self {

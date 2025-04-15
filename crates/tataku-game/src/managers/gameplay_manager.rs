@@ -109,8 +109,7 @@ pub struct GameplayManager {
     pub on_start: Box<dyn FnOnce(&mut Self) + Send + Sync>,
 
     pub events: Vec<IngameEvent>,
-    // #[cfg(feature="graphics")]
-    // ui_editor: Option<GameUIEditorDialog>,
+    // #[cfg(feature="graphics")] ui_editor: Option<GameUIEditorDialog>,
 
     pending_time_jump: Option<f32>,
     pending_frames: Vec<ReplayFrame>,

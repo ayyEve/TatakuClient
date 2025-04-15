@@ -6,8 +6,6 @@ use crate::prelude::ui::*;
 pub struct LoadingMenu {
     actions: ActionQueue,
     pub statuses: Vec<Arc<RwLock<LoadingStatus>>>,
-    // window_size: Arc<WindowSize>,
-
     node: Box<dyn Widget>,
     node_id: NodeId,
 }
@@ -42,7 +40,6 @@ impl LoadingMenu {
     }
 
     fn build_view(&self) -> Box<dyn Widget> {
-
         let elements = self.statuses.iter()
             .map(|status| {
             let status = status.read();
@@ -88,115 +85,6 @@ impl LoadingMenu {
             vertical_align = AlignContent::Center
         )
     }
-
-    // loaders
-    // async fn load_difficulties(status: Arc<RwLock<LoadingStatus>>) {
-    //     // trace!("loading difficulties");
-    //     // status.lock().await.stage = LoadingStage::Difficulties;
-        
-    //     // init diff manager
-    //     init_diffs(Some(status.clone())).await;
-
-    //     status.write().complete = true;
-    // }
-
-    /*
-    async fn load_beatmaps(status: Arc<RwLock<LoadingStatus>>) {
-        // trace!("loading beatmaps");
-        // status.lock().await.stage = LoadingStage::Beatmaps;
-        // set the count and reset the counter
-        // status.lock().await.loading_count = 0;
-        // status.lock().await.loading_done = 0;
-
-
-        let ignored = Database::get_all_ignored().await;
-        let existing_len;
-        trace!("got ignored {}", ignored.len());
-
-        {
-            let existing_maps = Database::get_all_beatmaps().await;
-            existing_len = existing_maps.len();
-            trace!("loading {existing_len} from the db");
-            
-            status.write().item_count = existing_len;
-            // load from db
-            let mut lock = BEATMAP_MANAGER.write().await;
-            lock.ignore_beatmaps = ignored.into_iter().collect();
-
-            for meta in existing_maps {
-                // verify the map exists
-                if !std::path::Path::new(&*meta.file_path).exists() {
-                    trace!("beatmap exists in db but not in fs: {}", meta.file_path);
-                    continue
-                }
-
-                lock.add_beatmap(&meta);
-                status.write().items_complete += 1;
-            }
-            trace!("done beatmap manager init");
-            lock.initialized = true;
-        }
-        
-        // look through the songs folder to make sure everything is already added
-        if existing_len == 0 {
-            // get existing dirs
-            let mut existing_paths = HashSet::new();
-            for i in BEATMAP_MANAGER.read().await.beatmaps.iter() {
-                if let Some(parent) = Path::new(&*i.file_path).parent() {
-                    existing_paths.insert(parent.to_string_lossy().to_string());
-                }
-            }
-            
-            // filter out folders that already exist
-            let folders = BeatmapManager::folders_to_check().await;
-            let folders:Vec<String> = folders.into_iter().map(|f|f.to_string_lossy().to_string()).filter(|f| !existing_paths.contains(f)).collect();
-
-            {
-                let mut lock = status.write();
-                lock.items_complete = 0;
-                lock.item_count = folders.len();
-                lock.custom_message = "Checking folders...".to_owned();
-            }
-
-            trace!("loading from the disk");
-            let mut manager = BEATMAP_MANAGER.write().await;
-            
-            // this should probably be delegated to the background
-            for f in folders.iter() {
-                manager.check_folder(f, true).await;
-                status.write().items_complete += 1;
-            }
-
-            let nlen = manager.beatmaps.len();
-            debug!("loaded {nlen} beatmaps ({} new)", nlen - existing_len);
-        }
-
-        
-        // {
-        //     let beatmaps = BEATMAP_MANAGER.read().await.beatmaps.clone();
-        //     let timer = std::time::Instant::now();
-        //     for b in beatmaps.iter() {
-        //         if b.beatmap_type == BeatmapType::Osu {
-        //             let _ = OsuBeatmap::load(b.file_path.clone());
-        //         }
-        //     }
-        //     let full_elapsed = timer.elapsed().as_secs_f32() * 1000.0;
-        //     let timer = std::time::Instant::now();
-
-        //     for b in beatmaps.iter() {
-        //         if b.beatmap_type == BeatmapType::Osu {
-        //             let _ = OsuBeatmap::load_metadata(b.file_path.clone());
-        //         }
-        //     }
-        //     let meta_elapsed = timer.elapsed().as_secs_f32() * 1000.0;
-            
-        //     println!("full took {full_elapsed:.4}");
-        //     println!("meta took {meta_elapsed:.4}")
-        // }
-
-        status.write().complete = true;
-    }
-    */
     
     async fn init_fonts(status: Arc<RwLock<LoadingStatus>>) {
         status.write().item_count = 3;

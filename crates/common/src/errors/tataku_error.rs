@@ -34,6 +34,9 @@ impl TatakuError {
     pub fn from_err(e: impl std::error::Error) -> Self {
         Self::String(format!("{e}"))
     }
+    pub fn from_boxed_err(e: Box<dyn std::error::Error>) -> Self {
+        Self::String(format!("{e}"))
+    }
 }
 impl From<&str> for TatakuError {
     fn from(value: &str) -> Self {

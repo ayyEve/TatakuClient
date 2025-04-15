@@ -9,6 +9,7 @@ pub struct BeatmapManager {
     #[reflect(skip)]
     pub actions: ActionQueue,
     pub initialized: bool,
+
     #[reflect(skip)]
     pub infos: GamemodeInfos,
 
@@ -20,9 +21,8 @@ pub struct BeatmapManager {
     pub beatmaps_by_hash: HashMap<Md5Hash, Arc<BeatmapMeta>>,
     pub ignore_beatmaps: HashSet<String>,
 
-    // TODO: change to MD5Hash
     /// previously played maps
-    played: Vec<Arc<BeatmapMeta>>, 
+    played: Vec<Md5Hash>, 
     /// current index of previously played maps
     play_index: usize,
 
@@ -269,7 +269,7 @@ impl BeatmapManager {
         diff_manager: &mut impl DifficultyProvider,
     ) {
         debug!("Setting current beatmap to {} ({}) and playmode {}", beatmap.beatmap_hash, beatmap.file_path, config.playmode);
-        self.played.push(beatmap.clone());
+        self.played.push(beatmap.beatmap_hash);
         self.play_index += 1;
 
         // update value collection
@@ -375,7 +375,14 @@ impl BeatmapManager {
         settings: &Settings,
         diff_manager: &mut impl DifficultyProvider,
     ) -> bool {
-        match self.played.get(self.play_index + 1).cloned() {
+        // TODO: handle maps that dont exist anymore
+        let at_index = self
+            .played
+            .get(self.play_index + 1)
+            .and_then(|hash| self.beatmaps_by_hash.get(hash))
+            .cloned();
+
+        match at_index {
             Some(map) => {
                 self.set_current_beatmap(&map, config, settings, diff_manager).await;
                 // since we're playing something already in the queue, dont append it again
@@ -400,7 +407,14 @@ impl BeatmapManager {
     ) -> bool {
         if self.play_index == 0 { return false }
 
-        match self.played.get(self.play_index - 1).cloned() {
+        // TODO: handle maps that dont exist anymore
+        let at_index = self
+            .played
+            .get(self.play_index - 1)
+            .and_then(|hash| self.beatmaps_by_hash.get(hash))
+            .cloned();
+
+        match at_index {
             Some(map) => {
                 self.set_current_beatmap(&map, config, settings, diff_manager).await;
                 // since we're playing something already in the queue, dont append it again

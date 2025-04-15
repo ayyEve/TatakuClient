@@ -1,6 +1,7 @@
 use crate::prelude::*;
 use crate::prelude::ui::*;
 
+// TODO: what is this even used for? lmao
 #[derive(Default)]
 pub struct SpectatorMenu {
     node_id: NodeId

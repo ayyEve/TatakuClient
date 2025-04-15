@@ -6,10 +6,6 @@ const LOBBY_PASSWORD_PATH: &str = "new_lobby.password";
 const LOBBY_PRIVATE_PATH: &str = "new_lobby.private";
 
 pub struct CreateLobbyDialog {
-    // name_text: String,
-    // password_text: String,
-    // is_private: bool, 
-
     node: Box<dyn Widget>,
     node_id: NodeId
 }
@@ -17,10 +13,6 @@ impl CreateLobbyDialog {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
-            // name_text: String::new(),
-            // password_text: String::new(),
-            // is_private: false,
-
             node: EmptyWidget::new_boxed(),
             node_id: EMPTY_NODE
         }

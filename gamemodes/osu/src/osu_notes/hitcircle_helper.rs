@@ -88,12 +88,13 @@ impl HitCircleImageHelper {
             self.combo_text = None;
         } else if self.combo_text.is_none() {
             let mut text = Text::new(
-                self.pos,
+                Vector2::ZERO,
                 radius,
                 self.combo_num.to_string(),
                 Color::WHITE,
                 Font::Main
             );
+            text.line_height = radius;
             text.center_text(&rect);
 
             self.combo_text = Some(text);

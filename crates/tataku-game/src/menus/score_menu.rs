@@ -144,9 +144,6 @@ impl ScoreMenu {
                 width = FILL,
                 height = SHRINK
             )
-
-            // // key event helper
-            // self.key_handler.handler();
             ;
 
             width = FILL,
@@ -154,21 +151,8 @@ impl ScoreMenu {
         )
     }
 
-    async fn close(&mut self) {
+    fn close(&mut self) {
         self.actions.push(MenuAction::PreviousMenu(self.name()));
-
-        // let menu: Box<dyn AsyncMenu>;
-        // match &*self.menu_type {
-        //     ScoreMenuType::Normal => menu = Box::new(BeatmapSelectMenu::new().await),
-        //     ScoreMenuType::Multiplayer { .. } => menu = Box::new(LobbyMenu::new().await),
-        //     ScoreMenuType::Spectator { .. } => menu = Box::new(SpectatorMenu::new()),
-        // }
-        // self.actions.push(MenuAction::SetMenu(menu));
-
-        // if self.dont_close_on_back {
-        //     self.should_close = true;
-        //     return;
-        // }
     }
 
 
@@ -203,9 +187,8 @@ impl ScoreMenu {
         self.actions.push(GameAction::WatchReplay(Box::new(score)));
     }
 
-    async fn retry(&mut self) {
+    fn retry(&mut self) {
         self.actions.push(BeatmapAction::PlaySelected);
-        // self.actions.push(BeatmapAction::PlayMap(self.beatmap.clone(), self.score.playmode.clone()));
     }
     
     async fn change_score(&mut self, score: IngameScore) {
@@ -287,6 +270,7 @@ impl ScoreMenu {
                 .duration(5_000.0)
                 .color(Color::RED)
             );
+
             return;
         };
         
@@ -390,25 +374,6 @@ impl ScoreMenu {
                 .boxed()
             )
         }
-        // if let Some(sub) = &self.score_submit_response {
-        //     add!(font_size / 2.0);
-
-        //     match sub {
-        //         SubmitResponse::NotSubmitted(_, str) => {
-        //             add!(format!("Score not submitted: {str}"), Color::BLACK);
-        //         }
-
-        //         SubmitResponse::Submitted { score_id:_, placing, performance_rating } => {
-        //             for str in [
-        //                 format!("Map Ranking: #{}", format_number(*placing)),
-        //                 format!("Performance: {}pr", format_float(*performance_rating, 2)),
-        //             ] {
-        //                 add!(str, Color::BLACK);
-        //                 add!(font_size);
-        //             }
-        //         }
-        //     }
-        // }
 
         lines
     }
@@ -529,9 +494,9 @@ impl Widget for ScoreMenu {
 
         let Some(tag) = message.tag.as_string() else { return };
         match &**tag {
-            "retry" => self.retry().await,
+            "retry" => self.retry(),
             "replay" => self.replay(&values.reflect_get::<Settings>("settings").unwrap()).await,
-            "back" => self.close().await,
+            "back" => self.close(),
             "score" => if let MessageValue::Number(num) = message.value {
                 if let ScoreMenuType::Multiplayer { lobby_items, .. } = &*self.menu_type {
                     if let Some(score) = lobby_items.get(num) {
@@ -567,16 +532,6 @@ impl Widget for ScoreMenu {
     ) {
         self.node.input(event, shell);
     }
-
-    // async fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
-    //     #[cfg(feature="graphics")]
-    //     if let Some(score_hash) = self.lobby_scrollable.on_click_tagged(pos, button, mods) {
-    //         let Some(lobby) = &**self.lobby_helper else { return };
-    //         let Some(score) = lobby.player_scores.values().find(|s|s.hash() == score_hash) else { return };
-    //         self.change_score(IngameScore::new(score.clone(), false, false)).await;
-    //     }
-    // }
-
 }
 
 
@@ -678,7 +633,6 @@ impl LeaderboardComponent {
         score: IngameScore,
         infos: &GamemodeInfos,
     ) -> Self {
-
         let info = infos.get_info(&score.playmode).unwrap();
         let score_mods = ModManager::short_mods_string(
             &score.mods, 

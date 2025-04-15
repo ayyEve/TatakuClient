@@ -26,7 +26,12 @@ impl TatakuTask for BeatmapDownloadsCheckTask {
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Continuous }
     fn get_state(&self) -> TatakuTaskState { TatakuTaskState::Running } // no real point in saying we arent running, since we run for one update every ~10s
 
-    async fn run(&mut self, _values: &mut dyn Reflect, state: &TaskGameState, actions: &mut ActionQueue) {
+    async fn run(
+        &mut self, 
+        _values: &mut dyn Reflect, 
+        state: &TaskGameState, 
+        actions: &mut ActionQueue
+    ) {
         // dont continue if we're ingame
         if state.ingame { return }
 
@@ -44,6 +49,7 @@ impl TatakuTask for BeatmapDownloadsCheckTask {
             info!("file ok {file}");
             
             if AVAILABLE_MAP_EXTENSIONS.iter().any(|e| file.ends_with(e)) {
+                // FIXME: ????
                 // // check file paths first
                 // if ignore_paths.contains(file) {
                 //     continue

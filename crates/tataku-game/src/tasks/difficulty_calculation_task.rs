@@ -167,9 +167,6 @@ impl TatakuTask for DiffCalcTask {
                 self.diff_calc = Some(calc);
                 self.diff_entries.push((entry, diff));
                 self.current = None;
-
-                // if existing.contains_key(&diff_key) { continue }
-                // self.diff_entries.push((diff_key, diff));
             }
 
             return

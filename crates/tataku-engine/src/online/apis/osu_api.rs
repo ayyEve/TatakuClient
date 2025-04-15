@@ -94,7 +94,10 @@ pub struct OsuApiBeatmap {
 
 #[test]
 fn test() {
-    let r = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+    let r = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
 
     r.block_on(async {
         let settings = Settings::load(&mut ActionQueue::new()).await;

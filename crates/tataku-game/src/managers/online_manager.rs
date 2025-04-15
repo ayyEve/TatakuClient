@@ -14,7 +14,7 @@ use tokio_tungstenite::{
 type WsWriter = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
 
 
-// how many frames do we buffer before sending?
+// how many spectator frames do we buffer before sending?
 // higher means less packet spam
 const SPECTATOR_BUFFER_FLUSH_SIZE: usize = 20;
 

@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-/// just runs the action, primarily used with the DelayedTask to run actions after a certain amount of time
+/// Just runs the action, primarily used with the DelayedTask to run actions after a certain amount of time
 pub struct ActionTask {
     state: TatakuTaskState,
     action: Option<TatakuAction>,
@@ -21,7 +21,12 @@ impl TatakuTask for ActionTask {
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Once }
     fn get_state(&self) -> TatakuTaskState { self.state }
     
-    async fn run(&mut self, _values: &mut dyn Reflect, _state: &TaskGameState, actions: &mut ActionQueue) {
+    async fn run(
+        &mut self, 
+        _values: &mut dyn Reflect, 
+        _state: &TaskGameState, 
+        actions: &mut ActionQueue
+    ) {
         if self.state == TatakuTaskState::NotStarted {
             self.state = TatakuTaskState::Running;
         }
