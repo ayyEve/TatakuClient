@@ -79,7 +79,7 @@ impl TatakuIntegration for MediaControlsIntegration {
             dbus_name: "tataku.player",
             display_name: "Tataku!",
             hwnd,
-        }).map_err(TatakuError::from_err)?);
+        }).map_err(|e| TatakuError::String(e.to_string()))?);
 
         Ok(())
     }
@@ -96,14 +96,14 @@ impl TatakuIntegration for MediaControlsIntegration {
             let sender = self.sender.clone();
             controls
                 .attach(move |e| sender.send(e).unwrap())
-                .map_err(TatakuError::from_err)?;
+                .map_err(|e| TatakuError::String(e.to_string()))?;
             trace!("media controls attached");
         } else if !self.enabled && self.attached {
             trace!("detaching media controls");
             self.attached = false;
             controls
                 .detach()
-                .map_err(TatakuError::from_err)?;
+                .map_err(|e| TatakuError::String(e.to_string()))?;
         }
 
         Ok(())
