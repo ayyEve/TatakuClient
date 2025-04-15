@@ -90,11 +90,11 @@ impl HitCircleImageHelper {
             let mut text = Text::new(
                 Vector2::ZERO,
                 radius,
-                self.combo_num.to_string(),
+                self.combo_num,
                 Color::WHITE,
                 Font::Main
             );
-            text.line_height = radius;
+            text.line_height = radius / 2.0;
             text.center_text(&rect);
 
             self.combo_text = Some(text);
