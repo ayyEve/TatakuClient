@@ -19,6 +19,9 @@ pub struct GameValues {
     /// Beatmap manager, its here instead of in Game to keep the lists in one place
     #[reflect(alias("beatmaps"))] pub beatmap_manager: BeatmapManager,
 
+    /// Online manager, its here instead of in Game to keep the lists in one place
+    #[reflect(alias("online"))] pub online_manager: OnlineManager,
+
     /// list of retreived scored 
     #[reflect(alias("scores_list"))] pub score_list: ScoreList,
     #[reflect(alias("downloads"))] pub download_manager: DownloadManager,

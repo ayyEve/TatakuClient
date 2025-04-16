@@ -169,9 +169,7 @@ type OnClickCallback = Box<dyn Fn() -> Option<Message> + Send + Sync>;
 pub enum ButtonOnClick {
     Message(Option<Message>),
     BuildableAction(BuildableAction),
-    #[debug(skip)] 
-    Callback(OnClickCallback),
-    // ActionCallback(OnClickaActionCallback),
+    #[debug(skip)] Callback(OnClickCallback),
 }
 impl ButtonOnClick {
     pub fn resolve(
@@ -182,7 +180,11 @@ impl ButtonOnClick {
     ) -> Option<ActionResponse> {
         match self {
             Self::Message(m) => m.clone().map(ActionResponse::Message),
-            Self::BuildableAction(action) => action.clone().into_action(values, passed_in).map(ActionResponse::Action),
+            Self::BuildableAction(action) => {
+                let mut a = action.clone();
+                a.build(values);
+                a.into_action(values, passed_in).map(ActionResponse::Action)
+            },
             Self::Callback(cb) => (cb)().map(ActionResponse::Message),
         }
     }

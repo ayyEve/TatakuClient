@@ -16,7 +16,11 @@ default = [
 ]
 
 # integrations
-all_integrations = [ "discord", "lastfm", "media_controls" ]
+all_integrations = [ 
+    "discord", 
+    "lastfm", 
+    # "media_controls" 
+]
 discord = [ "integration-discord" ]
 lastfm = [ "integration-lastfm" ]
 media_controls = [ "integration-media-controls" ]

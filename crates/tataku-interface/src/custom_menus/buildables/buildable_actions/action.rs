@@ -129,7 +129,7 @@ impl BuildableAction {
 
                 match cond.resolve(values) {
                     BuildableConditionResult::Failed => None,
-                    BuildableConditionResult::Unbuilt(_) => unreachable!(),
+                    BuildableConditionResult::Unbuilt(_) => unreachable!("BuildableConditions should be built!"),
                     BuildableConditionResult::True => if_true.into_action(values, passed_in),
                     BuildableConditionResult::False => if_false.and_then(|a| a.action.into_action(values, passed_in)),
                     BuildableConditionResult::Error(_) => None,

@@ -109,7 +109,7 @@ impl Text {
 
         Vector2::new(
             max_width.max(current_width),
-            line_height * line_count.min(1) as f32
+            line_height * line_count as f32
         ) * scale * text_scale
     }
 

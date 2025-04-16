@@ -1,66 +1,64 @@
 use PacketId::*;
 use crate::prelude::*;
-use tokio::{ sync::Mutex, net::TcpStream };
+use tokio::net::TcpStream;
 use futures_util::{ SinkExt, StreamExt, stream::SplitSink };
 use tokio_tungstenite::{ 
     MaybeTlsStream, 
     WebSocketStream, 
     tungstenite::{
         Bytes,
+        Error,
         protocol::Message,
     }
 };
-
-type WsWriter = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
-
 
 // how many spectator frames do we buffer before sending?
 // higher means less packet spam
 const SPECTATOR_BUFFER_FLUSH_SIZE: usize = 20;
 
-static ONLINE_MANAGER: OnceCell<Arc<AsyncRwLock<OnlineManager>>> = OnceCell::const_new();
+// how often (ms) to send pings
+const PING_TIMER: u64 = 5_000;
 
-
+#[derive(Reflect)]
+#[derive(Debug2)]
+#[reflect(dont_clone)]
 pub struct OnlineManager {
     pub connected: bool,
-    pub users: HashMap<u32, Arc<Mutex<OnlineUser>>>, // user id is key
+    pub users: HashMap<u32, OnlineUser>, // user id is key
     pub friends: HashSet<u32>, // userid is key
 
     /// our user's id
     pub user_id: u32,
 
     /// are we successfully logged in?
-    pub logged_in: bool,
-
-    /// socket writer
-    pub writer: Option<WsWriter>,
+    logged_in: bool,
 
     // ====== chat ======
     #[cfg(feature="graphics")]
-    pub chat_messages: HashMap<ChatChannel, Vec<ChatMessage>>,
+    chat_messages: HashMap<ChatChannel, Vec<ChatMessage>>,
 
     // ====== spectator ======
     spectator_info: OnlineSpectatorInfo,
+    
+    /// received from the network thread to be processed
+    #[debug(skip)]
+    #[reflect(skip)] 
+    event_receiver: Option<AsyncUnboundedReceiver<OnlineManagerEvent>>,
 
-    // ====== multiplayer ======
-    multiplayer_packet_queue: Vec<MultiplayerPacket>,
+    /// sent to the network thread to be serialized and sent to the server
+    #[debug(skip)]
+    #[reflect(skip)] 
+    packet_sender: Option<AsyncUnboundedSender<PacketId>>,
 
-    event_sender: AsyncUnboundedSender<OnlineEvent>,
+    #[reflect(skip)] 
+    events: Vec<OnlineEvent>,
+
+    #[debug(skip)]
+    #[reflect(skip)] 
+    handle: Option<tokio::task::JoinHandle<()>>,
 }
-
 impl OnlineManager {
-    pub fn build(
-        event_sender: AsyncUnboundedSender<OnlineEvent>,
-    ) {
-        if ONLINE_MANAGER.initialized() { panic!("???") }
-
-        let a = Self::new(event_sender);
-        let _ = ONLINE_MANAGER.set(Arc::new(AsyncRwLock::new(a)));
-    }
-
-    fn new(
-        event_sender: AsyncUnboundedSender<OnlineEvent>,
-    ) -> Self {
+    pub fn new() -> Self {
         // idk why this is suddenly required but whatever
         let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
 
@@ -81,335 +79,277 @@ impl OnlineManager {
             logged_in: false,
             users: HashMap::new(),
             friends: HashSet::new(),
-            writer: None,
             connected: false,
             #[cfg(feature="graphics")]
             chat_messages: messages,
             spectator_info: OnlineSpectatorInfo::new(0),
+            event_receiver: None,
+            packet_sender: None,
 
-            multiplayer_packet_queue: Vec::new(),
-            event_sender,
+            events: Vec::new(),
+            handle: None
         }
     }
 
     #[cfg(feature="gameplay")]
     pub fn start(
+        &mut self,
         settings: &Settings,
-        mut action_receiver: AsyncUnboundedReceiver<OnlineAction>,
     ) {
-        let server_url = settings.server_url.clone();
-        let username = settings.username.clone();
-        let password = settings.password.clone();
-        let logging_settings = settings.logging_settings;
-        
-        
-        tokio::spawn(async move {
-            info!("Starting websocket connection to url: {server_url}");
-            
-            // initialize the connection
-            match tokio_tungstenite::connect_async(server_url).await {
-                Ok((ws_stream, _)) => {
-                    let (writer, mut reader) = ws_stream.split();
-
-                    // send login
-                    {
-                        let mut s = Self::get_mut().await;
-                        s.writer = Some(writer);
-                        s.connected = true;
-
-                        // send login packet
-                        s.send_packet(Client_UserLogin {
-                            protocol_version: 1,
-                            game: "Tataku\n0.1.0".to_owned(),
-                            username: username.clone(),
-                            password: password.clone()
-                        }).await;
-                    }
-
-                    
-                    loop { tokio::select! {
-                        message = action_receiver.recv() => {
-                            let Some(message) = message else { continue };
-                            match message {
-                                OnlineAction::SpectateHost { host_id } => Self::start_spectating(host_id),
-                                OnlineAction::StopSpectating { host_id } => Self::stop_spectating(host_id),
-                                OnlineAction::SendSpectatorFrame { frame, force } => Self::send_spec_frames(vec![*frame], force),
-                            }
-                        }
-
-                        message = reader.next() => {
-                            let Some(message) = message else { return };
-
-                            match message {
-                                Ok(Message::Binary(data)) => {
-                                    let data = data.to_vec();
-                                    if let Err(e) = Self::handle_packet(data, &logging_settings).await {
-                                        error!("Error with packet: {}", e);
-                                    }
-                                }
-                                Ok(Message::Ping(_)) => {
-                                    if let Some(writer) = &mut Self::get_mut().await.writer {
-                                        let _ = writer.send(Message::Pong(Bytes::from_static(&[]))).await;
-                                    }
-                                }
-
-                                Ok(Message::Close(_)) => {
-                                    Self::send_notification(
-                                        Notification::default()
-                                        .text("Disconnected from server")
-                                        .color(Color::RED)
-                                        .duration(5000.0)
-                                    ).await;
-
-                                    Self::disconnect().await;
-                                }
-                                Ok(message) => if logging_settings.extra_online_logging { warn!("Got other network message: {message:?}"); },
-
-                                Err(oof) => {
-                                    error!("network connection error: {oof}\nAttempting to reconnect");
-                                    Self::disconnect().await;
-
-                                    // reconnect handled by caller
-                                    break;
-                                }
-                            }
-                        }
-
-                    } }
-                }
-                Err(oof) => {
-                    warn!("Could not accept connection: {oof:?}");
-                }
-            }
-        });
-    }
-
-    /// disconnect and reset everything
-    pub fn restart() {
-        tokio::spawn(async {
-            Self::get_mut().await.reset().await;
-        });
-    }
-
-    /// disconnect and reset everything
-    async fn reset(&mut self) {
-        // if we currently have a connection, close it
-        if let Some(writer) = &mut self.writer {
-            let _ = writer.close().await;
+        if let Some(handle) = self.handle.take() {
+            handle.abort();
         }
+        
+        let (event_sender, event_receiver) = async_unbounded_channel();
+        let (packet_sender, packet_receiver) = async_unbounded_channel();
+        
+        self.packet_sender = Some(packet_sender);
+        self.event_receiver = Some(event_receiver);
 
+        self.handle = Some(network_thread(settings, event_sender, packet_receiver));
+    }
+
+    /// disconnect and reset everything
+    pub fn reset(&mut self) {
         // reset most values
-        self.writer = None;
         self.user_id = 0;
-        self.connected = false;
-        self.logged_in = false;
         self.users.clear();
         self.friends.clear();
+        self.events.clear();
 
         self.spectator_info = OnlineSpectatorInfo::default();
-        self.multiplayer_packet_queue.clear();
-        self.event_sender.send(OnlineEvent::Disconnected).unwrap();
+
+        self.disconnect();
     }
 
     /// disconnect without resetting anything
-    async fn disconnect() {
-        let mut s = Self::get_mut().await;
-        s.writer = None;
-        s.connected = false;
-        s.logged_in = false;
-        s.event_sender.send(OnlineEvent::Disconnected).unwrap();
+    fn disconnect(&mut self) {
+        warn!("Disconnecting...");
+        // if we currently have a connection, close it
+        self.packet_sender = None;
+        self.event_receiver = None;
+
+        if let Some(handle) = self.handle.take() {
+            handle.abort();
+        }
+
+        self.connected = false;
+        self.logged_in = false;
+        self.events.push(OnlineEvent::Disconnected);
+    }
+
+
+    pub fn update(
+        &mut self,
+        settings: &Settings,
+        actions: &mut ActionQueue,
+    ) -> Vec<OnlineEvent> {
+        while let Some(Ok(event)) = self.event_receiver.as_mut().map(|e| e.try_recv()) {
+            match event {
+                OnlineManagerEvent::Connected => self.events.push(OnlineEvent::Connected),
+                OnlineManagerEvent::Disconnected => self.events.push(OnlineEvent::Disconnected),
+                OnlineManagerEvent::Packet(packet) => self.handle_packet(
+                    *packet, 
+                    &settings.logging_settings, 
+                    actions
+                ),
+            }
+        }
+
+        self.events.take()
+    }
+
+
+    pub fn handle_action(
+        &mut self,
+        action: OnlineAction,
+    ) {
+        match action {
+            OnlineAction::SpectateHost { host_id } => self.start_spectating(host_id),
+            OnlineAction::StopSpectating { host_id } => self.stop_spectating(host_id),
+            OnlineAction::SendSpectatorFrame { frame, force } => self.send_spec_frames(vec![*frame], force),
+            OnlineAction::Packet(packet) => self.send_packet(*packet),
+        }
     }
 
     /// handle an incoming server packet
     #[cfg(feature="gameplay")]
-    async fn handle_packet(data: Vec<u8>, log_settings: &LoggingSettings) -> TatakuResult<()> {
-        let mut reader = SerializationReader::new(data);
-        
-        while reader.can_read() {
-            // trace!("reading packet from server");
-            let packet:PacketId = reader.read("packet id")?;
-            // if log_settings.extra_online_logging { info!("Got packet {:?}", packet); };
+    fn handle_packet(
+        &mut self,
+        packet: PacketId, 
+        log_settings: &LoggingSettings,
+        actions: &mut ActionQueue,
+    ) {
+        match packet {
+            // ===== ping/pong =====
+            PacketId::Ping => { self.send_packet(Pong); },
+            PacketId::Pong => { /* trace!("Got pong from server"); */ },
 
-            match packet {
-                // ===== ping/pong =====
-                PacketId::Ping => { Self::get_mut().await.send_packet(Pong).await; },
-                PacketId::Pong => {/* trace!("Got pong from server"); */},
-
-                // login
-                PacketId::Server_LoginResponse { status, user_id } => {
-
-                    match status {
-                        LoginStatus::UnknownError => {
-                            trace!("Unknown Error");
-                                
-                            Self::send_notification(
-                                Notification::default()
-                                .text("[Login] Unknown error logging in")
-                                .color(Color::RED)
-                                .duration(5000.0)
-                            ).await;
-                        }
-                        LoginStatus::BadPassword => {
-                            trace!("Auth failed");    
-                            Self::send_notification(
-                                Notification::default()
-                                .text("[Login] Authentication failed")
-                                .color(Color::RED)
-                                .duration(5000.0)
-                            ).await;
-                        }
-                        LoginStatus::NoUser => {
-                            trace!("User not found");
-                                
-                            Self::send_notification(
-                                Notification::default()
-                                .text("[Login] Authentication failed")
-                                .color(Color::RED)
-                                .duration(5000.0)
-                            ).await;
-                        }
-                        LoginStatus::NotActivated => {
-                            trace!("User not activated");
-                                
-                            Self::send_notification(
-                                Notification::default()
-                                .text("[Login] Your account is pending activation")
-                                .color(Color::YELLOW)
-                                .duration(5000.0)
-                            ).await;
-                        }
-                        LoginStatus::Ok => {
-                            trace!("Success, got user_id: {user_id}");
-                            {
-                                let mut om = Self::get_mut().await;
-                                om.user_id = user_id;
-                                om.logged_in = true;
-                                om.spectator_info = OnlineSpectatorInfo::new(user_id);
-                            }
-                                
-                            Self::send_notification(
-                                Notification::default()
-                                .text("[Login] Logged in!")
-                                .color(Color::GREEN)
-                                .duration(2000.0)
-                            ).await;
-
-                            Self::send_event(OnlineEvent::LoggedIn { 
-                                user_id, 
-                                username: String::new()
-                            }).await;
-
-                            ping_handler();
-
-                            // request friends list
-                            Self::get_mut().await.send_packet(ChatPacket::Client_GetFriends).await;
-                        }
-                    }
-                }
-
-                // notification
-                PacketId::Server_Notification { message, severity } => {
-                    let (color, duration) = match severity {
-                        Severity::Info => (Color::GREEN, 3000.0),
-                        Severity::Warning => (Color::YELLOW, 5000.0),
-                        Severity::Error => (Color::RED, 7000.0),
-                    };
-
-                    Self::send_notification(Notification::default()
-                        .text(message)
-                        .color(color)
-                        .duration(duration)
-                    ).await;
-                }
-                // server error
-                PacketId::Server_Error { code, error } => {
-                    warn!("Got server error {:?}: '{}'", code, error)
-                }
-
-
-                // ===== user updates =====
-                PacketId::Server_UserJoined { user_id, username, game } => {
-                    if log_settings.extra_online_logging { debug!("User {username} joined (id: {user_id}, game: {game})"); };
-                    let mut user = OnlineUser::new(user_id, username.clone());
-                    user.game = game;
-
-                    let mut s = Self::get_mut().await;
-                    s.users.insert(user_id, Arc::new(Mutex::new(user)));
-
-                    if s.friends.contains(&user_id) {
-                        Self::send_notification(
+            // login
+            PacketId::Server_LoginResponse { status, user_id } => {
+                match status {
+                    LoginStatus::UnknownError => {
+                        trace!("Unknown Error");
+                        actions.push(
                             Notification::default()
-                            .text(format!("{username} is online"))
+                            .text("[Login] Unknown error logging in")
+                            .color(Color::RED)
                             .duration(5000.0)
-                            .color(Color::BLUE)
-                        ).await;
+                        );
                     }
-                }
-                PacketId::Server_UserLeft { user_id } => {
-                    if log_settings.extra_online_logging { debug!("User id {user_id} left"); };
-
-                    let mut lock = Self::get_mut().await;
-                    // remove from online users
-                    if let Some(u) = lock.users.remove(&user_id) {
-                        let l = u.lock().await;
-                        let username = &l.username;
-                        if lock.friends.contains(&user_id) {
-                            Self::send_notification(
-                                Notification::default()
-                                .text(format!("{username} is offline"))
-                                .color(Color::BLUE)
-                                .duration(5000.0)
-                            ).await;
-                        }
+                    LoginStatus::BadPassword => {
+                        trace!("Auth failed");    
+                        actions.push(
+                            Notification::default()
+                            .text("[Login] Authentication failed")
+                            .color(Color::RED)
+                            .duration(5000.0)
+                        );
                     }
-
-                    // remove from our spec list
-                    lock.spectator_info.remove_spec(0, user_id);
-                }
-                PacketId::Server_UserStatusUpdate { user_id, action, action_text, mode } => {
-                    // debug!("Got user status update: {}, {:?}, {} ({:?})", user_id, action, action_text, mode);
-                    
-                    if let Some(e) = Self::get().await.users.get(&user_id) {
-                        let mut a = e.lock().await;
-                        a.action = Some(action);
-                        a.action_text = Some(action_text);
-                        a.mode = Some(mode);
+                    LoginStatus::NoUser => {
+                        trace!("User not found");
+                        
+                        actions.push(
+                            Notification::default()
+                            .text("[Login] Authentication failed")
+                            .color(Color::RED)
+                            .duration(5000.0)
+                        );
                     }
-                }
+                    LoginStatus::NotActivated => {
+                        trace!("User not activated");
+                            
+                        actions.push(
+                            Notification::default()
+                            .text("[Login] Your account is pending activation")
+                            .color(Color::YELLOW)
+                            .duration(5000.0)
+                        );
+                    }
+                    LoginStatus::Ok => {
+                        trace!("Success, got user_id: {user_id}");
+                        self.user_id = user_id;
+                        self.logged_in = true;
+                        self.spectator_info = OnlineSpectatorInfo::new(user_id);
+                        
+                            
+                        actions.push(
+                            Notification::default()
+                            .text("[Login] Logged in!")
+                            .color(Color::GREEN)
+                            .duration(2000.0)
+                        );
 
-                // score 
-                PacketId::Server_ScoreUpdate { .. } => {}
+                        self.events.push(OnlineEvent::LoggedIn { 
+                            user_id, 
+                            username: String::new()
+                        });
 
-                // ===== chat =====
-                PacketId::Chat_Packet { packet } => Self::handle_chat_packet(packet, log_settings).await?,
-                
-                // ===== spectator =====
-                PacketId::Spectator_Packet { host_id, packet } => Self::handle_spec_packet(packet, host_id, log_settings).await?,
-                
-                // ===== multiplayer =====
-                PacketId::Multiplayer_Packet { packet } => Self::handle_multi_packet(packet, log_settings).await?,
-
-                // other packets
-                PacketId::Unknown => {
-                    warn!("Got unknown packet, dropping remaining packets");
-                    break;
-                }
-
-                p => {
-                    warn!("Got unhandled packet: {p:?}, dropping remaining packets");
-                    break;
+                        // request friends list
+                        self.send_packet(ChatPacket::Client_GetFriends);
+                    }
                 }
             }
-        }
 
-        Ok(())
+            // notification
+            PacketId::Server_Notification { message, severity } => {
+                let (color, duration) = match severity {
+                    Severity::Info => (Color::GREEN, 3000.0),
+                    Severity::Warning => (Color::YELLOW, 5000.0),
+                    Severity::Error => (Color::RED, 7000.0),
+                };
+
+                actions.push(Notification::default()
+                    .text(message)
+                    .color(color)
+                    .duration(duration)
+                );
+            }
+            // server error
+            PacketId::Server_Error { code, error } => {
+                warn!("Got server error {code:?}: '{error}'")
+            }
+
+
+            // ===== user updates =====
+            PacketId::Server_UserJoined { user_id, username, game } => {
+                if log_settings.extra_online_logging { debug!("User {username} joined (id: {user_id}, game: {game})"); };
+                let mut user = OnlineUser::new(user_id, username.clone());
+                user.game = game;
+
+                self.users.insert(user_id, user);
+
+                if self.friends.contains(&user_id) {
+                    actions.push(
+                        Notification::default()
+                        .text(format!("{username} is online"))
+                        .duration(5000.0)
+                        .color(Color::BLUE)
+                    )
+                }
+            }
+            PacketId::Server_UserLeft { user_id } => {
+                if log_settings.extra_online_logging { debug!("User id {user_id} left"); };
+
+                // remove from online users
+                if let Some(u) = self.users.remove(&user_id) {
+                    let username = &u.username;
+                    if self.friends.contains(&user_id) {
+                        actions.push(
+                            Notification::default()
+                            .text(format!("{username} is offline"))
+                            .color(Color::BLUE)
+                            .duration(5000.0)
+                        );
+                    }
+                }
+
+                // remove from our spec list
+                self.spectator_info.remove_spec(0, user_id);
+            }
+            PacketId::Server_UserStatusUpdate { user_id, action, action_text, mode } => {
+                // debug!("Got user status update: {}, {:?}, {} ({:?})", user_id, action, action_text, mode);
+                
+                if let Some(u) = self.users.get_mut(&user_id) {
+                    u.action = Some(action);
+                    u.action_text = Some(action_text);
+                    u.mode = Some(mode);
+                }
+            }
+
+            // score 
+            PacketId::Server_ScoreUpdate { .. } => {}
+
+            // ===== chat =====
+            PacketId::Chat_Packet { packet } => self.handle_chat_packet(packet, log_settings, actions),
+            
+            // ===== spectator =====
+            PacketId::Spectator_Packet { host_id, packet } => self.handle_spec_packet(packet, host_id, actions),
+            
+            // ===== multiplayer =====
+            PacketId::Multiplayer_Packet { packet } => self.events.push(OnlineEvent::MultiplayerPacket(Box::new(packet))), // self.handle_multi_packet(packet, actions)?,
+
+            // other packets
+            PacketId::Unknown => {
+                warn!("Got unknown packet, dropping remaining packets");
+            }
+
+            p => {
+                warn!("Got unhandled packet: {p:?}, dropping remaining packets");
+            }
+        }
     }
 
     #[cfg(feature="gameplay")]
-    async fn handle_chat_packet(packet: ChatPacket, log_settings: &LoggingSettings) -> TatakuResult<()> {
+    fn handle_chat_packet(
+        &mut self,
+        packet: ChatPacket, 
+        log_settings: &LoggingSettings,
+        _actions: &mut ActionQueue
+    ) {
         match packet {
-            ChatPacket::Server_SendMessage {sender_id, message, channel}=> {
-                if log_settings.extra_online_logging { debug!("Got message: `{}` from user id `{}` in channel `{}`", message, sender_id, channel); };
+            ChatPacket::Server_SendMessage { sender_id, message, channel } => {
+                if log_settings.extra_online_logging { debug!("Got message: `{message}` from user id `{sender_id}` in channel `{channel}`"); };
 
                 let channel = if channel.starts_with("#") {
                     ChatChannel::Channel {name: channel.trim_start_matches("#").to_owned()}
@@ -417,13 +357,10 @@ impl OnlineManager {
                     ChatChannel::User {username: channel}
                 };
 
-                let mut lock = Self::get_mut().await;
-                let sender = lock.find_user_by_id(sender_id).unwrap_or_default().lock().await.username.clone();
-                let chat_messages = &mut lock.chat_messages;
-                // if the list doesnt include the channel, add it
-                if !chat_messages.contains_key(&channel) {
-                    chat_messages.insert(channel.clone(), Vec::new());
-                }
+                let sender = self
+                    .find_user_by_id(sender_id)
+                    .map(|i| i.username.clone())
+                    .unwrap_or_default();
 
                 let message = ChatMessage::new(
                     sender,
@@ -431,88 +368,92 @@ impl OnlineManager {
                     sender_id,
                     message
                 );
-
-                // add the message to the channel
-                chat_messages.get_mut(&channel).unwrap().push(message);
+                
+                // add the message to the channel, creating the channel if it doesnt exist.
+                self.chat_messages
+                    .entry(channel.clone())
+                    .or_default()
+                    .push(message);
             }
 
             // friends list received from server
             ChatPacket::Server_FriendsList { friend_ids } => {
-                let mut s = Self::get_mut().await;
                 for i in friend_ids.iter() {
-                    if let Some(u) = s.users.get_mut(i) {
-                        u.lock().await.friend = true;
+                    if let Some(u) = self.users.get_mut(i) {
+                        u.friend = true;
                     }
                 }
                 info!("got friends list: {friend_ids:?}");
 
-                s.friends = friend_ids.into_iter().collect();
+                self.friends = friend_ids.into_iter().collect();
             }
 
             ChatPacket::Server_UpdateFriend { friend_id, is_friend } => {
-                let mut s = Self::get_mut().await;
-                if let Some(u) = s.users.get_mut(&friend_id) {
-                    u.lock().await.friend = is_friend;
+                if let Some(u) = self.users.get_mut(&friend_id) {
+                    u.friend = is_friend;
                 }
 
                 if is_friend {
-                    s.friends.insert(friend_id);
+                    self.friends.insert(friend_id);
                     info!("add friend {friend_id}");
                 } else {
-                    s.friends.remove(&friend_id);
+                    self.friends.remove(&friend_id);
                     info!("remove friend {friend_id}");
                 }
             }
 
             _ => {}
         }
-
-        Ok(())
     }
 
-    async fn handle_spec_packet(packet: SpectatorPacket, host_id: u32, _log_settings: &LoggingSettings) -> TatakuResult<()> {
+    fn handle_spec_packet(
+        &mut self,
+        packet: SpectatorPacket, 
+        host_id: u32, 
+        actions: &mut ActionQueue,
+    ) {
         match packet {
             SpectatorPacket::Server_SpectatorFrames { frames: new_frames } => {
                 // debug!("Got {} spectator frames from the server", frames.len());
-                let mut lock = Self::get_mut().await;
-                if let Some(frames) = lock.spectator_info.incoming_frames.get_mut(&host_id) {
+                if let Some(frames) = self.spectator_info.incoming_frames.get_mut(&host_id) {
                     frames.extend(new_frames);
                 } else {
                     warn!("got spec packets for host we're not spectating: {host_id}");
                 }
             }
             // spec join/leave
-            SpectatorPacket::Server_SpectatorJoined { user_id, username }=> {
-                Self::get_mut().await.spectator_info.add_spec(host_id, user_id, username.clone());
-                Self::send_notification(
+            SpectatorPacket::Server_SpectatorJoined { user_id, username } => {
+                self.spectator_info.add_spec(host_id, user_id, username.clone());
+                actions.push(
                     Notification::default()
                     .text(format!("{username} is now spectating"))
                     .color(Color::GREEN)
                     .duration(2000.0)
-                ).await;
-                Self::send_event(OnlineEvent::SpectatorEvent(SpectatorEvent::SpectatorJoined { user_id, username })).await;
+                );
+
+                self.events.push(OnlineEvent::SpectatorEvent(SpectatorEvent::SpectatorJoined { user_id, username }));
             }
             SpectatorPacket::Server_SpectatorLeft { user_id } => {
-                let user = if let Some(u) = Self::get().await.find_user_by_id(user_id) {
-                    u.lock().await.username.clone()
+                let user = if let Some(u) = self.find_user_by_id(user_id) {
+                    u.username.clone()
                 } else {
                     "A user".to_owned()
                 };
-                Self::get_mut().await.spectator_info.remove_spec(host_id, user_id);
-                Self::send_notification(
+                self.spectator_info.remove_spec(host_id, user_id);
+                actions.push(
                     Notification::default()
                     .text(format!("{user} stopped spectating"))
                     .color(Color::GREEN)
                     .duration(2000.0)
-                ).await;
+                );
                 
-                Self::send_event(OnlineEvent::SpectatorEvent(SpectatorEvent::SpectatorLeft { user_id })).await;
+                self.events.push(OnlineEvent::SpectatorEvent(SpectatorEvent::SpectatorLeft { user_id }));
             }
             SpectatorPacket::Server_SpectateResult { result} => {
                 trace!("Got spec result {result:?}");
                 let mut notif = None;
                 match result {
-                    SpectateResult::Ok => Self::get_mut().await.spectator_info.add_host(host_id),
+                    SpectateResult::Ok => self.spectator_info.add_host(host_id),
                     SpectateResult::Error_SpectatingBot => notif = Some(Notification::new_text("You cannot spectate a bot!", Color::RED, 3000.0)),
                     SpectateResult::Error_HostOffline => notif = Some(Notification::new_text("Spectate host is offline!", Color::RED, 3000.0)),
                     SpectateResult::Error_SpectatingYourself => notif = Some(Notification::new_text("You cannot spectate yourself!", Color::RED, 3000.0)),
@@ -520,124 +461,97 @@ impl OnlineManager {
                 }
 
                 if let Some(notif) = notif {
-                    Self::send_notification(notif).await;
+                    actions.push(notif);
                 }
             }
 
             _ => {}
         }
-
-        Ok(())
     }
 
-    async fn handle_multi_packet(packet: MultiplayerPacket, _log_settings: &LoggingSettings) -> TatakuResult<()> {
-        // the game handles these now
+    pub fn send_packet(&mut self, packet: impl Into<PacketId>) {
+        let Some(sender) = self.packet_sender.as_ref() else { return };
 
-        let mut online = Self::get_mut().await;
-
-        match packet {
-            MultiplayerPacket::Server_LobbyInvite { inviter_id, lobby } => {
-                let username = if let Some(user) = online.users.get(&inviter_id) {
-                    user.lock().await.username.clone()
-                } else {
-                    "A user".to_owned()
-                };
-
-                online.event_sender.send(OnlineEvent::MultiplayerLobbyInvite { 
-                    inviter_id, 
-                    inviter_username: username, 
-                    lobby 
-                }).unwrap();
-            }
-            other => online.multiplayer_packet_queue.push(other),
+        let packet = packet.into();
+        if let Err(_e) = sender.send(packet) {
+            self.disconnect();
         }
-        Ok(())
     }
-
-
 
     /// set our user's action for the server and any enabled integrations
-    pub fn set_action(action_info: SetAction, incoming_mode: Option<String>) {
-        tokio::spawn(async move {
-            let mut s = Self::get_mut().await;
-            let mode = incoming_mode.clone().unwrap_or_default();
+    pub fn set_action(&mut self, action_info: SetAction, incoming_mode: Option<String>) {
+        let mode = incoming_mode.clone().unwrap_or_default();
 
-            let action = action_info.get_action();
-            let action_text = match &action_info {
-                SetAction::Idle => "Idle".to_string(),
-                SetAction::Closing => "Closing".to_string(),
+        let action = action_info.get_action();
+        let action_text = match &action_info {
+            SetAction::Idle => "Idle".to_string(),
+            SetAction::Closing => "Closing".to_string(),
 
-                SetAction::Listening { artist, title, .. } => format!("Listening to {artist} - {title}"),
-                SetAction::Spectating { player, artist, title, version, creator:_ } => format!("Watching {player} play {artist} - {title}[{version}]"),
-                SetAction::Playing { artist, title, version, .. } => format!("Playing {artist} - {title}[{version}]"),
-            };
+            SetAction::Listening { artist, title, .. } => format!("Listening to {artist} - {title}"),
+            SetAction::Spectating { player, artist, title, version, creator:_ } => format!("Watching {player} play {artist} - {title}[{version}]"),
+            SetAction::Playing { artist, title, version, .. } => format!("Playing {artist} - {title}[{version}]"),
+        };
 
-            s.send_packet(PacketId::Client_StatusUpdate { action, action_text: action_text.clone(), mode }).await;
-            if action == UserAction::Leaving {
-                s.send_packet(PacketId::Client_LogOut).await;
-            }
+        self.send_packet(PacketId::Client_StatusUpdate { action, action_text: action_text.clone(), mode });
+        if action == UserAction::Leaving {
+            self.send_packet(PacketId::Client_LogOut);
+        }
 
-        });
     }
 
-    pub fn find_user_by_id(&self, user_id: u32) -> Option<Arc<Mutex<OnlineUser>>> {
-        self.users.get(&user_id).cloned()
+    pub fn find_user_by_id(&mut self, user_id: u32) -> Option<&mut OnlineUser> {
+        self.users.get_mut(&user_id)
+    }
+
+    pub fn get_user(&self, id: u32) -> Option<OnlineUser> {
+        self.users.get(&id).cloned()
+    }
+}
+impl Default for OnlineManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
+
 // spectator functions
 impl OnlineManager {
-    pub async fn update_usernames(data: &mut CurrentLobbyInfo) {
+    pub fn update_usernames(&mut self, data: &mut CurrentLobbyInfo) {
         data.player_usernames.clear();
-        let om = Self::get().await;
 
         for user in data.info.players.iter() {
-            let Some(user) = om.users.get(&user.user_id) else { continue };
-            let user = user.lock().await;
+            let Some(user) = self.users.get(&user.user_id) else { continue };
             data.player_usernames.insert(user.user_id, user.username.clone());
         }
     }
 
-    pub fn send_spec_frames(frames: Vec<SpectatorFrame>, force_send: bool) {
-        tokio::spawn(async move {
-            let mut lock = Self::get_mut().await;
+    pub fn send_spec_frames(&mut self, frames: Vec<SpectatorFrame>, force_send: bool) {
+        self.spectator_info.outgoing_frames.extend(frames);
+        // wait at most 1s before sending packets
+        let times_up = self.spectator_info.last_sent_frame.as_millis() > 1000.0;
 
-            lock.spectator_info.outgoing_frames.extend(frames);
-            // wait at most 1s before sending packets
-            let times_up = lock.spectator_info.last_sent_frame.as_millis() > 1000.0;
-
-            if force_send || times_up || lock.spectator_info.outgoing_frames.len() >= SPECTATOR_BUFFER_FLUSH_SIZE {
-                let frames = std::mem::take(&mut lock.spectator_info.outgoing_frames);
-                
-                // info!("Sending {} spec packets", frames.len());
-                let id = lock.user_id;
-                lock.send_packet(SpectatorPacket::Client_SpectatorFrames {frames}.with_host(id)).await;
-                lock.spectator_info.last_sent_frame = TatakuInstant::now();
-            }
-        });
-
+        if force_send || times_up || self.spectator_info.outgoing_frames.len() >= SPECTATOR_BUFFER_FLUSH_SIZE {
+            let frames = self.spectator_info.outgoing_frames.take();
+            
+            // info!("Sending {} spec packets", frames.len());
+            self.send_packet(SpectatorPacket::Client_SpectatorFrames {frames}.with_host(self.user_id));
+            self.spectator_info.last_sent_frame = TatakuInstant::now();
+        }
     }
 
     /// attempt to start spectating a host
     /// 
     /// this doesnt actually begin the spec process, it just sends the request to the server
     /// the process starts when the spec is approved
-    pub fn start_spectating(host_id: u32) {
-        tokio::spawn(async move {
-            let mut s = Self::get_mut().await;
-            s.send_packet(SpectatorPacket::Client_Spectate.with_host(host_id)).await;
-        });
+    pub fn start_spectating(&mut self, host_id: u32) {
+        self.send_packet(SpectatorPacket::Client_Spectate.with_host(host_id));
     }
 
-    pub fn stop_spectating(host_id: u32) {
+    pub fn stop_spectating(&mut self, host_id: u32) {
         info!("Request to stop speccing {host_id}");
-        tokio::spawn(async move {
-            trace!("Attempting to stop speccing {host_id}");
-            let mut s = Self::get_mut().await;
-            s.spectator_info.remove_host(host_id);
-            s.send_packet(SpectatorPacket::Client_LeaveSpectator.with_host(host_id)).await;
-            trace!("Stopped speccing {host_id}");
-        });
+        self.spectator_info.remove_host(host_id);
+        self.send_packet(SpectatorPacket::Client_LeaveSpectator.with_host(host_id));
+        trace!("Stopped speccing {host_id}");
     }
 
     pub fn get_pending_spec_frames(&mut self, host_id: u32) -> Vec<SpectatorFrame> {
@@ -648,153 +562,37 @@ impl OnlineManager {
 
 // multiplayer functions
 impl OnlineManager {
-    pub async fn add_lobby_listener() {
-        let mut s = Self::get_mut().await;
-        s.send_packet(MultiplayerPacket::Client_AddLobbyListener).await;
-        s.send_packet(MultiplayerPacket::Client_LobbyList).await;
+    pub fn add_lobby_listener(&mut self) {
+        self.send_packet(MultiplayerPacket::Client_AddLobbyListener);
+        self.send_packet(MultiplayerPacket::Client_LobbyList);
     }
-    pub async fn remove_lobby_listener() {
-        let mut s = Self::get_mut().await;
-        s.send_packet(MultiplayerPacket::Client_AddLobbyListener).await;
+    pub fn remove_lobby_listener(&mut self) {
+        self.send_packet(MultiplayerPacket::Client_AddLobbyListener);
     }
 
-    pub async fn invite_user(user_id: u32) {
+    pub fn invite_user(&mut self, user_id: u32) {
         // info!("inviting user {user_id}");
-        let mut s = Self::get_mut().await;
-        s.send_packet(MultiplayerPacket::Client_LobbyInvite { user_id } ).await;
+        self.send_packet(MultiplayerPacket::Client_LobbyInvite { user_id } );
     }
 
-    pub async fn update_lobby_beatmap(beatmap: Arc<BeatmapMeta>, mode: String) {
+    pub fn update_lobby_beatmap(
+        &mut self,
+        beatmap: Arc<BeatmapMeta>, 
+        mode: String,
+    ) {
         // info!("update lobby beatmap: {beatmap:?}, {mode}");
-        let mut s = Self::get_mut().await;
-        s.send_packet(MultiplayerPacket::Client_LobbyMapChange { 
+        self.send_packet(MultiplayerPacket::Client_LobbyMapChange { 
             new_map: LobbyBeatmap { 
                 title: beatmap.version_string(), 
                 hash: beatmap.beatmap_hash, 
                 mode,
                 map_game: beatmap.beatmap_type.into()
             }
-        }).await;
-    }
-
-    pub async fn move_lobby_slot(new_slot: u8) {
-        // info!("move slot");
-        let mut s = Self::get_mut().await;
-        let our_id = s.user_id;
-        s.send_packet(MultiplayerPacket::Client_LobbySlotChange { slot: new_slot, new_status: LobbySlot::Filled {user: our_id} } ).await;
-    }
-    pub async fn update_lobby_slot(slot: u8, new_state: LobbySlot) {
-        // info!("update slot");
-        let mut s = Self::get_mut().await;
-        s.send_packet(MultiplayerPacket::Client_LobbySlotChange { slot, new_status: new_state } ).await;
-    }
-
-    pub async fn update_lobby_state(new_state: LobbyUserState) {
-        // info!("update our user state: {new_state:?}");
-        let mut s = Self::get_mut().await;
-        s.send_packet(MultiplayerPacket::Client_LobbyUserState { new_state } ).await;
-    }
-
-    pub async fn lobby_load_complete() {
-        // info!("sending load complete");
-        let mut s = Self::get_mut().await;
-        s.send_packet(MultiplayerPacket::Client_LobbyMapLoaded).await;
-    }
-
-    pub async fn lobby_map_complete(score: Score) {
-        // info!("sending map complete");
-        let mut s = Self::get_mut().await;
-        s.send_packet(MultiplayerPacket::Client_LobbyMapComplete { score }).await;
-    }
-
-    pub async fn lobby_map_start() {
-        // info!("sending map start");
-        let mut s = Self::get_mut().await;
-        s.send_packet(MultiplayerPacket::Client_LobbyStart).await;
-    }
-
-    pub async fn lobby_update_score(score: Score) {
-        // info!("update lobby score");
-        let mut s = Self::get_mut().await;
-        s.send_packet(MultiplayerPacket::Client_LobbyScoreUpdate { score }).await;
-    }
-
-    pub async fn lobby_change_host(new_host: u32) {
-        // info!("change lobby host");
-        let mut s = Self::get_mut().await;
-        s.send_packet(MultiplayerPacket::Client_LobbyChangeHost { new_host }).await;
-    }
-
-    pub async fn lobby_update_mods(mods: HashSet<String>, speed: u16) {
-        // info!("update mods and speed");
-        let mut s = Self::get_mut().await;
-        s.send_packet(MultiplayerPacket::Client_LobbyUserModsChanged { mods, speed }).await;
-    }
-}
-
-impl OnlineManager {
-    /// opens a read lock on the online manager
-    async fn get<'a>() -> tokio::sync::RwLockReadGuard<'a, Self> {
-        ONLINE_MANAGER.get().unwrap().read().await
-    }
-    /// opens a write lock on the online manager
-    async fn get_mut<'a>() -> tokio::sync::RwLockWriteGuard<'a, Self> {
-        ONLINE_MANAGER.get().unwrap().write().await
-    }
-
-    pub async fn get_user(id: u32) -> Option<OnlineUser> {
-        Some(Self::get().await.users.get(&id)?.lock().await.clone())
-    }
-
-    async fn send_event(event: OnlineEvent) {
-        Self::get().await.event_sender.send(event).unwrap();
-    }
-    async fn send_notification(notif: Notification) {
-        Self::send_event(OnlineEvent::TatakuAction(notif.into())).await
-    }
-
-    
-    pub async fn send_packet(&mut self, packet: impl Into<PacketId>) -> bool { 
-        let Some(writer) = &mut self.writer else { return false }; 
-        let packet = packet.into();
-
-        let data = SimpleWriter::new().write(packet).done();
-        match writer.send(Message::Binary(Bytes::from_owner(data))).await {
-            Ok(_) => true,
-            Err(e) => {
-                error!("Error sending data ({}:{}): {}", file!(), line!(), e);
-                if let Err(e) = writer.close().await {
-                    error!("Error closing connection: {}", e);
-                }
-                false
-            }
-        }
-    }
-
-
-    pub fn send_packet_static(packet: impl Into<PacketId> + Send + Sync + 'static) {
-        tokio::spawn(async move {
-            let mut om = Self::get_mut().await;
-            om.send_packet(packet).await;
         });
     }
+
 }
 
-const LOG_PINGS:bool = false;
-fn ping_handler() {
-    #[cfg(feature="gameplay")]
-    tokio::spawn(async move {
-        let duration = std::time::Duration::from_millis(1000);
-
-        loop {
-            tokio::time::sleep(duration).await;
-            if LOG_PINGS { trace!("Sending ping"); };
-            let mut s = OnlineManager::get_mut().await;
-            if s.writer.is_none() { return; }
-            s.send_packet(PacketId::Ping).await;
-        }
-    });
-}
 
 #[allow(unused)]
 pub enum SetAction {
@@ -836,4 +634,130 @@ impl SetAction {
             Self::Spectating { .. } => UserAction::Ingame,
         }
     }
+}
+
+
+
+struct Writer(SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>);
+impl Writer {
+    async fn send_packet(&mut self, packet: PacketId) -> Result<(), Error> {
+        let data = SimpleWriter::new().write(packet).done();
+        self.0.send(Message::Binary(data.into())).await
+    }
+    async fn send_ping(&mut self) -> Result<(), Error> {
+        self.0.send(Message::Pong(Bytes::from_static(&[]))).await
+    }
+}
+
+
+enum OnlineManagerEvent {
+    Connected,
+    Disconnected,
+    Packet(Box<PacketId>),
+}
+
+
+fn network_thread(
+    settings: &Settings,
+    event_sender: AsyncUnboundedSender<OnlineManagerEvent>,
+    mut packet_receiver: AsyncUnboundedReceiver<PacketId>,
+) -> tokio::task::JoinHandle<()> {
+    let server_url = settings.server_url.clone();
+    let username = settings.username.clone();
+    let password = settings.password.clone();
+    let logging_settings = settings.logging_settings;
+
+    tokio::spawn(async move {
+        info!("Starting websocket connection to url: {server_url}");
+
+        // initialize the connection
+        match tokio_tungstenite::connect_async(server_url).await {
+            Ok((ws_stream, _)) => {
+                let (writer, mut reader) = ws_stream.split();
+                let mut writer = Writer(writer);
+
+                macro_rules! disconnect {
+                    () => {
+                        error!("Disconnected");
+                        let _ = event_sender.send(OnlineManagerEvent::Disconnected);
+                        return;
+                    }
+                }
+
+                if let Err(_e) = event_sender.send(OnlineManagerEvent::Connected) {
+                    disconnect!();
+                }
+                
+                // send login packet
+                if let Err(_e) = writer.send_packet(Client_UserLogin {
+                    protocol_version: 1,
+                    game: "Tataku\n0.1.0".to_owned(),
+                    username: username.clone(),
+                    password: password.clone()
+                }).await {
+                    disconnect!();
+                }
+
+                let ping_delay = std::time::Duration::from_millis(PING_TIMER);
+                let mut ping_delay = tokio::time::interval(ping_delay);
+                ping_delay.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+
+                loop { tokio::select! {
+                    _message = ping_delay.tick() => {
+                        if writer.send_ping().await.is_err() {
+                            disconnect!();
+                        }
+                    }
+
+                    message = packet_receiver.recv() => {
+                        let Some(message) = message else { disconnect!(); };
+                        if let Err(_e) = writer.send_packet(message).await {
+                            disconnect!();
+                        }
+                    }
+
+                    message = reader.next() => {
+                        let Some(message) = message else { disconnect!(); };
+
+                        match message {
+                            Ok(Message::Binary(data)) => {
+                                let mut reader = SerializationReader::new(data.to_vec());
+                                
+                                while reader.can_read() {
+                                    // trace!("reading packet from server");
+                                    let Ok(packet) = reader.read::<PacketId>("packet") else { break };
+
+                                    // if !matches!(packet, PacketId::Ping) {
+                                    //     error!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                                    //     debug!("{packet:?}");
+                                    //     error!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                                    // }
+                                    if let Err(_e) = event_sender.send(OnlineManagerEvent::Packet(Box::new(packet))) {
+                                        disconnect!();
+                                    }
+                                }
+                            }
+                            Ok(Message::Ping(_)) => {
+                                if let Err(_e) = writer.send_ping().await {
+                                    disconnect!();
+                                }
+                            }
+
+                            Ok(Message::Close(_)) => { disconnect!(); }
+                            Ok(message) => if logging_settings.extra_online_logging { warn!("Got other network message: {message:?}"); },
+
+                            Err(oof) => {
+                                error!("network connection error: {oof}");
+                                disconnect!();
+                            }
+                        }
+                    }
+                } }
+            
+            }
+            Err(oof) => {
+                warn!("Could not accept connection: {oof:?}");
+            }
+        }
+    })
 }

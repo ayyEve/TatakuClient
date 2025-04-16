@@ -270,4 +270,3 @@ fn init_logging() -> LogGuard {
         _guards: [ trace_guard, stdout_guard ]
     }
 }
-

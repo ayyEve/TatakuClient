@@ -427,6 +427,7 @@ impl Widget for Chat {
 
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Reflect)]
 pub struct ChatMessage {
     pub sender: String,
     // channel or username
@@ -472,23 +473,40 @@ impl ChatMessage {
 
 // some kind of identifier
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Reflect)]
 pub enum ChatChannel {
-    Channel{name:String},
-    User{username:String}
+    Channel { 
+        name: String 
+    },
+    User {
+        username: String
+    }
 }
 impl ChatChannel {
-    pub fn from_name(name:String) -> ChatChannel {
+    pub fn from_name(name: String) -> ChatChannel {
         if name.starts_with("#") {
-            ChatChannel::Channel { name }
+            ChatChannel::Channel { name: name.trim_start_matches("#").to_string() }
         } else {
             ChatChannel::User { username: name }
         }
     }
     pub fn get_name(&self) -> Cow<'_, str> {
         match self {
-            ChatChannel::Channel { name } => Cow::Owned(format!("#{}", name)),
+            ChatChannel::Channel { name } => Cow::Owned(format!("#{name}")),
             ChatChannel::User { username } => Cow::Borrowed(username),
         }
+    }
+}
+impl std::str::FromStr for ChatChannel {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self::from_name(s.to_owned()))
+    }
+}
+impl std::fmt::Display for ChatChannel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.get_name().fmt(f)
     }
 }
 

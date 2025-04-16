@@ -90,7 +90,7 @@ impl Widget for UserPanel {
                 // spectate
                 if user.game.starts_with("Tataku") {
                     user_menu_dialog.add_button("Spectate", Arc::new(move |_, actions| {
-                        OnlineManager::start_spectating(user_id);
+                        actions.push(OnlineAction::SpectateHost { host_id: user_id });
                         actions.push(UiAction::new(node_id, DialogAction::Close));
                         None
                     }));

@@ -67,7 +67,7 @@ impl MultiplayerManager {
     pub async fn update(
         &mut self,
         manager: Option<&mut Box<GameplayManager>>,
-        values: &mut ValueCollection
+        values: &mut ValueCollection,
     ) -> Vec<TatakuAction> {
         let previous_map = self.current_beatmap.clone();
 
@@ -79,7 +79,7 @@ impl MultiplayerManager {
                 if let Some(old_map) = *previous_map {
                     warn!("selecting previous map");
                     self.actions.push(BeatmapAction::SetFromHash(old_map, SetBeatmapOptions::new().restart_song(false).use_preview_point(true)));
-                    tokio::spawn(OnlineManager::update_lobby_state(LobbyUserState::NotReady));
+                    self.set_state(LobbyUserState::NotReady);
                 }
             }
 
@@ -89,16 +89,16 @@ impl MultiplayerManager {
             Ok(Some(map)) if self.is_host() => {
                 if !self.current_beatmap_is_selected() {
                     self.actions.push(MultiplayerAction::SetBeatmap { hash: map, mode: self.selected_mode.clone() });
-                    tokio::spawn(OnlineManager::update_lobby_state(LobbyUserState::NotReady));
+                    self.set_state(LobbyUserState::NotReady);
                 }
             }
 
             Err(ReflectError::OptionIsNone) => {
                 // not host, dont have map.
-                tokio::spawn(OnlineManager::update_lobby_state(LobbyUserState::NoMap));
+                self.set_state(LobbyUserState::NoMap);
             }
             Ok(Some(_)) => {
-                tokio::spawn(OnlineManager::update_lobby_state(LobbyUserState::NotReady));
+                self.set_state(LobbyUserState::NotReady);
             }
 
 
@@ -113,7 +113,7 @@ impl MultiplayerManager {
         if let Some(loader) = &self.beatmap_loader {
             if !self.load_complete_sent && loader.is_complete() {
                 self.load_complete_sent = true;
-                tokio::spawn(OnlineManager::lobby_load_complete());
+                self.send_packet(MultiplayerPacket::Client_LobbyMapLoaded);
             }
         }
 
@@ -121,7 +121,7 @@ impl MultiplayerManager {
         if let Ok(Some(mods)) = self.current_mods.update(values) {
             let speed = mods.speed;
             let mods = mods.mods.clone();
-            tokio::spawn(OnlineManager::lobby_update_mods(mods, speed.as_u16()));
+            self.send_packet(MultiplayerPacket::Client_LobbyUserModsChanged { mods, speed: speed.as_u16() });
         }
     
         // check if a new beatmap was added
@@ -131,7 +131,7 @@ impl MultiplayerManager {
             if let Some(beatmap) = &self.lobby.current_beatmap {
                 if new_hash == &beatmap.hash {
                     self.actions.push(BeatmapAction::SetFromHash(beatmap.hash, SetBeatmapOptions::new().restart_song(true)));
-                    tokio::spawn(OnlineManager::update_lobby_state(LobbyUserState::NotReady));
+                    self.set_state(LobbyUserState::NotReady);
                 }
             }
         }
@@ -161,6 +161,7 @@ impl MultiplayerManager {
                 filled: bool,
                 locked: bool,
                 is_host: bool,
+                #[reflect(alias("user"))]
                 player: Option<LobbySlotPlayerReflect>,
             }
             #[derive(Reflect, Clone, Default)]
@@ -234,7 +235,7 @@ impl MultiplayerManager {
                 if &self.lobby.info.id != lobby_id { return Ok(None) }
                 self.lobby.info.players.push(LobbyUser { user_id: *user_id, ..Default::default() });
 
-                let Some(user) = OnlineManager::get_user(*user_id).await else { 
+                let Some(user) = values.online_manager.get_user(*user_id) else { 
                     self.actions.push(
                         Notification::default()
                         .text(format!("User with id {user_id} joined the match"))
@@ -333,7 +334,7 @@ impl MultiplayerManager {
                                 Ok(mut manager) => {
                                     manager.set_mode(GameplayMode::Multiplayer.into());
                                     new_manager = Some(manager);
-                                    tokio::spawn(OnlineManager::update_lobby_state(LobbyUserState::InGame));
+                                    self.set_state(LobbyUserState::InGame);
                                 }
                                 Err(e) => error!("no manager! {e:?}"),
                             }
@@ -366,7 +367,7 @@ impl MultiplayerManager {
                     self.actions.push(BeatmapAction::SetFromHash(beatmap.hash, SetBeatmapOptions::new().restart_song(true)));
                 } else {
                     self.actions.push(BeatmapAction::Remove);
-                    tokio::spawn(OnlineManager::update_lobby_state(LobbyUserState::NoMap));
+                    self.set_state(LobbyUserState::NoMap);
                 }
             }
 
@@ -453,18 +454,25 @@ impl MultiplayerManager {
         Ok(None)
     }
 
+    fn send_packet(&mut self, packet: impl Into<PacketId>) {
+        self.actions.push(OnlineAction::Packet(Box::new(packet.into())));
+    }
+    fn set_state(&mut self, new_state: LobbyUserState) {
+        self.send_packet(MultiplayerPacket::Client_LobbyUserState { new_state } )
+    }
+
     pub async fn handle_lobby_action(&mut self, action: LobbyAction, settings: &Settings) {
         match action {
             LobbyAction::Start => {
                 self.skip_request_sent = false;
-                tokio::spawn(OnlineManager::lobby_map_start());
+                self.send_packet(MultiplayerPacket::Client_LobbyStart);
             }
 
             LobbyAction::Ready => {
-                tokio::spawn(OnlineManager::update_lobby_state(LobbyUserState::Ready));
+                self.set_state(LobbyUserState::Ready);
             }
             LobbyAction::Unready => {
-                tokio::spawn(OnlineManager::update_lobby_state(LobbyUserState::NotReady));
+                self.set_state(LobbyUserState::NotReady);
             }
 
             LobbyAction::SendSkipRequest => {
@@ -474,7 +482,7 @@ impl MultiplayerManager {
             LobbyAction::MapComplete(mut score) => {
                 // dont include the replay for this message
                 score.replay = None;
-                tokio::spawn(OnlineManager::lobby_map_complete(*score));
+                self.send_packet(MultiplayerPacket::Client_LobbyMapComplete { score: *score });
             }
 
             LobbyAction::OpenMapLink => {
@@ -520,25 +528,25 @@ impl MultiplayerManager {
             
             LobbyAction::SlotAction(LobbySlotAction::MoveTo(slot)) => {
                 let Some(LobbySlot::Empty) = self.lobby.slots.get(&slot) else { return };
-                
-                tokio::spawn(OnlineManager::move_lobby_slot(slot));
+                let user = self.lobby.our_user_id;
+                self.send_packet(MultiplayerPacket::Client_LobbySlotChange { slot, new_status: LobbySlot::Filled { user } } );
             }
 
             LobbyAction::SlotAction(LobbySlotAction::TransferHost(slot)) => {
                 if !self.is_host() { return }
                 let Some(LobbySlot::Filled { user }) = self.lobby.slots.get(&slot) else { return };
-                tokio::spawn(OnlineManager::lobby_change_host(*user));
+                self.send_packet(MultiplayerPacket::Client_LobbyChangeHost { new_host: *user });
             }
 
             LobbyAction::SlotAction(LobbySlotAction::Lock(slot)) 
             | LobbyAction::SlotAction(LobbySlotAction::Kick(slot))
             => {
                 if !self.is_host() { return }
-                tokio::spawn(OnlineManager::update_lobby_slot(slot, LobbySlot::Locked));
+                self.send_packet(MultiplayerPacket::Client_LobbySlotChange { slot, new_status: LobbySlot::Locked } );
             }
             LobbyAction::SlotAction(LobbySlotAction::Unlock(slot)) => {
                 if !self.is_host() { return }
-                tokio::spawn(OnlineManager::update_lobby_slot(slot, LobbySlot::Empty));
+                self.send_packet(MultiplayerPacket::Client_LobbySlotChange { slot, new_status: LobbySlot::Empty } );
             }
 
             _ => {}
@@ -549,14 +557,6 @@ impl MultiplayerManager {
         self.lobby.is_host()
     }
 }
-
-
-// pub enum HandleMultiPacketResponse {
-//     None,
-//     StartGame(Box<GameplayManager>),
-
-// }
-
 
 #[test]
 fn test() {

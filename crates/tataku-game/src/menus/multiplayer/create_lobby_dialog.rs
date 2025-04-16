@@ -115,9 +115,10 @@ impl Widget for CreateLobbyDialog {
                 let password = get(values, LOBBY_PASSWORD_PATH);
                 let private = get(values, LOBBY_PRIVATE_PATH);
                 let players = 16;
+                info!("done");
 
-                
                 actions.push(MultiplayerAction::CreateLobby { name, password, private, players });
+                info!("done2");
                 actions.push(UiAction::new(self.node_id, DialogAction::Close));
             }
 

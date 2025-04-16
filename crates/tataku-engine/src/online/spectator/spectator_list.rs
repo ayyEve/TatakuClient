@@ -1,7 +1,8 @@
 use crate::prelude::*;
 
 /// helper for managing lists of spectators
-#[derive(Default, Clone)]
+#[derive(Clone, Debug, Default)]
+#[derive(Reflect)]
 pub struct SpectatorList {
     pub list: Vec<SpectatingUser>,
     pub updated: bool,

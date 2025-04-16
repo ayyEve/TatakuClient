@@ -566,7 +566,7 @@ impl Widget for TextInput {
                             // },
                             cached 
                         } = &self.value {
-                            if let Some(BuildableTextInner::Variable(var)) = custom.text.get(0) {
+                            if let Some(BuildableTextInner::Variable(var)) = custom.text.first() {
                                 let _ = shell.values
                                     .reflect_insert(var, cached.clone())
                                     .inspect_err(|e| warn!("{e:?}"));

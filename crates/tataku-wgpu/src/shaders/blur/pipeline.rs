@@ -148,6 +148,29 @@ impl BlurShader {
         self.horizontal.texture = device.create_texture(&desc);
 
         let view_desc = TextureViewDescriptor::default();
+
+        self.vertical.bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Texture bind group"),
+            layout: &self.pipeline.get_bind_group_layout(1),
+            entries: &[
+                // input
+                BindGroupEntry {
+                    binding: 0,
+                    resource: BindingResource::TextureView(&output.view),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: BindingResource::TextureView(
+                        &self.vertical.texture.create_view(&view_desc),
+                    ),
+                },
+                BindGroupEntry {
+                    binding: 2,
+                    resource: self.vertical.buffer.as_entire_binding(),
+                },
+            ],
+        });
+
         self.horizontal.bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("Texture bind group"),
             layout: &self.pipeline.get_bind_group_layout(1),
@@ -171,26 +194,6 @@ impl BlurShader {
             ],
         });
 
-        self.vertical.bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("Texture bind group"),
-            layout: &self.pipeline.get_bind_group_layout(1),
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: BindingResource::TextureView(&output.view),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: BindingResource::TextureView(
-                        &self.vertical.texture.create_view(&view_desc),
-                    ),
-                },
-                BindGroupEntry {
-                    binding: 2,
-                    resource: self.vertical.buffer.as_entire_binding(),
-                },
-            ],
-        });
     }
 
     pub fn perform(

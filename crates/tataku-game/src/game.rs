@@ -19,9 +19,6 @@ pub struct Game {
     #[cfg(feature="graphics")]
     window_event_receiver: tokio::sync::mpsc::Receiver<WindowEvent>,
 
-    online_event_receiver: AsyncUnboundedReceiver<OnlineEvent>,
-    online_action_sender: AsyncUnboundedSender<OnlineAction>,
-
     #[cfg(feature="graphics")]
     window_proxy: winit::event_loop::EventLoopProxy<WindowAction>,
 
@@ -98,12 +95,6 @@ impl Game {
         let infos = GamemodeInfos::new(gamemodes); 
         let values = GameValues::new(infos.clone(), &settings);
 
-
-        let (online_event_sender, online_event_receiver) = async_unbounded_channel();
-        let (online_action_sender, _online_action_receiver) = async_unbounded_channel();
-
-        OnlineManager::build(online_event_sender);
-
         let mut g = Self {
             actions,
 
@@ -117,14 +108,13 @@ impl Game {
             multiplayer_manager: None,
             difficulty_manager: DifficultyManager,
             multiplayer_data: MultiplayerData::default(),
-            online_action_sender,
-            online_event_receiver,
 
             song_manager: SongManager::new(),
             sound_manager: SoundManager::new(),
             audio_manager: AudioManager::init_audio(audio_engines).await.expect("failed to initialize audio engine!"),
             score_manager: ScoreManager::new(values.global.gamemode_infos.clone()),
             task_manager: TaskManager::new(),
+
             custom_menu_manager: CustomMenuManager::default(),
             skin_manager,
             cursor_manager: CursorManager::new(skin, settings.cursor_settings.clone()).await,
@@ -245,10 +235,7 @@ impl Game {
     }
 
     fn init_online(&mut self) {
-        let (online_action_sender, online_action_receiver) = async_unbounded_channel();
-
-        self.online_action_sender = online_action_sender;
-        OnlineManager::start(&self.settings, online_action_receiver);
+        self.values.values.online_manager.start(&self.values.values.settings);
     }
 
     pub async fn init(&mut self) {
@@ -350,7 +337,6 @@ impl Game {
                     self.skin_manager.change_skin(self.settings.current_skin.clone());
                     self.last_skin = self.settings.current_skin.clone();
 
-
                     for (i, _) in self.gameplay_managers.values_mut() {
                         i.reload_skin(&mut self.skin_manager, &self.values.settings).await;
                     }
@@ -361,7 +347,7 @@ impl Game {
                 }
 
                 if self.settings.server_url != settings.server_url {
-                    OnlineManager::restart();
+                    self.online_manager.reset();
                 }
 
                 if self.settings.integrations != settings.integrations {
@@ -430,6 +416,7 @@ impl Game {
                 }
             }
 
+            tokio::task::yield_now().await;
         }
 
     }
@@ -893,7 +880,7 @@ impl Game {
                 let _ = self.window_proxy.send_event(WindowAction::CloseGame);
 
                 // send logoff
-                OnlineManager::set_action(SetAction::Closing, None);
+                self.online_manager.set_action(SetAction::Closing, None);
             }
 
 
@@ -915,7 +902,7 @@ impl Game {
                         manager.reload_skin(&mut self.skin_manager, &self.values.settings).await;
                         manager.start().await;
 
-                        let m = &manager.metadata;
+                        let m = manager.metadata.clone();
                         let start_time = manager.start_time;
 
                         let action;
@@ -938,11 +925,11 @@ impl Game {
                             };
                         }
 
-                        OnlineManager::set_action(action, Some(m.mode.clone()));
+                        self.online_manager.set_action(action, Some(m.mode.clone()));
                         self.set_background_beatmap().await;
                     }
                     GameState::SetMenu(_menu) => {
-                        OnlineManager::set_action(SetAction::Idle, None)
+                        self.online_manager.set_action(SetAction::Idle, None)
                     }
 
                     _ => {}
@@ -974,10 +961,13 @@ impl Game {
 
         // update the notification manager
         self.notification_manager.update().await;
-        
-        if let Ok(online_event) = self.online_event_receiver.try_recv() {
-            match online_event {
-                OnlineEvent::TatakuAction(action) => self.actions.push(action),
+
+        let online_events = self.values.values.online_manager.update(&self.values.values.settings, &mut self.actions);
+        for event in online_events {
+            match event {
+                OnlineEvent::Connected => {
+                    self.online_manager.connected = true;
+                }
 
                 OnlineEvent::LoggedIn { user_id, username } => {
                     self.values.global.logged_in = true;
@@ -985,32 +975,12 @@ impl Game {
                     self.values.global.username = username;
                 }
 
-                OnlineEvent::MultiplayerLobbyInvite { 
-                    inviter_username, 
-                    lobby,
-                    ..
-                } => {
-                    // mark the lobby we have saved as without password, so the user isnt prompted to enter the password
-                    // since we were invited, we can join without the password
-                    if let Some(l) = self.multiplayer_data.lobbies.get_mut(&lobby.id) { 
-                        l.has_password = false 
-                    }
-
-                    self.actions.push(
-                        Notification::default()
-                        .text(format!("{inviter_username} has invited you to a multiplayer match"))
-                        .color(Color::PURPLE_AMETHYST)
-                        .duration(10_000.0)
-                        .onclick(NotificationOnClick::MultiplayerLobby(lobby.id))
-                    );
-                }
-
                 OnlineEvent::Disconnected => {
                     let global = &mut self.values.global;
                     if global.user_id > 0 {
                         global.logged_in = false;
                         global.user_id = 0;
-                        // dont nuke username because we used to be logged
+                        // dont nuke username because we used to be logged in
                     }
 
                     self.task_manager.add_task(Box::new(DelayTask::new(
@@ -1079,6 +1049,7 @@ impl Game {
                 }
             }
         }
+
 
         for integration in self.integrations.iter_mut() {
             integration.update(&mut self.values, &mut self.actions);
@@ -1236,7 +1207,6 @@ impl Game {
         }
     }
 
-    // this should never recurse, but we need this here because the compiler doesnt know that lol
     #[async_recursion::async_recursion]
     pub async fn handle_action(&mut self, action: impl Into<TatakuAction> + Send + 'static) {
         let action = action.into();
@@ -1244,7 +1214,7 @@ impl Game {
 
         match action {
             TatakuAction::None => return,
-            TatakuAction::Online(action) => self.online_action_sender.send(action).nope(),
+            TatakuAction::Online(action) => self.online_manager.handle_action(action),
 
             TatakuAction::Menu(action) => self.handle_menu_action(action).await,
             TatakuAction::Audio(action) => self.sound_manager.handle_action(action, &mut self.values, &mut self.audio_manager),
@@ -1579,7 +1549,13 @@ impl Game {
                 GameplayModeInner::Replaying {..} => {
                     self.handle_custom_menu("beatmap_select").await;
                 }
-                GameplayModeInner::Multiplayer { .. } => {}
+                GameplayModeInner::Multiplayer { .. } => {
+                    debug!("multiplayer finished gameplay");
+
+                    // FIXME: show the scores lmao
+                    // go back to the lobby menu
+                    self.handle_custom_menu("lobby_menu").await;
+                }
 
                 _ => {
                     // show score menu
@@ -1660,7 +1636,7 @@ impl Game {
             let manager_maybe = multi_manager.handle_packet(&mut self.values, &packet, ig_manager).await?;
             if let Some(manager) = manager_maybe {
                 // start the manager
-                println!("multi starting gameplay");
+                debug!("multi starting gameplay");
                 self.queue_state_change(GameState::Ingame(Box::new(manager))).await;
             }
         }
@@ -1668,6 +1644,28 @@ impl Game {
         match packet {
             MultiplayerPacket::Server_LobbyList { lobbies } => {
                 self.multiplayer_data.lobbies = lobbies.into_iter().map(|l| (l.id, l)).collect();
+            }
+
+            MultiplayerPacket::Server_LobbyInvite { inviter_id, lobby } => {
+                let username = if let Some(user) = self.online_manager.users.get(&inviter_id) {
+                    user.username.clone()
+                } else {
+                    "A user".to_owned()
+                };
+
+                // mark the lobby we have saved as without password, so the user isnt prompted to enter the password
+                // since we were invited, we can join without the password
+                if let Some(l) = self.multiplayer_data.lobbies.get_mut(&lobby.id) { 
+                    l.has_password = false 
+                }
+
+                self.actions.push(
+                    Notification::default()
+                    .text(format!("{username} has invited you to a multiplayer match"))
+                    .color(Color::PURPLE_AMETHYST)
+                    .duration(10_000.0)
+                    .onclick(NotificationOnClick::MultiplayerLobby(lobby.id))
+                );
             }
 
             MultiplayerPacket::Server_CreateLobby { success, lobby } => {
@@ -1678,7 +1676,7 @@ impl Game {
 
 
                 let mut info = CurrentLobbyInfo::new(lobby, our_id);
-                OnlineManager::update_usernames(&mut info).await;
+                self.online_manager.update_usernames(&mut info);
 
                 let manager = MultiplayerManager::new(info, self.global.gamemode_infos.clone());
                 manager.update_values(&mut self.values);
@@ -1692,7 +1690,7 @@ impl Game {
                 let Some(map) = self.beatmap_manager.get_by_hash(&map_hash) else { return Ok(()) };
 
                 let mode = self.global.playmode.clone();
-                OnlineManager::update_lobby_beatmap(map, mode).await;
+                self.online_manager.update_lobby_beatmap(map, mode);
             }
             MultiplayerPacket::Server_JoinLobby { success, lobby } => {
                 let Some(lobby) = lobby.filter(|_| success) else { return Ok(()) };
@@ -1701,7 +1699,7 @@ impl Game {
                 if our_id == 0 { return Ok (()) }
 
                 let mut info = CurrentLobbyInfo::new(lobby, our_id);
-                OnlineManager::update_usernames(&mut info).await;
+                self.online_manager.update_usernames(&mut info);
 
                 let manager = MultiplayerManager::new(info, self.global.gamemode_infos.clone());
                 manager.update_values(&mut self.values);
@@ -1751,7 +1749,7 @@ impl Game {
 
             MultiplayerPacket::Server_LobbyStateChange { lobby_id, new_state } => {
                 if let Some(l) = self.multiplayer_data.lobbies.get_mut(&lobby_id) { 
-                    l.state = new_state 
+                    l.state = new_state;
                 }
             }
 
@@ -1958,8 +1956,7 @@ impl Game {
 
                     let Some(map) = self.values.beatmap_manager.current_beatmap.clone() else { return };
                     let playmode = self.values.global.playmode.clone();
-
-                    tokio::spawn(OnlineManager::update_lobby_beatmap((*map).clone(), playmode));
+                    self.online_manager.update_lobby_beatmap((*map).clone(), playmode);
                 } else {
                     // play map
                     self.handle_action(BeatmapAction::PlaySelected).await
@@ -2404,6 +2401,12 @@ impl Game {
     async fn handle_multiplayer_action(&mut self, action: MultiplayerAction) {
         match action {
             #[cfg(feature="graphics")]
+            MultiplayerAction::StartMultiplayer => {
+                self.online_manager.add_lobby_listener();
+                self.handle_custom_menu("lobby_select").await;
+            },
+
+            #[cfg(feature="graphics")]
             MultiplayerAction::ExitMultiplayer => {
                 self.handle_action(MultiplayerAction::LeaveLobby).await;
 
@@ -2412,13 +2415,8 @@ impl Game {
                     self.handle_custom_menu("main_menu").await;
                 }
 
-                tokio::spawn(OnlineManager::remove_lobby_listener());
+                self.online_manager.remove_lobby_listener();
             }
-            #[cfg(feature="graphics")]
-            MultiplayerAction::StartMultiplayer => {
-                tokio::spawn(OnlineManager::add_lobby_listener());
-                self.handle_custom_menu("lobby_select").await;
-            },
 
             #[cfg(feature="gameplay")]
             MultiplayerAction::CreateLobby { 
@@ -2428,13 +2426,14 @@ impl Game {
                 players 
             } => {
                 self.multiplayer_data.lobby_creation_pending = true;
+                info!("sending create");
 
-                OnlineManager::send_packet_static(MultiplayerPacket::Client_CreateLobby { name, password, private, players });
+                self.online_manager.send_packet(MultiplayerPacket::Client_CreateLobby { name, password, private, players });
             }
             #[cfg(feature="gameplay")]
             MultiplayerAction::LeaveLobby => {
                 self.multiplayer_manager = None;
-                OnlineManager::send_packet_static(MultiplayerPacket::Client_LeaveLobby);
+                self.online_manager.send_packet(MultiplayerPacket::Client_LeaveLobby);
                 self.handle_action(MenuAction::set_menu("lobby_select")).await;
             }
             #[cfg(feature="gameplay")]
@@ -2448,19 +2447,19 @@ impl Game {
                     self.handle_action(MultiplayerAction::LeaveLobby).await;
                 }
 
-                OnlineManager::send_packet_static(MultiplayerPacket::Client_JoinLobby { lobby_id, password });
+                self.online_manager.send_packet(MultiplayerPacket::Client_JoinLobby { lobby_id, password });
             }
 
             #[cfg(feature="gameplay")]
             MultiplayerAction::SetBeatmap { hash, mode } => {
                 let Some(map) = self.beatmap_manager.get_by_hash(&hash) else { return };
                 let mode = mode.unwrap_or_else(|| self.values.global.playmode_actual.clone());
-                tokio::spawn(OnlineManager::update_lobby_beatmap(map, mode));
+                self.online_manager.update_lobby_beatmap(map, mode);
             }
 
             #[cfg(feature="gameplay")]
             MultiplayerAction::InviteUser { user_id } => {
-                tokio::spawn(OnlineManager::invite_user(user_id));
+                self.online_manager.invite_user(user_id);
             }
 
             // lobby actions

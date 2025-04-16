@@ -53,7 +53,7 @@ impl BuiltCustomMenu {
 }
 #[async_trait]
 impl Widget for BuiltCustomMenu {
-    fn name(&self) -> Cow<'static, str> { "custom_menu".into() }
+    fn name(&self) -> Cow<'static, str> { format!("custom-{}", self.id).into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn get_style_str(&self) -> String { self.styles.clone() }

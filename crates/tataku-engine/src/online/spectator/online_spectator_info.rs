@@ -1,17 +1,23 @@
 use crate::prelude::*;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
+#[derive(Reflect)]
+#[reflect(dont_clone)]
 pub struct OnlineSpectatorInfo {
     /// our user's user id
+    #[reflect(skip)]
     our_id: u32,
 
     /// buffer for outgoing spectator frames
+    #[reflect(skip)]
     pub outgoing_frames: Vec<SpectatorFrame>,
 
     /// when was the last spectator frame sent?
+    #[reflect(skip)]
     pub last_sent_frame: TatakuInstant,
 
     /// list of incoming spectator frames, indexed by host_id
+    #[reflect(skip)]
     pub incoming_frames: HashMap<u32, Vec<SpectatorFrame>>,
 
     /// list each host's spectators
@@ -20,6 +26,7 @@ pub struct OnlineSpectatorInfo {
     pub spectator_list: HashMap<u32, SpectatorList>,
     
     /// list of accepted spectator host ids
+    #[reflect(skip)]
     pub spectate_pending: Vec<u32>,
 }
 impl OnlineSpectatorInfo {

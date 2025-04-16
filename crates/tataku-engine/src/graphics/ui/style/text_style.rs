@@ -47,7 +47,6 @@ impl TextStyle {
     }
 
 }
-
 impl Default for TextStyle {
     fn default() -> Self {
         Self { 

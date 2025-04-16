@@ -96,7 +96,7 @@ impl Widget for LobbyPlayerDialog {
         match &**tag {
             "close" => actions.push(UiAction::new(self.node_id, DialogAction::Close)),
             "make_host" => {
-                tokio::spawn(OnlineManager::lobby_change_host(self.user_id));
+                actions.push(LobbyAction::ChangeHost(self.user_id));
                 actions.push(UiAction::new(self.node_id, DialogAction::Close))
             }
             "kick" => {

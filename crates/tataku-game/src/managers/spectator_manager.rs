@@ -18,7 +18,6 @@ pub struct SpectatorManager {
     new_map: ValueChangeHelper<Md5Hash>,
     own_beatmap: ValueChangeHelper<Arc<BeatmapMeta>>,
 
-
     infos: GamemodeInfos,
 }
 impl SpectatorManager {
@@ -91,9 +90,9 @@ impl SpectatorManager {
         None
     }
 
-    pub fn stop(&mut self) {
-        OnlineManager::stop_spectating(self.host_id);
-    }
+    // pub fn stop(&mut self) {
+    //     OnlineManager::stop_spectating(self.host_id);
+    // }
 
     pub async fn update(
         &mut self,

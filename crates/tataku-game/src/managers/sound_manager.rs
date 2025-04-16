@@ -33,7 +33,7 @@ impl SoundManager {
                     let path = match i.source {
                         HitsoundSource::Default => format!("resources/audio/{}", i.path),
                         // HitsoundSource::Skin => values.skin.current_beatmap.as_ref().unwrap().get_parent_dir().unwrap().join(&i.path).to_string_lossy().to_string(),
-                        HitsoundSource::Beatmap => values.beatmap_manager.current_beatmap.as_ref().unwrap().get_parent_dir().unwrap().join(&i.path).to_string_lossy().to_string(),
+                        HitsoundSource::Beatmap if values.beatmap_manager.current_beatmap.is_some() => values.beatmap_manager.current_beatmap.as_ref().unwrap().get_parent_dir().unwrap().join(&i.path).to_string_lossy().to_string(),
                         _ => continue, // FIXME: need a way to get the current skin path easily
                     };
 

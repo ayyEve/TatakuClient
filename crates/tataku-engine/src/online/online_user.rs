@@ -1,10 +1,12 @@
 use crate::prelude::*;
 
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default)]
+#[derive(Reflect)]
 pub struct OnlineUser {
     pub user_id: u32,
     pub username: String,
 
+    #[reflect(skip)] // FIXME: 
     pub action: Option<UserAction>,
     pub action_text: Option<String>,
     pub mode: Option<String>,

@@ -61,17 +61,29 @@ pub enum LobbyAction {
     /// Open a link to the lobby's beatmap
     OpenMapLink,
 
-    /// send a skip request
+    /// Send a skip request
     SendSkipRequest,
 
-    /// notify the lobby that we've completed the map
+    /// Notify the lobby that we've completed the map
     MapComplete(Box<Score>),
 
-    /// notify the lobby of our current score data
+    /// Notify the lobby of our current score data
     ScoreUpdate(Box<Score>),
 
     /// Perform an action on a slot
     SlotAction(LobbySlotAction),
+
+    /// Set our user state
+    SetState(LobbyUserState),
+
+    /// Notify the lobby that our map as been loaded
+    LoadComplete,
+
+    /// Notify the lobby that our mods changed
+    UpdateMods(ModManager),
+
+    /// Give host to a user id
+    ChangeHost(u32),
 }
 
 #[derive(Debug)]
