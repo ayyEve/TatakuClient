@@ -58,14 +58,6 @@ impl Widget for WidgetContainer {
             tree,
         );
 
-        // let mut output = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/pain.txt").unwrap();
-        // let id = self.id.as_ref().map(|i| format!("#{i}")).unwrap_or_default();
-        // let class_list = self.class.0.iter().map(|c| format!(".{c}")).collect::<Vec<_>>().join(" ");
-        // let thing = [id, class_list].into_iter().filter(|s| !s.is_empty()).collect::<Vec<_>>().join(" ");
-        // if !thing.is_empty() {
-        //     output.write_all(format!("{thing} -> {:?}", a.none.0).as_bytes()).unwrap();
-        // }
-
         let ctx = tree.get_context_mut(node).unwrap();
         ctx.element_data.styles = a.transpose();
 
@@ -178,6 +170,13 @@ impl Widget for WidgetContainer {
 
     }
     
+    fn draw_overlay(
+        &self, 
+        shell: &mut DrawShell<'_>,
+    ) {
+        self.inner.draw_overlay(shell);
+    }
+
     fn update(&mut self, shell: &mut UpdateShell<'_>, actions: &mut ActionQueue) {
         self.inner.update(shell, actions)
     }

@@ -82,6 +82,12 @@ impl Widget for BuiltCustomMenu {
     fn draw(&self, shell: &mut DrawShell<'_>) {
         self.element.draw(shell);
     }
+    fn draw_overlay(
+        &self, 
+        shell: &mut DrawShell<'_>,
+    ) {
+        self.element.draw_overlay(shell);
+    }
 
     fn update(&mut self, shell: &mut UpdateShell<'_>, actions: &mut ActionQueue) {
         actions.extend(self.actions.take());

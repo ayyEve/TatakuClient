@@ -25,6 +25,10 @@ pub trait Widget: Send + Sync {
         &self, 
         _shell: &mut DrawShell<'_>,
     ) {}
+    fn draw_overlay(
+        &self, 
+        _shell: &mut DrawShell<'_>,
+    ) {}
 
     fn update(
         &mut self, 

@@ -80,11 +80,25 @@ impl TatakuTask for BeatmapDownloadsCheckTask {
         if state.game_time - self.last_check < DOWNLOAD_CHECK_INTERVAL { return }
 
         // get all files in the downloads dir
-        if std::fs::read_dir(DOWNLOADS_DIR).unwrap().count() == 0 { return }
+        let dir = std::fs::read_dir(DOWNLOADS_DIR).unwrap().filter_map(Result::ok).collect::<Vec<_>>();
+        if dir.is_empty() { return }
 
         // extract them to the songs dir
+        let mut folders = Vec::new();
+
         // TODO: this is kinda shit
-        let folders = Zip::extract_all(DOWNLOADS_DIR, SONGS_DIR, ArchiveDelete::Always).await;
+        for i in dir {
+            let path = i.path();
+            let Some(ext) = path.extension() else { continue };
+            if ext == ".osk" {
+                if let Ok(path) = Zip::extract_single(i.path(), SKINS_FOLDER, true, ArchiveDelete::Always).await {
+                    folders.push(path);
+                }
+            } else if let Ok(path) = Zip::extract_single(i.path(), SONGS_DIR, true, ArchiveDelete::Always).await {
+                folders.push(path);
+            }
+        }
+        // let folders = Zip::extract_all(DOWNLOADS_DIR, SONGS_DIR, ArchiveDelete::Always).await;
         // info!("checking folders {folders:#?}");
 
         // add extracted maps

@@ -80,6 +80,10 @@ impl Widget for ConditionalWidget {
         let Some(child) = self.get_ele() else { return };
         child.draw(shell);
     }
+    fn draw_overlay(&self, shell: &mut DrawShell<'_>) {
+        let Some(child) = self.get_ele() else { return };
+        child.draw(shell);
+    }
 
     fn input(
         &mut self,

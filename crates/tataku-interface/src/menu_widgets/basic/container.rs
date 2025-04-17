@@ -176,7 +176,7 @@ impl Widget for Container {
 
     fn draw(
         &self, 
-        shell: &mut DrawShell<'_>, 
+        shell: &mut DrawShell, 
     ) {
         let Some(our_bounds) = shell.tree.absolute_bounds(self) else { return };
 
@@ -185,7 +185,7 @@ impl Widget for Container {
             std::mem::swap(shell.list, &mut list);
         }
 
-        for i in self.children.iter().rev() {
+        for i in self.children.iter() {
             // dont attempt to draw items outside our bounds
             let Some(ibounds) = shell.tree.absolute_bounds(i.node_id()) else { continue };
             if our_bounds.intersection(ibounds).is_none() { continue }
@@ -208,10 +208,36 @@ impl Widget for Container {
         // }
     }
     
+    fn draw_overlay(
+        &self, 
+        shell: &mut DrawShell,
+    ) {
+        let Some(our_bounds) = shell.tree.absolute_bounds(self) else { return };
+
+        let mut list = RenderableCollection::new();
+        if self.scrollable {
+            std::mem::swap(shell.list, &mut list);
+        }
+
+        for i in self.children.iter() {
+            // dont attempt to draw items outside our bounds
+            let Some(ibounds) = shell.tree.absolute_bounds(i.node_id()) else { continue };
+            if our_bounds.intersection(ibounds).is_none() { continue }
+            i.draw_overlay(shell)
+        }
+        
+        if self.scrollable {
+            std::mem::swap(shell.list, &mut list);
+            shell.list.push(ScissoredDrawable::new(
+                our_bounds.into_scissor(),
+                Box::new(TransformGroup::from_collection(Vector2::ZERO, list))
+            ));
+        }
+    }
 
     fn update(
         &mut self, 
-        shell: &mut UpdateShell<'_>, 
+        shell: &mut UpdateShell, 
         actions: &mut ActionQueue
     ) {
         if let Some(data) = &mut self.programmatic {

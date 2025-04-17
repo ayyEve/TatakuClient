@@ -163,6 +163,12 @@ impl Widget for TransformableWidget {
     ) {
         self.child.draw(shell)
     }
+    fn draw_overlay(
+        &self, 
+        shell: &mut DrawShell<'_>,
+    ) {
+        self.child.draw_overlay(shell);
+    }
 
     fn update(
         &mut self, 

@@ -460,6 +460,7 @@ impl Tree {
                 general_theme: GeneralUiTheme::default(),
             };
             node.draw(&mut shell);
+            node.draw_overlay(&mut shell);
         });
     }
 

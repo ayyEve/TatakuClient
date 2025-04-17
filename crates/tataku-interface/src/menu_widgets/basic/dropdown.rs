@@ -274,31 +274,40 @@ impl Widget for Dropdown {
 
         shell.list.push(self.text_style.create_text(main_text.clone(), bounds));
 
-        if self.active {
-            let selected = self.value.index().unwrap_or(self.variants.len());
-            let active = self.active_index.unwrap_or(self.variants.len());
-
-            // draw all options
-            // TODO: margin between items
-            for (n, i) in self.variants.get_displays().iter().cloned().enumerate() {
-                let offset = Vector2::new(
-                    bounds.pos.x,
-                    bounds.pos.y + bounds.size.y * (n + 1) as f32,
-                );
-
-                // bounding box
-                shell.list.push(Rectangle::new(
-                    offset, 
-                    bounds.size,
-                    theme.background_color.alpha(1.0),
-                    Some(Border::new(theme.get_color(n == selected, n == active), 2.0))
-                ));
-
-                let text = self.text_style.create_text(i, Bounds::new(offset, bounds.size));
-                shell.list.push(text);
-            }
-        }
         
+    }
+
+
+    fn draw_overlay(
+        &self, 
+        shell: &mut DrawShell<'_>,
+    ) {
+        if !self.active { return }
+        let Some(bounds) = shell.tree.absolute_bounds(self) else { return };
+        let theme = &shell.general_theme;
+
+        let selected = self.value.index().unwrap_or(self.variants.len());
+        let active = self.active_index.unwrap_or(self.variants.len());
+
+        // draw all options
+        // TODO: margin between items
+        for (n, i) in self.variants.get_displays().iter().cloned().enumerate() {
+            let offset = Vector2::new(
+                bounds.pos.x,
+                bounds.pos.y + bounds.size.y * (n + 1) as f32,
+            );
+
+            // bounding box
+            shell.list.push(Rectangle::new(
+                offset, 
+                bounds.size,
+                theme.background_color.alpha(1.0),
+                Some(Border::new(theme.get_color(n == selected, n == active), 2.0))
+            ));
+
+            let text = self.text_style.create_text(i, Bounds::new(offset, bounds.size));
+            shell.list.push(text);
+        }
     }
 
     fn update(

@@ -318,7 +318,7 @@ pub struct CssStyle {
     // /// Defines the track sizing functions (heights) of the grid rows
     // pub grid_template_rows: Option<Vec<TrackSizingFunction>>,
 
-    // /// Defines the track sizing functions (widths) of t::<f32>he grid columns
+    // /// Defines the track sizing functions (widths) of the grid columns
     // pub grid_template_columns: Option<Vec<TrackSizingFunction>>,
 
     // /// Defines the size of implicitly created rows
