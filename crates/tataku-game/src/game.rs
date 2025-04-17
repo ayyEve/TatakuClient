@@ -1008,7 +1008,7 @@ impl Game {
                             //     // self.queue_state_change(GameState::Spectating(Box::new()));
                             // };
 
-                            self.spectator_manager = Some(Box::new(SpectatorManager::new(host_id, host_username, self.values.global.gamemode_infos.clone()).await))
+                            self.spectator_manager = Some(Box::new(SpectatorManager::new(host_id, host_username, self.values.global.gamemode_infos.clone())))
                         }
                         SpectatorEvent::SpectatorJoined { user_id, username } => {
                             if let Some(specman) = self.spectator_manager.as_mut() {

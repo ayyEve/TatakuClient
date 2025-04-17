@@ -11,7 +11,7 @@ pub struct ManiaDifficultyCalculator {
 
 #[async_trait]
 impl DiffCalc for ManiaDifficultyCalculator {
-    async fn new(g: &BeatmapMeta, settings: &Settings) -> TatakuResult<Self> {
+    fn new(g: &BeatmapMeta, settings: &Settings) -> TatakuResult<Self> {
         let g = Beatmap::from_metadata(g)?;
         let g = crate::mania_game::ManiaGame::new(&g, true, settings)?;
         if g.columns.iter().fold(0, |sum, c| sum + c.len()) == 0 { 
@@ -42,7 +42,7 @@ impl DiffCalc for ManiaDifficultyCalculator {
         })
     }
 
-    async fn calc(&mut self, mods: &ModManager) -> TatakuResult<DiffCalcSummary> {
+    fn calc(&mut self, mods: &ModManager) -> TatakuResult<DiffCalcSummary> {
         // let strain = self.strain(mods)?;
         let note_density = self.note_density(mods)?;
         let mut diff = Vec::new();

@@ -72,7 +72,7 @@ impl DiffCalcTask {
             let settings = values.reflect_get("settings").unwrap();
 
             // otherwise, try to get the diff calc
-            match self.info.create_diffcalc(&self.beatmap, &settings).await {
+            match self.info.create_diffcalc(&self.beatmap, &settings) {
                 Ok(c) => self.diff_calc = Some(c),
                 Err(e) => {
                     error!("couldnt get calc: {e}");
@@ -93,7 +93,6 @@ impl DiffCalcTask {
             let mut diff = 
                 diff_calc
                 .calc(&mods2)
-                .await
                 .unwrap_or_default()
                 .diff;
             

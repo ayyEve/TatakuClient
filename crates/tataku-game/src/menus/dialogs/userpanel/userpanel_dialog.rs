@@ -113,7 +113,7 @@ impl Widget for UserPanel {
                 user_menu_dialog.add_button(friend_txt, Arc::new(move |_, actions| {
                     actions.push(GameAction::HandleMessage(Message::new(
                         owner,
-                        "add_remove_friend",
+                        if is_friend { "remove_friend" } else { "add_friend" },
                         MessageValue::Number(user_id as usize)
                     )));
                     actions.push(UiAction::new(node_id, DialogAction::Close));
@@ -142,15 +142,20 @@ impl Widget for UserPanel {
                 self.chat.selected_channel = Some(ChatChannel::from_name(username.clone()))
             }
 
-            "add_remove_friend" => {
+            "add_friend" => {
                 let MessageValue::Number(friend_id) = message.value else { return };
-                let friend_id = friend_id as u32;
+                self.actions.push(OnlineAction::packet(ChatPacket::Client_UpdateFriend { 
+                    friend_id: friend_id as u32, 
+                    is_friend: true,
+                }));
+            }
 
-                // FIXME:
-                // let mut manager = OnlineManager::get_mut().await;
-                // let is_friend = !manager.friends.contains(&friend_id);
-
-                // manager.send_packet(ChatPacket::Client_UpdateFriend {friend_id, is_friend}).await;
+            "remove_friend" => {
+                let MessageValue::Number(friend_id) = message.value else { return };
+                self.actions.push(OnlineAction::packet(ChatPacket::Client_UpdateFriend { 
+                    friend_id: friend_id as u32, 
+                    is_friend: false,
+                }));
             }
             _ => {}
         }

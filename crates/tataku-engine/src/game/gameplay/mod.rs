@@ -22,8 +22,8 @@ use crate::prelude::*;
 
 #[async_trait]
 pub trait DiffCalc: Send + Sync {
-    async fn new(g: &BeatmapMeta, settings: &Settings) -> TatakuResult<Self> where Self:Sized;
-    async fn calc(&mut self, mods: &ModManager) -> TatakuResult<DiffCalcSummary>;
+    fn new(g: &BeatmapMeta, settings: &Settings) -> TatakuResult<Self> where Self:Sized;
+    fn calc(&mut self, mods: &ModManager) -> TatakuResult<DiffCalcSummary>;
 }
 #[derive(Default, serde::Serialize)]
 pub struct DiffCalcSummary {

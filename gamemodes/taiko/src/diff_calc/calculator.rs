@@ -145,7 +145,7 @@ impl TaikoDifficultyCalculator {
 
 #[async_trait]
 impl DiffCalc for TaikoDifficultyCalculator {
-    async fn new(g: &BeatmapMeta, settings: &Settings) -> TatakuResult<Self> {
+    fn new(g: &BeatmapMeta, settings: &Settings) -> TatakuResult<Self> {
         let g = Beatmap::from_metadata(g)?;
         let g = TaikoGame::new(&g, true, settings)?;
         if g.notes.is_empty() { return Err(BeatmapError::InvalidFile.into()) }
@@ -169,7 +169,7 @@ impl DiffCalc for TaikoDifficultyCalculator {
         })
     }
 
-    async fn calc(&mut self, mods: &ModManager) -> TatakuResult<DiffCalcSummary> {
+    fn calc(&mut self, mods: &ModManager) -> TatakuResult<DiffCalcSummary> {
         let strain = self.strain(mods)?;
         let note_density = self.note_density(mods)?;
 

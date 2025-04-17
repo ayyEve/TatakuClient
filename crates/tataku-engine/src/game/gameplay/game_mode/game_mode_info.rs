@@ -29,17 +29,14 @@ pub struct GamemodeInfo {
 
     #[reflect(skip)]
     pub can_load_beatmap: fn(&BeatmapType) -> bool,
-
-
-    // pub get_diff_string: fn(&BeatmapMetaWithDiff, &ModManager) -> String,
     
     #[reflect(skip)]
     pub stats_from_groups: fn(&HashMap<String, HashMap<String, Vec<f32>>>) -> Vec<StatsInfo>,
 
     #[reflect(skip)]
-    pub create_game: for<'a> fn(&'a Beatmap, &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn GameMode>>>,
+    pub create_game: fn(&Beatmap, &Settings) -> TatakuResult<Box<dyn GameMode>>,
     #[reflect(skip)]
-    pub create_diffcalc: for<'a> fn(&'a BeatmapMeta, &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn DiffCalc>>>,
+    pub create_diffcalc: fn(&BeatmapMeta, &Settings) -> TatakuResult<Box<dyn DiffCalc>>,
 
 
     #[reflect(skip)]
@@ -66,8 +63,8 @@ impl GamemodeInfo {
         // get_diff_string: Self::dummy_diff_str,
         stats_from_groups: |_| Vec::new(),
         can_load_beatmap: |_| false,
-        create_game: |_, _| Box::pin(async { Err(GameModeError::UnknownGameMode.into()) }),
-        create_diffcalc: |_,_| Box::pin(async { Err(GameModeError::UnknownGameMode.into()) }),
+        create_game: |_, _| Err(GameModeError::UnknownGameMode.into()),
+        create_diffcalc: |_,_| Err(GameModeError::UnknownGameMode.into()),
         deserialize_settings: |_| None, 
         serialize_settings: |_| panic!("serialize_settings not implemented!")
     };
@@ -88,12 +85,12 @@ impl GamemodeInfo {
     }
 
 
-    pub async fn create_game(&self, map: &Beatmap, settings: &Settings) -> TatakuResult<Box<dyn GameMode>> {
-        (self.create_game)(map, settings).await
+    pub fn create_game(&self, map: &Beatmap, settings: &Settings) -> TatakuResult<Box<dyn GameMode>> {
+        (self.create_game)(map, settings)
     }
     
-    pub async fn create_diffcalc(&self, map: &BeatmapMeta, settings: &Settings) -> TatakuResult<Box<dyn DiffCalc>> {
-        (self.create_diffcalc)(map, settings).await
+    pub fn create_diffcalc(&self, map: &BeatmapMeta, settings: &Settings) -> TatakuResult<Box<dyn DiffCalc>> {
+        (self.create_diffcalc)(map, settings)
     }
 
 

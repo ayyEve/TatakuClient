@@ -4,11 +4,11 @@ pub struct UTypingDifficultyCalculator {}
 
 #[async_trait]
 impl DiffCalc for UTypingDifficultyCalculator {
-    async fn new(_g: &BeatmapMeta, _: &Settings) -> TatakuResult<Self> {
+    fn new(_g: &BeatmapMeta, _: &Settings) -> TatakuResult<Self> {
         Ok(Self {})
     }
 
-    async fn calc(&mut self, _mods: &ModManager) -> TatakuResult<DiffCalcSummary> {
+    fn calc(&mut self, _mods: &ModManager) -> TatakuResult<DiffCalcSummary> {
         Ok(Default::default())
     }
 }

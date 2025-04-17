@@ -11,7 +11,7 @@ pub struct CenteredTextHelper {
     font: Font,
 }
 impl CenteredTextHelper {
-    pub async fn new(draw_time: f32) -> Self {
+    pub fn new(draw_time: f32) -> Self {
         Self {
             text: String::new(),
 

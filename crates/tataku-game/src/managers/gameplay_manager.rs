@@ -170,7 +170,7 @@ impl GameplayManager {
             end_time: properties.end_time,
             global_offset: settings.global_offset,
 
-            center_text_helper: CenteredTextHelper::new(CENTER_TEXT_DRAW_TIME).await,
+            center_text_helper: CenteredTextHelper::new(CENTER_TEXT_DRAW_TIME),
             beatmap_preferences: Database::get_beatmap_prefs(metadata.beatmap_hash).await,
 
             common_game_settings: Arc::new(settings.common_game_settings.clone()),
@@ -1611,7 +1611,7 @@ pub async fn manager_from_playmode_path_hash(
 
     let info = infos.get_info(&playmode)?;
 
-    let gamemode = info.create_game(&beatmap, settings).await?;
+    let gamemode = info.create_game(&beatmap, settings)?;
     Ok(GameplayManager::new(beatmap, gamemode, mods, settings).await)
 }
 
@@ -1627,7 +1627,7 @@ pub async fn manager_from_playmode(
 
     let info = infos.get_info(&playmode)?;
 
-    let gamemode = info.create_game(&beatmap, settings).await?;
+    let gamemode = info.create_game(&beatmap, settings)?;
 
     Ok(GameplayManager::new(beatmap, gamemode, mods, settings).await)
 }

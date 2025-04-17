@@ -64,17 +64,11 @@ impl ManiaGameInfo {
         matches!(map, BeatmapType::Osu | BeatmapType::Quaver | BeatmapType::Stepmania)
     }
 
-    fn create_game<'a>(beatmap: &'a Beatmap, settings: &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn GameMode>>> {
-        Box::pin(async {
-            let game: Box<dyn GameMode> = Box::new(ManiaGame::new(beatmap, false, settings)?);
-            Ok(game)
-        })
+    fn create_game(beatmap: &Beatmap, settings: &Settings) -> TatakuResult<Box<dyn GameMode>> {
+        Ok(Box::new(ManiaGame::new(beatmap, false, settings)?))
     }
-    fn create_diffcalc<'a>(map: &'a BeatmapMeta, settings: &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn DiffCalc>>> {
-        Box::pin(async {
-            let calc:Box<dyn DiffCalc> = Box::new(ManiaDifficultyCalculator::new(map, settings).await?);
-            Ok(calc)
-        })
+    fn create_diffcalc(map: &BeatmapMeta, settings: &Settings) -> TatakuResult<Box<dyn DiffCalc>> {
+        Ok(Box::new(ManiaDifficultyCalculator::new(map, settings)?))
     }
 
     fn deserialize_settings(value: serde_json::Value) -> Option<Box<dyn GamemodeSettings>> {

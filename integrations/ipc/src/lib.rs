@@ -1,3 +1,4 @@
+#![allow(unused)]
 // TODO: i dont actually know how this works, i thought it was a socket file you can provide but apparently not?
 use tataku_engine::prelude::*;
 use ipc_channel::ipc::*;

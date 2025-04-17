@@ -38,7 +38,7 @@ impl UploadScoreTask {
                 }, 
                 score_url: settings.score_url.clone(),
                 path: score_submit_path(),
-                delay: 0
+                // delay: 0
             },
             task: None,
         }
@@ -156,7 +156,7 @@ struct ScoreUploadData {
     score_submit: ScoreSubmit,
     score_url: String,
     path: String,
-    delay: u32,
+    // delay: u32,
 }
 
 #[derive(Reflect)]

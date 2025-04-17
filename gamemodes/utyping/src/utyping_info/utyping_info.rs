@@ -42,17 +42,11 @@ impl UTypingGameInfo {
         matches!(map, BeatmapType::UTyping)
     }
 
-    fn create_game<'a>(beatmap: &'a Beatmap, settings: &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn GameMode>>> {
-        Box::pin(async {
-            let game:Box<dyn GameMode> = Box::new(UTypingGame::new(beatmap, false, settings)?);
-            Ok(game)
-        })
+    fn create_game(beatmap: &Beatmap, settings: &Settings) -> TatakuResult<Box<dyn GameMode>> {
+        Ok(Box::new(UTypingGame::new(beatmap, false, settings)?))
     }
-    fn create_diffcalc<'a>(map: &'a BeatmapMeta, settings: &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn DiffCalc>>> {
-        Box::pin(async {
-            let calc:Box<dyn DiffCalc> = Box::new(UTypingDifficultyCalculator::new(map, settings).await?);
-            Ok(calc)
-        })
+    fn create_diffcalc(map: &BeatmapMeta, settings: &Settings) -> TatakuResult<Box<dyn DiffCalc>> {
+        Ok(Box::new(UTypingDifficultyCalculator::new(map, settings)?))
     }
 
 

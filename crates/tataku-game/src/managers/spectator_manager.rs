@@ -4,9 +4,9 @@ use crate::prelude::*;
 pub struct SpectatorManager {
     actions: ActionQueue,
 
-    pub frames: VecDeque<SpectatorFrame>,
-    pub state: SpectatorState,
-    pub host_id: u32,
+    frames: VecDeque<SpectatorFrame>,
+    state: SpectatorState,
+    host_id: u32,
     pub host_username: String,
 
     /// what is the current map's hash?
@@ -16,12 +16,12 @@ pub struct SpectatorManager {
     /// list of id,username for other spectators
     pub spectator_cache: HashMap<u32, String>,
     new_map: ValueChangeHelper<Md5Hash>,
-    own_beatmap: ValueChangeHelper<Arc<BeatmapMeta>>,
+    // own_beatmap: ValueChangeHelper<Arc<BeatmapMeta>>,
 
     infos: GamemodeInfos,
 }
 impl SpectatorManager {
-    pub async fn new(
+    pub fn new(
         host_id: u32, 
         host_username: String,
         infos: GamemodeInfos,
@@ -37,7 +37,7 @@ impl SpectatorManager {
             spectator_cache: HashMap::new(),
             host_map: None,
 
-            own_beatmap: ValueChangeHelper::new("map.hash"),
+            // own_beatmap: ValueChangeHelper::new("map.hash"),
             new_map: ValueChangeHelper::new("global.new_map_hash"),
         }
     }
@@ -53,10 +53,6 @@ impl SpectatorManager {
     ) -> Option<Box<GameplayManager>> {
         trace!("Trying to watch host play a map");
         let HostMap { map_hash, playmode, mods } = self.host_map.clone()?;
-
-        // self.host_map = Some((beatmap_hash, mode.clone(), mods_str.clone(), speed));
-        // let mut mods = ModManager::new().with_speed(speed);
-        // mods.mods = Score::mods_from_string(mods_str);
 
         // see if our current map is the host's map
         let map = values.beatmap_manager.current_beatmap.as_ref()?;
@@ -94,45 +90,21 @@ impl SpectatorManager {
         &mut self,
         manager: Option<&mut Box<GameplayManager>>,
         values: &mut ValueCollection,
-        actions: &mut ActionQueue,
     ) -> Option<Box<GameplayManager>> { 
+        // only continue if we received a map update
         let Ok(Some(_)) = self.new_map.update(values) else { return None };
+
+        // and only continue if we arent playing anything right now
         if manager.is_some() { return None }
 
         let host_map = self.host_map.as_ref()?;
-
-        // let new_map_hash:Md5Hash = self.new_map.deref().try_into().unwrap_or_default();
-        // info!("got new map: {new_map_hash:?}");
-
-
-        // if we got new maps, and we have a map waiting to be played, but arent playing
-        if let Some(host_map) = self.host_map.as_ref() {
+        if values.beatmap_manager.beatmaps_by_hash.contains_key(&host_map.map_hash) {
             self.actions.push(BeatmapAction::SetFromHash(host_map.map_hash, SetBeatmapOptions::new().restart_song(true)));
-        } else {
-            return None;
+            let current_time = (self.frames.iter().fold(0.0, |t, f| f.time.max(t)) - 2000.0).max(0.0);
+            return self.start_game(values, current_time).await;
         }
 
-        // TODO: !!!
-        let current_time = 0.0; // (self.frames.iter().map(|f| f.time).max() - 1000.0).max(0.0);
-
-        actions.extend(self.actions.take());
-        self.start_game(values, current_time).await
-
-        // if let Some((current_map, mode, mods, speed)) = self.current_map.clone() {
-        //     info!("good state to start map");
-        //     if &new_map.beatmap_hash == &current_map {
-        //         info!("starting map");
-        //         self.start_game(current_map, mode, mods, current_time, speed).await;
-        //     } else {
-        //         info!("starting map");
-        //         // if this wasnt the map we wanted, check to see if the map we wanted was added anyways
-        //         // because it might have loaded a group of maps, and the one we wanted was loaded before the last map added
-        //         let has_map = BEATMAP_MANAGER.read().await.get_by_hash(&current_map).is_some();
-        //         if has_map {
-        //             self.start_game(current_map, mode, mods, current_time, speed).await;
-        //         }
-        //     }
-        // }
+        None
     }
 
     pub async fn update(
@@ -142,7 +114,8 @@ impl SpectatorManager {
         actions: &mut ActionQueue,
     ) -> Option<Box<GameplayManager>> {
         // handle new maps
-        if let Some(manager) = self.check_new_maps(manager, values, actions).await {
+        if let Some(manager) = self.check_new_maps(manager, values).await {
+            actions.extend(self.actions.take());
             return Some(manager)
         }
 
@@ -165,6 +138,7 @@ impl SpectatorManager {
 
                     if values.beatmap_manager.get_by_hash(&beatmap_hash).is_some() {
                         self.actions.push(BeatmapAction::SetFromHash(beatmap_hash, SetBeatmapOptions::new().restart_song(true)));
+                        self.start_game(values, 0.0).await;
                     } else {
                         let settings = &values.settings;
                         info!("no beatmap, attempting to download");

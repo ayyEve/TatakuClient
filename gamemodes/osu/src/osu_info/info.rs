@@ -64,17 +64,11 @@ impl OsuGameInfo {
         matches!(map, BeatmapType::Osu)
     }
 
-    fn create_game<'a>(beatmap: &'a Beatmap, settings: &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn GameMode>>> {
-        Box::pin(async {
-            let game:Box<dyn GameMode> = Box::new(OsuGame::new(beatmap, false, settings)?);
-            Ok(game)
-        })
+    fn create_game(beatmap: &Beatmap, settings: &Settings) -> TatakuResult<Box<dyn GameMode>> {
+        Ok(Box::new(OsuGame::new(beatmap, false, settings)?))
     }
-    fn create_diffcalc<'a>(map: &'a BeatmapMeta, settings: &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn DiffCalc>>> {
-        Box::pin(async {
-            let calc:Box<dyn DiffCalc> = Box::new(OsuDifficultyCalculator::new(map, settings).await?);
-            Ok(calc)
-        })
+    fn create_diffcalc(map: &BeatmapMeta, settings: &Settings) -> TatakuResult<Box<dyn DiffCalc>> {
+        Ok(Box::new(OsuDifficultyCalculator::new(map, settings)?))
     }
 
 

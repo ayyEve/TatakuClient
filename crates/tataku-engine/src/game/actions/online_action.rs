@@ -13,6 +13,11 @@ pub enum OnlineAction {
     /// Send a packet to the network
     Packet(Box<PacketId>),
 }
+impl OnlineAction {
+    pub fn packet(packet: impl Into<PacketId>) -> Self {
+        Self::Packet(Box::new(packet.into()))
+    }
+}
 impl From<PacketId> for OnlineAction {
     fn from(value: PacketId) -> Self {
         Self::Packet(Box::new(value))
