@@ -60,7 +60,6 @@ impl ManiaNote {
         self.playfield.hit_y() - (self.relative_y - ManiaGame::pos_at(&self.position_function, time, &mut self.position_function_index)) * speed
     }
 }
-#[async_trait]
 impl HitObject for ManiaNote {
     fn note_type(&self) -> NoteType { NoteType::Note }
     fn time(&self) -> f32 { self.time }
@@ -94,11 +93,11 @@ impl HitObject for ManiaNote {
     }
 
     #[cfg(feature="graphics")]
-    async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+    fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
         self.note_image = None;
         let Some(settings) = &self.mania_skin_settings else { return }; 
         let Some(path) = settings.note_image.get(&self.column) else { return };
-        let Some(mut img) = skin_manager.get_texture(path, source, SkinUsage::Gamemode, true).await else { return };
+        let Some(mut img) = skin_manager.get_texture(path, source, SkinUsage::Gamemode, true) else { return };
         
         self.playfield.note_image(&mut img);
         img.color = self.color;

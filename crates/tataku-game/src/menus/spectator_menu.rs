@@ -15,7 +15,6 @@ impl SpectatorMenu {
 }
 
 // FIXME: all this
-// #[async_trait]
 impl Widget for SpectatorMenu {
     fn name(&self) -> Cow<'static, str> { Cow::Borrowed("spectator_menu") }
     fn node_id(&self) -> NodeId { self.node_id }

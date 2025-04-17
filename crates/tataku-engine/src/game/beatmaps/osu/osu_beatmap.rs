@@ -407,7 +407,6 @@ impl OsuBeatmap {
     }
 
 }
-#[async_trait]
 impl TatakuBeatmap for OsuBeatmap {
     fn hash(&self) -> Md5Hash { self.hash }
     fn get_beatmap_meta(&self) -> Arc<BeatmapMeta> { self.metadata.clone() }
@@ -440,7 +439,7 @@ impl TatakuBeatmap for OsuBeatmap {
         }).collect()
     }
     #[cfg(feature="graphics")]
-    async fn get_animation(&self, skin_manager: &mut dyn SkinProvider) -> Option<Box<dyn BeatmapAnimation>> {
+    fn get_animation(&self, skin_manager: &mut dyn SkinProvider) -> Option<Box<dyn BeatmapAnimation>> {
         let Some(storyboard) = &self.storyboard else { return None };
         let parent_dir = Path::new(&self.metadata.file_path).parent()?.to_string_lossy().to_string();
         match OsuStoryboard::new(
@@ -448,7 +447,7 @@ impl TatakuBeatmap for OsuBeatmap {
             parent_dir,
             skin_manager,
             // OsuSettings::default(), // TODO: !!!!!
-        ).await {
+        ) {
             Ok(sb) => {
                 trace!("made anim");
                 Some(Box::new(sb))

@@ -30,8 +30,6 @@ impl LobbyPlayerDialog {
         }
     }
 }
-
-#[async_trait]
 impl Widget for LobbyPlayerDialog {
     fn name(&self) -> Cow<'static, str> { "lobby_player_dialog".into() }
     fn node_id(&self) -> NodeId { self.node_id }
@@ -85,7 +83,7 @@ impl Widget for LobbyPlayerDialog {
     }
 
     
-    async fn handle_message(
+    fn handle_message(
         &mut self, 
         message: &Message, 
         _values: &mut dyn Reflect,

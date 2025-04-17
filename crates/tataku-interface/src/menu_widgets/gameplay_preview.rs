@@ -109,8 +109,6 @@ impl GameplayPreview {
     }
 
 }
-
-#[async_trait]
 impl Widget for GameplayPreview {
     fn name(&self) -> Cow<'static, str> { "gameplay_preview_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
@@ -122,7 +120,7 @@ impl Widget for GameplayPreview {
         Ok(self.node_id)
     }
 
-    async fn handle_message(
+    fn handle_message(
         &mut self, 
         message: &Message, 
         _values: &mut dyn Reflect,
@@ -245,10 +243,10 @@ impl Widget for GameplayPreview {
     }
 
 
-    async fn reload_skin(&mut self, shell: &mut UpdateShell) {
+    fn reload_skin(&mut self, shell: &mut UpdateShell) {
         if let Some(vis) = &mut self.visualization {
             debug!("reloading vis skin");
-            vis.reload_skin(shell.skin_manager).await;
+            vis.reload_skin(shell.skin_manager);
         }
     }
 }

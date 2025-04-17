@@ -1,7 +1,6 @@
 use crate::prelude::*;
 
 // hitobject trait, implemented by anything that should be hit
-#[async_trait]
 pub trait HitObject: Send + Sync {
     fn note_type(&self) -> NoteType;
 
@@ -19,7 +18,7 @@ pub trait HitObject: Send + Sync {
     fn time_jump(&mut self, _new_time: f32) {}
 
     #[cfg(feature="graphics")]
-    async fn reload_skin(&mut self, _source: &TextureSource, _skin_manager: &mut dyn SkinProvider) {}
+    fn reload_skin(&mut self, _source: &TextureSource, _skin_manager: &mut dyn SkinProvider) {}
 
     
     fn beat_happened(&mut self, _pulse_length: f32) {}

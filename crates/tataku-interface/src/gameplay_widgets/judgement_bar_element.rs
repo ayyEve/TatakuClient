@@ -31,7 +31,6 @@ impl JudgementBarElement {
         })
     }
 }
-#[async_trait]
 impl GameplayWidget for JudgementBarElement {
     fn display_name(&self) -> &'static str { "Judgement Bar" }
 

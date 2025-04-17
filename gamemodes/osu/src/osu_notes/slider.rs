@@ -479,7 +479,7 @@ impl OsuSlider {
                 GameWindow::update_render_target(target, Box::new(move |g: &mut dyn GraphicsEngine, mut transform: Matrix| {
                     transform = transform.trans(offset);
                     drawables.into_iter().for_each(|d| d.draw(&options, transform, g))
-                })).await
+                }))
             }));
         } else {
             let loader = AsyncLoader::new(async move {
@@ -490,7 +490,7 @@ impl OsuSlider {
                         transform = transform.trans(offset);
                         drawables.into_iter().for_each(|d| d.draw(&options, transform, g))
                     })
-                ).await
+                )
             });
 
             self.slider_body_loader = SliderBodyLoader::New {
@@ -576,8 +576,6 @@ impl OsuSlider {
     }
 
 }
-
-#[async_trait]
 impl HitObject for OsuSlider {
     fn note_type(&self) -> NoteType { NoteType::Slider }
     fn time(&self) -> f32 { self.time }
@@ -905,26 +903,26 @@ impl HitObject for OsuSlider {
     }
 
     #[cfg(feature="graphics")]
-    async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+    fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
         self.skin = skin_manager.skin().clone();
-        self.start_circle_image.reload_skin(source, skin_manager).await;
-        self.end_circle_image = skin_manager.get_texture("sliderendcircle", source, SkinUsage::Gamemode, false).await;
-        self.slider_reverse_image = skin_manager.get_texture("reversearrow", source, SkinUsage::Gamemode, false).await;
-        self.follow_circle_image = skin_manager.get_texture("sliderfollowcircle", source, SkinUsage::Gamemode, false).await;
+        self.start_circle_image.reload_skin(source, skin_manager);
+        self.end_circle_image = skin_manager.get_texture("sliderendcircle", source, SkinUsage::Gamemode, false);
+        self.slider_reverse_image = skin_manager.get_texture("reversearrow", source, SkinUsage::Gamemode, false);
+        self.follow_circle_image = skin_manager.get_texture("sliderfollowcircle", source, SkinUsage::Gamemode, false);
 
-        self.approach_circle.reload_texture(source, skin_manager).await;
+        self.approach_circle.reload_texture(source, skin_manager);
 
         for dot in self.hit_dots.iter_mut() {
-            dot.reload_skin(source, skin_manager).await;
+            dot.reload_skin(source, skin_manager);
         }
 
         // slider ball
-        self.sliderball_under_image = skin_manager.get_texture("sliderb-nd", source, SkinUsage::Gamemode, false).await;
+        self.sliderball_under_image = skin_manager.get_texture("sliderb-nd", source, SkinUsage::Gamemode, false);
 
         let mut i = 0;
         let mut images = Vec::new();
         loop {
-            let Some(image) = skin_manager.get_texture(&format!("sliderb{i}"), source, SkinUsage::Gamemode, false).await else { break };
+            let Some(image) = skin_manager.get_texture(&format!("sliderb{i}"), source, SkinUsage::Gamemode, false) else { break };
             images.push(image);
             i += 1;
         }
@@ -1172,8 +1170,8 @@ impl SliderDot {
     }
 
     #[cfg(feature="graphics")]
-    pub async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
-        self.dot_image = skin_manager.get_texture("sliderscorepoint", source, SkinUsage::Gamemode, false).await;
+    pub fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+        self.dot_image = skin_manager.get_texture("sliderscorepoint", source, SkinUsage::Gamemode, false);
     }
 }
 

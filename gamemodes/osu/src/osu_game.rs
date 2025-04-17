@@ -332,8 +332,6 @@ impl OsuGame {
         }
     }
 }
-
-#[async_trait]
 impl GameMode for OsuGame {
     fn new(
         map: &Beatmap, 
@@ -1045,12 +1043,12 @@ impl GameMode for OsuGame {
     }
 
     #[cfg(feature="graphics")]
-    async fn reload_skin(&mut self, beatmap_path: &str, skin_manager: &mut dyn SkinProvider) -> TextureSource {
+    fn reload_skin(&mut self, beatmap_path: &str, skin_manager: &mut dyn SkinProvider) -> TextureSource {
         let source = if self.game_settings.beatmap_skin { TextureSource::Beatmap(beatmap_path.to_owned()) } else { TextureSource::Skin };
 
-        self.cursor.reload_skin(skin_manager).await;
-        self.judgment_helper.reload_skin(skin_manager).await;
-        self.follow_point_image = skin_manager.get_texture("followpoint", &source, SkinUsage::Gamemode, false).await;
+        self.cursor.reload_skin(skin_manager);
+        self.judgment_helper.reload_skin(skin_manager);
+        self.follow_point_image = skin_manager.get_texture("followpoint", &source, SkinUsage::Gamemode, false);
 
         let combo_colors = if self.game_settings.use_beatmap_combo_colors && !self.beatmap_combo_colors.is_empty() {
             self.beatmap_combo_colors.clone()
@@ -1063,10 +1061,10 @@ impl GameMode for OsuGame {
         self.apply_combo_colors(combo_colors);
 
         for n in self.notes.iter_mut() {
-            n.reload_skin(&source, skin_manager).await;
+            n.reload_skin(&source, skin_manager);
         }
 
-        let smoke = skin_manager.get_texture("cursor-smoke", &source, SkinUsage::Gamemode, false).await.map(|i| i.tex).unwrap_or_default();
+        let smoke = skin_manager.get_texture("cursor-smoke", &source, SkinUsage::Gamemode, false).map(|i| i.tex).unwrap_or_default();
         if let Some(emitter) = &mut self.smoke_emitter {
             emitter.image = smoke;
         } else {
@@ -1446,7 +1444,7 @@ impl GameMode for OsuGame {
         self.notes.iter_mut().for_each(|n| n.kiai_changed(is_kiai));
     }
 
-    async fn build_widgets(
+    fn build_widgets(
         &self, 
         loader: &mut dyn UiElementLoader
     ) {

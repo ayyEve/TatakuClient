@@ -23,7 +23,7 @@ pub struct SkinnedNumber {
 }
 impl SkinnedNumber {
     #[cfg(feature = "graphics")]
-    pub async fn new<TN: AsRef<str>>(
+    pub fn new<TN: AsRef<str>>(
         pos: Vector2, 
         number: f64, 
         color: Color, 
@@ -45,7 +45,7 @@ impl SkinnedNumber {
             let tex = skin_manager.get_texture_then(&tex, source, usage, false, |i| {
                 i.origin = Vector2::ZERO;
                 // i.size = i.tex_size();
-            }).await.ok_or(TatakuError::String(format!("texture does not exist: {tex}")))?;
+            }).ok_or(TatakuError::String(format!("texture does not exist: {tex}")))?;
 
             number_textures.push(tex);
         }
@@ -61,7 +61,7 @@ impl SkinnedNumber {
         ];
         for (c, name) in chars {
             let name = format!("{texture_name}-{name}");
-            let Some(mut tex) = skin_manager.get_texture(&name, source, usage, false).await else { continue }; 
+            let Some(mut tex) = skin_manager.get_texture(&name, source, usage, false) else { continue }; 
             tex.origin = Vector2::ZERO;
             symbol_textures.insert(c, tex);
         }

@@ -47,9 +47,6 @@ impl DraggableDialog {
     }
     
 }
-
-
-#[async_trait]
 impl Widget for DraggableDialog {
     fn name(&self) -> Cow<'static, str> { self.inner.name() }
     fn node_id(&self) -> NodeId { self.node_id }
@@ -146,8 +143,6 @@ impl Dialog for DraggableDialog {
 //         p - (self.toolbar_bounds.pos + self.toolbar_bounds.size.y_portion())
 //     }
 // }
-
-// #[async_trait]
 // impl Dialog for DraggableDialog {
 //     fn name(&self) -> &'static str { self.inner.name() }
 //     fn should_close(&self) -> bool { self.inner.should_close() }

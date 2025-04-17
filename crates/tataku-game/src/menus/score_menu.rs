@@ -156,28 +156,28 @@ impl ScoreMenu {
     }
 
 
-    pub async fn get_replay(&self, settings: &Settings) -> TatakuResult<Score> {
+    pub fn get_replay(&self, settings: &Settings) -> TatakuResult<Score> {
         info!("Getting replay from {:#?}", self.score.replay_location);
 
         match &self.score.replay_location {
             ReplayLocation::Local => get_local_replay_for_score(&self.score),
-            ReplayLocation::Online(downloader) => downloader.get_replay(settings).await,
+            ReplayLocation::Online(downloader) => downloader.get_replay(settings),
             ReplayLocation::OnlineNotExist => Err("Replay is not available :c".into()),
         }
     }
 
-    async fn replay(&mut self, settings: &Settings) {
+    fn replay(&mut self, settings: &Settings) {
         if self.score.replay.is_some() {
-            self.do_replay((*self.score).clone()).await;
+            self.do_replay((*self.score).clone());
         } else {
-            match self.get_replay(settings).await {
-                Ok(score) => self.do_replay(score).await,
+            match self.get_replay(settings) {
+                Ok(score) => self.do_replay(score),
                 Err(e) => self.actions.push(GameAction::AddNotification(Notification::new_error("Error loading replay", e))),
             }
         }
     }
 
-    async fn do_replay(&mut self, score: Score) {
+    fn do_replay(&mut self, score: Score) {
         // make sure the replay has score data
         // i dont think it should ever not, but just in case
         // if replay.score_data.is_none() {
@@ -191,7 +191,7 @@ impl ScoreMenu {
         self.actions.push(BeatmapAction::PlaySelected);
     }
     
-    async fn change_score(&mut self, score: IngameScore) {
+    fn change_score(&mut self, score: IngameScore) {
         self.hit_error = score.hit_error();
 
         let judgments = self.infos.get_info(&score.playmode).map(|i| i.judgments).unwrap_or_default();
@@ -262,7 +262,7 @@ impl ScoreMenu {
         
     }
   
-    async fn save_replay(&mut self) {
+    fn save_replay(&mut self) {
         if self.score.replay.is_none() { 
             self.actions.push(
                 Notification::default()
@@ -429,8 +429,6 @@ impl ScoreMenu {
         buttons
     }
 }
-
-#[async_trait]
 impl Widget for ScoreMenu {
     fn name(&self) -> Cow<'static, str> { "score_menu".into() }
     fn node_id(&self) -> NodeId { self.node_id }
@@ -484,23 +482,23 @@ impl Widget for ScoreMenu {
     }
 
     
-    async fn handle_message(
+    fn handle_message(
         &mut self, 
         message: &Message, 
         values: &mut dyn Reflect,
         actions: &mut ActionQueue
     ) {
-        self.node.handle_message(message, values, actions).await;
+        self.node.handle_message(message, values, actions);
 
         let Some(tag) = message.tag.as_string() else { return };
         match &**tag {
             "retry" => self.retry(),
-            "replay" => self.replay(&values.reflect_get::<Settings>("settings").unwrap()).await,
+            "replay" => self.replay(&values.reflect_get::<Settings>("settings").unwrap()),
             "back" => self.close(),
             "score" => if let MessageValue::Number(num) = message.value {
                 if let ScoreMenuType::Multiplayer { lobby_items, .. } = &*self.menu_type {
                     if let Some(score) = lobby_items.get(num) {
-                        self.change_score(score.score.clone()).await;
+                        self.change_score(score.score.clone());
                     }
                 }
             }
@@ -516,13 +514,13 @@ impl Widget for ScoreMenu {
     }
 
 
-    async fn handle_event(
+    fn handle_event(
         &mut self, 
         event: TatakuEventType, 
         event_value: Option<TatakuValue>, 
         values: &mut dyn Reflect
     ) {
-        self.node.handle_event(event, event_value, values).await
+        self.node.handle_event(event, event_value, values);
     }
 
     fn input(

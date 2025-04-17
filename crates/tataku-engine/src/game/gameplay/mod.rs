@@ -20,7 +20,6 @@ pub use gamemode_library::*;
 
 use crate::prelude::*;
 
-#[async_trait]
 pub trait DiffCalc: Send + Sync {
     fn new(g: &BeatmapMeta, settings: &Settings) -> TatakuResult<Self> where Self:Sized;
     fn calc(&mut self, mods: &ModManager) -> TatakuResult<DiffCalcSummary>;

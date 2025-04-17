@@ -31,7 +31,6 @@ impl HealthBarElement {
         })
     }
 }
-#[async_trait]
 impl GameplayWidget for HealthBarElement {
     fn display_name(&self) -> &'static str { "Health Bar" }
 
@@ -39,10 +38,10 @@ impl GameplayWidget for HealthBarElement {
         Vector2::new(self.container_size.x / 2.0, DURATION_HEIGHT)
     }
 
-    async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+    fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
         // peppy calls the healthbar texture "scorebar"
-        self.healthbar_image = skin_manager.get_texture("scorebar-colour", source, SkinUsage::Gamemode, false).await;
-        self.healthbar_bg_image = skin_manager.get_texture("scorebar-bg", source, SkinUsage::Gamemode, false).await;
+        self.healthbar_image = skin_manager.get_texture("scorebar-colour", source, SkinUsage::Gamemode, false);
+        self.healthbar_bg_image = skin_manager.get_texture("scorebar-bg", source, SkinUsage::Gamemode, false);
 
         for i in [ &mut self.healthbar_image, &mut self.healthbar_bg_image ] {
             let Some(i) = i else { continue };

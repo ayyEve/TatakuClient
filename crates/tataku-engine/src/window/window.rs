@@ -17,7 +17,6 @@ use winit::{
     },
 };
 use tokio::sync::mpsc::Sender;
-use tokio::sync::oneshot::channel as oneshot_channel;
 use tataku_input::prelude::MouseButton;
 
 static WINDOW_PROXY: OnceCell<EventLoopProxy<WindowAction>> = OnceCell::const_new();
@@ -151,7 +150,7 @@ impl<'window> GameWindow<'window> {
 
     fn run_load_image_event(&mut self, event: LoadImage) {
         match event {
-            LoadImage::Image(data, on_done) => on_done.send(self.graphics.load_texture_rgba(&data, [data.width(), data.height()])).expect("poopy"),
+            LoadImage::Image(data, on_done) => on_done(self.graphics.load_texture_rgba(&data, [data.width(), data.height()])),
 
             LoadImage::Font(font, font_size, on_done) => {
                 debug!("Loading font {} with size {font_size}", font.name);
@@ -179,7 +178,7 @@ impl<'window> GameWindow<'window> {
                 font.loaded_sizes.write().insert(font_size.u32());
 
                 if let Some(on_done) = on_done {
-                    let _ = on_done.send(Ok(()));
+                    on_done(Ok(()));
                 }
             }
 
@@ -189,11 +188,11 @@ impl<'window> GameWindow<'window> {
 
             LoadImage::CreateRenderTarget((w, h), on_done, callback) => {
                 let rt = self.graphics.create_render_target([w, h], Color::TRANSPARENT, callback);
-                let _ = on_done.send(rt.ok_or("failed".into()));
+                on_done(rt.ok_or(TatakuError::from("failed")));
             }
             LoadImage::UpdateRenderTarget(target, on_done, callback) => {
                 self.graphics.update_render_target(target, callback);
-                let _ = on_done.send(());
+                on_done(Ok(()));
             }
 
         }
@@ -355,26 +354,24 @@ impl GameWindow<'_> {
         Self::send_event(WindowAction::RefreshMonitors);
     }
 
-    pub async fn load_texture_data(data: RgbaImage) -> TatakuResult<TextureReference> {
+    pub fn load_texture_data(data: RgbaImage) -> TatakuResult<TextureReference> {
         trace!("loading tex data");
 
-        let (sender, receiver) = oneshot_channel();
-        Self::send_event(WindowAction::LoadImage(LoadImage::Image(data, sender)));
+        let (s, r) = sync_channel(1);
+        Self::send_event(WindowAction::LoadImage(LoadImage::Image(data, Box::new(move |r| s.send(r).nope()))));
 
         // if this unwrap fails, the receiver was dropped, meaning it was never sent, which means the thread is dead, which means give up
-        receiver.await.unwrap()
+        r.recv().unwrap()
     }
 
     // this is called from functions without real access to async, so we have to be dumb here
     pub fn load_font_data(font: ActualFont, size: f32, wait_for_complete: bool) -> TatakuResult<()> {
         // NOTE: this will hang the main thread if this is run there
         if wait_for_complete {
-            let (sender, mut receiver) = oneshot_channel();
-            Self::send_event(WindowAction::LoadImage(LoadImage::Font(font, size, Some(sender))));
+            let (s, r) = sync_channel(1);
+            Self::send_event(WindowAction::LoadImage(LoadImage::Font(font, size, Some(Box::new(move |r| s.send(r).nope())))));
 
-            loop {
-                if let Ok(_t) = receiver.try_recv() { return Ok(()) }
-            }
+            return r.recv().unwrap();
         } else {
             Self::send_event(WindowAction::LoadImage(LoadImage::Font(font, size, None)));
         }
@@ -382,23 +379,37 @@ impl GameWindow<'_> {
     }
 
 
-    pub async fn create_render_target(size: (u32, u32), callback: impl FnOnce(&mut dyn GraphicsEngine, Matrix) + Send + Sync + 'static) -> TatakuResult<RenderTarget> {
+    pub fn create_render_target(
+        size: (u32, u32), 
+        callback: impl FnOnce(&mut dyn GraphicsEngine, Matrix) + Send + Sync + 'static
+    ) -> TatakuResult<RenderTarget> {
         trace!("create render target");
 
-        let (sender, receiver) = oneshot_channel();
-        Self::send_event(WindowAction::LoadImage(LoadImage::CreateRenderTarget(size, sender, Box::new(callback))));
+        let (s, r) = sync_channel(1);
+        Self::send_event(WindowAction::LoadImage(LoadImage::CreateRenderTarget(
+            size, 
+            Box::new(move |t| s.send(t).nope()), 
+            Box::new(callback)
+        )));
 
-        receiver.await.unwrap()
+        r.recv().unwrap()
     }
 
     #[allow(unused)]
-    pub async fn update_render_target(rt: RenderTarget, callback: impl FnOnce(&mut dyn GraphicsEngine, Matrix) + Send + Sync + 'static) {
+    pub fn update_render_target(
+        rt: RenderTarget, 
+        callback: impl FnOnce(&mut dyn GraphicsEngine, Matrix) + Send + Sync + 'static
+    ) {
         trace!("update render target");
 
-        let (sender, mut receiver) = oneshot_channel();
-        Self::send_event(WindowAction::LoadImage(LoadImage::UpdateRenderTarget(rt, sender, Box::new(callback))));
+        let (s, r) = sync_channel(1);
+        Self::send_event(WindowAction::LoadImage(LoadImage::UpdateRenderTarget(
+            rt, 
+            Box::new(move |t| s.send(t).nope()), 
+            Box::new(callback)
+        )));
 
-        receiver.await;
+        let _ = r.recv().unwrap();
     }
 
 

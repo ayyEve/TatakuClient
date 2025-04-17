@@ -45,8 +45,6 @@ impl DialogWidget {
         node
     }
 }
-
-#[async_trait]
 impl Widget for DialogWidget {
     fn name(&self) -> Cow<'static, str> { format!("{}{}", self.title, if self.draggable { " (Draggable)" } else { "" } ).into() }
     fn node_id(&self) -> NodeId { self.node_id }
@@ -97,7 +95,7 @@ impl Widget for DialogWidget {
         self.node.update(shell, actions);
     }
     
-    async fn handle_message(
+    fn handle_message(
         &mut self, 
         message: &Message, 
         values: &mut dyn Reflect, 
@@ -126,22 +124,22 @@ impl Widget for DialogWidget {
             message, 
             values, 
             actions
-        ).await;
+        );
     }
 
-    async fn handle_event(
+    fn handle_event(
         &mut self, 
         event: TatakuEventType, 
         event_value: Option<TatakuValue>, 
         values: &mut dyn Reflect,
     ) {
-        self.node.handle_event(event, event_value, values).await;
+        self.node.handle_event(event, event_value, values);
     }
 
-    async fn reload_skin(
+    fn reload_skin(
         &mut self, 
         shell: &mut UpdateShell,
     ) {
-        self.node.reload_skin(shell).await;
+        self.node.reload_skin(shell);
     }
 }

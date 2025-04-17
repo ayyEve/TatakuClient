@@ -40,7 +40,6 @@ impl SkinSelect {
     //     }
     // }
 }
-#[async_trait]
 impl Dialog for SkinSelect {
     fn name(&self) -> &'static str { "skin_select" }
     

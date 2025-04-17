@@ -1,8 +1,7 @@
 use crate::prelude::*;
 
-#[async_trait]
 pub trait ReplayDownloader: Send + Sync + std::fmt::Debug {
-    async fn get_replay(&self, settings: &Settings) -> TatakuResult<Score>;
+    fn get_replay(&self, settings: &Settings) -> TatakuResult<Score>;
 }
 
 #[derive(Debug)]
@@ -14,9 +13,8 @@ impl TatakuReplayDownloader {
     }
 }
 
-#[async_trait]
 impl ReplayDownloader for TatakuReplayDownloader {
-    async fn get_replay(&self, settings: &Settings) -> TatakuResult<Score> {
+    fn get_replay(&self, settings: &Settings) -> TatakuResult<Score> {
         let base = settings.score_url.clone();
 
         let url = if let Some(hash) = &self.1 {
@@ -27,7 +25,7 @@ impl ReplayDownloader for TatakuReplayDownloader {
         
 
         // this will be a full .ttkr file, aka a replay binary file
-        let bytes = reqwest::get(url).await?.error_for_status()?.bytes().await?;
+        let bytes = reqwest::blocking::get(url)?.error_for_status()?.bytes()?;
         
         // check if the received data 
         if bytes.is_empty() {

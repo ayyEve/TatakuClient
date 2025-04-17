@@ -15,5 +15,6 @@ bass-rs = { version = "0.2.3" }
 
 lazy_static.workspace = true
 parking_lot.workspace = true
+reqwest.workspace = true
 
 tracing.workspace = true

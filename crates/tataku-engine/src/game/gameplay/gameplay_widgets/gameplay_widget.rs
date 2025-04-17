@@ -1,6 +1,5 @@
 use crate::prelude::*;
 
-#[async_trait]
 pub trait GameplayWidget: Send + Sync {
     fn display_name(&self) -> &'static str;
 
@@ -20,7 +19,7 @@ pub trait GameplayWidget: Send + Sync {
     fn reset(&mut self) {}
 
     #[cfg(feature="graphics")]
-    async fn reload_skin(
+    fn reload_skin(
         &mut self, 
         _source: &TextureSource, 
         _skin_manager: &mut dyn SkinProvider

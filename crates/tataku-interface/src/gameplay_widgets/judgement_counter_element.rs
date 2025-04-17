@@ -19,7 +19,6 @@ impl JudgementCounterElement {
         })
     }
 }
-#[async_trait]
 impl GameplayWidget for JudgementCounterElement {
     fn display_name(&self) -> &'static str { "Judgement Counter" }
 
@@ -107,8 +106,8 @@ impl GameplayWidget for JudgementCounterElement {
         }
     }
 
-    async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
-        self.button_image = skin_manager.get_texture("inputoverlay-key", source, SkinUsage::Gamemode, false).await
+    fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+        self.button_image = skin_manager.get_texture("inputoverlay-key", source, SkinUsage::Gamemode, false);
     }
 }
 

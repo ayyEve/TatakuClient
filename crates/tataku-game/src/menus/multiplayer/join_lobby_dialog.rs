@@ -19,8 +19,6 @@ impl JoinLobbyDialog {
         }
     }
 }
-
-#[async_trait]
 impl Widget for JoinLobbyDialog {
     fn name(&self) -> Cow<'static, str> { "join_lobby_dialog".into() }
     fn node_id(&self) -> NodeId { self.node_id }
@@ -71,7 +69,7 @@ impl Widget for JoinLobbyDialog {
     }
 
     
-    async fn handle_message(
+    fn handle_message(
         &mut self, 
         message: &Message, 
         values: &mut dyn Reflect,

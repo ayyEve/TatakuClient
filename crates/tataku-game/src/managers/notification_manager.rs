@@ -26,8 +26,8 @@ impl NotificationManager {
     }
 
     #[cfg(feature="graphics")]
-    pub async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
-        self.notification_image = skin_manager.get_texture("notification", &TextureSource::Skin, SkinUsage::Game, true).await;
+    pub fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+        self.notification_image = skin_manager.get_texture("notification", &TextureSource::Skin, SkinUsage::Game, true);
     }
 
     pub fn draw(&self, window_size: Vector2, list: &mut RenderableCollection) {

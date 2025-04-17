@@ -82,7 +82,6 @@ impl ManiaHold {
         (a(rel_start), a(rel_end))
     }
 }
-#[async_trait]
 impl HitObject for ManiaHold {
     fn note_type(&self) -> NoteType {NoteType::Hold}
     fn time(&self) -> f32 {self.time}
@@ -212,7 +211,7 @@ impl HitObject for ManiaHold {
     }
 
     #[cfg(feature="graphics")]
-    async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+    fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
         self.start_image = None;
         self.middle_image = None;
         self.end_image = None;
@@ -221,7 +220,7 @@ impl HitObject for ManiaHold {
         
         // start
         if let Some(path) = settings.note_image_h.get(&self.column) {
-            if let Some(mut img) = skin_manager.get_texture(path, source, SkinUsage::Gamemode, true).await {
+            if let Some(mut img) = skin_manager.get_texture(path, source, SkinUsage::Gamemode, true) {
                 self.playfield.note_image(&mut img);
                 img.color = self.color;
                 self.start_image = Some(img);
@@ -230,7 +229,7 @@ impl HitObject for ManiaHold {
         
         // middle
         if let Some(path) = settings.note_image_l.get(&self.column) {
-            if let Some(mut img) = skin_manager.get_texture(path, source, SkinUsage::Gamemode, true).await {
+            if let Some(mut img) = skin_manager.get_texture(path, source, SkinUsage::Gamemode, true) {
                 img.origin = Vector2::ZERO;
                 img.color = Color::WHITE;
                 img.scale.x = self.playfield.column_width / img.tex_size().x;
@@ -241,7 +240,7 @@ impl HitObject for ManiaHold {
 
         // end
         if let Some(path) = settings.note_image_t.get(&self.column) {
-            if let Some(mut img) = skin_manager.get_texture(path, source, SkinUsage::Gamemode, true).await {
+            if let Some(mut img) = skin_manager.get_texture(path, source, SkinUsage::Gamemode, true) {
                 self.playfield.note_image(&mut img);
                 img.scale.y *= -1.0;
                 img.color = Color::WHITE;

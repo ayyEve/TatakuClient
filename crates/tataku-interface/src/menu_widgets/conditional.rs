@@ -50,8 +50,6 @@ impl ConditionalWidget {
         }
     }
 }
-
-#[async_trait]
 impl Widget for ConditionalWidget {
     fn name(&self) -> Cow<'static, str>  { "conditional_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
@@ -136,33 +134,33 @@ impl Widget for ConditionalWidget {
         child.update(shell, actions);
     }
     
-    async fn handle_message(
+    fn handle_message(
         &mut self, 
         message: &Message, 
         values: &mut dyn Reflect, 
         actions: &mut ActionQueue,
     ) {
         let Some(child) = self.get_ele_mut() else { return };
-        child.handle_message(message, values, actions).await;
+        child.handle_message(message, values, actions);
     }
 
-    async fn handle_event(
+    fn handle_event(
         &mut self, 
         event: TatakuEventType, 
         event_value: Option<TatakuValue>, 
         values: &mut dyn Reflect,
     ) {
         let Some(child) = self.get_ele_mut() else { return };
-        child.handle_event(event, event_value, values).await
+        child.handle_event(event, event_value, values);
     }
 
-    async fn reload_skin(
+    fn reload_skin(
         &mut self, 
         shell: &mut UpdateShell,
     ) {
-        self.if_true.reload_skin(shell).await;
+        self.if_true.reload_skin(shell);
         if let Some(if_false) = self.if_false.as_mut() {
-            if_false.reload_skin(shell).await;
+            if_false.reload_skin(shell);
         }
     }
 }

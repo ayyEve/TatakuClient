@@ -11,7 +11,7 @@ pub struct RenderTarget {
 }
 #[cfg(feature = "graphics")]
 impl RenderTarget {
-    pub async fn new(
+    pub fn new(
         width: u32, 
         height: u32, 
         callback: impl FnOnce(&mut dyn GraphicsEngine, Matrix) + Send + Sync + 'static
@@ -19,7 +19,7 @@ impl RenderTarget {
         GameWindow::create_render_target(
             (width, height), 
             callback
-        ).await
+        )
     }
 }
 #[cfg(feature = "graphics")]

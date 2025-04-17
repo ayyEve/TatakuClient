@@ -158,7 +158,6 @@ impl Default for Chat {
     }
 }
 
-#[async_trait]
 impl Widget for Chat {
     fn name(&self) -> Cow<'static, str> { "chat_dialog".into() }
     fn node_id(&self) -> NodeId { self.node_id }
@@ -182,7 +181,7 @@ impl Widget for Chat {
         todo!()
     }
 
-    async fn handle_message(
+    fn handle_message(
         &mut self, 
         message: &Message, 
         _values: &mut dyn Reflect,

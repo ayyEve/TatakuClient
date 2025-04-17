@@ -113,8 +113,6 @@ impl Dropdown {
         }
     }
 }
-
-#[async_trait]
 impl Widget for Dropdown {
     fn name(&self) -> Cow<'static, str> { "dropdown_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }

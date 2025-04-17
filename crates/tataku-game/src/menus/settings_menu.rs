@@ -205,8 +205,6 @@ impl SettingsMenu {
         .boxed()
     }
 }
-
-#[async_trait]
 impl Widget for SettingsMenu {
     fn name(&self) -> Cow<'static, str> { "settings_menu".into() }
     fn node_id(&self) -> NodeId { self.node_id }
@@ -251,7 +249,7 @@ impl Widget for SettingsMenu {
     }
 
     
-    async fn handle_message(
+    fn handle_message(
         &mut self, 
         message: &Message, 
         values: &mut dyn Reflect,
@@ -293,7 +291,7 @@ impl Widget for SettingsMenu {
                     &Message::new(message.owner, "close", MessageValue::Click), 
                     values, 
                     actions
-                ).await;
+                );
                 let close_task = ActionTask::new(UiAction::new(self.node_id, DialogAction::Close));
                 let task = DelayTask::new(close_task, 200);
                 actions.push(TaskAction::AddTask(Box::new(task)));

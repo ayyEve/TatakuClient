@@ -63,7 +63,7 @@ pub struct HitCircleImageHelper {
 }
 impl HitCircleImageHelper {
     #[cfg(feature="graphics")]
-    pub async fn new(
+    pub fn new(
         settings: &Arc<TaikoSettings>, 
         hit_type: HitType, 
         finisher: bool, 
@@ -87,13 +87,13 @@ impl HitCircleImageHelper {
             i.pos = Vector2::ZERO;
             i.scale = scale;
             i.color = color;
-        }).await;
+        });
 
         let overlay = skin_manager.get_texture_then(&format!("{hitcircle}overlay"), source, SkinUsage::Gamemode, false, |i| {
             i.pos = Vector2::ZERO;
             i.scale = scale;
             i.color = color;
-        }).await;
+        });
 
         if overlay.is_none() || circle.is_none() { return None }
 

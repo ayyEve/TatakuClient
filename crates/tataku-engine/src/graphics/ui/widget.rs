@@ -1,7 +1,6 @@
 use crate::prelude::*;
 use crate::prelude::ui::*;
 
-#[async_trait]
 pub trait Widget: Send + Sync {
     fn name(&self) -> Cow<'static, str>;
     fn node_id(&self) -> NodeId;
@@ -33,21 +32,21 @@ pub trait Widget: Send + Sync {
         _actions: &mut ActionQueue,
     ) {}
     
-    async fn handle_message(
+    fn handle_message(
         &mut self, 
         _message: &Message, 
         _values: &mut dyn Reflect, 
         _actions: &mut ActionQueue,
     ) {}
 
-    async fn handle_event(
+    fn handle_event(
         &mut self, 
         _event: TatakuEventType, 
         _event_value: Option<TatakuValue>, 
         _values: &mut dyn Reflect,
     ) {}
 
-    async fn reload_skin(
+    fn reload_skin(
         &mut self, 
         _shell: &mut UpdateShell,
     ) {}

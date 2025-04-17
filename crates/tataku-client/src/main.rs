@@ -80,8 +80,8 @@ fn start_game(
             game_event_receiver,
             proxy,
             vec![
-                #[cfg(feature="kira_audio")] Box::new(tataku_kira::KiraAudioInit), 
-                #[cfg(feature="bass_audio")] Box::new(tataku_bass::BassAudioInit),
+                #[cfg(feature="kira_audio")] tataku_kira::KiraAudioInit, 
+                #[cfg(feature="bass_audio")] tataku_bass::BassAudioInit,
             ],
             gamemodes,
         ).await;

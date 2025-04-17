@@ -73,7 +73,6 @@ impl Container {
     }
 }
 
-#[async_trait]
 impl Widget for Container {
     fn name(&self) -> Cow<'static, str> { "container_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
@@ -298,7 +297,7 @@ impl Widget for Container {
         }
     }
 
-    async fn handle_message(
+    fn handle_message(
         &mut self, 
         message: &Message, 
         values: &mut dyn Reflect, 
@@ -322,16 +321,16 @@ impl Widget for Container {
             let path = ReflectPath::new(&data.variable);
             for (i, value) in self.children.iter_mut().zip(values_) {
                 values.impl_insert(path.clone(), value).expect("error inserting into values");
-                i.handle_message(message, values, actions).await;
+                i.handle_message(message, values, actions);
             }
         } else {
             for i in self.children.iter_mut() {
-                i.handle_message(message, values, actions).await
+                i.handle_message(message, values, actions);
             }
         }
     }
 
-    async fn handle_event(
+    fn handle_event(
         &mut self, 
         event: TatakuEventType, 
         event_value: Option<TatakuValue>, 
@@ -355,18 +354,18 @@ impl Widget for Container {
             let path = ReflectPath::new(&data.variable);
             for (i, value) in self.children.iter_mut().zip(values_) {
                 values.impl_insert(path.clone(), value).expect("error inserting into values");
-                i.handle_event(event, event_value.clone(), values).await;
+                i.handle_event(event, event_value.clone(), values);
             }
         } else {
             for i in self.children.iter_mut() {
-                i.handle_event(event, event_value.clone(), values).await
+                i.handle_event(event, event_value.clone(), values)
             }
         }
     }
 
-    async fn reload_skin(&mut self, shell: &mut UpdateShell) {
+    fn reload_skin(&mut self, shell: &mut UpdateShell) {
         for i in self.children.iter_mut() {
-            i.reload_skin(shell).await
+            i.reload_skin(shell);
         }
     }
 }

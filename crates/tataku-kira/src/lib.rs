@@ -19,6 +19,14 @@ const NO_TWEEN:Tween = Tween {
 };
 
 pub struct KiraAudio(Mutex<KiraAudioManager<CpalBackend>>);
+impl KiraAudio {
+    fn init() -> TatakuResult<Arc<dyn AudioApi>> {
+        let manager = KiraAudioManager::<CpalBackend>::new(AudioManagerSettings::default())
+            .map_err(TatakuError::from_err)?;
+
+        Ok(Arc::new(KiraAudio(Mutex::new(manager))))
+    }
+}
 impl AudioApi for KiraAudio {
     fn load_sample_data(&self, data: Vec<u8>) -> TatakuResult<Arc<dyn AudioInstance>> {
         // TODO: StaticSoundData
@@ -37,18 +45,11 @@ impl AudioApi for KiraAudio {
     }
 }
 
-pub struct KiraAudioInit;
-#[async_trait]
-impl AudioApiInit for KiraAudioInit {
-    fn name(&self) ->  &'static str { "kira_audio" }
-    
-    async fn init(&self) -> TatakuResult<Arc<dyn AudioApi>> {
-        let manager = KiraAudioManager::<CpalBackend>::new(AudioManagerSettings::default())
-            .map_err(TatakuError::from_err)?;
-
-        Ok(Arc::new(KiraAudio(Mutex::new(manager))))
-    }
-}
+#[allow(non_upper_case_globals)]
+pub const KiraAudioInit: AudioApiInit = AudioApiInit {
+    name: "kira_audio",
+    init: KiraAudio::init
+};
 
 struct KiraStreamAudioInstance(RwLock<StreamingSoundHandle<FromFileError>>);
 impl KiraStreamAudioInstance {

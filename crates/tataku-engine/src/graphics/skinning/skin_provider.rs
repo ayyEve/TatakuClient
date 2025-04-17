@@ -1,10 +1,9 @@
 use crate::prelude::*;
 
-#[async_trait::async_trait]
 pub trait SkinProvider: Send + Sync + 'static {
     fn skin(&self) -> &Arc<SkinSettings>;
 
-    async fn get_texture(
+    fn get_texture(
         &mut self,
         name: &str,
         source: &TextureSource,
@@ -20,7 +19,7 @@ pub trait SkinProvider: Send + Sync + 'static {
 
 impl dyn SkinProvider {
     /// helper since most texture loads will look something like this
-    pub async fn get_texture_then(
+    pub fn get_texture_then(
         &mut self,
         name: &str,
         source: &TextureSource,
@@ -30,7 +29,6 @@ impl dyn SkinProvider {
     ) -> Option<Image> {
         self
         .get_texture(name, source, usage, grayscale)
-        .await
         .map(|mut i| {
             on_loaded(&mut i);
             i

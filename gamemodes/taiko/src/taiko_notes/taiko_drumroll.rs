@@ -50,8 +50,6 @@ impl TaikoDrumroll {
         }
     }
 }
-
-#[async_trait]
 impl HitObject for TaikoDrumroll {
     fn note_type(&self) -> NoteType { NoteType::Slider }
     fn time(&self) -> f32 { self.time }
@@ -149,20 +147,20 @@ impl HitObject for TaikoDrumroll {
     }
     
     #[cfg(feature="graphics")]
-    async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+    fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
         let radius = self.settings.note_radius * if self.finisher { self.settings.big_note_multiplier } else { 1.0 };
 
         self.middle_image = skin_manager.get_texture_then("taiko-roll-middle", source, SkinUsage::Gamemode, false, |i| {
             i.origin.x = 0.0;
             i.color = Color::YELLOW;
             i.scale = Vector2::ONE * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
-        }).await;
+        });
 
         self.end_image = skin_manager.get_texture_then("taiko-roll-end", source, SkinUsage::Gamemode, false, |i| {
             i.origin.x = 0.0;
             i.color = Color::YELLOW;
             i.scale = Vector2::ONE * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
-        }).await;
+        });
 
     }
 }

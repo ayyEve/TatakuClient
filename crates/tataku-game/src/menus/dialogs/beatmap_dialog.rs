@@ -17,8 +17,6 @@ impl BeatmapDialog {
         }
     }
 }
-
-#[async_trait]
 impl Widget for BeatmapDialog {
     fn name(&self) -> Cow<'static, str> { "beatmap_dialog".into() }
     fn node_id(&self) -> NodeId { self.node_id }
@@ -53,7 +51,7 @@ impl Widget for BeatmapDialog {
         self.node.draw(shell)
     }
 
-    async fn handle_message(
+    fn handle_message(
         &mut self, 
         message: &Message, 
         _values: &mut dyn Reflect,

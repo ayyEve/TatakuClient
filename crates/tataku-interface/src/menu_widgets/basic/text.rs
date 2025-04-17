@@ -35,9 +35,6 @@ impl TextWidget {
         }
     }
 }
-
-
-#[async_trait]
 impl Widget for TextWidget {
     fn name(&self) -> Cow<'static, str> { "text_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }

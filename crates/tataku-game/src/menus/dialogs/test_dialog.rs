@@ -46,9 +46,6 @@ impl Default for TestDialog {
         Self::new()
     }
 }
-
-
-#[async_trait]
 impl Dialog for TestDialog {
     fn name(&self) -> &'static str { "test_weee" }
     fn title(&self) -> &'static str { "Test Dialog" }
@@ -197,7 +194,6 @@ impl Dialog for TestDialog {
 //     }
 // }
 
-// #[async_trait]
 // #[allow(unused)]
 // impl Dialog for StupidDialog {
 //     fn name(&self) -> &'static str { "this is so dumb" }

@@ -31,7 +31,6 @@ impl ElapsedElement {
     }
 }
 
-#[async_trait]
 impl GameplayWidget for ElapsedElement {
     fn display_name(&self) -> &'static str { "Time Elapsed" }
     fn max_size(&self) -> Vector2 { SIZE }

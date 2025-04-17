@@ -12,7 +12,7 @@ pub struct OsuStoryboard {
     time: f32,
 }
 impl OsuStoryboard {
-    pub async fn new(
+    pub fn new(
         def: StoryboardDef,
         dir: String,
         skin_manager: &mut dyn SkinProvider,
@@ -29,7 +29,7 @@ impl OsuStoryboard {
         let mut image_cache = HashMap::new();
         let mut elements = Vec::new();
         for e in def.entries.clone() {
-            elements.push(Element::new(e, &dir, &mut image_cache,  skin_manager).await?);
+            elements.push(Element::new(e, &dir, &mut image_cache,  skin_manager)?);
         }
         elements.sort_by(Element::sort);
 
@@ -47,9 +47,6 @@ impl OsuStoryboard {
         })
     }
 }
-
-
-#[async_trait]
 impl BeatmapAnimation for OsuStoryboard {
     fn use_gamemode_playfield(&self, gamemode: &GamemodeInfo) -> bool {
         gamemode.id == "osu"
@@ -140,7 +137,7 @@ struct Element {
     group: TransformGroup,
 }
 impl Element {
-    async fn new(
+    fn new(
         def: StoryboardEntryDef,
         parent_dir: &String,
         image_cache: &mut HashMap<String, Image>,
@@ -166,7 +163,7 @@ impl Element {
                     .replace("\\", "/")
                 ;
 
-                let mut image = try_load_image(&filepath, image_cache, skin_manager).await?;
+                let mut image = try_load_image(&filepath, image_cache, skin_manager)?;
 
                 image.origin = Vector2::ZERO;
                 image.pos = Vector2::ZERO;
@@ -194,7 +191,7 @@ impl Element {
                         .replace("\\", "/")
                     ;
 
-                    let Ok(image) = try_load_image(&filepath, image_cache, skin_manager).await else {
+                    let Ok(image) = try_load_image(&filepath, image_cache, skin_manager) else {
                         if counter == 0 { error!("image not found: {filepath}"); }
                         break
                     };
@@ -326,14 +323,14 @@ enum ElementImage {
     Anim(Animation),
 }
 
-async fn try_load_image(
+fn try_load_image(
     filepath: &String,
     image_cache: &mut HashMap<String, Image>,
     skin_manager: &mut dyn SkinProvider
 ) -> TatakuResult<Image> {
     if let Some(image) = image_cache.get(filepath).cloned() {
         Ok(image)
-    } else if let Some(i) = skin_manager.get_texture(filepath, &TextureSource::Raw, SkinUsage::Beatmap, false).await {
+    } else if let Some(i) = skin_manager.get_texture(filepath, &TextureSource::Raw, SkinUsage::Beatmap, false) {
         image_cache.insert(filepath.clone(), i.clone());
         Ok(i)
     } else {
@@ -348,7 +345,7 @@ async fn try_load_image(
             if file.file_name().to_ascii_lowercase() != filename { continue }
             // let filename = file.file_name().to_str().unwrap();
             let filepath2 = parent.join(file.file_name()).to_string_lossy().to_string();
-            found = skin_manager.get_texture(&filepath2, &TextureSource::Raw, SkinUsage::Beatmap, false).await;
+            found = skin_manager.get_texture(&filepath2, &TextureSource::Raw, SkinUsage::Beatmap, false);
             break;
         }
 

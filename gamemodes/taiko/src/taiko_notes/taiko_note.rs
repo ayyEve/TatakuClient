@@ -53,12 +53,10 @@ impl TaikoNote {
         }
     }
 }
-
-#[async_trait]
 impl HitObject for TaikoNote {
-    fn note_type(&self) -> NoteType {NoteType::Note}
-    fn time(&self) -> f32 {self.time}
-    fn end_time(&self, hw_miss:f32) -> f32 {self.time + hw_miss}
+    fn note_type(&self) -> NoteType { NoteType::Note }
+    fn time(&self) -> f32 { self.time }
+    fn end_time(&self, hw_miss: f32) -> f32 { self.time + hw_miss }
 
     fn update(&mut self, _time: f32) {}
     fn draw(&mut self, time: f32, list: &mut RenderableCollection) {
@@ -96,8 +94,8 @@ impl HitObject for TaikoNote {
     }
 
     #[cfg(feature="graphics")]
-    async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
-        self.image = HitCircleImageHelper::new(&self.settings, self.hit_type, self.finisher, source, skin_manager).await;
+    fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+        self.image = HitCircleImageHelper::new(&self.settings, self.hit_type, self.finisher, source, skin_manager);
     }
 }
 impl TaikoHitObject for TaikoNote {

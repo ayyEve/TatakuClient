@@ -1,6 +1,5 @@
 use crate::prelude::*;
 
-#[async_trait]
 pub trait GameMode: Send + Sync {
     fn new(
         beatmap: &Beatmap, 
@@ -34,7 +33,7 @@ pub trait GameMode: Send + Sync {
     
     fn force_update_settings(&mut self, settings: &Settings);
     #[cfg(feature="graphics")]
-    async fn reload_skin(&mut self, beatmap_path: &str, skin_manager: &mut dyn SkinProvider) -> TextureSource;
+    fn reload_skin(&mut self, beatmap_path: &str, skin_manager: &mut dyn SkinProvider) -> TextureSource;
 
     fn time_jump(&mut self, _new_time: f32, _state: &mut GameplayUpdateShell) {}
     fn apply_mods(&mut self, mods: Arc<ModManager>);
@@ -51,7 +50,7 @@ pub trait GameMode: Send + Sync {
 
     /// setup any gamemode specific ui elements for this gamemode
     /// ie combo and leaderboard, since the pos is different per-mode
-    async fn build_widgets(
+    fn build_widgets(
         &self, 
         _loader: &mut dyn UiElementLoader,
     ) {}

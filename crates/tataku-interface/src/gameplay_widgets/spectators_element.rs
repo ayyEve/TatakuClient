@@ -18,7 +18,6 @@ impl SpectatorsElement {
         })
     }
 }
-#[async_trait]
 impl GameplayWidget for SpectatorsElement {
     fn display_name(&self) -> &'static str { "Spectators" }
 

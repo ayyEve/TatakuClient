@@ -69,8 +69,6 @@ impl UTypingGame {
         self.timing_bars.iter_mut().for_each(|n| n.update_playfield(self.playfield.clone()));
     }
 }
-
-#[async_trait]
 impl GameMode for UTypingGame {
     fn new(beatmap: &Beatmap, _:bool, settings: &Settings) -> TatakuResult<Self> {
         // let settings = Arc::new(settings.taiko_settings.clone());
@@ -396,9 +394,9 @@ impl GameMode for UTypingGame {
     
     fn force_update_settings(&mut self, _settings: &Settings) {}
     #[cfg(feature="graphics")]
-    async fn reload_skin(&mut self, _beatmap_path: &str, skin_manager: &mut dyn SkinProvider) -> TextureSource {
+    fn reload_skin(&mut self, _beatmap_path: &str, skin_manager: &mut dyn SkinProvider) -> TextureSource {
         for i in self.notes.iter_mut() {
-            i.reload_skin(&TextureSource::Skin, skin_manager).await;
+            i.reload_skin(&TextureSource::Skin, skin_manager);
         }
         TextureSource::Skin
     }

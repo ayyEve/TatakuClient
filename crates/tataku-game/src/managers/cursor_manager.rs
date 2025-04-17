@@ -30,7 +30,7 @@ pub struct CursorManager {
     settings: CursorSettings,
 }
 impl CursorManager {
-    pub async fn new(skin: Arc<SkinSettings>, settings: CursorSettings) -> Self {
+    pub fn new(skin: Arc<SkinSettings>, settings: CursorSettings) -> Self {
         Self {
             pos: Vector2::ZERO,
 
@@ -53,7 +53,7 @@ impl CursorManager {
 
 
     #[cfg(feature="graphics")]
-    pub async fn reload_skin(&mut self, skin_manager: &mut dyn SkinProvider) {
+    pub fn reload_skin(&mut self, skin_manager: &mut dyn SkinProvider) {
         self.cursor_images.clear();
         self.current_skin = skin_manager.skin().clone();
 
@@ -65,7 +65,7 @@ impl CursorManager {
             CursorMode::Pointer,
             CursorMode::Text
         ] {
-            if let Some(image) = skin_manager.get_texture(mode.tex_name(), &TextureSource::Skin, SkinUsage::Game, true).await {
+            if let Some(image) = skin_manager.get_texture(mode.tex_name(), &TextureSource::Skin, SkinUsage::Game, true) {
                 self.cursor_images.insert(mode, image);
             }
         }
@@ -78,7 +78,7 @@ impl CursorManager {
     }
 
 
-    pub async fn update(&mut self, time: f32, cursor_pos: Vector2) {
+    pub fn update(&mut self, time: f32, cursor_pos: Vector2) {
         self.time = time;
         self.pos = cursor_pos;
 

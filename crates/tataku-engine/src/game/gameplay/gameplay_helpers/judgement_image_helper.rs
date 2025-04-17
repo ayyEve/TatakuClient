@@ -17,7 +17,7 @@ impl JudgmentImageHelper {
     }
 
     #[cfg(feature="graphics")]
-    pub async fn reload_skin(&mut self, skin_manager: &mut dyn SkinProvider) {
+    pub fn reload_skin(&mut self, skin_manager: &mut dyn SkinProvider) {
         self.images.clear();
 
         for i in self.variants.iter() {
@@ -29,7 +29,7 @@ impl JudgmentImageHelper {
             let img = i.tex_name;
             loop {
                 let img = img.to_owned() + "-" + &textures.len().to_string();
-                if let Some(tex) = skin_manager.get_texture(&img, &TextureSource::Skin, SkinUsage::Game, false).await {
+                if let Some(tex) = skin_manager.get_texture(&img, &TextureSource::Skin, SkinUsage::Game, false) {
                     textures.push(tex);
                 } else {
                     break;
@@ -38,7 +38,7 @@ impl JudgmentImageHelper {
 
             // if there was no animation, try loading a static image (no -num)
             if textures.is_empty() {
-                if let Some(tex) = skin_manager.get_texture(img, &TextureSource::Skin, SkinUsage::Game, false).await {
+                if let Some(tex) = skin_manager.get_texture(img, &TextureSource::Skin, SkinUsage::Game, false) {
                     textures.push(tex);
                 }
             }

@@ -21,7 +21,6 @@ impl KeyCounterElement {
     }
 }
 
-#[async_trait]
 impl GameplayWidget for KeyCounterElement {
     fn display_name(&self) -> &'static str { "Key Counter" }
 
@@ -104,7 +103,7 @@ impl GameplayWidget for KeyCounterElement {
 
     }
 
-    async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+    fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
         // let mut background_image = SKIN_MANAGER.write().get_texture("inputoverlay-background", false;
         // if let Some(image) = &mut background_image {
         //     image.current_rotation = 90f64.to_radians();
@@ -113,7 +112,7 @@ impl GameplayWidget for KeyCounterElement {
         //     image.depth = -100.0;
         // }
 
-        self.button_image = skin_manager.get_texture("inputoverlay-key", source, SkinUsage::Gamemode, false).await;
+        self.button_image = skin_manager.get_texture("inputoverlay-key", source, SkinUsage::Gamemode, false);
     }
 }
 

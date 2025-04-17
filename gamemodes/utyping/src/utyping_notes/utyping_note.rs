@@ -91,8 +91,6 @@ impl UTypingNote {
     }
 
 }
-
-#[async_trait]
 impl HitObject for UTypingNote {
     fn note_type(&self) -> NoteType {NoteType::Note}
     fn time(&self) -> f32 {self.time}
@@ -200,8 +198,8 @@ impl HitObject for UTypingNote {
     }
 
     #[cfg(feature="graphics")]
-    async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
-        self.image = HitCircleImageHelper::new(&self.settings, source, skin_manager).await;
+    fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+        self.image = HitCircleImageHelper::new(&self.settings, source, skin_manager);
     }
 }
 
@@ -254,7 +252,7 @@ struct HitCircleImageHelper {
 }
 impl HitCircleImageHelper {
     #[cfg(feature="graphics")]
-    async fn new(_settings: &Arc<TaikoSettings>, source: &TextureSource, skin_manager: &mut dyn SkinProvider) -> Option<Self> {
+    fn new(_settings: &Arc<TaikoSettings>, source: &TextureSource, skin_manager: &mut dyn SkinProvider) -> Option<Self> {
         let scale = 1.0;
         let hitcircle = "taikohitcircle";
 
@@ -264,12 +262,12 @@ impl HitCircleImageHelper {
             i.pos = Vector2::ZERO;
             i.scale = scale;
             // circle.color = color;
-        }).await;
+        });
         let overlay = skin_manager.get_texture_then(&format!("{hitcircle}overlay"), source, SkinUsage::Gamemode, false, |i| {
             i.pos = Vector2::ZERO;
             i.scale = scale;
             // overlay.color = color;
-        }).await;
+        });
 
         if overlay.is_none() || circle.is_none() { return None }
 

@@ -99,7 +99,6 @@ impl OsuNote {
     }
 }
 
-#[async_trait]
 impl HitObject for OsuNote {
     fn note_type(&self) -> NoteType { NoteType::Note }
     fn time(&self) -> f32 { self.time }
@@ -163,9 +162,9 @@ impl HitObject for OsuNote {
 
     
     #[cfg(feature="graphics")]
-    async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
-        self.circle_image.reload_skin(source, skin_manager).await;
-        self.approach_circle.reload_texture(source, skin_manager).await;
+    fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+        self.circle_image.reload_skin(source, skin_manager);
+        self.approach_circle.reload_texture(source, skin_manager);
     }
 }
 

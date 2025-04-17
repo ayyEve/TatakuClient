@@ -40,7 +40,7 @@ impl UiManager {
     }
 
 
-    pub async fn add_dialog(
+    pub fn add_dialog(
         &mut self, 
         dialog: Box<dyn Widget>,
         values: &mut dyn Reflect, 
@@ -65,7 +65,7 @@ impl UiManager {
             ), 
             values, 
             actions
-        ).await;
+        );
 
 
         // FIXME: 
@@ -75,7 +75,7 @@ impl UiManager {
         self.dialog_counter += 1;
     }
 
-    pub async fn close_latest(
+    pub fn close_latest(
         &mut self,
         values: &mut dyn Reflect,
         actions: &mut ActionQueue,
@@ -89,10 +89,10 @@ impl UiManager {
             ), 
             values,
             actions, 
-        ).await;
+        );
         true
     }
-    pub async fn force_close_all(
+    pub fn force_close_all(
         &mut self, 
         values: &mut dyn Reflect, 
         actions: &mut ActionQueue
@@ -106,7 +106,7 @@ impl UiManager {
                 ), 
                 values,
                 actions, 
-            ).await;
+            );
         }
         self.dialogs.clear();
         self.dialog_counter = 0;
@@ -137,7 +137,7 @@ impl UiManager {
         );
     }
 
-    pub async fn update(
+    pub fn update(
         &mut self,
         input_state: &mut CurrentInputState,
         mut tataku_events: Vec<(TatakuEventType, Option<TatakuValue>)>,
@@ -161,7 +161,7 @@ impl UiManager {
                 &m, 
                 values, 
                 actions
-            ).await;
+            );
         }
 
         for i in input_state.keys_down.0.iter() {
@@ -192,7 +192,7 @@ impl UiManager {
                     event, 
                     param.clone(), 
                     values
-                ).await;
+                );
             }
         }
 
@@ -227,7 +227,7 @@ impl UiManager {
             .find(|(_, tree)| tree.has_node(node))
     }
 
-    pub async fn handle_ui_action(
+    pub fn handle_ui_action(
         &mut self, 
         action: UiAction,
         values: &mut dyn Reflect,
@@ -281,7 +281,7 @@ impl UiManager {
                             &Message::new(tree.owner, "force_close", MessageValue::Click), 
                             values, 
                             actions,
-                        ).await;
+                        );
                         self.dialogs.remove(num);
                     }
 
@@ -312,7 +312,7 @@ impl UiManager {
 
 
 
-    pub async fn reload_skin(
+    pub fn reload_skin(
         &mut self, 
         values: &mut dyn Reflect,
         skin_manager: &mut dyn SkinProvider,
@@ -321,14 +321,14 @@ impl UiManager {
             values,
             &mut self.messages,
             skin_manager
-        ).await;
+        );
         
         for i in self.dialogs.iter_mut() {
             i.reload_skin(
                 values,
                 &mut self.messages,
                 skin_manager
-            ).await
+            );
         }
     }
 

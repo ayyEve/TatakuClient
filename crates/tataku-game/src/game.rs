@@ -71,7 +71,7 @@ pub struct Game {
     last_skin: String,
 
     background_loader: Option<AsyncLoader<Option<Image>>>,
-    spec_watch_action: SpectatorWatchAction,
+    // spec_watch_action: SpectatorWatchAction,
 
     pub actions: ActionQueue,
     #[cfg(feature="graphics")]
@@ -84,7 +84,7 @@ impl Game {
     pub async fn new(
         game_event_receiver: tokio::sync::mpsc::Receiver<WindowEvent>,
         window_proxy: winit::event_loop::EventLoopProxy<WindowAction>,
-        audio_engines: Vec<Box<dyn AudioApiInit>>,
+        audio_engines: Vec<AudioApiInit>,
         gamemodes: Vec<IncomingGamemode>,
     ) -> Self {
         let mut actions = ActionQueue::new();
@@ -111,13 +111,13 @@ impl Game {
 
             song_manager: SongManager::new(),
             sound_manager: SoundManager::new(),
-            audio_manager: AudioManager::init_audio(audio_engines).await.expect("failed to initialize audio engine!"),
+            audio_manager: AudioManager::init_audio(audio_engines).expect("failed to initialize audio engine!"),
             score_manager: ScoreManager::new(values.global.gamemode_infos.clone()),
             task_manager: TaskManager::new(),
 
             custom_menu_manager: CustomMenuManager::default(),
             skin_manager,
-            cursor_manager: CursorManager::new(skin, settings.cursor_settings.clone()).await,
+            cursor_manager: CursorManager::new(skin, settings.cursor_settings.clone()),
             notification_manager: NotificationManager::default(),
 
             gameplay_managers: HashMap::new(),
@@ -127,7 +127,7 @@ impl Game {
 
             current_state: GameState::None,
             queued_state: GameState::None,
-            spec_watch_action: SpectatorWatchAction::FullMenu,
+            // spec_watch_action: SpectatorWatchAction::FullMenu,
 
             // fps
             render_display: AsyncFpsDisplay::new("fps", 3, RENDER_COUNT.clone(), RENDER_FRAMETIME.clone()),
@@ -258,9 +258,9 @@ impl Game {
 
         // == menu setup ==
         #[cfg(feature="graphics")]
-        let mut loading_menu = LoadingMenu::new().await;
+        let mut loading_menu = LoadingMenu::new();
         #[cfg(feature="graphics")]
-        loading_menu.load(&self.settings).await;
+        loading_menu.load(&self.settings);
 
         debug!("game init took {:.2}", now.elapsed().as_secs_f32() * 1000.0);
 
@@ -338,7 +338,7 @@ impl Game {
                     self.last_skin = self.settings.current_skin.clone();
 
                     for (i, _) in self.gameplay_managers.values_mut() {
-                        i.reload_skin(&mut self.skin_manager, &self.values.settings).await;
+                        i.reload_skin(&mut self.skin_manager, &self.values.settings);
                     }
                 }
 
@@ -364,7 +364,7 @@ impl Game {
 
                 // update game mode with new information
                 if let GameState::Ingame(igm) = &mut self.current_state {
-                    if skin_changed { igm.reload_skin(&mut self.skin_manager, &self.values.settings).await; }
+                    if skin_changed { igm.reload_skin(&mut self.skin_manager, &self.values.settings); }
                     igm.force_update_settings(&self.values.settings);
                 }
 
@@ -528,7 +528,7 @@ impl Game {
         let controller_axis = self.input_manager.get_controller_axis();
 
         // update the cursor
-        self.cursor_manager.update(elapsed, self.input_manager.mouse_pos).await;
+        self.cursor_manager.update(elapsed, self.input_manager.mouse_pos);
 
         // update cursor
         if mouse_down.contains(&MouseButton::Left) {
@@ -619,12 +619,12 @@ impl Game {
 
         if keys_down.has_and_remove(Key::Grave) {
             let d = DialogWidget::new("Console", false, false, ConsoleDialog::new().boxed()).boxed();
-            self.ui_manager.add_dialog(d, &mut self.values, &mut self.actions).await;
+            self.ui_manager.add_dialog(d, &mut self.values, &mut self.actions);
         }
 
 
         // update any dialogs
-        if keys_down.has_key(Key::Escape) && self.ui_manager.close_latest(&mut self.values, &mut self.actions).await {
+        if keys_down.has_key(Key::Escape) && self.ui_manager.close_latest(&mut self.values, &mut self.actions) {
             keys_down.remove_key(Key::Escape);
         }
 
@@ -739,7 +739,7 @@ impl Game {
             &mut self.values,
             &mut self.actions,
             &mut self.skin_manager,
-        ).await;
+        );
 
         // update spec and multi managers
         if let Some(spec) = &mut self.spectator_manager {
@@ -816,7 +816,7 @@ impl Game {
                 if elapsed - timer > TRANSITION_TIME / 2.0 {
                     match *into {
                         GameState::Ingame(mut g) => {
-                            g.reload_skin(&mut self.skin_manager, &self.values.settings).await;
+                            g.reload_skin(&mut self.skin_manager, &self.values.settings);
                             
                             // let trans = self.transition.take();
                             let elapsed = self.game_start.as_millis();
@@ -828,7 +828,7 @@ impl Game {
                         GameState::SetMenu(menu) => {
                             let name = MenuType::from_menu(&*menu);
                             self.ui_manager.set_root(menu, &mut self.values);
-                            self.ui_manager.reload_skin(&mut self.values, &mut self.skin_manager).await;
+                            self.ui_manager.reload_skin(&mut self.values, &mut self.skin_manager);
                             
                             let elapsed = self.game_start.as_millis();
                             self.current_state = GameState::TransitionEnding { 
@@ -886,7 +886,7 @@ impl Game {
 
             _ => {
                 // force close all dialogs
-                self.ui_manager.force_close_all(&mut self.values, &mut self.actions).await;
+                self.ui_manager.force_close_all(&mut self.values, &mut self.actions);
 
                 match &mut self.queued_state {
                     GameState::Ingame(manager) => {
@@ -899,7 +899,7 @@ impl Game {
                         }
                         // make sure it has the latest window size
                         manager.window_size_changed(self.values.game.window_size).await;
-                        manager.reload_skin(&mut self.skin_manager, &self.values.settings).await;
+                        manager.reload_skin(&mut self.skin_manager, &self.values.settings);
                         manager.start();
 
                         let m = manager.metadata.clone();
@@ -1245,7 +1245,7 @@ impl Game {
                 action,
                 &mut self.values,
                 &mut self.actions,
-            ).await,
+            ),
 
             TatakuAction::Multiple(list) => {
                 for i in list {
@@ -1311,7 +1311,7 @@ impl Game {
                 debug!("Changing menu to: {}", menu.name());
                 self.ui_manager.set_root(menu, &mut self.values);
                 self.queued_events.push((TatakuEventType::MenuEnter, None));
-                self.ui_manager.reload_skin(&mut self.values, &mut self.skin_manager).await;
+                self.ui_manager.reload_skin(&mut self.values, &mut self.skin_manager);
             }
             GameState::InMenu(_) => {}
             mut state => {
@@ -1353,7 +1353,7 @@ impl Game {
                 Box::new(UserPanel::new()),
                 &mut self.values,
                 &mut self.actions
-            ).await;
+            );
         } else {
             self.ui_manager.dialogs.retain(|d| d.get_node().name() != "user_panel");
         }
@@ -1370,7 +1370,7 @@ impl Game {
     #[cfg(feature="graphics")]
     pub async fn set_background_beatmap(&mut self) {
         let Some(filename) = self.values.current_beatmap_prop(|b| b.image_filename.clone()) else { return };
-        self.background_image = self.skin_manager.get_texture(&filename, &TextureSource::Raw, SkinUsage::Background, false).await;
+        self.background_image = self.skin_manager.get_texture(&filename, &TextureSource::Raw, SkinUsage::Background, false);
         if let Some(i) = &mut self.background_image {
             i.origin = Vector2::ZERO;
         }
@@ -1397,7 +1397,7 @@ impl Game {
         }
 
         debug!("adding dialog: {}", dialog.name());
-        self.ui_manager.add_dialog(dialog, &mut self.values, &mut self.actions).await
+        self.ui_manager.add_dialog(dialog, &mut self.values, &mut self.actions)
     }
 
     /// Drag and Drop
@@ -2344,7 +2344,7 @@ impl Game {
                     }
                 } {
                     Ok(mut manager) => {
-                        manager.reload_skin(&mut self.skin_manager, &self.values.settings).await;
+                        manager.reload_skin(&mut self.skin_manager, &self.values.settings);
                         if let Some(mode) = config.gameplay_mode.clone() {
                             manager.set_mode(mode.into());
                         }

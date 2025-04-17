@@ -141,9 +141,6 @@ impl TaikoDifficultyCalculator {
         Ok(change_density)
     }
 }
-
-
-#[async_trait]
 impl DiffCalc for TaikoDifficultyCalculator {
     fn new(g: &BeatmapMeta, settings: &Settings) -> TatakuResult<Self> {
         let g = Beatmap::from_metadata(g)?;
@@ -184,7 +181,7 @@ impl DiffCalc for TaikoDifficultyCalculator {
 
             diff.push(combined);
             if WRITE_DEBUG_FILES {
-                lines.push(format!("{},{},{}", strain_value, density_value, combined));
+                lines.push(format!("{strain_value},{density_value},{combined}"));
             }
         }
         

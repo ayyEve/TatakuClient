@@ -3,7 +3,6 @@ use crate::prelude::*;
 /// how much time should pass at beatmap start before audio begins playing (and the map "starts")
 pub const LEAD_IN_TIME:f32 = 1000.0;
 
-#[async_trait]
 pub trait GameplayManagerTrait {
     fn time(&self) -> f32;
     fn end_time(&self) -> f32;
@@ -41,7 +40,7 @@ pub trait GameplayManagerTrait {
     );
 
 
-    async fn reload_skin(
+    fn reload_skin(
         &mut self, 
         skin_manager: &mut dyn SkinProvider,
         settings: &Settings,

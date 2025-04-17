@@ -76,8 +76,6 @@ impl TransformableWidget {
         }
     }
 }
-
-#[async_trait]
 impl Widget for TransformableWidget {
     fn name(&self) -> Cow<'static, str> { "transformable_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
@@ -211,7 +209,7 @@ impl Widget for TransformableWidget {
         self.child.update(shell, actions);
     }
     
-    async fn handle_message(
+    fn handle_message(
         &mut self, 
         message: &Message, 
         values: &mut dyn Reflect, 
@@ -230,10 +228,10 @@ impl Widget for TransformableWidget {
             self.run_triggers(to_trigger, time);
         }
 
-        self.child.handle_message(message, values, actions).await;
+        self.child.handle_message(message, values, actions);
     }
 
-    async fn handle_event(
+    fn handle_event(
         &mut self, 
         event: TatakuEventType, 
         event_value: Option<TatakuValue>, 
@@ -252,13 +250,13 @@ impl Widget for TransformableWidget {
             self.run_triggers(to_trigger, time);
         }
         
-        self.child.handle_event(event, event_value, values).await;
+        self.child.handle_event(event, event_value, values);
     }
 
-    async fn reload_skin(
+    fn reload_skin(
         &mut self, 
         shell: &mut UpdateShell,
     ) {
-        self.child.reload_skin(shell).await;
+        self.child.reload_skin(shell);
     }
 }

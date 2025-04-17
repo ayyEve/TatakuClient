@@ -11,6 +11,7 @@ default-members = [ "crates/tataku-client" ]
 resolver = "2"
 
 [workspace.lints]
+clippy.new_without_default = "allow"
 clippy.too_many_arguments = "allow"
 clippy.module_inception = "allow"
 clippy.type_complexity = "allow"
@@ -94,7 +95,7 @@ rustls = "0.23.26"
 native-tls = "0.2.14"
 tokio-native-tls = "0.3.1"
 tokio-tungstenite = { version = "0.26.2", features = [ "rustls-tls-native-roots" ] }
-reqwest = { version = "0.12.15", features = [ "json" ] }
+reqwest = { version = "0.12.15", features = [ "json", "blocking" ] }
 
 # serde
 serde = { version = "1.0.219", features = [ "derive" ] }

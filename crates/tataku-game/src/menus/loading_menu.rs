@@ -11,16 +11,15 @@ pub struct LoadingMenu {
 }
 
 impl LoadingMenu {
-    pub async fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             actions: ActionQueue::new(),
             statuses: Vec::new(),
             node: EmptyWidget::new_boxed(),
             node_id: EMPTY_NODE
-            // window_size: WindowSize::get(),
         }
     }
-    pub async fn load(&mut self, _settings: &Settings) {
+    pub fn load(&mut self, _settings: &Settings) {
         macro_rules! add {
             ($fn: ident, $stage: expr) => {{
                 let status = Arc::new(RwLock::new(LoadingStatus::new($stage)));
@@ -95,8 +94,6 @@ impl LoadingMenu {
         status.write().complete = true;
     }
 }
-
-#[async_trait]
 impl Widget for LoadingMenu {
     fn name(&self) -> Cow<'static, str> { Cow::Borrowed("loading_menu") }
     fn node_id(&self) -> NodeId { self.node_id }
@@ -141,4 +138,3 @@ impl Widget for LoadingMenu {
         self.node.draw(shell);
     }
 }
-

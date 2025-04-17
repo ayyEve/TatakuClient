@@ -69,8 +69,6 @@ impl DonChan {
     }
 
 }
-
-#[async_trait]
 impl GameplayWidget for DonChan {
     fn display_name(&self) -> &'static str { "DonChan" }
 
@@ -200,16 +198,16 @@ impl GameplayWidget for DonChan {
     }
 
     // #[cfg(feature="graphics")]
-    async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
-        self.normal_anim = load_anim("idle", source, skin_manager).await;
-        self.combo_anim = load_anim("clear", source, skin_manager).await;
-        self.kiai_anim = load_anim("kiai", source, skin_manager).await;
-        self.fail_anim = load_anim("fail", source, skin_manager).await;
+    fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+        self.normal_anim = load_anim("idle", source, skin_manager);
+        self.combo_anim = load_anim("clear", source, skin_manager);
+        self.kiai_anim = load_anim("kiai", source, skin_manager);
+        self.fail_anim = load_anim("fail", source, skin_manager);
     }
 }
 
 // #[cfg(feature="graphics")]
-async fn load_anim(
+fn load_anim(
     name: &str, 
     source: &TextureSource,
     skin_manager: &mut dyn SkinProvider,
@@ -217,7 +215,7 @@ async fn load_anim(
     let mut frames = Vec::new();
     let mut current = 0;
 
-    while let Some(tex) = skin_manager.get_texture(&format!("pippidon{name}{current}"), source, SkinUsage::Gamemode, false).await {
+    while let Some(tex) = skin_manager.get_texture(&format!("pippidon{name}{current}"), source, SkinUsage::Gamemode, false) {
         current += 1;
         frames.push(tex.tex);
     }

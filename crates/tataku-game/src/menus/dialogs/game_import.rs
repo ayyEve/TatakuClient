@@ -65,8 +65,6 @@ impl GameImportDialog {
         }
     }
 }
-
-#[async_trait]
 impl Dialog for GameImportDialog {
     fn name(&self) -> &'static str { "game_import" }
     fn should_close(&self) -> bool { self.should_close }

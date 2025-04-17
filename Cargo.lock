@@ -3694,6 +3694,7 @@ dependencies = [
  "base64 0.22.1",
  "bytes",
  "encoding_rs",
+ "futures-channel",
  "futures-core",
  "futures-util",
  "h2",
@@ -4472,6 +4473,7 @@ dependencies = [
  "bass-rs",
  "lazy_static",
  "parking_lot",
+ "reqwest",
  "tataku-engine",
  "tracing",
 ]

@@ -42,8 +42,6 @@ impl UserPanel {
         // ).boxed()
     }
 }
-
-#[async_trait]
 impl Widget for UserPanel {
     fn name(&self) -> Cow<'static, str> { "user_panel".into() }
     fn node_id(&self) -> NodeId { self.node_id }
@@ -67,7 +65,7 @@ impl Widget for UserPanel {
         self.node.draw(shell);
     }
 
-    async fn handle_message(
+    fn handle_message(
         &mut self, 
         message: &Message, 
         _values: &mut dyn Reflect,

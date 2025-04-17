@@ -51,7 +51,6 @@ impl BuiltCustomMenu {
         }
     }
 }
-#[async_trait]
 impl Widget for BuiltCustomMenu {
     fn name(&self) -> Cow<'static, str> { format!("custom-{}", self.id).into() }
     fn node_id(&self) -> NodeId { self.node_id }
@@ -89,7 +88,7 @@ impl Widget for BuiltCustomMenu {
         self.element.update(shell, actions);
     }
 
-    async fn handle_message(
+    fn handle_message(
         &mut self, 
         message: &Message, 
         values: &mut dyn Reflect, 
@@ -97,7 +96,7 @@ impl Widget for BuiltCustomMenu {
     ) {
         actions.extend(self.actions.take());
 
-        self.element.handle_message(message, values, &mut self.actions).await;
+        self.element.handle_message(message, values, &mut self.actions);
         if !self.actions.is_empty() { return actions.extend(self.actions.take())}
 
         let cast = message.value
@@ -130,7 +129,7 @@ impl Widget for BuiltCustomMenu {
             
             MessageValue::Multi(messages) => {
                 for i in messages {
-                    self.handle_message(&i, values, actions).await;
+                    self.handle_message(&i, values, actions);
                 }
             }
 
@@ -138,7 +137,7 @@ impl Widget for BuiltCustomMenu {
         }
     }
 
-    async fn handle_event(
+    fn handle_event(
         &mut self, 
         event: TatakuEventType, 
         event_value: Option<TatakuValue>, 
@@ -161,8 +160,8 @@ impl Widget for BuiltCustomMenu {
         }
     }
 
-    async fn reload_skin(&mut self, shell: &mut UpdateShell) {
-        self.element.reload_skin(shell).await;
+    fn reload_skin(&mut self, shell: &mut UpdateShell) {
+        self.element.reload_skin(shell);
     }
 }
 

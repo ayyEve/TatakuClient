@@ -230,7 +230,6 @@ impl TaikoGame {
     }
 }
 
-#[async_trait]
 impl GameMode for TaikoGame {
     fn new(
         beatmap: &Beatmap, 
@@ -929,13 +928,13 @@ impl GameMode for TaikoGame {
     }
     
     #[cfg(feature="graphics")]
-    async fn reload_skin(&mut self, beatmap_path: &str, skin_manager: &mut dyn SkinProvider) -> TextureSource {
+    fn reload_skin(&mut self, beatmap_path: &str, skin_manager: &mut dyn SkinProvider) -> TextureSource {
         let source = TextureSource::Beatmap(beatmap_path.to_owned()); // TODO: yeah
 
         let radius = self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult;
         let scale = Vector2::ONE * (radius * 2.0) / TAIKO_HIT_INDICATOR_TEX_SIZE.x;
 
-        if let Some(mut don) = skin_manager.get_texture("taiko-drum-inner", &source, SkinUsage::Gamemode, true).await {
+        if let Some(mut don) = skin_manager.get_texture("taiko-drum-inner", &source, SkinUsage::Gamemode, true) {
             don.origin.x = (don.tex_size() / don.base_scale).x;
             don.pos = self.playfield.hit_position;
             don.scale = scale;
@@ -945,7 +944,7 @@ impl GameMode for TaikoGame {
             rdon.scale *= Vector2::new(-1.0, 1.0);
             self.right_don_image = Some(rdon);
         }
-        if let Some(mut kat) = skin_manager.get_texture("taiko-drum-outer", &source, SkinUsage::Gamemode, true).await {
+        if let Some(mut kat) = skin_manager.get_texture("taiko-drum-outer", &source, SkinUsage::Gamemode, true) {
             kat.origin.x = 0.0;
             kat.pos = self.playfield.hit_position;
             kat.scale = scale;
@@ -959,7 +958,7 @@ impl GameMode for TaikoGame {
         self.judgement_helper = JudgmentImageHelper::new(TaikoHitJudgments::variants().to_vec());
 
         for n in self.notes.iter_mut().chain(self.other_notes.iter_mut()) {
-            n.reload_skin(&source, skin_manager).await;
+            n.reload_skin(&source, skin_manager);
         }
 
         source
@@ -1052,7 +1051,7 @@ impl GameMode for TaikoGame {
     }
 
 
-    async fn build_widgets(
+    fn build_widgets(
         &self, 
         loader: &mut dyn UiElementLoader
     ) {

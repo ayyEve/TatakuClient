@@ -47,7 +47,7 @@ impl SkinManager {
 
 
     // try to load a skin from the provided source. does not try fallbacks
-    async fn load_texture(
+    fn load_texture(
         source: &TextureSource,
         name: impl AsRef<str> + Send + Sync, 
         grayscale: bool,
@@ -76,7 +76,7 @@ impl SkinManager {
             };
 
             // try loading the bytes. if we cant, try the next source 
-            let Ok(buf) = Io::read_file_async(&path).await else { continue };
+            let Ok(buf) = Io::read_file(&path) else { continue };
 
             // read the file bytes as an image
             match image::load_from_memory(&buf) {
@@ -102,7 +102,7 @@ impl SkinManager {
                     }
 
                     // send the bytes to the gpu to load into the texture atlas
-                    let tex = GameWindow::load_texture_data(img).await.expect("no atlas");
+                    let tex = GameWindow::load_texture_data(img).expect("no atlas");
                     let image = Image::new(Vector2::ZERO, Arc::new(tex), scale);
                     return TextureState::Success(image);
                 }
@@ -113,7 +113,6 @@ impl SkinManager {
     }
 }
 
-#[async_trait]
 impl SkinProvider for SkinManager {
     fn skin(&self) -> &Arc<SkinSettings> {
         &self.current_skin_config
@@ -174,7 +173,7 @@ impl SkinProvider for SkinManager {
     }
 
 
-    async fn get_texture(
+    fn get_texture(
         &mut self, 
         name: &str, 
         source: &TextureSource,
@@ -201,7 +200,7 @@ impl SkinProvider for SkinManager {
                 | Some(TextureEntry { image: TextureState::Unloaded, .. })
                 => {
                     // try to load the texture
-                    let result = Self::load_texture(&source, name, grayscale, &self.skin_name).await;
+                    let result = Self::load_texture(&source, name, grayscale, &self.skin_name);
                     entry.insert(source, TextureEntry { usage, image: result.clone() });
 
                     match result {

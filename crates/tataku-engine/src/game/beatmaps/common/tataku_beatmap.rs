@@ -1,6 +1,5 @@
 use crate::prelude::*;
 
-#[async_trait]
 pub trait TatakuBeatmap: Send+Sync {
     fn hash(&self) -> Md5Hash;
     fn playmode(&self, incoming: String) -> String;
@@ -13,6 +12,6 @@ pub trait TatakuBeatmap: Send+Sync {
     fn get_events(&self) -> Vec<IngameEvent> { Vec::new() }
 
     #[cfg(feature="graphics")]
-    async fn get_animation(&self, _skin_manager: &mut dyn SkinProvider) -> Option<Box<dyn BeatmapAnimation>> { None }
+    fn get_animation(&self, _skin_manager: &mut dyn SkinProvider) -> Option<Box<dyn BeatmapAnimation>> { None }
 }
 

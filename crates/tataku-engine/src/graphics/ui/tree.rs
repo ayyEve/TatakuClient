@@ -432,26 +432,23 @@ impl Tree {
         });
     }
 
-    pub async fn reload_skin(
+    pub fn reload_skin(
         &mut self,
         values: &mut dyn Reflect,
         messages: &mut Vec<Message>,
         skin_manager: &mut dyn SkinProvider,
     ) {
-        let mut node: Box<dyn Widget> = Box::new(EmptyWidget(self.node.node_id()));
-        std::mem::swap(&mut self.node, &mut node);
-
-        // update the root widget
-        let mut shell = UpdateShell {
-            owner: self.owner,
-            tree: self,
-            values,
-            messages,
-            skin_manager,
-        };
-        node.reload_skin(&mut shell).await;
-
-        self.node = node;
+        self.with_node(|tree, node| {
+            // update the root widget
+            let mut shell = UpdateShell {
+                owner: tree.owner,
+                tree,
+                values,
+                messages,
+                skin_manager,
+            };
+            node.reload_skin(&mut shell);
+        });
     }
 
     pub fn draw(&mut self, list: &mut RenderableCollection) {

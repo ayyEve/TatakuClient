@@ -17,8 +17,6 @@ impl ConsoleDialog {
         }
     }
 }
-
-#[async_trait]
 impl Widget for ConsoleDialog {
     fn name(&self) -> Cow<'static, str> { "console_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
@@ -103,29 +101,29 @@ impl Widget for ConsoleDialog {
         self.node.draw(shell)
     }
 
-    async fn handle_message(
+    fn handle_message(
         &mut self, 
         message: &Message, 
         values: &mut dyn Reflect, 
         actions: &mut ActionQueue,
     ) {
-        self.node.handle_message(message, values, actions).await
+        self.node.handle_message(message, values, actions);
     }
 
-    async fn handle_event(
+    fn handle_event(
         &mut self, 
         event: TatakuEventType, 
         event_value: Option<TatakuValue>, 
         values: &mut dyn Reflect,
     ) {
-        self.node.handle_event(event, event_value, values).await
+        self.node.handle_event(event, event_value, values);
     }
 
-    async fn reload_skin(
+    fn reload_skin(
         &mut self, 
         shell: &mut UpdateShell,
     ) {
-        self.node.reload_skin(shell).await
+        self.node.reload_skin(shell);
     }
 
 }

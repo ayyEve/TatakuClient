@@ -74,8 +74,6 @@ impl GenericDialog {
         )
     }
 }
-
-#[async_trait]
 impl Widget for GenericDialog {
     fn name(&self) -> Cow<'static, str> { "generic_dialog".into() }
     fn node_id(&self) -> NodeId { self.node_id }
@@ -98,7 +96,7 @@ impl Widget for GenericDialog {
 
     }
     
-    async fn handle_message(
+    fn handle_message(
         &mut self, 
         message: &Message, 
         _values: &mut dyn Reflect,

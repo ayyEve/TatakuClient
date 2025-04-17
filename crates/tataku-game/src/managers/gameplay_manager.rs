@@ -215,13 +215,13 @@ impl GameplayManager {
             song_time: 0.0,
         };
 
-        gm.init_ui().await;
+        gm.init_ui();
 
         gm
     }
 
     #[cfg(feature="graphics")]
-    async fn init_ui(&mut self) {
+    fn init_ui(&mut self) {
         let layouts = std::fs::read("ui_layouts.json").ok()
             .and_then(|bytes| serde_json::from_slice(&bytes).ok())
             .unwrap_or_default();
@@ -251,7 +251,7 @@ impl GameplayManager {
         }
 
         // Anything in the gamemode itself
-        self.gamemode.build_widgets(&mut loader).await;
+        self.gamemode.build_widgets(&mut loader);
 
         // update every ui element so they're all initialized
         loader.elements
@@ -638,7 +638,6 @@ impl GameplayManager {
     }
 }
 
-#[async_trait]
 impl GameplayManagerTrait for GameplayManager {
     fn end_time(&self) -> f32 { self.end_time }
 
@@ -1220,20 +1219,20 @@ impl GameplayManagerTrait for GameplayManager {
     }
 
     #[cfg(feature="graphics")]
-    async fn reload_skin(
+    fn reload_skin(
         &mut self, 
         skin_manager: &mut dyn SkinProvider,
         _settings: &Settings,
     ) {
         let parent_folder = self.beatmap.get_parent_dir().unwrap().to_string_lossy().to_string();
-        let source = self.gamemode.reload_skin(&parent_folder, skin_manager).await;
+        let source = self.gamemode.reload_skin(&parent_folder, skin_manager);
 
         for (id, list) in self.properties().sound_list.clone() {
             self.actions.push(AudioAction::new(id, AudioActionType::Load { list }));
         }
 
         #[cfg(feature="storyboards")]
-        if let Some(anim) = self.beatmap.get_animation(skin_manager).await {
+        if let Some(anim) = self.beatmap.get_animation(skin_manager) {
             self.animation = anim;
 
             if self.animation.use_gamemode_playfield(self.gamemode_properties.info) {
@@ -1244,7 +1243,7 @@ impl GameplayManagerTrait for GameplayManager {
         }
 
         for i in self.ui_elements.iter_mut() {
-            i.reload_skin(&source, skin_manager).await;
+            i.reload_skin(&source, skin_manager);
         }
 
         self.layout_ui();

@@ -20,6 +20,12 @@ lazy_static::lazy_static! {
 
 
 pub struct BassAudio(bass_rs::Bass);
+impl BassAudio {
+    fn init() -> TatakuResult<Arc<dyn AudioApi>> {
+        check_bass()?;
+        Ok(Arc::new(BassAudio(bass_rs::Bass::init_default().map_err(map_bass_err)?)))
+    }
+}
 impl AudioApi for BassAudio {
     fn load_sample_data(&self, data: Vec<u8>) -> TatakuResult<Arc<dyn AudioInstance>> {
         let channel = SampleChannel::load_from_memory(data, 0, 64).map_err(map_bass_err)?;
@@ -39,15 +45,12 @@ impl AudioApi for BassAudio {
     }
 }
 
-pub struct BassAudioInit;
-#[tataku_engine::prelude::async_trait]
-impl AudioApiInit for BassAudioInit {
-    fn name(&self) -> &'static str { "Bass Audio" }
-    async fn init(&self) -> TatakuResult<Arc<dyn AudioApi>> {
-        check_bass().await;
-        Ok(Arc::new(BassAudio(bass_rs::Bass::init_default().map_err(map_bass_err)?)))
-    }
-}
+#[allow(non_upper_case_globals)]
+pub const BassAudioInit: AudioApiInit = AudioApiInit {
+    name: "Bass Audio",
+    init: BassAudio::init,
+};
+
 
 struct SampleChannelData {
     channel: SampleChannel,
@@ -231,7 +234,7 @@ fn map_bass_err(e: BassError) -> AudioError {
 
 /// check for the bass lib
 /// if not found, will be downloaded
-async fn check_bass() {
+fn check_bass() -> TatakuResult<()> {
     use tataku_engine::prelude::Io;
 
     #[cfg(target_os = "windows")] let filename = "bass.dll";
@@ -243,21 +246,30 @@ async fn check_bass() {
         library_path.push(filename);
 
         // check if already exists
-        if library_path.exists() { return }
+        if library_path.exists() { return Ok(()) }
         info!("{library_path:?} not found, attempting to find or download");
 
         // if linux, check for lib in /usr/lib
         #[cfg(target_os = "linux")]
         if Io::exists(format!("/usr/lib/{filename}")) {
             match std::fs::copy(filename, &library_path) {
-                Ok(_) => return info!("Found in /usr/lib"),
+                Ok(_) => {
+                    info!("Found in /usr/lib");
+                    return Ok(());
+                },
                 Err(e) => warn!("Found in /usr/lib, but couldnt copy: {e}")
             }
         } 
 
         // download it from the web
-        Io::check_file(&library_path, &format!("https://cdn.ayyeve.dev/tataku/lib/bass/{filename}")).await;
+        let bytes = reqwest::blocking::get(format!("https://cdn.ayyeve.dev/tataku/lib/bass/{filename}"))?
+            .bytes()?;
+
+        std::fs::write(&library_path, bytes)?;
+
+        Ok(())
     } else {
-        warn!("error getting current executable dir, assuming things are good...")
+        warn!("error getting current executable dir, assuming things are good...");
+        Ok(())
     }
 }

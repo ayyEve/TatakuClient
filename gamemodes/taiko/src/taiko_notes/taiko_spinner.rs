@@ -48,8 +48,6 @@ impl TaikoSpinner {
         }
     }
 }
-
-#[async_trait]
 impl HitObject for TaikoSpinner {
     fn note_type(&self) -> NoteType { NoteType::Spinner }
     fn time(&self) -> f32 { self.time }
@@ -120,8 +118,8 @@ impl HitObject for TaikoSpinner {
     }
     
     #[cfg(feature="graphics")]
-    async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
-        self.spinner_image = skin_manager.get_texture("spinner-warning", source, SkinUsage::Gamemode, false).await;
+    fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+        self.spinner_image = skin_manager.get_texture("spinner-warning", source, SkinUsage::Gamemode, false);
     }
 }
 impl TaikoHitObject for TaikoSpinner {

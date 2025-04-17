@@ -12,9 +12,8 @@ impl QuaverReplayDownloader {
 
 
 // TODO: this
-#[async_trait]
 impl ReplayDownloader for QuaverReplayDownloader {
-    async fn get_replay(&self, _settings: &Settings) -> TatakuResult<Score> {
+    fn get_replay(&self, _settings: &Settings) -> TatakuResult<Score> {
         Err(TatakuError::String("Not Implemented".to_owned()))
         // https://quavergame.com/download/replay/48727123
 

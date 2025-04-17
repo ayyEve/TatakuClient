@@ -105,7 +105,6 @@ impl OsuDifficultyCalculator {
         Ok(note_density)
     }
 }
-#[async_trait]
 impl DiffCalc for OsuDifficultyCalculator {
     fn new(meta: &BeatmapMeta, settings: &Settings) -> TatakuResult<Self> {
         let g = Beatmap::from_metadata(meta)?;

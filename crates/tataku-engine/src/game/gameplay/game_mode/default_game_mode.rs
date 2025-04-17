@@ -5,7 +5,6 @@ use crate::prelude::*;
 #[derive(Default)]
 pub struct NoMode;
 
-#[async_trait]
 impl GameMode for NoMode {
     fn new(_: &Beatmap, _: bool, _: &Settings) -> Result<Self, TatakuError> where Self: Sized {Ok(Self {})}
 
@@ -18,7 +17,7 @@ impl GameMode for NoMode {
     fn force_update_settings(&mut self, _: &Settings) {}
     
     #[cfg(feature="graphics")]
-    async fn reload_skin(&mut self, _beatmap_folder: &str, _skin_manager: &mut dyn SkinProvider) -> TextureSource { TextureSource::Raw }
+    fn reload_skin(&mut self, _beatmap_folder: &str, _skin_manager: &mut dyn SkinProvider) -> TextureSource { TextureSource::Raw }
     fn apply_mods(&mut self, _: Arc<ModManager>) {}
 
     

@@ -46,7 +46,6 @@ impl WidgetContainer {
     
 }
 
-#[async_trait]
 impl Widget for WidgetContainer {
     fn name(&self) -> Cow<'static, str> { self.inner.name() }
     fn node_id(&self) -> NodeId { self.inner.node_id() }
@@ -183,25 +182,25 @@ impl Widget for WidgetContainer {
         self.inner.update(shell, actions)
     }
     
-    async fn handle_message(
+    fn handle_message(
         &mut self, 
         message: &Message, 
         values: &mut dyn Reflect, 
         actions: &mut ActionQueue,
     ) {
-        self.inner.handle_message(message, values, actions).await
+        self.inner.handle_message(message, values, actions)
     }
     
-    async fn handle_event(
+    fn handle_event(
         &mut self, 
         event: TatakuEventType, 
         event_value: Option<TatakuValue>, 
         values: &mut dyn Reflect,
     ) {
-        self.inner.handle_event(event, event_value, values).await
+        self.inner.handle_event(event, event_value, values)
     }
 
-    async fn reload_skin(
+    fn reload_skin(
         &mut self, 
         shell: &mut UpdateShell,
     ) {
@@ -216,10 +215,10 @@ impl Widget for WidgetContainer {
                     SkinUsage::Game, 
                     style.image_grayscale.value().copied().unwrap_or_default(), 
                     |image| image.origin = Vector2::ZERO,
-                ).await;
+                );
             }
         }
-        self.inner.reload_skin(shell).await
+        self.inner.reload_skin(shell)
     }
 
 }

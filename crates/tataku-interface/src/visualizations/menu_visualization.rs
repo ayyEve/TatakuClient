@@ -242,11 +242,11 @@ impl MenuVisualization {
         });
     }
 
-    pub async fn reload_skin(&mut self, skin_manager: &mut dyn SkinProvider) {
-        if let Some(cookie) = skin_manager.get_texture("menu-osu", &TextureSource::Skin, SkinUsage::Game, false).await {
+    pub fn reload_skin(&mut self, skin_manager: &mut dyn SkinProvider) {
+        if let Some(cookie) = skin_manager.get_texture("menu-osu", &TextureSource::Skin, SkinUsage::Game, false) {
             self.cookie = Some(cookie);
         } else {
-            self.cookie = skin_manager.get_texture("./resources/icon.png", &TextureSource::Raw, SkinUsage::Game, false).await;
+            self.cookie = skin_manager.get_texture("./resources/icon.png", &TextureSource::Raw, SkinUsage::Game, false);
         }
     }
 

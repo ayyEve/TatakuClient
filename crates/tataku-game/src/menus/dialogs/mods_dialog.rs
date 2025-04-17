@@ -78,9 +78,6 @@ impl ModDialog {
             .boxed()
     }
 }
-
-
-#[async_trait]
 impl Widget for ModDialog {
     fn name(&self) -> Cow<'static,str> { "mod_dialog".into() }
     fn node_id(&self) -> NodeId { self.node_id }
@@ -123,7 +120,7 @@ impl Widget for ModDialog {
         self.node.update(shell, actions)
     }
     
-    async fn handle_message(
+    fn handle_message(
         &mut self, 
         message: &Message, 
         _values: &mut dyn Reflect,
@@ -164,7 +161,6 @@ impl Widget for ModDialog {
 //         }
 //     }
 // }
-// // #[async_trait]
 // impl Widget for ModButton {
 //     fn name(&self) -> Cow<'static, str> { format!("mod_{}", self.m.name) }
 //     fn node_id(&self) -> NodeId { self.node_id }

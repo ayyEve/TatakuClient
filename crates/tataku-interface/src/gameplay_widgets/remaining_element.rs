@@ -30,7 +30,6 @@ impl RemainingElement {
         })
     }
 }
-#[async_trait]
 impl GameplayWidget for RemainingElement {
     fn display_name(&self) -> &'static str { "Time Remaining" }
     fn max_size(&self) -> Vector2 { SIZE }

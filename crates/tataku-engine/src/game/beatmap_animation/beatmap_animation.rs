@@ -1,6 +1,5 @@
 use crate::prelude::*;
 
-#[async_trait]
 pub trait BeatmapAnimation: Send + Sync {
     fn update(&mut self, time: f32);
     fn draw(&self, list: &mut RenderableCollection);
@@ -15,8 +14,6 @@ pub trait BeatmapAnimation: Send + Sync {
 
 #[derive(Default, Copy, Clone)]
 pub struct EmptyAnimation;
-
-#[async_trait]
 impl BeatmapAnimation for EmptyAnimation {
     fn update(&mut self, _: f32) {}
     fn draw(&self, _: &mut RenderableCollection) {}

@@ -1,6 +1,5 @@
 use crate::prelude::*;
 use image::RgbaImage;
-use tokio::sync::oneshot::Sender as OneshotSender;
 
 #[allow(unused)]
 #[derive(Debug2)]
@@ -44,14 +43,15 @@ impl From<WindowAction> for TatakuAction {
     }
 }
 
+pub type LoadImageCallback<T> = Box<dyn FnOnce(TatakuResult<T>) + Send + Sync>;
 #[derive(Debug2)]
 pub enum LoadImage {
-    #[debug(skip)] Image(RgbaImage, OneshotSender<TatakuResult<TextureReference>>),
-    Font(ActualFont, f32, #[debug(skip)] Option<OneshotSender<TatakuResult<()>>>),
+    #[debug(skip)] Image(RgbaImage, LoadImageCallback<TextureReference>),
+    Font(ActualFont, f32, #[debug(skip)] Option<LoadImageCallback<()>>),
     FreeTexture(TextureReference),
 
-    #[debug(skip)] CreateRenderTarget((u32, u32), OneshotSender<TatakuResult<RenderTarget>>, RenderTargetDraw),
-    #[debug(skip)] UpdateRenderTarget(RenderTarget, OneshotSender<()>, RenderTargetDraw),
+    #[debug(skip)] CreateRenderTarget((u32, u32), LoadImageCallback<RenderTarget>, RenderTargetDraw),
+    #[debug(skip)] UpdateRenderTarget(RenderTarget, LoadImageCallback<()>, RenderTargetDraw),
 }
 
 

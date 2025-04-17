@@ -46,8 +46,6 @@
 //     }
 
 // }
-
-// #[async_trait]
 // impl Dialog for DirectDownloadDialog {
 //     fn name(&self) -> &'static str { "direct_download" }
 //     fn get_num(&self) -> usize { self.num }

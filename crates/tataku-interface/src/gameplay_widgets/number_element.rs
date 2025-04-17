@@ -39,8 +39,6 @@ macro_rules! number_element {
             }
         }
 
-
-        #[async_trait]
         impl GameplayWidget for $name {
             fn display_name(&self) -> &'static str { $display }
             fn max_size(&self) -> Vector2 { self.max_size }
@@ -92,7 +90,7 @@ macro_rules! number_element {
                 }
             }
 
-            async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+            fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
                 self.image = SkinnedNumber::new(
                     Vector2::ZERO, 
                     $max_number as f64, 
@@ -103,7 +101,7 @@ macro_rules! number_element {
                     skin_manager, 
                     source, 
                     SkinUsage::Gamemode
-                ).await.ok();
+                ).ok();
                 
                 if let Some(image) = &mut self.image {
                     self.max_size = image.measure_text();

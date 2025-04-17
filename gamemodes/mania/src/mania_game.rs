@@ -128,7 +128,7 @@ impl ManiaGame {
     }
     
     // #[cfg(feature="graphics")]
-    async fn load_col_images(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+    fn load_col_images(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
         let Some(settings) = &self.mania_skin_settings else { return };
         self.key_images_down.clear();
         self.key_images_up.clear();
@@ -146,7 +146,7 @@ impl ManiaGame {
                 (&settings.key_image_d, &mut self.key_images_down),
             ] {
                 let Some(path) = path_map.get(&col) else { continue };
-                let Some(mut img) = skin_manager.get_texture(path, source, SkinUsage::Beatmap, true).await else { continue };
+                let Some(mut img) = skin_manager.get_texture(path, source, SkinUsage::Beatmap, true) else { continue };
                 self.playfield.column_image(&mut img);
                 img.pos = Vector2::new(x, y);
 
@@ -308,7 +308,6 @@ impl ManiaGame {
     
 }
 
-#[async_trait]
 impl GameMode for ManiaGame {
     fn new(beatmap: &Beatmap, _: bool, settings: &Settings) -> TatakuResult<Self> {
         let metadata = beatmap.get_beatmap_meta();
@@ -913,7 +912,7 @@ impl GameMode for ManiaGame {
     
     fn force_update_settings(&mut self, _settings: &Settings) {}
     
-    async fn reload_skin(&mut self, beatmap_path: &str, skin_manager: &mut dyn SkinProvider) -> TextureSource {
+    fn reload_skin(&mut self, beatmap_path: &str, skin_manager: &mut dyn SkinProvider) -> TextureSource {
         let source = TextureSource::Beatmap(beatmap_path.to_owned()); // TODO: add setting option
 
         // reload skin settings
@@ -927,11 +926,11 @@ impl GameMode for ManiaGame {
         
         for c in self.columns.iter_mut() {
             for n in c.iter_mut() {
-                n.reload_skin(&source, skin_manager).await;
+                n.reload_skin(&source, skin_manager);
             }
         }
         
-        self.load_col_images(&source, skin_manager).await;
+        self.load_col_images(&source, skin_manager);
 
         source
     }
@@ -980,7 +979,7 @@ impl GameMode for ManiaGame {
     }
 
 
-    async fn build_widgets(
+    fn build_widgets(
         &self, 
         loader: &mut dyn UiElementLoader
     ) {

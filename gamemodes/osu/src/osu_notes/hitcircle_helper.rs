@@ -52,7 +52,7 @@ impl HitCircleImageHelper {
     }
 
     #[cfg(feature="graphics")]
-    pub async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+    pub fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
         self.skin_settings = skin_manager.skin().clone();
         let radius = CIRCLE_RADIUS_BASE * self.scaling_helper.cs;
 
@@ -60,12 +60,12 @@ impl HitCircleImageHelper {
             i.pos = self.pos;
             i.scale = Vector2::ONE * self.scaling_helper.cs;
             i.color = self.color;
-        }).await;
+        });
         
         self.overlay = skin_manager.get_texture_then("hitcircleoverlay", source, SkinUsage::Gamemode, false, |i| {
             i.pos = self.pos;
             i.scale = Vector2::ONE * self.scaling_helper.cs;
-        }).await;
+        });
         
         self.combo_image = SkinnedNumber::new(
             self.pos, 
@@ -78,7 +78,7 @@ impl HitCircleImageHelper {
 
             source, 
             SkinUsage::Gamemode,
-        ).await.ok();
+        ).ok();
 
         let rect = Bounds::new(self.pos - Vector2::ONE * radius / 2.0, Vector2::ONE * radius);
         if let Some(combo) = &mut self.combo_image {

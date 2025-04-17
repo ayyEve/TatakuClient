@@ -8,8 +8,6 @@ pub struct ManiaDifficultyCalculator {
     difficulty_hitobjects: Vec<DifficultyHitObject>,
     col_count: usize
 }
-
-#[async_trait]
 impl DiffCalc for ManiaDifficultyCalculator {
     fn new(g: &BeatmapMeta, settings: &Settings) -> TatakuResult<Self> {
         let g = Beatmap::from_metadata(g)?;

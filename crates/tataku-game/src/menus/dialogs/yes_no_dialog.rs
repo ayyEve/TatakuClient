@@ -62,8 +62,6 @@ impl YesNoDialog {
         )
     }
 }
-
-#[async_trait]
 impl Widget for YesNoDialog {
     fn name(&self) -> Cow<'static, str> { "yes_no_dialog".into() }
     fn node_id(&self) -> NodeId { self.node_id }
@@ -87,7 +85,7 @@ impl Widget for YesNoDialog {
         self.node.draw(shell);
     }
 
-    async fn handle_message(
+    fn handle_message(
         &mut self, 
         message: &Message, 
         _values: &mut dyn Reflect,

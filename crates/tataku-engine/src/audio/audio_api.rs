@@ -17,10 +17,9 @@ pub trait AudioApi: Send + Sync {
     fn amplitude_multiplier(&self) -> f32 { 1.0 }
 }
 
-#[async_trait]
-pub trait AudioApiInit: Send + Sync {
-    fn name(&self) -> &'static str;
-    async fn init(&self) -> TatakuResult<Arc<dyn AudioApi>>;
+pub struct AudioApiInit {
+    pub name: &'static str,
+    pub init: fn() -> TatakuResult<Arc<dyn AudioApi>>,
 }
 
 

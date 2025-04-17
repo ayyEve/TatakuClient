@@ -45,8 +45,8 @@ impl GameplayWidgetContainer {
     }
 
     #[cfg(feature="graphics")]
-    pub async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
-        self.inner.reload_skin(source, skin_manager).await;
+    pub fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+        self.inner.reload_skin(source, skin_manager);
     }
 
 

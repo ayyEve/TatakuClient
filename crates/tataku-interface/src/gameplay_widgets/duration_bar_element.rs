@@ -17,8 +17,6 @@ impl DurationBarElement {
         })
     }
 }
-
-#[async_trait]
 impl GameplayWidget for DurationBarElement {
     fn display_name(&self) -> &'static str { "Duration Bar" }
 

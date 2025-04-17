@@ -19,7 +19,6 @@ impl LeaderboardElement {
         })
     }
 }
-#[async_trait]
 impl GameplayWidget for LeaderboardElement {
     fn display_name(&self) -> &'static str { "Leaderboard" }
 
@@ -163,8 +162,8 @@ impl GameplayWidget for LeaderboardElement {
 
     }
 
-    async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
-        self.image = skin_manager.get_texture("menu-button-background", source, SkinUsage::Gamemode, false).await;
+    fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+        self.image = skin_manager.get_texture("menu-button-background", source, SkinUsage::Gamemode, false);
     }
 }
 

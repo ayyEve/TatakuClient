@@ -9,15 +9,14 @@ impl OsuReplayDownloader {
     }
 }
 
-#[async_trait]
 impl ReplayDownloader for OsuReplayDownloader {
-    async fn get_replay(&self, settings: &Settings) -> TatakuResult<Score> {
+    fn get_replay(&self, settings: &Settings) -> TatakuResult<Score> {
         let key = settings.osu_api_key.clone();
 
         let url = format!("https://osu.ppy.sh//api/get_replay?k={key}&s={}", self.1);
 
         // what gets downloaded from the api is not the full .osr file, its just the lzma stream.
-        let bytes = reqwest::get(url).await?.bytes().await?;
+        let bytes = reqwest::blocking::get(url)?.bytes()?;
     
         // check if the received data 
         if bytes.is_empty() {

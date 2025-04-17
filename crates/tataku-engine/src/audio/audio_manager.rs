@@ -3,18 +3,18 @@ use crate::prelude::*;
 
 pub struct AudioManager {
     engine: Arc<dyn AudioApi>,
-    _engine_builders: Vec<Box<dyn AudioApiInit>>,
+    _engine_builders: Vec<AudioApiInit>,
 }
 impl AudioManager {
-    pub async fn init_audio(
-        engines: Vec<Box<dyn AudioApiInit>>
+    pub fn init_audio(
+        engines: Vec<AudioApiInit>
     ) -> TatakuResult<Self> {
         let mut api: Option<Arc<dyn AudioApi>> = None;
 
         for i in &engines {
-            match i.init().await {
+            match (i.init)() {
                 Ok(good) => { api = Some(good); break; },
-                Err(e) => error!("error loading {} api: {e}", i.name())
+                Err(e) => error!("error loading {} api: {e}", i.name)
             }
         }
 
