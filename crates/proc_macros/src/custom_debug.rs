@@ -16,7 +16,7 @@ macro_rules! try_error {
 }
 
 
-pub fn derive(derive: &syn::DeriveInput) -> proc_macro2::TokenStream {
+pub(crate) fn derive(derive: &syn::DeriveInput) -> proc_macro2::TokenStream {
     let type_name = &derive.ident;
     let (impl_generics, ty_generics, where_clause) = derive.generics.split_for_impl();
 

@@ -24,11 +24,12 @@ pub struct TaikoDrumroll {
     end_image: Option<Image>,
 }
 impl TaikoDrumroll {
-    pub async fn new(time: f32, end_time: f32, finisher: bool, settings: Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>) -> Self {
-        let radius = if finisher { settings.note_radius * settings.big_note_multiplier } else { settings.note_radius };
-
-        let middle_image = None;
-        let end_image = None;
+    pub fn new(time: f32, end_time: f32, finisher: bool, settings: Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>) -> Self {
+        let radius = if finisher { 
+            settings.note_radius * settings.big_note_multiplier 
+        } else { 
+            settings.note_radius 
+        };
 
         Self {
             time, 
@@ -44,8 +45,8 @@ impl TaikoDrumroll {
             settings,
             playfield,
 
-            middle_image,
-            end_image
+            middle_image: None,
+            end_image: None,
         }
     }
 }
@@ -55,9 +56,9 @@ impl HitObject for TaikoDrumroll {
     fn note_type(&self) -> NoteType { NoteType::Slider }
     fn time(&self) -> f32 { self.time }
     fn end_time(&self,_:f32) -> f32 { self.end_time }
-    async fn update(&mut self, _time: f32) {}
+    fn update(&mut self, _time: f32) {}
     
-    async fn draw(&mut self, time: f32, list: &mut RenderableCollection) {
+    fn draw(&mut self, time: f32, list: &mut RenderableCollection) {
         self.pos.x = self.playfield.hit_position.x + self.x_at(time);
         self.end_x = self.playfield.hit_position.x + self.end_x_at(time);
 
@@ -141,7 +142,7 @@ impl HitObject for TaikoDrumroll {
         }
     }
 
-    async fn reset(&mut self) {
+    fn reset(&mut self) {
         self.hit_dots.clear();
         self.pos.x = 0.0;
         self.end_x = 0.0;

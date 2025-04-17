@@ -61,7 +61,7 @@ pub struct TaikoGame {
     healthbar_swap_pending: bool,
 }
 impl TaikoGame {
-    async fn play_sound (
+    fn play_sound (
         &self, 
         state: &mut GameplayUpdateShell<'_>, 
         note_time: f32, 
@@ -92,7 +92,7 @@ impl TaikoGame {
         state.play_hitsounds(&hitsound, false);
     }
 
-    async fn setup_hitwindows(&mut self) {
+    fn setup_hitwindows(&mut self) {
         let od = Self::get_od(&self.metadata, &self.current_mods);
 
         // windows
@@ -232,7 +232,7 @@ impl TaikoGame {
 
 #[async_trait]
 impl GameMode for TaikoGame {
-    async fn new(
+    fn new(
         beatmap: &Beatmap, 
         _diff_calc_only: bool, 
         settings: &Settings
@@ -249,7 +249,7 @@ impl GameMode for TaikoGame {
         let left_don_image = None;
         let right_don_image = None;
         let right_kat_image = None;
-        let judgement_helper = JudgmentImageHelper::new(TaikoHitJudgments::variants().to_vec()).await;
+        let judgement_helper = JudgmentImageHelper::new(TaikoHitJudgments::variants().to_vec());
 
         for i in [TaikoHit::LeftKat, TaikoHit::LeftDon, TaikoHit::RightDon, TaikoHit::RightKat] {
             hit_cache.insert(i, -999.9);
@@ -298,7 +298,7 @@ impl GameMode for TaikoGame {
                         finisher,
                         settings.clone(),
                         playfield.clone(),
-                    ).await));
+                    )));
                 }
                 for slider in beatmap.sliders.iter() {
                     let SliderDef {time, slides, length, ..} = slider.to_owned();
@@ -345,7 +345,7 @@ impl GameMode for TaikoGame {
                                 sound_type.1,
                                 settings.clone(),
                                 playfield.clone(),
-                            ).await));
+                            )));
 
                             if !unified_sound_addition { i = (i + 1) % sound_types.len() }
 
@@ -359,7 +359,7 @@ impl GameMode for TaikoGame {
                             finisher, 
                             settings.clone(),
                             playfield.clone(),
-                        ).await));
+                        )));
                     }
                 }
                 for spinner in beatmap.spinners.iter() {
@@ -369,7 +369,7 @@ impl GameMode for TaikoGame {
                         0, 
                         settings.clone(),
                         playfield.clone(),
-                    ).await));
+                    )));
                 }
             }
 
@@ -381,7 +381,7 @@ impl GameMode for TaikoGame {
                         note.is_big,
                         settings.clone(),
                         playfield.clone(),
-                    ).await));
+                    )));
                 }
 
                 for drumroll in beatmap.drumrolls.iter() {
@@ -391,7 +391,7 @@ impl GameMode for TaikoGame {
                         drumroll.is_big, 
                         settings.clone(),
                         playfield.clone(),
-                    ).await));
+                    )));
                 }
 
                 for balloon in beatmap.balloons.iter() {
@@ -401,7 +401,7 @@ impl GameMode for TaikoGame {
                         balloon.hits_required as u16, 
                         settings.clone(),
                         playfield.clone(),
-                    ).await));
+                    )));
                 }
             }
             _ => return Err(BeatmapError::UnsupportedMode.into()),
@@ -420,15 +420,15 @@ impl GameMode for TaikoGame {
         }
         s.end_time += 1000.0;
 
-        s.setup_hitwindows().await;
+        s.setup_hitwindows();
 
         Ok(s)
     }
 
-    async fn handle_replay_frame<'a>(
+    fn handle_replay_frame(
         &mut self, 
         frame: ReplayFrame, 
-        state: &mut GameplayUpdateShell<'a>
+        state: &mut GameplayUpdateShell
     ) {
         let ReplayAction::Press(key) = frame.action else { return };
 
@@ -513,7 +513,7 @@ impl GameMode for TaikoGame {
                             note_time, 
                             cond, 
                             &TaikoHitJudgments::Miss
-                        ).await;
+                        );
 
                         if let Some(judge) = hit_maybe {
                             // if note.finisher_sound() { sound = match hit_type { HitType::Don => "bigdon", HitType::Kat => "bigkat" } }
@@ -562,11 +562,11 @@ impl GameMode for TaikoGame {
         *self.hit_cache.get_mut(&new_hit_type).unwrap() = frame.time;
 
         // play sound
-        self.play_sound(state, hit_time, hit_type, finisher_sound).await;
+        self.play_sound(state, hit_time, hit_type, finisher_sound);
     }
 
 
-    async fn update<'a>(&mut self, state: &mut GameplayUpdateShell<'a>) {
+    fn update(&mut self, state: &mut GameplayUpdateShell) {
         // check healthbar swap
         if self.healthbar_swap_pending {
             self.healthbar_swap_pending = false;
@@ -614,14 +614,14 @@ impl GameMode for TaikoGame {
             self.other_notes = queues.remove(0);
 
             for frame in pending_frames.into_iter() {
-                self.handle_replay_frame(ReplayFrame::new(state.time, frame), state).await;
+                self.handle_replay_frame(ReplayFrame::new(state.time, frame), state);
             }
 
         }
         
         for queue in [&mut self.notes, &mut self.other_notes] {
             for note in queue.notes.iter_mut() {
-                note.update(state.time).await;
+                note.update(state.time);
             }
 
             if queue.done() {
@@ -658,7 +658,7 @@ impl GameMode for TaikoGame {
 
     }
     
-    async fn draw<'a>(&mut self, state: GameplayDrawShell<'a>, list: &mut RenderableCollection) {
+    fn draw(&mut self, state: GameplayDrawShell, list: &mut RenderableCollection) {
 
         // draw the playfield
         list.push(self.playfield.get_rectangle(state.current_timing_point.kiai));
@@ -686,7 +686,7 @@ impl GameMode for TaikoGame {
         });
 
         for note in note_list { 
-            note.draw(state.time, list).await 
+            note.draw(state.time, list) 
         }
 
         // draw hit indicators
@@ -772,14 +772,14 @@ impl GameMode for TaikoGame {
         }
     }
 
-    async fn reset(&mut self, beatmap: &Beatmap) {
+    fn reset(&mut self, beatmap: &Beatmap) {
         let timing_points = TimingPointHelper::new(beatmap.get_timing_points(), beatmap.slider_velocity());
 
         for queue in [&mut self.notes, &mut self.other_notes] {
             queue.index = 0;
             
             for note in queue.iter_mut() {
-                note.reset().await;
+                note.reset();
 
                 // set note svs
                 if self.current_mods.has_mod(NoSV) {
@@ -850,13 +850,6 @@ impl GameMode for TaikoGame {
         }
 
         if game_time >= time { return None }
-
-        // if manager.lead_in_time > 0.0 {
-        //     if time > manager.lead_in_time {
-        //         time -= manager.lead_in_time - 0.01;
-        //         manager.lead_in_time = 0.01;
-        //     }
-        // }
         
         if time < 0.0 { return None }
         Some(time)
@@ -866,7 +859,7 @@ impl GameMode for TaikoGame {
         self.update_playfield(bounds, full_window);
     }
 
-    async fn force_update_settings(&mut self, settings: &Settings) {
+    fn force_update_settings(&mut self, settings: &Settings) {
         let settings = settings.gamemode_settings(GAME_INFO).unwrap_or_default();
 
         if settings == *self.taiko_settings { return }
@@ -963,7 +956,7 @@ impl GameMode for TaikoGame {
             self.left_kat_image = Some(lkat);
         }
 
-        self.judgement_helper = JudgmentImageHelper::new(TaikoHitJudgments::variants().to_vec()).await;
+        self.judgement_helper = JudgmentImageHelper::new(TaikoHitJudgments::variants().to_vec());
 
         for n in self.notes.iter_mut().chain(self.other_notes.iter_mut()) {
             n.reload_skin(&source, skin_manager).await;
@@ -973,7 +966,7 @@ impl GameMode for TaikoGame {
     }
 
     
-    async fn apply_mods(&mut self, mods: Arc<ModManager>) {
+    fn apply_mods(&mut self, mods: Arc<ModManager>) {
         let old_sv_mult = self.taiko_settings.sv_multiplier;
         let old_mods = self.current_mods.clone();
 
@@ -1028,7 +1021,7 @@ impl GameMode for TaikoGame {
     }
 
     
-    async fn time_jump<'a>(&mut self, new_time: f32, _state: &mut GameplayUpdateShell<'a>) {
+    fn time_jump(&mut self, new_time: f32, _state: &mut GameplayUpdateShell) {
         let mut latest_time = 0f32;
         for i in self.hit_cache.values() { latest_time = latest_time.max(*i) }
         // info!("{new_time} < {latest_time}");
@@ -1037,7 +1030,7 @@ impl GameMode for TaikoGame {
             for queue in [&mut self.notes, &mut self.other_notes] {
                 let mut index = 0;
                 for (i, note) in queue.iter_mut().enumerate() {
-                    note.reset().await;
+                    note.reset();
                     if note.time() <= new_time {
                         index = i
                     }
@@ -1051,10 +1044,10 @@ impl GameMode for TaikoGame {
     }
 
     
-    async fn beat_happened(&mut self, pulse_length: f32) {
+    fn beat_happened(&mut self, pulse_length: f32) {
         self.notes.iter_mut().chain(self.other_notes.iter_mut()).for_each(|n|n.beat_happened(pulse_length))
     }
-    async fn kiai_changed(&mut self, is_kiai: bool) {
+    fn kiai_changed(&mut self, is_kiai: bool) {
         self.notes.iter_mut().chain(self.other_notes.iter_mut()).for_each(|n|n.kiai_changed(is_kiai))
     }
 
@@ -1137,7 +1130,7 @@ impl GameMode for TaikoGame {
 
 
     
-    async fn handle_input(&mut self, input: InputEvent) -> Option<ReplayAction> {
+    fn handle_input(&mut self, input: InputEvent) -> Option<ReplayAction> {
         match input.event {
             InputType::KeyPress(key) => {
                 let key = key.as_key()?;
@@ -1230,7 +1223,7 @@ impl GameMode for TaikoGame {
                             event: InputType::ControllerPress(btn, id, name),
                             ..input
                         }
-                    ).await
+                    )
                 }
             }
 
@@ -1273,7 +1266,7 @@ impl GameMode for TaikoGame {
                             event: InputType::ControllerRelease(btn, id, name),
                             ..input
                         }
-                    ).await
+                    )
                 }
             }
             

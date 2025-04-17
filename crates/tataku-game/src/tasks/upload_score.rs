@@ -115,7 +115,7 @@ impl TatakuTask for UploadScoreTask {
             return;
         };
 
-        let Some(received) = task.check().await else { return };
+        let Some(received) = task.check() else { return };
 
         match received {
             SubmitResponse::Submitted {

@@ -5,7 +5,7 @@ pub struct JudgmentImageHelper {
     variants: Vec<HitJudgment>
 }
 impl JudgmentImageHelper {
-    pub async fn new(variants: Vec<HitJudgment>) -> Self {
+    pub fn new(variants: Vec<HitJudgment>) -> Self {
         Self {
             images: HashMap::new(),
             variants

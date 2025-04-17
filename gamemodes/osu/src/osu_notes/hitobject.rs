@@ -1,6 +1,5 @@
 use crate::prelude::*;
 
-#[async_trait]
 pub trait OsuHitObject: HitObject {
     /// return the window-scaled coords of this object at `time`
     fn pos_at(&self, time: f32) -> Vector2;
@@ -11,7 +10,7 @@ pub trait OsuHitObject: HitObject {
     fn pending_combo(&mut self) -> Vec<(HitJudgment, Vector2)> { Vec::new() }
 
     fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>);
-    async fn set_settings(&mut self, settings: Arc<OsuSettings>);
+    fn set_settings(&mut self, settings: Arc<OsuSettings>);
 
     fn press(&mut self, _time:f32) {}
     fn release(&mut self, _time:f32) {}

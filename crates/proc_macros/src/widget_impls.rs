@@ -2,13 +2,13 @@ use quote::*;
 use syn::*;
 use syn::punctuated::Punctuated;
 
-pub const WIDGET_ATTRIBUTE: &str = "widget";
-pub const TYPE_ATTRIBUTE: &str = "type";
-pub const CONTAINER_TYPE: &str = "container";
-pub const TEXT_TYPE: &str = "text";
+const WIDGET_ATTRIBUTE: &str = "widget";
+const TYPE_ATTRIBUTE: &str = "type";
+const CONTAINER_TYPE: &str = "container";
+const TEXT_TYPE: &str = "text";
 
-pub const STYLE_PATH: &str = "style_path";
-pub const TEXT_STYLE_PATH: &str = "text_style_path";
+const STYLE_PATH: &str = "style_path";
+const TEXT_STYLE_PATH: &str = "text_style_path";
 
 macro_rules! try_error {
     ($($t:tt)+) => {
@@ -20,7 +20,7 @@ macro_rules! try_error {
 }
 
 
-pub fn derive(derive: &syn::DeriveInput) -> proc_macro2::TokenStream {
+pub(crate) fn derive(derive: &syn::DeriveInput) -> proc_macro2::TokenStream {
     let type_name = &derive.ident;
     let (impl_generics, ty_generics, where_clause) = derive.generics.split_for_impl();
 

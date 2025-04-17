@@ -36,7 +36,7 @@ pub struct UTypingNote {
     pub judgment: Option<HitJudgment>
 }
 impl UTypingNote {
-    pub async fn new(time:f32, text: String, settings:Arc<TaikoSettings>, playfield: Arc<UTypingPlayfield>) -> Self {
+    pub fn new(time:f32, text: String, settings:Arc<TaikoSettings>, playfield: Arc<UTypingPlayfield>) -> Self {
         // let y = settings.hit_position.y;
         // let a = GRAVITY_SCALING * 9.81;
         // let bounce_factor = (2000.0*y.sqrt()) as f32 / (a*(a.powi(2) + 2_000_000.0)).sqrt() * 10.0;
@@ -99,7 +99,7 @@ impl HitObject for UTypingNote {
     fn end_time(&self, hw_miss:f32) -> f32 {
         self.time + hw_miss
     }
-    async fn update(&mut self, beatmap_time: f32) {
+    fn update(&mut self, beatmap_time: f32) {
         let delta_time = beatmap_time - self.hit_time;
         let y = 
             if self.hit {GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2) - (delta_time * self.bounce_factor)} 
@@ -110,7 +110,7 @@ impl HitObject for UTypingNote {
 
         if let Some(i) = self.image.as_mut() { i.set_pos(self.pos) }
     }
-    async fn draw(&mut self, _time: f32, list: &mut RenderableCollection) {
+    fn draw(&mut self, _time: f32, list: &mut RenderableCollection) {
         if self.pos.x + self.settings.note_radius < 0.0 || self.pos.x - self.settings.note_radius > 10000000.0 { return }
 
         let size = Vector2::new(self.settings.note_radius, self.settings.note_radius);
@@ -190,7 +190,7 @@ impl HitObject for UTypingNote {
         list.push(t);
     }
 
-    async fn reset(&mut self) {
+    fn reset(&mut self) {
         self.pos = Vector2::ZERO;
         self.hit = false;
         self.missed = false;

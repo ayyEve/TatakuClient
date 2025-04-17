@@ -26,15 +26,15 @@ pub trait GameplayManagerTrait {
 
     fn bounds(&self) -> Bounds;
 
-    async fn apply_mods(&mut self, mut mods: ModManager);
-    async fn update(&mut self, values: &mut dyn Reflect, actions: &mut ActionQueue);
-    async fn draw(&mut self, list: &mut RenderableCollection);
-    async fn handle_action(
+    fn apply_mods(&mut self, mods: ModManager);
+    fn update(&mut self, values: &mut dyn Reflect, actions: &mut ActionQueue);
+    fn draw(&mut self, list: &mut RenderableCollection);
+    fn handle_action(
         &mut self, 
         action: GameplayAction,
         settings: &Settings,
     );
-    async fn handle_gamemode_action(
+    fn handle_gamemode_action(
         &mut self, 
         action: GamemodeAction,
         settings: &Settings
@@ -62,9 +62,9 @@ pub trait GameplayManagerTrait {
     fn get_mode(&self) -> &GameplayModeInner;
 
 
-    async fn start(&mut self);
+    fn start(&mut self);
     fn pause(&mut self);
-    async fn reset(&mut self);
+    fn reset(&mut self);
     fn fail(&mut self);
 }
 
@@ -253,7 +253,7 @@ impl GameplayUpdateShell<'_> {
     }
 
     /// check and add to hit timings if found
-    pub async fn check_judgment<'j>(
+    pub fn check_judgment<'j>(
         &mut self,
         windows: &'j [(HitJudgment, Range<f32>)],
         time: f32,
@@ -269,7 +269,7 @@ impl GameplayUpdateShell<'_> {
         }
     }
 
-    pub async fn check_judgment_condition<'j>(
+    pub fn check_judgment_condition<'j>(
         &mut self,
         windows: &'j [(HitJudgment, Range<f32>)],
         time: f32,

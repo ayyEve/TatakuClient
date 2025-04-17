@@ -254,17 +254,17 @@ impl ManiaGame {
         }
     }
 
-    async fn draw_notes(&mut self, time: f32, list: &mut RenderableCollection) {
+    fn draw_notes(&mut self, time: f32, list: &mut RenderableCollection) {
         // draw timing bars
         for tb in self.timing_bars.iter_mut() { tb.draw(list) }
 
         // draw notes
         for col in self.columns.iter_mut() {
-            for note in col.iter_mut() { note.draw(time, list).await }
+            for note in col.iter_mut() { note.draw(time, list) }
         }
     }
 
-    async fn draw_columns(&mut self, bounds: Bounds, list: &mut RenderableCollection) {
+    fn draw_columns(&mut self, bounds: Bounds, list: &mut RenderableCollection) {
 
         for col in 0..self.column_count {
             let x = self.playfield.col_pos(col);
@@ -310,7 +310,7 @@ impl ManiaGame {
 
 #[async_trait]
 impl GameMode for ManiaGame {
-    async fn new(beatmap: &Beatmap, _: bool, settings: &Settings) -> TatakuResult<Self> {
+    fn new(beatmap: &Beatmap, _: bool, settings: &Settings) -> TatakuResult<Self> {
         let metadata = beatmap.get_beatmap_meta();
 
         let game_settings = settings.gamemode_settings::<ManiaSettings>(GAME_INFO).unwrap_or_default();
@@ -453,7 +453,7 @@ impl GameMode for ManiaGame {
                         s.playfield.clone(),
                         s.mania_skin_settings.clone(),
                         get_hitsounds(note.time, note.hitsound, note.hitsamples.clone())
-                    ).await));
+                    )));
                 }
                 for hold in beatmap.holds.iter() {
                     let column = (hold.pos.x * s.column_count as f32 / 512.0).floor() as u8;
@@ -467,7 +467,7 @@ impl GameMode for ManiaGame {
                         s.playfield.clone(),
                         s.mania_skin_settings.clone(),
                         get_hitsounds(hold.time, hold.hitsound, hold.hitsamples.clone())
-                    ).await));
+                    )));
                 }
 
                 s.integrate_velocity(beatmap.timing_points.iter().filter(|b| b.is_inherited()).map(|&b| SliderVelocity {
@@ -539,7 +539,7 @@ impl GameMode for ManiaGame {
                             s.playfield.clone(),
                             None,
                             get_hitsounds()
-                        ).await));
+                        )));
                     } else {
                         s.columns[column as usize].push(Box::new(ManiaNote::new(
                             time,
@@ -550,7 +550,7 @@ impl GameMode for ManiaGame {
                             s.playfield.clone(),
                             None,
                             get_hitsounds()
-                        ).await));
+                        )));
                     }
                 }
                 s.integrate_velocity(beatmap.slider_velocities.iter().map(|&x| x.into()).collect());
@@ -621,7 +621,7 @@ impl GameMode for ManiaGame {
                             s.playfield.clone(),
                             s.mania_skin_settings.clone(),
                             get_hitsounds()
-                        ).await));
+                        )));
                     } else {
                         s.columns[column as usize].push(Box::new(ManiaNote::new(
                             time,
@@ -632,7 +632,7 @@ impl GameMode for ManiaGame {
                             s.playfield.clone(),
                             s.mania_skin_settings.clone(),
                             get_hitsounds()
-                        ).await));
+                        )));
                     }
                 }
 
@@ -656,10 +656,10 @@ impl GameMode for ManiaGame {
         Ok(s)
     }
 
-    async fn handle_replay_frame<'a>(
+    fn handle_replay_frame(
         &mut self, 
         frame: ReplayFrame, 
-        state: &mut GameplayUpdateShell<'a>
+        state: &mut GameplayUpdateShell
     ) {
         match frame.action {
             ReplayAction::Press(key) => {
@@ -677,7 +677,7 @@ impl GameMode for ManiaGame {
                 let note_time = note.time();
                 *self.column_states.get_mut(col).unwrap() = true;
 
-                if let Some(&judge) = state.check_judgment(&self.hit_windows, frame.time, note_time).await {
+                if let Some(&judge) = state.check_judgment(&self.hit_windows, frame.time, note_time) {
                     // tell the note it was hit
                     note.hit(frame.time);
 
@@ -715,7 +715,7 @@ impl GameMode for ManiaGame {
                 if note.note_type() == NoteType::Hold {
                     let note_time = note.end_time(0.0);
 
-                    if let Some(&judge) = state.check_judgment(&self.hit_windows, frame.time, note_time).await {
+                    if let Some(&judge) = state.check_judgment(&self.hit_windows, frame.time, note_time) {
     
                         // tell the note it was hit
                         note.hit(frame.time);
@@ -745,21 +745,21 @@ impl GameMode for ManiaGame {
     }
 
 
-    async fn update<'a>(
+    fn update(
         &mut self, 
-        state: &mut GameplayUpdateShell<'a>
+        state: &mut GameplayUpdateShell
     ) {
         if state.mods.has_autoplay() {
             let mut frames = Vec::new();
             self.auto_helper.update(&self.columns, &mut self.column_indices, state.time, &mut frames);
             for frame in frames {
-                self.handle_replay_frame(ReplayFrame::new(state.time, frame), state).await
+                self.handle_replay_frame(ReplayFrame::new(state.time, frame), state)
             }
         }
 
         // update notes
         for col in self.columns.iter_mut() {
-            for note in col.iter_mut() { note.update(state.time).await }
+            for note in col.iter_mut() { note.update(state.time) }
         }
 
         // dont continue if map is over
@@ -790,7 +790,7 @@ impl GameMode for ManiaGame {
         for tb in self.timing_bars.iter_mut() { tb.update(state.time) }
     }
     
-    async fn draw<'a>(&mut self, state:GameplayDrawShell<'a>, list: &mut RenderableCollection) {
+    fn draw(&mut self, state: GameplayDrawShell, list: &mut RenderableCollection) {
         let bounds = self.playfield.bounds;
 
         // playfield
@@ -803,10 +803,10 @@ impl GameMode for ManiaGame {
 
 
         // draw columns
-        self.draw_columns(bounds, list).await;
+        self.draw_columns(bounds, list);
 
         // draw notes and timing bars
-        self.draw_notes(state.time, list).await;
+        self.draw_notes(state.time, list);
     }
 
     fn skip_intro(&mut self, game_time: f32) -> Option<f32> {
@@ -829,12 +829,12 @@ impl GameMode for ManiaGame {
         Some(time)
     }
 
-    async fn reset(&mut self, beatmap:&Beatmap) {
+    fn reset(&mut self, beatmap: &Beatmap) {
         let timing_points = TimingPointHelper::new(beatmap.get_timing_points(), beatmap.slider_velocity());
 
         for col in self.columns.iter_mut() {
             for note in col.iter_mut() {
-                note.reset().await;
+                note.reset();
             }
         }
         for i in 0..self.columns.len() {
@@ -878,7 +878,7 @@ impl GameMode for ManiaGame {
 
                 // why isnt this accounting for bpm changes? because the bpm change doesnt allways happen inline with the bar idiot
                 time += next_bar_time;
-                if time >= self.end_time || time.is_nan() {break}
+                if time >= self.end_time || time.is_nan() { break }
             }
 
             trace!("created {} timing bars", self.timing_bars.len());
@@ -911,7 +911,7 @@ impl GameMode for ManiaGame {
     }
 
     
-    async fn force_update_settings(&mut self, _settings: &Settings) {}
+    fn force_update_settings(&mut self, _settings: &Settings) {}
     
     async fn reload_skin(&mut self, beatmap_path: &str, skin_manager: &mut dyn SkinProvider) -> TextureSource {
         let source = TextureSource::Beatmap(beatmap_path.to_owned()); // TODO: add setting option
@@ -936,9 +936,9 @@ impl GameMode for ManiaGame {
         source
     }
 
-    async fn apply_mods(&mut self, _mods: Arc<ModManager>) { }
+    fn apply_mods(&mut self, _mods: Arc<ModManager>) { }
 
-    async fn handle_input(&mut self, input: InputEvent) -> Option<ReplayAction> {
+    fn handle_input(&mut self, input: InputEvent) -> Option<ReplayAction> {
         match input.event {
             InputType::KeyPress(press) => {
                 let key = press.as_key()?;
@@ -972,10 +972,10 @@ impl GameMode for ManiaGame {
     }
 
 
-    async fn beat_happened(&mut self, pulse_length: f32) {
+    fn beat_happened(&mut self, pulse_length: f32) {
         self.columns.iter_mut().flatten().for_each(|n| n.beat_happened(pulse_length))
     }
-    async fn kiai_changed(&mut self, is_kiai: bool) {
+    fn kiai_changed(&mut self, is_kiai: bool) {
         self.columns.iter_mut().flatten().for_each(|n| n.kiai_changed(is_kiai))
     }
 

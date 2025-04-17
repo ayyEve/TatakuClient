@@ -52,7 +52,7 @@ pub struct OsuSpinner {
 }
 
 impl OsuSpinner {
-    pub async fn new(def: SpinnerDef, scaling_helper: Arc<ScalingHelper>, rotations_required: u16) -> Self {
+    pub fn new(def: SpinnerDef, scaling_helper: Arc<ScalingHelper>, rotations_required: u16) -> Self {
         let time = def.time;
         let end_time = def.end_time;
 
@@ -95,7 +95,7 @@ impl HitObject for OsuSpinner {
     fn end_time(&self,_:f32) -> f32 { self.end_time }
     fn note_type(&self) -> NoteType { NoteType::Spinner }
 
-    async fn update(&mut self, beatmap_time: f32) {
+    fn update(&mut self, beatmap_time: f32) {
         const WINDOW_PERIOD_MILLIS: f32 = 1000.0;
 
         let mut diff = 0.0;
@@ -164,7 +164,7 @@ impl HitObject for OsuSpinner {
         self.current_time = beatmap_time;
     }
 
-    async fn draw(&mut self, time: f32, list: &mut RenderableCollection) {
+    fn draw(&mut self, time: f32, list: &mut RenderableCollection) {
         if !(time >= self.time && time <= self.end_time) { return }
         let scale = Vector2::ONE * self.scaling_helper.cs;
 
@@ -235,7 +235,7 @@ impl HitObject for OsuSpinner {
         list.push(txt);
     }
 
-    async fn reset(&mut self) {
+    fn reset(&mut self) {
         self.missed = false;
         self.holding = false;
         self.rotation = 0.0;
@@ -281,7 +281,6 @@ impl HitObject for OsuSpinner {
     }
 }
 
-#[async_trait]
 impl OsuHitObject for OsuSpinner {
     fn miss(&mut self) { self.missed = true }
     fn was_hit(&self) -> bool { self.missed || self.rotations_completed >= self.rotations_required } //{ self.last_update >= self.end_time }
@@ -329,7 +328,7 @@ impl OsuHitObject for OsuSpinner {
         ) * self.scaling_helper.scale * 20.0
     }
 
-    async fn set_settings(&mut self, _settings: Arc<OsuSettings>) {
+    fn set_settings(&mut self, _settings: Arc<OsuSettings>) {
         // self.standard_settings = settings;
     }
 

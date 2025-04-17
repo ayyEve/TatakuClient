@@ -147,7 +147,7 @@ impl TaikoDifficultyCalculator {
 impl DiffCalc for TaikoDifficultyCalculator {
     async fn new(g: &BeatmapMeta, settings: &Settings) -> TatakuResult<Self> {
         let g = Beatmap::from_metadata(g)?;
-        let g = TaikoGame::new(&g, true, settings).await?;
+        let g = TaikoGame::new(&g, true, settings)?;
         if g.notes.is_empty() { return Err(BeatmapError::InvalidFile.into()) }
         
         let mut difficulty_hitobjects:Vec<DifficultyHitObject> = Vec::new();

@@ -66,7 +66,7 @@ impl ManiaGameInfo {
 
     fn create_game<'a>(beatmap: &'a Beatmap, settings: &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn GameMode>>> {
         Box::pin(async {
-            let game: Box<dyn GameMode> = Box::new(ManiaGame::new(beatmap, false, settings).await?);
+            let game: Box<dyn GameMode> = Box::new(ManiaGame::new(beatmap, false, settings)?);
             Ok(game)
         })
     }

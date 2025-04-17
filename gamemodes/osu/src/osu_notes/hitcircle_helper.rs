@@ -32,7 +32,7 @@ pub struct HitCircleImageHelper {
     shake_group: Option<TransformGroup>
 }
 impl HitCircleImageHelper {
-    pub async fn new(base_pos: Vector2, scaling_helper: Arc<ScalingHelper>, combo_num: u16) -> Self {
+    pub fn new(base_pos: Vector2, scaling_helper: Arc<ScalingHelper>, combo_num: u16) -> Self {
         Self {
             circle: None,
             overlay: None,

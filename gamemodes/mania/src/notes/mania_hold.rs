@@ -34,7 +34,7 @@ pub struct ManiaHold {
 }
 impl ManiaHold {
     #[allow(clippy::too_many_arguments)]
-    pub async fn new(
+    pub fn new(
         time: f32, end_time: f32, column: u8, color: Color, x: f32, 
         
         sv_mult: f32,
@@ -88,7 +88,7 @@ impl HitObject for ManiaHold {
     fn time(&self) -> f32 {self.time}
     fn end_time(&self,hw_miss:f32) -> f32 {self.end_time + hw_miss}
 
-    async fn update(&mut self, beatmap_time: f32) {
+    fn update(&mut self, beatmap_time: f32) {
         let (start, end) = self.y_at(beatmap_time);
         self.pos.y = start;
         self.end_y = end;
@@ -121,7 +121,7 @@ impl HitObject for ManiaHold {
 
     }
 
-    async fn draw(&mut self, _time: f32, list: &mut RenderableCollection) {
+    fn draw(&mut self, _time: f32, list: &mut RenderableCollection) {
         // if self.playfield.upside_down {
         //     if self.end_y < 0.0 || self.pos.y > args.window_size[1] as f64 {return}
         // } 
@@ -203,7 +203,7 @@ impl HitObject for ManiaHold {
 
 
 
-    async fn reset(&mut self) {
+    fn reset(&mut self) {
         self.pos.y = 0.0;
         self.holding = false;
         self.hold_starts.clear();

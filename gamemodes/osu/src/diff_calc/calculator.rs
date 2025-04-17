@@ -109,7 +109,7 @@ impl OsuDifficultyCalculator {
 impl DiffCalc for OsuDifficultyCalculator {
     async fn new(meta: &BeatmapMeta, settings: &Settings) -> TatakuResult<Self> {
         let g = Beatmap::from_metadata(meta)?;
-        let g = OsuGame::new(&g, true, settings).await?;
+        let g = OsuGame::new(&g, true, settings)?;
         if g.notes.is_empty() { return Err(BeatmapError::InvalidFile.into()) }
 
         let mut notes = Vec::new();

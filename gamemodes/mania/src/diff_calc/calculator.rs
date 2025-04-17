@@ -13,7 +13,7 @@ pub struct ManiaDifficultyCalculator {
 impl DiffCalc for ManiaDifficultyCalculator {
     async fn new(g: &BeatmapMeta, settings: &Settings) -> TatakuResult<Self> {
         let g = Beatmap::from_metadata(g)?;
-        let g = crate::mania_game::ManiaGame::new(&g, true, settings).await?;
+        let g = crate::mania_game::ManiaGame::new(&g, true, settings)?;
         if g.columns.iter().fold(0, |sum, c| sum + c.len()) == 0 { 
             return Err(BeatmapError::InvalidFile.into()) 
         }

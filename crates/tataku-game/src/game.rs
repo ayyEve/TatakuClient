@@ -365,12 +365,12 @@ impl Game {
                 // update game mode with new information
                 if let GameState::Ingame(igm) = &mut self.current_state {
                     if skin_changed { igm.reload_skin(&mut self.skin_manager, &self.values.settings).await; }
-                    igm.force_update_settings(&self.values.settings).await;
+                    igm.force_update_settings(&self.values.settings);
                 }
 
                 #[cfg(feature="graphics")]
                 for (i, _) in self.gameplay_managers.values_mut() {
-                    i.force_update_settings(&self.values.settings).await;
+                    i.force_update_settings(&self.values.settings);
                 }
 
                 settings = self.settings.clone();
@@ -483,7 +483,7 @@ impl Game {
 
         // check bg loaded
         if let Some(loader) = self.background_loader.clone() {
-            if let Some(image) = loader.check().await {
+            if let Some(image) = loader.check() {
                 self.background_loader = None;
 
                 // unload the old image so the atlas can reuse the space
@@ -684,7 +684,7 @@ impl Game {
                 continue;
             }
 
-            manager.update(&mut self.values, &mut self.actions).await;
+            manager.update(&mut self.values, &mut self.actions);
 
             if manager.completed {
                 manager.on_complete()
@@ -797,7 +797,7 @@ impl Game {
                     }
 
                     // update, then check if complete
-                    manager.update(&mut self.values, &mut self.actions).await;
+                    manager.update(&mut self.values, &mut self.actions);
                     // self.handle_actions(actions).await;
                     if manager.completed {
                         self.ingame_complete(manager).await;
@@ -900,7 +900,7 @@ impl Game {
                         // make sure it has the latest window size
                         manager.window_size_changed(self.values.game.window_size).await;
                         manager.reload_skin(&mut self.skin_manager, &self.values.settings).await;
-                        manager.start().await;
+                        manager.start();
 
                         let m = manager.metadata.clone();
                         let start_time = manager.start_time;
@@ -1092,7 +1092,7 @@ impl Game {
                 std::mem::swap(&mut render_queue, &mut temp_render_queue);
             }
 
-            manager.draw(&mut render_queue).await;
+            manager.draw(&mut render_queue);
 
             if let Some(draw_action) = &config.draw_function {
                 std::mem::swap(&mut render_queue, &mut temp_render_queue);
@@ -1108,7 +1108,7 @@ impl Game {
 
         match &mut self.current_state {
             GameState::Ingame(manager) => { 
-                manager.draw(&mut render_queue).await;
+                manager.draw(&mut render_queue);
             }
 
             GameState::TransitionStarting { 
@@ -1117,7 +1117,7 @@ impl Game {
                 timer 
             } => {
                 if let Some(game) = from.get_ingame() {
-                    game.draw(&mut render_queue).await;
+                    game.draw(&mut render_queue);
                 }
 
                 // draw fade in rect
@@ -1136,7 +1136,7 @@ impl Game {
                 timer,
             } => {
                 if let Some(game) = state.get_ingame() {
-                    game.draw(&mut render_queue).await;
+                    game.draw(&mut render_queue);
                 }
 
                 let diff = elapsed - *timer;
@@ -1889,7 +1889,7 @@ impl Game {
         // apply mods to all gameplay managers
         for (m, i) in self.gameplay_managers.values_mut() {
             if i.mods.is_some() { continue }
-            m.apply_mods(self.values.global.mods.clone()).await;
+            m.apply_mods(self.values.global.mods.clone());
         }
 
         // update the beatmap groupings to update the diffs
@@ -1923,7 +1923,7 @@ impl Game {
                     Ok(mut manager) => {
                         let start_time = manager.start_time as u64;
 
-                        manager.handle_action(GameplayAction::ApplyMods(mods), &self.settings).await;
+                        manager.handle_action(GameplayAction::ApplyMods(mods), &self.settings);
                         self.queue_state_change(GameState::Ingame(Box::new(manager))).await;
 
                         let multiplayer = self.multiplayer_manager.as_ref()
@@ -2192,14 +2192,14 @@ impl Game {
 
         match action {
             CurrentGameAction::Start => {
-                manager.start().await;
+                manager.start();
                 self.queue_state_change(GameState::Ingame(manager)).await;
             }
             CurrentGameAction::Resume => {
                 self.queue_state_change(GameState::Ingame(manager)).await;
             }
             CurrentGameAction::Restart => {
-                manager.reset().await;
+                manager.reset();
                 self.queue_state_change(GameState::Ingame(manager)).await;
             }
             CurrentGameAction::Free => {
@@ -2352,9 +2352,9 @@ impl Game {
                         manager.window_size_changed(self.values.game.window_size).await;
                         
                         if let Some(bounds) = config.area {
-                            manager.handle_action(GameplayAction::FitToArea(bounds), &self.settings).await;
+                            manager.handle_action(GameplayAction::FitToArea(bounds), &self.settings);
                         }
-                        manager.reset().await;
+                        manager.reset();
 
                         let id = self.next_gameplay_id();
                         self.ui_manager.add_message(Message::new(
@@ -2387,7 +2387,7 @@ impl Game {
                 if let &GameplayAction::RequestDifficulty = &action {
                     gameplay.update_difficulty(&mut self.difficulty_manager);
                 } else {
-                    gameplay.handle_action(action, &self.values.settings).await;
+                    gameplay.handle_action(action, &self.values.settings);
                 }
             }
 

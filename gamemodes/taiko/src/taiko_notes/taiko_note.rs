@@ -20,7 +20,13 @@ pub struct TaikoNote {
     image: Option<HitCircleImageHelper>,
 }
 impl TaikoNote {
-    pub async fn new(time: f32, hit_type: HitType, finisher: bool, settings: Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>) -> Self {
+    pub fn new(
+        time: f32, 
+        hit_type: HitType, 
+        finisher: bool, 
+        settings: Arc<TaikoSettings>, 
+        playfield: Arc<TaikoPlayfield>
+    ) -> Self {
         let bounce_factor = 1.6;
 
         Self {
@@ -54,8 +60,8 @@ impl HitObject for TaikoNote {
     fn time(&self) -> f32 {self.time}
     fn end_time(&self, hw_miss:f32) -> f32 {self.time + hw_miss}
 
-    async fn update(&mut self, _time: f32) {}
-    async fn draw(&mut self, time: f32, list: &mut RenderableCollection) {
+    fn update(&mut self, _time: f32) {}
+    fn draw(&mut self, time: f32, list: &mut RenderableCollection) {
         let x = self.x_at(time);
         let delta_time = time - self.hit_time;
         let y = 
@@ -82,7 +88,7 @@ impl HitObject for TaikoNote {
         }
     }
 
-    async fn reset(&mut self) {
+    fn reset(&mut self) {
         self.pos = Vector2::ZERO;
         self.hit = false;
         self.missed = false;

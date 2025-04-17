@@ -53,9 +53,9 @@ impl SoundManager {
     }
 }
 
-
 struct SoundEntry {
     sound: Arc<dyn AudioInstance>,
+    #[allow(unused, reason = "will be used later")]
     source: HitsoundSource,
 }
 impl Deref for SoundEntry {

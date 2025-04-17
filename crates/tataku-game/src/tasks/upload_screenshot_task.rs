@@ -75,7 +75,7 @@ impl TatakuTask for UploadScreenshotTask {
             return;
         };
 
-        let Some(received) = task.check().await else { return };
+        let Some(received) = task.check() else { return };
 
         match received {
             Ok(url) => {

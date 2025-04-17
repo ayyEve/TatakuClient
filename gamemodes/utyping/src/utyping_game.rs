@@ -72,7 +72,7 @@ impl UTypingGame {
 
 #[async_trait]
 impl GameMode for UTypingGame {
-    async fn new(beatmap: &Beatmap, _:bool, settings: &Settings) -> TatakuResult<Self> {
+    fn new(beatmap: &Beatmap, _:bool, settings: &Settings) -> TatakuResult<Self> {
         // let settings = Arc::new(settings.taiko_settings.clone());
         let settings = Arc::new(settings.gamemode_settings(GAME_INFO).unwrap_or_default());
         let playfield = Arc::new(Self::get_playfield(&settings, Bounds::new(Vector2::ZERO, Vector2::new(1920.0, 1080.0)), false));
@@ -114,7 +114,7 @@ impl GameMode for UTypingGame {
                         note.text.clone(), 
                         settings.clone(), 
                         playfield.clone(),
-                    ).await);
+                    ));
                 }
 
 
@@ -127,7 +127,7 @@ impl GameMode for UTypingGame {
                         note.text.clone(), 
                         settings.clone(), 
                         playfield.clone(),
-                    ).await);
+                    ));
                 }
             }
             _ => return Err(BeatmapError::UnsupportedMode.into()),
@@ -141,10 +141,10 @@ impl GameMode for UTypingGame {
         Ok(s)
     }
 
-    async fn handle_replay_frame<'a>(
+    fn handle_replay_frame(
         &mut self, 
         frame: ReplayFrame,
-        state: &mut GameplayUpdateShell<'a>
+        state: &mut GameplayUpdateShell
     ) {
         // utyping uses chars for input, so we encode it in the mouse pos
         let ReplayAction::MousePos(c, _) = &frame.action else { return };
@@ -184,9 +184,9 @@ impl GameMode for UTypingGame {
     }
 
 
-    async fn update<'a>(
+    fn update(
         &mut self, 
-        state: &mut GameplayUpdateShell<'a>
+        state: &mut GameplayUpdateShell
     ) {
         self.window_size = state.window_size;
         // do autoplay things
@@ -252,7 +252,7 @@ impl GameMode for UTypingGame {
         
 
         // update notes
-        for note in self.notes.iter_mut() { note.update(state.time).await }
+        for note in self.notes.iter_mut() { note.update(state.time) }
 
         // if theres no more notes to hit, show score screen
         if let Some(note) = self.notes.last() {
@@ -268,7 +268,7 @@ impl GameMode for UTypingGame {
         // TODO: might move tbs to a (time, speed) tuple
         for tb in self.timing_bars.iter_mut() { tb.update(state.time); }
     }
-    async fn draw<'a>(&mut self, state: GameplayDrawShell<'a>, list: &mut RenderableCollection) {
+    fn draw(&mut self, state: GameplayDrawShell, list: &mut RenderableCollection) {
 
         // draw the playfield
         list.push(self.playfield.get_rectangle(state.current_timing_point.kiai));
@@ -285,15 +285,15 @@ impl GameMode for UTypingGame {
         for tb in self.timing_bars.iter_mut() { tb.draw(state.time, list); }
         
         // draw notes
-        for note in self.notes.iter_mut() { note.draw(state.time, list).await; }
+        for note in self.notes.iter_mut() { note.draw(state.time, list); }
     }
 
 
-    async fn reset(&mut self, beatmap: &Beatmap) {
+    fn reset(&mut self, beatmap: &Beatmap) {
         let timing_points = TimingPointHelper::new(beatmap.get_timing_points(), beatmap.slider_velocity());
         
         for note in self.notes.iter_mut() {
-            note.reset().await;
+            note.reset();
 
             // set note svs
             // if self.game_settings.static_sv {
@@ -394,7 +394,7 @@ impl GameMode for UTypingGame {
     }
 
     
-    async fn force_update_settings(&mut self, _settings: &Settings) {}
+    fn force_update_settings(&mut self, _settings: &Settings) {}
     #[cfg(feature="graphics")]
     async fn reload_skin(&mut self, _beatmap_path: &str, skin_manager: &mut dyn SkinProvider) -> TextureSource {
         for i in self.notes.iter_mut() {
@@ -403,10 +403,10 @@ impl GameMode for UTypingGame {
         TextureSource::Skin
     }
 
-    async fn apply_mods(&mut self, _mods: Arc<ModManager>) {}
+    fn apply_mods(&mut self, _mods: Arc<ModManager>) {}
     
-    async fn beat_happened(&mut self, _pulse_length: f32) {}
-    async fn kiai_changed(&mut self, _is_kiai: bool) {}
+    fn beat_happened(&mut self, _pulse_length: f32) {}
+    fn kiai_changed(&mut self, _is_kiai: bool) {}
 
 
     fn get_playfield(&self) -> PlayfieldNonsense {
@@ -430,7 +430,7 @@ impl GameMode for UTypingGame {
 
 
     
-    async fn handle_input(&mut self, input: InputEvent) -> Option<ReplayAction> {
+    fn handle_input(&mut self, input: InputEvent) -> Option<ReplayAction> {
         match input.event {
             InputType::KeyPress(key) => {
                 let text = key.text?;

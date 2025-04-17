@@ -56,7 +56,7 @@ impl BeatmapAnimation for OsuStoryboard {
     }
 
 
-    async fn update(&mut self, time: f32) {
+    fn update(&mut self, time: f32) {
         self.time = time;
         for i in self.elements.iter_mut() {
             // if self.time < i.start_time || self.time > i.end_time + 5000.0 { continue }
@@ -64,7 +64,7 @@ impl BeatmapAnimation for OsuStoryboard {
         }
     }
 
-    async fn draw(&self, list: &mut RenderableCollection) {
+    fn draw(&self, list: &mut RenderableCollection) {
         // list.push_scissor(self.bounds.into_scissor());
         let bounds = self.playfield;
 

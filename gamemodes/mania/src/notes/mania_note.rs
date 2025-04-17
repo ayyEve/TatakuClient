@@ -24,7 +24,7 @@ pub struct ManiaNote {
 }
 impl ManiaNote {
     #[allow(clippy::too_many_arguments)]
-    pub async fn new(
+    pub fn new(
         time: f32, column: u8, color: Color, x: f32, 
         sv_mult: f32,
         playfield: Arc<ManiaPlayfield>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
@@ -66,10 +66,10 @@ impl HitObject for ManiaNote {
     fn time(&self) -> f32 { self.time }
     fn end_time(&self, hw_miss:f32) -> f32 { self.time + hw_miss }
  
-    async fn update(&mut self, beatmap_time: f32) {
+    fn update(&mut self, beatmap_time: f32) {
         self.pos.y = self.y_at(beatmap_time); // + self.playfield.note_size().y;
     }
-    async fn draw(&mut self, _time: f32, list: &mut RenderableCollection) {
+    fn draw(&mut self, _time: f32, list: &mut RenderableCollection) {
         if self.hit || self.pos.y + self.playfield.note_size().y < self.playfield.bounds.pos.y || self.pos.y > self.playfield.bounds.pos.y + self.playfield.bounds.size.y { return } 
         
         if let Some(mut img) = self.note_image.clone() {
@@ -85,7 +85,7 @@ impl HitObject for ManiaNote {
         }
     }
 
-    async fn reset(&mut self) {
+    fn reset(&mut self) {
         self.pos.y = 0.0;
         self.hit_time = 0.0;
         self.hit = false;

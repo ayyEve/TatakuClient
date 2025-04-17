@@ -147,7 +147,7 @@ impl GameplayManager {
         }));
 
         // make sure the gamemode has the correct mods applied
-        gamemode.apply_mods(current_mods.clone()).await;
+        gamemode.apply_mods(current_mods.clone());
 
         let mut gm = Self {
             id: Arc::new(u32::MAX),
@@ -335,7 +335,7 @@ impl GameplayManager {
 
 // Events and States
 impl GameplayManager {
-    async fn handle_frame(
+    fn handle_frame(
         &mut self,
         frame: ReplayAction,
         force: bool,
@@ -368,10 +368,10 @@ impl GameplayManager {
             let frame = ReplayFrame::new(time, frame);
 
             let mut state = create_update_state!(self, self.time(), settings);
-            self.gamemode.handle_replay_frame(frame, &mut state).await;
+            self.gamemode.handle_replay_frame(frame, &mut state);
 
             for action in state.actions.take() {
-                self.handle_gamemode_action(action, settings).await;
+                self.handle_gamemode_action(action, settings);
             }
 
             if add_frames && should_add {
@@ -472,16 +472,16 @@ impl GameplayManager {
             if key == self.common_game_settings.key_offset_down { t = -5.0 }
 
             if t != 0.0 {
-                self.increment_global_offset(t).await;
+                self.increment_global_offset(t);
                 return true;
             }
         } else {
             if key == self.common_game_settings.key_offset_up { 
-                self.increment_offset(5.0).await;
+                self.increment_offset(5.0);
                 return true;
             }
             if key == self.common_game_settings.key_offset_down { 
-                self.increment_offset(-5.0).await; 
+                self.increment_offset(-5.0); 
                 return true;
             }
         }
@@ -495,7 +495,7 @@ impl GameplayManager {
                 None, 
                 true,
                 settings,
-            ).await;
+            );
             
             return true;
         }
@@ -548,14 +548,14 @@ impl GameplayManager {
 
         if self.should_skip_input() { return }
 
-        let Some(frame) = self.gamemode.handle_input(input).await else { return };
+        let Some(frame) = self.gamemode.handle_input(input) else { return };
         self.handle_frame(
             frame, 
             false, 
             None, 
             true,
             settings,
-        ).await;
+        );
 
     }
 
@@ -570,7 +570,7 @@ impl GameplayManager {
         self.failed || self.gameplay_mode.skip_input()
     }
 
-    pub async fn increment_offset(&mut self, delta: f32) {
+    pub fn increment_offset(&mut self, delta: f32) {
         let time = self.time();
         self.beatmap_preferences.audio_offset += delta;
         self.center_text_helper.set_value(format!("Offset: {:.2}ms", self.beatmap_preferences.audio_offset), time);
@@ -581,14 +581,14 @@ impl GameplayManager {
         tokio::spawn(async move { Database::save_beatmap_prefs(hash, &new_prefs); });
     }
 
-    pub async fn increment_global_offset(&mut self, delta: f32) {
+    pub fn increment_global_offset(&mut self, delta: f32) {
         let time = self.time();
         self.global_offset += delta;
         self.center_text_helper.set_value(format!("Global Offset: {:.2}ms", self.global_offset), time);
     }
 
-    pub async fn force_update_settings(&mut self, settings: &Settings) {
-        self.gamemode.force_update_settings(settings).await;
+    pub fn force_update_settings(&mut self, settings: &Settings) {
+        self.gamemode.force_update_settings(settings);
         self.global_offset = settings.global_offset;
     }
 
@@ -660,16 +660,16 @@ impl GameplayManagerTrait for GameplayManager {
     }
 
 
-    async fn apply_mods(&mut self, mut mods: ModManager) {
+    fn apply_mods(&mut self, mut mods: ModManager) {
         if self.gameplay_mode.is_preview() {
             mods.add_mod(Autoplay);
         }
 
         self.current_mods = Arc::new(mods);
-        self.gamemode.apply_mods(self.current_mods.clone()).await;
+        self.gamemode.apply_mods(self.current_mods.clone());
     }
 
-    async fn update(
+    fn update(
         &mut self, 
         values: &mut dyn Reflect,
         actions: &mut ActionQueue,
@@ -684,13 +684,13 @@ impl GameplayManagerTrait for GameplayManager {
             self.pending_time_jump = None;
 
             let mut state = create_update_state!(self, time, &settings);
-            self.gamemode.time_jump(time, &mut state).await;
+            self.gamemode.time_jump(time, &mut state);
         }
 
         // check map restart
         if let Some(press_time) = self.restart_key_hold_start {
             if press_time.as_millis() >= self.common_game_settings.map_restart_delay {
-                self.reset().await;
+                self.reset();
                 actions.extend(self.actions.take());
                 return
             }
@@ -763,8 +763,8 @@ impl GameplayManagerTrait for GameplayManager {
         let tp_updates = self.timing_points.update(time);
         for tp_update in tp_updates {
             match tp_update {
-                TimingPointUpdate::BeatHappened(pulse_length) => self.gamemode.beat_happened(pulse_length).await,
-                TimingPointUpdate::KiaiChanged(kiai) => self.gamemode.kiai_changed(kiai).await,
+                TimingPointUpdate::BeatHappened(pulse_length) => self.gamemode.beat_happened(pulse_length),
+                TimingPointUpdate::KiaiChanged(kiai) => self.gamemode.kiai_changed(kiai),
             }
         }
 
@@ -778,9 +778,9 @@ impl GameplayManagerTrait for GameplayManager {
         let mut state = create_update_state!(self, time, &settings);
 
 
-        self.gamemode.update(&mut state).await;
+        self.gamemode.update(&mut state);
         for action in state.actions {
-            self.handle_gamemode_action(action, &settings).await;
+            self.handle_gamemode_action(action, &settings);
         }
 
         // update score stuff now that gamemode has been updated
@@ -983,7 +983,7 @@ impl GameplayManagerTrait for GameplayManager {
 
         // handle any pending gameplay actions
         for a in self.gameplay_actions.take() {
-            self.handle_action(a, &settings).await;
+            self.handle_action(a, &settings);
         }
 
         // if its time to send another score sync packet
@@ -1000,13 +1000,13 @@ impl GameplayManagerTrait for GameplayManager {
 
         // handle any frames
         for ReplayFrame { time, action } in self.pending_frames.take() {
-            self.handle_frame(action, true, Some(time), true, &settings).await;
+            self.handle_frame(action, true, Some(time), true, &settings);
         }
 
 
         // handle animation
         #[cfg(feature="graphics")] {
-            self.animation.update(time).await;
+            self.animation.update(time);
         }
 
         // update value collection
@@ -1019,11 +1019,11 @@ impl GameplayManagerTrait for GameplayManager {
     }
 
     #[cfg(feature="graphics")]
-    async fn draw(&mut self, list: &mut RenderableCollection) {
+    fn draw(&mut self, list: &mut RenderableCollection) {
         let time = self.time();
 
         // draw animation
-        self.animation.draw(list).await;
+        self.animation.draw(list);
 
         // draw gamemode
         if let Some(bounds) = self.fit_to_bounds { 
@@ -1038,7 +1038,7 @@ impl GameplayManagerTrait for GameplayManager {
             score: &self.score,
             window_size: self.window_size
         };
-        self.gamemode.draw(state, list).await;
+        self.gamemode.draw(state, list);
 
 
         if self.fit_to_bounds.is_some() { 
@@ -1080,27 +1080,27 @@ impl GameplayManagerTrait for GameplayManager {
         // ))
     }
 
-    async fn handle_action(
+    fn handle_action(
         &mut self, 
         action: GameplayAction,
         settings: &Settings,
     ) {
         match action {
             GameplayAction::Pause => self.pause(),
-            GameplayAction::Resume => self.start().await,
+            GameplayAction::Resume => self.start(),
             GameplayAction::JumpToTime { time, skip_intro } => self.jump_to_time(time, skip_intro),
-            GameplayAction::ApplyMods(mods) => self.apply_mods(mods).await,
+            GameplayAction::ApplyMods(mods) => self.apply_mods(mods),
             GameplayAction::FitToArea(bounds) => self.fit_to_area(bounds),
             GameplayAction::SetMode(mode) => self.set_mode(mode.into()),
 
-            GameplayAction::AddReplayAction { action, should_save } => self.handle_frame(action, true, Some(self.time()), should_save, settings).await,
+            GameplayAction::AddReplayAction { action, should_save } => self.handle_frame(action, true, Some(self.time()), should_save, settings),
         
             // not used here
             GameplayAction::RequestDifficulty => {}
         }
     }
 
-    async fn handle_gamemode_action(
+    fn handle_gamemode_action(
         &mut self, 
         action: GamemodeAction,
         settings: &Settings
@@ -1185,7 +1185,7 @@ impl GameplayManagerTrait for GameplayManager {
             GamemodeAction::RemoveLastJudgment => self.judgement_indicators.pop().nope(),
             GamemodeAction::ComboBreak => self.combo_break(),
             GamemodeAction::FailGame => self.fail(),
-            GamemodeAction::ReplayAction(frame) => self.handle_frame(frame.action, true, Some(frame.time), true, settings).await,
+            GamemodeAction::ReplayAction(frame) => self.handle_frame(frame.action, true, Some(frame.time), true, settings),
             GamemodeAction::ResetHealth => self.health.reset(),
             GamemodeAction::ReplaceHealth(new_health) => self.health = new_health,
             GamemodeAction::MapComplete => self.completed = true,
@@ -1294,7 +1294,7 @@ impl GameplayManagerTrait for GameplayManager {
 
 
     // can be from either paused or new
-    async fn start(&mut self) {
+    fn start(&mut self) {
         if let Some(bounds) = self.fit_to_bounds {
             self.gamemode.set_bounds(bounds, false);
         } else {
@@ -1319,7 +1319,7 @@ impl GameplayManagerTrait for GameplayManager {
         self.layout_ui();
 
         if !self.started {
-            self.reset().await;
+            self.reset();
 
             //TODO: probably want to skip other things as well
             if !self.gameplay_mode.is_replay() {
@@ -1383,8 +1383,8 @@ impl GameplayManagerTrait for GameplayManager {
 
         self.gamemode.pause();
     }
-    async fn reset(&mut self) {
-        self.gamemode.reset(&self.beatmap).await;
+    fn reset(&mut self) {
+        self.gamemode.reset(&self.beatmap);
         self.health.reset();
         self.key_counter.reset();
         self.hitbar_timings.clear();
@@ -1392,7 +1392,7 @@ impl GameplayManagerTrait for GameplayManager {
         self.restart_key_hold_start = None;
 
         if self.gameplay_mode.is_preview() {
-            self.gamemode.apply_mods(self.current_mods.clone()).await;
+            self.gamemode.apply_mods(self.current_mods.clone());
         } else {
             // reset song
             self.actions.push(SongAction::Restart);

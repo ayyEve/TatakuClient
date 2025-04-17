@@ -6,7 +6,6 @@ const BAR_HEIGHT:f32 = 4.0; // how tall is a timing bar
 
 
 // timing bar struct
-//TODO: might be able to reduce this to a (time, speed) and just calc pos on draw
 #[derive(Clone)]
 pub struct TimingBar {
     time: f32,
@@ -21,8 +20,8 @@ pub struct TimingBar {
     position_function_index: usize,
 }
 impl TimingBar {
-    pub fn new(time:f32, width:f32, playfield: Arc<ManiaPlayfield>) -> TimingBar {
-        TimingBar {
+    pub fn new(time: f32, width: f32, playfield: Arc<ManiaPlayfield>) -> Self {
+        Self {
             time, 
             size: Vector2::new(width, BAR_HEIGHT),
             speed: 1.0,
@@ -36,7 +35,7 @@ impl TimingBar {
         }
     }
 
-    pub fn set_sv(&mut self, sv:f32) {
+    pub fn set_sv(&mut self, sv: f32) {
         self.speed = sv;
     }
 
@@ -53,7 +52,7 @@ impl TimingBar {
         self.relative_y = ManiaGame::pos_at(&self.position_function, self.time, &mut 0);
     }
 
-    pub fn update(&mut self, time:f32) {
+    pub fn update(&mut self, time: f32) {
         self.pos.y = self.y_at(time);
     }
 

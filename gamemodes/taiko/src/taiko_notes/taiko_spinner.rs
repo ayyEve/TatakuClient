@@ -22,10 +22,13 @@ pub struct TaikoSpinner {
     kat_color: Color,
 }
 impl TaikoSpinner {
-    pub async fn new(time: f32, end_time: f32, hits_required:u16, settings:Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>) -> Self {
-        let don_color = settings.don_color.color;
-        let kat_color = settings.kat_color.color;
-
+    pub fn new(
+        time: f32, 
+        end_time: f32, 
+        hits_required: u16, 
+        settings: Arc<TaikoSettings>, 
+        playfield: Arc<TaikoPlayfield>
+    ) -> Self {
         Self {
             time, 
             end_time,
@@ -36,12 +39,12 @@ impl TaikoSpinner {
             complete: false,
             pos: Vector2::ZERO,
 
-            settings,
             playfield,
             
             spinner_image: None,
-            don_color,
-            kat_color
+            don_color: settings.don_color.color,
+            kat_color: settings.kat_color.color,
+            settings,
         }
     }
 }
@@ -55,10 +58,10 @@ impl HitObject for TaikoSpinner {
         if self.complete { self.time } else { self.end_time }
     }
 
-    async fn update(&mut self, beatmap_time: f32) {
+    fn update(&mut self, beatmap_time: f32) {
         if beatmap_time > self.end_time { self.complete = true }
     }
-    async fn draw(&mut self, time: f32, list: &mut RenderableCollection) {
+    fn draw(&mut self, time: f32, list: &mut RenderableCollection) {
         // if done, dont draw anything
         if self.complete { return }
         self.pos = self.playfield.hit_position + Vector2::with_x(self.x_at(time));
@@ -110,7 +113,7 @@ impl HitObject for TaikoSpinner {
         }
     }
 
-    async fn reset(&mut self) {
+    fn reset(&mut self) {
         self.pos.x = 0.0;
         self.hit_count = 0;
         self.complete = false;

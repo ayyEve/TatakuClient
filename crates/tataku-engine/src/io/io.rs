@@ -205,20 +205,20 @@ pub fn open_link(url: String) {
 
 #[derive(Clone)]
 pub struct AsyncLoader<T> {
-    value: Arc<AsyncMutex<Option<T>>>,
+    value: Arc<Mutex<Option<T>>>,
     written: Arc<AtomicBool>,
     abort_handle: Arc<tokio::task::AbortHandle>,
 }
 impl<T:Send + Sync + 'static> AsyncLoader<T> {
     pub fn new<F: std::future::IntoFuture<Output = T> + Send + 'static>(f: F) -> Self where <F as std::future::IntoFuture>::IntoFuture: Send {
-        let value = Arc::new(AsyncMutex::new(None));
+        let value = Arc::new(Mutex::new(None));
         let written = Arc::new(AtomicBool::new(false));
         
         let val = value.clone();
         let wrote = written.clone();
         let task = tokio::spawn(async move {
             let v = f.into_future().await;
-            *val.lock().await = Some(v);
+            *val.lock() = Some(v);
             wrote.store(true, Ordering::Release)
         });
 
@@ -239,9 +239,9 @@ impl<T:Send + Sync + 'static> AsyncLoader<T> {
         self.written.load(Ordering::Acquire)
     }
 
-    pub async fn check(&self) -> Option<T> {
+    pub fn check(&self) -> Option<T> {
         if self.written.load(Ordering::Acquire) {
-            std::mem::take(&mut *self.value.lock().await)
+            std::mem::take(&mut *self.value.lock())
         } else {
             None
         }

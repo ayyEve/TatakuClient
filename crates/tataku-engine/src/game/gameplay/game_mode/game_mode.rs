@@ -2,48 +2,48 @@ use crate::prelude::*;
 
 #[async_trait]
 pub trait GameMode: Send + Sync {
-    async fn new(
+    fn new(
         beatmap: &Beatmap, 
         diff_calc_only: bool,
         settings: &Settings,
     ) -> Result<Self, TatakuError> where Self:Sized;
 
-    async fn handle_replay_frame<'a>(
+    fn handle_replay_frame(
         &mut self, 
         frame: ReplayFrame, 
-        state: &mut GameplayUpdateShell<'a>
+        state: &mut GameplayUpdateShell
     );
 
-    async fn update<'a>(
+    fn update(
         &mut self, 
-        state: &mut GameplayUpdateShell<'a>
+        state: &mut GameplayUpdateShell
     );
 
-    async fn draw<'a>(
+    fn draw(
         &mut self, 
-        state: GameplayDrawShell<'a>, 
+        state: GameplayDrawShell, 
         list: &mut RenderableCollection,
     );
 
     fn skip_intro(&mut self, time: f32) -> Option<f32>;
     fn pause(&mut self) {}
     fn unpause(&mut self) {}
-    async fn reset(&mut self, beatmap: &Beatmap);
+    fn reset(&mut self, beatmap: &Beatmap);
 
     fn set_bounds(&mut self, bounds: Bounds, full_window: bool);
     
-    async fn force_update_settings(&mut self, settings: &Settings);
+    fn force_update_settings(&mut self, settings: &Settings);
     #[cfg(feature="graphics")]
     async fn reload_skin(&mut self, beatmap_path: &str, skin_manager: &mut dyn SkinProvider) -> TextureSource;
 
-    async fn time_jump<'a>(&mut self, _new_time: f32, _state: &mut GameplayUpdateShell<'a>) {}
-    async fn apply_mods(&mut self, mods: Arc<ModManager>);
+    fn time_jump(&mut self, _new_time: f32, _state: &mut GameplayUpdateShell) {}
+    fn apply_mods(&mut self, mods: Arc<ModManager>);
     // fn apply_auto(&mut self, settings: &BackgroundGameSettings);
 
     /// happens right when a beat occurs (or a bit after if theres lag/stutter)
-    async fn beat_happened(&mut self, pulse_length: f32);
+    fn beat_happened(&mut self, pulse_length: f32);
     /// happens right when kiai changes
-    async fn kiai_changed(&mut self, is_kiai: bool);
+    fn kiai_changed(&mut self, is_kiai: bool);
 
     fn properties(&self) -> GameModeProperties;
 
@@ -57,7 +57,7 @@ pub trait GameMode: Send + Sync {
     ) {}
 
 
-    async fn handle_input(&mut self, input: InputEvent) -> Option<ReplayAction>;
+    fn handle_input(&mut self, input: InputEvent) -> Option<ReplayAction>;
 }
 
 

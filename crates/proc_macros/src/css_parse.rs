@@ -2,10 +2,10 @@ use proc_macro2::TokenStream;
 use quote::*;
 use syn::*;
 
-pub const CSS_ATTRIBUTE: &str = "css";
-pub const NAME_ATTRIBUTE: &str = "name";
-pub const DEFAULT_ATTRIBUTE: &str = "default";
-pub const PARSE_WITH_ATTRIBUTE: &str = "parse_with";
+const CSS_ATTRIBUTE: &str = "css";
+const NAME_ATTRIBUTE: &str = "name";
+const DEFAULT_ATTRIBUTE: &str = "default";
+const PARSE_WITH_ATTRIBUTE: &str = "parse_with";
 
 macro_rules! try_error {
     ($($t:tt)+) => {
@@ -16,7 +16,7 @@ macro_rules! try_error {
     };
 }
 
-pub fn derive(derive: &syn::DeriveInput) -> proc_macro2::TokenStream {
+pub(crate) fn derive(derive: &syn::DeriveInput) -> proc_macro2::TokenStream {
     let type_name = &derive.ident;
     let (impl_generics, ty_generics, where_clause) = derive.generics.split_for_impl();
 

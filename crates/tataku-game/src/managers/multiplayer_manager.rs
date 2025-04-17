@@ -329,7 +329,7 @@ impl MultiplayerManager {
                     let mut new_manager = None;
 
                     if let Some(loader) = &self.beatmap_loader {
-                        if let Some(manager) = loader.check().await {
+                        if let Some(manager) = loader.check() {
                             match manager {
                                 Ok(mut manager) => {
                                     manager.set_mode(GameplayMode::Multiplayer.into());

@@ -110,7 +110,7 @@ pub struct OsuSlider {
 }
 impl OsuSlider {
     #[allow(clippy::too_many_arguments)]
-    pub async fn new(
+    pub fn new(
         def: SliderDef,
         curve: Curve,
         ar: f32,
@@ -146,7 +146,7 @@ impl OsuSlider {
             def.pos,
             scaling_helper.clone(),
             combo_num
-        ).await;
+        );
 
         Self {
             def,
@@ -583,7 +583,7 @@ impl HitObject for OsuSlider {
     fn time(&self) -> f32 { self.time }
     fn end_time(&self,_:f32) -> f32 { self.curve.end_time }
 
-    async fn update(&mut self, beatmap_time: f32) {
+    fn update(&mut self, beatmap_time: f32) {
         self.map_time = beatmap_time;
         self.start_circle_image.update(beatmap_time);
 
@@ -615,7 +615,7 @@ impl HitObject for OsuSlider {
 
         match &self.slider_body_loader {
             SliderBodyLoader::New { min_pos, loader } => if loader.is_complete() {
-                let value = loader.check().await.unwrap();
+                let value = loader.check().unwrap();
 
                 if let Ok(mut slider_body_render_target) = value {
                     slider_body_render_target.image.pos = *min_pos;
@@ -706,7 +706,7 @@ impl HitObject for OsuSlider {
 
     }
 
-    async fn draw(&mut self, _time: f32, list: &mut RenderableCollection) {
+    fn draw(&mut self, _time: f32, list: &mut RenderableCollection) {
         // draw shapes
         for shape in self.shapes.iter_mut() {
             list.push(shape.clone())
@@ -871,7 +871,7 @@ impl HitObject for OsuSlider {
         }
     }
 
-    async fn reset(&mut self) {
+    fn reset(&mut self) {
         self.shapes.clear();
         self.sound_queue.clear();
 
@@ -892,7 +892,7 @@ impl HitObject for OsuSlider {
         self.make_dots();
     }
 
-    async fn time_jump(&mut self, new_time: f32) {
+    fn time_jump(&mut self, new_time: f32) {
         if new_time > self.time {
             self.start_checked = true;
             if new_time > self.end_time(0.0) {
@@ -958,7 +958,6 @@ impl HitObject for OsuSlider {
     fn kiai_changed(&mut self, _is_kiai: bool) {}
 }
 
-#[async_trait]
 impl OsuHitObject for OsuSlider {
     fn miss(&mut self) { self.end_checked = true }
     fn was_hit(&self) -> bool { self.end_checked }
@@ -1080,7 +1079,7 @@ impl OsuHitObject for OsuSlider {
         }
     }
 
-    async fn set_settings(&mut self, settings: Arc<OsuSettings>) {
+    fn set_settings(&mut self, settings: Arc<OsuSettings>) {
         let old_body_alpha = self.standard_settings.slider_body_alpha;
         let old_border_alpha = self.standard_settings.slider_border_alpha;
         //TODO: cache these and only update if the difference is above some threshhold so we dont absolutely spam render targets\

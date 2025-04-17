@@ -42,7 +42,7 @@ pub struct OsuNote {
     hitsounds: Vec<Hitsound>,
 }
 impl OsuNote {
-    pub async fn new(def:NoteDef, ar:f32, combo_num:u16, scaling_helper: Arc<ScalingHelper>, standard_settings:Arc<OsuSettings>, hitsounds: Vec<Hitsound>) -> Self {
+    pub fn new(def:NoteDef, ar:f32, combo_num:u16, scaling_helper: Arc<ScalingHelper>, standard_settings:Arc<OsuSettings>, hitsounds: Vec<Hitsound>) -> Self {
         let time = def.time;
         let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
 
@@ -54,7 +54,7 @@ impl OsuNote {
             def.pos,
             scaling_helper.clone(),
             combo_num
-        ).await;
+        );
 
         Self {
             def,
@@ -104,7 +104,7 @@ impl HitObject for OsuNote {
     fn note_type(&self) -> NoteType { NoteType::Note }
     fn time(&self) -> f32 { self.time }
     fn end_time(&self, hw_miss:f32) -> f32 { self.time + hw_miss }
-    async fn update(&mut self, beatmap_time: f32) {
+    fn update(&mut self, beatmap_time: f32) {
         self.map_time = beatmap_time;
         self.approach_circle.update(beatmap_time);
         self.circle_image.update(beatmap_time);
@@ -115,7 +115,7 @@ impl HitObject for OsuNote {
         });
     }
 
-    async fn draw(&mut self, _time: f32, list: &mut RenderableCollection) {
+    fn draw(&mut self, _time: f32, list: &mut RenderableCollection) {
 
         // if its not time to draw anything else, leave
         if self.time - self.map_time > self.time_preempt || self.time + self.hitwindow_miss < self.map_time || self.hit { 
@@ -143,7 +143,7 @@ impl HitObject for OsuNote {
         }
     }
 
-    async fn reset(&mut self) {
+    fn reset(&mut self) {
         self.hit = false;
         self.missed = false;
         
@@ -151,7 +151,7 @@ impl HitObject for OsuNote {
         self.approach_circle.reset();
     }
 
-    async fn time_jump(&mut self, new_time: f32) {
+    fn time_jump(&mut self, new_time: f32) {
         if new_time > self.time {
             self.hit = true;
             self.missed = true;
@@ -169,7 +169,6 @@ impl HitObject for OsuNote {
     }
 }
 
-#[async_trait]
 impl OsuHitObject for OsuNote {
     fn miss(&mut self) { self.missed = true }
     fn was_hit(&self) -> bool { self.hit || self.missed }
@@ -228,7 +227,7 @@ impl OsuHitObject for OsuNote {
 
     
 
-    async fn set_settings(&mut self, settings: Arc<OsuSettings>) {
+    fn set_settings(&mut self, settings: Arc<OsuSettings>) {
         self.standard_settings = settings;
     }
 

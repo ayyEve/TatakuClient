@@ -335,7 +335,7 @@ impl OsuGame {
 
 #[async_trait]
 impl GameMode for OsuGame {
-    async fn new(
+    fn new(
         map: &Beatmap, 
         _diff_calc_only: bool,
         settings: &Settings,
@@ -353,12 +353,12 @@ impl GameMode for OsuGame {
         let od = Self::get_od(&metadata, &mods);
         let scaling_helper = Arc::new(ScalingHelper::new_with_settings(&game_settings, cs, effective_window_size, mods.has_mod(HardRock)));
 
-        let judgment_helper = JudgmentImageHelper::new(OsuHitJudgments::variants().to_vec()).await;
+        let judgment_helper = JudgmentImageHelper::new(OsuHitJudgments::variants().to_vec());
 
         let timing_points = TimingPointHelper::new(map.get_timing_points(), map.slider_velocity());
 
         let parent_dir = map.get_parent_dir().unwrap_or_default().to_string_lossy().to_string();
-        let cursor = OsuCursor::new(scaling_helper.circle_size.x / 2.0, SkinSettings::default(), parent_dir, settings).await;
+        let cursor = OsuCursor::new(scaling_helper.circle_size.x / 2.0, SkinSettings::default(), parent_dir, settings);
         let mut actions = ActionQueue::new();
         cursor.init(&mut actions);
 
@@ -483,7 +483,7 @@ impl GameMode for OsuGame {
                                 scaling_helper.clone(),
                                 std_settings.clone(),
                                 get_hitsounds(note.time, note.hitsound, note.hitsamples.clone())
-                            ).await));
+                            )));
                         }
 
                         Thing::Slider(slider, None) => {
@@ -504,7 +504,7 @@ impl GameMode for OsuGame {
                                 scaling_helper.clone(),
                                 std_settings.clone(),
                                 hitsounds,
-                            ).await));
+                            )));
                         }
 
                         Thing::Slider(slider, Some(curve)) => {
@@ -517,7 +517,7 @@ impl GameMode for OsuGame {
                                 std_settings.clone(),
                                 get_hitsounds,
                                 timing_points.slider_velocity_at(slider.time)
-                            ).await));
+                            )));
                         }
 
 
@@ -539,7 +539,7 @@ impl GameMode for OsuGame {
                                 spinner.clone(),
                                 scaling_helper.clone(),
                                 spins_required
-                            ).await))
+                            )))
                         }
                     }
                 }
@@ -558,10 +558,10 @@ impl GameMode for OsuGame {
         Ok(s)
     }
 
-    async fn handle_replay_frame<'a>(
+    fn handle_replay_frame(
         &mut self, 
         frame: ReplayFrame, 
-        state: &mut GameplayUpdateShell<'a>
+        state: &mut GameplayUpdateShell
     ) {
         const ALLOWED_PRESSES:&[KeyPress] = &[
             KeyPress::Left, 
@@ -613,7 +613,7 @@ impl GameMode for OsuGame {
                     if !note.check_distance(self.mouse_pos) { continue }
                     let note_time = note.time();
                     
-                    if let Some(judge) = state.check_judgment(&self.hit_windows, frame.time, note_time).await {
+                    if let Some(judge) = state.check_judgment(&self.hit_windows, frame.time, note_time) {
                         note.set_judgment(judge);
 
                         if judge == &OsuHitJudgments::X300 && !self.game_settings.show_300s {
@@ -692,9 +692,9 @@ impl GameMode for OsuGame {
     }
 
 
-    async fn update<'a>(
+    fn update(
         &mut self, 
-        state: &mut GameplayUpdateShell<'a>,
+        state: &mut GameplayUpdateShell,
     ) {
         state.action_queue.extend(self.actions.take());
 
@@ -708,7 +708,7 @@ impl GameMode for OsuGame {
         if state.gameplay_mode.is_preview() && self.cursor.emitter_enabled {
             self.cursor.emitter_enabled = false;
         }
-        self.cursor.update().await;
+        self.cursor.update();
 
         let has_autoplay = state.mods.has_autoplay();
         let has_relax = state.mods.has_mod(Relax);
@@ -741,7 +741,7 @@ impl GameMode for OsuGame {
 
         // update notes
         for (note_index, note) in self.notes.iter_mut().enumerate() {
-            note.update(state.time).await;
+            note.update(state.time);
             let end_time = note.end_time(self.miss_window);
 
             // play queued sounds
@@ -855,9 +855,9 @@ impl GameMode for OsuGame {
 
     }
     
-    async fn draw<'a>(
+    fn draw(
         &mut self, 
-        state: GameplayDrawShell<'a>, 
+        state: GameplayDrawShell, 
         list: &mut RenderableCollection
     ) {
         let window_size = state.window_size;
@@ -928,7 +928,7 @@ impl GameMode for OsuGame {
         for note in self.notes.iter_mut().rev() {
             match note.note_type() {
                 NoteType::Spinner => spinners.push(note),
-                _ => note.draw(state.time, list).await,
+                _ => note.draw(state.time, list),
             }
         }
 
@@ -955,7 +955,7 @@ impl GameMode for OsuGame {
         // spinners should be drawn last since they should be on top of everything
         // (we dont want notes or sliders drawn on top of the spinners)
         for i in spinners {
-            i.draw(state.time, list).await
+            i.draw(state.time, list)
         }
 
         // need to draw the smoke particles on top of everything
@@ -968,13 +968,13 @@ impl GameMode for OsuGame {
     }
 
     
-    async fn reset(&mut self, _beatmap:&Beatmap) {
+    fn reset(&mut self, _beatmap: &Beatmap) {
         // let ar = scale_by_mods(self.metadata.ar, 0.5, 1.4, &self.mods).clamp(1.0, 11.0);
 
         // reset notes
         let hwm = self.miss_window;
         for note in self.notes.iter_mut() {
-            note.reset().await;
+            note.reset();
             note.set_hitwindow_miss(hwm);
             // note.set_ar(ar)
         }
@@ -1009,13 +1009,13 @@ impl GameMode for OsuGame {
         }
     }
 
-    async fn time_jump<'a>(
+    fn time_jump(
         &mut self, 
         new_time: f32,
-        state: &mut GameplayUpdateShell<'a>
+        state: &mut GameplayUpdateShell
     ) {
         for n in self.notes.iter_mut() {
-            n.time_jump(new_time).await;
+            n.time_jump(new_time);
         }
 
         let mut pending_frames = Vec::new();
@@ -1031,7 +1031,7 @@ impl GameMode for OsuGame {
         }
     }
     
-    async fn force_update_settings(&mut self, settings: &Settings) {
+    fn force_update_settings(&mut self, settings: &Settings) {
         let settings = settings.gamemode_settings::<OsuSettings>(crate::GAME_INFO).unwrap_or_default();
         // let settings = settings.osu_settings.clone();
         let settings = Arc::new(settings);
@@ -1040,7 +1040,7 @@ impl GameMode for OsuGame {
 
         self.game_settings = settings.clone();
         for n in self.notes.iter_mut() {
-            n.set_settings(settings.clone()).await;
+            n.set_settings(settings.clone());
         }
     }
 
@@ -1088,7 +1088,7 @@ impl GameMode for OsuGame {
         source
     }
 
-    async fn apply_mods(&mut self, mods: Arc<ModManager>) {
+    fn apply_mods(&mut self, mods: Arc<ModManager>) {
         let had_easy_or_hr = self.mods.has_mod(Easy) || self.mods.has_mod(HardRock);
 
         let has_hr = mods.has_mod(HardRock);
@@ -1239,7 +1239,7 @@ impl GameMode for OsuGame {
         // }
     }
 
-    async fn handle_input(&mut self, input: InputEvent) -> Option<ReplayAction> {
+    fn handle_input(&mut self, input: InputEvent) -> Option<ReplayAction> {
         match input.event {
             InputType::KeyPress(press) => {
                 let key = press.as_key()?;
@@ -1439,11 +1439,11 @@ impl GameMode for OsuGame {
     }
 
     
-    async fn beat_happened(&mut self, pulse_length: f32) {
-        self.notes.iter_mut().for_each(|n|n.beat_happened(pulse_length));
+    fn beat_happened(&mut self, pulse_length: f32) {
+        self.notes.iter_mut().for_each(|n| n.beat_happened(pulse_length));
     }
-    async fn kiai_changed(&mut self, is_kiai: bool) {
-        self.notes.iter_mut().for_each(|n|n.kiai_changed(is_kiai));
+    fn kiai_changed(&mut self, is_kiai: bool) {
+        self.notes.iter_mut().for_each(|n| n.kiai_changed(is_kiai));
     }
 
     async fn build_widgets(

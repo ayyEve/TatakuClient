@@ -49,7 +49,7 @@ pub struct OsuCursor {
 }
 
 impl OsuCursor {
-    pub async fn new(
+    pub fn new(
         note_radius: f32,
         skin: SkinSettings,
         beatmap_path: String,
@@ -205,7 +205,7 @@ impl OsuCursor {
         self.pos = pos;
     }
 
-    pub async fn update(&mut self) {
+    pub fn update(&mut self) {
         let time = self.time.as_millis();
 
         if self.emitter_enabled {

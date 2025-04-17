@@ -10,13 +10,13 @@ pub trait HitObject: Send + Sync {
     /// when should the hitobject be considered "finished", should the miss hitwindow be applied (specifically for notes)
     fn end_time(&self, hitwindow_miss: f32) -> f32;
 
-    async fn update(&mut self, time: f32);
-    async fn draw(&mut self, time: f32, list: &mut RenderableCollection);
+    fn update(&mut self, time: f32);
+    fn draw(&mut self, time: f32, list: &mut RenderableCollection);
 
     /// set this object back to defaults
-    async fn reset(&mut self);
+    fn reset(&mut self);
 
-    async fn time_jump(&mut self, _new_time: f32) {}
+    fn time_jump(&mut self, _new_time: f32) {}
 
     #[cfg(feature="graphics")]
     async fn reload_skin(&mut self, _source: &TextureSource, _skin_manager: &mut dyn SkinProvider) {}

@@ -10,13 +10,13 @@ members = [ "crates/*", "gamemodes/*" , "integrations/*"]
 default-members = [ "crates/tataku-client" ]
 resolver = "2"
 
-[workspace.lints.clippy]
-too_many_arguments = "allow"
-module_inception = "allow"
-type_complexity = "allow"
+[workspace.lints]
+clippy.too_many_arguments = "allow"
+clippy.module_inception = "allow"
+clippy.type_complexity = "allow"
+clippy.todo = "warn"
 
-[workspace.lints.rust]
-unused_must_use = "deny"
+rust.unused_must_use = "deny"
 
 [workspace.dependencies]
 # tataku-common = { version = "0.16.0", path = "../tataku-common/tataku-common", registry = "tataku-registry" }
