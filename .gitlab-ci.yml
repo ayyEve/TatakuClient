@@ -57,8 +57,12 @@ releases:
       when: never # Do not run this job when a tag is created manually
     - if: $CI_COMMIT_REF_PROTECTED # Run this job when commits are pushed or merged to a protected branch
   script:
-    - echo "Creating release"
+    - export DATETIME='$(git show -s --format="%cd" --date=format:"%Y%m%d%H%M")'
   release:
-    tag_name: '$CI_COMMIT_REF_PROTECTED-$CI_COMMIT_TIMESTAMP'
+    tag_name: '$CI_COMMIT_BRANCH-$DATETIME'
     description: 'Automatic $CI_COMMIT_BRANCH release'
     ref: '$CI_COMMIT_SHA'
+    assets:
+      links:
+        - name: Linux x86_64
+          url: $CI_PROJECT_DIR/target/release/tataku-client
