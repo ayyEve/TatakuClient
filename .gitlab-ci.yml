@@ -31,7 +31,7 @@ build-windows:
     - linux
   artifacts:
     paths:
-      - target/release/tataku-client.exe
+      - target/x86_64-pc-windows-gnu/release/tataku-client.exe
     reports:
       dotenv: job.env
 
@@ -54,6 +54,8 @@ prepare-release:
   rules:
     - if: $CI_COMMIT_TAG
       when: never # Do not run this job when a tag is created manually
+    - if: $CI_MERGE_REQUEST_ID
+      when: never # Do not run this job for merge requests
     - if: $CI_COMMIT_REF_PROTECTED # Run this job when commits are pushed or merged to a protected branch
   script:
     - echo DATETIME='$(git show -s --format="%cd" --date=format:"%Y%m%d%H%M")' >> vars.env
@@ -67,6 +69,8 @@ releases:
   rules:
     - if: $CI_COMMIT_TAG
       when: never # Do not run this job when a tag is created manually
+    - if: $CI_MERGE_REQUEST_ID
+      when: never # Do not run this job for merge requests
     - if: $CI_COMMIT_REF_PROTECTED # Run this job when commits are pushed or merged to a protected branch
   needs:
     - job: prepare-release
