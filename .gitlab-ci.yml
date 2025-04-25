@@ -2,38 +2,38 @@ stages:
   - build-client
   - release
 
-build-windows-linux:
+build-linux:
   stage: build-client
   image: ayyeve/tataku-client-build:latest
-  rules:
-    # - if: $TATAKU_RELEASE_KEY != null
-    # - if: $CI_COMMIT_REF_PROTECTED != "true"
-    #   when: never
   script:
-    # linux
-    # build
     - ~/.cargo/bin/cargo mommy build --release
-    # push
-    - curl -X PUT http://$RELEASE_ADDR/$CI_COMMIT_BRANCH/linux/tataku-client --upload-file $CI_PROJECT_DIR/target/release/tataku-client
-    
-    # windows 
-    # build
-    - ~/.cargo/bin/cargo mommy build --release --target x86_64-pc-windows-gnu
-    # push 
-    - curl -X PUT http://$RELEASE_ADDR/$CI_COMMIT_BRANCH/windows/tataku-client.exe --upload-file $CI_PROJECT_DIR/target/x86_64-pc-windows-gnu/release/tataku-client.exe
+  after_script:
+    - echo "LINUX_JOB=$CI_JOB_URL" >> job.env
   tags:
     - docker
     - linux
+  artifacts:
+    paths:
+      - target/release/tataku-client
+    reports:
+      dotenv: job.env
 
-# build-windows:
-#   stage: build-client
-#   image: 
-#   script:
-#     - cargo build --release
-#     - cp ./target/release/tataku-client.exe //192.168.0.170/website/cdn/tataku/releases/windows/tataku-client.exe
-#   tags:
-#     - windows
-#     - local
+build-windows:
+  stage: build-client
+  image: ayyeve/tataku-client-build:latest
+  script:
+    # Cross-compiled from linux
+    - ~/.cargo/bin/cargo mommy build --release --target x86_64-pc-windows-gnu
+  after_script:
+    - echo "WINDOWS_JOB=$CI_JOB_URL" >> job.env
+  tags:
+    - docker
+    - linux
+  artifacts:
+    paths:
+      - target/release/tataku-client.exe
+    reports:
+      dotenv: job.env
 
 # # TODO: build-mac
 # build-mac:
@@ -49,6 +49,18 @@ build-windows-linux:
 #     - mac
 #     - local
 
+prepare-release:
+  stage: release
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never # Do not run this job when a tag is created manually
+    - if: $CI_COMMIT_REF_PROTECTED # Run this job when commits are pushed or merged to a protected branch
+  script:
+    - echo DATETIME='$(git show -s --format="%cd" --date=format:"%Y%m%d%H%M")' >> vars.env
+  artifacts:
+    reports:
+      dotenv: vars.env
+
 releases:
   stage: release
   image: registry.gitlab.com/gitlab-org/release-cli:latest
@@ -56,8 +68,16 @@ releases:
     - if: $CI_COMMIT_TAG
       when: never # Do not run this job when a tag is created manually
     - if: $CI_COMMIT_REF_PROTECTED # Run this job when commits are pushed or merged to a protected branch
+  needs:
+    - job: prepare-release
+      artifacts: true
+    - job: build-linux
+      artifacts: true
+    - job: build-windows
+      artifacts: true
   script:
-    - export DATETIME='$(git show -s --format="%cd" --date=format:"%Y%m%d%H%M")'
+    - echo Creating release $CI_COMMIT_BRANCH-$DATETIME
+  
   release:
     tag_name: '$CI_COMMIT_BRANCH-$DATETIME'
     description: 'Automatic $CI_COMMIT_BRANCH release'
@@ -65,4 +85,6 @@ releases:
     assets:
       links:
         - name: Linux x86_64
-          url: $CI_PROJECT_DIR/target/release/tataku-client
+          url: $LINUX_JOB/tataku-client
+        - name: Windows x86_64
+          url: $WINDOWS_JOB/tataku-client.exe
