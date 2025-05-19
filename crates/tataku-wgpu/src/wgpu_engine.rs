@@ -801,12 +801,18 @@ impl WgpuEngine<'_> {
 
         let vertex_buffer_queue = get_render_buffer!(self, Standard);
 
-        let mut recording_buffer = vertex_buffer_queue.recording_buffer().expect("didnt get vertex recording buffer");
-        let blend_mode_check = recording_buffer.blend_mode == blend_mode || recording_buffer.blend_mode == BlendMode::None;
-        let scissor_check = recording_buffer.scissor == Some(scissor) || recording_buffer.scissor.is_none();
+        let mut recording_buffer = vertex_buffer_queue
+            .recording_buffer()
+            .expect("didnt get vertex recording buffer");
 
-        if !blend_mode_check
-        || !scissor_check
+        if !( // blend mode check
+            recording_buffer.blend_mode == blend_mode 
+            || recording_buffer.blend_mode == BlendMode::None
+        )
+        || !( // scissor check
+            recording_buffer.scissor == Some(scissor) 
+            || recording_buffer.scissor.is_none()
+        )
         || recording_buffer.used_vertices + vtx_count > StandardBuffer::VTX_PER_BUF
         || recording_buffer.used_indices + idx_count > StandardBuffer::IDX_PER_BUF {
             let pipeline = WgpuPipeline::Render(self.pipelines.get(&blend_mode).unwrap());
@@ -850,7 +856,11 @@ impl WgpuEngine<'_> {
         transform: Matrix,
         blend_mode: BlendMode,
     ) {
-        let Some(mut reserved) = self.reserve_standard(4, 6, blend_mode) else { return };
+        let Some(mut reserved) = self.reserve_standard(
+            4, 
+            6, 
+            blend_mode
+        ) else { return };
 
         let [x, y, w, h] = rect;
         let color = color.into();
@@ -872,40 +882,43 @@ impl WgpuEngine<'_> {
         let tex_index = tex.layer as i32;
         let offset = reserved.idx_offset as u32;
         #[allow(clippy::identity_op, reason = "lines the values up nicely")]
-        reserved.copy_in(&[
-            StandardVertex {
-                position: transform.mul_v2(Vector2::new(x, y)).into(),
-                tex_coords: tl,
-                tex_index,
-                color,
-            },
-            StandardVertex {
-                position: transform.mul_v2(Vector2::new(x+w, y)).into(),
-                tex_coords: tr,
-                tex_index,
-                color,
-            },
-            StandardVertex {
-                position: transform.mul_v2(Vector2::new(x, y+h)).into(),
-                tex_coords: bl,
-                tex_index,
-                color,
-            },
-            StandardVertex {
-                position: transform.mul_v2(Vector2::new(x+w, y+h)).into(),
-                tex_coords: br,
-                tex_index,
-                color,
-            }
-        ], &[
-            0 + offset,
-            2 + offset,
-            1 + offset,
+        reserved.copy_in(
+        &[
+                StandardVertex {
+                    position: transform.mul_v2(Vector2::new(x, y)).into(),
+                    tex_coords: tl,
+                    tex_index,
+                    color,
+                },
+                StandardVertex {
+                    position: transform.mul_v2(Vector2::new(x+w, y)).into(),
+                    tex_coords: tr,
+                    tex_index,
+                    color,
+                },
+                StandardVertex {
+                    position: transform.mul_v2(Vector2::new(x, y+h)).into(),
+                    tex_coords: bl,
+                    tex_index,
+                    color,
+                },
+                StandardVertex {
+                    position: transform.mul_v2(Vector2::new(x+w, y+h)).into(),
+                    tex_coords: br,
+                    tex_index,
+                    color,
+                }
+            ], 
+            &[
+                0 + offset,
+                2 + offset,
+                1 + offset,
 
-            1 + offset,
-            2 + offset,
-            3 + offset,
-        ]);
+                1 + offset,
+                2 + offset,
+                3 + offset,
+            ]
+        );
     }
 
     // quad is tl,tr, bl,br
@@ -916,8 +929,11 @@ impl WgpuEngine<'_> {
         transform: Matrix,
         blend_mode: BlendMode,
     ) {
-        // let Some(mut reserved) = self.reserve_vertex(4, 6, scissor, blend_mode) else { return };
-        let Some(mut reserved) = self.reserve_standard(4, 6, blend_mode) else { return };
+        let Some(mut reserved) = self.reserve_standard(
+            4, 
+            6, 
+            blend_mode
+        ) else { return };
         let color = color.into();
 
         let vertices = quad.into_iter().map(|p: Vector2| StandardVertex {
@@ -1489,20 +1505,36 @@ impl GraphicsEngine for WgpuEngine<'_> {
     // draw helpers
 
     /// draw an arc with the center at 0,0
-    fn draw_arc(&mut self, start: f32, end: f32, radius: f32, color: Color, resolution: u32, transform: Matrix, blend_mode: BlendMode) {
-        let n = resolution;
-
+    fn draw_arc(
+        &mut self, 
+        start: f32, 
+        end: f32, 
+        radius: f32, 
+        color: Color, 
+        resolution: u32, 
+        transform: Matrix, 
+        blend_mode: BlendMode,
+    ) {
         // minor optimization
         if color.a <= 0.0 { return }
 
-        let (x, y, w, h) = (-radius, -radius, 2.0 * radius, 2.0 * radius);
+        let n = resolution;
+        let x = -radius;
+        let y = -radius;
+        let w = 2.0 * radius;
+        let h = 2.0 * radius;
+
         let (cw, ch) = (0.5 * w, 0.5 * h);
         let (cx, cy) = (x + cw, y + ch);
 
         let mut path = lyon_tessellation::path::Path::builder();
         for i in 0..=n {
             let angle = f32::lerp(start, end, i as f32 / n as f32);
-            let p = Point::new(cx + angle.cos() * cw, cy + angle.sin() * ch);
+            let p = Point::new(
+                cx + angle.cos() * cw, 
+                cy + angle.sin() * ch
+            );
+
             if i == 0 {
                 path.begin(p);
             } else {
@@ -1515,30 +1547,63 @@ impl GraphicsEngine for WgpuEngine<'_> {
         self.tessellate_path(&path, color, None, transform, blend_mode);
     }
 
-    fn draw_circle(&mut self, radius: f32, color: Color, border: Option<Border>, resolution: u32, transform: Matrix, blend_mode: BlendMode) {
+    fn draw_circle(
+        &mut self, 
+        radius: f32, 
+        color: Color, 
+        border: Option<Border>, 
+        resolution: u32, 
+        transform: Matrix, 
+        blend_mode: BlendMode
+    ) {
         let n = resolution;
+        let x = -radius;
+        let y = -radius;
+        let w = 2.0 * radius;
+        let h = 2.0 * radius;
 
-        let (x, y, w, h) = (-radius, -radius, 2.0 * radius, 2.0 * radius);
         let (cw, ch) = (0.5 * w, 0.5 * h);
         let (cx, cy) = (x + cw, y + ch);
         let points = (0..n).map(|i| {
             let angle = i as f32 / n as f32 * (PI * 2.0);
-            Vector2::new(cx + angle.cos() * cw, cy + angle.sin() * ch)
+            Vector2::new(
+                cx + angle.cos() * cw, 
+                cy + angle.sin() * ch
+            )
         }).collect::<Vec<_>>();
 
         // fill
         if color.a > 0.0 {
-            self.tessellate_polygon(&points, color, None, transform, blend_mode);
+            self.tessellate_polygon(
+                &points, 
+                color, 
+                None, 
+                transform, 
+                blend_mode
+            );
         }
 
         // border
         if let Some(border) = border.filter(|b|b.color.a > 0.0) {
-            self.tessellate_polygon(&points, border.color, Some(border.radius), transform, blend_mode);
+            self.tessellate_polygon(
+                &points, 
+                border.color, 
+                Some(border.radius), 
+                transform, 
+                blend_mode
+            );
         }
 
     }
 
-    fn draw_line(&mut self, p2: Vector2, thickness: f32, color: Color, transform: Matrix, blend_mode: BlendMode) {
+    fn draw_line(
+        &mut self, 
+        p2: Vector2, 
+        thickness: f32, 
+        color: Color, 
+        transform: Matrix, 
+        blend_mode: BlendMode,
+    ) {
         let p1 = Vector2::ZERO;
 
         let n = p2 - p1;
@@ -1554,20 +1619,45 @@ impl GraphicsEngine for WgpuEngine<'_> {
     }
 
     /// rect is [x,y,w,h]
-    fn draw_rect(&mut self, rect: [f32; 4], border: Option<Border>, shape: Shape, color: Color, transform: Matrix, blend_mode: BlendMode) {
+    fn draw_rect(
+        &mut self, 
+        rect: [f32; 4], 
+        border: Option<Border>, 
+        shape: Shape, 
+        color: Color, 
+        transform: Matrix, 
+        blend_mode: BlendMode,
+    ) {
         // for some reason something gets set to infinity on screen resize and panics the tesselator, this prevents that
         if rect.iter().any(|n| !n.is_normal() && *n != 0.0) { return }
 
         let [x, y, w, h] = rect;
-        let rect = Box2D::new(Point::new(x, y), Point::new(x+w, y+h));
+        let rect = Box2D::new(
+            Point::new(x, y), 
+            Point::new(x + w, y + h)
+        );
 
-        let mut path = lyon_tessellation::path::Path::builder();
+
+        use lyon_tessellation::path::{ Path, Winding };
+        let mut path = Path::builder();
         match shape {
-            Shape::Square => path.add_rectangle(&rect, lyon_tessellation::path::Winding::Positive),
-            Shape::Round(radius) => path.add_rounded_rectangle(&rect, &BorderRadii::new(radius), lyon_tessellation::path::Winding::Positive),
-            Shape::RoundSep([top_left, top_right, bottom_left, bottom_right]) => path.add_rounded_rectangle(&rect, &BorderRadii {
-                top_left, top_right, bottom_left, bottom_right
-            }, lyon_tessellation::path::Winding::Positive)
+            Shape::Square => path.add_rectangle(&rect, Winding::Positive),
+            Shape::Round(radius) => path.add_rounded_rectangle(
+                &rect, 
+                &BorderRadii::new(radius), 
+                Winding::Positive
+            ),
+
+            Shape::RoundSep([
+                top_left, 
+                top_right, 
+                bottom_left, 
+                bottom_right
+            ]) => path.add_rounded_rectangle(
+                &rect, 
+                &BorderRadii { top_left, top_right, bottom_left, bottom_right }, 
+                Winding::Positive
+            ),
         }
         let path = path.build();
 
@@ -1577,12 +1667,26 @@ impl GraphicsEngine for WgpuEngine<'_> {
         }
 
         // border
-        if let Some(border) = border.filter(|b|b.color.a > 0.0) {
-            self.tessellate_path(&path, border.color, Some(border.radius), transform, blend_mode)
+        if let Some(border) = border.filter(|b| b.color.a > 0.0) {
+            self.tessellate_path(
+                &path, 
+                border.color, 
+                Some(border.radius), 
+                transform, 
+                blend_mode
+            )
         }
     }
 
-    fn draw_tex(&mut self, tex: &TextureReference, color: Color, h_flip: bool, v_flip: bool, transform: Matrix, blend_mode: BlendMode) {
+    fn draw_tex(
+        &mut self, 
+        tex: &TextureReference, 
+        color: Color, 
+        h_flip: bool, 
+        v_flip: bool, 
+        transform: Matrix, 
+        blend_mode: BlendMode,
+    ) {
         let rect = [0.0, 0.0, tex.width as f32, tex.height as f32];
         self.reserve_tex_quad(tex, rect, color, h_flip, v_flip, transform, blend_mode);
     }

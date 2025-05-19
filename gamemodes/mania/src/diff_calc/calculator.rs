@@ -179,7 +179,7 @@ impl ManiaDifficultyCalculator {
 
 
 
-
+#[allow(unused, reason = "will be used once proper diffcalc is done")]
 pub struct DifficultyHitObject {
     pub col: u8,
     pub time: f32,

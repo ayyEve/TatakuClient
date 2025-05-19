@@ -64,7 +64,7 @@ impl MultiplayerManager {
     }
 
 
-    pub async fn update(
+    pub fn update(
         &mut self,
         manager: Option<&mut Box<GameplayManager>>,
         values: &mut ValueCollection,
@@ -140,7 +140,18 @@ impl MultiplayerManager {
     }
 
     pub fn update_values(&self, values: &mut ValueCollection) {
-        values.lobby = Some(self.lobby.clone());
+
+        
+        if let Some(lobby) = values.values.lobby.as_mut() {
+            if let Some(playmode) = self.lobby.current_beatmap.as_ref().and_then(|b| values.values.global.gamemode_infos.get_info(&b.mode).ok()) {
+                lobby.update(&self.lobby, playmode);
+            }
+        } else {
+            values.lobby = Some(ReflectLobby::new(&self.lobby));
+        }
+
+
+
         let Some(our_user) = self.lobby.our_user() else { return };
 
         let values = values.as_dyn_mut();
@@ -224,7 +235,7 @@ impl MultiplayerManager {
         &selected.hash == current_map
     }
 
-    pub async fn handle_packet(
+    pub fn handle_packet(
         &mut self, 
         values: &mut ValueCollection, 
         packet: &MultiplayerPacket,
@@ -314,7 +325,7 @@ impl MultiplayerManager {
                             map.beatmap_hash, 
                             mods,
                             &settings
-                        ).await };
+                        ) };
                         self.beatmap_loader = Some(AsyncLoader::new(f));
                     } else {
                         error!("not loading map: current != selected");
@@ -461,7 +472,11 @@ impl MultiplayerManager {
         self.send_packet(MultiplayerPacket::Client_LobbyUserState { new_state } )
     }
 
-    pub async fn handle_lobby_action(&mut self, action: LobbyAction, settings: &Settings) {
+    pub fn handle_lobby_action(
+        &mut self, 
+        action: LobbyAction, 
+        settings: &Settings,
+    ) {
         match action {
             LobbyAction::Start => {
                 self.skip_request_sent = false;
@@ -493,14 +508,14 @@ impl MultiplayerManager {
 
                 // TODO: maybe move to a task?
                 // or maybe readd direct????
-                let req = reqwest::get(format!("{score_url}/api/get_beatmap_url?hash={hash}")).await;
+                let req = reqwest::blocking::get(format!("{score_url}/api/get_beatmap_url?hash={hash}"));
                 match req {
                     Err(e) => self.actions.push(Notification::new_error("Error with beatmap url request", e.to_string())),
                     Ok(resp) => {
                         #[allow(unused)] #[derive(Deserialize)]
                         struct Resp { error: Option<String>, url: Option<String> }
                         
-                        let Ok(body) = resp.text().await else { 
+                        let Ok(body) = resp.text() else { 
                             self.actions.push(
                                 Notification::default()
                                 .text("shit")

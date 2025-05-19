@@ -1,0 +1,143 @@
+use crate::prelude::*;
+
+#[derive(Reflect)]
+#[derive(Debug, Default)]
+#[reflect(dont_clone)]
+// #[reflect(remap("map" => "self.beatmap_manager.current_beatmap.map"))]
+pub struct GameValues {
+    pub settings: Settings,
+
+    pub song: SongInfo,
+    pub game: GameInfo,
+    pub global: GlobalValues,
+    pub enums: EnumValues,
+    pub theme: Theme,
+
+    pub score: ReflectScore,
+
+    pub lobby: Option<ReflectLobby>,
+
+    /// Beatmap manager, its here instead of in Game to keep the lists in one place
+    #[reflect(alias("beatmaps"))] 
+    pub beatmap_manager: BeatmapManager,
+
+    /// Online manager, its here instead of in Game to keep the lists in one place
+    #[reflect(alias("online"))] 
+    pub online_manager: OnlineManager,
+
+    /// list of retreived scored 
+    #[reflect(alias("scores_list"))] 
+    pub score_list: ScoreList,
+
+    #[reflect(alias("downloads"))] 
+    pub download_manager: DownloadManager,
+}
+impl GameValues {
+    pub fn new(
+        infos: GamemodeInfos, 
+        settings: &Settings
+    ) -> Self {
+        Self {
+            enums: EnumValues::new(&infos),
+            settings: settings.clone(),
+            beatmap_manager: BeatmapManager::new(infos.clone()),
+            global: GlobalValues::new(infos.clone(), settings),
+            ..Default::default()
+        }
+    }
+
+    pub fn current_beatmap_prop<T>(
+        &self, 
+        f: impl FnOnce(&BeatmapMeta) -> T
+    ) -> Option<T> {
+        self
+            .beatmap_manager
+            .current_beatmap
+            .as_ref()
+            .map(|b| f(b))
+    }
+}
+
+
+
+#[derive(Debug, Clone)]
+#[derive(Reflect)]
+pub struct ReflectLobby {
+    /// scores of the players in the lobby
+    player_scores: Vec<ReflectScore>,
+
+    /// lobby id
+    id: u32,
+
+    /// name of the lobby
+    name: String,
+    
+    /// who is the current host
+    host: u32,
+    
+    /// current state of the lobby
+    state: LobbyState,
+
+    /// ids of the users in this lobby
+    players: Vec<LobbyUser>,
+
+    /// slot states
+    slots: Vec<LobbySlot>,
+
+    /// title of the current beatmap
+    current_beatmap: Option<LobbyBeatmap>,
+}
+impl ReflectLobby {
+    pub fn new(lobby: &CurrentLobbyInfo) -> Self {
+        Self {
+            player_scores: Vec::new(),
+            id: lobby.id,
+            name: lobby.name.clone(),
+            host: lobby.host,
+            state: lobby.state,
+            players: lobby.players.clone(),
+            slots: lobby.slots.values().cloned().collect(),
+            current_beatmap: lobby.current_beatmap.clone(),
+        }
+    }
+    pub fn update(
+        &mut self, 
+        lobby: &CurrentLobbyInfo, 
+        info: &GamemodeInfo
+    ) {
+        // FIXME: this is bad
+        self.player_scores = lobby.player_scores
+            .values()
+            .map(|s| ReflectScore::new(&IngameScore::new(
+                s.clone(), 
+                false, 
+                false
+            ), info))
+            .collect();
+
+        self.host = lobby.host;
+        self.state = lobby.state;
+        self.players = lobby.players.clone();
+        self.slots = lobby.slots.values().cloned().collect();
+        self.current_beatmap = lobby.current_beatmap.clone();
+    }
+}
+
+
+#[derive(Debug, Clone, Default)]
+#[derive(Reflect)]
+pub struct ScoreList {
+    #[reflect(flatten)]
+    pub scores: Vec<IngameScore>,
+    pub loaded: bool,
+}
+
+
+
+#[derive(Reflect)]
+#[reflect(display = "debug")]
+#[derive(Default, Debug, Copy, Clone)]
+pub struct GameInfo {
+    pub time: f32,
+    pub window_size: Vector2,
+}

@@ -3,7 +3,7 @@ const ATTEMPTS: usize = 5;
 
 pub struct Zip;
 impl Zip {
-    pub async fn extract_all(
+    pub fn extract_all(
         in_folder: impl AsRef<Path>, 
         out_folder: impl AsRef<Path>, 
         delete_archive: ArchiveDelete,
@@ -19,7 +19,12 @@ impl Zip {
         for filename in files.filter_map(|f|f.ok()) {
             trace!("Archive chcking file {:?}", filename);
             
-            match Self::extract_single(filename.path(), out_folder, true, delete_archive).await {
+            match Self::extract_single(
+                filename.path(), 
+                out_folder, 
+                true, 
+                delete_archive
+            ) {
                 Ok(path) => paths.push(path),
                 Err(e) => {
                     error!("Error extracting zip archive: {e}");
@@ -31,7 +36,7 @@ impl Zip {
         paths
     }
 
-    pub async fn extract_single(
+    pub fn extract_single(
         zip: impl AsRef<Path>, 
         dir: impl AsRef<Path>, 
         extract_to_folder: bool, 
@@ -62,7 +67,7 @@ impl Zip {
                     error_counter += 1;
 
                     // wait 200ms before trying again
-                    tokio::time::sleep(Duration::from_millis(200)).await;
+                    std::thread::sleep(Duration::from_millis(200));
                 }
 
             }

@@ -38,7 +38,7 @@ pub enum TatakuEventType {
 #[derive(Serialize, Deserialize)]
 pub struct CustomMenuKeyEvent {
     /// What key?
-    #[serde(alias="$value", alias="@key")] pub key: crate::prelude::Key,
+    #[serde(alias="@key")] pub key: crate::prelude::Key,
 
     /// Must control be pressed?
     #[serde(alias="@control", default)] pub control: bool,
@@ -55,5 +55,5 @@ pub struct CustomMenuKeyEvent {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[derive(Serialize, Deserialize)]
 pub struct CustomMenuControllerEvent {
-    #[serde(alias="$value")] pub button: ControllerButton,
+    #[serde(alias= "@button")] pub button: ControllerButton,
 }

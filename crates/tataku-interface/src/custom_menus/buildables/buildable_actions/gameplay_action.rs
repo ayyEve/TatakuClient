@@ -19,7 +19,10 @@ pub enum BuildableGameplayAction {
 impl BuildableGameplayAction {
     pub fn into_action(self) -> CurrentGameAction {
         match self {
-            Self::Pause => CurrentGameAction::Pause("pause_menu".to_owned()),
+            Self::Pause => CurrentGameAction::Pause {
+                id: "pause_menu".to_owned(),
+                input: BuildableInputArguments::default()
+            },
             Self::Quit => CurrentGameAction::Free,
             Self::Resume => CurrentGameAction::Resume,
             Self::Retry => CurrentGameAction::Restart,

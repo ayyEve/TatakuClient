@@ -8,7 +8,11 @@ pub trait DirectApi: Send+Sync {
 
     // TODO: make &[&str]?
     fn supported_modes(&self) -> Vec<String>;
-    async fn do_search(&mut self, search_params: SearchParams, settings: &Settings) -> Vec<Arc<dyn DirectDownloadable>>;
+    async fn do_search(
+        &mut self, 
+        search_params: SearchParams, 
+        settings: &Settings
+    ) -> Vec<Arc<dyn DirectDownloadable>>;
 
     // TODO: 
     // fn get_search_capabilities(&self) -> SearchCapabilities;

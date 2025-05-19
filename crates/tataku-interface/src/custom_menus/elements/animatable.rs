@@ -5,15 +5,30 @@ use crate::prelude::*;
 pub struct AnimatableElement {
     #[serde(rename = "@id", default)] id: Option<String>,
     #[serde(rename = "@class", default)] class_list: ClassList,
-
-    /// unparsed style string, parsed when the element is built
     #[serde(rename = "@style", default)] style: String,
     
-    #[serde(default)] triggers: AnimatableTriggers,
-    #[serde(default)] actions: AnimatableActionEntries,
+    #[serde(default)] triggers: AnimatableTriggersTag,
+    #[serde(default)] actions: AnimatableActionsTag,
 
     element: ElementTag,
 }
+impl CustomElement for AnimatableElement {
+    fn build(&self) -> Box<dyn Widget> {
+        WidgetContainer::new_boxed(
+            self.style.clone(),
+            "animatable",
+            self.id.clone(),
+            self.class_list.clone(),
+            TransformableWidget::new(
+                self.triggers.triggers.clone(),
+                self.actions.iter().cloned().map(|i| (i.id, i.list)).collect(),
+                self.element.build()
+            )
+            .boxed()
+        )
+    }
+}
+
 
 #[derive(Clone, Debug, PartialEq)]
 #[derive(Deserialize)]
@@ -24,28 +39,10 @@ struct AnimatableActionEntry {
 
 #[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
-struct AnimatableActionEntries {
+struct AnimatableActionsTag {
     #[serde(alias = "$value")] entries: Vec<AnimatableActionEntry>
 }
-crate::impl_tag!(AnimatableActionEntries, Vec<AnimatableActionEntry>, entries);
-
-impl CustomElement for AnimatableElement {
-    fn build(&self, shell: &mut ElementBuildShell<'_>) -> Box<dyn Widget> {
-        WidgetContainer::new_boxed(
-            self.style.clone(),
-            "animatable",
-            self.id.clone(),
-            self.class_list.clone(),
-            TransformableWidget::new(
-                self.triggers.triggers.clone(),
-                self.actions.iter().cloned().map(|i| (i.id, i.list)).collect(),
-                self.element.build(shell)
-            )
-            .boxed()
-        )
-    }
-}
-
+crate::impl_tag!(AnimatableActionsTag, Vec<AnimatableActionEntry>, entries);
 
 
 
@@ -58,10 +55,10 @@ pub struct AnimatableTrigger {
 
 #[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
-pub struct AnimatableTriggers {
+pub struct AnimatableTriggersTag {
     #[serde(alias = "$value")] pub triggers: Vec<AnimatableTrigger>,
 }
-crate::impl_tag!(AnimatableTriggers, Vec<AnimatableTrigger>, triggers);
+crate::impl_tag!(AnimatableTriggersTag, Vec<AnimatableTrigger>, triggers);
 
 
 #[derive(Clone, Debug, PartialEq)]
@@ -87,7 +84,7 @@ pub enum AnimatableTriggerEvent {
 #[derive(Clone, Debug, PartialEq)]
 #[derive(Deserialize)]
 pub struct AnimatableAction {
-    #[serde(alias = "$value")] pub action: TransformTypeTag,
+    #[serde(rename = "$value")] pub action: TransformTypeTag,
     #[serde(rename = "@duration")] pub duration: f32,
 }
 
@@ -107,44 +104,44 @@ pub enum TransformTypeTag {
     },
 
     ScaleX {
-        #[serde(alias="@start")] start: f32,
-        #[serde(alias="@end")] end: f32
+        #[serde(rename="@start")] start: f32,
+        #[serde(rename="@end")] end: f32
     },
     ScaleY {
-        #[serde(alias="@start")] start: f32,
-        #[serde(alias="@end")] end: f32
+        #[serde(rename="@start")] start: f32,
+        #[serde(rename="@end")] end: f32
     },
     Scale {
-        #[serde(alias="@start")] start: f32,
-        #[serde(alias="@end")] end: f32
+        #[serde(rename="@start")] start: f32,
+        #[serde(rename="@end")] end: f32
     },
     Rotation {
-        #[serde(alias="@start")] start: f32,
-        #[serde(alias="@end")] end: f32
+        #[serde(rename="@start")] start: f32,
+        #[serde(rename="@end")] end: f32
     },
     Color {
-        #[serde(alias="@start")] start: Color,
-        #[serde(alias="@end")] end: Color
+        #[serde(rename="@start")] start: Color,
+        #[serde(rename="@end")] end: Color
     },
     BorderSize {
-        #[serde(alias="@start")] start: f32,
-        #[serde(alias="@end")] end: f32
+        #[serde(rename="@start")] start: f32,
+        #[serde(rename="@end")] end: f32
     },
     Transparency {
-        #[serde(alias="@start")] start: f32,
-        #[serde(alias="@end")] end: f32
+        #[serde(rename="@start")] start: f32,
+        #[serde(rename="@end")] end: f32
     },
     BorderTransparency {
-        #[serde(alias="@start")] start: f32,
-        #[serde(alias="@end")] end: f32
+        #[serde(rename="@start")] start: f32,
+        #[serde(rename="@end")] end: f32
     },
     PositionX {
-        #[serde(alias="@start")] start: f32,
-        #[serde(alias="@end")] end: f32
+        #[serde(rename="@start")] start: f32,
+        #[serde(rename="@end")] end: f32
     },
     PositionY {
-        #[serde(alias="@start")] start: f32,
-        #[serde(alias="@end")] end: f32
+        #[serde(rename="@start")] start: f32,
+        #[serde(rename="@end")] end: f32
     },
 }
 impl From<TransformTypeTag> for TransformType {

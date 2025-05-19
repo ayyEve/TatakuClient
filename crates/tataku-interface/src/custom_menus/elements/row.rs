@@ -10,9 +10,8 @@ pub struct RowElement {
     #[serde(rename = "@style", default)] style: String,
     #[serde(alias = "$value")] children: Vec<Element>,
 }
-
 impl CustomElement for RowElement {
-    fn build(&self, shell: &mut ElementBuildShell<'_>) -> Box<dyn Widget> {
+    fn build(&self) -> Box<dyn Widget> {
         let mut classes = self.class_list.clone();
         classes.push("row");
 
@@ -21,7 +20,7 @@ impl CustomElement for RowElement {
             "row",
             self.id.clone(),
             classes,
-            Container::new(self.children.iter().map(|e| e.build(shell)).collect())
+            Container::new(self.children.iter().map(|e| e.build()).collect())
                 // .style(taffy_style)
                 // .flex_direction(taffy::FlexDirection::Row)
                 // .vertical_overflow(taffy::Overflow::Clip)

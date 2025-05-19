@@ -14,7 +14,11 @@ pub struct YesNoDialog {
     node_id: NodeId,
 }
 impl YesNoDialog {
-    pub fn new(title: &'static str, prompt: impl ToString, show_cancel: bool) -> (Receiver<YesNoResult>, Self) {
+    pub fn new(
+        title: &'static str, 
+        prompt: impl ToString, 
+        show_cancel: bool
+    ) -> (Receiver<YesNoResult>, Self) {
         let prompt = prompt.to_string();
 
         // create the sender and receiver to send the result of this dialog

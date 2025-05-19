@@ -1,7 +1,6 @@
 use crate::prelude::*;
 use image::RgbaImage;
 
-#[allow(unused)]
 #[derive(Debug2)]
 pub enum WindowAction {
     /// Show the system cursor

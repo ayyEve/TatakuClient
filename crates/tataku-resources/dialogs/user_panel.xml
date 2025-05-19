@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<?xml-model href="../xsd/dialog.xsd"?>
+
+<dialog 
+    id = "user_panel" 
+    title = "Users"
+>
+    <style>
+        .user {
+            width: 20%;
+            margin: 5px;
+            flex-grow: 1;
+            flex-shrink: 1;
+            flex-basis: 0;
+        }
+
+        #user-list {
+            width: fill;
+            align-items: space-around;
+        }
+    </style>
+
+    <element>
+        <list
+            id = "user-list"
+            list = "online.users"
+            variable = "_user"
+        >
+            <column class="user">
+                <!-- username -->
+                <text>
+                    <variable var="_user.username"/>
+                </text>
+                <!-- status -->
+                <conditional cond="_user.status_text">
+                    <text>
+                        <variable var="_user.status_text"/>
+                    </text>
+                </conditional>
+            </column>
+        </list>
+
+    </element>
+</dialog>

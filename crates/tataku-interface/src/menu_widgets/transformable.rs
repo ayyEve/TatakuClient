@@ -80,11 +80,15 @@ impl Widget for TransformableWidget {
     fn name(&self) -> Cow<'static, str> { "transformable_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn update_styles(&mut self, tree: &mut Tree, resolver: &mut CssResolver, display_override: Option<ui::Display>) {
-        self.child.update_styles(tree, resolver, display_override);
+    fn update_styles(
+        &mut self, 
+        shell: &mut StyleShell, 
+        display_override: Option<ui::Display>
+    ) {
+        self.child.update_styles(shell, display_override);
     }
     
-    fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId>  {
+    fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId>  {
         let child = self.child.layout(shell)?;
         self.node_id = shell.tree.new_with_children(
             self.style.clone(),
@@ -97,7 +101,7 @@ impl Widget for TransformableWidget {
     fn input(
         &mut self, 
         event: &InputEvent, 
-        shell: &mut InputShell<'_>,
+        shell: &mut InputShell,
     ) {
         let game_time = shell.values.reflect_get::<f32>("game.time").unwrap().copied();
         self.last_input = Some(game_time);
@@ -157,24 +161,14 @@ impl Widget for TransformableWidget {
         self.child.input(event, shell);
     }
 
-    fn draw(
-        &self, 
-        shell: &mut DrawShell<'_>,
-    ) {
+    fn draw(&self, shell: &mut DrawShell) {
         self.child.draw(shell)
     }
-    fn draw_overlay(
-        &self, 
-        shell: &mut DrawShell<'_>,
-    ) {
+    fn draw_overlay(&self, shell: &mut DrawShell) {
         self.child.draw_overlay(shell);
     }
 
-    fn update(
-        &mut self, 
-        shell: &mut UpdateShell<'_>, 
-        actions: &mut ActionQueue,
-    ) {
+    fn update(&mut self, shell: &mut UpdateShell) {
         let time = shell.values.reflect_get::<f32>("game.time")
             .unwrap()
             .copied();
@@ -210,16 +204,15 @@ impl Widget for TransformableWidget {
         if should_update {
             let context = shell.tree.get_context_mut(self.node_id).unwrap();
             context.local_transform = Transform::from_manager(&self.manager);
-            actions.push(UiAction::new(self.node_id, UiActionType::ContextChanged));
+            shell.actions.push(UiAction::new(self.node_id, UiActionType::ContextChanged));
         }
-        self.child.update(shell, actions);
+        self.child.update(shell);
     }
     
     fn handle_message(
         &mut self, 
         message: &Message, 
-        values: &mut dyn Reflect, 
-        actions: &mut ActionQueue,
+        shell: &mut MessageShell,
     ) {
         let mut to_trigger = Vec::new();
 
@@ -230,18 +223,18 @@ impl Widget for TransformableWidget {
             } 
         }
         if !to_trigger.is_empty() {
-            let time = values.reflect_get::<f32>("game.time").unwrap().copied();
+            let time = shell.values.reflect_get::<f32>("game.time").unwrap().copied();
             self.run_triggers(to_trigger, time);
         }
 
-        self.child.handle_message(message, values, actions);
+        self.child.handle_message(message, shell);
     }
 
     fn handle_event(
         &mut self, 
         event: TatakuEventType, 
         event_value: Option<TatakuValue>, 
-        values: &mut dyn Reflect,
+        shell: &mut MessageShell,
     ) {
         let mut to_trigger = Vec::new();
         for trigger in self.triggers.iter() {
@@ -251,18 +244,15 @@ impl Widget for TransformableWidget {
             }
         }
         if !to_trigger.is_empty() {
-            let time = values.reflect_get::<f32>("game.time")
+            let time = shell.values.reflect_get::<f32>("game.time")
                 .unwrap().copied();
             self.run_triggers(to_trigger, time);
         }
         
-        self.child.handle_event(event, event_value, values);
+        self.child.handle_event(event, event_value, shell);
     }
 
-    fn reload_skin(
-        &mut self, 
-        shell: &mut UpdateShell,
-    ) {
+    fn reload_skin(&mut self, shell: &mut UpdateShell) {
         self.child.reload_skin(shell);
     }
 }

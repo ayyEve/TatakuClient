@@ -16,7 +16,11 @@ impl DirectApi for OsuDirect {
         ]
     }
 
-    async fn do_search(&mut self, search_params: SearchParams, settings: &Settings) -> Vec<Arc<dyn DirectDownloadable>> {
+    async fn do_search(
+        &mut self, 
+        search_params: SearchParams, 
+        settings: &Settings
+    ) -> Vec<Arc<dyn DirectDownloadable>> {
         trace!("Searching");
 
         // TODO: do a proper sort (and convert from generic sort to osu sort number)
@@ -36,6 +40,7 @@ impl DirectApi for OsuDirect {
             /* text search */ if let Some(t) = search_params.text {format!("&q={}", t)} else {String::new()}
         );
 
+        // TODO: remove async once we're no longer in an async context
         let body = reqwest::get(url).await
             .expect("error with request")
             .text().await

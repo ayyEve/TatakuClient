@@ -30,7 +30,7 @@ pub use tokio::sync::{ OnceCell, Mutex as AsyncMutex, RwLock as AsyncRwLock };
 pub use tokio::sync::mpsc::{ UnboundedSender as AsyncUnboundedSender, UnboundedReceiver as AsyncUnboundedReceiver, unbounded_channel as async_unbounded_channel };
 pub use tokio::sync::mpsc::{ Sender as AsyncSender, Receiver as AsyncReceiver, channel as async_channel };
 
-pub use parking_lot::{ Mutex, RwLock };
+pub use parking_lot::{ Mutex, RwLock, MutexGuard };
 
 // serde imports
 pub use serde::{ Serialize, Deserialize };
@@ -78,6 +78,9 @@ pub mod ui {
     pub use taffy::NodeId as TaffyNodeId;
     
     pub use crate::graphics::ui::style::*;
+    pub use crate::graphics::ui::operations::*;
+
+    
     pub const EMPTY_NODE: super::NodeId = super::NodeId {
         node_id: TaffyNodeId::new(u64::MAX),
         owner: super::MessageOwner::Menu,

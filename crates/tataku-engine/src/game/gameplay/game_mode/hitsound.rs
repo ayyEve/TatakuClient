@@ -9,9 +9,17 @@ pub struct Hitsound {
     pub allowed_sources: Vec<HitsoundSource>
 }
 impl Hitsound {
-    pub fn new(filename: String, filename_backup: Option<String>, volume: f32, allowed_sources: Vec<HitsoundSource>) -> Self {
+    pub fn new(
+        filename: String, 
+        filename_backup: Option<String>, 
+        volume: f32, 
+        allowed_sources: Vec<HitsoundSource>
+    ) -> Self {
         Self {
-            filename: filename.trim_end_matches(".wav").trim_end_matches(".mp3").to_owned(),
+            filename: filename
+                .trim_end_matches(".wav")
+                .trim_end_matches(".mp3")
+                .to_owned(),
             filename_backup,
             volume,
             allowed_sources

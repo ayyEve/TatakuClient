@@ -8,11 +8,10 @@ pub struct TextElement {
 
     /// unparsed style string, parsed when the element is built
     #[serde(rename = "@style", default)] pub style: String,
-    #[serde(alias = "$value", alias = "$text")] pub text: BuildableText,
+    #[serde(rename = "$value")] pub text: BuildableText,
 }
-
 impl CustomElement for TextElement {
-    fn build(&self, _shell: &mut ElementBuildShell<'_>) -> Box<dyn Widget> {
+    fn build(&self) -> Box<dyn Widget> {
         WidgetContainer::new_boxed(
             self.style.clone(),
             "text",
@@ -24,7 +23,6 @@ impl CustomElement for TextElement {
             .boxed()
         )
     }
-
 }
 
 
@@ -33,8 +31,8 @@ fn test() {
     let xml = r#"
         <text id="hi" class="thing1 thing2">
             <list>
-                <text>hi mom</text>
-                <text>hi dad</text>
+                <text text="hi mom"/>
+                <text text="hi dad"/>
             </list>
         </text>
     "#;
@@ -46,11 +44,11 @@ fn test() {
             id: Some("hi".to_owned()), 
             class_list: "thing1 thing2".into(), 
             style: String::new(), 
-            text: BuildableText {
-                join: None,
-                text: vec![
-                    BuildableTextInner::Text("hi mom".to_owned()),
-                    BuildableTextInner::Text("hi dad".to_owned()),
+            text: BuildableText::List {
+                join: String::new(),
+                list: vec![ 
+                    BuildableText::Text { text: "hi mom".to_owned() },
+                    BuildableText::Text { text: "hi dad".to_owned() },
                 ]
             }
         }

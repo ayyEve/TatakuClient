@@ -15,7 +15,6 @@ debug_sliders = []
 [dependencies]
 serde.workspace = true
 tracing.workspace = true
-async-trait.workspace = true
 
 tataku-common.workspace = true
 tataku-engine.workspace = true

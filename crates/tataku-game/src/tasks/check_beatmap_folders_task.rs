@@ -7,13 +7,12 @@ pub struct CheckBeatmapFoldersTask {
     folders: Vec<String>
 }
 
-#[async_trait]
 impl TatakuTask for CheckBeatmapFoldersTask {
     fn get_name(&self) -> Cow<'static, str> { Cow::Borrowed("Check Beatmap Folders") }
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Once }
     fn get_state(&self) -> TatakuTaskState { self.state }
 
-    async fn run(
+    fn run(
         &mut self, 
         values: &mut dyn Reflect, 
         _state: &TaskGameState,
@@ -48,7 +47,7 @@ impl TatakuTask for CheckBeatmapFoldersTask {
         if let Some(folder) = self.folders.pop() {
             let manager = values.reflect_get_mut::<BeatmapManager>("beatmap_manager").expect("nope");
 
-            manager.check_folder(folder, true).await;
+            manager.check_folder(folder, true);
             return
         }
 

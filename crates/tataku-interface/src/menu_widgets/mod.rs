@@ -1,4 +1,6 @@
 mod basic;
+mod graphs;
+mod tabbed;
 mod filterable;
 mod conditional;
 mod stats_graph;
@@ -7,6 +9,8 @@ mod gameplay_preview;
 mod widget_container;
 
 pub use basic::*;
+pub use graphs::*;
+pub use tabbed::*;
 pub use filterable::*;
 pub use conditional::*;
 pub use stats_graph::*;

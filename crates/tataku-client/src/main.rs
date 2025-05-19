@@ -2,6 +2,9 @@ use tataku_game::prelude::*;
 
 const DOWNLOAD_URL_BASE:&str = "https://cdn.ayyeve.dev/tataku";
 
+mod game;
+
+
 #[inline]
 fn download_url<T:AsRef<str>>(file:T) -> String {
     format!("{}/{}", DOWNLOAD_URL_BASE, file.as_ref())
@@ -57,67 +60,35 @@ fn start_game(
         window_load_barrier.wait().await;
         trace!("window ready");
 
-
-        let gamemodes;
-        #[cfg(feature="dynamic_gamemodes")] {
-            gamemodes = vec![
-                GamemodeLibrary::load_gamemode("/home/ayyeve/Desktop/projects/tataku/tataku-client/target/release/gamemode_taiko").unwrap(),
-            ];
-        }
-
-        #[cfg(not(feature="dynamic_gamemodes"))] {
-            gamemodes = vec![
-                gamemode_osu::GAME_INFO,
-                gamemode_taiko::GAME_INFO,
-                gamemode_mania::GAME_INFO,
-                gamemode_utyping::GAME_INFO,
-            ]
-        }
-
-        // start the game
-        trace!("creating game");
-        let game = Game::new(
+        game::run_game(
             game_event_receiver,
             proxy,
-            vec![
-                #[cfg(feature="kira_audio")] tataku_kira::KiraAudioInit, 
-                #[cfg(feature="bass_audio")] tataku_bass::BassAudioInit,
-            ],
-            gamemodes,
         ).await;
-        
-        trace!("running game");
-        game.game_loop().await;
-        warn!("game closed");
     });
 
 
     static WINDOW: tokio::sync::OnceCell<winit::window::Window> = tokio::sync::OnceCell::const_new();
 
     // setup window
-    let runtime2 = window_runtime.clone();
-    let game_window = window_runtime.block_on(async move {
-        info!("creating window");
-        let settings = Settings::load(&mut ActionQueue::new()).await;
-
-        GameWindow::new(
-            game_event_sender,
-            &WINDOW,
-            runtime2,
-            window_side_barrier,
-            &settings,
-            WindowInitializers {
-                integrations: vec![
-                    #[cfg(feature="discord")] integration_discord::Discord::builder(),
-                    #[cfg(feature="lastfm")] integration_lastfm::LastFm::builder(),
-                    #[cfg(feature="media_controls")] integration_media_controls::MediaControlsIntegration::builder(),
-                ],
-                graphics_init: vec![
-                    Box::new(tataku_wgpu::WgpuInit)
-                ],
-            }
-        ).await
-    });
+    info!("creating window");
+    let settings = Settings::load(&mut ActionQueue::new());
+    let game_window = GameWindow::new(
+        game_event_sender,
+        &WINDOW,
+        window_runtime,
+        window_side_barrier,
+        &settings,
+        WindowInitializers {
+            integrations: vec![
+                #[cfg(feature="discord")] integration_discord::Discord::builder(),
+                #[cfg(feature="lastfm")] integration_lastfm::LastFm::builder(),
+                #[cfg(feature="media_controls")] integration_media_controls::MediaControlsIntegration::builder(),
+            ],
+            graphics_init: vec![
+                Box::new(tataku_wgpu::WgpuInit)
+            ],
+        }
+    );
 
 
     trace!("window running");
@@ -153,9 +124,10 @@ async fn startup() {
 async fn setup() {
     trace!("Client setup");
     let mut queue = ActionQueue::default();
-    Settings::load(&mut queue).await;
+    Settings::load(&mut queue);
 
-    if let Some(queue) = Some(queue.take()).filter(|v| !Vec::is_empty(v)) {
+    if let Some(queue) = Some(queue.take())
+        .filter(|v| !Vec::is_empty(v)) {
         panic!("error?? {queue:?}")
     }
 

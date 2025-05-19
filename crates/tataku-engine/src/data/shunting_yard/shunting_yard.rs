@@ -2,7 +2,9 @@ use crate::prelude::*;
 
 pub struct ShuntingYard;
 impl ShuntingYard {
-    pub fn parse_expression(expression: &str) -> ShuntingYardResult<Vec<ShuntingYardToken>> {
+    pub fn parse_expression(
+        expression: &str
+    ) -> ShuntingYardResult<Vec<ShuntingYardToken>> {
         let mut output_queue: Vec<ShuntingYardToken> = Vec::new();
         let mut operator_stack: Vec<ShuntingYardToken> = Vec::new();
 
@@ -22,9 +24,6 @@ impl ShuntingYard {
                 },
                 
                 '(' => {
-                    // if current_thing is a variable, it is actually a function
-                    // this is because if there was an operation between it and this, current_thing should be none
-                    // ie "sin(123)" vs "sin + (123)"
                     current_thing.add(&mut output_queue, &mut operator_stack, true)?;
                     operator_stack.push(ShuntingYardToken::LeftParenthesis);
                 }
@@ -47,6 +46,7 @@ impl ShuntingYard {
                         | Err(ShuntingYardError::InvalidOperator('=')) // and equals (EQ)
                         | Err(ShuntingYardError::InvalidOperator('&')) // and ampersands (AND)
                         | Err(ShuntingYardError::InvalidOperator('|')) // and pipes (OR)
+                        | Err(ShuntingYardError::InvalidOperator(':')) // and colons (REF)
                         => {}
 
                         Err(e) => warn!("Error parsing operator {c}: {e:?}"),
@@ -74,7 +74,10 @@ impl ShuntingYard {
         Ok(output_queue)
     }
 
-    pub fn evaluate_rpn<'a>(rpn: &[ShuntingYardToken], values: &'a dyn Reflect) -> ShuntingYardResult<Cow<'a, TatakuValue>> {
+    pub fn evaluate_rpn<'a>(
+        rpn: &[ShuntingYardToken], 
+        values: &'a dyn Reflect
+    ) -> ShuntingYardResult<Cow<'a, TatakuValue>> {
         let mut stack = Vec::new();
 
         for token in rpn {
@@ -85,42 +88,13 @@ impl ShuntingYard {
                     match &**var {
                         "true" => TatakuValue::Bool(true),
                         "false" => TatakuValue::Bool(false),
-                        _ => TatakuValue::from_reflection(values.impl_get(ReflectPath::new(var))?)?
+                        _ => {
+                            TatakuValue::from_reflection(values.impl_get(ReflectPath::new(var))?)?
+                        }
                     }
                 )),
 
-                ShuntingYardToken::Function(func) => {
-                    let n = stack.pop().ok_or(ShuntingYardError::MissingFunctionArgument(func.clone()))?;
-                    // let SYStackValue::Number(n) = n else { return Err(ShuntingYardError::NumberIsntANumber(String::new())) };
-
-                    match &**func {
-                        "abs" => stack.push(MathFunction::Abs.run(n)?),
-                        "sin" => stack.push(MathFunction::Sin.run(n)?),
-                        "cos" => stack.push(MathFunction::Cos.run(n)?),
-                        "tan" => stack.push(MathFunction::Tan.run(n)?),
-
-
-                        "display" => {
-                            let str = match &*n {
-                                TatakuValue::None => "None".to_owned(),
-                                TatakuValue::F32(n) => format_float(n, 2),
-                                TatakuValue::U32(n) => format_number(*n),
-                                TatakuValue::U64(n) => format_number(*n),
-                                TatakuValue::Bool(b) => format!("{b}"),
-                                TatakuValue::String(s) => s.clone(),
-                                TatakuValue::Reflect(reflect) => reflect.reflect_display("", Some(2)).unwrap_or("?".to_owned()),
-                            };
-
-                            stack.push(Cow::Owned(TatakuValue::from(str)));
-                        }
-                        
-
-                        "is_empty" => stack.push(Cow::Owned(TatakuValue::from(n.is_empty()))),
-                        "len"|"length" => stack.push(Cow::Owned(TatakuValue::from(n.get_length() as u64))),
-
-                        other => return Err(ShuntingYardError::InvalidFunction(other.to_string())),
-                    }
-                }
+                ShuntingYardToken::Function(func) => Self::run_function(func, &mut stack, values)?,
 
                 ShuntingYardToken::Operator(op) => {
                     let right = stack.pop().ok_or(ShuntingYardError::MissingRightSide(*op))?;
@@ -141,11 +115,73 @@ impl ShuntingYard {
         stack.pop().ok_or(ShuntingYardError::NoMath)
     }
 
-    fn check_op(c1: Operator, c2: &ShuntingYardToken) -> bool {
+    fn check_op(
+        c1: Operator, 
+        c2: &ShuntingYardToken
+    ) -> bool {
         let ShuntingYardToken::Operator(c2) = c2 else { return false };
         let p1 = c1.precedence();
         let p2 = c2.precedence();
         (p2 > p1) || (p1 == p2 && c1.is_left_associative())
+    }
+
+    fn run_function(
+        function: &str,
+        stack: &mut Vec<Cow<'_, TatakuValue>>,
+        values: &dyn Reflect,
+    ) -> ShuntingYardResult<()> {
+        // no-argument fns 
+        #[allow(clippy::single_match, reason = "adding more later")]
+        match function {
+            "now" => {
+                stack.push(Cow::Owned(TatakuValue::F32(TatakuInstant::now().as_millis())));
+                return Ok(())
+            }
+
+            _ => {}
+        }
+        
+        // argument fns
+        let n = stack.pop().ok_or_else(|| ShuntingYardError::MissingFunctionArgument(function.to_owned()))?;
+        // let SYStackValue::Number(n) = n else { return Err(ShuntingYardError::NumberIsntANumber(String::new())) };
+
+        match function {
+            "abs" => stack.push(MathFunction::Abs.run(n)?),
+            "sin" => stack.push(MathFunction::Sin.run(n)?),
+            "cos" => stack.push(MathFunction::Cos.run(n)?),
+            "tan" => stack.push(MathFunction::Tan.run(n)?),
+
+            "ref" => {
+                let value = values
+                        .impl_get(ReflectPath::new(&n.as_string()))
+                        .and_then(TatakuValue::from_reflection)
+                        .unwrap_or(TatakuValue::None);
+                println!("ref({n:?}) = {value:?}");
+
+                stack.push(Cow::Owned(value))
+            }
+
+            "display" => {
+                let str = match &*n {
+                    TatakuValue::None => "None".to_owned(),
+                    TatakuValue::F32(n) => format_float(n, 2),
+                    TatakuValue::U32(n) => format_number(*n),
+                    TatakuValue::U64(n) => format_number(*n),
+                    TatakuValue::Bool(b) => format!("{b}"),
+                    TatakuValue::String(s) => s.clone(),
+                    TatakuValue::Reflect(reflect) => reflect.reflect_display("", Some(2)).unwrap_or("?".to_owned()),
+                };
+
+                stack.push(Cow::Owned(TatakuValue::from(str)));
+            }
+
+            "is_empty" => stack.push(Cow::Owned(TatakuValue::from(n.is_empty()))),
+            "len"|"length" => stack.push(Cow::Owned(TatakuValue::from(n.get_length() as u64))),
+
+            other => return Err(ShuntingYardError::InvalidFunction(other.to_string())),
+        }
+        
+        Ok(())
     }
 }
 
@@ -184,6 +220,9 @@ impl CurrentThing {
                 output_queue.push(ShuntingYardToken::Number(number));
             } 
             Self::Variable(s) if is_open_paren => {
+                // if current_thing is a variable, it is actually a function
+                // this is because if there was an operation between it and this, current_thing should be none
+                // ie "sin(123)" vs "sin + (123)"
                 operator_queue.push(ShuntingYardToken::Function(s.take()));
             }
             Self::Variable(s) => {
@@ -221,6 +260,9 @@ pub enum Operator {
     And,
     Or,
     Not,
+
+    // special
+    Ref
 }
 impl Operator {
     fn from_chars(c1: char, c2: char) -> ShuntingYardResult<Self> {
@@ -245,12 +287,19 @@ impl Operator {
             ('|', '|') => Ok(Self::Or),
             ('!', _) => Ok(Self::Not),
 
+            // special
+            (':', ':') => Ok(Self::Ref),
+
             // err
             _ => Err(ShuntingYardError::InvalidOperator(c1))
         }
     }
 
-    fn perform<'a>(&self, right: Cow<'a, TatakuValue>, left: Cow<'a, TatakuValue>) -> Cow<'a, TatakuValue> {
+    fn perform<'a>(
+        &self, 
+        right: Cow<'a, TatakuValue>, 
+        left: Cow<'a, TatakuValue>,
+    ) -> Cow<'a, TatakuValue> {
         // debug!("");
         // debug!("perform: {left:?} {self:?} {right:?}");
         let left = left.as_ref();
@@ -276,6 +325,23 @@ impl Operator {
             Self::And => TatakuValue::Bool(left.as_bool() && right.as_bool()), //if left > 0.0 && right > 0.0 { 1.0 } else { 0.0 },
             Self::Or => TatakuValue::Bool(left.as_bool() || right.as_bool()), //if left > 0.0 || right > 0.0 { 1.0 } else { 0.0 },
             Self::Not => TatakuValue::Bool(!right.as_bool()), //if right > 0.0 { 0.0 } else { 1.0 },
+        
+            // special
+            Self::Ref => {
+                let path = right.as_string();
+                let path = ReflectPath::new(&path);
+                match left {
+                    TatakuValue::Bool(b) => b.as_dyn().impl_get(path),
+                    TatakuValue::F32(n) => n.as_dyn().impl_get(path),
+                    TatakuValue::U32(n) => n.as_dyn().impl_get(path),
+                    TatakuValue::U64(n) => n.as_dyn().impl_get(path),
+                    TatakuValue::String(n) => n.as_dyn().impl_get(path),
+                    TatakuValue::Reflect(n) => n.impl_get(path),
+                    TatakuValue::None => Ok(MaybeOwnedReflect::Owned(Box::new(None::<u8>))),
+                }
+                .and_then(TatakuValue::from_reflection)
+                .unwrap_or(TatakuValue::None)
+            }
         };
         // debug!("res: {res:?}");
         // debug!("");
@@ -285,9 +351,10 @@ impl Operator {
 
     fn precedence(&self) -> u8 {
         match self {
-            Self::Add | Self::Sub => 3,
-            Self::Mul | Self::Div => 4,
+            Self::Ref => 6,
             Self::Pow => 5,
+            Self::Mul | Self::Div => 4,
+            Self::Add | Self::Sub => 3,
 
             // comparisons should run after math
             Self::Eq | Self::NotEq
@@ -326,10 +393,27 @@ impl MathFunction {
 
 
 
-#[allow(unused)]
 #[cfg(test)]
 mod shunting_yard_tests {
     use crate::prelude::*;
+
+    #[test]
+    fn reference_test() {
+        let expression = "ref(b.path) :: '.a'";
+        
+        let values = DynMap::default()
+            .set_chained("b.path", "c.path")
+            .set_chained("c.path.a", 100u32)
+        ;
+    
+        let tokens = ShuntingYard::parse_expression(expression).unwrap();
+        println!("Tokens: {tokens:?}");
+
+        let result = ShuntingYard::evaluate_rpn(&tokens, &values).unwrap();
+        println!("Result: {result:?}");
+        assert_eq!(*result, TatakuValue::U32(100));
+        assert!(*result != TatakuValue::U32(10));
+    }
 
     #[test]
     fn math_test() {

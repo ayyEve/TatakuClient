@@ -100,7 +100,7 @@ impl TatakuRenderable for TransformGroup {
         &self,
         options: &DrawOptions,
         mut transform: Matrix,
-        g: &mut dyn GraphicsEngine
+        g: &mut dyn GraphicsEngine,
     ) {
         let options = options.merge(DrawOptions {
             alpha: Some(self.alpha),
@@ -108,6 +108,11 @@ impl TatakuRenderable for TransformGroup {
 
             color: self.color,
             border_color: None,
+
+            image_flip: ImageFlip::new(
+                self.image_flip_horizonal, 
+                self.image_flip_vertical,
+            ),
         });
 
         transform = transform * self.transform_manager.matrix();

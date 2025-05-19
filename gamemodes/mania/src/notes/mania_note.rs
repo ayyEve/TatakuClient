@@ -109,10 +109,10 @@ impl ManiaHitObject for ManiaNote {
         self.hit = true;
         self.hit_time = time;
     }
-    fn miss(&mut self, time:f32) {
-        self.missed = true;
-        self.hit_time = time;
-    }
+    // fn miss(&mut self, time:f32) {
+    //     self.missed = true;
+    //     self.hit_time = time;
+    // }
 
     fn set_sv_mult(&mut self, sv: f32) {
         self.sv_mult = sv;
@@ -136,7 +136,7 @@ impl ManiaHitObject for ManiaNote {
         &self.hitsounds
     }
     
-    fn set_skin_settings(&mut self, settings: Option<Arc<ManiaSkinSettings>>) {
-        self.mania_skin_settings = settings;
-    }
+    // fn set_skin_settings(&mut self, settings: Option<Arc<ManiaSkinSettings>>) {
+    //     self.mania_skin_settings = settings;
+    // }
 }

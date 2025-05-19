@@ -20,11 +20,18 @@ impl ModManager {
         Self::default()
     }
 
-    fn iter_mods(mode: &GamemodeInfo) -> impl Iterator<Item=GameplayMod> {
+    fn iter_mod_groups(mode: &GamemodeInfo) -> impl Iterator<Item=GameplayModGroup> {
         default_mod_groups()
             .into_iter()
             .chain(mode.mods.iter().map(GameplayModGroup::from_static))
+    }
+    fn iter_mods(mode: &GamemodeInfo) -> impl Iterator<Item=GameplayMod> {
+        Self::iter_mod_groups(mode)
             .flat_map(|m| m.mods)
+    }
+
+    pub fn mod_groups_for_playmode(mode: &GamemodeInfo) -> Vec<GameplayModGroup> {
+        Self::iter_mod_groups(mode).collect()
     }
 
     pub fn mods_for_playmode(

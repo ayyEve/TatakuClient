@@ -60,7 +60,7 @@ impl BeatmapManager {
         }
     }
 
-    pub async fn initialize(
+    pub fn initialize(
         &mut self, 
         sort_by: SortBy,
         mods: ModManager,
@@ -69,7 +69,7 @@ impl BeatmapManager {
     ) {
         trace!("Beatmap manager initialized");
         self.initialized = true;
-        self.refresh_maps(&mods, &playmode, sort_by, diff_manager).await;
+        self.refresh_maps(&mods, &playmode, sort_by, diff_manager);
     }
 
     pub fn folders_to_check(settings: &Settings) -> Vec<std::path::PathBuf> {
@@ -85,30 +85,30 @@ impl BeatmapManager {
     }
 
     /// clear the cache and db, and do a full rescan of the songs folder
-    pub async fn full_refresh(&mut self, settings: &Settings) {
+    pub fn full_refresh(&mut self, settings: &Settings) {
         self.beatmaps.clear();
         self.beatmaps_by_hash.clear();
 
-        Database::clear_all_maps().await;
+        Database::clear_all_maps();
 
         let mut new_beatmaps = Vec::new();
 
         info!("Reading maps");
         let folders = Self::folders_to_check(settings);
         for f in folders {
-            if let Some(maps) = self.check_folder(f, false).await {
+            if let Some(maps) = self.check_folder(f, false) {
                 new_beatmaps.extend(maps);
             }
         }
 
         if !new_beatmaps.is_empty() {
             info!("Inserting maps into database");
-            Database::insert_beatmaps(new_beatmaps).await;
+            Database::insert_beatmaps(new_beatmaps);
         }
     }
 
     /// if this doesnt handle the database entries, returns a list of new beatmaps that should be added to the database
-    pub async fn check_folder(
+    pub fn check_folder(
         &mut self,
         dir: impl AsRef<Path>,
         handle_database: impl Into<HandleDatabase>,
@@ -150,7 +150,7 @@ impl BeatmapManager {
                 match Beatmap::load_multiple_metadata(file) {
                     Ok(maps) => {
                         for map in maps {
-                            self.add_beatmap(&map, false).await;
+                            self.add_beatmap(&map, false);
 
                             // if it got here, it shouldnt be in the database
                             // so we should add it
@@ -168,17 +168,17 @@ impl BeatmapManager {
         match handle_database {
             HandleDatabase::No => Some(maps_to_add_to_database),
             HandleDatabase::Yes => {
-                Database::insert_beatmaps(maps_to_add_to_database).await;
+                Database::insert_beatmaps(maps_to_add_to_database);
                 None
             }
             HandleDatabase::YesAndReturnNewMaps => {
-                Database::insert_beatmaps(maps_to_add_to_database.clone()).await;
+                Database::insert_beatmaps(maps_to_add_to_database.clone());
                 Some(maps_to_add_to_database)
             }
         }
     }
 
-    pub async fn add_beatmap(
+    pub fn add_beatmap(
         &mut self, 
         beatmap: &Arc<BeatmapMeta>,
         add_to_db: bool,
@@ -190,7 +190,7 @@ impl BeatmapManager {
                 // if so, add it to the ignore list
                 trace!("adding {} to the ignore list, as it already exists", beatmap.file_path);
                 self.ignore_beatmaps.insert(beatmap.file_path.clone());
-                tokio::spawn(Database::add_ignored(beatmap.file_path.clone()));
+                Database::add_ignored(beatmap.file_path.clone());
             }
 
             trace!("map already added");
@@ -211,12 +211,12 @@ impl BeatmapManager {
         }
 
         if add_to_db {
-            Database::insert_beatmaps(vec![beatmap.clone()]).await;
+            Database::insert_beatmaps(vec![beatmap.clone()]);
         }
 
     }
 
-    pub async fn delete_beatmap(
+    pub fn delete_beatmap(
         &mut self, 
         beatmap: Md5Hash, 
         post_delete: PostDelete,
@@ -239,29 +239,28 @@ impl BeatmapManager {
             } else {
                 // file is probably in an external folder, just add this file to the ignore list
                 self.ignore_beatmaps.insert(old_map.file_path.clone());
-                Database::add_ignored(old_map.file_path.clone()).await;
+                Database::add_ignored(old_map.file_path.clone());
             }
         }
 
         if self.current_beatmap.as_ref().filter(|b| b.beatmap_hash == beatmap).is_some() {
             match post_delete {
                 // select next beatmap
-                PostDelete::Next => { self.next_beatmap(if_create, settings, diff_manager).await; },
-                PostDelete::Previous => { self.previous_beatmap(if_create, settings, diff_manager).await; },
+                PostDelete::Next => { self.next_beatmap(if_create, settings, diff_manager); },
+                PostDelete::Previous => { self.previous_beatmap(if_create, settings, diff_manager); },
                 PostDelete::Random => if let Some(map) = self.random_beatmap() {
                     self.set_current_beatmap(
                         &map, 
                         if_create,
                         settings,
                         diff_manager
-                    ).await
+                    )
                 }
             }
         }
     }
 
-    #[async_recursion::async_recursion]
-    pub async fn set_current_beatmap(
+    pub fn set_current_beatmap(
         &mut self,
         beatmap: &Arc<BeatmapMeta>,
         config: SelectBeatmapConfig,
@@ -325,7 +324,7 @@ impl BeatmapManager {
         }
     }
 
-    pub async fn remove_current_beatmap(&mut self) {
+    pub fn remove_current_beatmap(&mut self) {
         trace!("Setting current beatmap to None");
         self.current_beatmap = None;
 
@@ -369,7 +368,7 @@ impl BeatmapManager {
         }
     }
 
-    pub async fn next_beatmap(
+    pub fn next_beatmap(
         &mut self, 
         config: SelectBeatmapConfig, 
         settings: &Settings,
@@ -384,14 +383,14 @@ impl BeatmapManager {
 
         match at_index {
             Some(map) => {
-                self.set_current_beatmap(&map, config, settings, diff_manager).await;
+                self.set_current_beatmap(&map, config, settings, diff_manager);
                 // since we're playing something already in the queue, dont append it again
                 self.played.pop();
                 true
             }
 
             None => if let Some(map) = self.random_beatmap() {
-                self.set_current_beatmap(&map, config, settings, diff_manager).await;
+                self.set_current_beatmap(&map, config, settings, diff_manager);
                 true
             } else {
                 false
@@ -399,7 +398,7 @@ impl BeatmapManager {
         }
     }
 
-    pub async fn previous_beatmap(
+    pub fn previous_beatmap(
         &mut self, 
         config: SelectBeatmapConfig, 
         settings: &Settings,
@@ -416,7 +415,7 @@ impl BeatmapManager {
 
         match at_index {
             Some(map) => {
-                self.set_current_beatmap(&map, config, settings, diff_manager).await;
+                self.set_current_beatmap(&map, config, settings, diff_manager);
                 // since we're playing something already in the queue, dont append it again
                 self.played.pop();
                 // undo the index bump done in set_current_beatmap
@@ -432,7 +431,7 @@ impl BeatmapManager {
 
 
 impl BeatmapManager {
-    pub async fn refresh_maps(
+    pub fn refresh_maps(
         &mut self, 
         current_mods: &ModManager,
         playmode: &String,
@@ -445,10 +444,10 @@ impl BeatmapManager {
         //TODO: allow grouping by not just map set
         self.unfiltered_groups = self.all_by_sets(group_by);
 
-        self.apply_filter(current_mods, playmode, sort_by, diff_manager).await;
+        self.apply_filter(current_mods, playmode, sort_by, diff_manager);
     }
 
-    pub async fn apply_filter(
+    pub fn apply_filter(
         &mut self, 
         mods: &ModManager,
         playmode: &String,
@@ -648,7 +647,7 @@ impl From<GroupBy> for TatakuValue {
     }
 }
 
-/// this is a bad name for this
+/// FIXME: this is a bad name for this
 pub enum HandleDatabase {
     No,
     Yes,

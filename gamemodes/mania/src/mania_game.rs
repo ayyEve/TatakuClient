@@ -190,7 +190,11 @@ impl ManiaGame {
     }
 
     
-    pub fn pos_at(position_function: &Arc<Vec<PositionPoint>>, time: f32, current_index: &mut usize) -> f32 {
+    pub fn pos_at(
+        position_function: &Arc<Vec<PositionPoint>>, 
+        time: f32, 
+        current_index: &mut usize
+    ) -> f32 {
         let (index, b) = position_function.iter().enumerate().skip(*current_index).find(|(_, p)| time < p.time)
             .unwrap_or_else(|| {
                 (position_function.len() - 1, position_function.last().unwrap())
@@ -210,7 +214,7 @@ impl ManiaGame {
         column_count: u8, 
         game_settings: &Arc<ManiaSettings>, 
         playfield: &Arc<ManiaPlayfield>, 
-        state: &mut GameplayUpdateShell<'_>
+        state: &mut GameplayUpdateShell
     ) {
         let color = hit_value.color;
         let image = None;

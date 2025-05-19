@@ -6,7 +6,7 @@ pub struct TaikoPlayfield {
 
     pub hit_position: Vector2,
 
-    pub full_window: bool,
+    // pub full_window: bool,
 }
 
 impl TaikoPlayfield {

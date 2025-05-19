@@ -1,0 +1,369 @@
+<?xml version="1.0"?>
+<?xml-model href="../xsd/menu.xsd"?>
+
+<menu id="score_menu">
+  <style>
+    .score-details {
+      height: fill;
+    }
+
+    .buttons {
+      width: fill;
+      justify-self: end;
+    }
+
+    .judgment {
+      padding: 4px;
+      margin: 2px;
+      border-radius: 3px;
+    }
+    .judgment-text {
+      text-color: var(_j.judgment.color);
+    }
+  </style>
+
+  <inputs>
+    <input name="allow_retry" path="var.score_menu.allow_retry" type="bool" default="true" />
+    <input name="score_submit_path" path="var.score_menu.submit_path" type="string" default="" />
+  </inputs>
+
+
+  <events>
+    <event>
+      <keyPress key = "Escape" />
+      <actions>
+        <conditional cond="lobby.is_some">
+          <true>
+            <setMenu id="lobby_menu"/>
+          </true>
+          <false>
+            <setMenu id="beatmap_select"/>
+          </false>
+        </conditional>
+      </actions>
+    </event>
+
+    <!-- ensure temp variables have a value -->
+    <event>
+      <menuEnter />
+      <actions>
+        <setValue key = "var.score_menu.selected_user">
+          <variable var = "online.user_id"/>
+        </setValue>
+        <setValue key = "var.score_menu.selected_stat">
+          <value val = "0"/>
+        </setValue>
+      </actions>
+    </event>
+  </events>
+
+  <element>
+    <!-- should we be lobby-oriented? -->
+    <conditional cond = "lobby.is_some">
+      <!-- multiplayer menu -->
+      <true>
+        <column>
+
+          <row>
+            <!-- score details -->
+            <column>
+              <!-- score info -->
+              <list
+                list = "lobby.player_scores"
+                variable = "_score"
+              >
+                <conditional cond = "_score.user_id == var.score_menu.selected_user">
+                  <!-- score details -->
+                  <column class = "score-details">
+                    <!-- score title -->
+                    <row style = "width: fill">
+                      <!-- title [version] (playmode) (speedx) -->
+                      <conditional cond="_score.speed != 0.0">
+                        <true>
+                          <text>
+                            <list>
+                              <variable var="beatmaps.current.map.title"/>
+                              <text text=" ["/>
+                              <variable var="beatmaps.current.map.version"/>
+                              <text text="] ("/>
+                              <variable var="global.playmode_display"/>
+                              <text text=") ("/>
+                              <variable var="_score.speed"/>
+                              <text text="x)"/>
+                            </list>
+                          </text>
+                        </true>
+                        <false>
+                          <text>
+                            <list join="">
+                              <variable var="beatmaps.current.map.title"/>
+                              <text text=" ["/>
+                              <variable var="beatmaps.current.map.version"/>
+                              <text text="] ("/>
+                              <variable var="global.playmode_actual_display"/>
+                              <text text=")"/>
+                            </list>
+                          </text>
+                        </false>
+                      </conditional>
+                    </row>
+        
+                    <!-- score -->
+                    <row>
+                      <text>
+                        <list join=": ">
+                          <text text="Score"/>
+                          <display var="_score.score"/>
+                        </list>
+                      </text>
+                    </row>
+        
+                    <!-- judgments -->
+                    <list
+                      style = "flex-direction: column"
+                      list = "_score.judgments"
+                      variable = "_j"
+                    >
+                      <row>
+                        <text>
+                          <list join=": ">
+                            <variable var="_j.judgment.name"/>
+                            <display var="_j.count"/>
+                          </list>
+                        </text>
+                      </row>
+                    </list>
+        
+                    <!-- combo -->
+                    <row>
+                      <text>
+                        <list>
+                          <text text="Combo: " />
+                          <display var="_score.combo" />
+                          <text text="x, " />
+                          <calc calc="display(_score.accuracy * 100.0)" />
+                          <text text="%" />
+                        </list>
+                      </text>
+                    </row>
+        
+                    <!-- mods -->
+                    <row>
+                      <text>
+                        <variable var="_score.mods.short_list"/>
+                      </text>
+                    </row>
+
+                  </column>
+                </conditional>
+              </list>
+
+
+            </column>
+
+
+            <!-- lobby players -->
+            <list
+              list="lobby.player_scores"
+              variable="_score"
+            >
+              <button>
+                <action>
+                  <setValue key="var.score_menu.selected_user">
+                    <variable var="_score.user_id"/>
+                  </setValue>
+                </action>
+                <element>
+                  <row>
+                    <text>
+                      <variable var="_score.username"/>
+                    </text>
+                    <text>
+                      <list>
+                          <display var="_score.score"/>
+                          <text text=" ("/>
+                          <display var="_score.combo"/>
+                          <text text="x)"/>
+                      </list>
+                    </text>
+                  </row>
+                </element>
+              </button>
+            </list>
+          </row>
+
+          <button>
+            <action>
+              <setMenu id="lobby_menu"/>
+            </action>
+            <element>
+              <text> 
+                <text text="Back"/> 
+              </text>
+            </element>
+          </button>
+        </column>
+
+      </true>
+
+      <!-- singleplayer menu -->
+      <false>
+        <column>
+
+          <row>
+            <!-- score details -->
+            <column class = "score-details">
+              <!-- score title -->
+              <row style = "width: fill">
+                <!-- title [version] (playmode) (speedx) -->
+                <conditional cond="score.speed != 0.0">
+                  <true>
+                    <text>
+                      <list join="">
+                        <variable var="beatmaps.current.map.title"/>
+                        <text text=" ["/>
+                        <variable var="beatmaps.current.map.version"/>
+                        <text text="] ("/>
+                        <variable var="global.playmode_display"/>
+                        <text text=") ("/>
+                        <variable var="score.speed"/>
+                        <text text="x)"/>
+                      </list>
+                    </text>
+                  </true>
+                  <false>
+                    <text>
+                      <list join="">
+                        <variable var="beatmaps.current.map.title"/>
+                        <text text=" ["/>
+                        <variable var="beatmaps.current.map.version"/>
+                        <text text="] ("/>
+                        <variable var="global.playmode_display"/>
+                        <text text=")"/>
+                      </list>
+                    </text>
+                  </false>
+                </conditional>
+              </row>
+
+              <!-- score -->
+              <row>
+                <text>
+                  <list>
+                    <text text="Score: "/>
+                    <display var="score.score"/>
+                  </list>
+                </text>
+              </row>
+
+              <!-- judgments -->
+              <list
+                style = "flex-direction: column"
+                list = "score.judgments"
+                variable = "_j"
+              >
+                <conditional cond = "_j.judgment.name != ''">
+                    <row class = "judgment">
+                      <text class = "judgment-text">
+                        <list join = ": ">
+                          <variable var = "_j.judgment.name"/>
+                          <display var = "_j.count"/>
+                        </list>
+                      </text>
+                    </row>
+                </conditional>
+              </list>
+
+              <!-- combo -->
+              <row>
+                <text>
+                  <list>
+                    <text text = "Combo: "/>
+                    <display var = "score.combo"/>
+                    <text text = "x, "/>
+                    <display var = "score.accuracy"/>
+                    <text text = "%"/>
+                  </list>
+                </text>
+              </row>
+
+              <!-- mods -->
+              <row>
+                <text>
+                  <variable var="score.mods.short_list"/>
+                </text>
+              </row>
+
+              <!-- submit status -->
+
+              <!-- are we submitting a score? -->
+              <conditional cond="var.score_menu.submit_path != ''">
+                <!-- score is submitting -->
+                <conditional cond="ref(var.score_menu.submit_path) :: '.completed'">
+                  <true>
+                    <column>
+                      <!-- placing -->
+                      <text>
+                        <list>
+                          <text text="Placing: "/>
+                          <calc calc="ref(var.score_menu.submit_path) :: '.placing'"/>
+                        </list>
+                      </text>
+                      <!-- performance -->
+                      <text>
+                        <list>
+                          <text text="Performance: "/>
+                          <calc calc="display(ref(var.score_menu.submit_path) :: 'performance_rating')"/>
+                        </list>
+                      </text>
+                    </column>
+                  </true>
+                  <!-- still uploading -->
+                  <false>
+                    <text>
+                      <text text="Score Uploading.."/>
+                    </text>
+                  </false>
+                </conditional>
+              </conditional>
+            </column>
+
+            <!-- FIXME: reimplement stats -->
+            <!-- stats -->
+            <!-- <column>
+            
+            </column> -->
+          </row>
+
+          <row class = "buttons">
+            <conditional cond="var.score_menu.allow_retry">
+              <button>
+                <action>
+                  <map>
+                    <play/>
+                  </map>
+                </action>
+                <element>
+                  <text> 
+                    <text text="Retry"/> 
+                  </text>
+                </element>
+              </button>
+            </conditional>
+            
+            <button>
+              <action>
+                <setMenu id = "beatmap_select"/>
+              </action>
+              <element>
+                <text> 
+                  <text text="Back"/>
+                </text>
+              </element>
+            </button>
+          </row>
+        </column>
+      </false>
+    </conditional>
+  </element>
+</menu>

@@ -34,6 +34,11 @@ impl SkinManager {
     }
 
 
+    pub fn skin_path(&self) -> PathBuf {
+        Path::new(SKINS_FOLDER)
+            .join(&self.skin_name)
+    }
+
     pub fn change_skin(&mut self, new_skin: String) {
         if self.skin_name == new_skin { return }
         self.skin_name = new_skin.clone();
@@ -127,7 +132,7 @@ impl SkinProvider for SkinManager {
             if let TextureState::Success(i) = &a.image {
                 if i.reference_count() > 1 {
                     if !warned {
-                        debug!("Texture(s) still have references, not freeing: {source:?}");
+                        trace!("Texture(s) still have references, not freeing: {source:?}");
                         warned = true;
                     }
                     continue

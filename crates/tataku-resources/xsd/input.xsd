@@ -1,0 +1,216 @@
+<?xml version="1.0"?>
+
+<xs:schema 
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  targetNamespace="tataku/input"
+>
+
+<xs:simpleType name="key">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Key1"/>
+      <xs:enumeration value="Key2"/>
+      <xs:enumeration value="Key3"/>
+      <xs:enumeration value="Key4"/>
+      <xs:enumeration value="Key5"/>
+      <xs:enumeration value="Key6"/>
+      <xs:enumeration value="Key7"/>
+      <xs:enumeration value="Key8"/>
+      <xs:enumeration value="Key9"/>
+      <xs:enumeration value="Key0"/>
+      <xs:enumeration value="A"/>
+      <xs:enumeration value="B"/>
+      <xs:enumeration value="C"/>
+      <xs:enumeration value="D"/>
+      <xs:enumeration value="E"/>
+      <xs:enumeration value="F"/>
+      <xs:enumeration value="G"/>
+      <xs:enumeration value="H"/>
+      <xs:enumeration value="I"/>
+      <xs:enumeration value="J"/>
+      <xs:enumeration value="K"/>
+      <xs:enumeration value="L"/>
+      <xs:enumeration value="M"/>
+      <xs:enumeration value="N"/>
+      <xs:enumeration value="O"/>
+      <xs:enumeration value="P"/>
+      <xs:enumeration value="Q"/>
+      <xs:enumeration value="R"/>
+      <xs:enumeration value="S"/>
+      <xs:enumeration value="T"/>
+      <xs:enumeration value="U"/>
+      <xs:enumeration value="V"/>
+      <xs:enumeration value="W"/>
+      <xs:enumeration value="X"/>
+      <xs:enumeration value="Y"/>
+      <xs:enumeration value="Z"/>
+      <xs:enumeration value="Escape"/>
+      <xs:enumeration value="F1"/>
+      <xs:enumeration value="F2"/>
+      <xs:enumeration value="F3"/>
+      <xs:enumeration value="F4"/>
+      <xs:enumeration value="F5"/>
+      <xs:enumeration value="F6"/>
+      <xs:enumeration value="F7"/>
+      <xs:enumeration value="F8"/>
+      <xs:enumeration value="F9"/>
+      <xs:enumeration value="F10"/>
+      <xs:enumeration value="F11"/>
+      <xs:enumeration value="F12"/>
+      <xs:enumeration value="F13"/>
+      <xs:enumeration value="F14"/>
+      <xs:enumeration value="F15"/>
+      <xs:enumeration value="F16"/>
+      <xs:enumeration value="F17"/>
+      <xs:enumeration value="F18"/>
+      <xs:enumeration value="F19"/>
+      <xs:enumeration value="F20"/>
+      <xs:enumeration value="F21"/>
+      <xs:enumeration value="F22"/>
+      <xs:enumeration value="F23"/>
+      <xs:enumeration value="F24"/>
+      <xs:enumeration value="Snapshot"/>
+      <xs:enumeration value="Scroll"/>
+      <xs:enumeration value="Pause"/>
+      <xs:enumeration value="Insert"/>
+      <xs:enumeration value="Home"/>
+      <xs:enumeration value="Delete"/>
+      <xs:enumeration value="End"/>
+      <xs:enumeration value="PageDown"/>
+      <xs:enumeration value="PageUp"/>
+      <xs:enumeration value="Left"/>
+      <xs:enumeration value="Up"/>
+      <xs:enumeration value="Right"/>
+      <xs:enumeration value="Down"/>
+      <xs:enumeration value="Backspace"/>
+      <xs:enumeration value="Enter"/>
+      <xs:enumeration value="Space"/>
+      <xs:enumeration value="Compose"/>
+      <xs:enumeration value="Caret"/>
+      <xs:enumeration value="Numlock"/>
+      <xs:enumeration value="Numpad0"/>
+      <xs:enumeration value="Numpad1"/>
+      <xs:enumeration value="Numpad2"/>
+      <xs:enumeration value="Numpad3"/>
+      <xs:enumeration value="Numpad4"/>
+      <xs:enumeration value="Numpad5"/>
+      <xs:enumeration value="Numpad6"/>
+      <xs:enumeration value="Numpad7"/>
+      <xs:enumeration value="Numpad8"/>
+      <xs:enumeration value="Numpad9"/>
+      <xs:enumeration value="NumpadAdd"/>
+      <xs:enumeration value="NumpadDivide"/>
+      <xs:enumeration value="NumpadDecimal"/>
+      <xs:enumeration value="NumpadComma"/>
+      <xs:enumeration value="NumpadEnter"/>
+      <xs:enumeration value="NumpadEquals"/>
+      <xs:enumeration value="NumpadMultiply"/>
+      <xs:enumeration value="NumpadSubtract"/>
+      <xs:enumeration value="Apostrophe"/>
+      <xs:enumeration value="Apps"/>
+      <xs:enumeration value="Asterisk"/>
+      <xs:enumeration value="At"/>
+      <xs:enumeration value="Ax"/>
+      <xs:enumeration value="Backslash"/>
+      <xs:enumeration value="Calculator"/>
+      <xs:enumeration value="Capital"/>
+      <xs:enumeration value="Colon"/>
+      <xs:enumeration value="Comma"/>
+      <xs:enumeration value="Convert"/>
+      <xs:enumeration value="Equals"/>
+      <xs:enumeration value="Grave"/>
+      <xs:enumeration value="LAlt"/>
+      <xs:enumeration value="LBracket"/>
+      <xs:enumeration value="LControl"/>
+      <xs:enumeration value="LShift"/>
+      <xs:enumeration value="LWin"/>
+      <xs:enumeration value="Mail"/>
+      <xs:enumeration value="MediaSelect"/>
+      <xs:enumeration value="MediaStop"/>
+      <xs:enumeration value="Minus"/>
+      <xs:enumeration value="Mute"/>
+      <xs:enumeration value="NextTrack"/>
+      <xs:enumeration value="NoConvert"/>
+      <xs:enumeration value="Period"/>
+      <xs:enumeration value="Plus"/>
+      <xs:enumeration value="Power"/>
+      <xs:enumeration value="RAlt"/>
+      <xs:enumeration value="RBracket"/>
+      <xs:enumeration value="RControl"/>
+      <xs:enumeration value="RShift"/>
+      <xs:enumeration value="RWin"/>
+      <xs:enumeration value="Semicolon"/>
+      <xs:enumeration value="Slash"/>
+      <xs:enumeration value="Stop"/>
+      <xs:enumeration value="Tab"/>
+      <xs:enumeration value="Underline"/>
+      <xs:enumeration value="Unlabeled"/>
+      <xs:enumeration value="VolumeDown"/>
+      <xs:enumeration value="VolumeUp"/>
+      <xs:enumeration value="Wake"/>
+      <xs:enumeration value="WebBack"/>
+      <xs:enumeration value="WebFavorites"/>
+      <xs:enumeration value="WebForward"/>
+      <xs:enumeration value="WebHome"/>
+      <xs:enumeration value="WebRefresh"/>
+      <xs:enumeration value="WebSearch"/>
+      <xs:enumeration value="WebStop"/>
+      <xs:enumeration value="Yen"/>
+      <xs:enumeration value="Copy"/>
+      <xs:enumeration value="Paste"/>
+      <xs:enumeration value="Cut"/>
+    </xs:restriction>
+</xs:simpleType>
+
+<xs:simpleType name="mouse-button">
+  <xs:restriction base="xs:string">
+    <xs:enumeration value="Left"/>
+    <xs:enumeration value="Middle"/>
+    <xs:enumeration value="Right"/>
+  </xs:restriction>
+</xs:simpleType>
+
+<xs:simpleType name="controller-button">
+  <xs:restriction base="xs:string">
+    <xs:enumeration value="North"/>
+    <xs:enumeration value="South"/>
+    <xs:enumeration value="East"/>
+    <xs:enumeration value="West"/>
+    <xs:enumeration value="C"/>
+    <xs:enumeration value="Z"/>
+
+    <xs:enumeration value="Start"/>
+    <xs:enumeration value="Select"/>
+    <xs:enumeration value="Mode"/>
+
+    <xs:enumeration value="DPadUp"/>
+    <xs:enumeration value="DPadDown"/>
+    <xs:enumeration value="DPadLeft"/>
+    <xs:enumeration value="DPadRight"/>
+
+    <xs:enumeration value="LeftTrigger"/>
+    <xs:enumeration value="LeftBumper"/>
+    <xs:enumeration value="LeftThumb"/>
+
+    <xs:enumeration value="RightTrigger"/>
+    <xs:enumeration value="RightBumper"/>
+    <xs:enumeration value="RightThumb"/>
+
+  </xs:restriction>
+</xs:simpleType>
+
+<xs:simpleType name="controller-axis">
+  <xs:restriction base="xs:string">
+    <xs:enumeration value="LeftStickX"/>
+    <xs:enumeration value="LeftStickY"/>
+    <xs:enumeration value="LeftZ"/>
+    
+    <xs:enumeration value="RightStickX"/>
+    <xs:enumeration value="RightStickY"/>
+    <xs:enumeration value="RightZ"/>
+
+    <xs:enumeration value="DPadX"/>
+    <xs:enumeration value="DPadY"/>
+  </xs:restriction>
+</xs:simpleType>
+
+</xs:schema>

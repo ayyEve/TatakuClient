@@ -27,7 +27,6 @@ impl DelayTask {
     }
 }
 
-#[async_trait]
 impl TatakuTask for DelayTask {
     fn get_name(&self) -> Cow<'static, str> {
         if let Some(task) = &self.task {
@@ -39,7 +38,7 @@ impl TatakuTask for DelayTask {
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Once }
     fn get_state(&self) -> TatakuTaskState { self.state }
 
-    async fn run(
+    fn run(
         &mut self,
         _values: &mut dyn Reflect, 
         state: &TaskGameState, 

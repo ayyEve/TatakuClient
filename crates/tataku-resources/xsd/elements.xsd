@@ -1,17 +1,21 @@
 <?xml version="1.0"?>
 
 <xs:schema 
-  xmlns:xs="http://www.w3.org/2001/XMLSchema"
   targetNamespace="tataku/elements"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
   xmlns:elements="tataku/elements"
-  xmlns:text="tataku/text"
   xmlns:actions="tataku/actions"
+  xmlns:common="tataku/common"
   xmlns:events="tataku/events"
+  xmlns:input="tataku/input"
+  xmlns:text="tataku/text"
 >
 
-<xs:import namespace="tataku/text" schemaLocation="text.xsd"/>
 <xs:import namespace="tataku/actions" schemaLocation="actions.xsd"/>
+<xs:import namespace="tataku/common" schemaLocation="common.xsd"/>
 <xs:import namespace="tataku/events" schemaLocation="events.xsd"/>
+<xs:import namespace="tataku/input" schemaLocation="input.xsd"/>
+<xs:import namespace="tataku/text" schemaLocation="text.xsd"/>
 
 <xs:complexType name="generic">
   <xs:attribute name="id" type="xs:string"/>
@@ -24,6 +28,7 @@
     <xs:element name="column" type="elements:column-element"/>
     <xs:element name="row" type="elements:row-element"/>
     <xs:element name="button" type="elements:button-element"/>
+    <xs:element name="checkbox" type="elements:checkbox-element"/>
     <xs:element name="gameplayPreview" type="elements:gameplay-preview-element"/>
     <xs:element name="text" type="elements:text-element"/>
     <xs:element name="textInput" type="elements:text-input-element"/>
@@ -61,22 +66,48 @@
 <xs:complexType name="button-element">
   <xs:complexContent>
     <xs:extension base="elements:generic">
-      <xs:all>
-        <xs:element name="action">
-          <xs:complexType>
-            <xs:group ref="actions:action-type"/>
-          </xs:complexType>
-        </xs:element>
+      <xs:sequence>
+        <xs:group ref="elements:button-onclick"/>
+
         <xs:element name="element">
           <xs:complexType>
             <xs:group ref="elements:element"/>
           </xs:complexType>
         </xs:element>
-      </xs:all>
+      </xs:sequence>
+
       <xs:attribute name="active" type="xs:string"/>
     </xs:extension>
   </xs:complexContent>
 </xs:complexType>
+
+<xs:group name="button-onclick">
+  <xs:choice>
+    <!-- single action, left click -->
+    <xs:element name="action">
+      <xs:complexType>
+        <xs:group ref="actions:action-type"/>
+      </xs:complexType>
+    </xs:element>
+
+    <!-- list of actions depending on mouse button -->
+    <xs:element name="actions">
+      <xs:complexType>
+        <xs:sequence>
+          <xs:element name="action">
+            <xs:complexType>
+              <xs:group ref="actions:action-type"/>
+              <xs:attribute name="button" type="input:mouse-button" use="required"/>
+            </xs:complexType>
+          </xs:element>
+        </xs:sequence>
+      </xs:complexType>
+    </xs:element>
+  </xs:choice>
+</xs:group>
+
+
+
 
 <!-- gameplay preview element -->
 <xs:complexType name="gameplay-preview-element">
@@ -87,6 +118,34 @@
     </xs:extension>
   </xs:complexContent>
 </xs:complexType>
+
+<!-- checkbox element -->
+<xs:complexType name="checkbox-element">
+  <xs:complexContent>
+    <xs:extension base="elements:generic">
+      <xs:all>
+        <xs:element name="text" minOccurs="0">
+          <xs:complexType>
+            <xs:group ref="text:text"/>
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="value" minOccurs="0" type="xs:string"/>
+
+        <xs:element name="onClick" minOccurs="0">
+          <xs:complexType>
+            <xs:group ref="actions:action-type"/>
+          </xs:complexType>
+        </xs:element>
+
+      </xs:all>
+      <xs:attribute name="text" type="xs:string"/>
+      <xs:attribute name="value" type="xs:string"/>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+
 
 <!-- text element -->
 <xs:complexType name="text-element">
@@ -122,7 +181,7 @@
           </xs:complexType>
         </xs:element>
       </xs:all>
-      <xs:attribute name="variable" type="xs:string" use="required"/>
+      <xs:attribute name="variable" type="text:string" use="required"/>
       <xs:attribute name="password" type="xs:boolean" default="false"/>
     </xs:extension>
   </xs:complexContent>
@@ -174,10 +233,10 @@
         </xs:element>
       </xs:sequence>
 
-      <xs:attribute name="options_path" type="xs:string" use="required"/>
-      <xs:attribute name="options_display_path" type="xs:string"/>
-      <xs:attribute name="selected_path" type="xs:string" use="required"/>
-      <xs:attribute name="placeholder" type="xs:string"/>
+      <xs:attribute name="options_path" type="text:string" use="required"/>
+      <xs:attribute name="options_display_path" type="text:string"/>
+      <xs:attribute name="selected_path" type="text:string" use="required"/>
+      <xs:attribute name="placeholder" type="text:string"/>
     </xs:extension>
   </xs:complexContent>
 </xs:complexType>
@@ -191,8 +250,8 @@
         <xs:group ref="elements:element" minOccurs="1" maxOccurs="1"/>
       </xs:sequence>
 
-      <xs:attribute name="list" type="xs:string" use="required"/>
-      <xs:attribute name="variable" type="xs:string" use="required"/>
+      <xs:attribute name="list" type="text:string" use="required"/>
+      <xs:attribute name="variable" type="text:string" use="required"/>
       <xs:attribute name="scrollable" type="xs:boolean" default="false"/>
       <xs:attribute name="scroll" type="xs:boolean" default="false"/>
     </xs:extension>
@@ -208,7 +267,7 @@
         <xs:group ref="elements:conditional-element-true-only"/>
         <xs:group ref="elements:element"/>
       </xs:choice>
-      <xs:attribute name="cond" type="xs:string" use="required"/>
+      <xs:attribute name="cond" type="common:condition" use="required"/>
     </xs:extension>
   </xs:complexContent>
 </xs:complexType>
@@ -222,6 +281,7 @@
     </xs:element>
   </xs:sequence>
 </xs:group>
+
 <xs:group name="conditional-element-both">
   <xs:sequence>
     <xs:element name="true"> 
@@ -244,7 +304,7 @@
     <xs:element name="action">
         <xs:complexType>
           <xs:group ref="elements:transform-type" minOccurs="1" maxOccurs="1"/>
-          <xs:attribute name="id" type="xs:string" use="required"/>
+          <xs:attribute name="id" type="text:string" use="required"/>
         </xs:complexType>
     </xs:element>
   </xs:sequence>
@@ -272,15 +332,15 @@
 </xs:group>
 <xs:complexType name="transform-float">
   <xs:attribute name="start" type="xs:float" use="required"/>
-  <xs:attribute name="any" type="xs:float" use="required"/>
+  <xs:attribute name="end" type="xs:float" use="required"/>
 </xs:complexType>
 <xs:complexType name="transform-color">
-  <xs:attribute name="start" type="xs:string" use="required"/>
-  <xs:attribute name="any" type="xs:string" use="required"/>
+  <xs:attribute name="start" type="text:string" use="required"/>
+  <xs:attribute name="end" type="text:string" use="required"/>
 </xs:complexType>
 <xs:complexType name="transform-vector2">
-  <xs:attribute name="start" type="xs:string" use="required"/>
-  <xs:attribute name="any" type="xs:string" use="required"/>
+  <xs:attribute name="start" type="text:string" use="required"/>
+  <xs:attribute name="end" type="text:string" use="required"/>
 </xs:complexType>
 
 
@@ -288,7 +348,7 @@
   <xs:sequence>
     <xs:group ref="elements:trigger-event-type"/>
   </xs:sequence>
-  <xs:attribute name="action" type="xs:string" use="required"/>
+  <xs:attribute name="action" type="text:string" use="required"/>
 </xs:complexType>
 
 <xs:group name="trigger-event-type">

@@ -9,7 +9,7 @@
         <event>
             <keyPress key="Escape"/>
             <actions>
-                <setMenu>main_menu</setMenu>
+                <setMenu id="main_menu"/>
             </actions>
         </event>
     </events>
@@ -19,19 +19,19 @@
             <!-- list of lobbies -->
             <list
                 id = "lobby_list"
-                list = "global.lobbies"
+                list = "online.lobbies"
                 variable = "_lobby"
                 scrollable = "true"
             >
                 <button style = "width: fill; height: auto; padding: 5px">
                     <action>
                         <multiplayer>
-                            <joinLobby><variable>_lobby.id</variable></joinLobby>
+                            <joinLobby><variable var="_lobby.id"/></joinLobby>
                         </multiplayer>
                     </action>
                     <element>
                         <text>
-                            <variable>_lobby.name</variable>
+                            <variable var="_lobby.name"/>
                         </text>
                     </element>
                 </button>
@@ -40,10 +40,10 @@
             <!-- buttons -->
             <row style = "width: fill; height: auto;">
                 <button>
-                    <action><addDialog>create_lobby</addDialog></action>
+                    <action><addDialog id="create_lobby"/></action>
                     <element>
                         <text>
-                            <text>Create Lobby</text>
+                            <text text="Create Lobby"/>
                         </text>
                     </element>
                 </button>

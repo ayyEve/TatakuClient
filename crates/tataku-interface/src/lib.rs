@@ -1,4 +1,5 @@
 mod misc;
+mod dialog;
 mod custom_menus;
 mod menu_widgets;
 mod visualizations;
@@ -6,8 +7,9 @@ mod gameplay_widgets;
 
 pub mod prelude {
     pub(crate) use tataku_engine::prelude::*;
-
+    
     pub use crate::misc::*;
+    pub use crate::dialog::*;
     pub use crate::custom_menus::*;
     pub use crate::menu_widgets::*;
     pub use crate::visualizations::*;

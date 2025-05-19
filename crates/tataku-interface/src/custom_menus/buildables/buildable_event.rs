@@ -30,7 +30,7 @@ impl BuildableEvent {
 #[derive(Clone, Debug, PartialEq)]
 #[derive(Deserialize)]
 pub struct TatakuEventTypeTag {
-    #[serde(rename="$value", alias="$text")] pub event: TatakuEventType,
+    #[serde(rename="$value")] pub event: TatakuEventType,
 }
 impl Deref for TatakuEventTypeTag {
     type Target = TatakuEventType;
@@ -42,7 +42,7 @@ impl Deref for TatakuEventTypeTag {
 #[derive(Clone, Debug, PartialEq)]
 #[derive(Deserialize)]
 pub struct BuildableActionsTag {
-    #[serde(rename="$value", alias="$text")] pub actions: Vec<BuildableAction>
+    #[serde(rename="$value")] pub actions: Vec<BuildableAction>
 }
 impl Deref for BuildableActionsTag {
     type Target = Vec<BuildableAction>;

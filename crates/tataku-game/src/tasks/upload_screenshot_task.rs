@@ -25,8 +25,7 @@ impl UploadScreenshotTask {
 
         let data = match data {
             ScreenshotData::Raw(data) => data,
-            ScreenshotData::Path(path) => Io::read_file_async(path)
-                .await
+            ScreenshotData::Path(path) => Io::read_file(path)
                 .map_err(|e| Notification::new_error("Error loading screenshot to send to server", e))?,
         };
 
@@ -44,13 +43,12 @@ impl UploadScreenshotTask {
     }
 }
 
-#[async_trait]
 impl TatakuTask for UploadScreenshotTask {
     fn get_name(&self) -> Cow<'static, str> { Cow::Borrowed("Upload Screenshot") }
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Once }
     fn get_state(&self) -> TatakuTaskState { self.state }
 
-    async fn run(
+    fn run(
         &mut self, 
         values: &mut dyn Reflect, 
         _: &TaskGameState, 
@@ -79,15 +77,15 @@ impl TatakuTask for UploadScreenshotTask {
 
         match received {
             Ok(url) => {
-                actions.push(GameAction::AddNotification(Notification::new(
+                actions.push(Notification::new(
                     format!("Screenshot uploaded {url}"), 
                     Color::BLUE, 
                     5000.0, 
                     NotificationOnClick::Url(url.clone())
-                )));
+                ));
                 actions.push(GameAction::CopyToClipboard(url));
             }
-            Err(notif) => actions.push(GameAction::AddNotification(notif)),
+            Err(notif) => actions.push(notif),
         }
 
         self.state = TatakuTaskState::Complete;

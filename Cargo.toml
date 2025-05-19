@@ -17,11 +17,30 @@ clippy.module_inception = "allow"
 clippy.type_complexity = "allow"
 clippy.todo = "warn"
 
+# TODO: re-enable these and fix everything in a new commit
+# clippy.bool_to_int_with_if = "warn"
+# clippy.cloned_instead_of_copied = "warn"
+# clippy.comparison_chain = "warn"
+# clippy.default_trait_access = "warn"
+# clippy.filter_map_next = "warn"
+# clippy.format_collect = "warn"
+# clippy.implicit_clone = "warn"
+# clippy.inefficient_to_string = "warn"
+# clippy.map_unwrap_or = "warn"
+# clippy.match_wild_err_arm = "warn"
+# clippy.needless_continue = "warn"
+# clippy.needless_for_each = "warn"
+# clippy.needless_pass_by_value = "warn"
+# clippy.option_option = "warn"
+# clippy.option_as_ref_cloned = "deny"
+# clippy.ref_option = "warn"
+# clippy.semicolon_if_nothing_returned = "warn"
+
 rust.unused_must_use = "deny"
 
 [workspace.dependencies]
-# tataku-common = { version = "0.16.0", path = "../tataku-common/tataku-common", registry = "tataku-registry" }
-tataku-common = { version = "0.16.0", registry = "tataku-registry" }
+tataku-common = { version = "0.17.0", path = "../tataku-common/tataku-common", registry = "tataku-registry" }
+# tataku-common = { version = "0.16.0", registry = "tataku-registry" }
 
 # tataku-common-proc-macros = { version = "0.3.2", registry = "tataku-registry", path = "../tataku-common/tataku-common" }
 

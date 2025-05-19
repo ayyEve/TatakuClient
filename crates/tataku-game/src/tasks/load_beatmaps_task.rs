@@ -22,13 +22,12 @@ impl LoadBeatmapsTask {
     }
 }
 
-#[async_trait]
 impl TatakuTask for LoadBeatmapsTask {
     fn get_name(&self) -> Cow<'static, str> { Cow::Borrowed("Load Beatmap Task") }
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Once }
     fn get_state(&self) -> TatakuTaskState { self.state }
 
-    async fn run(
+    fn run(
         &mut self, 
         _values: &mut dyn Reflect, 
         _state: &TaskGameState, 
@@ -37,8 +36,8 @@ impl TatakuTask for LoadBeatmapsTask {
 
         // if we havent started yet, initialize our values
         if self.state == TatakuTaskState::NotStarted {
-            self.ignored_list = Database::get_all_ignored().await;
-            self.existing_maps = Database::get_all_beatmaps().await;
+            self.ignored_list = Database::get_all_ignored();
+            self.existing_maps = Database::get_all_beatmaps();
             // self.existing_maps.reverse(); // because they're added in reverse order later, but it doesnt really matter
 
             self.state = TatakuTaskState::Running;

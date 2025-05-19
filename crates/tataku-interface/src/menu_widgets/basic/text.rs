@@ -22,10 +22,10 @@ impl TextWidget {
         }
     }
 
-    fn min_size(&self, tree: &Tree) -> Size<Dimension> {
+    fn min_size(&self, tree: &Tree, values: &dyn Reflect) -> Size<Dimension> {
         let text_size = tree.get_context(self.node_id).unwrap()
             .element_data.style()
-            .0.text_style()
+            .0.text_style(values)
             .measure_text(&self.text.get(), None)
             ;
 
@@ -39,42 +39,60 @@ impl Widget for TextWidget {
     fn name(&self) -> Cow<'static, str> { "text_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn update_styles(&mut self, tree: &mut Tree, _resolver: &mut CssResolver, _display_override: Option<ui::Display>) {
-        let mut style = tree.get_style(self.node_id).unwrap().clone();
-        style.min_size = self.min_size(tree);
-        tree.set_style(self.node_id, style);
+    fn update_styles(
+        &mut self, 
+        shell: &mut StyleShell, 
+        _display_override: Option<ui::Display>
+    ) {
+        let mut style = shell.tree.get_style(self.node_id).unwrap().clone();
+        style.min_size = self.min_size(shell.tree, shell.values);
+        shell.tree.set_style(self.node_id, style);
     }
-    // fn set_text_style(&mut self, style: TextStyle) {
-    //     self.text_style = style;
-    // }
 
-    fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
+    fn set_text_style(&mut self, style: TextStyle) {
+        self.text_style = style;
+    }
+
+    fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {
         // self.text_style.font_size *= shell.ui_scale;
         self.node_id = shell.tree.new_leaf(Style::default())?;
         Ok(self.node_id)
     }
 
-    fn update(
-        &mut self, 
-        shell: &mut UpdateShell<'_>, 
-        actions: &mut ActionQueue
-    ) {
+    fn update(&mut self, shell: &mut UpdateShell) {
         if self.text.update(shell.values) {
-            let min = self.min_size(shell.tree);
-            actions.push(UiAction::new(self.node_id, UiActionType::UpdateStyleWith(Box::new(move |style| style.min_size = min))));
-            actions.push(UiAction::new(self.node_id, UiActionType::MarkDirty));
+            let min = self.min_size(shell.tree, shell.values);
+            shell.actions.push(UiAction::new(
+                self.node_id, 
+                UiActionType::UpdateStyleWith(Box::new(
+                    move |style| style.min_size = min
+                ))
+            ));
+            shell.actions.push(UiAction::new(
+                self.node_id, 
+                UiActionType::MarkDirty,
+            ));
         }
+
+        self.text_style = shell
+            .tree
+            .get_context(self.node_id)
+            .unwrap()
+            .element_data
+            .style()
+            .0
+            .text_style(shell.values);
     }
     
-    fn draw(
-        &self, 
-        shell: &mut DrawShell<'_>, 
-    ) {
+    fn draw(&self, shell: &mut DrawShell) {
         let Some(bounds) = shell.tree.absolute_bounds(self) else { return };
-        let Some(ctx) = shell.tree.get_context(self.node_id) else { return };
-        let style = ctx.element_data.style().0.text_style();
-
-        shell.list.push(style.create_text(self.text.get().clone().into_owned(), bounds));
+        // let Some(ctx) = shell.tree.get_context(self.node_id) else { return };
+        
+        let text = self.text.get();
+        shell.list.push(self.text_style.create_text(
+            text.into_owned(), 
+            bounds
+        ));
     }
 }
 
@@ -97,8 +115,8 @@ impl WidgetText {
     }
     pub fn set(&mut self, value: String) {
         match self {
-            WidgetText::String(cow) => *cow = Cow::Owned(value),
-            WidgetText::Custom { cached, .. } => *cached = value,
+            Self::String(cow) => *cow = Cow::Owned(value),
+            Self::Custom { cached, .. } => *cached = value,
         }
     }
 
@@ -116,9 +134,9 @@ impl WidgetText {
         }
     }
 }
-impl From<&'static str> for WidgetText {
-    fn from(value: &'static str) -> Self {
-        Self::String(value.into())
+impl From<&str> for WidgetText {
+    fn from(value: &str) -> Self {
+        Self::String(Cow::Owned(value.to_owned()))
     }
 }
 impl From<String> for WidgetText {
@@ -145,25 +163,15 @@ impl From<TextBuilderValue> for WidgetText {
     }
 }
 
-impl From<TextBuilderValue> for BuildableTextInner {
-    fn from(value: TextBuilderValue) -> Self {
-        match value {
-            TextBuilderValue::Static(s) => BuildableTextInner::Text(s),
-            TextBuilderValue::Variable(v) => BuildableTextInner::Variable(v),
-            TextBuilderValue::Calc(c) => BuildableTextInner::Calc(c),
-            TextBuilderValue::List(_list, _join) => panic!("nested list is unsupported!"),
-        }
-    }
-}
 impl From<TextBuilderValue> for BuildableText {
     fn from(value: TextBuilderValue) -> Self {
         match value {
-            TextBuilderValue::Static(s) => BuildableTextInner::Text(s).into(),
-            TextBuilderValue::Variable(v) => BuildableTextInner::Variable(v).into(),
-            TextBuilderValue::Calc(c) => BuildableTextInner::Calc(c).into(),
-            TextBuilderValue::List(list, join) => BuildableText {
-                join: Some(join),
-                text: list.into_iter().map(|i| i.into()).collect()
+            TextBuilderValue::Static(s) => BuildableText::Text { text: s },
+            TextBuilderValue::Variable(v) => BuildableText::Variable  { variable: v },
+            TextBuilderValue::Calc(c) => BuildableText::Calc { calc: c },
+            TextBuilderValue::List(list, join) => BuildableText::List {
+                join,
+                list: list.into_iter().map(|i| i.into()).collect()
             },
         }
     }

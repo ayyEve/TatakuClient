@@ -34,6 +34,22 @@
                 <song><play/></song>
             </actions>
         </event>
+
+        <event>
+            <keyPress key = "Escape" />
+            <actions>
+                <conditional cond = "var.lobby.last_escape - now() > 2000">
+                    <true>
+                        <setMenu id="main_menu"/>
+                    </true>
+                    <false>
+                        <setValue key="var.lobby.last_escape">
+                            <calc calc="now()"/>
+                        </setValue>
+                    </false>
+                </conditional>
+            </actions>
+        </event>
     </events>
 
 
@@ -62,7 +78,7 @@
                                                 <!-- and the slot isnt us, kick -->
                                                 <multiplayer>
                                                     <slot>
-                                                        <slot><variable>_slot.id</variable></slot>
+                                                        <slot><variable var="_slot.id"/></slot>
                                                         <kick/>
                                                     </slot>
                                                 </multiplayer>
@@ -76,7 +92,7 @@
                                                 <true> 
                                                     <multiplayer>
                                                         <slot>
-                                                            <slot><variable>_slot.id</variable></slot>
+                                                            <slot><variable var="_slot.id"/></slot>
                                                             <unlock/>
                                                         </slot>
                                                     </multiplayer>
@@ -85,7 +101,7 @@
                                                 <false>
                                                     <multiplayer>
                                                         <slot>
-                                                            <slot><variable>_slot.id</variable></slot>
+                                                            <slot><variable var="_slot.id"/></slot>
                                                             <lock/>
                                                         </slot>
                                                     </multiplayer>
@@ -100,7 +116,7 @@
                                     <true>
                                         <!-- crown icon -->
                                         <text class = "slot-icon" style = "font: icon">
-                                            <text>&#xF521;</text>
+                                            <text text="&#xF521;"/>
                                         </text>
                                     </true>
                                     <false>
@@ -108,13 +124,13 @@
                                             <true>
                                                 <!-- lock -->
                                                 <text class = "slot-icon" style = "font: icon;">
-                                                    <text>&#xF13E;</text>
+                                                    <text text="&#xF13E;"/>
                                                 </text>
                                             </true>
                                             <false>
                                                 <!-- unlock -->
                                                 <text class = "slot-icon" style = "font: icon;">
-                                                    <text>&#xF023;</text>
+                                                    <text text="&#xF023;"/>
                                                 </text>
                                             </false>
                                         </conditional>
@@ -131,7 +147,7 @@
                                     <action>
                                         <multiplayer>
                                             <slot>
-                                                <slot><variable>_slot.id</variable></slot>
+                                                <slot><variable var="_slot.id"/></slot>
                                                 <showProfile/>
                                             </slot>
                                         </multiplayer>
@@ -140,10 +156,10 @@
                                     <element>
                                         <text>
                                             <list join = "">
-                                                <variable>_slot.user.username</variable>
-                                                <text> (</text>
-                                                <variable>_slot.user.status</variable>
-                                                <text>)</text>
+                                                <variable var="_slot.user.username"/>
+                                                <text text=" ("/>
+                                                <variable var="_slot.user.status"/>
+                                                <text text=")"/>
                                             </list>
                                         </text>
                                     </element>
@@ -155,7 +171,7 @@
                                         <conditional cond="!_slot.locked">
                                             <multiplayer>
                                                 <slot>
-                                                    <slot><variable>_slot.id</variable></slot>
+                                                    <slot><variable var="_slot.id"/></slot>
                                                     <move/>
                                                 </slot>
                                             </multiplayer>
@@ -163,7 +179,7 @@
                                     </action>
                                     <element>
                                         <text>
-                                            <text>Empty</text>
+                                            <text text="Empty"/>
                                         </text>
                                     </element>
                                 </button>
@@ -183,7 +199,7 @@
                         <conditional cond="lobby.is_host">
                             <true>
                                 <!-- if we're the host, always override the button with opening the beatmap select menu -->
-                                <setMenu>beatmap_select</setMenu>
+                                <setMenu id="beatmap_select"/>
                             </true>
                             <false>
                                 <!-- if we're not the host, and we don't have the beatmap -->
@@ -203,11 +219,18 @@
                                     <true>
                                         <text>
                                             <list>
-                                                <variable>beatmaps.current.map.artist</variable> <text> - </text> <variable>beatmaps.current.map.title</variable> 
-                                                <text>&#xA;</text> <!-- newline -->
-                                                <variable>beatmaps.current.map.version</variable> <text> // </text> <variable>beatmaps.current.map.creator</variable> 
-                                                <text>&#xA;</text> <!-- newline -->
-                                                <text>Click here to change the beatmap</text>
+                                                <variable var="beatmaps.current.map.artist"/> 
+                                                <text text = " - "/> 
+                                                <variable var = "beatmaps.current.map.title"/>
+                                                <!-- newline -->
+                                                <text text="&#xA;"/>
+
+                                                <variable var="beatmaps.current.map.version"/> 
+                                                <text text=" // "/> 
+                                                <variable var="beatmaps.current.map.creator"/> 
+                                                <!-- newline -->
+                                                <text text="&#xA;"/> 
+                                                <text text="Click here to change the beatmap"/>
                                             </list>
                                         </text>
                                     </true>
@@ -216,21 +239,24 @@
                                             <true>
                                                 <text>
                                                     <list>
-                                                        <variable>lobby.info.current_beatmap.title</variable>
-                                                        <text> (</text>
-                                                            <variable>lobby.info.current_beatmap.mode</variable>
-                                                        <text>)</text>
-                                                        <text>&#xA;</text> <!-- newline -->
-                                                        <text>Click here to change the beatmap</text>
+                                                        <variable var="lobby.info.current_beatmap.title"/>
+                                                        <text text=" ("/>
+                                                            <variable var="lobby.info.current_beatmap.mode"/>
+                                                        <text text=")"/>
+
+                                                        <!-- newline -->
+                                                        <text text="&#xA;"/>
+
+                                                        <text text="Click here to change the beatmap"/>
                                                     </list>
                                                 </text>
                                             </true>
                                             <false>
                                                 <text>
                                                     <list>
-                                                        <text>No beatmap</text>
-                                                        <text>&#xA;</text> <!-- newline -->
-                                                        <text>Click here to change the beatmap</text>
+                                                        <text text="No beatmap"/>
+                                                        <text text="&#xA;"/> <!-- newline -->
+                                                        <text text="Click here to change the beatmap"/>
                                                     </list>
                                                 </text>
                                             </false>
@@ -243,10 +269,17 @@
                                 <conditional cond="lobby.we_have_beatmap">
                                     <true>
                                         <text>
-                                            <list join=" ">
-                                                <variable>beatmaps.current.map.artist</variable> <text> - </text> <variable>beatmaps.current.map.title</variable> 
-                                                <text>&#xA;</text>
-                                                <variable>beatmaps.current.map.version</variable> <text> // </text> <variable>beatmaps.current.map.creator</variable>
+                                            <list>
+                                                <variable var="beatmaps.current.map.artist"/> 
+                                                <text text=" - "/>
+                                                <variable var="beatmaps.current.map.title"/> 
+                                                
+                                                <!-- newline -->
+                                                <text text="&#xA;"/>
+                                                
+                                                <variable var="beatmaps.current.map.version"/> 
+                                                <text text=" // "/>
+                                                <variable var="beatmaps.current.map.creator"/>
                                             </list>
                                         </text>
                                     </true>
@@ -256,16 +289,16 @@
                                             <true>
                                                 <text>
                                                     <list>
-                                                        <variable>lobby.info.current_beatmap.title</variable>
-                                                        <text> (</text>
-                                                            <variable>lobby.info.current_beatmap.mode</variable>
-                                                        <text>)</text>
+                                                        <variable var="lobby.info.current_beatmap.title"/>
+                                                        <text text=" ("/>
+                                                            <variable var="lobby.info.current_beatmap.mode"/>
+                                                        <text text=")"/>
                                                     </list>
                                                 </text>
                                             </true>
                                             <false>
                                                 <text>
-                                                    <text>No beatmap</text>
+                                                    <text text="No beatmap"/>
                                                 </text>
                                             </false>
                                         </conditional>
@@ -285,7 +318,7 @@
                         </action>
                         <element>
                             <text>
-                                <text>Leave Lobby</text>
+                                <text text="Leave Lobby"/>
                             </text>
                         </element>
                     </button>
@@ -323,12 +356,12 @@
                                     <conditional cond="lobby.is_host">
                                         <true>
                                             <text>
-                                                <text>Start</text>
+                                                <text text="Start"/>
                                             </text>
                                         </true>
                                         <false>
                                             <text>
-                                                <text>Un-Ready</text>
+                                                <text text="Un-Ready"/>
                                             </text>
                                         </false>
                                     </conditional>
@@ -336,7 +369,7 @@
                                 <false>
                                     <!-- otherwise, show "ready" -->
                                     <text>
-                                        <text>Ready</text>
+                                        <text text="Ready"/>
                                     </text>
                                 </false>
                             </conditional>

@@ -2,6 +2,8 @@ use crate::prelude::*;
 
 #[derive(Debug)]
 pub enum OnlineAction {
+    ChatAction(ChatAction),
+
     SpectateHost { host_id: u32 },
     StopSpectating { host_id: u32 },
     // TODO: do we want to batch these? they're techncially already batched before being sent to the server
@@ -33,7 +35,6 @@ impl From<ChatPacket> for OnlineAction {
         Self::Packet(Box::new(value.into()))
     }
 }
-
 impl From<OnlineAction> for TatakuAction {
     fn from(value: OnlineAction) -> Self {
         TatakuAction::Online(value)

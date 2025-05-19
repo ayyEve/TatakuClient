@@ -40,7 +40,10 @@ impl Downloader {
     }
 
 
-    async fn perform_download(options: &DownloadOptions, progress: &Arc<RwLock<DownloadProgress>>) -> TatakuResult {
+    async fn perform_download(
+        options: &DownloadOptions, 
+        progress: &Arc<RwLock<DownloadProgress>>
+    ) -> TatakuResult {
         let params = UrlParams::parse(&options.url).unwrap();
         debug!("got params: {params:?}");
 

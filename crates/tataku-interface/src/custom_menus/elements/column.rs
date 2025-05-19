@@ -12,7 +12,7 @@ pub struct ColumnElement {
 }
 
 impl CustomElement for ColumnElement {
-    fn build(&self, shell: &mut ElementBuildShell<'_>) -> Box<dyn Widget> {
+    fn build(&self) -> Box<dyn Widget> {
         let mut classes = self.class_list.clone();
         classes.push("column");
         
@@ -21,7 +21,7 @@ impl CustomElement for ColumnElement {
             "column",
             self.id.clone(),
             classes,
-            Container::new(self.children.iter().map(|e| e.build(shell)).collect()).boxed()
+            Container::new(self.children.iter().map(|e| e.build()).collect()).boxed()
         )
     }
 }

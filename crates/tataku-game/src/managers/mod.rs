@@ -8,8 +8,8 @@ mod cursor_manager;
 mod beatmap_manager;
 mod gameplay_manager;
 mod download_manager;
+mod xml_test_manager;
 mod difficulty_manager;
-mod variable_collection;
 mod notification_manager;
 
 #[cfg(feature="gameplay")] mod spectator_manager;
@@ -21,7 +21,6 @@ mod notification_manager;
 pub use ui_manager::*;
 pub use skin_manager::*;
 pub use song_manager::*;
-pub use task_manager::*;
 pub use sound_manager::*;
 pub use score_manager::*;
 pub use cursor_manager::*;
@@ -29,8 +28,9 @@ pub use beatmap_manager::*;
 pub use gameplay_manager::*;
 pub use download_manager::*;
 pub use difficulty_manager::*;
-pub use variable_collection::*;
 pub use notification_manager::*;
+pub(crate) use task_manager::*;
+pub(crate) use xml_test_manager::*;
 
 #[cfg(feature="gameplay")] pub use spectator_manager::*;
 #[cfg(feature="gameplay")] pub use multiplayer_manager::*;

@@ -2,6 +2,7 @@ mod game;
 mod tasks;
 #[cfg(feature="graphics")]
 mod menus;
+mod values;
 mod helpers;
 mod managers;
 mod database;

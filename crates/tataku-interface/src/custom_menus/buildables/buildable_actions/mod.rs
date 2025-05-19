@@ -1,4 +1,5 @@
 mod action;
+mod chat;
 mod mod_action;
 mod map_action;
 mod slot_action;
@@ -8,7 +9,7 @@ mod cursor_action;
 mod gameplay_action;
 mod multiplayer_action;
 
-
+pub use chat::*;
 pub use action::*;
 pub use mod_action::*;
 pub use map_action::*;

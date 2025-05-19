@@ -70,7 +70,10 @@ pub enum CurrentGameAction {
     Resume,
 
     /// Pause the current game and open the provided menu
-    Pause(String),
+    Pause {
+        id: String,
+        input: BuildableInputArguments,
+    },
 
     Restart,
 

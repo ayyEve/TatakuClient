@@ -6,13 +6,15 @@ use crate::prelude::ui::*;
 #[widget(type("container"))]
 pub struct Button {
     #[chain] pub style: Style,
-    #[chain] pub on_press: ButtonOnClick,
+    #[chain] pub on_press_left: ButtonOnClick,
+    #[chain] pub on_press_middle: ButtonOnClick,
+    #[chain] pub on_press_right: ButtonOnClick,
     pub child: Box<dyn Widget>,
     
     visual_active_cond: VisuallyActive,
 
     /// did a click start on us (and the cursor has not moved)
-    active: bool,
+    active: Option<MouseButton>,
     hovered: bool,
 
     node_id: NodeId,
@@ -23,11 +25,13 @@ impl Button {
             style: Style::DEFAULT,
             child,
             node_id: EMPTY_NODE,
-            on_press: ButtonOnClick::Message(None),
+            on_press_left: ButtonOnClick::Message(None),
+            on_press_middle: ButtonOnClick::Message(None),
+            on_press_right: ButtonOnClick::Message(None),
             visual_active_cond: VisuallyActive::None,
 
+            active: None,
             hovered: false,
-            active: false,
         }
     }
 
@@ -42,17 +46,24 @@ impl Button {
         self.active_condition(cond)
     }
     
-}
 
+    pub fn on_press(self, on_press: impl Into<ButtonOnClick>) -> Self {
+        self.on_press_left(on_press)
+    }
+}
 impl Widget for Button {
     fn name(&self) -> Cow<'static, str> { "button_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn update_styles(&mut self, tree: &mut Tree, resolver: &mut CssResolver, display_override: Option<ui::Display>) {
-        self.child.update_styles(tree, resolver, display_override);
+    fn update_styles(
+        &mut self, 
+        shell: &mut StyleShell,
+        display_override: Option<ui::Display>
+    ) {
+        self.child.update_styles(shell, display_override);
     }
 
-    fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId>  {
+    fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId>  {
         let child = self.child.layout(shell)?;
         self.node_id = shell.tree.new_with_children(Style { 
             ..self.style.clone()
@@ -76,21 +87,28 @@ impl Widget for Button {
  
         match &event.event {
             InputType::MouseMove(pos) => {
-                if self.active { self.active = false }
+                if self.active.is_some() { self.active = None }
                 let pos = context.inverse_global_transform * *pos;
                 self.hovered = bounds.contains(pos);
             }
-            InputType::MouseScroll(_) if self.active => self.active = false,
+            InputType::MouseScroll(_) if self.active.is_some() => self.active = None,
             
-            InputType::MousePress(MouseButton::Left) if self.hovered => {
-                self.active = true;
+            InputType::MousePress(mb) if self.hovered => {
+                self.active = Some(*mb);
                 shell.event_consumed = true;
             }
 
-            InputType::MouseRelease(MouseButton::Left) if self.active => {
-                if let Some(message) = self.on_press.resolve(
-                    shell.owner,
-                    None,
+            InputType::MouseRelease(mb) if self.active == Some(*mb) => {
+                let action = match mb {
+                    MouseButton::Left => &self.on_press_left,
+                    MouseButton::Middle => &self.on_press_middle,
+                    MouseButton::Right => &self.on_press_right,
+                    _ => return,
+                };
+
+                if let Some(message) = action.resolve(
+                    self.node_id,
+                    &None,
                     shell.values
                 ) {
                     match message {
@@ -109,14 +127,11 @@ impl Widget for Button {
     }
     
     
-    fn draw(
-        &self, 
-        shell: &mut DrawShell<'_>,
-    ) {
+    fn draw(&self, shell: &mut DrawShell) {
         let theme = &shell.general_theme;
         let Some(bounds) = shell.tree.absolute_bounds(self) else { return };
 
-        let active = self.active || self.visual_active_cond.get();
+        let active = self.active.is_some() || self.visual_active_cond.get();
 
         // draw button
         shell.list.push(Rectangle::new_bounds(
@@ -129,38 +144,30 @@ impl Widget for Button {
         self.child.draw(shell);
     }
 
-    fn draw_overlay(
-        &self, 
-        shell: &mut DrawShell<'_>,
-    ) {
+    fn draw_overlay(&self, shell: &mut DrawShell) {
         self.child.draw_overlay(shell);
     }
     
-    fn update(
-        &mut self, 
-        shell: &mut UpdateShell<'_>, 
-        actions: &mut ActionQueue
-    ) {
+    fn update(&mut self, shell: &mut UpdateShell ) {
         self.visual_active_cond.update(shell.values);
-        self.child.update(shell, actions);
+        self.child.update(shell);
     }
 
     fn handle_message(
         &mut self, 
         message: &Message, 
-        values: &mut dyn Reflect, 
-        actions: &mut ActionQueue,
+        shell: &mut MessageShell,
     ) {
-        self.child.handle_message(message, values, actions);
+        self.child.handle_message(message, shell);
     }
 
     fn handle_event(
         &mut self, 
         event: TatakuEventType, 
         event_value: Option<TatakuValue>, 
-        values: &mut dyn Reflect
+        shell: &mut MessageShell,
     ) {
-        self.child.handle_event(event, event_value, values)
+        self.child.handle_event(event, event_value, shell)
     }
 
     fn reload_skin(&mut self, shell: &mut UpdateShell) {
@@ -180,8 +187,8 @@ pub enum ButtonOnClick {
 impl ButtonOnClick {
     pub fn resolve(
         &self, 
-        _owner: MessageOwner,
-        passed_in: Option<TatakuValue>,
+        node: NodeId,
+        passed_in: &Option<TatakuValue>,
         values: &mut dyn Reflect
     ) -> Option<ActionResponse> {
         match self {
@@ -189,7 +196,7 @@ impl ButtonOnClick {
             Self::BuildableAction(action) => {
                 let mut a = action.clone();
                 a.build(values);
-                a.into_action(values, passed_in).map(ActionResponse::Action)
+                a.into_action(node, values, passed_in).map(ActionResponse::Action)
             },
             Self::Callback(cb) => (cb)().map(ActionResponse::Message),
         }

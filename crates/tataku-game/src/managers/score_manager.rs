@@ -54,7 +54,7 @@ impl ScoreManager {
     }
 
 
-    pub async fn get_scores(&mut self, values: &mut ValueCollection) -> TatakuResult {
+    pub fn get_scores(&mut self, values: &mut ValueCollection) -> TatakuResult {
         if self.current_loader.take().is_some() {
             if let Some(abort) = self.abort_handle.take() {
                 abort.abort();
@@ -78,7 +78,7 @@ impl ScoreManager {
 
                 let handle = tokio::spawn(async move {
                     let map_hash = map_hash.to_string();
-                    let mut local_scores = Database::get_scores(&map_hash, playmode, infos).await;
+                    let mut local_scores = Database::get_scores(&map_hash, playmode, infos);
 
                     if method.filter_by_mods() {
                         local_scores.retain(|s| Self::check_mods(&s.mods, &mods));
@@ -166,7 +166,7 @@ impl ScoreManager {
         self.score_method.as_ref().copied().unwrap_or_default()
     }
     
-    pub async fn update(&mut self, values: &mut ValueCollection) {
+    pub fn update(&mut self, values: &mut ValueCollection) {
         let did_update = 
             self.beatmap.update(values).ok().and_then(|a| a).is_some() // if the map changed
             | self.playmode.update(values).unwrap().is_some() // or the actual playmode changed
@@ -186,7 +186,7 @@ impl ScoreManager {
             values.score_list.loaded = false;
             
             // and then get new scores
-            if let Err(e) = self.get_scores(values).await {
+            if let Err(e) = self.get_scores(values) {
                 warn!("error getting scores: {e}");
             }
         }

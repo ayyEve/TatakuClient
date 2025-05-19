@@ -2,6 +2,7 @@ use crate::prelude::*;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
+#[serde(rename_all="camelCase")]
 pub struct TextInputElement {
     #[serde(rename = "@id", default)] id: Option<String>,
     #[serde(rename = "@class", default)] class_list: ClassList,
@@ -12,21 +13,20 @@ pub struct TextInputElement {
     #[serde(rename = "@variable")] variable: String,
     #[serde(rename = "@password", default)] is_password: bool,
 
-    #[serde(default)] placeholder: BuildableText,
-    #[serde(alias="onInput", default)] on_input: Option<BuildableActionTag>,
-    #[serde(alias="onSubmit", default)] on_submit: Option<BuildableActionTag>,
+    #[serde(default)] placeholder: BuildableTextTag,
+    #[serde(default)] on_input: Option<BuildableActionTag>,
+    #[serde(default)] on_submit: Option<BuildableActionTag>,
 }
-
 impl CustomElement for TextInputElement {
-    fn build(&self, _shell: &mut ElementBuildShell<'_>) -> Box<dyn Widget> {
+    fn build(&self) -> Box<dyn Widget> {
         WidgetContainer::new_boxed(
             self.style.clone(),
             "textInput",
             self.id.clone(),
             self.class_list.clone(),
             TextInput::new(
-                self.placeholder.clone(),
-                BuildableText::from(BuildableTextInner::Variable(self.variable.clone()))
+                self.placeholder.value.clone(),
+                BuildableText::Variable { variable: self.variable.clone() }
             )
             .secure(self.is_password)
             .on_input_maybe(self.on_input.as_deref().cloned())

@@ -10,19 +10,34 @@ pub enum BuildableGameAction {
     /// View a score by id
     ViewScore { 
         #[serde(rename="$value", alias="$text")] 
-        score: BuildableValueTag
+        score: BuildableValue
     },
     
     #[serde(rename="notification")]
     ShowNotification {
         text: BuildableTextTag,
         #[serde(alias = "@color")] color: Color,
-        duration: BuildableValueTag
+        duration: BuildableValueTag,
+    },
+
+    CopyToClipboard {
+        #[serde(alias="$value")]
+        text: BuildableText,
     },
 }
 impl BuildableGameAction {
-    pub fn into_action(self, values: &mut dyn Reflect, passed_in: Option<TatakuValue>) -> Option<GameAction> {
+    pub fn into_action(
+        self, 
+        values: &mut dyn Reflect, 
+        passed_in: &Option<TatakuValue>
+    ) -> Option<GameAction> {
         match self {
+            Self::CopyToClipboard { mut text } => {
+                let _ = text.compute();
+                let text = text.to_string(values);
+                Some(GameAction::CopyToClipboard(text))
+            }
+
             Self::Quit => Some(GameAction::Quit),
             Self::ShowNotification {
                 text, color, duration
@@ -34,24 +49,36 @@ impl BuildableGameAction {
             ))),
 
             Self::ViewScore { score } => {
-                Some(GameAction::ViewScoreId(score.resolve(values, passed_in)?.as_u64().ok()? as usize))
+                let score_id = score
+                    .resolve(values, passed_in)?
+                    .as_u64()
+                    .ok()? as usize;
+
+                println!("score: {score_id}");
+
+                Some(GameAction::ViewScoreId(score_id))
             }
         }
     }
     
     pub fn build(&mut self, values: &dyn Reflect) {
-        let thing = match self {
-            Self::ViewScore { score } => score,
-            Self::ShowNotification { text, duration, .. } => {
+        match self {
+            Self::ViewScore { 
+                score 
+            } => score.resolve_pre(values),
+            Self::ShowNotification { 
+                text, 
+                duration, 
+                .. 
+            } => {
                 if let Err(e) = text.compute() {
                     error!("error parsing text '{text:?}': {e:?}");
                 }
 
-                duration
+                duration.resolve_pre(values);
             }
-            Self::Quit => return,
+            Self::Quit => {},
+            Self::CopyToClipboard { .. } => {},
         };
-
-        thing.value.resolve_pre(values);
     }
 }

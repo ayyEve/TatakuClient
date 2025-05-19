@@ -9,7 +9,6 @@ pub struct GameplayPreview {
     song_time: ValueChangeHelper<f32>,
 
     manager: Option<GameplayId>,
-    owner: MessageOwner,
 
     #[chain] pub visualization: Option<MenuVisualization>,
 
@@ -37,7 +36,6 @@ impl GameplayPreview {
         use_global_playmode: bool, 
         apply_rate: bool, 
         check_enabled: Arc<dyn Fn(&Settings) -> bool + Send + Sync>, 
-        owner: MessageOwner,
     ) -> Self {
         let a: Arc<dyn TatakuRenderable> = Arc::new(TransformGroup::new(Vector2::ZERO));
         let (widget_sender, widget_receiver) = TripleBuffer::new(&a).split();
@@ -51,7 +49,6 @@ impl GameplayPreview {
 
             visualization: None,
             handle_song_restart: false,
-            owner,
 
             // settings: SettingsHelper::new(),
             manager: None,
@@ -84,6 +81,7 @@ impl GameplayPreview {
 
     pub fn setup(
         &mut self, 
+        owner: MessageOwner,
         values: &dyn Reflect, 
         actions: &mut ActionQueue
     ) {
@@ -94,7 +92,7 @@ impl GameplayPreview {
 
         let draw_sender = self.widget_sender.clone();
         actions.push(GameAction::NewGameplayManager(NewManager {
-            owner: self.owner,
+            owner,
             playmode: (!self.use_global_playmode).then(|| settings.background_game_settings.mode.clone()),
             gameplay_mode: Some(GameplayMode::Preview),
             area: self.fit_to,
@@ -113,9 +111,7 @@ impl Widget for GameplayPreview {
     fn name(&self) -> Cow<'static, str> { "gameplay_preview_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn update_styles(&mut self, _tree: &mut Tree, _resolver: &mut CssResolver, _display_override: Option<ui::Display>) {}
-
-    fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
+    fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {
         self.node_id = shell.tree.new_leaf(self.style.clone())?;
         Ok(self.node_id)
     }
@@ -123,23 +119,19 @@ impl Widget for GameplayPreview {
     fn handle_message(
         &mut self, 
         message: &Message, 
-        _values: &mut dyn Reflect,
-        actions: &mut ActionQueue
+        shell: &mut MessageShell,
     ) {
         let MessageTag::String(str) = &message.tag else { return };
         if str != "gameplay_manager_create" { return }
 
         let MessageValue::GameplayManagerId(id) = &message.value else { return error!("wrong type") };
         self.manager = Some(id.clone());
+        shell.handled = true;
 
-        actions.push(GameAction::GameplayAction(id.clone(), GameplayAction::Resume));
+        shell.actions.push(GameAction::GameplayAction(id.clone(), GameplayAction::Resume));
     }
 
-    fn update(
-        &mut self, 
-        shell: &mut UpdateShell<'_>, 
-        actions: &mut ActionQueue
-    ) {
+    fn update(&mut self, shell: &mut UpdateShell) {
         self.widget_receiver.update();
         let settings = shell.values.reflect_get::<Settings>("settings").unwrap();
         
@@ -151,7 +143,7 @@ impl Widget for GameplayPreview {
         let last_song_time = self.song_time.unwrap_or_default();
         if let Ok(Some(time)) = self.song_time.update(shell.values) {
             if *time < last_song_time {
-                self.setup(shell.values, actions);
+                self.setup(shell.owner, shell.values, shell.actions);
             }
         }
 
@@ -161,7 +153,7 @@ impl Widget for GameplayPreview {
         let b = self.playmode.update(shell.values);
         match (a, b) {
             (Ok(Some(_)), _)
-            | (_, Ok(Some(_))) => self.setup(shell.values, actions),
+            | (_, Ok(Some(_))) => self.setup(shell.owner, shell.values, shell.actions),
             _=> {}
         }
 
@@ -173,14 +165,14 @@ impl Widget for GameplayPreview {
                 self.fit_to = Some(bounds);
 
                 if let Some(manager) = self.manager.clone() { 
-                    actions.push(GameAction::GameplayAction(manager, GameplayAction::FitToArea(bounds)));
+                    shell.actions.push(GameAction::GameplayAction(manager, GameplayAction::FitToArea(bounds)));
                 };
             }
         }
 
         // update vis
         if let Some((vis, bounds)) = self.visualization.as_mut().zip(bounds) {
-            vis.update(bounds, actions);
+            vis.update(bounds, shell.actions);
         }
 
         // check for state update
@@ -195,12 +187,12 @@ impl Widget for GameplayPreview {
             if exists {
                 if stopped {
                     if let Ok(preview) = shell.values.reflect_get::<f32>("beatmaps.current.map.preview") {
-                        actions.push(SongAction::SetPosition(*preview));
+                        shell.actions.push(SongAction::SetPosition(*preview));
                         if self.apply_rate {
-                            actions.push(SongAction::SetRate(speed));
+                            shell.actions.push(SongAction::SetRate(speed));
                         }
 
-                        actions.push(SongAction::Play);
+                        shell.actions.push(SongAction::Play);
                     }
                 }
             } else {
@@ -208,7 +200,7 @@ impl Widget for GameplayPreview {
                 let audio_path = shell.values.reflect_get::<String>("beatmaps.current.map.audio_path").ok();
                 
                 if let Some((path, preview)) = audio_path.zip(preview_time) {
-                    actions.push(SongAction::Set(SongMenuSetAction::FromFile(path.deref().clone(), SongPlayData {
+                    shell.actions.push(SongAction::Set(SongMenuSetAction::FromFile(path.deref().clone(), SongPlayData {
                         play: true,
                         position: Some(*preview),
                         rate: self.apply_rate.then_some(speed),
@@ -221,10 +213,7 @@ impl Widget for GameplayPreview {
         }
     }
 
-    fn draw(
-        &self, 
-        shell: &mut DrawShell<'_>, 
-    ) {
+    fn draw(&self, shell: &mut DrawShell) {
         // add gameplay
         shell.list.push_arced(self.widget_receiver.peek_output_buffer().clone());
 
@@ -252,7 +241,7 @@ impl Widget for GameplayPreview {
 }
 impl Clone for GameplayPreview {
     fn clone(&self) -> Self {
-        Self::new(self.use_global_playmode, self.apply_rate, self.check_enabled.clone(), self.owner)
+        Self::new(self.use_global_playmode, self.apply_rate, self.check_enabled.clone())
     }
 }
 impl core::fmt::Debug for GameplayPreview {

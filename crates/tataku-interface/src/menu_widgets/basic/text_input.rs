@@ -479,31 +479,30 @@ impl Widget for TextInput {
 
     fn update_styles(
         &mut self, 
-        tree: &mut Tree, 
-        _resolver: &mut CssResolver, 
+        shell: &mut StyleShell,
         _display_override: Option<ui::Display>
     ) {
-        let text_size = tree
+        let text_size = shell.tree
             .get_context(self.node_id)
             .unwrap()
             .element_data.style()
-            .0.text_style()
+            .0.text_style(shell.values)
             .measure_text(&self.get_text(), None)
             ;
 
-        let mut style = tree.get_style(self.node_id).unwrap().clone();
+        let mut style = shell.tree.get_style(self.node_id).unwrap().clone();
         style.min_size = Size {
             width: Dimension::Length(text_size.x),
             height: Dimension::Length(text_size.y),
         };
-        tree.set_style(self.node_id, style);
+        shell.tree.set_style(self.node_id, style);
     }
 
     fn set_text_style(&mut self, style: TextStyle) {
         self.text_style = style;
     }
 
-    fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
+    fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {
         // let min_size = self.text_style.measure_text(&self.get_text(), None);
         self.text_style.font_size *= shell.ui_scale;
 
@@ -528,7 +527,7 @@ impl Widget for TextInput {
     fn input(
         &mut self,
         event: &InputEvent,
-        shell: &mut InputShell<'_>,
+        shell: &mut InputShell,
     ) {
         match &event.event {
             InputType::KeyPress(press) if self.active => {
@@ -559,18 +558,12 @@ impl Widget for TextInput {
 
                     if text_changed {
                         if let WidgetText::Custom { 
-                            custom,
-                            // : BuildableText {
-                            //     text: vec! [ BuildableTextInner::Variable(var) ], 
-                            //     ..
-                            // },
+                            custom: BuildableText::Variable { variable },
                             cached 
                         } = &self.value {
-                            if let Some(BuildableTextInner::Variable(var)) = custom.text.first() {
-                                let _ = shell.values
-                                    .reflect_insert(var, cached.clone())
-                                    .inspect_err(|e| warn!("{e:?}"));
-                            }
+                            let _ = shell.values
+                                .reflect_insert(variable, cached.clone())
+                                .inspect_err(|e| warn!("{e:?}"));
                         }
                             
                         self.handle_action(
@@ -651,7 +644,7 @@ impl Widget for TextInput {
     }
 
 
-    fn draw(&self, shell: &mut DrawShell<'_>) {
+    fn draw(&self, shell: &mut DrawShell) {
         let Some(bounds) = shell.tree.absolute_bounds(self) else { return };
 
         shell.list.push(Rectangle::new_bounds(
@@ -723,11 +716,7 @@ impl Widget for TextInput {
         
     }
 
-    fn update(
-        &mut self,
-        shell: &mut UpdateShell<'_>,
-        _actions: &mut ActionQueue,
-    ) {
+    fn update(&mut self, shell: &mut UpdateShell) {
         self.value.update(shell.values);
         self.placeholder.update(shell.values);
     }

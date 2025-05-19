@@ -113,18 +113,26 @@ pub struct Settings {
     pub skip_autosaveing: bool,
 }
 impl Settings {
-    pub async fn load(actions: &mut ActionQueue) -> Self {
-        Self::load_from(SETTINGS_FILE, actions).await
+    pub fn load(actions: &mut ActionQueue) -> Self {
+        Self::load_from(SETTINGS_FILE, actions)
     }
-    pub async fn load_from(path: impl AsRef<Path>, actions: &mut ActionQueue) -> Self {
+    pub fn load_from(path: impl AsRef<Path>, actions: &mut ActionQueue) -> Self {
         let path = path.as_ref();
 
-        let mut s = match std::fs::read_to_string(path).map(|s| serde_json::from_str::<Settings>(&s).map_err(|e| e.to_string())).map_err(|e| e.to_string()) {
+        let mut s = match std::fs::read_to_string(path)
+            .map(|s| serde_json::from_str::<Settings>(&s)
+            .map_err(|e| e.to_string()))
+            .map_err(|e| e.to_string())
+        {
             Ok(Ok(settings)) => settings,
             Err(e) | Ok(Err(e)) => {
-                actions.push(Notification::new_error("Error reading settings.json\nLoading defaults", e.clone()));
                 warn!("Error reading settings.json\nLoading defaults, {e}");
-                if let Some(saved_as) = Self::backup_settings(path).await {
+                actions.push(Notification::new_error(
+                    "Error reading settings.json\nLoading defaults", 
+                    e
+                ));
+                
+                if let Some(saved_as) = Self::backup_settings(path) {
                     info!("Old settings saved to {saved_as}");
                 }
                 Self::default()
@@ -176,7 +184,7 @@ impl Settings {
     }
 
     // make a backup of the setting before they're overwritten (when the file fails to load)
-    async fn backup_settings(settings_path: &Path) -> Option<String> {
+    fn backup_settings(settings_path: &Path) -> Option<String> {
         if !Io::exists(settings_path) { return None }
         let settings_path = settings_path.to_string_lossy().to_string();
 
@@ -186,7 +194,8 @@ impl Settings {
             counter += 1;
             file = format!("{settings_path}.bak_{counter}")
         }
-        std::fs::copy(&settings_path, &file).expect("An error occurred while backing up the old settings.json");
+        std::fs::copy(&settings_path, &file)
+            .expect("An error occurred while backing up the old settings.json");
         // if let Err(e) = std::fs::copy(SETTINGS_FILE, &file) {
         //     NotificationManager::add_error_notification("Error backing up settings.json", e).await
         // } else {

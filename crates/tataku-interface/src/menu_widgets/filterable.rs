@@ -33,11 +33,15 @@ impl Widget for FilterableWidget {
     fn name(&self) -> Cow<'static, str>  { "filterable_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn update_styles(&mut self, tree: &mut Tree, resolver: &mut CssResolver, _display_override: Option<ui::Display>) {
-        self.node.update_styles(tree, resolver, None);
+    fn update_styles(
+        &mut self, 
+        shell: &mut StyleShell,
+        _display_override: Option<ui::Display>
+    ) {
+        self.node.update_styles(shell, None);
     }
 
-    fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId>  {
+    fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId>  {
         let mut children = Vec::with_capacity(2);
         children.push(self.node.layout(shell)?);
         self.node_id = shell.tree.new_with_children(
@@ -48,11 +52,11 @@ impl Widget for FilterableWidget {
         Ok(self.node_id)
     }
 
-    fn draw(&self, shell: &mut DrawShell<'_>) {
+    fn draw(&self, shell: &mut DrawShell) {
         if !self.visible { return }
         self.node.draw(shell);
     }
-    fn draw_overlay(&self, shell: &mut DrawShell<'_>) {
+    fn draw_overlay(&self, shell: &mut DrawShell) {
         if !self.visible { return }
         self.node.draw(shell);
     }
@@ -60,17 +64,13 @@ impl Widget for FilterableWidget {
     fn input(
         &mut self,
         event: &InputEvent,
-        shell: &mut InputShell<'_>,
+        shell: &mut InputShell,
     ) {
         if !self.visible { return }
         self.node.input(event, shell);
     }
 
-    fn update(
-        &mut self, 
-        shell: &mut UpdateShell<'_>, 
-        actions: &mut ActionQueue,
-    ) {
+    fn update(&mut self, shell: &mut UpdateShell) {
         let Ok(filter) = shell.values.reflect_get::<ItemFilter>(&self.variable_to_check)
             .inspect_err(|e| println!("{e:?}")) 
             else { return };
@@ -83,37 +83,33 @@ impl Widget for FilterableWidget {
             } else {
                 ui::Display::None
             };
-            actions.push(UiAction::new(self.node.node_id(), UiActionType::UpdateDisplay(display)));
+            shell.actions.push(UiAction::new(self.node.node_id(), UiActionType::UpdateDisplay(display)));
         }
 
         if !self.visible { return }
-        self.node.update(shell, actions);
+        self.node.update(shell);
     }
     
     fn handle_message(
         &mut self, 
         message: &Message, 
-        values: &mut dyn Reflect, 
-        actions: &mut ActionQueue,
+        shell: &mut MessageShell,
     ) {
         if !self.visible { return }
-        self.node.handle_message(message, values, actions);
+        self.node.handle_message(message, shell);
     }
 
     fn handle_event(
         &mut self, 
         event: TatakuEventType, 
         event_value: Option<TatakuValue>, 
-        values: &mut dyn Reflect,
+        shell: &mut MessageShell,
     ) {
         if !self.visible { return }
-        self.node.handle_event(event, event_value, values);
+        self.node.handle_event(event, event_value, shell);
     }
 
-    fn reload_skin(
-        &mut self, 
-        shell: &mut UpdateShell,
-    ) {
+    fn reload_skin(&mut self, shell: &mut UpdateShell) {
         self.node.reload_skin(shell);
     }
 }

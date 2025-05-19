@@ -128,7 +128,8 @@ impl<'a> CssResolver<'a> {
     ) -> ElementStateStyles<()> {
         let a = format!("* {{ {element_style} }}");
         let e_stylesheet = StyleSheet::parse(&a);
-        let e_style = e_stylesheet.rules
+        let e_style = e_stylesheet
+            .rules
             .first()
             .map(CssStyle::parse_css)
             .unwrap_or_default();
@@ -141,14 +142,24 @@ impl<'a> CssResolver<'a> {
             (ElementState::Focus, &mut states.focus.0),
         ] {
             // resolve the element's style
-            let mut ele_style = self.parsed.iter()
-                .filter(|i| i.selector.matches(&fuck::A::new(tree, node, state)))
-                .fold(e_style.clone(), |a, b| a.merge(b.style.clone()));
+            let mut ele_style = self
+                .parsed
+                .iter()
+                .filter(|i| 
+                    i.selector.matches(&fuck::A::new(tree, node, state))
+                )
+                .fold(
+                    e_style.clone(), 
+                    |a, b| a.merge(b.style.clone())
+                );
 
             // resolve inheritance
             if let Some(parent) = tree.parent(node) {
                 let ctx = tree.get_context(parent).unwrap();
-                let parent_style = ctx.element_data.styles.get_style(ElementState::None);
+                let parent_style = ctx
+                    .element_data
+                    .styles
+                    .get_style(state); // FIXME: should this be ElementState::None??
                 ele_style = ele_style.merge_parent(parent_style.0.clone());
             }
 

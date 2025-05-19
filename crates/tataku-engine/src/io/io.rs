@@ -15,17 +15,6 @@ impl Io {
         
         f
     }
-    /// read a file into bytes
-    pub async fn read_file_async(path: impl AsRef<Path>) -> io::Result<Vec<u8>> {
-        let time = TatakuInstant::now();
-        let f = tokio::fs::read(&path).await;
-
-        let duration = time.as_millis();
-        if duration > 1000.0 { warn!("took {duration:.2}ms to load file bytes {}", path.as_ref().display()); } 
-        // else { info!("took {duration:.2}ms to load file bytes {}", path.as_ref().display()); }
-        
-        f
-    }
 
     /// helper for the read_lines functions
     fn open_file(path: impl AsRef<Path>) -> io::Result<File>{
@@ -109,23 +98,7 @@ impl Io {
 
 }
 
-
-/// download a file from `url` to `download_path`
-pub async fn _download_file(url: impl reqwest::IntoUrl, download_path: impl AsRef<Path>) -> TatakuResult<()> {
-    let bytes = reqwest::get(url).await?.bytes().await?;
-    
-    // check if the received data 
-    if bytes.is_empty() {
-        return Err(TatakuError::String("Downloaded file was empty".to_owned()));
-    }
-
-    std::fs::write(download_path, bytes)?;
-
-    Ok(())
-}
-
-
-pub async fn read_replay_path(
+pub fn read_replay_path(
     path: impl AsRef<Path>,
     infos: &GamemodeInfos,
 ) -> TatakuResult<Score> {

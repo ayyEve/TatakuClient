@@ -98,8 +98,12 @@ impl Widget for LoadingMenu {
     fn name(&self) -> Cow<'static, str> { Cow::Borrowed("loading_menu") }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn update_styles(&mut self, tree: &mut Tree, resolver: &mut CssResolver, display_override: Option<ui::Display>) {
-        self.node.update_styles(tree, resolver, display_override);
+    fn update_styles(
+        &mut self, 
+        shell: &mut StyleShell, 
+        display_override: Option<ui::Display>,
+    ) {
+        self.node.update_styles(shell, display_override);
     }
 
     fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
@@ -114,12 +118,8 @@ impl Widget for LoadingMenu {
         Ok(self.node_id)
     }
 
-    fn update(
-        &mut self, 
-        _shell: &mut UpdateShell<'_>, 
-        actions: &mut ActionQueue
-    ) {
-        actions.extend(self.actions.take());
+    fn update(&mut self, shell: &mut UpdateShell) {
+        shell.actions.extend(self.actions.take());
 
         for status in self.statuses.iter() {
             let status = status.read();
@@ -127,14 +127,11 @@ impl Widget for LoadingMenu {
         }
 
         // loading complete, move to the main menu
-        actions.push(BeatmapAction::Next);
-        actions.push(MenuAction::set_menu("main_menu"));
+        shell.actions.push(BeatmapAction::Next);
+        shell.actions.push(MenuAction::set_menu("main_menu"));
     }
 
-    fn draw(
-        &self,
-        shell: &mut DrawShell<'_>,
-    ) {
+    fn draw(&self, shell: &mut DrawShell) {
         self.node.draw(shell);
     }
 }

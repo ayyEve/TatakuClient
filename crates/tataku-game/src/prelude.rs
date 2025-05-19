@@ -40,6 +40,7 @@ pub use crate::game::*;
 pub use crate::tasks::*;
 #[cfg(feature="graphics")]
 pub use crate::menus::*;
+pub use crate::values::*;
 pub use crate::helpers::*;
 pub use crate::managers::*;
 pub use crate::database::*;

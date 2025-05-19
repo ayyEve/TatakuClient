@@ -1,5 +1,42 @@
 use crate::prelude::*;
 
+#[derive(Copy, Clone, Debug, Default)]
+pub enum ImageFlip {
+    #[default]
+    None,
+    Horizontal,
+    Vertical,
+    Both,
+}
+impl ImageFlip {
+    pub fn new(
+        flip_h: bool,
+        flip_v: bool,
+    ) -> Self {
+        match (flip_h, flip_v) {
+            (true, true) => Self::Both,
+            (true, false) => Self::Horizontal,
+            (false, true) => Self::Vertical,
+            (false, false) => Self::None,
+        }
+    }
+    
+    fn flip_h(self) -> bool {
+        matches!(self, Self::Horizontal | Self::Both)
+    }
+    fn flip_v(self) -> bool {
+        matches!(self, Self::Vertical | Self::Both)
+    }
+    pub fn xor(self, other: Self) -> Self {
+        Self::new(
+            self.flip_h() ^ other.flip_h(),
+            self.flip_v() ^ other.flip_v(),
+        )
+    }
+}
+
+
+
 #[derive(Clone, Debug)]
 pub struct Image {
     // pub size: Vector2,
@@ -20,6 +57,7 @@ pub struct Image {
     pub scale: Vector2,
     pub rotation: f32,
 
+    pub flip: ImageFlip,
     pub draw_debug: bool,
 }
 impl Image {
@@ -39,6 +77,7 @@ impl Image {
             origin,
             tex,
             scissor: None,
+            flip: ImageFlip::None,
             blend_mode: BlendMode::AlphaBlending,
             base_scale,
             draw_debug: false,
@@ -54,7 +93,10 @@ impl Image {
     }
 
     fn raw_tex_size(&self) -> Vector2 {
-        Vector2::new(self.tex.width as f32, self.tex.height as f32)
+        Vector2::new(
+            self.tex.width as f32, 
+            self.tex.height as f32,
+        )
     }
     pub fn tex_size(&self) -> Vector2 { 
         self.raw_tex_size() * self.base_scale
@@ -145,12 +187,12 @@ impl TatakuRenderable for Image {
         &self, 
         options: &DrawOptions, 
         mut transform: Matrix, 
-        g: &mut dyn GraphicsEngine
+        g: &mut dyn GraphicsEngine,
     ) {
         let color = options.color_with_alpha(self.color);
 
-        let h_flip = false;
-        let v_flip = false;
+        // let h_flip = false;
+        // let v_flip = false;
 
         // if scale.x < 0.0 {
         //     scale.x = scale.x.abs();
@@ -168,11 +210,12 @@ impl TatakuRenderable for Image {
             .trans(self.pos) // move to pos
         ;
 
+        let flip = self.flip.xor(options.image_flip);
         g.draw_tex(
             &self.tex, 
             color,
-            h_flip, 
-            v_flip, 
+            flip.flip_h(), 
+            flip.flip_v(), 
             transform, 
             self.blend_mode
         );

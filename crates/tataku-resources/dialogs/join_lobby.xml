@@ -1,0 +1,78 @@
+<?xml version="1.0"?>
+<?xml-model href="../xsd/dialog.xsd"?>
+
+<dialog 
+    id = "join_lobby" 
+    title = "Join Lobby"
+    draggable = "true"
+>
+    <inputs>
+        <input name="lobby_id" path="var.lobby_id" type="integer" required="true"/>
+    </inputs>
+
+    <events>
+        <!-- on menu enter, initialize our temp values/reset existing values -->
+        <event>
+            <menuEnter/>
+            <actions>
+                <setValue key="temp.lobby_password">
+                    <value val=""/>
+                </setValue>
+            </actions>
+        </event>
+    </events>
+
+    <element>
+        <column>
+            <text>
+                <text text="Join Lobby:"/>
+            </text>
+
+            <!-- Password -->
+            <textInput 
+                variable = "temp.lobby_password" 
+                password = "true"
+            >
+                <placeholder> 
+                    <text text="Lobby Password"/> 
+                </placeholder>
+                <onInput>
+                    <setValue key="temp.lobby_password"> <passedIn/> </setValue>
+                </onInput>
+            </textInput>
+            
+            <row style="width: fill;">
+                <!-- Done/Join -->
+                <button>
+                    <action>
+                        <list>
+                            <multiplayer>
+                                <joinLobby>
+                                    <variable var="var.lobby_id"/>
+                                </joinLobby>
+                            </multiplayer>
+                            <closeDialog/>
+                        </list>
+                    </action>
+                    <element>
+                        <text>
+                            <text text="Join"/>
+                        </text>
+                    </element>
+                </button>
+
+                <!-- Cancel -->
+                <button>
+                    <action>
+                        <closeDialog/>
+                    </action>
+                    <element>
+                        <text>
+                            <text text="Cancel"/>
+                        </text>
+                    </element>
+                </button>
+            </row>
+        </column>
+    </element>
+</dialog>

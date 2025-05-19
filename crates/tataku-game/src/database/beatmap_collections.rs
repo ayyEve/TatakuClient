@@ -34,8 +34,8 @@ impl Database {
     }
 
 
-    pub async fn get_beatmap_collections() -> Vec<BeatmapCollection> {
-        let db = Self::get().await;
+    pub fn get_beatmap_collections() -> Vec<BeatmapCollection> {
+        let db = Self::get();
 
         let query = "SELECT * FROM beatmap_collections".to_string();
         let mut s = db.prepare(&query).unwrap();
@@ -43,7 +43,7 @@ impl Database {
 
         if let Ok(rows) = res {
             let mut map = HashMap::new();
-            for i in rows.filter_map(|r|r.ok()) {
+            for i in rows.filter_map(Result::ok) {
                 if !map.contains_key(&i.collection_name) {
                     map.insert(i.collection_name.clone(), Vec::new());
                 }
@@ -64,8 +64,8 @@ impl Database {
         }
     }
 
-    pub async fn insert_into_beatmap_collection(collection_name: String, beatmap_hash: String) {
-        let db = Self::get().await;
+    pub fn insert_into_beatmap_collection(collection_name: String, beatmap_hash: String) {
+        let db = Self::get();
 
         let query = format!("INSERT INTO beatmap_collections (collection_name, beatmap_hash) VALUES ('{collection_name}', '{beatmap_hash}')");
         let mut s = db.prepare(&query).unwrap();

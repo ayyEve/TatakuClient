@@ -64,7 +64,6 @@ impl BeatmapAnimation for OsuStoryboard {
     fn draw(&self, list: &mut RenderableCollection) {
         // list.push_scissor(self.bounds.into_scissor());
         let bounds = self.playfield;
-
         let scissor = bounds.into_scissor();
 
         for i in self.elements.iter() {
@@ -72,7 +71,10 @@ impl BeatmapAnimation for OsuStoryboard {
             // if !i.group.visible() { continue } // || (i.end_time < self.time && !i.group.visible()) { continue }
             let mut group = i.group.clone();
             group.scissor = Some(scissor);
-            list.push(TransformedDrawable::new(self.transform, Box::new(group)));
+            list.push(TransformedDrawable::new(
+                self.transform, 
+                Box::new(group)
+            ));
         }
         // list.pop_scissor();
     }

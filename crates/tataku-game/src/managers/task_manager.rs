@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-pub struct TaskManager {
+pub(crate) struct TaskManager {
     tasks: Vec<TaskInner>,
 
     max_tasks: usize,
@@ -23,12 +23,12 @@ impl TaskManager {
         })
     }
 
-    pub async fn update(
+    pub fn update(
         &mut self, 
         values: &mut ValueCollection, 
-        state: TaskGameState
-    ) -> Vec<TatakuAction> {
-        let mut actions = ActionQueue::new();
+        state: TaskGameState,
+        actions: &mut ActionQueue,
+    ) {
         let mut task_count = 0;
 
         // update our tasks
@@ -45,7 +45,7 @@ impl TaskManager {
             }
 
             // run the task
-            task.run(values, &state, &mut actions).await;
+            task.run(values, &state, actions);
 
             if task.get_state() == TatakuTaskState::Complete {
                 info!("Task complete {}", task.get_name())
@@ -58,8 +58,6 @@ impl TaskManager {
 
         // remove any completed tasks
         self.tasks.retain(|t| t.get_state() != TatakuTaskState::Complete);
-
-        actions.take()
     }
 }
 impl Default for TaskManager {

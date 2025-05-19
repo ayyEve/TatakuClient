@@ -91,13 +91,12 @@ impl UploadScoreTask {
     }
 }
 
-#[async_trait]
 impl TatakuTask for UploadScoreTask {
     fn get_name(&self) -> Cow<'static, str> { Cow::Borrowed("Upload Score") }
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Once }
     fn get_state(&self) -> TatakuTaskState { self.state }
 
-    async fn run(
+    fn run(
         &mut self, 
         values: &mut dyn Reflect, 
         _: &TaskGameState, 
@@ -107,7 +106,6 @@ impl TatakuTask for UploadScoreTask {
             self.state = TatakuTaskState::Running;
 
             let data = self.data.clone();
-            // let settings = values.reflect_get::<Settings>("settings").unwrap();
             self.task = Some(AsyncLoader::new(Self::upload(data)));
 
             values.reflect_insert(self.get_path(), ScoreSubmitResponse::default()).unwrap();
@@ -130,7 +128,7 @@ impl TatakuTask for UploadScoreTask {
                 a.performance_rating = performance_rating;
             }
             SubmitResponse::NotSubmitted(_e, msg) => {
-                actions.push(GameAction::AddNotification(Notification::new_error("Error submitting score", msg)));
+                actions.push(Notification::new_error("Error submitting score", msg));
                 
                 let a = values.reflect_get_mut::<ScoreSubmitResponse>(self.get_path()).unwrap();
                 a.completed = true;

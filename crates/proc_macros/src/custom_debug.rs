@@ -24,7 +24,7 @@ pub(crate) fn derive(derive: &syn::DeriveInput) -> proc_macro2::TokenStream {
     match &derive.data {
         syn::Data::Struct(s) => {
             for (n, field) in s.fields.iter().enumerate() {
-                let ident = field.ident.as_ref().cloned().unwrap_or_else(|| format_ident!("{n}"));
+                let ident = field.ident.clone().unwrap_or_else(|| format_ident!("{n}"));
 
                 let attrs = try_error!(FieldAttributes::parse_from_attrs(field.attrs.as_slice()));
                 if attrs.skip {

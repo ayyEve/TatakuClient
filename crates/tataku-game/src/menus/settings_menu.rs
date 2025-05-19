@@ -199,7 +199,7 @@ impl SettingsMenu {
             Easing::Linear,
             game_time 
         ))
-        .width(FILL)
+        .width(Dimension::Percent(30.0))
         .height(FILL)
         .vertical_overflow(taffy::Overflow::Scroll)
         .boxed()
@@ -209,8 +209,12 @@ impl Widget for SettingsMenu {
     fn name(&self) -> Cow<'static, str> { "settings_menu".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn update_styles(&mut self, tree: &mut Tree, resolver: &mut CssResolver, display_override: Option<ui::Display>) {
-        self.node.update_styles(tree, resolver, display_override);
+    fn update_styles(
+        &mut self, 
+        shell: &mut StyleShell, 
+        display_override: Option<ui::Display>
+    ) {
+        self.node.update_styles(shell, display_override);
     }
 
     fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
@@ -228,18 +232,14 @@ impl Widget for SettingsMenu {
         Ok(self.node_id)
     }
 
-    fn update(
-        &mut self, 
-        shell: &mut UpdateShell<'_>,
-        actions: &mut ActionQueue
-    ) {
-        self.node.update(shell, actions);
+    fn update(&mut self, shell: &mut UpdateShell) {
+        self.node.update(shell);
     }
     
     fn input(
         &mut self,
         event: &InputEvent,
-        shell: &mut InputShell<'_>,
+        shell: &mut InputShell,
     ) {
         self.node.input(event, shell);
     }
@@ -252,73 +252,77 @@ impl Widget for SettingsMenu {
     fn handle_message(
         &mut self, 
         message: &Message, 
-        values: &mut dyn Reflect,
-        actions: &mut ActionQueue,
+        shell: &mut MessageShell,
     ) {
         let Some(tag) = message.tag.as_string() else { return };
         
         let mut tags = ReflectPath::new(tag);
         let Some(first) = tags.next() else { return warn!("no first?") };
 
-        let settings = values
+        let settings = shell.values
             .reflect_get_mut::<Settings>("settings")
             .unwrap();
 
         match first {
             "done" => {
+                shell.handled = true;
                 settings.check_hashes();
-                actions.push(UiAction::new(self.node_id, DialogAction::Close));
+                shell.actions.push(UiAction::new(self.node_id, DialogAction::Close));
             },
             "revert" => {
+                shell.handled = true;
                 *settings = self.old_settings.clone();
-                actions.push(UiAction::new(self.node_id, DialogAction::Close));
+                shell.actions.push(UiAction::new(self.node_id, DialogAction::Close));
             },
             "search" => if let Some(text) = message.value.as_text_ref() { 
+                shell.handled = true;
                 let filter = ItemFilter::new(
                     text.clone().split(" ").map(String::from).collect(), 
                     QueryType::Any
                 );
 
-                if let Err(e) = values.reflect_insert(FILTERED_TEXT_PATH, Box::new(filter)) {
+                if let Err(e) = shell.values.reflect_insert(FILTERED_TEXT_PATH, Box::new(filter)) {
                     panic!("{e:?}")
                 }
             },
 
             // graceful close requested
             "close" => {
+                shell.handled = true;
                 // run the close animation
                 self.node.handle_message(
                     &Message::new(message.owner, "close", MessageValue::Click), 
-                    values, 
-                    actions
+                    shell
                 );
                 let close_task = ActionTask::new(UiAction::new(self.node_id, DialogAction::Close));
                 let task = DelayTask::new(close_task, 200);
-                actions.push(TaskAction::AddTask(Box::new(task)));
+                shell.actions.push(TaskAction::AddTask(Box::new(task)));
             }
 
             "var" => {
+                shell.handled = true;
                 let mut settings = (*settings).clone();
                 settings.gamemode_settings.from_elements(
                     &mut tags, 
                     message.clone(), 
                     &mut FromElementsExtra { 
-                        values
+                        values: shell.values
                     }
                 );
-                values.reflect_insert("settings", settings).unwrap();
+                shell.values.reflect_insert("settings", settings).unwrap();
             }
 
             _ => {
+                shell.handled = true;
                 let mut settings = (*settings).clone();
                 settings.from_elements(
                     &mut tags, 
                     message.clone(), 
                     &mut FromElementsExtra { 
-                        values
+                        values: shell.values
                     }
                 );
-                values.reflect_insert("settings", settings).unwrap();
+                shell.values.reflect_insert("settings", settings).unwrap();
             }
         }
 

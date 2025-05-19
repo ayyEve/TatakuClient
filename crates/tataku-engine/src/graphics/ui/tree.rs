@@ -16,12 +16,12 @@ pub struct Tree {
     selected_node: SelectedNode,
 }
 impl Tree {
-    pub fn with_capacity(
+    pub fn new(
         cap: usize,
         owner: MessageOwner,
+        node: Box<dyn Widget>,
     ) -> Self {
         let mut tree = TaffyTree::with_capacity(cap);
-        
         let root = tree.new_leaf(
             Style {
                 size: Size {
@@ -35,7 +35,7 @@ impl Tree {
 
         Self {
             tree,
-            node: EmptyWidget::new_boxed(),
+            node,
             root: NodeId::new(root, owner),
             bounds: Bounds::default(),
             should_refresh: false,
@@ -60,7 +60,9 @@ impl Tree {
         self.all_children.clear();
 
         // TODO: refresh layout when scale changes
-        let ui_scale = values.reflect_get::<f32>("settings.ui_scale").map(|i| *i).unwrap_or(1.0);
+        let ui_scale = values.reflect_get::<f32>("settings.ui_scale")
+            .map(|i| *i)
+            .unwrap_or(1.0);
         
         // layout the new node
         let mut shell = LayoutShell {
@@ -70,7 +72,9 @@ impl Tree {
             ui_scale,
         };
 
-        let new = node.layout(&mut shell).expect("failed to layout new node?");
+        let new = node
+            .layout(&mut shell)
+            .expect("failed to layout new node?");
         self.node = node;
 
         self.root = self.new_with_children(
@@ -86,9 +90,12 @@ impl Tree {
             &[ new ]
         ).unwrap();
         self.all_children.insert(self.root.node_id);
-        self.tree.set_node_context(self.root.node_id, Some(TreeData::default())).unwrap();
+        self.tree.set_node_context(
+            self.root.node_id, 
+            Some(TreeData::default())
+        ).unwrap();
         
-        self.update_layout();
+        self.update_layout(values);
     }
 
     #[allow(clippy::borrowed_box)]
@@ -98,16 +105,18 @@ impl Tree {
     }
 
 
+
     pub fn update_bounds(
         &mut self, 
         bounds: Bounds,
+        values: &dyn Reflect,
     ) {
         if bounds == self.bounds { return }
         self.bounds = bounds;
-        self.update_layout();
+        self.update_layout(values);
     }
 
-    pub fn update_layout(&mut self) {
+    pub fn update_layout(&mut self, values: &dyn Reflect) {
         // debug!("{:?} doing layout", self.owner);
         self.should_refresh = false;
         use taffy::AvailableSpace::*;
@@ -120,11 +129,22 @@ impl Tree {
         // these should save the results in the context
         let style = self.node.get_style_str();
         let mut resolver= CssResolver::new(&style);
+        
+
         self.with_node(|tree, node| {
-            node.update_styles(tree, &mut resolver, None);
+            let mut shell = StyleShell {
+                tree,
+                values, 
+                resolver: &mut resolver,
+            };
+
+            node.update_styles(&mut shell, None);
         });
 
-        self.tree.mark_dirty(self.root.node_id).expect("failed to mark dirty?");
+        self.tree
+            .mark_dirty(self.root.node_id)
+            .expect("failed to mark dirty?");
+
         self.tree
             .compute_layout(self.root.node_id, space)
             .expect("failed to compute layout?");
@@ -143,7 +163,11 @@ impl Tree {
             .run(NavigateConfig::default());
     }
 
-    fn recurse_update_context(&mut self, node: TaffyNodeId, mut matrix: Matrix) {
+    fn recurse_update_context(
+        &mut self, 
+        node: TaffyNodeId, 
+        mut matrix: Matrix
+    ) {
         if !self.all_children.contains(&node) {
             eprintln!("node not in tree!!! {node:?}");
             return;
@@ -176,7 +200,10 @@ impl Tree {
             ;
         }
 
-        matrix = matrix * context.local_transform.matrix() * Matrix::identity().trans(bounds.pos);
+        matrix = matrix 
+            * context.local_transform.matrix()
+            * Matrix::identity().trans(bounds.pos);
+
         for child in self.tree.children(node).unwrap() {
             self.recurse_update_context(child, matrix);
         }
@@ -231,7 +258,10 @@ impl Tree {
 
 
 
-    fn with_node<T>(&mut self, mut f: impl FnMut(&mut Tree, &mut Box<dyn Widget>) -> T + Send + Sync) -> T {
+    fn with_node<T>(
+        &mut self, 
+        f: impl FnOnce(&mut Tree, &mut Box<dyn Widget>) -> T + Send + Sync
+    ) -> T {
         let mut temp: Box<dyn Widget> = Box::new(EmptyWidget(self.node.node_id()));
         std::mem::swap(&mut self.node, &mut temp);
 
@@ -246,11 +276,10 @@ impl Tree {
         input_state: &mut CurrentInputState,
         values: &mut dyn Reflect,
         actions: &mut ActionQueue,
-        messages: &mut Vec<Message>
-    ) {
+        messages: &mut Vec<Message>,
+    ) -> bool {
         // let mouse_pos = input_state.mouse_pos;
-        self.with_node(|tree, node| {
-            let bounds = tree.bounds;
+        let mut consumed = self.with_node(|tree, node| {
             let mut shell = InputShell {
                 owner: tree.owner,
                 messages,
@@ -262,16 +291,16 @@ impl Tree {
             };
 
             if input_state.mouse_moved {
-                let pos = input_state.mouse_pos - bounds.pos;
-
                 node.input(
-                    &input_state.make_input(InputType::MouseMove(pos)),
+                    &input_state
+                        .make_input(InputType::MouseMove(input_state.mouse_pos)),
                     &mut shell
                 );
             }
             if input_state.scroll_delta.abs() > f32::EPSILON {
                 node.input(
-                    &input_state.make_input(InputType::MouseScroll(input_state.scroll_delta)),
+                    &input_state
+                        .make_input(InputType::MouseScroll(input_state.scroll_delta)),
                     &mut shell
                 );
             }
@@ -300,7 +329,8 @@ impl Tree {
             handle_event!(input_state.mouse_down, MousePress);
             handle_event!(input_state.mouse_up, MouseRelease);
 
-            input_state.controller_down.retain(|(a, id, name)| {
+            input_state.controller_down
+                .retain(|(a, id, name)| {
                 node.input(
                     &InputEvent {
                         event: InputType::ControllerPress(*a, *id, name.clone()),
@@ -312,7 +342,8 @@ impl Tree {
                 !std::mem::take(&mut shell.event_consumed)
             });
 
-            input_state.controller_up.retain(|(a, id, name)| {
+            input_state.controller_up
+                .retain(|(a, id, name)| {
                 node.input(
                     &InputEvent {
                         event: InputType::ControllerRelease(*a, *id, name.clone()),
@@ -324,7 +355,8 @@ impl Tree {
                 !std::mem::take(&mut shell.event_consumed)
             });
 
-            input_state.controller_axes.retain(|(a, value, id, name)| {
+            input_state.controller_axes
+                .retain(|(a, value, id, name)| {
                 node.input(
                     &InputEvent {
                         event: InputType::ControllerAxis(*a, *value, *id, name.clone()),
@@ -335,38 +367,48 @@ impl Tree {
                 );
                 !std::mem::take(&mut shell.event_consumed)
             });
+
+            shell.event_consumed
         });
 
-        for (key, direction) in [
-            (Key::Left, Direction::Left),
-            (Key::Right, Direction::Right),
-            (Key::Up, Direction::Up),
-            (Key::Down, Direction::Down),
-            (Key::Tab, Direction::Down),
-        ] {
-            if !input_state.keys_down.has_key(key) { continue }
+        if !consumed {
+            for (key, direction) in [
+                (Key::Left, Direction::Left),
+                (Key::Right, Direction::Right),
+                (Key::Up, Direction::Up),
+                (Key::Down, Direction::Down),
+                (Key::Tab, Direction::Down),
+            ] {
+                if !input_state.keys_down.has_key(key) { continue }
 
-            if !self.selected_node.active {
-                self.enable_navigation();
-                input_state.keys_down.remove_key(key);
-                // return since this was just to enable navigation
-                // otherwise we'd immediate select the next node, without selecting the current node
-                break;
-            }
+                if !self.selected_node.active {
+                    self.enable_navigation();
+                    input_state.keys_down.remove_key(key);
+                    consumed = true;
+                    // return since this was just to enable navigation
+                    // otherwise we'd immediate select the next node, without selecting the current node
+                    break;
+                }
 
-            let Some(current) = self.selected_node.node else { 
-                warn!("No active node to navigate from ??");
+                let Some(current) = self.selected_node.node else { 
+                    warn!("No active node to navigate from ??");
+                    break
+                };
+
+                if let Some(node) = self.tree
+                    .get_node_context(current.node_id)
+                    .and_then(|i| i.node_direction(direction)) {
+                    self.context_mut(current).selected = Some(false);
+                    self.context_mut(node).selected = Some(true);
+                    input_state.keys_down.remove_key(key);
+                    consumed = true;
+                }
+
                 break
-            };
-
-            if let Some(node) = self.tree.get_node_context(current.node_id).and_then(|i| i.node_direction(direction)) {
-                self.context_mut(current).selected = Some(false);
-                self.context_mut(node).selected = Some(true);
-                input_state.keys_down.remove_key(key);
             }
-
-            break
         }
+    
+        consumed
     }
 
     fn enable_navigation(&mut self) {
@@ -375,9 +417,10 @@ impl Tree {
         // try to make sure we have a selected node to start with
         if self.selected_node.node.is_none() {
             // find the first selectable node
-            self.selected_node.node = self.find_child(self.root, Rc::new(|tree, node| {
-                tree.context(node).selectable()
-            }));
+            self.selected_node.node = self.find_child(
+                self.root, 
+                Rc::new(|tree, node| tree.context(node).selectable())
+            );
 
             if let Some(node) = self.selected_node.node {
                 self.context_mut(node).selected = Some(true)
@@ -396,7 +439,11 @@ impl Tree {
     }
 
     /// this isnt the most efficient thing ever but hopefully its not used too often
-    fn find_child(&self, parent: impl HasNodeId, f: Rc<dyn Fn(&Self, TaffyNodeId) -> bool>) -> Option<NodeId> {
+    fn find_child(
+        &self, 
+        parent: impl HasNodeId, 
+        f: Rc<dyn Fn(&Self, TaffyNodeId) -> bool>
+    ) -> Option<NodeId> {
         let parent = parent.get_id();
         if f(self, parent) { return Some(NodeId::new(parent, self.owner)) }
         for child in self.tree.children(parent).ok()? {
@@ -408,6 +455,49 @@ impl Tree {
     }
 
 
+    // widget things
+
+    pub fn handle_message(
+        &mut self,
+        message: &Message,
+        values: &mut dyn Reflect,
+        actions: &mut ActionQueue,
+        messages: &mut Vec<Message>,
+    ) {
+        self.with_node(|tree, node| {
+            let mut shell = MessageShell {
+                values,
+                actions,
+                messages,
+                owner: tree.owner,
+                tree,
+                handled: false
+            };
+            node.handle_message(message, &mut shell);
+        });
+    }
+
+    pub fn handle_event(
+        &mut self,
+        event: TatakuEventType,
+        passed_in: Option<TatakuValue>,
+        values: &mut dyn Reflect,
+        actions: &mut ActionQueue,
+        messages: &mut Vec<Message>,
+    ) {
+        self.with_node(|tree, node| {
+            let mut shell = MessageShell {
+                values,
+                actions,
+                messages,
+                owner: tree.owner,
+                tree,
+                handled: false
+            };
+            node.handle_event(event, passed_in, &mut shell);
+        });
+    }
+
     pub fn update(
         &mut self,
         values: &mut dyn Reflect,
@@ -416,7 +506,7 @@ impl Tree {
         skin_manager: &mut dyn SkinProvider,
     ) {
         if self.should_refresh {
-            self.update_layout();
+            self.update_layout(values);
         }
 
         // update the root widget
@@ -425,10 +515,11 @@ impl Tree {
                 owner: tree.owner,
                 tree,
                 values,
+                actions,
                 messages,
                 skin_manager,
             };
-            node.update(&mut shell, actions);
+            node.update(&mut shell);
         });
     }
 
@@ -436,6 +527,7 @@ impl Tree {
         &mut self,
         values: &mut dyn Reflect,
         messages: &mut Vec<Message>,
+        actions: &mut ActionQueue,
         skin_manager: &mut dyn SkinProvider,
     ) {
         self.with_node(|tree, node| {
@@ -444,6 +536,7 @@ impl Tree {
                 owner: tree.owner,
                 tree,
                 values,
+                actions,
                 messages,
                 skin_manager,
             };
@@ -451,11 +544,16 @@ impl Tree {
         });
     }
 
-    pub fn draw(&mut self, list: &mut RenderableCollection) {
+    pub fn draw(
+        &mut self, 
+        values: &dyn Reflect,
+        list: &mut RenderableCollection
+    ) {
         self.with_node(|tree, node| {
             let mut shell = DrawShell {
                 tree,
                 list,
+                values,
                 // TODO: make customizable
                 general_theme: GeneralUiTheme::default(),
             };
@@ -463,6 +561,9 @@ impl Tree {
             node.draw_overlay(&mut shell);
         });
     }
+
+    
+
 
 
     // TaffyTree things
@@ -477,14 +578,26 @@ impl Tree {
         Ok(id)
     }
 
-    pub fn new_with_children(&mut self, style: Style, children: &[NodeId]) -> TaffyResult<NodeId> {
+    pub fn new_with_children(
+        &mut self, 
+        style: Style, 
+        children: &[NodeId]
+    ) -> TaffyResult<NodeId> {
         let id = self.new_leaf(style)?;
-        let children = children.iter().map(|i| i.node_id).collect::<Vec<_>>();
+        let children = children
+            .iter()
+            .map(|i| i.node_id)
+            .collect::<Vec<_>>();
+        
         self.tree.set_children(id.node_id, &children)?;
         Ok(id)
     }
 
-    pub fn add_child(&mut self, parent: impl HasNodeId, child: impl HasNodeId) {
+    pub fn add_child(
+        &mut self, 
+        parent: impl HasNodeId, 
+        child: impl HasNodeId,
+    ) {
         let _ = self.tree.add_child(parent.get_id(), child.get_id());
     }
 

@@ -44,7 +44,18 @@ pub enum BuildableMapAction {
         value: BuildableValue
     },
 
+    /// Refresh the beatmap list
     RefreshList,
+
+    /// Delete the current map
+    DeleteCurrent,
+
+    /// Delete the provided map
+    Delete {
+        #[serde(rename="$value", alias="$text")] 
+        value: BuildableValue
+    },
+
 
     // TODO: document the difference between BeatmapAction::Next and BeatmapListAction::NextSet
     NextMap,
@@ -53,13 +64,19 @@ pub enum BuildableMapAction {
     PreviousSet,
 }
 impl BuildableMapAction {
-    pub fn into_action(self, values: &mut dyn Reflect, passed_in: Option<TatakuValue>) -> Option<BeatmapAction> {
+    pub fn into_action(self, values: &mut dyn Reflect, passed_in: &Option<TatakuValue>) -> Option<BeatmapAction> {
         match self {
             Self::Play => Some(BeatmapAction::PlaySelected),
             Self::Next => Some(BeatmapAction::Next),
             Self::Previous { action } => Some(BeatmapAction::Previous(action)),
-            Self::Random{ use_preview } => Some(BeatmapAction::Random(use_preview)),
+            Self::Random { use_preview } => Some(BeatmapAction::Random(use_preview)),
             Self::Confirm => Some(BeatmapAction::ConfirmSelected),
+            Self::DeleteCurrent => Some(BeatmapAction::DeleteCurrent(PostDelete::Next)),
+            Self::Delete { value } => {
+                let value = value.resolve(values, passed_in)?;
+                let hash = Md5Hash::try_from(value.as_string()).ok()?;
+                Some(BeatmapAction::Delete(hash))
+            }
 
             Self::NextMap => Some(BeatmapAction::ListAction(BeatmapListAction::NextMap)),
             Self::NextSet => Some(BeatmapAction::ListAction(BeatmapListAction::NextSet)),
@@ -67,17 +84,11 @@ impl BuildableMapAction {
             Self::PreviousSet => Some(BeatmapAction::ListAction(BeatmapListAction::PrevSet)),
             Self::RefreshList => Some(BeatmapAction::ListAction(BeatmapListAction::Refresh)),
 
-
-            Self::SetPlaymode { value: BuildableValue::None } => None,
-            Self::SetPlaymode { value: BuildableValue::Value(v) } => Some(BeatmapAction::SetPlaymode(v.string_maybe()?.clone())),
-            Self::SetPlaymode { value: BuildableValue::Variable(var) } => {
-                let val = values.reflect_get::<String>(&var).ok()?;
-                Some(BeatmapAction::SetPlaymode((*val).clone()))
-            },
-            Self::SetPlaymode { value: BuildableValue::PassedIn } => {
-                let val = passed_in?.string_maybe()?.clone();
-                Some(BeatmapAction::SetPlaymode(val))
+            Self::SetPlaymode { value } => {
+                let value = value.resolve(values, passed_in)?;
+                Some(BeatmapAction::SetPlaymode(value.as_string()))
             }
+
 
             Self::SelectGroup { value} => {
                 let num = value.resolve(values, passed_in)?.as_u32().ok()?;
@@ -92,14 +103,14 @@ impl BuildableMapAction {
     }
 
     pub fn build(&mut self, values: &dyn Reflect) {
-        let thing = match self {
-            Self::SelectGroup { value } => value,
-            Self::SelectMap { value } => value,
+        match self {
+            Self::SelectGroup { value } => value.resolve_pre(values),
+            Self::SelectMap { value } => value.resolve_pre(values),
+            Self::SetPlaymode { value } => value.resolve_pre(values),
+            Self::Delete { value } => value.resolve_pre(values),
 
-            _ => return,
+            _ => {}
         };
-
-        thing.resolve_pre(values);
     }
 }
 

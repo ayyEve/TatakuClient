@@ -14,6 +14,17 @@
         }
     </style>
 
+    <events>
+        <event>
+            <keyPress key="Escape" />
+            <actions>
+                <gameplay>
+                    <resume/>
+                </gameplay>
+            </actions>
+        </event>
+    </events>
+
     <element>
         <column class="menu">
             <!-- resume button -->
@@ -23,7 +34,7 @@
                 </action>
                 <element>
                     <text>
-                        <text>Resume</text>
+                        <text text="Resume"/>
                     </text>
                 </element>
             </button>
@@ -35,7 +46,7 @@
                 </action>
                 <element>
                     <text>
-                        <text>Retry</text>
+                        <text text="Retry"/>
                     </text>
                 </element>
             </button>
@@ -45,12 +56,12 @@
                 <action>
                     <list>
                         <gameplay><quit/></gameplay>
-                        <setMenu><value>beatmap_select</value></setMenu>
+                        <setMenu id="beatmap_select"/>
                     </list>
                 </action>
                 <element>
                     <text>
-                        <text>Quit</text>
+                        <text text="Quit"/>
                     </text>
                 </element>
             </button>

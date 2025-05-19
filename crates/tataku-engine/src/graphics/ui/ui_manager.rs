@@ -1,6 +1,6 @@
 use crate::prelude::*;
 use crate::prelude::ui::*;
-use gilrs::{GamepadId, Axis};
+use gilrs::{ GamepadId, Axis };
 
 pub struct CurrentInputState {
     pub mouse_pos: Vector2,

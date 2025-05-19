@@ -187,9 +187,9 @@ impl Branch {
         self.available_branches.iter().map(|b|b.get_text()).collect()
     }
 
-    pub fn current_text(&self) -> String {
-        self.current_text.clone()
-    }
+    // pub fn current_text(&self) -> String {
+    //     self.current_text.clone()
+    // }
 
     pub fn get_first(&self) -> Vec<char> {
         self.available_branches.first().map(|b|b.get_first()).unwrap_or_default()

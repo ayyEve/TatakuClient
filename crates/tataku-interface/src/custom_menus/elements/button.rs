@@ -10,22 +10,48 @@ pub struct ButtonElement {
     #[serde(rename = "@style", default)] style: String,
     #[serde(rename = "@active_if", default)] active_cond: Option<BuildableCondition>,
     
-    action: BuildableActionTag,
+    #[serde(alias="action")]
+    actions: Vec<ClickAction>,
     element: ElementTag,
 }
 impl CustomElement for ButtonElement {
-    fn build(&self, shell: &mut ElementBuildShell<'_>) -> Box<dyn Widget> {
+    fn build(&self) -> Box<dyn Widget> {
+        let mut actions = self.actions
+            .iter()
+            .map(|i| (i.button, i.inner.clone()))
+            .collect::<HashMap<MouseButton2, BuildableAction>>();
+
         WidgetContainer::new_boxed(
             self.style.clone(),
             "button",
             self.id.clone(),
             self.class_list.clone(),
-            Button::new(self.element.element.build(shell))
-                .on_press(self.action.action.clone())
+            Button::new(self.element.element.build())
+                .on_press_left_maybe(actions.remove(&MouseButton2::Left))
+                .on_press_middle_maybe(actions.remove(&MouseButton2::Middle))
+                .on_press_right_maybe(actions.remove(&MouseButton2::Right))
                 .boxed()
         )
     }
 }
+
+#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Deserialize)]
+struct ClickAction {
+    #[serde(rename="$value")] inner: BuildableAction,
+    #[serde(rename="@button", default)] button: MouseButton2,
+}
+
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Deserialize)]
+#[serde(rename_all="camelCase")]
+enum MouseButton2 {
+    #[default]
+    Left,
+    Middle,
+    Right
+}
+
 
 #[test]
 fn test() {
@@ -42,13 +68,16 @@ fn test() {
         ButtonElement {
             id: Some("button123".to_owned()),
             class_list: "thing1 thing2".into(),
-            action: BuildableActionTag {
-                action: BuildableAction::Song { 
-                    action: BuildableSongAction::Play 
+            actions: vec![
+                ClickAction {
+                    button: MouseButton2::Left,
+                    inner: BuildableAction::Song { 
+                        action: BuildableSongAction::Play 
+                    },
                 }
-            }, 
+            ], 
             element: ElementTag { element: Element::Text(Box::new(TextElement {
-                text: BuildableTextInner::Text("hi mom".to_owned()).into(),
+                text: BuildableText::Text { text: "hi mom".to_owned() },
                 ..Default::default()
             })) } ,
             ..Default::default()

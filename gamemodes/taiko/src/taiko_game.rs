@@ -205,7 +205,7 @@ impl TaikoGame {
             bounds,
             height,
             hit_position,
-            full_window
+            // full_window
         }
     } 
 
@@ -1106,6 +1106,7 @@ impl GameMode for TaikoGame {
             );
             for i in hitsound {
                 sound_list.insert(i.get_id(), i.load_data(Some("taiko-")));
+                sound_list.insert(i.get_id(), i.load_data(None::<String>));
             }
         }
 

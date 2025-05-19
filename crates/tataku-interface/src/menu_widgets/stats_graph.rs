@@ -3,8 +3,6 @@ use crate::prelude::ui::*;
 
 #[derive(Widget)]
 pub struct StatsGraphWidget {
-    // stats: StatsInfo,
-
     style: Style,
     node: Box<dyn Widget>,
     node_id: NodeId
@@ -69,8 +67,12 @@ impl Widget for StatsGraphWidget {
     fn name(&self) -> Cow<'static, str> { "stats_graph_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn update_styles(&mut self, tree: &mut Tree, resolver: &mut CssResolver, display_override: Option<ui::Display>) {
-        self.node.update_styles(tree, resolver, display_override);
+    fn update_styles(
+        &mut self, 
+        shell: &mut StyleShell, 
+        display_override: Option<ui::Display>
+    ) {
+        self.node.update_styles(shell, display_override);
     }
 
     fn layout(
@@ -118,8 +120,6 @@ impl GraphWidget {
 impl Widget for GraphWidget {
     fn name(&self) -> Cow<'static, str> { "stats_graph_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
-
-    fn update_styles(&mut self, _tree: &mut Tree, _resolver: &mut CssResolver, _display_override: Option<ui::Display>) {}
     
     fn layout(
         &mut self, 

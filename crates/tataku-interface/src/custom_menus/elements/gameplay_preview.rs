@@ -13,7 +13,7 @@ pub struct GameplayPreviewElement {
     #[serde(rename = "@blur", default)] blur: f32,
 }
 impl CustomElement for GameplayPreviewElement {
-    fn build(&self, shell: &mut ElementBuildShell<'_>) -> Box<dyn Widget> {
+    fn build(&self) -> Box<dyn Widget> {
         WidgetContainer::new_boxed(
             self.style.clone(),
             "gameplayPreview",
@@ -23,7 +23,6 @@ impl CustomElement for GameplayPreviewElement {
                 true, 
                 true, 
                 Arc::new(|_| true), 
-                shell.owner,
             )
             .blur(self.blur)
             .visualization(if let Some(vis) = &self.visualization {

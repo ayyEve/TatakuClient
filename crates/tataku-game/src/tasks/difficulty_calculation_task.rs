@@ -49,7 +49,7 @@ impl DiffCalcTask {
         }
     }
 
-    async fn run_calc(
+    fn run_calc(
         &mut self,
         mods: ModManager,
         values: &mut dyn Reflect, 
@@ -113,12 +113,12 @@ impl DiffCalcTask {
         });
     }
 
-    async fn complete(&mut self, actions: &mut ActionQueue) {
+    fn complete(&mut self, actions: &mut ActionQueue) {
         for (entry, diff) in self.diff_entries.take() {
             if let Err(e) = DifficultyManager::save_diff_entry(
                 entry,
                 diff
-            ).await {
+            ) {
                 actions.push(Notification::new_error("Failed to insert diff", e));
             }
         }
@@ -127,14 +127,13 @@ impl DiffCalcTask {
     }
 }
 
-#[async_trait]
 impl TatakuTask for DiffCalcTask {
     fn get_id(&self) -> Cow<'static, str> { Cow::Borrowed("diff_calc") }
     fn get_name(&self) -> Cow<'static, str> { Cow::Owned(format!("Diff Calc for beatmap: {} and mode {}", self.beatmap.beatmap_hash, self.info.display_name)) }
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Once }
     fn get_state(&self) -> TatakuTaskState { self.state }
 
-    async fn run(
+    fn run(
         &mut self, 
         values: &mut dyn Reflect, 
         state: &TaskGameState, 
@@ -174,14 +173,14 @@ impl TatakuTask for DiffCalcTask {
 
         // try to get the next map
         if let Some(mods) = self.iter.next() {
-            self.run_calc(mods, values).await;
+            self.run_calc(mods, values);
         } 
         // try to get any inturrupted
         else if let Some(mods) = self.inturrupted.pop() {
-            self.run_calc(mods, values).await;
+            self.run_calc(mods, values);
         } else {
             // done
-            self.complete(actions).await;
+            self.complete(actions);
         }
     }
 }

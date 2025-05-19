@@ -1,16 +1,10 @@
 use crate::prelude::*;
 
 pub trait CustomElement {
-    fn build(&self, shell: &mut ElementBuildShell<'_>) -> Box<dyn Widget>;
+    fn build(&self) -> Box<dyn Widget>;
     fn boxed(self) -> Box<dyn CustomElement> where Self:Sized + 'static {
         Box::new(self)
     }
-}
-
-/// might want to add more to this in the future so i made it easy for myself
-pub struct ElementBuildShell<'a> {
-    pub owner: MessageOwner,
-    pub _empty: std::marker::PhantomData<&'a ()>
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -46,6 +40,7 @@ pub enum Element {
     Row(Box<RowElement>),
     Column(Box<ColumnElement>),
     Button(Box<ButtonElement>),
+    Checkbox(Box<CheckboxElement>),
 
     GameplayPreview(Box<GameplayPreviewElement>),
     Text(Box<TextElement>),
@@ -59,19 +54,20 @@ pub enum Element {
     Conditional(Box<ConditionalElement>),
 }
 impl CustomElement for Element {
-    fn build(&self, shell: &mut ElementBuildShell<'_>) -> Box<dyn Widget> {
+    fn build(&self) -> Box<dyn Widget> {
         match self {
             Self::Empty => EmptyWidget::new_boxed(),
-            Self::Row(e) => e.build(shell),
-            Self::Column(e) => e.build(shell),
-            Self::Button(e) => e.build(shell),
-            Self::GameplayPreview(e) => e.build(shell),
-            Self::Text(e) => e.build(shell),
-            Self::TextInput(e) => e.build(shell),
-            Self::Animatable(e) => e.build(shell),
-            Self::Conditional(e) => e.build(shell),
-            Self::List(e) => e.build(shell),
-            Self::Dropdown(e) => e.build(shell),
+            Self::Row(e) => e.build(),
+            Self::Column(e) => e.build(),
+            Self::Button(e) => e.build(),
+            Self::Checkbox(e) => e.build(),
+            Self::GameplayPreview(e) => e.build(),
+            Self::Text(e) => e.build(),
+            Self::TextInput(e) => e.build(),
+            Self::Animatable(e) => e.build(),
+            Self::Conditional(e) => e.build(),
+            Self::List(e) => e.build(),
+            Self::Dropdown(e) => e.build(),
         }
     }
 }
@@ -97,10 +93,10 @@ pub struct ElementList {
     #[serde(rename="$value")] pub list: Vec<Element>,
 }
 impl ElementList {
-    pub fn build(&self, shell: &mut ElementBuildShell<'_>) -> Vec<Box<dyn Widget>> {
+    pub fn build(&self) -> Vec<Box<dyn Widget>> {
         self.list
             .iter()
-            .map(|i| i.build(shell))
+            .map(|i| i.build())
             .collect()
     }
 }

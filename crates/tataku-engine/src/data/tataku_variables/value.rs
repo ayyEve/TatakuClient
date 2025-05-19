@@ -66,10 +66,12 @@ impl<'de> serde::Deserialize<'de> for TatakuValue {
                 }
             }
             fn visit_map<A: serde::de::MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
-                let _key = map.next_key::<String>().unwrap();
-                // println!("key: {_key:?}");
+                let key = map.next_key::<String>().unwrap();
+                if key.is_none() {
+                    return Ok(TatakuValue::None)
+                }
 
-                let val = map.next_value().unwrap();
+                let val = map.next_value().unwrap_or_else(|e| panic!("error deserializng '{key:?}': {e:?}"));
                 let _ = map.next_key::<String>().unwrap();
                 
                 Ok(val)
@@ -120,7 +122,7 @@ impl TatakuValue {
             Self::Bool(b) => Ok(if *b { 1.0 } else { 0.0 }),
 
             Self::None => Err(ShuntingYardError::ValueIsNone),
-            Self::String(s) => Err(ShuntingYardError::ValueIsntANumber(s.clone())),
+            Self::String(s) => s.parse().map_err(|_| ShuntingYardError::ValueIsntANumber(s.clone())),
             // Self::List(_) => Err(ShuntingYardError::ValueIsntANumber("<vec>".to_owned())),
             // Self::Map(_) => Err(ShuntingYardError::ValueIsntANumber("<map>".to_owned())),
             
@@ -135,6 +137,7 @@ impl TatakuValue {
             Self::U32(n) => Ok(*n),
             Self::U64(n) => Ok(*n as u32),
             Self::Reflect(r) => Ok(r.reflect_as_number("")?.into()),
+            Self::String(s) => s.parse().map_err(|_| ShuntingYardError::ValueIsntANumber(s.clone())),
 
             Self::None => Err(ShuntingYardError::ValueIsNone),
             _ => Err(ShuntingYardError::ConversionError("Not castable to u32".to_string()))
@@ -146,7 +149,8 @@ impl TatakuValue {
             // Self::I64(n) => Ok(*n as u64),
             Self::U32(n) => Ok(*n as u64),
             Self::U64(n) => Ok(*n),
-            Self::Reflect(r) => Ok(r.reflect_as_number("")?.into()),
+            Self::Reflect(r) => Ok(r.reflect_as_number(".")?.into()),
+            Self::String(s) => s.parse().map_err(|_| ShuntingYardError::ValueIsntANumber(s.clone())),
 
             Self::None => Err(ShuntingYardError::ValueIsNone),
             _ => Err(ShuntingYardError::ConversionError("Not castable to u64".to_string()))
@@ -176,7 +180,9 @@ impl TatakuValue {
             Self::F32(n) => Some(TatakuNumber::F32(*n)),
             Self::U32(n) => Some(TatakuNumber::U32(*n)),
             Self::U64(n) => Some(TatakuNumber::U64(*n)),
-            Self::Reflect(r) => Some(r.reflect_as_number("").ok()?.into()),
+            Self::Reflect(r) => Some(r.reflect_as_number(".").ok()?.into()),
+            
+            Self::String(s) => Some(TatakuNumber::F32(s.parse::<f32>().ok()?)),
             _ => None
         }
     }
@@ -185,19 +191,23 @@ impl TatakuValue {
         let value2:MaybeOwnedReflect<'a> = value.into();
         let value = value2.as_ref();
 
-        if let Some(n) = value.downcast_ref() {
-            Ok(Self::F32(*n))
-        } else if let Some(n) = value.downcast_ref() {
-            Ok(Self::U32(*n))
-        } else if let Some(n) = value.downcast_ref() {
-            Ok(Self::U64(*n))
-        } else if let Some(n) = value.downcast_ref::<usize>() {
-            Ok(Self::U64(*n as u64))
-        } else if let Some(n) = value.downcast_ref::<u8>() {
-            Ok(Self::U32(*n as u32))
-        } else if let Some(n) = value.downcast_ref::<u16>() {
-            Ok(Self::U32(*n as u32))
-        } else if let Some(b) = value.downcast_ref() {
+        if let Ok(n) = value.reflect_as_number(".") {
+            Ok(TatakuNumber::from(n).into())
+        }
+        // else if let Some(n) = value.downcast_ref() {
+        //     Ok(Self::F32(*n))
+        // } else if let Some(n) = value.downcast_ref() {
+        //     Ok(Self::U32(*n))
+        // } else if let Some(n) = value.downcast_ref() {
+        //     Ok(Self::U64(*n))
+        // } else if let Some(n) = value.downcast_ref::<usize>() {
+        //     Ok(Self::U64(*n as u64))
+        // } else if let Some(n) = value.downcast_ref::<u8>() {
+        //     Ok(Self::U32(*n as u32))
+        // } else if let Some(n) = value.downcast_ref::<u16>() {
+        //     Ok(Self::U32(*n as u32))
+        // } 
+        else if let Some(b) = value.downcast_ref() {
             Ok(Self::Bool(*b))
         } else if let Some(s) = value.downcast_ref::<String>() {
             Ok(Self::String(s.clone()))
@@ -235,10 +245,12 @@ impl TatakuValue {
 
     pub fn is_empty(&self) -> bool {
         match self {
-            // Self::List(l) => l.is_empty(),
-            // Self::Map(m) => m.is_empty(),
             Self::String(s) => s.is_empty(),
-            // Self::Reflect(r) => {r.}
+            Self::Reflect(r) => r
+                .reflect_display(".", None)
+                .ok().as_ref()
+                .map(String::is_empty)
+                .unwrap_or_default(),
             
             _ => false,
         }
@@ -246,8 +258,6 @@ impl TatakuValue {
 
     pub fn get_length(&self) -> usize {
         match self {
-            // Self::List(l) => l.len(),
-            // Self::Map(m) => m.len(),
             Self::String(s) => s.len(),
 
             _ => 0
@@ -262,9 +272,7 @@ impl TatakuValue {
             Self::U64(_) => "u64",
             Self::Bool(_) => "Bool",
             Self::String(_) => "String",
-            // Self::List(_) => "List",
-            // Self::Map(_) => "Map",
-            Self::Reflect(_) => "Reflect",
+            Self::Reflect(t) => t.type_name(),
         }
     }
 }
@@ -298,10 +306,13 @@ impl PartialEq for TatakuValue {
             // (Self::List(n), Self::List(n2)) => n == n2,
             // (Self::Map(n), Self::Map(n2)) => n == n2,
 
-            // TODO: ??
-            (Self::Reflect(_), Self::Reflect(_)) => true,
-
-            _ => false
+            (lhs, rhs) => {
+                if let Some((lhs, rhs)) = lhs.as_number().zip(rhs.as_number()) {
+                    lhs == rhs
+                } else  {
+                    lhs.as_string() == rhs.as_string()
+                }
+            }
         }
     }
 }
@@ -372,12 +383,47 @@ macro_rules! impl_math {
                     (TatakuValue::String(lhs), rhs) => TatakuValue::String(format!("{lhs}{}", &rhs.as_string())),
                     (lhs, TatakuValue::String(rhs)) => TatakuValue::String(format!("{}{rhs}", lhs.as_string())),
 
+                    (TatakuValue::Reflect(lhs), rhs) => {
+                        if let Some((lhs, rhs)) = lhs.reflect_as_number(".").ok().zip(rhs.as_number()) {
+                            TatakuValue::from(TatakuNumber::from(lhs).$func(rhs))
+                        } else {
+                            TatakuValue::None
+                        }
+                    }
+                    (lhs, TatakuValue::Reflect(rhs)) => {
+                        if let Some((rhs, lhs)) = rhs.reflect_as_number(".").ok().zip(lhs.as_number()) {
+                            TatakuValue::from(lhs.$func(TatakuNumber::from(rhs)))
+                        } else {
+                            TatakuValue::None
+                        }
+                    }
 
                     _ => panic!("nope")
                 }
             }
         }
+        
+        impl std::ops::$trait for TatakuNumber {
+            type Output = TatakuNumber;
+
+            fn $func(self, rhs: Self) -> Self::Output {
+                match (self, rhs) {
+                    (Self::F32(lhs), Self::F32(rhs)) => Self::F32(lhs.$func(rhs)),
+                    (Self::F32(lhs), Self::U32(rhs)) => Self::F32(lhs.$func(rhs as f32)),
+                    (Self::F32(lhs), Self::U64(rhs)) => Self::F32(lhs.$func(rhs as f32)),
+
+                    (Self::U32(lhs), Self::F32(rhs)) => Self::F32((lhs as f32).$func(rhs)),
+                    (Self::U32(lhs), Self::U32(rhs)) => Self::U32(lhs.$func(rhs)),
+                    (Self::U32(lhs), Self::U64(rhs)) => Self::U64((lhs as u64).$func(rhs)),
+                    
+                    (Self::U64(lhs), Self::F32(rhs)) => Self::F32((lhs as f32).$func(rhs)),
+                    (Self::U64(lhs), Self::U32(rhs)) => Self::U64(lhs.$func(rhs as u64)),
+                    (Self::U64(lhs), Self::U64(rhs)) => Self::U64(lhs.$func(rhs)),
+                }
+            }
+        }
     };
+
 }
 
 impl_math!(Add, add);
@@ -423,6 +469,23 @@ pub enum TatakuNumber {
     F32(f32),
     U32(u32),
     U64(u64),
+}
+impl PartialEq for TatakuNumber {
+    fn eq(&self, other: &Self) -> bool {
+        match (*self, *other) {
+            (Self::F32(lhs), Self::F32(rhs)) => lhs == rhs,
+            (Self::F32(lhs), Self::U32(rhs)) => lhs == rhs as f32,
+            (Self::F32(lhs), Self::U64(rhs)) => lhs == rhs as f32,
+
+            (Self::U32(lhs), Self::F32(rhs)) => lhs as f32 == rhs,
+            (Self::U32(lhs), Self::U32(rhs)) => lhs == rhs,
+            (Self::U32(lhs), Self::U64(rhs)) => lhs as u64 == rhs,
+            
+            (Self::U64(lhs), Self::F32(rhs)) => lhs as f32 == rhs,
+            (Self::U64(lhs), Self::U32(rhs)) => lhs == rhs as u64,
+            (Self::U64(lhs), Self::U64(rhs)) => lhs == rhs,
+        }
+    }
 }
 impl TatakuNumber {
     pub fn cos(&self) -> Self {

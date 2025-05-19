@@ -120,15 +120,14 @@ impl Widget for Dropdown {
 
     fn update_styles(
         &mut self, 
-        tree: &mut Tree, 
-        _resolver: &mut CssResolver, 
+        shell: &mut StyleShell,
         _display_override: Option<ui::Display>
     ) {
-        let text_style = tree
-            .get_context(self.node_id)
-            .unwrap()
+        let text_style = shell
+            .tree
+            .get_context(self.node_id).unwrap()
             .element_data.style()
-            .0.text_style();
+            .0.text_style(shell.values);
         
         let placeholder_size = text_style.measure_text(&self.placeholder, None);
         
@@ -138,19 +137,19 @@ impl Widget for Dropdown {
             .fold(placeholder_size, |a, b| Vector2::new(a.x.max(b.x), a.y.max(b.y)))
             ;
 
-        let mut style = tree.get_style(self.node_id).unwrap().clone();
+        let mut style = shell.tree.get_style(self.node_id).unwrap().clone();
         style.min_size = Size {
             width: Dimension::Length(largest_text.x),
             height: Dimension::Length(largest_text.y),
         };
-        tree.set_style(self.node_id, style);
+        shell.tree.set_style(self.node_id, style);
     }
 
     fn set_text_style(&mut self, style: TextStyle) {
         self.text_style = style;
     }
 
-    fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
+    fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {
         let style = self.get_style(Some(Vector2::ONE * shell.ui_scale));
         self.node_id = shell.tree.new_leaf(style)?;
 
@@ -165,7 +164,7 @@ impl Widget for Dropdown {
     fn input(
         &mut self, 
         event: &InputEvent, 
-        shell: &mut InputShell<'_>,
+        shell: &mut InputShell,
     ) {
         let Some(bounds) = shell.tree.bounds(&*self) else { return };
         let Some(context) = shell.tree.get_context(&*self) else { return };
@@ -251,10 +250,7 @@ impl Widget for Dropdown {
         }
     }
 
-    fn draw(
-        &self, 
-        shell: &mut DrawShell<'_>, 
-    ) {
+    fn draw(&self, shell: &mut DrawShell) {
         let theme = &shell.general_theme;
         let Some(bounds) = shell.tree.absolute_bounds(self) else { return };
         // bounds.pos.y += bounds.size.y;
@@ -277,11 +273,7 @@ impl Widget for Dropdown {
         
     }
 
-
-    fn draw_overlay(
-        &self, 
-        shell: &mut DrawShell<'_>,
-    ) {
+    fn draw_overlay(&self, shell: &mut DrawShell) {
         if !self.active { return }
         let Some(bounds) = shell.tree.absolute_bounds(self) else { return };
         let theme = &shell.general_theme;
@@ -310,11 +302,7 @@ impl Widget for Dropdown {
         }
     }
 
-    fn update(
-        &mut self, 
-        shell: &mut UpdateShell<'_>,
-        _actions: &mut ActionQueue,
-    ) {
+    fn update(&mut self, shell: &mut UpdateShell) {
         if self.variants.is_unbuilt() {
             if let Err(e) = self.variants.build(shell.values) {
                 error!("error building variants: {e:?}");
@@ -432,7 +420,7 @@ impl DropdownVariants {
 
         let iter = values.reflect_iter(&*var)?;
         let items = iter.filter_map(|value| {
-            let id = TatakuValue::from_reflection(value).ok()?.as_string();
+            let id = TatakuValue::from_reflection(value.item).ok()?.as_string();
             Some(DropdownWrapper {
                 display: value.impl_display(ReflectPath::new(""), None).unwrap_or_else(|_| id.clone()), 
                 id,

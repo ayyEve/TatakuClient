@@ -19,7 +19,7 @@
             border-radius: 5px; 
 
             align-content: end; 
-            background: #FFFFFF11;
+            background-color: #FFFFFF11;
         }
     </style>
 
@@ -47,13 +47,13 @@
                 <game>
                     <notification>
                         <color>teal</color> 
-                        <duration>10000</duration>
+                        <duration><value>10000</value></duration>
                         <text>
                             <list join=" ">
-                                <text>Now playing: </text>
-                                <variable>beatmaps.current.map.title</variable>
-                                <text> by </text>
-                                <variable>beatmaps.current.map.artist</variable>
+                                <text text="Now playing: "/>
+                                <variable var="beatmaps.current.map.title"/>
+                                <text text=" by "/>
+                                <variable var="beatmaps.current.map.artist"/>
                             </list>
                         </text>
                     </notification>
@@ -81,11 +81,11 @@
         <column style = "width: fill; height: fill">
             <!-- the first row contains the song display -->
             <row id = "song-display">
-                <text style = "font-size: 30px; color: #FFFF;">
-                    <list join = " ">
-                        <variable>beatmaps.current.map.artist</variable>
-                        <text> - </text>
-                        <variable>beatmaps.current.map.title</variable>
+                <text style = "font-size: 30px; text-color: #FFFF;">
+                    <list>
+                        <variable var="beatmaps.current.map.artist"/>
+                        <text text=" - "/>
+                        <variable var="beatmaps.current.map.title"/>
                     </list>
                 </text>
             </row> 
@@ -117,30 +117,48 @@
                             <!-- Singleplayer --> 
                             <button> 
                                 <action>
-                                    <setMenu>beatmap_select</setMenu>
+                                    <setMenu id="beatmap_select"/>
                                 </action> 
                                 <element>
-                                    <text><text>Play</text></text>
+                                    <text><text text="Play"/></text>
                                 </element>
                             </button>
 
                             <!-- Multiplayer --> 
                             <button> 
                                 <action>
-                                    <multiplayer><start/></multiplayer> 
+                                    <conditional cond="online.logged_in">
+                                        <true>
+                                            <multiplayer><start/></multiplayer> 
+                                        </true>
+                                        <false>
+                                            <game>
+                                                <notification color="RED">
+                                                    <duration> 
+                                                        <value>5000</value>
+                                                    </duration>
+                                                    <text>
+                                                        <text text="You must be online to play multiplayer!"/>
+                                                    </text>
+                                                </notification>
+                                            </game>
+                                        </false>
+                                    </conditional>
                                 </action>
                                 <element>
-                                    <text><text>Multiplayer</text></text>
+                                    <text>
+                                        <text text="Multiplayer"/>
+                                    </text>
                                 </element>
                             </button>
 
                             <!-- Settings --> 
                             <button> 
                                 <action>
-                                    <addDialog>settings</addDialog>
+                                    <addDialog id="settings"/>
                                 </action>
                                 <element>
-                                    <text><text>Settings</text></text>
+                                    <text><text text="Settings"/></text>
                                 </element>
                             </button>
 
@@ -150,7 +168,7 @@
                                     <game><quit/></game>
                                 </action>
                                 <element>
-                                    <text><text>Quit</text></text>
+                                    <text><text text="Quit"/></text>
                                 </element>
                             </button>
                         </column>
@@ -166,7 +184,7 @@
                     <button class = "fa-button">
                         <action> <map><previous/></map> </action>
                         <element>
-                            <text><text>&#xF04A;</text></text>
+                            <text><text text="&#xF04A;"/></text>
                         </element>
                     </button>
 
@@ -174,7 +192,7 @@
                     <button class = "fa-button">
                         <action> <song><seek><value>-500.0</value></seek></song> </action>
                         <element>
-                            <text><text>&#xF048;</text></text>
+                            <text><text text="&#xF048;"/></text>
                         </element>
                     </button>
 
@@ -185,7 +203,7 @@
                             <button class = "fa-button">
                                 <action> <song><pause/></song> </action>
                                 <element>
-                                    <text><text>&#xF04C;</text></text>
+                                    <text><text text="&#xF04C;"/></text>
                                 </element>
                             </button>
                         </true>
@@ -195,7 +213,7 @@
                             <button class="fa-button">
                                 <action> <song><play/></song> </action>
                                 <element>
-                                    <text><text>&#xF04B;</text></text>
+                                    <text><text text="&#xF04B;"/></text>
                                 </element>
                             </button>
                         </false>
@@ -206,7 +224,7 @@
                     <button class="fa-button">
                         <action> <song><seek><value>500.0</value></seek></song> </action>
                         <element>
-                            <text><text>&#xF051;</text></text>
+                            <text><text text="&#xF051;"/></text>
                         </element>
                     </button>
 
@@ -214,7 +232,7 @@
                     <button class="fa-button">
                         <action> <map><next/></map> </action>
                         <element>
-                            <text><text>&#xF04E;</text></text>
+                            <text><text text="&#xF04E;"/></text>
                         </element>
                     </button>
                 </row>

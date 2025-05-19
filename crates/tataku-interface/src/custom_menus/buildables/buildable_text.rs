@@ -3,73 +3,74 @@ use crate::prelude::*;
 #[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Serialize, Deserialize)]
 pub struct BuildableTextTag {
-    #[serde(alias = "$value", alias = "$text")] 
-    pub value: BuildableText
+    #[serde(rename="$value")] pub value: BuildableText
 }
 crate::impl_tag!(BuildableTextTag, BuildableText, value);
-
-
-#[derive(Clone, Debug, Default, PartialEq)]
-#[derive(Serialize, Deserialize)]
-pub struct BuildableText {
-    #[serde(rename="@join", default)] pub join: Option<String>,
-    #[serde(rename="$value", alias="$text")] pub text: Vec<BuildableTextInner>
-}
-impl BuildableText {
-    pub fn compute(&mut self) -> ShuntingYardResult<()> {
-        for i in self.text.iter_mut() {
-            i.compute()?
-        }
-
-        Ok(())
-    }
-
-    pub fn to_string(&self, values: &dyn Reflect) -> String {
-        self.text
-            .iter()
-            .map(|i| i.to_string(values))
-            .collect::<Vec<_>>()
-            .join(self.join.as_deref().unwrap_or(""))
-    }
-}
-impl From<BuildableTextInner> for BuildableText {
-    fn from(value: BuildableTextInner) -> Self {
-        Self {
-            join: None,
-            text: vec![value]
-        }
-    }
-}
 
 #[derive(Clone, Debug, PartialEq)]
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all="camelCase")]
-pub enum BuildableTextInner {
-    Variable(String),
-    Locale(String),
-    Calc(String),
-
-    /// calc but parsed, should not be read into
-    #[serde(skip)] CalcParsed(Arc<BuildableCalc>, String),
-    #[serde(alias = "$text")] Text(String),
-    
-    TextIter {
-        #[serde(alias = "@variable")] variable: String,
-        #[serde(alias = "@property")] property: Option<String>,
-        #[serde(alias = "@join")] join: String,
+pub enum BuildableText {
+    Text {
+        #[serde(rename = "@text")]
+        text: String
     },
+
+    Locale(String),
+    Variable {
+        #[serde(rename = "@var")] 
+        variable: String
+    },
+    
+    Display {
+        #[serde(rename = "@var")] 
+        variable: String,
+
+        #[serde(rename = "@precision", default)] 
+        precision: Option<usize>,
+    },
+
+    Calc {
+        #[serde(rename = "@calc")]
+        calc: String
+    },
+
+    
+    /// calc but parsed, should not be read into
+    #[serde(skip)] CalcParsed(BuildableCalc, String),
+
+    #[serde(alias = "iter")] 
+    TextIter {
+        #[serde(rename = "@variable")] variable: String,
+        #[serde(rename = "@property")] property: Option<String>,
+        #[serde(rename = "@join")] join: String,
+    },
+
+    List {
+        #[serde(rename="$value")]
+        list: Vec<Self>,
+        
+        #[serde(rename="@join", default)]
+        join: String
+    }
 }
-impl BuildableTextInner {
+impl BuildableText {
     /// Parses Self::Calc into Self::CalcParsed
     pub fn compute(&mut self) -> ShuntingYardResult<()> {
         match self {
-            Self::Calc(s) => {
-                let s = s.clone();
-                *self = Self::CalcParsed(Arc::new(BuildableCalc::parse(&s)?), s)
+            Self::Calc { calc } => {
+                let s = calc.clone();
+                *self = Self::CalcParsed(BuildableCalc::parse(&s)?, s)
             }
             // because json pointers use '/' and not '.', but '.' is nicer for locale
             // "dialog.confirmation.yes" (us) vs "dialog/confirmation/yes" (json)
             Self::Locale(s) => *s = s.replace('.', "/"),
+
+            Self::List { list, .. } => {
+                for i in list {
+                    i.compute()?;
+                }
+            }
 
             _ => {}
         }
@@ -77,14 +78,30 @@ impl BuildableTextInner {
         Ok(())
     }
 
-    pub fn as_buildable(self) -> BuildableText {
-        self.into()
-    }
-
     pub fn to_string(&self, values: &dyn Reflect) -> String {
         match self {
-            Self::Variable(t) => values.reflect_get::<String>(t).as_deref().cloned().unwrap_or_else(|_| format!("Invalid property: '{t}'")),
-            Self::Text(t) | Self::Locale(t) => t.clone(),
+            Self::Variable { variable } => values
+                .reflect_display(variable, None)
+                .unwrap_or_else(|e| format!("Invalid property: '{variable}' ({e:?})")),
+            
+            Self::Text { text: t } | Self::Locale(t) => t.clone(),
+            
+            Self::Display { variable, precision } => {
+                if let Ok(number) = values.reflect_as_number(variable) {
+                    match number {
+                        ReflectNumber::F32(n) => format_float(n, precision.unwrap_or(2)),
+                        ReflectNumber::F64(n) => format_float(n, precision.unwrap_or(2)),
+                        other => {
+                            let num = i128::from(other);
+                            format_number(num)
+                        }
+                    }
+                } else {
+                    values
+                    .reflect_display(variable, *precision)
+                    .unwrap_or_else(|e| format!("Invalid property: '{variable}' ({e:?})"))
+                }
+            },
 
             Self::CalcParsed(calc, calc_str) => {
                 match calc.resolve(values) {
@@ -94,6 +111,13 @@ impl BuildableTextInner {
                         "Calc error! See console.".to_string()
                     }
                 }
+            }
+
+            Self::List { list, join } => {
+                list.iter()
+                    .map(|i| i.to_string(values))
+                    .collect::<Vec<_>>()
+                    .join(join)
             }
 
             Self::TextIter { 
@@ -119,7 +143,7 @@ impl BuildableTextInner {
                                 if let Some(s) = str {
                                     list.push(s);
                                 }
-                            } else if let Some(s) = try_get_string(i) {
+                            } else if let Some(s) = try_get_string(i.item) {
                                 list.push(s);
                             }
                         }
@@ -133,13 +157,15 @@ impl BuildableTextInner {
                 }
             }
 
-            Self::Calc(_t) => panic!("You forgot to parse a calc!"),
+            Self::Calc { calc} => unreachable!("Calcs should be built. unbuilt: {calc}"),
         }
     }
 }
-impl Default for BuildableTextInner {
+impl Default for BuildableText {
     fn default() -> Self {
-        Self::Text(String::new())
+        Self::Text { 
+            text: String::new()
+        }
     }
 }
 
@@ -148,5 +174,91 @@ fn try_get_string(r: &dyn Reflect) -> Option<String> {
     match r.downcast_ref::<String>().cloned() {
         Some(s) => Some(s),
         None => r.downcast_ref::<&str>().map(|s| s.to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_text() {
+        let input = r#"<text text="hi mom"/>"#;
+        let expected = BuildableText::Text { 
+            text: "hi mom".to_owned() 
+        };
+        
+        assert_eq!(quick_xml::de::from_str::<'_, BuildableText>(input).unwrap(), expected);
+    }
+    
+    #[test]
+    fn test_variable() {
+        let input = r#" <variable var="hi mom"/> "#;
+        let expected = BuildableText::Variable { 
+            variable: "hi mom".to_owned() 
+        };
+        
+        assert_eq!(quick_xml::de::from_str::<'_, BuildableText>(input).unwrap(), expected);
+    }
+
+    #[test]
+    fn test_calc() {
+        let input = r#" <calc calc="hi mom"/> "#;
+        let expected = BuildableText::Calc { 
+            calc: "hi mom".to_owned() 
+        };
+        
+        assert_eq!(quick_xml::de::from_str::<'_, BuildableText>(input).unwrap(), expected);
+    }
+
+    #[test]
+    fn test_display() {
+        let input = r#" <display var="hi mom"/> "#;
+        let expected = BuildableText::Display { 
+            variable: "hi mom".to_owned(),
+            precision: None
+        };
+        
+        assert_eq!(quick_xml::de::from_str::<'_, BuildableText>(input).unwrap(), expected);
+    }
+
+    #[test]
+    fn test_display_precision() {
+        let input = r#" <display var="hi mom" precision="4" /> "#;
+        let expected = BuildableText::Display { 
+            variable: "hi mom".to_owned(),
+            precision: Some(4)
+        };
+        
+        assert_eq!(quick_xml::de::from_str::<'_, BuildableText>(input).unwrap(), expected);
+    }
+
+    
+    #[test]
+    fn test_list() {
+        let input = r#" <list> <text text="hi mom"/> <text text="bye mom"/> </list> "#;
+        let expected = BuildableText::List { 
+            join: String::new(),
+            list: vec![
+                BuildableText::Text { text: "hi mom".to_owned() },
+                BuildableText::Text { text: "bye mom".to_owned() }
+            ]  
+        };
+        
+        assert_eq!(quick_xml::de::from_str::<'_, BuildableText>(input).unwrap(), expected);
+    }
+
+    #[test]
+    fn test_list_join() {
+        let input = r#" <list join="uwu"> <text text="hi mom"/> <text text="bye mom"/> </list> "#;
+        let expected = BuildableText::List { 
+            join: "uwu".to_owned(),
+            list: vec![
+                BuildableText::Text { text: "hi mom".to_owned() },
+                BuildableText::Text { text: "bye mom".to_owned() }
+            ]  
+        };
+        
+        assert_eq!(quick_xml::de::from_str::<'_, BuildableText>(input).unwrap(), expected);
     }
 }

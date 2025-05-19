@@ -20,13 +20,12 @@ impl Default for BeatmapDownloadsCheckTask {
     }
 }
 
-#[async_trait]
 impl TatakuTask for BeatmapDownloadsCheckTask {
     fn get_name(&self) -> Cow<'static, str> { Cow::Borrowed("Beatmap Download Check") }
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Continuous }
     fn get_state(&self) -> TatakuTaskState { TatakuTaskState::Running } // no real point in saying we arent running, since we run for one update every ~10s
 
-    async fn run(
+    fn run(
         &mut self, 
         _values: &mut dyn Reflect, 
         state: &TaskGameState, 
@@ -91,10 +90,10 @@ impl TatakuTask for BeatmapDownloadsCheckTask {
             let path = i.path();
             let Some(ext) = path.extension() else { continue };
             if ext == ".osk" {
-                if let Ok(path) = Zip::extract_single(i.path(), SKINS_FOLDER, true, ArchiveDelete::Always).await {
+                if let Ok(path) = Zip::extract_single(i.path(), SKINS_FOLDER, true, ArchiveDelete::Always) {
                     folders.push(path);
                 }
-            } else if let Ok(path) = Zip::extract_single(i.path(), SONGS_DIR, true, ArchiveDelete::Always).await {
+            } else if let Ok(path) = Zip::extract_single(i.path(), SONGS_DIR, true, ArchiveDelete::Always) {
                 folders.push(path);
             }
         }

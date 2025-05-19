@@ -3,7 +3,9 @@
   xmlns:xs="http://www.w3.org/2001/XMLSchema"
   targetNamespace="tataku/events"
   xmlns:events="tataku/events"
+  xmlns:input="tataku/input"
 >
+<xs:import namespace="tataku/input" schemaLocation="input.xsd"/>
 
 <xs:group name="event-type">
   <xs:choice>
@@ -16,34 +18,20 @@
 
       <xs:element name="mapAdded"/>
 
-      <xs:element name="keyPress">
-        <xs:complexType>
-          <xs:attribute name="key" type="xs:string" use="required" />
-          <xs:attribute name="ctrl" type="xs:boolean" />
-          <xs:attribute name="alt" type="xs:boolean" />
-          <xs:attribute name="shift" type="xs:boolean" />
-        </xs:complexType>
-      </xs:element>
-      <xs:element name="keyRelease">
-        <xs:complexType>
-          <xs:attribute name="key" type="xs:string" use="required" />
-          <xs:attribute name="ctrl" type="xs:boolean" />
-          <xs:attribute name="alt" type="xs:boolean" />
-          <xs:attribute name="shift" type="xs:boolean" />
-        </xs:complexType>
-      </xs:element>
+      <xs:element name="keyPress" type="events:key-event"/>
+      <xs:element name="keyRelease" type="events:key-event"/>
 
       <xs:element name="controllerPress">
         <xs:complexType>
           <xs:sequence>
-            <xs:element name="button" type="events:controller-button" />
+            <xs:element name="button" type="input:controller-button" />
           </xs:sequence>
         </xs:complexType>
       </xs:element>
       <xs:element name="controllerRelease">
         <xs:complexType>
           <xs:sequence>
-            <xs:element name="button" type="events:controller-button" />
+            <xs:element name="button" type="input:controller-button" />
           </xs:sequence>
         </xs:complexType>
       </xs:element>
@@ -51,11 +39,13 @@
 </xs:group>
 
 
-
-<xs:complexType name="controller-button">
-  <xs:choice>
-
-  </xs:choice>
+<xs:complexType name="key-event">
+  <xs:attribute name="key" type="input:key" use="required" />
+  <xs:attribute name="ctrl" type="xs:boolean" />
+  <xs:attribute name="alt" type="xs:boolean" />
+  <xs:attribute name="shift" type="xs:boolean" />
 </xs:complexType>
+
+
 
 </xs:schema>

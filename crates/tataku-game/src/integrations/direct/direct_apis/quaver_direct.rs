@@ -10,7 +10,11 @@ impl DirectApi for QuaverDirect {
     fn api_name(&self) -> &'static str { "Quaver" }
     fn supported_modes(&self) -> Vec<String> { vec!["mania".to_owned()] }
 
-    async fn do_search(&mut self, search_params:SearchParams, _settings: &Settings) -> Vec<Arc<dyn DirectDownloadable>> {
+    async fn do_search(
+        &mut self, 
+        search_params: SearchParams, 
+        _settings: &Settings
+    ) -> Vec<Arc<dyn DirectDownloadable>> {
         trace!("Searching");
 
         let mut params = Vec::new();
@@ -38,13 +42,15 @@ impl DirectApi for QuaverDirect {
             params.join("&")
         );
 
+        // TODO: remove async once we're no longer in an async context
         let body = reqwest::get(url).await
             .expect("Error with request")
             .text().await
             .expect("Error converting to text");
 
 
-        let deserialized:QuaverMapsetRequest = serde_json::from_str(&body).expect("Error deserializing response");
+        let deserialized: QuaverMapsetRequest = serde_json::from_str(&body)
+            .expect("Error deserializing response");
 
         let mut items = Vec::new();
         for i in deserialized.mapsets {

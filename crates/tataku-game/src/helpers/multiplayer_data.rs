@@ -4,22 +4,13 @@ use crate::prelude::*;
 #[reflect(display = "debug")]
 #[derive(Default, Clone, Debug)]
 pub struct MultiplayerData {
-    pub lobbies: HashMap<u32, LobbyInfo>,
-
     pub lobby_creation_pending: bool,
     pub lobby_join_pending: bool,
 }
 impl MultiplayerData {
     pub fn clear(&mut self) {
-        self.lobbies.clear();
         self.lobby_creation_pending = false;
         self.lobby_join_pending = false;
-    }
-
-    pub fn update_values(&self, values: &mut dyn Reflect) {
-        if let Err(e) = values.reflect_insert("global.lobbies", self.lobbies.values().cloned().collect::<Vec<_>>()) {
-            error!("error updating global.lobbies: {e:?}");
-        }
     }
 }
 
@@ -76,3 +67,4 @@ impl DerefMut for CurrentLobbyInfo {
         &mut self.info
     }
 }
+

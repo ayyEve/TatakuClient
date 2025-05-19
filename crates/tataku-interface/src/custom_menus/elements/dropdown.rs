@@ -18,7 +18,7 @@ pub struct DropdownElement {
     #[serde(alias = "onSelect")] on_select: BuildableActionTag,
 }
 impl CustomElement for DropdownElement {
-    fn build(&self, _shell: &mut ElementBuildShell<'_>) -> Box<dyn Widget> {
+    fn build(&self) -> Box<dyn Widget> {
         WidgetContainer::new_boxed(
             self.style.clone(),
             "dropdown",

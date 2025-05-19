@@ -19,27 +19,40 @@ const SPECTATOR_BUFFER_FLUSH_SIZE: usize = 20;
 // how often (ms) to send pings
 const PING_TIMER: u64 = 5_000;
 
-#[derive(Reflect)]
-#[derive(Debug2)]
+#[derive(Default)]
+#[derive(Reflect, Debug2)]
 #[reflect(dont_clone)]
 pub struct OnlineManager {
+    /// are we connected to the server?
     pub connected: bool,
-    pub users: HashMap<u32, OnlineUser>, // user id is key
-    pub friends: HashSet<u32>, // userid is key
+
+    /// list of online users, key = user id
+    pub users: HashMap<u32, OnlineUser>, 
+
+    /// list of our friends, key = user id
+    pub friends: HashSet<u32>,
+
 
     /// our user's id
     pub user_id: u32,
 
     /// are we successfully logged in?
-    logged_in: bool,
+    pub logged_in: bool,
 
     // ====== chat ======
     #[cfg(feature="graphics")]
-    chat_messages: HashMap<ChatChannel, Vec<ChatMessage>>,
+    pub chat_messages: Vec<ChatChannel>,
 
     // ====== spectator ======
-    spectator_info: OnlineSpectatorInfo,
+    pub spectator_info: OnlineSpectatorInfo,
     
+    // ====== multiplayer ======
+    /// list of lobbies that exist
+    pub lobbies: Vec<LobbyInfo>,
+
+    #[cfg(feature="gameplay")]
+    pub multiplayer_data: MultiplayerData,
+
     /// received from the network thread to be processed
     #[debug(skip)]
     #[reflect(skip)] 
@@ -62,32 +75,22 @@ impl OnlineManager {
         // idk why this is suddenly required but whatever
         let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
 
-        #[cfg(feature="graphics")] 
-        let mut messages = HashMap::new();
-        #[cfg(feature="graphics")]
-        let channel = ChatChannel::Channel { name: "general".to_owned() };
-        #[cfg(feature="graphics")]
-        messages.insert(channel.clone(), vec![ChatMessage::new(
-            "System".to_owned(),
-            channel,
-            u32::MAX,
-            "this is a test message".to_owned()
-        )]);
+        // #[cfg(feature="graphics")] 
+        // let mut messages = HashMap::new();
+        // #[cfg(feature="graphics")]
+        // let channel = ChatChannelType::Channel { name: "general".to_owned() };
+        // #[cfg(feature="graphics")]
+        // messages.insert(channel.clone(), vec![ChatMessage::new(
+        //     "System".to_owned(),
+        //     channel,
+        //     u32::MAX,
+        //     "this is a test message".to_owned()
+        // )]);
 
         Self {
-            user_id: 0,
-            logged_in: false,
-            users: HashMap::new(),
-            friends: HashSet::new(),
-            connected: false,
-            #[cfg(feature="graphics")]
-            chat_messages: messages,
-            spectator_info: OnlineSpectatorInfo::new(0),
-            event_receiver: None,
-            packet_sender: None,
-
-            events: Vec::new(),
-            handle: None
+            // #[cfg(feature="graphics")]
+            // chat_messages,
+            ..Default::default()
         }
     }
 
@@ -169,6 +172,39 @@ impl OnlineManager {
             OnlineAction::StopSpectating { host_id } => self.stop_spectating(host_id),
             OnlineAction::SendSpectatorFrame { frame, force } => self.send_spec_frames(vec![*frame], force),
             OnlineAction::Packet(packet) => self.send_packet(*packet),
+
+            OnlineAction::ChatAction(action) => {
+                match action {
+                    ChatAction::SendMessage { 
+                        channel, 
+                        message 
+                    } => self.send_packet(ChatPacket::Client_SendMessage { 
+                        channel, 
+                        message 
+                    }),
+
+                    ChatAction::OpenChannel { 
+                        channel, 
+                        password 
+                    } => self.send_packet(ChatPacket::Client_JoinChannel { 
+                        channel, 
+                        password: password.unwrap_or_default() 
+                    }),
+
+                    ChatAction::CloseChannel { channel } => {
+                        if let Some((i,_)) = self.chat_messages
+                            .iter()
+                            .enumerate()
+                            .find(|(_, i)| i.channel_type == channel) {
+                            self.chat_messages.remove(i);
+                        }
+
+
+                        // TODO:
+                        // self.send_packet(ChatPacket::Client_LeaveChannel { channel })
+                    },
+                }
+            }
         }
     }
 
@@ -352,9 +388,9 @@ impl OnlineManager {
                 if log_settings.extra_online_logging { debug!("Got message: `{message}` from user id `{sender_id}` in channel `{channel}`"); };
 
                 let channel = if channel.starts_with("#") {
-                    ChatChannel::Channel {name: channel.trim_start_matches("#").to_owned()}
+                    ChatChannelType::Channel {name: channel.trim_start_matches("#").to_owned()}
                 } else {
-                    ChatChannel::User {username: channel}
+                    ChatChannelType::User {username: channel}
                 };
 
                 let sender = self
@@ -370,10 +406,16 @@ impl OnlineManager {
                 );
                 
                 // add the message to the channel, creating the channel if it doesnt exist.
-                self.chat_messages
-                    .entry(channel.clone())
-                    .or_default()
-                    .push(message);
+                if let Some(channel) = self.chat_messages
+                    .iter_mut()
+                    .find(|i| i.channel_type == channel) {
+                    channel.messages.push(message);
+                } else {
+                    self.chat_messages.push(ChatChannel {
+                        channel_type: channel,
+                        messages: vec![message]
+                    });
+                }
             }
 
             // friends list received from server
@@ -506,10 +548,11 @@ impl OnlineManager {
     pub fn get_user(&self, id: u32) -> Option<OnlineUser> {
         self.users.get(&id).cloned()
     }
-}
-impl Default for OnlineManager {
-    fn default() -> Self {
-        Self::new()
+
+    pub fn lobby(&mut self, lobby: u32) -> Option<&mut LobbyInfo> {
+        self.lobbies
+            .iter_mut()
+            .find(|l| l.id == lobby)
     }
 }
 
@@ -635,7 +678,6 @@ impl SetAction {
         }
     }
 }
-
 
 
 struct Writer(SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>);

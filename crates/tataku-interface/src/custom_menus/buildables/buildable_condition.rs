@@ -9,6 +9,10 @@ pub enum BuildableCondition {
     Failed,
 }
 impl BuildableCondition {
+    pub fn is_unbuilt(&self) -> bool {
+        matches!(self, Self::Unbuilt(_))
+    }
+
     pub fn build(&mut self) {
         let BuildableCondition::Unbuilt(s) = self else { return };
         match BuildableCalc::parse(format!("{s} == true")) {

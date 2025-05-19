@@ -119,12 +119,12 @@ impl TimingPointHelper {
         p.beat_length * mult
     }
 
-    pub fn slider_velocity_at(&self, time:f32) -> f32 {
+    pub fn slider_velocity_at(&self, time: f32) -> f32 {
         let bl = self.beat_length_at(time, true);
         100.0 * (self.slider_velocity_base * 1.4) * if bl > 0.0 {1000.0 / bl} else {1.0}
     }
 
-    pub fn control_point_at(&self, time:f32) -> TimingPoint {
+    pub fn control_point_at(&self, time: f32) -> TimingPoint {
         // panic as this should be dealt with earlier in the code
         if self.timing_points.is_empty() { panic!("beatmap has no timing points!"); }
 

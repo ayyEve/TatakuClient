@@ -1,92 +1,85 @@
 use crate::prelude::*;
+use serde::de::DeserializeOwned;
 
 #[derive(Default)]
 pub struct CustomMenuManager {
-    menu_list: Vec<CustomMenuEntry>,
+    menu_list: Vec<CustomEntry<CustomMenu>>,
+    dialog_list: Vec<CustomEntry<CustomDialog>>,
 }
 impl CustomMenuManager {
-    fn load_menu_inner(
+    fn load_entry_inner<T: DeserializeOwned>(
         path: Option<String>, 
         bytes: Vec<u8>, 
         source: CustomMenuSource
-    ) -> TatakuResult<CustomMenuEntry> {
+    ) -> TatakuResult<CustomEntry<T>> {
         let menu = quick_xml::de::from_reader(std::io::Cursor::new(&bytes))
             .map_err(TatakuError::from_err)?;
 
-        Ok(CustomMenuEntry {
+        Ok(CustomEntry {
             path,
             source,
-            menu,
+            inner: menu,
             bytes,
         })
     }
-
-    pub fn load_menu(&mut self, path: String, source: CustomMenuSource) -> TatakuResult {
-        let bytes = std::fs::read(&path)?;
-
-        let menu = Self::load_menu_inner(
-            Some(path),
-            bytes,
-            source
-        )?;
-
-        self.menu_list.push(menu);
-        Ok(())
-    }
-    pub fn load_menu_from_bytes(&mut self, bytes: &[u8], _name: String, source: CustomMenuSource) -> TatakuResult {
-        let menu = Self::load_menu_inner(
-            None, 
-            bytes.to_vec(), 
-            source
-        )?;
-
-        self.menu_list.push(menu);
-        Ok(())
-    }
-
-    pub fn load_menu_from_bytes_and_path(
+    
+    pub fn load_entry(
         &mut self, 
-        bytes: &[u8], 
-        _path: String, 
-        source: CustomMenuSource
+        path: String, 
+        source: CustomMenuSource,
+        entry_type: CustomEntryType,
     ) -> TatakuResult {
-        let menu = Self::load_menu_inner(
-            None, // Some(path), 
-            bytes.to_vec(), 
-            source
-        )?;
-
-        self.menu_list.push(menu);
-        Ok(())
+        let bytes = std::fs::read(&path)?;
+        self.load_entry_bytes(&bytes, Some(path), source, entry_type)
     }
     
-    pub fn get_menu(&self, selector: impl Into<CustomMenuSelector>) -> Option<&CustomMenu> {
-        let selector: CustomMenuSelector = selector.into();
-
-        for CustomMenuEntry { source, menu, .. } in self.menu_list.iter().rev() {
-            if menu.id == selector.name && source.check(&selector.source) {
-                return Some(menu)
+    pub fn load_entry_bytes(
+        &mut self, 
+        bytes: &[u8], 
+        path: Option<String>,
+        source: CustomMenuSource,
+        entry_type: CustomEntryType,
+    ) -> TatakuResult {
+        match entry_type {
+            CustomEntryType::Menu => {
+                self.menu_list.push(Self::load_entry_inner(
+                    path,
+                    bytes.to_vec(),
+                    source
+                )?);
+            }
+            CustomEntryType::Dialog => {
+                self.dialog_list.push(Self::load_entry_inner(
+                    path,
+                    bytes.to_vec(),
+                    source
+                )?);
             }
         }
-
-        None
+        Ok(())
     }
 
-    pub fn reload_menus(&mut self, source: CustomMenuSource) -> bool {
+
+
+
+    pub fn reload_entries(
+        &mut self, 
+        source: CustomMenuSource
+    ) -> bool {
         let mut reloaded = false;
 
         for i in self.menu_list.iter_mut().filter(|m| !m.source.check(&source) ) {
             let Some(path) = &i.path else { continue };
             let Ok(bytes) = std::fs::read(path) else { continue };
 
-            match Self::load_menu_inner(
+            match Self::load_entry_inner(
                 Some(path.clone()), 
                 bytes, 
                 i.source
             ) {
                 Ok(menu) => {
                     reloaded = true;
-                    i.menu = menu.menu;
+                    i.inner = menu.inner;
                     i.bytes = menu.bytes;
                 }
                 Err(e) => {
@@ -98,39 +91,87 @@ impl CustomMenuManager {
         reloaded
     }
 
-    pub fn clear_menus(&mut self, source: CustomMenuSource) -> bool {
-        let has_entries = !self.menu_list.is_empty();
+    pub fn clear(&mut self, source: CustomMenuSource) -> bool {
+        let mut has_entries = !self.menu_list.is_empty();
+        has_entries |= !self.dialog_list.is_empty();
 
         self.menu_list.retain(|src| src.source.check(&source));
+        self.dialog_list.retain(|src| src.source.check(&source));
 
         has_entries
     }
 
 
     pub fn update_values(&self, values: &mut ValueCollection) {
-        let menu_names = self.menu_list
+        values.global.menu_list = self.menu_list
             .iter()
-            .map(|m| m.menu.id.clone())
+            .map(|m| m.inner.id.clone())
             .collect::<Vec<_>>();
-        values.global.menu_list = menu_names;
+
+        values.global.dialog_list = self.dialog_list
+            .iter()
+            .map(|m| m.inner.id.clone())
+            .collect::<Vec<_>>();
+        
     }
 }
 
+// getters 
+impl CustomMenuManager {
+    pub fn get_menu(
+        &self, 
+        selector: impl Into<CustomEntrySelector>
+    ) -> Option<&CustomMenu> {
+        let selector: CustomEntrySelector = selector.into();
 
-struct CustomMenuEntry {
+        for CustomEntry { source, inner: menu, .. } in self.menu_list.iter().rev() {
+            if menu.id == selector.name && source.check(&selector.source) {
+                return Some(menu)
+            }
+        }
+
+        None
+    }
+
+    pub fn get_dialog(
+        &self, 
+        selector: impl Into<CustomEntrySelector>,
+    ) -> Option<&CustomDialog> {
+        let selector: CustomEntrySelector = selector.into();
+
+        for CustomEntry { source, inner, .. } in self.dialog_list.iter().rev() {
+            if inner.id == selector.name && source.check(&selector.source) {
+                return Some(inner)
+            }
+        }
+
+        None
+    }
+
+}
+
+
+pub enum CustomEntryType {
+    Menu,
+    Dialog,
+}
+
+#[derive(Debug)]
+struct CustomEntry<T> {
     source: CustomMenuSource,
-    menu: CustomMenu,
+    inner: T,
     
     path: Option<String>,
     bytes: Vec<u8>,
 }
 
+
 #[derive(Default)]
-pub struct CustomMenuSelector {
+pub struct CustomEntrySelector {
     name: String,
     source: CustomMenuSource,
 }
-impl From<(String, CustomMenuSource)> for CustomMenuSelector {
+impl From<(String, CustomMenuSource)> for CustomEntrySelector {
     fn from((name, source): (String, CustomMenuSource)) -> Self {
         Self {
             name,
@@ -138,7 +179,7 @@ impl From<(String, CustomMenuSource)> for CustomMenuSelector {
         }
     }
 }
-impl From<String> for CustomMenuSelector {
+impl From<String> for CustomEntrySelector {
     fn from(name: String) -> Self {
         Self {
             name,
@@ -146,7 +187,7 @@ impl From<String> for CustomMenuSelector {
         }
     }
 }
-impl From<&str> for CustomMenuSelector {
+impl From<&str> for CustomEntrySelector {
     fn from(name: &str) -> Self {
         Self {
             name: name.to_owned(),

@@ -1,56 +1,7 @@
 use taffy::*;
 use crate::prelude::*;
 use crate::prelude::ui::*;
-
-macro_rules! impl_parse {
-    ($fn: ident, $struct: ident, $(($i: expr, $v: tt));*) => {
-        pub fn $fn(s: &str) -> Result<$struct, ()> {
-            match s {
-                $( $i => Ok($struct::$v), )*
-                _ => Err(())
-            }
-        }
-    };
-
-    (rect, $fn: ident, $parent_fn: ident :: $parent_fn2: ident, $struct: ident) => {
-        pub fn $fn(s: &str) -> Result<Rect<$struct>, ()> {
-            let a = s.trim()
-                .split(" ")
-                .map($parent_fn :: $parent_fn2)
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(|_| ())?;
-            
-            match a.len() {
-                0 => Err(()),
-                1 => { 
-                    Ok(Rect {
-                        top: a[0],
-                        left: a[0],
-                        bottom: a[0],
-                        right: a[0],
-                    }) 
-                }
-                2 => { 
-                    Ok(Rect {
-                        top: a[0],
-                        left: a[1],
-                        bottom: a[0],
-                        right: a[1]
-                    }) 
-                }
-                4 => {
-                    Ok(Rect {
-                        top: a[0],
-                        left: a[1],
-                        bottom: a[2],
-                        right: a[3]
-                    }) 
-                }
-                _ => Err(())
-            }
-        }
-    }
-}
+use super::parsing::value_parser::CssValueParser;
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 #[derive(Deserialize)]
@@ -76,52 +27,7 @@ impl std::str::FromStr for DisplayType {
 }
 
 
-#[derive(Copy, Clone, Debug, Default)]
-pub enum CssValue<T> {
-    #[default]
-    Unset,
-    Inherit,
-    Value(T),
-}
-impl<T> CssValue<T> {
-    pub fn parse<E>(
-        s: &str, 
-        default: Self,
-        value_parser: impl Fn(&str) -> Result<T, E>
-    ) -> Self {
-        match s {
-            "unset" => Self::Unset,
-            "inherit" => Self::Inherit,
 
-            other => value_parser(other)
-                .map(Self::Value)
-                .unwrap_or(default),
-        }
-    }
-
-    pub fn check_inherit(self, parent: Self) -> Self {
-        match (self, parent) { 
-            (Self::Inherit, value @ Self::Value(_)) => value,
-            (other, _) => other
-        }
-    }
-    pub fn check_unset(self, parent: Self) -> Self {
-        match (self, parent) { 
-            (Self::Inherit | Self::Unset, value @ Self::Value(_)) => value,
-            (other, _) => other
-        }
-    }
-    
-    pub fn value(&self) -> Option<&T> {
-        match self {
-            Self::Value(v) => Some(v),
-            _ => None
-        }
-    }
-}
-
-
-/// this is mostly the same as taffy::Style but everything is an Option.
 #[derive(Default, Debug, Clone)]
 #[derive(ParseCss)]
 pub struct CssStyle {
@@ -183,7 +89,7 @@ pub struct CssStyle {
     pub padding: CssValue<Rect<LengthPercentage>>,
     /// How large should the border be on each side?
     #[css(parse_with = "Self::parse_rect_length_percentage")]
-    pub border: CssValue<Rect<LengthPercentage>>,
+    pub border_width: CssValue<Rect<LengthPercentage>>,
 
     /// The border radius in px
     pub border_radius: CssValue<f32>,
@@ -194,7 +100,7 @@ pub struct CssStyle {
 
     /// The background color
     #[css(parse_with = "Self::parse_color")]
-    pub background: CssValue<Color>,
+    pub background_color: CssValue<Color>,
 
     // Alignment properties
     /// How this node's children aligned in the cross/block axis?
@@ -343,14 +249,14 @@ impl CssStyle {
         let mut default = taffy::Style::default();
 
         macro_rules! cmp {
-            ($($field: ident),*) => {
+            ($($field: ident,)* $(,)?) => {
                 $(
                     if let Some(a) = self.$field.value().cloned() {
                         default.$field = a;
                     }
                 )*
             };
-            (option; $($field: ident),*) => {
+            (option; $($field: ident),* $(,)?) => {
                 $(default.$field = self.$field.value().cloned();)*
             };
         }
@@ -396,6 +302,9 @@ impl CssStyle {
         if let Some(&h) = self.max_height.value() {
             default.max_size.height = h;
         }
+        if let Some(&border) = self.border_width.value() {
+            default.border = border;
+        }
 
 
         cmp!(
@@ -405,12 +314,11 @@ impl CssStyle {
             inset,
             margin,
             padding,
-            border,
             flex_direction,
             flex_wrap,
             flex_grow,
             flex_shrink,
-            flex_basis
+            flex_basis,
         );
         cmp!(option;
             aspect_ratio,
@@ -419,183 +327,23 @@ impl CssStyle {
             justify_items,
             justify_self,
             align_content,
-            justify_content
+            justify_content,
         );
         
 
         default
     }
 
-    pub fn text_style(&self) -> TextStyle {
+    pub fn text_style(&self, values: &dyn Reflect) -> TextStyle {
         TextStyle::default()
             .font_maybe(self.font.value().copied())
-            .font_size_maybe(self.font_size.value().copied())
-            .color_maybe(self.text_color.value().copied())
-            .line_height_maybe(self.line_height.check_inherit(self.font_size).value().copied())
+            .font_size_maybe(self.font_size.value_var_copied(values))
+            .color_maybe(self.text_color.value_var_copied(values))
+            .line_height_maybe(self.line_height.clone()
+                .check_inherit(self.font_size.clone())
+                .value_var_copied(values))
             .alignment_maybe(self.text_alignment.value().copied())
     }
-}
-
-// parsing
-#[allow(clippy::result_unit_err)] // its fine because im lazy and we dont care about the error
-impl CssStyle {
-    pub fn parse_length_percentage_auto(s: &str) -> Result<LengthPercentageAuto, ()> {
-        if s.ends_with("%") {
-            let a = s.trim_end_matches("%").parse::<f32>().map_err(|_| ())?;
-            return Ok(LengthPercentageAuto::Percent(a / 100.0))
-        }
-        if s.ends_with("px") {
-            let a = s.trim_end_matches("px").parse().map_err(|_| ())?;
-            return Ok(LengthPercentageAuto::Length(a))
-        }
-
-        match s {
-            "auto" => Ok(LengthPercentageAuto::Auto),
-            _ => Err(())
-        }
-    }
-    pub fn parse_length_percentage(s: &str) -> Result<LengthPercentage, ()> {
-        if s.ends_with("%") {
-            let a = s.trim_end_matches("%").parse::<f32>().map_err(|_| ())?;
-            return Ok(LengthPercentage::Percent(a / 100.0))
-        }
-        if s.ends_with("px") {
-            let a = s.trim_end_matches("px").parse().map_err(|_| ())?;
-            return Ok(LengthPercentage::Length(a))
-        }
-
-        Err(())
-    }
-
-    pub fn parse_dimension(s: &str) -> Result<Dimension, ()> {
-        if s.ends_with("%") {
-            let a = s.trim_end_matches("%").parse::<f32>().map_err(|_| ())?;
-            return Ok(Dimension::Percent(a / 100.0))
-        }
-        if s.ends_with("px") {
-            let a = s.trim_end_matches("px").parse().map_err(|_| ())?;
-            return Ok(Dimension::Length(a))
-        }
-
-        match s {
-            "fill" => Ok(Dimension::Percent(1.0)),
-            "auto" => Ok(Dimension::Auto),
-            _ => Err(())
-        }
-    }
-
-    pub fn parse_color(s: &str) -> Result<Color, ()> {
-        Color::try_from_hex(s).ok_or(())
-    }
-
-    pub fn parse_image_source(s: &str) -> Result<TextureSource, ()> {
-        match s {
-            "raw" => Ok(TextureSource::Raw),
-            "skin" => Ok(TextureSource::Skin),
-            "default-skin" => Ok(TextureSource::DefaultSkin),
-            other => Ok(TextureSource::Beatmap(other.to_owned()))
-        }
-    }
-
-    impl_parse!(rect, 
-        parse_rect_length_percentage, 
-        Self::parse_length_percentage, 
-        LengthPercentage
-    );
-    impl_parse!(rect, 
-        parse_rect_length_percentage_auto, 
-        Self::parse_length_percentage_auto, 
-        LengthPercentageAuto
-    );
-    impl_parse!(rect, 
-        parse_rect_f32, 
-        str::parse, 
-        f32
-    );
-
-    
-    impl_parse!(
-        parse_image_fit, ImageFit, 
-        ("fill", Fill);
-        ("none", None);
-        ("cover", Cover);
-        ("contain", Contain)
-    );
-
-    impl_parse!(
-        parse_box_sizing, BoxSizing, 
-        ("border-box", BorderBox);
-        ("content-box", ContentBox)
-    );
-    impl_parse!(
-        parse_overflow, Overflow, 
-        ("visible", Visible);
-        ("clip", Clip);
-        ("hidden", Hidden);
-        ("scroll", Scroll)
-    );
-
-    impl_parse!(
-        parse_position, Position, 
-        ("relative", Relative);
-        ("absolute", Absolute)
-    );
-
-    impl_parse!(
-        parse_flex_wrap, FlexWrap, 
-        ("nowrap", NoWrap);
-        ("wrap", Wrap);
-        ("wrap-reverse", WrapReverse)
-    );
-
-    impl_parse!(
-        parse_flex_direction, FlexDirection, 
-        ("row", Row);
-        ("column", Column);
-        ("row-reverse", RowReverse);
-        ("column-reverse", ColumnReverse)
-    );
-    
-    impl_parse!(
-        parse_font, Font, 
-        ("main", Main);
-        ("font-awesome", FontAwesome);
-        ("icon", FontAwesome);
-        ("icons", FontAwesome);
-        ("fallback", Fallback)
-    );
-    impl_parse!(
-        parse_align_items, AlignItems, 
-        ("start", Start);
-        ("end", End);
-        ("center", Center);
-        ("flex-start", FlexStart);
-        ("flex-end", FlexEnd);
-        ("stretch", Stretch);
-        ("baseline", Baseline)
-    );
-    impl_parse!(
-        parse_align_self, AlignSelf, 
-        ("start", Start);
-        ("end", End);
-        ("center", Center);
-        ("flex-start", FlexStart);
-        ("flex-end", FlexEnd);
-        ("stretch", Stretch);
-        ("baseline", Baseline)
-    );
-    impl_parse!(
-        parse_align_content, AlignContent, 
-        ("start", Start);
-        ("end", End);
-        ("center", Center);
-        ("flex-start", FlexStart);
-        ("flex-end", FlexEnd);
-        ("stretch", Stretch);
-        ("space-around", SpaceAround);
-        ("space-event", SpaceEvenly);
-        ("space-between", SpaceBetween)
-    );
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -716,52 +464,3 @@ impl std::str::FromStr for BlurLocation {
     }
 }
 
-
-struct CssValueParser<'a> {
-    s: &'a str,
-    pos: usize,
-    length: usize,
-}
-impl<'a> CssValueParser<'a> {
-    fn new(s: &'a str) -> Self {
-        Self {
-            s,
-            pos: 0,
-            length: s.chars().count()
-        }
-    }
-
-    fn chars(&self) -> std::str::Chars<'a> {
-        self.s[self.pos..].chars()
-    }
-    fn advance(&mut self, n: usize) {
-        self.pos = self.length.min(self.pos + n);
-    }
-    fn char(&self) -> Option<char> {
-        self.chars().next()
-    }
-
-    fn skip_spaces(&mut self) {
-        let chars = self.chars().enumerate();
-        for (n, c) in chars {
-            if !c.is_whitespace() {
-                self.pos += n;
-                break;
-            }
-        }
-    }
-    fn slice(&self, start: usize, end: usize) -> &'a str {
-        &self.s[start..end]
-    }
-
-    fn read_until(&self, f: impl Fn(char) -> bool) -> &'a str {
-        let start = self.pos;
-        while let Some(char) = self.char() {
-            if f(char) {
-                break;
-            }
-        }
-
-        self.slice(start, self.pos)
-    }
-}

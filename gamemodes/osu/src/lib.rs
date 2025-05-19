@@ -11,7 +11,6 @@ pub use osu_info::GAME_INFO;
 
 /// import helper
 mod prelude {
-    pub use async_trait::async_trait;
     pub use tataku_engine::prelude::*;
 
     pub use super::osu_math::*;

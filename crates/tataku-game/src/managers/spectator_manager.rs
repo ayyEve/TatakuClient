@@ -46,13 +46,17 @@ impl SpectatorManager {
         self.frames.push_back(frame);
     }
 
-    async fn start_game(
+    fn start_game(
         &mut self, 
         values: &ValueCollection, 
         current_time: f32,
     ) -> Option<Box<GameplayManager>> {
         trace!("Trying to watch host play a map");
-        let HostMap { map_hash, playmode, mods } = self.host_map.clone()?;
+        let HostMap { 
+            map_hash, 
+            playmode, 
+            mods 
+        } = self.host_map.clone()?;
 
         // see if our current map is the host's map
         let map = values.beatmap_manager.current_beatmap.as_ref()?;
@@ -60,10 +64,21 @@ impl SpectatorManager {
         let hash = map.beatmap_hash;
         if hash != map_hash { return None }
 
-        match manager_from_playmode_path_hash(&self.infos, &playmode, map_path, hash, mods.clone(), &values.settings).await {
+        match manager_from_playmode_path_hash(
+            &self.infos, 
+            &playmode, 
+            map_path, 
+            hash, 
+            mods.clone(), 
+            &values.settings
+        ) {
             Ok(mut manager) => {
                 // set manager things
-                manager.handle_action(GameplayAction::ApplyMods(mods), &values.settings);
+                manager.handle_action(
+                    GameplayAction::ApplyMods(mods), 
+                    &values.settings
+                );
+
                 manager.set_mode(GameplayMode::Spectator(Box::new(SpectatorGameplayInfo { 
                     host_id: self.host_id,
                     host_username: self.host_username.clone(),
@@ -74,19 +89,27 @@ impl SpectatorManager {
                 // manager.replay.score_data = Some(Score::new(map.beatmap_hash, self.host_username.clone(), mode.clone()));
                 manager.on_start = Box::new(move |manager| {
                     trace!("Jumping to time {current_time}");
-                    manager.jump_to_time(current_time.max(0.0), current_time > 0.0);
+                    manager.jump_to_time(
+                        current_time.max(0.0), 
+                        current_time > 0.0
+                    );
                 });
 
                 return Some(Box::new(manager));
             }
 
-            Err(e) => self.actions.push(Notification::new_error("Error loading spec beatmap", e)),
+            Err(e) => self.actions.push(
+                Notification::new_error(
+                    "Error loading spec beatmap", 
+                    e
+                )
+            ),
         }
 
         None
     }
 
-    async fn check_new_maps(
+    fn check_new_maps(
         &mut self,
         manager: Option<&mut Box<GameplayManager>>,
         values: &mut ValueCollection,
@@ -99,28 +122,36 @@ impl SpectatorManager {
 
         let host_map = self.host_map.as_ref()?;
         if values.beatmap_manager.beatmaps_by_hash.contains_key(&host_map.map_hash) {
-            self.actions.push(BeatmapAction::SetFromHash(host_map.map_hash, SetBeatmapOptions::new().restart_song(true)));
-            let current_time = (self.frames.iter().fold(0.0, |t, f| f.time.max(t)) - 2000.0).max(0.0);
-            return self.start_game(values, current_time).await;
+            self.actions.push(BeatmapAction::SetFromHash(
+                host_map.map_hash, 
+                SetBeatmapOptions::new().restart_song(true)
+            ));
+
+            let current_time = (self.frames.iter().fold(
+                0.0, 
+                |t, f| f.time.max(t)) - 2000.0
+            ).max(0.0);
+            
+            return self.start_game(values, current_time);
         }
 
         None
     }
 
-    pub async fn update(
+    pub fn update(
         &mut self,
         manager: Option<&mut Box<GameplayManager>>,
         values: &mut ValueCollection,
         actions: &mut ActionQueue,
     ) -> Option<Box<GameplayManager>> {
         // handle new maps
-        if let Some(manager) = self.check_new_maps(manager, values).await {
+        if let Some(manager) = self.check_new_maps(manager, values) {
             actions.extend(self.actions.take());
             return Some(manager)
         }
 
         // check all incoming frames
-        while let Some(SpectatorFrame { time: _time, action }) = self.frames.pop_front() {
+        while let Some(SpectatorFrame { time: _, action }) = self.frames.pop_front() {
             println!("Handling spec frame: {action:?}");
 
             // debug!("Packet: {action:?}");
@@ -138,11 +169,11 @@ impl SpectatorManager {
 
                     if values.beatmap_manager.get_by_hash(&beatmap_hash).is_some() {
                         self.actions.push(BeatmapAction::SetFromHash(beatmap_hash, SetBeatmapOptions::new().restart_song(true)));
-                        self.start_game(values, 0.0).await;
+                        self.start_game(values, 0.0);
                     } else {
                         let settings = &values.settings;
                         info!("no beatmap, attempting to download");
-                        self.download_beatmap(beatmap_hash, map_game, settings, actions).await;
+                        self.download_beatmap(beatmap_hash, map_game, settings, actions);
                     }
 
                     break;
@@ -189,7 +220,7 @@ impl SpectatorManager {
     // }
 
 
-    pub async fn key_down(&mut self, key: Key, _mods: KeyModifiers) {
+    pub fn key_down(&mut self, key: Key, _mods: KeyModifiers) {
         // check if we need to close something
         if key == Key::Escape {
             self.actions.push(MenuAction::set_menu("main_menu"));
@@ -199,7 +230,7 @@ impl SpectatorManager {
     }
 
 
-    async fn download_beatmap(
+    fn download_beatmap(
         &self, 
         beatmap_hash: Md5Hash, 
         map_game: MapGame, 
@@ -209,7 +240,7 @@ impl SpectatorManager {
         match map_game {
             MapGame::Osu => {
                 // need to query the osu api to get the set id for this hashmap
-                match OsuApi::get_beatmap_by_hash(&beatmap_hash, settings).await {
+                match OsuApi::get_beatmap_by_hash(beatmap_hash, settings) {
                     Ok(Some(map_info)) => {
                         // we have a thing! lets download it
                         let username = &settings.osu_username;

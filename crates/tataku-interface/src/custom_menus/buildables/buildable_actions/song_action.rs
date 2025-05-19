@@ -38,15 +38,19 @@ pub enum BuildableSongAction {
     },
 }
 impl BuildableSongAction {
-    pub fn into_action(self, values: &mut dyn Reflect) -> Option<SongAction> {
+    pub fn into_action(
+        self, 
+        values: &mut dyn Reflect, 
+        passed_in: &Option<TatakuValue>
+    ) -> Option<SongAction> {
         match self {
             Self::Play => Some(SongAction::Play),
             Self::Pause => Some(SongAction::Pause),
             Self::Toggle => Some(SongAction::Toggle),
             Self::Restart => Some(SongAction::Restart),
-            Self::Seek { value: n } => n.resolve(values, None).and_then(|n| n.as_f32().ok()).map(SongAction::SeekBy),
-            Self::SetPosition { value: n } => n.resolve(values, None).and_then(|n| n.as_f32().ok()).map(SongAction::SetPosition),
-            Self::SetRate { value: n } => n.resolve(values, None).and_then(|n| n.as_f32().ok()).map(SongAction::SetRate),
+            Self::Seek { value: n } => n.resolve(values, passed_in).and_then(|n| n.as_f32().ok()).map(SongAction::SeekBy),
+            Self::SetPosition { value: n } => n.resolve(values, passed_in).and_then(|n| n.as_f32().ok()).map(SongAction::SetPosition),
+            Self::SetRate { value: n } => n.resolve(values, passed_in).and_then(|n| n.as_f32().ok()).map(SongAction::SetRate),
         }
     }
 

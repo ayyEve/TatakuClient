@@ -7,10 +7,11 @@ pub struct HitJudgment {
     /// internal str for this judgment
     pub id: &'static str,
 
-    // does this alias as another id?
+    /// does this alias as another id?
     pub alias_id: Option<&'static str>,
 
     /// what does this judgment look like when displayed?
+    #[reflect(alias("name"))]
     pub display_name: &'static str,
 
     /// how much health should be gained/lost for this judgment

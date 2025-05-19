@@ -50,7 +50,7 @@ impl Widget for Slider {
     fn name(&self) -> Cow<'static, str> { "slider_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
+    fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {
         self.node_id = shell.tree.new_leaf(self.style.clone())?;
 
         shell.with_context(self.node_id, |ctx| {
@@ -64,7 +64,7 @@ impl Widget for Slider {
     fn input(
         &mut self,
         event: &InputEvent,
-        shell: &mut InputShell<'_>,
+        shell: &mut InputShell,
     ) {
         let Some(ctx) = shell.tree.get_context(self.node_id) else { return };
         let active = ctx.selected.unwrap();
@@ -140,19 +140,11 @@ impl Widget for Slider {
         }
     }
 
-    fn update(
-        &mut self,
-        shell: &mut UpdateShell<'_>,
-        _actions: &mut ActionQueue,
-    ) {
+    fn update(&mut self, shell: &mut UpdateShell) {
         self.value.update(shell.values);
     }
 
-
-    fn draw(
-        &self,
-        shell: &mut DrawShell<'_>,
-    ) {
+    fn draw(&self, shell: &mut DrawShell) {
         let Some(bounds) = shell.tree.absolute_bounds(self.node_id) else { return };
 
         shell.list.push(Rectangle::new_bounds(bounds, Color::TRANSPARENT, Some(Border::new(Color::PUMPKIN_ORANGE, 2.0))));

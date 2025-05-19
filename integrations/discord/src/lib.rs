@@ -184,9 +184,7 @@ impl TatakuIntegration for Discord {
 }
 impl Drop for Discord {
     fn drop(&mut self) {
-        if self.connected {
-            let _ = self.client.close();
-        }
+        let _ = self.client.close();
     }
 }
 

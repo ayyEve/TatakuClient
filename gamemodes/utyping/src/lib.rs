@@ -9,9 +9,7 @@ pub use utyping_info::GAME_INFO;
 
 
 mod prelude {
-    pub use async_trait::async_trait;
     pub use tataku_engine::prelude::*;
-
 
     pub use super::helpers::*;
     pub use super::utyping_info::*;

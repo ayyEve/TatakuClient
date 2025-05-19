@@ -15,7 +15,7 @@ pub struct VolumeControl {
     window_size: Vector2,
 }
 impl VolumeControl {
-    pub async fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             vol_selected_index: 0,
             vol_selected_time: 0,
@@ -35,7 +35,7 @@ impl VolumeControl {
         self.window_size = window_size;
     }
 
-    async fn change(&mut self, delta: f32, settings: &mut Settings) -> Option<SongAction> {
+    fn change(&mut self, delta: f32, settings: &mut Settings) -> Option<SongAction> {
         let elapsed = self.elapsed();
 
         // reset index back to 0 (master) if the volume hasnt been touched in a while
@@ -57,7 +57,7 @@ impl VolumeControl {
     }
 
 
-    pub async fn draw(&mut self, list: &mut RenderableCollection) {
+    pub fn draw(&mut self, list: &mut RenderableCollection) {
         let elapsed = self.elapsed();
 
         // draw the volume things if needed
@@ -79,7 +79,7 @@ impl VolumeControl {
             let mut master_text = Text::new(
                 self.window_size - Vector2::new(300.0, 90.0),
                 20.0,
-                "Master:".to_owned(),
+                "Master:",
                 Color::BLACK,
                 Font::Main,
             );
@@ -103,7 +103,7 @@ impl VolumeControl {
             let mut effect_text = Text::new(
                 self.window_size - Vector2::new(300.0, 60.0),
                 20.0,
-                "Effects:".to_owned(),
+                "Effects:",
                 Color::BLACK,
                 Font::Main
             );
@@ -127,7 +127,7 @@ impl VolumeControl {
             let mut music_text = Text::new(
                 self.window_size - Vector2::new(300.0, 30.0),
                 20.0,
-                "Music:".to_owned(),
+                "Music:",
                 Color::BLACK,
                 Font::Main
             );
@@ -172,12 +172,14 @@ impl VolumeControl {
     pub fn on_mouse_move(&mut self, mouse_pos: Vector2) {
         let elapsed = self.elapsed();
 
-        let master_pos:Vector2 = Vector2::new(self.window_size.x - 300.0, self.window_size.y - 90.0);
-        let effect_pos:Vector2 = Vector2::new(self.window_size.x - 300.0, self.window_size.y - 60.0);
-        let music_pos:Vector2 = Vector2::new(self.window_size.x - 300.0, self.window_size.y - 30.0);
+        let master_pos = Vector2::new(self.window_size.x - 300.0, self.window_size.y - 90.0);
+        let effect_pos = Vector2::new(self.window_size.x - 300.0, self.window_size.y - 60.0);
+        let music_pos = Vector2::new(self.window_size.x - 300.0, self.window_size.y - 30.0);
 
         // check if mouse moved over a volume button
-        if mouse_pos.x >= master_pos.x && self.vol_selected_time > 0 && elapsed as f64 - (self.vol_selected_time as f64) < VOLUME_CHANGE_DISPLAY_TIME as f64 {
+        if mouse_pos.x >= master_pos.x 
+            && self.vol_selected_time > 0 
+            && elapsed as f32 - (self.vol_selected_time as f32) < VOLUME_CHANGE_DISPLAY_TIME as f32 {
             if mouse_pos.y >= music_pos.y {
                 self.vol_selected_index = 2;
                 self.vol_selected_time = elapsed;
@@ -191,26 +193,36 @@ impl VolumeControl {
         }
     }
 
-    pub async fn on_mouse_wheel(&mut self, delta: f32, mods: KeyModifiers, settings: &mut Settings) -> Option<SongAction> {
+    pub fn on_mouse_wheel(
+        &mut self, 
+        delta: f32, 
+        mods: KeyModifiers, 
+        settings: &mut Settings
+    ) -> Option<SongAction> {
         if mods.alt {
-            self.change(delta / 10.0, settings).await
+            self.change(delta / 10.0, settings)
         } else {
             None
         }
     }
 
     // #[cfg(feature="graphics")]
-    pub async fn on_key_press(&mut self, keys: &mut KeyCollection, mods: KeyModifiers, settings: &mut Settings) -> bool {
+    pub fn on_key_press(
+        &mut self, 
+        keys: &mut KeyCollection, 
+        mods: KeyModifiers, 
+        settings: &mut Settings
+    ) -> bool {
         let elapsed = self.elapsed();
 
         if mods.alt {
             // let mut changed = false;
 
             if keys.has_and_remove(Key::Right) {
-                self.change(0.1, settings).await;
+                self.change(0.1, settings);
             }
             if keys.has_and_remove(Key::Left) {
-                self.change(-0.1, settings).await;
+                self.change(-0.1, settings);
             }
 
             if keys.has_and_remove(Key::Up) {

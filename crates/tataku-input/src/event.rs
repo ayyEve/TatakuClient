@@ -32,3 +32,14 @@ pub struct InputEvent {
     pub mouse_pos: Vector2,
     pub key_mods: KeyModifiers,
 }
+impl InputEvent {
+    pub fn is_mouse(&self) -> bool {
+        matches!(
+            self.event, 
+            InputType::MouseMove(_) 
+            | InputType::MousePress(_) 
+            | InputType::MouseRelease(_) 
+            | InputType::MouseScroll(_)
+        )
+    }
+}

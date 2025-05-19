@@ -25,7 +25,7 @@ impl ConditionalElement {
 }
 
 impl CustomElement for ConditionalElement {
-    fn build(&self, shell: &mut ElementBuildShell<'_>) -> Box<dyn Widget> {
+    fn build(&self) -> Box<dyn Widget> {
         let Some(if_true) = self.if_true() else {
             let name = self.id.as_ref()
                 .map(|i| format!("id: {i}"))
@@ -41,8 +41,8 @@ impl CustomElement for ConditionalElement {
             self.id.clone(),
             self.class_list.clone(),
             ConditionalWidget::new(
-                if_true.build(shell),
-                self.if_false.as_ref().map(|i| i.build(shell)),
+                if_true.build(),
+                self.if_false.as_ref().map(|i| i.build()),
                 BuildableCondition::Unbuilt(self.condition.clone())
             )
             .boxed()
@@ -66,12 +66,12 @@ fn test() {
             class_list: "thing1 thing2".into(),
             condition: "path.to.thing.is_true".to_owned(), 
             if_true_body: Some(TextElement {
-                text: BuildableTextInner::Text("hi mom".to_owned()).into(),
+                text: BuildableText::Text { text: "hi mom".to_owned() },
                 ..Default::default()
             }.into()),
             if_true_specified: None,
             if_false: Some(ElementTag::new(TextElement {
-                text: BuildableTextInner::Text("bye mom".to_owned()).into(),
+                text: BuildableText::Text { text: "bye mom".to_owned() },
                 ..Default::default()
             })),
             ..Default::default()

@@ -1,3 +1,4 @@
+mod chat;
 mod ui_action;
 mod mod_action;
 mod song_action;
@@ -14,6 +15,7 @@ mod beatmap_action;
 mod gameplay_action;
 mod multiplayer_action;
 
+pub use chat::*;
 pub use ui_action::*;
 pub use mod_action::*;
 pub use song_action::*;

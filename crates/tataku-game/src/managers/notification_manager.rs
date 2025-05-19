@@ -21,7 +21,7 @@ pub struct NotificationManager {
     notification_image: Option<Image>,
 }
 impl NotificationManager {
-    pub async fn update(&mut self) {
+    pub fn update(&mut self) {
         self.notifications.retain(|n| n.check_time());
     }
 
@@ -40,7 +40,7 @@ impl NotificationManager {
     }
 
 
-    pub async fn on_click(
+    pub fn on_click(
         &mut self, 
         window_size: Vector2, 
         mouse_pos: Vector2, 
@@ -52,7 +52,7 @@ impl NotificationManager {
             let pos = current_pos - Vector2::new(n.size.x + NOTIF_MARGIN.x, NOTIF_Y_OFFSET + n.size.y);
             
             if Bounds::new(pos, n.size).contains(mouse_pos) {
-                n.notification.onclick.do_action(actions).await;
+                n.notification.onclick.do_action(actions);
                 n.remove = true;
                 return true;
             }

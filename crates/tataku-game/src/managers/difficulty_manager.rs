@@ -5,7 +5,7 @@ const DIFF_FILE:&str = "diffs.db2";
 #[derive(Default)]
 pub struct DifficultyManager;
 impl DifficultyManager {
-    pub async fn save_diff(
+    pub fn save_diff(
         map: &Arc<BeatmapMeta>, 
         playmode: &str, 
         mods: &ModManager,
@@ -18,17 +18,16 @@ impl DifficultyManager {
                 mods
             ), 
             diff
-        ).await
+        )
     }
 
-    pub async fn save_diff_entry(
+    pub fn save_diff_entry(
         entry: DifficultyEntry,
         diff: f32
     ) -> TatakuResult {
         let key = entry.as_key();
         
-        cacache::write(DIFF_FILE, key, diff.to_le_bytes())
-            .await
+        cacache::write_sync(DIFF_FILE, key, diff.to_le_bytes())
             .map_err(|e| TatakuError::String(e.to_string()))
             .map(|_| ())
     }

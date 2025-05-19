@@ -60,14 +60,14 @@ fn perform_migrations(db: &Connection) {
 
 #[derive(Clone)]
 pub struct Database {
-    connection: Arc<AsyncMutex<Connection>>,
+    connection: Arc<Mutex<Connection>>,
 }
 impl Database {
-    pub async fn get<'a>() -> tokio::sync::MutexGuard<'a, Connection> {
+    pub fn get<'a>() -> MutexGuard<'a, Connection> {
         let now = TatakuInstant::now();
-        let a = DATABASE.connection.lock().await;
+        let a = DATABASE.connection.lock();
         let duration = now.as_millis();
-        if duration > 100.0 {info!("db lock took {:.4}ms to aquire", duration)};
+        if duration > 100.0 {info!("db lock took {duration:.4}ms to aquire")};
         a
     }
 
@@ -174,7 +174,7 @@ impl Database {
         perform_migrations(&connection);
 
 
-        let connection = Arc::new(AsyncMutex::new(connection));
+        let connection = Arc::new(Mutex::new(connection));
 
 
         let (sender, mut receiver) = channel(1000);
@@ -188,7 +188,7 @@ impl Database {
             while let Some(op) = receiver.recv().await {
                 match op {
                     DatabaseQuery::InsertOrUpdate { sql, table_name, operation, sql_if_failed , operation_if_failed} => {
-                        let db = Self::get().await;
+                        let db = Self::get();
                         let mut s = db.prepare(&sql).unwrap();
                         let res = s.execute([]);
 

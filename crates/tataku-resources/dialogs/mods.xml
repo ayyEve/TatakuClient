@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+<?xml-model href="../xsd/dialog.xsd"?>
+
+<dialog 
+    id = "mods_dialog" 
+    title = "Mods"
+>
+    <style>
+        #group-list {
+            width: fill;
+        }
+    </style>
+
+    <element>
+        <column style = "width: fill; height: fill; blur: 2;">
+            <text style = "width: fill;">
+                <text text = "Mods List"/>
+            </text>
+
+            <list
+                id = "group-list"
+                list = "global.mod_groups"
+                variable = "_group"
+                scrollable = "true"
+                style = "width: fill; height: auto; flex-direction: column;"
+            >
+                <column style = "width: fill">
+                    <text>
+                        <variable var = "_group.name"/>
+                    </text>
+                    <list
+                        id = "mod-list"
+                        list = "_group.mods"
+                        variable = "_mod"
+                        style = "flex-direction: column;"
+                    >
+                        <row style = "justify-items: space-between">
+                            <checkbox 
+                                value = "_mod.enabled"
+                                style = "width: 30%;"
+                            >
+                                <onClick>
+                                    <mods>
+                                        <toggleMod>
+                                            <variable var = "_mod.id"/>
+                                        </toggleMod>
+                                    </mods>
+                                </onClick>
+                                <text>
+                                    <variable var = "_mod.display_name"/>
+                                </text>
+                            </checkbox>
+                            <text>
+                                <variable var = "_mod.description"/>
+                            </text>
+                        </row>
+                    </list>
+                </column>
+            </list>
+
+        </column>
+    </element>
+</dialog>

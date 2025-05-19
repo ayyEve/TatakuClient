@@ -1,0 +1,109 @@
+<?xml version="1.0"?>
+<?xml-model href="../xsd/dialog.xsd"?>
+
+<dialog 
+    id = "create_lobby" 
+    title = "Create Lobby"
+    draggable = "true"
+>
+    <events>
+        <!-- on menu (dialog) enter, initialize our temp values/reset existing values -->
+        <event>
+            <menuEnter/>
+            <actions>
+                <setValue key="new_lobby.name">
+                    <value val=""/>
+                </setValue>
+                <setValue key="new_lobby.password">
+                    <value val=""/>
+                </setValue>
+                <setValue key="new_lobby.private">
+                    <value val="false"/>
+                </setValue>
+            </actions>
+        </event>
+    </events>
+
+    <element>
+        <column>
+            <text>
+                <text text="Create Lobby:"/>
+            </text>
+
+            <!-- Name -->
+            <textInput variable="new_lobby.name">
+                <placeholder> 
+                    <text text="Lobby Name"/> 
+                </placeholder>
+                <onInput>
+                    <setValue key="new_lobby.name"> <passedIn/> </setValue>
+                </onInput>
+            </textInput>
+
+            <!-- Password -->
+            <textInput 
+                variable="new_lobby.name" 
+                password="true"
+            >
+                <placeholder> 
+                    <text text="Lobby Password"/> 
+                </placeholder>
+                <onInput>
+                    <setValue key="new_lobby.password"> <passedIn/> </setValue>
+                </onInput>
+            </textInput>
+            
+            <!-- Private -->
+            <checkbox value="new_lobby.private">
+                <text>
+                    <text text="Private"/>
+                </text>
+                <onClick>
+                    <setValue key="new_lobby.private"> <passedIn/> </setValue>
+                </onClick>
+            </checkbox>
+
+
+            <row style="width: fill;">
+                <!-- Done -->
+                <button>
+                    <action>
+                        <list>
+                            <multiplayer>
+                                <createLobby>
+                                    <name>
+                                        <variable var="new_lobby.name"/>
+                                    </name>
+                                    <password>
+                                        <variable var="new_lobby.password"/>
+                                    </password>
+                                    <private>
+                                        <variable var="new_lobby.private"/>
+                                    </private>
+                                </createLobby>
+                            </multiplayer>
+                            <closeDialog/>
+                        </list>
+                    </action>
+                    <element>
+                        <text>
+                            <text text="Done"/>
+                        </text>
+                    </element>
+                </button>
+
+                <!-- Cancel -->
+                <button>
+                    <action>
+                        <closeDialog/>
+                    </action>
+                    <element>
+                        <text>
+                            <text text="Cancel"/>
+                        </text>
+                    </element>
+                </button>
+            </row>
+        </column>
+    </element>
+</dialog>

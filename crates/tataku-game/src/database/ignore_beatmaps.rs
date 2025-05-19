@@ -1,8 +1,8 @@
 use crate::prelude::*;
 
 impl Database {
-    pub async fn get_all_ignored() -> Vec<String> {
-        let db = Self::get().await;
+    pub fn get_all_ignored() -> Vec<String> {
+        let db = Self::get();
         let mut s = db.prepare("SELECT * FROM ignore_maps").unwrap();
         
         s.query_map([], |r|r.get("beatmap_path")).unwrap()
@@ -13,11 +13,14 @@ impl Database {
         .collect::<Vec<String>>()
     }
 
-    pub async fn add_ignored(path: String) {
+    pub fn add_ignored(path: String) {
         let query = "INSERT INTO ignore_maps (beatmap_path, beatmap_hash) VALUES (?, '')";
 
-        let db = Self::get().await;
-        let res = db.prepare(query).expect(query).execute([path]);
+        let db = Self::get();
+        let res = db.prepare(query)
+            .expect(query)
+            .execute([path]);
+
         if let Err(e) = res {
             error!("error inserting metadata: {}", e);
         }

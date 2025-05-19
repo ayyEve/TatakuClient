@@ -2,12 +2,12 @@ use crate::prelude::*;
 use crate::REPLAYS_DIR;
 
 impl Database {
-    pub async fn get_scores(
+    pub fn get_scores(
         hash: &String, 
         playmode: String,
         infos: GamemodeInfos
     ) -> Vec<Score> {
-        let db = Self::get().await;
+        let db = Self::get();
         let mut s = db.prepare(&format!("SELECT * FROM scores WHERE map_hash='{hash}' AND playmode='{playmode}'")).unwrap();
         
         s.query_map([], |r| {
@@ -26,7 +26,7 @@ impl Database {
             let judgment_str = r
                 .get::<&str, String>("judgments")
                 .ok()
-                .and_then(|s| if s.is_empty() {None} else {Some(s)});
+                .and_then(|s| (!s.is_empty()).then_some(s));
             if let Some(judgment_string) = judgment_str {
                 judgments = Score::judgments_from_string(&judgment_string);
             } else { // no judgments, load legacy values
@@ -85,10 +85,10 @@ impl Database {
     }
 
 
-    pub async fn save_score(s:&Score) {
+    pub fn save_score(s:&Score) {
         trace!("saving score");
 
-        let db = Self::get().await;
+        let db = Self::get();
         let sql = format!(
             "INSERT INTO scores (
                 map_hash, score_hash,

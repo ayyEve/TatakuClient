@@ -18,12 +18,12 @@
         <column class="menu">
             <!-- retry button -->
             <button>
-                <action>    
+                <action>
                     <gameplay><retry/></gameplay>
                 </action>
                 <element>
                     <text>
-                        <text>Retry</text>
+                        <text text="Retry"/>
                     </text>
                 </element>
             </button>
@@ -32,13 +32,13 @@
             <button>
                 <action>
                     <list>
-                        <setMenu><value>beatmap_select</value></setMenu>
+                        <setMenu id="beatmap_select"/>
                         <gameplay><quit/></gameplay>
                     </list>
                 </action>
                 <element>
                     <text>
-                        <text>Quit</text>
+                        <text text="Quit"/>
                     </text>
                 </element>
             </button>

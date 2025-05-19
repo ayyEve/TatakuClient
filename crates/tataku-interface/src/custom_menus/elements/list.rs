@@ -16,7 +16,7 @@ pub struct ListElement {
     #[serde(alias = "$value")] element: Element,
 }
 impl CustomElement for ListElement {
-    fn build(&self, _shell: &mut ElementBuildShell<'_>) -> Box<dyn Widget> {
+    fn build(&self) -> Box<dyn Widget> {
         WidgetContainer::new_boxed(
             self.style.clone(),
             "list",

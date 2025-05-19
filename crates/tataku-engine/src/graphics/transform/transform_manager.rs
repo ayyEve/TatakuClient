@@ -90,20 +90,20 @@ impl TransformManager {
                 let val:f64 = val.into();
                 self.scale = Vector2::ONE * val as f32;
 
-                if self.image_flip_horizonal {
-                    self.scale.x *= -1.0;
-                }
-                if self.image_flip_vertical {
-                    self.scale.y *= -1.0;
-                }
+                // if self.image_flip_horizonal {
+                //     self.scale.x *= -1.0;
+                // }
+                // if self.image_flip_vertical {
+                //     self.scale.y *= -1.0;
+                // }
             }
             TransformType::ScaleX { .. } => {
                 let val:f64 = val.into();
                 self.scale.x = val as f32;
 
-                if self.image_flip_horizonal {
-                    self.scale.x *= -1.0;
-                }
+                // if self.image_flip_horizonal {
+                //     self.scale.x *= -1.0;
+                // }
             }
             TransformType::ScaleY { .. } => {
                 let val:f64 = val.into();
@@ -117,12 +117,12 @@ impl TransformManager {
                 let val:Vector2 = val.into();
                 self.scale = val;
 
-                if self.image_flip_horizonal {
-                    self.scale.x *= -1.0;
-                }
-                if self.image_flip_vertical {
-                    self.scale.y *= -1.0;
-                }
+                // if self.image_flip_horizonal {
+                //     self.scale.x *= -1.0;
+                // }
+                // if self.image_flip_vertical {
+                //     self.scale.y *= -1.0;
+                // }
             }
             TransformType::Rotation { .. } => {
                 let val:f64 = val.into();

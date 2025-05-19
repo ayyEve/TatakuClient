@@ -1,0 +1,86 @@
+<?xml version="1.0"?>
+
+<xs:schema 
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  targetNamespace="tataku/common"
+  xmlns:actions="tataku/actions"
+  xmlns:events="tataku/events"
+  xmlns:common="tataku/common"
+  xmlns:buildable-value="tataku/buildable-value"
+  xmlns:text="tataku/text"
+>
+
+<xs:import namespace="tataku/actions" schemaLocation="actions.xsd"/>
+<xs:import namespace="tataku/events" schemaLocation="events.xsd"/>
+<xs:import namespace="tataku/elements" schemaLocation="elements.xsd"/>
+
+
+<xs:complexType name="event-list">
+<xs:sequence>
+    <xs:element name="event" maxOccurs="unbounded">
+      <xs:complexType>
+        <xs:sequence>
+          <xs:choice>
+            <xs:group ref="events:event-type"/>
+            <xs:element name="event"> 
+              <xs:complexType>
+                <xs:group ref="events:event-type"/>
+              </xs:complexType>
+            </xs:element>
+          </xs:choice>
+
+          <xs:element name="actions" type="common:action-list"/>
+        </xs:sequence>
+      </xs:complexType>
+    </xs:element>
+</xs:sequence>
+</xs:complexType>
+
+
+<xs:complexType name="action-list">
+  <xs:choice maxOccurs="unbounded">
+      <xs:group ref="actions:action-type"/>
+      <xs:element name="action">
+        <xs:complexType>
+          <xs:group ref="actions:action-type"/>
+        </xs:complexType>
+      </xs:element>
+  </xs:choice>
+</xs:complexType>
+
+
+<xs:complexType name="input-variable">
+  <xs:attribute name="name" type="xs:string" use="required"/>
+  <xs:attribute name="path" type="xs:string" use="required"/>
+  <xs:attribute name="type" type="common:input-variable-type" use="required"/>
+  <xs:attribute name="default" type="xs:anySimpleType" />
+  <xs:attribute name="required" type="xs:boolean" default="false" />
+</xs:complexType>
+
+
+<xs:complexType name="input-variables">
+    <xs:sequence>
+        <xs:element name="input" type="common:input-variable" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+</xs:complexType>
+
+<xs:simpleType name="input-variable-type">
+  <xs:restriction base="xs:string">
+    <xs:enumeration value="integer"/>
+    <xs:enumeration value="float"/>
+    <xs:enumeration value="bool"/>
+    <xs:enumeration value="string"/>
+    <xs:enumeration value="any"/>
+  </xs:restriction>
+</xs:simpleType>
+
+
+<xs:simpleType name="condition">
+  <xs:restriction base="xs:string">
+    <xs:minLength value="1"/>
+  </xs:restriction>
+</xs:simpleType>
+
+
+
+</xs:schema>

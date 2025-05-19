@@ -142,10 +142,11 @@ impl HitObject for UTypingNote {
         let height = self.settings.note_radius * self.settings.big_note_multiplier * 2.0 + self.settings.playfield_height_padding;
         rect.pos.y = self.pos.y + height / 2.0;
 
-        let prefix = self.branches.current_text();
-        let complete_color = Color::RED;
-        let completed_len = prefix.len();
-        let incomplete_color = Color::WHITE;
+
+        // let prefix = self.branches.current_text();
+        // let complete_color = Color::RED;
+        // let completed_len = prefix.len();
+        // let incomplete_color = Color::WHITE;
 
         let lines = self.branches.get_strs();
 
@@ -155,7 +156,7 @@ impl HitObject for UTypingNote {
         #[allow(clippy::needless_range_loop)]
         for i in 0..lines.len().min(MAX_COUNT) {
             let i = &lines[i];
-            let len = i.len();
+            // let len = i.len();
             
             // draw text to hit
             let mut t = Text::new(

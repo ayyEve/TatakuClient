@@ -2,6 +2,8 @@ Tataku is an osu clone with a focus on performance.
 It started out as a taiko sim, but has since expanded to include popular games such as Osu and Mania (osu!mania, quaver, beatmania, etc)
 Join our Discord server! https://discord.gg/PGa6XY7mKC
 
+AI-Free!
+
 required deps:
  - windows:
    - cmake

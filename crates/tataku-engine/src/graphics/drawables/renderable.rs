@@ -29,6 +29,8 @@ pub struct DrawOptions {
 
     pub color: Option<Color>,
     pub border_color: Option<Color>,
+
+    pub image_flip: ImageFlip,
 }
 impl DrawOptions {
     /// get the modified alpha value for the provided alpha
@@ -64,14 +66,18 @@ impl DrawOptions {
     }
 
 
-    /// merge self with other
-    /// color and border color will be whichever is Some(), or other's if both are Some()
+    /// Merge self with other
+    /// 
+    /// Color and border color will be whichever is Some(), or other's if both are Some()
+    /// 
+    /// Will also xor the image flips
     pub fn merge(self, other: Self) -> Self {
         Self {
             alpha: merge_opts(self.alpha, other.alpha),
             border_alpha: merge_opts(self.border_alpha, other.border_alpha),
             color: other.color.or(self.color),
             border_color: other.border_color.or(self.border_color),
+            image_flip: self.image_flip.xor(other.image_flip),
         }
     }
 }

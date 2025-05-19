@@ -119,7 +119,7 @@ pub struct GameplayManager {
 }
 
 impl GameplayManager {
-    pub async fn new(
+    pub fn new(
         beatmap: Beatmap,
         mut gamemode: Box<dyn GameMode>,
         mut current_mods: ModManager,
@@ -132,10 +132,16 @@ impl GameplayManager {
         if current_mods.get_speed() == 0.0 { current_mods.set_speed(1.0); }
         let current_mods = Arc::new(current_mods);
 
-        let mut score = Score::new(beatmap.hash(), settings.username.clone(), playmode.to_string());
-        score.speed = current_mods.speed;
+        let time = chrono::Utc::now().timestamp();
+        let mut score = Score::new(
+            beatmap.hash(), 
+            settings.username.clone(), 
+            playmode.to_string()
+        );
 
-        
+        score.speed = current_mods.speed;
+        score.time = time as u64;
+
         let mut actions = ActionQueue::new();
     
         for (id, list) in properties.sound_list.clone() {
@@ -143,7 +149,15 @@ impl GameplayManager {
         }
         // combo break sound
         actions.push(AudioAction::new("combobreak", AudioActionType::Load { 
-            list: AudioLoadData::new_multi_source("combobreak", None::<String>, &[HitsoundSource::Beatmap, HitsoundSource::Skin, HitsoundSource::Default])
+            list: AudioLoadData::new_multi_source(
+                "combobreak", 
+                None::<String>, 
+                &[
+                    HitsoundSource::Beatmap, 
+                    HitsoundSource::Skin, 
+                    HitsoundSource::Default
+                ]
+            )
         }));
 
         // make sure the gamemode has the correct mods applied
@@ -171,7 +185,7 @@ impl GameplayManager {
             global_offset: settings.global_offset,
 
             center_text_helper: CenteredTextHelper::new(CENTER_TEXT_DRAW_TIME),
-            beatmap_preferences: Database::get_beatmap_prefs(metadata.beatmap_hash).await,
+            beatmap_preferences: Database::get_beatmap_prefs(metadata.beatmap_hash),
 
             common_game_settings: Arc::new(settings.common_game_settings.clone()),
 
@@ -184,7 +198,7 @@ impl GameplayManager {
             score_list: Vec::new(),
             // score_loader, values: &mut dyn Reflec
             window_size: Vector2::ZERO,
-            start_time: chrono::Utc::now().timestamp(),
+            start_time: time,
 
             judgement_indicators: Vec::new(),
             gameplay_mode: Box::new(GameplayModeInner::Normal),
@@ -329,7 +343,7 @@ impl GameplayManager {
             &self.current_mods
         ).unwrap_or_default();
 
-        debug!("Updated diff: {}", self.map_diff);
+        trace!("Updated diff: {}", self.map_diff);
     }
 }
 
@@ -389,7 +403,7 @@ impl GameplayManager {
 #[cfg(feature="graphics")]
 impl GameplayManager {
 
-    pub async fn key_down(
+    pub fn key_down(
         &mut self, 
         key_input: KeyInput, 
         mods: KeyModifiers,
@@ -505,7 +519,7 @@ impl GameplayManager {
 
 
     #[cfg(feature="graphics")]
-    pub async fn window_size_changed(&mut self, window_size: Vector2) {
+    pub fn window_size_changed(&mut self, window_size: Vector2) {
         self.window_size = window_size;
         if self.fit_to_bounds.is_none() {
             self.gamemode.set_bounds(Bounds::new(Vector2::ZERO, window_size), true);
@@ -521,7 +535,7 @@ impl GameplayManager {
     }
 
 
-    pub async fn handle_input(&mut self, input: InputEvent, settings: &Settings) {
+    pub fn handle_input(&mut self, input: InputEvent, settings: &Settings) {
         // #[cfg(feature="graphics")]
         // if let Some(ui_editor) = &mut self.ui_editor {
         //     if ui_editor.handle_input(&input).await { return}
@@ -529,7 +543,7 @@ impl GameplayManager {
 
         match &input.event {
             InputType::KeyPress(key_input) => {
-                if self.key_down(key_input.clone(), input.key_mods, settings).await {
+                if self.key_down(key_input.clone(), input.key_mods, settings) {
                     return 
                 }
             }
@@ -1011,7 +1025,12 @@ impl GameplayManagerTrait for GameplayManager {
         // update value collection
         {
             // TODO: placing
-            values.reflect_insert("score", self.score.clone()).unwrap();
+            let score = values.reflect_get_mut::<ReflectScore>("score").unwrap();
+            if score.time != self.score.time {
+                *score = ReflectScore::new(&self.score, self.gamemode_properties.info)
+            } else {
+                score.update(&self.score);
+            }
         }
 
         actions.extend(self.actions.take());
@@ -1597,7 +1616,7 @@ pub struct GameplaySpectatorInfo {
 
 
 
-pub async fn manager_from_playmode_path_hash(
+pub fn manager_from_playmode_path_hash(
     infos: &GamemodeInfos,
     incoming_mode: &str,
     map_path: String,
@@ -1611,10 +1630,10 @@ pub async fn manager_from_playmode_path_hash(
     let info = infos.get_info(&playmode)?;
 
     let gamemode = info.create_game(&beatmap, settings)?;
-    Ok(GameplayManager::new(beatmap, gamemode, mods, settings).await)
+    Ok(GameplayManager::new(beatmap, gamemode, mods, settings))
 }
 
-pub async fn manager_from_playmode(
+pub fn manager_from_playmode(
     infos: &GamemodeInfos,
     incoming_mode: &str,
     beatmap: &BeatmapMeta,
@@ -1628,5 +1647,5 @@ pub async fn manager_from_playmode(
 
     let gamemode = info.create_game(&beatmap, settings)?;
 
-    Ok(GameplayManager::new(beatmap, gamemode, mods, settings).await)
+    Ok(GameplayManager::new(beatmap, gamemode, mods, settings))
 }

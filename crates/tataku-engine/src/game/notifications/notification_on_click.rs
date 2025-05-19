@@ -12,7 +12,7 @@ pub enum NotificationOnClick {
     MultiplayerLobby(u32)
 }
 impl NotificationOnClick {
-    pub async fn do_action(&self, actions: &mut ActionQueue) {
+    pub fn do_action(&self, actions: &mut ActionQueue) {
         match self {
             NotificationOnClick::None => {}
             NotificationOnClick::Url(url) => {

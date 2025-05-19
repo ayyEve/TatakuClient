@@ -14,7 +14,6 @@ graphics = []
 [dependencies]
 serde.workspace = true
 tracing.workspace = true
-async-trait.workspace = true
 lazy_static.workspace = true
 
 tataku-common.workspace = true

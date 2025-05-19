@@ -22,11 +22,15 @@ impl Widget for ConsoleDialog {
     fn node_id(&self) -> NodeId { self.node_id }
 
 
-    fn update_styles(&mut self, tree: &mut Tree, resolver: &mut CssResolver, display_override: Option<ui::Display>) {
-        self.node.update_styles(tree, resolver, display_override);
+    fn update_styles(
+        &mut self, 
+        shell: &mut StyleShell, 
+        display_override: Option<ui::Display>
+    ) {
+        self.node.update_styles(shell, display_override);
     }
 
-    fn layout(&mut self, shell: &mut LayoutShell<'_>) -> ui::TaffyResult<NodeId> {
+    fn layout(&mut self, shell: &mut LayoutShell) -> ui::TaffyResult<NodeId> {
 
         if shell.values.reflect_get::<Vec<String>>(OUTPUT_PATH).is_err() {
             shell.values.reflect_insert(OUTPUT_PATH, Vec::<String>::new()).unwrap()
@@ -40,7 +44,7 @@ impl Widget for ConsoleDialog {
         let output = Container::new(Vec::new())
             .make_programmatic(ProgrammaticListData::new(
                 Element::Text(Box::new(TextElement {
-                    text: BuildableTextInner::Variable("_line".to_string()).into(),
+                    text: BuildableText::Variable { variable: "_line".to_string() },
                     ..Default::default()
                 })),
                 // ElementDef {
@@ -68,7 +72,7 @@ impl Widget for ConsoleDialog {
             .height(SHRINK)
             .boxed();
 
-        let input = TextInput::new("Command:", WidgetText::Custom { custom: BuildableTextInner::Variable(INPUT_PATH.to_owned()).as_buildable(), cached: String::new() })
+        let input = TextInput::new("Command:", BuildableText::Variable { variable: INPUT_PATH.to_owned() })
             .on_submit(parse_line(shell.owner))
             .width(FILL)
             .height(SHRINK)
@@ -91,38 +95,34 @@ impl Widget for ConsoleDialog {
         Ok(self.node_id)
     }
 
-    fn input(&mut self, event: &InputEvent, shell: &mut InputShell<'_>) {
+    fn input(&mut self, event: &InputEvent, shell: &mut InputShell) {
         self.node.input(event, shell);
     }
-    fn update(&mut self, shell: &mut UpdateShell<'_>, actions: &mut ActionQueue) {
-        self.node.update(shell, actions)
+    fn update(&mut self, shell: &mut UpdateShell) {
+        self.node.update(shell)
     }
-    fn draw(&self, shell: &mut DrawShell<'_>) {
+    fn draw(&self, shell: &mut DrawShell) {
         self.node.draw(shell)
     }
 
     fn handle_message(
         &mut self, 
         message: &Message, 
-        values: &mut dyn Reflect, 
-        actions: &mut ActionQueue,
+        shell: &mut MessageShell,
     ) {
-        self.node.handle_message(message, values, actions);
+        self.node.handle_message(message, shell);
     }
 
     fn handle_event(
         &mut self, 
         event: TatakuEventType, 
         event_value: Option<TatakuValue>, 
-        values: &mut dyn Reflect,
+        shell: &mut MessageShell,
     ) {
-        self.node.handle_event(event, event_value, values);
+        self.node.handle_event(event, event_value, shell);
     }
 
-    fn reload_skin(
-        &mut self, 
-        shell: &mut UpdateShell,
-    ) {
+    fn reload_skin(&mut self, shell: &mut UpdateShell) {
         self.node.reload_skin(shell);
     }
 

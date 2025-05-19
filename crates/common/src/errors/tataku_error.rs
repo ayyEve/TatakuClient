@@ -7,7 +7,6 @@ use super::*;
 pub type TatakuResult<T=()> = Result<T, TatakuError>;
 
 #[derive(Debug)]
-#[allow(dead_code, unused)]
 pub enum TatakuError {
     Beatmap(BeatmapError),
     GameMode(GameModeError),

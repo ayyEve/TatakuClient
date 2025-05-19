@@ -5,9 +5,16 @@ use crate::prelude::*;
 #[serde(rename_all = "camelCase")]
 pub enum BuildableMultiplayerAction {
     /// Join a lobby
+    CreateLobby {  
+        name: BuildableValueTag,
+        password: Option<BuildableValueTag>,
+        private: BuildableValueTag,
+    },
+
+    /// Join a lobby
     JoinLobby { 
         #[serde(alias="$value")] lobby_id: BuildableValue, 
-        password: Option<BuildableValue> 
+        password: Option<BuildableValueTag> 
     },
 
     /// Open the link to the lobby's beatmap
@@ -37,7 +44,11 @@ pub enum BuildableMultiplayerAction {
     SlotAction(BuildableSlot),
 }
 impl BuildableMultiplayerAction {
-    pub fn into_action(self, values: &mut dyn Reflect, passed_in: Option<TatakuValue>) -> Option<MultiplayerAction> {
+    pub fn into_action(
+        self, 
+        values: &mut dyn Reflect, 
+        passed_in: &Option<TatakuValue>
+    ) -> Option<MultiplayerAction> {
         match self {
             Self::StartMultiplayer => Some(MultiplayerAction::StartMultiplayer),
             Self::StartMatch => Some(MultiplayerAction::LobbyAction(LobbyAction::Start)),
@@ -54,9 +65,33 @@ impl BuildableMultiplayerAction {
             }
             
             Self::JoinLobby { lobby_id, password } => Some(MultiplayerAction::JoinLobby { 
-                lobby_id: lobby_id.resolve(values, passed_in.clone())?.as_u32().ok()?, 
-                password: password.and_then(|i| i.resolve(values, passed_in)).map(|i| i.as_string()).unwrap_or_default(),
+                lobby_id: lobby_id.resolve(values, passed_in)?.as_u32().ok()?, 
+                password: password
+                    .and_then(|i| i
+                        .resolve(values, passed_in)
+                        .map(|t| t.as_string())
+                    )
+                    .unwrap_or_default(),
             }),
+
+            Self::CreateLobby { 
+                name, 
+                password, 
+                private 
+            } => Some(MultiplayerAction::CreateLobby { 
+                name: name.resolve(values, passed_in)?.as_string(), 
+                password: password
+                    .and_then(|i| i
+                        .resolve(values, passed_in)
+                        .map(|t| t.as_string())
+                    )
+                    .unwrap_or_default(), 
+                private: private
+                    .resolve(values, passed_in)
+                    .map(|i| i.as_bool())
+                    .unwrap_or_default(), 
+                players: 16
+            })
         }
     }
     

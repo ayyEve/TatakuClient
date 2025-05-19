@@ -7,14 +7,65 @@ pub struct BuildableSlot {
     #[serde(rename="$value")] pub action: BuildableSlotAction,
 }
 impl BuildableSlot {
-    pub fn get_action(&self, values: &mut dyn Reflect, passed_in: Option<TatakuValue>) -> Option<LobbySlotAction> {
+    pub fn get_action(
+        &self, 
+        values: &mut dyn Reflect, 
+        passed_in: &Option<TatakuValue>,
+    ) -> Option<LobbySlotAction> {
         let slot = match &self.slot.value {
             BuildableValue::None => {
                 error!("slot is none?? ({:?})", self.action);
                 return None;
             }
-            BuildableValue::Value(val) => Cow::Borrowed(val),
-            BuildableValue::Variable(var) => {
+            BuildableValue::Calc { .. } => unreachable!("Calc should be built"),
+
+            BuildableValue::Reference {
+                reference,
+                reference_attribute,
+            } => {
+                let path = reference
+                    .as_ref()
+                    .map(|r| r.to_string(values))
+                    .or(reference_attribute.clone())
+                    ?;
+                
+
+                let var = values.reflect_as_number(&path).ok()?;
+                let var = match var {
+                    ReflectNumber::F32(n) => TatakuValue::F32(n),
+                    ReflectNumber::F64(n) => TatakuValue::F32(n as f32),
+                    ReflectNumber::U8(n) => TatakuValue::U32(n as u32),
+                    ReflectNumber::I8(n) => TatakuValue::U32(n as u32),
+                    ReflectNumber::U16(n) => TatakuValue::U32(n as u32),
+                    ReflectNumber::I16(n) => TatakuValue::U32(n as u32),
+                    ReflectNumber::U32(n) => TatakuValue::U32(n),
+                    ReflectNumber::I32(n) => TatakuValue::U32(n as u32),
+                    ReflectNumber::U64(n) => TatakuValue::U64(n),
+                    ReflectNumber::I64(n) => TatakuValue::U64(n as u64),
+                    ReflectNumber::U128(n) => TatakuValue::U64(n as u64),
+                    ReflectNumber::I128(n) => TatakuValue::U64(n as u64),
+                    ReflectNumber::Usize(n) => TatakuValue::U64(n as u64),
+                    ReflectNumber::Isize(n) => TatakuValue::U64(n as u64),
+                };
+                Cow::Owned(var)
+            }
+
+            BuildableValue::CalcParsed { 
+                calc, 
+                calc_str 
+            } => match calc.resolve(values) {
+                Ok(v) => v,
+                Err(e) => {
+                    error!("Error with calc '{calc_str}': {e:?}");
+                    return None;
+                }
+            },
+            
+            BuildableValue::Value { 
+                value, 
+                value_attribute
+            } => Cow::Borrowed(value.as_ref().or(value_attribute.as_ref())?),
+            BuildableValue::Variable { var } => {
                 let var = values.reflect_as_number(var).ok()?;
                 let var = match var {
                     ReflectNumber::F32(n) => TatakuValue::F32(n),
@@ -34,7 +85,7 @@ impl BuildableSlot {
                 };
                 Cow::Owned(var)
             }
-            BuildableValue::PassedIn => Cow::Owned(passed_in?),
+            BuildableValue::PassedIn => Cow::Owned(passed_in.clone()?),
         };
 
         let Ok(slot_num) = slot.as_u32() else {
@@ -51,6 +102,10 @@ impl BuildableSlot {
             BuildableSlotAction::Unlock => Some(LobbySlotAction::Unlock(slot)),
             BuildableSlotAction::Kick => Some(LobbySlotAction::Kick(slot)),
         }
+    }
+
+    pub fn build(&mut self, values: &dyn Reflect) {
+        self.slot.resolve_pre(values);
     }
 }
 

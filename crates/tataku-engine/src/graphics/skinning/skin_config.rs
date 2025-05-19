@@ -47,7 +47,7 @@ pub struct SkinSettings {
 }
 #[allow(unused, dead_code)]
 impl SkinSettings {
-    pub fn from_file(path:String) -> TatakuResult<Self> {
+    pub fn from_file(path: String) -> TatakuResult<Self> {
         enum SkinSection {
             General,
             Colors, // colours
@@ -85,7 +85,7 @@ impl SkinSettings {
                         s.mania_settings.push(ms);
                     },
 
-                    _ => warn!("unknown skin section '{}'", line)
+                    _ => warn!("unknown skin section '{line}'")
                 }
                 continue;
             }

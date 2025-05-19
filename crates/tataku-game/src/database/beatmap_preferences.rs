@@ -46,15 +46,15 @@ impl Default for BeatmapPlaymodePreferences {
 
 
 impl Database {
-    pub async fn get_beatmap_prefs(map_hash: Md5Hash) -> BeatmapPreferences {
-        let db = Self::get().await;
+    pub fn get_beatmap_prefs(map_hash: Md5Hash) -> BeatmapPreferences {
+        let db = Self::get();
 
         let query = format!("SELECT * FROM beatmap_preferences WHERE beatmap_hash='{map_hash}'");
         let mut s = db.prepare(&query).unwrap();
         let res = s.query_map([], BeatmapPreferences::from_row);
 
         if let Ok(mut rows) = res {
-            rows.find_map(|r|r.ok()).unwrap_or_default()
+            rows.find_map(|r| r.ok()).unwrap_or_default()
         } else {
             Default::default()
         }
@@ -72,8 +72,8 @@ impl Database {
         });
     }
 
-    pub async fn get_beatmap_mode_prefs(map_hash:Md5Hash, playmode:&String) -> BeatmapPlaymodePreferences {
-        let db = Self::get().await;
+    pub fn get_beatmap_mode_prefs(map_hash:Md5Hash, playmode:&String) -> BeatmapPlaymodePreferences {
+        let db = Self::get();
         let map_hash = map_hash.to_string();
 
         let query = format!("SELECT * FROM beatmap_mode_preferences WHERE beatmap_hash='{map_hash}' AND playmode='{playmode}'");

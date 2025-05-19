@@ -34,10 +34,13 @@ impl Animation {
         size: Vector2, 
         frames: Vec<Arc<TextureReference>>, 
         frame_delay: f32, 
-        base_scale: Vector2
+        base_scale: Vector2,
     ) -> Self {
         // let scale = Vector2::new(tex.get_width() as f64 / size.x, tex.get_height() as f64 / size.y);
-        let tex_size = Vector2::new(frames[0].width as f32, frames[0].height as f32);
+        let tex_size = Vector2::new(
+            frames[0].width as f32, 
+            frames[0].height as f32
+        );
         let scale = size / tex_size;
 
         let rotation = 0.0;
@@ -106,6 +109,7 @@ impl Animation {
             scale: self.scale,
             rotation: self.rotation,
             draw_debug: self.draw_debug,
+            flip: ImageFlip::None,
         }
     }
 
@@ -135,8 +139,14 @@ impl TatakuRenderable for Animation {
             .trans(self.pos) // move to pos
         ;
 
-        let image = &self.frames[self.frame_index];
-        g.draw_tex(image, color, false, false, transform, self.blend_mode);
+        g.draw_tex(
+            &self.frames[self.frame_index], 
+            color, 
+            false, 
+            false, 
+            transform, 
+            self.blend_mode
+        );
 
         // if self.draw_debug {
         //     let size = self.size();

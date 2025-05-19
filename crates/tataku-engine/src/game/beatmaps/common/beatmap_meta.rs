@@ -88,7 +88,7 @@ impl BeatmapMeta {
     }
     pub fn secs(&self, speed: f32) -> f32 {
         let mins = self.mins(speed);
-        let remaining_ms = (self.duration / speed) - mins * 60000.0;
+        let remaining_ms = (self.duration / speed) - mins * 60_000.0;
         (remaining_ms / 1000.0).floor()
     }
     

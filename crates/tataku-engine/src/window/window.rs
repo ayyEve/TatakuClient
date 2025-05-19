@@ -65,8 +65,7 @@ pub struct GameWindow<'window> {
     _phantom_data: std::marker::PhantomData<&'window ()>,
 }
 impl<'window> GameWindow<'window> {
-
-    pub async fn new(
+    pub fn new(
         game_event_sender: Sender<WindowEvent>,
         window: &'window OnceCell<WinitWindow>,
         runtime: Rc<tokio::runtime::Runtime>,
