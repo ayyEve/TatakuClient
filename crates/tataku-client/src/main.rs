@@ -26,45 +26,48 @@ pub const REQUIRED_FILES:&[&str] = &[
 
 
 fn main() {
-    let runtime = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .unwrap();
+    // let runtime = tokio::runtime::Builder::new_multi_thread()
+    //     .enable_all()
+    //     .build()
+    //     .unwrap();
 
     let _guards = init_logging();
 
-    // initialize the game
-    runtime.block_on(startup());
+    // // initialize the game
+    // runtime.block_on(startup());
 
-    start_game(&runtime);
+    // start_game(&runtime);
+    startup();
+    start_game();
 }
 
 fn start_game(
-    runtime: &tokio::runtime::Runtime,
+    // runtime: &tokio::runtime::Runtime,
 ) {
-    let window_runtime = Rc::new(tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap());
-
     let (game_event_sender, game_event_receiver) = tokio::sync::mpsc::channel(30);
-    let window_load_barrier = Arc::new(tokio::sync::Barrier::new(2));
+    // let window_load_barrier = Arc::new(tokio::sync::Barrier::new(2));
+    // let window_side_barrier = window_load_barrier.clone();
+    let window_load_barrier = Arc::new(std::sync::Barrier::new(2));
     let window_side_barrier = window_load_barrier.clone();
 
     let e = winit::event_loop::EventLoop::with_user_event().build().unwrap();
     let proxy = e.create_proxy();
 
     // start game
-    let game = runtime.spawn(async move {
+    let game = std::thread::spawn(move || {
         // wait for the window side to be ready
-        window_load_barrier.wait().await;
+        // window_load_barrier.wait().await;
+        window_load_barrier.wait();
         trace!("window ready");
 
         game::run_game(
             game_event_receiver,
             proxy,
-        ).await;
+        );
     });
+    // let game = runtime.spawn(async move {
+        
+    // });
 
 
     static WINDOW: tokio::sync::OnceCell<winit::window::Window> = tokio::sync::OnceCell::const_new();
@@ -75,7 +78,6 @@ fn start_game(
     let game_window = GameWindow::new(
         game_event_sender,
         &WINDOW,
-        window_runtime,
         window_side_barrier,
         &settings,
         WindowInitializers {
@@ -94,14 +96,15 @@ fn start_game(
     trace!("window running");
     game_window.run(e);
 
-    // wait for game to finish
-    runtime.block_on(game).unwrap();
+    // // wait for game to finish
+    // runtime.block_on(game).unwrap();
+    game.join().unwrap();
 
     info!("Byebye!");
 }
 
 
-async fn startup() {
+fn startup() {
     // enter game dir
     const GAME_DIR:&str = "./game";
 
@@ -118,10 +121,10 @@ async fn startup() {
     }
 
     // finish setting up
-    setup().await;
+    setup();
 }
 
-async fn setup() {
+fn setup() {
     trace!("Client setup");
     let mut queue = ActionQueue::default();
     Settings::load(&mut queue);
@@ -145,7 +148,7 @@ async fn setup() {
 
     // check for missing files
     for file in REQUIRED_FILES.iter() {
-        Io::check_file(file, &download_url(file)).await;
+        Io::check_file_sync(file, &download_url(file));
     }
 
     // hitsounds
@@ -153,7 +156,7 @@ async fn setup() {
         for sample_set in ["normal", "soft", "drum"] {
             for hitsound in ["hitnormal", "hitwhistle", "hitclap", "hitfinish", "slidertick"] {
                 let file = format!("resources/audio/{mode}{sample_set}-{hitsound}.wav");
-                Io::check_file(&file, &download_url(&file)).await;
+                Io::check_file_sync(&file, &download_url(&file));
             }
         }
     }

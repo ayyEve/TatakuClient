@@ -407,8 +407,8 @@ impl GameMode for TaikoGame {
         };
 
         if s.notes.len() + s.other_notes.len() == 0 { return Err(TatakuError::Beatmap(BeatmapError::InvalidFile)) }
-        s.notes.sort_by(|a, b|a.time().partial_cmp(&b.time()).unwrap());
-        s.other_notes.sort_by(|a, b|a.time().partial_cmp(&b.time()).unwrap());
+        s.notes.sort_by(|a, b| a.time().partial_cmp(&b.time()).unwrap());
+        s.other_notes.sort_by(|a, b| a.time().partial_cmp(&b.time()).unwrap());
 
         // theres probably a better way to do this lol
         if let Some(last) = s.notes.last() {
@@ -677,11 +677,12 @@ impl GameMode for TaikoGame {
         // higher sv notes are drawn overtop of lower sv notes
         // if sv is equal, earlier notes are drawn on top of later notes
         let mut note_list = self.notes.iter_mut().chain(self.other_notes.iter_mut()).collect::<Vec<_>>();
-        note_list.sort_by(|a, b|{
-            match a.get_sv().partial_cmp(&b.get_sv()).unwrap_or(core::cmp::Ordering::Equal) {
-                core::cmp::Ordering::Equal => b.time().partial_cmp(&a.time()).unwrap_or(core::cmp::Ordering::Equal),
-                other => other
-            }
+        note_list.sort_by(|a, b| {
+            b.time().partial_cmp(&a.time()).unwrap_or(core::cmp::Ordering::Equal)
+            // match a.get_sv().partial_cmp(&b.get_sv()).unwrap_or(core::cmp::Ordering::Equal) {
+            //     core::cmp::Ordering::Equal => b.time().partial_cmp(&a.time()).unwrap_or(core::cmp::Ordering::Equal),
+            //     other => other
+            // }
         });
 
         for note in note_list { 

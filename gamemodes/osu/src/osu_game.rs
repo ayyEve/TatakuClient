@@ -288,12 +288,8 @@ impl OsuGame {
                         None
                     ));
                 }
-
             }
-            
         }
-        
-
     }
 
     fn apply_combo_colors(&mut self, colors: Vec<Color>) {

@@ -35,9 +35,7 @@ lazy_static::lazy_static! {
 
 pub struct GameWindow<'window> {
     window: &'window OnceCell<WinitWindow>,
-    window_creation_barrier: Arc<tokio::sync::Barrier>,
-
-    runtime: Rc<tokio::runtime::Runtime>,
+    window_creation_barrier: Arc<std::sync::Barrier>,
 
     graphics: Box<dyn GraphicsEngine + 'window>,
     pub settings: DisplaySettings,
@@ -68,8 +66,7 @@ impl<'window> GameWindow<'window> {
     pub fn new(
         game_event_sender: Sender<WindowEvent>,
         window: &'window OnceCell<WinitWindow>,
-        runtime: Rc<tokio::runtime::Runtime>,
-        window_creation_barrier: Arc<tokio::sync::Barrier>,
+        window_creation_barrier: Arc<std::sync::Barrier>,
         settings: &Settings,
 
         init: WindowInitializers<'window>,
@@ -79,7 +76,6 @@ impl<'window> GameWindow<'window> {
         let s = Self {
             window,
             window_creation_barrier,
-            runtime,
 
             graphics: Box::new(DummyGraphicsEngine),
             settings: settings.display_settings.clone(),
@@ -471,7 +467,13 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
         info!("Window created");
 
         // initialize graphics
-        self.runtime.clone().block_on(async {
+
+        let window_runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+
+        window_runtime.block_on(async {
             while let Some(graphics_init) = self.init_graphics.pop() {
                 let window = self.window();
                 match graphics_init.init(window, self.settings.clone()).await {
@@ -488,7 +490,7 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
             debug!("done graphics");
 
             // let the game side know the window is good to go
-            self.window_creation_barrier.wait().await;
+            self.window_creation_barrier.wait(); //.await;
         });
 
 

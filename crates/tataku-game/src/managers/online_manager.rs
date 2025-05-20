@@ -98,6 +98,7 @@ impl OnlineManager {
     pub fn start(
         &mut self,
         settings: &Settings,
+        runtime: &tokio::runtime::Runtime,
     ) {
         if let Some(handle) = self.handle.take() {
             handle.abort();
@@ -109,7 +110,12 @@ impl OnlineManager {
         self.packet_sender = Some(packet_sender);
         self.event_receiver = Some(event_receiver);
 
-        self.handle = Some(network_thread(settings, event_sender, packet_receiver));
+        self.handle = Some(network_thread(
+            runtime, 
+            settings, 
+            event_sender, 
+            packet_receiver
+        ));
     }
 
     /// disconnect and reset everything
@@ -745,6 +751,7 @@ enum OnlineManagerEvent {
 
 
 fn network_thread(
+    runtime: &tokio::runtime::Runtime,
     settings: &Settings,
     event_sender: AsyncUnboundedSender<OnlineManagerEvent>,
     mut packet_receiver: AsyncUnboundedReceiver<PacketId>,
@@ -754,7 +761,7 @@ fn network_thread(
     let password = settings.password.clone();
     let logging_settings = settings.logging_settings;
 
-    tokio::spawn(async move {
+    runtime.spawn(async move {
         info!("Starting websocket connection to url: {server_url}");
 
         // initialize the connection

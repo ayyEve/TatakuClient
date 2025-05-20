@@ -12,6 +12,7 @@ pub type IncomingGamemode = GamemodeInfo;
 pub struct Game {
     // engine things
     pub actions: ActionQueue,
+    runtime: Rc<tokio::runtime::Runtime>,
     
     volume_controller: VolumeControl,
     current_state: GameState,
@@ -93,12 +94,16 @@ impl Game {
         let settings = Settings::load(&mut actions);
 
         let skin_manager = SkinManager::new(&settings);
-        let skin = skin_manager.skin().clone();
         let infos = GamemodeInfos::new(gamemodes); 
-        let values = GameValues::new(&infos, &settings);
 
-        let mut g = Self {
+        Self {
             actions,
+            runtime: Rc::new(
+            tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()
+                .unwrap()
+            ),
 
             // engine
             window_proxy,
@@ -113,14 +118,18 @@ impl Game {
             song_manager: SongManager::new(),
             sound_manager: SoundManager::default(),
             audio_manager: AudioManager::init_audio(audio_engines).expect("failed to initialize audio engine!"),
-            score_manager: ScoreManager::new(values.global.gamemode_infos.clone()),
+            score_manager: ScoreManager::new(infos.clone()),
             task_manager: TaskManager::new(),
 
             custom_menu_manager: CustomMenuManager::default(),
+            cursor_manager: CursorManager::new(
+                skin_manager.skin().clone(), 
+                settings.cursor_settings.clone()
+            ),
             skin_manager,
-            cursor_manager: CursorManager::new(skin, settings.cursor_settings.clone()),
             notification_manager: NotificationManager::default(),
-
+            ui_manager: UiManager::new(),
+            xml_test_manager: None,
             gameplay_managers: HashMap::new(),
             pending_gameplay_manager: None,
 
@@ -142,19 +151,13 @@ impl Game {
             last_skin: String::new(),
             background_loader: None,
 
-            ui_manager: UiManager::new(),
-            xml_test_manager: None,
             queued_events: Vec::new(),
 
             values: ValueCollection {
-                values,
+                values: GameValues::new(&infos, &settings),
                 custom: DynMap::default()
             },
-        };
-
-        g.init();
-
-        g
+        }
     }
 
     pub fn make_xml_helper(&mut self, path: String) {
@@ -279,7 +282,7 @@ impl Game {
     }
 
     fn init_online(&mut self) {
-        self.values.values.online_manager.start(&self.values.values.settings);
+        self.values.values.online_manager.start(&self.values.values.settings, &self.runtime);
     }
 
     fn init(&mut self) {
@@ -351,6 +354,9 @@ impl Game {
 
     #[cfg(feature="gameplay")]
     pub fn game_loop(mut self) {
+        let _guard = self.runtime.enter();
+        self.init();
+
         let mut update_timer = TatakuInstant::now();
         let mut draw_timer = TatakuInstant::now();
         let mut last_draw_offset = 0.0;

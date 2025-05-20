@@ -20,22 +20,23 @@ impl LoadingMenu {
         }
     }
     pub fn load(&mut self, _settings: &Settings) {
-        macro_rules! add {
-            ($fn: ident, $stage: expr) => {{
-                let status = Arc::new(RwLock::new(LoadingStatus::new($stage)));
-                self.statuses.push(status.clone());
-                tokio::spawn(Self::$fn(status));
-            }}
-        }
+        // macro_rules! add {
+        //     ($fn: ident, $stage: expr) => {{
+        //         let status = Arc::new(RwLock::new(LoadingStatus::new($stage)));
+        //         self.statuses.push(status.clone());
+        //         tokio::spawn(Self::$fn(status));
+        //     }}
+        // }
 
         {
             let status = Arc::new(RwLock::new(LoadingStatus::new("Loading beatmaps")));
             self.actions.push(TaskAction::AddTask(Box::new(LoadBeatmapsTask::new(status.clone()))));
             self.statuses.push(status);
         }
+        Self::init_fonts(Arc::new(RwLock::new(LoadingStatus::new(""))));
 
-        // init fonts
-        add!(init_fonts, "Initializing fonts");
+        // // init fonts
+        // add!(init_fonts, "Initializing fonts");
     }
 
     fn build_view(&self) -> Box<dyn Widget> {
@@ -85,7 +86,7 @@ impl LoadingMenu {
         )
     }
     
-    async fn init_fonts(status: Arc<RwLock<LoadingStatus>>) {
+    fn init_fonts(status: Arc<RwLock<LoadingStatus>>) {
         status.write().item_count = 3;
 
         #[cfg(feature="graphics")]

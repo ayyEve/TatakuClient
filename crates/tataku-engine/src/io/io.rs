@@ -64,6 +64,21 @@ impl Io {
                 .expect("Error saving file");
         }
     }
+    /// check if a file exists, downloading it if it doesnt
+    pub fn check_file_sync(path: impl AsRef<Path>, download_url: &str) {
+        let path = path.as_ref();
+        if !path.exists() {
+            info!("Check failed for '{path:?}', downloading from '{download_url}'");
+            
+            let bytes = reqwest::blocking::get(download_url)
+                .expect("error with request")
+                .bytes()
+                .expect("error converting to bytes");
+
+            std::fs::write(path, bytes)
+                .expect("Error saving file");
+        }
+    }
 
     pub fn sanitize_filename(filename: impl AsRef<str>) -> String {
         filename.as_ref()

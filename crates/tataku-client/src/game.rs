@@ -1,7 +1,7 @@
 use clap::Parser;
 use tataku_game::prelude::*;
 
-pub async fn run_game(
+pub fn run_game(
     game_event_receiver: tokio::sync::mpsc::Receiver<WindowEvent>,
     proxy: winit::event_loop::EventLoopProxy<WindowAction>,
 ) {

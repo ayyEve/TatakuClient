@@ -422,7 +422,7 @@ impl Tree {
             // find the first selectable node
             self.selected_node.node = self.find_child(
                 self.root, 
-                &|tree, node| tree.context(node).selectable()
+                Rc::new(|tree, node| tree.context(node).selectable())
             );
 
             if let Some(node) = self.selected_node.node {
@@ -445,12 +445,12 @@ impl Tree {
     fn find_child(
         &self, 
         parent: impl HasNodeId, 
-        f: &impl Fn(&Self, TaffyNodeId) -> bool
+        f: Rc<dyn Fn(&Self, TaffyNodeId) -> bool>,
     ) -> Option<NodeId> {
         let parent = parent.get_id();
         if f(self, parent) { return Some(NodeId::new(parent, self.owner)) }
         for child in self.tree.children(parent).ok()? {
-            if let Some(node) = self.find_child(child, &f) { 
+            if let Some(node) = self.find_child(child, f.clone()) { 
                 return Some(node) 
             }
         }
