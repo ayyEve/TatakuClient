@@ -56,10 +56,13 @@ impl Database {
         if let Ok(mut rows) = res {
             rows.find_map(|r| r.ok()).unwrap_or_default()
         } else {
-            Default::default()
+            BeatmapPreferences::default()
         }
     }
-    pub fn save_beatmap_prefs(map_hash:Md5Hash, prefs: &BeatmapPreferences) {
+    pub fn save_beatmap_prefs(
+        map_hash: Md5Hash, 
+        prefs: &BeatmapPreferences
+    ) {
         let BeatmapPreferences{ audio_offset, background_video, storyboard } = prefs;
         let map_hash = map_hash.to_string();
 
@@ -72,21 +75,31 @@ impl Database {
         });
     }
 
-    pub fn get_beatmap_mode_prefs(map_hash:Md5Hash, playmode:&String) -> BeatmapPlaymodePreferences {
+    pub fn get_beatmap_mode_prefs(
+        map_hash: Md5Hash, 
+        playmode: &String
+    ) -> BeatmapPlaymodePreferences {
         let db = Self::get();
         let map_hash = map_hash.to_string();
 
         let query = format!("SELECT * FROM beatmap_mode_preferences WHERE beatmap_hash='{map_hash}' AND playmode='{playmode}'");
         let mut s = db.prepare(&query).unwrap();
-        let res = s.query_map([], BeatmapPlaymodePreferences::from_row);
+        let res = s.query_map(
+            [], 
+            BeatmapPlaymodePreferences::from_row
+        );
 
         if let Ok(mut rows) = res {
             rows.find_map(|r|r.ok()).unwrap_or_default()
         } else {
-            Default::default()
+            BeatmapPlaymodePreferences::default()
         }
     }
-    pub fn save_beatmap_mode_prefs(map_hash:Md5Hash, playmode:&String, prefs:&BeatmapPlaymodePreferences) {
+    pub fn save_beatmap_mode_prefs(
+        map_hash: Md5Hash, 
+        playmode: &String, 
+        prefs: &BeatmapPlaymodePreferences
+    ) {
         let BeatmapPlaymodePreferences { scroll_speed } = prefs;
         let map_hash = map_hash.to_string();
 

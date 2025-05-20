@@ -117,18 +117,22 @@ impl ManiaGame {
     fn set_sv_mult_notes(&mut self) {
         for col in self.columns.iter_mut() {
             for note in col.iter_mut() {
-                note.set_sv_mult(self.sv_mult)
+                note.set_sv_mult(self.sv_mult);
             }
         }
 
         // update timing bars as well
         for t in self.timing_bars.iter_mut() {
-            t.set_sv(self.sv_mult)
+            t.set_sv(self.sv_mult);
         }
     }
     
     // #[cfg(feature="graphics")]
-    fn load_col_images(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+    fn load_col_images(
+        &mut self, 
+        source: &TextureSource, 
+        skin_manager: &mut dyn SkinProvider
+    ) {
         let Some(settings) = &self.mania_skin_settings else { return };
         self.key_images_down.clear();
         self.key_images_up.clear();
@@ -239,7 +243,7 @@ impl ManiaGame {
             playfield.column_width / 2.0 * (2.0 / 3.0),
             color,
             image
-        ))
+        ));
     }
 
 
@@ -756,7 +760,7 @@ impl GameMode for ManiaGame {
             let mut frames = Vec::new();
             self.auto_helper.update(&self.columns, &mut self.column_indices, state.time, &mut frames);
             for frame in frames {
-                self.handle_replay_frame(ReplayFrame::new(state.time, frame), state)
+                self.handle_replay_frame(ReplayFrame::new(state.time, frame), state);
             }
         }
 
@@ -976,10 +980,16 @@ impl GameMode for ManiaGame {
 
 
     fn beat_happened(&mut self, pulse_length: f32) {
-        self.columns.iter_mut().flatten().for_each(|n| n.beat_happened(pulse_length))
+        self.columns
+            .iter_mut()
+            .flatten()
+            .for_each(|n| n.beat_happened(pulse_length));
     }
     fn kiai_changed(&mut self, is_kiai: bool) {
-        self.columns.iter_mut().flatten().for_each(|n| n.kiai_changed(is_kiai))
+        self.columns
+            .iter_mut()
+            .flatten()
+            .for_each(|n| n.kiai_changed(is_kiai));
     }
 
 

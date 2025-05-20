@@ -74,7 +74,7 @@ impl SkinnedNumber {
             rotation,
             number,
 
-            cache: Arc::new(RwLock::new((number, Self::number_as_text_base(number, floating_precision, &symbol)))),
+            cache: Arc::new(RwLock::new((number, Self::number_as_text_base(number, floating_precision, symbol.as_ref())))),
             number_textures,
             symbol_textures,
             symbol,
@@ -91,7 +91,11 @@ impl SkinnedNumber {
         drop(last);
         
 
-        let s = Self::number_as_text_base(self.number, self.floating_precision, &self.symbol);
+        let s = Self::number_as_text_base(
+            self.number, 
+            self.floating_precision, 
+            self.symbol.as_ref()
+        );
         *self.cache.write() = (self.number, s.clone());
         s
     }
@@ -129,7 +133,7 @@ impl SkinnedNumber {
             if let Some(t) = self.get_char_tex(c) {
                 let t = t.size() * self.scale;
                 width += t.x + x_spacing;
-                max_height = max_height.max(t.y)
+                max_height = max_height.max(t.y);
             }
         }
         
@@ -141,7 +145,11 @@ impl SkinnedNumber {
         self.pos = rect.pos + (rect.size - text_size) / 2.0;
     }
 
-    fn number_as_text_base(num: f64, precision: usize, symbol: &Option<char>) -> String {
+    fn number_as_text_base(
+        num: f64, 
+        precision: usize, 
+        symbol: Option<&char>
+    ) -> String {
         let mut s = format_float(num, precision);
 
         if precision == 0 {

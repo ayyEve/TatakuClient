@@ -31,26 +31,26 @@ impl GlobalValues {
             username: settings.username.clone(),
             ..Default::default()
         };
-        s.update_playmode(settings.last_played_mode.clone());
-        s.update_playmode_actual(settings.last_played_mode.clone());
+        s.update_playmode(&settings.last_played_mode);
+        s.update_playmode_actual(&settings.last_played_mode);
         
         s
     }
 
     pub fn update_playmode(
         &mut self, 
-        playmode: String,
+        playmode: &str,
     ) {
-        self.playmode = playmode.clone();
-        let Ok(info) = self.gamemode_infos.get_info(&playmode) else { return };
+        self.playmode = playmode.to_owned();
+        let Ok(info) = self.gamemode_infos.get_info(playmode) else { return };
         self.playmode_display = info.display_name.to_owned();
     }
     pub fn update_playmode_actual(
         &mut self, 
-        playmode: String,
+        playmode: &str,
     ) {
-        self.playmode_actual = playmode.clone();
-        let Ok(info) = self.gamemode_infos.get_info(&playmode) else { return };
+        self.playmode_actual = playmode.to_owned();
+        let Ok(info) = self.gamemode_infos.get_info(playmode) else { return };
         self.playmode_actual_display = info.display_name.to_owned();
 
 

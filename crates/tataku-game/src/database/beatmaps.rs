@@ -17,15 +17,20 @@ impl Database {
     pub fn clear_all_maps() {
         let db = Self::get();
         let statement = "DELETE FROM beatmaps";
-        let res = db.prepare(statement).expect(statement).execute([]);
+        let res = db
+            .prepare(statement)
+            .expect(statement)
+            .execute([]);
+
         if let Err(e) = res {
             error!("error deleting beatmap meta from db: {}", e);
         }
     }
 
-    pub fn insert_beatmaps(maps: Vec<Arc<BeatmapMeta>>) {
+    pub fn insert_beatmaps(maps: &[Arc<BeatmapMeta>]) {
         let max_inserts_per_statement = 1_000;
-        let maps_iter = maps.chunks(max_inserts_per_statement);
+        let maps_iter = maps
+            .chunks(max_inserts_per_statement);
 
         for map_group in maps_iter {
             let statement = get_beatmap_insert();

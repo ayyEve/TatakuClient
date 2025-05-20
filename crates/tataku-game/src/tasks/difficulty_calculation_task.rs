@@ -97,7 +97,7 @@ impl DiffCalcTask {
                 .diff;
             
             if !diff.is_normal() {
-                diff = 0.0
+                diff = 0.0;
             }
 
             #[cfg(feature="debug_perf_rating")]
@@ -123,7 +123,7 @@ impl DiffCalcTask {
             }
         }
 
-        self.state = TatakuTaskState::Complete
+        self.state = TatakuTaskState::Complete;
     }
 }
 

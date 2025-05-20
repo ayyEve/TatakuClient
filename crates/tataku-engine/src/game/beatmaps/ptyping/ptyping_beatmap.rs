@@ -39,8 +39,16 @@ impl PTypingBeatmap {
         let data: PTypingMapDef = serde_json::from_slice(&data)?;
 
         let maps = data.beatmaps.into_iter().map(|def| {
-            let start_time = def.hit_objects.first().map(|n|n.time).unwrap_or_default() as f32;
-            let end_time = def.hit_objects.last().map(|n|n.time).unwrap_or_default() as f32;
+            let start_time = def.hit_objects
+                .first()
+                .map(|n| n.time as f32)
+                .unwrap_or_default();
+
+            let end_time = def.hit_objects
+                .last()
+                .map(|n| n.time as f32)
+                .unwrap_or_default();
+
             let duration = end_time - start_time;
             
             PTypingBeatmap {
@@ -59,10 +67,15 @@ impl PTypingBeatmap {
         Ok(maps)
     }
 
-    pub fn load_single(path:impl AsRef<Path>, meta: &BeatmapMeta) -> TatakuResult<Self> {
+    pub fn load_single(
+        path: impl AsRef<Path>, 
+        meta: &BeatmapMeta
+    ) -> TatakuResult<Self> {
         let maps = Self::load_multiple(path)?;
 
-        maps.into_iter().find(|m| m.hash == meta.beatmap_hash).ok_or_else(|| BeatmapError::InvalidFile.into())
+        maps.into_iter()
+            .find(|m| m.hash == meta.beatmap_hash)
+            .ok_or_else(|| BeatmapError::InvalidFile.into())
     }
 }
 impl TatakuBeatmap for PTypingBeatmap {
@@ -104,8 +117,16 @@ impl TatakuBeatmap for PTypingBeatmap {
             creator: self.def.info.mapper.username.clone(), 
             version: self.def.info.difficulty_name.get_string(), 
 
-            audio_filename: self.parent_dir.clone() + "/files/" + &self.def.file_collection.audio.hash, 
-            image_filename: self.parent_dir.clone() + "/files/" + &self.def.file_collection.background.as_ref().map(|f|f.hash.clone()).unwrap_or("none.png".to_owned()),
+            audio_filename: self.parent_dir.clone() 
+                + "/files/" 
+                + &self.def.file_collection.audio.hash, 
+            
+            image_filename: self.parent_dir.clone() 
+                + "/files/" 
+                + &self.def.file_collection.background.as_ref()
+                    .map_or("none.png".to_owned(), |f| f.hash.clone()),
+            
+            
             audio_preview: self.def.info.preview_time, 
             duration: self.duration, 
             hp: 0.0, 
@@ -125,5 +146,5 @@ fn test() {
     let path = "C:/Users/Eve/Desktop/ptyping/song";
     let map = PTypingBeatmap::load_multiple(path).unwrap();
     let map = map.first().unwrap();
-    println!("{:?}, {:?}", map.artist, map.title)
+    println!("{:?}, {:?}", map.artist, map.title);
 }

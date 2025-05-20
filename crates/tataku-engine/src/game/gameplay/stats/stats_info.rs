@@ -6,7 +6,11 @@ pub struct StatsInfo {
     pub data: Arc<Vec<StatsEntry>>,
 }
 impl StatsInfo {
-    pub fn new(display_name: impl ToString, graph_type: GraphType, data: Vec<StatsEntry>) -> Self {
+    pub fn new(
+        display_name: impl ToString, 
+        graph_type: GraphType, 
+        data: Vec<StatsEntry>,
+    ) -> Self {
         Self {
             display_name: display_name.to_string(),
             graph_type,
@@ -34,7 +38,13 @@ pub struct StatsEntry {
     pub concat_method: ConcatMethod
 }
 impl StatsEntry {
-    pub fn new_f32(name: impl ToString, value: f32, color:Color, show_in_graph: bool, show_in_list: bool) -> Self {
+    pub fn new_f32(
+        name: impl ToString, 
+        value: f32, 
+        color: Color, 
+        show_in_graph: bool, 
+        show_in_list: bool
+    ) -> Self {
         Self {
             name: name.to_string(),
             value: StatsValue::Single(value),
@@ -44,7 +54,14 @@ impl StatsEntry {
             concat_method: ConcatMethod::Sum
         }
     }
-    pub fn new_list(name: impl ToString, values: Vec<f32>, color:Color, show_in_graph: bool, show_in_list: bool, concat_method: ConcatMethod) -> Self {
+    pub fn new_list(
+        name: impl ToString, 
+        values: Vec<f32>, 
+        color: Color, 
+        show_in_graph: bool, 
+        show_in_list: bool, 
+        concat_method: ConcatMethod
+    ) -> Self {
         Self {
             name: name.to_string(),
             value: StatsValue::List(values),

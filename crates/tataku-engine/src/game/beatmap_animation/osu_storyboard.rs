@@ -13,8 +13,8 @@ pub struct OsuStoryboard {
 }
 impl OsuStoryboard {
     pub fn new(
-        def: StoryboardDef,
-        dir: String,
+        def: &StoryboardDef,
+        dir: &String,
         skin_manager: &mut dyn SkinProvider,
         // settings: OsuSettings,
     ) -> TatakuResult<Self> {
@@ -29,7 +29,7 @@ impl OsuStoryboard {
         let mut image_cache = HashMap::new();
         let mut elements = Vec::new();
         for e in def.entries.clone() {
-            elements.push(Element::new(e, &dir, &mut image_cache,  skin_manager)?);
+            elements.push(Element::new(e, dir, &mut image_cache,  skin_manager)?);
         }
         elements.sort_by(Element::sort);
 
@@ -296,21 +296,21 @@ impl Element {
 
             if anim.frame_index != old_frame {
                 // only
-                self.group.items = vec![Arc::new(anim.current_frame_as_image())]
+                self.group.items = vec![Arc::new(anim.current_frame_as_image())];
             }
         }
 
-        self.group.update(time)
+        self.group.update(time);
     }
 
     fn reset(&mut self) {
         if let ElementImage::Anim(anim) = &mut self.element_image {
             anim.update(0.0);
 
-            self.group.items = vec![Arc::new(anim.clone())]
+            self.group.items = vec![Arc::new(anim.clone())];
         }
 
-        self.group.update(0.0)
+        self.group.update(0.0);
     }
 
     fn sort(a: &Self, b: &Self) -> std::cmp::Ordering {

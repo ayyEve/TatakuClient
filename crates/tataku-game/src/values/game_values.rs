@@ -34,11 +34,11 @@ pub struct GameValues {
 }
 impl GameValues {
     pub fn new(
-        infos: GamemodeInfos, 
+        infos: &GamemodeInfos, 
         settings: &Settings
     ) -> Self {
         Self {
-            enums: EnumValues::new(&infos),
+            enums: EnumValues::new(infos),
             settings: settings.clone(),
             beatmap_manager: BeatmapManager::new(infos.clone()),
             global: GlobalValues::new(infos.clone(), settings),
@@ -96,7 +96,7 @@ impl ReflectLobby {
             host: lobby.host,
             state: lobby.state,
             players: lobby.players.clone(),
-            slots: lobby.slots.values().cloned().collect(),
+            slots: lobby.slots.values().copied().collect(),
             current_beatmap: lobby.current_beatmap.clone(),
         }
     }
@@ -118,7 +118,7 @@ impl ReflectLobby {
         self.host = lobby.host;
         self.state = lobby.state;
         self.players = lobby.players.clone();
-        self.slots = lobby.slots.values().cloned().collect();
+        self.slots = lobby.slots.values().copied().collect();
         self.current_beatmap = lobby.current_beatmap.clone();
     }
 }

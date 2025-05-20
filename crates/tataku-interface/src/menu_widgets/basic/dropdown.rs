@@ -59,12 +59,17 @@ impl Dropdown {
     }
 
     fn get_style(&self, scale: Option<Vector2>) -> Style {
-        let placeholder_size = self.text_style.measure_text(&self.placeholder, scale);
+        let placeholder_size = self
+            .text_style
+            .measure_text(&self.placeholder, scale);
         
         let largest_text = self.variants.get_displays()
             .iter()
             .map(|a| self.text_style.measure_text(a, scale))
-            .fold(placeholder_size, |a, b| Vector2::new(a.x.max(b.x), a.y.max(b.y)))
+            .fold(
+                placeholder_size, 
+                |a, b| Vector2::new(a.x.max(b.x), a.y.max(b.y))
+            )
             ;
         
         Style {
@@ -176,7 +181,7 @@ impl Widget for Dropdown {
                 match key {
                     Key::Escape => {
                         self.active = false;
-                        self.active_index = None
+                        self.active_index = None;
                     }
                     Key::Enter => {
                         if let Some(index) = self.active_index.take() {
@@ -314,7 +319,9 @@ impl Widget for Dropdown {
 
         if let DropdownValue::Variable(var, index) = &mut self.value {
             let selected = match shell.values.impl_get(ReflectPath::new(&*var)) {
-                Ok(s) => match TatakuValue::from_reflection(s).map(|s| s.as_string()) {
+                Ok(s) => match TatakuValue::from_reflection(s)
+                    .map(|s| s.as_string()) 
+                {
                     Ok(s) => Some(s),
                     Err(ReflectError::OptionIsNone) => None,
                     Err(e) => {
@@ -338,14 +345,19 @@ impl Widget for Dropdown {
             if let Some(selected) = selected {
                 if index.is_none() {
                     if let DropdownVariants::Static(list) = &self.variants {
-                        if let Some((n, _)) = list.iter().enumerate().find(|(_, a)| *a == &selected ) {
-                            *index = Some(n)
+                        if let Some((n, _)) = list
+                            .iter()
+                            .enumerate()
+                            .find(|(_, a)| *a == &selected) 
+                        {
+                            *index = Some(n);
                         }
                     }
                 }
 
 
-                let DropdownVariants::Built { items, .. } = &self.variants else { return };
+                let DropdownVariants::Built { items, .. } = &self.variants 
+                else { return };
 
                 for (n, i) in items.iter().enumerate() {
                     if i.id == selected {

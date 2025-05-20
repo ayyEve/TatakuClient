@@ -120,13 +120,13 @@ impl TatakuRenderable for TransformGroup {
         self.items.iter().for_each(|i| {
             // need to scissor internal items manually
             if let Some(scissor) = i.get_scissor() {
-                g.push_scissor(scissor)
+                g.push_scissor(scissor);
             }
 
             i.draw(&options, transform, g);
 
             if i.get_scissor().is_some() {
-                g.pop_scissor()
+                g.pop_scissor();
             }
         });
     }

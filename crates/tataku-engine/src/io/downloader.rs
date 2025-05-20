@@ -11,7 +11,10 @@ impl Downloader {
         progress
     }
 
-    pub fn download_existing_progress(mut options: DownloadOptions, progress: Arc<RwLock<DownloadProgress>>) {
+    pub fn download_existing_progress(
+        mut options: DownloadOptions, 
+        progress: Arc<RwLock<DownloadProgress>>,
+    ) {
         tokio::spawn(async move {
             for i in 0..=options.retry_count {
                 match Self::perform_download(&options, &progress).await {
@@ -130,7 +133,7 @@ impl Downloader {
                         }
                         if code == 302 && key == "location" {
                             // location is the redirect url, try downloading from there.
-                            let location = value.to_owned();
+                            let location = value.clone();
                             return Err(TatakuError::DownloadError(DownloadError::Redirected(location)));
                         }
                     }

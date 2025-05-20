@@ -31,7 +31,7 @@ impl TatakuTask for ActionTask {
         }
 
         if let Some(action) = self.action.take() {
-            actions.push(action)
+            actions.push(action);
         }
 
         if self.action.is_none() {

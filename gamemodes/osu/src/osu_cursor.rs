@@ -295,7 +295,7 @@ impl OsuCursor {
         if self.cursor_trail_image.is_some() {
             // draw the transforms
             for i in self.trail_images.iter().cloned() {
-                list.push(i)
+                list.push(i);
             }
         }
 
@@ -344,8 +344,7 @@ impl OsuCursor {
     pub fn draw_below(&self, list: &mut RenderableCollection) {
         // draw ripples
         for ripple in self.ripples.iter().cloned() {
-            list.push(ripple)
-            // ripple.draw(list)
+            list.push(ripple);
         }
     }
 

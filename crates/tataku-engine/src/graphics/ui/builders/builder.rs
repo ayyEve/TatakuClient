@@ -22,7 +22,7 @@ impl SettingsBuilder<'_> {
         let sc = self.categories.last_mut().unwrap();
         sc.properties.push(prop);
         sc.values.push(val);
-        sc.names.push(name.to_string())
+        sc.names.push(name.to_string());
     }
 
     pub fn add_category(

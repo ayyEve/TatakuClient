@@ -92,7 +92,7 @@ impl TatakuRenderable for TransformedDrawable {
         g: &mut dyn GraphicsEngine,
     ) {
         transform = transform * self.transform.matrix();
-        self.drawable.draw(options, transform, g)
+        self.drawable.draw(options, transform, g);
     }
 }
 

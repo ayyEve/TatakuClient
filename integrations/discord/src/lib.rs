@@ -123,13 +123,16 @@ impl TatakuIntegration for Discord {
                 let creator = &beatmap.creator;
                 let version = &beatmap.version;
 
-                let infos = values.reflect_get::<GamemodeInfos>("global.infos").unwrap();
+                let infos = values
+                    .reflect_get::<GamemodeInfos>("global.infos")
+                    .unwrap();
 
                 let playmode_display = infos
                     .get_info(playmode)
-                    .map(|i| i.display_name.to_owned())
-                    .unwrap_or_else(|_| playmode.to_owned())
-                    ;
+                    .map_or_else(
+                        |_| playmode.to_owned(), 
+                        |i| i.display_name.to_owned()
+                    );
 
                 assets = assets
                     .small_image("icon") // TODO: use a url for the image, where if it doesnt exist, it gives some default, so we always have the mode text

@@ -33,6 +33,7 @@ impl TatakuError {
     pub fn from_err(e: impl std::error::Error) -> Self {
         Self::String(format!("{e}"))
     }
+    #[allow(clippy::needless_pass_by_value, reason = "conversion function")]
     pub fn from_boxed_err(e: Box<dyn std::error::Error>) -> Self {
         Self::String(format!("{e}"))
     }

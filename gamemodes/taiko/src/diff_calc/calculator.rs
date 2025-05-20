@@ -125,7 +125,7 @@ impl TaikoDifficultyCalculator {
                 | NoteType::Spinner => {
                     // Reset hands for sliders and spinners.
                     for i in hands.iter_mut() {
-                        *i = Thing::None
+                        *i = Thing::None;
                     }
                     count_since_reset = 0;
                 },
@@ -297,7 +297,7 @@ impl DiffCalc for TaikoDifficultyCalculator {
                 </script>
                 "#);
 
-                std::fs::write(format!("./html/{}.html", file_name), all_data)?
+                std::fs::write(format!("./html/{file_name}.html"), all_data)?;
             }
         }
 

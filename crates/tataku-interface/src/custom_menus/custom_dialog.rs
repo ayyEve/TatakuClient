@@ -128,7 +128,7 @@ impl Widget for BuiltCustomDialog {
                 shell.values, 
                 &passed_in
             ) {
-                shell.actions.push(action)
+                shell.actions.push(action);
             }
             return
         }
@@ -144,14 +144,20 @@ impl Widget for BuiltCustomDialog {
                     return
                 };
 
-                if let Err(e) = shell.values.reflect_insert(variable, value) {
+                if let Err(e) = shell.values.reflect_insert(
+                    variable, 
+                    value
+                ) {
                     error!("error inserting into values: {e:?}");
                 }
             }
             MessageValue::Text(incoming) => {
                 let Some(variable) = tag.as_string() else { return };
                 shell.handled = true;
-                if let Err(e) = shell.values.reflect_insert(variable, Box::new(incoming.clone())) {
+                if let Err(e) = shell.values.reflect_insert(
+                    variable, 
+                    Box::new(incoming.clone())
+                ) {
                     error!("error inserting into values: {e:?}");
                 }
             }
@@ -192,7 +198,7 @@ impl Widget for BuiltCustomDialog {
                 ) else { continue };
                 shell.actions.push(a);
             } else {
-                shell.actions.push(GameAction::HandleMessage(message))
+                shell.actions.push(GameAction::HandleMessage(message));
             }
         }
     }

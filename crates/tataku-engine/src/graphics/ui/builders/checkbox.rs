@@ -9,7 +9,10 @@ pub struct CheckboxBuilder {
     pub on_change: Option<Arc<dyn Fn(bool) -> Message + Send + Sync>>,
 }
 impl CheckboxBuilder {
-    pub fn new(text: impl ToString, value: impl Into<CheckboxBuilderValue>) -> Self {
+    pub fn new(
+        text: impl ToString, 
+        value: impl Into<CheckboxBuilderValue>
+    ) -> Self {
         Self {
             text: text.to_string(),
             value: value.into(),
@@ -22,7 +25,10 @@ impl CheckboxBuilder {
         self
     }
     
-    pub fn on_change(mut self, on_change: impl Fn(bool) -> Message + Send + Sync + 'static) -> Self {
+    pub fn on_change(
+        mut self, 
+        on_change: impl Fn(bool) -> Message + Send + Sync + 'static
+    ) -> Self {
         self.on_change = Some(Arc::new(on_change));
         self
     }

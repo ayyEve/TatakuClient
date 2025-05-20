@@ -17,24 +17,36 @@ impl ShuntingYard {
             match c {
                 '0'..='9'|'a'..='z'|'.'|'_' => current_thing.push(c),
                 '\'' => if matches!(current_thing, CurrentThing::StringLiteral(_)) {
-                    current_thing.add(&mut output_queue, &mut operator_stack, false)?;
+                    current_thing.add(
+                        &mut output_queue, 
+                        &mut operator_stack,
+                        false
+                    )?;
 
                 } else {
-                    current_thing = CurrentThing::StringLiteral(String::new())
+                    current_thing = CurrentThing::StringLiteral(String::new());
                 },
                 
                 '(' => {
-                    current_thing.add(&mut output_queue, &mut operator_stack, true)?;
+                    current_thing.add(
+                        &mut output_queue, 
+                        &mut operator_stack, 
+                        true
+                    )?;
                     operator_stack.push(ShuntingYardToken::LeftParenthesis);
                 }
                 ')' => {
-                    current_thing.add(&mut output_queue, &mut operator_stack, false)?;
+                    current_thing.add(
+                        &mut output_queue, 
+                        &mut operator_stack, 
+                        false
+                    )?;
                     while let Some(top) = operator_stack.pop() {
                         if let ShuntingYardToken::LeftParenthesis = top { break }
                         output_queue.push(top);
                     }
 
-                    if let ShuntingYardToken::Function(_) = operator_stack.last().unwrap() {
+                    if let Some(ShuntingYardToken::Function(_)) = operator_stack.last() {
                         output_queue.push(operator_stack.pop().unwrap());
                     }
                 }
@@ -51,9 +63,17 @@ impl ShuntingYard {
 
                         Err(e) => warn!("Error parsing operator {c}: {e:?}"),
                         Ok(op) => {
-                            current_thing.add(&mut output_queue, &mut operator_stack, false)?;
+                            current_thing.add(
+                                &mut output_queue,
+                                &mut operator_stack, 
+                                false
+                            )?;
 
-                            while operator_stack.last().filter(|c2| Self::check_op(op, c2)).is_some() {
+                            while operator_stack
+                                .last()
+                                .filter(|c2| Self::check_op(op, c2))
+                                .is_some()
+                                {
                                 output_queue.push(operator_stack.pop().unwrap());
                             }
 
@@ -97,14 +117,19 @@ impl ShuntingYard {
                 ShuntingYardToken::Function(func) => Self::run_function(func, &mut stack, values)?,
 
                 ShuntingYardToken::Operator(op) => {
-                    let right = stack.pop().ok_or(ShuntingYardError::MissingRightSide(*op))?;
+                    let right = stack
+                        .pop()
+                        .ok_or(ShuntingYardError::MissingRightSide(*op))?;
+
                     // "Not" is a special case, we only care about the right side
                     if let Operator::Not = op {
                         stack.push(op.perform(right, Cow::Owned(TatakuValue::None)));
                         continue;
                     }
 
-                    let left = stack.pop().ok_or(ShuntingYardError::MissingLeftSide(*op))?;
+                    let left = stack
+                        .pop()
+                        .ok_or(ShuntingYardError::MissingLeftSide(*op))?;
                     stack.push(op.perform(right, left));
                 }
 
@@ -142,7 +167,8 @@ impl ShuntingYard {
         }
         
         // argument fns
-        let n = stack.pop().ok_or_else(|| ShuntingYardError::MissingFunctionArgument(function.to_owned()))?;
+        let n = stack.pop()
+            .ok_or_else(|| ShuntingYardError::MissingFunctionArgument(function.to_owned()))?;
         // let SYStackValue::Number(n) = n else { return Err(ShuntingYardError::NumberIsntANumber(String::new())) };
 
         match function {
@@ -158,7 +184,7 @@ impl ShuntingYard {
                         .unwrap_or(TatakuValue::None);
                 println!("ref({n:?}) = {value:?}");
 
-                stack.push(Cow::Owned(value))
+                stack.push(Cow::Owned(value));
             }
 
             "display" => {
@@ -169,7 +195,10 @@ impl ShuntingYard {
                     TatakuValue::U64(n) => format_number(*n),
                     TatakuValue::Bool(b) => format!("{b}"),
                     TatakuValue::String(s) => s.clone(),
-                    TatakuValue::Reflect(reflect) => reflect.reflect_display("", Some(2)).unwrap_or("?".to_owned()),
+                    TatakuValue::Reflect(reflect) 
+                    => reflect
+                        .reflect_display("", Some(2))
+                        .unwrap_or("?".to_owned()),
                 };
 
                 stack.push(Cow::Owned(TatakuValue::from(str)));

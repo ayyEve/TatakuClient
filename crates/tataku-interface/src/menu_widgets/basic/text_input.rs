@@ -55,8 +55,8 @@ impl TextInput {
             value: value.into(),
             secure: false,
 
-            on_input: Default::default(),
-            on_submit: Default::default(),
+            on_input: TextInputAction::default(),
+            on_submit: TextInputAction::default(),
 
             pressed: false,
             hovered: false,
@@ -98,8 +98,7 @@ impl TextInput {
                 indices
                     .skip(index)
                     .find(|(_, c)| TOKENS.contains(c))
-                    .map(|(i, _)| i + 1)
-                    .unwrap_or(len)
+                    .map_or(len, |(i, _)| i + 1)
             } else {
                 // TODO: validate this is actually correct
                 // it seems to be
@@ -107,8 +106,7 @@ impl TextInput {
                     .rev()
                     .skip(len - index)
                     .find(|(_, c)| TOKENS.contains(c))
-                    .map(|(i, _)| i)
-                    .unwrap_or(0)
+                    .map_or(0, |(i, _)| i)
             }
         }
 
@@ -1040,7 +1038,7 @@ fn test() {
         
     ];
 
-    for i in tests.iter().cloned().flatten() {
+    for i in tests.iter().copied().flatten() {
         let mut input = TextInput::new("", base_txt);
 
         input.cursor = i.input_cursor;
@@ -1057,7 +1055,7 @@ fn test() {
         assert_eq!(input.cursor, i.expected);
         if let Some(text) = &i.expected_text {
             println!("{text}");
-            assert!(input.value.get() == *text)
+            assert!(input.value.get() == *text);
         }
     }
 

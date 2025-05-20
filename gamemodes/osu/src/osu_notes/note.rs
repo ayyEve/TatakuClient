@@ -42,14 +42,27 @@ pub struct OsuNote {
     hitsounds: Vec<Hitsound>,
 }
 impl OsuNote {
-    pub fn new(def:NoteDef, ar:f32, combo_num:u16, scaling_helper: Arc<ScalingHelper>, standard_settings:Arc<OsuSettings>, hitsounds: Vec<Hitsound>) -> Self {
+    pub fn new(
+        def: NoteDef, 
+        ar: f32, 
+        combo_num: u16, 
+        scaling_helper: Arc<ScalingHelper>, 
+        standard_settings: Arc<OsuSettings>, 
+        hitsounds: Vec<Hitsound>,
+    ) -> Self {
         let time = def.time;
         let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
 
         let pos = scaling_helper.scale_coords(def.pos);
         let radius = CIRCLE_RADIUS_BASE * scaling_helper.cs;
         
-        let approach_circle = ApproachCircle::new(def.pos, time, radius, time_preempt, scaling_helper.clone());
+        let approach_circle = ApproachCircle::new(
+            def.pos, 
+            time, 
+            radius, 
+            time_preempt, 
+            scaling_helper.clone()
+        );
         let circle_image = HitCircleImageHelper::new(
             def.pos,
             scaling_helper.clone(),
@@ -120,7 +133,7 @@ impl HitObject for OsuNote {
         if self.time - self.map_time > self.time_preempt || self.time + self.hitwindow_miss < self.map_time || self.hit { 
             // draw shapes
             for shape in self.shapes.iter() {
-                list.push(shape.clone())
+                list.push(shape.clone());
             }
             
             return 
@@ -138,7 +151,7 @@ impl HitObject for OsuNote {
 
         // draw shapes
         for shape in self.shapes.iter() {
-            list.push(shape.clone())
+            list.push(shape.clone());
         }
     }
 
@@ -185,7 +198,7 @@ impl OsuHitObject for OsuNote {
         
         self.circle_image.set_color(color);
         if self.standard_settings.approach_combo_color { 
-            self.approach_circle.set_color(color) 
+            self.approach_circle.set_color(color);
         }
      }
 

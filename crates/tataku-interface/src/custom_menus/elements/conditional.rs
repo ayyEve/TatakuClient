@@ -27,9 +27,12 @@ impl ConditionalElement {
 impl CustomElement for ConditionalElement {
     fn build(&self) -> Box<dyn Widget> {
         let Some(if_true) = self.if_true() else {
-            let name = self.id.as_ref()
-                .map(|i| format!("id: {i}"))
-                .unwrap_or_else(|| format!("cond: {}", self.condition));
+            let name = self.id
+                .as_ref()
+                .map_or_else(
+                    || format!("cond: {}", self.condition), 
+                    |i| format!("id: {i}")
+                );
 
             error!("Conditional Element ({name}) does not have an element for when true!");
             return EmptyWidget::new_boxed();
@@ -76,5 +79,5 @@ fn test() {
             })),
             ..Default::default()
         }
-    )
+    );
 }

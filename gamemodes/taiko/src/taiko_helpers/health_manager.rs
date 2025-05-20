@@ -47,7 +47,7 @@ impl HealthManager for TaikoBatteryHealthManager {
             _ => return
         };
 
-        self.validate_health()
+        self.validate_health();
     }
 
     fn validate_health(&mut self) {

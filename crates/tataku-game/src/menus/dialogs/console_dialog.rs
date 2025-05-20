@@ -33,10 +33,10 @@ impl Widget for ConsoleDialog {
     fn layout(&mut self, shell: &mut LayoutShell) -> ui::TaffyResult<NodeId> {
 
         if shell.values.reflect_get::<Vec<String>>(OUTPUT_PATH).is_err() {
-            shell.values.reflect_insert(OUTPUT_PATH, Vec::<String>::new()).unwrap()
+            shell.values.reflect_insert(OUTPUT_PATH, Vec::<String>::new()).unwrap();
         }
         if shell.values.reflect_get::<String>(INPUT_PATH).is_err() {
-            shell.values.reflect_insert(INPUT_PATH, String::new()).unwrap()
+            shell.values.reflect_insert(INPUT_PATH, String::new()).unwrap();
         }
 
 
@@ -99,10 +99,10 @@ impl Widget for ConsoleDialog {
         self.node.input(event, shell);
     }
     fn update(&mut self, shell: &mut UpdateShell) {
-        self.node.update(shell)
+        self.node.update(shell);
     }
     fn draw(&self, shell: &mut DrawShell) {
-        self.node.draw(shell)
+        self.node.draw(shell);
     }
 
     fn handle_message(
@@ -138,7 +138,7 @@ fn parse_line(_owner: MessageOwner) -> TextInputAction {
             r.reflect_get_mut::<String>(INPUT_PATH)
             .map(|s| s.clear())
             .inspect_err(|e| warn!("{e:?}"))
-            .nope()
+            .nope();
         })),
 
         TextInputAction::ReflectCallback(Box::new(move |s, r| 
@@ -160,7 +160,7 @@ fn parse_line(_owner: MessageOwner) -> TextInputAction {
             r.reflect_get_mut::<Vec<String>>(OUTPUT_PATH)
                 .map(|list| list.push(format!("-> {}\n", output)))
                 .inspect_err(|e| warn!("{e:?}"))
-                .nope()
+                .nope();
         })),
     ])
 }

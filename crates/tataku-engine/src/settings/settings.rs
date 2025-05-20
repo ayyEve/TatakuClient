@@ -157,21 +157,31 @@ impl Settings {
         let str = serde_json::to_string_pretty(self).unwrap();
         match std::fs::write(&self.save_path, str) {
             Ok(_) => trace!("settings saved successfully"),
-            Err(e) => actions.push(GameAction::AddNotification(Notification::new_error("Error saving settings", e))),
+            Err(e) => actions.push(Notification::new_error(
+                "Error saving settings", 
+                e
+            )),
         }
     }
 
-    // TODO
-    pub fn gamemode_settings<G: serde::de::DeserializeOwned>(&self, gamemode: impl AsRef<str>) -> Option<G> {
-        serde_json::from_value(self.gamemode_settings.get(gamemode.as_ref())?.clone()).ok()
+    pub fn gamemode_settings<G: serde::de::DeserializeOwned>(
+        &self, 
+        gamemode: impl AsRef<str>
+    ) -> Option<G> {
+        serde_json::from_value(self.gamemode_settings.get(gamemode.as_ref())?.clone())
+            .ok()
     }
 
-    pub fn update_gamemode_settings<G: serde::Serialize>(&mut self, gamemode: impl AsRef<str>, settings: G) {
+    pub fn update_gamemode_settings<G: serde::Serialize>(
+        &mut self, 
+        gamemode: impl AsRef<str>, 
+        settings: G
+    ) {
         *self.gamemode_settings
             .entry(gamemode.as_ref().to_owned())
             .or_default()
             = serde_json::to_value(settings)
-            .expect("couldnt serialize game settings?")
+            .expect("couldnt serialize game settings?");
     }
 
 
@@ -192,7 +202,7 @@ impl Settings {
         let mut file = format!("{settings_path}.bak_{counter}");
         while Io::exists(&file) {
             counter += 1;
-            file = format!("{settings_path}.bak_{counter}")
+            file = format!("{settings_path}.bak_{counter}");
         }
         std::fs::copy(&settings_path, &file)
             .expect("An error occurred while backing up the old settings.json");
@@ -234,11 +244,7 @@ impl Default for Settings {
 
             // game settings
             logging_settings: LoggingSettings::default(),
-            gamemode_settings: Default::default(),
-            // osu_settings: OsuSettings::default(),
-            // taiko_settings: TaikoSettings::default(),
-            // catch_settings: CatchSettings::default(),
-            // mania_settings: ManiaSettings::default(),
+            gamemode_settings: GamemodeSettingsCollection::default(),
             background_game_settings: BackgroundGameSettings::default(),
             common_game_settings: CommonGameplaySettings::default(),
             last_played_mode: "osu".to_owned(),
@@ -247,7 +253,7 @@ impl Default for Settings {
             beatmap_hitsounds: true,
             enable_diffcalc: true,
 
-            cursor_settings: Default::default(),
+            cursor_settings: CursorSettings::default(),
             
             // keybinds
             key_user_panel: Key::F8,
@@ -257,9 +263,9 @@ impl Default for Settings {
             double_tap_protection_duration: 80.0,
             
             // integrations
-            integrations: Default::default(),
+            integrations: IntegrationSettings::default(),
 
-            display_settings: Default::default(),
+            display_settings: DisplaySettings::default(),
             ui_scale: 1.0,
             background_dim: 0.8,
 
@@ -400,7 +406,7 @@ lazy_static::lazy_static! {
         let mut list = vec!["None".to_owned()];
         if let Ok(folder) = std::fs::read_dir(SKINS_FOLDER) {
             for f in folder.filter_map(|f| f.ok()) {
-                list.push(f.file_name().to_string_lossy().to_string())
+                list.push(f.file_name().to_string_lossy().to_string());
             }
         }
         Arc::new(RwLock::new(list))

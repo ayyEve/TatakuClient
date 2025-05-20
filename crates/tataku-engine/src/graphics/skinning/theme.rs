@@ -18,13 +18,13 @@ pub struct Theme {
 }
 impl Theme {
     pub fn get_color(&self, color: ThemeColor) -> Option<Color> {
-        self.colors.get(&color).cloned()
+        self.colors.get(&color).copied()
     }
     pub fn get_pos(&self, pos: ThemePosition) -> Option<Vector2> {
-        self.positions.get(&pos).cloned()
+        self.positions.get(&pos).copied()
     }
     pub fn get_scale(&self, scale: ThemeScale) -> Option<Vector2> {
-        self.scales.get(&scale).cloned()
+        self.scales.get(&scale).copied()
     }
 }
 impl Default for Theme {

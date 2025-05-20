@@ -65,8 +65,8 @@ impl Beatmap {
         
         match path.extension().unwrap().to_str().unwrap() {
             "osu" => Ok(vec![Beatmap::Osu(Box::new(osu::OsuBeatmap::load(path.to_str().unwrap().to_owned())?))]),
-            "qua" => Ok(vec![Beatmap::Quaver(Box::new(quaver::QuaverBeatmap::load(path.to_str().unwrap().to_owned())?))]),
-            "adofai" => Ok(vec![Beatmap::Adofai(Box::new(adofai::AdofaiBeatmap::load(path.to_str().unwrap().to_owned())))]),
+            "qua" => Ok(vec![Beatmap::Quaver(Box::new(quaver::QuaverBeatmap::load(path.to_str().unwrap())?))]),
+            "adofai" => Ok(vec![Beatmap::Adofai(Box::new(adofai::AdofaiBeatmap::load(path.to_str().unwrap())))]),
             "txt" => Ok(vec![Beatmap::UTyping(Box::new(u_typing::UTypingBeatmap::load(path)?))]),
             "ssc" | "sm" => Ok(stepmania::StepmaniaBeatmap::load_multiple(path)?.into_iter().map(|b|Beatmap::Stepmania(Box::new(b))).collect()),
             "tja" => Ok(tja::TjaBeatmap::load_multiple(path)?.into_iter().map(|b|Beatmap::Tja(Box::new(b))).collect()),
@@ -87,8 +87,8 @@ impl Beatmap {
         
         match path.extension().unwrap().to_str().unwrap() {
             "osu" => Ok(Beatmap::Osu(Box::new(osu::OsuBeatmap::load(path.to_str().unwrap().to_owned())?))),
-            "qua" => Ok(Beatmap::Quaver(Box::new(quaver::QuaverBeatmap::load(path.to_str().unwrap().to_owned())?))),
-            "adofai" => Ok(Beatmap::Adofai(Box::new(adofai::AdofaiBeatmap::load(path.to_str().unwrap().to_owned())))),
+            "qua" => Ok(Beatmap::Quaver(Box::new(quaver::QuaverBeatmap::load(path.to_str().unwrap())?))),
+            "adofai" => Ok(Beatmap::Adofai(Box::new(adofai::AdofaiBeatmap::load(path.to_str().unwrap())))),
             "txt" => Ok(Beatmap::UTyping(Box::new(u_typing::UTypingBeatmap::load(path.to_str().unwrap())?))),
             "ssc" | "sm" => Ok(Beatmap::Stepmania(Box::new(stepmania::StepmaniaBeatmap::load_single(path, meta)?))),
             "tja" => Ok(Beatmap::Tja(Box::new(tja::TjaBeatmap::load_single(path, meta)?))),
@@ -111,8 +111,8 @@ impl Beatmap {
         
         match path.extension().unwrap().to_str().unwrap() {
             "osu" => Ok(vec![osu::OsuBeatmap::load_metadata(path.to_str().unwrap())?]),
-            "qua" => Ok(vec![quaver::QuaverBeatmap::load(path.to_str().unwrap().to_owned())?.get_beatmap_meta()]),
-            "adofai" => Ok(vec![adofai::AdofaiBeatmap::load(path.to_str().unwrap().to_owned()).get_beatmap_meta()]),
+            "qua" => Ok(vec![quaver::QuaverBeatmap::load(path.to_str().unwrap())?.get_beatmap_meta()]),
+            "adofai" => Ok(vec![adofai::AdofaiBeatmap::load(path.to_str().unwrap()).get_beatmap_meta()]),
             "txt" => Ok(vec![u_typing::UTypingBeatmap::load(path)?.get_beatmap_meta()]),
             "ssc" | "sm" => Ok(stepmania::StepmaniaBeatmap::load_multiple(path)?.into_iter().map(|b|b.get_beatmap_meta()).collect()),
             "tja" => Ok(tja::TjaBeatmap::load_multiple(path)?.into_iter().map(|b|b.get_beatmap_meta()).collect()),

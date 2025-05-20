@@ -50,7 +50,11 @@ impl GameplayWidget for SpectatorsElement {
         // draw spectators
         list.push(Rectangle::new(
             pos_offset,
-            Vector2::new(SPECTATOR_ITEM_SIZE.x, (SPECTATOR_ITEM_SIZE.y + PADDING) * self.spectators.list.len() as f32) * scale,
+            Vector2::new(
+                SPECTATOR_ITEM_SIZE.x, 
+                (SPECTATOR_ITEM_SIZE.y + PADDING) 
+                * self.spectators.list.len() as f32
+            ) * scale,
             Color::WHITE.alpha(0.8),
             None
         ));
@@ -58,12 +62,17 @@ impl GameplayWidget for SpectatorsElement {
         for (i, user) in self.spectators.list.iter().enumerate() {
             // draw username
             list.push(Text::new(
-                pos_offset + Vector2::new(0.0, (SPECTATOR_ITEM_SIZE.y + PADDING) * i as f32) * scale,
+                pos_offset 
+                    + Vector2::new(
+                        0.0, 
+                        (SPECTATOR_ITEM_SIZE.y + PADDING) * i as f32
+                    ) 
+                    * scale,
                 30.0 * scale.y,
                 &user.username,
                 Color::WHITE, 
                 Font::Main
-            ))
+            ));
         }
     }
 }
@@ -73,7 +82,10 @@ impl GameplayWidget for SpectatorsElement {
 pub const SPECTATORS: GameplayWidgetBuilder = GameplayWidgetBuilder {
     name: "spectators",
     default_layout: GameplayWidgetLayout::new_default(
-        GameplayWidgetAnchor::element("health_bar", GameplayWidgetAlign::Below), 
+        GameplayWidgetAnchor::element(
+            "health_bar", 
+            GameplayWidgetAlign::Below
+        ), 
         Alignment::TOP_LEFT,
         None,
         None,

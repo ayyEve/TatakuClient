@@ -13,7 +13,7 @@ impl RenderableCollection {
         self.list.push(Arc::new(r));
     }
     pub fn push_arced(&mut self, r: Arc<dyn TatakuRenderable>) {
-        self.list.push(r)
+        self.list.push(r);
     }
 
     pub fn push_scissor(&mut self, _scissor: [f32; 4]) {

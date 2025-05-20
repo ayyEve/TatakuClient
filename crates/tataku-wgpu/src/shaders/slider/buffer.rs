@@ -128,10 +128,10 @@ impl Default for CpuSliderRenderBuffer {
             cpu_vtx: vec![SliderVertex::default(); VTX_PER_BUF as usize],
             cpu_idx: vec![0; IDX_PER_BUF as usize],
 
-            slider_data: vec![Default::default(); EXPECTED_SLIDER_COUNT as usize],
-            slider_grids: vec![Default::default(); SLIDER_GRID_COUNT as usize],
+            slider_data: vec![SliderDataInner::default(); EXPECTED_SLIDER_COUNT as usize],
+            slider_grids: vec![GridCellInner::default(); SLIDER_GRID_COUNT as usize],
             grid_cells: vec![Default::default(); GRID_CELL_COUNT as usize],
-            line_segments: vec![Default::default(); LINE_SEGMENT_COUNT as usize],
+            line_segments: vec![LineSegmentInner::default(); LINE_SEGMENT_COUNT as usize],
         }
     }
 }

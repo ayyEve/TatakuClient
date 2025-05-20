@@ -124,7 +124,7 @@ impl BeatmapMetaWithDiff {
     }
 
     pub fn _set_diff(&mut self, new_diff: Option<f32>) {
-        self.diff = new_diff
+        self.diff = new_diff;
     }
 
     pub fn filter(&self, filter_str: &str) -> bool {

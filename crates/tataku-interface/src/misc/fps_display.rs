@@ -40,7 +40,10 @@ impl FpsDisplay {
     }
 
     pub fn window_size_changed(&mut self, window_size: Vector2) {
-        self.pos = window_size - Vector2::new(SIZE.x, SIZE.y * (self.pos_count+1) as f32)
+        self.pos = window_size - Vector2::new(
+            SIZE.x, 
+            SIZE.y * (self.pos_count+1) as f32
+        );
     }
 
     pub fn update(&mut self) {
@@ -70,7 +73,7 @@ impl FpsDisplay {
     pub fn increment(&mut self) {
         self.count += 1;
         
-        self.frametime_last = self.frametime_last.max(self.frametime_timer.elapsed().as_secs_f32() * 1000.0);
+        self.frametime_last = self.frametime_last.max(self.frametime_timer.as_millis());
         self.frametime_timer = TatakuInstant::now();
     }
     pub fn draw(&self, list: &mut RenderableCollection) {
@@ -122,7 +125,10 @@ impl AsyncFpsDisplay {
     }
 
     pub fn window_size_changed(&mut self, window_size: Vector2) {
-        self.pos = window_size - Vector2::new(SIZE.x, SIZE.y * (self.pos_count+1) as f32)
+        self.pos = window_size - Vector2::new(
+            SIZE.x, 
+            SIZE.y * (self.pos_count+1) as f32
+        );
     }
 
     pub fn update(&mut self) {

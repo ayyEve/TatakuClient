@@ -68,8 +68,13 @@ pub struct LayoutShell<'a> {
     pub ui_scale: f32
 }
 impl LayoutShell<'_> {
-    pub fn with_context(&mut self, node: impl HasNodeId, f: impl Fn(&mut TreeData)) { 
-        let ctx = self.tree.get_context_mut(node.get_id())
+    pub fn with_context(
+        &mut self, 
+        node: impl HasNodeId, 
+        f: impl Fn(&mut TreeData)
+    ) { 
+        let ctx = self.tree
+            .get_context_mut(node.get_id())
             .expect("no context?");
         f(ctx);
     }

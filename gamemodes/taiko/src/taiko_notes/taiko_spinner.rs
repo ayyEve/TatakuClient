@@ -145,7 +145,7 @@ impl TaikoHitObject for TaikoSpinner {
 
 
     fn playfield_changed(&mut self, new_playfield: Arc<TaikoPlayfield>) {
-        self.playfield = new_playfield
+        self.playfield = new_playfield;
     }
     fn get_playfield(&self) -> Arc<TaikoPlayfield> {
         self.playfield.clone()
@@ -160,7 +160,7 @@ impl TaikoHitObject for TaikoSpinner {
         }
     }
 
-    fn set_required_hits(&mut self, required_hits:u16) {
-        self.hits_required = required_hits
+    fn set_required_hits(&mut self, required_hits: u16) {
+        self.hits_required = required_hits;
     }
 }

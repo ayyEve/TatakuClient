@@ -160,7 +160,7 @@ impl Tree {
 
         // update spatial navigation
         SpatialNagivation::new(self)
-            .run(NavigateConfig::default());
+            .run(&NavigateConfig::default());
     }
 
     fn recurse_update_context(
@@ -212,9 +212,12 @@ impl Tree {
     pub fn update_context(&mut self, node: impl HasNodeId) {
         let node = node.get_id();
 
-        let our_matrix = self.get_context(node)
-            .map(|p| p.global_transform)
-            .unwrap_or_else(|| Matrix::identity().trans(self.bounds.pos));
+        let our_matrix = self
+            .get_context(node)
+            .map_or_else(
+                || Matrix::identity().trans(self.bounds.pos), 
+                |p| p.global_transform
+            );
 
         self.recurse_update_context(node, our_matrix);
     }
@@ -419,11 +422,11 @@ impl Tree {
             // find the first selectable node
             self.selected_node.node = self.find_child(
                 self.root, 
-                Rc::new(|tree, node| tree.context(node).selectable())
+                &|tree, node| tree.context(node).selectable()
             );
 
             if let Some(node) = self.selected_node.node {
-                self.context_mut(node).selected = Some(true)
+                self.context_mut(node).selected = Some(true);
             }
         }
 
@@ -442,12 +445,12 @@ impl Tree {
     fn find_child(
         &self, 
         parent: impl HasNodeId, 
-        f: Rc<dyn Fn(&Self, TaffyNodeId) -> bool>
+        f: &impl Fn(&Self, TaffyNodeId) -> bool
     ) -> Option<NodeId> {
         let parent = parent.get_id();
         if f(self, parent) { return Some(NodeId::new(parent, self.owner)) }
         for child in self.tree.children(parent).ok()? {
-            if let Some(node) = self.find_child(child, f.clone()) { 
+            if let Some(node) = self.find_child(child, &f) { 
                 return Some(node) 
             }
         }

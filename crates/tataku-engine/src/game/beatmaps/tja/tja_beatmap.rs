@@ -53,10 +53,10 @@ impl TjaBeatmap {
         let parent = path.parent().unwrap().to_string_lossy().to_string();
 
         let mut maps = super::tja_parser::TjaParser::default().parse(lines)?;
-        maps.iter_mut().for_each(|map| {
+        for map in maps.iter_mut() {
             map.directory = parent.clone();
             map.filename = filename.clone();
-        });
+        };
 
         Ok(maps)
     }
@@ -116,15 +116,15 @@ impl TatakuBeatmap for TjaBeatmap {
     }
     fn get_beatmap_meta(&self) -> Arc<BeatmapMeta> {
         let start = [
-            self.circles.first().map(|b|b.time).unwrap_or(999999.9) as i32,
-            self.drumrolls.first().map(|b|b.time).unwrap_or(999999.9) as i32,
-            self.balloons.first().map(|b|b.time).unwrap_or(999999.9) as i32,
+            self.circles.first().map_or(999999, |b| b.time as i32),
+            self.drumrolls.first().map_or(999999, |b| b.time as i32),
+            self.balloons.first().map_or(999999, |b| b.time as i32),
         ].iter().min().copied().unwrap_or(0) as f32;
 
         let end = [
-            self.circles.last().map(|b|b.time).unwrap_or_default() as i32,
-            self.drumrolls.last().map(|b|b.end_time).unwrap_or_default() as i32,
-            self.balloons.last().map(|b|b.end_time).unwrap_or_default() as i32,
+            self.circles.last().map(|b| b.time as i32).unwrap_or_default(),
+            self.drumrolls.last().map(|b| b.end_time as i32).unwrap_or_default(),
+            self.balloons.last().map(|b| b.end_time as i32).unwrap_or_default(),
         ].iter().max().copied().unwrap_or(0) as f32;
         let duration = end - start;
 

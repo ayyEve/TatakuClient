@@ -56,8 +56,10 @@ impl ReflectScore {
                 .map(|j| score
                     .judgments
                     .get(j.id)
-                    .map(|c| ReflectJudgment::new(*j, *c))
-                    .unwrap_or_else(|| ReflectJudgment::new(*j, 0))
+                    .map_or_else(
+                        || ReflectJudgment::new(*j, 0), 
+                        |c| ReflectJudgment::new(*j, *c)
+                    )
                 )
                 .collect(),
 
@@ -90,7 +92,7 @@ impl ReflectScore {
 
         for stat in self.stat_data.iter_mut() {
             let Some(s) = score.stat_data.get(&stat.name) else { continue };
-            stat.data = s.clone()
+            stat.data = s.clone();
         }
     }
 }

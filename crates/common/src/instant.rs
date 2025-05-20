@@ -6,7 +6,7 @@ fn get_time() -> u64 {
 }
 pub fn set_time(t: Duration) {
     unsafe {
-        TIME = t.as_nanos() as u64
+        TIME = t.as_nanos() as u64;
     }
 }
 

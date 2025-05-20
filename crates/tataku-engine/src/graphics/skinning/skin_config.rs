@@ -47,7 +47,7 @@ pub struct SkinSettings {
 }
 #[allow(unused, dead_code)]
 impl SkinSettings {
-    pub fn from_file(path: String) -> TatakuResult<Self> {
+    pub fn from_file(path: &str) -> TatakuResult<Self> {
         enum SkinSection {
             General,
             Colors, // colours
@@ -58,11 +58,11 @@ impl SkinSettings {
         let mut s = Self::default();
 
         // return defaults if skin does not exist
-        if !Io::exists(&path) { return Ok(s) }
+        if !Io::exists(path) { return Ok(s) }
 
         // read lines
         let mut current_area = SkinSection::General;
-        let mut lines = Io::read_lines(&path)?;
+        let mut lines = Io::read_lines(path)?;
 
         while let Some(Ok(line)) = lines.next() {
             // split out comments, and trim wacky chars
@@ -165,7 +165,10 @@ impl SkinSettings {
                     let s = &mut s.mania_settings[len - 1];
 
                     if key.starts_with("KeyImage") {
-                        let num:u8 = key.trim_start_matches("KeyImage").trim_end_matches("D").parse().unwrap_or(10);
+                        let num = key.trim_start_matches("KeyImage")
+                            .trim_end_matches("D")
+                            .parse::<u8>()
+                            .unwrap_or(10);
                         if num > 9 { continue }
 
                         if key.ends_with("D") {

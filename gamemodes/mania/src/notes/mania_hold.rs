@@ -93,7 +93,7 @@ impl HitObject for ManiaHold {
         self.end_y = end;
 
         if self.playfield.upside_down {
-            std::mem::swap(&mut self.end_y, &mut self.pos.y)
+            std::mem::swap(&mut self.end_y, &mut self.pos.y);
         }
 
         let note_size = self.playfield.note_size();
@@ -288,7 +288,7 @@ impl ManiaHitObject for ManiaHold {
             if flip { img.scale.y *= -1.0; }
         }
         if let Some(img) = self.middle_image.as_mut() {
-            img.scale.x = self.playfield.column_width / img.tex_size().x
+            img.scale.x = self.playfield.column_width / img.tex_size().x;
         }
     }
 

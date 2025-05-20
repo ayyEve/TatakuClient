@@ -20,7 +20,7 @@ impl TaskManager {
         self.tasks.push(TaskInner {
             task,
             // started: TatakuInstant::now(),
-        })
+        });
     }
 
     pub fn update(
@@ -41,14 +41,14 @@ impl TaskManager {
             if task_count > self.max_tasks { break }
 
             if task.get_state() == TatakuTaskState::NotStarted {
-                info!("Starting task {}", task.get_name())
+                info!("Starting task {}", task.get_name());
             }
 
             // run the task
             task.run(values, &state, actions);
 
             if task.get_state() == TatakuTaskState::Complete {
-                info!("Task complete {}", task.get_name())
+                info!("Task complete {}", task.get_name());
             }
 
             // if task.get_type() == TatakuTaskType::Once && task.started.as_millis() > 60_000 {

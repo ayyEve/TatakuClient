@@ -75,11 +75,24 @@ impl Zip {
 
         let mut dir = dir.to_path_buf();
         if extract_to_folder {
-            let ext = ".".to_owned() + &zip.extension().map(|s|s.to_string_lossy().to_string()).unwrap_or(".".to_owned());
-            dir = dir.join(zip.file_name().unwrap().to_str().unwrap().trim_end_matches(&ext));// format!("{dir}/{}/", SONGS_DIR, );
+            let ext = ".".to_owned() + &zip
+                .extension()
+                .map_or(
+                    ".".to_owned(), 
+                    |s| s.to_string_lossy().to_string()
+                );
+
+            dir = dir.join(zip
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap().trim_end_matches(&ext)
+            );// format!("{dir}/{}/", SONGS_DIR, );
         }
 
-        let mut archive = zip::ZipArchive::new(file).map_err(|e|e.to_string())?;
+        let mut archive = zip::ZipArchive::new(file)
+            .map_err(|e| e.to_string())?;
+        
         for i in 0..archive.len() {
             let mut file = archive.by_index(i).unwrap();
             let Some(outpath) = file.enclosed_name() else { continue };
@@ -102,7 +115,7 @@ impl Zip {
             ArchiveDelete::Never => {},
             _ => {
                 if let Err(e) = std::fs::remove_file(zip) {
-                    error!("Error deleting file: {}", e)
+                    error!("Error deleting file: {e}");
                 }
             }
         }

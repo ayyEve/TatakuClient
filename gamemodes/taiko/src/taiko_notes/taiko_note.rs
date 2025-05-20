@@ -69,7 +69,7 @@ impl HitObject for TaikoNote {
 
         self.pos = self.playfield.hit_position + Vector2::new(x, y);
         if let Some(image) = &mut self.image {
-            image.set_pos(self.pos)
+            image.set_pos(self.pos);
         }
 
         if self.pos.x + self.settings.note_radius < self.playfield.pos.x || self.pos.x - self.settings.note_radius > self.playfield.pos.x + self.playfield.size.x { return }
@@ -124,7 +124,7 @@ impl TaikoHitObject for TaikoNote {
 
 
     fn playfield_changed(&mut self, new_playfield: Arc<TaikoPlayfield>) {
-        self.playfield = new_playfield
+        self.playfield = new_playfield;
     }
     fn get_playfield(&self) -> Arc<TaikoPlayfield> {
         self.playfield.clone()
@@ -133,7 +133,7 @@ impl TaikoHitObject for TaikoNote {
     fn set_settings(&mut self, settings: Arc<TaikoSettings>) {
         self.settings = settings.clone();
         if let Some(i) = &mut self.image {
-            i.update_settings(settings, self.finisher)
+            i.update_settings(settings, self.finisher);
         }
     }
 

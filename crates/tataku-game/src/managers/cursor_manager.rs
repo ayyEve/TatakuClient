@@ -65,7 +65,11 @@ impl CursorManager {
             CursorMode::Pointer,
             CursorMode::Text
         ] {
-            if let Some(image) = skin_manager.get_texture(mode.tex_name(), &TextureSource::Skin, SkinUsage::Game, true) {
+            if let Some(image) = skin_manager.get_texture(
+                mode.tex_name(), 
+                &TextureSource::Skin, 
+                SkinUsage::Game, true
+            ) {
                 self.cursor_images.insert(mode, image);
             }
         }
@@ -103,7 +107,7 @@ impl CursorManager {
         
         // draw ripples
         for ripple in self.ripples.iter() {
-            list.push(ripple.clone())
+            list.push(ripple.clone());
         }
     }
 
@@ -144,7 +148,9 @@ impl CursorManager {
     }
 
     fn add_ripple(&mut self) {
-        let mut group = TransformGroup::new(self.pos).alpha(0.0).border_alpha(1.0);
+        let mut group = TransformGroup::new(self.pos)
+            .alpha(0.0)
+            .border_alpha(1.0);
         let duration = 500.0;
         // let time = self.time.as_millis();
 
@@ -194,7 +200,7 @@ impl CursorManager {
             CursorAction::OverrideRippleRadius(radius_maybe) => self.ripple_radius_override = radius_maybe,
             CursorAction::SetVisible(show) => {
                 trace!("setting cursor visible = {show}");
-                self.visible = show
+                self.visible = show;
             },
         }
     }

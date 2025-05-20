@@ -60,7 +60,7 @@ impl BuildableText {
         match self {
             Self::Calc { calc } => {
                 let s = calc.clone();
-                *self = Self::CalcParsed(BuildableCalc::parse(&s)?, s)
+                *self = Self::CalcParsed(BuildableCalc::parse(&s)?, s);
             }
             // because json pointers use '/' and not '.', but '.' is nicer for locale
             // "dialog.confirmation.yes" (us) vs "dialog/confirmation/yes" (json)
@@ -91,10 +91,7 @@ impl BuildableText {
                     match number {
                         ReflectNumber::F32(n) => format_float(n, precision.unwrap_or(2)),
                         ReflectNumber::F64(n) => format_float(n, precision.unwrap_or(2)),
-                        other => {
-                            let num = i128::from(other);
-                            format_number(num)
-                        }
+                        other => format_number(i128::from(other)),
                     }
                 } else {
                     values
@@ -173,7 +170,7 @@ impl Default for BuildableText {
 fn try_get_string(r: &dyn Reflect) -> Option<String> {
     match r.downcast_ref::<String>().cloned() {
         Some(s) => Some(s),
-        None => r.downcast_ref::<&str>().map(|s| s.to_string())
+        None => r.downcast_ref::<&str>().map(|s| (*s).to_string())
     }
 }
 

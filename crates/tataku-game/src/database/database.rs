@@ -49,7 +49,7 @@ fn perform_migrations(db: &Connection) {
                     let e = format!("{}", e);
                     // only log error if its not a duplicate column name
                     if !e.contains("duplicate column name") {
-                        error!("Error adding column to scores db: {}", e)
+                        error!("Error adding column to scores db: {e}");
                     }
                 }
             }

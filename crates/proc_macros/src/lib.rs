@@ -80,7 +80,7 @@ pub fn dropdown(input: TokenStream) -> TokenStream {
             if ignore { continue }
 
             // create packet data
-            entries.push(&v.ident)
+            entries.push(&v.ident);
         }
     }
 
@@ -132,7 +132,7 @@ pub fn impl_chainable_initializer(input: proc_macro::TokenStream) -> proc_macro:
         let Some(ident) = &f.ident else { panic!("ghjskslgd") }; 
         tys.push(&f.ty);
         idents.push(ident);
-        idents_maybe.push(format_ident!("{ident}_maybe"))
+        idents_maybe.push(format_ident!("{ident}_maybe"));
     }
 
     quote! {

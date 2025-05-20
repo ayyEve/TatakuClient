@@ -23,7 +23,7 @@ static WINDOW_PROXY: OnceCell<EventLoopProxy<WindowAction>> = OnceCell::const_ne
 
 
 lazy_static::lazy_static! {
-    pub(super) static ref MONITORS: Arc<RwLock<Vec<String>>> = Default::default();
+    pub(super) static ref MONITORS: Arc<RwLock<Vec<String>>> = Arc::default();
 
     pub static ref RENDER_COUNT: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
     pub static ref RENDER_FRAMETIME: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
@@ -196,7 +196,7 @@ impl<'window> GameWindow<'window> {
 
         }
 
-        trace!("Done loading tex")
+        trace!("Done loading tex");
     }
 
     pub fn render(&mut self) {
@@ -261,7 +261,7 @@ impl GameWindow<'_> {
         // either its not fullscreen, or the monitor wasnt found, so default to windowed
         let [x,y] = self.settings.window_pos;
         self.window().set_fullscreen(None);
-        self.window().set_outer_position(winit::dpi::PhysicalPosition::new(x, y))
+        self.window().set_outer_position(winit::dpi::PhysicalPosition::new(x, y));
     }
 
     fn set_vsync(&mut self, vsync: Vsync) {
@@ -544,7 +544,7 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
 
                 self.graphics.screenshot(Box::new(move |(data, size)| {
                     let _ = sender.try_send(WindowEvent::ScreenshotComplete(data, size, info));
-                }))
+                }));
             },
             WindowAction::RefreshMonitors => self.refresh_monitors_inner(),
 
@@ -572,7 +572,7 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
             }
 
             WindowAction::CopyToClipboard(text) => if let Err(e) = Self::set_clipboard(text) {
-                error!("error copying to clipboard: {e:?}")
+                error!("error copying to clipboard: {e:?}");
             }
 
             WindowAction::AddEmitter(emitter) => self.graphics.add_emitter(emitter), 

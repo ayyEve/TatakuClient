@@ -8,7 +8,7 @@ impl ButtonBuilder {
     pub fn new(element: Box<dyn Widget>) -> Self {
         Self {
             element,
-            on_press: Default::default(),
+            on_press: ButtonBuilderOnClick::default(),
         }
     }
 

@@ -37,7 +37,7 @@ impl SongManager {
 
         // stop the current audio
         if let Some(s) = self.current_song.as_ref() { 
-            s.instance.stop() 
+            s.instance.stop();
         }
 
         // apply params

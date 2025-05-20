@@ -38,14 +38,14 @@ impl ActualFont {
     pub fn load(path: impl AsRef<Path>) -> Option<Self> {
         let data = Io::read_file(&path).ok()?;
         let name = path.as_ref().file_name().unwrap().to_string_lossy().to_string();
-        let font = fontdue::Font::from_bytes(data, Default::default()).ok()?;
+        let font = fontdue::Font::from_bytes(data, fontdue::FontSettings::default()).ok()?;
 
         Some(Self {
             name: Arc::new(name),
             font: Arc::new(font),
             loaded_sizes: Arc::new(RwLock::new(HashSet::new())),
             characters: Arc::new(RwLock::new(HashMap::new())),
-            queued_for_load: Default::default()
+            queued_for_load: Arc::default()
         })
     }
 

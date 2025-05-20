@@ -133,7 +133,7 @@ impl TatakuIntegration for MediaControlsIntegration {
                     cover_url: None, 
                     duration: Some(Duration::from_secs_f32(*duration / 1000.0))
                 }) {
-                    error!("error setting metadata: {e:?}")
+                    error!("error setting metadata: {e:?}");
                 }
             }        
             _ => {}

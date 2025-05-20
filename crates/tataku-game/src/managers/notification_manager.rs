@@ -27,14 +27,23 @@ impl NotificationManager {
 
     #[cfg(feature="graphics")]
     pub fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
-        self.notification_image = skin_manager.get_texture("notification", &TextureSource::Skin, SkinUsage::Game, true);
+        self.notification_image = skin_manager.get_texture(
+            "notification", 
+            &TextureSource::Skin, 
+            SkinUsage::Game, 
+            true
+        );
     }
 
-    pub fn draw(&self, window_size: Vector2, list: &mut RenderableCollection) {
+    pub fn draw(
+        &self, 
+        window_size: Vector2, 
+        list: &mut RenderableCollection
+    ) {
         let mut current_pos = window_size;
 
         for i in self.notifications.iter().rev() {
-            i.draw(current_pos, &self.notification_image, list);
+            i.draw(current_pos, self.notification_image.as_ref(), list);
             current_pos.y -= i.size.y + NOTIF_MARGIN.y;
         }
     }
@@ -44,12 +53,15 @@ impl NotificationManager {
         &mut self, 
         window_size: Vector2, 
         mouse_pos: Vector2, 
-        actions: &mut ActionQueue
+        actions: &mut ActionQueue,
     ) -> bool {
         let mut current_pos = window_size;
         
         for n in self.notifications.iter_mut() {
-            let pos = current_pos - Vector2::new(n.size.x + NOTIF_MARGIN.x, NOTIF_Y_OFFSET + n.size.y);
+            let pos = current_pos - Vector2::new(
+                n.size.x + NOTIF_MARGIN.x, 
+                NOTIF_Y_OFFSET + n.size.y
+            );
             
             if Bounds::new(pos, n.size).contains(mouse_pos) {
                 n.notification.onclick.do_action(actions);
@@ -105,14 +117,17 @@ impl ProcessedNotif {
     fn draw(
         &self, 
         pos_offset: Vector2, 
-        image: &Option<Image>, 
+        image: Option<&Image>, 
         list: &mut RenderableCollection
     ) {
-        let pos = pos_offset - (self.size + Vector2::new(NOTIF_MARGIN.x, NOTIF_Y_OFFSET));
+        let pos = pos_offset - (
+            self.size 
+            + Vector2::new(NOTIF_MARGIN.x, NOTIF_Y_OFFSET)
+        );
 
         // bg
         let bounds = Bounds::new(pos, self.size);
-        if let Some(mut image) = image.clone() {
+        if let Some(mut image) = image.cloned() {
             image.pos = pos;
             image.set_size(self.size);
             image.color = self.notification.color;

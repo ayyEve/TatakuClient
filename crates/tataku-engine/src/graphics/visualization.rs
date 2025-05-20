@@ -19,7 +19,7 @@ impl VisualizationData {
     pub fn new(config: VisualizationConfig) -> Self {
         Self {
             config,
-            hook: Default::default(),
+            hook: Arc::default(),
             data: Vec::new(),
             timer: TatakuInstant::now()
         }

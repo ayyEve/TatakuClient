@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 pub fn md5<B:AsRef<[u8]>>(body: B) -> Md5Hash {
-    format!("{:x}", md5::compute(body).to_owned()).try_into().unwrap()
+    format!("{:x}", md5::compute(body).clone()).try_into().unwrap()
 }
 
 pub fn sha512<B:AsRef<[u8]>>(body: B) -> String {

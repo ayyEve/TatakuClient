@@ -104,14 +104,14 @@ impl UTypingBeatmap {
                     let mut text = next!(split);
                     // add any cut off (NOTE: ptyping code doesnt do this)
                     for t in split {
-                        text += &format!(" {t}")
+                        text += &format!(" {t}");
                     }
 
                     map.events.push(UTypingEvent {
                         time,
                         text,
                         event_type: UTypingEventType::Lyric
-                    })
+                    });
                 }
 
 
@@ -126,7 +126,7 @@ impl UTypingBeatmap {
                         time,
                         text: String::new(),
                         event_type: UTypingEventType::CutOff
-                    })
+                    });
                 }
 
                 
@@ -141,7 +141,7 @@ impl UTypingBeatmap {
                         time,
                         text: String::new(),
                         event_type: UTypingEventType::BeatlineBeat
-                    })
+                    });
                 }
 
                 
@@ -156,7 +156,7 @@ impl UTypingBeatmap {
                         time,
                         text: String::new(),
                         event_type: UTypingEventType::BeatlineBar
-                    })
+                    });
                 }
 
                 _ => {}
@@ -268,5 +268,5 @@ pub enum UTypingEventType {
 fn test() {
     let path = "C:/Users/Eve/Desktop/Projects/rust/tataku/tataku-client/songs/zento/info.txt";
     let map = UTypingBeatmap::load(path).unwrap();
-    println!("map: {:?}", map)
+    println!("map: {:?}", map);
 }

@@ -208,7 +208,7 @@ impl OsuSlider {
             beat_scale: 1.0,
 
             slider_body: SliderDrawable::default(),
-            skin: Default::default(),
+            skin: Arc::default(),
         }
     }
 
@@ -251,7 +251,9 @@ impl OsuSlider {
             // FIXME: figure out why radius is 0?
             if self.radius <= 0.01 { return }
 
-            let mut line_segments: Vec<LineSegment> = self.curve.segments.iter().flat_map(|segment| {
+            let mut line_segments: Vec<LineSegment> = self.curve.segments
+                .iter()
+                .flat_map(|segment| {
                 let points = segment.all_points();
 
                 if points.is_empty() { return Vec::new(); }
@@ -336,10 +338,10 @@ impl OsuSlider {
 
                     // FIXME: NEB !!?!?!?!!!?!!????!?!?!!!?!?!?!?!?!?!??????!?!!!?!?!?!?
                     if distance_along_segment_next_cell.x == -0.0 {
-                        distance_along_segment_next_cell.x = 0.0
+                        distance_along_segment_next_cell.x = 0.0;
                     }
                     if distance_along_segment_next_cell.y == -0.0 {
-                        distance_along_segment_next_cell.y = 0.0
+                        distance_along_segment_next_cell.y = 0.0;
                     }
 
                     debug_assert!(distance_along_segment_next_cell.x.is_sign_positive());
@@ -350,7 +352,7 @@ impl OsuSlider {
                             distance_along_segment_next_cell.x += grid_size_along_segment.x;
 
                             let Some(new) = grid_x.checked_add_signed(dir_sign.0) else { break; };
-                            grid_x = new
+                            grid_x = new;
                         } else {
                             distance_along_segment_next_cell.y += grid_size_along_segment.y;
 
@@ -474,22 +476,26 @@ impl OsuSlider {
         if !self.use_render_targets() { return }
 
         let options = DrawOptions::default();
+        let callback = Box::new(move |g: &mut dyn GraphicsEngine, mut transform: Matrix| {
+            transform = transform.trans(offset);
+            for d in drawables {
+                d.draw(&options, transform, g);
+            }
+        });
+
         if let Some(target) = self.slider_body_render_target.clone() {
             self.slider_body_loader = SliderBodyLoader::Update(AsyncLoader::new(async move {
-                GameWindow::update_render_target(target, Box::new(move |g: &mut dyn GraphicsEngine, mut transform: Matrix| {
-                    transform = transform.trans(offset);
-                    drawables.into_iter().for_each(|d| d.draw(&options, transform, g))
-                }))
+                GameWindow::update_render_target(
+                    target, 
+                    callback
+                );
             }));
         } else {
             let loader = AsyncLoader::new(async move {
                 RenderTarget::new(
                     size.x as u32,
                     size.y as u32,
-                    Box::new(move |g: &mut dyn GraphicsEngine, mut transform: Matrix| {
-                        transform = transform.trans(offset);
-                        drawables.into_iter().for_each(|d| d.draw(&options, transform, g))
-                    })
+                    callback
                 )
             });
 
@@ -688,7 +694,7 @@ impl HitObject for OsuSlider {
                     self.sound_queue.push(vec![self.sliderdot_hitsound.clone()]);
                 } else {
                     self.pending_combo.push((OsuHitJudgments::SliderDotMiss, dot.pos));
-                    self.dots_missed += 1
+                    self.dots_missed += 1;
                 }
             }
         }
@@ -699,7 +705,7 @@ impl HitObject for OsuSlider {
         }
 
         if let Some(ball) = &mut self.sliderball_image {
-            ball.update(beatmap_time)
+            ball.update(beatmap_time);
         }
 
     }
@@ -707,7 +713,7 @@ impl HitObject for OsuSlider {
     fn draw(&mut self, _time: f32, list: &mut RenderableCollection) {
         // draw shapes
         for shape in self.shapes.iter_mut() {
-            list.push(shape.clone())
+            list.push(shape.clone());
         }
 
         // if its not time to draw anything else, leave
@@ -732,7 +738,7 @@ impl HitObject for OsuSlider {
         // draw hit dots
         for dot in self.hit_dots.iter() {
             if dot.slide_layer == self.slides_complete {
-                dot.draw(self.beat_scale, list)
+                dot.draw(self.beat_scale, list);
             }
         }
 

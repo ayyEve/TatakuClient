@@ -66,7 +66,7 @@ impl PartialEq for DifficultyValue {
 impl Eq for DifficultyValue {}
 impl std::hash::Hash for DifficultyValue {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.id.hash(state)
+        self.id.hash(state);
     }
 }
 

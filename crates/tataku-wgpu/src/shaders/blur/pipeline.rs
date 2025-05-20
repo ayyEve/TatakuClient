@@ -250,7 +250,7 @@ pub struct WgpuTextureReference<'a> {
 impl<'a> WgpuTextureReference<'a> {
     pub fn new(texture: &'a Texture) -> Self {
         Self {
-            view: texture.create_view(&Default::default()),
+            view: texture.create_view(&TextureViewDescriptor::default()),
             size: texture.size(),
             copy: texture.as_image_copy(),
         }

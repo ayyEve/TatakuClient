@@ -75,7 +75,7 @@ impl<'window> WgpuEngine<'window> {
             backends: Backends::VULKAN | Backends::METAL, // | Backends::GL,
             flags: InstanceFlags::empty(),
             gles_minor_version: Gles3MinorVersion::Automatic,
-            dx12_shader_compiler: Default::default(),
+            dx12_shader_compiler: Dx12Compiler::default(),
         });
 
         // create the surface
@@ -107,7 +107,7 @@ impl<'window> WgpuEngine<'window> {
 
         let can_blur = device.features().contains(Features::BGRA8UNORM_STORAGE);
         if !can_blur {
-            warn!("Blur unsupported on this device!")
+            warn!("Blur unsupported on this device!");
         }
 
         // no more comments good luck!
@@ -367,7 +367,7 @@ impl<'window> WgpuEngine<'window> {
 
         
         let tex = WgpuTextureReference::new(&self.intermediate_texture);
-        self.render(RenderableSurface::new(
+        self.render(&RenderableSurface::new(
             &tex,
             GFX_CLEAR_COLOR, 
             Vector2::new(size.width as f32, size.height as f32), 
@@ -376,10 +376,10 @@ impl<'window> WgpuEngine<'window> {
 
         // `texture` should now have our data, with which we can use to render the surface, as well as use for screenshots
         // again though, because the swapchain texture can only be rendered to directly for some reason, we have to use a shader
-        let mut encoder = self.device.create_command_encoder(&Default::default());
+        let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor::default());
 
         {
-            let output_view = swapchain.texture.create_view(&Default::default());
+            let output_view = swapchain.texture.create_view(&TextureViewDescriptor::default());
 
             let mut render = encoder.begin_render_pass(&RenderPassDescriptor {
                 label: None,
@@ -485,7 +485,7 @@ impl<'window> WgpuEngine<'window> {
         Ok(())
     }
 
-    fn render(&self, renderable: RenderableSurface) -> Result<(), SurfaceError> {
+    fn render(&self, renderable: &RenderableSurface) -> Result<(), SurfaceError> {
         let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor { label: Some("Render Encoder") });
 
         {
@@ -580,10 +580,10 @@ impl<'window> WgpuEngine<'window> {
                 }
 
                 if let RenderBufferType::Slider(slider) = i {
-                    render_pass.set_bind_group(1, &slider.bind_group, &[])
+                    render_pass.set_bind_group(1, &slider.bind_group, &[]);
                 }
                 if let RenderBufferType::Flashlight(flashlight) = i {
-                    render_pass.set_bind_group(1, &flashlight.bind_group, &[])
+                    render_pass.set_bind_group(1, &flashlight.bind_group, &[]);
                 }
 
                 render_pass.set_vertex_buffer(0, i.get_vertex_buffer().slice(..));
@@ -817,7 +817,7 @@ impl WgpuEngine<'_> {
         || recording_buffer.used_indices + idx_count > StandardBuffer::IDX_PER_BUF {
             let pipeline = WgpuPipeline::Render(self.pipelines.get(&blend_mode).unwrap());
             if let Some(b) = vertex_buffer_queue.dump_and_next(&self.queue, &self.device, pipeline) {
-                self.completed_buffers.push(RenderBufferType::Standard(b))
+                self.completed_buffers.push(RenderBufferType::Standard(b));
             }
 
             recording_buffer = vertex_buffer_queue.recording_buffer()?;
@@ -997,7 +997,7 @@ impl WgpuEngine<'_> {
         {
             let pipeline = WgpuPipeline::Render(self.pipelines.get(&BlendMode::Slider).unwrap());
             if let Some(b) = slider_buffer_queue.dump_and_next(&self.queue, &self.device, pipeline) {
-                self.completed_buffers.push(RenderBufferType::Slider(b))
+                self.completed_buffers.push(RenderBufferType::Slider(b));
             }
             recording_buffer = slider_buffer_queue.recording_buffer()?;
         }
@@ -1064,7 +1064,7 @@ impl WgpuEngine<'_> {
         {
             let pipeline = WgpuPipeline::Render(self.pipelines.get(&BlendMode::Flashlight).unwrap());
             if let Some(b) = buffer_queue.dump_and_next(&self.queue, &self.device, pipeline) {
-                self.completed_buffers.push(RenderBufferType::Flashlight(b))
+                self.completed_buffers.push(RenderBufferType::Flashlight(b));
             }
             recording_buffer = buffer_queue.recording_buffer()?;
         }
@@ -1110,7 +1110,7 @@ impl WgpuEngine<'_> {
             let blur = self.blur_shader.borrow();
             let pipeline = WgpuPipeline::Compute(&blur.pipeline);
             if let Some(b) = buffer_queue.dump_and_next(&self.queue, &self.device, pipeline) {
-                self.completed_buffers.push(RenderBufferType::Blur(b))
+                self.completed_buffers.push(RenderBufferType::Blur(b));
             }
             recording_buffer = buffer_queue.recording_buffer()?;
         }
@@ -1169,7 +1169,7 @@ impl WgpuEngine<'_> {
         path.end(true);
         let path = path.build();
 
-        self.tessellate_path(&path, color, border, transform, blend_mode)
+        self.tessellate_path(&path, color, border, transform, blend_mode);
     }
 
     fn tessellate_path(&mut self, path: &lyon_tessellation::path::Path, color: Color, border: Option<f32>, transform: Matrix, blend_mode: BlendMode) {
@@ -1330,8 +1330,8 @@ impl GraphicsEngine for WgpuEngine<'_> {
         self.end_render();
 
         // perform render
-        if let Err(e) = self.render(renderable) {
-            error!("Error rendering render target: {e:?}")
+        if let Err(e) = self.render(&renderable) {
+            error!("Error rendering render target: {e:?}");
         }
 
 
@@ -1496,10 +1496,10 @@ impl GraphicsEngine for WgpuEngine<'_> {
 
 
     fn push_scissor(&mut self, scissor: [f32; 4]) {
-        self.scissors.push_scissor(scissor)
+        self.scissors.push_scissor(scissor);
     }
     fn pop_scissor(&mut self) {
-        self.scissors.pop_scissor()
+        self.scissors.pop_scissor();
     }
 
     // draw helpers
@@ -1663,7 +1663,7 @@ impl GraphicsEngine for WgpuEngine<'_> {
 
         // fill
         if color.a > 0.0 {
-            self.tessellate_path(&path, color, None, transform, blend_mode)
+            self.tessellate_path(&path, color, None, transform, blend_mode);
         }
 
         // border
@@ -1674,7 +1674,7 @@ impl GraphicsEngine for WgpuEngine<'_> {
                 Some(border.radius), 
                 transform, 
                 blend_mode
-            )
+            );
         }
     }
 
@@ -1837,11 +1837,11 @@ impl VsyncUtils {
 
 fn cast_from_rgba_bytes(bytes: &[u8], format: TextureFormat) -> [u8; 4] {
     // incoming is rgba8
-    #[allow(clippy::get_first)] // get(0) keeps things lined up here
-    let r = bytes.get(0).cloned().unwrap_or_default();
-    let g = bytes.get(1).cloned().unwrap_or_default();
-    let b = bytes.get(2).cloned().unwrap_or_default();
-    let a = bytes.get(3).cloned().unwrap_or_default();
+    #[allow(clippy::get_first, reason = "get(0) keeps things lined up here")]
+    let r = bytes.get(0).copied().unwrap_or_default();
+    let g = bytes.get(1).copied().unwrap_or_default();
+    let b = bytes.get(2).copied().unwrap_or_default();
+    let a = bytes.get(3).copied().unwrap_or_default();
 
     match format {
         // pretend this is all it can be for now
@@ -1856,11 +1856,11 @@ fn cast_from_rgba_bytes(bytes: &[u8], format: TextureFormat) -> [u8; 4] {
 
 fn cast_to_rgba_bytes(bytes: &[u8], _format: TextureFormat) -> [u8; 4] {
     // pretend incoming is bgra8
-    #[allow(clippy::get_first)]
-    let b = bytes.get(0).cloned().unwrap_or_default();
-    let g = bytes.get(1).cloned().unwrap_or_default();
-    let r = bytes.get(2).cloned().unwrap_or_default();
-    let a = bytes.get(3).cloned().unwrap_or_default();
+    #[allow(clippy::get_first, reason = "get(0) keeps things lined up here")]
+    let b = bytes.get(0).copied().unwrap_or_default();
+    let g = bytes.get(1).copied().unwrap_or_default();
+    let r = bytes.get(2).copied().unwrap_or_default();
+    let a = bytes.get(3).copied().unwrap_or_default();
 
     [r, g, b, a]
 

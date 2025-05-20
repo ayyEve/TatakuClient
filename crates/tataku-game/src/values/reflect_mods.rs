@@ -61,7 +61,7 @@ impl ReflectMod {
             description: inner.description.to_owned(),
             adjusts_difficulty: inner.adjusts_difficulty,
             score_multiplier: inner.score_multiplier,
-            removes: inner.removes.iter().map(|i| i.to_string()).collect(),
+            removes: inner.removes.iter().map(|i| (*i).to_string()).collect(),
 
             enabled: mods.has_mod(inner),
         }

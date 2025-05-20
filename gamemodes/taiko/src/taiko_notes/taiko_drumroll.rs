@@ -136,7 +136,7 @@ impl HitObject for TaikoDrumroll {
                 SLIDER_DOT_RADIUS,
                 BAR_COLOR,
                 None
-            ))
+            ));
         }
     }
 

@@ -47,7 +47,7 @@ impl JudgementIndicator for BasicJudgementIndicator {
                 let frametime = duration / count as f32;
                 anim.frame_delay = frametime;
             } else {
-                duration = anim.frame_delay * count as f32
+                duration = anim.frame_delay * count as f32;
             }
         }
 
@@ -74,7 +74,7 @@ impl JudgementIndicator for BasicJudgementIndicator {
                 self.radius,
                 self.color.alpha(alpha),
                 None
-            ))
+            ));
         }
     }
 }

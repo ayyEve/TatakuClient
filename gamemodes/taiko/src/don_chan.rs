@@ -96,7 +96,7 @@ impl GameplayWidget for DonChan {
 
         // check kiai update
         if self.kiai != current_tp.kiai {
-            self.kiai = current_tp.kiai
+            self.kiai = current_tp.kiai;
         }
 
         // TODO: figure out peppy's bullshit for this animation (it might play in reverse after)
@@ -130,7 +130,7 @@ impl GameplayWidget for DonChan {
                     info!("combo anim complete");
                     self.state = DonChanState::Normal;
                 } else {
-                    self.combo_anim_last_index = anim.frame_index
+                    self.combo_anim_last_index = anim.frame_index;
                 }
             }
         }
@@ -157,13 +157,13 @@ impl GameplayWidget for DonChan {
                         let mut anim = anim.clone();
                         anim.pos = pos_offset;
                         anim.scale *= scale;
-                        list.push(anim)
+                        list.push(anim);
                     }
                 } else if let Some(anim) = &self.normal_anim {
                     let mut anim = anim.clone();
                     anim.pos = pos_offset;
                     anim.scale *= scale;
-                    list.push(anim)
+                    list.push(anim);
                 }
                 
             }
@@ -172,7 +172,7 @@ impl GameplayWidget for DonChan {
                     let mut anim = anim.clone();
                     anim.pos = pos_offset;
                     anim.scale *= scale;
-                    list.push(anim)
+                    list.push(anim);
                 }
             }
             DonChanState::Fail => {
@@ -180,7 +180,7 @@ impl GameplayWidget for DonChan {
                     let mut anim = anim.clone();
                     anim.pos = pos_offset;
                     anim.scale *= scale;
-                    list.push(anim)
+                    list.push(anim);
                 }
             }
         }

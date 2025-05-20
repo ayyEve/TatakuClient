@@ -125,7 +125,7 @@ impl UiElementLoader for DefaultUiElementLoader {
         
         // TODO: is there a better way? this is kinda silly
         if element.default_layout == element.layout {
-            element.layout = layout.clone()
+            element.layout = layout.clone();
         }
 
         element.default_layout = layout;

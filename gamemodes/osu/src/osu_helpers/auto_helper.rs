@@ -55,7 +55,10 @@ impl StandardAutoHelper {
     ) {
         let mut any_checked = false;
 
-        let map_over = time > notes.last().map(|n| n.end_time(100.0)).unwrap_or(0.0);
+        let map_over = time > notes.last().map_or(
+            0.0, 
+            |n| n.end_time(100.0)
+        );
         if map_over { return; }
 
         for i in 0..notes.len() {
@@ -149,8 +152,10 @@ impl StandardAutoHelper {
     ) {
         let map_over = new_time > notes
             .last()
-            .map(|n| n.end_time(100.0))
-            .unwrap_or(0.0);
+            .map_or(
+                0.0, 
+                |n| n.end_time(100.0)
+            );
         if map_over { return; }
 
         let mut mouse_pos = None;

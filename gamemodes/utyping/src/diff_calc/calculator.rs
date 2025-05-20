@@ -7,6 +7,6 @@ impl DiffCalc for UTypingDifficultyCalculator {
     }
 
     fn calc(&mut self, _mods: &ModManager) -> TatakuResult<DiffCalcSummary> {
-        Ok(Default::default())
+        Ok(DiffCalcSummary::default())
     }
 }

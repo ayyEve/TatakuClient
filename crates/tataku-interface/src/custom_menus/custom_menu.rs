@@ -109,7 +109,11 @@ impl Widget for BuiltCustomMenu {
             .cloned();
 
         if let Some((action, passed_in)) = cast {
-            if let Some(action) = action.into_action(self.node_id, shell.values, &passed_in) {
+            if let Some(action) = action.into_action(
+                self.node_id, 
+                shell.values, 
+                &passed_in
+            ) {
                 shell.actions.push(action);
             }
             
@@ -161,10 +165,14 @@ impl Widget for BuiltCustomMenu {
                 .cloned();
             
             if let Some((action, passed_in)) = cast {
-                let Some(a) = action.into_action(self.node_id, shell.values, &passed_in) else { continue };
+                let Some(a) = action.into_action(
+                    self.node_id, 
+                    shell.values, 
+                    &passed_in
+                ) else { continue };
                 shell.actions.push(a);
             } else {
-                shell.actions.push(GameAction::HandleMessage(message))
+                shell.actions.push(GameAction::HandleMessage(message));
             }
         }
     }

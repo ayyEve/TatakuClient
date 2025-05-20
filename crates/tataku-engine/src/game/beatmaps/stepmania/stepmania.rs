@@ -68,206 +68,215 @@ impl StepmaniaBeatmap {
         while let Some(line) = lines.next() {
             // trim out comments
             let line = line.split("//").next().unwrap();
-            if line.is_empty() {continue}
+            if line.is_empty() { continue }
+            if !line.starts_with("#") { continue }
 
-            if line.starts_with("#") {
-                let mut split = line.trim_end_matches(";").split(":");
-                let key = split.next().unwrap();
-                let value = split.next().unwrap_or_default();
+            let mut split = line.trim_end_matches(";").split(":");
+            let key = split.next().unwrap();
+            let value = split.next().unwrap_or_default();
 
-                match key {
-                    "#TITLE" => map.title = value.to_owned(),
-                    "#SUBTITLE" => map.subtitle = value.to_owned(),
-                    "#ARTIST" => map.artist = value.to_owned(),
+            match key {
+                "#TITLE" => map.title = value.to_owned(),
+                "#SUBTITLE" => map.subtitle = value.to_owned(),
+                "#ARTIST" => map.artist = value.to_owned(),
 
-                    "#TITLETRANSLIT" if !value.is_empty() => map.title_translated = Some(value.to_owned()),
-                    "#SUBTITLETRANSLIT" if !value.is_empty() => map.subtitle_translated = Some(value.to_owned()),
-                    "#ARTISTTRANSLIT" if !value.is_empty() => map.artist_translated = Some(value.to_owned()),
+                "#TITLETRANSLIT" if !value.is_empty() => map.title_translated = Some(value.to_owned()),
+                "#SUBTITLETRANSLIT" if !value.is_empty() => map.subtitle_translated = Some(value.to_owned()),
+                "#ARTISTTRANSLIT" if !value.is_empty() => map.artist_translated = Some(value.to_owned()),
 
-                    "#GENRE" => map.genre = value.to_owned(),
-                    "#CREDIT" => map.credit = value.to_owned(),
-                    "#MUSIC" => map.audio_file = parent.join(value).to_string_lossy().to_string(),
-                    "#BANNER" => map.banner = parent.join(value).to_string_lossy().to_string(),
-                    "#BACKGROUND" => map.background = parent.join(value).to_string_lossy().to_string(),
-                    "#OFFSET" => map.audio_offset = value.parse().unwrap_or_default(),
-                    "#BPMS" => {
-                        // bpms are a list of beat=bpm separated by commas
-                        for entry in value.split(",") {
-                            let mut split = entry.split("=");
-                            let beat = split.next().unwrap().parse().unwrap();
-                            let bpm = split.next().unwrap().parse().unwrap();
+                "#GENRE" => map.genre = value.to_owned(),
+                "#CREDIT" => map.credit = value.to_owned(),
+                "#MUSIC" => map.audio_file = parent.join(value).to_string_lossy().to_string(),
+                "#BANNER" => map.banner = parent.join(value).to_string_lossy().to_string(),
+                "#BACKGROUND" => map.background = parent.join(value).to_string_lossy().to_string(),
+                "#OFFSET" => map.audio_offset = value.parse().unwrap_or_default(),
+                "#BPMS" => {
+                    // bpms are a list of beat=bpm separated by commas
+                    for entry in value.split(",") {
+                        let mut split = entry.split("=");
+                        let beat = split.next().unwrap().parse().unwrap();
+                        let bpm = split.next().unwrap().parse().unwrap();
 
-                            map.bpms.push((beat, bpm));
-                        }
+                        map.bpms.push((beat, bpm));
                     }
-
-
-                    // ssc chart things
-                    "#NOTEDATA" => {
-                        // something probably
-                        // use this to init other info for now
-                        chart_type = Some(String::new());
-                        description = Some(String::new());
-                        difficulty = Some(String::new());
-                        meter = Some(String::new());
-                        groove_radar_values = Some(String::new());
-                    }
-                    "#STEPSTYPE" => chart_type = Some(value.to_owned()),
-                    "#DIFFICULTY" => difficulty = Some(value.to_owned()),
-                    "#METER" => meter = Some(value.to_owned()),
-                    "#RADARVALUES" => groove_radar_values = Some(value.to_owned()),
-
-                    "#NOTES" => {
-                        // read chart into lines, ensures split is correct
-                        let mut chart_info = value.to_owned();
-                        for line in lines.by_ref() {
-                            chart_info += &line;
-                            if line.ends_with(";") {break}
-                        }
-
-                        // remove final semicolon
-                        chart_info = chart_info.trim_end_matches(";").to_owned();
-
-                        // debug!("lines: {}", chart_info);
-                        let mut chart_split = chart_info.split(":");
-
-                        let mut chart = StepmaniaChart::default();
-
-                        let is_ssc = path.as_ref().extension().unwrap() == "ssc";
-                        macro_rules! get {
-                            ($name: ident) => {
-                                if is_ssc {
-                                    std::mem::take(&mut $name).unwrap_or_default()
-                                } else {
-                                    chart_split.next().unwrap().to_owned()
-                                }
-                            }
-                        }
-
-                        // first entries are meta (if sm, otherwise meta was already loaded)
-                        chart.chart_type          = get!(chart_type);
-                        chart.description         = get!(description);
-                        chart.difficulty          = get!(difficulty);
-                        chart.diff_value               = get!(meter).parse().unwrap_or_default();
-                        chart.groove_radar_values = get!(groove_radar_values).split(",").map(|r|r.parse().unwrap_or_default()).collect();
-                        
-                        let note_data = chart_split.next().unwrap();
-                        let bars = note_data.split(",");
-
-                        // (time, beat_length)
-                        let mut beat_lengths:Vec<(f32,f32)> = map.bpms.iter().map(|(beat, bpm)| (*beat, 60_000.0 / *bpm)).collect();
-                        let beat_lens_clone = beat_lengths.clone();
-                        for (i, (time, _)) in beat_lengths.iter_mut().enumerate() {
-                            // time is actually the beat number
-                            // need to convert it to ms
-                            *time *= beat_lens_clone.get(i).unwrap_or(&(0.0, -map.audio_offset * 1000.0)).1;
-                        }
-                        map.beat_lengths = beat_lengths.clone();
-                        let mut beat_length_index = 0;
-
-                        let mut current_time = -map.audio_offset * 1000.0;
-                        let mut columns:[Vec<(f32, StepmaniaTempNoteType)>; 4] = [
-                            Vec::new(),
-                            Vec::new(),
-                            Vec::new(),
-                            Vec::new()
-                        ];
-
-                        // turn the bars into columns of known note types at their specified times
-                        for bar in bars {
-                            let notes:Vec<StepmaniaTempNoteType> = bar.chars().map(StepmaniaTempNoteType::from).collect();
-
-                            let note_snapping = notes.len() as f32 / 16.0;
-                            let mut time_step = beat_lengths[beat_length_index].1 / note_snapping;
-                            
-                            for i in (0..notes.len()).step_by(4) {
-                                // push notes into column
-                                for n in 0..4 {
-                                    columns[n].push((current_time, notes[i+n]));
-                                }
-
-                                // check for bpm change
-                                if let Some((next_time, next_beat_length)) = beat_lengths.get(beat_length_index + 1) {
-                                    if *next_time <= current_time {
-                                        beat_length_index += 1;
-                                        time_step = *next_beat_length / note_snapping;
-                                    }
-                                }
-
-                                current_time += time_step;
-                            }
-                        }
-
-                        // turn the column types into actual note types
-                        for (num, col) in columns.iter().enumerate() {
-                            let mut last_hold_start = None;
-
-                            for (time, note_type) in col {
-                                match note_type {
-                                    StepmaniaTempNoteType::None => continue,
-
-                                    StepmaniaTempNoteType::HoldStart
-                                    | StepmaniaTempNoteType::RollStart => {
-                                        let note_type = match note_type {
-                                            StepmaniaTempNoteType::RollStart => StepmaniaNoteType::Roll,
-                                            StepmaniaTempNoteType::HoldStart => StepmaniaNoteType::Hold,
-                                            _ => panic!("literally impossible")
-                                        };
-                                        last_hold_start = Some(StepmaniaNote {
-                                            column: num as u8,
-                                            start: *time,
-                                            end: None,
-                                            note_type,
-                                        });
-                                    }
-
-                                    StepmaniaTempNoteType::HoldEnd => {
-                                        let note = std::mem::take(&mut last_hold_start);
-                                        if let Some(mut note) = note {
-                                            note.end = Some(*time);
-                                            chart.notes.push(note);
-                                        } else {
-                                            return Err(BeatmapError::InvalidFile.into())
-                                        }
-                                    }
-
-                                    StepmaniaTempNoteType::Note
-                                    | StepmaniaTempNoteType::Mine
-                                    | StepmaniaTempNoteType::KeySound
-                                    | StepmaniaTempNoteType::LiftNote
-                                    | StepmaniaTempNoteType::FakeNote => {
-                                        let note_type = match note_type {
-                                            StepmaniaTempNoteType::Note => StepmaniaNoteType::Note,
-                                            StepmaniaTempNoteType::Mine => StepmaniaNoteType::Mine,
-                                            StepmaniaTempNoteType::KeySound => StepmaniaNoteType::KeySound,
-                                            StepmaniaTempNoteType::LiftNote => StepmaniaNoteType::LiftNote,
-                                            StepmaniaTempNoteType::FakeNote => StepmaniaNoteType::FakeNote,
-                                            _ => panic!("literally impossible")
-                                        };
-                                        chart.notes.push(StepmaniaNote {
-                                            column: num as u8,
-                                            start: *time,
-                                            end: None,
-                                            note_type
-                                        });
-                                    }
-                                }
-                            }
-                        }
-
-                        let mut map = map.clone();
-                        map.chart_info = chart;
-                        map.hash = md5(chart_info);
-
-                        maps.push(map);
-                    }
-
-                    _ => {}
                 }
 
-            } else {
-                continue
+
+                // ssc chart things
+                "#NOTEDATA" => {
+                    // something probably
+                    // use this to init other info for now
+                    chart_type = Some(String::new());
+                    description = Some(String::new());
+                    difficulty = Some(String::new());
+                    meter = Some(String::new());
+                    groove_radar_values = Some(String::new());
+                }
+                "#STEPSTYPE" => chart_type = Some(value.to_owned()),
+                "#DIFFICULTY" => difficulty = Some(value.to_owned()),
+                "#METER" => meter = Some(value.to_owned()),
+                "#RADARVALUES" => groove_radar_values = Some(value.to_owned()),
+
+                "#NOTES" => {
+                    // read chart into lines, ensures split is correct
+                    let mut chart_info = value.to_owned();
+                    for line in lines.by_ref() {
+                        chart_info += &line;
+                        if line.ends_with(";") {break}
+                    }
+
+                    // remove final semicolon
+                    chart_info = chart_info.trim_end_matches(";").to_owned();
+
+                    // debug!("lines: {}", chart_info);
+                    let mut chart_split = chart_info.split(":");
+
+                    let mut chart = StepmaniaChart::default();
+
+                    let is_ssc = path.as_ref().extension().unwrap() == "ssc";
+                    macro_rules! get {
+                        ($name: ident) => {
+                            if is_ssc {
+                                std::mem::take(&mut $name).unwrap_or_default()
+                            } else {
+                                chart_split.next().unwrap().to_owned()
+                            }
+                        }
+                    }
+
+                    // first entries are meta (if sm, otherwise meta was already loaded)
+                    chart.chart_type          = get!(chart_type);
+                    chart.description         = get!(description);
+                    chart.difficulty          = get!(difficulty);
+                    chart.diff_value               = get!(meter).parse().unwrap_or_default();
+                    chart.groove_radar_values = get!(groove_radar_values)
+                        .split(",")
+                        .map(|r| r.parse().unwrap_or_default())
+                        .collect();
+                    
+                    let note_data = chart_split.next().unwrap();
+                    let bars = note_data.split(",");
+
+                    // (time, beat_length)
+                    let mut beat_lengths:Vec<(f32,f32)> = map.bpms
+                        .iter()
+                        .map(|(beat, bpm)| (*beat, 60_000.0 / *bpm))
+                        .collect();
+                    
+                    let beat_lens_clone = beat_lengths.clone();
+                    for (i, (time, _)) in beat_lengths.iter_mut().enumerate() {
+                        // time is actually the beat number
+                        // need to convert it to ms
+                        *time *= beat_lens_clone
+                            .get(i)
+                            .unwrap_or(&(0.0, -map.audio_offset * 1000.0)).1;
+                    }
+                    map.beat_lengths = beat_lengths.clone();
+                    let mut beat_length_index = 0;
+
+                    let mut current_time = -map.audio_offset * 1000.0;
+                    let mut columns:[Vec<(f32, StepmaniaTempNoteType)>; 4] = [
+                        Vec::new(),
+                        Vec::new(),
+                        Vec::new(),
+                        Vec::new()
+                    ];
+
+                    // turn the bars into columns of known note types at their specified times
+                    for bar in bars {
+                        let notes = bar.chars()
+                            .map(StepmaniaTempNoteType::from)
+                            .collect::<Vec<_>>();
+
+                        let note_snapping = notes.len() as f32 / 16.0;
+                        let mut time_step = beat_lengths[beat_length_index].1 / note_snapping;
+                        
+                        for i in (0..notes.len()).step_by(4) {
+                            // push notes into column
+                            for n in 0..4 {
+                                columns[n].push((current_time, notes[i+n]));
+                            }
+
+                            // check for bpm change
+                            if let Some((next_time, next_beat_length)) = beat_lengths.get(beat_length_index + 1) {
+                                if *next_time <= current_time {
+                                    beat_length_index += 1;
+                                    time_step = *next_beat_length / note_snapping;
+                                }
+                            }
+
+                            current_time += time_step;
+                        }
+                    }
+
+                    // turn the column types into actual note types
+                    for (num, col) in columns.iter().enumerate() {
+                        let mut last_hold_start = None;
+
+                        for (time, note_type) in col {
+                            match note_type {
+                                StepmaniaTempNoteType::None => continue,
+
+                                StepmaniaTempNoteType::HoldStart
+                                | StepmaniaTempNoteType::RollStart => {
+                                    let note_type = match note_type {
+                                        StepmaniaTempNoteType::RollStart => StepmaniaNoteType::Roll,
+                                        StepmaniaTempNoteType::HoldStart => StepmaniaNoteType::Hold,
+                                        _ => panic!("literally impossible")
+                                    };
+                                    last_hold_start = Some(StepmaniaNote {
+                                        column: num as u8,
+                                        start: *time,
+                                        end: None,
+                                        note_type,
+                                    });
+                                }
+
+                                StepmaniaTempNoteType::HoldEnd => {
+                                    let note = std::mem::take(&mut last_hold_start);
+                                    if let Some(mut note) = note {
+                                        note.end = Some(*time);
+                                        chart.notes.push(note);
+                                    } else {
+                                        return Err(BeatmapError::InvalidFile.into())
+                                    }
+                                }
+
+                                StepmaniaTempNoteType::Note
+                                | StepmaniaTempNoteType::Mine
+                                | StepmaniaTempNoteType::KeySound
+                                | StepmaniaTempNoteType::LiftNote
+                                | StepmaniaTempNoteType::FakeNote => {
+                                    let note_type = match note_type {
+                                        StepmaniaTempNoteType::Note => StepmaniaNoteType::Note,
+                                        StepmaniaTempNoteType::Mine => StepmaniaNoteType::Mine,
+                                        StepmaniaTempNoteType::KeySound => StepmaniaNoteType::KeySound,
+                                        StepmaniaTempNoteType::LiftNote => StepmaniaNoteType::LiftNote,
+                                        StepmaniaTempNoteType::FakeNote => StepmaniaNoteType::FakeNote,
+                                        _ => panic!("literally impossible")
+                                    };
+                                    chart.notes.push(StepmaniaNote {
+                                        column: num as u8,
+                                        start: *time,
+                                        end: None,
+                                        note_type
+                                    });
+                                }
+                            }
+                        }
+                    }
+
+                    let mut map = map.clone();
+                    map.chart_info = chart;
+                    map.hash = md5(chart_info);
+
+                    maps.push(map);
+                }
+
+                _ => {}
             }
+
+            
         }
 
         Ok(maps)
@@ -294,7 +303,7 @@ impl TatakuBeatmap for StepmaniaBeatmap {
     // fn slider_velocity_at(&self, _time:f32) -> f32 { 400.0 }
 
     fn get_timing_points(&self) -> Vec<TimingPoint> {
-        self.beat_lengths.iter().map(|&(time, beat_length)| {
+        self.beat_lengths.iter().map(|&(time, beat_length)| 
             TimingPoint {
                 time, 
                 beat_length,
@@ -305,7 +314,7 @@ impl TatakuBeatmap for StepmaniaBeatmap {
                 sample_set: 0,
                 sample_index: 0,
             }
-        }).collect()
+        ).collect()
     }
 
     fn get_beatmap_meta(&self) -> Arc<BeatmapMeta> {

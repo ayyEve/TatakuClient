@@ -33,7 +33,11 @@ pub struct Curve {
 }
 #[allow(dead_code)]
 impl Curve {
-    fn new(slider: SliderDef, path: Vec<CurveSegment>, timing_points: &TimingPointHelper) -> Self {
+    fn new(
+        slider: SliderDef, 
+        path: Vec<CurveSegment>, 
+        timing_points: &TimingPointHelper
+    ) -> Self {
         let slider_multiplier = timing_points.slider_velocity_base;
 
         let l = slider.length * 1.4 * slider.slides as f32;
@@ -51,7 +55,7 @@ impl Curve {
         }
     }
 
-    pub fn time_at_length(&self, length:f32) -> f32 {
+    pub fn time_at_length(&self, length: f32) -> f32 {
         self.slider.time + (length / self.velocity) * 1000.0
     }
 
@@ -60,7 +64,9 @@ impl Curve {
     }
     
     pub fn get_length_required(&self, time: f32) -> f32 {
-        let mut pos = (time - self.slider.time) / (self.length() / self.slider.slides as f32);
+        let mut pos = (time - self.slider.time) 
+            / (self.length() / self.slider.slides as f32);
+        
         if pos % 2.0 > 1.0 {
             pos = 1.0 - (pos % 1.0);
         } else {
@@ -140,7 +146,11 @@ impl CurveSegment {
 
 
 
-pub fn get_curve(slider: &SliderDef, beatmap: &Beatmap, timing_points: &TimingPointHelper) -> Curve {
+pub fn get_curve(
+    slider: &SliderDef, 
+    beatmap: &Beatmap, 
+    timing_points: &TimingPointHelper
+) -> Curve {
     let mut points = slider.curve_points.clone();
     points.insert(0, slider.pos);
 
@@ -165,7 +175,7 @@ pub fn get_curve(slider: &SliderDef, beatmap: &Beatmap, timing_points: &TimingPo
                 for k in 0..=SLIDER_DETAIL_LEVEL {
                     curve.push(catmull_rom(v1, v2, v3, v4, k as f32 / SLIDER_DETAIL_LEVEL as f32));
                 }
-                path.push(CurveSegment::Catmull { curve })
+                path.push(CurveSegment::Catmull { curve });
             }
         }
         CurveType::Bézier => {
@@ -176,20 +186,19 @@ pub fn get_curve(slider: &SliderDef, beatmap: &Beatmap, timing_points: &TimingPo
                     let multipart_segment = (i as i32) < points.len() as i32 - 2 && points[i] == points[i + 1];
 
                     if multipart_segment || i == points.len() - 1 {
-                        let this_segment = points[last_index..i+1].to_vec();
+                        let this_segment = &points[last_index..i+1];
 
                         if beatmap_version > 8 {
                             if this_segment.len() == 2 {
                                 // this segment is a line
-                                path.push(CurveSegment::Linear {p1: this_segment[0], p2:this_segment[1]});
+                                path.push(CurveSegment::Linear { p1: this_segment[0], p2:this_segment[1] });
                             } else {
                                 let curve = create_bezier(this_segment, beatmap_version < 10);
                                 path.push(CurveSegment::Bezier {curve});
                             }
                         } else {
-                            let this_length = points[last_index..i + 1].to_vec();
-                            let curve = create_bezier(this_length, false);
-                            path.push(CurveSegment::Bezier {curve});
+                            let curve = create_bezier(&points[last_index..i + 1], false);
+                            path.push(CurveSegment::Bezier { curve });
                         }
 
                         //Need to skip one point since we consuned an extra.
@@ -201,9 +210,11 @@ pub fn get_curve(slider: &SliderDef, beatmap: &Beatmap, timing_points: &TimingPo
                     //This algorithm is broken for multipart sliders (http://osu.sifterapp.com/projects/4151/issues/145).
                     //Newer maps always use the one in the else clause.
                     if (i > 0 && points[i] == points[i - 1]) || i == points.len() - 1 {
-                        let this_segment = points[last_index..i + 1].to_vec();
-                        let curve = create_bezier(this_segment, true);
-                        path.push(CurveSegment::Bezier {curve});
+                        let curve = create_bezier(
+                            &points[last_index..i + 1], 
+                            true
+                        );
+                        path.push(CurveSegment::Bezier { curve });
                         
                         last_index = i;
                     }
@@ -272,7 +283,7 @@ pub fn get_curve(slider: &SliderDef, beatmap: &Beatmap, timing_points: &TimingPo
                 for i in 1..curve.len() {
                     let p1 = curve[i - 1];
                     let p2 = curve[i];
-                    smooth_path.push(CurveLine::new(p1, p2))
+                    smooth_path.push(CurveLine::new(p1, p2));
                 }
             },
 
@@ -310,7 +321,13 @@ pub fn get_curve(slider: &SliderDef, beatmap: &Beatmap, timing_points: &TimingPo
     curve
 }
 
-fn catmull_rom(value1:Vector2, value2:Vector2, value3:Vector2, value4:Vector2, amount:f32) -> Vector2 {
+fn catmull_rom(
+    value1: Vector2, 
+    value2: Vector2, 
+    value3: Vector2, 
+    value4: Vector2, 
+    amount: f32
+) -> Vector2 {
     let num = amount * amount;
     let num2 = amount * num;
     let mut result = Vector2::ZERO;

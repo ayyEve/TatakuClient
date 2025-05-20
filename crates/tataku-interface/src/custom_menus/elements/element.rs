@@ -13,7 +13,7 @@ pub trait CustomElement {
 pub struct ClassList(pub Vec<String>);
 impl ClassList {
     pub fn push(&mut self, s: impl Into<String>) {
-        self.0.push(s.into())
+        self.0.push(s.into());
     }
 }
 impl From<String> for ClassList {

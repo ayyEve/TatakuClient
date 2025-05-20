@@ -95,7 +95,7 @@ impl ScalingHelper {
     /// turn playfield (osu) coords into window coords
     pub fn scale_coords(&self, mut osu_coords: Vector2) -> Vector2 {
         if self.flip_vertical {
-            osu_coords.y = FIELD_SIZE.y - osu_coords.y
+            osu_coords.y = FIELD_SIZE.y - osu_coords.y;
         }
 
         self.playfield.pos + osu_coords * self.scale

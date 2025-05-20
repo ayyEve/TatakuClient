@@ -162,7 +162,7 @@ impl Widget for TransformableWidget {
     }
 
     fn draw(&self, shell: &mut DrawShell) {
-        self.child.draw(shell)
+        self.child.draw(shell);
     }
     fn draw_overlay(&self, shell: &mut DrawShell) {
         self.child.draw_overlay(shell);
@@ -204,7 +204,10 @@ impl Widget for TransformableWidget {
         if should_update {
             let context = shell.tree.get_context_mut(self.node_id).unwrap();
             context.local_transform = Transform::from_manager(&self.manager);
-            shell.actions.push(UiAction::new(self.node_id, UiActionType::ContextChanged));
+            shell.actions.push(UiAction::new(
+                self.node_id, 
+                UiActionType::ContextChanged
+            ));
         }
         self.child.update(shell);
     }
@@ -217,9 +220,11 @@ impl Widget for TransformableWidget {
         let mut to_trigger = Vec::new();
 
         for trigger in self.triggers.iter() {
-            let AnimatableTriggerEvent::Message(tag) = &trigger.trigger else { continue };
+            let AnimatableTriggerEvent::Message(tag) = &trigger.trigger 
+            else { continue };
+
             if &message.tag == tag {
-                to_trigger.push(trigger.action.clone())
+                to_trigger.push(trigger.action.clone());
             } 
         }
         if !to_trigger.is_empty() {

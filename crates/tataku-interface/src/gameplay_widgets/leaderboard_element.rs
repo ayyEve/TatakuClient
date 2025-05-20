@@ -126,7 +126,7 @@ impl GameplayWidget for LeaderboardElement {
                     img.color = color;
                     img.set_size(size);
 
-                    list.push(img)
+                    list.push(img);
                 } else {
                     // bounding rect
                     list.push(Rectangle::new(
@@ -162,8 +162,17 @@ impl GameplayWidget for LeaderboardElement {
 
     }
 
-    fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
-        self.image = skin_manager.get_texture("menu-button-background", source, SkinUsage::Gamemode, false);
+    fn reload_skin(
+        &mut self, 
+        source: &TextureSource, 
+        skin_manager: &mut dyn SkinProvider
+    ) {
+        self.image = skin_manager.get_texture(
+            "menu-button-background", 
+            source, 
+            SkinUsage::Gamemode, 
+            false
+        );
     }
 }
 

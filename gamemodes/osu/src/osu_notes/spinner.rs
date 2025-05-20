@@ -52,7 +52,11 @@ pub struct OsuSpinner {
 }
 
 impl OsuSpinner {
-    pub fn new(def: SpinnerDef, scaling_helper: Arc<ScalingHelper>, rotations_required: u16) -> Self {
+    pub fn new(
+        def: &SpinnerDef, 
+        scaling_helper: Arc<ScalingHelper>, 
+        rotations_required: u16
+    ) -> Self {
         let time = def.time;
         let end_time = def.end_time;
 
@@ -170,13 +174,13 @@ impl HitObject for OsuSpinner {
         // bg circle
         if let Some(mut i) = self.spinner_background.clone() {
             i.scale = scale;
-            list.push(i)
+            list.push(i);
         }
 
         // bottom circle
         if let Some(mut i) = self.spinner_bottom.clone() {
             i.scale = scale;
-            list.push(i)
+            list.push(i);
         } else if !(self.spinner_approach.is_some() || self.spinner_circle.is_some()) {
             list.push(Circle::new(
                 self.pos,
@@ -190,7 +194,7 @@ impl HitObject for OsuSpinner {
         // draw another circle on top which increases in radius as the counter gets closer to the reqired
         if let Some(mut i) = self.spinner_approach.clone() {
             i.scale = Vector2::ONE * f32::lerp(1.0, 0.0, (self.current_time - self.time) / (self.end_time - self.time)) * self.scaling_helper.scale;
-            list.push(i)
+            list.push(i);
         } else {
             list.push(Circle::new(
                 self.pos,
@@ -205,9 +209,14 @@ impl HitObject for OsuSpinner {
         if let Some(mut i) = self.spinner_circle.clone() {
             i.scale = scale;
             i.rotation = self.display_rotation;
-            list.push(i)
+            list.push(i);
         } else {
-            let p2 = self.pos + Vector2::new(self.display_rotation.cos(), self.display_rotation.sin()) * SPINNER_RADIUS;
+            let p2 = self.pos 
+                + Vector2::new(
+                    self.display_rotation.cos(), 
+                    self.display_rotation.sin()
+                ) 
+                * SPINNER_RADIUS;
             list.push(Line::new(
                 self.pos,
                 p2,
@@ -248,39 +257,69 @@ impl HitObject for OsuSpinner {
     }
 
     #[cfg(feature="graphics")]
-    fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+    fn reload_skin(
+        &mut self, 
+        source: &TextureSource, 
+        skin_manager: &mut dyn SkinProvider
+    ) {
         let pos = self.scaling_helper.scale_coords(FIELD_SIZE / 2.0);
         let scale = Vector2::ONE * self.scaling_helper.scale;
 
-        self.spinner_circle = skin_manager.get_texture_then("spinner-circle", source, SkinUsage::Gamemode, false, |i| {
-            // const SIZE:f64 = 700.0;
-            i.pos = pos;
-            i.scale = scale;
-        });
+        self.spinner_circle = skin_manager.get_texture_then(
+            "spinner-circle", 
+            source, 
+            SkinUsage::Gamemode, 
+            false, 
+            |i| {
+                // const SIZE:f64 = 700.0;
+                i.pos = pos;
+                i.scale = scale;
+            }
+        );
 
-        self.spinner_background = skin_manager.get_texture_then("spinner-background", source, SkinUsage::Gamemode, false, |i| {
-            // const SIZE:f64 = 667.0;
-            i.pos = pos;
-            i.scale = scale;
-        });
+        self.spinner_background = skin_manager.get_texture_then(
+            "spinner-background", 
+            source, 
+            SkinUsage::Gamemode, 
+            false, 
+            |i| {
+                // const SIZE:f64 = 667.0;
+                i.pos = pos;
+                i.scale = scale;
+            }
+        );
 
-        self.spinner_bottom = skin_manager.get_texture_then("spinner-bottom", source, SkinUsage::Gamemode, false, |i| {
-            i.pos = pos;
-            i.scale = scale;
-        });
+        self.spinner_bottom = skin_manager.get_texture_then(
+            "spinner-bottom", 
+            source, 
+            SkinUsage::Gamemode, 
+            false, 
+            |i| {
+                i.pos = pos;
+                i.scale = scale;
+            }
+        );
 
-        self.spinner_approach = skin_manager.get_texture_then("spinner-approachcircle", source, SkinUsage::Gamemode, false, |i| {
-            // const SIZE:f64 = 320.0;
-            i.pos = pos;
-            i.scale = scale;
-        });
+        self.spinner_approach = skin_manager.get_texture_then(
+            "spinner-approachcircle", 
+            source, 
+            SkinUsage::Gamemode, 
+            false, 
+            |i| {
+                // const SIZE:f64 = 320.0;
+                i.pos = pos;
+                i.scale = scale;
+            }
+        );
 
     }
 }
 
 impl OsuHitObject for OsuSpinner {
     fn miss(&mut self) { self.missed = true }
-    fn was_hit(&self) -> bool { self.missed || self.rotations_completed >= self.rotations_required } //{ self.last_update >= self.end_time }
+    fn was_hit(&self) -> bool { 
+        self.missed || self.rotations_completed >= self.rotations_required 
+    } //{ self.last_update >= self.end_time }
     fn get_preempt(&self) -> f32 { 0.0 }
     fn point_draw_pos(&self, _: f32) -> Vector2 { self.pos }
     fn set_hitwindow_miss(&mut self, _window: f32) {}

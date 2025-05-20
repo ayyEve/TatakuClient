@@ -54,6 +54,6 @@ impl TatakuRenderable for HalfCircle {
             20, 
             transform.trans(self.pos), 
             self.blend_mode
-        )
+        );
     }
 }

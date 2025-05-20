@@ -105,7 +105,7 @@ impl<'a> CssResolver<'a> {
                     };
                     anim.insert(frame, style);
                 }
-                animations.insert(name.to_string(), CssAnimation(anim));
+                animations.insert((*name).to_string(), CssAnimation(anim));
             }
         }
         

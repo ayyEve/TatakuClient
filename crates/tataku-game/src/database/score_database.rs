@@ -4,13 +4,15 @@ use crate::REPLAYS_DIR;
 impl Database {
     pub fn get_scores(
         hash: &String, 
-        playmode: String,
-        infos: GamemodeInfos
+        playmode: &String,
+        infos: &GamemodeInfos
     ) -> Vec<Score> {
         let db = Self::get();
-        let mut s = db.prepare(&format!("SELECT * FROM scores WHERE map_hash='{hash}' AND playmode='{playmode}'")).unwrap();
+        let mut s = db
+            .prepare("SELECT * FROM scores WHERE map_hash=? AND playmode=?")
+            .unwrap();
         
-        s.query_map([], |r| {
+        s.query_map([hash, playmode], |r| {
             let _score_hash:String = r.get("score_hash")?;
 
             let mut mods_string:Option<String> = r.get("mods_string").ok();
@@ -61,7 +63,7 @@ impl Database {
 
 
             // this is bad but its fineee
-            if let Some((mods_string, info)) = mods_string.zip(infos.get_info(&playmode).ok()) {
+            if let Some((mods_string, info)) = mods_string.zip(infos.get_info(playmode).ok()) {
                 let mods = mods_string.split("|");
                 let all_mods = ModManager::mods_for_playmode_as_hashmap(info);
                 for m in mods {
@@ -85,47 +87,47 @@ impl Database {
     }
 
 
-    pub fn save_score(s:&Score) {
+    pub fn save_score(s: &Score) {
         trace!("saving score");
 
         let db = Self::get();
-        let sql = format!(
-            "INSERT INTO scores (
-                map_hash, score_hash,
-                username, playmode, time,
-                score,
-                combo, max_combo,
-                x50, x100, x300, geki, katu, xmiss,
-                speed, 
-                version,
-                mods_string,
-                judgments
-            ) VALUES (
-                '{}', '{}',
-                '{}', '{}', {},
-                {},
-                {}, {},
-                0, 0, 0, 0, 0, 0,
-                {},
-                {},
-                '{}',
-                '{}'
-            )", 
-            s.beatmap_hash, s.hash(),
-            s.username, s.playmode, s.time,
-            s.score,
-            s.combo, s.max_combo,
+        let sql = "INSERT INTO scores (
+            map_hash, score_hash,
+            username, playmode, time,
+            score,
+            combo, max_combo,
+            x50, x100, x300, geki, katu, xmiss,
+            speed, 
+            version,
+            mods_string,
+            judgments
+        ) VALUES (
+            ?, ?,
+            ?, ?, ?,
+            ?,
+            ?, ?,
+            0, 0, 0, 0, 0, 0,
+            ?,
+            ?,
+            ?,
+            ?
+        )";
+        let params: &[&(dyn rusqlite::ToSql + Send + Sync); 12] = &[
+            &s.beatmap_hash.to_string(), &s.hash(),
+            &s.username, &s.playmode, &s.time,
+            &s.score,
+            &s.combo, &s.max_combo,
             // s.x50, s.x100, s.x300, s.xgeki, s.xkatu, s.xmiss, 
-            s.speed,
-            s.version,
-            s.mods_string_sorted(),
-            s.judgment_string()
-        );
+            &s.speed.as_u16(),
+            &s.version,
+            &s.mods_string_sorted(),
+            &s.judgment_string()
+        ];
 
-        match db.prepare(&sql) {
+        match db.prepare(sql) {
             Ok(mut s) => {
-                if let Err(e) = s.execute([]) {
-                    error!("error executing query: {e}\n {sql}")
+                if let Err(e) = s.execute(params) {
+                    error!("error executing query: {e}\n {sql}");
                 }
             }
 

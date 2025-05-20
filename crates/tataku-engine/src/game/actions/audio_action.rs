@@ -59,7 +59,11 @@ impl AudioLoadData {
         }
     }
 
-    pub fn new_multi_source(path: impl Into<String>, prefix: Option<impl Into<String>>, sources: &[HitsoundSource]) -> Vec<Self> {
+    pub fn new_multi_source(
+        path: impl Into<String>, 
+        prefix: Option<impl Into<String>>, 
+        sources: &[HitsoundSource]
+    ) -> Vec<Self> {
         let path: String = path.into();
         let mut list = sources
             .iter()
@@ -80,7 +84,7 @@ impl AudioLoadData {
                     Self::new(format!("{prefix}-{path}"), source)
                 })
             )
-            .collect()
+            .collect();
         }
 
         list

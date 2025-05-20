@@ -133,11 +133,9 @@ impl Branch {
         // try to get an exact match from the mapping
         CHAR_MAPPING
         .get(&**text)
-        .map(|a|vec![a.clone()])
-        
-        // if no exact mapping exists, manually parse
-        .unwrap_or_else(||
-            text
+        .map_or_else(
+            // if no exact mapping exists, manually parse
+            || text
             .chars()
             .map(|c|
                 CHAR_MAPPING
@@ -145,7 +143,8 @@ impl Branch {
                 .cloned()
                 .unwrap_or_else(||vec![CharVariant::new([c])])
             )
-            .collect()
+            .collect(),
+            |a| vec![a.clone()]
         );
         
         // branch 1: [chi, ra, i]

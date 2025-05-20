@@ -113,8 +113,12 @@ impl Widget for Checkbox {
     ) {
         match event.event {
             InputType::MouseMove(pos) => {
-                let Some(bounds) = shell.tree.bounds(self.node_id) else { return };
-                let Some(ctx) = shell.tree.get_context(self.node_id) else { return };
+                let Some(bounds) = shell.tree.bounds(self.node_id) 
+                else { return };
+
+                let Some(ctx) = shell.tree.get_context(self.node_id) 
+                else { return };
+
                 let pos = ctx.inverse_global_transform * pos;
 
                 self.hovered = bounds.contains(pos);
@@ -146,7 +150,8 @@ impl Widget for Checkbox {
     }
 
     fn draw(&self, shell: &mut DrawShell) {
-        let Some(bounds) = shell.tree.absolute_bounds(self) else { return };
+        let Some(bounds) = shell.tree.absolute_bounds(self) 
+        else { return };
 
         let box_size = self.box_size();
         let box_padding = self.box_padding();
@@ -169,8 +174,15 @@ impl Widget for Checkbox {
         let rect = Rectangle::new(
             box_pos,
             box_size,
-            if self.value.get() { shell.general_theme.active_color } else { Color::TRANSPARENT },
-            Some(Border::new(shell.general_theme.get_color(self.active, self.hovered), 2.0))
+            if self.value.get() { 
+                shell.general_theme.active_color 
+            } else { 
+                Color::TRANSPARENT 
+            },
+            Some(Border::new(
+                shell.general_theme.get_color(self.active, self.hovered), 
+                2.0
+            ))
         ).shape(Shape::Round(2.0));
         shell.list.push(rect);
 
@@ -185,7 +197,10 @@ impl Widget for Checkbox {
             )
         );
 
-        shell.list.push(self.text_style.create_text(self.text.get().clone(), text_bounds))
+        shell.list.push(self.text_style.create_text(
+            self.text.get().clone(), 
+            text_bounds
+        ));
     }
 
     fn update(&mut self, shell: &mut UpdateShell) {
@@ -195,7 +210,9 @@ impl Widget for Checkbox {
         self.text.update(shell.values);
         let new_text = self.text.get();
         if new_text != &old_text {
-            let Some(ctx) = shell.tree.get_context(self.node_id) else { return };
+            let Some(ctx) = shell.tree.get_context(self.node_id) 
+            else { return };
+
             self.text_style = ctx.element_data.style().0.text_style(shell.values);
 
             let size = self.size();
@@ -242,8 +259,11 @@ impl CheckboxText {
                 } else {
                     *cache = format!("failed: {path}");
                 }
-            },
-            Self::Buildable(b, cache) => *cache = b.to_string(values),
+            }
+            Self::Buildable(
+                b, 
+                cache
+            ) => *cache = b.to_string(values),
         }
     }
 }
@@ -329,7 +349,8 @@ impl From<CheckboxBuilderValue> for CheckboxValue {
     fn from(value: CheckboxBuilderValue) -> Self {
         match value {
             CheckboxBuilderValue::Static(b) => Self::Static(b),
-            CheckboxBuilderValue::Variable(v) => BuildableCondition::Unbuilt(v).into(),
+            CheckboxBuilderValue::Variable(v) 
+                => BuildableCondition::Unbuilt(v).into(),
         }
     }
 }
@@ -349,11 +370,17 @@ impl CheckboxOnToggle {
         values: &mut dyn Reflect,
     ) -> Option<Message> {
         match self {
-            Self::Callback(cb) => Some(cb(value)),
+            Self::Callback(cb) 
+                => Some(cb(value)),
+
             Self::Buildable(action) => {
                 let mut action = action.clone();
                 action.build(values);
-                action.resolve(owner, values, Some(TatakuValue::Bool(value)))
+                action.resolve(
+                    owner, 
+                    values, 
+                    Some(TatakuValue::Bool(value))
+                )
             },
         }
     }

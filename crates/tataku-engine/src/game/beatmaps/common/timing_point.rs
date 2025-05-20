@@ -90,9 +90,9 @@ impl TimingPointSearch for Vec<TimingPoint> {
             if t.is_inherited() { continue }
 
             if t.time <= time {
-                tp = t
+                tp = t;
             } else { 
-                break 
+                break;
             }
         }
         tp
@@ -100,11 +100,10 @@ impl TimingPointSearch for Vec<TimingPoint> {
     fn timing_point_at(&self, time: f32) -> &TimingPoint {
         let mut tp = &self[0];
         for t in self.iter() {
-
             if t.time <= time {
-                tp = t
+                tp = t;
             } else { 
-                break 
+                break;
             }
         }
         tp

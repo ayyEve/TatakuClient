@@ -32,7 +32,7 @@ impl UTypingTimingBar {
 
     pub fn update_playfield(&mut self, playfield: Arc<UTypingPlayfield>) {
         self.playfield = playfield;
-        self.pos.y = self.playfield.hit_position.y - self.size.y/2.0
+        self.pos.y = self.playfield.hit_position.y - self.size.y / 2.0;
     }
 
     pub fn update(&mut self, _time:f32) {}

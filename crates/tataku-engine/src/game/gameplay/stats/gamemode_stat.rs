@@ -33,7 +33,7 @@ impl PartialEq for GameModeStat {
 }
 impl std::hash::Hash for GameModeStat {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.name.hash(state)
+        self.name.hash(state);
     }
 }
 

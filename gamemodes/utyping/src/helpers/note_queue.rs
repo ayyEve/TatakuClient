@@ -72,7 +72,7 @@ impl UTypingNoteQueue {
 
                 if hit_ok && (judgment == Some(&UTypingHitJudgment::X100) || judgment == Some(&UTypingHitJudgment::X300)) {
                     // proceed with this note, miss last note.
-                    next_note.judgment = judgment.cloned();
+                    next_note.judgment = judgment.copied();
                 }
             }
 

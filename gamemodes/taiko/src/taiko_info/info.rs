@@ -81,7 +81,7 @@ impl TaikoGameInfo {
             info.push(StatsInfo::new("Presses", GraphType::Pie, vec![
                 StatsEntry::new_f32("Left Presses", left_presses, Color::BLUE, true, true),
                 StatsEntry::new_f32("Right Presses", right_presses, Color::RED, true, true),
-            ]))
+            ]));
         }
 
         info

@@ -24,8 +24,7 @@ impl GameplayWidget for JudgementCounterElement {
 
     fn max_size(&self) -> Vector2 {
         let box_size = self.button_image.as_ref()
-            .map(Image::size)
-            .unwrap_or(BOX_SIZE);
+            .map_or(BOX_SIZE, Image::size);
         
         Vector2::new(box_size.x, box_size.y * self.hit_counts.len() as f32)
     }
@@ -59,7 +58,9 @@ impl GameplayWidget for JudgementCounterElement {
         _align: Alignment,
         list: &mut RenderableCollection
     ) {
-        let box_size = self.button_image.as_ref().map(Image::size).unwrap_or(BOX_SIZE) * scale;
+        let box_size = self.button_image
+            .as_ref()
+            .map_or(BOX_SIZE, Image::size) * scale;
         
         for (i, (txt, count)) in self.hit_counts.iter().enumerate() {
             let pos = pos_offset + Vector2::new(0.0, box_size.y * i as f32);
@@ -82,7 +83,8 @@ impl GameplayWidget for JudgementCounterElement {
                 list.push(Rectangle::new(
                     pos,
                     BOX_SIZE * scale,
-                    *self.colors.get(txt).unwrap_or(&Color::new(0.0, 0.0, 0.0, 0.8)), // TODO: get a proper color
+                    *self.colors.get(txt)
+                        .unwrap_or(&Color::new(0.0, 0.0, 0.0, 0.8)), // TODO: get a proper color
                     Some(Border::new(Color::BLACK, 2.0))
                 ));
             }
@@ -98,7 +100,7 @@ impl GameplayWidget for JudgementCounterElement {
             let text_size = text.measure_text();
             let max_width = box_width - 10.0; // padding of 10
             if text_size.x >= max_width {
-                text.set_font_size(20.0 * scale.x * max_width / text_size.x)
+                text.set_font_size(20.0 * scale.x * max_width / text_size.x);
             }
             text.center_text(&Bounds::new(pos, box_size));
 
@@ -106,15 +108,27 @@ impl GameplayWidget for JudgementCounterElement {
         }
     }
 
-    fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
-        self.button_image = skin_manager.get_texture("inputoverlay-key", source, SkinUsage::Gamemode, false);
+    fn reload_skin(
+        &mut self, 
+        source: &TextureSource, 
+        skin_manager: &mut dyn SkinProvider
+    ) {
+        self.button_image = skin_manager.get_texture(
+            "inputoverlay-key", 
+            source, 
+            SkinUsage::Gamemode, 
+            false
+        );
     }
 }
 
 pub const JUDGMENT_COUNTER: GameplayWidgetBuilder = GameplayWidgetBuilder {
     name: "judgement_counter",
     default_layout: GameplayWidgetLayout::new_default(
-        GameplayWidgetAnchor::element("key_counter", GameplayWidgetAlign::Below), 
+        GameplayWidgetAnchor::element(
+            "key_counter", 
+            GameplayWidgetAlign::Below
+        ), 
         Alignment::BOTTOM_LEFT,
         None,
         None,

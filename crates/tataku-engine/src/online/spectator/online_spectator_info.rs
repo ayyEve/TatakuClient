@@ -60,13 +60,13 @@ impl OnlineSpectatorInfo {
         if host_id == 0 {
             // remove from all
             for specs in self.spectator_list.values_mut() {
-                specs.remove(removed_user)
+                specs.remove(removed_user);
             }
             return;
         }
 
         if let Some(specs) = self.spectator_list.get_mut(&host_id) {
-            specs.remove(removed_user)
+            specs.remove(removed_user);
         }
     }
 

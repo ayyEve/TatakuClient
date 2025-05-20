@@ -192,7 +192,7 @@ impl<T:Send + Sync + 'static> AsyncLoader<T> {
         let task = tokio::spawn(async move {
             let v = f.into_future().await;
             *val.lock() = Some(v);
-            wrote.store(true, Ordering::Release)
+            wrote.store(true, Ordering::Release);
         });
 
         let abort_handle = Arc::new(task.abort_handle());

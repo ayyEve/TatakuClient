@@ -237,7 +237,7 @@ impl StoryboardDef {
                 // deal with old ele if exists
                 if let Some(mut old_ele) = std::mem::take(&mut current_entry) {
                     if let Some(loop_def) = std::mem::take(&mut loop_def) {
-                        loop_def.apply(&mut old_ele)
+                        loop_def.apply(&mut old_ele);
                     }
 
                     entries.push(old_ele);

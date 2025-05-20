@@ -127,7 +127,7 @@ pub fn load_osu_settings(path: impl AsRef<Path>, settings: &mut Settings) -> Res
     // bool!("MouseDisableButtons", osu_settings, ignore_mouse_buttons);
     num!("Offset", global_offset, f32);
     if let Some((width, height)) = num!("Width", f32).zip(num!("Height", f32)) {
-        settings.display_settings.window_size = [width, height] 
+        settings.display_settings.window_size = [width, height];
     }
 
     // num!("CustomFrameLimit", display_settings.fps_target, u64);

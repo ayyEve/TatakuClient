@@ -7,11 +7,14 @@ pub struct DropdownBuilder {
     pub font_size: Option<f32>,
 }
 impl DropdownBuilder {
-    pub fn new(variants: impl Into<DropdownBuilderVariants>, value: impl Into<DropdownBuilderValue>) -> Self {
+    pub fn new(
+        variants: impl Into<DropdownBuilderVariants>, 
+        value: impl Into<DropdownBuilderValue>,
+    ) -> Self {
         Self {
             variants: variants.into(),
             value: value.into(),
-            on_change: Default::default(),
+            on_change: DropdownBuilderOnChange::default(),
             font_size: None,
         }
     }

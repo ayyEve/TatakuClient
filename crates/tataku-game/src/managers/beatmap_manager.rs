@@ -63,13 +63,13 @@ impl BeatmapManager {
     pub fn initialize(
         &mut self, 
         sort_by: SortBy,
-        mods: ModManager,
-        playmode: String,
+        mods: &ModManager,
+        playmode: &String,
         diff_manager: &mut impl DifficultyProvider,
     ) {
         trace!("Beatmap manager initialized");
         self.initialized = true;
-        self.refresh_maps(&mods, &playmode, sort_by, diff_manager);
+        self.refresh_maps(mods, playmode, sort_by, diff_manager);
     }
 
     pub fn folders_to_check(settings: &Settings) -> Vec<std::path::PathBuf> {
@@ -103,7 +103,7 @@ impl BeatmapManager {
 
         if !new_beatmaps.is_empty() {
             info!("Inserting maps into database");
-            Database::insert_beatmaps(new_beatmaps);
+            Database::insert_beatmaps(&new_beatmaps);
         }
     }
 
@@ -168,11 +168,11 @@ impl BeatmapManager {
         match handle_database {
             HandleDatabase::No => Some(maps_to_add_to_database),
             HandleDatabase::Yes => {
-                Database::insert_beatmaps(maps_to_add_to_database);
+                Database::insert_beatmaps(&maps_to_add_to_database);
                 None
             }
             HandleDatabase::YesAndReturnNewMaps => {
-                Database::insert_beatmaps(maps_to_add_to_database.clone());
+                Database::insert_beatmaps(&maps_to_add_to_database);
                 Some(maps_to_add_to_database)
             }
         }
@@ -211,7 +211,7 @@ impl BeatmapManager {
         }
 
         if add_to_db {
-            Database::insert_beatmaps(vec![beatmap.clone()]);
+            Database::insert_beatmaps(&[beatmap.clone()]);
         }
 
     }
@@ -254,7 +254,7 @@ impl BeatmapManager {
                         if_create,
                         settings,
                         diff_manager
-                    )
+                    );
                 }
             }
         }
@@ -440,7 +440,7 @@ impl BeatmapManager {
     ) {
         trace!("Refreshing maps");
 
-        let group_by = Default::default(); //values.settings.group_by;
+        let group_by = GroupBy::default(); //values.settings.group_by;
         //TODO: allow grouping by not just map set
         self.unfiltered_groups = self.all_by_sets(group_by);
 
@@ -513,7 +513,7 @@ impl BeatmapManager {
             self.groups.push(BeatmapListGroup { maps, id: 0, name, selected: false });
         }
 
-        self.sort(sort_by)
+        self.sort(sort_by);
     }
 
     pub fn sort(
@@ -525,11 +525,13 @@ impl BeatmapManager {
         // sort
         macro_rules! sort {
             ($property:tt, String) => {
-                self.groups.sort_by(|a, b| a.maps[0].$property.to_lowercase().cmp(&b.maps[0].$property.to_lowercase()))
+                self.groups.sort_by(|a, b| a.maps[0].$property.to_lowercase()
+                    .cmp(&b.maps[0].$property.to_lowercase()))
             };
             ($property:ident, Float) => {
-                self.groups.sort_by(|a, b| a.maps[0].$property.partial_cmp(&b.maps[0].$property).unwrap())
-            }
+                self.groups.sort_by(|a, b| a.maps[0].$property
+                    .partial_cmp(&b.maps[0].$property).unwrap())
+            };
         }
 
         match sort_by {
@@ -577,27 +579,40 @@ impl BeatmapManager {
         // ))
     }
     pub fn next_set(&mut self) {
-        self.select_set(self.selected_set.wrapping_add_1(self.groups.len()))
+        self.select_set(
+            self.selected_set.wrapping_add_1(self.groups.len())
+        );
     }
     pub fn prev_set(&mut self) {
-        self.select_set(self.selected_set.wrapping_sub_1(self.groups.len()))
+        self.select_set(
+            self.selected_set.wrapping_sub_1(self.groups.len())
+        );
     }
 
     pub fn select_map(&mut self, map_num: usize)  {
         self.selected_map = map_num;
 
-        let Some(set) = self.groups.get(self.selected_set) else { return };
+        let Some(set) = self.groups.get(self.selected_set) 
+        else { return };
+
         if let Some(map) = set.maps.get(self.selected_map) {
-            self.actions.push(BeatmapAction::Set(map.map.clone(), SetBeatmapOptions::new().use_preview_point(true)));
+            self.actions.push(BeatmapAction::Set(
+                map.map.clone(), 
+                SetBeatmapOptions::new().use_preview_point(true)
+            ));
         }
     }
     pub fn next_map(&mut self) {
-        let Some(set) = self.groups.get(self.selected_set) else { return };
-        self.select_map(self.selected_map.wrapping_add_1(set.maps.len()))
+        let Some(set) = self.groups.get(self.selected_set) 
+        else { return };
+
+        self.select_map(self.selected_map.wrapping_add_1(set.maps.len()));
     }
     pub fn prev_map(&mut self) {
-        let Some(set) = self.groups.get(self.selected_set) else { return };
-        self.select_map(self.selected_map.wrapping_sub_1(set.maps.len()))
+        let Some(set) = self.groups.get(self.selected_set) 
+        else { return };
+        
+        self.select_map(self.selected_map.wrapping_sub_1(set.maps.len()));
     }
 }
 

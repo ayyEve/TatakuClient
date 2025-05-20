@@ -18,7 +18,7 @@ pub async fn run_game(
             gamemode_taiko::GAME_INFO,
             gamemode_mania::GAME_INFO,
             gamemode_utyping::GAME_INFO,
-        ]
+        ];
     }
 
     // start the game

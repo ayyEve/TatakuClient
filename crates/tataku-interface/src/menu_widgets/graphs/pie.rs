@@ -12,7 +12,7 @@ impl PieGraph {
         let mut sum = 0.0;
 
         for i in data.iter() {
-            sum += i.get_value()
+            sum += i.get_value();
         }
 
         Self {
@@ -59,7 +59,7 @@ impl PieGraph {
                 None
             ));
 
-            last_theta += theta
+            last_theta += theta;
         }
 
         group

@@ -32,13 +32,17 @@ pub struct HitCircleImageHelper {
     shake_group: Option<TransformGroup>
 }
 impl HitCircleImageHelper {
-    pub fn new(base_pos: Vector2, scaling_helper: Arc<ScalingHelper>, combo_num: u16) -> Self {
+    pub fn new(
+        base_pos: Vector2, 
+        scaling_helper: Arc<ScalingHelper>, 
+        combo_num: u16
+    ) -> Self {
         Self {
             circle: None,
             overlay: None,
             base_pos,
             pos: scaling_helper.scale_coords(base_pos),
-            skin_settings: Default::default(),
+            skin_settings: Arc::default(),
             combo_num,
             scaling_helper,
 
@@ -52,7 +56,11 @@ impl HitCircleImageHelper {
     }
 
     #[cfg(feature="graphics")]
-    pub fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+    pub fn reload_skin(
+        &mut self, 
+        source: &TextureSource, 
+        skin_manager: &mut dyn SkinProvider
+    ) {
         self.skin_settings = skin_manager.skin().clone();
         let radius = CIRCLE_RADIUS_BASE * self.scaling_helper.cs;
 
@@ -128,7 +136,7 @@ impl HitCircleImageHelper {
         }
         if let Some(text) = &mut self.combo_text {
             text.set_font_size(radius);
-            text.center_text(&rect)
+            text.center_text(&rect);
         }
 
     }
@@ -139,7 +147,7 @@ impl HitCircleImageHelper {
     pub fn set_color(&mut self, color: Color) {
         self.color = color;
         if let Some(circle) = &mut self.circle {
-            circle.color = color
+            circle.color = color;
         }
     }
 
@@ -191,7 +199,9 @@ impl HitCircleImageHelper {
 
     /// helper fn to reduce duplicate code
     fn get_group(&self, include_combo_num: bool) -> TransformGroup {
-        let mut group = TransformGroup::new(self.pos).alpha(1.0).border_alpha(1.0);
+        let mut group = TransformGroup::new(self.pos)
+            .alpha(1.0)
+            .border_alpha(1.0);
         
         // hit circle
         if let Some(mut circle) = self.circle.clone() {

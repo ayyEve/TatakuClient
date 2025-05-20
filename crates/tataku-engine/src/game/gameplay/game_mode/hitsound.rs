@@ -10,7 +10,7 @@ pub struct Hitsound {
 }
 impl Hitsound {
     pub fn new(
-        filename: String, 
+        filename: &str, 
         filename_backup: Option<String>, 
         volume: f32, 
         allowed_sources: Vec<HitsoundSource>
@@ -28,7 +28,9 @@ impl Hitsound {
     
     pub fn new_simple(filename: impl ToString) -> Self {
         Self::new(
-            filename.to_string().trim_end_matches(".wav").trim_end_matches(".mp3").to_owned(),
+            filename.to_string()
+                .trim_end_matches(".wav")
+                .trim_end_matches(".mp3"),
             None,
             1.0,
             all_allowed_sources()
@@ -81,7 +83,11 @@ impl Hitsound {
             suffix = hitsamples.index.to_string();
         }
 
-        let mut allowed_sources = vec![HitsoundSource::Skin, HitsoundSource::Default];
+        let mut allowed_sources = vec![
+            HitsoundSource::Skin, 
+            HitsoundSource::Default
+        ];
+
         if check_beatmap { allowed_sources.push(HitsoundSource::Beatmap); }
 
         let mut list = Vec::new();
@@ -92,8 +98,17 @@ impl Hitsound {
                 #[cfg(feature="debug_hitsounds")]
                 debug!("got custom sound: {}", name);
 
-                let allowed_sources = vec![HitsoundSource::Skin, HitsoundSource::Default, HitsoundSource::Beatmap];
-                list.push(Self::new(name, None, vol, allowed_sources));
+                let allowed_sources = vec![
+                    HitsoundSource::Skin, 
+                    HitsoundSource::Default, 
+                    HitsoundSource::Beatmap
+                ];
+                list.push(Self::new(
+                    &name, 
+                    None, 
+                    vol, 
+                    allowed_sources
+                ));
 
                 play_normal = (hitsound & 1) > 0;
                 play_whistle = false;
@@ -111,7 +126,12 @@ impl Hitsound {
             if check {
                 let sample_set = SAMPLE_SETS[set as usize % 4]; // % 4 to un-break broken maps
                 let backup = if suffix.is_empty() { None } else { Some(format!("{sample_set}{infix}")) };
-                list.push(Hitsound::new(format!("{sample_set}{infix}{suffix}"), backup, vol, allowed_sources.clone()));
+                list.push(Hitsound::new(
+                    &format!("{sample_set}{infix}{suffix}"), 
+                    backup, 
+                    vol, 
+                    allowed_sources.clone()
+                ));
             }
         }
 

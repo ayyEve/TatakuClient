@@ -165,15 +165,23 @@ impl SpectatorManager {
                     map_link: _
                 } => {
                     info!("got play: {beatmap_hash}, {mode}, {mods:?}");
-                    self.host_map = Some(HostMap::new(beatmap_hash, mode, mods, speed));
+                    self.host_map = Some(HostMap::new(
+                        beatmap_hash, 
+                        mode, 
+                        mods, 
+                        speed
+                    ));
 
                     if values.beatmap_manager.get_by_hash(&beatmap_hash).is_some() {
-                        self.actions.push(BeatmapAction::SetFromHash(beatmap_hash, SetBeatmapOptions::new().restart_song(true)));
+                        self.actions.push(BeatmapAction::SetFromHash(
+                            beatmap_hash, 
+                            SetBeatmapOptions::new().restart_song(true)
+                        ));
                         self.start_game(values, 0.0);
                     } else {
                         let settings = &values.settings;
                         info!("no beatmap, attempting to download");
-                        self.download_beatmap(beatmap_hash, map_game, settings, actions);
+                        self.download_beatmap(beatmap_hash, &map_game, settings, actions);
                     }
 
                     break;
@@ -233,7 +241,7 @@ impl SpectatorManager {
     fn download_beatmap(
         &self, 
         beatmap_hash: Md5Hash, 
-        map_game: MapGame, 
+        map_game: &MapGame, 
         settings: &Settings,
         actions: &mut ActionQueue,
     ) {

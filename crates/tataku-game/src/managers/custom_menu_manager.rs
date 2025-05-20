@@ -83,7 +83,7 @@ impl CustomMenuManager {
                     i.bytes = menu.bytes;
                 }
                 Err(e) => {
-                    error!("error reloading custom menu {path}: {e:?}")
+                    error!("error reloading custom menu {path}: {e:?}");
                 }
             }
         }

@@ -25,9 +25,9 @@ impl GameplayWidget for KeyCounterElement {
     fn display_name(&self) -> &'static str { "Key Counter" }
 
     fn max_size(&self) -> Vector2 {
-        let box_size = self.button_image.as_ref()
-            .map(Image::size)
-            .unwrap_or(BOX_SIZE);
+        let box_size = self.button_image
+            .as_ref()
+            .map_or(BOX_SIZE, Image::size);
         Vector2::new(box_size.x, box_size.y * self.counter.key_order.len() as f32)
     }
     
@@ -42,9 +42,9 @@ impl GameplayWidget for KeyCounterElement {
         _align: Alignment,
         list: &mut RenderableCollection
     ) {
-        let box_size = self.button_image.as_ref()
-            .map(Image::size)
-            .unwrap_or(BOX_SIZE) * scale;
+        let box_size = self.button_image
+            .as_ref()
+            .map_or(BOX_SIZE, Image::size) * scale;
 
         // if let Some(bg) = &self.background_image {
         //     let mut bg = bg.clone();
@@ -54,7 +54,10 @@ impl GameplayWidget for KeyCounterElement {
 
         for i in 0..self.counter.key_order.len() {
             let info = &self.counter.keys[&self.counter.key_order[i]];
-            let pos = pos_offset + Vector2::new(0.0, box_size.y * i as f32);
+            let pos = pos_offset + Vector2::new(
+                0.0, 
+                box_size.y * i as f32
+            );
             let box_width;
 
             if let Some(mut btn) = self.button_image.clone() {
@@ -86,7 +89,12 @@ impl GameplayWidget for KeyCounterElement {
             let mut text = Text::new(
                 pos,
                 20.0 * scale.x,
-                if info.count == 0 {info.label.clone()} else {format!("{}", info.count)},
+                if info.count == 0 {
+                    info.label.clone()
+                } else {
+                    format!("{}", info.count)
+                },
+
                 Color::WHITE,
                 Font::Main
             );
@@ -94,7 +102,7 @@ impl GameplayWidget for KeyCounterElement {
             let text_size = text.measure_text();
             let max_width = box_width - 10.0; // padding of 10
             if text_size.x >= max_width {
-                text.set_font_size(20.0 * scale.x * max_width / text_size.x)
+                text.set_font_size(20.0 * scale.x * max_width / text_size.x);
             }
 
             text.center_text(&Bounds::new(pos, box_size));
@@ -103,7 +111,11 @@ impl GameplayWidget for KeyCounterElement {
 
     }
 
-    fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+    fn reload_skin(
+        &mut self, 
+        source: &TextureSource, 
+        skin_manager: &mut dyn SkinProvider
+    ) {
         // let mut background_image = SKIN_MANAGER.write().get_texture("inputoverlay-background", false;
         // if let Some(image) = &mut background_image {
         //     image.current_rotation = 90f64.to_radians();
@@ -112,7 +124,12 @@ impl GameplayWidget for KeyCounterElement {
         //     image.depth = -100.0;
         // }
 
-        self.button_image = skin_manager.get_texture("inputoverlay-key", source, SkinUsage::Gamemode, false);
+        self.button_image = skin_manager.get_texture(
+            "inputoverlay-key", 
+            source, 
+            SkinUsage::Gamemode, 
+            false
+        );
     }
 }
 

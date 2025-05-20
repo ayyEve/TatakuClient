@@ -69,7 +69,7 @@ impl TatakuTask for BeatmapDownloadsCheckTask {
                     Err(e) => error!("error loading beatmap '{file}': {e}"),
                 }
             } else {
-                warn!("map ext not found!")
+                warn!("map ext not found!");
             }
 
             return;

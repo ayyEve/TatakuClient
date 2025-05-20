@@ -139,7 +139,7 @@ fn test() {
 
     assert_eq!(
         from_str::<Action>(r#"<action> <previous/> </action>"#).unwrap(),
-        Action { action: BuildableMapAction::Previous { action: Default::default()} }
+        Action { action: BuildableMapAction::Previous { action: MapActionIfNone::default()} }
     );
     assert_eq!(
         from_str::<Action>(r#"<action> <previous> <setNone/> </previous> </action>"#).unwrap(),

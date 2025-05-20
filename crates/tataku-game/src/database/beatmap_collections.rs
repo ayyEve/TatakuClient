@@ -47,7 +47,7 @@ impl Database {
                 if !map.contains_key(&i.collection_name) {
                     map.insert(i.collection_name.clone(), Vec::new());
                 }
-                map.get_mut(&i.collection_name).unwrap().push(i.beatmap.clone())
+                map.get_mut(&i.collection_name).unwrap().push(i.beatmap.clone());
             }
 
             let mut list = Vec::new();
@@ -64,14 +64,14 @@ impl Database {
         }
     }
 
-    pub fn insert_into_beatmap_collection(collection_name: String, beatmap_hash: String) {
+    pub fn insert_into_beatmap_collection(collection_name: &String, beatmap_hash: &String) {
         let db = Self::get();
 
         let query = format!("INSERT INTO beatmap_collections (collection_name, beatmap_hash) VALUES ('{collection_name}', '{beatmap_hash}')");
         let mut s = db.prepare(&query).unwrap();
 
         if let Err(e) = s.execute([]) {
-            info!("error adding map into collection: {e}")
+            info!("error adding map into collection: {e}");
         }
     }
 }

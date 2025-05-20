@@ -254,7 +254,7 @@ impl Widget for WidgetContainer {
             }
         }
 
-        self.inner.reload_skin(shell)
+        self.inner.reload_skin(shell);
     }
 
 }

@@ -54,8 +54,7 @@ impl DirectApi for QuaverDirect {
 
         let mut items = Vec::new();
         for i in deserialized.mapsets {
-            let i = Arc::new(QuaverDirectDownloadable::new(i)) as Arc<dyn DirectDownloadable>;
-            items.push(i)
+            items.push(Arc::new(QuaverDirectDownloadable::new(i)) as Arc<dyn DirectDownloadable>);
         }
 
         items
@@ -80,7 +79,7 @@ impl QuaverDirectDownloadable {
         Self {
             item,
             filename,
-            download_progress: Default::default(),
+            download_progress: Arc::default(),
             downloading: Arc::new(AtomicBool::new(false))
         }
     }

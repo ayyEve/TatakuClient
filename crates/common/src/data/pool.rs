@@ -6,7 +6,9 @@ impl<T> Pool<T> {
     pub fn new(size: usize, init: impl Fn(usize) -> T) -> Self {
         if size == 0 { panic!("tried to create a pool of size 0"); }
 
-        let mut items:Vec<PoolEntry<T>> = (0..size).map(|i| PoolEntry::new(init(i), i)).collect();
+        let mut items:Vec<PoolEntry<T>> = (0..size)
+            .map(|i| PoolEntry::new(init(i), i))
+            .collect();
         items.last_mut().unwrap().set_next(None);
 
         Self {
@@ -56,7 +58,11 @@ impl<T> Pool<T> {
 
     /// resets the pool, removing all used entries
     pub fn clear(&mut self) {
-        let to_remove = self.iter_used().map(|p| p.get_index()).collect::<Vec<_>>();
+        let to_remove = self
+            .iter_used()
+            .map(|p| p.get_index())
+            .collect::<Vec<_>>();
+        
         to_remove.into_iter().for_each(|p| self.remove(p));
     }
 }
@@ -86,7 +92,7 @@ impl<T> PoolEntry<T> {
         }
     }
     fn set_next(&mut self, next: Option<usize>) {
-        self.next = next
+        self.next = next;
     }
 
     pub fn get_index(&self) -> usize {

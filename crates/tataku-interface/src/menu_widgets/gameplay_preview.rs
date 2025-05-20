@@ -177,12 +177,21 @@ impl Widget for GameplayPreview {
 
         // check for state update
         if self.handle_song_restart {
-            let stopped = shell.values.reflect_get::<bool>("song.stopped").map(|i| *i).unwrap_or_default();
-            let playing = shell.values.reflect_get::<bool>("song.playing").map(|i| *i).unwrap_or_default();
-            let paused = shell.values.reflect_get::<bool>("song.paused").map(|i| *i).unwrap_or_default();
+            let stopped = shell.values.reflect_get::<bool>("song.stopped")
+                .map(|i| *i)
+                .unwrap_or_default();
+            let playing = shell.values.reflect_get::<bool>("song.playing")
+                .map(|i| *i)
+                .unwrap_or_default();
+            let paused = shell.values.reflect_get::<bool>("song.paused")
+                .map(|i| *i)
+                .unwrap_or_default();
             let exists = stopped || playing || paused;
 
-            let speed = self.mods.as_ref().map(|m| m.get_speed()).unwrap_or(1.0);
+            let speed = self
+                .mods
+                .as_ref()
+                .map_or(1.0, |m| m.get_speed());
 
             if exists {
                 if stopped {

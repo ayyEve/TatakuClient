@@ -76,7 +76,7 @@ impl Widget for ConditionalWidget {
         let mut children = Vec::with_capacity(2);
         children.push(self.if_true.layout(shell)?);
         if let Some(if_false) = self.if_false.as_mut() {
-            children.push(if_false.layout(shell)?)
+            children.push(if_false.layout(shell)?);
         }
 
         self.node_id = shell.tree.new_with_children(

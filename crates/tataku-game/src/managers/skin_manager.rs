@@ -15,15 +15,17 @@ impl SkinManager {
     pub fn refresh_skins() {
         let mut list = vec!["None".to_owned()];
         for f in std::fs::read_dir(SKINS_FOLDER).unwrap() {
-            list.push(f.unwrap().file_name().to_string_lossy().to_string())
+            list.push(f.unwrap().file_name().to_string_lossy().to_string());
         }
 
-        *AVAILABLE_SKINS.write() = list
+        *AVAILABLE_SKINS.write() = list;
     }
 
     pub fn new(settings: &Settings) -> Self {
         let current_skin = settings.current_skin.clone();
-        let current_skin_config = Arc::new(SkinSettings::from_file(format!("{SKINS_FOLDER}/{current_skin}/skin.ini")).unwrap_or_default());
+        let current_skin_config = Arc::new(SkinSettings::from_file(
+            &format!("{SKINS_FOLDER}/{current_skin}/skin.ini")
+        ).unwrap_or_default());
         
         Self {
             skin_name: current_skin,
@@ -39,10 +41,12 @@ impl SkinManager {
             .join(&self.skin_name)
     }
 
-    pub fn change_skin(&mut self, new_skin: String) {
+    pub fn change_skin(&mut self, new_skin: &str) {
         if self.skin_name == new_skin { return }
-        self.skin_name = new_skin.clone();
-        self.current_skin_config = Arc::new(SkinSettings::from_file(format!("{SKINS_FOLDER}/{new_skin}/skin.ini")).unwrap_or_default());
+        self.skin_name = new_skin.to_owned();
+        self.current_skin_config = Arc::new(SkinSettings::from_file(
+            &format!("{SKINS_FOLDER}/{new_skin}/skin.ini")
+        ).unwrap_or_default());
 
         // free up the last skin's images in the atlas for reuse
         self.free_by_source(TextureSource::Skin);

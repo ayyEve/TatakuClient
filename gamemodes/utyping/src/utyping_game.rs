@@ -189,7 +189,9 @@ impl GameMode for UTypingGame {
         self.window_size = state.window_size;
         // do autoplay things
         if state.mods.has_autoplay() {
-            let mut next_note_time = self.notes.next_note().map(|n|n.time()).unwrap_or(0.0);
+            let mut next_note_time = self.notes
+                .next_note()
+                .map_or(0.0, |n| n.time());
 
 
             if let Some((queue, delay, last_hit)) = &mut self.autoplay_queue {
@@ -364,7 +366,7 @@ impl GameMode for UTypingGame {
 
         for i in self.notes.iter().rev() {
             let time_at = i.time_at(x_needed);
-            time = time.min(time_at)
+            time = time.min(time_at);
         }
         // loop {
         //     let mut found = false;

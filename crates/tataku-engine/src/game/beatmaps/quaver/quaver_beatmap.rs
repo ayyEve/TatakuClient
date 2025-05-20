@@ -49,8 +49,8 @@ pub struct QuaverBeatmap {
     #[serde(default)] path: String,
 }
 impl QuaverBeatmap {
-    pub fn load(path: String) -> TatakuResult<Self> {
-        let lines = std::fs::read_to_string(&path)?;
+    pub fn load(path: &str) -> TatakuResult<Self> {
+        let lines = std::fs::read_to_string(path)?;
         let mut s:QuaverBeatmap = serde_yaml::from_str(&lines).map_err(|e| {
             error!("error parsing quaver beatmap: {:?}", e);
             BeatmapError::InvalidFile
@@ -63,23 +63,30 @@ impl QuaverBeatmap {
 
         // fix bpms
         // skip any NaN bpms before a valid point, as we need a valid bpm to base any future bpms off of
-        while !s.timing_points.is_empty() && s.timing_points[0].bpm.is_nan() { s.timing_points.remove(0); }
-        if s.timing_points.is_empty() {return Err(BeatmapError::NoTimingPoints.into())}
+        while !s.timing_points.is_empty() && s.timing_points[0].bpm.is_nan() { 
+            s.timing_points.remove(0); 
+        }
+
+        if s.timing_points.is_empty() {
+            return Err(BeatmapError::NoTimingPoints.into());
+        }
 
         let first_bpm = s.timing_points.first().unwrap().bpm;
-        for tp in s.timing_points.iter_mut().filter(|t|t.bpm.is_nan()) {
+        for tp in s.timing_points.iter_mut()
+            .filter(|t| t.bpm.is_nan()) {
             tp.bpm = first_bpm;
         }
 
         // fix note times
         let first_timingpoint_time = s.timing_points.first().unwrap().start_time;
-        for note in s.hit_objects.iter_mut().filter(|n|n.start_time.is_nan()) {
+        for note in s.hit_objects.iter_mut()
+            .filter(|n|n.start_time.is_nan()) {
             note.start_time = first_timingpoint_time;
         }
 
 
-        s.hash = Io::get_file_hash(&path)?;
-        s.path = path.clone();
+        s.hash = Io::get_file_hash(path)?;
+        s.path = path.to_owned();
 
         let parent_dir = Path::new(&path).parent().unwrap().to_str().unwrap();
         s.audio_file = format!("{}/{}", parent_dir, s.audio_file);
@@ -144,12 +151,12 @@ impl TatakuBeatmap for QuaverBeatmap {
         let mut end_time = 0.0;
         for note in self.hit_objects.iter() {
             if note.start_time < start_time {
-                start_time = note.start_time
+                start_time = note.start_time;
             }
 
             let et = note.end_time.unwrap_or(note.start_time);
             if et > end_time {
-                end_time = et
+                end_time = et;
             }
         }
         meta.duration = end_time - start_time;

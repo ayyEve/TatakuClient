@@ -93,7 +93,7 @@ impl Widget for Slider {
                         ) { 
                             new_value = val;
                         } else {
-                            new_value = value
+                            new_value = value;
                         }
                     }
 

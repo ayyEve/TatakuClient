@@ -134,12 +134,12 @@ impl OsuBeatmap {
                     let val = split.collect::<Vec<&str>>().join(":");
 
                     match key {
-                        "Title" => metadata.title = val.to_owned(),
-                        "TitleUnicode" => metadata.title_unicode = val.to_owned(),
-                        "Artist" => metadata.artist = val.to_owned(),
-                        "ArtistUnicode" => metadata.artist_unicode = val.to_owned(),
-                        "Creator" => metadata.creator = val.to_owned(),
-                        "Version" => metadata.version = val.to_owned(),
+                        "Title" => metadata.title = val.clone(),
+                        "TitleUnicode" => metadata.title_unicode = val.clone(),
+                        "Artist" => metadata.artist = val.clone(),
+                        "ArtistUnicode" => metadata.artist_unicode = val.clone(),
+                        "Creator" => metadata.creator = val.clone(),
+                        "Version" => metadata.version = val.clone(),
                         _ => {}
                     }
                 }
@@ -166,7 +166,11 @@ impl OsuBeatmap {
                             if let OsuEvent::Background { filename, start_time: 0, .. } = &event {
                                 // background
                                 let filename = filename.trim_matches('"');
-                                metadata.image_filename = parent_dir.join(filename).to_str().unwrap().to_owned();
+                                metadata.image_filename = parent_dir
+                                    .join(filename)
+                                    .to_str()
+                                    .unwrap()
+                                    .to_owned();
                             }
 
                             if !metadata_only {
@@ -193,20 +197,24 @@ impl OsuBeatmap {
                     let time = split.next().unwrap().parse::<f32>().unwrap();
 
                     if time < start_time {
-                        start_time = time
+                        start_time = time;
                     }
                     if time > end_time {
-                        end_time = time
+                        end_time = time;
                     }
 
                     if metadata_only { continue; }
 
-                    let read_type = split.next().unwrap().parse::<u64>().unwrap_or(0); // see below
+                    let read_type = split
+                        .next()
+                        .unwrap()
+                        .parse::<u64>()
+                        .unwrap_or(0); // see below
 
                     let hitsound_raw = split.next().unwrap();
                     let hitsound = hitsound_raw.parse::<i8>();
                     if let Err(e) = &hitsound {
-                        warn!("error parsing hitsound: {} (line: {})", e, line)
+                        warn!("error parsing hitsound: {} (line: {})", e, line);
                     }
 
                     let hitsound = hitsound.unwrap_or(0).unsigned_abs(); // 0 = normal, 2 = whistle, 4 = finish, 8 = clap
@@ -221,6 +229,7 @@ impl OsuBeatmap {
                     // g = spinner
                     // h = mania hold
                     let new_combo = (read_type & 4) > 0;
+                    #[allow(clippy::bool_to_int_with_if, reason = "not meant as a direct conversion")]
                     let color_skip =
                           if (read_type & 16) > 0 {1} else {0}
                         + if (read_type & 32) > 0 {2} else {0}
@@ -235,7 +244,7 @@ impl OsuBeatmap {
                             .next()
                             .unwrap_or(hitsound_str)
                             .split("|")
-                            .map(|s|s.parse::<u8>().unwrap_or(hitsound)).collect();
+                            .map(|s| s.parse::<u8>().unwrap_or(hitsound)).collect();
                         let edge_sets = split
                             .next()
                             .unwrap_or("0:0")
@@ -264,7 +273,7 @@ impl OsuBeatmap {
                             curve_points.push(Vector2::new(
                                 s.next().unwrap().parse().unwrap(),
                                 s.next().unwrap().parse().unwrap()
-                            ))
+                            ));
                         }
 
                         beatmap.sliders.push(SliderDef {
@@ -349,7 +358,7 @@ impl OsuBeatmap {
             // idk if this is how its supposed to be done but theres no documentation on it in the wiki
             let osb_file = std::fs::read_dir(parent_dir).ok().and_then(|files|files.filter_map(|f|f.ok()).find(|f|f.file_name().to_string_lossy().ends_with(".osb")));
             if let Some(storyboard_file) = osb_file {
-                storyboard_lines.extend(Io::read_lines_resolved(storyboard_file.path()).unwrap())
+                storyboard_lines.extend(Io::read_lines_resolved(storyboard_file.path()).unwrap());
             }
 
             match StoryboardDef::read(storyboard_lines) {
@@ -443,8 +452,8 @@ impl TatakuBeatmap for OsuBeatmap {
         let Some(storyboard) = &self.storyboard else { return None };
         let parent_dir = Path::new(&self.metadata.file_path).parent()?.to_string_lossy().to_string();
         match OsuStoryboard::new(
-            storyboard.clone(),
-            parent_dir,
+            storyboard,
+            &parent_dir,
             skin_manager,
             // OsuSettings::default(), // TODO: !!!!!
         ) {

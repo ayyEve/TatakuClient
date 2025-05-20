@@ -78,14 +78,22 @@ impl ScoreManager {
 
                 let handle = tokio::spawn(async move {
                     let map_hash = map_hash.to_string();
-                    let mut local_scores = Database::get_scores(&map_hash, playmode, infos);
+                    let mut local_scores = Database::get_scores(
+                        &map_hash, 
+                        &playmode, 
+                        &infos
+                    );
+
 
                     if method.filter_by_mods() {
                         local_scores.retain(|s| Self::check_mods(&s.mods, &mods));
                     }
                     
                     let mut thing = scores_clone.write().await;
-                    thing.scores = local_scores.into_iter().map(|s| IngameScore::new(s, false, false)).collect();
+                    thing.scores = local_scores
+                        .into_iter()
+                        .map(|s| IngameScore::new(s, false, false))
+                        .collect();
                     thing.done = true;
                 });
 
@@ -97,10 +105,17 @@ impl ScoreManager {
 
                 let handle = tokio::spawn(async move {
                     let map_hash = map_hash.to_string();
-                    let mut online_scores = tataku::get_scores(&map_hash, &playmode, &settings).await;
+                    let mut online_scores = tataku::get_scores(
+                        &map_hash, 
+                        &playmode, 
+                        &settings
+                    ).await;
 
                     if method.filter_by_mods() {
-                        online_scores.retain(|s| Self::check_mods(&s.mods, &mods));
+                        online_scores.retain(|s| Self::check_mods(
+                            &s.mods,
+                            &mods
+                        ));
                     }
 
                     let mut thing = scores_clone.write().await;
@@ -217,10 +232,9 @@ impl ScoreManager {
         self.scores.get(id)
     }
 }
-
 impl Default for ScoreManager {
     fn default() -> Self {
-        Self::new(Default::default())
+        Self::new(GamemodeInfos::default())
     }
 }
 

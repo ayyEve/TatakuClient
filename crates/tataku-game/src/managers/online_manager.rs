@@ -288,7 +288,10 @@ impl OnlineManager {
             }
 
             // notification
-            PacketId::Server_Notification { message, severity } => {
+            PacketId::Server_Notification { 
+                message, 
+                severity
+            } => {
                 let (color, duration) = match severity {
                     Severity::Info => (Color::GREEN, 3000.0),
                     Severity::Warning => (Color::YELLOW, 5000.0),
@@ -302,14 +305,23 @@ impl OnlineManager {
                 );
             }
             // server error
-            PacketId::Server_Error { code, error } => {
-                warn!("Got server error {code:?}: '{error}'")
+            PacketId::Server_Error { 
+                code, 
+                error 
+            } => {
+                warn!("Got server error {code:?}: '{error}'");
             }
 
 
             // ===== user updates =====
-            PacketId::Server_UserJoined { user_id, username, game } => {
-                if log_settings.extra_online_logging { debug!("User {username} joined (id: {user_id}, game: {game})"); };
+            PacketId::Server_UserJoined { 
+                user_id, 
+                username, 
+                game 
+            } => {
+                if log_settings.extra_online_logging { 
+                    debug!("User {username} joined (id: {user_id}, game: {game})"); 
+                };
                 let mut user = OnlineUser::new(user_id, username.clone());
                 user.game = game;
 
@@ -321,7 +333,7 @@ impl OnlineManager {
                         .text(format!("{username} is online"))
                         .duration(5000.0)
                         .color(Color::BLUE)
-                    )
+                    );
                 }
             }
             PacketId::Server_UserLeft { user_id } => {
@@ -343,7 +355,12 @@ impl OnlineManager {
                 // remove from our spec list
                 self.spectator_info.remove_spec(0, user_id);
             }
-            PacketId::Server_UserStatusUpdate { user_id, action, action_text, mode } => {
+            PacketId::Server_UserStatusUpdate { 
+                user_id, 
+                action, 
+                action_text, 
+                mode 
+            } => {
                 // debug!("Got user status update: {}, {:?}, {} ({:?})", user_id, action, action_text, mode);
                 
                 if let Some(u) = self.users.get_mut(&user_id) {
@@ -357,13 +374,20 @@ impl OnlineManager {
             PacketId::Server_ScoreUpdate { .. } => {}
 
             // ===== chat =====
-            PacketId::Chat_Packet { packet } => self.handle_chat_packet(packet, log_settings, actions),
+            PacketId::Chat_Packet { 
+                packet 
+            } => self.handle_chat_packet(packet, log_settings, actions),
             
             // ===== spectator =====
-            PacketId::Spectator_Packet { host_id, packet } => self.handle_spec_packet(packet, host_id, actions),
+            PacketId::Spectator_Packet { 
+                host_id, 
+                packet 
+            } => self.handle_spec_packet(packet, host_id, actions),
             
             // ===== multiplayer =====
-            PacketId::Multiplayer_Packet { packet } => self.events.push(OnlineEvent::MultiplayerPacket(Box::new(packet))), // self.handle_multi_packet(packet, actions)?,
+            PacketId::Multiplayer_Packet { 
+                packet 
+            } => self.events.push(OnlineEvent::MultiplayerPacket(Box::new(packet))),
 
             // other packets
             PacketId::Unknown => {
@@ -521,7 +545,11 @@ impl OnlineManager {
     }
 
     /// set our user's action for the server and any enabled integrations
-    pub fn set_action(&mut self, action_info: SetAction, incoming_mode: Option<String>) {
+    pub fn set_action(
+        &mut self, 
+        action_info: SetAction, 
+        incoming_mode: Option<String>,
+    ) {
         let mode = incoming_mode.clone().unwrap_or_default();
 
         let action = action_info.get_action();
@@ -529,9 +557,26 @@ impl OnlineManager {
             SetAction::Idle => "Idle".to_string(),
             SetAction::Closing => "Closing".to_string(),
 
-            SetAction::Listening { artist, title, .. } => format!("Listening to {artist} - {title}"),
-            SetAction::Spectating { player, artist, title, version, creator:_ } => format!("Watching {player} play {artist} - {title}[{version}]"),
-            SetAction::Playing { artist, title, version, .. } => format!("Playing {artist} - {title}[{version}]"),
+            SetAction::Listening { 
+                artist, 
+                title, 
+                .. 
+            } => format!("Listening to {artist} - {title}"),
+            
+            SetAction::Spectating { 
+                player, 
+                artist, 
+                title, 
+                version, 
+                .. 
+            } => format!("Watching {player} play {artist} - {title}[{version}]"),
+           
+            SetAction::Playing { 
+                artist, 
+                title, 
+                version, 
+                ..
+            } => format!("Playing {artist} - {title}[{version}]"),
         };
 
         self.send_packet(PacketId::Client_StatusUpdate { action, action_text: action_text.clone(), mode });
@@ -620,7 +665,7 @@ impl OnlineManager {
 
     pub fn update_lobby_beatmap(
         &mut self,
-        beatmap: Arc<BeatmapMeta>, 
+        beatmap: &Arc<BeatmapMeta>, 
         mode: String,
     ) {
         // info!("update lobby beatmap: {beatmap:?}, {mode}");

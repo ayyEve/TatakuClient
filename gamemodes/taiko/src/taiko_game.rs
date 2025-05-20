@@ -156,7 +156,7 @@ impl TaikoGame {
             game_settings.note_radius * 0.5 * if finisher_hit { game_settings.big_note_multiplier } else { 1.0 },
             color,
             image
-        ))
+        ));
     }
 
     #[inline]
@@ -648,7 +648,7 @@ impl GameMode for TaikoGame {
                     );
                 }
 
-                queue.next()
+                queue.next();
             }
         }
 
@@ -685,7 +685,7 @@ impl GameMode for TaikoGame {
         });
 
         for note in note_list { 
-            note.draw(state.time, list) 
+            note.draw(state.time, list);
         }
 
         // draw hit indicators
@@ -843,7 +843,7 @@ impl GameMode for TaikoGame {
 
             for i in queue.notes.iter().rev() {
                 let time_at = i.time_at(x_needed);
-                time = time.min(time_at)
+                time = time.min(time_at);
             }
 
         }
@@ -1031,7 +1031,7 @@ impl GameMode for TaikoGame {
                 for (i, note) in queue.iter_mut().enumerate() {
                     note.reset();
                     if note.time() <= new_time {
-                        index = i
+                        index = i;
                     }
                 }
                 queue.index = index;
@@ -1044,10 +1044,16 @@ impl GameMode for TaikoGame {
 
     
     fn beat_happened(&mut self, pulse_length: f32) {
-        self.notes.iter_mut().chain(self.other_notes.iter_mut()).for_each(|n|n.beat_happened(pulse_length))
+        self.notes
+            .iter_mut()
+            .chain(self.other_notes.iter_mut())
+            .for_each(|n| n.beat_happened(pulse_length));
     }
     fn kiai_changed(&mut self, is_kiai: bool) {
-        self.notes.iter_mut().chain(self.other_notes.iter_mut()).for_each(|n|n.kiai_changed(is_kiai))
+        self.notes
+            .iter_mut()
+            .chain(self.other_notes.iter_mut())
+            .for_each(|n| n.kiai_changed(is_kiai));
     }
 
 
@@ -1100,7 +1106,7 @@ impl GameMode for TaikoGame {
         for hitsound in [0, 1, 2, 4, 8] {
             let hitsound = Hitsound::from_hitsamples(
                 hitsound, 
-                Default::default(), 
+                HitSamples::default(), 
                 false, 
                 &TimingPoint::default(),
             );

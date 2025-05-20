@@ -26,22 +26,25 @@ pub struct AdofaiBeatmap {
     audio_file: String,
 }
 impl AdofaiBeatmap {
-    pub fn load(path: String) -> Self {
-        let file_contents = std::fs::read_to_string(&path).unwrap();
+    pub fn load(path: &str) -> Self {
+        let file_contents = std::fs::read_to_string(path).unwrap();
 
         let allowed_chars = [
             '"', '[',']', ':', '{', '}', '\\', '/', '\'', ',', '\n', ' ', '_', '.', '-', '!'
         ];
 
-        let file_contents:String = file_contents.chars().filter(|c| c.is_alphanumeric() || allowed_chars.contains(c)).collect();
+        let file_contents: String = file_contents
+            .chars()
+            .filter(|c| c.is_alphanumeric() || allowed_chars.contains(c))
+            .collect();
 
         let mut map:AdofaiBeatmap = match serde_json::from_str(&file_contents) {
             Ok(m) => m,
             Err(e) => panic!("error reading adofai map '{path}': {e}"),
         };
 
-        map.hash = Io::get_file_hash(&path).unwrap();
-        map.file_path = path.clone();
+        map.hash = Io::get_file_hash(path).unwrap();
+        map.file_path = path.to_owned();
         
         let chars = map.path_data.chars().collect::<Vec<char>>();
 
@@ -107,7 +110,11 @@ impl AdofaiBeatmap {
 
     
         let parent_dir = Path::new(&path).parent().unwrap();
-        map.audio_file = format!("{}/{}", parent_dir.to_str().unwrap(), map.settings.song_filename).replace("\\\\", "/");
+        map.audio_file = format!(
+            "{}/{}", 
+            parent_dir.to_str().unwrap(), 
+            map.settings.song_filename
+        ).replace("\\\\", "/");
 
         map
     }
@@ -159,7 +166,7 @@ impl TatakuBeatmap for AdofaiBeatmap {
         })
     }
 
-    fn playmode(&self, _incoming:String) -> String {
+    fn playmode(&self, _incoming: String) -> String {
         // TODO: 
         "taiko".to_owned()
     }

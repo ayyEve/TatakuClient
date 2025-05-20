@@ -37,7 +37,7 @@ impl DirectApi for OsuDirect {
             /*   page num  */ search_params.page,
             /*   sort num  */ sort,
             /*  rank state */ status as i8,
-            /* text search */ if let Some(t) = search_params.text {format!("&q={}", t)} else {String::new()}
+            /* text search */ search_params.text.as_ref().map(|q| format!("&q={q}")).unwrap_or_default(),
         );
 
         // TODO: remove async once we're no longer in an async context
@@ -56,7 +56,7 @@ impl DirectApi for OsuDirect {
             if line.len() < 5 {continue}
             if let Ok(dl) = OsuDirectDownloadable::from_str(line) {
                 // why does this work
-                items.push(Arc::new(dl) as Arc<dyn DirectDownloadable>)
+                items.push(Arc::new(dl) as Arc<dyn DirectDownloadable>);
             }
         }
 
@@ -142,7 +142,7 @@ impl FromStr for OsuDirectDownloadable {
             title,
             creator,
             
-            progress: Default::default(),
+            progress: Arc::default(),
             downloading: Arc::new(AtomicBool::new(false))
         })
     }

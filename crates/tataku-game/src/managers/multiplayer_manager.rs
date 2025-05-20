@@ -72,7 +72,7 @@ impl MultiplayerManager {
         let previous_map = self.current_beatmap.clone();
 
         match self.current_beatmap.update(values)
-            .map(|i| i.cloned())
+            .map(|i| i.copied())
             .map_err(|e| e.to_owned()) {
             Err(ReflectError::OptionIsNone) if self.is_host() => {
                 // if nothing was selected, make sure we revert back to the previous beatmap
@@ -289,7 +289,7 @@ impl MultiplayerManager {
 
             MultiplayerPacket::Server_LobbySlotChange { slot, new_status } => {
                 if let Some(slot) = self.lobby.info.slots.get_mut(slot) {
-                    *slot = *new_status
+                    *slot = *new_status;
                 }
             }
 
@@ -352,7 +352,7 @@ impl MultiplayerManager {
 
                         }
                     } else {
-                        warn!("no loader!!!")
+                        warn!("no loader!!!");
                     }
                     self.beatmap_loader = None;
                     self.load_complete_sent = false;
@@ -469,7 +469,7 @@ impl MultiplayerManager {
         self.actions.push(OnlineAction::Packet(Box::new(packet.into())));
     }
     fn set_state(&mut self, new_state: LobbyUserState) {
-        self.send_packet(MultiplayerPacket::Client_LobbyUserState { new_state } )
+        self.send_packet(MultiplayerPacket::Client_LobbyUserState { new_state } );
     }
 
     pub fn handle_lobby_action(
@@ -497,7 +497,9 @@ impl MultiplayerManager {
             LobbyAction::MapComplete(mut score) => {
                 // dont include the replay for this message
                 score.replay = None;
-                self.send_packet(MultiplayerPacket::Client_LobbyMapComplete { score: *score });
+                self.send_packet(MultiplayerPacket::Client_LobbyMapComplete { 
+                    score: *score 
+                });
             }
 
             LobbyAction::OpenMapLink => {
@@ -508,9 +510,15 @@ impl MultiplayerManager {
 
                 // TODO: maybe move to a task?
                 // or maybe readd direct????
-                let req = reqwest::blocking::get(format!("{score_url}/api/get_beatmap_url?hash={hash}"));
+                let req = reqwest::blocking::get(
+                    format!("{score_url}/api/get_beatmap_url?hash={hash}")
+                );
                 match req {
-                    Err(e) => self.actions.push(Notification::new_error("Error with beatmap url request", e.to_string())),
+                    Err(e) => self.actions.push(Notification::new_error(
+                        "Error with beatmap url request", 
+                        e.to_string()
+                    )),
+
                     Ok(resp) => {
                         #[allow(unused)] #[derive(Deserialize)]
                         struct Resp { error: Option<String>, url: Option<String> }
@@ -536,7 +544,9 @@ impl MultiplayerManager {
 
             // slot actions
             LobbyAction::SlotAction(LobbySlotAction::ShowProfile(slot)) => {
-                let Some(LobbySlot::Filled { user: _ }) = self.lobby.slots.get(&slot) else { return };
+                let Some(LobbySlot::Filled { user: _ }) = self.lobby.slots.get(&slot) 
+                else { return };
+
                 // TODO: set values for user_id and slot_id, then open dialog
                 // self.actions.push()
             }
@@ -544,24 +554,37 @@ impl MultiplayerManager {
             LobbyAction::SlotAction(LobbySlotAction::MoveTo(slot)) => {
                 let Some(LobbySlot::Empty) = self.lobby.slots.get(&slot) else { return };
                 let user = self.lobby.our_user_id;
-                self.send_packet(MultiplayerPacket::Client_LobbySlotChange { slot, new_status: LobbySlot::Filled { user } } );
+                self.send_packet(MultiplayerPacket::Client_LobbySlotChange { 
+                    slot, 
+                    new_status: LobbySlot::Filled { user } 
+                });
             }
 
             LobbyAction::SlotAction(LobbySlotAction::TransferHost(slot)) => {
                 if !self.is_host() { return }
-                let Some(LobbySlot::Filled { user }) = self.lobby.slots.get(&slot) else { return };
-                self.send_packet(MultiplayerPacket::Client_LobbyChangeHost { new_host: *user });
+                let Some(LobbySlot::Filled { user }) = self.lobby.slots.get(&slot) 
+                else { return };
+
+                self.send_packet(MultiplayerPacket::Client_LobbyChangeHost { 
+                    new_host: *user 
+                });
             }
 
             LobbyAction::SlotAction(LobbySlotAction::Lock(slot)) 
             | LobbyAction::SlotAction(LobbySlotAction::Kick(slot))
             => {
                 if !self.is_host() { return }
-                self.send_packet(MultiplayerPacket::Client_LobbySlotChange { slot, new_status: LobbySlot::Locked } );
+                self.send_packet(MultiplayerPacket::Client_LobbySlotChange { 
+                    slot, 
+                    new_status: LobbySlot::Locked 
+                });
             }
             LobbyAction::SlotAction(LobbySlotAction::Unlock(slot)) => {
                 if !self.is_host() { return }
-                self.send_packet(MultiplayerPacket::Client_LobbySlotChange { slot, new_status: LobbySlot::Empty } );
+                self.send_packet(MultiplayerPacket::Client_LobbySlotChange { 
+                    slot, 
+                    new_status: LobbySlot::Empty 
+                });
             }
 
             _ => {}
@@ -591,5 +614,5 @@ fn test() {
     let a: Box<dyn Reflect> = Box::new(a);
 
     let b = a.reflect_get::<u32>("a.b").unwrap();
-    println!("{}", *b)
+    println!("{}", *b);
 }

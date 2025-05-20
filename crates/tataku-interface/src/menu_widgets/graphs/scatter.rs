@@ -72,7 +72,7 @@ impl ScatterGraph {
                         size.x_portion() + Vector2::with_y(v),
                         1.5,
                         i.color,
-                    ))
+                    ));
                 }
                 StatsValue::List(points) => {
                     let mapped_points = self.map_points(points, size);

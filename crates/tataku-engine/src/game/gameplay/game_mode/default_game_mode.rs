@@ -4,9 +4,14 @@ use crate::prelude::*;
 // needed for std::mem::take/swap
 #[derive(Default)]
 pub struct NoMode;
-
 impl GameMode for NoMode {
-    fn new(_: &Beatmap, _: bool, _: &Settings) -> Result<Self, TatakuError> where Self: Sized {Ok(Self {})}
+    fn new(
+        _: &Beatmap, 
+        _: bool, 
+        _: &Settings
+    ) -> Result<Self, TatakuError> where Self: Sized {
+        Ok(Self {})
+    }
 
     fn handle_replay_frame(&mut self, _: ReplayFrame, _: &mut GameplayUpdateShell) {}
     fn update(&mut self, _: &mut GameplayUpdateShell) { }
@@ -17,7 +22,7 @@ impl GameMode for NoMode {
     fn force_update_settings(&mut self, _: &Settings) {}
     
     #[cfg(feature="graphics")]
-    fn reload_skin(&mut self, _beatmap_folder: &str, _skin_manager: &mut dyn SkinProvider) -> TextureSource { TextureSource::Raw }
+    fn reload_skin(&mut self, _: &str, _: &mut dyn SkinProvider) -> TextureSource { TextureSource::Raw }
     fn apply_mods(&mut self, _: Arc<ModManager>) {}
 
     
@@ -25,7 +30,7 @@ impl GameMode for NoMode {
     fn kiai_changed(&mut self, _is_kiai: bool) {}
 
 
-    fn get_playfield(&self) -> PlayfieldNonsense { Default::default() }
+    fn get_playfield(&self) -> PlayfieldNonsense { PlayfieldNonsense::default() }
     fn properties(&self) -> GameModeProperties { GameModeProperties::default() }
 
     fn handle_input(&mut self, _input: InputEvent) -> Option<ReplayAction> { None }

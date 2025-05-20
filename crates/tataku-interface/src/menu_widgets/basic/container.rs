@@ -30,7 +30,7 @@ impl Container {
 
             drag_scroll: false,
             programmatic: None,
-            drag_scroll_data: Default::default(),
+            drag_scroll_data: DragScrollData::default(),
             scroll_offset: Vector2::ZERO,
             id: "".into(),
         }
@@ -91,13 +91,17 @@ impl Widget for Container {
         event: &InputEvent,
         shell: &mut InputShell,
     ) {
-        let Some(layout) = shell.tree.get_layout(&*self).cloned() else { return };
+        let Some(layout) = shell.tree.get_layout(&*self).copied() 
+        else { return };
 
         if let InputType::MouseScroll(delta) = &event.event {
             if shell.event_consumed { return }
-            if self.check_scroll(ScrollPosition::Relative(Vector2::new(0.0, *delta)), &layout) {
+            if self.check_scroll(
+                ScrollPosition::Relative(Vector2::new(0.0, *delta)), 
+                &layout
+            ) {
                 let context = shell.tree.get_context_mut(&*self).unwrap();
-                // TODO: this is backwards, but if its = scroll_offset then it scrolls opposite of the content
+                // FIXME: this is backwards, but if its = scroll_offset then it scrolls opposite of the content
                 context.local_transform.pos = -self.scroll_offset;
                 shell.actions.push(UiAction::new(self.node_id, UiActionType::ContextChanged));
 
@@ -109,7 +113,8 @@ impl Widget for Container {
         
         let mut captured = false;
         if let Some(data) = &mut self.programmatic {
-            let Ok(iter) = shell.values.reflect_iter(&data.list_var) else {
+            let Ok(iter) = shell.values.reflect_iter(&data.list_var) 
+            else {
                 if !data.error_printed {
                     data.error_printed = true;
                     error!("!!!!!!!!!!!!!!");
@@ -125,7 +130,10 @@ impl Widget for Container {
     
             let path = ReflectPath::new(&data.variable);
             for (w, value) in self.children.iter_mut().zip(values) {
-                shell.values.impl_insert(path.clone(), value).expect("error inserting into values");
+                shell
+                    .values
+                    .impl_insert(path.clone(), value)
+                    .expect("error inserting into values");
                 w.input(event, shell);
 
                 captured |= shell.event_consumed;
@@ -151,17 +159,23 @@ impl Widget for Container {
         shell.event_consumed = captured;
 
         if !captured && self.scrollable && self.drag_scroll {
-            let offset = self.drag_scroll_data.check_input(self.node_id, shell, event);
+            let offset = self
+                .drag_scroll_data
+                .check_input(self.node_id, shell, event);
+
             if self.check_scroll(offset, &layout) {
                 shell.event_consumed = true;
                 let context = shell.tree.get_context_mut(&*self).unwrap();
                 context.local_transform.pos = -self.scroll_offset;
-                shell.actions.push(UiAction::new(self.node_id, UiActionType::ContextChanged));
+                shell.actions.push(UiAction::new(
+                    self.node_id, 
+                    UiActionType::ContextChanged
+                ));
             }
         }
     }
 
-    fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
+    fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {
         let children = self.children.iter_mut()
             .map(|w| w.layout(shell))
             .collect::<TaffyResult<Vec<_>>>()?;
@@ -179,7 +193,8 @@ impl Widget for Container {
     }
 
     fn draw(&self, shell: &mut DrawShell) {
-        let Some(our_bounds) = shell.tree.absolute_bounds(self) else { return };
+        let Some(our_bounds) = shell.tree.absolute_bounds(self) 
+        else { return };
 
         let mut list = RenderableCollection::new();
         if self.scrollable {
@@ -188,7 +203,8 @@ impl Widget for Container {
 
         for i in self.children.iter() {
             // dont attempt to draw items outside our bounds
-            let Some(ibounds) = shell.tree.absolute_bounds(i.node_id()) else { continue };
+            let Some(ibounds) = shell.tree.absolute_bounds(i.node_id()) 
+            else { continue };
             if our_bounds.intersection(ibounds).is_none() { continue }
             i.draw(shell);
         }
@@ -197,7 +213,10 @@ impl Widget for Container {
             std::mem::swap(shell.list, &mut list);
             shell.list.push(ScissoredDrawable::new(
                 our_bounds.into_scissor(),
-                Box::new(TransformGroup::from_collection(Vector2::ZERO, list))
+                Box::new(TransformGroup::from_collection(
+                    Vector2::ZERO, 
+                    list
+                ))
             ));
         }
 
@@ -210,7 +229,8 @@ impl Widget for Container {
     }
     
     fn draw_overlay(&self, shell: &mut DrawShell) {
-        let Some(our_bounds) = shell.tree.absolute_bounds(self) else { return };
+        let Some(our_bounds) = shell.tree.absolute_bounds(self) 
+        else { return };
 
         let mut list = RenderableCollection::new();
         if self.scrollable {
@@ -219,16 +239,21 @@ impl Widget for Container {
 
         for i in self.children.iter() {
             // dont attempt to draw items outside our bounds
-            let Some(ibounds) = shell.tree.absolute_bounds(i.node_id()) else { continue };
+            let Some(ibounds) = shell.tree.absolute_bounds(i.node_id()) 
+            else { continue };
+
             if our_bounds.intersection(ibounds).is_none() { continue }
-            i.draw_overlay(shell)
+            i.draw_overlay(shell);
         }
         
         if self.scrollable {
             std::mem::swap(shell.list, &mut list);
             shell.list.push(ScissoredDrawable::new(
                 our_bounds.into_scissor(),
-                Box::new(TransformGroup::from_collection(Vector2::ZERO, list))
+                Box::new(TransformGroup::from_collection(
+                    Vector2::ZERO, 
+                    list
+                ))
             ));
         }
     }
@@ -236,7 +261,8 @@ impl Widget for Container {
     fn update(&mut self, shell: &mut UpdateShell) {
         if let Some(data) = &mut self.programmatic {
 
-            let Ok(iter) = shell.values.reflect_iter(&data.list_var) else {
+            let Ok(iter) = shell.values.reflect_iter(&data.list_var) 
+            else {
                 if !data.error_printed {
                     error!("!!!!!!!!!!!!!!");
                     error!("list variable doesnt exist! {}", data.list_var);
@@ -280,8 +306,14 @@ impl Widget for Container {
                     }
                     
                     // mark the tree as dirty
-                    shell.actions.push(UiAction::new(self.node_id, UiActionType::MarkDirty));
-                    shell.actions.push(UiAction::new(self.node_id, UiActionType::Refresh));
+                    shell.actions.push(UiAction::new(
+                        self.node_id, 
+                        UiActionType::MarkDirty
+                    ));
+                    shell.actions.push(UiAction::new(
+                        self.node_id, 
+                        UiActionType::Refresh
+                    ));
                 }
                 diff @ (0..) => {
                     // too many elements, remove some
@@ -294,8 +326,14 @@ impl Widget for Container {
                     }
                 
                     // mark the tree as dirty
-                    shell.actions.push(UiAction::new(self.node_id, UiActionType::MarkDirty));
-                    shell.actions.push(UiAction::new(self.node_id, UiActionType::Refresh));
+                    shell.actions.push(UiAction::new(
+                        self.node_id, 
+                        UiActionType::MarkDirty
+                    ));
+                    shell.actions.push(UiAction::new(
+                        self.node_id, 
+                        UiActionType::Refresh
+                    ));
                 }
             }
             
@@ -307,7 +345,7 @@ impl Widget for Container {
 
         } else {
             for i in self.children.iter_mut() {
-                i.update(shell)
+                i.update(shell);
             }
         }
     }
@@ -351,7 +389,8 @@ impl Widget for Container {
         shell: &mut MessageShell,
     ) {
         if let Some(data) = &mut self.programmatic {
-            let Ok(iter) = shell.values.reflect_iter(&data.list_var) else {
+            let Ok(iter) = shell.values.reflect_iter(&data.list_var) 
+            else {
                 if !data.error_printed {
                     data.error_printed = true;
                     error!("!!!!!!!!!!!!!!");
@@ -367,12 +406,16 @@ impl Widget for Container {
     
             let path = ReflectPath::new(&data.variable);
             for (i, value) in self.children.iter_mut().zip(values_) {
-                shell.values.impl_insert(path.clone(), value).expect("error inserting into values");
+                shell
+                    .values
+                    .impl_insert(path.clone(), value)
+                    .expect("error inserting into values");
+                
                 i.handle_event(event, event_value.clone(), shell);
             }
         } else {
             for i in self.children.iter_mut() {
-                i.handle_event(event, event_value.clone(), shell)
+                i.handle_event(event, event_value.clone(), shell);
             }
         }
     }

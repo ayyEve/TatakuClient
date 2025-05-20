@@ -40,7 +40,7 @@ impl IngameScore {
         let key = stat.name.to_owned();
 
         if let Some(values) = self.score.stat_data.get_mut(&key) {
-            values.push(value)
+            values.push(value);
         } else {
             self.score.stat_data.insert(key, vec![value]);
         }

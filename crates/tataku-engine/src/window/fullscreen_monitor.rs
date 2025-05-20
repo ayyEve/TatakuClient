@@ -26,8 +26,10 @@ impl Display for FullscreenMonitor {
             Self::Monitor(num) => MONITORS
                 .read()
                 .get(*num)
-                .map(|s|format!("({num}). {s}"))
-                .unwrap_or_else(||"None".to_owned()).fmt(f)
+                .map_or_else(
+                    || "None".to_owned(), 
+                    |s| format!("({num}). {s}")
+                ).fmt(f)
         }
     }
 }

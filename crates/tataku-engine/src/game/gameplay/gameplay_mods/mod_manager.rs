@@ -62,7 +62,7 @@ impl ModManager {
         let mut list = Vec::new();
         for m in mods.iter() {
             if let Some(m) = ok_mods.get(m.as_ref()) {
-                list.push(m.short_name)
+                list.push(m.short_name);
             }
         }
 

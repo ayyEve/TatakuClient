@@ -82,12 +82,15 @@ impl GamemodeInfos {
             .ok_or(TatakuError::GameMode(GameModeError::UnknownGameMode))
     }
 
-    pub fn get_playmode_actual<'a>(&self, playmode: &'a String, beatmap: Option<&'a BeatmapMeta>) -> &'a String {
+    pub fn get_playmode_actual<'a>(
+        &self, 
+        playmode: &'a String, 
+        beatmap: Option<&'a BeatmapMeta>
+    ) -> &'a String {
         let Ok(info) = self.get_info(playmode) else { return playmode };
         
         beatmap
             .filter(|b| !info.can_load_beatmap(&b.beatmap_type))
-            .map(|b| &b.mode)
-            .unwrap_or(playmode)
+            .map_or(playmode, |b| &b.mode)
     }
 }

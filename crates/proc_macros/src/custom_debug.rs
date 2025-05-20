@@ -30,11 +30,11 @@ pub(crate) fn derive(derive: &syn::DeriveInput) -> proc_macro2::TokenStream {
                 if attrs.skip {
                     tokens.extend(quote! {
                         .field(stringify!(#ident), &())
-                    })
+                    });
                 } else {
                     tokens.extend(quote! {
                         .field(stringify!(#ident), &self.#ident)
-                    })
+                    });
                 }
             }
             
@@ -90,11 +90,11 @@ pub(crate) fn derive(derive: &syn::DeriveInput) -> proc_macro2::TokenStream {
                         if attrs.skip {
                             match_tokens.extend(quote! {
                                 .field(stringify!(#ident), &())
-                            })
+                            });
                         } else {
                             match_tokens.extend(quote! {
                                 .field(stringify!(#ident), &#ident)
-                            })
+                            });
                         }
                     }
 
@@ -115,11 +115,11 @@ pub(crate) fn derive(derive: &syn::DeriveInput) -> proc_macro2::TokenStream {
                         if attrs.skip {
                             match_tokens.extend(quote! {
                                 .field(&())
-                            })
+                            });
                         } else {
                             match_tokens.extend(quote! {
                                 .field(&#ident)
-                            })
+                            });
                         }
                     }
 
@@ -166,7 +166,7 @@ impl FieldAttributes {
     
             attr.parse_nested_meta(|meta| {
                 if meta.path.is_ident(SKIP_ATTRIBUTE) {
-                    a.skip = true
+                    a.skip = true;
                 }
                 else {
                     return Err(meta.error("Invalid attribute"))

@@ -316,7 +316,11 @@ impl ParseCourse {
         60_000.0 / self.current_bpm * self.current_measure * 4.0
     }
     fn next_required_hits(&mut self) -> usize {
-        let required_hits = self.required_hits.get(self.used_required_hits).cloned().unwrap_or_default();
+        let required_hits = self.required_hits
+            .get(self.used_required_hits)
+            .copied()
+            .unwrap_or_default();
+        
         self.used_required_hits += 1;
         required_hits
     }

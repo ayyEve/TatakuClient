@@ -190,7 +190,7 @@ impl SpatialNagivation<'_> {
         let mut group = dest_priority.group
             .iter()
             .flat_map(|i| i.iter())
-            .cloned()
+            .copied()
             .collect::<Vec<_>>();
 
         if group.is_empty() {
@@ -419,10 +419,7 @@ impl SpatialNagivation<'_> {
         )
     }
 
-    pub fn run(
-        &mut self, 
-        config: NavigateConfig
-    ) {
+    pub fn run(&mut self, config: &NavigateConfig) {
         let all_selectable = self.tree.all_children()
             .filter(|i| self.tree.get_context(*i).is_some())
             .map(|i| i.get_id())
@@ -438,26 +435,26 @@ impl SpatialNagivation<'_> {
                 i, 
                 Direction::Left, 
                 &candidates, 
-                &config
+                config
             );
             let right = self.navigate(
                 i, 
                 Direction::Right, 
                 &candidates, 
-                &config
+                config
             );
 
             let above = self.navigate(
                 i, 
                 Direction::Up, 
                 &candidates, 
-                &config
+                config
             );
             let below = self.navigate(
                 i, 
                 Direction::Down, 
                 &candidates, 
-                &config
+                config
             );
 
             let context = self.tree.get_context_mut(i).unwrap();

@@ -8,8 +8,8 @@ pub struct StatsGraphWidget {
     node_id: NodeId
 }
 impl StatsGraphWidget {
-    pub fn new(stats: StatsInfo) -> Self {
-        let node = Self::view(&stats);
+    pub fn new(stats: &StatsInfo) -> Self {
+        let node = Self::view(stats);
 
         Self {
             // stats,
@@ -113,7 +113,7 @@ impl GraphWidget {
                 },
                 ..Default::default()
             },
-            node_id: Default::default(),
+            node_id: NodeId::default(),
         }
     }
 }

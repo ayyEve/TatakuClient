@@ -176,7 +176,9 @@ impl OsuGame {
         if hit_value.tex_name.is_empty() { return }
 
         let color = hit_value.color;
-        let mut image = if settings.use_skin_judgments { judgment_helper.get_from_scorehit(hit_value) } else { None };
+        let mut image = settings.use_skin_judgments.then_some(())
+            .and_then(|_| judgment_helper.get_from_scorehit(hit_value));
+
         if let Some(image) = &mut image {
             image.pos = pos;
             let scale = Vector2::ONE * scaling_helper.cs;
@@ -189,12 +191,17 @@ impl OsuGame {
             CIRCLE_RADIUS_BASE * scaling_helper.cs * (1.0/3.0),
             color,
             image
-        ))
+        ));
     }
 
 
     #[inline]
-    fn scale_by_mods<V:std::ops::Mul<Output=V>>(val:V, ez_scale: V, hr_scale: V, mods: &ModManager) -> V {
+    fn scale_by_mods<V:std::ops::Mul<Output=V>>(
+        val:V, 
+        ez_scale: V, 
+        hr_scale: V, 
+        mods: &ModManager
+    ) -> V {
         if mods.has_mod(Easy) {
             val * ez_scale
         } else if mods.has_mod(HardRock) {
@@ -339,9 +346,8 @@ impl GameMode for OsuGame {
         settings: &Settings,
     ) -> TatakuResult<Self> {
         let metadata = map.get_beatmap_meta();
-        let mods = Arc::new(Default::default());
-        // let window_size = WindowSize::get();
-        let effective_window_size = super::diff_calc::WINDOW_SIZE; //if diff_calc_only { super::diff_calc::WINDOW_SIZE } else { window_size.0 };
+        let mods = Arc::default();
+        let effective_window_size = super::diff_calc::WINDOW_SIZE;
         
         let game_settings = settings.gamemode_settings(crate::GAME_INFO).unwrap_or_default();
         // settings.osu_settings.clone();
@@ -534,10 +540,10 @@ impl GameMode for OsuGame {
                             }
                             
                             s.notes.push(Box::new(OsuSpinner::new(
-                                spinner.clone(),
+                                spinner,
                                 scaling_helper.clone(),
                                 spins_required
-                            )))
+                            )));
                         }
                     }
                 }
@@ -578,7 +584,7 @@ impl GameMode for OsuGame {
                     KeyPress::Right | KeyPress::RightMouse => self.cursor.right_pressed(true),
                     KeyPress::Dash => {
                         for i in self.smoke_emitter.iter_mut() {
-                            i.should_emit = true
+                            i.should_emit = true;
                         }
                         return;
                     }
@@ -597,9 +603,9 @@ impl GameMode for OsuGame {
 
                     if (in_hitwindow || is_visible) && !note.was_hit() && note.note_type() != NoteType::Spinner {
                         if in_hitwindow {
-                            hittable_notes.push(note)
+                            hittable_notes.push(note);
                         } else { 
-                            visible_notes.push(note) 
+                            visible_notes.push(note);
                         }
                     }
                 }
@@ -668,7 +674,7 @@ impl GameMode for OsuGame {
                 for note in self.notes.iter_mut() {
                     // if this is the last key to be released
                     if self.hold_count == 0 {
-                        note.release(frame.time)
+                        note.release(frame.time);
                     }
                 }
             }
@@ -677,7 +683,7 @@ impl GameMode for OsuGame {
                 let pos = self.scaling_helper.scale_coords(Vector2::new(x, y));
                 self.mouse_pos = pos;
                 if let Some(emitter) = &mut self.smoke_emitter {
-                    emitter.position = pos
+                    emitter.position = pos;
                 }
                 self.cursor.cursor_pos(pos);
 
@@ -912,7 +918,7 @@ impl GameMode for OsuGame {
         // if flashlight is enabled, we want to scissor all items by the playfield
         // this prevents things like approach circles and ripples from showing up outside the flashlight radius
         if has_flashlight {
-            list.push_scissor(self.scaling_helper.playfield_with_padding.into_scissor())
+            list.push_scissor(self.scaling_helper.playfield_with_padding.into_scissor());
         }
 
         // draw cursor ripples
@@ -953,12 +959,12 @@ impl GameMode for OsuGame {
         // spinners should be drawn last since they should be on top of everything
         // (we dont want notes or sliders drawn on top of the spinners)
         for i in spinners {
-            i.draw(state.time, list)
+            i.draw(state.time, list);
         }
 
         // need to draw the smoke particles on top of everything
         if let Some(e) = self.smoke_emitter.as_ref() { 
-            e.draw(list) 
+            e.draw(list);
         }
 
         // draw the cursor on top of smoke tho
@@ -980,7 +986,7 @@ impl GameMode for OsuGame {
         // reset the smoke particles
         if let Some(e) = self.smoke_emitter.as_mut() { e.reset(0.0) }
 
-        self.cursor.reset()
+        self.cursor.reset();
     }
 
     fn skip_intro(&mut self, game_time: f32) -> Option<f32> {
@@ -1131,7 +1137,7 @@ impl GameMode for OsuGame {
         if last_easing != new_easing || last_easing_type != new_easing_type {
             // use out as default easing type
             if new_easing_type.is_empty() && !new_easing.is_empty() {
-                new_easing_type = "out"
+                new_easing_type = "out";
             }
 
             let easing = match (new_easing_type, new_easing) {
@@ -1174,7 +1180,11 @@ impl GameMode for OsuGame {
         
         if has_otb != had_otb {
             if has_otb {
-                let timing_points = self.timing_points.iter().filter(|t| !t.is_inherited()).cloned().collect::<Vec<_>>();
+                let timing_points = self.timing_points
+                    .iter()
+                    .filter(|t| !t.is_inherited())
+                    .copied()
+                    .collect::<Vec<_>>();
                 let mut index = 0;
                 // info!("tp: {} -> {}", timing_points[index].time, timing_points[index].beat_length);
                 
@@ -1198,9 +1208,9 @@ impl GameMode for OsuGame {
 
                     // if this note lands on a beat, or within 10ms of a beat, make it ~funky~
                     if m < 10.0 || m2 < 10.0 {
-                        note.set_approach_easing(Easing::EaseOutExponential)
+                        note.set_approach_easing(Easing::EaseOutExponential);
                     } else {
-                        note.set_approach_easing(Easing::Linear)
+                        note.set_approach_easing(Easing::Linear);
                     }
                     
                 }
@@ -1215,7 +1225,7 @@ impl GameMode for OsuGame {
         if set_ar.is_some() || set_easing.is_some() {
             for note in self.notes.iter_mut() {
                 if let Some(easing) = set_easing {
-                    note.set_approach_easing(easing)
+                    note.set_approach_easing(easing);
                 }
                 if let Some(ar) = set_ar {
                     note.set_ar(ar);

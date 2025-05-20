@@ -436,7 +436,7 @@ impl Widget for DialogContainer {
                         pos_start: Vector2::ZERO, // doesnt matter for resize 
                         mouse_pos_start: event.mouse_pos, 
                         origin,
-                    })
+                    });
                 }
             }
             (InputType::MouseRelease(MouseButton::Left), Some(_)) => {

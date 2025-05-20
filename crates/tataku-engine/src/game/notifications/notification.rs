@@ -17,7 +17,12 @@ pub struct Notification {
     #[chain] pub onclick: NotificationOnClick
 }
 impl Notification {
-    pub fn new(text: String, color: Color, duration: f32, onclick: NotificationOnClick) -> Self {
+    pub fn new(
+        text: String, 
+        color: Color, 
+        duration: f32, 
+        onclick: NotificationOnClick
+    ) -> Self {
         let id = ID_COUNTER.fetch_add(1, Ordering::AcqRel);
         Self {
             id,
@@ -27,11 +32,23 @@ impl Notification {
             onclick
         }
     }
-    pub fn new_text(text: impl ToString, color: Color, duration: f32) -> Self {
-        Self::new(text.to_string(), color, duration, NotificationOnClick::None)
+    pub fn new_text(
+        text: impl ToString, 
+        color: Color, 
+        duration: f32
+    ) -> Self {
+        Self::new(
+            text.to_string(), 
+            color, 
+            duration, 
+            NotificationOnClick::None
+        )
     }
 
-    pub fn new_error(text: impl ToString, err: impl Into<TatakuError>) -> Self {
+    pub fn new_error(
+        text: impl ToString, 
+        err: impl Into<TatakuError>
+    ) -> Self {
         Self::new(
             format!("{}\n{:?}", text.to_string(), err.into()),
             Color::RED,

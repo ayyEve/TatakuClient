@@ -82,7 +82,9 @@ impl Widget for Button {
         event: &InputEvent, 
         shell: &mut InputShell,
     ) {
-        let Some(bounds) = shell.tree.bounds(self.node_id) else { return };
+        let Some(bounds) = shell.tree.bounds(self.node_id) 
+        else { return };
+
         let context = shell.tree.get_context(self.node_id).unwrap();
  
         match &event.event {
@@ -112,8 +114,11 @@ impl Widget for Button {
                     shell.values
                 ) {
                     match message {
-                        ActionResponse::Message(message) => shell.publish(message),
-                        ActionResponse::Action(action) => shell.actions.push(action),
+                        ActionResponse::Message(message) 
+                            => shell.publish(message),
+
+                        ActionResponse::Action(action) 
+                            => shell.actions.push(action),
                     }
                     // shell.event_consumed = true;
                     return;
@@ -129,7 +134,8 @@ impl Widget for Button {
     
     fn draw(&self, shell: &mut DrawShell) {
         let theme = &shell.general_theme;
-        let Some(bounds) = shell.tree.absolute_bounds(self) else { return };
+        let Some(bounds) = shell.tree.absolute_bounds(self) 
+        else { return };
 
         let active = self.active.is_some() || self.visual_active_cond.get();
 
@@ -137,7 +143,10 @@ impl Widget for Button {
         shell.list.push(Rectangle::new_bounds(
             bounds,
             theme.background_color,
-            Some(Border::new(theme.get_color(active, self.hovered), 2.0)),
+            Some(Border::new(
+                theme.get_color(active, self.hovered), 
+                2.0
+            )),
         ).shape(Shape::Round(2.0)));
 
         // draw child ontop of button
@@ -167,11 +176,11 @@ impl Widget for Button {
         event_value: Option<TatakuValue>, 
         shell: &mut MessageShell,
     ) {
-        self.child.handle_event(event, event_value, shell)
+        self.child.handle_event(event, event_value, shell);
     }
 
     fn reload_skin(&mut self, shell: &mut UpdateShell) {
-        self.child.reload_skin(shell)
+        self.child.reload_skin(shell);
     }
 }
 
@@ -192,13 +201,16 @@ impl ButtonOnClick {
         values: &mut dyn Reflect
     ) -> Option<ActionResponse> {
         match self {
-            Self::Message(m) => m.clone().map(ActionResponse::Message),
+            Self::Message(m) 
+                => m.clone().map(ActionResponse::Message),
+
             Self::BuildableAction(action) => {
                 let mut a = action.clone();
                 a.build(values);
                 a.into_action(node, values, passed_in).map(ActionResponse::Action)
             },
-            Self::Callback(cb) => (cb)().map(ActionResponse::Message),
+            Self::Callback(cb) 
+                => (cb)().map(ActionResponse::Message),
         }
     }
 }
@@ -215,7 +227,10 @@ impl From<Message> for ButtonOnClick {
 }
 impl From<BuildableAction> for ButtonOnClick {
     fn from(mut value: BuildableAction) -> Self {
-        if let BuildableAction::Conditional { cond, .. } = &mut value {
+        if let BuildableAction::Conditional { 
+            cond, 
+            .. 
+        } = &mut value {
             cond.build();
         }
 
@@ -230,8 +245,10 @@ impl From<OnClickCallback> for ButtonOnClick {
 impl From<ButtonBuilderOnClick> for ButtonOnClick {
     fn from(value: ButtonBuilderOnClick) -> Self {
         match value {
-            ButtonBuilderOnClick::Message(message) => Self::Message(message),
-            ButtonBuilderOnClick::Callback(cb) => Self::Callback(cb),
+            ButtonBuilderOnClick::Message(message) 
+                => Self::Message(message),
+            ButtonBuilderOnClick::Callback(cb) 
+                => Self::Callback(cb),
         }
     }
 }
@@ -246,7 +263,9 @@ enum VisuallyActive {
 }
 impl VisuallyActive {
     fn update(&mut self, values: &dyn Reflect) {
-        let Self::Condition { cond, value } = self else { return };
+        let Self::Condition { cond, value } = self 
+        else { return };
+        
         match cond.resolve(values) {
             BuildableConditionResult::Failed => {},
             BuildableConditionResult::Unbuilt(_) => unreachable!("should be built"),
