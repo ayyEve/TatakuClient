@@ -14,11 +14,20 @@ pub enum HitType {
     Don,
     Kat
 }
+impl HitType {
+    pub fn new(is_kat: bool) -> Self {
+        if is_kat {
+            Self::Kat
+        } else {
+            Self::Don
+        }
+    }
+}
 impl From<KeyPress> for HitType {
     fn from(val: KeyPress) -> Self {
         match val {
-            KeyPress::LeftKat|KeyPress::RightKat => HitType::Kat,
-            KeyPress::LeftDon|KeyPress::RightDon => HitType::Don,
+            KeyPress::LeftKat | KeyPress::RightKat => HitType::Kat,
+            KeyPress::LeftDon | KeyPress::RightDon => HitType::Don,
             _ => { panic!("non-taiko key while playing taiko") }
         }
     }

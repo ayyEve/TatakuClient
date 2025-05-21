@@ -33,8 +33,17 @@ pub enum BuildableAction {
         #[serde(alias="@id", default)] 
         id_attribute: Option<String>,
 
-        #[serde(alias="@allow_duplicates", default="_true")] 
-        allow_duplicates: bool,
+        #[serde(alias="@allow_multiple", default="_true")] 
+        allow_multiple: bool,
+
+        #[serde(alias="@resizable", default)]
+        resizable: bool,
+
+        #[serde(alias="@draggable", default)]
+        draggable: bool,
+
+        #[serde(alias="@title", default)]
+        title: String,
 
         #[serde(default)]
         variables: DialogInputsTag,
@@ -123,22 +132,36 @@ impl BuildableAction {
             Self::AddDialog { 
                 id, 
                 id_attribute,
-                allow_duplicates, 
+
+                resizable,
+                draggable,
+                allow_multiple,
+                title,
+
                 variables 
             } => {
                 let id = id
-                    .and_then(|i| i.resolve(values, passed_in).map(Cow::into_owned))
+                    .and_then(|i| i
+                        .resolve(values, passed_in)
+                        .map(Cow::into_owned)
+                    )
                     .and_then(|i| i.string_maybe().cloned())
                     .or(id_attribute)
                     ?;
                     
                 Some(TatakuAction::Menu(MenuAction::AddDialog {
                     id: id.into(),
-                    allow_duplicates,
+                    options: DialogCreateOptions {
+                        allow_multiple,
+                        draggable,
+                        resizable,
+                        title: Cow::Owned(title),
+                    },
                     input: variables.build(values, passed_in)
                 }))
             }
-            Self::CloseDialog => Some(UiAction::new(node, DialogAction::Close).into()),
+            Self::CloseDialog => Some(UiAction::new(node, DialogAction::Close)
+                .into()),
 
             Self::SetMenu { 
                 id, 
@@ -146,7 +169,9 @@ impl BuildableAction {
                 variables 
             } =>  {
                 let id = id
-                    .and_then(|i| i.resolve(values, passed_in).map(Cow::into_owned))
+                    .and_then(|i| i.resolve(values, passed_in)
+                        .map(Cow::into_owned)
+                    )
                     .and_then(|i| i.string_maybe().cloned())
                     .or(id_attribute)
                     ?;

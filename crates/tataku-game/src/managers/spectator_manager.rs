@@ -2,8 +2,6 @@ use crate::prelude::*;
 
 /// Manager for when we're spectating another user
 pub struct SpectatorManager {
-    actions: ActionQueue,
-
     frames: VecDeque<SpectatorFrame>,
     state: SpectatorState,
     host_id: u32,
@@ -27,7 +25,6 @@ impl SpectatorManager {
         infos: GamemodeInfos,
     ) -> Self {
         Self {
-            actions: ActionQueue::new(),
             infos,
 
             frames: VecDeque::new(),
@@ -50,6 +47,7 @@ impl SpectatorManager {
         &mut self, 
         values: &ValueCollection, 
         current_time: f32,
+        actions: &mut ActionQueue,
     ) -> Option<Box<GameplayManager>> {
         trace!("Trying to watch host play a map");
         let HostMap { 
@@ -98,7 +96,7 @@ impl SpectatorManager {
                 return Some(Box::new(manager));
             }
 
-            Err(e) => self.actions.push(
+            Err(e) => actions.push(
                 Notification::new_error(
                     "Error loading spec beatmap", 
                     e
@@ -113,6 +111,7 @@ impl SpectatorManager {
         &mut self,
         manager: Option<&mut Box<GameplayManager>>,
         values: &mut ValueCollection,
+        actions: &mut ActionQueue,
     ) -> Option<Box<GameplayManager>> { 
         // only continue if we received a map update
         let Ok(Some(_)) = self.new_map.update(values) else { return None };
@@ -122,7 +121,7 @@ impl SpectatorManager {
 
         let host_map = self.host_map.as_ref()?;
         if values.beatmap_manager.beatmaps_by_hash.contains_key(&host_map.map_hash) {
-            self.actions.push(BeatmapAction::SetFromHash(
+            actions.push(BeatmapAction::SetFromHash(
                 host_map.map_hash, 
                 SetBeatmapOptions::new().restart_song(true)
             ));
@@ -132,7 +131,7 @@ impl SpectatorManager {
                 |t, f| f.time.max(t)) - 2000.0
             ).max(0.0);
             
-            return self.start_game(values, current_time);
+            return self.start_game(values, current_time, actions);
         }
 
         None
@@ -145,13 +144,15 @@ impl SpectatorManager {
         actions: &mut ActionQueue,
     ) -> Option<Box<GameplayManager>> {
         // handle new maps
-        if let Some(manager) = self.check_new_maps(manager, values) {
-            actions.extend(self.actions.take());
+        if let Some(manager) = self.check_new_maps(manager, values, actions) {
             return Some(manager)
         }
 
         // check all incoming frames
-        while let Some(SpectatorFrame { time: _, action }) = self.frames.pop_front() {
+        while let Some(SpectatorFrame { 
+            time: _, 
+            action 
+        }) = self.frames.pop_front() {
             println!("Handling spec frame: {action:?}");
 
             // debug!("Packet: {action:?}");
@@ -173,11 +174,11 @@ impl SpectatorManager {
                     ));
 
                     if values.beatmap_manager.get_by_hash(&beatmap_hash).is_some() {
-                        self.actions.push(BeatmapAction::SetFromHash(
+                        actions.push(BeatmapAction::SetFromHash(
                             beatmap_hash, 
                             SetBeatmapOptions::new().restart_song(true)
                         ));
-                        self.start_game(values, 0.0);
+                        self.start_game(values, 0.0, actions);
                     } else {
                         let settings = &values.settings;
                         info!("no beatmap, attempting to download");
@@ -187,7 +188,7 @@ impl SpectatorManager {
                     break;
                 }
                 SpectatorAction::SpectatingOther { .. } => {
-                    self.actions.push(
+                    actions.push(
                         Notification::default()
                         .text("Host speccing someone")
                         .duration(2000.0)
@@ -208,7 +209,6 @@ impl SpectatorManager {
             }
         }
 
-        actions.extend(self.actions.take());
         None
     }
 
@@ -228,12 +228,17 @@ impl SpectatorManager {
     // }
 
 
-    pub fn key_down(&mut self, key: Key, _mods: KeyModifiers) {
+    pub fn key_down(
+        &mut self, 
+        key: Key, 
+        _mods: KeyModifiers,
+        actions: &mut ActionQueue,
+    ) {
         // check if we need to close something
         if key == Key::Escape {
-            self.actions.push(MenuAction::set_menu("main_menu"));
+            actions.push(MenuAction::set_menu("main_menu"));
             // resume song if paused
-            self.actions.push(SongAction::Play);
+            actions.push(SongAction::Play);
         }
     }
 

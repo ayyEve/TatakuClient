@@ -7,8 +7,9 @@ use crate::prelude::ui::*;
 pub struct CustomDialog {
     #[serde(rename = "@id")] pub id: String,
     #[serde(rename = "@title")] pub title: String,
+    #[serde(rename = "@allow_multiple", default)] pub allow_multiple: bool,
     #[serde(rename = "@draggable", default)] pub draggable: bool, 
-    #[serde(rename = "@resizable", default)] pub resizable: bool,    
+    #[serde(rename = "@resizable", default)] pub resizable: bool,
 
     #[serde(default)] pub style: Option<String>,
     #[serde(default)] pub events: BuildableEventsTag,
@@ -49,6 +50,15 @@ impl CustomDialog {
 
             node_id: EMPTY_NODE,
         })
+    }
+
+    pub fn options(&self) -> DialogCreateOptions {
+        DialogCreateOptions {
+            draggable: self.draggable,
+            resizable: self.resizable,
+            allow_multiple: self.allow_multiple,
+            title: Cow::Owned(self.title.clone()),
+        }
     }
 }
 
@@ -112,7 +122,7 @@ impl Widget for BuiltCustomDialog {
     fn handle_message(
         &mut self, 
         message: &Message, 
-        shell: &mut MessageShell
+        shell: &mut MessageShell,
     ) {
         self.element.handle_message(message, shell);
         if shell.handled { return }

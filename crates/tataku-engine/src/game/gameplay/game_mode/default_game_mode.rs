@@ -22,7 +22,9 @@ impl GameMode for NoMode {
     fn force_update_settings(&mut self, _: &Settings) {}
     
     #[cfg(feature="graphics")]
-    fn reload_skin(&mut self, _: &str, _: &mut dyn SkinProvider) -> TextureSource { TextureSource::Raw }
+    fn reload_skin(&mut self, _: &str, _: &mut dyn SkinProvider) -> TextureSource { 
+        TextureSource::Raw 
+    }
     fn apply_mods(&mut self, _: Arc<ModManager>) {}
 
     
@@ -31,7 +33,7 @@ impl GameMode for NoMode {
 
 
     fn get_playfield(&self) -> PlayfieldNonsense { PlayfieldNonsense::default() }
-    fn properties(&self) -> GameModeProperties { GameModeProperties::default() }
+    fn properties(&self, _: &TimingPointHelper) -> GameModeProperties { GameModeProperties::default() }
 
     fn handle_input(&mut self, _input: InputEvent) -> Option<ReplayAction> { None }
 }

@@ -3,7 +3,7 @@ use crate::prelude::*;
 /// NOTE: which dialog is actioned is determined by the node id that sent the message
 #[derive(Copy, Clone, Debug)]
 pub enum DialogAction {
-    /// The dialog is requesting to be closede
+    /// The dialog is requesting to be closed
     Close,
 
     /// The dialog should be moved to the provided position
@@ -11,4 +11,7 @@ pub enum DialogAction {
     
     /// The dialog should be resized to the provided size
     ResizeDialog(Vector2),
+
+    /// Bring the dialog to the front of the list
+    BringToFront,
 }

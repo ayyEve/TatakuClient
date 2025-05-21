@@ -274,8 +274,6 @@ impl Widget for Dropdown {
             .unwrap_or(&self.placeholder);
 
         shell.list.push(self.text_style.create_text(main_text.clone(), bounds));
-
-        
     }
 
     fn draw_overlay(&self, shell: &mut DrawShell) {

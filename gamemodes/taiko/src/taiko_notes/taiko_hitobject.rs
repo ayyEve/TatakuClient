@@ -4,7 +4,7 @@ pub trait TaikoHitObject: HitObject + Send + Sync {
     fn is_kat(&self) -> bool { false } // needed for diff calc and autoplay
 
     fn get_sv(&self) -> f32;
-    fn set_sv(&mut self, sv:f32);
+    fn set_sv(&mut self, sv: f32);
     /// does this hit object play a finisher sound when hit?
     fn finisher_sound(&self) -> bool { false }
 
@@ -15,18 +15,27 @@ pub trait TaikoHitObject: HitObject + Send + Sync {
     fn causes_miss(&self) -> bool;
 
     /// returns true if a finisher was successfully hit
-    fn check_finisher(&self, _hit_type:HitType, _time:f32, _game_speed: f32) -> bool { false }
+    fn check_finisher(
+        &self, 
+        _hit_type: HitType, 
+        _time: f32, 
+        _game_speed: f32
+    ) -> bool { false }
 
     fn get_playfield(&self) -> Arc<TaikoPlayfield>;
     fn set_settings(&mut self, settings: Arc<TaikoSettings>);
 
 
-    fn x_at(&self, time:f32) -> f32 {
+    fn x_at(&self, time: f32) -> f32 {
         // (self.time() - time) * self.get_sv()
-        ((self.time() - time) / SV_OVERRIDE) * self.get_sv() * self.get_playfield().size.x
+        ((self.time() - time) / SV_OVERRIDE) 
+            * self.get_sv() 
+            * self.get_playfield().size.x
     }
-    fn end_x_at(&self, time:f32) -> f32 {
-        ((self.end_time(0.0) - time) / SV_OVERRIDE) * self.get_sv() * self.get_playfield().size.x
+    fn end_x_at(&self, time: f32) -> f32 {
+        ((self.end_time(0.0) - time) / SV_OVERRIDE) 
+            * self.get_sv() 
+            * self.get_playfield().size.x
     }
 
     fn time_at(&self, x: f32) -> f32 {
@@ -48,7 +57,7 @@ pub trait TaikoHitObject: HitObject + Send + Sync {
     fn playfield_changed(&mut self, _new_playfield: Arc<TaikoPlayfield>);
 
     /// only used by spinners
-    fn set_required_hits(&mut self, _required_hits:u16) {}
+    fn set_required_hits(&mut self, _required_hits: u16) {}
 
     /// used if no_finisher mod is enabled/disabled
     fn toggle_finishers(&mut self, _enabled: bool) {}
@@ -83,17 +92,29 @@ impl HitCircleImageHelper {
 
         let scale = Vector2::ONE * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
 
-        let circle = skin_manager.get_texture_then(hitcircle, source, SkinUsage::Gamemode, false, |i| {
-            i.pos = Vector2::ZERO;
-            i.scale = scale;
-            i.color = color;
-        });
+        let circle = skin_manager.get_texture_then(
+            hitcircle, 
+            source, 
+            SkinUsage::Gamemode, 
+            false,
+            |i| {
+                i.pos = Vector2::ZERO;
+                i.scale = scale;
+                i.color = color;
+            }
+        );
 
-        let overlay = skin_manager.get_texture_then(&format!("{hitcircle}overlay"), source, SkinUsage::Gamemode, false, |i| {
-            i.pos = Vector2::ZERO;
-            i.scale = scale;
-            i.color = color;
-        });
+        let overlay = skin_manager.get_texture_then(
+            &format!("{hitcircle}overlay"), 
+            source, 
+            SkinUsage::Gamemode, 
+            false, 
+            |i| {
+                i.pos = Vector2::ZERO;
+                i.scale = scale;
+                i.color = color;
+            }
+        );
 
         if overlay.is_none() || circle.is_none() { return None }
 

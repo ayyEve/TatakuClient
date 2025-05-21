@@ -7,6 +7,8 @@ const INCLUDE_DIRS: &[&str] = &[
 const OUTPUT: &str = "src/lib.rs";
 
 fn main() {
+    println!("cargo::rerun-if-changed=build.rs");
+    
     let mut output = std::fs::OpenOptions::new()
         .create(true)
         .write(true)
@@ -40,6 +42,7 @@ fn read_folder(
             read_folder(path, indent + 1, output);
             continue
         }
+        println!("cargo::rerun-if-changed={}", path.display());
 
         let name = path.file_stem().unwrap();
         let const_name = name.to_ascii_uppercase();

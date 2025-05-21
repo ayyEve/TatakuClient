@@ -3,7 +3,7 @@ use crate::prelude::*;
 // TODO: operations (so can scroll to items etc)
 pub struct UiManager {
     messages: Vec<Message>,
-    current_menu: MenuType,
+    current_menu: String,
 
     /// what menu is currently being drawn?
     pub root_tree: Tree,
@@ -16,19 +16,19 @@ impl UiManager {
     pub fn new() -> Self {
         Self {
             messages: Vec::new(),
-            current_menu: MenuType::Internal("None"),
+            current_menu: "None".to_owned(),
             root_tree: Tree::new(
-                100, 
+                100, // 100 should be fine right? right??!!?
                 MessageOwner::Menu, 
                 EmptyWidget::new_boxed()
-            ), // 100 should be fine right? right??!!?
+            ), 
 
             dialog_counter: 0,
             dialogs: Vec::new(),
         }
     }
 
-    pub fn get_menu(&self) -> MenuType { self.current_menu.clone() }
+    pub fn get_menu(&self) -> &String { &self.current_menu }
     pub fn add_message(&mut self, message: Message) { self.messages.push(message) }
 
     pub fn set_root<T: Reflect>(
@@ -36,7 +36,7 @@ impl UiManager {
         root: Box<dyn Widget>,
         values: &mut T
     ) {
-        self.current_menu = MenuType::from_menu(&*root);
+        self.current_menu = root.name().into_owned();
         self.messages.retain(|m| !m.owner.is_menu());
         self.root_tree.set_node(root, values);
     }
@@ -45,18 +45,34 @@ impl UiManager {
     pub fn add_dialog(
         &mut self, 
         dialog: Box<dyn Widget>,
+        options: DialogCreateOptions,
         values: &mut dyn Reflect, 
         actions: &mut ActionQueue,
     ) {
-        debug!("adding dialog: {}", dialog.name());
-        let dialog = Box::new(DialogWidget::new(
-            dialog.name(),
-            false,
-            false,
-            dialog
-        ));
+        if !options.allow_multiple {
+            // check if dialog already exists, if so, dont add it
+            let name = dialog.name();
+            if self.dialogs
+                .iter()
+                .any(|n| n.get_node().name() == name)
+            { 
+                debug!("not adding dialog {}, already exists", dialog.name());
+                return 
+            }
+        }
 
+        let dialog = DialogWidget::new(
+            options.title,
+            options.draggable,
+            options.resizable,
+            dialog
+        ).boxed();
+
+
+
+        debug!("adding dialog: {}", dialog.name());
         let num = self.dialog_counter;
+        self.dialog_counter += 1;
         let mut tree = Tree::new(
             50, 
             MessageOwner::Dialog(num), 
@@ -76,20 +92,20 @@ impl UiManager {
         );
 
 
-        // FIXME: this is just for testing
-        let bounds = self.root_tree.bounds;
-        let half = bounds.size / 2.0;
-        let quarter = half / 2.0;
-
-        let bounds = Bounds::new(
-            bounds.pos + quarter,
-            half
-        );
+        let mut bounds = self.root_tree.bounds;
+        // if the dialog is resizable or draggable, make it a quarter of the screen size
+        if options.draggable || options.resizable {
+            let half = bounds.size / 2.0;
+            let quarter = half / 2.0;
+            bounds = Bounds::new(
+                bounds.pos + quarter,
+                half
+            );
+        }
 
         tree.update_bounds(bounds, values);
 
         self.dialogs.push(tree);
-        self.dialog_counter += 1;
     }
 
     fn all_trees(&mut self) -> impl Iterator<Item = &mut Tree> {
@@ -104,7 +120,6 @@ impl UiManager {
     ) -> bool {
         let Some(last) = self.dialogs.last_mut() else { return false };
 
-        debug!("close latest dialog");
         last.handle_message(
             &Message::new(
                 last.owner,
@@ -123,7 +138,6 @@ impl UiManager {
         values: &mut dyn Reflect, 
         actions: &mut ActionQueue
     ) {
-        debug!("force closing all dialogs");
         for i in self.dialogs.iter_mut() {
             i.handle_message(
                 &Message::new(
@@ -147,27 +161,24 @@ impl UiManager {
         values: &mut dyn Reflect,
         actions: &mut ActionQueue,
     ) {
-        let mut consumed = false;
         // check dialogs first
         for dialog in self.dialogs.iter_mut().rev() {
-            consumed = dialog.handle_inputs(
+            if dialog.handle_inputs(
                 input_state, 
                 values, 
                 actions, 
                 &mut self.messages
-            );
-
-            if consumed { break }
+            ) { 
+                return 
+            }
         }
 
-        if !consumed {
-            self.root_tree.handle_inputs(
-                input_state, 
-                values, 
-                actions, 
-                &mut self.messages
-            );
-        }
+        self.root_tree.handle_inputs(
+            input_state, 
+            values, 
+            actions, 
+            &mut self.messages
+        );
     }
 
     pub fn update(
@@ -221,7 +232,10 @@ impl UiManager {
 
         for (event, param) in tataku_events {
             // update all trees
-            for tree in self.dialogs.iter_mut().chain([&mut self.root_tree]) {
+            for tree in self.dialogs
+                .iter_mut()
+                .chain([&mut self.root_tree])
+            {
                 tree.handle_event(
                     event, 
                     param.clone(),
@@ -254,7 +268,8 @@ impl UiManager {
         values: &ValueCollection,
         list: &mut RenderableCollection,
     ) {
-        for i in self.all_trees() {
+        self.root_tree.draw(values, list);
+        for i in self.dialogs.iter_mut().rev() {
             i.draw(values, list);
         }
     }
@@ -269,7 +284,7 @@ impl UiManager {
         &mut self, 
         action: UiAction,
         values: &mut dyn Reflect,
-        actions: &mut ActionQueue,
+        _actions: &mut ActionQueue,
     ) {
         let node = action.node;
         let action = action.action;
@@ -299,7 +314,9 @@ impl UiManager {
             }
 
             UiActionType::UpdateStyleWith(f) => {
-                let Some(mut style) = tree.get_style(node).cloned() else { return };
+                let Some(mut style) = tree.get_style(node).cloned() 
+                else { return };
+
                 f(&mut style);
                 tree.set_style(node, style);
                 tree.mark_refresh("UpdateStyleWith");
@@ -307,7 +324,7 @@ impl UiManager {
 
             UiActionType::UpdateDisplay(display) => {
                 let Some(mut style) = tree.get_style(node).cloned() else { 
-                    return warn!("style not found for node: {node:?}")
+                    return warn!("style not found for node: {node:?}");
                 };
                 style.display = display;
                 tree.set_style(node, style);
@@ -318,15 +335,19 @@ impl UiManager {
                 num -= 1; // 0 is the menu, so subtract 1 to get the dialog index
                 match action {
                     DialogAction::Close => {
-                        let mut messages = Vec::new();
-                        tree.handle_message(
-                            &Message::new(tree.owner, "force_close", MessageValue::Click), 
-                            values, 
-                            actions,
-                            &mut messages
-                        );
+                        // let mut messages = Vec::new();
+                        // tree.handle_message(
+                        //     &Message::new(
+                        //         tree.owner, 
+                        //         "force_close", 
+                        //         MessageValue::Click
+                        //     ), 
+                        //     values, 
+                        //     actions,
+                        //     &mut messages
+                        // );
                         self.dialogs.remove(num);
-                        self.messages.extend(messages);
+                        // self.messages.extend(messages);
                     }
 
                     DialogAction::MoveDialog(pos) => {
@@ -350,6 +371,11 @@ impl UiManager {
                         );
                         tree.mark_refresh("resize dialog");
                     }
+                
+                    DialogAction::BringToFront => {
+                        let d = self.dialogs.remove(num);
+                        self.dialogs.push(d);
+                    }
                 }
             } 
             
@@ -360,12 +386,16 @@ impl UiManager {
     }
 
 
-    pub fn window_size_changed(&mut self, window_size: Vector2, values: &dyn Reflect) {
+    pub fn window_size_changed(
+        &mut self, 
+        window_size: Vector2, 
+        values: &dyn Reflect,
+    ) {
         let old_bounds = self.root_tree.bounds;
         let new_bounds = Bounds::new(Vector2::ZERO, window_size);
         self.root_tree.update_bounds(new_bounds, values);
         
-        // FIXME: account for draggables
+        // only resize dialogs that were the size of the old bounds (aka fullscreen dialogs)
         for i in self.dialogs.iter_mut() {
             if i.bounds == old_bounds {
                 i.update_bounds(new_bounds, values);

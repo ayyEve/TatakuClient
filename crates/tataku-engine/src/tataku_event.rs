@@ -38,16 +38,16 @@ pub enum TatakuEventType {
 #[derive(Serialize, Deserialize)]
 pub struct CustomMenuKeyEvent {
     /// What key?
-    #[serde(alias="@key")] pub key: crate::prelude::Key,
+    #[serde(rename="@key")] pub key: crate::prelude::Key,
 
     /// Must control be pressed?
-    #[serde(alias="@control", default)] pub control: bool,
+    #[serde(rename="@control", alias="@ctrl", default)] pub control: bool,
 
     /// Must alt be pressed?
-    #[serde(alias="@alt", default)] pub alt: bool,
+    #[serde(rename="@alt", default)] pub alt: bool,
 
     /// Must shift be pressed?
-    #[serde(alias="@shift", default)] pub shift: bool,
+    #[serde(rename="@shift", default)] pub shift: bool,
 }
 
 

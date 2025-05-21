@@ -13,7 +13,8 @@ impl XmlTestManager {
         actions: &mut ActionQueue,
     ) {
         if let Some(file) = self.current_file.as_ref() {
-            let Ok(new_meta) = std::fs::metadata(&file.path) else {
+            let Ok(new_meta) = std::fs::metadata(&file.path) 
+            else {
                 self.current_file = None;
                 return
             };
@@ -47,7 +48,11 @@ impl XmlTestManager {
             .map(Widget::boxed)
             .collect::<Vec<_>>();
 
-        children.insert(0, TextWidget::new(format!("Error creating {loaded_type}:")).boxed());
+        children.insert(
+            0, 
+            TextWidget::new(format!("Error creating {loaded_type}:"))
+            .boxed()
+        );
         
         let thing = Container::new(children)
             .flex_direction(ui::FlexDirection::Column)
@@ -86,8 +91,16 @@ impl XmlTestManager {
                 }
 
                 match custom_menu.build(values, input) {
-                    Ok(menu) => ui_manager.set_root(Box::new(menu), values),
-                    Err(e) => Self::handle_error(ui_manager, e, values, "menu")
+                    Ok(menu) => ui_manager.set_root(
+                        Box::new(menu), 
+                        values
+                    ),
+                    Err(e) => Self::handle_error(
+                        ui_manager, 
+                        e, 
+                        values, 
+                        "menu"
+                    ),
                 }
             }
             XmlData::Dialog(custom_dialog) => {
@@ -101,9 +114,19 @@ impl XmlTestManager {
                 match custom_dialog.build(values, input) {
                     Ok(dialog) => {
                         ui_manager.set_root(EmptyWidget::new_boxed(), values);
-                        ui_manager.add_dialog(Box::new(dialog), values, actions);
+                        ui_manager.add_dialog(
+                            Box::new(dialog), 
+                            DialogCreateOptions::default(),
+                            values, 
+                            actions
+                        );
                     },
-                    Err(e) => Self::handle_error(ui_manager, e, values, "dialog")
+                    Err(e) => Self::handle_error(
+                        ui_manager,
+                        e, 
+                        values, 
+                        "dialog"
+                    ),
                 }
 
             }

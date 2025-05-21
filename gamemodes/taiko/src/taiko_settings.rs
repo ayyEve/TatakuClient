@@ -107,7 +107,12 @@ pub struct TaikoControllerConfig {
 }
 // #[cfg(feature = "gameplay")]
 impl TaikoControllerConfig {
-    fn new_default<I:Into<ControllerBinding>>(left_kat: I, left_don: I, right_don: I, right_kat: I) -> Self {
+    fn new_default<I:Into<ControllerBinding>>(
+        left_kat: I, 
+        left_don: I, 
+        right_don: I, 
+        right_kat: I
+    ) -> Self {
         Self {
             left_kat: left_kat.into(),
             left_don:  left_don.into(),
@@ -117,11 +122,33 @@ impl TaikoControllerConfig {
     }
     pub fn defaults(controller_name: Arc<String>) -> Self {
         match &**controller_name {
-            "Taiko Controller"|"HORI CO.,LTD. Taiko Controller"|"HID-compliant game controller" => Self::new_default(ControllerButton::LeftBumper, ControllerButton::LeftThumb, ControllerButton::RightThumb, ControllerButton::RightBumper),
-            "Xbox Controller"|"Xbox One Game Controller" => Self::new_default(ControllerButton::DPadLeft, ControllerButton::DPadDown, ControllerButton::South, ControllerButton::East),
-            // "Wireless Controller"|"Sony Interactive Entertainment Wireless Controller" => Self::new_default(17, 15, 0, 2),
+            "Taiko Controller"
+            | "HORI CO.,LTD. Taiko Controller"
+            | "HID-compliant game controller" => Self::new_default(
+                ControllerButton::LeftBumper, 
+                ControllerButton::LeftThumb, 
+                ControllerButton::RightThumb, 
+                ControllerButton::RightBumper
+            ),
 
-            _ => Self::new_default(ControllerButton::LeftBumper, ControllerButton::LeftThumb, ControllerButton::RightThumb, ControllerButton::RightBumper)
+            "Xbox Controller"
+            | "Xbox One Game Controller" => Self::new_default(
+                ControllerButton::DPadLeft, 
+                ControllerButton::DPadDown, 
+                ControllerButton::South, 
+                ControllerButton::East
+            ),
+
+            // "Wireless Controller"
+            // | "Sony Interactive Entertainment Wireless Controller" 
+            //     => Self::new_default(17, 15, 0, 2),
+
+            _ => Self::new_default(
+                ControllerButton::LeftBumper, 
+                ControllerButton::LeftThumb, 
+                ControllerButton::RightThumb, 
+                ControllerButton::RightBumper
+            )
         }
     }
 }

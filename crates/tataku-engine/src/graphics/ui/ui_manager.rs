@@ -185,19 +185,3 @@ impl NodeId {
 impl Default for NodeId {
     fn default() -> Self { EMPTY_NODE }
 }
-
-
-#[derive(Clone, Debug)]
-pub enum MenuType {
-    Internal(&'static str),
-    Custom(String)
-}
-#[cfg(feature="graphics")]
-impl MenuType {
-    pub fn from_menu(menu: &dyn crate::prelude::Widget) -> Self {
-        match menu.name() {
-            Cow::Borrowed(name) => Self::Internal(name),
-            Cow::Owned(name) => Self::Custom(name.clone())
-        }
-    }
-}

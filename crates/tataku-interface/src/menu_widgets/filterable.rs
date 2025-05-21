@@ -58,7 +58,7 @@ impl Widget for FilterableWidget {
     }
     fn draw_overlay(&self, shell: &mut DrawShell) {
         if !self.visible { return }
-        self.node.draw(shell);
+        self.node.draw_overlay(shell);
     }
 
     fn input(

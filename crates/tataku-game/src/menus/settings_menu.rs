@@ -11,6 +11,13 @@ pub struct SettingsMenu {
     node_id: NodeId,
 }
 impl SettingsMenu {
+    pub const DEFAULT_OPTIONS: DialogCreateOptions = DialogCreateOptions {
+        allow_multiple: false,
+        resizable: false,
+        draggable: false,
+        title: Cow::Borrowed("Settings"),
+    };
+
     pub fn new(settings: &Settings) -> Self {
         Self {
             filter_text: String::new(),
@@ -29,7 +36,6 @@ impl SettingsMenu {
         let game_time = values.reflect_get::<f32>("game.time")
             .unwrap_or(MaybeOwned::Owned(0.0))
             .copied();
-
 
         // set/clear the entry for the settings filter in the map
         values.reflect_insert(
@@ -99,10 +105,10 @@ impl SettingsMenu {
             .filter(|sc| !sc.properties.is_empty())
             .flat_map(|sc| [
                 // space
-                Container::new(Vec::new()).flex_direction(FlexDirection::Row).width(FILL).boxed(),
-                // row!( 
-                //     // Space::new(FILL, Dimension::Length(40.0)).boxed();
-                // ),
+                Container::new(Vec::new())
+                    .flex_direction(FlexDirection::Row)
+                    .width(FILL)
+                    .boxed(),
 
                 // category name
                 row!( TextWidget::new(sc.name).font_size(40.0).boxed(); ),
@@ -113,7 +119,7 @@ impl SettingsMenu {
                     .map(|(p, v)| 
                         Container::new(vec![p, v])
                         .vertical_align(AlignContent::Center)
-                        .horizontal_align(AlignContent::SpaceBetween)
+                        // .horizontal_align(AlignContent::SpaceBetween)
                         .margin([LengthPercentageAuto::Length(0.0), LengthPercentageAuto::Length(5.0)])
                         .width(FILL)
                         .boxed()
@@ -145,7 +151,11 @@ impl SettingsMenu {
             // search text
             TextInput::new("Search", self.filter_text.clone())
                 .font_size(30.0)
-                .on_input(move |t: &str| Message::new(owner, "search", MessageValue::Text(t.to_string())))
+                .on_input(move |t: &str| Message::new(
+                    owner, 
+                    "search", 
+                    MessageValue::Text(t.to_string())
+                ))
                 .boxed(),
 
             // // space
@@ -181,13 +191,14 @@ impl SettingsMenu {
             vec![
                 AnimatableTrigger { 
                     trigger: AnimatableTriggerEvent::Message(MessageTag::String("close".to_owned())), 
-                    action: "close_dialog".to_owned()
+                    action: "close".to_owned()
                 }
             ],
-            [("close_dialog".to_owned(), vec![AnimatableAction {
-                action: TransformTypeTag::VectorScale { start: Vector2::new(1.0, 1.0), end: Vector2::new(0.0, 1.0) },
-                // start: AnimatableTransformValue::Current,
-                // stop: AnimatableTransformValue::Current,
+            [("close".to_owned(), vec![AnimatableAction {
+                action: TransformTypeTag::VectorScale { 
+                    start: Vector2::new(1.0, 1.0), 
+                    end: Vector2::new(0.0, 1.0) 
+                },
                 duration: 200.0,
             }])].into_iter().collect(),
             everything
@@ -195,7 +206,10 @@ impl SettingsMenu {
         .with_transform(Transformation::new(
             0.0,
             200.0,
-            TransformType::VectorScale { start: Vector2::new(0.0, 1.0), end: Vector2::new(1.0, 1.0) },
+            TransformType::VectorScale { 
+                start: Vector2::new(0.0, 1.0), 
+                end: Vector2::new(1.0, 1.0) 
+            },
             Easing::Linear,
             game_time 
         ))
@@ -248,6 +262,10 @@ impl Widget for SettingsMenu {
         self.node.draw(shell);
     }
 
+    fn draw_overlay(&self, shell: &mut DrawShell) {
+        self.node.draw_overlay(shell);
+    }
+
     
     fn handle_message(
         &mut self, 
@@ -287,14 +305,22 @@ impl Widget for SettingsMenu {
             },
 
             // graceful close requested
-            "close" => {
+            "force_close" | "close" => {
                 shell.handled = true;
                 // run the close animation
                 self.node.handle_message(
-                    &Message::new(message.owner, "close", MessageValue::Click), 
+                    &Message::new(
+                        message.owner, 
+                        "close", 
+                        MessageValue::Click
+                    ), 
                     shell
                 );
-                let close_task = ActionTask::new(UiAction::new(self.node_id, DialogAction::Close));
+                let close_task = ActionTask::new(UiAction::new(
+                    self.node_id, 
+                    DialogAction::Close,
+                ));
+
                 let task = DelayTask::new(close_task, 200);
                 shell.actions.push(TaskAction::AddTask(Box::new(task)));
             }

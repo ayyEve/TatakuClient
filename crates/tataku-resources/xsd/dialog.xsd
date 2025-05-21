@@ -33,6 +33,7 @@
     
     <xs:attribute name="id" type="xs:string" use="required"/>
     <xs:attribute name="title" type="xs:string"/>
+    <xs:attribute name="allow_multiple" type="xs:boolean"/>
     <xs:attribute name="draggable" type="xs:boolean"/>
     <xs:attribute name="resizable" type="xs:boolean"/>
   </xs:complexType>

@@ -9,6 +9,13 @@ pub struct ConsoleDialog {
     node_id: NodeId,
 }
 impl ConsoleDialog {
+    pub const DEFAULT_OPTIONS: DialogCreateOptions = DialogCreateOptions {
+        allow_multiple: false,
+        resizable: false,
+        draggable: false,
+        title: Cow::Borrowed("Console"),
+    };
+
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {

@@ -17,7 +17,7 @@ pub enum MenuAction {
     /// Add a custom dialog
     AddDialog {
         id: Cow<'static, str>,
-        allow_duplicates: bool,
+        options: DialogCreateOptions,
         input: BuildableInputArguments,
     },
 }
@@ -59,3 +59,36 @@ impl DerefMut for BuildableInputArguments {
         &mut self.0
     }
 }
+
+#[derive(Clone, Debug, Default)]
+#[derive(ChainableInitializer)]
+#[derive(Deserialize)]
+pub struct DialogCreateOptions {
+    #[serde(rename = "@allow_multiple")]
+    #[chain] pub allow_multiple: bool,
+    #[serde(rename = "@resizable")]
+    #[chain] pub resizable: bool,
+    #[serde(rename = "@draggable")]
+    #[chain] pub draggable: bool,
+
+    #[serde(rename = "@title")]
+    #[chain] pub title: Cow<'static, str>,
+}
+impl DialogCreateOptions {
+    pub fn merge(
+        incoming: Self, 
+        dialog_defaults: Self
+    ) -> Self {
+        Self {
+            allow_multiple: incoming.allow_multiple && dialog_defaults.allow_multiple,
+            resizable: incoming.resizable && dialog_defaults.resizable,
+            draggable: incoming.draggable && dialog_defaults.draggable,
+            title: if incoming.title.is_empty() { 
+                dialog_defaults.title 
+            } else { 
+                incoming.title 
+            },
+        }
+    }
+}
+

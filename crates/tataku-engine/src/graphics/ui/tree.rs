@@ -550,7 +550,7 @@ impl Tree {
     pub fn draw(
         &mut self, 
         values: &dyn Reflect,
-        list: &mut RenderableCollection
+        list: &mut RenderableCollection,
     ) {
         self.with_node(|tree, node| {
             let mut shell = DrawShell {

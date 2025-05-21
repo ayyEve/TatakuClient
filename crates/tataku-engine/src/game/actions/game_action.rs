@@ -57,7 +57,20 @@ pub enum GameAction {
 }
 
 impl From<GameAction> for TatakuAction {
-    fn from(value: GameAction) -> Self { Self::Game(Box::new(value)) }
+    fn from(value: GameAction) -> Self { 
+        Self::Game(Box::new(value)) 
+    }
+}
+
+impl From<TatakuEventType> for TatakuAction {
+    fn from(value: TatakuEventType) -> Self {
+        GameAction::HandleEvent(value, None).into()
+    }
+}
+impl From<(TatakuEventType, TatakuValue)> for TatakuAction {
+    fn from(value: (TatakuEventType, TatakuValue)) -> Self {
+        GameAction::HandleEvent(value.0, Some(value.1)).into()
+    }
 }
 
 

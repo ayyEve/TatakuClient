@@ -412,7 +412,7 @@ impl GameMode for UTypingGame {
     fn get_playfield(&self) -> PlayfieldNonsense {
         PlayfieldNonsense::new_simple(self.playfield.bounds)
     }
-    fn properties(&self) -> GameModeProperties {
+    fn properties(&self, _: &TimingPointHelper) -> GameModeProperties {
         GameModeProperties { 
             info: &crate::GAME_INFO, 
             keys: Vec::new(), 

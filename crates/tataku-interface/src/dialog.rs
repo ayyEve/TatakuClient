@@ -1,138 +1,8 @@
 use crate::prelude::*;
 use crate::prelude::ui::*;
 
-pub struct DialogWidget {
-    num: usize,
-    should_close: bool,
-    node: Box<dyn Widget>,
-}
-impl DialogWidget {
-    pub fn new(
-        title: impl Into<Cow<'static, str>>,
-        _draggable: bool,
-        _resizable: bool,
-        node: Box<dyn Widget>
-    ) -> Self {
-        let draggable = true;
-        let resizable = true;
-
-        let node = if draggable || resizable { 
-            DialogContainer::new(
-                title.into(),
-                draggable,
-                resizable,
-                node
-            ).boxed()
-        } else { 
-            node 
-        };
-
-        Self {
-            num: 0,
-            should_close: false,
-            node,
-        }
-    }
-}
-impl Widget for DialogWidget {
-    fn name(&self) -> Cow<'static, str> { self.node.name() }
-    fn node_id(&self) -> NodeId { self.node.node_id() }
-
-    fn update_styles(
-        &mut self, 
-        shell: &mut StyleShell,
-        _display_override: Option<ui::Display>,
-    ) {
-        self.node.update_styles(shell, None);
-    }
-
-    fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId>  {
-        self.node.layout(shell)
-    }
-    
-
-    fn input(
-        &mut self, 
-        event: &InputEvent, 
-        shell: &mut InputShell,
-    ) {
-        self.node.input(event, shell);
-
-        if event.is_mouse() && !shell.event_consumed {
-            let Some(bounds) = shell.tree.absolute_bounds(self.node_id()) else { return };
-            if bounds.contains(event.mouse_pos) {
-                shell.event_consumed = true;
-            }
-        }
-    }
-
-    fn draw(&self, shell: &mut DrawShell) {
-        let Some(bounds) = shell.tree.absolute_bounds(self) else { return };
-        
-        shell.list.push(Rectangle::new_bounds(
-            bounds, 
-            Color::BLACK.alpha(0.9), 
-            None
-        ));
-
-        // FIXME: add scissor!
-        self.node.draw(shell);
-    }
-
-    fn update(&mut self, shell: &mut UpdateShell) {
-        self.node.update(shell);
-    }
-    
-    fn handle_message(
-        &mut self, 
-        message: &Message, 
-        shell: &mut MessageShell,
-    ) {
-        match message.owner {
-            MessageOwner::Menu => return,
-            MessageOwner::Dialog(num) => if num != self.num { return }
-        }
-
-        if let Some(str) = message.tag.as_string() {
-            match &**str {
-                "set_num" => if let MessageValue::Number(n) = message.value {
-                    self.num = n;
-                    return
-                }
-                "close" => {
-                    self.should_close = true;
-                }
-                "force_close" => {
-                    self.should_close = true;
-                    // dont return in case the child has special logic to do on close
-                }
-                _ => {}
-            }
-        }
-
-        self.node.handle_message(
-            message, 
-            shell,
-        );
-    }
-
-    fn handle_event(
-        &mut self, 
-        event: TatakuEventType, 
-        event_value: Option<TatakuValue>, 
-        shell: &mut MessageShell,
-    ) {
-        self.node.handle_event(event, event_value, shell);
-    }
-
-    fn reload_skin(&mut self, shell: &mut UpdateShell) {
-        self.node.reload_skin(shell);
-    }
-}
-
-
+/// How many pixels of leniency should there be for resizing
 const LENIENCY: f32 = 5.0;
-
 #[derive(Copy, Clone, Default)]
 struct ResizeHover {
     left: bool,
@@ -164,9 +34,10 @@ impl ResizeHover {
 }
 
 
-struct DialogContainer {
+pub struct DialogWidget {
     title: Cow<'static, str>,
     node: Box<dyn Widget>,
+    num: usize,
 
     draggable: bool,
     resizable: bool,
@@ -174,15 +45,16 @@ struct DialogContainer {
 
     resize_hover: ResizeHover
 }
-impl DialogContainer {
-    fn new(
-        title: Cow<'static, str>,
+impl DialogWidget {
+    pub fn new(
+        title: impl Into<Cow<'static, str>>,
         draggable: bool,
         resizable: bool,
         inner: Box<dyn Widget>,
     ) -> Self {
         Self {
-            title,
+            title: title.into(),
+            num: 0,
             // will get changed in layout
             node: inner,
             resizable,
@@ -322,12 +194,15 @@ impl DialogContainer {
             .contains(mouse_pos);
     }
 }
-impl Widget for DialogContainer {
+impl Widget for DialogWidget {
     fn name(&self) -> Cow<'static, str> { self.node.name() }
     fn node_id(&self) -> NodeId { self.node.node_id() }
 
     fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {
-        let node = std::mem::replace(&mut self.node, EmptyWidget::new_boxed());
+        let node = std::mem::replace(
+            &mut self.node, 
+            EmptyWidget::new_boxed()
+        );
 
         self.node = Container::new(vec![
             DialogTitlebar::new(self.title.clone(), self.draggable)
@@ -357,19 +232,29 @@ impl Widget for DialogContainer {
         shell: &mut InputShell,
     ) {
         self.node.input(event, shell);
+        if shell.event_consumed {
+            return;
+        }
 
-        if shell.event_consumed || !self.resizable {
+        let node_id = self.node_id();
+
+        let Some(bounds) = shell.tree.absolute_bounds(node_id) 
+        else { return };
+
+        // if this was a mouse input and its inside our bounds
+        // we should always consume the event
+        if event.is_mouse() && bounds.contains(event.mouse_pos) {
+            shell.event_consumed = true;
+        }
+
+        // resize 
+        if !self.resizable {
             return
         }
 
-
-        let node_id = self.node_id();
         match (&event.event, self.resizing) {
             (InputType::MouseMove(pos), Some(drag)) => {
                 let delta = drag.mouse_pos_start - *pos;
-                let Some(bounds) = shell.tree.absolute_bounds(node_id) 
-                    else { return };
-
                 self.resizing = Some(DragData {
                     mouse_pos_start: *pos,
                     ..drag
@@ -420,9 +305,6 @@ impl Widget for DialogContainer {
                 }
             }
             (InputType::MouseMove(pos), _) => {
-                let Some(bounds) = shell.tree.absolute_bounds(node_id) 
-                    else { return };
-
                 self.check_top(&bounds, *pos);
                 self.check_bottom(&bounds, *pos);
                 self.check_left(&bounds, *pos);
@@ -457,9 +339,19 @@ impl Widget for DialogContainer {
     }
     
     fn draw(&self, shell: &mut DrawShell) {
+        let Some(bounds) = shell.tree.absolute_bounds(self) 
+        else { return };
+        
+        // black background for visibility
+        shell.list.push(Rectangle::new_bounds(
+            bounds, 
+            Color::BLACK.alpha(0.9), 
+            None
+        ));
+
+        // FIXME: add scissor!
         self.node.draw(shell);
         if !self.resizable { return }
-        let Some(bounds) = shell.tree.absolute_bounds(self.node_id()) else { return };
 
         let color = Color::CRIMSON;
         if self.resize_hover.left {
@@ -505,18 +397,44 @@ impl Widget for DialogContainer {
         message: &Message, 
         shell: &mut MessageShell,
     ) {
-        if let Some(s) = message.tag.as_string() {
-            #[allow(clippy::single_match, reason = "expandability in the future")]
-            match &**s {
-                "close_dialog" => shell.actions.push(UiAction::new(
-                    self.node_id(), 
-                    DialogAction::Close
-                )),
-                _ => {}
+        match message.owner {
+            MessageOwner::Menu => return,
+            MessageOwner::Dialog(num) => {
+                if let Some(str) = message.tag.as_string() {
+                    if str == "set_num" {
+                        if let MessageValue::Number(n) = message.value {
+                            println!("setting num to {n}");
+                            self.num = n;
+                            return;
+                        }
+                    }
+                }
+                
+                if num != self.num { return }
             }
         }
 
-        self.node.handle_message(message, shell);
+        self.node.handle_message(
+            message, 
+            shell,
+        );
+
+        if shell.handled { return }
+        if let Some(str) = message.tag.as_string() {
+            match &**str {
+                "close" 
+                | "force_close"
+                => {
+                    debug!("close request");
+                    shell.actions.push(UiAction::new(
+                        self.node_id(),
+                        DialogAction::Close,
+                    ));
+                }
+
+                _ => {}
+            }
+        }
     }
     
     fn handle_event(
@@ -587,7 +505,7 @@ impl Widget for DialogTitlebar {
             // close button
             Button::new(Box::new(TextWidget::new("X").font_size(20.0)))
                 .padding(LengthPercentage::Length(5.0))
-                .on_press(Message::new(shell.owner, "close_dialog", MessageValue::Click))
+                .on_press(Message::new(shell.owner, "close", MessageValue::Click))
                 .boxed()
         ])
         .width(FILL)
@@ -640,7 +558,7 @@ impl Widget for DialogTitlebar {
 
             (InputType::MousePress(MouseButton::Left), _) => {
                 let Some(bounds) = shell.tree.absolute_bounds(node_id) 
-                    else { return };
+                else { return };
 
                 if bounds.contains(event.mouse_pos) {
                     shell.event_consumed = true;

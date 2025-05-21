@@ -125,7 +125,9 @@ impl GameplayManager {
         mut current_mods: ModManager,
         settings: &Settings,
     ) -> Self {
-        let properties = gamemode.properties();
+        let timing_points = TimingPointHelper::new_from_beatmap(&beatmap);
+
+        let properties = gamemode.properties(&timing_points);
         let playmode = properties.playmode();
         let metadata = beatmap.get_beatmap_meta();
 
@@ -167,7 +169,7 @@ impl GameplayManager {
             id: Arc::new(u32::MAX),
             actions,
 
-            timing_points: TimingPointHelper::new_from_beatmap(&beatmap),
+            timing_points,
             current_mods,
             health: Box::new(DefaultHealthManager::new()),
             key_counter: KeyCounter::new(&properties.keys),
@@ -1354,7 +1356,7 @@ impl GameplayManagerTrait for GameplayManager {
         // drop all texture references by dropping the gamemode
         // this should be fine since we shouldnt be re-using this gamemode at this time anyways
         self.gamemode = Box::new(NoMode);
-        self.gamemode_properties = self.gamemode.properties();
+        self.gamemode_properties = self.gamemode.properties(&self.timing_points);
         skin_manager.free_by_usage(SkinUsage::Beatmap);
 
         let path = self.beatmap

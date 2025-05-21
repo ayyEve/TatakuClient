@@ -4,6 +4,7 @@
 <dialog 
     id = "mods_dialog" 
     title = "Mods"
+    allow_multiple = "false"
 >
     <style>
         #group-list {

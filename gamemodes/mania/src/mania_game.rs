@@ -1027,7 +1027,7 @@ impl GameMode for ManiaGame {
     fn get_playfield(&self) -> PlayfieldNonsense {
         PlayfieldNonsense::new_simple(self.playfield.bounds)
     }
-    fn properties(&self) -> GameModeProperties {
+    fn properties(&self, _timing_points: &TimingPointHelper) -> GameModeProperties {
         const KEY_LIST: &[(KeyPress, &str)] = &[
             (KeyPress::Mania1, "K1"),
             (KeyPress::Mania2, "K2"),
@@ -1044,7 +1044,10 @@ impl GameMode for ManiaGame {
             for note in col.iter() {
                 let hitsounds = note.get_hitsound();
                 for hitsound in hitsounds {
-                    sound_list.insert(hitsound.get_id(), hitsound.load_data(Some("mania-")));
+                    sound_list.insert(
+                        hitsound.get_id(), 
+                        hitsound.load_data(Some("mania-"))
+                    );
                 }
             }
         }

@@ -1474,11 +1474,14 @@ impl GameMode for OsuGame {
             self.mods.has_mod(HardRock)
         )
     }
-    fn properties(&self) -> GameModeProperties {
+    fn properties(&self, _timing_points: &TimingPointHelper) -> GameModeProperties {
         let mut sound_list = HashMap::new();
         for note in self.notes.iter() {
             for hitsound in note.get_all_hitsounds().iter().flatten() {
-                sound_list.insert(hitsound.get_id(), hitsound.load_data(None::<String>));
+                sound_list.insert(
+                    hitsound.get_id(), 
+                    hitsound.load_data(None::<String>)
+                );
             }
         }
 

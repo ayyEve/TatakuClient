@@ -44,7 +44,7 @@ pub trait GameMode: Send + Sync {
     /// happens right when kiai changes
     fn kiai_changed(&mut self, is_kiai: bool);
 
-    fn properties(&self) -> GameModeProperties;
+    fn properties(&self, timing_points: &TimingPointHelper) -> GameModeProperties;
 
     fn get_playfield(&self) -> PlayfieldNonsense;
 
