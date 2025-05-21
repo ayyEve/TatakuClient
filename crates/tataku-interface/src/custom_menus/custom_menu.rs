@@ -17,12 +17,6 @@ impl CustomMenu {
         values: &mut dyn Reflect,
         variables: BuildableInputArguments,
     ) -> Result<BuiltCustomMenu, Vec<BuildableInputError>> {
-
-        std::fs::write(
-            format!("/tmp/fuck/{}.json", self.id),
-            format!("{self:#?}")
-        ).unwrap();
-
         self.inputs.init(variables, values)?;
 
         let mut events: HashMap<TatakuEventType, Vec<BuildableAction>> = HashMap::new();
