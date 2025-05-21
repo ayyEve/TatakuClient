@@ -7,7 +7,6 @@ impl Downloader {
     pub fn download(options: DownloadOptions) -> Arc<RwLock<DownloadProgress>> {
         let progress = Arc::new(RwLock::new(DownloadProgress::default()));
         Self::download_existing_progress(options, progress.clone());
-
         progress
     }
 
@@ -16,7 +15,8 @@ impl Downloader {
         progress: Arc<RwLock<DownloadProgress>>,
     ) {
         tokio::spawn(async move {
-            for i in 0..=options.retry_count {
+            for i in 0..= options.retry_count {
+                println!("starting download: {}", options.url);
                 match Self::perform_download(&options, &progress).await {
                     Ok(_) => break,
 
@@ -46,7 +46,7 @@ impl Downloader {
     async fn perform_download(
         options: &DownloadOptions, 
         progress: &Arc<RwLock<DownloadProgress>>
-    ) -> TatakuResult {
+    ) -> TatakuResult<()> {
         let params = UrlParams::parse(&options.url).unwrap();
         debug!("got params: {params:?}");
 
@@ -78,7 +78,7 @@ impl Downloader {
                     progress.error = None;
                     progress.retrying = false;
                 }
-
+                
                 return Ok(())
             }
     

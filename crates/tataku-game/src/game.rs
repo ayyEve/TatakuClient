@@ -346,7 +346,7 @@ impl Game {
             if std::fs::read_dir(SONGS_DIR).unwrap().count() == 0 {
                 // no songs, download some
                 for id in FIRST_MAPS {
-                    let downloadable = Downloadable {
+                    self.download_manager.add_download(Downloadable {
                         filename: format!("{DOWNLOADS_DIR}/{id}.osz"),
                         download_progress: None,
                         download: Arc::new(move ||
@@ -356,15 +356,23 @@ impl Game {
                             ))
                         ),
                         on_complete: None,
-                    };
-
-                    self.download_manager.add_download(downloadable);
+                    });
                 }
             }
 
 
             // // TODO: remove when done testing downloads stuff
-            // self.download_manager.add_download(Downloadable::fake_download());
+            // self.download_manager.add_download(Downloadable {
+            //     filename: "/tmp/75.osz".to_string(),
+            //     download_progress: None,
+            //     download: Arc::new(move ||
+            //         Downloader::download(DownloadOptions::new(
+            //             "https://cdn.ayyeve.dev/tataku/maps/75.osz".to_string(),
+            //             0
+            //         ))
+            //     ),
+            //     on_complete: None,
+            // });
         }
 
         #[cfg(feature="graphics")]

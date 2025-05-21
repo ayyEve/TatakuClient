@@ -21,7 +21,13 @@ impl DownloadManager {
         // TODO: queue things and only download a certain number of things at a time
 
         download.download_progress = Some((download.download)());
-        info!("adding download: {download:?}");
+        self.statuses.push(DownloadStatus {
+            filename: download.filename.clone(),
+            title: download.filename.clone(),
+            downloading: false,
+            completed: false,
+            progress: 0.0,
+        });
         self.downloads.push(download);
     }
 
@@ -31,11 +37,21 @@ impl DownloadManager {
     ) {
         let mut to_remove = Vec::new();
 
-        for (n, (dl, status)) in self.downloads.iter_mut().zip(self.statuses.iter_mut()).enumerate() {
+        for (n, (dl, status)) in self
+            .downloads
+            .iter_mut()
+            .zip(self.statuses.iter_mut())
+            .enumerate()
+        {
             status.filename = dl.filename.clone();
             status.downloading = dl.download_progress.is_some();
 
-            let Some(p) = dl.download_progress.as_ref().map(|i| i.read()) else { continue };
+            let Some(p) = dl
+                .download_progress
+                .as_ref()
+                .map(|i| i.read()) 
+            else { continue };
+
             status.progress = p.progress();
             let complete = p.complete();
 
@@ -60,7 +76,11 @@ impl DownloadManager {
     }
 
 
-    pub fn draw(&self, window_size: Vector2, list: &mut RenderableCollection) {
+    pub fn draw(
+        &self, 
+        window_size: Vector2, 
+        list: &mut RenderableCollection
+    ) {
         if self.statuses.is_empty() { return }
 
         const SIZE: Vector2 = Vector2::new(150.0, 50.0);

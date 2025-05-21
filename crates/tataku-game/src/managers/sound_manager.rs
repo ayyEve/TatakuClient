@@ -36,7 +36,7 @@ impl SoundManager {
             }
 
             AudioActionType::Load { list } => {
-                debug!("loading sounds: {list:?}");
+                // debug!("loading sounds: {list:?}");
                 for i in list {
                     let path = match i.source {
                         HitsoundSource::Default => format!("resources/audio/{}", i.path),
