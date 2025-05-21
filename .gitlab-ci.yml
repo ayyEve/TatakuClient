@@ -89,6 +89,6 @@ releases:
     assets:
       links:
         - name: Linux x86_64
-          url: $LINUX_JOB/tataku-client
+          url: $LINUX_JOB/artifacts/file/target/release/tataku-client
         - name: Windows x86_64
-          url: $WINDOWS_JOB/tataku-client.exe
+          url: $WINDOWS_JOB/artifacts/file/target/x86_64-pc-windows-gnu/release/tataku-client.exe
