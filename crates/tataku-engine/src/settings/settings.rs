@@ -113,10 +113,10 @@ pub struct Settings {
     pub skip_autosaveing: bool,
 }
 impl Settings {
-    pub fn load(actions: &mut ActionQueue) -> Self {
-        Self::load_from(SETTINGS_FILE, actions)
+    pub fn load() -> Self {
+        Self::load_from(SETTINGS_FILE)
     }
-    pub fn load_from(path: impl AsRef<Path>, actions: &mut ActionQueue) -> Self {
+    pub fn load_from(path: impl AsRef<Path>) -> Self {
         let path = path.as_ref();
 
         let mut s = match std::fs::read_to_string(path)
@@ -127,10 +127,6 @@ impl Settings {
             Ok(Ok(settings)) => settings,
             Err(e) | Ok(Err(e)) => {
                 warn!("Error reading settings.json\nLoading defaults, {e}");
-                actions.push(Notification::new_error(
-                    "Error reading settings.json\nLoading defaults", 
-                    e
-                ));
                 
                 if let Some(saved_as) = Self::backup_settings(path) {
                     info!("Old settings saved to {saved_as}");
@@ -145,22 +141,16 @@ impl Settings {
         
         // save after loading.
         // writes file if it doesnt exist, and writes new values from updates
-        s.save(actions);
+        s.save();
         s
     }
 
-    pub fn save(
-        &self,
-        actions: &mut ActionQueue,
-    ) {
+    pub fn save(&self) {
         debug!("Saving settings");
         let str = serde_json::to_string_pretty(self).unwrap();
         match std::fs::write(&self.save_path, str) {
             Ok(_) => trace!("settings saved successfully"),
-            Err(e) => actions.push(Notification::new_error(
-                "Error saving settings", 
-                e
-            )),
+            Err(e) => error!("Error saving settings: {e}"),
         }
     }
 

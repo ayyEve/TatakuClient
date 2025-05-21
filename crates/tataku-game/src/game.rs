@@ -90,14 +90,13 @@ impl Game {
         audio_engines: Vec<AudioApiInit>,
         gamemodes: Vec<IncomingGamemode>,
     ) -> Self {
-        let mut actions = ActionQueue::new();
-        let settings = Settings::load(&mut actions);
+        let settings = Settings::load();
 
         let skin_manager = SkinManager::new(&settings);
         let infos = GamemodeInfos::new(gamemodes); 
 
         Self {
-            actions,
+            actions: ActionQueue::new(),
             runtime: Rc::new(
             tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
@@ -479,7 +478,7 @@ impl Game {
             // wait 100ms before writing settings changes
             if let Some(last_update) = last_setting_update {
                 if last_update.as_millis() > 500.0 {
-                    self.settings.clone().save(&mut self.actions);
+                    self.settings.clone().save();
                     last_setting_update = None;
                 }
             }
@@ -1055,7 +1054,7 @@ impl Game {
             // queued mode didnt change, set the unlocked's mode to the updated mode
             GameState::None => {} //self.current_state = current_state,
             GameState::Closing => {
-                self.settings.clone().save(&mut self.actions);
+                self.settings.clone().save();
                 self.current_state = GameState::Closing;
                 let _ = self.window_proxy.send_event(WindowAction::CloseGame);
 

@@ -94,7 +94,7 @@ pub struct OsuApiBeatmap {
 
 #[test]
 fn test() {
-    let settings = Settings::load(&mut ActionQueue::new());
+    let settings = Settings::load();
 
     let x = OsuApi::get_beatmap_by_hash("b512dc9b054db498689150556bce5533", &settings);
     println!("{x:?}");

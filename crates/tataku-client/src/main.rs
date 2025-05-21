@@ -26,31 +26,22 @@ pub const REQUIRED_FILES:&[&str] = &[
 
 
 fn main() {
-    // let runtime = tokio::runtime::Builder::new_multi_thread()
-    //     .enable_all()
-    //     .build()
-    //     .unwrap();
-
     let _guards = init_logging();
-
-    // // initialize the game
-    // runtime.block_on(startup());
-
-    // start_game(&runtime);
     startup();
     start_game();
 }
 
-fn start_game(
-    // runtime: &tokio::runtime::Runtime,
-) {
-    let (game_event_sender, game_event_receiver) = tokio::sync::mpsc::channel(30);
-    // let window_load_barrier = Arc::new(tokio::sync::Barrier::new(2));
-    // let window_side_barrier = window_load_barrier.clone();
+fn start_game() {
+    let (
+        game_event_sender, 
+        game_event_receiver
+    ) = tokio::sync::mpsc::channel(30);
     let window_load_barrier = Arc::new(std::sync::Barrier::new(2));
     let window_side_barrier = window_load_barrier.clone();
 
-    let e = winit::event_loop::EventLoop::with_user_event().build().unwrap();
+    let e = winit::event_loop::EventLoop::with_user_event()
+        .build()
+        .unwrap();
     let proxy = e.create_proxy();
 
     // start game
@@ -65,16 +56,12 @@ fn start_game(
             proxy,
         );
     });
-    // let game = runtime.spawn(async move {
-        
-    // });
-
 
     static WINDOW: tokio::sync::OnceCell<winit::window::Window> = tokio::sync::OnceCell::const_new();
 
     // setup window
     info!("creating window");
-    let settings = Settings::load(&mut ActionQueue::new());
+    let settings = Settings::load();
     let game_window = GameWindow::new(
         game_event_sender,
         &WINDOW,
@@ -110,7 +97,7 @@ fn startup() {
 
     let game_dir = std::env::var("GAME_DIR")
         .unwrap_or(GAME_DIR.to_owned());
-
+    
     if !Io::exists(&game_dir) {
         if let Err(e) = std::fs::create_dir_all(&game_dir) {
             println!("Error creating game dir: {e}");
@@ -126,13 +113,7 @@ fn startup() {
 
 fn setup() {
     trace!("Client setup");
-    let mut queue = ActionQueue::default();
-    Settings::load(&mut queue);
-
-    if let Some(queue) = Some(queue.take())
-        .filter(|v| !Vec::is_empty(v)) {
-        panic!("error?? {queue:?}")
-    }
+    Settings::load();
 
     // check for missing folders
     debug!("checking folders");

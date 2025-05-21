@@ -21,7 +21,7 @@ settings.json
 
 # new tataku resource dir
 /game
-/game2
+/game[0-9]
 /Screenshots
 
 # things that are auto-generated each build
