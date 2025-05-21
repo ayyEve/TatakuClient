@@ -181,7 +181,7 @@ impl TransformManager {
             self.transforms.push(Transformation::new(
                 offset,
                 duration,
-                TransformType::Transparency {start: start_a, end: 0.0},
+                TransformType::Transparency { start: start_a, end: 0.0 },
                 Easing::EaseOutSine,
                 time
             ));
@@ -200,7 +200,7 @@ impl TransformManager {
         self.transforms.push(Transformation::new(
             offset,
             duration * 1.1,
-            TransformType::Scale {start: 1.0, end: end_scale},
+            TransformType::Scale { start: 1.0, end: end_scale },
             Easing::Linear,
             time
         ));

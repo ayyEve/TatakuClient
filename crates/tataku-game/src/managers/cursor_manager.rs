@@ -175,7 +175,8 @@ impl CursorManager {
 
             // primitive ripple, not always correct
             let radius = 1.0;
-            let end_radius = self.ripple_radius_override.unwrap_or(radius * self.settings.cursor_ripple_final_scale);
+            let end_radius = self.ripple_radius_override
+                .unwrap_or(25.0 * self.settings.cursor_ripple_final_scale);
 
             let end_scale = end_radius / radius;
 
@@ -187,7 +188,14 @@ impl CursorManager {
                 Color::WHITE.alpha(0.5),
                 Some(Border::new(Color::WHITE, 2.0 / end_scale))
             ));
-            group.ripple(0.0, duration, self.time, end_scale, true, Some(0.2));
+            group.ripple(
+                0.0, 
+                duration, 
+                self.time, 
+                end_scale, 
+                true, 
+                Some(0.2)
+            );
         // }
 
 
@@ -197,7 +205,8 @@ impl CursorManager {
 
     pub fn handle_cursor_action(&mut self, action: CursorAction) {
         match action {
-            CursorAction::OverrideRippleRadius(radius_maybe) => self.ripple_radius_override = radius_maybe,
+            CursorAction::OverrideRippleRadius(radius_maybe) 
+                => self.ripple_radius_override = radius_maybe,
             CursorAction::SetVisible(show) => {
                 trace!("setting cursor visible = {show}");
                 self.visible = show;

@@ -557,7 +557,14 @@ impl OsuSlider {
             ));
 
             let duration = 500.0;
-            group.ripple(0.0, duration, time, self.standard_settings.ripple_scale, true,  None);
+            group.ripple(
+                0.0, 
+                duration, 
+                time, 
+                self.standard_settings.ripple_scale, 
+                true, 
+                None
+            );
 
             self.shapes.push(group);
         }

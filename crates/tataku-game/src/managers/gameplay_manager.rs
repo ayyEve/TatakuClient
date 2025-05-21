@@ -1638,7 +1638,7 @@ impl GameplayManagerTrait for GameplayManager {
         &self.gameplay_mode
     }
     fn set_mode(&mut self, mode: GameplayModeInner) {
-        println!("setting gameplay mode to {mode:?}");
+        // println!("setting gameplay mode to {mode:?}");
 
         match &mode {
             GameplayModeInner::Normal => {
