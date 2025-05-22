@@ -40,7 +40,6 @@ pub struct OnlineManager {
     pub logged_in: bool,
 
     // ====== chat ======
-    #[cfg(feature="graphics")]
     pub chat_messages: Vec<ChatChannel>,
 
     // ====== spectator ======

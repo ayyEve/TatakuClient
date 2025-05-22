@@ -18,6 +18,7 @@ pub trait GameMode: Send + Sync {
         state: &mut GameplayUpdateShell
     );
 
+    #[cfg(feature="graphics")]
     fn draw(
         &mut self, 
         state: GameplayDrawShell, 
@@ -29,6 +30,7 @@ pub trait GameMode: Send + Sync {
     fn unpause(&mut self) {}
     fn reset(&mut self, beatmap: &Beatmap);
 
+    #[cfg(feature="graphics")]
     fn set_bounds(&mut self, bounds: Bounds, full_window: bool);
     
     fn force_update_settings(&mut self, settings: &Settings);
@@ -50,6 +52,7 @@ pub trait GameMode: Send + Sync {
 
     /// setup any gamemode specific ui elements for this gamemode
     /// ie combo and leaderboard, since the pos is different per-mode
+    #[cfg(feature="graphics")]
     fn build_widgets(
         &self, 
         _loader: &mut dyn UiElementLoader,

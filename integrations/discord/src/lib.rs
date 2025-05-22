@@ -64,6 +64,7 @@ impl TatakuIntegration for Discord {
     fn name(&self) -> Cow<'static, str> { Cow::Borrowed("Discord") }
     fn init(
         &mut self, 
+        #[cfg(feature="graphics")]
         _window_handle: raw_window_handle::WindowHandle<'_>,
     ) -> TatakuResult<()> {
         Ok(())

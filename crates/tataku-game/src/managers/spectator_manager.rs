@@ -236,6 +236,7 @@ impl SpectatorManager {
     ) {
         // check if we need to close something
         if key == Key::Escape {
+            #[cfg(feature="graphics")] 
             actions.push(MenuAction::set_menu("main_menu"));
             // resume song if paused
             actions.push(SongAction::Play);

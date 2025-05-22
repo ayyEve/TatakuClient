@@ -11,7 +11,7 @@ workspace = true
 
 [features]
 default = [ "gameplay" ]
-gameplay = [ "graphics", "tokio-tungstenite", "tataku-engine/gameplay" ]
+gameplay = [ "tokio-tungstenite", "tataku-engine/gameplay" ]
 # kira_audio = ["rustfft", "uuid"]
 debug_hitsounds = [ "tataku-engine/debug_hitsounds" ]
 debug_perf_rating = []
@@ -23,13 +23,13 @@ storyboards = [ "tataku-engine/storyboards" ]
 ui = [ "taffy", "quick-xml", "triple_buffer" ]
 
 # removes as much graphics-side stuff as possible
-graphics = [ "winit", "ui", "image" ]
+graphics = [ "winit", "ui", "image", "tataku-engine/graphics", "tataku-interface" ]
 
 [dependencies]
 tataku-common.workspace = true
 tataku-engine.workspace = true
 tataku-resources.workspace = true
-tataku-interface.workspace = true
+tataku-interface = { workspace = true, optional = true }
 tataku-client-proc-macros.workspace = true
 
 # framework stuff

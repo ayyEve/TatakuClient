@@ -27,6 +27,7 @@ pub struct ActualFont {
     // if the size is loaded but the char isnt found, dont try to load the font
     queued_for_load: Arc<RwLock<HashSet<u32>>>,
 }
+#[cfg(feature="graphics")]
 impl std::fmt::Debug for ActualFont {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Debug::fmt(&self.name, f)

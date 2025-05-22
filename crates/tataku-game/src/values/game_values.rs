@@ -11,6 +11,7 @@ pub struct GameValues {
     pub game: GameInfo,
     pub global: GlobalValues,
     pub enums: EnumValues,
+    #[cfg(feature="graphics")] 
     pub theme: Theme,
 
     pub score: ReflectScore,

@@ -59,6 +59,8 @@ impl HitObject for TaikoNote {
     fn end_time(&self, hw_miss: f32) -> f32 { self.time + hw_miss }
 
     fn update(&mut self, _time: f32) {}
+
+    #[cfg(feature="graphics")]
     fn draw(&mut self, time: f32, list: &mut RenderableCollection) {
         let x = self.x_at(time);
         let delta_time = time - self.hit_time;

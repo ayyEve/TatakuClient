@@ -10,6 +10,8 @@ pub trait HitObject: Send + Sync {
     fn end_time(&self, hitwindow_miss: f32) -> f32;
 
     fn update(&mut self, time: f32);
+
+    #[cfg(feature="graphics")]
     fn draw(&mut self, time: f32, list: &mut RenderableCollection);
 
     /// set this object back to defaults

@@ -35,17 +35,15 @@ pub use serde::{ Serialize, Deserialize };
 // logging
 pub use tracing::*;
 
-// general game imports
+// tataku imports
 pub use crate::game::*;
 pub use crate::tasks::*;
-#[cfg(feature="graphics")]
-pub use crate::menus::*;
 pub use crate::values::*;
 pub use crate::helpers::*;
 pub use crate::managers::*;
 pub use crate::database::*;
 pub use crate::integrations::*;
-
-// tataku-client imports
 pub use tataku_engine::prelude::*;
-pub use tataku_interface::prelude::*;
+
+#[cfg(feature="graphics")] pub use crate::menus::*;
+#[cfg(feature="graphics")] pub use tataku_interface::prelude::*;

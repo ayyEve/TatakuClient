@@ -89,12 +89,14 @@ pub struct GameplayManager {
     pub timing_points: TimingPointHelper,
 
     /// center text helper (ie, for offset and global offset)
+    #[cfg(feature="graphics")]
     pub center_text_helper: CenteredTextHelper,
 
     /// (map.time, note.time - hit.time)
     hitbar_timings: Vec<(f32, f32)>,
 
     /// list of judgement indicators to draw
+    #[cfg(feature="graphics")] 
     pub judgement_indicators: Vec<Box<dyn JudgementIndicator>>,
 
     pub common_game_settings: Arc<CommonGameplaySettings>,
@@ -186,6 +188,7 @@ impl GameplayManager {
             end_time: properties.end_time,
             global_offset: settings.global_offset,
 
+            #[cfg(feature="graphics")] 
             center_text_helper: CenteredTextHelper::new(CENTER_TEXT_DRAW_TIME),
             beatmap_preferences: Database::get_beatmap_prefs(metadata.beatmap_hash),
 
@@ -202,6 +205,7 @@ impl GameplayManager {
             window_size: Vector2::ZERO,
             start_time: time,
 
+            #[cfg(feature="graphics")] 
             judgement_indicators: Vec::new(),
             gameplay_mode: Box::new(GameplayModeInner::Normal),
             gameplay_actions: Vec::new(),
@@ -231,6 +235,7 @@ impl GameplayManager {
             song_time: 0.0,
         };
 
+        #[cfg(feature="graphics")] 
         gm.init_ui();
 
         gm
@@ -593,9 +598,9 @@ impl GameplayManager {
     }
 
     pub fn increment_offset(&mut self, delta: f32) {
-        let time = self.time();
         self.beatmap_preferences.audio_offset += delta;
-        self.center_text_helper.set_value(format!("Offset: {:.2}ms", self.beatmap_preferences.audio_offset), time);
+        #[cfg(feature="graphics")] 
+        self.center_text_helper.set_value(format!("Offset: {:.2}ms", self.beatmap_preferences.audio_offset), self.time());
 
         // update the beatmap offset
         let new_prefs = self.beatmap_preferences.clone();
@@ -604,9 +609,9 @@ impl GameplayManager {
     }
 
     pub fn increment_global_offset(&mut self, delta: f32) {
-        let time = self.time();
         self.global_offset += delta;
-        self.center_text_helper.set_value(format!("Global Offset: {:.2}ms", self.global_offset), time);
+        #[cfg(feature="graphics")] 
+        self.center_text_helper.set_value(format!("Global Offset: {:.2}ms", self.global_offset), self.time());
     }
 
     pub fn force_update_settings(&mut self, settings: &Settings) {
@@ -790,9 +795,11 @@ impl GameplayManagerTrait for GameplayManager {
         }
 
         // update hit timings bar
+        #[cfg(feature="graphics")] 
         self.hitbar_timings.retain(|(hit_time, _)| {time - hit_time < HIT_TIMING_DURATION});
 
         // update judgement indicators
+        #[cfg(feature="graphics")] 
         self.judgement_indicators.retain(|a| a.should_keep(time));
 
         // update gamemode
@@ -1125,7 +1132,10 @@ impl GameplayManagerTrait for GameplayManager {
             GameplayAction::Resume => self.start(),
             GameplayAction::JumpToTime { time, skip_intro } => self.jump_to_time(time, skip_intro),
             GameplayAction::ApplyMods(mods) => self.apply_mods(mods),
-            GameplayAction::FitToArea(bounds) => self.fit_to_area(bounds),
+            GameplayAction::FitToArea(bounds) => {
+                #[cfg(feature="graphics")] 
+                self.fit_to_area(bounds);
+            },
             GameplayAction::SetMode(mode) => self.set_mode(mode.into()),
 
             GameplayAction::AddReplayAction { action, should_save } => self.handle_frame(action, true, Some(self.time()), should_save, settings),
@@ -1230,6 +1240,7 @@ impl GameplayManagerTrait for GameplayManager {
                 self.hitbar_timings.push((hit_time, diff));
             }
 
+            #[cfg(feature="graphics")] 
             GamemodeAction::AddIndicator(
                 mut indicator
             ) => {
@@ -1245,6 +1256,7 @@ impl GameplayManagerTrait for GameplayManager {
                 stat, 
                 value 
             } => self.score.insert_stat(stat, value),
+            #[cfg(feature="graphics")] 
             GamemodeAction::RemoveLastJudgment => self.judgement_indicators.pop().nope(),
             GamemodeAction::ComboBreak => self.combo_break(),
             GamemodeAction::FailGame => self.fail(),
@@ -1263,12 +1275,16 @@ impl GameplayManagerTrait for GameplayManager {
 
 
             GamemodeAction::PlayfieldChanged => {
+                #[cfg(feature="graphics")] 
                 if self.animation.use_gamemode_playfield(self.gamemode_properties.info) {
                     self.animation.fit_to_area(self.gamemode.get_playfield());
                 }
 
                 self.layout_ui();
             }
+
+            #[cfg(not(feature="graphics"))] 
+            _ => {}
         }
     }
 
@@ -1338,6 +1354,7 @@ impl GameplayManagerTrait for GameplayManager {
     }
 
 
+    #[cfg(feature="graphics")]
     fn window_focus_changed(&mut self, got_focus: bool) {
         // info!("window focus changed");
         if got_focus {
@@ -1369,7 +1386,7 @@ impl GameplayManagerTrait for GameplayManager {
     }
 
 
-    // make not async?
+    #[cfg(feature="graphics")]
     fn fit_to_area(&mut self, bounds: Bounds) {
         // info!("fitting to area: {bounds:?}");
         self.fit_to_bounds = Some(bounds);
@@ -1393,6 +1410,7 @@ impl GameplayManagerTrait for GameplayManager {
 
     // can be from either paused or new
     fn start(&mut self) {
+        #[cfg(feature="graphics")] 
         if let Some(bounds) = self.fit_to_bounds {
             self.gamemode.set_bounds(bounds, false);
         } else {
@@ -1402,6 +1420,7 @@ impl GameplayManagerTrait for GameplayManager {
             );
         }
 
+        #[cfg(feature="graphics")] 
         if self.should_hide_cursor() {
             self.actions.push(CursorAction::SetVisible(false));
         } else {
@@ -1469,10 +1488,13 @@ impl GameplayManagerTrait for GameplayManager {
     
         self.layout_ui();
     }
+
     fn pause(&mut self) {
         // make sure the cursor is visible
+        #[cfg(feature="graphics")] 
         self.actions.push(CursorAction::SetVisible(true));
         // undo any cursor override
+        #[cfg(feature="graphics")] 
         self.actions.push(CursorAction::OverrideRippleRadius(None));
 
         // self.song.pause();
@@ -1495,6 +1517,7 @@ impl GameplayManagerTrait for GameplayManager {
         self.health.reset();
         self.key_counter.reset();
         self.hitbar_timings.clear();
+        #[cfg(feature="graphics")] 
         self.judgement_indicators.clear();
         self.restart_key_hold_start = None;
 
@@ -1614,8 +1637,10 @@ impl GameplayManagerTrait for GameplayManager {
 
     fn on_complete(&mut self) {
         // make sure the cursor is visible
+        #[cfg(feature="graphics")] 
         self.actions.push(CursorAction::SetVisible(true));
         // undo any cursor override
+        #[cfg(feature="graphics")] 
         self.actions.push(CursorAction::OverrideRippleRadius(None));
 
         #[cfg(feature="gameplay")]

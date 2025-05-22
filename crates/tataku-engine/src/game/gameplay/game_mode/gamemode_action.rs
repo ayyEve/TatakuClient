@@ -24,6 +24,7 @@ pub enum GamemodeAction {
     },
 
     /// add a hit indicator
+    #[cfg(feature="graphics")]
     AddIndicator(Box<dyn JudgementIndicator>),
 
     /// perform a combo break

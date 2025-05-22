@@ -717,6 +717,7 @@ impl HitObject for OsuSlider {
 
     }
 
+    #[cfg(feature="graphics")]
     fn draw(&mut self, _time: f32, list: &mut RenderableCollection) {
         // draw shapes
         for shape in self.shapes.iter_mut() {

@@ -1,8 +1,15 @@
 use crate::prelude::*;
 
+#[cfg(feature="graphics")]
 pub trait GamemodeSettings: Reflect + MakeSettingsMenu + std::fmt::Debug {
     fn to_value(&self) -> serde_json::Value;
 }
+
+#[cfg(not(feature="graphics"))]
+pub trait GamemodeSettings: Reflect + std::fmt::Debug {
+    fn to_value(&self) -> serde_json::Value;
+}
+
 impl_downcast!(GamemodeSettings);
 
 #[repr(C)]

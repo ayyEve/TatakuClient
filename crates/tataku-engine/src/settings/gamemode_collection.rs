@@ -16,6 +16,7 @@ impl DerefMut for GamemodeSettingsCollection {
 }
 
 
+#[cfg(feature="graphics")]
 impl MakeSettingsMenu for GamemodeSettingsCollection {
     fn into_elements(
         &self, 

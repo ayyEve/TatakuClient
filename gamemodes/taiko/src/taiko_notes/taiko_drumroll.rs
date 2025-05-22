@@ -56,6 +56,7 @@ impl HitObject for TaikoDrumroll {
     fn end_time(&self,_:f32) -> f32 { self.end_time }
     fn update(&mut self, _time: f32) {}
     
+    #[cfg(feature="graphics")]
     fn draw(&mut self, time: f32, list: &mut RenderableCollection) {
         self.pos.x = self.playfield.hit_position.x + self.x_at(time);
         self.end_x = self.playfield.hit_position.x + self.end_x_at(time);

@@ -1,4 +1,6 @@
 use crate::prelude::*;
+
+#[cfg(feature="graphics")]
 use tataku_client_proc_macros::Settings;
 
 const SETTINGS_FILE:&str = "settings.json";
@@ -408,5 +410,42 @@ impl Dropdownable2 for SkinDropdownable {
     type T = String;
     fn variants() -> Vec<String> {
         AVAILABLE_SKINS.read().clone() //.iter().map(|s|Self::Skin(s.clone())).collect()
+    }
+}
+
+
+lazy_static::lazy_static! {
+    static ref THEMES: Vec<(String, String)> = {
+        Vec::new()
+    };
+}
+
+#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Reflect)]
+#[derive(Serialize, Deserialize)]
+#[reflect(display = "display")]
+pub enum SelectedTheme {
+    Tataku,
+    Osu,
+    /// path to theme file, name of theme
+    Custom(String, String),
+}
+#[cfg(feature="graphics")]
+impl tataku_client_common::Dropdownable2 for SelectedTheme {
+    type T = Self;
+    fn variants() -> Vec<Self::T> {
+        [Self::Tataku, Self::Osu]
+            .into_iter()
+            .chain(THEMES.clone().into_iter().map(|t| Self::Custom(t.0, t.1)))
+            .collect()
+    }
+}
+impl Display for SelectedTheme {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Tataku => write!(f, "Tataku"),
+            Self::Osu => write!(f, "Osu"),
+            Self::Custom(_, name) => write!(f, "{name}"),
+        }
     }
 }

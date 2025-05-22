@@ -437,6 +437,7 @@ impl MultiplayerManager {
 
             MultiplayerPacket::Server_LobbyRoundComplete => {
                 info!("lobby round completed");
+                #[cfg(feature="graphics")] 
                 actions.push(MenuAction::set_menu("score_menu"));
             }
 

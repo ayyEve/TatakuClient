@@ -1,4 +1,5 @@
 use crate::prelude::*;
+#[cfg(feature="graphics")]
 use tataku_client_proc_macros::Settings;
 
 #[derive(Clone, Debug, Serialize, PartialEq, SettingsDeserialize)]

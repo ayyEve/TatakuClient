@@ -5,6 +5,7 @@ pub struct SongManager {
     song_queue: Vec<SongData>,
     current_song: Option<SongData>,
 
+    #[cfg(feature="graphics")] 
     fft_hooks: Vec<Weak<FFTHook>>,
 }
 impl SongManager {
@@ -50,6 +51,7 @@ impl SongManager {
         Ok(())
     }
 
+    #[cfg(feature="graphics")] 
     fn update_ffts(&mut self, engine: &mut AudioManager) {
         if self.fft_hooks.is_empty() { return }
         let Some(song) = &self.current_song else { return };
@@ -68,6 +70,7 @@ impl SongManager {
     }
 
     pub fn update(&mut self, engine: &mut AudioManager) {
+        #[cfg(feature="graphics")] 
         self.update_ffts(engine);
     }
 
@@ -132,6 +135,7 @@ impl SongManager {
         if let Some(vol) = params.volume { song.set_volume(vol) }
     }
 
+    #[cfg(feature="graphics")] 
     pub fn hook_fft(&mut self, hook: Weak<FFTHook>) {
         self.fft_hooks.push(hook);
     }

@@ -27,6 +27,7 @@ pub trait GameplayManagerTrait {
 
     fn apply_mods(&mut self, mods: ModManager);
     fn update(&mut self, values: &mut dyn Reflect, actions: &mut ActionQueue);
+    #[cfg(feature="graphics")]
     fn draw(&mut self, list: &mut RenderableCollection);
     fn handle_action(
         &mut self, 
@@ -40,14 +41,18 @@ pub trait GameplayManagerTrait {
     );
 
 
+    #[cfg(feature="graphics")]
     fn reload_skin(
         &mut self, 
         skin_manager: &mut dyn SkinProvider,
         settings: &Settings,
     );
 
+    #[cfg(feature="graphics")]
     fn fit_to_area(&mut self, bounds: Bounds);
+    #[cfg(feature="graphics")]
     fn window_focus_changed(&mut self, got_focus: bool);
+    #[cfg(feature="graphics")]
     fn cleanup_textures(&mut self, skin_manager: &mut dyn SkinProvider);
 
     fn on_complete(&mut self);
@@ -313,16 +318,13 @@ impl GameplayUpdateShell<'_> {
     pub fn add_judgment(&mut self, judgment: HitJudgment) {
         self.actions.push(GamemodeAction::AddJudgment(judgment));
     }
+    #[cfg(feature="graphics")]
     pub fn add_indicator(&mut self, indicator: impl JudgementIndicator + 'static) {
         self.actions.push(GamemodeAction::AddIndicator(Box::new(indicator)));
     }
     pub fn add_stat(&mut self, stat: GameModeStat, value: f32) {
         self.actions.push(GamemodeAction::AddStat { stat, value });
     }
-
-    // pub fn play_note_sound(&mut self, hitsounds: Vec<Hitsound>) {
-    //     self.actions.push(GamemodeAction::PlayHitsounds(hitsounds));
-    // }
 
     pub fn play_hitsounds(&mut self, sounds: &[Hitsound], repeat: bool) {
         for i in sounds {

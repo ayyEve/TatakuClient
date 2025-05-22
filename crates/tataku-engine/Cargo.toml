@@ -9,7 +9,7 @@ workspace = true
 
 [features]
 default = [ "gameplay" ]
-gameplay = [ "graphics" ]
+gameplay = []
 debug_hitsounds = []
 debug_perf_rating = []
 debug_custom_menus = []

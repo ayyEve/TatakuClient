@@ -11,7 +11,8 @@ workspace = true
 # crate-type = ["cdylib"]
 
 [features]
-default = [ "graphics" ]
+# default = [ "graphics" ]
+default = []
 graphics = []
 
 [dependencies]

@@ -234,38 +234,3 @@ fn col(b:[u8; 4]) -> Color {
         b[3] as f32 / 255.0
     )
 }
-
-
-
-lazy_static::lazy_static! {
-    static ref THEMES: Vec<(String, String)> = {
-        Vec::new()
-    };
-}
-
-#[derive(Clone, Eq, PartialEq, Debug)]
-#[derive(Reflect)]
-#[derive(Serialize, Deserialize)]
-#[reflect(display = "display")]
-pub enum SelectedTheme {
-    Tataku,
-    Osu,
-    /// path to theme file, name of theme
-    Custom(String, String),
-}
-#[cfg(feature="graphics")]
-impl tataku_client_common::Dropdownable2 for SelectedTheme {
-    type T = Self;
-    fn variants() -> Vec<Self::T> {
-        [Self::Tataku, Self::Osu].into_iter().chain(THEMES.clone().into_iter().map(|t| Self::Custom(t.0, t.1))).collect()
-    }
-}
-impl Display for SelectedTheme {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Tataku => write!(f, "Tataku"),
-            Self::Osu => write!(f, "Osu"),
-            Self::Custom(_, name) => write!(f, "{name}"),
-        }
-    }
-}

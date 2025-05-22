@@ -1,4 +1,5 @@
 use crate::prelude::*;
+#[cfg(feature="graphics")]
 use tataku_client_proc_macros::Settings;
 
 /// helper so i dont need to recompile the game every time i want to change what things are logged

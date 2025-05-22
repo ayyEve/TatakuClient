@@ -14,6 +14,7 @@ pub struct Game {
     pub actions: ActionQueue,
     runtime: Rc<tokio::runtime::Runtime>,
     
+    #[cfg(feature="graphics")] 
     volume_controller: VolumeControl,
     current_state: GameState,
     queued_state: GameState,
@@ -24,40 +25,29 @@ pub struct Game {
     window_proxy: winit::event_loop::EventLoopProxy<WindowAction>,
 
     // managers
+    #[cfg(feature="gameplay")] input_manager: InputManager,
+    #[cfg(feature="gameplay")] spectator_manager: Option<Box<SpectatorManager>>,
+    #[cfg(feature="gameplay")] multiplayer_manager: Option<Box<MultiplayerManager>>,
 
-    #[cfg(feature="graphics")]
-    input_manager: InputManager,
-
-    /// if some, will handle spectator stuff
-    #[cfg(feature="gameplay")]
-    spectator_manager: Option<Box<SpectatorManager>>,
-    #[cfg(feature="gameplay")]
-    multiplayer_manager: Option<Box<MultiplayerManager>>,
-
-    #[cfg(feature="graphics")]
-    skin_manager: SkinManager,
     pub song_manager: SongManager,
     pub audio_manager: AudioManager,
     pub sound_manager: SoundManager,
     pub(crate) task_manager: TaskManager,
-    notification_manager: NotificationManager,
-
     difficulty_manager: DifficultyManager,
-    #[cfg(feature="graphics")]
-    custom_menu_manager: CustomMenuManager,
 
-    #[cfg(feature="graphics")]
+    #[cfg(feature="graphics")] ui_manager: UiManager,
+    #[cfg(feature="graphics")] skin_manager: SkinManager,
+    #[cfg(feature="graphics")] cursor_manager: CursorManager,
+    #[cfg(feature="graphics")] xml_test_manager: Option<XmlTestManager>,
+    #[cfg(feature="graphics")] notification_manager: NotificationManager,
+    #[cfg(feature="graphics")] custom_menu_manager: CustomMenuManager,
+
+    #[cfg(feature="graphics")] 
     gameplay_managers: HashMap<GameplayId, (GameplayManager, NewManager)>,
     pending_gameplay_manager: Option<Box<GameplayManager>>,
 
-    #[cfg(feature="graphics")]
-    ui_manager: UiManager,
-    xml_test_manager: Option<XmlTestManager>,
 
     score_manager: ScoreManager,
-    #[cfg(feature="graphics")]
-    cursor_manager: CursorManager,
-
     integrations: Vec<Box<dyn TatakuIntegration>>,
 
     // fps
@@ -68,13 +58,11 @@ pub struct Game {
 
     // misc
     game_start: TatakuInstant,
-    background_image: Option<Image>,
-    wallpapers: Vec<Image>,
-
-
     last_skin: String,
 
-    background_loader: Option<AsyncLoader<Option<Image>>>,
+    #[cfg(feature="graphics")] background_image: Option<Image>,
+    #[cfg(feature="graphics")] wallpapers: Vec<Image>,
+    #[cfg(feature="graphics")] background_loader: Option<AsyncLoader<Option<Image>>>,
     // spec_watch_action: SpectatorWatchAction,
 
     #[cfg(feature="graphics")]
@@ -83,33 +71,34 @@ pub struct Game {
     pub values: ValueCollection,
 }
 impl Game {
-    #[cfg(feature="graphics")]
     pub fn new(
+        #[cfg(feature="graphics")]
         game_event_receiver: tokio::sync::mpsc::Receiver<WindowEvent>,
+        #[cfg(feature="graphics")]
         window_proxy: winit::event_loop::EventLoopProxy<WindowAction>,
         audio_engines: Vec<AudioApiInit>,
         gamemodes: Vec<IncomingGamemode>,
     ) -> Self {
         let settings = Settings::load();
-
-        let skin_manager = SkinManager::new(&settings);
         let infos = GamemodeInfos::new(gamemodes); 
+        
+        #[cfg(feature="graphics")] 
+        let skin_manager = SkinManager::new(&settings);
 
         Self {
             actions: ActionQueue::new(),
-            runtime: Rc::new(
-            tokio::runtime::Builder::new_multi_thread()
+            runtime: Rc::new(tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
                 .build()
                 .unwrap()
             ),
 
             // engine
-            window_proxy,
-            input_manager: InputManager::new(),
-            volume_controller: VolumeControl::new(),
-            background_image: None,
-            wallpapers: Vec::new(),
+            #[cfg(feature="graphics")] window_proxy,
+            #[cfg(feature="gameplay")] input_manager: InputManager::new(),
+            #[cfg(feature="graphics")] volume_controller: VolumeControl::new(),
+            #[cfg(feature="graphics")] background_image: None,
+            #[cfg(feature="graphics")] wallpapers: Vec::new(),
             spectator_manager: None,
             multiplayer_manager: None,
             difficulty_manager: DifficultyManager,
@@ -121,16 +110,19 @@ impl Game {
             score_manager: ScoreManager::new(infos.clone()),
             task_manager: TaskManager::new(),
 
+            #[cfg(feature="graphics")]
             custom_menu_manager: CustomMenuManager::default(),
+
+            #[cfg(feature="graphics")]
             cursor_manager: CursorManager::new(
                 skin_manager.skin().clone(), 
                 settings.cursor_settings.clone()
             ),
-            skin_manager,
-            notification_manager: NotificationManager::default(),
-            ui_manager: UiManager::new(),
-            xml_test_manager: None,
-            gameplay_managers: HashMap::new(),
+            #[cfg(feature="graphics")] skin_manager,
+            #[cfg(feature="graphics")] notification_manager: NotificationManager::default(),
+            #[cfg(feature="graphics")] ui_manager: UiManager::new(),
+            #[cfg(feature="graphics")] xml_test_manager: None,
+            #[cfg(feature="graphics")] gameplay_managers: HashMap::new(),
             pending_gameplay_manager: None,
 
             integrations: Vec::new(),
@@ -140,15 +132,15 @@ impl Game {
             // spec_watch_action: SpectatorWatchAction::FullMenu,
 
             // fps
-            render_display: AsyncFpsDisplay::new(
+            #[cfg(feature="graphics")] render_display: AsyncFpsDisplay::new(
                 "fps", 
                 3, 
                 RENDER_COUNT.clone(),
                 RENDER_FRAMETIME.clone()
             ),
-            fps_display: FpsDisplay::new("draws/s", 2),
-            update_display: FpsDisplay::new("updates/s", 1),
-            input_display: AsyncFpsDisplay::new(
+            #[cfg(feature="graphics")] fps_display: FpsDisplay::new("draws/s", 2),
+            #[cfg(feature="graphics")] update_display: FpsDisplay::new("updates/s", 1),
+            #[cfg(feature="graphics")] input_display: AsyncFpsDisplay::new(
                 "inputs/s", 
                 0, 
                 INPUT_COUNT.clone(), 
@@ -157,11 +149,11 @@ impl Game {
 
             // misc
             game_start: TatakuInstant::now(),
-            window_event_receiver: game_event_receiver,
+            #[cfg(feature="graphics")] background_loader: None,
+            #[cfg(feature="graphics")] window_event_receiver: game_event_receiver,
             last_skin: String::new(),
-            background_loader: None,
 
-            queued_events: Vec::new(),
+            #[cfg(feature="graphics")] queued_events: Vec::new(),
 
             values: ValueCollection {
                 values: GameValues::new(&infos, &settings),
@@ -170,6 +162,7 @@ impl Game {
         }
     }
 
+    #[cfg(feature="graphics")] 
     pub fn make_xml_helper(&mut self, path: String) {
         let mut tester = XmlTestManager::default();
         if tester.load_file(
@@ -182,47 +175,6 @@ impl Game {
         }
 
         self.xml_test_manager = Some(tester);
-    }
-
-    #[cfg(not(feature="graphics"))]
-    pub fn new() -> Self {
-        let settings = Settings::get();
-
-        let mut g = Self {
-            volume_controller: VolumeControl::new(),
-            background_image: None,
-            wallpapers: Vec::new(),
-            #[cfg(feature="gameplay")]
-            spectator_manager: None,
-            #[cfg(feature="gameplay")]
-            multiplayer_manager: None,
-            #[cfg(feature="gameplay")]
-            multiplayer_data: MultiplayerData::default(),
-
-            beatmap_manager: BeatmapManager::new(),
-            song_manager: SongManager::new(),
-            score_manager: ScoreManager::new(),
-            task_manager: TaskManager::new(),
-
-            // menus: HashMap::new(),
-            current_state: GameState::None,
-            queued_state: GameState::None,
-            spec_watch_action: SpectatorWatchAction::FullMenu,
-
-            // misc
-            game_start: TatakuInstant::now(),
-            last_skin: String::new(),
-            background_loader: None,
-
-            actions: ActionQueue::new(),
-
-            values: ValueCollection::new(),
-            song_state: AudioState::Unknown,
-        };
-
-        g.init();
-
-        g
     }
 
     #[cfg(feature="graphics")]
@@ -304,6 +256,7 @@ impl Game {
 
         let now = std::time::Instant::now();
 
+        #[cfg(feature="graphics")] 
         self.load_theme();
         self.last_skin = self.settings.current_skin.clone();
 
@@ -384,12 +337,13 @@ impl Game {
         self.init();
 
         let mut update_timer = TatakuInstant::now();
-        let mut draw_timer = TatakuInstant::now();
+        #[cfg(feature="graphics")] let mut draw_timer = TatakuInstant::now();
         let mut last_draw_offset = 0.0;
 
         let game_start = std::time::Instant::now();
         let mut last_setting_update = None;
 
+        #[cfg(feature="graphics")] 
         let mut render_rate   = 1.0 / self.settings.display_settings.fps_target as f32;
         let mut update_target = 1.0 / self.settings.display_settings.update_target as f32;
 
@@ -398,6 +352,7 @@ impl Game {
         loop {
             // update our settings
             if self.settings != settings {
+                #[cfg(feature="graphics")] 
                 if self.settings.display_settings != settings.display_settings {
                     render_rate = 1.0 / self.settings.display_settings.fps_target as f32;
                     update_target = 1.0 / self.settings.display_settings.update_target as f32;
@@ -411,7 +366,7 @@ impl Game {
                     last_setting_update = Some(TatakuInstant::now());
                 }
 
-
+                #[cfg(feature="graphics")] 
                 let skin_changed = self.settings.current_skin != self.last_skin;
                 #[cfg(feature="graphics")]
                 if skin_changed {
@@ -428,6 +383,7 @@ impl Game {
                     }
                 }
 
+                #[cfg(feature="graphics")] 
                 if self.settings.theme != settings.theme {
                     self.load_theme();
                 }
@@ -458,6 +414,7 @@ impl Game {
 
                 // update game mode with new information
                 if let GameState::Ingame(igm) = &mut self.current_state {
+                    #[cfg(feature="graphics")] 
                     if skin_changed { 
                         igm.reload_skin(
                             &mut self.skin_manager, 
@@ -524,9 +481,11 @@ impl Game {
     /// to tell the game to close, set the state to GameState::Closing
     fn close_game(&mut self) {
         warn!("stopping game");
+        #[cfg(feature="graphics")] 
         for (i, _) in self.gameplay_managers.values_mut() {
             i.cleanup_textures(&mut self.skin_manager);
         }
+        #[cfg(feature="graphics")] 
         if let Some(i) = self.current_state.get_ingame() {
             i.cleanup_textures(&mut self.skin_manager);
         }
@@ -537,7 +496,9 @@ impl Game {
         let elapsed = self.game_start.as_millis();
         self.values.game.time = elapsed;
 
+        #[cfg(feature="graphics")] 
         let mut window_size = self.values.game.window_size;
+        #[cfg(feature="graphics")] 
         while let Ok(e) = self.window_event_receiver.try_recv() {
             match e {
                 #[cfg(feature="graphics")]
@@ -576,6 +537,7 @@ impl Game {
         // since window resizes can spam and laying out the ui can be slow, 
         // sometimes they happen too fast for us to keep up with.
         // so this should make sure things arent delayed because of the spam
+        #[cfg(feature="graphics")] 
         if self.values.game.window_size != window_size {
             self.resize_bg();
             self.ui_manager.window_size_changed(window_size, &self.values);
@@ -593,6 +555,7 @@ impl Game {
         }
 
         // check bg loaded
+        #[cfg(feature="graphics")] 
         if let Some(loader) = self.background_loader.clone() {
             if let Some(image) = loader.check() {
                 self.background_loader = None;
@@ -612,13 +575,13 @@ impl Game {
             }
         }
 
-        self.update_display.increment();
+        #[cfg(feature="graphics")] self.update_display.increment();
 
         // update counters
-        self.fps_display.update();
-        self.update_display.update();
-        self.render_display.update();
-        self.input_display.update();
+        #[cfg(feature="graphics")] self.fps_display.update();
+        #[cfg(feature="graphics")] self.update_display.update();
+        #[cfg(feature="graphics")] self.render_display.update();
+        #[cfg(feature="graphics")] self.input_display.update();
 
         // read input events
         let mouse_pos = self.input_manager.mouse_pos;
@@ -642,14 +605,17 @@ impl Game {
             .get_controller_axis();
 
         // update the cursor
+        #[cfg(feature="graphics")] 
         self.cursor_manager.update(elapsed, self.input_manager.mouse_pos);
 
         // update cursor
+        #[cfg(feature="graphics")] 
         if mouse_down.contains(&MouseButton::Left) {
             self.cursor_manager.left_pressed(true);
         } else if mouse_up.contains(&MouseButton::Left) {
             self.cursor_manager.left_pressed(false);
         }
+        #[cfg(feature="graphics")] 
         if mouse_down.contains(&MouseButton::Right) {
             self.cursor_manager.right_pressed(true);
         } else if mouse_up.contains(&MouseButton::Right) {
@@ -660,19 +626,20 @@ impl Game {
             .iter()
             .any(|(_,a)| a.contains(&ControllerButton::Start));
 
-        if !mouse_down.is_empty() {
-            // check notifs
-            if self.notification_manager.on_click(
-                self.values.game.window_size, 
-                mouse_pos, 
-                &mut self.actions
-            ) {
-                mouse_down.clear();
-            }
+        // check if a notif was clicked
+        #[cfg(feature="graphics")] 
+        if !mouse_down.is_empty() && self.notification_manager.on_click(
+            self.values.game.window_size, 
+            mouse_pos, 
+            &mut self.actions
+        ) {
+            mouse_down.clear();
         }
 
         // check for volume change
+        #[cfg(feature="graphics")] 
         if mouse_moved { self.volume_controller.on_mouse_move(mouse_pos); }
+        #[cfg(feature="graphics")] 
         if scroll_delta != 0.0 {
             if let Some(action) = self.volume_controller.on_mouse_wheel(
                 scroll_delta / (self.settings.display_settings.scroll_sensitivity * 1.5), 
@@ -683,6 +650,7 @@ impl Game {
                 self.actions.push(action);
             }
         }
+        #[cfg(feature="graphics")] 
         self.volume_controller.on_key_press(
             &mut keys_down, 
             mods, 
@@ -690,12 +658,14 @@ impl Game {
         );
 
         // check user panel
+        #[cfg(feature="graphics")] 
         if keys_down.has_and_remove(self.settings.key_user_panel) {
             self.handle_make_userpanel();
         }
 
 
         // screenshot
+        #[cfg(feature="graphics")] 
         if keys_down.has_and_remove(Key::F12) {
             self.window_proxy.send_event(WindowAction::TakeScreenshot(ScreenshotInfo {
                 // if shift is pressed, upload to server, and get link
@@ -709,6 +679,7 @@ impl Game {
             let allow_ingame = self.settings.common_game_settings.allow_ingame_settings;
             let is_ingame = self.current_state.is_ingame();
 
+            #[cfg(feature="graphics")] 
             if !is_ingame || allow_ingame {
                 self.ui_manager.add_dialog(
                     Box::new(SettingsMenu::new(&self.values.settings)), 
@@ -738,16 +709,19 @@ impl Game {
 
             // self.actions.push(MenuAction::set_menu("menu_list"));
         }
+        #[cfg(feature="graphics")] 
         if keys_down.has_key(Key::H) && mods.ctrl && mods.shift {
             keys_down.remove_key(Key::H);
             warn!("{:#?}", self.ui_manager.root_tree.print());
         }
-
+        
+        #[cfg(feature="graphics")] 
         if keys_down.has_key(Key::T) && mods.ctrl && mods.shift {
             keys_down.remove_key(Key::T);
             self.ui_manager.root_tree.print();
         }
 
+        #[cfg(feature="graphics")] 
         if !self.current_state.is_ingame() && keys_down.has_key(Key::Grave) {
             keys_down.remove_key(Key::Grave);
 
@@ -761,6 +735,7 @@ impl Game {
 
 
         // update any dialogs
+        #[cfg(feature="graphics")] 
         if keys_down.has_key(Key::Escape) 
             && self.ui_manager.close_latest(&mut self.values, &mut self.actions) {
             keys_down.remove_key(Key::Escape);
@@ -797,6 +772,7 @@ impl Game {
         }
 
         // reload custom menus
+        #[cfg(feature="graphics")] 
         if keys_down.has_key(Key::R) && mods.ctrl {
             keys_down.remove_key(Key::R);
             self.load_custom_menus();
@@ -828,6 +804,7 @@ impl Game {
         }
 
         // update any ingame managers
+        #[cfg(feature="graphics")] 
         for (a, (manager, _)) in self.gameplay_managers.iter_mut() {
             if Arc::strong_count(a) == 1 {
                 manager.cleanup_textures(&mut self.skin_manager);
@@ -840,8 +817,9 @@ impl Game {
                 manager.on_complete();
             }
         }
+        #[cfg(feature="graphics")] 
         self.gameplay_managers.retain(|a, _| Arc::strong_count(a) > 1);
-
+        #[cfg(feature="graphics")] 
         let mut input_state = CurrentInputState {
             mouse_pos,
             mouse_moved,
@@ -887,6 +865,7 @@ impl Game {
                 )
                 .collect(),
         };
+        #[cfg(feature="graphics")] 
         self.ui_manager.update(
             &mut input_state,
             self.queued_events.take(),
@@ -895,6 +874,7 @@ impl Game {
             &mut self.skin_manager,
         );
 
+        #[cfg(feature="graphics")] 
         if let Some(tester) = &mut self.xml_test_manager {
             tester.update(
                 &mut self.ui_manager,
@@ -950,6 +930,7 @@ impl Game {
         match self.current_state.take() {
             GameState::Ingame(mut manager) => {
                 // pause button, or focus lost, only if not replaying
+                #[cfg(feature="graphics")] 
                 if let Some(got_focus) = window_focus_changed {
                     if self.settings.display_settings.pause_on_focus_lost {
                         manager.window_focus_changed(got_focus);
@@ -962,12 +943,14 @@ impl Game {
                     self.handle_actions(actions);
 
                     self.pending_gameplay_manager = Some(manager);
+                    #[cfg(feature="graphics")] 
                     self.actions.push(MenuAction::SetMenu { 
                         id: "pause_menu".into(), 
                         input: BuildableInputArguments::default() 
                     });
                 } else {
                     // inputs
+                    #[cfg(feature="graphics")] 
                     for input in input_state.into_events() {
                         manager.handle_input(input, &self.settings);
                     }
@@ -975,6 +958,7 @@ impl Game {
                     // update, then check if complete
                     manager.update(&mut self.values, &mut self.actions);
                     if manager.completed {
+                        #[cfg(feature="graphics")] 
                         self.ingame_complete(manager);
                         // a menu is queued up, we dont need to reapply current_state
                     } else {
@@ -991,6 +975,7 @@ impl Game {
                 if elapsed - timer > TRANSITION_TIME / 2.0 {
                     match *into {
                         GameState::Ingame(mut g) => {
+                            #[cfg(feature="graphics")] 
                             g.reload_skin(&mut self.skin_manager, &self.values.settings);
                             
                             // let trans = self.transition.take();
@@ -1000,6 +985,7 @@ impl Game {
                                 timer: elapsed,
                             });
                         }
+                        #[cfg(feature="graphics")] 
                         GameState::SetMenu(menu) => {
                             let name = menu.name().into_owned();
                             self.ui_manager.set_root(menu, &mut self.values);
@@ -1056,28 +1042,39 @@ impl Game {
             GameState::Closing => {
                 self.settings.clone().save();
                 self.current_state = GameState::Closing;
+                #[cfg(feature="graphics")] 
                 let _ = self.window_proxy.send_event(WindowAction::CloseGame);
 
                 // send logoff
-                self.online_manager.set_action(SetAction::Closing, None);
+                self.online_manager.set_action(
+                    SetAction::Closing, 
+                    None
+                );
             }
 
 
             _ => {
                 // force close all dialogs
+                #[cfg(feature="graphics")] 
                 self.ui_manager.force_close_all(&mut self.values, &mut self.actions);
 
                 match &mut self.queued_state {
                     GameState::Ingame(manager) => {
                         // reset the song position
-                        if let Some(song) = self.song_manager.instance() {
+                        if let Some(song) = self
+                            .song_manager
+                            .instance() 
+                        {
                             song.pause();
                             if !manager.started {
                                 song.set_position(0.0);
                             }
                         }
+
                         // make sure it has the latest window size
+                        #[cfg(feature="graphics")] 
                         manager.window_size_changed(self.values.game.window_size);
+                        #[cfg(feature="graphics")] 
                         manager.reload_skin(&mut self.skin_manager, &self.values.settings);
                         manager.start();
 
@@ -1107,6 +1104,7 @@ impl Game {
                         self.online_manager.set_action(action, Some(m.mode.clone()));
                         self.actions.push(GameAction::UpdateBackground);
                     }
+                    #[cfg(feature="graphics")] 
                     GameState::SetMenu(_menu) => {
                         self.online_manager.set_action(
                             SetAction::Idle, 
@@ -1120,6 +1118,7 @@ impl Game {
                 let mut do_transition = true;
                 match &self.current_state {
                     GameState::None => do_transition = false,
+                    #[cfg(feature="graphics")] 
                     GameState::SetMenu(menu) 
                         if menu.name() == "pause" => do_transition = false,
                     _ => {}
@@ -1143,6 +1142,7 @@ impl Game {
         }
 
         // update the notification manager
+        #[cfg(feature="graphics")] 
         self.notification_manager.update();
 
         let online_events = self.values
@@ -1177,7 +1177,10 @@ impl Game {
                 OnlineEvent::SpectatorEvent(spectator_event) => {
 
                     match spectator_event {
-                        SpectatorEvent::SpectatingHost { host_id, host_username } => {
+                        SpectatorEvent::SpectatingHost { 
+                            host_id, 
+                            host_username 
+                        } => {
                             // if let SpectatorWatchAction::FullMenu = self.spec_watch_action {
                             //     // stop spectating everyone else
                             //     for other_host_id in manager.spectator_info.currently_spectating() {
@@ -1200,7 +1203,10 @@ impl Game {
                                 self.values.global.gamemode_infos.clone()
                             )));
                         }
-                        SpectatorEvent::SpectatorJoined { user_id, username } => {
+                        SpectatorEvent::SpectatorJoined { 
+                            user_id, 
+                            username 
+                        } => {
                             if let Some(specman) = self.spectator_manager.as_mut() {
                                 specman.spectator_cache.insert(user_id, username.clone());
                             }
@@ -1218,7 +1224,10 @@ impl Game {
                                 manager.spectator_info.spectators.remove(user_id);
                             }
                         }
-                        SpectatorEvent::SpectatorFrame { host, frame } => {
+                        SpectatorEvent::SpectatorFrame { 
+                            host, 
+                            frame 
+                        } => {
                             let frame = *frame;
                             if let Some(specman) = self.spectator_manager.as_mut() {
                                 specman.add_frame(frame.clone());
@@ -1410,12 +1419,15 @@ impl Game {
         match action {
             TatakuAction::None => {},
             TatakuAction::Online(action) => self.online_manager.handle_action(action),
-
+            
+            #[cfg(feature="graphics")] 
             TatakuAction::Menu(action) => self.handle_menu_action(action),
+            
             TatakuAction::Audio(action) => self.sound_manager.handle_action(
                 action, 
                 &mut self.values, 
                 &mut self.audio_manager,
+                #[cfg(feature="graphics")] 
                 &mut self.skin_manager,
             ),
             TatakuAction::Beatmap(action) => self.handle_beatmap_action(action),
@@ -1440,7 +1452,7 @@ impl Game {
             #[cfg(feature="graphics")]
             TatakuAction::WindowAction(action) => self.window_proxy.send_event(action).nope(),
 
-
+            #[cfg(feature="graphics")] 
             TatakuAction::Ui(action) => self.ui_manager.handle_ui_action(
                 action,
                 &mut self.values,
@@ -1458,6 +1470,7 @@ impl Game {
         }
     }
 
+    #[cfg(feature="graphics")] 
     fn next_gameplay_id(&self) -> GameplayId {
         Arc::new(self.gameplay_managers
             .keys()
@@ -1539,6 +1552,7 @@ impl Game {
     #[cfg(feature="gameplay")]
     fn queue_state_change(&mut self, state: GameState) {
         match state {
+            #[cfg(feature="graphics")] 
             GameState::SetMenu(menu) => {
                 debug!("Changing menu to: {}", menu.name());
                 self.queued_state = GameState::InMenu(menu.name().into_owned());
@@ -1562,6 +1576,7 @@ impl Game {
                 }
 
                 // set the menu to an empty element, hiding it
+                #[cfg(feature="graphics")] 
                 self.ui_manager.set_root(EmptyWidget::new_boxed(), &mut self.values);
                 self.queued_state = state;
             }
@@ -1569,6 +1584,7 @@ impl Game {
     }
 
 
+    #[cfg(feature="graphics")] 
     fn handle_make_userpanel(&mut self) {
         let mut user_panel_exists = false;
         let mut chat_exists = false;
@@ -1839,7 +1855,7 @@ impl Game {
         manager.cleanup_textures(&mut self.skin_manager);
     }
 
-
+    #[cfg(feature="graphics")] 
     fn load_theme(&mut self) {
         let theme = match &self.settings.theme {
             SelectedTheme::Tataku => tataku_theme(),
@@ -2166,6 +2182,7 @@ impl Game {
                     duration: audio.get_duration()
                 });
             }
+            #[cfg(feature="graphics")] 
             SongAction::HookFFT(hook) => {
                 self.song_manager.hook_fft(hook);
             }
@@ -2210,6 +2227,7 @@ impl Game {
         self.actions.push(SongAction::SetRate(self.values.global.mods.get_speed()));
 
         // apply mods to all gameplay managers
+        #[cfg(feature="graphics")] 
         for (m, i) in self.gameplay_managers.values_mut() {
             if i.mods.is_some() { continue }
             m.apply_mods(self.values.global.mods.clone());
@@ -2274,6 +2292,7 @@ impl Game {
                 if let Some(multi) = &mut self.multiplayer_manager {
                     // go back to the lobby before any checks
                     // this way if for some reason something down below fails, the user is in the lobby and not stuck in limbo
+                    #[cfg(feature="graphics")] 
                     self.actions.push(MenuAction::set_menu("lobby_menu"));
 
                     if !multi.is_host() { return warn!("trying to set lobby beatmap while not the host ??") };
@@ -2343,7 +2362,9 @@ impl Game {
             BeatmapAction::Remove => {
                 self.beatmap_manager.remove_current_beatmap();
                 // warn!("removing beatmap");
-                self.background_image = None;
+                #[cfg(feature="graphics")] {
+                    self.background_image = None;
+                }
             }
 
             BeatmapAction::Delete(hash) => {
@@ -2361,9 +2382,13 @@ impl Game {
                 );
             }
             BeatmapAction::DeleteCurrent(post_delete) => {
-                let Some(map_hash) = self.values.current_beatmap_prop(|b| b.beatmap_hash) else { return };
+                let Some(map_hash) = self.values
+                    .current_beatmap_prop(|b| b.beatmap_hash) 
+                else { return };
+
                 let config = self.create_select_beatmap_config(
-                    true, true
+                    true, 
+                    true
                 );
 
                 let settings = self.settings.clone();
@@ -2377,7 +2402,10 @@ impl Game {
                 );
             }
             BeatmapAction::Next => {
-                let config = self.create_select_beatmap_config(true, false);
+                let config = self.create_select_beatmap_config(
+                    true, 
+                    false
+                );
 
                 let settings = self.settings.clone();
                 self.values.beatmap_manager.next_beatmap(
@@ -2491,6 +2519,8 @@ impl Game {
 
     fn handle_current_game_action(&mut self, action: CurrentGameAction) {
         if matches!(action, CurrentGameAction::Pause {..}) {
+
+            #[cfg(feature="graphics")]
             let CurrentGameAction::Pause { 
                 id, 
                 input 
@@ -2503,6 +2533,7 @@ impl Game {
 
             let GameState::Ingame(gameplay) = self.current_state.take() else { unreachable!() };
             self.current_state = GameState::None;
+            #[cfg(feature="graphics")] 
             self.handle_menu_action(MenuAction::SetMenu {
                 id: id.into(),
                 input
@@ -2531,6 +2562,7 @@ impl Game {
                 self.queue_state_change(GameState::Ingame(manager));
             }
             CurrentGameAction::Free => {
+                #[cfg(feature="graphics")] 
                 manager.cleanup_textures(&mut self.skin_manager);
             }
 
@@ -2634,6 +2666,7 @@ impl Game {
             #[cfg(feature="graphics")]
             GameAction::HandleMessage(message) => self.ui_manager.add_message(message),
             GameAction::RefreshScores => self.score_manager.force_update = true,
+            #[cfg(feature="graphics")] 
             GameAction::ViewScoreId(id) => {
                 if let Some(score) = self.score_manager.get_score(id) {
                     self.handle_game_action(GameAction::ViewScore(score.clone()));
@@ -2641,6 +2674,7 @@ impl Game {
             }
             #[cfg(feature="graphics")]
             GameAction::HandleEvent(event, param) => self.queued_events.push((event, param)),
+            #[cfg(feature="graphics")] 
             GameAction::AddNotification(notif) => self.notification_manager.add_notification(notif),
 
             #[cfg(feature="graphics")]
@@ -2757,6 +2791,8 @@ impl Game {
             GameAction::UpdateSettings(run) => {
                 (run)(&mut self.values.settings);
             }
+
+            #[cfg(not(feature="graphics"))] _ => {} 
         }
     }
 
@@ -2796,6 +2832,7 @@ impl Game {
             MultiplayerAction::LeaveLobby => {
                 self.multiplayer_manager = None;
                 self.online_manager.send_packet(MultiplayerPacket::Client_LeaveLobby);
+                #[cfg(feature="graphics")] 
                 self.handle_custom_menu("lobby_select", None);
             }
             #[cfg(feature="gameplay")]

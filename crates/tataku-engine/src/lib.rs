@@ -10,6 +10,7 @@ mod audio;
 mod online;
 mod window;
 mod locale;
+#[cfg(feature="graphics")]
 mod graphics;
 mod settings;
 mod tataku_event;

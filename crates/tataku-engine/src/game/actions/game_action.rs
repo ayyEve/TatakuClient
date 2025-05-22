@@ -12,9 +12,11 @@ pub enum GameAction {
     SetValue(String, TatakuValue),
 
     /// Open a score in the score menu
+    #[cfg(feature="graphics")]
     ViewScore(IngameScore),
 
     /// Open a score in the score menu
+    #[cfg(feature="graphics")]
     ViewScoreId(usize),
 
     /// Handle a message
@@ -28,7 +30,6 @@ pub enum GameAction {
     RestartOnline,
 
     /// Handle an event
-    #[cfg(feature="graphics")]
     HandleEvent(TatakuEventType, Option<TatakuValue>),
 
     /// Add a notification
@@ -85,6 +86,7 @@ pub enum CurrentGameAction {
     /// Pause the current game and open the provided menu
     Pause {
         id: String,
+        #[cfg(feature="graphics")]
         input: BuildableInputArguments,
     },
 

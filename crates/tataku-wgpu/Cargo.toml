@@ -12,7 +12,7 @@ default = [ "texture_arrays" ]
 texture_arrays = []
 
 [dependencies]
-tataku-engine.workspace = true
+tataku-engine = { workspace = true, features = ["graphics"]}
 tataku-client-common.workspace = true
 
 tokio.workspace = true

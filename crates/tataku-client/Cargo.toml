@@ -41,19 +41,19 @@ debug_sliders = [ "gamemode-osu/debug_sliders" ]
 
 [dependencies]
 tataku-common.workspace = true
-tataku-game.workspace = true
 tataku-wgpu.workspace = true
 tataku-bass = { workspace = true, optional = true }
 tataku-kira = { workspace = true, optional = true }
+tataku-game = { workspace = true, features = [ "graphics" ] }
 
 # Gamemodes
-gamemode-osu.workspace = true
-gamemode-taiko.workspace = true
-gamemode-mania.workspace = true
-gamemode-utyping.workspace = true
+gamemode-osu = { workspace = true, features = [ "graphics" ] }
+gamemode-taiko = { workspace = true, features = [ "graphics" ] }
+gamemode-mania = { workspace = true, features = [ "graphics" ] }
+gamemode-utyping = { workspace = true, features = [ "graphics" ] }
 
 # Integrations
-integration-discord = { workspace = true, optional = true }
+integration-discord = { workspace = true, optional = true, features = ["graphics"] }
 integration-lastfm = { workspace = true, optional = true }
 integration-media-controls = { workspace = true, optional = true }
 
@@ -61,6 +61,7 @@ integration-media-controls = { workspace = true, optional = true }
 
 # framework stuff
 tokio = { workspace = true, features = ["full"] }
+clap = { version = "4.5", features = ["derive"] }
 
 # windowing
 winit = { workspace = true, features = ["serde"] }
@@ -68,8 +69,6 @@ winit = { workspace = true, features = ["serde"] }
 # serde
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
-
-clap = { version = "4.5", features = ["derive"] }
 
 # logging
 tracing.workspace = true

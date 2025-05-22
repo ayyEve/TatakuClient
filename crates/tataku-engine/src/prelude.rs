@@ -55,6 +55,8 @@ pub use crate::online::*;
 pub use crate::window::*;
 pub use crate::locale::*;
 pub use crate::settings::*;
+
+#[cfg(feature="graphics")]
 pub use crate::graphics::*;
 pub use crate::tataku_event::*;
 pub use crate::tataku_integration_event::*;

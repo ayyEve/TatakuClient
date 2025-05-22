@@ -36,6 +36,9 @@ impl TimingBar {
     fn x_at(&self, time: f32) -> f32 {
         ((self.time - time) / SV_OVERRIDE) * self.speed * self.playfield.size.x
     }
+
+
+    #[cfg(feature="graphics")]
     pub fn draw(&mut self, list: &mut RenderableCollection) {
         if self.pos.x + BAR_WIDTH < self.playfield.pos.x || self.pos.x - BAR_WIDTH > self.playfield.pos.x + self.playfield.size.x { return }
 

@@ -5,7 +5,8 @@ use crate::prelude::*;
 
 #[derive(Copy, Clone, Serialize, Deserialize, Eq, PartialEq, Debug)]
 #[derive(Reflect)]
-#[reflect(display = "display")]
+#[cfg_attr(feature="graphics", reflect(display = "display"))]
+#[cfg_attr(not(feature="graphics"), reflect(display = "debug"))]
 pub enum FullscreenMonitor {
     None,
     Monitor(usize),

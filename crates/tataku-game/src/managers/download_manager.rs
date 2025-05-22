@@ -1,4 +1,5 @@
 use crate::prelude::*;
+#[cfg(feature="graphics")] 
 use tataku_engine::prelude::ui::TextStyle;
 
 #[derive(Default, Debug)]
@@ -75,7 +76,7 @@ impl DownloadManager {
         }
     }
 
-
+    #[cfg(feature="graphics")] 
     pub fn draw(
         &self, 
         window_size: Vector2, 

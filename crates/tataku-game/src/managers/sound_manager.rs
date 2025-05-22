@@ -10,6 +10,7 @@ impl SoundManager {
         action: AudioAction,
         values: &mut ValueCollection,
         engine: &mut AudioManager,
+        #[cfg(feature="graphics")] 
         skin: &mut SkinManager,
    ) {
         let id = &action.id;
@@ -55,7 +56,8 @@ impl SoundManager {
                             .to_string_lossy()
                             .to_string()
                         }
-                        
+
+                        #[cfg(feature="graphics")] 
                         HitsoundSource::Skin => skin
                             .skin_path()
                             .parent()
@@ -63,7 +65,9 @@ impl SoundManager {
                             .join(&i.path)
                             .to_string_lossy()
                             .to_string(),
-                            
+                        
+                        #[cfg(not(feature="graphics"))] 
+                        _ => continue
                     };
 
                     let Ok(sound) = engine.load(&path)

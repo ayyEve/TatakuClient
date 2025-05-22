@@ -142,7 +142,7 @@ impl GameplayWidget for DonChan {
         }
     }
 
-    // #[cfg(feature="graphics")]
+    #[cfg(feature="graphics")]
     fn draw(
         &mut self, 
         pos_offset: Vector2, 
@@ -197,7 +197,7 @@ impl GameplayWidget for DonChan {
         self.combo_anim_last_index = 0;
     }
 
-    // #[cfg(feature="graphics")]
+    #[cfg(feature="graphics")]
     fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
         self.normal_anim = load_anim("idle", source, skin_manager);
         self.combo_anim = load_anim("clear", source, skin_manager);
@@ -206,7 +206,7 @@ impl GameplayWidget for DonChan {
     }
 }
 
-// #[cfg(feature="graphics")]
+#[cfg(feature="graphics")]
 fn load_anim(
     name: &str, 
     source: &TextureSource,

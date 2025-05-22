@@ -59,6 +59,8 @@ impl HitObject for TaikoSpinner {
     fn update(&mut self, beatmap_time: f32) {
         if beatmap_time > self.end_time { self.complete = true }
     }
+
+    #[cfg(feature="graphics")]
     fn draw(&mut self, time: f32, list: &mut RenderableCollection) {
         // if done, dont draw anything
         if self.complete { return }

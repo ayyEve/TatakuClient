@@ -61,7 +61,9 @@ impl ItemFilter {
 }
 
 
+#[cfg(feature="graphics")]
 use crate::prelude::Widget;
+#[cfg(feature="graphics")]
 #[derive(Default)]
 pub struct SettingsCategory {
     pub name: String,

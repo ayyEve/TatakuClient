@@ -127,6 +127,7 @@ impl HitObject for OsuNote {
         });
     }
 
+    #[cfg(feature="graphics")]
     fn draw(&mut self, _time: f32, list: &mut RenderableCollection) {
 
         // if its not time to draw anything else, leave

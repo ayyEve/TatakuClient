@@ -4,6 +4,9 @@ version = "0.1.0"
 authors.workspace = true
 edition.workspace = true
 
+[features]
+graphics = [ "tataku-engine/graphics" ]
+
 [lints]
 workspace = true
 

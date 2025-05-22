@@ -33,6 +33,7 @@ pub enum SongAction {
     Set(SongMenuSetAction),
 
     /// Add a hook to fft data
+    #[cfg(feature="graphics")]
     HookFFT(Weak<FFTHook>)
 }
 

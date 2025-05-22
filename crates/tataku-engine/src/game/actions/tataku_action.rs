@@ -10,6 +10,7 @@ pub enum TatakuAction {
     Audio(AudioAction),
 
     /// Perform a menu operation
+    #[cfg(feature="graphics")]
     Menu(MenuAction),
 
     /// Perform a game operation
@@ -28,6 +29,7 @@ pub enum TatakuAction {
     Mods(ModAction),
 
     /// Perform an action on the Ui
+    #[cfg(feature="graphics")]
     Ui(UiAction),
 
     /// Perform a multiplayer action
@@ -37,9 +39,11 @@ pub enum TatakuAction {
     Task(TaskAction),
 
     /// Perform a cursor action
+    #[cfg(feature="graphics")]
     CursorAction(CursorAction),
 
     /// Perform a window action
+    #[cfg(feature="graphics")]
     WindowAction(WindowAction),
 
     /// Download a file
