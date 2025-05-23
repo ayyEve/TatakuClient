@@ -2,16 +2,18 @@
 
 use crate::prelude::*;
 use super::shaders::*;
+use std::num::NonZeroU64;
 
 use tataku_engine::prelude::*;
+use wgpu::util::DeviceExt as _;
+use winit::raw_window_handle::{ HasWindowHandle, HasDisplayHandle };
+use tataku_client_common::prelude::Color;
 use lyon_tessellation::{ 
     geom::{ Box2D, Point }, 
     path::builder::BorderRadii,
+    path::Path as LyonPath,
 };
 
-use tataku_client_common::prelude::Color;
-use wgpu::util::DeviceExt as _;
-use winit::raw_window_handle::{ HasWindowHandle, HasDisplayHandle };
 
 // must not go past 16
 const LAYER_COUNT:u32 = 4;
@@ -22,8 +24,12 @@ const GFX_CLEAR_COLOR:Color = Color::BLACK;
 
 macro_rules! get_render_buffer {
     ($self: ident, $t: ident) => {{
-        let b = $self.current_render_buffer.as_mut().expect("last drawn type not set");
-        if let RenderBufferQueueType::$t(b2) = &mut **b {b2} else { panic!("wrong buffer type") }
+        let b = $self.current_render_buffer
+            .as_mut()
+            .expect("last drawn type not set");
+
+        if let RenderBufferQueueType::$t(b2) = &mut **b {b2} 
+            else { panic!("wrong buffer type") }
     }}
 }
 
@@ -79,7 +85,9 @@ impl<'window> WgpuEngine<'window> {
         });
 
         // create the surface
-        let surface: Surface<'window> = instance.create_surface(window).unwrap();
+        let surface: Surface<'window> = instance
+            .create_surface(window)
+            .unwrap();
 
         // create the adapter
         let adapter = instance.request_adapter(&RequestAdapterOptions {
@@ -95,7 +103,9 @@ impl<'window> WgpuEngine<'window> {
         let (device, queue) = adapter.request_device(
             &DeviceDescriptor {
                 #[cfg(feature="texture_arrays")]
-                required_features: Features::TEXTURE_BINDING_ARRAY | Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING | Features::BGRA8UNORM_STORAGE,
+                required_features: Features::TEXTURE_BINDING_ARRAY 
+                    | Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING 
+                    | Features::BGRA8UNORM_STORAGE,
                 #[cfg(not(feature="texture_arrays"))]
                 required_features: Features::default(),
                 required_limits: Limits::default(),
@@ -137,120 +147,130 @@ impl<'window> WgpuEngine<'window> {
 
 
         #[cfg(feature="texture_arrays")]
-        let texture_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("atlas group layout"),
-            entries: &[
-                BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: ShaderStages::FRAGMENT,
-                    ty: BindingType::Texture {
-                        sample_type: TextureSampleType::Float { filterable: true },
-                        view_dimension: TextureViewDimension::D2,
-                        multisampled: false,
+        let texture_bind_group_layout = device.create_bind_group_layout(
+            &BindGroupLayoutDescriptor {
+                label: Some("atlas group layout"),
+                entries: &[
+                    BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Texture {
+                            sample_type: TextureSampleType::Float { filterable: true },
+                            view_dimension: TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: std::num::NonZeroU32::new(LAYER_COUNT),
                     },
-                    count: std::num::NonZeroU32::new(LAYER_COUNT),
-                },
-                BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: ShaderStages::FRAGMENT,
-                    ty: BindingType::Sampler(SamplerBindingType::Filtering),
-                    count: None,
-                },
-            ],
-        });
+                    BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+            }
+        );
 
         #[cfg(not(feature="texture_arrays"))]
-        let texture_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("atlas group layout"),
-            entries: &[
-                BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: ShaderStages::FRAGMENT,
-                    ty: BindingType::Sampler(SamplerBindingType::Filtering),
-                    count: None,
-                },
-                BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: ShaderStages::FRAGMENT,
-                    ty: BindingType::Texture {
-                        sample_type: TextureSampleType::Float { filterable: true },
-                        view_dimension: TextureViewDimension::D2,
-                        multisampled: false,
+        let texture_bind_group_layout = device.create_bind_group_layout(
+            &BindGroupLayoutDescriptor {
+                label: Some("atlas group layout"),
+                entries: &[
+                    BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                        count: None,
                     },
-                    count: None,
-                },
-                BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: ShaderStages::FRAGMENT,
-                    ty: BindingType::Texture {
-                        sample_type: TextureSampleType::Float { filterable: true },
-                        view_dimension: TextureViewDimension::D2,
-                        multisampled: false,
+                    BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Texture {
+                            sample_type: TextureSampleType::Float { filterable: true },
+                            view_dimension: TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: ShaderStages::FRAGMENT,
-                    ty: BindingType::Texture {
-                        sample_type: TextureSampleType::Float { filterable: true },
-                        view_dimension: TextureViewDimension::D2,
-                        multisampled: false,
+                    BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Texture {
+                            sample_type: TextureSampleType::Float { filterable: true },
+                            view_dimension: TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                BindGroupLayoutEntry {
-                    binding: 4,
-                    visibility: ShaderStages::FRAGMENT,
-                    ty: BindingType::Texture {
-                        sample_type: TextureSampleType::Float { filterable: true },
-                        view_dimension: TextureViewDimension::D2,
-                        multisampled: false,
+                    BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Texture {
+                            sample_type: TextureSampleType::Float { filterable: true },
+                            view_dimension: TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-            ],
-        });
+                    BindGroupLayoutEntry {
+                        binding: 4,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Texture {
+                            sample_type: TextureSampleType::Float { filterable: true },
+                            view_dimension: TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                ],
+            }
+        );
 
         let proj_matrix_size = std::mem::size_of::<[[f32; 4]; 4]>() as u64;
-        let projection_matrix_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("Texture/Sampler bind group layout"),
-            entries: &[
-                BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: ShaderStages::VERTEX,
-                    ty: BindingType::Buffer {
-                        ty: BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: std::num::NonZeroU64::new(proj_matrix_size)
+        let projection_matrix_bind_group_layout = device.create_bind_group_layout(
+            &BindGroupLayoutDescriptor {
+                label: Some("Texture/Sampler bind group layout"),
+                entries: &[
+                    BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: ShaderStages::VERTEX,
+                        ty: BindingType::Buffer {
+                            ty: BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: NonZeroU64::new(proj_matrix_size)
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-            ]
-        });
+                ]
+            }
+        );
 
         let window_size = Vector2::new(window_size[0], window_size[1]);
         let projection_matrix = Self::create_projection(window_size);
-        let projection_matrix_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
-            label: Some("Projection Matrix Buffer"),
-            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-            contents: bytemuck::cast_slice(&projection_matrix.to_raw()),
-        });
+        let projection_matrix_buffer = device.create_buffer_init(
+            &BufferInitDescriptor {
+                label: Some("Projection Matrix Buffer"),
+                usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+                contents: bytemuck::cast_slice(&projection_matrix.to_raw()),
+            }
+        );
 
-        let projection_matrix_bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("diffuse_bind_group"),
-            layout: &projection_matrix_bind_group_layout,
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: BindingResource::Buffer(BufferBinding {
-                        buffer: &projection_matrix_buffer,
-                        offset: 0,
-                        size: std::num::NonZeroU64::new(proj_matrix_size)
-                    }),
-                },
-            ],
-        });
+        let projection_matrix_bind_group = device.create_bind_group(
+            &BindGroupDescriptor {
+                label: Some("diffuse_bind_group"),
+                layout: &projection_matrix_bind_group_layout,
+                entries: &[
+                    BindGroupEntry {
+                        binding: 0,
+                        resource: BindingResource::Buffer(BufferBinding {
+                            buffer: &projection_matrix_buffer,
+                            offset: 0,
+                            size: NonZeroU64::new(proj_matrix_size)
+                        }),
+                    },
+                ],
+            }
+        );
 
         let mut pipelines = create_standard_pipeline(
             &device, 
@@ -261,10 +281,18 @@ impl<'window> WgpuEngine<'window> {
 
 
         // create slider pipeline
-        pipelines.insert(BlendMode::Slider, create_slider_pipeline(&device, &config, &projection_matrix_bind_group_layout));
+        pipelines.insert(BlendMode::Slider, create_slider_pipeline(
+            &device, 
+            &config, 
+            &projection_matrix_bind_group_layout
+        ));
 
         // create flashlight pipeline
-        pipelines.insert(BlendMode::Flashlight, create_flashlight_pipeline(&device, &config, &projection_matrix_bind_group_layout));
+        pipelines.insert(BlendMode::Flashlight, create_flashlight_pipeline(
+            &device, 
+            &config, 
+            &projection_matrix_bind_group_layout
+        ));
 
 
         let sampler = device.create_sampler(&SamplerDescriptor {
@@ -286,32 +314,66 @@ impl<'window> WgpuEngine<'window> {
 
 
         let atlas_size = device.limits().max_texture_dimension_2d.min(8192);
-        let atlas_texture = Self::create_texture(&device, &texture_bind_group_layout, &sampler, atlas_size, atlas_size, config.format);
-
-        let atlas = Atlas::new(atlas_size, atlas_size, LAYER_COUNT);
+        let atlas_texture = Self::create_texture(
+            &device, 
+            &texture_bind_group_layout, 
+            &sampler, 
+            atlas_size, 
+            atlas_size, 
+            config.format
+        );
 
         let particle_system = ParticleSystem::new(&device);
 
         let buffer_queues = [
-            (LastDrawn::Slider, Box::new(RenderBufferQueueType::Slider(RenderBufferQueue::new().init(&device, pipelines.get(&BlendMode::Slider).unwrap())))),
-            (LastDrawn::Standard, Box::new(RenderBufferQueueType::Standard(RenderBufferQueue::new().init(&device, pipelines.get(&BlendMode::AlphaBlending).unwrap())))),
-            (LastDrawn::Flashlight, Box::new(RenderBufferQueueType::Flashlight(RenderBufferQueue::new().init(&device, pipelines.get(&BlendMode::Flashlight).unwrap())))),
-            (LastDrawn::Blur, Box::new(RenderBufferQueueType::Blur(RenderBufferQueue::new().init(&device, &blur_shader.pipeline)))),
+            (LastDrawn::Slider, Box::new(RenderBufferQueueType::Slider(
+                RenderBufferQueue::new().init(
+                    &device, 
+                    &pipelines[&BlendMode::Slider]
+                )
+            ))),
+            (LastDrawn::Standard, Box::new(RenderBufferQueueType::Standard(
+                RenderBufferQueue::new().init(
+                    &device, 
+                    &pipelines[&BlendMode::AlphaBlending]
+                )
+            ))),
+            (LastDrawn::Flashlight, Box::new(RenderBufferQueueType::Flashlight(
+                RenderBufferQueue::new().init(
+                    &device, 
+                    &pipelines[&BlendMode::Flashlight]
+                )
+            ))),
+            (LastDrawn::Blur, Box::new(RenderBufferQueueType::Blur(
+                RenderBufferQueue::new().init(
+                    &device, 
+                    &blur_shader.pipeline
+                )
+            ))),
         ].into_iter().collect();
 
 
         // because the swapchain texture can only have RenderAttachment (**annoy**)
         // we render to an intermediary texture, which can have blur applied and used for screenshots
-        let intermediate_texture = device.create_texture(&TextureDescriptor { 
-            label: Some("Render Texture"),
-            size: Extent3d { width: config.width, height: config.height, depth_or_array_layers: 1 },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: TextureDimension::D2,
-            format: TextureFormat::Bgra8UnormSrgb,
-            usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::COPY_SRC | TextureUsages::COPY_DST | TextureUsages::TEXTURE_BINDING,
-            view_formats: &[ TextureFormat::Bgra8Unorm ]
-        });
+        let intermediate_texture = device.create_texture(
+            &TextureDescriptor { 
+                label: Some("Render Texture"),
+                size: Extent3d { 
+                    width: config.width, 
+                    height: config.height, 
+                    depth_or_array_layers: 1 
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: TextureDimension::D2,
+                format: TextureFormat::Bgra8UnormSrgb,
+                usage: TextureUsages::RENDER_ATTACHMENT 
+                    | TextureUsages::COPY_SRC 
+                    | TextureUsages::COPY_DST 
+                    | TextureUsages::TEXTURE_BINDING,
+                view_formats: &[ TextureFormat::Bgra8Unorm ]
+            }
+        );
 
         Box::new(Self {
             surface,
@@ -319,7 +381,11 @@ impl<'window> WgpuEngine<'window> {
             queue: Arc::new(queue),
             config,
             pipelines,
-            atlas,
+            atlas: Atlas::new(
+                atlas_size, 
+                atlas_size, 
+                LAYER_COUNT
+            ),
             atlas_texture,
 
             current_render_buffer: None,
@@ -346,23 +412,27 @@ impl<'window> WgpuEngine<'window> {
 
     pub fn render_current_surface(&mut self) -> Result<(), SurfaceError> {
         let swapchain = self.surface.get_current_texture()?;
-        // let view = output.texture.create_view(&TextureViewDescriptor::default());
         let size = swapchain.texture.size();
 
         // don't draw if our draw surface has no area
         if size.width == 0 || size.height == 0 { return Ok(()) }
 
         if self.intermediate_texture.size() != size {
-            self.intermediate_texture = self.device.create_texture(&TextureDescriptor {
-                label: Some("Render Texture"),
-                size,
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: TextureDimension::D2,
-                format: TextureFormat::Bgra8UnormSrgb,
-                usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::COPY_SRC | TextureUsages::COPY_DST | TextureUsages::TEXTURE_BINDING,
-                view_formats: &[ TextureFormat::Bgra8Unorm ]
-            });
+            self.intermediate_texture = self.device.create_texture(
+                &TextureDescriptor {
+                    label: Some("Render Texture"),
+                    size,
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: TextureDimension::D2,
+                    format: TextureFormat::Bgra8UnormSrgb,
+                    usage: TextureUsages::RENDER_ATTACHMENT 
+                        | TextureUsages::COPY_SRC 
+                        | TextureUsages::COPY_DST 
+                        | TextureUsages::TEXTURE_BINDING,
+                    view_formats: &[ TextureFormat::Bgra8Unorm ]
+                }
+            );
         }
 
         
@@ -376,43 +446,50 @@ impl<'window> WgpuEngine<'window> {
 
         // `texture` should now have our data, with which we can use to render the surface, as well as use for screenshots
         // again though, because the swapchain texture can only be rendered to directly for some reason, we have to use a shader
-        let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor::default());
+        let mut encoder = self.device
+            .create_command_encoder(&CommandEncoderDescriptor::default());
 
         {
-            let output_view = swapchain.texture.create_view(&TextureViewDescriptor::default());
+            let output_view = swapchain
+                .texture
+                .create_view(&TextureViewDescriptor::default());
 
-            let mut render = encoder.begin_render_pass(&RenderPassDescriptor {
-                label: None,
-                color_attachments: &[
-                    Some(RenderPassColorAttachment {
-                        view: &output_view,
-                        resolve_target: None,
-                        ops: Operations {
-                            load: LoadOp::Clear(wgpu::Color::BLACK),
-                            store: StoreOp::Store,
-                        }
-                    })
-                ],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-            });
+            let mut render = encoder.begin_render_pass(
+                &RenderPassDescriptor {
+                    label: None,
+                    color_attachments: &[
+                        Some(RenderPassColorAttachment {
+                            view: &output_view,
+                            resolve_target: None,
+                            ops: Operations {
+                                load: LoadOp::Clear(wgpu::Color::BLACK),
+                                store: StoreOp::Store,
+                            }
+                        })
+                    ],
+                    depth_stencil_attachment: None,
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
+                }
+            );
             render.set_pipeline(&self.render_image_shader.pipeline);
 
-            let bind_group = self.device.create_bind_group(&BindGroupDescriptor {
-                label: None,
-                layout: &self.render_image_shader.bind_group_layout,
-                entries: &[
-                    BindGroupEntry {
-                        binding: 0,
-                        resource: BindingResource::Sampler(&self.sampler),
-                    },
-                    BindGroupEntry {
-                        binding: 1,
-                        resource: BindingResource::TextureView(&tex.view),
-                    },
-                ]
-            });
+            let bind_group = self.device.create_bind_group(
+                &BindGroupDescriptor {
+                    label: None,
+                    layout: &self.render_image_shader.bind_group_layout,
+                    entries: &[
+                        BindGroupEntry {
+                            binding: 0,
+                            resource: BindingResource::Sampler(&self.sampler),
+                        },
+                        BindGroupEntry {
+                            binding: 1,
+                            resource: BindingResource::TextureView(&tex.view),
+                        },
+                    ]
+                }
+            );
 
             self.render_image_shader.update_buffer(
                 &self.queue,
@@ -420,9 +497,22 @@ impl<'window> WgpuEngine<'window> {
             );
             self.queue.submit([]);
 
-            render.set_bind_group(0, &bind_group, &[]);
-            render.set_bind_group(1, &self.projection_matrix_bind_group, &[]);
-            render.set_vertex_buffer(0, self.render_image_shader.buffer.slice(..));
+            render.set_bind_group(
+                0, 
+                &bind_group, 
+                &[]
+            );
+
+            render.set_bind_group(
+                1, 
+                &self.projection_matrix_bind_group, 
+                &[]
+            );
+
+            render.set_vertex_buffer(
+                0, 
+                self.render_image_shader.buffer.slice(..)
+            );
 
             render.draw(0..6, 0..1);
         }        
@@ -448,7 +538,7 @@ impl<'window> WgpuEngine<'window> {
 
 
 
-        if let Some(screenshot) = std::mem::take(&mut self.screenshot_pending) {
+        if let Some(screenshot) = self.screenshot_pending.take() {
             // let texture = self.device.create_texture(&TextureDescriptor {
             //     label: Some("Screenshot Texture"),
             //     size: Extent3d {
@@ -486,23 +576,31 @@ impl<'window> WgpuEngine<'window> {
     }
 
     fn render(&self, renderable: &RenderableSurface) -> Result<(), SurfaceError> {
-        let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor { label: Some("Render Encoder") });
+        let mut encoder = self.device.create_command_encoder(
+            &CommandEncoderDescriptor { label: Some("Render Encoder") }
+        );
 
         {
-            let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
-                label: Some("Render Pass"),
-                color_attachments: &[Some(RenderPassColorAttachment {
-                    view: &renderable.texture.view,
-                    resolve_target: None,
-                    ops: Operations {
-                        load: LoadOp::Clear(renderable.get_clear_color()),
-                        store: if renderable.render_target { StoreOp::Store } else { StoreOp::Discard }, // must be store for render targets to work apparently
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-            });
+            let mut render_pass = encoder.begin_render_pass(
+                &RenderPassDescriptor {
+                    label: Some("Render Pass"),
+                    color_attachments: &[Some(RenderPassColorAttachment {
+                        view: &renderable.texture.view,
+                        resolve_target: None,
+                        ops: Operations {
+                            load: LoadOp::Clear(renderable.get_clear_color()),
+                            store: if renderable.render_target { 
+                                StoreOp::Store  // must be store for render targets to work apparently
+                            } else {
+                                StoreOp::Discard 
+                            },
+                        },
+                    })],
+                    depth_stencil_attachment: None,
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
+                }
+            );
 
             let mut current_blend_mode = BlendMode::None;
             let mut current_scissor: Scissor = None;
@@ -515,7 +613,9 @@ impl<'window> WgpuEngine<'window> {
                     drop(render_pass);
                     self.queue.submit([encoder.finish()]);
                     
-                    let RenderBufferType::Blur(buffer) = i else { unreachable!() };
+                    let RenderBufferType::Blur(buffer) = i 
+                    else { unreachable!() };
+
                     self.blur_shader.borrow_mut().perform(
                         &self.device, 
                         &self.queue, 
@@ -524,7 +624,12 @@ impl<'window> WgpuEngine<'window> {
                     );
 
                     // back to our regularly scheduled programming
-                    encoder = self.device.create_command_encoder(&CommandEncoderDescriptor { label: Some("Render Encoder") });
+                    encoder = self.device.create_command_encoder(
+                        &CommandEncoderDescriptor { 
+                            label: Some("Render Encoder") 
+                        }
+                    );
+
                     render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
                         label: Some("Render Pass"),
                         color_attachments: &[Some(RenderPassColorAttachment {
@@ -547,8 +652,12 @@ impl<'window> WgpuEngine<'window> {
                 let scissor = i.get_scissor();
                 if scissor != current_scissor {
                     current_scissor = scissor;
-                    let [x, y, w, h] = current_scissor.unwrap_or_else(|| [0.0, 0.0, renderable.size.x, renderable.size.y]);
-                    if renderable.size.x - x < 0.0 || renderable.size.y - y < 0.0 { continue }
+                    let [x, y, w, h] = current_scissor
+                        .unwrap_or_else(|| [0.0, 0.0, renderable.size.x, renderable.size.y]);
+
+                    if renderable.size.x - x < 0.0 || renderable.size.y - y < 0.0 { 
+                        continue 
+                    }
 
                     let x = x.clamp(0.0, renderable.size.x);
                     let y = y.clamp(0.0, renderable.size.y);
@@ -565,30 +674,57 @@ impl<'window> WgpuEngine<'window> {
                 
                 if blend_mode != current_blend_mode {
                     current_blend_mode = blend_mode;
-                    let Some(pipeline) = self.pipelines.get(&blend_mode) else {
+                    let Some(pipeline) = self.pipelines.get(&blend_mode) 
+                    else {
                         error!("Pipeline not created for blend mode {current_blend_mode:?}");
                         current_blend_mode = BlendMode::None;
                         continue
                     };
 
                     render_pass.set_pipeline(pipeline);
-                    render_pass.set_bind_group(0, &self.projection_matrix_bind_group, &[]);
+                    render_pass.set_bind_group(
+                        0, 
+                        &self.projection_matrix_bind_group, 
+                        &[]
+                    );
 
                     if let RenderBufferType::Standard(_) = i {
-                        render_pass.set_bind_group(1, &self.atlas_texture.bind_group, &[]);
+                        render_pass.set_bind_group(
+                            1, 
+                            &self.atlas_texture.bind_group, 
+                            &[]
+                        );
                     }
                 }
 
                 if let RenderBufferType::Slider(slider) = i {
-                    render_pass.set_bind_group(1, &slider.bind_group, &[]);
+                    render_pass.set_bind_group(
+                        1, 
+                        &slider.bind_group, 
+                        &[]
+                    );
                 }
                 if let RenderBufferType::Flashlight(flashlight) = i {
-                    render_pass.set_bind_group(1, &flashlight.bind_group, &[]);
+                    render_pass.set_bind_group(
+                        1, 
+                        &flashlight.bind_group, 
+                        &[]
+                    );
                 }
 
-                render_pass.set_vertex_buffer(0, i.get_vertex_buffer().slice(..));
-                render_pass.set_index_buffer(i.get_index_buffer().slice(..), IndexFormat::Uint32);
-                render_pass.draw_indexed(0..i.get_used_indices() as u32, 0, 0..1);
+                render_pass.set_vertex_buffer(
+                    0, 
+                    i.get_vertex_buffer().slice(..)
+                );
+                render_pass.set_index_buffer(
+                    i.get_index_buffer().slice(..), 
+                    IndexFormat::Uint32
+                );
+                render_pass.draw_indexed(
+                    0..i.get_used_indices() as u32, 
+                    0, 
+                    0..1
+                );
             }
 
         }
@@ -645,15 +781,10 @@ impl WgpuEngine<'_> {
                     format, //TextureFormat::Rgba8UnormSrgb,
                     // TEXTURE_BINDING tells wgpu that we want to use this texture in shaders
                     // COPY_DST means that we want to copy data to this texture
-                    usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST | TextureUsages::RENDER_ATTACHMENT,
+                    usage: TextureUsages::TEXTURE_BINDING 
+                        | TextureUsages::COPY_DST 
+                        | TextureUsages::RENDER_ATTACHMENT,
                     label: Some("atlas_texture"),
-                    // This is the same as with the SurfaceConfig. It
-                    // specifies what texture formats can be used to
-                    // create TextureViews for this texture. The base
-                    // texture format (Rgba8UnormSrgb in this case) is
-                    // always supported. Note that using a different
-                    // texture format is not supported on the WebGL2
-                    // backend.
                     view_formats: &[],
                 }
             );
@@ -665,28 +796,34 @@ impl WgpuEngine<'_> {
 
                 ..Default::default()
             });
+
             (texture, view)
         })
         .collect::<Vec<_>>();
 
 
         #[cfg(feature="texture_arrays")]
-        let view_list = textures.iter().map(|a|&a.1).collect::<Vec<_>>();
+        let view_list = textures.iter()
+            .map(|a| &a.1)
+            .collect::<Vec<_>>();
+
         #[cfg(feature="texture_arrays")]
-        let bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("texture array bind group"),
-            layout,
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: BindingResource::TextureViewArray(&view_list),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: BindingResource::Sampler(sampler),
-                }
-            ],
-        });
+        let bind_group = device.create_bind_group(
+            &BindGroupDescriptor {
+                label: Some("texture array bind group"),
+                layout,
+                entries: &[
+                    BindGroupEntry {
+                        binding: 0,
+                        resource: BindingResource::TextureViewArray(&view_list),
+                    },
+                    BindGroupEntry {
+                        binding: 1,
+                        resource: BindingResource::Sampler(sampler),
+                    }
+                ],
+            }
+        );
 
         #[cfg(not(feature="texture_arrays"))]
         let bind_group = device.create_bind_group(&BindGroupDescriptor {
@@ -726,7 +863,10 @@ impl WgpuEngine<'_> {
         let texture = &self.intermediate_texture;
         let (w, h) = (texture.width(), texture.height());
 
-        let fuck = (w * 4).div_ceil(COPY_BYTES_PER_ROW_ALIGNMENT) * COPY_BYTES_PER_ROW_ALIGNMENT;
+        let fuck = (w * 4)
+            .div_ceil(COPY_BYTES_PER_ROW_ALIGNMENT) 
+            * COPY_BYTES_PER_ROW_ALIGNMENT;
+
         let size = (fuck * h) as u64; //(w * h * 4) as u64;
         let buffer = self.device.create_buffer(&BufferDescriptor {
             label: Some("Screenshot Buffer"),
@@ -744,8 +884,14 @@ impl WgpuEngine<'_> {
             }
         };
 
-        let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor { label: Some("screenshot encoder") });
-        encoder.copy_texture_to_buffer(texture.as_image_copy(), tex_buffer, texture.size());
+        let mut encoder = self.device.create_command_encoder(
+            &CommandEncoderDescriptor { label: Some("screenshot encoder") }
+        );
+        encoder.copy_texture_to_buffer(
+            texture.as_image_copy(), 
+            tex_buffer, 
+            texture.size()
+        );
         self.queue.submit(Some(encoder.finish()));
 
         let slice = buffer.slice(..);
@@ -767,13 +913,23 @@ impl WgpuEngine<'_> {
 // render code
 impl WgpuEngine<'_> {
     fn dump_last_drawn(&mut self) {
-        let Some(mut last_drawn) = std::mem::take(&mut self.current_render_buffer) else { return };
+        let Some(mut last_drawn) = self
+            .current_render_buffer.take()
+        else { return };
+
         let blur = self.blur_shader.borrow();
         let pipeline = match last_drawn.draw_type().as_blendmode() {
             BlendMode::Blur => WgpuPipeline::Compute(&blur.pipeline),
-            other => WgpuPipeline::Render(self.pipelines.get(&other).unwrap()),
+            other => WgpuPipeline::Render(&self.pipelines[&other]),
         };
-        if let Some(b) = last_drawn.dump_and_next(&self.queue, &self.device, pipeline) { self.completed_buffers.push(b); };
+        if let Some(b) = last_drawn.dump_and_next(
+            &self.queue, 
+            &self.device, 
+            pipeline
+        ) { 
+            self.completed_buffers.push(b); 
+        };
+
         self.buffer_queues.insert(last_drawn.draw_type(), last_drawn);
     }
 
@@ -815,8 +971,15 @@ impl WgpuEngine<'_> {
         )
         || recording_buffer.used_vertices + vtx_count > StandardBuffer::VTX_PER_BUF
         || recording_buffer.used_indices + idx_count > StandardBuffer::IDX_PER_BUF {
-            let pipeline = WgpuPipeline::Render(self.pipelines.get(&blend_mode).unwrap());
-            if let Some(b) = vertex_buffer_queue.dump_and_next(&self.queue, &self.device, pipeline) {
+            let pipeline = WgpuPipeline::Render(
+                &self.pipelines[&blend_mode]
+            );
+            
+            if let Some(b) = vertex_buffer_queue.dump_and_next(
+                &self.queue, 
+                &self.device, 
+                pipeline
+            ) {
                 self.completed_buffers.push(RenderBufferType::Standard(b));
             }
 
@@ -839,8 +1002,12 @@ impl WgpuEngine<'_> {
 
         let cache = &mut vertex_buffer_queue.cpu_cache;
         Some(StandardReserveData {
-            vtx: &mut cache.cpu_vtx[(used_vertices - vtx_count) as usize .. used_vertices as usize],
-            idx: &mut cache.cpu_idx[(used_indices - idx_count) as usize .. used_indices as usize],
+            vtx: &mut cache.cpu_vtx[
+                (used_vertices - vtx_count) as usize .. used_vertices as usize
+            ],
+            idx: &mut cache.cpu_idx[
+                (used_indices - idx_count) as usize .. used_indices as usize
+            ],
             idx_offset: used_vertices - vtx_count,
         })
     }
@@ -936,11 +1103,13 @@ impl WgpuEngine<'_> {
         ) else { return };
         let color = color.into();
 
-        let vertices = quad.into_iter().map(|p: Vector2| StandardVertex {
-            position: transform.mul_v2(p).into(),
-            color,
-            ..Default::default()
-        }).collect::<Vec<_>>();
+        let vertices = quad.into_iter()
+            .map(|p| StandardVertex {
+                position: transform.mul_v2(p).into(),
+                color,
+                ..Default::default()
+            })
+            .collect::<Vec<_>>();
 
         let offset = reserved.idx_offset as u32;
         #[allow(clippy::identity_op, reason = "lines the values up nicely")]
@@ -957,7 +1126,6 @@ impl WgpuEngine<'_> {
 
     fn reserve_slider(
         &mut self,
-
         slider_grid_count: u64,
         grid_cell_count: u64,
         line_segment_count: u64,
@@ -966,15 +1134,17 @@ impl WgpuEngine<'_> {
         self.check_dump_and_next(LastDrawn::Slider);
 
         let slider_buffer_queue = get_render_buffer!(self, Slider);
-        // if let Some(RenderBufferQueueType::Slider(b)) = &mut self.last_drawn {b} else {panic!("wrong buffer type")};
 
-        let mut recording_buffer = slider_buffer_queue.recording_buffer().expect("didnt get slider recording buffer");
-        let scissor_check = recording_buffer.scissor == Some(scissor) || recording_buffer.scissor.is_none();
+        let mut recording_buffer = slider_buffer_queue
+            .recording_buffer()
+            .expect("didnt get slider recording buffer");
+
+        let scissor_check = recording_buffer.scissor == Some(scissor) 
+            || recording_buffer.scissor.is_none();
 
 
         let vtx_count = 4;
         let idx_count = 6;
-
 
         // FIXME:
         // assert!(slider_grid_count < SLIDER_GRID_COUNT);
@@ -995,8 +1165,15 @@ impl WgpuEngine<'_> {
         || recording_buffer.used_grid_cells + grid_cell_count > GRID_CELL_COUNT
         || recording_buffer.used_line_segments + line_segment_count > LINE_SEGMENT_COUNT
         {
-            let pipeline = WgpuPipeline::Render(self.pipelines.get(&BlendMode::Slider).unwrap());
-            if let Some(b) = slider_buffer_queue.dump_and_next(&self.queue, &self.device, pipeline) {
+            let pipeline = WgpuPipeline::Render(
+                &self.pipelines[&BlendMode::Slider]
+            );
+            if let Some(b) = slider_buffer_queue
+            .dump_and_next(
+                &self.queue, 
+                &self.device, 
+                pipeline
+            ) {
                 self.completed_buffers.push(RenderBufferType::Slider(b));
             }
             recording_buffer = slider_buffer_queue.recording_buffer()?;
@@ -1014,31 +1191,41 @@ impl WgpuEngine<'_> {
         recording_buffer.used_grid_cells += grid_cell_count;
         recording_buffer.used_line_segments += line_segment_count;
 
-        let used_vertices = recording_buffer.used_vertices;
-        let used_indices = recording_buffer.used_indices;
+        let used_vertices = recording_buffer.used_vertices as usize;
+        let used_indices = recording_buffer.used_indices as usize;
 
-        let used_slider_grids = recording_buffer.used_slider_grids;
-        let used_grid_cells = recording_buffer.used_grid_cells;
-        let used_line_segments = recording_buffer.used_line_segments;
+        let used_slider_grids = recording_buffer.used_slider_grids as usize;
+        let used_grid_cells = recording_buffer.used_grid_cells as usize;
+        let used_line_segments = recording_buffer.used_line_segments as usize;
 
         // reserve slider vertex data
         let slider_index = recording_buffer.used_slider_data - 1;
 
         let cache = &mut slider_buffer_queue.cpu_cache;
         Some(SliderReserveData {
-            vtx: &mut cache.cpu_vtx[(used_vertices - vtx_count) as usize .. used_vertices as usize],
-            idx: &mut cache.cpu_idx[(used_indices - idx_count) as usize .. used_indices as usize],
+            vtx: &mut cache.cpu_vtx[
+                (used_vertices - vtx_count as usize) .. used_vertices
+            ],
+            idx: &mut cache.cpu_idx[
+                (used_indices - idx_count as usize) .. used_indices
+            ],
 
             slider_data: &mut cache.slider_data[slider_index as usize],
-            slider_grids: &mut cache.slider_grids[(used_slider_grids - slider_grid_count) as usize .. used_slider_grids as usize],
-            grid_cells: &mut cache.grid_cells[(used_grid_cells - grid_cell_count) as usize .. used_grid_cells as usize],
-            line_segments: &mut cache.line_segments[(used_line_segments - line_segment_count) as usize .. used_line_segments as usize],
+            slider_grids: &mut cache.slider_grids[
+                (used_slider_grids - slider_grid_count as usize) .. used_slider_grids
+            ],
+            grid_cells: &mut cache.grid_cells[
+                (used_grid_cells - grid_cell_count as usize) .. used_grid_cells
+                ],
+            line_segments: &mut cache.line_segments[
+                (used_line_segments - line_segment_count as usize) .. used_line_segments
+            ],
 
-            idx_offset: used_vertices - vtx_count,
+            idx_offset: used_vertices as u64 - vtx_count,
             slider_index: slider_index as u32,
-            slider_grid_offset: (used_slider_grids - slider_grid_count) as u32,
-            grid_cell_offset: (used_grid_cells - grid_cell_count) as u32,
-            line_segment_offset: (used_line_segments - line_segment_count) as u32,
+            slider_grid_offset: used_slider_grids as u32 - slider_grid_count as u32,
+            grid_cell_offset: used_grid_cells as u32 - grid_cell_count as u32,
+            line_segment_offset: used_line_segments as u32 - line_segment_count as u32,
         })
     }
 
@@ -1052,8 +1239,11 @@ impl WgpuEngine<'_> {
         let buffer_queue = get_render_buffer!(self, Flashlight);
         // if let Some(RenderBufferQueueType::Slider(b)) = &mut self.last_drawn {b} else {panic!("wrong buffer type")};
 
-        let mut recording_buffer = buffer_queue.recording_buffer().expect("didnt get flashlight recording buffer");
-        let scissor_check = recording_buffer.scissor == Some(scissor) || recording_buffer.scissor.is_none();
+        let mut recording_buffer = buffer_queue
+            .recording_buffer()
+            .expect("didnt get flashlight recording buffer");
+        let scissor_check = recording_buffer.scissor == Some(scissor) 
+            || recording_buffer.scissor.is_none();
 
         let vtx_count = 4;
         let idx_count = 6;
@@ -1062,8 +1252,14 @@ impl WgpuEngine<'_> {
         || recording_buffer.used_vertices + vtx_count > SliderRenderBuffer::VTX_PER_BUF
         || recording_buffer.used_indices + idx_count > SliderRenderBuffer::IDX_PER_BUF
         {
-            let pipeline = WgpuPipeline::Render(self.pipelines.get(&BlendMode::Flashlight).unwrap());
-            if let Some(b) = buffer_queue.dump_and_next(&self.queue, &self.device, pipeline) {
+            let pipeline = WgpuPipeline::Render(
+                &self.pipelines[&BlendMode::Flashlight]
+            );
+            if let Some(b) = buffer_queue.dump_and_next(
+                &self.queue, 
+                &self.device,
+                pipeline
+            ) {
                 self.completed_buffers.push(RenderBufferType::Flashlight(b));
             }
             recording_buffer = buffer_queue.recording_buffer()?;
@@ -1101,15 +1297,21 @@ impl WgpuEngine<'_> {
 
         let buffer_queue = get_render_buffer!(self, Blur);
 
-        let mut recording_buffer = buffer_queue.recording_buffer().expect("didnt get blur recording buffer");
-        let scissor_check = recording_buffer.scissor == Some(scissor) || recording_buffer.scissor.is_none();
+        let mut recording_buffer = buffer_queue.recording_buffer()
+            .expect("didnt get blur recording buffer");
+        let scissor_check = recording_buffer.scissor == Some(scissor) 
+            || recording_buffer.scissor.is_none();
 
         if !scissor_check
         || recording_buffer.used + 1 > BlurBuffer::VTX_PER_BUF
         {
             let blur = self.blur_shader.borrow();
             let pipeline = WgpuPipeline::Compute(&blur.pipeline);
-            if let Some(b) = buffer_queue.dump_and_next(&self.queue, &self.device, pipeline) {
+            if let Some(b) = buffer_queue.dump_and_next(
+                &self.queue, 
+                &self.device, 
+                pipeline
+            ) {
                 self.completed_buffers.push(RenderBufferType::Blur(b));
             }
             recording_buffer = buffer_queue.recording_buffer()?;
@@ -1139,16 +1341,40 @@ impl WgpuEngine<'_> {
             BlendMode::AlphaOverwrite => BlendState::REPLACE,
             BlendMode::PremultipliedAlpha => BlendState::PREMULTIPLIED_ALPHA_BLENDING,
             BlendMode::AdditiveBlending => BlendState {
-                color: BlendComponent { src_factor: BlendFactor::One, dst_factor: BlendFactor::One, operation: BlendOperation::Add },
-                alpha: BlendComponent { src_factor: BlendFactor::One, dst_factor: BlendFactor::One, operation: BlendOperation::Add }
+                color: BlendComponent { 
+                    src_factor: BlendFactor::One, 
+                    dst_factor: BlendFactor::One, 
+                    operation: BlendOperation::Add 
+                },
+                alpha: BlendComponent { 
+                    src_factor: BlendFactor::One, 
+                    dst_factor: BlendFactor::One, 
+                    operation: BlendOperation::Add 
+                }
             },
             BlendMode::OsuAdditiveBlending => BlendState {
-                color: BlendComponent { src_factor: BlendFactor::SrcAlpha, dst_factor: BlendFactor::One, operation: BlendOperation::Add },
-                alpha: BlendComponent { src_factor: BlendFactor::One, dst_factor: BlendFactor::One, operation: BlendOperation::Add }
+                color: BlendComponent { 
+                    src_factor: BlendFactor::SrcAlpha, 
+                    dst_factor: BlendFactor::One, 
+                    operation: BlendOperation::Add 
+                },
+                alpha: BlendComponent { 
+                    src_factor: BlendFactor::One, 
+                    dst_factor: BlendFactor::One, 
+                    operation: BlendOperation::Add 
+                }
             },
             BlendMode::SourceAlphaBlending => BlendState {
-                color: BlendComponent { src_factor: BlendFactor::SrcAlpha, dst_factor: BlendFactor::One, operation: BlendOperation::Add },
-                alpha: BlendComponent { src_factor: BlendFactor::SrcAlpha, dst_factor: BlendFactor::One, operation: BlendOperation::Add }
+                color: BlendComponent { 
+                    src_factor: BlendFactor::SrcAlpha, 
+                    dst_factor: BlendFactor::One, 
+                    operation: BlendOperation::Add 
+                },
+                alpha: BlendComponent { 
+                    src_factor: BlendFactor::SrcAlpha, 
+                    dst_factor: BlendFactor::One, 
+                    operation: BlendOperation::Add 
+                }
             },
 
             BlendMode::None
@@ -1158,10 +1384,20 @@ impl WgpuEngine<'_> {
         }
     }
 
-    fn tessellate_polygon(&mut self, polygon: &[Vector2], color: Color, border: Option<f32>, transform: Matrix, blend_mode: BlendMode) {
+    fn tessellate_polygon(
+        &mut self, 
+        polygon: &[Vector2], 
+        color: Color, 
+        border: Option<f32>, 
+        transform: Matrix, 
+        blend_mode: BlendMode
+    ) {
         let mut polygon = polygon.iter();
-        let mut path = lyon_tessellation::path::Path::builder();
-        path.begin(polygon.next().map(|p|Point::new(p.x, p.y)).unwrap());
+        let mut path = LyonPath::builder();
+        path.begin(
+            polygon.next().map(|p| Point::new(p.x, p.y)).unwrap()
+        );
+
         for p in polygon {
             if !p.x.is_normal() || !p.y.is_normal() { return }
             path.line_to(Point::new(p.x, p.y));
@@ -1172,31 +1408,47 @@ impl WgpuEngine<'_> {
         self.tessellate_path(&path, color, border, transform, blend_mode);
     }
 
-    fn tessellate_path(&mut self, path: &lyon_tessellation::path::Path, color: Color, border: Option<f32>, transform: Matrix, blend_mode: BlendMode) {
+    fn tessellate_path(
+        &mut self, 
+        path: &LyonPath, 
+        color: Color, 
+        border: Option<f32>, 
+        transform: Matrix, 
+        blend_mode: BlendMode
+    ) {
+        use lyon_tessellation::{
+            VertexBuffers,
+            StrokeOptions,
+            FillTessellator,
+            FillOptions,
+            StrokeTessellator,
+            geometry_builder::simple_builder,
+        };
+
         // Create the destination vertex and index buffers.
-        let mut buffers: lyon_tessellation::VertexBuffers<Point<f32>, u16> = lyon_tessellation::VertexBuffers::new();
+        let mut buffers: VertexBuffers<Point<f32>, u16> = VertexBuffers::new();
 
         {
-            let mut vertex_builder = lyon_tessellation::geometry_builder::simple_builder(&mut buffers);
+            let mut vertex_builder = simple_builder(&mut buffers);
 
             let result = if let Some(radius) = border {
                 // Create the tessellator.
-                let mut tessellator = lyon_tessellation::StrokeTessellator::new();
+                let mut tessellator = StrokeTessellator::new();
 
                 // Compute the tessellation.
                 tessellator.tessellate_path(
                     path,
-                    &lyon_tessellation::StrokeOptions::default().with_line_width(radius * 2.0),
+                    &StrokeOptions::default().with_line_width(radius * 2.0),
                     &mut vertex_builder
                 )
             } else {
                 // Create the tessellator.
-                let mut tessellator = lyon_tessellation::FillTessellator::new();
+                let mut tessellator = FillTessellator::new();
 
                 // Compute the tessellation.
                 tessellator.tessellate_path(
                     path,
-                    &lyon_tessellation::FillOptions::default(),
+                    &FillOptions::default(),
                     &mut vertex_builder
                 )
             };
@@ -1207,20 +1459,30 @@ impl WgpuEngine<'_> {
 
         }
 
-        // let mut reserved = self.reserve_vertex(buffers.vertices.len() as u64, buffers.indices.len() as u64, scissor, blend_mode).expect("nope");
-        let mut reserved = self.reserve_standard(buffers.vertices.len() as u64, buffers.indices.len() as u64, blend_mode).expect("nope");
+        let mut reserved = self.reserve_standard(
+            buffers.vertices.len() as u64, 
+            buffers.indices.len() as u64, 
+            blend_mode
+        ).expect("nope");
 
         // convert vertices and indices to their proper values
-        let vertices = buffers.vertices.into_iter().map(|n| StandardVertex {
-                position: [n.x, n.y],
-                color: [color.r, color.g, color.b, color.a],
-                // scissor_index: reserved.scissor_index,
-                ..Default::default()
-            }.apply_matrix(&transform)
-        ).collect::<Vec<_>>();
+        let vertices = buffers.vertices
+            .into_iter()
+            .map(|n| 
+                StandardVertex {
+                    position: [n.x, n.y],
+                    color: [color.r, color.g, color.b, color.a],
+                    ..Default::default()
+                }.apply_matrix(&transform)
+            )
+            .collect::<Vec<_>>();
 
         // insert the vertices and indices into the render buffer
-        let indices = buffers.indices.into_iter().map(|a| reserved.idx_offset as u32 + a as u32).collect::<Vec<_>>();
+        let indices = buffers.indices
+            .into_iter()
+            .map(|a| reserved.idx_offset as u32 + a as u32)
+            .collect::<Vec<_>>();
+
         reserved.copy_in(&vertices, &indices);
     }
 }
@@ -1228,7 +1490,10 @@ impl WgpuEngine<'_> {
 
 
 impl GraphicsEngine for WgpuEngine<'_> {
-    fn resize(&mut self, [width, height]: [u32; 2]) {
+    fn resize(
+        &mut self, 
+        [width, height]: [u32; 2]
+    ) {
         if width == 0 || height == 0 { return }
 
         self.config.width = width;
@@ -1237,11 +1502,18 @@ impl GraphicsEngine for WgpuEngine<'_> {
 
         let window_size = Vector2::new(width as f32, height as f32);
         self.projection_matrix = Self::create_projection(window_size);
-        self.queue.write_buffer(&self.projection_matrix_buffer, 0, bytemuck::cast_slice(&self.projection_matrix.to_raw()));
+        self.queue.write_buffer(
+            &self.projection_matrix_buffer, 
+            0, 
+            bytemuck::cast_slice(&self.projection_matrix.to_raw())
+        );
     }
 
     fn set_vsync(&mut self, vsync: Vsync) {
-        self.config.present_mode = VsyncUtils::map_from_vsync(VsyncUtils::to_okay(vsync, &self.present_modes));
+        self.config.present_mode = VsyncUtils::map_from_vsync(VsyncUtils::to_okay(
+            vsync, 
+            &self.present_modes
+        ));
         self.surface.configure(&self.device, &self.config);
     }
 
@@ -1261,7 +1533,10 @@ impl GraphicsEngine for WgpuEngine<'_> {
         let atlased = self.atlas.try_insert(width, height)?;
 
         // create a projection and render target
-        let projection = Self::create_projection(Vector2::new(width as f32, height as f32));
+        let projection = Self::create_projection(
+            Vector2::new(width as f32, height as f32)
+        );
+
         let target = RenderTarget {
             width,
             height,
@@ -1280,13 +1555,23 @@ impl GraphicsEngine for WgpuEngine<'_> {
         // return the new render target
         Some(target)
     }
-    fn update_render_target(&mut self, target: RenderTarget, do_render: RenderTargetDraw) {
+    fn update_render_target(
+        &mut self, 
+        target: RenderTarget, 
+        do_render: RenderTargetDraw
+    ) {
         // get the texture this target was written to
         let textures = self.atlas_texture.textures.clone();
-        let Some((atlas_tex, _)) = textures.get(target.image.tex.layer as usize) else { return };
+
+        let Some((atlas_tex, _)) = textures.get(target.image.tex.layer as usize) 
+        else { return };
 
         // write the projection matrix
-        self.queue.write_buffer(&self.projection_matrix_buffer, 0, bytemuck::cast_slice(&target.projection.to_raw()));
+        self.queue.write_buffer(
+            &self.projection_matrix_buffer, 
+            0, 
+            bytemuck::cast_slice(&target.projection.to_raw())
+        );
         self.queue.submit([]);
 
         let width = target.width;
@@ -1336,26 +1621,40 @@ impl GraphicsEngine for WgpuEngine<'_> {
 
 
         // copy render to atlas
-        let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor { label: Some("render_target copy encoder") });
+        let mut encoder = self.device.create_command_encoder(
+            &CommandEncoderDescriptor { 
+                label: Some("render_target copy encoder"),
+            }
+        );
 
         let mut dest = atlas_tex.as_image_copy();
         dest.origin.x = target.image.tex.x;
         dest.origin.y = target.image.tex.y;
 
-        encoder.copy_texture_to_texture(texture.as_image_copy(), dest, Extent3d { width, height, depth_or_array_layers: 1 });
+        encoder.copy_texture_to_texture(
+            texture.as_image_copy(), 
+            dest, 
+            texture.size(),
+        );
         self.queue.submit([encoder.finish()]);
 
         // remove temp texture
         self.queue.on_submitted_work_done(move || texture.destroy());
 
         // reapply the window projection matrix
-        self.queue.write_buffer(&self.projection_matrix_buffer, 0, bytemuck::cast_slice(&self.projection_matrix.to_raw()));
+        self.queue.write_buffer(
+            &self.projection_matrix_buffer, 
+            0, 
+            bytemuck::cast_slice(&self.projection_matrix.to_raw())
+        );
 
     }
 
 
     fn load_texture_bytes(&mut self, data: &[u8]) -> TatakuResult<TextureReference> {
-        let diffuse_image = image::load_from_memory(data).map_err(|e| TatakuError::String(e.to_string()))?;
+        let diffuse_image = image::load_from_memory(data)
+            .map_err(|e| TatakuError::String(e.to_string()))?;
+
         let diffuse_rgba = diffuse_image.to_rgba8();
 
         use image::GenericImageView;
@@ -1364,8 +1663,14 @@ impl GraphicsEngine for WgpuEngine<'_> {
         self.load_texture_rgba(&diffuse_rgba, [width, height])
     }
 
-    fn load_texture_rgba(&mut self, data: &[u8], [width, height]: [u32; 2]) -> TatakuResult<TextureReference> {
-        let Some(info) = self.atlas.try_insert(width, height) else { return Err(TatakuError::String("no space in atlas".to_owned())); };
+    fn load_texture_rgba(
+        &mut self, 
+        data: &[u8], 
+        [width, height]: [u32; 2]
+    ) -> TatakuResult<TextureReference> {
+        let Some(info) = self.atlas.try_insert(width, height) 
+        else { return Err(TatakuError::String("no space in atlas".to_owned())); };
+
         if info.is_empty() { return Ok(info) }
 
         // cast to bgra
@@ -1383,7 +1688,10 @@ impl GraphicsEngine for WgpuEngine<'_> {
 
         self.queue.write_texture(
             ImageCopyTexture {
-                texture: &self.atlas_texture.textures.get(info.layer as usize).unwrap().0,
+                texture: &self.atlas_texture.textures
+                    .get(info.layer as usize)
+                    .unwrap()
+                    .0,
                 mip_level: 0,
                 origin: Origin3d {
                     x: info.x,
@@ -1417,7 +1725,10 @@ impl GraphicsEngine for WgpuEngine<'_> {
         self.queue.write_texture(
             // Tells wgpu where to copy the pixel data
             ImageCopyTexture {
-                texture: &self.atlas_texture.textures.get(tex.layer as usize).unwrap().0,
+                texture: &self.atlas_texture.textures
+                    .get(tex.layer as usize)
+                    .unwrap()
+                    .0,
                 mip_level: 0,
                 origin: Origin3d {
                     x: tex.x - ATLAS_PADDING,
@@ -1460,7 +1771,7 @@ impl GraphicsEngine for WgpuEngine<'_> {
         let mut flashlight_buffers = Vec::new();
         let mut blur_buffers = Vec::new();
 
-        for i in std::mem::take(&mut self.completed_buffers) {
+        for i in self.completed_buffers.take() {
             match i {
                 RenderBufferType::Standard(v) => standard_buffers.push(v),
                 RenderBufferType::Slider(s) => slider_buffers.push(s),
@@ -1471,22 +1782,24 @@ impl GraphicsEngine for WgpuEngine<'_> {
 
         for i in self.buffer_queues.values_mut() {
             match &mut **i {
-                RenderBufferQueueType::Slider(s) => s.begin(std::mem::take(&mut slider_buffers)),
-                RenderBufferQueueType::Standard(v) => v.begin(std::mem::take(&mut standard_buffers)),
-                RenderBufferQueueType::Flashlight(f) => f.begin(std::mem::take(&mut flashlight_buffers)),
-                RenderBufferQueueType::Blur(f) => f.begin(std::mem::take(&mut blur_buffers)),
+                RenderBufferQueueType::Slider(s) => s.begin(slider_buffers.take()),
+                RenderBufferQueueType::Standard(v) => v.begin(standard_buffers.take()),
+                RenderBufferQueueType::Flashlight(f) => f.begin(flashlight_buffers.take()),
+                RenderBufferQueueType::Blur(f) => f.begin(blur_buffers.take()),
             }
         }
     }
 
     fn end_render(&mut self) {
-        if let Some(mut last_queue) = std::mem::take(&mut self.current_render_buffer) {
-            if let Some(b) = last_queue.end(&self.queue) {
-                self.completed_buffers.push(b);
-            }
+        let Some(mut last_queue) = self.current_render_buffer.take() 
+        else { return };
 
-            self.buffer_queues.insert(last_queue.draw_type(), last_queue);
+        if let Some(b) = last_queue.end(&self.queue) {
+            self.completed_buffers.push(b);
         }
+
+        self.buffer_queues.insert(last_queue.draw_type(), last_queue);
+        
     }
 
     fn present(&mut self) -> TatakuResult<()> {
@@ -1527,7 +1840,7 @@ impl GraphicsEngine for WgpuEngine<'_> {
         let (cw, ch) = (0.5 * w, 0.5 * h);
         let (cx, cy) = (x + cw, y + ch);
 
-        let mut path = lyon_tessellation::path::Path::builder();
+        let mut path = LyonPath::builder();
         for i in 0..=n {
             let angle = f32::lerp(start, end, i as f32 / n as f32);
             let p = Point::new(
@@ -1584,7 +1897,7 @@ impl GraphicsEngine for WgpuEngine<'_> {
         }
 
         // border
-        if let Some(border) = border.filter(|b|b.color.a > 0.0) {
+        if let Some(border) = border.filter(|b| b.color.a > 0.0) {
             self.tessellate_polygon(
                 &points, 
                 border.color, 
@@ -1628,7 +1941,7 @@ impl GraphicsEngine for WgpuEngine<'_> {
         transform: Matrix, 
         blend_mode: BlendMode,
     ) {
-        // for some reason something gets set to infinity on screen resize and panics the tesselator, this prevents that
+        // for some reason something gets set to infinity on screen resize and panics the tesselator, this prevents the panic
         if rect.iter().any(|n| !n.is_normal() && *n != 0.0) { return }
 
         let [x, y, w, h] = rect;
@@ -1655,7 +1968,12 @@ impl GraphicsEngine for WgpuEngine<'_> {
                 bottom_right
             ]) => path.add_rounded_rectangle(
                 &rect, 
-                &BorderRadii { top_left, top_right, bottom_left, bottom_right }, 
+                &BorderRadii { 
+                    top_left, 
+                    top_right, 
+                    bottom_left, 
+                    bottom_right 
+                }, 
                 Winding::Positive
             ),
         }
@@ -1663,7 +1981,13 @@ impl GraphicsEngine for WgpuEngine<'_> {
 
         // fill
         if color.a > 0.0 {
-            self.tessellate_path(&path, color, None, transform, blend_mode);
+            self.tessellate_path(
+                &path, 
+                color, 
+                None, 
+                transform, 
+                blend_mode
+            );
         }
 
         // border
@@ -1687,8 +2011,15 @@ impl GraphicsEngine for WgpuEngine<'_> {
         transform: Matrix, 
         blend_mode: BlendMode,
     ) {
-        let rect = [0.0, 0.0, tex.width as f32, tex.height as f32];
-        self.reserve_tex_quad(tex, rect, color, h_flip, v_flip, transform, blend_mode);
+        self.reserve_tex_quad(
+            tex, 
+            [0.0, 0.0, tex.width as f32, tex.height as f32], 
+            color, 
+            h_flip, 
+            v_flip, 
+            transform, 
+            blend_mode
+        );
     }
 
 
@@ -1711,17 +2042,17 @@ impl GraphicsEngine for WgpuEngine<'_> {
             return
         };
 
-        // info!("{} : {} : {}", reserved.slider_grid_offset, reserved.grid_cell_offset, reserved.line_segment_offset);
-
-
-        let vertices = quad.into_iter().map(|p| SliderVertex {
-            position: transform.mul_v2(p).into(),
-            slider_index: reserved.slider_index,
-        }).collect::<Vec<_>>();
+        let vertices = quad
+            .into_iter()
+            .map(|p| SliderVertex {
+                position: transform.mul_v2(p).into(),
+                slider_index: reserved.slider_index,
+            })
+            .collect::<Vec<_>>();
 
         let offset = reserved.idx_offset as u32;
         slider_data.grid_index += reserved.slider_grid_offset;
-        #[allow(clippy::identity_op)] // 0 + offset is nice
+        #[allow(clippy::identity_op, reason = "0 + offset is nice")]
         reserved.copy_in(
             &vertices,
             &[
@@ -1734,9 +2065,23 @@ impl GraphicsEngine for WgpuEngine<'_> {
                 3 + offset,
             ],
             slider_data.into(),
-            &slider_grids.into_iter().map(|mut a| {a.index += reserved.grid_cell_offset; a.into()}).collect::<Vec<_>>(),
-            &grid_cells.into_iter().map(|i|i + reserved.line_segment_offset).collect::<Vec<_>>(),
-            &line_segments.into_iter().map(|a| a.into()).collect::<Vec<_>>()
+
+            &slider_grids.into_iter()
+                .map(|mut a| {
+                    a.index += reserved.grid_cell_offset; 
+                    a.into()
+                })
+                .collect::<Vec<_>>(),
+
+            &grid_cells
+                .into_iter()
+                .map(|i|i + reserved.line_segment_offset)
+                .collect::<Vec<_>>(),
+
+            &line_segments
+                .into_iter()
+                .map(|a| a.into())
+                .collect::<Vec<_>>()
         );
     }
 
@@ -1746,12 +2091,15 @@ impl GraphicsEngine for WgpuEngine<'_> {
         transform: Matrix,
         flashlight_data: FlashlightData
     ) {
-        let Some(mut reserved) = self.reserve_flashlight() else { return };
+        let Some(mut reserved) = self.reserve_flashlight() 
+        else { return };
 
-        let vertices = quad.into_iter().map(|p| FlashlightVertex {
-            position: transform.mul_v2(p).into(),
-            flashlight_index: reserved.flashlight_index,
-        }).collect::<Vec<_>>();
+        let vertices = quad.into_iter()
+            .map(|p| FlashlightVertex {
+                position: transform.mul_v2(p).into(),
+                flashlight_index: reserved.flashlight_index,
+            })
+            .collect::<Vec<_>>();
 
         reserved.copy_in(&vertices, flashlight_data);
     }
@@ -1763,7 +2111,9 @@ impl GraphicsEngine for WgpuEngine<'_> {
         sigma: f32,
         _rounds: u32,
     ) {
-        let Some(mut reserve) = self.reserve_blur() else { return };
+        let Some(mut reserve) = self.reserve_blur() 
+        else { return };
+
         let params = BlurParams::new(
             bounds.pos.x,
             bounds.pos.y,

@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use tataku_client_common::prelude::Matrix;
+use std::mem::size_of;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
@@ -13,7 +14,7 @@ pub struct StandardVertex {
 impl StandardVertex {
     pub fn desc() -> VertexBufferLayout<'static> {
         VertexBufferLayout {
-            array_stride: std::mem::size_of::<StandardVertex>() as BufferAddress,
+            array_stride: size_of::<StandardVertex>() as BufferAddress,
             step_mode: VertexStepMode::Vertex,
             attributes: &[
                 // position
@@ -24,19 +25,26 @@ impl StandardVertex {
                 },
                 // tex coords
                 VertexAttribute {
-                    offset: std::mem::size_of::<[f32;2]>() as BufferAddress,
+                    offset: size_of::<[f32;2]>() as BufferAddress,
                     shader_location: 1,
                     format: VertexFormat::Float32x2,
                 },
                 // tex index
                 VertexAttribute {
-                    offset: (std::mem::size_of::<[f32;2]>() + std::mem::size_of::<[f32;2]>()) as BufferAddress,
+                    offset: (
+                        size_of::<[f32;2]>() 
+                        + size_of::<[f32;2]>()
+                    ) as BufferAddress,
                     shader_location: 2,
                     format: VertexFormat::Sint32,
                 },
                 // color
                 VertexAttribute {
-                    offset: (std::mem::size_of::<[f32;2]>() + std::mem::size_of::<[f32;2]>() + std::mem::size_of::<i32>()) as BufferAddress,
+                    offset: (
+                        size_of::<[f32;2]>() 
+                        + size_of::<[f32;2]>() 
+                        + size_of::<i32>()
+                    ) as BufferAddress,
                     shader_location: 3,
                     format: VertexFormat::Float32x4,
                 },
@@ -46,7 +54,12 @@ impl StandardVertex {
 
     pub fn apply_matrix(mut self, matrix: &Matrix) -> Self {
         // matrix
-        let pos = cgmath::Vector4::new(self.position[0], self.position[1], 0.0, 1.0);
+        let pos = cgmath::Vector4::new(
+            self.position[0], 
+            self.position[1], 
+            0.0, 
+            1.0
+        );
         let new_pos = matrix * pos;
         self.position = [new_pos.x, new_pos.y];
 

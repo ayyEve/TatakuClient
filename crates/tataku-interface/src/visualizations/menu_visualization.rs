@@ -1,5 +1,4 @@
 use crate::prelude::*;
-// use super::Visualization;
 
 const CUTOFF:f32 = 0.1;
 pub const VISUALIZATION_SIZE_FACTOR:f32 = 1.2;
@@ -48,10 +47,12 @@ impl MenuVisualization {
         // let window_size = WindowSizeHelper::new();
         // let initial_inner_radius = window_size.y / 6.0;
         
-        let vis_data = VisualizationData::new(VisualizationConfig {
-            should_lerp: true,
-            lerp_factor: 10.0
-        });
+        let vis_data = VisualizationData::new(
+            VisualizationConfig {
+                should_lerp: true,
+                lerp_factor: 10.0
+            }
+        );
         let mut actions = ActionQueue::new();
         actions.push(SongAction::HookFFT(vis_data.get_hook()));
 
@@ -93,7 +94,9 @@ impl MenuVisualization {
     }
 
     fn add_ripple(&mut self) {
-        let mut group = TransformGroup::new(self.bounds_center()).alpha(1.0).border_alpha(1.0);
+        let mut group = TransformGroup::new(self.bounds_center())
+            .alpha(1.0)
+            .border_alpha(1.0);
         let duration = 1000.0;
         let time = self.other_timer.as_millis();
 
@@ -105,15 +108,23 @@ impl MenuVisualization {
             Color::WHITE.alpha(0.5),
             Some(Border::new(Color::WHITE, 2.0))
         ));
-        group.ripple(0.0, duration, time, 2.0, true, Some(0.5));
+        group.ripple(
+            0.0, 
+            duration, 
+            time, 
+            2.0, 
+            true, 
+            Some(0.5)
+        );
 
         self.ripples.push(group);
     }
 
-    pub fn on_click(&self, pos:Vector2) -> bool {
+    pub fn on_click(&self, pos: Vector2) -> bool {
         let circle_pos = self.bounds_center();
 
-        let dist = (pos.x - circle_pos.x).powi(2) + (pos.y - circle_pos.y).powi(2);
+        let dist = (pos.x - circle_pos.x).powi(2) 
+            + (pos.y - circle_pos.y).powi(2);
         let radius = self.current_inner_radius.powi(2);
 
         dist <= radius
@@ -151,11 +162,19 @@ impl MenuVisualization {
         let n = (2.0 * PI * self.current_inner_radius) / data.len() as f32 / 2.0;
         const BAR_MULT:f32 = 1.5;
 
-        for (i, val) in data.iter().map(|a| a.amplitude()).enumerate() {
+        for (i, val) in data
+            .iter()
+            .map(|a| a.amplitude())
+            .enumerate() 
+        {
             if val <= CUTOFF { continue }
 
             let factor = (i as f32 + 2.0).log10();
-            let l = self.current_inner_radius + val * factor * self.bar_height * BAR_MULT;
+            let l = self.current_inner_radius 
+                + val 
+                * factor 
+                * self.bar_height 
+                * BAR_MULT;
 
             let theta = self.rotation + a * i as f32;
             let theta_vector = Vector2::from_angle(theta);
@@ -196,7 +215,8 @@ impl MenuVisualization {
             let min = inner_radius / VISUALIZATION_SIZE_FACTOR;
             let max = inner_radius * VISUALIZATION_SIZE_FACTOR;
             let val = data[self.index].amplitude() / 500.0;
-            let inner_radius = f32::lerp(min, max, val).clamp(min, max);
+            let inner_radius = f32::lerp(min, max, val)
+                .clamp(min, max);
             self.current_inner_radius = inner_radius;
         }
 
@@ -243,10 +263,20 @@ impl MenuVisualization {
     }
 
     pub fn reload_skin(&mut self, skin_manager: &mut dyn SkinProvider) {
-        if let Some(cookie) = skin_manager.get_texture("menu-osu", &TextureSource::Skin, SkinUsage::Game, false) {
+        if let Some(cookie) = skin_manager.get_texture(
+            "menu-osu", 
+            &TextureSource::Skin, 
+            SkinUsage::Game, 
+            false
+        ) {
             self.cookie = Some(cookie);
         } else {
-            self.cookie = skin_manager.get_texture("./resources/icon.png", &TextureSource::Raw, SkinUsage::Game, false);
+            self.cookie = skin_manager.get_texture(
+                "./resources/icon.png", 
+                &TextureSource::Raw, 
+                SkinUsage::Game, 
+                false
+            );
         }
     }
 

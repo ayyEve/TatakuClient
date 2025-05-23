@@ -149,7 +149,8 @@ impl Widget for WidgetContainer {
             .copied()
             .map(Shape::Round);
 
-        if let Some(bg) = style.background_color.value_var(shell.values) {
+        if let Some(bg) = style.background_color
+            .value_var(shell.values) {
             shell.list.push(Rectangle::new_bounds(
                     bounds,
                     *bg,
@@ -236,10 +237,14 @@ impl Widget for WidgetContainer {
     }
 
     fn reload_skin(&mut self, shell: &mut UpdateShell) {
-        let Some(ctx) = shell.tree.get_context_mut(self.node_id()) else { return };
+        let Some(ctx) = shell.tree
+            .get_context_mut(self.node_id()) 
+        else { return };
 
-        for (style, img) in ctx.element_data.styles.all_mut() {
-            if let Some(image) = style.image.value_var(shell.values) {
+        for (style, img) in ctx.element_data.styles
+            .all_mut() {
+            if let Some(image) = style.image
+                .value_var(shell.values) {
                 let source = style.image_source.value()
                     .cloned()
                     .unwrap_or(TextureSource::Skin);
@@ -248,7 +253,9 @@ impl Widget for WidgetContainer {
                     &image, 
                     &source, 
                     SkinUsage::Game, 
-                    style.image_grayscale.value().copied().unwrap_or_default(), 
+                    style.image_grayscale.value()
+                        .copied()
+                        .unwrap_or_default(), 
                     |image| image.origin = Vector2::ZERO,
                 );
             }

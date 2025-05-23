@@ -77,13 +77,18 @@ impl FpsDisplay {
         self.frametime_timer = TatakuInstant::now();
     }
     pub fn draw(&self, list: &mut RenderableCollection) {
-        list.push(Rectangle::new(self.pos, SIZE, Color::WHITE.alpha(0.8), None));
+        list.push(Rectangle::new(
+            self.pos, 
+            SIZE, 
+            Color::WHITE.alpha(0.8), 
+            None
+        ));
 
         list.push(Text::new(
             self.pos + TEXT_PADDING,
             12.0,
             format!("{:.2}{} ({:.2}ms)", self.last, self.name, self.frametime_last_draw),
-            Color::BLACK,
+            Color::BLACK, 
             Font::Main
         ));
     }
@@ -108,7 +113,12 @@ pub struct AsyncFpsDisplay {
 }
 impl AsyncFpsDisplay {
     /// name is what to display in text, count is which fps counter is this (only affects position)
-    pub fn new(name: &str, pos_count: u8, count: Arc<AtomicU32>, frametime_last: Arc<AtomicU32>) -> Self {
+    pub fn new(
+        name: &str, 
+        pos_count: u8, 
+        count: Arc<AtomicU32>, 
+        frametime_last: Arc<AtomicU32>
+    ) -> Self {
         Self {
             count,
             frametime_last,
@@ -116,7 +126,7 @@ impl AsyncFpsDisplay {
             last: 0.0,
             timer: TatakuInstant::now(),
             name: name.to_owned(),
-            pos: Vector2::ZERO, // Vector2::new(window_size.x - SIZE.x, window_size.y - SIZE.y * (pos_count+1) as f32),
+            pos: Vector2::ZERO, 
 
             frametime_last_draw: 0.0,
             // window_size,
@@ -138,13 +148,20 @@ impl AsyncFpsDisplay {
             self.timer = TatakuInstant::now();
 
             // update frametime and last updates/s
-            self.frametime_last_draw = self.frametime_last.swap(0, SeqCst) as f32 / 100.0; // restore 2 decimal places
-            self.last = self.count.swap(0, SeqCst) as f32 / fps_elapsed * 1000.0;
+            self.frametime_last_draw = self.frametime_last
+                .swap(0, SeqCst) as f32 / 100.0; // restore 2 decimal places
+            self.last = self.count
+                .swap(0, SeqCst) as f32 / fps_elapsed * 1000.0;
         }
     }
 
     pub fn draw(&self, list: &mut RenderableCollection) {
-        list.push(Rectangle::new(self.pos, SIZE, Color::WHITE.alpha(0.8), None));
+        list.push(Rectangle::new(
+            self.pos, 
+            SIZE, 
+            Color::WHITE.alpha(0.8), 
+            None
+        ));
 
         list.push(Text::new(
             self.pos + TEXT_PADDING,

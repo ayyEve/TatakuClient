@@ -39,7 +39,7 @@ impl TabbedWidget {
     }
 }
 impl Widget for TabbedWidget {
-    fn name(&self) -> Cow<'static, str>  { format!("tabbed_widget({})", self.name).into() }
+    fn name(&self) -> Cow<'static, str> { format!("tabbed_widget({})", self.name).into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn operation(

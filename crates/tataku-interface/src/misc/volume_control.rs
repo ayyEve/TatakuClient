@@ -39,7 +39,9 @@ impl VolumeControl {
         let elapsed = self.elapsed();
 
         // reset index back to 0 (master) if the volume hasnt been touched in a while
-        if elapsed - self.vol_selected_time > VOLUME_CHANGE_DISPLAY_TIME + 1000 { self.vol_selected_index = 0 }
+        if elapsed - self.vol_selected_time > VOLUME_CHANGE_DISPLAY_TIME + 1000 { 
+            self.vol_selected_index = 0 
+        }
 
         // find out what volume to edit, and edit it
         match self.vol_selected_index {
@@ -61,7 +63,9 @@ impl VolumeControl {
         let elapsed = self.elapsed();
 
         // draw the volume things if needed
-        if self.vol_selected_time > 0 && elapsed - self.vol_selected_time < VOLUME_CHANGE_DISPLAY_TIME {
+        if self.vol_selected_time > 0 
+            && elapsed - self.vol_selected_time < VOLUME_CHANGE_DISPLAY_TIME 
+            {
             const BOX_SIZE:Vector2 = Vector2::new(300.0, 100.0);
             let b = Rectangle::new(
                 self.window_size - BOX_SIZE,
@@ -172,14 +176,24 @@ impl VolumeControl {
     pub fn on_mouse_move(&mut self, mouse_pos: Vector2) {
         let elapsed = self.elapsed();
 
-        let master_pos = Vector2::new(self.window_size.x - 300.0, self.window_size.y - 90.0);
-        let effect_pos = Vector2::new(self.window_size.x - 300.0, self.window_size.y - 60.0);
-        let music_pos = Vector2::new(self.window_size.x - 300.0, self.window_size.y - 30.0);
+        let master_pos = Vector2::new(
+            self.window_size.x - 300.0, 
+            self.window_size.y - 90.0
+        );
+        let effect_pos = Vector2::new(
+            self.window_size.x - 300.0, 
+            self.window_size.y - 60.0
+        );
+        let music_pos = Vector2::new(
+            self.window_size.x - 300.0, 
+            self.window_size.y - 30.0
+        );
 
         // check if mouse moved over a volume button
         if mouse_pos.x >= master_pos.x 
             && self.vol_selected_time > 0 
-            && elapsed as f32 - (self.vol_selected_time as f32) < VOLUME_CHANGE_DISPLAY_TIME as f32 {
+            && elapsed as f32 - (self.vol_selected_time as f32) < VOLUME_CHANGE_DISPLAY_TIME as f32 
+        {
             if mouse_pos.y >= music_pos.y {
                 self.vol_selected_index = 2;
                 self.vol_selected_time = elapsed;

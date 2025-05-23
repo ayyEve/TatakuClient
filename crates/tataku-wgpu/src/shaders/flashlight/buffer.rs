@@ -32,42 +32,56 @@ impl RenderBufferable for FlashlightBuffer {
         self.used_flashlights = 0;
     }
 
-    fn dump(&mut self, queue: &wgpu::Queue, cache: &Self::Cache) {
-        queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&cache.cpu_vtx));
-        queue.write_buffer(&self.index_buffer, 0, bytemuck::cast_slice(&cache.cpu_idx));
-        queue.write_buffer(&self.flashlight_buffer, 0, bytemuck::cast_slice(&cache.cpu_flashlights));
+    fn dump(&mut self, queue: &Queue, cache: &Self::Cache) {
+        queue.write_buffer(
+            &self.vertex_buffer, 
+            0, 
+            bytemuck::cast_slice(&cache.cpu_vtx)
+        );
+        queue.write_buffer(
+            &self.index_buffer, 
+            0, 
+            bytemuck::cast_slice(&cache.cpu_idx)
+        );
+        queue.write_buffer(
+            &self.flashlight_buffer, 
+            0, 
+            bytemuck::cast_slice(&cache.cpu_flashlights)
+        );
     }
 
     fn create_new_buffer(device: &Device, pipeline: WgpuPipeline) -> Self {
-        let flashlight_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+        let flashlight_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("Flashlight Data Buffer"),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            size: FLASHLIGHT_PER_BUF * std::mem::size_of::<FlashlightDataInner>() as u64,
+            usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
+            size: FLASHLIGHT_PER_BUF * size_of::<FlashlightDataInner>() as u64,
             mapped_at_creation: false,
         });
 
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("flashlight bind group"),
-            layout: &pipeline.get_bind_group_layout(1),
-            entries: &[
-                wgpu::BindGroupEntry { 
-                    binding: 0, 
-                    resource: flashlight_buffer.as_entire_binding() 
-                },
-            ]
-        });
+        let bind_group = device.create_bind_group(
+            &BindGroupDescriptor {
+                label: Some("flashlight bind group"),
+                layout: &pipeline.get_bind_group_layout(1),
+                entries: &[
+                    BindGroupEntry { 
+                        binding: 0, 
+                        resource: flashlight_buffer.as_entire_binding() 
+                    },
+                ]
+            }
+        );
 
         Self {
-            vertex_buffer: device.create_buffer(&wgpu::BufferDescriptor {
+            vertex_buffer: device.create_buffer(&BufferDescriptor {
                 label: Some("Flashlight Vertex Buffer"),
-                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-                size: VTX_PER_BUF * std::mem::size_of::<FlashlightVertex>() as u64,
+                usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
+                size: VTX_PER_BUF * size_of::<FlashlightVertex>() as u64,
                 mapped_at_creation: false,
             }),
-            index_buffer: device.create_buffer(&wgpu::BufferDescriptor {
+            index_buffer: device.create_buffer(&BufferDescriptor {
                 label: Some("Flashlight Index Buffer"),
-                usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
-                size: IDX_PER_BUF * std::mem::size_of::<u32>() as u64,
+                usage: BufferUsages::INDEX | BufferUsages::COPY_DST,
+                size: IDX_PER_BUF * size_of::<u32>() as u64,
                 mapped_at_creation: false,
             }),
             flashlight_buffer,
@@ -106,7 +120,11 @@ pub struct FlashlightReserveData<'a> {
     pub flashlight_index: u32
 }
 impl FlashlightReserveData<'_> {
-    pub fn copy_in(&mut self, vtx: &[FlashlightVertex], flashlight_data: FlashlightData) {
+    pub fn copy_in(
+        &mut self, 
+        vtx: &[FlashlightVertex], 
+        flashlight_data: FlashlightData
+    ) {
         let offset = self.idx_offset as u32;
         let idx:&[u32] = &[
             offset,

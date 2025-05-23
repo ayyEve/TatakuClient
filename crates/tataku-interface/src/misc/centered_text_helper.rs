@@ -30,7 +30,12 @@ impl CenteredTextHelper {
         self.changed_time = 0.0;
     }
 
-    pub fn draw(&mut self, time: f32, window_size: Vector2, list: &mut RenderableCollection) {
+    pub fn draw(
+        &mut self, 
+        time: f32, 
+        window_size: Vector2, 
+        list: &mut RenderableCollection
+    ) {
         if self.changed_time > 0.0 && time - self.changed_time < self.draw_time {
             let mut offset_text = Text::new(
                 Vector2::ZERO, // centered later
@@ -43,12 +48,20 @@ impl CenteredTextHelper {
             let text_width = offset_text.measure_text().x + TEXT_HPADDING;
             // center
             let rect = Bounds::new(
-                Vector2::new((window_size.x - text_width) / 2.0, window_size.y * 1.0/3.0), 
+                Vector2::new(
+                    (window_size.x - text_width) / 2.0, 
+                    window_size.y * 1.0 / 3.0
+                ), 
                 Vector2::new(text_width + TEXT_HPADDING, 64.0)
             );
             offset_text.center_text(&rect);
             // add
-            list.push(Rectangle::new(rect.pos, rect.size, Color::WHITE.alpha(0.8), None));
+            list.push(Rectangle::new(
+                rect.pos, 
+                rect.size, 
+                Color::WHITE.alpha(0.8), 
+                None
+            ));
             list.push(offset_text);
         }
     }

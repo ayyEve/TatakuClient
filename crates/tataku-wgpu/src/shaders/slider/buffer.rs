@@ -49,13 +49,37 @@ impl RenderBufferable for SliderRenderBuffer {
     }
 
     fn dump(&mut self, queue: &Queue, cache: &Self::Cache) {
-        queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&cache.cpu_vtx));
-        queue.write_buffer(&self.index_buffer, 0, bytemuck::cast_slice(&cache.cpu_idx));
+        queue.write_buffer(
+            &self.vertex_buffer, 
+            0, 
+            bytemuck::cast_slice(&cache.cpu_vtx)
+        );
+        queue.write_buffer(
+            &self.index_buffer, 
+            0, 
+            bytemuck::cast_slice(&cache.cpu_idx)
+        );
 
-        queue.write_buffer(&self.slider_data, 0, bytemuck::cast_slice(&cache.slider_data));
-        queue.write_buffer(&self.slider_grids, 0, bytemuck::cast_slice(&cache.slider_grids));
-        queue.write_buffer(&self.grid_cells, 0, bytemuck::cast_slice(&cache.grid_cells));
-        queue.write_buffer(&self.line_segments, 0, bytemuck::cast_slice(&cache.line_segments));
+        queue.write_buffer(
+            &self.slider_data, 
+            0, 
+            bytemuck::cast_slice(&cache.slider_data)
+        );
+        queue.write_buffer(
+            &self.slider_grids, 
+            0, 
+            bytemuck::cast_slice(&cache.slider_grids)
+        );
+        queue.write_buffer(
+            &self.grid_cells, 
+            0, 
+            bytemuck::cast_slice(&cache.grid_cells)
+        );
+        queue.write_buffer(
+            &self.line_segments, 
+            0, 
+            bytemuck::cast_slice(&cache.line_segments)
+        );
     }
 
     fn should_write(&self) -> bool {
@@ -63,21 +87,51 @@ impl RenderBufferable for SliderRenderBuffer {
     }
 
     fn create_new_buffer(device: &Device, pipeline: WgpuPipeline) -> Self {
-        let slider_data = create_buffer::<SliderData>(device, BufferUsages::STORAGE, EXPECTED_SLIDER_COUNT);
-        let slider_grids = create_buffer::<GridCell>(device, BufferUsages::STORAGE, SLIDER_GRID_COUNT);
-        let grid_cells = create_buffer::<u32>(device, BufferUsages::STORAGE, GRID_CELL_COUNT);
-        let line_segments = create_buffer::<LineSegment>(device, BufferUsages::STORAGE, LINE_SEGMENT_COUNT);
+        let slider_data = create_buffer::<SliderData>(
+            device, 
+            BufferUsages::STORAGE, 
+            EXPECTED_SLIDER_COUNT
+        );
+        let slider_grids = create_buffer::<GridCell>(
+            device, 
+            BufferUsages::STORAGE, 
+            SLIDER_GRID_COUNT
+        );
+        let grid_cells = create_buffer::<u32>(
+            device, 
+            BufferUsages::STORAGE, 
+            GRID_CELL_COUNT
+        );
+        let line_segments = create_buffer::<LineSegment>(
+            device, 
+            BufferUsages::STORAGE, 
+            LINE_SEGMENT_COUNT
+        );
 
-        let bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("slider bind group"),
-            layout: &pipeline.get_bind_group_layout(1),
-            entries: &[
-                BindGroupEntry { binding: 0, resource: slider_data.as_entire_binding() },
-                BindGroupEntry { binding: 1, resource: slider_grids.as_entire_binding() },
-                BindGroupEntry { binding: 2, resource: grid_cells.as_entire_binding() },
-                BindGroupEntry { binding: 3, resource: line_segments.as_entire_binding() },
-            ]
-        });
+        let bind_group = device.create_bind_group(
+            &BindGroupDescriptor {
+                label: Some("slider bind group"),
+                layout: &pipeline.get_bind_group_layout(1),
+                entries: &[
+                    BindGroupEntry { 
+                        binding: 0, 
+                        resource: slider_data.as_entire_binding() 
+                    },
+                    BindGroupEntry { 
+                        binding: 1, 
+                        resource: slider_grids.as_entire_binding() 
+                    },
+                    BindGroupEntry { 
+                        binding: 2, 
+                        resource: grid_cells.as_entire_binding() 
+                    },
+                    BindGroupEntry { 
+                        binding: 3, 
+                        resource: line_segments.as_entire_binding() 
+                    },
+                ]
+            }
+        );
 
         Self {
             scissor: None,
@@ -90,8 +144,16 @@ impl RenderBufferable for SliderRenderBuffer {
             used_grid_cells: 0,
             used_line_segments: 0,
 
-            vertex_buffer: create_buffer::<SliderVertex>(device, BufferUsages::VERTEX, VTX_PER_BUF),
-            index_buffer: create_buffer::<u32>(device, BufferUsages::INDEX, IDX_PER_BUF),
+            vertex_buffer: create_buffer::<SliderVertex>(
+                device, 
+                BufferUsages::VERTEX, 
+                VTX_PER_BUF
+            ),
+            index_buffer: create_buffer::<u32>(
+                device, 
+                BufferUsages::INDEX, 
+                IDX_PER_BUF
+            ),
 
             slider_data,
             slider_grids,

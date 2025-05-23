@@ -16,7 +16,11 @@ impl<B:RenderBufferable> RenderBufferQueue<B> {
     }
     
     /// inline helper to create a render buffer on the queue
-    pub fn init<'a>(mut self, device: &Device, pipeline: impl Into<WgpuPipeline<'a>>) -> Self {
+    pub fn init<'a>(
+        mut self, 
+        device: &Device, 
+        pipeline: impl Into<WgpuPipeline<'a>>
+    ) -> Self {
         self.create_render_buffer(device, pipeline.into());
         self
     }
@@ -39,7 +43,7 @@ impl<B:RenderBufferable> RenderBufferQueue<B> {
 
     /// write the data in the cpu cache to the gpu
     pub fn dump(&mut self, queue: &Queue) -> Option<Box<B>> {
-        let mut recording_buffer = std::mem::take(&mut self.recording_buffer)?;
+        let mut recording_buffer = self.recording_buffer.take()?;
         if recording_buffer.should_write() {
             recording_buffer.dump(queue, &self.cpu_cache);
             Some(recording_buffer)
@@ -55,12 +59,21 @@ impl<B:RenderBufferable> RenderBufferQueue<B> {
     }
 
     /// create a render buffer on the gpu
-    pub fn create_render_buffer(&mut self, device: &Device, pipeline: WgpuPipeline) {
+    pub fn create_render_buffer(
+        &mut self, 
+        device: &Device, 
+        pipeline: WgpuPipeline
+    ) {
         self.queued_buffers.push(Box::new(B::create_new_buffer(device, pipeline)));
     }
 
     /// dump the cached data to the gpu, and set up the next recording buffer, creating a new buffer on the gpu if no existing buffers are available
-    pub fn dump_and_next(&mut self, queue: &Queue, device: &Device, pipeline: WgpuPipeline) -> Option<Box<B>> {
+    pub fn dump_and_next(
+        &mut self, 
+        queue: &Queue, 
+        device: &Device, 
+        pipeline: WgpuPipeline
+    ) -> Option<Box<B>> {
         let dumped: Option<Box<B>> = self.dump(queue);
         if self.queued_buffers.is_empty() {
             self.create_render_buffer(device, pipeline);

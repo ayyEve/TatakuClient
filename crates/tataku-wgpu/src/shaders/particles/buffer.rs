@@ -25,7 +25,9 @@ impl ParticleBuffer {
 
         let particle_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("Particle Buffer"),
-            usage: BufferUsages::STORAGE | BufferUsages::COPY_DST | BufferUsages::COPY_SRC,
+            usage: BufferUsages::STORAGE 
+                | BufferUsages::COPY_DST 
+                | BufferUsages::COPY_SRC,
             size: SIZE * std::mem::size_of::<GpuParticle>() as u64,
             mapped_at_creation: false,
         });
@@ -37,68 +39,80 @@ impl ParticleBuffer {
             mapped_at_creation: false,
         });
 
-        let layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("ghjkdfs"),
-            entries: &[
-                BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: ShaderStages::COMPUTE,
-                    ty: BindingType::Buffer {
-                        ty: BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: std::num::NonZeroU64::new(SIZE * std::mem::size_of::<EmitterInfoInner>() as u64)
+        let layout = device.create_bind_group_layout(
+            &BindGroupLayoutDescriptor {
+                label: Some("ghjkdfs"),
+                entries: &[
+                    BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: ShaderStages::COMPUTE,
+                        ty: BindingType::Buffer {
+                            ty: BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: NonZeroU64::new(
+                                SIZE * size_of::<EmitterInfoInner>() as u64
+                            )
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: ShaderStages::COMPUTE,
-                    ty: BindingType::Buffer {
-                        ty: BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: std::num::NonZeroU64::new(SIZE * std::mem::size_of::<GpuParticle>() as u64)
+                    BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: ShaderStages::COMPUTE,
+                        ty: BindingType::Buffer {
+                            ty: BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: NonZeroU64::new(
+                                SIZE * size_of::<GpuParticle>() as u64
+                            )
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: ShaderStages::COMPUTE,
-                    ty: BindingType::Buffer {
-                        ty: BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: std::num::NonZeroU64::new(std::mem::size_of::<RunInfoInner>() as u64)
+                    BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: ShaderStages::COMPUTE,
+                        ty: BindingType::Buffer {
+                            ty: BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: NonZeroU64::new(
+                                size_of::<RunInfoInner>() as u64
+                            )
+                        },
+                        count: None,
+                    }
+                ]
+            }
+        );
+
+        let bind_group = device.create_bind_group(
+            &BindGroupDescriptor {
+                label: Some("hgoifdshgijfds"),
+                layout: &layout,
+                entries: &[
+                    BindGroupEntry {
+                        binding: 0,
+                        resource: emitter_buffer.as_entire_binding(),
                     },
-                    count: None,
-                }
-            ]
-        });
-
-        let bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("hgoifdshgijfds"),
-            layout: &layout,
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: emitter_buffer.as_entire_binding(),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: particle_buffer.as_entire_binding(),
-                },
-                BindGroupEntry {
-                    binding: 2,
-                    resource: run_info_buffer.as_entire_binding(),
-                }
-            ],
-        });
+                    BindGroupEntry {
+                        binding: 1,
+                        resource: particle_buffer.as_entire_binding(),
+                    },
+                    BindGroupEntry {
+                        binding: 2,
+                        resource: run_info_buffer.as_entire_binding(),
+                    }
+                ],
+            }
+        );
 
 
-        let readable_particle_buffer = device.create_buffer(&BufferDescriptor {
-            label: Some("Particle Buffer 2"),
-            usage: BufferUsages::COPY_DST | BufferUsages::MAP_READ,
-            size: SIZE * std::mem::size_of::<GpuParticle>() as u64,
-            mapped_at_creation: false,
-        });
+        let readable_particle_buffer = device.create_buffer(
+            &BufferDescriptor {
+                label: Some("Particle Buffer 2"),
+                usage: BufferUsages::COPY_DST | BufferUsages::MAP_READ,
+                size: SIZE * size_of::<GpuParticle>() as u64,
+                mapped_at_creation: false,
+            }
+        );
 
         Self {
             particle_buffer,

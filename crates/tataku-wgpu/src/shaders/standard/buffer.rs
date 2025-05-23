@@ -28,8 +28,16 @@ impl RenderBufferable for StandardBuffer {
     }
 
     fn dump(&mut self, queue: &Queue, cache: &Self::Cache) {
-        queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&cache.cpu_vtx));
-        queue.write_buffer(&self.index_buffer, 0, bytemuck::cast_slice(&cache.cpu_idx));
+        queue.write_buffer(
+            &self.vertex_buffer, 
+            0, 
+            bytemuck::cast_slice(&cache.cpu_vtx)
+        );
+        queue.write_buffer(
+            &self.index_buffer, 
+            0, 
+            bytemuck::cast_slice(&cache.cpu_idx)
+        );
     }
 
     fn create_new_buffer(device: &Device, _: WgpuPipeline) -> Self {
@@ -39,13 +47,13 @@ impl RenderBufferable for StandardBuffer {
             vertex_buffer: device.create_buffer(&BufferDescriptor {
                 label: Some("Vertex Buffer"),
                 usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
-                size: Self::VTX_PER_BUF * std::mem::size_of::<StandardVertex>() as u64,
+                size: Self::VTX_PER_BUF * size_of::<StandardVertex>() as u64,
                 mapped_at_creation: false,
             }),
             index_buffer: device.create_buffer(&BufferDescriptor {
                 label: Some("Index Buffer"),
                 usage: BufferUsages::INDEX | BufferUsages::COPY_DST,
-                size: Self::IDX_PER_BUF * std::mem::size_of::<u32>() as u64,
+                size: Self::IDX_PER_BUF * size_of::<u32>() as u64,
                 mapped_at_creation: false,
             }),
             used_vertices: 0,

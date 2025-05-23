@@ -60,7 +60,9 @@ impl TransformableWidget {
 
     fn run_triggers(&mut self, triggers: Vec<String>, time: f32) {
         for trigger in triggers {
-            let Some(actions) = self.actions.get(&trigger) else { continue };
+            let Some(actions) = self.actions.get(&trigger) 
+            else { continue };
+
             for action in actions {
                 self.manager.push_transform(Transformation::new(
                     0.0,
@@ -103,7 +105,9 @@ impl Widget for TransformableWidget {
         event: &InputEvent, 
         shell: &mut InputShell,
     ) {
-        let game_time = shell.values.reflect_get::<f32>("game.time").unwrap().copied();
+        let game_time = shell.values.reflect_get::<f32>("game.time")
+            .unwrap()
+            .copied();
         self.last_input = Some(game_time);
         self.skip_noinput_actions.clear();
 
@@ -126,8 +130,14 @@ impl Widget for TransformableWidget {
                 self.skip_clickhold_actions.clear();
             }
             InputType::MouseMove(pos) => {
-                let bounds = shell.tree.content_bounds(self.node_id).unwrap();
-                let ctx = shell.tree.get_context(self.node_id).unwrap();
+                let bounds = shell
+                    .tree
+                    .content_bounds(self.node_id)
+                    .unwrap();
+                let ctx = shell
+                    .tree
+                    .get_context(self.node_id)
+                    .unwrap();
 
                 let pos = ctx.inverse_global_transform * *pos;
                 let new_hover = bounds.contains(pos);
@@ -177,8 +187,11 @@ impl Widget for TransformableWidget {
         for trigger in self.triggers.iter() {
             match &trigger.trigger {
                 AnimatableTriggerEvent::NoInput { duration } => {
-                    if let Some(last) = (self.last_input).filter(|_| self.hold_start.is_none() ) {
-                        if time - last >= *duration && !self.skip_noinput_actions.contains(&trigger.trigger) {
+                    if let Some(last) = (self.last_input)   
+                        .filter(|_| self.hold_start.is_none()) {
+                        if time - last >= *duration 
+                            && !self.skip_noinput_actions.contains(&trigger.trigger) 
+                            {
                             to_trigger.push(trigger.action.clone());
                             self.skip_noinput_actions.push(trigger.trigger.clone());
                         }
@@ -187,7 +200,8 @@ impl Widget for TransformableWidget {
 
                 AnimatableTriggerEvent::ClickHold { duration } => {
                     if let Some(start) = self.hold_start {
-                        if time - start >= *duration && !self.skip_clickhold_actions.contains(&trigger.trigger) {
+                        if time - start >= *duration 
+                            && !self.skip_clickhold_actions.contains(&trigger.trigger) {
                             to_trigger.push(trigger.action.clone());
                             self.skip_clickhold_actions.push(trigger.trigger.clone());
                         }
@@ -202,7 +216,10 @@ impl Widget for TransformableWidget {
         let should_update = !self.manager.transforms.is_empty();
         self.manager.update(time);
         if should_update {
-            let context = shell.tree.get_context_mut(self.node_id).unwrap();
+            let context = shell
+                .tree
+                .get_context_mut(self.node_id)
+                .unwrap();
             context.local_transform = Transform::from_manager(&self.manager);
             shell.actions.push(UiAction::new(
                 self.node_id, 
@@ -228,7 +245,10 @@ impl Widget for TransformableWidget {
             } 
         }
         if !to_trigger.is_empty() {
-            let time = shell.values.reflect_get::<f32>("game.time").unwrap().copied();
+            let time = shell.values
+                .reflect_get::<f32>("game.time")
+                .unwrap()
+                .copied();
             self.run_triggers(to_trigger, time);
         }
 
@@ -243,7 +263,8 @@ impl Widget for TransformableWidget {
     ) {
         let mut to_trigger = Vec::new();
         for trigger in self.triggers.iter() {
-            let AnimatableTriggerEvent::Event(trigger_event) = &trigger.trigger else { continue };
+            let AnimatableTriggerEvent::Event(trigger_event) = &trigger.trigger 
+            else { continue };
             if &event == trigger_event {
                 to_trigger.push(trigger.action.clone());
             }

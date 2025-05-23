@@ -11,7 +11,7 @@ pub struct SliderVertex {
 impl SliderVertex {
     pub fn desc() -> VertexBufferLayout<'static> {
         VertexBufferLayout {
-            array_stride: std::mem::size_of::<Self>() as BufferAddress,
+            array_stride: size_of::<Self>() as BufferAddress,
             step_mode: VertexStepMode::Vertex,
             attributes: &[
                 // position
@@ -22,7 +22,7 @@ impl SliderVertex {
                 },
                 // slider index
                 VertexAttribute {
-                    offset: std::mem::size_of::<[f32; 2]>() as BufferAddress,
+                    offset: size_of::<[f32; 2]>() as BufferAddress,
                     shader_location: 1,
                     format: VertexFormat::Uint32,
                 },

@@ -11,68 +11,72 @@ pub fn create_slider_pipeline(
         source: ShaderSource::Wgsl(crate::shader_files::SLIDER.into()),
     });
 
-    let slider_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-        label: Some("slider group layout"),
-        entries: &[
-            // slider_data
-            BindGroupLayoutEntry {
-                binding: 0,
-                visibility: ShaderStages::FRAGMENT,
-                ty: BindingType::Buffer {
-                    ty: BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: std::num::NonZeroU64::new(std::mem::size_of::<SliderData>() as u64 * 2)
+    let slider_bind_group_layout = device.create_bind_group_layout(
+        &BindGroupLayoutDescriptor {
+            label: Some("slider group layout"),
+            entries: &[
+                // slider_data
+                BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: NonZeroU64::new(size_of::<SliderData>() as u64 * 2)
+                    },
+                    count: None,
                 },
-                count: None,
-            },
 
-            // slider_grids
-            BindGroupLayoutEntry {
-                binding: 1,
-                visibility: ShaderStages::FRAGMENT,
-                ty: BindingType::Buffer {
-                    ty: BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: std::num::NonZeroU64::new(std::mem::size_of::<GridCell>() as u64 * 2)
+                // slider_grids
+                BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: NonZeroU64::new(size_of::<GridCell>() as u64 * 2)
+                    },
+                    count: None,
                 },
-                count: None,
-            },
 
-            // grid_cells
-            BindGroupLayoutEntry {
-                binding: 2,
-                visibility: ShaderStages::FRAGMENT,
-                ty: BindingType::Buffer {
-                    ty: BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: std::num::NonZeroU64::new(std::mem::size_of::<u32>() as u64 * 2)
+                // grid_cells
+                BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: NonZeroU64::new(size_of::<u32>() as u64 * 2)
+                    },
+                    count: None,
                 },
-                count: None,
-            },
 
-            // line_segments
-            BindGroupLayoutEntry {
-                binding: 3,
-                visibility: ShaderStages::FRAGMENT,
-                ty: BindingType::Buffer {
-                    ty: BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: std::num::NonZeroU64::new(std::mem::size_of::<LineSegment>() as u64 * 2)
+                // line_segments
+                BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: NonZeroU64::new(size_of::<LineSegment>() as u64 * 2)
+                    },
+                    count: None,
                 },
-                count: None,
-            },
 
-        ],
-    });
+            ],
+        }
+    );
 
-    let slider_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-        label: Some("Slider Pipeline Layout"),
-        bind_group_layouts: &[
-            projection_matrix_bind_group_layout,
-            &slider_bind_group_layout,
-        ],
-        push_constant_ranges: &[],
-    });
+    let slider_pipeline_layout = device.create_pipeline_layout(
+        &PipelineLayoutDescriptor {
+            label: Some("Slider Pipeline Layout"),
+            bind_group_layouts: &[
+                projection_matrix_bind_group_layout,
+                &slider_bind_group_layout,
+            ],
+            push_constant_ranges: &[],
+        }
+    );
 
     device.create_render_pipeline(&RenderPipelineDescriptor {
         label: Some("Slider Pipeline"),

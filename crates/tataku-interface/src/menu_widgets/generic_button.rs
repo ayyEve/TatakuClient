@@ -13,15 +13,15 @@ pub struct GenericButtonImage {
 }
 
 impl GenericButtonImage {
-    pub async fn new(pos: Vector2, size: Vector2) -> Option<Self> {
+    pub fn new(pos: Vector2, size: Vector2) -> Option<Self> {
         // return None;
-        let mut left_image = SkinManager::get_texture("button-left", true).await?;
+        let mut left_image = SkinManager::get_texture("button-left", true)?;
         left_image.origin = Vector2::ZERO;
         
-        let mut right_image = SkinManager::get_texture("button-right", true).await?;
+        let mut right_image = SkinManager::get_texture("button-right", true)?;
         right_image.origin = Vector2::ZERO;
 
-        let mut middle_image = SkinManager::get_texture("button-middle", true).await?;
+        let mut middle_image = SkinManager::get_texture("button-middle", true)?;
         middle_image.origin = Vector2::ZERO;
 
         let mut s = Self {

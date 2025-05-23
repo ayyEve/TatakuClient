@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use tataku_client_common::graphics::BlendMode;
 
 pub struct RenderImageShader {
     pub pipeline: RenderPipeline,
@@ -11,43 +12,50 @@ impl RenderImageShader {
         queue: &Queue,
         projection_matrix_layout: &BindGroupLayout,
     ) -> Self {
-        let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: None,
-            entries: &[
-                BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: ShaderStages::VERTEX_FRAGMENT,
-                    ty: BindingType::Sampler(SamplerBindingType::Filtering),
-                    count: None
-                },
-                BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: ShaderStages::VERTEX_FRAGMENT,
-                    ty: BindingType::Texture {
-                        sample_type: TextureSampleType::Float { filterable: true },
-                        view_dimension: TextureViewDimension::D2,
-                        multisampled: false,
+        let bind_group_layout = device.create_bind_group_layout(
+            &BindGroupLayoutDescriptor {
+                label: None,
+                entries: &[
+                    BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: ShaderStages::VERTEX_FRAGMENT,
+                        ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                        count: None
                     },
-                    count: None
-                },
-            ]
-        });
+                    BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: ShaderStages::VERTEX_FRAGMENT,
+                        ty: BindingType::Texture {
+                            sample_type: TextureSampleType::Float { filterable: true },
+                            view_dimension: TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None
+                    },
+                ]
+            }
+        );
 
-        let shader = device.create_shader_module(ShaderModuleDescriptor {
-            label: Some("nvjdks"),
-            source: ShaderSource::Wgsl(crate::shader_files::RENDER_IMAGE.into()),
-        });
+        let shader = device.create_shader_module(
+            ShaderModuleDescriptor {
+                label: Some("nvjdks"),
+                source: ShaderSource::Wgsl(crate::shader_files::RENDER_IMAGE.into()),
+            }
+        );
 
-        let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("hgvnfjkdsmlc"),
-            bind_group_layouts: &[
-                &bind_group_layout,
-                projection_matrix_layout
-            ],
-            push_constant_ranges: &[]
-        });
+        let pipeline_layout = device.create_pipeline_layout(
+            &PipelineLayoutDescriptor {
+                label: Some("hgvnfjkdsmlc"),
+                bind_group_layouts: &[
+                    &bind_group_layout,
+                    projection_matrix_layout
+                ],
+                push_constant_ranges: &[]
+            }
+        );
 
-        let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
+        let pipeline = device.create_render_pipeline(
+            &RenderPipelineDescriptor {
             label: Some("vhfjkdnhijvds"),
             cache: None,
             layout: Some(&pipeline_layout),
@@ -57,7 +65,7 @@ impl RenderImageShader {
                 compilation_options: PipelineCompilationOptions::default(),
                 buffers: &[
                     VertexBufferLayout {
-                        array_stride: std::mem::size_of::<Vertex>() as BufferAddress,
+                        array_stride: size_of::<Vertex>() as BufferAddress,
                         step_mode: VertexStepMode::Vertex,
                         attributes: &[
                             VertexAttribute {
@@ -79,7 +87,7 @@ impl RenderImageShader {
                 entry_point: Some("fs_main"),
                 targets: &[Some(ColorTargetState {
                     format: TextureFormat::Bgra8UnormSrgb,
-                    blend: Some(WgpuEngine::map_blend_mode(tataku_client_common::graphics::BlendMode::AlphaBlending)),
+                    blend: Some(WgpuEngine::map_blend_mode(BlendMode::AlphaBlending)),
                     write_mask: ColorWrites::ALL,
                 })],
                 compilation_options: PipelineCompilationOptions::default(),
@@ -104,7 +112,7 @@ impl RenderImageShader {
 
         let buffer = device.create_buffer(&BufferDescriptor { 
             label: Some("nhjgkdnkvdskmdvs"), 
-            size: std::mem::size_of::<[Vertex; 6]>() as u64, 
+            size: size_of::<[Vertex; 6]>() as u64, 
             usage: BufferUsages::VERTEX | BufferUsages::COPY_DST, 
             mapped_at_creation: false
         });
@@ -119,7 +127,10 @@ impl RenderImageShader {
             tr, bl, br,
         ];
 
-        if let Some(mut a) = queue.write_buffer_with(&buffer, 0, std::num::NonZero::new(std::mem::size_of::<[Vertex; 6]>() as u64).unwrap()) {
+        if let Some(mut a) = queue.write_buffer_with(
+            &buffer, 0, 
+            NonZero::new(size_of::<[Vertex; 6]>() as u64).unwrap()
+        ) {
             a.as_mut().copy_from_slice(bytemuck::cast_slice(&data)); 
         }
         queue.submit([]);
@@ -147,9 +158,6 @@ impl RenderImageShader {
 
         queue.write_buffer(&self.buffer, 0, bytemuck::cast_slice(&data));
     }
-
-
-
 }
 
 
@@ -161,7 +169,10 @@ struct Vertex {
     tex_uv: [f32; 2]
 }
 impl Vertex {
-    fn new(p: impl Into<[f32; 2]>, t: impl Into<[f32; 2]>) -> Self {
+    fn new(
+        p: impl Into<[f32; 2]>, 
+        t: impl Into<[f32; 2]>
+    ) -> Self {
         Self {
             position: p.into(),
             tex_uv: t.into(),

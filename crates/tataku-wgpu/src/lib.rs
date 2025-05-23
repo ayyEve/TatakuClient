@@ -8,7 +8,11 @@ mod render_buffer_type;
 mod render_buffer_queue_type;
 
 mod prelude {
+    pub(crate) use std::num::NonZero;
+    pub(crate) use std::num::NonZeroU64;
+
     pub(crate) use wgpu::*;
+    pub(crate) use wgpu::util::BufferInitDescriptor;
     pub(crate) use crate::wgpu_engine::WgpuPipeline;
 
     pub use crate::shaders::*;

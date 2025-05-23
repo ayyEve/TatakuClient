@@ -74,8 +74,14 @@ impl DialogWidget {
     ) {
         bounds.pos.x -= delta;
         bounds.size.x += delta;
-        actions.push(UiAction::new(node, DialogAction::MoveDialog(bounds.pos)));
-        actions.push(UiAction::new(node, DialogAction::ResizeDialog(bounds.size)));
+        actions.push(UiAction::new(
+            node, 
+            DialogAction::MoveDialog(bounds.pos)
+        ));
+        actions.push(UiAction::new(
+            node, 
+            DialogAction::ResizeDialog(bounds.size)
+        ));
     }
     fn resize_right(
         delta: f32,
@@ -84,7 +90,10 @@ impl DialogWidget {
         actions: &mut ActionQueue,
     ) {
         bounds.size.x -= delta;
-        actions.push(UiAction::new(node, DialogAction::ResizeDialog(bounds.size)));
+        actions.push(UiAction::new(
+            node, 
+            DialogAction::ResizeDialog(bounds.size)
+        ));
     }
     
     fn resize_up(
@@ -95,8 +104,14 @@ impl DialogWidget {
     ) {
         bounds.pos.y -= delta;
         bounds.size.y += delta;
-        actions.push(UiAction::new(node, DialogAction::MoveDialog(bounds.pos)));
-        actions.push(UiAction::new(node, DialogAction::ResizeDialog(bounds.size)));
+        actions.push(UiAction::new(
+            node, 
+            DialogAction::MoveDialog(bounds.pos)
+        ));
+        actions.push(UiAction::new(
+            node, 
+            DialogAction::ResizeDialog(bounds.size)
+        ));
     }
     fn resize_down(
         delta: f32,
@@ -105,7 +120,10 @@ impl DialogWidget {
         actions: &mut ActionQueue,
     ) {
         bounds.size.y -= delta;
-        actions.push(UiAction::new(node, DialogAction::ResizeDialog(bounds.size)));
+        actions.push(UiAction::new(
+            node, 
+            DialogAction::ResizeDialog(bounds.size)
+        ));
     }
 
 
@@ -312,7 +330,9 @@ impl Widget for DialogWidget {
             }
 
             (InputType::MousePress(MouseButton::Left), None) => {
-                if let Some(origin) = ResizeHover::get_drag_origin(self.resize_hover) {
+                if let Some(origin) = ResizeHover::get_drag_origin(
+                    self.resize_hover
+                ) {
                     shell.event_consumed = true;
                     self.resizing = Some(DragData { 
                         pos_start: Vector2::ZERO, // doesnt matter for resize 
@@ -518,8 +538,14 @@ impl Widget for DialogTitlebar {
     }
 
     fn draw(&self, shell: &mut DrawShell) {
-        let Some(bounds) = shell.tree.absolute_bounds(self.node_id()) else { return };
-        shell.list.push(Rectangle::new_bounds(bounds, Color::WHITE.alpha(0.5), None));
+        let Some(bounds) = shell.tree.absolute_bounds(self.node_id()) 
+        else { return };
+
+        shell.list.push(Rectangle::new_bounds(
+            bounds, 
+            Color::WHITE.alpha(0.5), 
+            None
+        ));
         self.node.draw(shell);
     }
     fn draw_overlay(&self, shell: &mut DrawShell) {

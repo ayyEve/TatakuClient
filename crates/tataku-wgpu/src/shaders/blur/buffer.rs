@@ -35,7 +35,11 @@ impl RenderBufferable for BlurBuffer {
             self.sigma = params.sigma;
             let kernel = kernel(params.sigma);
             self.kernel_size = kernel.size() as u32;
-            queue.write_buffer(&self.kernel_buffer, 0, bytemuck::cast_slice(&kernel.packed_data()[..]));
+            queue.write_buffer(
+                &self.kernel_buffer, 
+                0, 
+                bytemuck::cast_slice(&kernel.packed_data()[..])
+            );
         }
 
         let settings = Blur2 {
@@ -46,7 +50,11 @@ impl RenderBufferable for BlurBuffer {
             height: params.height,
         };
 
-        queue.write_buffer(&self.settings, 0, bytemuck::cast_slice(&[settings]));
+        queue.write_buffer(
+            &self.settings, 
+            0, 
+            bytemuck::cast_slice(&[settings])
+        );
     }
 
     fn create_new_buffer(device: &Device, pipeline: WgpuPipeline) -> Self {
@@ -61,26 +69,30 @@ impl RenderBufferable for BlurBuffer {
             usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
         });
 
-        let kernel = device.create_buffer_init(&BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::cast_slice(&kernel.packed_data()[..]),
-            usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
-        });
+        let kernel = device.create_buffer_init(
+            &BufferInitDescriptor {
+                label: None,
+                contents: bytemuck::cast_slice(&kernel.packed_data()[..]),
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
+            }
+        );
 
-        let compute_constants = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("Compute constants"),
-            layout: &pipeline.get_bind_group_layout(0),
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: settings.as_entire_binding(),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: kernel.as_entire_binding(),
-                },
-            ],
-        });
+        let compute_constants = device.create_bind_group(
+            &BindGroupDescriptor {
+                label: Some("Compute constants"),
+                layout: &pipeline.get_bind_group_layout(0),
+                entries: &[
+                    BindGroupEntry {
+                        binding: 0,
+                        resource: settings.as_entire_binding(),
+                    },
+                    BindGroupEntry {
+                        binding: 1,
+                        resource: kernel.as_entire_binding(),
+                    },
+                ],
+            }
+        );
 
         Self {
             scissor: None,
@@ -92,7 +104,6 @@ impl RenderBufferable for BlurBuffer {
             compute_constants,
         }
     }
-
 
 }
 
