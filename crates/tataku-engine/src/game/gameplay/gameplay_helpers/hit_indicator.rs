@@ -73,7 +73,6 @@ impl JudgementIndicator for BasicJudgementIndicator {
                 self.pos,
                 self.radius,
                 self.color.alpha(alpha),
-                None
             ));
         }
     }

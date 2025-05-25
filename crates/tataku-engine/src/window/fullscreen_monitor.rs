@@ -15,7 +15,11 @@ pub enum FullscreenMonitor {
 impl Dropdownable2 for FullscreenMonitor {
     type T = Self;
     fn variants() -> Vec<Self::T> {
-        [Self::None].into_iter().chain((0..MONITORS.read().len()).map(Self::Monitor)).collect()
+        [Self::None]
+            .into_iter()
+            .chain((0..MONITORS.read().len())
+            .map(Self::Monitor))
+            .collect()
     }
 }
 

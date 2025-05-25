@@ -59,8 +59,7 @@ impl CenteredTextHelper {
             list.push(Rectangle::new(
                 rect.pos, 
                 rect.size, 
-                Color::WHITE.alpha(0.8), 
-                None
+                Color::WHITE.alpha(0.8),
             ));
             list.push(offset_text);
         }

@@ -48,7 +48,9 @@ impl GameplayWidget for JudgementBarElement {
             self.judgment_colors = manager.properties().timing_bar_things.clone();
 
             
-            self.judgment_colors.sort_by(|(a, _), (b, _)| b.partial_cmp(a).unwrap());
+            self.judgment_colors.sort_by(
+                |(a, _), (b, _)| b.partial_cmp(a).unwrap()
+            );
             self.miss_window = self.judgment_colors.iter()
                 .map(|(n,_)| *n)
                 .reduce(f32::max)
@@ -66,30 +68,32 @@ impl GameplayWidget for JudgementBarElement {
     ) {
         // TODO: rework this garbage lmao
         let timing_bar_size = HIT_TIMING_BAR_SIZE * scale;
-
-        // since the calcs scale the x, but the x pos does not actually scale, we need to offset it
-        // let x_offset = Vector2::with_x(timing_bar_size.x - HIT_TIMING_BAR_SIZE.x) / 2.0;
-        // let pos_offset = pos_offset + x_offset;
         
         // draw hit windows
         for (window, color) in &self.judgment_colors {
             let width = (window / self.miss_window) * timing_bar_size.x;
             
             list.push(Rectangle::new(
-                pos_offset + Vector2::new((timing_bar_size.x - width) / 2.0, 0.0),
-                // pos_offset + Vector2::new(-width / 2.0, HIT_TIMING_BAR_POS.y),
+                pos_offset + Vector2::new(
+                    (timing_bar_size.x - width) / 2.0, 
+                    0.0
+                ),
                 Vector2::new(width, timing_bar_size.y),
                 *color,
-                None // for now
             ));
         }
         
         // draw hit timings
         for &(hit_time, mut diff) in self.hitbar_timings.iter() {
-            diff = if diff < 0.0 { diff.max(-self.miss_window) } else { diff.min(self.miss_window) };
+            diff = if diff < 0.0 { 
+                diff.max(-self.miss_window) 
+            } else { 
+                diff.min(self.miss_window) 
+            };
 
-            let pos = (timing_bar_size.x / 2.0) + (diff / self.miss_window) * (timing_bar_size.x / 2.0);
-            // let pos = (diff / self.miss_window) * (timing_bar_size.x / 2.0);
+            let pos = (timing_bar_size.x / 2.0) 
+                + (diff / self.miss_window) 
+                * (timing_bar_size.x / 2.0);
 
 
             // draw diff line
@@ -99,10 +103,9 @@ impl GameplayWidget for JudgementBarElement {
             } else { 1.0 };
 
             list.push(Rectangle::new(
-                pos_offset + Vector2::new(pos, 0.0), //HIT_TIMING_BAR_POS.y),
+                pos_offset + Vector2::new(pos, 0.0),
                 Vector2::new(2.0, timing_bar_size.y),
                 HIT_TIMING_BAR_COLOR.alpha(alpha),
-                None // for now
             ));
         }
 
@@ -114,7 +117,10 @@ impl GameplayWidget for JudgementBarElement {
 pub const JUDGMENT_BAR: GameplayWidgetBuilder = GameplayWidgetBuilder {
     name: "judgement_bar",
     default_layout: GameplayWidgetLayout::new_default(
-        GameplayWidgetAnchor::element("duration_bar", GameplayWidgetAlign::Above), 
+        GameplayWidgetAnchor::element(
+            "duration_bar", 
+            GameplayWidgetAlign::Above
+        ), 
         Alignment::TOP_CENTER,
         None,
         None,

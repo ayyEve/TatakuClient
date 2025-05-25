@@ -285,7 +285,6 @@ impl OsuGame {
                         point,
                         follow_dot_size,
                         Color::WHITE.alpha(alpha),
-                        None
                     ));
                 }
             }
@@ -867,7 +866,9 @@ impl GameMode for OsuGame {
             let mut playfield = Rectangle::new_bounds(
                 self.scaling_helper.playfield_with_padding, 
                 Color::BLACK.alpha(alpha), 
-                state.current_timing_point.kiai.then_some(Border::new(Color::YELLOW.alpha(alpha), 2.0))
+            ).border_maybe(
+                state.current_timing_point.kiai
+                    .then_some(Border::new(Color::YELLOW.alpha(alpha), 2.0))
             );
 
             if self.move_playfield.is_some() {

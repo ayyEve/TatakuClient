@@ -45,7 +45,6 @@ impl UTypingTimingBar {
             self.pos,
             self.size,
             BAR_COLOR,
-            None
         ));
     }
 }

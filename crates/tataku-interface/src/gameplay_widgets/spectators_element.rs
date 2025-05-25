@@ -56,7 +56,6 @@ impl GameplayWidget for SpectatorsElement {
                 * self.spectators.list.len() as f32
             ) * scale,
             Color::WHITE.alpha(0.8),
-            None
         ));
 
         for (i, user) in self.spectators.list.iter().enumerate() {

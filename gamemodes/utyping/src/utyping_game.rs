@@ -278,7 +278,6 @@ impl GameMode for UTypingGame {
             self.playfield.hit_position,
             self.game_settings.note_radius * self.game_settings.hit_area_radius_mult,
             Color::BLACK,
-            None
         ));
 
         // draw timing lines

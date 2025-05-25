@@ -308,14 +308,14 @@ impl BuildableAction {
         &self, 
         owner: MessageOwner, 
         values: &mut dyn Reflect, 
-        passed_in: Option<TatakuValue>
+        passed_in: Option<&TatakuValue>
     ) -> Option<Message> {
         if let BuildableAction::None = &self { return None };
 
         let mut action = self.clone();
         action.build(values);
 
-        let value = Arc::new((action, passed_in));
+        let value = Arc::new((action, passed_in.cloned()));
         let message = MessageValue::Custom(value);
         Some(Message::new(owner, "", message))
     }

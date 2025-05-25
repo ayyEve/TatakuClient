@@ -140,14 +140,17 @@ impl Widget for Button {
         let active = self.active.is_some() || self.visual_active_cond.get();
 
         // draw button
-        shell.list.push(Rectangle::new_bounds(
-            bounds,
-            theme.background_color,
-            Some(Border::new(
+        shell.list.push(
+            Rectangle::new_bounds(
+                bounds,
+                theme.background_color,
+            )
+            .border(Border::new(
                 theme.get_color(active, self.hovered), 
                 2.0
-            )),
-        ).shape(Shape::Round(2.0)));
+            ))
+            .shape(Shape::Round(2.0))
+        );
 
         // draw child ontop of button
         self.child.draw(shell);
@@ -173,7 +176,7 @@ impl Widget for Button {
     fn handle_event(
         &mut self, 
         event: TatakuEventType, 
-        event_value: Option<TatakuValue>, 
+        event_value: Option<&TatakuValue>, 
         shell: &mut MessageShell,
     ) {
         self.child.handle_event(event, event_value, shell);

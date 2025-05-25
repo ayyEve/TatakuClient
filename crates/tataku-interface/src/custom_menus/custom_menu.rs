@@ -152,13 +152,17 @@ impl Widget for BuiltCustomMenu {
     fn handle_event(
         &mut self, 
         event: TatakuEventType, 
-        event_value: Option<TatakuValue>, 
+        event_value: Option<&TatakuValue>, 
         shell: &mut MessageShell,
     ) {
         let Some(events) = self.events.get(&event) else { return };
 
         for i in events.iter() {
-            let Some(message) = i.resolve(MessageOwner::Menu, shell.values, event_value.clone()) else { continue };
+            let Some(message) = i.resolve(
+                MessageOwner::Menu, 
+                shell.values, 
+                event_value,
+            ) else { continue };
 
             let cast = message.value
                 .try_downcast_ref::<(BuildableAction, Option<TatakuValue>)>()

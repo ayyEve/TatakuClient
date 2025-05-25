@@ -483,7 +483,7 @@ impl Tree {
     pub fn handle_event(
         &mut self,
         event: TatakuEventType,
-        passed_in: Option<TatakuValue>,
+        passed_in: Option<&TatakuValue>,
         values: &mut dyn Reflect,
         actions: &mut ActionQueue,
         messages: &mut Vec<Message>,
@@ -497,7 +497,11 @@ impl Tree {
                 tree,
                 handled: false
             };
-            node.handle_event(event, passed_in, &mut shell);
+            node.handle_event(
+                event, 
+                passed_in, 
+                &mut shell
+            );
         });
     }
 

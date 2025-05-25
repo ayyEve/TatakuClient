@@ -83,8 +83,7 @@ impl HitObject for TaikoNote {
                 self.pos,
                 if self.finisher {self.settings.note_radius * self.settings.big_note_multiplier} else {self.settings.note_radius},
                 self.get_color(),
-                Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE))
-            ));
+            ).border(Border::new(Color::BLACK, NOTE_BORDER_SIZE)));
         }
     }
 

@@ -46,12 +46,14 @@ impl BarGraph {
         let size = bounds.size;
 
         // background
-        group.push(Rectangle::new(
-            Vector2::ZERO,
-            size,
-            Color::new(0.2, 0.2, 0.2, 0.7),
-            Some(Border::new(Color::RED, 1.5))
-        ));
+        group.push(
+            Rectangle::new(
+                Vector2::ZERO,
+                size,
+                Color::new(0.2, 0.2, 0.2, 0.7),
+            )
+            .border(Border::new(Color::RED, 1.5))
+        );
 
         // // mid
         // list.push(Line::new(

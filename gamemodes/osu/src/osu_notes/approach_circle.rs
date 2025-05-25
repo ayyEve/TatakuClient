@@ -78,7 +78,9 @@ impl ApproachCircle {
                 self.pos,
                 self.radius * scale, // self.radius is already accounting for the scaled_cs
                 Color::TRANSPARENT,
-                Some(Border::new(self.color.alpha(self.alpha), OSU_NOTE_BORDER_SIZE * self.scaling_helper.cs))
+            ).border(Border::new(
+                self.color.alpha(self.alpha), 
+                OSU_NOTE_BORDER_SIZE * self.scaling_helper.cs)
             ));
         }
     }

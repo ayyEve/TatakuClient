@@ -46,7 +46,6 @@ impl TimingBar {
             self.pos,
             self.size,
             BAR_COLOR,
-            None
         ));
     }
 

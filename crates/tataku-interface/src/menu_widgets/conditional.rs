@@ -176,7 +176,7 @@ impl Widget for ConditionalWidget {
     fn handle_event(
         &mut self, 
         event: TatakuEventType, 
-        event_value: Option<TatakuValue>, 
+        event_value: Option<&TatakuValue>, 
         shell: &mut MessageShell,
     ) {
         if let Some(child) = self.get_ele_mut() { 

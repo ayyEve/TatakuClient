@@ -113,19 +113,22 @@ impl GameplayWidget for HealthBarElement {
             let index = ((len as f32 * percent) as usize).min(len - 1);
 
             // bg
-            list.push(Rectangle::new(
-                pos_offset,
-                bg_size,
-                self.common_game_settings.healthbar_bg_color,
-                Some(Border::new(self.common_game_settings.healthbar_border_color, 1.8))
-            ));
+            list.push(
+                Rectangle::new(
+                    pos_offset,
+                    bg_size,
+                    self.common_game_settings.healthbar_bg_color,
+                ).border(Border::new(
+                    self.common_game_settings.healthbar_border_color, 
+                    1.8
+                ))
+            );
 
             // fill
             list.push(Rectangle::new(
                 pos_offset,
                 Vector2::new((self.container_size.x / 2.0) * percent, DURATION_HEIGHT) * scale,
                 self.common_game_settings.healthbar_colors[index],
-                None
             ));
         }
 

@@ -1,6 +1,5 @@
 use crate::prelude::*;
 
-// TODO: make border not required in new
 #[derive(ChainableInitializer)]
 #[derive(Copy, Clone)]
 pub struct Rectangle {
@@ -15,22 +14,20 @@ pub struct Rectangle {
     blend_mode: BlendMode,
 
     #[chain] pub shape: Shape,
-    #[chain] pub border: Option<Border>,
+    pub border: Option<Border>,
 }
 impl Rectangle {
     pub fn new(
         pos: Vector2, 
         size: Vector2, 
         color: Color, 
-        border: Option<Border>
     ) -> Self {
-        Self::new_bounds(Bounds::new(pos, size), color, border)
+        Self::new_bounds(Bounds::new(pos, size), color)
     }
 
     pub fn new_bounds(
         bounds: Bounds, 
-        color: Color, 
-        border: Option<Border>
+        color: Color,
     ) -> Self {
         Self {
             inner: bounds,
@@ -42,23 +39,18 @@ impl Rectangle {
             scissor: None,
             blend_mode: BlendMode::AlphaBlending,
 
-            border,
+            border: None,
             origin: bounds.size / 2.0,
         }
     }
 
-    /// used when a rect is only used for style info
-    pub fn style_only(
-        color: Color, 
-        border: Option<Border>, 
-        shape: Shape
-    ) -> Self {
-        Self::new(
-            Vector2::ZERO, 
-            Vector2::ZERO, 
-            color, 
-            border
-        ).shape(shape)
+    pub fn border(mut self, border: Border) -> Self {
+        self.border = Some(border);
+        self
+    }
+    pub fn border_maybe(mut self, border: Option<Border>) -> Self {
+        self.border = border;
+        self
     }
 }
 

@@ -66,13 +66,16 @@ impl Widget for Slider {
         event: &InputEvent,
         shell: &mut InputShell,
     ) {
-        let Some(ctx) = shell.tree.get_context(self.node_id) else { return };
+        let Some(ctx) = shell.tree.get_context(self.node_id) 
+        else { return };
         let active = ctx.selected.unwrap();
 
         match &event.event {
             InputType::MouseMove(pos) => {
                 let pos = ctx.inverse_global_transform * *pos;
-                let bounds = shell.tree.content_bounds(self.node_id).unwrap();
+                let bounds = shell.tree
+                    .content_bounds(self.node_id)
+                    .unwrap();
                 self.hovered = bounds.contains(pos);
 
                 if self.pressed {
@@ -81,7 +84,8 @@ impl Widget for Slider {
                     let end = *self.range.end();
 
                     let percent = (pos.x - bounds.pos.x) / bounds.size.x;
-                    let mut new_value = (start + percent * (end - start)).clamp(start, end);
+                    let mut new_value = (start + percent * (end - start))
+                        .clamp(start, end);
 
                     if let Some(snap) = self.step {
                         // apply_snap
@@ -125,11 +129,17 @@ impl Widget for Slider {
                 match key {
                     Key::Left => if active || self.hovered {
                         shell.event_consumed = true;
-                        self.value.set((self.value.get() - self.step.unwrap_or(1.0)).clamp(*self.range.start(), *self.range.end()));
+                        self.value.set((self.value.get() - self.step
+                            .unwrap_or(1.0))
+                            .clamp(*self.range.start(), *self.range.end())
+                        );
                     }
                     Key::Right => if active || self.hovered {
                         shell.event_consumed = true;
-                        self.value.set((self.value.get() + self.step.unwrap_or(1.0)).clamp(*self.range.start(), *self.range.end()));
+                        self.value.set(
+                            (self.value.get() + self.step.unwrap_or(1.0))
+                            .clamp(*self.range.start(), *self.range.end())
+                        );
                     }
 
                     _ => {}
@@ -145,9 +155,13 @@ impl Widget for Slider {
     }
 
     fn draw(&self, shell: &mut DrawShell) {
-        let Some(bounds) = shell.tree.absolute_bounds(self.node_id) else { return };
+        let Some(bounds) = shell.tree.absolute_bounds(self.node_id) 
+        else { return };
 
-        shell.list.push(Rectangle::new_bounds(bounds, Color::TRANSPARENT, Some(Border::new(Color::PUMPKIN_ORANGE, 2.0))));
+        shell.list.push(
+            Rectangle::new_bounds(bounds, Color::TRANSPARENT)
+                .border(Border::new(Color::PUMPKIN_ORANGE, 2.0))
+        );
 
         // draw track
         let track = Bounds::new(
@@ -161,11 +175,7 @@ impl Widget for Slider {
             )
         );
 
-        shell.list.push(Rectangle::new_bounds(
-            bounds,
-            Color::BLACK,
-            None,
-        ));
+        shell.list.push(Rectangle::new_bounds(bounds, Color::BLACK));
 
         // draw slider
         let start = *self.range.start();
@@ -180,8 +190,8 @@ impl Widget for Slider {
         shell.list.push(Circle::new(
             dragger_pos,
             (bounds.size.y / 2.0) * 5.0/6.0,
-            shell.general_theme.default_color,
-            Some(Border::new(
+            shell.general_theme.default_color
+        ).border(Border::new(
                 if self.pressed {
                     shell.general_theme.active_color
                 } else if self.hovered {
@@ -191,7 +201,7 @@ impl Widget for Slider {
                 },
                 2.0
             ))
-        ));
+        );
     }
 }
 
@@ -276,9 +286,12 @@ impl SliderOnChange {
         values: &mut dyn Reflect
     ) -> Option<Message> {
         match self {
-            Self::Message(m) => m.clone(),
-            Self::Action(a) => a.resolve(owner, values, Some(value.into())),
-            Self::Callback(cb) => Some((cb)(value)),
+            Self::Message(m) 
+                => m.clone(),
+            Self::Action(a) 
+                => a.resolve(owner, values, Some(&value.into())),
+            Self::Callback(cb) 
+                => Some((cb)(value)),
         }
     }
 }

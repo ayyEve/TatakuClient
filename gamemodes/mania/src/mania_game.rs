@@ -282,21 +282,29 @@ impl ManiaGame {
                 Vector2::new(x, bounds.pos.y),
                 Vector2::new(self.playfield.column_width, bounds.size.y),
                 Color::new(0.1, 0.1, 0.1, 0.8),
-                Some(Border::new(Color::GREEN, 1.2))
-            ));
+            ).border(Border::new(Color::GREEN, 1.2)));
 
             // hit area/button state for this col
-            let map = if self.column_states[col as usize] { &self.key_images_down } else { &self.key_images_up };
+            let map = if self.column_states[col as usize] { 
+                &self.key_images_down 
+            } else { 
+                &self.key_images_up
+            };
 
             if let Some(img) = map.get(&col) {
                 list.push(img.clone());
             } else {
+                let color = if self.column_states[col as usize] { 
+                    self.get_color(col) 
+                } else { 
+                    Color::TRANSPARENT 
+                };
+
                 list.push(Rectangle::new(
                     Vector2::new(x, self.playfield.hit_y()),
                     self.playfield.note_size(),
-                    if self.column_states[col as usize] { self.get_color(col) } else { Color::TRANSPARENT },
-                    Some(Border::new(Color::RED, self.playfield.note_border_width))
-                ));
+                    color,
+                ).border(Border::new(Color::RED, self.playfield.note_border_width)));
             }
         }
     }
@@ -802,11 +810,14 @@ impl GameMode for ManiaGame {
 
         // playfield
         list.push(Rectangle::new(
-            Vector2::new(self.playfield.col_pos(0), bounds.pos.y),
-            Vector2::new(self.playfield.total_width, bounds.size.y),
-            Color::new(0.0, 0.0, 0.0, 0.8),
-            Some(Border::new(if state.current_timing_point.kiai { Color::YELLOW } else { Color::BLACK }, 1.2))
-        ));
+                Vector2::new(self.playfield.col_pos(0), bounds.pos.y),
+                Vector2::new(self.playfield.total_width, bounds.size.y),
+                Color::new(0.0, 0.0, 0.0, 0.8),
+            ).border(Border::new(
+                if state.current_timing_point.kiai { Color::YELLOW } else { Color::BLACK }, 
+                1.2
+            ))
+        );
 
 
         // draw columns

@@ -63,7 +63,6 @@ impl TimingBar {
             self.pos + Vector2::with_y(self.playfield.note_size().y),
             self.size,
             BAR_COLOR,
-            None
         ));
 
     }

@@ -126,7 +126,10 @@ impl HitObject for ManiaHold {
         // } 
         let note_size = self.playfield.note_size();
 
-        let border = Some(Border::new(Color::BLACK, self.playfield.note_border_width));
+        let border = Border::new(
+            Color::BLACK, 
+            self.playfield.note_border_width
+        );
         let color = self.color;
 
         if self.playfield.upside_down {
@@ -135,9 +138,8 @@ impl HitObject for ManiaHold {
                 list.push(Rectangle::new(
                     self.pos,
                     self.playfield.note_size(),
-                    color,
-                    border
-                ));
+                    color
+                ).border(border));
             }
 
             // end
@@ -146,8 +148,7 @@ impl HitObject for ManiaHold {
                     Vector2::new(self.pos.x, self.end_y),
                     self.playfield.note_size(),
                     color,
-                    border
-                ));
+                ).border(border));
             }
         } else {
 
@@ -162,8 +163,7 @@ impl HitObject for ManiaHold {
                         Vector2::new(self.pos.x, y),
                         Vector2::new(self.playfield.column_width, self.end_y - y),
                         color,
-                        border
-                    ));
+                    ).border(border));
                 }
             }
 
@@ -176,8 +176,7 @@ impl HitObject for ManiaHold {
                         self.pos,
                         self.playfield.note_size(),
                         color,
-                        border
-                    ));
+                    ).border(border));
                 }
             }
 
@@ -191,8 +190,7 @@ impl HitObject for ManiaHold {
                         Vector2::new(self.pos.x, self.end_y + note_size.y),
                         self.playfield.note_size(),
                         color,
-                        border
-                    ));
+                    ).border(border));
                 }
             }
 

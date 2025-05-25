@@ -123,7 +123,7 @@ impl Widget for ConsoleDialog {
     fn handle_event(
         &mut self, 
         event: TatakuEventType, 
-        event_value: Option<TatakuValue>, 
+        event_value: Option<&TatakuValue>, 
         shell: &mut MessageShell,
     ) {
         self.node.handle_event(event, event_value, shell);

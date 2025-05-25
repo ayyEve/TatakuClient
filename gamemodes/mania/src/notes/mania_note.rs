@@ -79,8 +79,7 @@ impl HitObject for ManiaNote {
                 self.pos,
                 self.playfield.note_size(),
                 self.color,
-                Some(Border::new(Color::BLACK, self.playfield.note_border_width))
-            ));
+            ).border(Border::new(Color::BLACK, self.playfield.note_border_width)));
         }
     }
 

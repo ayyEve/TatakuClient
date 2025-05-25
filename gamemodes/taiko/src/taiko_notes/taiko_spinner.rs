@@ -74,17 +74,15 @@ impl HitObject for TaikoSpinner {
             list.push(Circle::new(
                 spinner_position,
                 SPINNER_RADIUS,
-                Color::YELLOW,
-                Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE))
-            ));
+                Color::YELLOW
+            ).border(Border::new(Color::BLACK, NOTE_BORDER_SIZE)));
 
             // draw another circle on top which increases in radius as the counter gets closer to the reqired
             list.push(Circle::new(
                 spinner_position,
                 SPINNER_RADIUS * (self.hit_count as f32 / self.hits_required as f32),
                 Color::WHITE,
-                Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE))
-            ));
+            ).border(Border::new(Color::BLACK, NOTE_BORDER_SIZE)));
             
             //TODO: draw a counter
 

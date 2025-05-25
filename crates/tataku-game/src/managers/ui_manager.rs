@@ -238,7 +238,7 @@ impl UiManager {
             {
                 tree.handle_event(
                     event, 
-                    param.clone(),
+                    param.as_ref(),
                     values, 
                     actions,
                     &mut self.messages,

@@ -120,8 +120,7 @@ impl HitObject for UTypingNote {
                 self.pos,
                 self.settings.note_radius,
                 Color::TRANSPARENT,
-                Some(Border::new(Color::RED, NOTE_BORDER_SIZE))
-            ));
+            ).border(Border::new(Color::RED, NOTE_BORDER_SIZE)));
         }
 
 

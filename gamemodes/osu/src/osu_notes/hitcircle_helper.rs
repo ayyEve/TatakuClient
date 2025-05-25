@@ -175,11 +175,10 @@ impl HitCircleImageHelper {
                 self.pos,
                 CIRCLE_RADIUS_BASE * self.scaling_helper.cs,
                 self.color.alpha(self.alpha),
-                Some(Border::new(
-                    Color::WHITE.alpha(self.alpha),
-                    self.scaling_helper.border_width
-                ))
-            ));
+            ).border(Border::new(
+                Color::WHITE.alpha(self.alpha),
+                self.scaling_helper.border_width
+            )));
         }
 
         if let Some(mut overlay) = self.overlay.clone() {
@@ -219,11 +218,10 @@ impl HitCircleImageHelper {
                 Vector2::ZERO,
                 self.scaling_helper.cs,
                 self.color,
-                Some(Border::new(
-                    Color::BLACK,
-                    self.scaling_helper.border_width
-                ))
-            ));
+            ).border(Border::new(
+                Color::BLACK,
+                self.scaling_helper.border_width
+            )));
         }
 
         if include_combo_num {

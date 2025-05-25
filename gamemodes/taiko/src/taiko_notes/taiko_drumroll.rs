@@ -61,10 +61,11 @@ impl HitObject for TaikoDrumroll {
         self.pos.x = self.playfield.hit_position.x + self.x_at(time);
         self.end_x = self.playfield.hit_position.x + self.end_x_at(time);
 
-        if self.end_x + self.settings.note_radius < self.playfield.pos.x || self.pos.x - self.settings.note_radius > self.playfield.pos.x + self.playfield.size.x { return }
+        if self.end_x + self.settings.note_radius < self.playfield.pos.x 
+        || self.pos.x - self.settings.note_radius > self.playfield.pos.x + self.playfield.size.x { return }
 
         let color = Color::YELLOW;
-        let border = Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE));
+        let border = Border::new(Color::BLACK, NOTE_BORDER_SIZE);
 
         // middle segment
         if let Some(image) = &self.middle_image {
@@ -78,8 +79,7 @@ impl HitObject for TaikoDrumroll {
                 self.pos,
                 Vector2::new(self.end_x - self.pos.x, self.radius * 2.0),
                 color,
-                border
-            ));
+            ).border(border));
         }
 
         // start + end circles
@@ -102,16 +102,14 @@ impl HitObject for TaikoDrumroll {
                 self.pos + Vector2::new(0.0, self.radius),
                 self.radius,
                 color,
-                border
-            ));
+            ).border(border));
             
             // end circle
             list.push(Circle::new(
                 Vector2::new(self.end_x, self.pos.y + self.radius),
                 self.radius,
                 color,
-                border
-            ));
+            ).border(border));
         }
 
 
@@ -128,15 +126,13 @@ impl HitObject for TaikoDrumroll {
                 Vector2::new(x, y),
                 SLIDER_DOT_RADIUS,
                 Color::YELLOW,
-                Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE/2.0))
-            ));
+            ).border(Border::new(Color::BLACK, NOTE_BORDER_SIZE/2.0)));
 
             // "hole"
             list.push(Circle::new(
                 Vector2::new(x, self.pos.y + self.radius),
                 SLIDER_DOT_RADIUS,
                 BAR_COLOR,
-                None
             ));
         }
     }

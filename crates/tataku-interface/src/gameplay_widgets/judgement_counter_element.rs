@@ -80,20 +80,23 @@ impl GameplayWidget for JudgementCounterElement {
                 box_width = (BOX_SIZE * scale).x;
 
                 // draw bg box
-                list.push(Rectangle::new(
-                    pos,
-                    BOX_SIZE * scale,
-                    *self.colors.get(txt)
-                        .unwrap_or(&Color::new(0.0, 0.0, 0.0, 0.8)), // TODO: get a proper color
-                    Some(Border::new(Color::BLACK, 2.0))
-                ));
+                list.push(
+                    Rectangle::new(
+                        pos,
+                        BOX_SIZE * scale,
+                        self.colors.get(txt)
+                            .copied()
+                            .unwrap_or(Color::new(0.0, 0.0, 0.0, 0.8)), // TODO: get a proper color
+                    )
+                    .border(Border::new(Color::BLACK, 2.0))
+                );
             }
 
             // draw text/count
             let mut text = Text::new(
                 pos,
                 20.0 * scale.y,
-                if count == &0 {txt.clone()} else {format!("{}", count)},
+                if count == &0 { txt.clone() } else { count.to_string() },
                 Color::WHITE,
                 Font::Main
             );

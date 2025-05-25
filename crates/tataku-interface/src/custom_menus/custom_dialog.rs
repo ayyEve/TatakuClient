@@ -185,7 +185,7 @@ impl Widget for BuiltCustomDialog {
     fn handle_event(
         &mut self, 
         event: TatakuEventType, 
-        event_value: Option<TatakuValue>, 
+        event_value: Option<&TatakuValue>, 
         shell: &mut MessageShell,
     ) {
         let Some(events) = self.events.get(&event) else { return };
@@ -194,7 +194,7 @@ impl Widget for BuiltCustomDialog {
             let Some(message) = i.resolve(
                 MessageOwner::Menu, 
                 shell.values, 
-                event_value.clone()
+                event_value
             ) else { continue };
 
             let cast = message.value

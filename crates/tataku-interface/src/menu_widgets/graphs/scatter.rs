@@ -46,12 +46,14 @@ impl ScatterGraph {
         let size = bounds.size;
 
         // background
-        group.push(Rectangle::new(
-            Vector2::ZERO,
-            size,
-            Color::new(0.2, 0.2, 0.2, 0.7),
-            Some(Border::new(Color::RED, 1.5))
-        ));
+        group.push(
+            Rectangle::new(
+                Vector2::ZERO,
+                size,
+                Color::new(0.2, 0.2, 0.2, 0.7),
+            )
+            .border(Border::new(Color::RED, 1.5))
+        );
         
         // 0 line
         let zero_pos = Vector2::with_y(self.map_point(0.0, size));
@@ -79,14 +81,13 @@ impl ScatterGraph {
                     let x_step = size.x / mapped_points.len() as f32;
 
                     for (n, &y) in mapped_points.iter().enumerate() {
-                        let mut c = Circle::new(
-                            Vector2::new(x_step * n as f32, y),
-                            2.0,
-                            i.color,
-                            None
+                        group.push(
+                            Circle::new(
+                                Vector2::new(x_step * n as f32, y),
+                                2.0,
+                                i.color,
+                            ).resolution(32u32)
                         );
-                        c.resolution = 32;
-                        group.push(c);
                     }
                     
                 }

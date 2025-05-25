@@ -96,16 +96,17 @@ impl DownloadManager {
                     SIZE.y
                 ),
                 Color::TRANSPARENT,
-                None
             ));
 
             // bounds
-            list.push(Rectangle::new(
-                pos, 
-                SIZE,
-                Color::TRANSPARENT,
-                Some(Border::new(Color::BLACK, 2.0))
-            ));
+            list.push(
+                Rectangle::new(
+                    pos, 
+                    SIZE,
+                    Color::TRANSPARENT,
+                )
+                .border(Border::new(Color::BLACK, 2.0))
+            );
 
             let style = TextStyle::default()
                 .alignment(Alignment::CENTER)

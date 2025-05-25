@@ -106,8 +106,7 @@ impl MenuVisualization {
             Vector2::ZERO,
             self.current_inner_radius,
             Color::WHITE.alpha(0.5),
-            Some(Border::new(Color::WHITE, 2.0))
-        ));
+        ).border(Border::new(Color::WHITE, 2.0)));
         group.ripple(
             0.0, 
             duration, 

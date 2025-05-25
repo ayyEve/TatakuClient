@@ -46,9 +46,9 @@ impl Container {
             ScrollPosition::None => false,
             ScrollPosition::Relative(delta) => {
                 let new_scroll = (self.scroll_offset.y + delta.y)
-                    .clamp(0.0, layout.scroll_height());
+                    .clamp(-layout.scroll_height(), 0.0);
 
-                if (self.scroll_offset.y - new_scroll).abs() > f32::EPSILON {
+                if (self.scroll_offset.y + new_scroll).abs() > f32::EPSILON {
                     self.scroll_offset.y = new_scroll;
                     true
                 } else {
@@ -60,7 +60,8 @@ impl Container {
                     layout.scroll_width(),
                     layout.scroll_height(),
                 );
-                self.scroll_offset = (size * pos).clamp(Vector2::ZERO, size);
+                self.scroll_offset = (size * -pos)
+                    .clamp(-size, Vector2::ZERO);
                 true
             }
         }
@@ -100,10 +101,16 @@ impl Widget for Container {
                 ScrollPosition::Relative(Vector2::new(0.0, *delta)), 
                 &layout
             ) {
-                let context = shell.tree.get_context_mut(&*self).unwrap();
-                // FIXME: this is backwards, but if its = scroll_offset then it scrolls opposite of the content
-                context.local_transform.pos = -self.scroll_offset;
-                shell.actions.push(UiAction::new(self.node_id, UiActionType::ContextChanged));
+                let context = shell
+                    .tree
+                    .get_context_mut(&*self)
+                    .unwrap();
+
+                context.local_transform.pos = self.scroll_offset;
+                shell.actions.push(UiAction::new(
+                    self.node_id, 
+                    UiActionType::ContextChanged
+                ));
 
                 shell.event_consumed = true;
                 return 
@@ -165,8 +172,12 @@ impl Widget for Container {
 
             if self.check_scroll(offset, &layout) {
                 shell.event_consumed = true;
-                let context = shell.tree.get_context_mut(&*self).unwrap();
-                context.local_transform.pos = -self.scroll_offset;
+                let context = shell
+                    .tree
+                    .get_context_mut(&*self)
+                    .unwrap();
+
+                context.local_transform.pos = self.scroll_offset;
                 shell.actions.push(UiAction::new(
                     self.node_id, 
                     UiActionType::ContextChanged
@@ -261,7 +272,8 @@ impl Widget for Container {
     fn update(&mut self, shell: &mut UpdateShell) {
         if let Some(data) = &mut self.programmatic {
 
-            let Ok(iter) = shell.values.reflect_iter(&data.list_var) 
+            let Ok(iter) = shell.values
+                .reflect_iter(&data.list_var) 
             else {
                 if !data.error_printed {
                     error!("!!!!!!!!!!!!!!");
@@ -319,10 +331,12 @@ impl Widget for Container {
                     // too many elements, remove some
                     for _ in 0..diff.abs() {
                         // remove it from our list
-                        let removed = self.children.swap_remove(0);
+                        let removed = self
+                            .children
+                            .swap_remove(0);
 
                         // remove it from the tree
-                        shell.tree.remove(removed.node_id()); //.expect("failed to remove child from tree");
+                        shell.tree.remove(removed.node_id()); 
                     }
                 
                     // mark the tree as dirty
@@ -338,8 +352,14 @@ impl Widget for Container {
             }
             
             let path = ReflectPath::new(&data.variable);
-            for (i, value) in self.children.iter_mut().zip(values) {
-                shell.values.impl_insert(path.clone(), value).expect("error inserting into values");
+            for (i, value) in self
+                .children
+                .iter_mut()
+                .zip(values)
+            {
+                shell.values
+                    .impl_insert(path.clone(), value)
+                    .expect("error inserting into values");
                 i.update(shell);
             }
 
@@ -356,7 +376,9 @@ impl Widget for Container {
         shell: &mut MessageShell,
     ) {
         if let Some(data) = &mut self.programmatic {
-            let Ok(iter) = shell.values.reflect_iter(&data.list_var) else {
+            let Ok(iter) = shell.values
+                .reflect_iter(&data.list_var) 
+            else {
                 if !data.error_printed {
                     data.error_printed = true;
                     error!("!!!!!!!!!!!!!!");
@@ -371,8 +393,14 @@ impl Widget for Container {
                 .collect::<Vec<_>>();
     
             let path = ReflectPath::new(&data.variable);
-            for (i, value) in self.children.iter_mut().zip(values_) {
-                shell.values.impl_insert(path.clone(), value).expect("error inserting into values");
+            for (i, value) in self
+                .children
+                .iter_mut()
+                .zip(values_)
+            {
+                shell.values
+                    .impl_insert(path.clone(), value)
+                    .expect("error inserting into values");
                 i.handle_message(message, shell);
             }
         } else {
@@ -385,7 +413,7 @@ impl Widget for Container {
     fn handle_event(
         &mut self, 
         event: TatakuEventType, 
-        event_value: Option<TatakuValue>, 
+        event_value: Option<&TatakuValue>, 
         shell: &mut MessageShell,
     ) {
         if let Some(data) = &mut self.programmatic {
@@ -411,11 +439,11 @@ impl Widget for Container {
                     .impl_insert(path.clone(), value)
                     .expect("error inserting into values");
                 
-                i.handle_event(event, event_value.clone(), shell);
+                i.handle_event(event, event_value, shell);
             }
         } else {
             for i in self.children.iter_mut() {
-                i.handle_event(event, event_value.clone(), shell);
+                i.handle_event(event, event_value, shell);
             }
         }
     }
@@ -564,10 +592,12 @@ impl DragScrollData {
     fn check_input(
         &mut self,
         node_id: NodeId,
-        shell: &mut InputShell<'_>,
+        shell: &mut InputShell,
         event: &InputEvent,
     ) -> ScrollPosition {
-        let Some(bounds) = shell.tree.absolute_bounds(node_id) else { return ScrollPosition::None }; 
+        let Some(bounds) = shell.tree.absolute_bounds(node_id) 
+        else { return ScrollPosition::None }; 
+
         let hover = bounds.contains(shell.mouse_pos);
 
         match event.event {
@@ -590,7 +620,7 @@ impl DragScrollData {
                 // if the mouse moved, we dont want to register the release key, so return that it was consumed
                 self.did_move = false;
 
-                // TODO: dont use this hack lmao
+                // FIXME: dont use this hack lmao
                 return ScrollPosition::Relative(Vector2::ZERO);
             }
             InputType::MouseMove(position) if hover => {
@@ -604,7 +634,7 @@ impl DragScrollData {
                     //     x: -(position.x - self.pressed_at.x),
                     //     y: -(position.y - self.pressed_at.y),
                     // };
-                    let diff = (position - self.pressed_at) * -1.0;
+                    let diff = position - self.pressed_at;
 
                     // reset the clicked pos to move the delta
                     self.pressed_at = position;
@@ -618,7 +648,8 @@ impl DragScrollData {
                     let pos = bounds.pos;
                     let size = bounds.size;
 
-                    let move_to = ((position - pos) / size).clamp(Vector2::ZERO, Vector2::ONE);
+                    let move_to = ((position - pos) / size)
+                        .clamp(Vector2::ZERO, Vector2::ONE);
                     
                     return ScrollPosition::Absolute(move_to)
                     // let move_to = Vector2::new(

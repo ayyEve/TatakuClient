@@ -4,14 +4,14 @@ use crate::prelude::*;
 pub struct ManiaPlayfield {
     pub settings: ManiaPlayfieldSettings,
     pub bounds: Bounds,
-    pub col_count: u8,
+    // pub col_count: u8,
     pub total_width: f32,
 
     /// bullshit peppy fuck
     pub skin_hit_pos: f32,
 
     column_origin: Arc<AtomicU32>,
-    full_window: bool,
+    // full_window: bool,
 }
 impl ManiaPlayfield {
     pub fn new(
@@ -31,12 +31,12 @@ impl ManiaPlayfield {
         Self {
             settings, 
             bounds,
-            col_count,
+            // col_count,
             total_width,
 
             skin_hit_pos,
             column_origin: Arc::new(AtomicU32::new(0)),
-            full_window
+            // full_window
         }
     }
 

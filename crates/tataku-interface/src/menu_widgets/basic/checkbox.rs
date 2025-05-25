@@ -178,12 +178,13 @@ impl Widget for Checkbox {
                 shell.general_theme.active_color 
             } else { 
                 Color::TRANSPARENT 
-            },
-            Some(Border::new(
+            }
+        )
+            .border(Border::new(
                 shell.general_theme.get_color(self.active, self.hovered), 
                 2.0
             ))
-        ).shape(Shape::Round(2.0));
+            .shape(Shape::Round(2.0));
         shell.list.push(rect);
 
         let text_bounds = Bounds::new(
@@ -379,7 +380,7 @@ impl CheckboxOnToggle {
                 action.resolve(
                     owner, 
                     values, 
-                    Some(TatakuValue::Bool(value))
+                    Some(&TatakuValue::Bool(value))
                 )
             },
         }

@@ -129,12 +129,15 @@ impl GameplayWidget for LeaderboardElement {
                     list.push(img);
                 } else {
                     // bounding rect
-                    list.push(Rectangle::new(
-                        pos_offset,
-                        size,
-                        Color::new(0.2, 0.2, 0.2, 1.0),
-                        Some(Border::new(color, 1.5 * scale.y))
-                    ).shape(Shape::Round(5.0)));
+                    list.push(
+                        Rectangle::new(
+                            pos_offset,
+                            size,
+                            Color::new(0.2, 0.2, 0.2, 1.0),
+                        )
+                        .shape(Shape::Round(5.0))
+                        .border(Border::new(color, 1.5 * scale.y))
+                    );
                 }
 
 

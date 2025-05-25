@@ -134,14 +134,14 @@ impl ProcessedNotif {
 
             list.push(image);
         } else {
-            list.push(Rectangle::new_bounds(
-                bounds,
-                NOTIF_BG_COLOR,
-                Some(Border::new(
-                    self.notification.color,
-                    1.2
-                ))
-            ).shape(Shape::Round(NOTIF_BORDER_ROUNDING)));
+            list.push(
+                Rectangle::new_bounds(bounds, NOTIF_BG_COLOR)
+                    .border(Border::new(
+                        self.notification.color,
+                        1.2
+                    ))
+                    .shape(Shape::Round(NOTIF_BORDER_ROUNDING))
+            );
         }
 
         list.push(self.text.clone().centered(&bounds));

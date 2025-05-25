@@ -11,13 +11,11 @@ pub struct TaikoPlayfield {
 
 impl TaikoPlayfield {
     pub fn get_rectangle(&self, kiai: bool) -> Rectangle {
-        let bounds = self.get_playfield_bounds();
-        Rectangle::new(
-            bounds.pos,
-            bounds.size,
+        Rectangle::new_bounds(
+            self.get_playfield_bounds(),
             Color::new(0.1, 0.1, 0.1, 1.0),
-            kiai.then_some(Border::new(Color::YELLOW, 2.0))
         )
+        .border_maybe(kiai.then_some(Border::new(Color::YELLOW, 2.0)))
     }
 
     pub fn get_playfield_bounds(&self) -> Bounds {

@@ -186,8 +186,8 @@ impl CursorManager {
                 Vector2::ZERO,
                 radius,
                 Color::WHITE.alpha(0.5),
-                Some(Border::new(Color::WHITE, 2.0 / end_scale))
-            ));
+            ).border(Border::new(Color::WHITE, 2.0 / end_scale)));
+
             group.ripple(
                 0.0, 
                 duration, 

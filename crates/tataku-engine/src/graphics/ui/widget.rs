@@ -10,7 +10,7 @@ pub trait Widget: Send + Sync {
     fn update_styles(
         &mut self, 
         _shell: &mut StyleShell,
-        _display_override: Option<ui::Display>
+        _display_override: Option<ui::Display>,
     ) {}
 
     fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId>;
@@ -25,7 +25,7 @@ pub trait Widget: Send + Sync {
     fn operation(
         &mut self, 
         _operation: &UiOperation, 
-        _tree: &mut Tree
+        _tree: &mut Tree,
     ) {}
 
     fn draw(&self, _shell: &mut DrawShell) {}
@@ -36,14 +36,14 @@ pub trait Widget: Send + Sync {
     fn handle_message(
         &mut self, 
         _message: &Message, 
-        _shell: &mut MessageShell
+        _shell: &mut MessageShell,
     ) {}
 
     fn handle_event(
         &mut self, 
         _event: TatakuEventType, 
-        _event_value: Option<TatakuValue>, 
-        _shell: &mut MessageShell
+        _event_value: Option<&TatakuValue>, 
+        _shell: &mut MessageShell,
     ) {}
 
     fn reload_skin(&mut self, _shell: &mut UpdateShell) {}

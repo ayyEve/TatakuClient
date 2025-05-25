@@ -218,8 +218,7 @@ impl OsuHitObject for OsuNote {
                 Vector2::ZERO,
                 self.radius,
                 Color::TRANSPARENT,
-                Some(Border::new(self.color, 2.0))
-            ));
+            ).border(Border::new(self.color, 2.0)));
 
             let duration = 500.0;
             group.ripple(

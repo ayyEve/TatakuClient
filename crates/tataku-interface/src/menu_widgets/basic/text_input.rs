@@ -93,7 +93,12 @@ impl TextInput {
         let value = self.value.get();
         let len = value.len();
         let indices = value.char_indices();
-        fn next(indices: std::str::CharIndices<'_>, index: usize, len: usize, forwards: bool) -> usize {
+        fn next(
+            indices: std::str::CharIndices<'_>, 
+            index: usize, 
+            len: usize, 
+            forwards: bool
+        ) -> usize {
             if forwards {
                 indices
                     .skip(index)
@@ -115,7 +120,11 @@ impl TextInput {
             ControlAction::Delete => {
                 if let Cursor::Position(index) = self.cursor {
                     let end = next(indices, index, len, true);
-                    self.cursor = Cursor::Selection { start: index, end, forward_select: true };
+                    self.cursor = Cursor::Selection { 
+                        start: index, 
+                        end, 
+                        forward_select: true 
+                    };
                 }
 
                 self.replace_selection("");
@@ -123,7 +132,11 @@ impl TextInput {
             ControlAction::Backspace => {
                 if let Cursor::Position(index) = self.cursor {
                     let start = next(indices, index, len, false);
-                    self.cursor = Cursor::Selection { start, end: index, forward_select: false };
+                    self.cursor = Cursor::Selection { 
+                        start, 
+                        end: index, 
+                        forward_select: false 
+                    };
                 }
 
                 self.replace_selection("");
@@ -458,7 +471,11 @@ impl TextInput {
             }
             TextInputAction::Custom(lua_action) => {
                 let value = TatakuValue::String(self.value.get().clone().into_owned());
-                if let Some(message) = lua_action.resolve(owner, values, Some(value)) {
+                if let Some(message) = lua_action.resolve(
+                    owner, 
+                    values, 
+                    Some(&value)
+                ) {
                     messages.push(message);
                 }
             }
@@ -645,11 +662,16 @@ impl Widget for TextInput {
     fn draw(&self, shell: &mut DrawShell) {
         let Some(bounds) = shell.tree.absolute_bounds(self) else { return };
 
-        shell.list.push(Rectangle::new_bounds(
-            bounds,
-            shell.general_theme.background_color,
-            Some(Border::new(shell.general_theme.get_color(self.active, self.hovered), 2.0))
-        ));
+        shell.list.push(
+            Rectangle::new_bounds(
+                bounds,
+                shell.general_theme.background_color
+            )
+            .border(Border::new(
+                shell.general_theme.get_color(self.active, self.hovered), 
+                2.0
+            ))
+        );
 
         let mut text = self.get_text().clone().into_owned();
         shell.list.push(self.text_style.create_text(text.clone(), bounds));
@@ -678,7 +700,6 @@ impl Widget for TextInput {
                             bounds.size.y
                         ),
                         shell.general_theme.active_color,
-                        None
                     );
                     shell.list.push(cursor_bar);
                 }
@@ -704,8 +725,7 @@ impl Widget for TextInput {
                             size.x,
                             bounds.size.y
                         ),
-                        shell.general_theme.active_color.alpha(0.7),
-                        None
+                        shell.general_theme.active_color.alpha(0.7)
                     );
                     shell.list.push(cursor_bar);
                 }
@@ -736,7 +756,11 @@ impl Cursor {
             match start.cmp(&end) {
                 Ordering::Less => {}
                 Ordering::Equal => *self = Cursor::Position(start),
-                Ordering::Greater => *self = Cursor::Selection { start: end, end: start, forward_select: true },
+                Ordering::Greater => *self = Cursor::Selection { 
+                    start: end, 
+                    end: start, 
+                    forward_select: true 
+                },
             }
         }
     }

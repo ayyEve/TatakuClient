@@ -366,7 +366,6 @@ impl Widget for DialogWidget {
         shell.list.push(Rectangle::new_bounds(
             bounds, 
             Color::BLACK.alpha(0.9), 
-            None
         ));
 
         // FIXME: add scissor!
@@ -378,28 +377,24 @@ impl Widget for DialogWidget {
             shell.list.push(Rectangle::new_bounds(
                 Self::left_bound(&bounds), 
                 color, 
-                None
             ));
         }
         if self.resize_hover.right {
             shell.list.push(Rectangle::new_bounds(
                 Self::right_bound(&bounds), 
                 color, 
-                None
             ));
         }
         if self.resize_hover.top {
             shell.list.push(Rectangle::new_bounds(
                 Self::top_bound(&bounds), 
                 color, 
-                None
             ));
         }
         if self.resize_hover.bottom {
             shell.list.push(Rectangle::new_bounds(
                 Self::bottom_bound(&bounds), 
-                color, 
-                None
+                color,
             ));
         }
     }
@@ -423,7 +418,6 @@ impl Widget for DialogWidget {
                 if let Some(str) = message.tag.as_string() {
                     if str == "set_num" {
                         if let MessageValue::Number(n) = message.value {
-                            println!("setting num to {n}");
                             self.num = n;
                             return;
                         }
@@ -460,7 +454,7 @@ impl Widget for DialogWidget {
     fn handle_event(
         &mut self, 
         event: TatakuEventType, 
-        event_value: Option<TatakuValue>, 
+        event_value: Option<&TatakuValue>, 
         shell: &mut MessageShell,
     ) {
         self.node.handle_event(event, event_value, shell);
@@ -544,7 +538,6 @@ impl Widget for DialogTitlebar {
         shell.list.push(Rectangle::new_bounds(
             bounds, 
             Color::WHITE.alpha(0.5), 
-            None
         ));
         self.node.draw(shell);
     }

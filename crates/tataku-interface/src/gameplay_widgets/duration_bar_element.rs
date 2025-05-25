@@ -44,18 +44,19 @@ impl GameplayWidget for DurationBarElement {
                 DURATION_HEIGHT
             ) * scale,
             self.common_game_settings.duration_color_full,
-            None
         ));
 
         // border
-        list.push(Rectangle::new(
-            pos_offset, // + Vector2::with_y(-(DURATION_HEIGHT + 3.0)),
-            Vector2::new(self.container_size.x, DURATION_HEIGHT) * scale,
-            self.common_game_settings.duration_color,
-            Some(Border::new(
+        list.push(
+            Rectangle::new(
+                pos_offset, // + Vector2::with_y(-(DURATION_HEIGHT + 3.0)),
+                Vector2::new(self.container_size.x, DURATION_HEIGHT) * scale,
+                self.common_game_settings.duration_color,
+            )
+            .border(Border::new(
                 self.common_game_settings.duration_border_color, 
                 1.8 * scale.x
-            ))
+            )
         ));
     }
 }

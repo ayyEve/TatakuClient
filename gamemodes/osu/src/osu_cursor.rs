@@ -145,8 +145,7 @@ impl OsuCursor {
                 Vector2::ZERO,
                 radius,
                 Color::WHITE.alpha(0.5),
-                Some(Border::new(Color::WHITE, 2.0 / end_scale))
-            ));
+            ).border(Border::new(Color::WHITE, 2.0 / end_scale)));
             group.ripple(0.0, duration, time, end_scale, true, Some(0.2));
         // }
 
@@ -323,6 +322,7 @@ impl OsuCursor {
                 self.pos,
                 radius * self.settings.cursor_scale,
                 *self.settings.cursor_color,
+            ).border_maybe(
                 if self.settings.cursor_border > 0.0 {
                     Some(Border::new(
                         *self.settings.cursor_border_color,

@@ -73,16 +73,17 @@ impl GameplayWidget for KeyCounterElement {
                 box_width = (BOX_SIZE * scale).x;
 
                 // draw bg box
-                list.push(Rectangle::new(
-                    pos,
-                    BOX_SIZE * scale,
-                    if info.held {
-                        Color::new(0.8, 0.0, 0.8, 0.8)
-                    } else {
-                        Color::new(0.0, 0.0, 0.0, 0.8)
-                    },
-                    Some(Border::new(Color::BLACK, 2.0))
-                ));
+                list.push(
+                    Rectangle::new(
+                        pos,
+                        BOX_SIZE * scale,
+                        if info.held {
+                            Color::new(0.8, 0.0, 0.8, 0.8)
+                        } else {
+                            Color::new(0.0, 0.0, 0.0, 0.8)
+                        },
+                    ).border(Border::new(Color::BLACK, 2.0))
+                );
             }
 
             // draw key

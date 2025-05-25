@@ -102,7 +102,7 @@ impl Widget for FilterableWidget {
     fn handle_event(
         &mut self, 
         event: TatakuEventType, 
-        event_value: Option<TatakuValue>, 
+        event_value: Option<&TatakuValue>, 
         shell: &mut MessageShell,
     ) {
         if !self.visible { return }

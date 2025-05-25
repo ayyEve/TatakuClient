@@ -760,7 +760,6 @@ impl GameMode for TaikoGame {
             self.taiko_settings.note_radius 
                 * self.taiko_settings.hit_area_radius_mult,
             Color::BLACK,
-            None
         ));
 
         // draw timing lines

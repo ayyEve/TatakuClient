@@ -81,7 +81,6 @@ impl FpsDisplay {
             self.pos, 
             SIZE, 
             Color::WHITE.alpha(0.8), 
-            None
         ));
 
         list.push(Text::new(
@@ -159,8 +158,7 @@ impl AsyncFpsDisplay {
         list.push(Rectangle::new(
             self.pos, 
             SIZE, 
-            Color::WHITE.alpha(0.8), 
-            None
+            Color::WHITE.alpha(0.8),
         ));
 
         list.push(Text::new(

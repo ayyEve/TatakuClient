@@ -40,7 +40,7 @@ impl VolumeControl {
 
         // reset index back to 0 (master) if the volume hasnt been touched in a while
         if elapsed - self.vol_selected_time > VOLUME_CHANGE_DISPLAY_TIME + 1000 { 
-            self.vol_selected_index = 0 
+            self.vol_selected_index = 0;
         }
 
         // find out what volume to edit, and edit it
@@ -71,105 +71,51 @@ impl VolumeControl {
                 self.window_size - BOX_SIZE,
                 BOX_SIZE,
                 Color::WHITE,
-                Some(Border::new(Color::BLACK, 1.2))
-            );
+            )
+                .border(Border::new(Color::BLACK, 1.2))
+            ;
 
             // text 100px wide, bar 190px (10px padding)
             let border_padding = 10.0;
             let border_size = Vector2::new(200.0 - border_padding, 20.0);
-            
-            // == master bar ==
-            // text
-            let mut master_text = Text::new(
-                self.window_size - Vector2::new(300.0, 90.0),
-                20.0,
-                "Master:",
-                Color::BLACK,
-                Font::Main,
-            );
-            // border
-            let master_border = Rectangle::new(
-                self.window_size - Vector2::new(border_size.x + border_padding, 90.0),
-                border_size,
-                Color::TRANSPARENT,
-                Some(Border::new(Color::RED, 1.0))
-            );
-            // fill
-            let master_fill = Rectangle::new(
-                self.window_size - Vector2::new(border_size.x + border_padding, 90.0),
-                Vector2::new(border_size.x * self.settings.master, border_size.y),
-                Color::BLUE,
-                None
-            );
-
-            // == effects bar ==
-            // text
-            let mut effect_text = Text::new(
-                self.window_size - Vector2::new(300.0, 60.0),
-                20.0,
-                "Effects:",
-                Color::BLACK,
-                Font::Main
-            );
-            // border
-            let effect_border = Rectangle::new(
-                self.window_size - Vector2::new(border_size.x + border_padding, 60.0),
-                border_size,
-                Color::TRANSPARENT,
-                Some(Border::new(Color::RED, 1.0))
-            );
-            // fill
-            let effect_fill = Rectangle::new(
-                self.window_size - Vector2::new(border_size.x + border_padding, 60.0),
-                Vector2::new(border_size.x * self.settings.effects, border_size.y),
-                Color::BLUE,
-                None
-            );
-
-            // == music bar ==
-            // text
-            let mut music_text = Text::new(
-                self.window_size - Vector2::new(300.0, 30.0),
-                20.0,
-                "Music:",
-                Color::BLACK,
-                Font::Main
-            );
-            // border
-            let music_border = Rectangle::new(
-                self.window_size - Vector2::new(border_size.x + border_padding, 30.0),
-                border_size,
-                Color::TRANSPARENT,
-                Some(Border::new(Color::RED, 1.0))
-            );
-            // fill
-            let music_fill = Rectangle::new(
-                self.window_size - Vector2::new(border_size.x + border_padding, 30.0),
-                Vector2::new(border_size.x * self.settings.music, border_size.y),
-                Color::BLUE,
-                None
-            );
-            
-            // highlight selected index
-            match self.vol_selected_index {
-                0 => master_text.color = Color::RED,
-                1 => effect_text.color = Color::RED,
-                2 => music_text.color = Color::RED,
-                _ => error!("self.vol_selected_index out of bounds somehow")
-            }
 
             list.push(b);
-            list.push(master_text);
-            list.push(master_fill);
-            list.push(master_border);
-            
-            list.push(effect_text);
-            list.push(effect_fill);
-            list.push(effect_border);
+        
+            for (n, (text, value)) in [
+                ("Master:", self.settings.master),
+                ("Effects:", self.settings.effects),
+                ("Music:", self.settings.music),
+            ].iter().enumerate() {
+                let r_offset = Vector2::new(
+                    border_size.x + border_padding, 
+                    (90 - 30 * n) as f32
+                );
 
-            list.push(music_text);
-            list.push(music_fill);
-            list.push(music_border);
+                // text
+                list.push(Text::new(
+                    self.window_size - Vector2::new(300.0, r_offset.y),
+                    20.0,
+                    text,
+                    if self.vol_selected_index == n as u8 { Color::RED } else { Color::BLACK },
+                    Font::Main,
+                ));
+                // fill
+                list.push(Rectangle::new(
+                    self.window_size - r_offset,
+                    Vector2::new(border_size.x * *value, border_size.y),
+                    Color::BLUE,
+                ));
+
+                // border
+                list.push(Rectangle::new(
+                    self.window_size - r_offset,
+                    border_size,
+                    Color::TRANSPARENT,
+                )
+                    .border(Border::new(Color::RED, 1.0))
+                );
+            }
+
         }
     }
 

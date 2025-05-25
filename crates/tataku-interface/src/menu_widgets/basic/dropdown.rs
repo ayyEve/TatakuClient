@@ -96,18 +96,26 @@ impl Dropdown {
         let message = match &self.on_change {
             DropdownOnChange::Message(message) => message.clone(),
             DropdownOnChange::Buildable(lua_action) => {
+                let passed_in = match &self.variants {
+                    DropdownVariants::Static(items) 
+                        => Some(items[index].clone().into()),
+                    DropdownVariants::Variable(_) => None,
+                    DropdownVariants::Built { 
+                        items, 
+                        .. 
+                    } => {
+                        TatakuValue::from_reflection(
+                            items[index].value.duplicate().unwrap()
+                        )
+                            .inspect_err(|e| warn!("didnt reflect: {e:?}"))
+                            .ok()
+                    },
+                };
+
                 lua_action.resolve(
                     shell.owner, 
                     shell.values, 
-                    match &self.variants {
-                        DropdownVariants::Static(items) => Some(items[index].clone().into()),
-                        DropdownVariants::Variable(_) => None,
-                        DropdownVariants::Built { items, .. } => {
-                            TatakuValue::from_reflection(items[index].value.duplicate().unwrap())
-                            .inspect_err(|e| warn!("didnt reflect: {e:?}"))
-                            .ok()
-                        },
-                    }
+                    passed_in.as_ref(),
                 )
             },
             DropdownOnChange::Callback(f) => Some(f(index)),
@@ -257,15 +265,17 @@ impl Widget for Dropdown {
 
     fn draw(&self, shell: &mut DrawShell) {
         let theme = &shell.general_theme;
-        let Some(bounds) = shell.tree.absolute_bounds(self) else { return };
-        // bounds.pos.y += bounds.size.y;
+        let Some(bounds) = shell.tree.absolute_bounds(self) 
+        else { return };
 
         // bounding box
-        shell.list.push(Rectangle::new_bounds(
-            bounds,
-            theme.background_color,
-            Some(Border::new(theme.get_color(self.active, self.hover), 2.0))
-        ));
+        shell.list.push(
+            Rectangle::new_bounds(
+                bounds,
+                theme.background_color,
+            )
+            .border(Border::new(theme.get_color(self.active, self.hover), 2.0))
+        );
 
         // selected text
         let displays = self.variants.get_displays();
@@ -293,12 +303,17 @@ impl Widget for Dropdown {
             );
 
             // bounding box
-            shell.list.push(Rectangle::new(
-                offset, 
-                bounds.size,
-                theme.background_color.alpha(1.0),
-                Some(Border::new(theme.get_color(n == selected, n == active), 2.0))
-            ));
+            shell.list.push(
+                Rectangle::new(
+                    offset, 
+                    bounds.size,
+                    theme.background_color.alpha(1.0),
+                )
+                .border(Border::new(
+                    theme.get_color(n == selected, n == active), 
+                    2.0
+                ))
+            );
 
             let text = self.text_style.create_text(i, Bounds::new(offset, bounds.size));
             shell.list.push(text);

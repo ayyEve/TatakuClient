@@ -169,7 +169,10 @@ impl HitObject for OsuSpinner {
         if !(time >= self.time && time <= self.end_time) { return }
         let scale = Vector2::ONE * self.scaling_helper.cs;
 
-        let border = Some(Border::new(Color::BLACK, OSU_NOTE_BORDER_SIZE));
+        let border = Border::new(
+            Color::BLACK, 
+            OSU_NOTE_BORDER_SIZE
+        );
 
         // bg circle
         if let Some(mut i) = self.spinner_background.clone() {
@@ -186,8 +189,7 @@ impl HitObject for OsuSpinner {
                 self.pos,
                 SPINNER_RADIUS,
                 Color::YELLOW,
-                border
-            ));
+            ).border(border));
         }
 
 
@@ -200,8 +202,7 @@ impl HitObject for OsuSpinner {
                 self.pos,
                 SPINNER_RADIUS * (self.rotations_completed as f32 / self.rotations_required as f32).min(1.0),
                 Color::WHITE,
-                border
-            ));
+            ).border(border));
         }
 
 

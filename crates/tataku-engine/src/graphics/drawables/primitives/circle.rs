@@ -1,6 +1,5 @@
 use crate::prelude::*;
 
-// TODO: remove border from new
 #[derive(ChainableInitializer)]
 #[derive(Copy, Clone)]
 pub struct Circle {
@@ -12,7 +11,7 @@ pub struct Circle {
     scissor: Scissor,
     blend_mode: BlendMode,
 
-    #[chain] pub border: Option<Border>,
+    pub border: Option<Border>,
     #[chain] pub resolution: u32,
 }
 impl Circle {
@@ -20,7 +19,6 @@ impl Circle {
         pos: Vector2, 
         radius: f32, 
         color: Color, 
-        border: Option<Border>
     ) -> Self {
         Self {
             color,
@@ -29,9 +27,17 @@ impl Circle {
             scissor: None,
             blend_mode: BlendMode::AlphaBlending,
 
-            border,
+            border: None,
             resolution: 128,
         }
+    }
+    pub fn border(mut self, border: Border) -> Self {
+        self.border = Some(border);
+        self
+    }
+    pub fn border_maybe(mut self, border: Option<Border>) -> Self {
+        self.border = border;
+        self
     }
 }
 

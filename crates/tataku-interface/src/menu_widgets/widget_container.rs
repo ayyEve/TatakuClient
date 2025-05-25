@@ -154,16 +154,16 @@ impl Widget for WidgetContainer {
             shell.list.push(Rectangle::new_bounds(
                     bounds,
                     *bg,
-                    border
                 )
+                .border_maybe(border)
                 .shape_maybe(shape)
             );
         } else if let Some(border) = border {
             shell.list.push(Rectangle::new_bounds(
                     bounds,
                     Color::TRANSPARENT,
-                    Some(border)
                 )
+                .border(border)
                 .shape_maybe(shape)
             );
         }
@@ -230,7 +230,7 @@ impl Widget for WidgetContainer {
     fn handle_event(
         &mut self, 
         event: TatakuEventType, 
-        event_value: Option<TatakuValue>, 
+        event_value: Option<&TatakuValue>, 
         shell: &mut MessageShell,
     ) {
         self.inner.handle_event(event, event_value, shell);

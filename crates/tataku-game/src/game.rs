@@ -1276,7 +1276,6 @@ impl Game {
             Vector2::ZERO,
             self.values.game.window_size,
             Color::BLACK.alpha(self.settings.background_dim),
-            None
         ));
 
         // draw cursor ripples
@@ -1325,7 +1324,6 @@ impl Game {
                     Vector2::ZERO,
                     self.game.window_size,
                     Color::new(0.0, 0.0, 0.0, alpha),
-                    None
                 ));
             }
             GameState::TransitionEnding {
@@ -1343,7 +1341,6 @@ impl Game {
                     Vector2::ZERO,
                     self.game.window_size,
                     Color::new(0.0, 0.0, 0.0, alpha),
-                    None
                 ));
             }
 
