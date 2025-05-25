@@ -156,7 +156,7 @@ impl Game {
             #[cfg(feature="graphics")] queued_events: Vec::new(),
 
             values: ValueCollection {
-                values: GameValues::new(&infos, &settings),
+                values: TatakuValues::new(&infos, &settings),
                 custom: DynMap::default()
             },
         }
@@ -274,12 +274,6 @@ impl Game {
             BeatmapDownloadsCheckTask::default()
         )));
 
-        // == menu setup ==
-        #[cfg(feature="graphics")]
-        let mut loading_menu = LoadingMenu::new();
-        #[cfg(feature="graphics")]
-        loading_menu.load(&self.settings);
-
         debug!("game init took {:.2}", now.elapsed().as_secs_f32() * 1000.0);
 
 
@@ -327,8 +321,9 @@ impl Game {
             // });
         }
 
+        self.actions.push(InitGameTask::default());
         #[cfg(feature="graphics")]
-        self.queue_state_change(GameState::SetMenu(Box::new(loading_menu)));
+        self.handle_custom_menu("loading_menu", None);
     }
 
     #[cfg(feature="gameplay")]
@@ -1380,7 +1375,7 @@ impl Game {
         let in_spec = self.spectator_manager.is_some();
 
         if in_multi { return self.handle_custom_menu("lobby_menu", None) }
-        if in_spec { return self.queue_state_change(GameState::SetMenu(Box::new(SpectatorMenu::new()))) }
+        if in_spec { return self.handle_custom_menu("beatmap_select", None) }
 
         match current_menu {
             // score menu with no multi or spec is the beatmap select menu
@@ -2185,7 +2180,9 @@ impl Game {
             }
 
             other => {
-                let Some(audio) = self.song_manager.instance() else { return };
+                let Some(audio) = self
+                    .song_manager.instance() else { return };
+
                 match other {
                     SongAction::Play => audio.play(false),
                     SongAction::Restart => audio.play(true),
@@ -2221,7 +2218,9 @@ impl Game {
         self.values.global.update_mods();
 
         // update the song's rate
-        self.actions.push(SongAction::SetRate(self.values.global.mods.get_speed()));
+        self.actions.push(
+            SongAction::SetRate(self.values.global.mods.get_speed())
+        );
 
         // apply mods to all gameplay managers
         #[cfg(feature="graphics")] 
@@ -2247,7 +2246,12 @@ impl Game {
         match action {
             #[cfg(feature="gameplay")]
             BeatmapAction::PlaySelected => {
-                let Some(map) = self.beatmap_manager.current_beatmap.clone() else { return };
+                let Some(map) = self
+                    .beatmap_manager
+                    .current_beatmap
+                    .clone() 
+                else { return };
+
                 let mods = self.global.mods.clone();
                 let mode = self.global.playmode.clone();
 
@@ -2261,8 +2265,14 @@ impl Game {
                     Ok(mut manager) => {
                         let start_time = manager.start_time as u64;
 
-                        manager.handle_action(GameplayAction::ApplyMods(mods), &self.settings);
-                        self.queue_state_change(GameState::Ingame(Box::new(manager)));
+                        manager.handle_action(
+                            GameplayAction::ApplyMods(mods), 
+                            &self.settings
+                        );
+
+                        self.queue_state_change(
+                            GameState::Ingame(Box::new(manager))
+                        );
 
                         let multiplayer = self.multiplayer_manager
                             .as_ref()
@@ -2275,28 +2285,56 @@ impl Game {
                             beatmap: map.map.clone(), 
                             playmode: mode, 
                             multiplayer, 
-                            spectator: self.spectator_manager.as_ref().map(|s| s.host_username.clone())
+                            spectator: self.spectator_manager
+                                .as_ref()
+                                .map(|s| s.host_username.clone())
                         });
                     }
-                    Err(e) => self.actions.push(Notification::new_error("Error loading beatmap", e)),
+                    Err(e) => self.actions.push(
+                        Notification::new_error("Error loading beatmap", e)
+                    ),
                 }
             }
 
             #[cfg(feature="gameplay")]
             BeatmapAction::ConfirmSelected => {
-                // TODO: could we use this to send map requests from ingame to the spec host?
-
                 if let Some(multi) = &mut self.multiplayer_manager {
                     // go back to the lobby before any checks
                     // this way if for some reason something down below fails, the user is in the lobby and not stuck in limbo
                     #[cfg(feature="graphics")] 
                     self.actions.push(MenuAction::set_menu("lobby_menu"));
 
-                    if !multi.is_host() { return warn!("trying to set lobby beatmap while not the host ??") };
+                    if !multi.is_host() { 
+                        return warn!("trying to set lobby beatmap while not the host ??");
+                    };
 
-                    let Some(map) = self.values.beatmap_manager.current_beatmap.clone() else { return };
+                    let Some(map) = self.values
+                        .beatmap_manager
+                        .current_beatmap.clone() 
+                    else { return };
+
                     let playmode = self.values.global.playmode.clone();
-                    self.online_manager.update_lobby_beatmap(&map, playmode);
+                    self.online_manager.update_lobby_beatmap(
+                        &map, 
+                        playmode
+                    );
+
+                } else if let Some(spec_man) = self.spectator_manager.as_mut() {
+                    let Some(map) = self.values
+                        .beatmap_manager
+                        .current_beatmap.clone() 
+                    else { return };
+
+                    self.values.online_manager.handle_action(OnlineAction::ChatAction(
+                        ChatAction::SendMessage { 
+                            channel: spec_man.host_username.clone(), 
+                            message: BeatmapLink {
+                                beatmap_hash: map.beatmap_hash.to_string(),
+                                beatmap_title: map.version_string(),
+                                download_link: None,
+                            }.to_string()
+                        }
+                    ));
                 } else {
                     // play map
                     self.handle_beatmap_action(BeatmapAction::PlaySelected);
@@ -2304,7 +2342,10 @@ impl Game {
             }
 
             BeatmapAction::Set(beatmap, options) => {
-                self.handle_beatmap_action(BeatmapAction::SetFromHash(beatmap.beatmap_hash, options));
+                self.handle_beatmap_action(BeatmapAction::SetFromHash(
+                    beatmap.beatmap_hash, 
+                    options
+                ));
             }
             BeatmapAction::SetFromHash(hash, options) => {
                 if let Some(beatmap) = self.beatmap_manager.get_by_hash(&hash) {
@@ -2887,7 +2928,7 @@ impl Game {
 }
 
 impl Deref for Game {
-    type Target = GameValues;
+    type Target = TatakuValues;
     fn deref(&self) -> &Self::Target {
         &self.values.values
     }

@@ -21,7 +21,6 @@ pub struct GameplayPreview {
     /// use bg game settings, or global gamemode?
     use_global_playmode: bool,
     apply_rate: bool,
-    check_enabled: Arc<dyn Fn(&Settings) -> bool + Send + Sync>,
 
     widget_sender: Arc<Mutex<TripleBufferSender<Arc<dyn TatakuRenderable>>>>,
     widget_receiver: TripleBufferReceiver<Arc<dyn TatakuRenderable>>,
@@ -35,7 +34,6 @@ impl GameplayPreview {
     pub fn new(
         use_global_playmode: bool, 
         apply_rate: bool, 
-        check_enabled: Arc<dyn Fn(&Settings) -> bool + Send + Sync>, 
     ) -> Self {
         let a: Arc<dyn TatakuRenderable> = Arc::new(TransformGroup::new(Vector2::ZERO));
         let (widget_sender, widget_receiver) = TripleBuffer::new(&a).split();
@@ -50,18 +48,13 @@ impl GameplayPreview {
             visualization: None,
             handle_song_restart: false,
 
-            // settings: SettingsHelper::new(),
             manager: None,
             fit_to: None,
             use_global_playmode,
             apply_rate,
-            // loader: None,
-            check_enabled,
 
             widget_sender: Arc::new(Mutex::new(widget_sender)),
             widget_receiver,
-            // event_receiver,
-            // widget
 
             blur: 0.0,
             style: Style {
@@ -75,20 +68,15 @@ impl GameplayPreview {
         }
     }
 
-    pub fn is_enabled(&self, settings: &Settings) -> bool {
-        (self.check_enabled)(settings)
-    }
-
     pub fn setup(
         &mut self, 
         owner: MessageOwner,
         values: &dyn Reflect, 
         actions: &mut ActionQueue
     ) {
-        let settings = values.reflect_get::<Settings>("settings").unwrap();
-
-        // make sure we're enabled before doing anything else
-        if !self.is_enabled(&settings) { return }
+        let settings = values
+            .reflect_get::<Settings>("settings")
+            .unwrap();
 
         let draw_sender = self.widget_sender.clone();
         actions.push(GameAction::NewGameplayManager(NewManager {
@@ -124,22 +112,23 @@ impl Widget for GameplayPreview {
         let MessageTag::String(str) = &message.tag else { return };
         if str != "gameplay_manager_create" { return }
 
-        let MessageValue::GameplayManagerId(id) = &message.value else { return error!("wrong type") };
+        let MessageValue::GameplayManagerId(id) = &message.value 
+        else { return error!("wrong type") };
+
         self.manager = Some(id.clone());
         shell.handled = true;
 
-        shell.actions.push(GameAction::GameplayAction(id.clone(), GameplayAction::Resume));
+        shell.actions.push(
+            GameAction::GameplayAction(id.clone(), GameplayAction::Resume)
+        );
     }
 
     fn update(&mut self, shell: &mut UpdateShell) {
         self.widget_receiver.update();
-        let settings = shell.values.reflect_get::<Settings>("settings").unwrap();
+        let settings = shell.values
+            .reflect_get::<Settings>("settings")
+            .unwrap();
         
-        // check for settings changes
-        if !self.is_enabled(&settings) && self.manager.is_some() {
-            self.manager = None;
-        }
-
         let last_song_time = self.song_time.unwrap_or_default();
         if let Ok(Some(time)) = self.song_time.update(shell.values) {
             if *time < last_song_time {
@@ -246,11 +235,6 @@ impl Widget for GameplayPreview {
             debug!("reloading vis skin");
             vis.reload_skin(shell.skin_manager);
         }
-    }
-}
-impl Clone for GameplayPreview {
-    fn clone(&self) -> Self {
-        Self::new(self.use_global_playmode, self.apply_rate, self.check_enabled.clone())
     }
 }
 impl core::fmt::Debug for GameplayPreview {

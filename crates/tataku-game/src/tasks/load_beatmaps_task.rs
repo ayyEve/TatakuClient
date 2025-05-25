@@ -2,8 +2,8 @@ use crate::prelude::*;
 
 pub struct LoadBeatmapsTask {
     state: TatakuTaskState,
-
-    status: Arc<RwLock<LoadingStatus>>,
+    
+    status_index: usize,
 
     /// list of ignored file paths
     ignored_list: Vec<String>,
@@ -12,10 +12,10 @@ pub struct LoadBeatmapsTask {
     existing_maps: Vec<Arc<BeatmapMeta>>,
 }
 impl LoadBeatmapsTask {
-    pub fn new(status: Arc<RwLock<LoadingStatus>>) -> Self {
+    pub fn new(status_index: usize) -> Self {
         Self {
             state: TatakuTaskState::NotStarted,
-            status,
+            status_index,
             ignored_list: Vec::new(),
             existing_maps: Vec::new(),
         }
@@ -29,16 +29,20 @@ impl TatakuTask for LoadBeatmapsTask {
 
     fn run(
         &mut self, 
-        _values: &mut dyn Reflect, 
+        values: &mut dyn Reflect, 
         _state: &TaskGameState, 
-        actions: &mut ActionQueue
+        actions: &mut ActionQueue,
     ) {
+        let statuses = values
+            .reflect_get_mut::<Vec<LoadingStatus>>("game.loading_statuses")
+            .unwrap();
+        let status = &mut statuses[self.status_index];
 
         // if we havent started yet, initialize our values
         if self.state == TatakuTaskState::NotStarted {
             self.ignored_list = Database::get_all_ignored();
             self.existing_maps = Database::get_all_beatmaps();
-            // self.existing_maps.reverse(); // because they're added in reverse order later, but it doesnt really matter
+            status.item_count = self.existing_maps.len();
 
             self.state = TatakuTaskState::Running;
             debug!("Got existing maps");
@@ -47,27 +51,24 @@ impl TatakuTask for LoadBeatmapsTask {
 
         // load all maps from the database
         if let Some(map) = self.existing_maps.pop() {
-            trace!("Adding map {}", map.beatmap_hash);
+            // trace!("Adding map {}", map.beatmap_hash);
 
             // make sure the beatmap exists before adding it
-            if !std::path::Path::new(&map.file_path).exists() {
+            if !Io::exists(&map.file_path) {
                 warn!("Beatmap exists in db but not in fs: {}", map.file_path);
             } else {
-                actions.push(BeatmapAction::AddBeatmap { map, add_to_db: false });
+                actions.push(BeatmapAction::AddBeatmap { 
+                    map, 
+                    add_to_db: false 
+                });
             }
-
-            // if that was the last map, tell the beatmap manager it has been initialized
-            if self.existing_maps.is_empty() {
-                debug!("All existing maps loaded");
-                // actions.push(BeatmapAction::InitializeManager);
-            }
-
+            status.items_complete += 1;
             return;
         }
 
         debug!("Done adding maps");
         actions.push(BeatmapAction::InitializeManager);
-        self.status.write().complete = true;
+        status.complete = true;
         self.state = TatakuTaskState::Complete;
 
         // add a task to check the beatmaps folder for new maps

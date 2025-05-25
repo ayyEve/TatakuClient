@@ -4657,6 +4657,7 @@ dependencies = [
  "native-tls",
  "num-format",
  "parking_lot",
+ "quick-xml",
  "rand 0.9.1",
  "raw-window-handle",
  "reqwest",

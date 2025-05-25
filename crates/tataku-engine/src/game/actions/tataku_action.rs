@@ -56,6 +56,12 @@ pub enum TatakuAction {
     Multiple(Vec<Self>)
 }
 
+impl<T:TatakuTask + 'static> From<T> for TatakuAction {
+    fn from(value: T) -> Self {
+        Self::Task(TaskAction::AddTask(Box::new(value)))
+    }
+}
+
 impl From<Notification> for TatakuAction {
     fn from(value: Notification) -> Self {
         Self::Game(Box::new(GameAction::AddNotification(value)))

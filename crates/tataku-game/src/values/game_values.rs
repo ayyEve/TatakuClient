@@ -4,11 +4,11 @@ use crate::prelude::*;
 #[derive(Debug, Default)]
 #[reflect(dont_clone)]
 // #[reflect(remap("map" => "self.beatmap_manager.current_beatmap.map"))]
-pub struct GameValues {
+pub struct TatakuValues {
     pub settings: Settings,
 
     pub song: SongInfo,
-    pub game: GameInfo,
+    pub game: GameValues,
     pub global: GlobalValues,
     pub enums: EnumValues,
     #[cfg(feature="graphics")] 
@@ -33,7 +33,7 @@ pub struct GameValues {
     #[reflect(alias("downloads"))] 
     pub download_manager: DownloadManager,
 }
-impl GameValues {
+impl TatakuValues {
     pub fn new(
         infos: &GamemodeInfos, 
         settings: &Settings
@@ -135,10 +135,12 @@ pub struct ScoreList {
 
 
 
+#[derive(Default, Debug)]
 #[derive(Reflect)]
 #[reflect(display = "debug")]
-#[derive(Default, Debug, Copy, Clone)]
-pub struct GameInfo {
+#[reflect(dont_clone)]
+pub struct GameValues {
     pub time: f32,
     pub window_size: Vector2,
+    pub loading_statuses: Vec<LoadingStatus>,
 }

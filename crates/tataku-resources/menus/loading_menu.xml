@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<?xml-model href="../xsd/menu.xsd"?>
+
+<menu id = "loading_menu">
+    <element>
+        <list
+            list = "game.loading_statuses"
+            variable = "_status"
+            style = "flex-direction: column;"
+        >
+            <row>
+                <text style = "text-color: white;">
+                    <list>
+                        <variable var = "_status.name" />
+                        <text text=":" />
+                    </list>
+                </text>
+                <conditional cond="_status.error.is_some()">
+                    <true>
+                        <text style = "text-color: red;">
+                            <list>
+                                <text text="Error: "/>
+                                <variable var="_status.error" />
+                            </list>
+                        </text>
+                    </true>
+                    <false>
+                        <conditional cond="_status.complete">
+                            <true>
+                                <text>
+                                    <text text="Done"/>
+                                </text>
+                            </true>
+                            <false>
+                                <text style = "text-color: green;">
+                                    <list>
+                                        <variable var = "_status.items_complete"/>
+                                        <text text = "/"/>
+                                        <variable var = "_status.item_count"/>
+                                    </list>
+                                </text>
+                            </false>
+                        </conditional>
+                    </false>
+                </conditional>
+
+            </row>
+        </list>
+
+    </element>
+</menu>

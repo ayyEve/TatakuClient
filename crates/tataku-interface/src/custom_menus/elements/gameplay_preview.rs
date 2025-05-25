@@ -22,7 +22,6 @@ impl CustomElement for GameplayPreviewElement {
             GameplayPreview::new(
                 true, 
                 true, 
-                Arc::new(|_| true), 
             )
             .blur(self.blur)
             .visualization(if let Some(vis) = &self.visualization {

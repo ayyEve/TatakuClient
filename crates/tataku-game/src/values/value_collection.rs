@@ -2,11 +2,11 @@ use crate::prelude::*;
 
 #[derive(Default)]
 pub struct ValueCollection {
-    pub values: GameValues,
+    pub values: TatakuValues,
     pub custom: DynMap,
 }
 impl Deref for ValueCollection {
-    type Target = GameValues;
+    type Target = TatakuValues;
 
     fn deref(&self) -> &Self::Target {
         &self.values

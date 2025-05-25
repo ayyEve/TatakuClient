@@ -4,7 +4,7 @@ use crate::prelude::*;
 pub struct SpectatorManager {
     frames: VecDeque<SpectatorFrame>,
     state: SpectatorState,
-    host_id: u32,
+    pub host_id: u32,
     pub host_username: String,
 
     /// what is the current map's hash?
