@@ -5,6 +5,7 @@ mod slider;
 mod checkbox;
 mod dropdown;
 mod container;
+mod key_button;
 mod text_input;
 
 pub use text::*;
@@ -14,4 +15,5 @@ pub use slider::*;
 pub use checkbox::*;
 pub use dropdown::*;
 pub use container::*;
+pub use key_button::*;
 pub use text_input::*;

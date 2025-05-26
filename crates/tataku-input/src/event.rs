@@ -42,4 +42,11 @@ impl InputEvent {
             | InputType::MouseScroll(_)
         )
     }
+    pub fn is_keyboard(&self) -> bool {
+        matches!(
+            self.event,
+            InputType::KeyPress(_)
+            | InputType::KeyRelease(_)
+        )
+    }
 }

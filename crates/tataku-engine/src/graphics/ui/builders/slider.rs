@@ -50,7 +50,7 @@ impl From<String> for SliderBuilderValue {
 }
 
 
-type OnChangeCallback = Box<dyn Fn(f32) -> Message + Send + Sync>;
+type OnChangeCallback = Box<dyn Fn(&f32) -> Message + Send + Sync>;
 pub enum SliderBuilderOnChange {
     Message(Option<Message>),
     Callback(OnChangeCallback),

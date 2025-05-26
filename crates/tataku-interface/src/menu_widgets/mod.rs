@@ -5,6 +5,7 @@ mod filterable;
 mod conditional;
 mod stats_graph;
 mod transformable;
+mod action_helper;
 mod gameplay_preview;
 mod widget_container;
 
@@ -15,5 +16,6 @@ pub use filterable::*;
 pub use conditional::*;
 pub use stats_graph::*;
 pub use transformable::*;
+pub use action_helper::*;
 pub use gameplay_preview::*;
 pub use widget_container::*;

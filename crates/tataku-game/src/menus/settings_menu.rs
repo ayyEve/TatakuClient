@@ -92,6 +92,14 @@ impl SettingsMenu {
                     .chain_maybe(builder.font_size, |s, f| s.font_size(f))
                     .boxed()
             }),
+            create_key_button: Box::new(|builder| {
+                KeyButton::new(builder.value)
+                    .on_change(builder.on_change)
+                    .optional(builder.optional)
+                    .boxed()
+            }),
+
+
         };
         settings.into_elements(
             "settings".to_owned(), 
@@ -151,7 +159,7 @@ impl SettingsMenu {
             // search text
             TextInput::new("Search", self.filter_text.clone())
                 .font_size(30.0)
-                .on_input(move |t: &str| Message::new(
+                .on_input(move |t: &String| Message::new(
                     owner, 
                     "search", 
                     MessageValue::Text(t.to_string())

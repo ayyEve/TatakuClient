@@ -11,6 +11,7 @@ pub struct SettingsBuilder<'a> {
     pub create_slider: Box<dyn Fn(SliderBuilder) -> Box<dyn Widget>>,
     pub create_text_input: Box<dyn Fn(TextInputBuilder) -> Box<dyn Widget>>,
     pub create_dropdown: Box<dyn Fn(DropdownBuilder) -> Box<dyn Widget>>,
+    pub create_key_button: Box<dyn Fn(KeyButtonBuilder) -> Box<dyn Widget>>,
 }
 impl SettingsBuilder<'_> {
     pub fn add_item(
@@ -56,6 +57,9 @@ impl SettingsBuilder<'_> {
     }
     pub fn create_dropdown(&self, builder: DropdownBuilder) -> Box<dyn Widget> {
         (self.create_dropdown)(builder)
+    }
+    pub fn create_key_button(&self, builder: KeyButtonBuilder) -> Box<dyn Widget> {
+        (self.create_key_button)(builder)
     }
 
 }

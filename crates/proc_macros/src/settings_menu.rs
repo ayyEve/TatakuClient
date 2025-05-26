@@ -216,7 +216,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> Result<proc_macro2::Token
                     let prop_str = format!("{prefix}.{}", #prop_string);
                     let prop_str2 = prop_str.clone();
 
-                    let b: Box<dyn Fn(f32) -> Message + Send + Sync> = Box::new(move |v| Message::new(owner, prop_str.clone(), MessageValue::Float(v)));
+                    let b: Box<dyn Fn(&f32) -> Message + Send + Sync> = Box::new(move |v| Message::new(owner, prop_str.clone(), MessageValue::Float(*v)));
                     let slider = builder.create_slider(
                         SliderBuilder::new(
                             (#min as f32)..=(#max as f32),
@@ -247,7 +247,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> Result<proc_macro2::Token
 
                     let prop_str = format!("{prefix}.{}", #prop_string);
                     let prop_str2 = prop_str.clone();
-                    let b:Box<dyn Fn(&str) -> Message + Send + Sync> = Box::new(move |t| Message::new(
+                    let b:Box<dyn Fn(&String) -> Message + Send + Sync> = Box::new(move |t| Message::new(
                         owner, 
                         prop_str.clone(), 
                         MessageValue::Text(t.to_string())
@@ -278,7 +278,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> Result<proc_macro2::Token
                         .font_size(FONT_SIZE)
                     );
 
-                    let b:Box<dyn Fn(&str) -> Message + Send + Sync> = Box::new(move|t| Message::new(owner, format!("{prefix}.{}", #prop_string), MessageValue::Text(t.to_string())));
+                    let b:Box<dyn Fn(&String) -> Message + Send + Sync> = Box::new(move|t| Message::new(owner, format!("{prefix}.{}", #prop_string), MessageValue::Text(t.to_string())));
                     // TODO: 
                     let input = builder.create_text_input(
                         TextInputBuilder::new("", color)
@@ -301,7 +301,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> Result<proc_macro2::Token
                         .font_size(FONT_SIZE)
                     );
 
-                    let b:Box<dyn Fn(&str) -> Message + Send + Sync> = Box::new(move|t| Message::new(owner, format!("{prefix}.{}", #prop_string), MessageValue::Text(t.to_string())));
+                    let b:Box<dyn Fn(&String) -> Message + Send + Sync> = Box::new(move|t| Message::new(owner, format!("{prefix}.{}", #prop_string), MessageValue::Text(t.to_string())));
 
                     // TODO: impl reflect on settings color (?)
                     let input = builder.create_text_input(
@@ -319,15 +319,65 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> Result<proc_macro2::Token
 
             // 
             SettingsType::Key => {
-                //TODO: !!!!!!!!!!!!!
+                into_elements_lines.extend(quote! {{
+                    let prefix = prefix.clone();
 
-                // get_menu_items_lines.push(format!("let mut i = KeyButton::new(p, {size}, self.{property}, \"{text}\", Font::Main);"));
+                    let text = builder.create_text(
+                        TextBuilder::new(#text)
+                        .font_size(FONT_SIZE)
+                    );
 
-                // from_menu_lines.push(format!("
-                // if let Some(val) = list.get_tagged(prefix.clone() + \"{property}\").first().map(|i|i.get_value()) {{
-                //     let val = val.downcast_ref::<Key>().expect(&format!(\"error downcasting for {property}\"));
-                //     self.{property} = val.clone(); 
-                // }}"))
+                    let prop_str = format!("{prefix}.{}", #prop_string);
+
+                    let prop2 = prop_str.clone();
+                    let change: Box<dyn Fn(&Option<Key>) -> Message + Send + Sync> = Box::new(move |key| Message::new(
+                        owner, 
+                        prop2.clone(), 
+                        MessageValue::Key(key.unwrap())
+                    ));
+
+                    let key_button = builder.create_key_button(
+                        KeyButtonBuilder::new(prop_str.clone())
+                        .on_change(change)
+                    );
+
+                    builder.add_item(text, key_button, #text);
+                }});
+                
+                from_elements_lines.extend(quote! {
+                    #prop_string => if let Some(k) = message.value.as_key() { self.#property = k; },
+                });
+            }
+
+            SettingsType::OptionalKey => {
+                into_elements_lines.extend(quote! {{
+                    let prefix = prefix.clone();
+
+                    let text = builder.create_text(
+                        TextBuilder::new(#text)
+                        .font_size(FONT_SIZE)
+                    );
+
+                    let prop_str = format!("{prefix}.{}", #prop_string);
+
+                    let prop2 = prop_str.clone();
+                    let change: Box<dyn Fn(&Option<Key>) -> Message + Send + Sync> = Box::new(move |key| Message::new(
+                        owner, 
+                        prop2.clone(), 
+                        key.copied().map(MessageValue::Key).unwrap_or(MessageValue::Click)
+                    ));
+
+                    let key_button = builder.create_key_button(
+                        KeyButtonBuilder::new(prop_str.clone())
+                        .on_change(change)
+                    );
+
+                    builder.add_item(text, key_button, #text);
+                }});
+                
+                from_elements_lines.extend(quote! {
+                    #prop_string => self.#property = message.value.as_key(),
+                });
             }
 
             // dropdown menu
@@ -433,7 +483,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> Result<proc_macro2::Token
                 &self, 
                 prefix: String,
                 owner: MessageOwner, 
-                builder: &mut SettingsBuilder<'_>,
+                builder: &mut SettingsBuilder,
             ) {
                 use crate::prelude::*;
                 use crate::prelude::ui::*;
@@ -447,7 +497,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> Result<proc_macro2::Token
                 tags: &mut ReflectPath,//impl Iterator<Item = &'a str>,
                 // message that contains the data
                 message: Message,
-                extras: &mut FromElementsExtra<'_>
+                extras: &mut FromElementsExtra
             ) {
                 use crate::prelude::*;
                 use crate::prelude::ui::*;
@@ -508,8 +558,8 @@ enum SettingsType {
     F64,
     Usize,
     String,
-    // Vec(Box<SettingsType>),
     
+    OptionalKey,
     Key,
     Dropdown(String),
     SubSetting,
@@ -537,6 +587,7 @@ impl SettingsType {
             "Color" => Self::Color,
             "SettingsColor" => Self::SettingsColor,
             "Key" => Self::Key,
+            "Option<Key>" => Self::OptionalKey,
             _ => Self::Unknown
         }
     }

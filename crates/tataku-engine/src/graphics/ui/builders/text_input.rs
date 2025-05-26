@@ -38,7 +38,7 @@ impl TextInputBuilder {
 }
 
 
-type TextInputCallback = Box<dyn Fn(&str) -> Message + Send + Sync>;
+type TextInputCallback = Box<dyn Fn(&String) -> Message + Send + Sync>;
 
 pub enum TextInputBuilderInput {
     Message(Option<Message>),

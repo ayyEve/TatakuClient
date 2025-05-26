@@ -149,6 +149,33 @@ impl From<Vector2> for taffy::geometry::Size<f32> {
         }
     }
 }
+#[cfg(feature="ui")]
+impl From<Vector2> for taffy::Size<taffy::Dimension> {
+    fn from(value: Vector2) -> Self {
+        Self {
+            width: taffy::Dimension::Length(value.x),
+            height: taffy::Dimension::Length(value.y)
+        }
+    }
+}
+#[cfg(feature="ui")]
+impl From<Vector2> for taffy::Size<taffy::LengthPercentage> {
+    fn from(value: Vector2) -> Self {
+        Self {
+            width: taffy::LengthPercentage::Length(value.x),
+            height: taffy::LengthPercentage::Length(value.y)
+        }
+    }
+}
+#[cfg(feature="ui")]
+impl From<Vector2> for taffy::Size<taffy::LengthPercentageAuto> {
+    fn from(value: Vector2) -> Self {
+        Self {
+            width: taffy::LengthPercentageAuto::Length(value.x),
+            height: taffy::LengthPercentageAuto::Length(value.y)
+        }
+    }
+}
 
 
 impl Default for Vector2 {

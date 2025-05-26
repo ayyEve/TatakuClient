@@ -13,7 +13,7 @@ pub struct Slider {
     pub range: RangeInclusive<f32>,
     #[chain] pub step: Option<f32>,
 
-    pub on_change: SliderOnChange,
+    pub on_change: InputAction<f32>, //SliderOnChange,
 
     hovered: bool,
     // active: bool,
@@ -24,7 +24,8 @@ impl Slider {
     pub fn new(
         range: RangeInclusive<f32>,
         value: impl Into<SliderValue>,
-        on_change: impl Into<SliderOnChange>,
+        // on_change: impl Into<SliderOnChange>,
+        on_change: impl Into<InputAction<f32>>,
     ) -> Self {
         Self {
             style: Style {
@@ -103,13 +104,20 @@ impl Widget for Slider {
 
                     if (value - new_value).abs() > f32::EPSILON {
                         self.value.set(new_value);
-                        if let Some(msg) = self.on_change.resolve(
-                            new_value,
+                        self.on_change.run(
+                            &new_value,
                             shell.owner,
-                            shell.values
-                        ) {
-                            shell.messages.push(msg);
-                        }
+                            shell.messages,
+                            shell.actions,
+                            shell.values,
+                        );
+                        // if let Some(msg) = self.on_change.resolve(
+                        //     new_value,
+                        //     shell.owner,
+                        //     shell.values
+                        // ) {
+                        //     shell.messages.push(msg);
+                        // }
                     }
                 }
             }
@@ -271,63 +279,74 @@ impl From<SliderBuilderValue> for SliderValue {
     }
 }
 
-type OnChangeCallback = Box<dyn Fn(f32) -> Message + Send + Sync>;
 
-pub enum SliderOnChange {
-    Message(Option<Message>),
-    Action(BuildableAction),
-    Callback(OnChangeCallback),
-}
-impl SliderOnChange {
-    pub fn resolve(
-        &self, 
-        value: f32,
-        owner: MessageOwner,
-        values: &mut dyn Reflect
-    ) -> Option<Message> {
-        match self {
-            Self::Message(m) 
-                => m.clone(),
-            Self::Action(a) 
-                => a.resolve(owner, values, Some(&value.into())),
-            Self::Callback(cb) 
-                => Some((cb)(value)),
-        }
-    }
-}
-impl<T: Into<SliderOnChange>> From<Option<T>> for SliderOnChange {
-    fn from(value: Option<T>) -> Self {
-        let Some(value) = value else { return Self::Message(None) };
-        value.into()
-    }
-}
-impl From<Message> for SliderOnChange {
-    fn from(value: Message) -> Self {
-        Self::Message(Some(value))
-    }
-}
-impl From<BuildableAction> for SliderOnChange {
-    fn from(mut value: BuildableAction) -> Self {
-        if let BuildableAction::Conditional { cond, .. } = &mut value {
-            cond.build();
-        }
-
-        Self::Action(value)
-    }
-}
-impl From<OnChangeCallback> for SliderOnChange {
-    fn from(value: OnChangeCallback) -> Self {
-        Self::Callback(value)
-    }
-}
-impl From<SliderBuilderOnChange> for SliderOnChange {
+impl From<SliderBuilderOnChange> for InputAction<f32> {
     fn from(value: SliderBuilderOnChange) -> Self {
         match value {
-            SliderBuilderOnChange::Callback(cb) => Self::Callback(cb),
             SliderBuilderOnChange::Message(m) => Self::Message(m),
+            SliderBuilderOnChange::Callback(cb)
+                => Self::MessageCallback(cb),
         }
     }
 }
+
+// type OnChangeCallback = Box<dyn Fn(f32) -> Message + Send + Sync>;
+
+// pub enum SliderOnChange {
+//     Message(Option<Message>),
+//     Action(BuildableAction),
+//     Callback(OnChangeCallback),
+// }
+// impl SliderOnChange {
+//     pub fn resolve(
+//         &self, 
+//         value: f32,
+//         owner: MessageOwner,
+//         values: &mut dyn Reflect
+//     ) -> Option<Message> {
+//         match self {
+//             Self::Message(m) 
+//                 => m.clone(),
+//             Self::Action(a) 
+//                 => a.resolve(owner, values, Some(&value.into())),
+//             Self::Callback(cb) 
+//                 => Some((cb)(value)),
+//         }
+//     }
+// }
+// impl<T: Into<SliderOnChange>> From<Option<T>> for SliderOnChange {
+//     fn from(value: Option<T>) -> Self {
+//         let Some(value) = value else { return Self::Message(None) };
+//         value.into()
+//     }
+// }
+// impl From<Message> for SliderOnChange {
+//     fn from(value: Message) -> Self {
+//         Self::Message(Some(value))
+//     }
+// }
+// impl From<BuildableAction> for SliderOnChange {
+//     fn from(mut value: BuildableAction) -> Self {
+//         if let BuildableAction::Conditional { cond, .. } = &mut value {
+//             cond.build();
+//         }
+
+//         Self::Action(value)
+//     }
+// }
+// impl From<OnChangeCallback> for SliderOnChange {
+//     fn from(value: OnChangeCallback) -> Self {
+//         Self::Callback(value)
+//     }
+// }
+// impl From<SliderBuilderOnChange> for SliderOnChange {
+//     fn from(value: SliderBuilderOnChange) -> Self {
+//         match value {
+//             SliderBuilderOnChange::Callback(cb) => Self::Callback(cb),
+//             SliderBuilderOnChange::Message(m) => Self::Message(m),
+//         }
+//     }
+// }
 
 
 fn apply_snap(

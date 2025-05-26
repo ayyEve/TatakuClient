@@ -139,23 +139,23 @@ impl Widget for ConsoleDialog {
 
 
 // TODO: change to spans once implemented so input and output can be color coded (and errors can be red, etc)
-fn parse_line(_owner: MessageOwner) -> TextInputAction {
-    TextInputAction::Multi(vec![
-        TextInputAction::ReflectCallback(Box::new( move |_, r| {
+fn parse_line(_owner: MessageOwner) -> InputAction<String> {
+    InputAction::Multi(vec![
+        InputAction::ReflectCallback(Box::new( move |_, r| {
             r.reflect_get_mut::<String>(INPUT_PATH)
             .map(|s| s.clear())
             .inspect_err(|e| warn!("{e:?}"))
             .nope();
         })),
 
-        TextInputAction::ReflectCallback(Box::new(move |s, r| 
+        InputAction::ReflectCallback(Box::new(move |s, r| 
             r.reflect_get_mut::<Vec<String>>(OUTPUT_PATH)
             .map(|list| list.push(s.to_string()))
             .inspect_err(|e| warn!("{e:?}"))
             .nope()
         )),
         
-        TextInputAction::ReflectCallback(Box::new(move |s, r| {
+        InputAction::ReflectCallback(Box::new(move |s, r| {
             let output = match BuildableCalc::parse(s) {
                 Ok(cec) => match cec.resolve(r) {
                     Ok(s) => s.as_string(),

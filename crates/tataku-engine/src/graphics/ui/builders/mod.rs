@@ -1,5 +1,6 @@
 // this is a very stupid thing but its needed for glue
 
+mod key;
 mod text;
 mod slider;
 mod button;
@@ -8,6 +9,7 @@ mod checkbox;
 mod dropdown;
 mod text_input;
 
+pub use self::key::*;
 pub use self::text::*;
 pub use self::slider::*;
 pub use self::button::*;
