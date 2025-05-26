@@ -8,7 +8,6 @@ pub struct SettingsMenu {
     old_settings: Settings,
 
     node: Box<dyn Widget>,
-    node_id: NodeId,
 }
 impl SettingsMenu {
     pub const DEFAULT_OPTIONS: DialogCreateOptions = DialogCreateOptions {
@@ -24,7 +23,6 @@ impl SettingsMenu {
             old_settings: settings.clone(),
 
             node: EmptyWidget::new_boxed(),
-            node_id: EMPTY_NODE
         }
     }
 
@@ -46,7 +44,9 @@ impl SettingsMenu {
             )
         ).expect("couldnt insert settings filter into dynmap");
 
-        let settings = values.reflect_get::<Settings>("settings").unwrap().cloned();
+        let settings = values.reflect_get::<Settings>("settings")
+            .unwrap()
+            .cloned();
 
         // build settings list
         let mut builder = SettingsBuilder {
@@ -107,7 +107,7 @@ impl SettingsMenu {
             &mut builder
         );
 
-        // TODO: hide catergory names when all items are filtered out
+        // TODO: hide category names when all items are filtered out
         let items = builder.categories
             .into_iter()
             .filter(|sc| !sc.properties.is_empty())
@@ -121,14 +121,15 @@ impl SettingsMenu {
                 // category name
                 row!( TextWidget::new(sc.name).font_size(40.0).boxed(); ),
                 // settings
-                Container::new(sc.properties
+                Container::new(sc
+                    .properties
                     .into_iter()
                     .zip(sc.values)
                     .map(|(p, v)| 
                         Container::new(vec![p, v])
                         .vertical_align(AlignContent::Center)
-                        // .horizontal_align(AlignContent::SpaceBetween)
-                        .margin([LengthPercentageAuto::Length(0.0), LengthPercentageAuto::Length(5.0)])
+                        .horizontal_align(AlignContent::SpaceBetween)
+                        .margin([LengthPercentageAuto::Length(5.0), LengthPercentageAuto::Length(5.0)])
                         .width(FILL)
                         .boxed()
                     )
@@ -143,8 +144,7 @@ impl SettingsMenu {
                     .collect()
                 )
                 .flex_direction(FlexDirection::Column)
-                // .spacing(LengthPercentage::Length(5.0))
-                .margin([ LengthPercentageAuto::Length(0.0), LengthPercentageAuto::Length(5.0) ])
+                .margin(LengthPercentageAuto::Length(5.0))
                 .width(FILL)
                 .boxed()
             ]
@@ -198,7 +198,9 @@ impl SettingsMenu {
         TransformableWidget::new(
             vec![
                 AnimatableTrigger { 
-                    trigger: AnimatableTriggerEvent::Message(MessageTag::String("close".to_owned())), 
+                    trigger: AnimatableTriggerEvent::Message(
+                        MessageTag::String("close".to_owned())
+                    ), 
                     action: "close".to_owned()
                 }
             ],
@@ -221,7 +223,8 @@ impl SettingsMenu {
             Easing::Linear,
             game_time 
         ))
-        .width(Dimension::Percent(30.0))
+        .min_width(Dimension::Percent(0.25))
+        .max_width(Dimension::Percent(0.75))
         .height(FILL)
         .vertical_overflow(taffy::Overflow::Scroll)
         .boxed()
@@ -229,7 +232,7 @@ impl SettingsMenu {
 }
 impl Widget for SettingsMenu {
     fn name(&self) -> Cow<'static, str> { "settings_menu".into() }
-    fn node_id(&self) -> NodeId { self.node_id }
+    fn node_id(&self) -> NodeId { self.node.node_id() }
 
     fn update_styles(
         &mut self, 
@@ -239,19 +242,9 @@ impl Widget for SettingsMenu {
         self.node.update_styles(shell, display_override);
     }
 
-    fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
+    fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {
         self.node = self.view(shell.values, shell.owner);
-        let child = self.node.layout(shell)?;
-
-        self.node_id = shell.tree.new_with_children(
-            Style {
-                size: Size::auto(),
-                ..menu_layout()
-            },
-            &[ child ]
-        )?;
-        
-        Ok(self.node_id)
+        self.node.layout(shell)
     }
 
     fn update(&mut self, shell: &mut UpdateShell) {
@@ -266,7 +259,7 @@ impl Widget for SettingsMenu {
         self.node.input(event, shell);
     }
 
-    fn draw(&self, shell: &mut DrawShell<'_>) {
+    fn draw(&self, shell: &mut DrawShell) {
         self.node.draw(shell);
     }
 
@@ -283,7 +276,7 @@ impl Widget for SettingsMenu {
         let Some(tag) = message.tag.as_string() else { return };
         
         let mut tags = ReflectPath::new(tag);
-        let Some(first) = tags.next() else { return warn!("no first?") };
+        let Some(first) = tags.next() else { return  };
 
         let settings = shell.values
             .reflect_get_mut::<Settings>("settings")
@@ -293,12 +286,18 @@ impl Widget for SettingsMenu {
             "done" => {
                 shell.handled = true;
                 settings.check_hashes();
-                shell.actions.push(UiAction::new(self.node_id, DialogAction::Close));
+                shell.actions.push(UiAction::new(
+                    self.node_id(), 
+                    DialogAction::Close
+                ));
             },
             "revert" => {
                 shell.handled = true;
                 *settings = self.old_settings.clone();
-                shell.actions.push(UiAction::new(self.node_id, DialogAction::Close));
+                shell.actions.push(UiAction::new(
+                    self.node_id(), 
+                    DialogAction::Close
+                ));
             },
             "search" => if let Some(text) = message.value.as_text_ref() { 
                 shell.handled = true;
@@ -307,7 +306,10 @@ impl Widget for SettingsMenu {
                     QueryType::Any
                 );
 
-                if let Err(e) = shell.values.reflect_insert(FILTERED_TEXT_PATH, Box::new(filter)) {
+                if let Err(e) = shell.values.reflect_insert(
+                    FILTERED_TEXT_PATH, 
+                    Box::new(filter)
+                ) {
                     panic!("{e:?}")
                 }
             },
@@ -325,7 +327,7 @@ impl Widget for SettingsMenu {
                     shell
                 );
                 let close_task = ActionTask::new(UiAction::new(
-                    self.node_id, 
+                    self.node_id(), 
                     DialogAction::Close,
                 ));
 
@@ -343,7 +345,9 @@ impl Widget for SettingsMenu {
                         values: shell.values
                     }
                 );
-                shell.values.reflect_insert("settings", settings).unwrap();
+                shell.values
+                    .reflect_insert("settings", settings)
+                    .unwrap();
             }
 
             _ => {
@@ -356,7 +360,9 @@ impl Widget for SettingsMenu {
                         values: shell.values
                     }
                 );
-                shell.values.reflect_insert("settings", settings).unwrap();
+                shell.values
+                    .reflect_insert("settings", settings)
+                    .unwrap();
             }
         }
 

@@ -191,7 +191,7 @@ impl Widget for TransformableWidget {
                         .filter(|_| self.hold_start.is_none()) {
                         if time - last >= *duration 
                             && !self.skip_noinput_actions.contains(&trigger.trigger) 
-                            {
+                        {
                             to_trigger.push(trigger.action.clone());
                             self.skip_noinput_actions.push(trigger.trigger.clone());
                         }

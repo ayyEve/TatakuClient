@@ -37,13 +37,29 @@ pub(crate) fn derive(derive: &syn::DeriveInput) -> proc_macro2::TokenStream {
     let mut tokens = proc_macro2::TokenStream::new();
 
     tokens.extend(quote! {
+        pub fn min_width(mut self, width: impl Into<Dimension>) -> Self {
+            self.#style_path min_size.width = width.into();
+            self
+        }
         pub fn width(mut self, width: impl Into<Dimension>) -> Self {
             self.#style_path size.width = width.into();
             self
         }
+        pub fn max_width(mut self, width: impl Into<Dimension>) -> Self {
+            self.#style_path max_size.width = width.into();
+            self
+        }
 
+        pub fn min_height(mut self, height: impl Into<Dimension>) -> Self {
+            self.#style_path min_size.height = height.into();
+            self
+        }
         pub fn height(mut self, height: impl Into<Dimension>) -> Self {
             self.#style_path size.height = height.into();
+            self
+        }
+        pub fn max_height(mut self, height: impl Into<Dimension>) -> Self {
+            self.#style_path max_size.height = height.into();
             self
         }
 
