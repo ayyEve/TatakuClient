@@ -6,6 +6,7 @@ const CATEGORY_ATTRIBUTE:&str = "category";
 const TEXT_ATTRIBUTE:&str = "text";
 const DROPDOWN_ATTRIBUTE:&str = "dropdown";
 const ACTION_ATTRIBUTE:&str = "action";
+const CLICK_ATTRIBUTE:&str = "click";
 
 const MIN_ATTRIBUTE:&str = "min";
 const MAX_ATTRIBUTE:&str = "max";
@@ -72,6 +73,12 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> Result<proc_macro2::Token
                         let value: LitStr = meta.input.parse()?;
 
                         setting.setting_text = Some(value.value());
+                    }
+                    else if meta.path.is_ident(CLICK_ATTRIBUTE) {
+                        let _ = meta.value()?;
+                        let value: LitStr = meta.input.parse()?;
+
+                        setting.click = Some(value.value());
                     }
                     else if meta.path.is_ident(ACTION_ATTRIBUTE) {
                         let _ = meta.value()?;
@@ -435,7 +442,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> Result<proc_macro2::Token
                 });
 
                 from_elements_lines.extend(quote! { 
-                    #prop_string => self.#property.from_elements(tags, message, extras),
+                    #prop_string => self.#property.from_elements(tags, message, shell),
                 });
             }
 
@@ -458,10 +465,15 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> Result<proc_macro2::Token
                     builder.add_item(empty, button, #text);
                 });
 
-                if let Some(action) = setting.action {
+                if let Some(click) = setting.click {
+                    let click = click.parse::<proc_macro2::TokenStream>().unwrap();
+                    from_elements_lines.extend(quote! { 
+                        #prop_string => { #click; },
+                    });
+                } else if let Some(action) = setting.action {
                     let action = action.parse::<proc_macro2::TokenStream>().unwrap();
                     from_elements_lines.extend(quote! { 
-                        #prop_string => { #action; },
+                        #prop_string => { shell.actions.push(#action); },
                     });
                 }
             }
@@ -497,7 +509,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> Result<proc_macro2::Token
                 tags: &mut ReflectPath,//impl Iterator<Item = &'a str>,
                 // message that contains the data
                 message: Message,
-                extras: &mut FromElementsExtra
+                shell: &mut GenericShell
             ) {
                 use crate::prelude::*;
                 use crate::prelude::ui::*;
@@ -512,8 +524,8 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> Result<proc_macro2::Token
     };
 
     
-    std::fs::create_dir_all("./debug").unwrap();
-    std::fs::write(format!("./debug/{struct_name}-settings_impl.rs"), all_lines.to_string()).unwrap();
+    // std::fs::create_dir_all("/tmp/debug").unwrap();
+    // std::fs::write(format!("/tmp/debug/{struct_name}-settings_impl.rs"), all_lines.to_string()).unwrap();
     
     Ok(all_lines)
 }
@@ -545,7 +557,8 @@ struct SettingsItem {
     width: Option<f64>,
 
     // used for buttons
-    action: Option<String>
+    click: Option<String>,
+    action: Option<String>,
 }
 
 

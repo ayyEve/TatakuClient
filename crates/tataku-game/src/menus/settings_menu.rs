@@ -341,9 +341,12 @@ impl Widget for SettingsMenu {
                 settings.gamemode_settings.from_elements(
                     &mut tags, 
                     message.clone(), 
-                    &mut FromElementsExtra { 
-                        values: shell.values
-                    }
+                    &mut GenericShell {
+                        tree: shell.tree,
+                        values: shell.values,
+                        messages: shell.messages,
+                        actions: shell.actions,
+                    },
                 );
                 shell.values
                     .reflect_insert("settings", settings)
@@ -356,9 +359,12 @@ impl Widget for SettingsMenu {
                 settings.from_elements(
                     &mut tags, 
                     message.clone(), 
-                    &mut FromElementsExtra { 
-                        values: shell.values
-                    }
+                    &mut GenericShell {
+                        tree: shell.tree,
+                        values: shell.values,
+                        messages: shell.messages,
+                        actions: shell.actions,
+                    },
                 );
                 shell.values
                     .reflect_insert("settings", settings)

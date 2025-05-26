@@ -74,10 +74,10 @@ pub struct Settings {
     #[cfg_attr(feature="graphics", setting(text="Skin", dropdown="SkinDropdownable", category="Skin Settings"))]
     pub current_skin: String,
 
-    // TODO
+    // TODO:
     #[serde(skip)]
     #[reflect(skip)]
-    // #[cfg_attr(feature="graphics", Setting(text="Refresh Skins", action="SkinManager::refresh_skins()"))]
+    #[cfg_attr(feature="graphics", setting(text="Refresh Skins", action="GameAction::RefreshSkins"))]
     refresh_skins_button: (),
 
     #[cfg_attr(feature="graphics", setting(text="Theme", dropdown="SelectedTheme"))]

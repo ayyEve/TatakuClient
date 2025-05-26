@@ -35,7 +35,7 @@ pub struct DisplaySettings {
     
     #[serde(skip)]
     #[reflect(skip)]
-    #[cfg_attr(feature="graphics", setting(text="Refresh Monitors", action="GameWindow::refresh_monitors()"))]
+    #[cfg_attr(feature="graphics", setting(text="Refresh Monitors", click="GameWindow::refresh_monitors()"))]
     refresh_monitors_button: (),
 
     #[cfg_attr(feature="graphics", setting(text="Hide Decorations"))]

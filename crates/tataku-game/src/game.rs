@@ -2726,7 +2726,11 @@ impl Game {
                 self.resize_bg();
             },
             #[cfg(feature="graphics")]
-            GameAction::CopyToClipboard(text) => { let _ = self.window_proxy.send_event(WindowAction::CopyToClipboard(text)); }
+            GameAction::CopyToClipboard(text) => { 
+                let _ = self.window_proxy.send_event(
+                    WindowAction::CopyToClipboard(text)
+                ); 
+            }
 
             GameAction::RefreshPlaymodeValues => {
                 let playmode = self.global.playmode.clone();
@@ -2734,6 +2738,10 @@ impl Game {
             }
             GameAction::UpdatePlaymodeActual(actual) => {
                 self.values.global.update_playmode_actual(&actual);
+            }
+
+            GameAction::RefreshSkins => {
+                SkinManager::refresh_skins();
             }
 
 

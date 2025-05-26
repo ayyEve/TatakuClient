@@ -17,10 +17,6 @@ pub trait MakeSettingsMenu {
         // message that contains the data
         message: Message,
         
-        extras: &mut FromElementsExtra<'_>,
+        shell: &mut GenericShell,
     );
-}
-
-pub struct FromElementsExtra<'a> {
-    pub values: &'a mut dyn Reflect
 }

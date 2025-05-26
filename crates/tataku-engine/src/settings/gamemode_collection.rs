@@ -58,13 +58,14 @@ impl MakeSettingsMenu for GamemodeSettingsCollection {
         &mut self,
         tags: &mut ReflectPath,
         message: Message,
-        extras: &mut FromElementsExtra<'_>,
+        shell: &mut GenericShell,
     ) {
         let Some(playmode) = tags.next() else { return println!("aaaa"); };
         let playmode = playmode.trim_end_matches("_config");
 
         // let Some(value) = self.0.get(playmode) else { return };
-        let info = extras.values
+        let info = shell
+            .values
             .reflect_get::<GamemodeInfos>("global.infos")
             .unwrap().cloned()
             .get_info(playmode)
@@ -72,17 +73,17 @@ impl MakeSettingsMenu for GamemodeSettingsCollection {
         
         let path = format!("var.{playmode}_config");
         let value_path = format!("var.{playmode}_config_value");
-        let tmp = extras.values.reflect_get::<ReflectJsonValue>(
+        let tmp = shell.values.reflect_get::<ReflectJsonValue>(
             &value_path
         ).unwrap().0.clone();
 
         let mut settings = info.deserialize_settings(tmp).unwrap();
-        settings.from_elements(tags, message, extras);
+        settings.from_elements(tags, message, shell);
         let value = settings.to_value();
 
         *self.0.entry(playmode.to_owned()).or_default() = value.clone();
-        extras.values.reflect_insert(&path, settings).unwrap();
-        extras.values.reflect_insert(&value_path, ReflectJsonValue(value)).unwrap();
+        shell.values.reflect_insert(&path, settings).unwrap();
+        shell.values.reflect_insert(&value_path, ReflectJsonValue(value)).unwrap();
     }
 }
 

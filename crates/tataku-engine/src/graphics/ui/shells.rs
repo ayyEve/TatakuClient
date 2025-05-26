@@ -79,3 +79,41 @@ impl LayoutShell<'_> {
         f(ctx);
     }
 }
+
+
+pub struct GenericShell<'a> {
+    pub tree: &'a mut Tree,
+    pub values: &'a mut dyn Reflect,
+    pub messages: &'a mut Vec<Message>,
+    pub actions: &'a mut ActionQueue,
+}
+impl<'a, 'b:'a> From<&'b mut MessageShell<'a>> for GenericShell<'a> {
+    fn from(value: &'b mut MessageShell<'a>) -> Self {
+        Self {
+            tree: value.tree,
+            values: value.values,
+            messages: value.messages,
+            actions: value.actions
+        }
+    }
+}
+impl<'a, 'b:'a> From<&'b mut UpdateShell<'a>> for GenericShell<'a> {
+    fn from(value: &'a mut UpdateShell<'b>) -> Self {
+        Self {
+            tree: value.tree,
+            values: value.values,
+            messages: value.messages,
+            actions: value.actions
+        }
+    }
+}
+impl<'a, 'b:'a> From<&'b mut InputShell<'a>> for GenericShell<'a> {
+    fn from(value: &'b mut InputShell<'a>) -> Self {
+        Self {
+            tree: value.tree,
+            values: value.values,
+            messages: value.messages,
+            actions: value.actions
+        }
+    }
+}

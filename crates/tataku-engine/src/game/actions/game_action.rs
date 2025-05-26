@@ -44,6 +44,9 @@ pub enum GameAction {
     /// Force a refresh of global.playmode and global.playmode_actual (+display) variables
     RefreshPlaymodeValues,
 
+    /// Force a refresh of the skins list
+    RefreshSkins,
+
     /// Set the actual playmode for the current beatmap
     UpdatePlaymodeActual(String),
 
