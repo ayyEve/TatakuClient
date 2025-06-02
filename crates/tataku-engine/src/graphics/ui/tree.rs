@@ -374,43 +374,89 @@ impl Tree {
             shell.event_consumed
         });
 
-        if !consumed {
-            for (key, direction) in [
-                (Key::Left, Direction::Left),
-                (Key::Right, Direction::Right),
-                (Key::Up, Direction::Up),
-                (Key::Down, Direction::Down),
-                (Key::Tab, Direction::Down),
-            ] {
-                if !input_state.keys_down.has_key(key) { continue }
+        if consumed { return true }
 
-                if !self.selected_node.active {
-                    self.enable_navigation();
-                    input_state.keys_down.remove_key(key);
-                    consumed = true;
-                    // return since this was just to enable navigation
-                    // otherwise we'd immediate select the next node, without selecting the current node
-                    break;
+        #[derive(Copy, Clone)]
+        #[derive(From)]
+        enum MenuInputType {
+            Key(Key),
+            Controller(ControllerButton),
+            // Axis()
+        }
+        impl MenuInputType {
+            fn has(
+                self, 
+                state: &mut CurrentInputState
+            ) -> bool {
+                match self {
+                    Self::Key(key) 
+                        => state.keys_down.has_key(key),
+                    Self::Controller(btn) 
+                        => state.controller_down.iter()
+                            .any(|(b, _, _)| b == &btn),
                 }
-
-                let Some(current) = self.selected_node.node else { 
-                    warn!("No active node to navigate from ??");
-                    break
-                };
-
-                if let Some(node) = self.tree
-                    .get_node_context(current.node_id)
-                    .and_then(|i| i.node_direction(direction)) {
-                    self.context_mut(current).selected = Some(false);
-                    self.context_mut(node).selected = Some(true);
-                    input_state.keys_down.remove_key(key);
-                    consumed = true;
+            }
+            fn remove_from(
+                self,
+                state: &mut CurrentInputState,
+            ) {
+                match self {
+                    Self::Key(key) 
+                        => state.keys_down.remove_key(key),
+                    Self::Controller(btn) 
+                        => state.controller_down
+                            .retain(|(b, _, _)| b != &btn)
                 }
-
-                break
             }
         }
-    
+
+        for (input, direction) in [
+            (MenuInputType::Key(Key::Left), Direction::Left),
+            (Key::Right.into(), Direction::Right),
+            (Key::Up.into(), Direction::Up),
+            (Key::Down.into(), Direction::Down),
+            (Key::Tab.into(), Direction::Down),
+
+            (ControllerButton::DPadLeft.into(), Direction::Left),
+            (ControllerButton::DPadRight.into(), Direction::Right),
+            (ControllerButton::DPadUp.into(), Direction::Up),
+            (ControllerButton::DPadDown.into(), Direction::Down),
+        ] {
+            if !input.has(input_state) { continue }
+            
+            if !self.selected_node.active {
+                self.enable_navigation();
+                
+                input.remove_from(input_state);
+
+                consumed = true;
+                error!("Navigation Enabled");
+                // return since this was just to enable navigation
+                // otherwise we'd immediate select the next node, without selecting the current node
+                break;
+            }
+
+            let Some(current) = self.selected_node.node else { 
+                warn!("No active node to navigate from ??");
+                break
+            };
+
+            if let Some(node) = self.tree
+                .get_node_context(current.node_id)
+                .and_then(|i| i.node_direction(direction)) 
+            {
+                self.context_mut(current).selected = Some(false);
+                self.context_mut(node).selected = Some(true);
+                input.remove_from(input_state);
+                consumed = true;
+                error!("Navigated!");
+            } else {
+                error!("No Navigation!!");
+            }
+
+            break
+        }
+        
         consumed
     }
 
@@ -448,7 +494,10 @@ impl Tree {
         f: Rc<dyn Fn(&Self, TaffyNodeId) -> bool>,
     ) -> Option<NodeId> {
         let parent = parent.get_id();
-        if f(self, parent) { return Some(NodeId::new(parent, self.owner)) }
+        if f(self, parent) { 
+            return Some(NodeId::new(parent, self.owner)) 
+        }
+        
         for child in self.tree.children(parent).ok()? {
             if let Some(node) = self.find_child(child, f.clone()) { 
                 return Some(node) 

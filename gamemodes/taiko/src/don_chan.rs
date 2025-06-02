@@ -215,7 +215,12 @@ fn load_anim(
     let mut frames = Vec::new();
     let mut current = 0;
 
-    while let Some(tex) = skin_manager.get_texture(&format!("pippidon{name}{current}"), source, SkinUsage::Gamemode, false) {
+    while let Some(tex) = skin_manager.get_texture(
+        &format!("pippidon{name}{current}"), 
+        source, 
+        SkinUsage::Gamemode, 
+        false
+    ) {
         current += 1;
         frames.push(tex.tex);
     }

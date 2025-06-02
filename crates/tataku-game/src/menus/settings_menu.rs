@@ -15,6 +15,7 @@ impl SettingsMenu {
         resizable: false,
         draggable: false,
         title: Cow::Borrowed("Settings"),
+        location: DialogLocation::Auto,
     };
 
     pub fn new(settings: &Settings) -> Self {

@@ -1,9 +1,9 @@
+mod gameplay;
 mod song_manager;
 mod task_manager;
 mod sound_manager;
 mod score_manager;
 mod beatmap_manager;
-mod gameplay_manager;
 mod download_manager;
 mod difficulty_manager;
 
@@ -19,11 +19,11 @@ mod difficulty_manager;
 #[cfg(feature="gameplay")] mod online_manager;
 
 
+pub use gameplay::*;
 pub use song_manager::*;
 pub use sound_manager::*;
 pub use score_manager::*;
 pub use beatmap_manager::*;
-pub use gameplay_manager::*;
 pub use download_manager::*;
 pub use difficulty_manager::*;
 pub(crate) use task_manager::*;

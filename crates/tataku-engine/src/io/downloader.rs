@@ -106,7 +106,7 @@ impl Downloader {
                     let response_code = headers_split.next().unwrap();
                     let mut response_code_split = response_code.split(" ");
                     let _ = response_code_split.next(); // HTTP/1.1
-                    let code = response_code_split.next().and_then(|c|c.parse::<u16>().ok()).unwrap();
+                    let code = response_code_split.next().and_then(|c| c.parse::<u16>().ok()).unwrap();
                 
                     match code {
                         // success

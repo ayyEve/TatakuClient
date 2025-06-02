@@ -1288,15 +1288,19 @@ impl Game {
             if let Some(draw_action) = &config.draw_function {
                 std::mem::swap(&mut render_queue, &mut temp_render_queue);
 
-                let group = TransformGroup::from_collection(Vector2::ZERO, temp_render_queue);
+                let group = TransformGroup::from_collection(
+                    Vector2::ZERO, 
+                    temp_render_queue
+                );
                 (draw_action)(group);
             }
         }
 
 
-        // mode
-        self.ui_manager.draw(&self.values, &mut render_queue);
+        // menu
+        self.ui_manager.draw_menu(&self.values, &mut render_queue);
 
+        // state
         match &mut self.current_state {
             GameState::Ingame(manager) => { 
                 manager.draw(&mut render_queue);
@@ -1341,6 +1345,11 @@ impl Game {
 
             _ => {}
         }
+
+        // dialogs 
+        self.ui_manager.draw_dialogs(&self.values, &mut render_queue);
+        
+
 
         // draw fps's
         self.fps_display.draw(&mut render_queue);
@@ -2145,6 +2154,18 @@ impl Game {
                 options, 
                 input
             } => self.handle_custom_dialog(id.to_string(), options, input),
+
+            MenuAction::AddDialogRaw {
+                dialog, 
+                options
+            } => {
+                self.ui_manager.add_dialog(
+                    dialog, 
+                    options, 
+                    &mut self.values, 
+                    &mut self.actions,
+                );
+            }
         }
     }
 

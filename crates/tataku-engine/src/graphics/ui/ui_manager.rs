@@ -93,14 +93,15 @@ bitflags::bitflags! {
 
 
 #[derive(Clone, Default)]
+#[derive(Debug2)]
 pub struct ElementData {
-    pub state: ElementState,
     pub element_name: String,
     pub id: Option<String>,
     pub class_list: Vec<String>,
-
     pub debug_name: Option<String>,
+    pub state: ElementState,
 
+    #[debug(skip)]
     pub styles: ElementStateStyles<Option<Image>>,
 }
 impl ElementData {

@@ -1,11 +1,9 @@
 use crate::prelude::*;
 
 pub struct GameplayWidgetContainer {
-    // pub default_pos: Vector2,
     pub element_name: String,
     pub pos_offset: Vector2,
     pub scale: Vector2,
-    // pub visible: bool,
 
     pub layout: GameplayWidgetLayout,
     pub default_layout: GameplayWidgetLayout,
@@ -21,7 +19,9 @@ impl GameplayWidgetContainer {
     #[cfg(feature="graphics")]
     pub fn draw(&mut self, list: &mut RenderableCollection) {
         if !self.layout.visible { return }
-        let align = self.layout.inner_align.unwrap_or(self.layout.align);
+        let align = self.layout
+            .inner_align
+            .unwrap_or(self.layout.align);
         self.inner.draw(self.pos_offset, self.scale, align, list);
     }
 
@@ -45,7 +45,11 @@ impl GameplayWidgetContainer {
     }
 
     #[cfg(feature="graphics")]
-    pub fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+    pub fn reload_skin(
+        &mut self, 
+        source: &TextureSource, 
+        skin_manager: &mut dyn SkinProvider
+    ) {
         self.inner.reload_skin(source, skin_manager);
     }
 
@@ -95,8 +99,8 @@ impl GameplayWidgetContainer {
                     e.pos_offset = offset + bounds.pos + e.layout.align.resolve(
                         &playfield,
                         bounds.size,
-                        [GameplayWidgetAlign::Above, GameplayWidgetAlign::Below, GameplayWidgetAlign::Inside].contains(&relative),
-                        [GameplayWidgetAlign::Left, GameplayWidgetAlign::Right, GameplayWidgetAlign::Inside].contains(&relative),
+                        relative.vertical() || relative.inside(),
+                        relative.horizontal() || relative.inside(),
                     );
                     
                     layed_out.push((e, scale));
@@ -116,10 +120,19 @@ impl GameplayWidgetContainer {
             let remaining_count = remaining.len();
 
             for i in 0..remaining_count {
-                let Some(e) = remaining.get_mut(i) else { break };
-                let GameplayWidgetAnchor::Element { element: anchor_ele, relative } = &e.layout.anchor else { unreachable!() };
+                let Some(e) = remaining
+                    .get_mut(i) 
+                else { break };
 
-                let Some((anchor_ele, scale)) = layed_out
+                let GameplayWidgetAnchor::Element { 
+                    element: anchor_ele, 
+                    relative 
+                } = &e.layout.anchor else { unreachable!() };
+
+                let Some((
+                    anchor_ele, 
+                    scale
+                )) = layed_out
                     .iter()
                     .find(|(e, _)| &e.element_name == anchor_ele) 
                     else { continue };
@@ -132,36 +145,44 @@ impl GameplayWidgetContainer {
                 
                 if relative == &GameplayWidgetAlign::Inside {
                     // elements should not be inside other elements
-                    warn!("WARNING!! element {} is set to be inside element {}", e.element_name, anchor_ele.element_name);
+                    warn!(
+                        "WARNING!! element {} is set to be inside element {}", 
+                        e.element_name, 
+                        anchor_ele.element_name
+                    );
                 }
 
                 let bounds = e.get_bounds();
                 e.pos_offset = offset + bounds.pos + e.layout.align.resolve(
                     &anchor_bounds,
                     bounds.size,
-                    [GameplayWidgetAlign::Above, GameplayWidgetAlign::Below].contains(relative),
-                    [GameplayWidgetAlign::Left, GameplayWidgetAlign::Right].contains(relative),
+                    relative.vertical(),
+                    relative.horizontal(),
                 );
 
                 layed_out.push((remaining.swap_remove(i) , scale));
             }
             
-            if remaining_count == remaining.len() {
-                for r in &remaining {
-                    let GameplayWidgetAnchor::Element { element: anchor_ele, .. } = &r.layout.anchor else { unreachable!() }; 
+            if remaining_count != remaining.len() { continue }
+            for r in &remaining {
+                let GameplayWidgetAnchor::Element { 
+                    element: anchor_ele, 
+                    .. 
+                } = &r.layout.anchor else { unreachable!() }; 
 
-                    let found = layed_out
-                        .iter()
-                        .map(|(e, _)| e).chain(&remaining)
-                        .any(|e| &e.element_name == anchor_ele);
+                let found = layed_out
+                    .iter()
+                    .map(|(e, _)| e).chain(&remaining)
+                    .any(|e| &e.element_name == anchor_ele);
 
-                    if !found {
-                        return Err(GameplayWidgetLayoutError::InvalidElementReference(anchor_ele.clone().into_owned()));
-                    }
+                if !found {
+                    return Err(GameplayWidgetLayoutError::InvalidElementReference(
+                        anchor_ele.clone().into_owned()
+                    ));
                 }
-
-                return Err(GameplayWidgetLayoutError::CyclicDependencyDetected);
             }
+
+            return Err(GameplayWidgetLayoutError::CyclicDependencyDetected);
         }
 
         Ok(())

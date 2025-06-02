@@ -175,17 +175,9 @@ impl SpatialNagivation<'_> {
     ) -> Option<Vec<NodeInfo>> {
         let dest_priority = priorities
             .iter()
-            .find(|i| !i.group.is_empty())?;
-
-        // let mut dest_priority = None;
-        // for i in priorities.iter().flat_map(|i| i.iter()) {
-        //     if i.group.is_empty() { continue }
-        //     dest_priority = Some(i);
-        //     break;
-        // }
-        // let dest_priority = dest_priority?;
-
-        // let mut group = dest_priority.group.clone();
+            .find(|i| 
+                i.group.iter().any(|i| !i.is_empty())
+            )?;
 
         let mut group = dest_priority.group
             .iter()
@@ -194,6 +186,7 @@ impl SpatialNagivation<'_> {
             .collect::<Vec<_>>();
 
         if group.is_empty() {
+            error!("group empty!");
             return None
         }
         
@@ -204,16 +197,11 @@ impl SpatialNagivation<'_> {
             for distance in dest_distance.iter() {
                 let delta = (distance)(a) - (distance)(b);
                 
-                // TODO: make sure this is correct
                 return match delta {
                     0.0.. => Greater,
                     ..0.0 => Less,
                     _ => continue,
                 }
-                // original js (converted to rust but returns a number and not an Ordering)
-                // if delta != 0 {
-                //     return delta
-                // }
             }
 
             Equal
@@ -230,7 +218,10 @@ impl SpatialNagivation<'_> {
         candidates: &[TaffyNodeId],
         config: &NavigateConfig
     ) -> Option<TaffyNodeId> {
-        if candidates.is_empty() { return None }
+        if candidates.is_empty() { 
+            error!("candidates empty!");
+            return None 
+        }
 
         let rects = candidates
             .iter()
@@ -238,7 +229,10 @@ impl SpatialNagivation<'_> {
             .filter_map(|c| self.get_rect(c))
             .collect::<Vec<_>>();
 
-        if rects.is_empty() { return None }
+        if rects.is_empty() { 
+            error!("rects empty!");
+            return None 
+        }
 
         let target_rect = self.get_rect(target)?;
         let distance_function = DistanceFunctions::generate(target_rect);
@@ -420,8 +414,9 @@ impl SpatialNagivation<'_> {
     }
 
     pub fn run(&mut self, config: &NavigateConfig) {
+        debug!("starting navigation");
         let all_selectable = self.tree.all_children()
-            .filter(|i| self.tree.get_context(*i).is_some())
+            .filter(|i| self.tree.get_context(*i).unwrap().selectable())
             .map(|i| i.get_id())
             .collect::<Vec<_>>();
 
@@ -458,6 +453,7 @@ impl SpatialNagivation<'_> {
             );
 
             let context = self.tree.get_context_mut(i).unwrap();
+            // debug!("got adjacent nodes for node {:?}: above: {above:?} | below: {below:?} | left: {left:?} | right: {right:?}", context.element_data);
             context.node_above = above;
             context.node_below = below;
             context.node_left = left;

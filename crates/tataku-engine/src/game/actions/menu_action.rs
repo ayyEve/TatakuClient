@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-#[derive(Debug)]
+#[derive(Debug2)]
 pub enum MenuAction {
     /// Set the menu to the provided menu identifier
     SetMenu {
@@ -19,6 +19,12 @@ pub enum MenuAction {
         id: Cow<'static, str>,
         options: DialogCreateOptions,
         input: BuildableInputArguments,
+    },
+
+    #[debug(skip)]
+    AddDialogRaw {
+        dialog: Box<dyn Widget>,
+        options: DialogCreateOptions,
     },
 }
 impl MenuAction {
@@ -73,6 +79,9 @@ pub struct DialogCreateOptions {
 
     #[serde(rename = "@title")]
     #[chain] pub title: Cow<'static, str>,
+    
+    #[serde(skip)]
+    pub location: DialogLocation,
 }
 impl DialogCreateOptions {
     pub fn merge(
@@ -83,6 +92,7 @@ impl DialogCreateOptions {
             allow_multiple: incoming.allow_multiple && dialog_defaults.allow_multiple,
             resizable: incoming.resizable && dialog_defaults.resizable,
             draggable: incoming.draggable && dialog_defaults.draggable,
+            location: incoming.location,
             title: if incoming.title.is_empty() { 
                 dialog_defaults.title 
             } else { 
@@ -92,3 +102,20 @@ impl DialogCreateOptions {
     }
 }
 
+#[derive(Clone, Debug, Default)]
+pub enum DialogLocation {
+    /// automatically determine the location
+    #[default]
+    Auto,
+
+    /// fullscreen
+    Fullscreen,
+
+    /// near the cursor
+    Cursor,
+    /// centered on the screen
+    Center,
+
+    /// at a specific position
+    Position(Vector2),
+}

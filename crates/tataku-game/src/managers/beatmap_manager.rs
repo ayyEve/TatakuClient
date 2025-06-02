@@ -580,12 +580,14 @@ impl BeatmapManager {
     }
     pub fn next_set(&mut self) {
         self.select_set(
-            self.selected_set.wrapping_add_1(self.groups.len())
+            (self.selected_set + 1)
+                .wrapping_clamp(0, self.groups.len())
         );
     }
     pub fn prev_set(&mut self) {
         self.select_set(
-            self.selected_set.wrapping_sub_1(self.groups.len())
+            (self.selected_set - 1)
+                .wrapping_clamp(0, self.groups.len())
         );
     }
 
@@ -606,13 +608,17 @@ impl BeatmapManager {
         let Some(set) = self.groups.get(self.selected_set) 
         else { return };
 
-        self.select_map(self.selected_map.wrapping_add_1(set.maps.len()));
+        self.select_map(
+            (self.selected_map + 1).wrapping_clamp(0, set.maps.len())
+        );
     }
     pub fn prev_map(&mut self) {
         let Some(set) = self.groups.get(self.selected_set) 
         else { return };
         
-        self.select_map(self.selected_map.wrapping_sub_1(set.maps.len()));
+        self.select_map(
+            (self.selected_map - 1).wrapping_clamp(0, set.maps.len())
+        );
     }
 }
 

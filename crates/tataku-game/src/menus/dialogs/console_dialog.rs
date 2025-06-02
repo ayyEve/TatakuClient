@@ -14,6 +14,7 @@ impl ConsoleDialog {
         resizable: false,
         draggable: false,
         title: Cow::Borrowed("Console"),
+        location: DialogLocation::Auto,
     };
 
     #[allow(clippy::new_without_default)]

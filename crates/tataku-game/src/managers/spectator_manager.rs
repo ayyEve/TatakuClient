@@ -85,13 +85,13 @@ impl SpectatorManager {
                 })).into());
 
                 // manager.replay.score_data = Some(Score::new(map.beatmap_hash, self.host_username.clone(), mode.clone()));
-                manager.on_start = Box::new(move |manager| {
+                manager.on_start = Some(Box::new(move |manager| {
                     trace!("Jumping to time {current_time}");
                     manager.jump_to_time(
                         current_time.max(0.0), 
                         current_time > 0.0
                     );
-                });
+                }));
 
                 return Some(Box::new(manager));
             }

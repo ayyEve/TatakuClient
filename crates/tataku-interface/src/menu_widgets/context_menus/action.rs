@@ -1,0 +1,54 @@
+use crate::prelude::*;
+
+type Callback = Arc<dyn Fn() + Send + Sync>;
+type MessageCallback = Arc<dyn Fn() -> Option<Message> + Send + Sync>;
+
+#[derive(From)]
+#[derive(Clone)]
+pub enum ContextMenuAction {
+    Message(Option<Message>),
+    Callback(Callback),
+    MessageCallback(MessageCallback),
+    Buildable(BuildableAction),
+}
+impl ContextMenuAction {
+    pub fn build(&mut self, values: &mut dyn Reflect) {
+        if let Self::Buildable(b) = self {
+            b.build(values);
+        }
+    }
+
+    pub fn run(
+        &self,
+        owner: MessageOwner,
+        passed_in: Option<TatakuValue>,
+        values: &mut dyn Reflect,
+        _actions: &mut ActionQueue,
+        messages: &mut Vec<Message>,
+    ) {
+        match self {
+            Self::Message(None) => {}
+            Self::Message(Some(m)) => messages.push(m.clone()),
+            Self::Callback(cb) => cb(),
+            Self::MessageCallback(cb) => {
+                if let Some(m) = cb() {
+                    messages.push(m);
+                }
+            }
+            Self::Buildable(b) => {
+                if let Some(message) = b.resolve(
+                    owner, 
+                    values, 
+                    passed_in.as_ref(),
+                ) {
+                    messages.push(message);
+                }
+            },
+        }
+    }
+}
+impl From<Message> for ContextMenuAction {
+    fn from(value: Message) -> Self {
+        Self::Message(Some(value))
+    }
+}

@@ -58,6 +58,7 @@ impl CustomDialog {
             resizable: self.resizable,
             allow_multiple: self.allow_multiple,
             title: Cow::Owned(self.title.clone()),
+            location: DialogLocation::Auto,
         }
     }
 }

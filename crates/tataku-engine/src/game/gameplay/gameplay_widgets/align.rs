@@ -19,3 +19,14 @@ pub enum GameplayWidgetAlign {
     /// To the right of the parent
     Right
 }
+impl GameplayWidgetAlign {
+    pub fn inside(&self) -> bool {
+        matches!(self, Self::Inside)
+    }
+    pub fn vertical(&self) -> bool {
+        matches!(self, Self::Above | Self::Below)
+    }
+    pub fn horizontal(&self) -> bool {
+        matches!(self, Self::Left | Self::Right)
+    }
+}

@@ -1,3 +1,4 @@
+mod from;
 mod css_parse;
 mod widget_impls;
 mod settings_menu;
@@ -7,6 +8,15 @@ mod settings_deserializer;
 use proc_macro::TokenStream;
 use quote::*;
 use syn::*;
+
+#[proc_macro_derive(From, attributes(from))]
+pub fn impl_from(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    // Parse the string representation
+    let ast = syn::parse(input).unwrap();
+
+    // Build the impl
+    from::derive(&ast).into()
+}
 
 #[proc_macro_derive(Debug2, attributes(debug))]
 pub fn impl_debug2(input: proc_macro::TokenStream) -> proc_macro::TokenStream {

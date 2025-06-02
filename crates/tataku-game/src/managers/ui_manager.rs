@@ -1,6 +1,5 @@
 use crate::prelude::*;
 
-// TODO: operations (so can scroll to items etc)
 pub struct UiManager {
     messages: Vec<Message>,
     current_menu: String,
@@ -263,12 +262,18 @@ impl UiManager {
         // i cant even type because of you
     }
 
-    pub fn draw(
+    pub fn draw_menu(
         &mut self, 
         values: &ValueCollection,
         list: &mut RenderableCollection,
     ) {
         self.root_tree.draw(values, list);
+    }
+    pub fn draw_dialogs(
+        &mut self, 
+        values: &ValueCollection,
+        list: &mut RenderableCollection,
+    ) {
         for i in self.dialogs.iter_mut().rev() {
             i.draw(values, list);
         }

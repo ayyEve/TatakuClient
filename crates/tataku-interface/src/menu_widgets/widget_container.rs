@@ -136,7 +136,7 @@ impl Widget for WidgetContainer {
             let width = layout.border.top;
 
             if let Some(border) = &mut border {
-                border.radius = width;
+                border.width = width;
             } else {
                 border = Some(Border::new(Color::BLACK, width));
             }
@@ -205,6 +205,16 @@ impl Widget for WidgetContainer {
 
         // draw the inner
         self.inner.draw(shell);
+
+        if ctx.selected == Some(true) {
+            shell.list.push(
+                Rectangle::new_bounds(
+                    bounds,
+                    Color::TRANSPARENT,
+                )
+                .border(Border::new(Color::RED, 3.0))
+            );
+        }
 
         if should_blur && blur_location == BlurLocation::Above {
             shell.list.push(Blur::new(bounds, blur_amount));

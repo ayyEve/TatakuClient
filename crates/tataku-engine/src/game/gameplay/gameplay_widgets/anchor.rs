@@ -29,7 +29,10 @@ pub enum GameplayWidgetAnchor {
     },
 }
 impl GameplayWidgetAnchor {
-    pub const fn element(element: &'static str, relative: GameplayWidgetAlign) -> Self {
+    pub const fn element(
+        element: &'static str, 
+        relative: GameplayWidgetAlign,
+    ) -> Self {
         Self::Element {
             element: Cow::Borrowed(element),
             relative

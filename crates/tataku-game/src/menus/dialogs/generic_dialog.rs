@@ -5,7 +5,6 @@ use crate::prelude::ui::*;
 const Y_PADDING:f32 = 5.0;
 const BUTTON_SIZE:Vector2 = Vector2::new(100.0, 30.0);
 
-// pub type ClickFn = Box<dyn Fn(&mut GenericDialog, &mut Game) + Send + Sync>;
 pub type ClickFn = Arc<dyn Fn(&mut GenericDialog, &mut ActionQueue) -> Option<TatakuAction> + Send + Sync>;
 
 pub struct GenericDialog {
@@ -47,21 +46,23 @@ impl Widget for GenericDialog {
     fn name(&self) -> Cow<'static, str> { "generic_dialog".into() }
     fn node_id(&self) -> NodeId { self.node_id }
     
-    fn update_styles(&mut self, tree: &mut Tree, resolver: &mut CssResolver, display_override: Option<ui::Display>) {
+    fn update_styles(
+        &mut self, 
+        tree: &mut Tree, 
+        resolver: &mut CssResolver, 
+        display_override: Option<Display>
+    ) {
         self.node.update_styles(tree, resolver, display_override);
     }
     
-    fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
+    fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {
         self.node = self.build_view(shell.owner);
         let child = self.node.layout(shell)?;
         self.node_id = shell.tree.new_with_children(Style::default(), &[child])?;
         Ok(self.node_id)
     }
     
-    fn draw(
-        &self, 
-        shell: &mut DrawShell<'_>, 
-    ) {
+    fn draw(&self, shell: &mut DrawShell) {
         
     }
     

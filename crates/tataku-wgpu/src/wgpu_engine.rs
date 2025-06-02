@@ -1901,7 +1901,7 @@ impl GraphicsEngine for WgpuEngine<'_> {
             self.tessellate_polygon(
                 &points, 
                 border.color, 
-                Some(border.radius), 
+                Some(border.width), 
                 transform, 
                 blend_mode
             );
@@ -1995,7 +1995,7 @@ impl GraphicsEngine for WgpuEngine<'_> {
             self.tessellate_path(
                 &path, 
                 border.color, 
-                Some(border.radius), 
+                Some(border.width), 
                 transform, 
                 blend_mode
             );

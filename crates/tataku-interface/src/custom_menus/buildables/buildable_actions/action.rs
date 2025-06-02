@@ -156,6 +156,8 @@ impl BuildableAction {
                         draggable,
                         resizable,
                         title: Cow::Owned(title),
+                        // TODO: not auto?
+                        location: DialogLocation::Auto,
                     },
                     input: variables.build(values, passed_in)
                 }))

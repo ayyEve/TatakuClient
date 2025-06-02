@@ -448,7 +448,7 @@ impl KeyCollection {
     pub fn has_and_remove(&mut self, key: Key) -> bool {
         let mut has = false;
         
-        self.0.retain(|k| if k.is_key(key) { has = true; false} else { true });
+        self.0.retain(|k| if k.is_key(key) { has = true; false } else { true });
 
         has
     }

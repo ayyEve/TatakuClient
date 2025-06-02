@@ -6,7 +6,6 @@ const SEARCH_BAR_HEIGHT:f32 = 50.0;
 const MAX_CONCURRENT_DOWNLOADS:usize = 5;
 
 pub type DirectDownloadQueue = Vec<Arc<dyn DirectDownloadable>>;
-// type DirectDownloadItem = Arc<dyn DirectDownloadable>;
 
 pub struct DirectMenu {
     actions: ActionQueue,

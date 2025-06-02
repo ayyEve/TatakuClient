@@ -4,13 +4,13 @@ use crate::prelude::Color;
 #[derive(serde::Deserialize)]
 pub struct Border {
     pub color: Color,
-    pub radius: f32,
+    pub width: f32,
 }
 impl Border {
-    pub fn new(color: Color, radius: f32) -> Self {
+    pub fn new(color: Color, width: f32) -> Self {
         Self {
             color, 
-            radius
+            width
         }
     }
 }
