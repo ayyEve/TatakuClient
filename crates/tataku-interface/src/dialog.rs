@@ -227,11 +227,15 @@ impl Widget for DialogWidget {
             EmptyWidget::new_boxed()
         );
 
-        self.node = Container::new(vec![
-            DialogTitlebar::new(self.title.clone(), self.draggable)
-            .boxed(),
-            node,
-        ])
+        let children = if self.draggable || self.resizable {
+            vec![
+                DialogTitlebar::new(self.title.clone(), self.draggable).boxed(),
+                node,
+            ]
+        } else {
+            vec![node]
+        };
+        self.node = Container::new(children)
         .flex_direction(FlexDirection::Column)
         .width(FILL)
         .height(FILL)
