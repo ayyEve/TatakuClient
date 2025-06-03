@@ -2,9 +2,25 @@ stages:
   - build-client
   - release
 
+workflow:
+  auto_cancel:
+    on_new_commit: interruptible
+  rules:
+    - if: $CI_COMMIT_BRANCH
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    
+
 build-linux:
   stage: build-client
   image: ayyeve/tataku-client-build:latest
+  interruptible: true
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never # Do not run this job when a tag is created
+    - if: $CI_COMMIT_BRANCH
+    - when: on_success
   script:
     - ~/.cargo/bin/cargo mommy build --release
   after_script:
@@ -21,6 +37,11 @@ build-linux:
 build-windows:
   stage: build-client
   image: ayyeve/tataku-client-build:latest
+  interruptible: true
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never # Do not run this job when a tag is created
+    - when: on_success
   script:
     # Cross-compiled from linux
     - ~/.cargo/bin/cargo mommy build --release --target x86_64-pc-windows-gnu
@@ -52,6 +73,7 @@ build-windows:
 prepare-release:
   stage: release
   image: curlimages/curl
+  interruptible: true
   rules:
     - if: $CI_COMMIT_TAG
       when: never # Do not run this job when a tag is created manually
@@ -61,7 +83,7 @@ prepare-release:
   script:
     - echo DATETIME='$(git show -s --format="%cd" --date=format:"%Y%m%d%H%M")' >> vars.env
     - echo Removing old tag and release
-    - "curl -X DELETE -H 'PRIVATE-TOKEN: $GITLAB_API_TOKEN' '$CI_API_V4_URL/projects/$CI_PROJECT_ID/tags/$CI_COMMIT_BRANCH' || _ignore=$?"
+    - "curl -X DELETE -H 'PRIVATE-TOKEN: $GITLAB_API_TOKEN' 'https://gitlab.ayyeve.dev/api/v4/projects/$CI_PROJECT_ID/tags/$CI_COMMIT_BRANCH' || _ignore=$?"
   artifacts:
     reports:
       dotenv: vars.env
@@ -69,6 +91,7 @@ prepare-release:
 releases:
   stage: release
   image: registry.gitlab.com/gitlab-org/release-cli:latest
+  interruptible: true
   rules:
     - if: $CI_COMMIT_TAG
       when: never # Do not run this job when a tag is created manually
