@@ -65,7 +65,7 @@ prepare-release:
 
 releases:
   stage: release
-  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  image: registry.gitlab.com/gitlab-org/cli:latest
   rules:
     - if: $CI_COMMIT_TAG
       when: never # Do not run this job when a tag is created manually
@@ -80,10 +80,11 @@ releases:
     - job: build-windows
       artifacts: true
   script:
+    - echo Removing old tag and release
+    - git push origin :refs/tags/$CI_COMMIT_BRANCH || ignore=$?
     - echo Creating release $CI_COMMIT_BRANCH-$DATETIME
-  
   release:
-    tag_name: '$CI_COMMIT_BRANCH-$DATETIME'
+    tag_name: $CI_COMMIT_BRANCH
     description: 'Automatic $CI_COMMIT_BRANCH release'
     ref: '$CI_COMMIT_SHA'
     assets:
