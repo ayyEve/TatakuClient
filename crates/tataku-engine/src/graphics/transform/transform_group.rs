@@ -6,7 +6,7 @@ pub struct TransformGroup {
     transform_manager: TransformManager,
 
     pub scissor: Scissor,
-    pub blend_mode: BlendMode,
+    pub blend_mode: Pipeline,
 
     size: Vector2,
 }
@@ -17,7 +17,7 @@ impl TransformGroup {
             transform_manager: TransformManager::new(pos),
 
             scissor: None,
-            blend_mode: BlendMode::AlphaBlending,
+            blend_mode: Pipeline::AlphaBlending,
             size: Vector2::ZERO,
         }
     }
@@ -33,7 +33,7 @@ impl TransformGroup {
             transform_manager: manager,
 
             scissor: None,
-            blend_mode: BlendMode::AlphaBlending,
+            blend_mode: Pipeline::AlphaBlending,
             size: Vector2::ZERO,
         }
     }
@@ -44,7 +44,7 @@ impl TransformGroup {
             transform_manager: TransformManager::new(pos),
 
             scissor: None,
-            blend_mode: BlendMode::AlphaBlending,
+            blend_mode: Pipeline::AlphaBlending,
             size: Vector2::ZERO,
         }
     }
@@ -93,8 +93,8 @@ impl TatakuRenderable for TransformGroup {
 
     fn get_scissor(&self) -> Scissor { self.scissor }
     fn set_scissor(&mut self, s: Scissor) { self.scissor = s; }
-    fn get_blend_mode(&self) -> BlendMode { self.blend_mode }
-    fn set_blend_mode(&mut self, blend_mode: BlendMode) { self.blend_mode = blend_mode; }
+    fn get_blend_mode(&self) -> Pipeline { self.blend_mode }
+    fn set_blend_mode(&mut self, blend_mode: Pipeline) { self.blend_mode = blend_mode; }
 
     fn draw(
         &self,

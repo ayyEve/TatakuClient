@@ -2,10 +2,9 @@ use crate::prelude::*;
 use tataku_client_common::prelude::*;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 
-use super::kernel;
-pub const BLURS_PER_BUF:u64 = 1;
+const BLURS_PER_BUF:u64 = 1;
 
-pub struct BlurBuffer {
+pub struct GaussianBlurBuffer {
     pub scissor: Option<Scissor>,
     pub used: u64,
     kernel_size: u32,
@@ -16,7 +15,7 @@ pub struct BlurBuffer {
     pub compute_constants: BindGroup,
 }
 
-impl RenderBufferable for BlurBuffer {
+impl RenderBufferable for GaussianBlurBuffer {
     type Cache = CpuBlurBuffer;
     const VTX_PER_BUF: u64 = BLURS_PER_BUF;
     const IDX_PER_BUF: u64 = BLURS_PER_BUF;
@@ -33,7 +32,7 @@ impl RenderBufferable for BlurBuffer {
         
         if self.sigma != params.sigma {
             self.sigma = params.sigma;
-            let kernel = kernel(params.sigma);
+            let kernel = GaussianKernel::kernel(params.sigma);
             self.kernel_size = kernel.size() as u32;
             queue.write_buffer(
                 &self.kernel_buffer, 
@@ -60,7 +59,7 @@ impl RenderBufferable for BlurBuffer {
     fn create_new_buffer(device: &Device, pipeline: WgpuPipeline) -> Self {
         let sigma = 100.0; // this affects the size of the buffer, so we start with an unreasonably high number to hopefully prevent crashes when its changed later
 
-        let kernel = kernel(sigma);
+            let kernel = GaussianKernel::kernel(sigma);
         let kernel_size = kernel.size() as u32;
 
         let settings = device.create_buffer_init(&BufferInitDescriptor {
@@ -110,25 +109,25 @@ impl RenderBufferable for BlurBuffer {
 
 
 pub struct CpuBlurBuffer {
-    pub cpu_blurs: Vec<BlurParams>,
+    pub cpu_blurs: Vec<GaussianBlurParams>,
 }
 impl Default for CpuBlurBuffer {
     fn default() -> Self {
         Self {
-            cpu_blurs: vec![BlurParams::default(); BLURS_PER_BUF as usize],
+            cpu_blurs: vec![GaussianBlurParams::default(); BLURS_PER_BUF as usize],
         }
     }
 }
 
 
-pub struct BlurReserveData<'a> {
-    pub data: &'a mut BlurParams,
+pub struct GaussianBlurReserveData<'a> {
+    pub data: &'a mut GaussianBlurParams,
     pub _blur_index: u32,
 }
-impl BlurReserveData<'_> {
+impl GaussianBlurReserveData<'_> {
     pub fn copy_in(
         &mut self, 
-        data: BlurParams
+        data: GaussianBlurParams
     ) {
         *self.data = data;
     }

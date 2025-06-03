@@ -3,13 +3,13 @@ use wgpu::util::{BufferInitDescriptor, DeviceExt};
 
 const NAME: &str = "gaussian blur";
 
-pub struct BlurShader {
+pub struct GaussianBlurShader {
     pub pipeline: ComputePipeline,
 
     vertical: BlurBindings,
     horizontal: BlurBindings,
 }
-impl BlurShader {
+impl GaussianBlurShader {
     pub fn new(device: &Device) -> Self {
         let pipeline = Self::gaussian_blur(device);
 
@@ -131,7 +131,7 @@ impl BlurShader {
         let shader = device.create_shader_module(
             ShaderModuleDescriptor {
                 label: Some(format!("{NAME} shader").as_str()),
-                source: ShaderSource::Wgsl(crate::shader_files::BLUR.into()),
+                source: ShaderSource::Wgsl(crate::shader_files::GAUSSIAN_BLUR.into()),
             }
         );
 
@@ -229,7 +229,7 @@ impl BlurShader {
         device: &Device,
         queue: &Queue,
         output: &WgpuTextureReference,
-        data: &BlurBuffer,
+        data: &GaussianBlurBuffer,
     ) {
         let hs = self.horizontal.texture.size();
         if hs != output.size {
@@ -288,28 +288,13 @@ impl BlurShader {
 
 }
 
-pub struct WgpuTextureReference<'a> {
-    pub view: TextureView,
-    pub size: Extent3d,
-    pub copy: ImageCopyTexture<'a>,
-}
-impl<'a> WgpuTextureReference<'a> {
-    pub fn new(texture: &'a Texture) -> Self {
-        Self {
-            view: texture.create_view(&TextureViewDescriptor::default()),
-            size: texture.size(),
-            copy: texture.as_image_copy(),
-        }
-    }
-}
 
-
-pub(crate) struct Kernel {
+pub struct GaussianKernel {
     sum: f32,
     values: Vec<f32>,
 }
-impl Kernel {
-    pub fn new(values: Vec<f32>) -> Self {
+impl GaussianKernel {
+    fn new(values: Vec<f32>) -> Self {
         let sum = values.iter().sum();
         Self { sum, values }
     }
@@ -324,26 +309,26 @@ impl Kernel {
     pub fn size(&self) -> usize {
         self.values.len()
     }
+
+    pub fn kernel(sigma: f32) -> GaussianKernel {
+        let kernel_size = kernel_size_for_sigma(sigma);
+        let mut values = vec![0.0; kernel_size as usize];
+        let kernel_radius = (kernel_size as usize - 1) / 2;
+        for index in 0..=kernel_radius {
+            let normpdf = normalized_probablility_density_function(
+                index as f32, 
+                sigma
+            );
+            values[kernel_radius + index] = normpdf;
+            values[kernel_radius - index] = normpdf;
+        }
+
+        GaussianKernel::new(values)
+    }
 }
 
 fn kernel_size_for_sigma(sigma: f32) -> u32 {
     2 * (sigma * 3.0).ceil() as u32 + 1
-}
-
-pub(super) fn kernel(sigma: f32) -> Kernel {
-    let kernel_size = kernel_size_for_sigma(sigma);
-    let mut values = vec![0.0; kernel_size as usize];
-    let kernel_radius = (kernel_size as usize - 1) / 2;
-    for index in 0..=kernel_radius {
-        let normpdf = normalized_probablility_density_function(
-            index as f32, 
-            sigma
-        );
-        values[kernel_radius + index] = normpdf;
-        values[kernel_radius - index] = normpdf;
-    }
-
-    Kernel::new(values)
 }
 
 fn normalized_probablility_density_function(x: f32, sigma: f32) -> f32 {
@@ -371,7 +356,7 @@ struct BlurBindings {
 ///
 /// * `(width, height)` - The dimension of the image we are working on.
 /// * `(workgroup_width, workgroup_height)` - The width and height dimensions of the compute workgroup.
-pub(crate) fn compute_work_group_count(
+fn compute_work_group_count(
     (width, height): (u32, u32),
     (workgroup_width, workgroup_height): (u32, u32),
 ) -> (u32, u32) {

@@ -8,7 +8,7 @@ pub struct Line {
     thickness: f32,
 
     scissor: Scissor,
-    blend_mode: BlendMode,
+    blend_mode: Pipeline,
 }
 impl Line {
     pub fn new(
@@ -23,7 +23,7 @@ impl Line {
             thickness,
             color,
             scissor: None,
-            blend_mode: BlendMode::AlphaBlending,
+            blend_mode: Pipeline::AlphaBlending,
         }
     }
 }
@@ -35,8 +35,8 @@ impl TatakuRenderable for Line {
 
     fn get_scissor(&self) -> Scissor { self.scissor }
     fn set_scissor(&mut self, s: Scissor) { self.scissor = s }
-    fn get_blend_mode(&self) -> BlendMode { self.blend_mode }
-    fn set_blend_mode(&mut self, blend_mode: BlendMode) { self.blend_mode = blend_mode }
+    fn get_blend_mode(&self) -> Pipeline { self.blend_mode }
+    fn set_blend_mode(&mut self, blend_mode: Pipeline) { self.blend_mode = blend_mode }
 
     fn draw(
         &self, 

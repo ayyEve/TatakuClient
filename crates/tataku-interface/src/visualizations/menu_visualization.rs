@@ -151,8 +151,8 @@ impl MenuVisualization {
         // let since_last = self.vis_data.timer.elapsed().as_secs_f32(); // not ms
         // self.update_data().await;
 
-        let data = &self.vis_data.data;
-        if data.len() < 3 { return }
+        if self.vis_data.data.len() < 3 { return }
+        let data = &self.vis_data.data[0..self.vis_data.data.len() / 4];
 
         // TODO: would it maybe be better and more efficient to do this in a shader?
 

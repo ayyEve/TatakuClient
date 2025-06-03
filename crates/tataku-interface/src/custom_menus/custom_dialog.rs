@@ -59,6 +59,7 @@ impl CustomDialog {
             allow_multiple: self.allow_multiple,
             title: Cow::Owned(self.title.clone()),
             location: DialogLocation::Auto,
+            background: true,
         }
     }
 }

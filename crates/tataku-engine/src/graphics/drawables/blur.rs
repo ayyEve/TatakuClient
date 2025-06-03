@@ -2,23 +2,25 @@ use crate::prelude::*;
 
 pub struct Blur {
     bounds: Bounds,
-    amount: f32,
+    blur_type: BlurType,
 }
 impl Blur {
-    pub fn new(bounds: Bounds, amount: f32) -> Self { 
+    pub fn new(
+        bounds: Bounds, 
+        blur_type: BlurType
+    ) -> Self { 
         Self { 
             bounds, 
-            amount 
+            blur_type 
         }
     }
 }
 impl TatakuRenderable for Blur {
     fn get_bounds(&self) -> Bounds { self.bounds }
-
     fn get_scissor(&self) -> Scissor { Some(self.bounds.into_scissor()) }
 
-    fn get_blend_mode(&self) -> BlendMode { BlendMode::Blur }
-    fn set_blend_mode(&mut self, _blend_mode: BlendMode) {}
+    fn get_blend_mode(&self) -> Pipeline { Pipeline::GaussianBlur }
+    fn set_blend_mode(&mut self, _blend_mode: Pipeline) {}
 
     fn draw(
         &self, 
@@ -26,6 +28,22 @@ impl TatakuRenderable for Blur {
         _transform: Matrix, 
         g: &mut dyn GraphicsEngine,
     ) {
-        g.draw_blur(self.bounds, self.amount, 1);
+        match self.blur_type {
+            BlurType::Gaussian { sigma } 
+                => g.draw_gaussian_blur(self.bounds, sigma, 1),
+            BlurType::Box { size } 
+                => g.draw_box_blur(self.bounds, size),
+        }
+
     }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum BlurType {
+    Gaussian {
+        sigma: f32,
+    },
+    Box {
+        size: u32,
+    },
 }

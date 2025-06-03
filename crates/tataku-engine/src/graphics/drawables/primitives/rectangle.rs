@@ -11,7 +11,7 @@ pub struct Rectangle {
     pub origin: Vector2,
     pub scale: Vector2,
     scissor: Scissor,
-    blend_mode: BlendMode,
+    blend_mode: Pipeline,
 
     #[chain] pub shape: Shape,
     pub border: Option<Border>,
@@ -37,7 +37,7 @@ impl Rectangle {
             rotation: 0.0,
             shape: Shape::Square,
             scissor: None,
-            blend_mode: BlendMode::AlphaBlending,
+            blend_mode: Pipeline::AlphaBlending,
 
             border: None,
             origin: bounds.size / 2.0,
@@ -60,8 +60,8 @@ impl TatakuRenderable for Rectangle {
 
     fn get_scissor(&self) -> Scissor { self.scissor }
     fn set_scissor(&mut self, s: Scissor) { self.scissor = s }
-    fn get_blend_mode(&self) -> BlendMode { self.blend_mode }
-    fn set_blend_mode(&mut self, blend_mode: BlendMode) { self.blend_mode = blend_mode }
+    fn get_blend_mode(&self) -> Pipeline { self.blend_mode }
+    fn set_blend_mode(&mut self, blend_mode: Pipeline) { self.blend_mode = blend_mode }
 
     fn draw(
         &self, 
@@ -101,7 +101,7 @@ impl From<Bounds> for Rectangle {
             origin: other.size / 2.0,
             scale: Vector2::ONE,
             scissor: None,
-            blend_mode: BlendMode::default(),
+            blend_mode: Pipeline::default(),
             shape: Shape::Square,
             border: None
         }

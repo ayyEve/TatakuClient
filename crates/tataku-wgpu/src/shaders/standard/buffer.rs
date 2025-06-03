@@ -4,7 +4,7 @@ use tataku_client_common::prelude::*;
 const QUAD_PER_BUF:u64 = 3000;
 
 pub struct StandardBuffer {
-    pub blend_mode: BlendMode,
+    pub blend_mode: Pipeline,
     pub vertex_buffer: Buffer,
     pub index_buffer: Buffer,
     pub scissor: Option<Scissor>,
@@ -21,7 +21,7 @@ impl RenderBufferable for StandardBuffer {
     fn should_write(&self) -> bool { self.used_indices > 0 }
 
     fn reset(&mut self) {
-        self.blend_mode = BlendMode::None;
+        self.blend_mode = Pipeline::None;
         self.scissor = None;
         self.used_indices = 0;
         self.used_vertices = 0;
@@ -42,7 +42,7 @@ impl RenderBufferable for StandardBuffer {
 
     fn create_new_buffer(device: &Device, _: WgpuPipeline) -> Self {
         Self {
-            blend_mode: BlendMode::None,
+            blend_mode: Pipeline::None,
             scissor: None,
             vertex_buffer: device.create_buffer(&BufferDescriptor {
                 label: Some("Vertex Buffer"),

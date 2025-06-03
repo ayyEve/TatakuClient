@@ -43,19 +43,24 @@ pub struct DialogWidget {
     resizable: bool,
     resizing: Option<DragData>,
 
-    resize_hover: ResizeHover
+    resize_hover: ResizeHover,
+
+
+    draw_background: bool,
 }
 impl DialogWidget {
     pub fn new(
         title: impl Into<Cow<'static, str>>,
         draggable: bool,
         resizable: bool,
+        draw_background: bool,
         inner: Box<dyn Widget>,
     ) -> Self {
         Self {
             title: title.into(),
             num: 0,
             // will get changed in layout
+            draw_background,
             node: inner,
             resizable,
             draggable,
@@ -361,12 +366,16 @@ impl Widget for DialogWidget {
     fn draw(&self, shell: &mut DrawShell) {
         let Some(bounds) = shell.tree.absolute_bounds(self) 
         else { return };
-        
-        // black background for visibility
-        shell.list.push(Rectangle::new_bounds(
-            bounds, 
-            Color::BLACK.alpha(0.9), 
-        ));
+
+        if self.draw_background {
+            shell.list.push(Blur::new(bounds, BlurType::Box { size: 2 }));
+
+            // black background for visibility
+            shell.list.push(Rectangle::new_bounds(
+                bounds, 
+                Color::BLACK.alpha(0.9), 
+            ));
+        }
 
         // FIXME: add scissor!
         self.node.draw(shell);

@@ -118,7 +118,7 @@ impl ActualFont {
         [x, y]: [&mut f32; 2], 
         scale: Vector2,
         color: Color, 
-        blend_mode: BlendMode,
+        blend_mode: Pipeline,
         transform: Matrix, 
         graphics: &mut dyn GraphicsEngine
     ) {

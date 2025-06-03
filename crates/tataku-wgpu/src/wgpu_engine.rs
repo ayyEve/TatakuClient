@@ -39,9 +39,9 @@ pub struct WgpuEngine<'window> {
     queue: Arc<Queue>,
     config: SurfaceConfiguration,
 
-    pipelines: HashMap<BlendMode, RenderPipeline>,
+    pipelines: HashMap<Pipeline, RenderPipeline>,
 
-    buffer_queues: HashMap<LastDrawn, Box<RenderBufferQueueType>>,
+    buffer_queues: HashMap<LastPipeline, Box<RenderBufferQueueType>>,
     completed_buffers: Vec<RenderBufferType>,
     current_render_buffer: Option<Box<RenderBufferQueueType>>,
 
@@ -56,7 +56,8 @@ pub struct WgpuEngine<'window> {
 
     sampler: Sampler,
     particle_system: ParticleSystem,
-    blur_shader: RefCell<BlurShader>,
+    gaussian_blur_shader: RefCell<GaussianBlurShader>,
+    box_blur_shader: RefCell<BoxBlurShader>,
     render_image_shader: RenderImageShader,
 
     scissors: ScissorManager,
@@ -281,14 +282,14 @@ impl<'window> WgpuEngine<'window> {
 
 
         // create slider pipeline
-        pipelines.insert(BlendMode::Slider, create_slider_pipeline(
+        pipelines.insert(Pipeline::Slider, create_slider_pipeline(
             &device, 
             &config, 
             &projection_matrix_bind_group_layout
         ));
 
         // create flashlight pipeline
-        pipelines.insert(BlendMode::Flashlight, create_flashlight_pipeline(
+        pipelines.insert(Pipeline::Flashlight, create_flashlight_pipeline(
             &device, 
             &config, 
             &projection_matrix_bind_group_layout
@@ -305,7 +306,8 @@ impl<'window> WgpuEngine<'window> {
             ..Default::default()
         });
 
-        let blur_shader = BlurShader::new(&device);
+        let gaussian_blur_shader = GaussianBlurShader::new(&device);
+        let box_blur_shader = BoxBlurShader::new(&device);
         let render_image_shader = RenderImageShader::new(
             &device, 
             &queue, 
@@ -326,28 +328,34 @@ impl<'window> WgpuEngine<'window> {
         let particle_system = ParticleSystem::new(&device);
 
         let buffer_queues = [
-            (LastDrawn::Slider, Box::new(RenderBufferQueueType::Slider(
+            (LastPipeline::Slider, Box::new(RenderBufferQueueType::Slider(
                 RenderBufferQueue::new().init(
                     &device, 
-                    &pipelines[&BlendMode::Slider]
+                    &pipelines[&Pipeline::Slider]
                 )
             ))),
-            (LastDrawn::Standard, Box::new(RenderBufferQueueType::Standard(
+            (LastPipeline::Standard, Box::new(RenderBufferQueueType::Standard(
                 RenderBufferQueue::new().init(
                     &device, 
-                    &pipelines[&BlendMode::AlphaBlending]
+                    &pipelines[&Pipeline::AlphaBlending]
                 )
             ))),
-            (LastDrawn::Flashlight, Box::new(RenderBufferQueueType::Flashlight(
+            (LastPipeline::Flashlight, Box::new(RenderBufferQueueType::Flashlight(
                 RenderBufferQueue::new().init(
                     &device, 
-                    &pipelines[&BlendMode::Flashlight]
+                    &pipelines[&Pipeline::Flashlight]
                 )
             ))),
-            (LastDrawn::Blur, Box::new(RenderBufferQueueType::Blur(
+            (LastPipeline::GaussianBlur, Box::new(RenderBufferQueueType::GaussianBlur(
                 RenderBufferQueue::new().init(
                     &device, 
-                    &blur_shader.pipeline
+                    &gaussian_blur_shader.pipeline
+                )
+            ))),
+            (LastPipeline::BoxBlur, Box::new(RenderBufferQueueType::BoxBlur(
+                RenderBufferQueue::new().init(
+                    &device, 
+                    &box_blur_shader.pipeline
                 )
             ))),
         ].into_iter().collect();
@@ -398,7 +406,8 @@ impl<'window> WgpuEngine<'window> {
             screenshot_pending: None,
 
             particle_system,
-            blur_shader: RefCell::new(blur_shader),
+            gaussian_blur_shader: RefCell::new(gaussian_blur_shader),
+            box_blur_shader: RefCell::new(box_blur_shader),
             render_image_shader,
 
             scissors: ScissorManager::default(),
@@ -602,26 +611,47 @@ impl<'window> WgpuEngine<'window> {
                 }
             );
 
-            let mut current_blend_mode = BlendMode::None;
+            let mut current_pipeline = Pipeline::None;
             let mut current_scissor: Scissor = None;
 
             for i in self.completed_buffers.iter() {
-                // blur is a special case, because its a compute shader and not a fragment shader
-                if i.get_blend_mode() == BlendMode::Blur {
+                // blurs are a special case, they're compute shaders and not fragment shaders
+                let pipeline = i.get_pipeline();
+                if pipeline.is_blur() {
                     if !self.can_blur || !self.blur_enabled { continue }
 
+                    // finish and submit the current render pass to free up the encoder
                     drop(render_pass);
                     self.queue.submit([encoder.finish()]);
-                    
-                    let RenderBufferType::Blur(buffer) = i 
-                    else { unreachable!() };
 
-                    self.blur_shader.borrow_mut().perform(
-                        &self.device, 
-                        &self.queue, 
-                        renderable.texture,
-                        buffer
-                    );
+                    // perform the blur
+                    match pipeline {
+                        Pipeline::GaussianBlur => {
+                            let RenderBufferType::GaussianBlur(buffer) = i 
+                            else { unreachable!() };
+
+                            self.gaussian_blur_shader.borrow_mut().perform(
+                                &self.device, 
+                                &self.queue, 
+                                renderable.texture,
+                                buffer
+                            );
+                        }
+                        Pipeline::BoxBlur => {
+                            let RenderBufferType::BoxBlur(buffer) = i 
+                            else { unreachable!() };
+
+                            self.box_blur_shader.borrow_mut().perform(
+                                &self.device, 
+                                &self.queue, 
+                                renderable.texture,
+                                buffer
+                            );
+                        }
+
+                        _ => unreachable!()
+                    }
+                    
 
                     // back to our regularly scheduled programming
                     encoder = self.device.create_command_encoder(
@@ -644,7 +674,7 @@ impl<'window> WgpuEngine<'window> {
                         timestamp_writes: None,
                         occlusion_query_set: None,
                     });
-                    current_blend_mode = BlendMode::None;
+                    current_pipeline = Pipeline::None;
                     continue 
                 }
 
@@ -670,14 +700,14 @@ impl<'window> WgpuEngine<'window> {
                     );
                 }
 
-                let blend_mode = i.get_blend_mode();
+                let pipeline = i.get_pipeline();
                 
-                if blend_mode != current_blend_mode {
-                    current_blend_mode = blend_mode;
-                    let Some(pipeline) = self.pipelines.get(&blend_mode) 
+                if pipeline != current_pipeline {
+                    current_pipeline = pipeline;
+                    let Some(pipeline) = self.pipelines.get(&pipeline) 
                     else {
-                        error!("Pipeline not created for blend mode {current_blend_mode:?}");
-                        current_blend_mode = BlendMode::None;
+                        error!("Pipeline not created for blend mode {current_pipeline:?}");
+                        current_pipeline = Pipeline::None;
                         continue
                     };
 
@@ -917,9 +947,12 @@ impl WgpuEngine<'_> {
             .current_render_buffer.take()
         else { return };
 
-        let blur = self.blur_shader.borrow();
+        let gaussian_blur = self.gaussian_blur_shader.borrow();
+        let box_blur = self.box_blur_shader.borrow();
+
         let pipeline = match last_drawn.draw_type().as_blendmode() {
-            BlendMode::Blur => WgpuPipeline::Compute(&blur.pipeline),
+            Pipeline::GaussianBlur => WgpuPipeline::Compute(&gaussian_blur.pipeline),
+            Pipeline::BoxBlur => WgpuPipeline::Compute(&box_blur.pipeline),
             other => WgpuPipeline::Render(&self.pipelines[&other]),
         };
         if let Some(b) = last_drawn.dump_and_next(
@@ -933,7 +966,7 @@ impl WgpuEngine<'_> {
         self.buffer_queues.insert(last_drawn.draw_type(), last_drawn);
     }
 
-    fn check_dump_and_next(&mut self, to_draw: LastDrawn) {
+    fn check_dump_and_next(&mut self, to_draw: LastPipeline) {
         if let Some(last_drawn) = &self.current_render_buffer {
             if last_drawn.draw_type() == to_draw { return }
         }
@@ -950,10 +983,10 @@ impl WgpuEngine<'_> {
         &mut self,
         vtx_count: u64,
         idx_count: u64,
-        blend_mode: BlendMode
+        blend_mode: Pipeline
     ) -> Option<StandardReserveData> {
         let scissor = self.scissors.current_scissor();
-        self.check_dump_and_next(LastDrawn::Standard);
+        self.check_dump_and_next(LastPipeline::Standard);
 
         let vertex_buffer_queue = get_render_buffer!(self, Standard);
 
@@ -963,7 +996,7 @@ impl WgpuEngine<'_> {
 
         if !( // blend mode check
             recording_buffer.blend_mode == blend_mode 
-            || recording_buffer.blend_mode == BlendMode::None
+            || recording_buffer.blend_mode == Pipeline::None
         )
         || !( // scissor check
             recording_buffer.scissor == Some(scissor) 
@@ -987,7 +1020,7 @@ impl WgpuEngine<'_> {
             recording_buffer.blend_mode = blend_mode;
             recording_buffer.scissor = Some(scissor);
         }
-        if recording_buffer.blend_mode == BlendMode::None {
+        if recording_buffer.blend_mode == Pipeline::None {
             recording_buffer.blend_mode = blend_mode;
         }
         if recording_buffer.scissor.is_none() {
@@ -1021,7 +1054,7 @@ impl WgpuEngine<'_> {
         h_flip: bool,
         v_flip: bool,
         transform: Matrix,
-        blend_mode: BlendMode,
+        blend_mode: Pipeline,
     ) {
         let Some(mut reserved) = self.reserve_standard(
             4, 
@@ -1094,7 +1127,7 @@ impl WgpuEngine<'_> {
         quad: [Vector2; 4],
         color: Color,
         transform: Matrix,
-        blend_mode: BlendMode,
+        blend_mode: Pipeline,
     ) {
         let Some(mut reserved) = self.reserve_standard(
             4, 
@@ -1131,7 +1164,7 @@ impl WgpuEngine<'_> {
         line_segment_count: u64,
     ) -> Option<SliderReserveData> {
         let scissor = self.scissors.current_scissor();
-        self.check_dump_and_next(LastDrawn::Slider);
+        self.check_dump_and_next(LastPipeline::Slider);
 
         let slider_buffer_queue = get_render_buffer!(self, Slider);
 
@@ -1166,7 +1199,7 @@ impl WgpuEngine<'_> {
         || recording_buffer.used_line_segments + line_segment_count > LINE_SEGMENT_COUNT
         {
             let pipeline = WgpuPipeline::Render(
-                &self.pipelines[&BlendMode::Slider]
+                &self.pipelines[&Pipeline::Slider]
             );
             if let Some(b) = slider_buffer_queue
             .dump_and_next(
@@ -1234,7 +1267,7 @@ impl WgpuEngine<'_> {
         &mut self,
     ) -> Option<FlashlightReserveData> {
         let scissor = self.scissors.current_scissor();
-        self.check_dump_and_next(LastDrawn::Flashlight);
+        self.check_dump_and_next(LastPipeline::Flashlight);
 
         let buffer_queue = get_render_buffer!(self, Flashlight);
         // if let Some(RenderBufferQueueType::Slider(b)) = &mut self.last_drawn {b} else {panic!("wrong buffer type")};
@@ -1253,7 +1286,7 @@ impl WgpuEngine<'_> {
         || recording_buffer.used_indices + idx_count > SliderRenderBuffer::IDX_PER_BUF
         {
             let pipeline = WgpuPipeline::Render(
-                &self.pipelines[&BlendMode::Flashlight]
+                &self.pipelines[&Pipeline::Flashlight]
             );
             if let Some(b) = buffer_queue.dump_and_next(
                 &self.queue, 
@@ -1289,13 +1322,13 @@ impl WgpuEngine<'_> {
         })
     }
 
-    fn reserve_blur(
+    fn reserve_gaussian_blur(
         &mut self,
-    ) -> Option<BlurReserveData> {
+    ) -> Option<GaussianBlurReserveData> {
         let scissor = self.scissors.current_scissor();
-        self.check_dump_and_next(LastDrawn::Blur);
+        self.check_dump_and_next(LastPipeline::GaussianBlur);
 
-        let buffer_queue = get_render_buffer!(self, Blur);
+        let buffer_queue = get_render_buffer!(self, GaussianBlur);
 
         let mut recording_buffer = buffer_queue.recording_buffer()
             .expect("didnt get blur recording buffer");
@@ -1303,16 +1336,16 @@ impl WgpuEngine<'_> {
             || recording_buffer.scissor.is_none();
 
         if !scissor_check
-        || recording_buffer.used + 1 > BlurBuffer::VTX_PER_BUF
+            || recording_buffer.used + 1 > GaussianBlurBuffer::VTX_PER_BUF
         {
-            let blur = self.blur_shader.borrow();
+            let blur = self.gaussian_blur_shader.borrow();
             let pipeline = WgpuPipeline::Compute(&blur.pipeline);
             if let Some(b) = buffer_queue.dump_and_next(
                 &self.queue, 
                 &self.device, 
                 pipeline
             ) {
-                self.completed_buffers.push(RenderBufferType::Blur(b));
+                self.completed_buffers.push(RenderBufferType::GaussianBlur(b));
             }
             recording_buffer = buffer_queue.recording_buffer()?;
         }
@@ -1324,23 +1357,61 @@ impl WgpuEngine<'_> {
         let index = recording_buffer.used - 1;
 
         let cache = &mut buffer_queue.cpu_cache;
-        Some(BlurReserveData {
+        Some(GaussianBlurReserveData {
             data: &mut cache.cpu_blurs[index as usize],
             _blur_index: index as u32,
         })
     }
     
+    fn reserve_box_blur(
+        &mut self,
+    ) -> Option<BoxBlurReserveData> {
+        let scissor = self.scissors.current_scissor();
+        self.check_dump_and_next(LastPipeline::BoxBlur);
+
+        let buffer_queue = get_render_buffer!(self, BoxBlur);
+
+        let mut recording_buffer = buffer_queue.recording_buffer()
+            .expect("didnt get blur recording buffer");
+        let scissor_check = recording_buffer.scissor == Some(scissor) 
+            || recording_buffer.scissor.is_none();
+
+        if !scissor_check || recording_buffer.used {
+            let blur = self.box_blur_shader.borrow();
+            let pipeline = WgpuPipeline::Compute(&blur.pipeline);
+            if let Some(b) = buffer_queue.dump_and_next(
+                &self.queue, 
+                &self.device, 
+                pipeline
+            ) {
+                self.completed_buffers.push(RenderBufferType::BoxBlur(b));
+            }
+            recording_buffer = buffer_queue.recording_buffer()?;
+        }
+        if recording_buffer.scissor.is_none() {
+            recording_buffer.scissor = Some(scissor);
+        }
+
+        recording_buffer.used = true;
+
+        let cache = &mut buffer_queue.cpu_cache;
+        Some(BoxBlurReserveData {
+            data: &mut cache.cpu_blurs[0],
+        })
+    }
+    
+
 }
 
 
 // draw helpers
 impl WgpuEngine<'_> {
-    pub(crate) fn map_blend_mode(blend_mode: BlendMode) -> BlendState {
+    pub(crate) fn map_blend_mode(blend_mode: Pipeline) -> BlendState {
         match blend_mode {
-            BlendMode::AlphaBlending => BlendState::ALPHA_BLENDING,
-            BlendMode::AlphaOverwrite => BlendState::REPLACE,
-            BlendMode::PremultipliedAlpha => BlendState::PREMULTIPLIED_ALPHA_BLENDING,
-            BlendMode::AdditiveBlending => BlendState {
+            Pipeline::AlphaBlending => BlendState::ALPHA_BLENDING,
+            Pipeline::AlphaOverwrite => BlendState::REPLACE,
+            Pipeline::PremultipliedAlpha => BlendState::PREMULTIPLIED_ALPHA_BLENDING,
+            Pipeline::AdditiveBlending => BlendState {
                 color: BlendComponent { 
                     src_factor: BlendFactor::One, 
                     dst_factor: BlendFactor::One, 
@@ -1352,7 +1423,7 @@ impl WgpuEngine<'_> {
                     operation: BlendOperation::Add 
                 }
             },
-            BlendMode::OsuAdditiveBlending => BlendState {
+            Pipeline::OsuAdditiveBlending => BlendState {
                 color: BlendComponent { 
                     src_factor: BlendFactor::SrcAlpha, 
                     dst_factor: BlendFactor::One, 
@@ -1364,7 +1435,7 @@ impl WgpuEngine<'_> {
                     operation: BlendOperation::Add 
                 }
             },
-            BlendMode::SourceAlphaBlending => BlendState {
+            Pipeline::SourceAlphaBlending => BlendState {
                 color: BlendComponent { 
                     src_factor: BlendFactor::SrcAlpha, 
                     dst_factor: BlendFactor::One, 
@@ -1377,10 +1448,11 @@ impl WgpuEngine<'_> {
                 }
             },
 
-            BlendMode::None
-            | BlendMode::Blur
-            | BlendMode::Slider
-            | BlendMode::Flashlight => unimplemented!("nope")
+            Pipeline::None
+            | Pipeline::BoxBlur
+            | Pipeline::GaussianBlur
+            | Pipeline::Slider
+            | Pipeline::Flashlight => unimplemented!("nope")
         }
     }
 
@@ -1390,7 +1462,7 @@ impl WgpuEngine<'_> {
         color: Color, 
         border: Option<f32>, 
         transform: Matrix, 
-        blend_mode: BlendMode
+        blend_mode: Pipeline
     ) {
         let mut polygon = polygon.iter();
         let mut path = LyonPath::builder();
@@ -1414,7 +1486,7 @@ impl WgpuEngine<'_> {
         color: Color, 
         border: Option<f32>, 
         transform: Matrix, 
-        blend_mode: BlendMode
+        blend_mode: Pipeline
     ) {
         use lyon_tessellation::{
             VertexBuffers,
@@ -1769,14 +1841,16 @@ impl GraphicsEngine for WgpuEngine<'_> {
         let mut standard_buffers = Vec::new();
         let mut slider_buffers = Vec::new();
         let mut flashlight_buffers = Vec::new();
-        let mut blur_buffers = Vec::new();
+        let mut gaussian_blur_buffers = Vec::new();
+        let mut box_blur_buffers = Vec::new();
 
         for i in self.completed_buffers.take() {
             match i {
                 RenderBufferType::Standard(v) => standard_buffers.push(v),
                 RenderBufferType::Slider(s) => slider_buffers.push(s),
                 RenderBufferType::Flashlight(f) => flashlight_buffers.push(f),
-                RenderBufferType::Blur(f) => blur_buffers.push(f),
+                RenderBufferType::GaussianBlur(f) => gaussian_blur_buffers.push(f),
+                RenderBufferType::BoxBlur(f) => box_blur_buffers.push(f),
             }
         }
 
@@ -1785,7 +1859,8 @@ impl GraphicsEngine for WgpuEngine<'_> {
                 RenderBufferQueueType::Slider(s) => s.begin(slider_buffers.take()),
                 RenderBufferQueueType::Standard(v) => v.begin(standard_buffers.take()),
                 RenderBufferQueueType::Flashlight(f) => f.begin(flashlight_buffers.take()),
-                RenderBufferQueueType::Blur(f) => f.begin(blur_buffers.take()),
+                RenderBufferQueueType::GaussianBlur(f) => f.begin(gaussian_blur_buffers.take()),
+                RenderBufferQueueType::BoxBlur(f) => f.begin(box_blur_buffers.take()),
             }
         }
     }
@@ -1826,7 +1901,7 @@ impl GraphicsEngine for WgpuEngine<'_> {
         color: Color, 
         resolution: u32, 
         transform: Matrix, 
-        blend_mode: BlendMode,
+        blend_mode: Pipeline,
     ) {
         // minor optimization
         if color.a <= 0.0 { return }
@@ -1867,7 +1942,7 @@ impl GraphicsEngine for WgpuEngine<'_> {
         border: Option<Border>, 
         resolution: u32, 
         transform: Matrix, 
-        blend_mode: BlendMode
+        blend_mode: Pipeline
     ) {
         let n = resolution;
         let x = -radius;
@@ -1915,7 +1990,7 @@ impl GraphicsEngine for WgpuEngine<'_> {
         thickness: f32, 
         color: Color, 
         transform: Matrix, 
-        blend_mode: BlendMode,
+        blend_mode: Pipeline,
     ) {
         let p1 = Vector2::ZERO;
 
@@ -1939,7 +2014,7 @@ impl GraphicsEngine for WgpuEngine<'_> {
         shape: Shape, 
         color: Color, 
         transform: Matrix, 
-        blend_mode: BlendMode,
+        blend_mode: Pipeline,
     ) {
         // for some reason something gets set to infinity on screen resize and panics the tesselator, this prevents the panic
         if rect.iter().any(|n| !n.is_normal() && *n != 0.0) { return }
@@ -2009,7 +2084,7 @@ impl GraphicsEngine for WgpuEngine<'_> {
         h_flip: bool, 
         v_flip: bool, 
         transform: Matrix, 
-        blend_mode: BlendMode,
+        blend_mode: Pipeline,
     ) {
         self.reserve_tex_quad(
             tex, 
@@ -2105,16 +2180,35 @@ impl GraphicsEngine for WgpuEngine<'_> {
     }
 
 
-    fn draw_blur(
+    fn draw_box_blur(
+        &mut self,
+        bounds: Bounds,
+        size: u32,
+    ) {
+        let Some(mut reserve) = self.reserve_box_blur() 
+        else { return };
+
+        let params = BoxBlurParams::new(
+            bounds.pos.x.max(0.0) as u32,
+            bounds.pos.y.max(0.0) as u32,
+            bounds.size.x.max(0.0) as u32,
+            bounds.size.y.max(0.0) as u32,
+            size,
+        );
+
+        reserve.copy_in(params);
+    }
+
+    fn draw_gaussian_blur(
         &mut self,
         bounds: Bounds,
         sigma: f32,
         _rounds: u32,
     ) {
-        let Some(mut reserve) = self.reserve_blur() 
+        let Some(mut reserve) = self.reserve_gaussian_blur() 
         else { return };
 
-        let params = BlurParams::new(
+        let params = GaussianBlurParams::new(
             bounds.pos.x,
             bounds.pos.y,
             bounds.size.x,

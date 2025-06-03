@@ -73,7 +73,7 @@ pub trait GraphicsEngine {
         color: Color, 
         resolution: u32, 
         transform: Matrix, 
-        blend_mode: BlendMode
+        blend_mode: Pipeline
     );
 
     /// draw a circle with the center at 0,0
@@ -84,7 +84,7 @@ pub trait GraphicsEngine {
         border: Option<Border>, 
         resolution: u32, 
         transform: Matrix, 
-        blend_mode: BlendMode
+        blend_mode: Pipeline
     );
 
     /// draw a line from 0,0 to p
@@ -94,7 +94,7 @@ pub trait GraphicsEngine {
         thickness: f32, 
         color: Color, 
         transform: Matrix, 
-        blend_mode: BlendMode
+        blend_mode: Pipeline
     );
 
     /// draw a rectangle
@@ -105,7 +105,7 @@ pub trait GraphicsEngine {
         shape: Shape, 
         color: Color, 
         transform: Matrix, 
-        blend_mode: BlendMode
+        blend_mode: Pipeline
     );
 
     /// draw a texture with top left at 0,0
@@ -116,7 +116,7 @@ pub trait GraphicsEngine {
         h_flip: bool, 
         v_flip: bool, 
         transform: Matrix, 
-        blend_mode: BlendMode
+        blend_mode: Pipeline
     );
 
     /// draw a slider
@@ -139,11 +139,17 @@ pub trait GraphicsEngine {
         flashlight_data: FlashlightData
     );
 
-    fn draw_blur(
+    fn draw_gaussian_blur(
         &mut self,
         bounds: Bounds,
         sigma: f32,
         rounds: u32,
+    );
+
+    fn draw_box_blur(
+        &mut self,
+        bounds: Bounds,
+        size: u32,
     );
 
     // particle engine stuff
@@ -159,14 +165,14 @@ pub struct TextureDraw<'a> {
     pub h_flip: bool, 
     pub v_flip: bool, 
     pub transform: Matrix, 
-    pub blend_mode: BlendMode,
+    pub blend_mode: Pipeline,
 }
 impl<'a> TextureDraw<'a> {
     pub fn new(
         tex: &'a TextureReference, 
         color: Color, 
         transform: Matrix, 
-        blend_mode: BlendMode,
+        blend_mode: Pipeline,
     ) -> Self {
         Self {
             tex,

@@ -93,7 +93,7 @@ pub fn create_slider_pipeline(
             entry_point: Some("slider_fs_main"),
             targets: &[Some(ColorTargetState {
                 format: config.format,
-                blend: Some(WgpuEngine::map_blend_mode(BlendMode::AlphaBlending)),
+                blend: Some(WgpuEngine::map_blend_mode(Pipeline::AlphaBlending)),
                 write_mask: ColorWrites::ALL,
             })],
             compilation_options: PipelineCompilationOptions::default(),

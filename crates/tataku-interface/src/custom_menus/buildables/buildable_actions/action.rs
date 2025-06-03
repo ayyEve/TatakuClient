@@ -158,6 +158,7 @@ impl BuildableAction {
                         title: Cow::Owned(title),
                         // TODO: not auto?
                         location: DialogLocation::Auto,
+                        background: true,
                     },
                     input: variables.build(values, passed_in)
                 }))

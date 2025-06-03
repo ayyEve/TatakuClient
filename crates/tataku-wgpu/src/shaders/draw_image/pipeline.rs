@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use tataku_client_common::graphics::BlendMode;
+use tataku_client_common::graphics::Pipeline;
 
 pub struct RenderImageShader {
     pub pipeline: RenderPipeline,
@@ -87,7 +87,7 @@ impl RenderImageShader {
                 entry_point: Some("fs_main"),
                 targets: &[Some(ColorTargetState {
                     format: TextureFormat::Bgra8UnormSrgb,
-                    blend: Some(WgpuEngine::map_blend_mode(BlendMode::AlphaBlending)),
+                    blend: Some(WgpuEngine::map_blend_mode(Pipeline::AlphaBlending)),
                     write_mask: ColorWrites::ALL,
                 })],
                 compilation_options: PipelineCompilationOptions::default(),

@@ -6,7 +6,7 @@ pub fn create_standard_pipeline(
     config: &SurfaceConfiguration,
     projection_matrix_bind_group_layout: &BindGroupLayout,
     texture_bind_group_layout: &BindGroupLayout,
-) -> HashMap<BlendMode, RenderPipeline> {
+) -> HashMap<Pipeline, RenderPipeline> {
     let shader = device.create_shader_module(ShaderModuleDescriptor {
         label: Some("Standard Shader"),
         #[cfg(feature="texture_arrays")] 
@@ -29,12 +29,12 @@ pub fn create_standard_pipeline(
 
     let mut pipelines = HashMap::new();
     for blend_mode in [
-        BlendMode::AlphaBlending,
-        BlendMode::AlphaOverwrite,
-        BlendMode::PremultipliedAlpha,
-        BlendMode::AdditiveBlending,
-        BlendMode::OsuAdditiveBlending,
-        BlendMode::SourceAlphaBlending,
+        Pipeline::AlphaBlending,
+        Pipeline::AlphaOverwrite,
+        Pipeline::PremultipliedAlpha,
+        Pipeline::AdditiveBlending,
+        Pipeline::OsuAdditiveBlending,
+        Pipeline::SourceAlphaBlending,
     ] {
         let blend_state = WgpuEngine::map_blend_mode(blend_mode);
 

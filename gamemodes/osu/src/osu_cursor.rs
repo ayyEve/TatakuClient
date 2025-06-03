@@ -163,7 +163,7 @@ impl OsuCursor {
         time: f32
     ) -> TransformGroup {
         trail.scale = scale;
-        trail.set_blend_mode(BlendMode::SourceAlphaBlending);
+        trail.set_blend_mode(Pipeline::SourceAlphaBlending);
         let mut g = TransformGroup::new(pos).alpha(1.0).border_alpha(0.0);
         g.transforms.push(Transformation::new(
             start, 

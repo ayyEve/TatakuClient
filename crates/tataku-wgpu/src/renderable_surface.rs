@@ -31,3 +31,20 @@ impl<'a> RenderableSurface<'a> {
         }
     }
 }
+
+
+
+pub struct WgpuTextureReference<'a> {
+    pub view: TextureView,
+    pub size: Extent3d,
+    pub copy: ImageCopyTexture<'a>,
+}
+impl<'a> WgpuTextureReference<'a> {
+    pub fn new(texture: &'a Texture) -> Self {
+        Self {
+            view: texture.create_view(&TextureViewDescriptor::default()),
+            size: texture.size(),
+            copy: texture.as_image_copy(),
+        }
+    }
+}

@@ -39,11 +39,11 @@ impl GraphicsEngine for DummyGraphicsEngine {
     fn push_scissor(&mut self, _scissor: [f32; 4]) {}
     fn pop_scissor(&mut self) {}
 
-    fn draw_arc(&mut self, _start: f32, _end: f32, _radius: f32, _color: Color, _resolution: u32, _transform: Matrix, _blend_mode: BlendMode) {}
-    fn draw_circle(&mut self, _radius: f32, _color: Color, _border: Option<Border>, _resolution: u32, _transform: Matrix, _blend_mode: BlendMode) {}
-    fn draw_line(&mut self, _p: Vector2, _thickness: f32, _color: Color, _transform: Matrix, _blend_mode: BlendMode) {}
-    fn draw_rect(&mut self, _rect: [f32; 4], _border: Option<Border>, _shape: Shape, _color: Color, _transform: Matrix, _blend_mode: BlendMode) {}
-    fn draw_tex(&mut self, _tex: &TextureReference, _color: Color, _h_flip: bool, _v_flip: bool, _transform: Matrix, _blend_mode: BlendMode) {}
+    fn draw_arc(&mut self, _start: f32, _end: f32, _radius: f32, _color: Color, _resolution: u32, _transform: Matrix, _blend_mode: Pipeline) {}
+    fn draw_circle(&mut self, _radius: f32, _color: Color, _border: Option<Border>, _resolution: u32, _transform: Matrix, _blend_mode: Pipeline) {}
+    fn draw_line(&mut self, _p: Vector2, _thickness: f32, _color: Color, _transform: Matrix, _blend_mode: Pipeline) {}
+    fn draw_rect(&mut self, _rect: [f32; 4], _border: Option<Border>, _shape: Shape, _color: Color, _transform: Matrix, _blend_mode: Pipeline) {}
+    fn draw_tex(&mut self, _tex: &TextureReference, _color: Color, _h_flip: bool, _v_flip: bool, _transform: Matrix, _blend_mode: Pipeline) {}
 
     fn draw_slider(
         &mut self,
@@ -63,11 +63,16 @@ impl GraphicsEngine for DummyGraphicsEngine {
         _flashlight_data: FlashlightData
     ) {}
 
-    fn draw_blur(
+    fn draw_gaussian_blur(
         &mut self,
         _bounds: Bounds,
         _sigma: f32,
         _rounds: u32,
+    ) {}
+    fn draw_box_blur(
+        &mut self,
+        _bounds: Bounds,
+        _size: u32,
     ) {}
     
 

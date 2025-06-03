@@ -51,19 +51,43 @@ fn main(
         return;
     }
 
+    var color = vec4<f32>(0.0);
+    if (orientation.vertical == 0u) {
+        color = horizontal(position, filter_size, filter_radius);
+    } else {
+        color = vertical(position, filter_size, filter_radius);
+    }
+
+    textureStore(output_texture, position, color);
+}
+
+
+fn horizontal(
+    position: vec2<i32>,
+    filter_size: i32,
+    filter_radius: i32,
+) -> vec4<f32> {
     let original = textureLoad(input_texture, position, 0);
     var color = vec4<f32>(0.0, 0.0, 0.0, 0.0);
     
-    for (var i : i32 = 0; i < filter_size; i = i + 1) {
-        if (orientation.vertical > 0u) {
-            let y = position.y - filter_radius + i;
-            color = color + kernel.values[i] * textureLoad(input_texture, vec2<i32>(position.x, y), 0);
-        } else {
-            let x = position.x - filter_radius + i;
-            color = color + kernel.values[i] * textureLoad(input_texture, vec2<i32>(x, position.y), 0);
-        }
+    for (var i: i32 = 0; i < filter_size; i++) {
+        let x = position.x - filter_radius + i;
+        color = color + kernel.values[i] * textureLoad(input_texture, vec2<i32>(x, position.y), 0);
     }
-    color = color / kernel.sum;
+    return color / kernel.sum;
+}
 
-    textureStore(output_texture, position, color);
+fn vertical(
+    position: vec2<i32>,
+    filter_size: i32,
+    filter_radius: i32,
+) -> vec4<f32> {
+    let original = textureLoad(input_texture, position, 0);
+    var color = vec4<f32>(0.0, 0.0, 0.0, 0.0);
+    
+    for (var i: i32 = 0; i < filter_size; i++) {
+        let y = position.y - filter_radius + i;
+        color = color + kernel.values[i] * textureLoad(input_texture, vec2<i32>(position.x, y), 0);
+    }
+    return color / kernel.sum;
 }

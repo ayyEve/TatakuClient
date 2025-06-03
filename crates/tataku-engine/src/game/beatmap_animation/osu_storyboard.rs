@@ -151,7 +151,7 @@ impl Element {
         for i in def.commands.iter() {
             let StoryboardEvent::Parameter { param: Param::AdditiveBlending } = i.event else { continue };
             // if i.start_time as i32 == i.end_time as i32 {
-                blend_mode = Some(BlendMode::OsuAdditiveBlending);
+                blend_mode = Some(Pipeline::OsuAdditiveBlending);
             // }
             break;
         }

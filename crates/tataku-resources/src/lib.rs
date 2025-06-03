@@ -6,6 +6,7 @@ pub mod menus {
     pub const LOBBY_SELECT:&[u8] = include_bytes!("/home/ayyeve/Desktop/projects/tataku/tataku-client/crates/tataku-resources/menus/lobby_select.xml");
     pub const FAIL_MENU:&[u8] = include_bytes!("/home/ayyeve/Desktop/projects/tataku/tataku-client/crates/tataku-resources/menus/fail_menu.xml");
     pub const BEATMAP_SELECT:&[u8] = include_bytes!("/home/ayyeve/Desktop/projects/tataku/tataku-client/crates/tataku-resources/menus/beatmap_select.xml");
+    pub const LOADING_MENU:&[u8] = include_bytes!("/home/ayyeve/Desktop/projects/tataku/tataku-client/crates/tataku-resources/menus/loading_menu.xml");
     pub const MAIN_MENU:&[u8] = include_bytes!("/home/ayyeve/Desktop/projects/tataku/tataku-client/crates/tataku-resources/menus/main_menu.xml");
 }
 pub mod dialogs {

@@ -188,19 +188,34 @@ impl Widget for WidgetContainer {
         }
 
         // blur
-        let blur_amount = style.blur
+        let blur_amount = style
+            .blur
             .value_var(shell.values)
             .as_deref()
             .copied()
             .unwrap_or_default();
 
-        let blur_location = style.blur_location.value()
+        let blur_type = style
+            .blur_type
+            .value()
+            .copied()
+            .unwrap_or(CssBlurType::Box);
+
+        let blur_location = style
+            .blur_location
+            .value()
             .copied()
             .unwrap_or_default();
 
-        let should_blur = blur_amount > 0.0;
-        if should_blur && blur_location == BlurLocation::Below {
-            shell.list.push(Blur::new(bounds, blur_amount));
+        let blur = if blur_amount > 0.0 {
+            Some(blur_type.into_blur(blur_amount))
+        } else { None };
+
+
+        if let Some(blur) = blur {
+            if blur_location == BlurLocation::Below {
+                shell.list.push(Blur::new(bounds, blur));
+            }
         }
 
         // draw the inner
@@ -216,8 +231,10 @@ impl Widget for WidgetContainer {
             );
         }
 
-        if should_blur && blur_location == BlurLocation::Above {
-            shell.list.push(Blur::new(bounds, blur_amount));
+        if let Some(blur) = blur {
+            if blur_location == BlurLocation::Above {
+                shell.list.push(Blur::new(bounds, blur));
+            }
         }
     }
     

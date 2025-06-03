@@ -70,11 +70,11 @@ impl TatakuRenderable for TransformedDrawable {
         self.drawable.get_bounds()
     }
 
-    fn get_blend_mode(&self) -> BlendMode {
+    fn get_blend_mode(&self) -> Pipeline {
         self.drawable.get_blend_mode()
     }
 
-    fn set_blend_mode(&mut self, blend_mode: BlendMode) {
+    fn set_blend_mode(&mut self, blend_mode: Pipeline) {
         self.drawable.set_blend_mode(blend_mode);
     }
 
@@ -117,11 +117,11 @@ impl TatakuRenderable for ScissoredDrawable {
         self.drawable.get_bounds()
     }
 
-    fn get_blend_mode(&self) -> BlendMode {
+    fn get_blend_mode(&self) -> Pipeline {
         self.drawable.get_blend_mode()
     }
 
-    fn set_blend_mode(&mut self, blend_mode: BlendMode) {
+    fn set_blend_mode(&mut self, blend_mode: Pipeline) {
         self.drawable.set_blend_mode(blend_mode);
     }
 

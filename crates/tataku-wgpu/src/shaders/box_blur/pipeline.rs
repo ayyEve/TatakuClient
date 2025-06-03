@@ -1,0 +1,328 @@
+use crate::prelude::*;
+use wgpu::util::{BufferInitDescriptor, DeviceExt};
+
+const NAME: &str = "box blur";
+
+pub struct BoxBlurShader {
+    pub pipeline: ComputePipeline,
+
+    vertical: BlurBindings,
+    horizontal: BlurBindings,
+}
+impl BoxBlurShader {
+    pub fn new(device: &Device) -> Self {
+        let pipeline = Self::box_blur(device);
+
+        // some default size, will get updated later
+        let size = Extent3d { 
+            width: 1, 
+            height: 1, 
+            depth_or_array_layers: 1 
+        };
+
+        let desc = TextureDescriptor {
+            label: None,
+            size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: TextureDimension::D2,
+            format: TextureFormat::Bgra8Unorm,
+            usage: TextureUsages::TEXTURE_BINDING
+                | TextureUsages::COPY_SRC
+                | TextureUsages::STORAGE_BINDING,
+            view_formats: &[],
+        };
+
+        let vertical_buffer = device.create_buffer_init(
+            &BufferInitDescriptor {
+                label: Some("Orientation"),
+                contents: bytemuck::cast_slice(&[1u32]),
+                usage: BufferUsages::UNIFORM,
+            }
+        );
+        let horizontal_buffer = device.create_buffer_init(
+            &BufferInitDescriptor {
+                label: Some("Orientation"),
+                contents: bytemuck::cast_slice(&[0u32]),
+                usage: BufferUsages::UNIFORM,
+            }
+        );
+
+        let vertical_texture = device.create_texture(&desc);
+        let horizontal_texture = device.create_texture(&desc);
+
+        let vertical_bind_group = device.create_bind_group(
+            &BindGroupDescriptor {
+                label: Some("Texture bind group"),
+                layout: &pipeline.get_bind_group_layout(1),
+                entries: &[
+                    BindGroupEntry {
+                        binding: 0,
+                        resource: BindingResource::TextureView(
+                            // NOTE!: this should be the output texture, but thats not accessible here
+                            &vertical_texture.create_view(
+                                &TextureViewDescriptor::default()
+                            ),
+                        ),
+                    },
+                    BindGroupEntry {
+                        binding: 1,
+                        resource: BindingResource::TextureView(
+                            &vertical_texture.create_view(
+                                &TextureViewDescriptor::default()
+                            ),
+                        ),
+                    },
+                    BindGroupEntry {
+                        binding: 2,
+                        resource: BindingResource::Buffer(
+                            vertical_buffer.as_entire_buffer_binding(),
+                        ),
+                    },
+                ],
+            }
+        );
+
+        let horizontal_bind_group = device.create_bind_group(
+            &BindGroupDescriptor {
+                label: Some("Texture bind group"),
+                layout: &pipeline.get_bind_group_layout(1),
+                entries: &[
+                    BindGroupEntry {
+                        binding: 0,
+                        resource: BindingResource::TextureView(
+                            &vertical_texture.create_view(
+                                &TextureViewDescriptor::default()
+                            ),
+                        ),
+                    },
+                    BindGroupEntry {
+                        binding: 1,
+                        resource: BindingResource::TextureView(
+                            &horizontal_texture.create_view(
+                                &TextureViewDescriptor::default()
+                            ),
+                        ),
+                    },
+                    BindGroupEntry {
+                        binding: 2,
+                        resource: BindingResource::Buffer(
+                            horizontal_buffer.as_entire_buffer_binding(),
+                        ),
+                    },
+                ],
+            }
+        );
+
+        Self {
+            pipeline,
+
+            horizontal: BlurBindings {
+                buffer: horizontal_buffer,
+                texture: horizontal_texture,
+                bind_group: horizontal_bind_group,
+            },
+            vertical: BlurBindings {
+                buffer: vertical_buffer,
+                texture: vertical_texture,
+                bind_group: vertical_bind_group,
+            },
+        }
+    }
+
+    fn box_blur(device: &Device) -> ComputePipeline {
+        let shader = device.create_shader_module(
+            ShaderModuleDescriptor {
+                label: Some(format!("{NAME} shader").as_str()),
+                source: ShaderSource::Wgsl(crate::shader_files::BOX_BLUR.into()),
+            }
+        );
+
+        let pipeline = device.create_compute_pipeline(
+            &ComputePipelineDescriptor {
+                label: Some(format!("{NAME} pipeline").as_str()),
+                layout: None,
+                module: &shader,
+                entry_point: Some("main"),
+                compilation_options: PipelineCompilationOptions::default(),
+                cache: None,
+            }
+        );
+        
+        pipeline
+    }
+
+    fn resize(
+        &mut self,
+        device: &Device,
+        output: &WgpuTextureReference,
+    ) {
+        let desc = TextureDescriptor {
+            label: None,
+            size: output.size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: TextureDimension::D2,
+            format: TextureFormat::Bgra8Unorm,
+            usage: TextureUsages::TEXTURE_BINDING
+                | TextureUsages::COPY_SRC
+                | TextureUsages::STORAGE_BINDING,
+            view_formats: &[],
+        };
+
+
+        self.vertical.texture = device.create_texture(&desc);
+        self.horizontal.texture = device.create_texture(&desc);
+
+        let view_desc = TextureViewDescriptor::default();
+
+        self.vertical.bind_group = device.create_bind_group(
+            &BindGroupDescriptor {
+                label: Some("Texture bind group"),
+                layout: &self.pipeline.get_bind_group_layout(1),
+                entries: &[
+                    // input
+                    BindGroupEntry {
+                        binding: 0,
+                        resource: BindingResource::TextureView(&output.view),
+                    },
+                    BindGroupEntry {
+                        binding: 1,
+                        resource: BindingResource::TextureView(
+                            &self.vertical.texture.create_view(&view_desc),
+                        ),
+                    },
+                    BindGroupEntry {
+                        binding: 2,
+                        resource: BindingResource::Buffer(
+                            self.vertical.buffer.as_entire_buffer_binding()
+                        ),
+                    },
+                ],
+            }
+        );
+
+        self.horizontal.bind_group = device.create_bind_group(
+            &BindGroupDescriptor {
+                label: Some("Texture bind group"),
+                layout: &self.pipeline.get_bind_group_layout(1),
+                entries: &[
+                    BindGroupEntry {
+                        binding: 0,
+                        resource: BindingResource::TextureView(
+                            &self.vertical.texture.create_view(&view_desc),
+                        ),
+                    },
+                    BindGroupEntry {
+                        binding: 1,
+                        resource: BindingResource::TextureView(
+                            &self.horizontal.texture.create_view(&view_desc),
+                        ),
+                    },
+                    BindGroupEntry {
+                        binding: 2,
+                        resource: BindingResource::Buffer(
+                            self.horizontal.buffer.as_entire_buffer_binding()
+                        ),
+                    },
+                ],
+            }
+        );
+
+    }
+
+    pub fn perform(
+        &mut self,
+        device: &Device,
+        queue: &Queue,
+        output: &WgpuTextureReference,
+        data: &BoxBlurBuffer,
+    ) {
+        let hs = self.horizontal.texture.size();
+        if hs != output.size {
+            self.resize(device, output);
+        }
+
+        // perform the blur
+        let mut encoder = device.create_command_encoder(
+            &CommandEncoderDescriptor { label: None }
+        );
+        {
+            let mut compute_pass = encoder.begin_compute_pass(
+                &ComputePassDescriptor {
+                    timestamp_writes: None,
+                    label: Some(format!("{NAME} pass").as_str()),
+                }
+            );
+
+            compute_pass.set_pipeline(&self.pipeline);
+            compute_pass.set_bind_group(
+                0, 
+                &data.settings_bindgroup, 
+                &[]
+            );
+            compute_pass.set_bind_group(
+                1, 
+                &self.vertical.bind_group, 
+                &[]
+            );
+
+            let (dispatch_width, dispatch_height) = compute_work_group_count(
+                (output.size.width, output.size.height),
+                (128, 1),
+            );
+            compute_pass.dispatch_workgroups(dispatch_width, dispatch_height, 1);
+
+
+            compute_pass.set_bind_group(
+                1, 
+                &self.horizontal.bind_group, 
+                &[]
+            );
+            let (dispatch_height, dispatch_width) = compute_work_group_count(
+                (output.size.width, output.size.height),
+                (1, 128),
+            );
+            compute_pass.dispatch_workgroups(dispatch_width, dispatch_height, 1);
+        }
+
+        encoder.copy_texture_to_texture(
+            self.horizontal.texture.as_image_copy(), 
+            output.copy, 
+            output.size,
+        );
+
+        queue.submit(Some(encoder.finish()));
+    }
+
+}
+
+
+struct BlurBindings {
+    buffer: Buffer,
+    texture: Texture,
+    bind_group: BindGroup,
+}
+
+
+
+
+
+/// Compute the amount of work groups to be dispatched for an image, based on the work group size.
+/// Chances are, the group will not match perfectly, like an image of width 100, for a workgroup size of 32.
+/// To make sure the that the whole 100 pixels are visited, then we would need a count of 4, as 4 * 32 = 128,
+/// which is bigger than 100. A count of 3 would be too little, as it means 96, so four columns (or, 100 - 96) would be ignored.
+///
+/// # Arguments
+///
+/// * `(width, height)` - The dimension of the image we are working on.
+/// * `(workgroup_width, workgroup_height)` - The width and height dimensions of the compute workgroup.
+pub(crate) fn compute_work_group_count(
+    (width, height): (u32, u32),
+    (workgroup_width, workgroup_height): (u32, u32),
+) -> (u32, u32) {
+    let width = width.div_ceil(workgroup_width);
+    let height = height.div_ceil(workgroup_height);
+
+    (width, height)
+}

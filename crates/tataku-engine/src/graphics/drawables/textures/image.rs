@@ -50,7 +50,7 @@ pub struct Image {
     pub origin: Vector2,
 
     pub scissor: Scissor,
-    pub blend_mode: BlendMode,
+    pub blend_mode: Pipeline,
 
     pub color: Color,
     pub pos: Vector2,
@@ -78,7 +78,7 @@ impl Image {
             tex,
             scissor: None,
             flip: ImageFlip::None,
-            blend_mode: BlendMode::AlphaBlending,
+            blend_mode: Pipeline::AlphaBlending,
             base_scale,
             draw_debug: false,
         }
@@ -180,8 +180,8 @@ impl TatakuRenderable for Image {
     
     fn get_scissor(&self) -> Scissor { self.scissor }
     fn set_scissor(&mut self, s: Scissor) { self.scissor = s }
-    fn get_blend_mode(&self) -> BlendMode { self.blend_mode }
-    fn set_blend_mode(&mut self, blend_mode: BlendMode) { self.blend_mode = blend_mode }
+    fn get_blend_mode(&self) -> Pipeline { self.blend_mode }
+    fn set_blend_mode(&mut self, blend_mode: Pipeline) { self.blend_mode = blend_mode }
 
     fn draw(
         &self, 

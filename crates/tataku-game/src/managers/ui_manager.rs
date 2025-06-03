@@ -64,6 +64,7 @@ impl UiManager {
             options.title,
             options.draggable,
             options.resizable,
+            options.background,
             dialog
         ).boxed();
 

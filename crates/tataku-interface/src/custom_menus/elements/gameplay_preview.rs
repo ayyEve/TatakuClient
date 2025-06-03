@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use crate::prelude::ui::CssBlurType;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
@@ -11,6 +12,7 @@ pub struct GameplayPreviewElement {
     #[serde(rename = "@visualization", default)] visualization: Option<String>,
     
     #[serde(rename = "@blur", default)] blur: f32,
+    #[serde(rename = "@blur_type", default)] blur_type: CssBlurType,
 }
 impl CustomElement for GameplayPreviewElement {
     fn build(&self) -> Box<dyn Widget> {
@@ -23,7 +25,7 @@ impl CustomElement for GameplayPreviewElement {
                 true, 
                 true, 
             )
-            .blur(self.blur)
+            .blur(self.blur_type.into_blur(self.blur / 100.0))
             .visualization(if let Some(vis) = &self.visualization {
                 match &**vis {
                     "menu_visualization" => Some(MenuVisualization::new()),

@@ -552,7 +552,10 @@ impl GameplayManager {
 
             self.actions.push(MenuAction::AddDialogRaw { 
                 dialog: Box::new(editor), 
-                options: DialogCreateOptions::default()
+                options: DialogCreateOptions {
+                    background: false,
+                    ..Default::default()
+                }
             });
 
             self.editor = Some(EditorChannels {

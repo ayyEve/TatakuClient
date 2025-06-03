@@ -66,7 +66,7 @@ impl DerefMut for BuildableInputArguments {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 #[derive(ChainableInitializer)]
 #[derive(Deserialize)]
 pub struct DialogCreateOptions {
@@ -82,6 +82,9 @@ pub struct DialogCreateOptions {
     
     #[serde(skip)]
     pub location: DialogLocation,
+    
+    #[serde(skip)]
+    #[chain] pub background: bool,
 }
 impl DialogCreateOptions {
     pub fn merge(
@@ -98,9 +101,24 @@ impl DialogCreateOptions {
             } else { 
                 incoming.title 
             },
+
+            background: incoming.background,
         }
     }
 }
+impl Default for DialogCreateOptions {
+    fn default() -> Self {
+        Self {
+            allow_multiple: false,
+            resizable: false,
+            draggable: false,
+            title: Cow::Borrowed(""),
+            location: DialogLocation::Auto,
+            background: true,
+        }
+    }
+}
+
 
 #[derive(Clone, Debug, Default)]
 pub enum DialogLocation {

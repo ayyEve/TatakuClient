@@ -28,7 +28,7 @@ pub struct Emitter {
     pub color: Color,
 
     pub image: Arc<TextureReference>,
-    pub blend_mode: BlendMode,
+    pub blend_mode: Pipeline,
     
     pool: Arc<RwLock<Pool<Particle>>>,
 }
@@ -48,7 +48,7 @@ impl Emitter {
     
         color: Color,
         image: Arc<TextureReference>,
-        blend_mode: BlendMode,
+        blend_mode: Pipeline,
     ) -> Self {
         let capacity = (life.end * spawn_delay) as usize;
 
@@ -159,7 +159,7 @@ pub struct EmitterBuilder {
     #[chain] color: Color,
     #[chain] image: Arc<TextureReference>,
     #[chain] should_emit: bool,
-    #[chain] blend_mode: BlendMode,
+    #[chain] blend_mode: Pipeline,
 }
 impl EmitterBuilder {
     pub fn new() -> Self { Self::default().should_emit(true) }

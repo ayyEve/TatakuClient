@@ -1,22 +1,24 @@
-use tataku_engine::prelude::BlendMode;
+use tataku_engine::prelude::Pipeline;
 
 // TODO: rename this
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub enum LastDrawn {
+pub enum LastPipeline {
     Standard,
     Slider,
     Flashlight,
 
     // special
-    Blur,
+    GaussianBlur,
+    BoxBlur,
 }
-impl LastDrawn {
-    pub fn as_blendmode(self) -> BlendMode {
+impl LastPipeline {
+    pub fn as_blendmode(self) -> Pipeline {
         match self {
-            Self::Standard => BlendMode::AlphaBlending,
-            Self::Flashlight => BlendMode::Flashlight,
-            Self::Blur => BlendMode::Blur,
-            Self::Slider => BlendMode::Slider,
+            Self::Standard => Pipeline::AlphaBlending,
+            Self::Slider => Pipeline::Slider,
+            Self::Flashlight => Pipeline::Flashlight,
+            Self::GaussianBlur => Pipeline::GaussianBlur,
+            Self::BoxBlur => Pipeline::BoxBlur,
         }
     }
 }

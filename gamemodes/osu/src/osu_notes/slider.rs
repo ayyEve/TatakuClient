@@ -421,8 +421,8 @@ impl OsuSlider {
             // both body and border use the same code with a few differences, so might as well for-loop them to simplify code
             // border is first, body is 2nd, since the body must be drawn on top of the border (which creates the border)
             for (radius, color, blend_mode) in [
-                (self.radius - border_radius * 0.5, border_color, BlendMode::AlphaBlending), // border
-                (self.radius - border_radius * 1.5, color, BlendMode::AlphaOverwrite) // fill
+                (self.radius - border_radius * 0.5, border_color, Pipeline::AlphaBlending), // border
+                (self.radius - border_radius * 1.5, color, Pipeline::AlphaOverwrite) // fill
             ] {
                 // add starting circle manually
                 drawables.push(Box::new(Circle::new(

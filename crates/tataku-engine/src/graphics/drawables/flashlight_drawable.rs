@@ -37,8 +37,8 @@ impl TatakuRenderable for FlashlightDrawable {
 
     fn get_scissor(&self) -> Scissor { self.scissor }
     fn set_scissor(&mut self, s: Scissor) { self.scissor = s }
-    fn get_blend_mode(&self) -> BlendMode { BlendMode::Flashlight }
-    fn set_blend_mode(&mut self, _blend_mode: BlendMode) { }
+    fn get_blend_mode(&self) -> Pipeline { Pipeline::Flashlight }
+    fn set_blend_mode(&mut self, _blend_mode: Pipeline) { }
 
 
     fn draw(

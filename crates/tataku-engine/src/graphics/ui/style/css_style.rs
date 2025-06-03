@@ -215,6 +215,9 @@ pub struct CssStyle {
     /// How much to blur, 0 is none
     pub blur: CssValue<f32>,
 
+    /// What type of blur to use, default is box
+    pub blur_type: CssValue<CssBlurType>,
+
     /// Should the blur be applied above or below the element its on (above means it would blur itself)
     pub blur_location: CssValue<BlurLocation>,
 
@@ -459,6 +462,37 @@ impl std::str::FromStr for BlurLocation {
         match s {
             "above" => Ok(Self::Above),
             "below" => Ok(Self::Below),
+            _ => Err(()),
+        }
+    }
+}
+
+
+
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Deserialize)]
+#[serde(rename_all="camelCase")]
+pub enum CssBlurType {
+    #[default]
+    Box,
+    Gaussian,
+}
+impl CssBlurType {
+    pub fn into_blur(self, amount: f32) -> BlurType {
+        match self {
+            Self::Box => BlurType::Box { size: (amount * 10.0).ceil() as u32 },
+            Self::Gaussian => BlurType::Gaussian { sigma: amount.clamp(0.0, 1.0) },
+        }
+    }
+}
+
+impl std::str::FromStr for CssBlurType {
+    type Err = ();
+    
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "box" => Ok(Self::Box),
+            "gaussian" => Ok(Self::Gaussian),
             _ => Err(()),
         }
     }
