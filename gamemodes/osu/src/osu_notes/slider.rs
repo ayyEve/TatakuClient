@@ -857,7 +857,6 @@ impl HitObject for OsuSlider {
                 circle.pos = self.slider_ball_pos;
                 circle.scale = scale;
                 circle.color = color;
-                circle.rotation = rotation;
 
                 list.push(circle);
             } else {
