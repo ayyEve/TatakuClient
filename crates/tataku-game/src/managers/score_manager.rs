@@ -92,6 +92,15 @@ impl ScoreManager {
                     let mut thing = scores_clone.write().await;
                     thing.scores = local_scores
                         .into_iter()
+                        .map(|mut s| {
+                            if let Ok(info) = infos.get_info(&s.playmode) {
+                                if s.accuracy == 0.0 {
+                                    s.accuracy = info.calc_acc(&s);
+                                }
+                            }
+
+                            s
+                        })
                         .map(|s| IngameScore::new(s, false, false))
                         .collect();
                     thing.done = true;
