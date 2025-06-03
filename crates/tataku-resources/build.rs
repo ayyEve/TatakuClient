@@ -4,16 +4,16 @@ const INCLUDE_DIRS: &[&str] = &[
     "menus",
     "dialogs"
 ];
-const OUTPUT: &str = "src/lib.rs";
 
 fn main() {
     println!("cargo::rerun-if-changed=build.rs");
+    let output = format!("{}/generated.rs", std::env::var("OUT_DIR").unwrap());
     
     let mut output = std::fs::OpenOptions::new()
         .create(true)
         .write(true)
         .truncate(true)
-        .open(OUTPUT)
+        .open(output)
         .expect("error opening output file");
 
     for i in INCLUDE_DIRS {
