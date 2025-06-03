@@ -540,7 +540,7 @@ impl Widget for TextInput {
                                 .inspect_err(|e| warn!("{e:?}"));
                         }
                         
-                        self.on_submit.run(
+                        self.on_input.run(
                             &self.value.get().into_owned(),
                             shell.owner,
                             shell.messages,

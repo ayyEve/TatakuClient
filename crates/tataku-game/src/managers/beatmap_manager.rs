@@ -438,8 +438,6 @@ impl BeatmapManager {
         sort_by: SortBy,
         diff_manager: &mut impl DifficultyProvider,
     ) {
-        trace!("Refreshing maps");
-
         let group_by = GroupBy::default(); //values.settings.group_by;
         //TODO: allow grouping by not just map set
         self.unfiltered_groups = self.all_by_sets(group_by);
