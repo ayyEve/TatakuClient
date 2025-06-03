@@ -81,7 +81,7 @@ prepare-release:
   script:
     - echo DATETIME='$(git show -s --format="%cd" --date=format:"%Y%m%d%H%M")' >> vars.env
     - echo Removing old tag and release
-    - "curl -X DELETE -H 'PRIVATE-TOKEN: $GITLAB_API_TOKEN' 'https://gitlab.ayyeve.dev/api/v4/projects/$CI_PROJECT_ID/tags/latest-$CI_COMMIT_BRANCH' || _ignore=$?"
+    - "curl -X DELETE -H 'PRIVATE-TOKEN: $GITLAB_API_TOKEN' 'https://gitlab.ayyeve.dev/api/v4/projects/$CI_PROJECT_ID/repository/tags/latest-$CI_COMMIT_BRANCH' || _ignore=$?"
   artifacts:
     reports:
       dotenv: vars.env
