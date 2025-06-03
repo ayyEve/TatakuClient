@@ -111,7 +111,15 @@ impl SkinManager {
                     }
 
                     // send the bytes to the gpu to load into the texture atlas
-                    let tex = GameWindow::load_texture_data(img).expect("no atlas");
+                    let Ok(tex) = GameWindow::load_texture_data(img) 
+                    else {
+                        // #[cfg(feature="renderdoc")] { 
+                        //     if let Ok(renderdoc) = renderdoc::RenderDoc::<renderdoc::V140>::new() {
+                        //         renderdoc.start_frame_capture(dev, win);
+                        //     }
+                        // }
+                        panic!("no texture");
+                    };
                     let image = Image::new(Vector2::ZERO, Arc::new(tex), scale);
                     return TextureState::Success(image);
                 }

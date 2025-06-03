@@ -54,7 +54,7 @@ impl BuildableGameAction {
                     .as_u64()
                     .ok()? as usize;
 
-                println!("score: {score_id}");
+                debug!("score: {score_id}");
 
                 Some(GameAction::ViewScoreId(score_id))
             }

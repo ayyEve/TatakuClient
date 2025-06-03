@@ -108,7 +108,6 @@ impl ReflectJudgment {
         judgment: HitJudgment,
         count: u16,
     ) -> Self {
-        println!("{judgment:?}");
         Self {
             judgment,
             count,

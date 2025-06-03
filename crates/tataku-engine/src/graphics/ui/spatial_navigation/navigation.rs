@@ -414,7 +414,7 @@ impl SpatialNagivation<'_> {
     }
 
     pub fn run(&mut self, config: &NavigateConfig) {
-        debug!("starting navigation");
+        // debug!("starting navigation");
         let all_selectable = self.tree.all_children()
             .filter(|i| self.tree.get_context(*i).unwrap().selectable())
             .map(|i| i.get_id())

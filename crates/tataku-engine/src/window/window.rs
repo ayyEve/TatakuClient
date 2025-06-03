@@ -360,11 +360,19 @@ impl GameWindow<'_> {
     }
 
     // this is called from functions without real access to async, so we have to be dumb here
-    pub fn load_font_data(font: ActualFont, size: f32, wait_for_complete: bool) -> TatakuResult<()> {
+    pub fn load_font_data(
+        font: ActualFont, 
+        size: f32, 
+        wait_for_complete: bool
+    ) -> TatakuResult<()> {
         // NOTE: this will hang the main thread if this is run there
         if wait_for_complete {
             let (s, r) = sync_channel(1);
-            Self::send_event(WindowAction::LoadImage(LoadImage::Font(font, size, Some(Box::new(move |r| s.send(r).nope())))));
+            Self::send_event(WindowAction::LoadImage(LoadImage::Font(
+                font, 
+                size, 
+                Some(Box::new(move |r| s.send(r).nope()))
+            )));
 
             return r.recv().unwrap();
         } else {

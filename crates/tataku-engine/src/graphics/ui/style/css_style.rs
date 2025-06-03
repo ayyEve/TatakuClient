@@ -186,7 +186,7 @@ pub struct CssStyle {
 
     /// How should the element fit inside the container
     #[css(parse_with = "Self::parse_image_fit")]
-    pub image_fit: CssValue<ImageFit>,
+    pub image_stretch: CssValue<ImageStretch>,
 
     /// Where should the image be loaded from
     #[css(parse_with = "Self::parse_image_source")]
@@ -463,4 +463,3 @@ impl std::str::FromStr for BlurLocation {
         }
     }
 }
-

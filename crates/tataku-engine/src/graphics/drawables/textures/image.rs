@@ -108,15 +108,15 @@ impl Image {
     }
 
     /// NOTE: this will change the origin to top-left
-    pub fn fit_to(&mut self, fit: ImageFit, bounds: Bounds) {
+    pub fn fit_to(&mut self, fit: ImageStretch, bounds: Bounds) {
         let image_size = self.tex_size();
         let size = bounds.size;
 
         match fit {
-            ImageFit::Fill => {
+            ImageStretch::Fill => {
                 self.set_size(bounds.size);
             }
-            ImageFit::Contain => {
+            ImageStretch::Contain => {
                 // resize to maintain aspect ratio
                 let ratio = image_size.y / image_size.x;
                 
@@ -138,7 +138,7 @@ impl Image {
 
                 self.set_size(new_size);
             }
-            ImageFit::Cover => {
+            ImageStretch::Cover => {
                 // resize to maintain aspect ratio
                 let ratio = image_size.y / image_size.x;
 
@@ -159,12 +159,12 @@ impl Image {
                 // TODO: transform to Cover
                 self.set_size(new_size);
             }
-            ImageFit::None => {},
+            ImageStretch::None => {},
         }
     }
 
     pub fn fit_to_bg_size(&mut self, size: Vector2) {
-        self.fit_to(ImageFit::Contain, Bounds::new(Vector2::ZERO, size));
+        self.fit_to(ImageStretch::Contain, Bounds::new(Vector2::ZERO, size));
         self.origin = Vector2::ZERO;
         self.pos = (size - self.size()) / 2.0;
     }
@@ -241,7 +241,7 @@ impl TatakuRenderable for Image {
 
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
-pub enum ImageFit {
+pub enum ImageStretch {
     /// The image is resized to fill the given dimension. 
     /// 
     /// If necessary, the image will be stretched or squished to fit

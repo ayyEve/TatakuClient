@@ -17,6 +17,7 @@ debug_hitsounds = [ "tataku-engine/debug_hitsounds" ]
 debug_perf_rating = []
 debug_custom_menus = [ "tataku-interface/debug_custom_menus" ]
 dynamic_gamemodes = [ "libloading", "tataku-engine/dynamic_gamemodes" ]
+renderdoc = [ "dep:renderdoc" ]
 
 
 storyboards = [ "tataku-engine/storyboards" ]
@@ -69,6 +70,7 @@ serde_json.workspace = true
 rand.workspace = true
 chrono.workspace = true
 cacache.workspace = true
+renderdoc = { version = "*", optional = true }
 
 # logging
 tracing.workspace = true

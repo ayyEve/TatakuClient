@@ -174,7 +174,7 @@ impl Widget for WidgetContainer {
             .copied()
             .unwrap_or(Alignment::CENTER);
 
-            if let Some(&fill_mode) = style.image_fit.value() {
+            if let Some(&fill_mode) = style.image_stretch.value() {
                 image.fit_to(fill_mode, bounds);
             }
 

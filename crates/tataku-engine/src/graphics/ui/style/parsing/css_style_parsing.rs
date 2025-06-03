@@ -161,7 +161,7 @@ impl CssStyle {
 
     
     impl_parse!(
-        parse_image_fit, ImageFit, 
+        parse_image_fit, ImageStretch, 
         ("fill", Fill);
         ("none", None);
         ("cover", Cover);
