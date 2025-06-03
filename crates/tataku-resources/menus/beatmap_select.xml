@@ -93,6 +93,10 @@
         <cursor>
           <show />
         </cursor>
+
+        <game>
+          <refreshScores/>
+        </game>
       </actions>
     </event>
 
@@ -335,7 +339,7 @@
           </placeholder>
           <onInput>
             <map>
-              <refreshList />
+              <refreshMaps />
             </map>
           </onInput>
         </textInput>

@@ -45,7 +45,7 @@ pub enum BuildableMapAction {
     },
 
     /// Refresh the beatmap list
-    RefreshList,
+    RefreshMaps,
 
     /// Delete the current map
     DeleteCurrent,
@@ -64,7 +64,11 @@ pub enum BuildableMapAction {
     PreviousSet,
 }
 impl BuildableMapAction {
-    pub fn into_action(self, values: &mut dyn Reflect, passed_in: &Option<TatakuValue>) -> Option<BeatmapAction> {
+    pub fn into_action(
+        self, 
+        values: &mut dyn Reflect, 
+        passed_in: &Option<TatakuValue>
+    ) -> Option<BeatmapAction> {
         match self {
             Self::Play => Some(BeatmapAction::PlaySelected),
             Self::Next => Some(BeatmapAction::Next),
@@ -82,7 +86,7 @@ impl BuildableMapAction {
             Self::NextSet => Some(BeatmapAction::ListAction(BeatmapListAction::NextSet)),
             Self::PreviousMap => Some(BeatmapAction::ListAction(BeatmapListAction::PrevMap)),
             Self::PreviousSet => Some(BeatmapAction::ListAction(BeatmapListAction::PrevSet)),
-            Self::RefreshList => Some(BeatmapAction::ListAction(BeatmapListAction::Refresh)),
+            Self::RefreshMaps => Some(BeatmapAction::ListAction(BeatmapListAction::Refresh)),
 
             Self::SetPlaymode { value } => {
                 let value = value.resolve(values, passed_in)?;

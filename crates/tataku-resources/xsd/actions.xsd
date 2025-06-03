@@ -231,7 +231,7 @@
       <xs:element name="selectMap" type="buildable-value:buildableValueElement"/>
       <xs:element name="setPlaymode" type="buildable-value:buildableValueElement"/>
 
-      <xs:element name="refreshList"/>
+      <xs:element name="refreshMaps"/>
       <xs:element name="delete" type="buildable-value:buildableValueElement"/>
       <xs:element name="deleteCurrent"/>
       
@@ -328,6 +328,7 @@
 <xs:group name="game-action">
   <xs:choice>
       <xs:element name="quit"/>
+      <xs:element name="refreshScores"/>
       
       <xs:element name="viewScore" type="buildable-value:buildableValueElement"/>
 

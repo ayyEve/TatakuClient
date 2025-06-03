@@ -7,6 +7,9 @@ pub enum BuildableGameAction {
     /// Quit the game
     Quit,
 
+    /// Refresh Scores
+    RefreshScores,
+
     /// View a score by id
     ViewScore { 
         #[serde(rename="$value", alias="$text")] 
@@ -39,6 +42,7 @@ impl BuildableGameAction {
             }
 
             Self::Quit => Some(GameAction::Quit),
+            Self::RefreshScores => Some(GameAction::RefreshScores),
             Self::ShowNotification {
                 text, color, duration
             } => Some(GameAction::AddNotification(Notification::new(
@@ -77,7 +81,9 @@ impl BuildableGameAction {
 
                 duration.resolve_pre(values);
             }
+            
             Self::Quit => {},
+            Self::RefreshScores => {},
             Self::CopyToClipboard { .. } => {},
         };
     }
