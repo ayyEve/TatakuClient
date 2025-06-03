@@ -81,7 +81,7 @@ releases:
       artifacts: true
   script:
     - echo Removing old tag and release
-    - git push origin :refs/tags/$CI_COMMIT_BRANCH || ignore=$?
+    - "curl -X DELETE -H 'PRIVATE-TOKEN: $GITLAB_API_TOKEN' '$CI_API_V4_URL/projects/$CI_PROJECT_ID/tags/$CI_COMMIT_BRANCH' || _ignore=$?"
     - echo Creating release $CI_COMMIT_BRANCH-$DATETIME
   release:
     tag_name: $CI_COMMIT_BRANCH
