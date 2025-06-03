@@ -339,7 +339,7 @@ impl BeatmapManager {
         let mut set_map: HashMap<BeatmapGroupValue, BeatmapGroup> = HashMap::new();
 
         for beatmap in self.beatmaps.iter().cloned() {
-            let key = format!("[{}] // {}-{}", beatmap.creator, beatmap.artist, beatmap.title);
+            let key = format!("[{}] // {} - {}", beatmap.creator, beatmap.artist, beatmap.title);
             let key = BeatmapGroupValue::Set(key);
 
             if let Some(list) = set_map.get_mut(&key) {

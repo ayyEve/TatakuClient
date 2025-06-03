@@ -96,6 +96,7 @@ impl Database {
             username, playmode, time,
             score,
             combo, max_combo,
+            accuracy,
             x50, x100, x300, geki, katu, xmiss,
             speed, 
             version,
@@ -106,17 +107,19 @@ impl Database {
             ?, ?, ?,
             ?,
             ?, ?,
+            ?,
             0, 0, 0, 0, 0, 0,
             ?,
             ?,
             ?,
             ?
         )";
-        let params: &[&(dyn rusqlite::ToSql + Send + Sync); 12] = &[
+        let params: &[&(dyn rusqlite::ToSql + Send + Sync); 13] = &[
             &s.beatmap_hash.to_string(), &s.hash(),
             &s.username, &s.playmode, &s.time,
             &s.score,
             &s.combo, &s.max_combo,
+            &s.accuracy,
             // s.x50, s.x100, s.x300, s.xgeki, s.xkatu, s.xmiss, 
             &s.speed.as_u16(),
             &s.version,
