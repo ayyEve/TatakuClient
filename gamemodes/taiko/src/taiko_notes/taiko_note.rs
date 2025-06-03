@@ -64,26 +64,32 @@ impl HitObject for TaikoNote {
     fn draw(&mut self, time: f32, list: &mut RenderableCollection) {
         let x = self.x_at(time);
         let delta_time = time - self.hit_time;
-        let y = 
-            if self.hit { GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2) - (delta_time * self.bounce_factor) } 
-            else if self.missed { GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2) } 
-            else { 0.0 };
+        let y = if self.hit { 
+            GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2) - (delta_time * self.bounce_factor) 
+        } else if self.missed { 
+            GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2) 
+        } else { 0.0 };
 
         self.pos = self.playfield.hit_position + Vector2::new(x, y);
-        if let Some(image) = &mut self.image {
-            image.set_pos(self.pos);
+
+        if self.pos.x + self.settings.note_radius < self.playfield.pos.x 
+            || self.pos.x - self.settings.note_radius > self.playfield.pos.x + self.playfield.size.x 
+        { 
+            return 
         }
 
-        if self.pos.x + self.settings.note_radius < self.playfield.pos.x || self.pos.x - self.settings.note_radius > self.playfield.pos.x + self.playfield.size.x { return }
-
         if let Some(image) = &mut self.image {
+            image.set_pos(self.pos);
             image.draw(list);
         } else {
             list.push(Circle::new(
                 self.pos,
                 if self.finisher {self.settings.note_radius * self.settings.big_note_multiplier} else {self.settings.note_radius},
                 self.get_color(),
-            ).border(Border::new(Color::BLACK, NOTE_BORDER_SIZE)));
+            ).border(Border::new(
+                Color::BLACK, 
+                NOTE_BORDER_SIZE
+            )));
         }
     }
 
@@ -96,7 +102,13 @@ impl HitObject for TaikoNote {
 
     #[cfg(feature="graphics")]
     fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
-        self.image = HitCircleImageHelper::new(&self.settings, self.hit_type, self.finisher, source, skin_manager);
+        self.image = HitCircleImageHelper::new(
+            &self.settings, 
+            self.hit_type, 
+            self.finisher, 
+            source, 
+            skin_manager
+        );
     }
 }
 impl TaikoHitObject for TaikoNote {
