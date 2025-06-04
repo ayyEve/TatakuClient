@@ -208,7 +208,7 @@ impl CursorManager {
             CursorAction::OverrideRippleRadius(radius_maybe) 
                 => self.ripple_radius_override = radius_maybe,
             CursorAction::SetVisible(show) => {
-                trace!("setting cursor visible = {show}");
+                // trace!("setting cursor visible = {show}");
                 self.visible = show;
             },
         }
