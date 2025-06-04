@@ -261,7 +261,7 @@ impl GaussianBlurShader {
 
             let (dispatch_width, dispatch_height) = compute_work_group_count(
                 (output.size.width, output.size.height),
-                (128, 1),
+                (16, 16),
             );
             compute_pass.dispatch_workgroups(dispatch_width, dispatch_height, 1);
             compute_pass.set_bind_group(
@@ -270,9 +270,9 @@ impl GaussianBlurShader {
                 &[]
             );
 
-            let (dispatch_height, dispatch_width) = compute_work_group_count(
+            let (dispatch_width, dispatch_height) = compute_work_group_count(
                 (output.size.width, output.size.height),
-                (1, 128),
+                (16, 16),
             );
             compute_pass.dispatch_workgroups(dispatch_width, dispatch_height, 1);
         }
@@ -327,6 +327,7 @@ impl GaussianKernel {
     }
 }
 
+/// Calculate using pixels within 3 sigma
 fn kernel_size_for_sigma(sigma: f32) -> u32 {
     2 * (sigma * 3.0).ceil() as u32 + 1
 }

@@ -269,7 +269,7 @@ impl BoxBlurShader {
 
             let (dispatch_width, dispatch_height) = compute_work_group_count(
                 (output.size.width, output.size.height),
-                (128, 1),
+                (16, 16),
             );
             compute_pass.dispatch_workgroups(dispatch_width, dispatch_height, 1);
 
@@ -279,9 +279,9 @@ impl BoxBlurShader {
                 &self.horizontal.bind_group, 
                 &[]
             );
-            let (dispatch_height, dispatch_width) = compute_work_group_count(
+            let (dispatch_width, dispatch_height) = compute_work_group_count(
                 (output.size.width, output.size.height),
-                (1, 128),
+                (16, 16),
             );
             compute_pass.dispatch_workgroups(dispatch_width, dispatch_height, 1);
         }

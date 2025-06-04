@@ -25,7 +25,7 @@ impl CustomElement for GameplayPreviewElement {
                 true, 
                 true, 
             )
-            .blur(self.blur_type.into_blur(self.blur / 100.0))
+            .blur(self.blur_type.into_blur(self.blur))
             .visualization(if let Some(vis) = &self.visualization {
                 match &**vis {
                     "menu_visualization" => Some(MenuVisualization::new()),

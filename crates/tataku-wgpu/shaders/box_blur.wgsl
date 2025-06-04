@@ -19,32 +19,28 @@ struct Orientation {
 
 
 @compute
-@workgroup_size(128)
+@workgroup_size(16, 16)
 fn main( 
     @builtin(global_invocation_id) global_id: vec3<u32>,
 ) {
     let frag_coord = vec2<i32>(global_id.xy);
 
-    // let dimensions = textureDimensions(input_texture);
-    // if (global_id.x >= dimensions.x || global_id.y >= dimensions.y) {
-    //     return;
-    // }
+    let dimensions = textureDimensions(input_texture);
+
+    if global_id.x >= dimensions.x || global_id.y >= dimensions.y {
+        return;
+    }
+
+    if (outside_bounds(frag_coord)) {
+        let color = textureLoad(input_texture, frag_coord, 0);
+        textureStore(output_texture, frag_coord, color);
+        return;
+    }
 
     var accumulation = vec3<f32>(0.0);
     if orientation.vertical > 0 {
-        if (outside_bounds(frag_coord)) {
-            let texture = textureLoad(input_texture, frag_coord, 0);
-            textureStore(output_texture, frag_coord, texture);
-            return;
-        }
         accumulation = vertical(frag_coord);
     } else {
-        if (outside_bounds(frag_coord)) {
-            let texture = textureLoad(input_texture, frag_coord.yx, 0);
-            textureStore(output_texture, frag_coord.yx, texture);
-            return;
-        }
-
         accumulation = horizontal(frag_coord);
     }
 
@@ -55,27 +51,33 @@ fn main(
 
 fn vertical(frag_coord: vec2<i32>) -> vec3<f32> {
     let size = i32(settings.size);
-    var accumulation = vec3<f32>(0.0);
-    for (var i = -size; i <= size; i++) {
-        let pos = frag_coord + vec2<i32>(0, i);
-        // if (outside_bounds(pos)) { continue; }
+    let height = textureDimensions(input_texture).y;
 
-        let texture = textureLoad(input_texture, pos, 0);
-        accumulation += texture.rgb;
+    var accumulation = vec3<f32>(0.0);
+
+    for (var i = -size; i <= size; i++) {
+        var pos = frag_coord + vec2<i32>(0, i);
+        pos.y = clamp(pos.y, 0, i32(height));
+
+        let color = textureLoad(input_texture, pos, 0);
+        accumulation += color.rgb;
     }
 
     return accumulation;
 }
 
 fn horizontal(frag_coord: vec2<i32>) -> vec3<f32> {
-    // Horizontal Blur
     let size = i32(settings.size);
+    let width = textureDimensions(input_texture).x;
+
     var accumulation = vec3<f32>(0.0);
+
     for (var i = -size; i <= size; i++) {
-        let pos = frag_coord + vec2<i32>(i, 0);
-        // if (outside_bounds(pos)) { continue; }
-        let texture = textureLoad(input_texture, pos, 0);
-        accumulation += texture.rgb;
+        var pos = frag_coord + vec2<i32>(i, 0);
+        pos.x = clamp(pos.x, 0, i32(width));
+
+        let color = textureLoad(input_texture, pos, 0);
+        accumulation += color.rgb;
     }
     
     return accumulation;
@@ -83,7 +85,7 @@ fn horizontal(frag_coord: vec2<i32>) -> vec3<f32> {
 
 fn outside_bounds(pos: vec2<i32>) -> bool {
     return pos.y < i32(settings.y) 
-        || pos.y > i32(settings.y + settings.height)
+        || pos.y >= i32(settings.y + settings.height)
         || pos.x < i32(settings.x) 
-        || pos.x > i32(settings.x + settings.width);
+        || pos.x >= i32(settings.x + settings.width);
 }

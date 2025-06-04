@@ -17,9 +17,14 @@ impl Blur {
 }
 impl TatakuRenderable for Blur {
     fn get_bounds(&self) -> Bounds { self.bounds }
-    fn get_scissor(&self) -> Scissor { Some(self.bounds.into_scissor()) }
+    fn get_scissor(&self) -> Scissor { None }
 
-    fn get_blend_mode(&self) -> Pipeline { Pipeline::GaussianBlur }
+    fn get_blend_mode(&self) -> Pipeline {
+        match self.blur_type {
+            BlurType::Gaussian { .. } => Pipeline::GaussianBlur,
+            BlurType::Box { .. } => Pipeline::BoxBlur,
+        }
+    }
     fn set_blend_mode(&mut self, _blend_mode: Pipeline) {}
 
     fn draw(

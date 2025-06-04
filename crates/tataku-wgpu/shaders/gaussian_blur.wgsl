@@ -25,7 +25,7 @@ struct Kernel {
 @group(1) @binding(2) var<uniform> orientation: Orientation;
 
 @compute
-@workgroup_size(128)
+@workgroup_size(16, 16)
 fn main(
   @builtin(global_invocation_id) global_id : vec3<u32>,
 ) {
@@ -33,21 +33,17 @@ fn main(
     let filter_size = i32(settings.filter_size);
     let dimensions = textureDimensions(input_texture);
     var position = vec2<i32>(global_id.xy);
-
-    if (orientation.vertical == 0u) {
-        position = position.yx;
-    }
     
     if (position.x >= i32(dimensions.x) || position.y >= i32(dimensions.y)) {
         return;
     }
 
     if (
-        position.x < i32(settings.x) || position.x > i32(settings.x + settings.width)
-        || position.y < i32(settings.y) || position.y > i32(settings.y + settings.height)
+        position.x < i32(settings.x) || position.x >= i32(settings.x + settings.width)
+        || position.y < i32(settings.y) || position.y >= i32(settings.y + settings.height)
     ) {
-        let original = textureLoad(input_texture, position, 0);
-        textureStore(output_texture, position, original);
+        let color = textureLoad(input_texture, position, 0);
+        textureStore(output_texture, position, color);
         return;
     }
 
@@ -67,12 +63,13 @@ fn horizontal(
     filter_size: i32,
     filter_radius: i32,
 ) -> vec4<f32> {
-    let original = textureLoad(input_texture, position, 0);
     var color = vec4<f32>(0.0, 0.0, 0.0, 0.0);
     
+    let width = i32(textureDimensions(input_texture).x);
+
     for (var i: i32 = 0; i < filter_size; i++) {
-        let x = position.x - filter_radius + i;
-        color = color + kernel.values[i] * textureLoad(input_texture, vec2<i32>(x, position.y), 0);
+        let x = clamp(position.x - filter_radius + i, 0, width);
+        color += kernel.values[i] * textureLoad(input_texture, vec2<i32>(x, position.y), 0);
     }
     return color / kernel.sum;
 }
@@ -82,12 +79,13 @@ fn vertical(
     filter_size: i32,
     filter_radius: i32,
 ) -> vec4<f32> {
-    let original = textureLoad(input_texture, position, 0);
     var color = vec4<f32>(0.0, 0.0, 0.0, 0.0);
     
+    let height = i32(textureDimensions(input_texture).y);
+
     for (var i: i32 = 0; i < filter_size; i++) {
-        let y = position.y - filter_radius + i;
-        color = color + kernel.values[i] * textureLoad(input_texture, vec2<i32>(position.x, y), 0);
+        let y = clamp(position.y - filter_radius + i, 0, height);
+        color += kernel.values[i] * textureLoad(input_texture, vec2<i32>(position.x, y), 0);
     }
     return color / kernel.sum;
 }

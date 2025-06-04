@@ -480,8 +480,8 @@ pub enum CssBlurType {
 impl CssBlurType {
     pub fn into_blur(self, amount: f32) -> BlurType {
         match self {
-            Self::Box => BlurType::Box { size: (amount * 10.0).ceil() as u32 },
-            Self::Gaussian => BlurType::Gaussian { sigma: amount.clamp(0.0, 1.0) },
+            Self::Box => BlurType::Box { size: amount.ceil() as u32 },
+            Self::Gaussian => BlurType::Gaussian { sigma: amount.max(0.0) },
         }
     }
 }
