@@ -171,11 +171,22 @@ impl ShuntingYard {
             .ok_or_else(|| ShuntingYardError::MissingFunctionArgument(function.to_owned()))?;
         // let SYStackValue::Number(n) = n else { return Err(ShuntingYardError::NumberIsntANumber(String::new())) };
 
+
+        // macro_rules! as_num {
+        //     ($n: expr, $ty: ty) => {
+        //         match n {
+        //             TatakuValue::F32(n) ->  
+        //         }
+        //     }
+        // }
+
         match function {
             "abs" => stack.push(MathFunction::Abs.run(n)?),
             "sin" => stack.push(MathFunction::Sin.run(n)?),
             "cos" => stack.push(MathFunction::Cos.run(n)?),
             "tan" => stack.push(MathFunction::Tan.run(n)?),
+
+            // "as_f32" => stack.push(),
 
             "ref" => {
                 let value = values

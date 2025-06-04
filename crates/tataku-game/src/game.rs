@@ -138,7 +138,7 @@ impl Game {
                 RENDER_COUNT.clone(),
                 RENDER_FRAMETIME.clone()
             ),
-            #[cfg(feature="graphics")] fps_display: FpsDisplay::new("draws/s", 2),
+            #[cfg(feature="graphics")] fps_display: FpsDisplay::new("prepares/s", 2),
             #[cfg(feature="graphics")] update_display: FpsDisplay::new("updates/s", 1),
             #[cfg(feature="graphics")] input_display: AsyncFpsDisplay::new(
                 "inputs/s", 

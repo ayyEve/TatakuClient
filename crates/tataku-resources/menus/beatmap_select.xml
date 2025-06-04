@@ -247,7 +247,7 @@
             <text>
               <list>
                 <text text="speed: "/>
-                <variable var="mods.speed"/>
+                <variable var="global.mods.speed"/>
               </list>
             </text>
           </notification>
