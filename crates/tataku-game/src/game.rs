@@ -227,6 +227,7 @@ impl Game {
             load_entry!(menu, self, "../menus/pause_menu.xml", menus::PAUSE_MENU);
             load_entry!(menu, self, "../menus/fail_menu.xml", menus::FAIL_MENU);
             load_entry!(menu, self, "../menus/score_menu.xml", menus::SCORE_MENU);
+            load_entry!(menu, self, "../menus/loading_menu.xml", menus::LOADING_MENU);
         }
         // dialogs 
         {
