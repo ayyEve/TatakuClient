@@ -16,7 +16,7 @@ pub struct OsuNote {
     missed: bool,
 
     /// combo color
-    color: Color, 
+    color: Color,
 
     /// note radius (scaled by cs and size)
     radius: f32,
@@ -34,20 +34,20 @@ pub struct OsuNote {
     /// cached settings for this game
     standard_settings: Arc<OsuSettings>,
     /// list of shapes to be drawn
-    shapes: Vec<TransformGroup>,
+    // shapes: Vec<TransformGroup>,
 
-    circle_image: HitCircleImageHelper,
+    circle_image: HitCircle,
     approach_circle: ApproachCircle,
 
     hitsounds: Vec<Hitsound>,
 }
 impl OsuNote {
     pub fn new(
-        def: NoteDef, 
-        ar: f32, 
-        combo_num: u16, 
+        def: NoteDef,
+        ar: f32,
+        combo_num: u16,
         scaling_helper: Arc<ScalingHelper>, 
-        standard_settings: Arc<OsuSettings>, 
+        standard_settings: Arc<OsuSettings>,
         hitsounds: Vec<Hitsound>,
     ) -> Self {
         let time = def.time;
@@ -55,15 +55,15 @@ impl OsuNote {
 
         let pos = scaling_helper.scale_coords(def.pos);
         let radius = CIRCLE_RADIUS_BASE * scaling_helper.cs;
-        
+
         let approach_circle = ApproachCircle::new(
-            def.pos, 
-            time, 
-            radius, 
-            time_preempt, 
+            def.pos,
+            time,
+            radius,
+            time_preempt,
             scaling_helper.clone()
         );
-        let circle_image = HitCircleImageHelper::new(
+        let circle_image = HitCircle::new(
             def.pos,
             scaling_helper.clone(),
             combo_num
@@ -72,9 +72,9 @@ impl OsuNote {
         Self {
             def,
             pos,
-            time, 
+            time,
             color: Color::WHITE,
-            
+
             hit: false,
             missed: false,
 
@@ -87,7 +87,7 @@ impl OsuNote {
             scaling_helper,
 
             standard_settings,
-            shapes: Vec::new(),
+            // shapes: Vec::new(),
             approach_circle,
 
             hitsounds
@@ -105,11 +105,11 @@ impl OsuNote {
         alpha
     }
 
-    fn ripple_start(&mut self) {
-        if !self.standard_settings.ripple_hitcircles { return }
+    // fn ripple_start(&mut self) {
+    //     if !self.standard_settings.ripple_hitcircles { return }
         
-        self.shapes.push(self.circle_image.ripple(self.map_time));
-    }
+    //     // self.shapes.push(self.circle_image.ripple(self.map_time));
+    // }
 }
 
 impl HitObject for OsuNote {
@@ -121,23 +121,23 @@ impl HitObject for OsuNote {
         self.approach_circle.update(beatmap_time);
         self.circle_image.update(beatmap_time);
         
-        self.shapes.retain_mut(|shape| {
-            shape.update(beatmap_time);
-            shape.visible()
-        });
+        // self.shapes.retain_mut(|shape| {
+        //     shape.update(beatmap_time);
+        //     shape.visible()
+        // });
     }
 
     #[cfg(feature="graphics")]
-    fn draw(&mut self, _time: f32, list: &mut RenderableCollection) {
+    fn draw(&mut self, _beatmap_time: f32, list: &mut RenderableCollection) {
 
         // if its not time to draw anything else, leave
-        if self.time - self.map_time > self.time_preempt || self.time + self.hitwindow_miss < self.map_time || self.hit { 
+        if self.time - self.map_time > self.time_preempt || self.time + self.hitwindow_miss < self.map_time || self.hit {
             // draw shapes
-            for shape in self.shapes.iter() {
-                list.push(shape.clone());
-            }
-            
-            return 
+            // for shape in self.shapes.iter() {
+            //     list.push(shape.clone());
+            // }
+
+            return
         }
 
         let alpha = self.get_alpha();
@@ -151,16 +151,16 @@ impl HitObject for OsuNote {
         self.approach_circle.draw(list);
 
         // draw shapes
-        for shape in self.shapes.iter() {
-            list.push(shape.clone());
-        }
+        // for shape in self.shapes.iter() {
+        //     list.push(shape.clone());
+        // }
     }
 
     fn reset(&mut self) {
         self.hit = false;
         self.missed = false;
-        
-        self.shapes.clear();
+
+        // self.shapes.clear();
         self.approach_circle.reset();
     }
 
@@ -174,7 +174,7 @@ impl HitObject for OsuNote {
         }
     }
 
-    
+
     #[cfg(feature="graphics")]
     fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
         self.circle_image.reload_skin(source, skin_manager);
@@ -194,11 +194,11 @@ impl OsuHitObject for OsuNote {
     }
 
     fn new_combo(&self) -> bool { self.def.new_combo }
-    fn set_combo_color(&mut self, color: Color) { 
+    fn set_combo_color(&mut self, color: Color) {
         self.color = color;
         
         self.circle_image.set_color(color);
-        if self.standard_settings.approach_combo_color { 
+        if self.standard_settings.approach_combo_color {
             self.approach_circle.set_color(color);
         }
      }
@@ -211,29 +211,29 @@ impl OsuHitObject for OsuNote {
     fn hit(&mut self, time: f32) {
         self.hit = true;
 
-        if self.standard_settings.hit_ripples {
-            let mut group = TransformGroup::new(self.pos).alpha(0.0).border_alpha(1.0);
+        // if self.standard_settings.hit_ripples {
+        //     let mut group = TransformGroup::new(self.pos).alpha(0.0).border_alpha(1.0);
 
-            group.push(Circle::new(
-                Vector2::ZERO,
-                self.radius,
-                Color::TRANSPARENT,
-            ).border(Border::new(self.color, 2.0)));
+        //     group.push(Circle::new(
+        //         Vector2::ZERO,
+        //         self.radius,
+        //         Color::TRANSPARENT,
+        //     ).border(Border::new(self.color, 2.0)));
 
-            let duration = 500.0;
-            group.ripple(
-                0.0, 
-                duration, 
-                time, 
-                self.standard_settings.ripple_scale, 
-                true, 
-                None
-            );
+        //     let duration = 500.0;
+        //     group.ripple(
+        //         0.0,
+        //         duration,
+        //         time,
+        //         self.standard_settings.ripple_scale,
+        //         true,
+        //         None
+        //     );
 
-            self.shapes.push(group);
-        }
+        //     self.shapes.push(group);
+        // }
 
-        self.ripple_start();
+        // self.ripple_start();
     }
 
     fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {
@@ -244,7 +244,7 @@ impl OsuHitObject for OsuNote {
         self.circle_image.playfield_changed(&self.scaling_helper);
     }
 
-    
+
 
     fn set_settings(&mut self, settings: Arc<OsuSettings>) {
         self.standard_settings = settings;
@@ -261,6 +261,6 @@ impl OsuHitObject for OsuNote {
         self.hitsounds.clone()
     }
 
-    
+
     fn shake(&mut self, time: f32) { self.circle_image.shake(time) }
 }

@@ -94,46 +94,9 @@ pub struct AnimatableAction {
 #[serde(rename_all = "camelCase")]
 pub enum TransformTypeTag {
     #[default] None,
-    VectorScale {
-        #[serde(alias="@start")] start: Vector2,
-        #[serde(alias="@end")] end: Vector2,
-    },
     Position {
         #[serde(alias="@start")] start: Vector2,
         #[serde(alias="@end")] end: Vector2,
-    },
-
-    ScaleX {
-        #[serde(rename="@start")] start: f32,
-        #[serde(rename="@end")] end: f32
-    },
-    ScaleY {
-        #[serde(rename="@start")] start: f32,
-        #[serde(rename="@end")] end: f32
-    },
-    Scale {
-        #[serde(rename="@start")] start: f32,
-        #[serde(rename="@end")] end: f32
-    },
-    Rotation {
-        #[serde(rename="@start")] start: f32,
-        #[serde(rename="@end")] end: f32
-    },
-    Color {
-        #[serde(rename="@start")] start: Color,
-        #[serde(rename="@end")] end: Color
-    },
-    BorderSize {
-        #[serde(rename="@start")] start: f32,
-        #[serde(rename="@end")] end: f32
-    },
-    Transparency {
-        #[serde(rename="@start")] start: f32,
-        #[serde(rename="@end")] end: f32
-    },
-    BorderTransparency {
-        #[serde(rename="@start")] start: f32,
-        #[serde(rename="@end")] end: f32
     },
     PositionX {
         #[serde(rename="@start")] start: f32,
@@ -143,33 +106,40 @@ pub enum TransformTypeTag {
         #[serde(rename="@start")] start: f32,
         #[serde(rename="@end")] end: f32
     },
-}
-impl From<TransformTypeTag> for TransformType {
-    fn from(value: TransformTypeTag) -> Self {
-        macro_rules! a {
-            ($($t: ident,)*) => {
-                match value {
-                    $(
-                        TransformTypeTag::$t { start, end } => Self::$t { start, end },
-                    )*
-                    TransformTypeTag::None => Self::None
-                }
-            }
-        }
-
-        a!(
-            VectorScale,
-            Position,
-            ScaleX,
-            ScaleY,
-            Scale ,
-            Rotation,
-            Color,
-            BorderSize,
-            Transparency,
-            BorderTransparency,
-            PositionX,
-            PositionY,
-        )
-    }
+    VectorScale {
+        #[serde(alias="@start")] start: Vector2,
+        #[serde(alias="@end")] end: Vector2,
+    },
+    Scale {
+        #[serde(rename="@start")] start: f32,
+        #[serde(rename="@end")] end: f32
+    },
+    ScaleX {
+        #[serde(rename="@start")] start: f32,
+        #[serde(rename="@end")] end: f32
+    },
+    ScaleY {
+        #[serde(rename="@start")] start: f32,
+        #[serde(rename="@end")] end: f32
+    },
+    Rotation {
+        #[serde(rename="@start")] start: f32,
+        #[serde(rename="@end")] end: f32
+    },
+    // Color {
+    //     #[serde(rename="@start")] start: Color,
+    //     #[serde(rename="@end")] end: Color
+    // },
+    // BorderSize {
+    //     #[serde(rename="@start")] start: f32,
+    //     #[serde(rename="@end")] end: f32
+    // },
+    // Transparency {
+    //     #[serde(rename="@start")] start: f32,
+    //     #[serde(rename="@end")] end: f32
+    // },
+    // BorderTransparency {
+    //     #[serde(rename="@start")] start: f32,
+    //     #[serde(rename="@end")] end: f32
+    // },
 }

@@ -132,13 +132,13 @@ impl Widget for GraphWidget {
     fn draw(&self, shell: &mut DrawShell<'_>) {
         let Some(bounds) = shell.tree.absolute_bounds(self.node_id) else { return };
 
-        let group = match &self.graph {
+        let collection = match &self.graph {
             StatsGraph::Bar(bar) => bar.draw(&bounds),
             StatsGraph::Pie(pie) => pie.draw(&bounds),
             StatsGraph::Scatter(scatter) => scatter.draw(&bounds),
         };
 
-        shell.list.push(group);
+        shell.list.list.extend(collection.list);
     }
 }
 

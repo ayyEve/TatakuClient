@@ -126,7 +126,7 @@ pub struct NewManager {
     pub area: Option<Bounds>,
     /// if there is a different draw function that should be used (mainly for widgets)
     #[debug(skip)]
-    pub draw_function: Option<Arc<dyn Fn(TransformGroup) + Send + Sync + 'static>>,
+    pub draw_function: Option<Arc<dyn Fn(RenderableCollection) + Send + Sync + 'static>>,
 }
 
 #[derive(Debug, Clone, Default)]

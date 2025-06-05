@@ -13,7 +13,6 @@ pub struct Sector {
     pub start: f32,
     pub end: f32,
 
-    scissor: Scissor,
     blend_mode: Pipeline,
 
     pub border: Option<Border>
@@ -37,7 +36,6 @@ impl Sector {
             scale: Vector2::ONE,
 
             border,
-            scissor: None,
             blend_mode: Pipeline::AlphaBlending,
         }
     }
@@ -49,8 +47,6 @@ impl TatakuRenderable for Sector {
         Bounds::new(self.pos, Vector2::ONE * self.radius) 
     }
 
-    fn get_scissor(&self) -> Scissor { self.scissor }
-    fn set_scissor(&mut self, s: Scissor) { self.scissor = s }
     fn get_blend_mode(&self) -> Pipeline { self.blend_mode }
     fn set_blend_mode(&mut self, blend_mode: Pipeline) { self.blend_mode = blend_mode }
 

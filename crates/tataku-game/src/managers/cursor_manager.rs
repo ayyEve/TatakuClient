@@ -24,7 +24,7 @@ pub struct CursorManager {
 
     current_skin: Arc<SkinSettings>,
 
-    ripples: Vec<TransformGroup>,
+    ripples: Vec<Trail>,
     time: f32,
 
     settings: CursorSettings,
@@ -87,10 +87,7 @@ impl CursorManager {
         self.pos = cursor_pos;
 
         // update ripples
-        self.ripples.retain_mut(|ripple| {
-            ripple.update(time);
-            ripple.visible()
-        });
+        self.ripples.retain(|ripple| !ripple.complete(time));
     }
 
     pub fn left_pressed(&mut self, pressed: bool) {
@@ -107,7 +104,13 @@ impl CursorManager {
         
         // draw ripples
         for ripple in self.ripples.iter() {
-            list.push(ripple.clone());
+            list.list.push(ripple.ripple(
+                self.time,
+                0.0,
+                self.settings.cursor_ripple_final_radius,
+                self.settings.cursor_ripple_color.alpha(0.2),
+                Some(Border::new(self.settings.cursor_ripple_color.alpha(0.5), 2.0))
+            ));
         }
     }
 
@@ -148,58 +151,9 @@ impl CursorManager {
     }
 
     fn add_ripple(&mut self) {
-        let mut group = TransformGroup::new(self.pos)
-            .alpha(0.0)
-            .border_alpha(1.0);
         let duration = 500.0;
-        // let time = self.time.as_millis();
 
-        // if let Some(mut ripple) = self.ripple_image.clone() {
-        //     ripple.color.a = self.ripple_color.a;
-        //     ripple.pos = self.pos;
-
-        //     // set scale
-        //     const SCALE:f64 = 0.25;
-        //     ripple.scale = Vector2::ONE * SCALE;
-
-        //     let end_scale = self
-        //         .ripple_radius_override
-        //         .map(|r|r / ripple.size().x / 2.0)
-        //         .unwrap_or(self.settings.cursor_ripple_final_scale)
-        //         * SCALE;
-
-        //     // add to transform group and make it ripple
-        //     group.push(ripple);
-        //     group.ripple_scale_range(0.0, duration, time, end_scale..SCALE, Some(2.0..0.0), Some(0.2));
-        // } else {
-
-            // primitive ripple, not always correct
-            let radius = 1.0;
-            let end_radius = self.ripple_radius_override
-                .unwrap_or(25.0 * self.settings.cursor_ripple_final_scale);
-
-            let end_scale = end_radius / radius;
-
-            // let end_scale = self.settings.cursor_ripple_final_scale * self.ripple_radius_override.map(|r| DEFAULT_CURSOR_SIZE / r).unwrap_or(1.0);
-
-            group.push(Circle::new(
-                Vector2::ZERO,
-                radius,
-                Color::WHITE.alpha(0.5),
-            ).border(Border::new(Color::WHITE, 2.0 / end_scale)));
-
-            group.ripple(
-                0.0, 
-                duration, 
-                self.time, 
-                end_scale, 
-                true, 
-                Some(0.2)
-            );
-        // }
-
-
-        self.ripples.push(group);
+        self.ripples.push(Trail::new(self.pos, self.time, duration));
     }
 
 

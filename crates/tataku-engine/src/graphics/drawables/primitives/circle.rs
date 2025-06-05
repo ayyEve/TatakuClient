@@ -8,7 +8,6 @@ pub struct Circle {
     pub pos: Vector2,
     pub radius: f32,
 
-    scissor: Scissor,
     blend_mode: Pipeline,
 
     pub border: Option<Border>,
@@ -24,7 +23,6 @@ impl Circle {
             color,
             pos,
             radius,
-            scissor: None,
             blend_mode: Pipeline::AlphaBlending,
 
             border: None,
@@ -47,8 +45,6 @@ impl TatakuRenderable for Circle {
         Bounds::new(self.pos, Vector2::ONE * self.radius) 
     }
 
-    fn get_scissor(&self) -> Scissor { self.scissor }
-    fn set_scissor(&mut self, s: Scissor) { self.scissor = s }
     fn get_blend_mode(&self) -> Pipeline { self.blend_mode }
     fn set_blend_mode(&mut self, blend_mode: Pipeline) { self.blend_mode = blend_mode }
 
@@ -76,4 +72,3 @@ impl TatakuRenderable for Circle {
         );
     }
 }
-
