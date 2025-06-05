@@ -121,7 +121,7 @@ impl TaikoHitObject for TaikoNote {
     fn finisher_sound(&self) -> bool { self.base_finisher }
     fn causes_miss(&self) -> bool { true }
 
-    fn hit(&mut self, time: f32) -> bool {
+    fn hit(&mut self, time: f32, _: HitType) -> bool {
         self.hit_time = time;
         self.hit = true;
         true

@@ -168,7 +168,7 @@ impl TaikoHitObject for TaikoDrumroll {
     fn set_sv(&mut self, sv:f32) { self.speed = sv }
     fn hits_to_complete(&self) -> u32 { ((self.end_time - self.time) / 50.0) as u32 }
 
-    fn hit(&mut self, time: f32) -> bool {
+    fn hit(&mut self, time: f32, _: HitType) -> bool {
         if time < self.time || time > self.end_time { return false }
         self.hit_dots.push(time);
         true

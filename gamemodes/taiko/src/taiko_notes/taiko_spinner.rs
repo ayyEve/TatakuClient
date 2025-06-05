@@ -7,6 +7,7 @@ pub struct TaikoSpinner {
     pos: Vector2, // the note in the bar, not the spinner itself
     hit_count: u16,
     complete: bool, // is this spinner done
+    last_hit: Option<HitType>,
 
     hits_required: u16, // how many hits until the spinner is "done"
     time: f32, // ms
@@ -34,6 +35,7 @@ impl TaikoSpinner {
             end_time,
             speed: 0.0,
             hits_required,
+            last_hit: None,
 
             hit_count: 0,
             complete: false,
@@ -123,20 +125,32 @@ impl HitObject for TaikoSpinner {
     }
 }
 impl TaikoHitObject for TaikoSpinner {
-    fn force_hit(&mut self) {self.complete = true}
-    fn was_hit(&self) -> bool {self.complete}
-    fn get_sv(&self) -> f32 {self.speed}
-    fn set_sv(&mut self, sv:f32) {self.speed = sv}
-    fn is_kat(&self) -> bool { false }
+    fn force_hit(&mut self) { self.complete = true }
+    fn was_hit(&self) -> bool { self.complete }
+    fn get_sv(&self) -> f32 { self.speed }
+    fn set_sv(&mut self, sv: f32) { self.speed = sv }
+    fn is_kat(&self) -> bool { self.last_hit == Some(HitType::Kat) }
     fn hits_to_complete(&self) -> u32 { self.hits_required as u32 }
 
-    fn causes_miss(&self) -> bool {!self.complete} // if the spinner wasnt completed in time, cause a miss
+    // if the spinner wasnt completed in time, cause a miss
+    fn causes_miss(&self) -> bool { !self.complete } 
 
-    fn hit(&mut self, time: f32) -> bool {
+    fn hit(&mut self, time: f32, hit_type: HitType) -> bool {
         // too soon or too late
         if time < self.time || time > self.end_time { return false }
         // wrong note, or already done (just in case)
         if self.complete { return false }
+
+        if let Some(last) = self.last_hit {
+            if last == hit_type {
+                return false;
+            }
+            self.last_hit = Some(!last);
+        } else {
+            self.last_hit = Some(hit_type);
+        }
+
+
         self.hit_count += 1;
         if self.hit_count == self.hits_required { self.complete = true }
 

@@ -61,24 +61,6 @@ pub struct TaikoGame {
     healthbar_swap_pending: bool,
 }
 impl TaikoGame {
-    fn play_sound (
-        &self, 
-        shell: &mut GameplayUpdateShell, 
-        note_time: f32, 
-        hit_type: HitType, 
-        finisher: bool,
-    ) {
-        shell.play_hitsounds(
-            &Self::get_hitsound(
-                note_time,
-                hit_type,
-                finisher,
-                shell.timing_points,
-            ), 
-            false
-        );
-    }
-
     fn get_hitsound(
         note_time: f32, 
         hit_type: HitType, 
@@ -239,26 +221,6 @@ impl TaikoGame {
         }
     } 
 
-    fn update_playfield(&mut self, bounds: Bounds, full_window: bool) {
-        self.playfield = Arc::new(Self::get_taiko_playfield(&self.taiko_settings, bounds, full_window));
-
-        // update notes
-        for note in self.notes.iter_mut().chain(self.other_notes.iter_mut()) { 
-            note.playfield_changed(self.playfield.clone());
-        }
-
-        // update timing bars
-        for tb in self.timing_bars.iter_mut() {
-            tb.playfield_changed(self.playfield.clone());
-        }
-
-        // update hit indicator sprite positions
-        for i in [ &mut self.left_kat_image, &mut self.left_don_image, &mut self.right_don_image, &mut self.right_kat_image ] {
-            let Some(i) = i else { continue };
-            i.pos = self.playfield.hit_position;
-        }
-    }
-
     #[allow(clippy::borrowed_box, reason = "matches sort_by signature")]
     fn sort(
         a: &Box<dyn TaikoHitObject>,
@@ -345,7 +307,7 @@ impl GameMode for TaikoGame {
             Beatmap::Osu(beatmap) => {
                 // add notes
                 for note in beatmap.notes.iter() {
-                    let hit_type = if (note.hitsound & (2 | 8)) > 0 {HitType::Kat} else {HitType::Don};
+                    let hit_type = HitType::new((note.hitsound & (2 | 8)) > 0);
                     let finisher = (note.hitsound & 4) > 0;
 
                     s.notes.push(Box::new(TaikoNote::new(
@@ -368,9 +330,13 @@ impl GameMode for TaikoGame {
                     // convert vars
                     let v = timing_points.slider_velocity_at(time);
                     let bl = timing_points.beat_length_at(time, beatmap.beatmap_version < 8);
-                    let skip_period = (bl / beatmap.slider_tick_rate).min((end_time - time) / slides as f32);
+                    let skip_period = (bl / beatmap.slider_tick_rate)
+                        .min((end_time - time) / slides as f32);
 
-                    if skip_period > 0.0 && beatmap.metadata.mode != "taiko" && l / v * 1000.0 < 2.0 * bl {
+                    if skip_period > 0.0 
+                        && beatmap.metadata.mode != "taiko" 
+                        && l / v * 1000.0 < 2.0 * bl 
+                    {
                         let mut i = 0;
                         let mut j = time;
 
@@ -381,7 +347,9 @@ impl GameMode for TaikoGame {
                         let mut sound_types:Vec<(HitType, bool)> = Vec::new();
 
                         for hitsound in slider.edge_sounds.iter() {
-                            let hit_type = HitType::new((hitsound & (2 | 8)) > 0);
+                            let hit_type = HitType::new(
+                                (hitsound & (2 | 8)) > 0
+                            );
                             let finisher = (hitsound & 4) > 0;
                             sound_types.push((hit_type, finisher));
                         }
@@ -434,7 +402,7 @@ impl GameMode for TaikoGame {
                 for note in beatmap.circles.iter() {
                     s.notes.push(Box::new(TaikoNote::new(
                         note.time,
-                        if note.is_don { HitType::Don } else { HitType::Kat },
+                        HitType::new(!note.is_don),
                         note.is_big,
                         settings.clone(),
                         playfield.clone(),
@@ -537,9 +505,15 @@ impl GameMode for TaikoGame {
                         //     &TaikoHitJudgments::X100 | &TaikoHitJudgments::Katu => &TaikoHitJudgments::Katu,
                         //     _ => return, // this shouldnt happen, last judgment will always be one of the above
                         // };
-                        let j = if [&TaikoHitJudgments::X300, &TaikoHitJudgments::Geki].contains(&&self.last_judgment) {
+                        let j = if [
+                            &TaikoHitJudgments::X300, 
                             &TaikoHitJudgments::Geki
-                        } else if [&TaikoHitJudgments::X100, &TaikoHitJudgments::Katu].contains(&&self.last_judgment) {
+                        ].contains(&&self.last_judgment) {
+                            &TaikoHitJudgments::Geki
+                        } else if [
+                            &TaikoHitJudgments::X100, 
+                            &TaikoHitJudgments::Katu
+                        ].contains(&&self.last_judgment) {
                             &TaikoHitJudgments::Katu
                         } else {
                             return
@@ -569,13 +543,11 @@ impl GameMode for TaikoGame {
                 let note_time = note.time();
                 match note.note_type() {
                     NoteType::Note => {
-                        let cond = || note.hit_type() == hit_type || has_relax;
-
                         let hit_maybe = shell.check_judgment_condition(
                             &self.hit_windows, 
                             frame.time, 
                             note_time, 
-                            cond, 
+                            || has_relax || note.hit_type() == hit_type, 
                             &TaikoHitJudgments::Miss
                         );
 
@@ -589,10 +561,17 @@ impl GameMode for TaikoGame {
                             if judge == &TaikoHitJudgments::Miss {
                                 note.miss(shell.time);
                             } else {
-                                note.hit(shell.time);
+                                note.hit(shell.time, hit_type);
                             }
 
-                            Self::add_hit_indicator(judge, false, &self.taiko_settings, &self.playfield, &self.judgement_helper, shell);
+                            Self::add_hit_indicator(
+                                judge, 
+                                false, 
+                                &self.taiko_settings, 
+                                &self.playfield, 
+                                &self.judgement_helper, 
+                                shell
+                            );
                             
                             self.last_judgment = *judge;
                             queue.next();
@@ -600,9 +579,9 @@ impl GameMode for TaikoGame {
                     }
 
                     // slider or spinner, special hit stuff
-                    NoteType::Slider if note.hit(shell.time) 
+                    NoteType::Slider if note.hit(shell.time, hit_type) 
                         => shell.add_judgment(TaikoHitJudgments::SliderPoint),
-                    NoteType::Spinner if note.hit(shell.time) 
+                    NoteType::Spinner if note.hit(shell.time, hit_type) 
                         => shell.add_judgment(TaikoHitJudgments::SpinnerPoint),
                     _ => {}
                 }
@@ -628,7 +607,15 @@ impl GameMode for TaikoGame {
         *self.hit_cache.get_mut(&new_hit_type).unwrap() = frame.time;
 
         // play sound
-        self.play_sound(shell, hit_time, hit_type, finisher_sound);
+        shell.play_hitsounds(
+            &Self::get_hitsound(
+                hit_time,
+                hit_type,
+                finisher_sound,
+                shell.timing_points,
+            ), 
+            false
+        );
     }
 
 
@@ -977,7 +964,34 @@ impl GameMode for TaikoGame {
     }
 
     fn set_bounds(&mut self, bounds: Bounds, full_window: bool) {
-        self.update_playfield(bounds, full_window);
+        self.playfield = Arc::new(Self::get_taiko_playfield(
+            &self.taiko_settings, 
+            bounds, 
+            full_window
+        ));
+
+        // update notes
+        for note in self.notes.iter_mut()
+            .chain(self.other_notes.iter_mut())
+        { 
+            note.playfield_changed(self.playfield.clone());
+        }
+
+        // update timing bars
+        for tb in self.timing_bars.iter_mut() {
+            tb.playfield_changed(self.playfield.clone());
+        }
+
+        // update hit indicator sprite positions
+        for i in [ 
+            &mut self.left_kat_image, 
+            &mut self.left_don_image, 
+            &mut self.right_don_image, 
+            &mut self.right_kat_image 
+        ] {
+            let Some(i) = i else { continue };
+            i.pos = self.playfield.hit_position;
+        }
     }
 
     fn force_update_settings(&mut self, settings: &Settings) {

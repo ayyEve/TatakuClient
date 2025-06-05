@@ -49,7 +49,8 @@ pub trait TaikoHitObject: HitObject + Send + Sync {
     fn was_hit(&self) -> bool;
     fn force_hit(&mut self) {}
 
-    fn hit(&mut self, _time: f32) -> bool { false }
+    fn hit(&mut self, _time: f32, _hit_type: HitType) -> bool { false }
+
     fn miss(&mut self, _time: f32) {}
 
     fn hits_to_complete(&self) -> u32 { 1 }

@@ -32,3 +32,12 @@ impl From<KeyPress> for HitType {
         }
     }
 }
+impl std::ops::Not for HitType {
+    type Output = Self;
+    fn not(self) -> Self::Output {
+        match self {
+            Self::Don => Self::Kat,
+            Self::Kat => Self::Don,
+        }
+    }
+}
