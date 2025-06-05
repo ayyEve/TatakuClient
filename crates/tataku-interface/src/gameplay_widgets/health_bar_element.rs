@@ -114,53 +114,35 @@ impl GameplayWidget for HealthBarElement {
         list: &mut RenderableCollection
     ) {
         let percent = self.health_ratio;
-        let bg_size = Vector2::new(self.container_size.x / 2.0, DURATION_HEIGHT) * scale;
-        let width = bg_size.x * percent;
-        let scissor = [pos_offset.x, pos_offset.y, width, bg_size.y];
 
         if let Some(mut color) = self.healthbar_color.clone() {
+            let tex_size = color.tex_size();
+            let width = tex_size.x * percent;
+
+            let scissor = [pos_offset.x, pos_offset.y, width * scale.x, tex_size.y * scale.y];
 
             // add bg
             if let Some(mut bg) = self.healthbar_bg_image.clone() {
                 bg.pos = pos_offset;
-                let tex_size = bg.tex_size();
-                let ratio = tex_size.y / tex_size.x;
-
-                bg.set_size(Vector2::new(
-                    bg_size.x,
-                    bg_size.x * ratio
-                ));
+                bg.scale *= scale;
 
                 list.push(bg);
             }
             if let Some(mut bg_1) = self.healthbar_bg_image_1.clone() {
                 bg_1.pos = pos_offset;
-                let tex_size = bg_1.tex_size();
-                let ratio = tex_size.y / tex_size.x;
-
-                bg_1.set_size(Vector2::new(
-                    bg_size.x,
-                    bg_size.x * ratio
-                ));
+                bg_1.scale *= scale;
 
                 list.push(bg_1);
             }
 
 
             color.pos = pos_offset;
-            let tex_size = color.tex_size();
-            let ratio = tex_size.y / tex_size.x;
-            color.set_size(Vector2::new(
-                bg_size.x,
-                bg_size.x * ratio
-            ));
-
+            color.scale *= scale;
             
             list.push(ScissoredDrawable::new(
-                scissor, 
-                Box::new(color.clone())
+                scissor,
+                Box::new(color)
             ));
-            
 
             // // add drained health
             // let width2 = bg_size.x * self.last_health_ratio;
@@ -174,13 +156,11 @@ impl GameplayWidget for HealthBarElement {
 
             if let Some(mut color_1) = self.healthbar_color_1.clone() {
                 color_1.pos = pos_offset;
-                let tex_size = color_1.tex_size();
-                let ratio = tex_size.y / tex_size.x;
-                color_1.set_size(Vector2::new(bg_size.x, bg_size.x * ratio));
+                color_1.scale *= scale;
 
                 list.push(ScissoredDrawable::new(
-                    scissor, 
-                    Box::new(color_1.clone())
+                    scissor,
+                    Box::new(color_1)
                 ));
 
                 // // add drained health
@@ -195,6 +175,8 @@ impl GameplayWidget for HealthBarElement {
             }
 
         } else {
+            let bg_size = Vector2::new(self.container_size.x / 2.0, DURATION_HEIGHT) * scale;
+
             let len = self.common_game_settings.healthbar_colors.len();
             let index = ((len as f32 * percent) as usize).min(len - 1);
 
