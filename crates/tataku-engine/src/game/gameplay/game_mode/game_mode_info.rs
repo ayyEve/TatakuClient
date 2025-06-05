@@ -13,7 +13,7 @@ pub trait GamemodeSettings: Reflect + std::fmt::Debug {
 impl_downcast!(GamemodeSettings);
 
 #[repr(C)]
-#[derive(Reflect)]
+#[derive(Reflect, Debug2)]
 #[derive(Copy, Clone)]
 pub struct GamemodeInfo {
     pub id: &'static str,
@@ -29,26 +29,36 @@ pub struct GamemodeInfo {
     pub diff_values: &'static [DifficultyValue],
     pub available_widgets: &'static [GameplayWidgetBuilder],
 
+    #[debug(skip)]
     #[reflect(skip)]
     pub calc_acc: fn(&Score) -> f32,
-    #[reflect(skip)]
-    pub calc_perf: fn(CalcPerfInfo<'_>) -> f32,
 
+    #[debug(skip)]
+    #[reflect(skip)]
+    pub calc_perf: fn(CalcPerfInfo) -> f32,
+
+    #[debug(skip)]
     #[reflect(skip)]
     pub can_load_beatmap: fn(&BeatmapType) -> bool,
     
+    #[debug(skip)]
     #[reflect(skip)]
     pub stats_from_groups: fn(&HashMap<String, HashMap<String, Vec<f32>>>) -> Vec<StatsInfo>,
 
+    #[debug(skip)]
     #[reflect(skip)]
     pub create_game: fn(&Beatmap, &Settings) -> TatakuResult<Box<dyn GameMode>>,
+
+    #[debug(skip)]
     #[reflect(skip)]
     pub create_diffcalc: fn(&BeatmapMeta, &Settings) -> TatakuResult<Box<dyn DiffCalc>>,
 
 
+    #[debug(skip)]
     #[reflect(skip)]
     pub deserialize_settings: fn(serde_json::Value) -> Option<Box<dyn GamemodeSettings>>,
     
+    #[debug(skip)]
     #[reflect(skip)]
     pub serialize_settings: fn(Box<dyn GamemodeSettings>) -> serde_json::Value,
 }
@@ -66,8 +76,7 @@ impl GamemodeInfo {
         diff_values: &[],
         available_widgets: &[],
         calc_acc: |_| 0.0,
-        calc_perf: |_| 0.0,
-        // get_diff_string: Self::dummy_diff_str,
+        calc_perf: Self::default_calc_perf,
         stats_from_groups: |_| Vec::new(),
         can_load_beatmap: |_| false,
         create_game: |_, _| Err(GameModeError::UnknownGameMode.into()),
@@ -75,6 +84,12 @@ impl GamemodeInfo {
         deserialize_settings: |_| None, 
         serialize_settings: |_| panic!("serialize_settings not implemented!")
     };
+
+
+    // TODO:
+    fn default_calc_perf(data: CalcPerfInfo) -> f32 {
+        data.map_difficulty * (data.accuracy / 0.99).powi(6)
+    }
 
     pub fn calc_acc(&self, score: &Score) -> f32 {
         (self.calc_acc)(score)
@@ -117,28 +132,6 @@ impl Default for GamemodeInfo {
 impl AsRef<str> for GamemodeInfo {
     fn as_ref(&self) -> &str {
         self.id
-    }
-}
-
-impl std::fmt::Debug for GamemodeInfo {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("GameModeInfo")
-            .field("id", &self.id)
-            .field("display_name", &self.display_name)
-            .field("about", &self.about)
-            .field("author", &self.author)
-            .field("author_contact", &self.author_contact)
-            .field("bug_report_url", &self.bug_report_url)
-            .field("mods", &self.mods)
-            .field("stat_groups", &self.stat_groups)
-            .field("judgments", &self.judgments)
-            // .field("calc_acc", &self.calc_acc)
-            // .field("calc_perf", &self.calc_perf)
-            // .field("get_diff_string", &self.get_diff_string)
-            // .field("stats_from_groups", &self.stats_from_groups)
-            // .field("create_game", &self.create_game)
-            // .field("create_diffcalc", &self.create_diffcalc)
-            .finish()
     }
 }
 

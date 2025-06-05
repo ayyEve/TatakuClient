@@ -16,6 +16,8 @@ pub const GAME_INFO:GamemodeInfo = GamemodeInfo {
 
     judgments: ManiaHitJudgments::variants(),
     calc_acc: ManiaGameInfo::calc_acc,
+    calc_perf: ManiaGameInfo::calc_perf,
+
     // get_diff_string: ManiaGameInfo::get_diff_string,
     create_game: ManiaGameInfo::create_game,
     create_diffcalc: ManiaGameInfo::create_diffcalc,
@@ -59,6 +61,9 @@ impl ManiaGameInfo {
         top.max(0.0) / bottom
     }
 
+    fn calc_perf(info: CalcPerfInfo) -> f32 {
+        info.map_difficulty * (info.accuracy / 0.98).powi(6)
+    }
 
     fn can_load_beatmap(map: &BeatmapType) -> bool { 
         matches!(map, BeatmapType::Osu | BeatmapType::Quaver | BeatmapType::Stepmania)
