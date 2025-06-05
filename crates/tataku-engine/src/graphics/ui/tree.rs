@@ -281,8 +281,7 @@ impl Tree {
         actions: &mut ActionQueue,
         messages: &mut Vec<Message>,
     ) -> bool {
-        // let mouse_pos = input_state.mouse_pos;
-        let mut consumed = self.with_node(|tree, node| {
+        let consumed = self.with_node(|tree, node| {
             let mut shell = InputShell {
                 owner: tree.owner,
                 messages,
@@ -342,7 +341,7 @@ impl Tree {
                     },
                     &mut shell
                 );
-                !std::mem::take(&mut shell.event_consumed)
+                !shell.event_consumed.take()
             });
 
             input_state.controller_up
@@ -355,7 +354,7 @@ impl Tree {
                     },
                     &mut shell
                 );
-                !std::mem::take(&mut shell.event_consumed)
+                !shell.event_consumed.take()
             });
 
             input_state.controller_axes
@@ -368,7 +367,7 @@ impl Tree {
                     },
                     &mut shell
                 );
-                !std::mem::take(&mut shell.event_consumed)
+                shell.event_consumed.take()
             });
 
             shell.event_consumed
@@ -376,134 +375,8 @@ impl Tree {
 
         if consumed { return true }
 
-        #[derive(Copy, Clone)]
-        #[derive(From)]
-        enum MenuInputType {
-            Key(Key),
-            Controller(ControllerButton),
-            // Axis()
-        }
-        impl MenuInputType {
-            fn has(
-                self, 
-                state: &mut CurrentInputState
-            ) -> bool {
-                match self {
-                    Self::Key(key) 
-                        => state.keys_down.has_key(key),
-                    Self::Controller(btn) 
-                        => state.controller_down.iter()
-                            .any(|(b, _, _)| b == &btn),
-                }
-            }
-            fn remove_from(
-                self,
-                state: &mut CurrentInputState,
-            ) {
-                match self {
-                    Self::Key(key) 
-                        => state.keys_down.remove_key(key),
-                    Self::Controller(btn) 
-                        => state.controller_down
-                            .retain(|(b, _, _)| b != &btn)
-                }
-            }
-        }
-
-        for (input, direction) in [
-            (MenuInputType::Key(Key::Left), Direction::Left),
-            (Key::Right.into(), Direction::Right),
-            (Key::Up.into(), Direction::Up),
-            (Key::Down.into(), Direction::Down),
-            (Key::Tab.into(), Direction::Down),
-
-            (ControllerButton::DPadLeft.into(), Direction::Left),
-            (ControllerButton::DPadRight.into(), Direction::Right),
-            (ControllerButton::DPadUp.into(), Direction::Up),
-            (ControllerButton::DPadDown.into(), Direction::Down),
-        ] {
-            if !input.has(input_state) { continue }
-            
-            if !self.selected_node.active {
-                self.enable_navigation();
-                
-                input.remove_from(input_state);
-
-                consumed = true;
-                error!("Navigation Enabled");
-                // return since this was just to enable navigation
-                // otherwise we'd immediate select the next node, without selecting the current node
-                break;
-            }
-
-            let Some(current) = self.selected_node.node else { 
-                warn!("No active node to navigate from ??");
-                break
-            };
-
-            if let Some(node) = self.tree
-                .get_node_context(current.node_id)
-                .and_then(|i| i.node_direction(direction)) 
-            {
-                self.context_mut(current).selected = Some(false);
-                self.context_mut(node).selected = Some(true);
-                input.remove_from(input_state);
-                consumed = true;
-                error!("Navigated!");
-            } else {
-                error!("No Navigation!!");
-            }
-
-            break
-        }
-        
-        consumed
-    }
-
-    fn enable_navigation(&mut self) {
-        self.selected_node.active = true;
-
-        // try to make sure we have a selected node to start with
-        if self.selected_node.node.is_none() {
-            // find the first selectable node
-            self.selected_node.node = self.find_child(
-                self.root, 
-                Rc::new(|tree, node| tree.context(node).selectable())
-            );
-
-            if let Some(node) = self.selected_node.node {
-                self.context_mut(node).selected = Some(true);
-            }
-        }
-
-    }
-
-    // helpers for when we're certain the node is in the tree
-    // private for that reason too
-    fn context(&self, node: impl HasNodeId) -> &TreeData {
-        self.get_context(node.get_id()).unwrap()
-    }
-    fn context_mut(&mut self, node: impl HasNodeId) -> &mut TreeData {
-        self.get_context_mut(node.get_id()).unwrap()
-    }
-
-    /// this isnt the most efficient thing ever but hopefully its not used too often
-    fn find_child(
-        &self, 
-        parent: impl HasNodeId, 
-        f: Rc<dyn Fn(&Self, TaffyNodeId) -> bool>,
-    ) -> Option<NodeId> {
-        let parent = parent.get_id();
-        if f(self, parent) { 
-            return Some(NodeId::new(parent, self.owner)) 
-        }
-        
-        for child in self.tree.children(parent).ok()? {
-            if let Some(node) = self.find_child(child, f.clone()) { 
-                return Some(node) 
-            }
-        }
-        None
+        // self.handle_spacial_navigation(input_state, values, actions, messages)
+        false
     }
 
 
@@ -618,11 +491,155 @@ impl Tree {
         });
     }
 
-    
+}
 
+// spacial navigation things
+#[allow(unused, reason = "spacial navigation currently disabled")]
+impl Tree {
 
+    fn handle_spacial_navigation(
+        &mut self,
+        input_state: &mut CurrentInputState,
+        values: &mut dyn Reflect,
+        actions: &mut ActionQueue,
+        messages: &mut [Message],
+    ) -> bool {
+        let mut consumed = false;
 
-    // TaffyTree things
+        #[derive(Copy, Clone)]
+        #[derive(From)]
+        enum MenuInputType {
+            Key(Key),
+            Controller(ControllerButton),
+            // Axis()
+        }
+        impl MenuInputType {
+            fn has(
+                self, 
+                state: &mut CurrentInputState
+            ) -> bool {
+                match self {
+                    Self::Key(key) 
+                        => state.keys_down.has_key(key),
+                    Self::Controller(btn) 
+                        => state.controller_down.iter()
+                            .any(|(b, _, _)| b == &btn),
+                }
+            }
+            fn remove_from(
+                self,
+                state: &mut CurrentInputState,
+            ) {
+                match self {
+                    Self::Key(key) 
+                        => state.keys_down.remove_key(key),
+                    Self::Controller(btn) 
+                        => state.controller_down
+                            .retain(|(b, _, _)| b != &btn)
+                }
+            }
+        }
+
+        for (input, direction) in [
+            (MenuInputType::Key(Key::Left), Direction::Left),
+            (Key::Right.into(), Direction::Right),
+            (Key::Up.into(), Direction::Up),
+            (Key::Down.into(), Direction::Down),
+            (Key::Tab.into(), Direction::Down),
+
+            (ControllerButton::DPadLeft.into(), Direction::Left),
+            (ControllerButton::DPadRight.into(), Direction::Right),
+            (ControllerButton::DPadUp.into(), Direction::Up),
+            (ControllerButton::DPadDown.into(), Direction::Down),
+        ] {
+            if !input.has(input_state) { continue }
+            
+            if !self.selected_node.active {
+                self.enable_navigation();
+                
+                input.remove_from(input_state);
+
+                consumed = true;
+                error!("Navigation Enabled");
+                // return since this was just to enable navigation
+                // otherwise we'd immediate select the next node, without selecting the current node
+                break;
+            }
+
+            let Some(current) = self.selected_node.node else { 
+                warn!("No active node to navigate from ??");
+                break
+            };
+
+            if let Some(node) = self.tree
+                .get_node_context(current.node_id)
+                .and_then(|i| i.node_direction(direction)) 
+            {
+                self.context_mut(current).selected = Some(false);
+                self.context_mut(node).selected = Some(true);
+                input.remove_from(input_state);
+                consumed = true;
+                error!("Navigated!");
+            } else {
+                error!("No Navigation!!");
+            }
+
+            break
+        }
+
+        consumed
+    }
+
+    fn enable_navigation(&mut self) {
+        self.selected_node.active = true;
+
+        // try to make sure we have a selected node to start with
+        if self.selected_node.node.is_none() {
+            // find the first selectable node
+            self.selected_node.node = self.find_child(
+                self.root, 
+                Rc::new(|tree, node| tree.context(node).selectable())
+            );
+
+            if let Some(node) = self.selected_node.node {
+                self.context_mut(node).selected = Some(true);
+            }
+        }
+
+    }
+
+    // helpers for when we're certain the node is in the tree
+    // private for that reason too
+    fn context(&self, node: impl HasNodeId) -> &TreeData {
+        self.get_context(node.get_id()).unwrap()
+    }
+    fn context_mut(&mut self, node: impl HasNodeId) -> &mut TreeData {
+        self.get_context_mut(node.get_id()).unwrap()
+    }
+
+    /// this isnt the most efficient thing ever but hopefully its not used too often
+    fn find_child(
+        &self, 
+        parent: impl HasNodeId, 
+        f: Rc<dyn Fn(&Self, TaffyNodeId) -> bool>,
+    ) -> Option<NodeId> {
+        let parent = parent.get_id();
+        if f(self, parent) { 
+            return Some(NodeId::new(parent, self.owner)) 
+        }
+        
+        for child in self.tree.children(parent).ok()? {
+            if let Some(node) = self.find_child(child, f.clone()) { 
+                return Some(node) 
+            }
+        }
+        None
+    }
+
+}
+
+// taffy tree things
+impl Tree {
     pub fn new_leaf(&mut self, style: Style) -> TaffyResult<NodeId> {
         let id = self.tree.new_leaf(style)?;
 
