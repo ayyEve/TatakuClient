@@ -11,7 +11,7 @@ impl BuildableCursorAction {
     pub fn into_action(
         self, 
         _values: &mut dyn Reflect, 
-        _passed_in: &Option<TatakuValue>
+        _passed_in: Option<&TatakuValue>
     ) -> Option<CursorAction> {
         match self {
             Self::Show => Some(CursorAction::SetVisible(true)),

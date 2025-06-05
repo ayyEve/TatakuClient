@@ -98,7 +98,7 @@ impl Widget for KeyButton {
 
                         self.on_change.run(
                             &None,
-                            shell.owner,
+                            self.node_id,
                             shell.messages,
                             shell.actions,
                             shell.values,
@@ -115,7 +115,7 @@ impl Widget for KeyButton {
 
                     self.on_change.run(
                         &Some(key),
-                        shell.owner,
+                        self.node_id,
                         shell.messages,
                         shell.actions,
                         shell.values,

@@ -87,7 +87,7 @@ impl Dropdown {
     fn set_value(
         &mut self, 
         index: usize, 
-        shell: &mut InputShell<'_>
+        shell: &mut InputShell
     ) {
         self.active = false;
         self.value.set_index(index);
@@ -95,7 +95,7 @@ impl Dropdown {
 
         let message = match &self.on_change {
             DropdownOnChange::Message(message) => message.clone(),
-            DropdownOnChange::Buildable(lua_action) => {
+            DropdownOnChange::Buildable(buildable_action) => {
                 let passed_in = match &self.variants {
                     DropdownVariants::Static(items) 
                         => Some(items[index].clone().into()),
@@ -112,11 +112,18 @@ impl Dropdown {
                     },
                 };
 
-                lua_action.resolve(
-                    shell.owner, 
+
+
+                let action = buildable_action.clone().into_action(
+                    self.node_id, 
                     shell.values, 
                     passed_in.as_ref(),
-                )
+                );
+                if let Some(action) = action {
+                    shell.actions.push(action);
+                }
+
+                None
             },
             DropdownOnChange::Callback(f) => Some(f(index)),
         };

@@ -30,7 +30,7 @@ impl BuildableChatAction {
     pub fn into_action(
         self, 
         values: &dyn Reflect, 
-        _passed_in: &Option<TatakuValue>
+        _passed_in: Option<&TatakuValue>
     ) -> Option<TatakuAction> {
         match self {
             Self::SendMessage { 

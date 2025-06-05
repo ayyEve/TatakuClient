@@ -67,7 +67,7 @@ impl BuildableMapAction {
     pub fn into_action(
         self, 
         values: &mut dyn Reflect, 
-        passed_in: &Option<TatakuValue>
+        passed_in: Option<&TatakuValue>
     ) -> Option<BeatmapAction> {
         match self {
             Self::Play => Some(BeatmapAction::PlaySelected),

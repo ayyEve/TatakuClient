@@ -138,7 +138,7 @@ impl Widget for BuiltCustomDialog {
             if let Some(action) = action.into_action(
                 self.node_id, 
                 shell.values, 
-                &passed_in
+                passed_in.as_ref()
             ) {
                 shell.actions.push(action);
             }
@@ -193,25 +193,11 @@ impl Widget for BuiltCustomDialog {
         let Some(events) = self.events.get(&event) else { return };
 
         for i in events.iter() {
-            let Some(message) = i.resolve(
-                MessageOwner::Menu, 
-                shell.values, 
-                event_value
-            ) else { continue };
+            let Some(action) = i.clone()
+                .into_action(self.node_id, shell.values, event_value)
+            else { continue };
 
-            let cast = message.value
-                .try_downcast_ref::<(BuildableAction, Option<TatakuValue>)>()
-                .cloned();
-            if let Some((action, passed_in)) = cast {
-                let Some(a) = action.into_action(
-                    self.node_id, 
-                    shell.values, 
-                    &passed_in
-                ) else { continue };
-                shell.actions.push(a);
-            } else {
-                shell.actions.push(GameAction::HandleMessage(message));
-            }
+            shell.actions.push(action); 
         }
     }
 

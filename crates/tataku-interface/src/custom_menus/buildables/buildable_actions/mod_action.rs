@@ -39,7 +39,7 @@ impl BuildableModAction {
     pub fn into_action(
         self, 
         values: &mut dyn Reflect,
-        passed_in: &Option<TatakuValue>,
+        passed_in: Option<&TatakuValue>,
     ) -> Option<ModAction> {
         match self {
             Self::AddMod { value } => value.resolve(values, passed_in).and_then(|n| n.string_maybe().cloned()).map(ModAction::AddMod),

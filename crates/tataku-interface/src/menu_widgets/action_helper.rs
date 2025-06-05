@@ -16,7 +16,7 @@ impl<T:Clone + Reflect> InputAction<T> {
     pub fn run(
         &self, 
         value: &T,
-        owner: MessageOwner,
+        node: NodeId,
         messages: &mut Vec<Message>,
         actions: &mut ActionQueue,
         values: &mut dyn Reflect,
@@ -29,11 +29,16 @@ impl<T:Clone + Reflect> InputAction<T> {
             Self::ActionCallback(callback) 
                 => actions.push(callback(value)),
             Self::Custom(b) => {
-                let passed_in = TatakuValue::from_reflection(Box::new(value.clone()))
-                    .ok();
+                let passed_in = TatakuValue::from_reflection(
+                    Box::new(value.clone())
+                ).ok();
 
-                if let Some(m) = b.resolve(owner, values, passed_in.as_ref()) {
-                    messages.push(m);
+                if let Some(action) = b.clone().into_action(
+                    node, 
+                    values, 
+                    passed_in.as_ref()
+                ) {
+                    actions.push(action);
                 }
             }
             Self::ReflectCallback(callback)
@@ -41,7 +46,7 @@ impl<T:Clone + Reflect> InputAction<T> {
 
             Self::Multi(list) => {
                 for action in list {
-                    action.run(value, owner, messages, actions, values);
+                    action.run(value, node, messages, actions, values);
                 }
             }
         }

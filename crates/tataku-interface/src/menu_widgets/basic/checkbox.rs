@@ -133,10 +133,18 @@ impl Widget for Checkbox {
             InputType::MouseRelease(MouseButton::Left) if self.active => {
                 let m = self.on_toggle
                     .as_ref()
-                    .and_then(|f| f.run(!self.value.get(), shell.owner, shell.values))
+                    .and_then(|f| f.run(
+                        !self.value.get(), 
+                        self.node_id, 
+                        shell.values
+                    ))
                     ;
+
                 if let Some(m) = m {
-                    shell.publish(m);
+                    match m {
+                        Ok(m) => shell.publish(m),
+                        Err(action) => shell.actions.push(action),
+                    }
                 }
 
                 if let CheckboxValue::Static(b) = &mut self.value {
@@ -367,21 +375,22 @@ impl CheckboxOnToggle {
     fn run(
         &self, 
         value: bool, 
-        owner: MessageOwner, 
+        node: NodeId, 
         values: &mut dyn Reflect,
-    ) -> Option<Message> {
+    ) -> Option<Result<Message, TatakuAction>> {
         match self {
             Self::Callback(cb) 
-                => Some(cb(value)),
+                => Some(Ok(cb(value))),
 
             Self::Buildable(action) => {
                 let mut action = action.clone();
                 action.build(values);
-                action.resolve(
-                    owner, 
+                
+                action.into_action(
+                    node, 
                     values, 
                     Some(&TatakuValue::Bool(value))
-                )
+                ).map(Err)
             },
         }
     }

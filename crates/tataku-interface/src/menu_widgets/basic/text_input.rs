@@ -508,7 +508,7 @@ impl Widget for TextInput {
                 if let Some(Key::Enter) = press.as_key() {
                     self.on_submit.run(
                         &self.value.get().into_owned(),
-                        shell.owner,
+                        self.node_id,
                         shell.messages,
                         shell.actions,
                         shell.values,
@@ -542,7 +542,7 @@ impl Widget for TextInput {
                         
                         self.on_input.run(
                             &self.value.get().into_owned(),
-                            shell.owner,
+                            self.node_id,
                             shell.messages,
                             shell.actions,
                             shell.values,

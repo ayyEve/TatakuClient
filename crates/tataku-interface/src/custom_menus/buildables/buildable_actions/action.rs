@@ -125,7 +125,7 @@ impl BuildableAction {
         self, 
         node: NodeId,
         values: &mut dyn Reflect, 
-        passed_in: &Option<TatakuValue>
+        passed_in: Option<&TatakuValue>
     ) -> Option<TatakuAction> {
         match self {
             Self::None => None,
@@ -306,22 +306,6 @@ impl BuildableAction {
             _ => {}
         }
     }
-
-    pub fn resolve(
-        &self, 
-        owner: MessageOwner, 
-        values: &mut dyn Reflect, 
-        passed_in: Option<&TatakuValue>
-    ) -> Option<Message> {
-        if let BuildableAction::None = &self { return None };
-
-        let mut action = self.clone();
-        action.build(values);
-
-        let value = Arc::new((action, passed_in.cloned()));
-        let message = MessageValue::Custom(value);
-        Some(Message::new(owner, "", message))
-    }
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -377,7 +361,7 @@ impl DialogInputsTag {
     pub fn build(
         self, 
         values: &dyn Reflect,
-        passed_in: &Option<TatakuValue>
+        passed_in: Option<&TatakuValue>
     ) -> BuildableInputArguments {
         let mut inputs = BuildableInputArguments::default();
         for i in self.inputs {

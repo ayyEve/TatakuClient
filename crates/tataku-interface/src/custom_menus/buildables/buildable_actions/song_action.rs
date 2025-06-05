@@ -41,7 +41,7 @@ impl BuildableSongAction {
     pub fn into_action(
         self, 
         values: &mut dyn Reflect, 
-        passed_in: &Option<TatakuValue>
+        passed_in: Option<&TatakuValue>
     ) -> Option<SongAction> {
         match self {
             Self::Play => Some(SongAction::Play),

@@ -118,7 +118,7 @@ impl BuildableValue {
     pub fn resolve<'a:'b, 'b>(
         &'a self, 
         values: &'b dyn Reflect, 
-        passed_in: &'b Option<TatakuValue>
+        passed_in: Option<&'b TatakuValue>
     ) -> Option<Cow<'b, TatakuValue>> {
         match self {
             Self::None => None,

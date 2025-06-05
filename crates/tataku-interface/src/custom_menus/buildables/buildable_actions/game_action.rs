@@ -32,7 +32,7 @@ impl BuildableGameAction {
     pub fn into_action(
         self, 
         values: &mut dyn Reflect, 
-        passed_in: &Option<TatakuValue>
+        passed_in: Option<&TatakuValue>
     ) -> Option<GameAction> {
         match self {
             Self::CopyToClipboard { mut text } => {

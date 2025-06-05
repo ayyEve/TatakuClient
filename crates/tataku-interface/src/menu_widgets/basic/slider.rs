@@ -106,18 +106,11 @@ impl Widget for Slider {
                         self.value.set(new_value);
                         self.on_change.run(
                             &new_value,
-                            shell.owner,
+                            self.node_id,
                             shell.messages,
                             shell.actions,
                             shell.values,
                         );
-                        // if let Some(msg) = self.on_change.resolve(
-                        //     new_value,
-                        //     shell.owner,
-                        //     shell.values
-                        // ) {
-                        //     shell.messages.push(msg);
-                        // }
                     }
                 }
             }

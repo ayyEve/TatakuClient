@@ -110,7 +110,7 @@ impl Widget for Button {
 
                 if let Some(message) = action.resolve(
                     self.node_id,
-                    &None,
+                    None,
                     shell.values
                 ) {
                     match message {
@@ -200,7 +200,7 @@ impl ButtonOnClick {
     pub fn resolve(
         &self, 
         node: NodeId,
-        passed_in: &Option<TatakuValue>,
+        passed_in: Option<&TatakuValue>,
         values: &mut dyn Reflect
     ) -> Option<ActionResponse> {
         match self {

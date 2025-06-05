@@ -47,7 +47,7 @@ impl BuildableMultiplayerAction {
     pub fn into_action(
         self, 
         values: &mut dyn Reflect, 
-        passed_in: &Option<TatakuValue>
+        passed_in: Option<&TatakuValue>
     ) -> Option<MultiplayerAction> {
         match self {
             Self::StartMultiplayer => Some(MultiplayerAction::StartMultiplayer),

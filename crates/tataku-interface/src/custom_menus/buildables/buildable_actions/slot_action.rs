@@ -10,7 +10,7 @@ impl BuildableSlot {
     pub fn get_action(
         &self, 
         values: &mut dyn Reflect, 
-        passed_in: &Option<TatakuValue>,
+        passed_in: Option<&TatakuValue>,
     ) -> Option<LobbySlotAction> {
         let slot = match &self.slot.value {
             BuildableValue::None => {
@@ -85,7 +85,7 @@ impl BuildableSlot {
                 };
                 Cow::Owned(var)
             }
-            BuildableValue::PassedIn => Cow::Owned(passed_in.clone()?),
+            BuildableValue::PassedIn => Cow::Owned(passed_in.cloned()?),
         };
 
         let Ok(slot_num) = slot.as_u32() else {

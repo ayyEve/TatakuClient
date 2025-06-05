@@ -20,10 +20,10 @@ impl ContextMenuAction {
 
     pub fn run(
         &self,
-        owner: MessageOwner,
+        node: NodeId,
         passed_in: Option<TatakuValue>,
         values: &mut dyn Reflect,
-        _actions: &mut ActionQueue,
+        actions: &mut ActionQueue,
         messages: &mut Vec<Message>,
     ) {
         match self {
@@ -36,12 +36,12 @@ impl ContextMenuAction {
                 }
             }
             Self::Buildable(b) => {
-                if let Some(message) = b.resolve(
-                    owner, 
+                if let Some(action) = b.clone().into_action(
+                    node, 
                     values, 
                     passed_in.as_ref(),
                 ) {
-                    messages.push(message);
+                    actions.push(action);
                 }
             },
         }

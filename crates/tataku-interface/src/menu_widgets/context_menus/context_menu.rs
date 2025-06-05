@@ -157,7 +157,7 @@ impl Widget for ContextMenu {
                         self.should_close = true;
                         self.should_close_parent = true;
                         action.run(
-                            shell.owner,
+                            shell.tree.node.node_id(),
                             None,
                             shell.values,
                             shell.actions,
@@ -190,7 +190,7 @@ impl Widget for ContextMenu {
                                 self.should_close = true;
                                 self.should_close_parent = true;
                                 action.run(
-                                    shell.owner,
+                                    shell.tree.node.node_id(),
                                     None,
                                     shell.values,
                                     shell.actions,
