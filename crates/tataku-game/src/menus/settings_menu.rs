@@ -131,7 +131,10 @@ impl SettingsMenu {
                         Container::new(vec![p, v])
                         .vertical_align(AlignContent::Center)
                         .horizontal_align(AlignContent::SpaceBetween)
-                        .margin([LengthPercentageAuto::Length(5.0), LengthPercentageAuto::Length(5.0)])
+                        .margin([
+                            LengthPercentageAuto::Length(5.0), 
+                            LengthPercentageAuto::Length(5.0)
+                        ])
                         .width(FILL)
                         .boxed()
                     )
@@ -189,7 +192,7 @@ impl SettingsMenu {
 
             // done
             Button::new(TextWidget::new("Done").boxed())
-                .on_press(Message::new(owner, "done", MessageValue::Click))
+                .on_press(Message::new(owner, "close", MessageValue::Click))
                 .boxed()
         ])
         .width(FILL)
@@ -285,21 +288,9 @@ impl Widget for SettingsMenu {
             .unwrap();
 
         match first {
-            "done" => {
-                shell.handled = true;
-                settings.check_hashes();
-                shell.actions.push(UiAction::new(
-                    self.node_id(), 
-                    DialogAction::Close
-                ));
-            },
             "revert" => {
                 shell.handled = true;
                 *settings = self.old_settings.clone();
-                shell.actions.push(UiAction::new(
-                    self.node_id(), 
-                    DialogAction::Close
-                ));
             },
             "search" => if let Some(text) = message.value.as_text_ref() { 
                 shell.handled = true;
@@ -319,6 +310,8 @@ impl Widget for SettingsMenu {
             // graceful close requested
             "force_close" | "close" => {
                 shell.handled = true;
+                settings.check_hashes();
+
                 // run the close animation
                 self.node.handle_message(
                     &Message::new(
