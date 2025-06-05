@@ -31,7 +31,6 @@ pub struct Game {
 
     pub song_manager: SongManager,
     pub audio_manager: AudioManager,
-    pub sound_manager: SoundManager,
     pub(crate) task_manager: TaskManager,
     difficulty_manager: DifficultyManager,
 
@@ -104,7 +103,6 @@ impl Game {
             difficulty_manager: DifficultyManager,
 
             song_manager: SongManager::new(),
-            sound_manager: SoundManager::default(),
             audio_manager: AudioManager::init_audio(audio_engines)
                 .expect("failed to initialize audio engine!"),
             score_manager: ScoreManager::new(infos.clone()),
@@ -1435,10 +1433,9 @@ impl Game {
             #[cfg(feature="graphics")] 
             TatakuAction::Menu(action) => self.handle_menu_action(action),
             
-            TatakuAction::Audio(action) => self.sound_manager.handle_action(
+            TatakuAction::Audio(action) => self.audio_manager.handle_action(
                 action, 
                 &mut self.values, 
-                &mut self.audio_manager,
                 #[cfg(feature="graphics")] 
                 &mut self.skin_manager,
             ),
