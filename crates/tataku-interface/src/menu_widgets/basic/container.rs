@@ -37,7 +37,7 @@ impl Container {
     }
 
     fn check_scroll(
-        &mut self, 
+        &mut self,
         scroll: ScrollPosition,
         layout: &Layout,
     ) -> bool {
@@ -83,22 +83,22 @@ impl Widget for Container {
         shell: &mut StyleShell,
         _display_override: Option<ui::Display>) {
         for i in self.children.iter_mut() {
-            i.update_styles(shell, None);  
+            i.update_styles(shell, None);
         }
     }
 
     fn input(
-        &mut self, 
+        &mut self,
         event: &InputEvent,
         shell: &mut InputShell,
     ) {
-        let Some(layout) = shell.tree.get_layout(&*self).copied() 
+        let Some(layout) = shell.tree.get_layout(&*self).copied()
         else { return };
 
         if let InputType::MouseScroll(delta) = &event.event {
             if shell.event_consumed { return }
             if self.check_scroll(
-                ScrollPosition::Relative(Vector2::new(0.0, *delta)), 
+                ScrollPosition::Relative(Vector2::new(0.0, *delta)),
                 &layout
             ) {
                 let context = shell
@@ -108,19 +108,19 @@ impl Widget for Container {
 
                 context.local_transform.pos = self.scroll_offset;
                 shell.actions.push(UiAction::new(
-                    self.node_id, 
+                    self.node_id,
                     UiActionType::ContextChanged
                 ));
 
                 shell.event_consumed = true;
-                return 
+                return
             }
         }
 
-        
+
         let mut captured = false;
         if let Some(data) = &mut self.programmatic {
-            let Ok(iter) = shell.values.reflect_iter(&data.list_var) 
+            let Ok(iter) = shell.values.reflect_iter(&data.list_var)
             else {
                 if !data.error_printed {
                     data.error_printed = true;
@@ -128,13 +128,13 @@ impl Widget for Container {
                     error!("list variable doesnt exist! {}", data.list_var);
                     error!("!!!!!!!!!!!!!!");
                 }
-                return 
+                return
             };
-    
-            let values = iter 
+
+            let values = iter
                 .filter_map(|v| v.duplicate())
                 .collect::<Vec<_>>();
-    
+
             let path = ReflectPath::new(&data.variable);
             for (w, value) in self.children.iter_mut().zip(values) {
                 shell
@@ -179,7 +179,7 @@ impl Widget for Container {
 
                 context.local_transform.pos = self.scroll_offset;
                 shell.actions.push(UiAction::new(
-                    self.node_id, 
+                    self.node_id,
                     UiActionType::ContextChanged
                 ));
             }
@@ -192,7 +192,7 @@ impl Widget for Container {
             .collect::<TaffyResult<Vec<_>>>()?;
 
         self.node_id = shell.tree.new_with_children(
-            self.style.clone(), 
+            self.style.clone(),
             &children
         )?;
 
@@ -204,7 +204,7 @@ impl Widget for Container {
     }
 
     fn draw(&self, shell: &mut DrawShell) {
-        let Some(our_bounds) = shell.tree.absolute_bounds(self) 
+        let Some(our_bounds) = shell.tree.absolute_bounds(self)
         else { return };
 
         let mut list = RenderableCollection::new();
@@ -214,21 +214,23 @@ impl Widget for Container {
 
         for i in self.children.iter() {
             // dont attempt to draw items outside our bounds
-            let Some(ibounds) = shell.tree.absolute_bounds(i.node_id()) 
+            let Some(ibounds) = shell.tree.absolute_bounds(i.node_id())
             else { continue };
             if our_bounds.intersection(ibounds).is_none() { continue }
             i.draw(shell);
         }
-        
+
         if self.scrollable {
             std::mem::swap(shell.list, &mut list);
-            shell.list.push(ScissoredDrawable::new(
-                our_bounds.into_scissor(),
-                Box::new(TransformGroup::from_collection(
-                    Vector2::ZERO, 
-                    list
+
+            let elements = list.list.into_iter()
+                .map(|element| Scissored::new(
+                    our_bounds.into_scissor(),
+                    element
                 ))
-            ));
+                .map(|element| Box::new(element) as Box<dyn TatakuRenderable>);
+
+            shell.list.list.extend(elements);
         }
 
         // TODO: draw scrollbar if scrollable
@@ -238,9 +240,9 @@ impl Widget for Container {
         // if l.scrollbar_size.has_non_zero_area() {
         // }
     }
-    
+
     fn draw_overlay(&self, shell: &mut DrawShell) {
-        let Some(our_bounds) = shell.tree.absolute_bounds(self) 
+        let Some(our_bounds) = shell.tree.absolute_bounds(self)
         else { return };
 
         let mut list = RenderableCollection::new();
@@ -250,22 +252,24 @@ impl Widget for Container {
 
         for i in self.children.iter() {
             // dont attempt to draw items outside our bounds
-            let Some(ibounds) = shell.tree.absolute_bounds(i.node_id()) 
+            let Some(ibounds) = shell.tree.absolute_bounds(i.node_id())
             else { continue };
 
             if our_bounds.intersection(ibounds).is_none() { continue }
             i.draw_overlay(shell);
         }
-        
+
         if self.scrollable {
             std::mem::swap(shell.list, &mut list);
-            shell.list.push(ScissoredDrawable::new(
-                our_bounds.into_scissor(),
-                Box::new(TransformGroup::from_collection(
-                    Vector2::ZERO, 
-                    list
+
+            let elements = list.list.into_iter()
+                .map(|element| Scissored::new(
+                    our_bounds.into_scissor(),
+                    element
                 ))
-            ));
+                .map(|element| Box::new(element) as Box<dyn TatakuRenderable>);
+
+            shell.list.list.extend(elements);
         }
     }
 
@@ -273,17 +277,17 @@ impl Widget for Container {
         if let Some(data) = &mut self.programmatic {
 
             let Ok(iter) = shell.values
-                .reflect_iter(&data.list_var) 
+                .reflect_iter(&data.list_var)
             else {
                 if !data.error_printed {
                     error!("!!!!!!!!!!!!!!");
                     error!("list variable doesnt exist! {}", data.list_var);
                     error!("!!!!!!!!!!!!!!");
                 }
-                return 
+                return
             };
 
-            let values = iter  
+            let values = iter
                 .filter_map(|v| v.duplicate())
                 .collect::<Vec<_>>();
 
@@ -316,14 +320,14 @@ impl Widget for Container {
                         // add to our list
                         self.children.push(e);
                     }
-                    
+
                     // mark the tree as dirty
                     shell.actions.push(UiAction::new(
-                        self.node_id, 
+                        self.node_id,
                         UiActionType::MarkDirty
                     ));
                     shell.actions.push(UiAction::new(
-                        self.node_id, 
+                        self.node_id,
                         UiActionType::Refresh
                     ));
                 }
@@ -336,21 +340,21 @@ impl Widget for Container {
                             .swap_remove(0);
 
                         // remove it from the tree
-                        shell.tree.remove(removed.node_id()); 
+                        shell.tree.remove(removed.node_id());
                     }
-                
+
                     // mark the tree as dirty
                     shell.actions.push(UiAction::new(
-                        self.node_id, 
+                        self.node_id,
                         UiActionType::MarkDirty
                     ));
                     shell.actions.push(UiAction::new(
-                        self.node_id, 
+                        self.node_id,
                         UiActionType::Refresh
                     ));
                 }
             }
-            
+
             let path = ReflectPath::new(&data.variable);
             for (i, value) in self
                 .children
@@ -371,13 +375,13 @@ impl Widget for Container {
     }
 
     fn handle_message(
-        &mut self, 
-        message: &Message, 
+        &mut self,
+        message: &Message,
         shell: &mut MessageShell,
     ) {
         if let Some(data) = &mut self.programmatic {
             let Ok(iter) = shell.values
-                .reflect_iter(&data.list_var) 
+                .reflect_iter(&data.list_var)
             else {
                 if !data.error_printed {
                     data.error_printed = true;
@@ -385,13 +389,13 @@ impl Widget for Container {
                     error!("list variable doesnt exist! {}", data.list_var);
                     error!("!!!!!!!!!!!!!!");
                 }
-                return 
+                return
             };
-    
-            let values_ = iter 
+
+            let values_ = iter
                 .filter_map(|v| v.duplicate())
                 .collect::<Vec<_>>();
-    
+
             let path = ReflectPath::new(&data.variable);
             for (i, value) in self
                 .children
@@ -411,13 +415,13 @@ impl Widget for Container {
     }
 
     fn handle_event(
-        &mut self, 
-        event: TatakuEventType, 
-        event_value: Option<&TatakuValue>, 
+        &mut self,
+        event: TatakuEventType,
+        event_value: Option<&TatakuValue>,
         shell: &mut MessageShell,
     ) {
         if let Some(data) = &mut self.programmatic {
-            let Ok(iter) = shell.values.reflect_iter(&data.list_var) 
+            let Ok(iter) = shell.values.reflect_iter(&data.list_var)
             else {
                 if !data.error_printed {
                     data.error_printed = true;
@@ -425,20 +429,20 @@ impl Widget for Container {
                     error!("list variable doesnt exist! {}", data.list_var);
                     error!("!!!!!!!!!!!!!!");
                 }
-                return 
+                return
             };
-    
-            let values_ = iter 
+
+            let values_ = iter
                 .filter_map(|v| v.duplicate())
                 .collect::<Vec<_>>();
-    
+
             let path = ReflectPath::new(&data.variable);
             for (i, value) in self.children.iter_mut().zip(values_) {
                 shell
                     .values
                     .impl_insert(path.clone(), value)
                     .expect("error inserting into values");
-                
+
                 i.handle_event(event, event_value, shell);
             }
         } else {
@@ -595,8 +599,8 @@ impl DragScrollData {
         shell: &mut InputShell,
         event: &InputEvent,
     ) -> ScrollPosition {
-        let Some(bounds) = shell.tree.absolute_bounds(node_id) 
-        else { return ScrollPosition::None }; 
+        let Some(bounds) = shell.tree.absolute_bounds(node_id)
+        else { return ScrollPosition::None };
 
         let hover = bounds.contains(shell.mouse_pos);
 
@@ -628,7 +632,7 @@ impl DragScrollData {
                     self.did_move = true;
                 }
 
-                // check left click 
+                // check left click
                 if self.left_pressed && self.did_move {
                     // let diff = AbsoluteOffset {
                     //     x: -(position.x - self.pressed_at.x),
@@ -641,7 +645,7 @@ impl DragScrollData {
 
                     // perform scroll
                     return ScrollPosition::Relative(diff)
-                } else 
+                } else
 
                 // check right click
                 if self.right_pressed && self.did_move {
@@ -650,7 +654,7 @@ impl DragScrollData {
 
                     let move_to = ((position - pos) / size)
                         .clamp(Vector2::ZERO, Vector2::ONE);
-                    
+
                     return ScrollPosition::Absolute(move_to)
                     // let move_to = Vector2::new(
                     //     move_to.x.clamp(0.0, 1.0),

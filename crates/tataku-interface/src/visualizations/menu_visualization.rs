@@ -24,7 +24,7 @@ pub struct MenuVisualization {
     // initial_inner_radius: f32,
     current_inner_radius: f32,
 
-    ripples: Vec<TransformGroup>,
+    ripples: Vec<Ripple>,
     // current_timing_point: TimingPoint,
 
     bounds: Bounds,
@@ -94,29 +94,19 @@ impl MenuVisualization {
     }
 
     fn add_ripple(&mut self) {
-        let mut group = TransformGroup::new(self.bounds_center())
-            .alpha(1.0)
-            .border_alpha(1.0);
-        let duration = 1000.0;
         let time = self.other_timer.as_millis();
+        let duration = 1000.0;
 
-        // info!("adding ripple {time}");
-
-        group.push(Circle::new(
-            Vector2::ZERO,
-            self.current_inner_radius,
-            Color::WHITE.alpha(0.5),
-        ).border(Border::new(Color::WHITE, 2.0)));
-        group.ripple(
-            0.0, 
-            duration, 
-            time, 
-            2.0, 
-            true, 
-            Some(0.5)
+        let trail = Trail::new(
+            self.bounds_center(),
+            time,
+            duration,
         );
 
-        self.ripples.push(group);
+        self.ripples.push(Ripple {
+            trail,
+            start_radius: self.current_inner_radius,
+        });
     }
 
     pub fn on_click(&self, pos: Vector2) -> bool {
@@ -139,14 +129,23 @@ impl MenuVisualization {
     }
 
     pub fn draw_vis(&self, list: &mut RenderableCollection) {
+        let time = self.other_timer.as_millis();
+
         let pos = self.bounds_center();
 
         // draw ripples
-        self
-            .ripples
-            .iter()
-            .cloned()
-            .for_each(|r| list.push(r));
+        let ripples = self.ripples.iter()
+            .map(|ripple| {
+                ripple.trail.ripple(
+                    time,
+                    ripple.start_radius,
+                    ripple.start_radius * 2.0,
+                    Color::WHITE.alpha(0.5),
+                    Some(Border::new(Color::WHITE, 2.0)),
+                )
+            });
+
+        list.list.extend(ripples);
 
         // let since_last = self.vis_data.timer.elapsed().as_secs_f32(); // not ms
         // self.update_data().await;
@@ -255,10 +254,7 @@ impl MenuVisualization {
 
         
         let time = self.other_timer.as_millis();
-        self.ripples.retain_mut(|ripple| {
-            ripple.update(time);
-            ripple.visible()
-        });
+        self.ripples.retain(|ripple| !ripple.trail.complete(time));
     }
 
     pub fn reload_skin(&mut self, skin_manager: &mut dyn SkinProvider) {
@@ -292,4 +288,9 @@ impl MenuVisualization {
         self.ripples.clear();
         // self.timer = Instant::now();
     }
+}
+
+struct Ripple {
+    trail: Trail,
+    start_radius: f32,
 }

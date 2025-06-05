@@ -3,6 +3,7 @@ pub mod math;
 pub mod utils;
 pub mod errors;
 pub mod instant;
+pub mod animate;
 pub mod graphics;
 
 
@@ -21,6 +22,7 @@ pub mod prelude {
     pub use crate::utils::*;
     pub use crate::errors::*;
     pub use crate::instant::*;
+    pub use crate::animate::*;
     pub use crate::graphics::*;
     pub use crate::Dropdownable2;
 }

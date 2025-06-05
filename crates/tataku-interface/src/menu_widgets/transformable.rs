@@ -8,8 +8,12 @@ pub struct TransformableWidget {
     #[chain] style: Style,
     child: Box<dyn Widget>,
     
-    /// we let a TransformGroup handle the transforms to avoid duplicating code
-    manager: TransformManager,
+    x_position: AnimationTimeline<f32>,
+    y_position: AnimationTimeline<f32>,
+    x_scale: AnimationTimeline<f32>,
+    y_scale: AnimationTimeline<f32>,
+    rotation: AnimationTimeline<f32>,
+
     triggers: Vec<AnimatableTrigger>,
     actions: HashMap<String, Vec<AnimatableAction>>,
 
@@ -33,7 +37,12 @@ impl TransformableWidget {
         Self {
             style: Style::default(),
 
-            manager: TransformManager::new(Vector2::ZERO),
+            x_position: AnimationTimeline::new(Vec::new(), 0.0),
+            y_position: AnimationTimeline::new(Vec::new(), 0.0),
+            x_scale: AnimationTimeline::new(Vec::new(), 1.0),
+            y_scale: AnimationTimeline::new(Vec::new(), 1.0),
+            rotation: AnimationTimeline::new(Vec::new(), 0.0),
+
             triggers,
             actions,
             child,
@@ -49,33 +58,78 @@ impl TransformableWidget {
         }
     }
 
-    pub fn add_transform(&mut self, transform: Transformation) {
-        self.manager.push_transform(transform);
-    }
-    pub fn with_transform(mut self, transform: Transformation) -> Self {
-        self.add_transform(transform);
+    pub fn with_animation(
+        mut self,
+        start_time: f32,
+        duration: f32,
+        easing: Easing,
+        transform_type: TransformTypeTag,
+    ) -> Self {
+        self.push_animation(start_time, duration, easing, transform_type);
         self
     }
 
+    pub fn push_animation(
+        &mut self,
+        start_time: f32,
+        duration: f32,
+        easing: Easing,
+        transform_type: TransformTypeTag,
+    ) {
+        match transform_type {
+            TransformTypeTag::Position { start, end } => {
+                self.x_position.push(Animate::new(start_time, duration, easing, start.x, end.x));
+                self.y_position.push(Animate::new(start_time, duration, easing, start.x, end.x));
+            },
+            TransformTypeTag::PositionX { start, end } =>
+                self.x_position.push(Animate::new(start_time, duration, easing, start, end)),
+            TransformTypeTag::PositionY { start, end } =>
+                self.y_position.push(Animate::new(start_time, duration, easing, start, end)),
+
+            TransformTypeTag::VectorScale { start, end } => {
+                self.x_scale.push(Animate::new(start_time, duration, easing, start.x, end.x));
+                self.y_scale.push(Animate::new(start_time, duration, easing, start.x, end.x));
+            },
+            TransformTypeTag::Scale { start, end } => {
+                self.x_scale.push(Animate::new(start_time, duration, easing, start, end));
+                self.y_scale.push(Animate::new(start_time, duration, easing, start, end));
+            }
+            TransformTypeTag::ScaleX { start, end } =>
+                self.x_scale.push(Animate::new(start_time, duration, easing, start, end)),
+            TransformTypeTag::ScaleY { start, end } =>
+                self.y_scale.push(Animate::new(start_time, duration, easing, start, end)),
+            TransformTypeTag::Rotation { start, end } =>
+                self.rotation.push(Animate::new(start_time, duration, easing, start, end)),
+            TransformTypeTag::None => {},
+        }
+    }
 
     fn run_triggers(&mut self, triggers: Vec<String>, time: f32) {
         for trigger in triggers {
-            let Some(actions) = self.actions.get(&trigger) 
+            let Some(actions) = self.actions.get(&trigger).cloned()
             else { continue };
 
             for action in actions {
-                self.manager.push_transform(Transformation::new(
-                    0.0,
-                    action.duration,
-                    action.action.into(),
-                    // TODO: action.easing,
-                    Easing::Linear,
-                    time
-                ));
+                let easing = Easing::Linear; // todo: get from action
 
-
+                self.push_animation(time, action.duration, easing, action.action);
             }
         }
+    }
+
+    fn transform(&self, time: f32) -> Transform {
+        let x_position = self.x_position.last_value();
+        let y_position = self.y_position.last_value();
+        let x_scale = self.x_scale.last_value();
+        let y_scale = self.y_scale.last_value();
+        let rotation = self.rotation.last_value();
+
+        Transform::new(
+            Vector2::new(x_position, y_position),
+            Vector2::new(x_scale, y_scale),
+            rotation,
+            Vector2::ZERO
+        )
     }
 }
 impl Widget for TransformableWidget {
@@ -213,16 +267,23 @@ impl Widget for TransformableWidget {
         }
         self.run_triggers(to_trigger, time);
 
-        let should_update = !self.manager.transforms.is_empty();
-        self.manager.update(time);
+        let should_update = self.x_position.update(time)
+            || self.y_position.update(time)
+            || self.rotation.update(time)
+            || self.x_scale.update(time)
+            || self.y_scale.update(time);
+
         if should_update {
+            let transform = self.transform(time);
             let context = shell
                 .tree
                 .get_context_mut(self.node_id)
                 .unwrap();
-            context.local_transform = Transform::from_manager(&self.manager);
+
+            context.local_transform = transform;
+
             shell.actions.push(UiAction::new(
-                self.node_id, 
+                self.node_id,
                 UiActionType::ContextChanged
             ));
         }

@@ -41,7 +41,7 @@ pub struct GameWindow<'window> {
     pub settings: DisplaySettings,
 
     game_event_sender: Arc<Sender<WindowEvent>>,
-    render_data: Vec<Arc<dyn TatakuRenderable>>,
+    render_data: Vec<Box<dyn TatakuRenderable>>,
 
     frametime_timer: TatakuInstant,
     input_timer: TatakuInstant,
@@ -209,16 +209,7 @@ impl<'window> GameWindow<'window> {
         self.graphics.begin_render();
         let options = DrawOptions::default();
         self.render_data.iter().for_each(|d| {
-            let scissor = d.get_scissor();
-            if let Some(scissor) = scissor {
-                self.graphics.push_scissor(scissor);
-            }
-
             d.draw(&options, transform, &mut *self.graphics);
-
-            if scissor.is_some() {
-                self.graphics.pop_scissor();
-            }
         });
 
         self.graphics.end_render();

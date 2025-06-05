@@ -22,9 +22,8 @@ pub struct GameplayPreview {
     use_global_playmode: bool,
     apply_rate: bool,
 
-    widget_sender: Arc<Mutex<TripleBufferSender<Arc<dyn TatakuRenderable>>>>,
-    widget_receiver: TripleBufferReceiver<Arc<dyn TatakuRenderable>>,
-
+    widget_receiver: TripleBufferReceiver<Option<RenderableCollection>>,
+    gameplay: Mutex<Option<RenderableCollection>>,
 
     #[chain] blur: Option<BlurType>,
     #[chain] style: Style,
@@ -35,8 +34,7 @@ impl GameplayPreview {
         use_global_playmode: bool, 
         apply_rate: bool, 
     ) -> Self {
-        let a: Arc<dyn TatakuRenderable> = Arc::new(TransformGroup::new(Vector2::ZERO));
-        let (widget_sender, widget_receiver) = TripleBuffer::new(&a).split();
+        let (_, widget_receiver) = TripleBuffer::default().split();
 
         Self {
             // current_mods: ModManagerHelper::new(),
@@ -53,8 +51,8 @@ impl GameplayPreview {
             use_global_playmode,
             apply_rate,
 
-            widget_sender: Arc::new(Mutex::new(widget_sender)),
             widget_receiver,
+            gameplay: Mutex::new(None),
 
             blur: None,
             style: Style {
@@ -78,15 +76,20 @@ impl GameplayPreview {
             .reflect_get::<Settings>("settings")
             .unwrap();
 
-        let draw_sender = self.widget_sender.clone();
+        let (widget_sender, widget_receiver) = TripleBuffer::default().split();
+
+        let widget_sender = Mutex::new(widget_sender);
+
+        self.widget_receiver = widget_receiver;
         actions.push(GameAction::NewGameplayManager(NewManager {
             owner,
             playmode: (!self.use_global_playmode).then(|| settings.background_game_settings.mode.clone()),
             gameplay_mode: Some(GameplayMode::Preview),
             area: self.fit_to,
-            draw_function: Some(Arc::new(move |group| {
-                let mut lock = draw_sender.lock();
-                *lock.input_buffer_mut() = Arc::new(group);
+            draw_function: Some(Arc::new(move |collection| {
+                let Some(mut lock) = widget_sender.try_lock() else { return; };
+
+                *lock.input_buffer_mut() = Some(collection);
                 lock.publish();
             })),
 
@@ -125,6 +128,10 @@ impl Widget for GameplayPreview {
 
     fn update(&mut self, shell: &mut UpdateShell) {
         self.widget_receiver.update();
+        if let Some(gameplay) = self.widget_receiver.output_buffer_mut().take() {
+            *self.gameplay.lock() = Some(gameplay);
+        }
+
         let settings = shell.values
             .reflect_get::<Settings>("settings")
             .unwrap();
@@ -213,7 +220,9 @@ impl Widget for GameplayPreview {
 
     fn draw(&self, shell: &mut DrawShell) {
         // add gameplay
-        shell.list.push_arced(self.widget_receiver.peek_output_buffer().clone());
+        if let Some(gameplay) = self.gameplay.lock().take() {
+            shell.list.list.extend(gameplay.list);
+        }
 
         if let Some(blur) = self.blur {
             let bounds = shell.tree.absolute_bounds(self.node_id).unwrap();

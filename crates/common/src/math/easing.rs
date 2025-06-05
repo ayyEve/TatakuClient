@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 /// values and equations taken from https://easings.net/
-#[derive(Copy, Clone, Default)]
+#[derive(Debug, Copy, Clone, Default)]
 pub enum Easing {
     #[default]
     Linear,

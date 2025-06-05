@@ -263,7 +263,7 @@ impl Tree {
 
     fn with_node<T>(
         &mut self, 
-        f: impl FnOnce(&mut Tree, &mut Box<dyn Widget>) -> T + Send + Sync
+        f: impl FnOnce(&mut Tree, &mut Box<dyn Widget>) -> T
     ) -> T {
         let mut temp: Box<dyn Widget> = Box::new(EmptyWidget(self.node.node_id()));
         std::mem::swap(&mut self.node, &mut temp);

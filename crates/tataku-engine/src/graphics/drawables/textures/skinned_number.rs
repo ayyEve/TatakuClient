@@ -17,7 +17,6 @@ pub struct SkinnedNumber {
     pub symbol: Option<char>,
     pub floating_precision: usize,
     
-    scissor: Scissor,
     blend_mode: Pipeline,
     cache: Arc<RwLock<(f64, String)>>,
 }
@@ -80,7 +79,6 @@ impl SkinnedNumber {
             symbol,
             floating_precision,
             spacing_override: None,
-            scissor: None,
             blend_mode: Pipeline::AlphaBlending,
         })
     }
@@ -170,8 +168,6 @@ impl TatakuRenderable for SkinnedNumber {
     fn get_name(&self) -> String { "Skinned number".to_owned() }
     fn get_bounds(&self) -> Bounds { Bounds::new(self.pos, self.measure_text()) }
 
-    fn get_scissor(&self) -> Scissor { self.scissor }
-    fn set_scissor(&mut self, s:Scissor) { self.scissor = s }
     fn get_blend_mode(&self) -> Pipeline { self.blend_mode }
     fn set_blend_mode(&mut self, blend_mode: Pipeline) { self.blend_mode = blend_mode }
 
@@ -191,14 +187,9 @@ impl TatakuRenderable for SkinnedNumber {
             .trans(self.pos) // move to pos
         ;
 
-
         // TODO: cache `s`
         let s = self.number_as_text();
         let mut current_pos = Vector2::ZERO;
-
-        if let Some(scissor) = self.scissor {
-            g.push_scissor(scissor);
-        }
 
         for c in s.chars() {
             let Some(mut t) = self.get_char_tex(c).cloned() else { continue }; 
@@ -208,10 +199,5 @@ impl TatakuRenderable for SkinnedNumber {
             t.draw(options, transform.trans(current_pos), g);
             current_pos.x += t.size().x * self.scale.x + x_spacing;
         }
-        
-        if self.scissor.is_some() {
-            g.pop_scissor();
-        }
-
     }
 }

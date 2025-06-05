@@ -16,7 +16,6 @@ pub struct Text {
     pub text: String,
     pub fonts: Vec<Font>,
 
-    scissor: Scissor,
     blend_mode: Pipeline,
 }
 impl Text {
@@ -38,7 +37,6 @@ impl Text {
             line_height: font_size + 3.0,
             text: text.to_string(),
             fonts: vec![font, Font::Fallback],
-            scissor: None,
             blend_mode: Pipeline::AlphaBlending,
         }
     }
@@ -117,9 +115,7 @@ impl Text {
 impl TatakuRenderable for Text {
     fn get_name(&self) -> String { format!("Text '{}' with fonts {} and size {}", self.text, self.fonts.iter().map(|f| format!("{f:?}")).collect::<Vec<String>>().join(", "), self.font_size) }
     fn get_bounds(&self) -> Bounds { Bounds::new(self.pos, self.measure_text()) }
-    
-    fn get_scissor(&self) -> Scissor { self.scissor }
-    fn set_scissor(&mut self, s:Scissor) { self.scissor = s }
+
     fn get_blend_mode(&self) -> Pipeline { self.blend_mode }
     fn set_blend_mode(&mut self, blend_mode: Pipeline) { self.blend_mode = blend_mode }
  
@@ -177,4 +173,3 @@ impl TatakuRenderable for Text {
         }
     }
 }
-

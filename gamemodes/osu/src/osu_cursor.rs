@@ -25,7 +25,7 @@ pub struct OsuCursor {
     pub cursor_image: Option<Image>,
     pub cursor_middle_image: Option<Image>,
     pub cursor_trail_image: Option<Image>,
-    pub trail_images: Vec<TransformGroup>,
+    pub trails: Vec<Trail>,
     last_trail_time: f32,
 
     trail_create_timer: f32,
@@ -38,13 +38,13 @@ pub struct OsuCursor {
     skin: SkinSettings,
     beatmap_path: String,
 
-    ripples: Vec<TransformGroup>,
+    ripples: Vec<Trail>,
     time: TatakuInstant,
 
     left_emitter: Emitter,
     right_emitter: Emitter,
     pub emitter_enabled: bool,
-    
+
     settings: CursorSettings,
 }
 
@@ -74,15 +74,15 @@ impl OsuCursor {
         Self {
             pos: Vector2::ZERO,
             last_pos: Vector2::ZERO,
-        
-            trail_images: Vec::new(),
+
+            trails: Vec::new(),
             cursor_image: None,
             cursor_middle_image: None,
             cursor_trail_image: None,
             last_trail_time: 0.0,
             // ripple_image,
 
-            trail_create_timer: TRAIL_CREATE_TIMER, 
+            trail_create_timer: TRAIL_CREATE_TIMER,
             trail_fadeout_timer_start: TRAIL_FADEOUT_TIMER_START,
             trail_fadeout_timer_duration: TRAIL_FADEOUT_TIMER_DURATION,
             cursor_rotation: 0.0,
@@ -111,90 +111,54 @@ impl OsuCursor {
     }
 
     fn add_ripple(&mut self) {
-        let mut group = TransformGroup::new(self.pos).alpha(0.0).border_alpha(1.0);
         let duration = 500.0;
         let time = self.time.as_millis();
 
-        // if let Some(mut ripple) = self.ripple_image.clone() {
-
-        //     ripple.color.a = self.ripple_color.a;
-        //     ripple.pos = self.pos;
-
-        //     // set scale
-        //     const SCALE:f64 = 0.25;
-        //     ripple.scale = Vector2::ONE * SCALE;
-
-        //     let end_scale = self
-        //         .ripple_radius_override
-        //         .map(|r|r / ripple.size().x / 2.0)
-        //         .unwrap_or(self.settings.cursor_ripple_final_scale)
-        //         * SCALE;
-
-        //     // add to transform group and make it ripple
-        //     group.push(ripple);
-        //     group.ripple_scale_range(0.0, duration, time, end_scale..SCALE, Some(2.0..0.0), Some(0.2));
-        // } else {
-            let radius = self.note_radius * 0.33; //self.scaling_helper.scaled_circle_size.x; //DEFAULT_CURSOR_SIZE / 2.0 * self.settings.cursor_scale * PRESSED_CURSOR_SCALE;
-            let end_radius = self.note_radius * 1.9; //self.ripple_radius_override.unwrap_or(radius * self.settings.cursor_ripple_final_scale);
-
-            let end_scale = end_radius / radius;
-
-            // let end_scale = self.settings.cursor_ripple_final_scale * self.ripple_radius_override.map(|r| DEFAULT_CURSOR_SIZE / r).unwrap_or(1.0);
-
-            group.push(Circle::new(
-                Vector2::ZERO,
-                radius,
-                Color::WHITE.alpha(0.5),
-            ).border(Border::new(Color::WHITE, 2.0 / end_scale)));
-            group.ripple(0.0, duration, time, end_scale, true, Some(0.2));
-        // }
-
-
-        self.ripples.push(group);
+        self.ripples.push(Trail::new(self.pos, time, duration));
     }
 
 
-    fn make_trail_group(
-        pos: Vector2, 
-        mut trail: Image, 
-        start: f32, 
-        duration: f32, 
-        scale: Vector2, 
-        time: f32
-    ) -> TransformGroup {
-        trail.scale = scale;
-        trail.set_blend_mode(Pipeline::SourceAlphaBlending);
-        let mut g = TransformGroup::new(pos).alpha(1.0).border_alpha(0.0);
-        g.transforms.push(Transformation::new(
-            start, 
-            duration, 
-            TransformType::Transparency { start: 1.0, end: 0.0 }, 
-            Easing::EaseOutSine, 
-            time
-        ));
-        g.push(trail);
-        g
-    }
+    // fn make_trail_group(
+    //     pos: Vector2,
+    //     mut trail: Image,
+    //     start: f32,
+    //     duration: f32,
+    //     scale: Vector2,
+    //     time: f32
+    // ) -> TransformGroup {
+    //     trail.scale = scale;
+    //     trail.set_blend_mode(Pipeline::SourceAlphaBlending);
+    //     let mut g = TransformGroup::new(pos).alpha(1.0).border_alpha(0.0);
+    //     g.transforms.push(Transformation::new(
+    //         start,
+    //         duration,
+    //         TransformType::Transparency { start: 1.0, end: 0.0 },
+    //         Easing::EaseOutSine,
+    //         time
+    //     ));
+    //     g.push(trail);
+    //     g
+    // }
 
     pub fn reset(&mut self) {
         let time = -2000.0;
         self.left_emitter.reset(time);
         self.right_emitter.reset(time);
         self.ripples.clear();
-        self.trail_images.clear();
+        self.trails.clear();
         self.last_trail_time = time;
     }
 
 
-    pub fn left_pressed(&mut self, pressed: bool) { 
-        self.left_pressed = pressed; 
+    pub fn left_pressed(&mut self, pressed: bool) {
+        self.left_pressed = pressed;
         self.left_emitter.should_emit = pressed;
         if pressed && self.settings.cursor_ripples {
             self.add_ripple();
         }
     }
-    pub fn right_pressed(&mut self, pressed: bool) { 
-        self.right_pressed = pressed; 
+    pub fn right_pressed(&mut self, pressed: bool) {
+        self.right_pressed = pressed;
         self.right_emitter.should_emit = pressed;
         if pressed && self.settings.cursor_ripples {
             self.add_ripple();
@@ -220,49 +184,36 @@ impl OsuCursor {
         }
 
         // trail stuff
-        self.render_trail(time);
-        
-        // update the transforms, removing any that are not visible
-        self.trail_images.retain_mut(|i| {
-            i.update(time);
-            i.visible()
-        });
+        self.add_trails();
 
-        // update ripples
-        let time = self.time.as_millis();
-        self.ripples.retain_mut(|ripple| {
-            ripple.update(time);
-            ripple.visible()
-        });
-
+        self.trails.retain(|trail| !trail.complete(time));
+        self.ripples.retain(|ripple| !ripple.complete(time) );
     }
-    
-    pub fn render_trail(&mut self, _time: f32) {
+
+    pub fn add_trails(&mut self) {
         let time = self.time.as_millis();
+
+        if self.last_pos == self.pos { return; }
 
         // check if we should add a new trail
         let is_solid_trail = self.cursor_middle_image.is_some();
 
-        if let Some(trail) = self.cursor_trail_image.as_ref().filter(|_| self.last_pos != self.pos) {
-            let scale = Vector2::ONE * self.settings.cursor_scale;
-
+        if let Some(trail) = self.cursor_trail_image.as_ref() {
             if is_solid_trail {
                 // solid trail, a bit more to check
                 let width = trail.size().x;
-                let dist = self.pos.distance(self.last_pos) * 2.5;
-                let count = (dist / width).ceil() as i32;
-                
+                let dist = self.pos.distance(self.last_pos);
+                let count = (2.5 * dist / width).ceil() as i32;
+
                 if dist < width { return; }
 
                 for i in 0..count {
                     let pos = Vector2::lerp(self.last_pos, self.pos, i as f32 / count as f32);
-                    self.trail_images.push(Self::make_trail_group(
+
+                    self.trails.push(Trail::new(
                         pos,
-                        trail.clone(),
-                        self.trail_fadeout_timer_start,
+                        time + self.trail_fadeout_timer_start,
                         self.trail_fadeout_timer_duration,
-                        scale,
-                        time
                     ));
                 }
 
@@ -273,49 +224,61 @@ impl OsuCursor {
                 // not a solid trail, just follow the timer
                 self.last_trail_time = time;
                 self.last_pos = self.pos;
-                self.trail_images.push(Self::make_trail_group(
+
+                self.trails.push(Trail::new(
                     self.pos,
-                    trail.clone(),
-                    self.trail_fadeout_timer_start,
+                    time + self.trail_fadeout_timer_start,
                     self.trail_fadeout_timer_duration,
-                    scale,
-                    time
                 ));
             }
         }
     }
 
     pub fn draw_above(&self, list: &mut RenderableCollection) {
+        let time = self.time.as_millis();
+
         let mut radius = DEFAULT_CURSOR_SIZE;
         if self.left_pressed || self.right_pressed {
             radius *= PRESSED_CURSOR_SCALE;
         }
 
-        if self.cursor_trail_image.is_some() {
-            // draw the transforms
-            for i in self.trail_images.iter().cloned() {
-                list.push(i);
-            }
+        if let Some(image) = &self.cursor_trail_image {
+            let mut image = image.clone();
+            image.scale = Vector2::ONE * self.settings.cursor_scale;
+            image.set_blend_mode(Pipeline::SourceAlphaBlending);
+
+            let trails = self.trails.iter()
+                .map(|trail| {
+                    let mut image = image.clone();
+
+                    image.color.a = 1.0 - trail.progress(time);
+
+                    image.pos = trail.position;
+
+                    Box::new(image) as Box<dyn TatakuRenderable>
+                });
+
+            list.list.extend(trails);
         }
 
         if self.emitter_enabled {
             self.left_emitter.draw(list);
             self.right_emitter.draw(list);
         }
-        
+
 
         // draw cursor itself
         if let Some(mut cursor) = self.cursor_image.clone() {
             cursor.pos = self.pos;
             cursor.rotation = self.cursor_rotation;
             // cursor.color = self.color;
-            
+
             if self.left_pressed || self.right_pressed {
                 cursor.scale = Vector2::ONE * PRESSED_CURSOR_SCALE * self.settings.cursor_scale;
             } else {
                 cursor.scale = Vector2::ONE * self.settings.cursor_scale;
             }
-            
+
             list.push(cursor);
         } else {
             list.push(Circle::new(
@@ -331,28 +294,34 @@ impl OsuCursor {
                 } else { None }
             ));
         }
-    
-        
+
+
         if let Some(mut cursor) = self.cursor_middle_image.clone() {
             cursor.pos = self.pos;
             cursor.scale = Vector2::ONE * self.settings.cursor_scale;
-            
+
             list.push(cursor);
         }
     }
 
     pub fn draw_below(&self, list: &mut RenderableCollection) {
         // draw ripples
-        for ripple in self.ripples.iter().cloned() {
-            list.push(ripple);
+        for ripple in self.ripples.iter() {
+            list.list.push(ripple.ripple(
+                self.time.as_millis(),
+                0.0,
+                self.settings.cursor_ripple_final_radius,
+                self.settings.cursor_ripple_color.alpha(0.2),
+                Some(Border::new(self.settings.cursor_ripple_color.alpha(0.5), 2.0))
+            ));
         }
     }
 
 
     #[cfg(feature="graphics")]
     pub fn reload_skin(
-        &mut self, 
-        skin_manager: &mut dyn SkinProvider, 
+        &mut self,
+        skin_manager: &mut dyn SkinProvider,
     ) {
         let source = if self.settings.beatmap_cursor { TextureSource::Beatmap(self.beatmap_path.clone()) } else { TextureSource::Skin };
 
@@ -372,7 +341,7 @@ impl OsuCursor {
 
         self.cursor_rotation = 0.0;
 
-        
+
         let tex = skin_manager.get_texture("star2", &source, SkinUsage::Gamemode, false).map(|t| t.tex).unwrap_or_default();
         self.left_emitter.image = tex.clone();
         self.right_emitter.image = tex;

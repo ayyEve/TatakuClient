@@ -21,15 +21,15 @@ impl PieGraph {
         }
     }
 
-    pub fn draw(&self, bounds: &Bounds) -> TransformGroup {
-        let mut group = TransformGroup::new(bounds.pos);
+    pub fn draw(&self, bounds: &Bounds) -> RenderableCollection {
+        let mut collection = RenderableCollection::new();
         let size = bounds.size;
         let radius = size.x / 2.0;
 
         // background
-        group.push(
+        collection.push(
             Rectangle::new(
-                Vector2::ZERO,
+                bounds.pos,
                 size,
                 Color::new(0.2, 0.2, 0.2, 0.7),
             )
@@ -52,8 +52,8 @@ impl PieGraph {
             let theta = (i.get_value() / self.sum) * 2.0 * PI;
 
             // arc
-            group.push(Sector::new(
-                center, 
+            collection.push(Sector::new(
+                bounds.pos + center,
                 radius,
                 last_theta,
                 last_theta + theta,
@@ -64,7 +64,7 @@ impl PieGraph {
             last_theta += theta;
         }
 
-        group
+        collection
     }
 
 }

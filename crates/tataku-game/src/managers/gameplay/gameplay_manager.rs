@@ -1236,9 +1236,10 @@ impl GameplayManagerTrait for GameplayManager {
         self.animation.draw(list);
 
         // draw gamemode
-        if let Some(bounds) = self.fit_to_bounds { 
-            list.push_scissor(bounds.into_scissor()); 
-        }
+        // if let Some(bounds) = self.fit_to_bounds {
+        //     list.push_scissor(bounds.into_scissor());
+        // todo: is this still necessary?
+        // }
 
         let state = GameplayDrawShell {
             time,
@@ -1251,9 +1252,9 @@ impl GameplayManagerTrait for GameplayManager {
         self.gamemode.draw(state, list);
 
 
-        if self.fit_to_bounds.is_some() { 
-            list.pop_scissor(); 
-        }
+        // if self.fit_to_bounds.is_some() {
+        //     list.pop_scissor();
+        // }
 
         // dont draw score, combo, etc if this is a menu bg
         if self.gameplay_mode.is_preview() { return }

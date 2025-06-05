@@ -1,6 +1,7 @@
 
 mod blur;
 mod font;
+mod trail;
 mod emitter;
 mod textures;
 mod renderable;
@@ -11,6 +12,7 @@ mod renderable_collection;
 
 pub use blur::*;
 pub use font::*;
+pub use trail::*;
 pub use emitter::*;
 pub use textures::*;
 pub use primitives::*;

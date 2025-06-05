@@ -7,8 +7,6 @@ pub struct FlashlightDrawable {
     pub bounds: Bounds,
 
     pub color: Color,
-
-    scissor: Scissor,
 }
 impl FlashlightDrawable {
     pub fn new(
@@ -24,7 +22,6 @@ impl FlashlightDrawable {
             fade_radius, 
             bounds,
             color,
-            scissor: None
         }
     }
 }
@@ -35,8 +32,6 @@ impl TatakuRenderable for FlashlightDrawable {
         Bounds::new(self.pos, Vector2::ONE * self.radius) 
     }
 
-    fn get_scissor(&self) -> Scissor { self.scissor }
-    fn set_scissor(&mut self, s: Scissor) { self.scissor = s }
     fn get_blend_mode(&self) -> Pipeline { Pipeline::Flashlight }
     fn set_blend_mode(&mut self, _blend_mode: Pipeline) { }
 

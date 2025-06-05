@@ -18,8 +18,8 @@ pub struct CursorSettings {
     pub cursor_ripples: bool,
     #[cfg_attr(feature="graphics", setting(text="Cursor Ripple Color"))]
     pub cursor_ripple_color: SettingsColor,
-    #[cfg_attr(feature="graphics", setting(text="Cursor Ripple Scale"))]
-    pub cursor_ripple_final_scale: f32,
+    #[cfg_attr(feature="graphics", setting(text="Cursor Ripple Radius"))]
+    pub cursor_ripple_final_radius: f32,
 
     #[cfg_attr(feature="graphics", setting(text="Use Beatmap Cursor"))]
     pub beatmap_cursor: bool,
@@ -32,8 +32,8 @@ impl Default for CursorSettings {
             cursor_color: Color::from_hex("#ffff32").into(),
             cursor_border_color: Color::from_hex("#000").into(),
             cursor_ripples: true,
-            cursor_ripple_color: Color::from_hex("#000").into(),
-            cursor_ripple_final_scale: 1.5,
+            cursor_ripple_color: Color::from_hex("#fff").into(),
+            cursor_ripple_final_radius: 64.0,
             beatmap_cursor: true,
         }
     }
