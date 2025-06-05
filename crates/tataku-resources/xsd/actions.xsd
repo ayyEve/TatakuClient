@@ -19,6 +19,14 @@
       <!-- none -->
       <xs:element name="none"/>
 
+      <!-- delayed -->
+      <xs:element name="delayed">
+        <xs:complexType>
+          <xs:group ref="actions:action-type"/>
+          <xs:attribute name="delay" type="xs:positiveInteger" use="required"/>
+        </xs:complexType>
+      </xs:element>
+
       <!-- setMenu -->
       <xs:choice>
         <!-- value only -->

@@ -4640,9 +4640,9 @@ dependencies = [
 
 [[package]]
 name = "tataku-common"
-version = "0.17.0"
+version = "0.17.1"
 source = "registry+https://gitlab.ayyeve.dev/tataku/tataku-rust-registry.git"
-checksum = "2d5e30cf8849644bdb70a886739ebfbd52ecf58ac099d06540e1ff4819ff937d"
+checksum = "ceb9677dd7bb7fd9a84d9834e11977d826378dfa3d21b6517085f2f48089692a"
 dependencies = [
  "downcast-rs 2.0.1",
  "serde",

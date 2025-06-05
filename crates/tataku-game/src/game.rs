@@ -1166,7 +1166,9 @@ impl Game {
                     }
 
                     self.task_manager.add_task(Box::new(DelayTask::new(
-                        ActionTask::new(GameAction::RestartOnline),
+                        ActionTask::new(ActionTaskAction::Action(
+                            GameAction::RestartOnline.into()
+                        )),
                         10_000
                     )));
                 }
@@ -1420,6 +1422,14 @@ impl Game {
 
         match action {
             TatakuAction::None => {},
+            TatakuAction::Delayed(action, delay) => {
+                self.task_manager.add_task(Box::new(DelayTask::new(
+                    ActionTask::new(action),
+                    delay
+                )));
+            }
+
+
             TatakuAction::Online(action) => self.online_manager.handle_action(action),
             
             #[cfg(feature="graphics")] 

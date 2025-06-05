@@ -3,10 +3,10 @@ use crate::prelude::*;
 /// Just runs the action, primarily used with the DelayedTask to run actions after a certain amount of time
 pub struct ActionTask {
     state: TatakuTaskState,
-    action: Option<TatakuAction>,
+    action: Option<ActionTaskAction>,
 }
 impl ActionTask {
-    pub fn new(action: impl Into<TatakuAction>) -> Self {
+    pub fn new(action: impl Into<ActionTaskAction>) -> Self {
         Self {
             action: Some(action.into()),
             state: TatakuTaskState::NotStarted,
@@ -22,7 +22,7 @@ impl TatakuTask for ActionTask {
     
     fn run(
         &mut self, 
-        _values: &mut dyn Reflect, 
+        values: &mut dyn Reflect, 
         _state: &TaskGameState, 
         actions: &mut ActionQueue
     ) {
@@ -31,11 +31,50 @@ impl TatakuTask for ActionTask {
         }
 
         if let Some(action) = self.action.take() {
+            let action = match action {
+                ActionTaskAction::Buildable {
+                    action,
+                    node,
+                    passed_in
+                } => action
+                    .into_action(node, values, passed_in.as_ref())
+                    .unwrap_or(TatakuAction::None),
+
+                ActionTaskAction::Callback(cb) 
+                    => cb(values),
+                
+                ActionTaskAction::Action(a) => a,
+            };
             actions.push(action);
         }
 
         if self.action.is_none() {
             self.state = TatakuTaskState::Complete;
+        }
+    }
+}
+
+
+pub enum ActionTaskAction {
+    Action(TatakuAction), 
+    Callback(Box<dyn FnOnce(&mut dyn Reflect) -> TatakuAction + Send + Sync>),
+    Buildable {
+        action: BuildableAction,
+        node: NodeId,
+        passed_in: Option<TatakuValue>
+    },
+}
+// impl<T: Into<TatakuAction>> From<T> for ActionTaskAction {
+//     fn from(value: T) -> Self {
+//         Self::Action(value.into())
+//     }
+// }
+impl From<DelayedActionType> for ActionTaskAction {
+    fn from(value: DelayedActionType) -> Self {
+        match value {
+            DelayedActionType::Action(a) => Self::Action(*a),
+            DelayedActionType::Callback(cb) 
+                => Self::Callback(cb),
         }
     }
 }

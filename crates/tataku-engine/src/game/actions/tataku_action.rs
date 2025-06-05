@@ -6,6 +6,10 @@ pub enum TatakuAction {
     /// Don't do anything (this is a helper)
     #[default] None,
 
+    /// A delayed action
+    #[debug(skip)]
+    Delayed(DelayedActionType, u64),
+
     /// Perform an audio action
     Audio(AudioAction),
 
@@ -72,4 +76,10 @@ impl From<TatakuIntegrationEvent> for TatakuAction {
     fn from(value: TatakuIntegrationEvent) -> Self {
         Self::Event(value)
     }
+}
+
+
+pub enum DelayedActionType {
+    Action(Box<TatakuAction>),
+    Callback(Box<dyn FnOnce(&mut dyn Reflect) -> TatakuAction + Send + Sync>)
 }

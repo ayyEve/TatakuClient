@@ -7,6 +7,12 @@ pub enum BuildableAction {
     /// No action
     #[default] None,
 
+    // A delayed action
+    Delayed {
+        #[serde(rename="$value")] action: Box<Self>,
+        #[serde(rename="@delay")] delay: u64,
+    },
+
     /// set a value
     SetValue {
         #[serde(rename="@key")] key: String, 
@@ -129,6 +135,21 @@ impl BuildableAction {
     ) -> Option<TatakuAction> {
         match self {
             Self::None => None,
+            Self::Delayed {
+                action,
+                delay,
+            } => {
+                let passed_in = passed_in.cloned();
+                Some(TatakuAction::Delayed(
+                    DelayedActionType::Callback(Box::new(
+                        move |values| action
+                            .into_action(node, values, passed_in.as_ref())
+                            .unwrap_or(TatakuAction::None)
+                    )),
+                    delay
+                ))
+            },
+
             Self::AddDialog { 
                 id, 
                 id_attribute,

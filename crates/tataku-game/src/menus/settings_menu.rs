@@ -321,10 +321,12 @@ impl Widget for SettingsMenu {
                     ), 
                     shell
                 );
-                let close_task = ActionTask::new(UiAction::new(
-                    self.node_id(), 
-                    DialogAction::Close,
-                ));
+                let close_task = ActionTask::new(
+                    ActionTaskAction::Action(UiAction::new(
+                        self.node_id(), 
+                        DialogAction::Close,
+                    ).into())
+                );
 
                 let task = DelayTask::new(close_task, 200);
                 shell.actions.push(TaskAction::AddTask(Box::new(task)));

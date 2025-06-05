@@ -241,17 +241,19 @@
           </addSpeed>
         </mods>
         <!-- notify user of speed -->
-        <game>
-          <notification color="#FFFFFF">
-            <duration><value>10000</value></duration>
-            <text>
-              <list>
-                <text text="speed: "/>
-                <variable var="global.mods.speed"/>
-              </list>
-            </text>
-          </notification>
-        </game>
+        <delayed delay="1">
+          <game>
+            <notification color="#FFFFFF">
+              <duration><value>10000</value></duration>
+              <text>
+                <list>
+                  <text text="speed: "/>
+                  <display var="global.mods.speed" precision="2"/>
+                </list>
+              </text>
+            </notification>
+          </game>
+        </delayed>
       </actions>
     </event>
 
@@ -263,17 +265,19 @@
           <addSpeed><value>-0.1</value></addSpeed>
         </mods>
         <!-- notify user of speed -->
-        <game>
-          <notification color="#FFFFFF">
-            <duration><value>10000</value></duration>
-            <text>
-              <list>
-                <text text="speed:"/>
-                <variable var="mods.speed"/>
-              </list>
-            </text>
-          </notification>
-        </game>
+        <delayed delay="1">
+          <game>
+            <notification color="#FFFFFF">
+              <duration><value>10000</value></duration>
+              <text>
+                <list>
+                  <text text="speed:"/>
+                  <display var="global.mods.speed" precision="2"/>
+                </list>
+              </text>
+            </notification>
+          </game>
+        </delayed>
       </actions>
     </event>
   </events>
