@@ -27,6 +27,10 @@ pub struct DifficultyValue {
     /// what unit to append to the diff string
     pub unit: Option<&'static str>,
 
+    /// What special display callback should be used?
+    #[reflect(skip)]
+    pub display: Option<fn(f32) -> String>,
+
     /// get the value for this from the map and mods provided
     #[reflect(skip)]
     pub get_diff_value: fn(&BeatmapMetaWithDiff, &ModManager) -> f32,
@@ -40,14 +44,19 @@ impl DifficultyValue {
         min: 0.0,
         max: 0.0,
         step: None,
+        display: None,
         unit: None,
         get_diff_value: |_,_| 0.0,
     };
 
     pub fn format(&self, num: f32) -> String {
-        let num = match self.number_type {
-            DifficultyNumberType::Float => format_float(num, 2),
-            DifficultyNumberType::WholeNumber => format_number(num as u64),
+        let num = if let Some(display) = self.display {
+            display(num)
+        } else {
+            match self.number_type {
+                DifficultyNumberType::Float => format_float(num, 2),
+                DifficultyNumberType::WholeNumber => format_number(num as u64),
+            }
         };
         format!("{}: {num}{}", self.name, self.unit.unwrap_or_default())
     }
@@ -89,6 +98,7 @@ pub const DIFFICULTY_DIFF_VALUE: DifficultyValue = DifficultyValue {
     max: 200.0,
     step: None,
     unit: Some("*"),
+    display: None,
     get_diff_value: |map, _| map.diff.unwrap_or_default(),
 };
 
@@ -101,6 +111,7 @@ pub const BPM_DIFF_VALUE: DifficultyValue = DifficultyValue {
     max: 999999.0,
     step: None,
     unit: Some("bpm"),
+    display: None,
     get_diff_value: |map, mods| map.bpm_min * mods.get_speed(),
 };
 
@@ -113,5 +124,13 @@ pub const DURATION_DIFF_VALUE: DifficultyValue = DifficultyValue {
     max: 999999.0,
     step: None,
     unit: None,
-    get_diff_value: |map, mods| map.secs(mods.speed.as_f32()),
+    display: Some(display_time),
+    get_diff_value: |map, mods| map.duration * mods.speed.as_f32(),
 };
+
+fn display_time(ms: f32) -> String {
+    let seconds_total = ms / 1000.0;
+    let mins = (seconds_total / 60.0).floor();
+    let secs = seconds_total % 60.0;
+    format!("{mins:.0}:{secs:.0}")
+}

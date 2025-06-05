@@ -122,5 +122,6 @@ pub const OVERALL_DIFFICULTY: DifficultyValue = DifficultyValue {
     max: 11.0,
     step: Some(0.1),
     unit: None,
+    display: None,
     get_diff_value: |map, mods| TaikoGame::get_od(map, mods),
 };

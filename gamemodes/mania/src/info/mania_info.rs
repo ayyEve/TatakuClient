@@ -97,6 +97,7 @@ const KEYS_DIFF_VALUE: DifficultyValue = DifficultyValue {
     max: 9.0,
     step: None,
     unit: Some("k"),
+    display: None,
     get_diff_value: get_key_count,
 };
 fn get_key_count(map: &BeatmapMetaWithDiff, _: &ModManager) -> f32 {

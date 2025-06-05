@@ -98,6 +98,7 @@ pub const OVERALL_DIFFICULTY: DifficultyValue = DifficultyValue {
     max: 11.0,
     step: Some(0.1),
     unit: None,
+    display: None,
     get_diff_value: |map, mods| OsuGame::get_od(map, mods),
 };
 
@@ -110,6 +111,7 @@ pub const APPROACH_DIFFICULTY: DifficultyValue = DifficultyValue {
     max: 11.0,
     step: Some(0.1),
     unit: None,
+    display: None,
     get_diff_value: |map, mods| OsuGame::get_ar(map, mods),
 };
 
@@ -122,6 +124,7 @@ pub const CIRCLE_SIZE_DIFFICULTY: DifficultyValue = DifficultyValue {
     max: 10.0,
     step: Some(0.1),
     unit: None,
+    display: None,
     get_diff_value: |map, mods| OsuGame::get_cs(map, mods),
 };
 
