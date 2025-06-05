@@ -41,14 +41,14 @@ impl ScatterGraph {
     }
 
 
-    pub fn draw(&self, bounds: &Bounds) -> TransformGroup {
-        let mut group = TransformGroup::new(bounds.pos);
+    pub fn draw(&self, bounds: &Bounds) -> RenderableCollection {
+        let mut collection = RenderableCollection::new();
         let size = bounds.size;
 
         // background
-        group.push(
+        collection.push(
             Rectangle::new(
-                Vector2::ZERO,
+                bounds.pos,
                 size,
                 Color::new(0.2, 0.2, 0.2, 0.7),
             )
@@ -57,9 +57,9 @@ impl ScatterGraph {
         
         // 0 line
         let zero_pos = Vector2::with_y(self.map_point(0.0, size));
-        group.push(Line::new(
-            zero_pos,
-            size.x_portion() + zero_pos,
+        collection.push(Line::new(
+            bounds.pos + zero_pos,
+            bounds.pos + size.x_portion() + zero_pos,
             1.5,
             Color::WHITE,
         ));
@@ -69,9 +69,9 @@ impl ScatterGraph {
                 StatsValue::Single(v) => {
                     let v = self.map_point(*v, size);
 
-                    group.push(Line::new(
-                        Vector2::with_y(v),
-                        size.x_portion() + Vector2::with_y(v),
+                    collection.push(Line::new(
+                        bounds.pos + Vector2::with_y(v),
+                        bounds.pos + size.x_portion() + Vector2::with_y(v),
                         1.5,
                         i.color,
                     ));
@@ -81,9 +81,9 @@ impl ScatterGraph {
                     let x_step = size.x / mapped_points.len() as f32;
 
                     for (n, &y) in mapped_points.iter().enumerate() {
-                        group.push(
+                        collection.push(
                             Circle::new(
-                                Vector2::new(x_step * n as f32, y),
+                                bounds.pos + Vector2::new(x_step * n as f32, y),
                                 2.0,
                                 i.color,
                             ).resolution(32u32)
@@ -95,7 +95,7 @@ impl ScatterGraph {
             
         }
 
-        group
+        collection
     }
 
 }

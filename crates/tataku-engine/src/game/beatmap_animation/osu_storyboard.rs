@@ -22,14 +22,14 @@ impl OsuStoryboard {
 
         let transform = Transform::default();
         let playfield = Bounds::new(
-            transform.matrix() * Vector2::ZERO,
-            transform.matrix() * playfield_size
+            Vector2::ZERO,
+            playfield_size
         );
 
         let mut image_cache = HashMap::new();
         let mut elements = Vec::new();
         for e in def.entries.clone() {
-            elements.push(Element::new(e, dir, &mut image_cache,  skin_manager)?);
+            elements.push(Element::new(e, dir, &mut image_cache, skin_manager)?);
         }
         elements.sort_by(Element::sort);
 
@@ -67,13 +67,62 @@ impl BeatmapAnimation for OsuStoryboard {
         let scissor = bounds.into_scissor();
 
         for i in self.elements.iter() {
-            if self.time < i.start_time || !i.group.visible() { continue } // || (i.end_time < self.time && !i.group.visible()) { continue }
-            // if !i.group.visible() { continue } // || (i.end_time < self.time && !i.group.visible()) { continue }
-            let mut group = i.group.clone();
-            group.scissor = Some(scissor);
-            list.push(TransformedDrawable::new(
-                self.transform, 
-                Box::new(group)
+            if !i.visible(self.time) { continue }
+
+            let image_flip = ImageFlip::new(
+                i.flip_horizontal.last_value() != 0.0,
+                i.flip_vertical.last_value() != 0.0
+            );
+
+            let draw_options = DrawOptions {
+                image_flip,
+                ..Default::default()
+            };
+
+            let x_position = i.x_position.last_value();
+            let y_position = i.y_position.last_value();
+            let rotation = i.rotation.last_value();
+            let x_scale = i.x_scale.last_value();
+            let y_scale = i.y_scale.last_value();
+
+            let transform = Transform::new(
+                Vector2::new(x_position, y_position),
+                Vector2::new(x_scale, y_scale),
+                rotation,
+                i.origin
+            );
+
+            let transform = transform.translate(-self.transform.origin)
+                .rotate(self.transform.rotation)
+                .scale(self.transform.scale)
+                .translate(self.transform.pos);
+
+            let mut color = i.color.last_value();
+            let alpha = i.alpha.last_value();
+            color.a = alpha;
+
+            let element: Box<dyn TatakuRenderable> = match i.element_image.clone() {
+                ElementImage::Sprite(mut image) => {
+                    image.color = color;
+
+                    Box::new(image)
+                },
+                ElementImage::Anim(mut animation) => {
+                    animation.color = color;
+
+                    Box::new(animation)
+                },
+            };
+
+            list.push(Scissored::new(
+                scissor,
+                Box::new(MergeDrawOptions::new(
+                    draw_options,
+                    Box::new(Transformed::new(
+                        transform,
+                        element
+                    ))
+                ))
             ));
         }
         // list.pop_scissor();
@@ -99,9 +148,9 @@ impl BeatmapAnimation for OsuStoryboard {
                 &Bounds::new(
                     nonsense.bounds.pos + OFFSET * nonsense.scale,
                     nonsense.bounds.size
-                ), 
-                GAME_SIZE * nonsense.scale, 
-                true, 
+                ),
+                GAME_SIZE * nonsense.scale,
+                true,
                 true,
             );
         }
@@ -135,8 +184,21 @@ struct Element {
     layer: Layer,
     element_image: ElementImage,
     commands: Vec<StoryboardCommand>,
-    // command_index: usize,
-    group: TransformGroup,
+
+    initial_pos: Vector2,
+    origin: Vector2,
+    x_position: AnimationTimeline<f32>,
+    y_position: AnimationTimeline<f32>,
+    rotation: AnimationTimeline<f32>,
+    x_scale: AnimationTimeline<f32>,
+    y_scale: AnimationTimeline<f32>,
+
+    // todo: do properly
+    flip_horizontal: AnimationTimeline<f32>,
+    flip_vertical: AnimationTimeline<f32>,
+
+    alpha: AnimationTimeline<f32>,
+    color: AnimationTimeline<Color>,
 }
 impl Element {
     fn new(
@@ -156,8 +218,9 @@ impl Element {
             break;
         }
 
+        let initial_pos;
+        let origin;
 
-        let mut group = TransformGroup::new(Vector2::ZERO).border_alpha(0.0).alpha(0.0);
         let image = match def.element.clone() {
             StoryboardElementDef::Sprite(sprite) => {
                 let filepath = format!("{parent_dir}/{}", sprite.filepath)
@@ -170,13 +233,12 @@ impl Element {
                 image.origin = Vector2::ZERO;
                 image.pos = Vector2::ZERO;
 
-                group.pos = sprite.pos;
-                group.origin = sprite.origin.resolve(image.tex_size());
+                initial_pos = sprite.pos;
+                origin = sprite.origin.resolve(image.tex_size());
 
                 layer = sprite.layer;
                 if let Some(b) = blend_mode { image.set_blend_mode(b) }
 
-                group.items.push(Arc::new(image.clone()));
                 ElementImage::Sprite(image)
             }
             StoryboardElementDef::Animation(anim) => {
@@ -210,11 +272,10 @@ impl Element {
                 animation.draw_debug = true;
                 if let Some(b) = blend_mode { animation.set_blend_mode(b) }
 
-                group.pos = anim.pos;
-                group.origin = anim.origin.resolve(tex_size);
+                initial_pos = anim.pos;
+                origin = anim.origin.resolve(tex_size);
                 layer = anim.layer;
 
-                group.items.push(Arc::new(animation.clone()));
                 ElementImage::Anim(animation)
             }
         };
@@ -225,8 +286,20 @@ impl Element {
             layer,
             element_image: image,
             commands: def.commands,
-            // command_index: 0,
-            group,
+
+            initial_pos,
+            origin,
+            x_position: AnimationTimeline::new(Vec::new(), initial_pos.x),
+            y_position: AnimationTimeline::new(Vec::new(), initial_pos.y),
+            rotation: AnimationTimeline::new(Vec::new(), 0.0),
+            x_scale: AnimationTimeline::new(Vec::new(), 1.0),
+            y_scale: AnimationTimeline::new(Vec::new(), 1.0),
+
+            flip_horizontal: AnimationTimeline::new(Vec::new(), 0.0),
+            flip_vertical: AnimationTimeline::new(Vec::new(), 0.0),
+
+            alpha: AnimationTimeline::new(Vec::new(), 1.0),
+            color: AnimationTimeline::new(Vec::new(), Color::WHITE),
         };
         s.apply_commands();
 
@@ -234,13 +307,22 @@ impl Element {
     }
 
     fn apply_commands(&mut self) {
-        self.group.transforms.clear();
+        let mut x_position = Vec::new();
+        let mut y_position = Vec::new();
+        let mut rotation = Vec::new();
+        let mut x_scale = Vec::new();
+        let mut y_scale = Vec::new();
 
-        let mut earliest_start:f32 = f32::MAX;
-        let mut latest_end:f32 = 0.0;
+        let mut flip_horizontal: Vec<Animate<f32>> = Vec::new();
+        let mut flip_vertical: Vec<Animate<f32>> = Vec::new();
+
+        let mut alpha = Vec::new();
+        let mut color = Vec::new();
+
+        let mut earliest_start = f32::MAX;
+        let mut latest_end = 0.0f32;
 
         for i in self.commands.iter() {
-            let offset = i.start_time;
             let mut duration = i.end_time - i.start_time;
 
             // i wonder if durations that are less than 0 should be run immediately?
@@ -255,62 +337,98 @@ impl Element {
             latest_end = latest_end.max(i.end_time);
 
 
-            let trans_type = match i.event {
-                StoryboardEvent::Move { start, end } => TransformType::Position { start, end },
-                StoryboardEvent::MoveX { start, end } => TransformType::PositionX { start, end },
-                StoryboardEvent::MoveY { start, end } => TransformType::PositionY { start, end },
+            match i.event {
+                StoryboardEvent::Move { start, end } => {
+                    x_position.push(Animate::new(i.start_time, duration, i.easing.into(), start.x, end.x));
+                    y_position.push(Animate::new(i.start_time, duration, i.easing.into(), start.y, end.y));
+                },
+                StoryboardEvent::MoveX { start, end } =>
+                    x_position.push(Animate::new(i.start_time, duration, i.easing.into(), start, end)),
+                StoryboardEvent::MoveY { start, end } =>
+                    y_position.push(Animate::new(i.start_time, duration, i.easing.into(), start, end)),
 
-                StoryboardEvent::Scale { start, end } => TransformType::Scale { start, end },
-                StoryboardEvent::VectorScale { start, end } => TransformType::VectorScale { start, end },
+                StoryboardEvent::Scale { start, end } => {
+                    x_scale.push(Animate::new(i.start_time, duration, i.easing.into(), start, end));
+                    y_scale.push(Animate::new(i.start_time, duration, i.easing.into(), start, end));
+                },
+                StoryboardEvent::VectorScale { start, end } => {
+                    x_scale.push(Animate::new(i.start_time, duration, i.easing.into(), start.x, end.x));
+                    y_scale.push(Animate::new(i.start_time, duration, i.easing.into(), start.y, end.y));
+                },
 
-                StoryboardEvent::Fade { start, end } => TransformType::Transparency { start, end },
+                StoryboardEvent::Rotate { start, end } =>
+                    rotation.push(Animate::new(i.start_time, duration, i.easing.into(), start, end)),
 
-                StoryboardEvent::Rotate { start, end } => TransformType::Rotation { start, end },
-                StoryboardEvent::Color { start, end } => TransformType::Color { start, end },
+                StoryboardEvent::Fade { start, end } =>
+                    alpha.push(Animate::new(i.start_time, duration, i.easing.into(), start, end)),
+
+                StoryboardEvent::Color { start, end } =>
+                    color.push(Animate::new(i.start_time, duration, i.easing.into(), start, end)),
 
                 StoryboardEvent::Parameter { param } => match param {
-                    Param::FlipHorizontal => { self.group.image_flip_horizonal = true; continue; },
-                    Param::FlipVertial => { self.group.image_flip_vertical = true; continue; },
-                    _ => continue
-                }
-                StoryboardEvent::Loop { count:_ } => continue,
-            };
+                    Param::FlipHorizontal => {
+                        let start = flip_horizontal.last().map(|animation| animation.end).unwrap_or_default();
 
-            self.group.transforms.push(Transformation::new(
-                offset,
-                duration,
-                trans_type,
-                i.easing.into(),
-                0.0
-            ));
+                        flip_horizontal.push(Animate::new(i.start_time, duration, Easing::default(), start, 1.0));
+                        flip_horizontal.push(Animate::new(i.end_time, 0.0, Easing::default(), 1.0, 0.0));
+                    },
+                    Param::FlipVertial => {
+                        let start = flip_vertical.last().map(|animation| animation.end).unwrap_or_default();
+
+                        flip_vertical.push(Animate::new(i.start_time, duration, Easing::default(), start, 1.0));
+                        flip_vertical.push(Animate::new(i.end_time, 0.0, Easing::default(), 1.0, 0.0));
+                    },
+                    Param::AdditiveBlending => {} // todo:
+                }
+                StoryboardEvent::Loop { .. } => {}, // done elsewhere
+            };
         }
+
+        self.x_position = AnimationTimeline::new(x_position, self.initial_pos.x);
+        self.y_position = AnimationTimeline::new(y_position, self.initial_pos.y);
+        self.rotation = AnimationTimeline::new(rotation, 0.0);
+        self.x_scale = AnimationTimeline::new(x_scale, 1.0);
+        self.y_scale = AnimationTimeline::new(y_scale, 1.0);
+
+        self.flip_horizontal = AnimationTimeline::new(flip_horizontal, 0.0);
+        self.flip_vertical = AnimationTimeline::new(flip_vertical, 0.0);
+
+        self.alpha = AnimationTimeline::new(alpha, 1.0);
+        self.color = AnimationTimeline::new(color, Color::WHITE);
+
 
         self.start_time = earliest_start;
         self.end_time = latest_end;
     }
 
+    fn visible(&self, time: f32) -> bool {
+        time >= self.start_time && time < self.end_time
+            && self.alpha.last_value() != 0.0
+            && self.x_scale.last_value() != 0.0 && self.y_scale.last_value() != 0.0
+    }
+
     fn update(&mut self, time: f32) {
         if let ElementImage::Anim(anim) = &mut self.element_image {
-            let old_frame = anim.frame_index;
             anim.update(time);
-
-            if anim.frame_index != old_frame {
-                // only
-                self.group.items = vec![Arc::new(anim.current_frame_as_image())];
-            }
         }
 
-        self.group.update(time);
+        self.x_position.update(time);
+        self.y_position.update(time);
+        self.rotation.update(time);
+        self.x_scale.update(time);
+        self.y_scale.update(time);
+
+        self.flip_horizontal.update(time);
+        self.flip_vertical.update(time);
+
+        self.alpha.update(time);
+        self.color.update(time);
     }
 
     fn reset(&mut self) {
         if let ElementImage::Anim(anim) = &mut self.element_image {
             anim.update(0.0);
-
-            self.group.items = vec![Arc::new(anim.clone())];
         }
-
-        self.group.update(0.0);
     }
 
     fn sort(a: &Self, b: &Self) -> std::cmp::Ordering {
@@ -319,8 +437,8 @@ impl Element {
 
 }
 
+#[derive(Clone)]
 enum ElementImage {
-    #[allow(dead_code)] // this (probably?) holds a reference to the image so its not dropped and cleared
     Sprite(Image),
     Anim(Animation),
 }

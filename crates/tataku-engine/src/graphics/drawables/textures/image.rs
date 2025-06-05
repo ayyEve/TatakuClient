@@ -49,7 +49,6 @@ pub struct Image {
     /// BEFORE SCALE
     pub origin: Vector2,
 
-    pub scissor: Scissor,
     pub blend_mode: Pipeline,
 
     pub color: Color,
@@ -76,7 +75,6 @@ impl Image {
             color: Color::WHITE,
             origin,
             tex,
-            scissor: None,
             flip: ImageFlip::None,
             blend_mode: Pipeline::AlphaBlending,
             base_scale,
@@ -178,8 +176,6 @@ impl TatakuRenderable for Image {
     fn get_name(&self) -> String { "Texture".to_owned() }
     fn get_bounds(&self) -> Bounds { Bounds::new(self.pos, self.size()) }
     
-    fn get_scissor(&self) -> Scissor { self.scissor }
-    fn set_scissor(&mut self, s: Scissor) { self.scissor = s }
     fn get_blend_mode(&self) -> Pipeline { self.blend_mode }
     fn set_blend_mode(&mut self, blend_mode: Pipeline) { self.blend_mode = blend_mode }
 

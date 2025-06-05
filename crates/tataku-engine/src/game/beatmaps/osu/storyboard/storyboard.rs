@@ -8,9 +8,9 @@ pub struct StoryboardSpriteDef {
     pub layer: Layer,
 
     /**
-     * Where on the image should osu! consider that image's origin (coordinate) to be. 
-     * This affects the (x) and (y) values, as well as several other command-specific behaviors. 
-     * For example, choosing (origin) = TopLeft will let the (x),(y) values determine, where the top left corner of the image itself should be on the screen.
+        Where on the image should osu! consider that image's origin (coordinate) to be.
+        This affects the (x) and (y) values, as well as several other command-specific behaviors.
+        For example, choosing (origin) = TopLeft will let the (x),(y) values determine, where the top left corner of the image itself should be on the screen.
      */
     pub origin: Origin,
 
@@ -19,11 +19,11 @@ pub struct StoryboardSpriteDef {
     pub filepath: String,
 
     /**
-     * (x) and (y) are the x-/y-coordinates of where the object should be, by default respectively. The interpretation of this depends on the value of (origin); 
-     * for instance, to place a 640x480 image as your background, the values could be: 
-     * origin = TopLeft, x = 0, y = 0 
-     * origin = Centre, x = 320, y = 240 
-     * origin = BottomRight, x = 640, y = 480 
+        (x) and (y) are the x-/y-coordinates of where the object should be, by default respectively. The interpretation of this depends on the value of (origin);
+        for instance, to place a 640x480 image as your background, the values could be:
+        origin = TopLeft, x = 0, y = 0
+        origin = Centre, x = 320, y = 240
+        origin = BottomRight, x = 640, y = 480
      */
     pub pos: Vector2
 }
@@ -34,9 +34,9 @@ pub struct StoryboardAnimationDef {
     pub layer: Layer,
 
     /**
-     * Where on the image should osu! consider that image's origin (coordinate) to be. 
-     * This affects the (x) and (y) values, as well as several other command-specific behaviors. 
-     * For example, choosing (origin) = TopLeft will let the (x),(y) values determine, where the top left corner of the image itself should be on the screen.
+        Where on the image should osu! consider that image's origin (coordinate) to be.
+        This affects the (x) and (y) values, as well as several other command-specific behaviors.
+        For example, choosing (origin) = TopLeft will let the (x),(y) values determine, where the top left corner of the image itself should be on the screen.
      */
     pub origin: Origin,
 
@@ -44,11 +44,11 @@ pub struct StoryboardAnimationDef {
     pub filepath: String,
 
     /**
-     * (x) and (y) are the x-/y-coordinates of where the object should be, by default respectively. The interpretation of this depends on the value of (origin); 
-     * for instance, to place a 640x480 image as your background, the values could be: 
-     * origin = TopLeft, x = 0, y = 0 
-     * origin = Centre, x = 320, y = 240 
-     * origin = BottomRight, x = 640, y = 480 
+        (x) and (y) are the x-/y-coordinates of where the object should be, by default respectively. The interpretation of this depends on the value of (origin);
+        for instance, to place a 640x480 image as your background, the values could be:
+        origin = TopLeft, x = 0, y = 0
+        origin = Centre, x = 320, y = 240
+        origin = BottomRight, x = 640, y = 480
      */
     pub pos: Vector2,
 

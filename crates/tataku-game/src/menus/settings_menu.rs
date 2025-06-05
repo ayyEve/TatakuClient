@@ -218,16 +218,15 @@ impl SettingsMenu {
             }])].into_iter().collect(),
             everything
         )
-        .with_transform(Transformation::new(
-            0.0,
+        .with_animation(
+            game_time,
             200.0,
-            TransformType::VectorScale { 
+            Easing::Linear,
+            TransformTypeTag::VectorScale {
                 start: Vector2::new(0.0, 1.0), 
                 end: Vector2::new(1.0, 1.0) 
             },
-            Easing::Linear,
-            game_time 
-        ))
+        )
         .min_width(Dimension::Percent(0.25))
         .max_width(Dimension::Percent(0.75))
         .height(FILL)

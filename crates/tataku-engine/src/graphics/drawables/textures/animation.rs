@@ -17,7 +17,6 @@ pub struct Animation {
     pub frame_index: usize,
     pub frame_delay: f32,
 
-    scissor: Scissor,
     blend_mode: Pipeline,
 
     // current
@@ -53,7 +52,6 @@ impl Animation {
             rotation,
             color,
             base_scale,
-            scissor: None,
             blend_mode: Pipeline::AlphaBlending,
 
             frames,
@@ -102,7 +100,6 @@ impl Animation {
             tex: self.frames[self.frame_index].clone(),
             base_scale: self.base_scale,
             origin: self.origin,
-            scissor: self.scissor,
             blend_mode: self.blend_mode,
             color: self.color,
             pos: self.pos,
@@ -119,8 +116,6 @@ impl TatakuRenderable for Animation {
     fn get_name(&self) -> String { "animation".into() }
     fn get_bounds(&self) -> Bounds { Bounds::new(self.pos, self.size()) }
 
-    fn get_scissor(&self) -> Scissor { self.scissor }
-    fn set_scissor(&mut self, s: Scissor) { self.scissor = s }
     fn get_blend_mode(&self) -> Pipeline { self.blend_mode }
     fn set_blend_mode(&mut self, blend_mode: Pipeline) { self.blend_mode = blend_mode }
 

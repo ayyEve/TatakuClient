@@ -28,7 +28,7 @@ pub enum WindowAction {
     RefreshMonitors,
 
     /// Update the data to render
-    RenderData(#[debug(skip)] Vec<Arc<dyn TatakuRenderable>>),
+    RenderData(#[debug(skip)] Vec<Box<dyn TatakuRenderable>>),
 
     /// Update the display to match the settings
     SettingsUpdated(DisplaySettings),

@@ -915,7 +915,8 @@ impl GameMode for OsuGame {
         // if flashlight is enabled, we want to scissor all items by the playfield
         // this prevents things like approach circles and ripples from showing up outside the flashlight radius
         if has_flashlight {
-            list.push_scissor(self.scaling_helper.playfield_with_padding.into_scissor());
+            // list.push_scissor(self.scaling_helper.playfield_with_padding.into_scissor());
+            // todo: fix this
         }
 
         // draw cursor ripples
@@ -935,7 +936,7 @@ impl GameMode for OsuGame {
 
         // draw flashlight
         if has_flashlight {
-            list.pop_scissor();
+            // list.pop_scissor();
 
             let radius = match state.score.combo {
                 0..=99 => 125.0,

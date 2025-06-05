@@ -83,10 +83,10 @@ pub struct OsuSlider {
     /// cached settings for this game
     standard_settings: Arc<OsuSettings>,
     /// list of shapes to be drawn
-    shapes: Vec<TransformGroup>,
+    // shapes: Vec<TransformGroup>,
 
 
-    start_circle_image: HitCircleImageHelper,
+    start_circle_image: HitCircle,
     end_circle_image: Option<Image>,
     slider_reverse_image: Option<Image>,
     sliderball_image: Option<Animation>,
@@ -142,7 +142,7 @@ impl OsuSlider {
         }).collect();
 
         let approach_circle = ApproachCircle::new(def.pos, time, radius, time_preempt, scaling_helper.clone());
-        let start_circle_image = HitCircleImageHelper::new(
+        let start_circle_image = HitCircle::new(
             def.pos,
             scaling_helper.clone(),
             combo_num
@@ -184,7 +184,7 @@ impl OsuSlider {
 
 
             standard_settings,
-            shapes: Vec::new(),
+            // shapes: Vec::new(),
             hitwindow_miss: 0.0,
 
             start_circle_image,
@@ -484,7 +484,7 @@ impl OsuSlider {
         if let Some(target) = self.slider_body_render_target.clone() {
             self.slider_body_loader = SliderBodyLoader::Update(AsyncLoader::new(async move {
                 GameWindow::update_render_target(
-                    target, 
+                    target,
                     callback
                 );
             }));
@@ -539,33 +539,33 @@ impl OsuSlider {
         }
     }
 
-    fn add_ripple(&mut self, time: f32, pos: Vector2, is_tick: bool) {
-        if self.standard_settings.hit_ripples {
-            let mut group = TransformGroup::new(pos).alpha(0.0).border_alpha(1.0);
-            group.alpha = 0.0;
+    // fn add_ripple(&mut self, time: f32, pos: Vector2, is_tick: bool) {
+    //     if self.standard_settings.hit_ripples {
+    //         let mut group = TransformGroup::new(pos).alpha(0.0).border_alpha(1.0);
+    //         group.alpha = 0.0;
 
-            // border is white if ripple caused by slider tick
-            let border_color = if is_tick { Color::WHITE } else { self.color };
+    //         // border is white if ripple caused by slider tick
+    //         let border_color = if is_tick { Color::WHITE } else { self.color };
 
-            group.push(Circle::new(
-                Vector2::ZERO,
-                self.radius,
-                Color::TRANSPARENT,
-            ).border(Border::new(border_color, 2.0)));
+    //         group.push(Circle::new(
+    //             Vector2::ZERO,
+    //             self.radius,
+    //             Color::TRANSPARENT,
+    //         ).border(Border::new(border_color, 2.0)));
 
-            let duration = 500.0;
-            group.ripple(
-                0.0, 
-                duration, 
-                time, 
-                self.standard_settings.ripple_scale, 
-                true, 
-                None
-            );
+    //         let duration = 500.0;
+    //         group.ripple(
+    //             0.0,
+    //             duration,
+    //             time,
+    //             self.standard_settings.ripple_scale,
+    //             true,
+    //             None
+    //         );
 
-            self.shapes.push(group);
-        }
-    }
+    //         self.shapes.push(group);
+    //     }
+    // }
 
     fn get_alpha(&self) -> f32 {
         let mut alpha = ((1.0 - ((self.time - (self.time_preempt * (2.0/3.0))) - self.map_time) / (self.time_preempt * (1.0/3.0))) / 3.0).clamp(0.0, 1.0);
@@ -576,14 +576,14 @@ impl OsuSlider {
         alpha
     }
 
-    fn ripple_start(&mut self) {
-        if !self.standard_settings.ripple_hitcircles { return }
-        self.shapes.push(self.start_circle_image.ripple(self.map_time));
-    }
+    // fn ripple_start(&mut self) {
+    //     if !self.standard_settings.ripple_hitcircles { return }
+    //     self.shapes.push(self.start_circle_image.ripple(self.map_time));
+    // }
 
-    fn add_end_ripple(&mut self, time: f32) {
-        self.add_ripple(time, self.time_end_pos, false);
-    }
+    // fn add_end_ripple(&mut self, time: f32) {
+    //     self.add_ripple(time, self.time_end_pos, false);
+    // }
 
 }
 impl HitObject for OsuSlider {
@@ -598,10 +598,10 @@ impl HitObject for OsuSlider {
         self.beat_scale = f32::lerp(BEAT_SCALE, 1.0, (beatmap_time - self.last_beat) / self.pulse_length).clamp(1.0, BEAT_SCALE);
 
         // update shapes
-        self.shapes.retain_mut(|shape| {
-            shape.update(beatmap_time);
-            shape.visible()
-        });
+        // self.shapes.retain_mut(|shape| {
+        //     shape.update(beatmap_time);
+        //     shape.visible()
+        // });
 
         // check sliding ok
         self.slider_ball_pos = self.scaling_helper.scale_coords(self.curve.position_at_time(beatmap_time));
@@ -633,11 +633,11 @@ impl HitObject for OsuSlider {
                     warn!("failed to slider");
                     self.slider_body_render_target_failed = Some(self.map_time);
                 }
-                
+
                 self.slider_body_loader = SliderBodyLoader::None;
             }
             SliderBodyLoader::Update(new) => if new.is_complete() {
-                
+
                 self.slider_body_loader = SliderBodyLoader::None;
             }
             _ => {}
@@ -651,7 +651,7 @@ impl HitObject for OsuSlider {
             self.start_checked = true;
             self.start_judgment = OsuHitJudgments::Miss;
             self.pending_combo.insert(0, (OsuHitJudgments::Miss, self.pos));
-            self.ripple_start();
+            // self.ripple_start();
         }
 
         // find out if a slide has been completed
@@ -679,7 +679,7 @@ impl HitObject for OsuSlider {
             if self.sliding_ok {
                 self.pending_combo.push((OsuHitJudgments::SliderEnd, pos));
                 self.sound_queue.push(self.get_hitsound());
-                self.add_ripple(beatmap_time, pos, false);
+                // self.add_ripple(beatmap_time, pos, false);
             } else {
                 // we broke combo
                 self.pending_combo.push((OsuHitJudgments::SliderEndMiss, pos));
@@ -691,7 +691,7 @@ impl HitObject for OsuSlider {
         for dot in dots.iter_mut() {
             if let Some(was_hit) = dot.update(beatmap_time, self.holding, self.mouse_pos, self.radius) {
                 if was_hit {
-                    self.add_ripple(beatmap_time, dot.pos, true);
+                    // self.add_ripple(beatmap_time, dot.pos, true);
 
 
                     self.pending_combo.push((OsuHitJudgments::SliderDot, dot.pos));
@@ -715,11 +715,11 @@ impl HitObject for OsuSlider {
     }
 
     #[cfg(feature="graphics")]
-    fn draw(&mut self, _time: f32, list: &mut RenderableCollection) {
+    fn draw(&mut self, _beatmap_time: f32, list: &mut RenderableCollection) {
         // draw shapes
-        for shape in self.shapes.iter_mut() {
-            list.push(shape.clone());
-        }
+        // for shape in self.shapes.iter_mut() {
+        //     list.push(shape.clone());
+        // }
 
         // if its not time to draw anything else, leave
         if self.time - self.map_time > self.time_preempt || self.map_time > self.curve.end_time + self.hitwindow_miss { return }
@@ -865,7 +865,7 @@ impl HitObject for OsuSlider {
                     self.radius * OK_TICK_RADIUS_MULT,
                     Color::TRANSPARENT,
                 ).border(Border::new(
-                    if self.sliding_ok {Color::LIME} else {Color::RED}.alpha(alpha), 
+                    if self.sliding_ok {Color::LIME} else {Color::RED}.alpha(alpha),
                     2.0
                 )));
             }
@@ -879,7 +879,7 @@ impl HitObject for OsuSlider {
     }
 
     fn reset(&mut self) {
-        self.shapes.clear();
+        // self.shapes.clear();
         self.sound_queue.clear();
 
         self.map_time = 0.0;
@@ -993,15 +993,15 @@ impl OsuHitObject for OsuSlider {
         self.start_checked = true;
         self.start_judgment = *j;
 
-        self.ripple_start();
+        // self.ripple_start();
     }
 
     fn hit(&mut self, time: f32) {
         self.start_checked = true;
 
-        if self.standard_settings.hit_ripples {
-            self.add_ripple(time, self.pos_at(time), false);
-        }
+        // if self.standard_settings.hit_ripples {
+        //     self.add_ripple(time, self.pos_at(time), false);
+        // }
     }
 
     fn check_release_points(&mut self, time: f32) -> HitJudgment {
@@ -1022,17 +1022,17 @@ impl OsuHitObject for OsuSlider {
             } else if self.dots_missed == self.dot_count {
                 OsuHitJudgments::Miss
             } else if self.dots_missed == 0 {
-                self.add_end_ripple(time);
+                // self.add_end_ripple(time);
                 OsuHitJudgments::X100
             } else {
-                self.add_end_ripple(time);
+                // self.add_end_ripple(time);
                 OsuHitJudgments::X50
             }
         } else if self.dots_missed == 0 && self.holding && distance < ok_distance {
-            self.add_end_ripple(time);
+            // self.add_end_ripple(time);
             OsuHitJudgments::X300
         } else {
-            self.add_end_ripple(time);
+            // self.add_end_ripple(time);
             OsuHitJudgments::X100
         }
     }
@@ -1111,7 +1111,7 @@ impl OsuHitObject for OsuSlider {
         let index = self.sound_index.min(self.def.edge_sets.len() - 1);
         self.hitsounds[index].clone()
     }
-    fn get_all_hitsounds(&self) -> Vec<Vec<Hitsound>> { vec![ 
+    fn get_all_hitsounds(&self) -> Vec<Vec<Hitsound>> { vec![
         self.get_hitsound(),
         vec![ self.sliderdot_hitsound.clone() ]
     ] }

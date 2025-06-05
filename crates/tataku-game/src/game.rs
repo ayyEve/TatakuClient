@@ -1286,14 +1286,10 @@ impl Game {
 
             manager.draw(&mut render_queue);
 
-            if let Some(draw_action) = &config.draw_function {
+            if let Some(draw_function) = &config.draw_function {
                 std::mem::swap(&mut render_queue, &mut temp_render_queue);
 
-                let group = TransformGroup::from_collection(
-                    Vector2::ZERO, 
-                    temp_render_queue
-                );
-                (draw_action)(group);
+                (draw_function)(temp_render_queue);
             }
         }
 
@@ -1413,7 +1409,7 @@ impl Game {
 
     fn handle_action(
         &mut self, 
-        action: impl Into<TatakuAction> + Send + 'static
+        action: impl Into<TatakuAction> + 'static
     ) {
         let action = action.into();
         // debug!("handling action: {action:?}");

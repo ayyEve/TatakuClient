@@ -11,7 +11,7 @@ const SHAKE_COUNT:usize = 6;
 const SHAKE_INTURRUPT: bool = true;
 
 #[derive(Clone)]
-pub struct HitCircleImageHelper {
+pub struct HitCircle {
     pub base_pos: Vector2,
     /// scaled pos
     pub pos: Vector2,
@@ -23,18 +23,18 @@ pub struct HitCircleImageHelper {
     pub scaling_helper: Arc<ScalingHelper>,
     alpha: f32,
     color: Color,
-    
+
     /// combo num text cache
     combo_text: Option<Text>,
     combo_image: Option<SkinnedNumber>,
 
     skin_settings: Arc<SkinSettings>,
-    shake_group: Option<TransformGroup>
+    shake: Option<AnimationTimeline<f32>>
 }
-impl HitCircleImageHelper {
+impl HitCircle {
     pub fn new(
-        base_pos: Vector2, 
-        scaling_helper: Arc<ScalingHelper>, 
+        base_pos: Vector2,
+        scaling_helper: Arc<ScalingHelper>,
         combo_num: u16
     ) -> Self {
         Self {
@@ -51,14 +51,14 @@ impl HitCircleImageHelper {
 
             alpha: 0.0,
             color: Color::WHITE,
-            shake_group: None
+            shake: None
         }
     }
 
     #[cfg(feature="graphics")]
     pub fn reload_skin(
-        &mut self, 
-        source: &TextureSource, 
+        &mut self,
+        source: &TextureSource,
         skin_manager: &mut dyn SkinProvider
     ) {
         self.skin_settings = skin_manager.skin().clone();
@@ -69,22 +69,22 @@ impl HitCircleImageHelper {
             i.scale = Vector2::ONE * self.scaling_helper.cs;
             i.color = self.color;
         });
-        
+
         self.overlay = skin_manager.get_texture_then("hitcircleoverlay", source, SkinUsage::Gamemode, false, |i| {
             i.pos = self.pos;
             i.scale = Vector2::ONE * self.scaling_helper.cs;
         });
-        
+
         self.combo_image = SkinnedNumber::new(
-            self.pos, 
+            self.pos,
             self.combo_num as f64,
-            Color::WHITE, 
+            Color::WHITE,
             &self.skin_settings.hitcircle_prefix,
             None,
             0,
             skin_manager,
 
-            source, 
+            source,
             SkinUsage::Gamemode,
         ).ok();
 
@@ -109,7 +109,7 @@ impl HitCircleImageHelper {
         }
 
     }
-    
+
     pub fn playfield_changed(&mut self, new_scale: &Arc<ScalingHelper>) {
         self.pos = new_scale.scale_coords(self.base_pos);
         let scale = Vector2::ONE * new_scale.cs;
@@ -128,7 +128,7 @@ impl HitCircleImageHelper {
         // update combo text position
         let radius = CIRCLE_RADIUS_BASE * new_scale.cs;
         let rect = Bounds::new(self.pos - Vector2::ONE * radius / 2.0, Vector2::ONE * radius);
-        
+
         if let Some(image) = &mut self.combo_image {
             image.spacing_override = Some(-(self.skin_settings.hitcircle_overlap as f32));
             image.scale = scale * TEXT_SCALE;
@@ -152,71 +152,59 @@ impl HitCircleImageHelper {
     }
 
     pub fn update(&mut self, time: f32) {
-        if let Some(group) = &mut self.shake_group { 
-            group.update(time);
+        if let Some(shake) = &mut self.shake {
+            shake.update(time);
 
-            if group.transforms.is_empty() {
-                self.shake_group = None;
+            if shake.is_empty() {
+                self.shake = None;
             }
         }
     }
 
     pub fn draw(&mut self, list: &mut RenderableCollection) {
-        if let Some(group) = self.shake_group.clone() {
-            list.push(group);
-            return
-        }
+        let note = self.note(true);
 
-        if let Some(mut circle) = self.circle.clone() {
-            circle.color.a = self.alpha;
-            list.push(circle);
+        if let Some(shake) = &self.shake {
+            let shake = shake.last_value();
+
+            let transform = Transform {
+                pos: Vector2::new(shake * 8.0 * self.scaling_helper.scale, 0.0),
+                ..Default::default()
+            };
+
+            let elements = note.list.into_iter()
+                .map(|element| Transformed::new(
+                    transform,
+                    element
+                ))
+                .map(|element| Box::new(element) as Box<dyn TatakuRenderable>);
+
+            list.list.extend(elements);
         } else {
-            list.push(Circle::new(
-                self.pos,
-                CIRCLE_RADIUS_BASE * self.scaling_helper.cs,
-                self.color.alpha(self.alpha),
-            ).border(Border::new(
-                Color::WHITE.alpha(self.alpha),
-                self.scaling_helper.border_width
-            )));
+            list.list.extend(note.list);
         }
-
-        if let Some(mut overlay) = self.overlay.clone() {
-            overlay.color.a = self.alpha;
-            list.push(overlay);
-        }
-
-        if let Some(mut image) = self.combo_image.clone() {
-            image.color.a = self.alpha;
-            list.push(image);
-        } else if let Some(mut text) = self.combo_text.clone() {
-            text.color.a = self.alpha;
-            list.push(text);
-        }
-
     }
 
-    /// helper fn to reduce duplicate code
-    fn get_group(&self, include_combo_num: bool) -> TransformGroup {
-        let mut group = TransformGroup::new(self.pos)
-            .alpha(1.0)
-            .border_alpha(1.0);
-        
+    fn note(&self, include_combo_num: bool) -> RenderableCollection {
+        let mut collection = RenderableCollection::new();
+
         // hit circle
         if let Some(mut circle) = self.circle.clone() {
-            circle.pos = Vector2::ZERO;
-            group.push(circle);
+            circle.pos = self.pos;
+            circle.color.a = self.alpha;
+            collection.push(circle);
         }
 
         if let Some(mut overlay) = self.overlay.clone() {
-            overlay.pos = Vector2::ZERO;
-            group.push(overlay);
+            overlay.pos = self.pos;
+            overlay.color.a = self.alpha;
+            collection.push(overlay);
         }
-        
-        if group.items.is_empty() {
-            group.push(Circle::new(
-                Vector2::ZERO,
-                self.scaling_helper.cs,
+
+        if collection.list.is_empty() {
+            collection.push(Circle::new(
+                self.pos,
+                CIRCLE_RADIUS_BASE * self.scaling_helper.cs,
                 self.color,
             ).border(Border::new(
                 Color::BLACK,
@@ -226,36 +214,94 @@ impl HitCircleImageHelper {
 
         if include_combo_num {
             let size = self.scaling_helper.circle_size;
-            let rect = Bounds::new(-size / 2.0, size);
+            let rect = Bounds::new(self.pos - size / 2.0, size);
 
             if let Some(mut image) = self.combo_image.clone() {
+                image.color.a = self.alpha;
                 image.center_text(&rect);
-                group.push(image);
+                collection.push(image);
             } else if let Some(mut text) = self.combo_text.clone() {
+                text.color.a = self.alpha;
                 text.center_text(&rect);
-                group.push(text);
+                collection.push(text);
             }
         }
 
-        group
+        collection
     }
 
 
     pub fn shake(&mut self, time: f32) {
-        if self.shake_group.is_some() && !SHAKE_INTURRUPT { return }
+        if self.shake.is_some() && !SHAKE_INTURRUPT { return }
 
-        let mut group = self.get_group(true);
-        group.shake(0.0, time, Vector2::new(8.0, 0.0) * self.scaling_helper.scale, SHAKE_TIME, SHAKE_COUNT);
-        self.shake_group = Some(group);
+        let shake = shake(
+            time,
+            SHAKE_TIME,
+            SHAKE_COUNT,
+            Easing::Linear,
+        );
+
+        self.shake = Some(shake);
     }
 
-    pub fn ripple(&self, time: f32) -> TransformGroup {
-        let scale = 1.0..1.4;
-        let mut group = self.get_group(false);
+    // pub fn ripple(&self, time: f32) -> TransformGroup {
+    //     let scale = 1.0..1.4;
+    //     let mut group = self.note(false);
 
-        // make it ripple and add it to the list
-        group.ripple_scale_range(0.0, 240.0, time, scale, None, Some(0.5));
-        group
+    //     // make it ripple and add it to the list
+    //     group.ripple_scale_range(0.0, 240.0, time, scale, None, Some(0.5));
+    //     group
+    // }
+
+}
+
+pub fn shake(
+    start_time: f32,
+    time_between_shakes: f32,
+    shake_count: usize,
+    easing: Easing,
+) -> AnimationTimeline<f32> {
+    let mut animations = Vec::with_capacity(shake_count);
+
+    animations.push(Animate::new(
+        start_time,
+        time_between_shakes / 2.0,
+        easing,
+        0.0,
+        1.0,
+    ));
+
+    if shake_count > 1 {
+        for i in 0..shake_count-1 {
+            let (start, end) = if i % 2 == 0 {
+                (1.0, -1.0)
+            } else {
+                (-1.0, 1.0)
+            };
+
+            animations.push(Animate::new(
+                start_time + time_between_shakes * (i as f32 + 0.5),
+                time_between_shakes,
+                easing,
+                start,
+                end,
+            ));
+        }
     }
 
+    let (start, end) = if shake_count % 2 == 0 {
+        (-1.0, 0.0)
+    } else {
+        (1.0, 0.0)
+    };
+
+    animations.push(Animate::new(
+        start_time + time_between_shakes * (shake_count as f32 + 0.5) ,
+        time_between_shakes / 2.0,
+        easing,
+        start,
+        end,
+    ));
+
+    AnimationTimeline::new(animations, 0.0)
 }
