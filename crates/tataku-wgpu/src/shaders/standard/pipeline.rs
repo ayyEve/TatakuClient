@@ -3,7 +3,6 @@ use tataku_engine::prelude::*;
 
 pub fn create_standard_pipeline(
     device: &Device,
-    config: &SurfaceConfiguration,
     projection_matrix_bind_group_layout: &BindGroupLayout,
     texture_bind_group_layout: &BindGroupLayout,
 ) -> HashMap<Pipeline, RenderPipeline> {
@@ -53,7 +52,7 @@ pub fn create_standard_pipeline(
                     module: &shader,
                     entry_point: Some("fs_main"),
                     targets: &[Some(ColorTargetState {
-                        format: config.format,
+                        format: TextureFormat::Bgra8Unorm,
                         blend: Some(blend_state),
                         write_mask: ColorWrites::ALL,
                     })],

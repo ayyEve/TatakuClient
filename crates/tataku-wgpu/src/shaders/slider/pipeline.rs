@@ -3,7 +3,6 @@ use tataku_client_common::prelude::*;
 
 pub fn create_slider_pipeline(
     device: &Device,
-    config: &SurfaceConfiguration,
     projection_matrix_bind_group_layout: &BindGroupLayout,
 ) -> RenderPipeline {
     let slider_shader = device.create_shader_module(ShaderModuleDescriptor {
@@ -92,7 +91,7 @@ pub fn create_slider_pipeline(
             module: &slider_shader,
             entry_point: Some("slider_fs_main"),
             targets: &[Some(ColorTargetState {
-                format: config.format,
+                format: TextureFormat::Bgra8Unorm,
                 blend: Some(WgpuEngine::map_blend_mode(Pipeline::AlphaBlending)),
                 write_mask: ColorWrites::ALL,
             })],

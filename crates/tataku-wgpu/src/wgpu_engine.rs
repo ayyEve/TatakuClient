@@ -275,7 +275,6 @@ impl<'window> WgpuEngine<'window> {
 
         let mut pipelines = create_standard_pipeline(
             &device, 
-            &config, 
             &projection_matrix_bind_group_layout, 
             &texture_bind_group_layout
         );
@@ -284,14 +283,12 @@ impl<'window> WgpuEngine<'window> {
         // create slider pipeline
         pipelines.insert(Pipeline::Slider, create_slider_pipeline(
             &device, 
-            &config, 
             &projection_matrix_bind_group_layout
         ));
 
         // create flashlight pipeline
         pipelines.insert(Pipeline::Flashlight, create_flashlight_pipeline(
             &device, 
-            &config, 
             &projection_matrix_bind_group_layout
         ));
 
@@ -322,7 +319,7 @@ impl<'window> WgpuEngine<'window> {
             &sampler, 
             atlas_size, 
             atlas_size, 
-            config.format
+            TextureFormat::Bgra8Unorm,
         );
 
         let particle_system = ParticleSystem::new(&device);
@@ -374,12 +371,12 @@ impl<'window> WgpuEngine<'window> {
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: TextureDimension::D2,
-                format: TextureFormat::Bgra8UnormSrgb,
+                format: TextureFormat::Bgra8Unorm,
                 usage: TextureUsages::RENDER_ATTACHMENT 
                     | TextureUsages::COPY_SRC 
                     | TextureUsages::COPY_DST 
                     | TextureUsages::TEXTURE_BINDING,
-                view_formats: &[ TextureFormat::Bgra8Unorm ]
+                view_formats: &[ TextureFormat::Bgra8UnormSrgb ]
             }
         );
 
@@ -433,13 +430,10 @@ impl<'window> WgpuEngine<'window> {
                     size,
                     mip_level_count: 1,
                     sample_count: 1,
-                    dimension: TextureDimension::D2,
-                    format: TextureFormat::Bgra8UnormSrgb,
-                    usage: TextureUsages::RENDER_ATTACHMENT 
-                        | TextureUsages::COPY_SRC 
-                        | TextureUsages::COPY_DST 
-                        | TextureUsages::TEXTURE_BINDING,
-                    view_formats: &[ TextureFormat::Bgra8Unorm ]
+                    dimension: self.intermediate_texture.dimension(),
+                    format: self.intermediate_texture.format(),
+                    usage: self.intermediate_texture.usage(),
+                    view_formats: &[ TextureFormat::Bgra8UnormSrgb ]
                 }
             );
         }
@@ -1635,6 +1629,10 @@ impl GraphicsEngine for WgpuEngine<'_> {
         // get the texture this target was written to
         let textures = self.atlas_texture.textures.clone();
 
+        if !Bounds::new(Vector2::ZERO, target.image.size()).has_area() {
+            return
+        }
+
         let Some((atlas_tex, _)) = textures.get(target.image.tex.layer as usize) 
         else { return };
 
@@ -1649,7 +1647,7 @@ impl GraphicsEngine for WgpuEngine<'_> {
         let width = target.width;
         let height = target.height;
 
-        // create a temporary texture to render to this target to
+        // create a temporary texture to render this target to
         let texture = self.device.create_texture(
             &TextureDescriptor {
                 size: Extent3d {
@@ -1660,10 +1658,10 @@ impl GraphicsEngine for WgpuEngine<'_> {
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: TextureDimension::D2,
-                format: self.config.format,
+                format: TextureFormat::Bgra8Unorm,
                 usage: TextureUsages::COPY_SRC | TextureUsages::RENDER_ATTACHMENT,
                 label: Some("render_target_temp_tex"),
-                view_formats: &[],
+                view_formats: &[TextureFormat::Bgra8UnormSrgb],
             }
         );
 
