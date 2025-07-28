@@ -90,7 +90,7 @@ impl ContextMenu {
 }
 
 impl Widget for ContextMenu {
-    fn name(&self) -> Cow<'static, str> { "context_menu".into() }
+    fn name(&self) -> CowStr { "context_menu".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {
@@ -276,12 +276,12 @@ impl Widget for ContextMenu {
 
 #[derive(Clone)]
 pub struct ContextMenuOption {
-    pub name: Cow<'static, str>,
+    pub name: CowStr,
     pub option_type: ContextMenuOptionType,
 }
 impl ContextMenuOption {
     pub fn new(
-        name: impl Into<Cow<'static, str>>,
+        name: impl Into<CowStr>,
         option_type: impl Into<ContextMenuOptionType>,
     ) -> Self {
         Self {

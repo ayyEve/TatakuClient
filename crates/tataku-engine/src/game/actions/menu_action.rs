@@ -4,7 +4,7 @@ use crate::prelude::*;
 pub enum MenuAction {
     /// Set the menu to the provided menu identifier
     SetMenu {
-        id: Cow<'static, str>,
+        id: CowStr,
         input: BuildableInputArguments,
     },
 
@@ -12,11 +12,11 @@ pub enum MenuAction {
     /// 
     /// NOTE these are predefined previous menus, not built on a stack
     /// TODO: should we make it a stack?
-    PreviousMenu(Cow<'static, str>),
+    PreviousMenu(CowStr),
 
     /// Add a custom dialog
     AddDialog {
-        id: Cow<'static, str>,
+        id: CowStr,
         options: DialogCreateOptions,
         input: BuildableInputArguments,
     },
@@ -29,7 +29,7 @@ pub enum MenuAction {
 }
 impl MenuAction {
     pub fn set_menu(
-        menu: impl Into<Cow<'static, str>>,
+        menu: impl Into<CowStr>,
     ) -> Self {
         Self::SetMenu {
             id: menu.into(),
@@ -78,7 +78,7 @@ pub struct DialogCreateOptions {
     #[chain] pub draggable: bool,
 
     #[serde(rename = "@title")]
-    #[chain] pub title: Cow<'static, str>,
+    #[chain] pub title: CowStr,
     
     #[serde(skip)]
     pub location: DialogLocation,

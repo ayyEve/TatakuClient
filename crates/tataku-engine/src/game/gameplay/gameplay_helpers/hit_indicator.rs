@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-pub trait JudgementIndicator: Send + Sync{
+pub trait JudgementIndicator: Send + Sync {
     fn should_keep(&self, map_time: f32) -> bool;
     fn set_start_time(&mut self, time: f32);
     fn set_draw_duration(&mut self, duration: f32, settings: &Settings);
@@ -21,7 +21,13 @@ pub struct BasicJudgementIndicator {
 impl BasicJudgementIndicator {
     /// pos, depth, radius and color are only if image is none.
     /// if image is some, it assumes the values (pos, depth, size, etc) are already set
-    pub fn new(pos: Vector2, time: f32, radius: f32, color: Color, image: Option<Animation>) -> Self {
+    pub fn new(
+        pos: Vector2, 
+        time: f32, 
+        radius: f32, 
+        color: Color, 
+        image: Option<Animation>
+    ) -> Self {
         Self {
             pos,
             time,
@@ -60,7 +66,11 @@ impl JudgementIndicator for BasicJudgementIndicator {
 
     fn draw(&self, map_time: f32, list: &mut RenderableCollection) {
         let fade_duration = self.draw_duration / 2.0;
-        let alpha = (1.0 - (map_time - (self.time + (self.draw_duration - fade_duration))) / fade_duration).clamp(0.0, 1.0);
+        let alpha = (
+            1.0 
+            - (map_time - (self.time + (self.draw_duration - fade_duration))) 
+            / fade_duration
+        ).clamp(0.0, 1.0);
         
         if let Some(mut img) = self.image.clone() {
             img.update(map_time);

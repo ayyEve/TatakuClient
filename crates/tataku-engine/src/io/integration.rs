@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 // TODO: replace check_enabled with a set_enabled, and in settings have the integrations in a HashMap<integration-name, enabled>
 pub trait TatakuIntegration: Send + Sync {
-    fn name(&self) -> Cow<'static, str>;
+    fn name(&self) -> CowStr;
 
     /// initialize the integration
     fn init(

@@ -6,7 +6,6 @@ const FILTERED_TEXT_PATH: &str = "var.settings.search_filter";
 pub struct SettingsMenu {
     filter_text: String,
     old_settings: Settings,
-
     node: Box<dyn Widget>,
 }
 impl SettingsMenu {
@@ -69,11 +68,12 @@ impl SettingsMenu {
             }),
             create_slider: Box::new(|builder| {
                 Slider::new(
-                    builder.range, 
+                    *builder.range.start(), 
+                    *builder.range.end(), 
                     builder.value,
-                    builder.on_change
+                    Some(builder.on_change)
                 )
-                    .step_maybe(builder.step)
+                    .step(builder.step.map(SliderValue::Static))
                     .boxed()
             }),
             create_text_input: Box::new(|builder| {
@@ -100,8 +100,6 @@ impl SettingsMenu {
                     .optional(builder.optional)
                     .boxed()
             }),
-
-
         };
         settings.into_elements(
             "settings".to_owned(), 
@@ -235,7 +233,7 @@ impl SettingsMenu {
     }
 }
 impl Widget for SettingsMenu {
-    fn name(&self) -> Cow<'static, str> { "settings_menu".into() }
+    fn name(&self) -> CowStr { "settings_menu".into() }
     fn node_id(&self) -> NodeId { self.node.node_id() }
 
     fn update_styles(

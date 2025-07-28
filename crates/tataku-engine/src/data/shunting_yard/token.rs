@@ -5,6 +5,6 @@ pub enum ShuntingYardToken {
     Variable(String),
     StringLiteral(String),
     Function(String),
-    LeftParenthesis,
-    RightParenthesis,
+    OpenParenthesis,
+    // RightParenthesis,
 }

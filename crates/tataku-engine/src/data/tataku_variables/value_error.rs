@@ -12,7 +12,10 @@ pub enum TatakuValueError<'a> {
     }
 }
 impl<'a> TatakuValueError<'a> {
-    pub fn wrong_type(expected: impl Into<Cow<'a, str>>, received: impl Into<Cow<'a, str>>) -> Self {
+    pub fn wrong_type(
+        expected: impl Into<Cow<'a, str>>, 
+        received: impl Into<Cow<'a, str>>
+    ) -> Self {
         Self::ValueWrongType { expected: expected.into(), received: received.into() }
     }
 }

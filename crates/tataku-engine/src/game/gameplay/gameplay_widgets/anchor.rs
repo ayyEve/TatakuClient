@@ -22,7 +22,7 @@ pub enum GameplayWidgetAnchor {
     /// Anchored to an element, scaling is determined from the parent element
     Element {
         /// What element to anchor to
-        element: Cow<'static, str>,
+        element: CowStr,
 
         /// Where should this element be relative to the parent
         relative: GameplayWidgetAlign,

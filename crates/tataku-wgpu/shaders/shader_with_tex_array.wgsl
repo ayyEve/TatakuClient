@@ -43,7 +43,7 @@ fn vs_main(input: VertexInputs) -> VertexOutputs {
 
 //TODO: keep an eye on the spec, once we are able to support texture and sampler arrays, PLEASE USE THEM
 //The texture we're sampling
-@group(1) @binding(0) var textures: binding_array<texture_2d<f32>, 4>;
+@group(1) @binding(0) var textures: binding_array<texture_2d<f32>, 12>;
 //The sampler we're using to sample the texture
 @group(1) @binding(1) var s: sampler;
 

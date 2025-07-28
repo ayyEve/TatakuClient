@@ -17,7 +17,7 @@ pub enum BuildableMapAction {
     /// Change to the previous map
     Previous {
         #[serde(rename="$value", alias="$text", default)] 
-        action: MapActionIfNone
+        action: MapActionIfNone,
     },
 
     /// Change to a random map
@@ -29,19 +29,19 @@ pub enum BuildableMapAction {
     /// Select a specific set by group id
     SelectGroup { 
         #[serde(rename="$value", alias="$text")] 
-        value: BuildableValue
+        value: BuildableValue,
     },
 
     /// Select a specific map by hash
     SelectMap { 
         #[serde(rename="$value", alias="$text")] 
-        value: BuildableValue
+        value: BuildableValue,
     },
 
     /// Set the current playmode
     SetPlaymode { 
         #[serde(rename="$value", alias="$text")] 
-        value: BuildableValue
+        value: BuildableValue,
     },
 
     /// Refresh the beatmap list
@@ -50,10 +50,10 @@ pub enum BuildableMapAction {
     /// Delete the current map
     DeleteCurrent,
 
-    /// Delete the provided map
+    /// Delete the provided map hash
     Delete {
         #[serde(rename="$value", alias="$text")] 
-        value: BuildableValue
+        value: BuildableValue,
     },
 
 
@@ -71,22 +71,29 @@ impl BuildableMapAction {
     ) -> Option<BeatmapAction> {
         match self {
             Self::Play => Some(BeatmapAction::PlaySelected),
-            Self::Next => Some(BeatmapAction::Next),
-            Self::Previous { action } => Some(BeatmapAction::Previous(action)),
-            Self::Random { use_preview } => Some(BeatmapAction::Random(use_preview)),
             Self::Confirm => Some(BeatmapAction::ConfirmSelected),
-            Self::DeleteCurrent => Some(BeatmapAction::DeleteCurrent(PostDelete::Next)),
+
+            Self::Next => Some(BeatmapAction::Next),
+            Self::Previous { action } 
+                => Some(BeatmapAction::Previous(action)),
+
+            Self::Random { use_preview } 
+                => Some(BeatmapAction::Random(use_preview)),
+
+            Self::DeleteCurrent 
+                => Some(BeatmapAction::DeleteCurrent(PostDelete::Next)),
+
             Self::Delete { value } => {
                 let value = value.resolve(values, passed_in)?;
                 let hash = Md5Hash::try_from(value.as_string()).ok()?;
                 Some(BeatmapAction::Delete(hash))
             }
 
-            Self::NextMap => Some(BeatmapAction::ListAction(BeatmapListAction::NextMap)),
-            Self::NextSet => Some(BeatmapAction::ListAction(BeatmapListAction::NextSet)),
-            Self::PreviousMap => Some(BeatmapAction::ListAction(BeatmapListAction::PrevMap)),
-            Self::PreviousSet => Some(BeatmapAction::ListAction(BeatmapListAction::PrevSet)),
-            Self::RefreshMaps => Some(BeatmapAction::ListAction(BeatmapListAction::Refresh)),
+            Self::NextMap => Some(BeatmapListAction::NextMap.into()),
+            Self::NextSet => Some(BeatmapListAction::NextSet.into()),
+            Self::PreviousMap => Some(BeatmapListAction::PrevMap.into()),
+            Self::PreviousSet => Some(BeatmapListAction::PrevSet.into()),
+            Self::RefreshMaps => Some(BeatmapListAction::Refresh.into()),
 
             Self::SetPlaymode { value } => {
                 let value = value.resolve(values, passed_in)?;
@@ -96,22 +103,39 @@ impl BuildableMapAction {
 
             Self::SelectGroup { value} => {
                 let num = value.resolve(values, passed_in)?.as_u32().ok()?;
-                Some(BeatmapAction::ListAction(BeatmapListAction::SelectSet(num as usize)))
+                Some(BeatmapAction::ListAction(
+                    BeatmapListAction::SelectSet(num as usize)
+                ))
             }
 
             Self::SelectMap { value } => {
-                let hash = value.resolve(values, passed_in)?.string_maybe()?.try_into().ok()?;
-                Some(BeatmapAction::SetFromHash(hash, SetBeatmapOptions::new().use_preview_point(true)))
+                let hash = value
+                    .resolve(values, passed_in)?
+                    .string_maybe()?
+                    .try_into()
+                    .ok()?;
+                
+                Some(BeatmapAction::SetFromHash(
+                    hash, 
+                    SetBeatmapOptions::new().use_preview_point(true)
+                ))
             }
         }
     }
 
     pub fn build(&mut self, values: &dyn Reflect) {
         match self {
-            Self::SelectGroup { value } => value.resolve_pre(values),
-            Self::SelectMap { value } => value.resolve_pre(values),
-            Self::SetPlaymode { value } => value.resolve_pre(values),
-            Self::Delete { value } => value.resolve_pre(values),
+            Self::SelectGroup { value } 
+                => value.resolve_pre(values),
+                
+            Self::SelectMap { value } 
+                => value.resolve_pre(values),
+
+            Self::SetPlaymode { value } 
+                => value.resolve_pre(values),
+
+            Self::Delete { value } 
+                => value.resolve_pre(values),
 
             _ => {}
         };

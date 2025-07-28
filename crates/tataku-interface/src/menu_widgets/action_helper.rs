@@ -9,8 +9,14 @@ pub enum InputAction<T> {
     MessageCallback(MessageCallback<T>),
     ActionCallback(ActionCallback<T>),
     ReflectCallback(ReflectCallback<T>),
-    Custom(BuildableAction),
-    Multi(Vec<Self>),
+    Custom {
+        action: BuildableAction,
+        built: bool,
+    },
+    Multi {
+        list: Vec<Self>,
+        built: bool,
+    },
 }
 impl<T:Clone + Reflect> InputAction<T> {
     pub fn run(
@@ -28,12 +34,16 @@ impl<T:Clone + Reflect> InputAction<T> {
                 => messages.push(callback(value)),
             Self::ActionCallback(callback) 
                 => actions.push(callback(value)),
-            Self::Custom(b) => {
+            Self::Custom { action, .. } => {
                 let passed_in = TatakuValue::from_reflection(
                     Box::new(value.clone())
                 ).ok();
 
-                if let Some(action) = b.clone().into_action(
+                let mut action = action.clone();
+                action.build(values);
+
+
+                if let Some(action) = action.into_action(
                     node, 
                     values, 
                     passed_in.as_ref()
@@ -44,13 +54,48 @@ impl<T:Clone + Reflect> InputAction<T> {
             Self::ReflectCallback(callback)
                 => callback(value, values),
 
-            Self::Multi(list) => {
+            Self::Multi { list, .. } => {
                 for action in list {
                     action.run(value, node, messages, actions, values);
                 }
             }
         }
 
+    }
+
+    pub fn build(
+        &mut self,
+        values: &mut dyn Reflect,
+    ) {
+        match self {
+            Self::Custom { 
+                action, 
+                built,
+            } if !*built => {
+                *built = true;
+                action.build(values);
+            }
+
+            Self::Multi { 
+                list, 
+                built
+            } if !*built => {
+                *built = true;
+                list
+                    .iter_mut()
+                    .for_each(|i| i.build(values));
+            }
+
+            _ => {}
+        }
+    }
+
+    pub fn is_built(&self) -> bool {
+        match self {
+            Self::Multi { built, .. } => *built,
+            Self::Custom { built, .. } => *built,
+            _ => true
+        }
     }
 }
 
@@ -77,11 +122,20 @@ impl<T> From<BuildableAction> for InputAction<T> {
             cond.build();
         }
 
-        Self::Custom(value)
+        Self::Custom {
+            action: value,
+            built: false,
+        }
     }
 }
 impl<T, A: Fn(&T) -> Message + Send + Sync + 'static> From<A> for InputAction<T> {
     fn from(value: A) -> Self {
         Self::MessageCallback(Box::new(value))
+    }
+}
+
+impl<T> From<Vec<InputAction<T>>> for InputAction<T> {
+    fn from(value: Vec<InputAction<T>>) -> Self {
+        Self::Multi { list: value, built: false }
     }
 }

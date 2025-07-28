@@ -189,12 +189,13 @@ impl Tree {
         context.absolute_bounds = matrix * bounds;
         context.global_transform = matrix;
 
+        #[allow(clippy::unnecessary_lazy_evaluations, reason = "comment")]
         if context.needs_inverse_transform {
             context.inverse_global_transform = context
                 .global_transform
                 .inverse()
                 .unwrap_or_else(|| {
-                    eprintln!("could not invert transform: {:#?}", context.global_transform); 
+                    // eprintln!("could not invert transform: {:#?}", context.global_transform); 
                     context.global_transform 
                 })
             ;
@@ -404,7 +405,7 @@ impl Tree {
 
     pub fn handle_event(
         &mut self,
-        event: TatakuEventType,
+        event: &TatakuEventType,
         passed_in: Option<&TatakuValue>,
         values: &mut dyn Reflect,
         actions: &mut ActionQueue,

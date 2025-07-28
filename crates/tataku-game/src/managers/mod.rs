@@ -6,6 +6,7 @@ mod score_manager;
 mod beatmap_manager;
 mod download_manager;
 mod difficulty_manager;
+mod online_content_manager;
 
 #[cfg(feature="graphics")] mod ui_manager;
 #[cfg(feature="graphics")] mod skin_manager;
@@ -27,6 +28,7 @@ pub use beatmap_manager::*;
 pub use download_manager::*;
 pub use difficulty_manager::*;
 pub(crate) use task_manager::*;
+pub(crate) use online_content_manager::*;
 
 #[cfg(feature="graphics")] pub use ui_manager::*;
 #[cfg(feature="graphics")] pub use skin_manager::*;

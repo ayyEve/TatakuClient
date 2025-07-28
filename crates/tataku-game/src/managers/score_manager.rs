@@ -5,26 +5,17 @@ use tokio::task::AbortHandle;
 #[derive(Reflect)]
 #[derive(Debug, Clone)]
 pub struct ScoreManager {
+    pub force_update: bool,
     pub scores: Vec<IngameScore>,
 
-    #[reflect(skip)]
-    pub infos: GamemodeInfos,
+    #[reflect(skip)] infos: GamemodeInfos,
+    #[reflect(skip)] current_loader: Option<Arc<AsyncRwLock<ScoreLoaderHelper>>>,
+    #[reflect(skip)] abort_handle: Option<AbortHandle>,
 
-    #[reflect(skip)]
-    current_loader: Option<Arc<AsyncRwLock<ScoreLoaderHelper>>>,
-    #[reflect(skip)]
-    abort_handle: Option<AbortHandle>,
-
-    pub force_update: bool,
-
-    #[reflect(skip)]
-    beatmap: ValueChangeHelper<Md5Hash>,
-    #[reflect(skip)]
-    playmode: ValueChangeHelper<String>,
-    #[reflect(skip)]
-    score_method: ValueChangeHelper<ScoreRetreivalMethod>,
-    #[reflect(skip)]
-    mods: ValueChangeHelper<ModManager>,
+    #[reflect(skip)] beatmap: ValueChangeHelper<Md5Hash>,
+    #[reflect(skip)] playmode: ValueChangeHelper<String>,
+    #[reflect(skip)] score_method: ValueChangeHelper<ScoreRetreivalMethod>,
+    #[reflect(skip)] mods: ValueChangeHelper<ModManager>,
 }
 impl ScoreManager {
     pub fn new(infos: GamemodeInfos) -> Self {
@@ -54,7 +45,10 @@ impl ScoreManager {
     }
 
 
-    pub fn get_scores(&mut self, values: &mut ValueCollection) -> TatakuResult {
+    pub fn get_scores(
+        &mut self, 
+        values: &mut ValueCollection
+    ) -> TatakuResult {
         if self.current_loader.take().is_some() {
             if let Some(abort) = self.abort_handle.take() {
                 abort.abort();

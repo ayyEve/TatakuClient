@@ -24,10 +24,10 @@ pub enum UiOperationTarget {
     Node(NodeId),
 
     /// An element with the provided id
-    ElementId(Cow<'static, str>),
+    ElementId(CowStr),
 
     /// An element with the provided class
-    ElementClass(Cow<'static, str>),
+    ElementClass(CowStr),
 }
 impl UiOperationTarget {
     pub fn resolve(

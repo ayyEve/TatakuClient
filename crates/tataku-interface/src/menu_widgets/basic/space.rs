@@ -23,7 +23,7 @@ impl Space {
 }
 
 impl Widget for Space {
-    fn name(&self) -> Cow<'static, str> { "space_widget".into() }
+    fn name(&self) -> CowStr { "space_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
     
     fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {

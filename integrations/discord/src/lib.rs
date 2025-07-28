@@ -61,7 +61,7 @@ impl Discord {
 }
 
 impl TatakuIntegration for Discord {
-    fn name(&self) -> Cow<'static, str> { Cow::Borrowed("Discord") }
+    fn name(&self) -> CowStr { Cow::Borrowed("Discord") }
     fn init(
         &mut self, 
         #[cfg(feature="graphics")]

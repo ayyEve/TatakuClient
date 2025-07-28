@@ -35,6 +35,8 @@ pub enum WindowAction {
 
     /// Add a particle emitter
     AddEmitter(EmitterReference),
+
+    DumpAtlas,
 }
 impl From<WindowAction> for TatakuAction {
     fn from(value: WindowAction) -> Self {

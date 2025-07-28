@@ -33,11 +33,12 @@
         <xs:element name="calc">
             <xs:complexType mixed = "true">
                 <xs:attribute name="calc" type="text:string"/>
+                <xs:attribute name="var" type="text:string"/>
             </xs:complexType>
 
             <xs:key name="buildable_calc">
                 <xs:selector xpath="."/>
-                <xs:field xpath="@calc|*"/>
+                <xs:field xpath="@calc|@var|*"/>
             </xs:key>
         </xs:element>
     </xs:choice>

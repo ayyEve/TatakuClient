@@ -41,7 +41,7 @@ impl IpcIntegration {
 }
 
 impl TatakuIntegration for IpcIntegration {
-    fn name(&self) -> Cow<'static, str> { "ipc_integration".into() }
+    fn name(&self) -> CowStr { "ipc_integration".into() }
     fn check_enabled(
         &mut self, 
         _settings: &Settings

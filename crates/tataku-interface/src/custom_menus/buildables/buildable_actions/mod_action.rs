@@ -42,11 +42,30 @@ impl BuildableModAction {
         passed_in: Option<&TatakuValue>,
     ) -> Option<ModAction> {
         match self {
-            Self::AddMod { value } => value.resolve(values, passed_in).and_then(|n| n.string_maybe().cloned()).map(ModAction::AddMod),
-            Self::RemoveMod { value } => value.resolve(values, passed_in).and_then(|n| n.string_maybe().cloned()).map(ModAction::RemoveMod),
-            Self::ToggleMod { value } => value.resolve(values, passed_in).and_then(|n| n.string_maybe().cloned()).map(ModAction::ToggleMod),
-            Self::SetSpeed { value } => value.resolve(values, passed_in).and_then(|n| n.as_f32().ok()).map(ModAction::SetSpeed),
-            Self::AddSpeed { value } => value.resolve(values, passed_in).and_then(|n| n.as_f32().ok()).map(ModAction::AddSpeed),
+            Self::AddMod { value } => value
+                .resolve(values, passed_in)
+                .and_then(|n| n.string_maybe().cloned())
+                .map(ModAction::AddMod),
+
+            Self::RemoveMod { value } => value
+                .resolve(values, passed_in)
+                .and_then(|n| n.string_maybe().cloned())
+                .map(ModAction::RemoveMod),
+
+            Self::ToggleMod { value } => value
+                .resolve(values, passed_in)
+                .and_then(|n| n.string_maybe().cloned())
+                .map(ModAction::ToggleMod),
+
+            Self::SetSpeed { value } => value
+                .resolve(values, passed_in)
+                .and_then(|n| n.as_f32().ok())
+                .map(ModAction::SetSpeed),
+
+            Self::AddSpeed { value } => value
+                .resolve(values, passed_in)
+                .and_then(|n| n.as_f32().ok())
+                .map(ModAction::AddSpeed),
         }
     }
 

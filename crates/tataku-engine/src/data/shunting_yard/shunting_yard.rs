@@ -9,20 +9,21 @@ impl ShuntingYard {
         let mut operator_stack: Vec<ShuntingYardToken> = Vec::new();
 
         let mut current_thing = CurrentThing::None;
-        let expression = format!("{expression} ").chars().collect::<Vec<_>>();
+        let expression = format!("{expression} ")
+            .chars()
+            .collect::<Vec<_>>();
 
         for pair in expression.windows(2) {
             let &[c, c2] = pair else { continue };
 
             match c {
-                '0'..='9'|'a'..='z'|'.'|'_' => current_thing.push(c),
+                '0'..='9'|'a'..='z'|'A'..='Z'|'.'|'_' => current_thing.push(c),
                 '\'' => if matches!(current_thing, CurrentThing::StringLiteral(_)) {
                     current_thing.add(
                         &mut output_queue, 
                         &mut operator_stack,
                         false
                     )?;
-
                 } else {
                     current_thing = CurrentThing::StringLiteral(String::new());
                 },
@@ -33,7 +34,7 @@ impl ShuntingYard {
                         &mut operator_stack, 
                         true
                     )?;
-                    operator_stack.push(ShuntingYardToken::LeftParenthesis);
+                    operator_stack.push(ShuntingYardToken::OpenParenthesis);
                 }
                 ')' => {
                     current_thing.add(
@@ -42,7 +43,7 @@ impl ShuntingYard {
                         false
                     )?;
                     while let Some(top) = operator_stack.pop() {
-                        if let ShuntingYardToken::LeftParenthesis = top { break }
+                        if let ShuntingYardToken::OpenParenthesis = top { break }
                         output_queue.push(top);
                     }
 
@@ -61,7 +62,9 @@ impl ShuntingYard {
                         | Err(ShuntingYardError::InvalidOperator(':')) // and colons (REF)
                         => {}
 
-                        Err(e) => warn!("Error parsing operator {c}: {e:?}"),
+                        Err(e) 
+                            => warn!("Error parsing operator {c}: {e:?}"),
+
                         Ok(op) => {
                             current_thing.add(
                                 &mut output_queue,
@@ -73,7 +76,7 @@ impl ShuntingYard {
                                 .last()
                                 .filter(|c2| Self::check_op(op, c2))
                                 .is_some()
-                                {
+                            {
                                 output_queue.push(operator_stack.pop().unwrap());
                             }
 
@@ -85,7 +88,11 @@ impl ShuntingYard {
         }
 
         // make sure to add the last thing if there is one
-        current_thing.add(&mut output_queue, &mut operator_stack, false)?;
+        current_thing.add(
+            &mut output_queue, 
+            &mut operator_stack, 
+            false
+        )?;
 
         while let Some(top) = operator_stack.pop() {
             output_queue.push(top);
@@ -102,19 +109,22 @@ impl ShuntingYard {
 
         for token in rpn {
             match token {
-                ShuntingYardToken::Number(num) => stack.push(Cow::Owned(TatakuValue::from(*num))),
-                ShuntingYardToken::StringLiteral(s) => stack.push(Cow::Owned(TatakuValue::from(s.clone()))),
+                ShuntingYardToken::Number(num) 
+                    => stack.push(Cow::Owned(TatakuValue::from(*num))),
+                ShuntingYardToken::StringLiteral(s) 
+                    => stack.push(Cow::Owned(TatakuValue::from(s.clone()))),
                 ShuntingYardToken::Variable(var) => stack.push(Cow::Owned(
                     match &**var {
                         "true" => TatakuValue::Bool(true),
                         "false" => TatakuValue::Bool(false),
-                        _ => {
-                            TatakuValue::from_reflection(values.impl_get(ReflectPath::new(var))?)?
-                        }
+                        _ => TatakuValue::from_reflection(values.impl_get(
+                            ReflectPath::new(var))?
+                        )?
                     }
                 )),
 
-                ShuntingYardToken::Function(func) => Self::run_function(func, &mut stack, values)?,
+                ShuntingYardToken::Function(func) 
+                    => Self::run_function(func, &mut stack, values)?,
 
                 ShuntingYardToken::Operator(op) => {
                     let right = stack
@@ -144,7 +154,9 @@ impl ShuntingYard {
         c1: Operator, 
         c2: &ShuntingYardToken
     ) -> bool {
-        let ShuntingYardToken::Operator(c2) = c2 else { return false };
+        let ShuntingYardToken::Operator(c2) = c2 
+        else { return false };
+
         let p1 = c1.precedence();
         let p2 = c2.precedence();
         (p2 > p1) || (p1 == p2 && c1.is_left_associative())
@@ -167,24 +179,19 @@ impl ShuntingYard {
         }
         
         // argument fns
-        let n = stack.pop()
-            .ok_or_else(|| ShuntingYardError::MissingFunctionArgument(function.to_owned()))?;
-        // let SYStackValue::Number(n) = n else { return Err(ShuntingYardError::NumberIsntANumber(String::new())) };
-
-
-        // macro_rules! as_num {
-        //     ($n: expr, $ty: ty) => {
-        //         match n {
-        //             TatakuValue::F32(n) ->  
-        //         }
-        //     }
-        // }
+        let n = stack.pop().ok_or_else(
+            || ShuntingYardError::MissingFunctionArgument(function.to_owned())
+        )?;
 
         match function {
             "abs" => stack.push(MathFunction::Abs.run(n)?),
             "sin" => stack.push(MathFunction::Sin.run(n)?),
             "cos" => stack.push(MathFunction::Cos.run(n)?),
             "tan" => stack.push(MathFunction::Tan.run(n)?),
+
+            "floor" => stack.push(MathFunction::Floor.run(n)?),
+            "round" => stack.push(MathFunction::Round.run(n)?),
+            "ceil" => stack.push(MathFunction::Ceil.run(n)?),
 
             // "as_f32" => stack.push(),
 
@@ -193,7 +200,7 @@ impl ShuntingYard {
                         .impl_get(ReflectPath::new(&n.as_string()))
                         .and_then(TatakuValue::from_reflection)
                         .unwrap_or(TatakuValue::None);
-                println!("ref({n:?}) = {value:?}");
+                // println!("ref({n:?}) = {value:?}");
 
                 stack.push(Cow::Owned(value));
             }
@@ -207,21 +214,51 @@ impl ShuntingYard {
                     TatakuValue::Bool(b) => format!("{b}"),
                     TatakuValue::String(s) => s.clone(),
                     TatakuValue::Reflect(reflect) 
-                    => reflect
-                        .reflect_display("", Some(2))
-                        .unwrap_or("?".to_owned()),
+                        => reflect
+                            .reflect_display("", Some(2))
+                            .unwrap_or("?".to_owned()),
                 };
 
                 stack.push(Cow::Owned(TatakuValue::from(str)));
             }
 
-            "is_empty" => stack.push(Cow::Owned(TatakuValue::from(n.is_empty()))),
-            "len"|"length" => stack.push(Cow::Owned(TatakuValue::from(n.get_length() as u64))),
+            "is_empty" 
+                => stack.push(Cow::Owned(TatakuValue::from(n.is_empty()))),
 
-            other => return Err(ShuntingYardError::InvalidFunction(other.to_string())),
+            "len" | "length" 
+                => stack.push(Cow::Owned(TatakuValue::from(n.get_length() as u64))),
+            
+            "array" 
+                => Self::create_array(n, stack),
+
+            other 
+                => return Err(ShuntingYardError::InvalidFunction(other.to_string())),
         }
         
         Ok(())
+    }
+
+    fn create_array(
+        val: Cow<'_, TatakuValue>,
+        stack: &mut Vec<Cow<'_, TatakuValue>>,
+    ) {
+        let val = val.as_string();
+
+        let value = match &*val {
+            "i32" => TatakuValue::Reflect(Box::new(Vec::<i32>::new())),
+            "i64" => TatakuValue::Reflect(Box::new(Vec::<i64>::new())),
+            "isize" => TatakuValue::Reflect(Box::new(Vec::<isize>::new())),
+            
+            "u32" => TatakuValue::Reflect(Box::new(Vec::<u32>::new())),
+            "u64" => TatakuValue::Reflect(Box::new(Vec::<u64>::new())),
+            "usize" => TatakuValue::Reflect(Box::new(Vec::<usize>::new())),
+
+            "String" => TatakuValue::Reflect(Box::new(Vec::<String>::new())),
+
+            other => return error!("Unknown array type: {other}"),
+        };
+
+        stack.push(Cow::Owned(value));
     }
 }
 
@@ -354,12 +391,12 @@ impl Operator {
             Self::Pow => TatakuValue::F32(left.as_f32().unwrap().powf(right.as_f32().unwrap())),
 
             // math -> bool
-            Self::Eq => TatakuValue::Bool(left == right), // if left == right { 1.0 } else { 0.0 },
-            Self::NotEq => TatakuValue::Bool(left != right), // if left != right { 1.0 } else { 0.0 },
-            Self::Less => TatakuValue::Bool(left < right), // if left < right { 1.0 } else { 0.0 },
-            Self::LessEq => TatakuValue::Bool(left <= right), // if left <= right { 1.0 } else { 0.0 },
-            Self::Greater => TatakuValue::Bool(left > right), // if left > right { 1.0 } else { 0.0 },
-            Self::GreaterEq => TatakuValue::Bool(left >= right), // if left >= right { 1.0 } else { 0.0 },
+            Self::Eq => TatakuValue::Bool(left == right),
+            Self::NotEq => TatakuValue::Bool(left != right), 
+            Self::Less => TatakuValue::Bool(left < right), 
+            Self::LessEq => TatakuValue::Bool(left <= right), 
+            Self::Greater => TatakuValue::Bool(left > right), 
+            Self::GreaterEq => TatakuValue::Bool(left >= right), 
 
             // bool
             Self::And => TatakuValue::Bool(left.as_bool() && right.as_bool()), //if left > 0.0 && right > 0.0 { 1.0 } else { 0.0 },
@@ -417,16 +454,25 @@ enum MathFunction {
     Sin,
     Cos,
     Tan,
+
+    Round,
+    Ceil,
+    Floor,
 }
 impl MathFunction {
     fn run(self, val: Cow<'_, TatakuValue>) -> ShuntingYardResult<Cow<'_, TatakuValue>> {
-        let num = val.as_number().ok_or_else(|| ShuntingYardError::NumberIsntANumber(val.as_string()))?;
+        let num = val.as_number()
+            .ok_or_else(|| ShuntingYardError::NumberIsntANumber(val.as_string()))?;
 
         Ok(Cow::Owned(match self {
             Self::Abs => num.abs(),
             Self::Sin => num.sin(),
             Self::Cos => num.cos(),
             Self::Tan => num.tan(),
+
+            Self::Round => num.round(),
+            Self::Ceil => num.ceil(),
+            Self::Floor => num.floor(),
         }.into()))
     }
 }

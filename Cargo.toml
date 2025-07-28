@@ -38,8 +38,8 @@ clippy.semicolon_if_nothing_returned = "warn"
 rust.unused_must_use = "deny"
 
 [workspace.dependencies]
-tataku-common = { version = "0.17.1", registry = "tataku-registry" }
-# tataku-common = { version = "0.16.0", registry = "tataku-registry" }
+# tataku-common = { version = "0.17.1", registry = "tataku-registry" }
+tataku-common = { version = "0.17.1", path = "../tataku-common/tataku-common" }
 
 tataku-client-proc-macros.path = "crates/proc_macros"
 tataku-engine.path = "crates/tataku-engine"

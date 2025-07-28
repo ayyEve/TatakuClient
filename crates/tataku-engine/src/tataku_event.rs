@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all="camelCase")]
 pub enum TatakuEventType {
@@ -33,6 +33,10 @@ pub enum TatakuEventType {
 
     /// A controller button was released
     ControllerRelease(CustomMenuControllerEvent),
+
+    /// A custom event
+    #[serde(alias="custom")]
+    CustomEvent(String)
 }
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[derive(Serialize, Deserialize)]

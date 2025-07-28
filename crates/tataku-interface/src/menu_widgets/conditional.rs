@@ -51,7 +51,7 @@ impl ConditionalWidget {
     }
 }
 impl Widget for ConditionalWidget {
-    fn name(&self) -> Cow<'static, str>  { "conditional_widget".into() }
+    fn name(&self) -> CowStr  { "conditional_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn update_styles(
@@ -93,7 +93,7 @@ impl Widget for ConditionalWidget {
     }
     fn draw_overlay(&self, shell: &mut DrawShell) {
         let Some(child) = self.get_ele() else { return };
-        child.draw(shell);
+        child.draw_overlay(shell);
     }
 
     fn input(
@@ -175,7 +175,7 @@ impl Widget for ConditionalWidget {
 
     fn handle_event(
         &mut self, 
-        event: TatakuEventType, 
+        event: &TatakuEventType, 
         event_value: Option<&TatakuValue>, 
         shell: &mut MessageShell,
     ) {

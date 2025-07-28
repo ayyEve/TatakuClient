@@ -2,7 +2,7 @@ use crate::prelude::*;
 use crate::prelude::ui::*;
 
 pub trait Widget: Send + Sync {
-    fn name(&self) -> Cow<'static, str>;
+    fn name(&self) -> CowStr;
     fn node_id(&self) -> NodeId;
 
     fn get_style_str(&self) -> String { String::new() }
@@ -41,7 +41,7 @@ pub trait Widget: Send + Sync {
 
     fn handle_event(
         &mut self, 
-        _event: TatakuEventType, 
+        _event: &TatakuEventType, 
         _event_value: Option<&TatakuValue>, 
         _shell: &mut MessageShell,
     ) {}
@@ -88,7 +88,7 @@ impl EmptyWidget {
     }
 }
 impl Widget for EmptyWidget {
-    fn name(&self) -> Cow<'static, str> { "empty_widget".into() }
+    fn name(&self) -> CowStr { "empty_widget".into() }
     fn node_id(&self) -> NodeId { self.0 }
 
     fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {

@@ -16,7 +16,7 @@ use lyon_tessellation::{
 
 
 // must not go past 16
-const LAYER_COUNT:u32 = 4;
+const LAYER_COUNT:u32 = 12;
 const MAX_DEPTH:f32 = 8192.0 * 8192.0;
 
 /// background color
@@ -807,6 +807,7 @@ impl WgpuEngine<'_> {
                     // COPY_DST means that we want to copy data to this texture
                     usage: TextureUsages::TEXTURE_BINDING 
                         | TextureUsages::COPY_DST 
+                        | TextureUsages::COPY_SRC 
                         | TextureUsages::RENDER_ATTACHMENT,
                     label: Some("atlas_texture"),
                     view_formats: &[],
@@ -883,8 +884,7 @@ impl WgpuEngine<'_> {
         }
     }
 
-    fn finish_screenshot(&mut self, callback: ScreenshotCallback) {
-        let texture = &self.intermediate_texture;
+    fn read_texture(&self, texture: &Texture) -> (Vec<u8>, [u32;2]) {
         let (w, h) = (texture.width(), texture.height());
 
         let fuck = (w * 4)
@@ -893,7 +893,7 @@ impl WgpuEngine<'_> {
 
         let size = (fuck * h) as u64; //(w * h * 4) as u64;
         let buffer = self.device.create_buffer(&BufferDescriptor {
-            label: Some("Screenshot Buffer"),
+            label: Some("Texture Reading Buffer"),
             usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST,
             size,
             mapped_at_creation: false,
@@ -909,7 +909,7 @@ impl WgpuEngine<'_> {
         };
 
         let mut encoder = self.device.create_command_encoder(
-            &CommandEncoderDescriptor { label: Some("screenshot encoder") }
+            &CommandEncoderDescriptor { label: Some("Texture reading encoder") }
         );
         encoder.copy_texture_to_buffer(
             texture.as_image_copy(), 
@@ -929,7 +929,13 @@ impl WgpuEngine<'_> {
             .flat_map(|b| cast_to_rgba_bytes(b, texture.format()))
             .collect();
 
-        callback((data, [fuck / 4, h]));
+        (data, [fuck / 4, h])
+    }
+
+    fn finish_screenshot(&self, callback: ScreenshotCallback) {
+        let (data, size) = self.read_texture(&self.intermediate_texture);
+
+        callback((data, size));
     }
 }
 
@@ -1586,6 +1592,33 @@ impl GraphicsEngine for WgpuEngine<'_> {
 
     fn set_blur(&mut self, enabled: bool) {
         self.blur_enabled = enabled;
+    }
+
+
+    fn dump_atlas(&self, path: &str) {
+        std::fs::create_dir_all(path).unwrap();
+
+        for (n, (tex, _)) in self.atlas_texture
+            .textures
+            .iter()
+            .enumerate() 
+        {
+            println!("Reading atlas {n}");
+            let (data, [width, height]) = self.read_texture(tex);
+
+            let path = format!("{path}/atlas_{n}.png");
+            let file = std::fs::File::create(&path).unwrap();
+            let png = image::codecs::png::PngEncoder::new(file);
+
+            use image::ImageEncoder;
+            png.write_image(
+                &data, 
+                width, 
+                height, 
+                image::ExtendedColorType::Rgba8,
+            ).unwrap();
+        }
+
     }
 
 

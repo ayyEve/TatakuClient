@@ -92,7 +92,13 @@
 
             <!-- the next row is the preview and menu buttons -->
             <row id = "main_menu_row2" style = "width: fill; height: fill;">
-                <gameplayPreview visualization = "menu_visualization" blur="25.0" blur_type="gaussian" style = "width: 80%; height: fill;"/>
+                <gameplayPreview 
+                    visualization = "menu_visualization" 
+                    blur="25.0" 
+                    blur_type="gaussian" 
+                    style = "width: 80%; height: fill;"
+                />
+
                 <animatable id = "animatable" style = "width: 20%; height: fill;">
                     <!-- TODO: fix animations!! -->
                     <!-- <triggers>
@@ -113,7 +119,10 @@
                     </actions> -->
 
                     <element>
-                        <column id = "main_menu_buttons_list" style = "width: fill; height: fill;">
+                        <column 
+                            id = "main_menu_buttons_list" 
+                            style = "width: fill; height: fill;"
+                        >
                             <!-- Singleplayer --> 
                             <button> 
                                 <action>
@@ -148,6 +157,20 @@
                                 <element>
                                     <text>
                                         <text text="Multiplayer"/>
+                                    </text>
+                                </element>
+                            </button>
+
+                            <!-- Online Content --> 
+                            <button> 
+                                <action>
+                                    <setMenu>
+                                        <value>online_content</value>
+                                    </setMenu>
+                                </action>
+                                <element>
+                                    <text>
+                                        <text text="Online Content"/>
                                     </text>
                                 </element>
                             </button>

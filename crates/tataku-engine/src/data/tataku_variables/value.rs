@@ -96,9 +96,7 @@ impl TatakuValue {
             Self::U32(n) => *n != 0,
             Self::U64(n) => *n != 0,
             Self::F32(n) => *n > 0.0,
-            // Self::List(list) => !list.is_empty(),
             Self::String(s) => !s.is_empty(),
-            // Self::Map(m) => !m.is_empty(),
 
             Self::Reflect(r) => if let Some(a) = r.downcast_ref::<bool>() {
                 *a
@@ -108,14 +106,11 @@ impl TatakuValue {
             } else {
                 false
             },
-            // Self::Reflect(r) => Self::from_reflection(&**r).map(|a| a.as_bool()).unwrap_or_default(),
         }
     }
 
     pub fn as_f32(&self) -> Result<f32, ShuntingYardError> {
         match self {
-            // Self::I32(i) => Ok(*i as f32),
-            // Self::I64(i) => Ok(*i as f32),
             Self::U32(i) => Ok(*i as f32),
             Self::U64(i) => Ok(*i as f32),
             Self::F32(f) => Ok(*f),
@@ -123,8 +118,6 @@ impl TatakuValue {
 
             Self::None => Err(ShuntingYardError::ValueIsNone),
             Self::String(s) => s.parse().map_err(|_| ShuntingYardError::ValueIsntANumber(s.clone())),
-            // Self::List(_) => Err(ShuntingYardError::ValueIsntANumber("<vec>".to_owned())),
-            // Self::Map(_) => Err(ShuntingYardError::ValueIsntANumber("<map>".to_owned())),
             
             Self::Reflect(r) => Ok(r.reflect_as_number("")?.into()),
         }
@@ -132,8 +125,6 @@ impl TatakuValue {
 
     pub fn as_u32(&self) -> Result<u32, ShuntingYardError> {
         match self {
-            // Self::I32(n) => Ok(*n as u32),
-            // Self::I64(n) => Ok(*n as u32),
             Self::U32(n) => Ok(*n),
             Self::U64(n) => Ok(*n as u32),
             Self::Reflect(r) => Ok(r.reflect_as_number("")?.into()),
@@ -145,8 +136,6 @@ impl TatakuValue {
     }
     pub fn as_u64(&self) -> Result<u64, ShuntingYardError> {
         match self {
-            // Self::I32(n) => Ok(*n as u64),
-            // Self::I64(n) => Ok(*n as u64),
             Self::U32(n) => Ok(*n as u64),
             Self::U64(n) => Ok(*n),
             Self::Reflect(r) => Ok(r.reflect_as_number(".")?.into()),
@@ -160,19 +149,12 @@ impl TatakuValue {
     pub fn as_string(&self) -> String {
         match self {
             Self::None => "None".to_owned(),
-            // Self::I32(i) => format!("{i}"),
-            // Self::I64(i) => format!("{i}"),
             Self::U32(i) => format!("{i}"),
             Self::U64(i) => format!("{i}"),
             Self::F32(f) => format!("{f:.2}"),
             Self::Bool(b) => format!("{b}"),
             Self::String(s) => s.clone(),
             Self::Reflect(s) => s.reflect_display("", None).unwrap_or_else(|_| "Reflection!".to_owned()),
-
-            // Self::Reflect(r) => Self::from_reflection(&**r).map(|a| a.as_string()).unwrap_or_default(),
-
-            // Self::List(a) => a.iter().map(|a| a.as_string()).collect::<Vec<_>>().join(" "),
-            // Self::Map(a) => a.iter().map(|(a, b)| format!("({a}: {})", b.as_string())).collect::<Vec<_>>().join(" "),
         }
     }
     pub fn as_number(&self) -> Option<TatakuNumber> {
@@ -194,19 +176,6 @@ impl TatakuValue {
         if let Ok(n) = value.reflect_as_number(".") {
             Ok(TatakuNumber::from(n).into())
         }
-        // else if let Some(n) = value.downcast_ref() {
-        //     Ok(Self::F32(*n))
-        // } else if let Some(n) = value.downcast_ref() {
-        //     Ok(Self::U32(*n))
-        // } else if let Some(n) = value.downcast_ref() {
-        //     Ok(Self::U64(*n))
-        // } else if let Some(n) = value.downcast_ref::<usize>() {
-        //     Ok(Self::U64(*n as u64))
-        // } else if let Some(n) = value.downcast_ref::<u8>() {
-        //     Ok(Self::U32(*n as u32))
-        // } else if let Some(n) = value.downcast_ref::<u16>() {
-        //     Ok(Self::U32(*n as u32))
-        // } 
         else if let Some(b) = value.downcast_ref() {
             Ok(Self::Bool(*b))
         } else if let Some(s) = value.downcast_ref::<String>() {
@@ -288,8 +257,6 @@ impl Clone for TatakuValue {
             TatakuValue::String(a) => Self::String(a.clone()),
             TatakuValue::Reflect(a) => 
                 a.duplicate().map(Self::Reflect).unwrap_or_default(),
-            // TatakuValue::List(l) => Self::List(l.clone()),
-            // TatakuValue::Map(m) => Self::Map(m.clone()),
         }
     }
 }
@@ -303,8 +270,6 @@ impl PartialEq for TatakuValue {
             (Self::U64(n), Self::U64(n2)) => n == n2,
             (Self::Bool(n), Self::Bool(n2)) => n == n2,
             (Self::String(n), Self::String(n2)) => n == n2,
-            // (Self::List(n), Self::List(n2)) => n == n2,
-            // (Self::Map(n), Self::Map(n2)) => n == n2,
 
             (lhs, rhs) => {
                 if let Some((lhs, rhs)) = lhs.as_number().zip(rhs.as_number()) {
@@ -321,16 +286,12 @@ impl PartialEq for TatakuValue {
 impl strfmt::DisplayStr for TatakuValue {
     fn display_str(&self, f: &mut strfmt::Formatter) -> strfmt::Result<()> {
         match self {
-            // Self::I32(n) => n.display_str(f),
-            // Self::I64(n) => n.display_str(f),
             Self::U32(n) => n.display_str(f),
             Self::U64(n) => n.display_str(f),
             Self::F32(n) => n.display_str(f),
             Self::String(s) => s.display_str(f),
             Self::Bool(b) => f.str(if *b {"true"} else {"false"}),
             _ => f.str(&self.as_string()),
-            // Self::List(list) => f.str(&list.iter().map(|a|a.as_string()).collect::<Vec<_>>().join(" ")),
-            // Self::Map(a) => f.str(&a.iter().map(|(a, b)| format!("({a}: {})", b.as_string())).collect::<Vec<_>>().join(" ")),
         }
     }
 }
@@ -349,11 +310,6 @@ impl From<TatakuNumber> for TatakuValue {
         }
     }
 }
-// impl From<HashMap<String, TatakuValue>> for TatakuValue {
-//     fn from(value: HashMap<String, TatakuValue>) -> Self {
-//         Self::Map(value)
-//     }
-// }
 
 macro_rules! impl_math {
     ($trait: ident, $func: ident) => {
@@ -518,6 +474,28 @@ impl TatakuNumber {
         }
     }
 
+    pub fn round(&self) -> Self {
+        if let Self::F32(n) = self {
+            Self::U32(n.round() as u32)
+        } else {
+            *self
+        }
+    }
+    pub fn floor(&self) -> Self {
+        if let Self::F32(n) = self {
+            Self::U32(n.floor() as u32)
+        } else {
+            *self
+        }
+    }
+    pub fn ceil(&self) -> Self {
+        if let Self::F32(n) = self {
+            Self::U32(n.ceil() as u32)
+        } else {
+            *self
+        }
+    }
+
 }
 
 impl From<ReflectNumber> for TatakuNumber {
@@ -606,8 +584,6 @@ macro_rules! impl_from {
 
     }
 }
-// impl_from!(i32, I32);
-// impl_from!(i64, I64);
 impl_from!(u8, U32, u32);
 impl_from!(u16, U32, u32);
 impl_from!(u32, U32);

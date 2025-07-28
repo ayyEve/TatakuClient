@@ -54,8 +54,12 @@ impl ItemFilter {
 
         let keywords:Vec<&str> = item.split(" ").collect();
         match self.filter_type {
-            QueryType::All => self.filter.iter().all(|query_str| keywords.contains(&&**query_str)),
-            QueryType::Any => self.filter.iter().any(|query_str| keywords.iter().any(|k| k.starts_with(query_str))),
+            QueryType::All => self.filter.iter()
+                .all(|query_str| keywords.contains(&&**query_str)),
+            QueryType::Any => self.filter.iter()
+                .any(|query_str| 
+                    keywords.iter().any(|k| k.starts_with(query_str))
+                ),
         }
     }
 }

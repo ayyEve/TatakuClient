@@ -16,7 +16,9 @@ impl BuildableCondition {
     pub fn build(&mut self) {
         let BuildableCondition::Unbuilt(s) = self else { return };
         match BuildableCalc::parse(format!("{s} == true")) {
-            Ok(built) => *self = BuildableCondition::Built(Arc::new(built), s.clone()),
+            Ok(built) 
+                => *self = BuildableCondition::Built(Arc::new(built), s.clone()),
+                
             Err(e) => {
                 error!("Error building conditional: {e:?}");
                 *self = BuildableCondition::Failed;
@@ -48,6 +50,7 @@ impl From<String> for BuildableCondition {
     }
 }
 
+#[derive(PartialEq, Debug)]
 pub enum BuildableConditionResult<'a> {
     Failed,
     Unbuilt(&'a String),

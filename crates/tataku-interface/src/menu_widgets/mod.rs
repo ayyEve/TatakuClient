@@ -1,6 +1,7 @@
 mod basic;
 mod graphs;
 mod tabbed;
+mod switch;
 mod filterable;
 mod conditional;
 mod stats_graph;
@@ -9,10 +10,12 @@ mod action_helper;
 mod context_menus;
 mod gameplay_preview;
 mod widget_container;
+mod variable_path_resolver;
 
 pub use basic::*;
 pub use graphs::*;
 pub use tabbed::*;
+pub use switch::*;
 pub use filterable::*;
 pub use conditional::*;
 pub use stats_graph::*;
@@ -21,3 +24,4 @@ pub use action_helper::*;
 pub use context_menus::*;
 pub use gameplay_preview::*;
 pub use widget_container::*;
+pub use variable_path_resolver::VariablePathResolver;

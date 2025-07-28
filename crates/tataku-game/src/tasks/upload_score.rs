@@ -92,7 +92,7 @@ impl UploadScoreTask {
 }
 
 impl TatakuTask for UploadScoreTask {
-    fn get_name(&self) -> Cow<'static, str> { Cow::Borrowed("Upload Score") }
+    fn get_name(&self) -> CowStr { Cow::Borrowed("Upload Score") }
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Once }
     fn get_state(&self) -> TatakuTaskState { self.state }
 

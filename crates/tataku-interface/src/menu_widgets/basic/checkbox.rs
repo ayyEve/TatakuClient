@@ -83,7 +83,7 @@ impl Checkbox {
     }
 }
 impl Widget for Checkbox {
-    fn name(&self) -> Cow<'static, str> { "checkbox_widget".into() }
+    fn name(&self) -> CowStr { "checkbox_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn set_text_style(&mut self, style: TextStyle) {

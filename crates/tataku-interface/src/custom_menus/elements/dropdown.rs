@@ -13,9 +13,22 @@ pub struct DropdownElement {
     #[serde(rename = "@options_display_path", default)] options_display_path: Option<String>,
     #[serde(rename = "@selected_path")] selected_path: String,
 
-    #[serde(rename = "@placeholder", default)] placeholder: Option<String>,
+    #[serde(rename = "@placeholder", default)] placeholder_attribute: Option<String>,
+    #[serde(rename = "placeholder", default)] placeholder_tag: Option<BuildableTextTag>,
 
     #[serde(alias = "onSelect")] on_select: BuildableActionTag,
+}
+impl DropdownElement {
+    fn placeholder(&self) -> Option<DropdownPlaceholder> {
+        self
+            .placeholder_attribute
+            .clone()
+            .map(DropdownPlaceholder::Static)
+            .or(self.placeholder_tag
+                .clone()
+                .map(|b| b.value.into())
+            )
+    }
 }
 impl CustomElement for DropdownElement {
     fn build(&self) -> Box<dyn Widget> {
@@ -29,7 +42,7 @@ impl CustomElement for DropdownElement {
                 self.selected_path.clone(),
                 self.on_select.action.clone(),
             )
-            .chain_maybe(self.placeholder.clone(), |d, p| d.placeholder(p))
+            .placeholder_maybe(self.placeholder())
             // .font_size_maybe(font_size)
             // .chain_maybe(font.as_ref().and_then(map_font), |s, font| s.font(font))
             

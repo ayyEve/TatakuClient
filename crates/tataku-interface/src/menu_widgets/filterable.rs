@@ -30,7 +30,7 @@ impl FilterableWidget {
 }
 
 impl Widget for FilterableWidget {
-    fn name(&self) -> Cow<'static, str>  { "filterable_widget".into() }
+    fn name(&self) -> CowStr  { "filterable_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn update_styles(
@@ -101,7 +101,7 @@ impl Widget for FilterableWidget {
 
     fn handle_event(
         &mut self, 
-        event: TatakuEventType, 
+        event: &TatakuEventType, 
         event_value: Option<&TatakuValue>, 
         shell: &mut MessageShell,
     ) {

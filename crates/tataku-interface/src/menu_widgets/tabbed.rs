@@ -39,7 +39,7 @@ impl TabbedWidget {
     }
 }
 impl Widget for TabbedWidget {
-    fn name(&self) -> Cow<'static, str> { format!("tabbed_widget({})", self.name).into() }
+    fn name(&self) -> CowStr { format!("tabbed_widget({})", self.name).into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn operation(
@@ -130,7 +130,7 @@ impl Widget for TabbedWidget {
 
     fn handle_event(
         &mut self, 
-        event: TatakuEventType, 
+        event: &TatakuEventType, 
         event_value: Option<&TatakuValue>, 
         shell: &mut MessageShell,
     ) {

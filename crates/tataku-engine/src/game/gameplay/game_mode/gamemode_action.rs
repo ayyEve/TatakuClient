@@ -53,8 +53,4 @@ impl GamemodeAction {
     pub fn replace_health(health: impl HealthManager + 'static) -> Self {
         Self::ReplaceHealth(Box::new(health))
     }
-
-    // pub fn play_hitsounds(sounds: Vec<Hitsound>) -> Self {
-    //     Self::PlayHitsounds(sounds)
-    // }
 }

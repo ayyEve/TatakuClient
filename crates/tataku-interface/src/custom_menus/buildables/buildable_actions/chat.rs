@@ -46,7 +46,9 @@ impl BuildableChatAction {
                 channel_tag ,
                 password
             } => Some(ChatAction::OpenChannel { 
-                channel: channel.or(channel_tag.map(|i| i.value))?.to_string(values),
+                channel: channel
+                    .or(channel_tag.map(|i| i.value))?
+                    .to_string(values),
                 password: password.map(|i| i.to_string(values)),
             }.into()),
 
@@ -54,7 +56,9 @@ impl BuildableChatAction {
                 channel, 
                 channel_tag 
             } => Some(ChatAction::CloseChannel { 
-                channel: channel.or(channel_tag.map(|i| i.value))?.to_string(values),
+                channel: channel
+                    .or(channel_tag.map(|i| i.value))?
+                    .to_string(values),
             }.into()),
         }
     }

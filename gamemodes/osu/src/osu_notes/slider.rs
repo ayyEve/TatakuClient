@@ -82,9 +82,6 @@ pub struct OsuSlider {
 
     /// cached settings for this game
     standard_settings: Arc<OsuSettings>,
-    /// list of shapes to be drawn
-    // shapes: Vec<TransformGroup>,
-
 
     start_circle_image: HitCircle,
     end_circle_image: Option<Image>,
@@ -490,9 +487,11 @@ impl OsuSlider {
             }));
         } else {
             let loader = AsyncLoader::new(async move {
-                RenderTarget::new(
-                    size.x as u32,
-                    size.y as u32,
+                GameWindow::create_render_target(
+                    (
+                        size.x as u32,
+                        size.y as u32,
+                    ), 
                     callback
                 )
             });
@@ -503,7 +502,6 @@ impl OsuSlider {
             };
         }
         
-
     }
 
     fn make_dots(&mut self) {
@@ -595,7 +593,11 @@ impl HitObject for OsuSlider {
         self.map_time = beatmap_time;
         self.start_circle_image.update(beatmap_time);
 
-        self.beat_scale = f32::lerp(BEAT_SCALE, 1.0, (beatmap_time - self.last_beat) / self.pulse_length).clamp(1.0, BEAT_SCALE);
+        self.beat_scale = f32::lerp(
+            BEAT_SCALE, 
+            1.0, 
+            (beatmap_time - self.last_beat) / self.pulse_length
+        ).clamp(1.0, BEAT_SCALE);
 
         // update shapes
         // self.shapes.retain_mut(|shape| {
@@ -996,7 +998,7 @@ impl OsuHitObject for OsuSlider {
         // self.ripple_start();
     }
 
-    fn hit(&mut self, time: f32) {
+    fn hit(&mut self, _time: f32) {
         self.start_checked = true;
 
         // if self.standard_settings.hit_ripples {
@@ -1004,7 +1006,7 @@ impl OsuHitObject for OsuSlider {
         // }
     }
 
-    fn check_release_points(&mut self, time: f32) -> HitJudgment {
+    fn check_release_points(&mut self, _time: f32) -> HitJudgment {
         self.end_checked = true;
         self.sound_index = self.def.edge_sounds.len() - 1;
         let distance = self.mouse_pos.distance(self.time_end_pos); //((self.time_end_pos.x - self.mouse_pos.x).powi(2) + (self.time_end_pos.y - self.mouse_pos.y).powi(2)).sqrt();

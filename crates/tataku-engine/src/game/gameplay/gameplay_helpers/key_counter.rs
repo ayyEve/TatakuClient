@@ -24,12 +24,16 @@ impl KeyCounter {
     }
 
     pub fn key_down(&mut self, key: KeyPress) {
-        let Some(info) = self.keys.get_mut(&key) else { return };
+        let Some(info) = self.keys.get_mut(&key) 
+        else { return };
+        
         info.count += 1;
         info.held = true;
     }
     pub fn key_up(&mut self, key: KeyPress) {
-        let Some(info) = self.keys.get_mut(&key) else { return };
+        let Some(info) = self.keys.get_mut(&key) 
+        else { return };
+
         info.held = false;
     }
 

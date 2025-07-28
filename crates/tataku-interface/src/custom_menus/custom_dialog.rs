@@ -26,15 +26,22 @@ impl CustomDialog {
         self.inputs.init(variables, values)?;
 
         let mut events: HashMap<TatakuEventType, Vec<BuildableAction>> = HashMap::new();
-        for (event, event_type) in self.events.events
+        for (event, mut event_type) in self
+            .events
+            .events
             .clone()
             .into_iter()
             .filter_map(|i| 
                 i.get_event()
-                .copied()
+                .cloned()
                 .map(|e| (i, e))
         ) {
-            events.entry(event_type)
+            event_type.build();
+
+            let Some(e) = event_type.resolve(values) 
+            else { continue };
+            
+            events.entry(e)
                 .or_default()
                 .extend(event.get_actions());
         }
@@ -78,7 +85,7 @@ pub struct BuiltCustomDialog {
     node_id: NodeId,
 }
 impl Widget for BuiltCustomDialog {
-    fn name(&self) -> Cow<'static, str> { format!("custom-{}", self.id).into() }
+    fn name(&self) -> CowStr { format!("custom-{}", self.id).into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn get_style_str(&self) -> String { self.styles.clone() }
@@ -133,7 +140,9 @@ impl Widget for BuiltCustomDialog {
             .try_downcast_ref::<(BuildableAction, Option<TatakuValue>)>()
             .cloned();
 
-        if let Some((action, passed_in)) = cast {
+        if let Some((mut action, passed_in)) = cast {
+            action.build(shell.values);
+
             shell.handled = true;
             if let Some(action) = action.into_action(
                 self.node_id, 
@@ -148,11 +157,14 @@ impl Widget for BuiltCustomDialog {
         let tag = message.tag.clone();
         match &message.value {
             MessageValue::Value(TatakuValue::Reflect(value)) => {
-                let Some(variable) = tag.as_string() else { return };
+                let Some(variable) = tag.as_string() 
+                else { return };
+                
                 shell.handled = true;
 
-                let Some(value) = value.duplicate() else {
-                    error!("error duplicating message value");
+                let Some(value) = value.duplicate() 
+                else {
+                    error!("Error duplicating message value");
                     return
                 };
 
@@ -160,17 +172,19 @@ impl Widget for BuiltCustomDialog {
                     variable, 
                     value
                 ) {
-                    error!("error inserting into values: {e:?}");
+                    error!("Error inserting into values: {e:?}");
                 }
             }
             MessageValue::Text(incoming) => {
-                let Some(variable) = tag.as_string() else { return };
+                let Some(variable) = tag.as_string() 
+                else { return };
+
                 shell.handled = true;
                 if let Err(e) = shell.values.reflect_insert(
                     variable, 
                     Box::new(incoming.clone())
                 ) {
-                    error!("error inserting into values: {e:?}");
+                    error!("Error inserting into values: {e:?}");
                 }
             }
             
@@ -180,21 +194,26 @@ impl Widget for BuiltCustomDialog {
                 }
             }
 
-            _other => warn!("unhandled message: {message:?}"),
+            _other => warn!("Unhandled message: {message:?}"),
         }
     }
 
     fn handle_event(
         &mut self, 
-        event: TatakuEventType, 
+        event: &TatakuEventType, 
         event_value: Option<&TatakuValue>, 
         shell: &mut MessageShell,
     ) {
-        let Some(events) = self.events.get(&event) else { return };
+        let Some(events) = self.events.get(event) 
+        else { return };
 
-        for i in events.iter() {
-            let Some(action) = i.clone()
-                .into_action(self.node_id, shell.values, event_value)
+        for mut i in events.iter().cloned() {
+            i.build(shell.values);
+            let Some(action) = i.into_action(
+                self.node_id, 
+                shell.values, 
+                event_value
+            )
             else { continue };
 
             shell.actions.push(action); 

@@ -4,8 +4,19 @@ use tokio::{ net::TcpStream, io::{ AsyncReadExt, AsyncWriteExt } };
 
 pub struct Downloader;
 impl Downloader {
+    pub fn download_url(
+        url: impl ToString, 
+        retries: usize
+    ) -> Arc<RwLock<DownloadProgress>> {
+        Self::download(DownloadOptions::new(
+            url.to_string(), 
+            retries
+        ))
+    }
     pub fn download(options: DownloadOptions) -> Arc<RwLock<DownloadProgress>> {
-        let progress = Arc::new(RwLock::new(DownloadProgress::default()));
+        let progress = Arc::new(
+            RwLock::new(DownloadProgress::default())
+        );
         Self::download_existing_progress(options, progress.clone());
         progress
     }
@@ -16,7 +27,7 @@ impl Downloader {
     ) {
         tokio::spawn(async move {
             for i in 0..= options.retry_count {
-                println!("starting download: {}", options.url);
+                info!("Starting download: {}", options.url);
                 match Self::perform_download(&options, &progress).await {
                     Ok(_) => break,
 
@@ -48,7 +59,7 @@ impl Downloader {
         progress: &Arc<RwLock<DownloadProgress>>
     ) -> TatakuResult<()> {
         let params = UrlParams::parse(&options.url).unwrap();
-        debug!("got params: {params:?}");
+        debug!("Got params: {params:?}");
 
         let conn = TcpStream::connect(format!("{}:{}", params.host, params.port)).await?;
         let mut conn = if params.is_https {
@@ -117,7 +128,7 @@ impl Downloader {
 
                         code => {
                             let code_text = response_code_split.collect::<Vec<_>>().join(" ");
-                            println!("Bad status code: {code} ({code_text:?})");
+                            error!("Bad status code: {code} ({code_text:?})");
                             return Err(TatakuError::DownloadError(DownloadError::BadStatusCode(code)));
                         }
                     }
@@ -259,6 +270,12 @@ impl TcpConnection {
 }
 
 
+
+/// A downloadable item
+/// 
+/// NOTE!!!!!!!!!
+/// 
+/// When cloning, the on_complete is NOT CLONED!!!!
 #[derive(ChainableInitializer)]
 pub struct Downloadable {
     /// filename for this downloadable
@@ -296,6 +313,16 @@ impl Downloadable {
 impl std::fmt::Debug for Downloadable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Downloadable({})", self.filename)
+    }
+}
+impl Clone for Downloadable {
+    fn clone(&self) -> Self {
+        Self {
+            filename: self.filename.clone(),
+            download: self.download.clone(),
+            download_progress: self.download_progress.clone(),
+            on_complete: None,
+        }
     }
 }
 

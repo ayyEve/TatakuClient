@@ -31,8 +31,8 @@ pub enum BuildableText {
     },
 
     Calc {
-        #[serde(rename = "@calc")]
-        calc: String
+        #[serde(rename = "@calc", default)] calc: Option<String>,
+        #[serde(rename = "@var", default)] var: Option<VariablePathResolver>,
     },
 
     
@@ -58,7 +58,7 @@ impl BuildableText {
     /// Parses Self::Calc into Self::CalcParsed
     pub fn compute(&mut self) -> ShuntingYardResult<()> {
         match self {
-            Self::Calc { calc } => {
+            Self::Calc { calc: Some(calc), .. } => {
                 let s = calc.clone();
                 *self = Self::CalcParsed(BuildableCalc::parse(&s)?, s);
             }
@@ -128,13 +128,18 @@ impl BuildableText {
 
                         for i in iter {
                             if let Some(property) = &property {
-                                let Ok(v) = i.impl_get(ReflectPath::new(property))
-                                    .inspect_err(|e| error!("error with text iter prop: {e:?}")) 
+                                let Ok(v) = i
+                                    .impl_get(ReflectPath::new(property))
+                                    .inspect_err(|e| 
+                                        error!("error with text iter prop: {e:?}")
+                                    ) 
                                     else { return String::new() };
                                 
                                 let str = match v {
-                                    MaybeOwnedReflect::Borrowed(reflect) => try_get_string(reflect),
-                                    MaybeOwnedReflect::Owned(reflect) => try_get_string(&*reflect),
+                                    MaybeOwnedReflect::Borrowed(reflect) 
+                                        => try_get_string(reflect),
+                                    MaybeOwnedReflect::Owned(reflect) 
+                                        => try_get_string(&*reflect),
                                 };
                                 
                                 if let Some(s) = str {
@@ -154,7 +159,39 @@ impl BuildableText {
                 }
             }
 
-            Self::Calc { calc} => unreachable!("Calcs should be built. unbuilt: {calc}"),
+            Self::Calc { var: Some(var), .. } => {
+                let Ok(path) = var
+                    .resolve_path(values)
+                    .inspect_err(|e| 
+                        error!("Error resolving var path: {e:?}")
+                    )
+                else { return "Error!".to_string() };
+
+                let Ok(calc_str) = values
+                    .reflect_get::<String>(&*path)
+                    .inspect_err(|e| 
+                        error!("Error getting var calc: {e:?}")
+                    )
+                else { return "Error!".to_string() };
+
+                let Ok(calc) = BuildableCalc::parse(&*calc_str)
+                    .inspect_err(|e| 
+                        error!("Error parsing var calc: {e:?}")
+                    )
+                else { return "Error!".to_string() };
+                
+                match calc.resolve(values) {
+                    Ok(val) => val.as_string(),
+                    Err(e) => {
+                        error!("Error with shunting yard calc. calc: '{}', error: {e:?}", &*calc_str);
+                        "Calc error! See console.".to_string()
+                    }
+                }
+            }
+
+            Self::Calc { calc: None, var: None } => "No calc provided!".to_owned(),
+            Self::Calc { calc: Some(calc), .. } 
+                => unreachable!("Calcs should be built. unbuilt: {calc}"),
         }
     }
 }
@@ -202,7 +239,8 @@ mod tests {
     fn test_calc() {
         let input = r#" <calc calc="hi mom"/> "#;
         let expected = BuildableText::Calc { 
-            calc: "hi mom".to_owned() 
+            calc: Some("hi mom".to_owned()),
+            var: None,
         };
         
         assert_eq!(quick_xml::de::from_str::<'_, BuildableText>(input).unwrap(), expected);

@@ -1,0 +1,308 @@
+<?xml version="1.0"?>
+<?xml-model href="../xsd/menu.xsd"?>
+<menu id="online_content">
+  <events>
+    <event>
+      <menuEnter />
+      <actions>
+        <setValue key="var.online_content.song_pos">
+          <variable var="song.position" />
+        </setValue>
+        <song>
+          <pause />
+        </song>
+        <song>
+          <pushQueue />
+        </song>
+        <custom event="search" />
+
+
+        <setValue key="var.online_content.query">
+          <value val="" />
+        </setValue>
+
+        <setValue key="var.online_content.selected">
+          <value val="9999999" />
+        </setValue>
+
+        <setValue key="var.online_content.engine">
+          <variable var="game.online_content.engines.0.id" />
+        </setValue>
+      </actions>
+    </event>
+
+    <event>
+      <menuLeave />
+      <actions>
+        <song>
+          <popQueue />
+        </song>
+        <song>
+          <position>
+            <variable var="var.online_content.song_pos" />
+          </position>
+        </song>
+
+        <song>
+          <play />
+        </song>
+      </actions>
+    </event>
+
+    <event>
+      <custom event="search" />
+      <actions>
+        <onlineContent>
+          <search valuesKeyValuePath="var.online_content.options">
+            <engineId>
+              <variable var="var.online_content.engine" />
+            </engineId>
+
+            <query>
+              <variable var="var.online_content.query" />
+            </query>
+
+            <searchType>
+              <value>Maps</value>
+            </searchType>
+
+            <page><value val="0" /></page>
+          </search>
+        </onlineContent>
+      </actions>
+    </event>
+
+    <!-- back to style="width: fill" main menu -->
+    <event>
+      <keyPress key="Escape" />
+      <actions>
+        <setMenu id="main_menu" />
+      </actions>
+    </event>
+  </events>
+
+  <element>
+    <column style="width: fill; height: fill;">
+      <!-- top row -->
+      <row style="width: fill">
+        <column style="width: fill">
+
+          <!-- search options -->
+          <row style="width: fill; ">
+            <!-- engine -->
+            <dropdown
+              options_path="game.online_content.engines"
+              selected_path="var.online_content.engine"
+              placeholder="Engine"
+            >
+              <onSelect>
+                <setValue key="var.online_content.engine">
+                  <passedIn />
+                </setValue>
+              </onSelect>
+            </dropdown>
+          </row>
+
+          <row style="width: fill; justify-content: space-between; ">
+            <!-- engine options -->
+            <list
+              list="game.online_content.engines::(var.online_content.engine).search_options"
+              variable="_option"
+              style="flex-direction: row; justify-content: space-between; "
+            >
+              <switch>
+                <case cond="display(_option.values) == 'Integer'">
+                  <row>
+                    <text>
+                      <variable var="_option.display" />
+                    </text>
+                    <slider variable="var.online_content.options::_option.id">
+                      <min>
+                        <variable var="_option.values.Integer.min" />
+                      </min>
+                      <max>
+                        <variable var="_option.values.Integer.max" />
+                      </max>
+                      <step>
+                        <variable var="_option.values.Integer.step" />
+                      </step>
+                      <onInput>
+                        <custom event="search" />
+                      </onInput>
+                    </slider>
+                  </row>
+                </case>
+
+                <case cond="display(_option.values) == 'Float'">
+                  <row>
+                    <text>
+                      <variable var="_option.display" />
+                    </text>
+                    <slider variable="var.online_content.options::_option.id">
+                      <min>
+                        <variable var="_option.values.Float.min" />
+                      </min>
+                      <max>
+                        <variable var="_option.values.Float.max" />
+                      </max>
+                      <step>
+                        <variable var="_option.values.Float.step" />
+                      </step>
+                      <onInput>
+                        <custom event="search" />
+                      </onInput>
+                    </slider>
+                  </row>
+                </case>
+
+                <case cond="display(_option.values) == 'List'">
+                  <dropdown
+                    options_path="_option.values.List.options"
+                    selected_path="var.online_content.options::_option.id"
+                  >
+                    <placeholder>
+                      <variable var="_option.display" />
+                    </placeholder>
+                    <onSelect>
+                      <list>
+                        <setValue key="var.online_content.options::_option.id">
+                          <passedIn />
+                        </setValue>
+                        <custom event="search" />
+                      </list>
+                    </onSelect>
+                  </dropdown>
+                </case>
+              </switch>
+            </list>
+          </row>
+
+          <!-- search query -->
+          <row style="width: fill;">
+            <textInput
+              variable="var.online_content.query" 
+              style="width: fill"
+            >
+              <placeholder>
+                <text text="Search..." />
+              </placeholder>
+    
+              <onInput>
+                <custom event="search" />
+              </onInput>
+            </textInput>
+          </row>
+
+          <!-- page navigation -->
+          <row style="width: fill; justify-content: space-between;">
+            <!-- previous -->
+            <button>
+              <action>
+                <onlineContent>
+                  <previousPage/>
+                </onlineContent>
+              </action>
+              <element>
+                <text>
+                  <text text="Previous" />
+                </text>
+              </element>
+            </button>
+
+            <!-- results -->
+            <text>
+              <list>
+                <calc calc="game.online_content.results.page * game.online_content.results.items.length" />
+                <text text=" - " />
+                <calc calc="round((game.online_content.results.page + 1) * game.online_content.results.items.length)" />
+                <text text=" of " />
+                <calc calc="game.online_content.results.count" />
+              </list>
+            </text>
+
+            <!-- next -->
+            <button>
+              <action>
+                <onlineContent>
+                  <nextPage/>
+                </onlineContent>
+              </action>
+              <element>
+                <text>
+                  <text text="Next" />
+                </text>
+              </element>
+            </button>
+            
+          </row>
+        </column>
+      </row>
+
+      <!-- search results -->
+      <conditional
+        cond="game.online_content.results.error.is_some"
+        style="width: fill; height: auto;"
+      >
+        <true>
+          <text>
+            <list>
+              <text text="Error:" />
+              <display var="game.online_content.results.error" />
+            </list>
+          </text>
+        </true>
+        <false>
+          <list
+            list="game.online_content.results.items"
+            variable="_result"
+            scroll="true"
+            style="flex-direction: column"
+          >
+            <row>
+              <button
+                active="var.online_content.selected == _result.id"
+                style="width: fill; padding: 5px;"
+              >
+                <action>
+                  <conditional cond="var.online_content.selected == _result.id">
+                    <true>
+                      <list>
+                        <onlineContent>
+                          <download>
+                            <variable var="_result.id" />
+                          </download>
+                        </onlineContent>
+                        <song>
+                          <pause />
+                        </song>
+                      </list>
+                    </true>
+                    <false>
+                      <list>
+                        <setValue key="var.online_content.selected">
+                          <variable var="_result.id" />
+                        </setValue>
+
+                        <onlineContent>
+                          <audioPreview>
+                            <variable var="_result.id" />
+                          </audioPreview>
+                        </onlineContent>
+                      </list>
+                    </false>
+                  </conditional>
+                </action>
+                <element>
+                  <text>
+                    <variable var="_result.display" />
+                  </text>
+                </element>
+              </button>
+            </row>
+          </list>
+        </false>
+      </conditional>
+
+    </column>
+  </element>
+</menu>

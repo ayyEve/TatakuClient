@@ -23,29 +23,33 @@ pub enum SongAction {
     /// Set the position of the current song (in ms)
     SetPosition(f32),
 
-    /// set the song volume
+    /// Set the song volume
     SetVolume(f32),
 
-    /// set the playback rate of the current song
+    /// Set the playback rate of the current song
     SetRate(f32),
 
-    /// change the current song. you probably dont want to touch this in custom code
-    Set(SongMenuSetAction),
+    /// Change the current song. 
+    /// 
+    /// You probably don't want to touch this in custom code
+    Set(SongSetAction),
 
     /// Add a hook to fft data
     #[cfg(feature="graphics")]
-    HookFFT(Weak<FFTHook>)
+    HookFFT(Weak<FFTHook>),
 }
 
 #[derive(Clone, Debug)]
-pub enum SongMenuSetAction {
+pub enum SongSetAction {
     /// Push the current song to the play queue
     PushQueue,
     
-    /// Pop the latest song from the play queue and play it
-    PopQueue,
+    /// Pop the latest song from the play queue
+    /// 
+    /// Will only run if there is something in the queue
+    PopQueue(SongPlayData),
 
-    /// remove the current song, setting it to none
+    /// Remove the current song, setting it to none
     Remove,
 
     /// Play a file from the disk

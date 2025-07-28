@@ -20,13 +20,17 @@ impl SongManager {
         load_song: impl FnOnce(&mut AudioManager) -> TatakuResult<Arc<dyn AudioInstance>>,
         actions: &mut ActionQueue,
         engine: &mut AudioManager,
+        settings: &Settings,
     ) -> TatakuResult<()> {
         // check if the key is the same as current
-        if let Some(song) = self.current_song.as_ref().filter(|s| s.id == key) {
+        if let Some(song) = self.current_song
+            .as_ref()
+            .filter(|s| s.id == key)
+        {
             trace!("Trying to set the same song as current");
             if params.restart {
                 params.play = true;
-                Self::apply_params(&song.instance, params);
+                Self::apply_params(&song.instance, params, settings);
             }
 
             actions.push(GameAction::HandleEvent(TatakuEventType::SongStart, None));
@@ -42,7 +46,7 @@ impl SongManager {
         }
 
         // apply params
-        Self::apply_params(&song, params);
+        Self::apply_params(&song, params, settings);
 
         // set our current song to the loaded audio
         self.current_song = Some(SongData::new(song, key));
@@ -76,63 +80,82 @@ impl SongManager {
 
     pub fn handle_song_set_action(
         &mut self, 
-        action: SongMenuSetAction,
+        action: SongSetAction,
         actions: &mut ActionQueue,
         engine: &mut AudioManager,
+        settings: &Settings,
     ) -> TatakuResult {
         trace!("Set song: {action:?}");
 
         match action {
-            SongMenuSetAction::Remove => {
+            SongSetAction::Remove => {
                 if let Some(song) = self.current_song.take() {
                     song.instance.stop();
                 }
             }
 
-            SongMenuSetAction::PushQueue => {
+            SongSetAction::PushQueue => {
                 if let Some(song) = self.current_song.take() {
                     song.instance.pause();
                     self.song_queue.push(song);
                 }
             }
 
-            SongMenuSetAction::PopQueue => {
+            SongSetAction::PopQueue(params) => {
+                let Some(popped) = self.song_queue.pop() 
+                else { return Ok(()) };
+
                 if let Some(song) = self.current_song.take() {
                     song.instance.stop();
                 }
 
-                self.current_song = self.song_queue.pop();
-                if let Some(song) = &self.current_song {
-                    song.instance.play(false);
-                }
+                Self::apply_params(&popped.instance, params, settings);
+                self.current_song = Some(popped);
             }
 
-            SongMenuSetAction::FromFile(path, params) => self.play_song(
+            SongSetAction::FromFile(
+                path, 
+                params
+            ) => self.play_song(
                 path.clone(), 
                 params, 
                 move |engine| engine.load_song(&path),
                 actions,
                 engine,
+                settings,
             )?,
             
-            SongMenuSetAction::FromData(data, key, params) => self.play_song(
+            SongSetAction::FromData(
+                data, 
+                key, 
+                params
+            ) => self.play_song(
                 key, 
                 params, 
                 move |engine| engine.load_song_raw(data),
                 actions,
                 engine,
+                settings,
             )?,
         }
 
         Ok(())
     }
 
-    fn apply_params(song: &Arc<dyn AudioInstance>, params: SongPlayData) {
+    fn apply_params(
+        song: &Arc<dyn AudioInstance>, 
+        params: SongPlayData, 
+        settings: &Settings
+    ) {
         trace!("Using params: {params:?}");
         if params.play { song.play(params.restart) }
         if let Some(pos) = params.position { song.set_position(pos) }
         if let Some(rate) = params.rate { song.set_rate(rate) }
-        if let Some(vol) = params.volume { song.set_volume(vol) }
+        if let Some(vol) = params.volume { 
+            song.set_volume(vol);
+        } else {
+            song.set_volume(settings.get_music_vol());
+        }
     }
 
     #[cfg(feature="graphics")] 
@@ -141,12 +164,16 @@ impl SongManager {
     }
 
     pub fn position(&self) -> f32 {
-        let Some(song) = &self.current_song else { return 0.0 };
+        let Some(song) = &self.current_song 
+        else { return 0.0 };
+
         song.instance.get_position()
     }
 
     pub fn state(&self) -> AudioState {
-        let Some(song) = &self.current_song else { return AudioState::Stopped };
+        let Some(song) = &self.current_song 
+        else { return AudioState::Stopped };
+
         song.instance.get_state()
     }
 

@@ -52,7 +52,7 @@ impl Button {
     }
 }
 impl Widget for Button {
-    fn name(&self) -> Cow<'static, str> { "button_widget".into() }
+    fn name(&self) -> CowStr { "button_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn update_styles(
@@ -160,7 +160,7 @@ impl Widget for Button {
         self.child.draw_overlay(shell);
     }
     
-    fn update(&mut self, shell: &mut UpdateShell ) {
+    fn update(&mut self, shell: &mut UpdateShell) {
         self.visual_active_cond.update(shell.values);
         self.child.update(shell);
     }
@@ -175,7 +175,7 @@ impl Widget for Button {
 
     fn handle_event(
         &mut self, 
-        event: TatakuEventType, 
+        event: &TatakuEventType, 
         event_value: Option<&TatakuValue>, 
         shell: &mut MessageShell,
     ) {
@@ -212,6 +212,7 @@ impl ButtonOnClick {
                 a.build(values);
                 a.into_action(node, values, passed_in).map(ActionResponse::Action)
             },
+
             Self::Callback(cb) 
                 => (cb)().map(ActionResponse::Message),
         }
@@ -250,6 +251,7 @@ impl From<ButtonBuilderOnClick> for ButtonOnClick {
         match value {
             ButtonBuilderOnClick::Message(message) 
                 => Self::Message(message),
+
             ButtonBuilderOnClick::Callback(cb) 
                 => Self::Callback(cb),
         }

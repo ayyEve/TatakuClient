@@ -118,7 +118,22 @@ impl SkinManager {
                         //         renderdoc.start_frame_capture(dev, win);
                         //     }
                         // }
-                        panic!("no texture");
+
+
+                        GameWindow::dump_atlas();
+                        error!("No texture!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                        error!("No texture!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                        error!("No texture!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                        error!("No texture!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                        error!("No texture!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                        error!("No texture!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                        error!("No texture!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                        error!("No texture!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                        error!("No texture!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                        error!("No texture!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                        error!("No texture!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                        error!("No texture!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                        return TextureState::Failed;
                     };
                     let image = Image::new(Vector2::ZERO, Arc::new(tex), scale);
                     return TextureState::Success(image);

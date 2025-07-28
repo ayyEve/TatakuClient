@@ -33,8 +33,6 @@
 
 <xs:group name="text-type">
     <xs:choice>
-
-
         <xs:element name="text">
             <xs:complexType>
                 <xs:attribute name="text" type = "text:string" use="required"/>
@@ -56,8 +54,14 @@
         
         <xs:element name="calc">
             <xs:complexType>
-                <xs:attribute name="calc" type = "text:string"/>
+                <xs:attribute name="calc" type = "text:string" />
+                <xs:attribute name="var" type = "text:string" />
             </xs:complexType>
+
+            <xs:key name="text-calc">
+                <xs:selector xpath="."/>
+                <xs:field xpath="@calc|@field"/>
+            </xs:key>
         </xs:element>
 
         <xs:element name="textIter">
@@ -69,6 +73,5 @@
         </xs:element>
     </xs:choice>
 </xs:group>
-
 
 </xs:schema>

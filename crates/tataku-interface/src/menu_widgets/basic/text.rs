@@ -5,10 +5,10 @@ use crate::prelude::ui::*;
 #[derive(Widget)]
 #[widget(type("text"))]
 pub struct TextWidget {
-    #[chain] pub style: Style,
-    #[chain] pub text_style: TextStyle,
+    #[chain] style: Style,
+    #[chain] text_style: TextStyle,
     
-    pub text: WidgetText,
+    text: WidgetText,
 
     node_id: NodeId,
 }
@@ -36,7 +36,7 @@ impl TextWidget {
     }
 }
 impl Widget for TextWidget {
-    fn name(&self) -> Cow<'static, str> { "text_widget".into() }
+    fn name(&self) -> CowStr { "text_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn update_styles(
@@ -99,7 +99,7 @@ impl Widget for TextWidget {
 
 // TODO: rename?
 pub enum WidgetText {
-    String(Cow<'static, str>),
+    String(CowStr),
     Custom {
         custom: BuildableText,
         cached: String,
@@ -166,10 +166,18 @@ impl From<TextBuilderValue> for WidgetText {
 impl From<TextBuilderValue> for BuildableText {
     fn from(value: TextBuilderValue) -> Self {
         match value {
-            TextBuilderValue::Static(s) => BuildableText::Text { text: s },
-            TextBuilderValue::Variable(v) => BuildableText::Variable  { variable: v },
-            TextBuilderValue::Calc(c) => BuildableText::Calc { calc: c },
-            TextBuilderValue::List(list, join) => BuildableText::List {
+            TextBuilderValue::Static(text) => BuildableText::Text { text },
+            TextBuilderValue::Variable(variable) => BuildableText::Variable { 
+                variable
+            },
+            TextBuilderValue::Calc(c) => BuildableText::Calc { 
+                calc: Some(c), 
+                var: None 
+            },
+            TextBuilderValue::List(
+                list, 
+                join
+            ) => BuildableText::List {
                 join,
                 list: list.into_iter().map(|i| i.into()).collect()
             },

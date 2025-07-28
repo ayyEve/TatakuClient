@@ -14,7 +14,7 @@ workspace = true
 
 [dependencies]
 tataku-client-common = { workspace = true, optional = true }
-tataku-engine.workspace = true
+tataku-engine = { workspace = true, features = ["graphics"] }
 tataku-resources.workspace = true
 
 taffy.workspace = true

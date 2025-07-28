@@ -48,7 +48,7 @@ impl WidgetContainer {
     
 }
 impl Widget for WidgetContainer {
-    fn name(&self) -> Cow<'static, str> { self.inner.name() }
+    fn name(&self) -> CowStr { self.inner.name() }
     fn node_id(&self) -> NodeId { self.inner.node_id() }
 
     fn update_styles(
@@ -256,7 +256,7 @@ impl Widget for WidgetContainer {
     
     fn handle_event(
         &mut self, 
-        event: TatakuEventType, 
+        event: &TatakuEventType, 
         event_value: Option<&TatakuValue>, 
         shell: &mut MessageShell,
     ) {

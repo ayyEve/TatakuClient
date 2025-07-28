@@ -9,6 +9,7 @@
   xmlns:events="tataku/events"
   xmlns:input="tataku/input"
   xmlns:text="tataku/text"
+  xmlns:buildable-value="tataku/buildable-value"
 >
 
 <xs:import namespace="tataku/actions" schemaLocation="actions.xsd"/>
@@ -16,6 +17,7 @@
 <xs:import namespace="tataku/events" schemaLocation="events.xsd"/>
 <xs:import namespace="tataku/input" schemaLocation="input.xsd"/>
 <xs:import namespace="tataku/text" schemaLocation="text.xsd"/>
+<xs:import namespace="tataku/buildable-value" schemaLocation="buildable_value.xsd"/>
 
 <xs:complexType name="generic">
   <xs:attribute name="id" type="xs:string"/>
@@ -36,6 +38,8 @@
     <xs:element name="dropdown" type="elements:dropdown-element"/>
     <xs:element name="list" type="elements:list-element"/>
     <xs:element name="conditional" type="elements:conditional-element"/>
+    <xs:element name="switch" type="elements:switch-element"/>
+    <xs:element name="slider" type="elements:slider-element"/>
   </xs:choice>
 </xs:group>
 
@@ -115,9 +119,18 @@
     <xs:extension base="elements:generic">
       <xs:attribute name="visualization" type="xs:string"/>
       <xs:attribute name="blur" type="xs:float"/>
+      <xs:attribute name="blur_type" type="elements:gameplay-preview-blur"/>
     </xs:extension>
   </xs:complexContent>
 </xs:complexType>
+
+<xs:simpleType name="gameplay-preview-blur">
+  <xs:restriction base="xs:string">
+    <xs:enumeration value="box"/>
+    <xs:enumeration value="gaussian"/>
+  </xs:restriction>
+</xs:simpleType>
+
 
 <!-- checkbox element -->
 <xs:complexType name="checkbox-element">
@@ -165,24 +178,24 @@
       <xs:all>
         <xs:element name="placeholder" minOccurs="0">
           <xs:complexType>
-            <xs:group ref="text:text"/>
+            <xs:group ref="text:text" />
           </xs:complexType>
         </xs:element>
 
         <xs:element name="onInput" minOccurs="0">
           <xs:complexType>
-            <xs:group ref="actions:action-type"/>
+            <xs:group ref="actions:action-type" />
           </xs:complexType>
         </xs:element>
 
         <xs:element name="onSubmit" minOccurs="0">
           <xs:complexType>
-            <xs:group ref="actions:action-type"/>
+            <xs:group ref="actions:action-type" />
           </xs:complexType>
         </xs:element>
       </xs:all>
-      <xs:attribute name="variable" type="text:string" use="required"/>
-      <xs:attribute name="password" type="xs:boolean" default="false"/>
+      <xs:attribute name="variable" type="text:string" use="required" />
+      <xs:attribute name="password" type="xs:boolean" default="false" />
     </xs:extension>
   </xs:complexContent>
 </xs:complexType>
@@ -197,7 +210,11 @@
         <xs:element name="triggers" minOccurs="0" maxOccurs="1">
           <xs:complexType>
             <xs:sequence>
-              <xs:element name="trigger" type="elements:animatable-trigger" maxOccurs="unbounded"/>
+              <xs:element 
+                name="trigger" 
+                type="elements:animatable-trigger" 
+                maxOccurs="unbounded"
+              />
             </xs:sequence>
           </xs:complexType>
         </xs:element>
@@ -225,13 +242,19 @@
 <xs:complexType name="dropdown-element">
   <xs:complexContent>
     <xs:extension base="elements:generic">
-      <xs:sequence>
+      <xs:all>
         <xs:element name="onSelect" minOccurs="1" maxOccurs="1">
           <xs:complexType>
             <xs:group ref="actions:action-type"/>
           </xs:complexType>
         </xs:element>
-      </xs:sequence>
+
+        <xs:element name="placeholder" minOccurs="0">
+          <xs:complexType>
+            <xs:group ref="text:text" />
+          </xs:complexType>
+        </xs:element>
+      </xs:all>
 
       <xs:attribute name="options_path" type="text:string" use="required"/>
       <xs:attribute name="options_display_path" type="text:string"/>
@@ -271,6 +294,59 @@
     </xs:extension>
   </xs:complexContent>
 </xs:complexType>
+
+
+<!-- switch element -->
+<xs:complexType name="switch-element">
+  <xs:complexContent>
+    <xs:extension base="elements:generic">
+      <xs:sequence>
+        <xs:element name="case" minOccurs="1" maxOccurs="unbounded">
+          <xs:complexType>
+            <xs:group ref="elements:element" minOccurs="1"/>
+            <xs:attribute name="cond" type="xs:string" use="required"/>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+
+<!-- slider element -->
+<xs:complexType name="slider-element">
+  <xs:complexContent>
+    <xs:extension base="elements:generic">
+      <xs:all>
+        <xs:element name="min" type="buildable-value:buildableValueElement" minOccurs="0" />
+        <xs:element name="max" type="buildable-value:buildableValueElement" minOccurs="0"/>
+        <xs:element name="step" type="buildable-value:buildableValueElement" minOccurs="0"/>
+
+        <xs:element name="onInput" minOccurs="0">
+          <xs:complexType>
+            <xs:group ref="actions:action-type"/>
+          </xs:complexType>
+        </xs:element>
+      </xs:all>
+
+      <xs:attribute name="variable" type="text:string" use="required"/>
+      <xs:attribute name="min" type="elements:slider-attribute" />
+      <xs:attribute name="max" type="elements:slider-attribute" />
+      <xs:attribute name="step" type="elements:slider-attribute" />
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+<xs:simpleType name="slider-attribute">
+  <xs:annotation>
+    <xs:documentation>Float or Variable</xs:documentation>
+  </xs:annotation>
+  <xs:restriction base="xs:normalizedString" />
+</xs:simpleType>
+
+
+<!-- Extras -->
+
 
 <xs:group name="conditional-element-true-only">
   <xs:sequence>

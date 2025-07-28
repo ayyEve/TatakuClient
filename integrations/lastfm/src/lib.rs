@@ -46,7 +46,7 @@ impl LastFm {
     }
 }
 impl TatakuIntegration for LastFm {
-    fn name(&self) -> Cow<'static, str> { "LastFm".into() }
+    fn name(&self) -> CowStr { "LastFm".into() }
 
     fn init(
         &mut self, 

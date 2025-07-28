@@ -22,7 +22,7 @@ impl KeyButton {
         }
     }
 
-    fn text(&self, active: bool) -> Cow<'static, str> {
+    fn text(&self, active: bool) -> CowStr {
         if active {
             "Press a key".into()
         } else if let Some(k) = self.key.get() {
@@ -33,7 +33,7 @@ impl KeyButton {
     }
 }
 impl Widget for KeyButton {
-    fn name(&self) -> Cow<'static, str> { "key_input".into() }
+    fn name(&self) -> CowStr { "key_input".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {
@@ -79,6 +79,10 @@ impl Widget for KeyButton {
         event: &InputEvent, 
         shell: &mut InputShell,
     ) {
+        if !self.on_change.is_built() {
+            self.on_change.build(shell.values);
+        }
+
         if shell.event_consumed { return }
         let bounds = shell.tree
             .absolute_bounds(self.node_id)

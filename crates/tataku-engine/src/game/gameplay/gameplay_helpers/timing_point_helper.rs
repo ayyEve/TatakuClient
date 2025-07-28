@@ -10,8 +10,12 @@ pub struct TimingPointHelper {
     next_beat: f32,
 }
 impl TimingPointHelper {
-    pub fn timing_point(&self) -> &TimingPoint { self.indexed(self.timing_point_index) }
-    pub fn control_point(&self) -> &TimingPoint { self.indexed(self.control_point_index) }
+    pub fn timing_point(&self) -> &TimingPoint { 
+        self.indexed(self.timing_point_index) 
+    }
+    pub fn control_point(&self) -> &TimingPoint { 
+        self.indexed(self.control_point_index) 
+    }
     pub fn next_beat(&self) -> f32 { self.next_beat }
 
     fn indexed(&self, index: usize) -> &TimingPoint { 
@@ -22,7 +26,11 @@ impl TimingPointHelper {
         // make sure timing_points are sorted
         timing_points.sort();
         // timing_points.sort_by(|t, t2| t.time.partial_cmp(&t2.time).unwrap_or(core::cmp::Ordering::Equal));
-        let (control_point_index, control_point) = timing_points.iter().enumerate().find(|(_,t)| !t.is_inherited()).unwrap();
+        let (control_point_index, control_point) = timing_points
+            .iter()
+            .enumerate()
+            .find(|(_,t)| !t.is_inherited())
+            .unwrap();
 
         Self {
             timing_point_index: 0,
@@ -42,7 +50,9 @@ impl TimingPointHelper {
     pub fn update(&mut self, time: f32) -> Vec<TimingPointUpdate> {
         let mut update = Vec::new();
          
-        if self.timing_point_index + 1 < self.timing_points.len() && self.timing_points[self.timing_point_index + 1].time <= time {
+        if self.timing_point_index + 1 < self.timing_points.len() 
+            && self.timing_points[self.timing_point_index + 1].time <= time 
+        {
             let old_kiai = self.timing_point().kiai;
 
             self.timing_point_index += 1;
@@ -70,7 +80,11 @@ impl TimingPointHelper {
 
     pub fn reset(&mut self) {
         self.timing_point_index = 0;
-        let (control_point_index, control_point) = self.timing_points.iter().enumerate().find(|(_,t)|!t.is_inherited()).unwrap();
+        let (control_point_index, control_point) = self.timing_points
+            .iter()
+            .enumerate()
+            .find(|(_,t)| !t.is_inherited())
+            .unwrap();
         self.control_point_index = control_point_index;
         self.next_beat = control_point.time;
     }

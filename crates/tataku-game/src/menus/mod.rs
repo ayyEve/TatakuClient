@@ -1,5 +1,5 @@
-mod dialogs;
 mod settings_menu;
+mod console_dialog;
 
-pub use dialogs::*;
 pub use settings_menu::*;
+pub use console_dialog::*;

@@ -28,7 +28,11 @@ impl XmlTestManager {
                     values,
                     actions
                 ).is_err() {
-                    ui_manager.set_root(EmptyWidget::new_boxed(), values);
+                    ui_manager.set_root(
+                        EmptyWidget::new_boxed(), 
+                        values, 
+                        actions
+                    );
                 }
             }
         }
@@ -39,6 +43,7 @@ impl XmlTestManager {
         ui_manager: &mut UiManager,
         error: Vec<BuildableInputError>,
         values: &mut ValueCollection,
+        actions: &mut ActionQueue,
         loaded_type: &str,
     ) {
         let mut children = error
@@ -58,7 +63,7 @@ impl XmlTestManager {
             .flex_direction(ui::FlexDirection::Column)
             .boxed();
 
-        ui_manager.set_root(thing, values);
+        ui_manager.set_root(thing, values, actions);
     }
 
     pub fn load_file(
@@ -93,12 +98,14 @@ impl XmlTestManager {
                 match custom_menu.build(values, input) {
                     Ok(menu) => ui_manager.set_root(
                         Box::new(menu), 
-                        values
+                        values,
+                        actions,
                     ),
                     Err(e) => Self::handle_error(
                         ui_manager, 
                         e, 
                         values, 
+                        actions,
                         "menu"
                     ),
                 }
@@ -113,7 +120,11 @@ impl XmlTestManager {
 
                 match custom_dialog.build(values, input) {
                     Ok(dialog) => {
-                        ui_manager.set_root(EmptyWidget::new_boxed(), values);
+                        ui_manager.set_root(
+                            EmptyWidget::new_boxed(), 
+                            values, 
+                            actions
+                        );
                         ui_manager.add_dialog(
                             Box::new(dialog), 
                             DialogCreateOptions::default(),
@@ -125,10 +136,10 @@ impl XmlTestManager {
                         ui_manager,
                         e, 
                         values, 
+                        actions,
                         "dialog"
                     ),
                 }
-
             }
         }
 

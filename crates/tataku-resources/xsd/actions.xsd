@@ -110,6 +110,15 @@
         </xs:element>
       </xs:choice>
 
+      
+      <xs:element name="custom">
+        <xs:complexType>
+          <xs:group ref="text:text" minOccurs="0" />
+          <xs:attribute name="event" type="xs:string" />
+        </xs:complexType>
+      </xs:element>
+      
+
       <xs:element name="closeDialog"/>
 
       <xs:element name="setValue">
@@ -173,6 +182,12 @@
         </xs:complexType>
       </xs:element>
 
+      <xs:element name="onlineContent">
+        <xs:complexType>
+          <xs:group ref="actions:online-content-action"/>
+        </xs:complexType>
+      </xs:element>
+
       <xs:element name="conditional">
         <xs:complexType>
           <xs:choice minOccurs="1">
@@ -216,6 +231,7 @@
     </xs:element>
   </xs:sequence>
 </xs:group>
+
 
 
 <!-- Map Actions -->
@@ -271,6 +287,8 @@
     <xs:element name="pause"/>
     <xs:element name="toggle"/>
     <xs:element name="restart"/>
+    <xs:element name="pushQueue"/>
+    <xs:element name="popQueue"/>
     <xs:element name="seek" type="buildable-value:buildableValueElement"/>
     <xs:element name="position" type="buildable-value:buildableValueElement"/>
     <xs:element name="rate" type="buildable-value:buildableValueElement"/>
@@ -288,6 +306,7 @@
   </xs:choice>
 </xs:group>
 
+
 <!-- Cursor Actions -->
 <xs:group name="cursor-action">
   <xs:choice>
@@ -295,6 +314,7 @@
     <xs:element name="hide"/>
   </xs:choice>
 </xs:group>
+
 
 <!-- Chat Actions -->
 <xs:group name="chat-action">
@@ -331,6 +351,7 @@
 
   </xs:choice>
 </xs:group>
+
 
 <!-- Game Actions -->
 <xs:group name="game-action">
@@ -372,6 +393,7 @@
       </xs:element>
   </xs:choice>
 </xs:group>
+
 
 <!-- Multiplayer Actions -->
 <xs:group name="multiplayer-action">
@@ -415,6 +437,7 @@
   </xs:choice>
 </xs:group>
 
+
 <!-- Slot Actions -->
 <xs:group name="slot-action">
   <xs:sequence>
@@ -429,7 +452,6 @@
     </xs:choice>
   </xs:sequence>
 </xs:group>
-
 
 <xs:group name="slot-action-type">
   <xs:choice>
@@ -453,6 +475,49 @@
       <xs:element name="addSpeed" type="buildable-value:buildableValueElement" minOccurs="1"/>
   </xs:choice>
 </xs:group>
+
+
+<!-- Online Content Actions -->
+<xs:group name="online-content-action">
+  <xs:choice>
+      <xs:element name="audioPreview" type="buildable-value:buildableValueElement" minOccurs="1"/>
+      <xs:element name="download" type="buildable-value:buildableValueElement" minOccurs="1"/>
+      <xs:element name="search" type="actions:online-content-action-search" minOccurs="1"/>
+
+      <xs:element name="nextPage"/>
+      <xs:element name="previousPage"/>
+      <xs:element name="setPage" type="buildable-value:buildableValueElement" minOccurs="1"/>
+  </xs:choice>
+</xs:group>
+
+<xs:complexType name="online-content-action-search">
+  <xs:all>
+    <xs:element name="engineId" type="buildable-value:buildableValueElement" minOccurs="1" />
+    <xs:element name="searchType" type="buildable-value:buildableValueElement" minOccurs="1" />
+    <xs:element name="page" type="buildable-value:buildableValueElement" minOccurs="1" />
+    <xs:element name="query" type="buildable-value:buildableValueElement" />
+    
+    <!-- value list -->
+    <xs:element name="values" minOccurs="0">
+      <xs:complexType>
+        <xs:sequence>
+          <xs:element name="entry" type="actions:search_value" />
+        </xs:sequence>
+      </xs:complexType>
+    </xs:element>
+
+  </xs:all>
+  <xs:attribute name="valuesKeyValuePath" type="text:string" />
+  <xs:attribute name="valuesMapPath" type="text:string" />
+</xs:complexType>
+
+
+<xs:complexType name="search_value">
+  <xs:all>
+    <xs:element name="id" type="buildable-value:buildableValueElement" minOccurs="1" />
+    <xs:element name="value" type="buildable-value:buildableValueElement" minOccurs="1" />
+  </xs:all>
+</xs:complexType>
 
 
 </xs:schema>

@@ -13,9 +13,9 @@ pub enum BuildableAction {
         #[serde(rename="@delay")] delay: u64,
     },
 
-    /// set a value
+    /// Set a value
     SetValue {
-        #[serde(rename="@key")] key: String, 
+        #[serde(rename="@key")] key: VariablePathResolver, 
         #[serde(rename="$value")] value: BuildableValue,
     },
 
@@ -106,6 +106,12 @@ pub enum BuildableAction {
         action: BuildableChatAction,
     },
 
+    /// Perform an online content action
+    OnlineContent {
+        #[serde(rename="$value")] 
+        action: Box<BuildableOnlineContentAction>,
+    },
+
 
     /// A conditional
     Conditional {
@@ -120,10 +126,21 @@ pub enum BuildableAction {
         #[serde(rename = "false", default)] if_false: Option<Box<BuildableActionTag>>,
     },
 
+    /// Run multiple actions
     #[serde(alias="list")]
     Multiple {
         #[serde(rename="$value")] actions: Vec<Self>
     },
+
+    /// run a custom event
+    #[serde(rename="custom")]
+    CustomEvent {
+        #[serde(rename="$value", default)]
+        event_tag: Option<BuildableText>,
+
+        #[serde(rename="@event", default)]
+        event_attribute: Option<String>,
+    }
 }
 
 impl BuildableAction {
@@ -148,7 +165,7 @@ impl BuildableAction {
                     )),
                     delay
                 ))
-            },
+            }
 
             Self::AddDialog { 
                 id, 
@@ -184,14 +201,15 @@ impl BuildableAction {
                     input: variables.build(values, passed_in)
                 }))
             }
-            Self::CloseDialog => Some(UiAction::new(node, DialogAction::Close)
-                .into()),
+            
+            Self::CloseDialog 
+                => Some(UiAction::new(node, DialogAction::Close).into()),
 
             Self::SetMenu { 
                 id, 
                 id_attribute,
                 variables 
-            } =>  {
+            } => {
                 let id = id
                     .and_then(|i| i.resolve(values, passed_in)
                         .map(Cow::into_owned)
@@ -206,22 +224,73 @@ impl BuildableAction {
                 }))
             }
 
-            Self::Map { action } => action.into_action(values, passed_in).map(TatakuAction::Beatmap),
-            Self::Mods { action } => action.into_action(values, passed_in).map(TatakuAction::Mods),
-            Self::Song { action } => action.into_action(values, passed_in).map(TatakuAction::Song),
-            Self::Game { action } => action.into_action(values, passed_in).map(Box::new).map(TatakuAction::Game),
-            Self::Multiplayer { action } => action.into_action(values, passed_in).map(TatakuAction::Multiplayer),
-            Self::Cursor { action } => action.into_action(values, passed_in).map(TatakuAction::CursorAction),
-            Self::Chat { action } => action.into_action(values, passed_in),
+            Self::Map { action } => action
+                .into_action(values, passed_in)
+                .map(TatakuAction::Beatmap),
 
-            Self::Gameplay { action } => Some(TatakuAction::Game(Box::new(GameAction::CurrentGameAction(action.into_action())))),
+            Self::Mods { action } => action
+                .into_action(values, passed_in)
+                .map(TatakuAction::Mods),
 
-            Self::SetValue { key, value} => value
-                .resolve(values, passed_in)
-                .map(|value| GameAction::SetValue(key, value.into_owned()).into()),
+            Self::Song { action } => action
+                .into_action(values, passed_in)
+                .map(TatakuAction::Song),
+
+            Self::Game { action } => action
+                .into_action(values, passed_in)
+                .map(Box::new)
+                .map(TatakuAction::Game),
+
+            Self::Multiplayer { action } => action
+                .into_action(values, passed_in)
+                .map(TatakuAction::Multiplayer),
+
+            Self::Cursor { action } => action
+                .into_action(values, passed_in)
+                .map(TatakuAction::CursorAction),
+
+            Self::Chat { action } 
+                => action.into_action(values, passed_in),
+
+            Self::Gameplay { 
+                action 
+            } => Some(TatakuAction::Game(Box::new(
+                GameAction::CurrentGameAction(action.into_action())
+            ))),
+
+            Self::OnlineContent { action } 
+                => action
+                .into_action(values, passed_in)
+                .map(TatakuAction::OnlineContent),
+
+
+            Self::SetValue { key, value } => {
+                let key = key
+                    .resolve_path(values)
+                    .ok()?;
+                
+                value
+                    .resolve(values, passed_in)
+                    .map(|value| 
+                        GameAction::SetValue(key, value.into_owned()).into()
+                    )
+            }
+            Self::CustomEvent { 
+                event_tag, 
+                event_attribute 
+            } => {
+                let event = event_tag.and_then(|mut e| { 
+                    e.compute().ok()?; 
+                    Some(e.to_string(values)) 
+                }).or(event_attribute)?;
+
+                Some(GameAction::HandleEvent(
+                    TatakuEventType::CustomEvent(event), 
+                    None
+                ).into())
+            }
         
-        
-        
+
             Self::Conditional { 
                 cond, 
                 if_true, 
@@ -234,50 +303,45 @@ impl BuildableAction {
 
                 match cond.resolve(values) {
                     BuildableConditionResult::Failed => None,
-                    BuildableConditionResult::Unbuilt(_) => unreachable!("BuildableConditions should be built!"),
-                    BuildableConditionResult::True => if_true.into_action(node, values, passed_in),
-                    BuildableConditionResult::False => if_false.and_then(|a| a.action.into_action(node, values, passed_in)),
+                    BuildableConditionResult::Unbuilt(a) 
+                        => panic!("BuildableConditions should be built! '{a}'"),
+                    BuildableConditionResult::True => if_true
+                        .into_action(node, values, passed_in),
+                    BuildableConditionResult::False => if_false
+                        .and_then(|a| 
+                            a.action.into_action(node, values, passed_in)
+                        ),
                     BuildableConditionResult::Error(_) => None,
                 }
             }
 
-            Self::Multiple { actions } => {
-                Some(TatakuAction::Multiple(
-                    actions.into_iter()
-                        .filter_map(|e| e.into_action(node, values, passed_in))
-                        .collect()
-                ))
-            }
-        
+            Self::Multiple { 
+                actions
+            } => Some(TatakuAction::Multiple(actions
+                .into_iter()
+                .filter_map(|e| 
+                    e.into_action(node, values, passed_in)
+                )
+                .collect())
+            ),
         }
     }
 
     // build any values that need to be built on item creation (ie, for lists that have temporary variables)
     pub fn build(&mut self, values: &dyn Reflect) {
         match self {
-            Self::Map  { 
-                action
-            } => action.build(values),
-            
-            Self::Mods { 
-                action
-            } => action.build(values),
-            
-            Self::Song { 
-                action
-            } => action.build(values),
-            
-            Self::Game { 
-                action
-            } => action.build(values),
-            
-            Self::Multiplayer { 
-                action
-            } => action.build(values),
-            Self::Cursor { 
-                action
-            } => action.build(values),
-
+            Self::Map { action } 
+                => action.build(values),
+            Self::Mods { action } 
+                => action.build(values),
+            Self::Song { action } 
+                => action.build(values),
+            Self::Game { action } 
+                => action.build(values),
+            Self::Multiplayer { action } 
+                => action.build(values),
+            Self::Cursor { action } 
+                => action.build(values),
             Self::SetMenu { 
                 id, 
                 variables, 
@@ -287,8 +351,7 @@ impl BuildableAction {
                 if let Some(id) = id {
                     id.resolve_pre(values);
                 }
-            },
-
+            }
             Self::AddDialog { 
                 id, 
                 variables, 
@@ -298,8 +361,7 @@ impl BuildableAction {
                 if let Some(id) = id {
                     id.resolve_pre(values);
                 }
-            },
-
+            }
             Self::Conditional { 
                 cond, 
                 if_true, 
@@ -324,7 +386,28 @@ impl BuildableAction {
                 }
             }
 
-            _ => {}
+
+            Self::Delayed { action, .. } 
+                => action.build(values),
+
+            Self::SetValue { value, .. } 
+                => value.resolve_pre(values),
+
+            Self::Chat { action } 
+                => action.build(values),
+
+            Self::CustomEvent { 
+                event_tag: Some(event_tag), 
+                .. 
+            } => if let Err(e) = event_tag.compute() {
+                error!("error building custom event tag: {e:?}");
+            }
+
+            Self::None => {},
+            Self::CloseDialog => {},
+            Self::Gameplay { .. } => {},
+            Self::OnlineContent { .. } => {},
+            Self::CustomEvent { event_tag: None, .. } => {}
         }
     }
 }
@@ -332,7 +415,8 @@ impl BuildableAction {
 #[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
 pub struct BuildableActionTag {
-    #[serde(rename="$text", alias="$value")] pub action: BuildableAction,
+    #[serde(rename="$text", alias="$value")] 
+    pub action: BuildableAction,
 }
 crate::impl_tag!(BuildableActionTag, BuildableAction, action);
 
@@ -374,7 +458,9 @@ pub struct DialogInputsTag {
 impl DialogInputsTag {
     fn resolve_pre(&mut self, values: &dyn Reflect) {
         for i in self.inputs.iter_mut() {
-            let Some(value) = i.get_value_mut() else { continue };
+            let Some(value) = i.get_value_mut() 
+            else { continue };
+
             value.resolve_pre(values);
         }
     }
@@ -382,7 +468,7 @@ impl DialogInputsTag {
     pub fn build(
         self, 
         values: &dyn Reflect,
-        passed_in: Option<&TatakuValue>
+        passed_in: Option<&TatakuValue>,
     ) -> BuildableInputArguments {
         let mut inputs = BuildableInputArguments::default();
         for i in self.inputs {
@@ -390,10 +476,13 @@ impl DialogInputsTag {
                 error!("variable does not have a value!: {}", i.name);
                 continue;
             };
-            let Some(value) = value.resolve(values, passed_in) else {
+
+            let Some(value) = value.resolve(values, passed_in) 
+            else {
                 error!("variable could not be resolved!: {value:?}");
                 continue;
             };
+
             inputs.insert(i.name, value.into_owned());
         }
 

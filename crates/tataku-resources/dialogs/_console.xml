@@ -1,0 +1,71 @@
+<?xml version="1.0"?>
+<?xml-model href="../xsd/dialog.xsd"?>
+
+<dialog 
+    id = "console_dialog" 
+    title = "Console"
+>
+    <events>
+        <event>
+            <menuEnter />
+            <actions>
+                <setValue key="var.console.in">
+                    <value val="" />
+                </setValue>
+
+                <setValue key="var.console.out">
+                    <calc calc="array('String')" />
+                </setValue>
+            </actions>
+        </event>
+
+    </events>
+
+    <element>
+        <column style = "width: 30%; height: 100%">
+            <list
+                list = "var.console.out"
+                variable = "_line"
+                scrollable = "true"
+                style = "width: 100%; flex-direction: column;"
+            >
+                <text style = "width: 100%">
+                    <variable var = "_line" />
+                </text>
+            </list>
+
+            <textInput 
+                variable = "var.console.in"
+                style = "width: 100%; justify-self: end;"
+            >
+                <placeholder>
+                    <text text="Command:" />
+                </placeholder>
+
+                <onInput>
+                    <setValue key="var.console.in"> <passedIn/> </setValue>
+                </onInput>
+
+                <onSubmit>
+                    <list>
+
+                        <!-- Perform command, adding result to console.out -->
+                        <setValue key="var.console.out.99999999">
+                            <calc calc="display(var.console.in)" />
+                        </setValue>
+
+                        <!-- add command to output -->
+                         <setValue key="var.console.out.99999999">
+                            <variable var="var.console.in" />
+                        </setValue>
+
+
+                        <!-- clear input -->
+                        <setValue key="var.console.in"> <value val=""/> </setValue>
+                    </list>
+                </onSubmit>
+            </textInput>
+
+        </column>
+    </element>
+</dialog>

@@ -64,7 +64,7 @@ impl StatsGraphWidget {
     }
 }
 impl Widget for StatsGraphWidget {
-    fn name(&self) -> Cow<'static, str> { "stats_graph_widget".into() }
+    fn name(&self) -> CowStr { "stats_graph_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn update_styles(
@@ -118,7 +118,7 @@ impl GraphWidget {
     }
 }
 impl Widget for GraphWidget {
-    fn name(&self) -> Cow<'static, str> { "stats_graph_widget".into() }
+    fn name(&self) -> CowStr { "stats_graph_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
     
     fn layout(

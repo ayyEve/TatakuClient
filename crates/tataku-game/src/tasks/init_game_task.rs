@@ -8,7 +8,7 @@ pub struct InitGameTask {
 
 
 impl TatakuTask for InitGameTask {
-    fn get_name(&self) -> Cow<'static, str> { Cow::Borrowed("Initialize Game") }
+    fn get_name(&self) -> CowStr { Cow::Borrowed("Initialize Game") }
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Once }
     fn get_state(&self) -> TatakuTaskState { self.state }
 

@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use crate::REPLAYS_DIR;
 
 impl Database {
     pub fn get_scores(

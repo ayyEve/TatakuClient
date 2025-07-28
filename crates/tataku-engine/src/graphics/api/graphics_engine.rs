@@ -6,6 +6,8 @@ pub type ScreenshotCallback = Box<dyn FnOnce((Vec<u8>, [u32; 2])) + Send + Sync>
 pub trait GraphicsEngine {
     fn is_dummy(&self) -> bool { false }
 
+    fn dump_atlas(&self, _path: &str) {}
+
     /// set if blur should be enabled or not
     fn set_blur(&mut self, enabled: bool);
 

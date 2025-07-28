@@ -37,36 +37,42 @@ impl From<&str> for ClassList {
 #[serde(rename_all = "camelCase")]
 pub enum Element {
     #[default] Empty,
+
     Row(Box<RowElement>),
-    Column(Box<ColumnElement>),
-    Button(Box<ButtonElement>),
-    Checkbox(Box<CheckboxElement>),
-
-    GameplayPreview(Box<GameplayPreviewElement>),
-    Text(Box<TextElement>),
-    TextInput(Box<TextInputElement>),
-    Animatable(Box<AnimatableElement>),
-
-    Dropdown(Box<DropdownElement>),
     List(Box<ListElement>),
-
+    Column(Box<ColumnElement>),
+    Switch(Box<SwitchElement>),
+    Animatable(Box<AnimatableElement>),
     #[serde(alias="cond")]
     Conditional(Box<ConditionalElement>),
+
+    Text(Box<TextElement>),
+    GameplayPreview(Box<GameplayPreviewElement>),
+
+    Button(Box<ButtonElement>),
+    Slider(Box<SliderElement>),
+    Checkbox(Box<CheckboxElement>),
+    TextInput(Box<TextInputElement>),
+    Dropdown(Box<DropdownElement>),
 }
 impl CustomElement for Element {
     fn build(&self) -> Box<dyn Widget> {
         match self {
             Self::Empty => EmptyWidget::new_boxed(),
             Self::Row(e) => e.build(),
+            Self::List(e) => e.build(),
             Self::Column(e) => e.build(),
-            Self::Button(e) => e.build(),
-            Self::Checkbox(e) => e.build(),
-            Self::GameplayPreview(e) => e.build(),
-            Self::Text(e) => e.build(),
-            Self::TextInput(e) => e.build(),
+            Self::Switch(e) => e.build(),
             Self::Animatable(e) => e.build(),
             Self::Conditional(e) => e.build(),
-            Self::List(e) => e.build(),
+
+            Self::Text(e) => e.build(),
+            Self::GameplayPreview(e) => e.build(),
+
+            Self::Slider(e) => e.build(),
+            Self::Button(e) => e.build(),
+            Self::Checkbox(e) => e.build(),
+            Self::TextInput(e) => e.build(),
             Self::Dropdown(e) => e.build(),
         }
     }

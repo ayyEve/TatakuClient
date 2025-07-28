@@ -6,6 +6,7 @@ mod slot_action;
 mod song_action;
 mod game_action;
 mod cursor_action;
+mod online_content;
 mod gameplay_action;
 mod multiplayer_action;
 
@@ -17,5 +18,6 @@ pub use slot_action::*;
 pub use song_action::*;
 pub use game_action::*;
 pub use cursor_action::*;
+pub use online_content::*;
 pub use gameplay_action::*;
 pub use multiplayer_action::*;

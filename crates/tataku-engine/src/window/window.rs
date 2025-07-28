@@ -109,6 +109,10 @@ impl<'window> GameWindow<'window> {
         event_loop.run_app(&mut self).expect("nope");
     }
 
+    pub fn dump_atlas() {
+        WINDOW_PROXY.get().unwrap().send_event(WindowAction::DumpAtlas).unwrap();
+    }
+
     fn send_game_event(&mut self, event: WindowEvent) {
         // try to send without spawning a task.
         if let Err(tokio::sync::mpsc::error::TrySendError::Full(event)) = self.game_event_sender.try_send(event) {
@@ -195,7 +199,7 @@ impl<'window> GameWindow<'window> {
         trace!("Done loading tex");
     }
 
-    pub fn render(&mut self) {
+    fn render(&mut self) {
         let inner_size = self.window().inner_size();
         if inner_size.width == 0 || inner_size.height == 0 { return }
 
@@ -221,32 +225,37 @@ impl<'window> GameWindow<'window> {
         self.graphics.update_emitters();
     }
 
-
-    pub fn window(&self) -> &'window WinitWindow {
+    fn window(&self) -> &'window WinitWindow {
         self.window.get().unwrap()
-    }
-
-    pub fn set_graphics(&mut self, graphics: Box<dyn GraphicsEngine>) {
-        self.graphics = graphics;
     }
 }
 
 // input and state stuff
 impl GameWindow<'_> {
     fn refresh_monitors_inner(&mut self) {
-        *MONITORS.write() = self.window().available_monitors().filter_map(|m|m.name()).collect();
+        *MONITORS.write() = self.window()
+            .available_monitors()
+            .filter_map(|m| m.name())
+            .collect();
     }
 
     fn set_fullscreen(&mut self, monitor: FullscreenMonitor) {
         if let FullscreenMonitor::Monitor(monitor_num) = monitor {
-            if let Some((_, monitor)) = self.window().available_monitors().enumerate().find(|(n, _)|*n == monitor_num) {
-                self.window().set_fullscreen(Some(winit::window::Fullscreen::Borderless(Some(monitor))));
+            if let Some((_, monitor)) = self
+                .window()
+                .available_monitors()
+                .enumerate()
+                .find(|(n, _)| *n == monitor_num)
+            {
+                self.window().set_fullscreen(Some(
+                    winit::window::Fullscreen::Borderless(Some(monitor))
+                ));
                 return
             }
         }
 
         // either its not fullscreen, or the monitor wasnt found, so default to windowed
-        let [x,y] = self.settings.window_pos;
+        let [x, y] = self.settings.window_pos;
         self.window().set_fullscreen(None);
         self.window().set_outer_position(winit::dpi::PhysicalPosition::new(x, y));
     }
@@ -261,7 +270,10 @@ impl GameWindow<'_> {
 
         ctx
             .map_err(TatakuError::from_boxed_err)
-            .and_then(|mut ctx| ctx.set_contents(content).map_err(TatakuError::from_boxed_err))
+            .and_then(|mut ctx| ctx
+                .set_contents(content)
+                .map_err(TatakuError::from_boxed_err)
+            )
     }
 
 
@@ -331,7 +343,7 @@ impl GameWindow<'_> {
 
 // static fns
 impl GameWindow<'_> {
-    pub fn send_event(event: WindowAction) {
+    fn send_event(event: WindowAction) {
         let Some(proxy) = WINDOW_PROXY.get() else { return };
         let _ = proxy.send_event(event);
     }
@@ -389,7 +401,6 @@ impl GameWindow<'_> {
         r.recv().unwrap()
     }
 
-    #[allow(unused)]
     pub fn update_render_target(
         rt: RenderTarget, 
         callback: impl FnOnce(&mut dyn GraphicsEngine, Matrix) + Send + Sync + 'static
@@ -577,6 +588,10 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
             }
 
             WindowAction::AddEmitter(emitter) => self.graphics.add_emitter(emitter), 
+
+            WindowAction::DumpAtlas => {
+                self.graphics.dump_atlas("/tmp/fuck/");
+            }
         }
     }
 

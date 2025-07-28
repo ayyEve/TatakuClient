@@ -53,11 +53,14 @@ pub enum TatakuAction {
     /// Download a file
     Download(#[debug(skip)] Box<Downloadable>),
 
+    /// Perform an online content action
+    OnlineContent(OnlineContentAction),
+
     /// Handle an event
     Event(TatakuIntegrationEvent),
 
     /// Handle multiple actions
-    Multiple(Vec<Self>)
+    Multiple(Vec<Self>),
 }
 
 impl<T:TatakuTask + 'static> From<T> for TatakuAction {
@@ -78,6 +81,11 @@ impl From<TatakuIntegrationEvent> for TatakuAction {
     }
 }
 
+impl From<Downloadable> for TatakuAction {
+    fn from(value: Downloadable) -> Self {
+        Self::Download(Box::new(value))
+    }
+}
 
 pub enum DelayedActionType {
     Action(Box<TatakuAction>),

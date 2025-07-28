@@ -99,7 +99,7 @@ impl GameplayPreview {
 
 }
 impl Widget for GameplayPreview {
-    fn name(&self) -> Cow<'static, str> { "gameplay_preview_widget".into() }
+    fn name(&self) -> CowStr { "gameplay_preview_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {
@@ -205,7 +205,7 @@ impl Widget for GameplayPreview {
                 let audio_path = shell.values.reflect_get::<String>("beatmaps.current.map.audio_path").ok();
                 
                 if let Some((path, preview)) = audio_path.zip(preview_time) {
-                    shell.actions.push(SongAction::Set(SongMenuSetAction::FromFile(path.deref().clone(), SongPlayData {
+                    shell.actions.push(SongAction::Set(SongSetAction::FromFile(path.deref().clone(), SongPlayData {
                         play: true,
                         position: Some(*preview),
                         rate: self.apply_rate.then_some(speed),

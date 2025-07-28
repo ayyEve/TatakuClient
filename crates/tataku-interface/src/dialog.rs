@@ -35,7 +35,7 @@ impl ResizeHover {
 
 
 pub struct DialogWidget {
-    title: Cow<'static, str>,
+    title: CowStr,
     node: Box<dyn Widget>,
     num: usize,
 
@@ -50,7 +50,7 @@ pub struct DialogWidget {
 }
 impl DialogWidget {
     pub fn new(
-        title: impl Into<Cow<'static, str>>,
+        title: impl Into<CowStr>,
         draggable: bool,
         resizable: bool,
         draw_background: bool,
@@ -218,7 +218,7 @@ impl DialogWidget {
     }
 }
 impl Widget for DialogWidget {
-    fn name(&self) -> Cow<'static, str> { self.node.name() }
+    fn name(&self) -> CowStr { self.node.name() }
     fn node_id(&self) -> NodeId { self.node.node_id() }
 
     fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {
@@ -466,7 +466,7 @@ impl Widget for DialogWidget {
     
     fn handle_event(
         &mut self, 
-        event: TatakuEventType, 
+        event: &TatakuEventType, 
         event_value: Option<&TatakuValue>, 
         shell: &mut MessageShell,
     ) {
@@ -501,7 +501,7 @@ enum DragOrigin {
 }
 
 struct DialogTitlebar {
-    title: Cow<'static, str>,
+    title: CowStr,
     draggable: bool,
     node: Box<dyn Widget>,
 
@@ -509,7 +509,7 @@ struct DialogTitlebar {
 }
 impl DialogTitlebar {
     fn new(
-        title: impl Into<Cow<'static, str>>,
+        title: impl Into<CowStr>,
         draggable: bool,
     ) -> Self {
         Self {
@@ -521,7 +521,7 @@ impl DialogTitlebar {
     }
 }
 impl Widget for DialogTitlebar {
-    fn name(&self) -> Cow<'static, str> { "titlebar_widget".into() }
+    fn name(&self) -> CowStr { "titlebar_widget".into() }
     fn node_id(&self) -> NodeId { self.node.node_id() }
 
     fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {

@@ -33,8 +33,6 @@ pub struct OsuNote {
 
     /// cached settings for this game
     standard_settings: Arc<OsuSettings>,
-    /// list of shapes to be drawn
-    // shapes: Vec<TransformGroup>,
 
     circle_image: HitCircle,
     approach_circle: ApproachCircle,
@@ -208,7 +206,7 @@ impl OsuHitObject for OsuNote {
         distance <= self.radius.powi(2)
     }
 
-    fn hit(&mut self, time: f32) {
+    fn hit(&mut self, _time: f32) {
         self.hit = true;
 
         // if self.standard_settings.hit_ripples {

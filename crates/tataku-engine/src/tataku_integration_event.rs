@@ -39,5 +39,5 @@ pub enum TatakuIntegrationEvent {
     LeftMultiplayer,
 
     /// name of the menu entered
-    MenuEntered(Cow<'static, str>),
+    MenuEntered(CowStr),
 }

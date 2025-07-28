@@ -343,7 +343,7 @@ impl GameplayWidgetEditor {
     }
 }
 impl Widget for GameplayWidgetEditor {
-    fn name(&self) -> Cow<'static, str> { "widget_editor".into() }
+    fn name(&self) -> CowStr { "widget_editor".into() }
     fn node_id(&self) -> NodeId { self.node.node_id() }
     
     fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {

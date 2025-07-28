@@ -1,6 +1,8 @@
 use crate::prelude::*;
 use crate::prelude::ui::*;
 
+// TODO: add spacing between dropdown items
+
 #[derive(ChainableInitializer)]
 #[derive(Widget)]
 #[widget(type("text", "container"))]
@@ -8,7 +10,7 @@ pub struct Dropdown {
     #[chain] pub style: Style,
     pub text_style: TextStyle,
 
-    pub placeholder: String,
+    #[chain] pub placeholder: DropdownPlaceholder,
     pub value: DropdownValue,
     pub variants: DropdownVariants,
 
@@ -40,7 +42,7 @@ impl Dropdown {
             },
             value,
 
-            placeholder: String::new(),
+            placeholder: String::new().into(),
             variants,
             on_change: on_change.into(),
             active: false,
@@ -53,24 +55,19 @@ impl Dropdown {
         }
     }
 
-    pub fn placeholder(mut self, placeholder: String) -> Self {
-        self.placeholder = placeholder;
-        self
-    }
-
     fn get_style(&self, scale: Option<Vector2>) -> Style {
         let placeholder_size = self
             .text_style
-            .measure_text(&self.placeholder, scale);
+            .measure_text(self.placeholder.get(), scale);
         
         let largest_text = self.variants.get_displays()
             .iter()
             .map(|a| self.text_style.measure_text(a, scale))
             .fold(
                 placeholder_size, 
-                |a, b| Vector2::new(a.x.max(b.x), a.y.max(b.y))
-            )
-            ;
+                |a, b| 
+                    Vector2::new(a.x.max(b.x), a.y.max(b.y))
+            );
         
         Style {
             min_size: Size {
@@ -91,7 +88,7 @@ impl Dropdown {
     ) {
         self.active = false;
         self.value.set_index(index);
-        debug!("setting value to {index} ({})", self.variants.get_displays()[index]);
+        // debug!("setting value to {index} ({})", self.variants.get_displays()[index]);
 
         let message = match &self.on_change {
             DropdownOnChange::Message(message) => message.clone(),
@@ -103,18 +100,19 @@ impl Dropdown {
                     DropdownVariants::Built { 
                         items, 
                         .. 
-                    } => {
-                        TatakuValue::from_reflection(
-                            items[index].value.duplicate().unwrap()
-                        )
-                            .inspect_err(|e| warn!("didnt reflect: {e:?}"))
-                            .ok()
-                    },
+                    } => TatakuValue::from_reflection(
+                        items[index].value.duplicate().unwrap()
+                    ).inspect_err(|e| 
+                        warn!("didnt reflect: {e:?}")
+                    )
+                    .ok(),
                 };
 
 
 
-                let action = buildable_action.clone().into_action(
+                let action = buildable_action
+                    .clone()
+                    .into_action(
                     self.node_id, 
                     shell.values, 
                     passed_in.as_ref(),
@@ -124,8 +122,10 @@ impl Dropdown {
                 }
 
                 None
-            },
-            DropdownOnChange::Callback(f) => Some(f(index)),
+            }
+
+            DropdownOnChange::Callback(f) 
+                => Some(f(index)),
         };
 
         if let Some(m) = message {
@@ -134,7 +134,7 @@ impl Dropdown {
     }
 }
 impl Widget for Dropdown {
-    fn name(&self) -> Cow<'static, str> { "dropdown_widget".into() }
+    fn name(&self) -> CowStr { "dropdown_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
 
@@ -149,15 +149,27 @@ impl Widget for Dropdown {
             .element_data.style()
             .0.text_style(shell.values);
         
-        let placeholder_size = text_style.measure_text(&self.placeholder, None);
+        let placeholder_size = text_style.measure_text(
+            self.placeholder.get(), 
+            None
+        );
         
         let largest_text = self.variants.get_displays()
             .iter()
             .map(|a| text_style.measure_text(a, None))
-            .fold(placeholder_size, |a, b| Vector2::new(a.x.max(b.x), a.y.max(b.y)))
+            .fold(
+                placeholder_size, 
+                |a, b| 
+                    Vector2::new(a.x.max(b.x), a.y.max(b.y))
+            )
             ;
 
-        let mut style = shell.tree.get_style(self.node_id).unwrap().clone();
+        let mut style = shell
+            .tree
+            .get_style(self.node_id)
+            .unwrap()
+            .clone();
+
         style.min_size = Size {
             width: Dimension::Length(largest_text.x),
             height: Dimension::Length(largest_text.y),
@@ -186,8 +198,11 @@ impl Widget for Dropdown {
         event: &InputEvent, 
         shell: &mut InputShell,
     ) {
-        let Some(bounds) = shell.tree.bounds(&*self) else { return };
-        let Some(context) = shell.tree.get_context(&*self) else { return };
+        let Some(bounds) = shell.tree.bounds(&*self) 
+        else { return };
+
+        let Some(context) = shell.tree.get_context(&*self) 
+        else { return };
 
         match &event.event {
             InputType::KeyPress(input) if self.active => {
@@ -288,22 +303,35 @@ impl Widget for Dropdown {
         let displays = self.variants.get_displays();
         let main_text = self.value.index()
             .and_then(|n| displays.get(n))
-            .unwrap_or(&self.placeholder);
+            .unwrap_or(self.placeholder.get());
 
         shell.list.push(self.text_style.create_text(main_text.clone(), bounds));
     }
 
     fn draw_overlay(&self, shell: &mut DrawShell) {
         if !self.active { return }
-        let Some(bounds) = shell.tree.absolute_bounds(self) else { return };
+        let Some(bounds) = shell.tree.absolute_bounds(self) 
+        else { return };
         let theme = &shell.general_theme;
 
-        let selected = self.value.index().unwrap_or(self.variants.len());
-        let active = self.active_index.unwrap_or(self.variants.len());
+        let selected = self
+            .value
+            .index()
+            .unwrap_or(self.variants.len());
+
+        let active = self
+            .active_index
+            .unwrap_or(self.variants.len());
 
         // draw all options
         // TODO: margin between items
-        for (n, i) in self.variants.get_displays().iter().cloned().enumerate() {
+        for (n, i) in self
+            .variants
+            .get_displays()
+            .iter()
+            .cloned()
+            .enumerate() 
+        {
             let offset = Vector2::new(
                 bounds.pos.x,
                 bounds.pos.y + bounds.size.y * (n + 1) as f32,
@@ -322,12 +350,16 @@ impl Widget for Dropdown {
                 ))
             );
 
-            let text = self.text_style.create_text(i, Bounds::new(offset, bounds.size));
+            let text = self.text_style.create_text(
+                i, 
+                Bounds::new(offset, bounds.size)
+            );
             shell.list.push(text);
         }
     }
 
     fn update(&mut self, shell: &mut UpdateShell) {
+        self.placeholder.update(shell.values);
         if self.variants.is_unbuilt() {
             if let Err(e) = self.variants.build(shell.values) {
                 error!("error building variants: {e:?}");
@@ -337,8 +369,24 @@ impl Widget for Dropdown {
             shell.tree.set_style(self.node_id, self.get_style(None));
         }
 
-        if let DropdownValue::Variable(var, index) = &mut self.value {
-            let selected = match shell.values.impl_get(ReflectPath::new(&*var)) {
+        if let DropdownValue::Variable(
+            var, 
+            index
+        ) = &mut self.value {
+
+            let path = match var.resolve_path(shell.values) {
+                Ok(p) => p,
+                Err(e) => {
+                    error!("error with path variable '{var:?}': {e:?}");
+                    return
+                }
+            };
+
+
+            let selected = match shell
+                .values
+                .impl_get(ReflectPath::new(&path))
+            {
                 Ok(s) => match TatakuValue::from_reflection(s)
                     .map(|s| s.as_string()) 
                 {
@@ -376,8 +424,10 @@ impl Widget for Dropdown {
                 }
 
 
-                let DropdownVariants::Built { items, .. } = &self.variants 
-                else { return };
+                let DropdownVariants::Built { 
+                    items, 
+                    .. 
+                } = &self.variants else { return };
 
                 for (n, i) in items.iter().enumerate() {
                     if i.id == selected {
@@ -436,7 +486,7 @@ impl From<DropdownBuilderOnChange> for DropdownOnChange {
 
 pub enum DropdownVariants {
     Static(Vec<String>),
-    Variable(String),
+    Variable(VariablePathResolver),
     Built {
         items: Vec<DropdownWrapper>,
         cached_displays: Vec<String>
@@ -449,18 +499,27 @@ impl DropdownVariants {
     
     fn build(&mut self, values: &dyn Reflect) -> TatakuResult<()> {
         let Self::Variable(var) = self else { return Ok(()) };
+        let var = var.resolve_path(values)?;
 
         let iter = values.reflect_iter(&*var)?;
         let items = iter.filter_map(|value| {
             let id = TatakuValue::from_reflection(value.item).ok()?.as_string();
             Some(DropdownWrapper {
-                display: value.impl_display(ReflectPath::new(""), None).unwrap_or_else(|_| id.clone()), 
+                display: value
+                    .impl_display(ReflectPath::new(""), None)
+                    .unwrap_or_else(|_| id.clone()), 
                 id,
-                value: value.duplicate().expect("Value in dropdown not clonable"),
+                value: value
+                    .duplicate()
+                    .expect("Value in dropdown not clonable"),
                 // id.downcast_ref::<String>()?.clone(),
             })
         }).collect::<Vec<_>>();
-        let displays = items.iter().map(|i| i.display.clone()).collect();
+
+        let displays = items
+            .iter()
+            .map(|i| i.display.clone())
+            .collect();
 
         *self = Self::Built {
             items,
@@ -474,7 +533,10 @@ impl DropdownVariants {
         match self {
             Self::Static(items) => Cow::Borrowed(items),
             Self::Variable(_) => Cow::Owned(Vec::new()),
-            Self::Built { cached_displays, ..} => Cow::Borrowed(cached_displays),
+            Self::Built { 
+                cached_displays, 
+                ..
+            } => Cow::Borrowed(cached_displays),
         }
     } 
 
@@ -493,14 +555,14 @@ impl From<Vec<String>> for DropdownVariants {
 }
 impl From<String> for DropdownVariants {
     fn from(value: String) -> Self {
-        Self::Variable(value)
+        Self::Variable(value.into())
     }
 }
 impl From<DropdownBuilderVariants> for DropdownVariants {
     fn from(value: DropdownBuilderVariants) -> Self {
         match value {
             DropdownBuilderVariants::Static(items) => Self::Static(items),
-            DropdownBuilderVariants::Variable(var) => Self::Variable(var),
+            DropdownBuilderVariants::Variable(var) => Self::Variable(var.into()),
         }
     }
 }
@@ -529,7 +591,7 @@ impl Clone for DropdownWrapper {
 
 pub enum DropdownValue {
     Index(Option<usize>),
-    Variable(String, Option<usize>),
+    Variable(VariablePathResolver, Option<usize>),
 }
 impl DropdownValue {
     fn index(&self) -> Option<usize> {
@@ -553,7 +615,7 @@ impl From<Option<usize>> for DropdownValue {
 }
 impl From<String> for DropdownValue {
     fn from(value: String) -> Self {
-        Self::Variable(value, None)
+        Self::Variable(VariablePathResolver::new(value), None)
     }
 }
 impl From<DropdownBuilderValue> for DropdownValue {
@@ -561,6 +623,45 @@ impl From<DropdownBuilderValue> for DropdownValue {
         match value {
             DropdownBuilderValue::Index(i) => Self::Index(i),
             DropdownBuilderValue::Variable(var) => var.into(),
+        }
+    }
+}
+
+
+pub enum DropdownPlaceholder {
+    Static(String),
+    Buildable {
+        buildable: BuildableText,
+        cache: String
+    }
+}
+impl DropdownPlaceholder {
+    fn get(&self) -> &String {
+        match self {
+            Self::Static(s) => s,
+            Self::Buildable { cache, .. } => cache,
+        }
+    }
+    fn update(&mut self, values: &dyn Reflect) {
+        let Self::Buildable { buildable, cache } = self 
+        else { return };
+
+        *cache = buildable.to_string(values);
+    }
+}
+impl From<String> for DropdownPlaceholder {
+    fn from(value: String) -> Self {
+        Self::Static(value)
+    }
+}
+impl From<BuildableText> for DropdownPlaceholder {
+    fn from(mut value: BuildableText) -> Self {
+        if let Err(e) = value.compute() {
+            error!("Error building text: {e:?}");
+        }
+        Self::Buildable { 
+            buildable: value, 
+            cache: String::new() 
         }
     }
 }

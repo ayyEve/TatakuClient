@@ -4,8 +4,10 @@
   targetNamespace="tataku/events"
   xmlns:events="tataku/events"
   xmlns:input="tataku/input"
+  xmlns:text="tataku/text"
 >
 <xs:import namespace="tataku/input" schemaLocation="input.xsd"/>
+<xs:import namespace="tataku/text" schemaLocation="text.xsd"/>
 
 <xs:group name="event-type">
   <xs:choice>
@@ -35,6 +37,15 @@
           </xs:sequence>
         </xs:complexType>
       </xs:element>
+
+
+      <xs:element name="custom">
+        <xs:complexType>
+          <xs:group ref="text:text" minOccurs="0" />
+          <xs:attribute name="event" type="xs:string" />
+        </xs:complexType>
+      </xs:element>
+
   </xs:choice>
 </xs:group>
 

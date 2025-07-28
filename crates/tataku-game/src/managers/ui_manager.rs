@@ -33,8 +33,18 @@ impl UiManager {
     pub fn set_root<T: Reflect>(
         &mut self, 
         root: Box<dyn Widget>,
-        values: &mut T
+        values: &mut T,
+        actions: &mut ActionQueue,
     ) {
+        self.root_tree.handle_event(
+            &TatakuEventType::MenuLeave, 
+            None, 
+            values, 
+            actions, 
+            &mut self.messages
+        );
+
+
         self.current_menu = root.name().into_owned();
         self.messages.retain(|m| !m.owner.is_menu());
         self.root_tree.set_node(root, values);
@@ -90,6 +100,13 @@ impl UiManager {
             actions,
             &mut self.messages,
         );
+        tree.handle_event(
+            &TatakuEventType::MenuEnter, 
+            None, 
+            values, 
+            actions, 
+            &mut self.messages
+        );
 
 
         let mut bounds = self.root_tree.bounds;
@@ -118,8 +135,16 @@ impl UiManager {
         values: &mut dyn Reflect,
         actions: &mut ActionQueue,
     ) -> bool {
-        let Some(last) = self.dialogs.last_mut() else { return false };
+        let Some(last) = self.dialogs.last_mut() 
+        else { return false };
 
+        last.handle_event(
+            &TatakuEventType::MenuLeave, 
+            None,
+            values,
+            actions, 
+            &mut self.messages,
+        );
         last.handle_message(
             &Message::new(
                 last.owner,
@@ -237,7 +262,7 @@ impl UiManager {
                 .chain([&mut self.root_tree])
             {
                 tree.handle_event(
-                    event, 
+                    &event, 
                     param.as_ref(),
                     values, 
                     actions,

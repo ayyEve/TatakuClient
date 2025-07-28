@@ -13,7 +13,7 @@ pub enum ScrollType {
     ScrollToNode(NodeId),
 
     /// scroll to an element with the provided id
-    ScrollToId(Cow<'static, str>),
+    ScrollToId(CowStr),
 
     /// absolute scroll to pixel
     ScrollToPosition(Vector2),

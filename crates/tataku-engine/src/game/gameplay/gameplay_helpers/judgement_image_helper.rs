@@ -29,7 +29,12 @@ impl JudgmentImageHelper {
             let img = i.tex_name;
             loop {
                 let img = img.to_owned() + "-" + &textures.len().to_string();
-                if let Some(tex) = skin_manager.get_texture(&img, &TextureSource::Skin, SkinUsage::Game, false) {
+                if let Some(tex) = skin_manager.get_texture(
+                    &img, 
+                    &TextureSource::Skin, 
+                    SkinUsage::Game, 
+                    false
+                ) {
                     textures.push(tex);
                 } else {
                     break;
@@ -38,7 +43,12 @@ impl JudgmentImageHelper {
 
             // if there was no animation, try loading a static image (no -num)
             if textures.is_empty() {
-                if let Some(tex) = skin_manager.get_texture(img, &TextureSource::Skin, SkinUsage::Game, false) {
+                if let Some(tex) = skin_manager.get_texture(
+                    img, 
+                    &TextureSource::Skin, 
+                    SkinUsage::Game, 
+                    false
+                ) {
                     textures.push(tex);
                 }
             }
@@ -50,9 +60,18 @@ impl JudgmentImageHelper {
                 let size = textures[0].size();
                 let base_scale = textures[0].base_scale;
                 let frametime = 1000.0 / skin_manager.skin().animation_framerate as f32;
-                let frames = textures.into_iter().map(|t| t.tex).collect();
+                let frames = textures
+                    .into_iter()
+                    .map(|t| t.tex)
+                    .collect();
 
-                let animation = Animation::new(Vector2::ZERO, size, frames, frametime, base_scale);
+                let animation = Animation::new(
+                    Vector2::ZERO, 
+                    size, 
+                    frames, 
+                    frametime, 
+                    base_scale
+                );
                 self.images.insert(k, Some(animation));
             }
 

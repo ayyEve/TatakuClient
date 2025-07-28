@@ -10,22 +10,24 @@ pub struct Slider {
     #[chain] pub style: Style,
 
     pub value: SliderValue,
-    pub range: RangeInclusive<f32>,
-    #[chain] pub step: Option<f32>,
+    // pub range: RangeInclusive<f32>,
+    pub min: SliderValue,
+    pub max: SliderValue,
 
-    pub on_change: InputAction<f32>, //SliderOnChange,
+    #[chain] pub step: Option<SliderValue>,
+
+    pub on_change: Option<InputAction<f32>>, 
 
     hovered: bool,
-    // active: bool,
     pressed: bool,
     node_id: NodeId,
 }
 impl Slider {
     pub fn new(
-        range: RangeInclusive<f32>,
+        min: impl Into<SliderValue>,
+        max: impl Into<SliderValue>,
         value: impl Into<SliderValue>,
-        // on_change: impl Into<SliderOnChange>,
-        on_change: impl Into<InputAction<f32>>,
+        on_change: Option<impl Into<InputAction<f32>>>,
     ) -> Self {
         Self {
             style: Style {
@@ -36,19 +38,26 @@ impl Slider {
                 ..Style::default()
             },
 
-            range,
+            min: min.into(),
+            max: max.into(),
+            // range,
             value: value.into(),
             step: None,
-            on_change: on_change.into(),
+            on_change: on_change.map(|i| i.into()),
             
             hovered: false,
             pressed: false,
             node_id: EMPTY_NODE,
         }
     }
+
+
+    fn range(&self) -> RangeInclusive<f32> {
+        self.min.get()..=self.max.get()
+    }
 }
 impl Widget for Slider {
-    fn name(&self) -> Cow<'static, str> { "slider_widget".into() }
+    fn name(&self) -> CowStr { "slider_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {
@@ -67,6 +76,13 @@ impl Widget for Slider {
         event: &InputEvent,
         shell: &mut InputShell,
     ) {
+        if let Some(on_change) = self.on_change.as_mut() {
+            if !on_change.is_built() {
+                on_change.build(shell.values);
+            }
+        }
+
+
         let Some(ctx) = shell.tree.get_context(self.node_id) 
         else { return };
         let active = ctx.selected.unwrap();
@@ -81,20 +97,21 @@ impl Widget for Slider {
 
                 if self.pressed {
                     let value = self.value.get();
-                    let start = *self.range.start();
-                    let end = *self.range.end();
+                    let range = self.range();
+                    let start = *range.start();
+                    let end = *range.end();
 
                     let percent = (pos.x - bounds.pos.x) / bounds.size.x;
                     let mut new_value = (start + percent * (end - start))
                         .clamp(start, end);
 
-                    if let Some(snap) = self.step {
+                    if let Some(snap) = &self.step {
                         // apply_snap
                         if let Some(val) = apply_snap(
-                            &self.range, 
+                            &range, 
                             value, 
                             new_value, 
-                            snap
+                            snap.get()
                         ) { 
                             new_value = val;
                         } else {
@@ -104,13 +121,26 @@ impl Widget for Slider {
 
                     if (value - new_value).abs() > f32::EPSILON {
                         self.value.set(new_value);
-                        self.on_change.run(
-                            &new_value,
-                            self.node_id,
-                            shell.messages,
-                            shell.actions,
-                            shell.values,
-                        );
+                        if let Some(on_change) = &self.on_change {
+                            on_change.run(
+                                &new_value,
+                                self.node_id,
+                                shell.messages,
+                                shell.actions,
+                                shell.values,
+                            );
+                        } else if let SliderValue::Variable { 
+                            variable, .. 
+                        } = &self.value {
+                            let Ok(path) = variable
+                                .resolve_path(shell.values) 
+                            else { return };
+
+                            let _ = shell.values.reflect_insert(
+                                &*path, 
+                                new_value
+                            );
+                        }
                     }
                 }
             }
@@ -126,20 +156,27 @@ impl Widget for Slider {
 
             InputType::KeyPress(press) => {
                 let Some(key) = press.as_key() else { return };
+                let range = self.range();
 
                 match key {
                     Key::Left => if active || self.hovered {
                         shell.event_consumed = true;
-                        self.value.set((self.value.get() - self.step
-                            .unwrap_or(1.0))
-                            .clamp(*self.range.start(), *self.range.end())
+                        self.value.set((
+                            self.value.get() - self.step
+                                .as_ref()
+                                .map_or(1.0, |s| s.get())
+                            )
+                            .clamp(*range.start(), *range.end())
                         );
                     }
                     Key::Right => if active || self.hovered {
                         shell.event_consumed = true;
-                        self.value.set(
-                            (self.value.get() + self.step.unwrap_or(1.0))
-                            .clamp(*self.range.start(), *self.range.end())
+                        self.value.set((
+                            self.value.get() + self.step
+                                .as_ref()
+                                .map_or(1.0, |s| s.get())
+                            )
+                            .clamp(*range.start(), *range.end())
                         );
                     }
 
@@ -152,7 +189,12 @@ impl Widget for Slider {
     }
 
     fn update(&mut self, shell: &mut UpdateShell) {
-        self.value.update(shell.values);
+        let _ = self.value.update(shell.values);
+        let _ = self.min.update(shell.values);
+        let _ = self.max.update(shell.values);
+        if let Some(s) = self.step.as_mut() { 
+            let _ = s.update(shell.values);
+        }
     }
 
     fn draw(&self, shell: &mut DrawShell) {
@@ -179,8 +221,9 @@ impl Widget for Slider {
         shell.list.push(Rectangle::new_bounds(bounds, Color::BLACK));
 
         // draw slider
-        let start = *self.range.start();
-        let end = *self.range.end();
+        let range = self.range();
+        let start = *range.start();
+        let end = *range.end();
         let percent = (self.value.get() - start) / end;
 
         let dragger_pos = Vector2::new(
@@ -206,11 +249,14 @@ impl Widget for Slider {
     }
 }
 
-
 pub enum SliderValue {
     Static(f32),
     Variable {
-        variable: String,
+        variable: VariablePathResolver,
+        value: f32,
+    },
+    Buildable {
+        buildable: BuildableValue,
         value: f32,
     },
     Error,
@@ -221,6 +267,7 @@ impl SliderValue {
             Self::Error => 0.0,
             Self::Static(n) => *n,
             Self::Variable { value, .. } => *value,
+            Self::Buildable { value, .. } => *value,
         }
     }
     fn set(&mut self, new: f32) {
@@ -228,23 +275,41 @@ impl SliderValue {
             Self::Error => {},
             Self::Static(v) => *v = new,
             Self::Variable { value, .. } => *value = new,
+            Self::Buildable { value, .. } => *value = new,
         }
     }
 
-    fn update(&mut self, values: &dyn Reflect) {
+    fn update(&mut self, values: &dyn Reflect) -> TatakuResult<()> {
         match self {
             Self::Static(_) | Self::Error => {},
             Self::Variable {
                 variable,
                 value
-            }=> match values.reflect_as_number(&*variable) {
-                Ok(n) => *value = n.into(),
-                Err(e) => {
-                    warn!("error with get: {e:?}");
-                    *self = Self::Error;
+            } => {
+                let path = variable
+                    .resolve_path(values)?;
+                match values.reflect_as_number(&*path) {
+                    Ok(n) => *value = n.into(),
+                    Err(e) => {
+                        warn!("error with get: {e:?}");
+                        *self = Self::Error;
+                    }
+                }
+            }
+
+            Self::Buildable { 
+                buildable, 
+                value 
+            } => if let Some(t) = buildable
+                    .resolve(values, None)
+            { 
+                if let Ok(v) = t.as_f32() {
+                    *value = v;
                 }
             }
         }
+
+        Ok(())
     }
 }
 impl From<f32> for SliderValue {
@@ -255,7 +320,7 @@ impl From<f32> for SliderValue {
 impl From<String> for SliderValue {
     fn from(variable: String) -> Self {
         Self::Variable {
-            variable,
+            variable: variable.into(),
             value: 0.0,
         }
     }
@@ -265,13 +330,27 @@ impl From<SliderBuilderValue> for SliderValue {
         match value {
             SliderBuilderValue::Static(n) => Self::Static(n),
             SliderBuilderValue::Variable(v) => Self::Variable {
-                variable: v,
+                variable: v.into(),
                 value: 0.0
             },
         }
     }
 }
+impl From<BuildableValue> for SliderValue {
+    fn from(value: BuildableValue) -> Self {
+        match value {
+            BuildableValue::Variable { var } => Self::Variable { 
+                variable: var.into(), 
+                value: 0.0
+            },
 
+            buildable => Self::Buildable { 
+                buildable, 
+                value: 0.0
+            }
+        }
+    }
+}
 
 impl From<SliderBuilderOnChange> for InputAction<f32> {
     fn from(value: SliderBuilderOnChange) -> Self {
@@ -283,63 +362,7 @@ impl From<SliderBuilderOnChange> for InputAction<f32> {
     }
 }
 
-// type OnChangeCallback = Box<dyn Fn(f32) -> Message + Send + Sync>;
 
-// pub enum SliderOnChange {
-//     Message(Option<Message>),
-//     Action(BuildableAction),
-//     Callback(OnChangeCallback),
-// }
-// impl SliderOnChange {
-//     pub fn resolve(
-//         &self, 
-//         value: f32,
-//         owner: MessageOwner,
-//         values: &mut dyn Reflect
-//     ) -> Option<Message> {
-//         match self {
-//             Self::Message(m) 
-//                 => m.clone(),
-//             Self::Action(a) 
-//                 => a.resolve(owner, values, Some(&value.into())),
-//             Self::Callback(cb) 
-//                 => Some((cb)(value)),
-//         }
-//     }
-// }
-// impl<T: Into<SliderOnChange>> From<Option<T>> for SliderOnChange {
-//     fn from(value: Option<T>) -> Self {
-//         let Some(value) = value else { return Self::Message(None) };
-//         value.into()
-//     }
-// }
-// impl From<Message> for SliderOnChange {
-//     fn from(value: Message) -> Self {
-//         Self::Message(Some(value))
-//     }
-// }
-// impl From<BuildableAction> for SliderOnChange {
-//     fn from(mut value: BuildableAction) -> Self {
-//         if let BuildableAction::Conditional { cond, .. } = &mut value {
-//             cond.build();
-//         }
-
-//         Self::Action(value)
-//     }
-// }
-// impl From<OnChangeCallback> for SliderOnChange {
-//     fn from(value: OnChangeCallback) -> Self {
-//         Self::Callback(value)
-//     }
-// }
-// impl From<SliderBuilderOnChange> for SliderOnChange {
-//     fn from(value: SliderBuilderOnChange) -> Self {
-//         match value {
-//             SliderBuilderOnChange::Callback(cb) => Self::Callback(cb),
-//             SliderBuilderOnChange::Message(m) => Self::Message(m),
-//         }
-//     }
-// }
 
 
 fn apply_snap(

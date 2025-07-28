@@ -28,7 +28,7 @@ impl DelayTask {
 }
 
 impl TatakuTask for DelayTask {
-    fn get_name(&self) -> Cow<'static, str> {
+    fn get_name(&self) -> CowStr {
         if let Some(task) = &self.task {
             Cow::Owned(format!("Delayed ({})", task.get_name()))
         } else {

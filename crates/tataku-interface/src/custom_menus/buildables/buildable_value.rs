@@ -33,14 +33,14 @@ pub enum BuildableValue {
     Reference {
         #[serde(rename="$value", default)] 
         reference: Option<BuildableText>,
-        #[serde(rename="$ref", default)] 
+        #[serde(rename="@ref", default)] 
         reference_attribute: Option<String>,
     },
 
     /// Calculate the value from some calc string
     Calc {
-        #[serde(rename="@calc", alias="$value")] 
-        calc: String
+        #[serde(rename="@calc", default)] calc: Option<String>,
+        #[serde(rename="@var", default)] var: Option<VariablePathResolver>,
     },
 
     #[serde(skip)]
@@ -80,15 +80,58 @@ impl BuildableValue {
 
                 *self = Self::Value { value: Some(value), value_attribute: None };
             }
-            Self::Calc { calc: calc_str } => {
-                match BuildableCalc::parse(&calc_str) {
-                    Ok(calc) => {
-                        *self = Self::CalcParsed { calc, calc_str: calc_str.clone() }
-                    }
-                    Err(e) => {
-                        error!("Error with calc '{calc_str}': {e:?}");
+            Self::Calc { 
+                calc, 
+                var,
+            } => {
+                if let Some(path) = var {
+                    let Ok(path) = path
+                        .resolve_path(values)
+                        .inspect_err(|e| 
+                            error!("error with calc var {}: {e:?}", path.var)
+                        )
+                    else {
                         *self = Self::None;
+                        return
+                    };
+
+                    let Ok(calc_str) = values
+                        .reflect_get::<String>(&*path)
+                        .inspect_err(|e| 
+                            error!("error with calc var {path}: {e:?}")
+                        )
+                    else {
+                        *self = Self::None;
+                        return
+                    };
+                    let calc_str = &*calc_str;
+
+
+                    match BuildableCalc::parse(calc_str) {
+                        Ok(calc) => {
+                            *self = Self::CalcParsed { calc, calc_str: calc_str.clone() }
+                        }
+                        Err(e) => {
+                            error!("Error with calc '{calc_str}': {e:?}");
+                            *self = Self::None;
+                        }
                     }
+                } else if let Some(calc_str) = calc {
+                    match BuildableCalc::parse(&calc_str) {
+                        Ok(calc) => {
+                            *self = Self::CalcParsed { 
+                                calc, 
+                                calc_str: calc_str.clone() 
+                            }
+                        }
+                        Err(e) => {
+                            error!("Error with calc '{calc_str}': {e:?}");
+                            *self = Self::None;
+                        }
+                    }
+                } else {
+                    error!("No calc!");
+                    *self = Self::None;
                 }
             }
 
@@ -127,9 +170,12 @@ impl BuildableValue {
                 value_attribute
             } => Some(Cow::Borrowed(value.as_ref().or(value_attribute.as_ref())?)),
             Self::Calc { .. } => unreachable!("Calc should be built!"),
-            Self::CalcParsed { calc, .. } => {
+            Self::CalcParsed { calc, calc_str } => {
                 calc
                     .resolve(values)
+                    .inspect_err(|e| 
+                        error!("error with calc '{calc_str}': {e:?}")
+                    )
                     .ok()
             }
 
@@ -144,14 +190,16 @@ impl BuildableValue {
                     ?;
 
                 
-                let Ok(val) = values.impl_get(ReflectPath::new(&var)) else {
-                    error!("custom event value is none! {var}");
+                let Ok(val) = values.impl_get(ReflectPath::new(&var)) 
+                else {
+                    error!("BuildableValue is none! {var}");
                     return None;
                 };
+
                 let value = match TatakuValue::from_reflection(val) {
                     Ok(v) => v,
                     Err(e) => {
-                        error!("custom event value error: {var}, {e:?}");
+                        error!("BuildableValue error: {var}, {e:?}");
                         return None
                     }
                 };
@@ -161,7 +209,8 @@ impl BuildableValue {
 
 
             Self::Variable { var } => {
-                let Ok(val) = values.impl_get(ReflectPath::new(var)) else {
+                let Ok(val) = values.impl_get(ReflectPath::new(var)) 
+                else {
                     error!("custom event value is none! {var}");
                     return None;
                 };
@@ -198,7 +247,7 @@ fn test() {
         "#).unwrap(), 
         Action {
             action: BuildableAction::SetValue {
-                key: "hi".to_string(),
+                key: "hi".into(),
                 value: BuildableValue::Value {
                     value: Some(TatakuValue::String("hi mom".to_string())),
                     value_attribute: None
@@ -217,7 +266,7 @@ fn test() {
         "#).unwrap(), 
         Action {
             action: BuildableAction::SetValue {
-                key: "hi2".to_string(),
+                key: "hi2".into(),
                 value: BuildableValue::Value {
                     value: Some(TatakuValue::U32(100)),
                     value_attribute: None
@@ -236,7 +285,7 @@ fn test() {
         "#).unwrap(), 
         Action {
             action: BuildableAction::SetValue {
-                key: "hello".to_string(),
+                key: "hello".into(),
                 value: BuildableValue::Variable {
                     var: "tacos".to_owned()
                 }
@@ -254,7 +303,7 @@ fn test() {
         "#).unwrap(), 
         Action {
             action: BuildableAction::SetValue {
-                key: "hello123".to_string(),
+                key: "hello123".into(),
                 value: BuildableValue::PassedIn
             }
         }

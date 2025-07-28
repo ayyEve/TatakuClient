@@ -5,17 +5,30 @@ use crate::prelude::*;
 #[reflect(dont_clone)]
 // #[reflect(remap("map" => "self.beatmap_manager.current_beatmap.map"))]
 pub struct TatakuValues {
+
+    /// The Game's settings
     pub settings: Settings,
 
+    /// The current song information
     pub song: SongInfo,
+
+    /// Game values
     pub game: GameValues,
+
+    /// Global values
     pub global: GlobalValues,
+
+    /// Enums and their variants
     pub enums: EnumValues,
+
+    /// The current Tataku theme
     #[cfg(feature="graphics")] 
     pub theme: Theme,
 
+    /// The current score
     pub score: ReflectScore,
 
+    /// The multiplayer lobby, if we're in one
     pub lobby: Option<ReflectLobby>,
 
     /// Beatmap manager, its here instead of in Game to keep the lists in one place
@@ -26,23 +39,26 @@ pub struct TatakuValues {
     #[reflect(alias("online"))] 
     pub online_manager: OnlineManager,
 
-    /// list of retreived scored 
+    /// List of retreived scores
     #[reflect(alias("scores_list"))] 
     pub score_list: ScoreList,
 
+    /// The download manager
     #[reflect(alias("downloads"))] 
     pub download_manager: DownloadManager,
 }
 impl TatakuValues {
     pub fn new(
         infos: &GamemodeInfos, 
-        settings: &Settings
+        online_content_engines: Vec<OnlineContentCapabilities>,
+        settings: &Settings,
     ) -> Self {
         Self {
             enums: EnumValues::new(infos),
             settings: settings.clone(),
             beatmap_manager: BeatmapManager::new(infos.clone()),
             global: GlobalValues::new(infos.clone(), settings),
+            game: GameValues::new(online_content_engines),
             ..Default::default()
         }
     }
@@ -143,4 +159,58 @@ pub struct GameValues {
     pub time: f32,
     pub window_size: Vector2,
     pub loading_statuses: Vec<LoadingStatus>,
+    pub online_content: OnlineContentValues,
+}
+impl GameValues {
+    pub fn new(online_content_engines: Vec<OnlineContentCapabilities>) -> Self {
+        Self {
+            online_content: OnlineContentValues::new(online_content_engines),
+            ..Default::default()
+        }
+    }
+}
+
+#[derive(Default, Debug)]
+#[derive(Reflect)]
+#[reflect(display = "debug")]
+#[reflect(dont_clone)]
+pub struct OnlineContentValues {
+    pub engines: HashMap<String, OnlineContentCapabilities>,
+    pub results: OnlineContentReflectResults,
+}
+impl OnlineContentValues {
+    pub fn new(engines: Vec<OnlineContentCapabilities>) -> Self {
+        let engines = engines
+            .into_iter()
+            .enumerate()
+            .flat_map(|(n, i)| [
+                (i.engine_id.clone(), i.clone()),
+                // workaround/compatability,
+                // allows engines to be indexed by number
+                (n.to_string(), i) 
+            ])
+            .collect::<HashMap<_,_>>();
+
+        Self {
+            engines,
+            results: OnlineContentReflectResults::default(),
+        }
+    }
+}
+
+
+
+
+/// NOTE! when cloning, the result's downloadable WILL NOT HAVE AN ACTION!
+/// Clone should only be used when checking for data, 
+/// the original should be referenced properly when performing the download
+#[derive(Default, Debug, Clone)]
+#[derive(Reflect)]
+#[reflect(display = "debug")]
+pub struct OnlineContentReflectResults {
+    pub completed: bool,
+    pub error: Option<String>,
+    pub items: Vec<OnlineContentItem>,
+    pub count: usize,
+    pub page: usize,
 }

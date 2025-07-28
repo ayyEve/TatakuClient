@@ -110,6 +110,11 @@ pub enum BeatmapListAction {
         filter: Option<String>,
     },
 }
+impl From<BeatmapListAction> for BeatmapAction {
+    fn from(value: BeatmapListAction) -> Self {
+        Self::ListAction(value)
+    }
+}
 
 
 #[derive(Copy, Clone, Debug, Default)]

@@ -385,7 +385,7 @@ impl MultiplayerManager {
             } => {
                 if &self.lobby.id != lobby_id { return Ok(None) };
                 self.lobby.info.current_beatmap = Some(new_map.clone());
-                println!("lobby map change to {new_map:?}");
+                warn!("lobby map change to {new_map:?}");
 
                 if let Some(beatmap) = &self.lobby.current_beatmap {
                     // update the playmode
@@ -659,6 +659,65 @@ impl MultiplayerManager {
         self.lobby.is_host()
     }
 }
+
+
+
+
+#[derive(Reflect)]
+#[reflect(display = "debug")]
+#[derive(Clone, Default, Debug)]
+pub struct CurrentLobbyInfo {
+    /// what is our user id?
+    pub our_user_id: u32,
+
+    /// lobby information
+    pub info: FullLobbyInfo,
+
+    /// should we be loading the map?
+    pub play_pending: bool,
+
+    /// should we start playing the map?
+    pub should_play: bool,
+
+    /// scores of the players in the lobby
+    pub player_scores: HashMap<u32, Score>,
+
+    /// cache of lobby player usernames
+    pub player_usernames: HashMap<u32, String>,
+}
+impl CurrentLobbyInfo {
+    pub fn new(info: FullLobbyInfo, our_user_id: u32) -> Self {
+        Self {
+            our_user_id,
+            info,
+            play_pending: false,
+            should_play: false,
+            player_scores: HashMap::new(),
+            player_usernames: HashMap::new(),
+        }
+    }
+
+    pub fn is_host(&self) -> bool {
+        self.host == self.our_user_id
+    }
+    pub fn our_user(&self) -> Option<&LobbyUser> {
+        self.players.iter().find(|u| u.user_id == self.our_user_id)
+    }
+
+}
+impl Deref for CurrentLobbyInfo {
+    type Target = FullLobbyInfo;
+    fn deref(&self) -> &Self::Target {
+        &self.info
+    }
+}
+impl DerefMut for CurrentLobbyInfo {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.info
+    }
+}
+
+
 
 #[test]
 fn test() {

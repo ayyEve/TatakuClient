@@ -50,7 +50,7 @@ impl MediaControlsIntegration {
     }
 }
 impl TatakuIntegration for MediaControlsIntegration {
-    fn name(&self) -> Cow<'static, str> { "media_controls_integration".into() }
+    fn name(&self) -> CowStr { "media_controls_integration".into() }
     
     #[allow(unused)]
     fn init(

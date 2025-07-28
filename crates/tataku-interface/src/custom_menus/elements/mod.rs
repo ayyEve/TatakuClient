@@ -1,6 +1,8 @@
 mod row;
 mod text;
 mod list;
+mod slider;
+mod switch;
 mod column;
 mod button;
 mod tabbed;
@@ -15,6 +17,8 @@ mod gameplay_preview;
 pub use row::*;
 pub use text::*;
 pub use list::*;
+pub use slider::*;
+pub use switch::*;
 pub use column::*;
 pub use button::*;
 pub use tabbed::*;

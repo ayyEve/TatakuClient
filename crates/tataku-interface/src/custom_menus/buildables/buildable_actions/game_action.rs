@@ -44,7 +44,9 @@ impl BuildableGameAction {
             Self::Quit => Some(GameAction::Quit),
             Self::RefreshScores => Some(GameAction::RefreshScores),
             Self::ShowNotification {
-                text, color, duration
+                text, 
+                color, 
+                duration
             } => Some(GameAction::AddNotification(Notification::new(
                 text.to_string(values),
                 color,

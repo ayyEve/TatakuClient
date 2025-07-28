@@ -1,6 +1,23 @@
 use crate::prelude::*;
 use crate::prelude::ui::*;
 
+macro_rules! get_list {
+    ($data: expr, $values: expr) => {{
+        let path = $data.list_var.clone();
+        let Ok(path) = path.resolve_path($values)
+            .inspect_err(|e| $data.print_err(e))
+        else { return };
+
+        let Ok(iter) = $values
+            .reflect_iter(&*path)
+            .inspect_err(|e| $data.print_err(e))
+        else { return };
+
+        iter
+    }}
+}
+
+
 #[derive(Widget)]
 #[widget(type("container"))]
 #[derive(ChainableInitializer)]
@@ -8,7 +25,7 @@ pub struct Container {
     #[chain] pub style: Style,
     pub children: Vec<Box<dyn Widget>>,
 
-    #[chain] id: Cow<'static, str>,
+    #[chain] id: CowStr,
     #[chain] scrollable: bool,
     programmatic: Option<ProgrammaticListData>,
 
@@ -75,7 +92,7 @@ impl Container {
 }
 
 impl Widget for Container {
-    fn name(&self) -> Cow<'static, str> { "container_widget".into() }
+    fn name(&self) -> CowStr { "container_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn update_styles(
@@ -120,23 +137,18 @@ impl Widget for Container {
 
         let mut captured = false;
         if let Some(data) = &mut self.programmatic {
-            let Ok(iter) = shell.values.reflect_iter(&data.list_var)
-            else {
-                if !data.error_printed {
-                    data.error_printed = true;
-                    error!("!!!!!!!!!!!!!!");
-                    error!("list variable doesnt exist! {}", data.list_var);
-                    error!("!!!!!!!!!!!!!!");
-                }
-                return
-            };
+            let iter = get_list!(data, shell.values);
 
             let values = iter
                 .filter_map(|v| v.duplicate())
                 .collect::<Vec<_>>();
 
             let path = ReflectPath::new(&data.variable);
-            for (w, value) in self.children.iter_mut().zip(values) {
+            for (w, value) in self
+                .children
+                .iter_mut()
+                .zip(values) 
+            {
                 shell
                     .values
                     .impl_insert(path.clone(), value)
@@ -196,9 +208,10 @@ impl Widget for Container {
             &children
         )?;
 
-        shell.with_context(self.node_id, |ctx| {
-            ctx.needs_inverse_transform = true;
-        });
+        shell.with_context(
+            self.node_id, 
+            |ctx| ctx.needs_inverse_transform = true,
+        );
 
         Ok(self.node_id)
     }
@@ -223,7 +236,9 @@ impl Widget for Container {
         if self.scrollable {
             std::mem::swap(shell.list, &mut list);
 
-            let elements = list.list.into_iter()
+            let elements = list
+                .list
+                .into_iter()
                 .map(|element| Scissored::new(
                     our_bounds.into_scissor(),
                     element
@@ -275,17 +290,7 @@ impl Widget for Container {
 
     fn update(&mut self, shell: &mut UpdateShell) {
         if let Some(data) = &mut self.programmatic {
-
-            let Ok(iter) = shell.values
-                .reflect_iter(&data.list_var)
-            else {
-                if !data.error_printed {
-                    error!("!!!!!!!!!!!!!!");
-                    error!("list variable doesnt exist! {}", data.list_var);
-                    error!("!!!!!!!!!!!!!!");
-                }
-                return
-            };
+            let iter = get_list!(data, shell.values);
 
             let values = iter
                 .filter_map(|v| v.duplicate())
@@ -380,17 +385,7 @@ impl Widget for Container {
         shell: &mut MessageShell,
     ) {
         if let Some(data) = &mut self.programmatic {
-            let Ok(iter) = shell.values
-                .reflect_iter(&data.list_var)
-            else {
-                if !data.error_printed {
-                    data.error_printed = true;
-                    error!("!!!!!!!!!!!!!!");
-                    error!("list variable doesnt exist! {}", data.list_var);
-                    error!("!!!!!!!!!!!!!!");
-                }
-                return
-            };
+            let iter = get_list!(data, shell.values);
 
             let values_ = iter
                 .filter_map(|v| v.duplicate())
@@ -416,28 +411,23 @@ impl Widget for Container {
 
     fn handle_event(
         &mut self,
-        event: TatakuEventType,
+        event: &TatakuEventType,
         event_value: Option<&TatakuValue>,
         shell: &mut MessageShell,
     ) {
         if let Some(data) = &mut self.programmatic {
-            let Ok(iter) = shell.values.reflect_iter(&data.list_var)
-            else {
-                if !data.error_printed {
-                    data.error_printed = true;
-                    error!("!!!!!!!!!!!!!!");
-                    error!("list variable doesnt exist! {}", data.list_var);
-                    error!("!!!!!!!!!!!!!!");
-                }
-                return
-            };
+            let iter = get_list!(data, shell.values);
 
-            let values_ = iter
+            let values = iter
                 .filter_map(|v| v.duplicate())
                 .collect::<Vec<_>>();
 
             let path = ReflectPath::new(&data.variable);
-            for (i, value) in self.children.iter_mut().zip(values_) {
+            for (i, value) in self
+                .children
+                .iter_mut()
+                .zip(values) 
+            {
                 shell
                     .values
                     .impl_insert(path.clone(), value)
@@ -461,13 +451,13 @@ impl Widget for Container {
 
 #[derive(ChainableInitializer)]
 pub struct ProgrammaticListData {
-    /// what element to build for each iteration
+    /// What element to build for each iteration
     #[chain] pub template: Element,
 
-    /// what variable to iterate over
-    #[chain] pub list_var: String,
+    /// What variable to iterate over
+    #[chain] pub list_var: VariablePathResolver,
 
-    /// what var name to store the iter variable in (ie the `i` in `for i in ...`)
+    /// What var name to store the iter variable in (ie the `i` in `for i in ...`)
     #[chain] pub variable: String,
 
     error_printed: bool,
@@ -476,12 +466,23 @@ impl ProgrammaticListData {
     pub fn new(template: Element, list_var: String, variable: String) -> Self {
         Self {
             template,
-            list_var,
+            list_var: VariablePathResolver::new(list_var),
             variable,
             error_printed: false,
         }
     }
+
+    fn print_err(&mut self, error: &dyn std::fmt::Debug) {
+        if self.error_printed { return }
+
+        self.error_printed = true;
+        error!("!!!!!!!!!!!!!!");
+        error!("List variable error! '{:?}' {error:?}", self.list_var);
+        error!("!!!!!!!!!!!!!!");
+    }
+
 }
+
 
 
 
@@ -607,8 +608,11 @@ impl DragScrollData {
         match event.event {
             InputType::MousePress(b) if hover => {
                 match b {
-                    MouseButton::Left if !self.right_pressed => self.left_pressed = true,
-                    MouseButton::Right if !self.left_pressed => self.right_pressed = true,
+                    MouseButton::Left if !self.right_pressed 
+                        => self.left_pressed = true,
+                    MouseButton::Right if !self.left_pressed 
+                        => self.right_pressed = true,
+
                     _ => return ScrollPosition::None,
                 }
 
@@ -617,18 +621,23 @@ impl DragScrollData {
 
             InputType::MouseRelease(b) => {
                 match b {
-                    MouseButton::Left if self.left_pressed => self.left_pressed = false,
-                    MouseButton::Right if self.right_pressed => self.right_pressed = false,
+                    MouseButton::Left if self.left_pressed 
+                        => self.left_pressed = false,
+                    MouseButton::Right if self.right_pressed 
+                        => self.right_pressed = false,
                     _ => return ScrollPosition::None
                 }
-                // if the mouse moved, we dont want to register the release key, so return that it was consumed
+                // if the mouse moved, we dont want to register the release key, 
+                // so return that it was consumed
                 self.did_move = false;
 
                 // FIXME: dont use this hack lmao
                 return ScrollPosition::Relative(Vector2::ZERO);
             }
             InputType::MouseMove(position) if hover => {
-                if !self.did_move && (self.left_pressed || self.right_pressed) && position.distance(self.pressed_at) > DRAG_THRESHOLD {
+                if !self.did_move 
+                    && (self.left_pressed || self.right_pressed) 
+                    && position.distance(self.pressed_at) > DRAG_THRESHOLD {
                     self.did_move = true;
                 }
 

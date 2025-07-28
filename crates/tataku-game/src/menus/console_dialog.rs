@@ -27,7 +27,7 @@ impl ConsoleDialog {
     }
 }
 impl Widget for ConsoleDialog {
-    fn name(&self) -> Cow<'static, str> { "console_widget".into() }
+    fn name(&self) -> CowStr { "console_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
 
@@ -124,7 +124,7 @@ impl Widget for ConsoleDialog {
 
     fn handle_event(
         &mut self, 
-        event: TatakuEventType, 
+        event: &TatakuEventType, 
         event_value: Option<&TatakuValue>, 
         shell: &mut MessageShell,
     ) {
@@ -142,7 +142,7 @@ impl Widget for ConsoleDialog {
 
 // TODO: change to spans once implemented so input and output can be color coded (and errors can be red, etc)
 fn parse_line(_owner: MessageOwner) -> InputAction<String> {
-    InputAction::Multi(vec![
+    vec![
         InputAction::ReflectCallback(Box::new( move |_, r| {
             r.reflect_get_mut::<String>(INPUT_PATH)
             .map(|s| s.clear())
@@ -150,7 +150,7 @@ fn parse_line(_owner: MessageOwner) -> InputAction<String> {
             .nope();
         })),
 
-        InputAction::ReflectCallback(Box::new(move |s, r| 
+        InputAction::ReflectCallback(Box::new(move |s: &String, r| 
             r.reflect_get_mut::<Vec<String>>(OUTPUT_PATH)
             .map(|list| list.push(s.to_string()))
             .inspect_err(|e| warn!("{e:?}"))
@@ -167,9 +167,9 @@ fn parse_line(_owner: MessageOwner) -> InputAction<String> {
             };
 
             r.reflect_get_mut::<Vec<String>>(OUTPUT_PATH)
-                .map(|list| list.push(format!("-> {}\n", output)))
+                .map(|list| list.push(format!("-> {output}\n")))
                 .inspect_err(|e| warn!("{e:?}"))
                 .nope();
         })),
-    ])
+    ].into()
 }

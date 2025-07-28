@@ -117,7 +117,7 @@ impl TransformableWidget {
         }
     }
 
-    fn transform(&self, time: f32) -> Transform {
+    fn transform(&self) -> Transform {
         let x_position = self.x_position.last_value();
         let y_position = self.y_position.last_value();
         let x_scale = self.x_scale.last_value();
@@ -133,7 +133,7 @@ impl TransformableWidget {
     }
 }
 impl Widget for TransformableWidget {
-    fn name(&self) -> Cow<'static, str> { "transformable_widget".into() }
+    fn name(&self) -> CowStr { "transformable_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn update_styles(
@@ -274,7 +274,7 @@ impl Widget for TransformableWidget {
             || self.y_scale.update(time);
 
         if should_update {
-            let transform = self.transform(time);
+            let transform = self.transform();
             let context = shell
                 .tree
                 .get_context_mut(self.node_id)
@@ -318,7 +318,7 @@ impl Widget for TransformableWidget {
 
     fn handle_event(
         &mut self, 
-        event: TatakuEventType, 
+        event: &TatakuEventType, 
         event_value: Option<&TatakuValue>, 
         shell: &mut MessageShell,
     ) {
@@ -326,7 +326,7 @@ impl Widget for TransformableWidget {
         for trigger in self.triggers.iter() {
             let AnimatableTriggerEvent::Event(trigger_event) = &trigger.trigger 
             else { continue };
-            if &event == trigger_event {
+            if event == trigger_event {
                 to_trigger.push(trigger.action.clone());
             }
         }

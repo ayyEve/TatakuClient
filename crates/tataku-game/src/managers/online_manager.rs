@@ -748,6 +748,19 @@ enum OnlineManagerEvent {
     Packet(Box<PacketId>),
 }
 
+#[derive(Reflect)]
+#[reflect(display = "debug")]
+#[derive(Default, Clone, Debug)]
+pub struct MultiplayerData {
+    pub lobby_creation_pending: bool,
+    pub lobby_join_pending: bool,
+}
+impl MultiplayerData {
+    pub fn clear(&mut self) {
+        self.lobby_creation_pending = false;
+        self.lobby_join_pending = false;
+    }
+}
 
 fn network_thread(
     runtime: &tokio::runtime::Runtime,

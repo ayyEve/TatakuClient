@@ -16,7 +16,7 @@ impl ActionTask {
 
 // overengineered lol
 impl TatakuTask for ActionTask {
-    fn get_name(&self) -> Cow<'static, str> { "action_task".into() }
+    fn get_name(&self) -> CowStr { "action_task".into() }
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Once }
     fn get_state(&self) -> TatakuTaskState { self.state }
     

@@ -20,8 +20,20 @@ impl CustomMenu {
         self.inputs.init(variables, values)?;
 
         let mut events: HashMap<TatakuEventType, Vec<BuildableAction>> = HashMap::new();
-        for event in self.events.events.clone().into_iter().filter(|i| i.get_event().is_some()) {
-            events.entry(*event.get_event().unwrap())
+        for event in self
+            .events
+            .events
+            .clone()
+            .into_iter()
+            .filter(|i| i.get_event().is_some())
+        {
+            let mut event2 = event.get_event().unwrap().clone();
+            event2.build();
+
+            let Some(e) = event2.resolve(values) 
+            else { continue };
+
+            events.entry(e)
                 .or_default()
                 .extend(event.get_actions());
         }
@@ -54,7 +66,7 @@ pub struct BuiltCustomMenu {
     node_id: NodeId,
 }
 impl Widget for BuiltCustomMenu {
-    fn name(&self) -> Cow<'static, str> { format!("custom-{}", self.id).into() }
+    fn name(&self) -> CowStr { format!("custom-{}", self.id).into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn get_style_str(&self) -> String { self.styles.clone() }
@@ -124,17 +136,26 @@ impl Widget for BuiltCustomMenu {
         let tag = message.tag.clone();
         match message.value.clone() {
             MessageValue::Value(TatakuValue::Reflect(value)) => {
-                let Some(variable) = tag.as_string() else { return };
+                let Some(variable) = tag.as_string() 
+                else { return };
                 shell.handled = true;
 
-                if let Err(e) = shell.values.reflect_insert(variable, value) {
+                if let Err(e) = shell
+                    .values
+                    .reflect_insert(variable, value)
+                {
                     error!("error inserting into values: {e:?}");
                 }
             }
             MessageValue::Text(incoming) => {
-                let Some(variable) = tag.as_string() else { return };
+                let Some(variable) = tag.as_string() 
+                else { return };
+
                 shell.handled = true;
-                if let Err(e) = shell.values.reflect_insert(variable, Box::new(incoming)) {
+                if let Err(e) = shell
+                    .values
+                    .reflect_insert(variable, Box::new(incoming)) 
+                {
                     error!("error inserting into values: {e:?}");
                 }
             }
@@ -151,11 +172,12 @@ impl Widget for BuiltCustomMenu {
 
     fn handle_event(
         &mut self, 
-        event: TatakuEventType, 
+        event: &TatakuEventType, 
         event_value: Option<&TatakuValue>, 
         shell: &mut MessageShell,
     ) {
-        let Some(events) = self.events.get(&event) else { return };
+        let Some(events) = self.events.get(event) 
+        else { return };
 
         for i in events.iter() {
             let Some(action) = i.clone().into_action(
@@ -171,9 +193,6 @@ impl Widget for BuiltCustomMenu {
         self.element.reload_skin(shell);
     }
 }
-
-
-
 
 
 #[test]

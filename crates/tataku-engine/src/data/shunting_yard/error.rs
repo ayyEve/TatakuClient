@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 pub type ShuntingYardResult<T> = Result<T, ShuntingYardError>;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ShuntingYardError {
     NoMath,
     InvalidOperator(char),

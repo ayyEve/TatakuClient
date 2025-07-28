@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 pub struct GameModeProperties {
     pub info: &'static GamemodeInfo,
-    // pub playmode: Cow<'static, str>,
+    // pub playmode: CowStr,
     pub keys: Vec<(KeyPress, &'static str)>,
     pub end_time: f32,
     pub show_cursor: bool,
@@ -50,7 +50,7 @@ pub trait UiElementLoader: Send + Sync {
 pub struct DefaultUiElementLoader {
     pub layouts: HashMap<String, GameplayWidgetLayout>,
     pub elements: Vec<GameplayWidgetContainer>,
-    pub playmode: Cow<'static, str>,
+    pub playmode: CowStr,
 
     pub widget_builders: Vec<GameplayWidgetBuilder>,
 
@@ -59,7 +59,7 @@ pub struct DefaultUiElementLoader {
 }
 impl DefaultUiElementLoader {
     pub fn new(
-        playmode: impl Into<Cow<'static, str>>, 
+        playmode: impl Into<CowStr>, 
         layouts: HashMap<String, GameplayWidgetLayout>,
         widget_builders: Vec<GameplayWidgetBuilder>,
         

@@ -23,18 +23,15 @@ const TOKENS: &[char] = &[
 #[widget(type("text"))]
 #[derive(ChainableInitializer)]
 pub struct TextInput {
-    #[chain] pub style: Style,
-    #[chain] pub text_style: TextStyle,
-    #[chain] pub secure: bool,
+    #[chain] style: Style,
+    #[chain] text_style: TextStyle,
+    #[chain] secure: bool,
 
-    pub placeholder: WidgetText,
-    pub value: WidgetText,
-
-    // #[chain] pub on_input: TextInputAction,
-    // #[chain] pub on_submit: TextInputAction,
+    placeholder: WidgetText,
+    value: WidgetText,
     
-    #[chain] pub on_input: InputAction<String>,
-    #[chain] pub on_submit: InputAction<String>,
+    #[chain] on_input: InputAction<String>,
+    #[chain] on_submit: InputAction<String>,
     
     cursor: Cursor,
     pressed: bool,
@@ -148,26 +145,59 @@ impl TextInput {
                 // TODO: start here when you wake up
                 match self.cursor {
                     Cursor::Position(i) => {
-                        let start = next(indices, i, len, false);
+                        let start = next(
+                            indices, 
+                            i, 
+                            len, 
+                            false
+                        );
 
                         if shift_pressed {
-                            self.cursor = Cursor::Selection { start, end: i, forward_select: false };
+                            self.cursor = Cursor::Selection { 
+                                start, 
+                                end: i, 
+                                forward_select: false 
+                            };
                         } else {
                             self.cursor = Cursor::Position(start);
                         }
                     }
-                    Cursor::Selection { start, end, forward_select } => {
+                    Cursor::Selection { 
+                        start, 
+                        end, 
+                        forward_select 
+                    } => {
                         if shift_pressed {
                             if forward_select {
-                                let end = next(indices, end, len, false);
-                                self.cursor = Cursor::Selection { start, end, forward_select };
+                                self.cursor = Cursor::Selection { 
+                                    start, 
+                                    end: next(
+                                        indices, 
+                                        end, 
+                                        len, 
+                                        false
+                                    ), 
+                                    forward_select 
+                                };
                             } else {
-                                let start = next(indices, start, len, false);
-                                self.cursor = Cursor::Selection { start, end, forward_select };
+                                self.cursor = Cursor::Selection { 
+                                    start: next(
+                                        indices, 
+                                        start, 
+                                        len, 
+                                        false
+                                    ), 
+                                    end, 
+                                    forward_select,
+                                };
                             }
                         } else {
-                            let index = next(indices, start, len, false);
-                            self.cursor = Cursor::Position(index);
+                            self.cursor = Cursor::Position(next(
+                                indices, 
+                                start, 
+                                len, 
+                                false
+                            ));
                         }
                     }
                 }
@@ -179,23 +209,46 @@ impl TextInput {
                         let end = next(indices, i, len, true);
 
                         if shift_pressed {
-                            self.cursor = Cursor::Selection { start: i, end, forward_select: true };
+                            self.cursor = Cursor::Selection { 
+                                start: i, 
+                                end, 
+                                forward_select: true 
+                            };
                         } else {
                             self.cursor = Cursor::Position(end);
                         }
                     }
-                    Cursor::Selection { start, end, forward_select } => {
+                    Cursor::Selection { 
+                        start, 
+                        end, 
+                        forward_select 
+                    } => {
                         if shift_pressed {
                             if forward_select {
-                                let end = next(indices, end, len, true);
-                                self.cursor = Cursor::Selection { start, end, forward_select };
+                                self.cursor = Cursor::Selection { 
+                                    start, 
+                                    end: next(indices, end, len, true), 
+                                    forward_select 
+                                };
                             } else {
-                                let start = next(indices, start, len, true);
-                                self.cursor = Cursor::Selection { start, end, forward_select };
+                                self.cursor = Cursor::Selection { 
+                                    start: next(
+                                        indices, 
+                                        start, 
+                                        len, 
+                                        true
+                                    ), 
+                                    end, 
+                                    forward_select 
+                                };
                             }
                         } else {
-                            let index = next(indices, end, len, true);
-                            self.cursor = Cursor::Position(index);
+                            self.cursor = Cursor::Position(next(
+                                indices, 
+                                end, 
+                                len, 
+                                true
+                            ));
                         }
                     }
                 }
@@ -210,7 +263,8 @@ impl TextInput {
     }
 
     fn replace_selection(&mut self, text: &str) {
-        let Cursor::Selection { start, end, .. } = self.cursor else { 
+        let Cursor::Selection { start, end, .. } = self.cursor 
+        else { 
             unreachable!("should not be calling this unless cursor is selection") 
         };
         let value = self.value.get();
@@ -253,27 +307,45 @@ impl TextInput {
 
         match key.as_key()? {
             Key::Backspace if mods.ctrl => {
-                self.handle_control_action(ControlAction::Backspace, mods.shift);
+                self.handle_control_action(
+                    ControlAction::Backspace, 
+                    mods.shift
+                );
                 Some(true)
             }
             Key::Delete if mods.ctrl => {
-                self.handle_control_action(ControlAction::Delete, mods.shift);
+                self.handle_control_action(
+                    ControlAction::Delete, 
+                    mods.shift
+                );
                 Some(true)
             }
             Key::Left if mods.ctrl => {
-                self.handle_control_action(ControlAction::CursorLeft, mods.shift);
+                self.handle_control_action(
+                    ControlAction::CursorLeft, 
+                    mods.shift
+                );
                 Some(true)
             }
             Key::Right if mods.ctrl => {
-                self.handle_control_action(ControlAction::CursorRight, mods.shift);
+                self.handle_control_action(
+                    ControlAction::CursorRight, 
+                    mods.shift
+                );
                 Some(true)
             }
             Key::Up if mods.ctrl => {
-                self.handle_control_action(ControlAction::CursorUp, mods.shift);
+                self.handle_control_action(
+                    ControlAction::CursorUp, 
+                    mods.shift
+                );
                 Some(true)
             }
             Key::Down if mods.ctrl => {
-                self.handle_control_action(ControlAction::CursorDown, mods.shift);
+                self.handle_control_action(
+                    ControlAction::CursorDown, 
+                    mods.shift
+                );
                 Some(true)
             }
 
@@ -286,7 +358,10 @@ impl TextInput {
                     Cursor::Position(n) => {
                         if *n > 0 {
                             *n -= 1;
-                            let mut value = self.value.get().clone().into_owned();
+                            let mut value = self.value.get()
+                                .clone()
+                                .into_owned();
+
                             value.remove(*n);
                             self.value.set(value);
                             Some(true)
@@ -304,7 +379,10 @@ impl TextInput {
                 match self.cursor {
                     Cursor::Position(n) => {
                         if n < len {
-                            let mut value = self.value.get().clone().into_owned();
+                            let mut value = self.value.get()
+                                .clone()
+                                .into_owned();
+
                             value.remove(n);
                             self.value.set(value);
 
@@ -337,7 +415,11 @@ impl TextInput {
                     }
 
                     // select going forwards
-                    Cursor::Selection { start, end, forward_select: true } => if *end > 0 {
+                    Cursor::Selection { 
+                        start, 
+                        end, 
+                        forward_select: true 
+                    } => if *end > 0 {
                         let n = *end - 1;
 
                         if mods.shift && *start != n {
@@ -348,7 +430,11 @@ impl TextInput {
                     }
 
                     // select going backwards
-                    Cursor::Selection { start, forward_select: false, .. } => if *start > 0 {
+                    Cursor::Selection { 
+                        start, 
+                        forward_select: false, 
+                        .. 
+                    } => if *start > 0 {
                         let n = *start - 1;
 
                         if mods.shift {
@@ -379,7 +465,11 @@ impl TextInput {
                             *index = n;
                         }
                     }
-                    Cursor::Selection { end, forward_select: true, .. } => if *end < len {
+                    Cursor::Selection { 
+                        end, 
+                        forward_select: true, 
+                        .. 
+                    } => if *end < len {
                         let n = *end + 1;
                         if mods.shift {
                             *end = n;
@@ -388,7 +478,11 @@ impl TextInput {
                         }
                     }
 
-                    Cursor::Selection { start, end, forward_select: false } => if *end < len {
+                    Cursor::Selection { 
+                        start, 
+                        end, 
+                        forward_select: false 
+                    } => if *end < len {
                         let n = *start + 1;
                         if mods.shift && n != *end {
                             *start = n;
@@ -403,12 +497,8 @@ impl TextInput {
             }
             Key::Up => {
                 match &mut self.cursor {
-                    Cursor::Position(n) => {
-                        *n = len;
-                    }
-                    Cursor::Selection { end, .. } => {
-                        *end = len;
-                    }
+                    Cursor::Position(n) => *n = len,
+                    Cursor::Selection { end, .. } => *end = len,
                 }
                 self.cursor.validate();
                 Some(false)
@@ -433,12 +523,17 @@ impl TextInput {
     }
 
     fn index_rel_pos(&self, mut rel_x: f32) -> usize {
-        let (font_size, text_scale) = Text::get_font_size_scaled(self.text_style.font_size);
+        let (font_size, text_scale) = Text::get_font_size_scaled(
+            self.text_style.font_size
+        );
 
         let value = self.value.get();
 
         for (i, ch) in value.char_indices() {
-            let Some(data) = self.text_style.font.get_character(font_size, ch) else { continue };
+            let Some(data) = self.text_style
+                .font
+                .get_character(font_size, ch) 
+            else { continue };
             rel_x -= data.advance_width() * text_scale;
             
             if rel_x <= 0.0 { return i }
@@ -448,7 +543,7 @@ impl TextInput {
     }
 }
 impl Widget for TextInput {
-    fn name(&self) -> Cow<'static, str> { "text_input_widget".into() }
+    fn name(&self) -> CowStr { "text_input_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn update_styles(
@@ -464,7 +559,11 @@ impl Widget for TextInput {
             .measure_text(&self.get_text(), None)
             ;
 
-        let mut style = shell.tree.get_style(self.node_id).unwrap().clone();
+        let mut style = shell.tree
+            .get_style(self.node_id)
+            .unwrap()
+            .clone();
+
         style.min_size = Size {
             width: Dimension::Length(text_size.x),
             height: Dimension::Length(text_size.y),
@@ -477,12 +576,14 @@ impl Widget for TextInput {
     }
 
     fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {
-        // let min_size = self.text_style.measure_text(&self.get_text(), None);
         self.text_style.font_size *= shell.ui_scale;
 
         let style = Style {
             min_size: Size {
-                width: Dimension::Length(self.text_style.measure_text(&"a".repeat(30), None).x),
+                width: Dimension::Length(self.text_style.measure_text(
+                    &"a".repeat(30), 
+                    None
+                ).x),
                 height: Dimension::Length(self.text_style.line_height),
             },
 
@@ -503,9 +604,17 @@ impl Widget for TextInput {
         event: &InputEvent,
         shell: &mut InputShell,
     ) {
+        if !self.on_input.is_built() {
+            self.on_input.build(shell.values);
+        }
+        if !self.on_submit.is_built() {
+            self.on_submit.build(shell.values);
+        }
+
         match &event.event {
             InputType::KeyPress(press) if self.active => {
                 if let Some(Key::Enter) = press.as_key() {
+
                     self.on_submit.run(
                         &self.value.get().into_owned(),
                         self.node_id,
@@ -527,7 +636,10 @@ impl Widget for TextInput {
                 }
 
 
-                if let Some(text_changed) = self.handle_key(press, event.key_mods) {
+                if let Some(text_changed) = self.handle_key(
+                    press, 
+                    event.key_mods
+                ) {
                     shell.event_consumed = true;
 
                     if text_changed {
@@ -553,7 +665,9 @@ impl Widget for TextInput {
 
 
             InputType::MouseMove(pos) => {
-                let Some(ctx) = shell.tree.get_context(self.node_id) else { return };
+                let Some(ctx) = shell.tree.get_context(self.node_id) 
+                else { return };
+
                 let pos = ctx.inverse_global_transform * *pos;
                 let bounds = shell.tree.bounds(self.node_id).unwrap();
                 self.hovered = bounds.contains(pos);
@@ -577,17 +691,37 @@ impl Widget for TextInput {
                                 }
                             }
                         }
-                        Cursor::Selection { start, end, forward_select } => {
+                        Cursor::Selection { 
+                            start, 
+                            end, 
+                            forward_select 
+                        } => {
                             if forward_select {
                                 if index >= start {
-                                    self.cursor = Cursor::Selection { start, end: index, forward_select: true };
+                                    self.cursor = Cursor::Selection { 
+                                        start, 
+                                        end: index, 
+                                        forward_select: true 
+                                    };
                                 } else {
-                                    self.cursor = Cursor::Selection { start: index, end: start, forward_select: false };
+                                    self.cursor = Cursor::Selection { 
+                                        start: index, 
+                                        end: start, 
+                                        forward_select: false 
+                                    };
                                 }
                             } else if index <= end {
-                                self.cursor = Cursor::Selection { start: index, end, forward_select: false };
+                                self.cursor = Cursor::Selection { 
+                                    start: index, 
+                                    end, 
+                                    forward_select: false 
+                                };
                             } else {
-                                self.cursor = Cursor::Selection { start: end, end: index, forward_select: true };
+                                self.cursor = Cursor::Selection { 
+                                    start: end, 
+                                    end: index, 
+                                    forward_select: true 
+                                };
                             }
                         }
                     }
@@ -599,13 +733,19 @@ impl Widget for TextInput {
                 self.active = self.hovered;
                 self.pressed = self.active;
 
-                let Some(ctx) = shell.tree.get_context(self.node_id) else { return };
+                let Some(ctx) = shell.tree.get_context(self.node_id) 
+                else { return };
+
                 let pos = ctx.inverse_global_transform * event.mouse_pos;
-                let bounds = shell.tree.content_bounds(self.node_id).unwrap();
+                let bounds = shell.tree
+                    .content_bounds(self.node_id)
+                    .unwrap();
 
                 if self.pressed {
                     shell.event_consumed = true;
-                    self.cursor = Cursor::Position(self.index_rel_pos(pos.x - bounds.pos.x));
+                    self.cursor = Cursor::Position(self.index_rel_pos(
+                        pos.x - bounds.pos.x
+                    ));
                 }
             }
             InputType::MouseRelease(MouseButton::Left) => {
@@ -619,7 +759,8 @@ impl Widget for TextInput {
 
 
     fn draw(&self, shell: &mut DrawShell) {
-        let Some(bounds) = shell.tree.absolute_bounds(self) else { return };
+        let Some(bounds) = shell.tree.absolute_bounds(self) 
+        else { return };
 
         shell.list.push(
             Rectangle::new_bounds(
@@ -647,7 +788,8 @@ impl Widget for TextInput {
                     }
                     
                     // TODO: scale with transform
-                    let size = self.text_style.measure_text(&text, None);
+                    let size = self.text_style
+                        .measure_text(&text, None);
                     
                     let cursor_bar = Rectangle::new(
                         Vector2::new(
@@ -669,10 +811,12 @@ impl Widget for TextInput {
 
                     let diff = end - start;
                     let (start, split) = text.split_at(start);
-                    let offset = self.text_style.measure_text(start, None);
+                    let offset = self.text_style
+                        .measure_text(start, None);
 
                     let split = split.split_at(diff).0;
-                    let size = self.text_style.measure_text(split, None);
+                    let size = self.text_style
+                        .measure_text(split, None);
 
                     // TODO: scale with transform?
                     let cursor_bar = Rectangle::new(
