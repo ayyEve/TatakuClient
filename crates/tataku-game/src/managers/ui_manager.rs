@@ -339,26 +339,22 @@ impl UiManager {
                 // tree.mark_refresh("context changed");
             }
 
-            UiActionType::UpdateStyle(style) => {
-                tree.set_style(node, *style);
-                tree.mark_refresh("UpdateStyle");
-            }
+            // UiActionType::UpdateStyle(style) => {
+            //     tree.set_style(node, *style);
+            //     tree.mark_refresh("UpdateStyle");
+            // }
 
             UiActionType::UpdateStyleWith(f) => {
-                let Some(mut style) = tree.get_style(node).cloned() 
-                else { return };
-
-                f(&mut style);
-                tree.set_style(node, style);
-                tree.mark_refresh("UpdateStyleWith");
+                tree.update_style(node, |s| f(s));
             }
 
-            UiActionType::UpdateDisplay(display) => {
-                let Some(mut style) = tree.get_style(node).cloned() else { 
-                    return warn!("style not found for node: {node:?}");
-                };
-                style.display = display;
-                tree.set_style(node, style);
+            UiActionType::OverrideDisplay(display) => {
+                tree.set_display(node, display);
+                // let Some(mut style) = tree.get_style(node).cloned() else { 
+                //     return warn!("style not found for node: {node:?}");
+                // };
+                // style.display = display.into();
+                // tree.set_style(node, style);
                 tree.mark_refresh("UpdateDisplay");
             }
 

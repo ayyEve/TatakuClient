@@ -42,7 +42,7 @@ impl TatakuTask for InitGameTask {
             actions.push(BeatmapAction::Next);
             actions.push(MenuAction::SetMenu { 
                 id: "main_menu".into(), 
-                input: BuildableInputArguments::default() 
+                input: Box::new(BuildableInputArguments::default())
             });
         }
     }

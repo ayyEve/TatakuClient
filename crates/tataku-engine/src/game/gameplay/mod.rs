@@ -84,13 +84,14 @@ impl GamemodeInfos {
 
     pub fn get_playmode_actual<'a>(
         &self, 
-        playmode: &'a String, 
+        playmode: &'a str, 
         beatmap: Option<&'a BeatmapMeta>
-    ) -> &'a String {
-        let Ok(info) = self.get_info(playmode) else { return playmode };
+    ) -> &'a str {
+        let Ok(info) = self.get_info(playmode) 
+        else { return playmode };
         
         beatmap
             .filter(|b| !info.can_load_beatmap(&b.beatmap_type))
-            .map_or(playmode, |b| &b.mode)
+            .map_or(playmode, |b| &*b.mode)
     }
 }

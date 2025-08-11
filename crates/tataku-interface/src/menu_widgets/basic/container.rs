@@ -18,12 +18,9 @@ macro_rules! get_list {
 }
 
 
-#[derive(Widget)]
-#[widget(type("container"))]
 #[derive(ChainableInitializer)]
 pub struct Container {
-    #[chain] pub style: Style,
-    pub children: Vec<Box<dyn Widget>>,
+    children: Vec<Box<dyn Widget>>,
 
     #[chain] id: CowStr,
     #[chain] scrollable: bool,
@@ -40,7 +37,6 @@ pub struct Container {
 impl Container {
     pub fn new(items: Vec<Box<dyn Widget>>) -> Self {
         Self {
-            style: Style::DEFAULT,
             children: items,
             node_id: EMPTY_NODE,
             scrollable: false,
@@ -89,19 +85,128 @@ impl Container {
         self.programmatic = Some(data);
         self
     }
+
+
+    fn validate_scroll_position(
+        &mut self, 
+        tree: &mut Tree
+    ) {
+        let layout = tree.get_layout(self.node_id).unwrap();
+        let size = Vector2::new(
+            layout.scroll_width(),
+            layout.scroll_height(),
+        );
+
+        self.scroll_offset = self.scroll_offset.clamp(-size, Vector2::ZERO);
+    }
+
+    fn handle_scroll_operation(
+        &mut self,
+        scroll: &ScrollOperation,
+        tree: &mut Tree,
+    ) {
+        match &scroll.scroll_type {
+            ScrollType::ScrollByAmount(amt) 
+                => self.scroll_offset += *amt,
+
+            ScrollType::ScrollToPosition(pos) 
+                => self.scroll_offset = -*pos,
+
+            ScrollType::ScrollByPercent(percent) => {
+                let layout = tree
+                    .get_layout(self.node_id).unwrap();
+
+                let size = Vector2::new(
+                    layout.scroll_width(),
+                    layout.scroll_height(),
+                );
+                self.scroll_offset += (size * -*percent)
+                    .clamp(-size, Vector2::ZERO);
+            }
+            ScrollType::ScrollToPercent(percent) => {
+                let layout = tree
+                    .get_layout(self.node_id).unwrap();
+
+                let size = Vector2::new(
+                    layout.scroll_width(),
+                    layout.scroll_height(),
+                );
+                self.scroll_offset = (size * -*percent)
+                    .clamp(-size, Vector2::ZERO);
+            }
+
+            ScrollType::ScrollToId(id) => {
+                let Some((i, _)) = self.children
+                    .iter()
+                    .map(|c| 
+                        (c, tree.get_context(c.node_id()).unwrap())
+                    )
+                    .find(|(_, t)| 
+                        t.element_data.id.as_deref() == Some(&**id)
+                    )
+                else { return warn!("scroll: id not found: {id}")};
+                let node = i.node_id();
+
+                self.handle_scroll_operation(
+                    &ScrollOperation { 
+                        scroll_type: ScrollType::ScrollToNode(node) 
+                    }, 
+                    tree
+                );
+            }
+
+            // scroll to a specific node id
+            ScrollType::ScrollToNode(node) => {
+                let our_layout = tree
+                    .get_layout(self.node_id).unwrap();
+
+                let node_layout = tree
+                    .get_layout(*node).unwrap();
+
+                let top = Vector2::from(node_layout.location);
+
+                let offset = (
+                    Vector2::from(our_layout.size - node_layout.size)
+                    / 2.0
+                ).clamp(
+                    -Vector2::from(our_layout.size),
+                    Vector2::ZERO, 
+                );
+                
+                self.scroll_offset = top + offset;
+            }
+
+        }
+
+        self.validate_scroll_position(tree);
+    }
 }
 
 impl Widget for Container {
     fn name(&self) -> CowStr { "container_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn update_styles(
-        &mut self,
-        shell: &mut StyleShell,
-        _display_override: Option<ui::Display>) {
-        for i in self.children.iter_mut() {
-            i.update_styles(shell, None);
-        }
+    fn children(&self) -> WidgetChildren {
+        WidgetChildren::List(&self.children)
+    }
+    fn children_mut(&mut self) -> WidgetChildrenMut {
+        WidgetChildrenMut::List(&mut self.children)
+    }
+    
+    fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {
+        let children = self.children
+            .iter_mut()
+            .map(|w| w.layout(shell))
+            .collect::<TaffyResult<Vec<_>>>()?;
+
+        self.node_id = shell.tree.new_with_children(&children)?;
+        
+        shell.with_context(
+            self.node_id, 
+            |ctx| ctx.needs_inverse_transform = true,
+        );
+
+        Ok(self.node_id)
     }
 
     fn input(
@@ -198,22 +303,102 @@ impl Widget for Container {
         }
     }
 
-    fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {
-        let children = self.children.iter_mut()
-            .map(|w| w.layout(shell))
-            .collect::<TaffyResult<Vec<_>>>()?;
+    fn update(&mut self, shell: &mut UpdateShell) {
+        if let Some(data) = &mut self.programmatic {
+            let iter = get_list!(data, shell.values);
 
-        self.node_id = shell.tree.new_with_children(
-            self.style.clone(),
-            &children
-        )?;
+            let values = iter
+                .filter_map(|v| v.duplicate())
+                .collect::<Vec<_>>();
 
-        shell.with_context(
-            self.node_id, 
-            |ctx| ctx.needs_inverse_transform = true,
-        );
+            // FIXME: need to reload skin for added children
+            // make sure our list of children is the same length as the list of values
+            match self.children.len() as i64 - values.len() as i64 {
+                0 => {} // children and values are the same length, nothing to do
+                diff @ (..0) => {
+                    // children is too small, need to add elements
+                    
+                    for _ in 0..diff.abs() {
+                        // create the new element
+                        let mut e = data.template.build();
+                        let style = e.get_style_str();
+                        let mut resolver = CssResolver::new(&style);
 
-        Ok(self.node_id)
+                        let mut layout_shell = LayoutShell {
+                            tree: shell.tree,
+                            values: shell.values,
+                            owner: shell.owner,
+                            ui_scale: 1.0, // TODO:!
+                            resolver: &mut resolver,
+                        };
+
+                        // add it to the tree
+                        let child = match e.layout(&mut layout_shell) {
+                            Ok(n) => n,
+                            Err(e) => panic!("Error laying out new custom list child! {e}"), // TODO: not panic?
+                        };
+
+                        // make us its parent
+                        layout_shell.tree.add_child(self.node_id, child);
+                        
+                        // init it's style
+                        e.init_style(&mut layout_shell);
+
+                        // add to our list
+                        self.children.push(e);
+                    }
+
+                    // mark the tree as dirty
+                    shell.actions.push(UiAction::new(
+                        self.node_id,
+                        UiActionType::MarkDirty
+                    ));
+                    shell.actions.push(UiAction::new(
+                        self.node_id,
+                        UiActionType::Refresh
+                    ));
+                }
+                diff @ (0..) => {
+                    // too many elements, remove some
+                    for _ in 0..diff.abs() {
+                        // remove it from our list
+                        let removed = self
+                            .children
+                            .swap_remove(0);
+
+                        // remove it from the tree
+                        shell.tree.remove(removed.node_id());
+                    }
+
+                    // mark the tree as dirty
+                    shell.actions.push(UiAction::new(
+                        self.node_id,
+                        UiActionType::MarkDirty
+                    ));
+                    shell.actions.push(UiAction::new(
+                        self.node_id,
+                        UiActionType::Refresh
+                    ));
+                }
+            }
+
+            let path = ReflectPath::new(&data.variable);
+            for (i, value) in self
+                .children
+                .iter_mut()
+                .zip(values)
+            {
+                shell.values
+                    .impl_insert(path.clone(), value)
+                    .expect("error inserting into values");
+                i.update(shell);
+            }
+
+        } else {
+            for i in self.children.iter_mut() {
+                i.update(shell);
+            }
+        }
     }
 
     fn draw(&self, shell: &mut DrawShell) {
@@ -288,97 +473,6 @@ impl Widget for Container {
         }
     }
 
-    fn update(&mut self, shell: &mut UpdateShell) {
-        if let Some(data) = &mut self.programmatic {
-            let iter = get_list!(data, shell.values);
-
-            let values = iter
-                .filter_map(|v| v.duplicate())
-                .collect::<Vec<_>>();
-
-            // FIXME: need to reload skin for added children
-            // make sure our list of children is the same length as the list of values
-            match self.children.len() as i64 - values.len() as i64 {
-                0 => {} // children and values are the same length, nothing to do
-                diff @ (..0) => {
-                    // children is too small, need to add elements
-                    let mut layout_shell = LayoutShell {
-                        tree: shell.tree,
-                        values: shell.values,
-                        owner: shell.owner,
-                        ui_scale: 1.0, // TODO:!
-                    };
-
-                    for _ in 0..diff.abs() {
-                        // create the new element
-                        let mut e = data.template.build();
-
-                        // add it to the tree
-                        let child = match e.layout(&mut layout_shell) {
-                            Ok(n) => n,
-                            Err(e) => panic!("Error laying out new custom list child! {e}"), // TODO: not panic?
-                        };
-
-                        // make us its parent
-                        layout_shell.tree.add_child(self.node_id, child);
-
-                        // add to our list
-                        self.children.push(e);
-                    }
-
-                    // mark the tree as dirty
-                    shell.actions.push(UiAction::new(
-                        self.node_id,
-                        UiActionType::MarkDirty
-                    ));
-                    shell.actions.push(UiAction::new(
-                        self.node_id,
-                        UiActionType::Refresh
-                    ));
-                }
-                diff @ (0..) => {
-                    // too many elements, remove some
-                    for _ in 0..diff.abs() {
-                        // remove it from our list
-                        let removed = self
-                            .children
-                            .swap_remove(0);
-
-                        // remove it from the tree
-                        shell.tree.remove(removed.node_id());
-                    }
-
-                    // mark the tree as dirty
-                    shell.actions.push(UiAction::new(
-                        self.node_id,
-                        UiActionType::MarkDirty
-                    ));
-                    shell.actions.push(UiAction::new(
-                        self.node_id,
-                        UiActionType::Refresh
-                    ));
-                }
-            }
-
-            let path = ReflectPath::new(&data.variable);
-            for (i, value) in self
-                .children
-                .iter_mut()
-                .zip(values)
-            {
-                shell.values
-                    .impl_insert(path.clone(), value)
-                    .expect("error inserting into values");
-                i.update(shell);
-            }
-
-        } else {
-            for i in self.children.iter_mut() {
-                i.update(shell);
-            }
-        }
-    }
-
     fn handle_message(
         &mut self,
         message: &Message,
@@ -447,6 +541,26 @@ impl Widget for Container {
             i.reload_skin(shell);
         }
     }
+
+    fn operation(
+        &mut self, 
+        operation: &UiOperation, 
+        tree: &mut Tree,
+    ) {
+        if operation.target.resolve(self, tree) {
+            #[allow(clippy::single_match, reason = "expansion")]
+            match &operation.operation {
+                UiOperationType::Scroll(scroll) 
+                    => self.handle_scroll_operation(scroll, tree),
+
+                _ => {}
+            }
+        } else {
+            for i in self.children.iter_mut() {
+                i.operation(operation, tree);
+            }
+        }
+    }
 }
 
 #[derive(ChainableInitializer)]
@@ -482,105 +596,6 @@ impl ProgrammaticListData {
     }
 
 }
-
-
-
-
-mod macros {
-    // idk why this says its unused, if i remove it everything cries
-    #[allow(unused)]
-    use crate::prelude::*;
-
-    #[macro_export]
-    macro_rules! row {
-        ($($i:expr),*;$($t:ident = $v:expr),*) => {
-            Container::new(vec![
-                $(
-                    $i,
-                )*
-            ])
-            $(
-                .$t($v)
-            )*
-            .flex_direction(FlexDirection::Row)
-            .boxed()
-        };
-
-        ($vec:expr, $($t:ident = $v:expr),*) => {
-            Container::new($vec)
-            $(
-                .$t($v)
-            )*
-            .flex_direction(FlexDirection::Row)
-            .boxed()
-        }
-    }
-
-    #[macro_export]
-    macro_rules! col {
-        ($($i:expr),*;$($t:ident = $v:expr),*) => {
-            Container::new(vec![
-                $(
-                    $i,
-                )*
-            ])
-            $(
-                .$t($v)
-            )*
-            .flex_direction(FlexDirection::Column)
-            .boxed()
-        };
-
-        ($vec:expr, $($t:ident = $v:expr),*) => {
-            Container::new($vec)
-            $(
-                .$t($v)
-            )*
-            .flex_direction(FlexDirection::Column)
-            .boxed()
-        }
-    }
-
-}
-
-
-macro_rules! make_rect_helper {
-    ($name: ident, $ty: ty) => {
-        pub struct $name(pub taffy::Rect<$ty>);
-        impl From<$ty> for $name {
-            fn from(value: $ty) -> Self {
-                Self(taffy::Rect {
-                    top: value,
-                    left: value,
-                    bottom: value,
-                    right: value,
-                })
-            }
-        }
-        impl From<[$ty; 2]> for $name {
-            fn from(value: [$ty; 2]) -> Self {
-                Self(taffy::Rect {
-                    top: value[0],
-                    bottom: value[0],
-                    left: value[1],
-                    right: value[1],
-                })
-            }
-        }
-        impl From<[$ty; 4]> for $name {
-            fn from(value: [$ty; 4]) -> Self {
-                Self(taffy::Rect {
-                    top: value[0],
-                    left: value[1],
-                    bottom: value[2],
-                    right: value[3],
-                })
-            }
-        }
-    }
-}
-make_rect_helper!(Margin, LengthPercentageAuto);
-make_rect_helper!(Padding, LengthPercentage);
 
 /// how far the
 const DRAG_THRESHOLD:f32 = 5.0;

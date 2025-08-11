@@ -1,10 +1,8 @@
 use crate::prelude::*;
 
 pub trait CustomElement {
+    fn as_element(&self) -> Option<&dyn CustomElement> { None }
     fn build(&self) -> Box<dyn Widget>;
-    fn boxed(self) -> Box<dyn CustomElement> where Self:Sized + 'static {
-        Box::new(self)
-    }
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -53,27 +51,33 @@ pub enum Element {
     Slider(Box<SliderElement>),
     Checkbox(Box<CheckboxElement>),
     TextInput(Box<TextInputElement>),
+    KeyButton(Box<KeyButtonElement>),
     Dropdown(Box<DropdownElement>),
 }
 impl CustomElement for Element {
+    fn as_element(&self) -> Option<&dyn CustomElement> {
+        match self {
+            Self::Empty => None,
+            Self::Row(e) => Some(&**e as &dyn CustomElement),
+            Self::List(e) => Some(&**e as &dyn CustomElement),
+            Self::Column(e) => Some(&**e as &dyn CustomElement),
+            Self::Switch(e) => Some(&**e as &dyn CustomElement),
+            Self::Animatable(e) => Some(&**e as &dyn CustomElement),
+            Self::Conditional(e) => Some(&**e as &dyn CustomElement),
+            Self::Text(e) => Some(&**e as &dyn CustomElement),
+            Self::GameplayPreview(e) => Some(&**e as &dyn CustomElement),
+            Self::Slider(e) => Some(&**e as &dyn CustomElement),
+            Self::Button(e) => Some(&**e as &dyn CustomElement),
+            Self::Checkbox(e) => Some(&**e as &dyn CustomElement),
+            Self::TextInput(e) => Some(&**e as &dyn CustomElement),
+            Self::KeyButton(e) => Some(&**e as &dyn CustomElement),
+            Self::Dropdown(e) => Some(&**e as &dyn CustomElement),
+        }
+    }
     fn build(&self) -> Box<dyn Widget> {
         match self {
             Self::Empty => EmptyWidget::new_boxed(),
-            Self::Row(e) => e.build(),
-            Self::List(e) => e.build(),
-            Self::Column(e) => e.build(),
-            Self::Switch(e) => e.build(),
-            Self::Animatable(e) => e.build(),
-            Self::Conditional(e) => e.build(),
-
-            Self::Text(e) => e.build(),
-            Self::GameplayPreview(e) => e.build(),
-
-            Self::Slider(e) => e.build(),
-            Self::Button(e) => e.build(),
-            Self::Checkbox(e) => e.build(),
-            Self::TextInput(e) => e.build(),
-            Self::Dropdown(e) => e.build(),
+            other => other.as_element().unwrap().build(),
         }
     }
 }

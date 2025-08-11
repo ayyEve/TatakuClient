@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<?xml-model href="../xsd/dialog.xsd"?>
+
+<dialog 
+    id = "beatmap_settings" 
+    title = "Console"
+>
+    
+
+</dialog>

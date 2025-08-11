@@ -78,13 +78,12 @@
 
     <!-- the current main menu is broken up into rows -->
     <element>
-        <column style = "width: fill; height: fill">
+        <column id="pain" style = "width: fill; height: fill">
             <!-- the first row contains the song display -->
             <row id = "song-display">
                 <text style = "font-size: 30px; text-color: #FFFF;">
-                    <list>
+                    <list join=" - ">
                         <variable var="beatmaps.current.map.artist"/>
-                        <text text=" - "/>
                         <variable var="beatmaps.current.map.title"/>
                     </list>
                 </text>

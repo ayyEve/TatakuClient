@@ -40,5 +40,4 @@ pub use crate::managers::*;
 pub use crate::database::*;
 pub use tataku_engine::prelude::*;
 
-#[cfg(feature="graphics")] pub use crate::menus::*;
 #[cfg(feature="graphics")] pub use tataku_interface::prelude::*;

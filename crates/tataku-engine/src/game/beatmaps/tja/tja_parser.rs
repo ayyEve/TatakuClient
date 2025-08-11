@@ -4,25 +4,25 @@ use super::tja_beatmap::*;
 /// helper for parsing .tja files
 #[derive(Default)]
 pub struct TjaParser {
-    title: String,
-    title_en: String,
+    title: Arc<str>,
+    title_en: Arc<str>,
 
-    subtitle: String,
-    subtitle_en: String,
+    subtitle: Arc<str>,
+    subtitle_en: Arc<str>,
 
-    creator: String,
+    creator: Arc<str>,
 
     bpm: f32,
     offset: f32,
     audio_preview: f32,
 
-    audio_filename: String,
-    image_filename: String,
+    audio_filename: Arc<str>,
+    image_filename: Arc<str>,
 
     current_course: ParseCourse,
     courses: Vec<ParseCourse>,
 
-    course_lines: Vec<String>
+    course_lines: Vec<Arc<str>>
 }
 
 impl TjaParser {
@@ -31,11 +31,11 @@ impl TjaParser {
         self.offset = 0.0;
 
         for line in lines {
-            let Some(line) = line.split("//").next() else {continue };
+            let Some(line) = line.split("//").next() else { continue };
 
             if line.is_empty() { continue }
             // i am aware of the potential issue this causes, but it should be fine
-            self.course_lines.push(line.to_owned());
+            self.course_lines.push(line.to_owned().into());
 
             if line.starts_with("#") { 
                 if !self.current_course.is_valid() {
@@ -69,11 +69,11 @@ impl TjaParser {
         if value.is_empty() { return };
 
         match &*property {
-            "title" => self.title = value.to_owned(),
-            "subtitle" => self.subtitle = value.to_owned(),
-            "wave" => self.audio_filename = value.to_owned(),
-            "notedesigner" => self.creator = value.to_owned(),
-            "maker" => self.creator = value.to_owned(),
+            "title" => self.title = value.to_owned().into(),
+            "subtitle" => self.subtitle = value.to_owned().into(),
+            "wave" => self.audio_filename = value.to_owned().into(),
+            "notedesigner" => self.creator = value.to_owned().into(),
+            "maker" => self.creator = value.to_owned().into(),
 
             "bpm" => self.bpm = value.parse().unwrap_or_default(),
             "offset" => self.offset = value.parse().unwrap_or_default(),
@@ -151,7 +151,7 @@ impl ParseCourse {
 
     fn add_metadata(&mut self, key: &str, val: &str) {
         match key {
-            "course" => self.course.course_name = val.to_owned(),
+            "course" => self.course.course_name = val.to_owned().into(),
             "level" => self.course.course_level = val.parse().unwrap_or_default(),
             "balloon" => self.required_hits = val.split(",").map(|f|f.parse().unwrap_or(0)).collect(),
             

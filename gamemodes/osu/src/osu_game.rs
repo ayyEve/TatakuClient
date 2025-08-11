@@ -690,6 +690,181 @@ impl GameMode for OsuGame {
         }
     }
 
+    fn handle_gameplay_event(&mut self, event: GameplayEvent) {
+        match event {
+            GameplayEvent::SetBounds { bounds, full_window } => {
+                if full_window {
+                    // self.window_size = window_size;
+                    self.recalculate_playfield(bounds.size);
+                } else {
+                    self.apply_playfield(Arc::new(ScalingHelper::new_offset_scale(
+                        self.cs, 
+                        bounds.size, 
+                        bounds.pos, 
+                        0.80, 
+                        self.mods.has_mod(HardRock)
+                    )));
+                }
+            }
+
+            GameplayEvent::ApplyMods(mods) => {
+
+                let had_easy_or_hr = self.mods.has_mod(Easy) || self.mods.has_mod(HardRock);
+
+                let has_hr = mods.has_mod(HardRock);
+                let has_easy_or_hr = mods.has_mod(Easy) || has_hr;
+
+                let had_otb = self.mods.has_mod(OnTheBeat);
+                let has_otb = mods.has_mod(OnTheBeat);
+
+                // check easing type
+                let easing_type_names = ["in", "out", "inout"];
+                let mut last_easing_type = "";
+                let mut new_easing_type = "";
+                for i in easing_type_names {
+                    if self.mods.has_mod(i) { last_easing_type = i }
+                    if mods.has_mod(i) { new_easing_type = i }
+                }
+
+                // check easing
+                let easing_names = ["sine", "quad", "cube", "quart", "quint", "exp", "circ", "back"];
+                let mut last_easing = "";
+                let mut new_easing = "";
+                for i in easing_names {
+                    if self.mods.has_mod(i) { last_easing = i }
+                    if mods.has_mod(i) { new_easing = i }
+                }
+
+                self.mods = mods;
+
+                let mut set_ar = None;
+                let mut set_easing = None;
+
+                if has_easy_or_hr || had_easy_or_hr != has_easy_or_hr {
+                    self.cs = Self::get_cs(&self.metadata, &self.mods);
+                    let ar = Self::get_ar(&self.metadata, &self.mods);
+                    
+                    self.recalculate_playfield(self.scaling_helper.window_size);
+                    self.setup_hitwindows();
+
+                    set_ar = Some(ar);
+                }
+            
+                if last_easing != new_easing || last_easing_type != new_easing_type {
+                    // use out as default easing type
+                    if new_easing_type.is_empty() && !new_easing.is_empty() {
+                        new_easing_type = "out";
+                    }
+
+                    let easing = match (new_easing_type, new_easing) {
+                        // sine
+                        ("in", "sine") => Easing::EaseInSine,
+                        ("out", "sine") => Easing::EaseOutSine,
+                        ("inout", "sine") => Easing::EaseInOutSine,
+                        // quadratic
+                        ("in", "quad") => Easing::EaseInQuadratic,
+                        ("out", "quad") => Easing::EaseOutQuadratic,
+                        ("inout", "quad") => Easing::EaseInOutQuadratic,
+                        // cubic
+                        ("in", "cube") => Easing::EaseInCubic,
+                        ("out", "cube") => Easing::EaseOutCubic,
+                        ("inout", "cube") => Easing::EaseInOutCubic,
+                        // quartic
+                        ("in", "quart") => Easing::EaseInQuartic,
+                        ("out", "quart") => Easing::EaseOutQuartic,
+                        ("inout", "quart") => Easing::EaseInOutQuartic,
+                        // quintic
+                        ("in", "quint") => Easing::EaseInQuintic,
+                        ("out", "quint") => Easing::EaseOutQuintic,
+                        ("inout", "quint") => Easing::EaseInOutQuintic,
+                        // exponential
+                        ("in", "exp") => Easing::EaseInExponential,
+                        ("out", "exp") => Easing::EaseOutExponential,
+                        ("inout", "exp") => Easing::EaseInOutExponential,
+                        // // circular
+                        // ("in", "circ") => Easing::EaseInCircular,
+                        // ("out", "circ") => Easing::EaseOutCircular,
+                        // // back
+                        // ("in", "back") => Easing::EaseInBack      (1.7, 1.7 * 1.525),
+                        // ("out", "back") => Easing::EaseOutBack    (1.7, 1.7 * 1.525),
+                        // ("inout", "back") => Easing::EaseInOutBack(1.7, 1.7 * 1.525),
+                        _ => Easing::Linear
+                    };
+
+                    set_easing = Some(easing);
+                }
+                
+                if has_otb != had_otb {
+                    if has_otb {
+                        let timing_points = self.timing_points
+                            .iter()
+                            .filter(|t| !t.is_inherited())
+                            .copied()
+                            .collect::<Vec<_>>();
+                        let mut index = 0;
+                        // info!("tp: {} -> {}", timing_points[index].time, timing_points[index].beat_length);
+                        
+                        for note in self.notes.iter_mut() {
+                            // check next timing point
+                            if let Some(next) = timing_points.get(index + 1) {
+                                if next.time <= note.time() { 
+                                    index += 1; 
+                                    // info!("tp: {} -> {}", timing_points[index].time, timing_points[index].beat_length);
+                                }
+                            }
+
+                            // get the beat length of the current timing point
+                            let beat_length = timing_points[index].beat_length;
+
+                            // normalize the note time to "align" with the control point time offset
+                            let normalized_time = note.time() - timing_points[index].time; // beat lengths with decimal points
+                            let m = beat_length - (normalized_time % beat_length); // beat lengths without a decimal point
+                            let m2 = normalized_time % beat_length;
+                            // info!("{normalized_time}, {m}, {m2}");
+
+                            // if this note lands on a beat, or within 10ms of a beat, make it ~funky~
+                            if m < 10.0 || m2 < 10.0 {
+                                note.set_approach_easing(Easing::EaseOutExponential);
+                            } else {
+                                note.set_approach_easing(Easing::Linear);
+                            }
+                            
+                        }
+
+                        set_easing = None;
+                    } else {
+                        set_easing = Some(Easing::Linear);
+                    }
+
+                }
+
+                if set_ar.is_some() || set_easing.is_some() {
+                    for note in self.notes.iter_mut() {
+                        if let Some(easing) = set_easing {
+                            note.set_approach_easing(easing);
+                        }
+                        if let Some(ar) = set_ar {
+                            note.set_ar(ar);
+                        }
+                    }
+                }
+
+            }
+        
+            GameplayEvent::BeatHappened { pulse_length } => {
+                for i in self.notes.iter_mut() {
+                    i.beat_happened(pulse_length);
+                }
+            }
+            GameplayEvent::KiaiChanged { enabled } => {
+                for i in self.notes.iter_mut() {
+                    i.kiai_changed(enabled);
+                }
+            }
+
+            _ => {}
+        }
+    }
 
     fn update(
         &mut self, 
@@ -996,21 +1171,6 @@ impl GameMode for OsuGame {
         Some(time)
     }
 
-    fn set_bounds(&mut self, bounds: Bounds, full_window: bool) {
-        if full_window {
-            // self.window_size = window_size;
-            self.recalculate_playfield(bounds.size);
-        } else {
-            self.apply_playfield(Arc::new(ScalingHelper::new_offset_scale(
-                self.cs, 
-                bounds.size, 
-                bounds.pos, 
-                0.80, 
-                self.mods.has_mod(HardRock)
-            )));
-        }
-    }
-
     fn time_jump(
         &mut self, 
         new_time: f32,
@@ -1090,161 +1250,6 @@ impl GameMode for OsuGame {
         source
     }
 
-    fn apply_mods(&mut self, mods: Arc<ModManager>) {
-        let had_easy_or_hr = self.mods.has_mod(Easy) || self.mods.has_mod(HardRock);
-
-        let has_hr = mods.has_mod(HardRock);
-        let has_easy_or_hr = mods.has_mod(Easy) || has_hr;
-
-        let had_otb = self.mods.has_mod(OnTheBeat);
-        let has_otb = mods.has_mod(OnTheBeat);
-
-        // check easing type
-        let easing_type_names = ["in", "out", "inout"];
-        let mut last_easing_type = "";
-        let mut new_easing_type = "";
-        for i in easing_type_names {
-            if self.mods.has_mod(i) { last_easing_type = i }
-            if mods.has_mod(i) { new_easing_type = i }
-        }
-
-        // check easing
-        let easing_names = ["sine", "quad", "cube", "quart", "quint", "exp", "circ", "back"];
-        let mut last_easing = "";
-        let mut new_easing = "";
-        for i in easing_names {
-            if self.mods.has_mod(i) { last_easing = i }
-            if mods.has_mod(i) { new_easing = i }
-        }
-
-        self.mods = mods;
-
-        let mut set_ar = None;
-        let mut set_easing = None;
-
-        if has_easy_or_hr || had_easy_or_hr != has_easy_or_hr {
-            self.cs = Self::get_cs(&self.metadata, &self.mods);
-            let ar = Self::get_ar(&self.metadata, &self.mods);
-            
-            self.recalculate_playfield(self.scaling_helper.window_size);
-            self.setup_hitwindows();
-
-            set_ar = Some(ar);
-        }
-    
-        if last_easing != new_easing || last_easing_type != new_easing_type {
-            // use out as default easing type
-            if new_easing_type.is_empty() && !new_easing.is_empty() {
-                new_easing_type = "out";
-            }
-
-            let easing = match (new_easing_type, new_easing) {
-                // sine
-                ("in", "sine") => Easing::EaseInSine,
-                ("out", "sine") => Easing::EaseOutSine,
-                ("inout", "sine") => Easing::EaseInOutSine,
-                // quadratic
-                ("in", "quad") => Easing::EaseInQuadratic,
-                ("out", "quad") => Easing::EaseOutQuadratic,
-                ("inout", "quad") => Easing::EaseInOutQuadratic,
-                // cubic
-                ("in", "cube") => Easing::EaseInCubic,
-                ("out", "cube") => Easing::EaseOutCubic,
-                ("inout", "cube") => Easing::EaseInOutCubic,
-                // quartic
-                ("in", "quart") => Easing::EaseInQuartic,
-                ("out", "quart") => Easing::EaseOutQuartic,
-                ("inout", "quart") => Easing::EaseInOutQuartic,
-                // quintic
-                ("in", "quint") => Easing::EaseInQuintic,
-                ("out", "quint") => Easing::EaseOutQuintic,
-                ("inout", "quint") => Easing::EaseInOutQuintic,
-                // exponential
-                ("in", "exp") => Easing::EaseInExponential,
-                ("out", "exp") => Easing::EaseOutExponential,
-                ("inout", "exp") => Easing::EaseInOutExponential,
-                // // circular
-                // ("in", "circ") => Easing::EaseInCircular,
-                // ("out", "circ") => Easing::EaseOutCircular,
-                // // back
-                // ("in", "back") => Easing::EaseInBack      (1.7, 1.7 * 1.525),
-                // ("out", "back") => Easing::EaseOutBack    (1.7, 1.7 * 1.525),
-                // ("inout", "back") => Easing::EaseInOutBack(1.7, 1.7 * 1.525),
-                _ => Easing::Linear
-            };
-
-            set_easing = Some(easing);
-        }
-        
-        if has_otb != had_otb {
-            if has_otb {
-                let timing_points = self.timing_points
-                    .iter()
-                    .filter(|t| !t.is_inherited())
-                    .copied()
-                    .collect::<Vec<_>>();
-                let mut index = 0;
-                // info!("tp: {} -> {}", timing_points[index].time, timing_points[index].beat_length);
-                
-                for note in self.notes.iter_mut() {
-                    // check next timing point
-                    if let Some(next) = timing_points.get(index + 1) {
-                        if next.time <= note.time() { 
-                            index += 1; 
-                            // info!("tp: {} -> {}", timing_points[index].time, timing_points[index].beat_length);
-                        }
-                    }
-
-                    // get the beat length of the current timing point
-                    let beat_length = timing_points[index].beat_length;
-
-                    // normalize the note time to "align" with the control point time offset
-                    let normalized_time = note.time() - timing_points[index].time; // beat lengths with decimal points
-                    let m = beat_length - (normalized_time % beat_length); // beat lengths without a decimal point
-                    let m2 = normalized_time % beat_length;
-                    // info!("{normalized_time}, {m}, {m2}");
-
-                    // if this note lands on a beat, or within 10ms of a beat, make it ~funky~
-                    if m < 10.0 || m2 < 10.0 {
-                        note.set_approach_easing(Easing::EaseOutExponential);
-                    } else {
-                        note.set_approach_easing(Easing::Linear);
-                    }
-                    
-                }
-
-                set_easing = None;
-            } else {
-                set_easing = Some(Easing::Linear);
-            }
-
-        }
-
-        if set_ar.is_some() || set_easing.is_some() {
-            for note in self.notes.iter_mut() {
-                if let Some(easing) = set_easing {
-                    note.set_approach_easing(easing);
-                }
-                if let Some(ar) = set_ar {
-                    note.set_ar(ar);
-                }
-            }
-        }
-
-    }
-
-    
-    fn unpause(&mut self) {
-        // info!("unpause");
-        if self.use_controller_cursor {
-            // info!("using to controller input");
-            // CursorManager::set_gamemode_override(true);
-        } 
-        // else {
-        //     info!("using mouse input");
-        // }
-    }
-
     fn handle_input(&mut self, input: InputEvent) -> Option<ReplayAction> {
         match input.event {
             InputType::KeyPress(press) => {
@@ -1320,7 +1325,13 @@ impl GameMode for OsuGame {
                     
                     
                     let settings2 = settings.clone();
-                    self.actions.push(GameAction::UpdateSettings(Box::new(move |settings| settings.update_gamemode_settings(GAME_INFO, settings2) )));
+                    self.actions.push(GameAction::UpdateSettings(Arc::new(
+                        move |settings| 
+                        settings.update_gamemode_settings(
+                            GAME_INFO, 
+                            settings2.clone()
+                        ) 
+                    )));
 
                     self.game_settings = Arc::new(settings);
                     self.recalculate_playfield(self.scaling_helper.window_size);
@@ -1370,7 +1381,13 @@ impl GameMode for OsuGame {
                     a.playfield_scale += delta;
                     self.game_settings = Arc::new(a.clone());
 
-                    self.actions.push(GameAction::UpdateSettings(Box::new(move |settings| settings.update_gamemode_settings(GAME_INFO, a) )));
+                    self.actions.push(GameAction::UpdateSettings(Arc::new(
+                        move |settings| 
+                        settings.update_gamemode_settings(
+                            GAME_INFO, 
+                            a.clone()
+                        ) 
+                    )));
 
                     self.recalculate_playfield(self.scaling_helper.window_size);
                 }
@@ -1442,14 +1459,6 @@ impl GameMode for OsuGame {
 
             _ => None
         }
-    }
-
-    
-    fn beat_happened(&mut self, pulse_length: f32) {
-        self.notes.iter_mut().for_each(|n| n.beat_happened(pulse_length));
-    }
-    fn kiai_changed(&mut self, is_kiai: bool) {
-        self.notes.iter_mut().for_each(|n| n.kiai_changed(is_kiai));
     }
 
     fn build_widgets(

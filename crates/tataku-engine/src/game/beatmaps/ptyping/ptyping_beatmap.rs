@@ -103,28 +103,29 @@ impl TatakuBeatmap for PTypingBeatmap {
         // TODO: this
         let bpm = 100.0; //60_000.0 / self.beat_length;
         Arc::new(BeatmapMeta { 
-            file_path: self.file_path.clone(), 
+            file_path: self.file_path.clone().into(), 
             beatmap_hash: self.hash(), 
             beatmap_type: BeatmapType::UTyping,
-            mode: "utyping".to_owned(), 
+            mode: "utyping".to_owned().into(), 
 
+            artist: self.artist.ascii.clone().unwrap_or_default().into(), 
+            title: self.title.ascii.clone().unwrap_or_default().into(), 
+            artist_unicode: self.artist.unicode.clone().unwrap_or_default().into(), 
+            title_unicode: self.title.unicode.clone().unwrap_or_default().into(), 
 
-            artist: self.artist.ascii.clone().unwrap_or_default(), 
-            title: self.title.ascii.clone().unwrap_or_default(), 
-            artist_unicode: self.artist.unicode.clone().unwrap_or_default(), 
-            title_unicode: self.title.unicode.clone().unwrap_or_default(), 
+            creator: self.def.info.mapper.username.clone().into(), 
+            version: self.def.info.difficulty_name.get_string().into(), 
 
-            creator: self.def.info.mapper.username.clone(), 
-            version: self.def.info.difficulty_name.get_string(), 
-
-            audio_filename: self.parent_dir.clone() 
+            audio_filename: (self.parent_dir.clone() 
                 + "/files/" 
-                + &self.def.file_collection.audio.hash, 
+                + &self.def.file_collection.audio.hash).into(), 
             
-            image_filename: self.parent_dir.clone() 
+            image_filename: (
+                self.parent_dir.clone() 
                 + "/files/" 
                 + &self.def.file_collection.background.as_ref()
-                    .map_or("none.png".to_owned(), |f| f.hash.clone()),
+                    .map_or("none.png".to_owned(), |f| f.hash.clone())
+            ).into(),
             
             
             audio_preview: self.def.info.preview_time, 

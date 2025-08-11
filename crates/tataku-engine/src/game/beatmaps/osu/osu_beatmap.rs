@@ -25,7 +25,7 @@ pub struct OsuBeatmap {
     pub storyboard: Option<StoryboardDef>
 }
 impl OsuBeatmap {
-    pub fn load(file_path:String) -> TatakuResult<OsuBeatmap> {
+    pub fn load(file_path: impl AsRef<Path>) -> TatakuResult<OsuBeatmap> {
         Self::base_loader(file_path, false)
     }
 
@@ -120,10 +120,10 @@ impl OsuBeatmap {
                     let val = split.next().unwrap().trim();
 
                     match key {
-                        "AudioFilename" => metadata.audio_filename = parent_dir.join(val).to_str().unwrap().to_owned(),
+                        "AudioFilename" => metadata.audio_filename = parent_dir.join(val).to_str().unwrap().to_owned().into(),
                         "PreviewTime" => metadata.audio_preview = val.parse().unwrap_or(0.0),
                         "StackLeniency" => beatmap.stack_leniency = val.parse().unwrap_or(0.0),
-                        "Mode" => metadata.mode = playmode_from_u8(val.parse::<u8>().unwrap()).to_owned(),
+                        "Mode" => metadata.mode = playmode_from_u8(val.parse::<u8>().unwrap()).to_owned().into(),
 
                         _ => {}
                     }
@@ -134,12 +134,12 @@ impl OsuBeatmap {
                     let val = split.collect::<Vec<&str>>().join(":");
 
                     match key {
-                        "Title" => metadata.title = val.clone(),
-                        "TitleUnicode" => metadata.title_unicode = val.clone(),
-                        "Artist" => metadata.artist = val.clone(),
-                        "ArtistUnicode" => metadata.artist_unicode = val.clone(),
-                        "Creator" => metadata.creator = val.clone(),
-                        "Version" => metadata.version = val.clone(),
+                        "Title" => metadata.title = val.into(),
+                        "TitleUnicode" => metadata.title_unicode = val.into(),
+                        "Artist" => metadata.artist = val.into(),
+                        "ArtistUnicode" => metadata.artist_unicode = val.into(),
+                        "Creator" => metadata.creator = val.into(),
+                        "Version" => metadata.version = val.into(),
                         _ => {}
                     }
                 }
@@ -170,7 +170,8 @@ impl OsuBeatmap {
                                     .join(filename)
                                     .to_str()
                                     .unwrap()
-                                    .to_owned();
+                                    .to_owned()
+                                    .into();
                             }
 
                             if !metadata_only {
@@ -409,7 +410,7 @@ impl OsuBeatmap {
 
     pub fn from_metadata(metadata: &Arc<BeatmapMeta>) -> OsuBeatmap {
         // load the betmap
-        let mut b = Self::load(metadata.file_path.clone()).unwrap();
+        let mut b = Self::load(&*metadata.file_path).unwrap();
         // overwrite the loaded meta with the old meta, this maintains calculations etc
         b.metadata = metadata.clone();
         b
@@ -441,16 +442,16 @@ impl TatakuBeatmap for OsuBeatmap {
 
 
 
-    fn get_events(&self) -> Vec<IngameEvent> {
+    fn get_events(&self) -> Vec<BeatmapEvent> {
         self.events.iter().filter_map(|i| match i {
-            OsuEvent::Break { start_time, end_time } => Some(IngameEvent::Break { start: *start_time as f32, end: *end_time as f32 }),
+            OsuEvent::Break { start_time, end_time } => Some(BeatmapEvent::Break { start: *start_time as f32, end: *end_time as f32 }),
             _ => None
         }).collect()
     }
     #[cfg(feature="graphics")]
     fn get_animation(&self, skin_manager: &mut dyn SkinProvider) -> Option<Box<dyn BeatmapAnimation>> {
         let Some(storyboard) = &self.storyboard else { return None };
-        let parent_dir = Path::new(&self.metadata.file_path).parent()?.to_string_lossy().to_string();
+        let parent_dir = Path::new(&*self.metadata.file_path).parent()?.to_string_lossy().to_string();
         match OsuStoryboard::new(
             storyboard,
             &parent_dir,

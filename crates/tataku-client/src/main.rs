@@ -83,8 +83,7 @@ fn start_game() {
     trace!("window running");
     game_window.run(e);
 
-    // // wait for game to finish
-    // runtime.block_on(game).unwrap();
+    // wait for game to finish
     game.join().unwrap();
 
     info!("Byebye!");

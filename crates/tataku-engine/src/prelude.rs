@@ -68,58 +68,17 @@ pub use crate::tataku_integration_event::*;
 /// \* \~ **Organization!** \~ *
 #[cfg(feature="ui")]
 pub mod ui {
-    pub use taffy::Size;
-    pub use taffy::Style;
     pub use taffy::Layout;
-    pub use taffy::Display;
-    pub use taffy::Dimension;
-    pub use taffy::TaffyTree;
     pub use taffy::TaffyResult;
-    pub use taffy::AlignContent;
-    pub use taffy::FlexDirection;
-    pub use taffy::LengthPercentage;
-    pub use taffy::LengthPercentageAuto;
     pub use taffy::NodeId as TaffyNodeId;
     
     pub use crate::graphics::ui::style::*;
     pub use crate::graphics::ui::operations::*;
 
-    
     pub const EMPTY_NODE: super::NodeId = super::NodeId {
         node_id: TaffyNodeId::new(u64::MAX),
         owner: super::MessageOwner::Menu,
     };
-    pub const FILL: Dimension = Dimension::Percent(1.0);
-    pub const SHRINK: Dimension = Dimension::Auto;
-    
-    /// generic layout for menus
-    pub fn menu_layout() -> Style {
-        use taffy::prelude::*;
-        Style {
-            display: Display::Flex,
-            flex_direction: FlexDirection::Column,
-            box_sizing: taffy::BoxSizing::ContentBox,
-            position: taffy::Position::Relative,
-            overflow: taffy::Point {
-                x: taffy::Overflow::Hidden,
-                y: taffy::Overflow::Hidden,
-            },
-            
-            align_self: None,
-            align_items: Some(AlignItems::Stretch),
-            align_content: Some(AlignContent::SpaceBetween),
-
-            justify_self: None,
-            justify_items: Some(AlignItems::Stretch),
-            justify_content: Some(AlignContent::SpaceBetween),
-            
-            size: Size::from_percent(1.0, 1.0),
-            min_size: Size::from_percent(1.0, 1.0),
-            max_size: Size::from_percent(1.0, 1.0),
-
-            ..Default::default()
-        }
-    }
-
+    pub const FILL: CssUnit = CssUnit::Percent(half::f16::from_f32_const(1.0));
+    pub const SHRINK: CssUnit = CssUnit::Auto;
 }
-

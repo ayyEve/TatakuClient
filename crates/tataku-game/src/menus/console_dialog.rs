@@ -31,13 +31,13 @@ impl Widget for ConsoleDialog {
     fn node_id(&self) -> NodeId { self.node_id }
 
 
-    fn update_styles(
-        &mut self, 
-        shell: &mut StyleShell, 
-        display_override: Option<ui::Display>
-    ) {
-        self.node.update_styles(shell, display_override);
-    }
+    // fn update_styles(
+    //     &mut self, 
+    //     shell: &mut StyleShell, 
+    //     display_override: Option<DisplayType>
+    // ) {
+    //     self.node.update_styles(shell, display_override);
+    // }
 
     fn layout(&mut self, shell: &mut LayoutShell) -> ui::TaffyResult<NodeId> {
 
@@ -53,7 +53,9 @@ impl Widget for ConsoleDialog {
         let output = Container::new(Vec::new())
             .make_programmatic(ProgrammaticListData::new(
                 Element::Text(Box::new(TextElement {
-                    text: BuildableText::Variable { variable: "_line".to_string() },
+                    text: BuildableText::Variable { 
+                        variable: VariablePathResolver::new("_line".to_string())
+                    },
                     ..Default::default()
                 })),
                 // ElementDef {
@@ -67,8 +69,8 @@ impl Widget for ConsoleDialog {
                 //     },
                 //     debug_color: None,
                 //     debug_name: None,
-                //     width: Dimension::Percent(1.0),
-                //     height: Dimension::Auto,
+                //     width: Dimension::percent(1.0),
+                //     height: Dimension::auto,
                 //     style: Style::default(),
                 // },
                 OUTPUT_PATH.to_string(),
@@ -81,7 +83,11 @@ impl Widget for ConsoleDialog {
             .height(SHRINK)
             .boxed();
 
-        let input = TextInput::new("Command:", BuildableText::Variable { variable: INPUT_PATH.to_owned() })
+        let input = TextInput::new(
+            "Command:", 
+            BuildableText::Variable { 
+                variable: VariablePathResolver::new(INPUT_PATH.to_owned()), 
+            })
             .on_submit(parse_line(shell.owner))
             .width(FILL)
             .height(SHRINK)
@@ -92,7 +98,7 @@ impl Widget for ConsoleDialog {
             .width(FILL)
             .height(FILL)
             .flex_direction(FlexDirection::Column)
-            .vertical_align(AlignContent::SpaceBetween)
+            // .vertical_align(AlignContent::SpaceBetween)
             .boxed();
 
         let child = self.node.layout(shell)?;

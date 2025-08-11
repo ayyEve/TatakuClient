@@ -4,25 +4,25 @@ use crate::prelude::*;
 #[allow(unused)]
 pub struct StepmaniaBeatmap {
     hash: Md5Hash,
-    file_path: String,
+    file_path: Arc<str>,
 
-    title: String,
-    subtitle: String,
-    artist: String,
+    title: Arc<str>,
+    subtitle: Arc<str>,
+    artist: Arc<str>,
 
     // these are options to make them easier to unwrap_or()
-    title_translated:    Option<String>,
-    subtitle_translated: Option<String>,
-    artist_translated:   Option<String>,
+    title_translated:    Option<Arc<str>>,
+    subtitle_translated: Option<Arc<str>>,
+    artist_translated:   Option<Arc<str>>,
 
-    genre: String,
-    credit: String,
+    genre: Arc<str>,
+    credit: Arc<str>,
 
     /// renamed from "music"
-    audio_file: String,
-    banner: String,
-    background: String,
-    cd_title: String,
+    audio_file: Arc<str>,
+    banner: Arc<str>,
+    background: Arc<str>,
+    cd_title: Arc<str>,
 
     /// preview time start
     sample_start: f32,
@@ -47,9 +47,9 @@ pub struct StepmaniaBeatmap {
 }
 
 impl StepmaniaBeatmap {
-    pub fn load_multiple<P:AsRef<Path>>(path:P) -> TatakuResult<Vec<Self>> {
+    pub fn load_multiple<P:AsRef<Path>>(path: P) -> TatakuResult<Vec<Self>> {
         let mut map = Self {
-            file_path: path.as_ref().to_string_lossy().to_string(),
+            file_path: path.as_ref().to_string_lossy().to_string().into(),
             ..Default::default()
         };
 
@@ -76,19 +76,19 @@ impl StepmaniaBeatmap {
             let value = split.next().unwrap_or_default();
 
             match key {
-                "#TITLE" => map.title = value.to_owned(),
-                "#SUBTITLE" => map.subtitle = value.to_owned(),
-                "#ARTIST" => map.artist = value.to_owned(),
+                "#TITLE" => map.title = value.to_owned().into(),
+                "#SUBTITLE" => map.subtitle = value.to_owned().into(),
+                "#ARTIST" => map.artist = value.to_owned().into(),
 
-                "#TITLETRANSLIT" if !value.is_empty() => map.title_translated = Some(value.to_owned()),
-                "#SUBTITLETRANSLIT" if !value.is_empty() => map.subtitle_translated = Some(value.to_owned()),
-                "#ARTISTTRANSLIT" if !value.is_empty() => map.artist_translated = Some(value.to_owned()),
+                "#TITLETRANSLIT" if !value.is_empty() => map.title_translated = Some(value.to_owned().into()),
+                "#SUBTITLETRANSLIT" if !value.is_empty() => map.subtitle_translated = Some(value.to_owned().into()),
+                "#ARTISTTRANSLIT" if !value.is_empty() => map.artist_translated = Some(value.to_owned().into()),
 
-                "#GENRE" => map.genre = value.to_owned(),
-                "#CREDIT" => map.credit = value.to_owned(),
-                "#MUSIC" => map.audio_file = parent.join(value).to_string_lossy().to_string(),
-                "#BANNER" => map.banner = parent.join(value).to_string_lossy().to_string(),
-                "#BACKGROUND" => map.background = parent.join(value).to_string_lossy().to_string(),
+                "#GENRE" => map.genre = value.to_owned().into(),
+                "#CREDIT" => map.credit = value.to_owned().into(),
+                "#MUSIC" => map.audio_file = parent.join(value).to_string_lossy().to_string().into(),
+                "#BANNER" => map.banner = parent.join(value).to_string_lossy().to_string().into(),
+                "#BACKGROUND" => map.background = parent.join(value).to_string_lossy().to_string().into(),
                 "#OFFSET" => map.audio_offset = value.parse().unwrap_or_default(),
                 "#BPMS" => {
                     // bpms are a list of beat=bpm separated by commas
@@ -145,10 +145,10 @@ impl StepmaniaBeatmap {
                     }
 
                     // first entries are meta (if sm, otherwise meta was already loaded)
-                    chart.chart_type          = get!(chart_type);
-                    chart.description         = get!(description);
-                    chart.difficulty          = get!(difficulty);
-                    chart.diff_value               = get!(meter).parse().unwrap_or_default();
+                    chart.chart_type = get!(chart_type).into();
+                    chart.description = get!(description).into();
+                    chart.difficulty = get!(difficulty).into();
+                    chart.diff_value = get!(meter).parse().unwrap_or_default();
                     chart.groove_radar_values = get!(groove_radar_values)
                         .split(",")
                         .map(|r| r.parse().unwrap_or_default())
@@ -297,7 +297,7 @@ impl StepmaniaBeatmap {
 
 impl TatakuBeatmap for StepmaniaBeatmap {
     fn hash(&self) -> Md5Hash {self.hash}
-    fn playmode(&self, _incoming:String) -> String {"mania".to_owned()}
+    fn playmode(&self, _incoming: String) -> String { "mania".to_owned() }
     
     fn slider_velocity(&self) -> f32 { 1.0 }
     // fn slider_velocity_at(&self, _time:f32) -> f32 { 400.0 }
@@ -322,7 +322,7 @@ impl TatakuBeatmap for StepmaniaBeatmap {
             file_path: self.file_path.clone(),
             beatmap_hash: self.hash,
             beatmap_type: BeatmapType::Stepmania,
-            mode: self.playmode(String::new()),
+            mode: self.playmode(String::new()).into(),
             artist: self.artist.clone(),
             title: self.title.clone(),
             artist_unicode: self.artist_translated.as_ref().unwrap_or(&self.artist).clone(),
@@ -378,10 +378,10 @@ impl From<char> for StepmaniaTempNoteType {
 
 #[derive(Default, Clone)]
 pub struct StepmaniaChart {
-    pub chart_type: String, // not sure this matters at all
+    pub chart_type: Arc<str>, // not sure this matters at all
     /// usually difficulty name
-    pub description: String,
-    pub difficulty: String,
+    pub description: Arc<str>,
+    pub difficulty: Arc<str>,
     pub diff_value: u32, 
     pub groove_radar_values: Vec<u32>,
     pub notes: Vec<StepmaniaNote>,

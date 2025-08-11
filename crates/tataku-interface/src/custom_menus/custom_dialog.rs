@@ -6,16 +6,16 @@ use crate::prelude::ui::*;
 #[serde(rename_all="camelCase")]
 pub struct CustomDialog {
     #[serde(rename = "@id")] pub id: String,
-    #[serde(rename = "@title")] pub title: String,
-    #[serde(rename = "@allow_multiple", default)] pub allow_multiple: bool,
-    #[serde(rename = "@draggable", default)] pub draggable: bool, 
-    #[serde(rename = "@resizable", default)] pub resizable: bool,
+    #[serde(rename = "@title")] title: String,
+    #[serde(rename = "@allow_multiple", default)] allow_multiple: bool,
+    #[serde(rename = "@draggable", default)] draggable: bool, 
+    #[serde(rename = "@resizable", default)] resizable: bool,
 
-    #[serde(default)] pub style: Option<String>,
-    #[serde(default)] pub events: BuildableEventsTag,
+    #[serde(default)] style: Option<String>,
+    #[serde(default)] events: BuildableEventsTag,
     #[serde(default)] pub inputs: BuildableInputsTag,
 
-    pub element: ElementTag,
+    element: ElementTag,
 }
 impl CustomDialog {
     pub fn build(
@@ -87,45 +87,26 @@ pub struct BuiltCustomDialog {
 impl Widget for BuiltCustomDialog {
     fn name(&self) -> CowStr { format!("custom-{}", self.id).into() }
     fn node_id(&self) -> NodeId { self.node_id }
-
     fn get_style_str(&self) -> String { self.styles.clone() }
 
-    fn update_styles(
-        &mut self, 
-        shell: &mut StyleShell,
-        _display_override: Option<ui::Display>
-    ) {
-        self.element.update_styles(shell, None);
+    fn children(&self) -> WidgetChildren {
+        WidgetChildren::Single(&self.element)
+    }
+    fn children_mut(&mut self) -> WidgetChildrenMut {
+        WidgetChildrenMut::Single(&mut self.element)
     }
 
     fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {
         let child = self.element.layout(shell)?;
-        self.node_id = shell.tree.new_with_children(
-            menu_layout(), 
-            &[child]
-        )?;
-
+        self.node_id = shell.tree.new_with_children(&[child])?;
         Ok(self.node_id)
     }
-
-    fn input(
-        &mut self,
-        event: &InputEvent,
-        shell: &mut InputShell,
-    ) {
-        self.element.input(event, shell);
-    }
-
-    fn draw(&self, shell: &mut DrawShell) {
-        self.element.draw(shell);
-    }
-    
-    fn draw_overlay(&self, shell: &mut DrawShell) {
-        self.element.draw_overlay(shell);
-    }
-
-    fn update(&mut self, shell: &mut UpdateShell) {
-        self.element.update(shell);
+    fn init_style(&mut self, shell: &mut LayoutShell) {
+        shell.tree.update_style(
+            self.node_id, 
+            |style| *style = CssStyle::menu_layout()
+        );
+        self.element.init_style(shell);
     }
 
     fn handle_message(
@@ -157,9 +138,6 @@ impl Widget for BuiltCustomDialog {
         let tag = message.tag.clone();
         match &message.value {
             MessageValue::Value(TatakuValue::Reflect(value)) => {
-                let Some(variable) = tag.as_string() 
-                else { return };
-                
                 shell.handled = true;
 
                 let Some(value) = value.duplicate() 
@@ -169,31 +147,22 @@ impl Widget for BuiltCustomDialog {
                 };
 
                 if let Err(e) = shell.values.reflect_insert(
-                    variable, 
+                    &*tag, 
                     value
                 ) {
                     error!("Error inserting into values: {e:?}");
                 }
             }
             MessageValue::Text(incoming) => {
-                let Some(variable) = tag.as_string() 
-                else { return };
-
                 shell.handled = true;
                 if let Err(e) = shell.values.reflect_insert(
-                    variable, 
+                    &*tag, 
                     Box::new(incoming.clone())
                 ) {
                     error!("Error inserting into values: {e:?}");
                 }
             }
             
-            MessageValue::Multi(messages) => {
-                for m in messages {
-                    self.handle_message(m, shell);
-                }
-            }
-
             _other => warn!("Unhandled message: {message:?}"),
         }
     }
@@ -218,10 +187,6 @@ impl Widget for BuiltCustomDialog {
 
             shell.actions.push(action); 
         }
-    }
-
-    fn reload_skin(&mut self, shell: &mut UpdateShell) {
-        self.element.reload_skin(shell);
     }
 }
 

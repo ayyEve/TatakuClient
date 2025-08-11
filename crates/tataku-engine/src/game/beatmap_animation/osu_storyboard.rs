@@ -97,9 +97,8 @@ impl BeatmapAnimation for OsuStoryboard {
                 .scale(self.transform.scale)
                 .translate(self.transform.pos);
 
-            let mut color = i.color.last_value();
             let alpha = i.alpha.last_value();
-            color.a = alpha;
+            let color = i.color.last_value().alpha(alpha);
 
             let element: Box<dyn TatakuRenderable> = match i.element_image.clone() {
                 ElementImage::Sprite(mut image) => {
@@ -211,7 +210,9 @@ impl Element {
 
         let mut blend_mode = None;
         for i in def.commands.iter() {
-            let StoryboardEvent::Parameter { param: Param::AdditiveBlending } = i.event else { continue };
+            let StoryboardEvent::Parameter { 
+                param: Param::AdditiveBlending 
+            } = i.event else { continue };
             // if i.start_time as i32 == i.end_time as i32 {
                 blend_mode = Some(Pipeline::OsuAdditiveBlending);
             // }
@@ -228,22 +229,29 @@ impl Element {
                     .replace("\\", "/")
                 ;
 
-                let mut image = try_load_image(&filepath, image_cache, skin_manager)?;
+                let mut image = try_load_image(
+                    &filepath, 
+                    image_cache, 
+                    skin_manager
+                )?;
 
                 image.origin = Vector2::ZERO;
                 image.pos = Vector2::ZERO;
 
+                layer = sprite.layer;
                 initial_pos = sprite.pos;
                 origin = sprite.origin.resolve(image.tex_size());
 
-                layer = sprite.layer;
-                if let Some(b) = blend_mode { image.set_blend_mode(b) }
+                if let Some(b) = blend_mode { image.set_blend_mode(b); }
 
                 ElementImage::Sprite(image)
             }
             StoryboardElementDef::Animation(anim) => {
                 let filepath = Path::new(&anim.filepath);
-                let Some(ext) = filepath.extension() else { return Err(TatakuError::String("no extention on anim image".to_owned())); };
+                let Some(ext) = filepath.extension() else { 
+                    return Err(TatakuError::String("no extention on anim image".to_owned())); 
+                };
+
                 let ext = ext.to_str().unwrap();
                 let filename = filepath.to_str().unwrap().trim_end_matches(&format!(".{ext}"));
 
@@ -255,7 +263,11 @@ impl Element {
                         .replace("\\", "/")
                     ;
 
-                    let Ok(image) = try_load_image(&filepath, image_cache, skin_manager) else {
+                    let Ok(image) = try_load_image(
+                        &filepath, 
+                        image_cache, 
+                        skin_manager
+                    ) else {
                         if counter == 0 { error!("image not found: {filepath}"); }
                         break
                     };
@@ -263,14 +275,26 @@ impl Element {
                     frames.push(image.tex);
                     counter += 1;
                 }
-                if frames.is_empty() { return Err(TatakuError::String("anim has no frames!".to_owned())) }
+                if frames.is_empty() { 
+                    return Err(TatakuError::String("anim has no frames!".to_owned())) 
+                }
 
-                let tex_size = Vector2::new(frames[0].width as f32, frames[0].height as f32);
-                let mut animation = Animation::new(Vector2::ZERO, Vector2::ONE, frames, anim.frame_delay, Vector2::ONE);
+                let tex_size = Vector2::new(
+                    frames[0].width as f32, 
+                    frames[0].height as f32
+                );
+
+                let mut animation = Animation::new(
+                    Vector2::ZERO, 
+                    Vector2::ONE, 
+                    frames, 
+                    anim.frame_delay, 
+                    Vector2::ONE
+                );
                 animation.origin = Vector2::ZERO;
                 animation.scale = Vector2::ONE;
                 animation.draw_debug = true;
-                if let Some(b) = blend_mode { animation.set_blend_mode(b) }
+                if let Some(b) = blend_mode { animation.set_blend_mode(b); }
 
                 initial_pos = anim.pos;
                 origin = anim.origin.resolve(tex_size);
@@ -450,7 +474,12 @@ fn try_load_image(
 ) -> TatakuResult<Image> {
     if let Some(image) = image_cache.get(filepath).cloned() {
         Ok(image)
-    } else if let Some(i) = skin_manager.get_texture(filepath, &TextureSource::Raw, SkinUsage::Beatmap, false) {
+    } else if let Some(i) = skin_manager.get_texture(
+        filepath, 
+        &TextureSource::Raw, 
+        SkinUsage::Beatmap, 
+        false
+    ) {
         image_cache.insert(filepath.clone(), i.clone());
         Ok(i)
     } else {
@@ -464,8 +493,16 @@ fn try_load_image(
         for file in files.filter_map(Result::ok) {
             if file.file_name().to_ascii_lowercase() != filename { continue }
             // let filename = file.file_name().to_str().unwrap();
-            let filepath2 = parent.join(file.file_name()).to_string_lossy().to_string();
-            found = skin_manager.get_texture(&filepath2, &TextureSource::Raw, SkinUsage::Beatmap, false);
+            let filepath2 = parent
+                .join(file.file_name())
+                .to_string_lossy()
+                .to_string();
+            found = skin_manager.get_texture(
+                &filepath2, 
+                &TextureSource::Raw, 
+                SkinUsage::Beatmap, 
+                false
+            );
             break;
         }
 

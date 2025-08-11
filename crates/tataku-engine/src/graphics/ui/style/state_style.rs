@@ -1,31 +1,25 @@
 use crate::prelude::*;
-use crate::prelude::ui::*;
 
 #[derive(Clone, Debug, Default)]
-pub struct ElementStateStyles<T:Clone> {
-    pub none: (CssStyle, T),
-    pub active: (CssStyle, T),
-    pub hover: (CssStyle, T),
-    pub focus: (CssStyle, T),
+pub struct ElementStateStyles<Style, T:Clone> {
+    pub none: (Style, T),
+    pub active: (Style, T),
+    pub hover: (Style, T),
+    pub focus: (Style, T),
 }
-impl<T:Default+Clone> ElementStateStyles<T> {
-    pub fn new(
-        none: CssStyle,
-        active: CssStyle,
-        hover: CssStyle,
-        focus: CssStyle,
-    ) -> Self {
+impl<Style: Clone, T:Default+Clone> ElementStateStyles<Style, T> {
+    pub fn new(style: Style) -> Self {
         Self {
-            active: (active.merge(none.clone()), T::default()),
-            hover: (hover.merge(none.clone()), T::default()),
-            focus: (focus.merge(none.clone()), T::default()),
-            none: (none, T::default()),
+            active: (style.clone(), T::default()),
+            hover: (style.clone(), T::default()),
+            focus: (style.clone(), T::default()),
+            none: (style, T::default()),
         }
     }
 }
 
-impl<T:Clone> ElementStateStyles<T> {
-    pub fn get_style(&self, state: ElementState) -> &(CssStyle, T) {
+impl<Style, T:Clone> ElementStateStyles<Style, T> {
+    pub fn get_style(&self, state: ElementState) -> &(Style, T) {
         if state.contains(ElementState::Active) {
             &self.active
         } else if state.contains(ElementState::Hover) {
@@ -37,7 +31,7 @@ impl<T:Clone> ElementStateStyles<T> {
         }
     }
 
-    pub fn get_style_mut(&mut self, state: ElementState) -> &mut (CssStyle, T) {
+    pub fn get_style_mut(&mut self, state: ElementState) -> &mut (Style, T) {
         if state.contains(ElementState::Active) {
             &mut self.active
         } else if state.contains(ElementState::Hover) {
@@ -49,7 +43,7 @@ impl<T:Clone> ElementStateStyles<T> {
         }
     }
     
-    pub fn all(&self) -> [&(CssStyle, T); 4] {
+    pub fn all(&self) -> [&(Style, T); 4] {
         [
             &self.none,
             &self.active,
@@ -57,7 +51,7 @@ impl<T:Clone> ElementStateStyles<T> {
             &self.hover
         ]
     }
-    pub fn all_mut(&mut self) -> [&mut (CssStyle, T); 4] {
+    pub fn all_mut(&mut self) -> [&mut (Style, T); 4] {
         [
             &mut self.none,
             &mut self.active,
@@ -66,7 +60,7 @@ impl<T:Clone> ElementStateStyles<T> {
         ]
     }
 
-    pub fn transpose<T2:Default+Clone>(self) -> ElementStateStyles<T2> {
+    pub fn transpose<T2:Default+Clone>(self) -> ElementStateStyles<Style, T2> {
         ElementStateStyles {
             none: (self.none.0, T2::default()),
             active: (self.active.0, T2::default()),
@@ -75,3 +69,4 @@ impl<T:Clone> ElementStateStyles<T> {
         }
     }
 }
+

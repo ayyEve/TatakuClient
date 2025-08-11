@@ -24,8 +24,8 @@ pub enum BuildableValue {
 
     /// Get from a variable
     Variable {
-        #[serde(rename="@var", alias="$value", default)] 
-        var: String,
+        #[serde(rename="@var", alias="$value")] 
+        var: VariablePathResolver,
     },
 
     /// Defer the value to provided value.
@@ -64,15 +64,17 @@ impl BuildableValue {
     pub fn resolve_pre(&mut self, values: &dyn Reflect) {
         match self {
             Self::Variable { var } => {
-                let Ok(val) = values.impl_get(ReflectPath::new(var)) else {
-                    error!("custom event value is none! {var}");
+                let Ok(path) = var.resolve_path(values) else { return };
+
+                let Ok(val) = values.impl_get(ReflectPath::new(&path)) else {
+                    error!("custom event value is none! {path}");
                     *self = Self::None;
                     return;
                 };
                 let value = match TatakuValue::from_reflection(val) {
                     Ok(v) => v,
                     Err(e) => {
-                        error!("custom event value error: {var}, {e:?}");
+                        error!("custom event value error: {path}, {e:?}");
                         *self = Self::None;
                         return
                     }
@@ -88,7 +90,7 @@ impl BuildableValue {
                     let Ok(path) = path
                         .resolve_path(values)
                         .inspect_err(|e| 
-                            error!("error with calc var {}: {e:?}", path.var)
+                            error!("error with calc var {path}: {e:?}")
                         )
                     else {
                         *self = Self::None;
@@ -209,15 +211,18 @@ impl BuildableValue {
 
 
             Self::Variable { var } => {
-                let Ok(val) = values.impl_get(ReflectPath::new(var)) 
+                let path = var.resolve_path(values).ok()?;
+
+
+                let Ok(val) = values.impl_get(ReflectPath::new(&path)) 
                 else {
-                    error!("custom event value is none! {var}");
+                    error!("custom event value is none! {path}");
                     return None;
                 };
                 let value = match TatakuValue::from_reflection(val) {
                     Ok(v) => v,
                     Err(e) => {
-                        error!("custom event value error: {var}, {e:?}");
+                        error!("custom event value error: {path}, {e:?}");
                         return None
                     }
                 };
@@ -287,7 +292,7 @@ fn test() {
             action: BuildableAction::SetValue {
                 key: "hello".into(),
                 value: BuildableValue::Variable {
-                    var: "tacos".to_owned()
+                    var: "tacos".to_owned().into()
                 }
             }
         }

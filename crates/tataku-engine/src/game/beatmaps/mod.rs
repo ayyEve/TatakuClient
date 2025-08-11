@@ -64,7 +64,7 @@ impl Beatmap {
         }
         
         match path.extension().unwrap().to_str().unwrap() {
-            "osu" => Ok(vec![Beatmap::Osu(Box::new(osu::OsuBeatmap::load(path.to_str().unwrap().to_owned())?))]),
+            "osu" => Ok(vec![Beatmap::Osu(Box::new(osu::OsuBeatmap::load(path.to_str().unwrap())?))]),
             "qua" => Ok(vec![Beatmap::Quaver(Box::new(quaver::QuaverBeatmap::load(path.to_str().unwrap())?))]),
             "adofai" => Ok(vec![Beatmap::Adofai(Box::new(adofai::AdofaiBeatmap::load(path.to_str().unwrap())))]),
             "txt" => Ok(vec![Beatmap::UTyping(Box::new(u_typing::UTypingBeatmap::load(path)?))]),
@@ -86,7 +86,7 @@ impl Beatmap {
         }
         
         match path.extension().unwrap().to_str().unwrap() {
-            "osu" => Ok(Beatmap::Osu(Box::new(osu::OsuBeatmap::load(path.to_str().unwrap().to_owned())?))),
+            "osu" => Ok(Beatmap::Osu(Box::new(osu::OsuBeatmap::load(path.to_str().unwrap())?))),
             "qua" => Ok(Beatmap::Quaver(Box::new(quaver::QuaverBeatmap::load(path.to_str().unwrap())?))),
             "adofai" => Ok(Beatmap::Adofai(Box::new(adofai::AdofaiBeatmap::load(path.to_str().unwrap())))),
             "txt" => Ok(Beatmap::UTyping(Box::new(u_typing::UTypingBeatmap::load(path.to_str().unwrap())?))),
@@ -133,7 +133,7 @@ impl Beatmap {
         // }
     }
     pub fn from_metadata(meta: &BeatmapMeta) -> TatakuResult<Beatmap> {
-        Self::load_single(&meta.file_path, meta)
+        Self::load_single(&*meta.file_path, meta)
     }
 
     pub fn get_parent_dir(&self) -> Option<PathBuf> {

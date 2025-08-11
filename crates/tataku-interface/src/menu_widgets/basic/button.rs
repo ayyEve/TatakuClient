@@ -2,14 +2,11 @@ use crate::prelude::*;
 use crate::prelude::ui::*;
 
 #[derive(ChainableInitializer)]
-#[derive(Widget)]
-#[widget(type("container"))]
 pub struct Button {
-    #[chain] pub style: Style,
-    #[chain] pub on_press_left: ButtonOnClick,
-    #[chain] pub on_press_middle: ButtonOnClick,
-    #[chain] pub on_press_right: ButtonOnClick,
-    pub child: Box<dyn Widget>,
+    #[chain] on_press_left: ButtonOnClick,
+    #[chain] on_press_middle: ButtonOnClick,
+    #[chain] on_press_right: ButtonOnClick,
+    child: Box<dyn Widget>,
     
     visual_active_cond: VisuallyActive,
 
@@ -22,7 +19,6 @@ pub struct Button {
 impl Button {
     pub fn new(child: Box<dyn Widget>) -> Self {
         Self {
-            style: Style::DEFAULT,
             child,
             node_id: EMPTY_NODE,
             on_press_left: ButtonOnClick::Message(None),
@@ -55,19 +51,16 @@ impl Widget for Button {
     fn name(&self) -> CowStr { "button_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn update_styles(
-        &mut self, 
-        shell: &mut StyleShell,
-        display_override: Option<ui::Display>
-    ) {
-        self.child.update_styles(shell, display_override);
+    fn children(&self) -> WidgetChildren {
+        WidgetChildren::Single(&self.child)
+    }
+    fn children_mut(&mut self) -> WidgetChildrenMut {
+        WidgetChildrenMut::Single(&mut self.child)
     }
 
     fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId>  {
         let child = self.child.layout(shell)?;
-        self.node_id = shell.tree.new_with_children(Style { 
-            ..self.style.clone()
-        }, &[ child ])?;
+        self.node_id = shell.tree.new_with_children(&[ child ])?;
         
         shell.with_context(self.node_id, |ctx| {
             ctx.needs_inverse_transform = true;
@@ -131,7 +124,6 @@ impl Widget for Button {
         self.child.input(event, shell);
     }
     
-    
     fn draw(&self, shell: &mut DrawShell) {
         let theme = &shell.general_theme;
         let Some(bounds) = shell.tree.absolute_bounds(self) 
@@ -156,10 +148,6 @@ impl Widget for Button {
         self.child.draw(shell);
     }
 
-    fn draw_overlay(&self, shell: &mut DrawShell) {
-        self.child.draw_overlay(shell);
-    }
-    
     fn update(&mut self, shell: &mut UpdateShell) {
         self.visual_active_cond.update(shell.values);
         self.child.update(shell);
@@ -173,18 +161,6 @@ impl Widget for Button {
         self.child.handle_message(message, shell);
     }
 
-    fn handle_event(
-        &mut self, 
-        event: &TatakuEventType, 
-        event_value: Option<&TatakuValue>, 
-        shell: &mut MessageShell,
-    ) {
-        self.child.handle_event(event, event_value, shell);
-    }
-
-    fn reload_skin(&mut self, shell: &mut UpdateShell) {
-        self.child.reload_skin(shell);
-    }
 }
 
 
@@ -244,17 +220,6 @@ impl From<BuildableAction> for ButtonOnClick {
 impl From<OnClickCallback> for ButtonOnClick {
     fn from(value: OnClickCallback) -> Self {
         Self::Callback(value)
-    }
-}
-impl From<ButtonBuilderOnClick> for ButtonOnClick {
-    fn from(value: ButtonBuilderOnClick) -> Self {
-        match value {
-            ButtonBuilderOnClick::Message(message) 
-                => Self::Message(message),
-
-            ButtonBuilderOnClick::Callback(cb) 
-                => Self::Callback(cb),
-        }
     }
 }
 

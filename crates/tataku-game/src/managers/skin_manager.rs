@@ -30,7 +30,6 @@ impl SkinManager {
         Self {
             skin_name: current_skin,
             current_skin_config,
-            // texture_cache: HashMap::new(),
             textures: HashMap::new()
         }
     }
@@ -98,15 +97,16 @@ impl SkinManager {
                         for i in img.pixels_mut() {
                             let [r, g, b, _a] = &mut i.0;
 
-                            let rf = *r as f32 / 255.0;
-                            let gf = *g as f32 / 255.0;
-                            let bf = *b as f32 / 255.0;
+                            let rf = Color::to_f32(*r);
+                            let gf = Color::to_f32(*g);
+                            let bf = Color::to_f32(*b);
 
                             let gray = 0.299 * rf + 0.587 * gf + 0.114 * bf;
-
-                            *r = (gray * 255.0) as u8;
-                            *g = (gray * 255.0) as u8;
-                            *b = (gray * 255.0) as u8;
+                            let n = Color::to_u8(gray);
+                            
+                            *r = n;
+                            *g = n;
+                            *b = n;
                         }
                     }
 

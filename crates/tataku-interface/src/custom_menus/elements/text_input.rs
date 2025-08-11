@@ -6,8 +6,6 @@ use crate::prelude::*;
 pub struct TextInputElement {
     #[serde(rename = "@id", default)] id: Option<String>,
     #[serde(rename = "@class", default)] class_list: ClassList,
-
-    /// unparsed style string, parsed when the element is built
     #[serde(rename = "@style", default)] style: String,
 
     #[serde(rename = "@variable")] variable: String,
@@ -26,7 +24,9 @@ impl CustomElement for TextInputElement {
             self.class_list.clone(),
             TextInput::new(
                 self.placeholder.value.clone(),
-                BuildableText::Variable { variable: self.variable.clone() }
+                BuildableText::Variable { 
+                    variable: VariablePathResolver::new(self.variable.clone())
+                }
             )
             .secure(self.is_password)
             .on_input_maybe(self.on_input.as_deref().cloned())

@@ -19,6 +19,13 @@
       <!-- none -->
       <xs:element name="none"/>
 
+      <!-- internal -->
+      <xs:element name="internal">
+        <xs:complexType>
+          <xs:attribute name="path" type="text:string" use="required"/>
+        </xs:complexType>
+      </xs:element>
+
       <!-- delayed -->
       <xs:element name="delayed">
         <xs:complexType>

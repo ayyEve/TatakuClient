@@ -1,21 +1,14 @@
 use crate::prelude::*;
 use crate::prelude::ui::*;
 
-
-#[derive(ChainableInitializer)]
-#[derive(Widget)]
-#[widget(type("container", "text"))]
 pub struct Checkbox {
-    #[chain] pub style: Style,
-    #[chain] pub text_style: TextStyle,
-    
-    pub text: CheckboxText,
-    pub value: CheckboxValue,
+    text: CheckboxText,
+    value: CheckboxValue,
 
     active: bool,
     hovered: bool,
 
-    pub on_toggle: Option<CheckboxOnToggle>,
+    on_toggle: Option<CheckboxOnToggle>,
     
     node_id: NodeId,
 }
@@ -30,12 +23,6 @@ impl Checkbox {
         }
 
         Self {
-            style: Style::default(),
-            text_style: TextStyle {
-                alignment: Alignment::CENTER_LEFT,
-                .. TextStyle::default()
-            },
-
             text,
             value: value.into(),
             on_toggle: None,
@@ -46,14 +33,11 @@ impl Checkbox {
         }
     }
 
-    fn box_size(&self) -> Vector2 {
-        Vector2::ONE * self.text_style.font_size * 0.75
+    fn box_size(&self, font_size: f32) -> Vector2 {
+        Vector2::ONE * font_size * 0.75
     }
     fn box_padding(&self) -> Vector2 {
-        Vector2::new(
-            5.0,
-            0.0
-        )
+        Vector2::new(5.0, 0.0)
     }
 
     pub fn on_toggle_arced(mut self, on_toggle: Arc<dyn Fn(bool) -> Message + Send + Sync>) -> Self {
@@ -71,32 +55,23 @@ impl Checkbox {
         self
     }
 
-
-    fn size(&self) -> Size<Dimension> {
+    fn size(&self, text_style: &TextStyle) -> [CssUnit; 2] {
         let text = self.text.get();
-        let mut size = self.text_style.measure_text(text, None);
-        size += self.box_size() + self.box_padding();
-        Size {
-            width: Dimension::Length(size.x),
-            height: Dimension::Length(size.y)
-        }
+        let size = text_style.measure_text(text, None)
+            + self.box_size(text_style.font_size) 
+            + self.box_padding();
+        [
+            CssUnit::Pixels(half::f16::from_f32(size.x)),
+            CssUnit::Pixels(half::f16::from_f32(size.y))
+        ]
     }
 }
 impl Widget for Checkbox {
     fn name(&self) -> CowStr { "checkbox_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn set_text_style(&mut self, style: TextStyle) {
-        self.text_style = style;
-    }
-
     fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {
-        let style = Style {
-            min_size: self.size(),
-            ..self.style.clone()
-        };
-
-        self.node_id = shell.tree.new_leaf(style)?;
+        self.node_id = shell.tree.new_leaf()?;
 
         shell.with_context(self.node_id, |ctx| {
             ctx.needs_inverse_transform = true;
@@ -104,6 +79,21 @@ impl Widget for Checkbox {
         });
 
         Ok(self.node_id)
+    }
+
+    fn init_style(&mut self, shell: &mut LayoutShell) {
+        let text_style = shell.tree
+            .get_text_style(self.node_id)
+            .unwrap();
+        let size = self.size(text_style);
+
+        shell.tree.update_style(
+            self.node_id, 
+            |style| {
+                style.min_width = CssValue::Value(size[0]);
+                style.min_height = CssValue::Value(size[1]);
+            }
+        );
     }
 
     fn input(
@@ -161,7 +151,11 @@ impl Widget for Checkbox {
         let Some(bounds) = shell.tree.absolute_bounds(self) 
         else { return };
 
-        let box_size = self.box_size();
+        let text_style = shell.tree
+            .get_text_style(self.node_id)
+            .unwrap();
+
+        let box_size = self.box_size(text_style.font_size);
         let box_padding = self.box_padding();
 
         let box_bounds = Bounds::new(
@@ -206,7 +200,7 @@ impl Widget for Checkbox {
             )
         );
 
-        shell.list.push(self.text_style.create_text(
+        shell.list.push(text_style.create_text(
             self.text.get().clone(), 
             text_bounds
         ));
@@ -219,18 +213,18 @@ impl Widget for Checkbox {
         self.text.update(shell.values);
         let new_text = self.text.get();
         if new_text != &old_text {
-            let Some(ctx) = shell.tree.get_context(self.node_id) 
-            else { return };
+            let text_style = shell.tree
+                .get_text_style(self.node_id)
+                .unwrap();
 
-            self.text_style = ctx.element_data.style().0.text_style(shell.values);
-
-            let size = self.size();
-            shell.actions.push(UiAction::new(
+            let size = self.size(text_style);
+            shell.tree.update_style(
                 self.node_id, 
-                UiActionType::UpdateStyleWith(Box::new(move |style| {
-                    style.min_size = size;
-                }))
-            ));
+                |style| {
+                    style.min_width = size[0].into();
+                    style.min_height = size[1].into();
+                }
+            );
         }
     }
 }
@@ -243,7 +237,7 @@ pub enum CheckboxText {
     Buildable(BuildableText, String),
 }
 impl CheckboxText {
-    fn build(&mut self) -> Result<(), ShuntingYardError> {
+    fn build(&mut self) -> Result<(), BuildableShuntingYardError> {
         match self {
             Self::Buildable(b, _) => b.compute(),
             Self::Variable(b, _) => b.compute(),
@@ -295,7 +289,11 @@ impl From<BuildableText> for CheckboxText {
 #[derive(Debug)]
 pub enum CheckboxValue {
     Static(bool),
-    Variable(String, bool, bool),
+    Variable{
+        path: VariablePathResolver, 
+        cache: bool, 
+        failed: bool,
+    },
     Condition(BuildableCondition, bool),
 }
 impl CheckboxValue {
@@ -307,19 +305,30 @@ impl CheckboxValue {
     fn get(&self) -> bool {
         match self {
             Self::Static(b) => *b,
-            Self::Variable(_, b, _) => *b,
+            Self::Variable { cache: b, .. } => *b,
             Self::Condition(_, b) => *b,
         }
     }
     fn update(&mut self, values: &mut dyn Reflect) {
         match self {
             Self::Static(_) => {},
-            Self::Variable(path, value, failed) => {
+            Self::Variable { 
+                path, 
+                cache, 
+                failed
+             } => {
+                let Ok(path) = path
+                .resolve_path(values)
+                .map_err(|e| {
+                    *failed = true;
+                    error!("Error with checkbox path: {e:?}");
+                }) else { return };
+
                 match values.reflect_get::<bool>(&*path) {
-                    Ok(val) => *value = val.copied(),
+                    Ok(val) => *cache = val.copied(),
                     Err(e) => if !*failed {
                         *failed = true;
-                        error!("error with checkbox variable: {e:?}");
+                        error!("Error with checkbox variable: {e:?}");
                     }
                 }
             }
@@ -354,15 +363,6 @@ impl From<BuildableCondition> for CheckboxValue {
         Self::Condition(value, false)
     }
 }
-impl From<CheckboxBuilderValue> for CheckboxValue {
-    fn from(value: CheckboxBuilderValue) -> Self {
-        match value {
-            CheckboxBuilderValue::Static(b) => Self::Static(b),
-            CheckboxBuilderValue::Variable(v) 
-                => BuildableCondition::Unbuilt(v).into(),
-        }
-    }
-}
 
 
 #[derive(Debug2)]
@@ -379,8 +379,7 @@ impl CheckboxOnToggle {
         values: &mut dyn Reflect,
     ) -> Option<Result<Message, TatakuAction>> {
         match self {
-            Self::Callback(cb) 
-                => Some(Ok(cb(value))),
+            Self::Callback(cb) => Some(Ok(cb(value))),
 
             Self::Buildable(action) => {
                 let mut action = action.clone();

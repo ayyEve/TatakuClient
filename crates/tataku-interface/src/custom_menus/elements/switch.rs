@@ -5,8 +5,6 @@ use crate::prelude::*;
 pub struct SwitchElement {
     #[serde(rename = "@id", default)] id: Option<String>,
     #[serde(rename = "@class", default)] class_list: ClassList,
-
-    /// unparsed style string, parsed when the element is built
     #[serde(rename = "@style", default)] style: String,
 
     // #[serde(rename = "@condition", alias = "@cond")] condition: String,

@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
 pub struct SliderElement {
@@ -8,8 +8,7 @@ pub struct SliderElement {
     #[serde(rename = "@class", default)] class_list: ClassList,
     #[serde(rename = "@style", default)] style: String,
 
-
-    #[serde(rename = "@variable")] variable: String,
+    #[serde(rename = "@variable")] variable: VariablePathResolver,
 
     #[serde(rename = "@min", default)] min_attribute: Option<TatakuValue>,
     #[serde(rename = "@max", default)] max_attribute: Option<TatakuValue>,

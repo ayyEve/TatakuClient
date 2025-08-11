@@ -19,12 +19,12 @@ pub enum BuildableText {
     Locale(String),
     Variable {
         #[serde(rename = "@var")] 
-        variable: String
+        variable: VariablePathResolver
     },
     
     Display {
         #[serde(rename = "@var")] 
-        variable: String,
+        variable: VariablePathResolver,
 
         #[serde(rename = "@precision", default)] 
         precision: Option<usize>,
@@ -80,14 +80,26 @@ impl BuildableText {
 
     pub fn to_string(&self, values: &dyn Reflect) -> String {
         match self {
-            Self::Variable { variable } => values
-                .reflect_display(variable, None)
-                .unwrap_or_else(|e| format!("Invalid property: '{variable}' ({e:?})")),
+            Self::Variable { variable } => {
+                let variable = match variable.resolve_path(values) {
+                    Ok(v) => v,
+                    Err(e) => return format!("error: {e:?}")
+                };
+
+                values
+                    .reflect_display(&variable, None)
+                    .unwrap_or_else(|e| format!("Invalid property: '{variable}' ({e:?})"))
+            },
             
             Self::Text { text: t } | Self::Locale(t) => t.clone(),
             
             Self::Display { variable, precision } => {
-                if let Ok(number) = values.reflect_as_number(variable) {
+                let variable = match variable.resolve_path(values) {
+                    Ok(v) => v,
+                    Err(e) => return format!("error: {e:?}")
+                };
+                
+                if let Ok(number) = values.reflect_as_number(&variable) {
                     match number {
                         ReflectNumber::F32(n) => format_float(n, precision.unwrap_or(2)),
                         ReflectNumber::F64(n) => format_float(n, precision.unwrap_or(2)),
@@ -95,7 +107,7 @@ impl BuildableText {
                     }
                 } else {
                     values
-                    .reflect_display(variable, *precision)
+                    .reflect_display(&variable, *precision)
                     .unwrap_or_else(|e| format!("Invalid property: '{variable}' ({e:?})"))
                 }
             },
@@ -229,7 +241,7 @@ mod tests {
     fn test_variable() {
         let input = r#" <variable var="hi mom"/> "#;
         let expected = BuildableText::Variable { 
-            variable: "hi mom".to_owned() 
+            variable: VariablePathResolver::new("hi mom".to_owned()) 
         };
         
         assert_eq!(quick_xml::de::from_str::<'_, BuildableText>(input).unwrap(), expected);
@@ -250,7 +262,7 @@ mod tests {
     fn test_display() {
         let input = r#" <display var="hi mom"/> "#;
         let expected = BuildableText::Display { 
-            variable: "hi mom".to_owned(),
+            variable: VariablePathResolver::new("hi mom".to_owned()),
             precision: None
         };
         
@@ -261,7 +273,7 @@ mod tests {
     fn test_display_precision() {
         let input = r#" <display var="hi mom" precision="4" /> "#;
         let expected = BuildableText::Display { 
-            variable: "hi mom".to_owned(),
+            variable: VariablePathResolver::new("hi mom".to_owned()),
             precision: Some(4)
         };
         

@@ -56,7 +56,9 @@ impl Emitter {
             image: *image,
             ..Default::default()
         };
-        let pool = Arc::new(RwLock::new(Pool::new_cloning(capacity, particle)));
+        let pool = Arc::new(RwLock::new(
+            Pool::new_cloning(capacity, particle)
+        ));
         
         Self {
             should_emit: true,
@@ -86,10 +88,11 @@ impl Emitter {
     }
 
     pub fn update(&mut self, time: f32) {
+        
         if self.last_time + self.spawn_delay < time {
             self.last_time = time;
             if !self.should_emit || self.image.is_empty() { return }
-
+            
             let mut rng = rand::rng();
 
             let mut lock = self.pool.write();

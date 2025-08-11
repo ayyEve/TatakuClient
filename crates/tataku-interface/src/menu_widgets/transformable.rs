@@ -1,11 +1,8 @@
 use crate::prelude::*;
 use crate::prelude::ui::*;
 
-#[derive(Widget)]
-#[widget(type("container"))]
 #[derive(ChainableInitializer)]
 pub struct TransformableWidget {
-    #[chain] style: Style,
     child: Box<dyn Widget>,
     
     x_position: AnimationTimeline<f32>,
@@ -35,8 +32,6 @@ impl TransformableWidget {
         child: Box<dyn Widget>,
     ) -> Self {
         Self {
-            style: Style::default(),
-
             x_position: AnimationTimeline::new(Vec::new(), 0.0),
             y_position: AnimationTimeline::new(Vec::new(), 0.0),
             x_scale: AnimationTimeline::new(Vec::new(), 1.0),
@@ -136,21 +131,16 @@ impl Widget for TransformableWidget {
     fn name(&self) -> CowStr { "transformable_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn update_styles(
-        &mut self, 
-        shell: &mut StyleShell, 
-        display_override: Option<ui::Display>
-    ) {
-        self.child.update_styles(shell, display_override);
+    fn children(&self) -> WidgetChildren {
+        WidgetChildren::Single(&self.child)
+    }
+    fn children_mut(&mut self) -> WidgetChildrenMut {
+        WidgetChildrenMut::Single(&mut self.child)
     }
     
     fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId>  {
         let child = self.child.layout(shell)?;
-        self.node_id = shell.tree.new_with_children(
-            self.style.clone(),
-            &[child]
-        )?;
-
+        self.node_id = shell.tree.new_with_children(&[child])?;
         Ok(self.node_id)
     }
 
@@ -225,13 +215,6 @@ impl Widget for TransformableWidget {
         self.child.input(event, shell);
     }
 
-    fn draw(&self, shell: &mut DrawShell) {
-        self.child.draw(shell);
-    }
-    fn draw_overlay(&self, shell: &mut DrawShell) {
-        self.child.draw_overlay(shell);
-    }
-
     fn update(&mut self, shell: &mut UpdateShell) {
         let time = shell.values.reflect_get::<f32>("game.time")
             .unwrap()
@@ -301,7 +284,7 @@ impl Widget for TransformableWidget {
             let AnimatableTriggerEvent::Message(tag) = &trigger.trigger 
             else { continue };
 
-            if &message.tag == tag {
+            if &*message.tag == tag {
                 to_trigger.push(trigger.action.clone());
             } 
         }
@@ -339,7 +322,4 @@ impl Widget for TransformableWidget {
         self.child.handle_event(event, event_value, shell);
     }
 
-    fn reload_skin(&mut self, shell: &mut UpdateShell) {
-        self.child.reload_skin(shell);
-    }
 }

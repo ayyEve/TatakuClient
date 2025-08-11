@@ -3,9 +3,9 @@ use crate::prelude::ui::*;
 
 #[derive(ChainableInitializer)]
 pub struct KeyButton {
-    pub key: KeyButtonValue,
-    #[chain] pub optional: bool,
-    #[chain] pub on_change: InputAction<Option<Key>>,
+    key: KeyButtonValue,
+    #[chain] optional: bool,
+    #[chain] on_change: InputAction<Option<Key>>,
 
     node_id: NodeId,
 }
@@ -37,42 +37,43 @@ impl Widget for KeyButton {
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {
-        let mut text_style = TextStyle::default();
-        text_style.font_size *= shell.ui_scale;
-
-        let style = Style {
-            min_size: Size {
-                width: Dimension::Length(text_style.measure_text("Press a key", None).x),
-                height: Dimension::Length(text_style.line_height),
-            },
-
-            ..Style::default()
-        };
-
-        self.node_id = shell.tree.new_leaf(style)?;
+        self.node_id = shell.tree.new_leaf()?;
         Ok(self.node_id)
     }
+    fn init_style(&mut self, shell: &mut LayoutShell) {
+        let text_style = shell.tree
+            .get_text_style(self.node_id)
+            .unwrap();
 
-    fn update_styles(
-        &mut self, 
-        shell: &mut StyleShell,
-        _display_override: Option<ui::Display>
-    ) {
-        let text_size = shell.tree
-            .get_context(self.node_id)
-            .unwrap()
-            .element_data.style()
-            .0.text_style(shell.values)
-            .measure_text("Press a key", None)
-            ;
-
-        let mut style = shell.tree.get_style(self.node_id).unwrap().clone();
-        style.min_size = Size {
-            width: Dimension::Length(text_size.x),
-            height: Dimension::Length(text_size.y),
-        };
-        shell.tree.set_style(self.node_id, style);
+        let w = half::f16::from_f32(text_style.measure_text("Press a key", None).x);
+        let h = half::f16::from_f32(text_style.line_height);
+        shell.tree.update_style(
+            self.node_id, 
+            |style| {
+                style.min_width = CssUnit::Pixels(w).into();
+                style.min_height = CssUnit::Pixels(h).into();
+            }
+        );
     }
+
+    // fn update_styles(
+    //     &mut self, 
+    //     shell: &mut StyleShell,
+    //     _display_override: Option<ui::DisplayType>
+    // ) {
+    //     let text_size = shell.tree
+    //         .get_context(self.node_id)
+    //         .unwrap()
+    //         .element_data.style()
+    //         .0.text_style(shell.values)
+    //         .measure_text("Press a key", None)
+    //         ;
+
+    //     shell.tree.update_style(self.node_id, |style| {
+    //         style.min_width = CssUnit::Pixels(half::f16::from_f32(text_size.x)).into();
+    //         style.min_height = CssUnit::Pixels(half::f16::from_f32(text_size.y)).into();
+    //     });
+    // }
 
     fn input(
         &mut self, 
@@ -172,8 +173,11 @@ impl Widget for KeyButton {
 
             shell.actions.push(UiAction::new(
                 self.node_id, 
-                UiActionType::UpdateStyleWith(Box::new(
-                    move |style| style.min_size = min.into()
+                UiActionType::UpdateStyleWith(Arc::new(
+                    move |style| {
+                        style.min_width = CssUnit::Pixels(half::f16::from_f32(min.x)).into();
+                        style.min_height = CssUnit::Pixels(half::f16::from_f32(min.y)).into();
+                    }
                 ))
             ));
             shell.actions.push(UiAction::new(
@@ -219,22 +223,40 @@ impl Widget for KeyButton {
 
 pub enum KeyButtonValue {
     Static(Option<Key>),
-    Variable(String, Option<Key>),
+    Variable {
+        path: VariablePathResolver,
+        cache: Option<Key>, 
+        error_logged: bool,
+    },
 }
 impl KeyButtonValue {
     fn get(&self) -> Option<Key> {
         match self {
             Self::Static(k) 
-            | Self::Variable(_, k)
+            | Self::Variable { cache: k, .. }
                 => *k,
         }
     }
 
     fn update(&mut self, values: &dyn Reflect) -> bool {
-        let Self::Variable(path, cache) = self 
+        let Self::Variable {
+            path, 
+            cache, 
+            error_logged
+        } = self 
         else { return false };
 
-        let Ok(val) = values.impl_get(ReflectPath::new(path)) 
+        let Ok(path) = path
+            .resolve_path(values) 
+            .map_err(|e| {
+                if !*error_logged {
+                    error!("Error resolving path: {e:?}");
+                    *error_logged = true;
+                }
+            })
+        else { return false };
+
+        let Ok(val) = values.impl_get(ReflectPath::new(&path)) 
         else { return false };
 
         let val = val.as_ref();
@@ -257,21 +279,14 @@ impl KeyButtonValue {
         }
     }
 }
-impl From<KeyButtonBuilderValue> for KeyButtonValue {
-    fn from(value: KeyButtonBuilderValue) -> Self {
-        match value {
-            KeyButtonBuilderValue::Static(k) => Self::Static(k),
-            KeyButtonBuilderValue::Variable(path) => Self::Variable(path, None),
-        }
-    }
-}
 
-impl From<KeyButtonBuilderInput> for InputAction<Option<Key>> {
-    fn from(value: KeyButtonBuilderInput) -> Self {
-        match value {
-            KeyButtonBuilderInput::Callback(cb)
-                => Self::MessageCallback(cb),
-            KeyButtonBuilderInput::Message(m) => Self::Message(m),
+
+impl From<VariablePathResolver> for KeyButtonValue {
+    fn from(path: VariablePathResolver) -> Self {
+        Self::Variable {
+            path,
+            cache: None,
+            error_logged: false,
         }
     }
 }

@@ -251,8 +251,9 @@ impl OsuCursor {
                 .map(|trail| {
                     let mut image = image.clone();
 
-                    image.color.a = 1.0 - trail.progress(time);
-
+                    image.color.a = ((1.0 - trail.progress(time))
+                        .clamp(0.0, 1.0) * 255.0)
+                         as u8;
                     image.pos = trail.position;
 
                     Box::new(image) as Box<dyn TatakuRenderable>

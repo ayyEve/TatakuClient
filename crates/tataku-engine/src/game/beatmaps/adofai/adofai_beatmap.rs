@@ -2,11 +2,13 @@
 
 use crate::prelude::*;
 use serde::Deserialize;
+use tataku_client_common::data::de_arc_str;
 
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
 pub struct AdofaiBeatmap {
-    pub path_data: String,
+    #[serde(with = "de_arc_str")]
+    pub path_data: Arc<str>,
     #[serde(default)]
     pub settings: AdofaiMapSettings,
     pub actions: Vec<AdofaiAction>,
@@ -15,7 +17,8 @@ pub struct AdofaiBeatmap {
     pub hash: Md5Hash,
 
     #[serde(default)]
-    pub file_path: String,
+    #[serde(with = "de_arc_str")]
+    pub file_path: Arc<str>,
     
     #[serde(default)]
     pub notes: Vec<AdofaiNoteDef>,
@@ -23,7 +26,8 @@ pub struct AdofaiBeatmap {
     pub timing_points: Vec<TimingPoint>,
 
     #[serde(default, skip)]
-    audio_file: String,
+    #[serde(with = "de_arc_str")]
+    audio_file: Arc<str>,
 }
 impl AdofaiBeatmap {
     pub fn load(path: &str) -> Self {
@@ -44,7 +48,7 @@ impl AdofaiBeatmap {
         };
 
         map.hash = Io::get_file_hash(path).unwrap();
-        map.file_path = path.to_owned();
+        map.file_path = path.to_owned().into();
         
         let chars = map.path_data.chars().collect::<Vec<char>>();
 
@@ -68,7 +72,7 @@ impl AdofaiBeatmap {
 
             // look through events to find bpm change or direciton change
             for a in map.actions.iter() {
-                if a.floor != num as u32 {continue}
+                if a.floor != num as u32 { continue }
                 if let AdofaiEventType::Twirl = a.event_type {
                     current_direction = match current_direction {
                         Clockwise => CounterClockwise, 
@@ -114,7 +118,7 @@ impl AdofaiBeatmap {
             "{}/{}", 
             parent_dir.to_str().unwrap(), 
             map.settings.song_filename
-        ).replace("\\\\", "/");
+        ).replace("\\\\", "/").into();
 
         map
     }
@@ -127,7 +131,7 @@ impl TatakuBeatmap for AdofaiBeatmap {
     }
 
     fn get_beatmap_meta(&self) -> Arc<BeatmapMeta> {
-        let parent_dir = Path::new(&self.file_path);
+        let parent_dir = Path::new(&*self.file_path);
         let parent_dir = parent_dir.parent().unwrap().to_str().unwrap();
 
 
@@ -146,7 +150,7 @@ impl TatakuBeatmap for AdofaiBeatmap {
             file_path: self.file_path.clone(),
             beatmap_hash: self.hash(),
             beatmap_type: BeatmapType::Adofai,
-            mode: "adofai".to_owned(),
+            mode: "adofai".to_owned().into(),
             artist: self.settings.artist.clone(),
             title: self.settings.song.clone(),
             artist_unicode: self.settings.artist.clone(),
@@ -154,7 +158,7 @@ impl TatakuBeatmap for AdofaiBeatmap {
             creator: self.settings.author.clone(),
             version: self.settings.song.clone(),
             audio_filename: self.audio_file.clone(),
-            image_filename: format!("{}/{}", parent_dir, self.settings.bg_image),
+            image_filename: format!("{}/{}", parent_dir, self.settings.bg_image).into(),
             audio_preview: self.settings.preview_song_start,
             duration: 0.0,
             hp: 0.0,
@@ -220,71 +224,98 @@ pub enum AdofaiRotation {
 #[serde(rename_all="camelCase", default)]
 pub struct AdofaiMapSettings {
     version: u8,
-    artist: String,
-    special_artist_type: String,
-    artist_permission: String,
+    #[serde(with = "de_arc_str")]
+    artist: Arc<str>,
+    #[serde(with = "de_arc_str")]
+    special_artist_type: Arc<str>,
+    #[serde(with = "de_arc_str")]
+    artist_permission: Arc<str>,
     /// song title
-    song: String,
-    author: String,
+    #[serde(with = "de_arc_str")]
+    song: Arc<str>,
+    #[serde(with = "de_arc_str")]
+    author: Arc<str>,
     separate_countdown_time: Enabled,
 
-    preview_image: String,
-    preview_icon: String,
-    preview_icon_color: String,
+    #[serde(with = "de_arc_str")]
+    preview_image: Arc<str>,
+    #[serde(with = "de_arc_str")]
+    preview_icon: Arc<str>,
+    #[serde(with = "de_arc_str")]
+    preview_icon_color: Arc<str>,
     preview_song_start: f32,
     preview_song_duration: f32,
     seizure_warning: Enabled,
 
-    level_desc: String,
-    level_tags: String,
-    artist_links: String,
+    #[serde(with = "de_arc_str")]
+    level_desc: Arc<str>,
+    #[serde(with = "de_arc_str")]
+    level_tags: Arc<str>,
+    #[serde(with = "de_arc_str")]
+    artist_links: Arc<str>,
 
     difficulty: f32,
-    song_filename: String,
+    #[serde(with = "de_arc_str")]
+    song_filename: Arc<str>,
     bpm: f32,
     volume: u8,
     offset: f32,
     pitch: f32,
 
-    hitsound: String,
+    #[serde(with = "de_arc_str")]
+    hitsound: Arc<str>,
     hitsound_volume: u8,
     countdown_ticks: u8,
 
-    track_color_type: String,
-    track_color: String,
+    #[serde(with = "de_arc_str")]
+    track_color_type: Arc<str>,
+    #[serde(with = "de_arc_str")]
+    track_color: Arc<str>,
 
-    secondary_track_color: String,
+    #[serde(with = "de_arc_str")]
+    secondary_track_color: Arc<str>,
     track_color_anim_duration: f32,
-    track_color_pulse: String,
+    #[serde(with = "de_arc_str")]
+    track_color_pulse: Arc<str>,
     track_color_pulse_length: f32,
-    track_style: String,
-    track_animation: String,
+    #[serde(with = "de_arc_str")]
+    track_style: Arc<str>,
+    #[serde(with = "de_arc_str")]
+    track_animation: Arc<str>,
     beats_ahead: u8,
-    track_dissapear_animation: String,
+    #[serde(with = "de_arc_str")]
+    track_dissapear_animation: Arc<str>,
 
     beats_behind: u8,
-    background_color: String,
-    bg_image: String,
-    bg_image_color: String,
+    #[serde(with = "de_arc_str")]
+    background_color: Arc<str>,
+    #[serde(with = "de_arc_str")]
+    bg_image: Arc<str>,
+    #[serde(with = "de_arc_str")]
+    bg_image_color: Arc<str>,
     parallax: [f32;2],
 
-    bg_display_mode: String,
+    #[serde(with = "de_arc_str")]
+    bg_display_mode: Arc<str>,
     /// lock rotation
     lock_rot: Enabled,
     loop_bg: Enabled,
 
     unscaled_size: f32,
-    relative_to: String,
+    #[serde(with = "de_arc_str")]
+    relative_to: Arc<str>,
 
     position: [f32; 2],
     rotation: f32,
     zoom: f32,
-    bg_video: String,
+    #[serde(with = "de_arc_str")]
+    bg_video: Arc<str>,
     loop_video: Enabled,
     vid_offset: f32,
     floor_icon_outlines: Enabled,
     stick_to_floors: Enabled,
-    planet_ease: String,
+    #[serde(with = "de_arc_str")]
+    planet_ease: Arc<str>,
     planet_ease_parts: u8,
     legacy_flash: bool
 }

@@ -132,12 +132,12 @@ impl TatakuIntegration for Discord {
                     .get_info(playmode)
                     .map_or_else(
                         |_| playmode.to_owned(), 
-                        |i| i.display_name.to_owned()
+                        |i| i.display_name.to_owned().into()
                     );
 
                 assets = assets
                     .small_image("icon") // TODO: use a url for the image, where if it doesnt exist, it gives some default, so we always have the mode text
-                    .small_text(playmode_display); //values.global.gamemode_infos.get_info(playmode).map(|a| a.display_name.to_owned()).unwrap_or(playmode.to_owned()));
+                    .small_text(playmode_display.to_string()); //values.global.gamemode_infos.get_info(playmode).map(|a| a.display_name.to_owned()).unwrap_or(playmode.to_owned()));
 
                 activity = if let Some(player) = spectator {
                     activity

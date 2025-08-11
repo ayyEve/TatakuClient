@@ -92,7 +92,7 @@ impl OsuNote {
         }
     }
 
-    fn get_alpha(&self) -> f32 {
+    fn get_alpha(&self) -> u8 {
         // fade im
         let mut alpha = ((1.0 - ((self.time - (self.time_preempt * (2.0/3.0))) - self.map_time) / (self.time_preempt * (1.0/3.0))) / 3.0).clamp(0.0, 1.0);
 
@@ -100,7 +100,8 @@ impl OsuNote {
         if self.map_time >= self.time {
             alpha = ((self.time + self.hitwindow_miss) - self.map_time) / self.hitwindow_miss;
         }
-        alpha
+
+        (alpha.clamp(0.0, 1.0) * 255.0) as u8
     }
 
     // fn ripple_start(&mut self) {

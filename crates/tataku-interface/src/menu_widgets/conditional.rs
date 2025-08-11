@@ -7,8 +7,6 @@ pub struct ConditionalWidget {
     if_false: Option<Box<dyn Widget>>,
     cond: BuildableCondition,
 
-    #[chain] style: Style,
-
     value: bool,
     node_id: NodeId,
 }
@@ -25,10 +23,8 @@ impl ConditionalWidget {
             if_true,
             if_false,
             cond,
-            style: Style::default(),
 
             value: false,
-
             node_id: EMPTY_NODE
         }
     }
@@ -54,23 +50,54 @@ impl Widget for ConditionalWidget {
     fn name(&self) -> CowStr  { "conditional_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn update_styles(
-        &mut self, 
-        shell: &mut StyleShell, 
-        _display_override: Option<ui::Display>
-    ) {
-        self.if_true.update_styles(
-            shell, 
-            (!self.value).then_some(ui::Display::None)
-        );
+    fn children(&self) -> WidgetChildren {
+        let Some(child) = self.get_ele() 
+        else { return WidgetChildren::None };
         
-        if let Some(if_false) = &mut self.if_false {
-            if_false.update_styles(
-                shell, 
-                self.value.then_some(ui::Display::None)
-            );
-        }
+        WidgetChildren::Single(child)
     }
+    fn children_mut(&mut self) -> WidgetChildrenMut {
+        let Some(child) = self.get_ele_mut() 
+        else { return WidgetChildrenMut::None };
+        
+        WidgetChildrenMut::Single(child)
+    }
+    fn all_children(&self) -> WidgetChildren {
+        let mut list = Vec::with_capacity(2);
+        list.push(&self.if_true);
+        if let Some(f) = &self.if_false {
+            list.push(f);
+        }
+
+        WidgetChildren::OwnedList(list)
+    }
+    fn all_children_mut(&mut self) -> WidgetChildrenMut {
+        let mut list = Vec::with_capacity(2);
+        list.push(&mut self.if_true);
+        if let Some(f) = &mut self.if_false {
+            list.push(f);
+        }
+
+        WidgetChildrenMut::OwnedList(list)
+    }
+
+    // fn update_styles(
+    //     &mut self, 
+    //     shell: &mut StyleShell, 
+    //     _display_override: Option<ui::DisplayType>
+    // ) {
+    //     self.if_true.update_styles(
+    //         shell, 
+    //         (!self.value).then_some(ui::DisplayType::None)
+    //     );
+        
+    //     if let Some(if_false) = &mut self.if_false {
+    //         if_false.update_styles(
+    //             shell, 
+    //             self.value.then_some(ui::DisplayType::None)
+    //         );
+    //     }
+    // }
 
     fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId>  {
         let mut children = Vec::with_capacity(2);
@@ -79,34 +106,19 @@ impl Widget for ConditionalWidget {
             children.push(if_false.layout(shell)?);
         }
 
-        self.node_id = shell.tree.new_with_children(
-            self.style.clone(), 
-            &children
-        )?;
-
+        self.node_id = shell.tree.new_with_children(&children)?;
         Ok(self.node_id)
     }
+    
+    fn init_style(&mut self, shell: &mut LayoutShell) {
+        self.children_mut()
+            .into_iter()
+            .for_each(|c| c.init_style(shell));
 
-    fn draw(&self, shell: &mut DrawShell) {
-        let Some(child) = self.get_ele() else { return };
-        child.draw(shell);
+        // set the true condition widget to DisplayType::None so its hidden
+        // do not do this for the false widget because if it exists it should be visible by default
+        shell.tree.set_display(self.if_true.node_id(), Some(DisplayType::None));
     }
-    fn draw_overlay(&self, shell: &mut DrawShell) {
-        let Some(child) = self.get_ele() else { return };
-        child.draw_overlay(shell);
-    }
-
-    fn input(
-        &mut self,
-        event: &InputEvent,
-        shell: &mut InputShell,
-    ) {
-        if let Some(child) = self.get_ele_mut() {
-            child.input(event, shell);
-        }
-    }
-
-
 
     fn update(&mut self, shell: &mut UpdateShell) {
         match self.cond.resolve(shell.values) {
@@ -120,13 +132,13 @@ impl Widget for ConditionalWidget {
                 if let Some(child) = self.if_false.as_ref() {
                     shell.actions.push(UiAction::new(
                         child.node_id(), 
-                        UiActionType::UpdateDisplay(ui::Display::None)
+                        UiActionType::OverrideDisplay(Some(DisplayType::None))
                     ));
                 }
 
                 shell.actions.push(UiAction::new(
                     self.if_true.node_id(), 
-                    UiActionType::UpdateDisplay(ui::Display::Flex)
+                    UiActionType::OverrideDisplay(None)
                 ));
                 shell.actions.push(UiAction::new(
                     self.node_id, 
@@ -140,13 +152,13 @@ impl Widget for ConditionalWidget {
                 if let Some(child) = self.if_false.as_ref() {
                     shell.actions.push(UiAction::new(
                         child.node_id(), 
-                        UiActionType::UpdateDisplay(ui::Display::Flex)
+                        UiActionType::OverrideDisplay(None)
                     ));
                 }
 
                 shell.actions.push(UiAction::new(
                     self.if_true.node_id(), 
-                    UiActionType::UpdateDisplay(ui::Display::None)
+                    UiActionType::OverrideDisplay(Some(DisplayType::None))
                 ));
                 shell.actions.push(UiAction::new(
                     self.node_id, 
@@ -157,33 +169,11 @@ impl Widget for ConditionalWidget {
             _ => {}
         }
 
-        
         if let Some(child) = self.get_ele_mut() { 
             child.update(shell);
         }
     }
     
-    fn handle_message(
-        &mut self, 
-        message: &Message, 
-        shell: &mut MessageShell,
-    ) {
-        if let Some(child) = self.get_ele_mut() { 
-            child.handle_message(message, shell);
-        }
-    }
-
-    fn handle_event(
-        &mut self, 
-        event: &TatakuEventType, 
-        event_value: Option<&TatakuValue>, 
-        shell: &mut MessageShell,
-    ) {
-        if let Some(child) = self.get_ele_mut() { 
-            child.handle_event(event, event_value, shell);
-        }
-    }
-
     fn reload_skin(&mut self, shell: &mut UpdateShell) {
         self.if_true.reload_skin(shell);
         if let Some(if_false) = self.if_false.as_mut() {

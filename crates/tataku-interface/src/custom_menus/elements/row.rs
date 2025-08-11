@@ -5,9 +5,8 @@ use crate::prelude::*;
 pub struct RowElement {
     #[serde(rename = "@id", default)] id: Option<String>,
     #[serde(rename = "@class", default)] class_list: ClassList,
-
-    /// unparsed style string, parsed when the element is built
     #[serde(rename = "@style", default)] style: String,
+    
     #[serde(alias = "$value")] children: Vec<Element>,
 }
 impl CustomElement for RowElement {
@@ -20,7 +19,12 @@ impl CustomElement for RowElement {
             "row",
             self.id.clone(),
             classes,
-            Container::new(self.children.iter().map(|e| e.build()).collect())
+            Container::new(
+                self.children
+                    .iter()
+                    .map(|e| e.build())
+                    .collect()
+                )
                 // .style(taffy_style)
                 // .flex_direction(taffy::FlexDirection::Row)
                 // .vertical_overflow(taffy::Overflow::Clip)

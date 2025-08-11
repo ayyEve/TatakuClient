@@ -38,6 +38,8 @@ fn read_folder(
         .expect("error writing to output file");
 
     indent += 1;
+
+    let mut list = Vec::new();
     for f in std::fs::read_dir(path)
         .expect("error reading dir")
         .filter_map(Result::ok)
@@ -48,26 +50,35 @@ fn read_folder(
             read_folder(path, indent + 1, output);
             continue
         }
-        println!("cargo::rerun-if-changed={}", path.display());
-
         let name = path.file_stem().unwrap();
         let const_name = name.to_ascii_uppercase();
         let const_name_display = const_name.to_string_lossy();
+        
+        list.push(format!("(\"{const_name_display}\",{const_name_display})"));
+
         let path = f
             .path()
             .canonicalize()
             .expect("error canonicalizing path");
-        
-        let path_display = path.display();
 
-        let line = format!("pub const {const_name_display}:&[u8] = include_bytes!(\"{path_display}\");");
+        #[cfg(target_os = "windows")] let path_str = format!("{:?}", path.as_os_str());
+        #[cfg(target_os = "linux")] let path_str = format!("\"{}\"", path.display());
+        println!("cargo::rerun-if-changed={path_str}");
+
+        let line = format!("pub const {const_name_display}:&[u8] = include_bytes!({path_str});");
         
         let tabs = "    ".repeat(indent);
         output
             .write_all(format!("{tabs}{line}\n").as_bytes())
             .expect("error writing to output file");
     }
+
     
+    let all = list.join(",");
+    output
+        .write_all(format!("pub const ALL: &[(&str, &[u8])] = &[{all}];").as_bytes())
+        .expect("error writing to output file");
+
     output
         .write_all(format!("{tabs}}}\n").as_bytes())
         .expect("error writing to output file");

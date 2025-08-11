@@ -41,7 +41,7 @@ impl TatakuTask for ActionTask {
                     .unwrap_or(TatakuAction::None),
 
                 ActionTaskAction::Callback(cb) 
-                    => cb(values),
+                    => cb.clone()(values),
                 
                 ActionTaskAction::Action(a) => a,
             };
@@ -57,7 +57,7 @@ impl TatakuTask for ActionTask {
 
 pub enum ActionTaskAction {
     Action(TatakuAction), 
-    Callback(Box<dyn FnOnce(&mut dyn Reflect) -> TatakuAction + Send + Sync>),
+    Callback(Arc<dyn Fn(&mut dyn Reflect) -> TatakuAction + Send + Sync>),
     Buildable {
         action: BuildableAction,
         node: NodeId,

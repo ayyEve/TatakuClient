@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum OnlineAction {
     ChatAction(ChatAction),
 

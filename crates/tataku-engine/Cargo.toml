@@ -16,7 +16,7 @@ debug_custom_menus = []
 
 storyboards = []
 texture_arrays = []
-ui = [ "taffy", "triple_buffer", "simplecss" ]
+ui = [ "taffy", "triple_buffer", "simplecss", "slotmap" ]
 
 # removes as much graphics-side stuff as possible
 graphics = [ "winit", "ui", "clipboard", "raw-window-handle", "fontdue", "image" ]
@@ -34,8 +34,7 @@ lazy_static.workspace = true
 parking_lot.workspace = true
 async-trait.workspace = true
 bitflags.workspace = true
-
-tokio. workspace = true
+tokio.workspace = true
 triple_buffer = { workspace = true, optional = true }
 
 libloading = { workspace = true, optional = true }
@@ -51,6 +50,7 @@ clipboard = { workspace = true, optional = true }
 
 # gui
 taffy = { workspace = true, optional = true }
+slotmap = { workspace = true, optional = true }
 simplecss = { workspace = true, optional = true }
 
 # networking
@@ -76,6 +76,7 @@ encoding_rs = "0.8.35"
 # other stuff
 rand.workspace = true
 fs_extra.workspace = true
+half.workspace = true
 
 
 # logging

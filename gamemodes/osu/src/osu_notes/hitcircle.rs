@@ -21,7 +21,7 @@ pub struct HitCircle {
     pub combo_num: u16,
 
     pub scaling_helper: Arc<ScalingHelper>,
-    alpha: f32,
+    alpha: u8,
     color: Color,
 
     /// combo num text cache
@@ -49,7 +49,7 @@ impl HitCircle {
             combo_image: None,
             combo_text: None,
 
-            alpha: 0.0,
+            alpha: 0,
             color: Color::WHITE,
             shake: None
         }
@@ -141,7 +141,7 @@ impl HitCircle {
 
     }
 
-    pub fn set_alpha(&mut self, alpha: f32) {
+    pub fn set_alpha(&mut self, alpha: u8) {
         self.alpha = alpha;
     }
     pub fn set_color(&mut self, color: Color) {

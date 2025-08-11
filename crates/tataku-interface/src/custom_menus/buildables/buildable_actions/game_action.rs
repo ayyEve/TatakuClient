@@ -38,7 +38,7 @@ impl BuildableGameAction {
             Self::CopyToClipboard { mut text } => {
                 let _ = text.compute();
                 let text = text.to_string(values);
-                Some(GameAction::CopyToClipboard(text))
+                Some(GameAction::CopyToClipboard(text.into()))
             }
 
             Self::Quit => Some(GameAction::Quit),

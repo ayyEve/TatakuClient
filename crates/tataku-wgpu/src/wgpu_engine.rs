@@ -1,5 +1,6 @@
 // WARNING: there is a lot of just data and setup code in this
 
+use wgpu::Queue;
 use crate::prelude::*;
 use super::shaders::*;
 use std::num::NonZeroU64;
@@ -1543,7 +1544,7 @@ impl WgpuEngine<'_> {
             .map(|n| 
                 StandardVertex {
                     position: [n.x, n.y],
-                    color: [color.r, color.g, color.b, color.a],
+                    color: [color.r(), color.g(), color.b(), color.a()],
                     ..Default::default()
                 }.apply_matrix(&transform)
             )
@@ -1934,9 +1935,6 @@ impl GraphicsEngine for WgpuEngine<'_> {
         transform: Matrix, 
         blend_mode: Pipeline,
     ) {
-        // minor optimization
-        if color.a <= 0.0 { return }
-
         let n = resolution;
         let x = -radius;
         let y = -radius;
@@ -1992,7 +1990,7 @@ impl GraphicsEngine for WgpuEngine<'_> {
         }).collect::<Vec<_>>();
 
         // fill
-        if color.a > 0.0 {
+        if color.a > 0 {
             self.tessellate_polygon(
                 &points, 
                 color, 
@@ -2003,7 +2001,7 @@ impl GraphicsEngine for WgpuEngine<'_> {
         }
 
         // border
-        if let Some(border) = border.filter(|b| b.color.a > 0.0) {
+        if let Some(border) = border.filter(|b| b.color.a > 0) {
             self.tessellate_polygon(
                 &points, 
                 border.color, 
@@ -2086,7 +2084,7 @@ impl GraphicsEngine for WgpuEngine<'_> {
         let path = path.build();
 
         // fill
-        if color.a > 0.0 {
+        if color.a > 0 {
             self.tessellate_path(
                 &path, 
                 color, 
@@ -2097,7 +2095,7 @@ impl GraphicsEngine for WgpuEngine<'_> {
         }
 
         // border
-        if let Some(border) = border.filter(|b| b.color.a > 0.0) {
+        if let Some(border) = border.filter(|b| b.color.a > 0) {
             self.tessellate_path(
                 &path, 
                 border.color, 

@@ -13,7 +13,7 @@ impl Database {
         .collect::<Vec<String>>()
     }
 
-    pub fn add_ignored(path: String) {
+    pub fn add_ignored(path: &str) {
         let query = "INSERT INTO ignore_maps (beatmap_path, beatmap_hash) VALUES (?, '')";
 
         let db = Self::get();

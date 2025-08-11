@@ -36,7 +36,8 @@ impl Default for Theme {
 #[allow(unused)]
 #[derive(Reflect)]
 #[reflect(from_string = "auto")]
-#[derive(Debug, Serialize, Deserialize, Hash, Eq, PartialEq, Copy, Clone)]
+#[derive(Debug, Hash, Eq, PartialEq, Copy, Clone)]
+#[derive(Serialize, Deserialize)]
 pub enum ThemeColor {
     // main menu
     MainMenuPrimary,

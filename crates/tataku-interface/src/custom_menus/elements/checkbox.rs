@@ -6,8 +6,6 @@ use crate::prelude::*;
 pub struct CheckboxElement {
     #[serde(rename = "@id", default)] id: Option<String>,
     #[serde(rename = "@class", default)] class_list: ClassList,
-
-    /// unparsed style string, parsed when the element is built
     #[serde(rename = "@style", default)] style: String,
 
     /// buildable text in the body
@@ -37,7 +35,12 @@ impl CheckboxElement {
         if let Some(value) = self.value.clone() {
             match value {
                 TatakuValue::Bool(value) => CheckboxValue::Static(value),
-                TatakuValue::String(variable) => CheckboxValue::Variable(variable, false, false),
+                TatakuValue::String(variable) => CheckboxValue::Variable {
+                    path: variable.into(),
+                    cache: false,
+                    failed: false,
+                },
+
                 other => {
                     warn!("invalid checkbox value: {:?}", other);
                     CheckboxValue::Static(false)

@@ -272,10 +272,7 @@ impl TcpConnection {
 
 
 /// A downloadable item
-/// 
-/// NOTE!!!!!!!!!
-/// 
-/// When cloning, the on_complete is NOT CLONED!!!!
+#[derive(Clone)]
 #[derive(ChainableInitializer)]
 pub struct Downloadable {
     /// filename for this downloadable
@@ -284,7 +281,7 @@ pub struct Downloadable {
     // download progress data for this item
     pub download_progress: Option<Arc<RwLock<DownloadProgress>>>,
     pub download: Arc<dyn Fn() -> Arc<RwLock<DownloadProgress>> + Send + Sync>,
-    #[chain] pub on_complete: Option<TatakuAction>,
+    #[chain] pub on_complete: Option<Arc<dyn Fn() -> TatakuAction + Send + Sync>>,
 }
 impl Downloadable {
     pub fn new(
@@ -313,16 +310,6 @@ impl Downloadable {
 impl std::fmt::Debug for Downloadable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Downloadable({})", self.filename)
-    }
-}
-impl Clone for Downloadable {
-    fn clone(&self) -> Self {
-        Self {
-            filename: self.filename.clone(),
-            download: self.download.clone(),
-            download_progress: self.download_progress.clone(),
-            on_complete: None,
-        }
     }
 }
 

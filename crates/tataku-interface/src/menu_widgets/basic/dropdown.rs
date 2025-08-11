@@ -4,17 +4,12 @@ use crate::prelude::ui::*;
 // TODO: add spacing between dropdown items
 
 #[derive(ChainableInitializer)]
-#[derive(Widget)]
-#[widget(type("text", "container"))]
 pub struct Dropdown {
-    #[chain] pub style: Style,
-    pub text_style: TextStyle,
+    #[chain] placeholder: DropdownPlaceholder,
+    value: DropdownValue,
+    variants: DropdownVariants,
 
-    #[chain] pub placeholder: DropdownPlaceholder,
-    pub value: DropdownValue,
-    pub variants: DropdownVariants,
-
-    pub on_change: DropdownOnChange,
+    on_change: DropdownOnChange,
     // pub theme: DropdownTheme,
 
     /// is dropdown visible?
@@ -22,7 +17,6 @@ pub struct Dropdown {
     active_index: Option<usize>,
 
     hover: bool,
-
     node_id: NodeId,
 }
 impl Dropdown {
@@ -30,19 +24,15 @@ impl Dropdown {
         variants: impl Into<DropdownVariants>,
         value: impl Into<DropdownValue>,
         on_change: impl Into<DropdownOnChange>,
+        placeholder: impl Into<DropdownPlaceholder>,
     ) -> Self {
         let variants = variants.into();
         let value = value.into();
 
         Self {
-            style: Style::default(),
-            text_style: TextStyle {
-                alignment: Alignment::CENTER,
-                ..Default::default()
-            },
             value,
 
-            placeholder: String::new().into(),
+            placeholder: placeholder.into(),
             variants,
             on_change: on_change.into(),
             active: false,
@@ -55,31 +45,22 @@ impl Dropdown {
         }
     }
 
-    fn get_style(&self, scale: Option<Vector2>) -> Style {
-        let placeholder_size = self
-            .text_style
+    fn get_style(&self, text_style: &TextStyle, scale: Option<Vector2>) -> (CssUnit, CssUnit) {
+        let placeholder_size = text_style
             .measure_text(self.placeholder.get(), scale);
         
         let largest_text = self.variants.get_displays()
             .iter()
-            .map(|a| self.text_style.measure_text(a, scale))
+            .map(|a| text_style.measure_text(a, scale))
             .fold(
                 placeholder_size, 
-                |a, b| 
-                    Vector2::new(a.x.max(b.x), a.y.max(b.y))
+                |a, b| Vector2::new(a.x.max(b.x), a.y.max(b.y))
             );
         
-        Style {
-            min_size: Size {
-                width: Dimension::Length(largest_text.x),
-                height: Dimension::Length(largest_text.y)
-            },
-            // padding: Padding::from(ElementPadding::Single(5.0)).0,
-
-            ..self.style.clone()
-        }
+        let min_width = CssUnit::Pixels(half::f16::from_f32(largest_text.x));
+        let min_height = CssUnit::Pixels(half::f16::from_f32(largest_text.y));
+        (min_width, min_height)
     }
-
 
     fn set_value(
         &mut self, 
@@ -108,8 +89,6 @@ impl Dropdown {
                     .ok(),
                 };
 
-
-
                 let action = buildable_action
                     .clone()
                     .into_action(
@@ -137,53 +116,8 @@ impl Widget for Dropdown {
     fn name(&self) -> CowStr { "dropdown_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-
-    fn update_styles(
-        &mut self, 
-        shell: &mut StyleShell,
-        _display_override: Option<ui::Display>
-    ) {
-        let text_style = shell
-            .tree
-            .get_context(self.node_id).unwrap()
-            .element_data.style()
-            .0.text_style(shell.values);
-        
-        let placeholder_size = text_style.measure_text(
-            self.placeholder.get(), 
-            None
-        );
-        
-        let largest_text = self.variants.get_displays()
-            .iter()
-            .map(|a| text_style.measure_text(a, None))
-            .fold(
-                placeholder_size, 
-                |a, b| 
-                    Vector2::new(a.x.max(b.x), a.y.max(b.y))
-            )
-            ;
-
-        let mut style = shell
-            .tree
-            .get_style(self.node_id)
-            .unwrap()
-            .clone();
-
-        style.min_size = Size {
-            width: Dimension::Length(largest_text.x),
-            height: Dimension::Length(largest_text.y),
-        };
-        shell.tree.set_style(self.node_id, style);
-    }
-
-    fn set_text_style(&mut self, style: TextStyle) {
-        self.text_style = style;
-    }
-
     fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {
-        let style = self.get_style(Some(Vector2::ONE * shell.ui_scale));
-        self.node_id = shell.tree.new_leaf(style)?;
+        self.node_id = shell.tree.new_leaf()?;
 
         shell.with_context(self.node_id, |ctx| {
             ctx.needs_inverse_transform = true;
@@ -191,6 +125,21 @@ impl Widget for Dropdown {
         });
 
         Ok(self.node_id)
+    }
+
+    fn init_style(&mut self, shell: &mut LayoutShell) {
+        let text_style = shell.tree
+            .get_text_style(self.node_id)
+            .unwrap();
+
+        let (w, h) = self.get_style(text_style, None);
+        shell.tree.update_style(
+            self.node_id, 
+            |style| {
+                style.min_width = w.into();
+                style.min_height = h.into();
+            }
+        );
     }
 
     fn input(
@@ -274,7 +223,6 @@ impl Widget for Dropdown {
                 shell.event_consumed = true;
             }
             InputType::MousePress(MouseButton::Left) if !self.active => {
-                // let pos = context.inverse_global_transform * event.mouse_pos;
                 self.active = self.hover;
                 if self.active {
                     shell.event_consumed = true;
@@ -295,8 +243,10 @@ impl Widget for Dropdown {
             Rectangle::new_bounds(
                 bounds,
                 theme.background_color,
-            )
-            .border(Border::new(theme.get_color(self.active, self.hover), 2.0))
+            ).border(Border::new(
+                theme.get_color(self.active, self.hover), 
+                2.0
+            ))
         );
 
         // selected text
@@ -305,7 +255,11 @@ impl Widget for Dropdown {
             .and_then(|n| displays.get(n))
             .unwrap_or(self.placeholder.get());
 
-        shell.list.push(self.text_style.create_text(main_text.clone(), bounds));
+        let text_style = shell.tree
+            .get_text_style(self.node_id)
+            .unwrap();
+
+        shell.list.push(text_style.create_text(main_text.clone(), bounds));
     }
 
     fn draw_overlay(&self, shell: &mut DrawShell) {
@@ -322,6 +276,10 @@ impl Widget for Dropdown {
         let active = self
             .active_index
             .unwrap_or(self.variants.len());
+
+        let text_style = shell.tree
+            .get_text_style(self.node_id)
+            .unwrap();
 
         // draw all options
         // TODO: margin between items
@@ -343,14 +301,13 @@ impl Widget for Dropdown {
                     offset, 
                     bounds.size,
                     theme.background_color.alpha(1.0),
-                )
-                .border(Border::new(
+                ).border(Border::new(
                     theme.get_color(n == selected, n == active), 
                     2.0
                 ))
             );
 
-            let text = self.text_style.create_text(
+            let text = text_style.create_text(
                 i, 
                 Bounds::new(offset, bounds.size)
             );
@@ -365,8 +322,18 @@ impl Widget for Dropdown {
                 error!("error building variants: {e:?}");
                 return 
             }
+            let text_style = shell.tree
+                .get_text_style(self.node_id)
+                .unwrap();
 
-            shell.tree.set_style(self.node_id, self.get_style(None));
+            let (w, h) = self.get_style(text_style, None);
+            shell.tree.update_style(
+                self.node_id, 
+                |style| {
+                    style.min_width = w.into();
+                    style.min_height = h.into();
+                }
+            );
         }
 
         if let DropdownValue::Variable(
@@ -475,14 +442,6 @@ impl From<BuildableAction> for DropdownOnChange {
         Self::Buildable(value)
     }
 }
-impl From<DropdownBuilderOnChange> for DropdownOnChange {
-    fn from(value: DropdownBuilderOnChange) -> Self {
-        match value {
-            DropdownBuilderOnChange::Message(message) => Self::Message(message),
-            DropdownBuilderOnChange::Callback(cb) => Self::Callback(cb),
-        }
-    }
-}
 
 pub enum DropdownVariants {
     Static(Vec<String>),
@@ -498,7 +457,9 @@ impl DropdownVariants {
     }
     
     fn build(&mut self, values: &dyn Reflect) -> TatakuResult<()> {
-        let Self::Variable(var) = self else { return Ok(()) };
+        let Self::Variable(var) = self 
+        else { return Ok(()) };
+
         let var = var.resolve_path(values)?;
 
         let iter = values.reflect_iter(&*var)?;
@@ -512,7 +473,6 @@ impl DropdownVariants {
                 value: value
                     .duplicate()
                     .expect("Value in dropdown not clonable"),
-                // id.downcast_ref::<String>()?.clone(),
             })
         }).collect::<Vec<_>>();
 
@@ -556,14 +516,6 @@ impl From<Vec<String>> for DropdownVariants {
 impl From<String> for DropdownVariants {
     fn from(value: String) -> Self {
         Self::Variable(value.into())
-    }
-}
-impl From<DropdownBuilderVariants> for DropdownVariants {
-    fn from(value: DropdownBuilderVariants) -> Self {
-        match value {
-            DropdownBuilderVariants::Static(items) => Self::Static(items),
-            DropdownBuilderVariants::Variable(var) => Self::Variable(var.into()),
-        }
     }
 }
 
@@ -618,14 +570,6 @@ impl From<String> for DropdownValue {
         Self::Variable(VariablePathResolver::new(value), None)
     }
 }
-impl From<DropdownBuilderValue> for DropdownValue {
-    fn from(value: DropdownBuilderValue) -> Self {
-        match value {
-            DropdownBuilderValue::Index(i) => Self::Index(i),
-            DropdownBuilderValue::Variable(var) => var.into(),
-        }
-    }
-}
 
 
 pub enum DropdownPlaceholder {
@@ -633,6 +577,11 @@ pub enum DropdownPlaceholder {
     Buildable {
         buildable: BuildableText,
         cache: String
+    }
+}
+impl Default for DropdownPlaceholder {
+    fn default() -> Self {
+        Self::Static(String::new())
     }
 }
 impl DropdownPlaceholder {

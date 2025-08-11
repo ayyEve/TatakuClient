@@ -1,12 +1,12 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub enum CssValue<T> {
     #[default]
     Unset,
     Inherit,
-    Variable(String),
     Value(T),
+    Variable(Arc<str>),
 }
 impl<T> CssValue<T> {
     pub fn parse<E>(
@@ -22,7 +22,7 @@ impl<T> CssValue<T> {
                 let var = other
                     .trim_start_matches("var(")
                     .trim_end_matches(|c| [' ', ',', ';', ')'].contains(&c));
-                Self::Variable(var.to_owned())
+                Self::Variable(var.to_owned().into())
             }
 
             other => value_parser(other)
@@ -50,16 +50,35 @@ impl<T> CssValue<T> {
             _ => None
         }
     }
+
+    /// returns `other` if self is unset, otherwise returns self
+    pub fn merge<'a, 'b: 'a>(&'a self, other: &'b Self) -> &'a Self {
+        if let Self::Unset = self {
+            other
+        } else {
+            self
+        }
+    }
 }
+impl<T: std::str::FromStr> CssValue<T> {
+    pub fn parse_or_unset(s: &str) -> Self {
+        Self::parse(
+            s,
+            Self::Unset,
+            T::from_str
+        )
+    }
+}
+
 impl<T:Reflect + std::fmt::Debug> CssValue<T> {
-    pub fn value_var<'a: 'b, 'b>(
+    pub fn resolve<'a: 'b, 'b>(
         &'b self, 
         values: &'a dyn Reflect
     ) -> Option<MaybeOwned<'b, T>> {
         match self {
             Self::Value(v) => Some(MaybeOwned::Borrowed(v)),
             Self::Variable(path) => {
-                let val = values.reflect_get(path).ok();
+                let val = values.reflect_get(&**path).ok();
                 // println!("================================");
                 // println!("path: '{path}' = {val:?}");
                 // println!("================================");
@@ -70,12 +89,12 @@ impl<T:Reflect + std::fmt::Debug> CssValue<T> {
     }
 }
 impl<T:Reflect + std::fmt::Debug + Clone> CssValue<T> {
-    pub fn value_var_cloned(&self, values: &dyn Reflect) -> Option<T> {
+    pub fn resolve_cloned(&self, values: &dyn Reflect) -> Option<T> {
         match self {
             Self::Value(v) => Some(v.clone()),
             Self::Variable(path) => {
                 let val = values
-                    .reflect_get::<T>(path)
+                    .reflect_get::<T>(&**path)
                     .ok()
                     .map(|i| i.cloned());
                 // println!("================================");
@@ -88,12 +107,12 @@ impl<T:Reflect + std::fmt::Debug + Clone> CssValue<T> {
     }
 }
 impl<T:Reflect + std::fmt::Debug + Copy> CssValue<T> {
-    pub fn value_var_copied(&self, values: &dyn Reflect) -> Option<T> {
+    pub fn resolve_copied(&self, values: &dyn Reflect) -> Option<T> {
         match self {
             Self::Value(v) => Some(*v),
             Self::Variable(path) => {
                 let val = values
-                    .reflect_get::<T>(path)
+                    .reflect_get::<T>(&**path)
                     .map(|i| i.copied())
                     .ok();
                 // println!("================================");
@@ -103,5 +122,11 @@ impl<T:Reflect + std::fmt::Debug + Copy> CssValue<T> {
             }
             _ => None
         }
+    }
+}
+
+impl<T> From<T> for CssValue<T> {
+    fn from(value: T) -> Self {
+        Self::Value(value)
     }
 }

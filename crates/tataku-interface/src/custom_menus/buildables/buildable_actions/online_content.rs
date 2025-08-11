@@ -129,7 +129,7 @@ impl BuildableOnlineContentAction {
                 search_values_map_path, 
                 search_values_key_value_path, 
                 query 
-            } => Some(OnlineContentAction::Search(
+            } => Some(OnlineContentAction::Search(Box::new(
                 BuildableOnlineContentSearch {
                     engine_id, 
                     search_type, 
@@ -139,7 +139,7 @@ impl BuildableOnlineContentAction {
                     search_values_key_value_path, 
                     query 
                 }.resolve(values, passed_in)?
-            )),
+            ))),
         }
     }
 }

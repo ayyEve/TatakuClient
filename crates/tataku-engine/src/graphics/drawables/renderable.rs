@@ -6,7 +6,10 @@ pub trait TatakuRenderable: Sync + Send {
     
     fn get_blend_mode(&self) -> Pipeline;
     fn set_blend_mode(&mut self, blend_mode: Pipeline);
-    fn with_blend_mode(mut self, blend_mode: Pipeline) -> Self where Self:Sized { self.set_blend_mode(blend_mode); self }
+    fn with_blend_mode(mut self, blend_mode: Pipeline) -> Self where Self:Sized { 
+        self.set_blend_mode(blend_mode); 
+        self 
+    }
 
     // fn draw(&self, transform: Matrix, g: &mut dyn GraphicsEngine);
     fn draw(
@@ -21,8 +24,8 @@ pub trait TatakuRenderable: Sync + Send {
 /// draw option overrides
 #[derive(Copy, Clone, Debug, Default)]
 pub struct DrawOptions {
-    pub alpha: Option<f32>,
-    pub border_alpha: Option<f32>,
+    pub alpha: Option<u8>,
+    pub border_alpha: Option<u8>,
 
     pub color: Option<Color>,
     pub border_color: Option<Color>,
@@ -30,13 +33,22 @@ pub struct DrawOptions {
     pub image_flip: ImageFlip,
 }
 impl DrawOptions {
+    fn apply_alpha(alpha: Option<u8>, other: u8) -> u8 {
+        (
+            (
+                (alpha.unwrap_or(255) as f32 / 255.0)
+                * (other as f32 / 255.0) 
+            ).clamp(0.0, 1.0) * 255.0
+        ) as u8
+    }
+
     /// get the modified alpha value for the provided alpha
-    pub fn alpha(&self, other: f32) -> f32 {
-        self.alpha.unwrap_or(1.0) * other
+    pub fn alpha(&self, other: u8) -> u8 {
+        Self::apply_alpha(self.alpha, other)
     }
     /// get the modified alpha value for the provided border alpha
-    pub fn border_alpha(&self, other: f32) -> f32 {
-        self.alpha.unwrap_or(1.0) * other
+    pub fn border_alpha(&self, other: u8) -> u8 {
+        Self::apply_alpha(self.border_alpha, other)
     }
 
     /// get the modified color value for the provided color
@@ -47,7 +59,7 @@ impl DrawOptions {
 
     /// get the modified color with the modified alpha for the provided color
     pub fn color_with_alpha(&self, other: Color) -> Color {
-        self.color(other).alpha(self.alpha(other.a))
+        self.color(other).alpha8(self.alpha(other.a))
     }
 
     
@@ -59,7 +71,7 @@ impl DrawOptions {
 
     /// get the modified color with the modified alpha for the provided border color
     pub fn border_color_with_alpha(&self, other: Color) -> Color {
-        self.border_color(other).alpha(self.border_alpha(other.a))
+        self.border_color(other).alpha8(self.border_alpha(other.a))
     }
 
 
@@ -79,7 +91,7 @@ impl DrawOptions {
     }
 }
 
-fn merge_opts(a: Option<f32>, b: Option<f32>) -> Option<f32> {
+fn merge_opts<T: std::ops::Mul<Output=T>>(a: Option<T>, b: Option<T>) -> Option<T> {
     match (a, b) {
         (Some(a), Some(b)) => Some(a * b),
         (Some(a), None) => Some(a),

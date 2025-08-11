@@ -759,6 +759,47 @@ impl GameMode for ManiaGame {
         }
     }
 
+    fn handle_gameplay_event(&mut self, event: GameplayEvent) {
+        match event {
+            GameplayEvent::SetBounds { bounds, full_window } => {
+                let mut playfield = ManiaPlayfield::new(
+                    self.game_settings.playfield_settings[(self.column_count - 1) as usize].clone(), 
+                    bounds, 
+                    self.column_count,
+                    self.mania_skin_settings.as_ref().map(|s| OSU_SIZE.y - s.hit_position).unwrap_or_default(),
+                    full_window
+                );
+
+                if !full_window {
+                    playfield.settings.x_offset = bounds.pos.x;
+                }
+
+                // if playfield.upside_down {
+                //     playfield.settings.hit_pos -= pos.y
+                // } else {
+                //     playfield.settings.hit_pos += pos.y
+                // }
+                self.apply_new_playfield(Arc::new(playfield));
+            }
+        
+            GameplayEvent::ApplyMods(_mods) => {}
+
+            GameplayEvent::BeatHappened { pulse_length } => {
+                self.columns
+                    .iter_mut()
+                    .flatten()
+                    .for_each(|n| n.beat_happened(pulse_length));
+            }
+            GameplayEvent::KiaiChanged { enabled } => {
+                self.columns
+                    .iter_mut()
+                    .flatten()
+                    .for_each(|n| n.kiai_changed(enabled));
+            }
+
+            _ => {}
+        }
+    }
 
     fn update(
         &mut self, 
@@ -907,28 +948,6 @@ impl GameMode for ManiaGame {
         }
     }
 
-    fn set_bounds(&mut self, bounds: Bounds, full_window: bool) {
-        let mut playfield = ManiaPlayfield::new(
-            self.game_settings.playfield_settings[(self.column_count - 1) as usize].clone(), 
-            bounds, 
-            self.column_count,
-            self.mania_skin_settings.as_ref().map(|s| OSU_SIZE.y - s.hit_position).unwrap_or_default(),
-            full_window
-        );
-
-        if !full_window {
-            playfield.settings.x_offset = bounds.pos.x;
-        }
-
-        // if playfield.upside_down {
-        //     playfield.settings.hit_pos -= pos.y
-        // } else {
-        //     playfield.settings.hit_pos += pos.y
-        // }
-        self.apply_new_playfield(Arc::new(playfield));
-    }
-
-    
     fn force_update_settings(&mut self, _settings: &Settings) {}
     
     fn reload_skin(&mut self, beatmap_path: &str, skin_manager: &mut dyn SkinProvider) -> TextureSource {
@@ -953,8 +972,6 @@ impl GameMode for ManiaGame {
 
         source
     }
-
-    fn apply_mods(&mut self, _mods: Arc<ModManager>) { }
 
     fn handle_input(&mut self, input: InputEvent) -> Option<ReplayAction> {
         match input.event {
@@ -988,21 +1005,6 @@ impl GameMode for ManiaGame {
             _ => None
         }
     }
-
-
-    fn beat_happened(&mut self, pulse_length: f32) {
-        self.columns
-            .iter_mut()
-            .flatten()
-            .for_each(|n| n.beat_happened(pulse_length));
-    }
-    fn kiai_changed(&mut self, is_kiai: bool) {
-        self.columns
-            .iter_mut()
-            .flatten()
-            .for_each(|n| n.kiai_changed(is_kiai));
-    }
-
 
     fn build_widgets(
         &self, 

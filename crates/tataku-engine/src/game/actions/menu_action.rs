@@ -5,7 +5,7 @@ pub enum MenuAction {
     /// Set the menu to the provided menu identifier
     SetMenu {
         id: CowStr,
-        input: BuildableInputArguments,
+        input: Box<BuildableInputArguments>,
     },
 
     /// Go to the previous menu
@@ -17,23 +17,46 @@ pub enum MenuAction {
     /// Add a custom dialog
     AddDialog {
         id: CowStr,
-        options: DialogCreateOptions,
-        input: BuildableInputArguments,
+        options: Box<DialogCreateOptions>,
+        input: Box<BuildableInputArguments>,
     },
 
     #[debug(skip)]
     AddDialogRaw {
         dialog: Box<dyn Widget>,
-        options: DialogCreateOptions,
+        options: Box<DialogCreateOptions>,
     },
 }
+impl Clone for MenuAction {
+    fn clone(&self) -> Self {
+        match self {
+            Self::AddDialogRaw { .. } => panic!("Trying to clone AddDialogRaw!"),
+            Self::SetMenu { 
+                id, 
+                input 
+            } => Self::SetMenu { id: id.clone(), input: input.clone() },
+
+            MenuAction::PreviousMenu(c) 
+                => Self::PreviousMenu(c.clone()),
+
+            MenuAction::AddDialog { 
+                id, 
+                options, 
+                input 
+            } => Self::AddDialog { 
+                id: id.clone(), 
+                options: options.clone(), 
+                input: input.clone()
+            },
+        }
+    }
+}
+
 impl MenuAction {
-    pub fn set_menu(
-        menu: impl Into<CowStr>,
-    ) -> Self {
+    pub fn set_menu(menu: impl Into<CowStr>) -> Self {
         Self::SetMenu {
             id: menu.into(),
-            input: BuildableInputArguments::default()
+            input: Box::new(BuildableInputArguments::default())
         }
     }
 }

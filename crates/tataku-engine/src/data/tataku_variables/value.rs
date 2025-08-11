@@ -6,7 +6,6 @@ use crate::prelude::*;
 pub enum TatakuValue {
     #[default] None,
 
-    // I64(i64),
     F32(f32),
     U32(u32),
     U64(u64),
@@ -109,40 +108,42 @@ impl TatakuValue {
         }
     }
 
-    pub fn as_f32(&self) -> Result<f32, ShuntingYardError> {
+    pub fn as_f32(&self) -> ShuntingYardResult<f32> {
         match self {
             Self::U32(i) => Ok(*i as f32),
             Self::U64(i) => Ok(*i as f32),
             Self::F32(f) => Ok(*f),
             Self::Bool(b) => Ok(if *b { 1.0 } else { 0.0 }),
 
-            Self::None => Err(ShuntingYardError::ValueIsNone),
-            Self::String(s) => s.parse().map_err(|_| ShuntingYardError::ValueIsntANumber(s.clone())),
+            Self::None => Err(BuildableShuntingYardError::ValueIsNone),
+            Self::String(s) => s.parse().map_err(
+                |_| BuildableShuntingYardError::ValueIsntANumber(s.clone())
+            ),
             
             Self::Reflect(r) => Ok(r.reflect_as_number("")?.into()),
         }
     }
 
-    pub fn as_u32(&self) -> Result<u32, ShuntingYardError> {
+    pub fn as_u32(&self) -> ShuntingYardResult<u32> {
         match self {
             Self::U32(n) => Ok(*n),
             Self::U64(n) => Ok(*n as u32),
             Self::Reflect(r) => Ok(r.reflect_as_number("")?.into()),
-            Self::String(s) => s.parse().map_err(|_| ShuntingYardError::ValueIsntANumber(s.clone())),
+            Self::String(s) => s.parse().map_err(|_| BuildableShuntingYardError::ValueIsntANumber(s.clone())),
 
-            Self::None => Err(ShuntingYardError::ValueIsNone),
-            _ => Err(ShuntingYardError::ConversionError("Not castable to u32".to_string()))
+            Self::None => Err(BuildableShuntingYardError::ValueIsNone),
+            _ => Err(BuildableShuntingYardError::ConversionError("Not castable to u32".to_string()))
         }
     }
-    pub fn as_u64(&self) -> Result<u64, ShuntingYardError> {
+    pub fn as_u64(&self) -> ShuntingYardResult<u64> {
         match self {
             Self::U32(n) => Ok(*n as u64),
             Self::U64(n) => Ok(*n),
             Self::Reflect(r) => Ok(r.reflect_as_number(".")?.into()),
-            Self::String(s) => s.parse().map_err(|_| ShuntingYardError::ValueIsntANumber(s.clone())),
+            Self::String(s) => s.parse().map_err(|_| BuildableShuntingYardError::ValueIsntANumber(s.clone())),
 
-            Self::None => Err(ShuntingYardError::ValueIsNone),
-            _ => Err(ShuntingYardError::ConversionError("Not castable to u64".to_string()))
+            Self::None => Err(BuildableShuntingYardError::ValueIsNone),
+            _ => Err(BuildableShuntingYardError::ConversionError("Not castable to u64".to_string()))
         }
     }
 
@@ -195,11 +196,15 @@ impl TatakuValue {
         }
         else {
             match value2 {
-                MaybeOwnedReflect::Owned(reflect) => Ok(Self::Reflect(reflect)),
+                MaybeOwnedReflect::Owned(reflect) 
+                    => Ok(Self::Reflect(reflect)),
                 MaybeOwnedReflect::Borrowed(reflect) => reflect
                     .duplicate()
                     .map(Self::Reflect)
-                    .ok_or(ReflectError::wrong_type(value.type_name(), "TatakuValue")),
+                    .ok_or(ReflectError::wrong_type(
+                        value.type_name(), 
+                        "TatakuValue"
+                    )),
             }
         }
     }
@@ -301,6 +306,9 @@ impl From<&str> for TatakuValue {
         Self::String(value.to_owned())
     }
 }
+
+
+
 impl From<TatakuNumber> for TatakuValue {
     fn from(value: TatakuNumber) -> Self {
         match value {
@@ -515,6 +523,8 @@ impl From<ReflectNumber> for TatakuNumber {
             ReflectNumber::Isize(n) => Self::U64(n as u64),
             ReflectNumber::F32(n) => Self::F32(n),
             ReflectNumber::F64(n) => Self::F32(n as f32),
+            ReflectNumber::F16(n) => Self::F32(n.to_f32()),
+            ReflectNumber::BF16(n) => Self::F32(n.to_f32()),
         }
     }
 }

@@ -64,7 +64,7 @@ impl DownloadManager {
                 std::fs::write(&dl.filename, data).unwrap();
 
                 if let Some(on_complete) = dl.on_complete.take() {
-                    actions.push(on_complete);
+                    actions.push(on_complete());
                 }
             }
         }

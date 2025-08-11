@@ -5,10 +5,8 @@ use crate::prelude::*;
 pub struct ColumnElement {
     #[serde(rename = "@id", default)] id: Option<String>,
     #[serde(rename = "@class", default)] class_list: ClassList,
-
-    /// unparsed style string, parsed when the element is built
     #[serde(rename = "@style", default)] style: String,
-    #[serde(alias = "$value")] children: Vec<Element>,
+    #[serde(rename = "$value")] children: Vec<Element>,
 }
 
 impl CustomElement for ColumnElement {

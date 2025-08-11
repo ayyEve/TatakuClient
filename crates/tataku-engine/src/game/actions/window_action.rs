@@ -19,10 +19,10 @@ pub enum WindowAction {
     TakeScreenshot(ScreenshotInfo),
 
     /// Load an image
-    LoadImage(LoadImage),
+    LoadImage(Box<LoadImage>),
 
     /// Copy some text to the clipboard
-    CopyToClipboard(String),
+    CopyToClipboard(Arc<str>),
 
     /// Refresh available monitors
     RefreshMonitors,
@@ -38,9 +38,29 @@ pub enum WindowAction {
 
     DumpAtlas,
 }
+impl Clone for WindowAction {
+    fn clone(&self) -> Self {
+        match self {
+            Self::DumpAtlas => Self::DumpAtlas,
+            Self::CloseGame => Self::CloseGame,
+            Self::ShowCursor => Self::ShowCursor,
+            Self::HideCursor => Self::HideCursor,
+            Self::RefreshMonitors => Self::RefreshMonitors,
+            Self::RequestAttention => Self::RequestAttention,
+            Self::TakeScreenshot(arg0) => Self::TakeScreenshot(arg0.clone()),
+            Self::CopyToClipboard(arg0) => Self::CopyToClipboard(arg0.clone()),
+            Self::SettingsUpdated(arg0) => Self::SettingsUpdated(arg0.clone()),
+
+            Self::LoadImage(_) => panic!("trying to clone LoadImage"),
+            Self::RenderData(_) => panic!("trying to clone RenderData"),
+            Self::AddEmitter(_) => panic!("trying to clone AddEmitter"),
+        }
+    }
+}
+
 impl From<WindowAction> for TatakuAction {
     fn from(value: WindowAction) -> Self {
-        Self::WindowAction(value)
+        Self::WindowAction(Box::new(value))
     }
 }
 

@@ -5,9 +5,8 @@ use crate::prelude::*;
 pub struct TextElement {
     #[serde(rename = "@id", default)] pub id: Option<String>,
     #[serde(rename = "@class", default)] pub class_list: ClassList,
-
-    /// unparsed style string, parsed when the element is built
     #[serde(rename = "@style", default)] pub style: String,
+    
     #[serde(rename = "$value")] pub text: BuildableText,
 }
 impl CustomElement for TextElement {

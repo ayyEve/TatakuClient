@@ -3,11 +3,13 @@ use crate::prelude::*;
 #[cfg(feature="graphics")]
 pub trait GamemodeSettings: Reflect + MakeSettingsMenu + std::fmt::Debug {
     fn to_value(&self) -> serde_json::Value;
+    fn duplicate_settings(&self) -> Box<dyn GamemodeSettings>;
 }
 
 #[cfg(not(feature="graphics"))]
 pub trait GamemodeSettings: Reflect + std::fmt::Debug {
     fn to_value(&self) -> serde_json::Value;
+    fn duplicate_settings(&self) -> Box<dyn GamemodeSettings>;
 }
 
 impl_downcast!(GamemodeSettings);

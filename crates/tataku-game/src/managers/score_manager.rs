@@ -13,7 +13,7 @@ pub struct ScoreManager {
     #[reflect(skip)] abort_handle: Option<AbortHandle>,
 
     #[reflect(skip)] beatmap: ValueChangeHelper<Md5Hash>,
-    #[reflect(skip)] playmode: ValueChangeHelper<String>,
+    #[reflect(skip)] playmode: ValueChangeHelper<Arc<str>>,
     #[reflect(skip)] score_method: ValueChangeHelper<ScoreRetreivalMethod>,
     #[reflect(skip)] mods: ValueChangeHelper<ModManager>,
 }
@@ -57,7 +57,7 @@ impl ScoreManager {
         let settings = values.settings.clone();
 
         let playmode = self.playmode.try_get()?.clone();
-        let map_hash:Md5Hash = *self.beatmap.try_get()?;
+        let map_hash = *self.beatmap.try_get()?;
         let method = self.score_method();
         let infos = values.global.gamemode_infos.clone();
 
@@ -325,7 +325,7 @@ mod osu {
     }
 
 
-    pub async fn fetch_beatmap_id(api_key: &String, map_hash: &String) -> Option<String> {
+    pub async fn fetch_beatmap_id(api_key: &str, map_hash: &str) -> Option<String> {
         let url = format!("https://osu.ppy.sh/api/get_beatmaps?k={api_key}&h={map_hash}");
         trace!("osu beatmap id lookup");
         let bytes = reqwest::get(url).await.ok()?.bytes().await.ok()?.to_vec();
@@ -335,9 +335,9 @@ mod osu {
     }
 
     pub async fn get_scores(
-        osu_api_key: &String,
+        osu_api_key: &str,
         hash: Md5Hash,
-        playmode: &String,
+        playmode: &str,
         infos: &GamemodeInfos,
     ) -> Vec<IngameScore> {
         match get_scores_internal(osu_api_key, hash, playmode, infos).await {
@@ -350,15 +350,15 @@ mod osu {
     }
 
     async fn get_scores_internal(
-        osu_api_key: &String,
+        osu_api_key: &str,
         hash: Md5Hash,
-        playmode: &String,
+        playmode: &str,
         infos: &GamemodeInfos,
     ) -> TatakuResult<Vec<IngameScore>> {
         let info = infos.get_info(playmode)?;
         let ok_mods = ModManager::mods_for_playmode_as_hashmap(info);
 
-        let mode = match &**playmode {
+        let mode = match playmode {
             "osu" => 0,
             "taiko" => 1,
             "catch" => 2,
@@ -393,7 +393,7 @@ mod osu {
 
                     let mut score = Score::default();
                     score.username = s.username.clone();
-                    score.playmode = playmode.clone();
+                    score.playmode = playmode.to_string();
                     score.score = s.score.parse().unwrap_or_default();
                     score.combo = s.maxcombo.parse().unwrap_or_default();
                     score.max_combo = s.maxcombo.parse().unwrap_or_default();
@@ -604,7 +604,7 @@ mod tataku {
         score: Score
     }
 
-    pub async fn get_scores(map_hash: &String, playmode: &String, settings: &Settings) -> Vec<IngameScore> {
+    pub async fn get_scores(map_hash: &str, playmode: &str, settings: &Settings) -> Vec<IngameScore> {
         match get_scores_internal(map_hash, playmode, settings).await {
             Ok(maps) => maps,
             Err(e) => {
@@ -614,7 +614,7 @@ mod tataku {
         }
     }
 
-    async fn get_scores_internal(map_hash: &String, playmode: &String, settings: &Settings) -> TatakuResult<Vec<IngameScore>> {
+    async fn get_scores_internal(map_hash: &str, playmode: &str, settings: &Settings) -> TatakuResult<Vec<IngameScore>> {
         let base = settings.score_url.clone();
         let url = format!("{base}/api/get_scores?hash={map_hash}&mode={playmode}");
 

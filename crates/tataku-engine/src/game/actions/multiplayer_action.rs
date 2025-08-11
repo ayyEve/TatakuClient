@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum MultiplayerAction {
     // Leave multiplayer mode
     ExitMultiplayer,
@@ -28,7 +28,7 @@ pub enum MultiplayerAction {
     /// Change the beatmap
     SetBeatmap {
         hash: Md5Hash,
-        mode: Option<String>,
+        mode: Option<Arc<str>>,
     },
 
     InviteUser {
@@ -44,7 +44,7 @@ impl From<MultiplayerAction> for TatakuAction {
 }
 
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum LobbyAction {
     /// Start the match
     Start,
@@ -86,7 +86,7 @@ pub enum LobbyAction {
     ChangeHost(u32),
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum LobbySlotAction {
     /// Kick the player in the provided slot
     Kick(u8),

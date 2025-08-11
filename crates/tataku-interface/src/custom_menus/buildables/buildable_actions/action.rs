@@ -13,6 +13,11 @@ pub enum BuildableAction {
         #[serde(rename="@delay")] delay: u64,
     },
 
+    // An internal action at <path>
+    Internal {
+        #[serde(rename="@path")] path: VariablePathResolver,
+    },
+
     /// Set a value
     SetValue {
         #[serde(rename="@key")] key: VariablePathResolver, 
@@ -158,14 +163,30 @@ impl BuildableAction {
             } => {
                 let passed_in = passed_in.cloned();
                 Some(TatakuAction::Delayed(
-                    DelayedActionType::Callback(Box::new(
+                    DelayedActionType::Callback(Arc::new(
                         move |values| action
+                            .clone()
                             .into_action(node, values, passed_in.as_ref())
                             .unwrap_or(TatakuAction::None)
                     )),
                     delay
                 ))
             }
+
+            Self::Internal { path } => {
+                let path = path
+                    .resolve_path(values)
+                    .map_err(|e| error!("{e}"))
+                    .ok()?;
+
+                let action = values
+                    .reflect_get::<BuildableSettingsAction>(&path)
+                    .map_err(|e| error!("{e:?}"))
+                    .ok()?;
+
+                action.inner.build(node, passed_in, values)
+            }
+
 
             Self::AddDialog { 
                 id, 
@@ -189,7 +210,7 @@ impl BuildableAction {
                     
                 Some(TatakuAction::Menu(MenuAction::AddDialog {
                     id: id.into(),
-                    options: DialogCreateOptions {
+                    options: Box::new(DialogCreateOptions {
                         allow_multiple,
                         draggable,
                         resizable,
@@ -197,8 +218,8 @@ impl BuildableAction {
                         // TODO: not auto?
                         location: DialogLocation::Auto,
                         background: true,
-                    },
-                    input: variables.build(values, passed_in)
+                    }),
+                    input: Box::new(variables.build(values, passed_in))
                 }))
             }
             
@@ -220,7 +241,7 @@ impl BuildableAction {
 
                 Some(TatakuAction::Menu(MenuAction::SetMenu { 
                     id: id.into(), 
-                    input: variables.build(values, passed_in)
+                    input: Box::new(variables.build(values, passed_in))
                 }))
             }
 
@@ -332,6 +353,7 @@ impl BuildableAction {
         match self {
             Self::Map { action } 
                 => action.build(values),
+
             Self::Mods { action } 
                 => action.build(values),
             Self::Song { action } 
@@ -403,6 +425,7 @@ impl BuildableAction {
                 error!("error building custom event tag: {e:?}");
             }
 
+            Self::Internal { .. } => {},
             Self::None => {},
             Self::CloseDialog => {},
             Self::Gameplay { .. } => {},

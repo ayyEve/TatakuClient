@@ -201,9 +201,6 @@ impl OnlineContentValues {
 
 
 
-/// NOTE! when cloning, the result's downloadable WILL NOT HAVE AN ACTION!
-/// Clone should only be used when checking for data, 
-/// the original should be referenced properly when performing the download
 #[derive(Default, Debug, Clone)]
 #[derive(Reflect)]
 #[reflect(display = "debug")]

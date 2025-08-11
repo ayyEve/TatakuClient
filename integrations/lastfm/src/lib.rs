@@ -32,12 +32,17 @@ impl LastFm {
         }
     }
 
-    pub async fn update(track: String, artist: String, settings: &Settings) {
-        let username = settings.username.clone();
-        let password = settings.password.clone();
+    pub async fn update(track: Arc<str>, artist: Arc<str>, settings: &Settings) {
+        let username = settings.username.clone().into();
+        let password = settings.password.clone().into();
         let url = settings.score_url.clone();
 
-        let body = serde_json::to_string(&LastFmNowPlayingRequest { username, password, track, artist }).unwrap();
+        let body = serde_json::to_string(&LastFmNowPlayingRequest { 
+            username, 
+            password, 
+            track, 
+            artist 
+        }).unwrap();
         let Ok(_) = reqwest::Client::new()
             .post(format!("{url}/lastfm/set_now_playing"))
             .header("Content-Type", "application/json")
@@ -74,12 +79,17 @@ impl TatakuIntegration for LastFm {
         let track = title.clone();
         let artist = artist.clone();
 
-        let username = settings.username.clone();
-        let password = settings.password.clone();
+        let username = settings.username.clone().into();
+        let password = settings.password.clone().into();
         let url = settings.score_url.clone();
 
         tokio::spawn(async move {
-            let body = serde_json::to_string(&LastFmNowPlayingRequest { username, password, track, artist }).unwrap();
+            let body = serde_json::to_string(&LastFmNowPlayingRequest { 
+                username, 
+                password, 
+                track, 
+                artist 
+            }).unwrap();
             let Ok(_) = reqwest::Client::new()
                 .post(format!("{url}/lastfm/set_now_playing"))
                 .header("Content-Type", "application/json")
@@ -92,10 +102,14 @@ impl TatakuIntegration for LastFm {
 
 #[derive(Serialize)]
 struct LastFmNowPlayingRequest {
-    username: String,
-    password: String,
-    artist: String,
-    track: String
+    #[serde(with = "de_arc_str")]
+    username: Arc<str>,
+    #[serde(with = "de_arc_str")]
+    password: Arc<str>,
+    #[serde(with = "de_arc_str")]
+    artist: Arc<str>,
+    #[serde(with = "de_arc_str")]
+    track: Arc<str>,
 }
 
 #[derive(Serialize)]

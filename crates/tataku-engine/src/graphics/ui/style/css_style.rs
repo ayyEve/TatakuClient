@@ -1,79 +1,85 @@
-use taffy::*;
 use crate::prelude::*;
 use crate::prelude::ui::*;
-use super::parsing::value_parser::CssValueParser;
 
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
-#[derive(Deserialize)]
-pub enum DisplayType {
-    Block,
-    #[default] Flex,
-    Grid,
-    Table,
-    None,
-}
-impl std::str::FromStr for DisplayType {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "block" => Ok(Self::Block),
-            "flex" => Ok(Self::Flex),
-            "grid" => Ok(Self::Grid),
-            "table" => Ok(Self::Table),
-            "none" => Ok(Self::None),
-            _ => Err(())
+
+#[macro_export]
+macro_rules! create_css_value {
+    ($name: ident, $default: ident; $($str: expr, $variant: ident);* $(;)?) => {
+        use $crate::prelude::*;
+        #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+        #[derive(Deserialize, Reflect)]
+        pub enum $name {
+            $($variant),*
+        }
+        impl Default for $name {
+            fn default() -> Self {
+                Self::$default
+            }
+        }
+        impl std::str::FromStr for $name {
+            type Err = ();
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                $(
+                    if s == $str { return Ok(Self::$variant) }
+                )*
+
+                Err(())
+            }
+        }
+        impl From<$name> for taffy::$name {
+            fn from(value: $name) -> Self {
+                $(
+                    if value == $name::$variant { return taffy::$name::$variant }
+                )*
+                unreachable!()
+            }
         }
     }
 }
 
-
-
 #[derive(Default, Debug, Clone)]
 #[derive(ParseCss)]
 pub struct CssStyle {
-    #[css(name = "display")]
     /// What layout strategy should be used?
     pub display: CssValue<DisplayType>,
 
     /// Should size styles apply to the content box or the border box of the node
-    #[css(parse_with = "Self::parse_box_sizing")]
     pub box_sizing: CssValue<BoxSizing>,
 
     // Overflow properties
     /// How children overflowing their container should affect layout
-    #[css(parse_with = "Self::parse_overflow")]
+    #[css(shorthand = "DualShorthand")] _overflow: (),
     pub overflow_x: CssValue<Overflow>,
-    #[css(parse_with = "Self::parse_overflow")]
     pub overflow_y: CssValue<Overflow>,
-    /// How much space (in points) should be reserved for the scrollbars of `Overflow::Scroll` and `Overflow::Auto` nodes.
+
+    /// How much space (in pixels) should be reserved for the scrollbars of `Overflow::Scroll` and `Overflow::Auto` nodes.
     pub scrollbar_width: CssValue<f32>,
 
     // Position properties
     /// What should the `position` value of this struct use as a base offset?
-    #[css(parse_with = "Self::parse_position")]
     pub position: CssValue<Position>,
     
     /// How should the position of this element be tweaked relative to the layout defined?
-    #[css(parse_with = "Self::parse_rect_length_percentage_auto")]
-    pub inset: CssValue<Rect<LengthPercentageAuto>>,
+    #[css(shorthand = "QuadShorthand")] _inset: (),
+    pub inset_top: CssValue<CssUnit>,
+    pub inset_left: CssValue<CssUnit>,
+    pub inset_bottom: CssValue<CssUnit>,
+    pub inset_right: CssValue<CssUnit>,
 
     // Size properties
-    #[css(parse_with = "Self::parse_dimension")]
-    pub width: CssValue<Dimension>,
-    #[css(parse_with = "Self::parse_dimension")]
-    pub height: CssValue<Dimension>,
+    #[css(shorthand = "DualShorthand", size)] _size: (),
+    pub width: CssValue<CssUnit>,
+    pub height: CssValue<CssUnit>,
 
     /// Controls the minimum size of the item
-    #[css(parse_with = "Self::parse_dimension")]
-    pub min_width: CssValue<Dimension>,
-    #[css(parse_with = "Self::parse_dimension")]
-    pub min_height: CssValue<Dimension>,
+    #[css(shorthand = "DualShorthand", size)] _min_size: (),
+    pub min_width: CssValue<CssUnit>,
+    pub min_height: CssValue<CssUnit>,
 
     /// Controls the maximum size of the item
-    #[css(parse_with = "Self::parse_dimension")]
-    pub max_width: CssValue<Dimension>,
-    #[css(parse_with = "Self::parse_dimension")]
-    pub max_height: CssValue<Dimension>,
+    #[css(shorthand = "DualShorthand", size)] _max_size: (),
+    pub max_width: CssValue<CssUnit>,
+    pub max_height: CssValue<CssUnit>,
 
     /// Sets the preferred aspect ratio for the item
     ///
@@ -82,14 +88,27 @@ pub struct CssStyle {
 
     // Spacing Properties
     /// How large should the margin be on each side?
-    #[css(parse_with = "Self::parse_rect_length_percentage_auto")]
-    pub margin: CssValue<Rect<LengthPercentageAuto>>,
+    #[css(shorthand = "QuadShorthand")] _margin: (),
+    pub margin_top: CssValue<CssUnit>,
+    pub margin_left: CssValue<CssUnit>,
+    pub margin_bottom: CssValue<CssUnit>,
+    pub margin_right: CssValue<CssUnit>,
+
+
     /// How large should the padding be on each side?
-    #[css(parse_with = "Self::parse_rect_length_percentage")]
-    pub padding: CssValue<Rect<LengthPercentage>>,
+    #[css(shorthand = "QuadShorthand")] _padding: (),
+    pub padding_top: CssValue<CssUnit>,
+    pub padding_left: CssValue<CssUnit>,
+    pub padding_bottom: CssValue<CssUnit>,
+    pub padding_right: CssValue<CssUnit>,
+
+
     /// How large should the border be on each side?
-    #[css(parse_with = "Self::parse_rect_length_percentage")]
-    pub border_width: CssValue<Rect<LengthPercentage>>,
+    #[css(shorthand = "QuadShorthand")] _border_width: (),
+    pub border_width_top: CssValue<CssUnit>,
+    pub border_width_left: CssValue<CssUnit>,
+    pub border_width_bottom: CssValue<CssUnit>,
+    pub border_width_right: CssValue<CssUnit>,
 
     /// The border radius in px
     pub border_radius: CssValue<f32>,
@@ -104,52 +123,40 @@ pub struct CssStyle {
 
     // Alignment properties
     /// How this node's children aligned in the cross/block axis?
-    #[css(parse_with = "Self::parse_align_items")]
     pub align_items: CssValue<AlignItems>,
 
     /// How this node should be aligned in the cross/block axis
     /// Falls back to the parents [`AlignItems`] if not set
-    #[css(parse_with = "Self::parse_align_self")]
     pub align_self: CssValue<AlignSelf>,
 
     /// How this node's children should be aligned in the inline axis
-    #[css(name="justify-items")]
-    #[css(parse_with = "Self::parse_align_items")]
     pub justify_items: CssValue<AlignItems>,
 
     /// How this node should be aligned in the inline axis
     /// Falls back to the parents [`JustifyItems`] if not set
-    #[css(parse_with = "Self::parse_align_self")]
     pub justify_self: CssValue<AlignSelf>,
 
     /// How should content contained within this item be aligned in the cross/block axis
-    #[css(parse_with = "Self::parse_align_content")]
     pub align_content: CssValue<AlignContent>,
 
     /// How should content contained within this item be aligned in the main/inline axis
-    #[css(parse_with = "Self::parse_align_content")]
     pub justify_content: CssValue<JustifyContent>,
 
     /// How large should the gaps between items in a grid or flex container be?
-    #[css(parse_with = "Self::parse_length_percentage")]
-    pub gap_x: CssValue<LengthPercentage>,
-    #[css(parse_with = "Self::parse_length_percentage")]
-    pub gap_y: CssValue<LengthPercentage>,
-
+    #[css(shorthand = "DualShorthand")] _gap: (),
+    pub gap_x: CssValue<CssUnit>,
+    pub gap_y: CssValue<CssUnit>,
 
     // Flexbox container properties
     /// Which direction does the main axis flow in?
-    #[css(parse_with = "Self::parse_flex_direction")]
     pub flex_direction: CssValue<FlexDirection>,
 
     /// Should elements wrap, or stay in a single line?
-    #[css(parse_with = "Self::parse_flex_wrap")]
     pub flex_wrap: CssValue<FlexWrap>,
 
     // Flexbox item properties
     /// Sets the initial main axis size of the item
-    #[css(parse_with = "Self::parse_dimension")]
-    pub flex_basis: CssValue<Dimension>,
+    pub flex_basis: CssValue<CssUnit>,
 
     /// The relative rate at which this item grows when it is expanding to fill space
     ///
@@ -179,7 +186,7 @@ pub struct CssStyle {
     // image properties
 
     /// What image should be used
-    pub image: CssValue<String>,
+    pub background_image: CssValue<String>,
 
     /// How should the image be aligned
     pub image_alignment: CssValue<Alignment>,
@@ -207,293 +214,106 @@ pub struct CssStyle {
 
     pub animation_iteration_count: CssValue<AnimationIterationCount>,
 
-
-
     // blur properties
-
+    #[css(shorthand = "BlurShorthand")] 
+    #[css(shorthand_fields("blur_amount", "blur_type", "blur_location"))]
+    _blur: (),
 
     /// How much to blur, 0 is none
-    pub blur: CssValue<f32>,
+    pub blur_amount: CssValue<f32>,
 
     /// What type of blur to use, default is box
     pub blur_type: CssValue<CssBlurType>,
 
     /// Should the blur be applied above or below the element its on (above means it would blur itself)
     pub blur_location: CssValue<BlurLocation>,
-
-
-    // TODO: figure out the best way to parse this
-    // // Grid container properies
-    // /// Defines the track sizing functions (heights) of the grid rows
-    // pub grid_template_rows: Option<Vec<TrackSizingFunction>>,
-
-    // /// Defines the track sizing functions (widths) of the grid columns
-    // pub grid_template_columns: Option<Vec<TrackSizingFunction>>,
-
-    // /// Defines the size of implicitly created rows
-    // pub grid_auto_rows: Option<Vec<NonRepeatedTrackSizingFunction>>,
-
-    // /// Defined the size of implicitly created columns
-    // pub grid_auto_columns: Option<Vec<NonRepeatedTrackSizingFunction>>,
-
-    // /// Controls how items get placed into the grid for auto-placed items
-    // pub grid_auto_flow: Option<GridAutoFlow>,
-
-    // // Grid child properties
-    // /// Defines which row in the grid the item should start and end at
-    // pub grid_row: Option<taffy::Line<GridPlacement>>,
-
-    // /// Defines which column in the grid the item should start and end at
-    // pub grid_column: Option<taffy::Line<GridPlacement>>,
 }
-
 impl CssStyle {
-    pub fn taffy_style(&self) -> taffy::Style {
-        let mut default = taffy::Style::default();
-
-        macro_rules! cmp {
-            ($($field: ident,)* $(,)?) => {
-                $(
-                    if let Some(a) = self.$field.value().cloned() {
-                        default.$field = a;
-                    }
-                )*
-            };
-            (option; $($field: ident),* $(,)?) => {
-                $(default.$field = self.$field.value().cloned();)*
-            };
-        }
-
-        if let Some(display) = self.display.value() {
-            match display {
-                DisplayType::Block => default.display = taffy::Display::Block,
-                DisplayType::Flex => default.display = taffy::Display::Flex,
-                DisplayType::Grid => default.display = taffy::Display::Grid,
-                DisplayType::None => default.display = taffy::Display::None,
-                DisplayType::Table => default.item_is_table = true,
-            }
-        }
-
-        if let Some(&x) = self.overflow_x.value() {
-            default.overflow.x = x;
-        }
-        if let Some(&y) = self.overflow_y.value() {
-            default.overflow.y = y;
-        }
-        if let Some(&w) = self.gap_x.value() {
-            default.gap.width = w;
-        }
-        if let Some(&h) = self.gap_y.value() {
-            default.gap.height = h;
-        }
-        
-        if let Some(&w) = self.width.value() {
-            default.size.width = w;
-        }
-        if let Some(&h) = self.height.value() {
-            default.size.height = h;
-        }
-        if let Some(&w) = self.min_width.value() {
-            default.min_size.width = w;
-        }
-        if let Some(&h) = self.min_height.value() {
-            default.min_size.height = h;
-        }
-        if let Some(&w) = self.max_width.value() {
-            default.max_size.width = w;
-        }
-        if let Some(&h) = self.max_height.value() {
-            default.max_size.height = h;
-        }
-        if let Some(&border) = self.border_width.value() {
-            default.border = border;
-        }
-
-
-        cmp!(
-            box_sizing,
-            scrollbar_width,
-            position,
-            inset,
-            margin,
-            padding,
-            flex_direction,
-            flex_wrap,
-            flex_grow,
-            flex_shrink,
-            flex_basis,
-        );
-        cmp!(option;
-            aspect_ratio,
-            align_items,
-            align_self,
-            justify_items,
-            justify_self,
-            align_content,
-            justify_content,
-        );
-        
-
-        default
-    }
-
     pub fn text_style(&self, values: &dyn Reflect) -> TextStyle {
         TextStyle::default()
             .font_maybe(self.font.value().copied())
-            .font_size_maybe(self.font_size.value_var_copied(values))
-            .color_maybe(self.text_color.value_var_copied(values))
+            .font_size_maybe(self.font_size.resolve_copied(values))
+            .color_maybe(self.text_color.resolve_copied(values))
             .line_height_maybe(self.line_height.clone()
                 .check_inherit(self.font_size.clone())
-                .value_var_copied(values))
+                .resolve_copied(values))
             .alignment_maybe(self.text_alignment.value().copied())
     }
-}
 
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum AnimationIterationCount {
-    Value(u32),
-    Infinite
-}
-impl std::str::FromStr for AnimationIterationCount {
-    type Err = ();
+    pub fn menu_layout() -> CssStyle {
+        let zero = half::f16::from_f32(0.0);
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match &*s.to_lowercase() {
-            "infinite" => Ok(Self::Infinite),
+        CssStyle {
+            display: DisplayType::Flex.into(),
+            flex_direction: FlexDirection::Column.into(),
+            box_sizing: BoxSizing::ContentBox.into(),
+            position: Position::Relative.into(),
+            overflow_x: Overflow::Hidden.into(),
+            overflow_y: Overflow::Hidden.into(),
 
-            other => other.parse().map_err(|_| ()),
-        }
-    }
-}
+            align_self: CssValue::Unset,
+            align_items: AlignItems::Stretch.into(),
+            align_content: AlignContent::SpaceBetween.into(),
+            justify_self: CssValue::Unset,
+            justify_items: AlignItems::Stretch.into(),
+            justify_content: AlignContent::SpaceBetween.into(),
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
-pub enum AnimationDirection {
-    /// The animation is played as normal (forwards). This is default
-    #[default]
-    Normal,
-    /// The animation is played in reverse direction (backwards)
-    Reverse,
-    /// The animation is played forwards first, then backwards
-    Alternate,
-    /// The animation is played backwards first, then forwards
-    AlternateReverse,
-}
+            width: FILL.into(),
+            height: FILL.into(),
+            min_width: FILL.into(),
+            min_height: FILL.into(),
+            max_width: FILL.into(),
+            max_height: FILL.into(),
 
-impl std::str::FromStr for AnimationDirection {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "normal" => Ok(Self::Normal),
-            "reverse" => Ok(Self::Reverse),
-            "alternate" => Ok(Self::Alternate),
-            "alternate-reverse" => Ok(Self::AlternateReverse),
-            _ => Err(()),
-        }
-    }
-}
+            gap_x: CssUnit::Pixels(zero).into(),
+            gap_y: CssUnit::Pixels(zero).into(),
 
+            inset_top: CssUnit::Auto.into(),
+            inset_left: CssUnit::Auto.into(),
+            inset_bottom: CssUnit::Auto.into(),
+            inset_right: CssUnit::Auto.into(),
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
-pub enum AnimationTimingFunction {
-    /// Specifies an animation with the same speed from start to end
-    Linear,
+            margin_top: CssUnit::Pixels(zero).into(),
+            margin_left: CssUnit::Pixels(zero).into(),
+            margin_bottom: CssUnit::Pixels(zero).into(),
+            margin_right: CssUnit::Pixels(zero).into(),
 
-    /// Specifies an animation with a slow start, then fast, then end slowly
-    #[default]
-    Ease,
+            padding_top: CssUnit::Pixels(zero).into(),
+            padding_left: CssUnit::Pixels(zero).into(),
+            padding_bottom: CssUnit::Pixels(zero).into(),
+            padding_right: CssUnit::Pixels(zero).into(),
 
-    /// Specifies an animation with a slow start
-    EaseIn,
+            border_width_top: CssUnit::Pixels(zero).into(),
+            border_width_left: CssUnit::Pixels(zero).into(),
+            border_width_bottom: CssUnit::Pixels(zero).into(),
+            border_width_right: CssUnit::Pixels(zero).into(),
 
-    /// Specifies an animation with a slow end
-    EaseOut,
+            aspect_ratio: CssValue::Unset,
+            flex_wrap: FlexWrap::NoWrap.into(),
+            flex_basis: CssUnit::Auto.into(),
+            flex_grow: 0.0f32.into(),
+            flex_shrink: 1.0f32.into(),
 
-    /// Specifies an animation with a slow start and end
-    EaseInOut, 
-    
-    /// Lets you define your own values in a cubic-bezier function
-    CubicBezier(u32, u32, u32, u32),
-}
-impl std::str::FromStr for AnimationTimingFunction {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "linear" => Ok(Self::Linear),
-            "ease" => Ok(Self::Ease),
-            "ease-in" => Ok(Self::EaseIn),
-            "ease-out" => Ok(Self::EaseOut),
-            "ease-in-out" => Ok(Self::EaseInOut),
-            other if other.starts_with("cubic-bezier") => {
-                let mut parser = CssValueParser::new(other.trim_start_matches("cubic-bezier"));
-                parser.skip_spaces();
-
-                parser.advance(1); // skip the opening (
-                parser.skip_spaces(); // skip spaces between ( and first number
-                let n1 = parser.read_until(|c| c == ',').trim(); // read first value
-                parser.skip_spaces(); // skip spaces between values
-                let n2 = parser.read_until(|c| c == ',').trim(); // read value
-                parser.skip_spaces(); // skip spaces between values
-                let n3 = parser.read_until(|c| c == ',').trim(); // read value
-                parser.skip_spaces(); // skip spaces between values
-                let n4 = parser.read_until(|c| c == ')').trim(); // read value
-                Ok(Self::CubicBezier(
-                    n1.parse().map_err(|_| ())?,
-                    n2.parse().map_err(|_| ())?,
-                    n3.parse().map_err(|_| ())?,
-                    n4.parse().map_err(|_| ())?,
-                ))
-            },
-
-            _ => Err(()),
-        }
-    }
-}
-
-
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
-pub enum BlurLocation {
-    Above,
-    #[default]
-    Below,
-}
-impl std::str::FromStr for BlurLocation {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "above" => Ok(Self::Above),
-            "below" => Ok(Self::Below),
-            _ => Err(()),
+            ..Default::default()
         }
     }
 }
 
 
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
-#[derive(Deserialize)]
-#[serde(rename_all="camelCase")]
-pub enum CssBlurType {
-    #[default]
-    Box,
-    Gaussian,
-}
-impl CssBlurType {
-    pub fn into_blur(self, amount: f32) -> BlurType {
-        match self {
-            Self::Box => BlurType::Box { size: amount.ceil() as u32 },
-            Self::Gaussian => BlurType::Gaussian { sigma: amount.max(0.0) },
-        }
-    }
-}
+#[test]
+fn merge_test() {
+    let parent = CssStyle {
+        width: CssValue::Value(CssUnit::Pixels(half::f16::from_f32(100.0))),
+        ..Default::default()
+    };
 
-impl std::str::FromStr for CssBlurType {
-    type Err = ();
-    
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "box" => Ok(Self::Box),
-            "gaussian" => Ok(Self::Gaussian),
-            _ => Err(()),
-        }
-    }
+    let child = CssStyle {
+        width: CssValue::Inherit,
+        ..Default::default()
+    };
+
+
+    let merged = child.merge(parent);
+    assert_eq!(merged.width, CssValue::Inherit);
 }

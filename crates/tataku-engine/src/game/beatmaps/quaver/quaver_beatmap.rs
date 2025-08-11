@@ -6,17 +6,19 @@ use crate::prelude::*;
 fn one() -> f64 { 1.0 }
 fn nan64() -> f64 { f64::NAN }
 fn nan32() -> f32 { f32::NAN }
-fn default_diff_name() -> String { "default diff name".to_owned() }
+fn default_diff_name() -> Arc<str> { "default diff name".to_owned().into() }
 
 
 #[derive(Deserialize)]
 #[serde(rename_all="PascalCase")]
 pub struct QuaverBeatmap {
-    pub audio_file: String,
+    #[serde(with = "de_arc_str")]
+    pub audio_file: Arc<str>,
     
     #[serde(default)]
     pub song_preview_time: f32,
-    pub background_file: String,
+    #[serde(with = "de_arc_str")]
+    pub background_file: Arc<str>,
 
     // dunno if they can be negative
     #[serde(default)] pub map_id: i32,
@@ -24,14 +26,21 @@ pub struct QuaverBeatmap {
 
     pub mode: QuaverKeys,
 
-    pub title: String,
-    pub artist: String,
-    #[serde(default)] pub source: String,
-    #[serde(default)] pub tags: String,
-    pub creator: String,
+    #[serde(with = "de_arc_str")]
+    pub title: Arc<str>,
+    #[serde(with = "de_arc_str")]
+    pub artist: Arc<str>,
+    #[serde(with = "de_arc_str")]
+    #[serde(default)] pub source: Arc<str>,
+    #[serde(with = "de_arc_str")]
+    #[serde(default)] pub tags: Arc<str>,
+    #[serde(with = "de_arc_str")]
+    pub creator: Arc<str>,
+    #[serde(with = "de_arc_str")]
     #[serde(default="default_diff_name")] 
-    pub difficulty_name: String,
-    #[serde(default)] pub description: String,
+    pub difficulty_name: Arc<str>,
+    #[serde(with = "de_arc_str")]
+    #[serde(default)] pub description: Arc<str>,
 
     // pub editor_layers: Vec<?>,
     // pub audio_samples: Vec<?>,
@@ -46,7 +55,8 @@ pub struct QuaverBeatmap {
 
     // extra info added later
     #[serde(default)] hash: Md5Hash,
-    #[serde(default)] path: String,
+    #[serde(with = "de_arc_str")]
+    #[serde(default)] path: Arc<str>,
 }
 impl QuaverBeatmap {
     pub fn load(path: &str) -> TatakuResult<Self> {
@@ -86,11 +96,11 @@ impl QuaverBeatmap {
 
 
         s.hash = Io::get_file_hash(path)?;
-        s.path = path.to_owned();
+        s.path = path.to_owned().into();
 
         let parent_dir = Path::new(&path).parent().unwrap().to_str().unwrap();
-        s.audio_file = format!("{}/{}", parent_dir, s.audio_file);
-        s.background_file = format!("{}/{}", parent_dir, s.background_file);
+        s.audio_file = format!("{}/{}", parent_dir, s.audio_file).into();
+        s.background_file = format!("{}/{}", parent_dir, s.background_file).into();
         // debug!("bg: {}", s.background_file);
 
         Ok(s)
@@ -126,7 +136,7 @@ impl TatakuBeatmap for QuaverBeatmap {
             file_path: self.path.clone(), 
             beatmap_hash: self.hash, 
             beatmap_type: BeatmapType::Quaver,
-            mode: "mania".to_owned(), 
+            mode: "mania".to_owned().into(), 
             artist: self.artist.clone(), 
             title: self.title.clone(), 
             artist_unicode: self.artist.clone(), 

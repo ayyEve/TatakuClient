@@ -31,6 +31,10 @@ pub fn run_game(
             #[cfg(feature="bass_audio")] tataku_bass::BassAudioInit,
         ],
         gamemodes,
+        BuiltinMenus { 
+            menus: tataku_resources::menus::ALL, 
+            dialogs: tataku_resources::dialogs::ALL, 
+        }
     );
 
 

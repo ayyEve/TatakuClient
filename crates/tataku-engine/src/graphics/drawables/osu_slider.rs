@@ -5,7 +5,7 @@ pub struct SliderDrawable {
     /// bounding size of the slider
     pub size: Vector2,
     /// alpha of whole drawable, mainly used for fade in
-    pub alpha: f32,
+    pub alpha: u8,
 
 
     /// slider data to be passed onto the shader

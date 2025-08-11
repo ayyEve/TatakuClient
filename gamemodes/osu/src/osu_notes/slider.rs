@@ -222,16 +222,23 @@ impl OsuSlider {
         // wait for other load operations to complete first
         if !self.slider_body_loader.is_none() { return }
 
-        let mut color = self.skin.slider_track_override.filter(|c|c != &Color::BLACK && self.standard_settings.use_skin_slider_body_color).unwrap_or_else(|| {
-            let mut color = self.color;
+        let mut color = self.skin.slider_track_override.filter(
+            |c| c != &Color::BLACK 
+                && self.standard_settings.use_skin_slider_body_color
+        ).unwrap_or_else(|| {
             const DARKER:f32 = 2.0/3.0;
-            color.r *= DARKER;
-            color.g *= DARKER;
-            color.b *= DARKER;
-            color
+            Color::new(
+                self.color.r() * DARKER,
+                self.color.g() * DARKER,
+                self.color.b() * DARKER,
+                self.color.a()
+            )
         });
 
-        color.a = self.standard_settings.slider_body_alpha;
+        color.a = (
+            self.standard_settings.slider_body_alpha
+                .clamp(0.0, 1.0) * 255.0
+        ) as u8;
 
         let border_color = BORDER_COLOR.alpha(self.standard_settings.slider_border_alpha); //self.skin.slider_border.unwrap_or(BORDER_COLOR);
         let border_radius = BORDER_RADIUS * self.scaling_helper.cs;
@@ -250,7 +257,8 @@ impl OsuSlider {
 
             let mut line_segments: Vec<LineSegment> = self.curve.segments
                 .iter()
-                .flat_map(|segment| {
+                .flat_map(|segment| 
+            {
                 let points = segment.all_points();
 
                 if points.is_empty() { return Vec::new(); }
@@ -406,7 +414,7 @@ impl OsuSlider {
 
             let mut slider_body = self.slider_body.clone();
             slider_body.slider_data.grid_origin = Vector2::ZERO; // reset grid origin when rendering to a target
-            slider_body.alpha = 1.0;
+            slider_body.alpha = 255;
             drawables.push(Box::new(slider_body));
         } else {
             // starting point
@@ -565,13 +573,13 @@ impl OsuSlider {
     //     }
     // }
 
-    fn get_alpha(&self) -> f32 {
+    fn get_alpha(&self) -> u8 {
         let mut alpha = ((1.0 - ((self.time - (self.time_preempt * (2.0/3.0))) - self.map_time) / (self.time_preempt * (1.0/3.0))) / 3.0).clamp(0.0, 1.0);
         if self.map_time >= self.curve.end_time {
             alpha = ((self.curve.end_time + self.hitwindow_miss) - self.map_time) / self.hitwindow_miss;
         }
 
-        alpha
+        (alpha * 255.0) as u8
     }
 
     // fn ripple_start(&mut self) {
@@ -616,7 +624,7 @@ impl HitObject for OsuSlider {
         self.approach_circle.update(beatmap_time);
 
         if self.time - beatmap_time > self.time_preempt || self.curve.end_time < beatmap_time {
-            if self.slider_body_render_target.is_some() && alpha <= 0.0 {
+            if self.slider_body_render_target.is_some() && alpha == 0 {
                 self.slider_body_render_target = None;
             }
 
@@ -706,7 +714,7 @@ impl HitObject for OsuSlider {
         }
         self.hit_dots = dots;
 
-        if alpha > 0.0 && self.slider_body_render_target.is_none() && (self.use_render_targets() || self.slider_body.slider_data.circle_radius == 0.0) {
+        if alpha > 0 && self.slider_body_render_target.is_none() && (self.use_render_targets() || self.slider_body.slider_data.circle_radius == 0.0) {
             self.make_body();
         }
 
@@ -728,7 +736,7 @@ impl HitObject for OsuSlider {
 
         // color
         let alpha = self.get_alpha();
-        let color = self.color.alpha(alpha);
+        let color = self.color.alpha8(alpha);
         self.slider_body.alpha = alpha;
 
         // slider body
@@ -765,7 +773,7 @@ impl HitObject for OsuSlider {
                 self.radius,
                 color,
             ).border(Border::new(
-                if end_repeat { Color::YELLOW } else { Color::WHITE }.alpha(alpha),
+                if end_repeat { Color::YELLOW } else { Color::WHITE }.alpha8(alpha),
                 self.scaling_helper.border_width
             )));
         }
@@ -801,9 +809,9 @@ impl HitObject for OsuSlider {
                 list.push(Circle::new(
                     self.pos,
                     self.radius,
-                    self.color.alpha(alpha),
+                    self.color.alpha8(alpha),
                 ).border(Border::new(
-                    if start_repeat { Color::YELLOW } else { Color::WHITE }.alpha(alpha),
+                    if start_repeat { Color::YELLOW } else { Color::WHITE }.alpha8(alpha),
                     self.scaling_helper.border_width
                 )));
             }
@@ -851,7 +859,7 @@ impl HitObject for OsuSlider {
                     self.slider_ball_pos,
                     self.radius,
                     color,
-                ).border(Border::new(Color::WHITE.alpha(alpha), 2.0)));
+                ).border(Border::new(Color::WHITE.alpha8(alpha), 2.0)));
             }
 
             // radius thingy
@@ -867,7 +875,7 @@ impl HitObject for OsuSlider {
                     self.radius * OK_TICK_RADIUS_MULT,
                     Color::TRANSPARENT,
                 ).border(Border::new(
-                    if self.sliding_ok {Color::LIME} else {Color::RED}.alpha(alpha),
+                    if self.sliding_ok {Color::LIME} else {Color::RED}.alpha8(alpha),
                     2.0
                 )));
             }

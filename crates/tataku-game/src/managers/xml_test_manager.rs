@@ -60,7 +60,7 @@ impl XmlTestManager {
         );
         
         let thing = Container::new(children)
-            .flex_direction(ui::FlexDirection::Column)
+            // .flex_direction(ui::FlexDirection::Column)
             .boxed();
 
         ui_manager.set_root(thing, values, actions);

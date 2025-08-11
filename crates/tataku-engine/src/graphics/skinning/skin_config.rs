@@ -269,10 +269,10 @@ impl Default for SkinSettings {
 
             // colors
             combo_colors: vec![
-                Color::from_rgb8(0, 255, 0),
-                Color::from_rgb8(0, 255, 255),
-                Color::from_rgb8(255, 128, 255),
-                Color::from_rgb8(255, 255, 0),
+                Color::new_rgb8(0, 255, 0),
+                Color::new_rgb8(0, 255, 255),
+                Color::new_rgb8(255, 128, 255),
+                Color::new_rgb8(255, 255, 0),
             ],
             slider_border: None,
             slider_track_override: None,
@@ -298,7 +298,7 @@ impl Default for SkinSettings {
 
 #[inline]
 fn col(c: &[u8]) -> Color {
-    Color::from_rgb8(c[0], c[1], c[2])
+    Color::new_rgb8(c[0], c[1], c[2])
 }
 
 #[derive(Clone, Default, Debug)]

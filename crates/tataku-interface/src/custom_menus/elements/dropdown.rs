@@ -41,12 +41,8 @@ impl CustomElement for DropdownElement {
                 self.options_path.clone(),
                 self.selected_path.clone(),
                 self.on_select.action.clone(),
+                self.placeholder().unwrap_or_default()
             )
-            .placeholder_maybe(self.placeholder())
-            // .font_size_maybe(font_size)
-            // .chain_maybe(font.as_ref().and_then(map_font), |s, font| s.font(font))
-            
-            // .style(taffy_style)
             .boxed()
         )
     }

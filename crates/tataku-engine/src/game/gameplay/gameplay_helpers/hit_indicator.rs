@@ -66,11 +66,11 @@ impl JudgementIndicator for BasicJudgementIndicator {
 
     fn draw(&self, map_time: f32, list: &mut RenderableCollection) {
         let fade_duration = self.draw_duration / 2.0;
-        let alpha = (
-            1.0 
+        let alpha = 1.0 
             - (map_time - (self.time + (self.draw_duration - fade_duration))) 
             / fade_duration
-        ).clamp(0.0, 1.0);
+        ;
+        let alpha = (alpha.clamp(0.0, 1.0) * 255.0) as u8;
         
         if let Some(mut img) = self.image.clone() {
             img.update(map_time);
@@ -82,7 +82,7 @@ impl JudgementIndicator for BasicJudgementIndicator {
             list.push(Circle::new(
                 self.pos,
                 self.radius,
-                self.color.alpha(alpha),
+                self.color.alpha8(alpha),
             ));
         }
     }

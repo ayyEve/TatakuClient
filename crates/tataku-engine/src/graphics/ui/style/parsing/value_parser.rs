@@ -1,5 +1,5 @@
 
-pub struct CssValueParser<'a> {
+pub(crate) struct CssValueParser<'a> {
     s: &'a str,
     pos: usize,
     length: usize,

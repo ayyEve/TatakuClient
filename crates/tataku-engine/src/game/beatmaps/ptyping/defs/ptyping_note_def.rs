@@ -1,11 +1,13 @@
 use crate::prelude::*;
 
+
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct PTypingNoteDef {
     pub time: f64,
     pub color: PTypingNoteColor,
-    pub text: String,
+    #[serde(with = "tataku_client_common::data::de_arc_str")]
+    pub text: Arc<str>,
     pub settings: PTypingNoteSettings,
     pub typing_conversion: u8
 }

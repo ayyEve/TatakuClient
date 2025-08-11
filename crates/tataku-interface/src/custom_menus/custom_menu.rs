@@ -58,54 +58,38 @@ pub struct BuildableEventsTag {
 
 pub struct BuiltCustomMenu {
     pub id: String,
+    pub styles: String,
     pub element: Box<dyn Widget>,
     pub events: HashMap<TatakuEventType, Vec<BuildableAction>>,
-
-    pub styles: String,
 
     node_id: NodeId,
 }
 impl Widget for BuiltCustomMenu {
-    fn name(&self) -> CowStr { format!("custom-{}", self.id).into() }
+    fn name(&self) -> CowStr { self.id.clone().into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn get_style_str(&self) -> String { self.styles.clone() }
 
-    fn update_styles(
-        &mut self, 
-        shell: &mut StyleShell,
-        _display_override: Option<ui::Display>
-    ) {
-        self.element.update_styles(shell, None);
+    fn children(&self) -> WidgetChildren {
+        WidgetChildren::Single(&self.element)
+    }
+    fn children_mut(&mut self) -> WidgetChildrenMut {
+        WidgetChildrenMut::Single(&mut self.element)
     }
 
     fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {
         let child = self.element.layout(shell)?;
-        self.node_id = shell.tree.new_with_children(
-            menu_layout(), 
-            &[child]
-        )?;
-
+        self.node_id = shell.tree.new_with_children(&[child])?;
         Ok(self.node_id)
     }
 
-    fn input(
-        &mut self,
-        event: &InputEvent,
-        shell: &mut InputShell
-    ) {
-        self.element.input(event, shell);
-    }
-
-    fn draw(&self, shell: &mut DrawShell) {
-        self.element.draw(shell);
-    }
-    fn draw_overlay(&self, shell: &mut DrawShell) {
-        self.element.draw_overlay(shell);
-    }
-
-    fn update(&mut self, shell: &mut UpdateShell) {
-        self.element.update(shell);
+    fn init_style(&mut self, shell: &mut LayoutShell) {
+        shell.tree.update_style(
+            self.node_id, 
+            |style| *style = style.clone()
+                .merge_parent(CssStyle::menu_layout())
+        );
+        self.element.init_style(shell);
     }
 
     fn handle_message(
@@ -136,33 +120,22 @@ impl Widget for BuiltCustomMenu {
         let tag = message.tag.clone();
         match message.value.clone() {
             MessageValue::Value(TatakuValue::Reflect(value)) => {
-                let Some(variable) = tag.as_string() 
-                else { return };
                 shell.handled = true;
 
                 if let Err(e) = shell
                     .values
-                    .reflect_insert(variable, value)
+                    .reflect_insert(&*tag, value)
                 {
                     error!("error inserting into values: {e:?}");
                 }
             }
             MessageValue::Text(incoming) => {
-                let Some(variable) = tag.as_string() 
-                else { return };
-
                 shell.handled = true;
                 if let Err(e) = shell
                     .values
-                    .reflect_insert(variable, Box::new(incoming)) 
+                    .reflect_insert(&*tag, Box::new(incoming)) 
                 {
                     error!("error inserting into values: {e:?}");
-                }
-            }
-            
-            MessageValue::Multi(messages) => {
-                for i in messages {
-                    self.handle_message(&i, shell);
                 }
             }
 
@@ -187,10 +160,6 @@ impl Widget for BuiltCustomMenu {
             ) else { continue };
             shell.actions.push(action);
         }
-    }
-
-    fn reload_skin(&mut self, shell: &mut UpdateShell) {
-        self.element.reload_skin(shell);
     }
 }
 

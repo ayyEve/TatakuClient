@@ -53,10 +53,10 @@ pub enum SongSetAction {
     Remove,
 
     /// Play a file from the disk
-    FromFile(String, SongPlayData),
+    FromFile(Arc<str>, SongPlayData),
 
     /// Play from bytes
-    FromData(Vec<u8>, String, SongPlayData),
+    FromData(Vec<u8>, Arc<str>, SongPlayData),
 }
 
 impl From<SongAction> for TatakuAction {

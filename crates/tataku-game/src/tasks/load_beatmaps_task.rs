@@ -54,7 +54,7 @@ impl TatakuTask for LoadBeatmapsTask {
             // trace!("Adding map {}", map.beatmap_hash);
 
             // make sure the beatmap exists before adding it
-            if !Io::exists(&map.file_path) {
+            if !Io::exists(&*map.file_path) {
                 warn!("Beatmap exists in db but not in fs: {}", map.file_path);
             } else {
                 actions.push(BeatmapAction::AddBeatmap { 

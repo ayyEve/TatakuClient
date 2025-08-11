@@ -236,22 +236,22 @@ impl Widget for DialogWidget {
             vec![node]
         };
         self.node = Container::new(children)
-        .flex_direction(FlexDirection::Column)
-        .width(FILL)
-        .height(FILL)
-        .boxed();
+            // .flex_direction(FlexDirection::Column)
+            // .width(FILL)
+            // .height(FILL)
+            .boxed();
 
 
         self.node.layout(shell)
     }
     
-    fn update_styles(
-        &mut self, 
-        shell: &mut StyleShell,
-        _display_override: Option<ui::Display>
-    ) {
-        self.node.update_styles(shell, None);
-    }
+    // fn update_styles(
+    //     &mut self, 
+    //     shell: &mut StyleShell,
+    //     _display_override: Option<DisplayType>
+    // ) {
+    //     self.node.update_styles(shell, None);
+    // }
     
     fn input(
         &mut self, 
@@ -428,12 +428,10 @@ impl Widget for DialogWidget {
         match message.owner {
             MessageOwner::Menu => return,
             MessageOwner::Dialog(num) => {
-                if let Some(str) = message.tag.as_string() {
-                    if str == "set_num" {
-                        if let MessageValue::Number(n) = message.value {
-                            self.num = n;
-                            return;
-                        }
+                if &**message.tag == "set_num" {
+                    if let MessageValue::Number(n) = message.value {
+                        self.num = n;
+                        return;
                     }
                 }
                 
@@ -447,20 +445,18 @@ impl Widget for DialogWidget {
         );
 
         if shell.handled { return }
-        if let Some(str) = message.tag.as_string() {
-            match &**str {
-                "close" 
-                | "force_close"
-                => {
-                    debug!("close request");
-                    shell.actions.push(UiAction::new(
-                        self.node_id(),
-                        DialogAction::Close,
-                    ));
-                }
-
-                _ => {}
+        match &**message.tag {
+            "close" 
+            | "force_close"
+            => {
+                debug!("close request");
+                shell.actions.push(UiAction::new(
+                    self.node_id(),
+                    DialogAction::Close,
+                ));
             }
+
+            _ => {}
         }
     }
     
@@ -519,28 +515,54 @@ impl DialogTitlebar {
             drag: None,
         }
     }
+
+    fn get_titlebar(&self) -> Element {
+        let title = &self.title;
+        let a = format!(r#"
+        <row style="width: fill">
+            <!-- Title -->
+            <text style="font_size: 40.0"> 
+                <text text="{title}"/> 
+            </text>
+
+            <!-- Close Button -->
+            <button>
+                <action>
+                    <closeDialog />
+                </action>
+                <element>
+                    <text style="font_size: 20.0">
+                        <text text="X" />
+                    </text>
+                </element>
+            </button>
+        </row>
+        "#);
+        quick_xml::de::from_str(&a).unwrap()
+    }
 }
 impl Widget for DialogTitlebar {
     fn name(&self) -> CowStr { "titlebar_widget".into() }
     fn node_id(&self) -> NodeId { self.node.node_id() }
 
     fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {
-        self.node = Container::new(vec![
-            // Title 
-            TextWidget::new(&*self.title).font_size(40.0).boxed(),
+        // self.node = Container::new(vec![
+        //     // Title 
+        //     TextWidget::new(&*self.title).font_size(40.0).boxed(),
             
-            // close button
-            Button::new(Box::new(TextWidget::new("X").font_size(20.0)))
-                .padding(LengthPercentage::Length(5.0))
-                .on_press(Message::new(shell.owner, "close", MessageValue::Click))
-                .boxed()
-        ])
-        .width(FILL)
-        .padding(LengthPercentage::Length(5.0))
-        .flex_direction(FlexDirection::Row)
-        .horizontal_align(AlignContent::SpaceBetween)
-        .boxed();
+        //     // close button
+        //     Button::new(Box::new(TextWidget::new("X").font_size(20.0)))
+        //         // .padding(MeasurableUnit::Pixels(5.0))
+        //         .on_press(Message::new(shell.owner, "close", MessageValue::Click))
+        //         .boxed()
+        // ])
+        // .width(FILL)
+        // // .padding(MeasurableUnit::Pixels(5.0))
+        // .flex_direction(FlexDirection::Row)
+        // // .horizontal_align(AlignContent::SpaceBetween)
+        // .boxed();
 
+        self.node = self.get_titlebar().build();
         self.node.layout(shell)
     }
 

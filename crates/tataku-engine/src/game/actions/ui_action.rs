@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use crate::prelude::ui::*;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct UiAction {
     pub node: NodeId,
     pub action: UiActionType,
@@ -15,24 +15,20 @@ impl UiAction {
     }
 }
 
-#[derive(Debug2)]
+#[derive(Clone, Debug2)]
 pub enum UiActionType {
     Refresh,
     MarkDirty,
-    UpdateStyle(Box<Style>),
-    UpdateStyleWith(#[debug(skip)] Box<dyn Fn(&mut Style) + Send + Sync>),
+    // UpdateStyle(Box<CssStyle>),
+    UpdateStyleWith(#[debug(skip)] Arc<dyn Fn(&mut CssStyle) + Send + Sync>),
 
     /// Only update the display of a node. 
-    /// 
-    /// This should hopefully be cheaper than updating an entire style
-    /// 
-    /// ^ Currently it isnt, but hopefully in the future it is
-    UpdateDisplay(ui::Display),
+    OverrideDisplay(Option<DisplayType>),
 
-    /// rebuild the contexts for this node and its children
+    /// Rebuild the contexts for this node and its children
     ContextChanged,
 
-    /// run a dialog action
+    /// Run a dialog action
     DialogAction(DialogAction),
 }
 

@@ -106,9 +106,9 @@
           <row style="width: fill; justify-content: space-between; ">
             <!-- engine options -->
             <list
-              list="game.online_content.engines::(var.online_content.engine).search_options"
-              variable="_option"
-              style="flex-direction: row; justify-content: space-between; "
+              list = "game.online_content.engines::(var.online_content.engine).search_options"
+              variable = "_option"
+              style = "flex-direction: row; justify-content: space-between; "
             >
               <switch>
                 <case cond="display(_option.values) == 'Integer'">

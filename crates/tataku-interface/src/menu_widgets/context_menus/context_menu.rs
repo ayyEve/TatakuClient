@@ -94,12 +94,15 @@ impl Widget for ContextMenu {
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {
-        let style = Style {
-            position: taffy::Position::Absolute,
-            ..Default::default()
-        };
-        self.node_id = shell.tree.new_leaf(style)?;
+        self.node_id = shell.tree.new_leaf()?;
         Ok(self.node_id)
+    }
+
+    fn init_style(&mut self, shell: &mut LayoutShell) {
+        shell.tree.update_style(
+            self.node_id, 
+            |s| s.position = Position::Absolute.into()
+        );
     }
 
     fn input(

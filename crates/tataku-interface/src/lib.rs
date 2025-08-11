@@ -14,8 +14,6 @@ pub mod prelude {
     pub use crate::menu_widgets::*;
     pub use crate::visualizations::*;
     pub use crate::gameplay_widgets::*;
-    pub use crate::{ row, col };
-
 
     /// list of default gameplay widgets
     pub const DEFAULT_GAMEPLAY_WIDGETS: &[GameplayWidgetBuilder] = &[

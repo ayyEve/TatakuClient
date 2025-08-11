@@ -97,6 +97,9 @@ impl GamemodeSettings for ManiaSettings {
     fn to_value(&self) -> serde_json::Value {
         serde_json::to_value(self).unwrap()
     }
+    fn duplicate_settings(&self) -> Box<dyn GamemodeSettings> {
+        Box::new(self.clone())
+    }
 }
 
 

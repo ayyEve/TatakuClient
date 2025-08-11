@@ -15,7 +15,7 @@ pub struct UTypingNote {
 
     /// what character is this?
     /// string because jap in utf8 is wack
-    text: String,
+    text: Arc<str>,
     // romaji: String,
     // char_count: usize,
     branches: Branch,
@@ -36,7 +36,12 @@ pub struct UTypingNote {
     pub judgment: Option<HitJudgment>
 }
 impl UTypingNote {
-    pub fn new(time:f32, text: String, settings:Arc<TaikoSettings>, playfield: Arc<UTypingPlayfield>) -> Self {
+    pub fn new(
+        time: f32, 
+        text: Arc<str>, 
+        settings: Arc<TaikoSettings>, 
+        playfield: Arc<UTypingPlayfield>
+    ) -> Self {
         // let y = settings.hit_position.y;
         // let a = GRAVITY_SCALING * 9.81;
         // let bounce_factor = (2000.0*y.sqrt()) as f32 / (a*(a.powi(2) + 2_000_000.0)).sqrt() * 10.0;

@@ -1,10 +1,11 @@
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[repr(u8)]
 pub enum Direction {
-    Up,
-    Down,
-    Left,
-    Right
+    Up = 0,
+    Down = 1,
+    Left = 2,
+    Right = 3,
 }
 impl Direction {
     pub fn reverse(self) -> Self {

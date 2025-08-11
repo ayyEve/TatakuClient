@@ -5,19 +5,19 @@ use crate::prelude::*;
 #[derive(Reflect)]
 #[reflect(display="debug")]
 pub struct BeatmapMeta {
-    #[reflect(alias("path"))] pub file_path: String,
+    #[reflect(alias("path"))] pub file_path: Arc<str>,
     #[reflect(alias("hash"))] pub beatmap_hash: Md5Hash,
     #[reflect(alias("type"))] pub beatmap_type: BeatmapType,
 
-    #[reflect(alias("playmode"))] pub mode: String,
-    pub artist: String,
-    pub title: String,
-    pub artist_unicode: String,
-    pub title_unicode: String,
-    pub creator: String,
-    pub version: String,
-    #[reflect(alias("audio_path"))] pub audio_filename: String,
-    #[reflect(alias("image_path"))] pub image_filename: String,
+    #[reflect(alias("playmode"))] pub mode: Arc<str>,
+    pub artist: Arc<str>,
+    pub title: Arc<str>,
+    pub artist_unicode: Arc<str>,
+    pub title_unicode: Arc<str>,
+    pub creator: Arc<str>,
+    pub version: Arc<str>,
+    #[reflect(alias("audio_path"))] pub audio_filename: Arc<str>,
+    #[reflect(alias("image_path"))] pub image_filename: Arc<str>,
     #[reflect(alias("preview", "preview_time"))] pub audio_preview: f32,
 
     pub duration: f32, // time in ms from first note to last note
@@ -30,22 +30,27 @@ pub struct BeatmapMeta {
     pub bpm_max: f32,
 }
 impl BeatmapMeta {
-    pub fn new(file_path: String, beatmap_hash: Md5Hash, beatmap_type: BeatmapType) -> Self {
-        let unknown = "Unknown".to_owned();
-
+    pub fn new(
+        file_path: String, 
+        beatmap_hash: Md5Hash, 
+        beatmap_type: BeatmapType,
+    ) -> Self {
+        let unknown: Arc<str> = "Unknown".to_owned().into();
+        let empty: Arc<str> = String::new().into();
+        
         Self {
-            file_path,
+            file_path: file_path.into(),
             beatmap_hash,
             beatmap_type,
-            mode: "osu".to_owned(),
+            mode: "osu".to_owned().into(),
             artist: unknown.clone(),
             title: unknown.clone(),
             artist_unicode: unknown.clone(),
             title_unicode: unknown.clone(),
             creator: unknown.clone(),
             version: unknown.clone(),
-            audio_filename: String::new(),
-            image_filename: String::new(),
+            audio_filename: empty.clone(),
+            image_filename: empty.clone(),
             audio_preview: 0.0,
             hp: -1.0,
             od: -1.0,
@@ -77,7 +82,7 @@ impl BeatmapMeta {
 
 
     pub fn get_parent_dir(&self) -> Option<PathBuf> {
-        Some(Path::new(&self.file_path).parent()?.to_path_buf())
+        Some(Path::new(&*self.file_path).parent()?.to_path_buf())
     }
 }
 

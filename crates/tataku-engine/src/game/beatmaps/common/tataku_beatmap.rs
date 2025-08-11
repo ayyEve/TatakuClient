@@ -9,7 +9,7 @@ pub trait TatakuBeatmap: Send+Sync {
 
     fn slider_velocity(&self) -> f32 { 1.0 }
 
-    fn get_events(&self) -> Vec<IngameEvent> { Vec::new() }
+    fn get_events(&self) -> Vec<BeatmapEvent> { Vec::new() }
 
     #[cfg(feature="graphics")]
     fn get_animation(&self, _skin_manager: &mut dyn SkinProvider) -> Option<Box<dyn BeatmapAnimation>> { None }

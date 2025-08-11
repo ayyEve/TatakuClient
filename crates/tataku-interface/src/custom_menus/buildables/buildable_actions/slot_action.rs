@@ -46,6 +46,8 @@ impl BuildableSlot {
                     ReflectNumber::I128(n) => TatakuValue::U64(n as u64),
                     ReflectNumber::Usize(n) => TatakuValue::U64(n as u64),
                     ReflectNumber::Isize(n) => TatakuValue::U64(n as u64),
+                    ReflectNumber::F16(n) => TatakuValue::F32(n.to_f32()),
+                    ReflectNumber::BF16(n) => TatakuValue::F32(n.to_f32()),
                 };
                 Cow::Owned(var)
             }
@@ -66,7 +68,9 @@ impl BuildableSlot {
                 value_attribute
             } => Cow::Borrowed(value.as_ref().or(value_attribute.as_ref())?),
             BuildableValue::Variable { var } => {
-                let var = values.reflect_as_number(var).ok()?;
+                let path = var.resolve_path(values).ok()?;
+
+                let var = values.reflect_as_number(&path).ok()?;
                 let var = match var {
                     ReflectNumber::F32(n) => TatakuValue::F32(n),
                     ReflectNumber::F64(n) => TatakuValue::F32(n as f32),
@@ -82,6 +86,8 @@ impl BuildableSlot {
                     ReflectNumber::I128(n) => TatakuValue::U64(n as u64),
                     ReflectNumber::Usize(n) => TatakuValue::U64(n as u64),
                     ReflectNumber::Isize(n) => TatakuValue::U64(n as u64),
+                    ReflectNumber::F16(n) => TatakuValue::F32(n.to_f32()),
+                    ReflectNumber::BF16(n) => TatakuValue::F32(n.to_f32()),
                 };
                 Cow::Owned(var)
             }

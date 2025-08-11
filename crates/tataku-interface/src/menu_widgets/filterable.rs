@@ -33,6 +33,16 @@ impl Widget for FilterableWidget {
     fn name(&self) -> CowStr  { "filterable_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
+    fn children(&self) -> WidgetChildren {
+        if !self.visible { return WidgetChildren::None }
+        WidgetChildren::Single(&self.node)
+    }
+    fn children_mut(&mut self) -> WidgetChildrenMut {
+        if !self.visible { return WidgetChildrenMut::None }
+        WidgetChildrenMut::Single(&mut self.node)
+    }
+
+
     fn update_styles(
         &mut self, 
         shell: &mut StyleShell,
@@ -52,27 +62,11 @@ impl Widget for FilterableWidget {
         Ok(self.node_id)
     }
 
-    fn draw(&self, shell: &mut DrawShell) {
-        if !self.visible { return }
-        self.node.draw(shell);
-    }
-    fn draw_overlay(&self, shell: &mut DrawShell) {
-        if !self.visible { return }
-        self.node.draw_overlay(shell);
-    }
-
-    fn input(
-        &mut self,
-        event: &InputEvent,
-        shell: &mut InputShell,
-    ) {
-        if !self.visible { return }
-        self.node.input(event, shell);
-    }
-
     fn update(&mut self, shell: &mut UpdateShell) {
-        let Ok(filter) = shell.values.reflect_get::<ItemFilter>(&self.variable_to_check)
-            .inspect_err(|e| println!("{e:?}")) 
+        let Ok(filter) = shell
+            .values
+            .reflect_get::<ItemFilter>(&self.variable_to_check)
+            .inspect_err(|e| error!("{e:?}")) 
             else { return };
         let new_visible = filter.check(&self.text_to_check);
 
@@ -83,30 +77,14 @@ impl Widget for FilterableWidget {
             } else {
                 ui::Display::None
             };
-            shell.actions.push(UiAction::new(self.node.node_id(), UiActionType::UpdateDisplay(display)));
+            shell.actions.push(UiAction::new(
+                self.node.node_id(), 
+                UiActionType::UpdateDisplay(display)
+            ));
         }
 
         if !self.visible { return }
         self.node.update(shell);
-    }
-    
-    fn handle_message(
-        &mut self, 
-        message: &Message, 
-        shell: &mut MessageShell,
-    ) {
-        if !self.visible { return }
-        self.node.handle_message(message, shell);
-    }
-
-    fn handle_event(
-        &mut self, 
-        event: &TatakuEventType, 
-        event_value: Option<&TatakuValue>, 
-        shell: &mut MessageShell,
-    ) {
-        if !self.visible { return }
-        self.node.handle_event(event, event_value, shell);
     }
 
     fn reload_skin(&mut self, shell: &mut UpdateShell) {

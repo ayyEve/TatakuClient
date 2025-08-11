@@ -12,15 +12,15 @@ pub struct ConditionalElement {
     #[serde(rename = "@condition", alias = "@cond", default)] condition: String,
     #[serde(rename = "false", default)] if_false: Option<ElementTag>,
 
-    #[serde(rename = "true", default)] if_true_specified: Option<ElementTag>,
-    #[serde(rename = "$value", default)] if_true_body: Option<Element>,
+    #[serde(rename = "true", default)] if_true_tag: Option<ElementTag>,
+    #[serde(rename = "$value", default)] if_true: Option<Element>,
 }
 impl ConditionalElement {
     fn if_true(&self) -> Option<&Element> {
-        self.if_true_specified
+        self.if_true_tag
             .as_ref()
             .map(|i| &i.element)
-            .or(self.if_true_body.as_ref())
+            .or(self.if_true.as_ref())
     }
 }
 
@@ -68,11 +68,11 @@ fn test() {
             id: Some("cond123".to_owned()),
             class_list: "thing1 thing2".into(),
             condition: "path.to.thing.is_true".to_owned(), 
-            if_true_body: Some(TextElement {
+            if_true: Some(TextElement {
                 text: BuildableText::Text { text: "hi mom".to_owned() },
                 ..Default::default()
             }.into()),
-            if_true_specified: None,
+            if_true_tag: None,
             if_false: Some(ElementTag::new(TextElement {
                 text: BuildableText::Text { text: "bye mom".to_owned() },
                 ..Default::default()

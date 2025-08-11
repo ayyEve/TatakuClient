@@ -82,13 +82,29 @@ impl StoryboardElementDef {
         let filepath = filepath.trim_matches('"').to_owned();
 
         match ele {
-            "Sprite" => Some(StoryboardElementDef::Sprite(StoryboardSpriteDef { layer, origin, filepath, pos })),
+            "Sprite" => Some(StoryboardElementDef::Sprite(StoryboardSpriteDef { 
+                layer, 
+                origin, 
+                filepath, 
+                pos 
+            })),
+
             "Animation" => {
                 let frame_count = split.next()?.parse::<u16>().ok()?;
                 let frame_delay = split.next()?.parse::<f32>().ok()?;
-                let loop_type = split.next().and_then(LoopType::from_string).unwrap_or(LoopType::LoopForever);
+                let loop_type = split.next()
+                    .and_then(LoopType::from_string)
+                    .unwrap_or(LoopType::LoopForever);
 
-                Some(StoryboardElementDef::Animation(StoryboardAnimationDef { layer, origin, filepath, pos, frame_count, frame_delay, loop_type }))
+                Some(StoryboardElementDef::Animation(StoryboardAnimationDef { 
+                    layer, 
+                    origin, 
+                    filepath, 
+                    pos, 
+                    frame_count, 
+                    frame_delay, 
+                    loop_type 
+                }))
             }
 
             _=> None
@@ -207,7 +223,12 @@ impl StoryboardDef {
 
                 // loop events 
                 let mut time = self.start_time;
-                let mut end_time = self.events.iter().fold(0f32, |v, cmd|v.max(cmd.end_time));
+                let mut end_time = self.events.iter()
+                    .fold(
+                        0f32, 
+                        |v, cmd| v.max(cmd.end_time)
+                    );
+
                 for i in 0..self.loops {
                     // next iteration
                     time += end_time;
@@ -235,8 +256,8 @@ impl StoryboardDef {
             if let Some(new_ele) = StoryboardElementDef::read(&line) {
                 
                 // deal with old ele if exists
-                if let Some(mut old_ele) = std::mem::take(&mut current_entry) {
-                    if let Some(loop_def) = std::mem::take(&mut loop_def) {
+                if let Some(mut old_ele) = current_entry.take() {
+                    if let Some(loop_def) = loop_def.take() {
                         loop_def.apply(&mut old_ele);
                     }
 
@@ -269,37 +290,54 @@ impl StoryboardDef {
 
 
             // if the loop has finished
-            if loop_def.as_ref().filter(|l|l.depth_index != current_depth).is_some() {
+            if loop_def.as_ref()
+                .filter(|l| l.depth_index != current_depth)
+                .is_some() 
+            {
                 let loop_def = std::mem::take(&mut loop_def).unwrap();
                 if let Some(entry) = &mut current_entry {
                     loop_def.apply(entry);
                 }
             }
 
-            let Some(current_entry) = &mut current_entry else { continue };
+            let Some(current_entry) = &mut current_entry 
+            else { continue };
 
             let mut split = line.split(",");
 
             // helper because this code was already ugly
             macro_rules! parse_or_continue {
                 ($name: ident, $T:ty) => {
-                    let Some($name) = split.next().and_then(|s| s.parse::<$T>().ok()) else { error!("error reading {}, line {n}: {line}", stringify!($name), ); continue };
+                    let Some($name) = split.next().and_then(|s| s.parse::<$T>().ok()) 
+                    else { 
+                        error!("error reading {}, line {n}: {line}", stringify!($name)); 
+                        continue 
+                    };
                 };
                 ($name: ident, $T:ty, $default: ident) => {
-                    let $name = split.next().and_then(|s| s.parse::<$T>().ok()).unwrap_or($default);
+                    let $name = split.next()
+                        .and_then(|s| s.parse::<$T>().ok())
+                        .unwrap_or($default);
                 };
                 ($name: ident, $T:ty, _) => {
-                    let Some($name) = split.next().and_then(|s| <$T>::from_string(s)) else { error!("error reading {}, line {n}: {line}", stringify!($name)); continue };
+                    let Some($name) = split.next().and_then(|s| <$T>::from_string(s)) 
+                    else { 
+                        error!("error reading {}, line {n}: {line}", stringify!($name)); 
+                        continue 
+                    };
                 };
             }
 
-            let Some(event) = split.next() else { continue };
+            let Some(event) = split.next() 
+            else { continue };
 
             // check for loops because they're a special case
             if event == "L" {
-                parse_or_continue!(start_time, f32); // let Some(start_time) = split.next().and_then(|s|s.parse::<f32>().ok()) else { continue };
-                parse_or_continue!(loops, u32); // let Some(loops) = split.next().and_then(|s|s.parse::<u32>().ok()) else { continue };
-                if DEBUG { println!("starting loop_def at depth {}", current_depth + 1); }
+                parse_or_continue!(start_time, f32);
+                parse_or_continue!(loops, u32); 
+                if DEBUG { 
+                    println!("starting loop_def at depth {}", current_depth + 1); 
+                }
 
                 loop_def = Some(TempLoopDef {
                     depth_index: current_depth + 1,
@@ -317,9 +355,9 @@ impl StoryboardDef {
             }
 
             // check for other events
-            parse_or_continue!(easing, StoryboardEasing, _); //split.next().and_then(|s|s.parse::<i32>().ok()) else { continue };
-            parse_or_continue!(start_time, f32); // let Some(start_time) = split.next().and_then(|s|s.parse::<f32>().ok()) else { continue };
-            parse_or_continue!(end_time, f32, start_time); // let Some(end_time) = split.next().and_then(|s|s.parse::<f32>().ok()) else { continue };
+            parse_or_continue!(easing, StoryboardEasing, _);
+            parse_or_continue!(start_time, f32); 
+            parse_or_continue!(end_time, f32, start_time); 
             let event = match event {
                 "F" => {
                     parse_or_continue!(start, f32);
@@ -379,8 +417,8 @@ impl StoryboardDef {
                     parse_or_continue!(end_r, u8, start_r);
                     parse_or_continue!(end_g, u8, start_g);
                     parse_or_continue!(end_b, u8, start_b);
-                    let start = Color::from_rgb8(start_r, start_g, start_b);
-                    let end = Color::from_rgb8(end_r, end_g, end_b);
+                    let start = Color::new_rgb8(start_r, start_g, start_b);
+                    let end = Color::new_rgb8(end_r, end_g, end_b);
                     StoryboardEvent::Color { start, end }
                 }
 
@@ -393,7 +431,10 @@ impl StoryboardDef {
 
                 // triggers will be checked earlier once i have the willpower to add them
 
-                other => { println!("unknown storyboard event {other}"); continue},
+                other => { 
+                    println!("unknown storyboard event {other}"); 
+                    continue
+                },
             };
 
             let cmd = StoryboardCommand {

@@ -3,20 +3,15 @@ use crate::prelude::ui::*;
 use std::ops::RangeInclusive;
 
 
-#[derive(Widget)]
 // TODO: should we make this generic? maybe use a ReflectNumber instead of f32?
 #[derive(ChainableInitializer)]
 pub struct Slider {
-    #[chain] pub style: Style,
+    value: SliderValue,
+    min: SliderValue,
+    max: SliderValue,
 
-    pub value: SliderValue,
-    // pub range: RangeInclusive<f32>,
-    pub min: SliderValue,
-    pub max: SliderValue,
-
-    #[chain] pub step: Option<SliderValue>,
-
-    pub on_change: Option<InputAction<f32>>, 
+    #[chain] step: Option<SliderValue>,
+    on_change: Option<InputAction<f32>>, 
 
     hovered: bool,
     pressed: bool,
@@ -30,14 +25,6 @@ impl Slider {
         on_change: Option<impl Into<InputAction<f32>>>,
     ) -> Self {
         Self {
-            style: Style {
-                size: Size { 
-                    width: Dimension::Percent(0.25), 
-                    height: Dimension::Percent(1.0),
-                },
-                ..Style::default()
-            },
-
             min: min.into(),
             max: max.into(),
             // range,
@@ -51,7 +38,6 @@ impl Slider {
         }
     }
 
-
     fn range(&self) -> RangeInclusive<f32> {
         self.min.get()..=self.max.get()
     }
@@ -61,7 +47,13 @@ impl Widget for Slider {
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {
-        self.node_id = shell.tree.new_leaf(self.style.clone())?;
+        // let style = CssStyle {
+        //     min_width: CssUnit::Pixels(half::f16::from_f32(100.0)).into(),
+        //     min_height: CssUnit::Pixels(half::f16::from_f32(30.0)).into(),
+        //     ..self.style.clone()
+        // };
+
+        self.node_id = shell.tree.new_leaf()?;
 
         shell.with_context(self.node_id, |ctx| {
             ctx.needs_inverse_transform = true;
@@ -69,6 +61,16 @@ impl Widget for Slider {
         });
 
         Ok(self.node_id)
+    }
+
+    fn init_style(&mut self, shell: &mut LayoutShell) {
+        shell.tree.update_style(
+            self.node_id, 
+            |style| {
+                style.min_width = CssUnit::Pixels(half::f16::from_f32(100.0)).into();
+                style.min_height = CssUnit::Pixels(half::f16::from_f32(30.0)).into();
+            }
+        );
     }
 
     fn input(
@@ -236,16 +238,15 @@ impl Widget for Slider {
             (bounds.size.y / 2.0) * 5.0/6.0,
             shell.general_theme.default_color
         ).border(Border::new(
-                if self.pressed {
-                    shell.general_theme.active_color
-                } else if self.hovered {
-                    shell.general_theme.hover_color
-                } else {
-                    shell.general_theme.default_color
-                },
-                2.0
-            ))
-        );
+            if self.pressed {
+                shell.general_theme.active_color
+            } else if self.hovered {
+                shell.general_theme.hover_color
+            } else {
+                shell.general_theme.default_color
+            },
+            2.0
+        )));
     }
 }
 
@@ -288,10 +289,11 @@ impl SliderValue {
             } => {
                 let path = variable
                     .resolve_path(values)?;
+
                 match values.reflect_as_number(&*path) {
                     Ok(n) => *value = n.into(),
                     Err(e) => {
-                        warn!("error with get: {e:?}");
+                        warn!("error getting value at path '{path}': {e:?}");
                         *self = Self::Error;
                     }
                 }
@@ -325,22 +327,21 @@ impl From<String> for SliderValue {
         }
     }
 }
-impl From<SliderBuilderValue> for SliderValue {
-    fn from(value: SliderBuilderValue) -> Self {
-        match value {
-            SliderBuilderValue::Static(n) => Self::Static(n),
-            SliderBuilderValue::Variable(v) => Self::Variable {
-                variable: v.into(),
-                value: 0.0
-            },
+impl From<VariablePathResolver> for SliderValue {
+    fn from(variable: VariablePathResolver) -> Self {
+        Self::Variable {
+            variable,
+            value: 0.0,
         }
     }
 }
 impl From<BuildableValue> for SliderValue {
     fn from(value: BuildableValue) -> Self {
         match value {
-            BuildableValue::Variable { var } => Self::Variable { 
-                variable: var.into(), 
+            BuildableValue::Variable { 
+                var 
+            } => Self::Variable { 
+                variable: var, 
                 value: 0.0
             },
 
@@ -348,16 +349,6 @@ impl From<BuildableValue> for SliderValue {
                 buildable, 
                 value: 0.0
             }
-        }
-    }
-}
-
-impl From<SliderBuilderOnChange> for InputAction<f32> {
-    fn from(value: SliderBuilderOnChange) -> Self {
-        match value {
-            SliderBuilderOnChange::Message(m) => Self::Message(m),
-            SliderBuilderOnChange::Callback(cb)
-                => Self::MessageCallback(cb),
         }
     }
 }

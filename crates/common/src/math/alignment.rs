@@ -1,10 +1,12 @@
 use crate::prelude::*;
 
+use tataku_common::prelude::*;
 use HorizontalAlign::*;
 use VerticalAlign::*;
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
 #[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Reflect)]
 pub enum HorizontalAlign {
     #[default]
     Left,
@@ -39,6 +41,7 @@ impl From<Alignment> for HorizontalAlign {
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
 #[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Reflect)]
 pub enum VerticalAlign {
     #[default]
     Top,
@@ -72,6 +75,7 @@ impl From<Alignment> for VerticalAlign {
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
 #[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Reflect)]
 pub struct Alignment {
     pub horizontal: HorizontalAlign,
     pub vertical: VerticalAlign,

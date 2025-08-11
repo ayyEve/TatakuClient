@@ -5,7 +5,7 @@ use crate::prelude::*;
 #[serde(from="String")]
 pub enum BuildableCondition {
     Unbuilt(String),
-    Built(Arc<BuildableCalc>, String),
+    Built(BuildableCalc, String),
     Failed,
 }
 impl BuildableCondition {
@@ -17,7 +17,7 @@ impl BuildableCondition {
         let BuildableCondition::Unbuilt(s) = self else { return };
         match BuildableCalc::parse(format!("{s} == true")) {
             Ok(built) 
-                => *self = BuildableCondition::Built(Arc::new(built), s.clone()),
+                => *self = BuildableCondition::Built(built, s.clone()),
                 
             Err(e) => {
                 error!("Error building conditional: {e:?}");
@@ -56,5 +56,5 @@ pub enum BuildableConditionResult<'a> {
     Unbuilt(&'a String),
     True,
     False,
-    Error(ShuntingYardError)
+    Error(BuildableShuntingYardError)
 }

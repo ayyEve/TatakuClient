@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum ModAction {
     /// Add a mod
     AddMod(String),

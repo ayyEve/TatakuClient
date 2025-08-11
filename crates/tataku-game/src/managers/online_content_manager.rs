@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 pub(crate) struct OnlineContentManager {
     engines: Vec<Arc<dyn OnlineContentEngine>>,
-    last_search: Option<OnlineContentSearch>,
+    last_search: Option<Box<OnlineContentSearch>>,
 }
 impl OnlineContentManager {
     pub fn new(settings: &Settings) -> Self {
@@ -57,7 +57,7 @@ impl OnlineContentManager {
                 self.last_search = Some(search.clone());
 
                 actions.push(OnlineContentSearchTask::new(
-                    search,
+                    *search,
                     self.engines.clone(),
                 ));
             }

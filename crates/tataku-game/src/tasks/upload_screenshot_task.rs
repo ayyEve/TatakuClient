@@ -83,7 +83,7 @@ impl TatakuTask for UploadScreenshotTask {
                     5000.0, 
                     NotificationOnClick::Url(url.clone())
                 ));
-                actions.push(GameAction::CopyToClipboard(url));
+                actions.push(GameAction::CopyToClipboard(url.into()));
             }
             Err(notif) => actions.push(notif),
         }

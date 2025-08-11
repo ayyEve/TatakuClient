@@ -19,7 +19,7 @@ pub struct BeatmapManager {
     #[reflect(flatten)]
     pub beatmaps: Vec<Arc<BeatmapMeta>>,
     pub beatmaps_by_hash: HashMap<Md5Hash, Arc<BeatmapMeta>>,
-    pub ignore_beatmaps: HashSet<String>,
+    pub ignore_beatmaps: HashSet<Arc<str>>,
 
     /// previously played maps
     played: Vec<Md5Hash>, 
@@ -64,7 +64,7 @@ impl BeatmapManager {
         &mut self, 
         sort_by: SortBy,
         mods: &ModManager,
-        playmode: &String,
+        playmode: &str,
         diff_manager: &mut impl DifficultyProvider,
     ) {
         trace!("Beatmap manager initialized");
@@ -192,7 +192,7 @@ impl BeatmapManager {
                 // if so, add it to the ignore list
                 trace!("Adding {} to the ignore list", beatmap.file_path);
                 self.ignore_beatmaps.insert(beatmap.file_path.clone());
-                Database::add_ignored(beatmap.file_path.clone());
+                Database::add_ignored(&beatmap.file_path);
             }
 
             return;
@@ -233,7 +233,7 @@ impl BeatmapManager {
             if old_map.file_path.starts_with(SONGS_DIR) {
 
                 // delete the file
-                if let Err(e) = std::fs::remove_file(&old_map.file_path) {
+                if let Err(e) = std::fs::remove_file(&*old_map.file_path) {
                     self.actions.push(Notification::new_error(
                         "Error deleting map", 
                         e
@@ -244,7 +244,7 @@ impl BeatmapManager {
             } else {
                 // file is probably in an external folder, just add this file to the ignore list
                 self.ignore_beatmaps.insert(old_map.file_path.clone());
-                Database::add_ignored(old_map.file_path.clone());
+                Database::add_ignored(&old_map.file_path);
             }
         }
 
@@ -319,7 +319,7 @@ impl BeatmapManager {
                 diff_info
             });
             
-            self.actions.push(GameAction::UpdatePlaymodeActual(actual_mode.clone()));
+            self.actions.push(GameAction::UpdatePlaymodeActual(actual_mode.to_string().into()));
         }
 
         // set the song
@@ -459,7 +459,7 @@ impl BeatmapManager {
     pub fn refresh_maps(
         &mut self, 
         current_mods: &ModManager,
-        playmode: &String,
+        playmode: &str,
         sort_by: SortBy,
         diff_manager: &mut impl DifficultyProvider,
     ) {
@@ -473,7 +473,7 @@ impl BeatmapManager {
     pub fn apply_filter(
         &mut self, 
         mods: &ModManager,
-        playmode: &String,
+        playmode: &str,
         sort_by: SortBy,
         diff_manager: &mut impl DifficultyProvider,
     ) {
@@ -771,12 +771,12 @@ pub struct SelectBeatmapConfig {
     pub restart_song: bool,
     pub use_preview_time: bool,
     pub mods: ModManager,
-    pub playmode: String,
+    pub playmode: Arc<str>,
 }
 impl SelectBeatmapConfig {
     pub fn new(
         mods: ModManager, 
-        playmode: String,
+        playmode: Arc<str>,
         restart_song: bool, 
         use_preview_time: bool,
     ) -> Self {

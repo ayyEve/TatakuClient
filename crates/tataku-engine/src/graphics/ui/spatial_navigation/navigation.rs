@@ -426,38 +426,24 @@ impl SpatialNagivation<'_> {
             let mut candidates = all_selectable.clone();
             Self::remove_target(&mut candidates, i);
 
-            let left = self.navigate(
-                i, 
-                Direction::Left, 
-                &candidates, 
-                config
-            );
-            let right = self.navigate(
-                i, 
-                Direction::Right, 
-                &candidates, 
-                config
-            );
+            for dir in [
+                Direction::Up,
+                Direction::Down,
+                Direction::Left,
+                Direction::Right,
+            ] {
+                let node = self.navigate(
+                    i, 
+                    dir, 
+                    &candidates, 
+                    config
+                );
 
-            let above = self.navigate(
-                i, 
-                Direction::Up, 
-                &candidates, 
-                config
-            );
-            let below = self.navigate(
-                i, 
-                Direction::Down, 
-                &candidates, 
-                config
-            );
-
-            let context = self.tree.get_context_mut(i).unwrap();
+                let context = self.tree.get_context_mut(i).unwrap();
+                context.set_node_direction(dir, node);
+            }
             // debug!("got adjacent nodes for node {:?}: above: {above:?} | below: {below:?} | left: {left:?} | right: {right:?}", context.element_data);
-            context.node_above = above;
-            context.node_below = below;
-            context.node_left = left;
-            context.node_right = right;
+
         }
 
     }

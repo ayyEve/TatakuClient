@@ -42,6 +42,7 @@ debug_sliders = [ "gamemode-osu/debug_sliders" ]
 [dependencies]
 tataku-common.workspace = true
 tataku-wgpu.workspace = true
+tataku-resources.workspace = true
 tataku-bass = { workspace = true, optional = true }
 tataku-kira = { workspace = true, optional = true }
 tataku-game = { workspace = true, features = [ "graphics" ] }

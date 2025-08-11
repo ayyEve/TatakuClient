@@ -103,7 +103,7 @@ impl HitSamples {
             Some(str) => {
                 let mut split = str.split(':');
 
-                let normal_set = read_val!(split); //split.next().unwrap_or("0").parse().unwrap_or(0);
+                let normal_set = read_val!(split);
                 let addition_set = split.next().unwrap_or("0").parse().unwrap_or(0);
                 let index = split.next().unwrap_or("0").parse().unwrap_or(0);
                 let volume = split.next().unwrap_or("0").parse().unwrap_or(0);

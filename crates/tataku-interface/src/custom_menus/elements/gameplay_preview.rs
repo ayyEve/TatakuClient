@@ -21,10 +21,7 @@ impl CustomElement for GameplayPreviewElement {
             "gameplayPreview",
             self.id.clone(),
             self.class_list.clone(),
-            GameplayPreview::new(
-                true, 
-                true, 
-            )
+            GameplayPreview::new()
             .blur(self.blur_type.into_blur(self.blur))
             .visualization(if let Some(vis) = &self.visualization {
                 match &**vis {

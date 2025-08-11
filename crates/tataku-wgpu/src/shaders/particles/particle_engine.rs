@@ -136,7 +136,7 @@ impl ParticleSystem {
             let Some(Some(pool)) = emitters
                 .get_mut(&(particle.emitter_index as usize)) 
             else { continue };
-
+            
             let mut pool = pool.write();
             if particle.lifetime <= 0.0 { 
                 pool.remove(particle.particle_index as usize); 
@@ -152,7 +152,7 @@ impl ParticleSystem {
 
             cpu_p.scale = particle.scale;
             cpu_p.rotation = particle.rotation;
-            cpu_p.color.a = particle.opacity;
+            cpu_p.color.a = (particle.opacity.clamp(0.0, 1.0) * 255.0) as u8;
         }
 
         Some(buffer)

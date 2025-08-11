@@ -63,10 +63,7 @@ impl<T:Clone + Reflect> InputAction<T> {
 
     }
 
-    pub fn build(
-        &mut self,
-        values: &mut dyn Reflect,
-    ) {
+    pub fn build(&mut self, values: &mut dyn Reflect) {
         match self {
             Self::Custom { 
                 action, 

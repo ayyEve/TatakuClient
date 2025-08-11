@@ -124,7 +124,7 @@ pub struct Branch {
 }
 impl Branch {
     /// text can be as many chars
-    pub fn new(text: &String) -> Self {
+    pub fn new(text: &str) -> Self {
 
         // branch 1: [chi]
         // branch 2: [na, ra]
@@ -132,7 +132,7 @@ impl Branch {
         let branches_per_char: Vec<Vec<CharVariant>> = 
         // try to get an exact match from the mapping
         CHAR_MAPPING
-        .get(&**text)
+        .get(text)
         .map_or_else(
             // if no exact mapping exists, manually parse
             || text

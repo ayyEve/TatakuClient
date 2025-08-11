@@ -181,6 +181,18 @@ impl GameMode for UTypingGame {
 
     }
 
+    fn handle_gameplay_event(&mut self, event: GameplayEvent) {
+        match event {
+            GameplayEvent::SetBounds { 
+                bounds, 
+                full_window 
+            } => {
+                self.update_playfield(bounds, full_window);
+            }
+            GameplayEvent::ApplyMods(_) => {}
+            _ => {}
+        }
+    }
 
     fn update(
         &mut self, 
@@ -387,12 +399,6 @@ impl GameMode for UTypingGame {
         Some(time)
     }
 
-
-    fn set_bounds(&mut self, bounds: Bounds, full_window: bool) {
-        self.update_playfield(bounds, full_window);
-    }
-
-    
     fn force_update_settings(&mut self, _settings: &Settings) {}
     #[cfg(feature="graphics")]
     fn reload_skin(&mut self, _beatmap_path: &str, skin_manager: &mut dyn SkinProvider) -> TextureSource {
@@ -401,12 +407,6 @@ impl GameMode for UTypingGame {
         }
         TextureSource::Skin
     }
-
-    fn apply_mods(&mut self, _mods: Arc<ModManager>) {}
-    
-    fn beat_happened(&mut self, _pulse_length: f32) {}
-    fn kiai_changed(&mut self, _is_kiai: bool) {}
-
 
     fn get_playfield(&self) -> PlayfieldNonsense {
         PlayfieldNonsense::new_simple(self.playfield.bounds)

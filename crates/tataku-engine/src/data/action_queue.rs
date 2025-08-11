@@ -1,9 +1,10 @@
 use crate::prelude::*;
 
-/// helper struct for menu actions
+pub type ActionQueue = Queue<TatakuAction>;
+
 #[derive(Default, Debug)]
-pub struct ActionQueue(Vec<TatakuAction>);
-impl ActionQueue {
+pub struct Queue<T>(Vec<T>);
+impl<T> Queue<T> {
     pub fn new() -> Self {
         Self(Vec::new())
     }
@@ -14,14 +15,19 @@ impl ActionQueue {
         self.0.len()
     }
 
-    pub fn take(&mut self) -> Vec<TatakuAction> {
+    pub fn take(&mut self) -> Vec<T> {
         self.0.take()
     }
 
-    pub fn push(&mut self, action: impl Into<TatakuAction>) {
-        self.0.push(action.into());
+    pub fn push(&mut self, item: impl Into<T>) {
+        self.0.push(item.into());
     }
-    pub fn extend(&mut self, actions: Vec<TatakuAction>) {
-        self.0.extend(actions);
+    pub fn extend(&mut self, list: impl Into<Vec<T>>) {
+        self.0.extend(list.into());
+    }
+}
+impl<T> From<Vec<T>> for Queue<T> {
+    fn from(value: Vec<T>) -> Self {
+        Self(value)
     }
 }

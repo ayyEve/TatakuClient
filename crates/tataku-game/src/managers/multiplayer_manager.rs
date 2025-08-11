@@ -9,7 +9,7 @@ pub struct MultiplayerManager {
     current_beatmap: ValueChangeHelper<Md5Hash>,
     
     /// what playmode is selected by the host?
-    selected_mode: Option<String>,
+    selected_mode: Option<Arc<str>>,
 
     /// what mods are currently enabled?
     current_mods: ValueChangeHelper<ModManager>,
@@ -336,7 +336,7 @@ impl MultiplayerManager {
                         let f = async move { manager_from_playmode_path_hash(
                             &infos,
                             &mode, 
-                            map.file_path.clone(), 
+                            &map.file_path, 
                             map.beatmap_hash, 
                             mods,
                             &settings
@@ -389,7 +389,7 @@ impl MultiplayerManager {
 
                 if let Some(beatmap) = &self.lobby.current_beatmap {
                     // update the playmode
-                    self.selected_mode = Some(beatmap.mode.clone());
+                    self.selected_mode = Some(beatmap.mode.clone().into());
                     actions.push(BeatmapAction::SetPlaymode(beatmap.mode.clone()));
                     
                     // the beatmap change handler in Self::update will handle the rest

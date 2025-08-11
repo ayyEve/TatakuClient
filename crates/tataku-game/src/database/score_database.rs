@@ -2,8 +2,8 @@ use crate::prelude::*;
 
 impl Database {
     pub fn get_scores(
-        hash: &String, 
-        playmode: &String,
+        hash: &str, 
+        playmode: &str,
         infos: &GamemodeInfos
     ) -> Vec<Score> {
         let db = Self::get();

@@ -7,7 +7,6 @@ pub struct TabbedWidget {
     tabs: TabProvider,
     #[chain] selected: usize,
 
-    #[chain] style: Style,
     node_id: NodeId,
 }
 impl TabbedWidget {
@@ -19,8 +18,6 @@ impl TabbedWidget {
             name,
             tabs: tabs.into(),
             selected: 0,
-            
-            style: Style::default(),
             node_id: EMPTY_NODE
         }
     }
@@ -69,15 +66,15 @@ impl Widget for TabbedWidget {
 
     }
 
-    fn update_styles(
-        &mut self, 
-        shell: &mut StyleShell,
-        display_override: Option<ui::Display>
-    ) {
-        for tab in self.tabs.tabs_mut() {
-            tab.element.update_styles(shell, display_override);
-        }
-    }
+    // fn update_styles(
+    //     &mut self, 
+    //     shell: &mut StyleShell,
+    //     display_override: Option<DisplayType>
+    // ) {
+    //     for tab in self.tabs.tabs_mut() {
+    //         tab.element.update_styles(shell, display_override);
+    //     }
+    // }
 
     fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId>  {
         let children = self.tabs
@@ -86,11 +83,7 @@ impl Widget for TabbedWidget {
             .map(|i| i.element.layout(shell))
             .collect::<Result<Vec<_>, _>>()?;
 
-        self.node_id = shell.tree.new_with_children(
-            self.style.clone(), 
-            &children
-        )?;
-
+        self.node_id = shell.tree.new_with_children(&children)?;
         Ok(self.node_id)
     }
 

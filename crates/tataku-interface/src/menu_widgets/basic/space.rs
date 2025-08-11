@@ -26,7 +26,7 @@ impl Widget for Space {
     fn name(&self) -> CowStr { "space_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
     
-    fn layout(&mut self, shell: &mut LayoutShell<'_>) -> TaffyResult<NodeId> {
+    fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {
         self.node_id = shell.tree.new_leaf(self.style.clone())?;
         Ok(self.node_id)
     }

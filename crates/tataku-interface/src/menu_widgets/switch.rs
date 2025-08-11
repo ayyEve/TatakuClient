@@ -7,8 +7,6 @@ pub struct SwitchWidget {
     default_case: Option<Box<dyn Widget>>,
     // cond: BuildableCondition,
 
-    #[chain] style: Style,
-
     value: Option<usize>,
     node_id: NodeId,
 }
@@ -27,7 +25,6 @@ impl SwitchWidget {
             // cond,
             cases,
             default_case,
-            style: Style::default(),
 
             value: None,
             node_id: EMPTY_NODE
@@ -35,49 +32,20 @@ impl SwitchWidget {
     }
 
     #[allow(clippy::borrowed_box, reason = "signature")]
-    fn get_ele(
-        &self,
-        _values: &dyn Reflect,
-    ) -> Option<&Box<dyn Widget>> {
+    fn get_ele(&self) -> Option<&Box<dyn Widget>> {
         let Some(index) = self.value else {
             return self.default_case.as_ref();
         };
 
         Some(&self.cases.get(index)?.widget)
-        // for i in self.cases.iter() {
-        //     if i.cond.resolve(values) == BuildableConditionResult::True {
-        //         return Some(&i.widget)
-        //     }
-        // }
-
-        // if let Some(default) = &self.default_case {
-        //     Some(default)
-        // } else {
-        //     None
-        // }
     }
 
-    fn get_ele_mut(
-        &mut self,
-        _values: &dyn Reflect,
-    ) -> Option<&mut Box<dyn Widget>> {
+    fn get_ele_mut(&mut self) -> Option<&mut Box<dyn Widget>> {
         let Some(index) = self.value else {
             return self.default_case.as_mut();
         };
 
         Some(&mut self.cases.get_mut(index)?.widget)
-
-        // for i in self.cases.iter_mut() {
-        //     if i.cond.resolve(values) == BuildableConditionResult::True {
-        //         return Some(&mut i.widget)
-        //     }
-        // }
-
-        // if let Some(default) = &mut self.default_case {
-        //     Some(default)
-        // } else {
-        //     None
-        // }
     }
 
     fn update_value(
@@ -87,52 +55,86 @@ impl SwitchWidget {
         self.value = self
             .cases
             .iter()
-            .enumerate()
-            .find(|(_, i)| 
+            .position(|i| 
                 match i.cond.resolve(values) {
                     BuildableConditionResult::True => true,
                     BuildableConditionResult::False => false,
                     _ => false,
                 }
-            )
-            .map(|(n, _)| n);
+            );
     }
 }
 impl Widget for SwitchWidget {
     fn name(&self) -> CowStr { "switch_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn update_styles(
-        &mut self, 
-        shell: &mut StyleShell, 
-        _display_override: Option<ui::Display>,
-    ) {
-        let mut first_found = false;
-
-        for i in self.cases.iter_mut() {
-            if !first_found 
-                && i.cond.resolve(shell.values) == BuildableConditionResult::True 
-            {
-                first_found = true;
-                i.widget.update_styles(
-                    shell, 
-                    None
-                );
-            } else {
-                i.widget.update_styles(
-                    shell, 
-                    Some(ui::Display::None)
-                );
-            }
-        }
-
-        if let Some(default) = &mut self.default_case {
-            default.update_styles(
-                shell, 
-                (!first_found).then_some(ui::Display::None)
-            );
-        }
+    fn children(&self) -> WidgetChildren {
+        self.get_ele()
+            .map(WidgetChildren::Single)
+            .unwrap_or_default()
     }
+    fn children_mut(&mut self) -> WidgetChildrenMut {
+        self.get_ele_mut()
+            .map(WidgetChildrenMut::Single)
+            .unwrap_or_default()
+    }
+
+    fn all_children(&self) -> WidgetChildren {
+        let mut list = self.cases
+            .iter()
+            .map(|a| &a.widget)
+            .collect::<Vec<_>>();
+        if let Some(default) = &self.default_case {
+            list.push(default);
+        }
+
+        WidgetChildren::OwnedList(list)
+    }
+    fn all_children_mut(&mut self) -> WidgetChildrenMut {
+        let mut list = self.cases
+            .iter_mut()
+            .map(|a| &mut a.widget)
+            .collect::<Vec<_>>();
+        if let Some(default) = &mut self.default_case {
+            list.push(default);
+        }
+
+        WidgetChildrenMut::OwnedList(list)
+    }
+
+    // fn update_styles(
+    //     &mut self, 
+    //     shell: &mut StyleShell, 
+    //     _display_override: Option<DisplayType>,
+    // ) {
+    //     return;
+
+    //     let mut first_found = false;
+
+    //     for i in self.cases.iter_mut() {
+    //         if !first_found 
+    //             && i.cond.resolve(shell.values) == BuildableConditionResult::True 
+    //         {
+    //             first_found = true;
+    //             i.widget.update_styles(
+    //                 shell, 
+    //                 None
+    //             );
+    //         } else {
+    //             i.widget.update_styles(
+    //                 shell, 
+    //                 Some(DisplayType::None)
+    //             );
+    //         }
+    //     }
+
+    //     if let Some(default) = &mut self.default_case {
+    //         default.update_styles(
+    //             shell, 
+    //             (!first_found).then_some(DisplayType::None)
+    //         );
+    //     }
+    // }
 
     fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId>  {
         let mut children = self
@@ -146,22 +148,33 @@ impl Widget for SwitchWidget {
             children.push(default_case.layout(shell)?);
         }
 
-        self.node_id = shell.tree.new_with_children(
-            self.style.clone(), 
-            &children
-        )?;
-
+        self.node_id = shell.tree.new_with_children(&children)?;
         Ok(self.node_id)
     }
 
+    fn init_style(&mut self, shell: &mut LayoutShell) {
+        self.all_children_mut()
+            .into_iter()
+            .for_each(|c| c.init_style(shell));
+
+        // set all cases to DisplayType::None so they're hidden
+        // do not do this for the default case because if it exists it should be visible by default
+        for i in self.cases.iter() {
+            shell.tree.set_display(
+                i.widget.node_id(), 
+                Some(DisplayType::None)
+            );
+        }
+    }
+
     fn draw(&self, shell: &mut DrawShell) {
-        let Some(child) = self.get_ele(shell.values) 
+        let Some(child) = self.get_ele() 
         else { return };
 
         child.draw(shell);
     }
     fn draw_overlay(&self, shell: &mut DrawShell) {
-        let Some(child) = self.get_ele(shell.values) 
+        let Some(child) = self.get_ele() 
         else { return };
 
         child.draw_overlay(shell);
@@ -172,7 +185,7 @@ impl Widget for SwitchWidget {
         event: &InputEvent,
         shell: &mut InputShell,
     ) {
-        let Some(child) = self.get_ele_mut(shell.values) 
+        let Some(child) = self.get_ele_mut() 
         else { return };
 
         child.input(event, shell);
@@ -190,7 +203,12 @@ impl Widget for SwitchWidget {
             {
                 shell.actions.push(UiAction::new(
                     child.widget.node_id(), 
-                    UiActionType::UpdateDisplay(ui::Display::None)
+                    UiActionType::OverrideDisplay(Some(DisplayType::None))
+                ));
+            } else if let Some(default) = &self.default_case {
+                shell.actions.push(UiAction::new(
+                    default.node_id(), 
+                    UiActionType::OverrideDisplay(Some(DisplayType::None))
                 ));
             }
 
@@ -199,61 +217,17 @@ impl Widget for SwitchWidget {
             {
                 shell.actions.push(UiAction::new(
                     child.widget.node_id(), 
-                    UiActionType::UpdateDisplay(ui::Display::Flex)
+                    UiActionType::OverrideDisplay(None)
+                ));
+            }  else if let Some(default) = &self.default_case {
+                shell.actions.push(UiAction::new(
+                    default.node_id(), 
+                    UiActionType::OverrideDisplay(None)
                 ));
             }
         }
 
-        
-        // match self.cond.resolve(shell.values) {
-        //     BuildableConditionResult::Error(e) => {
-        //         error!("\n!!!!!!!\nerror with cond {:?}\n{e:?}\n!!!!!!!", self.cond);
-        //         self.cond = BuildableCondition::Failed;
-        //         return;
-        //     }
-        //     BuildableConditionResult::True if !self.value => {
-        //         self.value = true;
-        //         if let Some(child) = self.if_false.as_ref() {
-        //             shell.actions.push(UiAction::new(
-        //                 child.node_id(), 
-        //                 UiActionType::UpdateDisplay(ui::Display::None)
-        //             ));
-        //         }
-
-        //         shell.actions.push(UiAction::new(
-        //             self.if_true.node_id(), 
-        //             UiActionType::UpdateDisplay(ui::Display::Flex)
-        //         ));
-        //         shell.actions.push(UiAction::new(
-        //             self.node_id, 
-        //             UiActionType::Refresh
-        //         ));
-        //     }
-
-        //     BuildableConditionResult::False if self.value => {
-        //         self.value = false;
-
-        //         if let Some(child) = self.if_false.as_ref() {
-        //             shell.actions.push(UiAction::new(
-        //                 child.node_id(), 
-        //                 UiActionType::UpdateDisplay(ui::Display::Flex)
-        //             ));
-        //         }
-
-        //         shell.actions.push(UiAction::new(
-        //             self.if_true.node_id(), 
-        //             UiActionType::UpdateDisplay(ui::Display::None)
-        //         ));
-        //         shell.actions.push(UiAction::new(
-        //             self.node_id, 
-        //             UiActionType::Refresh
-        //         ));
-        //     }
-
-        //     _ => {}
-        // }
-
-        if let Some(child) = self.get_ele_mut(shell.values) { 
+        if let Some(child) = self.get_ele_mut() { 
             child.update(shell);
         }
     }
@@ -263,7 +237,7 @@ impl Widget for SwitchWidget {
         message: &Message, 
         shell: &mut MessageShell,
     ) {
-        if let Some(child) = self.get_ele_mut(shell.values) { 
+        if let Some(child) = self.get_ele_mut() { 
             child.handle_message(message, shell);
         }
     }
@@ -274,7 +248,7 @@ impl Widget for SwitchWidget {
         event_value: Option<&TatakuValue>, 
         shell: &mut MessageShell,
     ) {
-        if let Some(child) = self.get_ele_mut(shell.values) { 
+        if let Some(child) = self.get_ele_mut() { 
             child.handle_event(event, event_value, shell);
         }
     }

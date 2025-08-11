@@ -11,7 +11,7 @@ pub struct ApproachCircle {
     pos: Vector2,
     radius: f32,
     scaling_helper: Arc<ScalingHelper>,
-    alpha: f32,
+    alpha: u8,
     color: Color,
 
     preempt: f32,
@@ -31,7 +31,7 @@ impl ApproachCircle {
             color: Color::WHITE,
             scaling_helper,
 
-            alpha: 0.0,
+            alpha: 0,
             image: None,
             time_diff: time,
             easing_type: Easing::Linear
@@ -53,10 +53,10 @@ impl ApproachCircle {
 
     pub fn reset(&mut self) {
         self.time_diff = 9999.0;
-        self.alpha = 0.0;
+        self.alpha = 0;
     }
 
-    pub fn set_alpha(&mut self, alpha: f32) {
+    pub fn set_alpha(&mut self, alpha: u8) {
         self.alpha = alpha;
     }
     pub fn set_color(&mut self, color: Color) {
@@ -65,11 +65,15 @@ impl ApproachCircle {
 
     pub fn draw(&self, list: &mut RenderableCollection) {
         let lerp_amount = self.time_diff / self.preempt;
-        let scale = self.easing_type.run_easing(1.0, APPROACH_CIRCLE_MULT, lerp_amount.max(0.0));
+        let scale = self.easing_type.run_easing(
+            1.0, 
+            APPROACH_CIRCLE_MULT, 
+            lerp_amount.max(0.0)
+        );
 
         if let Some(mut tex) = self.image.clone() {
             tex.pos = self.pos;
-            tex.color = self.color.alpha(self.alpha);
+            tex.color = self.color.alpha8(self.alpha);
             tex.scale = Vector2::ONE * self.scaling_helper.cs * scale * APPROACH_CIRCLE_SCALE;
 
             list.push(tex);
@@ -79,7 +83,7 @@ impl ApproachCircle {
                 self.radius * scale, // self.radius is already accounting for the scaled_cs
                 Color::TRANSPARENT,
             ).border(Border::new(
-                self.color.alpha(self.alpha), 
+                self.color.alpha8(self.alpha), 
                 OSU_NOTE_BORDER_SIZE * self.scaling_helper.cs)
             ));
         }

@@ -10,10 +10,10 @@ pub struct GlobalValues {
     #[reflect(alias("infos"))]
     pub gamemode_infos: GamemodeInfos,
 
-    pub playmode: String,
-    pub playmode_display: String,
-    pub playmode_actual: String,
-    pub playmode_actual_display: String,
+    pub playmode: Arc<str>,
+    pub playmode_display: Arc<str>,
+    pub playmode_actual: Arc<str>,
+    pub playmode_actual_display: Arc<str>,
 
     pub username: String,
     pub menu_list: Vec<String>,
@@ -31,27 +31,33 @@ impl GlobalValues {
             username: settings.username.clone(),
             ..Default::default()
         };
-        s.update_playmode(&settings.last_played_mode);
-        s.update_playmode_actual(&settings.last_played_mode);
+        let a: Arc<str> = settings.last_played_mode.clone().into();
+        s.update_playmode(a.clone());
+        s.update_playmode_actual(a);
         
         s
     }
 
     pub fn update_playmode(
         &mut self, 
-        playmode: &str,
+        playmode: impl Into<Arc<str>>,
     ) {
-        self.playmode = playmode.to_owned();
-        let Ok(info) = self.gamemode_infos.get_info(playmode) else { return };
-        self.playmode_display = info.display_name.to_owned();
+        let playmode = playmode.into();
+        self.playmode = playmode.clone();
+        let Ok(info) = self.gamemode_infos.get_info(&playmode) 
+        else { return };
+
+        self.playmode_display = info.display_name.to_owned().into();
     }
     pub fn update_playmode_actual(
         &mut self, 
-        playmode: &str,
+        playmode: impl Into<Arc<str>>,
     ) {
-        self.playmode_actual = playmode.to_owned();
-        let Ok(info) = self.gamemode_infos.get_info(playmode) else { return };
-        self.playmode_actual_display = info.display_name.to_owned();
+        let playmode = playmode.into();
+        self.playmode_actual = playmode.clone();
+        let Ok(info) = self.gamemode_infos.get_info(&playmode) 
+        else { return };
+        self.playmode_actual_display = info.display_name.to_owned().into();
 
 
         // update mod groups

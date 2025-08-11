@@ -19,12 +19,8 @@ const TOKENS: &[char] = &[
 // TODO: make sure the forward-select stuff is all correct
 // TODO: cache selected text sizes?
 
-#[derive(Widget)]
-#[widget(type("text"))]
 #[derive(ChainableInitializer)]
 pub struct TextInput {
-    #[chain] style: Style,
-    #[chain] text_style: TextStyle,
     #[chain] secure: bool,
 
     placeholder: WidgetText,
@@ -46,8 +42,6 @@ impl TextInput {
         value: impl Into<WidgetText>,
     ) -> Self {
         Self {
-            style: Style::default(),
-            text_style: TextStyle::default(),
             cursor: Cursor::Position(0),
 
             placeholder: placeholder.into(),
@@ -276,7 +270,6 @@ impl TextInput {
         self.cursor = Cursor::Position(start.len() + text.len());
         self.value.set(format!("{start}{text}{end}"));
     }
-
 
     fn add_text(&mut self, text: &str) {
         match &mut self.cursor {
@@ -522,15 +515,15 @@ impl TextInput {
         }
     }
 
-    fn index_rel_pos(&self, mut rel_x: f32) -> usize {
+    fn index_rel_pos(&self, text_style: &TextStyle, mut rel_x: f32) -> usize {
         let (font_size, text_scale) = Text::get_font_size_scaled(
-            self.text_style.font_size
+            text_style.font_size
         );
 
         let value = self.value.get();
 
         for (i, ch) in value.char_indices() {
-            let Some(data) = self.text_style
+            let Some(data) = text_style
                 .font
                 .get_character(font_size, ch) 
             else { continue };
@@ -546,57 +539,34 @@ impl Widget for TextInput {
     fn name(&self) -> CowStr { "text_input_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn update_styles(
-        &mut self, 
-        shell: &mut StyleShell,
-        _display_override: Option<ui::Display>
-    ) {
-        let text_size = shell.tree
-            .get_context(self.node_id)
-            .unwrap()
-            .element_data.style()
-            .0.text_style(shell.values)
-            .measure_text(&self.get_text(), None)
-            ;
-
-        let mut style = shell.tree
-            .get_style(self.node_id)
-            .unwrap()
-            .clone();
-
-        style.min_size = Size {
-            width: Dimension::Length(text_size.x),
-            height: Dimension::Length(text_size.y),
-        };
-        shell.tree.set_style(self.node_id, style);
-    }
-
-    fn set_text_style(&mut self, style: TextStyle) {
-        self.text_style = style;
-    }
-
     fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {
-        self.text_style.font_size *= shell.ui_scale;
-
-        let style = Style {
-            min_size: Size {
-                width: Dimension::Length(self.text_style.measure_text(
-                    &"a".repeat(30), 
-                    None
-                ).x),
-                height: Dimension::Length(self.text_style.line_height),
-            },
-
-            ..self.style.clone()
-        };
-
-        self.node_id = shell.tree.new_leaf(style)?;
+        self.node_id = shell.tree.new_leaf()?;
         shell.with_context(self.node_id, |ctx| {
             ctx.needs_inverse_transform = true;
             ctx.set_selectable(true);
         });
 
         Ok(self.node_id)
+    }
+
+    fn init_style(&mut self, shell: &mut LayoutShell) {
+        let text_style = shell.tree
+            .get_text_style(self.node_id)
+            .unwrap();
+        
+        let min_height = half::f16::from_f32(text_style.line_height);
+        let min_width = half::f16::from_f32(text_style
+            .measure_text(&self.get_text(), None)
+            .x
+        );
+
+        shell.tree.update_style(
+            self.node_id, 
+            |style| {
+                style.min_width = CssUnit::Pixels(min_width).into();
+                style.min_height = CssUnit::Pixels(min_height).into();
+            }
+        );
     }
 
     fn input(
@@ -610,6 +580,10 @@ impl Widget for TextInput {
         if !self.on_submit.is_built() {
             self.on_submit.build(shell.values);
         }
+
+        let text_style = shell.tree
+            .get_text_style(self.node_id)
+            .unwrap();
 
         match &event.event {
             InputType::KeyPress(press) if self.active => {
@@ -644,11 +618,18 @@ impl Widget for TextInput {
 
                     if text_changed {
                         if let WidgetText::Custom { 
-                            custom: BuildableText::Variable { variable },
+                            custom: BuildableText::Variable { 
+                                variable 
+                            },
                             cached 
                         } = &self.value {
+                            let Ok(variable) = variable
+                                .resolve_path(shell.values)
+                                .inspect_err(|e| warn!("{e:?}"))
+                            else { return };
+
                             let _ = shell.values
-                                .reflect_insert(variable, cached.clone())
+                                .reflect_insert(&variable, cached.clone())
                                 .inspect_err(|e| warn!("{e:?}"));
                         }
                         
@@ -674,7 +655,11 @@ impl Widget for TextInput {
 
                 if self.pressed {
                     use std::cmp::Ordering;
-                    let index = self.index_rel_pos(pos.x - bounds.pos.x);
+                    let index = self.index_rel_pos(
+                        text_style, 
+                        pos.x - bounds.pos.x
+                    );
+                    
                     match self.cursor {
                         Cursor::Position(i) => {
                             match index.cmp(&i) {
@@ -744,6 +729,7 @@ impl Widget for TextInput {
                 if self.pressed {
                     shell.event_consumed = true;
                     self.cursor = Cursor::Position(self.index_rel_pos(
+                        text_style,
                         pos.x - bounds.pos.x
                     ));
                 }
@@ -757,10 +743,13 @@ impl Widget for TextInput {
         }
     }
 
-
     fn draw(&self, shell: &mut DrawShell) {
         let Some(bounds) = shell.tree.absolute_bounds(self) 
         else { return };
+
+        let text_style = shell.tree.get_text_style(self)
+            .unwrap();
+
 
         shell.list.push(
             Rectangle::new_bounds(
@@ -774,7 +763,7 @@ impl Widget for TextInput {
         );
 
         let mut text = self.get_text().clone().into_owned();
-        shell.list.push(self.text_style.create_text(text.clone(), bounds));
+        shell.list.push(text_style.create_text(text.clone(), bounds));
 
         if self.active && !self.value.get().is_empty() {
             match self.cursor {
@@ -787,9 +776,8 @@ impl Widget for TextInput {
                         text = split.to_owned();
                     }
                     
-                    // TODO: scale with transform
-                    let size = self.text_style
-                        .measure_text(&text, None);
+                    // TODO: scale with transform?
+                    let size = text_style.measure_text(&text, None);
                     
                     let cursor_bar = Rectangle::new(
                         Vector2::new(
@@ -811,11 +799,11 @@ impl Widget for TextInput {
 
                     let diff = end - start;
                     let (start, split) = text.split_at(start);
-                    let offset = self.text_style
+                    let offset = text_style
                         .measure_text(start, None);
 
                     let split = split.split_at(diff).0;
-                    let size = self.text_style
+                    let size = text_style
                         .measure_text(split, None);
 
                     // TODO: scale with transform?
@@ -865,17 +853,6 @@ impl Cursor {
                     forward_select: true 
                 },
             }
-        }
-    }
-}
-
-
-impl From<TextInputBuilderInput> for InputAction<String> {
-    fn from(value: TextInputBuilderInput) -> Self {
-        match value {
-            TextInputBuilderInput::Callback(cb) 
-                => Self::MessageCallback(cb),
-            TextInputBuilderInput::Message(m) => Self::Message(m),
         }
     }
 }

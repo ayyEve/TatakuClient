@@ -13,6 +13,8 @@ pub trait GameMode: Send + Sync {
         state: &mut GameplayUpdateShell
     );
 
+    fn handle_gameplay_event(&mut self, event: GameplayEvent);
+
     fn update(
         &mut self, 
         state: &mut GameplayUpdateShell
@@ -26,38 +28,36 @@ pub trait GameMode: Send + Sync {
     );
 
     fn skip_intro(&mut self, time: f32) -> Option<f32>;
-    fn pause(&mut self) {}
-    fn unpause(&mut self) {}
     fn reset(&mut self, beatmap: &Beatmap);
+    
+    // fn pause(&mut self) {}
+    // fn unpause(&mut self) {}
+    // #[cfg(feature="graphics")]
+    // fn set_bounds(&mut self, bounds: Bounds, full_window: bool);
+    // fn apply_mods(&mut self, mods: Arc<ModManager>);
 
-    #[cfg(feature="graphics")]
-    fn set_bounds(&mut self, bounds: Bounds, full_window: bool);
+    // /// happens right when a beat occurs (or a bit after if theres lag/stutter)
+    // fn beat_happened(&mut self, pulse_length: f32);
+    // /// happens right when kiai changes
+    // fn kiai_changed(&mut self, is_kiai: bool);
     
     fn force_update_settings(&mut self, settings: &Settings);
+
     #[cfg(feature="graphics")]
-    fn reload_skin(&mut self, beatmap_path: &str, skin_manager: &mut dyn SkinProvider) -> TextureSource;
-
-    fn time_jump(&mut self, _new_time: f32, _state: &mut GameplayUpdateShell) {}
-    fn apply_mods(&mut self, mods: Arc<ModManager>);
-    // fn apply_auto(&mut self, settings: &BackgroundGameSettings);
-
-    /// happens right when a beat occurs (or a bit after if theres lag/stutter)
-    fn beat_happened(&mut self, pulse_length: f32);
-    /// happens right when kiai changes
-    fn kiai_changed(&mut self, is_kiai: bool);
+    fn reload_skin(
+        &mut self, 
+        beatmap_path: &str, 
+        skin_manager: &mut dyn SkinProvider
+    ) -> TextureSource;
 
     fn properties(&self, timing_points: &TimingPointHelper) -> GameModeProperties;
-
+    fn time_jump(&mut self, _new_time: f32, _state: &mut GameplayUpdateShell) {}
     fn get_playfield(&self) -> PlayfieldNonsense;
 
     /// setup any gamemode specific ui elements for this gamemode
     /// ie combo and leaderboard, since the pos is different per-mode
     #[cfg(feature="graphics")]
-    fn build_widgets(
-        &self, 
-        _loader: &mut dyn UiElementLoader,
-    ) {}
-
+    fn build_widgets(&self, _loader: &mut dyn UiElementLoader) {}
 
     fn handle_input(&mut self, input: InputEvent) -> Option<ReplayAction>;
 }

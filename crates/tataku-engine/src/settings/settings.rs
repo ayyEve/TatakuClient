@@ -6,7 +6,7 @@ use tataku_client_proc_macros::Settings;
 const SETTINGS_FILE:&str = "settings.json";
 
 #[derive(Serialize)]
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug2)]
 #[cfg_attr(feature="graphics", derive(Settings))]
 #[derive(SettingsDeserialize, Reflect)]
 #[serde(default)]
@@ -14,6 +14,11 @@ const SETTINGS_FILE:&str = "settings.json";
 pub struct Settings {
     #[serde(skip)]
     pub save_path: String,
+
+    #[serde(skip)]
+    #[debug(skip)]
+    #[reflect(rename="buildable")]
+    pub buildable_provider: Arc<BuildableSettingsProvider>,
 
     // audio
     // #[Setting(text="Master Volume", category="Audio Settings")]
@@ -26,7 +31,7 @@ pub struct Settings {
     pub global_offset: f32,
     
     // login
-    #[cfg_attr(feature="graphics", setting(text="Tataku Username", category="Tataku Server Settings"))]
+    #[cfg_attr(feature="graphics", setting(text="Tataku Username", category="Connection Settings"))]
     pub username: String,
     #[cfg_attr(feature="graphics", setting(text="Tataku Password", password=true))]
     pub password: String,
@@ -44,8 +49,7 @@ pub struct Settings {
     pub osu_api_key: String,
     
     // game settings
-    #[reflect(skip)]
-    #[cfg_attr(feature="graphics", subsetting(category="Gamemodes"))]
+    #[cfg_attr(feature="graphics", subsetting())]
     pub gamemode_settings: GamemodeSettingsCollection,
 
     #[cfg_attr(feature="graphics", subsetting(category="Background Game Settings"))]
@@ -66,7 +70,6 @@ pub struct Settings {
     #[cfg_attr(feature="graphics", subsetting(category="Display Settings"))]
     pub display_settings: DisplaySettings,
     
-
     // cursor
     pub cursor_settings: CursorSettings,
 
@@ -110,9 +113,6 @@ pub struct Settings {
     
     #[cfg_attr(feature="graphics", subsetting(category="Log Settings"))]
     pub logging_settings: LoggingSettings,
-
-    #[serde(skip)]
-    pub skip_autosaveing: bool,
 }
 impl Settings {
     pub fn load() -> Self {
@@ -147,13 +147,26 @@ impl Settings {
         s
     }
 
-    pub fn save(&self) {
+    pub fn save(&mut self) {
         debug!("Saving settings");
+        self.gamemode_settings.update();
+
         let str = serde_json::to_string_pretty(self).unwrap();
         match std::fs::write(&self.save_path, str) {
             Ok(_) => trace!("settings saved successfully"),
             Err(e) => error!("Error saving settings: {e}"),
         }
+    }
+
+    pub fn init(
+        &mut self, 
+        values: &mut dyn Reflect,
+        prefix: String,
+    ) {
+        let mut builder = SettingsBuilder::new(values, "Settings");
+        #[cfg(feature = "graphics")]
+        self.create_provider(prefix, &mut builder);
+        self.buildable_provider = Arc::new(builder.done());
     }
 
     pub fn gamemode_settings<G: serde::de::DeserializeOwned>(
@@ -172,8 +185,10 @@ impl Settings {
         *self.gamemode_settings
             .entry(gamemode.as_ref().to_owned())
             .or_default()
-            = serde_json::to_value(settings)
+        = serde_json::to_value(settings)
             .expect("couldnt serialize game settings?");
+
+        self.gamemode_settings.rebuild();
     }
 
 
@@ -215,6 +230,7 @@ impl Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            buildable_provider: Arc::default(),
             save_path: String::new(),
 
             // audio
@@ -268,127 +284,10 @@ impl Default for Settings {
             refresh_skins_button: (),
 
             external_games_folders: Vec::new(),
-
-            skip_autosaveing: false,
             theme: SelectedTheme::Tataku
         }
     }
 }
-
-
-#[derive(Reflect)]
-#[reflect(from_string = "auto")]
-#[reflect(display = "display")]
-#[derive(Serialize, Deserialize)]
-#[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
-pub enum ScoreRetreivalMethod {
-    #[default]
-    Local,
-    LocalMods,
-    Global,
-    GlobalMods,
-
-    OgGame,
-    OgGameMods,
-    // Friends,
-    // FriendsMods
-}
-impl ScoreRetreivalMethod {
-    pub fn list() -> Vec<Self> {
-        vec![
-            Self::Local,
-            Self::LocalMods,
-            
-            Self::Global,
-            Self::GlobalMods,
-
-            Self::OgGame,
-            Self::OgGameMods,
-        ]
-    }
-
-    pub fn filter_by_mods(&self) -> bool {
-        use ScoreRetreivalMethod::*;
-        match self {
-            Local 
-            | OgGame 
-            // | Friends
-            | Global => false,
-
-            LocalMods
-            // | FriendsMods
-            | OgGameMods
-            | GlobalMods => true,
-        }
-    }
-}
-impl Display for ScoreRetreivalMethod {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{self:?}")
-    }
-}
-
-/// helper for colors inside settings
-#[derive(Clone, Debug)]
-#[derive(Serialize, Deserialize)]
-#[derive(Reflect)]
-#[reflect(from_string = "from_str")]
-#[serde(from="Color", into="Color")]
-pub struct SettingsColor {
-    pub string: String,
-    pub color: Color,
-    pub valid: bool,
-}
-impl SettingsColor {
-    pub fn update(&mut self, s: String) {
-        if let Some(color) = Color::try_from_hex(&s) {
-            self.color = color;
-            self.valid = true;
-        } else {
-            self.valid = false;
-        }
-
-        self.string = s;
-    }
-}
-impl PartialEq for SettingsColor {
-    fn eq(&self, other: &Self) -> bool {
-        self.color == other.color
-    }
-}
-impl std::str::FromStr for SettingsColor {
-    type Err = ReflectError<'static>;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let c = Color::try_from_hex(s);
-        Ok(Self {
-            string: s.to_owned(),
-            valid: c.is_some(),
-            color: c.unwrap_or_default(),
-        })
-    }
-}
-
-impl From<Color> for SettingsColor {
-    fn from(color: Color) -> Self {
-        Self {
-            string: color.to_hex(),
-            color,
-            valid: true,
-        }
-    }
-}
-impl From<SettingsColor> for Color {
-    fn from(value: SettingsColor) -> Self {
-        value.color
-    }
-}
-impl Deref for SettingsColor {
-    type Target = Color; 
-    fn deref(&self) -> &Self::Target {
-        &self.color
-    }
-}
-
 
 
 //TODO: move this

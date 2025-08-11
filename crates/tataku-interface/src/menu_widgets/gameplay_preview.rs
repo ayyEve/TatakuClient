@@ -5,63 +5,40 @@ use crate::prelude::ui::*;
 pub struct GameplayPreview {
     beatmap: ValueChangeHelper<String>,
     playmode: ValueChangeHelper<String>,
-    mods: ValueChangeHelper<ModManager>,
     song_time: ValueChangeHelper<f32>,
 
     manager: Option<GameplayId>,
 
-    #[chain] pub visualization: Option<MenuVisualization>,
+    #[chain] visualization: Option<MenuVisualization>,
 
     /// area to fit to
-    pub fit_to: Option<Bounds>,
-
-    /// if a song ends, should we handle restarting it?
-    pub handle_song_restart: bool,
-
-    /// use bg game settings, or global gamemode?
-    use_global_playmode: bool,
-    apply_rate: bool,
+    fit_to: Option<Bounds>,
 
     widget_receiver: TripleBufferReceiver<Option<RenderableCollection>>,
     gameplay: Mutex<Option<RenderableCollection>>,
 
     #[chain] blur: Option<BlurType>,
-    #[chain] style: Style,
     node_id: NodeId,
 }
 impl GameplayPreview {
-    pub fn new(
-        use_global_playmode: bool, 
-        apply_rate: bool, 
-    ) -> Self {
+    pub fn new() -> Self {
         let (_, widget_receiver) = TripleBuffer::default().split();
 
         Self {
             // current_mods: ModManagerHelper::new(),
             beatmap: ValueChangeHelper::new("beatmaps.current_beatmap.map.file_path"),
             playmode: ValueChangeHelper::new("global.playmode_actual"),
-            mods: ValueChangeHelper::new("global.mods"),
             song_time: ValueChangeHelper::new("song.position"),
 
             visualization: None,
-            handle_song_restart: false,
 
             manager: None,
             fit_to: None,
-            use_global_playmode,
-            apply_rate,
 
             widget_receiver,
             gameplay: Mutex::new(None),
 
             blur: None,
-            style: Style {
-                size: Size {
-                    width: FILL,
-                    height: FILL
-                },
-                ..Default::default()
-            },
             node_id: EMPTY_NODE,
         }
     }
@@ -69,13 +46,9 @@ impl GameplayPreview {
     pub fn setup(
         &mut self, 
         owner: MessageOwner,
-        values: &dyn Reflect, 
+        _values: &dyn Reflect, 
         actions: &mut ActionQueue
     ) {
-        let settings = values
-            .reflect_get::<Settings>("settings")
-            .unwrap();
-
         let (widget_sender, widget_receiver) = TripleBuffer::default().split();
 
         let widget_sender = Mutex::new(widget_sender);
@@ -83,7 +56,7 @@ impl GameplayPreview {
         self.widget_receiver = widget_receiver;
         actions.push(GameAction::NewGameplayManager(NewManager {
             owner,
-            playmode: (!self.use_global_playmode).then(|| settings.background_game_settings.mode.clone()),
+            playmode: None,
             gameplay_mode: Some(GameplayMode::Preview),
             area: self.fit_to,
             draw_function: Some(Arc::new(move |collection| {
@@ -103,7 +76,7 @@ impl Widget for GameplayPreview {
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {
-        self.node_id = shell.tree.new_leaf(self.style.clone())?;
+        self.node_id = shell.tree.new_leaf()?;
         Ok(self.node_id)
     }
 
@@ -112,11 +85,9 @@ impl Widget for GameplayPreview {
         message: &Message, 
         shell: &mut MessageShell,
     ) {
-        let MessageTag::String(str) = &message.tag else { return };
-        if str != "gameplay_manager_create" { return }
+        if &**message.tag != "gameplay_manager_create" { return }
 
-        let MessageValue::GameplayManagerId(id) = &message.value 
-        else { return error!("wrong type") };
+        let id = message.value.clone().downcast::<u32>();
 
         self.manager = Some(id.clone());
         shell.handled = true;
@@ -131,10 +102,6 @@ impl Widget for GameplayPreview {
         if let Some(gameplay) = self.widget_receiver.output_buffer_mut().take() {
             *self.gameplay.lock() = Some(gameplay);
         }
-
-        let settings = shell.values
-            .reflect_get::<Settings>("settings")
-            .unwrap();
         
         let last_song_time = self.song_time.unwrap_or_default();
         if let Ok(Some(time)) = self.song_time.update(shell.values) {
@@ -161,7 +128,10 @@ impl Widget for GameplayPreview {
                 self.fit_to = Some(bounds);
 
                 if let Some(manager) = self.manager.clone() { 
-                    shell.actions.push(GameAction::GameplayAction(manager, GameplayAction::FitToArea(bounds)));
+                    shell.actions.push(GameAction::GameplayAction(
+                        manager, 
+                        GameplayAction::FitToArea(bounds)
+                    ));
                 };
             }
         }
@@ -169,52 +139,6 @@ impl Widget for GameplayPreview {
         // update vis
         if let Some((vis, bounds)) = self.visualization.as_mut().zip(bounds) {
             vis.update(bounds, shell.actions);
-        }
-
-        // check for state update
-        if self.handle_song_restart {
-            let stopped = shell.values.reflect_get::<bool>("song.stopped")
-                .map(|i| *i)
-                .unwrap_or_default();
-            let playing = shell.values.reflect_get::<bool>("song.playing")
-                .map(|i| *i)
-                .unwrap_or_default();
-            let paused = shell.values.reflect_get::<bool>("song.paused")
-                .map(|i| *i)
-                .unwrap_or_default();
-            let exists = stopped || playing || paused;
-
-            let speed = self
-                .mods
-                .as_ref()
-                .map_or(1.0, |m| m.get_speed());
-
-            if exists {
-                if stopped {
-                    if let Ok(preview) = shell.values.reflect_get::<f32>("beatmaps.current.map.preview") {
-                        shell.actions.push(SongAction::SetPosition(*preview));
-                        if self.apply_rate {
-                            shell.actions.push(SongAction::SetRate(speed));
-                        }
-
-                        shell.actions.push(SongAction::Play);
-                    }
-                }
-            } else {
-                let preview_time = shell.values.reflect_get::<f32>("beatmaps.current.map.preview").ok();
-                let audio_path = shell.values.reflect_get::<String>("beatmaps.current.map.audio_path").ok();
-                
-                if let Some((path, preview)) = audio_path.zip(preview_time) {
-                    shell.actions.push(SongAction::Set(SongSetAction::FromFile(path.deref().clone(), SongPlayData {
-                        play: true,
-                        position: Some(*preview),
-                        rate: self.apply_rate.then_some(speed),
-                        volume: Some(settings.get_music_vol()),
-
-                        ..Default::default()
-                    })));
-                }
-            }
         }
     }
 

@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-#[derive(Debug2)]
+#[derive(Clone, Debug2)]
 pub enum GameAction {
     /// Fully quit the game
     Quit,
@@ -39,7 +39,7 @@ pub enum GameAction {
     UpdateBackground,
 
     /// Copy some text to the clipboard
-    CopyToClipboard(String),
+    CopyToClipboard(Arc<str>),
 
     /// Force a refresh of global.playmode and global.playmode_actual (+display) variables
     RefreshPlaymodeValues,
@@ -48,7 +48,7 @@ pub enum GameAction {
     RefreshSkins,
 
     /// Set the actual playmode for the current beatmap
-    UpdatePlaymodeActual(String),
+    UpdatePlaymodeActual(Arc<str>),
 
     #[cfg(feature="graphics")]
     NewGameplayManager(NewManager),
@@ -57,7 +57,7 @@ pub enum GameAction {
     CurrentGameAction(CurrentGameAction),
 
     /// update settings with the provided callback
-    UpdateSettings(#[debug(skip)] Box<dyn FnOnce(&mut Settings) + Send + Sync>),
+    UpdateSettings(#[debug(skip)] Arc<dyn Fn(&mut Settings) + Send + Sync>),
 }
 
 impl From<GameAction> for TatakuAction {
@@ -117,9 +117,9 @@ pub struct NewManager {
     /// what map hash to use
     pub map_hash: Option<Md5Hash>,
     /// optional path to the map hash 
-    pub path: Option<String>,
+    pub path: Option<Arc<str>>,
     /// what playmode to use. if none, will use 
-    pub playmode: Option<String>,
+    pub playmode: Option<Arc<str>>,
     /// what gameplay mode to use.
     pub gameplay_mode: Option<GameplayMode>,
     /// if it should be bound to an area
@@ -141,8 +141,8 @@ pub enum GameplayMode {
 #[derive(Debug, Clone, Default)]
 pub struct SpectatorGameplayInfo {
     pub host_id: u32,
-    pub host_username: String,
+    pub host_username: Arc<str>,
 
     pub pending_frames: VecDeque<SpectatorFrame>,
-    pub spectators: HashMap<u32, String>,
+    pub spectators: HashMap<u32, Arc<str>>,
 }

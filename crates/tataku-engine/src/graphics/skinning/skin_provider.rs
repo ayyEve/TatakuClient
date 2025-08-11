@@ -39,6 +39,7 @@ impl dyn SkinProvider {
 
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Reflect)]
 pub enum TextureSource {
     /// This texture came from a raw filepath
     Raw,

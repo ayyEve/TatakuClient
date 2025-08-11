@@ -1,7 +1,7 @@
 // TODO: if request fails due to expired token, get new token and try again
 use crate::prelude::*;
 use super::{
-    token::*,
+    token::Token,
     consts::*,
 };
 

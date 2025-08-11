@@ -113,7 +113,7 @@ pub struct GameplayManager {
     /// mainly a helper for spectator
     pub on_start: Option<Box<dyn FnOnce(&mut Self) + Send + Sync>>,
 
-    pub events: Vec<IngameEvent>,
+    pub events: Vec<BeatmapEvent>,
 
     pending_time_jump: Option<f32>,
     pending_frames: Vec<ReplayFrame>,
@@ -173,7 +173,7 @@ impl GameplayManager {
         ));
 
         // make sure the gamemode has the correct mods applied
-        gamemode.apply_mods(current_mods.clone());
+        gamemode.handle_gameplay_event(GameplayEvent::ApplyMods(current_mods.clone()));
 
         let mut gm = Self {
             id: Arc::new(u32::MAX),
@@ -552,10 +552,10 @@ impl GameplayManager {
 
             self.actions.push(MenuAction::AddDialogRaw { 
                 dialog: Box::new(editor), 
-                options: DialogCreateOptions {
+                options: Box::new(DialogCreateOptions {
                     background: false,
                     ..Default::default()
-                }
+                })
             });
 
             self.editor = Some(EditorChannels {
@@ -610,10 +610,10 @@ impl GameplayManager {
     pub fn window_size_changed(&mut self, window_size: Vector2) {
         self.window_size = window_size;
         if self.fit_to_bounds.is_none() {
-            self.gamemode.set_bounds(
-                Bounds::new(Vector2::ZERO, window_size), 
-                true
-            );
+            self.gamemode.handle_gameplay_event(GameplayEvent::SetBounds { 
+                bounds: Bounds::new(Vector2::ZERO, window_size), 
+                full_window: true
+            });
         }
 
         if self.animation.use_gamemode_playfield(self.gamemode_properties.info) {
@@ -703,9 +703,9 @@ impl GameplayManager {
     fn in_break(&self) -> bool {
         let time = self.time();
 
-        fn check(event: &IngameEvent, time: f32) -> bool {
+        fn check(event: &BeatmapEvent, time: f32) -> bool {
             #[allow(irrefutable_let_patterns, reason = "more events will be added eventually")]
-            let IngameEvent::Break { start, end } = event 
+            let BeatmapEvent::Break { start, end } = event 
             else { return false };
 
             time >= *start && time < *end 
@@ -783,7 +783,9 @@ impl GameplayManagerTrait for GameplayManager {
         }
 
         self.current_mods = Arc::new(mods);
-        self.gamemode.apply_mods(self.current_mods.clone());
+        self.gamemode.handle_gameplay_event(GameplayEvent::ApplyMods(
+            self.current_mods.clone()
+        ));
     }
 
     fn update(
@@ -792,7 +794,9 @@ impl GameplayManagerTrait for GameplayManager {
         actions: &mut ActionQueue,
     ) {
         let new_time = *values.reflect_get::<f32>("song.position").unwrap();
-        let settings = values.reflect_get::<Settings>("settings").unwrap();
+        let settings = values
+            .reflect_get::<Settings>("settings")
+            .unwrap();
 
         self.song_time = new_time;
 
@@ -922,10 +926,14 @@ impl GameplayManagerTrait for GameplayManager {
         for tp_update in tp_updates {
             match tp_update {
                 TimingPointUpdate::BeatHappened(pulse_length) 
-                    => self.gamemode.beat_happened(pulse_length),
+                    => self.gamemode.handle_gameplay_event(GameplayEvent::BeatHappened { 
+                        pulse_length
+                    }),
 
-                TimingPointUpdate::KiaiChanged(kiai) 
-                    => self.gamemode.kiai_changed(kiai),
+                TimingPointUpdate::KiaiChanged(enabled) 
+                    => self.gamemode.handle_gameplay_event(GameplayEvent::KiaiChanged { 
+                        enabled 
+                    }),
             }
         }
 
@@ -1590,7 +1598,10 @@ impl GameplayManagerTrait for GameplayManager {
     fn fit_to_area(&mut self, bounds: Bounds) {
         // info!("fitting to area: {bounds:?}");
         self.fit_to_bounds = Some(bounds);
-        self.gamemode.set_bounds(bounds, false);
+        self.gamemode.handle_gameplay_event(GameplayEvent::SetBounds { 
+            bounds, 
+            full_window: false 
+        });
 
         // if the anim uses the gamemode playfield, it will get updated once the gamemode's playfield is updated
         #[cfg(feature="graphics")]
@@ -1610,15 +1621,22 @@ impl GameplayManagerTrait for GameplayManager {
 
     // can be from either paused or new
     fn start(&mut self) {
-        #[cfg(feature="graphics")] 
-        if let Some(bounds) = self.fit_to_bounds {
-            self.gamemode.set_bounds(bounds, false);
-        } else {
-            self.gamemode.set_bounds(
-                Bounds::new(Vector2::ZERO, self.window_size), 
-                true
-            );
+        #[cfg(feature="graphics")] {
+            let event = if let Some(bounds) = self.fit_to_bounds {
+                GameplayEvent::SetBounds { 
+                    bounds, 
+                    full_window: false 
+                }
+            } else {
+                GameplayEvent::SetBounds { 
+                    bounds: Bounds::new(Vector2::ZERO, self.window_size), 
+                    full_window: true 
+                }
+            };
+
+            self.gamemode.handle_gameplay_event(event);
         }
+        
 
         #[cfg(feature="graphics")] 
         self.actions.push(CursorAction::SetVisible(
@@ -1683,7 +1701,7 @@ impl GameplayManagerTrait for GameplayManager {
                 SpectatorAction::UnPause
             ));
             self.actions.push(SongAction::Play);
-            self.gamemode.unpause();
+            self.gamemode.handle_gameplay_event(GameplayEvent::UnPaused);
         }
     
         self.layout_ui();
@@ -1710,7 +1728,7 @@ impl GameplayManagerTrait for GameplayManager {
             SpectatorFrame::new(time, SpectatorAction::Pause),
         );
 
-        self.gamemode.pause();
+        self.gamemode.handle_gameplay_event(GameplayEvent::Paused);
     }
     fn reset(&mut self) {
         self.gamemode.reset(&self.beatmap);
@@ -1722,7 +1740,9 @@ impl GameplayManagerTrait for GameplayManager {
         self.restart_key_hold_start = None;
 
         if self.gameplay_mode.is_preview() {
-            self.gamemode.apply_mods(self.current_mods.clone());
+        self.gamemode.handle_gameplay_event(GameplayEvent::ApplyMods(
+            self.current_mods.clone()
+        ));
         } else {
             // reset song
             self.actions.push(SongAction::Restart);
@@ -1923,7 +1943,7 @@ impl GameplayManagerTrait for GameplayManager {
             // handling spec
             #[cfg(feature="gameplay")]
             GameplayModeInner::Spectator { host_username, .. } => {
-                self.score.username = host_username.clone();
+                self.score.username = host_username.to_string();
             }
         }
 
@@ -1964,7 +1984,7 @@ struct EditorChannels {
 pub fn manager_from_playmode_path_hash(
     infos: &GamemodeInfos,
     incoming_mode: &str,
-    map_path: String,
+    map_path: &str,
     map_hash: Md5Hash,
     mods: ModManager,
     settings: &Settings,

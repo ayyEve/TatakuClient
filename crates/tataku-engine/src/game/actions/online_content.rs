@@ -1,9 +1,9 @@
 use crate::prelude::*;
 
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum OnlineContentAction {
-    Search(OnlineContentSearch),
+    Search(Box<OnlineContentSearch>),
     Download(usize),
     AudioPreview(usize),
 

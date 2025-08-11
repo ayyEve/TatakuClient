@@ -307,7 +307,7 @@
           options_path = "enums.playmodes"
           selected_path = "global.playmode"
           style = "width: 20%; font-size: 25px;"
-          placeholder = "Play Mode"
+          placeholder = "Playmode"
         >
           <onSelect>
             <map>

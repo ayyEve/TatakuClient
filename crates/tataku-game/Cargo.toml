@@ -29,7 +29,6 @@ graphics = [ "winit", "ui", "image", "tataku-engine/graphics", "tataku-interface
 [dependencies]
 tataku-common.workspace = true
 tataku-engine.workspace = true
-tataku-resources.workspace = true
 tataku-interface = { workspace = true, optional = true }
 tataku-client-proc-macros.workspace = true
 
@@ -61,6 +60,7 @@ reqwest = { workspace = true, features = ["json"] }
 rustls.workspace = true
 native-tls.workspace = true
 tokio-native-tls.workspace = true
+rustls-graviola.workspace = true
 
 # serde
 serde = { workspace = true, features = ["derive"] }

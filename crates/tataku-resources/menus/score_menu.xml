@@ -299,21 +299,21 @@
               <!-- are we submitting a score? -->
               <conditional cond="var.score_menu.submit_path != ''">
                 <!-- score is submitting -->
-                <conditional cond="ref(var.score_menu.submit_path) :: '.completed'">
+                <conditional cond="ref('::(var.score_menu.submit_path).completed')">
                   <true>
                     <column>
                       <!-- placing -->
                       <text>
                         <list>
                           <text text="Placing: "/>
-                          <calc calc="ref(var.score_menu.submit_path) :: '.placing'"/>
+                          <calc calc="ref('::(var.score_menu.submit_path).placing')"/>
                         </list>
                       </text>
                       <!-- performance -->
                       <text>
                         <list>
                           <text text="Performance: "/>
-                          <calc calc="display(ref(var.score_menu.submit_path) :: 'performance_rating')"/>
+                          <calc calc="display(ref('::(var.score_menu.submit_path).performance_rating'))"/>
                         </list>
                       </text>
                     </column>

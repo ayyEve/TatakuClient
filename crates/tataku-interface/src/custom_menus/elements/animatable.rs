@@ -78,7 +78,7 @@ pub enum AnimatableTriggerEvent {
     Unclick,
 
     Event(TatakuEventType),
-    Message(MessageTag)
+    Message(String)
 }
 
 #[derive(Clone, Debug, PartialEq)]

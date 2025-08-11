@@ -4,28 +4,28 @@ use crate::prelude::*;
 #[derive(Default, Debug)]
 pub struct TjaBeatmap {
     pub hash: Md5Hash,
-    pub filename: String,
-    pub directory: String,
+    pub filename: Arc<str>,
+    pub directory: Arc<str>,
 
-    pub title: String,
-    pub title_unicode: String,
+    pub title: Arc<str>,
+    pub title_unicode: Arc<str>,
 
     /// generally artist
-    pub subtitle: String,
-    pub subtitle_unicode: String,
+    pub subtitle: Arc<str>,
+    pub subtitle_unicode: Arc<str>,
 
     pub bpm: f32,
     pub offset: f32,
-    pub audio_path: String,
-    pub image_path: String,
+    pub audio_path: Arc<str>,
+    pub image_path: Arc<str>,
 
     // pub offset: f32,
     pub preview_time: f32,
 
 
-    pub course_name: String,
+    pub course_name: Arc<str>,
     pub course_level: u8,
-    pub course_creator: String,
+    pub course_creator: Arc<str>,
 
     pub course_events: Vec<TjaCourseEvent>,
 
@@ -49,8 +49,8 @@ impl TjaBeatmap {
         let lines = String::from_utf8(data).map_err(|_|BeatmapError::InvalidFile)?;
         let lines = lines.lines();
 
-        let filename = path.to_string_lossy().to_string();
-        let parent = path.parent().unwrap().to_string_lossy().to_string();
+        let filename: Arc<str> = path.to_string_lossy().to_string().into();
+        let parent: Arc<str> = path.parent().unwrap().to_string_lossy().to_string().into();
 
         let mut maps = super::tja_parser::TjaParser::default().parse(lines)?;
         for map in maps.iter_mut() {
@@ -140,15 +140,15 @@ impl TatakuBeatmap for TjaBeatmap {
             file_path: self.filename.clone(), 
             beatmap_hash: self.hash, 
             beatmap_type: BeatmapType::Tja, 
-            mode: "taiko".to_owned(), 
+            mode: "taiko".to_owned().into(), 
             artist: self.subtitle.clone(), 
             title: self.title.clone(), 
             artist_unicode: self.subtitle_unicode.clone(), 
             title_unicode: self.title_unicode.clone(), 
             creator: self.course_creator.clone(), 
             version: self.course_name.clone(), 
-            audio_filename: format!("{}/{}", self.directory, self.audio_path), 
-            image_filename: format!("{}/{}", self.directory, self.image_path), 
+            audio_filename: format!("{}/{}", self.directory, self.audio_path).into(), 
+            image_filename: format!("{}/{}", self.directory, self.image_path).into(), 
             audio_preview: self.preview_time, 
             duration, 
             bpm_min: 60_000.0 / bl_min, 
@@ -158,7 +158,7 @@ impl TatakuBeatmap for TjaBeatmap {
         })
     }
 
-    fn get_events(&self) -> Vec<IngameEvent> { Vec::new() }
+    fn get_events(&self) -> Vec<BeatmapEvent> { Vec::new() }
 }
 
 

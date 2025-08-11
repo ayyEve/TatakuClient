@@ -40,6 +40,7 @@
     <xs:element name="conditional" type="elements:conditional-element"/>
     <xs:element name="switch" type="elements:switch-element"/>
     <xs:element name="slider" type="elements:slider-element"/>
+    <xs:element name="keyButton" type="elements:keybutton-element"/>
   </xs:choice>
 </xs:group>
 
@@ -200,6 +201,21 @@
   </xs:complexContent>
 </xs:complexType>
 
+<!-- text input element -->
+<xs:complexType name="keybutton-element">
+  <xs:complexContent>
+    <xs:extension base="elements:generic">
+      <xs:all>
+        <xs:element name="onInput" minOccurs="0">
+          <xs:complexType>
+            <xs:group ref="actions:action-type" />
+          </xs:complexType>
+        </xs:element>
+      </xs:all>
+      <xs:attribute name="variable" type="text:string" use="required" />
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
 
 <!-- animatable element -->
 <xs:complexType name="animatable-element">
@@ -301,10 +317,17 @@
   <xs:complexContent>
     <xs:extension base="elements:generic">
       <xs:sequence>
+        <!-- case -->
         <xs:element name="case" minOccurs="1" maxOccurs="unbounded">
           <xs:complexType>
             <xs:group ref="elements:element" minOccurs="1"/>
             <xs:attribute name="cond" type="xs:string" use="required"/>
+          </xs:complexType>
+        </xs:element>
+        <!-- default -->
+        <xs:element name="default" minOccurs="0" maxOccurs="1">
+          <xs:complexType>
+            <xs:group ref="elements:element" minOccurs="1"/>
           </xs:complexType>
         </xs:element>
       </xs:sequence>

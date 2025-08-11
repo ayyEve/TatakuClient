@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<?xml-model href="../xsd/dialog.xsd"?>
+
+<dialog 
+    id = "beatmap_context_menu" 
+    title = "Beatmap Options"
+>
+    <element>
+        <row>
+            <!-- copy hash -->
+            <button>
+                <action>
+                    <game>
+                        <copyToClipboard>
+                            <variable var="beatmaps.current_beatmap.map.hash"/>
+                        </copyToClipboard>
+                    </game>
+                </action>
+                <element>
+                    <text>
+                        <text text="Copy Hash"/>
+                    </text>
+                </element>
+            </button>
+
+            <!-- Delete -->
+            <button>
+                <action>
+                    <map>
+                        <deleteCurrent/>
+                    </map>
+                </action>
+                <element>
+                    <text>
+                        <text text="Delete"/>
+                    </text>
+                </element>
+            </button>
+        </row>
+    </element>
+</dialog>

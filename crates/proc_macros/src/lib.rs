@@ -1,6 +1,5 @@
 mod from;
 mod css_parse;
-mod widget_impls;
 mod settings_menu;
 mod custom_debug;
 mod settings_deserializer;
@@ -36,14 +35,6 @@ pub fn impl_parse_css(input: proc_macro::TokenStream) -> proc_macro::TokenStream
     css_parse::derive(&ast).into()
 }
 
-#[proc_macro_derive(Widget, attributes(widget))]
-pub fn impl_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    // Parse the string representation
-    let ast = syn::parse(input).unwrap();
-
-    // Build the impl
-    widget_impls::derive(&ast).into()
-}
 
 #[proc_macro_derive(Settings, attributes(setting, subsetting))]
 pub fn create_setting(input: proc_macro::TokenStream) -> proc_macro::TokenStream {

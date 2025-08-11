@@ -356,7 +356,9 @@ impl GameWindow<'_> {
         trace!("loading tex data");
 
         let (s, r) = sync_channel(1);
-        Self::send_event(WindowAction::LoadImage(LoadImage::Image(data, Box::new(move |r| s.send(r).nope()))));
+        Self::send_event(WindowAction::LoadImage(Box::new(
+            LoadImage::Image(data, Box::new(move |r| s.send(r).nope())))
+        ));
 
         // if this unwrap fails, the receiver was dropped, meaning it was never sent, which means the thread is dead, which means give up
         r.recv().unwrap()
@@ -371,15 +373,17 @@ impl GameWindow<'_> {
         // NOTE: this will hang the main thread if this is run there
         if wait_for_complete {
             let (s, r) = sync_channel(1);
-            Self::send_event(WindowAction::LoadImage(LoadImage::Font(
+            Self::send_event(WindowAction::LoadImage(Box::new(LoadImage::Font(
                 font, 
                 size, 
                 Some(Box::new(move |r| s.send(r).nope()))
-            )));
+            ))));
 
             return r.recv().unwrap();
         } else {
-            Self::send_event(WindowAction::LoadImage(LoadImage::Font(font, size, None)));
+            Self::send_event(WindowAction::LoadImage(
+                Box::new(LoadImage::Font(font, size, None))
+            ));
         }
         Ok(())
     }
@@ -392,11 +396,11 @@ impl GameWindow<'_> {
         trace!("create render target");
 
         let (s, r) = sync_channel(1);
-        Self::send_event(WindowAction::LoadImage(LoadImage::CreateRenderTarget(
+        Self::send_event(WindowAction::LoadImage(Box::new(LoadImage::CreateRenderTarget(
             size, 
             Box::new(move |t| s.send(t).nope()), 
             Box::new(callback)
-        )));
+        ))));
 
         r.recv().unwrap()
     }
@@ -408,18 +412,20 @@ impl GameWindow<'_> {
         trace!("update render target");
 
         let (s, r) = sync_channel(1);
-        Self::send_event(WindowAction::LoadImage(LoadImage::UpdateRenderTarget(
+        Self::send_event(WindowAction::LoadImage(Box::new(LoadImage::UpdateRenderTarget(
             rt, 
             Box::new(move |t| s.send(t).nope()), 
             Box::new(callback)
-        )));
+        ))));
 
         let _ = r.recv().unwrap();
     }
 
 
     pub fn free_texture(tex: TextureReference) {
-        Self::send_event(WindowAction::LoadImage(LoadImage::FreeTexture(tex)));
+        Self::send_event(WindowAction::LoadImage(Box::new(
+            LoadImage::FreeTexture(tex)
+        )));
     }
 }
 
@@ -535,7 +541,7 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
         event: WindowAction
     ) {
         match event {
-            WindowAction::LoadImage(event) => self.run_load_image_event(event),
+            WindowAction::LoadImage(event) => self.run_load_image_event(*event),
             WindowAction::ShowCursor => {
                 self.window().set_cursor_visible(true);
             }
@@ -583,7 +589,7 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
                 self.settings = settings;
             }
 
-            WindowAction::CopyToClipboard(text) => if let Err(e) = Self::set_clipboard(text) {
+            WindowAction::CopyToClipboard(text) => if let Err(e) = Self::set_clipboard(text.to_string()) {
                 error!("error copying to clipboard: {e:?}");
             }
 

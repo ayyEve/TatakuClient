@@ -9,14 +9,14 @@ use crate::prelude::*;
 pub struct UTypingBeatmap {
     // paths etc
     pub hash: Md5Hash,
-    pub file_path: String,
-    pub audio_path: String,
+    pub file_path: Arc<str>,
+    pub audio_path: Arc<str>,
 
     // meta
-    pub title: String,
-    pub artist: String,
-    pub creator: String,
-    pub difficulty: String,
+    pub title: Arc<str>,
+    pub artist: Arc<str>,
+    pub creator: Arc<str>,
+    pub difficulty: Arc<str>,
 
     // notes and events
     pub notes: Vec<UTypingNoteDef>,
@@ -40,6 +40,8 @@ impl UTypingBeatmap {
             }
         }
 
+        let empty_text: Arc<str> = String::new().into();
+
         let parent_folder = path.as_ref().parent().unwrap().to_string_lossy().to_string();
 
         let lines = encoding_rs::SHIFT_JIS.decode(Io::read_file(path.as_ref())?.as_slice()).0.to_string().replace("\r","");
@@ -52,10 +54,10 @@ impl UTypingBeatmap {
         }
 
         let mut map = Self {
-            title: next!(lines),
-            artist: next!(lines),
-            creator: next!(lines),
-            difficulty: next!(lines),
+            title: next!(lines).into(),
+            artist: next!(lines).into(),
+            creator: next!(lines).into(),
+            difficulty: next!(lines).into(),
             ..Default::default()
         };
 
@@ -75,7 +77,7 @@ impl UTypingBeatmap {
                 // Contains the relative path to the song file in the format of
                 // @path
                 // ex. @animariot.ogg
-                '@' => map.audio_path = format!("{parent_folder}/{line}"),
+                '@' => map.audio_path = format!("{parent_folder}/{line}").into(),
 
                 
                 // Contains a note in the format of
@@ -89,7 +91,7 @@ impl UTypingBeatmap {
 
                     map.notes.push(UTypingNoteDef {
                         time, 
-                        text
+                        text: text.into()
                     });
                 }
 
@@ -109,7 +111,7 @@ impl UTypingBeatmap {
 
                     map.events.push(UTypingEvent {
                         time,
-                        text,
+                        text: text.into(),
                         event_type: UTypingEventType::Lyric
                     });
                 }
@@ -124,7 +126,7 @@ impl UTypingBeatmap {
                     
                     map.events.push(UTypingEvent {
                         time,
-                        text: String::new(),
+                        text: empty_text.clone(),
                         event_type: UTypingEventType::CutOff
                     });
                 }
@@ -139,7 +141,7 @@ impl UTypingBeatmap {
                     
                     map.events.push(UTypingEvent {
                         time,
-                        text: String::new(),
+                        text: empty_text.clone(),
                         event_type: UTypingEventType::BeatlineBeat
                     });
                 }
@@ -154,7 +156,7 @@ impl UTypingBeatmap {
                     
                     map.events.push(UTypingEvent {
                         time,
-                        text: String::new(),
+                        text: String::new().into(),
                         event_type: UTypingEventType::BeatlineBar
                     });
                 }
@@ -181,7 +183,7 @@ impl UTypingBeatmap {
         map.start_time = map.notes[0].time;
 
         // set the data file path
-        map.file_path = path.as_ref().to_string_lossy().to_string();
+        map.file_path = path.as_ref().to_string_lossy().to_string().into();
 
         // get the map duration
         map.map_duration = map.notes.last().unwrap().time - map.notes[0].time;
@@ -191,8 +193,8 @@ impl UTypingBeatmap {
     }
 }
 impl TatakuBeatmap for UTypingBeatmap {
-    fn hash(&self) -> Md5Hash {self.hash}
-    fn playmode(&self, _incoming:String) -> String {"utyping".to_owned()}
+    fn hash(&self) -> Md5Hash { self.hash }
+    fn playmode(&self, _incoming: String) -> String {"utyping".to_owned()}
 
     fn get_beatmap_meta(&self) -> Arc<BeatmapMeta> {
         let bpm = 60_000.0 / self.beat_length;
@@ -200,7 +202,7 @@ impl TatakuBeatmap for UTypingBeatmap {
             file_path: self.file_path.clone(), 
             beatmap_hash: self.hash, 
             beatmap_type: BeatmapType::UTyping,
-            mode: "utyping".to_owned(), 
+            mode: "utyping".to_owned().into(), 
             artist: self.artist.clone(), 
             title: self.title.clone(), 
             artist_unicode: self.artist.clone(), 
@@ -208,7 +210,7 @@ impl TatakuBeatmap for UTypingBeatmap {
             creator: self.creator.clone(), 
             version: self.difficulty.clone(), 
             audio_filename: self.audio_path.clone(), 
-            image_filename: String::new(), // no images for utyping :C 
+            image_filename: String::new().into(), // no images for utyping :C 
             audio_preview: 0.0, 
             duration: self.map_duration, 
             hp: 0.0, 
@@ -239,13 +241,13 @@ impl TatakuBeatmap for UTypingBeatmap {
 #[derive(Clone, Default, Debug)]
 pub struct UTypingNoteDef {
     pub time: f32,
-    pub text: String
+    pub text: Arc<str>
 }
 
 #[derive(Clone, Debug)]
 pub struct UTypingEvent {
     pub time: f32,
-    pub text: String,
+    pub text: Arc<str>,
     pub event_type: UTypingEventType
 }
 

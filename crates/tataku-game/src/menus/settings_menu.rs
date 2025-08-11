@@ -130,8 +130,8 @@ impl SettingsMenu {
                         .vertical_align(AlignContent::Center)
                         .horizontal_align(AlignContent::SpaceBetween)
                         .margin([
-                            LengthPercentageAuto::Length(5.0), 
-                            LengthPercentageAuto::Length(5.0)
+                            LengthPercentageAuto::length(5.0), 
+                            LengthPercentageAuto::length(5.0)
                         ])
                         .width(FILL)
                         .boxed()
@@ -147,7 +147,7 @@ impl SettingsMenu {
                     .collect()
                 )
                 .flex_direction(FlexDirection::Column)
-                .margin(LengthPercentageAuto::Length(5.0))
+                .margin(LengthPercentageAuto::length(5.0))
                 .width(FILL)
                 .boxed()
             ]
@@ -157,7 +157,7 @@ impl SettingsMenu {
             TextWidget::new("Settings").font_size(40.0).boxed(),
 
             // // space
-            // Space::new(FILL, Dimension::Length(10.0)).boxed(),
+            // Space::new(FILL, Dimension::length(10.0)).boxed(),
 
             // search text
             TextInput::new("Search", self.filter_text.clone())
@@ -170,7 +170,7 @@ impl SettingsMenu {
                 .boxed(),
 
             // // space
-            // Space::new(FILL, Dimension::Length(40.0)).boxed(),
+            // Space::new(FILL, Dimension::length(40.0)).boxed(),
 
             // items
             Container::new(items)
@@ -225,8 +225,8 @@ impl SettingsMenu {
                 end: Vector2::new(1.0, 1.0) 
             },
         )
-        .min_width(Dimension::Percent(0.25))
-        .max_width(Dimension::Percent(0.75))
+        .min_width(Dimension::percent(0.25))
+        .max_width(Dimension::percent(0.75))
         .height(FILL)
         .vertical_overflow(taffy::Overflow::Scroll)
         .boxed()

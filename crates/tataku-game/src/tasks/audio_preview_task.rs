@@ -64,7 +64,7 @@ impl TatakuTask for AudioPreviewTask {
             Ok(data) => {
                 actions.push(SongAction::Set(SongSetAction::FromData(
                     data, 
-                    self.preview_url.clone(),
+                    self.preview_url.clone().into(),
                     SongPlayData {
                         play: true,
                         restart: true,

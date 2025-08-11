@@ -334,7 +334,7 @@ impl GameMode for TaikoGame {
                         .min((end_time - time) / slides as f32);
 
                     if skip_period > 0.0 
-                        && beatmap.metadata.mode != "taiko" 
+                        && &*beatmap.metadata.mode != "taiko" 
                         && l / v * 1000.0 < 2.0 * bl 
                     {
                         let mut i = 0;
@@ -618,6 +618,115 @@ impl GameMode for TaikoGame {
         );
     }
 
+    fn handle_gameplay_event(&mut self, event: GameplayEvent) {
+        match event {
+            GameplayEvent::ApplyMods(mods) => {
+                let old_sv_mult = self.taiko_settings.sv_multiplier;
+                let old_mods = self.current_mods.clone();
+
+                let old_sv_static = old_mods.has_mod(NoSV);
+                let current_sv_static = mods.has_mod(NoSV);
+                self.current_mods = mods;
+
+                // let old_no_finisher = old_mods.has_mod(NoFinisher);
+                let new_no_finisher = self.current_mods.has_mod(NoFinisher);
+                
+                // update bars
+                if current_sv_static != old_sv_static {
+                    for bar in self.timing_bars.iter_mut() {
+                        if current_sv_static {
+                            bar.speed = self.taiko_settings.sv_multiplier;
+                        } else {
+                            let sv = if old_sv_static {
+                                bar.speed
+                            } else {
+                                bar.speed / old_sv_mult
+                            } * self.taiko_settings.sv_multiplier;
+                            bar.speed = sv;
+                        }
+                    }
+                }
+
+                // update notes
+                for note in self
+                    .notes.iter_mut()
+                    .chain(self.other_notes.iter_mut())
+                {
+                    
+                    // set note svs
+                    if current_sv_static != old_sv_static {
+                        if current_sv_static {
+                            note.set_sv(self.taiko_settings.sv_multiplier);
+                        } else {
+                            let sv = if old_sv_static {
+                                note.get_sv()
+                            } else {
+                                note.get_sv() / old_sv_mult
+                            } * self.taiko_settings.sv_multiplier;
+                            note.set_sv(sv);
+                        }
+                    }
+
+                    // check nofinisher change
+                    note.toggle_finishers(!new_no_finisher);
+                }
+
+
+                if old_mods.has_mod(NoBattery) != self.current_mods.has_mod(NoBattery) {
+                    self.healthbar_swap_pending = true;
+                }
+            }
+
+            GameplayEvent::SetBounds { 
+                bounds, 
+                full_window 
+            } => {
+                self.playfield = Arc::new(Self::get_taiko_playfield(
+                    &self.taiko_settings, 
+                    bounds, 
+                    full_window
+                ));
+
+                // update notes
+                for note in self.notes.iter_mut()
+                    .chain(self.other_notes.iter_mut())
+                { 
+                    note.playfield_changed(self.playfield.clone());
+                }
+
+                // update timing bars
+                for tb in self.timing_bars.iter_mut() {
+                    tb.playfield_changed(self.playfield.clone());
+                }
+
+                // update hit indicator sprite positions
+                for i in [ 
+                    &mut self.left_kat_image, 
+                    &mut self.left_don_image, 
+                    &mut self.right_don_image, 
+                    &mut self.right_kat_image 
+                ] {
+                    let Some(i) = i else { continue };
+                    i.pos = self.playfield.hit_position;
+                }
+            }
+            
+            GameplayEvent::BeatHappened { pulse_length } => {
+                self.notes
+                    .iter_mut()
+                    .chain(self.other_notes.iter_mut())
+                    .for_each(|n| n.beat_happened(pulse_length));
+            }
+            GameplayEvent::KiaiChanged { enabled } => {
+                self.notes
+                    .iter_mut()
+                    .chain(self.other_notes.iter_mut())
+                    .for_each(|n| n.kiai_changed(enabled));
+            }
+            
+            _ => {}
+        }
+    }
 
     fn update(&mut self, shell: &mut GameplayUpdateShell) {
         // check healthbar swap
@@ -775,6 +884,7 @@ impl GameMode for TaikoGame {
         for (hit_type, hit_time) in self.hit_cache.iter() {
             if shell.time - hit_time > lifetime_time { continue }
             let alpha = 1.0 - (shell.time - hit_time) / (lifetime_time * 4.0);
+            let alpha = (alpha.clamp(0.0, 1.0) * 255.0) as u8;
             match hit_type {
                 TaikoHit::LeftKat => {
                     if let Some(kat) = &self.left_kat_image {
@@ -786,7 +896,7 @@ impl GameMode for TaikoGame {
                             self.playfield.hit_position,
                             self.taiko_settings.note_radius 
                                 * self.taiko_settings.hit_area_radius_mult,
-                            self.taiko_settings.kat_color.alpha(alpha),
+                            self.taiko_settings.kat_color.alpha8(alpha),
                             true
                         ));
                     }
@@ -801,7 +911,7 @@ impl GameMode for TaikoGame {
                             self.playfield.hit_position,
                             self.taiko_settings.note_radius 
                                 * self.taiko_settings.hit_area_radius_mult,
-                            self.taiko_settings.don_color.alpha(alpha),
+                            self.taiko_settings.don_color.alpha8(alpha),
                             true
                         ));
                     }
@@ -816,7 +926,7 @@ impl GameMode for TaikoGame {
                             self.playfield.hit_position,
                             self.taiko_settings.note_radius 
                                 * self.taiko_settings.hit_area_radius_mult,
-                            self.taiko_settings.don_color.alpha(alpha),
+                            self.taiko_settings.don_color.alpha8(alpha),
                             false
                         ));
                     }
@@ -831,7 +941,7 @@ impl GameMode for TaikoGame {
                             self.playfield.hit_position,
                             self.taiko_settings.note_radius 
                                 * self.taiko_settings.hit_area_radius_mult,
-                            self.taiko_settings.kat_color.alpha(alpha),
+                            self.taiko_settings.kat_color.alpha8(alpha),
                             false
                         ));
                     }
@@ -954,44 +1064,12 @@ impl GameMode for TaikoGame {
                 let time_at = i.time_at(x_needed);
                 time = time.min(time_at);
             }
-
         }
 
         if game_time >= time { return None }
         
         if time < 0.0 { return None }
         Some(time)
-    }
-
-    fn set_bounds(&mut self, bounds: Bounds, full_window: bool) {
-        self.playfield = Arc::new(Self::get_taiko_playfield(
-            &self.taiko_settings, 
-            bounds, 
-            full_window
-        ));
-
-        // update notes
-        for note in self.notes.iter_mut()
-            .chain(self.other_notes.iter_mut())
-        { 
-            note.playfield_changed(self.playfield.clone());
-        }
-
-        // update timing bars
-        for tb in self.timing_bars.iter_mut() {
-            tb.playfield_changed(self.playfield.clone());
-        }
-
-        // update hit indicator sprite positions
-        for i in [ 
-            &mut self.left_kat_image, 
-            &mut self.left_don_image, 
-            &mut self.right_don_image, 
-            &mut self.right_kat_image 
-        ] {
-            let Some(i) = i else { continue };
-            i.pos = self.playfield.hit_position;
-        }
     }
 
     fn force_update_settings(&mut self, settings: &Settings) {
@@ -1139,64 +1217,6 @@ impl GameMode for TaikoGame {
     }
 
     
-    fn apply_mods(&mut self, mods: Arc<ModManager>) {
-        let old_sv_mult = self.taiko_settings.sv_multiplier;
-        let old_mods = self.current_mods.clone();
-
-        let old_sv_static = old_mods.has_mod(NoSV);
-        let current_sv_static = mods.has_mod(NoSV);
-        self.current_mods = mods;
-
-        // let old_no_finisher = old_mods.has_mod(NoFinisher);
-        let new_no_finisher = self.current_mods.has_mod(NoFinisher);
-        
-        // update bars
-        if current_sv_static != old_sv_static {
-            for bar in self.timing_bars.iter_mut() {
-                if current_sv_static {
-                    bar.speed = self.taiko_settings.sv_multiplier;
-                } else {
-                    let sv = if old_sv_static {
-                        bar.speed
-                    } else {
-                        bar.speed / old_sv_mult
-                    } * self.taiko_settings.sv_multiplier;
-                    bar.speed = sv;
-                }
-            }
-        }
-
-        // update notes
-        for note in self
-            .notes.iter_mut()
-            .chain(self.other_notes.iter_mut())
-        {
-            
-            // set note svs
-            if current_sv_static != old_sv_static {
-                if current_sv_static {
-                    note.set_sv(self.taiko_settings.sv_multiplier);
-                } else {
-                    let sv = if old_sv_static {
-                        note.get_sv()
-                    } else {
-                        note.get_sv() / old_sv_mult
-                    } * self.taiko_settings.sv_multiplier;
-                    note.set_sv(sv);
-                }
-            }
-
-            // check nofinisher change
-            note.toggle_finishers(!new_no_finisher);
-        }
-
-
-        if old_mods.has_mod(NoBattery) != self.current_mods.has_mod(NoBattery) {
-            self.healthbar_swap_pending = true;
-        }
-    }
-
-    
     fn time_jump(&mut self, new_time: f32, _state: &mut GameplayUpdateShell) {
         let mut latest_time = 0f32;
         for i in self.hit_cache.values() { latest_time = latest_time.max(*i) }
@@ -1224,25 +1244,7 @@ impl GameMode for TaikoGame {
         }
     }
 
-    
-    fn beat_happened(&mut self, pulse_length: f32) {
-        self.notes
-            .iter_mut()
-            .chain(self.other_notes.iter_mut())
-            .for_each(|n| n.beat_happened(pulse_length));
-    }
-    fn kiai_changed(&mut self, is_kiai: bool) {
-        self.notes
-            .iter_mut()
-            .chain(self.other_notes.iter_mut())
-            .for_each(|n| n.kiai_changed(is_kiai));
-    }
-
-
-    fn build_widgets(
-        &self, 
-        loader: &mut dyn UiElementLoader
-    ) {
+    fn build_widgets(&self, loader: &mut dyn UiElementLoader) {
         // combo
         loader.change_default_layout(
             "combo",

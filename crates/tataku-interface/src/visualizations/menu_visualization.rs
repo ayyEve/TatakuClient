@@ -9,7 +9,7 @@ const RIPPLE_MIN:f32 = 100.0;
 const RIPPLE_RESET:f32 = 120.0;
 
 
-const BAR_COLOR: Color = Color::from_rgb8(0x27, 0xbf, 0xc2);
+const BAR_COLOR: Color = Color::new_rgb8(0x27, 0xbf, 0xc2);
 
 
 pub struct MenuVisualization {

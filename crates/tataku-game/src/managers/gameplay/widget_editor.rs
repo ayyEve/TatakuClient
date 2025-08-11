@@ -347,24 +347,59 @@ impl Widget for GameplayWidgetEditor {
     fn node_id(&self) -> NodeId { self.node.node_id() }
     
     fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId> {
-        self.node = Container::new(
-            self.widgets
-                .iter()
-                .map(|w| {
-                    Button::new(TextWidget::new(w.name.clone()).boxed())
-                    .on_press(Message::new(
+
+        let a = self.widgets
+            .iter()
+            .map(|w| format!(r#"
+                <button>
+                    <action>
+                    Message::new(
                         shell.owner, 
                         w.name.clone(), 
-                        MessageValue::Click
-                    ))
-                    .boxed()
-                })
-                .collect()
-        )
-        .flex_direction(FlexDirection::Column)
-        .scrollable(true)
-        .width(FILL).height(FILL)
-        .boxed();
+                        MessageValue::Click,
+                    )
+                    </action>
+                    <element>
+                        <text>
+                            <text text="{}" />
+                        </text>
+                    </element>
+                </button>
+            "#, w.name))
+            .collect::<Vec<_>>()
+            .join("");
+        let list_str = format!(r#"
+            <column 
+                scollable="true" 
+                style="width: fill; height: fill"
+            >
+                {a}
+            </column>
+        "#);
+
+        self.node = quick_xml::de::from_str::<Element>(&list_str)
+            .unwrap()
+            .build();
+
+        // self.node = Container::new(
+        //     self.widgets
+        //         .iter()
+        //         .map(|w| {
+        //             Button::new(TextWidget::new(w.name.clone()).boxed())
+        //             .on_press(Message::new(
+        //                 shell.owner, 
+        //                 w.name.clone(), 
+        //                 MessageValue::Click,
+        //             ))
+        //             .boxed()
+        //         })
+        //         .collect()
+        // )
+        // .flex_direction(FlexDirection::Column)
+        // .scrollable(true)
+        // .width(FILL)
+        // .height(FILL)
+        // .boxed();
 
         self.node.layout(shell)
     }
@@ -512,145 +547,143 @@ impl Widget for GameplayWidgetEditor {
         message: &Message, 
         shell: &mut MessageShell,
     ) {
-        if let Some(tag) = message.tag.as_string() {
-            shell.handled = true;
+        shell.handled = true;
 
-            match &**tag {
-                "align" => {
-                    let value = *message.value.downcast::<Alignment>();
-                    for i in self.widgets.iter_mut() {
-                        if !i.selected { continue }
-                        i.layout.align = value;
+        match &**message.tag {
+            "align" => {
+                let value = *message.value.downcast::<Alignment>();
+                for i in self.widgets.iter_mut() {
+                    if !i.selected { continue }
+                    i.layout.align = value;
 
-                        let action = GameplayWidgetAction { 
-                            target: i.name.clone(), 
-                            action: GameplayWidgetActionType::Move(i.layout.clone()),
-                        };
+                    let action = GameplayWidgetAction { 
+                        target: i.name.clone(), 
+                        action: GameplayWidgetActionType::Move(i.layout.clone()),
+                    };
 
-                        self.send(action, shell.actions);
-                        break;
-                    }
+                    self.send(action, shell.actions);
+                    break;
                 }
+            }
+            
+            "anchor" => {
+                let Some(value) = message.value.as_text_ref() 
+                else { return };
                 
-                "anchor" => {
-                    let Some(value) = message.value.as_text_ref() 
-                    else { return };
+                use GameplayWidgetAnchor as Anchor;
+                for i in self.widgets.iter_mut() {
+                    if !i.selected { continue }
+                    let mut send_update = false;
                     
-                    use GameplayWidgetAnchor as Anchor;
-                    for i in self.widgets.iter_mut() {
-                        if !i.selected { continue }
-                        let mut send_update = false;
-                        
-                        match (&**value, &mut i.layout.anchor) {
-                            // dont change anything if the incoming type is already correct
-                            ("element", Anchor::Element {..}) => break,
-                            ("playfield", Anchor::Playfield {..}) => break,
+                    match (&**value, &mut i.layout.anchor) {
+                        // dont change anything if the incoming type is already correct
+                        ("element", Anchor::Element {..}) => break,
+                        ("playfield", Anchor::Playfield {..}) => break,
 
-                            ("screen", a) => {
-                                *a = Anchor::Screen;
-                                send_update = true;
-                            },
+                        ("screen", a) => {
+                            *a = Anchor::Screen;
+                            send_update = true;
+                        },
 
-                            ("element", a) => { 
-                                *a = Anchor::Element { 
-                                    element: Cow::Borrowed(""),
-                                    relative: GameplayWidgetAlign::Inside,
-                                };
-                            },
-
-                            ("playfield", a) => {
-                                *a = Anchor::Playfield { 
-                                    saved_size: None,
-                                    relative: GameplayWidgetAlign::Inside,
-                                };
-                                send_update = true;
-                            }
-
-                            _ => {}
-                        };
-
-                        if send_update {
-                            let action = GameplayWidgetAction { 
-                                target: i.name.clone(), 
-                                action: GameplayWidgetActionType::Move(i.layout.clone()),
+                        ("element", a) => { 
+                            *a = Anchor::Element { 
+                                element: Cow::Borrowed(""),
+                                relative: GameplayWidgetAlign::Inside,
                             };
-                            self.send(action, shell.actions);
+                        },
+
+                        ("playfield", a) => {
+                            *a = Anchor::Playfield { 
+                                saved_size: None,
+                                relative: GameplayWidgetAlign::Inside,
+                            };
+                            send_update = true;
                         }
 
-                        break;
-                    }
-                }
+                        _ => {}
+                    };
 
-                "relative_align" => {
-                    let value = *message
-                        .value.downcast::<GameplayWidgetAlign>();
-
-                    for i in self.widgets.iter_mut() {
-                        if !i.selected { continue }
-                        match &mut i.layout.anchor {
-                            GameplayWidgetAnchor::Screen => {},
-                            GameplayWidgetAnchor::Element { 
-                                relative,
-                                ..
-                            } | GameplayWidgetAnchor::Playfield { 
-                                relative,
-                                ..
-                            } => {
-                                *relative = value;
-                            }
-                        }
+                    if send_update {
                         let action = GameplayWidgetAction { 
                             target: i.name.clone(), 
                             action: GameplayWidgetActionType::Move(i.layout.clone()),
                         };
-
                         self.send(action, shell.actions);
-
-                        break;
                     }
+
+                    break;
                 }
+            }
 
-                "select_parent" => {
-                    self.click_action = ClickAction::SetAnchorElement;
-                }
+            "relative_align" => {
+                let value = *message
+                    .value.downcast::<GameplayWidgetAlign>();
 
-                "reset" => {
-                    if let Some(selected) = self.get_selected() {
-                        selected.layout = selected.original_layout.clone();
-                        let action = GameplayWidgetAction { 
-                            target: selected.name.clone(), 
-                            action: GameplayWidgetActionType::Move(
-                                selected.original_layout.clone()
-                            ),
-                        };
-
-                        self.send(
-                            action,
-                            shell.actions
-                        );
+                for i in self.widgets.iter_mut() {
+                    if !i.selected { continue }
+                    match &mut i.layout.anchor {
+                        GameplayWidgetAnchor::Screen => {},
+                        GameplayWidgetAnchor::Element { 
+                            relative,
+                            ..
+                        } | GameplayWidgetAnchor::Playfield { 
+                            relative,
+                            ..
+                        } => {
+                            *relative = value;
+                        }
                     }
-                }
-                
-                "reset_default" => {
-                    if let Some(selected) = self.get_selected() {
-                        selected.layout = selected.default_layout.clone();
-                        let action = GameplayWidgetAction { 
-                            target: selected.name.clone(), 
-                            action: GameplayWidgetActionType::Move(
-                                selected.default_layout.clone()
-                            ),
-                        };
+                    let action = GameplayWidgetAction { 
+                        target: i.name.clone(), 
+                        action: GameplayWidgetActionType::Move(i.layout.clone()),
+                    };
 
-                        self.send(
-                            action,
-                            shell.actions
-                        );
-                    }
-                }
+                    self.send(action, shell.actions);
 
-                _ => {
-                    shell.handled = false;
+                    break;
                 }
+            }
+
+            "select_parent" => {
+                self.click_action = ClickAction::SetAnchorElement;
+            }
+
+            "reset" => {
+                if let Some(selected) = self.get_selected() {
+                    selected.layout = selected.original_layout.clone();
+                    let action = GameplayWidgetAction { 
+                        target: selected.name.clone(), 
+                        action: GameplayWidgetActionType::Move(
+                            selected.original_layout.clone()
+                        ),
+                    };
+
+                    self.send(
+                        action,
+                        shell.actions
+                    );
+                }
+            }
+            
+            "reset_default" => {
+                if let Some(selected) = self.get_selected() {
+                    selected.layout = selected.default_layout.clone();
+                    let action = GameplayWidgetAction { 
+                        target: selected.name.clone(), 
+                        action: GameplayWidgetActionType::Move(
+                            selected.default_layout.clone()
+                        ),
+                    };
+
+                    self.send(
+                        action,
+                        shell.actions
+                    );
+                }
+            }
+
+            _ => {
+                shell.handled = false;
             }
         }
 
