@@ -8,9 +8,9 @@ pub trait CustomElement {
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[derive(Deserialize)]
 #[serde(from="String")]
-pub struct ClassList(pub Vec<String>);
+pub struct ClassList(pub Vec<ArcStr>);
 impl ClassList {
-    pub fn push(&mut self, s: impl Into<String>) {
+    pub fn push(&mut self, s: impl Into<ArcStr>) {
         self.0.push(s.into());
     }
 }
@@ -20,6 +20,18 @@ impl From<String> for ClassList {
             .split(" ")
             .map(|i| i.trim().to_owned())
             .filter(|i| !i.is_empty())
+            .map(ArcStr::from)
+            .collect()
+        )
+    }
+}
+impl From<ArcStr> for ClassList {
+    fn from(value: ArcStr) -> Self {
+        Self(value
+            .split(" ")
+            .map(|i| i.trim().to_owned())
+            .filter(|i| !i.is_empty())
+            .map(ArcStr::from)
             .collect()
         )
     }

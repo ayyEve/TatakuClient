@@ -15,7 +15,7 @@ impl SongManager {
 
     fn play_song(
         &mut self, 
-        key: Arc<str>, 
+        key: ArcStr, 
         mut params: SongPlayData, 
         load_song: impl FnOnce(&mut AudioManager) -> TatakuResult<Arc<dyn AudioInstance>>,
         actions: &mut ActionQueue,
@@ -184,10 +184,10 @@ impl SongManager {
 
 struct SongData {
     instance: Arc<dyn AudioInstance>,
-    id: Arc<str>,
+    id: ArcStr,
 }
 impl SongData {
-    fn new(instance: Arc<dyn AudioInstance>, path: Arc<str>) -> Self {
+    fn new(instance: Arc<dyn AudioInstance>, path: ArcStr) -> Self {
         Self {
             instance,
             id: path

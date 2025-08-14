@@ -4,28 +4,28 @@ use crate::prelude::*;
 #[derive(Default, Debug)]
 pub struct TjaBeatmap {
     pub hash: Md5Hash,
-    pub filename: Arc<str>,
-    pub directory: Arc<str>,
+    pub filename: ArcStr,
+    pub directory: ArcStr,
 
-    pub title: Arc<str>,
-    pub title_unicode: Arc<str>,
+    pub title: ArcStr,
+    pub title_unicode: ArcStr,
 
     /// generally artist
-    pub subtitle: Arc<str>,
-    pub subtitle_unicode: Arc<str>,
+    pub subtitle: ArcStr,
+    pub subtitle_unicode: ArcStr,
 
     pub bpm: f32,
     pub offset: f32,
-    pub audio_path: Arc<str>,
-    pub image_path: Arc<str>,
+    pub audio_path: ArcStr,
+    pub image_path: ArcStr,
 
     // pub offset: f32,
     pub preview_time: f32,
 
 
-    pub course_name: Arc<str>,
+    pub course_name: ArcStr,
     pub course_level: u8,
-    pub course_creator: Arc<str>,
+    pub course_creator: ArcStr,
 
     pub course_events: Vec<TjaCourseEvent>,
 
@@ -49,8 +49,8 @@ impl TjaBeatmap {
         let lines = String::from_utf8(data).map_err(|_|BeatmapError::InvalidFile)?;
         let lines = lines.lines();
 
-        let filename: Arc<str> = path.to_string_lossy().to_string().into();
-        let parent: Arc<str> = path.parent().unwrap().to_string_lossy().to_string().into();
+        let filename: ArcStr = path.to_string_lossy().to_string().into();
+        let parent: ArcStr = path.parent().unwrap().to_string_lossy().to_string().into();
 
         let mut maps = super::tja_parser::TjaParser::default().parse(lines)?;
         for map in maps.iter_mut() {

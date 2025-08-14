@@ -4,7 +4,7 @@ use crate::prelude::*;
 #[derive(Default)]
 pub struct InputManager {
     pub mouse_pos: Vector2,
-    pub scroll_delta: f32,
+    pub scroll_delta: Vector2,
     pub mouse_moved: bool,
 
     pub mouse_buttons: HashSet<MouseButton>,
@@ -46,7 +46,7 @@ impl InputManager {
     fn verify_controller_index_exists(
         &mut self, 
         id: GamepadId, 
-        name: Arc<String>, 
+        name: ArcStr, 
         power_info: PowerInfo
     ) {
         if self.controllers.contains_key(&id) {
@@ -229,7 +229,7 @@ impl InputManager {
         std::mem::take(&mut self.mouse_moved)
     }
     /// get how much the mouse wheel as scrolled (vertically) since the last check
-    pub fn get_scroll_delta(&mut self) -> f32 {
+    pub fn get_scroll_delta(&mut self) -> Vector2 {
         std::mem::take(&mut self.scroll_delta)
     }
 

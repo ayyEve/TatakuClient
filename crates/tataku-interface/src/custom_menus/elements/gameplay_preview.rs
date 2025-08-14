@@ -4,12 +4,12 @@ use crate::prelude::ui::CssBlurType;
 #[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
 pub struct GameplayPreviewElement {
-    #[serde(rename = "@id", default)] id: Option<String>,
+    #[serde(rename = "@id", default)] id: Option<ArcStr>,
     #[serde(rename = "@class", default)] class_list: ClassList,
 
     /// unparsed style string, parsed when the element is built
-    #[serde(rename = "@style", default)] style: String,
-    #[serde(rename = "@visualization", default)] visualization: Option<String>,
+    #[serde(rename = "@style", default)] style: ArcStr,
+    #[serde(rename = "@visualization", default)] visualization: Option<ArcStr>,
     
     #[serde(rename = "@blur", default)] blur: f32,
     #[serde(rename = "@blur_type", default)] blur_type: CssBlurType,

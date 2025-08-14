@@ -235,11 +235,7 @@ impl OsuSlider {
             )
         });
 
-        color.a = (
-            self.standard_settings.slider_body_alpha
-                .clamp(0.0, 1.0) * 255.0
-        ) as u8;
-
+        color.a = Color::to_u8(self.standard_settings.slider_body_alpha);
         let border_color = BORDER_COLOR.alpha(self.standard_settings.slider_border_alpha); //self.skin.slider_border.unwrap_or(BORDER_COLOR);
         let border_radius = BORDER_RADIUS * self.scaling_helper.cs;
 
@@ -574,12 +570,12 @@ impl OsuSlider {
     // }
 
     fn get_alpha(&self) -> u8 {
-        let mut alpha = ((1.0 - ((self.time - (self.time_preempt * (2.0/3.0))) - self.map_time) / (self.time_preempt * (1.0/3.0))) / 3.0).clamp(0.0, 1.0);
+        let mut alpha = (1.0 - ((self.time - (self.time_preempt * (2.0/3.0))) - self.map_time) / (self.time_preempt * (1.0/3.0))) / 3.0;
         if self.map_time >= self.curve.end_time {
             alpha = ((self.curve.end_time + self.hitwindow_miss) - self.map_time) / self.hitwindow_miss;
         }
 
-        (alpha * 255.0) as u8
+        Color::to_u8(alpha.clamp(0.0, 1.0))
     }
 
     // fn ripple_start(&mut self) {

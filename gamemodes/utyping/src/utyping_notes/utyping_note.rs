@@ -15,7 +15,7 @@ pub struct UTypingNote {
 
     /// what character is this?
     /// string because jap in utf8 is wack
-    text: Arc<str>,
+    text: ArcStr,
     // romaji: String,
     // char_count: usize,
     branches: Branch,
@@ -38,7 +38,7 @@ pub struct UTypingNote {
 impl UTypingNote {
     pub fn new(
         time: f32, 
-        text: Arc<str>, 
+        text: ArcStr, 
         settings: Arc<TaikoSettings>, 
         playfield: Arc<UTypingPlayfield>
     ) -> Self {

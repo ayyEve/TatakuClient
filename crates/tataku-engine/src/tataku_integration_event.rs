@@ -12,19 +12,19 @@ pub enum TatakuIntegrationEvent {
         beatmap: Arc<BeatmapMeta>,
 
         /// what mode the user is playing
-        playmode: Arc<str>,
+        playmode: ArcStr,
 
         /// multiplayer lobby info
         multiplayer: Option<LobbyInfo>,
 
         /// username of who's being spectated
-        spectator: Option<Arc<str>>
+        spectator: Option<ArcStr>
     },
 
     SongChanged {
-        artist: Arc<str>,
-        title: Arc<str>,
-        image_path: Arc<str>,
+        artist: ArcStr,
+        title: ArcStr,
+        image_path: ArcStr,
         elapsed: f32,
         duration: f32,
     },

@@ -3,7 +3,7 @@ use crate::prelude::ui::*;
 
 #[derive(ChainableInitializer)]
 pub struct TabbedWidget {
-    name: String,
+    name: ArcStr,
     tabs: TabProvider,
     #[chain] selected: usize,
 
@@ -11,18 +11,18 @@ pub struct TabbedWidget {
 }
 impl TabbedWidget {
     pub fn new(
-        name: String,
+        name: impl Into<ArcStr>,
         tabs: impl Into<TabProvider>,
     ) -> Self {
         Self {
-            name,
+            name: name.into(),
             tabs: tabs.into(),
             selected: 0,
             node_id: EMPTY_NODE
         }
     }
 
-    #[allow(clippy::borrowed_box)] // Box<dyn Widget> doesnt implement dyn Widget, and dereferencing and re-referencing is unecessary and ugly
+    // #[allow(clippy::borrowed_box, reason = "Box<dyn Widget> doesnt implement dyn Widget, and dereferencing and re-referencing is unecessary and ugly")]
     fn get_ele(&self) -> Option<&Tab> {
         self.tabs
             .tabs()

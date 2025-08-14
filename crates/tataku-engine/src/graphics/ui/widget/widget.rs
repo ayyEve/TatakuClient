@@ -13,11 +13,11 @@ pub trait Widget: Send + Sync {
     /// helper for default actions
     fn children_mut(&mut self) -> WidgetChildrenMut { WidgetChildrenMut::None }
 
-    fn get_style_str(&self) -> String { String::new() }
+    fn get_style_str(&self) -> ArcStr { ArcStr::new() }
     
     fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId>;
     fn init_style(&mut self, shell: &mut LayoutShell) {
-        for i in self.all_children_mut().into_iter() {
+        for i in self.all_children_mut() {
             i.init_style(shell);
         }
     }
@@ -27,7 +27,7 @@ pub trait Widget: Send + Sync {
         event: &InputEvent, 
         shell: &mut InputShell,
     ) {
-        for i in self.children_mut().into_iter() {
+        for i in self.children_mut() {
             if shell.event_consumed { return }
             i.input(event, shell);
         }
@@ -38,24 +38,24 @@ pub trait Widget: Send + Sync {
         operation: &UiOperation, 
         tree: &mut Tree,
     ) {
-        for i in self.children_mut().into_iter() {
+        for i in self.children_mut() {
             i.operation(operation, tree);
         }
     }
 
     fn draw(&self, shell: &mut DrawShell) {
-        for i in self.children().into_iter() {
+        for i in self.children() {
             i.draw(shell);
         }
     }
     fn draw_overlay(&self, shell: &mut DrawShell) {
-        for i in self.children().into_iter() {
+        for i in self.children() {
             i.draw_overlay(shell);
         }
     }
 
     fn update(&mut self, shell: &mut UpdateShell) {
-        for i in self.children_mut().into_iter() {
+        for i in self.children_mut() {
             i.update(shell);
         }
     }
@@ -65,7 +65,7 @@ pub trait Widget: Send + Sync {
         message: &Message, 
         shell: &mut MessageShell,
     ) {
-        for i in self.children_mut().into_iter() {
+        for i in self.children_mut() {
             if shell.handled { return }
             i.handle_message(message, shell);
         }
@@ -77,14 +77,14 @@ pub trait Widget: Send + Sync {
         event_value: Option<&TatakuValue>, 
         shell: &mut MessageShell,
     ) {
-        for i in self.children_mut().into_iter() {
+        for i in self.children_mut() {
             if shell.handled { return }
             i.handle_event(event, event_value, shell);
         }
     }
 
     fn reload_skin(&mut self, shell: &mut UpdateShell) {
-        for i in self.all_children_mut().into_iter() {
+        for i in self.all_children_mut() {
             i.reload_skin(shell);
         }
     }

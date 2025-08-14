@@ -132,7 +132,7 @@ impl<'window> GameWindow<'window> {
             let info = self.controller_input.gamepad(event.id);
             if event.event == gilrs::EventType::Connected { info!("new controller: {}", info.name()) }
 
-            self.send_game_event(WindowEvent::Input(InputType::RawControllerEvent(event, Arc::new(info.name().to_owned()), info.power_info())));
+            self.send_game_event(WindowEvent::Input(InputType::RawControllerEvent(event, info.name().into(), info.power_info())));
         }
 
         // send as many queued requests as we can
@@ -325,10 +325,13 @@ impl GameWindow<'_> {
                         if id != *start_id { return None }
 
                         let delta = touch_pos - *pos;
-                        let y_scroll = delta.y / 10.0;
+                        let scroll = Vector2::new(
+                            delta.x / 10.0,
+                            delta.y / 10.0
+                        );
                         *pos = touch_pos;
 
-                        return Some(WindowEvent::Input(InputType::MouseScroll(y_scroll)))
+                        return Some(WindowEvent::Input(InputType::MouseScroll(scroll)))
                     }
                 }
 
@@ -681,10 +684,10 @@ fn to_size(s: Vector2) -> winit::dpi::Size {
     winit::dpi::Size::Logical(winit::dpi::LogicalSize::new(s.x as f64, s.y as f64))
 }
 #[cfg(feature="graphics")]
-fn delta2f32(delta: winit::event::MouseScrollDelta) -> f32 {
+fn delta2f32(delta: winit::event::MouseScrollDelta) -> Vector2 {
     match delta {
-        winit::event::MouseScrollDelta::LineDelta(_, y) => y,
-        winit::event::MouseScrollDelta::PixelDelta(p) => p.y as f32,
+        winit::event::MouseScrollDelta::LineDelta(x, y) => Vector2::new(x, y),
+        winit::event::MouseScrollDelta::PixelDelta(p) => Vector2::new(p.x as f32, p.y as f32),
     }
 }
 

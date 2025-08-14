@@ -3,11 +3,11 @@ use crate::prelude::*;
 #[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
 pub struct ButtonElement {
-    #[serde(rename = "@id", default)] id: Option<String>,
+    #[serde(rename = "@id", default)] id: Option<ArcStr>,
     #[serde(rename = "@class", default)] class_list: ClassList,
 
     /// unparsed style string, parsed when the element is built
-    #[serde(rename = "@style", default)] style: String,
+    #[serde(rename = "@style", default)] style: ArcStr,
     #[serde(rename = "@active_if", default)] active_cond: Option<BuildableCondition>,
     
     #[serde(alias="action")]
@@ -66,7 +66,7 @@ fn test() {
             </button>
         "#).unwrap(),
         ButtonElement {
-            id: Some("button123".to_owned()),
+            id: Some("button123".into()),
             class_list: "thing1 thing2".into(),
             actions: vec![
                 ClickAction {
@@ -77,7 +77,7 @@ fn test() {
                 }
             ], 
             element: ElementTag { element: Element::Text(Box::new(TextElement {
-                text: BuildableText::Text { text: "hi mom".to_owned() },
+                text: BuildableText::Text { text: "hi mom".into() },
                 ..Default::default()
             })) } ,
             ..Default::default()

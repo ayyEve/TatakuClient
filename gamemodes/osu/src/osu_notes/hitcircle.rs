@@ -205,9 +205,9 @@ impl HitCircle {
             collection.push(Circle::new(
                 self.pos,
                 CIRCLE_RADIUS_BASE * self.scaling_helper.cs,
-                self.color,
+                self.color.alpha8(self.alpha),
             ).border(Border::new(
-                Color::BLACK,
+                Color::WHITE.alpha8(self.alpha),
                 self.scaling_helper.border_width
             )));
         }

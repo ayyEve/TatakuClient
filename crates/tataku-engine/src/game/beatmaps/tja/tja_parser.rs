@@ -4,25 +4,25 @@ use super::tja_beatmap::*;
 /// helper for parsing .tja files
 #[derive(Default)]
 pub struct TjaParser {
-    title: Arc<str>,
-    title_en: Arc<str>,
+    title: ArcStr,
+    title_en: ArcStr,
 
-    subtitle: Arc<str>,
-    subtitle_en: Arc<str>,
+    subtitle: ArcStr,
+    subtitle_en: ArcStr,
 
-    creator: Arc<str>,
+    creator: ArcStr,
 
     bpm: f32,
     offset: f32,
     audio_preview: f32,
 
-    audio_filename: Arc<str>,
-    image_filename: Arc<str>,
+    audio_filename: ArcStr,
+    image_filename: ArcStr,
 
     current_course: ParseCourse,
     courses: Vec<ParseCourse>,
 
-    course_lines: Vec<Arc<str>>
+    course_lines: Vec<ArcStr>
 }
 
 impl TjaParser {
@@ -105,7 +105,13 @@ impl TjaParser {
     pub fn complete_course(&mut self) {
         let mut course = ParseCourse::new(self);
         std::mem::swap(&mut self.current_course, &mut course);
-        course.course.hash = md5(std::mem::take(&mut self.course_lines).join("\n"));
+
+        let lines = self.course_lines.iter()
+            .map(|i| i.to_string())
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        course.course.hash = md5(lines);
 
         self.courses.push(course);
     }

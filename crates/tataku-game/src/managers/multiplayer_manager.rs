@@ -9,7 +9,7 @@ pub struct MultiplayerManager {
     current_beatmap: ValueChangeHelper<Md5Hash>,
     
     /// what playmode is selected by the host?
-    selected_mode: Option<Arc<str>>,
+    selected_mode: Option<ArcStr>,
 
     /// what mods are currently enabled?
     current_mods: ValueChangeHelper<ModManager>,

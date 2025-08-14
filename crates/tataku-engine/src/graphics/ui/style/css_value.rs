@@ -6,7 +6,7 @@ pub enum CssValue<T> {
     Unset,
     Inherit,
     Value(T),
-    Variable(Arc<str>),
+    Variable(ArcStr),
 }
 impl<T> CssValue<T> {
     pub fn parse<E>(
@@ -78,7 +78,7 @@ impl<T:Reflect + std::fmt::Debug> CssValue<T> {
         match self {
             Self::Value(v) => Some(MaybeOwned::Borrowed(v)),
             Self::Variable(path) => {
-                let val = values.reflect_get(&**path).ok();
+                let val = values.reflect_get(path).ok();
                 // println!("================================");
                 // println!("path: '{path}' = {val:?}");
                 // println!("================================");

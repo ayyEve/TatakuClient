@@ -1408,7 +1408,7 @@ impl GameMode for TaikoGame {
                 if let Some(c_config) = self
                     .taiko_settings
                     .controller_config
-                    .get(&*name)
+                    .get(&name)
                 {
                     if ControllerButton::North == btn { // skip
                         Some(ReplayAction::Press(KeyPress::SkipIntro))
@@ -1435,7 +1435,7 @@ impl GameMode for TaikoGame {
                         .clone();
 
                     new_settings.controller_config.insert(
-                        (*name).clone(), 
+                        name.clone(), 
                         TaikoControllerConfig::defaults(name.clone())
                     );
 
@@ -1458,7 +1458,7 @@ impl GameMode for TaikoGame {
             }
 
             InputType::ControllerRelease(btn, id, name) => {
-                if let Some(c_config) = self.taiko_settings.controller_config.get(&*name) {
+                if let Some(c_config) = self.taiko_settings.controller_config.get(&name) {
                     if c_config.left_kat.check_button(btn) {
                         Some(ReplayAction::Release(KeyPress::LeftKat))
                     } else if c_config.left_don.check_button(btn) {
@@ -1483,7 +1483,7 @@ impl GameMode for TaikoGame {
                         .clone();
 
                     new_settings.controller_config.insert(
-                        (*name).clone(), 
+                        name.clone(), 
                         TaikoControllerConfig::defaults(name.clone())
                     );
 

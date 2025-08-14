@@ -3,17 +3,17 @@ use crate::prelude::*;
 #[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
 pub struct DropdownElement {
-    #[serde(rename = "@id", default)] id: Option<String>,
+    #[serde(rename = "@id", default)] id: Option<ArcStr>,
     #[serde(rename = "@class", default)] class_list: ClassList,
 
     /// unparsed style string, parsed when the element is built
-    #[serde(rename = "@style", default)] style: String,
+    #[serde(rename = "@style", default)] style: ArcStr,
 
-    #[serde(rename = "@options_path")] options_path: String,
-    #[serde(rename = "@options_display_path", default)] options_display_path: Option<String>,
-    #[serde(rename = "@selected_path")] selected_path: String,
+    #[serde(rename = "@options_path")] options_path: ArcStr,
+    #[serde(rename = "@options_display_path", default)] options_display_path: Option<ArcStr>,
+    #[serde(rename = "@selected_path")] selected_path: ArcStr,
 
-    #[serde(rename = "@placeholder", default)] placeholder_attribute: Option<String>,
+    #[serde(rename = "@placeholder", default)] placeholder_attribute: Option<ArcStr>,
     #[serde(rename = "placeholder", default)] placeholder_tag: Option<BuildableTextTag>,
 
     #[serde(alias = "onSelect")] on_select: BuildableActionTag,

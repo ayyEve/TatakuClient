@@ -153,9 +153,9 @@ impl Widget for SwitchWidget {
     }
 
     fn init_style(&mut self, shell: &mut LayoutShell) {
-        self.all_children_mut()
-            .into_iter()
-            .for_each(|c| c.init_style(shell));
+        for i in self.all_children_mut() {
+            i.init_style(shell);
+        }
 
         // set all cases to DisplayType::None so they're hidden
         // do not do this for the default case because if it exists it should be visible by default

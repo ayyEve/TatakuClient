@@ -9,14 +9,14 @@ use crate::prelude::*;
 pub struct UTypingBeatmap {
     // paths etc
     pub hash: Md5Hash,
-    pub file_path: Arc<str>,
-    pub audio_path: Arc<str>,
+    pub file_path: ArcStr,
+    pub audio_path: ArcStr,
 
     // meta
-    pub title: Arc<str>,
-    pub artist: Arc<str>,
-    pub creator: Arc<str>,
-    pub difficulty: Arc<str>,
+    pub title: ArcStr,
+    pub artist: ArcStr,
+    pub creator: ArcStr,
+    pub difficulty: ArcStr,
 
     // notes and events
     pub notes: Vec<UTypingNoteDef>,
@@ -40,7 +40,7 @@ impl UTypingBeatmap {
             }
         }
 
-        let empty_text: Arc<str> = String::new().into();
+        let empty_text: ArcStr = String::new().into();
 
         let parent_folder = path.as_ref().parent().unwrap().to_string_lossy().to_string();
 
@@ -241,13 +241,13 @@ impl TatakuBeatmap for UTypingBeatmap {
 #[derive(Clone, Default, Debug)]
 pub struct UTypingNoteDef {
     pub time: f32,
-    pub text: Arc<str>
+    pub text: ArcStr
 }
 
 #[derive(Clone, Debug)]
 pub struct UTypingEvent {
     pub time: f32,
-    pub text: Arc<str>,
+    pub text: ArcStr,
     pub event_type: UTypingEventType
 }
 

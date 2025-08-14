@@ -4,10 +4,10 @@ use crate::prelude::ui::*;
 #[derive(Clone, Default)]
 #[derive(Debug2)]
 pub struct ElementData {
-    pub element_name: String,
-    pub id: Option<String>,
-    pub class_list: Vec<String>,
-    pub debug_name: Option<String>,
+    pub element_name: ArcStr,
+    pub id: Option<ArcStr>,
+    pub class_list: Vec<ArcStr>,
+    pub debug_name: Option<ArcStr>,
     pub state: ElementState,
 
     #[debug(skip)]

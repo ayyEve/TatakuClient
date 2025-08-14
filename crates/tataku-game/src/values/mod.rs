@@ -4,6 +4,7 @@ mod enum_values;
 mod reflect_mods;
 mod global_values;
 mod reflect_score;
+mod loading_status;
 mod value_collection;
 
 pub use enum_values::*;
@@ -12,4 +13,5 @@ pub use game_values::*;
 pub use reflect_mods::*;
 pub use global_values::*;
 pub use reflect_score::*;
+pub use loading_status::*;
 pub use value_collection::*;

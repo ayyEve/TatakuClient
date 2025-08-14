@@ -2142,7 +2142,8 @@ impl GraphicsEngine for WgpuEngine<'_> {
             grid_cells.len() as u64,
             line_segments.len() as u64
         ) else {
-            error!("couldnt reserve slider?");
+            // self.dump_atlas("debug/atlas");
+            // panic!("couldnt reserve slider?");
             return
         };
 

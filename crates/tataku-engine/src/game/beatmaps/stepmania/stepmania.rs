@@ -4,25 +4,25 @@ use crate::prelude::*;
 #[allow(unused)]
 pub struct StepmaniaBeatmap {
     hash: Md5Hash,
-    file_path: Arc<str>,
+    file_path: ArcStr,
 
-    title: Arc<str>,
-    subtitle: Arc<str>,
-    artist: Arc<str>,
+    title: ArcStr,
+    subtitle: ArcStr,
+    artist: ArcStr,
 
     // these are options to make them easier to unwrap_or()
-    title_translated:    Option<Arc<str>>,
-    subtitle_translated: Option<Arc<str>>,
-    artist_translated:   Option<Arc<str>>,
+    title_translated:    Option<ArcStr>,
+    subtitle_translated: Option<ArcStr>,
+    artist_translated:   Option<ArcStr>,
 
-    genre: Arc<str>,
-    credit: Arc<str>,
+    genre: ArcStr,
+    credit: ArcStr,
 
     /// renamed from "music"
-    audio_file: Arc<str>,
-    banner: Arc<str>,
-    background: Arc<str>,
-    cd_title: Arc<str>,
+    audio_file: ArcStr,
+    banner: ArcStr,
+    background: ArcStr,
+    cd_title: ArcStr,
 
     /// preview time start
     sample_start: f32,
@@ -378,10 +378,10 @@ impl From<char> for StepmaniaTempNoteType {
 
 #[derive(Default, Clone)]
 pub struct StepmaniaChart {
-    pub chart_type: Arc<str>, // not sure this matters at all
+    pub chart_type: ArcStr, // not sure this matters at all
     /// usually difficulty name
-    pub description: Arc<str>,
-    pub difficulty: Arc<str>,
+    pub description: ArcStr,
+    pub difficulty: ArcStr,
     pub diff_value: u32, 
     pub groove_radar_values: Vec<u32>,
     pub notes: Vec<StepmaniaNote>,

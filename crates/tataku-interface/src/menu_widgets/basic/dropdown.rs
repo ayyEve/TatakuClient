@@ -252,14 +252,14 @@ impl Widget for Dropdown {
         // selected text
         let displays = self.variants.get_displays();
         let main_text = self.value.index()
-            .and_then(|n| displays.get(n))
+            .and_then(|n| displays.get(n).map(|s| s.as_str()))
             .unwrap_or(self.placeholder.get());
 
         let text_style = shell.tree
             .get_text_style(self.node_id)
             .unwrap();
 
-        shell.list.push(text_style.create_text(main_text.clone(), bounds));
+        shell.list.push(text_style.create_text(main_text.to_string(), bounds));
     }
 
     fn draw_overlay(&self, shell: &mut DrawShell) {
@@ -513,6 +513,11 @@ impl From<Vec<String>> for DropdownVariants {
         Self::Static(value)
     }
 }
+impl From<ArcStr> for DropdownVariants {
+    fn from(value: ArcStr) -> Self {
+        Self::Variable(VariablePathResolver::new(value))
+    }
+}
 impl From<String> for DropdownVariants {
     fn from(value: String) -> Self {
         Self::Variable(value.into())
@@ -570,10 +575,15 @@ impl From<String> for DropdownValue {
         Self::Variable(VariablePathResolver::new(value), None)
     }
 }
+impl From<ArcStr> for DropdownValue {
+    fn from(value: ArcStr) -> Self {
+        Self::Variable(VariablePathResolver::new(value), None)
+    }
+}
 
 
 pub enum DropdownPlaceholder {
-    Static(String),
+    Static(ArcStr),
     Buildable {
         buildable: BuildableText,
         cache: String
@@ -581,11 +591,11 @@ pub enum DropdownPlaceholder {
 }
 impl Default for DropdownPlaceholder {
     fn default() -> Self {
-        Self::Static(String::new())
+        Self::Static(ArcStr::default())
     }
 }
 impl DropdownPlaceholder {
-    fn get(&self) -> &String {
+    fn get(&self) -> &str {
         match self {
             Self::Static(s) => s,
             Self::Buildable { cache, .. } => cache,
@@ -598,9 +608,14 @@ impl DropdownPlaceholder {
         *cache = buildable.to_string(values);
     }
 }
+impl From<ArcStr> for DropdownPlaceholder {
+    fn from(value: ArcStr) -> Self {
+        Self::Static(value)
+    }
+}
 impl From<String> for DropdownPlaceholder {
     fn from(value: String) -> Self {
-        Self::Static(value)
+        Self::Static(value.into())
     }
 }
 impl From<BuildableText> for DropdownPlaceholder {

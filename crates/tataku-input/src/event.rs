@@ -10,15 +10,15 @@ pub enum InputType {
     MousePress(MouseButton),
     MouseRelease(MouseButton),
     MouseMove(Vector2),
-    MouseScroll(f32),
+    MouseScroll(Vector2),
 
-    ControllerPress(ControllerButton, GamepadId, Arc<String>),
-    ControllerRelease(ControllerButton, GamepadId, Arc<String>),
-    ControllerAxis(gilrs::Axis, f32, GamepadId, Arc<String>),
+    ControllerPress(ControllerButton, GamepadId, ArcStr),
+    ControllerRelease(ControllerButton, GamepadId, ArcStr),
+    ControllerAxis(gilrs::Axis, f32, GamepadId, ArcStr),
 
     // controller input
     /// really only used by InputManager to handle all controller events
-    RawControllerEvent(gilrs::Event, Arc<String>, gilrs::PowerInfo),
+    RawControllerEvent(gilrs::Event, ArcStr, gilrs::PowerInfo),
 }
 impl InputType {
     pub fn is_mouse(&self) -> bool {

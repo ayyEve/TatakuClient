@@ -38,6 +38,7 @@ pub enum TatakuEventType {
     #[serde(alias="custom")]
     CustomEvent(String)
 }
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[derive(Serialize, Deserialize)]
 pub struct CustomMenuKeyEvent {

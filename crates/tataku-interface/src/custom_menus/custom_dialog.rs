@@ -5,13 +5,13 @@ use crate::prelude::ui::*;
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
 pub struct CustomDialog {
-    #[serde(rename = "@id")] pub id: String,
-    #[serde(rename = "@title")] title: String,
+    #[serde(rename = "@id")] pub id: ArcStr,
+    #[serde(rename = "@title")] title: ArcStr,
     #[serde(rename = "@allow_multiple", default)] allow_multiple: bool,
     #[serde(rename = "@draggable", default)] draggable: bool, 
     #[serde(rename = "@resizable", default)] resizable: bool,
 
-    #[serde(default)] style: Option<String>,
+    #[serde(default)] style: Option<ArcStr>,
     #[serde(default)] events: BuildableEventsTag,
     #[serde(default)] pub inputs: BuildableInputsTag,
 
@@ -64,7 +64,7 @@ impl CustomDialog {
             draggable: self.draggable,
             resizable: self.resizable,
             allow_multiple: self.allow_multiple,
-            title: Cow::Owned(self.title.clone()),
+            title: Cow::Owned(self.title.to_string()),
             location: DialogLocation::Auto,
             background: true,
         }
@@ -72,12 +72,12 @@ impl CustomDialog {
 }
 
 pub struct BuiltCustomDialog {
-    pub id: String,
-    pub title: String,
+    pub id: ArcStr,
+    pub title: ArcStr,
     pub element: Box<dyn Widget>,
     pub events: HashMap<TatakuEventType, Vec<BuildableAction>>,
 
-    pub styles: String,
+    pub styles: ArcStr,
 
     pub draggable: bool,
     pub resizable: bool,
@@ -87,7 +87,7 @@ pub struct BuiltCustomDialog {
 impl Widget for BuiltCustomDialog {
     fn name(&self) -> CowStr { format!("custom-{}", self.id).into() }
     fn node_id(&self) -> NodeId { self.node_id }
-    fn get_style_str(&self) -> String { self.styles.clone() }
+    fn get_style_str(&self) -> ArcStr { self.styles.clone() }
 
     fn children(&self) -> WidgetChildren {
         WidgetChildren::Single(&self.element)

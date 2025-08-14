@@ -201,7 +201,7 @@
             <!-- the next row is the media controls -->
             <row id = "media-controls" style = "width: fill; height: auto;">
                 <!-- an inner row so the buttons arent spread out over the whole width -->
-                <row id = "song-controls" style = "width: 30%; height: fill; align-content: space-evenly">
+                <row id = "song-controls" style = "width: 30%; height: fill; align-content: space-evenly;">
                     <!-- previous song -->
                     <button class = "fa-button">
                         <action> <map><previous/></map> </action>

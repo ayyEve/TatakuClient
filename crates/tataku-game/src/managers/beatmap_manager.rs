@@ -19,7 +19,7 @@ pub struct BeatmapManager {
     #[reflect(flatten)]
     pub beatmaps: Vec<Arc<BeatmapMeta>>,
     pub beatmaps_by_hash: HashMap<Md5Hash, Arc<BeatmapMeta>>,
-    pub ignore_beatmaps: HashSet<Arc<str>>,
+    pub ignore_beatmaps: HashSet<ArcStr>,
 
     /// previously played maps
     played: Vec<Md5Hash>, 
@@ -135,7 +135,7 @@ impl BeatmapManager {
 
             if AVAILABLE_MAP_EXTENSIONS.iter().any(|e| file.ends_with(e)) {
                 // check file paths first
-                if ignore_paths.contains(file) {
+                if ignore_paths.contains(&ArcStr::from(file)) {
                     continue
                 }
 
@@ -771,12 +771,12 @@ pub struct SelectBeatmapConfig {
     pub restart_song: bool,
     pub use_preview_time: bool,
     pub mods: ModManager,
-    pub playmode: Arc<str>,
+    pub playmode: ArcStr,
 }
 impl SelectBeatmapConfig {
     pub fn new(
         mods: ModManager, 
-        playmode: Arc<str>,
+        playmode: ArcStr,
         restart_song: bool, 
         use_preview_time: bool,
     ) -> Self {

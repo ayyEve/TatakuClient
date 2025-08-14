@@ -18,7 +18,7 @@ pub struct TaikoSettings {
     #[cfg_attr(feature="graphics", setting(text="Ignore Mouse Buttons"))]
     pub ignore_mouse_buttons: bool,
     #[reflect(skip)] // TaikoControllerConfig isnt reflectable
-    pub controller_config: HashMap<String, TaikoControllerConfig>,
+    pub controller_config: HashMap<ArcStr, TaikoControllerConfig>,
 
     // sv
     #[cfg_attr(feature="graphics", setting(text="SV Multiplier", min=1, max=2))]
@@ -123,8 +123,8 @@ impl TaikoControllerConfig {
             right_kat: right_kat.into()
         }
     }
-    pub fn defaults(controller_name: Arc<String>) -> Self {
-        match &**controller_name {
+    pub fn defaults(controller_name: ArcStr) -> Self {
+        match &*controller_name {
             "Taiko Controller"
             | "HORI CO.,LTD. Taiko Controller"
             | "HID-compliant game controller" => Self::new_default(

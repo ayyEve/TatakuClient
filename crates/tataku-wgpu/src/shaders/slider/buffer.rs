@@ -59,7 +59,6 @@ impl RenderBufferable for SliderRenderBuffer {
             0, 
             bytemuck::cast_slice(&cache.cpu_idx)
         );
-
         queue.write_buffer(
             &self.slider_data, 
             0, 
@@ -87,7 +86,7 @@ impl RenderBufferable for SliderRenderBuffer {
     }
 
     fn create_new_buffer(device: &Device, pipeline: WgpuPipeline) -> Self {
-        let slider_data = create_buffer::<SliderData>(
+        let slider_data = create_buffer::<SliderDataInner>(
             device, 
             BufferUsages::STORAGE, 
             EXPECTED_SLIDER_COUNT

@@ -109,9 +109,9 @@ impl Game {
             #[cfg(feature="graphics")] background_image: None,
             #[cfg(feature="graphics")] wallpapers: Vec::new(),
             #[cfg(feature="graphics")] builtin_menus,
+            #[cfg(feature="gameplay")] spectator_manager: None,
+            #[cfg(feature="gameplay")] multiplayer_manager: None,
 
-            spectator_manager: None,
-            multiplayer_manager: None,
             difficulty_manager: DifficultyManager,
             online_content_manager,
 
@@ -667,13 +667,13 @@ impl Game {
         #[cfg(feature="graphics")] 
         if mouse_moved { self.volume_controller.on_mouse_move(mouse_pos); }
         #[cfg(feature="graphics")] 
-        if scroll_delta != 0.0 {
+        if scroll_delta.y != 0.0 {
             if let Some(action) = self.volume_controller.on_mouse_wheel(
-                scroll_delta / (self.settings.display_settings.scroll_sensitivity * 1.5), 
+                scroll_delta.y / (self.settings.display_settings.scroll_sensitivity * 1.5), 
                 mods, 
                 &mut self.values.settings
             ) {
-                scroll_delta = 0.0;
+                scroll_delta.y = 0.0;
                 self.actions.push(action);
             }
         }
@@ -1627,7 +1627,7 @@ impl Game {
         input: Option<BuildableInputArguments>,
     ) {
         let selector = (
-            id.to_string(), 
+            id.to_string().into(), 
             CustomMenuSource::Any
         );
 
@@ -1662,7 +1662,7 @@ impl Game {
         options: DialogCreateOptions,
         input: BuildableInputArguments,
     ) {
-        let id = id.to_string();
+        let id:ArcStr = id.to_string().into();
         let Some(dialog) = self.custom_menu_manager
             .get_dialog((id.clone(), CustomMenuSource::Any))
         else {
@@ -2119,7 +2119,7 @@ impl Game {
 
     fn update_playmode(&mut self, playmode: &str) {
         // ensure lowercase
-        let playmode: Arc<str> = playmode.to_lowercase().into();
+        let playmode: ArcStr = playmode.to_lowercase().into();
 
         // ensure playmode exists
         let Ok(info) = self.global.gamemode_infos

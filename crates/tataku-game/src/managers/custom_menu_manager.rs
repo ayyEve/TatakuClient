@@ -168,19 +168,19 @@ struct CustomEntry<T> {
 
 #[derive(Default)]
 pub struct CustomEntrySelector {
-    name: String,
+    name: ArcStr,
     source: CustomMenuSource,
 }
-impl From<(String, CustomMenuSource)> for CustomEntrySelector {
-    fn from((name, source): (String, CustomMenuSource)) -> Self {
+impl From<(ArcStr, CustomMenuSource)> for CustomEntrySelector {
+    fn from((name, source): (ArcStr, CustomMenuSource)) -> Self {
         Self {
             name,
             source,
         }
     }
 }
-impl From<String> for CustomEntrySelector {
-    fn from(name: String) -> Self {
+impl From<ArcStr> for CustomEntrySelector {
+    fn from(name: ArcStr) -> Self {
         Self {
             name,
             source: CustomMenuSource::Any,
@@ -190,7 +190,7 @@ impl From<String> for CustomEntrySelector {
 impl From<&str> for CustomEntrySelector {
     fn from(name: &str) -> Self {
         Self {
-            name: name.to_owned(),
+            name: name.to_owned().into(),
             source: CustomMenuSource::Any,
         }
     }

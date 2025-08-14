@@ -6,19 +6,17 @@ use crate::prelude::*;
 fn one() -> f64 { 1.0 }
 fn nan64() -> f64 { f64::NAN }
 fn nan32() -> f32 { f32::NAN }
-fn default_diff_name() -> Arc<str> { "default diff name".to_owned().into() }
+fn default_diff_name() -> ArcStr { "default diff name".to_owned().into() }
 
 
 #[derive(Deserialize)]
 #[serde(rename_all="PascalCase")]
 pub struct QuaverBeatmap {
-    #[serde(with = "de_arc_str")]
-    pub audio_file: Arc<str>,
+    pub audio_file: ArcStr,
     
     #[serde(default)]
     pub song_preview_time: f32,
-    #[serde(with = "de_arc_str")]
-    pub background_file: Arc<str>,
+    pub background_file: ArcStr,
 
     // dunno if they can be negative
     #[serde(default)] pub map_id: i32,
@@ -26,21 +24,14 @@ pub struct QuaverBeatmap {
 
     pub mode: QuaverKeys,
 
-    #[serde(with = "de_arc_str")]
-    pub title: Arc<str>,
-    #[serde(with = "de_arc_str")]
-    pub artist: Arc<str>,
-    #[serde(with = "de_arc_str")]
-    #[serde(default)] pub source: Arc<str>,
-    #[serde(with = "de_arc_str")]
-    #[serde(default)] pub tags: Arc<str>,
-    #[serde(with = "de_arc_str")]
-    pub creator: Arc<str>,
-    #[serde(with = "de_arc_str")]
+    pub title: ArcStr,
+    pub artist: ArcStr,
+    #[serde(default)] pub source: ArcStr,
+    #[serde(default)] pub tags: ArcStr,
+    pub creator: ArcStr,
     #[serde(default="default_diff_name")] 
-    pub difficulty_name: Arc<str>,
-    #[serde(with = "de_arc_str")]
-    #[serde(default)] pub description: Arc<str>,
+    pub difficulty_name: ArcStr,
+    #[serde(default)] pub description: ArcStr,
 
     // pub editor_layers: Vec<?>,
     // pub audio_samples: Vec<?>,
@@ -55,8 +46,7 @@ pub struct QuaverBeatmap {
 
     // extra info added later
     #[serde(default)] hash: Md5Hash,
-    #[serde(with = "de_arc_str")]
-    #[serde(default)] path: Arc<str>,
+    #[serde(default)] path: ArcStr,
 }
 impl QuaverBeatmap {
     pub fn load(path: &str) -> TatakuResult<Self> {

@@ -20,7 +20,6 @@ pub enum _ShuntingYardTokenType {
     Unknown,
 }
 
-
 pub trait _ShuntingYardOperator<'values>: Sized {
     type Output;
     type Error;
@@ -334,4 +333,3 @@ pub trait GenericShuntingYard<'rpn, 'values: 'rpn> {
         Ok(list)
     }
 }
-

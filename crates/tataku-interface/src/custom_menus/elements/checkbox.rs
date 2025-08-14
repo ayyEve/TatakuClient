@@ -4,19 +4,19 @@ use crate::prelude::*;
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
 pub struct CheckboxElement {
-    #[serde(rename = "@id", default)] id: Option<String>,
+    #[serde(rename = "@id", default)] id: Option<ArcStr>,
     #[serde(rename = "@class", default)] class_list: ClassList,
-    #[serde(rename = "@style", default)] style: String,
+    #[serde(rename = "@style", default)] style: ArcStr,
 
     /// buildable text in the body
     #[serde(default)] text: Option<BuildableTextTag>,
     /// just a raw text string
-    #[serde(rename = "@text", default)] text_attribute: Option<String>,
+    #[serde(rename = "@text", default)] text_attribute: Option<ArcStr>,
 
     /// value as buildable path in body
     #[serde(default)] value: Option<TatakuValue>,
     /// value as a calc string
-    #[serde(rename = "@value", default)] value_calc: Option<String>,
+    #[serde(rename = "@value", default)] value_calc: Option<ArcStr>,
     
     /// what to run on click
     #[serde(default)] on_click: Option<BuildableActionTag>,
@@ -28,7 +28,7 @@ impl CheckboxElement {
         } else if let Some(text) = self.text_attribute.clone() {
             CheckboxText::Static(text)
         } else {
-            CheckboxText::Static(String::new())
+            CheckboxText::Static(ArcStr::default())
         }
     }
     fn get_value(&self) -> CheckboxValue {

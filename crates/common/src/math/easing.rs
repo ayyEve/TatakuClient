@@ -39,7 +39,7 @@ pub enum Easing {
     EaseInOutBack(f32, f32),
 }
 impl Easing {
-    pub fn run_easing<I:Interpolation>(self, start:I, end:I, amount: f32) -> I {
+    pub fn run_easing<I:Interpolation>(self, start: I, end: I, amount: f32) -> I {
         match self {
             Easing::Linear => Interpolation::lerp(start, end, amount),
 

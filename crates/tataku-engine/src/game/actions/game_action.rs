@@ -39,7 +39,7 @@ pub enum GameAction {
     UpdateBackground,
 
     /// Copy some text to the clipboard
-    CopyToClipboard(Arc<str>),
+    CopyToClipboard(ArcStr),
 
     /// Force a refresh of global.playmode and global.playmode_actual (+display) variables
     RefreshPlaymodeValues,
@@ -48,7 +48,7 @@ pub enum GameAction {
     RefreshSkins,
 
     /// Set the actual playmode for the current beatmap
-    UpdatePlaymodeActual(Arc<str>),
+    UpdatePlaymodeActual(ArcStr),
 
     #[cfg(feature="graphics")]
     NewGameplayManager(NewManager),
@@ -117,9 +117,9 @@ pub struct NewManager {
     /// what map hash to use
     pub map_hash: Option<Md5Hash>,
     /// optional path to the map hash 
-    pub path: Option<Arc<str>>,
+    pub path: Option<ArcStr>,
     /// what playmode to use. if none, will use 
-    pub playmode: Option<Arc<str>>,
+    pub playmode: Option<ArcStr>,
     /// what gameplay mode to use.
     pub gameplay_mode: Option<GameplayMode>,
     /// if it should be bound to an area
@@ -141,8 +141,8 @@ pub enum GameplayMode {
 #[derive(Debug, Clone, Default)]
 pub struct SpectatorGameplayInfo {
     pub host_id: u32,
-    pub host_username: Arc<str>,
+    pub host_username: ArcStr,
 
     pub pending_frames: VecDeque<SpectatorFrame>,
-    pub spectators: HashMap<u32, Arc<str>>,
+    pub spectators: HashMap<u32, ArcStr>,
 }

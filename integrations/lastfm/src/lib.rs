@@ -32,7 +32,7 @@ impl LastFm {
         }
     }
 
-    pub async fn update(track: Arc<str>, artist: Arc<str>, settings: &Settings) {
+    pub async fn update(track: ArcStr, artist: ArcStr, settings: &Settings) {
         let username = settings.username.clone().into();
         let password = settings.password.clone().into();
         let url = settings.score_url.clone();
@@ -102,14 +102,10 @@ impl TatakuIntegration for LastFm {
 
 #[derive(Serialize)]
 struct LastFmNowPlayingRequest {
-    #[serde(with = "de_arc_str")]
-    username: Arc<str>,
-    #[serde(with = "de_arc_str")]
-    password: Arc<str>,
-    #[serde(with = "de_arc_str")]
-    artist: Arc<str>,
-    #[serde(with = "de_arc_str")]
-    track: Arc<str>,
+    username: ArcStr,
+    password: ArcStr,
+    artist: ArcStr,
+    track: ArcStr,
 }
 
 #[derive(Serialize)]

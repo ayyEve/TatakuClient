@@ -4,7 +4,7 @@ use gilrs::{ GamepadId, Axis };
 pub struct CurrentInputState {
     pub mouse_pos: Vector2,
     pub mouse_moved: bool,
-    pub scroll_delta: f32,
+    pub scroll_delta: Vector2,
 
     pub mouse_down: Vec<MouseButton>,
     pub mouse_up: Vec<MouseButton>,
@@ -12,9 +12,9 @@ pub struct CurrentInputState {
     pub keys_down: KeyCollection,
     pub keys_up: KeyCollection,
 
-    pub controller_down: Vec<(ControllerButton, GamepadId, Arc<String>)>,
-    pub controller_up: Vec<(ControllerButton, GamepadId, Arc<String>)>,
-    pub controller_axes: Vec<(Axis, f32, GamepadId, Arc<String>)>,
+    pub controller_down: Vec<(ControllerButton, GamepadId, ArcStr)>,
+    pub controller_up: Vec<(ControllerButton, GamepadId, ArcStr)>,
+    pub controller_axes: Vec<(Axis, f32, GamepadId, ArcStr)>,
 
     pub mods: KeyModifiers,
 }
@@ -30,7 +30,7 @@ impl CurrentInputState {
     pub fn into_events(self) -> Vec<InputEvent> {
         [
             self.mouse_moved.then_some(InputType::MouseMove(self.mouse_pos)),
-            (self.scroll_delta > f32::EPSILON).then_some(InputType::MouseScroll(self.scroll_delta))
+            (self.scroll_delta.x.abs() > f32::EPSILON || self.scroll_delta.y.abs() > f32::EPSILON).then_some(InputType::MouseScroll(self.scroll_delta))
         ]
             .into_iter()
             .flatten()

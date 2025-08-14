@@ -1,7 +1,6 @@
 use crate::prelude::*;
 use crate::prelude::ui::*;
 
-
 #[derive(Clone)]
 pub struct TreeData {
     // pub bounds: Bounds,
@@ -70,10 +69,28 @@ impl TreeData {
     }
 
 
-    pub fn current_style(&self) -> &(CssStyle, Option<Image>) {
-        self.element_data
+    pub fn set_styles<_T:Clone>(
+        &mut self, 
+        styles: ElementStateStyles<CssStyle, _T>, 
+        values: &dyn Reflect
+    ) {
+        self.element_data.styles = styles.transpose();
+
+        for i in ElementState::list() {
+            let txt = self.element_data.styles.get_style(*i).0.text_style(values);
+            let (s, _) = self.element_data.text_styles.get_style_mut(*i);
+            *s = txt;
+        }
+    }
+
+    pub fn get_style(&self, state: ElementState) -> &CssStyle {
+        &self.element_data
             .styles
-            .get_style(self.element_data.state)
+            .get_style(state).0
+    }
+
+    pub fn current_style(&self) -> &(CssStyle, Option<Image>) {
+        self.element_data.style()
     }
     pub fn current_text_style(&self) -> &TextStyle {
         &self.element_data

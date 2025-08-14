@@ -6,8 +6,7 @@ use crate::prelude::*;
 pub struct PTypingNoteDef {
     pub time: f64,
     pub color: PTypingNoteColor,
-    #[serde(with = "tataku_client_common::data::de_arc_str")]
-    pub text: Arc<str>,
+    pub text: ArcStr,
     pub settings: PTypingNoteSettings,
     pub typing_conversion: u8
 }

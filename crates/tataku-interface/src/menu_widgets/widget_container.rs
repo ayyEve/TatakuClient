@@ -5,17 +5,17 @@ use crate::prelude::ui::*;
 
 // TODO: rename this please
 pub struct WidgetContainer {
-    element_name: String,
-    id: Option<String>,
-    style_str: String,
+    element_name: ArcStr,
+    id: Option<ArcStr>,
+    style_str: ArcStr,
     class: ClassList,
     inner: Box<dyn Widget>,
 }
 impl WidgetContainer {
     pub fn new(
-        style: String,
-        element_name: impl Into<String>,
-        id: Option<String>,
+        style: ArcStr,
+        element_name: impl Into<ArcStr>,
+        id: Option<ArcStr>,
         class: ClassList,
         inner: Box<dyn Widget>,
     ) -> Self {
@@ -29,9 +29,9 @@ impl WidgetContainer {
     }
 
     pub fn new_boxed(
-        style: String,
-        element_name: impl Into<String>,
-        id: Option<String>,
+        style: ArcStr,
+        element_name: impl Into<ArcStr>,
+        id: Option<ArcStr>,
         class: ClassList,
         inner: Box<dyn Widget>,
     ) -> Box<dyn Widget> {
@@ -59,19 +59,14 @@ impl Widget for WidgetContainer {
 
     fn init_style(&mut self, shell: &mut LayoutShell) {
         let node = self.node_id();
-        let a = shell.resolver.resolve_style(
+        let styles = shell.resolver.resolve_style(
             &self.style_str, 
             node, 
             shell.tree,
         );
 
         let ctx = shell.tree.get_context_mut(node).unwrap();
-        ctx.element_data.styles = a.transpose();
-
-        // let current = &ctx.current_style().0;
-        // if let Some(i) = &self.id {
-        //     info!("got layout for id {i}: {current:#?}");
-        // }
+        ctx.set_styles(styles, shell.values);
 
         self.inner.init_style(shell);
     }
@@ -87,8 +82,6 @@ impl Widget for WidgetContainer {
                 ..Default::default()
             }
         });
-
-        self.inner.init_style(shell);
 
         Ok(id)
     }

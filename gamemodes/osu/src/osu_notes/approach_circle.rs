@@ -21,7 +21,13 @@ pub struct ApproachCircle {
     pub easing_type: Easing
 }
 impl ApproachCircle {
-    pub fn new(base_pos:Vector2, time: f32, radius:f32, preempt:f32, scaling_helper: Arc<ScalingHelper>) -> Self {
+    pub fn new(
+        base_pos: Vector2, 
+        time: f32, 
+        radius: f32, 
+        preempt: f32, 
+        scaling_helper: Arc<ScalingHelper>
+    ) -> Self {
         Self {
             base_pos,
             pos: scaling_helper.scale_coords(base_pos),

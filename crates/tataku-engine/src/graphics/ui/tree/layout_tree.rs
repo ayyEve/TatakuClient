@@ -123,27 +123,6 @@ impl taffy::LayoutBlockContainer for LayoutTree<'_> {
     }
 }
 
-// impl taffy::LayoutGridContainer for LayoutTree<'_> {
-//     type GridContainerStyle<'b> = CssStyleResolver<'b> where Self: 'b;
-//     type GridItemStyle<'b> = CssStyleResolver<'b> where Self: 'b;
-
-//     #[inline(always)]
-//     fn get_grid_container_style(&self, node_id: taffy::NodeId) -> Self::GridContainerStyle<'_> {
-//         self.get_core_container_style(node_id)
-//     }
-
-//     #[inline(always)]
-//     fn get_grid_child_style(&self, child_node_id: taffy::NodeId) -> Self::GridItemStyle<'_> {
-//         self.get_core_container_style(child_node_id)
-//     }
-
-//     #[inline(always)]
-//     fn set_detailed_grid_info(&mut self, node_id: taffy::NodeId, detailed_grid_info: taffy::DetailedGridInfo) {
-//         self.tree.nodes[node_id.into()].detailed_layout_info = taffy::DetailedLayoutInfo::Grid(Box::new(detailed_grid_info));
-//     }
-// }
-
-
 impl taffy::LayoutPartialTree for LayoutTree<'_> {
     type CoreContainerStyle<'b> = CssStyleResolver<'b> where Self: 'b;
     type CustomIdent = Arc<str>;
@@ -154,7 +133,6 @@ impl taffy::LayoutPartialTree for LayoutTree<'_> {
     ) -> Self::CoreContainerStyle<'_> {
         CssStyleResolver {
             values: self.values,
-            // style: &self.tree.nodes[node_id.into()].style,
             style: &self.tree.node_context_data.get(node_id.into()).unwrap().current_style().0,
             viewport: self.viewport,
             root_font_size: self.root_font_size
@@ -186,13 +164,18 @@ impl taffy::LayoutPartialTree for LayoutTree<'_> {
         //   - Else call the passed closure (below) to compute the result
         //
         // If there was no cache match and a new result needs to be computed then that result will be added to the cache
-        taffy::compute_cached_layout(self, node, inputs, |tree, node, inputs| {
+        taffy::compute_cached_layout(
+            self, 
+            node, 
+            inputs, 
+            |tree, node, inputs| 
+        {
             let data = &tree.tree.nodes[node.into()];
             
             let display_mode = data
                 .current_display
-                .or_else(|| tree
-                    .tree.get_style(node).unwrap()
+                .or_else(|| tree.tree
+                    .get_style(node).unwrap()
                     .display
                     .resolve_copied(tree.values)
                 )
@@ -236,10 +219,10 @@ impl taffy::RoundTree for LayoutTree<'_> {
 impl taffy::PrintTree for LayoutTree<'_> {
     fn get_debug_label(&self, node_id: TaffyNodeId) -> &'static str {
         let node = self.tree.nodes.get(node_id.into()).unwrap();
-        let style = &self
+        let ctx = &self
             .tree
-            .node_context_data[node_id.into()]
-            .current_style().0;
+            .node_context_data[node_id.into()];
+        let style = &ctx.current_style().0;
         let display = node
             .current_display
             .or_else(|| style.display.resolve_copied(self.values));

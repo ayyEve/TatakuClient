@@ -14,14 +14,16 @@ pub struct Color {
 // constant colors
 #[allow(dead_code)]
 impl Color {
+    pub const MAX: u8 = 0xFF;
+
     #[inline(always)]
     pub const fn to_u8(n: f32) -> u8 {
-        (n.clamp(0.0, 1.0) * 255.0) as u8
+        (n.clamp(0.0, 1.0) * Self::MAX as f32) as u8
     }
     
     #[inline(always)]
     pub const fn to_f32(n: u8) -> f32 {
-        (n as f32) / 255.0
+        (n as f32) / Self::MAX as f32
     }
 
     #[inline]
@@ -48,7 +50,7 @@ impl Color {
 
 
     pub const fn alpha(self, a: f32) -> Self {
-        self.alpha8((a * 255.0) as u8)
+        self.alpha8(Color::to_u8(a))
     }
     pub const fn alpha8(mut self, a: u8) -> Self {
         self.a = a;
@@ -69,7 +71,7 @@ impl Color {
         let hex = hex.as_ref();
         Self::try_from_hex(hex).unwrap_or_else(|| {
             println!("malformed hex: '{hex}'"); 
-            Color::new(0.0, 0.0, 0.0, 0.0)
+            Color::new_all8(0)
         })
     }
 
@@ -122,7 +124,7 @@ impl Color {
     }
 
     pub const fn new_rgb8(r: u8, g: u8, b: u8) -> Self {
-        Self::new_rgba8(r, g, b, 255)
+        Self::new_rgba8(r, g, b, Self::MAX)
     }
     
     pub const fn new_rgba8(r: u8, g: u8, b: u8, a: u8) -> Self {
@@ -780,17 +782,29 @@ impl From<Color> for [f32; 4] {
 // bad math!!!!
 mod color_math {
     use crate::prelude::*;
-    use std::ops::{ Add, Div, Mul, Neg, Sub, Rem, AddAssign, SubAssign, MulAssign, DivAssign, RemAssign };
+    use std::ops::{ 
+        Add, 
+        Div, 
+        Mul, 
+        Neg, 
+        Sub, 
+        Rem, 
+        AddAssign, 
+        SubAssign, 
+        MulAssign, 
+        DivAssign, 
+        RemAssign 
+    };
     
     // negative (invert color?)
     impl Neg for Color {
         type Output = Self;
         fn neg(self) -> Self::Output {
-            Self::new(
-                1.0 - self.r(),
-                1.0 - self.g(),
-                1.0 - self.b(),
-                1.0 - self.a(),
+            Self::new_rgba8(
+                255 - self.r8(),
+                255 - self.g8(),
+                255 - self.b8(),
+                255 - self.a8(),
             )
         }
     }

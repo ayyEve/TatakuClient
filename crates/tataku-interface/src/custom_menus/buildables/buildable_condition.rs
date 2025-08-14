@@ -4,8 +4,8 @@ use crate::prelude::*;
 #[derive(Deserialize)]
 #[serde(from="String")]
 pub enum BuildableCondition {
-    Unbuilt(String),
-    Built(BuildableCalc, String),
+    Unbuilt(ArcStr),
+    Built(BuildableCalc, ArcStr),
     Failed,
 }
 impl BuildableCondition {
@@ -46,6 +46,11 @@ impl BuildableCondition {
 
 impl From<String> for BuildableCondition {
     fn from(value: String) -> Self {
+        Self::Unbuilt(value.into())
+    }
+}
+impl From<ArcStr> for BuildableCondition {
+    fn from(value: ArcStr) -> Self {
         Self::Unbuilt(value)
     }
 }
@@ -53,7 +58,7 @@ impl From<String> for BuildableCondition {
 #[derive(PartialEq, Debug)]
 pub enum BuildableConditionResult<'a> {
     Failed,
-    Unbuilt(&'a String),
+    Unbuilt(&'a str),
     True,
     False,
     Error(BuildableShuntingYardError)

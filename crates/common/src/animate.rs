@@ -132,3 +132,81 @@ where
         temp != self.last_value
     }
 }
+
+
+
+#[derive(Copy, Clone, Default, PartialEq)]
+pub struct AnimatableColor {
+    r: f32,
+    g: f32,
+    b: f32,
+    a: f32,
+}
+impl AnimatableColor {
+    fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
+        Self { r, g, b, a }
+    }
+    pub fn alpha(mut self, a: f32) -> Self {
+        self.a = a;
+        self
+    }
+}
+impl From<Color> for AnimatableColor {
+    fn from(value: Color) -> Self {
+        Self {
+            r: value.r(),
+            g: value.g(),
+            b: value.b(),
+            a: value.a(),
+        }
+    }
+}
+impl From<AnimatableColor> for Color {
+    fn from(value: AnimatableColor) -> Self {
+        Self::new(value.r, value.g, value.b, value.a)
+    }
+}
+
+mod c {
+    use super::AnimatableColor;
+    use std::ops::{
+        Add, 
+        Sub, 
+        Mul
+    };
+
+    impl Add for AnimatableColor {
+        type Output = Self;
+        fn add(self, rhs: Self) -> Self::Output {
+            Self::new(
+                self.r + rhs.r,
+                self.g + rhs.g,
+                self.b + rhs.b,
+                self.a + rhs.a,
+            )
+        }
+    }
+    impl Sub for AnimatableColor {
+        type Output = Self;
+        fn sub(self, rhs: Self) -> Self::Output {
+            Self::new(
+                self.r - rhs.r,
+                self.g - rhs.g,
+                self.b - rhs.b,
+                self.a - rhs.a,
+            )
+        }
+    }
+    impl Mul<f32> for AnimatableColor {
+        type Output = Self;
+        fn mul(self, rhs: f32) -> Self::Output {
+            Self::new(
+                self.r * rhs,
+                self.g * rhs,
+                self.b * rhs,
+                self.a * rhs,
+            )
+        }
+    }
+
+}

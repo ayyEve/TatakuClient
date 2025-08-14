@@ -3,9 +3,9 @@ use crate::prelude::*;
 #[derive(Clone, Debug, Default, PartialEq)]   
 #[derive(Deserialize)]
 pub struct TextElement {
-    #[serde(rename = "@id", default)] pub id: Option<String>,
+    #[serde(rename = "@id", default)] pub id: Option<ArcStr>,
     #[serde(rename = "@class", default)] pub class_list: ClassList,
-    #[serde(rename = "@style", default)] pub style: String,
+    #[serde(rename = "@style", default)] pub style: ArcStr,
     
     #[serde(rename = "$value")] pub text: BuildableText,
 }
@@ -40,14 +40,14 @@ fn test() {
         quick_xml::de::from_str::<TextElement>(xml).unwrap(), 
         
         TextElement { 
-            id: Some("hi".to_owned()), 
+            id: Some("hi".into()), 
             class_list: "thing1 thing2".into(), 
-            style: String::new(), 
+            style: ArcStr::default(), 
             text: BuildableText::List {
-                join: String::new(),
+                join: ArcStr::default(),
                 list: vec![ 
-                    BuildableText::Text { text: "hi mom".to_owned() },
-                    BuildableText::Text { text: "hi dad".to_owned() },
+                    BuildableText::Text { text: "hi mom".into() },
+                    BuildableText::Text { text: "hi dad".into() },
                 ]
             }
         }

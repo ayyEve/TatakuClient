@@ -235,6 +235,7 @@ fn map_bass_err(e: BassError) -> AudioError {
 /// check for the bass lib
 /// if not found, will be downloaded
 fn check_bass() -> TatakuResult<()> {
+    #[cfg(target_os = "linux")] 
     use tataku_engine::prelude::Io;
 
     #[cfg(target_os = "windows")] let filename = "bass.dll";

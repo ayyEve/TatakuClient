@@ -8,17 +8,18 @@ type AstResult = Result<Vec<PathShuntingYardToken>, PathShuntingYardError>;
 #[derive(Serialize, Deserialize)]
 #[serde(from="String", into="String")]
 pub struct VariablePathResolver {
-    pub(crate) var: Arc<String>,
+    pub(crate) var: ArcStr,
     ast: Arc<AstResult>,
 }
 impl VariablePathResolver {
-    pub fn new(path: String) -> Self {
+    pub fn new(path: impl Into<ArcStr>) -> Self {
+        let path = path.into();
         let ast = Arc::new(
             PathShuntingYard::parse_expression(&path)
         );
         
         Self {
-            var: Arc::new(path),
+            var: path,
             ast,
         }
     }
@@ -55,7 +56,7 @@ impl PartialEq for VariablePathResolver {
 }
 impl From<VariablePathResolver> for String {
     fn from(value: VariablePathResolver) -> Self {
-        value.var.deref().clone()
+        value.var.to_string()
     }
 }
 

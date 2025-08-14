@@ -81,24 +81,6 @@ impl Widget for ConditionalWidget {
         WidgetChildrenMut::OwnedList(list)
     }
 
-    // fn update_styles(
-    //     &mut self, 
-    //     shell: &mut StyleShell, 
-    //     _display_override: Option<ui::DisplayType>
-    // ) {
-    //     self.if_true.update_styles(
-    //         shell, 
-    //         (!self.value).then_some(ui::DisplayType::None)
-    //     );
-        
-    //     if let Some(if_false) = &mut self.if_false {
-    //         if_false.update_styles(
-    //             shell, 
-    //             self.value.then_some(ui::DisplayType::None)
-    //         );
-    //     }
-    // }
-
     fn layout(&mut self, shell: &mut LayoutShell) -> TaffyResult<NodeId>  {
         let mut children = Vec::with_capacity(2);
         children.push(self.if_true.layout(shell)?);
@@ -111,9 +93,9 @@ impl Widget for ConditionalWidget {
     }
     
     fn init_style(&mut self, shell: &mut LayoutShell) {
-        self.children_mut()
-            .into_iter()
-            .for_each(|c| c.init_style(shell));
+        for i in self.all_children_mut() {
+            i.init_style(shell)
+        }
 
         // set the true condition widget to DisplayType::None so its hidden
         // do not do this for the false widget because if it exists it should be visible by default

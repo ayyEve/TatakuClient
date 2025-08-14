@@ -432,7 +432,7 @@ impl StoryboardDef {
                 // triggers will be checked earlier once i have the willpower to add them
 
                 other => { 
-                    println!("unknown storyboard event {other}"); 
+                    warn!("unknown storyboard event {other}"); 
                     continue
                 },
             };

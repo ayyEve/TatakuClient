@@ -11,7 +11,6 @@ pub trait TatakuRenderable: Sync + Send {
         self 
     }
 
-    // fn draw(&self, transform: Matrix, g: &mut dyn GraphicsEngine);
     fn draw(
         &self, 
         options: &DrawOptions,
@@ -34,12 +33,10 @@ pub struct DrawOptions {
 }
 impl DrawOptions {
     fn apply_alpha(alpha: Option<u8>, other: u8) -> u8 {
-        (
-            (
-                (alpha.unwrap_or(255) as f32 / 255.0)
-                * (other as f32 / 255.0) 
-            ).clamp(0.0, 1.0) * 255.0
-        ) as u8
+        Color::to_u8((
+            Color::to_f32(alpha.unwrap_or(Color::MAX)) 
+            * Color::to_f32(other)
+        ).clamp(0.0, 1.0))
     }
 
     /// get the modified alpha value for the provided alpha

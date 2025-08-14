@@ -60,15 +60,15 @@ pub struct OsuGame {
 }
 impl OsuGame {
     fn recalculate_playfield(&mut self, window_size: Vector2) {
-        let new_scale = Arc::new(ScalingHelper::new_with_settings(
+        let new_scale = ScalingHelper::new_with_settings(
             &self.game_settings, 
             self.cs, 
             window_size, 
             self.mods.has_mod(HardRock)
-        ));
+        );
         
         self.new_playfield_pending = true;
-        self.apply_playfield(new_scale);
+        self.apply_playfield(Arc::new(new_scale));
     }
     fn apply_playfield(&mut self, playfield: Arc<ScalingHelper>) {
         self.scaling_helper = playfield.clone();
@@ -1378,7 +1378,7 @@ impl GameMode for OsuGame {
                 if self.move_playfield.is_some() {
                     let delta = delta / 40.0;
                     let mut a = (*self.game_settings).clone();
-                    a.playfield_scale += delta;
+                    a.playfield_scale += delta.y;
                     self.game_settings = Arc::new(a.clone());
 
                     self.actions.push(GameAction::UpdateSettings(Arc::new(

@@ -4,12 +4,12 @@ use crate::prelude::*;
 #[derive(Clone, Debug)]
 #[derive(Deserialize)]
 pub struct TabbedElement {
-    #[serde(rename = "@id", default)] id: Option<String>,
+    #[serde(rename = "@id", default)] id: Option<ArcStr>,
     #[serde(rename = "@class", default)] class_list: ClassList,
-    #[serde(rename = "@style", default)] style: String,
+    #[serde(rename = "@style", default)] style: ArcStr,
 
-    #[serde(rename = "@name")] name: String,
-    // #[serde(rename = "@name", default)] name_attribute: Option<String>,
+    #[serde(rename = "@name")] name: ArcStr,
+    // #[serde(rename = "@name", default)] name_attribute: Option<ArcStr>,
     // #[serde(rename = "name", default)] name_tag: Option<BuildableTextTag>,
     #[serde(rename = "$value")] tabs: BuildableTabProvider,
 }

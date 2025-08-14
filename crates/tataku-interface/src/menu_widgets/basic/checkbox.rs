@@ -201,7 +201,7 @@ impl Widget for Checkbox {
         );
 
         shell.list.push(text_style.create_text(
-            self.text.get().clone(), 
+            self.text.get().to_string(), 
             text_bounds
         ));
     }
@@ -209,10 +209,10 @@ impl Widget for Checkbox {
     fn update(&mut self, shell: &mut UpdateShell) {
         self.value.update(shell.values);
 
-        let old_text = self.text.get().clone();
+        let old_text = self.text.get().to_owned();
         self.text.update(shell.values);
         let new_text = self.text.get();
-        if new_text != &old_text {
+        if new_text != old_text {
             let text_style = shell.tree
                 .get_text_style(self.node_id)
                 .unwrap();
@@ -232,7 +232,7 @@ impl Widget for Checkbox {
 
 #[derive(Debug)]
 pub enum CheckboxText {
-    Static(String),
+    Static(ArcStr),
     Variable(BuildableText, String),
     Buildable(BuildableText, String),
 }
@@ -245,9 +245,9 @@ impl CheckboxText {
         }
     }
 
-    fn get(&self) -> &String {
+    fn get(&self) -> &str {
         match self {
-            Self::Static(t) => t,
+            Self::Static(t) => &**t,
             Self::Variable(_, t) => t,
             Self::Buildable(_, t) => t,
         }
@@ -272,11 +272,16 @@ impl CheckboxText {
 }
 impl From<&str> for CheckboxText {
     fn from(value: &str) -> Self {
-        Self::Static(value.to_owned())
+        Self::Static(value.into())
     }
 }
 impl From<String> for CheckboxText {
     fn from(value: String) -> Self {
+        Self::Static(value.into())
+    }
+}
+impl From<ArcStr> for CheckboxText {
+    fn from(value: ArcStr) -> Self {
         Self::Static(value)
     }
 }

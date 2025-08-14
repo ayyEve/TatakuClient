@@ -75,6 +75,9 @@ impl Tree {
         node.owner == self.owner
     }
 
+    #[allow(clippy::borrowed_box)]
+    pub fn get_node(&self) -> &Box<dyn Widget> { &self.node }
+
     pub fn set_node(
         &mut self, 
         mut node: Box<dyn Widget>,
@@ -112,8 +115,7 @@ impl Tree {
         self.update_layout(values);
     }
 
-    #[allow(clippy::borrowed_box)]
-    pub fn get_node(&self) -> &Box<dyn Widget> { &self.node }
+    
     pub fn mark_refresh(&mut self, _s: &str) {
         self.should_refresh = true;
     }
@@ -152,7 +154,7 @@ impl Tree {
             height: Definite(self.bounds.size.y),
         };
 
-        let root = self.root.node_id;
+        let root: TaffyNodeId = self.root.node_id;
         super::LayoutTree {
             viewport: self.bounds.size,
             use_rounding: self.use_rounding,
@@ -280,7 +282,8 @@ impl Tree {
         &mut self, 
         f: impl FnOnce(&mut Tree, &mut Box<dyn Widget>) -> T
     ) -> T {
-        let mut temp: Box<dyn Widget> = Box::new(EmptyWidget(self.node.node_id()));
+        let mut temp = SwapTree::new(&*self.node);
+        // let mut temp: Box<dyn Widget> = Box::new(EmptyWidget(self.node.node_id()));
         std::mem::swap(&mut self.node, &mut temp);
 
         let t = f(self, &mut temp);
@@ -314,7 +317,7 @@ impl Tree {
                     &mut shell
                 );
             }
-            if input_state.scroll_delta.abs() > f32::EPSILON {
+            if input_state.scroll_delta.x.abs() > f32::EPSILON || input_state.scroll_delta.y.abs() > f32::EPSILON{
                 node.input(
                     &input_state
                         .make_input(InputType::MouseScroll(input_state.scroll_delta)),
@@ -772,6 +775,7 @@ impl Tree {
         self.parents[child_key] = Some(parent);
         self.children[parent_key].push(child);
         self.mark_dirty(parent);
+        self.mark_refresh("add_child");
     }
 
     pub fn remove(&mut self, node: impl HasNodeId) {
@@ -905,4 +909,27 @@ impl Tree {
 struct SelectedNode {
     node: Option<NodeId>,
     active: bool,
+}
+
+
+
+struct SwapTree {
+    node: NodeId,
+    style: ArcStr,
+}
+impl SwapTree {
+    fn new(root: &dyn Widget) -> Box<dyn Widget> {
+        Box::new(Self {
+            node: root.node_id(),
+            style: root.get_style_str(),
+        })
+    }
+}
+impl Widget for SwapTree {
+    fn name(&self) -> CowStr { "SWAP TEMP".into() }
+    fn node_id(&self) -> NodeId { self.node }
+    fn get_style_str(&self) -> ArcStr { self.style.clone() }
+    fn layout(&mut self, _: &mut LayoutShell) -> TaffyResult<NodeId> {
+        unimplemented!()
+    }
 }

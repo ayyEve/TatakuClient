@@ -3,9 +3,9 @@ use crate::prelude::*;
 #[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
 pub struct RowElement {
-    #[serde(rename = "@id", default)] id: Option<String>,
+    #[serde(rename = "@id", default)] id: Option<ArcStr>,
     #[serde(rename = "@class", default)] class_list: ClassList,
-    #[serde(rename = "@style", default)] style: String,
+    #[serde(rename = "@style", default)] style: ArcStr,
     
     #[serde(alias = "$value")] children: Vec<Element>,
 }

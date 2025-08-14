@@ -13,10 +13,10 @@ crate::impl_tag!(BuildableTextTag, BuildableText, value);
 pub enum BuildableText {
     Text {
         #[serde(rename = "@text")]
-        text: String
+        text: ArcStr
     },
 
-    Locale(String),
+    Locale(ArcStr),
     Variable {
         #[serde(rename = "@var")] 
         variable: VariablePathResolver
@@ -31,19 +31,19 @@ pub enum BuildableText {
     },
 
     Calc {
-        #[serde(rename = "@calc", default)] calc: Option<String>,
+        #[serde(rename = "@calc", default)] calc: Option<ArcStr>,
         #[serde(rename = "@var", default)] var: Option<VariablePathResolver>,
     },
 
     
     /// calc but parsed, should not be read into
-    #[serde(skip)] CalcParsed(BuildableCalc, String),
+    #[serde(skip)] CalcParsed(BuildableCalc, ArcStr),
 
     #[serde(alias = "iter")] 
     TextIter {
-        #[serde(rename = "@variable")] variable: String,
-        #[serde(rename = "@property")] property: Option<String>,
-        #[serde(rename = "@join")] join: String,
+        #[serde(rename = "@variable")] variable: ArcStr,
+        #[serde(rename = "@property")] property: Option<ArcStr>,
+        #[serde(rename = "@join")] join: ArcStr,
     },
 
     List {
@@ -51,7 +51,7 @@ pub enum BuildableText {
         list: Vec<Self>,
         
         #[serde(rename="@join", default)]
-        join: String
+        join: ArcStr
     }
 }
 impl BuildableText {
@@ -64,7 +64,7 @@ impl BuildableText {
             }
             // because json pointers use '/' and not '.', but '.' is nicer for locale
             // "dialog.confirmation.yes" (us) vs "dialog/confirmation/yes" (json)
-            Self::Locale(s) => *s = s.replace('.', "/"),
+            Self::Locale(s) => *s = s.replace('.', "/").into(),
 
             Self::List { list, .. } => {
                 for i in list {
@@ -91,7 +91,7 @@ impl BuildableText {
                     .unwrap_or_else(|e| format!("Invalid property: '{variable}' ({e:?})"))
             },
             
-            Self::Text { text: t } | Self::Locale(t) => t.clone(),
+            Self::Text { text: t } | Self::Locale(t) => t.to_string(),
             
             Self::Display { variable, precision } => {
                 let variable = match variable.resolve_path(values) {
@@ -210,7 +210,7 @@ impl BuildableText {
 impl Default for BuildableText {
     fn default() -> Self {
         Self::Text { 
-            text: String::new()
+            text: ArcStr::new()
         }
     }
 }
@@ -231,7 +231,7 @@ mod tests {
     fn test_text() {
         let input = r#"<text text="hi mom"/>"#;
         let expected = BuildableText::Text { 
-            text: "hi mom".to_owned() 
+            text: "hi mom".into() 
         };
         
         assert_eq!(quick_xml::de::from_str::<'_, BuildableText>(input).unwrap(), expected);
@@ -251,7 +251,7 @@ mod tests {
     fn test_calc() {
         let input = r#" <calc calc="hi mom"/> "#;
         let expected = BuildableText::Calc { 
-            calc: Some("hi mom".to_owned()),
+            calc: Some("hi mom".into()),
             var: None,
         };
         
@@ -285,10 +285,10 @@ mod tests {
     fn test_list() {
         let input = r#" <list> <text text="hi mom"/> <text text="bye mom"/> </list> "#;
         let expected = BuildableText::List { 
-            join: String::new(),
+            join: ArcStr::new(),
             list: vec![
-                BuildableText::Text { text: "hi mom".to_owned() },
-                BuildableText::Text { text: "bye mom".to_owned() }
+                BuildableText::Text { text: "hi mom".into() },
+                BuildableText::Text { text: "bye mom".into() }
             ]  
         };
         
@@ -299,10 +299,10 @@ mod tests {
     fn test_list_join() {
         let input = r#" <list join="uwu"> <text text="hi mom"/> <text text="bye mom"/> </list> "#;
         let expected = BuildableText::List { 
-            join: "uwu".to_owned(),
+            join: "uwu".into(),
             list: vec![
-                BuildableText::Text { text: "hi mom".to_owned() },
-                BuildableText::Text { text: "bye mom".to_owned() }
+                BuildableText::Text { text: "hi mom".into() },
+                BuildableText::Text { text: "bye mom".into() }
             ]  
         };
         

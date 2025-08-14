@@ -220,7 +220,7 @@ impl Widget for Container {
         if let InputType::MouseScroll(delta) = &event.event {
             if shell.event_consumed { return }
             if self.check_scroll(
-                ScrollPosition::Relative(Vector2::new(0.0, *delta)),
+                ScrollPosition::Relative(*delta),
                 &layout
             ) {
                 let context = shell
@@ -313,16 +313,17 @@ impl Widget for Container {
 
             // FIXME: need to reload skin for added children
             // make sure our list of children is the same length as the list of values
-            match self.children.len() as i64 - values.len() as i64 {
+            let diff = self.children.len() as i64 - values.len() as i64;
+            match diff {
                 0 => {} // children and values are the same length, nothing to do
-                diff @ (..0) => {
+                (..0) => {
                     // children is too small, need to add elements
-                    
+                    let style = shell.tree.node.get_style_str(); // e.get_style_str();
+                    let mut resolver = CssResolver::new(&style);
+
                     for _ in 0..diff.abs() {
                         // create the new element
                         let mut e = data.template.build();
-                        let style = e.get_style_str();
-                        let mut resolver = CssResolver::new(&style);
 
                         let mut layout_shell = LayoutShell {
                             tree: shell.tree,
@@ -335,7 +336,7 @@ impl Widget for Container {
                         // add it to the tree
                         let child = match e.layout(&mut layout_shell) {
                             Ok(n) => n,
-                            Err(e) => panic!("Error laying out new custom list child! {e}"), // TODO: not panic?
+                            Err(e) => panic!("Error laying out new custom list child! {e}"), // FIXME: not panic?
                         };
 
                         // make us its parent
@@ -348,17 +349,17 @@ impl Widget for Container {
                         self.children.push(e);
                     }
 
-                    // mark the tree as dirty
-                    shell.actions.push(UiAction::new(
-                        self.node_id,
-                        UiActionType::MarkDirty
-                    ));
-                    shell.actions.push(UiAction::new(
-                        self.node_id,
-                        UiActionType::Refresh
-                    ));
+                    // // mark the tree as dirty
+                    // shell.actions.push(UiAction::new(
+                    //     self.node_id,
+                    //     UiActionType::MarkDirty
+                    // ));
+                    // shell.actions.push(UiAction::new(
+                    //     self.node_id,
+                    //     UiActionType::Refresh
+                    // ));
                 }
-                diff @ (0..) => {
+                (0..) => {
                     // too many elements, remove some
                     for _ in 0..diff.abs() {
                         // remove it from our list
@@ -572,12 +573,12 @@ pub struct ProgrammaticListData {
     #[chain] pub list_var: VariablePathResolver,
 
     /// What var name to store the iter variable in (ie the `i` in `for i in ...`)
-    #[chain] pub variable: String,
+    #[chain] pub variable: ArcStr,
 
     error_printed: bool,
 }
 impl ProgrammaticListData {
-    pub fn new(template: Element, list_var: String, variable: String) -> Self {
+    pub fn new(template: Element, list_var: ArcStr, variable: ArcStr) -> Self {
         Self {
             template,
             list_var: VariablePathResolver::new(list_var),

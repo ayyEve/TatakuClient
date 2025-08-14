@@ -29,6 +29,7 @@ graphics = [ "winit", "ui", "image", "tataku-engine/graphics", "tataku-interface
 [dependencies]
 tataku-common.workspace = true
 tataku-engine.workspace = true
+tataku-client-common = { workspace = true, features = ["sql"] }
 tataku-interface = { workspace = true, optional = true }
 tataku-client-proc-macros.workspace = true
 

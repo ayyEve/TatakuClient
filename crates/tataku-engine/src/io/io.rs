@@ -48,23 +48,6 @@ impl Io {
     }
 
     /// check if a file exists, downloading it if it doesnt
-    pub async fn check_file<P:AsRef<Path>>(path: P, download_url: &str) {
-        let path = path.as_ref();
-        if !path.exists() {
-            info!("Check failed for '{path:?}', downloading from '{download_url}'");
-            
-            let bytes = reqwest::get(download_url)
-                .await
-                .expect("error with request")
-                .bytes()
-                .await
-                .expect("error converting to bytes");
-
-            std::fs::write(path, bytes)
-                .expect("Error saving file");
-        }
-    }
-    /// check if a file exists, downloading it if it doesnt
     pub fn check_file_sync(path: impl AsRef<Path>, download_url: &str) {
         let path = path.as_ref();
         if !path.exists() {

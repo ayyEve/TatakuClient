@@ -3,11 +3,11 @@ use crate::prelude::*;
 #[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
 pub struct SwitchElement {
-    #[serde(rename = "@id", default)] id: Option<String>,
+    #[serde(rename = "@id", default)] id: Option<ArcStr>,
     #[serde(rename = "@class", default)] class_list: ClassList,
-    #[serde(rename = "@style", default)] style: String,
+    #[serde(rename = "@style", default)] style: ArcStr,
 
-    // #[serde(rename = "@condition", alias = "@cond")] condition: String,
+    // #[serde(rename = "@condition", alias = "@cond")] condition: ArcStr,
     #[serde(rename = "case")] cases: Vec<CaseElement>,
     #[serde(rename = "default", default)] default_case: Option<ElementTag>,
 }

@@ -4,10 +4,10 @@ use crate::prelude::ui::*;
 #[derive(Clone, Debug)]
 #[derive(Deserialize)]
 pub struct CustomMenu {
-    #[serde(rename = "@id")] pub id: String,
+    #[serde(rename = "@id")] pub id: ArcStr,
     pub element: ElementTag,
     
-    #[serde(default)] pub style: Option<String>,
+    #[serde(default)] pub style: Option<ArcStr>,
     #[serde(default)] pub events: BuildableEventsTag, 
     #[serde(default)] pub inputs: BuildableInputsTag,
 }
@@ -57,18 +57,18 @@ pub struct BuildableEventsTag {
 
 
 pub struct BuiltCustomMenu {
-    pub id: String,
-    pub styles: String,
+    pub id: ArcStr,
+    pub styles: ArcStr,
     pub element: Box<dyn Widget>,
     pub events: HashMap<TatakuEventType, Vec<BuildableAction>>,
 
     node_id: NodeId,
 }
 impl Widget for BuiltCustomMenu {
-    fn name(&self) -> CowStr { self.id.clone().into() }
+    fn name(&self) -> CowStr { self.id.to_string().into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn get_style_str(&self) -> String { self.styles.clone() }
+    fn get_style_str(&self) -> ArcStr { self.styles.clone() }
 
     fn children(&self) -> WidgetChildren {
         WidgetChildren::Single(&self.element)

@@ -4,9 +4,9 @@ use crate::prelude::*;
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
 pub struct TextInputElement {
-    #[serde(rename = "@id", default)] id: Option<String>,
+    #[serde(rename = "@id", default)] id: Option<ArcStr>,
     #[serde(rename = "@class", default)] class_list: ClassList,
-    #[serde(rename = "@style", default)] style: String,
+    #[serde(rename = "@style", default)] style: ArcStr,
 
     #[serde(rename = "@variable")] variable: String,
     #[serde(rename = "@password", default)] is_password: bool,

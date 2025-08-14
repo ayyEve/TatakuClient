@@ -28,7 +28,7 @@ pub enum MultiplayerAction {
     /// Change the beatmap
     SetBeatmap {
         hash: Md5Hash,
-        mode: Option<Arc<str>>,
+        mode: Option<ArcStr>,
     },
 
     InviteUser {

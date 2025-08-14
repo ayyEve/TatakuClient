@@ -3,12 +3,12 @@ use crate::prelude::*;
 #[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
 pub struct ListElement {
-    #[serde(rename = "@id", default)] id: Option<String>,
+    #[serde(rename = "@id", default)] id: Option<ArcStr>,
     #[serde(rename = "@class", default)] class_list: ClassList,
-    #[serde(rename = "@style", default)] style: String,
+    #[serde(rename = "@style", default)] style: ArcStr,
 
-    #[serde(rename = "@list_variable", alias = "@list")] list_var: String,
-    #[serde(rename = "@variable")] variable: String,
+    #[serde(rename = "@list_variable", alias = "@list")] list_var: ArcStr,
+    #[serde(rename = "@variable")] variable: ArcStr,
     #[serde(rename = "@scrollable", alias = "@scroll", default)] scrollable: bool,
     
     #[serde(alias = "$value")] element: Element,

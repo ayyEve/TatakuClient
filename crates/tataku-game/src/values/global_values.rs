@@ -10,14 +10,14 @@ pub struct GlobalValues {
     #[reflect(alias("infos"))]
     pub gamemode_infos: GamemodeInfos,
 
-    pub playmode: Arc<str>,
-    pub playmode_display: Arc<str>,
-    pub playmode_actual: Arc<str>,
-    pub playmode_actual_display: Arc<str>,
+    pub playmode: ArcStr,
+    pub playmode_display: ArcStr,
+    pub playmode_actual: ArcStr,
+    pub playmode_actual_display: ArcStr,
 
     pub username: String,
-    pub menu_list: Vec<String>,
-    pub dialog_list: Vec<String>,
+    pub menu_list: Vec<ArcStr>,
+    pub dialog_list: Vec<ArcStr>,
 
     pub new_beatmap_hash: Option<Md5Hash>,
 }
@@ -31,7 +31,7 @@ impl GlobalValues {
             username: settings.username.clone(),
             ..Default::default()
         };
-        let a: Arc<str> = settings.last_played_mode.clone().into();
+        let a: ArcStr = settings.last_played_mode.clone().into();
         s.update_playmode(a.clone());
         s.update_playmode_actual(a);
         
@@ -40,7 +40,7 @@ impl GlobalValues {
 
     pub fn update_playmode(
         &mut self, 
-        playmode: impl Into<Arc<str>>,
+        playmode: impl Into<ArcStr>,
     ) {
         let playmode = playmode.into();
         self.playmode = playmode.clone();
@@ -51,7 +51,7 @@ impl GlobalValues {
     }
     pub fn update_playmode_actual(
         &mut self, 
-        playmode: impl Into<Arc<str>>,
+        playmode: impl Into<ArcStr>,
     ) {
         let playmode = playmode.into();
         self.playmode_actual = playmode.clone();

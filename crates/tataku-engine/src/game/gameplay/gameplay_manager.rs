@@ -114,7 +114,7 @@ pub enum GameplayModeInner {
         frames: VecDeque<SpectatorFrame>,
 
         host_id: u32,
-        host_username: Arc<str>,
+        host_username: ArcStr,
 
         /// list of buffered replay frames
         replay_frames: Vec<ReplayFrame>,
@@ -127,7 +127,7 @@ pub enum GameplayModeInner {
         good_until: f32,
 
         /// List of (id,username) for other spectators
-        spectators: HashMap<u32, Arc<str>>,
+        spectators: HashMap<u32, ArcStr>,
 
         /// List of score frames to help sync the host score with our score
         ///

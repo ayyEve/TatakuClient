@@ -37,11 +37,23 @@ pub struct ScalingHelper {
     pub playfield_with_padding: Bounds,
 }
 impl ScalingHelper {
-    pub fn new_with_settings(settings: &OsuSettings, cs: f32, window_size: Vector2, flip_vertical: bool) -> Self {
+    pub fn new_with_settings(
+        settings: &OsuSettings, 
+        cs: f32, 
+        window_size: Vector2, 
+        flip_vertical: bool
+    ) -> Self {
         let (scale, offset) = settings.get_playfield();
+        // println!("scale: {scale}");
         Self::new_offset_scale(cs, window_size, offset, scale, flip_vertical)
     }
-    pub fn new_offset_scale(cs: f32, window_size: Vector2, settings_offset: Vector2, settings_scale: f32, flip_vertical: bool) -> Self {
+    pub fn new_offset_scale(
+        cs: f32, 
+        window_size: Vector2, 
+        settings_offset: Vector2, 
+        settings_scale: f32, 
+        flip_vertical: bool
+    ) -> Self {
         Self::new_offset_scale_custom_size(cs, window_size, settings_offset, settings_scale, flip_vertical, FIELD_SIZE)
     }
 

@@ -2,13 +2,11 @@
 
 use crate::prelude::*;
 use serde::Deserialize;
-use tataku_client_common::data::de_arc_str;
 
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
 pub struct AdofaiBeatmap {
-    #[serde(with = "de_arc_str")]
-    pub path_data: Arc<str>,
+    pub path_data: ArcStr,
     #[serde(default)]
     pub settings: AdofaiMapSettings,
     pub actions: Vec<AdofaiAction>,
@@ -17,8 +15,7 @@ pub struct AdofaiBeatmap {
     pub hash: Md5Hash,
 
     #[serde(default)]
-    #[serde(with = "de_arc_str")]
-    pub file_path: Arc<str>,
+    pub file_path: ArcStr,
     
     #[serde(default)]
     pub notes: Vec<AdofaiNoteDef>,
@@ -26,8 +23,7 @@ pub struct AdofaiBeatmap {
     pub timing_points: Vec<TimingPoint>,
 
     #[serde(default, skip)]
-    #[serde(with = "de_arc_str")]
-    audio_file: Arc<str>,
+    audio_file: ArcStr,
 }
 impl AdofaiBeatmap {
     pub fn load(path: &str) -> Self {
@@ -131,7 +127,7 @@ impl TatakuBeatmap for AdofaiBeatmap {
     }
 
     fn get_beatmap_meta(&self) -> Arc<BeatmapMeta> {
-        let parent_dir = Path::new(&*self.file_path);
+        let parent_dir = Path::new(&self.file_path);
         let parent_dir = parent_dir.parent().unwrap().to_str().unwrap();
 
 
@@ -224,98 +220,71 @@ pub enum AdofaiRotation {
 #[serde(rename_all="camelCase", default)]
 pub struct AdofaiMapSettings {
     version: u8,
-    #[serde(with = "de_arc_str")]
-    artist: Arc<str>,
-    #[serde(with = "de_arc_str")]
-    special_artist_type: Arc<str>,
-    #[serde(with = "de_arc_str")]
-    artist_permission: Arc<str>,
+    artist: ArcStr,
+    special_artist_type: ArcStr,
+    artist_permission: ArcStr,
     /// song title
-    #[serde(with = "de_arc_str")]
-    song: Arc<str>,
-    #[serde(with = "de_arc_str")]
-    author: Arc<str>,
+    song: ArcStr,
+    author: ArcStr,
     separate_countdown_time: Enabled,
 
-    #[serde(with = "de_arc_str")]
-    preview_image: Arc<str>,
-    #[serde(with = "de_arc_str")]
-    preview_icon: Arc<str>,
-    #[serde(with = "de_arc_str")]
-    preview_icon_color: Arc<str>,
+    preview_image: ArcStr,
+    preview_icon: ArcStr,
+    preview_icon_color: ArcStr,
     preview_song_start: f32,
     preview_song_duration: f32,
     seizure_warning: Enabled,
 
-    #[serde(with = "de_arc_str")]
-    level_desc: Arc<str>,
-    #[serde(with = "de_arc_str")]
-    level_tags: Arc<str>,
-    #[serde(with = "de_arc_str")]
-    artist_links: Arc<str>,
+    level_desc: ArcStr,
+    level_tags: ArcStr,
+    artist_links: ArcStr,
 
     difficulty: f32,
-    #[serde(with = "de_arc_str")]
-    song_filename: Arc<str>,
+    song_filename: ArcStr,
     bpm: f32,
     volume: u8,
     offset: f32,
     pitch: f32,
 
-    #[serde(with = "de_arc_str")]
-    hitsound: Arc<str>,
+    hitsound: ArcStr,
     hitsound_volume: u8,
     countdown_ticks: u8,
 
-    #[serde(with = "de_arc_str")]
-    track_color_type: Arc<str>,
-    #[serde(with = "de_arc_str")]
-    track_color: Arc<str>,
+    track_color_type: ArcStr,
+    track_color: ArcStr,
 
-    #[serde(with = "de_arc_str")]
-    secondary_track_color: Arc<str>,
+    secondary_track_color: ArcStr,
     track_color_anim_duration: f32,
-    #[serde(with = "de_arc_str")]
-    track_color_pulse: Arc<str>,
+    track_color_pulse: ArcStr,
     track_color_pulse_length: f32,
-    #[serde(with = "de_arc_str")]
-    track_style: Arc<str>,
-    #[serde(with = "de_arc_str")]
-    track_animation: Arc<str>,
+    track_style: ArcStr,
+    track_animation: ArcStr,
     beats_ahead: u8,
-    #[serde(with = "de_arc_str")]
-    track_dissapear_animation: Arc<str>,
+    track_dissapear_animation: ArcStr,
 
     beats_behind: u8,
-    #[serde(with = "de_arc_str")]
-    background_color: Arc<str>,
-    #[serde(with = "de_arc_str")]
-    bg_image: Arc<str>,
-    #[serde(with = "de_arc_str")]
-    bg_image_color: Arc<str>,
+    background_color: ArcStr,
+    bg_image: ArcStr,
+    bg_image_color: ArcStr,
     parallax: [f32;2],
 
-    #[serde(with = "de_arc_str")]
-    bg_display_mode: Arc<str>,
+    bg_display_mode: ArcStr,
     /// lock rotation
     lock_rot: Enabled,
     loop_bg: Enabled,
 
     unscaled_size: f32,
-    #[serde(with = "de_arc_str")]
-    relative_to: Arc<str>,
+    relative_to: ArcStr,
 
     position: [f32; 2],
     rotation: f32,
     zoom: f32,
-    #[serde(with = "de_arc_str")]
-    bg_video: Arc<str>,
+    bg_video: ArcStr,
     loop_video: Enabled,
     vid_offset: f32,
     floor_icon_outlines: Enabled,
     stick_to_floors: Enabled,
-    #[serde(with = "de_arc_str")]
-    planet_ease: Arc<str>,
+    planet_ease: ArcStr,
     planet_ease_parts: u8,
     legacy_flash: bool
 }

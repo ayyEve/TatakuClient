@@ -17,10 +17,10 @@ pub struct CssResolver<'a> {
     animations: HashMap<String, CssAnimation>,
 }
 impl<'a> CssResolver<'a> {
-    pub fn new(style: &'a str) -> Self {
+    pub fn new(style_str: &'a str) -> Self {
         let mut animations = HashMap::new();
 
-        let mut style = StyleSheet::parse(style);
+        let mut style = StyleSheet::parse(style_str);
         style.parse_more(ROW_COL);
         use simplecss::at_rules::at_rule::AtRule;
         for rule in style.at_rules.iter() {
@@ -46,7 +46,7 @@ impl<'a> CssResolver<'a> {
         
         let parsed = style.rules.iter()
             .map(CssRuleStyleResolver::parse)
-            .collect();
+            .collect::<Vec<_>>();
 
         Self {
             parsed,
@@ -61,9 +61,10 @@ impl<'a> CssResolver<'a> {
         node: NodeId,
         tree: &Tree,
     ) -> ElementStateStyles<CssStyle, ()> {
+
         let a = format!("* {{ {element_style} }}");
-        let e_stylesheet = StyleSheet::parse(&a);
-        let e_style = e_stylesheet
+        let base_stylesheet = StyleSheet::parse(&a);
+        let base_style = base_stylesheet
             .rules
             .first()
             .map(CssStyle::parse_css)
@@ -77,25 +78,21 @@ impl<'a> CssResolver<'a> {
             (ElementState::Focus, &mut states.focus.0),
         ] {
             // resolve the element's style
+            let f = fuck::A::new(tree, node, state);
             let mut ele_style = self
                 .parsed
                 .iter()
-                .filter(|i| 
-                    i.selector.matches(&fuck::A::new(tree, node, state))
-                )
+                .filter(|i| i.selector.matches(&f))
                 .fold(
-                    e_style.clone(), 
-                    |a, b| a.merge(b.style.clone())
+                    base_style.clone(), 
+                    |a, b| a.merge(b.style.clone())                    
                 );
 
             // resolve inheritance
             if let Some(parent) = tree.parent(node) {
                 let ctx = tree.get_context(parent).unwrap();
-                let parent_style = ctx
-                    .element_data
-                    .styles
-                    .get_style(state); // FIXME: should this be ElementState::None??
-                ele_style = ele_style.merge_parent(parent_style.0.clone());
+                let parent_style = ctx.get_style(state); // FIXME: should this be ElementState::None?
+                ele_style = ele_style.merge_parent(parent_style.clone());
             }
 
             *style = ele_style;
@@ -128,13 +125,9 @@ mod fuck {
         pub fn child_index(&self) -> Option<usize> {
             let parent = self.tree.parent(self.node)?;
             let children = self.tree.children(parent);
-            let index = children
+            children
                 .iter()
-                .enumerate()
-                .find(|(_, id)| id == &&self.node)
-                ?.0;
-
-            Some(index)
+                .position(|id| id == &self.node)
         }
     }
 
@@ -150,9 +143,7 @@ mod fuck {
 
             let index = children
                 .iter()
-                .enumerate()
-                .find(|(_, id)| id == &&self.node)
-                ?.0;
+                .position(|id| id == &self.node)?;
 
             let sibling = *children.get(index - 1)?;
 
@@ -160,9 +151,8 @@ mod fuck {
         }
     
         fn has_local_name(&self, name: &str) -> bool {
-            let Some(ctx) = self.tree.get_context(self.node) else {
-                return false
-            };
+            let Some(ctx) = self.tree.get_context(self.node) 
+            else { return false };
 
             ctx.element_data.element_name == name
         }
@@ -172,11 +162,12 @@ mod fuck {
             local_name: &str, 
             operator: simplecss::AttributeOperator<'_>
         ) -> bool {
-            let Some(ctx) = self.tree.get_context(self.node) else { return false };
+            let Some(ctx) = self.tree.get_context(self.node) 
+            else { return false };
             
             match local_name {
                 "id" => ctx.element_data.id.as_ref().map(|id| operator.matches(id)).unwrap_or_default(),
-                "class" => operator.matches(&ctx.element_data.class_list.join(" ")),
+                "class" => operator.matches(&ArcStr::join(&ctx.element_data.class_list, " ")),
 
                 other => panic!("attribute_matches {other}")
             }
@@ -184,12 +175,9 @@ mod fuck {
     
         fn pseudo_class_matches(&self, class: simplecss::PseudoClass<'_>) -> bool {
             use simplecss::PseudoClass;
-            if let PseudoClass::FirstChild = class {
-                return self.child_index() == Some(0)
-            }
-            
             let state = self.state;
             match class {
+                PseudoClass::FirstChild => self.child_index() == Some(0),
                 PseudoClass::Active => state.contains(ElementState::Active),
                 PseudoClass::Hover => state.contains(ElementState::Hover),
                 PseudoClass::Focus => state.contains(ElementState::Focus),

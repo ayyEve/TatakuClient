@@ -5,14 +5,14 @@ pub struct SpectatorManager {
     frames: VecDeque<SpectatorFrame>,
     state: SpectatorState,
     pub host_id: u32,
-    pub host_username: Arc<str>,
+    pub host_username: ArcStr,
 
     /// what is the current map's hash?
     /// if this is Some and game_manager is None, we dont have the map
     host_map: Option<HostMap>,
 
     /// list of id,username for other spectators
-    pub spectator_cache: HashMap<u32, Arc<str>>,
+    pub spectator_cache: HashMap<u32, ArcStr>,
     new_map: ValueChangeHelper<Md5Hash>,
     // own_beatmap: ValueChangeHelper<Arc<BeatmapMeta>>,
 
@@ -21,7 +21,7 @@ pub struct SpectatorManager {
 impl SpectatorManager {
     pub fn new(
         host_id: u32, 
-        host_username: impl Into<Arc<str>>,
+        host_username: impl Into<ArcStr>,
         infos: GamemodeInfos,
     ) -> Self {
         Self {

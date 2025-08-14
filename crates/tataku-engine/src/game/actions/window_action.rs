@@ -22,7 +22,7 @@ pub enum WindowAction {
     LoadImage(Box<LoadImage>),
 
     /// Copy some text to the clipboard
-    CopyToClipboard(Arc<str>),
+    CopyToClipboard(ArcStr),
 
     /// Refresh available monitors
     RefreshMonitors,

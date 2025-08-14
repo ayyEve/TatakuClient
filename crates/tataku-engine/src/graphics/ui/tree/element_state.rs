@@ -7,3 +7,14 @@ bitflags::bitflags! {
         const Focus = 4;
     }
 }
+
+impl ElementState {
+    pub const fn list() -> &'static [Self] {
+        &[
+            Self::None,
+            Self::Hover,
+            Self::Active,
+            Self::Focus
+        ]
+    }
+}

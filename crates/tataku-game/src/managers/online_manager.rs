@@ -71,7 +71,9 @@ pub struct OnlineManager {
 }
 impl OnlineManager {
     pub fn new() -> Self {
-        rustls_graviola::default_provider().install_default().unwrap();
+        rustls_graviola::default_provider()
+            .install_default()
+            .unwrap();
 
         // #[cfg(feature="graphics")] 
         // let mut messages = HashMap::new();
@@ -692,28 +694,28 @@ pub enum SetAction {
     Closing,
 
     Listening {
-        artist: Arc<str>,
-        title: Arc<str>,
+        artist: ArcStr,
+        title: ArcStr,
 
         elapsed: f32,
         duration: f32
     },
 
     Playing {
-        artist: Arc<str>,
-        title: Arc<str>,
-        version: Arc<str>,
-        creator: Arc<str>,
-        multiplayer_lobby_name: Option<Arc<str>>,
+        artist: ArcStr,
+        title: ArcStr,
+        version: ArcStr,
+        creator: ArcStr,
+        multiplayer_lobby_name: Option<ArcStr>,
         start_time: i64,
     },
 
     Spectating {
-        player: Arc<str>,
-        artist: Arc<str>,
-        title: Arc<str>,
-        creator: Arc<str>,
-        version: Arc<str>,
+        player: ArcStr,
+        artist: ArcStr,
+        title: ArcStr,
+        creator: ArcStr,
+        version: ArcStr,
     }
 }
 impl SetAction {

@@ -3,13 +3,13 @@ use crate::prelude::*;
 #[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
 pub struct ConditionalElement {
-    #[serde(rename = "@id", default)] id: Option<String>,
+    #[serde(rename = "@id", default)] id: Option<ArcStr>,
     #[serde(rename = "@class", default)] class_list: ClassList,
 
     /// unparsed style string, parsed when the element is built
-    #[serde(rename = "@style", default)] style: String,
+    #[serde(rename = "@style", default)] style: ArcStr,
 
-    #[serde(rename = "@condition", alias = "@cond", default)] condition: String,
+    #[serde(rename = "@condition", alias = "@cond", default)] condition: ArcStr,
     #[serde(rename = "false", default)] if_false: Option<ElementTag>,
 
     #[serde(rename = "true", default)] if_true_tag: Option<ElementTag>,
@@ -65,16 +65,16 @@ fn test() {
             </button>
         "#).unwrap(),
         ConditionalElement {
-            id: Some("cond123".to_owned()),
+            id: Some("cond123".into()),
             class_list: "thing1 thing2".into(),
-            condition: "path.to.thing.is_true".to_owned(), 
+            condition: "path.to.thing.is_true".into(), 
             if_true: Some(TextElement {
-                text: BuildableText::Text { text: "hi mom".to_owned() },
+                text: BuildableText::Text { text: "hi mom".into() },
                 ..Default::default()
             }.into()),
             if_true_tag: None,
             if_false: Some(ElementTag::new(TextElement {
-                text: BuildableText::Text { text: "bye mom".to_owned() },
+                text: BuildableText::Text { text: "bye mom".into() },
                 ..Default::default()
             })),
             ..Default::default()
