@@ -1,0 +1,21 @@
+[package]
+name = "tataku-bass"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+tataku-client-common.workspace = true
+tataku-audio.workspace = true
+
+# bass-rs = { version = "0.3.0", path = "/home/ayyeve/Desktop/projects/bass-rs" }
+bass-rs = { version = "0.2.3" }
+
+lazy_static.workspace = true
+parking_lot.workspace = true
+reqwest.workspace = true
+
+tracing.workspace = true

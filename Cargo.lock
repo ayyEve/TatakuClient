@@ -1633,6 +1633,7 @@ dependencies = [
  "tataku-client-proc-macros",
  "tataku-common",
  "tataku-engine",
+ "tataku-graphics",
  "tracing",
 ]
 
@@ -1645,6 +1646,7 @@ dependencies = [
  "tataku-client-proc-macros",
  "tataku-common",
  "tataku-engine",
+ "tataku-graphics",
  "tracing",
 ]
 
@@ -1657,6 +1659,7 @@ dependencies = [
  "tataku-client-proc-macros",
  "tataku-common",
  "tataku-engine",
+ "tataku-graphics",
  "tracing",
 ]
 
@@ -1670,6 +1673,7 @@ dependencies = [
  "tataku-client-proc-macros",
  "tataku-common",
  "tataku-engine",
+ "tataku-graphics",
  "tracing",
 ]
 
@@ -2310,6 +2314,7 @@ version = "0.1.0"
 dependencies = [
  "raw-window-handle",
  "souvlaki",
+ "tataku-audio",
  "tataku-engine",
  "tokio",
 ]
@@ -4514,6 +4519,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "tataku-audio"
+version = "0.1.0"
+dependencies = [
+ "tataku-client-common",
+ "tataku-common",
+]
+
+[[package]]
 name = "tataku-bass"
 version = "0.1.0"
 dependencies = [
@@ -4521,7 +4534,8 @@ dependencies = [
  "lazy_static",
  "parking_lot",
  "reqwest",
- "tataku-engine",
+ "tataku-audio",
+ "tataku-client-common",
  "tracing",
 ]
 
@@ -4556,9 +4570,14 @@ dependencies = [
 name = "tataku-client-common"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
+ "bitflags 2.9.1",
  "cgmath",
  "guillotiere",
+ "half",
  "image",
+ "lazy_static",
+ "md5",
  "num-format",
  "parking_lot",
  "paste",
@@ -4566,8 +4585,12 @@ dependencies = [
  "reqwest",
  "rusqlite",
  "serde",
+ "sha2",
+ "strfmt",
  "taffy",
+ "tataku-client-proc-macros",
  "tataku-common",
+ "tracing",
 ]
 
 [[package]]
@@ -4606,7 +4629,6 @@ name = "tataku-engine"
 version = "0.5.0"
 dependencies = [
  "async-trait",
- "base64 0.22.1",
  "bitflags 2.9.1",
  "clipboard",
  "encoding_rs",
@@ -4617,7 +4639,6 @@ dependencies = [
  "lazy_static",
  "libloading 0.8.7",
  "lzma-rs",
- "md5",
  "native-tls",
  "num-format",
  "parking_lot",
@@ -4628,15 +4649,16 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
- "sha2",
  "simplecss",
- "slotmap",
  "strfmt",
  "taffy",
  "tataku-client-common",
  "tataku-client-proc-macros",
  "tataku-common",
+ "tataku-graphics",
  "tataku-input",
+ "tataku-null-renderer",
+ "tataku-ui",
  "tokio",
  "tokio-native-tls",
  "tracing",
@@ -4668,17 +4690,32 @@ dependencies = [
  "serde",
  "serde_json",
  "taffy",
+ "tataku-audio",
  "tataku-client-common",
  "tataku-client-proc-macros",
  "tataku-common",
  "tataku-engine",
+ "tataku-graphics",
  "tataku-interface",
+ "tataku-null-audio",
+ "tataku-ui",
  "tokio",
  "tokio-native-tls",
  "tokio-tungstenite",
  "tracing",
  "triple_buffer",
  "winit",
+]
+
+[[package]]
+name = "tataku-graphics"
+version = "0.1.0"
+dependencies = [
+ "fontdue",
+ "rand 0.9.1",
+ "serde",
+ "tataku-client-common",
+ "tataku-common",
 ]
 
 [[package]]
@@ -4697,7 +4734,6 @@ dependencies = [
 name = "tataku-interface"
 version = "0.1.0"
 dependencies = [
- "async-recursion",
  "chrono",
  "half",
  "quick-xml",
@@ -4706,7 +4742,9 @@ dependencies = [
  "taffy",
  "tataku-client-common",
  "tataku-engine",
+ "tataku-graphics",
  "tataku-resources",
+ "tataku-ui",
 ]
 
 [[package]]
@@ -4714,13 +4752,54 @@ name = "tataku-kira"
 version = "0.1.0"
 dependencies = [
  "kira",
- "tataku-engine",
+ "parking_lot",
+ "tataku-audio",
+ "tataku-client-common",
  "tokio",
+]
+
+[[package]]
+name = "tataku-locale"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "strfmt",
+ "tataku-client-common",
+]
+
+[[package]]
+name = "tataku-null-audio"
+version = "0.1.0"
+dependencies = [
+ "tataku-audio",
+ "tataku-engine",
+]
+
+[[package]]
+name = "tataku-null-renderer"
+version = "0.1.0"
+dependencies = [
+ "tataku-client-common",
+ "tataku-graphics",
 ]
 
 [[package]]
 name = "tataku-resources"
 version = "0.1.0"
+
+[[package]]
+name = "tataku-ui"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "simplecss",
+ "slotmap",
+ "taffy",
+ "tataku-client-common",
+ "tataku-common",
+ "tataku-graphics",
+ "tataku-input",
+]
 
 [[package]]
 name = "tataku-wgpu"
@@ -4732,6 +4811,7 @@ dependencies = [
  "lyon_tessellation",
  "tataku-client-common",
  "tataku-engine",
+ "tataku-graphics",
  "tokio",
  "tracing",
  "wgpu",

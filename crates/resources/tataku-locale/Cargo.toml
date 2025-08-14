@@ -1,0 +1,10 @@
+[package]
+name = "tataku-locale"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+
+[dependencies]
+strfmt.workspace = true
+serde_json.workspace = true
+tataku-client-common.workspace = true

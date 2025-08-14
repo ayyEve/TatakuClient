@@ -1,0 +1,101 @@
+use crate::prelude::*;
+
+pub struct MessageShell<'a, Action: Send + Sync + 'static> {
+    pub messages: &'a mut Vec<Message>,
+    pub actions: &'a mut Queue<Action>,
+    pub tree: &'a mut Tree<Action>,
+    pub values: &'a mut dyn Reflect,
+    pub owner: MessageOwner,
+    pub handled: bool,
+}
+
+pub struct InputShell<'a, Action: Send + Sync + 'static> {
+    pub messages: &'a mut Vec<Message>,
+    pub actions: &'a mut Queue<Action>,
+    pub tree: &'a mut Tree<Action>,
+    pub values: &'a mut dyn Reflect,
+    pub owner: MessageOwner,
+    pub mouse_pos: Vector2,
+
+    pub event_consumed: bool,
+}
+impl<Action: Send + Sync + 'static> InputShell<'_, Action> {
+    pub fn publish(&mut self, message: Message) {
+        self.messages.push(message);
+    }
+}
+pub struct DrawShell<'a, Action: Send + Sync + 'static> {
+    pub tree: &'a Tree<Action>,
+    pub values: &'a dyn Reflect,
+    pub list: &'a mut RenderableCollection,
+    pub general_theme: GeneralUiTheme,
+}
+
+pub struct UpdateShell<'a, Action: Send + Sync + 'static> {
+    pub tree: &'a mut Tree<Action>,
+    pub values: &'a mut dyn Reflect,
+
+    pub owner: MessageOwner,
+    pub messages: &'a mut Vec<Message>,
+    pub actions: &'a mut Queue<Action>,
+    pub skin_manager: &'a mut dyn SkinProvider
+}
+
+
+pub struct LayoutShell<'a, 'css: 'a, Action: Send + Sync + 'static> {
+    pub tree: &'a mut Tree<Action>,
+    pub values: &'a mut dyn Reflect,
+    pub owner: MessageOwner,
+    pub ui_scale: f32,
+    pub resolver: &'a mut CssResolver<'css>,
+}
+impl<Action: Send + Sync + 'static> LayoutShell<'_,'_, Action> {
+    pub fn with_context(
+        &mut self, 
+        node: impl HasNodeId, 
+        f: impl Fn(&mut TreeData)
+    ) { 
+        let ctx = self.tree
+            .get_context_mut(node.get_id())
+            .expect("no context?");
+        f(ctx);
+    }
+}
+
+
+pub struct GenericShell<'a, Action: Send + Sync +'static> {
+    pub tree: &'a mut Tree<Action>,
+    pub values: &'a mut dyn Reflect,
+    pub messages: &'a mut Vec<Message>,
+    pub actions: &'a mut Queue<Action>,
+}
+impl<'a, 'b:'a, Action: Send + Sync +'static> From<&'b mut MessageShell<'a, Action>> for GenericShell<'a, Action> {
+    fn from(value: &'b mut MessageShell<'a, Action>) -> Self {
+        Self {
+            tree: value.tree,
+            values: value.values,
+            messages: value.messages,
+            actions: value.actions
+        }
+    }
+}
+impl<'a, 'b:'a, Action: Send + Sync +'static> From<&'b mut UpdateShell<'a, Action>> for GenericShell<'a, Action> {
+    fn from(value: &'a mut UpdateShell<'b, Action>) -> Self {
+        Self {
+            tree: value.tree,
+            values: value.values,
+            messages: value.messages,
+            actions: value.actions
+        }
+    }
+}
+impl<'a, 'b:'a, Action: Send + Sync +'static> From<&'b mut InputShell<'a, Action>> for GenericShell<'a, Action> {
+    fn from(value: &'b mut InputShell<'a, Action>) -> Self {
+        Self {
+            tree: value.tree,
+            values: value.values,
+            messages: value.messages,
+            actions: value.actions
+        }
+    }
+}

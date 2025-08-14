@@ -1,0 +1,19 @@
+[package]
+name = "tataku-graphics"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+graphics = []
+
+[dependencies]
+tataku-common.workspace = true
+tataku-client-common.workspace = true
+
+fontdue.workspace = true
+rand.workspace = true
+serde.workspace = true

@@ -1,0 +1,20 @@
+mod mania_game;
+mod diff_calc;
+mod info;
+mod notes;
+mod helpers;
+mod mania_settings;
+
+pub use info::GAME_INFO;
+
+mod prelude {
+    pub use tataku_engine::prelude::*;
+    pub use tataku_graphics::prelude::*;
+
+    pub use super::mania_game::*;
+    pub use super::mania_settings::*;
+    pub use super::diff_calc::*;
+    pub use super::info::*;
+    pub use super::notes::*;
+    pub use super::helpers::*;
+}

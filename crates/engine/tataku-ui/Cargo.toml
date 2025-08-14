@@ -1,0 +1,21 @@
+[package]
+name = "tataku-ui"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+
+[dependencies]
+serde.workspace = true
+taffy.workspace = true
+slotmap.workspace = true
+simplecss.workspace = true
+
+tataku-input.workspace = true
+tataku-common.workspace = true
+tataku-graphics.workspace = true
+tataku-client-common.workspace = true

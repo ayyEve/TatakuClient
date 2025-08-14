@@ -6,8 +6,20 @@ authors = [
 edition = "2024"
 
 [workspace]
-members = [ "crates/*", "gamemodes/*" , "integrations/*"]
-default-members = [ "crates/tataku-client" ]
+members = [ 
+    "crates/engine/audio/*", 
+    "crates/engine/renderers/*", 
+    "crates/engine/tataku-engine", 
+    "crates/engine/tataku-input", 
+    "crates/engine/tataku-graphics", 
+    "crates/engine/tataku-ui", 
+
+    "crates/game/*", 
+    "crates/gamemodes/*" , 
+    "crates/integrations/*",
+    "crates/resources/*",
+]
+default-members = [ "crates/game/tataku-client" ]
 resolver = "2"
 
 [workspace.lints]
@@ -41,29 +53,37 @@ rust.unused_must_use = "deny"
 # tataku-common = { version = "0.17.2", registry = "tataku-registry" }
 tataku-common = { version = "0.17.2", path = "../tataku-common/tataku-common" }
 
-tataku-client-proc-macros.path = "crates/proc_macros"
-tataku-engine.path = "crates/tataku-engine"
-tataku-game.path = "crates/tataku-game"
-tataku-resources.path = "crates/tataku-resources"
-tataku-client.path = "crates/tataku-client"
-tataku-client-common.path = "crates/common"
-tataku-interface.path = "crates/tataku-interface"
-tataku-input.path = "crates/tataku-input"
+tataku-ui.path = "crates/engine/tataku-ui"
+tataku-game.path = "crates/game/tataku-game"
+tataku-client.path = "crates/game/tataku-client"
+tataku-input.path = "crates/engine/tataku-input"
+tataku-engine.path = "crates/engine/tataku-engine"
+tataku-graphics.path = "crates/engine/tataku-graphics"
+tataku-client-common.path = "crates/game/client-common"
+tataku-interface.path = "crates/game/tataku-interface"
+tataku-client-proc-macros.path = "crates/game/proc_macros"
+tataku-resources.path = "crates/resources/tataku-resources"
 
-tataku-wgpu.path = "crates/tataku-wgpu"
-tataku-bass.path = "crates/tataku-bass"
-tataku-kira.path = "crates/tataku-kira"
+# audio
+tataku-audio.path = "crates/engine/audio/audio-common"
+tataku-bass.path = "crates/engine/audio/tataku-bass"
+tataku-kira.path = "crates/engine/audio/tataku-kira"
+tataku-null-audio.path = "crates/engine/audio/null-audio"
+
+# renderers
+tataku-wgpu.path = "crates/engine/renderers/tataku-wgpu"
+tataku-null-renderer.path = "crates/engine/renderers/null-renderer"
 
 # Gamemodes
-gamemode-osu.path = "gamemodes/osu"
-gamemode-taiko.path = "gamemodes/taiko"
-gamemode-mania.path = "gamemodes/mania"
-gamemode-utyping.path = "gamemodes/utyping"
+gamemode-osu.path = "crates/gamemodes/osu"
+gamemode-taiko.path = "crates/gamemodes/taiko"
+gamemode-mania.path = "crates/gamemodes/mania"
+gamemode-utyping.path = "crates/gamemodes/utyping"
 
 # Integrations
-integration-discord.path = "integrations/discord"
-integration-lastfm.path = "integrations/lastfm"
-integration-media-controls.path = "integrations/media_controls"
+integration-discord.path = "crates/integrations/discord"
+integration-lastfm.path = "crates/integrations/lastfm"
+integration-media-controls.path = "crates/integrations/media_controls"
 
 
 

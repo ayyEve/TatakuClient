@@ -1,0 +1,12 @@
+[package]
+name = "tataku-null-audio"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+tataku-engine.workspace = true
+tataku-audio.workspace = true

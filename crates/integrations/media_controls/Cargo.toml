@@ -1,0 +1,18 @@
+[package]
+name = "integration-media-controls"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+tokio.workspace = true
+tataku-engine.workspace = true
+tataku-audio.workspace = true
+raw-window-handle.workspace = true
+
+
+# media controls 
+souvlaki = { version = "0.8.2", default-features = false, features = [ "use_zbus" ] }
