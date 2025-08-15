@@ -5,8 +5,6 @@ use crate::prelude::*;
 pub struct DropdownElement {
     #[serde(rename = "@id", default)] id: Option<ArcStr>,
     #[serde(rename = "@class", default)] class_list: ClassList,
-
-    /// unparsed style string, parsed when the element is built
     #[serde(rename = "@style", default)] style: ArcStr,
 
     #[serde(rename = "@options_path")] options_path: ArcStr,

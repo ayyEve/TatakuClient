@@ -32,9 +32,10 @@ impl<'a> SettingsBuilder<'a> {
 
         category.settings.push(Arc::new(setting));
     }
-    pub fn add_category(
+    pub fn add_category<T: ToString>(
         &mut self, 
         name: impl ToString,
+        icon: Option<T>,
     ) {
         if let Some(category) = self.current_category.take() {
             self.current_id += 1;
@@ -43,6 +44,7 @@ impl<'a> SettingsBuilder<'a> {
 
         self.current_category = Some(BuildableSettingsCategory {
             name: name.to_string(),
+            icon: icon.map(|i| i.to_string()),
             id: self.current_id,
             settings: Vec::new(),
         });

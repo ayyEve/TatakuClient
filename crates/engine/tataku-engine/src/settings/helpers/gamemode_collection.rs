@@ -197,7 +197,7 @@ impl MakeSettingsMenu for GamemodeSettingsCollection {
             else { continue };
 
             let path = format!("{prefix}.{playmode}");
-            builder.add_category(info.display_name);
+            builder.add_category(info.display_name, None::<&str>);
             settings.create_provider(path, builder);
         }
     }

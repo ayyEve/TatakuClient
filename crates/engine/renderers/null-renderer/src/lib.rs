@@ -8,6 +8,7 @@ impl GraphicsEngine for DummyGraphicsEngine {
 
     fn set_vsync(&mut self, _: Vsync) {}
     fn set_blur(&mut self, _: bool) {}
+    fn vsync_modes(&self) -> Vec<Vsync> { Vsync::list() }
 
     fn create_render_target(
         &mut self, 

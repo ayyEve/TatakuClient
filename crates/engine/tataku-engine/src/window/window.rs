@@ -41,7 +41,7 @@ pub struct GameWindow<'window> {
     graphics: Box<dyn GraphicsEngine + 'window>,
     pub settings: DisplaySettings,
 
-    game_event_sender: Arc<Sender<WindowEvent>>,
+    window_event_sender: Arc<Sender<WindowEvent>>,
     render_data: Vec<Box<dyn TatakuRenderable>>,
 
     frametime_timer: TatakuInstant,
@@ -65,7 +65,7 @@ pub struct GameWindow<'window> {
 }
 impl<'window> GameWindow<'window> {
     pub fn new(
-        game_event_sender: Sender<WindowEvent>,
+        window_event_sender: Sender<WindowEvent>,
         window: &'window OnceCell<WinitWindow>,
         window_creation_barrier: Arc<std::sync::Barrier>,
         settings: &Settings,
@@ -81,7 +81,7 @@ impl<'window> GameWindow<'window> {
             graphics: Box::new(tataku_null_renderer::DummyGraphicsEngine),
             settings: settings.display_settings.clone(),
 
-            game_event_sender: Arc::new(game_event_sender),
+            window_event_sender: Arc::new(window_event_sender),
             // window_event_receiver,
             render_data: Vec::new(),
 
@@ -111,12 +111,12 @@ impl<'window> GameWindow<'window> {
     }
 
     pub fn dump_atlas() {
-        WINDOW_PROXY.get().unwrap().send_event(WindowAction::DumpAtlas).unwrap();
+        Self::send_action(WindowAction::DumpAtlas);
     }
 
-    fn send_game_event(&mut self, event: WindowEvent) {
+    fn send_event(&mut self, event: WindowEvent) {
         // try to send without spawning a task.
-        if let Err(tokio::sync::mpsc::error::TrySendError::Full(event)) = self.game_event_sender.try_send(event) {
+        if let Err(tokio::sync::mpsc::error::TrySendError::Full(event)) = self.window_event_sender.try_send(event) {
             // warn!("Game event queue full, event is getting queued: {event:?}");
             self.queued_events.push(event);
         }
@@ -133,13 +133,13 @@ impl<'window> GameWindow<'window> {
             let info = self.controller_input.gamepad(event.id);
             if event.event == gilrs::EventType::Connected { info!("new controller: {}", info.name()) }
 
-            self.send_game_event(WindowEvent::Input(InputType::RawControllerEvent(event, info.name().into(), info.power_info())));
+            self.send_event(WindowEvent::Input(InputType::RawControllerEvent(event, info.name().into(), info.power_info())));
         }
 
         // send as many queued requests as we can
         loop {
             let Some(event) = self.queued_events.pop() else { break };
-            if let Err(tokio::sync::mpsc::error::TrySendError::Full(event)) = self.game_event_sender.try_send(event) {
+            if let Err(tokio::sync::mpsc::error::TrySendError::Full(event)) = self.window_event_sender.try_send(event) {
                 // queue is full again (or still full). re-insert this event back at the top of the queue
                 self.queued_events.insert(0, event);
                 break;
@@ -234,19 +234,19 @@ impl<'window> GameWindow<'window> {
 // input and state stuff
 impl GameWindow<'_> {
     fn refresh_monitors_inner(&mut self) {
-        *MONITORS.write() = self.window()
+        let monitors = self.window()
             .available_monitors()
             .filter_map(|m| m.name())
-            .collect();
+            .collect::<Vec<_>>();
+
+        self.send_event(WindowEvent::AvailableMonitors(monitors));
     }
 
     fn set_fullscreen(&mut self, monitor: FullscreenMonitor) {
-        if let FullscreenMonitor::Monitor(monitor_num) = monitor {
-            if let Some((_, monitor)) = self
-                .window()
+        if let FullscreenMonitor::Monitor(name) = monitor {
+            if let Some(monitor) = self.window()
                 .available_monitors()
-                .enumerate()
-                .find(|(n, _)| *n == monitor_num)
+                .find(|m| m.name().filter(|n| name == *n).is_some())
             {
                 self.window().set_fullscreen(Some(
                     winit::window::Fullscreen::Borderless(Some(monitor))
@@ -277,7 +277,6 @@ impl GameWindow<'_> {
             )
     }
 
-
     fn handle_touch_event(&mut self, touch: Touch) -> Option<WindowEvent> {
         match touch {
             Touch { phase:TouchPhase::Started, location, id, .. } => {
@@ -292,7 +291,7 @@ impl GameWindow<'_> {
                 if self.finger_touches.len() == 1 {
                     self.touch_pos = Some((id, touch_pos));
 
-                    self.send_game_event(WindowEvent::Input(InputType::MouseMove(Vector2::new(location.x as f32, location.y as f32))));
+                    self.send_event(WindowEvent::Input(InputType::MouseMove(Vector2::new(location.x as f32, location.y as f32))));
                     Some(WindowEvent::Input(InputType::MousePress(MouseButton::Left)))
                 } else {
                     None
@@ -347,20 +346,20 @@ impl GameWindow<'_> {
 
 // static fns
 impl GameWindow<'_> {
-    fn send_event(event: WindowAction) {
+    fn send_action(event: WindowAction) {
         let Some(proxy) = WINDOW_PROXY.get() else { return };
         let _ = proxy.send_event(event);
     }
 
     pub fn refresh_monitors() {
-        Self::send_event(WindowAction::RefreshMonitors);
+        Self::send_action(WindowAction::RefreshMonitors);
     }
 
     pub fn load_texture_data(data: RgbaImage) -> TatakuResult<TextureReference> {
         trace!("loading tex data");
 
         let (s, r) = sync_channel(1);
-        Self::send_event(WindowAction::LoadImage(Box::new(
+        Self::send_action(WindowAction::LoadImage(Box::new(
             LoadImage::Image(data, Box::new(move |r| s.send(r).nope())))
         ));
 
@@ -400,7 +399,7 @@ impl GameWindow<'_> {
         trace!("create render target");
 
         let (s, r) = sync_channel(1);
-        Self::send_event(WindowAction::LoadImage(Box::new(LoadImage::CreateRenderTarget(
+        Self::send_action(WindowAction::LoadImage(Box::new(LoadImage::CreateRenderTarget(
             size, 
             Box::new(move |t| s.send(t).nope()), 
             Box::new(callback)
@@ -416,7 +415,7 @@ impl GameWindow<'_> {
         trace!("update render target");
 
         let (s, r) = sync_channel(1);
-        Self::send_event(WindowAction::LoadImage(Box::new(LoadImage::UpdateRenderTarget(
+        Self::send_action(WindowAction::LoadImage(Box::new(LoadImage::UpdateRenderTarget(
             rt, 
             Box::new(move |t| s.send(t).nope()), 
             Box::new(callback)
@@ -427,7 +426,7 @@ impl GameWindow<'_> {
 
 
     pub fn free_texture(tex: TextureReference) {
-        Self::send_event(WindowAction::LoadImage(Box::new(
+        Self::send_action(WindowAction::LoadImage(Box::new(
             LoadImage::FreeTexture(tex)
         )));
     }
@@ -448,7 +447,6 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
             .with_decorations(!self.settings.hide_decorations)
             ;
 
-
         #[cfg(target_os="linux")] {
             use winit::platform::wayland::WindowAttributesExtWayland;
 
@@ -457,7 +455,8 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
         }
 
 
-        let window = event_loop.create_window(attribs)
+        let window = event_loop
+            .create_window(attribs)
             .expect("Unable to create window");
         window.set_cursor_visible(false);
 
@@ -487,7 +486,6 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
         info!("Window created");
 
         // initialize graphics
-
         let window_runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
@@ -513,7 +511,6 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
             self.window_creation_barrier.wait(); //.await;
         });
 
-
         let mut integrations = Vec::new();
         let window_handle = self.window().window_handle().unwrap();
         for integration in self.integration_builders.take() {
@@ -526,11 +523,12 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
         }
 
         self.window().set_min_inner_size(Some(to_size(self.settings.window_size.into())));
-        self.refresh_monitors_inner();
-        self.set_fullscreen(self.settings.fullscreen_monitor);
+        self.set_fullscreen(self.settings.fullscreen_monitor.clone());
         self.set_vsync(self.settings.vsync);
-        self.send_game_event(WindowEvent::SizeChanged(self.settings.window_size.into()));
-        self.send_game_event(WindowEvent::IntegrationsLoaded(integrations));
+        self.send_event(WindowEvent::SizeChanged(self.settings.window_size.into()));
+        self.send_event(WindowEvent::IntegrationsLoaded(integrations));
+        self.refresh_monitors_inner();
+        self.send_event(WindowEvent::VsyncModes(self.graphics.vsync_modes()));
     }
 
 
@@ -558,11 +556,11 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
             WindowAction::CloseGame => {
                 self.close_pending = true;
                 // try send because the game might already be dead at this point
-                let _ = self.game_event_sender.try_send(WindowEvent::Closed);
+                let _ = self.window_event_sender.try_send(WindowEvent::Closed);
             }
 
             WindowAction::TakeScreenshot(info) => {
-                let sender = self.game_event_sender.clone();
+                let sender = self.window_event_sender.clone();
 
                 self.graphics.screenshot(Box::new(move |(data, size)| {
                     let _ = sender.try_send(WindowEvent::ScreenshotComplete(data, size, info));
@@ -577,7 +575,7 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
 
             WindowAction::SettingsUpdated(settings) => {
                 if self.settings.fullscreen_monitor != settings.fullscreen_monitor {
-                    self.set_fullscreen(settings.fullscreen_monitor);
+                    self.set_fullscreen(settings.fullscreen_monitor.clone());
                 }
                 if self.settings.hide_decorations != settings.hide_decorations {
                     self.window().set_decorations(!settings.hide_decorations);
@@ -619,7 +617,7 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
                 let new_size = Vector2::new(new_size.width as f32, new_size.height as f32);
 
                 if new_size != Vector2::ZERO {
-                    self.send_game_event(WindowEvent::SizeChanged(new_size));
+                    self.send_event(WindowEvent::SizeChanged(new_size));
                 }
 
                 None
@@ -668,7 +666,7 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
             _ => None
         };
 
-        if let Some(event) = event { self.send_game_event(event); }
+        if let Some(event) = event { self.send_event(event); }
     }
 
 

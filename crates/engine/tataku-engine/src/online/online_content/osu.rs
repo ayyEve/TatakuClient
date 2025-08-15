@@ -70,8 +70,7 @@ impl OnlineContentEngine for OsuDirect {
         search: OnlineContentSearch,
     ) -> AsyncLoader<OnlineContentSearchResults> {
         debug!("Searching: {search:?}");
-        let username = settings.osu_username.clone();
-        let password = settings.osu_password.clone();
+        let creds = settings.integrations.osu.clone();
 
         let mode = search.search_values
             .get_value_or_default("mode", "");
@@ -140,7 +139,9 @@ impl OnlineContentEngine for OsuDirect {
                 .map(|(id, i)| {
                     let filename = format!("{}.osz", i.id);
                     let url = format!(
-                        "https://osu.ppy.sh/d/{filename}?u={username}&h={password}"
+                        "https://osu.ppy.sh/d/{filename}?u={}&h={}",
+                        creds.username,
+                        creds.password,
                     );
 
                     OnlineContentItem { 

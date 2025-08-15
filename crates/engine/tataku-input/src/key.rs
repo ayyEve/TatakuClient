@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
 #[derive(Serialize, Deserialize)]
 #[derive(Reflect)]
 pub enum Key {
@@ -185,6 +185,10 @@ pub enum Key {
     Copy,
     Paste,
     Cut,
+
+
+    #[default]
+    Unknown
 }
 
 #[cfg(feature="graphics")]

@@ -12,15 +12,6 @@ pub struct SkinManager {
 #[cfg(feature="graphics")]
 // static
 impl SkinManager {
-    pub fn refresh_skins() {
-        let mut list = vec!["None".to_owned()];
-        for f in std::fs::read_dir(SKINS_FOLDER).unwrap() {
-            list.push(f.unwrap().file_name().to_string_lossy().to_string());
-        }
-
-        *AVAILABLE_SKINS.write() = list;
-    }
-
     pub fn new(settings: &Settings) -> Self {
         let current_skin = settings.current_skin.clone();
         let current_skin_config = Arc::new(SkinSettings::from_file(

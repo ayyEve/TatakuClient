@@ -138,7 +138,7 @@ impl ScoreManager {
                     .map(|b| b.beatmap_type)
                     .ok_or("no beatmap")?;
                 
-                let osu_api_key = values.settings.osu_api_key.clone();
+                let osu_api_key = values.settings.integrations.osu.api_key.clone();
                 let infos = self.infos.clone();
 
                 let handle = tokio::spawn(async move {

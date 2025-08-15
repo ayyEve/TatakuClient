@@ -119,13 +119,12 @@ impl<'window> WgpuEngine<'window> {
         ).await.unwrap();
 
         let can_blur = device.features().contains(Features::BGRA8UNORM_STORAGE);
-        if !can_blur {
-            warn!("Blur unsupported on this device!");
-        }
+        if !can_blur { warn!("Blur unsupported on this device!"); }
 
         // no more comments good luck!
         let surface_caps = surface.get_capabilities(&adapter);
-        let present_modes = surface_caps.present_modes
+        let present_modes = surface_caps
+            .present_modes
             .into_iter()
             .map(VsyncUtils::map_to_vsync)
             .chain([Vsync::AutoNoVsync, Vsync::AutoVsync])
@@ -136,7 +135,7 @@ impl<'window> WgpuEngine<'window> {
             .find(|f| f.is_srgb())
             .unwrap_or(surface_caps.formats[0]);
         let config = SurfaceConfiguration {
-            usage: TextureUsages::RENDER_ATTACHMENT, // | TextureUsages::COPY_SRC,
+            usage: TextureUsages::RENDER_ATTACHMENT, 
             format: surface_format,
             width: window_size[0] as u32,
             height: window_size[1] as u32,
@@ -147,7 +146,6 @@ impl<'window> WgpuEngine<'window> {
             desired_maximum_frame_latency: 1,
         };
         surface.configure(&device, &config);
-
 
         #[cfg(feature="texture_arrays")]
         let texture_bind_group_layout = device.create_bind_group_layout(
@@ -1584,13 +1582,15 @@ impl GraphicsEngine for WgpuEngine<'_> {
     }
 
     fn set_vsync(&mut self, vsync: Vsync) {
-        self.config.present_mode = VsyncUtils::map_from_vsync(VsyncUtils::to_okay(
-            vsync, 
-            &self.present_modes
-        ));
+        self.config.present_mode = VsyncUtils::map_from_vsync(
+            vsync.to_okay(&self.present_modes)
+        );
         self.surface.configure(&self.device, &self.config);
     }
 
+    fn vsync_modes(&self) -> Vec<Vsync> {
+        self.present_modes.clone()
+    }
 
     fn set_blur(&mut self, enabled: bool) {
         self.blur_enabled = enabled;
@@ -2310,30 +2310,6 @@ impl VsyncUtils {
             Vsync::FifoRelaxed => PresentMode::FifoRelaxed,
             Vsync::Immediate => PresentMode::Immediate,
             Vsync::Mailbox => PresentMode::Mailbox,
-        }
-    }
-
-    fn to_okay(vsync: Vsync, present_modes: &[Vsync]) -> Vsync {
-        if Self::is_okay(&vsync, present_modes) {
-            vsync
-        } else {
-            Self::get_fallback(vsync)
-        }
-    }
-    fn is_okay(vsync: &Vsync, present_modes: &[Vsync]) -> bool {
-        present_modes.contains(vsync)
-    }
-    fn get_fallback(vsync: Vsync) -> Vsync {
-        match vsync {
-            Vsync::AutoVsync 
-            | Vsync::Fifo
-            | Vsync::FifoRelaxed
-                => Vsync::AutoVsync,
-
-            Vsync::AutoNoVsync 
-            | Vsync::Immediate
-            | Vsync::Mailbox
-                => Vsync::AutoNoVsync,
         }
     }
 }

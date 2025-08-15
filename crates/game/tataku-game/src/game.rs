@@ -277,20 +277,20 @@ impl Game {
     fn init(&mut self) {
         let now = std::time::Instant::now();
         
-        #[cfg(feature="graphics")]
-        self.load_custom_menus();
-
-        #[cfg(feature="graphics")] 
-        self.load_theme();
+        #[cfg(feature="graphics")] {
+            self.load_custom_menus();
+            self.load_theme();
+        }
 
         self.init_online();
 
-        // setup double tap protection
-        #[cfg(feature="gameplay")]
-        self.input_manager.set_double_tap_protection(
-            self.settings.enable_double_tap_protection
-                .then_some(self.settings.double_tap_protection_duration)
-        );
+        #[cfg(feature="gameplay")] {
+            // setup double tap protection
+            self.input_manager.set_double_tap_protection(
+                self.settings.enable_double_tap_protection
+                    .then_some(self.settings.double_tap_protection_duration)
+            );
+        }
 
         // new beatmap check task
         self.actions.push(TaskAction::AddTask(Box::new(
@@ -302,7 +302,7 @@ impl Game {
         settings.init(&mut self.values, "settings".to_string());
         self.settings = settings;
 
-        debug!("game init took {:.2}", now.elapsed().as_secs_f32() * 1000.0);
+        debug!("game init took {:.2}ms", now.elapsed().as_secs_f32() * 1000.0);
 
 
 
@@ -549,6 +549,23 @@ impl Game {
                     }
                     
                     self.integrations = integrations;
+                }
+
+                WindowEvent::VsyncModes(modes) => {
+                    let current = self.settings.display_settings.vsync;
+                    if !modes.contains(&current) {
+                        self.actions.push(Notification::new_text(
+                            "Unsupported Vsync mode, changing to fallback!", 
+                            Color::YELLOW, 
+                            10_000.0
+                        ));
+                        self.settings.display_settings.vsync = current.get_fallback();
+                        let _ = self.window_proxy.send_event(WindowAction::SettingsUpdated(
+                            self.settings.display_settings.clone()
+                        ));
+                    }
+
+                    self.values.enums.vsync = modes;
                 }
 
                 _ => {}
@@ -2882,7 +2899,11 @@ impl Game {
             }
 
             GameAction::RefreshSkins => {
-                SkinManager::refresh_skins();
+                let mut list = vec!["None".to_owned()];
+                for f in std::fs::read_dir(SKINS_FOLDER).unwrap() {
+                    list.push(f.unwrap().file_name().to_string_lossy().to_string());
+                }
+                self.values.enums.skins = list;
             }
 
 

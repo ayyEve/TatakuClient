@@ -31,4 +31,10 @@ pub enum WindowEvent {
 
     /// Integrations have been loaded and are sent back to the game for usage
     IntegrationsLoaded(Vec<Box<dyn TatakuIntegration>>),
+
+    /// The list of available monitors has been updated
+    AvailableMonitors(Vec<String>),
+
+    /// The list of available vsync modes has been updated
+    VsyncModes(Vec<Vsync>),
 }

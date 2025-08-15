@@ -17,6 +17,9 @@ pub trait GraphicsEngine {
     /// set the vsync mode
     fn set_vsync(&mut self, vsync: Vsync);
 
+    /// Get the list of avaiable vsync modes
+    fn vsync_modes(&self) -> Vec<Vsync>;
+
     fn create_render_target(
         &mut self, 
         size: [u32; 2], 

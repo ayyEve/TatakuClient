@@ -101,9 +101,9 @@ pub fn load_osu_settings(path: impl AsRef<Path>, settings: &mut Settings) -> Res
             data.get(&$key.to_owned())
         };
 
-        ($key:expr, $val:ident) => {
+        ($key:expr, $($val:ident),*) => {
             if let Some(v) = data.get(&$key.to_owned()) {
-                settings.$val = v.to_owned()
+                settings $(.$val)* = v.to_owned()
             }
         }
     }
@@ -134,7 +134,7 @@ pub fn load_osu_settings(path: impl AsRef<Path>, settings: &mut Settings) -> Res
     string!("Skin", current_skin);
     // bool!("RawInput", display_settings.raw_mouse_input);
     // bool!("ComboColourSliderBall", standard_settings, combo_color_slider);
-    string!("Username", osu_username);
+    string!("Username", integrations, osu, username);
     // bool!("DiscordRichPresence", discord);
 
     // keys

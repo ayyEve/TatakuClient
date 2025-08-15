@@ -4,11 +4,20 @@ use crate::prelude::*;
 #[reflect(display = "debug")]
 #[derive(Debug, Clone, Default)]
 pub struct EnumValues {
+    // static enums
     pub sort_by: Vec<SortBy>,
     pub group_by: Vec<GroupBy>,
+    pub vsync: Vec<Vsync>,
+    pub performance_mode: Vec<PerformanceMode>,
     pub score_methods: Vec<ScoreRetreivalMethod>,
 
     pub playmodes: HashMap<String, PlaymodeReflect>,
+
+
+    // modifiable enums
+    pub skins: Vec<String>,
+    pub themes: Vec<SelectedTheme>,
+    pub monitors: Vec<FullscreenMonitor>,
 }
 impl EnumValues {
     pub fn new(infos: &GamemodeInfos) -> Self {
@@ -22,8 +31,13 @@ impl EnumValues {
             sort_by: SortBy::list(),
             group_by: GroupBy::list(),
             score_methods: ScoreRetreivalMethod::list(),
-
+            vsync: Vsync::list(),
+            performance_mode: PerformanceMode::list(),
             playmodes,
+
+            skins: Vec::new(),
+            themes: vec![ SelectedTheme::Tataku, SelectedTheme::Osu ],
+            monitors: Vec::new(),
         }
     }
 }

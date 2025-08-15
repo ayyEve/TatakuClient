@@ -1,12 +1,10 @@
 use tataku_common::prelude::*;
 use serde::{ Serialize, Deserialize };
 
-// pub static AVAILABLE_PRESENT_MODES: OnceCell<Vec<Vsync>> = OnceCell::const_new();
-
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 #[derive(Serialize, Deserialize)]
 #[derive(Reflect)]
-#[reflect(display = "debug")]
+#[reflect(display = "display")]
 pub enum Vsync {
     AutoVsync,
     #[default]
@@ -16,22 +14,42 @@ pub enum Vsync {
     Immediate,
     Mailbox,
 }
+impl Vsync {
+    pub fn list() -> Vec<Self> {
+        vec![
+            Self::AutoVsync,
+            Self::AutoNoVsync,
+            Self::Fifo,
+            Self::FifoRelaxed,
+            Self::Immediate,
+            Self::Mailbox,
+        ]
+    }
 
-// impl crate::Dropdownable2 for Vsync {
-//     type T = Self;
-//     fn variants() -> Vec<Self> {
-//         vec![
-//             Self::AutoVsync,
-//             Self::AutoNoVsync,
-//             // FIXME: fix this
-//             Self::Fifo,
-//             Self::FifoRelaxed,
-//             Self::Immediate,
-//             Self::Mailbox,
-//         ]
-//     }
-// }
+    pub fn to_okay(self, present_modes: &[Self]) -> Self {
+        if Self::is_okay(&self, present_modes) {
+            self
+        } else {
+            self.get_fallback()
+        }
+    }
+    pub fn is_okay(&self, present_modes: &[Self]) -> bool {
+        present_modes.contains(self)
+    }
+    pub fn get_fallback(self) -> Self {
+        match self {
+            Self::AutoVsync 
+            | Self::Fifo
+            | Self::FifoRelaxed
+                => Self::AutoVsync,
 
+            Self::AutoNoVsync 
+            | Self::Immediate
+            | Self::Mailbox
+                => Self::AutoNoVsync,
+        }
+    }
+}
 impl core::fmt::Display for Vsync {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

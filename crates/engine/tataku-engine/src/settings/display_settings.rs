@@ -10,7 +10,7 @@ pub struct DisplaySettings {
     pub window_size: [f32; 2],
     #[cfg_attr(feature="graphics", setting(text="FPS Limit", min=15, max=1_000, category="Window Settings"))]
     pub fps_target: u64,
-    #[cfg_attr(feature="graphics", setting(text="Vsync", dropdown="Vsync"))]
+    #[cfg_attr(feature="graphics", setting(text="Vsync", dropdown(path="enums.vsync")))]
     #[serde(deserialize_with = "vsync_reader")]
     pub vsync: Vsync,
     #[cfg_attr(feature="graphics", setting(text="Update Limit", min=500, max=10_000))]
@@ -24,19 +24,19 @@ pub struct DisplaySettings {
     #[cfg_attr(feature="graphics", setting(text="Scroll Sensitivity", min=0.1, max=5.0))]
     pub scroll_sensitivity: f32,
 
-    #[cfg_attr(feature="graphics", setting(text="Fullscreen", dropdown="FullscreenMonitor"))]
+    #[cfg_attr(feature="graphics", setting(text="Fullscreen", dropdown(path="enums.monitors")))]
     pub fullscreen_monitor: FullscreenMonitor,
     pub fullscreen_windowed: bool, // render at window_size?
     pub fullscreen_center: bool, // when rendering at window_size, center?
 
     
-    #[cfg_attr(feature="graphics", setting(text="Performance Mode (requires restart)", dropdown="PerformanceMode"))]
+    #[cfg_attr(feature="graphics", setting(text="Performance Mode (requires restart)", dropdown(path="enums.performance_mode")))]
     pub performance_mode: PerformanceMode,
     
     #[serde(skip)]
     #[reflect(skip)]
     #[cfg_attr(feature="graphics", setting(text="Refresh Monitors", click="WindowAction::RefreshMonitors"))]
-    refresh_monitors_button: (),
+    refresh_monitors_button: SettingsButton,
 
     #[cfg_attr(feature="graphics", setting(text="Hide Decorations"))]
     pub hide_decorations: bool,
@@ -75,10 +75,17 @@ impl Default for DisplaySettings {
 #[derive(Copy, Clone, Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[derive(Reflect)]
 #[reflect(display = "display")]
-// #[cfg_attr(feature="graphics", derive(Dropdown))]
 pub enum PerformanceMode {
     PowerSaver,
     HighPerformance,
+}
+impl PerformanceMode {
+    pub fn list() -> Vec<Self> {
+        vec![
+            Self::PowerSaver,
+            Self::HighPerformance,
+        ]
+    }
 }
 impl Display for PerformanceMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

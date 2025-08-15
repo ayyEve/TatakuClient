@@ -13,7 +13,7 @@
 
         .setting {
           width: fill;
-          height: 1em;
+          height: 2em;
         }
         .setting-text {
           width: 25%;
@@ -260,35 +260,42 @@
                     </case>
 
                     <!-- Dropdown -->
-                    <!-- <case cond="display(_setting.type) == 'Dropdown'">
-                      <switch>
-                        <case cond="display(_setting.type.Dropdown.options) == 'List'">
-                          <text> <text text="not yet implemented, sorry!"/> </text>
-                        </case>
+                    <case cond="display(_setting.type) == 'Dropdown'">
+                      <row style="width: fill; ">
+                        <text class="setting-text">
+                          <list>
+                            <variable var="_setting.name" />
+                            <text text=":" />
+                          </list>
+                        </text>
 
-                        <case cond="display(_setting.type.Dropdown.options) == 'Variable'">
-                          <dropdown 
-                            options_path = "_setting.type.Dropdown.options.Variable.var" 
-                            selected_path = "::_setting.path"
-                          >
-                            <onSelect>
-                              <setValue key = "::_setting.path">
-                                <passedIn />
-                              </setValue>
-                            </onSelect>
-                          </dropdown>
-                        </case>
+                        <switch>
+                          <case cond="display(_setting.type.Dropdown.options) == 'List'">
+                            <text> <text text="not yet implemented, sorry!"/> </text>
+                          </case>
 
-                        <default>
-                          <text>
-                            <list>
-                              <text text="Unknown dropdown type:" />
-                              <display var="_setting.type.Dropdown.options"/>
-                            </list>
-                          </text>
-                        </default>
-                      </switch>
-                    </case> -->
+                          <case cond="display(_setting.type.Dropdown.options) == 'Variable'">
+                            <dropdown 
+                              options_path = "::_setting.type.Dropdown.options.Variable.var" 
+                              selected_path = "::_setting.path"
+                            >
+                              <onSelect>
+                                <setValue key = "::_setting.path"> <passedIn /> </setValue>
+                              </onSelect>
+                            </dropdown>
+                          </case>
+
+                          <default>
+                            <text>
+                              <list>
+                                <text text="Unknown dropdown type:" />
+                                <display var="_setting.type.Dropdown.options"/>
+                              </list>
+                            </text>
+                          </default>
+                        </switch>
+                      </row>
+                    </case>
 
                     <!-- Button -->
                     <case cond="display(_setting.type) == 'Button'">

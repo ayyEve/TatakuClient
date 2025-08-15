@@ -11,7 +11,7 @@ impl OsuReplayDownloader {
 
 impl ReplayDownloader for OsuReplayDownloader {
     fn get_replay(&self, settings: &Settings) -> TatakuResult<Score> {
-        let key = settings.osu_api_key.clone();
+        let key = settings.integrations.osu.api_key.clone();
 
         let url = format!("https://osu.ppy.sh//api/get_replay?k={key}&s={}", self.1);
 

@@ -18,6 +18,7 @@ impl PartialEq for BuildableSettingsProvider {
 #[reflect(display="display")]
 pub struct BuildableSettingsCategory {
     pub name: String,
+    pub icon: Option<String>,
     pub id: u16,
     pub settings: Vec<Arc<BuildableSetting>>,
 }
@@ -31,9 +32,6 @@ impl Display for BuildableSettingsCategory {
 #[reflect(dont_clone)]
 pub struct BuildableSetting {
     pub name: String,
-    pub icon: Option<String>,
-
-    // pub id: String,
     pub path: String,
     pub tooltip: Option<String>,
 
@@ -95,6 +93,7 @@ impl std::fmt::Display for BuildableSettingType {
 
 #[derive(Clone)]
 #[derive(Reflect)]
+#[reflect(display = "display")]
 pub enum BuildableSettingDropdownOptions {
     List {
         list: Vec<BuildableSettingDropdownListOption>,
@@ -103,7 +102,14 @@ pub enum BuildableSettingDropdownOptions {
         var: String,
     },
 }
-
+impl Display for BuildableSettingDropdownOptions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::List {..} => "List",
+            Self::Variable {..} => "Variable",
+        }.fmt(f)
+    }
+}
 #[derive(Clone)]
 #[derive(Reflect)]
 pub struct BuildableSettingDropdownListOption {

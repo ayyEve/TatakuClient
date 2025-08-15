@@ -319,7 +319,9 @@ impl Widget<TatakuAction> for Dropdown {
         if self.variants.is_unbuilt() {
             if let Err(e) = self.variants.build(shell.values) {
                 error!("error building variants: {e:?}");
-                return 
+                self.variants = DropdownVariants::Static(vec!["ERROR".to_string()]);
+                
+                return;
             }
             let text_style = shell.tree
                 .get_text_style(self.node_id)

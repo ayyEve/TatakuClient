@@ -21,14 +21,15 @@ impl Token {
             grant_type: String, //"password"
             scope: String, // "*"
         }
+        let osu_integration = settings.integrations.osu.clone();
 
         let response = reqwest::blocking::Client::new()
             .post(TOKEN_URL)
             .json(&Request {
                 client_id: LAZER_CLIENT_ID.to_owned(), // osu lazer's client id
                 client_secret: LAZER_CLIENT_SECRET.to_owned(), // osu lazer's client secret
-                username: settings.osu_username.clone(),
-                password: settings.osu_password.clone(),
+                username: osu_integration.username.clone(),
+                password: osu_integration.password.clone(),
                 grant_type: "password".to_owned(),
                 scope: "*".to_owned(),
             })
