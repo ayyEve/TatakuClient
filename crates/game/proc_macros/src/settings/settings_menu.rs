@@ -45,8 +45,8 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> Result<proc_macro2::Token
         }
     };
 
-    std::fs::create_dir_all("/tmp/debug").unwrap();
-    std::fs::write(format!("/tmp/debug/{struct_name}-settings_impl.rs"), all_lines.to_string()).unwrap();
+    // std::fs::create_dir_all("/tmp/debug").unwrap();
+    // std::fs::write(format!("/tmp/debug/{struct_name}-settings_impl.rs"), all_lines.to_string()).unwrap();
     
     Ok(all_lines)
 }
