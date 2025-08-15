@@ -41,17 +41,17 @@
           <variable var="settings"/>
         </setValue>
         
-        <!-- <conditional cond="!value_exists(var.settings.selected_category)"> -->
+        <conditional cond="!value_exists(var.settings.selected_category)">
           <setValue key="var.settings.selected_category">
-            <variable var="settings.buildable.categories.0.id"/>
+            <value val="0"/>
           </setValue>
-        <!-- </conditional> -->
+        </conditional>
 
-        <!-- <conditional cond="!value_exists(var.settings.filter)"> -->
+        <conditional cond="!value_exists(var.settings.filter)">
           <setValue key="var.settings.filter">
-            <value>"</value>
+            <value val=""/>
           </setValue>
-        <!-- </conditional> -->
+        </conditional>
       </actions>
     </event>
   </events>
@@ -78,14 +78,15 @@
       </actions> -->
 
       <element>
-        <row style="width: fill; height: fill;">
+        <row style="width: 33%; height: fill;">
           <!-- category list an filter input on the left -->
-          <column style="height: fill">
+          <column style="height: fill; justify-content: space-between;">
             <!-- search text -->
             <textInput variable="var.settings.filter">
               <placeholder><text text="Search" /></placeholder>
             </textInput>
 
+            <!-- category list -->
             <list
               id = "category-list"
               list = "settings.buildable.categories"
@@ -108,6 +109,22 @@
                 </button>
               </conditional>
             </list>
+
+            <!-- buttons -->
+            <row style="width: fill; justify-self: end;">
+              <button>
+                <action>
+                  <setValue key="settings">
+                    <variable var="var.settings.old"/>
+                  </setValue>
+                </action>
+                <element>
+                  <text>
+                    <text text="Revert" />
+                  </text>
+                </element>
+              </button>
+            </row>
           </column>
 
           <column style="height: fill">
@@ -333,22 +350,6 @@
                 <!-- </conditional> -->
               </list>
             </column>
-            
-            <!-- buttons -->
-            <row style="width: fill; justify-self: end;">
-              <button>
-                <action>
-                  <setValue key="settings">
-                    <variable var="var.settings.old"/>
-                  </setValue>
-                </action>
-                <element>
-                  <text>
-                    <text text="Revert" />
-                  </text>
-                </element>
-              </button>
-            </row>
           </column>
         </row>
       </element>

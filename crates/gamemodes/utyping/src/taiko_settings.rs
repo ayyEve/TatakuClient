@@ -2,18 +2,17 @@ use crate::prelude::*;
 use tataku_client_proc_macros::Settings;
 
 #[derive(Clone, Serialize, PartialEq, Debug)]
-#[cfg_attr(feature="graphics", derive(Settings))]
-#[derive(Reflect, SettingsDeserialize)]
+#[derive(Reflect, Settings, SettingsDeserialize)]
 #[serde(default)]
 pub struct TaikoSettings {
     // sv
-    #[cfg_attr(feature="graphics", setting(text="SV Multiplier", min=1, max=2))]
+    #[setting(text="SV Multiplier", range(1.0, 2.0))]
     pub sv_multiplier: f32,
 
     // size stuff
-    #[cfg_attr(feature="graphics", setting(text="Note Radius", min=1, max=100))]
+    #[setting(text="Note Radius", range(1.0, 100.0))]
     pub note_radius: f32,
-    #[cfg_attr(feature="graphics", setting(text="Big Note Scale", min=1, max=5))]
+    #[setting(text="Big Note Scale", range(1.0, 5.0))]
     pub big_note_multiplier: f32,
 
     // /// hit area, but calculated before use
@@ -21,24 +20,24 @@ pub struct TaikoSettings {
     // pub hit_position: Vector2,
     pub hit_position_relative_to_window_size: bool,
     pub hit_position_relative_height_div: f32,
-    #[cfg_attr(feature="graphics", setting(text="Playfield Horizontal Offset", min=0, max=500))]
+    #[setting(text="Playfield Horizontal Offset", range(0.0, 500.0))]
     pub playfield_x_offset: f32,
-    #[cfg_attr(feature="graphics", setting(text="Playfield Vertical Offset", min=0, max=200))]
+    #[setting(text="Playfield Vertical Offset", range(0.0, 200.0))]
     pub playfield_y_offset: f32,
 
     /// hit area raidus multiplier, 1.0 = note radius
-    #[cfg_attr(feature="graphics", setting(text="Hit Area Radius Scale", min=1, max=5))]
+    #[setting(text="Hit Area Radius Scale", range(1.0, 5.0))]
     pub hit_area_radius_mult: f32,
     /// playfield = note_radius * max(hit_area_radius_mult, big_note_mult) + this
-    #[cfg_attr(feature="graphics", setting(text="Playfield Vertical Padding", min=0, max=20))]
+    #[setting(text="Playfield Vertical Padding", range(0.0, 20.0))]
     pub playfield_height_padding: f32,
     /// playfield = note_radius * max(hit_area_radius_mult, big_note_mult) + this
 
-    #[cfg_attr(feature="graphics", setting(text="Use Skin Judgments"))]
+    #[setting(text="Use Skin Judgments")]
     pub use_skin_judgments: bool,
     
     /// how far above the hit position should hit indicators be?
-    #[cfg_attr(feature="graphics", setting(text="Hit Judgment Y-Offset", min=0, max=100))]
+    #[setting(text="Hit Judgment Y-Offset", range(0.0, 100.0))]
     pub judgement_indicator_offset: f32,
 }
 // impl TaikoSettings {

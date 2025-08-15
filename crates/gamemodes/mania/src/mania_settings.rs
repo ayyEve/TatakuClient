@@ -1,29 +1,28 @@
 use crate::prelude::*;
 
 #[derive(Clone, Debug, Serialize, PartialEq)]
-#[cfg_attr(feature="graphics", derive(Settings))]
 // #[cfg_attr(feature="graphics", setting(get_items="get_key_items", from_menu="keys_from_menu"))]
-#[derive(Reflect, SettingsDeserialize)]
+#[derive(Reflect, Settings, SettingsDeserialize)]
 #[serde(default)]
 pub struct ManiaSettings {
     // sv
-    #[cfg_attr(feature="graphics", setting(text="Static SV"))]
+    #[setting(text="Static SV")]
     pub static_sv: bool,
-    #[cfg_attr(feature="graphics", setting(text="SV Multiplier", min=0.1, max=10.0))]
+    #[setting(text="SV Multiplier", range(0.1, 10.0))]
     pub sv_multiplier: f32,
 
     /// how much to change the sv by when a sv change key is pressed
-    #[cfg_attr(feature="graphics", setting(text="SV Change Amount", min=0.1, max=10.0))]
+    #[setting(text="SV Change Amount", range(0.1, 10.0))]
     pub sv_change_delta: f32,
 
-    #[cfg_attr(feature="graphics", setting(text="Per-Column Judjments"))]
+    #[setting(text="Per-Column Judjments")]
     pub judgements_per_column: bool,
     
     /// how far from the hit position should hit indicators be?
-    #[cfg_attr(feature="graphics", setting(text="Judgment Offset", min=-200.0, max=200.0))]
+    #[setting(text="Judgment Offset", range(-200.0, 200.0))]
     pub judgement_indicator_offset: f32,
     
-    #[cfg_attr(feature="graphics", setting(text="Use Skin Judgments"))]
+    #[setting(text="Use Skin Judgments")]
     pub use_skin_judgments: bool,
 
     // playfield settings

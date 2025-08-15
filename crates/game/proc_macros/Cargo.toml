@@ -12,6 +12,7 @@ proc-macro = true
 
 [features]
 extra_debugging = []
+graphics = []
 
 [dependencies]
 syn = "2.0"

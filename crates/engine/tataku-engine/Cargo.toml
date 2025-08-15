@@ -19,7 +19,7 @@ texture_arrays = []
 ui = [ "taffy", "triple_buffer", "simplecss" ]
 
 # removes as much graphics-side stuff as possible
-graphics = [ "winit", "ui", "clipboard", "raw-window-handle", "fontdue", "image", "tataku-graphics/graphics" ]
+graphics = [ "winit", "ui", "clipboard", "raw-window-handle", "fontdue", "image", "tataku-graphics/graphics", "tataku-client-proc-macros/graphics" ]
 
 dynamic_gamemodes = [ "libloading" ]
 

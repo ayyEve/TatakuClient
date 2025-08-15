@@ -1,27 +1,26 @@
 use crate::prelude::*;
 
 #[derive(Clone, Serialize, PartialEq, Debug)]
-#[cfg_attr(feature="graphics", derive(Settings))]
-#[derive(Reflect, SettingsDeserialize)]
+#[derive(Reflect, Settings, SettingsDeserialize)]
 #[serde(default)]
 pub struct CursorSettings {
-    #[cfg_attr(feature="graphics", setting(text="Cursor Color"))]
+    #[setting(text="Cursor Color")]
     pub cursor_color: SettingsColor,
-    #[cfg_attr(feature="graphics", setting(text="Cursor Scale", min=0.1, max=10.0))]
+    #[setting(text="Cursor Scale", range(0.1, 10.0))]
     pub cursor_scale: f32,
-    #[cfg_attr(feature="graphics", setting(text="Cursor Border", min=0.1, max=5.0))]
+    #[setting(text="Cursor Border", range(0.1, 5.0))]
     pub cursor_border: f32,
-    #[cfg_attr(feature="graphics", setting(text="Cursor Border Color"))]
+    #[setting(text="Cursor Border Color")]
     pub cursor_border_color: SettingsColor,
 
-    #[cfg_attr(feature="graphics", setting(text="Cursor Ripples"))]
+    #[setting(text="Cursor Ripples")]
     pub cursor_ripples: bool,
-    #[cfg_attr(feature="graphics", setting(text="Cursor Ripple Color"))]
+    #[setting(text="Cursor Ripple Color")]
     pub cursor_ripple_color: SettingsColor,
-    #[cfg_attr(feature="graphics", setting(text="Cursor Ripple Radius"))]
+    #[setting(text="Cursor Ripple Radius")]
     pub cursor_ripple_final_radius: f32,
 
-    #[cfg_attr(feature="graphics", setting(text="Use Beatmap Cursor"))]
+    #[setting(text="Use Beatmap Cursor")]
     pub beatmap_cursor: bool,
 }
 impl Default for CursorSettings {

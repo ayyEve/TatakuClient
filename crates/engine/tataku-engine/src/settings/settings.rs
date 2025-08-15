@@ -1,122 +1,121 @@
 use crate::prelude::*;
 
-pub type SettingsButton = ();
-pub type SettingsDivider = ();
-pub type SettingsCategory = ();
-
 #[cfg(feature="graphics")]
 use tataku_client_proc_macros::Settings;
 const SETTINGS_FILE:&str = "settings.json";
 
 #[derive(Serialize)]
 #[derive(Clone, Debug2, Default, PartialEq)]
-#[cfg_attr(feature="graphics", derive(Settings))]
-#[derive(SettingsDeserialize, Reflect)]
+#[derive(Reflect, Settings, SettingsDeserialize)]
 #[serde(default)]
 #[allow(clippy::manual_non_exhaustive)]
 pub struct Settings {
     #[serde(skip)] #[debug(skip)] #[reflect(skip)]
-    #[cfg_attr(feature="graphics", setting(category(name="Settings")))]
-    pub _main_category: SettingsCategory,
+    #[category(text="Settings")] _settings: (),
     
     #[serde(skip)]
     pub save_path: String,
 
     #[serde(skip)] #[debug(skip)] #[reflect(skip)]
-    #[cfg_attr(feature="graphics", setting(text="Audio Settings"))]
-    pub _audio_divider: SettingsDivider,
+    #[divider(text="Audio Settings")] _audio: (),
     
-    #[serde(skip)]
-    #[debug(skip)]
+    #[serde(skip)] #[debug(skip)] 
     #[reflect(rename="buildable")]
     pub buildable_provider: Arc<BuildableSettingsProvider>,
 
     // audio
-    // #[Setting(text="Master Volume")]
+    // #[setting(text="Master Volume")]
     pub master_vol: f32,
-    // #[Setting(text="Music Volume")]
+    // #[setting(text="Music Volume")]
     pub music_vol: f32,
-    // #[Setting(text="Effect Volume")]
+    // #[setting(text="Effect Volume")]
     pub effect_vol: f32,
-    #[cfg_attr(feature="graphics", setting(text="Global Offset", min=-100.0, max=100.0))]
+    #[setting(text="Global Offset", range(-100.0, 100.0))]
     pub global_offset: f32,
     
     // connection
     #[serde(skip)] #[debug(skip)] #[reflect(skip)]
-    #[cfg_attr(feature="graphics", setting(text="Connection Settings"))]
-    pub _connection_divider: SettingsDivider,
+    #[divider(text="Connection Settings")] _connections: (),
     
-    #[cfg_attr(feature="graphics", setting(text="Tataku Username"))]
+    #[setting(text="Tataku Username")]
     pub username: String,
-    #[cfg_attr(feature="graphics", setting(text="Tataku Password", password=true))]
+    #[setting(text="Tataku Password", password=true)]
     pub password: String,
-    #[cfg_attr(feature="graphics", setting(text="Tataku Server Url"))]
+    #[setting(text="Tataku Server Url")]
     pub server_url: String,
-    #[cfg_attr(feature="graphics", setting(text="Tataku Score Url"))]
+    #[setting(text="Tataku Score Url")]
     pub score_url: String,
     
     // game settings
-    #[cfg_attr(feature="graphics", subsetting())]
+    #[subsetting()]
     pub gamemode_settings: GamemodeSettingsCollection,
-
-    #[cfg_attr(feature="graphics", subsetting(category="Background Game Settings"))]
+    
+    #[subsetting(text="Background Game Settings")]
     pub background_game_settings: BackgroundGameSettings,
-    #[cfg_attr(feature="graphics", subsetting(category="Common Game Settings"))]
+
+    #[subsetting(text="Common Game Settings")]
     pub common_game_settings: CommonGameplaySettings,
 
     pub last_played_mode: String,
     pub score_method: ScoreRetreivalMethod,
     pub sort_by: SortBy,
     
-    #[cfg_attr(feature="graphics", setting(text="Beatmap Hitsounds"))]
+    #[setting(text="Beatmap Hitsounds")]
     pub beatmap_hitsounds: bool,
 
-    #[cfg_attr(feature="graphics", setting(text="Enable Difficulty Calculation"))]
+    #[setting(text="Enable Difficulty Calculation")]
     pub enable_diffcalc: bool,
 
-    #[cfg_attr(feature="graphics", subsetting(category="Display Settings"))]
+    #[subsetting(text="Display Settings")]
     pub display_settings: DisplaySettings,
     
     // cursor
     pub cursor_settings: CursorSettings,
 
     // skin settings
-    #[cfg_attr(feature="graphics", setting(text="Skin", dropdown(path="enums.skins"), category="Skin Settings"))]
+    #[serde(skip)] #[debug(skip)] #[reflect(skip)]
+    #[category(text="Skin Settings")] _skin_settings: (),
+
+    #[dropdown(text="Skin", path="enums.skins")]
     pub current_skin: String,
 
     // TODO:
     #[serde(skip)] #[debug(skip)] #[reflect(skip)]
-    #[cfg_attr(feature="graphics", setting(text="Refresh Skins", action="GameAction::RefreshSkins"))]
-    refresh_skins_button: SettingsButton,
+    #[button(text="Refresh Skins", action="GameAction::RefreshSkins")] _refresh_skins_button: (),
 
-    #[cfg_attr(feature="graphics", setting(text="Theme", dropdown(path="enums.themes")))]
+    #[dropdown(text="Theme", path="enums.themes")]
     pub theme: SelectedTheme,
 
-    #[cfg_attr(feature="graphics", setting(text="UI Scale", min=0.1, max=4.0))] // not ready yet
+    #[setting(text="UI Scale", range(0.1, 4.0))] // not ready yet
     pub ui_scale: f32,
-    #[cfg_attr(feature="graphics", setting(text="Background Dim", min=0, max=1))]
+    #[setting(text="Background Dim", range(0.0, 1.0))]
     pub background_dim: f32,
 
     // misc keybinds
-    #[cfg_attr(feature="graphics", setting(text="User Panel Key", category="Common Keybinds"))]
+    #[serde(skip)] #[debug(skip)] #[reflect(skip)]
+    #[category(text="Common Keybinds")] _5: (),
+    #[setting(text="User Panel Key")]
     pub key_user_panel: Key,
 
     // double tap protection
-    #[cfg_attr(feature="graphics", setting(text="Enable DoubleTap Protection", category="DoubleTap Protection"))]
+    #[serde(skip)] #[debug(skip)] #[reflect(skip)]
+    #[category(text="DoubleTap Protection")] _double_tap_prot: (),
+
+    #[setting(text="Enable DoubleTap Protection")]
     pub enable_double_tap_protection: bool,
-    #[cfg_attr(feature="graphics", setting(text="DoubleTap Protection Leniency", min=10.0, max=200.0))]
+    #[setting(text="DoubleTap Protection Leniency", range(10.0, 200.0))]
     pub double_tap_protection_duration: f32,
 
 
     // integrations
-    #[cfg_attr(feature="graphics", subsetting(category="Integrations"))]
+    #[subsetting(text="Integrations")]
     pub integrations: IntegrationSettings,
 
     // other misc
     // pub last_git_hash: String,
     pub external_games_folders: Vec<String>,
     
-    #[cfg_attr(feature="graphics", subsetting(category="Log Settings"))]
+    #[subsetting(text="Log Settings")]
     pub logging_settings: LoggingSettings,
 }
 impl Settings {

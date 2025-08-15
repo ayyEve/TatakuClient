@@ -2,26 +2,25 @@ use crate::prelude::*;
 #[cfg(feature="graphics")]
 use tataku_client_proc_macros::Settings;
 
-#[derive(Clone, Debug, Serialize, PartialEq, SettingsDeserialize)]
-#[cfg_attr(feature="graphics", derive(Settings))]
-#[derive(Reflect)]
+#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Reflect, Settings, SettingsDeserialize)]
 #[serde(default)]
 pub struct BackgroundGameSettings {
     /// whether to have gameplay in the main menu bg or not
     // #[serde(alias="enabled")]
-    #[cfg_attr(feature="graphics", setting(text="Main Menu Background Gameplay"))]
+    #[setting(text="Main Menu Background Gameplay")]
     pub main_menu_enabled: bool,
 
     /// whether to have gameplay in the beatmap select menu bg or not
-    #[cfg_attr(feature="graphics", setting(text="Map Select Background Gameplay"))]
+    #[setting(text="Map Select Background Gameplay")]
     pub beatmap_select_enabled: bool,
 
     /// whether to have gameplay in the settings menu bg or not
-    #[cfg_attr(feature="graphics", setting(text="Settings Background Gameplay"))]
+    #[setting(text="Settings Background Gameplay")]
     pub settings_menu_enabled: bool,
 
     /// whether to have gameplay in the settings menu bg or not
-    #[cfg_attr(feature="graphics", setting(text="Multiplayer Background Gameplay"))]
+    #[setting(text="Multiplayer Background Gameplay")]
     pub multiplayer_menu_enabled: bool,
 
     /// gameplay alpha multiplier

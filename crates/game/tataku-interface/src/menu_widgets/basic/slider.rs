@@ -103,8 +103,10 @@ impl Widget<TatakuAction> for Slider {
                     let end = *range.end();
 
                     let percent = (pos.x - bounds.pos.x) / bounds.size.x;
-                    let mut new_value = (start + percent * (end - start))
+                    let mut new_value = f32::lerp(start, end, percent)
                         .clamp(start, end);
+                    // (start + percent * (end - start))
+                    //     .clamp(start, end);
 
                     if let Some(snap) = &self.step {
                         // apply_snap
@@ -222,10 +224,9 @@ impl Widget<TatakuAction> for Slider {
         shell.list.push(Rectangle::new_bounds(bounds, Color::BLACK));
 
         // draw slider
-        let range = self.range();
-        let start = *range.start();
-        let end = *range.end();
-        let percent = (self.value.get() - start) / end;
+        let start = self.min.get();
+        let end = self.max.get();
+        let percent = (self.value.get() - start) / (end - start);
 
         let dragger_pos = Vector2::new(
             bounds.pos.x + bounds.size.x * percent,
@@ -364,7 +365,7 @@ fn apply_snap(
     let start = *range.start();
     let end = *range.end();
     let percent = (new_value - start) / (end - start);
-    let mut new_value = (start + percent * (end - start)).clamp(start, end);
+    let mut new_value = f32::lerp(start, end, percent).clamp(start, end);
     
     // apply snap
     let diff = (old_value - new_value).abs();

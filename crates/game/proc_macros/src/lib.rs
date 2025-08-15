@@ -1,6 +1,6 @@
 mod from;
+mod settings;
 mod css_parse;
-mod settings_menu;
 mod custom_debug;
 mod settings_deserializer;
 
@@ -36,12 +36,26 @@ pub fn impl_parse_css(input: proc_macro::TokenStream) -> proc_macro::TokenStream
 }
 
 
-#[proc_macro_derive(Settings, attributes(setting, subsetting))]
+#[proc_macro_derive(
+    Settings, 
+    attributes(
+        setting, 
+        subsetting, 
+        dropdown, 
+        button, 
+        category, 
+        divider,
+    )
+)]
 pub fn create_setting(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // Parse the string representation
     let ast = syn::parse(input).unwrap();
 
-    match settings_menu::impl_settings(&ast) {
+    #[cfg(not(feature="graphics"))]
+    return proc_macro::TokenStream::from(quote! {});
+
+    #[cfg(feature="graphics")]
+    match settings::impl_settings(&ast) {
         Ok(tokens) => proc_macro::TokenStream::from(tokens),
         Err(e) => proc_macro::TokenStream::from(e.into_compile_error()),
     }
