@@ -307,7 +307,7 @@ pub trait GenericShuntingYard<'rpn, 'values: 'rpn> {
         let Some(last) = op_queue.last() 
         else { return false };
 
-        matches!(last.get_type(), _ShuntingYardTokenType::Function { .. })
+        matches!(last.get_type(), _ShuntingYardTokenType::Function)
     }
 
     fn get_function_helper(

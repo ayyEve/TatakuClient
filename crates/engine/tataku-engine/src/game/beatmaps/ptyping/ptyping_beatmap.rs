@@ -1,4 +1,4 @@
-/**
+/*
  * derived from beyley's ptyping game: https://github.com/Beyley/pTyping
  * src: https://github.com/Beyley/pTyping/blob/master/pTyping/Songs/SongLoaders/UTypingSongHandler.cs
  */

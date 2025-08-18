@@ -246,7 +246,7 @@ impl CheckboxText {
 
     fn get(&self) -> &str {
         match self {
-            Self::Static(t) => &**t,
+            Self::Static(t) => t,
             Self::Variable(_, t) => t,
             Self::Buildable(_, t) => t,
         }
@@ -373,7 +373,7 @@ impl From<BuildableCondition> for CheckboxValue {
 pub enum CheckboxOnToggle {
     #[debug(skip)]
     Callback(Arc<dyn Fn(bool) -> Message + Send + Sync>),
-    Buildable(BuildableAction),
+    Buildable(Box<BuildableAction>),
 }
 impl CheckboxOnToggle {
     fn run(
@@ -405,6 +405,6 @@ impl From<Arc<dyn Fn(bool) -> Message + Send + Sync>> for CheckboxOnToggle {
 }
 impl From<BuildableAction> for CheckboxOnToggle {
     fn from(value: BuildableAction) -> Self {
-        Self::Buildable(value)
+        Self::Buildable(Box::new(value))
     }
 }

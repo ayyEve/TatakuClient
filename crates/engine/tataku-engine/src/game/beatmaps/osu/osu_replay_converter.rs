@@ -203,7 +203,7 @@ fn read_string(bytes: &[u8], offset:&mut usize) -> TatakuResult<String> {
         *offset += len;
         Ok(string)
     } else {
-        Err(TatakuError::String(format!("wrong first byte for uleb: {:X}", b)))
+        Err(TatakuError::String(format!("wrong first byte for uleb: {b:X}")))
     }
 }
 

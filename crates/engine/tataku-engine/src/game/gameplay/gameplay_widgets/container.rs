@@ -108,10 +108,7 @@ impl GameplayWidgetContainer {
                 }
 
                 // skip elements in the first pass
-                _ => {
-                    remaining.push(e);
-                    continue
-                }
+                _ => remaining.push(e),
             }
         }
 

@@ -77,13 +77,7 @@ impl<T:Reflect + std::fmt::Debug> CssValue<T> {
     ) -> Option<MaybeOwned<'b, T>> {
         match self {
             Self::Value(v) => Some(MaybeOwned::Borrowed(v)),
-            Self::Variable(path) => {
-                let val = values.reflect_get(path).ok();
-                // println!("================================");
-                // println!("path: '{path}' = {val:?}");
-                // println!("================================");
-                val
-            },
+            Self::Variable(path) => values.reflect_get(path).ok(),
             _ => None
         }
     }
@@ -93,14 +87,10 @@ impl<T:Reflect + std::fmt::Debug + Clone> CssValue<T> {
         match self {
             Self::Value(v) => Some(v.clone()),
             Self::Variable(path) => {
-                let val = values
+                values
                     .reflect_get::<T>(&**path)
                     .ok()
-                    .map(|i| i.cloned());
-                // println!("================================");
-                // println!("path: '{path}' = {val:?}");
-                // println!("================================");
-                val
+                    .map(|i| i.cloned())
             }
             _ => None
         }
@@ -111,14 +101,10 @@ impl<T:Reflect + std::fmt::Debug + Copy> CssValue<T> {
         match self {
             Self::Value(v) => Some(*v),
             Self::Variable(path) => {
-                let val = values
+                values
                     .reflect_get::<T>(&**path)
                     .map(|i| i.copied())
-                    .ok();
-                // println!("================================");
-                // println!("path: '{path}' = {val:?}");
-                // println!("================================");
-                val
+                    .ok()
             }
             _ => None
         }

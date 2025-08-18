@@ -1,4 +1,4 @@
-/**
+/*
  * UTyping game mode
  * Author: ayyEve
 */
@@ -132,7 +132,7 @@ impl GameMode for UTypingGame {
         }
 
         
-        if s.notes.len() == 0 { return Err(TatakuError::Beatmap(BeatmapError::InvalidFile)); }
+        if s.notes.is_empty() { return Err(TatakuError::Beatmap(BeatmapError::InvalidFile)); }
         s.notes.sort_by(|a, b|a.time().partial_cmp(&b.time()).unwrap());
         s.end_time = s.notes.iter().last().unwrap().time();
 

@@ -135,7 +135,7 @@ impl GaussianBlurShader {
             }
         );
 
-        let pipeline = device.create_compute_pipeline(
+        device.create_compute_pipeline(
             &ComputePipelineDescriptor {
                 label: Some(format!("{NAME} pipeline").as_str()),
                 layout: None,
@@ -144,9 +144,7 @@ impl GaussianBlurShader {
                 compilation_options: PipelineCompilationOptions::default(),
                 cache: None,
             }
-        );
-
-        pipeline
+        )
     }
 
     fn resize(

@@ -93,7 +93,7 @@ impl Widget<TatakuAction> for ConditionalWidget {
     
     fn init_style(&mut self, shell: &mut LayoutShell<TatakuAction>) {
         for i in self.all_children_mut() {
-            i.init_style(shell)
+            i.init_style(shell);
         }
 
         // set the true condition widget to DisplayType::None so its hidden

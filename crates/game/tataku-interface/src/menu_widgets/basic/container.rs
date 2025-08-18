@@ -359,7 +359,7 @@ impl Widget<TatakuAction> for Container {
                     //     UiActionType::Refresh
                     // ));
                 }
-                (0..) => {
+                (1..) => {
                     // too many elements, remove some
                     for _ in 0..diff.abs() {
                         // remove it from our list

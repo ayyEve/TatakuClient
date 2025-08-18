@@ -921,11 +921,12 @@ struct SwapTree<Action> {
     _a: std::marker::PhantomData<Action>,
 }
 impl<Action: Send + Sync + 'static> SwapTree<Action> {
+    #[allow(clippy::new_ret_no_self, reason = "its the only time its used")]
     fn new(root: &dyn Widget<Action>) -> Box<dyn Widget<Action>> {
         Box::new(Self {
             node: root.node_id(),
             style: root.get_style_str(),
-            _a: Default::default()
+            _a: std::marker::PhantomData,
         })
     }
 }

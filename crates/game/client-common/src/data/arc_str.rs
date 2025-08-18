@@ -57,7 +57,7 @@ impl PartialEq<&str> for ArcStr {
 }
 impl PartialEq<std::borrow::Cow<'_, str>> for ArcStr {
     fn eq(&self, other: &std::borrow::Cow<'_, str>) -> bool {
-        &**self == &**other
+        **self == **other
     }
 }
 
@@ -72,7 +72,7 @@ impl std::ops::Deref for ArcStr {
     type Target = str;
 
     fn deref(&self) -> &Self::Target {
-        &*self.0
+        &self.0
     }
 }
 
@@ -95,7 +95,7 @@ impl From<Arc<str>> for ArcStr {
 
 impl AsRef<str> for ArcStr {
     fn as_ref(&self) -> &str {
-        &*self.0
+        &self.0
     }
 }
 impl AsRef<std::ffi::OsStr> for ArcStr {
@@ -148,13 +148,11 @@ impl Stringable for ArcStr {
         Ok(Self::from(s))
     }
 }
-
-impl<'a> Into<ReflectPath<'a>> for &'a ArcStr {
-    fn into(self) -> ReflectPath<'a> {
-        ReflectPath::new(&self.0)
+impl<'a> From<&'a ArcStr> for ReflectPath<'a> {
+    fn from(value: &'a ArcStr) -> Self {
+        ReflectPath::new(&value.0)
     }
 }
-
 
 
 #[cfg(feature = "sql")] 

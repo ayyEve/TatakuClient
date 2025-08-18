@@ -1,4 +1,4 @@
-/**
+/*
  * Mania game mode
  * Authored by ayyEve
  * scroll velocity by Nebula

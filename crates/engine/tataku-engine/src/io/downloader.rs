@@ -249,6 +249,7 @@ impl UrlParams {
 }
 
 
+#[allow(clippy::large_enum_variant, reason = "cancer code")]
 enum TcpConnection {
     Ssl(tokio_native_tls::TlsStream<tokio::net::TcpStream>),
     NonSsl(tokio::net::TcpStream)

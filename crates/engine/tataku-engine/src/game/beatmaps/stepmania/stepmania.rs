@@ -215,7 +215,7 @@ impl StepmaniaBeatmap {
 
                         for (time, note_type) in col {
                             match note_type {
-                                StepmaniaTempNoteType::None => continue,
+                                StepmaniaTempNoteType::None => {},
 
                                 StepmaniaTempNoteType::HoldStart
                                 | StepmaniaTempNoteType::RollStart => {
@@ -370,7 +370,7 @@ impl From<char> for StepmaniaTempNoteType {
             'K' => Self::KeySound,
             'L' => Self::LiftNote,
             'F' => Self::FakeNote,
-            _ => panic!("unknown stepmania note type '{}'", c)
+            _ => panic!("unknown stepmania note type '{c}'")
         }
     }
 }

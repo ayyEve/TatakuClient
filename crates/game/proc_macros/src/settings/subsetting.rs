@@ -22,10 +22,9 @@ impl SubsettingItem {
             //     self.icon = Some(value.value());
             // } 
             // else {
-                return Err(meta.error(format!("Invalid attribute: {}", meta.path.get_ident().unwrap())));
+                Err(meta.error(format!("Invalid attribute: {}", meta.path.get_ident().unwrap())))
             // }
 
-            Ok(())
         })?;
 
         Ok(self)

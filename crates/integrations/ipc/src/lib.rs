@@ -27,7 +27,7 @@ impl IpcIntegration {
             loop {
                 match receiver2.try_recv() {
                     Ok(message) => ipc_sender.send(message).unwrap(),
-                    Err(tokio::sync::mpsc::error::TryRecvError::Empty) => continue,
+                    Err(tokio::sync::mpsc::error::TryRecvError::Empty) => {},
                     Err(tokio::sync::mpsc::error::TryRecvError::Disconnected) => return,
                 }
             }
@@ -40,6 +40,7 @@ impl IpcIntegration {
     }
 }
 
+#[allow(clippy::single_match)]
 impl TatakuIntegration for IpcIntegration {
     fn name(&self) -> CowStr { "ipc_integration".into() }
     fn check_enabled(

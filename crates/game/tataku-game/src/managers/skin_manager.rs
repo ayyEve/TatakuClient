@@ -228,12 +228,12 @@ impl SkinProvider for SkinManager {
 
                     match result {
                         TextureState::Success(image) => return Some(image.clone()),
-                        TextureState::Failed => continue,
+                        TextureState::Failed => {},
                         TextureState::Unloaded => unreachable!(),
                     }
                 }
 
-                Some(TextureEntry { image: TextureState::Failed, .. }) => continue,
+                Some(TextureEntry { image: TextureState::Failed, .. }) => {},
                 Some(TextureEntry { image: TextureState::Success(image), .. }) => return Some(image.clone()),
             }
 

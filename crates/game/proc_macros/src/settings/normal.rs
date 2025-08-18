@@ -105,8 +105,8 @@ impl NormalItem {
             | NormalItemType::F32 
             | NormalItemType::F64) => {
                 let ty = f.to_str();
-                let min = self.range_min.unwrap_or(0.0) as f32;
-                let max = self.range_max.unwrap_or(100.0) as f32;
+                let min = self.range_min.unwrap_or(0.0);
+                let max = self.range_max.unwrap_or(100.0);
                 let step = if f.is_float() {0.01f32} else {1.0};
 
                 quote! {

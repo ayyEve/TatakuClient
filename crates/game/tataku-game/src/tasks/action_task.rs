@@ -59,7 +59,7 @@ pub enum ActionTaskAction {
     Action(TatakuAction), 
     Callback(Arc<dyn Fn(&mut dyn Reflect) -> TatakuAction + Send + Sync>),
     Buildable {
-        action: BuildableAction,
+        action: Box<BuildableAction>,
         node: NodeId,
         passed_in: Option<TatakuValue>
     },

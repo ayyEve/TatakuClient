@@ -106,13 +106,13 @@ pub fn open_folder(path: String, selected_file: Option<String>) {
         if let Some(selected_file) = selected_file {
             let arg = format!("/select,{path}\\{selected_file}");
             trace!("open folder: {arg}");
-            cmd = cmd.arg(arg)
+            cmd = cmd.arg(arg);
         } else {
-            cmd = cmd.arg(path)
+            cmd = cmd.arg(path);
         }
 
         if let Err(e) = cmd.spawn() {
-            error!("error running cmd: {e}")
+            error!("error running cmd: {e}");
         }
 
         // explorer.exe /select,"C:\Folder\subfolder\file.txt"
@@ -121,7 +121,7 @@ pub fn open_folder(path: String, selected_file: Option<String>) {
     #[cfg(target_os="linux")] {
         let mut cmd = std::process::Command::new("xdg-open");
         cmd.arg(path);
-        if let Err(e) = cmd.spawn() { error!("error running cmd: {e}") }
+        if let Err(e) = cmd.spawn() { error!("error running cmd: {e}"); }
     }
 }   
 
@@ -142,7 +142,6 @@ pub fn open_link(url: String) {
     #[cfg(target_os="macos")] {
         let mut cmd = std::process::Command::new("open");
         cmd.arg(url);
-        if let Err(e) = cmd.spawn() { error!("error running cmd: {e}") }
+        if let Err(e) = cmd.spawn() { error!("error running cmd: {e}"); }
     }
 }
-

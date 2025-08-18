@@ -1,4 +1,4 @@
-/**
+/*
  * This is used to store map and map-mode preferences. 
  */
 

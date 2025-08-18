@@ -297,8 +297,18 @@ impl ContextMenuOption {
 #[derive(From)]
 pub enum ContextMenuOptionType {
     SubMenu(ContextMenuBuilder),
-    Action(ContextMenuAction),
+    Action(Box<ContextMenuAction>),
     TextOnly,
+}
+impl From<ContextMenuAction> for ContextMenuOptionType {
+    fn from(value: ContextMenuAction) -> Self {
+        Self::Action(Box::new(value))
+    }
+}
+impl From<Message> for ContextMenuOptionType {
+    fn from(value: Message) -> Self {
+        Self::Action(Box::new(value.into()))
+    }
 }
 
 #[derive(Clone, Default)]

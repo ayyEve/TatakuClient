@@ -46,7 +46,7 @@ fn perform_migrations(db: &Connection) {
             match db.execute(&format!("ALTER TABLE {table} ADD {col} {t};"), []) {
                 Ok(_) => debug!("Column added to {table} db: {col}"),
                 Err(e) => {
-                    let e = format!("{}", e);
+                    let e = e.to_string();
                     // only log error if its not a duplicate column name
                     if !e.contains("duplicate column name") {
                         error!("Error adding column to scores db: {e}");
@@ -179,7 +179,7 @@ impl Database {
 
         let (sender, mut receiver) = channel(1000);
         if let Err(e) = DATABASE_OPERATIONS_QUEUE.set(sender) {
-            panic!("no {}", e)
+            panic!("no {e}")
         }
 
         // setup operation performer

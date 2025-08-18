@@ -15,7 +15,7 @@ impl DividerItem {
         attr.parse_nested_meta(|meta| {
             if self.common.try_read(&meta)? { return Ok(()); }
 
-            return Err(meta.error(format!("Invalid attribute: {}", meta.path.get_ident().unwrap())));
+            Err(meta.error(format!("Invalid attribute: {}", meta.path.get_ident().unwrap())))
         })?;
 
         Ok(self)

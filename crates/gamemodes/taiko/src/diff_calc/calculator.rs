@@ -205,7 +205,7 @@ impl DiffCalc for TaikoDifficultyCalculator {
         // TEMP: for writing to csv, nicer graphs
         if WRITE_DEBUG_FILES {
             for line in lines.iter_mut().skip(1) {
-                *line += &format!(",{}", difficulty);
+                *line += &format!(",{difficulty}");
             }
             let file_name = self
                 .version_string
@@ -223,7 +223,7 @@ impl DiffCalc for TaikoDifficultyCalculator {
                 .replace("|", "")
                 ;
             
-            std::fs::write(format!("./csv/{}.csv", file_name), lines.join("\n"))?;
+            std::fs::write(format!("./csv/{file_name}.csv"), lines.join("\n"))?;
 
             {
                 let mut hashmap = HashMap::new();
@@ -272,7 +272,7 @@ impl DiffCalc for TaikoDifficultyCalculator {
                 }
 
 
-                let x_line = (0..lines.len()-1).fold(String::new(), |f, g| format!("{}'{}',", f, g));
+                let x_line = (0..lines.len()-1).fold(String::new(), |f, g| format!("{f}'{g}',"));
 
                 let datasets = data_sets.join(",");
                 let all_data = format!(r#"

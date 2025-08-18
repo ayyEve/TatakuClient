@@ -39,7 +39,8 @@ impl ManiaGameInfo {
         let good = score.judgments.get("x100").copied().unwrap_or_default() as f32;
         let okay  = score.judgments.get("x50").copied().unwrap_or_default() as f32;
         let miss = score.judgments.get("xmiss").copied().unwrap_or_default() as f32;
-    
+        
+        #[allow(clippy::neg_multiply, reason = "lines up with others nicer")]
         let top:f32 = [
             marv * 1.0, // 100%
             perf * 0.9825, // 98.25%

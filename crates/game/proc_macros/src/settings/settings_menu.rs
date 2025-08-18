@@ -21,7 +21,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> Result<proc_macro2::Token
         .map(SettingsItem::read)
         .collect::<Result<Vec<_>>>()?
         .into_iter()
-        .filter_map(|i| i)
+        .flatten()
         .collect::<Vec<_>>();
 
     let struct_name = &ast.ident;
@@ -92,7 +92,7 @@ impl SettingsItem {
                     enabled_if: None,
                     visible_if: None,
                 });
-            })
+            });
         } else {
             output.extend(tokens);
         }

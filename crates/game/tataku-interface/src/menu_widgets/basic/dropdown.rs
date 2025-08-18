@@ -490,7 +490,7 @@ impl DropdownVariants {
         Ok(())
     }
 
-    fn get_displays(&self) -> Cow<'_, Vec<String>> {
+    fn get_displays(&self) -> Cow<'_, [String]> {
         match self {
             Self::Static(items) => Cow::Borrowed(items),
             Self::Variable(_) => Cow::Owned(Vec::new()),

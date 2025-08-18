@@ -128,11 +128,11 @@ impl GameplayWidgetEditor {
                     } else {
                         Cow::Borrowed(label)
                     },
-                    ContextMenuOptionType::Action(Message::new(
+                    Message::new(
                         shell.owner, 
                         "align",
                         MessageValue::Custom(Arc::new(align))
-                    ).into())
+                    )
                 ));
             }
 
@@ -142,11 +142,11 @@ impl GameplayWidgetEditor {
         // visible
         options.push(ContextMenuOption::new(
             if selected.layout.visible { "Visible ✓" } else { "Visible" },
-            ContextMenuOptionType::Action(Message::new(
+            Message::new(
                 shell.owner,
                 "visible",
                 MessageValue::Click
-            ).into())
+            )
         ));
         // anchor
         options.push(ContextMenuOption::new(
@@ -155,27 +155,27 @@ impl GameplayWidgetEditor {
                 ContextMenuBuilder::new()
                 .with_option(ContextMenuOption::new(
                     "Screen",
-                    ContextMenuOptionType::Action(Message::new(
+                    Message::new(
                         shell.owner,
                         "anchor",
                         MessageValue::Text("screen".to_string())
-                    ).into())
+                    )
                 ))
                 .with_option(ContextMenuOption::new(
                     "Playfield",
-                    ContextMenuOptionType::Action(Message::new(
+                    Message::new(
                         shell.owner,
                         "anchor",
                         MessageValue::Text("playfield".to_string())
-                    ).into())
+                    )
                 ))
                 .with_option(ContextMenuOption::new(
                     "Element",
-                    ContextMenuOptionType::Action(Message::new(
+                    Message::new(
                         shell.owner,
                         "anchor",
                         MessageValue::Text("element".to_string())
-                    ).into())
+                    )
                 ))
             )
         ));
@@ -200,12 +200,10 @@ impl GameplayWidgetEditor {
                     } else {
                         Cow::Borrowed(label)
                     }, 
-                    ContextMenuOptionType::Action(
-                        Message::new(
-                            owner, 
-                            "relative_align",
-                            MessageValue::Custom(Arc::new(a))
-                        ).into()
+                    Message::new(
+                        owner, 
+                        "relative_align",
+                        MessageValue::Custom(Arc::new(a))
                     )
                 ));
             }
@@ -235,11 +233,11 @@ impl GameplayWidgetEditor {
                 ));
                 options.push(ContextMenuOption::new(
                     "Select Parent",
-                    ContextMenuOptionType::Action(Message::new(
+                    Message::new(
                         shell.owner,
                         "select_parent",
                         MessageValue::Click
-                    ).into()),
+                    ),
                 ));
             }
         }
@@ -248,20 +246,20 @@ impl GameplayWidgetEditor {
         // reset
         options.push(ContextMenuOption::new(
             "Reset",
-            ContextMenuOptionType::Action(Message::new(
+            Message::new(
                 shell.owner,
                 "reset",
                 MessageValue::Click,
-            ).into())
+            )
         ));
         // reset to default
         options.push(ContextMenuOption::new(
             "Default",
-            ContextMenuOptionType::Action(Message::new(
+            Message::new(
                 shell.owner,
                 "reset_default",
                 MessageValue::Click,
-            ).into())
+            )
         ));
 
         ContextMenu::new(options, shell.mouse_pos)

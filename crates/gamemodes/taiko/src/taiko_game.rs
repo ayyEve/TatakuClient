@@ -1,4 +1,4 @@
-/**
+/*
  * Taiko game mode
  * Author: ayyEve
  * 

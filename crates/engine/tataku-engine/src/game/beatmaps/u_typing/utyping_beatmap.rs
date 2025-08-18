@@ -1,4 +1,4 @@
-/**
+/*
  * derived from beyley's ptyping game: https://github.com/Beyley/pTyping
  * src: https://github.com/Beyley/pTyping/blob/master/pTyping/Songs/SongLoaders/UTypingSongHandler.cs
  */
@@ -270,5 +270,5 @@ pub enum UTypingEventType {
 fn test() {
     let path = "C:/Users/Eve/Desktop/Projects/rust/tataku/tataku-client/songs/zento/info.txt";
     let map = UTypingBeatmap::load(path).unwrap();
-    println!("map: {:?}", map);
+    println!("map: {map:?}");
 }
