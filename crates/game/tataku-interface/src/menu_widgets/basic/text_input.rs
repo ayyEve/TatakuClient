@@ -532,6 +532,27 @@ impl TextInput {
 
         value.len()
     }
+
+    fn update_size(&self, tree: &mut Tree<TatakuAction>) {
+        let text_style = tree
+            .get_text_style(self.node_id)
+            .unwrap();
+        
+        let min_height = f16::from_f32(text_style.line_height);
+        let min_width = f16::from_f32(text_style
+            .measure_text(&self.get_text(), None)
+            .x
+            .max(200.0)
+        );
+
+        tree.update_style(
+            self.node_id, 
+            |style| {
+                style.min_width = CssUnit::Pixels(min_width).into();
+                style.min_height = CssUnit::Pixels(min_height).into();
+            }
+        );
+    }
 }
 impl Widget<TatakuAction> for TextInput {
     fn name(&self) -> CowStr { "text_input_widget".into() }
@@ -548,23 +569,7 @@ impl Widget<TatakuAction> for TextInput {
     }
 
     fn init_style(&mut self, shell: &mut LayoutShell<TatakuAction>) {
-        let text_style = shell.tree
-            .get_text_style(self.node_id)
-            .unwrap();
-        
-        let min_height = half::f16::from_f32(text_style.line_height);
-        let min_width = half::f16::from_f32(text_style
-            .measure_text(&self.get_text(), None)
-            .x
-        );
-
-        shell.tree.update_style(
-            self.node_id, 
-            |style| {
-                style.min_width = CssUnit::Pixels(min_width).into();
-                style.min_height = CssUnit::Pixels(min_height).into();
-            }
-        );
+        self.update_size(shell.tree);
     }
 
     fn input(
@@ -824,8 +829,9 @@ impl Widget<TatakuAction> for TextInput {
     }
 
     fn update(&mut self, shell: &mut UpdateShell<TatakuAction>) {
-        self.value.update(shell.values);
-        self.placeholder.update(shell.values);
+        if self.value.update(shell.values) | self.placeholder.update(shell.values) {
+            self.update_size(shell.tree);
+        }
     }
 }
 
