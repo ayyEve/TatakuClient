@@ -46,7 +46,10 @@ impl DrawOptions {
     }
     /// get the modified alpha value for the provided border alpha
     pub fn border_alpha(&self, other: u8) -> u8 {
-        Self::apply_alpha(self.border_alpha, other)
+        let b = Self::apply_alpha(self.border_alpha, other);
+        let a = self.alpha.unwrap_or(Color::MAX);
+
+        Color::to_u8(Color::to_f32(b) * Color::to_f32(a))
     }
 
     /// get the modified color value for the provided color

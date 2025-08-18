@@ -56,9 +56,14 @@ impl Checkbox {
 
     fn size(&self, text_style: &TextStyle) -> [CssUnit; 2] {
         let text = self.text.get();
-        let size = text_style.measure_text(text, None)
-            + self.box_size(text_style.font_size) 
-            + self.box_padding();
+        let txt_size = text_style.measure_text(text, None);
+        let box_size = self.box_size(text_style.font_size);
+
+        let size = Vector2::new(
+            box_size.x + txt_size.x,
+            box_size.y.max(txt_size.y)
+        ) + self.box_padding() * 2.0;
+
         [
             CssUnit::Pixels(f16::from_f32(size.x)),
             CssUnit::Pixels(f16::from_f32(size.y))
@@ -126,8 +131,7 @@ impl Widget<TatakuAction> for Checkbox {
                         !self.value.get(), 
                         self.node_id, 
                         shell.values
-                    ))
-                    ;
+                    ));
 
                 if let Some(m) = m {
                     match m {
@@ -180,12 +184,10 @@ impl Widget<TatakuAction> for Checkbox {
             } else { 
                 Color::TRANSPARENT 
             }
-        )
-            .border(Border::new(
-                shell.general_theme.get_color(self.active, self.hovered), 
-                2.0
-            ))
-            .shape(Shape::Round(2.0));
+        ).border(Border::new(
+            shell.general_theme.get_color(self.active, self.hovered), 
+            2.0
+        )).shape(Shape::Round(2.0));
         shell.list.push(rect);
 
         let text_bounds = Bounds::new(

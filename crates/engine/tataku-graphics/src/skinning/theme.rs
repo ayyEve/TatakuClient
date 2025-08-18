@@ -8,7 +8,7 @@ use crate::prelude::*;
 #[derive(Serialize, Deserialize)]
 pub struct Theme {
     name: String,
-
+    #[reflect(skip)]
     colors: HashMap<ThemeColor, Color>,
 
     // TODO: impl Reflect on Vector2
