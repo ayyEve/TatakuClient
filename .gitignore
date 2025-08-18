@@ -4,8 +4,6 @@
 cargo.lock
 # any zip files
 *.zip
-# vscode config dir
-.vscode
 # logs
 /logs
 /debug
@@ -15,21 +13,14 @@ cargo.lock
 /[Ss]ongs
 /replays
 /skins
-tataku.db
-tataku_diffs.db
-settings.json
+/tataku.db
+/tataku_diffs.db
+/settings.json
 
-# new tataku resource dir
+# new tataku resource dirs
 /game
 /game[0-9]
 /Screenshots
-
-# things that are auto-generated each build
-test-commits.rs
-commits.rs
-src/tataku/gameplay/modes/mod.rs
-src/build_version.rs
-
 
 # test files
 test.log

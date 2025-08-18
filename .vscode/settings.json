@@ -1,0 +1,4 @@
+{
+    "rust-analyzer.check.command": "clippy",
+    "editor.rulers": [86, 98],
+}
