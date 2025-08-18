@@ -576,9 +576,9 @@ impl Game {
         // so this should make sure things arent delayed because of the spam
         #[cfg(feature="graphics")] 
         if self.values.game.window_size != window_size {
+            self.values.game.window_size = window_size;
             self.resize_bg();
             self.ui_manager.window_size_changed(window_size, &self.values);
-            self.values.game.window_size = window_size;
 
             self.volume_controller.window_size_changed(window_size);
             self.update_display.window_size_changed(window_size);
