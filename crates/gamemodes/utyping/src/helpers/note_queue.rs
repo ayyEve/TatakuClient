@@ -6,7 +6,6 @@ pub struct UTypingNoteQueue {
     pub index: usize,
 }
 impl UTypingNoteQueue {
-    pub fn new() -> Self { Self::default() }
     pub fn next(&mut self) { self.index += 1; }
 
     /// this function is a little weird, as it only returns a judgment when the note has been complete, not on the first press

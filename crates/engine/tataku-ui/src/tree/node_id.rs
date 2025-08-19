@@ -1,7 +1,8 @@
 use crate::prelude::*;
 
-#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Default2, Hash, Eq, PartialEq)]
 pub struct NodeId {
+    #[default(u64::MAX.into())]
     pub node_id: taffy::NodeId,
     pub owner: MessageOwner,
 }
@@ -10,14 +11,6 @@ impl NodeId {
         Self {
             node_id: id,
             owner,
-        }
-    }
-}
-impl Default for NodeId {
-    fn default() -> Self { 
-        Self {
-            node_id: u64::MAX.into(),
-            owner: MessageOwner::Menu,
         }
     }
 }

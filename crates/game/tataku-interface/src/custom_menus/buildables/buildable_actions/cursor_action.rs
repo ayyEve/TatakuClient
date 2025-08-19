@@ -1,8 +1,8 @@
 use crate::prelude::*;
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum BuildableCursorAction {
     Show,
     Hide,

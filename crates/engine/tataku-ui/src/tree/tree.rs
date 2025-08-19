@@ -44,7 +44,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         node: Box<dyn Widget<Action>>,
     ) -> Self {
         let mut nodes = SlotMap::with_capacity(capacity);
-        let root = nodes.insert(NodeData::new());
+        let root = nodes.insert(NodeData::default());
 
         let mut node_context_data = SparseSecondaryMap::with_capacity(capacity);
         node_context_data.insert(root, TreeData::with_style(CssStyle::menu_layout()));
@@ -540,8 +540,8 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
     ) -> bool {
         let mut consumed = false;
 
-        #[derive(Copy, Clone)]
         #[derive(From)]
+        #[derive(Copy, Clone)]
         enum MenuInputType {
             Key(Key),
             Controller(ControllerButton),
@@ -675,7 +675,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
 // taffy tree things
 impl<Action: Send + Sync + 'static> Tree<Action> {
     pub fn new_leaf(&mut self) -> taffy::TaffyResult<NodeId> {
-        let id = self.nodes.insert(NodeData::new());
+        let id = self.nodes.insert(NodeData::default());
         self.node_context_data.insert(id, TreeData::default());
         let _ = self.children.insert(Vec::new());
         let _ = self.parents.insert(None);

@@ -17,17 +17,9 @@ impl From<QuaverSliderVelocity> for SliderVelocity {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default2)]
 pub struct PositionPoint {
-    pub time: f32,
-    pub position: f32
-}
+    #[default(-LEAD_IN_TIME)] pub time: f32,
 
-impl Default for PositionPoint {
-    fn default() -> Self {
-        Self {
-            time: -LEAD_IN_TIME,
-            position: -LEAD_IN_TIME,
-        }
-    }
+    #[default(-LEAD_IN_TIME)] pub position: f32
 }

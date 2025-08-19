@@ -10,10 +10,6 @@ pub struct SongManager {
     fft_hooks: Vec<Weak<FFTHook>>,
 }
 impl SongManager {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     fn play_song(
         &mut self, 
         key: ArcStr, 

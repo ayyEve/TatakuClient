@@ -2,8 +2,8 @@ use crate::prelude::*;
 use tataku_audio::prelude::*;
 
 #[derive(Reflect)]
-#[derive(Default, Debug, Copy, Clone)]
 #[reflect(display = "debug")]
+#[derive(Default, Debug, Copy, Clone)]
 pub struct SongInfo {
     pub position: f32,
     pub paused: bool,

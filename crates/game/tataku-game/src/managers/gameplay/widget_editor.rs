@@ -120,7 +120,7 @@ impl GameplayWidgetEditor {
                 ("Bottom Left", Alignment::BOTTOM_LEFT), ("Bottom Middle", Alignment::BOTTOM_MIDDLE), ("Bottom Right", Alignment::BOTTOM_RIGHT)
             ];
 
-            let mut align_builder = ContextMenuBuilder::new();
+            let mut align_builder = ContextMenuBuilder::default();
             for &(label, align) in ALL_ALIGN {
                 align_builder.add_option(ContextMenuOption::new(
                     if align == selected.layout.align {
@@ -152,7 +152,7 @@ impl GameplayWidgetEditor {
         options.push(ContextMenuOption::new(
             "Anchor",
             ContextMenuOptionType::SubMenu(
-                ContextMenuBuilder::new()
+                ContextMenuBuilder::default()
                 .with_option(ContextMenuOption::new(
                     "Screen",
                     Message::new(
@@ -192,7 +192,7 @@ impl GameplayWidgetEditor {
                 ("Right", GameplayWidgetAlign::Right),
             ];
             
-            let mut builder = ContextMenuBuilder::new();
+            let mut builder = ContextMenuBuilder::default();
             for &(label, a) in ALL_INNER_ALIGN {
                 builder.add_option(ContextMenuOption::new(
                     if a == current {

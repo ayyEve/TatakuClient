@@ -1,8 +1,8 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub enum BuildableAction {
     /// No action
     #[default] None,
@@ -435,8 +435,8 @@ impl BuildableAction {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct BuildableActionTag {
     #[serde(rename="$text", alias="$value")] 
     pub action: BuildableAction,
@@ -446,8 +446,8 @@ crate::impl_tag!(BuildableActionTag, BuildableAction, action);
 
 
 
-#[derive(Clone, Debug, PartialEq)]
 #[derive(Deserialize)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct DialogInput {
     #[serde(rename="@name")] pub name: String,
     #[serde(rename="$value", default)] pub value: Option<BuildableValue>,
@@ -473,8 +473,8 @@ impl DialogInput {
 
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct DialogInputsTag {
     #[serde(rename="$text", alias="$value")] pub inputs: Vec<DialogInput>,
 }

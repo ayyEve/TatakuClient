@@ -13,6 +13,7 @@ pub struct GameplayPreview {
     /// area to fit to
     fit_to: Option<Bounds>,
 
+    widget_sender: Arc<Mutex<TripleBufferSender<Option<RenderableCollection>>>>,
     widget_receiver: TripleBufferReceiver<Option<RenderableCollection>>,
     gameplay: Mutex<Option<RenderableCollection>>,
 
@@ -21,7 +22,10 @@ pub struct GameplayPreview {
 }
 impl GameplayPreview {
     pub fn new() -> Self {
-        let (_, widget_receiver) = TripleBuffer::default().split();
+        let (
+            widget_sender, 
+            widget_receiver
+        ) = TripleBuffer::default().split();
 
         Self {
             // current_mods: ModManagerHelper::new(),
@@ -34,6 +38,7 @@ impl GameplayPreview {
             manager: None,
             fit_to: None,
 
+            widget_sender: Arc::new(Mutex::new(widget_sender)),
             widget_receiver,
             gameplay: Mutex::new(None),
 
@@ -48,18 +53,15 @@ impl GameplayPreview {
         _values: &dyn Reflect, 
         actions: &mut ActionQueue
     ) {
-        let (widget_sender, widget_receiver) = TripleBuffer::default().split();
-
-        let widget_sender = Mutex::new(widget_sender);
-
-        self.widget_receiver = widget_receiver;
+        let widget_sender = self.widget_sender.clone();
         actions.push(GameAction::NewGameplayManager(NewManager {
             owner,
             playmode: None,
             gameplay_mode: Some(GameplayMode::Preview),
             area: self.fit_to,
             draw_function: Some(Arc::new(move |collection| {
-                let Some(mut lock) = widget_sender.try_lock() else { return; };
+                let Some(mut lock) = widget_sender.try_lock() 
+                else { return };
 
                 *lock.input_buffer_mut() = Some(collection);
                 lock.publish();

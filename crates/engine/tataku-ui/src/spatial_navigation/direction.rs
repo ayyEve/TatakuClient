@@ -1,6 +1,6 @@
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[repr(u8)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum Direction {
     Up = 0,
     Down = 1,

@@ -1,4 +1,4 @@
-// TODO: move this to tataku-game, using a provider to save/load scores/replays etc
+// TODO: use a provider to save/load scores/replays etc
 
 use crate::prelude::*;
 use rusqlite::Connection;
@@ -178,9 +178,7 @@ impl Database {
 
 
         let (sender, mut receiver) = channel(1000);
-        if let Err(e) = DATABASE_OPERATIONS_QUEUE.set(sender) {
-            panic!("no {e}")
-        }
+        DATABASE_OPERATIONS_QUEUE.set(sender).unwrap();
 
         // setup operation performer
         tokio::spawn(async move {

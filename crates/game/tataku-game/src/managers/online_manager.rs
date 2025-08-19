@@ -19,9 +19,9 @@ const SPECTATOR_BUFFER_FLUSH_SIZE: usize = 20;
 // how often (ms) to send pings
 const PING_TIMER: u64 = 5_000;
 
-#[derive(Default)]
-#[derive(Reflect, Debug2)]
+#[derive(Reflect)]
 #[reflect(dont_clone)]
+#[derive(Default, Debug2)]
 pub struct OnlineManager {
     /// are we connected to the server?
     pub connected: bool,

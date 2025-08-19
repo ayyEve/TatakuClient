@@ -4,9 +4,10 @@ use crate::prelude::*;
 
 pub const SPEED_STEP: u16 = 5;
 
-#[derive(Clone, Default, PartialEq, Serialize, Deserialize, Eq, Debug)]
 #[derive(Reflect)]
 #[reflect(display="debug")]
+#[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 #[serde(default)]
 pub struct ModManager {
     /// use get/set_speed instead of direct access to this
@@ -16,10 +17,6 @@ pub struct ModManager {
 
 // static 
 impl ModManager {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     fn iter_mod_groups(mode: &GamemodeInfo) -> impl Iterator<Item=GameplayModGroup> {
         default_mod_groups()
             .into_iter()

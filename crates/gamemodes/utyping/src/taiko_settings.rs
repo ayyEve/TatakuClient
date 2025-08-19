@@ -1,8 +1,9 @@
 use crate::prelude::*;
 use tataku_client_proc_macros::Settings;
 
-#[derive(Clone, Serialize, PartialEq, Debug)]
-#[derive(Reflect, Settings, SettingsDeserialize)]
+#[derive(Reflect, Settings)]
+#[derive(Clone, PartialEq, Debug)]
+#[derive(Serialize, DeserializeSettings)]
 #[serde(default)]
 pub struct TaikoSettings {
     // sv

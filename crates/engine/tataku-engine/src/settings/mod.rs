@@ -61,8 +61,9 @@ impl ItemFilter {
 
 #[cfg(feature="graphics")]
 use tataku_ui::prelude::Widget;
-#[cfg(feature="graphics")]
+
 #[derive(Default)]
+#[cfg(feature="graphics")]
 pub struct SettingsCategory {
     pub name: String,
     pub properties: Vec<Box<dyn Widget<TatakuAction>>>, 

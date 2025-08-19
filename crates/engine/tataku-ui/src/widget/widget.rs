@@ -13,7 +13,7 @@ pub trait Widget<Action: Send + Sync>: Send + Sync {
     /// helper for default actions
     fn children_mut(&mut self) -> WidgetChildrenMut<Action> { WidgetChildrenMut::None }
 
-    fn get_style_str(&self) -> ArcStr { ArcStr::new() }
+    fn get_style_str(&self) -> ArcStr { ArcStr::default() }
     
     fn layout(&mut self, shell: &mut LayoutShell<Action>) -> taffy::TaffyResult<NodeId>;
     fn init_style(&mut self, shell: &mut LayoutShell<Action>) {

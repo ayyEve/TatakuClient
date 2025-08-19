@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct ButtonElement {
     #[serde(rename = "@id", default)] id: Option<ArcStr>,
     #[serde(rename = "@class", default)] class_list: ClassList,
@@ -35,16 +35,16 @@ impl CustomElement for ButtonElement {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq)]
 struct ClickAction {
     #[serde(rename="$value")] inner: BuildableAction,
     #[serde(rename="@button", default)] button: MouseButton2,
 }
 
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
 enum MouseButton2 {
     #[default]
     Left,

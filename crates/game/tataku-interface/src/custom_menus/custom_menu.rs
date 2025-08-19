@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug)]
 #[derive(Deserialize)]
+#[derive(Clone, Debug)]
 pub struct CustomMenu {
     #[serde(rename = "@id")] pub id: ArcStr,
     pub element: ElementTag,
@@ -48,8 +48,8 @@ impl CustomMenu {
 }
 
 
-#[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct BuildableEventsTag {
     #[serde(rename = "$value")] pub events: Vec<BuildableEvent>,
 }

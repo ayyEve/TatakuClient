@@ -42,7 +42,7 @@ impl BarGraph {
 
     
     pub fn draw(&self, bounds: &Bounds) -> RenderableCollection {
-        let mut collection = RenderableCollection::new();
+        let mut collection = RenderableCollection::default();
 
         let size = bounds.size;
 

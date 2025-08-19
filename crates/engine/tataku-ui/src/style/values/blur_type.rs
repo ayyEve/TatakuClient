@@ -1,8 +1,8 @@
 use crate::prelude::*;
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 #[derive(Reflect, Deserialize)]
 #[serde(rename_all="camelCase")]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub enum CssBlurType {
     #[default]
     Box,

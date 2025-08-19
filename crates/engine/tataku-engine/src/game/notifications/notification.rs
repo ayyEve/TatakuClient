@@ -3,16 +3,21 @@ use crate::prelude::*;
 static ID_COUNTER:AtomicUsize = AtomicUsize::new(0);
 
 #[derive(ChainableInitializer)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default2)]
 pub struct Notification {
     /// id number for this notification
+    #[default(ID_COUNTER.fetch_add(1, Ordering::AcqRel))]
     pub id: usize,
+
     /// text to display
     #[chain] pub text: String,
+
     /// color of the bounding box
     #[chain] pub color: Color,
+
     /// how long this message should last, in ms
     #[chain] pub duration: f32,
+
     /// what shold happen on click?
     #[chain] pub onclick: NotificationOnClick
 }
@@ -58,15 +63,15 @@ impl Notification {
     }
 }
 
-impl Default for Notification {
-    fn default() -> Self {
-        let id = ID_COUNTER.fetch_add(1, Ordering::AcqRel);
-        Self {
-            id,
-            text: String::new(),
-            color: Color::WHITE,
-            duration: 0.0,
-            onclick: NotificationOnClick::None,
-        }
-    }
-}
+// impl Default for Notification {
+//     fn default() -> Self {
+//         let id = ID_COUNTER.fetch_add(1, Ordering::AcqRel);
+//         Self {
+//             id,
+//             text: String::new(),
+//             color: Color::WHITE,
+//             duration: 0.0,
+//             onclick: NotificationOnClick::None,
+//         }
+//     }
+// }

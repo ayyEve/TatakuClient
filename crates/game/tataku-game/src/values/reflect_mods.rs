@@ -1,8 +1,8 @@
 use crate::prelude::*;
 
 /// A reflect-friendly version of GameplayModGroup
-#[derive(Clone, Debug)]
 #[derive(Reflect)]
+#[derive(Clone, Debug)]
 #[reflect(display="display")]
 pub struct ReflectModGroup {
     pub name: String,
@@ -36,8 +36,8 @@ impl Display for ReflectModGroup {
 /// A reflect-friendly version of GameplayMod
 /// specifically with an enabled field
 /// TODO: move back to &'static strs once https://gitlab.ayyeve.dev/tataku/tataku-common/-/issues/3 is fixed
-#[derive(Clone, Debug)]
 #[derive(Reflect)]
+#[derive(Clone, Debug)]
 #[reflect(display="display")]
 pub struct ReflectMod {
     pub enabled: bool,

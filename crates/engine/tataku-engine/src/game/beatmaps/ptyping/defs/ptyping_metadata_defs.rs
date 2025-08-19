@@ -1,6 +1,7 @@
 use crate::prelude::*;
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug)]
+#[derive(Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct PTypingMetadataText {
     pub unicode: Option<String>,
@@ -13,7 +14,8 @@ impl PTypingMetadataText {
 }
 
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug)]
+#[derive(Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct PTypingBeatmapInfo {
     pub description: String,
@@ -22,7 +24,8 @@ pub struct PTypingBeatmapInfo {
     pub preview_time: f32
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug)]
+#[derive(Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct PTypingMapperDef {
     pub user_id: u64,
@@ -31,7 +34,8 @@ pub struct PTypingMapperDef {
 }
 
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug)]
+#[derive(Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct PTypingBeatmapMetadataDef {
     pub backing_languages: Vec<u8>,
@@ -40,7 +44,8 @@ pub struct PTypingBeatmapMetadataDef {
 
 
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug)]
+#[derive(Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct PTypingFileCollectionDef {
     pub audio: PTypingFileDef,
@@ -49,7 +54,8 @@ pub struct PTypingFileCollectionDef {
 }
 
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug)]
+#[derive(Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct PTypingFileDef {
     /// NOT ACTUALLY PATH, its just the display text for this file. use the hash for the path (no ext)

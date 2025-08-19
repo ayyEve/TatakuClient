@@ -1,6 +1,8 @@
 use crate::prelude::*;
 
+#[derive(Default2)]
 pub struct GameModeProperties {
+    #[default(&GamemodeInfo::DEFAULT)]
     pub info: &'static GamemodeInfo,
     // pub playmode: CowStr,
     pub keys: Vec<(KeyPress, &'static str)>,
@@ -16,21 +18,6 @@ impl GameModeProperties {
         self.info.id
     }
 }
-impl Default for GameModeProperties {
-    fn default() -> Self {
-        Self {
-            info: &GamemodeInfo::DEFAULT,
-            // playmode: Cow::Borrowed("none"),
-            keys: Vec::new(),
-            end_time: 0.0,
-            show_cursor: false,
-            timing_bar_things: Vec::new(),
-            audio_prefix: String::new(),
-            sound_list: Vec::new(),
-        }
-    }
-}
-
 
 pub trait UiElementLoader: Send + Sync {
     /// Load a ui element

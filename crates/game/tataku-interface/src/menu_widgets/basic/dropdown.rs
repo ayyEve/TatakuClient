@@ -582,17 +582,13 @@ impl From<ArcStr> for DropdownValue {
     }
 }
 
-
+#[derive(Default2)]
 pub enum DropdownPlaceholder {
+    #[default]
     Static(ArcStr),
     Buildable {
         buildable: BuildableText,
         cache: String
-    }
-}
-impl Default for DropdownPlaceholder {
-    fn default() -> Self {
-        Self::Static(ArcStr::default())
     }
 }
 impl DropdownPlaceholder {

@@ -1,8 +1,8 @@
 use crate::prelude::*;
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
 pub enum Font {
     #[default]
     Main,

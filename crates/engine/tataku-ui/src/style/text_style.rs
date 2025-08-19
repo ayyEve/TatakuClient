@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
+#[derive(Copy, Clone)]
 #[derive(ChainableInitializer)]
-#[derive(Clone)]
 pub struct TextStyle {
     #[chain] pub font: Font,
     #[chain] pub font_size: f32,

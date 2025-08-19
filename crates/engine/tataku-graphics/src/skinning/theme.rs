@@ -37,8 +37,8 @@ impl Default for Theme {
 #[allow(unused)]
 #[derive(Reflect)]
 #[reflect(from_string = "auto")]
-#[derive(Debug, Hash, Eq, PartialEq, Copy, Clone)]
 #[derive(Serialize, Deserialize)]
+#[derive(Debug, Hash, Eq, PartialEq, Copy, Clone)]
 pub enum ThemeColor {
     // main menu
     MainMenuPrimary,
@@ -77,7 +77,8 @@ impl ToString for ThemeColor {
 #[allow(unused)]
 #[derive(Reflect)]
 #[reflect(from_string = "auto")]
-#[derive(Debug, Serialize, Deserialize, Hash, Eq, PartialEq, Copy, Clone)]
+#[derive(Serialize, Deserialize)]
+#[derive(Debug, Hash, Eq, PartialEq, Copy, Clone)]
 pub enum ThemePosition {
     // beatmap select
     BeatmapSelectSetSelectedOffset,
@@ -97,7 +98,8 @@ impl ToString for ThemePosition {
 #[allow(unused)]
 #[derive(Reflect)]
 #[reflect(from_string = "auto")]
-#[derive(Debug, Serialize, Deserialize, Hash, Eq, PartialEq, Copy, Clone)]
+#[derive(Serialize, Deserialize)]
+#[derive(Debug, Hash, Eq, PartialEq, Copy, Clone)]
 pub enum ThemeScale {
     // beatmap select
     BeatmapSelectSetSelectedScale,
@@ -158,9 +160,9 @@ pub fn tataku_theme() -> Theme {
 
 pub fn osu_theme() -> Theme {
     let name = "Osu".to_owned();
-    let pink = col([235, 73, 153, 240]);
-    let white = col([255, 255, 255, 220]);
-    let blue = col([0, 150, 236, 240]);
+    let pink = Color::new_rgba8(235, 73, 153, 240);
+    let white = Color::new_rgba8(255, 255, 255, 220);
+    let blue = Color::new_rgba8(0, 150, 236, 240);
 
     let lighten = 0.3;
     let lighten = Color::new(lighten, lighten, lighten, 1.0);
@@ -189,7 +191,7 @@ pub fn osu_theme() -> Theme {
         (ThemeColor::LeaderboardTextHovered, Color::WHITE),
         (ThemeColor::LeaderboardTextSelected, Color::WHITE),
 
-        (ThemeColor::LeaderboardPreviousBest, col([255, 69, 0, 150])),
+        (ThemeColor::LeaderboardPreviousBest, Color::new_rgba8(255, 69, 0, 150)),
         (ThemeColor::LeaderboardCurrentScore, Color::BLACK.alpha(0.5)),
 
     ].into_iter().collect::<HashMap<ThemeColor, Color>>();
@@ -225,14 +227,4 @@ pub fn osu_theme() -> Theme {
         scales,
         positions
     }
-}
-
-
-fn col(b:[u8; 4]) -> Color {
-    Color::new(
-        b[0] as f32 / 255.0, 
-        b[1] as f32 / 255.0, 
-        b[2] as f32 / 255.0, 
-        b[3] as f32 / 255.0
-    )
 }

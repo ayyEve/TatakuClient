@@ -1,8 +1,9 @@
 use crate::prelude::*;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default2)]
 pub struct Transform {
     pub origin: Vector2,
+    #[default(Vector2::ONE)]
     pub scale: Vector2,
     pub rotation: f32,
     pub pos: Vector2,
@@ -72,16 +73,6 @@ impl Transform {
         let br = Vector2::new(max_x, max_y);
 
         Bounds::new(pos, br - pos)
-    }
-}
-impl Default for Transform {
-    fn default() -> Self {
-        Self {
-            origin: Vector2::ZERO,
-            scale: Vector2::ONE,
-            rotation: 0.0,
-            pos: Vector2::ZERO,
-        }
     }
 }
 

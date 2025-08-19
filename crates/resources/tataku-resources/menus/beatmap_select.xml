@@ -463,7 +463,7 @@
                       class = "map-item"
                       active = "beatmaps.current.map.beatmap_hash == _map.map.beatmap_hash"
                     >
-                      <action>
+                      <action button="left">
                         <conditional
                           cond="beatmaps.current.map.beatmap_hash == _map.map.beatmap_hash">
                           <!-- if the map is selected -->
@@ -481,6 +481,16 @@
                           </false>
                         </conditional>
                       </action>
+
+                      <action button="right">
+                        <list>
+                          <map>
+                            <selectMap> <variable var="_map.map.beatmap_hash"/> </selectMap>
+                          </map>
+                          <addDialog id="beatmap_settings"/>
+                        </list>
+                      </action>
+                      
                       <element>
                         <column class="map-item-inner">
                           <!-- title and stuff -->

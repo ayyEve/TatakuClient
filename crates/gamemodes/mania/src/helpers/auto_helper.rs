@@ -1,16 +1,11 @@
 use crate::prelude::*;
 
 // TODO: document whatever the hell is happening here
+#[derive(Default)]
 pub struct ManiaAutoHelper {
     states: Vec<AutoplayColumnState>,
 }
 impl ManiaAutoHelper {
-    pub fn new() -> Self {
-        Self {
-            states: Vec::new(),
-        }
-    }
-
     fn get_keypress(col: usize) -> KeyPress {
         let base_key = KeyPress::Mania1 as u8;
         ((col + base_key as usize) as u8).into()

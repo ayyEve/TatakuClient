@@ -1,8 +1,8 @@
 use crate::prelude::*;
-use tataku_client_proc_macros::Settings;
 
-#[derive(Clone, Debug, Serialize, PartialEq)]
-#[derive(Reflect, Settings, SettingsDeserialize)]
+#[derive(Reflect, Settings)]
+#[derive(Clone, Debug, PartialEq)]
+#[derive(Serialize, DeserializeSettings)]
 #[serde(default)]
 pub struct OsuSettings {
     // input

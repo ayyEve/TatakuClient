@@ -15,8 +15,8 @@ pub trait GamemodeSettings: Reflect + std::fmt::Debug {
 impl_downcast!(GamemodeSettings);
 
 #[repr(C)]
-#[derive(Reflect, Debug2)]
-#[derive(Copy, Clone)]
+#[derive(Reflect)]
+#[derive(Copy, Clone, Debug2)]
 pub struct GamemodeInfo {
     pub id: &'static str,
     pub display_name: &'static str,

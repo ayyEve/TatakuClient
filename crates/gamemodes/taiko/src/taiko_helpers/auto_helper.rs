@@ -1,5 +1,6 @@
 use crate::prelude::*;
 
+#[derive(Default)]
 pub struct TaikoAutoHelper {
     don_presses: u32,
     kat_presses: u32,
@@ -8,15 +9,6 @@ pub struct TaikoAutoHelper {
     last_update: f32,
 }
 impl TaikoAutoHelper {
-    pub fn new() -> Self {
-        Self {
-            don_presses: 0, 
-            kat_presses: 0, 
-            last_hit: 0.0, 
-            last_update: 0.0
-        }
-    }
-
     pub fn update(&mut self, time: f32, queues: &mut [TaikoNoteQueue], frames: &mut Vec<ReplayAction>) {
         let catching_up = time - self.last_update > 20.0;
         self.last_update = time;

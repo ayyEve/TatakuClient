@@ -186,7 +186,7 @@ impl HitCircle {
     }
 
     fn note(&self, include_combo_num: bool) -> RenderableCollection {
-        let mut collection = RenderableCollection::new();
+        let mut collection = RenderableCollection::default();
 
         // hit circle
         if let Some(mut circle) = self.circle.clone() {

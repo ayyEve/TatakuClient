@@ -18,8 +18,8 @@ impl From<OnlineContentAction> for TatakuAction {
 }
 
 
-#[derive(Clone, Debug)]
 #[derive(Reflect)]
+#[derive(Clone, Debug)]
 #[reflect(display="display")]
 pub struct OnlineContentSearchData {
     pub display: String,
@@ -39,9 +39,9 @@ impl Display for OnlineContentSearchData {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct OnlineContentSearch {
     /// What "engine" to use to search
     pub engine_id: String,
@@ -60,9 +60,9 @@ pub struct OnlineContentSearch {
 }
 
 
-#[derive(Clone, Debug, PartialEq)]
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct OnlineContentSearchValue {
     pub id: String,
     pub value: String,
@@ -76,9 +76,9 @@ impl OnlineContentSearchValue {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
 #[derive(Deserialize)]
 #[serde(transparent)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct OnlineContentSearchValueCollection(Vec<OnlineContentSearchValue>);
 impl OnlineContentSearchValueCollection {
     pub fn get_value(&self, id: &str) -> Option<&String> {

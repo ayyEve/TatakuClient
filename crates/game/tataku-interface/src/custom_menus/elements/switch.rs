@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct SwitchElement {
     #[serde(rename = "@id", default)] id: Option<ArcStr>,
     #[serde(rename = "@class", default)] class_list: ClassList,
@@ -41,8 +41,8 @@ impl CustomElement for SwitchElement {
 }
 
 
-#[derive(Clone, Debug, PartialEq)]
 #[derive(Deserialize)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct CaseElement {
     #[serde(alias="@cond")] cond: BuildableCondition,
     #[serde(rename="$value")] element: Element,

@@ -76,7 +76,7 @@ impl GameMode for UTypingGame {
         let playfield = Arc::new(Self::get_playfield(&settings, Bounds::new(Vector2::ZERO, Vector2::new(1920.0, 1080.0)), false));
 
         let mut s = Self {
-            notes: UTypingNoteQueue::new(),
+            notes: UTypingNoteQueue::default(),
 
             timing_bars: Vec::new(),
             end_time: 0.0,

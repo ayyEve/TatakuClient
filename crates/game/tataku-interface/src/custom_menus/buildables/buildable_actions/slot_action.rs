@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug, PartialEq)]
 #[derive(Deserialize)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct BuildableSlot {
     pub slot: BuildableValueTag,
     #[serde(rename="$value")] pub action: BuildableSlotAction,
@@ -115,8 +115,8 @@ impl BuildableSlot {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
 #[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all="camelCase")]
 pub enum BuildableSlotAction {
 

@@ -63,17 +63,8 @@ impl VisualizationData {
     }
 }
 
-
+#[derive(Default2)]
 pub struct VisualizationConfig {
-    pub should_lerp: bool,
-    pub lerp_factor: f32,
-    
-}
-impl Default for VisualizationConfig {
-    fn default() -> Self {
-        Self {
-            should_lerp: true,
-            lerp_factor: 20.0
-        }
-    }
+    #[default(true)] pub should_lerp: bool,
+    #[default(20.0)] pub lerp_factor: f32,   
 }

@@ -476,22 +476,14 @@ struct BoundingBox {
     right: f32,
 }
 
+#[derive(Default2)]
 pub struct NavigateConfig {
+    #[default(0.5)]
     straight_overlap_threshold: f32,
     straight_only: bool,
 
     remember_source: bool,
     previous: Option<ConfigPrevious>
-}
-impl Default for NavigateConfig {
-    fn default() -> Self {
-        Self {
-            straight_only: false,
-            straight_overlap_threshold: 0.5,
-            remember_source: false,
-            previous: None,
-        }
-    }
 }
 
 #[allow(unused)]

@@ -1,8 +1,8 @@
 use crate::prelude::*;
 
 // you might be wondering why i dont just use gilrs::Button
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[derive(Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[serde(rename_all="camelCase")]
 pub enum ControllerButton {
     // action buttons

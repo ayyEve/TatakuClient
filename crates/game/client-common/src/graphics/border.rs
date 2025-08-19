@@ -1,7 +1,7 @@
 use crate::prelude::Color;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
 #[derive(serde::Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Border {
     pub color: Color,
     pub width: f32,

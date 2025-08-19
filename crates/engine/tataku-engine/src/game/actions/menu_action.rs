@@ -29,6 +29,14 @@ pub enum MenuAction {
         options: Box<DialogCreateOptions>,
     },
 }
+impl MenuAction {
+    pub fn set_menu(menu: impl Into<CowStr>) -> Self {
+        Self::SetMenu {
+            id: menu.into(),
+            input: Box::new(BuildableInputArguments::default())
+        }
+    }
+}
 impl Clone for MenuAction {
     fn clone(&self) -> Self {
         match self {
@@ -54,14 +62,6 @@ impl Clone for MenuAction {
     }
 }
 
-impl MenuAction {
-    pub fn set_menu(menu: impl Into<CowStr>) -> Self {
-        Self::SetMenu {
-            id: menu.into(),
-            input: Box::new(BuildableInputArguments::default())
-        }
-    }
-}
 impl From<MenuAction> for TatakuAction {
     fn from(value: MenuAction) -> Self { Self::Menu(value) }
 }
@@ -91,9 +91,9 @@ impl DerefMut for BuildableInputArguments {
     }
 }
 
-#[derive(Clone, Debug)]
-#[derive(ChainableInitializer)]
 #[derive(Deserialize)]
+#[derive(ChainableInitializer)]
+#[derive(Clone, Debug, Default2)]
 pub struct DialogCreateOptions {
     #[serde(rename = "@allow_multiple")]
     #[chain] pub allow_multiple: bool,
@@ -103,12 +103,14 @@ pub struct DialogCreateOptions {
     #[chain] pub draggable: bool,
 
     #[serde(rename = "@title")]
+    #[default(Cow::Borrowed(""))]
     #[chain] pub title: CowStr,
     
     #[serde(skip)]
     pub location: DialogLocation,
     
     #[serde(skip)]
+    #[default(true)]
     #[chain] pub background: bool,
 }
 impl DialogCreateOptions {
@@ -128,18 +130,6 @@ impl DialogCreateOptions {
             },
 
             background: incoming.background,
-        }
-    }
-}
-impl Default for DialogCreateOptions {
-    fn default() -> Self {
-        Self {
-            allow_multiple: false,
-            resizable: false,
-            draggable: false,
-            title: Cow::Borrowed(""),
-            location: DialogLocation::Auto,
-            background: true,
         }
     }
 }

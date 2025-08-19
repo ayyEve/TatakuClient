@@ -67,9 +67,9 @@ pub enum PostDelete {
 
 
 /// What to do if the desired action isnt possible
-#[derive(Copy, Clone, Debug, Default, PartialEq)]
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub enum MapActionIfNone {
     /// Continue with the current map (ie dont change)
     #[default] ContinueCurrent,
@@ -117,15 +117,10 @@ impl From<BeatmapListAction> for BeatmapAction {
 }
 
 
-#[derive(Copy, Clone, Debug, Default)]
 #[derive(ChainableInitializer)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct SetBeatmapOptions {
     #[chain] pub use_preview_point: bool,
     #[chain] pub restart_song: bool,
     #[chain] pub if_none: MapActionIfNone
-}
-impl SetBeatmapOptions {
-    pub fn new() -> Self {
-        Self::default()
-    }
 }

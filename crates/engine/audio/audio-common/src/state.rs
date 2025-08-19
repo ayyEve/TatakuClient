@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
 #[derive(Reflect)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
 #[reflect(display = "debug")]
 pub enum AudioState {
     Playing,
@@ -11,4 +11,3 @@ pub enum AudioState {
     #[default]
     Unknown,
 }
-

@@ -56,7 +56,7 @@ impl OsuCursor {
         settings: &Settings
     ) -> Self {
         let a = PI / 4.0;
-        let builder = EmitterBuilder::new()
+        let builder = EmitterBuilder::default()
             .spawn_delay(20.0)
             .angle(EmitterVal::init_only(-a..a))
             .speed(EmitterVal::init_only(0.1..0.5))

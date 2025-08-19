@@ -38,7 +38,10 @@ impl MultiplayerManager {
         // make sure our game is up to date with the lobby's current info
         match lobby.current_beatmap.clone() {
             Some(map) => {
-                actions.push(BeatmapAction::SetFromHash(map.hash, SetBeatmapOptions::new().restart_song(false)));
+                actions.push(BeatmapAction::SetFromHash(
+                    map.hash, 
+                    SetBeatmapOptions::default().restart_song(false)
+                ));
                 actions.push(BeatmapAction::SetPlaymode(map.mode));
             }
             None => {
@@ -79,7 +82,7 @@ impl MultiplayerManager {
                     warn!("selecting previous map");
                     actions.push(BeatmapAction::SetFromHash(
                         old_map, 
-                        SetBeatmapOptions::new()
+                        SetBeatmapOptions::default()
                             .restart_song(false)
                             .use_preview_point(true)
                     ));
@@ -146,7 +149,10 @@ impl MultiplayerManager {
             // if the map that was just added is the lobby's map, set it as our current map
             if let Some(beatmap) = &self.lobby.current_beatmap {
                 if new_hash == &beatmap.hash {
-                    actions.push(BeatmapAction::SetFromHash(beatmap.hash, SetBeatmapOptions::new().restart_song(true)));
+                    actions.push(BeatmapAction::SetFromHash(
+                        beatmap.hash, 
+                        SetBeatmapOptions::default().restart_song(true)
+                    ));
                     self.set_state(LobbyUserState::NotReady, actions);
                 }
             }
@@ -395,7 +401,7 @@ impl MultiplayerManager {
                     // the beatmap change handler in Self::update will handle the rest
                     actions.push(BeatmapAction::SetFromHash(
                         beatmap.hash, 
-                        SetBeatmapOptions::new().restart_song(true))
+                        SetBeatmapOptions::default().restart_song(true))
                     );
                 } else {
                     actions.push(BeatmapAction::Remove);

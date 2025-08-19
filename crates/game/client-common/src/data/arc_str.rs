@@ -6,10 +6,6 @@ static EMPTY: LazyLock<ArcStr> = LazyLock::new(|| ArcStr(String::new().into()));
 #[derive(Clone, Eq)]
 pub struct ArcStr(Arc<str>);
 impl ArcStr {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     pub fn unknown() -> Self {
         static STR: LazyLock<ArcStr> = LazyLock::new(|| ArcStr("unknown".into()));
         STR.clone()

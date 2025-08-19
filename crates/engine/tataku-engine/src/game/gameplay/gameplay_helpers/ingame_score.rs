@@ -1,8 +1,8 @@
 use crate::prelude::*;
 
 /// used for ingame_manager leaderboard
-#[derive(Clone, Debug, Default)]
 #[derive(Reflect)]
+#[derive(Clone, Debug, Default)]
 pub struct IngameScore {
     /// internal id used for score lists
     pub id: usize,

@@ -24,7 +24,9 @@ pub trait DiffCalc: Send + Sync {
     fn new(g: &BeatmapMeta, settings: &Settings) -> TatakuResult<Self> where Self:Sized;
     fn calc(&mut self, mods: &ModManager) -> TatakuResult<DiffCalcSummary>;
 }
-#[derive(Default, serde::Serialize)]
+
+#[derive(Default)]
+#[derive(Serialize)]
 pub struct DiffCalcSummary {
     pub diff: f32,
     pub diffs: Vec<f32>,
@@ -38,8 +40,8 @@ impl DiffCalcSummary {
     }
 }
 
-#[derive(Default, Debug, Clone)]
 #[derive(Reflect)]
+#[derive(Clone, Debug, Default)]
 pub struct GamemodeInfos {
     #[reflect(skip)]
     pub by_id: Arc<HashMap<&'static str, GamemodeInfo>>,

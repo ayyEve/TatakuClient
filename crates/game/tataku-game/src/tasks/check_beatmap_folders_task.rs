@@ -6,7 +6,6 @@ pub struct CheckBeatmapFoldersTask {
     existing_paths: HashSet<String>,
     folders: Vec<String>
 }
-
 impl TatakuTask for CheckBeatmapFoldersTask {
     fn get_name(&self) -> CowStr { Cow::Borrowed("Check Beatmap Folders") }
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Once }

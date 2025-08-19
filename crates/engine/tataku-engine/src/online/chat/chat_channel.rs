@@ -1,9 +1,9 @@
 use crate::prelude::*;
 
 // some kind of identifier
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(Reflect)]
 #[reflect(display="display")]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ChatChannelType {
     Channel { 
         name: String 
@@ -50,8 +50,8 @@ impl std::cmp::PartialEq<String> for ChatChannelType {
 }
 
 
-#[derive(Debug, Clone)]
 #[derive(Reflect)]
+#[derive(Debug, Clone)]
 #[reflect(display="debug")]
 pub struct ChatChannel {
     #[reflect(alias("name"))]

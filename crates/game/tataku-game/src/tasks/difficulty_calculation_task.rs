@@ -213,7 +213,11 @@ impl Iterator for DiffCalcTaskIter {
     fn next(&mut self) -> Option<Self::Item> {
         // get the next set of mods
         if let Some(mods) = self.mods_iter.next() {
-            Some(ModManager::new().with_mods(mods.iter()).with_speed(self.speed))
+            Some(
+                ModManager::default()
+                .with_mods(mods.iter())
+                .with_speed(self.speed)
+            )
         } else if let Some(speed) = self.speed_iter.next() {
             // otherwise, get the next speed, and reset the mods iter
             self.speed = speed;

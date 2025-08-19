@@ -55,21 +55,6 @@ pub enum OnlineEvent {
     SpectatorEvent(SpectatorEvent),
     MultiplayerPacket(Box<MultiplayerPacket>),
 }
-// impl From<PacketId> for OnlineEvent {
-//     fn from(value: PacketId) -> Self {
-//         Self::Packet(Box::new(value))
-//     }
-// }
-// impl From<MultiplayerPacket> for OnlineEvent {
-//     fn from(value: MultiplayerPacket) -> Self {
-//         Self::Packet(Box::new(value.into()))
-//     }
-// }
-// impl From<ChatPacket> for OnlineEvent {
-//     fn from(value: ChatPacket) -> Self {
-//         Self::Packet(Box::new(value.into()))
-//     }
-// }
 
 #[derive(Debug)]
 pub enum SpectatorEvent {

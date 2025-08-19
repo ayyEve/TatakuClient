@@ -163,9 +163,9 @@
 
 <xs:simpleType name="mouse-button">
   <xs:restriction base="xs:string">
-    <xs:enumeration value="Left"/>
-    <xs:enumeration value="Middle"/>
-    <xs:enumeration value="Right"/>
+    <xs:enumeration value="left"/>
+    <xs:enumeration value="middle"/>
+    <xs:enumeration value="right"/>
   </xs:restriction>
 </xs:simpleType>
 

@@ -1,8 +1,8 @@
 use crate::prelude::*;
 
 /// Only showes one item at a time
-#[derive(Clone, Debug)]
 #[derive(Deserialize)]
+#[derive(Clone, Debug)]
 pub struct TabbedElement {
     #[serde(rename = "@id", default)] id: Option<ArcStr>,
     #[serde(rename = "@class", default)] class_list: ClassList,
@@ -31,8 +31,8 @@ impl CustomElement for TabbedElement {
 
 
 
-#[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq)]
 struct BuildableTab {
     #[serde(rename="@name")] name: String,
     // #[serde(rename="@name", default)] pub name_attribute: Option<BuildableText>,
@@ -41,9 +41,9 @@ struct BuildableTab {
 }
 
 
-#[derive(Clone, Debug, PartialEq)]
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 enum BuildableTabProvider {
     Static {
         #[serde(alias="$value")] 

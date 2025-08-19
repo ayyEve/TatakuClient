@@ -1,19 +1,13 @@
 use crate::prelude::*;
 
+#[derive(Default2)]
 pub(crate) struct TaskManager {
     tasks: Vec<TaskInner>,
 
+    #[default(10)]
     max_tasks: usize,
 }
 impl TaskManager {
-    pub fn new() -> Self {
-        Self {
-            tasks: Vec::new(),
-
-            max_tasks: 10,
-        }
-    }
-
     pub fn add_task(&mut self, task: Box<dyn TatakuTask>) {
         info!("Adding task: {}", task.get_name());
 
@@ -58,11 +52,6 @@ impl TaskManager {
 
         // remove any completed tasks
         self.tasks.retain(|t| t.get_state() != TatakuTaskState::Complete);
-    }
-}
-impl Default for TaskManager {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

@@ -6,7 +6,6 @@ pub struct TaikoNoteQueue {
     pub index: usize,
 }
 impl TaikoNoteQueue {
-    pub fn new() -> Self { Self::default() }
     pub fn done(&self) -> bool { self.index >= self.notes.len() }
     pub fn next(&mut self) { self.index += 1; }
 

@@ -1,15 +1,15 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct BuildableValueTag {
     #[serde(rename="$value", alias="$text")] pub value: BuildableValue,
 }
 crate::impl_tag!(BuildableValueTag, BuildableValue, value);
 
-#[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub enum BuildableValue {
     /// No value
     #[default] None,

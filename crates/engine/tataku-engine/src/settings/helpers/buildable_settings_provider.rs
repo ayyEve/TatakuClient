@@ -1,8 +1,8 @@
 use crate::prelude::*;
 use tataku_ui::prelude::*;
 
-#[derive(Clone, Default)]
 #[derive(Reflect)]
+#[derive(Clone, Debug, Default)]
 pub struct BuildableSettingsProvider {
     pub name: String,
     pub categories: Vec<BuildableSettingsCategory>,
@@ -13,8 +13,8 @@ impl PartialEq for BuildableSettingsProvider {
     }
 }
 
-#[derive(Clone)]
 #[derive(Reflect)]
+#[derive(Clone, Debug)]
 #[reflect(display="display")]
 pub struct BuildableSettingsCategory {
     pub name: String,
@@ -28,6 +28,7 @@ impl Display for BuildableSettingsCategory {
     }
 }
 
+#[derive(Debug)]
 #[derive(Reflect)]
 #[reflect(dont_clone)]
 pub struct BuildableSetting {
@@ -44,8 +45,8 @@ pub struct BuildableSetting {
     pub setting_type: BuildableSettingType,
 }
 
-#[derive(Clone)]
 #[derive(Reflect)]
+#[derive(Clone, Debug)]
 #[reflect(display="display")]
 pub enum BuildableSettingType {
     // spacing
@@ -91,8 +92,8 @@ impl std::fmt::Display for BuildableSettingType {
     }
 }
 
-#[derive(Clone)]
 #[derive(Reflect)]
+#[derive(Clone, Debug)]
 #[reflect(display = "display")]
 pub enum BuildableSettingDropdownOptions {
     List {
@@ -110,25 +111,19 @@ impl Display for BuildableSettingDropdownOptions {
         }.fmt(f)
     }
 }
-#[derive(Clone)]
+
 #[derive(Reflect)]
+#[derive(Clone, Debug)]
 pub struct BuildableSettingDropdownListOption {
     pub name: String,
     #[reflect(skip)]
     pub value: TatakuValue,
 }
 
-// #[derive(Clone)]
-// #[derive(Reflect)]
-// pub enum BuildableSettingButtonAction {
-    
-// }
-
-
-#[derive(Clone)]
 #[derive(Reflect)]
+#[derive(Clone, Debug2)]
 pub struct BuildableSettingsAction {
-    #[reflect(skip)]
+    #[reflect(skip)] #[debug(skip)]
     pub inner: Arc<dyn BuildableSettingsActionTrait>,
 }
 impl From<TatakuAction> for BuildableSettingsAction {

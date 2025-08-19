@@ -406,7 +406,7 @@ impl Widget<TatakuAction> for Container {
         let Some(our_bounds) = shell.tree.absolute_bounds(self.node_id)
         else { return };
 
-        let mut list = RenderableCollection::new();
+        let mut list = RenderableCollection::default();
         if self.scrollable {
             std::mem::swap(shell.list, &mut list);
         }
@@ -446,7 +446,7 @@ impl Widget<TatakuAction> for Container {
         let Some(our_bounds) = shell.tree.absolute_bounds(self.node_id)
         else { return };
 
-        let mut list = RenderableCollection::new();
+        let mut list = RenderableCollection::default();
         if self.scrollable {
             std::mem::swap(shell.list, &mut list);
         }

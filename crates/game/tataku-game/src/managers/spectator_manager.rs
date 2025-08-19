@@ -123,7 +123,7 @@ impl SpectatorManager {
         if values.beatmap_manager.beatmaps_by_hash.contains_key(&host_map.map_hash) {
             actions.push(BeatmapAction::SetFromHash(
                 host_map.map_hash, 
-                SetBeatmapOptions::new().restart_song(true)
+                SetBeatmapOptions::default().restart_song(true)
             ));
 
             let current_time = (self.frames.iter().fold(
@@ -176,7 +176,7 @@ impl SpectatorManager {
                     if values.beatmap_manager.get_by_hash(&beatmap_hash).is_some() {
                         actions.push(BeatmapAction::SetFromHash(
                             beatmap_hash, 
-                            SetBeatmapOptions::new().restart_song(true)
+                            SetBeatmapOptions::default().restart_song(true)
                         ));
                         self.start_game(values, 0.0, actions);
                     } else {
@@ -314,7 +314,9 @@ impl HostMap {
         Self { 
             map_hash, 
             playmode, 
-            mods: ModManager::new().with_speed(speed).with_mods(mods.iter()) 
+            mods: ModManager::default()
+                .with_speed(speed)
+                .with_mods(mods.iter()) 
         }
     }
 }

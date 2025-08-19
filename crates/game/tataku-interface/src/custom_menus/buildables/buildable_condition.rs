@@ -1,8 +1,8 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug, PartialEq)]
 #[derive(Deserialize)]
 #[serde(from="String")]
+#[derive(Clone, Debug, PartialEq)]
 pub enum BuildableCondition {
     Unbuilt(ArcStr),
     Built(BuildableCalc, ArcStr),

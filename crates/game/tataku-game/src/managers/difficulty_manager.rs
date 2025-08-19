@@ -60,7 +60,7 @@ impl DifficultyProvider for DifficultyManager {
     }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct DifficultyEntry {
     pub playmode: Md5Hash,
     pub map_hash: Md5Hash,

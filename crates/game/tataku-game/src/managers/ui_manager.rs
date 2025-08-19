@@ -1,30 +1,25 @@
 use crate::prelude::*;
 
+#[derive(Default2)]
 pub struct UiManager {
     messages: Vec<Message>,
+    #[default("None".to_owned())]
     current_menu: String,
 
     /// what menu is currently being drawn?
+    #[default(Self::default_tree())]
     pub root_tree: Tree<TatakuAction>,
 
     dialog_counter: usize,
     pub dialogs: Vec<Tree<TatakuAction>>,
 }
 impl UiManager {
-    #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
-        Self {
-            messages: Vec::new(),
-            current_menu: "None".to_owned(),
-            root_tree: Tree::new(
-                100, // 100 should be fine right? right??!!?
-                MessageOwner::Menu, 
-                EmptyWidget::new_boxed()
-            ), 
-
-            dialog_counter: 0,
-            dialogs: Vec::new(),
-        }
+    fn default_tree() -> Tree<TatakuAction> {
+        Tree::new(
+            100, // 100 should be fine right? right??!!?
+            MessageOwner::Menu, 
+            EmptyWidget::new_boxed()
+        )
     }
 
     pub fn get_menu(&self) -> &String { &self.current_menu }

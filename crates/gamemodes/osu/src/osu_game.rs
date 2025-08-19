@@ -389,8 +389,8 @@ impl GameMode for OsuGame {
                     use_controller_cursor: false,
         
                     game_settings: std_settings.clone(),
-                    auto_helper: StandardAutoHelper::new(),
-                    relax_manager: RelaxManager::new(),
+                    auto_helper: StandardAutoHelper::default(),
+                    relax_manager: RelaxManager::default(),
                     
                     new_combos: Vec::new(),
                     stack_leniency,
@@ -1233,7 +1233,7 @@ impl GameMode for OsuGame {
             emitter.image = smoke;
         } else {
             // create the emitter
-            let emitter = EmitterBuilder::new()
+            let emitter = EmitterBuilder::default()
                 .should_emit(false)
                 .spawn_delay(10.0)
                 .life(500.0..2000.0)

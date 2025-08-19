@@ -1,9 +1,9 @@
 use crate::prelude::*;
 
 /// An action that deals with the Song
-#[derive(Clone, Debug, PartialEq)]
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub enum BuildableSongAction {
     /// Play/resume the song
     Play,
@@ -91,9 +91,9 @@ impl BuildableSongAction {
 }
 
 
-#[derive(Clone, Debug, PartialEq, Default)]
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct BuildableSongPlayData {
     #[serde(alias="@play", default)] pub play: Option<BuildableValueTag>,
     #[serde(alias="@restart", default)] pub restart: Option<BuildableValueTag>,

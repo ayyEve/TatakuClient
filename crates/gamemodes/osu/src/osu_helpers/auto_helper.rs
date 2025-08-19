@@ -7,6 +7,7 @@ use crate::prelude::*;
 //     KeyPress::RightMouse,
 // ];
 
+#[derive(Default)]
 pub struct StandardAutoHelper {
     point_trail_start_time: f32,
     point_trail_end_time: f32,
@@ -21,19 +22,6 @@ pub struct StandardAutoHelper {
     press_counter: usize,
 }
 impl StandardAutoHelper {
-    pub fn new() -> Self {
-        Self {
-            point_trail_start_time: 0.0,
-            point_trail_end_time: 0.0,
-            point_trail_start_pos: Vector2::ZERO,
-            point_trail_end_pos: Vector2::ZERO,
-
-            holding: HashMap::new(),
-
-            release_queue: Vec::new(),
-            press_counter: 0
-        }
-    }
     pub fn get_release_queue(&mut self) -> Vec<ReplayAction> {
         std::mem::take(&mut self.release_queue)
     }

@@ -1,20 +1,14 @@
 use crate::prelude::*;
+use tataku_engine::prelude::Default2;
 
+#[derive(Default2)]
 pub struct RenderBufferQueue<B:RenderBufferable> {
     pub cpu_cache: B::Cache,
+    #[default(Vec::with_capacity(3))]
     queued_buffers: Vec<Box<B>>,
     recording_buffer: Option<Box<B>>,
 }
 impl<B:RenderBufferable> RenderBufferQueue<B> {
-    /// create a new buffer queue
-    pub fn new() -> Self {
-        Self {
-            queued_buffers: Vec::with_capacity(3),
-            recording_buffer: None,
-            cpu_cache: B::Cache::default(),
-        }
-    }
-    
     /// inline helper to create a render buffer on the queue
     pub fn init<'a>(
         mut self, 

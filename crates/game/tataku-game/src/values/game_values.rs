@@ -1,9 +1,9 @@
 use crate::prelude::*;
 
 #[derive(Reflect)]
-#[derive(Debug, Default)]
 #[reflect(dont_clone)]
-// #[reflect(remap("map" => "self.beatmap_manager.current_beatmap.map"))]
+#[derive(Debug, Default)]
+// #[reflect(remap(map => self.beatmap_manager.current_beatmap.map))]
 pub struct TatakuValues {
 
     /// The Game's settings
@@ -34,6 +34,9 @@ pub struct TatakuValues {
     /// Beatmap manager, its here instead of in Game to keep the lists in one place
     #[reflect(alias("beatmaps"))] 
     pub beatmap_manager: BeatmapManager,
+    
+    /// beatmap settings
+    pub beatmap_settings: BeatmapSettings,
 
     /// Online manager, its here instead of in Game to keep the lists in one place
     #[reflect(alias("online"))] 
@@ -51,13 +54,13 @@ impl TatakuValues {
     pub fn new(
         infos: &GamemodeInfos, 
         online_content_engines: Vec<OnlineContentCapabilities>,
-        settings: &Settings,
+        settings: Settings,
     ) -> Self {
         Self {
             enums: EnumValues::new(infos),
-            settings: settings.clone(),
+            global: GlobalValues::new(infos.clone(), &settings),
+            settings,
             beatmap_manager: BeatmapManager::new(infos.clone()),
-            global: GlobalValues::new(infos.clone(), settings),
             game: GameValues::new(online_content_engines),
             ..Default::default()
         }
@@ -77,8 +80,8 @@ impl TatakuValues {
 
 
 
-#[derive(Debug, Clone)]
 #[derive(Reflect)]
+#[derive(Debug, Clone)]
 pub struct ReflectLobby {
     /// scores of the players in the lobby
     player_scores: Vec<ReflectScore>,
@@ -141,8 +144,8 @@ impl ReflectLobby {
 }
 
 
-#[derive(Debug, Clone, Default)]
 #[derive(Reflect)]
+#[derive(Debug, Clone, Default)]
 pub struct ScoreList {
     #[reflect(flatten)]
     pub scores: Vec<IngameScore>,
@@ -151,10 +154,9 @@ pub struct ScoreList {
 
 
 
-#[derive(Default, Debug)]
 #[derive(Reflect)]
-#[reflect(display = "debug")]
-#[reflect(dont_clone)]
+#[derive(Default, Debug)]
+#[reflect(display = "debug", dont_clone)]
 pub struct GameValues {
     pub time: f32,
     pub window_size: Vector2,
@@ -170,10 +172,9 @@ impl GameValues {
     }
 }
 
-#[derive(Default, Debug)]
 #[derive(Reflect)]
-#[reflect(display = "debug")]
-#[reflect(dont_clone)]
+#[derive(Default, Debug)]
+#[reflect(display = "debug", dont_clone)]
 pub struct OnlineContentValues {
     pub engines: HashMap<String, OnlineContentCapabilities>,
     pub results: OnlineContentReflectResults,
@@ -201,9 +202,9 @@ impl OnlineContentValues {
 
 
 
-#[derive(Default, Debug, Clone)]
 #[derive(Reflect)]
 #[reflect(display = "debug")]
+#[derive(Default, Debug, Clone)]
 pub struct OnlineContentReflectResults {
     pub completed: bool,
     pub error: Option<String>,

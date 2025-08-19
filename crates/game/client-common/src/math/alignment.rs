@@ -4,9 +4,9 @@ use tataku_common::prelude::*;
 use HorizontalAlign::*;
 use VerticalAlign::*;
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
-#[derive(serde::Serialize, serde::Deserialize)]
 #[derive(Reflect)]
+#[derive(Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
 pub enum HorizontalAlign {
     #[default]
     Left,
@@ -39,9 +39,9 @@ impl From<Alignment> for HorizontalAlign {
 }
 
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
-#[derive(serde::Serialize, serde::Deserialize)]
 #[derive(Reflect)]
+#[derive(Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
 pub enum VerticalAlign {
     #[default]
     Top,
@@ -73,9 +73,9 @@ impl From<Alignment> for VerticalAlign {
 }
 
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
-#[derive(serde::Serialize, serde::Deserialize)]
 #[derive(Reflect)]
+#[derive(Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
 pub struct Alignment {
     pub horizontal: HorizontalAlign,
     pub vertical: VerticalAlign,

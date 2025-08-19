@@ -1,8 +1,8 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct TextInputElement {
     #[serde(rename = "@id", default)] id: Option<ArcStr>,
     #[serde(rename = "@class", default)] class_list: ClassList,

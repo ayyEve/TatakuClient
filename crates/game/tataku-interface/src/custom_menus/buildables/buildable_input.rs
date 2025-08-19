@@ -1,8 +1,8 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug, PartialEq)]
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct BuildableInput {
     /// The name of the variable
     #[serde(rename="@name")] pub name: String,
@@ -18,9 +18,9 @@ pub struct BuildableInput {
     #[serde(rename="@default", alias="default", default)] pub default_value: Option<TatakuValue>,
 }
 
-#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
 pub enum BuildableInputType {
     /// type doesnt matter
     Any,
@@ -63,8 +63,8 @@ impl BuildableInputType {
 }
 
 
-#[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct BuildableInputsTag {
     #[serde(rename = "$value")] pub list: Vec<BuildableInput>,
 }

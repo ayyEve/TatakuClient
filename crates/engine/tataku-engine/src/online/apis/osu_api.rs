@@ -28,7 +28,8 @@ impl OsuApi {
 
 
 #[allow(unused)]
-#[derive(Deserialize, Debug)]
+#[derive(Debug)]
+#[derive(Deserialize)]
 struct RawOsuApiBeatmap {
     beatmap_id: String,
     beatmapset_id: String,

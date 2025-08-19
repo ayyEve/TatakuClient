@@ -158,8 +158,8 @@ struct ScoreUploadData {
 }
 
 #[derive(Reflect)]
-#[derive(Copy, Clone, Debug, Default)]
 #[reflect(display = "debug")]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct ScoreSubmitResponse {
     pub completed: bool,
     pub score_id: u64,

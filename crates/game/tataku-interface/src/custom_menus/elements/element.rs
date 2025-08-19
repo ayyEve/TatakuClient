@@ -5,9 +5,9 @@ pub trait CustomElement {
     fn build(&self) -> Box<dyn Widget<TatakuAction>>;
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[derive(Deserialize)]
 #[serde(from="String")]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ClassList(pub Vec<ArcStr>);
 impl ClassList {
     pub fn push(&mut self, s: impl Into<ArcStr>) {
@@ -42,9 +42,9 @@ impl From<&str> for ClassList {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub enum Element {
     #[default] Empty,
 
@@ -102,15 +102,15 @@ impl From<TextElement> for Element {
 }
 
 
-#[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct ElementTag {
     #[serde(rename="$value")] pub element: Element
 }
 crate::impl_tag!(ElementTag, Element, element);
 
-#[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct ElementList {
     #[serde(rename="$value")] pub list: Vec<Element>,
 }

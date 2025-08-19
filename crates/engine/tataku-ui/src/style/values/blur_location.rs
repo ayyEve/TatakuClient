@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 #[derive(Reflect)]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub enum BlurLocation {
     Above,
     #[default] Below,

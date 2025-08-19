@@ -1,16 +1,17 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct BuildableTextTag {
     #[serde(rename="$value")] pub value: BuildableText
 }
 crate::impl_tag!(BuildableTextTag, BuildableText, value);
 
-#[derive(Clone, Debug, PartialEq)]
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all="camelCase")]
+#[derive(Clone, Debug, Default2, PartialEq)]
 pub enum BuildableText {
+    #[default]
     Text {
         #[serde(rename = "@text")]
         text: ArcStr
@@ -207,13 +208,6 @@ impl BuildableText {
         }
     }
 }
-impl Default for BuildableText {
-    fn default() -> Self {
-        Self::Text { 
-            text: ArcStr::new()
-        }
-    }
-}
 
 
 fn try_get_string(r: &dyn Reflect) -> Option<String> {
@@ -285,7 +279,7 @@ mod tests {
     fn test_list() {
         let input = r#" <list> <text text="hi mom"/> <text text="bye mom"/> </list> "#;
         let expected = BuildableText::List { 
-            join: ArcStr::new(),
+            join: ArcStr::default(),
             list: vec![
                 BuildableText::Text { text: "hi mom".into() },
                 BuildableText::Text { text: "bye mom".into() }

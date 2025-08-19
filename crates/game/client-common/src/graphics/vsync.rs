@@ -1,10 +1,10 @@
 use tataku_common::prelude::*;
 use serde::{ Serialize, Deserialize };
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
-#[derive(Serialize, Deserialize)]
 #[derive(Reflect)]
 #[reflect(display = "display")]
+#[derive(Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub enum Vsync {
     AutoVsync,
     #[default]

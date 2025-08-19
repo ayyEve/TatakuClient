@@ -167,8 +167,8 @@ impl TatakuBeatmap for QuaverBeatmap {
 }
 
 
-
-#[derive(Deserialize, Copy, Clone)]
+#[derive(Copy, Clone)]
+#[derive(Deserialize)]
 pub enum QuaverKeys {
     Keys4,
     Keys5,
@@ -185,7 +185,8 @@ impl From<QuaverKeys> for u8 {
 }
 
 
-#[derive(Deserialize, Copy, Clone)]
+#[derive(Copy, Clone)]
+#[derive(Deserialize)]
 #[serde(rename_all="PascalCase")]
 pub struct QuaverTimingPoint {
     #[serde(default)]
@@ -216,7 +217,8 @@ pub struct QuaverNote {
     // key_sounds: Vec<?>
 }
 
-#[derive(Deserialize, Copy, Clone)]
+#[derive(Copy, Clone)]
+#[derive(Deserialize)]
 #[serde(rename_all="PascalCase")]
 pub struct QuaverSliderVelocity {
     #[serde(default)]

@@ -1,8 +1,8 @@
 
 /// TODO: somehow merge this with alignment? 
 /// my brain just isnt working properly enough to manually calculate this 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum GameplayWidgetAlign {
     /// Inside the parent
     Inside, 

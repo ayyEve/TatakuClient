@@ -3,7 +3,7 @@ use tokio::task::AbortHandle;
 
 
 #[derive(Reflect)]
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct ScoreManager {
     pub force_update: bool,
     pub scores: Vec<IngameScore>,
@@ -241,8 +241,7 @@ impl Default for ScoreManager {
     }
 }
 
-#[derive(Default)]
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ScoreLoaderHelper {
     pub scores: Vec<IngameScore>,
     pub done: bool,

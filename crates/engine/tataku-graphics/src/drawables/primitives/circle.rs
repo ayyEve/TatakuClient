@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
-#[derive(ChainableInitializer)]
 #[derive(Copy, Clone)]
+#[derive(ChainableInitializer)]
 pub struct Circle {
     // current
     pub color: Color,

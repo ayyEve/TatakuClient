@@ -1,8 +1,8 @@
 use crate::prelude::*;
 
-#[derive(Default, Debug)]
 #[derive(Reflect)]
 #[reflect(dont_clone)]
+#[derive(Default, Debug)]
 pub struct OnlineSpectatorInfo {
     /// our user's user id
     #[reflect(skip)]

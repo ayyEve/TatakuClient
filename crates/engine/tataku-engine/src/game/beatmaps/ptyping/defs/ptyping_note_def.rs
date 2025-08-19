@@ -1,7 +1,8 @@
 use crate::prelude::*;
 
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug)]
+#[derive(Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct PTypingNoteDef {
     pub time: f64,
@@ -11,8 +12,8 @@ pub struct PTypingNoteDef {
     pub typing_conversion: u8
 }
 
-
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug)]
+#[derive(Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct PTypingNoteColor {
     pub r: f32,
@@ -21,7 +22,9 @@ pub struct PTypingNoteColor {
     pub a: f32
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+
+#[derive(Clone, Default, Debug)]
+#[derive(Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct PTypingNoteSettings {
     pub approach_modifier: Option<f32>

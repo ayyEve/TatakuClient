@@ -5,8 +5,8 @@ use crate::prelude::*;
 macro_rules! create_css_value {
     ($name: ident, $default: ident; $($str: expr, $variant: ident);* $(;)?) => {
         use $crate::prelude::*;
-        #[derive(Copy, Clone, Debug, PartialEq, Eq)]
         #[derive(Deserialize, Reflect)]
+        #[derive(Copy, Clone, Debug, PartialEq, Eq)]
         pub enum $name {
             $($variant),*
         }
@@ -36,8 +36,8 @@ macro_rules! create_css_value {
     }
 }
 
-#[derive(Default, Debug, Clone)]
 #[derive(ParseCss)]
+#[derive(Default, Debug, Clone)]
 pub struct CssStyle {
     /// What layout strategy should be used?
     pub display: CssValue<DisplayType>,

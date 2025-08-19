@@ -2,9 +2,9 @@ use rand::Rng;
 use crate::prelude::*;
 use std::fs::read_dir;
 
-#[derive(Default, Debug)]
 #[derive(Reflect)]
 #[reflect(dont_clone)]
+#[derive(Default, Debug)]
 pub struct BeatmapManager {
     #[reflect(skip)]
     pub actions: ActionQueue,
@@ -71,6 +71,33 @@ impl BeatmapManager {
         self.initialized = true;
         self.refresh_maps(mods, playmode, sort_by, diff_manager);
     }
+
+    pub fn add_played(&mut self, map: Md5Hash) {
+        self.played.push(map);
+        self.play_index += 1;
+    }
+    pub fn remove_played(&mut self, index_change: usize) {
+        self.played.pop();
+        self.play_index -= index_change;
+    }
+
+
+    pub fn set_current(&mut self, map: BeatmapWithData) {
+        let hash = map.map.beatmap_hash;
+        self.current_beatmap = Some(map);
+
+        // make sure we have the selected set and selected map values up to date
+        for (n, i) in self.groups.iter_mut().enumerate() {
+            i.selected = false;
+
+            if let Some(j) = i.has_hash(&hash) {
+                self.selected_set = n;
+                self.selected_map = j;
+                i.selected = true;
+            }
+        }
+    }
+
 
     pub fn folders_to_check(settings: &Settings) -> Vec<std::path::PathBuf> {
         let mut dirs_to_check = settings.external_games_folders.clone();
@@ -219,141 +246,34 @@ impl BeatmapManager {
 
     }
 
-    pub fn delete_beatmap(
-        &mut self, 
-        beatmap: Md5Hash, 
-        post_delete: PostDelete,
-        if_create: SelectBeatmapConfig, 
-        diff_manager: &mut impl DifficultyProvider,
-    ) {
+    pub fn delete_beatmap(&mut self, beatmap: Md5Hash) -> bool {
         // remove beatmap from ourselves
         self.beatmaps.retain(|b| b.beatmap_hash != beatmap);
 
-        if let Some(old_map) = self.beatmaps_by_hash.remove(&beatmap) {
-            if old_map.file_path.starts_with(SONGS_DIR) {
+        let Some(old_map) = self.beatmaps_by_hash.remove(&beatmap) 
+        else { return false };
 
-                // delete the file
-                if let Err(e) = std::fs::remove_file(&*old_map.file_path) {
-                    self.actions.push(Notification::new_error(
-                        "Error deleting map", 
-                        e
-                    ));
-                }
-                // TODO: should check if this is the last beatmap in this folder
-                // if so, delete the parent dir
-            } else {
-                // file is probably in an external folder, just add this file to the ignore list
-                self.ignore_beatmaps.insert(old_map.file_path.clone());
-                Database::add_ignored(&old_map.file_path);
+        if old_map.file_path.starts_with(SONGS_DIR) {
+
+            // delete the file
+            if let Err(e) = std::fs::remove_file(&*old_map.file_path) {
+                self.actions.push(Notification::new_error(
+                    "Error deleting map", 
+                    e
+                ));
             }
+            // TODO: should check if this is the last beatmap in this folder
+            // if so, delete the parent dir
+        } else {
+            // file is probably in an external folder, just add this file to the ignore list
+            self.ignore_beatmaps.insert(old_map.file_path.clone());
+            Database::add_ignored(&old_map.file_path);
         }
 
-        if self.current_beatmap.as_ref().filter(|b| b.beatmap_hash == beatmap).is_some() {
-            match post_delete {
-                // select next beatmap
-                PostDelete::Next => { 
-                    self.next_beatmap(if_create, diff_manager); 
-                }
-
-                PostDelete::Previous => { 
-                    self.previous_beatmap(if_create, diff_manager); 
-                }
-
-                PostDelete::Random 
-                    => if let Some(map) = self.random_beatmap() {
-                    self.set_current_beatmap(
-                        &map, 
-                        if_create,
-                        diff_manager
-                    );
-                }
-            }
-        }
+        self.current_beatmap.as_ref().filter(|b| b.beatmap_hash == beatmap).is_some()
     }
 
-    pub fn set_current_beatmap(
-        &mut self,
-        beatmap: &Arc<BeatmapMeta>,
-        config: SelectBeatmapConfig,
-        diff_manager: &mut impl DifficultyProvider,
-    ) {
-        debug!(
-            "Setting current beatmap to {} ({}) and playmode {}", 
-            beatmap.beatmap_hash, 
-            beatmap.file_path, 
-            config.playmode
-        );
 
-        self.played.push(beatmap.beatmap_hash);
-        self.play_index += 1;
-
-        // update value collection
-        {
-            let actual_mode = self.infos.get_playmode_actual(
-                &config.playmode, 
-                Some(beatmap)
-            );
-
-            // let mods = &values.mods;
-            let diff = diff_manager.get_diff(
-                beatmap, 
-                actual_mode, 
-                &config.mods
-            ).ok();
-
-            let diff_info = if let Ok(info) = self.infos.get_info(actual_mode) {
-                let diff_meta = BeatmapMetaWithDiff::new(beatmap.clone(), diff);
-
-                info.diff_values
-                    .iter()
-                    .map(|dv| dv.format((dv.get_diff_value)(&diff_meta, &config.mods)))
-                    .collect::<Vec<_>>()
-                    .join(" | ")
-            } else {
-                String::new()
-            };
-
-            self.current_beatmap = Some(BeatmapWithData {
-                map: beatmap.clone(),
-                diff_rating: diff.unwrap_or_default(),
-                diff_info
-            });
-            
-            self.actions.push(GameAction::UpdatePlaymodeActual(actual_mode.to_string().into()));
-        }
-
-        // set the song
-        self.actions.push(SongAction::Set(SongSetAction::FromFile(beatmap.audio_filename.clone(), SongPlayData {
-            play: true,
-            restart: config.restart_song,
-            position: Some(if config.use_preview_time { beatmap.audio_preview } else { 0.0 }),
-            ..Default::default()
-        })));
-        // make sure the song is playing
-        self.actions.push(SongAction::Play);
-        // make sure to update the background
-        self.actions.push(GameAction::UpdateBackground);
-
-        // make sure we have the selected set and selected map values up to date
-        for (n, i) in self.groups.iter_mut().enumerate() {
-            i.selected = false;
-
-            if let Some(j) = i.has_hash(&beatmap.beatmap_hash) {
-                self.selected_set = n;
-                self.selected_map = j;
-                i.selected = true;
-            }
-        }
-    }
-
-    pub fn remove_current_beatmap(&mut self) {
-        trace!("Setting current beatmap to None");
-        self.current_beatmap = None;
-
-        // stop song
-        self.actions.push(SongAction::Stop);
-        self.actions.push(GameAction::UpdateBackground);
-    }
 
 
     // getters
@@ -395,65 +315,24 @@ impl BeatmapManager {
         }
     }
 
-    pub fn next_beatmap(
-        &mut self, 
-        config: SelectBeatmapConfig, 
-        diff_manager: &mut impl DifficultyProvider,
-    ) -> bool {
-        // TODO: handle maps that dont exist anymore
-        let at_index = self
+
+    pub fn next_beatmap(&self) -> Option<Arc<BeatmapMeta>> {
+        self
             .played
             .get(self.play_index + 1)
             .and_then(|hash| self.beatmaps_by_hash.get(hash))
-            .cloned();
-
-        match at_index {
-            Some(map) => {
-                self.set_current_beatmap(&map, config, diff_manager);
-                // since we're playing something already in the queue, dont append it again
-                self.played.pop();
-                true
-            }
-
-            None => if let Some(map) = self.random_beatmap() {
-                self.set_current_beatmap(&map, config, diff_manager);
-                true
-            } else {
-                false
-            }
-        }
+            .cloned()
     }
+    pub fn previous_beatmap(&self) -> Option<Arc<BeatmapMeta>> {
+        if self.play_index == 0 { return None }
 
-    pub fn previous_beatmap(
-        &mut self, 
-        config: SelectBeatmapConfig, 
-        diff_manager: &mut impl DifficultyProvider,
-    ) -> bool {
-        if self.play_index == 0 { return false }
-
-        // TODO: handle maps that dont exist anymore
-        let at_index = self
+        self
             .played
             .get(self.play_index - 1)
             .and_then(|hash| self.beatmaps_by_hash.get(hash))
-            .cloned();
-
-        match at_index {
-            Some(map) => {
-                self.set_current_beatmap(&map, config, diff_manager);
-                // since we're playing something already in the queue, dont append it again
-                self.played.pop();
-                // undo the index bump done in set_current_beatmap
-                self.play_index -= 2;
-
-                true
-            }
-            None => false
-        }
+            .cloned()
     }
-
 }
-
 
 impl BeatmapManager {
     pub fn refresh_maps(
@@ -648,7 +527,7 @@ impl BeatmapManager {
         if let Some(map) = set.maps.get(self.selected_map) {
             self.actions.push(BeatmapAction::Set(
                 map.map.clone(), 
-                SetBeatmapOptions::new().use_preview_point(true)
+                SetBeatmapOptions::default().use_preview_point(true)
             ));
         }
     }
@@ -672,8 +551,8 @@ impl BeatmapManager {
 
 
 #[allow(unused)]
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 #[derive(Reflect)]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub enum GroupBy {
     #[default]
     Set,
@@ -790,9 +669,9 @@ impl SelectBeatmapConfig {
 }
 
 
-#[derive(Clone, Debug, Default)]
 #[derive(Reflect)]
 #[reflect(display="debug")]
+#[derive(Clone, Debug, Default)]
 pub struct BeatmapWithData {
     #[reflect(flatten)]
     pub map: Arc<BeatmapMeta>,

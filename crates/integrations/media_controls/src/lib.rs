@@ -201,8 +201,11 @@ fn map_err(e: souvlaki::Error) -> TatakuError {
     #[cfg(windows)] TatakuError::String(format!("{e:?}"))
 }
 
+#[derive(Default2)]
 struct LastEventHelper {
     time: TatakuInstant,
+    
+    #[default(MediaControlEvent::Pause)]
     event: MediaControlEvent,
 }
 impl LastEventHelper {
@@ -210,14 +213,6 @@ impl LastEventHelper {
         Self {
             time: TatakuInstant::now(),
             event,
-        }
-    }
-}
-impl Default for LastEventHelper {
-    fn default() -> Self {
-        Self {
-            time: TatakuInstant::now(),
-            event: MediaControlEvent::Pause,
         }
     }
 }

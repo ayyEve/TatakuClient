@@ -2,6 +2,7 @@ mod from;
 mod settings;
 mod css_parse;
 mod custom_debug;
+mod custom_default;
 mod settings_deserializer;
 
 use proc_macro::TokenStream;
@@ -24,6 +25,15 @@ pub fn impl_debug2(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     // Build the impl
     custom_debug::derive(&ast).into()
+}
+
+#[proc_macro_derive(Default2, attributes(default))]
+pub fn impl_default2(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    // Parse the string representation
+    let ast = syn::parse(input).unwrap();
+
+    // Build the impl
+    custom_default::derive(&ast).into()
 }
 
 #[proc_macro_derive(ParseCss, attributes(css))]
@@ -116,7 +126,7 @@ pub fn dropdown(input: TokenStream) -> TokenStream {
     }.into()
 }
 
-#[proc_macro_derive(SettingsDeserialize)]
+#[proc_macro_derive(DeserializeSettings)]
 pub fn impl_settings_deserializer(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // Parse the string representation
     let ast = syn::parse(input).unwrap();

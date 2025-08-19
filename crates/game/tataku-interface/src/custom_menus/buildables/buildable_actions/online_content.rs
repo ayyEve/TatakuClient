@@ -1,9 +1,9 @@
 use crate::prelude::*;
 use std::str::FromStr;
 
-#[derive(Clone, Debug, PartialEq)]
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 #[allow(clippy::large_enum_variant)]
 pub enum BuildableOnlineContentAction {
     #[serde(rename_all="camelCase")]
@@ -145,9 +145,9 @@ impl BuildableOnlineContentAction {
 }
 
 
-#[derive(Clone, Debug, PartialEq)]
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct BuildableSearchValue {
     pub id: BuildableValueTag,
     pub value: BuildableValueTag,

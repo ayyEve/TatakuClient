@@ -1,18 +1,21 @@
 use crate::prelude::*;
 
-#[derive(Copy, Clone, Debug)]
 #[derive(Reflect)]
+#[derive(Copy, Clone, Debug, Default2)]
 pub struct DifficultyValue {
     /// internal id of this value
+    #[default("none")]
     pub id: &'static str,
     
     /// display name for this value
+    #[default("None")]
     pub name: &'static str,
 
     /// can custom values be set for this?
     pub modifiable: bool,
 
     /// is this a whole number, or a floating point number?
+    #[default(DifficultyNumberType::WholeNumber)]
     pub number_type: DifficultyNumberType,
 
     /// the minimum value this can be
@@ -32,23 +35,11 @@ pub struct DifficultyValue {
     pub display: Option<fn(f32) -> String>,
 
     /// get the value for this from the map and mods provided
+    #[default(|_,_| 0.0)]
     #[reflect(skip)]
     pub get_diff_value: fn(&BeatmapMetaWithDiff, &ModManager) -> f32,
 }
 impl DifficultyValue {
-    pub const DEFAULT: Self = Self {
-        id: "none",
-        name: "None",
-        modifiable: false,
-        number_type: DifficultyNumberType::WholeNumber,
-        min: 0.0,
-        max: 0.0,
-        step: None,
-        display: None,
-        unit: None,
-        get_diff_value: |_,_| 0.0,
-    };
-
     pub fn format(&self, num: f32) -> String {
         let num = if let Some(display) = self.display {
             display(num)

@@ -19,7 +19,10 @@ impl<'a> SettingsBuilder<'a> {
             current_id: 0,
         }
     }
-    pub fn done(self) -> BuildableSettingsProvider {
+    pub fn done(mut self) -> BuildableSettingsProvider {
+        if let Some(last) = self.current_category {
+            self.data.categories.push(last);
+        }
         self.data
     }
 

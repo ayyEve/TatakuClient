@@ -316,10 +316,6 @@ pub struct ContextMenuBuilder {
     pub options: Vec<ContextMenuOption>,
 }
 impl ContextMenuBuilder {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     pub fn build(&self, location: Vector2) -> ContextMenu {
         ContextMenu::new(self.options.clone(), location)
     }

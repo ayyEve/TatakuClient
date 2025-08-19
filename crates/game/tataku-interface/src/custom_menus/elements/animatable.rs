@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct AnimatableElement {
     #[serde(rename = "@id", default)] id: Option<ArcStr>,
     #[serde(rename = "@class", default)] class_list: ClassList,
@@ -30,15 +30,15 @@ impl CustomElement for AnimatableElement {
 }
 
 
-#[derive(Clone, Debug, PartialEq)]
 #[derive(Deserialize)]
+#[derive(Clone, Debug, PartialEq)]
 struct AnimatableActionEntry {
     #[serde(rename = "@id")] id: String,
     #[serde(alias = "$value")] list: Vec<AnimatableAction>
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq)]
 struct AnimatableActionsTag {
     #[serde(alias = "$value")] entries: Vec<AnimatableActionEntry>
 }
@@ -46,23 +46,23 @@ crate::impl_tag!(AnimatableActionsTag, Vec<AnimatableActionEntry>, entries);
 
 
 
-#[derive(Clone, Debug, PartialEq)]
 #[derive(Deserialize)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AnimatableTrigger {
     #[serde(alias = "$value")] pub trigger: AnimatableTriggerEvent,
     #[serde(rename = "@action")] pub action: String,
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct AnimatableTriggersTag {
     #[serde(alias = "$value")] pub triggers: Vec<AnimatableTrigger>,
 }
 crate::impl_tag!(AnimatableTriggersTag, Vec<AnimatableTrigger>, triggers);
 
 
-#[derive(Clone, Debug, PartialEq)]
 #[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq)]
 #[serde(rename_all="camelCase")]
 pub enum AnimatableTriggerEvent {
     Input,
@@ -81,17 +81,17 @@ pub enum AnimatableTriggerEvent {
     Message(String)
 }
 
-#[derive(Clone, Debug, PartialEq)]
 #[derive(Deserialize)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AnimatableAction {
     #[serde(rename = "$value")] pub action: TransformTypeTag,
     #[serde(rename = "@duration")] pub duration: f32,
 }
 
 
-#[derive(Copy, Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub enum TransformTypeTag {
     #[default] None,
     Position {

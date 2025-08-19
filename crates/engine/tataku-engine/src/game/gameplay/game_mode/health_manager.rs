@@ -18,26 +18,11 @@ pub trait HealthManager: Send + Sync {
     fn apply_hit(&mut self, hit_judgment: &HitJudgment, score: &IngameScore);
 }
 
+#[derive(Default2)]
 pub struct DefaultHealthManager {
-    current_health: f32,
-    initial_health: f32,
-    max_health: f32,
-}
-impl DefaultHealthManager {
-    pub fn new() -> Self {
-        let initial_health = 80.0;
-
-        Self {
-            current_health: initial_health,
-            max_health: initial_health,
-            initial_health,
-        }
-    }
-}
-impl Default for DefaultHealthManager {
-    fn default() -> Self {
-        Self::new()
-    }
+    #[default(80.0)] current_health: f32,
+    #[default(80.0)] initial_health: f32,
+    #[default(80.0)] max_health: f32,
 }
 impl HealthManager for DefaultHealthManager {
     fn is_dead(&self, _song_over: bool) -> bool {

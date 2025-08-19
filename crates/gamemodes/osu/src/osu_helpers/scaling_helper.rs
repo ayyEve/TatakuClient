@@ -7,10 +7,10 @@ pub const FIELD_SIZE:Vector2 = Vector2::new(512.0, 384.0); // 4:3
 
 #[derive(Copy, Clone)]
 pub struct ScalingHelper {
-    pub settings_offset: Vector2,
+    // pub settings_offset: Vector2,
 
-    /// scale setting in settings
-    pub settings_scale: f32,
+    // /// scale setting in settings
+    // pub settings_scale: f32,
 
     /// window size to playfield size scale, scales by settings_scale
     pub scale: f32,
@@ -91,8 +91,8 @@ impl ScalingHelper {
         );
 
         Self {
-            settings_offset,
-            settings_scale,
+            // settings_offset,
+            // settings_scale,
             scale,
             window_size,
             cs: scaled_cs,

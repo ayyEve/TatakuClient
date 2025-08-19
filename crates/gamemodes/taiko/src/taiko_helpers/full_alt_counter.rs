@@ -7,10 +7,6 @@ pub struct FullAltCounter {
     // playmode: TaikoPlaymode
 }
 impl FullAltCounter {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     pub fn add_hit(&mut self, hit: TaikoHit) -> bool {
 
         if self.last_hit.is_none() {

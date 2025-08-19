@@ -1,8 +1,9 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug, Serialize, PartialEq)]
-// #[cfg_attr(feature="graphics", setting(get_items="get_key_items", from_menu="keys_from_menu"))]
-#[derive(Reflect, Settings, SettingsDeserialize)]
+#[derive(Reflect, Settings)]
+#[derive(Clone, Debug, PartialEq)]
+#[derive(Serialize, DeserializeSettings)]
+// #[setting(get_items="get_key_items", from_menu="keys_from_menu")]
 #[serde(default)]
 pub struct ManiaSettings {
     // sv
@@ -145,8 +146,9 @@ impl Default for ManiaSettings {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[derive(Reflect)]
+#[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq)]
 #[serde(default)]
 pub struct ManiaPlayfieldSettings {
     /// name of this config

@@ -1,7 +1,8 @@
 use crate::prelude::*;
 
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug)]
+#[derive(Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct PTypingBeatmapDef {
     pub id: String,
@@ -15,7 +16,8 @@ pub struct PTypingBeatmapDef {
     pub file_collection: PTypingFileCollectionDef,
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug)]
+#[derive(Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct PTypingEventDef {
     pub start: f64,
@@ -26,7 +28,8 @@ pub struct PTypingEventDef {
     pub backing_type: u8
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug)]
+#[derive(Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct PTypingTimingPointDef {
     pub time: f64,
@@ -34,7 +37,8 @@ pub struct PTypingTimingPointDef {
     pub time_signature: f32
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug)]
+#[derive(Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct PTypingDifficultyDef {
     pub strictness: f32,

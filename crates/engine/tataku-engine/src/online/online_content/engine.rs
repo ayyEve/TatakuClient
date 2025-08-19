@@ -18,8 +18,8 @@ pub struct OnlineContentSearchResults {
 
 
 
-#[derive(Clone, Debug)]
 #[derive(Reflect)]
+#[derive(Clone, Debug)]
 #[reflect(display="display")]
 pub struct OnlineContentItem {
     /// Internal id
@@ -44,8 +44,8 @@ impl std::fmt::Display for OnlineContentItem {
     }
 }
 
-#[derive(Clone, Debug)]
 #[derive(Reflect)]
+#[derive(Clone, Debug)]
 #[reflect(display="debug")]
 pub enum OnlineContentItemType {
     Map {
@@ -58,8 +58,8 @@ pub enum OnlineContentItemType {
 
 
 
-#[derive(Clone, Debug)]
 #[derive(Reflect)]
+#[derive(Clone, Debug)]
 #[reflect(display="display")]
 pub struct OnlineContentCapabilities {
     #[reflect(alias("id"))]
@@ -75,8 +75,8 @@ impl Display for OnlineContentCapabilities {
     }
 }
 
-#[derive(Clone, Debug)]
 #[derive(Reflect)]
+#[derive(Clone, Debug)]
 pub struct SearchOption {
     pub id: String,
     pub display: String,
@@ -96,8 +96,8 @@ impl SearchOption {
     }
 }
 
-#[derive(Clone, Debug)]
 #[derive(Reflect)]
+#[derive(Clone, Debug)]
 #[reflect(display="display")]
 pub enum SearchOptionType {
     Integer {
@@ -151,10 +151,10 @@ impl Display for SearchOptionType {
 }
 
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[derive(Reflect)]
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum OnlineContentType {
     Maps,
     // Skins,

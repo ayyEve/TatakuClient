@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
 #[derive(Reflect)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ChatMessage {
     pub sender: String,
     // channel or username

@@ -4,11 +4,11 @@ use crate::prelude::*;
 use tataku_client_proc_macros::Settings;
 const SETTINGS_FILE:&str = "settings.json";
 
-#[derive(Serialize)]
-#[derive(Clone, Debug2, Default, PartialEq)]
-#[derive(Reflect, Settings, SettingsDeserialize)]
-#[serde(default)]
+#[derive(Reflect, Settings)]
 #[allow(clippy::manual_non_exhaustive)]
+#[derive(Serialize, DeserializeSettings)]
+#[derive(Clone, Debug2, Default, PartialEq)]
+#[serde(default)]
 pub struct Settings {
     #[serde(skip)] #[debug(skip)] #[reflect(skip)]
     #[category(text="Settings")] _settings: (),
@@ -274,10 +274,10 @@ impl Settings {
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, Default)]
 #[derive(Reflect)]
-#[derive(Serialize, Deserialize)]
 #[reflect(display = "display")]
+#[derive(Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Debug, Default)]
 pub enum SelectedTheme {
     #[default]
     Tataku,

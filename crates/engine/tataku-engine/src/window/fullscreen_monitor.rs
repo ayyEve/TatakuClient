@@ -1,10 +1,12 @@
 
 use crate::prelude::*;
 
-#[derive(Clone, Serialize, Deserialize, Eq, PartialEq, Debug)]
 #[derive(Reflect)]
 #[reflect(display = "display")]
+#[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub enum FullscreenMonitor {
+    #[default]
     None,
     Monitor(ArcStr),
 }

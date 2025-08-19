@@ -330,7 +330,7 @@ impl GameMode for ManiaGame {
 
         let game_settings = settings.gamemode_settings::<ManiaSettings>(GAME_INFO).unwrap_or_default();
         let playfields = &game_settings.playfield_settings.clone();
-        let auto_helper = ManiaAutoHelper::new();
+        let auto_helper = ManiaAutoHelper::default();
         
         // windows
         let hit_windows = vec![

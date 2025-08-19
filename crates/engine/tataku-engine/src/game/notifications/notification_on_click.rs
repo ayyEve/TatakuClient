@@ -1,9 +1,9 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug)]
 #[allow(unused)]
+#[derive(Clone, Debug, Default)]
 pub enum NotificationOnClick {
-    None,
+    #[default] None,
     Url(String),
     Menu(String),
 

@@ -72,7 +72,13 @@
   <xs:complexContent>
     <xs:extension base="elements:generic">
       <xs:sequence>
-        <xs:group ref="elements:button-onclick"/>
+        <!-- <xs:group ref="elements:button-onclick"/> -->
+        <xs:element name="action" minOccurs="1" maxOccurs="3">
+          <xs:complexType>
+            <xs:group ref="actions:action-type"/>
+            <xs:attribute name="button" type="input:mouse-button" default="left"/>
+          </xs:complexType>
+        </xs:element>
 
         <xs:element name="element">
           <xs:complexType>
@@ -86,30 +92,6 @@
   </xs:complexContent>
 </xs:complexType>
 
-<xs:group name="button-onclick">
-  <xs:choice>
-    <!-- single action, left click -->
-    <xs:element name="action">
-      <xs:complexType>
-        <xs:group ref="actions:action-type"/>
-      </xs:complexType>
-    </xs:element>
-
-    <!-- list of actions depending on mouse button -->
-    <xs:element name="actions">
-      <xs:complexType>
-        <xs:sequence>
-          <xs:element name="action">
-            <xs:complexType>
-              <xs:group ref="actions:action-type"/>
-              <xs:attribute name="button" type="input:mouse-button" use="required"/>
-            </xs:complexType>
-          </xs:element>
-        </xs:sequence>
-      </xs:complexType>
-    </xs:element>
-  </xs:choice>
-</xs:group>
 
 
 

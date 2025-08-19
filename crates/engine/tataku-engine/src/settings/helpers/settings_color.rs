@@ -1,9 +1,9 @@
 use crate::prelude::*;
 
 /// helper for colors inside settings
+#[derive(Reflect)]
 #[derive(Clone, Debug)]
 #[derive(Serialize, Deserialize)]
-#[derive(Reflect)]
 #[reflect(from_string = "from_str")]
 #[serde(from="Color", into="Color")]
 pub struct SettingsColor {

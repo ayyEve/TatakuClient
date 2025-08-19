@@ -36,6 +36,19 @@
                     </text>
                 </element>
             </button>
+
+            
+            <!-- open settings -->
+            <button>
+                <action>
+                    <addDialog id="beatmap_settings"/>
+                </action>
+                <element>
+                    <text>
+                        <text text="Open Settings"/>
+                    </text>
+                </element>
+            </button>
         </row>
     </element>
 </dialog>

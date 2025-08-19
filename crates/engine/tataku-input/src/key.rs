@@ -1,8 +1,8 @@
 use crate::prelude::*;
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
-#[derive(Serialize, Deserialize)]
 #[derive(Reflect)]
+#[derive(Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
 pub enum Key {
     /// The '1' key over the letters.
     Key1,

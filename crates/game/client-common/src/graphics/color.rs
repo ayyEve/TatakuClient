@@ -1,9 +1,9 @@
 use std::fmt::Display;
 use tataku_common::prelude::*;
 
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-#[derive(serde::Serialize, serde::Deserialize)]
 #[derive(Reflect)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(serde::Serialize, serde::Deserialize)]
 #[serde(from = "String", into = "String")]
 pub struct Color {
     pub r: u8,
@@ -138,6 +138,11 @@ impl Color {
         let a = self.a;
 
         format!("#{r:02X}{g:02X}{b:02X}{a:02X}")
+    }
+}
+impl Default for Color {
+    fn default() -> Self {
+        Self::WHITE
     }
 }
 

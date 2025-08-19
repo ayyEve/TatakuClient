@@ -326,31 +326,31 @@ impl<'window> WgpuEngine<'window> {
 
         let buffer_queues = [
             (LastPipeline::Slider, Box::new(RenderBufferQueueType::Slider(
-                RenderBufferQueue::new().init(
+                RenderBufferQueue::default().init(
                     &device, 
                     &pipelines[&Pipeline::Slider]
                 )
             ))),
             (LastPipeline::Standard, Box::new(RenderBufferQueueType::Standard(
-                RenderBufferQueue::new().init(
+                RenderBufferQueue::default().init(
                     &device, 
                     &pipelines[&Pipeline::AlphaBlending]
                 )
             ))),
             (LastPipeline::Flashlight, Box::new(RenderBufferQueueType::Flashlight(
-                RenderBufferQueue::new().init(
+                RenderBufferQueue::default().init(
                     &device, 
                     &pipelines[&Pipeline::Flashlight]
                 )
             ))),
             (LastPipeline::GaussianBlur, Box::new(RenderBufferQueueType::GaussianBlur(
-                RenderBufferQueue::new().init(
+                RenderBufferQueue::default().init(
                     &device, 
                     &gaussian_blur_shader.pipeline
                 )
             ))),
             (LastPipeline::BoxBlur, Box::new(RenderBufferQueueType::BoxBlur(
-                RenderBufferQueue::new().init(
+                RenderBufferQueue::default().init(
                     &device, 
                     &box_blur_shader.pipeline
                 )

@@ -1,14 +1,13 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct ColumnElement {
     #[serde(rename = "@id", default)] id: Option<ArcStr>,
     #[serde(rename = "@class", default)] class_list: ClassList,
     #[serde(rename = "@style", default)] style: ArcStr,
     #[serde(rename = "$value")] children: Vec<Element>,
 }
-
 impl CustomElement for ColumnElement {
     fn build(&self) -> Box<dyn Widget<TatakuAction>> {
         let mut classes = self.class_list.clone();

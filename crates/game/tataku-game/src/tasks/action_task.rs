@@ -64,11 +64,6 @@ pub enum ActionTaskAction {
         passed_in: Option<TatakuValue>
     },
 }
-// impl<T: Into<TatakuAction>> From<T> for ActionTaskAction {
-//     fn from(value: T) -> Self {
-//         Self::Action(value.into())
-//     }
-// }
 impl From<DelayedActionType> for ActionTaskAction {
     fn from(value: DelayedActionType) -> Self {
         match value {

@@ -148,7 +148,7 @@ impl Emitter {
 
 /// helper for building emitters
 /// useful if you have multiple emitters which only have one or two settings different between them
-#[derive(Clone, Default)]
+#[derive(Clone, Default2)]
 #[derive(ChainableInitializer)]
 pub struct EmitterBuilder {
     #[chain] spawn_delay: f32,
@@ -161,12 +161,11 @@ pub struct EmitterBuilder {
     #[chain] rotation: EmitterVal,
     #[chain] color: Color,
     #[chain] image: Arc<TextureReference>,
+    #[default(true)]
     #[chain] should_emit: bool,
     #[chain] blend_mode: Pipeline,
 }
 impl EmitterBuilder {
-    pub fn new() -> Self { Self::default().should_emit(true) }
-
     pub fn build(self, time: f32) -> Emitter {
         let mut e = Emitter::new(time, self.spawn_delay, self.position, self.angle, self.speed, self.scale, self.life, self.opacity, self.rotation, self.color, self.image, self.blend_mode);
         e.should_emit = self.should_emit;

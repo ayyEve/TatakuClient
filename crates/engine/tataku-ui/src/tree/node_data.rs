@@ -1,5 +1,6 @@
 use crate::prelude::*;
 
+#[derive(Default)]
 pub(super) struct NodeData {
     pub current_display: Option<DisplayType>,
 
@@ -16,15 +17,4 @@ pub(super) struct NodeData {
 
     // /// The computation result from layout algorithm
     // pub detailed_layout_info: taffy::DetailedLayoutInfo,
-}
-impl NodeData {
-    pub fn new() -> Self {
-        Self {
-            current_display: None,
-            unrounded_layout: taffy::Layout::default(),
-            final_layout: taffy::Layout::default(),
-            cache: taffy::Cache::default(),
-            // detailed_layout_info: taffy::DetailedLayoutInfo::None,
-        }
-    }
 }

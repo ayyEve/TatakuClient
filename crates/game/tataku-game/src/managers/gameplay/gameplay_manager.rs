@@ -181,7 +181,7 @@ impl GameplayManager {
 
             timing_points,
             current_mods,
-            health: Box::new(DefaultHealthManager::new()),
+            health: Box::new(DefaultHealthManager::default()),
             key_counter: KeyCounter::new(&properties.keys),
 
             judgments: properties.info.judgments.to_vec(),

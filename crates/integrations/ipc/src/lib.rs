@@ -69,9 +69,9 @@ impl TatakuIntegration for IpcIntegration {
 }
 
 
+#[derive(Clone, Debug)]
 #[allow(non_camel_case_types)]
 #[derive(Serialize, Deserialize)]
-#[derive(Clone, Debug)]
 pub enum IpcMessage {
     In_OpenFile(String),
     In_GetValue(String),

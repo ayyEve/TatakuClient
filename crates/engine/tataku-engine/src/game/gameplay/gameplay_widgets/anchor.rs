@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub enum GameplayWidgetAnchor {
     /// Anchored to the screen 
     /// 

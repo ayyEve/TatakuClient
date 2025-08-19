@@ -38,11 +38,6 @@ pub struct InputManager {
 }
 
 impl InputManager {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    
     fn verify_controller_index_exists(
         &mut self, 
         id: GamepadId, 
@@ -304,8 +299,8 @@ pub struct InputBinding {
 }
 
 // TODO: rename lol
-#[derive(Copy, Clone, Default, Debug, Eq, PartialEq, Hash)]
 #[derive(Serialize, Deserialize)]
+#[derive(Copy, Clone, Default, Debug, Eq, PartialEq, Hash)]
 pub enum ControllerButtonMenuConfig {
     /// Standard menu enter and menu back buttons
     /// ie, on playstation, circle = back and x = enter

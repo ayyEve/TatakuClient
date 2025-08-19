@@ -8,8 +8,8 @@ pub struct GameplayModGroupStatic {
     pub mods: &'static [ GameplayMod ],
 }
 
-#[derive(Clone, Debug)]
 #[derive(Reflect)]
+#[derive(Clone, Debug)]
 pub struct GameplayModGroup {
     pub name: String,
     pub mods: Vec<GameplayMod>

@@ -245,7 +245,7 @@ impl TextVariant {
 
 
 /// list of romaji chars for a single jap/eng char
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct CharVariant(Vec<char>);
 impl CharVariant {
     pub fn new(chars: impl AsRef<[char]>) -> Self {

@@ -6,8 +6,8 @@ use taffy::LengthPercentage;
 use taffy::LengthPercentageAuto;
 
 
-#[derive(Copy, Clone, Debug, Default, PartialEq)]
 #[derive(Reflect)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub enum CssUnit<T:Reflect+Copy=f16> {
     /// Automatic
     #[default]

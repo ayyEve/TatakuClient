@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 #[derive(Deserialize, Reflect)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub enum DisplayType {
     #[default] Flex,
     Block,

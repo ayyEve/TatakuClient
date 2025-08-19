@@ -1,6 +1,7 @@
 use crate::prelude::*;
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug)]
+#[derive(Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct PTypingMapDef {
     pub id: String,

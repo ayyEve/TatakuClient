@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug, Default)]
 #[derive(Reflect)]
+#[derive(Clone, Debug, Default)]
 pub struct OnlineUser {
     pub user_id: u32,
     pub username: String,

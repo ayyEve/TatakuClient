@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
-#[derive(Copy, Clone, Debug, Default, PartialEq)]
 #[derive(Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct ControllerBinding {
     pub button: Option<ControllerButton>,
     pub axis: Option<AxisConfig>

@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[serde(rename_all="camelCase")]
 pub enum TatakuEventType {
     /// Song has ended
@@ -39,8 +39,8 @@ pub enum TatakuEventType {
     CustomEvent(String)
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[derive(Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct CustomMenuKeyEvent {
     /// What key?
     #[serde(rename="@key")] pub key: tataku_input::prelude::Key,
@@ -57,8 +57,8 @@ pub struct CustomMenuKeyEvent {
 
 
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[derive(Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct CustomMenuControllerEvent {
     #[serde(alias= "@button")] pub button: tataku_input::prelude::ControllerButton,
 }

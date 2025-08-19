@@ -1,8 +1,8 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug, PartialEq)]
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub enum BuildableGameplayAction {
     /// Quit a pending game
     Quit,

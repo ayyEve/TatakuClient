@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 #[derive(Reflect)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub enum BeatmapType {
     #[default] Unknown,
     Adofai,
@@ -11,7 +11,6 @@ pub enum BeatmapType {
     Tja,
     UTyping
 }
-
 impl From<BeatmapType> for u8 {
     fn from(val: BeatmapType) -> Self {
         match val {

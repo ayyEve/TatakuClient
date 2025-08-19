@@ -1,9 +1,9 @@
 use crate::prelude::*;
 
 /// An action that deals with the Mod manager
-#[derive(Clone, Debug, PartialEq)]
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub enum BuildableModAction {
     /// Add the specified mod
     AddMod { 

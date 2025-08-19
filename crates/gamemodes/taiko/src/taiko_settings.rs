@@ -1,8 +1,9 @@
 use crate::prelude::*;
 use tataku_client_proc_macros::Settings;
 
-#[derive(Clone, Serialize, PartialEq, Debug)]
-#[derive(Reflect, Settings, SettingsDeserialize)]
+#[derive(Reflect, Settings)]
+#[derive(Clone, PartialEq, Debug)]
+#[derive(Serialize, DeserializeSettings)]
 #[serde(default)]
 pub struct TaikoSettings {
     // input
@@ -100,7 +101,8 @@ impl GamemodeSettings for TaikoSettings {
 }
 
 // #[cfg(feature = "gameplay")]
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TaikoControllerConfig {
     pub left_kat: ControllerBinding,
     pub left_don: ControllerBinding,

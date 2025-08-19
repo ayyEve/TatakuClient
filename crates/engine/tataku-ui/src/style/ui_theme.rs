@@ -1,10 +1,17 @@
 use crate::prelude::*;
 
-
+#[derive(Default2)]
 pub struct GeneralUiTheme {
+    #[default(Color::BLACK.alpha(0.8))]
     pub background_color: Color,
+    
+    #[default(Color::WHITE)]
     pub default_color: Color,
+
+    #[default(Color::CYAN)]
     pub hover_color: Color,
+
+    #[default(Color::YELLOW)]
     pub active_color: Color,
 }
 impl GeneralUiTheme {
@@ -18,14 +25,3 @@ impl GeneralUiTheme {
         }
     }
 }
-impl Default for GeneralUiTheme {
-    fn default() -> Self {
-        Self {
-            background_color: Color::BLACK.alpha(0.8),
-            default_color: Color::WHITE,
-            hover_color: Color::CYAN,
-            active_color: Color::YELLOW,
-        }
-    }
-}
-

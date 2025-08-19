@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
-#[derive(Clone, Default)]
 #[derive(Debug2)]
+#[derive(Clone, Default)]
 pub struct ElementData {
     pub element_name: ArcStr,
     pub id: Option<ArcStr>,

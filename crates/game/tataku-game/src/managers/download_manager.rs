@@ -1,8 +1,8 @@
 use crate::prelude::*;
 
-#[derive(Default, Debug)]
 #[derive(Reflect)]
 #[reflect(dont_clone)]
+#[derive(Default, Debug)]
 pub struct DownloadManager {
     #[reflect(skip)]
     pub downloads: Vec<Downloadable>,
@@ -135,8 +135,8 @@ impl DownloadManager {
 
 
 #[derive(Reflect)]
-#[derive(Clone, Debug, Default)]
 #[reflect(display = "debug")]
+#[derive(Clone, Debug, Default)]
 pub struct DownloadStatus {
     pub filename: String,
     pub title: String,

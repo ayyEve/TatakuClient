@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
-#[derive(ChainableInitializer)]
 #[derive(Copy, Clone)]
+#[derive(ChainableInitializer)]
 pub struct Rectangle {
     inner: Bounds,
     
@@ -115,4 +115,3 @@ impl DerefMut for Rectangle {
         &mut self.inner
     }
 }
-

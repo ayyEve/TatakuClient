@@ -276,13 +276,13 @@ impl GameMode for TaikoGame {
         );
 
         let mut s = Self {
-            notes: TaikoNoteQueue::new(),
-            other_notes: TaikoNoteQueue::new(),
+            notes: TaikoNoteQueue::default(),
+            other_notes: TaikoNoteQueue::default(),
 
             timing_bars: Vec::new(),
             end_time: 0.0,
 
-            auto_helper: TaikoAutoHelper::new(),
+            auto_helper: TaikoAutoHelper::default(),
             taiko_settings: settings.clone(),
             playfield: playfield.clone(),
             metadata,
@@ -298,8 +298,8 @@ impl GameMode for TaikoGame {
             miss_window: 0.0,
             hit_cache,
             last_judgment: TaikoHitJudgments::Miss,
-            counter: FullAltCounter::new(),
-            current_mods: Arc::new(ModManager::new()),
+            counter: FullAltCounter::default(),
+            current_mods: Arc::new(ModManager::default()),
             healthbar_swap_pending: false
         };
 
@@ -993,7 +993,7 @@ impl GameMode for TaikoGame {
         }
 
         self.last_judgment = TaikoHitJudgments::Miss;
-        self.counter = FullAltCounter::new();
+        self.counter = FullAltCounter::default();
 
         // setup timing bars
         if self.timing_bars.is_empty() {

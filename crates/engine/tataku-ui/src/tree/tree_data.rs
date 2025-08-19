@@ -1,34 +1,23 @@
 use crate::prelude::*;
 
-#[derive(Clone)]
+#[derive(Clone, Default2)]
 pub struct TreeData {
     // pub bounds: Bounds,
     pub absolute_bounds: Bounds,
     pub local_transform: Transform,
+
+    #[default(Matrix::identity())]
     pub global_transform: Matrix,
+    
+    #[default(Matrix::identity())]
     pub inverse_global_transform: Matrix,
+
     pub needs_inverse_transform: bool,
 
     pub selected: Option<bool>,
     adjacent_nodes: [Option<taffy::NodeId>; 4],
 
     pub element_data: ElementData,
-}
-impl Default for TreeData {
-    fn default() -> Self {
-        Self { 
-            // bounds: Bounds::default(),
-            absolute_bounds: Bounds::default(), 
-            local_transform: Transform::default(), 
-            global_transform: Matrix::identity(), 
-            inverse_global_transform: Matrix::identity(), 
-            needs_inverse_transform: false,
-
-            selected: None, 
-            adjacent_nodes: [None; 4],
-            element_data: ElementData::default(),
-        }
-    }
 }
 impl TreeData {
     pub fn with_style(style: CssStyle) -> Self {

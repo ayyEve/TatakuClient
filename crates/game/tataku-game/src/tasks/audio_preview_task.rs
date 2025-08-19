@@ -6,7 +6,6 @@ pub struct AudioPreviewTask {
     data_loader: Option<AsyncLoader<TatakuResult<Vec<u8>>>>,
     state: TatakuTaskState,
 }
-
 impl AudioPreviewTask {
     pub fn new(url: String) -> Self {
         Self {

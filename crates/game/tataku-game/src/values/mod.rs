@@ -6,6 +6,7 @@ mod global_values;
 mod reflect_score;
 mod loading_status;
 mod value_collection;
+mod beatmap_settings;
 
 pub use enum_values::*;
 pub use song_values::*;
@@ -15,3 +16,4 @@ pub use global_values::*;
 pub use reflect_score::*;
 pub use loading_status::*;
 pub use value_collection::*;
+pub use beatmap_settings::*;

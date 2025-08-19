@@ -1,8 +1,8 @@
 use crate::prelude::*;
 
 // a reflect-friendly score
-#[derive(Debug, Clone, Default)]
 #[derive(Reflect)]
+#[derive(Debug, Clone, Default)]
 pub struct ReflectScore {
     // score fields
     pub username: String,
@@ -97,8 +97,8 @@ impl ReflectScore {
     }
 }
 
-#[derive(Debug, Clone)]
 #[derive(Reflect)]
+#[derive(Debug, Clone)]
 pub struct ReflectJudgment {
     judgment: HitJudgment,
     count: u16,
@@ -115,8 +115,8 @@ impl ReflectJudgment {
     }
 }
 
-#[derive(Debug, Clone, Default)]
 #[derive(Reflect)]
+#[derive(Debug, Clone, Default)]
 pub struct ReflectMods {
     mods: Vec<GameplayMod>,
     short_list: String,
@@ -148,8 +148,8 @@ impl ReflectMods {
     }
 }
 
-#[derive(Debug, Clone)]
 #[derive(Reflect)]
+#[derive(Debug, Clone)]
 pub struct ReflectStat {
     name: String,
     data: Vec<f32>

@@ -1,9 +1,9 @@
 use crate::prelude::*;
 
 /// An action that deals with the current beatmap
-#[derive(Clone, Debug, PartialEq)]
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub enum BuildableMapAction {
     /// Play the current map
     Play,
@@ -117,7 +117,7 @@ impl BuildableMapAction {
                 
                 Some(BeatmapAction::SetFromHash(
                     hash, 
-                    SetBeatmapOptions::new().use_preview_point(true)
+                    SetBeatmapOptions::default().use_preview_point(true)
                 ))
             }
         }

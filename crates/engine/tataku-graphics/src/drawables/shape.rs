@@ -1,7 +1,7 @@
 
 /// The shape of the rectangle corners
-#[derive(Copy, Clone, Debug, PartialEq)]
 #[derive(serde::Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Shape {
     /// Square corners
     Square,

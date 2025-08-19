@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug, PartialEq)]
 #[derive(Deserialize)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct BuildableEvent {
     #[serde(default)] pub event_tag: Option<BuildableEventTypeTag>,
     #[serde(rename="$value", default)] pub event: Option<BuildableEventType>,
@@ -27,9 +27,9 @@ impl BuildableEvent {
 }
 
 
-#[derive(Clone, Debug, PartialEq)]
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub enum BuildableEventType {
     /// Song has started
     SongStart,
@@ -123,8 +123,8 @@ impl BuildableEventType {
 
 
 
-#[derive(Clone, Debug, PartialEq)]
 #[derive(Deserialize)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct BuildableEventTypeTag {
     #[serde(rename="$value")] pub event: BuildableEventType,
 }
@@ -135,8 +135,8 @@ impl Deref for BuildableEventTypeTag {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
 #[derive(Deserialize)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct BuildableActionsTag {
     #[serde(rename="$value")] pub actions: Vec<BuildableAction>
 }

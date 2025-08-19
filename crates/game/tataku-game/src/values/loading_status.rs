@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug)]
 #[derive(Reflect)]
+#[derive(Clone, Debug)]
 pub struct LoadingStatus {
     pub name: &'static str,
     pub error: Option<String>,

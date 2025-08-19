@@ -1,9 +1,9 @@
 use crate::prelude::*;
 
 // contains beatmap info unrelated to notes and timing points, etc
-#[derive(Clone, Debug, Default)]
 #[derive(Reflect)]
 #[reflect(display="debug")]
+#[derive(Clone, Debug, Default)]
 pub struct BeatmapMeta {
     #[reflect(alias("path"))] pub file_path: ArcStr,
     #[reflect(alias("hash"))] pub beatmap_hash: Md5Hash,

@@ -11,23 +11,14 @@ const IGNORED_EXTENSIONS: &[&str] = &[
     ".jpg",
 ];
 
-
+#[derive(Default2)]
 pub struct BeatmapDownloadsCheckTask {
     last_check: u64,
 
     maps_to_add: Vec<Arc<BeatmapMeta>>,
 
+    #[default(Box::new(Vec::new().into_iter()))]
     files: Box<dyn Iterator<Item = PathBuf> + Send + Sync>,
-}
-impl Default for BeatmapDownloadsCheckTask {
-    fn default() -> Self {
-        Self {
-            last_check: 0,
-
-            maps_to_add: Vec::new(),
-            files: Box::new(Vec::new().into_iter()),
-        }
-    }
 }
 
 impl TatakuTask for BeatmapDownloadsCheckTask {

@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug)]
 #[derive(Deserialize)]
+#[derive(Clone, Debug)]
 #[serde(rename_all="camelCase")]
 pub struct CustomDialog {
     #[serde(rename = "@id")] pub id: ArcStr,
@@ -84,8 +84,7 @@ pub struct BuiltCustomDialog {
     node_id: NodeId,
 }
 impl Widget<TatakuAction> for BuiltCustomDialog {
-
-    fn name(&self) -> CowStr { format!("custom-{}", self.id).into() }
+    fn name(&self) -> CowStr { self.id.to_string().into() }
     fn node_id(&self) -> NodeId { self.node_id }
     fn get_style_str(&self) -> ArcStr { self.styles.clone() }
 

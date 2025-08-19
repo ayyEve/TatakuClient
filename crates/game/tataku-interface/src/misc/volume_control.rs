@@ -3,6 +3,7 @@ use crate::prelude::*;
 /// how long should the volume thing be displayed when changed
 const VOLUME_CHANGE_DISPLAY_TIME:u64 = 2000;
 
+#[derive(Default)]
 /// helper to move volume things out of game, cleaning up code
 pub struct VolumeControl {
     /// 0-2, 0 = master, 1 = effect, 2 = music
@@ -15,16 +16,6 @@ pub struct VolumeControl {
     window_size: Vector2,
 }
 impl VolumeControl {
-    pub fn new() -> Self {
-        Self {
-            vol_selected_index: 0,
-            vol_selected_time: 0,
-            timer: TatakuInstant::now(),
-            window_size: Vector2::ZERO,
-            settings: VolumeSettings::default(),
-        }
-    }
-
     fn elapsed(&self) -> u64 {self.timer.elapsed().as_millis() as u64}
     fn _visible(&self) -> bool {
         let elapsed = self.elapsed();

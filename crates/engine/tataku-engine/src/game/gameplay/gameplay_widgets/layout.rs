@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug, Default, PartialEq)]
 #[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct GameplayWidgetLayout {
     /// Where this element is anchored
     pub anchor: GameplayWidgetAnchor,
