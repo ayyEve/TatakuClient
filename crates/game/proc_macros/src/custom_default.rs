@@ -96,7 +96,7 @@ pub(crate) fn derive(derive: &syn::DeriveInput) -> proc_macro2::TokenStream {
         }
     };
     
-    std::fs::write(format!("./debug/pain/{type_name}.rs"), tokens.to_string()).unwrap();
+    // std::fs::write(format!("./debug/pain/{type_name}.rs"), tokens.to_string()).unwrap();
 
     tokens
 }
