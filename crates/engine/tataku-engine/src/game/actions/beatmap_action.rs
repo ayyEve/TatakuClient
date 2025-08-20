@@ -8,7 +8,7 @@ pub enum BeatmapAction {
     /// Set the current beatmap
     /// 
     /// map, use audio preview time, restart song?
-    Set(Arc<BeatmapMeta>, SetBeatmapOptions),
+    Set(Md5Hash, SetBeatmapOptions),
 
     /// Set the current beatmap
     /// 

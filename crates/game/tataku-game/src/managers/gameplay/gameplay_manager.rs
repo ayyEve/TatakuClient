@@ -51,7 +51,7 @@ pub struct GameplayManager {
 
 
     pub score: IngameScore,
-    pub score_multiplier: f32,
+    // pub score_multiplier: f32,
 
     pub health: Box<dyn HealthManager>,
     pub judgments: Vec<HitJudgment>,
@@ -220,7 +220,7 @@ impl GameplayManager {
 
             failed: false,
             failed_time: 0.0,
-            score_multiplier: 1.0,
+            // score_multiplier: 1.0,
             started: false,
             completed: false,
 
@@ -517,6 +517,7 @@ impl GameplayManager {
         }
 
         // ui editor toggle
+        #[cfg(feature = "ui")]
         if key == Key::F9 {
             if self.editor.is_some() {
                 self.editor = None;
@@ -1347,7 +1348,7 @@ impl GameplayManagerTrait for GameplayManager {
                 // do score
                 let combo_mult = (
                     self.score.combo as f32 
-                    * self.score_multiplier
+                    * self.current_mods.score_multiplier
                 ).floor() as u16;
 
                 let score = judgment.base_score_value;
@@ -1780,14 +1781,17 @@ impl GameplayManagerTrait for GameplayManager {
 
         // get all available mods for this playmode
         {
-            self.score_multiplier = 1.0;
+            // self.score_multiplier = self
+            //     .current_mods
+            //     .calculate_score_multiplier(self.gamemode_properties.info);
 
             self.score.mods = self.current_mods.map_mods_to_thing(
                 self.gamemode_properties.info
             );
-            for m in self.score.mods.iter() {
-                self.score_multiplier *= m.score_multiplier;
-            }
+
+            // for m in self.score.mods.iter() {
+            //     self.score_multiplier *= m.score_multiplier;
+            // }
         }
         if self.score.replay.is_none() {
             self.score.replay = Some(Replay::new());
@@ -1901,28 +1905,16 @@ impl GameplayManagerTrait for GameplayManager {
 
             GameplayModeInner::Replaying { score, .. } => {
                 // load speed from score
-                let mods = ModManager {
-                    mods: score.mods.iter()
-                        .map(|m| m.name.clone())
-                        .collect(),
-                    speed: score.speed,
-                };
-                self.current_mods = Arc::new(mods);
+                self.current_mods = Arc::new(ModManager::new(
+                    score.mods.iter(),
+                    score.speed,
+                    self.gamemode_properties.info
+                ));
 
+                self.score.username = score.username.clone();
                 self.score.mods = self
                     .current_mods
                     .map_mods_to_thing(self.gamemode_properties.info);
-                self.score.username = score.username.clone();
-
-                // if let Some(score) = &replay.score_data {
-
-                //     self.current_mods = Arc::new(mods);
-                //     *self.score.mods_mut() = self.current_mods.mods.clone();
-
-                //     self.score.username = score.username.clone()
-                // } else {
-                //     self.score.username = "Unknown user".to_owned();
-                // }
             }
 
             GameplayModeInner::Preview => {

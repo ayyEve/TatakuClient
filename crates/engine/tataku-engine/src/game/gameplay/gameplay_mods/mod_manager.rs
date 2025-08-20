@@ -7,13 +7,18 @@ pub const SPEED_STEP: u16 = 5;
 #[derive(Reflect)]
 #[reflect(display="debug")]
 #[derive(Serialize, Deserialize)]
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default2)]
 #[serde(default)]
 pub struct ModManager {
     /// use get/set_speed instead of direct access to this
     pub speed: GameSpeed,
     pub mods: HashSet<String>,
+
+    #[serde(skip)]
+    #[default(1.0)]
+    pub score_multiplier: f32,
 }
+
 
 // static 
 impl ModManager {
@@ -40,7 +45,7 @@ impl ModManager {
         mode: &GamemodeInfo
     ) -> HashMap<String, GameplayMod> {
         Self::iter_mods(mode)
-            .map(|m| (m.name.to_owned(), m))
+            .map(|m| (m.id.to_owned(), m))
             .collect()
     }
 
@@ -87,7 +92,6 @@ impl ModManager {
         list.join(" ")
     }
 
-
     pub fn map_mods_to_thing(
         &self, 
         mode: &GamemodeInfo,
@@ -99,18 +103,82 @@ impl ModManager {
             .map(|m| (*m).into())
             .collect()
     }
+
+
+    fn speed_score_mult(_speed: &GameSpeed) -> f32 {
+        1.0
+        // TODO: 
+        // let fspeed = speed.as_f32();
+        // let uspeed = speed.as_u16();
+
+        // if fspeed < 1.0 {
+        //     // how many steps below 1.0x are we?
+        //     let count = uspeed / SPEED_STEP;
+
+        //     1.0 / GameSpeed::from_u16(count).as_f32() 
+        //     // 1.0 / count as f32
+        // } else {
+        //     // how many steps above 1.0x are we?
+        //     let count = (uspeed - GameSpeed::default().as_u16()) / SPEED_STEP;
+
+        //     1.0 * GameSpeed::from_u16(count).as_f32() 
+        //     // 1.0 * count as f32 
+        // }
+    }
 }
 
 // instance
 impl ModManager {
+    pub fn new(
+        mods: impl Iterator<Item=impl AsRef<str>>,
+        speed: impl Into<GameSpeed>,
+        info: &GamemodeInfo
+    ) -> Self {
+        let speed = speed.into();
+        let mods = mods
+            .map(|i| i.as_ref().to_owned())
+            .collect();
+        let score_multiplier = Self::calculate_score_multiplier(
+            &mods, 
+            &speed, 
+            info
+        );
+        
+        Self {
+            mods,
+            speed,
+            score_multiplier,
+        }
+    }
+
     pub fn get_speed(&self) -> f32 {
         self.speed.as_f32()
     }
     pub fn set_speed(&mut self, speed: impl Into<GameSpeed>) {
-        self.speed = speed.into();
-        let a = self.speed.as_u16();
+        let a = speed.into().as_u16();
         let speed_fixed = a - a % SPEED_STEP;
         self.speed = GameSpeed::from_u16(speed_fixed);
+    }
+
+    pub fn calculate_score_multiplier(
+        mods: &HashSet<String>, 
+        speed: &GameSpeed,
+        mode: &GamemodeInfo,
+    ) -> f32 {
+        mode.mods
+            .iter()
+            .flat_map(|mg| mg.mods)
+            .filter(|m| mods.contains(m.id))
+            .fold(1.0, |v, i| v * i.score_multiplier)
+            * Self::speed_score_mult(speed)
+    }
+    
+    pub fn update_score_multiplier(&mut self, mode: &GamemodeInfo) {
+        self.score_multiplier = Self::calculate_score_multiplier(
+            &self.mods,
+            &self.speed,
+            mode
+        );
     }
 
     fn mods_list(
@@ -122,7 +190,7 @@ impl ModManager {
         let mods = mod_groups
             .iter()
             .flat_map(|mg| mg.mods)
-            .map(|m| (m.name, m))
+            .map(|m| (m.id, m))
             .collect::<HashMap<_,_>>();
 
         let mut list = self.mods
@@ -157,11 +225,11 @@ impl ModManager {
     }
 
     // inline helpers
-    /// add a single mod
-    pub fn with_mod(mut self, m: impl AsRef<str>) -> Self {
-        self.add_mod(m);
-        self
-    }
+    // /// add a single mod
+    // pub fn with_mod(mut self, m: impl AsRef<str>) -> Self {
+    //     self.add_mod(m);
+    //     self
+    // }
     /// set all mods
     pub fn with_mods(mut self, mods: impl Iterator<Item=impl AsRef<str>>) -> Self {
         self.mods = mods.map(|i| i.as_ref().to_owned()).collect();
@@ -222,7 +290,15 @@ impl ModManager {
         let mods_str = format!("{}{}", mods.join(""), self.speed.as_u16());
         Cryptography::md5(mods_str)
     }
+
 }
+
+impl PartialEq for ModManager {
+    fn eq(&self, other: &Self) -> bool {
+        self.speed == other.speed && self.mods == other.mods
+    }
+}
+impl Eq for ModManager {}
 
 // lets pretend this is correct for now
 impl Hash for ModManager {

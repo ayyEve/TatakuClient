@@ -72,8 +72,7 @@ impl TatakuValues {
     ) -> Option<T> {
         self
             .beatmap_manager
-            .current_beatmap
-            .as_ref()
+            .current_beatmap()
             .map(|b| f(b))
     }
 }

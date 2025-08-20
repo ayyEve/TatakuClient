@@ -2,7 +2,7 @@
 use crate::prelude::*;
 
 pub const FullAlt: GameplayMod = GameplayMod {
-    name: "full_alt",
+    id: "full_alt",
     short_name: "FA",
     display_name: "Full Alt",
     description: "Force full-alt :D",
@@ -10,7 +10,7 @@ pub const FullAlt: GameplayMod = GameplayMod {
 };
 
 pub const NoSV: GameplayMod = GameplayMod {
-    name: "no_sv",
+    id: "no_sv",
     short_name: "NS",
     display_name: "No SV",
     description: "No more slider velocity changes!",
@@ -18,7 +18,7 @@ pub const NoSV: GameplayMod = GameplayMod {
 };
 
 pub const Relax: GameplayMod = GameplayMod {
-    name: "relax",
+    id: "relax",
     short_name: "RX",
     display_name: "Relax",
     description: "Hit any (taiko) key you want!",
@@ -26,7 +26,7 @@ pub const Relax: GameplayMod = GameplayMod {
 };
 
 pub const HardRock:GameplayMod = GameplayMod {
-    name: "hardrock",
+    id: "hardrock",
     short_name: "HR",
     display_name: "Hard Rock",
     description: "Timing is tigher >:3",
@@ -36,7 +36,7 @@ pub const HardRock:GameplayMod = GameplayMod {
 };
 
 pub const Easy: GameplayMod = GameplayMod {
-    name: "easy",
+    id: "easy",
     short_name: "EZ",
     display_name: "Easy",
     description: "Timing is looser :3",
@@ -46,7 +46,7 @@ pub const Easy: GameplayMod = GameplayMod {
 };
 
 pub const NoBattery: GameplayMod = GameplayMod {
-    name: "no_battery",
+    id: "no_battery",
     short_name: "NB",
     display_name: "No Battery",
     description: "Don't use battery health",
@@ -55,7 +55,7 @@ pub const NoBattery: GameplayMod = GameplayMod {
 };
 
 pub const NoFinisher: GameplayMod = GameplayMod {
-    name: "no_finisher",
+    id: "no_finisher",
     short_name: "NX",
     display_name: "No Finishers",
     description: "Turn all big notes into small notes",
@@ -64,7 +64,7 @@ pub const NoFinisher: GameplayMod = GameplayMod {
 
 
 pub const Flashlight: GameplayMod = GameplayMod {
-    name: "flashlight",
+    id: "flashlight",
     short_name: "FL",
     display_name: "Flashlight",
     description: "Waaa I can't see anything!",

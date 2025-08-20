@@ -615,8 +615,6 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
             WinitWindowEvent::Resized(new_size) => {
                 self.graphics.resize([new_size.width, new_size.height]);
                 let new_size = Vector2::new(new_size.width as f32, new_size.height as f32);
-                println!("{new_size}");
-
                 if new_size != Vector2::ZERO {
                     self.send_event(WindowEvent::SizeChanged(new_size));
                 }

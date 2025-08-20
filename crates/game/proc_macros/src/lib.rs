@@ -59,7 +59,7 @@ pub fn impl_parse_css(input: proc_macro::TokenStream) -> proc_macro::TokenStream
 )]
 pub fn create_setting(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // Parse the string representation
-    let ast = syn::parse(input).unwrap();
+    let ast: DeriveInput = syn::parse(input).unwrap();
 
     #[cfg(not(feature="graphics"))]
     return proc_macro::TokenStream::from(quote! {});

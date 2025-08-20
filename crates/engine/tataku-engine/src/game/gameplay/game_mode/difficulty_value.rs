@@ -35,9 +35,9 @@ pub struct DifficultyValue {
     pub display: Option<fn(f32) -> String>,
 
     /// get the value for this from the map and mods provided
-    #[default(|_,_| 0.0)]
     #[reflect(skip)]
-    pub get_diff_value: fn(&BeatmapMetaWithDiff, &ModManager) -> f32,
+    #[default(|_| 0.0)]
+    pub get_diff_value: fn(&GetDiffValue) -> f32,
 }
 impl DifficultyValue {
     pub fn format(&self, num: f32) -> String {
@@ -90,7 +90,7 @@ pub const DIFFICULTY_DIFF_VALUE: DifficultyValue = DifficultyValue {
     step: None,
     unit: Some("*"),
     display: None,
-    get_diff_value: |map, _| map.diff.unwrap_or_default(),
+    get_diff_value: |info| info.diff,
 };
 
 pub const BPM_DIFF_VALUE: DifficultyValue = DifficultyValue {
@@ -103,7 +103,7 @@ pub const BPM_DIFF_VALUE: DifficultyValue = DifficultyValue {
     step: None,
     unit: Some("bpm"),
     display: None,
-    get_diff_value: |map, mods| map.bpm_min * mods.get_speed(),
+    get_diff_value: |info| info.map.bpm_min * info.mods.get_speed(),
 };
 
 pub const DURATION_DIFF_VALUE: DifficultyValue = DifficultyValue {
@@ -116,7 +116,7 @@ pub const DURATION_DIFF_VALUE: DifficultyValue = DifficultyValue {
     step: None,
     unit: None,
     display: Some(display_time),
-    get_diff_value: |map, mods| map.duration * mods.speed.as_f32(),
+    get_diff_value: |info| info.map.duration * info.mods.speed.as_f32(),
 };
 
 fn display_time(ms: f32) -> String {
@@ -124,4 +124,10 @@ fn display_time(ms: f32) -> String {
     let mins = (seconds_total / 60.0).floor();
     let secs = seconds_total % 60.0;
     format!("{mins:.0}:{secs:.0}")
+}
+
+pub struct GetDiffValue<'a> {
+    pub map: &'a BeatmapMeta,
+    pub mods: &'a ModManager,
+    pub diff: f32,
 }

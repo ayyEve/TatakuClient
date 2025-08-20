@@ -12,14 +12,37 @@ impl<'rpn, 'values: 'rpn> GenericShuntingYard<'rpn, 'values> for PathShuntingYar
     fn read_check_char(
         read_type: &mut Self::ReadType,
         char: char,
-        _output_queue: &mut Vec<Self::Token>,
-        _operator_queue: &mut Vec<Self::Token>,
+        output_queue: &mut Vec<Self::Token>,
+        operator_queue: &mut Vec<Self::Token>,
+        function_arg_stack: &mut Vec<usize>,
     ) -> Result<bool, Self::Error> {
         match char {
             '0'..='9'|'a'..='z'|'A'..='Z'|'_'|'.' => {
                 read_type.push(char);
                 Ok(true)
             },
+
+            '[' => {
+                operator_queue.push(Self::Token::Reference);
+                Self::open_paren(
+                    read_type,
+                    output_queue, 
+                    operator_queue, 
+                    function_arg_stack,
+                )?;
+
+                Ok(true)
+            },
+            ']' => {
+                Self::close_paren(
+                    read_type,
+                    output_queue, 
+                    operator_queue, 
+                    function_arg_stack,
+                )?;
+
+                Ok(true)
+            }
 
             _ => Ok(false),
         }
@@ -29,6 +52,7 @@ impl<'rpn, 'values: 'rpn> GenericShuntingYard<'rpn, 'values> for PathShuntingYar
         read_type: &mut Self::ReadType,
         output_queue: &mut Vec<Self::Token>,
         operator_queue: &mut Vec<Self::Token>,
+        _function_arg_stack: &mut Vec<usize>,
         _is_open_paren: bool,
     ) -> Result<(), Self::Error> {
         // any "operation" is really a function
@@ -36,7 +60,6 @@ impl<'rpn, 'values: 'rpn> GenericShuntingYard<'rpn, 'values> for PathShuntingYar
             operator_queue.pop();
             operator_queue.push(PathShuntingYardToken::Reference);
         }
-
 
         match read_type {
             Self::ReadType::None => return Ok(()),
@@ -284,4 +307,55 @@ mod tests {
         assert_eq!(res, Ok(str_result.to_owned()));
     }
 
+    #[test]
+    fn test_index() {
+        let str = "game[game.test].hi_123";
+        let str_result = "game.hi.hi_123";
+
+        let ast = PathShuntingYard::parse_expression(str)
+            .unwrap();
+
+        assert_eq!(
+            ast,
+            vec![
+                PathShuntingYardToken::Static("game".into()),
+                PathShuntingYardToken::Static("game.test".into()),
+                PathShuntingYardToken::Reference,
+                PathShuntingYardToken::Static("hi_123".into()),
+            ]
+        );
+
+        let values = {
+            let hi = DynMap::default()
+                .set_chained("hi_123", "hello world")
+                ;
+
+            let game = DynMap::default()
+                .set_chained("test", "hi")
+                .set_chained("hi", hi)
+                ;
+            DynMap::default()
+                .set_chained("game", game)
+        };
+
+        let res = PathShuntingYard::evaluate_rpn(
+            &ast, 
+            &values
+        );
+
+        assert_eq!(res, Ok(str_result.to_owned()));
+    }
+}
+
+#[test]
+fn test() {
+    let i = Cryptography::md5("hi mom");
+    let mut map = HashMap::new();
+    let v = String::from("hello");
+    map.insert(i, v.clone());
+
+    let n = i.to_string();
+    let a = map.impl_get(ReflectPath::new(&n)).unwrap();
+    let t = a.as_ref().impl_display(ReflectPath::EMPTY, None).unwrap();
+    assert_eq!(t, v);
 }

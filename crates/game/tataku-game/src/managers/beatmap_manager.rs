@@ -6,26 +6,21 @@ use std::fs::read_dir;
 #[reflect(dont_clone)]
 #[derive(Default, Debug)]
 pub struct BeatmapManager {
-    #[reflect(skip)]
-    pub actions: ActionQueue,
-    initialized: bool,
-
-    #[reflect(skip)]
-    infos: GamemodeInfos,
+    #[reflect(skip)] pub actions: ActionQueue,
+    #[reflect(skip)] initialized: bool,
+    #[reflect(skip)] infos: GamemodeInfos,
 
     #[reflect(alias("current"))]
-    pub current_beatmap: Option<BeatmapWithData>,
+    pub current_beatmap: Option<Md5Hash>,
     
-    #[reflect(flatten)]
-    pub beatmaps: Vec<Arc<BeatmapMeta>>,
-    pub beatmaps_by_hash: HashMap<Md5Hash, Arc<BeatmapMeta>>,
-    pub ignore_beatmaps: HashSet<ArcStr>,
+    #[reflect(skip)] pub ignore_beatmaps: HashSet<ArcStr>,
+    pub diffs: HashMap<Md5Hash, BeatmapDifficulty>,
+    pub beatmaps: HashMap<Md5Hash, Arc<BeatmapMeta>>,
 
     /// previously played maps
     played: Vec<Md5Hash>, 
     /// current index of previously played maps
     play_index: usize,
-
 
     // list stuff
     pub filter_text: String,
@@ -45,9 +40,10 @@ impl BeatmapManager {
             initialized: false,
 
             current_beatmap: None,
-            beatmaps: Vec::new(),
-            beatmaps_by_hash: HashMap::new(),
+            // beatmaps: Vec::new(),
+            beatmaps: HashMap::new(),
             ignore_beatmaps: HashSet::new(),
+            diffs: HashMap::new(),
 
             played: Vec::new(),
             play_index: 0,
@@ -82,9 +78,11 @@ impl BeatmapManager {
     }
 
 
-    pub fn set_current(&mut self, map: BeatmapWithData) {
-        let hash = map.map.beatmap_hash;
-        self.current_beatmap = Some(map);
+    pub fn set_current(&mut self, hash: Md5Hash) {
+        if !self.beatmaps.contains_key(&hash)
+        { return }
+
+        self.current_beatmap = Some(hash);
 
         // make sure we have the selected set and selected map values up to date
         for (n, i) in self.groups.iter_mut().enumerate() {
@@ -113,8 +111,9 @@ impl BeatmapManager {
 
     /// clear the cache and db, and do a full rescan of the songs folder
     pub fn full_refresh(&mut self, settings: &Settings) {
+        // self.beatmaps.clear();
         self.beatmaps.clear();
-        self.beatmaps_by_hash.clear();
+        self.diffs.clear();
 
         Database::clear_all_maps();
 
@@ -148,7 +147,7 @@ impl BeatmapManager {
         let mut ignore_paths = self.ignore_beatmaps.clone();
 
         // ignore existing paths
-        for i in self.beatmaps.iter() {
+        for i in self.beatmaps.values() {
             ignore_paths.insert(i.file_path.clone());
         }
 
@@ -167,7 +166,7 @@ impl BeatmapManager {
                 }
 
                 match Io::get_file_hash(file) {
-                    Ok(hash) => if self.beatmaps_by_hash.contains_key(&hash) { continue },
+                    Ok(hash) => if self.beatmaps.contains_key(&hash) { continue },
                     Err(e) => {
                         error!("error getting hash for file {file}: {e}");
                         continue;
@@ -211,11 +210,11 @@ impl BeatmapManager {
         add_to_db: bool,
     ) {
         // check if we already have this map
-        if self.beatmaps_by_hash.contains_key(&beatmap.beatmap_hash) {
+        if self.beatmaps.contains_key(&beatmap.beatmap_hash) {
             trace!("Map already added");
 
             // see if this beatmap is being added from another source
-            if !self.beatmaps.iter().any(|m| m.file_path == beatmap.file_path) {
+            if !self.beatmaps.values().any(|m| m.file_path == beatmap.file_path) {
                 // if so, add it to the ignore list
                 trace!("Adding {} to the ignore list", beatmap.file_path);
                 self.ignore_beatmaps.insert(beatmap.file_path.clone());
@@ -227,8 +226,8 @@ impl BeatmapManager {
 
         // dont have it, add it
         let new_hash = beatmap.beatmap_hash;
-        self.beatmaps_by_hash.insert(new_hash, beatmap.clone());
-        self.beatmaps.push(beatmap.clone());
+        self.beatmaps.insert(new_hash, beatmap.clone());
+        // self.beatmaps.push(beatmap.clone());
 
         if self.initialized {
             debug!("Adding beatmap {}", beatmap.version_string());
@@ -248,9 +247,9 @@ impl BeatmapManager {
 
     pub fn delete_beatmap(&mut self, beatmap: Md5Hash) -> bool {
         // remove beatmap from ourselves
-        self.beatmaps.retain(|b| b.beatmap_hash != beatmap);
+        // self.beatmaps.retain(|b| b.beatmap_hash != beatmap);
 
-        let Some(old_map) = self.beatmaps_by_hash.remove(&beatmap) 
+        let Some(old_map) = self.beatmaps.remove(&beatmap) 
         else { return false };
 
         if old_map.file_path.starts_with(SONGS_DIR) {
@@ -270,17 +269,20 @@ impl BeatmapManager {
             Database::add_ignored(&old_map.file_path);
         }
 
-        self.current_beatmap.as_ref().filter(|b| b.beatmap_hash == beatmap).is_some()
+        self.current_beatmap == Some(beatmap)
     }
 
 
+    pub fn current_beatmap(&self) -> Option<&Arc<BeatmapMeta>> {
+        self.beatmaps.get(self.current_beatmap.as_ref()?)
+    }
 
 
     // getters
     pub fn all_by_sets(&self, _group_by: GroupBy) -> Vec<BeatmapGroup> {
         let mut set_map: HashMap<BeatmapGroupValue, BeatmapGroup> = HashMap::new();
 
-        for beatmap in self.beatmaps.iter().cloned() {
+        for beatmap in self.beatmaps.values() {
             let key = format!(
                 "[{}] // {} - {}", 
                 beatmap.creator, 
@@ -290,47 +292,50 @@ impl BeatmapManager {
             let key = BeatmapGroupValue::Set(key);
 
             if let Some(list) = set_map.get_mut(&key) {
-                list.maps.push(beatmap);
+                list.maps.push(beatmap.beatmap_hash);
             } else {
                 let mut group = BeatmapGroup::new(key.clone());
-                group.maps.push(beatmap);
+                group.maps.push(beatmap.beatmap_hash);
                 set_map.insert(key, group);
             }
         }
 
         set_map.into_values().collect()
     }
+
+    pub fn has_hash(&self, hash: &Md5Hash) -> bool {
+        self.beatmaps.contains_key(hash)
+    }
     pub fn get_by_hash(&self, hash: &Md5Hash) -> Option<Arc<BeatmapMeta>> {
-        self.beatmaps_by_hash.get(hash).cloned()
+        self.beatmaps.get(hash).cloned()
     }
 
 
-    pub fn random_beatmap(&self) -> Option<Arc<BeatmapMeta>> {
+    pub fn random_beatmap(&self) -> Option<Md5Hash> {
         if !self.beatmaps.is_empty() {
             let ind = rand::rng().random_range(0..self.beatmaps.len());
-            let map = self.beatmaps[ind].clone();
-            Some(map)
+            let map = self.beatmaps.keys().nth(ind).unwrap();
+
+            Some(*map)
         } else {
             None
         }
     }
 
 
-    pub fn next_beatmap(&self) -> Option<Arc<BeatmapMeta>> {
+    pub fn next_beatmap(&self) -> Option<Md5Hash> {
         self
             .played
             .get(self.play_index + 1)
-            .and_then(|hash| self.beatmaps_by_hash.get(hash))
-            .cloned()
+            .copied()
     }
-    pub fn previous_beatmap(&self) -> Option<Arc<BeatmapMeta>> {
+    pub fn previous_beatmap(&self) -> Option<Md5Hash> {
         if self.play_index == 0 { return None }
 
         self
             .played
             .get(self.play_index - 1)
-            .and_then(|hash| self.beatmaps_by_hash.get(hash))
-            .cloned()
+            .copied()
     }
 }
 
@@ -367,67 +372,79 @@ impl BeatmapManager {
             .collect::<Vec<_>>();
 
         for group in self.unfiltered_groups.iter() {
+            
             // let mut selected = false;
-            let mut maps = group.maps
-                .iter()
-                .map(|m| {
+            let maps = group.maps
+            .iter()
+            .flat_map(|m| {
+                let meta = self.beatmaps.get(m).unwrap();
+
                 let mode = self
                     .infos
-                    .get_playmode_actual(playmode, Some(m));
+                    .get_playmode_actual(playmode, Some(meta));
 
                 let diff = diff_manager
-                    .get_diff(m, mode, mods);
+                    .get_diff(meta, mode, mods)
+                    .unwrap_or(-1.0);
 
-                let Ok(info) = self.infos.get_info(mode) 
-                else {
-                    return BeatmapWithData {
-                        map: m.clone(),
-                        diff_rating: 0.0,
-                        diff_info: String::new(),
-                    }
-                };
+                let info = self.infos.get_info(mode).unwrap();
+                // else {
+                //     return BeatmapWithDiff {
+                //         map: m,
+                //         diff_rating: 0.0,
+                //         diff_info: String::new(),
+                //     }
+                // };
 
-                if let Err(TatakuError::DiffCalcError(DiffCalcError::NoDiff)) = &diff {
-                    self.actions.push(TaskAction::AddTask(Box::new(
-                        DiffCalcTask::new(m.clone(), *info)
-                    )));
-                }
+                // if let Err(TatakuError::DiffCalcError(DiffCalcError::NoDiff)) = &diff {
+                //     self.actions.push(TaskAction::AddTask(Box::new(
+                //         DiffCalcTask::new(m.clone(), *info)
+                //     )));
+                // }
 
-                let diff = diff.ok();
-                let diff_meta = BeatmapMetaWithDiff::new(
-                    m.clone(), 
-                    diff
-                );
+                // let diff = diff.unwrap_or(-1.0);
+                // m.set_diff(diff);
+
+                // let diff_meta = BeatmapMetaWithDiff::new(
+                //     m.clone(), 
+                //     diff
+                // );
+
                 
-                let diff_info = if let Ok(info) = self
-                    .infos.get_info(playmode) 
-                {
+                let diff_info = {
+                    let data = GetDiffValue {
+                        map: meta,
+                        mods,
+                        diff,
+                    };
+
                     info.diff_values
                         .iter()
                         .map(|dv| 
-                            dv.format((dv.get_diff_value)(&diff_meta, mods))
+                            dv.format((dv.get_diff_value)(&data))
                         )
                         .collect::<Vec<_>>()
                         .join(" | ")
-                } else {
-                    String::new()
                 };
 
-                BeatmapWithData {
-                    map: m.clone(),
-                    diff_rating: diff.unwrap_or_default(),
-                    diff_info,
+                let entry = self.diffs
+                    .entry(*m)
+                    .or_default();
+
+                entry.diff = diff;
+                entry.info = diff_info.into();
+
+                // apply filter
+                for filter in filters.iter() {
+                    if !meta.filter(filter, diff) { 
+                        return None;
+                    }
                 }
+
+                Some(*m)
             }).collect::<Vec<_>>();
 
-            // apply filter
-            if !filters.is_empty() {
-                for filter in filters.iter() {
-                    maps.retain(|bm| bm.filter(filter));
-                }
-
-                if maps.is_empty() { continue }
-            }
+            if maps.is_empty() { continue }
 
             let name = group.get_name().clone();
             self.groups.push(BeatmapListGroup { maps, id: 0, name, selected: false });
@@ -443,17 +460,17 @@ impl BeatmapManager {
         let current_hash = self
             .current_beatmap
             .as_ref()
-            .map(|b| b.beatmap_hash);
+            .copied();
 
         // sort
         macro_rules! sort {
             ($property:tt, String) => {
-                self.groups.sort_by(|a, b| a.maps[0].$property.to_lowercase()
-                    .cmp(&b.maps[0].$property.to_lowercase()))
+                self.groups.sort_by(|a, b| self.beatmaps.get(&a.maps[0]).unwrap().$property.to_lowercase()
+                    .cmp(&self.beatmaps.get(&b.maps[0]).unwrap().$property.to_lowercase()))
             };
             ($property:ident, Float) => {
-                self.groups.sort_by(|a, b| a.maps[0].$property
-                    .partial_cmp(&b.maps[0].$property).unwrap())
+                self.groups.sort_by(|a, b| self.beatmaps.get(&a.maps[0]).$property
+                    .partial_cmp(self.beatmaps.get(&b.maps[0]).$property).unwrap())
             };
         }
 
@@ -461,7 +478,17 @@ impl BeatmapManager {
             SortBy::Title => sort!(title, String),
             SortBy::Artist => sort!(artist, String),
             SortBy::Creator => sort!(creator, String),
-            SortBy::Difficulty => sort!(diff_rating, Float),
+            SortBy::Difficulty => {
+                self.groups.sort_by(|a, b| {
+                    let Some(a) = self.diffs.get(&a.maps[0]) 
+                    else { return std::cmp::Ordering::Equal };
+                    
+                    let Some(b) = self.diffs.get(&b.maps[0]) 
+                    else { return std::cmp::Ordering::Equal };
+
+                    a.diff.total_cmp(&b.diff)
+                });
+            },
         }
 
         let mut selected = false;
@@ -526,7 +553,7 @@ impl BeatmapManager {
 
         if let Some(map) = set.maps.get(self.selected_map) {
             self.actions.push(BeatmapAction::Set(
-                map.map.clone(), 
+                *map, 
                 SetBeatmapOptions::default().use_preview_point(true)
             ));
         }
@@ -614,7 +641,7 @@ impl From<bool> for HandleDatabase {
 pub struct BeatmapGroup {
     pub name: String,
     pub group_value: BeatmapGroupValue,
-    pub maps: Vec<Arc<BeatmapMeta>>,
+    pub maps: Vec<Md5Hash>,
 }
 impl BeatmapGroup {
     pub fn new(group: BeatmapGroupValue) -> Self {
@@ -669,37 +696,6 @@ impl SelectBeatmapConfig {
 }
 
 
-#[derive(Reflect)]
-#[reflect(display="debug")]
-#[derive(Clone, Debug, Default)]
-pub struct BeatmapWithData {
-    #[reflect(flatten)]
-    pub map: Arc<BeatmapMeta>,
-    pub diff_rating: f32,
-    pub diff_info: String,
-}
-impl BeatmapWithData {
-    fn filter(&self, filter: &str) -> bool {
-        BeatmapMetaWithDiff::new(
-            self.map.clone(), 
-            Some(self.diff_rating)
-        )
-            .filter(filter)
-    }
-}
-impl Deref for BeatmapWithData {
-    type Target = Arc<BeatmapMeta>;
-    fn deref(&self) -> &Self::Target {
-        &self.map
-    }
-}
-
-impl PartialEq for BeatmapWithData {
-    fn eq(&self, other: &Self) -> bool {
-        self.beatmap_hash == other.beatmap_hash
-    }
-}
-
 
 #[derive(Reflect)]
 #[derive(Debug, Clone)]
@@ -707,15 +703,28 @@ pub struct BeatmapListGroup {
     pub id: usize,
     pub selected: bool,
     pub name: String,
-    pub maps: Vec<BeatmapWithData>,
+    pub maps: Vec<Md5Hash>,
 }
 impl BeatmapListGroup {
     fn has_hash(&self, hash: &Md5Hash) -> Option<usize> {
         self
             .maps
             .iter()
-            .enumerate()
-            .find(|(_, b)| b.comp_hash(*hash)) 
-            .map(|(n, _)| n)
+            .position(|i| i == hash)
+    }
+}
+
+
+#[derive(Reflect)]
+#[reflect(dont_clone)]
+#[derive(Debug, Default)]
+#[reflect(display="display")]
+pub struct BeatmapDifficulty {
+    pub diff: f32,
+    pub info: Box<str>,
+}
+impl std::fmt::Display for BeatmapDifficulty {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.info.fmt(f)
     }
 }

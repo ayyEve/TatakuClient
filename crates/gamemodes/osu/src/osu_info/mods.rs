@@ -2,7 +2,7 @@
 use crate::prelude::*;
 
 pub const Flashlight: GameplayMod = GameplayMod {
-    name: "flashlight",
+    id: "flashlight",
     short_name: "FL",
     display_name: "Flashlight",
     description: "Waaa I can't see anything!",
@@ -13,7 +13,7 @@ pub const Flashlight: GameplayMod = GameplayMod {
 
 
 pub const Easy:GameplayMod = GameplayMod {
-    name: "easy", 
+    id: "easy", 
     short_name: "EZ", 
     display_name: "Easy", 
     description: "Bigger and slower notes c:", 
@@ -21,11 +21,11 @@ pub const Easy:GameplayMod = GameplayMod {
     score_multiplier: 0.6, 
 
     adjusts_difficulty: false,
-    removes: &[HardRock.name]
+    removes: &[HardRock.id]
 };
 
 pub const HardRock:GameplayMod = GameplayMod {
-    name: "hardrock", 
+    id: "hardrock", 
     short_name: "HR", 
     display_name: "Hard Rock", 
     description: "Smaller notes, higher approach, what fun!", 
@@ -37,7 +37,7 @@ pub const HardRock:GameplayMod = GameplayMod {
 };
 
 pub const Relax:GameplayMod = GameplayMod {
-    name: "relax", 
+    id: "relax", 
     short_name: "RX", 
     display_name: "Relax", 
     description: "You just need to aim!", 
@@ -49,7 +49,7 @@ pub const Relax:GameplayMod = GameplayMod {
 };
 
 pub const OnTheBeat:GameplayMod = GameplayMod {
-    name: "on_the_beat", 
+    id: "on_the_beat", 
     short_name: "OB", 
     display_name: "On the Beat", 
     description: "Notes on beats have something off about them", 

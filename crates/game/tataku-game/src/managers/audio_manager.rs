@@ -101,7 +101,7 @@ impl AudioManager {
                         
                         HitsoundSource::Beatmap => {
                             let Some(map) = &values
-                                .beatmap_manager.current_beatmap 
+                                .beatmap_manager.current_beatmap()
                             else {
                                 continue 
                             };

@@ -108,8 +108,8 @@ impl BuildableText {
                     }
                 } else {
                     values
-                    .reflect_display(&variable, *precision)
-                    .unwrap_or_else(|e| format!("Invalid property: '{variable}' ({e:?})"))
+                        .reflect_display(&variable, *precision)
+                        .unwrap_or_else(|e| format!("Invalid property: '{variable}' ({e:?})"))
                 }
             },
 

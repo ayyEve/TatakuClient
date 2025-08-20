@@ -139,6 +139,7 @@ impl<'rpn, 'values: 'rpn> GenericShuntingYard<'rpn, 'values> for BuildableShunti
         char: char,
         output_queue: &mut Vec<Self::Token>,
         operator_queue: &mut Vec<Self::Token>,
+        function_arg_stack: &mut Vec<usize>,
     ) -> Result<bool, Self::Error> {
         if let Self::ReadType::StringLiteral(s) = read_type {
             if char == '\'' {
@@ -146,6 +147,7 @@ impl<'rpn, 'values: 'rpn> GenericShuntingYard<'rpn, 'values> for BuildableShunti
                     read_type,
                     output_queue, 
                     operator_queue,
+                    function_arg_stack,
                     false
                 )?;
             } else {
@@ -156,7 +158,7 @@ impl<'rpn, 'values: 'rpn> GenericShuntingYard<'rpn, 'values> for BuildableShunti
         }
 
         match char {
-            '0'..='9'|'a'..='z'|'A'..='Z'|'.'|'_' => {
+            '0'..='9'|'a'..='z'|'A'..='Z'|'.'|'_'|'['|']' => {
                 read_type.push(char);
                 Ok(true)
             },
@@ -174,6 +176,7 @@ impl<'rpn, 'values: 'rpn> GenericShuntingYard<'rpn, 'values> for BuildableShunti
         read_type: &mut Self::ReadType,
         output_queue: &mut Vec<Self::Token>,
         operator_queue: &mut Vec<Self::Token>,
+        _function_arg_stack: &mut Vec<usize>,
         is_open_paren: bool,
     ) -> Result<(), Self::Error>{
         match read_type {
@@ -191,7 +194,7 @@ impl<'rpn, 'values: 'rpn> GenericShuntingYard<'rpn, 'values> for BuildableShunti
                 operator_queue.push(Self::Token::Function(s.take(), 1));
             }
             Self::ReadType::Variable(s) => {
-                output_queue.push(Self::Token::Variable(s.take()));
+                output_queue.push(Self::Token::Variable(s.take().into()));
             }
             Self::ReadType::StringLiteral(s) => {
                 output_queue.push(Self::Token::StringLiteral(s.take()));
@@ -211,13 +214,18 @@ impl<'rpn, 'values: 'rpn> GenericShuntingYard<'rpn, 'values> for BuildableShunti
                 => Ok(Cow::Owned(TatakuValue::from(*num))),
             BuildableShuntingYardToken::StringLiteral(s) 
                 => Ok(Cow::Owned(TatakuValue::from(s.clone()))),
-            BuildableShuntingYardToken::Variable(var) => match &**var {
+            BuildableShuntingYardToken::Variable(var) => match &*var.var {
                 "true"  => Ok(Cow::Owned(TatakuValue::Bool(true))),
                 "false" => Ok(Cow::Owned(TatakuValue::Bool(false))),
-                _ => values
-                    .impl_get(ReflectPath::new(var))
-                    .and_then(TatakuValue::from_reflection)
-                    .map(Cow::Owned)
+                _var => {
+                    let path = var.resolve_path(values).unwrap();
+
+                    values
+                        .impl_get(ReflectPath::new(&path))
+                        .and_then(TatakuValue::from_reflection)
+                        .map(Cow::Owned)
+                        .map_err(ReflectError::to_owned)
+                }
             },
 
             _ => unreachable!("token is not a value")
@@ -511,7 +519,7 @@ mod shunting_yard_tests {
             assert_eq!(
                 tokens,
                 vec![
-                    BuildableShuntingYardToken::Variable("hi.mom".to_string()),
+                    BuildableShuntingYardToken::Variable("hi.mom".to_string().into()),
                     BuildableShuntingYardToken::Number(3.0),
                     BuildableShuntingYardToken::Function("display".to_string(), 2)
                 ]
@@ -529,7 +537,7 @@ mod shunting_yard_tests {
             assert_eq!(
                 tokens,
                 vec![
-                    BuildableShuntingYardToken::Variable("hi.mom".to_string()),
+                    BuildableShuntingYardToken::Variable("hi.mom".to_string().into()),
                     BuildableShuntingYardToken::Number(1.0),
                     BuildableShuntingYardToken::Number(2.0),
                     BuildableShuntingYardToken::Number(3.0),
@@ -552,7 +560,7 @@ mod shunting_yard_tests {
             assert_eq!(
                 tokens,
                 vec![
-                    BuildableShuntingYardToken::Variable("hi.mom".to_string()),
+                    BuildableShuntingYardToken::Variable("hi.mom".to_string().into()),
 
                     // calc inner fn
                     BuildableShuntingYardToken::Number(123.0),

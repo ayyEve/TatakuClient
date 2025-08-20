@@ -156,13 +156,7 @@ impl TatakuBeatmap for AdofaiBeatmap {
             audio_filename: self.audio_file.clone(),
             image_filename: format!("{}/{}", parent_dir, self.settings.bg_image).into(),
             audio_preview: self.settings.preview_song_start,
-            duration: 0.0,
-            hp: 0.0,
-            od: 0.0,
-            cs: 0.0,
-            ar: 0.0,
-            bpm_min: 0.0,
-            bpm_max: 0.0,
+            ..Default::default()
         })
     }
 

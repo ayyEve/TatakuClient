@@ -75,12 +75,14 @@ pub trait GenericShuntingYard<'rpn, 'values: 'rpn> {
         
         output_queue: &mut Vec<Self::Token>,
         operator_queue: &mut Vec<Self::Token>,
+        function_arg_stack: &mut Vec<usize>,
     ) -> Result<bool, Self::Error>;
 
     fn add(
         read_type: &mut Self::ReadType,
         output_queue: &mut Vec<Self::Token>,
         operator_queue: &mut Vec<Self::Token>,
+        function_arg_stack: &mut Vec<usize>,
         is_open_paren: bool,
     ) -> Result<(), Self::Error>;
     
@@ -95,6 +97,62 @@ pub trait GenericShuntingYard<'rpn, 'values: 'rpn> {
         values: &'values dyn Reflect,
     ) -> Result<(), Self::Error>;
 
+
+    fn open_paren(
+        read_type: &mut Self::ReadType,
+        output_queue: &mut Vec<Self::Token>,
+        operator_queue: &mut Vec<Self::Token>,
+        function_arg_stack: &mut Vec<usize>,
+    ) -> Result<(), Self::Error> {
+        Self::add(
+            read_type,
+            output_queue, 
+            operator_queue, 
+            function_arg_stack,
+            true,
+        )?;
+
+        if Self::last_is_fn(operator_queue) {
+            function_arg_stack.push(1);
+        }
+
+        operator_queue.push(Self::Token::OPEN_PAREN);
+        Ok(())
+    }
+
+    fn close_paren(
+        read_type: &mut Self::ReadType,
+        output_queue: &mut Vec<Self::Token>,
+        operator_queue: &mut Vec<Self::Token>,
+        function_arg_stack: &mut Vec<usize>,
+    ) -> Result<(), Self::Error> {
+        Self::add(
+            read_type,
+            output_queue, 
+            operator_queue, 
+            function_arg_stack,
+            false
+        )?;
+
+        while let Some(top) = operator_queue.pop() {
+            if top == Self::Token::OPEN_PAREN { break }
+            output_queue.push(top);
+        }
+
+        if Self::last_is_fn(operator_queue) {
+            let arg_count = function_arg_stack.pop().unwrap();
+
+            let mut last = operator_queue
+                .pop()
+                .unwrap();
+
+            last.set_arg_count(arg_count);
+            output_queue.push(last);
+        }
+
+        Ok(())
+    }
+
     fn parse_expression(
         expression: &str,
     ) -> Result<Vec<Self::Token>, Self::Error> {
@@ -108,7 +166,6 @@ pub trait GenericShuntingYard<'rpn, 'values: 'rpn> {
 
         let mut function_arg_stack: Vec<usize> = Vec::new();
 
-
         for pair in expression.windows(2) {
             let &[c, c2] = pair else { continue };
 
@@ -117,49 +174,25 @@ pub trait GenericShuntingYard<'rpn, 'values: 'rpn> {
                 c,
                 &mut output_queue,
                 &mut operator_queue,
+                &mut function_arg_stack
             )?;
 
             if res { continue }
             
             match c {
-                '(' => {
-                    Self::add(
-                        &mut read_type,
-                        &mut output_queue, 
-                        &mut operator_queue, 
-                        true,
-                    )?;
+                '(' => Self::open_paren(
+                    &mut read_type, 
+                    &mut output_queue, 
+                    &mut operator_queue, 
+                    &mut function_arg_stack
+                )?,
+                ')' => Self::close_paren(
+                    &mut read_type, 
+                    &mut output_queue, 
+                    &mut operator_queue, 
+                    &mut function_arg_stack
+                )?,
 
-                    if Self::last_is_fn(&operator_queue) {
-                        function_arg_stack.push(1);
-                    }
-
-                    operator_queue.push(Self::Token::OPEN_PAREN);
-                }
-                ')' => {
-                    Self::add(
-                        &mut read_type,
-                        &mut output_queue, 
-                        &mut operator_queue, 
-                        false
-                    )?;
-
-                    while let Some(top) = operator_queue.pop() {
-                        if top == Self::Token::OPEN_PAREN { break }
-                        output_queue.push(top);
-                    }
-
-                    if Self::last_is_fn(&operator_queue) {
-                        let arg_count = function_arg_stack.pop().unwrap();
-
-                        let mut last = operator_queue
-                            .pop()
-                            .unwrap();
-
-                        last.set_arg_count(arg_count);
-                        output_queue.push(last);
-                    }
-                }
                 ',' => {
                     let Some(last) = function_arg_stack.last_mut()
                     else { return Err(Self::Error::UNEXPECTED_COMMA) };
@@ -169,6 +202,7 @@ pub trait GenericShuntingYard<'rpn, 'values: 'rpn> {
                         &mut read_type,
                         &mut output_queue, 
                         &mut operator_queue, 
+                        &mut function_arg_stack,
                         false
                     )?;
                 }
@@ -187,6 +221,7 @@ pub trait GenericShuntingYard<'rpn, 'values: 'rpn> {
                             &mut read_type,
                             &mut output_queue,
                             &mut operator_queue, 
+                            &mut function_arg_stack,
                             false
                         )?;
 
@@ -210,6 +245,7 @@ pub trait GenericShuntingYard<'rpn, 'values: 'rpn> {
             &mut read_type,
             &mut output_queue, 
             &mut operator_queue, 
+            &mut function_arg_stack,
             false
         )?;
 

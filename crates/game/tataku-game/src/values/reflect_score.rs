@@ -130,7 +130,7 @@ impl ReflectMods {
     ) -> Self {
         let all_mods = info.mods
             .iter()
-            .flat_map(|g| g.mods.iter().map(|m| (m.name, m)))
+            .flat_map(|g| g.mods.iter().map(|m| (m.id, m)))
             .collect::<HashMap<_,_>>();
 
         let (mod_list, short_mods) = 

@@ -69,6 +69,11 @@ impl GlobalValues {
     }
 
     pub fn update_mods(&mut self) {
+        let mode = self.gamemode_infos
+            .get_info(&self.playmode_actual)
+            .unwrap();
+        self.mods.update_score_multiplier(mode);
+
         for group in self.mod_groups.iter_mut() {
             group.update(&self.mods);
         }

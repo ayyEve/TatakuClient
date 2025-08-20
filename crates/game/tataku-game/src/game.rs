@@ -88,6 +88,7 @@ impl Game {
     ) -> Self {
         let settings = Settings::load();
         let infos = GamemodeInfos::new(gamemodes); 
+        #[cfg(feature = "graphics")]
         let skin_manager = SkinManager::new(&settings);
 
         let online_content_manager = OnlineContentManager::new(&settings);
@@ -706,6 +707,7 @@ impl Game {
             let values = &mut self.values;
             values.song.position = self.song_manager.position();
 
+            #[cfg(feature = "ui")]
             if let Some(audio) = self.song_manager.instance() {
                 if self.values.song.set_state(audio.get_state()) {
                     let action = match self.values.song.state {
@@ -1854,7 +1856,7 @@ impl Game {
 
                             if change_map {
                                 self.actions.push(BeatmapAction::Set(
-                                    last.clone(),
+                                    last.beatmap_hash,
                                     SetBeatmapOptions::default()
                                         .use_preview_point(use_preview_time)
                                         .restart_song(false)
@@ -1919,16 +1921,14 @@ impl Game {
 
     #[cfg(feature="graphics")]
     fn try_open_replay(&mut self, score: Score) {
-        let Some(beatmap) = self
-            .beatmap_manager
-            .get_by_hash(&score.beatmap_hash) 
-        else {
+        if !self.beatmap_manager.has_hash(&score.beatmap_hash) {
             self.actions.push(
                 Notification::default()
                 .text("You don't have this beatmap!")
                 .duration(5_000.0)
                 .color(Color::RED)
             );
+            
             return;
         };
 
@@ -1937,7 +1937,7 @@ impl Game {
             true
         );
         
-        self.set_current_beatmap(&beatmap, config);
+        self.set_current_beatmap(score.beatmap_hash, config);
 
         // move to a score menu with this as the score
         // let score = IngameScore::new(score, false, false);
@@ -2147,7 +2147,7 @@ impl Game {
 
         // if we have a beatmap, get the override mode and update the playmode_actual values
         let actual_playmode = self.beatmap_manager
-            .current_beatmap.as_ref()
+            .current_beatmap()
             .filter(|b| !info.can_load_beatmap(&b.beatmap_type))
             .map(|b| b.mode.clone())
             .unwrap_or(playmode)
@@ -2202,9 +2202,10 @@ impl Game {
 
     fn set_current_beatmap(
         &mut self, 
-        beatmap: &Arc<BeatmapMeta>,
+        hash: Md5Hash,
         config: SelectBeatmapConfig
     ) {
+        let beatmap = self.beatmap_manager.get_by_hash(&hash).unwrap();
         debug!(
             "Setting current beatmap to {} ({}) and playmode {}", 
             beatmap.beatmap_hash, 
@@ -2212,41 +2213,41 @@ impl Game {
             config.playmode
         );
 
-        self.beatmap_manager.add_played(beatmap.beatmap_hash);
-        let hash = beatmap.beatmap_hash;
+        self.beatmap_manager.add_played(hash);
 
         // update value collection
         {
             let infos = &self.values.values.global.gamemode_infos;
             let actual_mode = infos.get_playmode_actual(
                 &config.playmode, 
-                Some(beatmap)
+                Some(&beatmap)
             );
 
-            // let mods = &values.mods;
-            let diff = self.difficulty_manager.get_diff(
-                beatmap, 
-                actual_mode, 
-                &config.mods
-            ).ok();
+            // // let mods = &values.mods;
+            // let diff = self.difficulty_manager.get_diff(
+            //     beatmap, 
+            //     actual_mode, 
+            //     &config.mods
+            // ).ok();
 
-            let diff_info = if let Ok(info) = infos.get_info(actual_mode) {
-                let diff_meta = BeatmapMetaWithDiff::new(beatmap.clone(), diff);
 
-                info.diff_values
-                    .iter()
-                    .map(|dv| dv.format((dv.get_diff_value)(&diff_meta, &config.mods)))
-                    .collect::<Vec<_>>()
-                    .join(" | ")
-            } else {
-                String::new()
-            };
+            // let diff_info = if let Ok(info) = infos.get_info(actual_mode) {
+            //     let diff_meta = BeatmapWithDiff {
+            //         map: beatmap.clone(),
+            //         diff_rating: diff.unwrap_or(-1.0),
+            //         diff_info: Box::default(),
+            //     };
 
-            self.beatmap_manager.set_current(BeatmapWithData {
-                map: beatmap.clone(),
-                diff_rating: diff.unwrap_or_default(),
-                diff_info
-            });
+            //     info.diff_values
+            //         .iter()
+            //         .map(|dv| dv.format((dv.get_diff_value)(&diff_meta, &config.mods)))
+            //         .collect::<Vec<_>>()
+            //         .join(" | ")
+            // } else {
+            //     String::new()
+            // };
+
+            self.beatmap_manager.set_current(hash);
             
             self.actions.push(GameAction::UpdatePlaymodeActual(actual_mode.into()));
 
@@ -2316,7 +2317,7 @@ impl Game {
                         .random_beatmap() 
                     else { return };
 
-                    self.set_current_beatmap(&beatmap, config);
+                    self.set_current_beatmap(beatmap, config);
                 }
             }
         }
@@ -2328,14 +2329,14 @@ impl Game {
     ) -> bool {
         match self.beatmap_manager.next_beatmap() {
             Some(map) => {
-                self.set_current_beatmap(&map, config);
+                self.set_current_beatmap(map, config);
                 // since we're playing something already in the queue, dont append it again
                 self.beatmap_manager.remove_played(0);
                 true
             }
 
             None => if let Some(map) = self.beatmap_manager.random_beatmap() {
-                self.set_current_beatmap(&map, config);
+                self.set_current_beatmap(map, config);
                 true
             } else {
                 false
@@ -2349,7 +2350,7 @@ impl Game {
     ) -> bool {
         match self.beatmap_manager.previous_beatmap() {
             Some(map) => {
-                self.set_current_beatmap(&map, config);
+                self.set_current_beatmap(map, config);
                 // since we're playing something already in the queue, dont append it again
                 // and undo the index bump done in set_current_beatmap
                 self.beatmap_manager.remove_played(2);
@@ -2410,8 +2411,8 @@ impl Game {
                 let Some(audio) = self.song_manager.instance() 
                 else { return };
                 
-                let Some(current) = &self.beatmap_manager
-                    .current_beatmap
+                let Some(current) = self.beatmap_manager
+                    .current_beatmap()
                 else { return };
 
                 self.actions.push(TatakuIntegrationEvent::SongChanged { 
@@ -2495,9 +2496,10 @@ impl Game {
             #[cfg(feature="gameplay")]
             BeatmapAction::PlaySelected => {
                 let Some(map) = self
+                    .values.values
                     .beatmap_manager
-                    .current_beatmap
-                    .clone() 
+                    .current_beatmap()
+                    .cloned()
                 else { return };
 
                 let mods = self.global.mods.clone();
@@ -2518,10 +2520,6 @@ impl Game {
                             &self.settings
                         );
 
-                        self.queue_state_change(
-                            GameState::Ingame(Box::new(manager))
-                        );
-
                         let multiplayer = self.multiplayer_manager
                             .as_ref()
                             .map(|a| a.lobby.id)
@@ -2530,13 +2528,17 @@ impl Game {
 
                         self.handle_event(TatakuIntegrationEvent::BeatmapStarted { 
                             start_time, 
-                            beatmap: map.map.clone(), 
+                            beatmap: map, 
                             playmode: mode, 
                             multiplayer, 
                             spectator: self.spectator_manager
                                 .as_ref()
                                 .map(|s| s.host_username.clone())
                         });
+                        
+                        self.queue_state_change(
+                            GameState::Ingame(Box::new(manager))
+                        );
                     }
                     Err(e) => self.actions.push(Notification::new_error(
                         "Error loading beatmap", 
@@ -2557,14 +2559,15 @@ impl Game {
                         return warn!("trying to set lobby beatmap while not the host ??");
                     };
 
-                    let Some(map) = self.values
+                    let Some(map) = self
+                        .values.values
                         .beatmap_manager
-                        .current_beatmap.clone() 
+                        .current_beatmap() 
                     else { return };
 
                     let playmode = &self.values.values.global.playmode;
                     self.values.values.online_manager.update_lobby_beatmap(
-                        &map, 
+                        map, 
                         playmode.to_string()
                     );
 
@@ -2572,12 +2575,13 @@ impl Game {
                     .spectator_manager
                     .as_mut() 
                 {
-                    let Some(map) = self.values
+                    let Some(map) = self
+                        .values.values
                         .beatmap_manager
-                        .current_beatmap.clone() 
+                        .current_beatmap() 
                     else { return };
 
-                    self.values.online_manager.handle_action(OnlineAction::ChatAction(
+                    self.values.values.online_manager.handle_action(OnlineAction::ChatAction(
                         ChatAction::SendMessage { 
                             channel: spec_man.host_username.to_string(), 
                             message: BeatmapLink {
@@ -2594,23 +2598,20 @@ impl Game {
             }
 
             BeatmapAction::Set(
-                beatmap, 
+                hash, 
                 options
             ) => self.handle_beatmap_action(BeatmapAction::SetFromHash(
-                beatmap.beatmap_hash, 
+                hash, 
                 options
             )),
             
             BeatmapAction::SetFromHash(hash, options) => {
-                if let Some(beatmap) = self
-                    .beatmap_manager
-                    .get_by_hash(&hash) 
-                {
+                if self.beatmap_manager.has_hash(&hash) {
                     let config = self.create_select_beatmap_config(
                         options.restart_song,
                         options.use_preview_point,
                     );
-                    self.set_current_beatmap(&beatmap, config);
+                    self.set_current_beatmap(hash, config);
 
                     return;
                 }
@@ -2633,7 +2634,7 @@ impl Game {
                         else { return };
 
                         self.handle_beatmap_action(BeatmapAction::SetFromHash(
-                            map.beatmap_hash, 
+                            map, 
                             options.use_preview_point(preview)
                         ));
                     }
@@ -2644,7 +2645,7 @@ impl Game {
                 => self.update_playmode(&new_mode),
 
             BeatmapAction::Random(use_preview) => {
-                let Some(beatmap) = self
+                let Some(hash) = self
                     .beatmap_manager
                     .random_beatmap() 
                 else { return };
@@ -2653,7 +2654,7 @@ impl Game {
                     true,
                     use_preview
                 );
-                self.set_current_beatmap(&beatmap, config);
+                self.set_current_beatmap(hash, config);
             }
             BeatmapAction::Remove => {
                 self.remove_current_beatmap();
@@ -2675,8 +2676,7 @@ impl Game {
                 );
             }
             BeatmapAction::DeleteCurrent(post_delete) => {
-                let Some(map_hash) = self.values
-                    .current_beatmap_prop(|b| b.beatmap_hash) 
+                let Some(map_hash) = self.beatmap_manager.current_beatmap
                 else { return };
 
                 let config = self.create_select_beatmap_config(
@@ -2712,12 +2712,12 @@ impl Game {
                     MapActionIfNone::Random(use_preview) => {
                         config.use_preview_time = use_preview;
 
-                        let Some(beatmap) = self
+                        let Some(hash) = self
                             .beatmap_manager
                             .random_beatmap() 
                         else { return };
 
-                        self.set_current_beatmap(&beatmap, config);
+                        self.set_current_beatmap(hash, config);
                     }
                     MapActionIfNone::SetNone 
                         => self.remove_current_beatmap(),
@@ -2933,31 +2933,26 @@ impl Game {
             }
             #[cfg(feature="graphics")]
             GameAction::ViewScore(score) => {
-                if let Some(beatmap) = self
-                    .beatmap_manager
-                    .get_by_hash(&score.beatmap_hash)
-                {
-                    self.set_current_beatmap(
-                        &beatmap, 
-                        SelectBeatmapConfig::new(
-                            ModManager {
-                                speed: score.speed,
-                                mods: score.mods
-                                    .iter()
-                                    .map(|i| i.name.clone())
-                                    .collect()
-                            },
-                            score.playmode.clone().into(),
-                            false,
-                            true
-                        ),
-                    );
-
+                if self.beatmap_manager.has_hash(&score.beatmap_hash) {
                     let info = self.values.global
                         .gamemode_infos
                         .get_info(&score.playmode)
                         .copied()
                         .unwrap_or_default();
+
+                    self.set_current_beatmap(
+                        score.beatmap_hash, 
+                        SelectBeatmapConfig::new(
+                            ModManager::new(
+                                score.mods.iter(),
+                                score.speed, 
+                                &info
+                            ),
+                            score.playmode.clone().into(),
+                            false,
+                            true
+                        ),
+                    );
 
                     self.values.values.score = ReflectScore::new(&score, &info);
 

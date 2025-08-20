@@ -23,7 +23,7 @@ impl TatakuTask for CheckBeatmapFoldersTask {
             let settings = values.reflect_get("settings").expect("nope");
 
             // get existing dirs
-            for i in beatmap_manager.beatmaps.iter() {
+            for i in beatmap_manager.beatmaps.values() {
                 if let Some(parent) = Path::new(&*i.file_path).parent() {
                     self.existing_paths.insert(parent.to_string_lossy().to_string());
                 }

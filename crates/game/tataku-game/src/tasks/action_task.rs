@@ -1,10 +1,12 @@
 use crate::prelude::*;
 
 /// Just runs the action, primarily used with the DelayedTask to run actions after a certain amount of time
+#[cfg(feature = "ui")]
 pub struct ActionTask {
     state: TatakuTaskState,
     action: Option<ActionTaskAction>,
 }
+#[cfg(feature = "ui")]
 impl ActionTask {
     pub fn new(action: impl Into<ActionTaskAction>) -> Self {
         Self {
@@ -15,6 +17,7 @@ impl ActionTask {
 }
 
 // overengineered lol
+#[cfg(feature = "ui")]
 impl TatakuTask for ActionTask {
     fn get_name(&self) -> CowStr { "action_task".into() }
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Once }
@@ -55,6 +58,7 @@ impl TatakuTask for ActionTask {
 }
 
 
+#[cfg(feature = "ui")]
 pub enum ActionTaskAction {
     Action(TatakuAction), 
     Callback(Arc<dyn Fn(&mut dyn Reflect) -> TatakuAction + Send + Sync>),
@@ -64,6 +68,7 @@ pub enum ActionTaskAction {
         passed_in: Option<TatakuValue>
     },
 }
+#[cfg(feature = "ui")]
 impl From<DelayedActionType> for ActionTaskAction {
     fn from(value: DelayedActionType) -> Self {
         match value {

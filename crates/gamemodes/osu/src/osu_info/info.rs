@@ -99,7 +99,7 @@ pub const OVERALL_DIFFICULTY: DifficultyValue = DifficultyValue {
     step: Some(0.1),
     unit: None,
     display: None,
-    get_diff_value: |map, mods| OsuGame::get_od(map, mods),
+    get_diff_value: |info| OsuGame::get_od(info.map, info.mods),
 };
 
 pub const APPROACH_DIFFICULTY: DifficultyValue = DifficultyValue {
@@ -112,7 +112,7 @@ pub const APPROACH_DIFFICULTY: DifficultyValue = DifficultyValue {
     step: Some(0.1),
     unit: None,
     display: None,
-    get_diff_value: |map, mods| OsuGame::get_ar(map, mods),
+    get_diff_value: |info| OsuGame::get_ar(info.map, info.mods),
 };
 
 pub const CIRCLE_SIZE_DIFFICULTY: DifficultyValue = DifficultyValue {
@@ -125,7 +125,7 @@ pub const CIRCLE_SIZE_DIFFICULTY: DifficultyValue = DifficultyValue {
     step: Some(0.1),
     unit: None,
     display: None,
-    get_diff_value: |map, mods| OsuGame::get_cs(map, mods),
+    get_diff_value: |info| OsuGame::get_cs(info.map, info.mods),
 };
 
 // pub const HEALTH_DIFFICULTY: DifficultyValue = DifficultyValue {

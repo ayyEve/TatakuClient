@@ -6,7 +6,7 @@ use crate::prelude::*;
 #[derive(Copy, Clone, Debug)]
 pub struct GameplayMod {
     /// mod identifier, used in the mods hashmap
-    pub name: &'static str,
+    pub id: &'static str,
 
     /// short (usually 2 letter) name for the mod (ie HR, EZ)
     pub short_name: &'static str,
@@ -19,7 +19,7 @@ pub struct GameplayMod {
 
     /// texture name for this mod
     ///
-    /// if this is empty when loading a texture, the loader will use the name property
+    /// if this is empty when loading a texture, the loader will use the id property
     pub texture_name: &'static str,
 
 
@@ -34,7 +34,7 @@ pub struct GameplayMod {
 }
 impl GameplayMod {
     pub const DEFAULT:Self = Self {
-        name: "none",
+        id: "none",
         short_name: "NOPE",
         display_name: "None",
         description: "",
@@ -48,11 +48,11 @@ impl Default for GameplayMod {
     fn default() -> Self { Self::DEFAULT }
 }
 impl PartialEq for GameplayMod {
-    fn eq(&self, other: &Self) -> bool { self.name == other.name }
+    fn eq(&self, other: &Self) -> bool { self.id == other.id }
 }
 impl Eq for GameplayMod {}
 impl AsRef<str> for GameplayMod {
-    fn as_ref(&self) -> &str { self.name }
+    fn as_ref(&self) -> &str { self.id }
 }
 
 impl std::fmt::Display for GameplayMod {
@@ -64,7 +64,7 @@ impl std::fmt::Display for GameplayMod {
 impl From<GameplayMod> for ModDefinition {
     fn from(val: GameplayMod) -> Self {
         Self {
-            name: val.name.to_owned(),
+            name: val.id.to_owned(),
             short_name: val.short_name.to_owned(),
             display_name: val.display_name.to_owned(),
             adjusts_difficulty: val.adjusts_difficulty,
@@ -76,7 +76,7 @@ impl From<GameplayMod> for ModDefinition {
 
 // default mods
 pub const Autoplay: GameplayMod = GameplayMod {
-    name: "autoplay",
+    id: "autoplay",
     short_name: "AT",
     display_name: "Autoplay",
 
@@ -89,7 +89,7 @@ pub const Autoplay: GameplayMod = GameplayMod {
 };
 
 pub const NoFail: GameplayMod = GameplayMod {
-    name: "no_fail",
+    id: "no_fail",
     short_name: "NF",
     display_name: "No Fail",
 
@@ -105,7 +105,7 @@ pub const NoFail: GameplayMod = GameplayMod {
 };
 
 pub const SuddenDeath: GameplayMod = GameplayMod {
-    name: "sudden_death",
+    id: "sudden_death",
     short_name: "SD",
     display_name: "Sudden Death",
 
@@ -122,7 +122,7 @@ pub const SuddenDeath: GameplayMod = GameplayMod {
 };
 
 pub const Perfect: GameplayMod = GameplayMod {
-    name: "perfect",
+    id: "perfect",
     short_name: "PF",
     display_name: "Perfect",
 

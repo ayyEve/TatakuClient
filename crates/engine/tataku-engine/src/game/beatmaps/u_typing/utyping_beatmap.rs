@@ -211,14 +211,11 @@ impl TatakuBeatmap for UTypingBeatmap {
             version: self.difficulty.clone(), 
             audio_filename: self.audio_path.clone(), 
             image_filename: String::new().into(), // no images for utyping :C 
-            audio_preview: 0.0, 
             duration: self.map_duration, 
-            hp: 0.0, 
-            od: 0.0, 
-            cs: 0.0, 
-            ar: 0.0, 
             bpm_min: bpm, 
             bpm_max: bpm, 
+            
+            ..BeatmapMeta::default()
         })
     }
 

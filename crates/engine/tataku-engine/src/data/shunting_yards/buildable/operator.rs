@@ -24,7 +24,8 @@ pub enum BuildableShuntingYardOperator {
     Not,
 
     // special
-    Ref
+    Ref,
+    Index,
 }
 impl<'values> _ShuntingYardOperator<'values> for BuildableShuntingYardOperator {
     type Output = Cow<'values, TatakuValue>;
@@ -120,6 +121,8 @@ impl<'values> _ShuntingYardOperator<'values> for BuildableShuntingYardOperator {
                 .and_then(TatakuValue::from_reflection)
                 .unwrap_or(TatakuValue::None)
             }
+
+            Self::Index => left? + right,
         };
         // debug!("res: {res:?}");
         // debug!("");
@@ -129,7 +132,7 @@ impl<'values> _ShuntingYardOperator<'values> for BuildableShuntingYardOperator {
 
     fn precedence(&self) -> u8 {
         match self {
-            Self::Ref => 6,
+            Self::Ref | Self::Index => 6,
             Self::Pow => 5,
             Self::Mul | Self::Div => 4,
             Self::Add | Self::Sub => 3,

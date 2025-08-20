@@ -14,9 +14,16 @@
 
     <element>
         <column style = "width: fill; height: fill; blur: 2;">
-            <text style = "width: fill;">
-                <text text = "Mods List"/>
-            </text>
+            <row>
+                <text style = "width: fill;">
+                    <list>
+                        <text text = "Mods List    "/>
+                        <text text="Score: " />
+                        <display var="global.mods.score_multiplier" precision="2" />
+                        <text text="x" />
+                    </list>
+                </text>
+            </row>
 
             <list
                 id = "group-list"

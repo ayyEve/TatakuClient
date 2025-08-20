@@ -27,7 +27,7 @@ impl ScoreManager {
             abort_handle: None,
             force_update: false,
 
-            beatmap: ValueChangeHelper::new("beatmaps.current.map.hash"),
+            beatmap: ValueChangeHelper::new("beatmaps.current"),
             playmode: ValueChangeHelper::new("global.playmode_actual"),
             score_method: ValueChangeHelper::new("settings.score_method"),
             mods: ValueChangeHelper::new("global.mods"),
@@ -132,10 +132,7 @@ impl ScoreManager {
             ScoreRetreivalMethod::OgGame
             | ScoreRetreivalMethod::OgGameMods => {
                 let beatmap_type = values
-                    .beatmap_manager
-                    .current_beatmap
-                    .as_ref()
-                    .map(|b| b.beatmap_type)
+                    .current_beatmap_prop(|b| b.beatmap_type)
                     .ok_or("no beatmap")?;
                 
                 let osu_api_key = values.settings.integrations.osu.api_key.clone();

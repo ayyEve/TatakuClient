@@ -35,7 +35,6 @@ impl BeatmapMeta {
         beatmap_hash: Md5Hash, 
         beatmap_type: BeatmapType,
     ) -> Self {
-        
         Self {
             file_path: file_path.into(),
             beatmap_hash,
@@ -47,17 +46,12 @@ impl BeatmapMeta {
             title_unicode: ArcStr::unknown(),
             creator: ArcStr::unknown(),
             version: ArcStr::unknown(),
-            audio_filename: ArcStr::default(),
-            image_filename: ArcStr::default(),
-            audio_preview: 0.0,
             hp: -1.0,
             od: -1.0,
             ar: -1.0,
             cs: -1.0,
 
-            duration: 0.0,
-            bpm_min: 0.0,
-            bpm_max: 0.0
+            ..Self::default()
         }
     }
 
@@ -82,55 +76,8 @@ impl BeatmapMeta {
     pub fn get_parent_dir(&self) -> Option<PathBuf> {
         Some(Path::new(&self.file_path).parent()?.to_path_buf())
     }
-}
 
-// getter helpers
-impl BeatmapMeta {
-    pub fn mins(&self, speed: f32) -> f32 {
-        ((self.duration / speed) / 60000.0).floor() 
-    }
-    pub fn secs(&self, speed: f32) -> f32 {
-        let mins = self.mins(speed);
-        let remaining_ms = (self.duration / speed) - mins * 60_000.0;
-        (remaining_ms / 1000.0).floor()
-    }
-    
-    pub fn get_hp(&self, _mods: &ModManager) -> f32 {
-        self.hp
-        // scale_by_mods(self.hp, 0.5, 1.4, mods).clamp(1.0, 10.0)
-    }
-
-}
-
-impl std::cmp::PartialEq for BeatmapMeta {
-    fn eq(&self, other: &Self) -> bool {
-        self.beatmap_hash == other.beatmap_hash 
-    }
-}
-
-
-#[derive(Reflect)]
-#[derive(Clone, Debug)]
-pub struct BeatmapMetaWithDiff {
-    pub meta: Arc<BeatmapMeta>,
-    pub sort_pending: bool,
-    
-    pub diff: Option<f32>,
-}
-impl BeatmapMetaWithDiff {
-    pub fn new(meta: Arc<BeatmapMeta>, diff: Option<f32>) -> Self {
-        Self { 
-            diff, 
-            meta, 
-            sort_pending: true,
-        }
-    }
-
-    pub fn _set_diff(&mut self, new_diff: Option<f32>) {
-        self.diff = new_diff;
-    }
-
-    pub fn filter(&self, filter_str: &str) -> bool {
+    pub fn filter(&self, filter_str: &str, diff: f32) -> bool {
         const COMPS:&[&str] = &[">=","<=",">", "<", "="];
         let mut comp = None;
         for c in COMPS {
@@ -162,7 +109,7 @@ impl BeatmapMetaWithDiff {
             return match key {
                 // numbers
                 "bpm" => do_comp!(self.bpm_min),
-                "diff"|"stars" => do_comp!(self.diff.unwrap_or_default()),
+                "diff"|"stars" => do_comp!(diff),
 
                 // strings
                 "game" => format!("{:?}", self.beatmap_type).to_lowercase() == val.to_lowercase(),
@@ -186,10 +133,25 @@ impl BeatmapMetaWithDiff {
 
 }
 
-impl Deref for BeatmapMetaWithDiff {
-    type Target = Arc<BeatmapMeta>;
+// getter helpers
+impl BeatmapMeta {
+    pub fn mins(&self, speed: f32) -> f32 {
+        ((self.duration / speed) / 60000.0).floor() 
+    }
+    pub fn secs(&self, speed: f32) -> f32 {
+        let mins = self.mins(speed);
+        let remaining_ms = (self.duration / speed) - mins * 60_000.0;
+        (remaining_ms / 1000.0).floor()
+    }
+    
+    pub fn get_hp(&self, _mods: &ModManager) -> f32 {
+        self.hp
+        // scale_by_mods(self.hp, 0.5, 1.4, mods).clamp(1.0, 10.0)
+    }
+}
 
-    fn deref(&self) -> &Self::Target {
-        &self.meta
+impl std::cmp::PartialEq for BeatmapMeta {
+    fn eq(&self, other: &Self) -> bool {
+        self.beatmap_hash == other.beatmap_hash 
     }
 }

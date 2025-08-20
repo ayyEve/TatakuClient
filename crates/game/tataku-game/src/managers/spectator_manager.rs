@@ -57,7 +57,7 @@ impl SpectatorManager {
         } = self.host_map.clone()?;
 
         // see if our current map is the host's map
-        let map = values.beatmap_manager.current_beatmap.as_ref()?;
+        let map = values.beatmap_manager.current_beatmap()?;
         let map_path = map.file_path.clone();
         let hash = map.beatmap_hash;
         if hash != map_hash { return None }
@@ -120,7 +120,7 @@ impl SpectatorManager {
         if manager.is_some() { return None }
 
         let host_map = self.host_map.as_ref()?;
-        if values.beatmap_manager.beatmaps_by_hash.contains_key(&host_map.map_hash) {
+        if values.beatmap_manager.beatmaps.contains_key(&host_map.map_hash) {
             actions.push(BeatmapAction::SetFromHash(
                 host_map.map_hash, 
                 SetBeatmapOptions::default().restart_song(true)

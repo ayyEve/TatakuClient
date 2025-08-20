@@ -83,6 +83,18 @@ impl Reflect for ValueCollection {
         }
     }
 
+    fn impl_as_number<'v>(&self, path: ReflectPath<'v>) -> ReflectResult<'v, ReflectNumber> {
+        self
+            .values
+            .impl_as_number(path.clone())
+            .or_else(|_| self.custom.impl_as_number(path))
+    }
+    fn impl_display<'v>(&self, path: ReflectPath<'v>, precision: Option<usize>) -> ReflectResult<'v, String> {
+        self
+            .values
+            .impl_display(path.clone(), precision)
+            .or_else(|_| self.custom.impl_display(path, precision))
+    }
     fn duplicate(&self) -> Option<Box<dyn Reflect>> { None }
 
     fn from_string(_: &str) -> ReflectResult<'_, Box<dyn Reflect>> where Self:Sized {

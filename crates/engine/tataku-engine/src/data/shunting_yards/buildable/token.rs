@@ -4,7 +4,7 @@ use crate::prelude::*;
 #[derive(Debug, Clone, PartialEq)]
 pub enum BuildableShuntingYardToken {
     Number(f32),
-    Variable(String),
+    Variable(VariablePathResolver),
     StringLiteral(String),
     Operation(BuildableShuntingYardOperator),
     Function(String, usize),

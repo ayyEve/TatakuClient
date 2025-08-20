@@ -136,14 +136,11 @@ impl TatakuBeatmap for QuaverBeatmap {
             audio_filename: self.audio_file.clone(), 
             image_filename: self.background_file.clone(), 
             audio_preview: self.song_preview_time, 
-            duration: 0.0, 
-            hp: 0.0, 
-            od: 0.0, 
             cs, 
-            ar: 0.0, 
-
             bpm_min,
             bpm_max,
+            
+            ..BeatmapMeta::default()
         };
 
 

@@ -51,9 +51,9 @@
                         <text>
                             <list join=" ">
                                 <text text="Now playing: "/>
-                                <variable var="beatmaps.current.map.title"/>
+                                <variable var="beatmaps.beatmaps[beatmaps.current].title"/>
                                 <text text=" by "/>
-                                <variable var="beatmaps.current.map.artist"/>
+                                <variable var="beatmaps.beatmaps[beatmaps.current].artist"/>
                             </list>
                         </text>
                     </notification>
@@ -83,8 +83,8 @@
             <row id = "song-display">
                 <text style = "font-size: 30px; text-color: #FFFF;">
                     <list join=" - ">
-                        <variable var="beatmaps.current.map.artist"/>
-                        <variable var="beatmaps.current.map.title"/>
+                        <variable var="beatmaps.beatmaps[beatmaps.current].artist"/>
+                        <variable var="beatmaps.beatmaps[beatmaps.current].title"/>
                     </list>
                 </text>
             </row> 

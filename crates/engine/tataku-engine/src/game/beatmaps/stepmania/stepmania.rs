@@ -332,13 +332,11 @@ impl TatakuBeatmap for StepmaniaBeatmap {
             audio_filename: self.audio_file.clone(),
             image_filename: self.background.clone(),
             audio_preview: self.sample_start * 1000.0,
-            duration: 0.0,
             hp: 1.0,
             od: 1.0,
             cs: 1.0,
             ar: 1.0,
-            bpm_min: 0.0,
-            bpm_max: 0.0,
+            ..BeatmapMeta::default()
         })
     }
 

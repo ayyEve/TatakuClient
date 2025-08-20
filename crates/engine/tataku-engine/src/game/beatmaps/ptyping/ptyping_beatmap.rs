@@ -130,12 +130,9 @@ impl TatakuBeatmap for PTypingBeatmap {
             
             audio_preview: self.def.info.preview_time, 
             duration: self.duration, 
-            hp: 0.0, 
-            od: 0.0, 
-            cs: 0.0, 
-            ar: 0.0, 
             bpm_min: bpm, 
             bpm_max: bpm, 
+            ..BeatmapMeta::default()
         })
     }
 }

@@ -219,15 +219,15 @@
                                     <true>
                                         <text>
                                             <list>
-                                                <variable var="beatmaps.current.map.artist"/> 
+                                                <variable var="beatmaps.beatmaps[beatmaps.current].artist"/> 
                                                 <text text = " - "/> 
-                                                <variable var = "beatmaps.current.map.title"/>
+                                                <variable var = "beatmaps.beatmaps[beatmaps.current].title"/>
                                                 <!-- newline -->
                                                 <text text="&#xA;"/>
 
-                                                <variable var="beatmaps.current.map.version"/> 
+                                                <variable var="beatmaps.beatmaps[beatmaps.current].version"/> 
                                                 <text text=" // "/> 
-                                                <variable var="beatmaps.current.map.creator"/> 
+                                                <variable var="beatmaps.beatmaps[beatmaps.current].creator"/> 
                                                 <!-- newline -->
                                                 <text text="&#xA;"/> 
                                                 <text text="Click here to change the beatmap"/>
@@ -270,16 +270,16 @@
                                     <true>
                                         <text>
                                             <list>
-                                                <variable var="beatmaps.current.map.artist"/> 
+                                                <variable var="beatmaps.beatmaps[beatmaps.current].artist"/> 
                                                 <text text=" - "/>
-                                                <variable var="beatmaps.current.map.title"/> 
+                                                <variable var="beatmaps.beatmaps[beatmaps.current].title"/> 
                                                 
                                                 <!-- newline -->
                                                 <text text="&#xA;"/>
                                                 
-                                                <variable var="beatmaps.current.map.version"/> 
+                                                <variable var="beatmaps.beatmaps[beatmaps.current].version"/> 
                                                 <text text=" // "/>
-                                                <variable var="beatmaps.current.map.creator"/>
+                                                <variable var="beatmaps.beatmaps[beatmaps.current].creator"/>
                                             </list>
                                         </text>
                                     </true>

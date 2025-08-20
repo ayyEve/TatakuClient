@@ -106,7 +106,7 @@
       <actions>
         <!-- set position to the preview point -->
         <song>
-          <position><variable var="beatmaps.current.map.preview"/></position>
+          <position><variable var="beatmaps.beatmaps[beatmaps.current].preview"/></position>
         </song>
         <!-- play -->
         <song>
@@ -461,11 +461,11 @@
                   <column class="map-list">
                     <button
                       class = "map-item"
-                      active = "beatmaps.current.map.beatmap_hash == _map.map.beatmap_hash"
+                      active = "beatmaps.current == _map"
                     >
                       <action button="left">
                         <conditional
-                          cond="beatmaps.current.map.beatmap_hash == _map.map.beatmap_hash">
+                          cond="beatmaps.current == _map">
                           <!-- if the map is selected -->
                           <true>
                             <!-- confirm it -->
@@ -475,7 +475,7 @@
                           <false>
                             <map>
                               <selectMap>
-                                <variable var="_map.map.beatmap_hash"/>
+                                <variable var="_map"/>
                               </selectMap>
                             </map>
                           </false>
@@ -485,7 +485,7 @@
                       <action button="right">
                         <list>
                           <map>
-                            <selectMap> <variable var="_map.map.beatmap_hash"/> </selectMap>
+                            <selectMap> <variable var="_map"/> </selectMap>
                           </map>
                           <addDialog id="beatmap_settings"/>
                         </list>
@@ -494,15 +494,15 @@
                       <element>
                         <column class="map-item-inner">
                           <!-- title and stuff -->
-                          <conditional cond="_map.diff_rating > 0.0">
+                          <conditional cond="beatmaps.diffs[_map].diff > 0.0">
                             <true>
                               <text style="flex-shrink: 0.0">
                                 <list>
-                                  <display var="_map.map.playmode"/>
+                                  <display var="beatmaps.beatmaps[_map].playmode"/>
                                   <text text=" - "/>
-                                  <variable var="_map.map.version"/>
+                                  <variable var="beatmaps.beatmaps[_map].version"/>
                                   <text text=" (diff: "/>
-                                    <display var="_map.diff_rating"/>
+                                    <display var="beatmaps.diffs[_map].diff"/>
                                   <text text=")"/>
                                 </list>
                               </text>
@@ -510,8 +510,8 @@
                             <false>
                               <text>
                                 <list join=" - ">
-                                  <display var="_map.map.playmode"/>
-                                  <variable var="_map.map.version"/>
+                                  <display var="beatmaps.beatmaps[_map].playmode"/>
+                                  <variable var="beatmaps.beatmaps[_map].version"/>
                                 </list>
                               </text>
                             </false>
@@ -519,7 +519,7 @@
 
                           <!-- diff info -->
                           <text class="diff-info">
-                            <variable var="_map.diff_info"/>
+                            <variable var="beatmaps.diffs[_map].info"/>
                           </text>
                         </column>
                       </element>

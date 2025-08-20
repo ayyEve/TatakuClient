@@ -182,13 +182,6 @@ impl TatakuValue {
         } else if let Some(s) = value.downcast_ref::<Md5Hash>() {
             Ok(Self::String(s.to_string()))
         } 
-        
-        // // TODO: figure out a way to do this automatically
-        // else if let Some(s) = value.downcast_ref::<ScoreRetreivalMethod>() {
-        //     Ok(Self::String(s.to_string()))
-        // } else if let Some(s) = value.downcast_ref::<SortBy>() {
-        //     Ok(Self::String(s.to_string()))
-        // } 
         else if let Some(s) = value.downcast_ref::<GameSpeed>() {
             Ok(Self::F32(s.as_f32()))
         }

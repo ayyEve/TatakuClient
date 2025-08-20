@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use tataku_ui::prelude::*;
+#[cfg(feature="graphics")]
 use tataku_graphics::prelude::*;
 
 #[derive(Clone, Debug2)]

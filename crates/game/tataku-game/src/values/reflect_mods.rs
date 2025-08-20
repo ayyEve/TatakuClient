@@ -55,7 +55,7 @@ impl ReflectMod {
         mods: &ModManager
     ) -> Self {
         Self {
-            id: inner.name.to_owned(),
+            id: inner.id.to_owned(),
             short_name: inner.short_name.to_owned(),
             display_name: inner.display_name.to_owned(),
             description: inner.description.to_owned(),
