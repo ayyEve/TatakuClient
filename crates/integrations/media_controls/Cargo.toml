@@ -7,6 +7,9 @@ edition.workspace = true
 [lints]
 workspace = true
 
+[features]
+graphics = []
+
 [dependencies]
 tokio.workspace = true
 tataku-engine.workspace = true

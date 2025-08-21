@@ -164,7 +164,8 @@ impl HitObject for OsuSpinner {
         self.last_update = beatmap_time;
         self.current_time = beatmap_time;
     }
-
+    
+    #[cfg(feature="graphics")] 
     fn draw(&mut self, time: f32, list: &mut RenderableCollection) {
         if !(time >= self.time && time <= self.end_time) { return }
         let scale = Vector2::ONE * self.scaling_helper.cs;
@@ -322,19 +323,25 @@ impl OsuHitObject for OsuSpinner {
         self.missed || self.rotations_completed >= self.rotations_required 
     } //{ self.last_update >= self.end_time }
     fn get_preempt(&self) -> f32 { 0.0 }
-    fn point_draw_pos(&self, _: f32) -> Vector2 { self.pos }
     fn set_hitwindow_miss(&mut self, _window: f32) {}
     fn set_ar(&mut self, _ar: f32) {}
-    fn set_approach_easing(&mut self, _easing: Easing) {}
 
     fn press(&mut self, _time:f32) { self.holding = true; }
     fn release(&mut self, _time:f32) { self.holding = false; }
     fn mouse_move(&mut self, pos:Vector2) { self.mouse_pos = pos; }
     fn check_distance(&self, _:Vector2) -> bool { true }
-    fn get_hitsound(&self) -> Vec<Hitsound> { vec![] }
     fn hit(&mut self, _time: f32) {}
 
     fn new_combo(&self) -> bool { true }
+
+    
+    #[cfg(feature="graphics")] 
+    fn point_draw_pos(&self, _: f32) -> Vector2 { self.pos }
+    #[cfg(feature="graphics")] 
+    fn set_approach_easing(&mut self, _easing: Easing) {}
+    #[cfg(feature="gameplay")] 
+    fn get_hitsound(&self) -> Vec<Hitsound> { vec![] }
+    #[cfg(feature="graphics")] 
     fn set_combo_color(&mut self, _color: Color) {}
 
     fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {

@@ -28,8 +28,7 @@ pub trait GameplayManagerTrait {
 
     fn apply_mods(&mut self, mods: ModManager);
     fn update(&mut self, values: &mut dyn Reflect, actions: &mut ActionQueue);
-    #[cfg(feature="graphics")]
-    fn draw(&mut self, list: &mut RenderableCollection);
+    
     fn handle_action(
         &mut self, 
         action: GameplayAction,
@@ -48,13 +47,11 @@ pub trait GameplayManagerTrait {
         skin_manager: &mut dyn SkinProvider,
         settings: &Settings,
     );
-
-    #[cfg(feature="graphics")]
-    fn fit_to_area(&mut self, bounds: Bounds);
-    #[cfg(feature="graphics")]
-    fn window_focus_changed(&mut self, got_focus: bool);
-    #[cfg(feature="graphics")]
-    fn cleanup_textures(&mut self, skin_manager: &mut dyn SkinProvider);
+    
+    #[cfg(feature="graphics")] fn draw(&mut self, list: &mut RenderableCollection);
+    #[cfg(feature="graphics")] fn fit_to_area(&mut self, bounds: Bounds);
+    #[cfg(feature="graphics")] fn window_focus_changed(&mut self, got_focus: bool);
+    #[cfg(feature="graphics")] fn cleanup_textures(&mut self, skin_manager: &mut dyn SkinProvider);
 
     fn on_complete(&mut self);
     fn jump_to_time(&mut self, time: f32, skip_intro: bool);
@@ -154,11 +151,16 @@ impl GameplayModeInner {
     pub fn is_multi(&self) -> bool { matches!(self, &Self::Multiplayer { .. }) }
     pub fn is_replay(&self) -> bool { matches!(self, &Self::Replaying {..}) }
 
-    #[cfg(feature="gameplay")]
     pub fn should_load_scores(&self) -> bool {
         match self {
-            Self::Normal | Self::Spectator {..} | Self::Replaying {..} => true,
-            Self::Multiplayer {..} | Self::Preview {..} => false,
+            Self::Normal | Self::Replaying {..} => true,
+            Self::Preview {..} => false,
+
+            #[cfg(feature="gameplay")]
+            Self::Spectator {..} => true,
+
+            #[cfg(feature="gameplay")]
+            Self::Multiplayer {..} => false,
         }
     }
 
@@ -182,8 +184,14 @@ impl From<GameplayMode> for GameplayModeInner {
         match value {
             GameplayMode::Normal => Self::Normal,
             GameplayMode::Preview => Self::Preview,
-            GameplayMode::Multiplayer => Self::Multiplayer { last_escape_press: TatakuInstant::now(), score_send_timer: TatakuInstant::now() },
             GameplayMode::Replay(score) => Self::Replaying { score: *score, current_frame: 0 },
+            
+            #[cfg(feature="gameplay")]
+            GameplayMode::Multiplayer => Self::Multiplayer { 
+                last_escape_press: TatakuInstant::now(), 
+                score_send_timer: TatakuInstant::now() 
+            },
+            #[cfg(feature="gameplay")]
             GameplayMode::Spectator(a) => Self::Spectator {
                 state: SpectatorState::None,
                 frames: a.pending_frames,
@@ -194,7 +202,10 @@ impl From<GameplayMode> for GameplayModeInner {
                 good_until: 0.0,
                 spectators: a.spectators,
                 buffered_score_frames: Vec::new()
-            }
+            },
+
+            #[cfg(not(feature="gameplay"))]
+            _ => unimplemented!()
         }
     }
 }

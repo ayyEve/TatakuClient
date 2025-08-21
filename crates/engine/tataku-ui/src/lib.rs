@@ -2,7 +2,6 @@ mod tree;
 mod style;
 mod widget;
 mod message;
-mod tataku_event;
 mod spatial_navigation;
 mod current_input_state;
 
@@ -17,7 +16,6 @@ pub mod prelude {
     pub use crate::style::*;
     pub use crate::widget::*;
     pub use crate::message::*;
-    pub use crate::tataku_event::*;
     pub use crate::spatial_navigation::*;
     pub use crate::current_input_state::*;
 

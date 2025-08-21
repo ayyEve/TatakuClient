@@ -29,6 +29,7 @@ pub struct TatakuValues {
     pub score: ReflectScore,
 
     /// The multiplayer lobby, if we're in one
+    #[cfg(feature="gameplay")] 
     pub lobby: Option<ReflectLobby>,
 
     /// Beatmap manager, its here instead of in Game to keep the lists in one place
@@ -40,6 +41,7 @@ pub struct TatakuValues {
 
     /// Online manager, its here instead of in Game to keep the lists in one place
     #[reflect(alias("online"))] 
+    #[cfg(feature="gameplay")]
     pub online_manager: OnlineManager,
 
     /// List of retreived scores
@@ -81,6 +83,7 @@ impl TatakuValues {
 
 #[derive(Reflect)]
 #[derive(Debug, Clone)]
+#[cfg(feature="gameplay")]
 pub struct ReflectLobby {
     /// scores of the players in the lobby
     player_scores: Vec<ReflectScore>,
@@ -106,6 +109,7 @@ pub struct ReflectLobby {
     /// title of the current beatmap
     current_beatmap: Option<LobbyBeatmap>,
 }
+#[cfg(feature="gameplay")]
 impl ReflectLobby {
     pub fn new(lobby: &CurrentLobbyInfo) -> Self {
         Self {
@@ -119,6 +123,7 @@ impl ReflectLobby {
             current_beatmap: lobby.current_beatmap.clone(),
         }
     }
+    
     pub fn update(
         &mut self, 
         lobby: &CurrentLobbyInfo, 

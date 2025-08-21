@@ -10,7 +10,7 @@ workspace = true
 [features]
 default = [ "gameplay", "graphics" ]
 gameplay = []
-graphics = ["winit"]
+graphics = [ "winit" ]
 
 [dependencies]
 tataku-common.workspace = true

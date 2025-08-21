@@ -54,10 +54,23 @@ impl TatakuIntegration for MediaControlsIntegration {
     fn name(&self) -> CowStr { "media_controls_integration".into() }
     
     #[allow(unused)]
+    #[cfg(not(feature="graphics"))]
     fn init(
         &mut self, 
+        #[cfg(feature="graphics")] 
         window_handle: raw_window_handle::WindowHandle<'_>,
     ) -> TatakuResult<()> {
+        Ok(())
+    }
+    
+    #[allow(unused)]
+    #[cfg(feature="graphics")] 
+    fn init(
+        &mut self, 
+        #[cfg(feature="graphics")] 
+        window_handle: raw_window_handle::WindowHandle<'_>,
+    ) -> TatakuResult<()> {
+
         if self.media_controls.is_some() { return Ok(()) }
 
         #[cfg(not(target_os = "windows"))]
@@ -179,8 +192,11 @@ impl TatakuIntegration for MediaControlsIntegration {
                 MediaControlEvent::SetPosition(position) => actions.push(SongAction::SetPosition(position.0.as_secs_f32() * 1000.0)),
                 MediaControlEvent::SetVolume(vol) => actions.push(SongAction::SetVolume(vol as f32)),
                 MediaControlEvent::OpenUri(_) => {},
+                #[cfg(feature="graphics")] 
                 MediaControlEvent::Raise => actions.push(WindowAction::RequestAttention),
                 MediaControlEvent::Quit => {},
+
+                #[cfg(not(feature="graphics"))] _ => {} 
             }
         }
     }

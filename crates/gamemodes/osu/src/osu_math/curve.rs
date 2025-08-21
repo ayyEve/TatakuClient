@@ -19,7 +19,7 @@ impl CurveLine {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Curve {
     pub slider: SliderDef,
     pub end_time: f32,

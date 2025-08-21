@@ -8,8 +8,8 @@ edition.workspace = true
 workspace = true
 
 [features]
-# default = [ "graphics" ]
-default = [ ]
+default = []
+gameplay = []
 graphics = []
 debug_sliders = []
 

@@ -18,15 +18,10 @@ pub struct Game {
     pub actions: ActionQueue,
     runtime: Rc<tokio::runtime::Runtime>,
     
-    #[cfg(feature="graphics")] 
-    volume_controller: VolumeControl,
     current_state: GameState,
     queued_state: GameState,
-    #[cfg(feature="graphics")]
-    window_event_receiver: AsyncReceiver<WindowEvent>,
-
-    #[cfg(feature="graphics")]
-    window_proxy: winit::event_loop::EventLoopProxy<WindowAction>,
+    #[cfg(feature="graphics")] window_event_receiver: AsyncReceiver<WindowEvent>,
+    #[cfg(feature="graphics")] window_proxy: winit::event_loop::EventLoopProxy<WindowAction>,
 
     // managers
     score_manager: ScoreManager,
@@ -40,16 +35,15 @@ pub struct Game {
     #[cfg(feature="graphics")] skin_manager: SkinManager,
     #[cfg(feature="gameplay")] input_manager: InputManager,
     #[cfg(feature="graphics")] cursor_manager: CursorManager,
+    #[cfg(feature="graphics")] volume_controller: VolumeControl,
     #[cfg(feature="graphics")] custom_menu_manager: CustomMenuManager,
     #[cfg(feature="graphics")] xml_test_manager: Option<XmlTestManager>,
     #[cfg(feature="graphics")] notification_manager: NotificationManager,
     #[cfg(feature="gameplay")] spectator_manager: Option<Box<SpectatorManager>>,
     #[cfg(feature="gameplay")] multiplayer_manager: Option<Box<MultiplayerManager>>,
+    #[cfg(feature="graphics")] gameplay_managers: HashMap<GameplayId, (GameplayManager, NewManager)>,
 
-    #[cfg(feature="graphics")] 
-    gameplay_managers: HashMap<GameplayId, (GameplayManager, NewManager)>,
-    pending_gameplay_manager: Option<Box<GameplayManager>>,
-
+    #[cfg(feature="gameplay")] pending_gameplay_manager: Option<Box<GameplayManager>>,
 
     integrations: Vec<Box<dyn TatakuIntegration>>,
 
@@ -121,19 +115,18 @@ impl Game {
             score_manager: ScoreManager::new(infos.clone()),
             task_manager: TaskManager::default(),
 
-            #[cfg(feature="graphics")] custom_menu_manager: CustomMenuManager::default(),
-
-            #[cfg(feature="graphics")]
-            cursor_manager: CursorManager::new(
+            
+            #[cfg(feature="graphics")] cursor_manager: CursorManager::new(
                 skin_manager.skin().clone(), 
                 settings.cursor_settings.clone()
             ),
             #[cfg(feature="graphics")] skin_manager,
-            #[cfg(feature="graphics")] notification_manager: NotificationManager::default(),
-            #[cfg(feature="graphics")] ui_manager: UiManager::default(),
             #[cfg(feature="graphics")] xml_test_manager: None,
+            #[cfg(feature="gameplay")] pending_gameplay_manager: None,
+            #[cfg(feature="graphics")] ui_manager: UiManager::default(),
             #[cfg(feature="graphics")] gameplay_managers: HashMap::new(),
-            pending_gameplay_manager: None,
+            #[cfg(feature="graphics")] custom_menu_manager: CustomMenuManager::default(),
+            #[cfg(feature="graphics")] notification_manager: NotificationManager::default(),
 
             integrations: Vec::new(),
 
@@ -264,6 +257,7 @@ impl Game {
         debug!("Done loading custom menus");
     }
 
+    #[cfg(feature="gameplay")]
     fn init_online(&mut self) {
         self.values.values.online_manager.start(
             &self.values.values.settings, 
@@ -279,6 +273,7 @@ impl Game {
             self.load_theme();
         }
 
+        #[cfg(feature="gameplay")]
         self.init_online();
 
         #[cfg(feature="gameplay")] {
@@ -1118,7 +1113,7 @@ impl Game {
                         online.user_id = 0;
                         // dont nuke username because we used to be logged in
                     }
-
+                    
                     self.task_manager.add_task(Box::new(DelayTask::new(
                         ActionTask::new(ActionTaskAction::Action(
                             GameAction::RestartOnline.into()
@@ -1368,6 +1363,7 @@ impl Game {
         }
 
         // settings menu
+        #[cfg(feature="graphics")] 
         if keys_down.has_key(Key::O) && mods.ctrl {
             keys_down.remove_key(Key::O);
 
@@ -1376,7 +1372,6 @@ impl Game {
                 .common_game_settings
                 .allow_ingame_settings;
 
-            #[cfg(feature="graphics")] 
             if !is_ingame || allow_ingame {
                 self.handle_custom_dialog(
                     "settings", 
@@ -1553,6 +1548,7 @@ impl Game {
             }
 
 
+            #[cfg(feature="gameplay")]
             TatakuAction::Online(action) 
                 => self.online_manager.handle_action(action),
             
@@ -2792,10 +2788,10 @@ impl Game {
         }
     }
 
+    #[cfg(feature="graphics")] 
     fn handle_current_game_action(&mut self, action: CurrentGameAction) {
         if matches!(action, CurrentGameAction::Pause {..}) {
 
-            #[cfg(feature="graphics")]
             let CurrentGameAction::Pause { 
                 id, 
                 input 
@@ -2812,7 +2808,6 @@ impl Game {
             else { unreachable!() };
 
             self.current_state = GameState::None;
-            #[cfg(feature="graphics")] 
             self.handle_menu_action(MenuAction::SetMenu {
                 id: id.into(),
                 input: Box::new(input),
@@ -2820,6 +2815,7 @@ impl Game {
             
             // make sure it has the latest window size
             self.pending_gameplay_manager = Some(gameplay);
+            
             return;
         }
 
@@ -2833,13 +2829,16 @@ impl Game {
         match action {
             CurrentGameAction::Start => {
                 manager.start();
+                #[cfg(feature="gameplay")]
                 self.queue_state_change(GameState::Ingame(manager));
             }
             CurrentGameAction::Resume => {
+                #[cfg(feature="gameplay")]
                 self.queue_state_change(GameState::Ingame(manager));
             }
             CurrentGameAction::Restart => {
                 manager.reset();
+                #[cfg(feature="gameplay")]
                 self.queue_state_change(GameState::Ingame(manager));
             }
             CurrentGameAction::Free => {
@@ -2855,8 +2854,11 @@ impl Game {
         match action {
             #[cfg(feature="gameplay")]
             GameAction::Quit => self.queue_state_change(GameState::Closing),
+
+            #[cfg(feature="gameplay")]
             GameAction::RestartOnline => self.init_online(),
 
+            #[cfg(feature="graphics")] 
             GameAction::CurrentGameAction(action) 
                 => self.handle_current_game_action(action),
 

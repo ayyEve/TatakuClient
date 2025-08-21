@@ -8,8 +8,9 @@ edition.workspace = true
 workspace = true
 
 [features]
-default = [ "graphics" ]
+default = []
 graphics = []
+gameplay = []
 
 [dependencies]
 serde.workspace = true

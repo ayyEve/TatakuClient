@@ -9,7 +9,6 @@ mod chain_maybe;
 mod tataku_value;
 mod generic_shunting_yard;
 
-
 pub use nope::*;
 pub use pool::*;
 pub use take::*;

@@ -5,6 +5,7 @@ const APPROACH_CIRCLE_MULT:f32 = 4.0;
 /// for some reason in tataku, approach circles at scale 1 are too big, so we fudge the scale with this to make it better (not perfect, idk why its broken in the first place)
 const APPROACH_CIRCLE_SCALE:f32 = 0.90;
 
+#[derive(Default)]
 pub struct ApproachCircle {
     image: Option<Image>,
     base_pos: Vector2,
@@ -69,6 +70,7 @@ impl ApproachCircle {
         self.color = color;
     }
 
+    #[cfg(feature="graphics")]
     pub fn draw(&self, list: &mut RenderableCollection) {
         let lerp_amount = self.time_diff / self.preempt;
         let scale = self.easing_type.run_easing(

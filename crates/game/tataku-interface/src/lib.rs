@@ -1,10 +1,11 @@
-mod misc;
-mod dialog;
-mod custom_menus;
-mod menu_widgets;
-mod visualizations;
-mod gameplay_widgets;
+#[cfg(feature="graphics")] mod misc;
+#[cfg(feature="graphics")] mod dialog;
+#[cfg(feature="graphics")] mod custom_menus;
+#[cfg(feature="graphics")] mod menu_widgets;
+#[cfg(feature="graphics")] mod visualizations;
+#[cfg(feature="graphics")] mod gameplay_widgets;
 
+#[cfg(feature="graphics")] 
 pub mod prelude {
     pub(crate) use tataku_ui::prelude::*;
     pub(crate) use tataku_engine::prelude::*;

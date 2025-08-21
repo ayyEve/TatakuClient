@@ -11,10 +11,11 @@ const BAR_SPACING:f32 = 4.0;
 /// bc sv is bonked, divide it by this amount
 const SV_FACTOR:f32 = 700.0;
 
+#[derive(Default)]
 pub struct UTypingGame {
     // lists
     pub notes: UTypingNoteQueue,
-    timing_bars: Vec<UTypingTimingBar>,
+    #[cfg(feature="graphics")] timing_bars: Vec<UTypingTimingBar>,
 
     // hit timing bar stuff
     hitwindow_300: f32,
@@ -28,11 +29,14 @@ pub struct UTypingGame {
     playfield: Arc<UTypingPlayfield>,
     window_size: Vector2,
 
-
     autoplay_queue: Option<(Vec<char>, f32, f32)>
 }
 impl UTypingGame {
-    pub fn get_playfield(settings: &TaikoSettings, bounds: Bounds, full_window: bool) -> UTypingPlayfield {
+    pub fn get_playfield(
+        settings: &TaikoSettings, 
+        bounds: Bounds, 
+        full_window: bool
+    ) -> UTypingPlayfield {
         let half_note_width = settings.note_radius * settings.big_note_multiplier;
         let height = half_note_width * 2.0 + settings.playfield_height_padding;
 
@@ -66,6 +70,7 @@ impl UTypingGame {
         self.notes.iter_mut().for_each(|n| n.update_playfield(self.playfield.clone()));
 
         // update timing bars
+        #[cfg(feature="graphics")] 
         self.timing_bars.iter_mut().for_each(|n| n.update_playfield(self.playfield.clone()));
     }
 }
@@ -78,18 +83,10 @@ impl GameMode for UTypingGame {
         let mut s = Self {
             notes: UTypingNoteQueue::default(),
 
-            timing_bars: Vec::new(),
-            end_time: 0.0,
-
-            hitwindow_100: 0.0,
-            hitwindow_300: 0.0,
-            hitwindow_miss: 0.0,
-
-            // auto_helper: UTypingAutoHelper::new(),
             game_settings: settings.clone(),
             playfield: playfield.clone(),
-            autoplay_queue: None,
-            window_size: Vector2::ZERO,
+
+            ..Self::default()
         };
 
         match beatmap {
@@ -278,8 +275,11 @@ impl GameMode for UTypingGame {
         }
         
         // TODO: might move tbs to a (time, speed) tuple
+        #[cfg(feature="graphics")] 
         for tb in self.timing_bars.iter_mut() { tb.update(state.time); }
     }
+
+    #[cfg(feature="graphics")] 
     fn draw(&mut self, state: GameplayDrawShell, list: &mut RenderableCollection) {
 
         // draw the playfield
@@ -301,6 +301,7 @@ impl GameMode for UTypingGame {
 
 
     fn reset(&mut self, beatmap: &Beatmap) {
+        #[cfg(feature="graphics")] 
         let timing_points = TimingPointHelper::new(beatmap.get_timing_points(), beatmap.slider_velocity());
         
         for note in self.notes.iter_mut() {
@@ -323,7 +324,7 @@ impl GameMode for UTypingGame {
         self.hitwindow_300 = map_difficulty(od, 50.0, 35.0, 20.0);
 
         // setup timing bars
-        //TODO: it would be cool if we didnt actually need timing bar objects, and could just draw them
+        #[cfg(feature="graphics")] 
         if self.timing_bars.is_empty() {
             // load timing bars
             let parent_tps = timing_points.iter().filter(|t|!t.is_inherited()).collect::<Vec<&TimingPoint>>();
@@ -368,7 +369,7 @@ impl GameMode for UTypingGame {
     }
 
 
-
+    #[cfg(feature="gameplay")] 
     fn skip_intro(&mut self, game_time: f32) -> Option<f32> {
         // if self.note_index > 0 {return}
 
@@ -400,6 +401,7 @@ impl GameMode for UTypingGame {
     }
 
     fn force_update_settings(&mut self, _settings: &Settings) {}
+    
     #[cfg(feature="graphics")]
     fn reload_skin(&mut self, _beatmap_path: &str, skin_manager: &mut dyn SkinProvider) -> TextureSource {
         for i in self.notes.iter_mut() {
@@ -408,6 +410,7 @@ impl GameMode for UTypingGame {
         TextureSource::Skin
     }
 
+    #[cfg(feature="graphics")] 
     fn get_playfield(&self) -> PlayfieldNonsense {
         PlayfieldNonsense::new_simple(self.playfield.bounds)
     }
@@ -429,6 +432,7 @@ impl GameMode for UTypingGame {
 
 
     
+    #[cfg(feature="gameplay")] 
     fn handle_input(&mut self, input: InputEvent) -> Option<ReplayAction> {
         match input.event {
             InputType::KeyPress(key) => {

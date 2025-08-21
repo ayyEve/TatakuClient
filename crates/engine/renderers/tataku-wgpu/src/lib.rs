@@ -44,6 +44,8 @@ mod shader_files {
 use tataku_engine::prelude::*;
 
 pub struct WgpuInit;
+
+#[cfg(feature="graphics")]
 #[async_trait]
 impl<'window> GraphicsInitializer<'window> for WgpuInit {
     fn name(&self) -> &'static str { "Wgpu Graphics" }

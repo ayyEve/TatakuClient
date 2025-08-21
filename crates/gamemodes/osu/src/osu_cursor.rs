@@ -104,7 +104,7 @@ impl OsuCursor {
             settings: settings.cursor_settings.clone(),
         }
     }
-
+    
     pub fn init(&self, actions: &mut ActionQueue) {
         actions.push(WindowAction::AddEmitter(self.left_emitter.get_ref()));
         actions.push(WindowAction::AddEmitter(self.right_emitter.get_ref()));

@@ -5,7 +5,7 @@ pub const OSU_NOTE_BORDER_SIZE:f32 = 2.0;
 
 pub const FIELD_SIZE:Vector2 = Vector2::new(512.0, 384.0); // 4:3
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct ScalingHelper {
     // pub settings_offset: Vector2,
 

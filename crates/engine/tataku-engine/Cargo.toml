@@ -8,7 +8,7 @@ edition.workspace = true
 workspace = true
 
 [features]
-default = [ "gameplay" ]
+default = []
 gameplay = []
 debug_hitsounds = []
 debug_perf_rating = []
@@ -19,7 +19,16 @@ texture_arrays = []
 ui = [ "taffy", "triple_buffer", "simplecss" ]
 
 # removes as much graphics-side stuff as possible
-graphics = [ "winit", "ui", "clipboard", "raw-window-handle", "fontdue", "image", "tataku-graphics/graphics", "tataku-client-proc-macros/graphics" ]
+graphics = [ 
+    "winit", 
+    "ui", 
+    "clipboard", 
+    "raw-window-handle", 
+    "fontdue", 
+    "image", 
+    "tataku-graphics/graphics", 
+    "tataku-client-proc-macros/graphics",
+]
 
 dynamic_gamemodes = [ "libloading" ]
 
@@ -68,10 +77,7 @@ quick-xml.workspace = true
 
 # decoding/encoding/zip stuff
 zip.workspace = true
-# md5.workspace = true
 lzma-rs.workspace = true
-# base64.workspace = true
-# sha2.workspace = true
 encoding_rs = "0.8.35"
 
 
@@ -85,5 +91,3 @@ half.workspace = true
 tracing.workspace = true
 num-format.workspace = true
 strfmt.workspace = true
-
-# battery_level = { git = "https://gitlab.ayyeve.dev/ayyEve/battery-level-rs" }

@@ -156,3 +156,47 @@ impl TaikoControllerConfig {
         }
     }
 }
+
+
+#[test]
+fn test() {
+    let mut settings = Settings::default();
+    settings.save_path = "/tmp/test.json".into();
+
+    let infos = GamemodeInfos::new(vec![crate::GAME_INFO]);
+    settings.gamemode_settings.build(infos.clone());
+
+
+    let gamemode = crate::GAME_INFO.id;
+
+    let mut t_settings = settings
+        .gamemode_settings::<TaikoSettings>(gamemode)
+        .unwrap_or_default();
+
+    assert_eq!(t_settings.left_don, TaikoSettings::default().left_don, "default test");
+
+    t_settings.left_don = Key::Calculator;
+    settings.update_gamemode_settings(gamemode, t_settings);
+
+    {
+        let t_settings = settings
+            .gamemode_settings::<TaikoSettings>(gamemode)
+            .unwrap();
+
+        assert_eq!(t_settings.left_don, Key::Calculator, "update test");
+    }
+
+    settings.save();
+
+    {
+        let mut settings = Settings::load_from(&settings.save_path);
+        settings.gamemode_settings.build(infos);
+        let gamemode = crate::GAME_INFO.id;
+
+        let t_settings = settings
+            .gamemode_settings::<TaikoSettings>(gamemode)
+            .unwrap();
+        
+        assert_eq!(t_settings.left_don, Key::Calculator, "save test");
+    }
+}

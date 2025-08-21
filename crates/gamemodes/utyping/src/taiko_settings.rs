@@ -32,7 +32,6 @@ pub struct TaikoSettings {
     /// playfield = note_radius * max(hit_area_radius_mult, big_note_mult) + this
     #[setting(text="Playfield Vertical Padding", range(0.0, 20.0))]
     pub playfield_height_padding: f32,
-    /// playfield = note_radius * max(hit_area_radius_mult, big_note_mult) + this
 
     #[setting(text="Use Skin Judgments")]
     pub use_skin_judgments: bool,

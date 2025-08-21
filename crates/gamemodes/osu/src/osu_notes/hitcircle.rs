@@ -10,7 +10,7 @@ const SHAKE_COUNT:usize = 6;
 /// can a shake request inturrupt another shake?
 const SHAKE_INTURRUPT: bool = true;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct HitCircle {
     pub base_pos: Vector2,
     /// scaled pos

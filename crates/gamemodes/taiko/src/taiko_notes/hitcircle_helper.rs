@@ -1,5 +1,4 @@
 use crate::prelude::*;
-
 #[derive(Clone)]
 pub struct HitCircleImageHelper {
     color: Color,
@@ -7,7 +6,6 @@ pub struct HitCircleImageHelper {
     overlay: Image,
 }
 impl HitCircleImageHelper {
-    #[cfg(feature="graphics")]
     pub fn new(
         settings: &Arc<TaikoSettings>, 
         hit_type: HitType, 
@@ -64,6 +62,7 @@ impl HitCircleImageHelper {
         }
         self.overlay.pos = pos; 
     }
+
     pub fn draw(&self, list: &mut RenderableCollection) {
         if let Some(circle) = &self.circle {
             list.push(circle.clone());

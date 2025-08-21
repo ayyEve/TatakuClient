@@ -1,6 +1,7 @@
 mod key;
 mod event;
 mod gamepad;
+mod tataku_event;
 mod mouse_button;
 mod input_manager;
 mod key_modifiers;
@@ -28,6 +29,7 @@ pub mod prelude {
     pub use crate::key::*;
     pub use crate::event::*;
     pub use crate::gamepad::*;
+    pub use crate::tataku_event::*;
     pub use crate::mouse_button::*;
 
     #[cfg(feature = "gameplay")]

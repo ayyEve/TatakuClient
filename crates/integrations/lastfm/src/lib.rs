@@ -55,6 +55,7 @@ impl TatakuIntegration for LastFm {
 
     fn init(
         &mut self, 
+        #[cfg(feature="graphics")] 
         _window_handle: raw_window_handle::WindowHandle<'_>,
     ) -> TatakuResult<()> {
         Ok(())

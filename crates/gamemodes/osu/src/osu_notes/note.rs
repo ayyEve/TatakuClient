@@ -1,5 +1,6 @@
 use crate::prelude::*;
 
+#[derive(Default)]
 pub struct OsuNote {
     /// note definition
     def: NoteDef,
@@ -34,8 +35,8 @@ pub struct OsuNote {
     /// cached settings for this game
     standard_settings: Arc<OsuSettings>,
 
-    circle_image: HitCircle,
-    approach_circle: ApproachCircle,
+    #[cfg(feature="graphics")] circle_image: HitCircle,
+    #[cfg(feature="graphics")] approach_circle: ApproachCircle,
 
     hitsounds: Vec<Hitsound>,
 }
@@ -53,42 +54,35 @@ impl OsuNote {
 
         let pos = scaling_helper.scale_coords(def.pos);
         let radius = CIRCLE_RADIUS_BASE * scaling_helper.cs;
-
-        let approach_circle = ApproachCircle::new(
-            def.pos,
-            time,
-            radius,
-            time_preempt,
-            scaling_helper.clone()
-        );
-        let circle_image = HitCircle::new(
-            def.pos,
-            scaling_helper.clone(),
-            combo_num
-        );
-
+        
         Self {
-            def,
             pos,
             time,
-            color: Color::WHITE,
-
-            hit: false,
-            missed: false,
-
-            map_time: 0.0,
-            mouse_pos: Vector2::ZERO,
-            circle_image,
-            time_preempt,
-            hitwindow_miss: 0.0,
             radius,
-            scaling_helper,
-
+            time_preempt,
             standard_settings,
-            // shapes: Vec::new(),
-            approach_circle,
+            
+            #[cfg(feature="graphics")]
+            circle_image: HitCircle::new(
+                def.pos,
+                scaling_helper.clone(),
+                combo_num
+            ),
 
-            hitsounds
+            #[cfg(feature="graphics")]
+            approach_circle: ApproachCircle::new(
+                def.pos,
+                time,
+                radius,
+                time_preempt,
+                scaling_helper.clone()
+            ),
+
+            def,
+            scaling_helper,
+            hitsounds,
+
+            ..Self::default()
         }
     }
 
@@ -103,12 +97,6 @@ impl OsuNote {
 
         Color::to_u8(alpha.clamp(0.0, 1.0))
     }
-
-    // fn ripple_start(&mut self) {
-    //     if !self.standard_settings.ripple_hitcircles { return }
-        
-    //     // self.shapes.push(self.circle_image.ripple(self.map_time));
-    // }
 }
 
 impl HitObject for OsuNote {
@@ -117,13 +105,10 @@ impl HitObject for OsuNote {
     fn end_time(&self, hw_miss:f32) -> f32 { self.time + hw_miss }
     fn update(&mut self, beatmap_time: f32) {
         self.map_time = beatmap_time;
+        #[cfg(feature="graphics")]
         self.approach_circle.update(beatmap_time);
+        #[cfg(feature="graphics")]
         self.circle_image.update(beatmap_time);
-        
-        // self.shapes.retain_mut(|shape| {
-        //     shape.update(beatmap_time);
-        //     shape.visible()
-        // });
     }
 
     #[cfg(feature="graphics")]
@@ -131,11 +116,6 @@ impl HitObject for OsuNote {
 
         // if its not time to draw anything else, leave
         if self.time - self.map_time > self.time_preempt || self.time + self.hitwindow_miss < self.map_time || self.hit {
-            // draw shapes
-            // for shape in self.shapes.iter() {
-            //     list.push(shape.clone());
-            // }
-
             return
         }
 
@@ -159,7 +139,7 @@ impl HitObject for OsuNote {
         self.hit = false;
         self.missed = false;
 
-        // self.shapes.clear();
+        #[cfg(feature="graphics")]
         self.approach_circle.reset();
     }
 
@@ -184,23 +164,13 @@ impl HitObject for OsuNote {
 impl OsuHitObject for OsuNote {
     fn miss(&mut self) { self.missed = true }
     fn was_hit(&self) -> bool { self.hit || self.missed }
-    fn point_draw_pos(&self, _: f32) -> Vector2 { self.pos }
-    fn mouse_move(&mut self, pos:Vector2) { self.mouse_pos = pos }
+    fn mouse_move(&mut self, pos: Vector2) { self.mouse_pos = pos }
     fn get_preempt(&self) -> f32 { self.time_preempt }
+    fn new_combo(&self) -> bool { self.def.new_combo }
     fn pos_at(&self, _time: f32) -> Vector2 { self.pos }
     fn set_hitwindow_miss(&mut self, window: f32) {
         self.hitwindow_miss = window;
     }
-
-    fn new_combo(&self) -> bool { self.def.new_combo }
-    fn set_combo_color(&mut self, color: Color) {
-        self.color = color;
-        
-        self.circle_image.set_color(color);
-        if self.standard_settings.approach_combo_color {
-            self.approach_circle.set_color(color);
-        }
-     }
 
     fn check_distance(&self, _mouse_pos: Vector2) -> bool {
         let distance = (self.pos.x - self.mouse_pos.x).powi(2) + (self.pos.y - self.mouse_pos.y).powi(2);
@@ -239,11 +209,12 @@ impl OsuHitObject for OsuNote {
         self.pos = new_scale.scale_coords(self.def.pos);
         self.radius = CIRCLE_RADIUS_BASE * new_scale.cs;
         self.scaling_helper = new_scale.clone();
-        self.approach_circle.scale_changed(new_scale, self.radius);
-        self.circle_image.playfield_changed(&self.scaling_helper);
+
+        #[cfg(feature="graphics")] {
+            self.approach_circle.scale_changed(new_scale, self.radius);
+            self.circle_image.playfield_changed(&self.scaling_helper);
+        }
     }
-
-
 
     fn set_settings(&mut self, settings: Arc<OsuSettings>) {
         self.standard_settings = settings;
@@ -252,14 +223,28 @@ impl OsuHitObject for OsuNote {
     fn set_ar(&mut self, ar: f32) {
         self.time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
     }
+
+    #[cfg(feature="graphics")]
+    fn point_draw_pos(&self, _: f32) -> Vector2 { self.pos }
+    #[cfg(feature="graphics")] 
+    fn set_combo_color(&mut self, color: Color) {
+        self.color = color;
+        self.circle_image.set_color(color);
+        if self.standard_settings.approach_combo_color {
+            self.approach_circle.set_color(color);
+        }
+    }
+
+    #[cfg(feature="graphics")]
     fn set_approach_easing(&mut self, easing: Easing) {
         self.approach_circle.easing_type = easing;
     }
 
+    #[cfg(feature="gameplay")]
     fn get_hitsound(&self) -> Vec<Hitsound> {
         self.hitsounds.clone()
     }
 
-
+    #[cfg(feature="graphics")]
     fn shake(&mut self, time: f32) { self.circle_image.shake(time) }
 }

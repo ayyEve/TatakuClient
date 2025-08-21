@@ -187,7 +187,7 @@ impl BuildableAction {
                 action.inner.build(node, passed_in, values)
             }
 
-
+            #[cfg(feature="graphics")] 
             Self::AddDialog { 
                 id, 
                 id_attribute,
@@ -223,9 +223,11 @@ impl BuildableAction {
                 }))
             }
             
+            #[cfg(feature="graphics")] 
             Self::CloseDialog 
                 => Some(UiAction::new(node, DialogAction::Close).into()),
-
+            
+            #[cfg(feature="graphics")] 
             Self::SetMenu { 
                 id, 
                 id_attribute,
@@ -266,6 +268,7 @@ impl BuildableAction {
                 .into_action(values, passed_in)
                 .map(TatakuAction::Multiplayer),
 
+            #[cfg(feature="graphics")] 
             Self::Cursor { action } => action
                 .into_action(values, passed_in)
                 .map(TatakuAction::CursorAction),
@@ -345,6 +348,8 @@ impl BuildableAction {
                 )
                 .collect())
             ),
+
+            #[cfg(not(feature="graphics"))] _ => None
         }
     }
 

@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use tataku_graphics::prelude::*;
+#[cfg(feature = "graphics")] use tataku_graphics::prelude::*;
 
 pub trait GameMode: Send + Sync {
     fn new(
@@ -28,6 +28,7 @@ pub trait GameMode: Send + Sync {
         list: &mut RenderableCollection,
     );
 
+    #[cfg(feature="gameplay")] 
     fn skip_intro(&mut self, time: f32) -> Option<f32>;
     fn reset(&mut self, beatmap: &Beatmap);
     
@@ -53,13 +54,15 @@ pub trait GameMode: Send + Sync {
 
     fn properties(&self, timing_points: &TimingPointHelper) -> GameModeProperties;
     fn time_jump(&mut self, _new_time: f32, _state: &mut GameplayUpdateShell) {}
-    fn get_playfield(&self) -> PlayfieldNonsense;
+
+    #[cfg(feature="graphics")] fn get_playfield(&self) -> PlayfieldNonsense;
 
     /// setup any gamemode specific ui elements for this gamemode
     /// ie combo and leaderboard, since the pos is different per-mode
     #[cfg(feature="graphics")]
     fn build_widgets(&self, _loader: &mut dyn UiElementLoader) {}
 
+    #[cfg(feature="gameplay")] 
     fn handle_input(&mut self, input: InputEvent) -> Option<ReplayAction>;
 }
 

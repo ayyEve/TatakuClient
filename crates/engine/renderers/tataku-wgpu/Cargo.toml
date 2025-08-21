@@ -11,8 +11,10 @@ workspace = true
 default = [ "texture_arrays" ]
 texture_arrays = []
 
+graphics = [ "tataku-engine/graphics" ]
+
 [dependencies]
-tataku-engine = { workspace = true, features = ["graphics"]}
+tataku-engine = { workspace = true }
 tataku-client-common.workspace = true
 tataku-graphics.workspace = true
 

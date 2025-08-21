@@ -1,59 +1,52 @@
 use crate::prelude::*;
 
+#[derive(Default)]
 pub struct ManiaNote {
-    pos: Vector2,
-    relative_y: f32,
     time: f32, // ms
     column: u8,
-    color: Color,
-
+    
     hit_time: f32,
     hit: bool,
     missed: bool,
     
-    position_function: Arc<Vec<PositionPoint>>,
-    position_function_index: usize,
+    #[cfg(feature="graphics")] pos: Vector2,
+    #[cfg(feature="graphics")] color: Color,
+    #[cfg(feature="graphics")] sv_mult: f32,
+    #[cfg(feature="graphics")] relative_y: f32,
+    #[cfg(feature="graphics")] note_image: Option<Image>,
+    #[cfg(feature="graphics")] playfield: Arc<ManiaPlayfield>,
+    #[cfg(feature="graphics")] position_function_index: usize,
+    #[cfg(feature="graphics")] position_function: Arc<Vec<PositionPoint>>,
+    #[cfg(feature="graphics")] mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
 
-    sv_mult: f32,
-
-    playfield: Arc<ManiaPlayfield>,
-    note_image: Option<Image>,
-    mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
-
-    hitsounds: Vec<Hitsound>
+    #[cfg(feature="gameplay")] hitsounds: Vec<Hitsound>
 }
 impl ManiaNote {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        time: f32, column: u8, color: Color, x: f32, 
-        sv_mult: f32,
-        playfield: Arc<ManiaPlayfield>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
-
-        hitsounds: Vec<Hitsound>,
+        time: f32, column: u8, 
+        #[cfg(feature="graphics")] color: Color, 
+        #[cfg(feature="graphics")] x: f32, 
+        #[cfg(feature="graphics")] sv_mult: f32,
+        #[cfg(feature="graphics")] playfield: Arc<ManiaPlayfield>, 
+        #[cfg(feature="graphics")] mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
+        #[cfg(feature="gameplay")] hitsounds: Vec<Hitsound>,
     ) -> Self {
         Self {
             time,
-            position_function: Arc::new(Vec::new()),
-            relative_y: 0.0,
-            sv_mult,
             column,
-            color,
+            #[cfg(feature="graphics")] color,
+            #[cfg(feature="graphics")] sv_mult,
+            #[cfg(feature="graphics")] playfield,
+            #[cfg(feature="graphics")] mania_skin_settings,
+            #[cfg(feature="graphics")] pos: Vector2::with_x(x),
 
-            hit_time: 0.0,
-            hit: false,
-            missed: false,
-            pos: Vector2::with_x(x),
-
-            playfield,
-            note_image:None,
-            position_function_index: 0,
-
-            mania_skin_settings,
-
-            hitsounds,
+            #[cfg(feature="gameplay")] hitsounds,
+            ..Self::default()
         }
     }
 
+    #[cfg(feature="graphics")] 
     fn y_at(&mut self, time: f32) -> f32 {
         let speed = self.sv_mult * if self.playfield.upside_down {-1.0} else {1.0};
 
@@ -66,8 +59,11 @@ impl HitObject for ManiaNote {
     fn end_time(&self, hw_miss:f32) -> f32 { self.time + hw_miss }
  
     fn update(&mut self, beatmap_time: f32) {
-        self.pos.y = self.y_at(beatmap_time); // + self.playfield.note_size().y;
+        #[cfg(feature="graphics")] {
+            self.pos.y = self.y_at(beatmap_time); // + self.playfield.note_size().y;
+        }
     }
+    #[cfg(feature="graphics")] 
     fn draw(&mut self, _time: f32, list: &mut RenderableCollection) {
         if self.hit || self.pos.y + self.playfield.note_size().y < self.playfield.bounds.pos.y || self.pos.y > self.playfield.bounds.pos.y + self.playfield.bounds.size.y { return } 
         
@@ -84,11 +80,13 @@ impl HitObject for ManiaNote {
     }
 
     fn reset(&mut self) {
-        self.pos.y = 0.0;
         self.hit_time = 0.0;
         self.hit = false;
         self.missed = false;
-        self.position_function_index = 0;
+        #[cfg(feature="graphics")] {
+            self.pos.y = 0.0;
+            self.position_function_index = 0;
+        }
     }
 
     #[cfg(feature="graphics")]
@@ -112,16 +110,19 @@ impl ManiaHitObject for ManiaNote {
     //     self.missed = true;
     //     self.hit_time = time;
     // }
-
+    
+    #[cfg(feature="graphics")] 
     fn set_sv_mult(&mut self, sv: f32) {
         self.sv_mult = sv;
     }
 
+    #[cfg(feature="graphics")] 
     fn set_position_function(&mut self, p: Arc<Vec<PositionPoint>>) {
         self.position_function = p;
 
         self.relative_y = ManiaGame::pos_at(&self.position_function, self.time, &mut 0);
     }
+    #[cfg(feature="graphics")] 
     fn playfield_changed(&mut self, playfield: Arc<ManiaPlayfield>) {
         self.playfield = playfield;
         self.pos.x = self.playfield.col_pos(self.column);
@@ -131,11 +132,8 @@ impl ManiaHitObject for ManiaNote {
         }
     }
 
+    #[cfg(feature="gameplay")] 
     fn get_hitsound(&self) -> &Vec<Hitsound> {
         &self.hitsounds
     }
-    
-    // fn set_skin_settings(&mut self, settings: Option<Arc<ManiaSkinSettings>>) {
-    //     self.mania_skin_settings = settings;
-    // }
 }

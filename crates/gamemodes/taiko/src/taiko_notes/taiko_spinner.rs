@@ -1,10 +1,10 @@
 use crate::prelude::*;
 
+#[cfg(feature = "graphics")]
 const SPINNER_RADIUS:f32 = 200.0;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct TaikoSpinner {
-    pos: Vector2, // the note in the bar, not the spinner itself
     hit_count: u16,
     complete: bool, // is this spinner done
     last_hit: Option<HitType>,
@@ -15,12 +15,12 @@ pub struct TaikoSpinner {
     speed: f32,
 
     settings: Arc<TaikoSettings>,
-    playfield: Arc<TaikoPlayfield>,
 
-    spinner_image: Option<Image>,
-
-    don_color: Color,
-    kat_color: Color,
+    #[cfg(feature="graphics")] pos: Vector2, // the note in the bar, not the spinner itself
+    #[cfg(feature="graphics")] don_color: Color,
+    #[cfg(feature="graphics")] kat_color: Color,
+    #[cfg(feature="graphics")] spinner_image: Option<Image>,
+    #[cfg(feature="graphics")] playfield: Arc<TaikoPlayfield>,
 }
 impl TaikoSpinner {
     pub fn new(
@@ -28,25 +28,19 @@ impl TaikoSpinner {
         end_time: f32, 
         hits_required: u16, 
         settings: Arc<TaikoSettings>, 
-        playfield: Arc<TaikoPlayfield>
+        #[cfg(feature="graphics")] playfield: Arc<TaikoPlayfield>
     ) -> Self {
         Self {
             time, 
             end_time,
-            speed: 0.0,
+            #[cfg(feature="graphics")] playfield,
             hits_required,
-            last_hit: None,
-
-            hit_count: 0,
-            complete: false,
-            pos: Vector2::ZERO,
-
-            playfield,
             
-            spinner_image: None,
-            don_color: settings.don_color.color,
-            kat_color: settings.kat_color.color,
+            #[cfg(feature = "graphics")] don_color: settings.don_color.color,
+            #[cfg(feature = "graphics")] kat_color: settings.kat_color.color,
             settings,
+
+            ..Default::default()
         }
     }
 }
@@ -114,21 +108,27 @@ impl HitObject for TaikoSpinner {
     }
 
     fn reset(&mut self) {
-        self.pos.x = 0.0;
         self.hit_count = 0;
         self.complete = false;
+        
+        #[cfg(feature="graphics")] {
+            self.pos.x = 0.0;
+        }
     }
     
     #[cfg(feature="graphics")]
     fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
-        self.spinner_image = skin_manager.get_texture("spinner-warning", source, SkinUsage::Gamemode, false);
+        self.spinner_image = skin_manager.get_texture(
+            "spinner-warning", 
+            source, 
+            SkinUsage::Gamemode, 
+            false
+        );
     }
 }
 impl TaikoHitObject for TaikoSpinner {
     fn force_hit(&mut self) { self.complete = true }
     fn was_hit(&self) -> bool { self.complete }
-    fn get_sv(&self) -> f32 { self.speed }
-    fn set_sv(&mut self, sv: f32) { self.speed = sv }
     fn is_kat(&self) -> bool { self.last_hit == Some(HitType::Kat) }
     fn hits_to_complete(&self) -> u32 { self.hits_required as u32 }
 
@@ -158,16 +158,10 @@ impl TaikoHitObject for TaikoSpinner {
     }
 
 
-    fn playfield_changed(&mut self, new_playfield: Arc<TaikoPlayfield>) {
-        self.playfield = new_playfield;
-    }
-    fn get_playfield(&self) -> Arc<TaikoPlayfield> {
-        self.playfield.clone()
-    }
-    
     fn set_settings(&mut self, settings: Arc<TaikoSettings>) {
         self.settings = settings.clone();
-
+        
+        #[cfg(feature="graphics")]
         if let Some(i) = &mut self.spinner_image {
             let radius = settings.note_radius;
             i.scale = Vector2::ONE * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
@@ -177,4 +171,20 @@ impl TaikoHitObject for TaikoSpinner {
     fn set_required_hits(&mut self, required_hits: u16) {
         self.hits_required = required_hits;
     }
+
+    #[cfg(feature="graphics")] 
+    fn get_sv(&self) -> f32 { self.speed }
+
+    #[cfg(feature="graphics")] 
+    fn set_sv(&mut self, sv: f32) { self.speed = sv }
+
+    #[cfg(feature="graphics")] 
+    fn playfield_changed(&mut self, new_playfield: Arc<TaikoPlayfield>) {
+        self.playfield = new_playfield;
+    }
+    #[cfg(feature="graphics")] 
+    fn get_playfield(&self) -> Arc<TaikoPlayfield> {
+        self.playfield.clone()
+    }
+    
 }

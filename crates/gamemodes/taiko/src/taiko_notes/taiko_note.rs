@@ -1,8 +1,7 @@
 use crate::prelude::*;
 
-#[derive(Clone)]
+#[derive(Default, Clone)]
 pub struct TaikoNote {
-    pos: Vector2,
     time: f32, // ms
     hit_time: f32,
     hit_type: HitType,
@@ -10,14 +9,14 @@ pub struct TaikoNote {
     finisher: bool,
     hit: bool,
     missed: bool,
-    speed: f32,
-
+    
     settings: Arc<TaikoSettings>,
-    playfield: Arc<TaikoPlayfield>,
-
-    bounce_factor: f32,
-
-    image: Option<HitCircleImageHelper>,
+    
+    #[cfg(feature="graphics")] speed: f32,
+    #[cfg(feature="graphics")] pos: Vector2,
+    #[cfg(feature="graphics")] bounce_factor: f32,
+    #[cfg(feature="graphics")] playfield: Arc<TaikoPlayfield>,
+    #[cfg(feature="graphics")] image: Option<HitCircleImageHelper>,
 }
 impl TaikoNote {
     pub fn new(
@@ -25,27 +24,24 @@ impl TaikoNote {
         hit_type: HitType, 
         finisher: bool, 
         settings: Arc<TaikoSettings>, 
-        playfield: Arc<TaikoPlayfield>
+        #[cfg(feature="graphics")] playfield: Arc<TaikoPlayfield>
     ) -> Self {
-        let bounce_factor = 1.6;
 
         Self {
-            pos: Vector2::ZERO,
             time, 
-            hit_time: 0.0,
             hit_type, 
             base_finisher: finisher,
             finisher,
-            speed: 0.0,
-            hit: false,
-            missed: false,
-            image: None,
             settings,
-            playfield,
-            bounce_factor
+            #[cfg(feature="graphics")] playfield,
+            #[cfg(feature="graphics")] bounce_factor: 1.6,
+            
+            ..Default::default()
         }
     }
 
+
+    #[cfg(feature = "graphics")]
     fn get_color(&mut self) -> Color {
         match self.hit_type {
             HitType::Don => self.settings.don_color.color,
@@ -94,10 +90,13 @@ impl HitObject for TaikoNote {
     }
 
     fn reset(&mut self) {
-        self.pos = Vector2::ZERO;
         self.hit = false;
         self.missed = false;
         self.hit_time = 0.0;
+
+        #[cfg(feature="graphics")] {
+            self.pos = Vector2::ZERO;
+        }
     }
 
     #[cfg(feature="graphics")]
@@ -114,8 +113,6 @@ impl HitObject for TaikoNote {
 impl TaikoHitObject for TaikoNote {
     fn was_hit(&self) -> bool { self.hit || self.missed }
     fn force_hit(&mut self) { self.hit = true }
-    fn get_sv(&self) -> f32 { self.speed }
-    fn set_sv(&mut self, sv:f32) { self.speed = sv }
     fn is_kat(&self) -> bool { self.hit_type == HitType::Kat }
     fn is_finisher(&self) -> bool { self.finisher }
     fn finisher_sound(&self) -> bool { self.base_finisher }
@@ -135,16 +132,10 @@ impl TaikoHitObject for TaikoNote {
         self.finisher && hit_type == self.hit_type && (time - self.hit_time) < FINISHER_LENIENCY * game_speed
     }
 
-
-    fn playfield_changed(&mut self, new_playfield: Arc<TaikoPlayfield>) {
-        self.playfield = new_playfield;
-    }
-    fn get_playfield(&self) -> Arc<TaikoPlayfield> {
-        self.playfield.clone()
-    }
-    
     fn set_settings(&mut self, settings: Arc<TaikoSettings>) {
         self.settings = settings.clone();
+
+        #[cfg(feature="graphics")]
         if let Some(i) = &mut self.image {
             i.update_settings(settings, self.finisher);
         }
@@ -155,4 +146,16 @@ impl TaikoHitObject for TaikoNote {
         self.finisher = self.base_finisher && enabled;
         self.set_settings(self.settings.clone());
     }
+    
+    #[cfg(feature="graphics")] fn get_sv(&self) -> f32 { self.speed }
+    #[cfg(feature="graphics")] fn set_sv(&mut self, sv:f32) { self.speed = sv }
+    #[cfg(feature="graphics")] 
+    fn playfield_changed(&mut self, new_playfield: Arc<TaikoPlayfield>) {
+        self.playfield = new_playfield;
+    }
+    #[cfg(feature="graphics")] 
+    fn get_playfield(&self) -> Arc<TaikoPlayfield> {
+        self.playfield.clone()
+    }
+    
 }

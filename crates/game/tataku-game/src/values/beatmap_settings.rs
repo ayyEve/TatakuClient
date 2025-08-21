@@ -4,6 +4,7 @@ use crate::prelude::*;
 #[derive(Clone, Debug2, Default)]
 pub struct BeatmapSettings {
     #[debug(skip)] 
+    #[cfg(feature="graphics")]
     #[reflect(rename="buildable")]
     provider: BuildableSettingsProvider,
 
@@ -18,20 +19,25 @@ impl BeatmapSettings {
         prefix: impl ToString,
     ) -> Self {
         let prefix = prefix.to_string();
-        let mut builder = SettingsBuilder::new(
-            values,
-            "Beatmap Settings"
-        );
-        builder.add_category("", None::<&str>);
 
-        beatmap.create_provider(prefix.clone() + ".beatmap", &mut builder);
-        playmode.create_provider(prefix + ".playmode", &mut builder);
+        #[cfg(feature="graphics")] 
+        let provider = {
+            let mut builder = SettingsBuilder::new(
+                values,
+                "Beatmap Settings"
+            );
+            builder.add_category("", None::<&str>);
 
-        let provider = builder.done();
-        println!("{provider:?}");
+            beatmap.create_provider(prefix.clone() + ".beatmap", &mut builder);
+            playmode.create_provider(prefix + ".playmode", &mut builder);
+
+            let provider = builder.done();
+            println!("{provider:?}");
+            provider
+        };
 
         Self {
-            provider,
+            #[cfg(feature="graphics")] provider,
             beatmap,
             playmode
         }

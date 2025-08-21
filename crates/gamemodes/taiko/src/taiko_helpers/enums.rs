@@ -7,10 +7,19 @@ pub enum TaikoHit {
     RightDon,
     RightKat
 }
+impl TaikoHit {
+    pub const ALL: &[Self] = &[
+        Self::LeftDon,
+        Self::LeftKat,
+        Self::RightDon,
+        Self::RightKat,
+    ];
+}
 
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub enum HitType {
+    #[default]
     Don,
     Kat
 }

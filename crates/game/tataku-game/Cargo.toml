@@ -10,7 +10,7 @@ workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = [ "gameplay" ]
+default = [ ]
 gameplay = [ "tokio-tungstenite", "tataku-engine/gameplay" ]
 # kira_audio = ["rustfft", "uuid"]
 debug_hitsounds = [ "tataku-engine/debug_hitsounds" ]
@@ -24,17 +24,25 @@ storyboards = [ "tataku-engine/storyboards" ]
 ui = [ "taffy", "quick-xml", "triple_buffer" ]
 
 # removes as much graphics-side stuff as possible
-graphics = [ "winit", "ui", "image", "tataku-engine/graphics", "tataku-interface", "tataku-graphics", "tataku-ui" ]
+graphics = [ 
+    "winit", 
+    "ui", 
+    "image", 
+    "tataku-engine/graphics", 
+    "tataku-interface/graphics", 
+    "tataku-graphics", 
+    "tataku-ui"
+]
 
 [dependencies]
 tataku-audio.workspace = true
 tataku-common.workspace = true
 tataku-engine.workspace = true
+tataku-interface.workspace = true
 tataku-null-audio.workspace = true
 tataku-client-proc-macros.workspace = true
 tataku-ui = { workspace = true, optional = true }
 tataku-graphics = { workspace = true, optional = true }
-tataku-interface = { workspace = true, optional = true }
 tataku-client-common = { workspace = true, features = ["sql"] }
 
 # framework stuff

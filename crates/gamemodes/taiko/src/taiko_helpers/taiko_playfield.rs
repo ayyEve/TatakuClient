@@ -1,5 +1,6 @@
 use crate::prelude::*;
 
+#[derive(Default)]
 pub struct TaikoPlayfield {
     pub bounds: Bounds,
     pub height: f32,
@@ -10,6 +11,7 @@ pub struct TaikoPlayfield {
 }
 
 impl TaikoPlayfield {
+    #[cfg(feature = "graphics")]
     pub fn get_rectangle(&self, kiai: bool) -> Rectangle {
         Rectangle::new_bounds(
             self.get_playfield_bounds(),

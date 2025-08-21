@@ -6,8 +6,7 @@ pub struct SongManager {
     song_queue: Vec<SongData>,
     current_song: Option<SongData>,
 
-    #[cfg(feature="graphics")] 
-    fft_hooks: Vec<Weak<FFTHook>>,
+    #[cfg(feature="graphics")] fft_hooks: Vec<Weak<FFTHook>>,
 }
 impl SongManager {
     fn play_song(
@@ -47,7 +46,7 @@ impl SongManager {
 
         // set our current song to the loaded audio
         self.current_song = Some(SongData::new(song, key));
-
+        
         actions.push(GameAction::HandleEvent(TatakuEventType::SongStart, None));
         Ok(())
     }
@@ -71,8 +70,7 @@ impl SongManager {
     }
 
     pub fn update(&mut self, engine: &mut AudioManager) {
-        #[cfg(feature="graphics")] 
-        self.update_ffts(engine);
+        #[cfg(feature="graphics")] self.update_ffts(engine);
     }
 
     pub fn handle_song_set_action(

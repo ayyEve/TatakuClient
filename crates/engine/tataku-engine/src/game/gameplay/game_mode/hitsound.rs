@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 /// TODO: nuke this probably, or at least change how its being used
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Hitsound {
     pub volume: f32,
     pub filename: String,

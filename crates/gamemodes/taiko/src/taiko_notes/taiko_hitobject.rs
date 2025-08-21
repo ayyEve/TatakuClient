@@ -3,8 +3,11 @@ use crate::prelude::*;
 pub trait TaikoHitObject: HitObject + Send + Sync {
     fn is_kat(&self) -> bool { false } // needed for diff calc and autoplay
 
+    #[cfg(feature="graphics")] 
     fn get_sv(&self) -> f32;
+    #[cfg(feature="graphics")] 
     fn set_sv(&mut self, sv: f32);
+
     /// does this hit object play a finisher sound when hit?
     fn finisher_sound(&self) -> bool { false }
 
@@ -22,22 +25,25 @@ pub trait TaikoHitObject: HitObject + Send + Sync {
         _game_speed: f32
     ) -> bool { false }
 
+    #[cfg(feature="graphics")] 
     fn get_playfield(&self) -> Arc<TaikoPlayfield>;
     fn set_settings(&mut self, settings: Arc<TaikoSettings>);
 
-
+    #[cfg(feature="graphics")] 
     fn x_at(&self, time: f32) -> f32 {
         // (self.time() - time) * self.get_sv()
         ((self.time() - time) / SV_OVERRIDE) 
             * self.get_sv() 
             * self.get_playfield().size.x
     }
+    #[cfg(feature="graphics")] 
     fn end_x_at(&self, time: f32) -> f32 {
         ((self.end_time(0.0) - time) / SV_OVERRIDE) 
             * self.get_sv() 
             * self.get_playfield().size.x
     }
 
+    #[cfg(feature="graphics")] 
     fn time_at(&self, x: f32) -> f32 {
         -(x / self.get_sv()) + self.time()
     }
@@ -50,11 +56,11 @@ pub trait TaikoHitObject: HitObject + Send + Sync {
     fn force_hit(&mut self) {}
 
     fn hit(&mut self, _time: f32, _hit_type: HitType) -> bool { false }
-
     fn miss(&mut self, _time: f32) {}
 
     fn hits_to_complete(&self) -> u32 { 1 }
 
+    #[cfg(feature="graphics")] 
     fn playfield_changed(&mut self, _new_playfield: Arc<TaikoPlayfield>);
 
     /// only used by spinners

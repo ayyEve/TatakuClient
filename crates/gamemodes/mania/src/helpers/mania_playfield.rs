@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct ManiaPlayfield {
     pub settings: ManiaPlayfieldSettings,
     pub bounds: Bounds,

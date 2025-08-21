@@ -37,6 +37,8 @@ impl TatakuTask for InitGameTask {
             
             info!("game init done, going to main menu");
             actions.push(BeatmapAction::Next);
+            
+            #[cfg(feature="graphics")]
             actions.push(MenuAction::SetMenu { 
                 id: "main_menu".into(), 
                 input: Box::new(BuildableInputArguments::default())

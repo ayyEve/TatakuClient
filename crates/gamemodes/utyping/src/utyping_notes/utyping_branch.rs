@@ -114,7 +114,7 @@ use super::super::prelude::*;
 // }
 
 // list of branches for a string of text
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Branch {
     branches: Vec<TextVariant>,
     available_branches: Vec<TextVariant>,

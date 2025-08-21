@@ -8,7 +8,7 @@ edition.workspace = true
 workspace = true
 
 [features]
-default = [ "graphics" ]
+default = [ ]
 graphics = []
 
 [dependencies]

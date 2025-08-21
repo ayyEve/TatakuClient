@@ -1,5 +1,6 @@
 use crate::prelude::*;
 
+#[derive(Default)]
 pub struct UTypingPlayfield {
     pub bounds: Bounds,
     pub height: f32,
@@ -8,6 +9,7 @@ pub struct UTypingPlayfield {
 }
 
 impl UTypingPlayfield {
+    #[cfg(feature="graphics")] 
     pub fn get_rectangle(&self, kiai: bool) -> Rectangle {
         let width = self.bounds.size.x;
         let height = self.height;

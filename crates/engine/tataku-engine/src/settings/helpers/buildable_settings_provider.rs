@@ -135,8 +135,6 @@ impl From<TatakuAction> for BuildableSettingsAction {
 }
 
 
-#[cfg(not(feature="graphics"))] type NodeId = ();
-
 pub trait BuildableSettingsActionTrait: Send + Sync {
     fn build(
         &self, 

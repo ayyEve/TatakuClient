@@ -12,7 +12,8 @@ default = [
     "storyboards",
     "bass_audio",
     # "kira_audio",
-    "all_integrations"
+    "all_integrations",
+    "graphics"
 ]
 
 # integrations
@@ -20,6 +21,7 @@ all_integrations = [
     "discord", 
     "lastfm", 
     # "media_controls" 
+    # "ipc"
 ]
 discord = [ "integration-discord" ]
 lastfm = [ "integration-lastfm" ]
@@ -30,31 +32,51 @@ media_controls = [ "integration-media-controls" ]
 bass_audio = [ "tataku-bass" ]
 kira_audio = [ "tataku-kira" ]
 
-
 storyboards = [ "tataku-game/storyboards" ]
 dynamic_gamemodes = [ "tataku-game/dynamic_gamemodes" ]
 
 texture_arrays = [ "tataku-wgpu/texture_arrays" ]
 debug_sliders = [ "gamemode-osu/debug_sliders" ]
 
+# helper for testing
+graphics = [
+    "tataku-game/graphics",
+    "gamemode-osu/graphics",
+    "gamemode-taiko/graphics",
+    "gamemode-mania/graphics",
+    "gamemode-utyping/graphics",
+    "integration-lastfm/graphics",
+    "integration-discord/graphics",
+    "integration-media-controls/graphics",
+    "tataku-wgpu",
+    "gameplay"
+]
+gameplay = [
+    "tataku-game/gameplay",
+    "gamemode-osu/gameplay",
+    "gamemode-taiko/gameplay",
+    "gamemode-mania/gameplay",
+    "gamemode-utyping/gameplay",
+]
+
 
 
 [dependencies]
 tataku-common.workspace = true
-tataku-wgpu.workspace = true
+tataku-wgpu = { workspace = true, optional = true, features = ["graphics"] }
 tataku-resources.workspace = true
 tataku-bass = { workspace = true, optional = true }
 tataku-kira = { workspace = true, optional = true }
-tataku-game = { workspace = true, features = [ "graphics" ] }
+tataku-game = { workspace = true }
 
 # Gamemodes
-gamemode-osu = { workspace = true, features = [ "graphics" ] }
-gamemode-taiko = { workspace = true, features = [ "graphics" ] }
-gamemode-mania = { workspace = true, features = [ "graphics" ] }
-gamemode-utyping = { workspace = true, features = [ "graphics" ] }
+gamemode-osu.workspace = true
+gamemode-taiko.workspace = true
+gamemode-mania.workspace = true
+gamemode-utyping.workspace = true
 
 # Integrations
-integration-discord = { workspace = true, optional = true, features = ["graphics"] }
+integration-discord = { workspace = true, optional = true }
 integration-lastfm = { workspace = true, optional = true }
 integration-media-controls = { workspace = true, optional = true }
 

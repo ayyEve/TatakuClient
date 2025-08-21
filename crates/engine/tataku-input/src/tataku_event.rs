@@ -43,7 +43,7 @@ pub enum TatakuEventType {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct CustomMenuKeyEvent {
     /// What key?
-    #[serde(rename="@key")] pub key: tataku_input::prelude::Key,
+    #[serde(rename="@key")] pub key: Key,
 
     /// Must control be pressed?
     #[serde(rename="@control", alias="@ctrl", default)] pub control: bool,
@@ -55,10 +55,8 @@ pub struct CustomMenuKeyEvent {
     #[serde(rename="@shift", default)] pub shift: bool,
 }
 
-
-
 #[derive(Serialize, Deserialize)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct CustomMenuControllerEvent {
-    #[serde(alias= "@button")] pub button: tataku_input::prelude::ControllerButton,
+    #[serde(alias= "@button")] pub button: ControllerButton,
 }

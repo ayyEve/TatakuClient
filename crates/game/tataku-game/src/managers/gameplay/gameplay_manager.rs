@@ -56,8 +56,9 @@ pub struct GameplayManager {
     pub health: Box<dyn HealthManager>,
     pub judgments: Vec<HitJudgment>,
     pub key_counter: KeyCounter,
-    ui_elements: Vec<GameplayWidgetContainer>,
-    editor: Option<EditorChannels>,
+
+    #[cfg(feature = "graphics")] ui_elements: Vec<GameplayWidgetContainer>,
+    #[cfg(feature = "graphics")] editor: Option<EditorChannels>,
 
     #[cfg(feature="graphics")]
     animation: Box<dyn BeatmapAnimation>,
@@ -92,15 +93,13 @@ pub struct GameplayManager {
     pub timing_points: TimingPointHelper,
 
     /// center text helper (ie, for offset and global offset)
-    #[cfg(feature="graphics")]
-    pub center_text_helper: CenteredTextHelper,
+    #[cfg(feature="graphics")] pub center_text_helper: CenteredTextHelper,
 
     /// (map.time, note.time - hit.time)
     hitbar_timings: Vec<(f32, f32)>,
 
     /// list of judgement indicators to draw
-    #[cfg(feature="graphics")] 
-    pub judgement_indicators: Vec<Box<dyn JudgementIndicator>>,
+    #[cfg(feature="graphics")] pub judgement_indicators: Vec<Box<dyn JudgementIndicator>>,
 
     pub common_game_settings: Arc<CommonGameplaySettings>,
     window_size: Vector2,
@@ -187,8 +186,6 @@ impl GameplayManager {
             judgments: properties.info.judgments.to_vec(),
             score: IngameScore::new(score, true, false),
 
-            #[cfg(feature="graphics")]
-            animation: Box::new(EmptyAnimation),
             events: beatmap.get_events(),
 
             lead_in_time: LEAD_IN_TIME,
@@ -212,9 +209,11 @@ impl GameplayManager {
             // score_loader, values: &mut dyn Reflec
             window_size: Vector2::ZERO,
             start_time: time,
-
-            #[cfg(feature="graphics")] 
-            judgement_indicators: Vec::new(),
+            
+            #[cfg(feature="graphics")] editor: None,
+            #[cfg(feature="graphics")] ui_elements: Vec::new(),
+            #[cfg(feature="graphics")] judgement_indicators: Vec::new(),
+            #[cfg(feature="graphics")] animation: Box::new(EmptyAnimation),
             gameplay_mode: Box::new(GameplayModeInner::Normal),
             gameplay_actions: Vec::new(),
 
@@ -230,9 +229,7 @@ impl GameplayManager {
             fit_to_bounds: None,
             should_pause: false,
             pause_pending: false,
-            ui_elements: Vec::new(),
             ui_changed: false,
-            editor: None,
 
             pending_time_jump: None,
             pending_frames: Vec::new(),
@@ -295,6 +292,7 @@ impl GameplayManager {
         // layout will be performed on game start (and skin load)
     }
 
+    #[cfg(feature = "graphics")]
     fn layout_ui(&mut self) {
         if let Err(e) = GameplayWidgetContainer::layout(
             &mut self.ui_elements,
@@ -323,6 +321,7 @@ impl GameplayManager {
         }
     }
 
+    #[cfg(feature="gameplay")] 
     pub fn skip_intro(&mut self) {
         let Some(mut time) = self.gamemode.skip_intro(self.time()) 
         else { return };
@@ -406,6 +405,7 @@ impl GameplayManager {
         settings: &Settings
     ) {
         // note to self: force is used when the frames are from the gamemode's update function
+        #[cfg(feature="gameplay")]
         if let ReplayAction::Press(KeyPress::SkipIntro) = frame {
             if self.gameplay_mode.is_multi() {
                 self.actions.push(LobbyAction::SendSkipRequest);
@@ -828,6 +828,7 @@ impl GameplayManagerTrait for GameplayManager {
 
 
         // update ui editor
+        #[cfg(feature = "graphics")]
         if let Some(channels) = &self.editor {
             let receiver = channels
                 .action_receiver.clone();
@@ -876,6 +877,7 @@ impl GameplayManagerTrait for GameplayManager {
         }
 
         // update ui elements
+        #[cfg(feature = "graphics")]
         if !self.gameplay_mode.is_preview() {
             let mut ui_elements = self.ui_elements.take();
             for ui in ui_elements.iter_mut() {
@@ -906,10 +908,12 @@ impl GameplayManagerTrait for GameplayManager {
         let scores_list = values
             .reflect_get::<Vec<IngameScore>>("score_list.scores")
             .unwrap();
+        #[cfg(feature="gameplay")]
         let scores_loaded = *values
             .reflect_get::<bool>("score_list.loaded")
             .unwrap();
 
+        #[cfg(feature="gameplay")]
         if !self.scores_loaded 
             && self.gameplay_mode.should_load_scores() 
             && scores_loaded 
@@ -991,6 +995,7 @@ impl GameplayManagerTrait for GameplayManager {
         }
 
         // send map completed packets
+        #[allow(clippy::collapsible_if, reason = "features")]
         if self.completed {
             #[cfg(feature="gameplay")] {
                 let mut score = self.score.score.clone();
@@ -1008,6 +1013,7 @@ impl GameplayManagerTrait for GameplayManager {
             ));
 
 
+            #[cfg(feature="gameplay")]
             if self.gameplay_mode.is_multi() {
                 self.actions.push(LobbyAction::MapComplete(
                     Box::new(self.score.score.clone())
@@ -1310,6 +1316,7 @@ impl GameplayManagerTrait for GameplayManager {
             } => self.jump_to_time(time, skip_intro),
 
             GameplayAction::ApplyMods(mods) => self.apply_mods(mods),
+            
             GameplayAction::FitToArea(bounds) => {
                 #[cfg(feature="graphics")] 
                 self.fit_to_area(bounds);
@@ -1480,6 +1487,7 @@ impl GameplayManagerTrait for GameplayManager {
                     self.animation.fit_to_area(self.gamemode.get_playfield());
                 }
 
+                #[cfg(feature = "graphics")]
                 self.layout_ui();
             }
 
@@ -1653,6 +1661,7 @@ impl GameplayManagerTrait for GameplayManager {
         }
 
         // re init ui
+        #[cfg(feature = "graphics")]
         self.layout_ui();
 
         if !self.started {
@@ -1704,7 +1713,9 @@ impl GameplayManagerTrait for GameplayManager {
             self.actions.push(SongAction::Play);
             self.gamemode.handle_gameplay_event(GameplayEvent::UnPaused);
         }
-    
+        
+
+        #[cfg(feature = "graphics")]
         self.layout_ui();
     }
 
@@ -1808,6 +1819,7 @@ impl GameplayManagerTrait for GameplayManager {
         }
 
         // reset elements
+        #[cfg(feature = "graphics")]
         for e in self.ui_elements.iter_mut() {
             e.reset_element();
         }
@@ -1824,11 +1836,17 @@ impl GameplayManagerTrait for GameplayManager {
 
     }
     fn fail(&mut self) {
+        #[cfg(feature="gameplay")] 
+        let a = self.gameplay_mode.is_multi();
+        #[cfg(not(feature="gameplay"))] 
+        let a = false;
+
         if self.failed 
             || self.current_mods.has_nofail() 
             || self.current_mods.has_autoplay() 
             || self.gameplay_mode.is_preview() 
-            || self.gameplay_mode.is_multi() { 
+            || a
+        { 
             return
         }
         
@@ -1967,6 +1985,8 @@ pub struct GameplaySpectatorInfo {
     pub spectators: SpectatorList
 }
 
+
+    #[cfg(feature = "graphics")]
 struct EditorChannels {
     event_sender: Sender<GameplayWidgetEvent>,
     action_receiver: Arc<Mutex<Receiver<GameplayWidgetAction>>>,

@@ -5,7 +5,7 @@ const NOTE_BORDER_SIZE:f32 = 2.0;
 const GRAVITY_SCALING:f32 = 400.0;
 
 // note
-#[derive(Clone)]
+#[derive(Clone, Default)]
 #[allow(unused)]
 pub struct UTypingNote {
     pos: Vector2,
@@ -31,7 +31,7 @@ pub struct UTypingNote {
     /// what char are we trying to hit?
     hit_index: usize,
 
-    image: Option<HitCircleImageHelper>,
+    #[cfg(feature="graphics")] image: Option<HitCircleImageHelper>,
 
     pub judgment: Option<HitJudgment>
 }
@@ -42,44 +42,24 @@ impl UTypingNote {
         settings: Arc<TaikoSettings>, 
         playfield: Arc<UTypingPlayfield>
     ) -> Self {
-        // let y = settings.hit_position.y;
-        // let a = GRAVITY_SCALING * 9.81;
-        // let bounce_factor = (2000.0*y.sqrt()) as f32 / (a*(a.powi(2) + 2_000_000.0)).sqrt() * 10.0;
-        let bounce_factor = 1.6;
-
-        let branches = Branch::new(&text);
-
-        // let entry = get_things_for_text(&text);
-        // let char_count = entry.len();
-        // let mut romaji = String::new(); 
-        // entry.iter().for_each(|c|romaji += &format!(" {c}"));
-
         Self {
             time, 
+            branches: Branch::new(&text),
             text, 
-            // romaji,
-            branches,
-            // char_count,
             
             speed: 1.0,
-            hit_time: 0.0,
-            hit_index: 0,
-            hit: false,
-            missed: false,
-
-            pos: Vector2::ZERO,
-            image: None,
             settings,
             playfield,
-            bounce_factor,
-            judgment: None
+            bounce_factor: 1.6,
+            
+            ..Self::default()
         }
     }
 
 
     // dont look at this
     /// check if the char `c` is valid for this character and hit index
-    pub fn check_char(&self, c:&char) -> bool {
+    pub fn check_char(&self, c: &char) -> bool {
 
         self.branches.check_char(*c)
         // let mut val = false;
@@ -110,9 +90,11 @@ impl HitObject for UTypingNote {
             else {0.0};
         
         self.pos = self.playfield.hit_position + Vector2::new((self.time - beatmap_time) * self.speed, y);
-
+        
+        #[cfg(feature="graphics")] 
         if let Some(i) = self.image.as_mut() { i.set_pos(self.pos) }
     }
+    #[cfg(feature="graphics")] 
     fn draw(&mut self, _time: f32, list: &mut RenderableCollection) {
         if self.pos.x + self.settings.note_radius < 0.0 || self.pos.x - self.settings.note_radius > 10000000.0 { return }
 
@@ -286,6 +268,7 @@ impl HitCircleImageHelper {
         self.circle.pos  = pos;
         self.overlay.pos = pos;
     }
+    #[cfg(feature="graphics")] 
     fn draw(&mut self, list: &mut RenderableCollection) {
         list.push(self.circle.clone());
         list.push(self.overlay.clone());

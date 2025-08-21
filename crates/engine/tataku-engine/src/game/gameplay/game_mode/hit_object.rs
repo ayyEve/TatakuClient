@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use tataku_graphics::prelude::*;
+#[cfg(feature = "graphics")] use tataku_graphics::prelude::*;
 
 // hitobject trait, implemented by anything that should be hit
 pub trait HitObject: Send + Sync {

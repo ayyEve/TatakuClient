@@ -10,6 +10,7 @@ const OK_TICK_RADIUS_MULT: f32 = 2.0;
 
 const USE_NEW_SLIDER_RENDERING:bool = true;
 
+#[derive(Default)]
 pub struct OsuSlider {
     /// slider definition for this slider
     def: SliderDef,
@@ -83,27 +84,27 @@ pub struct OsuSlider {
     /// cached settings for this game
     standard_settings: Arc<OsuSettings>,
 
-    start_circle_image: HitCircle,
-    end_circle_image: Option<Image>,
-    slider_reverse_image: Option<Image>,
-    sliderball_image: Option<Animation>,
-    sliderball_under_image: Option<Image>,
-    follow_circle_image: Option<Image>,
+    #[cfg(feature="graphics")] start_circle_image: HitCircle,
+    #[cfg(feature="graphics")] end_circle_image: Option<Image>,
+    #[cfg(feature="graphics")] slider_reverse_image: Option<Image>,
+    #[cfg(feature="graphics")] sliderball_image: Option<Animation>,
+    #[cfg(feature="graphics")] sliderball_under_image: Option<Image>,
+    #[cfg(feature="graphics")] follow_circle_image: Option<Image>,
 
-    approach_circle: ApproachCircle,
-    slider_body_render_target: Option<RenderTarget>,
-    slider_body_render_target_failed: Option<f32>,
-    slider_body_loader: SliderBodyLoader,
+    #[cfg(feature="graphics")] approach_circle: ApproachCircle,
+    #[cfg(feature="graphics")] slider_body_render_target: Option<RenderTarget>,
+    #[cfg(feature="graphics")] slider_body_render_target_failed: Option<f32>,
+    #[cfg(feature="graphics")] slider_body_loader: SliderBodyLoader,
 
-    hitsounds: Vec<Vec<Hitsound>>,
-    pub(crate) sliderdot_hitsound: Hitsound,
+    #[cfg(feature="gameplay")] hitsounds: Vec<Vec<Hitsound>>,
+    #[cfg(feature="gameplay")] pub(crate) sliderdot_hitsound: Hitsound,
 
     last_beat: f32,
     pulse_length: f32,
     beat_scale: f32,
 
-    slider_body: SliderDrawable,
-    skin: Arc<SkinSettings>,
+    #[cfg(feature="graphics")] slider_body: SliderDrawable,
+    #[cfg(feature="graphics")] skin: Arc<SkinSettings>,
 }
 impl OsuSlider {
     #[allow(clippy::too_many_arguments)]
@@ -126,8 +127,10 @@ impl OsuSlider {
         let radius = CIRCLE_RADIUS_BASE * scaling_helper.cs;
 
         const SAMPLE_SETS:[&str; 4] = ["normal", "normal", "soft", "drum"];
+        #[cfg(feature="gameplay")] 
         let sliderdot_hitsound = Hitsound::new_simple(format!("{}-slidertick", SAMPLE_SETS[def.hitsamples.addition_set as usize]));
 
+        #[cfg(feature="gameplay")] 
         let hitsounds = def.edge_sets.iter().enumerate().map(|(n, &[normal_set, addition_set])| {
             let mut samples = def.hitsamples.clone();
             samples.normal_set = normal_set;
@@ -138,7 +141,9 @@ impl OsuSlider {
             hitsound_fn(def.time, hitsound, samples)
         }).collect();
 
+        #[cfg(feature="graphics")] 
         let approach_circle = ApproachCircle::new(def.pos, time, radius, time_preempt, scaling_helper.clone());
+        #[cfg(feature="graphics")] 
         let start_circle_image = HitCircle::new(
             def.pos,
             scaling_helper.clone(),
@@ -148,7 +153,6 @@ impl OsuSlider {
         Self {
             def,
             curve,
-            color: Color::WHITE,
             time_preempt,
             radius,
 
@@ -157,62 +161,32 @@ impl OsuSlider {
             time_end_pos,
 
             time,
-            hit_dots: Vec::new(),
-            pending_combo: Vec::new(),
-            sound_index: 0,
-            slides_complete: 0,
             moving_forward: true,
-            map_time: 0.0,
-
-            start_checked: false,
-            end_checked: false,
-            holding: false,
-            mouse_pos: Vector2::ZERO,
-
-            dots_missed: 0,
-            dot_count: 0,
             start_judgment: OsuHitJudgments::Miss,
 
-            sound_queue: Vec::new(),
-
             scaling_helper,
-            sliding_ok: false,
-            slider_ball_pos: Vector2::ZERO,
-
-
             standard_settings,
-            // shapes: Vec::new(),
-            hitwindow_miss: 0.0,
+            
+            #[cfg(feature="graphics")] start_circle_image,
+            #[cfg(feature="graphics")] approach_circle,
 
-            start_circle_image,
-            end_circle_image: None,
-            slider_reverse_image: None,
-            slider_body_render_target: None,
-            slider_body_render_target_failed: None,
-            slider_body_loader: SliderBodyLoader::None,
-            follow_circle_image: None,
-            sliderball_image: None,
-            sliderball_under_image: None,
-            approach_circle,
-
-            hitsounds,
-            sliderdot_hitsound,
+            #[cfg(feature="gameplay")] hitsounds,
+            #[cfg(feature="gameplay")] sliderdot_hitsound,
             velocity,
 
-
             last_beat: -100.0,
-            pulse_length: 0.0,
             beat_scale: 1.0,
 
-            slider_body: SliderDrawable::default(),
-            skin: Arc::default(),
+            ..Self::default()
         }
     }
 
+    #[cfg(feature="graphics")] 
     fn use_render_targets(&self) -> bool {
         self.standard_settings.slider_render_targets || !USE_NEW_SLIDER_RENDERING
     }
 
+    #[cfg(feature="graphics")] 
     fn make_body(&mut self) {
         // TODO: check if we should try again
         if self.slider_body_render_target_failed.is_some() {
@@ -595,6 +569,7 @@ impl HitObject for OsuSlider {
 
     fn update(&mut self, beatmap_time: f32) {
         self.map_time = beatmap_time;
+        #[cfg(feature="graphics")] 
         self.start_circle_image.update(beatmap_time);
 
         self.beat_scale = f32::lerp(
@@ -613,40 +588,49 @@ impl HitObject for OsuSlider {
         self.slider_ball_pos = self.scaling_helper.scale_coords(self.curve.position_at_time(beatmap_time));
         let distance = self.slider_ball_pos.distance(self.mouse_pos); //((self.slider_ball_pos.x - self.mouse_pos.x).powi(2) + (self.slider_ball_pos.y - self.mouse_pos.y).powi(2)).sqrt();
         self.sliding_ok = self.holding && distance <= self.radius * OK_RADIUS_MULT;
-
-
-        let alpha = self.get_alpha();
-        self.approach_circle.set_alpha(alpha);
-        self.approach_circle.update(beatmap_time);
-
-        if self.time - beatmap_time > self.time_preempt || self.curve.end_time < beatmap_time {
-            if self.slider_body_render_target.is_some() && alpha == 0 {
-                self.slider_body_render_target = None;
-            }
-
-            return
-        }
-
-        match &self.slider_body_loader {
-            SliderBodyLoader::New { min_pos, loader } => if loader.is_complete() {
-                let value = loader.check().unwrap();
-
-                if let Ok(mut slider_body_render_target) = value {
-                    slider_body_render_target.image.pos = *min_pos;
-                    slider_body_render_target.image.origin = Vector2::ZERO;
-                    self.slider_body_render_target = Some(slider_body_render_target);
-                } else {
-                    warn!("failed to slider");
-                    self.slider_body_render_target_failed = Some(self.map_time);
+        
+        #[cfg(feature="graphics")] {
+            let alpha = self.get_alpha();
+            self.approach_circle.set_alpha(alpha);
+            self.approach_circle.update(beatmap_time);
+    
+            if self.time - beatmap_time > self.time_preempt || self.curve.end_time < beatmap_time {
+                if self.slider_body_render_target.is_some() && alpha == 0 {
+                    self.slider_body_render_target = None;
                 }
-
-                self.slider_body_loader = SliderBodyLoader::None;
+    
+                return
             }
-            SliderBodyLoader::Update(new) => if new.is_complete() {
-
-                self.slider_body_loader = SliderBodyLoader::None;
+    
+            match &self.slider_body_loader {
+                SliderBodyLoader::New { min_pos, loader } => if loader.is_complete() {
+                    let value = loader.check().unwrap();
+    
+                    if let Ok(mut slider_body_render_target) = value {
+                        slider_body_render_target.image.pos = *min_pos;
+                        slider_body_render_target.image.origin = Vector2::ZERO;
+                        self.slider_body_render_target = Some(slider_body_render_target);
+                    } else {
+                        warn!("failed to slider");
+                        self.slider_body_render_target_failed = Some(self.map_time);
+                    }
+    
+                    self.slider_body_loader = SliderBodyLoader::None;
+                }
+                SliderBodyLoader::Update(new) => if new.is_complete() {
+    
+                    self.slider_body_loader = SliderBodyLoader::None;
+                }
+                _ => {}
             }
-            _ => {}
+            
+            if alpha > 0 && self.slider_body_render_target.is_none() && (self.use_render_targets() || self.slider_body.slider_data.circle_radius == 0.0) {
+                self.make_body();
+            }
+
+            if let Some(ball) = &mut self.sliderball_image {
+                ball.update(beatmap_time);
+            }
         }
 
 
@@ -684,6 +668,7 @@ impl HitObject for OsuSlider {
             // check cursor
             if self.sliding_ok {
                 self.pending_combo.push((OsuHitJudgments::SliderEnd, pos));
+                #[cfg(feature="gameplay")] 
                 self.sound_queue.push(self.get_hitsound());
                 // self.add_ripple(beatmap_time, pos, false);
             } else {
@@ -701,6 +686,7 @@ impl HitObject for OsuSlider {
 
 
                     self.pending_combo.push((OsuHitJudgments::SliderDot, dot.pos));
+                    #[cfg(feature="gameplay")] 
                     self.sound_queue.push(vec![self.sliderdot_hitsound.clone()]);
                 } else {
                     self.pending_combo.push((OsuHitJudgments::SliderDotMiss, dot.pos));
@@ -709,15 +695,6 @@ impl HitObject for OsuSlider {
             }
         }
         self.hit_dots = dots;
-
-        if alpha > 0 && self.slider_body_render_target.is_none() && (self.use_render_targets() || self.slider_body.slider_data.circle_radius == 0.0) {
-            self.make_body();
-        }
-
-        if let Some(ball) = &mut self.sliderball_image {
-            ball.update(beatmap_time);
-        }
-
     }
 
     #[cfg(feature="graphics")]
@@ -974,7 +951,6 @@ impl HitObject for OsuSlider {
 impl OsuHitObject for OsuSlider {
     fn miss(&mut self) { self.end_checked = true }
     fn was_hit(&self) -> bool { self.end_checked }
-    fn point_draw_pos(&self, time: f32) -> Vector2 { self.pos_at(time) }
 
     fn get_preempt(&self) -> f32 { self.time_preempt }
     fn press(&mut self, _:f32) { self.holding = true }
@@ -986,14 +962,6 @@ impl OsuHitObject for OsuSlider {
 
 
     fn new_combo(&self) -> bool { self.def.new_combo }
-    fn set_combo_color(&mut self, color: Color) {
-        self.color = color;
-
-        self.start_circle_image.set_color(color);
-        if self.standard_settings.approach_combo_color {
-            self.approach_circle.set_color(color);
-        }
-     }
 
     fn set_judgment(&mut self, j: &HitJudgment) {
         self.start_checked = true;
@@ -1068,20 +1036,22 @@ impl OsuHitObject for OsuSlider {
         self.visual_end_pos = self.scaling_helper.scale_coords(self.curve.curve_lines.last().unwrap().p2);//.scale_coords(self.curve.position_at_length(self.curve.length()));
         self.time_end_pos = if self.def.slides % 2 == 1 { self.visual_end_pos } else { self.pos };
 
-        self.approach_circle.scale_changed(new_scale, self.radius);
-        self.start_circle_image.playfield_changed(&self.scaling_helper);
-
-        if let Some(image) = &mut self.end_circle_image {
-           image.pos = self.scaling_helper.scale_coords(self.visual_end_pos);
-           image.scale = Vector2::ONE * self.scaling_helper.cs;
+        #[cfg(feature="graphics")] {
+            self.approach_circle.scale_changed(new_scale, self.radius);
+            self.start_circle_image.playfield_changed(&self.scaling_helper);
+    
+            if let Some(image) = &mut self.end_circle_image {
+               image.pos = self.scaling_helper.scale_coords(self.visual_end_pos);
+               image.scale = Vector2::ONE * self.scaling_helper.cs;
+            }
+            
+            if self.slider_body_render_target.is_some() || (!self.standard_settings.slider_render_targets && USE_NEW_SLIDER_RENDERING) {
+                // if the playfield was resized, if we dont set this to none it will use the old size and then be wrong
+                self.slider_body_render_target = None;
+                self.make_body();
+            }
+            self.make_dots();
         }
-
-        if self.slider_body_render_target.is_some() || (!self.standard_settings.slider_render_targets && USE_NEW_SLIDER_RENDERING) {
-            // if the playfield was resized, if we dont set this to none it will use the old size and then be wrong
-            self.slider_body_render_target = None;
-            self.make_body();
-        }
-        self.make_dots();
     }
 
     fn pos_at(&self, time: f32) -> Vector2 {
@@ -1098,6 +1068,7 @@ impl OsuHitObject for OsuSlider {
         //TODO: cache these and only update if the difference is above some threshhold so we dont absolutely spam render targets\
         self.standard_settings = settings;
 
+        #[cfg(feature="graphics")] 
         if (self.slider_body_render_target.is_some() || (!self.standard_settings.slider_render_targets && USE_NEW_SLIDER_RENDERING)) && (self.standard_settings.slider_body_alpha != old_body_alpha || old_border_alpha != self.standard_settings.slider_border_alpha) {
             self.make_body();
         }
@@ -1108,23 +1079,43 @@ impl OsuHitObject for OsuSlider {
         self.time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
     }
 
+    #[cfg(feature="graphics")] 
+    fn set_combo_color(&mut self, color: Color) {
+        self.color = color;
+
+        self.start_circle_image.set_color(color);
+        if self.standard_settings.approach_combo_color {
+            self.approach_circle.set_color(color);
+        }
+    }
+
+    #[cfg(feature="graphics")] 
+    fn point_draw_pos(&self, time: f32) -> Vector2 { self.pos_at(time) }
+
+    #[cfg(feature="graphics")] 
     fn set_approach_easing(&mut self, easing: Easing) {
         self.approach_circle.easing_type = easing;
     }
 
+    #[cfg(feature="gameplay")] 
     fn get_hitsound(&self) -> Vec<Hitsound> {
         // println!("playing hitsound index {}/{}", self.sound_index+1, self.def.edge_sets.len());
         let index = self.sound_index.min(self.def.edge_sets.len() - 1);
         self.hitsounds[index].clone()
     }
+
+    #[cfg(feature="gameplay")] 
     fn get_all_hitsounds(&self) -> Vec<Vec<Hitsound>> { vec![
         self.get_hitsound(),
         vec![ self.sliderdot_hitsound.clone() ]
     ] }
+
+    #[cfg(feature="gameplay")] 
     fn get_sound_queue(&mut self) -> Vec<Vec<Hitsound>> {
         std::mem::take(&mut self.sound_queue)
     }
 
+    #[cfg(feature="graphics")] 
     fn shake(&mut self, time: f32) { self.start_circle_image.shake(time) }
 }
 
@@ -1167,6 +1158,7 @@ impl SliderDot {
         }
     }
 
+    #[cfg(feature="graphics")] 
     pub fn draw(&self, beat_scale: f32, list: &mut RenderableCollection) {
         if self.checked { return }
 
@@ -1189,7 +1181,9 @@ impl SliderDot {
     }
 }
 
+#[derive(Default)]
 enum SliderBodyLoader {
+    #[default]
     None,
     New {
         min_pos: Vector2,

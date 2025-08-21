@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct NoteDef {
     /// Position in osu! pixels of the object.
     pub pos: Vector2,
@@ -15,7 +15,7 @@ pub struct NoteDef {
 }
 
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct SliderDef {
     /// x,y,time,type,hitSound,curveType|curvePoints,slides,length,edgeSounds,edgeSets,hitSample
     pub raw: String,
@@ -65,8 +65,9 @@ pub struct HoldDef {
 
 
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub enum CurveType {
+    #[default]
     Bézier,
     Catmull,
     Linear,

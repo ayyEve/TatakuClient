@@ -92,8 +92,10 @@ pub struct Settings {
     pub background_dim: f32,
 
     // misc keybinds
+    #[doc(hidden)]
     #[serde(skip)] #[debug(skip)] #[reflect(skip)]
     #[category(text="Common Keybinds")] _5: (),
+
     #[setting(text="User Panel Key")]
     pub key_user_panel: Key,
 
@@ -246,7 +248,6 @@ impl Settings {
 
             // login
             username: "Guest".to_owned(),
-            password: String::new(),
             server_url: "wss://server.tataku.ca".to_owned(),
             score_url: "https://scores.tataku.ca".to_owned(),
 
@@ -260,7 +261,6 @@ impl Settings {
             key_user_panel: Key::F8,
 
             // doubletap protection
-            enable_double_tap_protection: false,
             double_tap_protection_duration: 80.0,
             
             ui_scale: 1.0,
@@ -294,3 +294,4 @@ impl Display for SelectedTheme {
         }
     }
 }
+

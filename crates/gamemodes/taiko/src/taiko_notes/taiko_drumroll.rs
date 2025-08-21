@@ -1,30 +1,36 @@
 use crate::prelude::*;
 
+#[cfg(feature = "graphics")]
 const SLIDER_DOT_RADIUS:f32 = 8.0;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct TaikoDrumroll {
-    pos: Vector2,
-    hit_dots: Vec<f32>, // list of times the slider was hit at
-
+    
     time: f32, // ms
     end_time: f32, // ms
     /// should this be a finisher
-    pub base_finisher: bool,
-    pub finisher: bool,
-    speed: f32,
-    radius: f32,
-    // TODO: figure out how to pre-calc this
-    end_x: f32,
-
+    base_finisher: bool,
+    finisher: bool,
     settings: Arc<TaikoSettings>,
-    playfield: Arc<TaikoPlayfield>,
-
-    middle_image: Option<Image>,
-    end_image: Option<Image>,
+    
+    #[cfg(feature="graphics")] speed: f32,
+    #[cfg(feature="graphics")] end_x: f32,
+    #[cfg(feature="graphics")] radius: f32,
+    #[cfg(feature="graphics")] pos: Vector2,
+    #[cfg(feature="graphics")] hit_dots: Vec<f32>, // list of times the slider was hit at
+    #[cfg(feature="graphics")] end_image: Option<Image>,
+    #[cfg(feature="graphics")] middle_image: Option<Image>,
+    #[cfg(feature="graphics")] playfield: Arc<TaikoPlayfield>,
 }
 impl TaikoDrumroll {
-    pub fn new(time: f32, end_time: f32, finisher: bool, settings: Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>) -> Self {
+    pub fn new(
+        time: f32, 
+        end_time: f32, 
+        finisher: bool, 
+        settings: Arc<TaikoSettings>, 
+        #[cfg(feature="graphics")] playfield: Arc<TaikoPlayfield>
+    ) -> Self {
+        #[cfg(feature="graphics")] 
         let radius = if finisher { 
             settings.note_radius * settings.big_note_multiplier 
         } else { 
@@ -34,19 +40,15 @@ impl TaikoDrumroll {
         Self {
             time, 
             end_time,
-            base_finisher: finisher,
-            finisher,
-            radius,
-            speed: 0.0,
-
-            pos: Vector2::new(0.0, playfield.hit_position.y - radius),
-            end_x: 0.0,
-            hit_dots: Vec::new(),
             settings,
-            playfield,
+            finisher,
+            base_finisher: finisher,
+            
+            #[cfg(feature="graphics")] radius,
+            #[cfg(feature="graphics")] pos: Vector2::new(0.0, playfield.hit_position.y - radius),
+            #[cfg(feature="graphics")] playfield,
 
-            middle_image: None,
-            end_image: None,
+            ..Default::default()
         }
     }
 }
@@ -138,9 +140,11 @@ impl HitObject for TaikoDrumroll {
     }
 
     fn reset(&mut self) {
-        self.hit_dots.clear();
-        self.pos.x = 0.0;
-        self.end_x = 0.0;
+        #[cfg(feature="graphics")]  {
+            self.hit_dots.clear();
+            self.pos.x = 0.0;
+            self.end_x = 0.0;
+        }
     }
     
     #[cfg(feature="graphics")]
@@ -164,27 +168,19 @@ impl HitObject for TaikoDrumroll {
 impl TaikoHitObject for TaikoDrumroll {
     fn was_hit(&self) -> bool { false }
     fn causes_miss(&self) -> bool { false }
-    fn get_sv(&self) -> f32 { self.speed }
-    fn set_sv(&mut self, sv:f32) { self.speed = sv }
     fn hits_to_complete(&self) -> u32 { ((self.end_time - self.time) / 50.0) as u32 }
 
     fn hit(&mut self, time: f32, _: HitType) -> bool {
         if time < self.time || time > self.end_time { return false }
+        #[cfg(feature="graphics")] 
         self.hit_dots.push(time);
         true
-    }
-
-    fn playfield_changed(&mut self, new_playfield: Arc<TaikoPlayfield>) {
-        self.playfield = new_playfield;
-        self.pos.y = self.playfield.hit_position.y - self.radius;
-    }
-    fn get_playfield(&self) -> Arc<TaikoPlayfield> {
-        self.playfield.clone()
     }
     
     fn set_settings(&mut self, settings: Arc<TaikoSettings>) {
         self.settings = settings;
 
+        #[cfg(feature="graphics")]
         for i in [&mut self.middle_image, &mut self.end_image] {
             let Some(i) = i else { continue };
             // let radius = self.settings.note_radius * if self.finisher {self.settings.big_note_multiplier} else {1.0};
@@ -197,5 +193,17 @@ impl TaikoHitObject for TaikoDrumroll {
             self.finisher = enabled;
             self.set_settings(self.settings.clone());
         }
+    }
+
+    #[cfg(feature="graphics")] fn get_sv(&self) -> f32 { self.speed }
+    #[cfg(feature="graphics")] fn set_sv(&mut self, sv:f32) { self.speed = sv }
+    #[cfg(feature="graphics")] 
+    fn playfield_changed(&mut self, new_playfield: Arc<TaikoPlayfield>) {
+        self.playfield = new_playfield;
+        self.pos.y = self.playfield.hit_position.y - self.radius;
+    }
+    #[cfg(feature="graphics")] 
+    fn get_playfield(&self) -> Arc<TaikoPlayfield> {
+        self.playfield.clone()
     }
 }

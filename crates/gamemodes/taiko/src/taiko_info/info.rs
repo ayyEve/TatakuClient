@@ -65,9 +65,7 @@ impl TaikoGameInfo {
         / (miss + x100 + x300)
     }
 
-    
 
-    #[cfg(feature="graphics")]
     fn stats_from_groups(data: &HashMap<String, HashMap<String, Vec<f32>>>) -> Vec<StatsInfo> { 
         let mut info = Vec::new();
 

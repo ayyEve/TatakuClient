@@ -1,76 +1,60 @@
 use crate::prelude::*;
 
+#[derive(Default)]
 pub struct ManiaHold {
-    pos: Vector2,
     time: f32, // ms
-    end_time: f32, // ms
-
-    start_relative_pos: f32,
-    end_relative_pos: f32,
     column: u8,
-    color: Color,
-
+    end_time: f32, // ms
     /// when the user started holding
     hold_starts: Vec<f32>,
     hold_ends: Vec<f32>,
     holding: bool,
 
-    position_function: Arc<Vec<PositionPoint>>,
-    position_function_index: usize,
+    #[cfg(feature="graphics")] pos: Vector2,
 
-    sv_mult: f32,
-    //TODO: figure out how to pre-calc this
-    end_y: f32,
-
-    playfield: Arc<ManiaPlayfield>,
-
-    start_image: Option<Image>,
-    end_image: Option<Image>,
-    middle_image: Option<Image>,
-
-    hitsounds: Vec<Hitsound>,
-
-    mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
+    #[cfg(feature="graphics")] end_relative_pos: f32,
+    #[cfg(feature="graphics")] start_relative_pos: f32,
+    
+    #[cfg(feature="graphics")] end_y: f32,
+    #[cfg(feature="graphics")] sv_mult: f32,
+    #[cfg(feature="graphics")] color: Color,
+    #[cfg(feature="gameplay")] hitsounds: Vec<Hitsound>,
+    #[cfg(feature="graphics")] end_image: Option<Image>,
+    #[cfg(feature="graphics")] start_image: Option<Image>,
+    #[cfg(feature="graphics")] middle_image: Option<Image>,
+    #[cfg(feature="graphics")] playfield: Arc<ManiaPlayfield>,
+    #[cfg(feature="gameplay")] position_function_index: usize,
+    #[cfg(feature="gameplay")] position_function: Arc<Vec<PositionPoint>>,
+    #[cfg(feature="graphics")] mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
 }
 impl ManiaHold {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        time: f32, end_time: f32, column: u8, color: Color, x: f32, 
+        time: f32, end_time: f32, column: u8, 
+        #[cfg(feature="graphics")] color: Color, 
+        #[cfg(feature="graphics")] x: f32, 
+        #[cfg(feature="graphics")] sv_mult: f32,
         
-        sv_mult: f32,
-        
-        playfield: Arc<ManiaPlayfield>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
+        #[cfg(feature="graphics")] playfield: Arc<ManiaPlayfield>, 
+        #[cfg(feature="graphics")] mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
 
-        hitsounds: Vec<Hitsound>,
+        #[cfg(feature="gameplay")] hitsounds: Vec<Hitsound>,
     ) -> Self {
         Self {
             time, 
-            end_time,
             column,
-            position_function: Arc::new(Vec::new()),
-            position_function_index: 0,
-
-            start_relative_pos: 0.0,
-            end_relative_pos: 0.0,
-            sv_mult,
-            holding: false,
-            color,
-
-            pos: Vector2::with_x(x),
-            hold_starts: Vec::new(),
-            hold_ends: Vec::new(),
-            end_y: 0.0,
-
-            playfield,
-            start_image: None,
-            end_image: None,
-            middle_image: None,
-            mania_skin_settings,
-
-            hitsounds
+            end_time,
+            #[cfg(feature="graphics")] color,
+            #[cfg(feature="graphics")] sv_mult,
+            #[cfg(feature="graphics")] playfield,
+            #[cfg(feature="gameplay")] hitsounds,
+            #[cfg(feature="graphics")] pos: Vector2::with_x(x),
+            #[cfg(feature="graphics")] mania_skin_settings,
+            ..Self::default()
         }
     }
 
+    #[cfg(feature="graphics")] 
     fn y_at(&mut self, beatmap_time: f32) -> (f32, f32) {
         let speed = self.sv_mult * if self.playfield.upside_down {-1.0} else {1.0};
 
@@ -88,38 +72,40 @@ impl HitObject for ManiaHold {
     fn end_time(&self,hw_miss:f32) -> f32 {self.end_time + hw_miss}
 
     fn update(&mut self, beatmap_time: f32) {
-        let (start, end) = self.y_at(beatmap_time);
-        self.pos.y = start;
-        self.end_y = end;
-
-        if self.playfield.upside_down {
-            std::mem::swap(&mut self.end_y, &mut self.pos.y);
+        #[cfg(feature="graphics")] {
+            let (start, end) = self.y_at(beatmap_time);
+            self.pos.y = start;
+            self.end_y = end;
+    
+            if self.playfield.upside_down {
+                std::mem::swap(&mut self.end_y, &mut self.pos.y);
+            }
+            
+            let note_size = self.playfield.note_size();
+            let y = if self.holding {self.playfield.hit_y()} else {self.pos.y}; // + note_size.y / 2.0;
+    
+            // update start tex
+            if let Some(img) = self.start_image.as_mut() {
+                img.pos = self.pos;
+            }
+    
+            // update middle tex
+            if let Some(img) = &mut self.middle_image {
+                img.pos = Vector2::new(self.pos.x, y);
+                let length = self.end_y - (y - note_size.y / 2.0);
+    
+                img.scale.y = length / img.tex_size().y;
+            }
+    
+            // update end tex
+            if let Some(img) = &mut self.end_image {
+                img.pos = Vector2::new(self.pos.x, self.end_y);
+                // img.scale = self.playfield.note_size() / img.tex_size();
+            }
         }
-
-        let note_size = self.playfield.note_size();
-        let y = if self.holding {self.playfield.hit_y()} else {self.pos.y}; // + note_size.y / 2.0;
-
-        // update start tex
-        if let Some(img) = self.start_image.as_mut() {
-            img.pos = self.pos;
-        }
-
-        // update middle tex
-        if let Some(img) = &mut self.middle_image {
-            img.pos = Vector2::new(self.pos.x, y);
-            let length = self.end_y - (y - note_size.y / 2.0);
-
-            img.scale.y = length / img.tex_size().y;
-        }
-
-        // update end tex
-        if let Some(img) = &mut self.end_image {
-            img.pos = Vector2::new(self.pos.x, self.end_y);
-            // img.scale = self.playfield.note_size() / img.tex_size();
-        }
-
     }
 
+    #[cfg(feature="graphics")] 
     fn draw(&mut self, _time: f32, list: &mut RenderableCollection) {
         // if self.playfield.upside_down {
         //     if self.end_y < 0.0 || self.pos.y > args.window_size[1] as f64 {return}
@@ -201,11 +187,14 @@ impl HitObject for ManiaHold {
 
 
     fn reset(&mut self) {
-        self.pos.y = 0.0;
         self.holding = false;
         self.hold_starts.clear();
         self.hold_ends.clear();
-        self.position_function_index = 0;
+        
+        #[cfg(feature="graphics")] {
+            self.pos.y = 0.0;
+            self.position_function_index = 0;
+        }
     }
 
     #[cfg(feature="graphics")]
@@ -262,13 +251,13 @@ impl ManiaHitObject for ManiaHold {
         self.holding = false;
     }
 
-    // //
-    // fn miss(&mut self, _time:f32) {}
 
+    #[cfg(feature="graphics")] 
     fn set_sv_mult(&mut self, sv: f32) {
         self.sv_mult = sv;
     }
 
+    #[cfg(feature="graphics")] 
     fn set_position_function(&mut self, p: Arc<Vec<PositionPoint>>) {
         self.position_function = p;
 
@@ -276,6 +265,7 @@ impl ManiaHitObject for ManiaHold {
         self.end_relative_pos = ManiaGame::pos_at(&self.position_function, self.end_time, &mut 0);
     }
     
+    #[cfg(feature="graphics")] 
     fn playfield_changed(&mut self, playfield: Arc<ManiaPlayfield>) {
         self.playfield = playfield;
         self.pos.x = self.playfield.col_pos(self.column);
@@ -290,11 +280,8 @@ impl ManiaHitObject for ManiaHold {
         }
     }
 
+    #[cfg(feature="gameplay")] 
     fn get_hitsound(&self) -> &Vec<Hitsound> {
         &self.hitsounds
     } 
-    
-    // fn set_skin_settings(&mut self, settings: Option<Arc<ManiaSkinSettings>>) {
-    //     self.mania_skin_settings = settings;
-    // }
 }
