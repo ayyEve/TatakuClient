@@ -1,6 +1,7 @@
 use crate::prelude::*;
 
-// TODO: add spacing between dropdown items
+// default spacing between dropdown items, should probably be kept 0
+const DEFAULT_ITEM_MARGIN: f32 = 0.0;
 
 #[derive(ChainableInitializer)]
 pub struct Dropdown {
@@ -44,7 +45,7 @@ impl Dropdown {
         }
     }
 
-    fn get_style(&self, text_style: &TextStyle, scale: Option<Vector2>) -> (CssUnit, CssUnit) {
+    fn min_size(&self, text_style: &TextStyle, scale: Option<Vector2>) -> (CssUnit, CssUnit) {
         let placeholder_size = text_style
             .measure_text(self.placeholder.get(), scale);
         
@@ -56,8 +57,8 @@ impl Dropdown {
                 |a, b| Vector2::new(a.x.max(b.x), a.y.max(b.y))
             );
         
-        let min_width = CssUnit::Pixels(half::f16::from_f32(largest_text.x));
-        let min_height = CssUnit::Pixels(half::f16::from_f32(largest_text.y));
+        let min_width = CssUnit::Pixels(f16::from_f32(largest_text.x));
+        let min_height = CssUnit::Pixels(f16::from_f32(largest_text.y));
         (min_width, min_height)
     }
 
@@ -131,7 +132,7 @@ impl Widget<TatakuAction> for Dropdown {
             .get_text_style(self.node_id)
             .unwrap();
 
-        let (w, h) = self.get_style(text_style, None);
+        let (w, h) = self.min_size(text_style, None);
         shell.tree.update_style(
             self.node_id, 
             |style| {
@@ -176,11 +177,23 @@ impl Widget<TatakuAction> for Dropdown {
                 self.hover = bounds.contains(pos);
 
                 if self.active {
+                    let item_margin = shell
+                        .tree
+                        .get_style(self.node_id)
+                        .unwrap()
+                        .item_margin
+                        .resolve_copied(shell.values)
+                        .unwrap_or(DEFAULT_ITEM_MARGIN)
+                        ;
+
+                    let len = (self.variants.len() + 1) as f32;
+                    let item_height = bounds.size.y + item_margin;
+
                     let bounds_with_dropdown = Bounds::new(
                         bounds.pos,
                         Vector2::new(
                             bounds.size.x,
-                            bounds.size.y * (self.variants.len() + 1) as f32,
+                            item_height * len - item_margin,
                         )
                     );
 
@@ -188,7 +201,16 @@ impl Widget<TatakuAction> for Dropdown {
 
                     // at this point we know something is hovered over, find out what
                     let rel_y = pos.y - bounds.pos.y;
-                    let mut index = (rel_y / bounds.size.y) as usize;
+                    
+                    {
+                        // if the mouse is over the space between items, dont set the active index
+                        if rel_y % item_height <= item_margin { 
+                            self.active_index = None;
+                            return;
+                        }
+                    }
+
+                    let mut index = (rel_y / item_height) as usize;
                     
                     if index == 0 { return } // 0 would be the dropdown itself, not an item in the list
                     index -= 1;
@@ -198,12 +220,24 @@ impl Widget<TatakuAction> for Dropdown {
             }
             InputType::MousePress(MouseButton::Left) if self.active => {
                 let pos = context.inverse_global_transform * event.mouse_pos;
+                let len = (self.variants.len() + 1) as f32;
+
+                let item_margin = shell
+                    .tree
+                    .get_style(self.node_id)
+                    .unwrap()
+                    .item_margin
+                    .resolve_copied(shell.values)
+                    .unwrap_or(DEFAULT_ITEM_MARGIN)
+                    ;
+
+                let item_height = bounds.size.y + item_margin;
 
                 let bounds_with_dropdown = Bounds::new(
                     bounds.pos,
                     Vector2::new(
                         bounds.size.x,
-                        bounds.size.y * (self.variants.len() + 1) as f32,
+                        item_height * len - item_margin,
                     )
                 );
 
@@ -280,6 +314,12 @@ impl Widget<TatakuAction> for Dropdown {
             .get_text_style(self.node_id)
             .unwrap();
 
+        let item_margin = shell.tree
+            .get_style(self.node_id).unwrap()
+            .item_margin
+            .resolve_copied(shell.values)
+            .unwrap_or(DEFAULT_ITEM_MARGIN);
+
         // draw all options
         // TODO: margin between items
         for (n, i) in self
@@ -291,7 +331,7 @@ impl Widget<TatakuAction> for Dropdown {
         {
             let offset = Vector2::new(
                 bounds.pos.x,
-                bounds.pos.y + bounds.size.y * (n + 1) as f32,
+                bounds.pos.y + (bounds.size.y + item_margin) * (n + 1) as f32,
             );
 
             // bounding box
@@ -327,7 +367,7 @@ impl Widget<TatakuAction> for Dropdown {
                 .get_text_style(self.node_id)
                 .unwrap();
 
-            let (w, h) = self.get_style(text_style, None);
+            let (w, h) = self.min_size(text_style, None);
             shell.tree.update_style(
                 self.node_id, 
                 |style| {

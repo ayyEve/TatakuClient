@@ -86,6 +86,10 @@ pub struct CssStyle {
     pub aspect_ratio: CssValue<f32>,
 
     // Spacing Properties
+
+    /// How much space (in pixels) should be between items? (currently only used for dropdowns).
+    pub item_margin: CssValue<f32>,
+
     /// How large should the margin be on each side?
     #[css(shorthand = "QuadShorthand")] _margin: (),
     pub margin_top: CssValue<CssUnit>,
