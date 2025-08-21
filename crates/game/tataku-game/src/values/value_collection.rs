@@ -97,7 +97,4 @@ impl Reflect for ValueCollection {
     }
     fn duplicate(&self) -> Option<Box<dyn Reflect>> { None }
 
-    fn from_string(_: &str) -> ReflectResult<'_, Box<dyn Reflect>> where Self:Sized {
-        Err(ReflectError::NoFromString)
-    }
 }

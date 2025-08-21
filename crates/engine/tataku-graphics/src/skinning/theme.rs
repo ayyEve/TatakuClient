@@ -35,8 +35,7 @@ impl Default for Theme {
 }
 
 #[allow(unused)]
-#[derive(Reflect)]
-#[reflect(from_string = "auto")]
+#[derive(Reflect, FromStr)]
 #[derive(Serialize, Deserialize)]
 #[derive(Debug, Hash, Eq, PartialEq, Copy, Clone)]
 pub enum ThemeColor {
@@ -75,8 +74,7 @@ impl ToString for ThemeColor {
 }
 
 #[allow(unused)]
-#[derive(Reflect)]
-#[reflect(from_string = "auto")]
+#[derive(Reflect, FromStr)]
 #[derive(Serialize, Deserialize)]
 #[derive(Debug, Hash, Eq, PartialEq, Copy, Clone)]
 pub enum ThemePosition {
@@ -96,8 +94,7 @@ impl ToString for ThemePosition {
 }
 
 #[allow(unused)]
-#[derive(Reflect)]
-#[reflect(from_string = "auto")]
+#[derive(Reflect, FromStr)]
 #[derive(Serialize, Deserialize)]
 #[derive(Debug, Hash, Eq, PartialEq, Copy, Clone)]
 pub enum ThemeScale {

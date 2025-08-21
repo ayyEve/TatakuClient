@@ -16,40 +16,28 @@ pub enum BuildableValue {
 
     /// Literal value (number, string, bool)
     Value {
-        #[serde(rename = "$value", default)] 
-        value: Option<TatakuValue>,
-        #[serde(rename = "@val", default)] 
-        value_attribute: Option<TatakuValue>,
+        #[serde(rename = "$value", default)] value: Option<TatakuValue>,
+        #[serde(rename = "@val", default)] value_attribute: Option<TatakuValue>,
     },
 
     /// Get from a variable
     Variable {
-        #[serde(rename="@var", alias="$value")] 
-        var: VariablePathResolver,
-    },
-
-    /// Defer the value to provided value.
-    /// Basically, this is a path that points to another path
-    Reference {
-        #[serde(rename="$value", default)] 
-        reference: Option<BuildableText>,
-        #[serde(rename="@ref", default)] 
-        reference_attribute: Option<String>,
+        #[serde(rename="@var", alias="$value")] var: VariablePathResolver,
     },
 
     /// Calculate the value from some calc string
     Calc {
-        #[serde(rename="@calc", default)] calc: Option<String>,
+        #[serde(rename="@calc", default)] calc: Option<ArcStr>,
         #[serde(rename="@var", default)] var: Option<VariablePathResolver>,
     },
 
     #[serde(skip)]
     CalcParsed {
         calc: BuildableCalc, 
-        calc_str: String,
+        calc_str: ArcStr,
     },
 
-    /// Get value from a passed in value
+    /// The value is passed in from the widget, ie a slider's value when changed
     PassedIn,
 }
 impl BuildableValue {
@@ -98,7 +86,7 @@ impl BuildableValue {
                     };
 
                     let Ok(calc_str) = values
-                        .reflect_get::<String>(&*path)
+                        .reflect_display(&*path, None)
                         .inspect_err(|e| 
                             error!("error with calc var {path}: {e:?}")
                         )
@@ -106,12 +94,11 @@ impl BuildableValue {
                         *self = Self::None;
                         return
                     };
-                    let calc_str = &*calc_str;
+                    let calc_str = ArcStr::from(calc_str);
 
-
-                    match BuildableCalc::parse(calc_str) {
+                    match BuildableCalc::parse(&calc_str) {
                         Ok(calc) => {
-                            *self = Self::CalcParsed { calc, calc_str: calc_str.clone() }
+                            *self = Self::CalcParsed { calc, calc_str }
                         }
                         Err(e) => {
                             error!("Error with calc '{calc_str}': {e:?}");
@@ -123,7 +110,7 @@ impl BuildableValue {
                         Ok(calc) => {
                             *self = Self::CalcParsed { 
                                 calc, 
-                                calc_str: calc_str.clone() 
+                                calc_str: calc_str.clone()
                             }
                         }
                         Err(e) => {
@@ -137,24 +124,6 @@ impl BuildableValue {
                 }
             }
 
-            Self::Reference {
-                reference,
-                reference_attribute
-            } => {
-                match (reference, reference_attribute) {
-                    (Some(r), _) => {
-                        if let Err(e) = r.compute() {
-                            error!("error with reference '{r:?}': {e:?}");
-                            *self = Self::None;
-                        }
-                    },
-                    (_, Some(_)) => {},
-                    (None, None) => {
-                        error!("Reference does not have a ref path!");
-                        *self = Self::None;
-                    }
-                }
-            }
             _ => {}
         }
 
@@ -180,35 +149,6 @@ impl BuildableValue {
                     )
                     .ok()
             }
-
-            Self::Reference {
-                reference,
-                reference_attribute,
-            } => {
-                let var = reference
-                    .as_ref()
-                    .map(|r| r.to_string(values))
-                    .or(reference_attribute.clone())
-                    ?;
-
-                
-                let Ok(val) = values.impl_get(ReflectPath::new(&var)) 
-                else {
-                    error!("BuildableValue is none! {var}");
-                    return None;
-                };
-
-                let value = match TatakuValue::from_reflection(val) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        error!("BuildableValue error: {var}, {e:?}");
-                        return None
-                    }
-                };
-
-                Some(Cow::Owned(value))
-            }
-
 
             Self::Variable { var } => {
                 let path = var.resolve_path(values).ok()?;

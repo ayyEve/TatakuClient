@@ -1,9 +1,9 @@
 use crate::prelude::*;
 
-#[derive(Reflect)]
+#[derive(Reflect, FromStr)]
+#[reflect(display = "display")]
 #[derive(Serialize, Deserialize)]
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
-#[reflect(display = "display", from_string = "auto")]
 pub enum ScoreRetreivalMethod {
     #[default]
     Local,

@@ -134,9 +134,6 @@ impl Reflect for ArcStr {
         Ok(self.to_string())
     }
 
-    fn from_string(str: &str) -> ReflectResult<'_, Box<dyn Reflect>> where Self:Sized {
-        Ok(Box::new(Self::from(str)))
-    }
 }
 impl Stringable for ArcStr {
     type Err = ();

@@ -10,7 +10,6 @@ pub struct Dropdown {
     variants: DropdownVariants,
 
     on_change: DropdownOnChange,
-    // pub theme: DropdownTheme,
 
     /// is dropdown visible?
     active: bool,
@@ -45,7 +44,11 @@ impl Dropdown {
         }
     }
 
-    fn min_size(&self, text_style: &TextStyle, scale: Option<Vector2>) -> (CssUnit, CssUnit) {
+    fn min_size(
+        &self, 
+        text_style: &TextStyle, 
+        scale: Option<Vector2>
+    ) -> (CssUnit, CssUnit) {
         let placeholder_size = text_style
             .measure_text(self.placeholder.get(), scale);
         
@@ -116,7 +119,10 @@ impl Widget<TatakuAction> for Dropdown {
     fn name(&self) -> CowStr { "dropdown_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn layout(&mut self, shell: &mut LayoutShell<TatakuAction>) -> taffy::TaffyResult<NodeId> {
+    fn layout(
+        &mut self, 
+        shell: &mut LayoutShell<TatakuAction>
+    ) -> taffy::TaffyResult<NodeId> {
         self.node_id = shell.tree.new_leaf()?;
 
         shell.with_context(self.node_id, |ctx| {
@@ -381,7 +387,6 @@ impl Widget<TatakuAction> for Dropdown {
             var, 
             index
         ) = &mut self.value {
-
             let path = match var.resolve_path(shell.values) {
                 Ok(p) => p,
                 Err(e) => {
@@ -390,13 +395,12 @@ impl Widget<TatakuAction> for Dropdown {
                 }
             };
 
-
             let selected = match shell
                 .values
                 .impl_get(ReflectPath::new(&path))
             {
                 Ok(s) => match TatakuValue::from_reflection(s)
-                    .map(|s| s.as_string()) 
+                    .map(|s| s.as_string().to_lowercase()) 
                 {
                     Ok(s) => Some(s),
                     Err(ReflectError::OptionIsNone) => None,
@@ -421,10 +425,9 @@ impl Widget<TatakuAction> for Dropdown {
             if let Some(selected) = selected {
                 if index.is_none() {
                     if let DropdownVariants::Static(list) = &self.variants {
-                        if let Some((n, _)) = list
+                        if let Some(n) = list
                             .iter()
-                            .enumerate()
-                            .find(|(_, a)| *a == &selected) 
+                            .position(|a| a == &selected)
                         {
                             *index = Some(n);
                         }
@@ -437,11 +440,11 @@ impl Widget<TatakuAction> for Dropdown {
                     .. 
                 } = &self.variants else { return };
 
-                for (n, i) in items.iter().enumerate() {
-                    if i.id == selected {
-                        *index = Some(n);
-                        return;
-                    }
+                if let Some(n) = items.iter()
+                    .position(|i| i.id == selected) 
+                {
+                    *index = Some(n);
+                    return;
                 }
             }
 
@@ -476,7 +479,10 @@ impl From<OnChange> for DropdownOnChange {
 }
 impl From<BuildableAction> for DropdownOnChange {
     fn from(mut value: BuildableAction) -> Self {
-        if let BuildableAction::Conditional { cond, .. } = &mut value {
+        if let BuildableAction::Conditional { 
+            cond, 
+            .. 
+        } = &mut value {
             cond.build();
         }
 
@@ -505,10 +511,14 @@ impl DropdownVariants {
 
         let iter = values.reflect_iter(&*var)?;
         let items = iter.filter_map(|value| {
-            let id = TatakuValue::from_reflection(value.item).ok()?.as_string();
+            let id = TatakuValue::from_reflection(value.item)
+                .ok()?
+                .as_string()
+                .to_lowercase();
+
             Some(DropdownWrapper {
                 display: value
-                    .impl_display(ReflectPath::new(""), None)
+                    .impl_display(ReflectPath::EMPTY, None)
                     .unwrap_or_else(|_| id.clone()), 
                 id,
                 value: value
@@ -565,6 +575,7 @@ impl From<String> for DropdownVariants {
     }
 }
 
+#[derive(Debug)]
 pub struct DropdownWrapper {
     id: String,
     value: Box<dyn Reflect>,

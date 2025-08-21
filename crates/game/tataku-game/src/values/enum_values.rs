@@ -81,8 +81,6 @@ impl Reflect for PlaymodeReflect {
         }
     }
     
-
-
     fn impl_display<'v>(
         &self, 
         _path: ReflectPath<'v>, 
@@ -101,9 +99,5 @@ impl Reflect for PlaymodeReflect {
         _value: Box<dyn Reflect>
     ) -> ReflectResult<'v, ()> {
         Err(ReflectError::ImmutableContainer)
-    }
-    
-    fn from_string(_str: &str) -> ReflectResult<'_, Box<dyn Reflect>> where Self:Sized {
-        Err(ReflectError::NoFromString)
     }
 }

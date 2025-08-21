@@ -231,7 +231,7 @@ impl Widget<TatakuAction> for WidgetContainer {
         for (style, img) in ctx
             .element_data.styles.all_mut()
         {
-            if let Some(image) = style.background_image
+            if let Some(image) = style.image
                 .resolve(shell.values)
             {
                 let source = style.image_source

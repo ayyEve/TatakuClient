@@ -13,22 +13,17 @@ crate::impl_tag!(BuildableTextTag, BuildableText, value);
 pub enum BuildableText {
     #[default]
     Text {
-        #[serde(rename = "@text")]
-        text: ArcStr
+        #[serde(rename = "@text")] text: ArcStr
     },
 
     Locale(ArcStr),
     Variable {
-        #[serde(rename = "@var")] 
-        variable: VariablePathResolver
+        #[serde(rename = "@var")] variable: VariablePathResolver
     },
     
     Display {
-        #[serde(rename = "@var")] 
-        variable: VariablePathResolver,
-
-        #[serde(rename = "@precision", default)] 
-        precision: Option<usize>,
+        #[serde(rename = "@var")] variable: VariablePathResolver,
+        #[serde(rename = "@precision", default)] precision: Option<usize>,
     },
 
     Calc {
@@ -48,11 +43,8 @@ pub enum BuildableText {
     },
 
     List {
-        #[serde(rename="$value")]
-        list: Vec<Self>,
-        
-        #[serde(rename="@join", default)]
-        join: ArcStr
+        #[serde(rename="$value")] list: Vec<Self>,
+        #[serde(rename="@join", default)] join: ArcStr,
     }
 }
 impl BuildableText {
@@ -89,7 +81,9 @@ impl BuildableText {
 
                 values
                     .reflect_display(&variable, None)
-                    .unwrap_or_else(|e| format!("Invalid property: '{variable}' ({e:?})"))
+                    .unwrap_or_else(|e| 
+                        format!("Invalid property: '{variable}' ({e:?})")
+                    )
             },
             
             Self::Text { text: t } | Self::Locale(t) => t.to_string(),
@@ -101,15 +95,20 @@ impl BuildableText {
                 };
                 
                 if let Ok(number) = values.reflect_as_number(&variable) {
+                    let precis = precision.unwrap_or(2);
                     match number {
-                        ReflectNumber::F32(n) => format_float(n, precision.unwrap_or(2)),
-                        ReflectNumber::F64(n) => format_float(n, precision.unwrap_or(2)),
+                        ReflectNumber::F16(n) => format_float(n, precis),
+                        ReflectNumber::F32(n) => format_float(n, precis),
+                        ReflectNumber::F64(n) => format_float(n, precis),
+                        ReflectNumber::BF16(n) => format_float(n, precis),
                         other => format_number(i128::from(other)),
                     }
                 } else {
                     values
                         .reflect_display(&variable, *precision)
-                        .unwrap_or_else(|e| format!("Invalid property: '{variable}' ({e:?})"))
+                        .unwrap_or_else(|e| 
+                            format!("Invalid property: '{variable}' ({e:?})")
+                        )
                 }
             },
 
@@ -146,16 +145,9 @@ impl BuildableText {
                                     .inspect_err(|e| 
                                         error!("error with text iter prop: {e:?}")
                                     ) 
-                                    else { return String::new() };
-                                
-                                let str = match v {
-                                    MaybeOwnedReflect::Borrowed(reflect) 
-                                        => try_get_string(reflect),
-                                    MaybeOwnedReflect::Owned(reflect) 
-                                        => try_get_string(&*reflect),
-                                };
-                                
-                                if let Some(s) = str {
+                                else { return String::new() };
+
+                                if let Some(s) = try_get_string(v.as_ref()) {
                                     list.push(s);
                                 }
                             } else if let Some(s) = try_get_string(i.item) {
@@ -204,7 +196,7 @@ impl BuildableText {
 
             Self::Calc { calc: None, var: None } => "No calc provided!".to_owned(),
             Self::Calc { calc: Some(calc), .. } 
-                => unreachable!("Calcs should be built. unbuilt: {calc}"),
+                => panic!("Calcs should be built. unbuilt: {calc}"),
         }
     }
 }

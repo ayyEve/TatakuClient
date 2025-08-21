@@ -351,7 +351,6 @@
       </row>
 
       <!-- the next row has the score list, gameplay preview, and beatmap list -->
-      <!-- FIXME: Something here is growing too big, pushing the bottom bar off-screen (and hiding the last item in the list) -->
       <row id="middle">
         <!-- score list -->
         <column id="score-list">

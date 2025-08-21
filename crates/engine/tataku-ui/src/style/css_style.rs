@@ -189,7 +189,7 @@ pub struct CssStyle {
     // image properties
 
     /// What image should be used
-    pub background_image: CssValue<String>,
+    pub image: CssValue<String>,
 
     /// How should the image be aligned
     pub image_alignment: CssValue<Alignment>,

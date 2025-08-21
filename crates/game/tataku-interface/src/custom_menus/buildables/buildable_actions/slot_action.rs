@@ -19,39 +19,6 @@ impl BuildableSlot {
             }
             BuildableValue::Calc { .. } => unreachable!("Calc should be built"),
 
-            BuildableValue::Reference {
-                reference,
-                reference_attribute,
-            } => {
-                let path = reference
-                    .as_ref()
-                    .map(|r| r.to_string(values))
-                    .or(reference_attribute.clone())
-                    ?;
-                
-
-                let var = values.reflect_as_number(&path).ok()?;
-                let var = match var {
-                    ReflectNumber::F32(n) => TatakuValue::F32(n),
-                    ReflectNumber::F64(n) => TatakuValue::F32(n as f32),
-                    ReflectNumber::U8(n) => TatakuValue::U32(n as u32),
-                    ReflectNumber::I8(n) => TatakuValue::U32(n as u32),
-                    ReflectNumber::U16(n) => TatakuValue::U32(n as u32),
-                    ReflectNumber::I16(n) => TatakuValue::U32(n as u32),
-                    ReflectNumber::U32(n) => TatakuValue::U32(n),
-                    ReflectNumber::I32(n) => TatakuValue::U32(n as u32),
-                    ReflectNumber::U64(n) => TatakuValue::U64(n),
-                    ReflectNumber::I64(n) => TatakuValue::U64(n as u64),
-                    ReflectNumber::U128(n) => TatakuValue::U64(n as u64),
-                    ReflectNumber::I128(n) => TatakuValue::U64(n as u64),
-                    ReflectNumber::Usize(n) => TatakuValue::U64(n as u64),
-                    ReflectNumber::Isize(n) => TatakuValue::U64(n as u64),
-                    ReflectNumber::F16(n) => TatakuValue::F32(n.to_f32()),
-                    ReflectNumber::BF16(n) => TatakuValue::F32(n.to_f32()),
-                };
-                Cow::Owned(var)
-            }
-
             BuildableValue::CalcParsed { 
                 calc, 
                 calc_str 
@@ -67,6 +34,7 @@ impl BuildableSlot {
                 value, 
                 value_attribute
             } => Cow::Borrowed(value.as_ref().or(value_attribute.as_ref())?),
+            
             BuildableValue::Variable { var } => {
                 let path = var.resolve_path(values).ok()?;
 

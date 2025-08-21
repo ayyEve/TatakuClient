@@ -99,7 +99,7 @@ impl TatakuValue {
 
             Self::Reflect(r) => if let Some(a) = r.downcast_ref::<bool>() {
                 *a
-            } else if let Ok(num) = r.reflect_as_number("") {
+            } else if let Ok(num) = r.reflect_as_number(ReflectPath::EMPTY) {
                 let num:u64 = num.into();
                 num != 0
             } else {
@@ -113,12 +113,16 @@ impl TatakuValue {
             Self::U32(i) => Some(*i as f32),
             Self::U64(i) => Some(*i as f32),
             Self::F32(f) => Some(*f),
-            Self::Bool(b) => Some(if *b { 1.0 } else { 0.0 }),
+            Self::Bool(b) => Some(*b as u8 as f32),
 
             Self::None => None,
             Self::String(s) => s.parse().ok(),
             
-            Self::Reflect(r) => Some(r.reflect_as_number("").ok()?.into()),
+            Self::Reflect(r) => Some(
+                r.reflect_as_number(ReflectPath::EMPTY)
+                    .ok()?
+                    .into()
+            ),
         }
     }
 
@@ -126,7 +130,11 @@ impl TatakuValue {
         match self {
             Self::U32(n) => Some(*n),
             Self::U64(n) => Some(*n as u32),
-            Self::Reflect(r) => Some(r.reflect_as_number("").ok()?.into()),
+            Self::Reflect(r) => Some(
+                r.reflect_as_number(ReflectPath::EMPTY)
+                    .ok()?
+                    .into()
+            ),
             Self::String(s) => s.parse().ok(),
 
             Self::None => None,
@@ -135,12 +143,16 @@ impl TatakuValue {
     }
     pub fn as_u64(&self) -> Option<u64> {
         match self {
+            Self::None => None,
             Self::U32(n) => Some(*n as u64),
             Self::U64(n) => Some(*n),
-            Self::Reflect(r) => Some(r.reflect_as_number(".").ok()?.into()),
+            Self::Reflect(r) => Some(
+                r.reflect_as_number(ReflectPath::EMPTY)
+                    .ok()?
+                    .into()
+            ),
             Self::String(s) => s.parse().ok(),
 
-            Self::None => None,
             _ => None
         }
     }
@@ -148,12 +160,15 @@ impl TatakuValue {
     pub fn as_string(&self) -> String {
         match self {
             Self::None => "None".to_owned(),
-            Self::U32(i) => format!("{i}"),
-            Self::U64(i) => format!("{i}"),
+            Self::U32(i) => i.to_string(),
+            Self::U64(i) => i.to_string(),
             Self::F32(f) => format!("{f:.2}"),
-            Self::Bool(b) => format!("{b}"),
+            Self::Bool(b) => b.to_string(),
             Self::String(s) => s.clone(),
-            Self::Reflect(s) => s.reflect_display("", None).unwrap_or_else(|_| "Reflection!".to_owned()),
+            Self::Reflect(s) => s.reflect_display(
+                ReflectPath::EMPTY, 
+                None
+            ).unwrap_or_else(|_| format!("No as_string! {}", s.type_name())),
         }
     }
     pub fn as_number(&self) -> Option<TatakuNumber> {
@@ -169,10 +184,10 @@ impl TatakuValue {
     }
 
     pub fn from_reflection<'a>(value: impl Into<MaybeOwnedReflect<'a>>) -> Result<Self, ReflectError<'a>> {
-        let value2:MaybeOwnedReflect<'a> = value.into();
+        let value2: MaybeOwnedReflect<'a> = value.into();
         let value = value2.as_ref();
 
-        if let Ok(n) = value.reflect_as_number(".") {
+        if let Ok(n) = value.reflect_as_number(ReflectPath::EMPTY) {
             Ok(TatakuNumber::from(n).into())
         }
         else if let Some(b) = value.downcast_ref() {

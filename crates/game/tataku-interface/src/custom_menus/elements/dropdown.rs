@@ -8,7 +8,7 @@ pub struct DropdownElement {
     #[serde(rename = "@style", default)] style: ArcStr,
 
     #[serde(rename = "@options_path")] options_path: ArcStr,
-    #[serde(rename = "@options_display_path", default)] options_display_path: Option<ArcStr>,
+    // #[serde(rename = "@options_display_path", default)] options_display_path: Option<ArcStr>,
     #[serde(rename = "@selected_path")] selected_path: ArcStr,
 
     #[serde(rename = "@placeholder", default)] placeholder_attribute: Option<ArcStr>,

@@ -4,7 +4,6 @@ use crate::prelude::*;
 #[derive(Reflect)]
 #[derive(Clone, Debug)]
 #[derive(Serialize, Deserialize)]
-#[reflect(from_string = "from_str")]
 #[serde(from="Color", into="Color")]
 pub struct SettingsColor {
     pub string: String,

@@ -125,10 +125,6 @@ impl Reflect for GamemodeSettingsCollection {
     fn duplicate(&self) -> Option<Box<dyn Reflect>> {
         Some(Box::new(self.clone()))
     }
-    
-    fn from_string(_: &str) -> ReflectResult<'_, Box<dyn Reflect>> where Self:Sized {
-        Err(ReflectError::NoFromString)
-    }
 }
 
 impl Deref for GamemodeSettingsCollection {

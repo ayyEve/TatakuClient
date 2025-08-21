@@ -269,10 +269,6 @@ impl Reflect for Vector2 {
             other => Err(ReflectError::entry_not_exist(other))
         }
     }
-
-    fn from_string(_str: &str) -> ReflectResult<'_, Box<dyn Reflect>> where Self:Sized {
-        Err(ReflectError::NoFromString)
-    }
 }
 
 
