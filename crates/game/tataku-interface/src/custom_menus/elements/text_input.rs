@@ -23,7 +23,7 @@ impl CustomElement for TextInputElement {
             self.id.clone(),
             self.class_list.clone(),
             TextInput::new(
-                self.placeholder.value.clone(),
+                self.placeholder.inner.clone(),
                 BuildableText::Variable { 
                     variable: VariablePathResolver::new(self.variable.clone())
                 }

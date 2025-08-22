@@ -4770,7 +4770,6 @@ dependencies = [
  "tataku-client-common",
  "tataku-engine",
  "tataku-graphics",
- "tataku-resources",
  "tataku-ui",
 ]
 

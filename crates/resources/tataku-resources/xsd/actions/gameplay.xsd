@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+
+<xs:schema 
+  targetNamespace="tataku/actions/gameplay"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+>
+
+<xs:group name="gameplay-action">
+  <xs:choice>
+    <xs:element name="resume"/>
+    <xs:element name="pause"/>
+    <xs:element name="quit"/>
+    <xs:element name="retry"/>
+  </xs:choice>
+</xs:group>
+
+</xs:schema>

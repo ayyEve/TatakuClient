@@ -18,8 +18,7 @@ pub struct ConditionalElement {
 impl ConditionalElement {
     fn if_true(&self) -> Option<&Element> {
         self.if_true_tag
-            .as_ref()
-            .map(|i| &i.element)
+            .as_deref()
             .or(self.if_true.as_ref())
     }
 }

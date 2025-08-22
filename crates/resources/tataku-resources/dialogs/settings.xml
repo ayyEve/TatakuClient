@@ -140,7 +140,7 @@
                 list = "settings.buildable.categories::(var.settings.selected_category).settings"
                 variable = "_setting"
                 style = "width: fill; flex-direction: column; justify-content: space-between; "
-                scroll = "true"
+                scrollable = "true"
               > 
                 <!-- <conditional cond="check_filter(var.settings.filter, _setting.name)"> -->
                   <switch style="width: fill; height: 1em;">

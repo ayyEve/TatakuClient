@@ -1,0 +1,55 @@
+<?xml version="1.0"?>
+
+<xs:schema 
+  targetNamespace="tataku/actions/multiplayer"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:slot-actions="tataku/actions/slot"
+  xmlns:buildable-value="tataku/buildable-value"
+>
+
+<xs:import namespace="tataku/buildable-value" schemaLocation="../buildable_value.xsd"/>
+<xs:import namespace="tataku/actions/slot" schemaLocation="./slot.xsd"/>
+
+
+<xs:group name="multiplayer-action">
+  <xs:choice>
+    <xs:element name="createLobby">
+      <xs:complexType>
+        <xs:all>
+          <xs:element name="name" type="buildable-value:buildableValueElement" minOccurs="1" maxOccurs="1"/>
+          <xs:element name="password" type="buildable-value:buildableValueElement" minOccurs="0" maxOccurs="1"/>
+          <xs:element name="private" type="buildable-value:buildableValueElement" minOccurs="0" maxOccurs="1"/>
+        </xs:all>
+      </xs:complexType>
+    </xs:element>
+
+    <xs:element name="joinLobby">
+      <xs:complexType>
+        <xs:choice>
+          <xs:group ref="buildable-value:buildableValue"/>
+          <xs:sequence>
+            <xs:element name="lobby_id" type="buildable-value:buildableValueElement" minOccurs="1" maxOccurs="1"/>
+            <xs:element name="password" type="buildable-value:buildableValueElement" minOccurs="0" maxOccurs="1"/>
+          </xs:sequence>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+
+    <xs:element name="openMapLink"/>
+    <xs:element name="startMatch"/>
+    <xs:element name="ready"/>
+    <xs:element name="unready"/>
+    <xs:element name="leave"/>
+    <xs:element name="quit"/>
+    <xs:element name="start"/>
+    
+    <xs:element name="slot">
+      <xs:complexType>
+        <xs:group ref="slot-actions:slot-action" minOccurs="1" maxOccurs="1"/>
+      </xs:complexType>
+    </xs:element>
+    
+  </xs:choice>
+</xs:group>
+
+</xs:schema>

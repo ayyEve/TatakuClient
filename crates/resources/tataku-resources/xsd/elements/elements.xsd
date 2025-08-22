@@ -1,0 +1,66 @@
+<?xml version="1.0"?>
+
+<xs:schema 
+  targetNamespace="tataku/elements"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+
+  xmlns:gameplay-preview-element="tataku/elements/gameplay-preview"
+  xmlns:conditional-element="tataku/elements/conditional"
+  xmlns:animatable-element="tataku/elements/animatable"
+  xmlns:text-input-element="tataku/elements/text-input"
+  xmlns:keybutton-element="tataku/elements/keybutton"
+  xmlns:checkbox-element="tataku/elements/checkbox"
+  xmlns:dropdown-element="tataku/elements/dropdown"
+  xmlns:column-element="tataku/elements/column"
+  xmlns:button-element="tataku/elements/button"
+  xmlns:slider-element="tataku/elements/slider"
+  xmlns:switch-element="tataku/elements/switch"
+  xmlns:text-element="tataku/elements/text"
+  xmlns:list-element="tataku/elements/list"
+  xmlns:row-element="tataku/elements/row"
+>
+
+
+<!-- element imports -->
+<xs:import namespace="tataku/elements/row" schemaLocation="./row.xsd"/>
+<xs:import namespace="tataku/elements/list" schemaLocation="./list.xsd"/>
+<xs:import namespace="tataku/elements/text" schemaLocation="./text.xsd"/>
+<xs:import namespace="tataku/elements/button" schemaLocation="./button.xsd"/>
+<xs:import namespace="tataku/elements/column" schemaLocation="./column.xsd"/>
+<xs:import namespace="tataku/elements/slider" schemaLocation="./slider.xsd"/>
+<xs:import namespace="tataku/elements/switch" schemaLocation="./switch.xsd"/>
+<xs:import namespace="tataku/elements/dropdown" schemaLocation="./dropdown.xsd"/>
+<xs:import namespace="tataku/elements/checkbox" schemaLocation="./checkbox.xsd"/>
+<xs:import namespace="tataku/elements/keybutton" schemaLocation="./key_button.xsd"/>
+<xs:import namespace="tataku/elements/animatable" schemaLocation="./animatable.xsd"/>
+<xs:import namespace="tataku/elements/text-input" schemaLocation="./text_input.xsd"/>
+<xs:import namespace="tataku/elements/conditional" schemaLocation="./conditional.xsd"/>
+<xs:import namespace="tataku/elements/gameplay-preview" schemaLocation="./gameplay_preview.xsd"/>
+
+<xs:complexType name="generic">
+  <xs:attribute name="id" type="xs:string"/>
+  <xs:attribute name="class" type="xs:string"/>
+  <xs:attribute name="style" type="xs:string"/>
+</xs:complexType>
+
+<xs:group name="element">
+  <xs:choice>
+    <xs:element name="column" type="column-element:column-element"/>
+    <xs:element name="row" type="row-element:row-element"/>
+    <xs:element name="button" type="button-element:button-element"/>
+    <xs:element name="checkbox" type="checkbox-element:checkbox-element"/>
+    <xs:element name="gameplayPreview" type="gameplay-preview-element:gameplay-preview-element"/>
+    <xs:element name="text" type="text-element:text-element"/>
+    <xs:element name="textInput" type="text-input-element:text-input-element"/>
+    <xs:element name="animatable" type="animatable-element:animatable-element"/>
+    <xs:element name="dropdown" type="dropdown-element:dropdown-element"/>
+    <xs:element name="list" type="list-element:list-element"/>
+    <xs:element name="conditional" type="conditional-element:conditional-element"/>
+    <xs:element name="switch" type="switch-element:switch-element"/>
+    <xs:element name="slider" type="slider-element:slider-element"/>
+    <xs:element name="keyButton" type="keybutton-element:keybutton-element"/>
+  </xs:choice>
+</xs:group>
+
+
+</xs:schema>

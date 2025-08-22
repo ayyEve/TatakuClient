@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+
+<xs:schema 
+  targetNamespace="tataku/actions/chat"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:actions="tataku/actions"
+  xmlns:text="tataku/text"
+>
+
+<xs:import namespace="tataku/text" schemaLocation="../text.xsd"/>
+<xs:import namespace="tataku/actions" schemaLocation="./actions.xsd"/>
+
+
+<xs:group name="chat-action">
+  <xs:choice>
+    <!-- send message -->
+    <xs:element name="sendMessage">
+      <xs:complexType>
+        <xs:all>
+          <xs:element name="channel" type="text:textElement"/>
+          <xs:element name="message" type="text:textElement"/>
+        </xs:all>
+      </xs:complexType>
+    </xs:element>
+    
+    <!-- open channel -->
+    <xs:element name="openChannel">
+      <xs:complexType>
+        <xs:choice>
+          <xs:group ref="text:text"/>
+          <xs:element name="channel" type="text:textElement"/>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+
+    <!-- close channel -->
+    <xs:element name="closeChannel">
+      <xs:complexType>
+        <xs:choice>
+          <xs:group ref="text:text"/>
+          <xs:element name="channel" type="text:textElement"/>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+
+  </xs:choice>
+</xs:group>
+
+</xs:schema>

@@ -1,0 +1,57 @@
+<?xml version="1.0"?>
+
+<xs:schema 
+  targetNamespace="tataku/actions/map"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:map-actions="tataku/actions/map"
+  xmlns:buildable-value="tataku/buildable-value"
+>
+
+<xs:import namespace="tataku/buildable-value" schemaLocation="../buildable_value.xsd"/>
+
+
+<xs:group name="map-action">
+  <xs:choice>
+      <xs:element name="play"/>
+      <xs:element name="confirm"/>
+      <xs:element name="next"/>
+      <xs:element name="previous">
+        <xs:complexType>
+          <xs:group ref="map-actions:map-action-if-none" minOccurs="0" maxOccurs="1"/>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="random">  
+        <xs:complexType>
+          <xs:attribute name="use_preview" type="xs:boolean"/>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="selectGroup" type="buildable-value:buildableValueElement"/>
+      <xs:element name="selectMap" type="buildable-value:buildableValueElement"/>
+      <xs:element name="setPlaymode" type="buildable-value:buildableValueElement"/>
+
+      <xs:element name="refreshMaps"/>
+      <xs:element name="delete" type="buildable-value:buildableValueElement"/>
+      <xs:element name="deleteCurrent"/>
+      
+      <xs:element name="nextMap"/>
+      <xs:element name="nextSet"/>
+      <xs:element name="previousMap"/>
+      <xs:element name="previousSet"/>
+
+  </xs:choice>
+</xs:group>
+
+<xs:group name="map-action-if-none">
+  <xs:choice>
+    <xs:element name="continueCurrent"/>
+    <xs:element name="setNone"/>
+    <xs:element name="random"> 
+      <xs:complexType>
+        <xs:attribute name="use_preview" type="xs:boolean"/>
+      </xs:complexType>
+    </xs:element>
+  </xs:choice>
+</xs:group>
+
+</xs:schema>

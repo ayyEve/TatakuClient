@@ -1,0 +1,135 @@
+<?xml version="1.0"?>
+
+<xs:schema 
+  targetNamespace="tataku/elements/animatable"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:elements="tataku/elements"
+  xmlns:events="tataku/events"
+  xmlns:text="tataku/text"
+
+  xmlns:animatable-element="tataku/elements/animatable"
+>
+
+<xs:import namespace="tataku/events" schemaLocation="../events.xsd"/>
+<xs:import namespace="tataku/text" schemaLocation="../text.xsd"/>
+<xs:import namespace="tataku/elements" schemaLocation="./elements.xsd"/>
+
+
+<xs:complexType name="animatable-element">
+  <xs:complexContent>
+    <xs:extension base="elements:generic">
+      <xs:sequence>
+
+        <xs:element name="triggers" minOccurs="0" maxOccurs="1">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element 
+                name = "trigger" 
+                type = "animatable-element:animatable-trigger" 
+                maxOccurs = "unbounded"
+              />
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="actions" minOccurs="0" maxOccurs="1">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:group ref="animatable-element:animatable-action" maxOccurs="unbounded"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="element">
+          <xs:complexType>
+            <xs:group ref="elements:element"/>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+
+
+<xs:group name="animatable-action">
+  <xs:sequence>
+    <xs:element name="action">
+        <xs:complexType>
+          <xs:group ref="animatable-element:transform-type" minOccurs="1" maxOccurs="1"/>
+          <xs:attribute name="id" type="text:string" use="required"/>
+        </xs:complexType>
+    </xs:element>
+  </xs:sequence>
+</xs:group>
+
+
+
+<xs:group name="transform-type">
+  <xs:choice>
+    <xs:element name="position" type="animatable-element:transform-vector2"/>
+    <xs:element name="positionX" type="animatable-element:transform-float"/>
+    <xs:element name="positionY" type="animatable-element:transform-float"/>
+
+    <xs:element name="vectorScale" type="animatable-element:transform-vector2"/>
+    <xs:element name="scale" type="animatable-element:transform-float"/>
+    <xs:element name="scaleX" type="animatable-element:transform-float"/>
+    <xs:element name="scaleY" type="animatable-element:transform-float"/>
+
+    <xs:element name="rotation" type="animatable-element:transform-float"/>
+    <xs:element name="color" type="animatable-element:transform-color"/>
+
+    <xs:element name="borderSize" type="animatable-element:transform-float"/>
+    <xs:element name="transparency" type="animatable-element:transform-float"/>
+  </xs:choice>
+</xs:group>
+<xs:complexType name="transform-float">
+  <xs:attribute name="start" type="xs:float" use="required"/>
+  <xs:attribute name="end" type="xs:float" use="required"/>
+</xs:complexType>
+<xs:complexType name="transform-color">
+  <xs:attribute name="start" type="text:string" use="required"/>
+  <xs:attribute name="end" type="text:string" use="required"/>
+</xs:complexType>
+<xs:complexType name="transform-vector2">
+  <xs:attribute name="start" type="text:string" use="required"/>
+  <xs:attribute name="end" type="text:string" use="required"/>
+</xs:complexType>
+
+
+<xs:complexType name="animatable-trigger">
+  <xs:sequence>
+    <xs:group ref="animatable-element:trigger-event-type"/>
+  </xs:sequence>
+  <xs:attribute name="action" type="text:string" use="required"/>
+</xs:complexType>
+
+<xs:group name="trigger-event-type">
+  <xs:choice>
+    <xs:element name="input"/>
+    <xs:element name="noInput">
+      <xs:complexType>
+        <xs:attribute name="duration" type="xs:float" use="required"/>
+      </xs:complexType>
+    </xs:element>
+
+    <xs:element name="hover"/>
+    <xs:element name="unhover"/>
+    <xs:element name="click"/>
+    <xs:element name="clickHold">
+      <xs:complexType>
+        <xs:attribute name="duration" type="xs:float" use="required"/>
+      </xs:complexType>
+    </xs:element>
+    <xs:element name="unclick"/>
+    <xs:element name="event">
+      <xs:complexType>
+        <xs:group ref="events:event-type"/>
+      </xs:complexType>
+    </xs:element>
+    
+    <!-- TODO: add message tag? -->
+  </xs:choice>
+</xs:group>
+
+</xs:schema>

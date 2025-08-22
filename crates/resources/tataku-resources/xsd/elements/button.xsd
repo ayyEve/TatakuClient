@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+
+<xs:schema 
+  targetNamespace="tataku/elements/button"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:elements="tataku/elements"
+  xmlns:actions="tataku/actions"
+  xmlns:input="tataku/input"
+>
+
+<xs:import namespace="tataku/input" schemaLocation="../input.xsd"/>
+<xs:import namespace="tataku/elements" schemaLocation="./elements.xsd"/>
+<xs:import namespace="tataku/actions" schemaLocation="../actions/actions.xsd"/>
+
+
+<xs:complexType name="button-element">
+  <xs:complexContent>
+    <xs:extension base="elements:generic">
+      <xs:sequence>
+        <!-- <xs:group ref="elements:button-onclick"/> -->
+        <xs:element name="action" minOccurs="1" maxOccurs="3">
+          <xs:complexType>
+            <xs:group ref="actions:action-type"/>
+            <xs:attribute name="button" type="input:mouse-button" default="left"/>
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="element">
+          <xs:complexType>
+            <xs:group ref="elements:element"/>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+
+      <xs:attribute name="active" type="xs:string"/>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+</xs:schema>

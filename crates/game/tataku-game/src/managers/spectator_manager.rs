@@ -153,7 +153,7 @@ impl SpectatorManager {
             time: _, 
             action 
         }) = self.frames.pop_front() {
-            println!("Handling spec frame: {action:?}");
+            debug!("Handling spec frame: {action:?}");
 
             // debug!("Packet: {action:?}");
             match action {

@@ -24,7 +24,7 @@ pub struct CheckboxElement {
 impl CheckboxElement {
     fn get_text(&self) -> CheckboxText {
         if let Some(text) = self.text.clone() {
-            CheckboxText::Buildable(text.value, String::new())
+            CheckboxText::Buildable(text.inner, String::new())
         } else if let Some(text) = self.text_attribute.clone() {
             CheckboxText::Static(text)
         } else {
@@ -65,7 +65,10 @@ impl CustomElement for CheckboxElement {
             self.id.clone(),
             self.class_list.clone(),
             Checkbox::new(text, value)
-                .on_toggle_maybe(self.on_click.clone().map(|i| i.action))
+                .on_toggle_maybe(self.on_click
+                    .clone()
+                    .map(|i| i.inner)
+                )
                 .boxed()
         )
     }

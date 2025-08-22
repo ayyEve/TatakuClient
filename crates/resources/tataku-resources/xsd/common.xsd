@@ -10,9 +10,9 @@
   xmlns:text="tataku/text"
 >
 
-<xs:import namespace="tataku/actions" schemaLocation="actions.xsd"/>
+<xs:import namespace="tataku/actions" schemaLocation="actions/actions.xsd"/>
 <xs:import namespace="tataku/events" schemaLocation="events.xsd"/>
-<xs:import namespace="tataku/elements" schemaLocation="elements.xsd"/>
+<xs:import namespace="tataku/elements" schemaLocation="elements/elements.xsd"/>
 
 
 <xs:complexType name="event-list">

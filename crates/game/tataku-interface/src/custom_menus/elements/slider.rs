@@ -43,7 +43,7 @@ impl SliderElement {
             }
         } else if let Some(tag) = tag {
             SliderValue::Buildable {
-                buildable: tag.value.clone(),
+                buildable: tag.inner.clone(),
                 value: 0.0,
             }
         } else {

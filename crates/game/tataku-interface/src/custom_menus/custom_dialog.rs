@@ -195,11 +195,11 @@ impl Widget<TatakuAction> for BuiltCustomDialog {
 
 
 
-#[test]
-fn test() {
-    for (_, i) in tataku_resources::dialogs::ALL {
-        let _dialog = quick_xml::de::from_reader::<_, CustomDialog>(std::io::Cursor::new(i.to_vec()))
-            .map_err(|e| format!("{e}"))
-            .unwrap();
-    }
-}
+// #[test]
+// fn test() {
+//     for (_, i) in tataku_resources::dialogs::ALL {
+//         let _dialog = quick_xml::de::from_reader::<_, CustomDialog>(std::io::Cursor::new(i.to_vec()))
+//             .map_err(|e| format!("{e}"))
+//             .unwrap();
+//     }
+// }

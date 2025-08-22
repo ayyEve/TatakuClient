@@ -197,7 +197,7 @@ fn read_string(bytes: &[u8], offset:&mut usize) -> TatakuResult<String> {
         Ok(String::new())
     } else if b == 0x0b {
         let len = read_uleb128(bytes, offset) as usize;
-        // println!("got string len {len}");
+        // info!("got string len {len}");
 
         let string = String::from_utf8(bytes[*offset..(*offset+len)].to_vec()).map_err(|e|format!("error parsing string: {e}"))?;
         *offset += len;

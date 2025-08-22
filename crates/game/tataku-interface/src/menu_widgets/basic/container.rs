@@ -88,7 +88,7 @@ impl Container {
 
     fn validate_scroll_position(
         &mut self, 
-        tree: &mut Tree<TatakuAction>
+        tree: &mut Tree<TatakuAction>,
     ) {
         let layout = tree.get_layout(self.node_id).unwrap();
         let size = Vector2::new(
@@ -97,6 +97,11 @@ impl Container {
         );
 
         self.scroll_offset = self.scroll_offset.clamp(-size, Vector2::ZERO);
+
+        let ctx = tree.get_context_mut(self.node_id).unwrap();
+        ctx.local_transform.pos = self.scroll_offset;
+        tree.mark_dirty(self.node_id);
+        tree.mark_refresh("Container::validate_scroll_position");
     }
 
     fn handle_scroll_operation(
@@ -135,7 +140,8 @@ impl Container {
             }
 
             ScrollType::ScrollToId(id) => {
-                let Some((i, _)) = self.children
+                let Some((i, _)) = self
+                    .children
                     .iter()
                     .map(|c| 
                         (c, tree.get_context(c.node_id()).unwrap())
@@ -146,7 +152,7 @@ impl Container {
                 else { return warn!("scroll: id not found: {id}")};
                 let node = i.node_id();
 
-                self.handle_scroll_operation(
+                return self.handle_scroll_operation(
                     &ScrollOperation { 
                         scroll_type: ScrollType::ScrollToNode(node) 
                     }, 
@@ -156,28 +162,98 @@ impl Container {
 
             // scroll to a specific node id
             ScrollType::ScrollToNode(node) => {
-                let our_layout = tree
-                    .get_layout(self.node_id).unwrap();
+                let our_bounds = tree.absolute_bounds(self.node_id).unwrap();
+                // let our_layout = tree
+                //     .get_layout(self.node_id).unwrap();
 
-                let node_layout = tree
-                    .get_layout(*node).unwrap();
+                // let node_layout = tree
+                //     .get_layout(*node).unwrap();
+                let node_bounds = tree.absolute_bounds(*node).unwrap();
 
-                let top = Vector2::from(node_layout.location);
-
-                let offset = (
-                    Vector2::from(our_layout.size - node_layout.size)
-                    / 2.0
-                ).clamp(
-                    -Vector2::from(our_layout.size),
-                    Vector2::ZERO, 
+                let top = Vector2::new(
+                    node_bounds.pos.x,
+                    -node_bounds.pos.y,
                 );
+
+                let offset = (our_bounds.size - node_bounds.size) / 2.0;
+                // .clamp(
+                //     -Vector2::from(our_bounds.size),
+                //     Vector2::ZERO, 
+                // );
                 
                 self.scroll_offset = top + offset;
             }
 
+            ScrollType::ScrollToActive {
+                include_children: false 
+            } => {
+                let Some((i, _)) = self
+                    .children
+                    .iter()
+                    .map(|c| 
+                        (c, tree.get_context(c.node_id()).unwrap())
+                    )
+                    .find(|(_, t)| 
+                        t.element_data.state.contains(ElementState::Active)
+                    )
+                else { return warn!("scroll: no active?")};
+                let node = i.node_id();
+                
+                return self.handle_scroll_operation(
+                    &ScrollOperation { 
+                        scroll_type: ScrollType::ScrollToNode(node) 
+                    }, 
+                    tree
+                );
+            }
+
+            ScrollType::ScrollToActive {
+                include_children: true 
+            } => {
+                let Some(active_id) = Self::find_nested_child(
+                    tree, 
+                    self, 
+                    |tree, child| {
+                        let ctx = tree.get_context(child.node_id())?;
+                        Some(ctx.element_data.state.contains(ElementState::Active))
+                    }
+                ) else {
+                    warn!("couldnt find nested active element");
+                    return
+                };
+                
+                return self.handle_scroll_operation(
+                    &ScrollOperation { 
+                        scroll_type: ScrollType::ScrollToNode(active_id) 
+                    }, 
+                    tree
+                );
+            }
         }
 
         self.validate_scroll_position(tree);
+    }
+
+    fn find_nested_child(
+        tree: &Tree<TatakuAction>,
+        node: &dyn Widget<TatakuAction>,
+        op: fn(&Tree<TatakuAction>, &dyn Widget<TatakuAction>) -> Option<bool>,
+    ) -> Option<NodeId> {
+        for child in node.children() {
+            if op(tree, &**child)? {
+                return Some(child.node_id());
+            }
+            
+            if let Some(res) = Self::find_nested_child(
+                tree, 
+                &**child, 
+                op
+            ) {
+                return Some(res)
+            }
+        }
+        
+        None
     }
 }
 
@@ -206,6 +282,25 @@ impl Widget<TatakuAction> for Container {
         );
 
         Ok(self.node_id)
+    }
+
+    fn operation(
+        &mut self, 
+        operation: &UiOperation, 
+        tree: &mut Tree<TatakuAction>,
+    ) {
+        if operation.target.resolve(self, tree) {
+            #[allow(clippy::single_match, reason = "future expansion")]
+            match &operation.operation {
+                UiOperationType::Scroll(scroll) 
+                    => self.handle_scroll_operation(scroll, tree),
+                _ => {}
+            }
+        } else {
+            for i in self.children.iter_mut() {
+                i.operation(operation, tree);
+            }
+        }
     }
 
     fn input(
@@ -543,25 +638,6 @@ impl Widget<TatakuAction> for Container {
         }
     }
 
-    fn operation(
-        &mut self, 
-        operation: &UiOperation, 
-        tree: &mut Tree<TatakuAction>,
-    ) {
-        if operation.target.resolve(self, tree) {
-            #[allow(clippy::single_match, reason = "expansion")]
-            match &operation.operation {
-                UiOperationType::Scroll(scroll) 
-                    => self.handle_scroll_operation(scroll, tree),
-
-                _ => {}
-            }
-        } else {
-            for i in self.children.iter_mut() {
-                i.operation(operation, tree);
-            }
-        }
-    }
 }
 
 #[derive(ChainableInitializer)]
@@ -608,7 +684,6 @@ struct DragScrollData {
     pressed_at: Vector2,
     did_move: bool,
 }
-
 impl DragScrollData {
     fn check_input(
         &mut self,

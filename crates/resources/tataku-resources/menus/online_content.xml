@@ -253,10 +253,10 @@
         </true>
         <false>
           <list
-            list="game.online_content.results.items"
-            variable="_result"
-            scroll="true"
-            style="flex-direction: column"
+            list = "game.online_content.results.items"
+            variable = "_result"
+            scrollable = "true"
+            style = "flex-direction: column"
           >
             <row>
               <button

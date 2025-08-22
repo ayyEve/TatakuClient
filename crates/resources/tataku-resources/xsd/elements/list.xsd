@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+
+<xs:schema 
+  targetNamespace="tataku/elements/list"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:elements="tataku/elements"
+  xmlns:text="tataku/text"
+>
+
+<xs:import namespace="tataku/text" schemaLocation="../text.xsd"/>
+<xs:import namespace="tataku/elements" schemaLocation="./elements.xsd"/>
+
+
+<xs:complexType name="list-element">
+  <xs:complexContent>
+    <xs:extension base="elements:generic">
+      <xs:sequence>
+        <xs:group ref="elements:element" minOccurs="1" maxOccurs="1"/>
+      </xs:sequence>
+
+      <xs:attribute name="list" type="text:string" use="required"/>
+      <xs:attribute name="variable" type="text:string" use="required"/>
+      <xs:attribute name="scrollable" type="xs:boolean" default="false"/>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+</xs:schema>

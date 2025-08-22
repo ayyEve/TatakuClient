@@ -42,6 +42,7 @@ impl From<&str> for ClassList {
     }
 }
 
+crate::impl_tag!(ElementTag, Element);
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -102,54 +103,80 @@ impl From<TextElement> for Element {
 }
 
 
-#[derive(Deserialize)]
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct ElementTag {
-    #[serde(rename="$value")] pub element: Element
-}
-crate::impl_tag!(ElementTag, Element, element);
 
-#[derive(Deserialize)]
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct ElementList {
-    #[serde(rename="$value")] pub list: Vec<Element>,
-}
+crate::impl_tag!(ElementList, Vec<Element>);
 impl ElementList {
     pub fn build(&self) -> Vec<Box<dyn Widget<TatakuAction>>> {
-        self.list
+        self.inner
             .iter()
             .map(|i| i.build())
             .collect()
     }
 }
-crate::impl_tag!(ElementList, Vec<Element>, list);
 
 #[macro_export]
 macro_rules! impl_tag {
-    ($struct: ident, $ty: ty, $field: ident) => {
+    ($struct: ident, $ty: ty) => {
+        #[derive(Deserialize)]
+        #[derive(Clone, Debug, Default, PartialEq)] 
+        pub struct $struct {
+            #[serde(rename="$value")] pub inner: $ty,
+        }
         impl $struct {
-            #[allow(unused)]
-            pub fn new($field: impl Into<$ty>) -> Self {
-                Self { $field: $field.into() }
+            pub fn new(v: impl Into<$ty>) -> Self {
+                Self {
+                    inner: v.into()
+                }
             }
         }
-
+        
         impl Deref for $struct {
             type Target = $ty;
             fn deref(&self) -> &$ty {
-                &self.$field
+                &self.inner
             }
         }
         impl DerefMut for $struct {
             fn deref_mut(&mut self) -> &mut $ty {
-                &mut self.$field
+                &mut self.inner
             }
         }
         impl From<$ty> for $struct {
             fn from(value: $ty) -> Self {
+                Self::new(value)
+            }
+        }
+    };
+    
+    ($vis:ident, $struct: ident, $ty: ty) => {
+        #[derive(Deserialize)]
+        #[derive(Clone, Debug, Default, PartialEq)] 
+        #[allow(clippy::needless_pub_self)]
+        pub($vis) struct $struct {
+            #[serde(rename="$value")] pub inner: $ty,
+        }
+        impl $struct {
+            pub fn new(v: impl Into<$ty>) -> Self {
                 Self {
-                    $field: value
+                    inner: v.into()
                 }
+            }
+        }
+        
+        impl Deref for $struct {
+            type Target = $ty;
+            fn deref(&self) -> &$ty {
+                &self.inner
+            }
+        }
+        impl DerefMut for $struct {
+            fn deref_mut(&mut self) -> &mut $ty {
+                &mut self.inner
+            }
+        }
+        impl From<$ty> for $struct {
+            fn from(value: $ty) -> Self {
+                Self::new(value)
             }
         }
     }

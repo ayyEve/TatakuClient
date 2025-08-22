@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+
+<xs:schema 
+  targetNamespace="tataku/actions/slot"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:buildable-value="tataku/buildable-value"
+  xmlns:slot-actions="tataku/actions/slot"
+>
+
+<xs:import namespace="tataku/buildable-value" schemaLocation="../buildable_value.xsd"/>
+
+
+<xs:group name="slot-action">
+  <xs:sequence>
+    <xs:element name="slot" type="buildable-value:buildableValueElement"/>
+    <xs:choice>
+      <xs:group ref="slot-actions:slot-action-type"/>
+      <xs:element name="action">
+        <xs:complexType>
+          <xs:group ref="slot-actions:slot-action-type"/>
+        </xs:complexType>
+      </xs:element>
+    </xs:choice>
+  </xs:sequence>
+</xs:group>
+
+<xs:group name="slot-action-type">
+  <xs:choice>
+    <xs:element name="showProfile"/>
+    <xs:element name="move"/>
+    <xs:element name="transferHost"/>
+    <xs:element name="lock"/>
+    <xs:element name="unlock"/>
+    <xs:element name="kick"/>
+  </xs:choice>
+</xs:group>
+
+</xs:schema>

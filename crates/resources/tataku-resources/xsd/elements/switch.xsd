@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+
+<xs:schema 
+  targetNamespace="tataku/elements/switch"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:elements="tataku/elements"
+  xmlns:text="tataku/text"
+>
+
+<xs:import namespace="tataku/text" schemaLocation="../text.xsd"/>
+<xs:import namespace="tataku/elements" schemaLocation="./elements.xsd"/>
+
+
+<xs:complexType name="switch-element">
+  <xs:complexContent>
+    <xs:extension base="elements:generic">
+      <xs:sequence>
+        <!-- case -->
+        <xs:element name="case" minOccurs="1" maxOccurs="unbounded">
+          <xs:complexType>
+            <xs:group ref="elements:element" minOccurs="1"/>
+            <xs:attribute name="cond" type="xs:string" use="required"/>
+          </xs:complexType>
+        </xs:element>
+        <!-- default -->
+        <xs:element name="default" minOccurs="0" maxOccurs="1">
+          <xs:complexType>
+            <xs:group ref="elements:element" minOccurs="1"/>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+
+</xs:schema>

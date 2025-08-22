@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+
+<xs:schema 
+  targetNamespace="tataku/actions/online-content"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:text="tataku/text"
+  xmlns:buildable-value="tataku/buildable-value"
+  xmlns:online-content-actions="tataku/actions/online-content"
+>
+
+<xs:import namespace="tataku/buildable-value" schemaLocation="../buildable_value.xsd"/>
+<xs:import namespace="tataku/text" schemaLocation="../text.xsd"/>
+
+
+<xs:group name="online-content-action">
+  <xs:choice>
+      <xs:element name="audioPreview" type="buildable-value:buildableValueElement" minOccurs="1"/>
+      <xs:element name="download" type="buildable-value:buildableValueElement" minOccurs="1"/>
+      <xs:element name="search" type="online-content-actions:online-content-action-search" minOccurs="1"/>
+
+      <xs:element name="nextPage"/>
+      <xs:element name="previousPage"/>
+      <xs:element name="setPage" type="buildable-value:buildableValueElement" minOccurs="1"/>
+  </xs:choice>
+</xs:group>
+
+<xs:complexType name="online-content-action-search">
+  <xs:all>
+    <xs:element name="engineId" type="buildable-value:buildableValueElement" minOccurs="1" />
+    <xs:element name="searchType" type="buildable-value:buildableValueElement" minOccurs="1" />
+    <xs:element name="page" type="buildable-value:buildableValueElement" minOccurs="1" />
+    <xs:element name="query" type="buildable-value:buildableValueElement" />
+    
+    <!-- value list -->
+    <xs:element name="values" minOccurs="0">
+      <xs:complexType>
+        <xs:sequence>
+          <xs:element name="entry" type="online-content-actions:search_value" />
+        </xs:sequence>
+      </xs:complexType>
+    </xs:element>
+
+  </xs:all>
+  <xs:attribute name="valuesKeyValuePath" type="text:string" />
+  <xs:attribute name="valuesMapPath" type="text:string" />
+</xs:complexType>
+
+
+<xs:complexType name="search_value">
+  <xs:all>
+    <xs:element name="id" type="buildable-value:buildableValueElement" minOccurs="1" />
+    <xs:element name="value" type="buildable-value:buildableValueElement" minOccurs="1" />
+  </xs:all>
+</xs:complexType>
+
+</xs:schema>

@@ -331,13 +331,11 @@ impl UiManager {
 
             UiActionType::ContextChanged => {
                 tree.update_context(node);
-                // tree.mark_refresh("context changed");
             }
 
-            // UiActionType::UpdateStyle(style) => {
-            //     tree.set_style(node, *style);
-            //     tree.mark_refresh("UpdateStyle");
-            // }
+            UiActionType::Operation(op) => {
+                tree.operate(op);
+            }
 
             UiActionType::UpdateStyleWith(f) => {
                 tree.update_style(node, |s| f(s));
@@ -345,11 +343,6 @@ impl UiManager {
 
             UiActionType::OverrideDisplay(display) => {
                 tree.set_display(node, display);
-                // let Some(mut style) = tree.get_style(node).cloned() else { 
-                //     return warn!("style not found for node: {node:?}");
-                // };
-                // style.display = display.into();
-                // tree.set_style(node, style);
                 tree.mark_refresh("UpdateDisplay");
             }
 
@@ -403,7 +396,7 @@ impl UiManager {
             
             UiActionType::DialogAction(action) => {
                 warn!("trying to run dialog action {action:?} on menu!");
-            }
+            },
         }
     }
 

@@ -8,7 +8,7 @@ pub struct ButtonElement {
 
     /// unparsed style string, parsed when the element is built
     #[serde(rename = "@style", default)] style: ArcStr,
-    #[serde(rename = "@active_if", default)] active_cond: Option<BuildableCondition>,
+    #[serde(rename = "@active", default)] active_override: Option<BuildableCondition>,
     
     #[serde(alias="action")]
     actions: Vec<ClickAction>,
@@ -26,10 +26,11 @@ impl CustomElement for ButtonElement {
             "button",
             self.id.clone(),
             self.class_list.clone(),
-            Button::new(self.element.element.build())
+            Button::new(self.element.build())
                 .on_press_left_maybe(actions.remove(&MouseButton2::Left))
                 .on_press_middle_maybe(actions.remove(&MouseButton2::Middle))
                 .on_press_right_maybe(actions.remove(&MouseButton2::Right))
+                .active_condition_maybe(self.active_override.clone())
                 .boxed()
         )
     }
@@ -76,7 +77,7 @@ fn test() {
                     },
                 }
             ], 
-            element: ElementTag { element: Element::Text(Box::new(TextElement {
+            element: ElementTag { inner: Element::Text(Box::new(TextElement {
                 text: BuildableText::Text { text: "hi mom".into() },
                 ..Default::default()
             })) } ,

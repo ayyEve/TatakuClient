@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+
+<xs:schema 
+  targetNamespace="tataku/actions/game"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:buildable-value="tataku/buildable-value"
+  xmlns:text="tataku/text"
+>
+
+<xs:import namespace="tataku/buildable-value" schemaLocation="../buildable_value.xsd"/>
+<xs:import namespace="tataku/text" schemaLocation="../text.xsd"/>
+
+
+<xs:group name="game-action">
+  <xs:choice>
+      <xs:element name="quit"/>
+      <xs:element name="refreshScores"/>
+      
+      <xs:element name="viewScore" type="buildable-value:buildableValueElement"/>
+
+      <xs:element name="notification">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="color" type="xs:string" minOccurs="0"/>
+            <xs:element name="duration" minOccurs="1" maxOccurs="1"> 
+              <xs:complexType mixed="true">
+                <xs:group ref="buildable-value:buildableValue"/>
+              </xs:complexType>
+            </xs:element>
+
+            <xs:element name="text" minOccurs="1" maxOccurs="1"> 
+              <xs:complexType>
+                <xs:group ref="text:text" />
+              </xs:complexType>
+            </xs:element>
+          </xs:sequence>
+          <xs:attribute name="color" type="xs:string"/>
+        </xs:complexType>
+
+        <xs:key name="notification-color">
+          <xs:selector xpath="."/>
+          <xs:field xpath="color|@color"/>
+        </xs:key>
+      </xs:element>
+
+      <xs:element name="copyToClipboard">
+        <xs:complexType>
+          <xs:group ref="text:text"/>
+        </xs:complexType>
+      </xs:element>
+  </xs:choice>
+</xs:group>
+
+</xs:schema>

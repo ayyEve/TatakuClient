@@ -55,7 +55,7 @@ impl Beatmap {
         let path = path.as_ref();
         if path.extension().is_none() {
             // check for ptyping file (it has no extention)
-            // println!("path: {path:?}");
+            // info!("path: {path:?}");
             if path.file_name().unwrap().to_string_lossy() == "song" {
                 return Ok(ptyping::PTypingBeatmap::load_multiple(path)?.into_iter().map(|b|Beatmap::PTyping(Box::new(b))).collect())
             } else {

@@ -24,7 +24,7 @@ impl DropdownElement {
             .map(DropdownPlaceholder::Static)
             .or(self.placeholder_tag
                 .clone()
-                .map(|b| b.value.into())
+                .map(|b| b.inner.into())
             )
     }
 }
@@ -38,7 +38,7 @@ impl CustomElement for DropdownElement {
             Dropdown::new(
                 self.options_path.clone(),
                 self.selected_path.clone(),
-                self.on_select.action.clone(),
+                self.on_select.inner.clone(),
                 self.placeholder().unwrap_or_default()
             )
             .boxed()

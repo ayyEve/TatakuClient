@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+
+<xs:schema 
+  targetNamespace="tataku/elements/column"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:elements="tataku/elements"
+>
+
+<xs:import namespace="tataku/elements" schemaLocation="./elements.xsd"/>
+
+
+<xs:complexType name="column-element">
+  <xs:complexContent>
+    <xs:extension base="elements:generic">
+      <xs:sequence>
+        <xs:group ref="elements:element" minOccurs="1" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+</xs:schema>

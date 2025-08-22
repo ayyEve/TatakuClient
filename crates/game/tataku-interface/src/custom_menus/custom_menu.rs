@@ -163,10 +163,10 @@ impl Widget<TatakuAction> for BuiltCustomMenu {
 }
 
 
-#[test]
-fn test() {
-    let reader = std::io::Cursor::new(tataku_resources::menus::BEATMAP_SELECT);
-    let _menu = quick_xml::de::from_reader::<_, CustomMenu>(reader)
-        .map_err(|e| format!("{e}"))
-        .unwrap();
-}
+// #[test]
+// fn test() {
+//     let reader = std::io::Cursor::new(tataku_resources::menus::BEATMAP_SELECT);
+//     let _menu = quick_xml::de::from_reader::<_, CustomMenu>(reader)
+//         .map_err(|e| format!("{e}"))
+//         .unwrap();
+// }

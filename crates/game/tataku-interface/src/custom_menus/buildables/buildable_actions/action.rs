@@ -111,6 +111,12 @@ pub enum BuildableAction {
         action: BuildableChatAction,
     },
 
+    /// Perform a ui action
+    Ui {
+        #[serde(rename="$value")] 
+        action: BuildableUiAction,
+    },
+
     /// Perform an online content action
     OnlineContent {
         #[serde(rename="$value")] 
@@ -276,6 +282,14 @@ impl BuildableAction {
             Self::Chat { action } 
                 => action.into_action(values, passed_in),
 
+            #[cfg(feature="graphics")] 
+            Self::Ui { action } => {
+                Some(UiAction::new(
+                    node, 
+                    action.into_action(node, values, passed_in)?
+                ).into())
+            }
+
             Self::Gameplay { 
                 action 
             } => Some(TatakuAction::Game(Box::new(
@@ -322,7 +336,7 @@ impl BuildableAction {
                 if_false 
             } => {
                 let if_true = if_true_specified
-                    .map(|i| i.action)
+                    .map(|i| i.inner)
                     .or(if_true.map(|i| *i))?;
 
                 match cond.resolve(values) {
@@ -333,7 +347,7 @@ impl BuildableAction {
                         .into_action(node, values, passed_in),
                     BuildableConditionResult::False => if_false
                         .and_then(|a| 
-                            a.action.into_action(node, values, passed_in)
+                            a.inner.into_action(node, values, passed_in)
                         ),
                     BuildableConditionResult::Error(_) => None,
                 }
@@ -401,10 +415,10 @@ impl BuildableAction {
                     e.build(values);
                 }
                 if let Some(e) = if_true_specified {
-                    e.action.build(values);
+                    e.build(values);
                 }
                 if let Some(e) = if_false {
-                    e.action.build(values);
+                    e.build(values);
                 }
             }
             Self::Multiple { actions } => {
@@ -421,6 +435,9 @@ impl BuildableAction {
                 => value.resolve_pre(values),
 
             Self::Chat { action } 
+                => action.build(values),
+
+            Self::Ui { action } 
                 => action.build(values),
 
             Self::CustomEvent { 
@@ -440,13 +457,7 @@ impl BuildableAction {
     }
 }
 
-#[derive(Deserialize)]
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct BuildableActionTag {
-    #[serde(rename="$text", alias="$value")] 
-    pub action: BuildableAction,
-}
-crate::impl_tag!(BuildableActionTag, BuildableAction, action);
+crate::impl_tag!(BuildableActionTag, BuildableAction);
 
 
 
@@ -462,18 +473,12 @@ impl DialogInput {
     pub fn get_value(&self) -> Option<&BuildableValue> {
         self.value
             .as_ref()
-            .or(self.value_tag
-                .as_ref()
-                .map(|i| &i.value)
-            )
+            .or(self.value_tag.as_deref())
     }
     pub fn get_value_mut(&mut self) -> Option<&mut BuildableValue> {
         self.value
             .as_mut()
-            .or(self.value_tag
-                .as_mut()
-                .map(|i| &mut i.value)
-            )
+            .or(self.value_tag.as_deref_mut())
     }
 
 }

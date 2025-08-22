@@ -6,7 +6,7 @@ pub struct AnimatableElement {
     #[serde(rename = "@id", default)] id: Option<ArcStr>,
     #[serde(rename = "@class", default)] class_list: ClassList,
     #[serde(rename = "@style", default)] style: ArcStr,
-    
+
     #[serde(default)] triggers: AnimatableTriggersTag,
     #[serde(default)] actions: AnimatableActionsTag,
 
@@ -20,8 +20,11 @@ impl CustomElement for AnimatableElement {
             self.id.clone(),
             self.class_list.clone(),
             TransformableWidget::new(
-                self.triggers.triggers.clone(),
-                self.actions.iter().cloned().map(|i| (i.id, i.list)).collect(),
+                self.triggers.inner.clone(),
+                self.actions.iter()
+                    .cloned()
+                    .map(|i| (i.id, i.list))
+                    .collect(),
                 self.element.build()
             )
             .boxed()
@@ -37,14 +40,7 @@ struct AnimatableActionEntry {
     #[serde(alias = "$value")] list: Vec<AnimatableAction>
 }
 
-#[derive(Deserialize)]
-#[derive(Clone, Debug, Default, PartialEq)]
-struct AnimatableActionsTag {
-    #[serde(alias = "$value")] entries: Vec<AnimatableActionEntry>
-}
-crate::impl_tag!(AnimatableActionsTag, Vec<AnimatableActionEntry>, entries);
-
-
+crate::impl_tag!(self, AnimatableActionsTag, Vec<AnimatableActionEntry>);
 
 #[derive(Deserialize)]
 #[derive(Clone, Debug, PartialEq)]
@@ -53,12 +49,8 @@ pub struct AnimatableTrigger {
     #[serde(rename = "@action")] pub action: String,
 }
 
-#[derive(Deserialize)]
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct AnimatableTriggersTag {
-    #[serde(alias = "$value")] pub triggers: Vec<AnimatableTrigger>,
-}
-crate::impl_tag!(AnimatableTriggersTag, Vec<AnimatableTrigger>, triggers);
+
+crate::impl_tag!(AnimatableTriggersTag, Vec<AnimatableTrigger>);
 
 
 #[derive(Serialize, Deserialize)]

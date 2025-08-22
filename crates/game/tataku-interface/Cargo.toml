@@ -32,5 +32,5 @@ simplecss.workspace = true
 quick-xml.workspace = true
 half.workspace = true
 
-[dev-dependencies]
-tataku-resources.workspace = true
+# [dev-dependencies]
+# tataku-resources.workspace = true

@@ -272,6 +272,17 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         ))
     }
 
+
+    pub fn has_child(
+        &self, 
+        parent: impl HasNodeId, 
+        child: impl HasNodeId,
+    ) -> bool {
+        let Some(Some(parent_id)) = self.parents
+            .get(child.get_id().into()) 
+        else { return false };
+        parent_id == &parent.get_id()
+    }
     pub fn all_children(&self) -> impl Iterator<Item = taffy::NodeId> {
         self.nodes.keys()
             .map(taffy::NodeId::from)
@@ -293,6 +304,23 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         self.node = temp;
         t
     }
+
+    pub fn get_style(&self, node: impl HasNodeId) -> Option<&CssStyle> {
+        Some(
+            &self.node_context_data
+            .get(node.get_id().into())?
+            .current_style().0
+        )
+    }
+    pub fn get_text_style(&self, node: impl HasNodeId) -> Option<&TextStyle> {
+        Some(
+            self.node_context_data
+            .get(node.get_id().into())?
+            .current_text_style()
+        )
+    }
+
+    // widget things
 
     pub fn handle_inputs(
         &mut self,
@@ -399,23 +427,6 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         false
     }
 
-    pub fn get_style(&self, node: impl HasNodeId) -> Option<&CssStyle> {
-        Some(
-            &self.node_context_data
-            .get(node.get_id().into())?
-            .current_style().0
-        )
-    }
-    pub fn get_text_style(&self, node: impl HasNodeId) -> Option<&TextStyle> {
-        Some(
-            self.node_context_data
-            .get(node.get_id().into())?
-            .current_text_style()
-        )
-    }
-
-    // widget things
-
     pub fn handle_message(
         &mut self,
         message: &Message,
@@ -458,6 +469,15 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
                 passed_in, 
                 &mut shell
             );
+        });
+    }
+
+    pub fn operate(
+        &mut self, 
+        operation: UiOperation,
+    ) {
+        self.with_node(|tree, node| {
+            node.operation(&operation, tree);
         });
     }
 

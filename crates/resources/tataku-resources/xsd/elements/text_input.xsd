@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+
+<xs:schema 
+  targetNamespace="tataku/elements/text-input"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:elements="tataku/elements"
+  xmlns:actions="tataku/actions"
+  xmlns:text="tataku/text"
+>
+
+<xs:import namespace="tataku/text" schemaLocation="../text.xsd"/>
+<xs:import namespace="tataku/elements" schemaLocation="./elements.xsd"/>
+<xs:import namespace="tataku/actions" schemaLocation="../actions/actions.xsd"/>
+
+
+<xs:complexType name="text-input-element">
+  <xs:complexContent>
+    <xs:extension base="elements:generic">
+      <xs:all>
+        <xs:element name="placeholder" minOccurs="0">
+          <xs:complexType>
+            <xs:group ref="text:text" />
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="onInput" minOccurs="0">
+          <xs:complexType>
+            <xs:group ref="actions:action-type" />
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="onSubmit" minOccurs="0">
+          <xs:complexType>
+            <xs:group ref="actions:action-type" />
+          </xs:complexType>
+        </xs:element>
+      </xs:all>
+      <xs:attribute name="variable" type="text:string" use="required" />
+      <xs:attribute name="password" type="xs:boolean" default="false" />
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+</xs:schema>

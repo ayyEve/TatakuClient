@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+
+<xs:schema 
+  targetNamespace="tataku/actions/song"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:buildable-value="tataku/buildable-value"
+>
+
+<xs:import namespace="tataku/buildable-value" schemaLocation="../buildable_value.xsd"/>
+
+
+<xs:group name="song-action">
+  <xs:choice>
+    <xs:element name="play"/>
+    <xs:element name="pause"/>
+    <xs:element name="toggle"/>
+    <xs:element name="restart"/>
+    <xs:element name="pushQueue"/>
+    <xs:element name="popQueue"/>
+    <xs:element name="seek" type="buildable-value:buildableValueElement"/>
+    <xs:element name="position" type="buildable-value:buildableValueElement"/>
+    <xs:element name="rate" type="buildable-value:buildableValueElement"/>
+  </xs:choice>
+</xs:group>
+
+</xs:schema>

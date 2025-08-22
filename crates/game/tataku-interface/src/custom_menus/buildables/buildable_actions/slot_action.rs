@@ -12,7 +12,7 @@ impl BuildableSlot {
         values: &mut dyn Reflect, 
         passed_in: Option<&TatakuValue>,
     ) -> Option<LobbySlotAction> {
-        let slot = match &self.slot.value {
+        let slot = match &*self.slot {
             BuildableValue::None => {
                 error!("slot is none?? ({:?})", self.action);
                 return None;

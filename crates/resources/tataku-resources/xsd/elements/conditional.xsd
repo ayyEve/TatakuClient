@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+
+<xs:schema 
+  targetNamespace="tataku/elements/conditional"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:elements="tataku/elements"
+  xmlns:common="tataku/common"
+  xmlns:conditional-element="tataku/elements/conditional"
+>
+
+<xs:import namespace="tataku/common" schemaLocation="../common.xsd"/>
+<xs:import namespace="tataku/elements" schemaLocation="./elements.xsd"/>
+
+
+<xs:complexType name="conditional-element">
+  <xs:complexContent>
+    <xs:extension base="elements:generic">
+      <xs:choice>
+        <xs:group ref="elements:element"/>
+        <xs:group ref="conditional-element:conditional-element-both"/>
+        <xs:group ref="conditional-element:conditional-element-true-only"/>
+      </xs:choice>
+      <xs:attribute name="cond" type="common:condition" use="required"/>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+
+<xs:group name="conditional-element-true-only">
+  <xs:sequence>
+    <xs:element name="true"> 
+      <xs:complexType>
+        <xs:group ref="elements:element"/>
+      </xs:complexType>
+    </xs:element>
+  </xs:sequence>
+</xs:group>
+
+<xs:group name="conditional-element-both">
+  <xs:sequence>
+    <xs:element name="true"> 
+      <xs:complexType>
+        <xs:group ref="elements:element"/>
+      </xs:complexType>
+    </xs:element>
+    <xs:element name="false">
+      <xs:complexType>
+        <xs:group ref="elements:element"/>
+      </xs:complexType>
+    </xs:element>
+  </xs:sequence>
+</xs:group>
+
+
+
+</xs:schema>

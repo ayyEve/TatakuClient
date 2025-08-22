@@ -1,11 +1,10 @@
 mod from;
-mod settings;
 mod css_parse;
 mod custom_debug;
 mod custom_default;
 mod settings_deserializer;
+#[cfg(feature="graphics")] mod settings;
 
-use proc_macro::TokenStream;
 use quote::*;
 use syn::*;
 
@@ -59,6 +58,7 @@ pub fn impl_parse_css(input: proc_macro::TokenStream) -> proc_macro::TokenStream
 )]
 pub fn create_setting(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // Parse the string representation
+    #[cfg(feature="graphics")]
     let ast: DeriveInput = syn::parse(input).unwrap();
 
     #[cfg(not(feature="graphics"))]
@@ -69,61 +69,6 @@ pub fn create_setting(input: proc_macro::TokenStream) -> proc_macro::TokenStream
         Ok(tokens) => proc_macro::TokenStream::from(tokens),
         Err(e) => proc_macro::TokenStream::from(e.into_compile_error()),
     }
-}
-
-
-/// allowed enum attribute values:
-/// - debug
-/// 
-/// allowed variant attribute values:
-/// - ignore
-/// - display = String (default is variant name)
-#[proc_macro_derive(Dropdown, attributes(Dropdown))]
-pub fn dropdown(input: TokenStream) -> TokenStream {
-    // Parse the string representation
-    let ast:DeriveInput = syn::parse(input).unwrap();
-    let mut entries = Vec::new();
-
-    // find all the variant data
-    if let Data::Enum(data) = &ast.data {
-        for v in data.variants.iter() {
-            let mut ignore = false;
-
-            // find the id of the packet
-            for attr in v.attrs.iter() {
-                if !attr.path().is_ident("Dropdown") { continue }
-
-                let _ = attr.parse_nested_meta(|meta| {
-                    if meta.path.is_ident("ignore") {
-                        ignore = true;
-                    }
-                    Ok(())
-                });
-            }
-
-            // skip this variant if it should be ignored
-            if ignore { continue }
-
-            // create packet data
-            entries.push(&v.ident);
-        }
-    }
-
-    // make sure the enum isnt empty
-    if entries.is_empty() { panic!("enum is empty or all variants are ignored") }
-
-    let enum_name = ast.ident;
-    quote! {
-        impl Dropdownable2 for #enum_name {
-            type T = Self;
-
-            fn variants() -> Vec<Self::T> {
-                vec![
-                    #(Self::#entries,)*
-                ]
-            }
-        }
-    }.into()
 }
 
 #[proc_macro_derive(DeserializeSettings)]

@@ -1,11 +1,6 @@
 use crate::prelude::*;
 
-#[derive(Deserialize)]
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct BuildableValueTag {
-    #[serde(rename="$value", alias="$text")] pub value: BuildableValue,
-}
-crate::impl_tag!(BuildableValueTag, BuildableValue, value);
+crate::impl_tag!(BuildableValueTag, BuildableValue);
 
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]

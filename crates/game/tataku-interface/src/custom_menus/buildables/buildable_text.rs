@@ -1,13 +1,8 @@
 use crate::prelude::*;
 
-#[derive(Serialize, Deserialize)]
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct BuildableTextTag {
-    #[serde(rename="$value")] pub value: BuildableText
-}
-crate::impl_tag!(BuildableTextTag, BuildableText, value);
+crate::impl_tag!(BuildableTextTag, BuildableText);
 
-#[derive(Serialize, Deserialize)]
+#[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
 #[derive(Clone, Debug, Default2, PartialEq)]
 pub enum BuildableText {

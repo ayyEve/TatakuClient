@@ -31,9 +31,7 @@ impl BeatmapSettings {
             beatmap.create_provider(prefix.clone() + ".beatmap", &mut builder);
             playmode.create_provider(prefix + ".playmode", &mut builder);
 
-            let provider = builder.done();
-            println!("{provider:?}");
-            provider
+            builder.done()
         };
 
         Self {

@@ -7,7 +7,7 @@ pub struct Button {
     #[chain] on_press_right: ButtonOnClick,
     child: Box<dyn Widget<TatakuAction>>,
     
-    visual_active_cond: VisuallyActive,
+    active_cond: VisuallyActive,
 
     /// did a click start on us (and the cursor has not moved)
     active: Option<MouseButton>,
@@ -23,7 +23,7 @@ impl Button {
             on_press_left: ButtonOnClick::Message(None),
             on_press_middle: ButtonOnClick::Message(None),
             on_press_right: ButtonOnClick::Message(None),
-            visual_active_cond: VisuallyActive::None,
+            active_cond: VisuallyActive::None,
 
             active: None,
             hovered: false,
@@ -32,7 +32,7 @@ impl Button {
 
     pub fn active_condition(mut self, mut cond: BuildableCondition) -> Self {
         cond.build();
-        self.visual_active_cond = VisuallyActive::Condition { cond, value: false };
+        self.active_cond = VisuallyActive::Condition { cond, value: false };
         self
     }
 
@@ -128,7 +128,7 @@ impl Widget<TatakuAction> for Button {
         let Some(bounds) = shell.tree.absolute_bounds(self.node_id) 
         else { return };
 
-        let active = self.active.is_some() || self.visual_active_cond.get();
+        let active = self.active.is_some() || self.active_cond.get();
 
         // draw button
         shell.list.push(
@@ -148,8 +148,21 @@ impl Widget<TatakuAction> for Button {
     }
 
     fn update(&mut self, shell: &mut UpdateShell<TatakuAction>) {
-        self.visual_active_cond.update(shell.values);
+        self.active_cond.update(shell.values);
         self.child.update(shell);
+
+        let Some(ctx) = shell.tree.get_context_mut(self.node_id)
+        else { return };
+
+        let active = ctx.element_data.state.contains(ElementState::Active);
+        let new_active = self.active_cond.get();
+        if new_active != active {
+            if new_active {
+                ctx.element_data.state.insert(ElementState::Active);
+            } else {
+                ctx.element_data.state.remove(ElementState::Active);
+            }
+        }
     }
 
     fn handle_message(
@@ -232,8 +245,10 @@ enum VisuallyActive {
 }
 impl VisuallyActive {
     fn update(&mut self, values: &dyn Reflect) {
-        let Self::Condition { cond, value } = self 
-        else { return };
+        let Self::Condition { 
+            cond, 
+            value 
+        } = self else { return };
         
         match cond.resolve(values) {
             BuildableConditionResult::Failed => {},

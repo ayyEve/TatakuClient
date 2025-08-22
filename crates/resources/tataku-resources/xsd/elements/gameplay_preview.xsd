@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+
+<xs:schema 
+  targetNamespace="tataku/elements/gameplay-preview"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:elements="tataku/elements"
+
+  xmlns:gameplay-preview-element="tataku/elements/gameplay-preview"
+>
+
+<xs:import namespace="tataku/elements" schemaLocation="./elements.xsd"/>
+
+
+<xs:complexType name="gameplay-preview-element">
+  <xs:complexContent>
+    <xs:extension base="elements:generic">
+      <xs:attribute name="visualization" type="xs:string"/>
+      <xs:attribute name="blur" type="xs:float"/>
+      <xs:attribute name="blur_type" type="gameplay-preview-element:gameplay-preview-blur"/>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+
+<xs:simpleType name="gameplay-preview-blur">
+  <xs:restriction base="xs:string">
+    <xs:enumeration value="box"/>
+    <xs:enumeration value="gaussian"/>
+  </xs:restriction>
+</xs:simpleType>
+
+</xs:schema>

@@ -9,19 +9,25 @@ pub struct ScrollOperation {
 
 #[derive(Clone, Debug)]
 pub enum ScrollType {
-    /// scroll to a specific node id
+    /// Scroll to the (first) selected node
+    ScrollToActive {
+        /// Should the children's children be included in the search
+        include_children: bool,
+    },
+
+    /// Scroll to a specific node id
     ScrollToNode(NodeId),
 
-    /// scroll to an element with the provided id
+    /// Scroll to an element with the provided id
     ScrollToId(CowStr),
 
-    /// absolute scroll to pixel
+    /// Absolute scroll to pixel
     ScrollToPosition(Vector2),
-    /// relative scroll to pixel
+    /// Relative scroll to pixel
     ScrollByAmount(Vector2),
     
-    /// absolute scroll to percent
+    /// Absolute scroll to percent
     ScrollToPercent(Vector2),
-    /// relative scroll by percent
+    /// Relative scroll by percent
     ScrollByPercent(Vector2),
 }

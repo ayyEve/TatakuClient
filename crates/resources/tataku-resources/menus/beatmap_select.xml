@@ -94,9 +94,13 @@
           <show />
         </cursor>
 
+        <!-- and refresh the score list -->
         <game>
           <refreshScores/>
         </game>
+
+        <!-- scroll to selected group and item -->
+        <custom event="scroll-to-selected" />
       </actions>
     </event>
 
@@ -135,8 +139,30 @@
       </actions>
     </event>
 
-    <!-- key events -->
+    <event>
+      <custom event="scroll-to-selected" />
+      <actions>
+        <delayed delay="100">
+          <ui>
+            <operate>
+              <target>
+                <id id="group-list" />
+              </target>
+              <operation>
+                <scroll>
+                  <scrollTo>
+                    <active include_children="true" />
+                  </scrollTo>
+                </scroll>
+              </operation>
+            </operate>
+          </ui>
+        </delayed>
+      </actions>
+    </event>
 
+
+    <!-- key events -->
 
     <!-- select set -->
     <event>
@@ -437,11 +463,14 @@
               <!-- set info -->
               <button active="_group.selected">
                 <action>
-                  <map>
-                    <selectGroup>
-                      <variable var="_group.id"/>
-                    </selectGroup>
-                  </map>
+                  <!-- <list> -->
+                    <map>
+                      <selectGroup>
+                        <variable var="_group.id"/>
+                      </selectGroup>
+                    </map>
+                    <!-- <custom event="scroll-to-selected" />
+                  </list> -->
                 </action>
                 <element>
                   <text>
@@ -463,8 +492,7 @@
                       active = "beatmaps.current == _map"
                     >
                       <action button="left">
-                        <conditional
-                          cond="beatmaps.current == _map">
+                        <conditional cond="beatmaps.current == _map">
                           <!-- if the map is selected -->
                           <true>
                             <!-- confirm it -->

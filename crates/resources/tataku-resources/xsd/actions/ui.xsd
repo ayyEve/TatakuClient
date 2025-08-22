@@ -1,0 +1,271 @@
+<?xml version="1.0"?>
+
+<xs:schema 
+  targetNamespace="tataku/actions/ui"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:ui-actions="tataku/actions/ui"
+  xmlns:buildable-value="tataku/buildable-value"
+  xmlns:text="tataku/text"
+>
+
+<xs:import namespace="tataku/buildable-value" schemaLocation="../buildable_value.xsd"/>
+<xs:import namespace="tataku/text" schemaLocation="../text.xsd"/>
+
+
+
+<xs:group name="ui-action">
+  <xs:choice>
+    <xs:element name="operate" type="ui-actions:ui-operation">
+      <xs:annotation>
+        <xs:documentation>Perform a Widget operation</xs:documentation>
+      </xs:annotation>
+    </xs:element>
+  </xs:choice>
+</xs:group>
+
+
+<!-- operations -->
+<xs:complexType name="ui-operation">
+  <xs:all>
+    <xs:element name="target">
+      <xs:annotation>
+        <xs:documentation>The target of the operation</xs:documentation>
+      </xs:annotation>
+      <xs:complexType>
+        <xs:group ref="ui-actions:ui-operation-target"/>
+      </xs:complexType>
+    </xs:element>
+    <xs:element name="operation">
+      <xs:annotation>
+        <xs:documentation>Which operation to perform</xs:documentation>
+      </xs:annotation>
+      <xs:complexType>
+        <xs:group ref="ui-actions:ui-operation-type" />
+      </xs:complexType>
+    </xs:element>
+  </xs:all>
+  
+</xs:complexType>
+
+<xs:group name="ui-operation-target">
+  <xs:choice>
+    <xs:element name="self">
+      <xs:annotation>
+        <xs:documentation>Apply the operation to the element which generated the action</xs:documentation>
+      </xs:annotation>
+    </xs:element>
+
+    <xs:element name="parent">
+      <xs:annotation>
+        <xs:documentation>
+          Apply the operation to the parent of the element which generated the action
+        </xs:documentation>
+      </xs:annotation>
+    </xs:element>
+
+    <!-- todo: add restriction to allow either attr or tag, but not both -->
+    <xs:element name="id">
+      <xs:annotation>
+        <xs:documentation>
+          Apply the operation to element(s) with the specified id
+        </xs:documentation>
+      </xs:annotation>
+
+      <xs:complexType>
+        <xs:group ref="text:text" minOccurs="0" />
+        <xs:attribute name="id" type="xs:string" />
+      </xs:complexType>
+    </xs:element>
+
+    <!-- todo: add restriction to allow either attr or tag, but not both -->
+    <xs:element name="class">
+      <xs:annotation>
+        <xs:documentation>
+          Apply the operation to element(s) with the specified class
+        </xs:documentation>
+      </xs:annotation>
+
+      <xs:complexType>
+        <xs:group ref="text:text" minOccurs="0" />
+        <xs:attribute name="class" type="xs:string" />
+      </xs:complexType>
+    </xs:element>
+  </xs:choice>
+</xs:group>
+
+
+<xs:group name="ui-operation-type">
+  <xs:choice>
+    <xs:element name="scroll" type="ui-actions:scroll-operation"> 
+      <xs:annotation>
+        <xs:documentation>Perform a Scroll operation on an element</xs:documentation>
+      </xs:annotation>
+    </xs:element>
+    <xs:element name="state" type="ui-actions:state-operation">
+      <xs:annotation>
+        <xs:documentation>Change the State of an element</xs:documentation>
+      </xs:annotation>
+    </xs:element>
+  </xs:choice>
+</xs:group>
+
+
+<!-- scroll -->
+<xs:complexType name="scroll-operation">
+  <xs:all>
+    <xs:element name="scrollTo" minOccurs="1">
+      <xs:annotation>
+        <xs:documentation>What to scroll to</xs:documentation>
+      </xs:annotation>
+      <xs:complexType>
+        <xs:group ref="ui-actions:scroll-operation-type"></xs:group>
+      </xs:complexType>
+    </xs:element>
+  </xs:all>
+</xs:complexType>
+
+<xs:group name="scroll-operation-type">
+  <xs:choice>
+    <xs:element name="active">
+      <xs:annotation>
+        <xs:documentation>Scroll to the (first) active child element</xs:documentation>
+        <xs:documentation>
+          @include_children indicates if the children's children [...] should be included in the search
+        </xs:documentation>
+      </xs:annotation>
+      <xs:complexType>
+        <xs:attribute name="include_children" type="xs:boolean" default="false">
+          <xs:annotation>
+            <xs:documentation>Should the children's children [...] should be included in the search?</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+      </xs:complexType>
+    </xs:element>
+
+    <xs:element name="id">
+      <xs:annotation>
+        <xs:documentation>Scroll to the child element with the provided id</xs:documentation>
+      </xs:annotation>
+
+      <!-- TOdO: restrict to one of tag or attr, not both -->
+      <xs:complexType>
+        <xs:annotation><xs:documentation>The element Id to scroll to</xs:documentation></xs:annotation>
+        <xs:group ref="text:text" />
+        <xs:attribute name="id" type="xs:string" />
+      </xs:complexType>
+
+    </xs:element>
+
+    <xs:element name="absolute">
+      <xs:annotation>
+        <xs:documentation>Scroll exactly to the provided value</xs:documentation>
+      </xs:annotation>
+      <xs:complexType>
+        <xs:group ref="ui-actions:vector2" />
+      </xs:complexType>
+    </xs:element>
+
+    <xs:element name="relative">
+      <xs:annotation>
+        <xs:documentation>Scroll relative to the provided value</xs:documentation>
+      </xs:annotation>
+      <xs:complexType>
+        <xs:group ref="ui-actions:vector2" />
+      </xs:complexType>
+    </xs:element>
+
+    <xs:element name="absolutePercent">
+      <xs:annotation>
+        <xs:documentation>Scroll exactly to the provided value as a percent of the element's size</xs:documentation>
+      </xs:annotation>
+      <xs:complexType>
+        <xs:group ref="ui-actions:vector2" />
+      </xs:complexType>
+    </xs:element>
+
+    <xs:element name="relativePercent">
+      <xs:annotation>
+        <xs:documentation>Scroll relative to the provided value as a percent of the element's size</xs:documentation>
+      </xs:annotation>
+      <xs:complexType>
+        <xs:group ref="ui-actions:vector2" />
+      </xs:complexType>
+    </xs:element>
+  </xs:choice>
+</xs:group>
+
+<xs:group name="vector2">
+  <xs:all>
+    <xs:element name="x">
+      <xs:annotation>
+        <xs:documentation>The X portion of this vector</xs:documentation>
+      </xs:annotation>
+      <xs:complexType>
+        <xs:group ref="buildable-value:buildableValue" />
+      </xs:complexType>
+    </xs:element>
+
+    <xs:element name="y">
+      <xs:annotation>
+        <xs:documentation>The Y portion of this vector</xs:documentation>
+      </xs:annotation>
+      <xs:complexType>
+        <xs:group ref="buildable-value:buildableValue" />
+      </xs:complexType>
+    </xs:element>
+  </xs:all>
+</xs:group>
+
+<!-- state -->
+<xs:complexType name="state-operation">
+  <xs:group ref="ui-actions:state-operation-type"/>
+</xs:complexType>
+
+<xs:group name="state-operation-type">
+  <xs:choice>
+    <xs:element name="add" type="ui-actions:element-states">
+      <xs:annotation>
+        <xs:documentation>Add the provided state(s) to the element</xs:documentation>
+      </xs:annotation>
+    </xs:element>
+    <xs:element name="remove" type="ui-actions:element-states">
+      <xs:annotation>
+        <xs:documentation>Remove the provided state(s) from the element</xs:documentation>
+      </xs:annotation>
+    </xs:element>
+    <xs:element name="toggle" type="ui-actions:element-states">
+      <xs:annotation>
+        <xs:documentation>Toggle the provided state(s) on the element</xs:documentation>
+      </xs:annotation>
+    </xs:element>
+  </xs:choice>
+</xs:group>
+
+<xs:complexType name="element-states">
+  <xs:sequence>
+    <xs:group ref="ui-actions:element-state" minOccurs="1" maxOccurs="4" />
+  </xs:sequence>
+</xs:complexType>
+
+<xs:group name="element-state">
+  <xs:choice>
+    <!-- <xs:element name="none" /> -->
+    <xs:element name="hover">
+      <xs:annotation>
+        <xs:documentation>Hover state</xs:documentation>
+      </xs:annotation>
+    </xs:element>
+    <xs:element name="focus">
+      <xs:annotation>
+        <xs:documentation>Focus state</xs:documentation>
+      </xs:annotation>
+    </xs:element>
+    <xs:element name="active">
+      <xs:annotation>
+        <xs:documentation>Active state</xs:documentation>
+      </xs:annotation>
+    </xs:element>
+  </xs:choice>
+</xs:group>
+
+</xs:schema>

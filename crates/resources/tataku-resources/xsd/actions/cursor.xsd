@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+
+<xs:schema 
+  targetNamespace="tataku/actions/cursor"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:actions="tataku/actions"
+>
+
+<xs:import namespace="tataku/actions" schemaLocation="./actions.xsd"/>
+
+
+<xs:group name="cursor-action">
+  <xs:choice>
+    <xs:element name="show"/>
+    <xs:element name="hide"/>
+  </xs:choice>
+</xs:group>
+
+</xs:schema>

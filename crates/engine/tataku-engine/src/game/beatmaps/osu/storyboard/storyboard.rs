@@ -336,7 +336,7 @@ impl StoryboardDef {
                 parse_or_continue!(start_time, f32);
                 parse_or_continue!(loops, u32); 
                 if DEBUG { 
-                    println!("starting loop_def at depth {}", current_depth + 1); 
+                    debug!("starting loop_def at depth {}", current_depth + 1); 
                 }
 
                 loop_def = Some(TempLoopDef {

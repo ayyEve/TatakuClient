@@ -19,7 +19,6 @@ impl UiAction {
 pub enum UiActionType {
     Refresh,
     MarkDirty,
-    // UpdateStyle(Box<CssStyle>),
     UpdateStyleWith(#[debug(skip)] Arc<dyn Fn(&mut CssStyle) + Send + Sync>),
 
     /// Only update the display of a node. 
@@ -30,6 +29,13 @@ pub enum UiActionType {
 
     /// Run a dialog action
     DialogAction(DialogAction),
+
+    Operation(UiOperation),
+}
+impl From<UiOperation> for UiActionType {
+    fn from(value: UiOperation) -> Self {
+        Self::Operation(value)
+    }
 }
 
 impl From<UiAction> for TatakuAction {

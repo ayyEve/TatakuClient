@@ -12,8 +12,9 @@ pub struct UiOperation {
 
 #[derive(Clone, Debug)]
 pub enum UiOperationType {
-    Scroll(super::ScrollOperation),
     SetTab(String),
+    State(StateOperation),
+    Scroll(super::ScrollOperation),
 }
 
 
@@ -22,6 +23,9 @@ pub enum UiOperationType {
 pub enum UiOperationTarget {
     /// A specific node id
     Node(NodeId),
+
+    /// The parent of a specific node id
+    Parent(NodeId),
 
     /// An element with the provided id
     ElementId(CowStr),
@@ -38,6 +42,10 @@ impl UiOperationTarget {
         let nid = node.node_id();
         match self {
             Self::Node(node_id) => &nid == node_id,
+            Self::Parent(node_id) => {
+                tree.has_child(nid, *node_id) 
+            }
+
             Self::ElementId(id) => {
                 let Some(ctx) = tree.get_context(nid) 
                 else { return false };

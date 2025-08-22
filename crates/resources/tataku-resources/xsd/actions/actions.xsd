@@ -1,0 +1,275 @@
+<?xml version="1.0"?>
+
+<xs:schema 
+  targetNamespace="tataku/actions"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:actions="tataku/actions"
+  xmlns:common="tataku/common"
+  xmlns:buildable-value="tataku/buildable-value"
+  xmlns:text="tataku/text"
+
+
+  xmlns:chat-actions="tataku/actions/chat"
+  xmlns:cursor-actions="tataku/actions/cursor"
+  xmlns:game-actions="tataku/actions/game"
+  xmlns:gameplay-actions="tataku/actions/gameplay"
+  xmlns:map-actions="tataku/actions/map"
+  xmlns:mod-actions="tataku/actions/mod"
+  xmlns:multiplayer-actions="tataku/actions/multiplayer"
+  xmlns:online-content-actions="tataku/actions/online-content"
+  xmlns:slot-actions="tataku/actions/slot"
+  xmlns:song-actions="tataku/actions/song"
+  xmlns:ui-actions="tataku/actions/ui"
+>
+
+<xs:import namespace="tataku/buildable-value" schemaLocation="../buildable_value.xsd"/>
+<xs:import namespace="tataku/text" schemaLocation="../text.xsd"/>
+<xs:import namespace="tataku/common" schemaLocation="../common.xsd"/>
+
+<xs:import namespace="tataku/actions/chat" schemaLocation="./chat.xsd"/>
+<xs:import namespace="tataku/actions/cursor" schemaLocation="./cursor.xsd"/>
+<xs:import namespace="tataku/actions/game" schemaLocation="./game.xsd"/>
+<xs:import namespace="tataku/actions/gameplay" schemaLocation="./gameplay.xsd"/>
+<xs:import namespace="tataku/actions/map" schemaLocation="./map.xsd"/>
+<xs:import namespace="tataku/actions/mod" schemaLocation="./mod.xsd"/>
+<xs:import namespace="tataku/actions/multiplayer" schemaLocation="./multiplayer.xsd"/>
+<xs:import namespace="tataku/actions/online-content" schemaLocation="./online_content.xsd"/>
+<xs:import namespace="tataku/actions/slot" schemaLocation="./slot.xsd"/>
+<xs:import namespace="tataku/actions/song" schemaLocation="./song.xsd"/>
+<xs:import namespace="tataku/actions/ui" schemaLocation="./ui.xsd"/>
+
+<xs:group name="action-type">
+  <xs:choice>
+      <!-- none -->
+      <xs:element name="none"/>
+
+      <!-- internal -->
+      <xs:element name="internal">
+        <xs:complexType>
+          <xs:attribute name="path" type="text:string" use="required"/>
+        </xs:complexType>
+      </xs:element>
+
+      <!-- delayed -->
+      <xs:element name="delayed">
+        <xs:complexType>
+          <xs:group ref="actions:action-type"/>
+          <xs:attribute name="delay" type="xs:positiveInteger" use="required"/>
+        </xs:complexType>
+      </xs:element>
+
+      <!-- setMenu -->
+      <xs:choice>
+        <!-- value only -->
+        <xs:element name="setMenu">
+          <xs:annotation>
+            <xs:documentation>Set the current menu to the provided ID</xs:documentation>
+            <xs:documentation>Note!: Only one of @id or #content should be provided</xs:documentation>
+          </xs:annotation>
+          <xs:complexType>
+            <xs:group ref="buildable-value:buildableValue" minOccurs="0">
+              <xs:annotation>
+                <xs:documentation>The menu ID</xs:documentation>
+              </xs:annotation>
+            </xs:group>
+            <xs:attribute name="id" type="xs:string">
+              <xs:annotation>
+                <xs:documentation>The menu ID</xs:documentation>
+              </xs:annotation>
+            </xs:attribute>
+          </xs:complexType>
+        </xs:element>
+
+        <!-- manually specified -->
+        <xs:element name="setMenu">
+          <xs:annotation>
+            <xs:documentation>Set the current menu to the provided ID</xs:documentation>
+          </xs:annotation>
+          <xs:complexType>
+            <xs:all>
+              <xs:element name="id" type="buildable-value:buildableValueElement" minOccurs="1">
+                <xs:annotation>
+                  <xs:documentation>The menu ID</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              <xs:element name="inputs" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>Input variables to pass to the menu</xs:documentation>
+                </xs:annotation>
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="variable" type="actions:buildable-inputs" minOccurs="1" maxOccurs="unbounded"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+            </xs:all>
+          </xs:complexType>
+        </xs:element>
+      </xs:choice>
+
+      <!-- addDialog -->
+      <xs:choice>
+        <!-- value only -->
+        <xs:element name="addDialog">
+          <xs:complexType>
+            <xs:group ref="buildable-value:buildableValue" minOccurs="0"/>
+            <xs:attribute name="id" type="xs:string"/>
+            <xs:attribute name="allow_duplicates" type="xs:boolean"/>
+          </xs:complexType>
+
+          <xs:key name="dialog_id">
+            <xs:selector xpath="."/>
+            <xs:field xpath="@id|*"/>
+          </xs:key>
+        </xs:element>
+
+        <!-- manually specified -->
+        <xs:element name="addDialog">
+          <xs:complexType>
+            <xs:all>
+              <xs:element name="id" type="buildable-value:buildableValueElement"/>
+              <xs:element name="inputs" minOccurs="0">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="variable" type="actions:buildable-inputs" minOccurs="1" maxOccurs="unbounded"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+            </xs:all>
+            <xs:attribute name="allow_duplicates" type="xs:boolean"/>
+          </xs:complexType>
+        </xs:element>
+      </xs:choice>
+
+      
+      <xs:element name="custom">
+        <xs:complexType>
+          <xs:group ref="text:text" minOccurs="0" />
+          <xs:attribute name="event" type="xs:string" />
+        </xs:complexType>
+      </xs:element>
+      
+
+      <xs:element name="closeDialog"/>
+
+      <xs:element name="setValue">
+        <xs:complexType>
+          <xs:group ref="buildable-value:buildableValue" minOccurs="1"/>
+          <xs:attribute name="key" type="xs:string" use="required"/>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="map"> 
+        <xs:complexType>
+          <xs:group ref="map-actions:map-action"/>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="game">
+        <xs:complexType>
+          <xs:group ref="game-actions:game-action" minOccurs="1"/>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="mod">
+        <xs:complexType>
+          <xs:group ref="mod-actions:mod-action"/>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="mods">
+        <xs:complexType>
+          <xs:group ref="mod-actions:mod-action"/>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="song">
+        <xs:complexType>
+          <xs:group ref="song-actions:song-action"/>
+        </xs:complexType>
+      </xs:element>
+      
+      <xs:element name="multiplayer">
+        <xs:complexType>
+          <xs:group ref="multiplayer-actions:multiplayer-action"/>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="ui">
+        <xs:annotation>
+          <xs:documentation>Perform a UI action</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:group ref="ui-actions:ui-action"/>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="cursor">
+        <xs:complexType>
+          <xs:group ref="cursor-actions:cursor-action"/>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="chat">
+        <xs:complexType>
+          <xs:group ref="chat-actions:chat-action"/>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="gameplay">
+        <xs:complexType>
+          <xs:group ref="gameplay-actions:gameplay-action"/>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="onlineContent">
+        <xs:complexType>
+          <xs:group ref="online-content-actions:online-content-action"/>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="conditional">
+        <xs:complexType>
+          <xs:choice minOccurs="1">
+            <xs:group ref="actions:action-cond-specified"/>
+            <xs:group ref="actions:action-type"/>
+          </xs:choice>
+          <xs:attribute name="cond" type="common:condition" use="required"/>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="list">
+        <xs:complexType>
+            <xs:group ref="actions:action-type" minOccurs="1" maxOccurs="unbounded"/>
+        </xs:complexType>
+      </xs:element>
+      
+  </xs:choice>
+</xs:group>
+
+<xs:complexType name="buildable-inputs">
+  <xs:choice>
+    <xs:group ref="buildable-value:buildableValue" />
+    <xs:element name="value" type="buildable-value:buildableValueElement" />
+  </xs:choice>
+  <xs:attribute name="name" type="xs:string" use="required"/>
+</xs:complexType>
+
+
+<xs:group name="action-cond-specified">
+  <xs:sequence>
+    <xs:element name="true" minOccurs="1" maxOccurs="1">
+      <xs:complexType>
+        <xs:group ref="actions:action-type"/>
+      </xs:complexType>
+    </xs:element>
+
+    <xs:element name="false" minOccurs="0" maxOccurs="1">
+      <xs:complexType>
+        <xs:group ref="actions:action-type"/>
+      </xs:complexType>
+    </xs:element>
+  </xs:sequence>
+</xs:group>
+
+
+</xs:schema>
