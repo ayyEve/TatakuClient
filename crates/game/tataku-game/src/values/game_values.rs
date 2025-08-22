@@ -60,10 +60,11 @@ impl TatakuValues {
     ) -> Self {
         Self {
             enums: EnumValues::new(infos),
-            global: GlobalValues::new(infos.clone(), &settings),
-            settings,
-            beatmap_manager: BeatmapManager::new(infos.clone()),
+            online_manager: OnlineManager::new(),
             game: GameValues::new(online_content_engines),
+            global: GlobalValues::new(infos.clone(), &settings),
+            beatmap_manager: BeatmapManager::new(infos.clone()),
+            settings,
             ..Default::default()
         }
     }
