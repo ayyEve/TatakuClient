@@ -90,7 +90,7 @@ integration-media-controls.path = "crates/integrations/media_controls"
 lazy_static = "1.5.0"
 parking_lot = "0.12.3"
 tokio = { version = "1.44.2", features = [ "full" ] }
-rusqlite = { version = "0.34.0", features = [ "bundled" ] }
+rusqlite = { version = "0.37.0", features = [ "bundled" ] }
 futures-util = { version = "0.3.31", features = [ "async-await", "sink", "std" ] }
 async-trait = "0.1.87"
 async-recursion = "1.1.1"

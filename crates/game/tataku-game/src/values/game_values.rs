@@ -60,6 +60,7 @@ impl TatakuValues {
     ) -> Self {
         Self {
             enums: EnumValues::new(infos),
+            #[cfg(feature="gameplay")]
             online_manager: OnlineManager::new(),
             game: GameValues::new(online_content_engines),
             global: GlobalValues::new(infos.clone(), &settings),

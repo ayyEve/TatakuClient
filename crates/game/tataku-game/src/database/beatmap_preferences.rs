@@ -69,21 +69,42 @@ impl Database {
         map_hash: Md5Hash, 
         prefs: &BeatmapPreferences,
     ) {
-        let BeatmapPreferences{ 
+        let BeatmapPreferences { 
             audio_offset, 
             background_video, 
             storyboard, 
             beatmap_skin,
         } = prefs;
-        let map_hash = map_hash.to_string();
+        let map_hash = Box::new(map_hash.to_string());
 
-        Self::add_query(DatabaseQuery::InsertOrUpdate { 
-            sql: format!("INSERT INTO beatmap_preferences (beatmap_hash, audio_offset, background_video, storyboard, beatmap_skin) VALUES ('{map_hash}', {audio_offset}, {background_video}, {storyboard}, {beatmap_skin})"), 
-            table_name: "beatmap_preferences".to_owned(), 
-            operation: "INSERT".to_owned(), 
-            sql_if_failed: Some(format!("UPDATE beatmap_preferences SET audio_offset={audio_offset}, background_video={background_video}, storyboard={storyboard} WHERE beatmap_hash='{map_hash}'")), 
-            operation_if_failed: Some("UPDATE".to_owned()) 
-        });
+        Self::insert_or_update(
+            "beatmap_preferences", 
+            SqlOperation::new(
+                "INSERT INTO beatmap_preferences (beatmap_hash, audio_offset, background_video, storyboard, beatmap_skin) VALUES (?1, ?2, ?3, ?4, ?5)", 
+                "INSERT",
+                vec![
+                    map_hash.clone().into(), 
+                    audio_offset.into(),
+                    background_video.into(),
+                    storyboard.into(),
+                    beatmap_skin.into(),
+                ]
+            ),
+            Some(SqlOperation::new(
+                "UPDATE beatmap_preferences 
+                    SET audio_offset=?2, background_video=?3, storyboard=?4, beatmap_skin=?5
+                    WHERE beatmap_hash=?1
+                ", 
+                "UPDATE",
+                vec![
+                    map_hash.clone().into(), 
+                    audio_offset.into(),
+                    background_video.into(),
+                    storyboard.into(),
+                    beatmap_skin.into(),
+                ]
+            ))
+        );
     }
 
     pub fn get_beatmap_mode_prefs(
@@ -93,15 +114,18 @@ impl Database {
         let db = Self::get();
         let map_hash = map_hash.to_string();
 
-        let query = format!("SELECT * FROM beatmap_mode_preferences WHERE beatmap_hash='{map_hash}' AND playmode='{playmode}'");
-        let mut s = db.prepare(&query).unwrap();
+        let query = "SELECT * FROM beatmap_mode_preferences WHERE beatmap_hash=?1 AND playmode=?2";
+        let mut s = db.prepare(query).unwrap();
         let res = s.query_map(
-            [], 
+            [
+                &map_hash,
+                playmode
+            ], 
             BeatmapPlaymodePreferences::from_row
         );
 
         if let Ok(mut rows) = res {
-            rows.find_map(|r|r.ok()).unwrap_or_default()
+            rows.find_map(|r| r.ok()).unwrap_or_default()
         } else {
             BeatmapPlaymodePreferences::default()
         }
@@ -112,15 +136,32 @@ impl Database {
         prefs: &BeatmapPlaymodePreferences
     ) {
         let BeatmapPlaymodePreferences { scroll_speed } = prefs;
-        let map_hash = map_hash.to_string();
+        let map_hash = Box::new(map_hash.to_string());
+        // let playmode = Box::new(playmode.to_string());
 
-        Self::add_query(DatabaseQuery::InsertOrUpdate { 
-            sql: format!("INSERT INTO beatmap_mode_preferences (beatmap_hash, playmode, scroll_speed) VALUES ('{map_hash}', '{playmode}', {scroll_speed})"), 
-            table_name: "beatmap_mode_preferences".to_owned(), 
-            operation: "INSERT".to_owned(), 
-            sql_if_failed: Some(format!("UPDATE beatmap_mode_preferences SET scroll_speed={scroll_speed} WHERE beatmap_hash='{map_hash}' AND playmode='{playmode}'")), 
-            operation_if_failed: Some("UPDATE".to_owned()) 
-        });
+        Self::insert_or_update(
+            "beatmap_preferences", 
+            SqlOperation::new(
+                "INSERT INTO beatmap_mode_preferences (beatmap_hash, playmode, scroll_speed) VALUES (?1, ?2, ?3, ?4, ?5)", 
+                "INSERT",
+                vec![
+                    (&map_hash).into(), 
+                    (&playmode).into(),
+                    scroll_speed.into(),
+                ]
+            ),
+            Some(SqlOperation::new(
+                "UPDATE beatmap_mode_preferences 
+                    SET scroll_speed=?3, 
+                    WHERE beatmap_hash=?1 AND playmode=?2", 
+                "UPDATE",
+                vec![
+                    (&map_hash).into(), 
+                    (&playmode).into(),
+                    scroll_speed.into(),
+                ]
+            ))
+        );
     }
 
 }

@@ -1,13 +1,12 @@
 // TODO: use a provider to save/load scores/replays etc
 
 use crate::prelude::*;
-use rusqlite::Connection;
-use tokio::sync::mpsc::{ channel, Sender };
+use rusqlite::{ Connection, ToSql };
+// use tokio::sync::mpsc::{ channel, Sender };
 
 
 lazy_static::lazy_static! {
     pub static ref DATABASE: Arc<Database> = Database::new();
-    pub static ref DATABASE_OPERATIONS_QUEUE:OnceCell<Sender<DatabaseQuery>> = OnceCell::const_new();
 }
 
 // add new db columns here
@@ -177,59 +176,115 @@ impl Database {
         let connection = Arc::new(Mutex::new(connection));
 
 
-        let (sender, mut receiver) = channel(1000);
-        DATABASE_OPERATIONS_QUEUE.set(sender).unwrap();
+        // let (sender, mut receiver) = channel(1000);
+        // DATABASE_OPERATIONS_QUEUE.set(sender).unwrap();
 
-        // setup operation performer
-        tokio::spawn(async move {
+        // // setup operation performer
+        // tokio::spawn(async move {
             
-            while let Some(op) = receiver.recv().await {
-                match op {
-                    DatabaseQuery::InsertOrUpdate { sql, table_name, operation, sql_if_failed , operation_if_failed} => {
-                        let db = Self::get();
-                        let mut s = db.prepare(&sql).unwrap();
-                        let res = s.execute([]);
-
-                        // if error, probably exists, update instead
-                        if let Err(e) = res {
-                            if let Some(sql) = &sql_if_failed {
-                                let mut s = db.prepare(sql).unwrap();
-                                let res = s.execute([]);
-
-                                if let Err(e) = res {
-                                    let operation = operation_if_failed.unwrap_or(format!("if_failed({operation})"));
-                                    error!("Failed op {operation} for table {table_name}: {e}");
-                                }
-                            } else {
-                                error!("Failed op {operation} for table {table_name}: {e}");
-                            }
-                        }
-                    },
-                }
-            }
-        });
+        //     while let Some(op) = receiver.recv().await {
+        //         match op {
+        //             DatabaseQuery::InsertOrUpdate { sql, table_name, operation, sql_if_failed , operation_if_failed } => {
+                        
+        //             },
+        //         }
+        //     }
+        // });
         
         Arc::new(Self {connection})
     }
 
-    pub fn add_query(q: DatabaseQuery) {
-        tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(async {
-                if let Err(e) = DATABASE_OPERATIONS_QUEUE.get().unwrap().send(q).await {
-                    error!("error sending database query! {}", e);
-                }
-            });
-        });
+    pub fn insert_or_update(
+        table_name: &str, 
+        operation: SqlOperation,
+        operation_if_failed: Option<SqlOperation>,
+    ) {
+        let db = Self::get();
+        let mut s:rusqlite::Statement<'_> = db.prepare(&operation.sql).unwrap();
+        let values = operation.values
+            .iter()
+            .map(|i| &**i)
+            .collect::<Vec<_>>();
+
+        let res = s.execute(&*values);
+
+        // if error, probably exists, update instead
+        if let Err(e) = res {
+            if let Some(operation) = operation_if_failed {
+                Self::insert_or_update(table_name, operation, None);
+            } else {
+                error!("Failed op {} for table {table_name}: {e}", operation.operation_name);
+            }
+        }
+    }
+
+
+    pub fn make_values_str(columns: usize, entries: usize) -> String {
+        let mut index = 1;
+
+        (0..entries)
+            .map(|_| (0..columns)
+                .map(|_| { index += 1; format!("?{}", index - 1) })
+                .collect::<Vec<_>>()
+                .join(", ")
+            )
+            .map(|v| format!("({v})"))
+            .collect::<Vec<_>>()
+            .join(",\n")
+    }
+
+}
+
+pub struct SqlOperation<'a> {
+    pub sql: String,
+    pub operation_name: String,
+    pub values: Vec<SqlValue<'a>>, 
+}
+impl<'a> SqlOperation<'a> {
+    pub fn new(
+        sql: impl ToString,
+        operation_name: impl ToString,
+        values: Vec<SqlValue<'a>>,
+    ) -> Self {
+        Self {
+            sql: sql.to_string(),
+            operation_name: operation_name.to_string(),
+            values,
+        }
+    }
+}
+
+pub enum SqlValue<'a> {
+    Owned(Box<dyn ToSql>),
+    Borrowed(&'a dyn ToSql),
+}
+impl<T: ToSql + 'static> From<Box<T>> for SqlValue<'_> {
+    fn from(value: Box<T>) -> Self {
+        Self::Owned(value)
+    }
+}
+impl<'a, T: ToSql> From<&'a T> for SqlValue<'a> {
+    fn from(value: &'a T) -> Self {
+        Self::Borrowed(value)
+    }
+}
+impl<'a> Deref for SqlValue<'a> {
+    type Target = dyn ToSql + 'a;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::Owned(b) => b.as_ref(),
+            Self::Borrowed(b) => *b,
+        }
     }
 }
 
 
-pub enum DatabaseQuery {
-    InsertOrUpdate { 
-        sql: String, 
-        table_name: String, 
-        operation: String, 
-        sql_if_failed: Option<String>, 
-        operation_if_failed: Option<String> 
-    }
+
+#[test]
+fn test_make_values_str() {
+    assert_eq!(
+        "(?1, ?2, ?3, ?4),\n(?5, ?6, ?7, ?8),\n(?9, ?10, ?11, ?12)", 
+        Database::make_values_str(4, 3)
+    );
 }

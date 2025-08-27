@@ -1,5 +1,23 @@
 use crate::prelude::*;
 
+const BEATMAP_INSERT: &str = "
+INSERT INTO beatmaps (
+    beatmap_path, beatmap_hash, beatmap_type,
+
+    playmode, 
+    artist, artist_unicode,
+    title, title_unicode,
+    creator, version,
+
+    audio_filename, image_filename,
+    audio_preview, duration,
+    
+    hp, od, cs, ar,
+    
+    bpm_min, bpm_max
+) VALUES ";
+const COLUMNS: usize = 20;
+
 impl Database {
     pub fn get_all_beatmaps() -> Vec<Arc<BeatmapMeta>> {
         let db = Self::get();
@@ -33,20 +51,27 @@ impl Database {
             .chunks(max_inserts_per_statement);
 
         for map_group in maps_iter {
-            let statement = get_beatmap_insert();
-            let map_strs = map_group
+            let values = map_group
                 .iter()
-                .map(insert_beatmap_values)
-                .collect::<Vec<String>>().join(",\n");
-            let query = statement + &map_strs;
+                .flat_map(|a| beatmap_values(a))
+                .collect::<Vec<_>>();
+            let values = values.iter()
+                .map(|i| &**i)
+                .collect::<Vec<_>>();
+
+            let query = BEATMAP_INSERT.to_string() + &Self::make_values_str(
+                COLUMNS,
+                map_group.len()
+            );
 
             let db = Self::get();
             let res = db
                 .prepare(&query)
                 .expect(&query)
-                .execute([]);
+                .execute(&*values);
+
             if let Err(e) = res {
-                error!("error inserting metadatas: {}", e);
+                error!("Error inserting metadatas: {e}");
             }
         }
     }
@@ -78,64 +103,31 @@ fn row_into_metadata(r: &rusqlite::Row) -> rusqlite::Result<BeatmapMeta> {
     })
 }
 
-
-fn get_beatmap_insert() -> String {
-    "INSERT INTO beatmaps (
-        beatmap_path, beatmap_hash, beatmap_type,
-
-        playmode, 
-        artist, artist_unicode,
-        title, title_unicode,
-        creator, version,
-
-        audio_filename, image_filename,
-        audio_preview, duration,
-        
-        hp, od, cs, ar,
-        
-        bpm_min, bpm_max
-    ) VALUES ".to_owned()
-}
-fn insert_beatmap_values(map: impl AsRef<BeatmapMeta>) -> String {
-    let map = map.as_ref();
-    
-    let mut bpm_min = map.bpm_min;
-    let mut bpm_max = map.bpm_max;
+fn beatmap_values(map: &BeatmapMeta) -> Vec<SqlValue<'_>> {
+    let mut bpm_min = Box::new(map.bpm_min);
+    let mut bpm_max = Box::new(map.bpm_max);
     if !bpm_min.is_normal() {
-        bpm_min = 0.0;
+        *bpm_min = 0.0;
     }
     if !bpm_max.is_normal() {
-        bpm_max = 99999999.0;
+        *bpm_max = 99999999.0;
     }
-    let beatmap_type:u8 = map.beatmap_type.into();
+    let beatmap_type:Box<u8> = Box::new(map.beatmap_type.into());
+    let hash = Box::new(map.beatmap_hash.to_string());
+    
+    vec![
+        (&map.file_path).into(), hash.into(), beatmap_type.into(),
 
-    format!("(
-        \"{}\", \"{}\", {},
-
-        \"{}\",
-        \"{}\", \"{}\",
-        \"{}\", \"{}\",
-        \"{}\", \"{}\",
-
-        \"{}\", \"{}\",
-        {}, {},
-
-        {}, {}, {}, {},
-
-        {}, {}
-    )",
-        map.file_path, map.beatmap_hash, beatmap_type,
-
-        map.mode,
-        map.artist.replace("\"", "\"\""), map.artist_unicode.replace("\"", "\"\""),
-        map.title.replace("\"", "\"\""), map.title_unicode.replace("\"", "\"\""),
-        map.creator.replace("\"", "\"\""), map.version.replace("\"", "\"\""),
+        (&map.mode).into(),
+        (&map.artist).into(), (&map.artist_unicode).into(),
+        (&map.title).into(), (&map.title_unicode).into(),
+        (&map.creator).into(), (&map.version).into(),
         
-        map.audio_filename, map.image_filename,
-        map.audio_preview, map.duration,
+        (&map.audio_filename).into(), (&map.image_filename).into(),
+        (&map.audio_preview).into(), (&map.duration).into(),
 
-        map.hp, map.od, map.cs, map.ar,
+        (&map.hp).into(), (&map.od).into(), (&map.cs).into(), (&map.ar).into(),
 
-        bpm_min, bpm_max
-    )
+        bpm_min.into(), bpm_max.into()
+    ]
 }
