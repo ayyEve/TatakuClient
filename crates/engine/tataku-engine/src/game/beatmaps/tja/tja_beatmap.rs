@@ -39,14 +39,13 @@ impl TjaBeatmap {
     pub fn load_multiple(path: impl AsRef<Path>) -> TatakuResult<Vec<Self>> {
         let path = path.as_ref();
 
-
         let mut data = std::fs::read(path)?;
         // if theres random useless bom data, remove it
         if data[0..3] == [0xEF, 0xBB, 0xBF] {
             data = data[3..].to_vec();
         }
 
-        let lines = String::from_utf8(data).map_err(|_|BeatmapError::InvalidFile)?;
+        let lines = String::from_utf8(data).map_err(|_| BeatmapError::InvalidFile)?;
         let lines = lines.lines();
 
         let filename: ArcStr = path.to_string_lossy().to_string().into();
@@ -136,16 +135,22 @@ impl TatakuBeatmap for TjaBeatmap {
             bl_max = bl_max.max(tp.beat_length);
         }
 
+        let creator = if self.course_creator.is_empty() {
+            "Taiko no Tatsujin".into()
+        } else {
+            self.course_creator.clone()
+        };
+
         Arc::new(BeatmapMeta { 
             file_path: self.filename.clone(), 
             beatmap_hash: self.hash, 
             beatmap_type: BeatmapType::Tja, 
-            mode: "taiko".to_owned().into(), 
+            mode: "taiko".into(), 
             artist: self.subtitle.clone(), 
             title: self.title.clone(), 
             artist_unicode: self.subtitle_unicode.clone(), 
             title_unicode: self.title_unicode.clone(), 
-            creator: self.course_creator.clone(), 
+            creator, 
             version: self.course_name.clone(), 
             audio_filename: format!("{}/{}", self.directory, self.audio_path).into(), 
             image_filename: format!("{}/{}", self.directory, self.image_path).into(), 
@@ -189,7 +194,7 @@ pub enum TjaCourseEventType {
 
 #[test]
 fn test() {
-    let path = "C:/Users/Eve/Desktop/tja/The Magician/The Magician.tja";
+    let path = "C:/Users/Vee/Desktop/tataku/tja-maps/Songs/01 Pop/360°/360.tja";
     
     let res = TjaBeatmap::load_multiple(path);
     println!("{res:?}");

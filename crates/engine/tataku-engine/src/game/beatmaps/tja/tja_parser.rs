@@ -3,7 +3,7 @@ use super::tja_beatmap::*;
 
 /// helper for parsing .tja files
 #[derive(Default)]
-pub struct TjaParser {
+pub(super) struct TjaParser {
     title: ArcStr,
     title_en: ArcStr,
 
@@ -24,22 +24,37 @@ pub struct TjaParser {
 
     course_lines: Vec<ArcStr>
 }
-
 impl TjaParser {
-    pub fn parse<'a>(mut self, lines: impl Iterator<Item=&'a str>) -> TatakuResult<Vec<TjaBeatmap>> {
+    pub fn parse<'a>(
+        mut self, 
+        lines: impl Iterator<Item=&'a str>,
+    ) -> TatakuResult<Vec<TjaBeatmap>> {
         self.bpm = 120.0;
         self.offset = 0.0;
 
         for line in lines {
             let Some(line) = line.split("//").next() else { continue };
-
             if line.is_empty() { continue }
+
             // i am aware of the potential issue this causes, but it should be fine
             self.course_lines.push(line.to_owned().into());
 
             if line.starts_with("#") { 
                 if !self.current_course.is_valid() {
-                    self.current_course = ParseCourse::new(&self);
+
+                    let c = self.current_course.course.take();
+                    self.current_course = ParseCourse {
+                        course: TjaBeatmap {
+                            course_name: c.course_name,
+                            course_creator: c.course_creator,
+                            course_level: c.course_level,
+                            balloons: c.balloons,
+                            
+                            ..self.get_default_beatmap()
+                        },
+
+                        ..ParseCourse::new(&self)
+                    }
                 }
 
                 self.current_course.parse_course_line(line);
@@ -58,29 +73,37 @@ impl TjaParser {
             self.complete_course();
         }
 
-        Ok(self.courses.into_iter().map(|c|c.course).collect())
+        Ok(self.courses.into_iter().map(|c| c.course).collect())
     }
 
     pub fn parse_metadata(&mut self, line: &str) {
+        // println!("reading meta: {line}");
         let mut split = line.split(":");
         let Some(property) = split.next() else { return };
         let property = property.to_lowercase();
+        // println!("prop: {property}");
         let Some(value) = split.next() else { return };
+        // println!("value: {value}");
         if value.is_empty() { return };
 
+
         match &*property {
-            "title" => self.title = value.to_owned().into(),
-            "subtitle" => self.subtitle = value.to_owned().into(),
-            "wave" => self.audio_filename = value.to_owned().into(),
-            "notedesigner" => self.creator = value.to_owned().into(),
-            "maker" => self.creator = value.to_owned().into(),
+            "titleja" => self.title = value.into(),
+            "title" => self.title_en = value.into(),
+
+            "subtitleja" => self.subtitle = value.into(),
+            "subtitle" => self.subtitle_en = value.into(),
+
+            "wave" => self.audio_filename = value.into(),
+            "notedesigner" => self.creator = value.into(),
+            "maker" => self.creator = value.into(),
 
             "bpm" => self.bpm = value.parse().unwrap_or_default(),
             "offset" => self.offset = value.parse().unwrap_or_default(),
             "demostart" => self.audio_preview = value.parse().unwrap_or_default(),
 
             // current course properties
-            _=> self.current_course.add_metadata(&property, value),
+            _ => self.current_course.add_metadata(&property, value),
         }
     }
 
@@ -159,7 +182,10 @@ impl ParseCourse {
         match key {
             "course" => self.course.course_name = val.to_owned().into(),
             "level" => self.course.course_level = val.parse().unwrap_or_default(),
-            "balloon" => self.required_hits = val.split(",").map(|f|f.parse().unwrap_or(0)).collect(),
+            "balloon" => self.required_hits = val
+                .split(",")
+                .map(|f| f.parse().unwrap_or(0))
+                .collect(),
             
             "scoreinit" => {}, //self.course.score_init = value.parse().unwrap_or_default(),
             "scorediff" => {}, //self.course.score_diff = value.parse().unwrap_or_default(),
@@ -370,7 +396,11 @@ impl ParseCourse {
                 MeasureEvent::Circle(c) => branch.circles.push(c),
                 MeasureEvent::Balloon(b) => branch.balloons.push(b),
                 MeasureEvent::Drumroll(d) => branch.drumrolls.push(d),
-                MeasureEvent::LongEnd(last_long) => self.get_last_long(last_long).as_mut().map(|l|l.set_end_time(time)).nope(),
+                MeasureEvent::LongEnd(last_long) => self
+                    .get_last_long(last_long)
+                    .as_mut()
+                    .map(|l| l.set_end_time(time))
+                    .nope(),
             }
         } else {
             match note {
@@ -379,7 +409,11 @@ impl ParseCourse {
                 MeasureEvent::Circle(c) => self.course.circles.push(c),
                 MeasureEvent::Balloon(b) => self.course.balloons.push(b),
                 MeasureEvent::Drumroll(d) => self.course.drumrolls.push(d),
-                MeasureEvent::LongEnd(last_long) => self.get_last_long(last_long).as_mut().map(|l| l.set_end_time(time)).nope(),
+                MeasureEvent::LongEnd(last_long) => self
+                    .get_last_long(last_long)
+                    .as_mut()
+                    .map(|l| l.set_end_time(time))
+                    .nope(),
             }
         }
 
@@ -390,12 +424,25 @@ impl ParseCourse {
     fn get_last_long(&mut self, long_type: LongType) -> Option<ExistingLongType> {
         match long_type {
             LongType::Balloon => {
-                let list = if let Some(b) = &mut self.current_branch { &mut b.balloons } else { &mut self.course.balloons };
-                list.iter_mut().find(|b| b.end_time.is_nan()).map(ExistingLongType::Balloon)
+                let list = if let Some(b) = &mut self.current_branch { 
+                    &mut b.balloons 
+                } else { 
+                    &mut self.course.balloons 
+                };
+
+                list.iter_mut()
+                    .find(|b| b.end_time.is_nan())
+                    .map(ExistingLongType::Balloon)
             }
             LongType::Drumroll => {
-                let list = if let Some(b) = &mut self.current_branch { &mut b.drumrolls } else { &mut self.course.drumrolls };
-                list.iter_mut().find(|d| d.end_time.is_nan()).map(ExistingLongType::Drumroll)
+                let list = if let Some(b) = &mut self.current_branch { 
+                    &mut b.drumrolls 
+                } else { 
+                    &mut self.course.drumrolls 
+                };
+                list.iter_mut()
+                    .find(|d| d.end_time.is_nan())
+                    .map(ExistingLongType::Drumroll)
             }
             LongType::None => None
         }
@@ -412,7 +459,7 @@ impl ParseCourse {
     fn add_branch_group(&mut self, value: &str) {
         let mut val_split = value.split(",");
         let t = val_split.next().unwrap_or("p").trim(); // type
-        let a = val_split.next().unwrap_or("0").trim(); // advaced requirement
+        let a = val_split.next().unwrap_or("0").trim(); // advanced requirement
         let m = val_split.next().unwrap_or("0").trim(); // master requirement
 
         let requirement = BranchRequirement {
@@ -434,10 +481,11 @@ impl ParseCourse {
         self.add_course_event(TjaCourseEventType::Branch);
     }
     fn complete_branch(&mut self) {
-        let Some(mut branch_group) = std::mem::take(&mut self.current_branch_group) else { return };
+        let Some(mut branch_group) = self.current_branch_group.take() 
+        else { return };
     
         // add the current branch if exists
-        if let Some(branch) = std::mem::take(&mut self.current_branch) {
+        if let Some(branch) = self.current_branch.take() {
             branch_group.branches.insert(branch.diff, branch);
         }
 
@@ -496,5 +544,3 @@ impl MeasureEvent {
         }
     }
 }
-
-

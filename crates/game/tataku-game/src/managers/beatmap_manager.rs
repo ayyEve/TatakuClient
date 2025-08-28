@@ -288,16 +288,14 @@ impl BeatmapManager {
                 beatmap.creator, 
                 beatmap.artist, 
                 beatmap.title
-            );
+            ); 
             let key = BeatmapGroupValue::Set(key);
 
-            if let Some(list) = set_map.get_mut(&key) {
-                list.maps.push(beatmap.beatmap_hash);
-            } else {
-                let mut group = BeatmapGroup::new(key.clone());
-                group.maps.push(beatmap.beatmap_hash);
-                set_map.insert(key, group);
-            }
+            let list = set_map
+                .entry(key.clone())
+                .or_insert_with(|| BeatmapGroup::new(key.clone()));
+
+            list.maps.push(beatmap.beatmap_hash);
         }
 
         set_map.into_values().collect()
@@ -312,14 +310,14 @@ impl BeatmapManager {
 
 
     pub fn random_beatmap(&self) -> Option<Md5Hash> {
-        if !self.beatmaps.is_empty() {
-            let ind = rand::rng().random_range(0..self.beatmaps.len());
-            let map = self.beatmaps.keys().nth(ind).unwrap();
-
-            Some(*map)
-        } else {
-            None
+        if self.beatmaps.is_empty() {
+            return None;
         }
+
+        let ind = rand::rng().random_range(0..self.beatmaps.len());
+        let map = self.beatmaps.keys().nth(ind).unwrap();
+
+        Some(*map)
     }
 
 
