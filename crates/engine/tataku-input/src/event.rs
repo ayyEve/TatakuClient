@@ -20,11 +20,6 @@ pub enum InputType {
     /// really only used by InputManager to handle all controller events
     RawControllerEvent(gilrs::Event, ArcStr, gilrs::PowerInfo),
 }
-impl InputType {
-    pub fn is_mouse(&self) -> bool {
-        matches!(self, Self::MouseMove(_) | Self::MousePress(_) | Self::MouseRelease(_))
-    }
-}
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct InputEvent {

@@ -1,13 +1,12 @@
+mod game;
+
 use tataku_game::prelude::*;
 
 const DOWNLOAD_URL_BASE:&str = "https://cdn.ayyeve.dev/tataku";
 
-mod game;
-
-
 #[inline]
-fn download_url<T:AsRef<str>>(file:T) -> String {
-    format!("{}/{}", DOWNLOAD_URL_BASE, file.as_ref())
+fn download_url<T:AsRef<str>>(file: T) -> String {
+    format!("{DOWNLOAD_URL_BASE}/{}", file.as_ref())
 }
 
 pub const REQUIRED_FILES:&[&str] = &[
@@ -36,6 +35,13 @@ fn start_game() {
         game_event_sender, 
         game_event_receiver
     ) = tokio::sync::mpsc::channel(30);
+
+    let (
+        mouse_position_sender, 
+        mouse_position_receiver
+    ) = TripleBuffer::new(&Vector2::ZERO).split();
+
+
     let window_load_barrier = Arc::new(std::sync::Barrier::new(2));
     let window_side_barrier = window_load_barrier.clone();
 
@@ -53,6 +59,7 @@ fn start_game() {
 
         game::run_game(
             game_event_receiver,
+            mouse_position_receiver,
             proxy,
         );
     });
@@ -64,10 +71,11 @@ fn start_game() {
     let settings = Settings::load();
     let game_window = GameWindow::new(
         game_event_sender,
+        mouse_position_sender,
         &WINDOW,
-        window_side_barrier,
         &settings,
         WindowInitializers {
+            window_creation_barrier: window_side_barrier,
             integrations: vec![
                 #[cfg(feature="discord")] integration_discord::Discord::builder(),
                 #[cfg(feature="lastfm")] integration_lastfm::LastFm::builder(),
@@ -76,6 +84,7 @@ fn start_game() {
             graphics_init: vec![
                 Box::new(tataku_wgpu::WgpuInit)
             ],
+
         }
     );
 

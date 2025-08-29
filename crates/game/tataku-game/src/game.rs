@@ -21,6 +21,7 @@ pub struct Game {
     current_state: GameState,
     queued_state: GameState,
     #[cfg(feature="graphics")] window_event_receiver: AsyncReceiver<WindowEvent>,
+    #[cfg(feature="graphics")] mouse_position_receiver: TripleBufferReceiver<Vector2>,
     #[cfg(feature="graphics")] window_proxy: winit::event_loop::EventLoopProxy<WindowAction>,
 
     // managers
@@ -70,7 +71,10 @@ pub struct Game {
 impl Game {
     pub fn new(
         #[cfg(feature="graphics")]
-        game_event_receiver: tokio::sync::mpsc::Receiver<WindowEvent>,
+        window_event_receiver: tokio::sync::mpsc::Receiver<WindowEvent>,
+        #[cfg(feature="graphics")] 
+        mouse_position_receiver: TripleBufferReceiver<Vector2>,
+
         #[cfg(feature="graphics")]
         window_proxy: winit::event_loop::EventLoopProxy<WindowAction>,
         
@@ -98,6 +102,8 @@ impl Game {
 
             // engine
             #[cfg(feature="graphics")] window_proxy,
+            #[cfg(feature="graphics")] window_event_receiver,
+            #[cfg(feature="graphics")] mouse_position_receiver,
             #[cfg(feature="gameplay")] input_manager: InputManager::default(),
             #[cfg(feature="graphics")] volume_controller: VolumeControl::default(),
             #[cfg(feature="graphics")] background_image: None,
@@ -153,7 +159,6 @@ impl Game {
             // misc
             game_start: TatakuInstant::now(),
             #[cfg(feature="graphics")] background_loader: None,
-            #[cfg(feature="graphics")] window_event_receiver: game_event_receiver,
             #[cfg(feature="graphics")] queued_events: Vec::new(),
 
             values: ValueCollection {
@@ -273,10 +278,9 @@ impl Game {
             self.load_theme();
         }
 
-        #[cfg(feature="gameplay")]
-        self.init_online();
-
         #[cfg(feature="gameplay")] {
+            self.init_online();
+
             // setup double tap protection
             self.input_manager.set_double_tap_protection(
                 self.settings.enable_double_tap_protection
@@ -613,88 +617,15 @@ impl Game {
         #[cfg(feature="graphics")] self.input_display.update();
 
         // read input events
-        let mouse_pos = self.input_manager.mouse_pos;
-        let mut mouse_down = self.input_manager.get_mouse_down();
-        let mouse_up = self.input_manager.get_mouse_up();
-        let mouse_moved = self.input_manager.get_mouse_moved();
-        // TODO: do we want this here or only in menus?
-        let mut scroll_delta = self.input_manager.get_scroll_delta() 
-            * self.settings.display_settings.scroll_sensitivity;
-
-        let mut keys_down = self.input_manager.get_keys_down();
-        let keys_up = self.input_manager.get_keys_up();
-        let mods = self.input_manager.get_key_mods();
-        let window_focus_changed = self.input_manager.get_changed_focus();
-
-        let controller_down = self
-            .input_manager
-            .get_controller_down();
-        let controller_up = self
-            .input_manager
-            .get_controller_up();
-        let controller_axis = self
-            .input_manager
-            .get_controller_axis();
+        let mut input_state = self.handle_inputs();
 
         // update the cursor
         #[cfg(feature="graphics")] 
         self.cursor_manager.update(
             elapsed, 
-            self.input_manager.mouse_pos
+            input_state.mouse_pos
         );
 
-        // update cursor
-        #[cfg(feature="graphics")] 
-        if mouse_down.contains(&MouseButton::Left) {
-            self.cursor_manager.left_pressed(true);
-        } else if mouse_up.contains(&MouseButton::Left) {
-            self.cursor_manager.left_pressed(false);
-        }
-        #[cfg(feature="graphics")] 
-        if mouse_down.contains(&MouseButton::Right) {
-            self.cursor_manager.right_pressed(true);
-        } else if mouse_up.contains(&MouseButton::Right) {
-            self.cursor_manager.right_pressed(false);
-        }
-
-        let controller_pause = controller_down
-            .iter()
-            .any(|(_, a)| 
-                a.contains(&ControllerButton::Start)
-            );
-
-        // check if a notif was clicked
-        #[cfg(feature="graphics")] 
-        if !mouse_down.is_empty() && self.notification_manager.on_click(
-            self.values.game.window_size, 
-            mouse_pos, 
-            &mut self.actions
-        ) {
-            mouse_down.clear();
-        }
-
-        // check for volume change
-        #[cfg(feature="graphics")] 
-        if mouse_moved { self.volume_controller.on_mouse_move(mouse_pos); }
-        #[cfg(feature="graphics")] 
-        if scroll_delta.y != 0.0 {
-            if let Some(action) = self.volume_controller.on_mouse_wheel(
-                scroll_delta.y / (self.settings.display_settings.scroll_sensitivity * 1.5), 
-                mods, 
-                &mut self.values.settings
-            ) {
-                scroll_delta.y = 0.0;
-                self.actions.push(action);
-            }
-        }
-        #[cfg(feature="graphics")] 
-        self.volume_controller.on_key_press(
-            &mut keys_down, 
-            mods, 
-            &mut self.values.settings
-        );
-
-        self.check_keys(&mut keys_down, &mods);
 
 
         // update our global values
@@ -737,52 +668,54 @@ impl Game {
         }
         #[cfg(feature="graphics")] 
         self.gameplay_managers.retain(|a, _| Arc::strong_count(a) > 1);
-        #[cfg(feature="graphics")] 
-        let mut input_state = CurrentInputState {
-            mouse_pos,
-            mouse_moved,
-            scroll_delta,
-            mouse_down,
-            mouse_up,
-            keys_down,
-            keys_up,
-            mods,
 
-            controller_axes: controller_axis
-                .into_iter()
-                .flat_map(|(info, axes)| 
-                    axes
-                    .clone()
-                    .into_iter()
-                    .filter_map(move |(axis, state)| 
-                        state.changed.then_some((
-                            axis, 
-                            state.value, 
-                            info.id, 
-                            info.name.clone()
-                        ))
-                    )
-                )
-                .collect(),
+        // #[cfg(feature="graphics")] 
+        // let mut input_state = CurrentInputState {
+        //     mouse_pos,
+        //     mouse_moved,
+        //     scroll_delta,
+        //     mouse_down,
+        //     mouse_up,
+        //     keys_down,
+        //     keys_up,
+        //     mods,
 
-            controller_down: controller_down
-                .into_iter()
-                .flat_map(|(info, buttons)| 
-                    buttons
-                    .into_iter()
-                    .map(move |b| (b, info.id, info.name.clone()))
-                )
-                .collect(),
+        //     controller_axes: controller_axis
+        //         .into_iter()
+        //         .flat_map(|(info, axes)| 
+        //             axes
+        //             .clone()
+        //             .into_iter()
+        //             .filter_map(move |(axis, state)| 
+        //                 state.changed.then_some((
+        //                     axis, 
+        //                     state.value, 
+        //                     info.id, 
+        //                     info.name.clone()
+        //                 ))
+        //             )
+        //         )
+        //         .collect(),
+
+        //     controller_down: controller_down
+        //         .into_iter()
+        //         .flat_map(|(info, buttons)| 
+        //             buttons
+        //             .into_iter()
+        //             .map(move |b| (b, info.id, info.name.clone()))
+        //         )
+        //         .collect(),
             
-            controller_up: controller_up
-                .into_iter()
-                .flat_map(|(info, buttons)| 
-                    buttons
-                    .into_iter()
-                    .map(move |b| (b, info.id, info.name.clone()))
-                )
-                .collect(),
-        };
+        //     controller_up: controller_up
+        //         .into_iter()
+        //         .flat_map(|(info, buttons)| 
+        //             buttons
+        //             .into_iter()
+        //             .map(move |b| (b, info.id, info.name.clone()))
+        //         )
+        //         .collect(),
+        // };
+        
         #[cfg(feature="graphics")] 
         self.ui_manager.update(
             &mut input_state,
@@ -853,14 +786,14 @@ impl Game {
             GameState::Ingame(mut manager) => {
                 // pause button, or focus lost, only if not replaying
                 #[cfg(feature="graphics")] 
-                if let Some(got_focus) = window_focus_changed {
+                if let Some(got_focus) = input_state.window_focus_changed {
                     if self.settings.display_settings.pause_on_focus_lost {
                         manager.window_focus_changed(got_focus);
                     }
                 }
 
                 if !manager.failed && manager.can_pause() 
-                    && (manager.should_pause || controller_pause)
+                    && (manager.should_pause || input_state.controller_pause)
                 {
                     manager.pause();
                     let actions = manager.actions.take();
@@ -1340,159 +1273,240 @@ impl Game {
         // if elapsed > 1000.0/144.0 {warn!("render took a while: {elapsed}")}
     }
 
-    fn check_keys(
-        &mut self, 
-        keys_down: &mut KeyCollection,
-        mods: &KeyModifiers,
-    ) {
 
-        // check user panel
-        #[cfg(feature="graphics")] 
-        if keys_down.has_and_remove(self.settings.key_user_panel) {
-            self.handle_make_userpanel();
-        }
+    #[cfg(feature="graphics")] 
+    fn handle_inputs(&mut self) -> CurrentInputState {
+        let mouse_pos = *self.mouse_position_receiver.read();
+        let mouse_moved = mouse_pos != self.input_manager.mouse_pos;
+
+        let mut controller_pause = false;
+        let mods = self.input_manager.get_key_mods();
+        let window_focus_changed = self.input_manager.get_changed_focus();
+        let mut events = self.input_manager.events.take();
+
+        events.retain(|event| {
+            match event {
+                InputType::MousePress(MouseButton::Left) => {
+                    self.cursor_manager.left_pressed(true);
+
+                    // check if a notif was clicked
+                    if self.notification_manager.on_click(
+                        self.values.game.window_size, 
+                        mouse_pos, 
+                        &mut self.actions
+                    ) {
+                        return false;
+                    }
+                }
+                InputType::MousePress(MouseButton::Right) => {
+                    self.cursor_manager.right_pressed(true);
+                }
+                InputType::MouseRelease(MouseButton::Left) => {
+                    self.cursor_manager.left_pressed(false);
+                }
+                InputType::MouseRelease(MouseButton::Right) => {
+                    self.cursor_manager.right_pressed(false);
+                }
+
+                InputType::MouseScroll(delta) => {
+                    // check for volume change
+                    if delta.y != 0.0 {
+                        if let Some(action) = self.volume_controller.on_mouse_wheel(
+                            delta.y / (self.settings.display_settings.scroll_sensitivity * 1.5), 
+                            mods, 
+                            &mut self.values.settings
+                        ) {
+                            self.actions.push(action);
+                            return false;
+                        }
+                    }
+                }
+
+                InputType::ControllerPress(ControllerButton::Start, _, _) => {
+                    controller_pause = true;
+                }
+
+                InputType::KeyPress(key) => {
+                    let Some(key) = key.as_key() 
+                    else { return true };
+
+                    if self.volume_controller.on_key_press(
+                        &key, 
+                        mods, 
+                        &mut self.actions,
+                        &mut self.values.settings
+                    ) {
+                        return false;
+                    }
+
+                    // check user panel
+                    if key == self.settings.key_user_panel {
+                        self.handle_make_userpanel();
+                        return false;
+                    }
+
+                    match key {
+                        // screenshot
+                        Key::F12 => self.window_proxy.send_event(WindowAction::TakeScreenshot(ScreenshotInfo {
+                            // if shift is pressed, upload to server, and get link
+                            upload: mods.shift,
+                        })).unwrap(),
+                        
+                        // settings menu
+                        Key::O => if mods.ctrl {
+                            let is_ingame = self.current_state.is_ingame();
+                            let allow_ingame = self.settings
+                                .common_game_settings
+                                .allow_ingame_settings;
+
+                            if !is_ingame || allow_ingame {
+                                self.handle_custom_dialog(
+                                    "settings", 
+                                    DialogCreateOptions::default(), 
+                                    BuildableInputArguments::default(),
+                                );
+                                // self.ui_manager.add_dialog(
+                                //     Box::new(SettingsMenu::new(&self.values.settings)), 
+                                //     SettingsMenu::DEFAULT_OPTIONS,
+                                //     &mut self.values, 
+                                //     &mut self.actions,
+                                // );z
+                            }
+                        }
+
+                        // debug
+                        Key::PageUp => if mods.ctrl {
+                            debug!("{:#?}", self.values.values);
+                        }
+
+                        // custom menu list
+                        Key::M => if mods.ctrl && mods.shift {
+                            self.actions.push(MultiplayerAction::CreateLobby { 
+                                name: "a".to_string(), 
+                                password: String::new(), 
+                                private: false, 
+                                players: 5
+                            });
+
+                            // self.actions.push(MenuAction::set_menu("menu_list"));
+                        }
+
+                        // #[cfg(feature="graphics")] 
+                        // if keys_down.has_key(Key::H) && mods.ctrl && mods.shift {
+                        //     keys_down.remove_key(Key::H);
+                        //     warn!("{:#?}", self.ui_manager.root_tree.print());
+                        // }
+
+                        // debug
+                        Key::T => if mods.ctrl && mods.shift {
+                            self.ui_manager.root_tree.print(&self.values);
+                        }
+
+                        // console dialog
+                        Key::Grave => if !self.current_state.is_ingame() {
+                            // self.handle_custom_dialog(
+                            //     "console_dialog", 
+                            //     DialogCreateOptions::default(),
+                            //     BuildableInputArguments::default()
+                            // );
+
+                            // self.ui_manager.add_dialog(
+                            //     ConsoleDialog::new().boxed(), 
+                            //     ConsoleDialog::DEFAULT_OPTIONS,
+                            //     &mut self.values, 
+                            //     &mut self.actions,
+                            // );
+                        }
+
+                                        
+                        // close latest dialog
+                        Key::Escape if self.ui_manager.close_latest(
+                            &mut self.values, 
+                            &mut self.actions
+                        ) => {}
+
+                        // full refresh
+                        Key::F5 => if mods.ctrl {
+                            self.actions.push(Notification::new_text(
+                                "Doing a full refresh, the game will freeze for a bit", 
+                                Color::RED, 
+                                5000.0
+                            ));
+                            let settings = self.settings.clone();
+                            self.beatmap_manager.full_refresh(&settings);
+                        }
+
+                        // reload custom menus
+                        Key::R if mods.ctrl => {
+                            self.load_custom_menus();
+
+                            debug!("Reloading current menu");
+                            self.handle_custom_menu(
+                                self.ui_manager.get_menu().clone(), 
+                                None
+                            );
+                        }
 
 
-        // screenshot
-        #[cfg(feature="graphics")] 
-        if keys_down.has_and_remove(Key::F12) {
-            self.window_proxy.send_event(WindowAction::TakeScreenshot(ScreenshotInfo {
-                // if shift is pressed, upload to server, and get link
-                upload: mods.shift,
-            })).unwrap();
-        }
+                        // playmode change keybind
+                        // FIXME: move to menus??
+                        
+                        Key::Key1
+                        | Key::Key2
+                        | Key::Key3
+                        | Key::Key4
+                            if mods.ctrl => {
+                            let index = match key {
+                                Key::Key1 => 0,
+                                Key::Key2 => 1,
+                                Key::Key3 => 2,
+                                Key::Key4 => 3,
+                                _ => unsafe { std::hint::unreachable_unchecked() },
+                            };
+                            
+                            let Some(mode) = self.global
+                                .gamemode_infos
+                                .by_num
+                                .get(index) 
+                            else { return true };
 
-        // settings menu
-        #[cfg(feature="graphics")] 
-        if keys_down.has_key(Key::O) && mods.ctrl {
-            keys_down.remove_key(Key::O);
+                            let mode = mode.id;
+                            self.actions.push(BeatmapAction::SetPlaymode(mode.to_string()));
+                            self.actions.push(Notification::new_text(
+                                format!("Playmode set to {mode}"), 
+                                Color::CYAN,
+                                3000.0
+                            ));
+                        }
 
-            let is_ingame = self.current_state.is_ingame();
-            let allow_ingame = self.settings
-                .common_game_settings
-                .allow_ingame_settings;
+                        _ => return true,
+                    }
 
-            if !is_ingame || allow_ingame {
-                self.handle_custom_dialog(
-                    "settings", 
-                    DialogCreateOptions::default(), 
-                    BuildableInputArguments::default(),
-                );
-                // self.ui_manager.add_dialog(
-                //     Box::new(SettingsMenu::new(&self.values.settings)), 
-                //     SettingsMenu::DEFAULT_OPTIONS,
-                //     &mut self.values, 
-                //     &mut self.actions,
-                // );z
+                    return false;
+                }
+                
+                _ => {}
             }
+
+            true
+        });
+
+        if mouse_moved { 
+            events.push(InputType::MouseMove(mouse_pos));
+            self.input_manager.mouse_pos = mouse_pos;
+            self.volume_controller.on_mouse_move(mouse_pos); 
         }
 
-        // debug
-        if keys_down.has_key(Key::PageUp) && mods.ctrl {
-            keys_down.remove_key(Key::PageUp);
-            debug!("{:#?}", self.values.values);
+        CurrentInputState {
+            mouse_pos,
+            mouse_moved,
+            window_focus_changed,
+            controller_pause,
+            mods,
+            events,
         }
-
-        // custom menu list
-        if keys_down.has_key(Key::M) && mods.ctrl && mods.shift {
-            keys_down.remove_key(Key::M);
-            
-            self.actions.push(MultiplayerAction::CreateLobby { 
-                name: "a".to_string(), 
-                password: String::new(), 
-                private: false, 
-                players: 5
-            });
-
-            // self.actions.push(MenuAction::set_menu("menu_list"));
-        }
-        // #[cfg(feature="graphics")] 
-        // if keys_down.has_key(Key::H) && mods.ctrl && mods.shift {
-        //     keys_down.remove_key(Key::H);
-        //     warn!("{:#?}", self.ui_manager.root_tree.print());
-        // }
-        
-        #[cfg(feature="graphics")] 
-        if keys_down.has_key(Key::T) && mods.ctrl && mods.shift {
-            keys_down.remove_key(Key::T);
-            self.ui_manager.root_tree.print(&self.values);
-        }
-
-        #[cfg(feature="graphics")] 
-        if !self.current_state.is_ingame() && keys_down.has_key(Key::Grave) {
-            keys_down.remove_key(Key::Grave);
-
-            // self.handle_custom_dialog(
-            //     "console_dialog", 
-            //     DialogCreateOptions::default(),
-            //     BuildableInputArguments::default()
-            // );
-
-            // self.ui_manager.add_dialog(
-            //     ConsoleDialog::new().boxed(), 
-            //     ConsoleDialog::DEFAULT_OPTIONS,
-            //     &mut self.values, 
-            //     &mut self.actions,
-            // );
-        }
-
-
-        // update any dialogs
-        #[cfg(feature="graphics")] 
-        if keys_down.has_key(Key::Escape) 
-            && self.ui_manager.close_latest(&mut self.values, &mut self.actions) {
-            keys_down.remove_key(Key::Escape);
-        }
-
-        if keys_down.has_key(Key::F5) && mods.ctrl {
-            keys_down.remove_key(Key::F5);
-            self.actions.push(Notification::new_text(
-                "Doing a full refresh, the game will freeze for a bit", 
-                Color::RED, 
-                5000.0
-            ));
-            let settings = self.settings.clone();
-            self.beatmap_manager.full_refresh(&settings);
-        }
-
-        // FIXME: move to menus??
-        if mods.ctrl {
-            for (key, index) in [
-                (Key::Key1, 0),
-                (Key::Key2, 1),
-                (Key::Key3, 2),
-                (Key::Key4, 3),
-            ] {
-                if !keys_down.has_key(key) { continue }
-                let Some(mode) = self.global
-                    .gamemode_infos
-                    .by_num.get(index) 
-                else { continue };
-
-                let mode = mode.id;
-                self.actions.push(BeatmapAction::SetPlaymode(mode.to_string()));
-                self.actions.push(Notification::new_text(
-                    format!("Playmode set to {mode}"), 
-                    Color::CYAN,
-                    3000.0
-                ));
-            }
-        }
-
-        // reload custom menus
-        #[cfg(feature="graphics")] 
-        if keys_down.has_key(Key::R) && mods.ctrl {
-            keys_down.remove_key(Key::R);
-            self.load_custom_menus();
-
-            debug!("Reloading current menu");
-            self.handle_custom_menu(
-                self.ui_manager.get_menu().clone(), 
-                None
-            );
-        }
-
     }
+
 
 
     #[cfg(feature="graphics")]
@@ -2728,42 +2742,42 @@ impl Game {
                     &mut self.difficulty_manager,
                 );
             }
-            BeatmapAction::AddBeatmap { map, add_to_db } => {
+            BeatmapAction::AddBeatmap { 
+                map, 
+                add_to_db 
+            } => {
                 self.beatmap_manager.add_beatmap(&map, add_to_db);
 
-                self.values.values.beatmap_manager.refresh_maps(
-                    &self.values.values.global.mods, 
-                    &self.values.values.global.playmode, 
-                    self.values.values.settings.sort_by,
-                    &mut self.difficulty_manager,
-                );
+                if self.beatmap_manager.initialized {
+                    self.values.values.beatmap_manager.refresh_maps(
+                        &self.values.values.global.mods, 
+                        &self.values.values.global.playmode, 
+                        self.values.values.settings.sort_by,
+                        &mut self.difficulty_manager,
+                    );
+                }
             }
-
 
             // beatmap list actions
             BeatmapAction::ListAction(list_action) => {
                 match list_action {
                     BeatmapListAction::Refresh => {
-                        let mods = self.global.mods.clone();
-                        let playmode = self.global.playmode.clone();
-                        let sort_by = self.values.settings.sort_by;
-                        self.values.beatmap_manager.refresh_maps(
-                            &mods, 
-                            &playmode, 
-                            sort_by,
+                        self.values.values.beatmap_manager.refresh_maps(
+                            &self.values.values.global.mods, 
+                            &self.values.values.global.playmode, 
+                            self.values.values.settings.sort_by,
                             &mut self.difficulty_manager,
                         );
                     }
 
-                    BeatmapListAction::ApplyFilter { filter } => {
+                    BeatmapListAction::ApplyFilter { 
+                        filter
+                    } => {
                         self.beatmap_manager.filter_text = filter.unwrap_or_default();
-                        let mods = self.global.mods.clone();
-                        let playmode = self.global.playmode.clone();
-                        let sort_by = self.values.settings.sort_by;
-                        self.values.beatmap_manager.apply_filter(
-                            &mods,
-                            &playmode,
-                            sort_by,
+                        self.values.values.beatmap_manager.apply_filter(
+                            &self.values.values.global.mods,
+                            &self.values.values.global.playmode,
+                            self.values.values.settings.sort_by,
                             &mut self.difficulty_manager
                         );
                     }

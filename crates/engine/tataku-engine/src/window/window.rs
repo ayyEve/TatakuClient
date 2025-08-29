@@ -24,7 +24,6 @@ static WINDOW_PROXY: OnceCell<EventLoopProxy<WindowAction>> = OnceCell::const_ne
 
 
 lazy_static::lazy_static! {
-    pub(super) static ref MONITORS: Arc<RwLock<Vec<String>>> = Arc::default();
 
     pub static ref RENDER_COUNT: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
     pub static ref RENDER_FRAMETIME: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
@@ -36,7 +35,7 @@ lazy_static::lazy_static! {
 
 pub struct GameWindow<'window> {
     window: &'window OnceCell<WinitWindow>,
-    window_creation_barrier: Arc<std::sync::Barrier>,
+    mouse_position_sender: TripleBufferSender<Vector2>,
 
     graphics: Box<dyn GraphicsEngine + 'window>,
     pub settings: DisplaySettings,
@@ -57,8 +56,9 @@ pub struct GameWindow<'window> {
     // what finger id started the touch, and where is the floating touch location
     touch_pos: Option<(u64, Vector2)>,
 
-    pub init_graphics: Vec<Box<dyn GraphicsInitializer<'window>>>,
-    integration_builders: Vec<TatakuIntegrationBuilder>,
+    init: WindowInitializers<'window>,
+    // init_graphics: Vec<Box<dyn GraphicsInitializer<'window>>>,
+    // integration_builders: Vec<TatakuIntegrationBuilder>,
 
     #[cfg(not(feature = "graphics"))]
     _phantom_data: std::marker::PhantomData<&'window ()>,
@@ -66,8 +66,8 @@ pub struct GameWindow<'window> {
 impl<'window> GameWindow<'window> {
     pub fn new(
         window_event_sender: Sender<WindowEvent>,
+        mouse_position_sender: TripleBufferSender<Vector2>,
         window: &'window OnceCell<WinitWindow>,
-        window_creation_barrier: Arc<std::sync::Barrier>,
         settings: &Settings,
 
         init: WindowInitializers<'window>,
@@ -76,12 +76,12 @@ impl<'window> GameWindow<'window> {
 
         let s = Self {
             window,
-            window_creation_barrier,
 
             graphics: Box::new(tataku_null_renderer::DummyGraphicsEngine),
             settings: settings.display_settings.clone(),
 
             window_event_sender: Arc::new(window_event_sender),
+            mouse_position_sender,
             // window_event_receiver,
             render_data: Vec::new(),
 
@@ -91,8 +91,9 @@ impl<'window> GameWindow<'window> {
             close_pending: false,
             queued_events: Vec::new(),
 
-            init_graphics: init.graphics_init,
-            integration_builders: init.integrations,
+            init,
+            // init_graphics: init.graphics_init,
+            // integration_builders: init.integrations,
             
             // input
             controller_input: gilrs::Gilrs::new().unwrap(),
@@ -492,7 +493,7 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
             .unwrap();
 
         window_runtime.block_on(async {
-            while let Some(graphics_init) = self.init_graphics.pop() {
+            while let Some(graphics_init) = self.init.graphics_init.pop() {
                 let window = self.window();
                 match graphics_init.init(window, self.settings.clone()).await {
                     Ok(a) => {
@@ -508,12 +509,12 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
             debug!("done graphics");
 
             // let the game side know the window is good to go
-            self.window_creation_barrier.wait(); //.await;
+            self.init.window_creation_barrier.wait(); //.await;
         });
 
         let mut integrations = Vec::new();
         let window_handle = self.window().window_handle().unwrap();
-        for integration in self.integration_builders.take() {
+        for integration in self.init.integrations.take() {
             let Ok(mut i) = (integration.build)() else { continue };
             if let Err(e) = i.init(window_handle) {
                 error!("failed to initialize {}: {e:?}", integration.name);
@@ -614,7 +615,11 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
         let event = match event {
             WinitWindowEvent::Resized(new_size) => {
                 self.graphics.resize([new_size.width, new_size.height]);
-                let new_size = Vector2::new(new_size.width as f32, new_size.height as f32);
+                let new_size = Vector2::new(
+                    new_size.width as f32, 
+                    new_size.height as f32
+                );
+
                 if new_size != Vector2::ZERO {
                     self.send_event(WindowEvent::SizeChanged(new_size));
                 }
@@ -647,12 +652,36 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
                 }, ..
             } => Some(WindowEvent::Input(InputType::KeyRelease(KeyInput::from_event(e)))),
 
-            WinitWindowEvent::CursorMoved { position, .. } => 
-                Some(WindowEvent::Input(InputType::MouseMove(Vector2::new(position.x as f32, position.y as f32)))),
+            WinitWindowEvent::CursorMoved { position, .. } => {
+                let pos = Vector2::new(position.x as f32, position.y as f32);
+                self.mouse_position_sender.write(pos);
+                None
+                //     Some(WindowEvent::Input(InputType::MouseMove(pos))),
+            }
 
-            WinitWindowEvent::MouseWheel { delta, .. } => Some(WindowEvent::Input(InputType::MouseScroll(delta2f32(delta)))),
-            WinitWindowEvent::MouseInput { state: ElementState::Pressed, button, .. }  => Some(WindowEvent::Input(InputType::MousePress(button.into()))),
-            WinitWindowEvent::MouseInput { state: ElementState::Released, button, .. } => Some(WindowEvent::Input(InputType::MouseRelease(button.into()))),
+            WinitWindowEvent::MouseWheel { 
+                delta, 
+                .. 
+            } => {
+                use winit::event::MouseScrollDelta::{ LineDelta, PixelDelta };
+                let delta = match delta {
+                    LineDelta(x, y) => Vector2::new(x, y),
+                    PixelDelta(p) => Vector2::new(p.x as f32, p.y as f32),
+                };
+
+                Some(WindowEvent::Input(InputType::MouseScroll(delta)))
+            }
+
+            WinitWindowEvent::MouseInput { 
+                state: ElementState::Pressed, 
+                button, 
+                .. 
+            }  => Some(WindowEvent::Input(InputType::MousePress(button.into()))),
+            WinitWindowEvent::MouseInput { 
+                state: ElementState::Released, 
+                button, 
+                .. 
+            } => Some(WindowEvent::Input(InputType::MouseRelease(button.into()))),
 
             WinitWindowEvent::Touch(touch) => self.handle_touch_event(touch),
             // WinitWindowEvent::Occluded(_) => todo!(),
@@ -679,14 +708,10 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
 
 #[cfg(feature="graphics")]
 fn to_size(s: Vector2) -> winit::dpi::Size {
-    winit::dpi::Size::Logical(winit::dpi::LogicalSize::new(s.x as f64, s.y as f64))
-}
-#[cfg(feature="graphics")]
-fn delta2f32(delta: winit::event::MouseScrollDelta) -> Vector2 {
-    match delta {
-        winit::event::MouseScrollDelta::LineDelta(x, y) => Vector2::new(x, y),
-        winit::event::MouseScrollDelta::PixelDelta(p) => Vector2::new(p.x as f32, p.y as f32),
-    }
+    winit::dpi::Size::Logical(winit::dpi::LogicalSize::new(
+        s.x as f64, 
+        s.y as f64
+    ))
 }
 
 
@@ -704,4 +729,5 @@ pub trait GraphicsInitializer<'window> {
 pub struct WindowInitializers<'a> {
     pub integrations: Vec<TatakuIntegrationBuilder>,
     pub graphics_init: Vec<Box<dyn GraphicsInitializer<'a>>>,
+    pub window_creation_barrier: Arc<std::sync::Barrier>,
 }

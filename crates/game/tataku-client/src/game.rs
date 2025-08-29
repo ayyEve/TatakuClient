@@ -3,6 +3,7 @@ use tataku_game::prelude::*;
 
 pub fn run_game(
     game_event_receiver: tokio::sync::mpsc::Receiver<WindowEvent>,
+    mouse_position_receiver: TripleBufferReceiver<Vector2>,
     proxy: winit::event_loop::EventLoopProxy<WindowAction>,
 ) {
     let gamemodes;
@@ -21,10 +22,12 @@ pub fn run_game(
         ];
     }
 
+
     // start the game
     trace!("creating game");
     let mut game = Game::new(
         game_event_receiver,
+        mouse_position_receiver,
         proxy,
         vec![
             #[cfg(feature="kira_audio")] tataku_kira::KiraAudioInit, 

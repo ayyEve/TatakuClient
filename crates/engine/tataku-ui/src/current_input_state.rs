@@ -1,49 +1,45 @@
 use crate::prelude::*;
 use tataku_input::prelude::*;
 
+#[derive(Debug)]
 pub struct CurrentInputState {
     pub mouse_pos: Vector2,
     pub mouse_moved: bool,
-    pub scroll_delta: Vector2,
-
-    pub mouse_down: Vec<MouseButton>,
-    pub mouse_up: Vec<MouseButton>,
-
-    pub keys_down: KeyCollection,
-    pub keys_up: KeyCollection,
-
-    pub controller_down: Vec<(ControllerButton, GamepadId, ArcStr)>,
-    pub controller_up: Vec<(ControllerButton, GamepadId, ArcStr)>,
-    pub controller_axes: Vec<(Axis, f32, GamepadId, ArcStr)>,
-
     pub mods: KeyModifiers,
+    pub window_focus_changed: Option<bool>,
+    pub controller_pause: bool,
+
+    pub events: Vec<InputType>,
 }
 impl CurrentInputState {
-    pub(super) fn make_input(&self, event: InputType) -> InputEvent {
-        InputEvent {
-            event,
-            mouse_pos: self.mouse_pos,
-            key_mods: self.mods,
-        }
+    pub fn keys_down(&self) -> impl Iterator<Item=Key> {
+        self.events
+            .iter()
+            .filter_map(|e| if let InputType::KeyPress(k) = e {
+                k.as_key()
+            } else { None })
+    }
+    pub fn controller_down(&self) -> impl Iterator<Item=&ControllerButton> {
+        self.events
+            .iter()
+            .filter_map(|e| if let InputType::ControllerPress(b, _, _) = e {
+                Some(b)
+            } else { None })
     }
 
     pub fn into_events(self) -> Vec<InputEvent> {
         [
             self.mouse_moved.then_some(InputType::MouseMove(self.mouse_pos)),
-            (self.scroll_delta.x.abs() > f32::EPSILON || self.scroll_delta.y.abs() > f32::EPSILON).then_some(InputType::MouseScroll(self.scroll_delta))
+            // (self.scroll_delta.x.abs() > f32::EPSILON || self.scroll_delta.y.abs() > f32::EPSILON).then_some(InputType::MouseScroll(self.scroll_delta))
         ]
             .into_iter()
             .flatten()
-            .chain(self.mouse_down.into_iter().map(InputType::MousePress))
-            .chain(self.mouse_up.into_iter().map(InputType::MouseRelease))
-            .chain(self.keys_down.0.into_iter().map(InputType::KeyPress))
-            .chain(self.keys_up.0.into_iter().map(InputType::KeyRelease))
-            
-            .chain(self.controller_down.into_iter().map(|(a, b, c)| InputType::ControllerPress(a, b, c)))
-            .chain(self.controller_up.into_iter().map(|(a, b, c)| InputType::ControllerRelease(a, b, c)))
-            .chain(self.controller_axes.into_iter().map(|(a, b, c, d)| InputType::ControllerAxis(a, b, c, d)))
-
-            .map(|event| InputEvent { event, mouse_pos: self.mouse_pos, key_mods: self.mods })
+            .chain(self.events)
+            .map(|event| InputEvent { 
+                event, 
+                mouse_pos: self.mouse_pos, 
+                key_mods: self.mods 
+            })
             .collect()
     }
 }

@@ -174,33 +174,6 @@ impl UiManager {
         self.dialog_counter = 0;
     }
 
-
-    fn handle_inputs(
-        &mut self,
-        input_state: &mut CurrentInputState,
-        values: &mut dyn Reflect,
-        actions: &mut ActionQueue,
-    ) {
-        // check dialogs first
-        for dialog in self.dialogs.iter_mut().rev() {
-            if dialog.handle_inputs(
-                input_state, 
-                values, 
-                actions, 
-                &mut self.messages
-            ) { 
-                return 
-            }
-        }
-
-        self.root_tree.handle_inputs(
-            input_state, 
-            values, 
-            actions, 
-            &mut self.messages
-        );
-    }
-
     pub fn update(
         &mut self,
         input_state: &mut CurrentInputState,
@@ -229,25 +202,31 @@ impl UiManager {
             );
         }
 
-        for i in input_state.keys_down.0.iter() {
-            let Some(key) = i.as_key() else { continue };
+        for event in input_state.events.iter() {
+            match event {
+                InputType::KeyPress(key) => {
+                    let Some(key) = key.as_key() else { continue };
 
-            tataku_events.push((TatakuEventType::KeyPress(CustomMenuKeyEvent {
-                key,
-                control: input_state.mods.ctrl,
-                alt: input_state.mods.alt,
-                shift: input_state.mods.shift,
-            }), None));
-        }
-        for i in input_state.keys_up.0.iter() {
-            let Some(key) = i.as_key() else { continue };
+                    tataku_events.push((TatakuEventType::KeyPress(CustomMenuKeyEvent {
+                        key,
+                        control: input_state.mods.ctrl,
+                        alt: input_state.mods.alt,
+                        shift: input_state.mods.shift,
+                    }), None));
+                }
+                InputType::KeyRelease(key) => {
+                    let Some(key) = key.as_key() else { continue };
 
-            tataku_events.push((TatakuEventType::KeyRelease(CustomMenuKeyEvent {
-                key,
-                control: input_state.mods.ctrl,
-                alt: input_state.mods.alt,
-                shift: input_state.mods.shift,
-            }), None));
+                    tataku_events.push((TatakuEventType::KeyRelease(CustomMenuKeyEvent {
+                        key,
+                        control: input_state.mods.ctrl,
+                        alt: input_state.mods.alt,
+                        shift: input_state.mods.shift,
+                    }), None));
+                }
+
+                _ => {}
+            }
         }
 
         for (event, param) in tataku_events {
@@ -282,6 +261,33 @@ impl UiManager {
         // nooooooooo
         // i cant even type because of you
     }
+
+    fn handle_inputs(
+        &mut self,
+        input_state: &mut CurrentInputState,
+        values: &mut dyn Reflect,
+        actions: &mut ActionQueue,
+    ) {
+        // check dialogs first
+        for dialog in self.dialogs.iter_mut().rev() {
+            if dialog.handle_inputs(
+                input_state, 
+                values, 
+                actions, 
+                &mut self.messages
+            ) { 
+                return 
+            }
+        }
+
+        self.root_tree.handle_inputs(
+            input_state, 
+            values, 
+            actions, 
+            &mut self.messages
+        );
+    }
+
 
     pub fn draw_menu(
         &mut self, 

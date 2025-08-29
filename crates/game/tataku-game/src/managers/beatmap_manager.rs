@@ -7,7 +7,7 @@ use std::fs::read_dir;
 #[derive(Default, Debug)]
 pub struct BeatmapManager {
     #[reflect(skip)] pub actions: ActionQueue,
-    #[reflect(skip)] initialized: bool,
+    #[reflect(skip)] pub initialized: bool,
     #[reflect(skip)] infos: GamemodeInfos,
 
     #[reflect(alias("current"))]
@@ -385,28 +385,9 @@ impl BeatmapManager {
                     .get_diff(meta, mode, mods)
                     .unwrap_or(-1.0);
 
-                let info = self.infos.get_info(mode).unwrap();
-                // else {
-                //     return BeatmapWithDiff {
-                //         map: m,
-                //         diff_rating: 0.0,
-                //         diff_info: String::new(),
-                //     }
-                // };
-
-                // if let Err(TatakuError::DiffCalcError(DiffCalcError::NoDiff)) = &diff {
-                //     self.actions.push(TaskAction::AddTask(Box::new(
-                //         DiffCalcTask::new(m.clone(), *info)
-                //     )));
-                // }
-
-                // let diff = diff.unwrap_or(-1.0);
-                // m.set_diff(diff);
-
-                // let diff_meta = BeatmapMetaWithDiff::new(
-                //     m.clone(), 
-                //     diff
-                // );
+                let info = self.infos
+                    .get_info(mode)
+                    .unwrap();
 
                 
                 let diff_info = {
@@ -440,7 +421,8 @@ impl BeatmapManager {
                 }
 
                 Some(*m)
-            }).collect::<Vec<_>>();
+            })
+            .collect::<Vec<_>>();
 
             if maps.is_empty() { continue }
 

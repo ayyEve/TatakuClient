@@ -150,43 +150,44 @@ impl VolumeControl {
         mods: KeyModifiers, 
         settings: &mut Settings
     ) -> Option<SongAction> {
-        if mods.alt {
-            self.change(delta / 10.0, settings)
-        } else {
-            None
-        }
+        if !mods.alt { return None }
+
+        self.change(delta / 10.0, settings)
     }
 
     // #[cfg(feature="graphics")]
     pub fn on_key_press(
         &mut self, 
-        keys: &mut KeyCollection, 
+        key: &Key, 
         mods: KeyModifiers, 
-        settings: &mut Settings
+        actions: &mut ActionQueue,
+        settings: &mut Settings,
     ) -> bool {
         let elapsed = self.elapsed();
 
-        if mods.alt {
-            // let mut changed = false;
-
-            if keys.has_and_remove(Key::Right) {
-                self.change(0.1, settings);
-            }
-            if keys.has_and_remove(Key::Left) {
-                self.change(-0.1, settings);
-            }
-
-            if keys.has_and_remove(Key::Up) {
+        if !mods.alt { return false }
+        let action = match key {
+            Key::Right => self.change(0.1, settings),
+            Key::Left => self.change(-0.1, settings),
+            Key::Up => {
                 self.vol_selected_index = (3+(self.vol_selected_index as i8 - 1)) as u8 % 3;
                 self.vol_selected_time = elapsed;
+                None
             }
-            if keys.has_and_remove(Key::Down) {
+            Key::Down => {
                 self.vol_selected_index = (self.vol_selected_index + 1) % 3;
                 self.vol_selected_time = elapsed;
+                None
             }
+
+            _ => return false,
+        };
+        
+        if let Some(action) = action {
+            actions.push(action);
         }
 
-        false
+        true
     }
 }
 

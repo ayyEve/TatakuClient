@@ -340,83 +340,95 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
                 event_consumed: false,
             };
 
-            if input_state.mouse_moved {
-                node.input(
-                    &input_state
-                        .make_input(InputType::MouseMove(input_state.mouse_pos)),
-                    &mut shell
-                );
-            }
-            if input_state.scroll_delta.x.abs() > f32::EPSILON || input_state.scroll_delta.y.abs() > f32::EPSILON{
-                node.input(
-                    &input_state
-                        .make_input(InputType::MouseScroll(input_state.scroll_delta)),
-                    &mut shell
-                );
-            }
+            // if input_state.mouse_moved {
+            //     node.input(
+            //         &input_state
+            //             .make_input(InputType::MouseMove(input_state.mouse_pos)),
+            //         &mut shell
+            //     );
+            // }
+            // if input_state.scroll_delta.x.abs() > f32::EPSILON || input_state.scroll_delta.y.abs() > f32::EPSILON{
+            //     node.input(
+            //         &input_state
+            //             .make_input(InputType::MouseScroll(input_state.scroll_delta)),
+            //         &mut shell
+            //     );
+            // }
 
             let mouse_pos = input_state.mouse_pos;
             let key_mods = input_state.mods;
 
-            macro_rules! handle_event {
-                ($list: expr, $map: ident) => {
-                    $list.retain(|a| {
-                        node.input(
-                            &InputEvent {
-                                event: InputType::$map(a.clone()),
-                                key_mods,
-                                mouse_pos,
-                            },
-                            &mut shell
-                        );
-                        !std::mem::take(&mut shell.event_consumed)
-                    });
-                }
-            }
+            input_state.events.retain(|event| {
+                let event = InputEvent {
+                    event: event.clone(),
+                    mouse_pos,
+                    key_mods 
+                };
+                node.input(&event, &mut shell);
 
-            handle_event!(input_state.keys_down.0, KeyPress);
-            handle_event!(input_state.keys_up.0, KeyRelease);
-            handle_event!(input_state.mouse_down, MousePress);
-            handle_event!(input_state.mouse_up, MouseRelease);
-
-            input_state.controller_down
-                .retain(|(a, id, name)| {
-                node.input(
-                    &InputEvent {
-                        event: InputType::ControllerPress(*a, *id, name.clone()),
-                        key_mods,
-                        mouse_pos,
-                    },
-                    &mut shell
-                );
                 !shell.event_consumed.take()
             });
 
-            input_state.controller_up
-                .retain(|(a, id, name)| {
-                node.input(
-                    &InputEvent {
-                        event: InputType::ControllerRelease(*a, *id, name.clone()),
-                        key_mods,
-                        mouse_pos,
-                    },
-                    &mut shell
-                );
-                !shell.event_consumed.take()
-            });
 
-            input_state.controller_axes
-                .retain(|(a, value, id, name)| {
-                node.input(
-                    &InputEvent {
-                        event: InputType::ControllerAxis(*a, *value, *id, name.clone()),
-                        key_mods,
-                        mouse_pos,
-                    },
-                    &mut shell
-                );
-                shell.event_consumed.take()
-            });
+            // macro_rules! handle_event {
+            //     ($list: expr, $map: ident) => {
+            //         $list.retain(|a| {
+            //             node.input(
+            //                 &InputEvent {
+            //                     event: InputType::$map(a.clone()),
+            //                     key_mods,
+            //                     mouse_pos,
+            //                 },
+            //                 &mut shell
+            //             );
+            //             !std::mem::take(&mut shell.event_consumed)
+            //         });
+            //     }
+            // }
+
+            // handle_event!(input_state.keys_down.0, KeyPress);
+            // handle_event!(input_state.keys_up.0, KeyRelease);
+            // handle_event!(input_state.mouse_down, MousePress);
+            // handle_event!(input_state.mouse_up, MouseRelease);
+
+            // input_state.controller_down
+            //     .retain(|(a, id, name)| {
+            //     node.input(
+            //         &InputEvent {
+            //             event: InputType::ControllerPress(*a, *id, name.clone()),
+            //             key_mods,
+            //             mouse_pos,
+            //         },
+            //         &mut shell
+            //     );
+            //     !shell.event_consumed.take()
+            // });
+
+            // input_state.controller_up
+            //     .retain(|(a, id, name)| {
+            //     node.input(
+            //         &InputEvent {
+            //             event: InputType::ControllerRelease(*a, *id, name.clone()),
+            //             key_mods,
+            //             mouse_pos,
+            //         },
+            //         &mut shell
+            //     );
+            //     !shell.event_consumed.take()
+            // });
+
+            // input_state.controller_axes
+            //     .retain(|(a, value, id, name)| {
+            //     node.input(
+            //         &InputEvent {
+            //             event: InputType::ControllerAxis(*a, *value, *id, name.clone()),
+            //             key_mods,
+            //             mouse_pos,
+            //         },
+            //         &mut shell
+            //     );
+            //     shell.event_consumed.take()
+            // });
 
             shell.event_consumed
         });
@@ -574,10 +586,9 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
             ) -> bool {
                 match self {
                     Self::Key(key) 
-                        => state.keys_down.has_key(key),
+                        => state.keys_down().any(|k| k == key),
                     Self::Controller(btn) 
-                        => state.controller_down.iter()
-                            .any(|(b, _, _)| b == &btn),
+                        => state.controller_down().any(|b| b == &btn),
                 }
             }
             fn remove_from(
@@ -585,11 +596,22 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
                 state: &mut CurrentInputState,
             ) {
                 match self {
-                    Self::Key(key) 
-                        => state.keys_down.remove_key(key),
-                    Self::Controller(btn) 
-                        => state.controller_down
-                            .retain(|(b, _, _)| b != &btn)
+                    Self::Key(key) => {
+                        state.events.retain(|e| {
+                            let InputType::KeyPress(k) = e 
+                            else { return true };
+
+                            !k.is_key(key)
+                        });
+                    },
+                    Self::Controller(btn) => {
+                        state.events.retain(|e| {
+                            let InputType::ControllerPress(cb, _, _) = e 
+                            else { return true };
+
+                            cb != &btn
+                        });
+                    }
                 }
             }
         }

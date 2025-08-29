@@ -59,7 +59,7 @@ impl TatakuTask for LoadBeatmapsTask {
             } else {
                 actions.push(BeatmapAction::AddBeatmap { 
                     map, 
-                    add_to_db: false 
+                    add_to_db: false,
                 });
             }
             status.items_complete += 1;
