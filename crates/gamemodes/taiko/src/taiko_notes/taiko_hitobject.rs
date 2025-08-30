@@ -3,13 +3,11 @@ use crate::prelude::*;
 pub trait TaikoHitObject: HitObject + Send + Sync {
     fn is_kat(&self) -> bool { false } // needed for diff calc and autoplay
 
-    #[cfg(feature="graphics")] 
-    fn get_sv(&self) -> f32;
-    #[cfg(feature="graphics")] 
-    fn set_sv(&mut self, sv: f32);
+    #[cfg(feature="graphics")] fn get_sv(&self) -> f32;
+    #[cfg(feature="graphics")] fn set_sv(&mut self, sv: f32);
 
     /// does this hit object play a finisher sound when hit?
-    fn finisher_sound(&self) -> bool { false }
+    #[cfg(feature="gameplay")] fn finisher_sound(&self) -> bool { false }
 
     /// used by autoplay, is this note a finisher?
     fn is_finisher(&self) -> bool { false }

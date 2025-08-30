@@ -27,7 +27,6 @@ pub struct UTypingGame {
 
     game_settings: Arc<TaikoSettings>,
     playfield: Arc<UTypingPlayfield>,
-    window_size: Vector2,
 
     autoplay_queue: Option<(Vec<char>, f32, f32)>
 }
@@ -195,7 +194,6 @@ impl GameMode for UTypingGame {
         &mut self, 
         state: &mut GameplayUpdateShell
     ) {
-        self.window_size = state.window_size;
         // do autoplay things
         if state.mods.has_autoplay() {
             let mut next_note_time = self.notes

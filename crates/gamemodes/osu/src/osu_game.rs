@@ -8,7 +8,6 @@ pub const PREEMPT_MIN:f32 = 450.0;
 pub struct OsuGame {
     // lists
     pub notes: Vec<Box<dyn OsuHitObject>>,
-
     actions: ActionQueue,
 
     // hit timing bar stuff
@@ -42,7 +41,6 @@ pub struct OsuGame {
     #[cfg(feature="graphics")] beatmap_combo_colors: Vec<Color>,
 
     use_controller_cursor: bool,
-    // window_size: Arc<WindowSize>,
     end_time: f32,
 
     #[cfg(feature="graphics")] cursor: OsuCursor,

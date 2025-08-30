@@ -115,7 +115,6 @@ impl TaikoHitObject for TaikoNote {
     fn force_hit(&mut self) { self.hit = true }
     fn is_kat(&self) -> bool { self.hit_type == HitType::Kat }
     fn is_finisher(&self) -> bool { self.finisher }
-    fn finisher_sound(&self) -> bool { self.base_finisher }
     fn causes_miss(&self) -> bool { true }
 
     fn hit(&mut self, time: f32, _: HitType) -> bool {
@@ -149,6 +148,7 @@ impl TaikoHitObject for TaikoNote {
     
     #[cfg(feature="graphics")] fn get_sv(&self) -> f32 { self.speed }
     #[cfg(feature="graphics")] fn set_sv(&mut self, sv:f32) { self.speed = sv }
+    #[cfg(feature="gameplay")] fn finisher_sound(&self) -> bool { self.base_finisher }
     #[cfg(feature="graphics")] 
     fn playfield_changed(&mut self, new_playfield: Arc<TaikoPlayfield>) {
         self.playfield = new_playfield;

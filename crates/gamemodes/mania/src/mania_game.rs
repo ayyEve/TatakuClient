@@ -10,7 +10,7 @@ const OSU_SIZE: Vector2 = Vector2::new(640.0, 480.0);
 
 #[derive(Default)]
 pub struct ManiaGame {
-    map_meta: Arc<BeatmapMeta>,
+    // map_meta: Arc<BeatmapMeta>,
     // lists
     pub columns: Vec<Vec<Box<dyn ManiaHitObject>>>,
     hit_windows: Vec<(HitJudgment, Range<f32>)>,
@@ -36,7 +36,7 @@ pub struct ManiaGame {
 }
 impl ManiaGame {
     #[cfg(feature="graphics")] 
-    pub fn get_color(&self, col:u8) -> Color {
+    pub fn get_color(&self, col: u8) -> Color {
         match col {
             0|3 => Color::BLUE_ORCHID,
             1|2 => Color::ACID_GREEN,
@@ -132,7 +132,9 @@ impl ManiaGame {
         source: &TextureSource, 
         skin_manager: &mut dyn SkinProvider
     ) {
-        let Some(settings) = &self.mania_skin_settings else { return };
+        let Some(settings) = &self.mania_skin_settings 
+        else { return };
+
         self.key_images_down.clear();
         self.key_images_up.clear();
         
@@ -178,8 +180,12 @@ impl ManiaGame {
         for col in 0..self.column_count {
             let x = self.playfield.col_pos(col);
 
-            for image_map in [&mut self.key_images_down, &mut self.key_images_up] {
-                let Some(img) = image_map.get_mut(&col) else { continue };
+            for image_map in [
+                &mut self.key_images_down, 
+                &mut self.key_images_up
+            ] {
+                let Some(img) = image_map.get_mut(&col) 
+                else { continue };
                 self.playfield.column_image(img);
 
                 let tex_size = img.tex_size();
@@ -199,7 +205,10 @@ impl ManiaGame {
         time: f32, 
         current_index: &mut usize
     ) -> f32 {
-        let (index, b) = position_function.iter().enumerate().skip(*current_index).find(|(_, p)| time < p.time)
+        let (index, b) = position_function.iter()
+            .enumerate()
+            .skip(*current_index)
+            .find(|(_, p)| time < p.time)
             .unwrap_or_else(|| {
                 (position_function.len() - 1, position_function.last().unwrap())
             });
@@ -318,8 +327,7 @@ impl ManiaGame {
         keys
             .iter()
             .enumerate()
-            .find_map(|(col, k)| (k == &key)
-                .then_some(col)
+            .find_map(|(col, k)| (k == &key).then_some(col)
             )
             .map(|i| ((base_key as usize + i) as u8).into())
     }
@@ -328,11 +336,15 @@ impl ManiaGame {
 
 impl GameMode for ManiaGame {
     fn new(beatmap: &Beatmap, _: bool, settings: &Settings) -> TatakuResult<Self> {
-        let metadata = beatmap.get_beatmap_meta();
+        // let metadata = beatmap.get_beatmap_meta();
 
-        let game_settings = settings.gamemode_settings::<ManiaSettings>(GAME_INFO).unwrap_or_default();
-        let playfields = &game_settings.playfield_settings.clone();
-        let auto_helper = ManiaAutoHelper::default();
+        let game_settings = settings
+            .gamemode_settings::<ManiaSettings>(GAME_INFO)
+            .unwrap_or_default();
+
+        let playfields = &game_settings
+            .playfield_settings
+            .clone();
         
         // windows
         let hit_windows = vec![
@@ -433,12 +445,11 @@ impl GameMode for ManiaGame {
 
 
                 let mut s = Self {
-                    map_meta: metadata.clone(),
+                    // map_meta: metadata.clone(),
                     hit_windows,
                     miss_window,
 
                     column_count,
-                    auto_helper,
                     game_settings: Arc::new(game_settings),
 
                     #[cfg(feature="graphics")] sv_mult: 1.0,
@@ -508,11 +519,10 @@ impl GameMode for ManiaGame {
                 };
 
                 let mut s = Self {
-                    map_meta: metadata.clone(),
+                    // map_meta: metadata.clone(),
                     hit_windows,
                     miss_window,
                     column_count,
-                    auto_helper,
                     #[cfg(feature="graphics")] playfield,
                     #[cfg(feature="graphics")] sv_mult: 1.0,
                     game_settings: Arc::new(game_settings),
@@ -579,11 +589,10 @@ impl GameMode for ManiaGame {
                 };
 
                 let mut s = Self {
-                    map_meta: metadata.clone(),
+                    // map_meta: metadata.clone(),
                     hit_windows,
                     miss_window,
                     column_count,
-                    auto_helper,
 
                     #[cfg(feature="graphics")] playfield,
                     #[cfg(feature="graphics")] sv_mult: 1.0,
@@ -834,7 +843,9 @@ impl GameMode for ManiaGame {
         }
         
         #[cfg(feature="graphics")] 
-        for tb in self.timing_bars.iter_mut() { tb.update(state.time) }
+        for tb in self.timing_bars.iter_mut() { 
+            tb.update(state.time);
+        }
     }
     
     #[cfg(feature="graphics")] 
@@ -883,12 +894,13 @@ impl GameMode for ManiaGame {
 
     fn reset(&mut self, beatmap: &Beatmap) {
         #[cfg(feature="graphics")] 
-        let timing_points = TimingPointHelper::new(beatmap.get_timing_points(), beatmap.slider_velocity());
+        let timing_points = TimingPointHelper::new(
+            beatmap.get_timing_points(), 
+            beatmap.slider_velocity()
+        );
 
-        for col in self.columns.iter_mut() {
-            for note in col.iter_mut() {
-                note.reset();
-            }
+        for note in self.columns.iter_mut().flatten() {
+            note.reset();
         }
         for i in 0..self.columns.len() {
             self.column_indices[i] = 0;
@@ -896,7 +908,6 @@ impl GameMode for ManiaGame {
         }
 
         // setup timing bars
-        //TODO: it would be cool if we didnt actually need timing bar objects, and could just draw them
         #[cfg(feature="graphics")] 
         if self.timing_bars.is_empty() {
             // load timing bars

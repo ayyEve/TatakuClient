@@ -9,13 +9,13 @@ pub struct TaikoSpinner {
     complete: bool, // is this spinner done
     last_hit: Option<HitType>,
 
-    hits_required: u16, // how many hits until the spinner is "done"
     time: f32, // ms
     end_time: f32, // ms
-    speed: f32,
-
+    hits_required: u16, // how many hits until the spinner is "done"
+    
     settings: Arc<TaikoSettings>,
-
+    
+    #[cfg(feature="graphics")] speed: f32,
     #[cfg(feature="graphics")] pos: Vector2, // the note in the bar, not the spinner itself
     #[cfg(feature="graphics")] don_color: Color,
     #[cfg(feature="graphics")] kat_color: Color,
@@ -33,9 +33,9 @@ impl TaikoSpinner {
         Self {
             time, 
             end_time,
-            #[cfg(feature="graphics")] playfield,
             hits_required,
             
+            #[cfg(feature="graphics")] playfield,
             #[cfg(feature = "graphics")] don_color: settings.don_color.color,
             #[cfg(feature = "graphics")] kat_color: settings.kat_color.color,
             settings,

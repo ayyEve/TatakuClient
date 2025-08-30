@@ -54,7 +54,7 @@ pub struct TaikoGame {
     counter: FullAltCounter,
     
     hit_windows: Vec<(HitJudgment, Range<f32>)>,
-    hit_cache: HashMap<TaikoHit, f32>,
+    #[cfg(feature="graphics")] hit_cache: HashMap<TaikoHit, f32>,
     miss_window: f32,
 
     #[default(TaikoHitJudgments::Miss)]
@@ -299,6 +299,7 @@ impl GameMode for TaikoGame {
             #[cfg(feature="graphics")] playfield: playfield.clone(),
             metadata,
             
+            #[cfg(feature="graphics")] 
             hit_cache: TaikoHit::ALL
                 .iter()
                 .map(|i| (*i, -999.9))
@@ -487,6 +488,7 @@ impl GameMode for TaikoGame {
         }
 
         let mut hit_type: HitType = key.into();
+        #[cfg(feature="gameplay")] 
         let mut finisher_sound = false;
         // let mut sound = match hit_type {HitType::Don => "don", HitType::Kat => "kat"};
 
@@ -526,20 +528,21 @@ impl GameMode for TaikoGame {
                         // add whatever the last judgment was as a finisher score
                         shell.add_judgment(*j);
 
-                        #[cfg(feature="graphics")]
-                        Self::add_hit_indicator(
-                            j, 
-                            true, 
-                            &self.taiko_settings, 
-                            &self.playfield, 
-                            &self.judgement_helper, 
-                            shell
-                        );
+                        #[cfg(feature="graphics")] {
+                            Self::add_hit_indicator(
+                                j, 
+                                true, 
+                                &self.taiko_settings, 
+                                &self.playfield, 
+                                &self.judgement_helper, 
+                                shell
+                            );
+                            
+                            // draw drum
+                            *self.hit_cache.get_mut(&taiko_hit_type).unwrap() = shell.time;
+                        }
 
-                        // draw drum
-                        *self.hit_cache.get_mut(&taiko_hit_type).unwrap() = shell.time;
-
-                        return; // return and note continue because we dont want the 2nd finisher press to count towards anything
+                        return; // return and not continue because we dont want the 2nd finisher press to count towards anything
                     }
                 }
             }
@@ -559,7 +562,11 @@ impl GameMode for TaikoGame {
 
                         if let Some(judge) = hit_maybe {
                             // if note.finisher_sound() { sound = match hit_type { HitType::Don => "bigdon", HitType::Kat => "bigkat" } }
-                            finisher_sound = note.finisher_sound();
+                            
+                            #[cfg(feature="gameplay")] {
+                                finisher_sound = note.finisher_sound();
+                            }
+
                             if has_relax {
                                 hit_type = note.hit_type();
                             }
@@ -611,9 +618,12 @@ impl GameMode for TaikoGame {
         };
 
         // draw drum
-        *self.hit_cache.get_mut(&new_hit_type).unwrap() = frame.time;
+        #[cfg(feature="graphics")] {
+            *self.hit_cache.get_mut(&new_hit_type).unwrap() = frame.time;
+        }
 
         // play sound
+        #[cfg(feature="gameplay")] 
         shell.play_hitsounds(
             &Self::get_hitsound(
                 hit_time,
@@ -1016,59 +1026,60 @@ impl GameMode for TaikoGame {
         self.counter = FullAltCounter::default();
 
         // setup timing bars
-        #[cfg(feature="graphics")] 
-        if self.timing_bars.is_empty() {
-            // load timing bars
-            let parent_tps = timing_points
-                .iter()
-                .filter(|t| !t.is_inherited())
-                .collect::<Vec<&TimingPoint>>();
+        #[cfg(feature="graphics")] {
+            if self.timing_bars.is_empty() {
+                // load timing bars
+                let parent_tps = timing_points
+                    .iter()
+                    .filter(|t| !t.is_inherited())
+                    .collect::<Vec<&TimingPoint>>();
+                
+                let mut sv = self.taiko_settings.sv_multiplier;
+                let mut time = parent_tps[0].time;
+                let mut tp_index = 0;
+                let step = timing_points.beat_length_at(time, false);
+                time %= step; // get the earliest bar line possible
+    
+                loop {
+                    if !self.current_mods.has_mod(NoSV) {
+                        sv = (timing_points.slider_velocity_at(time) / SV_FACTOR) 
+                            * self.taiko_settings.sv_multiplier;
+                    }
+    
+                    // if theres a bpm change, adjust the current time to that of the bpm change
+                    let next_bar_time = timing_points
+                        .beat_length_at(time, false)
+                        * BAR_SPACING; // bar spacing is actually the timing point measure
+    
+                    // edge case for aspire maps
+                    if next_bar_time.is_nan() || next_bar_time == 0.0 { break; }
+    
+                    // add timing bar at current time
+                    self.timing_bars.push(TimingBar::new(
+                        time, 
+                        sv, 
+                        self.playfield.clone()
+                    ));
+    
+                    if tp_index < parent_tps.len() 
+                        && parent_tps[tp_index].time <= time + next_bar_time 
+                    {
+                        time = parent_tps[tp_index].time;
+                        tp_index += 1;
+                        continue;
+                    }
+    
+                    // why isnt this accounting for bpm changes? because the bpm change doesnt always happen inline with the bar idiot
+                    time += next_bar_time;
+                    if time >= self.end_time || time.is_nan() { break }
+                } 
+    
+            }
             
-            let mut sv = self.taiko_settings.sv_multiplier;
-            let mut time = parent_tps[0].time;
-            let mut tp_index = 0;
-            let step = timing_points.beat_length_at(time, false);
-            time %= step; // get the earliest bar line possible
-
-            loop {
-                if !self.current_mods.has_mod(NoSV) {
-                    sv = (timing_points.slider_velocity_at(time) / SV_FACTOR) 
-                        * self.taiko_settings.sv_multiplier;
-                }
-
-                // if theres a bpm change, adjust the current time to that of the bpm change
-                let next_bar_time = timing_points
-                    .beat_length_at(time, false)
-                    * BAR_SPACING; // bar spacing is actually the timing point measure
-
-                // edge case for aspire maps
-                if next_bar_time.is_nan() || next_bar_time == 0.0 { break; }
-
-                // add timing bar at current time
-                self.timing_bars.push(TimingBar::new(
-                    time, 
-                    sv, 
-                    self.playfield.clone()
-                ));
-
-                if tp_index < parent_tps.len() 
-                    && parent_tps[tp_index].time <= time + next_bar_time 
-                {
-                    time = parent_tps[tp_index].time;
-                    tp_index += 1;
-                    continue;
-                }
-
-                // why isnt this accounting for bpm changes? because the bpm change doesnt always happen inline with the bar idiot
-                time += next_bar_time;
-                if time >= self.end_time || time.is_nan() { break }
-            } 
-
-        }
-        
-        // reset hitcache times
-        for t in self.hit_cache.values_mut() {
-            *t = -999.9;
+            // reset hitcache times
+            for t in self.hit_cache.values_mut() {
+                *t = -999.9;
+            }
         }
 
         self.healthbar_swap_pending = true;
@@ -1250,7 +1261,10 @@ impl GameMode for TaikoGame {
     
     fn time_jump(&mut self, new_time: f32, _state: &mut GameplayUpdateShell) {
         let mut latest_time = 0f32;
-        for i in self.hit_cache.values() { latest_time = latest_time.max(*i) }
+        #[cfg(feature="graphics")] 
+        for i in self.hit_cache.values() { 
+            latest_time = latest_time.max(*i);
+        }
         // info!("{new_time} < {latest_time}");
 
         if new_time < latest_time {
@@ -1269,6 +1283,7 @@ impl GameMode for TaikoGame {
             }
             
             // reset hitcache times
+            #[cfg(feature="graphics")] 
             for t in self.hit_cache.values_mut() {
                 *t = -999.9;
             }
