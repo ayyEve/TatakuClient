@@ -196,7 +196,7 @@ impl TaikoHitObject for TaikoDrumroll {
     }
 
     #[cfg(feature="graphics")] fn get_sv(&self) -> f32 { self.speed }
-    #[cfg(feature="graphics")] fn set_sv(&mut self, sv:f32) { self.speed = sv }
+    #[cfg(feature="graphics")] fn set_sv(&mut self, sv: f32) { self.speed = sv }
     #[cfg(feature="graphics")] 
     fn playfield_changed(&mut self, new_playfield: Arc<TaikoPlayfield>) {
         self.playfield = new_playfield;
