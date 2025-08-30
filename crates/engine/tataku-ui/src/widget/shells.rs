@@ -38,7 +38,11 @@ pub struct UpdateShell<'a, Action: Send + Sync + 'static> {
     pub owner: MessageOwner,
     pub messages: &'a mut Vec<Message>,
     pub actions: &'a mut Queue<Action>,
-    pub skin_manager: &'a mut dyn SkinProvider
+    pub skin_manager: &'a mut dyn SkinProvider,
+
+    pub font_context: &'a mut parley::FontContext,
+    pub scale_context: &'a mut parley::swash::scale::ScaleContext,
+    pub text_layout_context: &'a mut parley::LayoutContext,
 }
 
 

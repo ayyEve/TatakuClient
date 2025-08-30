@@ -79,20 +79,15 @@ impl Transform {
 pub struct Transformed {
     transform: Transform,
     drawable: Box<dyn TatakuRenderable>,
-
-    bounds: Bounds,
 }
 impl Transformed {
     pub fn new(
         transform: Transform,
-        drawable: Box<dyn TatakuRenderable>
+        drawable: Box<dyn TatakuRenderable>,
     ) -> Self {
-        let bounds = transform.aabb_bounds(drawable.get_bounds());
-
         Self {
             transform,
             drawable,
-            bounds,
         }
     }
 
@@ -102,7 +97,6 @@ impl Transformed {
 
     pub fn set_transform(&mut self, transform: Transform) {
         self.transform = transform;
-        self.bounds = transform.aabb_bounds(self.drawable.get_bounds());
     }
 
     pub fn into_inner(self) -> Box<dyn TatakuRenderable> {
@@ -112,10 +106,6 @@ impl Transformed {
 
 #[cfg(feature="graphics")]
 impl TatakuRenderable for Transformed {
-    fn get_bounds(&self) -> Bounds {
-        self.bounds
-    }
-
     fn get_blend_mode(&self) -> Pipeline {
         self.drawable.get_blend_mode()
     }
@@ -154,10 +144,6 @@ impl Scissored {
 
 #[cfg(feature="graphics")]
 impl TatakuRenderable for Scissored {
-    fn get_bounds(&self) -> Bounds {
-        self.drawable.get_bounds()
-    }
-
     fn get_blend_mode(&self) -> Pipeline {
         self.drawable.get_blend_mode()
     }
@@ -196,10 +182,6 @@ impl MergeDrawOptions {
 
 #[cfg(feature="graphics")]
 impl TatakuRenderable for MergeDrawOptions {
-    fn get_bounds(&self) -> Bounds {
-        self.drawable.get_bounds()
-    }
-
     fn get_blend_mode(&self) -> Pipeline {
         self.drawable.get_blend_mode()
     }

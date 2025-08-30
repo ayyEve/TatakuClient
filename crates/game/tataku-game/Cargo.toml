@@ -65,7 +65,7 @@ winit = { workspace = true, features = ["serde"], optional = true }
 # gui
 taffy = { workspace = true, optional = true }
 quick-xml  = { workspace = true, optional = true }
-
+parley.workspace = true
 
 # networking
 tokio-tungstenite = { workspace = true, features = [ "rustls-tls-native-roots" ], optional = true }

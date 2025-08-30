@@ -69,7 +69,6 @@ pub type LoadImageCallback<T> = Box<dyn FnOnce(TatakuResult<T>) + Send + Sync>;
 #[derive(Debug2)]
 pub enum LoadImage {
     #[debug(skip)] Image(RgbaImage, LoadImageCallback<TextureReference>),
-    Font(ActualFont, f32, #[debug(skip)] Option<LoadImageCallback<()>>),
     FreeTexture(TextureReference),
 
     #[debug(skip)] CreateRenderTarget((u32, u32), LoadImageCallback<RenderTarget>, RenderTargetDraw),

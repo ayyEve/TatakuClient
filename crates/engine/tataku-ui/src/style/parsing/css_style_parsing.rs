@@ -19,24 +19,24 @@ macro_rules! impl_parse {
                 .map($parent_fn :: $parent_fn2)
                 .collect::<Result<Vec<_>, _>>()
                 .map_err(|_| ())?;
-            
+
             match a.len() {
                 0 => Err(()),
-                1 => { 
+                1 => {
                     Ok(Rect {
                         top: a[0],
                         left: a[0],
                         bottom: a[0],
                         right: a[0],
-                    }) 
+                    })
                 }
-                2 => { 
+                2 => {
                     Ok(Rect {
                         top: a[0],
                         left: a[1],
                         bottom: a[0],
                         right: a[1]
-                    }) 
+                    })
                 }
                 4 => {
                     Ok(Rect {
@@ -44,7 +44,7 @@ macro_rules! impl_parse {
                         left: a[1],
                         bottom: a[2],
                         right: a[3]
-                    }) 
+                    })
                 }
                 _ => Err(())
             }
@@ -54,7 +54,7 @@ macro_rules! impl_parse {
 
 
 // parsing
-#[allow(clippy::result_unit_err, reason = "we dont care about the error")] 
+#[allow(clippy::result_unit_err, reason = "we dont care about the error")]
 impl CssStyle {
     pub(crate) fn parse_color(s: &str) -> Result<Color, ()> {
         if s.starts_with("rgb") {
@@ -96,9 +96,9 @@ impl CssStyle {
         }
     }
 
-    
+
     impl_parse!(
-        parse_image_fit, ImageStretch, 
+        parse_image_fit, ImageStretch,
         ("fill", Fill);
         ("none", None);
         ("cover", Cover);
@@ -106,7 +106,7 @@ impl CssStyle {
     );
 
     impl_parse!(
-        parse_font, Font, 
+        parse_font, DefaultFont,
         ("main", Main);
         ("font-awesome", FontAwesome);
         ("icon", FontAwesome);

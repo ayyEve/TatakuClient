@@ -499,6 +499,9 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         actions: &mut Queue<Action>,
         messages: &mut Vec<Message>,
         skin_manager: &mut dyn SkinProvider,
+        font_context: &mut parley::FontContext,
+        scale_context: &mut parley::swash::scale::ScaleContext,
+        text_layout_context: &mut parley::LayoutContext,
     ) {
         if self.should_refresh {
             self.update_layout(values);
@@ -513,6 +516,9 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
                 actions,
                 messages,
                 skin_manager,
+                font_context,
+                scale_context,
+                text_layout_context,
             };
             node.update(&mut shell);
         });
@@ -524,6 +530,9 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         messages: &mut Vec<Message>,
         actions: &mut Queue<Action>,
         skin_manager: &mut dyn SkinProvider,
+        font_context: &mut parley::FontContext,
+        scale_context: &mut parley::swash::scale::ScaleContext,
+        text_layout_context: &mut parley::LayoutContext,
     ) {
         self.with_node(|tree, node| {
             // update the root widget
@@ -534,6 +543,9 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
                 actions,
                 messages,
                 skin_manager,
+                font_context,
+                scale_context,
+                text_layout_context,
             };
             node.reload_skin(&mut shell);
         });

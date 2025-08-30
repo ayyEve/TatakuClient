@@ -515,20 +515,20 @@ impl TextInput {
     }
 
     fn index_rel_pos(&self, text_style: &TextStyle, mut rel_x: f32) -> usize {
-        let (font_size, text_scale) = Text::get_font_size_scaled(
-            text_style.font_size
-        );
+        // let (font_size, text_scale) = Text::get_font_size_scaled(
+        //     text_style.font_size
+        // );
 
         let value = self.value.get();
 
-        for (i, ch) in value.char_indices() {
-            let Some(data) = ActualFont::get_font(text_style.font)
-                .get_character(font_size, ch) 
-            else { continue };
-            rel_x -= data.advance_width() * text_scale;
+        // for (i, ch) in value.char_indices() {
+        //     let Some(data) = ActualFont::get_font(text_style.font)
+        //         .get_character(font_size, ch)
+        //     else { continue };
+        //     rel_x -= data.advance_width() * text_scale;
             
-            if rel_x <= 0.0 { return i }
-        }
+        //     if rel_x <= 0.0 { return i }
+        // }
 
         value.len()
     }
@@ -539,16 +539,16 @@ impl TextInput {
             .unwrap();
         
         let min_height = f16::from_f32(text_style.line_height);
-        let min_width = f16::from_f32(text_style
-            .measure_text(&self.get_text(), None)
-            .x
-            .max(200.0)
-        );
+        // let min_width = f16::from_f32(text_style
+        //     .measure_text(&self.get_text(), None)
+        //     .x
+        //     .max(200.0)
+        // );
 
         tree.update_style(
             self.node_id, 
             |style| {
-                style.min_width = CssUnit::Pixels(min_width).into();
+                // style.min_width = CssUnit::Pixels(min_width).into();
                 style.min_height = CssUnit::Pixels(min_height).into();
             }
         );
@@ -766,7 +766,7 @@ impl Widget<TatakuAction> for TextInput {
         );
 
         let mut text = self.get_text().clone().into_owned();
-        shell.list.push(text_style.create_text(text.clone(), bounds));
+        // shell.list.push(text_style.create_text(text.clone(), bounds));
 
         if self.active && !self.value.get().is_empty() {
             match self.cursor {
@@ -780,7 +780,8 @@ impl Widget<TatakuAction> for TextInput {
                     }
                     
                     // TODO: scale with transform?
-                    let size = text_style.measure_text(&text, None);
+                    // let size = text_style.measure_text(&text, None);
+                    let size = Vector2::new(100.0, 16.0);
                     
                     let cursor_bar = Rectangle::new(
                         Vector2::new(
@@ -802,12 +803,14 @@ impl Widget<TatakuAction> for TextInput {
 
                     let diff = end - start;
                     let (start, split) = text.split_at(start);
-                    let offset = text_style
-                        .measure_text(start, None);
+                    // let offset = text_style
+                    //     .measure_text(start, None);
+                    let offset = Vector2::new(10.0, 0.0);
 
                     let split = split.split_at(diff).0;
-                    let size = text_style
-                        .measure_text(split, None);
+                    // let size = text_style
+                    //     .measure_text(split, None);
+                    let size = Vector2::new(100.0, 16.0);
 
                     // TODO: scale with transform?
                     let cursor_bar = Rectangle::new(

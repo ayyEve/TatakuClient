@@ -115,7 +115,6 @@ impl Animation {
 #[cfg(feature="graphics")]
 impl TatakuRenderable for Animation {
     fn get_name(&self) -> String { "animation".into() }
-    fn get_bounds(&self) -> Bounds { Bounds::new(self.pos, self.size()) }
 
     fn get_blend_mode(&self) -> Pipeline { self.blend_mode }
     fn set_blend_mode(&mut self, blend_mode: Pipeline) { self.blend_mode = blend_mode }

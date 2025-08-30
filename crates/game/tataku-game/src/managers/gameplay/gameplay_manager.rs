@@ -93,7 +93,7 @@ pub struct GameplayManager {
     pub timing_points: TimingPointHelper,
 
     /// center text helper (ie, for offset and global offset)
-    #[cfg(feature="graphics")] pub center_text_helper: CenteredTextHelper,
+    // #[cfg(feature="graphics")] pub center_text_helper: CenteredTextHelper,
 
     /// (map.time, note.time - hit.time)
     hitbar_timings: Vec<(f32, f32)>,
@@ -193,8 +193,8 @@ impl GameplayManager {
             end_time: properties.end_time,
             global_offset: settings.global_offset,
 
-            #[cfg(feature="graphics")] 
-            center_text_helper: CenteredTextHelper::new(CENTER_TEXT_DRAW_TIME),
+            // #[cfg(feature="graphics")]
+            // center_text_helper: CenteredTextHelper::new(CENTER_TEXT_DRAW_TIME),
             beatmap_preferences: Database::get_beatmap_prefs(metadata.beatmap_hash),
 
             common_game_settings: Arc::new(settings.common_game_settings.clone()),
@@ -675,11 +675,11 @@ impl GameplayManager {
 
     pub fn increment_offset(&mut self, delta: f32) {
         self.beatmap_preferences.audio_offset += delta;
-        #[cfg(feature="graphics")] 
-        self.center_text_helper.set_value(
-            format!("Offset: {:.2}ms", self.beatmap_preferences.audio_offset), 
-            self.time()
-        );
+        // #[cfg(feature="graphics")]
+        // self.center_text_helper.set_value(
+        //     format!("Offset: {:.2}ms", self.beatmap_preferences.audio_offset),
+        //     self.time()
+        // );
 
         // update the beatmap offset
         let new_prefs = self.beatmap_preferences.clone();
@@ -689,11 +689,11 @@ impl GameplayManager {
 
     pub fn increment_global_offset(&mut self, delta: f32) {
         self.global_offset += delta;
-        #[cfg(feature="graphics")] 
-        self.center_text_helper.set_value(
-            format!("Global Offset: {:.2}ms", self.global_offset), 
-            self.time()
-        );
+        // #[cfg(feature="graphics")]
+        // self.center_text_helper.set_value(
+        //     format!("Global Offset: {:.2}ms", self.global_offset),
+        //     self.time()
+        // );
     }
 
     pub fn force_update_settings(&mut self, settings: &Settings) {
@@ -1289,7 +1289,7 @@ impl GameplayManagerTrait for GameplayManager {
         }
 
         // draw center text
-        self.center_text_helper.draw(time, self.window_size, list);
+        // self.center_text_helper.draw(time, self.window_size, list);
 
 
         // // draw playfield border (debug)

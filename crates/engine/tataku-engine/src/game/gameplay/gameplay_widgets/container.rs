@@ -28,7 +28,7 @@ impl GameplayWidgetContainer {
 
     pub fn get_bounds(&self) -> Bounds {
         Bounds::new(
-            self.pos_offset, 
+            self.pos_offset,
             self.inner.max_size() * self.scale
         )
     }

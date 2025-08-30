@@ -36,7 +36,7 @@ impl CursorManager {
 
             cursor_images: HashMap::new(),
             cursor_mode: CursorMode::Normal,
-            
+
             current_skin: skin,
             cursor_rotation: 0.0,
 
@@ -66,8 +66,8 @@ impl CursorManager {
             CursorMode::Text
         ] {
             if let Some(image) = skin_manager.get_texture(
-                mode.tex_name(), 
-                &TextureSource::Skin, 
+                mode.tex_name(),
+                &TextureSource::Skin,
                 SkinUsage::Game, true
             ) {
                 self.cursor_images.insert(mode, image);
@@ -101,7 +101,7 @@ impl CursorManager {
 
     pub fn draw_ripples(&self, list: &mut RenderableCollection) {
         if !self.visible { return }
-        
+
         // draw ripples
         for ripple in self.ripples.iter() {
             list.list.push(ripple.ripple(
@@ -133,20 +133,20 @@ impl CursorManager {
                 CursorMode::Text => (FontAwesome::ICursor, Alignment::CENTER),
             };
 
-            let mut text = Text::new(
-                self.pos, 
-                32.0, 
-                c, 
-                self.settings.cursor_color.color, 
-                Font::FontAwesome
-            );
-            text.rotation = self.cursor_rotation;
+            // let mut text = Text::new(
+            //     self.pos,
+            //     32.0,
+            //     c,
+            //     self.settings.cursor_color.color,
+            //     DefaultFont::FontAwesome
+            // );
+            // text.rotation = self.cursor_rotation;
 
-            if align == Alignment::CENTER {
-                let size = text.measure_text();
-                text.pos -= size / 2.0;
-            }
-            list.push(text);
+            // if align == Alignment::CENTER {
+            //     let size = text.measure_text();
+            //     text.pos -= size / 2.0;
+            // }
+            // list.push(text);
         }
     }
 
@@ -159,7 +159,7 @@ impl CursorManager {
 
     pub fn handle_cursor_action(&mut self, action: CursorAction) {
         match action {
-            CursorAction::OverrideRippleRadius(radius_maybe) 
+            CursorAction::OverrideRippleRadius(radius_maybe)
                 => self.ripple_radius_override = radius_maybe,
             CursorAction::SetVisible(show) => {
                 // trace!("setting cursor visible = {show}");

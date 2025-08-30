@@ -30,19 +30,21 @@ impl ContextMenu {
             ..Default::default()
         };
 
-        let item_size = options
-            .iter()
-            .map(|o| text_style.measure_text(
-                &o.name, 
-                None
-            ))
-            .fold(
-                Vector2::ZERO, 
-                |i, n| Vector2::new(
-                    i.x.max(n.x), 
-                    i.y.max(n.y)
-                )
-            ) + Vector2::new(5.0, 5.0);
+        // let item_size = options
+        //     .iter()
+        //     .map(|o| text_style.measure_text(
+        //         &o.name,
+        //         None
+        //     ))
+        //     .fold(
+        //         Vector2::ZERO,
+        //         |i, n| Vector2::new(
+        //             i.x.max(n.x),
+        //             i.y.max(n.y)
+        //         )
+        //     ) + Vector2::new(5.0, 5.0);
+
+        let item_size = Vector2::new(5.0, 5.0);
 
         Self {
             options,
@@ -264,10 +266,10 @@ impl Widget<TatakuAction> for ContextMenu {
                 2.0
             )));
 
-            shell.list.push(self.text_style.create_text(
-                i.name.clone().into_owned(), 
-                bounds
-            ));
+            // shell.list.push(self.text_style.create_text(
+            //     i.name.clone().into_owned(),
+            //     bounds
+            // ));
         }
 
         if let Some(menu) = &self.submenu {

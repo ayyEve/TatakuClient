@@ -153,36 +153,6 @@ impl<'window> GameWindow<'window> {
         match event {
             LoadImage::Image(data, on_done) => on_done(self.graphics.load_texture_rgba(&data, [data.width(), data.height()])),
 
-            LoadImage::Font(font, font_size, on_done) => {
-                debug!("Loading font {} with size {font_size}", font.name);
-                let font_size = FontSize::new(font_size);
-                let mut characters = font.characters.write();
-
-                for (&char, _) in font.font.chars() {
-                    // generate glyph data
-                    let (metrics, bitmap) = font.font.rasterize(char, font_size.f32());
-
-                    // bitmap is a vec of grayscale pixels
-                    // we need to turn that into rgba bytes
-                    let data = bitmap
-                        .into_iter()
-                        .flat_map(|gray| [255,255,255, gray])
-                        .collect::<Vec<_>>();
-
-                    let Ok(texture) = self.graphics.load_texture_rgba(&data, [metrics.width as u32, metrics.height as u32]) else { panic!("eve broke fonts") };
-
-                    let char_data = CharData { texture, metrics };
-                    characters.insert((font_size.u32(), char), char_data);
-                }
-
-                // let the font know the size been loaded
-                font.loaded_sizes.write().insert(font_size.u32());
-
-                if let Some(on_done) = on_done {
-                    on_done(Ok(()));
-                }
-            }
-
             LoadImage::FreeTexture(tex) => {
                 self.graphics.free_tex(tex);
             }

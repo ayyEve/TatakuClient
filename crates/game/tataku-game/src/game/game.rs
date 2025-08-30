@@ -46,6 +46,10 @@ pub struct Game {
 
     #[cfg(feature="gameplay")] pub(super) pending_gameplay_manager: Option<Box<GameplayManager>>,
 
+    #[cfg(feature="graphics")] font_context: parley::FontContext,
+    #[cfg(feature="graphics")] scale_context: parley::swash::scale::ScaleContext,
+    #[cfg(feature="graphics")] text_layout_context: parley::LayoutContext,
+
     integrations: Vec<Box<dyn TatakuIntegration>>,
 
     // fps
@@ -133,6 +137,10 @@ impl Game {
             #[cfg(feature="graphics")] gameplay_managers: HashMap::new(),
             #[cfg(feature="graphics")] custom_menu_manager: CustomMenuManager::default(),
             #[cfg(feature="graphics")] notification_manager: NotificationManager::default(),
+
+            #[cfg(feature="graphics")] font_context: parley::FontContext::default(),
+            #[cfg(feature="graphics")] scale_context: parley::swash::scale::ScaleContext::new(),
+            #[cfg(feature="graphics")] text_layout_context: parley::LayoutContext::new(),
 
             integrations: Vec::new(),
 
@@ -681,6 +689,9 @@ impl Game {
             &mut self.values,
             &mut self.actions,
             &mut self.skin_manager,
+            &mut self.font_context,
+            &mut self.scale_context,
+            &mut self.text_layout_context,
         );
 
         #[cfg(feature="graphics")] 
@@ -814,6 +825,9 @@ impl Game {
                                 &mut self.values, 
                                 &mut self.actions, 
                                 &mut self.skin_manager,
+                                &mut self.font_context,
+                                &mut self.scale_context,
+                                &mut self.text_layout_context,
                             );
                             
                             let elapsed = self.game_start.as_millis();
@@ -1204,10 +1218,10 @@ impl Game {
 
 
         // draw fps's
-        self.fps_display.draw(&mut render_queue);
-        self.update_display.draw(&mut render_queue);
-        self.render_display.draw(&mut render_queue);
-        self.input_display.draw(&mut render_queue);
+        self.fps_display.draw(&mut render_queue, &mut self.font_context, &mut self.scale_context, &mut self.text_layout_context);
+        self.update_display.draw(&mut render_queue, &mut self.font_context, &mut self.scale_context, &mut self.text_layout_context);
+        self.render_display.draw(&mut render_queue, &mut self.font_context, &mut self.scale_context, &mut self.text_layout_context);
+        self.input_display.draw(&mut render_queue, &mut self.font_context, &mut self.scale_context, &mut self.text_layout_context);
 
         // draw the download manager
         self.download_manager.draw(self.values.game.window_size, &mut render_queue);
@@ -1562,7 +1576,10 @@ impl Game {
                 self.ui_manager.reload_skin(
                     &mut self.values, 
                     &mut self.actions, 
-                    &mut self.skin_manager
+                    &mut self.skin_manager,
+                    &mut self.font_context,
+                    &mut self.scale_context,
+                    &mut self.text_layout_context,
                 );
             }
             GameState::InMenu => {}

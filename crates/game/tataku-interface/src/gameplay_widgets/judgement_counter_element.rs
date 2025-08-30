@@ -25,10 +25,10 @@ impl GameplayWidget for JudgementCounterElement {
     fn max_size(&self) -> Vector2 {
         let box_size = self.button_image.as_ref()
             .map_or(BOX_SIZE, Image::size);
-        
+
         Vector2::new(box_size.x, box_size.y * self.hit_counts.len() as f32)
     }
-    
+
     fn update(&mut self, manager: &mut dyn GameplayManagerTrait) {
         // TODO: improve this
         self.hit_counts.clear();
@@ -52,16 +52,16 @@ impl GameplayWidget for JudgementCounterElement {
     }
 
     fn draw(
-        &mut self, 
-        pos_offset: Vector2, 
-        scale: Vector2, 
+        &mut self,
+        pos_offset: Vector2,
+        scale: Vector2,
         _align: Alignment,
         list: &mut RenderableCollection
     ) {
         let box_size = self.button_image
             .as_ref()
             .map_or(BOX_SIZE, Image::size) * scale;
-        
+
         for (i, (txt, count)) in self.hit_counts.iter().enumerate() {
             let pos = pos_offset + Vector2::new(0.0, box_size.y * i as f32);
             let box_width;
@@ -74,7 +74,7 @@ impl GameplayWidget for JudgementCounterElement {
                 if let Some(&color) = self.colors.get(txt) {
                     btn.color = color;
                 }
-                
+
                 list.push(btn);
             } else {
                 box_width = (BOX_SIZE * scale).x;
@@ -93,33 +93,33 @@ impl GameplayWidget for JudgementCounterElement {
             }
 
             // draw text/count
-            let mut text = Text::new(
-                pos,
-                20.0 * scale.y,
-                if count == &0 { txt.clone() } else { count.to_string() },
-                Color::WHITE,
-                Font::Main
-            );
-            let text_size = text.measure_text();
-            let max_width = box_width - 10.0; // padding of 10
-            if text_size.x >= max_width {
-                text.set_font_size(20.0 * scale.x * max_width / text_size.x);
-            }
-            text.center_text(&Bounds::new(pos, box_size));
+            // let mut text = Text::new(
+            //     pos,
+            //     20.0 * scale.y,
+            //     if count == &0 { txt.clone() } else { count.to_string() },
+            //     Color::WHITE,
+            //     DefaultFont::Main
+            // );
+            // let text_size = text.measure_text();
+            // let max_width = box_width - 10.0; // padding of 10
+            // if text_size.x >= max_width {
+            //     text.set_font_size(20.0 * scale.x * max_width / text_size.x);
+            // }
+            // text.center_text(&Bounds::new(pos, box_size));
 
-            list.push(text);
+            // list.push(text);
         }
     }
 
     fn reload_skin(
-        &mut self, 
-        source: &TextureSource, 
+        &mut self,
+        source: &TextureSource,
         skin_manager: &mut dyn SkinProvider
     ) {
         self.button_image = skin_manager.get_texture(
-            "inputoverlay-key", 
-            source, 
-            SkinUsage::Gamemode, 
+            "inputoverlay-key",
+            source,
+            SkinUsage::Gamemode,
             false
         );
     }
@@ -129,9 +129,9 @@ pub const JUDGMENT_COUNTER: GameplayWidgetBuilder = GameplayWidgetBuilder {
     name: "judgement_counter",
     default_layout: GameplayWidgetLayout::new_default(
         GameplayWidgetAnchor::element(
-            "key_counter", 
+            "key_counter",
             GameplayWidgetAlign::Below
-        ), 
+        ),
         Alignment::BOTTOM_LEFT,
         None,
         None,

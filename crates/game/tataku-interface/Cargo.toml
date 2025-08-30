@@ -24,6 +24,7 @@ tataku-client-common = { workspace = true, optional = true }
 tataku-engine = { workspace = true }
 
 taffy.workspace = true
+parley.workspace = true
 # async-recursion.workspace = true
 
 chrono.workspace = true

@@ -16,8 +16,6 @@ impl Blur {
     }
 }
 impl TatakuRenderable for Blur {
-    fn get_bounds(&self) -> Bounds { self.bounds }
-
     fn get_blend_mode(&self) -> Pipeline {
         match self.blur_type {
             BlurType::Gaussian { .. } => Pipeline::GaussianBlur,

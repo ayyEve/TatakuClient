@@ -29,9 +29,6 @@ impl Line {
 #[cfg(feature="graphics")]
 impl TatakuRenderable for Line {
     fn get_name(&self) -> String { "Line".to_owned() }
-    fn get_bounds(&self) -> Bounds { 
-        Bounds::new(self.p1, self.p2 - self.p1) 
-    }
 
     fn get_blend_mode(&self) -> Pipeline { self.blend_mode }
     fn set_blend_mode(&mut self, blend_mode: Pipeline) { self.blend_mode = blend_mode }

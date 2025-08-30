@@ -2,7 +2,6 @@ use crate::prelude::*;
 
 pub trait TatakuRenderable: Sync + Send {
     fn get_name(&self) -> String { "Unnamed".to_owned() }
-    fn get_bounds(&self) -> Bounds;
     
     fn get_blend_mode(&self) -> Pipeline;
     fn set_blend_mode(&mut self, blend_mode: Pipeline);

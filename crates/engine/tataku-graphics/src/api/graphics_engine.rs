@@ -65,9 +65,6 @@ pub trait GraphicsEngine {
     /// pop a scissor from the scissor stack
     fn pop_scissor(&mut self);
 
-    fn load_font_data(&mut self, font: ActualFont, size: FontSize);
-
-
     // drawing
 
     /// draw an arc with the center at 0,0

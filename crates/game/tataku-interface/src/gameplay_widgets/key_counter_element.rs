@@ -14,7 +14,7 @@ impl KeyCounterElement {
     ) -> Box<dyn GameplayWidget> {
         Box::new(Self {
             counter: KeyCounter::default(),
-            
+
             // background_image,
             button_image: None,
         })
@@ -30,15 +30,15 @@ impl GameplayWidget for KeyCounterElement {
             .map_or(BOX_SIZE, Image::size);
         Vector2::new(box_size.x, box_size.y * self.counter.key_order.len() as f32)
     }
-    
+
     fn update(&mut self, manager: &mut dyn GameplayManagerTrait) {
         self.counter = manager.key_counter().clone();
     }
 
     fn draw(
-        &mut self, 
-        pos_offset: Vector2, 
-        scale: Vector2, 
+        &mut self,
+        pos_offset: Vector2,
+        scale: Vector2,
         _align: Alignment,
         list: &mut RenderableCollection
     ) {
@@ -55,7 +55,7 @@ impl GameplayWidget for KeyCounterElement {
         for i in 0..self.counter.key_order.len() {
             let info = &self.counter.keys[&self.counter.key_order[i]];
             let pos = pos_offset + Vector2::new(
-                0.0, 
+                0.0,
                 box_size.y * i as f32
             );
             let box_width;
@@ -66,7 +66,7 @@ impl GameplayWidget for KeyCounterElement {
                 if info.held {
                     btn.scale *= 1.1;
                 }
-                
+
                 box_width = btn.size().x * scale.x;
                 list.push(btn);
             } else {
@@ -86,35 +86,35 @@ impl GameplayWidget for KeyCounterElement {
                 );
             }
 
-            // draw key
-            let mut text = Text::new(
-                pos,
-                20.0 * scale.x,
-                if info.count == 0 {
-                    info.label.clone()
-                } else {
-                    format!("{}", info.count)
-                },
+            // // draw key
+            // let mut text = Text::new(
+            //     pos,
+            //     20.0 * scale.x,
+            //     if info.count == 0 {
+            //         info.label.clone()
+            //     } else {
+            //         format!("{}", info.count)
+            //     },
 
-                Color::WHITE,
-                Font::Main
-            );
-            
-            let text_size = text.measure_text();
-            let max_width = box_width - 10.0; // padding of 10
-            if text_size.x >= max_width {
-                text.set_font_size(20.0 * scale.x * max_width / text_size.x);
-            }
+            //     Color::WHITE,
+            //     DefaultFont::Main
+            // );
 
-            text.center_text(&Bounds::new(pos, box_size));
-            list.push(text);
+            // let text_size = text.measure_text();
+            // let max_width = box_width - 10.0; // padding of 10
+            // if text_size.x >= max_width {
+            //     text.set_font_size(20.0 * scale.x * max_width / text_size.x);
+            // }
+
+            // text.center_text(&Bounds::new(pos, box_size));
+            // list.push(text);
         }
 
     }
 
     fn reload_skin(
-        &mut self, 
-        source: &TextureSource, 
+        &mut self,
+        source: &TextureSource,
         skin_manager: &mut dyn SkinProvider
     ) {
         // let mut background_image = SKIN_MANAGER.write().get_texture("inputoverlay-background", false;
@@ -126,9 +126,9 @@ impl GameplayWidget for KeyCounterElement {
         // }
 
         self.button_image = skin_manager.get_texture(
-            "inputoverlay-key", 
-            source, 
-            SkinUsage::Gamemode, 
+            "inputoverlay-key",
+            source,
+            SkinUsage::Gamemode,
             false
         );
     }
@@ -137,7 +137,7 @@ impl GameplayWidget for KeyCounterElement {
 pub const KEY_COUNTER: GameplayWidgetBuilder = GameplayWidgetBuilder {
     name: "key_counter",
     default_layout: GameplayWidgetLayout::new_default(
-        GameplayWidgetAnchor::Screen, 
+        GameplayWidgetAnchor::Screen,
         Alignment::CENTER_RIGHT,
         None,
         None,

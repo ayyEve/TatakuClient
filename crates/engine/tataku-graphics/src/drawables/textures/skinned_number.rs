@@ -167,7 +167,6 @@ impl SkinnedNumber {
 #[cfg(feature="graphics")]
 impl TatakuRenderable for SkinnedNumber {
     fn get_name(&self) -> String { "Skinned number".to_owned() }
-    fn get_bounds(&self) -> Bounds { Bounds::new(self.pos, self.measure_text()) }
 
     fn get_blend_mode(&self) -> Pipeline { self.blend_mode }
     fn set_blend_mode(&mut self, blend_mode: Pipeline) { self.blend_mode = blend_mode }

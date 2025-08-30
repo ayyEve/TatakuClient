@@ -14,6 +14,7 @@ graphics = []
 tataku-common.workspace = true
 tataku-client-common.workspace = true
 
-fontdue.workspace = true
+parley.workspace = true
+swash.workspace = true
 rand.workspace = true
 serde.workspace = true

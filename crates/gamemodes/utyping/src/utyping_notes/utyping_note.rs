@@ -37,21 +37,21 @@ pub struct UTypingNote {
 }
 impl UTypingNote {
     pub fn new(
-        time: f32, 
-        text: ArcStr, 
-        settings: Arc<TaikoSettings>, 
+        time: f32,
+        text: ArcStr,
+        settings: Arc<TaikoSettings>,
         playfield: Arc<UTypingPlayfield>
     ) -> Self {
         Self {
-            time, 
+            time,
             branches: Branch::new(&text),
-            text, 
-            
+            text,
+
             speed: 1.0,
             settings,
             playfield,
             bounce_factor: 1.6,
-            
+
             ..Self::default()
         }
     }
@@ -84,17 +84,17 @@ impl HitObject for UTypingNote {
     }
     fn update(&mut self, beatmap_time: f32) {
         let delta_time = beatmap_time - self.hit_time;
-        let y = 
-            if self.hit {GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2) - (delta_time * self.bounce_factor)} 
-            else if self.missed {GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2)} 
+        let y =
+            if self.hit {GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2) - (delta_time * self.bounce_factor)}
+            else if self.missed {GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2)}
             else {0.0};
-        
+
         self.pos = self.playfield.hit_position + Vector2::new((self.time - beatmap_time) * self.speed, y);
-        
-        #[cfg(feature="graphics")] 
+
+        #[cfg(feature="graphics")]
         if let Some(i) = self.image.as_mut() { i.set_pos(self.pos) }
     }
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn draw(&mut self, _time: f32, list: &mut RenderableCollection) {
         if self.pos.x + self.settings.note_radius < 0.0 || self.pos.x - self.settings.note_radius > 10000000.0 { return }
 
@@ -112,16 +112,16 @@ impl HitObject for UTypingNote {
 
 
         // draw text to hit
-        let mut t = Text::new(
-            self.pos,
-            32.0,
-            // self.romaji.clone(), //
-            self.text.clone(),
-            Color::BLACK,
-            Font::Fallback
-        );
+        // let mut t = Text::new(
+        //     self.pos,
+        //     32.0,
+        //     // self.romaji.clone(), //
+        //     self.text.clone(),
+        //     Color::BLACK,
+        //     DefaultFont::Fallback
+        // );
         let mut rect = Bounds::new(self.pos - size / 2.0, size);
-        t.center_text(&rect);
+        // t.center_text(&rect);
         rect.size.y = 32.0;
 
         // add romaji variants
@@ -143,36 +143,36 @@ impl HitObject for UTypingNote {
         for i in 0..lines.len().min(MAX_COUNT) {
             let i = &lines[i];
             // let len = i.len();
-            
+
             // draw text to hit
-            let mut t = Text::new(
-                self.pos,
-                32.0,
-                i.clone(),
-                Color::BLACK,
-                Font::Fallback
-            );
+            // let mut t = Text::new(
+            //     self.pos,
+            //     32.0,
+            //     i.clone(),
+            //     Color::BLACK,
+            //     DefaultFont::Fallback
+            // );
 
             // FIXME: reimplement this once text spans are added
             // t.text_colors = (0..completed_len).map(|_|complete_color).chain((0..(len - completed_len)).map(|_| incomplete_color)).collect();
-            t.center_text(&rect);
-            rect.pos.y += t.measure_text().y + 5.0;
-            list.push(t);
+            // t.center_text(&rect);
+            // rect.pos.y += t.measure_text().y + 5.0;
+            // list.push(t);
         }
         if over_max {
             // draw text to hit
-            let mut t = Text::new(
-                self.pos,
-                32.0,
-                "...".to_owned(),
-                Color::BLACK,
-                Font::Fallback
-            );
-            t.center_text(&rect);
-            list.push(t);
+            // let mut t = Text::new(
+            //     self.pos,
+            //     32.0,
+            //     "...".to_owned(),
+            //     Color::BLACK,
+            //     DefaultFont::Fallback
+            // );
+            // t.center_text(&rect);
+            // list.push(t);
         }
 
-        list.push(t);
+        // list.push(t);
     }
 
     fn reset(&mut self) {
@@ -268,7 +268,7 @@ impl HitCircleImageHelper {
         self.circle.pos  = pos;
         self.overlay.pos = pos;
     }
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn draw(&mut self, list: &mut RenderableCollection) {
         list.push(self.circle.clone());
         list.push(self.overlay.clone());

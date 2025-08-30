@@ -44,12 +44,12 @@ impl Widget<TatakuAction> for KeyButton {
             .get_text_style(self.node_id)
             .unwrap();
 
-        let w = f16::from_f32(text_style.measure_text("Press a key", None).x);
+        // let w = f16::from_f32(text_style.measure_text("Press a key", None).x);
         let h = f16::from_f32(text_style.line_height);
         shell.tree.update_style(
             self.node_id, 
             |style| {
-                style.min_width = CssUnit::Pixels(w).into();
+                // style.min_width = CssUnit::Pixels(w).into();
                 style.min_height = CssUnit::Pixels(h).into();
             }
         );
@@ -168,17 +168,17 @@ impl Widget<TatakuAction> for KeyButton {
                 .state
                 .contains(ElementState::Active);
 
-            let min = txt.measure_text(&self.text(active), None);
+            // let min = txt.measure_text(&self.text(active), None);
 
-            shell.actions.push(UiAction::new(
-                self.node_id, 
-                UiActionType::UpdateStyleWith(Arc::new(
-                    move |style| {
-                        style.min_width = CssUnit::Pixels(half::f16::from_f32(min.x)).into();
-                        style.min_height = CssUnit::Pixels(half::f16::from_f32(min.y)).into();
-                    }
-                ))
-            ));
+            // shell.actions.push(UiAction::new(
+            //     self.node_id,
+            //     UiActionType::UpdateStyleWith(Arc::new(
+            //         move |style| {
+            //             style.min_width = CssUnit::Pixels(half::f16::from_f32(min.x)).into();
+            //             style.min_height = CssUnit::Pixels(half::f16::from_f32(min.y)).into();
+            //         }
+            //     ))
+            // ));
             shell.actions.push(UiAction::new(
                 self.node_id, 
                 UiActionType::MarkDirty,
@@ -212,10 +212,10 @@ impl Widget<TatakuAction> for KeyButton {
             .style().0
             .text_style(shell.values);
 
-        shell.list.push(style.create_text(
-            self.text(active).into_owned(), 
-            bounds
-        ));
+        // shell.list.push(style.create_text(
+        //     self.text(active).into_owned(),
+        //     bounds
+        // ));
     }
 }
 

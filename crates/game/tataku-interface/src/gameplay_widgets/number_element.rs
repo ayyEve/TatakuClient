@@ -17,23 +17,23 @@ macro_rules! number_element {
     ) => {
         struct $name {
             image: Option<SkinnedNumber>,
-            text: Text,
+            text: String,
         
             number: $t,
-            max_size: Vector2,
+            // max_size: Vector2,
         }
         impl $name {
             pub fn build(
                 _: &GamemodeInfo,
                 _: &Arc<CommonGameplaySettings>
             ) -> Box<dyn GameplayWidget> {
-                let text = Text::new(Vector2::ZERO, 30.0, format!("{}{}", $format($max_number), $symbol.map(|c| c.to_string()).unwrap_or_default()), Color::WHITE, Font::Main);
+                let text = format!("{}{}", $format($max_number), $symbol.map(|c| c.to_string()).unwrap_or_default());
 
                 Box::new(Self {
                     image: None,
                     // combo_size: Text::measure_text_raw(&[Font::Main], 30.0, &format!("{NUMBER}x"), Vector2::ONE, 0.0),
                     number: $max_number as $t,
-                    max_size: text.measure_text(),
+                    // max_size: text.measure_text(),
                     text,
                 })
             }
@@ -41,7 +41,7 @@ macro_rules! number_element {
 
         impl GameplayWidget for $name {
             fn display_name(&self) -> &'static str { $display }
-            fn max_size(&self) -> Vector2 { self.max_size }
+            fn max_size(&self) -> Vector2 { Vector2::new(100.0, 100.0) } //self.max_size }
 
             fn update(&mut self, manager: &mut dyn GameplayManagerTrait) {
                 let old_number = self.number;
@@ -54,7 +54,7 @@ macro_rules! number_element {
                     image.number = self.number as f64;
                     // self.size = image.measure_text();
                 } else {
-                    self.text.text = ($format)(self.number);
+                    self.text = ($format)(self.number);
                     // self.size = self.text.measure_text();
                 }
             }
@@ -66,28 +66,28 @@ macro_rules! number_element {
                 align: Alignment,
                 list: &mut RenderableCollection
             ) {
-                if let Some(mut image) = self.image.clone() {
-                    image.scale = scale;
+                // if let Some(mut image) = self.image.clone() {
+                //     image.scale = scale;
 
-                    image.pos = align.resolve(
-                        &Bounds::new(pos_offset, self.max_size),
-                        image.measure_text(),
-                        true,
-                        true
-                    );
+                //     image.pos = align.resolve(
+                //         &Bounds::new(pos_offset, self.max_size),
+                //         image.measure_text(),
+                //         true,
+                //         true
+                //     );
 
-                    list.push(image);
-                } else {
-                    let mut text = self.text.clone();
-                    text.pos = align.resolve(
-                        &Bounds::new(pos_offset, self.max_size),
-                        text.measure_text(),
-                        true,
-                        true
-                    );
-                    text.set_font_size(30.0 * scale.y);
-                    list.push(text);
-                }
+                //     list.push(image);
+                // } else {
+                //     let mut text = self.text.clone();
+                //     text.pos = align.resolve(
+                //         &Bounds::new(pos_offset, self.max_size),
+                //         text.measure_text(),
+                //         true,
+                //         true
+                //     );
+                //     text.set_font_size(30.0 * scale.y);
+                //     list.push(text);
+                // }
             }
 
             fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
@@ -104,7 +104,7 @@ macro_rules! number_element {
                 ).ok();
                 
                 if let Some(image) = &mut self.image {
-                    self.max_size = image.measure_text();
+                    // self.max_size = image.measure_text();
                     image.number = self.number as f64;
                 }
             }

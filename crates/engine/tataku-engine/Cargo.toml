@@ -24,7 +24,6 @@ graphics = [
     "ui", 
     "clipboard", 
     "raw-window-handle", 
-    "fontdue", 
     "image", 
     "tataku-graphics/graphics", 
     "tataku-client-proc-macros/graphics",
@@ -53,7 +52,6 @@ libloading = { workspace = true, optional = true }
 
 # image stuff
 image = { workspace = true, optional = true }
-fontdue = { workspace = true, optional = true }
 
 # windowing
 winit = { workspace = true, features = ["serde"], optional = true }

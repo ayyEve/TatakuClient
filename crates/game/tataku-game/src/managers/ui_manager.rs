@@ -181,6 +181,9 @@ impl UiManager {
         values: &mut dyn Reflect,
         actions: &mut ActionQueue,
         skin_manager: &mut dyn SkinProvider,
+        font_context: &mut parley::FontContext,
+        scale_context: &mut parley::swash::scale::ScaleContext,
+        text_layout_context: &mut parley::LayoutContext,
     ) {
         self.handle_inputs(input_state, values, actions);
 
@@ -247,11 +250,11 @@ impl UiManager {
 
         // update dialogs
         for dialog in self.dialogs.iter_mut().rev() {
-            dialog.update(values, actions, &mut self.messages, skin_manager);
+            dialog.update(values, actions, &mut self.messages, skin_manager, font_context, scale_context, text_layout_context);
         }
 
         // update the root widget
-        self.root_tree.update(values, actions, &mut self.messages, skin_manager);
+        self.root_tree.update(values, actions, &mut self.messages, skin_manager, font_context, scale_context, text_layout_context);
         
         
         // im leaving this in
@@ -429,12 +432,18 @@ impl UiManager {
         values: &mut dyn Reflect,
         actions: &mut ActionQueue,
         skin_manager: &mut dyn SkinProvider,
+        font_context: &mut parley::FontContext,
+        scale_context: &mut parley::swash::scale::ScaleContext,
+        text_layout_context: &mut parley::LayoutContext,
     ) {
         self.root_tree.reload_skin(
             values,
             &mut self.messages,
             actions,
             skin_manager,
+            font_context,
+            scale_context,
+            text_layout_context,
         );
         
         for i in self.dialogs.iter_mut() {
@@ -442,7 +451,10 @@ impl UiManager {
                 values,
                 &mut self.messages,
                 actions,
-                skin_manager
+                skin_manager,
+                font_context,
+                scale_context,
+                text_layout_context,
             );
         }
     }

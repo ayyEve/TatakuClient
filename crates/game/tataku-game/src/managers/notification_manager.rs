@@ -28,16 +28,16 @@ impl NotificationManager {
     #[cfg(feature="graphics")]
     pub fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
         self.notification_image = skin_manager.get_texture(
-            "notification", 
-            &TextureSource::Skin, 
-            SkinUsage::Game, 
+            "notification",
+            &TextureSource::Skin,
+            SkinUsage::Game,
             true
         );
     }
 
     pub fn draw(
-        &self, 
-        window_size: Vector2, 
+        &self,
+        window_size: Vector2,
         list: &mut RenderableCollection
     ) {
         let mut current_pos = window_size;
@@ -50,19 +50,19 @@ impl NotificationManager {
 
 
     pub fn on_click(
-        &mut self, 
-        window_size: Vector2, 
-        mouse_pos: Vector2, 
+        &mut self,
+        window_size: Vector2,
+        mouse_pos: Vector2,
         actions: &mut ActionQueue,
     ) -> bool {
         let mut current_pos = window_size;
-        
+
         for n in self.notifications.iter_mut() {
             let pos = current_pos - Vector2::new(
-                n.size.x + NOTIF_MARGIN.x, 
+                n.size.x + NOTIF_MARGIN.x,
                 NOTIF_Y_OFFSET + n.size.y
             );
-            
+
             if Bounds::new(pos, n.size).contains(mouse_pos) {
                 n.notification.onclick.do_action(actions);
                 n.remove = true;
@@ -85,24 +85,25 @@ impl NotificationManager {
 struct ProcessedNotif {
     size: Vector2,
     time: TatakuInstant,
-    text: Text,
+    // text: Text,
     notification: Notification,
     remove: bool
 }
 impl ProcessedNotif {
     fn new(notification: Notification) -> Self {
-        let text = Text::new(
-            Vector2::ZERO,
-            NOTIF_TEXT_SIZE,
-            notification.text.clone(),
-            Color::WHITE,
-            Font::Main
-        );
-        
+        // let text = Text::new(
+        //     Vector2::ZERO,
+        //     NOTIF_TEXT_SIZE,
+        //     notification.text.clone(),
+        //     Color::WHITE,
+        //     DefaultFont::Main
+        // );
+
         Self {
-            size: text.measure_text() + NOTIF_PADDING * 2.0,
+            // size: text.measure_text() + NOTIF_PADDING * 2.0,
+            size: Vector2::new(100.0, 16.0),
             time: TatakuInstant::now(),
-            text,
+            // text,
             notification,
             remove: false
         }
@@ -115,13 +116,13 @@ impl ProcessedNotif {
     }
 
     fn draw(
-        &self, 
-        pos_offset: Vector2, 
-        image: Option<&Image>, 
+        &self,
+        pos_offset: Vector2,
+        image: Option<&Image>,
         list: &mut RenderableCollection
     ) {
         let pos = pos_offset - (
-            self.size 
+            self.size
             + Vector2::new(NOTIF_MARGIN.x, NOTIF_Y_OFFSET)
         );
 
@@ -144,6 +145,6 @@ impl ProcessedNotif {
             );
         }
 
-        list.push(self.text.clone().centered(&bounds));
+        // list.push(self.text.clone().centered(&bounds));
     }
 }

@@ -26,7 +26,6 @@ impl GraphicsEngine for DummyGraphicsEngine {
     fn load_texture_bytes(&mut self, _data: &[u8]) -> TatakuResult<TextureReference> {
         Err(TatakuError::Graphics(GraphicsError::DummyEngine))
     }
-    fn load_font_data(&mut self, _: ActualFont, _: FontSize) {}
 
     fn load_texture_rgba(&mut self, _data: &[u8], _size: [u32; 2]) -> TatakuResult<TextureReference> {
         Err(TatakuError::Graphics(GraphicsError::DummyEngine))

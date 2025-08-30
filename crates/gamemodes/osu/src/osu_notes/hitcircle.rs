@@ -25,7 +25,7 @@ pub struct HitCircle {
     color: Color,
 
     /// combo num text cache
-    combo_text: Option<Text>,
+    // combo_text: Option<Text>,
     combo_image: Option<SkinnedNumber>,
 
     skin_settings: Arc<SkinSettings>,
@@ -47,7 +47,7 @@ impl HitCircle {
             scaling_helper,
 
             combo_image: None,
-            combo_text: None,
+            // combo_text: None,
 
             alpha: 0,
             color: Color::WHITE,
@@ -93,19 +93,19 @@ impl HitCircle {
             combo.spacing_override = Some(-(self.skin_settings.hitcircle_overlap as f32));
             combo.scale = Vector2::ONE * self.scaling_helper.cs * TEXT_SCALE;
             combo.center_text(&rect);
-            self.combo_text = None;
-        } else if self.combo_text.is_none() {
-            let mut text = Text::new(
-                Vector2::ZERO,
-                radius,
-                self.combo_num,
-                Color::WHITE,
-                Font::Main
-            );
-            text.line_height = radius / 2.0;
-            text.center_text(&rect);
+            // self.combo_text = None;
+        // } else if self.combo_text.is_none() {
+        //     let mut text = Text::new(
+        //         Vector2::ZERO,
+        //         radius,
+        //         self.combo_num,
+        //         Color::WHITE,
+        //         DefaultFont::Main
+        //     );
+        //     text.line_height = radius / 2.0;
+        //     text.center_text(&rect);
 
-            self.combo_text = Some(text);
+        //     self.combo_text = Some(text);
         }
 
     }
@@ -134,10 +134,10 @@ impl HitCircle {
             image.scale = scale * TEXT_SCALE;
             image.center_text(&rect);
         }
-        if let Some(text) = &mut self.combo_text {
-            text.set_font_size(radius);
-            text.center_text(&rect);
-        }
+        // if let Some(text) = &mut self.combo_text {
+        //     text.set_font_size(radius);
+        //     text.center_text(&rect);
+        // }
 
     }
 
@@ -220,10 +220,10 @@ impl HitCircle {
                 image.color.a = self.alpha;
                 image.center_text(&rect);
                 collection.push(image);
-            } else if let Some(mut text) = self.combo_text.clone() {
-                text.color.a = self.alpha;
-                text.center_text(&rect);
-                collection.push(text);
+            // } else if let Some(mut text) = self.combo_text.clone() {
+                // text.color.a = self.alpha;
+                // text.center_text(&rect);
+                // collection.push(text);
             }
         }
 

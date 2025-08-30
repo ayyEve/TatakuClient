@@ -57,7 +57,7 @@ pub struct CssStyle {
     // Position properties
     /// What should the `position` value of this struct use as a base offset?
     pub position: CssValue<Position>,
-    
+
     /// How should the position of this element be tweaked relative to the layout defined?
     #[css(shorthand = "QuadShorthand")] _inset: (),
     pub inset_top: CssValue<CssUnit>,
@@ -171,11 +171,11 @@ pub struct CssStyle {
     /// 1.0 is the default value, and this value must be positive.
     pub flex_shrink: CssValue<f32>,
 
-    
+
     // text properties
     #[css(default = "CssValue::Inherit")]
     #[css(parse_with = "Self::parse_font")]
-    pub font: CssValue<Font>,
+    pub font: CssValue<DefaultFont>,
     #[css(default = "CssValue::Inherit")]
     pub font_size: CssValue<f32>,
     #[css(default = "CssValue::Inherit")]
@@ -218,7 +218,7 @@ pub struct CssStyle {
     pub animation_iteration_count: CssValue<AnimationIterationCount>,
 
     // blur properties
-    #[css(shorthand = "BlurShorthand")] 
+    #[css(shorthand = "BlurShorthand")]
     #[css(shorthand_fields("blur_amount", "blur_type", "blur_location"))]
     _blur: (),
 

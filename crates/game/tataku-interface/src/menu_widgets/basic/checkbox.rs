@@ -54,21 +54,21 @@ impl Checkbox {
         self
     }
 
-    fn size(&self, text_style: &TextStyle) -> [CssUnit; 2] {
-        let text = self.text.get();
-        let txt_size = text_style.measure_text(text, None);
-        let box_size = self.box_size(text_style.font_size);
+    // fn size(&self, text_style: &TextStyle) -> [CssUnit; 2] {
+    //     let text = self.text.get();
+    //     let txt_size = text_style.measure_text(text, None);
+    //     let box_size = self.box_size(text_style.font_size);
 
-        let size = Vector2::new(
-            box_size.x + txt_size.x,
-            box_size.y.max(txt_size.y)
-        ) + self.box_padding() * 2.0;
+    //     let size = Vector2::new(
+    //         box_size.x + txt_size.x,
+    //         box_size.y.max(txt_size.y)
+    //     ) + self.box_padding() * 2.0;
 
-        [
-            CssUnit::Pixels(f16::from_f32(size.x)),
-            CssUnit::Pixels(f16::from_f32(size.y))
-        ]
-    }
+    //     [
+    //         CssUnit::Pixels(f16::from_f32(size.x)),
+    //         CssUnit::Pixels(f16::from_f32(size.y))
+    //     ]
+    // }
 }
 impl Widget<TatakuAction> for Checkbox {
     fn name(&self) -> CowStr { "checkbox_widget".into() }
@@ -89,15 +89,15 @@ impl Widget<TatakuAction> for Checkbox {
         let text_style = shell.tree
             .get_text_style(self.node_id)
             .unwrap();
-        let size = self.size(text_style);
+        // let size = self.size(text_style);
 
-        shell.tree.update_style(
-            self.node_id, 
-            |style| {
-                style.min_width = CssValue::Value(size[0]);
-                style.min_height = CssValue::Value(size[1]);
-            }
-        );
+        // shell.tree.update_style(
+        //     self.node_id,
+        //     |style| {
+        //         style.min_width = CssValue::Value(size[0]);
+        //         style.min_height = CssValue::Value(size[1]);
+        //     }
+        // );
     }
 
     fn input(
@@ -158,53 +158,53 @@ impl Widget<TatakuAction> for Checkbox {
             .get_text_style(self.node_id)
             .unwrap();
 
-        let box_size = self.box_size(text_style.font_size);
+        // let box_size = self.box_size(text_style.font_size);
         let box_padding = self.box_padding();
 
-        let box_bounds = Bounds::new(
-            bounds.pos,
-            Vector2::new(
-                box_size.x + box_padding.x,
-                bounds.size.y
-            ),
-        );
+        // let box_bounds = Bounds::new(
+        //     bounds.pos,
+        //     Vector2::new(
+        //         box_size.x + box_padding.x,
+        //         bounds.size.y
+        //     ),
+        // );
 
-        let box_pos = Alignment::CENTER.resolve(
-            &box_bounds, 
-            box_size, 
-            true, 
-            true,
-        );
+        // let box_pos = Alignment::CENTER.resolve(
+        //     &box_bounds,
+        //     box_size,
+        //     true,
+        //     true,
+        // );
 
-        let rect = Rectangle::new(
-            box_pos,
-            box_size,
-            if self.value.get() { 
-                shell.general_theme.active_color 
-            } else { 
-                Color::TRANSPARENT 
-            }
-        ).border(Border::new(
-            shell.general_theme.get_color(self.active, self.hovered), 
-            2.0
-        )).shape(Shape::Round(2.0));
-        shell.list.push(rect);
+        // let rect = Rectangle::new(
+        //     box_pos,
+        //     box_size,
+        //     if self.value.get() {
+        //         shell.general_theme.active_color
+        //     } else {
+        //         Color::TRANSPARENT
+        //     }
+        // ).border(Border::new(
+        //     shell.general_theme.get_color(self.active, self.hovered),
+        //     2.0
+        // )).shape(Shape::Round(2.0));
+        // shell.list.push(rect);
 
-        let text_bounds = Bounds::new(
-            Vector2::new(
-                bounds.pos.x + box_size.x + box_padding.x,
-                bounds.pos.y
-            ),
-            Vector2::new(
-                bounds.size.x - box_size.x,
-                bounds.size.y
-            )
-        );
+        // let text_bounds = Bounds::new(
+        //     Vector2::new(
+        //         bounds.pos.x + box_size.x + box_padding.x,
+        //         bounds.pos.y
+        //     ),
+        //     Vector2::new(
+        //         bounds.size.x - box_size.x,
+        //         bounds.size.y
+        //     )
+        // );
 
-        shell.list.push(text_style.create_text(
-            self.text.get().to_string(), 
-            text_bounds
-        ));
+        // shell.list.push(text_style.create_text(
+        //     self.text.get().to_string(),
+        //     text_bounds
+        // ));
     }
 
     fn update(&mut self, shell: &mut UpdateShell<TatakuAction>) {
@@ -218,14 +218,14 @@ impl Widget<TatakuAction> for Checkbox {
                 .get_text_style(self.node_id)
                 .unwrap();
 
-            let size = self.size(text_style);
-            shell.tree.update_style(
-                self.node_id, 
-                |style| {
-                    style.min_width = size[0].into();
-                    style.min_height = size[1].into();
-                }
-            );
+            // let size = self.size(text_style);
+            // shell.tree.update_style(
+            //     self.node_id,
+            //     |style| {
+            //         style.min_width = size[0].into();
+            //         style.min_height = size[1].into();
+            //     }
+            // );
         }
     }
 }

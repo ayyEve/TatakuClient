@@ -1923,35 +1923,6 @@ impl GraphicsEngine for WgpuEngine<'_> {
         self.scissors.pop_scissor();
     }
 
-
-    fn load_font_data(&mut self, font: ActualFont, font_size: FontSize) {
-        debug!("Loading font {} with size {font_size:?}", font.name);
-        let mut characters = font.characters.write();
-
-        for (&char, _) in font.font.chars() {
-            // generate glyph data
-            let (metrics, bitmap) = font.font.rasterize(char, font_size.f32());
-
-            // bitmap is a vec of grayscale pixels
-            // we need to turn that into rgba bytes
-            let data = bitmap
-                .into_iter()
-                .flat_map(|gray| [255,255,255, gray])
-                .collect::<Vec<_>>();
-
-            let Ok(texture) = self.load_texture_rgba(
-                &data, 
-                [metrics.width as u32, metrics.height as u32]
-            ) else { panic!("eve broke fonts") };
-
-            let char_data = CharData { texture, metrics };
-            characters.insert((font_size.u32(), char), char_data);
-        }
-
-        // let the font know the size been loaded
-        font.loaded_sizes.write().insert(font_size.u32());
-    }
-
     // draw helpers
 
     /// draw an arc with the center at 0,0

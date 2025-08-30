@@ -112,21 +112,21 @@ impl DownloadManager {
                 .alignment(Alignment::CENTER)
                 .font_size(20.0);
 
-            list.push(style.create_text(
-                i.title.clone(), 
-                Bounds::new(
-                    pos, 
-                    Vector2::new(SIZE.x, SIZE.y / 2.0)
-                )
-            ));
+            // list.push(style.create_text(
+            //     i.title.clone(),
+            //     Bounds::new(
+            //         pos,
+            //         Vector2::new(SIZE.x, SIZE.y / 2.0)
+            //     )
+            // ));
 
-            list.push(style.create_text(
-                format!("{:.2}%", i.progress), 
-                Bounds::new(
-                    pos + Vector2::new(0.0, SIZE.y / 2.0), 
-                    Vector2::new(SIZE.x, SIZE.y / 2.0)
-                )
-            ));
+            // list.push(style.create_text(
+            //     format!("{:.2}%", i.progress),
+            //     Bounds::new(
+            //         pos + Vector2::new(0.0, SIZE.y / 2.0),
+            //         Vector2::new(SIZE.x, SIZE.y / 2.0)
+            //     )
+            // ));
         }
 
     }

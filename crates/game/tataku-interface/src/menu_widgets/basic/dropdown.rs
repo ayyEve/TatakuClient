@@ -44,26 +44,26 @@ impl Dropdown {
         }
     }
 
-    fn min_size(
-        &self, 
-        text_style: &TextStyle, 
-        scale: Option<Vector2>
-    ) -> (CssUnit, CssUnit) {
-        let placeholder_size = text_style
-            .measure_text(self.placeholder.get(), scale);
+    // fn min_size(
+    //     &self,
+    //     text_style: &TextStyle,
+    //     scale: Option<Vector2>
+    // ) -> (CssUnit, CssUnit) {
+    //     let placeholder_size = text_style
+    //         .measure_text(self.placeholder.get(), scale);
         
-        let largest_text = self.variants.get_displays()
-            .iter()
-            .map(|a| text_style.measure_text(a, scale))
-            .fold(
-                placeholder_size, 
-                |a, b| Vector2::new(a.x.max(b.x), a.y.max(b.y))
-            );
+    //     let largest_text = self.variants.get_displays()
+    //         .iter()
+    //         .map(|a| text_style.measure_text(a, scale))
+    //         .fold(
+    //             placeholder_size,
+    //             |a, b| Vector2::new(a.x.max(b.x), a.y.max(b.y))
+    //         );
         
-        let min_width = CssUnit::Pixels(f16::from_f32(largest_text.x));
-        let min_height = CssUnit::Pixels(f16::from_f32(largest_text.y));
-        (min_width, min_height)
-    }
+    //     let min_width = CssUnit::Pixels(f16::from_f32(largest_text.x));
+    //     let min_height = CssUnit::Pixels(f16::from_f32(largest_text.y));
+    //     (min_width, min_height)
+    // }
 
     fn set_value(
         &mut self, 
@@ -138,14 +138,14 @@ impl Widget<TatakuAction> for Dropdown {
             .get_text_style(self.node_id)
             .unwrap();
 
-        let (w, h) = self.min_size(text_style, None);
-        shell.tree.update_style(
-            self.node_id, 
-            |style| {
-                style.min_width = w.into();
-                style.min_height = h.into();
-            }
-        );
+        // let (w, h) = self.min_size(text_style, None);
+        // shell.tree.update_style(
+        //     self.node_id,
+        //     |style| {
+        //         style.min_width = w.into();
+        //         style.min_height = h.into();
+        //     }
+        // );
     }
 
     fn input(
@@ -298,7 +298,7 @@ impl Widget<TatakuAction> for Dropdown {
             .get_text_style(self.node_id)
             .unwrap();
 
-        shell.list.push(text_style.create_text(main_text.to_string(), bounds));
+        // shell.list.push(text_style.create_text(main_text.to_string(), bounds));
     }
 
     fn draw_overlay(&self, shell: &mut DrawShell<TatakuAction>) {
@@ -352,11 +352,11 @@ impl Widget<TatakuAction> for Dropdown {
                 ))
             );
 
-            let text = text_style.create_text(
-                i, 
-                Bounds::new(offset, bounds.size)
-            );
-            shell.list.push(text);
+            // let text = text_style.create_text(
+            //     i,
+            //     Bounds::new(offset, bounds.size)
+            // );
+            // shell.list.push(text);
         }
     }
 
@@ -373,14 +373,14 @@ impl Widget<TatakuAction> for Dropdown {
                 .get_text_style(self.node_id)
                 .unwrap();
 
-            let (w, h) = self.min_size(text_style, None);
-            shell.tree.update_style(
-                self.node_id, 
-                |style| {
-                    style.min_width = w.into();
-                    style.min_height = h.into();
-                }
-            );
+            // let (w, h) = self.min_size(text_style, None);
+            // shell.tree.update_style(
+            //     self.node_id,
+            //     |style| {
+            //         style.min_width = w.into();
+            //         style.min_height = h.into();
+            //     }
+            // );
         }
 
         if let DropdownValue::Variable(

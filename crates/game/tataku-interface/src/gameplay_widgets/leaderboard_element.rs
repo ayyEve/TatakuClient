@@ -36,9 +36,9 @@ impl GameplayWidget for LeaderboardElement {
     }
 
     fn draw(
-        &mut self, 
-        mut pos_offset: Vector2, 
-        scale: Vector2, 
+        &mut self,
+        mut pos_offset: Vector2,
+        scale: Vector2,
         _align: Alignment,
         list: &mut RenderableCollection,
     ) {
@@ -62,9 +62,9 @@ impl GameplayWidget for LeaderboardElement {
             // l.image = self.image.clone();
             // l.ui_scale_changed(scale);
 
-            if score.is_current { 
+            if score.is_current {
                 color_override = Some(theme.get_color(ThemeColor::LeaderboardCurrentScore).unwrap_or(Color::RED));
-            } else if score.is_previous { 
+            } else if score.is_previous {
                 if is_pb {
                     is_pb = false;
                     color_override = Some(theme.get_color(ThemeColor::LeaderboardPreviousBest).unwrap_or(Color::BLUE));
@@ -78,8 +78,8 @@ impl GameplayWidget for LeaderboardElement {
 
             {
                 let score_mods = ModManager::short_mods_string(
-                    &score.mods, 
-                    false, 
+                    &score.mods,
+                    false,
                     &self.info
                 );
 
@@ -93,29 +93,29 @@ impl GameplayWidget for LeaderboardElement {
                 } else {
                     String::new()
                 };
-                
+
                 let color = if let Some(color) = color_override {
                     color
-                } 
+                }
                 // else if self.selected {
                 //     theme.get_color(ThemeColor::LeaderboardSelect).unwrap_or(Color::BLUE)
-                // } 
+                // }
                 // else if self.hover {
                 //     theme.get_color(ThemeColor::LeaderboardHover).unwrap_or(Color::RED)
-                // } 
+                // }
                 else {
                     theme.get_color(ThemeColor::LeaderboardBg).unwrap_or(Color::WHITE)
                 };
 
                 // let text_color = if let Some(color) = text_color_override {
                 //     color
-                // } 
+                // }
                 // else if self.selected {
                 //     theme.get_color(ThemeColor::LeaderboardTextSelected).unwrap_or(Color::WHITE)
-                // } 
+                // }
                 // else if self.hover {
                 //     theme.get_color(ThemeColor::LeaderboardTextHovered).unwrap_or(Color::WHITE)
-                // } 
+                // }
                 // else {
                 let text_color = theme.get_color(ThemeColor::LeaderboardText).unwrap_or(Color::WHITE);
                 // };
@@ -142,22 +142,22 @@ impl GameplayWidget for LeaderboardElement {
 
 
                 // score text
-                list.push(Text::new(
-                    pos_offset + PADDING * scale,
-                    15.0 * scale.y,
-                    format!("{}: {}", score.username, format_number(score.score.score)),
-                    text_color,
-                    Font::Main
-                ));
+                // list.push(Text::new(
+                //     pos_offset + PADDING * scale,
+                //     15.0 * scale.y,
+                //     format!("{}: {}", score.username, format_number(score.score.score)),
+                //     text_color,
+                //     DefaultFont::Main
+                // ));
 
                 // combo text
-                list.push(Text::new(
-                    pos_offset + (PADDING + Vector2::new(0.0, PADDING.y + 15.0)) * scale,
-                    12.0 * scale.y,
-                    format!("{}x, {:.2}%, {score_mods}{time_diff_str}", format_number(score.max_combo), self.info.calc_acc(score) * 100.0),
-                    text_color,
-                    Font::Main
-                ));
+                // list.push(Text::new(
+                //     pos_offset + (PADDING + Vector2::new(0.0, PADDING.y + 15.0)) * scale,
+                //     12.0 * scale.y,
+                //     format!("{}x, {:.2}%, {score_mods}{time_diff_str}", format_number(score.max_combo), self.info.calc_acc(score) * 100.0),
+                //     text_color,
+                //     DefaultFont::Main
+                // ));
             }
 
             pos_offset += Vector2::with_y(LEADERBOARD_ITEM_SIZE.y + 5.0) * scale;
@@ -166,14 +166,14 @@ impl GameplayWidget for LeaderboardElement {
     }
 
     fn reload_skin(
-        &mut self, 
-        source: &TextureSource, 
+        &mut self,
+        source: &TextureSource,
         skin_manager: &mut dyn SkinProvider
     ) {
         self.image = skin_manager.get_texture(
-            "menu-button-background", 
-            source, 
-            SkinUsage::Gamemode, 
+            "menu-button-background",
+            source,
+            SkinUsage::Gamemode,
             false
         );
     }
@@ -225,8 +225,8 @@ pub const LEADERBOARD: GameplayWidgetBuilder = GameplayWidgetBuilder {
 //         let tag = score.hash(); //username.clone();
 //         let font = Font::Main;
 //         let score_mods = ModManager::short_mods_string(
-//             &score.mods, 
-//             false, 
+//             &score.mods,
+//             false,
 //             &info
 //         );
 
@@ -270,7 +270,7 @@ pub const LEADERBOARD: GameplayWidgetBuilder = GameplayWidgetBuilder {
 //         } else {
 //             String::new()
 //         };
-        
+
 //         let color = if let Some(color) = self.color_override {
 //             color
 //         } else if self.selected {

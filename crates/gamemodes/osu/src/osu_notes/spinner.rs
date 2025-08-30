@@ -53,8 +53,8 @@ pub struct OsuSpinner {
 
 impl OsuSpinner {
     pub fn new(
-        def: &SpinnerDef, 
-        scaling_helper: Arc<ScalingHelper>, 
+        def: &SpinnerDef,
+        scaling_helper: Arc<ScalingHelper>,
         rotations_required: u16
     ) -> Self {
         let time = def.time;
@@ -146,8 +146,8 @@ impl HitObject for OsuSpinner {
 
             // update display rotation
             self.display_rotation += self.rotation_velocity * (beatmap_time - self.last_update);
-            if self.display_rotation >= PI * 2.0 || self.display_rotation <= -PI * 2.0 { 
-                self.rotations_completed += 1; 
+            if self.display_rotation >= PI * 2.0 || self.display_rotation <= -PI * 2.0 {
+                self.rotations_completed += 1;
                 if self.rotations_completed >= self.rotations_required && (self.rotations_completed - self.rotations_required) % 3 == 0 {
                     self.points_queue.push((OsuHitJudgments::SpinnerPoint, self.pos));
                 }
@@ -164,14 +164,14 @@ impl HitObject for OsuSpinner {
         self.last_update = beatmap_time;
         self.current_time = beatmap_time;
     }
-    
-    #[cfg(feature="graphics")] 
+
+    #[cfg(feature="graphics")]
     fn draw(&mut self, time: f32, list: &mut RenderableCollection) {
         if !(time >= self.time && time <= self.end_time) { return }
         let scale = Vector2::ONE * self.scaling_helper.cs;
 
         let border = Border::new(
-            Color::BLACK, 
+            Color::BLACK,
             OSU_NOTE_BORDER_SIZE
         );
 
@@ -213,11 +213,11 @@ impl HitObject for OsuSpinner {
             i.rotation = self.display_rotation;
             list.push(i);
         } else {
-            let p2 = self.pos 
+            let p2 = self.pos
                 + Vector2::new(
-                    self.display_rotation.cos(), 
+                    self.display_rotation.cos(),
                     self.display_rotation.sin()
-                ) 
+                )
                 * SPINNER_RADIUS;
             list.push(Line::new(
                 self.pos,
@@ -229,18 +229,18 @@ impl HitObject for OsuSpinner {
 
         // draw a counter
         let rpm = (self.rotation_velocity / (2.0 * PI)) * 1000.0 * 60.0;
-        let mut txt = Text::new(
-            Vector2::ZERO,
-            30.0,
-            format!("{:.0}rpm ({}/{})", rpm.abs(), self.rotations_completed, self.rotations_required), // format!("{:.0}rpm", rpm.abs()),
-            Color::BLACK,
-            Font::Main
-        );
-        txt.center_text(&Bounds::new(
-            Vector2::new(0.0, self.pos.y + 50.0),
-            Vector2::new(self.pos.x * 2.0, 50.0)
-        ));
-        list.push(txt);
+        // let mut txt = Text::new(
+        //     Vector2::ZERO,
+        //     30.0,
+        //     format!("{:.0}rpm ({}/{})", rpm.abs(), self.rotations_completed, self.rotations_required), // format!("{:.0}rpm", rpm.abs()),
+        //     Color::BLACK,
+        //     DefaultFont::Main
+        // );
+        // txt.center_text(&Bounds::new(
+        //     Vector2::new(0.0, self.pos.y + 50.0),
+        //     Vector2::new(self.pos.x * 2.0, 50.0)
+        // ));
+        // list.push(txt);
     }
 
     fn reset(&mut self) {
@@ -260,18 +260,18 @@ impl HitObject for OsuSpinner {
 
     #[cfg(feature="graphics")]
     fn reload_skin(
-        &mut self, 
-        source: &TextureSource, 
+        &mut self,
+        source: &TextureSource,
         skin_manager: &mut dyn SkinProvider
     ) {
         let pos = self.scaling_helper.scale_coords(FIELD_SIZE / 2.0);
         let scale = Vector2::ONE * self.scaling_helper.scale;
 
         self.spinner_circle = skin_manager.get_texture_then(
-            "spinner-circle", 
-            source, 
-            SkinUsage::Gamemode, 
-            false, 
+            "spinner-circle",
+            source,
+            SkinUsage::Gamemode,
+            false,
             |i| {
                 // const SIZE:f64 = 700.0;
                 i.pos = pos;
@@ -280,10 +280,10 @@ impl HitObject for OsuSpinner {
         );
 
         self.spinner_background = skin_manager.get_texture_then(
-            "spinner-background", 
-            source, 
-            SkinUsage::Gamemode, 
-            false, 
+            "spinner-background",
+            source,
+            SkinUsage::Gamemode,
+            false,
             |i| {
                 // const SIZE:f64 = 667.0;
                 i.pos = pos;
@@ -292,10 +292,10 @@ impl HitObject for OsuSpinner {
         );
 
         self.spinner_bottom = skin_manager.get_texture_then(
-            "spinner-bottom", 
-            source, 
-            SkinUsage::Gamemode, 
-            false, 
+            "spinner-bottom",
+            source,
+            SkinUsage::Gamemode,
+            false,
             |i| {
                 i.pos = pos;
                 i.scale = scale;
@@ -303,10 +303,10 @@ impl HitObject for OsuSpinner {
         );
 
         self.spinner_approach = skin_manager.get_texture_then(
-            "spinner-approachcircle", 
-            source, 
-            SkinUsage::Gamemode, 
-            false, 
+            "spinner-approachcircle",
+            source,
+            SkinUsage::Gamemode,
+            false,
             |i| {
                 // const SIZE:f64 = 320.0;
                 i.pos = pos;
@@ -319,8 +319,8 @@ impl HitObject for OsuSpinner {
 
 impl OsuHitObject for OsuSpinner {
     fn miss(&mut self) { self.missed = true }
-    fn was_hit(&self) -> bool { 
-        self.missed || self.rotations_completed >= self.rotations_required 
+    fn was_hit(&self) -> bool {
+        self.missed || self.rotations_completed >= self.rotations_required
     } //{ self.last_update >= self.end_time }
     fn get_preempt(&self) -> f32 { 0.0 }
     fn set_hitwindow_miss(&mut self, _window: f32) {}
@@ -334,14 +334,14 @@ impl OsuHitObject for OsuSpinner {
 
     fn new_combo(&self) -> bool { true }
 
-    
-    #[cfg(feature="graphics")] 
+
+    #[cfg(feature="graphics")]
     fn point_draw_pos(&self, _: f32) -> Vector2 { self.pos }
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn set_approach_easing(&mut self, _easing: Easing) {}
-    #[cfg(feature="gameplay")] 
+    #[cfg(feature="gameplay")]
     fn get_hitsound(&self) -> Vec<Hitsound> { vec![] }
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn set_combo_color(&mut self, _color: Color) {}
 
     fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {

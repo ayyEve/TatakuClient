@@ -22,7 +22,7 @@ impl ElapsedElement {
         Box::new(Self {
             // elapsed_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::ZERO, 0.0, "normal", None, 0).await.ok(),
             // elapsed_bounds: Bounds::new(Vector2::ZERO, SIZE),
-            
+
             speed: 1.0,
             start_time: -1.0,
             end_time: -1.0,
@@ -47,9 +47,9 @@ impl GameplayWidget for ElapsedElement {
     }
 
     fn draw(
-        &mut self, 
-        pos_offset: Vector2, 
-        scale: Vector2, 
+        &mut self,
+        pos_offset: Vector2,
+        scale: Vector2,
         _align: Alignment,
         list: &mut RenderableCollection,
     ) {
@@ -63,15 +63,15 @@ impl GameplayWidget for ElapsedElement {
         let mins = (secs / 60.0).floor() as i16;
         let secs = secs as i16 % 60;
 
-        let text = Text::new(
-            pos_offset,
-            30.0 * scale.y,
-            format!("{mins:02}:{secs:02}"),
-            Color::WHITE,
-            Font::Main
-        );
-        // text.center_text(&bounds);
-        list.push(text);
+        // let text = Text::new(
+        //     pos_offset,
+        //     30.0 * scale.y,
+        //     format!("{mins:02}:{secs:02}"),
+        //     Color::WHITE,
+        //     DefaultFont::Main
+        // );
+        // // text.center_text(&bounds);
+        // list.push(text);
     }
 
 }
@@ -80,7 +80,7 @@ impl GameplayWidget for ElapsedElement {
 pub const ELAPSED: GameplayWidgetBuilder = GameplayWidgetBuilder {
     name: "elapsed_timer",
     default_layout: GameplayWidgetLayout::new_default(
-        GameplayWidgetAnchor::element("judgement_bar", GameplayWidgetAlign::Left), 
+        GameplayWidgetAnchor::element("judgement_bar", GameplayWidgetAlign::Left),
         Alignment::CENTER_LEFT,
         Some(Alignment::CENTER_RIGHT),
         None,

@@ -7,7 +7,7 @@ const VOLUME_CHANGE_DISPLAY_TIME:u64 = 2000;
 /// helper to move volume things out of game, cleaning up code
 pub struct VolumeControl {
     /// 0-2, 0 = master, 1 = effect, 2 = music
-    vol_selected_index: u8, 
+    vol_selected_index: u8,
     /// when the volume was changed, or the selected index changed
     vol_selected_time: u64,
     timer: TatakuInstant,
@@ -30,7 +30,7 @@ impl VolumeControl {
         let elapsed = self.elapsed();
 
         // reset index back to 0 (master) if the volume hasnt been touched in a while
-        if elapsed - self.vol_selected_time > VOLUME_CHANGE_DISPLAY_TIME + 1000 { 
+        if elapsed - self.vol_selected_time > VOLUME_CHANGE_DISPLAY_TIME + 1000 {
             self.vol_selected_index = 0;
         }
 
@@ -54,8 +54,8 @@ impl VolumeControl {
         let elapsed = self.elapsed();
 
         // draw the volume things if needed
-        if self.vol_selected_time > 0 
-            && elapsed - self.vol_selected_time < VOLUME_CHANGE_DISPLAY_TIME 
+        if self.vol_selected_time > 0
+            && elapsed - self.vol_selected_time < VOLUME_CHANGE_DISPLAY_TIME
             {
             const BOX_SIZE:Vector2 = Vector2::new(300.0, 100.0);
             let b = Rectangle::new(
@@ -71,25 +71,26 @@ impl VolumeControl {
             let border_size = Vector2::new(200.0 - border_padding, 20.0);
 
             list.push(b);
-        
+
             for (n, (text, value)) in [
                 ("Master:", self.settings.master),
                 ("Effects:", self.settings.effects),
                 ("Music:", self.settings.music),
             ].iter().enumerate() {
                 let r_offset = Vector2::new(
-                    border_size.x + border_padding, 
+                    border_size.x + border_padding,
                     (90 - 30 * n) as f32
                 );
 
+
                 // text
-                list.push(Text::new(
-                    self.window_size - Vector2::new(300.0, r_offset.y),
-                    20.0,
-                    text,
-                    if self.vol_selected_index == n as u8 { Color::RED } else { Color::BLACK },
-                    Font::Main,
-                ));
+                // list.push(Text::new(
+                //     self.window_size - Vector2::new(300.0, r_offset.y),
+                //     20.0,
+                //     text,
+                //     if self.vol_selected_index == n as u8 { Color::RED } else { Color::BLACK },
+                //     DefaultFont::Main,
+                // ));
                 // fill
                 list.push(Rectangle::new(
                     self.window_size - r_offset,
@@ -114,22 +115,22 @@ impl VolumeControl {
         let elapsed = self.elapsed();
 
         let master_pos = Vector2::new(
-            self.window_size.x - 300.0, 
+            self.window_size.x - 300.0,
             self.window_size.y - 90.0
         );
         let effect_pos = Vector2::new(
-            self.window_size.x - 300.0, 
+            self.window_size.x - 300.0,
             self.window_size.y - 60.0
         );
         let music_pos = Vector2::new(
-            self.window_size.x - 300.0, 
+            self.window_size.x - 300.0,
             self.window_size.y - 30.0
         );
 
         // check if mouse moved over a volume button
-        if mouse_pos.x >= master_pos.x 
-            && self.vol_selected_time > 0 
-            && elapsed as f32 - (self.vol_selected_time as f32) < VOLUME_CHANGE_DISPLAY_TIME as f32 
+        if mouse_pos.x >= master_pos.x
+            && self.vol_selected_time > 0
+            && elapsed as f32 - (self.vol_selected_time as f32) < VOLUME_CHANGE_DISPLAY_TIME as f32
         {
             if mouse_pos.y >= music_pos.y {
                 self.vol_selected_index = 2;
@@ -145,9 +146,9 @@ impl VolumeControl {
     }
 
     pub fn on_mouse_wheel(
-        &mut self, 
-        delta: f32, 
-        mods: KeyModifiers, 
+        &mut self,
+        delta: f32,
+        mods: KeyModifiers,
         settings: &mut Settings
     ) -> Option<SongAction> {
         if !mods.alt { return None }
@@ -157,9 +158,9 @@ impl VolumeControl {
 
     // #[cfg(feature="graphics")]
     pub fn on_key_press(
-        &mut self, 
-        key: &Key, 
-        mods: KeyModifiers, 
+        &mut self,
+        key: &Key,
+        mods: KeyModifiers,
         actions: &mut ActionQueue,
         settings: &mut Settings,
     ) -> bool {

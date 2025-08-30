@@ -28,9 +28,6 @@ impl HalfCircle {
 #[cfg(feature="graphics")]
 impl TatakuRenderable for HalfCircle {
     fn get_name(&self) -> String { "Half Circle".to_owned() }
-    fn get_bounds(&self) -> Bounds { 
-        Bounds::new(self.pos, Vector2::ONE * self.radius) 
-    }
 
     fn get_blend_mode(&self) -> Pipeline { self.blend_mode }
     fn set_blend_mode(&mut self, blend_mode: Pipeline) { self.blend_mode = blend_mode }

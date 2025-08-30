@@ -55,7 +55,6 @@ impl Rectangle {
 #[cfg(feature="graphics")]
 impl TatakuRenderable for Rectangle {
     fn get_name(&self) -> String { "Rectangle".to_owned() }
-    fn get_bounds(&self) -> Bounds { self.inner }
 
     fn get_blend_mode(&self) -> Pipeline { self.blend_mode }
     fn set_blend_mode(&mut self, blend_mode: Pipeline) { self.blend_mode = blend_mode }

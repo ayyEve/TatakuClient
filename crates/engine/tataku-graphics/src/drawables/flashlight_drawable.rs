@@ -28,9 +28,6 @@ impl FlashlightDrawable {
 
 impl TatakuRenderable for FlashlightDrawable {
     fn get_name(&self) -> String { "Flashlight".to_owned() }
-    fn get_bounds(&self) -> Bounds { 
-        Bounds::new(self.pos, Vector2::ONE * self.radius) 
-    }
 
     fn get_blend_mode(&self) -> Pipeline { Pipeline::Flashlight }
     fn set_blend_mode(&mut self, _blend_mode: Pipeline) { }

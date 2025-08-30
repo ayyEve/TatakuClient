@@ -1,6 +1,5 @@
 
 mod blur;
-mod font;
 mod trail;
 mod shape;
 mod emitter;
@@ -12,7 +11,6 @@ mod flashlight_drawable;
 mod renderable_collection;
 
 pub use blur::*;
-pub use font::*;
 pub use trail::*;
 pub use shape::*;
 pub use emitter::*;

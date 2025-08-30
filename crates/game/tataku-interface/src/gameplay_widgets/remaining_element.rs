@@ -22,7 +22,7 @@ impl RemainingElement {
         Box::new(Self {
             // elapsed_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::ZERO, 0.0, "normal", None, 0).await.ok(),
             // elapsed_bounds: Bounds::new(Vector2::ZERO, SIZE),
-            
+
             speed: 1.0,
             start_time: -1.0,
             end_time: -1.0,
@@ -46,9 +46,9 @@ impl GameplayWidget for RemainingElement {
     }
 
     fn draw(
-        &mut self, 
-        pos_offset: Vector2, 
-        scale: Vector2, 
+        &mut self,
+        pos_offset: Vector2,
+        scale: Vector2,
         _align: Alignment,
         list: &mut RenderableCollection
     ) {
@@ -62,15 +62,15 @@ impl GameplayWidget for RemainingElement {
         let mins = (secs / 60.0).floor() as i16;
         let secs = secs as i16 % 60;
 
-        let text = Text::new(
-            pos_offset,
-            30.0 * scale.y,
-            format!("{sign}{mins:02}:{secs:02}"),
-            Color::WHITE,
-            Font::Main
-        );
-        // text.center_text(&bounds);
-        list.push(text);
+        // let text = Text::new(
+        //     pos_offset,
+        //     30.0 * scale.y,
+        //     format!("{sign}{mins:02}:{secs:02}"),
+        //     Color::WHITE,
+        //     DefaultFont::Main
+        // );
+        // // text.center_text(&bounds);
+        // list.push(text);
     }
 }
 
@@ -78,7 +78,7 @@ impl GameplayWidget for RemainingElement {
 pub const REMAINING_ELEMENT: GameplayWidgetBuilder = GameplayWidgetBuilder {
     name: "remaining_timer",
     default_layout: GameplayWidgetLayout::new_default(
-        GameplayWidgetAnchor::element("judgement_bar", GameplayWidgetAlign::Right), 
+        GameplayWidgetAnchor::element("judgement_bar", GameplayWidgetAlign::Right),
         Alignment::CENTER_RIGHT,
         Some(Alignment::CENTER_LEFT),
         None,

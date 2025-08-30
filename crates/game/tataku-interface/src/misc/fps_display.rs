@@ -41,7 +41,7 @@ impl FpsDisplay {
 
     pub fn window_size_changed(&mut self, window_size: Vector2) {
         self.pos = window_size - Vector2::new(
-            SIZE.x, 
+            SIZE.x,
             SIZE.y * (self.pos_count+1) as f32
         );
     }
@@ -50,7 +50,7 @@ impl FpsDisplay {
         // if self.skin_helper.update() {
         //     self.number_image = SkinnedNumber::new(Color::BLACK, 0.0, self.pos, self.frametime_last_draw as f64, "fps", None, 2).await.ok();
         // }
-        
+
         let now = TatakuInstant::now();
         let fps_elapsed = now.duration_since(self.timer).as_secs_f32() * 1000.0;
 
@@ -58,7 +58,7 @@ impl FpsDisplay {
             self.last = self.count as f32 / fps_elapsed * 1000.0;
             self.timer = now;
             self.count = 0;
-            
+
             // frame times
             self.frametime_last_draw = self.frametime_last;
             self.frametime_last = 0.0;
@@ -72,24 +72,47 @@ impl FpsDisplay {
 
     pub fn increment(&mut self) {
         self.count += 1;
-        
+
         self.frametime_last = self.frametime_last.max(self.frametime_timer.as_millis());
         self.frametime_timer = TatakuInstant::now();
     }
-    pub fn draw(&self, list: &mut RenderableCollection) {
+    pub fn draw(
+        &self,
+        list: &mut RenderableCollection,
+        font_context: &mut parley::FontContext,
+        scale_context: &mut parley::swash::scale::ScaleContext,
+        text_layout_context: &mut parley::LayoutContext
+    ) {
         list.push(Rectangle::new(
-            self.pos, 
-            SIZE, 
-            Color::WHITE.alpha(0.8), 
+            self.pos,
+            SIZE,
+            Color::WHITE.alpha(0.8),
         ));
 
-        list.push(Text::new(
-            self.pos + TEXT_PADDING,
-            12.0,
-            format!("{:.2}{} ({:.2}ms)", self.last, self.name, self.frametime_last_draw),
-            Color::BLACK, 
-            Font::Main
-        ));
+        let text = format!("{:.2} {} ({:.2}ms)", self.last, self.name, self.frametime_last_draw);
+
+        let layout = simple_text(
+            &text,
+            &TextStyle {
+                font_size: 12.0,
+                ..Default::default()
+            },
+            SIZE.x,
+            font_context,
+            text_layout_context,
+        );
+
+        let glyphs = rasterize_layout(
+            layout,
+            Color::BLACK,
+            scale_context,
+        );
+
+        let transform = Transform::default().translate(self.pos + TEXT_PADDING);
+
+        for glyph in glyphs {
+            list.push(Transformed::new(transform, Box::new(glyph)));
+        }
     }
 }
 
@@ -100,22 +123,22 @@ pub struct AsyncFpsDisplay {
     pos: Vector2,
 
     count: Arc<AtomicU32>,
-    
+
     timer: TatakuInstant,
     last: f32,
 
     frametime_last: Arc<AtomicU32>,
     frametime_last_draw: f32,
-    
+
     // window_size: WindowSizeHelper,
     pos_count: u8,
 }
 impl AsyncFpsDisplay {
     /// name is what to display in text, count is which fps counter is this (only affects position)
     pub fn new(
-        name: &str, 
-        pos_count: u8, 
-        count: Arc<AtomicU32>, 
+        name: &str,
+        pos_count: u8,
+        count: Arc<AtomicU32>,
         frametime_last: Arc<AtomicU32>
     ) -> Self {
         Self {
@@ -125,7 +148,7 @@ impl AsyncFpsDisplay {
             last: 0.0,
             timer: TatakuInstant::now(),
             name: name.to_owned(),
-            pos: Vector2::ZERO, 
+            pos: Vector2::ZERO,
 
             frametime_last_draw: 0.0,
             // window_size,
@@ -135,7 +158,7 @@ impl AsyncFpsDisplay {
 
     pub fn window_size_changed(&mut self, window_size: Vector2) {
         self.pos = window_size - Vector2::new(
-            SIZE.x, 
+            SIZE.x,
             SIZE.y * (self.pos_count+1) as f32
         );
     }
@@ -154,19 +177,42 @@ impl AsyncFpsDisplay {
         }
     }
 
-    pub fn draw(&self, list: &mut RenderableCollection) {
+    pub fn draw(
+        &self,
+        list: &mut RenderableCollection,
+        font_context: &mut parley::FontContext,
+        scale_context: &mut parley::swash::scale::ScaleContext,
+        text_layout_context: &mut parley::LayoutContext
+    ) {
         list.push(Rectangle::new(
-            self.pos, 
-            SIZE, 
+            self.pos,
+            SIZE,
             Color::WHITE.alpha(0.8),
         ));
 
-        list.push(Text::new(
-            self.pos + TEXT_PADDING,
-            12.0,
-            format!("{:.2}{} ({:.2}ms)", self.last, self.name, self.frametime_last_draw),
+        let text = format!("{:.2} {} ({:.2}ms)", self.last, self.name, self.frametime_last_draw);
+
+        let layout = simple_text(
+            &text,
+            &TextStyle {
+                font_size: 12.0,
+                ..Default::default()
+            },
+            SIZE.x,
+            font_context,
+            text_layout_context,
+        );
+
+        let glyphs = rasterize_layout(
+            layout,
             Color::BLACK,
-            Font::Main
-        ));
+            scale_context,
+        );
+
+        let transform = Transform::default().translate(self.pos + TEXT_PADDING);
+
+        for glyph in glyphs {
+            list.push(Transformed::new(transform, Box::new(glyph)));
+        }
     }
 }
