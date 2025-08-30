@@ -29,6 +29,9 @@ pub struct DrawShell<'a, Action: Send + Sync + 'static> {
     pub values: &'a dyn Reflect,
     pub list: &'a mut RenderableCollection,
     pub general_theme: GeneralUiTheme,
+
+    pub font_context: &'a mut parley::FontContext,
+    pub scale_context: &'a mut parley::swash::scale::ScaleContext,
 }
 
 pub struct UpdateShell<'a, Action: Send + Sync + 'static> {
@@ -41,7 +44,6 @@ pub struct UpdateShell<'a, Action: Send + Sync + 'static> {
     pub skin_manager: &'a mut dyn SkinProvider,
 
     pub font_context: &'a mut parley::FontContext,
-    pub scale_context: &'a mut parley::swash::scale::ScaleContext,
     pub text_layout_context: &'a mut parley::LayoutContext,
 }
 
@@ -52,6 +54,9 @@ pub struct LayoutShell<'a, 'css: 'a, Action: Send + Sync + 'static> {
     pub owner: MessageOwner,
     pub ui_scale: f32,
     pub resolver: &'a mut CssResolver<'css>,
+
+    pub font_context: &'a mut parley::FontContext,
+    pub text_layout_context: &'a mut parley::LayoutContext,
 }
 impl<Action: Send + Sync + 'static> LayoutShell<'_,'_, Action> {
     pub fn with_context(

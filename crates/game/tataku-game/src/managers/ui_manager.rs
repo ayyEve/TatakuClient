@@ -30,6 +30,8 @@ impl UiManager {
         root: Box<dyn Widget<TatakuAction>>,
         values: &mut T,
         actions: &mut ActionQueue,
+        font_context: &mut parley::FontContext,
+        text_layout_context: &mut parley::LayoutContext,
     ) {
         self.root_tree.handle_event(
             &TatakuEventType::MenuLeave, 
@@ -42,7 +44,7 @@ impl UiManager {
 
         self.current_menu = root.name().into_owned();
         self.messages.retain(|m| !m.owner.is_menu());
-        self.root_tree.set_node(root, values);
+        self.root_tree.set_node(root, values, font_context, text_layout_context);
     }
 
 
@@ -52,6 +54,8 @@ impl UiManager {
         options: DialogCreateOptions,
         values: &mut dyn Reflect, 
         actions: &mut ActionQueue,
+        font_context: &mut parley::FontContext,
+        text_layout_context: &mut parley::LayoutContext,
     ) {
         let name = dialog.name();
         if !options.allow_multiple {
@@ -84,7 +88,7 @@ impl UiManager {
             EmptyWidget::new_boxed()
         );
 
-        tree.set_node(dialog, values);
+        tree.set_node(dialog, values, font_context, text_layout_context);
         tree.handle_message(
             &Message::new(
                 tree.owner, 
@@ -182,7 +186,6 @@ impl UiManager {
         actions: &mut ActionQueue,
         skin_manager: &mut dyn SkinProvider,
         font_context: &mut parley::FontContext,
-        scale_context: &mut parley::swash::scale::ScaleContext,
         text_layout_context: &mut parley::LayoutContext,
     ) {
         self.handle_inputs(input_state, values, actions);
@@ -250,11 +253,11 @@ impl UiManager {
 
         // update dialogs
         for dialog in self.dialogs.iter_mut().rev() {
-            dialog.update(values, actions, &mut self.messages, skin_manager, font_context, scale_context, text_layout_context);
+            dialog.update(values, actions, &mut self.messages, skin_manager, font_context, text_layout_context);
         }
 
         // update the root widget
-        self.root_tree.update(values, actions, &mut self.messages, skin_manager, font_context, scale_context, text_layout_context);
+        self.root_tree.update(values, actions, &mut self.messages, skin_manager, font_context, text_layout_context);
         
         
         // im leaving this in
@@ -296,16 +299,20 @@ impl UiManager {
         &mut self, 
         values: &ValueCollection,
         list: &mut RenderableCollection,
+        font_context: &mut parley::FontContext,
+        scale_context: &mut parley::swash::scale::ScaleContext,
     ) {
-        self.root_tree.draw(values, list);
+        self.root_tree.draw(values, list, font_context, scale_context);
     }
     pub fn draw_dialogs(
         &mut self, 
         values: &ValueCollection,
         list: &mut RenderableCollection,
+        font_context: &mut parley::FontContext,
+        scale_context: &mut parley::swash::scale::ScaleContext,
     ) {
         for i in self.dialogs.iter_mut().rev() {
-            i.draw(values, list);
+            i.draw(values, list, font_context, scale_context);
         }
     }
 
@@ -433,7 +440,6 @@ impl UiManager {
         actions: &mut ActionQueue,
         skin_manager: &mut dyn SkinProvider,
         font_context: &mut parley::FontContext,
-        scale_context: &mut parley::swash::scale::ScaleContext,
         text_layout_context: &mut parley::LayoutContext,
     ) {
         self.root_tree.reload_skin(
@@ -442,7 +448,6 @@ impl UiManager {
             actions,
             skin_manager,
             font_context,
-            scale_context,
             text_layout_context,
         );
         
@@ -453,7 +458,6 @@ impl UiManager {
                 actions,
                 skin_manager,
                 font_context,
-                scale_context,
                 text_layout_context,
             );
         }

@@ -84,6 +84,8 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         &mut self, 
         mut node: Box<dyn Widget<Action>>,
         values: &mut dyn Reflect,
+        font_context: &mut parley::FontContext,
+        text_layout_context: &mut parley::LayoutContext,
     ) {
         // clear the tree and all our children
         self.clear();
@@ -103,6 +105,8 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
             values,
             ui_scale,
             resolver: &mut resolver,
+            font_context,
+            text_layout_context,
         };
 
         let root = node
@@ -500,7 +504,6 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         messages: &mut Vec<Message>,
         skin_manager: &mut dyn SkinProvider,
         font_context: &mut parley::FontContext,
-        scale_context: &mut parley::swash::scale::ScaleContext,
         text_layout_context: &mut parley::LayoutContext,
     ) {
         if self.should_refresh {
@@ -517,7 +520,6 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
                 messages,
                 skin_manager,
                 font_context,
-                scale_context,
                 text_layout_context,
             };
             node.update(&mut shell);
@@ -531,7 +533,6 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         actions: &mut Queue<Action>,
         skin_manager: &mut dyn SkinProvider,
         font_context: &mut parley::FontContext,
-        scale_context: &mut parley::swash::scale::ScaleContext,
         text_layout_context: &mut parley::LayoutContext,
     ) {
         self.with_node(|tree, node| {
@@ -544,7 +545,6 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
                 messages,
                 skin_manager,
                 font_context,
-                scale_context,
                 text_layout_context,
             };
             node.reload_skin(&mut shell);
@@ -555,6 +555,8 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         &mut self, 
         values: &dyn Reflect,
         list: &mut RenderableCollection,
+        font_context: &mut parley::FontContext,
+        scale_context: &mut parley::swash::scale::ScaleContext,
     ) {
         self.with_node(|tree, node| {
             let mut shell = DrawShell {
@@ -563,6 +565,8 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
                 values,
                 // TODO: make customizable
                 general_theme: GeneralUiTheme::default(),
+                font_context,
+                scale_context,
             };
             node.draw(&mut shell);
             node.draw_overlay(&mut shell);

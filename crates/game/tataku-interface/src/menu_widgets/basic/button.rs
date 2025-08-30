@@ -59,6 +59,7 @@ impl Widget<TatakuAction> for Button {
 
     fn layout(&mut self, shell: &mut LayoutShell<TatakuAction>) -> taffy::TaffyResult<NodeId>  {
         let child = self.child.layout(shell)?;
+
         self.node_id = shell.tree.new_with_children(&[ child ])?;
         
         shell.with_context(self.node_id, |ctx| {

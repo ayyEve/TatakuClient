@@ -115,10 +115,12 @@ impl Game {
                 Box::new(d), 
                 DialogCreateOptions::merge(
                     options, 
-                    dialog.options()
+                    dialog.options(),
                 ),
                 &mut self.values, 
                 &mut self.actions,
+                &mut self.font_context,
+                &mut self.text_layout_context,
             ),
             Err(e) => {
                 error!("Error building dialog: {e:?}");
@@ -155,6 +157,8 @@ impl Game {
                     *options, 
                     &mut self.values, 
                     &mut self.actions,
+                    &mut self.font_context,
+                    &mut self.text_layout_context,
                 );
             }
         }

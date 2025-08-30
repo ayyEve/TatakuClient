@@ -46,9 +46,9 @@ pub struct Game {
 
     #[cfg(feature="gameplay")] pub(super) pending_gameplay_manager: Option<Box<GameplayManager>>,
 
-    #[cfg(feature="graphics")] font_context: parley::FontContext,
-    #[cfg(feature="graphics")] scale_context: parley::swash::scale::ScaleContext,
-    #[cfg(feature="graphics")] text_layout_context: parley::LayoutContext,
+    #[cfg(feature="graphics")] pub(super) font_context: parley::FontContext,
+    #[cfg(feature="graphics")] pub(super) scale_context: parley::swash::scale::ScaleContext,
+    #[cfg(feature="graphics")] pub(super) text_layout_context: parley::LayoutContext,
 
     integrations: Vec<Box<dyn TatakuIntegration>>,
 
@@ -184,11 +184,15 @@ impl Game {
             &mut self.ui_manager, 
             &mut self.values, 
             &mut self.actions,
+            &mut self.font_context,
+            &mut self.text_layout_context,
         ).is_err() {
             self.ui_manager.set_root(
                 EmptyWidget::new_boxed(), 
                 &mut self.values, 
-                &mut self.actions
+                &mut self.actions,
+                &mut self.font_context,
+                &mut self.text_layout_context,
             );
         }
 
@@ -693,7 +697,6 @@ impl Game {
             &mut self.actions,
             &mut self.skin_manager,
             &mut self.font_context,
-            &mut self.scale_context,
             &mut self.text_layout_context,
         );
 
@@ -703,6 +706,8 @@ impl Game {
                 &mut self.ui_manager,
                 &mut self.values,
                 &mut self.actions,
+                &mut self.font_context,
+                &mut self.text_layout_context,
             );
         }
 
@@ -822,14 +827,15 @@ impl Game {
                             self.ui_manager.set_root(
                                 menu, 
                                 &mut self.values, 
-                                &mut self.actions
+                                &mut self.actions,
+                                &mut self.font_context,
+                                &mut self.text_layout_context,
                             );
                             self.ui_manager.reload_skin(
                                 &mut self.values, 
                                 &mut self.actions, 
                                 &mut self.skin_manager,
                                 &mut self.font_context,
-                                &mut self.scale_context,
                                 &mut self.text_layout_context,
                             );
                             
@@ -1167,7 +1173,7 @@ impl Game {
 
 
         // menu
-        self.ui_manager.draw_menu(&self.values, &mut render_queue);
+        self.ui_manager.draw_menu(&self.values, &mut render_queue, &mut self.font_context, &mut self.scale_context);
 
         // state
         match &mut self.current_state {
@@ -1216,8 +1222,7 @@ impl Game {
         }
 
         // dialogs 
-        self.ui_manager.draw_dialogs(&self.values, &mut render_queue);
-        
+        self.ui_manager.draw_dialogs(&self.values, &mut render_queue, &mut self.font_context, &mut self.scale_context);
 
 
         // draw fps's
@@ -1573,7 +1578,9 @@ impl Game {
                 self.ui_manager.set_root(
                     menu, 
                     &mut self.values, 
-                    &mut self.actions
+                    &mut self.actions,
+                    &mut self.font_context,
+                    &mut self.text_layout_context,
                 );
                 self.queued_events.push((TatakuEventType::MenuEnter, None));
                 self.ui_manager.reload_skin(
@@ -1581,7 +1588,6 @@ impl Game {
                     &mut self.actions, 
                     &mut self.skin_manager,
                     &mut self.font_context,
-                    &mut self.scale_context,
                     &mut self.text_layout_context,
                 );
             }
@@ -1601,7 +1607,9 @@ impl Game {
                 self.ui_manager.set_root(
                     EmptyWidget::new_boxed(), 
                     &mut self.values,
-                    &mut self.actions
+                    &mut self.actions,
+                    &mut self.font_context,
+                    &mut self.text_layout_context,
                 );
                 self.queued_state = state;
             }

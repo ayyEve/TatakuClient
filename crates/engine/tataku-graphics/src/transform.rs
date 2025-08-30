@@ -77,8 +77,8 @@ impl Transform {
 }
 
 pub struct Transformed {
-    transform: Transform,
-    drawable: Box<dyn TatakuRenderable>,
+    pub transform: Matrix,
+    pub drawable: Box<dyn TatakuRenderable>,
 }
 impl Transformed {
     pub fn new(
@@ -86,21 +86,9 @@ impl Transformed {
         drawable: Box<dyn TatakuRenderable>,
     ) -> Self {
         Self {
-            transform,
+            transform: transform.matrix(),
             drawable,
         }
-    }
-
-    pub fn transform(&self) -> Transform {
-        self.transform
-    }
-
-    pub fn set_transform(&mut self, transform: Transform) {
-        self.transform = transform;
-    }
-
-    pub fn into_inner(self) -> Box<dyn TatakuRenderable> {
-        self.drawable
     }
 }
 
@@ -120,7 +108,7 @@ impl TatakuRenderable for Transformed {
         mut transform: Matrix,
         g: &mut dyn GraphicsEngine,
     ) {
-        transform = transform * self.transform.matrix();
+        transform = transform * self.transform;
         self.drawable.draw(options, transform, g);
     }
 }

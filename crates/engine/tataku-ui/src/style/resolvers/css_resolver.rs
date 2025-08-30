@@ -9,6 +9,10 @@ const ROW_COL: &str = r#"
     column {
         flex-direction: column;
     }
+
+    button * {
+        width: 100%;
+    }
 "#;
 
 pub struct CssResolver<'a> {

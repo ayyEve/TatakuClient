@@ -1,12 +1,11 @@
 use crate::prelude::*;
 
 use parley::{
-    FontContext, LayoutContext, Font, Layout,
+    FontContext, LayoutContext, Layout, Alignment,
     swash::{
-        FontRef, GlyphId, CacheKey,
+        FontRef,
         scale::{
             ScaleContext, Render, Source, StrikeWith,
-            image::Image as SwashImage,
         }
     },
 };
@@ -16,7 +15,9 @@ pub struct TextWidget {
     text: WidgetText,
     node_id: NodeId,
 
-    glyphs: Vec<Image>,
+    layout: Layout<[u8; 4]>,
+    old_x: f32,
+    old_width: f32,
 }
 impl TextWidget {
     pub fn new(text: impl Into<WidgetText>) -> Self {
@@ -24,7 +25,38 @@ impl TextWidget {
             text: text.into(),
             node_id: EMPTY_NODE,
 
-            glyphs: Vec::new(), 
+            layout: Layout::default(),
+            old_x: 0.0,
+            old_width: 0.0,
+        }
+    }
+
+    fn update_layout(
+        &mut self,
+        tree: &mut Tree<TatakuAction>,
+        container_width: f32,
+        font_context: &mut FontContext,
+        text_layout_context: &mut LayoutContext,
+    ) {
+        let text = self.text.get();
+
+        let text_style = tree.get_text_style(self.node_id).unwrap();
+
+        if !text.is_empty() {
+            self.layout = simple_text(
+                &text,
+                text_style,
+                container_width,
+                font_context,
+                text_layout_context,
+            );
+
+            let widths = self.layout.calculate_content_widths();
+
+            tree.update_style(self.node_id, |style| {
+                style.min_width = CssUnit::Pixels(f16::from_f32(widths.min.ceil())).into();
+                style.max_width = CssUnit::Pixels(f16::from_f32(widths.max.ceil())).into();
+            });
         }
     }
 }
@@ -33,54 +65,69 @@ impl Widget<TatakuAction> for TextWidget {
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn layout(&mut self, shell: &mut LayoutShell<TatakuAction>) -> taffy::TaffyResult<NodeId> {
-        // self.text_style.font_size *= shell.ui_scale;
         self.node_id = shell.tree.new_leaf()?;
         Ok(self.node_id)
     }
     fn init_style(&mut self, shell: &mut LayoutShell<TatakuAction>) {
-        // let min_size = self.min_size(shell.tree);
-        // shell.tree.update_style(self.node_id, |style| {
-        //     style.min_width = min_size[0].into();
-        //     style.min_height = min_size[1].into();
-        // });
+        self.update_layout(
+            shell.tree,
+            9999.0,
+            shell.font_context,
+            shell.text_layout_context
+        );
+
+        let text_style = shell.tree.get_text_style(self.node_id).unwrap();
+        let min_height = text_style.line_height;
+
+        shell.tree.update_style(self.node_id, |style| {
+            style.min_height = CssUnit::Pixels(f16::from_f32(min_height)).into();
+        });
     }
 
     fn update(&mut self, shell: &mut UpdateShell<TatakuAction>) {
-        if self.glyphs.is_empty() || self.text.update(shell.values) {
-            let text = self.text.get();
+        let bounds = shell.tree.absolute_bounds(self.node_id).unwrap();
 
-            let bounds = shell.tree.content_bounds(self.node_id).unwrap();
-            let text_style = shell.tree.get_text_style(self.node_id).unwrap();
+        let parent_bounds = shell.tree.parent(self.node_id)
+            .and_then(|parent| shell.tree.absolute_bounds(parent));
 
-            // shell.actions.push(UiAction::new(
-            //     self.node_id,
-            //     UiActionType::UpdateStyleWith(Arc::new(
-            //         move |style| {
-            //             style.min_width = CssUnit::Pixels(f16::from_f32(widths.min)).into();
-            //             style.max_width = CssUnit::Pixels(f16::from_f32(widths.max)).into();
-            //             // style.min_height = min[1].into();
-            //         }
-            //     ))
-            // ));
-            // shell.actions.push(UiAction::new(
-            //     self.node_id,
-            //     UiActionType::MarkDirty,
-            // ));
+        if let Some(parent_bounds) = parent_bounds {
+            if parent_bounds.intersection(bounds).is_none() {
+                return;
+            }
         }
 
-        // self.text_style = shell
-        //     .tree
-        //     .get_context(self.node_id)
-        //     .unwrap()
-        //     .element_data
-        //     .style()
-        //     .0
-        //     .text_style(shell.values);
+        let refresh = self.text.update(shell.values)
+            || bounds.pos.x != self.old_x
+            || bounds.size.x != self.old_width;
+
+        if refresh {
+            self.old_x = bounds.pos.x;
+            self.old_width = bounds.size.x;
+
+            self.update_layout(
+                shell.tree,
+                bounds.size.x,
+                shell.font_context,
+                shell.text_layout_context
+            );
+        }
     }
     
     fn draw(&self, shell: &mut DrawShell<TatakuAction>) {
-        for glyph in self.glyphs.iter() {
-            shell.list.push(glyph.clone());
+        let transform = shell.tree.get_context(self.node_id).unwrap().global_transform;
+        let text_style = shell.tree.get_text_style(self.node_id).unwrap();
+
+        let glyphs = rasterize_layout(
+            &self.layout,
+            text_style.color,
+            shell.scale_context,
+        );
+
+        for glyph in glyphs {
+            shell.list.push(Transformed {
+                transform,
+                drawable: Box::new(glyph),
+            });
         }
     }
 }
@@ -139,9 +186,12 @@ impl From<BuildableText> for WidgetText {
             error!("error parsing CustomElementText: {e:?}");
         }
 
-        Self::Custom {
-            custom: value,
-            cached: String::new()
+        match value {
+            BuildableText::Text { text } => Self::String(text.to_string().into()),
+            custom => Self::Custom {
+                custom,
+                cached: String::new()
+            }
         }
     }
 }
@@ -152,8 +202,8 @@ pub fn simple_text(
 
     container_width: f32,
 
-    font_context: &mut parley::FontContext,
-    text_layout_context: &mut parley::LayoutContext,
+    font_context: &mut FontContext,
+    text_layout_context: &mut LayoutContext,
 ) -> Layout<[u8; 4]> {
     let mut builder = text_layout_context.tree_builder(
         font_context,
@@ -168,9 +218,15 @@ pub fn simple_text(
 
     layout.break_all_lines(Some(container_width));
 
+    let alignment = match style.alignment.horizontal {
+        HorizontalAlign::Left => Alignment::Start,
+        HorizontalAlign::Center => Alignment::Middle,
+        HorizontalAlign::Right => Alignment::End,
+    };
+
     layout.align(
         None,
-        parley::Alignment::default(), // todo:
+        alignment,
         parley::AlignmentOptions::default(),
     );
 
@@ -178,11 +234,11 @@ pub fn simple_text(
 }
 
 pub fn rasterize_layout(
-    layout: Layout<[u8; 4]>,
+    layout: &Layout<[u8; 4]>,
 
     color: Color,
 
-    scale_context: &mut parley::swash::scale::ScaleContext,
+    scale_context: &mut ScaleContext,
 ) -> Vec<Transformed> {
     let runs = layout.lines()
         .flat_map(|line| line.items())

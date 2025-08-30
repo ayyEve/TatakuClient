@@ -11,6 +11,8 @@ impl XmlTestManager {
         ui_manager: &mut UiManager,
         values: &mut ValueCollection,
         actions: &mut ActionQueue,
+        font_context: &mut parley::FontContext,
+        text_layout_context: &mut parley::LayoutContext,
     ) {
         if let Some(file) = self.current_file.as_ref() {
             let Ok(new_meta) = std::fs::metadata(&file.path) 
@@ -26,12 +28,16 @@ impl XmlTestManager {
                     file.path.clone(),
                     ui_manager,
                     values,
-                    actions
+                    actions,
+                    font_context,
+                    text_layout_context,
                 ).is_err() {
                     ui_manager.set_root(
                         EmptyWidget::new_boxed(), 
                         values, 
-                        actions
+                        actions,
+                        font_context,
+                        text_layout_context,
                     );
                 }
             }
@@ -45,6 +51,8 @@ impl XmlTestManager {
         values: &mut ValueCollection,
         actions: &mut ActionQueue,
         loaded_type: &str,
+        font_context: &mut parley::FontContext,
+        text_layout_context: &mut parley::LayoutContext,
     ) {
         let mut children = error
             .into_iter()
@@ -63,7 +71,7 @@ impl XmlTestManager {
             // .flex_direction(ui::FlexDirection::Column)
             .boxed();
 
-        ui_manager.set_root(thing, values, actions);
+        ui_manager.set_root(thing, values, actions, font_context, text_layout_context);
     }
 
     pub fn load_file(
@@ -72,6 +80,8 @@ impl XmlTestManager {
         ui_manager: &mut UiManager,
         values: &mut ValueCollection,
         actions: &mut ActionQueue,
+        font_context: &mut parley::FontContext,
+        text_layout_context: &mut parley::LayoutContext,
     ) -> TatakuResult<()> {
         info!("loading file: {path}");
         self.current_file = None;
@@ -100,13 +110,17 @@ impl XmlTestManager {
                         Box::new(menu), 
                         values,
                         actions,
+                        font_context,
+                        text_layout_context,
                     ),
                     Err(e) => Self::handle_error(
                         ui_manager, 
                         e, 
                         values, 
                         actions,
-                        "menu"
+                        "menu",
+                        font_context,
+                        text_layout_context,
                     ),
                 }
             }
@@ -123,13 +137,17 @@ impl XmlTestManager {
                         ui_manager.set_root(
                             EmptyWidget::new_boxed(), 
                             values, 
-                            actions
+                            actions,
+                            font_context,
+                            text_layout_context,
                         );
                         ui_manager.add_dialog(
                             Box::new(dialog), 
                             DialogCreateOptions::default(),
                             values, 
-                            actions
+                            actions,
+                            font_context,
+                            text_layout_context,
                         );
                     },
                     Err(e) => Self::handle_error(
@@ -137,7 +155,9 @@ impl XmlTestManager {
                         e, 
                         values, 
                         actions,
-                        "dialog"
+                        "dialog",
+                        font_context,
+                        text_layout_context,
                     ),
                 }
             }

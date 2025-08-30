@@ -103,7 +103,7 @@ impl FpsDisplay {
         );
 
         let glyphs = rasterize_layout(
-            layout,
+            &layout,
             Color::BLACK,
             scale_context,
         );
@@ -204,7 +204,7 @@ impl AsyncFpsDisplay {
         );
 
         let glyphs = rasterize_layout(
-            layout,
+            &layout,
             Color::BLACK,
             scale_context,
         );
