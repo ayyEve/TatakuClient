@@ -53,14 +53,14 @@ impl UiManager {
         values: &mut dyn Reflect, 
         actions: &mut ActionQueue,
     ) {
+        let name = dialog.name();
         if !options.allow_multiple {
             // check if dialog already exists, if so, dont add it
-            let name = dialog.name();
             if self.dialogs
                 .iter()
                 .any(|n| n.get_node().name() == name)
             { 
-                debug!("not adding dialog {}, already exists", dialog.name());
+                debug!("not adding dialog {name}, already exists");
                 return 
             }
         }
@@ -75,7 +75,7 @@ impl UiManager {
 
 
 
-        debug!("adding dialog: {}", dialog.name());
+        debug!("adding dialog: {name}");
         let num = self.dialog_counter;
         self.dialog_counter += 1;
         let mut tree = Tree::new(

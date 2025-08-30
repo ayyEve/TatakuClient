@@ -11,7 +11,7 @@ const DROPDOWN_ATTRIBUTE:&str = "dropdown";
 const CATEGORY_ATTRIBUTE:&str = "category";
 const SUBSETTING_ATTRIBUTE:&str = "subsetting";
 
-pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> Result<proc_macro2::TokenStream> {
+pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> Result<TokenStream> {
     let Data::Struct(data) = &ast.data else {
         return Err(Error::new(ast.span(), "Settings can only be derived on a struct"));
     };

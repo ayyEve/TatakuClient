@@ -12,8 +12,8 @@ pub enum InputType {
     MouseMove(Vector2),
     MouseScroll(Vector2),
 
-    ControllerPress(ControllerButton, GamepadId, ArcStr),
-    ControllerRelease(ControllerButton, GamepadId, ArcStr),
+    ControllerPress(GamepadButton, GamepadId, ArcStr),
+    ControllerRelease(GamepadButton, GamepadId, ArcStr),
     ControllerAxis(gilrs::Axis, f32, GamepadId, ArcStr),
 
     // controller input
@@ -42,6 +42,15 @@ impl InputEvent {
             self.event,
             InputType::KeyPress(_)
             | InputType::KeyRelease(_)
+        )
+    }
+
+    pub fn is_gamepad(&self) -> bool {
+        matches!(
+            self.event,
+            InputType::ControllerPress(_,_,_)
+            | InputType::ControllerRelease(_,_,_)
+            | InputType::ControllerAxis(_,_,_,_)
         )
     }
 }

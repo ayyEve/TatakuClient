@@ -40,9 +40,9 @@ pub struct TaikoSettings {
     /// hit area raidus multiplier, 1.0 = note radius
     #[setting(text="Hit Area Radius Scale", range(1.0, 5.0))]
     pub hit_area_radius_mult: f32,
+
     /// playfield = note_radius * max(hit_area_radius_mult, big_note_mult) + this
     #[setting(text="Playfield Vertical Padding", range(0.0, 20.0))]
-    /// playfield = note_radius * max(hit_area_radius_mult, big_note_mult) + this
     pub playfield_height_padding: f32,
 
     #[setting(text="Don Color")]
@@ -56,6 +56,15 @@ pub struct TaikoSettings {
     /// how far above the hit position should hit indicators be?
     #[setting(text="Hit Judgment Y-Offset", range(0.0, 100.0))]
     pub judgement_indicator_offset: f32,
+
+    #[setting(text="Left Kat (Gamepad)")]
+    pub gamepad_left_kat: Option<GamepadButton>,
+    #[setting(text="Left don (Gamepad)")]
+    pub gamepad_left_don: Option<GamepadButton>,
+    #[setting(text="Right don (Gamepad)")]
+    pub gamepad_right_don: Option<GamepadButton>,
+    #[setting(text="Right Kat (Gamepad)")]
+    pub gamepad_right_kat: Option<GamepadButton>,
 }
 impl Default for TaikoSettings {
     fn default() -> Self {
@@ -86,7 +95,12 @@ impl Default for TaikoSettings {
             kat_color: Color::from_hex("#3797CA").into(),
             
             judgement_indicator_offset: 0.0,
-            use_skin_judgments: true
+            use_skin_judgments: true,
+
+            gamepad_left_don: None,
+            gamepad_left_kat: None,
+            gamepad_right_don: None,
+            gamepad_right_kat: None,
         }
     }
 }
@@ -119,7 +133,7 @@ impl TaikoControllerConfig {
     ) -> Self {
         Self {
             left_kat: left_kat.into(),
-            left_don:  left_don.into(),
+            left_don: left_don.into(),
             right_don: right_don.into(),
             right_kat: right_kat.into()
         }
@@ -129,18 +143,18 @@ impl TaikoControllerConfig {
             "Taiko Controller"
             | "HORI CO.,LTD. Taiko Controller"
             | "HID-compliant game controller" => Self::new_default(
-                ControllerButton::LeftBumper, 
-                ControllerButton::LeftThumb, 
-                ControllerButton::RightThumb, 
-                ControllerButton::RightBumper
+                GamepadButton::LeftBumper, 
+                GamepadButton::LeftThumb, 
+                GamepadButton::RightThumb, 
+                GamepadButton::RightBumper
             ),
 
             "Xbox Controller"
             | "Xbox One Game Controller" => Self::new_default(
-                ControllerButton::DPadLeft, 
-                ControllerButton::DPadDown, 
-                ControllerButton::South, 
-                ControllerButton::East
+                GamepadButton::DPadLeft, 
+                GamepadButton::DPadDown, 
+                GamepadButton::South, 
+                GamepadButton::East
             ),
 
             // "Wireless Controller"
@@ -148,10 +162,10 @@ impl TaikoControllerConfig {
             //     => Self::new_default(17, 15, 0, 2),
 
             _ => Self::new_default(
-                ControllerButton::LeftBumper, 
-                ControllerButton::LeftThumb, 
-                ControllerButton::RightThumb, 
-                ControllerButton::RightBumper
+                GamepadButton::DPadLeft, 
+                GamepadButton::DPadDown, 
+                GamepadButton::South, 
+                GamepadButton::East
             )
         }
     }

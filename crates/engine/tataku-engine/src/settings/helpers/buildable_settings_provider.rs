@@ -49,27 +49,32 @@ pub struct BuildableSetting {
 #[derive(Clone, Debug)]
 #[reflect(display="display")]
 pub enum BuildableSettingType {
-    // spacing
+    // Spacing
     Divider,
 
-    /// checkbox
+    /// Checkbox
     Bool,
 
-    /// color input
+    /// Color input
     Color,
 
-    /// key input
+    /// Key input
     Key {
         optional: bool,
     },
 
-    /// text input
+    /// Gamepad button input
+    GamepadButton {
+        optional: bool,
+    },
+
+    /// Text input
     String {
         password: bool,
         // char_limit: Option<usize>,
     },
 
-    /// slider
+    /// Slider
     Number {
         num_type: String,
         min: f32,
@@ -77,11 +82,13 @@ pub enum BuildableSettingType {
         step: Option<f32>,
     },
 
+    // A dropdown
     Dropdown {
         // allow_unset: bool,
         options: BuildableSettingDropdownOptions,
     },
 
+    /// A Button
     Button {
         action: BuildableSettingsAction, //BuildableSettingButtonAction,
     },

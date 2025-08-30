@@ -5,6 +5,7 @@ use crate::prelude::*;
 #[derive(Clone, Debug)]
 #[derive(Serialize, Deserialize)]
 #[serde(from="Color", into="Color")]
+#[reflect(display="display")]
 pub struct SettingsColor {
     pub string: String,
     pub color: Color,
@@ -57,5 +58,11 @@ impl Deref for SettingsColor {
     type Target = Color; 
     fn deref(&self) -> &Self::Target {
         &self.color
+    }
+}
+
+impl std::fmt::Display for SettingsColor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.string.fmt(f)
     }
 }

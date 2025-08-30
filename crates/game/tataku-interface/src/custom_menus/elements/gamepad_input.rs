@@ -3,7 +3,7 @@ use crate::prelude::*;
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
 #[derive(Clone, Debug, PartialEq)]
-pub struct KeyButtonElement {
+pub struct GamepadButtonElement {
     #[serde(rename = "@id", default)] id: Option<ArcStr>,
     #[serde(rename = "@class", default)] class_list: ClassList,
     #[serde(rename = "@style", default)] style: ArcStr,
@@ -12,14 +12,14 @@ pub struct KeyButtonElement {
     #[serde(rename = "@variable")] variable: VariablePathResolver,
     #[serde(default)] on_input: Option<BuildableActionTag>,
 }
-impl CustomElement for KeyButtonElement {
+impl CustomElement for GamepadButtonElement {
     fn build(&self) -> Box<dyn Widget<TatakuAction>> {
         WidgetContainer::new_boxed(
             self.style.clone(),
-            "keyButton",
+            "gamepadButton",
             self.id.clone(),
             self.class_list.clone(),
-            KeyButton::new(
+            GamepadButtonInput::new(
                self.variable.clone(),
             )
             .optional(self.optional)

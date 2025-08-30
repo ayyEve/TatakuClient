@@ -576,7 +576,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         #[derive(Copy, Clone)]
         enum MenuInputType {
             Key(Key),
-            Controller(ControllerButton),
+            Controller(GamepadButton),
             // Axis()
         }
         impl MenuInputType {
@@ -623,10 +623,10 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
             (Key::Down.into(), Direction::Down),
             (Key::Tab.into(), Direction::Down),
 
-            (ControllerButton::DPadLeft.into(), Direction::Left),
-            (ControllerButton::DPadRight.into(), Direction::Right),
-            (ControllerButton::DPadUp.into(), Direction::Up),
-            (ControllerButton::DPadDown.into(), Direction::Down),
+            (GamepadButton::DPadLeft.into(), Direction::Left),
+            (GamepadButton::DPadRight.into(), Direction::Right),
+            (GamepadButton::DPadUp.into(), Direction::Up),
+            (GamepadButton::DPadDown.into(), Direction::Down),
         ] {
             if !input.has(input_state) { continue }
             

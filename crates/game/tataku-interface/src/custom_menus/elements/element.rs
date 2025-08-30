@@ -65,6 +65,7 @@ pub enum Element {
     Checkbox(Box<CheckboxElement>),
     TextInput(Box<TextInputElement>),
     KeyButton(Box<KeyButtonElement>),
+    GamepadButton(Box<GamepadButtonElement>),
     Dropdown(Box<DropdownElement>),
 }
 impl CustomElement for Element {
@@ -84,6 +85,7 @@ impl CustomElement for Element {
             Self::Checkbox(e) => Some(&**e as &dyn CustomElement),
             Self::TextInput(e) => Some(&**e as &dyn CustomElement),
             Self::KeyButton(e) => Some(&**e as &dyn CustomElement),
+            Self::GamepadButton(e) => Some(&**e as &dyn CustomElement),
             Self::Dropdown(e) => Some(&**e as &dyn CustomElement),
         }
     }

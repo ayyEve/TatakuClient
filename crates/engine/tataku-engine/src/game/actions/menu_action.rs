@@ -10,11 +10,11 @@ pub enum MenuAction {
         input: Box<BuildableInputArguments>,
     },
 
-    /// Go to the previous menu
-    /// 
-    /// NOTE these are predefined previous menus, not built on a stack
-    /// TODO: should we make it a stack?
-    PreviousMenu(CowStr),
+    // /// Go to the previous menu
+    // /// 
+    // /// NOTE these are predefined previous menus, not built on a stack
+    // /// TODO: should we make it a stack?
+    // PreviousMenu(CowStr),
 
     /// Add a custom dialog
     AddDialog {
@@ -46,8 +46,8 @@ impl Clone for MenuAction {
                 input 
             } => Self::SetMenu { id: id.clone(), input: input.clone() },
 
-            MenuAction::PreviousMenu(c) 
-                => Self::PreviousMenu(c.clone()),
+            // MenuAction::PreviousMenu(c) 
+            //     => Self::PreviousMenu(c.clone()),
 
             MenuAction::AddDialog { 
                 id, 

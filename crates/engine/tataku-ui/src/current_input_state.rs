@@ -19,7 +19,7 @@ impl CurrentInputState {
                 k.as_key()
             } else { None })
     }
-    pub fn controller_down(&self) -> impl Iterator<Item=&ControllerButton> {
+    pub fn controller_down(&self) -> impl Iterator<Item=&GamepadButton> {
         self.events
             .iter()
             .filter_map(|e| if let InputType::ControllerPress(b, _, _) = e {

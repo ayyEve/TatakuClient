@@ -235,6 +235,23 @@
                       </row>
                     </case>
 
+                    <!-- Gamepad Button (GamepadButtonInput) -->
+                    <case cond="display(_setting.type) == 'GamepadButton'">
+                      <row class="setting">
+                        <text class="setting-text">
+                          <variable var="_setting.name" />
+                        </text>
+
+                        <gamepadButton variable="::_setting.path" class="setting-inner">
+                          <onInput>
+                            <setValue key="::_setting.path">
+                              <passedIn />
+                            </setValue>
+                          </onInput>
+                        </gamepadButton>
+                      </row>
+                    </case>
+
                     <!-- Number (Slider) -->
                     <case cond="display(_setting.type) == 'Number'">
                       <row style="width: fill; ">

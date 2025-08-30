@@ -233,6 +233,40 @@ impl TaikoGame {
             .partial_cmp(&b.time())
             .unwrap()
     }
+
+    fn map_gamepad_button(
+        &self, 
+        config: &TaikoControllerConfig,
+        btn: GamepadButton,
+    ) -> Option<KeyPress> {
+        if self.taiko_settings.gamepad_left_kat == Some(btn) {
+            Some(KeyPress::LeftKat)
+        } else if self.taiko_settings.gamepad_left_don == Some(btn) {
+            Some(KeyPress::LeftDon)
+        } else if self.taiko_settings.gamepad_right_don == Some(btn) {
+            Some(KeyPress::RightDon)
+        } else if self.taiko_settings.gamepad_right_kat == Some(btn) {
+            Some(KeyPress::RightKat)
+        }
+        
+        else if config.left_kat.check_button(btn) {
+            Some(KeyPress::LeftKat)
+        } else if config.left_don.check_button(btn) {
+            Some(KeyPress::LeftDon)
+        } else if config.right_don.check_button(btn) {
+            Some(KeyPress::RightDon)
+        } else if config.right_kat.check_button(btn) {
+            Some(KeyPress::RightKat)
+        } 
+
+        // skip
+        else if GamepadButton::North == btn {
+            Some(KeyPress::SkipIntro)
+        }
+        else {
+            None
+        }
+    }
 }
 
 impl GameMode for TaikoGame {
@@ -1403,31 +1437,21 @@ impl GameMode for TaikoGame {
                 id, 
                 name
             ) => {
-                if let Some(c_config) = self
+                if let Some(config) = self
                     .taiko_settings
                     .controller_config
                     .get(&name)
                 {
-                    if ControllerButton::North == btn { // skip
-                        Some(ReplayAction::Press(KeyPress::SkipIntro))
-                    } else if c_config.left_kat.check_button(btn) {
-                        Some(ReplayAction::Press(KeyPress::LeftKat))
-                    } else if c_config.left_don.check_button(btn) {
-                        Some(ReplayAction::Press(KeyPress::LeftDon))
-                    } else if c_config.right_don.check_button(btn) {
-                        Some(ReplayAction::Press(KeyPress::RightDon))
-                    } else if c_config.right_kat.check_button(btn) {
-                        Some(ReplayAction::Press(KeyPress::RightKat))
-                    } else {
-                        None
-                    }
+                    self.map_gamepad_button(config, btn)
+                        .map(ReplayAction::Press)
+
                 } else {
                     trace!("Controller with no setup");
 
                     // TODO: if this is slow, we should store controller configs separately
                     // but i dont think this will be an issue, as its unlikely to happen in the first place,
                     // and if there is lag, the user is likely to retry the man anyways
-                    trace!("Setting up new controller");
+                    trace!("Setting up new controller {name}");
                     let mut new_settings = self.taiko_settings
                         .as_ref()
                         .clone();
@@ -1455,20 +1479,18 @@ impl GameMode for TaikoGame {
                 }
             }
 
-            InputType::ControllerRelease(btn, id, name) => {
-                if let Some(c_config) = self.taiko_settings.controller_config.get(&name) {
-                    if c_config.left_kat.check_button(btn) {
-                        Some(ReplayAction::Release(KeyPress::LeftKat))
-                    } else if c_config.left_don.check_button(btn) {
-                        Some(ReplayAction::Release(KeyPress::LeftDon))
-                    } else if c_config.right_don.check_button(btn) {
-                        Some(ReplayAction::Release(KeyPress::RightDon))
-                    } else if c_config.right_kat.check_button(btn) {
-                        Some(ReplayAction::Release(KeyPress::RightKat))
-                    } else {
-                        None
-                    }
-
+            InputType::ControllerRelease(
+                btn, 
+                id, 
+                name
+            ) => {
+                if let Some(config) = self
+                    .taiko_settings
+                    .controller_config
+                    .get(&name) 
+                {
+                    self.map_gamepad_button(config, btn)
+                        .map(ReplayAction::Release)
                 } else {
                     trace!("Controller with no setup");
 

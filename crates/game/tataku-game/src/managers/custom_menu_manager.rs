@@ -150,7 +150,7 @@ impl CustomMenuManager {
 
 }
 
-
+#[derive(Copy, Clone, Debug)]
 pub enum CustomEntryType {
     Menu,
     Dialog,

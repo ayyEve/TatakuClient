@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 
 <xs:schema 
-  targetNamespace="tataku/elements/keybutton"
+  targetNamespace="tataku/elements/gamepad-button"
   xmlns:xs="http://www.w3.org/2001/XMLSchema"
   xmlns:elements="tataku/elements"
   xmlns:actions="tataku/actions"
@@ -13,7 +13,7 @@
 <xs:import namespace="tataku/actions" schemaLocation="../actions/actions.xsd"/>
 
 
-<xs:complexType name="keybutton-element">
+<xs:complexType name="gamepad-button-element">
   <xs:complexContent>
     <xs:extension base="elements:generic">
       <xs:all>

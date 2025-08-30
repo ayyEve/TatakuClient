@@ -25,18 +25,12 @@ pub(super) struct NormalItem {
 }
 impl NormalItem {
     pub fn new(field: &Field) -> Self {
-        let mut inner = NormalItemType::Unknown;
-        if let Type::Path(p) = &field.ty {
-            inner = NormalItemType::from(p.path.get_ident());
-        }
-
         Self {
-            inner,
+            inner: NormalItemType::from(field).unwrap_or_default(),
             ..Default::default()
         }
     }
     pub fn common(&self) -> &CommonItems { &self.common }
-    
     
     pub fn read(mut self, attr: &Attribute) -> Result<Self> {
         self.common.add_item = true;
@@ -83,7 +77,9 @@ impl NormalItem {
             } 
 
             else {
-                return Err(meta.error(format!("Invalid attribute: {}", meta.path.get_ident().unwrap())))
+                return Err(meta.error(
+                    format!("Invalid attribute: {}", meta.path.get_ident().unwrap())
+                ))
             }
 
             Ok(())
@@ -138,17 +134,28 @@ impl NormalItem {
                 password: false,
             }},
 
-            // 
+            // key 
             NormalItemType::Key => quote! { BuildableSettingType::Key {
                 optional: false,
             }},
 
+            // optional key
             NormalItemType::OptionalKey => quote! { BuildableSettingType::Key {
+                optional: true,
+            }},
+
+            // key 
+            NormalItemType::GamepadButton => quote! { BuildableSettingType::GamepadButton {
+                optional: false,
+            }},
+            
+            // optional key
+            NormalItemType::OptionalGamepadButton => quote! { BuildableSettingType::GamepadButton {
                 optional: true,
             }},
             
             NormalItemType::Unknown => {
-                quote! {}
+                quote! { }
             }
         }
     }
@@ -165,19 +172,40 @@ enum NormalItemType {
     Usize,
     String,
     
-    OptionalKey,
     Key,
+    OptionalKey,
+
+    GamepadButton,
+    OptionalGamepadButton,
 
     SettingsColor,
     Color,
 
-    #[default] Unknown
+    #[default] Unknown,
 }
 impl NormalItemType {
-    fn from(s: Option<&Ident>) -> Self {
-        let Some(s) = s else { return Self::Unknown };
+    fn from(f: &Field) -> Option<Self> {
+        let Type::Path(p) = &f.ty else { return None };
+        
+        let Some(s) = p.path.get_ident() else { 
+            let first = p.path.segments.first()?;
+            if first.ident == "Option" {
+                if let PathArguments::AngleBracketed(t) = &first.arguments {
+                    let GenericArgument::Type(Type::Path(inner)) = t.args.first()?
+                    else { return None };
 
-        match &*s.to_string() {
+                    if inner.path.is_ident("GamepadButton") {
+                        return Some(Self::OptionalGamepadButton);
+                    } else if inner.path.is_ident("Key") {
+                        return Some(Self::OptionalKey);
+                    } 
+                }
+            }
+
+            return None
+        };
+
+        Some(match &*s.to_string() {
             "Key" => Self::Key,
             "u32"  => Self::U32,
             "u64"  => Self::U64,
@@ -189,8 +217,15 @@ impl NormalItemType {
             "String" => Self::String,
             "Option<Key>" => Self::OptionalKey,
             "SettingsColor" => Self::SettingsColor,
-            _ => Self::Unknown
-        }
+
+            "GamepadButton" => Self::GamepadButton,
+            "Option<GamepadButton>" => Self::OptionalGamepadButton,
+
+            _ => {
+                // println!("unknown setting type: '{other}'");
+                Self::Unknown
+            }
+        })
     }
 
     fn to_str(&self) -> &str {

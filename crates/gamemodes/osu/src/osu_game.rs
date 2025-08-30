@@ -1429,8 +1429,8 @@ impl GameMode for OsuGame {
                 if self.mods.has_mod(Relax) && !self.game_settings.manual_input_with_relax { return None; }
 
                 match btn {
-                    ControllerButton::LeftTrigger => Some(ReplayAction::Press(KeyPress::Left)),
-                    ControllerButton::RightTrigger => Some(ReplayAction::Press(KeyPress::Right)),
+                    GamepadButton::LeftTrigger => Some(ReplayAction::Press(KeyPress::Left)),
+                    GamepadButton::RightTrigger => Some(ReplayAction::Press(KeyPress::Right)),
                     _ => None
                 }
             }
@@ -1440,8 +1440,8 @@ impl GameMode for OsuGame {
                 if self.mods.has_mod(Relax) && !self.game_settings.manual_input_with_relax { return None; }
 
                 match btn {
-                    ControllerButton::LeftTrigger => Some(ReplayAction::Release(KeyPress::Left)),
-                    ControllerButton::RightTrigger => Some(ReplayAction::Release(KeyPress::Right)),
+                    GamepadButton::LeftTrigger => Some(ReplayAction::Release(KeyPress::Left)),
+                    GamepadButton::RightTrigger => Some(ReplayAction::Release(KeyPress::Right)),
                     _ => None
                 }
             }

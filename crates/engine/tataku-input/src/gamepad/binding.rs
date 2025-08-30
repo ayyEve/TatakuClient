@@ -3,18 +3,18 @@ use crate::prelude::*;
 #[derive(Serialize, Deserialize)]
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct ControllerBinding {
-    pub button: Option<ControllerButton>,
+    pub button: Option<GamepadButton>,
     pub axis: Option<AxisConfig>
 }
 impl ControllerBinding {
-    pub fn new(button: Option<ControllerButton>, axis: Option<AxisConfig>) -> Self {
+    pub fn new(button: Option<GamepadButton>, axis: Option<AxisConfig>) -> Self {
         Self {
             button, 
             axis
         }
     }
 
-    pub fn check_button(&self, button: ControllerButton) -> bool {
+    pub fn check_button(&self, button: GamepadButton) -> bool {
         if let Some(b) = self.button {
             b == button
         } else {
@@ -31,8 +31,8 @@ impl From<Axis> for ControllerBinding {
         }
     }
 }
-impl From<ControllerButton> for ControllerBinding {
-    fn from(value: ControllerButton) -> Self {
+impl From<GamepadButton> for ControllerBinding {
+    fn from(value: GamepadButton) -> Self {
         Self {
             button: Some(value),
             axis: None,

@@ -1,21 +1,9 @@
-use gilrs::PowerInfo;
+// use gilrs::PowerInfo;
 use crate::prelude::*;
 
 #[derive(Default)]
 pub struct InputManager {
     pub mouse_pos: Vector2,
-    pub scroll_delta: Vector2,
-    // pub mouse_moved: bool,
-
-    // pub mouse_buttons: HashSet<MouseButton>,
-    // pub mouse_down: HashSet<(MouseButton, TatakuInstant)>,
-    // pub mouse_up: HashSet<(MouseButton, TatakuInstant)>,
-
-    // pub controllers: HashMap<GamepadId, GamepadState>,
-    // /// keys that were pressed but waiting to be registered
-    // keys_down: HashSet<(KeyInput, TatakuInstant)>,
-    // /// keys that were released but waiting to be registered
-    // keys_up: HashSet<(KeyInput, TatakuInstant)>,
 
     pub using_controller_input: bool,
     pub controller_cursor_pos: Vector2,
@@ -23,12 +11,10 @@ pub struct InputManager {
     pub events: Vec<InputType>,
 
 
-    /// currently pressed keys
+    /// currently pressed keys, internal use only
     keys: HashSet<KeyInput>,
-
     key_mods: KeyModifiers,
     
-
     text_cache: String,
     window_change_focus: Option<bool>,
     register_times: Vec<f32>,
@@ -40,7 +26,6 @@ pub struct InputManager {
     /// last key pressed, time it was pressed, was it a double tap? (need to know if it was a double tap for release check)
     last_key_press: HashMap<KeyInput, (TatakuInstant, bool)>,
 }
-
 impl InputManager {
     // fn verify_controller_index_exists(
     //     &mut self, 
@@ -96,6 +81,15 @@ impl InputManager {
 
                 self.keys.insert(key.clone());
 
+                if let Some(k) = key.as_key() {
+                    match k {
+                        Key::LAlt | Key::RAlt => self.key_mods.alt = true,
+                        Key::LControl | Key::RControl => self.key_mods.ctrl = true,
+                        Key::LShift | Key::RShift => self.key_mods.shift = true,
+                        _ => {}
+                    }
+                }
+
                 // self.keys_down.insert((key.clone(), TatakuInstant::now()));
                 // self.last_key_press.insert(key, (TatakuInstant::now(), false));
             }
@@ -114,6 +108,15 @@ impl InputManager {
                     self.keys.remove(key);
                     // self.keys_up.insert((key, TatakuInstant::now()));
                     // self.last_key_press.remove(&key);
+
+                    if let Some(k) = key.as_key() {
+                        match k {
+                            Key::LAlt | Key::RAlt => self.key_mods.alt = false,
+                            Key::LControl | Key::RControl => self.key_mods.ctrl = false,
+                            Key::LShift | Key::RShift => self.key_mods.shift = false,
+                            _ => {}
+                        }
+                    }
                 } else {
                     self.last_key_press.remove(key);
                     return;
@@ -137,7 +140,7 @@ impl InputManager {
             // // }
             // Input::MouseScroll(delta) => self.scroll_delta += delta,
 
-            Input::RawControllerEvent(event, name, power_info) => {
+            Input::RawControllerEvent(event, name, _power_info) => {
                 // self.verify_controller_index_exists(event.id, name, power_info);
                 // let Some(controller) = self.controllers.get_mut(&event.id) 
                 // else { return };

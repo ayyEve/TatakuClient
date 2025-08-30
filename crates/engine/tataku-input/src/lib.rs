@@ -17,7 +17,6 @@ pub mod prelude {
     
     
     pub use gilrs;
-    pub use gilrs::Axis;
     pub use gilrs::GamepadId;
     pub(crate) use serde::{ Serialize, Deserialize };
 

@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 #[derive(ChainableInitializer)]
 pub struct KeyButton {
-    key: KeyButtonValue,
+    key: InputButtonValue<Key>,
     #[chain] optional: bool,
     #[chain] on_change: InputAction<Option<Key>>,
 
@@ -10,7 +10,7 @@ pub struct KeyButton {
 }
 impl KeyButton {
     pub fn new(
-        key: impl Into<KeyButtonValue>, 
+        key: impl Into<InputButtonValue<Key>>, 
     ) -> Self {
         Self {
             key: key.into(),
@@ -96,7 +96,7 @@ impl Widget<TatakuAction> for KeyButton {
 
                 if key.is_key(Key::Escape) {
                     if event.key_mods.ctrl && self.optional {
-                        if let KeyButtonValue::Static(k) = &mut self.key {
+                        if let InputButtonValue::Static(k) = &mut self.key {
                             *k = None;
                         }
 
@@ -113,7 +113,7 @@ impl Widget<TatakuAction> for KeyButton {
                         error!("couldnt convert KeyInput to Key: {key:?}");
                         return;
                     };
-                    if let KeyButtonValue::Static(k) = &mut self.key {
+                    if let InputButtonValue::Static(k) = &mut self.key {
                         *k = Some(key);
                     }
 
@@ -153,7 +153,7 @@ impl Widget<TatakuAction> for KeyButton {
 
 
     fn update(&mut self, shell: &mut UpdateShell<TatakuAction>) {
-        if self.key.update(shell.values) {
+        if self.key.update(shell.values, self.optional) {
             let ctx = shell
                 .tree
                 .get_context(self.node_id)
@@ -220,16 +220,16 @@ impl Widget<TatakuAction> for KeyButton {
 }
 
 
-pub enum KeyButtonValue {
-    Static(Option<Key>),
+pub enum InputButtonValue<T> {
+    Static(Option<T>),
     Variable {
         path: VariablePathResolver,
-        cache: Option<Key>, 
+        cache: Option<T>, 
         error_logged: bool,
     },
 }
-impl KeyButtonValue {
-    fn get(&self) -> Option<Key> {
+impl<T:Copy + Reflect + PartialEq> InputButtonValue<T> {
+    pub(crate) fn get(&self) -> Option<T> {
         match self {
             Self::Static(k) 
             | Self::Variable { cache: k, .. }
@@ -237,7 +237,11 @@ impl KeyButtonValue {
         }
     }
 
-    fn update(&mut self, values: &dyn Reflect) -> bool {
+    pub(crate) fn update(
+        &mut self, 
+        values: &dyn Reflect,
+        optional: bool,
+    ) -> bool {
         let Self::Variable {
             path, 
             cache, 
@@ -259,28 +263,24 @@ impl KeyButtonValue {
         else { return false };
 
         let val = val.as_ref();
-        if let Some(&key) = val.downcast_ref::<Option<Key>>() {
-            if *cache != key {
-                *cache = key;
-                true
-            } else {
-                false
+        if optional {
+            if let Some(&input) = val.downcast_ref::<Option<T>>() {
+                if *cache != input {
+                    *cache = input;
+                    return true;
+                }
             }
-        } else if let Some(&key) = val.downcast_ref::<Key>() {
-            if *cache != Some(key) {
-                *cache = Some(key);
-                true
-            } else {
-                false
+        } else if let Some(&input) = val.downcast_ref::<T>() {
+            if *cache != Some(input) {
+                *cache = Some(input);
+                return true;
             }
-        } else {
-            false
         }
+
+        false
     }
 }
-
-
-impl From<VariablePathResolver> for KeyButtonValue {
+impl<T> From<VariablePathResolver> for InputButtonValue<T> {
     fn from(path: VariablePathResolver) -> Self {
         Self::Variable {
             path,

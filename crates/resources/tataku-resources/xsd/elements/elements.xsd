@@ -5,6 +5,7 @@
   xmlns:xs="http://www.w3.org/2001/XMLSchema"
 
   xmlns:gameplay-preview-element="tataku/elements/gameplay-preview"
+  xmlns:gamepad-button-element="tataku/elements/gamepad-button"
   xmlns:conditional-element="tataku/elements/conditional"
   xmlns:animatable-element="tataku/elements/animatable"
   xmlns:text-input-element="tataku/elements/text-input"
@@ -35,6 +36,7 @@
 <xs:import namespace="tataku/elements/animatable" schemaLocation="./animatable.xsd"/>
 <xs:import namespace="tataku/elements/text-input" schemaLocation="./text_input.xsd"/>
 <xs:import namespace="tataku/elements/conditional" schemaLocation="./conditional.xsd"/>
+<xs:import namespace="tataku/elements/gamepad-button" schemaLocation="./gamepad_button.xsd"/>
 <xs:import namespace="tataku/elements/gameplay-preview" schemaLocation="./gameplay_preview.xsd"/>
 
 <xs:complexType name="generic">
@@ -59,6 +61,7 @@
     <xs:element name="switch" type="switch-element:switch-element"/>
     <xs:element name="slider" type="slider-element:slider-element"/>
     <xs:element name="keyButton" type="keybutton-element:keybutton-element"/>
+    <xs:element name="gamepadButton" type="gamepad-button-element:gamepad-button-element"/>
   </xs:choice>
 </xs:group>
 

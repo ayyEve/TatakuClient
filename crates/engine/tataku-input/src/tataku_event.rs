@@ -58,5 +58,5 @@ pub struct CustomMenuKeyEvent {
 #[derive(Serialize, Deserialize)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct CustomMenuControllerEvent {
-    #[serde(alias= "@button")] pub button: ControllerButton,
+    #[serde(alias= "@button")] pub button: GamepadButton,
 }

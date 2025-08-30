@@ -1,21 +1,27 @@
 use crate::prelude::*;
 
+const AXES: &[Axis] = &[
+    Axis::LeftStickX, Axis::LeftStickY, Axis::LeftTrigger,
+    Axis::RightStickX, Axis::RightStickY, Axis::RightTrigger,
+    Axis::DPadX, Axis::DPadY
+];
+
 #[derive(Clone, Debug)]
 pub struct GamepadState {
     /// gamepad info
     pub info: GamepadInfo,
 
     /// list of currently-pressed buttons
-    pub buttons: HashSet<ControllerButton>,
+    pub buttons: HashSet<GamepadButton>,
 
     /// list of buttons that have been released since the last update
-    pub buttons_up: HashSet<ControllerButton>,
+    pub buttons_up: HashSet<GamepadButton>,
 
     /// list of buttons that have been pressed since the last update
-    pub buttons_down: HashSet<ControllerButton>,
+    pub buttons_down: HashSet<GamepadButton>,
 
     /// current axes states
-    pub axis: HashMap<gilrs::Axis, AxisState>,
+    pub axis: HashMap<Axis, AxisState>,
 
 
     pub power_info: gilrs::PowerInfo,
@@ -27,12 +33,11 @@ impl GamepadState {
             buttons: HashSet::new(),
             buttons_up: HashSet::new(),
             buttons_down: HashSet::new(),
-            axis: [
-                Axis::LeftStickX, Axis::LeftStickY, Axis::LeftZ,
-                Axis::RightStickX, Axis::RightStickY, Axis::RightZ,
-                Axis::DPadX, Axis::DPadY
-            ].into_iter().map(|a| (a, AxisState::default())).collect(),
+            axis: AXES.iter()
+                .map(|a| (*a, AxisState::default()))
+                .collect(),
             power_info: gilrs::PowerInfo::Unknown,
         }
     }
 }
+

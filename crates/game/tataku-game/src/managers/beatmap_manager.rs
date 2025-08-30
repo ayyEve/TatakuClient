@@ -103,30 +103,34 @@ impl BeatmapManager {
 
         dirs_to_check.iter()
             .map(std::fs::read_dir)
-            .filter_map(|d| d.ok())
-            .flat_map(|f| f.filter_map(|f| f.ok())
-                .map(|f| f.path()) )
+            .filter_map(Result::ok)
+            .flat_map(|f| f
+                .filter_map(Result::ok)
+                .map(|f| f.path()) 
+            )
             .collect()
     }
 
     /// clear the cache and db, and do a full rescan of the songs folder
     pub fn full_refresh(&mut self, settings: &Settings) {
-        // self.beatmaps.clear();
+        Database::clear_all_maps();
         self.beatmaps.clear();
         self.diffs.clear();
-
-        Database::clear_all_maps();
+        self.initialized = false;
 
         let mut new_beatmaps = Vec::new();
 
         info!("Reading maps");
-        let folders = Self::folders_to_check(settings);
-        for f in folders {
-            if let Some(maps) = self.check_folder(f, false) {
-                new_beatmaps.extend(maps);
-            }
+        for f in Self::folders_to_check(settings) {
+            let Some(maps) = self.check_folder(
+                f, 
+                false
+            ) else { continue };
+
+            new_beatmaps.extend(maps);
         }
 
+        self.initialized = true;
         if !new_beatmaps.is_empty() {
             info!("Inserting maps into database");
             Database::insert_beatmaps(&new_beatmaps);
@@ -139,6 +143,7 @@ impl BeatmapManager {
         dir: impl AsRef<Path>,
         handle_database: impl Into<HandleDatabase>,
     ) -> Option<Vec<Arc<BeatmapMeta>>> {
+        let handle_database = handle_database.into();
         let dir = dir.as_ref();
 
         if !dir.is_dir() { return None }
@@ -153,11 +158,21 @@ impl BeatmapManager {
 
         let mut maps_to_add_to_database = Vec::new();
 
-        for file in dir_files.filter_map(|s|s.ok()) {
+        for file in dir_files.filter_map(Result::ok) {
             let file = file.path();
-            let Some(file) = file.to_str() else { continue };
-            // info!("checking {file}");
+            if file.is_dir() {
+                let Some(maps) = self.check_folder(
+                    &file, 
+                    handle_database
+                ) else { continue };
 
+                maps_to_add_to_database.extend(maps);
+                continue;
+            }
+
+            let Some(file) = file.to_str() 
+            else { continue };
+            // info!("checking {file}");
 
             if AVAILABLE_MAP_EXTENSIONS.iter().any(|e| file.ends_with(e)) {
                 // check file paths first
@@ -166,7 +181,9 @@ impl BeatmapManager {
                 }
 
                 match Io::get_file_hash(file) {
-                    Ok(hash) => if self.beatmaps.contains_key(&hash) { continue },
+                    Ok(hash) => if self.beatmaps.contains_key(&hash) { 
+                        continue;
+                    },
                     Err(e) => {
                         error!("error getting hash for file {file}: {e}");
                         continue;
@@ -190,7 +207,6 @@ impl BeatmapManager {
             }
         }
 
-        let handle_database:HandleDatabase = handle_database.into();
         match handle_database {
             HandleDatabase::No => Some(maps_to_add_to_database),
             HandleDatabase::Yes => {
@@ -214,7 +230,10 @@ impl BeatmapManager {
             trace!("Map already added");
 
             // see if this beatmap is being added from another source
-            if !self.beatmaps.values().any(|m| m.file_path == beatmap.file_path) {
+            if !self.beatmaps
+                .values()
+                .any(|m| m.file_path == beatmap.file_path) 
+            {
                 // if so, add it to the ignore list
                 trace!("Adding {} to the ignore list", beatmap.file_path);
                 self.ignore_beatmaps.insert(beatmap.file_path.clone());
@@ -227,7 +246,6 @@ impl BeatmapManager {
         // dont have it, add it
         let new_hash = beatmap.beatmap_hash;
         self.beatmaps.insert(new_hash, beatmap.clone());
-        // self.beatmaps.push(beatmap.clone());
 
         if self.initialized {
             debug!("Adding beatmap {}", beatmap.version_string());
@@ -343,7 +361,7 @@ impl BeatmapManager {
         current_mods: &ModManager,
         playmode: &str,
         sort_by: SortBy,
-        diff_manager: &mut impl DifficultyProvider,
+        diff_manager: &mut dyn DifficultyProvider,
     ) {
         let group_by = GroupBy::default(); //values.settings.group_by;
         //TODO: allow grouping by not just map set
@@ -357,7 +375,7 @@ impl BeatmapManager {
         mods: &ModManager,
         playmode: &str,
         sort_by: SortBy,
-        diff_manager: &mut impl DifficultyProvider,
+        diff_manager: &mut dyn DifficultyProvider,
     ) {
         trace!("Applying Filter");
         self.groups.clear();
@@ -603,6 +621,7 @@ impl From<GroupBy> for TatakuValue {
 }
 
 /// FIXME: this is a bad name for this
+#[derive(Copy, Clone)]
 pub enum HandleDatabase {
     No,
     Yes,
