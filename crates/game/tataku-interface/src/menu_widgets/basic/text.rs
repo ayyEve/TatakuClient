@@ -275,6 +275,6 @@ impl TatakuRenderable for Glyph {
             Pipeline::AlphaBlending,
         );
 
-        // g.free_tex(tex);
+        g.free_tex(tex, true);
     }
 }

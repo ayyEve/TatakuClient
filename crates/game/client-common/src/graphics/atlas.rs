@@ -10,10 +10,12 @@ pub struct Atlas {
     allocators: Vec<AtlasAllocator>,
 
     empty_tex: TextureReference,
-}
+} 
 impl Atlas {
     pub fn new(width: u32, height: u32, layers: u32) -> Self {
-        let allocators =  (0..layers).map(|_| AtlasAllocator::new(size2(width as i32, height as i32))).collect();
+        let allocators =  (0..layers)
+            .map(|_| AtlasAllocator::new(size2(width as i32, height as i32)))
+            .collect();
         
         Self {
             available_width: width,
@@ -54,7 +56,12 @@ impl AtlasData {
     fn new(alloc_info: Allocation, layer: u32, total_width: u32, total_height: u32) -> Self {
         let [x, y] = alloc_info.rectangle.min.to_array();
         let [x2, y2] = alloc_info.rectangle.max.to_array();
-        let [x, y, x2, y2] = [x as u32 + ATLAS_PADDING, y as u32 + ATLAS_PADDING, x2 as u32 - ATLAS_PADDING, y2 as u32 - ATLAS_PADDING];
+        let [x, y, x2, y2] = [
+            x as u32 + ATLAS_PADDING, 
+            y as u32 + ATLAS_PADDING, 
+            x2 as u32 - ATLAS_PADDING, 
+            y2 as u32 - ATLAS_PADDING
+        ];
 
         let w = x2 - x;
         let h = y2 - y;

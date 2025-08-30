@@ -561,7 +561,10 @@ impl Game {
 
                 // unload the old image so the atlas can reuse the space
                 if let Some(old_img) = self.background_image.take() {
-                    GameWindow::free_texture(*old_img.tex);
+                    self.actions.push(LoadImage::FreeTexture { 
+                        tex: *old_img.tex, 
+                        deferred: false
+                    });
                 }
 
                 self.background_image = image;

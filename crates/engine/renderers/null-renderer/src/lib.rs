@@ -31,7 +31,7 @@ impl GraphicsEngine for DummyGraphicsEngine {
         Err(TatakuError::Graphics(GraphicsError::DummyEngine))
     }
 
-    fn free_tex(&mut self, _tex: TextureReference) {}
+    fn free_tex(&mut self, _tex: TextureReference, _defer_until_next_draw: bool) {}
     fn screenshot(&mut self, _callback: ScreenshotCallback) {}
 
     fn begin_render(&mut self) {}

@@ -34,14 +34,14 @@ pub trait GraphicsEngine {
 
     // texture things
 
-    /// load a texture from bytes
+    /// load a texture from file bytes (ie .png file)
     fn load_texture_bytes(&mut self, data: &[u8]) -> TatakuResult<TextureReference>;
 
-    /// load a texture from RGBA bytes
+    /// load a texture from RGBA
     fn load_texture_rgba(&mut self, data: &[u8], size: [u32; 2]) -> TatakuResult<TextureReference>;
 
     /// free a texture
-    fn free_tex(&mut self, tex: TextureReference);
+    fn free_tex(&mut self, tex: TextureReference, defer_until_next_draw: bool);
 
     /// take a screenshot, returning the data via callback
     fn screenshot(&mut self, callback: ScreenshotCallback);

@@ -153,8 +153,8 @@ impl<'window> GameWindow<'window> {
         match event {
             LoadImage::Image(data, on_done) => on_done(self.graphics.load_texture_rgba(&data, [data.width(), data.height()])),
 
-            LoadImage::FreeTexture(tex) => {
-                self.graphics.free_tex(tex);
+            LoadImage::FreeTexture { tex, deferred } => {
+                self.graphics.free_tex(tex, deferred);
             }
 
             LoadImage::CreateRenderTarget((w, h), on_done, callback) => {
@@ -396,9 +396,12 @@ impl GameWindow<'_> {
     }
 
 
-    pub fn free_texture(tex: TextureReference) {
+    pub fn free_texture(tex: TextureReference, deferred: bool) {
         Self::send_action(WindowAction::LoadImage(Box::new(
-            LoadImage::FreeTexture(tex)
+            LoadImage::FreeTexture {
+                tex, 
+                deferred
+            }
         )));
     }
 }

@@ -69,6 +69,8 @@ pub struct WgpuEngine<'window> {
     blur_enabled: bool,
 
     intermediate_texture: Texture,
+
+    deferred_free_textures: Vec<TextureReference>,
 }
 impl<'window> WgpuEngine<'window> {
 
@@ -413,6 +415,8 @@ impl<'window> WgpuEngine<'window> {
             can_blur,
             blur_enabled: true,
             intermediate_texture,
+
+            deferred_free_textures: Vec::new(),
         })
     }
 
@@ -522,56 +526,12 @@ impl<'window> WgpuEngine<'window> {
         self.queue.submit([encoder.finish()]);
         swapchain.present();
 
-
-
-        // self.render(RenderableSurface::new(
-        //     &view, 
-        //     GFX_CLEAR_COLOR, 
-        //     Vector2::new(size.width as f32, size.height as f32),
-        //     false,
-        // ))?;
-
-        // let width = output.texture.width();
-        // let height = output.texture.height();
-
-
-        // 
-
-        // output.present();
-
-
-
         if let Some(screenshot) = self.screenshot_pending.take() {
-            // let texture = self.device.create_texture(&TextureDescriptor {
-            //     label: Some("Screenshot Texture"),
-            //     size: Extent3d {
-            //         width,
-            //         height,
-            //         depth_or_array_layers: 1
-            //     },
-            //     mip_level_count: 1,
-            //     sample_count: 1,
-            //     dimension: TextureDimension::D2,
-            //     format: TextureFormat::Bgra8UnormSrgb,
-            //     usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::COPY_SRC,
-            //     view_formats: &[]
-            // });
-            // let view = texture.create_view(&TextureViewDescriptor {
-            //     label: Some("Screenshot Texture View"),
-            //     dimension: Some(TextureViewDimension::D2),
-            //     base_array_layer: 0,
-
-            //     ..Default::default()
-            // });
-
-            // self.render(RenderableSurface::new(
-            //     &view, 
-            //     GFX_CLEAR_COLOR, 
-            //     Vector2::new(width as f32, height as f32), 
-            //     true
-            // ))?;
-
             self.finish_screenshot(screenshot);
+        }
+
+        for i in self.deferred_free_textures.take() {
+            self.free_tex(i, false);
         }
 
 
@@ -1817,45 +1777,50 @@ impl GraphicsEngine for WgpuEngine<'_> {
         Ok(info)
     }
 
-    fn free_tex(&mut self, tex: TextureReference) {
+    fn free_tex(&mut self, tex: TextureReference, defer_until_next_draw: bool) {
         if tex.is_empty() { return }
 
-        // write empty data to where the texture was
-        // this should remove the weird border when the atlas space is reused
-        let width = tex.width + ATLAS_PADDING * 2;
-        let height = tex.height + ATLAS_PADDING * 2;
-        // empty pixels
-        let data = vec![0u8; (width * height * 4) as usize];
+        if defer_until_next_draw {
+            self.deferred_free_textures.push(tex);
+            return;
+        }
 
-        self.queue.write_texture(
-            // Tells wgpu where to copy the pixel data
-            ImageCopyTexture {
-                texture: &self.atlas_texture.textures
-                    .get(tex.layer as usize)
-                    .unwrap()
-                    .0,
-                mip_level: 0,
-                origin: Origin3d {
-                    x: tex.x - ATLAS_PADDING,
-                    y: tex.y - ATLAS_PADDING,
-                    z: 0
-                },
-                aspect: TextureAspect::All,
-            },
-            // The actual pixel data
-            &data,
-            // The layout of the texture
-            ImageDataLayout {
-                offset: 0,
-                bytes_per_row: Some(4 * width),
-                rows_per_image: Some(height),
-            },
-            Extent3d {
-                width,
-                height,
-                depth_or_array_layers: 1,
-            }
-        );
+        // // write empty data to where the texture was
+        // // this should remove the weird border when the atlas space is reused
+        // let width = tex.width + ATLAS_PADDING * 2;
+        // let height = tex.height + ATLAS_PADDING * 2;
+        // // empty pixels
+        // let data = vec![0u8; (width * height * 4) as usize];
+
+        // self.queue.write_texture(
+        //     // Tells wgpu where to copy the pixel data
+        //     ImageCopyTexture {
+        //         texture: &self.atlas_texture.textures
+        //             .get(tex.layer as usize)
+        //             .unwrap()
+        //             .0,
+        //         mip_level: 0,
+        //         origin: Origin3d {
+        //             x: tex.x - ATLAS_PADDING,
+        //             y: tex.y - ATLAS_PADDING,
+        //             z: 0
+        //         },
+        //         aspect: TextureAspect::All,
+        //     },
+        //     // The actual pixel data
+        //     &data,
+        //     // The layout of the texture
+        //     ImageDataLayout {
+        //         offset: 0,
+        //         bytes_per_row: Some(4 * width),
+        //         rows_per_image: Some(height),
+        //     },
+        //     Extent3d {
+        //         width,
+        //         height,
+        //         depth_or_array_layers: 1,
+        //     }
+        // );
 
         // remove from texture atlas
         self.atlas.remove_entry(tex);
