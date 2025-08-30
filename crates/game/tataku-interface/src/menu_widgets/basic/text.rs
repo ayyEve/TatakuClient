@@ -24,7 +24,7 @@ impl TextWidget {
             text: text.into(),
             node_id: EMPTY_NODE,
 
-            glyphs: Vec::new(),
+            glyphs: Vec::new(), 
         }
     }
 }
