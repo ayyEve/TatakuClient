@@ -54,10 +54,10 @@ impl Zip {
                     // if we've waited 200ms*ATTEMPTS and its still broken, give up
                     if error_counter > ATTEMPTS {
                         error!("5 errors opening archive file: {e}");
-                        if let ArchiveDelete::Always = delete_file {
-                            if let Err(e) = std::fs::remove_file(zip) {
-                                error!("Error deleting failed archive file {e}");
-                            }
+                        if let ArchiveDelete::Always = delete_file
+                            && let Err(e) = std::fs::remove_file(zip) 
+                        {
+                            error!("Error deleting failed archive file {e}");
                         }
 
                         return Err(e.into());
@@ -103,8 +103,8 @@ impl Zip {
                 std::fs::create_dir_all(&outpath).unwrap();
             } else {
                 debug!("File {i} extracted to \"{outpath:?}\" ({} bytes)", file.size());
-                if let Some(p) = outpath.parent() {
-                    if !p.exists() { std::fs::create_dir_all(p).unwrap() }
+                if let Some(p) = outpath.parent() && !p.exists() { 
+                    std::fs::create_dir_all(p).unwrap();
                 }
                 let mut outfile = std::fs::File::create(&outpath).unwrap();
                 std::io::copy(&mut file, &mut outfile).unwrap();

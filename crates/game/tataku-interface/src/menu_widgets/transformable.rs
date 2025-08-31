@@ -130,10 +130,10 @@ impl Widget<TatakuAction> for TransformableWidget {
     fn name(&self) -> CowStr { "transformable_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn children(&self) -> WidgetChildren<TatakuAction> {
+    fn children(&'_ self) -> WidgetChildren<'_, TatakuAction> {
         WidgetChildren::Single(&self.child)
     }
-    fn children_mut(&mut self) -> WidgetChildrenMut<TatakuAction> {
+    fn children_mut(&'_ mut self) -> WidgetChildrenMut<'_, TatakuAction> {
         WidgetChildrenMut::Single(&mut self.child)
     }
     
@@ -224,23 +224,21 @@ impl Widget<TatakuAction> for TransformableWidget {
             match &trigger.trigger {
                 AnimatableTriggerEvent::NoInput { duration } => {
                     if let Some(last) = (self.last_input)   
-                        .filter(|_| self.hold_start.is_none()) {
-                        if time - last >= *duration 
-                            && !self.skip_noinput_actions.contains(&trigger.trigger) 
-                        {
-                            to_trigger.push(trigger.action.clone());
-                            self.skip_noinput_actions.push(trigger.trigger.clone());
-                        }
+                        .filter(|_| self.hold_start.is_none())
+                    && time - last >= *duration 
+                    && !self.skip_noinput_actions.contains(&trigger.trigger) 
+                    {
+                        to_trigger.push(trigger.action.clone());
+                        self.skip_noinput_actions.push(trigger.trigger.clone());
                     }
                 }
 
                 AnimatableTriggerEvent::ClickHold { duration } => {
-                    if let Some(start) = self.hold_start {
-                        if time - start >= *duration 
-                            && !self.skip_clickhold_actions.contains(&trigger.trigger) {
-                            to_trigger.push(trigger.action.clone());
-                            self.skip_clickhold_actions.push(trigger.trigger.clone());
-                        }
+                    if let Some(start) = self.hold_start
+                    && time - start >= *duration 
+                        && !self.skip_clickhold_actions.contains(&trigger.trigger) {
+                        to_trigger.push(trigger.action.clone());
+                        self.skip_clickhold_actions.push(trigger.trigger.clone());
                     }
                 }
 

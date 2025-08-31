@@ -14,10 +14,10 @@ impl OsuConnection {
         let p = std::path::Path::new(REFRESH_TOKEN_FILE);
 
         let mut token = None;
-        if let Ok(refresh_token) = std::fs::read_to_string(p) {
-            if let Ok(refreshed_token) = Token::refresh(refresh_token) {
-                token = Some(refreshed_token);
-            }
+        if let Ok(refresh_token) = std::fs::read_to_string(p)
+        && let Ok(refreshed_token) = Token::refresh(refresh_token) 
+        {
+            token = Some(refreshed_token);
         }
         let token = if let Some(token) = token {
             token

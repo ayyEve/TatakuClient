@@ -189,17 +189,16 @@ impl NormalItemType {
         
         let Some(s) = p.path.get_ident() else { 
             let first = p.path.segments.first()?;
-            if first.ident == "Option" {
-                if let PathArguments::AngleBracketed(t) = &first.arguments {
-                    let GenericArgument::Type(Type::Path(inner)) = t.args.first()?
-                    else { return None };
+            if first.ident == "Option"
+            && let PathArguments::AngleBracketed(t) = &first.arguments {
+                let GenericArgument::Type(Type::Path(inner)) = t.args.first()?
+                else { return None };
 
-                    if inner.path.is_ident("GamepadButton") {
-                        return Some(Self::OptionalGamepadButton);
-                    } else if inner.path.is_ident("Key") {
-                        return Some(Self::OptionalKey);
-                    } 
-                }
+                if inner.path.is_ident("GamepadButton") {
+                    return Some(Self::OptionalGamepadButton);
+                } else if inner.path.is_ident("Key") {
+                    return Some(Self::OptionalKey);
+                } 
             }
 
             return None

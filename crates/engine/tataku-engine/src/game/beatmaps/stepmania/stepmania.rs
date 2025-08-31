@@ -198,11 +198,13 @@ impl StepmaniaBeatmap {
                             }
 
                             // check for bpm change
-                            if let Some((next_time, next_beat_length)) = beat_lengths.get(beat_length_index + 1) {
-                                if *next_time <= current_time {
-                                    beat_length_index += 1;
-                                    time_step = *next_beat_length / note_snapping;
-                                }
+                            if let Some(
+                                (next_time, next_beat_length)
+                            ) = beat_lengths.get(beat_length_index + 1)
+                                && *next_time <= current_time 
+                            {
+                                beat_length_index += 1;
+                                time_step = *next_beat_length / note_snapping;
                             }
 
                             current_time += time_step;

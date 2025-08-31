@@ -21,7 +21,9 @@ impl<B:RenderBufferable> RenderBufferQueue<B> {
 
     /// set up the buffers to be writable
     pub fn begin(&mut self, mut recorded: Vec<Box<B>>) {
-        recorded.iter_mut().for_each(|b| b.reset());
+        for b in recorded.iter_mut() { 
+            b.reset(); 
+        }
         self.queued_buffers.extend(recorded);
 
         // the recording buffer can be <Some> if it was not used in the previous draw call

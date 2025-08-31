@@ -78,9 +78,9 @@ impl<T:Clone + Reflect> InputAction<T> {
                 built
             } if !*built => {
                 *built = true;
-                list
-                    .iter_mut()
-                    .for_each(|i| i.build(values));
+                for i in list.iter_mut() { 
+                    i.build(values); 
+                }
             }
 
             _ => {}

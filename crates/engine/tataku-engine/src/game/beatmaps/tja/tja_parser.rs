@@ -363,7 +363,9 @@ impl ParseCourse {
         if self.current_measure_events.is_empty() {
             self.current_time += time_step;
         }
-        std::mem::take(&mut self.current_measure_events).into_iter().for_each(|n|self.add_note(n, time_step));
+        for n in self.current_measure_events.take() {
+            self.add_note(n, time_step);
+        }
     }
 
     /// get the step length for the current measure events
@@ -421,7 +423,7 @@ impl ParseCourse {
     }
 
     /// get the next "long" note that hasnt had its end time set
-    fn get_last_long(&mut self, long_type: LongType) -> Option<ExistingLongType> {
+    fn get_last_long<'a>(&'a mut self, long_type: LongType) -> Option<ExistingLongType<'a>> {
         match long_type {
             LongType::Balloon => {
                 let list = if let Some(b) = &mut self.current_branch { 

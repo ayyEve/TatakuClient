@@ -89,42 +89,41 @@ impl Widget<TatakuAction> for KeyButton {
             .unwrap();
 
         let ctx = shell.tree.get_context_mut(self.node_id).unwrap();
-        if ctx.element_data.state.contains(ElementState::Active) && event.is_keyboard() {
-            if let InputType::KeyPress(key) = &event.event {
-                ctx.element_data.state.remove(ElementState::Active);
-                shell.event_consumed = true;
+        if ctx.element_data.state.contains(ElementState::Active) && event.is_keyboard()
+        && let InputType::KeyPress(key) = &event.event {
+            ctx.element_data.state.remove(ElementState::Active);
+            shell.event_consumed = true;
 
-                if key.is_key(Key::Escape) {
-                    if event.key_mods.ctrl && self.optional {
-                        if let InputButtonValue::Static(k) = &mut self.key {
-                            *k = None;
-                        }
-
-                        self.on_change.run(
-                            &None,
-                            self.node_id,
-                            shell.messages,
-                            shell.actions,
-                            shell.values,
-                        );
-                    }
-                } else {
-                    let Some(key) = key.as_key() else {
-                        error!("couldnt convert KeyInput to Key: {key:?}");
-                        return;
-                    };
+            if key.is_key(Key::Escape) {
+                if event.key_mods.ctrl && self.optional {
                     if let InputButtonValue::Static(k) = &mut self.key {
-                        *k = Some(key);
+                        *k = None;
                     }
 
                     self.on_change.run(
-                        &Some(key),
+                        &None,
                         self.node_id,
                         shell.messages,
                         shell.actions,
                         shell.values,
                     );
                 }
+            } else {
+                let Some(key) = key.as_key() else {
+                    error!("couldnt convert KeyInput to Key: {key:?}");
+                    return;
+                };
+                if let InputButtonValue::Static(k) = &mut self.key {
+                    *k = Some(key);
+                }
+
+                self.on_change.run(
+                    &Some(key),
+                    self.node_id,
+                    shell.messages,
+                    shell.actions,
+                    shell.values,
+                );
             }
         }
         let hover = ctx.element_data.state.contains(ElementState::Hover);
@@ -264,17 +263,15 @@ impl<T:Copy + Reflect + PartialEq> InputButtonValue<T> {
 
         let val = val.as_ref();
         if optional {
-            if let Some(&input) = val.downcast_ref::<Option<T>>() {
-                if *cache != input {
-                    *cache = input;
-                    return true;
-                }
-            }
-        } else if let Some(&input) = val.downcast_ref::<T>() {
-            if *cache != Some(input) {
-                *cache = Some(input);
+            if let Some(&input) = val.downcast_ref::<Option<T>>()
+            && *cache != input {
+                *cache = input;
                 return true;
             }
+        } else if let Some(&input) = val.downcast_ref::<T>()
+        && *cache != Some(input) {
+            *cache = Some(input);
+            return true;
         }
 
         false

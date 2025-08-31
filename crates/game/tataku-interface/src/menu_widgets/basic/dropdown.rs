@@ -423,15 +423,13 @@ impl Widget<TatakuAction> for Dropdown {
 
 
             if let Some(selected) = selected {
-                if index.is_none() {
-                    if let DropdownVariants::Static(list) = &self.variants {
-                        if let Some(n) = list
-                            .iter()
-                            .position(|a| a == &selected)
-                        {
-                            *index = Some(n);
-                        }
-                    }
+                if index.is_none()
+                && let DropdownVariants::Static(list) = &self.variants
+                && let Some(n) = list
+                    .iter()
+                    .position(|a| a == &selected)
+                {
+                    *index = Some(n);
                 }
 
 

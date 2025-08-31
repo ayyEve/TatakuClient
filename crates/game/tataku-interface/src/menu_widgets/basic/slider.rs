@@ -77,10 +77,9 @@ impl Widget<TatakuAction> for Slider {
         event: &InputEvent,
         shell: &mut InputShell<TatakuAction>,
     ) {
-        if let Some(on_change) = self.on_change.as_mut() {
-            if !on_change.is_built() {
-                on_change.build(shell.values);
-            }
+        if let Some(on_change) = self.on_change.as_mut()
+        && !on_change.is_built() {
+            on_change.build(shell.values);
         }
 
 
@@ -303,11 +302,9 @@ impl SliderValue {
                 buildable, 
                 value 
             } => if let Some(t) = buildable
-                    .resolve(values, None)
-            { 
-                if let Some(v) = t.as_f32() {
-                    *value = v;
-                }
+                .resolve(values, None) 
+            && let Some(v) = t.as_f32() {
+                *value = v;
             }
         }
 

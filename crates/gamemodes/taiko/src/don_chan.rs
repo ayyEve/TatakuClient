@@ -123,15 +123,14 @@ impl GameplayWidget for DonChan {
         
 
         // check if combo milestone anim has finished
-        if self.state == DonChanState::ComboMilestone {
-            if let Some(anim) = &self.combo_anim {
-                if self.combo_anim_last_index > anim.frame_index {
-                    // completed
-                    info!("combo anim complete");
-                    self.state = DonChanState::Normal;
-                } else {
-                    self.combo_anim_last_index = anim.frame_index;
-                }
+        if self.state == DonChanState::ComboMilestone
+        && let Some(anim) = &self.combo_anim {
+            if self.combo_anim_last_index > anim.frame_index {
+                // completed
+                info!("combo anim complete");
+                self.state = DonChanState::Normal;
+            } else {
+                self.combo_anim_last_index = anim.frame_index;
             }
         }
 

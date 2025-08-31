@@ -258,7 +258,7 @@ impl BeatmapManager {
         }
 
         if add_to_db {
-            Database::insert_beatmaps(&[beatmap.clone()]);
+            Database::insert_beatmaps(std::slice::from_ref(beatmap));
         }
 
     }
@@ -499,15 +499,13 @@ impl BeatmapManager {
             i.selected = false;
 
             // make sure we have the correct selected set and map number
-            if let Some(current_hash) = &current_hash {
-                if !selected {
-                    if let Some(j) = i.has_hash(current_hash) {
-                        self.selected_set = n;
-                        self.selected_map = j;
-                        selected = true;
-                        i.selected = true;
-                    }
-                }
+            if !selected
+            && let Some(current_hash) = &current_hash
+            && let Some(j) = i.has_hash(current_hash) {
+                self.selected_set = n;
+                self.selected_map = j;
+                selected = true;
+                i.selected = true;
             }
         }
 

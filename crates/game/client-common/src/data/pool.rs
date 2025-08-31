@@ -63,7 +63,9 @@ impl<T> Pool<T> {
             .map(|p| p.get_index())
             .collect::<Vec<_>>();
         
-        to_remove.into_iter().for_each(|p| self.remove(p));
+        for p in to_remove.into_iter() { 
+            self.remove(p); 
+        }
     }
 }
 impl<T:Clone> Pool<T> {

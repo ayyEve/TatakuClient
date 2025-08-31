@@ -810,12 +810,11 @@ impl GameplayManagerTrait for GameplayManager {
         }
 
         // check map restart
-        if let Some(press_time) = self.restart_key_hold_start {
-            if press_time.as_millis() >= self.common_game_settings.map_restart_delay {
-                self.reset();
-                actions.extend(self.actions.take());
-                return
-            }
+        if let Some(press_time) = self.restart_key_hold_start
+        && press_time.as_millis() >= self.common_game_settings.map_restart_delay {
+            self.reset();
+            actions.extend(self.actions.take());
+            return
         }
 
         // check pause

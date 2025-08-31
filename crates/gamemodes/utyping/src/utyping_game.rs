@@ -212,16 +212,15 @@ impl GameMode for UTypingGame {
                 if queue.is_empty() {
                     self.autoplay_queue = None;
                 }
-            } else if let Some(current_note) = self.notes.current_note() {
-                if current_note.time() <= state.time {
-                    let chars = current_note.get_chars();
-                    let len = (chars.len() * 2 + 1) as f32;
+            } else if let Some(current_note) = self.notes.current_note()
+            && current_note.time() <= state.time {
+                let chars = current_note.get_chars();
+                let len = (chars.len() * 2 + 1) as f32;
 
-                    if next_note_time == 0.0 { next_note_time = current_note.time() + 500.0; }
-                    let delay = (next_note_time - current_note.time()) / len;
+                if next_note_time == 0.0 { next_note_time = current_note.time() + 500.0; }
+                let delay = (next_note_time - current_note.time()) / len;
 
-                    self.autoplay_queue = Some((chars, delay, state.time - delay));
-                }
+                self.autoplay_queue = Some((chars, delay, state.time - delay));
             }
             // let mut pending_frames = Vec::new();
             // let notes = &mut self.notes;
@@ -262,14 +261,13 @@ impl GameMode for UTypingGame {
         for note in self.notes.iter_mut() { note.update(state.time) }
 
         // if theres no more notes to hit, show score screen
-        if let Some(note) = self.notes.last() {
-            if state.time > note.end_time(self.hitwindow_miss) && note.was_hit() {
-                if !state.complete() {
-                    state.add_action(GamemodeAction::MapComplete);
-                    // manager.completed = true;
-                }
-                return;
+        if let Some(note) = self.notes.last()
+        && state.time > note.end_time(self.hitwindow_miss) && note.was_hit() {
+            if !state.complete() {
+                state.add_action(GamemodeAction::MapComplete);
+                // manager.completed = true;
             }
+            return;
         }
         
         // TODO: might move tbs to a (time, speed) tuple

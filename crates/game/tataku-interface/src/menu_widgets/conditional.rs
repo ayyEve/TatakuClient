@@ -49,19 +49,19 @@ impl Widget<TatakuAction> for ConditionalWidget {
     fn name(&self) -> CowStr  { "conditional_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn children(&self) -> WidgetChildren<TatakuAction> {
+    fn children(&'_ self) -> WidgetChildren<'_, TatakuAction> {
         let Some(child) = self.get_ele() 
         else { return WidgetChildren::None };
         
         WidgetChildren::Single(child)
     }
-    fn children_mut(&mut self) -> WidgetChildrenMut<TatakuAction> {
+    fn children_mut(&'_ mut self) -> WidgetChildrenMut<'_, TatakuAction> {
         let Some(child) = self.get_ele_mut() 
         else { return WidgetChildrenMut::None };
         
         WidgetChildrenMut::Single(child)
     }
-    fn all_children(&self) -> WidgetChildren<TatakuAction> {
+    fn all_children(&'_ self) -> WidgetChildren<'_, TatakuAction> {
         let mut list = Vec::with_capacity(2);
         list.push(&self.if_true);
         if let Some(f) = &self.if_false {
@@ -70,7 +70,7 @@ impl Widget<TatakuAction> for ConditionalWidget {
 
         WidgetChildren::OwnedList(list)
     }
-    fn all_children_mut(&mut self) -> WidgetChildrenMut<TatakuAction> {
+    fn all_children_mut(&'_ mut self) -> WidgetChildrenMut<'_, TatakuAction> {
         let mut list = Vec::with_capacity(2);
         list.push(&mut self.if_true);
         if let Some(f) = &mut self.if_false {

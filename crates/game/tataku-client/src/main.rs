@@ -106,10 +106,9 @@ fn startup() {
     let game_dir = std::env::var("GAME_DIR")
         .unwrap_or(GAME_DIR.to_owned());
     
-    if !Io::exists(&game_dir) {
-        if let Err(e) = std::fs::create_dir_all(&game_dir) {
-            println!("Error creating game dir: {e}");
-        }
+    if !Io::exists(&game_dir)
+    && let Err(e) = std::fs::create_dir_all(&game_dir) {
+        println!("Error creating game dir: {e}");
     }
     if let Err(e) = std::env::set_current_dir(&game_dir) {
         println!("Error changing current dir: {e}");

@@ -220,10 +220,10 @@ impl Widget<TatakuAction> for DialogWidget {
     fn name(&self) -> CowStr { self.node.name() }
     fn node_id(&self) -> NodeId { self.node.node_id() }
 
-    fn children(&self) -> WidgetChildren<TatakuAction> {
+    fn children(&'_ self) -> WidgetChildren<'_, TatakuAction> {
         WidgetChildren::Single(&self.node)
     }
-    fn children_mut(&mut self) -> WidgetChildrenMut<TatakuAction> {
+    fn children_mut(&'_ mut self) -> WidgetChildrenMut<'_, TatakuAction> {
         WidgetChildrenMut::Single(&mut self.node)
     }
 
@@ -418,11 +418,10 @@ impl Widget<TatakuAction> for DialogWidget {
         match message.owner {
             MessageOwner::Menu => return,
             MessageOwner::Dialog(num) => {
-                if &**message.tag == "set_num" {
-                    if let MessageValue::Number(n) = message.value {
-                        self.num = n;
-                        return;
-                    }
+                if &**message.tag == "set_num"
+                && let MessageValue::Number(n) = message.value {
+                    self.num = n;
+                    return;
                 }
                 
                 if num != self.num { return }

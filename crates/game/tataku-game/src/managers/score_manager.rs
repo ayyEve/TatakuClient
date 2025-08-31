@@ -49,10 +49,9 @@ impl ScoreManager {
         &mut self, 
         values: &mut ValueCollection
     ) -> TatakuResult {
-        if self.current_loader.take().is_some() {
-            if let Some(abort) = self.abort_handle.take() {
-                abort.abort();
-            }
+        if self.current_loader.take().is_some()
+        && let Some(abort) = self.abort_handle.take() {
+            abort.abort();
         }
         let settings = values.settings.clone();
 
@@ -87,10 +86,9 @@ impl ScoreManager {
                     thing.scores = local_scores
                         .into_iter()
                         .map(|mut s| {
-                            if let Ok(info) = infos.get_info(&s.playmode) {
-                                if s.accuracy == 0.0 {
-                                    s.accuracy = info.calc_acc(&s);
-                                }
+                            if let Ok(info) = infos.get_info(&s.playmode)
+                            && s.accuracy == 0.0 {
+                                s.accuracy = info.calc_acc(&s);
                             }
 
                             s
@@ -206,23 +204,22 @@ impl ScoreManager {
             }
         }
 
-        if let Some(loader) = self.current_loader.clone() {
-            if let Ok(loader) = loader.try_read() {
-                if !loader.done { return } 
+        if let Some(loader) = self.current_loader.clone()
+        && let Ok(loader) = loader.try_read() {
+            if !loader.done { return } 
 
-                let mut scores = loader.scores.clone();
-                scores
-                    .iter_mut()
-                    .enumerate()
-                    .for_each(|(n, s)| s.id = n);
+            let mut scores = loader.scores.clone();
+            scores
+                .iter_mut()
+                .enumerate()
+                .for_each(|(n, s)| s.id = n);
 
-                self.current_loader = None;
-                self.abort_handle = None;
-                self.scores = scores.clone();
-                values.score_list.scores = scores;
-                values.score_list.loaded = true;
-                info!("scores loaded: {:?}", self.scores);
-            }
+            self.current_loader = None;
+            self.abort_handle = None;
+            self.scores = scores.clone();
+            values.score_list.scores = scores;
+            values.score_list.loaded = true;
+            info!("scores loaded: {:?}", self.scores);
         }
 
     }
@@ -514,11 +511,10 @@ mod quaver {
 
             // check mods
             for m in s.mods_string.split(", ") {
-                if m.ends_with("x") {
-                    if let Ok(speed) = m.trim_end_matches("x").parse() {
-                        score.speed = GameSpeed::from_f32(speed);
-                        continue;
-                    }
+                if m.ends_with("x")
+                && let Ok(speed) = m.trim_end_matches("x").parse() {
+                    score.speed = GameSpeed::from_f32(speed);
+                    continue;
                 }
 
                 if let Some(m) = ok_mods.get(m) {

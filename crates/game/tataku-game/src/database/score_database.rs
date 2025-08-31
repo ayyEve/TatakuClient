@@ -15,10 +15,9 @@ impl Database {
             let _score_hash:String = r.get("score_hash")?;
 
             let mut mods_string:Option<String> = r.get("mods_string").ok();
-            if let Some(str) = &mods_string {
-                if str.is_empty() {
-                    mods_string = None;
-                }
+            if let Some(str) = &mods_string
+            && str.is_empty() {
+                mods_string = None;
             }
 
             let mut judgments = HashMap::new();

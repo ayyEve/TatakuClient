@@ -138,10 +138,9 @@ impl Widget<TatakuAction> for ContextMenu {
                     self.submenu = None;
                 }
 
-                if let Some(hover) = self.hover_index {
-                    if !self.try_make_submenu(hover) {
-                        self.submenu = None;
-                    }
+                if let Some(hover) = self.hover_index
+                && !self.try_make_submenu(hover) {
+                    self.submenu = None;
                 }
             }
 

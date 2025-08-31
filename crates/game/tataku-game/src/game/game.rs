@@ -416,11 +416,10 @@ impl Game {
             }
 
             // wait 100ms before writing settings changes
-            if let Some(last_update) = last_setting_update {
-                if last_update.as_millis() > 500.0 {
-                    self.settings.clone().save();
-                    last_setting_update = None;
-                }
+            if let Some(last_update) = last_setting_update
+            && last_update.as_millis() > 500.0 {
+                self.settings.clone().save();
+                last_setting_update = None;
             }
 
             // update our instant's time
@@ -559,26 +558,25 @@ impl Game {
 
         // check bg loaded
         #[cfg(feature="graphics")] 
-        if let Some(loader) = self.background_loader.clone() {
-            if let Some(image) = loader.check() {
-                self.background_loader = None;
+        if let Some(loader) = self.background_loader.clone()
+        && let Some(image) = loader.check() {
+            self.background_loader = None;
 
-                // unload the old image so the atlas can reuse the space
-                if let Some(old_img) = self.background_image.take() {
-                    self.actions.push(LoadImage::FreeTexture { 
-                        tex: *old_img.tex, 
-                        deferred: false
-                    });
-                }
-
-                self.background_image = image;
-
-                if self.background_image.is_none() && !self.wallpapers.is_empty() {
-                    self.background_image = Some(self.wallpapers[0].clone());
-                }
-
-                self.resize_bg();
+            // unload the old image so the atlas can reuse the space
+            if let Some(old_img) = self.background_image.take() {
+                self.actions.push(LoadImage::FreeTexture { 
+                    tex: *old_img.tex, 
+                    deferred: false
+                });
             }
+
+            self.background_image = image;
+
+            if self.background_image.is_none() && !self.wallpapers.is_empty() {
+                self.background_image = Some(self.wallpapers[0].clone());
+            }
+
+            self.resize_bg();
         }
 
         #[cfg(feature="graphics")] self.update_display.increment();
@@ -763,10 +761,9 @@ impl Game {
             GameState::Ingame(mut manager) => {
                 // pause button, or focus lost, only if not replaying
                 #[cfg(feature="graphics")] 
-                if let Some(got_focus) = input_state.window_focus_changed {
-                    if self.settings.display_settings.pause_on_focus_lost {
-                        manager.window_focus_changed(got_focus);
-                    }
+                if let Some(got_focus) = input_state.window_focus_changed
+                && self.settings.display_settings.pause_on_focus_lost {
+                    manager.window_focus_changed(got_focus);
                 }
 
                 if !manager.failed && manager.can_pause() 
@@ -1289,15 +1286,14 @@ impl Game {
 
                 InputType::MouseScroll(delta) => {
                     // check for volume change
-                    if delta.y != 0.0 {
-                        if let Some(action) = self.volume_controller.on_mouse_wheel(
-                            delta.y / (self.settings.display_settings.scroll_sensitivity * 1.5), 
-                            mods, 
-                            &mut self.values.settings
-                        ) {
-                            self.actions.push(action);
-                            return false;
-                        }
+                    if delta.y != 0.0
+                    && let Some(action) = self.volume_controller.on_mouse_wheel(
+                        delta.y / (self.settings.display_settings.scroll_sensitivity * 1.5), 
+                        mods, 
+                        &mut self.values.settings
+                    ) {
+                        self.actions.push(action);
+                        return false;
                     }
                 }
 

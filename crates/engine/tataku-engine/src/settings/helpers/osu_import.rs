@@ -11,15 +11,13 @@ pub fn load_osu_skins(path: impl AsRef<Path>) {
     }
 
     let skins_folder = path.join("Skins");
-    if skins_folder.exists() {
-        if let Ok(skins_folder) = skins_folder.read_dir() {
-            for f in skins_folder.filter_map(|f|f.ok()) {
-                if f.path().is_dir() {
-                    let mut options = fs_extra::dir::CopyOptions::new();
-                    options.copy_inside = true;
-                    if let Err(e) = fs_extra::dir::copy(f.path(), SKINS_FOLDER, &options) {
-                        // NotificationManager::add_error_notification("error copying skin", TatakuError::from_err(e)).await;
-                    }
+    if skins_folder.exists() && let Ok(skins_folder) = skins_folder.read_dir() {
+        for f in skins_folder.filter_map(|f|f.ok()) {
+            if f.path().is_dir() {
+                let mut options = fs_extra::dir::CopyOptions::new();
+                options.copy_inside = true;
+                if let Err(e) = fs_extra::dir::copy(f.path(), SKINS_FOLDER, &options) {
+                    // NotificationManager::add_error_notification("error copying skin", TatakuError::from_err(e)).await;
                 }
             }
         }

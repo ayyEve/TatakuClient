@@ -67,7 +67,7 @@ impl<B: parley::Brush> From<TextStyle> for parley::TextStyle<'_, B> {
         Self {
             font_stack: parley::FontStack::Single(parley::FontFamily::Generic(parley::GenericFamily::SansSerif)), // todo:
             font_size: value.font_size,
-            line_height: Default::default(), // todo:
+            line_height: parley::LineHeight::default(), // todo:
             ..Default::default()
         }
     }

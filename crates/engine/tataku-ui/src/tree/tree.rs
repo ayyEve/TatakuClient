@@ -764,7 +764,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
 
         let parent_children = &mut self.children[parent_key];
         parent_children.clear();
-        children.iter().for_each(|child| parent_children.push(*child));
+        parent_children.extend(children.iter().copied());
 
         self.mark_dirty(parent);
 
@@ -841,10 +841,9 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
     pub fn remove(&mut self, node: impl HasNodeId) {
         let id = node.get_id();
         let key = id.into();
-        if let Some(parent) = self.parents[key] {
-            if let Some(children) = self.children.get_mut(parent.into()) {
-                children.retain(|f| *f != id);
-            }
+        if let Some(parent) = self.parents[key]
+        && let Some(children) = self.children.get_mut(parent.into()) {
+            children.retain(|f| *f != id);
         }
 
         // Remove "parent" references to a node when removing that node

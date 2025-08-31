@@ -43,15 +43,13 @@ impl JudgmentImageHelper {
             }
 
             // if there was no animation, try loading a static image (no -num)
-            if textures.is_empty() {
-                if let Some(tex) = skin_manager.get_texture(
-                    img, 
-                    &TextureSource::Skin, 
-                    SkinUsage::Game, 
-                    false
-                ) {
-                    textures.push(tex);
-                }
+            if textures.is_empty() && let Some(tex) = skin_manager.get_texture(
+                img, 
+                &TextureSource::Skin, 
+                SkinUsage::Game, 
+                false
+            ) {
+                textures.push(tex);
             }
 
             // debug!("trying to load tex {img}, got? {}", tex.is_some());

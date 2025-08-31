@@ -120,14 +120,13 @@ impl MultiplayerManager {
         }
 
         // if we're loading the beatmap, check if its done
-        if let Some(loader) = &self.beatmap_loader {
-            if !self.load_complete_sent && loader.is_complete() {
-                self.load_complete_sent = true;
-                self.send_packet(
-                    MultiplayerPacket::Client_LobbyMapLoaded,
-                    actions
-                );
-            }
+        if let Some(loader) = &self.beatmap_loader
+        && !self.load_complete_sent && loader.is_complete() {
+            self.load_complete_sent = true;
+            self.send_packet(
+                MultiplayerPacket::Client_LobbyMapLoaded,
+                actions
+            );
         }
 
         // if our mods changed, let the lobby know
@@ -147,14 +146,13 @@ impl MultiplayerManager {
         if let Some(Some(new_hash)) = self.new_beatmap_helper.update(values).ok().filter(|_| manager.is_none()) {
 
             // if the map that was just added is the lobby's map, set it as our current map
-            if let Some(beatmap) = &self.lobby.current_beatmap {
-                if new_hash == &beatmap.hash {
-                    actions.push(BeatmapAction::SetFromHash(
-                        beatmap.hash, 
-                        SetBeatmapOptions::default().restart_song(true)
-                    ));
-                    self.set_state(LobbyUserState::NotReady, actions);
-                }
+            if let Some(beatmap) = &self.lobby.current_beatmap
+            && new_hash == &beatmap.hash {
+                actions.push(BeatmapAction::SetFromHash(
+                    beatmap.hash, 
+                    SetBeatmapOptions::default().restart_song(true)
+                ));
+                self.set_state(LobbyUserState::NotReady, actions);
             }
         }
     }

@@ -77,10 +77,10 @@ impl SampleChannelInstance {
     fn new(channel: SampleChannel) -> Self {
         Self(parking_lot::RwLock::new(SampleChannelData { channel, volume: 1.0, rate: 1.0 }))
     }
-    fn data(&self) -> parking_lot::RwLockReadGuard<SampleChannelData> {
+    fn data<'a>(&'a self) -> parking_lot::RwLockReadGuard<'a, SampleChannelData> {
         self.0.read()
     }
-    fn data_mut(&self) -> parking_lot::RwLockWriteGuard<SampleChannelData> {
+    fn data_mut<'a>(&'a self) -> parking_lot::RwLockWriteGuard<'a, SampleChannelData> {
         self.0.write()
     }
 }

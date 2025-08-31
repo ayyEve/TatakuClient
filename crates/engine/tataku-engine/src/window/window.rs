@@ -214,16 +214,15 @@ impl GameWindow<'_> {
     }
 
     fn set_fullscreen(&mut self, monitor: FullscreenMonitor) {
-        if let FullscreenMonitor::Monitor(name) = monitor {
-            if let Some(monitor) = self.window()
-                .available_monitors()
-                .find(|m| m.name().filter(|n| name == *n).is_some())
-            {
-                self.window().set_fullscreen(Some(
-                    winit::window::Fullscreen::Borderless(Some(monitor))
-                ));
-                return
-            }
+        if let FullscreenMonitor::Monitor(name) = monitor
+        && let Some(monitor) = self.window()
+            .available_monitors()
+            .find(|m| m.name().filter(|n| name == *n).is_some())
+        {
+            self.window().set_fullscreen(Some(
+                winit::window::Fullscreen::Borderless(Some(monitor))
+            ));
+            return
         }
 
         // either its not fullscreen, or the monitor wasnt found, so default to windowed
@@ -277,12 +276,11 @@ impl GameWindow<'_> {
 
                 // check for release of first touch.
                 // if this was the first touch, set the touch pos to none, and send a click release event
-                if let Some((start_id, _)) = self.touch_pos {
-                    if id == start_id {
-                        self.touch_pos = None;
+                if let Some((start_id, _)) = self.touch_pos
+                && id == start_id {
+                    self.touch_pos = None;
 
-                        return Some(WindowEvent::Input(InputType::MouseRelease(MouseButton::Left)))
-                    }
+                    return Some(WindowEvent::Input(InputType::MouseRelease(MouseButton::Left)))
                 }
 
                 None
@@ -291,19 +289,18 @@ impl GameWindow<'_> {
             Touch { phase:TouchPhase::Moved, location, id, .. } => {
                 let touch_pos = Vector2::new(location.x as f32, location.y as f32);
 
-                if self.finger_touches.len() > 1 {
-                    if let Some((start_id, pos)) = &mut self.touch_pos {
-                        if id != *start_id { return None }
+                if self.finger_touches.len() > 1
+                && let Some((start_id, pos)) = &mut self.touch_pos {
+                    if id != *start_id { return None }
 
-                        let delta = touch_pos - *pos;
-                        let scroll = Vector2::new(
-                            delta.x / 10.0,
-                            delta.y / 10.0
-                        );
-                        *pos = touch_pos;
+                    let delta = touch_pos - *pos;
+                    let scroll = Vector2::new(
+                        delta.x / 10.0,
+                        delta.y / 10.0
+                    );
+                    *pos = touch_pos;
 
-                        return Some(WindowEvent::Input(InputType::MouseScroll(scroll)))
-                    }
+                    return Some(WindowEvent::Input(InputType::MouseScroll(scroll)))
                 }
 
                 Some(WindowEvent::Input(InputType::MouseMove(touch_pos)))

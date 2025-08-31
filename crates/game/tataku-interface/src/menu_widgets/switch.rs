@@ -67,18 +67,18 @@ impl Widget<TatakuAction> for SwitchWidget {
     fn name(&self) -> CowStr { "switch_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn children(&self) -> WidgetChildren<TatakuAction> {
+    fn children(&'_ self) -> WidgetChildren<'_, TatakuAction> {
         self.get_ele()
             .map(WidgetChildren::Single)
             .unwrap_or_default()
     }
-    fn children_mut(&mut self) -> WidgetChildrenMut<TatakuAction> {
+    fn children_mut(&'_ mut self) -> WidgetChildrenMut<'_, TatakuAction> {
         self.get_ele_mut()
             .map(WidgetChildrenMut::Single)
             .unwrap_or_default()
     }
 
-    fn all_children(&self) -> WidgetChildren<TatakuAction> {
+    fn all_children(&'_ self) -> WidgetChildren<'_, TatakuAction> {
         let mut list = self.cases
             .iter()
             .map(|a| &a.widget)
@@ -89,7 +89,7 @@ impl Widget<TatakuAction> for SwitchWidget {
 
         WidgetChildren::OwnedList(list)
     }
-    fn all_children_mut(&mut self) -> WidgetChildrenMut<TatakuAction> {
+    fn all_children_mut(&'_ mut self) -> WidgetChildrenMut<'_, TatakuAction> {
         let mut list = self.cases
             .iter_mut()
             .map(|a| &mut a.widget)

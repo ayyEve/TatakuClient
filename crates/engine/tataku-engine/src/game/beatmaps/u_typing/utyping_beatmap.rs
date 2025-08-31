@@ -34,10 +34,10 @@ pub struct UTypingBeatmap {
 }
 impl UTypingBeatmap {
     pub fn load<P:AsRef<Path>>(path: P) -> TatakuResult<Self> {
-        if let Some(path) = path.as_ref().file_name() {
-            if path.to_str() != Some("info.txt") {
-                return Err(TatakuError::Beatmap(BeatmapError::InvalidFile));
-            }
+        if let Some(path) = path.as_ref().file_name()
+            && path.to_str() != Some("info.txt") 
+        {
+            return Err(TatakuError::Beatmap(BeatmapError::InvalidFile));
         }
 
         let empty_text: ArcStr = String::new().into();

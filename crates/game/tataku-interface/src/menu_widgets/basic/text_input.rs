@@ -74,12 +74,11 @@ impl TextInput {
         action: ControlAction, 
         shift_pressed: bool
     ) {
-        if let Cursor::Selection { start, .. } = self.cursor {
-            if action.delete_text() {
-                self.replace_selection("");
-                self.cursor = Cursor::Position(start);
-                return
-            }
+        if let Cursor::Selection { start, .. } = self.cursor
+        && action.delete_text() {
+            self.replace_selection("");
+            self.cursor = Cursor::Position(start);
+            return
         }
 
         let value = self.value.get();

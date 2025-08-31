@@ -198,41 +198,58 @@ impl HitObject for ManiaHold {
     }
 
     #[cfg(feature="graphics")]
-    fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+    fn reload_skin(
+        &mut self, 
+        source: &TextureSource, 
+        skin_manager: &mut dyn SkinProvider,
+    ) {
         self.start_image = None;
         self.middle_image = None;
         self.end_image = None;
 
-        let Some(settings) = &self.mania_skin_settings else { return };
+        let Some(settings) = &self.mania_skin_settings 
+        else { return };
         
         // start
-        if let Some(path) = settings.note_image_h.get(&self.column) {
-            if let Some(mut img) = skin_manager.get_texture(path, source, SkinUsage::Gamemode, true) {
-                self.playfield.note_image(&mut img);
-                img.color = self.color;
-                self.start_image = Some(img);
-            }
+        if let Some(path) = settings.note_image_h.get(&self.column)
+        && let Some(mut img) = skin_manager.get_texture(
+            path, 
+            source, 
+            SkinUsage::Gamemode, 
+            true
+        ) {
+            self.playfield.note_image(&mut img);
+            img.color = self.color;
+            self.start_image = Some(img);
         }
         
         // middle
-        if let Some(path) = settings.note_image_l.get(&self.column) {
-            if let Some(mut img) = skin_manager.get_texture(path, source, SkinUsage::Gamemode, true) {
-                img.origin = Vector2::ZERO;
-                img.color = Color::WHITE;
-                img.scale.x = self.playfield.column_width / img.tex_size().x;
+        if let Some(path) = settings.note_image_l.get(&self.column)
+        && let Some(mut img) = skin_manager.get_texture(
+            path, 
+            source, 
+            SkinUsage::Gamemode, 
+            true
+        ) {
+            img.origin = Vector2::ZERO;
+            img.color = Color::WHITE;
+            img.scale.x = self.playfield.column_width / img.tex_size().x;
 
-                self.middle_image = Some(img);
-            }
+            self.middle_image = Some(img);
         }
 
         // end
-        if let Some(path) = settings.note_image_t.get(&self.column) {
-            if let Some(mut img) = skin_manager.get_texture(path, source, SkinUsage::Gamemode, true) {
-                self.playfield.note_image(&mut img);
-                img.scale.y *= -1.0;
-                img.color = Color::WHITE;
-                self.end_image = Some(img);
-            }
+        if let Some(path) = settings.note_image_t.get(&self.column)
+        && let Some(mut img) = skin_manager.get_texture(
+            path, 
+            source, 
+            SkinUsage::Gamemode, 
+            true
+        ) {
+            self.playfield.note_image(&mut img);
+            img.scale.y *= -1.0;
+            img.color = Color::WHITE;
+            self.end_image = Some(img);
         }
     }
 }

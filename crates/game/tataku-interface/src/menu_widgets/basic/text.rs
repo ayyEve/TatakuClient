@@ -90,10 +90,9 @@ impl Widget<TatakuAction> for TextWidget {
         let parent_bounds = shell.tree.parent(self.node_id)
             .and_then(|parent| shell.tree.absolute_bounds(parent));
 
-        if let Some(parent_bounds) = parent_bounds {
-            if parent_bounds.intersection(bounds).is_none() {
-                return;
-            }
+        if let Some(parent_bounds) = parent_bounds
+        && parent_bounds.intersection(bounds).is_none() {
+            return;
         }
 
         let refresh = self.text.update(shell.values)

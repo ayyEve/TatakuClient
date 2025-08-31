@@ -1214,17 +1214,15 @@ impl Game {
                 }
 
                 if let Some(manager) = &self
-                    .multiplayer_manager 
-                {
-                    if manager.lobby.our_user_id == user_id {
-                        self.multiplayer_manager = None;
-                        self.actions.push(
-                            Notification::default()
-                            .text("You have been kicked from the match")
-                            .duration(3000.0)
-                            .color(Color::PURPLE)
-                        );
-                    }
+                    .multiplayer_manager
+                && manager.lobby.our_user_id == user_id {
+                    self.multiplayer_manager = None;
+                    self.actions.push(
+                        Notification::default()
+                        .text("You have been kicked from the match")
+                        .duration(3000.0)
+                        .color(Color::PURPLE)
+                    );
                 }
             }
 

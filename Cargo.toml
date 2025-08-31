@@ -4,6 +4,7 @@ authors = [
     "~Nebula~ <stefanb1289@gmail.com>"
 ]
 edition = "2024"
+rust-version = "1.89"
 
 [workspace]
 members = [ 
@@ -50,8 +51,8 @@ clippy.semicolon_if_nothing_returned = "warn"
 rust.unused_must_use = "deny"
 
 [workspace.dependencies]
-# tataku-common = { version = "0.18.0", registry = "tataku-registry", path = "../tataku-common/tataku-common" }
-tataku-common = { version = "0.18.0", registry = "tataku-registry" }
+# tataku-common = { version = "0.19.0", registry = "tataku-registry", path = "../tataku-common/tataku-common" }
+tataku-common = { version = "0.19.0", registry = "tataku-registry" }
 tataku-ui.path = "crates/engine/tataku-ui"
 tataku-game.path = "crates/game/tataku-game"
 tataku-client.path = "crates/game/tataku-client"
@@ -113,10 +114,10 @@ half = "2.6"
 
 # windowing
 bytemuck = { version = "1.21.0", features = [ "derive" ] }
-winit = { version = "0.30.7", features = [ "serde" ] }
+winit = { version = "0.30.12", features = [ "serde" ] }
 raw-window-handle = "0.6.2"
 clipboard = "0.5.0"
-wgpu = "23.0.1"
+wgpu = "26.0.1"
 
 # gamepad input
 gilrs = { version = "0.11.0", features = [ "serde-serialize" ] }
@@ -127,15 +128,15 @@ slotmap = "1.0.7"
 
 # taffy = { version = "0.8.3", features = [ "serde" ], git="https://github.com/DioxusLabs/taffy.git", branch="units" }
 simplecss = { version = "0.2.2", git = "https://github.com/ayyEve/simplecss.git", features = ["at_rules"] }
-quick-xml = { version = "0.37", features = [ "serialize" ]}
+quick-xml = { version = "0.38", features = [ "serialize" ]}
 
 # networking
 rustls = { version = "0.23.26", default-features = false }
 native-tls = "0.2.14"
 tokio-native-tls = "0.3.1"
-tokio-tungstenite = { version = "0.26.2", features = [ "rustls-tls-native-roots" ] }
+tokio-tungstenite = { version = "0.27", features = [ "rustls-tls-native-roots" ] }
 reqwest = { version = "0.12.15", features = [ "json", "blocking" ] }
-rustls-graviola = "0.2.1"
+rustls-graviola = "0.3.0"
 
 # serde
 serde = { version = "1.0.219", features = [ "derive" ] }
@@ -145,7 +146,7 @@ serde_yaml = "0.9.34"
 # decoding/encoding/zip stuff
 sha2 = "0.10.8"
 zip = { version = "2.2.3", default-features = false, features = [ "deflate", "deflate64", "bzip2" ] }
-md5 = "0.7.0"
+md5 = "0.8.0"
 lzma-rs = "0.3.0"
 base64 = "0.22.1"
 encoding_rs = { version = "0.8.35" }

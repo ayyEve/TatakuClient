@@ -49,10 +49,10 @@ impl Widget<TatakuAction> for WidgetContainer {
     fn name(&self) -> CowStr { self.inner.name() }
     fn node_id(&self) -> NodeId { self.inner.node_id() }
 
-    fn children(&self) -> WidgetChildren<TatakuAction> {
+    fn children(&'_ self) -> WidgetChildren<'_, TatakuAction> {
         WidgetChildren::Single(&self.inner)
     }
-    fn children_mut(&mut self) -> WidgetChildrenMut<TatakuAction> {
+    fn children_mut(&'_ mut self) -> WidgetChildrenMut<'_, TatakuAction> {
         WidgetChildrenMut::Single(&mut self.inner)
     }
 
@@ -226,10 +226,9 @@ impl Widget<TatakuAction> for WidgetContainer {
             Some(blur_type.into_blur(blur_amount))
         } else { None };
 
-        if let Some(blur) = blur {
-            if blur_location == BlurLocation::Below {
-                shell.list.push(Blur::new(bounds, blur));
-            }
+        if let Some(blur) = blur
+        && blur_location == BlurLocation::Below {
+            shell.list.push(Blur::new(bounds, blur));
         }
 
         // draw the inner
@@ -245,10 +244,9 @@ impl Widget<TatakuAction> for WidgetContainer {
             );
         }
 
-        if let Some(blur) = blur {
-            if blur_location == BlurLocation::Above {
-                shell.list.push(Blur::new(bounds, blur));
-            }
+        if let Some(blur) = blur
+        && blur_location == BlurLocation::Above {
+            shell.list.push(Blur::new(bounds, blur));
         }
     }
     

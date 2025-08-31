@@ -59,17 +59,15 @@ impl InputManager {
             Input::KeyPress(key) if !self.keys.contains(key) => {
                 let mut ok_to_continue = true;
 
-                if let Some(check) = self.double_tap_protection {
-                    if let Some((
-                        press_time, 
-                        is_double_tap
-                    )) = self.last_key_press.get_mut(key) {
-                        let since = press_time.as_millis();
-                        if since <= check {
-                            warn!("stopped a doubletap of duration {since:.4}ms");
-                            ok_to_continue = false;
-                            *is_double_tap = false;
-                        }
+                if let Some(check) = self.double_tap_protection && let Some((
+                    press_time, 
+                    is_double_tap
+                )) = self.last_key_press.get_mut(key) {
+                    let since = press_time.as_millis();
+                    if since <= check {
+                        warn!("stopped a doubletap of duration {since:.4}ms");
+                        ok_to_continue = false;
+                        *is_double_tap = false;
                     }
                 }
 
@@ -96,12 +94,10 @@ impl InputManager {
             Input::KeyRelease(key) => {
                 let mut ok_to_continue = true;
 
-                if self.double_tap_protection.is_some() {
-                    if let Some((_, is_double_tap)) = self.last_key_press.get(key) {
-                        if *is_double_tap {
-                            ok_to_continue = false;
-                        }
-                    }
+                if self.double_tap_protection.is_some()
+                && let Some((_, is_double_tap)) = self.last_key_press.get(key)
+                && *is_double_tap {
+                    ok_to_continue = false;
                 }
                 
                 if ok_to_continue {

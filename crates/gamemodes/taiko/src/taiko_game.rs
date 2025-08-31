@@ -501,50 +501,48 @@ impl GameMode for TaikoGame {
             if queue.done() { continue; }
 
             // check for finisher 2nd hit. 
-            if !did_hit && self.last_judgment != TaikoHitJudgments::Miss {
-                if let Some(last_note) = queue.previous_note() {
-                    if last_note.check_finisher(hit_type, frame.time, shell.game_speed) {
+            if !did_hit && self.last_judgment != TaikoHitJudgments::Miss
+            && let Some(last_note) = queue.previous_note()
+            && last_note.check_finisher(hit_type, frame.time, shell.game_speed) {
 
-                        // i cant match on these contants bc i dont use the derive macro :c
-                        // let j = match &self.last_judgment {
-                        //     &TaikoHitJudgments::X300 | &TaikoHitJudgments::Geki => &TaikoHitJudgments::Geki,
-                        //     &TaikoHitJudgments::X100 | &TaikoHitJudgments::Katu => &TaikoHitJudgments::Katu,
-                        //     _ => return, // this shouldnt happen, last judgment will always be one of the above
-                        // };
-                        let j = if [
-                            &TaikoHitJudgments::X300, 
-                            &TaikoHitJudgments::Geki
-                        ].contains(&&self.last_judgment) {
-                            &TaikoHitJudgments::Geki
-                        } else if [
-                            &TaikoHitJudgments::X100, 
-                            &TaikoHitJudgments::Katu
-                        ].contains(&&self.last_judgment) {
-                            &TaikoHitJudgments::Katu
-                        } else {
-                            return
-                        };
+                // i cant match on these contants bc i dont use the derive macro :c
+                // let j = match &self.last_judgment {
+                //     &TaikoHitJudgments::X300 | &TaikoHitJudgments::Geki => &TaikoHitJudgments::Geki,
+                //     &TaikoHitJudgments::X100 | &TaikoHitJudgments::Katu => &TaikoHitJudgments::Katu,
+                //     _ => return, // this shouldnt happen, last judgment will always be one of the above
+                // };
+                let j = if [
+                    &TaikoHitJudgments::X300, 
+                    &TaikoHitJudgments::Geki
+                ].contains(&&self.last_judgment) {
+                    &TaikoHitJudgments::Geki
+                } else if [
+                    &TaikoHitJudgments::X100, 
+                    &TaikoHitJudgments::Katu
+                ].contains(&&self.last_judgment) {
+                    &TaikoHitJudgments::Katu
+                } else {
+                    return
+                };
 
-                        // add whatever the last judgment was as a finisher score
-                        shell.add_judgment(*j);
+                // add whatever the last judgment was as a finisher score
+                shell.add_judgment(*j);
 
-                        #[cfg(feature="graphics")] {
-                            Self::add_hit_indicator(
-                                j, 
-                                true, 
-                                &self.taiko_settings, 
-                                &self.playfield, 
-                                &self.judgement_helper, 
-                                shell
-                            );
-                            
-                            // draw drum
-                            *self.hit_cache.get_mut(&taiko_hit_type).unwrap() = shell.time;
-                        }
-
-                        return; // return and not continue because we dont want the 2nd finisher press to count towards anything
-                    }
+                #[cfg(feature="graphics")] {
+                    Self::add_hit_indicator(
+                        j, 
+                        true, 
+                        &self.taiko_settings, 
+                        &self.playfield, 
+                        &self.judgement_helper, 
+                        shell
+                    );
+                    
+                    // draw drum
+                    *self.hit_cache.get_mut(&taiko_hit_type).unwrap() = shell.time;
                 }
+
+                return; // return and not continue because we dont want the 2nd finisher press to count towards anything
             }
 
             // check note hit

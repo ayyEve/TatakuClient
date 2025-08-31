@@ -82,11 +82,23 @@ impl<'window> WgpuEngine<'window> {
         let window_size = settings.window_size;
 
         // create a wgpu instance
-        let instance = Instance::new(InstanceDescriptor {
+        let instance = Instance::new(&InstanceDescriptor {
             backends: Backends::VULKAN | Backends::METAL, // | Backends::GL,
             flags: InstanceFlags::empty(),
-            gles_minor_version: Gles3MinorVersion::Automatic,
-            dx12_shader_compiler: Dx12Compiler::default(),
+            memory_budget_thresholds: MemoryBudgetThresholds { 
+                for_resource_creation: None, 
+                for_device_loss: None
+            },
+            backend_options: BackendOptions { 
+                gl: GlBackendOptions { 
+                    gles_minor_version: Gles3MinorVersion::Automatic, 
+                    fence_behavior: GlFenceBehavior::Normal,
+                }, 
+                dx12: Dx12BackendOptions { 
+                    shader_compiler: Dx12Compiler::default() 
+                }, 
+                noop: NoopBackendOptions { enable: false }
+            },
         });
 
         // create the surface
@@ -116,8 +128,8 @@ impl<'window> WgpuEngine<'window> {
                 required_limits: Limits::default(),
                 memory_hints: MemoryHints::Performance,
                 label: None,
+                trace: wgpu::Trace::Off
             },
-            None,
         ).await.unwrap();
 
         let can_blur = device.features().contains(Features::BGRA8UNORM_STORAGE);
@@ -443,7 +455,9 @@ impl<'window> WgpuEngine<'window> {
         }
 
         
-        let tex = WgpuTextureReference::new(&self.intermediate_texture);
+        let tex = WgpuTextureReference::new(
+            &self.intermediate_texture
+        );
         self.render(&RenderableSurface::new(
             &tex,
             GFX_CLEAR_COLOR, 
@@ -468,6 +482,7 @@ impl<'window> WgpuEngine<'window> {
                         Some(RenderPassColorAttachment {
                             view: &output_view,
                             resolve_target: None,
+                            depth_slice: None,
                             ops: Operations {
                                 load: LoadOp::Clear(wgpu::Color::BLACK),
                                 store: StoreOp::Store,
@@ -550,6 +565,7 @@ impl<'window> WgpuEngine<'window> {
                     color_attachments: &[Some(RenderPassColorAttachment {
                         view: &renderable.texture.view,
                         resolve_target: None,
+                        depth_slice: None,
                         ops: Operations {
                             load: LoadOp::Clear(renderable.get_clear_color()),
                             store: if renderable.render_target { 
@@ -619,6 +635,7 @@ impl<'window> WgpuEngine<'window> {
                         color_attachments: &[Some(RenderPassColorAttachment {
                             view: &renderable.texture.view,
                             resolve_target: None,
+                            depth_slice: None,
                             ops: Operations {
                                 load: LoadOp::Load,
                                 store: StoreOp::Store, // must be store for render targets to work apparently
@@ -859,9 +876,9 @@ impl WgpuEngine<'_> {
             mapped_at_creation: false,
         });
 
-        let tex_buffer = ImageCopyBuffer {
+        let tex_buffer = TexelCopyBufferInfo {
             buffer: &buffer,
-            layout: ImageDataLayout {
+            layout: TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(fuck),
                 rows_per_image: None
@@ -881,7 +898,7 @@ impl WgpuEngine<'_> {
         let slice = buffer.slice(..);
         slice.map_async(MapMode::Read, |_| {});
         let index = self.queue.submit(None);
-        self.device.poll(MaintainBase::WaitForSubmissionIndex(index));
+        self.device.poll(wgt::PollType::WaitForSubmissionIndex(index)).unwrap();
     
         let data = slice
             .get_mapped_range()
@@ -927,9 +944,9 @@ impl WgpuEngine<'_> {
     }
 
     fn check_dump_and_next(&mut self, to_draw: LastPipeline) {
-        if let Some(last_drawn) = &self.current_render_buffer {
-            if last_drawn.draw_type() == to_draw { return }
-        }
+        if let Some(last_drawn) = &self.current_render_buffer
+            && last_drawn.draw_type() == to_draw 
+        { return }
 
         self.dump_last_drawn();
         self.current_render_buffer = Some(self.buffer_queues
@@ -939,12 +956,12 @@ impl WgpuEngine<'_> {
     }
 
     /// returns reserve data
-    fn reserve_standard(
-        &mut self,
+    fn reserve_standard<'a>(
+        &'a mut self,
         vtx_count: u64,
         idx_count: u64,
         blend_mode: Pipeline
-    ) -> Option<StandardReserveData> {
+    ) -> Option<StandardReserveData<'a>> {
         let scissor = self.scissors.current_scissor();
         self.check_dump_and_next(LastPipeline::Standard);
 
@@ -1117,12 +1134,12 @@ impl WgpuEngine<'_> {
         ]);
     }
 
-    fn reserve_slider(
-        &mut self,
+    fn reserve_slider<'a>(
+        &'a mut self,
         slider_grid_count: u64,
         grid_cell_count: u64,
         line_segment_count: u64,
-    ) -> Option<SliderReserveData> {
+    ) -> Option<SliderReserveData<'a>> {
         let scissor = self.scissors.current_scissor();
         self.check_dump_and_next(LastPipeline::Slider);
 
@@ -1223,9 +1240,9 @@ impl WgpuEngine<'_> {
     }
 
 
-    fn reserve_flashlight(
-        &mut self,
-    ) -> Option<FlashlightReserveData> {
+    fn reserve_flashlight<'a>(
+        &'a mut self,
+    ) -> Option<FlashlightReserveData<'a>> {
         let scissor = self.scissors.current_scissor();
         self.check_dump_and_next(LastPipeline::Flashlight);
 
@@ -1282,9 +1299,9 @@ impl WgpuEngine<'_> {
         })
     }
 
-    fn reserve_gaussian_blur(
-        &mut self,
-    ) -> Option<GaussianBlurReserveData> {
+    fn reserve_gaussian_blur<'a>(
+        &'a mut self,
+    ) -> Option<GaussianBlurReserveData<'a>> {
         let scissor = self.scissors.current_scissor();
         self.check_dump_and_next(LastPipeline::GaussianBlur);
 
@@ -1323,9 +1340,9 @@ impl WgpuEngine<'_> {
         })
     }
     
-    fn reserve_box_blur(
-        &mut self,
-    ) -> Option<BoxBlurReserveData> {
+    fn reserve_box_blur<'a>(
+        &'a mut self,
+    ) -> Option<BoxBlurReserveData<'a>> {
         let scissor = self.scissors.current_scissor();
         self.check_dump_and_next(LastPipeline::BoxBlur);
 
@@ -1752,7 +1769,7 @@ impl GraphicsEngine for WgpuEngine<'_> {
         };
 
         self.queue.write_texture(
-            ImageCopyTexture {
+            TexelCopyTextureInfo {
                 texture: &self.atlas_texture.textures
                     .get(info.layer as usize)
                     .unwrap()
@@ -1766,7 +1783,7 @@ impl GraphicsEngine for WgpuEngine<'_> {
                 aspect: TextureAspect::All,
             },
             &data,
-            ImageDataLayout {
+            TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(4 * width),
                 rows_per_image: Some(height),

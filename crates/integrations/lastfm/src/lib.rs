@@ -27,8 +27,9 @@ impl LastFm {
             .send().await else { return };
 
         let txt = req.text().await.unwrap();
-        if let Ok(resp) = serde_json::from_str::<LastFMAuthReponse>(&txt) {
-            if let Some(url) = resp.auth_url { open_link(url); }
+        if let Ok(resp) = serde_json::from_str::<LastFMAuthReponse>(&txt)
+        && let Some(url) = resp.auth_url { 
+            open_link(url); 
         }
     }
 

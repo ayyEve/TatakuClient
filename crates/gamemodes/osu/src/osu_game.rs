@@ -818,11 +818,10 @@ impl GameMode for OsuGame {
                         
                         for note in self.notes.iter_mut() {
                             // check next timing point
-                            if let Some(next) = timing_points.get(index + 1) {
-                                if next.time <= note.time() { 
-                                    index += 1; 
-                                    // info!("tp: {} -> {}", timing_points[index].time, timing_points[index].beat_length);
-                                }
+                            if let Some(next) = timing_points.get(index + 1)
+                            && next.time <= note.time() { 
+                                index += 1; 
+                                // info!("tp: {} -> {}", timing_points[index].time, timing_points[index].beat_length);
                             }
 
                             // get the beat length of the current timing point

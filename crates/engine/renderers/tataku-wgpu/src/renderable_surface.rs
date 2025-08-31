@@ -37,7 +37,7 @@ impl<'a> RenderableSurface<'a> {
 pub struct WgpuTextureReference<'a> {
     pub view: TextureView,
     pub size: Extent3d,
-    pub copy: ImageCopyTexture<'a>,
+    pub copy: TexelCopyTextureInfo<'a>,
 }
 impl<'a> WgpuTextureReference<'a> {
     pub fn new(texture: &'a Texture) -> Self {

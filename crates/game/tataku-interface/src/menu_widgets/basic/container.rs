@@ -261,10 +261,10 @@ impl Widget<TatakuAction> for Container {
     fn name(&self) -> CowStr { "container_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn children(&self) -> WidgetChildren<TatakuAction> {
+    fn children(&'_ self) -> WidgetChildren<'_, TatakuAction> {
         WidgetChildren::List(&self.children)
     }
-    fn children_mut(&mut self) -> WidgetChildrenMut<TatakuAction> {
+    fn children_mut(&'_ mut self) -> WidgetChildrenMut<'_, TatakuAction> {
         WidgetChildrenMut::List(&mut self.children)
     }
     

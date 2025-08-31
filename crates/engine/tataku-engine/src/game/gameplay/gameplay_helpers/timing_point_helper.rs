@@ -124,10 +124,10 @@ impl TimingPointHelper {
         let mut mult = 1.0;
         let Some(p) = point else { return 0.0 };
 
-        if let Some(ip) = inherited_point.filter(|_| allow_multiplier) {
-            if p.time <= ip.time && ip.beat_length < 0.0 {
-                mult = (-ip.beat_length).clamp(10.0, 1000.0) / 100.0;
-            }
+        if allow_multiplier && let Some(ip) = inherited_point
+            && p.time <= ip.time && ip.beat_length < 0.0 
+        {
+            mult = (-ip.beat_length).clamp(10.0, 1000.0) / 100.0;
         }
 
         p.beat_length * mult

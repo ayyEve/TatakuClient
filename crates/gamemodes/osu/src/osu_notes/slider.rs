@@ -751,17 +751,16 @@ impl HitObject for OsuSlider {
             )));
         }
 
-        if end_repeat {
-            if let Some(mut reverse_arrow) = self.slider_reverse_image.clone() {
-                reverse_arrow.pos = self.visual_end_pos;
-                reverse_arrow.color.a = alpha;
-                reverse_arrow.scale = Vector2::ONE * self.beat_scale * self.scaling_helper.cs;
+        if end_repeat
+        && let Some(mut reverse_arrow) = self.slider_reverse_image.clone() {
+            reverse_arrow.pos = self.visual_end_pos;
+            reverse_arrow.color.a = alpha;
+            reverse_arrow.scale = Vector2::ONE * self.beat_scale * self.scaling_helper.cs;
 
-                let l = self.curve.curve_lines.last().unwrap();
-                reverse_arrow.rotation = (l.p1 - l.p2).atan2_wrong();
+            let l = self.curve.curve_lines.last().unwrap();
+            reverse_arrow.rotation = (l.p1 - l.p2).atan2_wrong();
 
-                list.push(reverse_arrow);
-            }
+            list.push(reverse_arrow);
         }
 
 
@@ -789,17 +788,16 @@ impl HitObject for OsuSlider {
                 )));
             }
 
-            if start_repeat {
-                if let Some(mut reverse_arrow) = self.slider_reverse_image.clone() {
-                    reverse_arrow.pos = self.pos;
-                    reverse_arrow.color.a = alpha;
-                    reverse_arrow.scale = Vector2::ONE * self.beat_scale * self.scaling_helper.cs;
+            if start_repeat
+            && let Some(mut reverse_arrow) = self.slider_reverse_image.clone() {
+                reverse_arrow.pos = self.pos;
+                reverse_arrow.color.a = alpha;
+                reverse_arrow.scale = Vector2::ONE * self.beat_scale * self.scaling_helper.cs;
 
-                    let l = self.curve.curve_lines.first().unwrap();
-                    reverse_arrow.rotation = (l.p2 - l.p1).atan2_wrong();
+                let l = self.curve.curve_lines.first().unwrap();
+                reverse_arrow.rotation = (l.p2 - l.p1).atan2_wrong();
 
-                    list.push(reverse_arrow);
-                }
+                list.push(reverse_arrow);
             }
         }
 

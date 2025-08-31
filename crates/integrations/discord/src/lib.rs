@@ -43,10 +43,9 @@ impl Discord {
 
 
         // make sure we wait at least RECONNECT_INTERVAL before trying to reconnect
-        if let Some(last_check) = self.last_connection_attempt {
-            if last_check.as_millis() < RECONNECT_INTERVAL { 
-                return Ok(()) 
-            }
+        if let Some(last_check) = self.last_connection_attempt
+        && last_check.as_millis() < RECONNECT_INTERVAL { 
+            return Ok(()) 
         }
         self.last_connection_attempt = Some(TatakuInstant::now());
 

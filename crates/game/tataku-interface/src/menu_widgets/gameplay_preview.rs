@@ -105,10 +105,9 @@ impl Widget<TatakuAction> for GameplayPreview {
         }
         
         let last_song_time = self.song_time.unwrap_or_default();
-        if let Ok(Some(time)) = self.song_time.update(shell.values) {
-            if *time < last_song_time {
-                self.setup(shell.owner, shell.values, shell.actions);
-            }
+        if let Ok(Some(time)) = self.song_time.update(shell.values)
+        && *time < last_song_time {
+            self.setup(shell.owner, shell.values, shell.actions);
         }
 
 
@@ -123,18 +122,17 @@ impl Widget<TatakuAction> for GameplayPreview {
 
         // check for new bounds
         let bounds = shell.tree.absolute_bounds(self.node_id);
-        if let Some(bounds) = bounds {
-            if self.fit_to != Some(bounds) {
-                // info!("fitting to area {bounds:?}");
-                self.fit_to = Some(bounds);
+        if let Some(bounds) = bounds
+        && self.fit_to != Some(bounds) {
+            // info!("fitting to area {bounds:?}");
+            self.fit_to = Some(bounds);
 
-                if let Some(manager) = self.manager.clone() { 
-                    shell.actions.push(GameAction::GameplayAction(
-                        manager, 
-                        GameplayAction::FitToArea(bounds)
-                    ));
-                };
-            }
+            if let Some(manager) = self.manager.clone() { 
+                shell.actions.push(GameAction::GameplayAction(
+                    manager, 
+                    GameplayAction::FitToArea(bounds)
+                ));
+            };
         }
 
         // update vis

@@ -99,28 +99,28 @@ impl Hitsound {
         let mut list = Vec::new();
 
         // if the hitsound is being overridden
-        if let Some(name) = hitsamples.filename {
-            if !name.is_empty() {
-                #[cfg(feature="debug_hitsounds")]
-                debug!("got custom sound: {name}");
+        if let Some(name) = hitsamples.filename
+            && !name.is_empty() 
+        {
+            #[cfg(feature="debug_hitsounds")]
+            debug!("got custom sound: {name}");
 
-                let allowed_sources = vec![
-                    HitsoundSource::Skin, 
-                    HitsoundSource::Default, 
-                    HitsoundSource::Beatmap
-                ];
-                list.push(Self::new(
-                    &name, 
-                    None, 
-                    vol, 
-                    allowed_sources
-                ));
+            let allowed_sources = vec![
+                HitsoundSource::Skin, 
+                HitsoundSource::Default, 
+                HitsoundSource::Beatmap
+            ];
+            list.push(Self::new(
+                &name, 
+                None, 
+                vol, 
+                allowed_sources
+            ));
 
-                play_normal = (hitsound & 1) > 0;
-                play_whistle = false;
-                play_clap = false;
-                play_finish = false;
-            }
+            play_normal = (hitsound & 1) > 0;
+            play_whistle = false;
+            play_clap = false;
+            play_finish = false;
         }
 
         for (check, set, infix) in [
