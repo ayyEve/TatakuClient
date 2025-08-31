@@ -88,10 +88,10 @@ impl Widget<TatakuAction> for BuiltCustomDialog {
     fn node_id(&self) -> NodeId { self.node_id }
     fn get_style_str(&self) -> ArcStr { self.styles.clone() }
 
-    fn children(&'_ self) -> WidgetChildren<'_, TatakuAction> {
+    fn children(&self) -> WidgetChildren<'_, TatakuAction> {
         WidgetChildren::Single(&self.element)
     }
-    fn children_mut(&'_ mut self) -> WidgetChildrenMut<'_, TatakuAction> {
+    fn children_mut(&mut self) -> WidgetChildrenMut<'_, TatakuAction> {
         WidgetChildrenMut::Single(&mut self.element)
     }
 

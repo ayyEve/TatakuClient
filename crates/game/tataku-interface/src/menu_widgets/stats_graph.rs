@@ -63,10 +63,10 @@ impl Widget<TatakuAction> for StatsGraphWidget {
     fn name(&self) -> CowStr { "stats_graph_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn children(&'_ self) -> WidgetChildren<'_, TatakuAction> {
+    fn children(&self) -> WidgetChildren<'_, TatakuAction> {
         WidgetChildren::Single(&self.node)
     }
-    fn children_mut(&'_ mut self) -> WidgetChildrenMut<'_, TatakuAction> {
+    fn children_mut(&mut self) -> WidgetChildrenMut<'_, TatakuAction> {
         WidgetChildrenMut::Single(&mut self.node)
     }
 

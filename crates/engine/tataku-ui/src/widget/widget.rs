@@ -5,13 +5,13 @@ pub trait Widget<Action: Send + Sync>: Send + Sync {
     fn name(&self) -> CowStr;
     fn node_id(&self) -> NodeId;
 
-    fn all_children(&'_ self) -> WidgetChildren<'_, Action> { self.children() }
-    fn all_children_mut(&'_ mut self) -> WidgetChildrenMut<'_, Action> { self.children_mut() }
+    fn all_children(&self) -> WidgetChildren<'_, Action> { self.children() }
+    fn all_children_mut(&mut self) -> WidgetChildrenMut<'_, Action> { self.children_mut() }
 
     /// helper for default actions
-    fn children(&'_ self) -> WidgetChildren<'_, Action> { WidgetChildren::None }
+    fn children(&self) -> WidgetChildren<'_, Action> { WidgetChildren::None }
     /// helper for default actions
-    fn children_mut(&'_ mut self) -> WidgetChildrenMut<'_, Action> { WidgetChildrenMut::None }
+    fn children_mut(&mut self) -> WidgetChildrenMut<'_, Action> { WidgetChildrenMut::None }
 
     fn get_style_str(&self) -> ArcStr { ArcStr::default() }
     

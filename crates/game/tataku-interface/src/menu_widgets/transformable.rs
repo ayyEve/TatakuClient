@@ -130,10 +130,10 @@ impl Widget<TatakuAction> for TransformableWidget {
     fn name(&self) -> CowStr { "transformable_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn children(&'_ self) -> WidgetChildren<'_, TatakuAction> {
+    fn children(&self) -> WidgetChildren<'_, TatakuAction> {
         WidgetChildren::Single(&self.child)
     }
-    fn children_mut(&'_ mut self) -> WidgetChildrenMut<'_, TatakuAction> {
+    fn children_mut(&mut self) -> WidgetChildrenMut<'_, TatakuAction> {
         WidgetChildrenMut::Single(&mut self.child)
     }
     
