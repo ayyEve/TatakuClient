@@ -1765,9 +1765,23 @@ impl GraphicsEngine for WgpuEngine<'_> {
             .collect::<Vec<_>>()
         ;
 
+        let padded_width = width + 2 * ATLAS_PADDING;
+        let padded_height = height + 2 * ATLAS_PADDING;
+
+        let top_bottom_padding = || (0..padded_width * ATLAS_PADDING * 4).map(|_| 0u8);
+        let left_right_padding = || (0..ATLAS_PADDING * 4).map(|_| 0u8);
+
+        let data = top_bottom_padding()
+            .chain(
+                data.chunks_exact(width as usize * 4)
+                    .flat_map(|data| left_right_padding().chain(data.iter().copied()).chain(left_right_padding()))
+            )
+            .chain(top_bottom_padding())
+            .collect::<Vec<_>>();
+
         let texture_size = Extent3d {
-            width,
-            height,
+            width: padded_width,
+            height: padded_height,
             depth_or_array_layers: 1,
         };
 
@@ -1779,8 +1793,8 @@ impl GraphicsEngine for WgpuEngine<'_> {
                     .0,
                 mip_level: 0,
                 origin: Origin3d {
-                    x: info.x,
-                    y: info.y,
+                    x: info.x.saturating_sub(ATLAS_PADDING),
+                    y: info.y.saturating_sub(ATLAS_PADDING),
                     z: 0
                 },
                 aspect: TextureAspect::All,
@@ -1788,8 +1802,8 @@ impl GraphicsEngine for WgpuEngine<'_> {
             &data,
             TexelCopyBufferLayout {
                 offset: 0,
-                bytes_per_row: Some(4 * width),
-                rows_per_image: Some(height),
+                bytes_per_row: Some(4 * padded_width),
+                rows_per_image: Some(padded_height),
             },
             texture_size,
         );
