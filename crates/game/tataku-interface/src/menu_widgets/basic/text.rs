@@ -69,7 +69,7 @@ impl TextWidget {
         if !text.is_empty() {
             self.layout.break_all_lines(Some(container_width));
 
-            let alignment = match text_style.alignment.horizontal {
+            let alignment = match text_style.alignment {
                 HorizontalAlign::Left => Alignment::Start,
                 HorizontalAlign::Center => Alignment::Middle,
                 HorizontalAlign::Right => Alignment::End,

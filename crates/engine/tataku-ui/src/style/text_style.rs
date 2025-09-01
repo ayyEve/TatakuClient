@@ -8,7 +8,7 @@ pub struct TextStyle {
     #[chain] pub color: Color,
     #[chain] pub line_height: f32,
 
-    #[chain] pub alignment: Alignment,
+    #[chain] pub alignment: HorizontalAlign,
 }
 impl TextStyle {
     // pub fn measure_text(
@@ -57,7 +57,7 @@ impl Default for TextStyle {
             // idk what a sane default for this is
             line_height: 35.0,
 
-            alignment: Alignment::CENTER_LEFT,
+            alignment: HorizontalAlign::Left,
         }
     }
 }
