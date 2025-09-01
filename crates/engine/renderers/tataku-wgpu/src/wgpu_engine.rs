@@ -125,7 +125,10 @@ impl<'window> WgpuEngine<'window> {
                     | Features::BGRA8UNORM_STORAGE,
                 #[cfg(not(feature="texture_arrays"))]
                 required_features: Features::default(),
-                required_limits: Limits::default(),
+                required_limits: Limits {
+                    max_binding_array_elements_per_shader_stage: LAYER_COUNT,
+                    ..Default::default()
+                },
                 memory_hints: MemoryHints::Performance,
                 label: None,
                 trace: wgpu::Trace::Off

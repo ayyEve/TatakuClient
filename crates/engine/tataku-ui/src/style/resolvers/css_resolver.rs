@@ -10,7 +10,7 @@ const ROW_COL: &str = r#"
         flex-direction: column;
     }
 
-    button * {
+    text {
         width: 100%;
     }
 "#;

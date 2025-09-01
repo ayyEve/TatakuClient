@@ -91,16 +91,17 @@ impl FpsDisplay {
 
         let text = format!("{:.2} {} ({:.2}ms)", self.last, self.name, self.frametime_last_draw);
 
-        let layout = simple_text(
+        let mut layout = simple_text(
             &text,
             &TextStyle {
                 font_size: 12.0,
                 ..Default::default()
             },
-            SIZE.x,
             font_context,
             text_layout_context,
         );
+
+        layout.break_all_lines(Some(SIZE.x));
 
         let glyphs = rasterize_layout(
             &layout,
@@ -192,16 +193,17 @@ impl AsyncFpsDisplay {
 
         let text = format!("{:.2} {} ({:.2}ms)", self.last, self.name, self.frametime_last_draw);
 
-        let layout = simple_text(
+        let mut layout = simple_text(
             &text,
             &TextStyle {
                 font_size: 12.0,
                 ..Default::default()
             },
-            SIZE.x,
             font_context,
             text_layout_context,
         );
+
+        layout.break_all_lines(Some(SIZE.x));
 
         let glyphs = rasterize_layout(
             &layout,

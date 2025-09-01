@@ -31,31 +31,60 @@ impl TextWidget {
         }
     }
 
-    fn update_layout(
+    fn recreate_layout(
         &mut self,
         tree: &mut Tree<TatakuAction>,
-        container_width: f32,
         font_context: &mut FontContext,
         text_layout_context: &mut LayoutContext,
     ) {
         let text = self.text.get();
-
         let text_style = tree.get_text_style(self.node_id).unwrap();
 
-        if !text.is_empty() {
-            self.layout = simple_text(
-                &text,
-                text_style,
-                container_width,
-                font_context,
-                text_layout_context,
-            );
+        self.layout = simple_text(
+            &text,
+            text_style,
+            font_context,
+            text_layout_context
+        );
 
+        if !text.is_empty() {
             let widths = self.layout.calculate_content_widths();
 
             tree.update_style(self.node_id, |style| {
-                style.min_width = CssUnit::Pixels(f16::from_f32(widths.min.ceil())).into();
-                style.max_width = CssUnit::Pixels(f16::from_f32(widths.max.ceil())).into();
+                // fixme: there is an off-by-one somewhere
+                style.min_width = CssUnit::Pixels(f16::from_f32(widths.min.ceil() + 1.0)).into();
+                style.max_width = CssUnit::Pixels(f16::from_f32(widths.max.ceil() + 1.0)).into();
+            });
+        }
+    }
+
+    fn wrap_and_align(
+        &mut self,
+        tree: &mut Tree<TatakuAction>,
+        container_width: f32,
+    ) {
+        let text = self.text.get();
+        let text_style = tree.get_text_style(self.node_id).unwrap();
+
+        if !text.is_empty() {
+            self.layout.break_all_lines(Some(container_width));
+
+            let alignment = match text_style.alignment.horizontal {
+                HorizontalAlign::Left => Alignment::Start,
+                HorizontalAlign::Center => Alignment::Middle,
+                HorizontalAlign::Right => Alignment::End,
+            };
+
+            self.layout.align(
+                None,
+                alignment,
+                parley::AlignmentOptions::default(),
+            );
+
+            let height = self.layout.height();
+
+            tree.update_style(self.node_id, |style| {
+                style.height = CssUnit::Pixels(f16::from_f32(height)).into();
             });
         }
     }
@@ -69,15 +98,19 @@ impl Widget<TatakuAction> for TextWidget {
         Ok(self.node_id)
     }
     fn init_style(&mut self, shell: &mut LayoutShell<TatakuAction>) {
-        self.update_layout(
+        self.recreate_layout(
             shell.tree,
-            9999.0,
             shell.font_context,
             shell.text_layout_context
         );
 
         let text_style = shell.tree.get_text_style(self.node_id).unwrap();
         let min_height = text_style.line_height;
+
+        self.wrap_and_align(
+            shell.tree,
+            f32::MAX,
+        );
 
         shell.tree.update_style(self.node_id, |style| {
             style.min_height = CssUnit::Pixels(f16::from_f32(min_height)).into();
@@ -87,33 +120,39 @@ impl Widget<TatakuAction> for TextWidget {
     fn update(&mut self, shell: &mut UpdateShell<TatakuAction>) {
         let bounds = shell.tree.absolute_bounds(self.node_id).unwrap();
 
-        let parent_bounds = shell.tree.parent(self.node_id)
-            .and_then(|parent| shell.tree.absolute_bounds(parent));
+        let refresh_text = self.text.update(shell.values);
 
-        if let Some(parent_bounds) = parent_bounds
-        && parent_bounds.intersection(bounds).is_none() {
-            return;
+        if refresh_text {
+            self.recreate_layout(
+                shell.tree,
+                shell.font_context,
+                shell.text_layout_context,
+            );
         }
 
-        let refresh = self.text.update(shell.values)
+        let refresh_layout = refresh_text
             || bounds.pos.x != self.old_x
             || bounds.size.x != self.old_width;
 
-        if refresh {
+        if refresh_layout {
             self.old_x = bounds.pos.x;
             self.old_width = bounds.size.x;
 
-            self.update_layout(
+            self.wrap_and_align(
                 shell.tree,
                 bounds.size.x,
-                shell.font_context,
-                shell.text_layout_context
             );
         }
     }
     
     fn draw(&self, shell: &mut DrawShell<TatakuAction>) {
-        let transform = shell.tree.get_context(self.node_id).unwrap().global_transform;
+        // todo: handle this better
+        let bounds = shell.tree.bounds(self.node_id).unwrap();
+        let context = shell.tree.get_context(self.node_id).unwrap();
+        let transform = context.global_transform
+            * context.local_transform.matrix()
+            * Matrix::identity().trans(bounds.pos);
+
         let text_style = shell.tree.get_text_style(self.node_id).unwrap();
 
         let glyphs = rasterize_layout(
@@ -199,8 +238,6 @@ pub fn simple_text(
     text: &str,
     style: &TextStyle,
 
-    container_width: f32,
-
     font_context: &mut FontContext,
     text_layout_context: &mut LayoutContext,
 ) -> Layout<[u8; 4]> {
@@ -213,21 +250,7 @@ pub fn simple_text(
 
     builder.push_text(text);
 
-    let (mut layout, _text) = builder.build();
-
-    layout.break_all_lines(Some(container_width));
-
-    let alignment = match style.alignment.horizontal {
-        HorizontalAlign::Left => Alignment::Start,
-        HorizontalAlign::Center => Alignment::Middle,
-        HorizontalAlign::Right => Alignment::End,
-    };
-
-    layout.align(
-        None,
-        alignment,
-        parley::AlignmentOptions::default(),
-    );
+    let (layout, _text) = builder.build();
 
     layout
 }
