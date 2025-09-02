@@ -30,8 +30,7 @@ impl UiManager {
         root: Box<dyn Widget<TatakuAction>>,
         values: &mut T,
         actions: &mut ActionQueue,
-        font_context: &mut parley::FontContext,
-        text_layout_context: &mut parley::LayoutContext<Color>,
+        text_layout_contexts: &mut TextLayoutContexts,
     ) {
         self.root_tree.handle_event(
             &TatakuEventType::MenuLeave,
@@ -44,7 +43,7 @@ impl UiManager {
 
         self.current_menu = root.name().into_owned();
         self.messages.retain(|m| !m.owner.is_menu());
-        self.root_tree.set_node(root, values, font_context, text_layout_context);
+        self.root_tree.set_node(root, values, text_layout_contexts);
     }
 
 
@@ -54,8 +53,7 @@ impl UiManager {
         options: DialogCreateOptions,
         values: &mut dyn Reflect,
         actions: &mut ActionQueue,
-        font_context: &mut parley::FontContext,
-        text_layout_context: &mut parley::LayoutContext<Color>,
+        text_layout_contexts: &mut TextLayoutContexts,
     ) {
         let name = dialog.name();
         if !options.allow_multiple {
@@ -88,7 +86,7 @@ impl UiManager {
             EmptyWidget::new_boxed()
         );
 
-        tree.set_node(dialog, values, font_context, text_layout_context);
+        tree.set_node(dialog, values, text_layout_contexts);
         tree.handle_message(
             &Message::new(
                 tree.owner,
@@ -185,8 +183,7 @@ impl UiManager {
         values: &mut dyn Reflect,
         actions: &mut ActionQueue,
         skin_manager: &mut dyn SkinProvider,
-        font_context: &mut parley::FontContext,
-        text_layout_context: &mut parley::LayoutContext<Color>,
+        text_layout_contexts: &mut TextLayoutContexts,
     ) {
         self.handle_inputs(input_state, values, actions);
 
@@ -253,11 +250,23 @@ impl UiManager {
 
         // update dialogs
         for dialog in self.dialogs.iter_mut().rev() {
-            dialog.update(values, actions, &mut self.messages, skin_manager, font_context, text_layout_context);
+            dialog.update(
+                values, 
+                actions, 
+                &mut self.messages, 
+                skin_manager, 
+                text_layout_contexts
+            );
         }
 
         // update the root widget
-        self.root_tree.update(values, actions, &mut self.messages, skin_manager, font_context, text_layout_context);
+        self.root_tree.update(
+            values, 
+            actions, 
+            &mut self.messages, 
+            skin_manager, 
+            text_layout_contexts
+        );
 
 
         // im leaving this in
@@ -299,18 +308,18 @@ impl UiManager {
         &mut self,
         values: &ValueCollection,
         list: &mut RenderableCollection,
-        font_context: &mut parley::FontContext,
+        text_layout_contexts: &mut TextLayoutContexts,
     ) {
-        self.root_tree.draw(values, list, font_context);
+        self.root_tree.draw(values, list, text_layout_contexts);
     }
     pub fn draw_dialogs(
         &mut self,
         values: &ValueCollection,
         list: &mut RenderableCollection,
-        font_context: &mut parley::FontContext,
+        text_layout_contexts: &mut TextLayoutContexts,
     ) {
         for i in self.dialogs.iter_mut().rev() {
-            i.draw(values, list, font_context);
+            i.draw(values, list, text_layout_contexts);
         }
     }
 
@@ -437,16 +446,14 @@ impl UiManager {
         values: &mut dyn Reflect,
         actions: &mut ActionQueue,
         skin_manager: &mut dyn SkinProvider,
-        font_context: &mut parley::FontContext,
-        text_layout_context: &mut parley::LayoutContext<Color>,
+        text_layout_contexts: &mut TextLayoutContexts,
     ) {
         self.root_tree.reload_skin(
             values,
             &mut self.messages,
             actions,
             skin_manager,
-            font_context,
-            text_layout_context,
+            text_layout_contexts,
         );
 
         for i in self.dialogs.iter_mut() {
@@ -455,8 +462,7 @@ impl UiManager {
                 &mut self.messages,
                 actions,
                 skin_manager,
-                font_context,
-                text_layout_context,
+                text_layout_contexts,
             );
         }
     }

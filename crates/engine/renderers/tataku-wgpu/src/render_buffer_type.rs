@@ -26,7 +26,10 @@ impl RenderBufferType {
     }
     pub fn get_pipeline(&self) -> tataku::GraphicsPipeline {
         match self {
-            Self::Standard(v) => v.blend_mode,
+            Self::Standard(v) => v.blend_mode
+                .map(tataku::GraphicsPipeline::Standard)
+                .unwrap_or_default()
+            ,
             Self::Slider(_) => tataku::GraphicsPipeline::Slider,
             Self::Flashlight(_) => tataku::GraphicsPipeline::Flashlight,
             Self::GaussianBlur(_) => tataku::GraphicsPipeline::GaussianBlur,

@@ -11,8 +11,7 @@ impl XmlTestManager {
         ui_manager: &mut UiManager,
         values: &mut ValueCollection,
         actions: &mut ActionQueue,
-        font_context: &mut parley::FontContext,
-        text_layout_context: &mut parley::LayoutContext<Color>,
+        text_layout_contexts: &mut TextLayoutContexts,
     ) {
         if let Some(file) = self.current_file.as_ref() {
             let Ok(new_meta) = std::fs::metadata(&file.path)
@@ -29,15 +28,13 @@ impl XmlTestManager {
                     ui_manager,
                     values,
                     actions,
-                    font_context,
-                    text_layout_context,
+                    text_layout_contexts,
                 ).is_err() {
                     ui_manager.set_root(
                         EmptyWidget::new_boxed(),
                         values,
                         actions,
-                        font_context,
-                        text_layout_context,
+                        text_layout_contexts,
                     );
                 }
             }
@@ -51,8 +48,7 @@ impl XmlTestManager {
         values: &mut ValueCollection,
         actions: &mut ActionQueue,
         loaded_type: &str,
-        font_context: &mut parley::FontContext,
-        text_layout_context: &mut parley::LayoutContext<Color>,
+        text_layout_contexts: &mut TextLayoutContexts,
     ) {
         let mut children = error
             .into_iter()
@@ -71,7 +67,7 @@ impl XmlTestManager {
             // .flex_direction(ui::FlexDirection::Column)
             .boxed();
 
-        ui_manager.set_root(thing, values, actions, font_context, text_layout_context);
+        ui_manager.set_root(thing, values, actions, text_layout_contexts);
     }
 
     pub fn load_file(
@@ -80,8 +76,7 @@ impl XmlTestManager {
         ui_manager: &mut UiManager,
         values: &mut ValueCollection,
         actions: &mut ActionQueue,
-        font_context: &mut parley::FontContext,
-        text_layout_context: &mut parley::LayoutContext<Color>,
+        text_layout_contexts: &mut TextLayoutContexts,
     ) -> TatakuResult<()> {
         info!("loading file: {path}");
         self.current_file = None;
@@ -110,8 +105,7 @@ impl XmlTestManager {
                         Box::new(menu),
                         values,
                         actions,
-                        font_context,
-                        text_layout_context,
+                        text_layout_contexts,
                     ),
                     Err(e) => Self::handle_error(
                         ui_manager,
@@ -119,8 +113,7 @@ impl XmlTestManager {
                         values,
                         actions,
                         "menu",
-                        font_context,
-                        text_layout_context,
+                        text_layout_contexts,
                     ),
                 }
             }
@@ -138,16 +131,14 @@ impl XmlTestManager {
                             EmptyWidget::new_boxed(),
                             values,
                             actions,
-                            font_context,
-                            text_layout_context,
+                            text_layout_contexts,
                         );
                         ui_manager.add_dialog(
                             Box::new(dialog),
                             DialogCreateOptions::default(),
                             values,
                             actions,
-                            font_context,
-                            text_layout_context,
+                            text_layout_contexts,
                         );
                     },
                     Err(e) => Self::handle_error(
@@ -156,8 +147,7 @@ impl XmlTestManager {
                         values,
                         actions,
                         "dialog",
-                        font_context,
-                        text_layout_context,
+                        text_layout_contexts,
                     ),
                 }
             }

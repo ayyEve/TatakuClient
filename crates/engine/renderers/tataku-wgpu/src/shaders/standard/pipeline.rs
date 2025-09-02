@@ -29,14 +29,14 @@ pub(crate) fn create_standard_pipeline(
 
     let mut pipelines = HashMap::new();
     for blend_mode in [
-        tataku::GraphicsPipeline::AlphaBlending,
-        tataku::GraphicsPipeline::AlphaOverwrite,
-        tataku::GraphicsPipeline::PremultipliedAlpha,
-        tataku::GraphicsPipeline::AdditiveBlending,
-        tataku::GraphicsPipeline::OsuAdditiveBlending,
-        tataku::GraphicsPipeline::SourceAlphaBlending,
+        tataku::BlendMode::AlphaBlending,
+        tataku::BlendMode::AlphaOverwrite,
+        tataku::BlendMode::PremultipliedAlpha,
+        tataku::BlendMode::AdditiveBlending,
+        tataku::BlendMode::OsuAdditiveBlending,
+        tataku::BlendMode::SourceAlphaBlending,
     ] {
-        let blend_state = WgpuEngine::map_pipeline(blend_mode);
+        let blend_state = WgpuEngine::map_blend_mode(blend_mode);
 
         let pipeline = device.create_render_pipeline(
             &wgpu::RenderPipelineDescriptor {
@@ -78,7 +78,11 @@ pub(crate) fn create_standard_pipeline(
             }
         );
 
-        pipelines.insert(blend_mode, pipeline);
+
+        pipelines.insert(
+            tataku::GraphicsPipeline::Standard(blend_mode), 
+            pipeline
+        );
     }
 
     pipelines

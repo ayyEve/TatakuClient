@@ -34,21 +34,19 @@ pub struct Game {
 
     #[cfg(feature="graphics")] pub(super) ui_manager: UiManager,
     #[cfg(feature="graphics")] pub(super) skin_manager: SkinManager,
-    #[cfg(feature="gameplay")] pub(super) input_manager: InputManager,
     #[cfg(feature="graphics")] pub(super) cursor_manager: CursorManager,
     #[cfg(feature="graphics")] pub(super) volume_controller: VolumeControl,
     #[cfg(feature="graphics")] pub(super) custom_menu_manager: CustomMenuManager,
+    #[cfg(feature="graphics")] pub(super) text_layout_contexts: TextLayoutContexts,
     #[cfg(feature="graphics")] pub(super) xml_test_manager: Option<XmlTestManager>,
     #[cfg(feature="graphics")] pub(super) notification_manager: NotificationManager,
+    #[cfg(feature="graphics")] pub(super) gameplay_managers: HashMap<GameplayId, (GameplayManager, NewManager)>,
+    
+    #[cfg(feature="gameplay")] pub(super) input_manager: InputManager,
     #[cfg(feature="gameplay")] pub(super) spectator_manager: Option<Box<SpectatorManager>>,
     #[cfg(feature="gameplay")] pub(super) multiplayer_manager: Option<Box<MultiplayerManager>>,
-    #[cfg(feature="graphics")] pub(super) gameplay_managers: HashMap<GameplayId, (GameplayManager, NewManager)>,
-
     #[cfg(feature="gameplay")] pub(super) pending_gameplay_manager: Option<Box<GameplayManager>>,
 
-    #[cfg(feature="graphics")] pub(super) font_context: parley::FontContext,
-    // #[cfg(feature="graphics")] pub(super) scale_context: parley::swash::scale::ScaleContext,
-    #[cfg(feature="graphics")] pub(super) text_layout_context: parley::LayoutContext<Color>,
 
     integrations: Vec<Box<dyn TatakuIntegration>>,
 
@@ -128,7 +126,7 @@ impl Game {
 
             #[cfg(feature="graphics")] cursor_manager: CursorManager::new(
                 skin_manager.skin().clone(),
-                settings.cursor_settings.clone()
+                settings.cursor_settings.clone(),
             ),
             #[cfg(feature="graphics")] skin_manager,
             #[cfg(feature="graphics")] xml_test_manager: None,
@@ -138,9 +136,7 @@ impl Game {
             #[cfg(feature="graphics")] custom_menu_manager: CustomMenuManager::default(),
             #[cfg(feature="graphics")] notification_manager: NotificationManager::default(),
 
-            #[cfg(feature="graphics")] font_context: parley::FontContext::default(),
-            // #[cfg(feature="graphics")] scale_context: parley::swash::scale::ScaleContext::new(),
-            #[cfg(feature="graphics")] text_layout_context: parley::LayoutContext::new(),
+            #[cfg(feature="graphics")] text_layout_contexts: TextLayoutContexts::new(),
 
             integrations: Vec::new(),
 
@@ -184,15 +180,13 @@ impl Game {
             &mut self.ui_manager,
             &mut self.values,
             &mut self.actions,
-            &mut self.font_context,
-            &mut self.text_layout_context,
+            &mut self.text_layout_contexts,
         ).is_err() {
             self.ui_manager.set_root(
                 EmptyWidget::new_boxed(),
                 &mut self.values,
                 &mut self.actions,
-                &mut self.font_context,
-                &mut self.text_layout_context,
+                &mut self.text_layout_contexts,
             );
         }
 
@@ -237,26 +231,41 @@ impl Game {
         );
     }
 
-    fn init(&mut self) {
-        let now = std::time::Instant::now();
-
-
+    #[cfg(feature="graphics")]
+    fn init_fonts(&mut self) {
+        // init FontAwesome
         {
             let data = std::fs::read(
                 "resources/fonts/font_awesome_6_regular.otf"
             ).unwrap();
 
-            let ids = self.font_context
+            let font_context = &mut self
+                .text_layout_contexts
+                .font;
+
+            let ids = font_context
                 .collection
                 .register_fonts(data.into(), None);
 
-            self.font_context.collection.append_generic_families(
+            font_context.collection.append_generic_families(
                 parley::GenericFamily::Emoji, 
                 ids.into_iter().map(|(i, _)| i)
             );
         }
+    }
 
+    fn init(&mut self) {
+        let now = std::time::Instant::now();
+        
         #[cfg(feature="graphics")] {
+            self.init_fonts();
+            
+            // init the default cursor
+            self.cursor_manager.handle_cursor_action(
+                CursorAction::SetCursorMode(CursorMode::Normal),
+                &mut self.text_layout_contexts,
+            );
+
             self.load_custom_menus();
             self.load_theme();
         }
@@ -710,8 +719,7 @@ impl Game {
             &mut self.values,
             &mut self.actions,
             &mut self.skin_manager,
-            &mut self.font_context,
-            &mut self.text_layout_context,
+            &mut self.text_layout_contexts,
         );
 
         #[cfg(feature="graphics")]
@@ -720,8 +728,7 @@ impl Game {
                 &mut self.ui_manager,
                 &mut self.values,
                 &mut self.actions,
-                &mut self.font_context,
-                &mut self.text_layout_context,
+                &mut self.text_layout_contexts,
             );
         }
 
@@ -841,15 +848,13 @@ impl Game {
                                 menu,
                                 &mut self.values,
                                 &mut self.actions,
-                                &mut self.font_context,
-                                &mut self.text_layout_context,
+                                &mut self.text_layout_contexts,
                             );
                             self.ui_manager.reload_skin(
                                 &mut self.values,
                                 &mut self.actions,
                                 &mut self.skin_manager,
-                                &mut self.font_context,
-                                &mut self.text_layout_context,
+                                &mut self.text_layout_contexts,
                             );
 
                             let elapsed = self.game_start.as_millis();
@@ -1189,7 +1194,7 @@ impl Game {
         self.ui_manager.draw_menu(
             &self.values,
             &mut render_queue,
-            &mut self.font_context
+            &mut self.text_layout_contexts,
         );
 
         // state
@@ -1242,30 +1247,26 @@ impl Game {
         self.ui_manager.draw_dialogs(
             &self.values,
             &mut render_queue,
-            &mut self.font_context,
+            &mut self.text_layout_contexts,
         );
 
 
         // draw fps's
         self.fps_display.draw(
             &mut render_queue,
-            &mut self.font_context,
-            &mut self.text_layout_context
+            &mut self.text_layout_contexts
         );
         self.update_display.draw(
             &mut render_queue,
-            &mut self.font_context,
-            &mut self.text_layout_context
+            &mut self.text_layout_contexts
         );
         self.render_display.draw(
             &mut render_queue,
-            &mut self.font_context,
-            &mut self.text_layout_context
+            &mut self.text_layout_contexts
         );
         self.input_display.draw(
             &mut render_queue,
-            &mut self.font_context,
-            &mut self.text_layout_context
+            &mut self.text_layout_contexts
         );
 
         // draw the download manager
@@ -1277,16 +1278,11 @@ impl Game {
         // volume control
         self.volume_controller.draw(
             &mut render_queue, 
-            &mut self.font_context, 
-            &mut self.text_layout_context
+            &mut self.text_layout_contexts
         );
 
         // draw cursor
-        self.cursor_manager.draw(
-            &mut render_queue, 
-            &mut self.font_context, 
-            &mut self.text_layout_context,
-        );
+        self.cursor_manager.draw(&mut render_queue);
         
         // toss the items to the window to render
         let _ = self.window_proxy.send_event(WindowAction::RenderData(render_queue.take()));
@@ -1588,7 +1584,10 @@ impl Game {
 
             #[cfg(feature="graphics")]
             TatakuAction::CursorAction(action)
-                => self.cursor_manager.handle_cursor_action(action),
+                => self.cursor_manager.handle_cursor_action(
+                    action, 
+                    &mut self.text_layout_contexts
+                ),
 
             #[cfg(feature="graphics")]
             TatakuAction::WindowAction(action)
@@ -1623,16 +1622,14 @@ impl Game {
                     menu,
                     &mut self.values,
                     &mut self.actions,
-                    &mut self.font_context,
-                    &mut self.text_layout_context,
+                    &mut self.text_layout_contexts,
                 );
                 self.queued_events.push((TatakuEventType::MenuEnter, None));
                 self.ui_manager.reload_skin(
                     &mut self.values,
                     &mut self.actions,
                     &mut self.skin_manager,
-                    &mut self.font_context,
-                    &mut self.text_layout_context,
+                    &mut self.text_layout_contexts,
                 );
             }
             GameState::InMenu => {}
@@ -1652,8 +1649,7 @@ impl Game {
                     EmptyWidget::new_boxed(),
                     &mut self.values,
                     &mut self.actions,
-                    &mut self.font_context,
-                    &mut self.text_layout_context,
+                    &mut self.text_layout_contexts,
                 );
                 self.queued_state = state;
             }

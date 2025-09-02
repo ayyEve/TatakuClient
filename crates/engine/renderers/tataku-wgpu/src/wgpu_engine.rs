@@ -62,11 +62,11 @@ pub struct WgpuEngine<'window> {
     box_blur_pipeline: shaders::box_blur::Pipeline,
 
     #[cfg(feature="vello_rendering")]
-    pub(crate) vello_pipeline: Option<shaders::vello::Pipeline>,
+    vello_pipeline: Option<shaders::vello::Pipeline>,
     font_scale_context: parley::swash::scale::ScaleContext,
 
 
-    scissors: tataku::ScissorManager,
+    pub(crate) scissors: tataku::ScissorManager,
 
     present_modes: Vec<tataku::Vsync>,
     can_blur: bool,
@@ -450,7 +450,7 @@ impl<'window> WgpuEngine<'window> {
             (PipelineType::Standard, Box::new(RenderBufferQueueType::Standard(
                 RenderBufferQueue::default().init(
                     device,
-                    &pipelines[&tataku::GraphicsPipeline::AlphaBlending]
+                    &pipelines[&tataku::GraphicsPipeline::Standard(tataku::BlendMode::AlphaBlending)]
                 )
             ))),
             (PipelineType::Slider, Box::new(RenderBufferQueueType::Slider(
@@ -595,7 +595,7 @@ impl<'window> WgpuEngine<'window> {
 
                 // blurs are a special case, they're compute shaders and not fragment shaders
                 // vello is also a special case as it handles its own pipelines itself
-                if pipeline_type.special_render() {
+                if pipeline_type.is_compute() {
                     if pipeline_type.is_blur()
                     && (!self.can_blur || !self.blur_enabled) {
                         continue
@@ -611,7 +611,7 @@ impl<'window> WgpuEngine<'window> {
                     self.queue.submit([encoder.finish()]);
 
 
-                    // perform the blur
+                    // perform the compute shader
                     match pipeline_type {
                         PipelineType::GaussianBlur => {
                             let RenderBufferType::GaussianBlur(buffer) = i
@@ -954,11 +954,11 @@ impl WgpuEngine<'_> {
             .current_render_buffer.take()
         else { return };
 
-        let pipeline = match last_buffer.draw_type() {
+        let pipeline = match last_buffer.pipeline_type() {
             PipelineType::GaussianBlur => WgpuPipeline::Compute(&self.gaussian_blur_pipeline.pipeline),
             PipelineType::BoxBlur => WgpuPipeline::Compute(&self.box_blur_pipeline.pipeline),
             PipelineType::Vello => WgpuPipeline::None,
-            other => WgpuPipeline::Render(&self.pipelines[&other.as_pipeline()]),
+            _ => WgpuPipeline::Render(&self.pipelines[&last_buffer.graphics_pipeline()]),
         };
         if let Some(b) = last_buffer.dump_and_next(
             &self.queue,
@@ -968,12 +968,12 @@ impl WgpuEngine<'_> {
             self.completed_buffers.push(b);
         };
 
-        self.buffer_queues.insert(last_buffer.draw_type(), last_buffer);
+        self.buffer_queues.insert(last_buffer.pipeline_type(), last_buffer);
     }
 
     fn check_dump_and_next(&mut self, to_draw: PipelineType) {
         if let Some(last_buffer) = &self.current_render_buffer
-            && last_buffer.draw_type() == to_draw
+            && last_buffer.pipeline_type() == to_draw
         { return }
 
         self.dump_last_drawn();
@@ -988,7 +988,7 @@ impl WgpuEngine<'_> {
         &'a mut self,
         vtx_count: u64,
         idx_count: u64,
-        blend_mode: tataku::GraphicsPipeline
+        blend_mode: tataku::BlendMode
     ) -> Option<shaders::standard::ReserveData<'a>> {
         use crate::shaders::standard;
 
@@ -1002,8 +1002,8 @@ impl WgpuEngine<'_> {
             .expect("didnt get vertex recording buffer");
 
         if !( // blend mode check
-            recording_buffer.blend_mode == blend_mode
-            || recording_buffer.blend_mode == tataku::GraphicsPipeline::None
+            recording_buffer.blend_mode.is_none()
+            || recording_buffer.blend_mode.unwrap() == blend_mode
         )
         || !( // scissor check
             recording_buffer.scissor == Some(scissor)
@@ -1012,7 +1012,7 @@ impl WgpuEngine<'_> {
         || recording_buffer.used_vertices + vtx_count > standard::Buffer::VTX_PER_BUF
         || recording_buffer.used_indices + idx_count > standard::Buffer::IDX_PER_BUF {
             let pipeline = WgpuPipeline::Render(
-                &self.pipelines[&blend_mode]
+                &self.pipelines[&tataku::GraphicsPipeline::Standard(blend_mode)]
             );
 
             if let Some(b) = vertex_buffer_queue.dump_and_next(
@@ -1024,11 +1024,11 @@ impl WgpuEngine<'_> {
             }
 
             recording_buffer = vertex_buffer_queue.recording_buffer()?;
-            recording_buffer.blend_mode = blend_mode;
+            recording_buffer.blend_mode = Some(blend_mode);
             recording_buffer.scissor = Some(scissor);
         }
-        if recording_buffer.blend_mode == tataku::GraphicsPipeline::None {
-            recording_buffer.blend_mode = blend_mode;
+        if recording_buffer.blend_mode.is_none() {
+            recording_buffer.blend_mode = Some(blend_mode);
         }
         if recording_buffer.scissor.is_none() {
             recording_buffer.scissor = Some(scissor);
@@ -1061,7 +1061,7 @@ impl WgpuEngine<'_> {
         h_flip: bool,
         v_flip: bool,
         transform: tataku::Matrix,
-        blend_mode: tataku::GraphicsPipeline,
+        blend_mode: tataku::BlendMode,
     ) {
         use shaders::standard;
         let Some(mut reserved) = self.reserve_standard(
@@ -1135,7 +1135,7 @@ impl WgpuEngine<'_> {
         quad: [tataku::Vector2; 4],
         color: tataku::Color,
         transform: tataku::Matrix,
-        blend_mode: tataku::GraphicsPipeline,
+        blend_mode: tataku::BlendMode,
     ) {
         let Some(mut reserved) = self.reserve_standard(
             4,
@@ -1410,7 +1410,6 @@ impl WgpuEngine<'_> {
     #[cfg(feature="vello_rendering")]
     pub(crate) fn reserve_vello<'a>(
         &'a mut self,
-        blend_mode: tataku::GraphicsPipeline,
     ) -> Option<shaders::vello::ReserveData<'a>> {
         let scissor = self.scissors.current_scissor();
         self.check_dump_and_next(PipelineType::Vello);
@@ -1421,14 +1420,12 @@ impl WgpuEngine<'_> {
             .recording_buffer()
             .expect("didnt get vello recording buffer");
 
-        let scissor_check = recording_buffer.scissor == Some(scissor)
-            || recording_buffer.scissor.is_none();
-
-        let blend_mode_check = recording_buffer.blend_mode == blend_mode
-            || recording_buffer.blend_mode == tataku::GraphicsPipeline::None
+        let scissor_check = 
+            recording_buffer.scissor == Some(scissor)
+            || recording_buffer.scissor.is_none()
             ;
 
-        if !scissor_check || !blend_mode_check {
+        if !scissor_check {
             if let Some(b) = buffer_queue.dump_and_next(
                 &self.queue,
                 &self.device,
@@ -1441,9 +1438,6 @@ impl WgpuEngine<'_> {
 
         if recording_buffer.scissor.is_none() {
             recording_buffer.scissor = Some(scissor);
-        }
-        if recording_buffer.blend_mode == tataku::GraphicsPipeline::None {
-            recording_buffer.blend_mode = blend_mode;
         }
 
         recording_buffer.used += 1;
@@ -1458,7 +1452,7 @@ impl WgpuEngine<'_> {
 
 // draw helpers
 impl WgpuEngine<'_> {
-    pub(crate) fn map_pipeline(pipeline: tataku::GraphicsPipeline) -> wgpu::BlendState {
+    pub(crate) fn map_blend_mode(blend_mode: tataku::BlendMode) -> wgpu::BlendState {
         use wgpu:: {
             BlendState,
             BlendComponent,
@@ -1466,11 +1460,11 @@ impl WgpuEngine<'_> {
             BlendOperation
         };
 
-        match pipeline {
-            tataku::GraphicsPipeline::AlphaBlending => BlendState::ALPHA_BLENDING,
-            tataku::GraphicsPipeline::AlphaOverwrite => BlendState::REPLACE,
-            tataku::GraphicsPipeline::PremultipliedAlpha => BlendState::PREMULTIPLIED_ALPHA_BLENDING,
-            tataku::GraphicsPipeline::AdditiveBlending => BlendState {
+        match blend_mode {
+            tataku::BlendMode::AlphaBlending => BlendState::ALPHA_BLENDING,
+            tataku::BlendMode::AlphaOverwrite => BlendState::REPLACE,
+            tataku::BlendMode::PremultipliedAlpha => BlendState::PREMULTIPLIED_ALPHA_BLENDING,
+            tataku::BlendMode::AdditiveBlending => BlendState {
                 color: BlendComponent {
                     src_factor: BlendFactor::One,
                     dst_factor: BlendFactor::One,
@@ -1482,7 +1476,7 @@ impl WgpuEngine<'_> {
                     operation: BlendOperation::Add
                 }
             },
-            tataku::GraphicsPipeline::OsuAdditiveBlending => BlendState {
+            tataku::BlendMode::OsuAdditiveBlending => BlendState {
                 color: BlendComponent {
                     src_factor: BlendFactor::SrcAlpha,
                     dst_factor: BlendFactor::One,
@@ -1494,7 +1488,7 @@ impl WgpuEngine<'_> {
                     operation: BlendOperation::Add
                 }
             },
-            tataku::GraphicsPipeline::SourceAlphaBlending => BlendState {
+            tataku::BlendMode::SourceAlphaBlending => BlendState {
                 color: BlendComponent {
                     src_factor: BlendFactor::SrcAlpha,
                     dst_factor: BlendFactor::One,
@@ -1506,12 +1500,6 @@ impl WgpuEngine<'_> {
                     operation: BlendOperation::Add
                 }
             },
-
-            tataku::GraphicsPipeline::None
-            | tataku::GraphicsPipeline::BoxBlur
-            | tataku::GraphicsPipeline::GaussianBlur
-            | tataku::GraphicsPipeline::Slider
-            | tataku::GraphicsPipeline::Flashlight => unimplemented!("nope")
         }
     }
 
@@ -1521,7 +1509,7 @@ impl WgpuEngine<'_> {
         color: tataku::Color,
         border: Option<f32>,
         transform: tataku::Matrix,
-        blend_mode: tataku::GraphicsPipeline
+        blend_mode: tataku::BlendMode
     ) {
         let mut polygon = polygon.iter();
         let mut path = LyonPath::builder();
@@ -1545,7 +1533,7 @@ impl WgpuEngine<'_> {
         color: tataku::Color,
         border: Option<f32>,
         transform: tataku::Matrix,
-        blend_mode: tataku::GraphicsPipeline
+        blend_mode: tataku::BlendMode
     ) {
         use lyon_tessellation::{
             VertexBuffers,
@@ -1967,7 +1955,7 @@ impl tataku::RenderingEngine for WgpuEngine<'_> {
             self.completed_buffers.push(b);
         }
 
-        self.buffer_queues.insert(last_queue.draw_type(), last_queue);
+        self.buffer_queues.insert(last_queue.pipeline_type(), last_queue);
     }
 
     fn present(&mut self) -> tataku::TatakuResult<()> {
@@ -2017,7 +2005,7 @@ impl tataku::DrawEngine for WgpuEngine<'_> {
         color: tataku::Color,
         resolution: u32,
         transform: tataku::Matrix,
-        blend_mode: tataku::GraphicsPipeline,
+        blend_mode: tataku::BlendMode,
     ) {
         let n = resolution;
         let x = -radius;
@@ -2055,7 +2043,7 @@ impl tataku::DrawEngine for WgpuEngine<'_> {
         border: Option<tataku::Border>,
         resolution: u32,
         transform: tataku::Matrix,
-        blend_mode: tataku::GraphicsPipeline
+        blend_mode: tataku::BlendMode
     ) {
         let n = resolution;
         let x = -radius;
@@ -2104,7 +2092,7 @@ impl tataku::DrawEngine for WgpuEngine<'_> {
         thickness: f32,
         color: tataku::Color,
         transform: tataku::Matrix,
-        blend_mode: tataku::GraphicsPipeline,
+        blend_mode: tataku::BlendMode,
     ) {
         let p1 = tataku::Vector2::ZERO;
 
@@ -2128,7 +2116,7 @@ impl tataku::DrawEngine for WgpuEngine<'_> {
         shape: tataku::Shape,
         color: tataku::Color,
         transform: tataku::Matrix,
-        blend_mode: tataku::GraphicsPipeline,
+        blend_mode: tataku::BlendMode,
     ) {
         // for some reason something gets set to infinity on screen resize and panics the tesselator, this prevents the panic
         if rect.iter().any(|n| !n.is_normal() && *n != 0.0) { return }
@@ -2193,19 +2181,16 @@ impl tataku::DrawEngine for WgpuEngine<'_> {
 
     fn draw_tex(
         &mut self,
-        tex: &tataku::TextureReference,
-        color: tataku::Color,
-        h_flip: bool,
-        v_flip: bool,
+        tex: tataku::TextureDraw,
         transform: tataku::Matrix,
-        blend_mode: tataku::GraphicsPipeline,
+        blend_mode: tataku::BlendMode,
     ) {
         self.reserve_tex_quad(
-            tex,
-            [0.0, 0.0, tex.width as f32, tex.height as f32],
-            color,
-            h_flip,
-            v_flip,
+            tex.tex,
+            [0.0, 0.0, tex.tex.width as f32, tex.tex.height as f32],
+            tex.color,
+            tex.flip.flip_h(),
+            tex.flip.flip_v(),
             transform,
             blend_mode
         );
@@ -2337,7 +2322,7 @@ impl tataku::DrawEngine for WgpuEngine<'_> {
     fn draw_text(
         &mut self,
         transform: tataku::Matrix,
-        blend_mode: tataku::GraphicsPipeline,
+        blend_mode: tataku::BlendMode,
         layout: &parley::Layout<tataku_client_common::prelude::Color>,
     ) {
         use parley::swash::{
@@ -2423,10 +2408,10 @@ impl tataku::DrawEngine for WgpuEngine<'_> {
             let tex = self.load_texture_rgba(&data, size).unwrap();
 
             self.draw_tex(
-                &tex,
-                tataku::Color::WHITE,
-                false,
-                false,
+                tataku::TextureDraw::new(
+                    &tex,
+                    tataku::Color::WHITE,
+                ),
                 transform.trans(g.pos),
                 blend_mode,
             );

@@ -10,7 +10,7 @@ pub struct Rectangle {
 
     pub origin: Vector2,
     pub scale: Vector2,
-    blend_mode: GraphicsPipeline,
+    blend_mode: BlendMode,
 
     #[chain] pub shape: Shape,
     pub border: Option<Border>,
@@ -35,7 +35,7 @@ impl Rectangle {
             color,
             rotation: 0.0,
             shape: Shape::Square,
-            blend_mode: GraphicsPipeline::AlphaBlending,
+            blend_mode: BlendMode::AlphaBlending,
 
             border: None,
             origin: bounds.size / 2.0,
@@ -56,8 +56,13 @@ impl Rectangle {
 impl TatakuRenderable for Rectangle {
     fn get_name(&self) -> String { "Rectangle".to_owned() }
 
-    fn get_blend_mode(&self) -> GraphicsPipeline { self.blend_mode }
-    fn set_blend_mode(&mut self, blend_mode: GraphicsPipeline) { self.blend_mode = blend_mode }
+    fn get_pipeline(&self) -> GraphicsPipeline { GraphicsPipeline::Standard(self.blend_mode) }
+    fn set_pipeline(&mut self, pipeline: GraphicsPipeline) { 
+        let GraphicsPipeline::Standard(blend_mode) = pipeline 
+        else { return };
+
+        self.blend_mode = blend_mode; 
+    }
 
     fn draw(
         &self, 
@@ -82,7 +87,7 @@ impl TatakuRenderable for Rectangle {
 
         g.draw_rect(
             [
-                0.0, 0.0, //self.inner.pos.x, self.inner.pos.y, 
+                0.0, 0.0, 
                 self.inner.size.x, self.inner.size.y
             ], 
             border, 
@@ -91,14 +96,6 @@ impl TatakuRenderable for Rectangle {
             transform, 
             self.blend_mode
         );
-        // g.draw_rect(
-        //     [0.0, 0.0, self.inner.size.x, self.inner.size.y], 
-        //     border, 
-        //     self.shape, 
-        //     color, 
-        //     transform, 
-        //     self.blend_mode
-        // );
     }
 }
 
@@ -110,7 +107,7 @@ impl From<Bounds> for Rectangle {
             rotation: 0.0,
             origin: other.size / 2.0,
             scale: Vector2::ONE,
-            blend_mode: GraphicsPipeline::default(),
+            blend_mode: BlendMode::default(),
             shape: Shape::Square,
             border: None
         }

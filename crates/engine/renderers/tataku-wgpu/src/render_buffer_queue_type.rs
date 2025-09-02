@@ -67,7 +67,7 @@ impl RenderBufferQueueType {
         }
     }
 
-    pub fn draw_type(&self) -> PipelineType {
+    pub fn pipeline_type(&self) -> PipelineType {
         match self {
             Self::Standard(_) => PipelineType::Standard,
             Self::Slider(_) => PipelineType::Slider,
@@ -77,6 +77,25 @@ impl RenderBufferQueueType {
             
             #[cfg(feature="vello")]
             Self::Vello(_) => PipelineType::Vello,
+        }
+    }
+
+    pub fn graphics_pipeline(&self) -> tataku::GraphicsPipeline {
+        match self {
+            Self::Standard(s) => {
+                let b = s
+                    .first_used()
+                    .and_then(|b| b.blend_mode)
+                    .unwrap_or_default();
+                tataku::GraphicsPipeline::Standard(b)
+            },
+            Self::Slider(_) => tataku::GraphicsPipeline::Slider,
+            Self::Flashlight(_) => tataku::GraphicsPipeline::Flashlight,
+            Self::GaussianBlur(_) => tataku::GraphicsPipeline::GaussianBlur,
+            Self::BoxBlur(_) => tataku::GraphicsPipeline::BoxBlur,
+            
+            #[cfg(feature="vello")]
+            Self::Vello(_) => unimplemented!("Trying to get GraphicsPipeline for Vello!"),
         }
     }
 }

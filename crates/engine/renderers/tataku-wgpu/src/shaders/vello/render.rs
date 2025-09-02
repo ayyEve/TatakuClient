@@ -1,36 +1,139 @@
 use crate::prelude::*;
 use vello::kurbo::Stroke;
 use vello::peniko::{ Brush, Fill };
+#[cfg(feature="vello_layers")] use layers::*;
 
 pub(crate) struct RenderEngine<'window, 'a> {
     wgpu: &'a mut WgpuEngine<'window>,
+
+    #[cfg(feature="vello_layers")] layers: Vec<RenderEngineLayer>,
+    #[cfg(feature="vello_layers")] reset_pending: bool,
 }
 impl<'window, 'a> RenderEngine<'window, 'a> {
     pub fn new(wgpu: &'a mut WgpuEngine<'window>) -> Self {
-        Self { wgpu }
+        Self { 
+            wgpu, 
+            #[cfg(feature="vello_layers")] layers: vec![ RenderEngineLayer::default() ],
+            #[cfg(feature="vello_layers")] reset_pending: false,
+        }
     }
-    fn scene(&mut self, blend_mode: tataku::GraphicsPipeline) -> Option<shaders::vello::ReserveData<'_>> {
-        self.wgpu.reserve_vello(blend_mode)
+
+    
+    #[cfg(not(feature="vello_layers"))]
+    fn scene(
+        &mut self, 
+        _blend_mode: tataku::BlendMode
+    ) -> Option<shaders::vello::ReserveData<'_>> {
+        self.wgpu.reserve_vello()
     }
 }
+
+#[cfg(feature="vello_layers")]
+impl<'window, 'a> RenderEngine<'window, 'a> {
+    fn reset_layers(&mut self) {
+        self.reset_pending = true;
+
+        let reserve = self.wgpu.reserve_vello().unwrap();
+        for _ in 0..self.layers.iter().filter(|l| !l.any_unset()).count() {
+            reserve.scene.pop_layer();
+        }
+    }
+
+    fn vello_layer(
+        reserve: &mut shaders::vello::ReserveData,
+        scissor: tataku::Scissor,
+        blend_mode: tataku::BlendMode,
+    ) {
+        let scissor = scissor.unwrap_or([
+            0.0, 0.0,
+            5_000.0, 5_000.0
+        ]);
+
+        reserve.scene.push_layer(
+            map_blend_mode(blend_mode),
+            1.0,
+            vello::kurbo::Affine::IDENTITY,
+            &map_rect(scissor),
+        );
+    }
+
+    fn check_layer(
+        &mut self,
+        blend_mode: tataku::BlendMode,
+        scissor: tataku::Scissor,
+    ) -> Option<shaders::vello::ReserveData<'_>> {
+        let mut reserve = self.wgpu.reserve_vello()?;
+
+        if self.reset_pending {
+            self.reset_pending = false;
+            for layer in self.layers.iter().filter(|l| !l.any_unset()) {
+                Self::vello_layer(&mut reserve, layer.scissor.unwrap(), layer.blend_mode.unwrap());
+            }
+        }
+
+
+        if self.layers.is_empty() {
+            self.layers.push(RenderEngineLayer::default());
+        }
+
+        let last_layer = self.layers.last_mut().unwrap();
+        let any_unset = last_layer.any_unset();
+        if last_layer.check(blend_mode, scissor) {
+            if any_unset {
+                Self::vello_layer(&mut reserve, scissor, blend_mode);
+            }
+        } else {
+            self.layers.push(RenderEngineLayer {
+                blend_mode: LayerValue::Set(blend_mode),
+                scissor: LayerValue::Set(scissor),
+            });
+            Self::vello_layer(&mut reserve, scissor, blend_mode);
+        }
+
+        Some(reserve)
+    }
+
+    fn scene(
+        &mut self, 
+        blend_mode: tataku::BlendMode
+    ) -> Option<shaders::vello::ReserveData<'_>> {
+        let scissor = self.wgpu.scissors.current_scissor();
+        return self.check_layer(blend_mode, scissor);
+    }
+}
+
 impl tataku_graphics::DrawEngine for RenderEngine<'_, '_> {
     fn push_scissor(&mut self, scissor: [f32; 4]) {
         self.wgpu.push_scissor(scissor);
-        // let reserve = self.scene().unwrap();
-        // reserve.scene.push_layer(
-        //     vello::peniko::BlendMode::default(),
-        //     1.0,
-        //     vello::kurbo::Affine::IDENTITY,
-        //     &map_rect(scissor),
-        // );
+
+        #[cfg(feature="vello_layers")] {
+            if let Some(last) = self.layers.last_mut()
+            && last.scissor.is_unset() {
+                last.scissor = LayerValue::Set(Some(scissor));
+                return;
+            }
+    
+            self.layers.push(RenderEngineLayer {
+                scissor: LayerValue::Set(Some(scissor)),
+                blend_mode: LayerValue::Unset,
+            });
+        }
     }
 
     fn pop_scissor(&mut self) {
         self.wgpu.pop_scissor();
-        // self.scene()
-        //     .unwrap()
-        //     .scene
-        //     .pop_layer();
+        
+        #[cfg(feature="vello_layers")] {
+            let Some(last) = self.layers.pop() 
+            else { return };
+            if !last.any_unset() {
+                self.wgpu
+                    .reserve_vello()
+                    .unwrap()
+                    .scene
+                    .pop_layer();
+            }
+        }
     }
 
     fn draw_arc(
@@ -41,7 +144,7 @@ impl tataku_graphics::DrawEngine for RenderEngine<'_, '_> {
         _color: tataku::Color,
         _resolution: u32,
         _transform: tataku::Matrix,
-        _blend_mode: tataku::GraphicsPipeline
+        _blend_mode: tataku::BlendMode
     ) {
         
     }
@@ -53,7 +156,7 @@ impl tataku_graphics::DrawEngine for RenderEngine<'_, '_> {
         border: Option<tataku::Border>,
         _resolution: u32,
         transform: tataku::Matrix,
-        blend_mode: tataku::GraphicsPipeline,
+        blend_mode: tataku::BlendMode,
     ) {
         let reserve = self.scene(blend_mode).unwrap();
         let transform = map_transform(transform);
@@ -91,7 +194,7 @@ impl tataku_graphics::DrawEngine for RenderEngine<'_, '_> {
         thickness: f32,
         color: tataku::Color,
         transform: tataku::Matrix,
-        blend_mode: tataku::GraphicsPipeline,
+        blend_mode: tataku::BlendMode,
     ) {
         let reserve = self.scene(blend_mode).unwrap();
 
@@ -122,7 +225,7 @@ impl tataku_graphics::DrawEngine for RenderEngine<'_, '_> {
         shape: tataku::Shape,
         color: tataku::Color,
         transform: tataku::Matrix,
-        blend_mode: tataku::GraphicsPipeline
+        blend_mode: tataku::BlendMode
     ) {
         let reserve = self.scene(blend_mode).unwrap();
         let transform = map_transform(transform);
@@ -191,18 +294,13 @@ impl tataku_graphics::DrawEngine for RenderEngine<'_, '_> {
 
     fn draw_tex(
         &mut self,
-        tex: &tataku_engine::prelude::TextureReference,
-        color: tataku_engine::prelude::Color,
-        h_flip: bool,
-        v_flip: bool,
+        tex: tataku::TextureDraw,
         transform: tataku_engine::prelude::Matrix,
-        blend_mode: tataku_engine::prelude::GraphicsPipeline
+        blend_mode: tataku_engine::prelude::BlendMode
     ) {
+        #[cfg(feature="vello_layers")] self.reset_layers();
         self.wgpu.draw_tex(
             tex,
-            color,
-            h_flip,
-            v_flip,
             transform,
             blend_mode
         );
@@ -211,7 +309,7 @@ impl tataku_graphics::DrawEngine for RenderEngine<'_, '_> {
     fn draw_text(
         &mut self,
         transform: tataku::Matrix,
-        blend_mode: tataku::GraphicsPipeline,
+        blend_mode: tataku::BlendMode,
         layout: &parley::Layout<tataku::Color>,
     ) {
         let reserve = self.scene(blend_mode).expect("no scene!");
@@ -250,6 +348,7 @@ impl tataku_graphics::DrawEngine for RenderEngine<'_, '_> {
         grid_cells: Vec<u32>,
         line_segments: Vec<tataku::LineSegment>
     ) {
+        #[cfg(feature="vello_layers")] self.reset_layers();
         self.wgpu.draw_slider(
             quad,
             transform,
@@ -266,6 +365,7 @@ impl tataku_graphics::DrawEngine for RenderEngine<'_, '_> {
         transform: tataku::Matrix,
         flashlight_data: tataku::FlashlightData
     ) {
+        #[cfg(feature="vello_layers")] self.reset_layers();
         self.wgpu.draw_flashlight(
             quad,
             transform,
@@ -279,6 +379,7 @@ impl tataku_graphics::DrawEngine for RenderEngine<'_, '_> {
         sigma: f32,
         rounds: u32,
     ) {
+        #[cfg(feature="vello_layers")] self.reset_layers();
         self.wgpu.draw_gaussian_blur(
             bounds,
             sigma,
@@ -291,13 +392,13 @@ impl tataku_graphics::DrawEngine for RenderEngine<'_, '_> {
         bounds: tataku::Bounds,
         size: u32,
     ) {
+        #[cfg(feature="vello_layers")] self.reset_layers();
         self.wgpu.draw_box_blur(bounds, size);
     }
 }
 
 
-use vello::peniko::color::AlphaColor;
-use vello::peniko::color::Srgb;
+use vello::peniko::color::{ AlphaColor, Srgb };
 
 fn map_color(color: tataku::Color) -> AlphaColor<Srgb> {
     AlphaColor::from_rgba8(
@@ -332,11 +433,42 @@ fn map_glyph(parley: parley::Glyph) -> vello::Glyph {
     }
 }
 
-// fn map_blend_mode(
-//     blend: tataku::GraphicsPipeline,
-// ) -> vello::peniko::BlendMode {
-//     vello::peniko::BlendMode::default()
-// }
+#[cfg(feature="vello_layers")]
+fn map_blend_mode(
+    blend: tataku::BlendMode,
+) -> vello::peniko::BlendMode {
+    use vello::peniko;
+
+    // TODO: actually verify these
+    match blend {
+        tataku::BlendMode::AlphaBlending => peniko::BlendMode {
+            mix: peniko::Mix::Normal,
+            compose: peniko::Compose::SrcOver,
+        },
+        tataku::BlendMode::AlphaOverwrite => peniko::BlendMode {
+            mix: peniko::Mix::Normal,
+            compose: peniko::Compose::Copy,
+        },
+
+        _ => panic!("using {blend:?} for non-image!"),
+        // tataku::BlendMode::PremultipliedAlpha => peniko::BlendMode {
+        //     mix: peniko::Mix::Normal,
+        //     compose: peniko::Compose::Plus,
+        // },
+        // tataku::BlendMode::AdditiveBlending => peniko::BlendMode {
+        //     mix: peniko::Mix::Normal,
+        //     compose: peniko::Compose::Plus,
+        // },
+        // tataku::BlendMode::SourceAlphaBlending => peniko::BlendMode {
+        //     mix: peniko::Mix::Normal,
+        //     compose: peniko::Compose::SrcOver,
+        // },
+        // tataku::BlendMode::OsuAdditiveBlending => peniko::BlendMode {
+        //     mix: peniko::Mix::Normal,
+        //     compose: peniko::Compose::SrcOver,
+        // },
+    }
+}
 
 fn map_rect([x, y, w, h]: [f32; 4]) -> vello::kurbo::Rect {
     let x = x as f64;
@@ -348,4 +480,72 @@ fn map_rect([x, y, w, h]: [f32; 4]) -> vello::kurbo::Rect {
         x + w as f64,
         y + h as f64,
     )
+}
+
+
+#[cfg(feature="vello_layers")]
+mod layers {
+    #[derive(Default)]
+    pub(super) struct RenderEngineLayer {
+        pub blend_mode: LayerValue<tataku::BlendMode>,
+        pub scissor: LayerValue<tataku::Scissor>,
+    }
+    impl RenderEngineLayer {
+        // returns true if should continue, false if needs new layer
+        pub fn check(
+            &mut self, 
+            blend_mode: tataku::BlendMode,
+            scissor: tataku::Scissor,
+        ) -> bool {
+            if self.scissor.is_unset() {
+                self.scissor = LayerValue::Set(scissor);
+            } else if self.scissor != LayerValue::Set(scissor) {
+                return false;
+            }
+    
+            if self.blend_mode.is_unset() {
+                self.blend_mode = LayerValue::Set(blend_mode);
+            } else if self.blend_mode != LayerValue::Set(blend_mode) {
+                return false;
+            }
+    
+            true
+        }
+    
+        pub fn any_unset(&self) -> bool {
+            self.blend_mode.is_unset() || self.scissor.is_unset()
+        }
+    }
+    
+    /// Option<Option<...>> seemed unintuitive
+    #[derive(Copy, Clone, Default, PartialEq, Eq)]
+    pub(super) enum LayerValue<T> {
+        Set(T),
+        #[default]
+        Unset,
+    }
+    impl<T> LayerValue<T> {
+        const fn is_set(&self) -> bool {
+            matches!(self, Self::Set(_))
+        }
+        const fn is_unset(&self) -> bool {
+            matches!(self, Self::Unset)
+        }
+    
+        fn unwrap(self) -> T {
+            match self {
+                Self::Set(v) => v,
+                Self::Unset => panic!("trying to unwrap value from unset!"), 
+            }
+        }
+    }
+    impl<T> From<Option<T>> for LayerValue<T> {
+        fn from(value: Option<T>) -> Self {
+            match value {
+                Some(v) => Self::Set(v),
+                None => Self::Unset
+            }
+        }
+    }
+
 }

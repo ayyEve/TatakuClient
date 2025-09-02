@@ -79,8 +79,7 @@ impl FpsDisplay {
     pub fn draw(
         &self,
         list: &mut RenderableCollection,
-        font_context: &mut parley::FontContext,
-        text_layout_context: &mut parley::LayoutContext<Color>
+        text_layout_contexts: &mut TextLayoutContexts,
     ) {
         list.push(Rectangle::new(
             self.pos,
@@ -90,15 +89,13 @@ impl FpsDisplay {
 
         let text = format!("{:.2} {} ({:.2}ms)", self.last, self.name, self.frametime_last_draw);
 
-        let mut layout = simple_text(
+        let mut layout = text_layout_contexts.simple_text(
             &text,
             &TextStyle {
                 font_size: 12.0,
                 color: Color::BLACK,
                 ..Default::default()
             },
-            font_context,
-            text_layout_context,
         );
 
         layout.break_all_lines(Some(SIZE.x));
@@ -177,8 +174,7 @@ impl AsyncFpsDisplay {
     pub fn draw(
         &self,
         list: &mut RenderableCollection,
-        font_context: &mut parley::FontContext,
-        text_layout_context: &mut parley::LayoutContext<Color>
+        text_layout_contexts: &mut TextLayoutContexts,
     ) {
         list.push(Rectangle::new(
             self.pos,
@@ -188,15 +184,13 @@ impl AsyncFpsDisplay {
 
         let text = format!("{:.2} {} ({:.2}ms)", self.last, self.name, self.frametime_last_draw);
 
-        let mut layout = simple_text(
+        let mut layout = text_layout_contexts.simple_text(
             &text,
             &TextStyle {
                 font_size: 12.0,
                 color: Color::BLACK,
                 ..Default::default()
             },
-            font_context,
-            text_layout_context,
         );
 
         layout.break_all_lines(Some(SIZE.x));

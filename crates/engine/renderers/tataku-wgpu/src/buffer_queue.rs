@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 #[derive(tataku::Default2)]
-pub struct RenderBufferQueue<B:RenderBufferable> {
+pub(crate) struct RenderBufferQueue<B:RenderBufferable> {
     pub cpu_cache: B::Cache,
     #[default(Vec::with_capacity(3))]
     queued_buffers: Vec<Box<B>>,
@@ -16,6 +16,15 @@ impl<B:RenderBufferable> RenderBufferQueue<B> {
     ) -> Self {
         self.create_render_buffer(device, pipeline.into());
         self
+    }
+
+    /// Get the first used buffer
+    #[allow(clippy::borrowed_box)]
+    pub fn first_used(&self) -> Option<&Box<B>> {
+        self.recording_buffer
+            .iter()
+            .chain(self.queued_buffers.iter())
+            .find(|b| b.should_write())
     }
 
     /// set up the buffers to be writable

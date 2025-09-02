@@ -17,7 +17,7 @@ pub struct SkinnedNumber {
     pub symbol: Option<char>,
     pub floating_precision: usize,
     
-    blend_mode: GraphicsPipeline,
+    blend_mode: BlendMode,
     cache: Arc<RwLock<(f64, String)>>,
 }
 impl SkinnedNumber {
@@ -79,7 +79,7 @@ impl SkinnedNumber {
             symbol,
             floating_precision,
             spacing_override: None,
-            blend_mode: GraphicsPipeline::AlphaBlending,
+            blend_mode: BlendMode::AlphaBlending,
         })
     }
 
@@ -168,8 +168,13 @@ impl SkinnedNumber {
 impl TatakuRenderable for SkinnedNumber {
     fn get_name(&self) -> String { "Skinned number".to_owned() }
 
-    fn get_blend_mode(&self) -> GraphicsPipeline { self.blend_mode }
-    fn set_blend_mode(&mut self, blend_mode: GraphicsPipeline) { self.blend_mode = blend_mode }
+    fn get_pipeline(&self) -> GraphicsPipeline { GraphicsPipeline::Standard(self.blend_mode) }
+    fn set_pipeline(&mut self, pipeline: GraphicsPipeline) { 
+        let GraphicsPipeline::Standard(blend_mode) = pipeline 
+        else { return };
+
+        self.blend_mode = blend_mode; 
+    }
 
     fn draw(
         &self, 
@@ -195,7 +200,7 @@ impl TatakuRenderable for SkinnedNumber {
             let Some(mut t) = self.get_char_tex(c).cloned() else { continue }; 
             t.color = color;
             // t.set_scissor(self.scissor);
-            t.set_blend_mode(self.blend_mode);
+            t.set_pipeline(GraphicsPipeline::Standard(self.blend_mode));
             t.draw(options, transform.trans(current_pos), g);
             current_pos.x += t.size().x * self.scale.x + x_spacing;
         }

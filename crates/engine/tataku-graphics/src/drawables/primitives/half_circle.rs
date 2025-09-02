@@ -6,7 +6,7 @@ pub struct HalfCircle {
     pub pos: Vector2,
     pub radius: f32,
     pub left_side: bool,
-    blend_mode: GraphicsPipeline,
+        blend_mode: BlendMode,
 }
 impl HalfCircle {
     pub fn new(
@@ -20,7 +20,7 @@ impl HalfCircle {
             pos,
             radius,
             left_side,
-            blend_mode: GraphicsPipeline::AlphaBlending,
+            blend_mode: BlendMode::AlphaBlending,
         }
     }
 }
@@ -29,8 +29,13 @@ impl HalfCircle {
 impl TatakuRenderable for HalfCircle {
     fn get_name(&self) -> String { "Half Circle".to_owned() }
 
-    fn get_blend_mode(&self) -> GraphicsPipeline { self.blend_mode }
-    fn set_blend_mode(&mut self, blend_mode: GraphicsPipeline) { self.blend_mode = blend_mode }
+    fn get_pipeline(&self) -> GraphicsPipeline { GraphicsPipeline::Standard(self.blend_mode) }
+    fn set_pipeline(&mut self, pipeline: GraphicsPipeline) { 
+        let GraphicsPipeline::Standard(blend_mode) = pipeline 
+        else { return };
+
+        self.blend_mode = blend_mode; 
+    }
 
     fn draw(
         &self, 

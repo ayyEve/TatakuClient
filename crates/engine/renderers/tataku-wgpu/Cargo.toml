@@ -11,6 +11,7 @@ workspace = true
 [features]
 default = [ "texture_arrays", "vello_rendering" ]
 texture_arrays = []
+vello_layers = []
 
 graphics = [ "tataku-engine/graphics" ]
 vello_rendering = [ "vello" ]

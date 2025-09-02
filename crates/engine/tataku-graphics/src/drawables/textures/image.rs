@@ -9,7 +9,7 @@ pub enum ImageFlip {
     Both,
 }
 impl ImageFlip {
-    pub fn new(
+    pub const fn new(
         flip_h: bool,
         flip_v: bool,
     ) -> Self {
@@ -21,17 +21,28 @@ impl ImageFlip {
         }
     }
     
-    fn flip_h(self) -> bool {
+    pub const fn flip_h(self) -> bool {
         matches!(self, Self::Horizontal | Self::Both)
     }
-    fn flip_v(self) -> bool {
+    pub const fn flip_v(self) -> bool {
         matches!(self, Self::Vertical | Self::Both)
     }
-    pub fn xor(self, other: Self) -> Self {
+    pub const fn xor(self, other: Self) -> Self {
         Self::new(
             self.flip_h() ^ other.flip_h(),
             self.flip_v() ^ other.flip_v(),
         )
+    }
+}
+impl std::ops::BitXor for ImageFlip {
+    type Output = Self;
+    fn bitxor(self, rhs: Self) -> Self::Output {
+        self.xor(rhs)
+    }
+}
+impl std::ops::BitXorAssign for ImageFlip {
+    fn bitxor_assign(&mut self, rhs: Self) {
+        *self = self.xor(rhs);
     }
 }
 
@@ -49,7 +60,7 @@ pub struct Image {
     /// BEFORE SCALE
     pub origin: Vector2,
 
-    pub blend_mode: GraphicsPipeline,
+    pub blend_mode: BlendMode,
 
     pub color: Color,
     pub pos: Vector2,
@@ -76,7 +87,7 @@ impl Image {
             origin,
             tex,
             flip: ImageFlip::None,
-            blend_mode: GraphicsPipeline::AlphaBlending,
+            blend_mode: BlendMode::AlphaBlending,
             base_scale,
             draw_debug: false,
         }
@@ -176,8 +187,13 @@ impl Image {
 impl TatakuRenderable for Image {
     fn get_name(&self) -> String { "Texture".to_owned() }
     
-    fn get_blend_mode(&self) -> GraphicsPipeline { self.blend_mode }
-    fn set_blend_mode(&mut self, blend_mode: GraphicsPipeline) { self.blend_mode = blend_mode }
+    fn get_pipeline(&self) -> GraphicsPipeline { GraphicsPipeline::Standard(self.blend_mode) }
+    fn set_pipeline(&mut self, pipeline: GraphicsPipeline) { 
+        let GraphicsPipeline::Standard(blend_mode) = pipeline 
+        else { return };
+
+        self.blend_mode = blend_mode; 
+    }
 
     fn draw(
         &self, 
@@ -196,10 +212,10 @@ impl TatakuRenderable for Image {
 
         let flip = self.flip.xor(options.image_flip);
         g.draw_tex(
-            &self.tex, 
-            color,
-            flip.flip_h(), 
-            flip.flip_v(), 
+            TextureDraw::new(
+                &self.tex, 
+                color,
+            ).with_flip(flip),
             transform, 
             self.blend_mode
         );

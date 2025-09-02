@@ -119,8 +119,7 @@ impl Game {
                 ),
                 &mut self.values, 
                 &mut self.actions,
-                &mut self.font_context,
-                &mut self.text_layout_context,
+                &mut self.text_layout_contexts,
             ),
             Err(e) => {
                 error!("Error building dialog: {e:?}");
@@ -157,8 +156,7 @@ impl Game {
                     *options, 
                     &mut self.values, 
                     &mut self.actions,
-                    &mut self.font_context,
-                    &mut self.text_layout_context,
+                    &mut self.text_layout_contexts,
                 );
             }
         }

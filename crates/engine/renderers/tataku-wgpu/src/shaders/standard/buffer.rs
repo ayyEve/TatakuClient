@@ -5,7 +5,7 @@ use crate::buffer_queue::RenderBufferable;
 const QUAD_PER_BUF:u64 = 3000;
 
 pub(crate) struct Buffer {
-    pub blend_mode: tataku::GraphicsPipeline,
+    pub blend_mode: Option<tataku::BlendMode>,
     pub vertex_buffer: wgpu::Buffer,
     pub index_buffer: wgpu::Buffer,
     pub scissor: Option<tataku::Scissor>,
@@ -22,7 +22,7 @@ impl RenderBufferable for Buffer {
     fn should_write(&self) -> bool { self.used_indices > 0 }
 
     fn reset(&mut self) {
-        self.blend_mode = tataku::GraphicsPipeline::None;
+        self.blend_mode = None;
         self.scissor = None;
         self.used_indices = 0;
         self.used_vertices = 0;
@@ -43,7 +43,7 @@ impl RenderBufferable for Buffer {
 
     fn create_new_buffer(device: &wgpu::Device, _: WgpuPipeline) -> Self {
         Self {
-            blend_mode: tataku::GraphicsPipeline::None,
+            blend_mode: None,
             scissor: None,
             vertex_buffer: device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some("Vertex Buffer"),

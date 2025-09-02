@@ -30,7 +30,7 @@ pub struct DrawShell<'a, Action: Send + Sync + 'static> {
     pub list: &'a mut RenderableCollection,
     pub general_theme: GeneralUiTheme,
 
-    pub font_context: &'a mut parley::FontContext,
+    pub text_layout_contexts: &'a mut TextLayoutContexts,
 }
 
 pub struct UpdateShell<'a, Action: Send + Sync + 'static> {
@@ -42,8 +42,7 @@ pub struct UpdateShell<'a, Action: Send + Sync + 'static> {
     pub actions: &'a mut Queue<Action>,
     pub skin_manager: &'a mut dyn SkinProvider,
 
-    pub font_context: &'a mut parley::FontContext,
-    pub text_layout_context: &'a mut parley::LayoutContext<Color>,
+    pub text_layout_contexts: &'a mut TextLayoutContexts,
 }
 
 
@@ -54,14 +53,14 @@ pub struct LayoutShell<'a, 'css: 'a, Action: Send + Sync + 'static> {
     pub ui_scale: f32,
     pub resolver: &'a mut CssResolver<'css>,
 
-    pub font_context: &'a mut parley::FontContext,
-    pub text_layout_context: &'a mut parley::LayoutContext<Color>,
+    pub text_layout_contexts: &'a mut TextLayoutContexts,
 }
 impl<Action: Send + Sync + 'static> LayoutShell<'_,'_, Action> {
     pub fn with_context(
         &mut self,
         node: impl HasNodeId,
         f: impl Fn(&mut TreeData)
+                    
     ) {
         let ctx = self.tree
             .get_context_mut(node.get_id())
@@ -105,5 +104,37 @@ impl<'a, 'b:'a, Action: Send + Sync +'static> From<&'b mut InputShell<'a, Action
             messages: value.messages,
             actions: value.actions
         }
+    }
+}
+
+pub struct TextLayoutContexts {
+    pub font: parley::FontContext,
+    pub layout: parley::LayoutContext<Color>,
+}
+impl TextLayoutContexts {
+    pub fn new() -> Self {
+        Self {
+            font: parley::FontContext::new(),
+            layout: parley::LayoutContext::new(),
+        }
+    }
+
+    pub fn simple_text(
+        &mut self,
+        text: &str,
+        style: &TextStyle,
+    ) -> parley::Layout<Color> {
+        let mut builder = self.layout.tree_builder(
+            &mut self.font,
+            1.0, // gui/dpi scale
+            true,
+            &style.into(),
+        );
+
+        builder.push_text(text);
+
+        let (layout, _text) = builder.build();
+
+        layout
     }
 }

@@ -83,7 +83,7 @@ pub trait DrawEngine {
         color: Color,
         resolution: u32,
         transform: Matrix,
-        blend_mode: GraphicsPipeline
+        blend_mode: BlendMode,
     );
 
     /// draw a circle with the center at 0,0
@@ -94,7 +94,7 @@ pub trait DrawEngine {
         border: Option<Border>,
         resolution: u32,
         transform: Matrix,
-        blend_mode: GraphicsPipeline
+        blend_mode: BlendMode,
     );
 
     /// draw a line from 0,0 to p
@@ -104,7 +104,7 @@ pub trait DrawEngine {
         thickness: f32,
         color: Color,
         transform: Matrix,
-        blend_mode: GraphicsPipeline
+        blend_mode: BlendMode,
     );
 
     /// draw a rectangle
@@ -115,18 +115,15 @@ pub trait DrawEngine {
         shape: Shape,
         color: Color,
         transform: Matrix,
-        blend_mode: GraphicsPipeline
+        blend_mode: BlendMode,
     );
 
     /// draw a texture with top left at 0,0
     fn draw_tex(
         &mut self,
-        tex: &TextureReference,
-        color: Color,
-        h_flip: bool,
-        v_flip: bool,
+        tex: TextureDraw<'_>,
         transform: Matrix,
-        blend_mode: GraphicsPipeline
+        blend_mode: BlendMode,
     );
 
     /// draw a slider
@@ -162,11 +159,10 @@ pub trait DrawEngine {
         size: u32,
     );
 
-
     fn draw_text(
         &mut self,
         transform: Matrix,
-        blend_mode: GraphicsPipeline,
+        blend_mode: BlendMode,
         layout: &parley::Layout<tataku_client_common::prelude::Color>,
     );
 }
@@ -176,34 +172,37 @@ pub trait DrawEngine {
 pub struct TextureDraw<'a> {
     pub tex: &'a TextureReference,
     pub color: Color,
-    pub h_flip: bool,
-    pub v_flip: bool,
-    pub transform: Matrix,
-    pub blend_mode: GraphicsPipeline,
+    pub flip: ImageFlip,
 }
 impl<'a> TextureDraw<'a> {
     pub fn new(
         tex: &'a TextureReference,
         color: Color,
-        transform: Matrix,
-        blend_mode: GraphicsPipeline,
     ) -> Self {
         Self {
             tex,
             color,
-            transform,
-            blend_mode,
-            h_flip: false,
-            v_flip: false
+            flip: ImageFlip::None
         }
     }
 
+    pub fn with_flip(mut self, flip: ImageFlip) -> Self {
+        self.flip ^= flip;
+        self
+    }
+
     pub fn with_hflip(mut self, hflip: bool) -> Self {
-        self.h_flip = hflip;
+        self.flip = ImageFlip::new(
+            hflip,
+            self.flip.flip_v(),
+        );
         self
     }
     pub fn with_vflip(mut self, vflip: bool) -> Self {
-        self.v_flip = vflip;
+        self.flip = ImageFlip::new(
+            self.flip.flip_h(),
+            vflip,
+        );
         self
     }
 }

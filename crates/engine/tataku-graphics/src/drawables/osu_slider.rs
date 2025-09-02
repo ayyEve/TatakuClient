@@ -21,8 +21,8 @@ pub struct SliderDrawable {
     pub line_segments: Vec<LineSegment>,
 }
 impl TatakuRenderable for SliderDrawable {
-    fn get_blend_mode(&self) -> GraphicsPipeline { GraphicsPipeline::Slider }
-    fn set_blend_mode(&mut self, _blend_mode: GraphicsPipeline) {}
+    fn get_pipeline(&self) -> GraphicsPipeline { GraphicsPipeline::Slider }
+    fn set_pipeline(&mut self, _blend_mode: GraphicsPipeline) {}
 
     #[cfg(feature="graphics")]
     fn draw(

@@ -4,12 +4,21 @@ use crate::prelude::*;
 pub enum CursorAction {
     /// Set if the cursor is visible or not
     SetVisible(bool),
+
     /// Set/remove an override for the Cursor's ripple radius
     OverrideRippleRadius(Option<f32>),
+
+    /// Set the cursor mode
+    SetCursorMode(CursorMode),
 }
 impl From<CursorAction> for TatakuAction {
     fn from(value: CursorAction) -> Self {
         Self::CursorAction(value)
+    }
+}
+impl From<CursorMode> for CursorAction {
+    fn from(value: CursorMode) -> Self {
+        Self::SetCursorMode(value)
     }
 }
 

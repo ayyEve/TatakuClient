@@ -94,12 +94,12 @@ impl Transformed {
 
 #[cfg(feature="graphics")]
 impl TatakuRenderable for Transformed {
-    fn get_blend_mode(&self) -> GraphicsPipeline {
-        self.drawable.get_blend_mode()
+    fn get_pipeline(&self) -> GraphicsPipeline {
+        self.drawable.get_pipeline()
     }
 
-    fn set_blend_mode(&mut self, blend_mode: GraphicsPipeline) {
-        self.drawable.set_blend_mode(blend_mode);
+    fn set_pipeline(&mut self, blend_mode: GraphicsPipeline) {
+        self.drawable.set_pipeline(blend_mode);
     }
 
     fn draw(
@@ -132,12 +132,12 @@ impl Scissored {
 
 #[cfg(feature="graphics")]
 impl TatakuRenderable for Scissored {
-    fn get_blend_mode(&self) -> GraphicsPipeline {
-        self.drawable.get_blend_mode()
+    fn get_pipeline(&self) -> GraphicsPipeline {
+        self.drawable.get_pipeline()
     }
 
-    fn set_blend_mode(&mut self, blend_mode: GraphicsPipeline) {
-        self.drawable.set_blend_mode(blend_mode);
+    fn set_pipeline(&mut self, blend_mode: GraphicsPipeline) {
+        self.drawable.set_pipeline(blend_mode);
     }
 
     fn draw(
@@ -170,12 +170,12 @@ impl MergeDrawOptions {
 
 #[cfg(feature="graphics")]
 impl TatakuRenderable for MergeDrawOptions {
-    fn get_blend_mode(&self) -> GraphicsPipeline {
-        self.drawable.get_blend_mode()
+    fn get_pipeline(&self) -> GraphicsPipeline {
+        self.drawable.get_pipeline()
     }
 
-    fn set_blend_mode(&mut self, blend_mode: GraphicsPipeline) {
-        self.drawable.set_blend_mode(blend_mode);
+    fn set_pipeline(&mut self, blend_mode: GraphicsPipeline) {
+        self.drawable.set_pipeline(blend_mode);
     }
 
     fn draw(

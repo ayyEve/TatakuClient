@@ -29,16 +29,17 @@ pub struct CursorManager {
 
     settings: CursorSettings,
 
-    // layout: parley::Layout<Color>,
-    // style: TextStyle,
+    layout: Arc<parley::Layout<Color>>,
+    pos_offset: Vector2,
 }
 impl CursorManager {
     pub fn new(
         skin: Arc<SkinSettings>, 
-        settings: CursorSettings
+        settings: CursorSettings,
     ) -> Self {
         Self {
             pos: Vector2::ZERO,
+            pos_offset: Vector2::ZERO,
 
             cursor_images: HashMap::new(),
             cursor_mode: CursorMode::Normal,
@@ -51,8 +52,7 @@ impl CursorManager {
             visible: true,
             ripple_radius_override: None,
             settings,
-            // layout: parley::Layout::new(),
-            // style: ,
+            layout: Arc::new(parley::Layout::new()),
 
             ripples: Vec::new(),
             time: 0.0,
@@ -89,6 +89,85 @@ impl CursorManager {
         self.cursor_images.get(&self.cursor_mode)
     }
 
+    fn fallback_cursor(cursor_mode: CursorMode) -> FallbackCursorInfo {
+        match cursor_mode {
+            CursorMode::Normal => FallbackCursorInfo::new_offset(
+                FontAwesome::ArrowPointer, 
+                Alignment::TOP_LEFT, 
+                Some(Vector2::new(-2.0, 3.0)),
+            ),
+            CursorMode::HorizontalResize => FallbackCursorInfo::new(
+                FontAwesome::LeftRight, 
+                Alignment::CENTER
+            ),
+            CursorMode::VerticalResize => FallbackCursorInfo::new(
+                FontAwesome::UpDown, 
+                Alignment::CENTER
+            ),
+            CursorMode::Resize => FallbackCursorInfo::new(
+                FontAwesome::UpDownLeftRight, 
+                Alignment::CENTER
+            ),
+            CursorMode::Pointer => FallbackCursorInfo::new(
+                FontAwesome::HandPointer, 
+                Alignment::TOP_LEFT
+            ),
+            CursorMode::Text => FallbackCursorInfo::new(
+                FontAwesome::ICursor, 
+                Alignment::CENTER
+            ),
+        }
+    }
+
+    pub fn handle_cursor_action(
+        &mut self, 
+        action: CursorAction,
+        text_layout_contexts: &mut TextLayoutContexts,
+    ) {
+        match action {
+            CursorAction::OverrideRippleRadius(radius_maybe)
+                => self.ripple_radius_override = radius_maybe,
+            CursorAction::SetVisible(show) => {
+                // trace!("setting cursor visible = {show}");
+                self.visible = show;
+            },
+
+            CursorAction::SetCursorMode(new_mode) => {
+                // if self.cursor_mode == new_mode { return }
+                self.cursor_mode = new_mode;
+
+                if self.get_cursor_image().is_some() { return };
+
+                let fallback_info = Self::fallback_cursor(self.cursor_mode);
+                let mut layout = text_layout_contexts.simple_text(
+                    &fallback_info.char.to_string(), 
+                    &TextStyle {
+                        font: DefaultFont::FontAwesome,
+                        font_size: 32.0,
+                        color: self.settings.cursor_color.color,
+                        line_height: 32.0,
+                        alignment: HorizontalAlign::Left,
+                    }, 
+                );
+                layout.break_all_lines(None);
+                self.layout = Arc::new(layout);
+
+                let cursor_size = Vector2::new(
+                    self.layout.width(), 
+                    self.layout.height()
+                );
+
+                let pos = fallback_info.align.resolve(
+                    &Bounds::default(), 
+                    cursor_size,
+                    true, 
+                    true,
+                );
+
+                self.pos_offset = pos + fallback_info.extra_offset.unwrap_or_default();
+            }
+        }
+    }
 
     pub fn update(&mut self, time: f32, cursor_pos: Vector2) {
         self.time = time;
@@ -125,8 +204,6 @@ impl CursorManager {
     pub fn draw(
         &mut self, 
         list: &mut RenderableCollection,
-        font_context: &mut parley::FontContext,
-        text_layout_context: &mut parley::LayoutContext<Color>,
     ) {
         if !self.visible { return }
 
@@ -137,35 +214,12 @@ impl CursorManager {
             list.push(cursor.clone());
         } else {
             // use font awesome as fallback
-            let (c, align) = match self.cursor_mode {
-                CursorMode::Normal => (FontAwesome::ArrowPointer, Alignment::TOP_LEFT),
-                CursorMode::HorizontalResize => (FontAwesome::LeftRight, Alignment::CENTER),
-                CursorMode::VerticalResize => (FontAwesome::UpDown, Alignment::CENTER),
-                CursorMode::Resize => (FontAwesome::UpDownLeftRight, Alignment::CENTER),
-                CursorMode::Pointer => (FontAwesome::HandPointer, Alignment::TOP_LEFT),
-                CursorMode::Text => (FontAwesome::ICursor, Alignment::CENTER),
-            };
-
-            let mut layout = simple_text(
-                &c.to_string(), 
-                &TextStyle {
-                    font: DefaultFont::FontAwesome,
-                    font_size: 32.0,
-                    color: self.settings.cursor_color.color,
-                    line_height: 32.0,
-                    alignment: align.horizontal,
-                }, 
-                font_context, 
-                text_layout_context
-            );
-            layout.break_all_lines(None);
-
             list.push(Transformed::new(
                 Transform::default()
                     .rotate(self.cursor_rotation)
                     .translate(self.pos)
                     ,
-                Box::new(Text::new(layout))
+                Box::new(Text::new(self.layout.clone()))
             ));
 
             // let mut text = Text::new(
@@ -187,19 +241,38 @@ impl CursorManager {
 
     fn add_ripple(&mut self) {
         let duration = 500.0;
-
         self.ripples.push(Trail::new(self.pos, self.time, duration));
     }
 
+}
 
-    pub fn handle_cursor_action(&mut self, action: CursorAction) {
-        match action {
-            CursorAction::OverrideRippleRadius(radius_maybe)
-                => self.ripple_radius_override = radius_maybe,
-            CursorAction::SetVisible(show) => {
-                // trace!("setting cursor visible = {show}");
-                self.visible = show;
-            },
+
+struct FallbackCursorInfo {
+    /// What char to use
+    char: FontAwesome,
+
+    /// How should the cursor be aligned
+    align: Alignment,
+
+    /// Extra offset to tweak positioning
+    /// 
+    /// This is added to the cursor position
+    extra_offset: Option<Vector2>,
+}
+impl FallbackCursorInfo {
+    fn new(char: FontAwesome, align: Alignment) -> Self {
+        Self::new_offset(char, align, None)
+    }
+    fn new_offset(
+        char: FontAwesome, 
+        align: Alignment, 
+        extra_offset: Option<Vector2>
+    ) -> Self {
+        Self {
+            char,
+            align,
+            extra_offset
         }
     }
+
 }

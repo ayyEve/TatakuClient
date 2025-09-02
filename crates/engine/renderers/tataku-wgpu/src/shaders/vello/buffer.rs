@@ -3,7 +3,6 @@ use crate::wgpu_engine::WgpuPipeline;
 use crate::buffer_queue::RenderBufferable;
 
 pub(crate) struct Buffer {
-    pub blend_mode: tataku::GraphicsPipeline,
     pub scissor: Option<tataku::Scissor>,
     pub scene: vello::Scene,
 
@@ -31,7 +30,6 @@ impl RenderBufferable for Buffer {
     fn create_new_buffer(_device: &wgpu::Device, _: WgpuPipeline) -> Self {
         Self {
             scissor: None,
-            blend_mode: tataku::GraphicsPipeline::None,
             scene: vello::Scene::new(),
             used: 0,
         }

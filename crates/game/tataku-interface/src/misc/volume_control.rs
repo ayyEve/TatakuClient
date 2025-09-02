@@ -53,8 +53,7 @@ impl VolumeControl {
     pub fn draw(
         &mut self, 
         list: &mut RenderableCollection,
-        font_context: &mut parley::FontContext,
-        text_layout_context: &mut parley::LayoutContext<Color>,
+        text_layout_contexts: &mut TextLayoutContexts,
     ) {
         let elapsed = self.elapsed();
 
@@ -87,16 +86,19 @@ impl VolumeControl {
                     (90 - 30 * n) as f32
                 );
 
-                let mut layout = simple_text(
+                let color = if self.vol_selected_index == n as u8 { 
+                    Color::RED 
+                } else { 
+                    Color::BLACK 
+                };
+                let mut layout = text_layout_contexts.simple_text(
                     text,
                     &TextStyle {
                         font_size: 20.0,
                         font: DefaultFont::Main,
-                        color: if self.vol_selected_index == n as u8 { Color::RED } else { Color::BLACK },
+                        color,
                         ..Default::default()
                     },
-                    font_context,
-                    text_layout_context,
                 );
                 layout.break_all_lines(None);
 

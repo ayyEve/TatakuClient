@@ -426,8 +426,7 @@ impl Widget<TatakuAction> for Container {
                             owner: shell.owner,
                             ui_scale: 1.0, // TODO:!
                             resolver: &mut resolver,
-                            font_context: shell.font_context,
-                            text_layout_context: shell.text_layout_context,
+                            text_layout_contexts: shell.text_layout_contexts,
                         };
 
                         // add it to the tree

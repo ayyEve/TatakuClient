@@ -1,15 +1,11 @@
 use crate::prelude::*;
 
-use parley::{
-    FontContext, LayoutContext, Layout, Alignment,
-};
-
 #[derive(ChainableInitializer)]
 pub struct TextWidget {
     text: WidgetText,
     node_id: NodeId,
 
-    layout: Layout<Color>,
+    layout: parley::Layout<Color>,
     old_x: f32,
     old_width: f32,
 }
@@ -19,7 +15,7 @@ impl TextWidget {
             text: text.into(),
             node_id: EMPTY_NODE,
 
-            layout: Layout::default(),
+            layout: parley::Layout::default(),
             old_x: 0.0,
             old_width: 0.0,
         }
@@ -28,17 +24,14 @@ impl TextWidget {
     fn recreate_layout(
         &mut self,
         tree: &mut Tree<TatakuAction>,
-        font_context: &mut FontContext,
-        text_layout_context: &mut LayoutContext<Color>,
+        text_layout_contexts: &mut TextLayoutContexts,
     ) {
         let text = self.text.get();
         let text_style = tree.get_text_style(self.node_id).unwrap();
 
-        self.layout = simple_text(
+        self.layout = text_layout_contexts.simple_text(
             &text,
             text_style,
-            font_context,
-            text_layout_context
         );
 
         if !text.is_empty() {
@@ -64,9 +57,9 @@ impl TextWidget {
             self.layout.break_all_lines(Some(container_width));
 
             let alignment = match text_style.alignment {
-                HorizontalAlign::Left => Alignment::Start,
-                HorizontalAlign::Center => Alignment::Middle,
-                HorizontalAlign::Right => Alignment::End,
+                HorizontalAlign::Left => parley::Alignment::Start,
+                HorizontalAlign::Center => parley::Alignment::Middle,
+                HorizontalAlign::Right => parley::Alignment::End,
             };
 
             self.layout.align(
@@ -97,8 +90,7 @@ impl Widget<TatakuAction> for TextWidget {
     fn init_style(&mut self, shell: &mut LayoutShell<TatakuAction>) {
         self.recreate_layout(
             shell.tree,
-            shell.font_context,
-            shell.text_layout_context
+            shell.text_layout_contexts
         );
 
         let text_style = shell.tree
@@ -124,8 +116,7 @@ impl Widget<TatakuAction> for TextWidget {
         if refresh_text {
             self.recreate_layout(
                 shell.tree,
-                shell.font_context,
-                shell.text_layout_context,
+                shell.text_layout_contexts,
             );
         }
 
@@ -221,25 +212,4 @@ impl From<BuildableText> for WidgetText {
             }
         }
     }
-}
-
-pub fn simple_text(
-    text: &str,
-    style: &TextStyle,
-
-    font_context: &mut FontContext,
-    text_layout_context: &mut LayoutContext<Color>,
-) -> Layout<Color> {
-    let mut builder = text_layout_context.tree_builder(
-        font_context,
-        1.0, // gui/dpi scale
-        true,
-        &style.into(),
-    );
-
-    builder.push_text(text);
-
-    let (layout, _text) = builder.build();
-
-    layout
 }

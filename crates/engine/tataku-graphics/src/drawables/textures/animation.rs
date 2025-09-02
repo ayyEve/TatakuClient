@@ -17,7 +17,7 @@ pub struct Animation {
     pub frame_index: usize,
     pub frame_delay: f32,
 
-    blend_mode: GraphicsPipeline,
+    blend_mode: BlendMode,
 
     // current
     pub color: Color,
@@ -52,7 +52,7 @@ impl Animation {
             rotation,
             color,
             base_scale,
-            blend_mode: GraphicsPipeline::AlphaBlending,
+            blend_mode: BlendMode::AlphaBlending,
 
             frames,
             frame_index: 0,
@@ -116,8 +116,13 @@ impl Animation {
 impl TatakuRenderable for Animation {
     fn get_name(&self) -> String { "animation".into() }
 
-    fn get_blend_mode(&self) -> GraphicsPipeline { self.blend_mode }
-    fn set_blend_mode(&mut self, blend_mode: GraphicsPipeline) { self.blend_mode = blend_mode }
+    fn get_pipeline(&self) -> GraphicsPipeline { GraphicsPipeline::Standard(self.blend_mode) }
+    fn set_pipeline(&mut self, pipeline: GraphicsPipeline) { 
+        let GraphicsPipeline::Standard(blend_mode) = pipeline 
+        else { return };
+
+        self.blend_mode = blend_mode; 
+    }
 
     fn draw(
         &self, 
@@ -135,10 +140,10 @@ impl TatakuRenderable for Animation {
         ;
 
         g.draw_tex(
-            &self.frames[self.frame_index], 
-            color, 
-            false, 
-            false, 
+            TextureDraw::new(
+                &self.frames[self.frame_index],
+                color, 
+            ),
             transform, 
             self.blend_mode
         );

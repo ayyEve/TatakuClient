@@ -245,7 +245,7 @@ impl OsuCursor {
         if let Some(image) = &self.cursor_trail_image {
             let mut image = image.clone();
             image.scale = Vector2::ONE * self.settings.cursor_scale;
-            image.set_blend_mode(GraphicsPipeline::SourceAlphaBlending);
+            image.set_pipeline(BlendMode::SourceAlphaBlending.into());
 
             let trails = self.trails.iter()
                 .map(|trail| {

@@ -1,4 +1,5 @@
-use crate::prelude::tataku::GraphicsPipeline;
+// use crate::prelude::*;
+// use tataku::GraphicsPipeline;
 
 // TODO: rename this
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -7,7 +8,6 @@ pub enum PipelineType {
     Slider,
     Flashlight,
 
-    // special
     GaussianBlur,
     BoxBlur,
 
@@ -22,20 +22,20 @@ impl PipelineType {
         matches!(self, Self::Vello)
     }
 
-    pub fn special_render(&self) -> bool {
+    pub fn is_compute(&self) -> bool {
         self.is_blur() || self.is_vello()
     }
 
-    pub fn as_pipeline(self) -> GraphicsPipeline {
-        match self {
-            Self::Standard => GraphicsPipeline::AlphaBlending,
-            Self::Slider => GraphicsPipeline::Slider,
-            Self::Flashlight => GraphicsPipeline::Flashlight,
-            Self::GaussianBlur => GraphicsPipeline::GaussianBlur,
-            Self::BoxBlur => GraphicsPipeline::BoxBlur,
+    // pub fn as_pipeline(self) -> GraphicsPipeline {
+    //     match self {
+    //         Self::Standard(blend) => GraphicsPipeline::Standard(blend),
+    //         Self::Slider => GraphicsPipeline::Slider,
+    //         Self::Flashlight => GraphicsPipeline::Flashlight,
+    //         Self::GaussianBlur => GraphicsPipeline::GaussianBlur,
+    //         Self::BoxBlur => GraphicsPipeline::BoxBlur,
 
-            #[cfg(feature="vello")]
-            Self::Vello => panic!("Trying to map Vello pipeline to GraphicsPipeline!")
-        }
-    }
+    //         #[cfg(feature="vello")]
+    //         Self::Vello => unimplemented!("Trying to get vello GraphicsPipeline!")
+    //     }
+    // }
 }

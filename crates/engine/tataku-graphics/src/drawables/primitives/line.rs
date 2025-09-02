@@ -7,21 +7,21 @@ pub struct Line {
     p2: Vector2,
     thickness: f32,
 
-    blend_mode: GraphicsPipeline,
+    blend_mode: BlendMode,
 }
 impl Line {
     pub fn new(
         p1: Vector2, 
         p2: Vector2, 
         thickness: f32, 
-        color: Color
+        color: Color,
     ) -> Self {
         Self {
             p1,
             p2,
             thickness,
             color,
-            blend_mode: GraphicsPipeline::AlphaBlending,
+            blend_mode: BlendMode::AlphaBlending,
         }
     }
 }
@@ -30,8 +30,13 @@ impl Line {
 impl TatakuRenderable for Line {
     fn get_name(&self) -> String { "Line".to_owned() }
 
-    fn get_blend_mode(&self) -> GraphicsPipeline { self.blend_mode }
-    fn set_blend_mode(&mut self, blend_mode: GraphicsPipeline) { self.blend_mode = blend_mode }
+    fn get_pipeline(&self) -> GraphicsPipeline { GraphicsPipeline::Standard(self.blend_mode) }
+    fn set_pipeline(&mut self, pipeline: GraphicsPipeline) { 
+        let GraphicsPipeline::Standard(blend_mode) = pipeline 
+        else { return };
+
+        self.blend_mode = blend_mode; 
+    }
 
     fn draw(
         &self, 

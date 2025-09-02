@@ -396,15 +396,17 @@ impl OsuSlider {
             // both body and border use the same code with a few differences, so might as well for-loop them to simplify code
             // border is first, body is 2nd, since the body must be drawn on top of the border (which creates the border)
             for (radius, color, blend_mode) in [
-                (self.radius - border_radius * 0.5, border_color, GraphicsPipeline::AlphaBlending), // border
-                (self.radius - border_radius * 1.5, color, GraphicsPipeline::AlphaOverwrite) // fill
+                (self.radius - border_radius * 0.5, border_color, BlendMode::AlphaBlending), // border
+                (self.radius - border_radius * 1.5, color, BlendMode::AlphaOverwrite) // fill
             ] {
+                let pipeline = GraphicsPipeline::Standard(blend_mode);
+
                 // add starting circle manually
                 drawables.push(Box::new(Circle::new(
                     p,
                     radius,
                     color,
-                ).with_blend_mode(blend_mode)));
+                ).with_pipeline(pipeline)));
 
                 // add all lines
                 for line in self.curve.curve_lines.iter() {
@@ -427,7 +429,7 @@ impl OsuSlider {
                         p2,
                         radius,
                         color
-                    ).with_blend_mode(blend_mode)));
+                    ).with_pipeline(pipeline)));
 
                     // add a circle to smooth out the corners
                     // border
@@ -435,7 +437,7 @@ impl OsuSlider {
                         p2,
                         radius,
                         color,
-                    ).with_blend_mode(blend_mode)));
+                    ).with_pipeline(pipeline)));
                 }
             }
 

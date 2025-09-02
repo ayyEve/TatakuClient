@@ -125,7 +125,7 @@ impl Emitter {
             let mut image = Image::new(i.position, Arc::new(i.image), Vector2::ONE);
             image.color = i.color;
             image.scale = Vector2::ONE * i.scale;
-            image.set_blend_mode(self.blend_mode);
+            image.set_pipeline(self.blend_mode);
 
             list.push(image);
         }

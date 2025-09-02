@@ -215,7 +215,7 @@ impl Element {
                 param: Param::AdditiveBlending 
             } = i.event else { continue };
             // if i.start_time as i32 == i.end_time as i32 {
-                blend_mode = Some(GraphicsPipeline::OsuAdditiveBlending);
+                blend_mode = Some(BlendMode::OsuAdditiveBlending);
             // }
             break;
         }
@@ -243,7 +243,7 @@ impl Element {
                 initial_pos = sprite.pos;
                 origin = sprite.origin.resolve(image.tex_size());
 
-                if let Some(b) = blend_mode { image.set_blend_mode(b); }
+                if let Some(b) = blend_mode { image.set_pipeline(b.into()); }
 
                 ElementImage::Sprite(image)
             }
@@ -295,7 +295,7 @@ impl Element {
                 animation.origin = Vector2::ZERO;
                 animation.scale = Vector2::ONE;
                 animation.draw_debug = true;
-                if let Some(b) = blend_mode { animation.set_blend_mode(b); }
+                if let Some(b) = blend_mode { animation.set_pipeline(b.into()); }
 
                 initial_pos = anim.pos;
                 origin = anim.origin.resolve(tex_size);
