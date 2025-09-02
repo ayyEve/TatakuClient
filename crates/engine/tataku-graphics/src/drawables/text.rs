@@ -4,6 +4,14 @@ pub struct Text {
     pub layout: parley::Layout<Color>,
     pub blend_mode: GraphicsPipeline,
 }
+impl Text {
+    pub fn new(layout: parley::Layout<Color>) -> Self {
+        Self {
+            layout,
+            blend_mode: GraphicsPipeline::default(),
+        }
+    }
+}
 impl TatakuRenderable for Text {
     fn get_blend_mode(&self) -> GraphicsPipeline {
         self.blend_mode

@@ -94,6 +94,7 @@ impl FpsDisplay {
             &text,
             &TextStyle {
                 font_size: 12.0,
+                color: Color::BLACK,
                 ..Default::default()
             },
             font_context,
@@ -102,27 +103,13 @@ impl FpsDisplay {
 
         layout.break_all_lines(Some(SIZE.x));
 
-        // let glyphs = rasterize_layout(
-        //     &layout,
-        //     Color::BLACK,
-        //     scale_context,
-        // );
-
         let transform = Transform::default()
             .translate(self.pos + TEXT_PADDING);
 
-
         list.push(Transformed::new(
             transform,
-            Box::new(Text {
-                layout: layout.clone(),
-                blend_mode: GraphicsPipeline::default(),
-            })
+            Box::new(Text::new(layout.clone()))
         ));
-
-        // for glyph in glyphs {
-        //     list.push(Transformed::new(transform, Box::new(glyph)));
-        // }
     }
 }
 
@@ -205,6 +192,7 @@ impl AsyncFpsDisplay {
             &text,
             &TextStyle {
                 font_size: 12.0,
+                color: Color::BLACK,
                 ..Default::default()
             },
             font_context,
@@ -217,22 +205,8 @@ impl AsyncFpsDisplay {
 
         list.push(Transformed::new(
             transform,
-            Box::new(Text {
-                layout: layout.clone(),
-                blend_mode: GraphicsPipeline::default()
-            }),
+            Box::new(Text::new(layout.clone())),
         ));
-
-
-        // let glyphs = rasterize_layout(
-        //     &layout,
-        //     Color::BLACK,
-        //     scale_context,
-        // );
-
-
-        // for glyph in glyphs {
-        //     list.push(Transformed::new(transform, Box::new(glyph)));
-        // }
+        
     }
 }

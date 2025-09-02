@@ -240,6 +240,22 @@ impl Game {
     fn init(&mut self) {
         let now = std::time::Instant::now();
 
+
+        {
+            let data = std::fs::read(
+                "resources/fonts/font_awesome_6_regular.otf"
+            ).unwrap();
+
+            let ids = self.font_context
+                .collection
+                .register_fonts(data.into(), None);
+
+            self.font_context.collection.append_generic_families(
+                parley::GenericFamily::Emoji, 
+                ids.into_iter().map(|(i, _)| i)
+            );
+        }
+
         #[cfg(feature="graphics")] {
             self.load_custom_menus();
             self.load_theme();
@@ -1259,11 +1275,19 @@ impl Game {
         self.notification_manager.draw(self.values.game.window_size, &mut render_queue);
 
         // volume control
-        self.volume_controller.draw(&mut render_queue);
+        self.volume_controller.draw(
+            &mut render_queue, 
+            &mut self.font_context, 
+            &mut self.text_layout_context
+        );
 
         // draw cursor
-        self.cursor_manager.draw(&mut render_queue);
-
+        self.cursor_manager.draw(
+            &mut render_queue, 
+            &mut self.font_context, 
+            &mut self.text_layout_context,
+        );
+        
         // toss the items to the window to render
         let _ = self.window_proxy.send_event(WindowAction::RenderData(render_queue.take()));
 

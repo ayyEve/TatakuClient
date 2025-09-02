@@ -62,18 +62,25 @@ impl Default for TextStyle {
     }
 }
 
-impl<B: parley::Brush> From<TextStyle> for parley::TextStyle<'_, B> {
+// could prolly just have the Brush be Color here but whatever
+impl<B: parley::Brush + From<Color>> From<TextStyle> for parley::TextStyle<'_, B> {
     fn from(value: TextStyle) -> Self {
         Self {
-            font_stack: parley::FontStack::Single(parley::FontFamily::Generic(parley::GenericFamily::SansSerif)), // todo:
+             // todo:
+            font_stack: match value.font {
+                DefaultFont::Main => parley::FontStack::Single(parley::FontFamily::Generic(parley::GenericFamily::SansSerif)),
+                DefaultFont::FontAwesome => parley::FontStack::Single(parley::FontFamily::Generic(parley::GenericFamily::Emoji)),
+                DefaultFont::Fallback => parley::FontStack::Single(parley::FontFamily::Generic(parley::GenericFamily::Serif)),
+            },
             font_size: value.font_size,
             line_height: parley::LineHeight::default(), // todo:
+            brush: value.color.into(),
             ..Default::default()
         }
     }
 }
 
-impl<B: parley::Brush> From<&TextStyle> for parley::TextStyle<'_, B> {
+impl<B: parley::Brush + From<Color>> From<&TextStyle> for parley::TextStyle<'_, B> {
     fn from(value: &TextStyle) -> Self {
         Self::from(*value)
     }

@@ -28,9 +28,15 @@ pub struct CursorManager {
     time: f32,
 
     settings: CursorSettings,
+
+    // layout: parley::Layout<Color>,
+    // style: TextStyle,
 }
 impl CursorManager {
-    pub fn new(skin: Arc<SkinSettings>, settings: CursorSettings) -> Self {
+    pub fn new(
+        skin: Arc<SkinSettings>, 
+        settings: CursorSettings
+    ) -> Self {
         Self {
             pos: Vector2::ZERO,
 
@@ -45,9 +51,11 @@ impl CursorManager {
             visible: true,
             ripple_radius_override: None,
             settings,
+            // layout: parley::Layout::new(),
+            // style: ,
 
             ripples: Vec::new(),
-            time: 0.0
+            time: 0.0,
         }
     }
 
@@ -114,7 +122,12 @@ impl CursorManager {
         }
     }
 
-    pub fn draw(&mut self, list: &mut RenderableCollection) {
+    pub fn draw(
+        &mut self, 
+        list: &mut RenderableCollection,
+        font_context: &mut parley::FontContext,
+        text_layout_context: &mut parley::LayoutContext<Color>,
+    ) {
         if !self.visible { return }
 
         // draw cursor itself
@@ -132,6 +145,28 @@ impl CursorManager {
                 CursorMode::Pointer => (FontAwesome::HandPointer, Alignment::TOP_LEFT),
                 CursorMode::Text => (FontAwesome::ICursor, Alignment::CENTER),
             };
+
+            let mut layout = simple_text(
+                &c.to_string(), 
+                &TextStyle {
+                    font: DefaultFont::FontAwesome,
+                    font_size: 32.0,
+                    color: self.settings.cursor_color.color,
+                    line_height: 32.0,
+                    alignment: align.horizontal,
+                }, 
+                font_context, 
+                text_layout_context
+            );
+            layout.break_all_lines(None);
+
+            list.push(Transformed::new(
+                Transform::default()
+                    .rotate(self.cursor_rotation)
+                    .translate(self.pos)
+                    ,
+                Box::new(Text::new(layout))
+            ));
 
             // let mut text = Text::new(
             //     self.pos,

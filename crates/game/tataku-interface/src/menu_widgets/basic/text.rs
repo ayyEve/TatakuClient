@@ -2,12 +2,6 @@ use crate::prelude::*;
 
 use parley::{
     FontContext, LayoutContext, Layout, Alignment,
-    swash::{
-        FontRef,
-        scale::{
-            ScaleContext, Render, Source, StrikeWith,
-        }
-    },
 };
 
 #[derive(ChainableInitializer)]
@@ -160,25 +154,8 @@ impl Widget<TatakuAction> for TextWidget {
 
         shell.list.push(Transformed {
             transform,
-
-            drawable: Box::new(Text {
-                layout: self.layout.clone(),
-                blend_mode: GraphicsPipeline::default()
-            }),
+            drawable: Box::new(Text::new(self.layout.clone())),
         });
-
-        // let glyphs = rasterize_layout(
-        //     &self.layout,
-        //     text_style.color,
-        //     shell.scale_context,
-        // );
-
-        // for glyph in glyphs {
-        //     shell.list.push(Transformed {
-        //         transform,
-        //         drawable: Box::new(glyph),
-        //     });
-        // }
     }
 }
 
@@ -266,105 +243,3 @@ pub fn simple_text(
 
     layout
 }
-
-// pub fn rasterize_layout(
-//     layout: &Layout<[u8; 4]>,
-
-//     color: Color,
-
-//     scale_context: &mut ScaleContext,
-// ) -> Vec<Transformed> {
-//     let runs = layout.lines()
-//         .flat_map(|line| line.items())
-//         .flat_map(|item| match item {
-//             parley::PositionedLayoutItem::GlyphRun(glyph_run) => Some(glyph_run),
-//             parley::PositionedLayoutItem::InlineBox(_) => None,
-//         });
-
-//     let mut render = Render::new(&[
-//         // Color outline with the first palette
-//         Source::ColorOutline(0),
-//         // Color bitmap with best fit selection mode
-//         Source::ColorBitmap(StrikeWith::BestFit),
-//         // Standard scalable outline
-//         Source::Outline,
-//     ]);
-
-//     let mut glyphs = Vec::new();
-
-//     for run in runs {
-//         let font = run.run().font();
-//         let size = run.run().font_size();
-
-//         let mut scaler = scale_context.builder(FontRef::from_index(font.data.data(), font.index as usize).unwrap())
-//             .size(size)
-//             .build();
-
-//         for glyph in run.positioned_glyphs() {
-//             let offset = [
-//                 glyph.x.fract(),
-//                 0.0, // quantize = true
-//             ];
-
-//             render.offset(offset.into());
-
-//             let Some(image) = render.render(&mut scaler, glyph.id) else { continue; };
-
-//             let x = glyph.x.floor() as i32;
-//             let y = glyph.y.floor() as i32;
-
-//             // convert from bottom-left to top-left image
-//             let x = x + image.placement.left;
-//             let y = y - image.placement.top;
-
-//             let glyph = Glyph {
-//                 alpha_mask: image.data,
-//                 color,
-//                 size: [image.placement.width, image.placement.height],
-//             };
-
-//             let transform = Transform::default()
-//                 .translate(Vector2::new(x as f32, y as f32));
-
-//             glyphs.push(Transformed::new(transform, Box::new(glyph)));
-//         }
-//     }
-
-//     glyphs
-// }
-
-// pub struct Glyph {
-//     alpha_mask: Vec<u8>,
-//     color: Color,
-//     size: [u32; 2],
-// }
-
-// impl TatakuRenderable for Glyph {
-//     fn get_blend_mode(&self) -> GraphicsPipeline { GraphicsPipeline::AlphaBlending }
-//     fn set_blend_mode(&mut self, _blend_mode: GraphicsPipeline) {}
-
-//     fn draw(
-//         &self,
-//         options: &DrawOptions,
-//         transform: Matrix,
-//         g: &mut dyn RenderEngine,
-//     ) {
-//         let data = self.alpha_mask.iter()
-//             .map(|&alpha| self.color.alpha8(alpha))
-//             .flat_map(|color| [color.r, color.g, color.b, color.a])
-//             .collect::<Vec<_>>();
-
-//         let tex = g.load_texture_rgba(&data, self.size).unwrap();
-
-//         g.draw_tex(
-//             &tex,
-//             Color::WHITE,
-//             false,
-//             false,
-//             transform,
-//             GraphicsPipeline::AlphaBlending,
-//         );
-
-//         g.free_tex(tex, true);
-//     }
-// }

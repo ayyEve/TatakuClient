@@ -63,6 +63,7 @@ pub struct WgpuEngine<'window> {
 
     #[cfg(feature="vello_rendering")]
     pub(crate) vello_pipeline: Option<shaders::vello::Pipeline>,
+    font_scale_context: parley::swash::scale::ScaleContext,
 
 
     scissors: tataku::ScissorManager,
@@ -400,6 +401,7 @@ impl<'window> WgpuEngine<'window> {
 
             #[cfg(feature="vello_rendering")]
             vello_pipeline,
+            font_scale_context: parley::swash::scale::ScaleContext::new(),
 
             scissors: tataku::ScissorManager::default(),
             present_modes,
@@ -2334,11 +2336,104 @@ impl tataku::DrawEngine for WgpuEngine<'_> {
 
     fn draw_text(
         &mut self,
-        _transform: tataku::Matrix,
-        _blend_mode: tataku::GraphicsPipeline,
-        _layout: &parley::Layout<tataku_client_common::prelude::Color>,
+        transform: tataku::Matrix,
+        blend_mode: tataku::GraphicsPipeline,
+        layout: &parley::Layout<tataku_client_common::prelude::Color>,
     ) {
-        todo!()
+        use parley::swash::{
+            FontRef,
+            scale::{
+                Render, Source, StrikeWith,
+            }
+        };
+
+        let runs = layout.lines()
+            .flat_map(|line| line.items())
+            .flat_map(|item| match item {
+                parley::PositionedLayoutItem::GlyphRun(glyph_run) => Some(glyph_run),
+                parley::PositionedLayoutItem::InlineBox(_) => None,
+            });
+
+        let mut render = Render::new(&[
+            // Color outline with the first palette
+            Source::ColorOutline(0),
+            // Color bitmap with best fit selection mode
+            Source::ColorBitmap(StrikeWith::BestFit),
+            // Standard scalable outline
+            Source::Outline,
+        ]);
+
+        let mut glyphs = Vec::new();
+        struct Glyph {
+            pos: tataku::Vector2,
+            color: tataku::Color,
+            image: parley::swash::scale::image::Image,
+        }
+
+        for run in runs {
+            let inner = run.run();
+            let font = inner.font();
+            let size = inner.font_size();
+            let color = run.style().brush;
+
+            let mut scaler = self.font_scale_context.builder(FontRef::from_index(
+                font.data.data(), 
+                font.index as usize
+            ).unwrap())
+                .size(size)
+                .build();
+
+            for glyph in run.positioned_glyphs() {
+                let offset = [
+                    glyph.x.fract(),
+                    0.0, // quantize = true
+                ];
+
+                render.offset(offset.into());
+
+                let Some(image) = render.render(&mut scaler, glyph.id) 
+                else { continue; };
+
+                let x = glyph.x.floor() as i32;
+                let y = glyph.y.floor() as i32;
+
+                // convert from bottom-left to top-left image
+                let x = x + image.placement.left;
+                let y = y - image.placement.top;
+
+                glyphs.push(Glyph {
+                    pos: tataku::Vector2::new(x as f32, y as f32),
+                    color,
+                    image,
+                });
+
+            }
+        }
+
+        for g in glyphs {
+            let image = g.image;
+
+            let size = [image.placement.width, image.placement.height];
+
+            let data = image.data.iter()
+                .map(|&alpha| g.color.alpha8(alpha))
+                .flat_map(|color| [color.r, color.g, color.b, color.a])
+                .collect::<Vec<_>>();
+
+            let tex = self.load_texture_rgba(&data, size).unwrap();
+
+            self.draw_tex(
+                &tex,
+                tataku::Color::WHITE,
+                false,
+                false,
+                transform.trans(g.pos),
+                blend_mode,
+            );
+
+            self.free_tex(tex, true);
+        }
+
     }
 }
 

@@ -50,7 +50,12 @@ impl VolumeControl {
     }
 
 
-    pub fn draw(&mut self, list: &mut RenderableCollection) {
+    pub fn draw(
+        &mut self, 
+        list: &mut RenderableCollection,
+        font_context: &mut parley::FontContext,
+        text_layout_context: &mut parley::LayoutContext<Color>,
+    ) {
         let elapsed = self.elapsed();
 
         // draw the volume things if needed
@@ -82,15 +87,26 @@ impl VolumeControl {
                     (90 - 30 * n) as f32
                 );
 
+                let mut layout = simple_text(
+                    text,
+                    &TextStyle {
+                        font_size: 20.0,
+                        font: DefaultFont::Main,
+                        color: if self.vol_selected_index == n as u8 { Color::RED } else { Color::BLACK },
+                        ..Default::default()
+                    },
+                    font_context,
+                    text_layout_context,
+                );
+                layout.break_all_lines(None);
 
                 // text
-                // list.push(Text::new(
-                //     self.window_size - Vector2::new(300.0, r_offset.y),
-                //     20.0,
-                //     text,
-                //     if self.vol_selected_index == n as u8 { Color::RED } else { Color::BLACK },
-                //     DefaultFont::Main,
-                // ));
+                list.push(Transformed::new(
+                    Transform::default()
+                        .translate(self.window_size - Vector2::new(300.0, r_offset.y)),
+                    Box::new(Text::new(layout))
+                ));
+
                 // fill
                 list.push(Rectangle::new(
                     self.window_size - r_offset,
