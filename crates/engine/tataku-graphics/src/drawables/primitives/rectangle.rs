@@ -10,7 +10,7 @@ pub struct Rectangle {
 
     pub origin: Vector2,
     pub scale: Vector2,
-    blend_mode: Pipeline,
+    blend_mode: GraphicsPipeline,
 
     #[chain] pub shape: Shape,
     pub border: Option<Border>,
@@ -35,7 +35,7 @@ impl Rectangle {
             color,
             rotation: 0.0,
             shape: Shape::Square,
-            blend_mode: Pipeline::AlphaBlending,
+            blend_mode: GraphicsPipeline::AlphaBlending,
 
             border: None,
             origin: bounds.size / 2.0,
@@ -56,18 +56,21 @@ impl Rectangle {
 impl TatakuRenderable for Rectangle {
     fn get_name(&self) -> String { "Rectangle".to_owned() }
 
-    fn get_blend_mode(&self) -> Pipeline { self.blend_mode }
-    fn set_blend_mode(&mut self, blend_mode: Pipeline) { self.blend_mode = blend_mode }
+    fn get_blend_mode(&self) -> GraphicsPipeline { self.blend_mode }
+    fn set_blend_mode(&mut self, blend_mode: GraphicsPipeline) { self.blend_mode = blend_mode }
 
     fn draw(
         &self, 
         options: &DrawOptions, 
         transform: Matrix, 
-        g: &mut dyn GraphicsEngine
+        g: &mut dyn DrawEngine
     ) {
         let color = options.color_with_alpha(self.color);
         
-        let border = self.border.map(|mut b| { b.color = options.border_color_with_alpha(b.color); b });
+        let border = self.border.map(|mut b| { 
+            b.color = options.border_color_with_alpha(b.color); 
+            b 
+        });
         
         let transform = transform * Matrix::identity()
             .trans(-self.origin) // apply origin
@@ -78,13 +81,24 @@ impl TatakuRenderable for Rectangle {
         ;
 
         g.draw_rect(
-            [0.0, 0.0, self.inner.size.x, self.inner.size.y], 
+            [
+                0.0, 0.0, //self.inner.pos.x, self.inner.pos.y, 
+                self.inner.size.x, self.inner.size.y
+            ], 
             border, 
             self.shape, 
             color, 
             transform, 
             self.blend_mode
         );
+        // g.draw_rect(
+        //     [0.0, 0.0, self.inner.size.x, self.inner.size.y], 
+        //     border, 
+        //     self.shape, 
+        //     color, 
+        //     transform, 
+        //     self.blend_mode
+        // );
     }
 }
 
@@ -96,7 +110,7 @@ impl From<Bounds> for Rectangle {
             rotation: 0.0,
             origin: other.size / 2.0,
             scale: Vector2::ONE,
-            blend_mode: Pipeline::default(),
+            blend_mode: GraphicsPipeline::default(),
             shape: Shape::Square,
             border: None
         }

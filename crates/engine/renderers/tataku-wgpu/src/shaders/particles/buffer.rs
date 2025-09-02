@@ -1,80 +1,79 @@
 use crate::prelude::*;
 
-pub const SIZE:u64 = 300;
+pub(crate) const SIZE:u64 = 300;
 
-pub struct ParticleBuffer {
-    pub particle_buffer: Buffer,
-    pub emitter_buffer: Buffer,
-    pub run_info_buffer: Buffer,
-    pub bind_group: BindGroup,
-    pub layout: BindGroupLayout,
+pub(crate) struct Buffer {
+    pub particle_buffer: wgpu::Buffer,
+    pub emitter_buffer: wgpu::Buffer,
+    pub run_info_buffer: wgpu::Buffer,
+    pub bind_group: wgpu::BindGroup,
+    pub layout: wgpu::BindGroupLayout,
 
-    pub readable_particle_buffer: Buffer,
+    pub readable_particle_buffer: wgpu::Buffer,
     pub index: usize,
     pub particle_count: usize,
 }
-
-impl ParticleBuffer {
-    pub fn new(device: &Device, index: usize) -> Self {
-        let emitter_buffer = device.create_buffer(&BufferDescriptor {
+impl Buffer {
+    pub fn new(device: &wgpu::Device, index: usize) -> Self {
+        let emitter_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Emittor Info Buffer"),
-            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-            size: SIZE * std::mem::size_of::<EmitterInfoInner>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            size: SIZE * std::mem::size_of::<super::GpuEmitterInfo>() as u64,
             mapped_at_creation: false,
         });
 
-        let particle_buffer = device.create_buffer(&BufferDescriptor {
+        let particle_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Particle Buffer"),
-            usage: BufferUsages::STORAGE 
-                | BufferUsages::COPY_DST 
-                | BufferUsages::COPY_SRC,
-            size: SIZE * std::mem::size_of::<GpuParticle>() as u64,
+            usage: wgpu::BufferUsages::STORAGE 
+                | wgpu::BufferUsages::COPY_DST 
+                | wgpu::BufferUsages::COPY_SRC,
+            size: SIZE * std::mem::size_of::<super::GpuParticle>() as u64,
             mapped_at_creation: false,
         });
 
-        let run_info_buffer = device.create_buffer(&BufferDescriptor {
+        let run_info_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Run Info Buffer"),
-            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-            size: std::mem::size_of::<RunInfoInner>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            size: std::mem::size_of::<super::GpuRunInfo>() as u64,
             mapped_at_creation: false,
         });
 
         let layout = device.create_bind_group_layout(
-            &BindGroupLayoutDescriptor {
+            &wgpu::BindGroupLayoutDescriptor {
                 label: Some("ghjkdfs"),
                 entries: &[
-                    BindGroupLayoutEntry {
+                    wgpu::BindGroupLayoutEntry {
                         binding: 0,
-                        visibility: ShaderStages::COMPUTE,
-                        ty: BindingType::Buffer {
-                            ty: BufferBindingType::Uniform,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
                             has_dynamic_offset: false,
                             min_binding_size: NonZeroU64::new(
-                                SIZE * size_of::<EmitterInfoInner>() as u64
+                                SIZE * size_of::<super::GpuEmitterInfo>() as u64
                             )
                         },
                         count: None,
                     },
-                    BindGroupLayoutEntry {
+                    wgpu::BindGroupLayoutEntry {
                         binding: 1,
-                        visibility: ShaderStages::COMPUTE,
-                        ty: BindingType::Buffer {
-                            ty: BufferBindingType::Storage { read_only: false },
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
                             has_dynamic_offset: false,
                             min_binding_size: NonZeroU64::new(
-                                SIZE * size_of::<GpuParticle>() as u64
+                                SIZE * size_of::<super::GpuParticle>() as u64
                             )
                         },
                         count: None,
                     },
-                    BindGroupLayoutEntry {
+                    wgpu::BindGroupLayoutEntry {
                         binding: 2,
-                        visibility: ShaderStages::COMPUTE,
-                        ty: BindingType::Buffer {
-                            ty: BufferBindingType::Uniform,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
                             has_dynamic_offset: false,
                             min_binding_size: NonZeroU64::new(
-                                size_of::<RunInfoInner>() as u64
+                                size_of::<super::GpuRunInfo>() as u64
                             )
                         },
                         count: None,
@@ -84,19 +83,19 @@ impl ParticleBuffer {
         );
 
         let bind_group = device.create_bind_group(
-            &BindGroupDescriptor {
+            &wgpu::BindGroupDescriptor {
                 label: Some("hgoifdshgijfds"),
                 layout: &layout,
                 entries: &[
-                    BindGroupEntry {
+                    wgpu::BindGroupEntry {
                         binding: 0,
                         resource: emitter_buffer.as_entire_binding(),
                     },
-                    BindGroupEntry {
+                    wgpu::BindGroupEntry {
                         binding: 1,
                         resource: particle_buffer.as_entire_binding(),
                     },
-                    BindGroupEntry {
+                    wgpu::BindGroupEntry {
                         binding: 2,
                         resource: run_info_buffer.as_entire_binding(),
                     }
@@ -106,10 +105,10 @@ impl ParticleBuffer {
 
 
         let readable_particle_buffer = device.create_buffer(
-            &BufferDescriptor {
+            &wgpu::BufferDescriptor {
                 label: Some("Particle Buffer 2"),
-                usage: BufferUsages::COPY_DST | BufferUsages::MAP_READ,
-                size: SIZE * size_of::<GpuParticle>() as u64,
+                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                size: SIZE * size_of::<super::GpuParticle>() as u64,
                 mapped_at_creation: false,
             }
         );

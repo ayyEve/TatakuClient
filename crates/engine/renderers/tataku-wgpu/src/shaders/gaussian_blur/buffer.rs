@@ -1,22 +1,20 @@
 use crate::prelude::*;
-use tataku_client_common::prelude::*;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 
 const BLURS_PER_BUF:u64 = 1;
 
-pub struct GaussianBlurBuffer {
-    pub scissor: Option<Scissor>,
+pub(crate) struct Buffer {
+    pub scissor: Option<tataku::Scissor>,
     pub used: u64,
     kernel_size: u32,
     sigma: f32,
-    settings: Buffer,
-    kernel_buffer: Buffer,
-
-    pub compute_constants: BindGroup,
+    
+    settings: wgpu::Buffer,
+    kernel_buffer: wgpu::Buffer,
+    pub compute_constants: wgpu::BindGroup,
 }
-
-impl RenderBufferable for GaussianBlurBuffer {
-    type Cache = CpuBlurBuffer;
+impl RenderBufferable for Buffer {
+    type Cache = CpuBuffer;
     const VTX_PER_BUF: u64 = BLURS_PER_BUF;
     const IDX_PER_BUF: u64 = BLURS_PER_BUF;
 
@@ -27,16 +25,16 @@ impl RenderBufferable for GaussianBlurBuffer {
         self.used = 0;
     }
 
-    fn dump(&mut self, queue: &wgpu::Queue, cache: &Self::Cache) {
+    fn dump(&mut self, queue: &wgpu::Queue, cache: &mut Self::Cache) {
         let params = cache.cpu_blurs[0];
-        
+
         if self.sigma != params.sigma {
             self.sigma = params.sigma;
-            let kernel = GaussianKernel::kernel(params.sigma);
+            let kernel = super::GaussianKernel::kernel(params.sigma);
             self.kernel_size = kernel.size() as u32;
             queue.write_buffer(
-                &self.kernel_buffer, 
-                0, 
+                &self.kernel_buffer,
+                0,
                 bytemuck::cast_slice(&kernel.packed_data()[..])
             );
         }
@@ -50,42 +48,42 @@ impl RenderBufferable for GaussianBlurBuffer {
         };
 
         queue.write_buffer(
-            &self.settings, 
-            0, 
+            &self.settings,
+            0,
             bytemuck::cast_slice(&[settings])
         );
     }
 
-    fn create_new_buffer(device: &Device, pipeline: WgpuPipeline) -> Self {
+    fn create_new_buffer(device: &wgpu::Device, pipeline: WgpuPipeline) -> Self {
         let sigma = 100.0; // this affects the size of the buffer, so we start with an unreasonably high number to hopefully prevent crashes when its changed later
 
-            let kernel = GaussianKernel::kernel(sigma);
+        let kernel = super::GaussianKernel::kernel(sigma);
         let kernel_size = kernel.size() as u32;
 
         let settings = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("Image info"),
             contents: bytemuck::cast_slice(&[Blur2::default()]),
-            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
         let kernel = device.create_buffer_init(
             &BufferInitDescriptor {
-                label: None,
+                label: Some("gaussian blur"),
                 contents: bytemuck::cast_slice(&kernel.packed_data()[..]),
-                usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
             }
         );
 
         let compute_constants = device.create_bind_group(
-            &BindGroupDescriptor {
+            &wgpu::BindGroupDescriptor {
                 label: Some("Compute constants"),
                 layout: &pipeline.get_bind_group_layout(0),
                 entries: &[
-                    BindGroupEntry {
+                    wgpu::BindGroupEntry {
                         binding: 0,
                         resource: settings.as_entire_binding(),
                     },
-                    BindGroupEntry {
+                    wgpu::BindGroupEntry {
                         binding: 1,
                         resource: kernel.as_entire_binding(),
                     },
@@ -108,26 +106,26 @@ impl RenderBufferable for GaussianBlurBuffer {
 
 
 
-pub struct CpuBlurBuffer {
-    pub cpu_blurs: Vec<GaussianBlurParams>,
+pub(crate) struct CpuBuffer {
+    pub cpu_blurs: Vec<super::Params>,
 }
-impl Default for CpuBlurBuffer {
+impl Default for CpuBuffer {
     fn default() -> Self {
         Self {
-            cpu_blurs: vec![GaussianBlurParams::default(); BLURS_PER_BUF as usize],
+            cpu_blurs: vec![super::Params::default(); BLURS_PER_BUF as usize],
         }
     }
 }
 
 
-pub struct GaussianBlurReserveData<'a> {
-    pub data: &'a mut GaussianBlurParams,
+pub(crate) struct ReserveData<'a> {
+    pub data: &'a mut super::Params,
     pub _blur_index: u32,
 }
-impl GaussianBlurReserveData<'_> {
+impl ReserveData<'_> {
     pub fn copy_in(
-        &mut self, 
-        data: GaussianBlurParams
+        &mut self,
+        data: super::Params
     ) {
         *self.data = data;
     }

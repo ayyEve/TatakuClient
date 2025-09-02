@@ -14,13 +14,13 @@ struct Orientation {
 
 @group(0) @binding(0) var<uniform> settings: Settings;
 @group(1) @binding(0) var input_texture: texture_2d<f32>;
-@group(1) @binding(1) var output_texture: texture_storage_2d<bgra8unorm, write>;
+@group(1) @binding(1) var output_texture: texture_storage_2d<rgba8unorm, write>;
 @group(1) @binding(2) var<uniform> orientation: Orientation;
 
 
 @compute
 @workgroup_size(16, 16)
-fn main( 
+fn main(
     @builtin(global_invocation_id) global_id: vec3<u32>,
 ) {
     let frag_coord = vec2<i32>(global_id.xy);
@@ -79,13 +79,13 @@ fn horizontal(frag_coord: vec2<i32>) -> vec3<f32> {
         let color = textureLoad(input_texture, pos, 0);
         accumulation += color.rgb;
     }
-    
+
     return accumulation;
 }
 
 fn outside_bounds(pos: vec2<i32>) -> bool {
-    return pos.y < i32(settings.y) 
+    return pos.y < i32(settings.y)
         || pos.y >= i32(settings.y + settings.height)
-        || pos.x < i32(settings.x) 
+        || pos.x < i32(settings.x)
         || pos.x >= i32(settings.x + settings.width);
 }

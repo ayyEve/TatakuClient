@@ -2,6 +2,6 @@ mod buffer;
 mod vertex;
 mod pipeline;
 
-pub use buffer::*;
-pub use vertex::*;
-pub use pipeline::*;
+pub(crate) use buffer::*;
+pub(crate) use vertex::*;
+pub(crate) use pipeline::*;

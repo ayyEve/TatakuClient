@@ -16,20 +16,20 @@ impl Blur {
     }
 }
 impl TatakuRenderable for Blur {
-    fn get_blend_mode(&self) -> Pipeline {
+    fn get_blend_mode(&self) -> GraphicsPipeline {
         match self.blur_type {
-            BlurType::Gaussian { .. } => Pipeline::GaussianBlur,
-            BlurType::Box { .. } => Pipeline::BoxBlur,
+            BlurType::Gaussian { .. } => GraphicsPipeline::GaussianBlur,
+            BlurType::Box { .. } => GraphicsPipeline::BoxBlur,
         }
     }
-    fn set_blend_mode(&mut self, _blend_mode: Pipeline) {}
+    fn set_blend_mode(&mut self, _blend_mode: GraphicsPipeline) {}
 
     #[cfg(feature="graphics")]
     fn draw(
         &self, 
         _options: &DrawOptions,
         _transform: Matrix, 
-        g: &mut dyn GraphicsEngine,
+        g: &mut dyn DrawEngine,
     ) {
         match self.blur_type {
             BlurType::Gaussian { sigma } 

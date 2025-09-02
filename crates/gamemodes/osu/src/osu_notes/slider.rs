@@ -396,8 +396,8 @@ impl OsuSlider {
             // both body and border use the same code with a few differences, so might as well for-loop them to simplify code
             // border is first, body is 2nd, since the body must be drawn on top of the border (which creates the border)
             for (radius, color, blend_mode) in [
-                (self.radius - border_radius * 0.5, border_color, Pipeline::AlphaBlending), // border
-                (self.radius - border_radius * 1.5, color, Pipeline::AlphaOverwrite) // fill
+                (self.radius - border_radius * 0.5, border_color, GraphicsPipeline::AlphaBlending), // border
+                (self.radius - border_radius * 1.5, color, GraphicsPipeline::AlphaOverwrite) // fill
             ] {
                 // add starting circle manually
                 drawables.push(Box::new(Circle::new(
@@ -449,7 +449,7 @@ impl OsuSlider {
         if !self.use_render_targets() { return }
 
         let options = DrawOptions::default();
-        let callback = Box::new(move |g: &mut dyn GraphicsEngine, mut transform: Matrix| {
+        let callback = Box::new(move |g: &mut dyn DrawEngine, mut transform: Matrix| {
             transform = transform.trans(offset);
             for d in drawables {
                 d.draw(&options, transform, g);

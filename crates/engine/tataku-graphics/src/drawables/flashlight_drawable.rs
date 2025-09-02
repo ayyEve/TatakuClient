@@ -29,8 +29,8 @@ impl FlashlightDrawable {
 impl TatakuRenderable for FlashlightDrawable {
     fn get_name(&self) -> String { "Flashlight".to_owned() }
 
-    fn get_blend_mode(&self) -> Pipeline { Pipeline::Flashlight }
-    fn set_blend_mode(&mut self, _blend_mode: Pipeline) { }
+    fn get_blend_mode(&self) -> GraphicsPipeline { GraphicsPipeline::Flashlight }
+    fn set_blend_mode(&mut self, _blend_mode: GraphicsPipeline) { }
 
 
     #[cfg(feature="graphics")]
@@ -38,7 +38,7 @@ impl TatakuRenderable for FlashlightDrawable {
         &self, 
         _options: &DrawOptions,
         transform: Matrix, 
-        g: &mut dyn GraphicsEngine,
+        g: &mut dyn DrawEngine,
     ) {
         g.draw_flashlight(
             self.bounds.into_quad(), 

@@ -3,9 +3,9 @@ use crate::prelude::*;
 pub trait TatakuRenderable: Sync + Send {
     fn get_name(&self) -> String { "Unnamed".to_owned() }
     
-    fn get_blend_mode(&self) -> Pipeline;
-    fn set_blend_mode(&mut self, blend_mode: Pipeline);
-    fn with_blend_mode(mut self, blend_mode: Pipeline) -> Self where Self:Sized { 
+    fn get_blend_mode(&self) -> GraphicsPipeline;
+    fn set_blend_mode(&mut self, blend_mode: GraphicsPipeline);
+    fn with_blend_mode(mut self, blend_mode: GraphicsPipeline) -> Self where Self:Sized { 
         self.set_blend_mode(blend_mode); 
         self 
     }
@@ -15,7 +15,7 @@ pub trait TatakuRenderable: Sync + Send {
         &self, 
         options: &DrawOptions,
         transform: Matrix, 
-        g: &mut dyn GraphicsEngine,
+        g: &mut dyn DrawEngine,
     );
 }
 

@@ -1,6 +1,5 @@
-use wgpu::Queue;
 use crate::prelude::*;
-use tataku_client_common::prelude::*;
+use tataku::Take;
 
 use std::{
     collections::HashMap, 
@@ -11,38 +10,37 @@ use std::{
     }
 };
 
-pub struct ParticleSystem {
-    emitters: Vec<EmitterReference>,
-    last_update: TatakuInstant,
+pub(crate) struct ParticleSystem {
+    emitters: Vec<tataku::EmitterReference>,
+    last_update: tataku::TatakuInstant,
 
-    pipeline: ComputePipeline,
+    pipeline: wgpu::ComputePipeline,
 
     // are we waiting for the gpu to compute?
     datas_pending: usize,
     sender: SyncSender<(usize, usize)>,
     receiver: Receiver<(usize, usize)>,
 
-    used_buffers: Vec<ParticleBuffer>,
-    available_buffers: Vec<ParticleBuffer>,
-    current_buffer: Option<ParticleBuffer>,
+    used_buffers: Vec<super::Buffer>,
+    available_buffers: Vec<super::Buffer>,
+    current_buffer: Option<super::Buffer>,
 
-    cpu_info_buffer: Vec<EmitterInfoInner>,
-    cpu_particle_buffer: Vec<GpuParticle>,
+    cpu_info_buffer: Vec<super::GpuEmitterInfo>,
+    cpu_particle_buffer: Vec<super::GpuParticle>,
 }
-
 impl ParticleSystem {
-    pub fn new(device: &Device) -> Self {
+    pub fn new(device: &wgpu::Device) -> Self {
         let particle_compute_shader = device.create_shader_module(
-            ShaderModuleDescriptor {
+            wgpu::ShaderModuleDescriptor {
                 label: Some("Particle Compute Shader"),
-                source: ShaderSource::Wgsl(crate::shader_files::PARTICLES.into()),
+                source: wgpu::ShaderSource::Wgsl(crate::shader_files::PARTICLES.into()),
             }
         );
 
-        let buffer = ParticleBuffer::new(device, 0);
+        let buffer = super::Buffer::new(device, 0);
 
         let pipeline_layout = device.create_pipeline_layout(
-            &PipelineLayoutDescriptor {
+            &wgpu::PipelineLayoutDescriptor {
                 label: Some("Compute Pipeline layout"),
                 bind_group_layouts: &[ &buffer.layout ],
                 push_constant_ranges: &[],
@@ -50,20 +48,20 @@ impl ParticleSystem {
         );
 
         let pipeline = device.create_compute_pipeline(
-            &ComputePipelineDescriptor {
+            &wgpu::ComputePipelineDescriptor {
                 label: Some("Particle compute pipeline"),
                 layout: Some(&pipeline_layout),
                 module: &particle_compute_shader,
                 entry_point: Some("main"),
                 cache: None,
-                compilation_options: PipelineCompilationOptions::default(),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
             }
         );
 
         let (sender, receiver) = sync_channel(1000);
         Self {
             emitters: Vec::new(),
-            last_update: TatakuInstant::now(),
+            last_update: tataku::TatakuInstant::now(),
 
             pipeline,
 
@@ -71,19 +69,19 @@ impl ParticleSystem {
             receiver,
             datas_pending: 0,
 
-            cpu_info_buffer: Vec::with_capacity(SIZE as usize),
-            cpu_particle_buffer: Vec::with_capacity(SIZE as usize),
+            cpu_info_buffer: Vec::with_capacity(super::SIZE as usize),
+            cpu_particle_buffer: Vec::with_capacity(super::SIZE as usize),
             current_buffer: Some(buffer),
 
             used_buffers: Vec::new(),
             available_buffers: Vec::new(),
         }
     }
-    pub fn add(&mut self, emitter: EmitterReference) {
+    pub fn add(&mut self, emitter: tataku::EmitterReference) {
         self.emitters.push(emitter);
     }
 
-    pub fn update(&mut self, device: &Device, queue: &Queue) {
+    pub fn update(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
         if self.datas_pending > 0 {
             if let Ok((index, written_size)) = self.receiver.try_recv() {
                 if let Some(buffer) = self
@@ -98,7 +96,7 @@ impl ParticleSystem {
 
         self.send_to_gpu(device, queue);
     }
-    fn get_buffer_from_index(&self, index: usize) -> Option<&ParticleBuffer> {
+    fn get_buffer_from_index(&self, index: usize) -> Option<&super::Buffer> {
         self.used_buffers.iter().find(|b| b.index == index)
     }
 
@@ -107,11 +105,11 @@ impl ParticleSystem {
         &self, 
         index: usize, 
         written_size: usize
-    ) -> Option<&ParticleBuffer> {
+    ) -> Option<&super::Buffer> {
         let buffer = self.get_buffer_from_index(index)?;
 
         // this shouldnt happen (anymore) but is here as a failsafe
-        if GpuParticle::count_size(buffer.particle_count) != written_size {
+        if super::GpuParticle::count_size(buffer.particle_count) != written_size {
             warn!("got disagreeing written particle count");
             return None
         }
@@ -121,8 +119,8 @@ impl ParticleSystem {
             .slice(..written_size as u64)
             .get_mapped_range();
 
-        let particles:Vec<GpuParticle> = data
-            .chunks_exact(GpuParticle::count_size(1))
+        let particles:Vec<super::GpuParticle> = data
+            .chunks_exact(super::GpuParticle::count_size(1))
             .map(|bytes| bytemuck::cast_slice(bytes)[0])
             .collect();
 
@@ -160,7 +158,7 @@ impl ParticleSystem {
     }
 
 
-    fn send_to_gpu(&mut self, device: &Device, queue: &Queue) {
+    fn send_to_gpu(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
         let delta = self.last_update.elapsed_and_reset();
         self.available_buffers.extend(self.used_buffers.take());
         if self.current_buffer.is_none() {
@@ -178,7 +176,7 @@ impl ParticleSystem {
 
             let pool = pool.read();
 
-            if self.cpu_particle_buffer.len() as u64 + 1 >= SIZE {
+            if self.cpu_particle_buffer.len() as u64 + 1 >= super::SIZE {
                 self.next_buffer(device, queue, delta);
             }
 
@@ -186,13 +184,13 @@ impl ParticleSystem {
             self.cpu_info_buffer.push(info);
 
             pool.iter_used().for_each(|p| {
-                if self.cpu_particle_buffer.len() as u64 + 1 >= SIZE {
+                if self.cpu_particle_buffer.len() as u64 + 1 >= super::SIZE {
                     self.next_buffer(device, queue, delta);
 
                     self.cpu_info_buffer.push(info);
                     info_index = 0;
                 }
-                self.cpu_particle_buffer.push(GpuParticle::new(
+                self.cpu_particle_buffer.push(super::GpuParticle::new(
                     p, 
                     info_index, 
                     emitter_index
@@ -208,13 +206,13 @@ impl ParticleSystem {
         if self.used_buffers.is_empty() { return; }
 
         let mut encoder = device.create_command_encoder(
-            &CommandEncoderDescriptor { label: Some("Render Encoder") }
+            &wgpu::CommandEncoderDescriptor { label: Some("Render Encoder") }
         );
 
         for buffer in &self.used_buffers {
             {
                 let mut compute_pass = encoder.begin_compute_pass(
-                    &ComputePassDescriptor { 
+                    &wgpu::ComputePassDescriptor { 
                         label: Some("Particles"), 
                         timestamp_writes: None, 
                     }
@@ -224,13 +222,13 @@ impl ParticleSystem {
                 compute_pass.dispatch_workgroups(buffer.particle_count as u32, 1, 1);
             }
 
-            let write_size = GpuParticle::count_size(buffer.particle_count);
+            let write_size = super::GpuParticle::count_size(buffer.particle_count);
             encoder.copy_buffer_to_buffer(
                 &buffer.particle_buffer, 
                 0, 
                 &buffer.readable_particle_buffer, 
                 0, 
-                write_size as BufferAddress
+                write_size as wgpu::BufferAddress
             );
         }
 
@@ -238,13 +236,13 @@ impl ParticleSystem {
 
         for buffer in &self.used_buffers {
             let index = buffer.index;
-            let write_size = GpuParticle::count_size(buffer.particle_count);
+            let write_size = super::GpuParticle::count_size(buffer.particle_count);
             let s = self.sender.clone();
 
             buffer.readable_particle_buffer
                 .slice(..write_size as u64)
                 .map_async(
-                    MapMode::Read, 
+                    wgpu::MapMode::Read, 
                     move |_| s.send((index, write_size)
                 )
                 .unwrap());
@@ -253,12 +251,12 @@ impl ParticleSystem {
         self.datas_pending = self.used_buffers.len();
     }
 
-    fn next_buffer(&mut self, device: &Device, queue: &Queue, delta: f32) {
+    fn next_buffer(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, delta: f32) {
         if self.cpu_particle_buffer.is_empty() { return }
 
         let mut buffer = self.current_buffer
             .take()
-            .unwrap_or_else(|| ParticleBuffer::new(
+            .unwrap_or_else(|| super::Buffer::new(
                 device, 
                 self.used_buffers.len()
             ));
@@ -278,7 +276,7 @@ impl ParticleSystem {
         queue.write_buffer(
             &buffer.run_info_buffer, 
             0, 
-            bytemuck::cast_slice(&[RunInfoInner::new(delta)])
+            bytemuck::cast_slice(&[super::GpuRunInfo::new(delta)])
         );
         self.used_buffers.push(buffer);
 

@@ -80,8 +80,7 @@ impl FpsDisplay {
         &self,
         list: &mut RenderableCollection,
         font_context: &mut parley::FontContext,
-        scale_context: &mut parley::swash::scale::ScaleContext,
-        text_layout_context: &mut parley::LayoutContext
+        text_layout_context: &mut parley::LayoutContext<Color>
     ) {
         list.push(Rectangle::new(
             self.pos,
@@ -103,17 +102,27 @@ impl FpsDisplay {
 
         layout.break_all_lines(Some(SIZE.x));
 
-        let glyphs = rasterize_layout(
-            &layout,
-            Color::BLACK,
-            scale_context,
-        );
+        // let glyphs = rasterize_layout(
+        //     &layout,
+        //     Color::BLACK,
+        //     scale_context,
+        // );
 
-        let transform = Transform::default().translate(self.pos + TEXT_PADDING);
+        let transform = Transform::default()
+            .translate(self.pos + TEXT_PADDING);
 
-        for glyph in glyphs {
-            list.push(Transformed::new(transform, Box::new(glyph)));
-        }
+
+        list.push(Transformed::new(
+            transform,
+            Box::new(Text {
+                layout: layout.clone(),
+                blend_mode: GraphicsPipeline::default(),
+            })
+        ));
+
+        // for glyph in glyphs {
+        //     list.push(Transformed::new(transform, Box::new(glyph)));
+        // }
     }
 }
 
@@ -182,8 +191,7 @@ impl AsyncFpsDisplay {
         &self,
         list: &mut RenderableCollection,
         font_context: &mut parley::FontContext,
-        scale_context: &mut parley::swash::scale::ScaleContext,
-        text_layout_context: &mut parley::LayoutContext
+        text_layout_context: &mut parley::LayoutContext<Color>
     ) {
         list.push(Rectangle::new(
             self.pos,
@@ -204,17 +212,27 @@ impl AsyncFpsDisplay {
         );
 
         layout.break_all_lines(Some(SIZE.x));
+        let transform = Transform::default()
+            .translate(self.pos + TEXT_PADDING);
 
-        let glyphs = rasterize_layout(
-            &layout,
-            Color::BLACK,
-            scale_context,
-        );
+        list.push(Transformed::new(
+            transform,
+            Box::new(Text {
+                layout: layout.clone(),
+                blend_mode: GraphicsPipeline::default()
+            }),
+        ));
 
-        let transform = Transform::default().translate(self.pos + TEXT_PADDING);
 
-        for glyph in glyphs {
-            list.push(Transformed::new(transform, Box::new(glyph)));
-        }
+        // let glyphs = rasterize_layout(
+        //     &layout,
+        //     Color::BLACK,
+        //     scale_context,
+        // );
+
+
+        // for glyph in glyphs {
+        //     list.push(Transformed::new(transform, Box::new(glyph)));
+        // }
     }
 }

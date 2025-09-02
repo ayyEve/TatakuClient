@@ -2,7 +2,7 @@
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default)]
 #[derive(bytemuck::Pod, bytemuck::Zeroable)]
-pub struct BoxBlurParams {
+pub(crate) struct Params {
     pub x: u32,
     pub y: u32,
     pub width: u32,
@@ -10,7 +10,7 @@ pub struct BoxBlurParams {
 
     pub size: u32,
 }
-impl BoxBlurParams {
+impl Params {
     pub fn new(
         x: u32,
         y: u32,

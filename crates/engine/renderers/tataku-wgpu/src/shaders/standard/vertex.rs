@@ -1,59 +1,58 @@
-use crate::prelude::*;
 use std::mem::size_of;
-use tataku_client_common::prelude::{ Matrix, Default2 };
+use crate::prelude::*;
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug, Default2)]
+#[derive(Copy, Clone, Debug, tataku::Default2)]
 #[derive(bytemuck::Pod, bytemuck::Zeroable)]
-pub struct StandardVertex {
+pub(crate) struct Vertex {
     pub position: [f32; 2],
     pub tex_coords: [f32; 2],
     #[default(-1)]
     pub tex_index: i32,
     pub color: [f32; 4],
 }
-impl StandardVertex {
-    pub fn desc() -> VertexBufferLayout<'static> {
-        VertexBufferLayout {
-            array_stride: size_of::<StandardVertex>() as BufferAddress,
-            step_mode: VertexStepMode::Vertex,
+impl Vertex {
+    pub fn layout() -> wgpu::VertexBufferLayout<'static> {
+        wgpu::VertexBufferLayout {
+            array_stride: size_of::<Self>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Vertex,
             attributes: &[
                 // position
-                VertexAttribute {
+                wgpu::VertexAttribute {
                     offset: 0,
                     shader_location: 0,
-                    format: VertexFormat::Float32x2,
+                    format: wgpu::VertexFormat::Float32x2,
                 },
                 // tex coords
-                VertexAttribute {
-                    offset: size_of::<[f32;2]>() as BufferAddress,
+                wgpu::VertexAttribute {
+                    offset: size_of::<[f32;2]>() as wgpu::BufferAddress,
                     shader_location: 1,
-                    format: VertexFormat::Float32x2,
+                    format: wgpu::VertexFormat::Float32x2,
                 },
                 // tex index
-                VertexAttribute {
+                wgpu::VertexAttribute {
                     offset: (
                         size_of::<[f32;2]>() 
                         + size_of::<[f32;2]>()
-                    ) as BufferAddress,
+                    ) as wgpu::BufferAddress,
                     shader_location: 2,
-                    format: VertexFormat::Sint32,
+                    format: wgpu::VertexFormat::Sint32,
                 },
                 // color
-                VertexAttribute {
+                wgpu::VertexAttribute {
                     offset: (
                         size_of::<[f32;2]>() 
                         + size_of::<[f32;2]>() 
                         + size_of::<i32>()
-                    ) as BufferAddress,
+                    ) as wgpu::BufferAddress,
                     shader_location: 3,
-                    format: VertexFormat::Float32x4,
+                    format: wgpu::VertexFormat::Float32x4,
                 },
             ]
         }
     }
 
-    pub fn apply_matrix(mut self, matrix: &Matrix) -> Self {
+    pub fn apply_matrix(mut self, matrix: &tataku::Matrix) -> Self {
         // matrix
         let pos = cgmath::Vector4::new(
             self.position[0], 
@@ -67,4 +66,3 @@ impl StandardVertex {
         self
     }
 }
-

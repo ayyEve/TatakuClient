@@ -94,11 +94,11 @@ impl Transformed {
 
 #[cfg(feature="graphics")]
 impl TatakuRenderable for Transformed {
-    fn get_blend_mode(&self) -> Pipeline {
+    fn get_blend_mode(&self) -> GraphicsPipeline {
         self.drawable.get_blend_mode()
     }
 
-    fn set_blend_mode(&mut self, blend_mode: Pipeline) {
+    fn set_blend_mode(&mut self, blend_mode: GraphicsPipeline) {
         self.drawable.set_blend_mode(blend_mode);
     }
 
@@ -106,7 +106,7 @@ impl TatakuRenderable for Transformed {
         &self,
         options: &DrawOptions,
         mut transform: Matrix,
-        g: &mut dyn GraphicsEngine,
+        g: &mut dyn DrawEngine,
     ) {
         transform = transform * self.transform;
         self.drawable.draw(options, transform, g);
@@ -132,11 +132,11 @@ impl Scissored {
 
 #[cfg(feature="graphics")]
 impl TatakuRenderable for Scissored {
-    fn get_blend_mode(&self) -> Pipeline {
+    fn get_blend_mode(&self) -> GraphicsPipeline {
         self.drawable.get_blend_mode()
     }
 
-    fn set_blend_mode(&mut self, blend_mode: Pipeline) {
+    fn set_blend_mode(&mut self, blend_mode: GraphicsPipeline) {
         self.drawable.set_blend_mode(blend_mode);
     }
 
@@ -144,7 +144,7 @@ impl TatakuRenderable for Scissored {
         &self,
         options: &DrawOptions,
         transform: Matrix,
-        g: &mut dyn GraphicsEngine,
+        g: &mut dyn DrawEngine,
     ) {
         g.push_scissor(self.scissor);
         self.drawable.draw(options, transform, g);
@@ -170,11 +170,11 @@ impl MergeDrawOptions {
 
 #[cfg(feature="graphics")]
 impl TatakuRenderable for MergeDrawOptions {
-    fn get_blend_mode(&self) -> Pipeline {
+    fn get_blend_mode(&self) -> GraphicsPipeline {
         self.drawable.get_blend_mode()
     }
 
-    fn set_blend_mode(&mut self, blend_mode: Pipeline) {
+    fn set_blend_mode(&mut self, blend_mode: GraphicsPipeline) {
         self.drawable.set_blend_mode(blend_mode);
     }
 
@@ -182,7 +182,7 @@ impl TatakuRenderable for MergeDrawOptions {
         &self,
         options: &DrawOptions,
         transform: Matrix,
-        g: &mut dyn GraphicsEngine,
+        g: &mut dyn DrawEngine,
     ) {
         let options = options.merge(self.draw_options);
         self.drawable.draw(&options, transform, g);

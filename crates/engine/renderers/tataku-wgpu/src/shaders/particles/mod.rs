@@ -3,7 +3,7 @@ mod buffer;
 mod particle;
 mod particle_engine;
 
-pub use data::*;
-pub use buffer::*;
-pub use particle::*;
-pub use particle_engine::*;
+pub(crate) use data::*;
+pub(crate) use buffer::*;
+pub(crate) use particle::*;
+pub(crate) use particle_engine::*;

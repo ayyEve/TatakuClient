@@ -21,7 +21,7 @@ struct Kernel {
 @group(0) @binding(0) var<uniform> settings: Settings;
 @group(0) @binding(1) var<storage, read> kernel: Kernel;
 @group(1) @binding(0) var input_texture: texture_2d<f32>;
-@group(1) @binding(1) var output_texture: texture_storage_2d<bgra8unorm, write>;
+@group(1) @binding(1) var output_texture: texture_storage_2d<rgba8unorm, write>;
 @group(1) @binding(2) var<uniform> orientation: Orientation;
 
 @compute
@@ -33,7 +33,7 @@ fn main(
     let filter_size = i32(settings.filter_size);
     let dimensions = textureDimensions(input_texture);
     var position = vec2<i32>(global_id.xy);
-    
+
     if (position.x >= i32(dimensions.x) || position.y >= i32(dimensions.y)) {
         return;
     }
@@ -64,7 +64,7 @@ fn horizontal(
     filter_radius: i32,
 ) -> vec4<f32> {
     var color = vec4<f32>(0.0, 0.0, 0.0, 0.0);
-    
+
     let width = i32(textureDimensions(input_texture).x);
 
     for (var i: i32 = 0; i < filter_size; i++) {
@@ -80,7 +80,7 @@ fn vertical(
     filter_radius: i32,
 ) -> vec4<f32> {
     var color = vec4<f32>(0.0, 0.0, 0.0, 0.0);
-    
+
     let height = i32(textureDimensions(input_texture).y);
 
     for (var i: i32 = 0; i < filter_size; i++) {

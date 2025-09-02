@@ -2,6 +2,6 @@ mod data;
 mod buffer;
 mod pipeline;
 
-pub use data::*;
-pub use buffer::*;
-pub use pipeline::*;
+pub(crate) use data::*;
+pub(crate) use buffer::*;
+pub(crate) use pipeline::*;

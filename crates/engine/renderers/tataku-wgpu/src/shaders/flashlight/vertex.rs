@@ -1,12 +1,12 @@
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default)]
 #[derive(bytemuck::Pod, bytemuck::Zeroable)]
-pub struct FlashlightVertex {
+pub(crate) struct Vertex {
     pub position: [f32; 2],
     pub flashlight_index: u32,
 }
-impl FlashlightVertex {
-    pub fn desc() -> wgpu::VertexBufferLayout<'static> {
+impl Vertex {
+    pub fn layout() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
             array_stride: size_of::<Self>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Vertex,

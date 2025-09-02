@@ -1,10 +1,10 @@
-use tataku_client_common::prelude::*;
+use crate::prelude::*;
 
 /// Vertex buffer layout for sliders
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default)]
 #[derive(bytemuck::Pod, bytemuck::Zeroable)]
-pub struct SliderDataInner {
+pub(crate) struct GpuSliderData {
     /// Radius of inner slider body
     pub circle_radius: f32,
     /// Width of border around slider body
@@ -30,8 +30,8 @@ pub struct SliderDataInner {
     /// Colour of the border of the slider
     pub border_color: [f32; 4],
 }
-impl From<SliderData> for SliderDataInner {
-    fn from(value: SliderData) -> Self {
+impl From<tataku::SliderData> for GpuSliderData {
+    fn from(value: tataku::SliderData) -> Self {
         Self {
             circle_radius: value.circle_radius,
             border_width: value.border_width,
@@ -51,14 +51,14 @@ impl From<SliderData> for SliderDataInner {
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default)]
 #[derive(bytemuck::Pod, bytemuck::Zeroable)]
-pub struct GridCellInner {
+pub(crate) struct GpuGridCell {
     /// Starting index for slice in `grid_cells` array
     pub index: u32,
     /// Length of slice in `grid_cells` array
     pub length: u32,
 }
-impl From<GridCell> for GridCellInner {
-    fn from(value: GridCell) -> Self {
+impl From<tataku::GridCell> for GpuGridCell {
+    fn from(value: tataku::GridCell) -> Self {
         Self {
             index: value.index,
             length: value.length,
@@ -70,12 +70,12 @@ impl From<GridCell> for GridCellInner {
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default)]
 #[derive(bytemuck::Pod, bytemuck::Zeroable)]
-pub struct LineSegmentInner {
+pub(crate) struct GpuLineSegment {
     pub p1: [f32; 2],
     pub p2: [f32; 2],
 }
-impl From<LineSegment> for LineSegmentInner {
-    fn from(value: LineSegment) -> Self {
+impl From<tataku::LineSegment> for GpuLineSegment {
+    fn from(value: tataku::LineSegment) -> Self {
         Self {
             p1: value.p1.into(),
             p2: value.p2.into(),

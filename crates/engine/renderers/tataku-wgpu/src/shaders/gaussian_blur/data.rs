@@ -1,5 +1,5 @@
 #[derive(Copy, Clone, Debug, Default)]
-pub struct GaussianBlurParams {
+pub(crate) struct Params {
     pub x: f32,
     pub y: f32,
     pub width: f32,
@@ -7,7 +7,7 @@ pub struct GaussianBlurParams {
 
     pub sigma: f32
 }
-impl GaussianBlurParams {
+impl Params {
     pub fn new(
         x: f32,
         y: f32,

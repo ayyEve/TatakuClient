@@ -3,7 +3,7 @@ use tataku_client_common::prelude::*;
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[derive(bytemuck::Pod, bytemuck::Zeroable)]
-pub struct EmitterInfoInner {
+pub(crate) struct GpuEmitterInfo {
     pub scale_start: f32,
     pub scale_end: f32,
 
@@ -17,7 +17,7 @@ pub struct EmitterInfoInner {
     _1: f32,
     _2: f32,
 }
-impl From<EmitterInfo> for EmitterInfoInner {
+impl From<EmitterInfo> for GpuEmitterInfo {
     fn from(value: EmitterInfo) -> Self {
         Self {
             scale_start: value.scale_start,
@@ -36,7 +36,7 @@ impl From<EmitterInfo> for EmitterInfoInner {
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[derive(bytemuck::Pod, bytemuck::Zeroable)]
-pub struct RunInfoInner { dt: f32 }
-impl RunInfoInner {
+pub(crate) struct GpuRunInfo { dt: f32 }
+impl GpuRunInfo {
     pub fn new(dt: f32) -> Self { Self { dt } }
 }

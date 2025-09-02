@@ -1,27 +1,23 @@
 use crate::prelude::*;
-use tataku_client_common::prelude::{ *, Color,};
 
 pub struct RenderableSurface<'a> {
-    pub texture: &'a WgpuTextureReference<'a>,
-    pub size: Vector2,
-    pub clear_color: Color,
-    pub render_target: bool,
+    pub texture: &'a WgpuTextureReference,
+    pub size: tataku::Vector2,
+    pub clear_color: tataku::Color,
 }
 impl<'a> RenderableSurface<'a> {
     pub fn new(
-        texture: &'a WgpuTextureReference<'a>,
-        clear_color: Color, 
-        size: Vector2,
-        render_target: bool,
+        texture: &'a WgpuTextureReference,
+        clear_color: tataku::Color,
+        size: tataku::Vector2,
     ) -> Self {
         Self {
             texture,
             size,
             clear_color,
-            render_target
         }
     }
-    
+
     pub fn get_clear_color(&self) -> wgpu::Color {
         wgpu::Color {
             r: self.clear_color.r() as f64,
@@ -34,17 +30,15 @@ impl<'a> RenderableSurface<'a> {
 
 
 
-pub struct WgpuTextureReference<'a> {
-    pub view: TextureView,
-    pub size: Extent3d,
-    pub copy: TexelCopyTextureInfo<'a>,
+pub struct WgpuTextureReference {
+    pub view: wgpu::TextureView,
+    pub size: wgpu::Extent3d,
 }
-impl<'a> WgpuTextureReference<'a> {
-    pub fn new(texture: &'a Texture) -> Self {
+impl WgpuTextureReference {
+    pub fn new(texture: &wgpu::Texture) -> Self {
         Self {
-            view: texture.create_view(&TextureViewDescriptor::default()),
+            view: texture.create_view(&wgpu::TextureViewDescriptor::default()),
             size: texture.size(),
-            copy: texture.as_image_copy(),
         }
     }
 }

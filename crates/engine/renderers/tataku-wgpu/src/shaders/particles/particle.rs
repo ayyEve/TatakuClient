@@ -1,9 +1,9 @@
-use tataku_client_common::prelude::*;
+use crate::prelude::*;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[derive(bytemuck::Pod, bytemuck::Zeroable)]
-pub struct GpuParticle {
+pub(crate) struct GpuParticle {
     /// how much life did this start out with?
     pub life_max: f32,
     /// how much life is left
@@ -28,7 +28,11 @@ pub struct GpuParticle {
     pub particle_index: u32,
 }
 impl GpuParticle {
-    pub fn new(p: &PoolEntry<Particle>, info: u32, emitter: u32) -> Self {
+    pub fn new(
+        p: &tataku::PoolEntry<tataku::Particle>, 
+        info: u32, 
+        emitter: u32
+    ) -> Self {
         Self {
             life_max: p.lifetime_max,
             lifetime: p.lifetime,

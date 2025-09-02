@@ -1,29 +1,28 @@
-use tataku_client_common::prelude::*;
 use crate::prelude::*;
 
-pub fn create_flashlight_pipeline(
-    device: &Device,
-    projection_matrix_bind_group_layout: &BindGroupLayout,
-) -> RenderPipeline {
+pub(crate) fn create_flashlight_pipeline(
+    device: &wgpu::Device,
+    projection_matrix_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
     let shader = device.create_shader_module(
-        ShaderModuleDescriptor {
+        wgpu::ShaderModuleDescriptor {
             label: Some("Flashlight Shader"),
-            source: ShaderSource::Wgsl(crate::shader_files::FLASHLIGHT.into()),
+            source: wgpu::ShaderSource::Wgsl(crate::shader_files::FLASHLIGHT.into()),
         }
     );
 
     let bind_group_layout = device.create_bind_group_layout(
-        &BindGroupLayoutDescriptor {
+        &wgpu::BindGroupLayoutDescriptor {
             label: Some("flashlight group layout"),
             entries: &[
-                BindGroupLayoutEntry {
+                wgpu::BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: ShaderStages::FRAGMENT,
-                    ty: BindingType::Buffer {
-                        ty: BufferBindingType::Storage { read_only: true },
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
                         has_dynamic_offset: false,
                         min_binding_size: NonZeroU64::new(
-                            size_of::<FlashlightDataInner>() as u64 * 2
+                            size_of::<super::GpuData>() as u64 * 2
                         )
                     },
                     count: None,
@@ -33,7 +32,7 @@ pub fn create_flashlight_pipeline(
     );
 
     let pipeline_layout = device.create_pipeline_layout(
-        &PipelineLayoutDescriptor {
+        &wgpu::PipelineLayoutDescriptor {
             label: Some("Flashlight Pipeline Layout"),
             bind_group_layouts: &[
                 projection_matrix_bind_group_layout,
@@ -43,37 +42,37 @@ pub fn create_flashlight_pipeline(
         }
     );
 
-    device.create_render_pipeline(&RenderPipelineDescriptor {
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("Flashlight Pipeline"),
         layout: Some(&pipeline_layout),
         cache: None,
-        vertex: VertexState {
+        vertex: wgpu::VertexState {
             module: &shader,
             entry_point: Some("flashlight_vs_main"),
-            buffers: &[ FlashlightVertex::desc() ],
-            compilation_options: PipelineCompilationOptions::default(),
+            buffers: &[ super::Vertex::layout() ],
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
         },
-        fragment: Some(FragmentState {
+        fragment: Some(wgpu::FragmentState {
             module: &shader,
             entry_point: Some("flashlight_fs_main"),
-            targets: &[Some(ColorTargetState {
-                format: TextureFormat::Bgra8Unorm,
-                blend: Some(WgpuEngine::map_blend_mode(Pipeline::AlphaBlending)),
-                write_mask: ColorWrites::ALL,
+            targets: &[Some(wgpu::ColorTargetState {
+                format: crate::FORMAT.remove_srgb_suffix(),
+                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                write_mask: wgpu::ColorWrites::ALL,
             })],
-            compilation_options: PipelineCompilationOptions::default(),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
         }),
-        primitive: PrimitiveState {
-            topology: PrimitiveTopology::TriangleList,
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
             strip_index_format: None,
-            front_face: FrontFace::Ccw,
+            front_face: wgpu::FrontFace::Ccw,
             cull_mode: None,
-            polygon_mode: PolygonMode::Fill,
+            polygon_mode: wgpu::PolygonMode::Fill,
             unclipped_depth: false,
             conservative: false,
         },
         depth_stencil: None,
-        multisample: MultisampleState {
+        multisample: wgpu::MultisampleState {
             count: 1,
             mask: !0,
             alpha_to_coverage_enabled: false,

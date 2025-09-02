@@ -6,7 +6,7 @@ pub struct HalfCircle {
     pub pos: Vector2,
     pub radius: f32,
     pub left_side: bool,
-    blend_mode: Pipeline,
+    blend_mode: GraphicsPipeline,
 }
 impl HalfCircle {
     pub fn new(
@@ -20,7 +20,7 @@ impl HalfCircle {
             pos,
             radius,
             left_side,
-            blend_mode: Pipeline::AlphaBlending,
+            blend_mode: GraphicsPipeline::AlphaBlending,
         }
     }
 }
@@ -29,14 +29,14 @@ impl HalfCircle {
 impl TatakuRenderable for HalfCircle {
     fn get_name(&self) -> String { "Half Circle".to_owned() }
 
-    fn get_blend_mode(&self) -> Pipeline { self.blend_mode }
-    fn set_blend_mode(&mut self, blend_mode: Pipeline) { self.blend_mode = blend_mode }
+    fn get_blend_mode(&self) -> GraphicsPipeline { self.blend_mode }
+    fn set_blend_mode(&mut self, blend_mode: GraphicsPipeline) { self.blend_mode = blend_mode }
 
     fn draw(
         &self, 
         options: &DrawOptions,
         transform: Matrix,
-        g: &mut dyn GraphicsEngine
+        g: &mut dyn DrawEngine
     ) {
         use std::f32::consts::PI;
         let start_angle = if self.left_side { PI / 2.0 } else { PI * 1.5 };

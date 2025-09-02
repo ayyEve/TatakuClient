@@ -1,7 +1,6 @@
 use crate::prelude::*;
-use tataku_engine::prelude::Default2;
 
-#[derive(Default2)]
+#[derive(tataku::Default2)]
 pub struct RenderBufferQueue<B:RenderBufferable> {
     pub cpu_cache: B::Cache,
     #[default(Vec::with_capacity(3))]
@@ -12,7 +11,7 @@ impl<B:RenderBufferable> RenderBufferQueue<B> {
     /// inline helper to create a render buffer on the queue
     pub fn init<'a>(
         mut self, 
-        device: &Device, 
+        device: &wgpu::Device, 
         pipeline: impl Into<WgpuPipeline<'a>>
     ) -> Self {
         self.create_render_buffer(device, pipeline.into());
@@ -33,15 +32,15 @@ impl<B:RenderBufferable> RenderBufferQueue<B> {
     }
 
     /// finish writing all data to the buffers
-    pub fn end(&mut self, queue: &Queue) -> Option<Box<B>> {
+    pub fn end(&mut self, queue: &wgpu::Queue) -> Option<Box<B>> {
         self.dump(queue)
     }
 
     /// write the data in the cpu cache to the gpu
-    pub fn dump(&mut self, queue: &Queue) -> Option<Box<B>> {
+    pub fn dump(&mut self, queue: &wgpu::Queue) -> Option<Box<B>> {
         let mut recording_buffer = self.recording_buffer.take()?;
         if recording_buffer.should_write() {
-            recording_buffer.dump(queue, &self.cpu_cache);
+            recording_buffer.dump(queue, &mut self.cpu_cache);
             Some(recording_buffer)
         } else {
             self.queued_buffers.push(recording_buffer);
@@ -57,7 +56,7 @@ impl<B:RenderBufferable> RenderBufferQueue<B> {
     /// create a render buffer on the gpu
     pub fn create_render_buffer(
         &mut self, 
-        device: &Device, 
+        device: &wgpu::Device, 
         pipeline: WgpuPipeline
     ) {
         self.queued_buffers.push(Box::new(B::create_new_buffer(device, pipeline)));
@@ -66,8 +65,8 @@ impl<B:RenderBufferable> RenderBufferQueue<B> {
     /// dump the cached data to the gpu, and set up the next recording buffer, creating a new buffer on the gpu if no existing buffers are available
     pub fn dump_and_next(
         &mut self, 
-        queue: &Queue, 
-        device: &Device, 
+        queue: &wgpu::Queue, 
+        device: &wgpu::Device, 
         pipeline: WgpuPipeline
     ) -> Option<Box<B>> {
         let dumped: Option<Box<B>> = self.dump(queue);
@@ -81,7 +80,7 @@ impl<B:RenderBufferable> RenderBufferQueue<B> {
 }
 
 
-pub trait RenderBufferable: Sized {
+pub(crate) trait RenderBufferable: Sized {
     type Cache: Default;
 
     const VTX_PER_BUF: u64;
@@ -91,11 +90,11 @@ pub trait RenderBufferable: Sized {
     fn reset(&mut self);
 
     /// dump the cpu cache to the gpu
-    fn dump(&mut self, queue: &Queue, cache: &Self::Cache);
+    fn dump(&mut self, queue: &wgpu::Queue, cache: &mut Self::Cache);
 
     /// whether or not the data should be dumped to the gpu
     fn should_write(&self) -> bool;
 
     /// create a new buffer on the gpu
-    fn create_new_buffer(device: &Device, pipeline: WgpuPipeline) -> Self;
+    fn create_new_buffer(device: &wgpu::Device, pipeline: WgpuPipeline) -> Self;
 }

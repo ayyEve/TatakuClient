@@ -21,15 +21,15 @@ pub struct SliderDrawable {
     pub line_segments: Vec<LineSegment>,
 }
 impl TatakuRenderable for SliderDrawable {
-    fn get_blend_mode(&self) -> Pipeline { Pipeline::Slider }
-    fn set_blend_mode(&mut self, _blend_mode: Pipeline) {}
+    fn get_blend_mode(&self) -> GraphicsPipeline { GraphicsPipeline::Slider }
+    fn set_blend_mode(&mut self, _blend_mode: GraphicsPipeline) {}
 
     #[cfg(feature="graphics")]
     fn draw(
         &self, 
         _options: &DrawOptions,
         transform: Matrix, 
-        g: &mut dyn GraphicsEngine
+        g: &mut dyn DrawEngine
     ) {
         let quad = [
             Vector2::ZERO,

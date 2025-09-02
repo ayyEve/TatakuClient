@@ -13,8 +13,8 @@ pub trait MatrixHelpers {
 
     fn from_orient(pos: Vector2) -> Self where Self: Sized;
 
-    fn mul_v3(&self, v: Vector3) -> Vector3;
     fn mul_v2(&self, v: Vector2) -> Vector2;
+    fn mul_v3(&self, v: Vector3) -> Vector3;
 
     // trans!!!!
     fn trans(self, p: Vector2) -> Self;

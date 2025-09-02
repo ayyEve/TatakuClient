@@ -13,7 +13,7 @@ pub struct Sector {
     pub start: f32,
     pub end: f32,
 
-    blend_mode: Pipeline,
+    blend_mode: GraphicsPipeline,
 
     pub border: Option<Border>
 }
@@ -36,7 +36,7 @@ impl Sector {
             scale: Vector2::ONE,
 
             border,
-            blend_mode: Pipeline::AlphaBlending,
+            blend_mode: GraphicsPipeline::AlphaBlending,
         }
     }
 }
@@ -45,14 +45,14 @@ impl Sector {
 impl TatakuRenderable for Sector {
     fn get_name(&self) -> String { "Sector".to_owned() }
 
-    fn get_blend_mode(&self) -> Pipeline { self.blend_mode }
-    fn set_blend_mode(&mut self, blend_mode: Pipeline) { self.blend_mode = blend_mode }
+    fn get_blend_mode(&self) -> GraphicsPipeline { self.blend_mode }
+    fn set_blend_mode(&mut self, blend_mode: GraphicsPipeline) { self.blend_mode = blend_mode }
 
     fn draw(
         &self,
         options: &DrawOptions, 
         transform: Matrix, 
-        g: &mut dyn GraphicsEngine
+        g: &mut dyn DrawEngine
     ) {
         g.draw_arc(
             self.start,

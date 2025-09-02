@@ -1,49 +1,51 @@
 use crate::prelude::*;
-use tataku_client_common::prelude::*;
+use crate::shaders::slider;
 
-pub fn create_slider_pipeline(
-    device: &Device,
-    projection_matrix_bind_group_layout: &BindGroupLayout,
-) -> RenderPipeline {
-    let slider_shader = device.create_shader_module(ShaderModuleDescriptor {
+pub(crate) fn create_slider_pipeline(
+    device: &wgpu::Device,
+    projection_matrix_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    let slider_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("Slider Shader"),
-        source: ShaderSource::Wgsl(crate::shader_files::SLIDER.into()),
+        source: wgpu::ShaderSource::Wgsl(crate::shader_files::SLIDER.into()),
     });
 
     let slider_bind_group_layout = device.create_bind_group_layout(
-        &BindGroupLayoutDescriptor {
+        &wgpu::BindGroupLayoutDescriptor {
             label: Some("slider group layout"),
             entries: &[
                 // slider_data
-                BindGroupLayoutEntry {
+                wgpu::BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: ShaderStages::FRAGMENT,
-                    ty: BindingType::Buffer {
-                        ty: BufferBindingType::Storage { read_only: true },
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
                         has_dynamic_offset: false,
-                        min_binding_size: NonZeroU64::new(size_of::<SliderData>() as u64 * 2)
+                        min_binding_size: NonZeroU64::new(
+                            size_of::<tataku::SliderData>() as u64 * 2
+                        )
                     },
                     count: None,
                 },
 
                 // slider_grids
-                BindGroupLayoutEntry {
+                wgpu::BindGroupLayoutEntry {
                     binding: 1,
-                    visibility: ShaderStages::FRAGMENT,
-                    ty: BindingType::Buffer {
-                        ty: BufferBindingType::Storage { read_only: true },
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
                         has_dynamic_offset: false,
-                        min_binding_size: NonZeroU64::new(size_of::<GridCell>() as u64 * 2)
+                        min_binding_size: NonZeroU64::new(size_of::<tataku::GridCell>() as u64 * 2)
                     },
                     count: None,
                 },
 
                 // grid_cells
-                BindGroupLayoutEntry {
+                wgpu::BindGroupLayoutEntry {
                     binding: 2,
-                    visibility: ShaderStages::FRAGMENT,
-                    ty: BindingType::Buffer {
-                        ty: BufferBindingType::Storage { read_only: true },
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
                         has_dynamic_offset: false,
                         min_binding_size: NonZeroU64::new(size_of::<u32>() as u64 * 2)
                     },
@@ -51,13 +53,15 @@ pub fn create_slider_pipeline(
                 },
 
                 // line_segments
-                BindGroupLayoutEntry {
+                wgpu::BindGroupLayoutEntry {
                     binding: 3,
-                    visibility: ShaderStages::FRAGMENT,
-                    ty: BindingType::Buffer {
-                        ty: BufferBindingType::Storage { read_only: true },
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
                         has_dynamic_offset: false,
-                        min_binding_size: NonZeroU64::new(size_of::<LineSegment>() as u64 * 2)
+                        min_binding_size: NonZeroU64::new(
+                            size_of::<tataku::LineSegment>() as u64 * 2
+                        )
                     },
                     count: None,
                 },
@@ -67,7 +71,7 @@ pub fn create_slider_pipeline(
     );
 
     let slider_pipeline_layout = device.create_pipeline_layout(
-        &PipelineLayoutDescriptor {
+        &wgpu::PipelineLayoutDescriptor {
             label: Some("Slider Pipeline Layout"),
             bind_group_layouts: &[
                 projection_matrix_bind_group_layout,
@@ -77,37 +81,37 @@ pub fn create_slider_pipeline(
         }
     );
 
-    device.create_render_pipeline(&RenderPipelineDescriptor {
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("Slider Pipeline"),
         layout: Some(&slider_pipeline_layout),
         cache: None,
-        vertex: VertexState {
+        vertex: wgpu::VertexState {
             module: &slider_shader,
             entry_point: Some("slider_vs_main"),
-            buffers: &[ SliderVertex::desc() ],
-            compilation_options: PipelineCompilationOptions::default(),
+            buffers: &[ slider::Vertex::layout() ],
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
         },
-        fragment: Some(FragmentState {
+        fragment: Some(wgpu::FragmentState {
             module: &slider_shader,
             entry_point: Some("slider_fs_main"),
-            targets: &[Some(ColorTargetState {
-                format: TextureFormat::Bgra8Unorm,
-                blend: Some(WgpuEngine::map_blend_mode(Pipeline::AlphaBlending)),
-                write_mask: ColorWrites::ALL,
+            targets: &[Some(wgpu::ColorTargetState {
+                format: crate::FORMAT.remove_srgb_suffix(),
+                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                write_mask: wgpu::ColorWrites::ALL,
             })],
-            compilation_options: PipelineCompilationOptions::default(),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
         }),
-        primitive: PrimitiveState {
-            topology: PrimitiveTopology::TriangleList,
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
             strip_index_format: None,
-            front_face: FrontFace::Ccw,
+            front_face: wgpu::FrontFace::Ccw,
             cull_mode: None,
-            polygon_mode: PolygonMode::Fill,
+            polygon_mode: wgpu::PolygonMode::Fill,
             unclipped_depth: false,
             conservative: false,
         },
         depth_stencil: None,
-        multisample: MultisampleState {
+        multisample: wgpu::MultisampleState {
             count: 1,
             mask: !0,
             alpha_to_coverage_enabled: false,

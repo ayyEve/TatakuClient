@@ -17,7 +17,7 @@ impl UiManager {
     fn default_tree() -> Tree<TatakuAction> {
         Tree::new(
             100, // 100 should be fine right? right??!!?
-            MessageOwner::Menu, 
+            MessageOwner::Menu,
             EmptyWidget::new_boxed()
         )
     }
@@ -26,18 +26,18 @@ impl UiManager {
     pub fn add_message(&mut self, message: Message) { self.messages.push(message) }
 
     pub fn set_root<T: Reflect>(
-        &mut self, 
+        &mut self,
         root: Box<dyn Widget<TatakuAction>>,
         values: &mut T,
         actions: &mut ActionQueue,
         font_context: &mut parley::FontContext,
-        text_layout_context: &mut parley::LayoutContext,
+        text_layout_context: &mut parley::LayoutContext<Color>,
     ) {
         self.root_tree.handle_event(
-            &TatakuEventType::MenuLeave, 
-            None, 
-            values, 
-            actions, 
+            &TatakuEventType::MenuLeave,
+            None,
+            values,
+            actions,
             &mut self.messages
         );
 
@@ -49,13 +49,13 @@ impl UiManager {
 
 
     pub fn add_dialog(
-        &mut self, 
+        &mut self,
         dialog: Box<dyn Widget<TatakuAction>>,
         options: DialogCreateOptions,
-        values: &mut dyn Reflect, 
+        values: &mut dyn Reflect,
         actions: &mut ActionQueue,
         font_context: &mut parley::FontContext,
-        text_layout_context: &mut parley::LayoutContext,
+        text_layout_context: &mut parley::LayoutContext<Color>,
     ) {
         let name = dialog.name();
         if !options.allow_multiple {
@@ -63,9 +63,9 @@ impl UiManager {
             if self.dialogs
                 .iter()
                 .any(|n| n.get_node().name() == name)
-            { 
+            {
                 debug!("not adding dialog {name}, already exists");
-                return 
+                return
             }
         }
 
@@ -83,27 +83,27 @@ impl UiManager {
         let num = self.dialog_counter;
         self.dialog_counter += 1;
         let mut tree = Tree::new(
-            50, 
-            MessageOwner::Dialog(num), 
+            50,
+            MessageOwner::Dialog(num),
             EmptyWidget::new_boxed()
         );
 
         tree.set_node(dialog, values, font_context, text_layout_context);
         tree.handle_message(
             &Message::new(
-                tree.owner, 
+                tree.owner,
                 "set_num",
                 MessageValue::Number(num),
-            ), 
-            values, 
+            ),
+            values,
             actions,
             &mut self.messages,
         );
         tree.handle_event(
-            &TatakuEventType::MenuEnter, 
-            None, 
-            values, 
-            actions, 
+            &TatakuEventType::MenuEnter,
+            None,
+            values,
+            actions,
             &mut self.messages
         );
 
@@ -134,14 +134,14 @@ impl UiManager {
         values: &mut dyn Reflect,
         actions: &mut ActionQueue,
     ) -> bool {
-        let Some(last) = self.dialogs.last_mut() 
+        let Some(last) = self.dialogs.last_mut()
         else { return false };
 
         last.handle_event(
-            &TatakuEventType::MenuLeave, 
+            &TatakuEventType::MenuLeave,
             None,
             values,
-            actions, 
+            actions,
             &mut self.messages,
         );
         last.handle_message(
@@ -149,17 +149,17 @@ impl UiManager {
                 last.owner,
                 "force_close",
                 MessageValue::Click
-            ), 
+            ),
             values,
-            actions, 
+            actions,
             &mut self.messages,
         );
-        
+
         true
     }
     pub fn force_close_all(
-        &mut self, 
-        values: &mut dyn Reflect, 
+        &mut self,
+        values: &mut dyn Reflect,
         actions: &mut ActionQueue
     ) {
         for i in self.dialogs.iter_mut() {
@@ -168,9 +168,9 @@ impl UiManager {
                     i.owner,
                     "force_close",
                     MessageValue::Click
-                ), 
+                ),
                 values,
-                actions, 
+                actions,
                 &mut self.messages,
             );
         }
@@ -186,7 +186,7 @@ impl UiManager {
         actions: &mut ActionQueue,
         skin_manager: &mut dyn SkinProvider,
         font_context: &mut parley::FontContext,
-        text_layout_context: &mut parley::LayoutContext,
+        text_layout_context: &mut parley::LayoutContext<Color>,
     ) {
         self.handle_inputs(input_state, values, actions);
 
@@ -194,15 +194,15 @@ impl UiManager {
             let Some(tree) = [&mut self.root_tree]
                 .into_iter()
                 .chain(self.dialogs.iter_mut())
-                .find(|t| t.owner.is_eq(m.owner)) 
-            else { 
+                .find(|t| t.owner.is_eq(m.owner))
+            else {
                 warn!("no tree for message {m:?}");
                 continue
             };
 
             tree.handle_message(
-                &m, 
-                values, 
+                &m,
+                values,
                 actions,
                 &mut self.messages,
             );
@@ -242,9 +242,9 @@ impl UiManager {
                 .chain([&mut self.root_tree])
             {
                 tree.handle_event(
-                    &event, 
+                    &event,
                     param.as_ref(),
-                    values, 
+                    values,
                     actions,
                     &mut self.messages,
                 );
@@ -258,8 +258,8 @@ impl UiManager {
 
         // update the root widget
         self.root_tree.update(values, actions, &mut self.messages, skin_manager, font_context, text_layout_context);
-        
-        
+
+
         // im leaving this in
 
         // what u doing here still
@@ -277,42 +277,40 @@ impl UiManager {
         // check dialogs first
         for dialog in self.dialogs.iter_mut().rev() {
             if dialog.handle_inputs(
-                input_state, 
-                values, 
-                actions, 
+                input_state,
+                values,
+                actions,
                 &mut self.messages
-            ) { 
-                return 
+            ) {
+                return
             }
         }
 
         self.root_tree.handle_inputs(
-            input_state, 
-            values, 
-            actions, 
+            input_state,
+            values,
+            actions,
             &mut self.messages
         );
     }
 
 
     pub fn draw_menu(
-        &mut self, 
+        &mut self,
         values: &ValueCollection,
         list: &mut RenderableCollection,
         font_context: &mut parley::FontContext,
-        scale_context: &mut parley::swash::scale::ScaleContext,
     ) {
-        self.root_tree.draw(values, list, font_context, scale_context);
+        self.root_tree.draw(values, list, font_context);
     }
     pub fn draw_dialogs(
-        &mut self, 
+        &mut self,
         values: &ValueCollection,
         list: &mut RenderableCollection,
         font_context: &mut parley::FontContext,
-        scale_context: &mut parley::swash::scale::ScaleContext,
     ) {
         for i in self.dialogs.iter_mut().rev() {
-            i.draw(values, list, font_context, scale_context);
+            i.draw(values, list, font_context);
         }
     }
 
@@ -323,7 +321,7 @@ impl UiManager {
     }
 
     pub fn handle_ui_action(
-        &mut self, 
+        &mut self,
         action: UiAction,
         values: &mut dyn Reflect,
         _actions: &mut ActionQueue,
@@ -331,7 +329,7 @@ impl UiManager {
         let node = action.node;
         let action = action.action;
 
-        let Some((mut num, tree)) = self.tree_with_node(node) 
+        let Some((mut num, tree)) = self.tree_with_node(node)
         else {
             warn!("couldnt find tree with provided node id!");
             return
@@ -369,11 +367,11 @@ impl UiManager {
                         // let mut messages = Vec::new();
                         // tree.handle_message(
                         //     &Message::new(
-                        //         tree.owner, 
-                        //         "force_close", 
+                        //         tree.owner,
+                        //         "force_close",
                         //         MessageValue::Click
-                        //     ), 
-                        //     values, 
+                        //     ),
+                        //     values,
                         //     actions,
                         //     &mut messages
                         // );
@@ -385,7 +383,7 @@ impl UiManager {
                         let old_bounds = tree.bounds;
                         tree.update_bounds(
                             Bounds::new(
-                                pos, 
+                                pos,
                                 old_bounds.size,
                             ), values
                         );
@@ -395,21 +393,21 @@ impl UiManager {
                         let old_bounds = tree.bounds;
                         tree.update_bounds(
                             Bounds::new(
-                                old_bounds.pos, 
+                                old_bounds.pos,
                                 size,
                             ),
                             values
                         );
                         tree.mark_refresh("resize dialog");
                     }
-                
+
                     DialogAction::BringToFront => {
                         let d = self.dialogs.remove(num);
                         self.dialogs.push(d);
                     }
                 }
-            } 
-            
+            }
+
             UiActionType::DialogAction(action) => {
                 warn!("trying to run dialog action {action:?} on menu!");
             },
@@ -418,14 +416,14 @@ impl UiManager {
 
 
     pub fn window_size_changed(
-        &mut self, 
-        window_size: Vector2, 
+        &mut self,
+        window_size: Vector2,
         values: &dyn Reflect,
     ) {
         let old_bounds = self.root_tree.bounds;
         let new_bounds = Bounds::new(Vector2::ZERO, window_size);
         self.root_tree.update_bounds(new_bounds, values);
-        
+
         // only resize dialogs that were the size of the old bounds (aka fullscreen dialogs)
         for i in self.dialogs.iter_mut() {
             if i.bounds == old_bounds {
@@ -435,12 +433,12 @@ impl UiManager {
     }
 
     pub fn reload_skin(
-        &mut self, 
+        &mut self,
         values: &mut dyn Reflect,
         actions: &mut ActionQueue,
         skin_manager: &mut dyn SkinProvider,
         font_context: &mut parley::FontContext,
-        text_layout_context: &mut parley::LayoutContext,
+        text_layout_context: &mut parley::LayoutContext<Color>,
     ) {
         self.root_tree.reload_skin(
             values,
@@ -450,7 +448,7 @@ impl UiManager {
             font_context,
             text_layout_context,
         );
-        
+
         for i in self.dialogs.iter_mut() {
             i.reload_skin(
                 values,

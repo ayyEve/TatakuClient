@@ -7,7 +7,7 @@ pub struct Circle {
     pub color: Color,
     pub pos: Vector2,
     pub radius: f32,
-    blend_mode: Pipeline,
+    blend_mode: GraphicsPipeline,
 
     pub border: Option<Border>,
     #[chain] pub resolution: u32,
@@ -22,7 +22,7 @@ impl Circle {
             color,
             pos,
             radius,
-            blend_mode: Pipeline::AlphaBlending,
+            blend_mode: GraphicsPipeline::AlphaBlending,
 
             border: None,
             resolution: 128,
@@ -40,14 +40,14 @@ impl Circle {
 impl TatakuRenderable for Circle {
     fn get_name(&self) -> String { "Circle".to_owned() }
 
-    fn get_blend_mode(&self) -> Pipeline { self.blend_mode }
-    fn set_blend_mode(&mut self, blend_mode: Pipeline) { self.blend_mode = blend_mode }
+    fn get_blend_mode(&self) -> GraphicsPipeline { self.blend_mode }
+    fn set_blend_mode(&mut self, blend_mode: GraphicsPipeline) { self.blend_mode = blend_mode }
 
     fn draw(
         &self, 
         options: &DrawOptions, 
         transform: Matrix, 
-        g: &mut dyn GraphicsEngine
+        g: &mut dyn DrawEngine
     ) {
         let color = options.color_with_alpha(self.color);
         let border = self.border.map(|mut b|{ b.color = options.border_color_with_alpha(b.color); b });

@@ -1,20 +1,20 @@
 // WARNING: there is a lot of just data and setup code in this
+use std::sync::Arc;
+use std::borrow::Cow;
+use std::collections::HashMap;
 
-use wgpu::Queue;
 use crate::prelude::*;
-use super::shaders::*;
-use std::num::NonZeroU64;
+use crate::texture::WgpuTexture;
+use crate::renderable_surface::*;
 
-use tataku_engine::prelude::*;
-use tataku_graphics::prelude::*;
+use tataku::Take as _;
+use tataku::MatrixHelpers as _; 
+use tataku::Interpolation as _;
 use wgpu::util::DeviceExt as _;
+use tataku::RenderingEngine as _;
+use lyon_tessellation::geom::{ Box2D, Point };
 use winit::raw_window_handle::{ HasWindowHandle, HasDisplayHandle };
-use tataku_client_common::prelude::Color;
-use lyon_tessellation::{ 
-    geom::{ Box2D, Point }, 
-    path::builder::BorderRadii,
-    path::Path as LyonPath,
-};
+use lyon_tessellation::path::{ builder::BorderRadii, Path as LyonPath };
 
 
 // must not go past 16
@@ -22,7 +22,7 @@ const LAYER_COUNT:u32 = 12;
 const MAX_DEPTH:f32 = 8192.0 * 8192.0;
 
 /// background color
-const GFX_CLEAR_COLOR:Color = Color::BLACK;
+const GFX_CLEAR_COLOR:tataku::Color = tataku::Color::BLACK;
 
 macro_rules! get_render_buffer {
     ($self: ident, $t: ident) => {{
@@ -30,87 +30,89 @@ macro_rules! get_render_buffer {
             .as_mut()
             .expect("last drawn type not set");
 
-        if let RenderBufferQueueType::$t(b2) = &mut **b {b2} 
+        if let RenderBufferQueueType::$t(b2) = &mut **b {b2}
             else { panic!("wrong buffer type") }
     }}
 }
 
 pub struct WgpuEngine<'window> {
-    surface: Surface<'window>,
-    device: Device,
-    queue: Arc<Queue>,
-    config: SurfaceConfiguration,
+    surface: wgpu::Surface<'window>,
+    device: wgpu::Device,
+    queue: Arc<wgpu::Queue>,
+    config: wgpu::SurfaceConfiguration,
 
-    pipelines: HashMap<Pipeline, RenderPipeline>,
+    pipelines: HashMap<tataku::GraphicsPipeline, wgpu::RenderPipeline>,
 
-    buffer_queues: HashMap<LastPipeline, Box<RenderBufferQueueType>>,
+    buffer_queues: HashMap<PipelineType, Box<RenderBufferQueueType>>,
     completed_buffers: Vec<RenderBufferType>,
     current_render_buffer: Option<Box<RenderBufferQueueType>>,
 
-    projection_matrix: Matrix,
-    projection_matrix_buffer: Buffer,
-    projection_matrix_bind_group: BindGroup,
+    projection_matrix: tataku::Matrix,
+    projection_matrix_buffer: wgpu::Buffer,
+    projection_matrix_bind_group: wgpu::BindGroup,
 
-    atlas: Atlas,
+    atlas: tataku::Atlas,
     atlas_texture: WgpuTexture,
 
-    screenshot_pending: Option<ScreenshotCallback>,
+    screenshot_pending: Option<tataku::ScreenshotCallback>,
 
-    sampler: Sampler,
-    particle_system: ParticleSystem,
-    gaussian_blur_shader: RefCell<GaussianBlurShader>,
-    box_blur_shader: RefCell<BoxBlurShader>,
-    render_image_shader: RenderImageShader,
+    // sampler: wgpu::Sampler,
+    particle_system: shaders::particles::ParticleSystem,
+    gaussian_blur_pipeline: shaders::gaussian_blur::Pipeline,
+    box_blur_pipeline: shaders::box_blur::Pipeline,
 
-    scissors: ScissorManager,
+    #[cfg(feature="vello_rendering")]
+    pub(crate) vello_pipeline: Option<shaders::vello::Pipeline>,
 
-    present_modes: Vec<Vsync>,
+
+    scissors: tataku::ScissorManager,
+
+    present_modes: Vec<tataku::Vsync>,
     can_blur: bool,
     blur_enabled: bool,
 
-    intermediate_texture: Texture,
-
-    deferred_free_textures: Vec<TextureReference>,
+    intermediate_texture: Option<wgpu::Texture>,
+    deferred_free_textures: Vec<tataku::TextureReference>,
 }
 impl<'window> WgpuEngine<'window> {
 
     // Creating some of the wgpu types requires async code
     pub async fn create<W:HasWindowHandle + HasDisplayHandle + Sync>(
-        window: &'window W, 
-        settings: &DisplaySettings,
-    ) -> Box<dyn GraphicsEngine + 'window> {
+        window: &'window W,
+        settings: &tataku::DisplaySettings,
+    ) -> Box<dyn tataku::RenderingEngine + 'window> {
         let window_size = settings.window_size;
 
         // create a wgpu instance
-        let instance = Instance::new(&InstanceDescriptor {
-            backends: Backends::VULKAN | Backends::METAL, // | Backends::GL,
-            flags: InstanceFlags::empty(),
-            memory_budget_thresholds: MemoryBudgetThresholds { 
-                for_resource_creation: None, 
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::VULKAN | wgpu::Backends::METAL, // | Backends::GL,
+            flags: wgpu::InstanceFlags::empty(),
+            memory_budget_thresholds: wgpu::MemoryBudgetThresholds {
+                for_resource_creation: None,
                 for_device_loss: None
             },
-            backend_options: BackendOptions { 
-                gl: GlBackendOptions { 
-                    gles_minor_version: Gles3MinorVersion::Automatic, 
-                    fence_behavior: GlFenceBehavior::Normal,
-                }, 
-                dx12: Dx12BackendOptions { 
-                    shader_compiler: Dx12Compiler::default() 
-                }, 
-                noop: NoopBackendOptions { enable: false }
+            backend_options: wgpu::BackendOptions {
+                gl: wgpu::GlBackendOptions {
+                    gles_minor_version: wgpu::Gles3MinorVersion::Automatic,
+                    fence_behavior: wgpu::GlFenceBehavior::Normal,
+                },
+                dx12: wgpu::Dx12BackendOptions {
+                    shader_compiler: wgpu::Dx12Compiler::default()
+                },
+                noop: wgpu::NoopBackendOptions { enable: false }
             },
         });
 
         // create the surface
-        let surface: Surface<'window> = instance
+        let surface: wgpu::Surface<'window> = instance
             .create_surface(window)
             .unwrap();
 
         // create the adapter
-        let adapter = instance.request_adapter(&RequestAdapterOptions {
+        let adapter = instance.request_adapter(&wgpu::RequestAdapterOptions {
             power_preference: match settings.performance_mode {
-                PerformanceMode::HighPerformance => PowerPreference::HighPerformance,
-                PerformanceMode::PowerSaver => PowerPreference::LowPower,
+                tataku::PerformanceMode::HighPerformance => wgpu::PowerPreference::HighPerformance,
+                tataku::PerformanceMode::PowerSaver => wgpu::PowerPreference::LowPower,
             },
             compatible_surface: Some(&surface),
             force_fallback_adapter: false,
@@ -118,24 +120,24 @@ impl<'window> WgpuEngine<'window> {
 
         // create device and queue
         let (device, queue) = adapter.request_device(
-            &DeviceDescriptor {
+            &wgpu::DeviceDescriptor {
                 #[cfg(feature="texture_arrays")]
-                required_features: Features::TEXTURE_BINDING_ARRAY 
-                    | Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING 
-                    | Features::BGRA8UNORM_STORAGE,
+                required_features: wgpu::Features::TEXTURE_BINDING_ARRAY
+                    | wgpu::Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING
+                    | wgpu::Features::BGRA8UNORM_STORAGE,
                 #[cfg(not(feature="texture_arrays"))]
-                required_features: Features::default(),
-                required_limits: Limits {
+                required_features: wgpu::Features::default(),
+                required_limits: wgpu::Limits {
                     max_binding_array_elements_per_shader_stage: LAYER_COUNT,
                     ..Default::default()
                 },
-                memory_hints: MemoryHints::Performance,
-                label: None,
+                memory_hints: wgpu::MemoryHints::Performance,
+                label: Some("device request"),
                 trace: wgpu::Trace::Off
             },
         ).await.unwrap();
 
-        let can_blur = device.features().contains(Features::BGRA8UNORM_STORAGE);
+        let can_blur = device.features().contains(wgpu::Features::BGRA8UNORM_STORAGE);
         if !can_blur { warn!("Blur unsupported on this device!"); }
 
         // no more comments good luck!
@@ -144,19 +146,30 @@ impl<'window> WgpuEngine<'window> {
             .present_modes
             .into_iter()
             .map(VsyncUtils::map_to_vsync)
-            .chain([Vsync::AutoNoVsync, Vsync::AutoVsync])
+            .chain([tataku::Vsync::AutoNoVsync, tataku::Vsync::AutoVsync])
             .collect();
 
-        let surface_format = surface_caps.formats.iter()
-            .copied()
-            .find(|f| f.is_srgb())
-            .unwrap_or(surface_caps.formats[0]);
-        let config = SurfaceConfiguration {
-            usage: TextureUsages::RENDER_ATTACHMENT, 
+
+        let formats = surface_caps.formats.clone();
+
+        let mut surface_format = crate::FORMAT;
+        if !formats.contains(&surface_format) {
+            error!("no rgba8unorm srgb!!!");
+
+            surface_format = formats
+                .iter()
+                .copied()
+                .find(|f| f.is_srgb())
+                .unwrap_or(formats[0]);
+        }
+
+
+        let config = wgpu::SurfaceConfiguration {
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface_format,
             width: window_size[0] as u32,
             height: window_size[1] as u32,
-            present_mode: PresentMode::AutoNoVsync, //surface_caps.present_modes[0],
+            present_mode: wgpu::PresentMode::AutoNoVsync, //surface_caps.present_modes[0],
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
 
@@ -166,23 +179,23 @@ impl<'window> WgpuEngine<'window> {
 
         #[cfg(feature="texture_arrays")]
         let texture_bind_group_layout = device.create_bind_group_layout(
-            &BindGroupLayoutDescriptor {
+            &wgpu::BindGroupLayoutDescriptor {
                 label: Some("atlas group layout"),
                 entries: &[
-                    BindGroupLayoutEntry {
+                    wgpu::BindGroupLayoutEntry {
                         binding: 0,
-                        visibility: ShaderStages::FRAGMENT,
-                        ty: BindingType::Texture {
-                            sample_type: TextureSampleType::Float { filterable: true },
-                            view_dimension: TextureViewDimension::D2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
                             multisampled: false,
                         },
-                        count: std::num::NonZeroU32::new(LAYER_COUNT),
+                        count: NonZeroU32::new(LAYER_COUNT),
                     },
-                    BindGroupLayoutEntry {
+                    wgpu::BindGroupLayoutEntry {
                         binding: 1,
-                        visibility: ShaderStages::FRAGMENT,
-                        ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                         count: None,
                     },
                 ],
@@ -191,51 +204,51 @@ impl<'window> WgpuEngine<'window> {
 
         #[cfg(not(feature="texture_arrays"))]
         let texture_bind_group_layout = device.create_bind_group_layout(
-            &BindGroupLayoutDescriptor {
+            &wgpu::BindGroupLayoutDescriptor {
                 label: Some("atlas group layout"),
                 entries: &[
-                    BindGroupLayoutEntry {
+                    wgpu::BindGroupLayoutEntry {
                         binding: 0,
-                        visibility: ShaderStages::FRAGMENT,
-                        ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                         count: None,
                     },
-                    BindGroupLayoutEntry {
+                    wgpu::BindGroupLayoutEntry {
                         binding: 1,
-                        visibility: ShaderStages::FRAGMENT,
-                        ty: BindingType::Texture {
-                            sample_type: TextureSampleType::Float { filterable: true },
-                            view_dimension: TextureViewDimension::D2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
                             multisampled: false,
                         },
                         count: None,
                     },
-                    BindGroupLayoutEntry {
+                    wgpu::BindGroupLayoutEntry {
                         binding: 2,
-                        visibility: ShaderStages::FRAGMENT,
-                        ty: BindingType::Texture {
-                            sample_type: TextureSampleType::Float { filterable: true },
-                            view_dimension: TextureViewDimension::D2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
                             multisampled: false,
                         },
                         count: None,
                     },
-                    BindGroupLayoutEntry {
+                    wgpu::BindGroupLayoutEntry {
                         binding: 3,
-                        visibility: ShaderStages::FRAGMENT,
-                        ty: BindingType::Texture {
-                            sample_type: TextureSampleType::Float { filterable: true },
-                            view_dimension: TextureViewDimension::D2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
                             multisampled: false,
                         },
                         count: None,
                     },
-                    BindGroupLayoutEntry {
+                    wgpu::BindGroupLayoutEntry {
                         binding: 4,
-                        visibility: ShaderStages::FRAGMENT,
-                        ty: BindingType::Texture {
-                            sample_type: TextureSampleType::Float { filterable: true },
-                            view_dimension: TextureViewDimension::D2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
                             multisampled: false,
                         },
                         count: None,
@@ -246,14 +259,14 @@ impl<'window> WgpuEngine<'window> {
 
         let proj_matrix_size = std::mem::size_of::<[[f32; 4]; 4]>() as u64;
         let projection_matrix_bind_group_layout = device.create_bind_group_layout(
-            &BindGroupLayoutDescriptor {
+            &wgpu::BindGroupLayoutDescriptor {
                 label: Some("Texture/Sampler bind group layout"),
                 entries: &[
-                    BindGroupLayoutEntry {
+                    wgpu::BindGroupLayoutEntry {
                         binding: 0,
-                        visibility: ShaderStages::VERTEX,
-                        ty: BindingType::Buffer {
-                            ty: BufferBindingType::Uniform,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
                             has_dynamic_offset: false,
                             min_binding_size: NonZeroU64::new(proj_matrix_size)
                         },
@@ -263,24 +276,24 @@ impl<'window> WgpuEngine<'window> {
             }
         );
 
-        let window_size = Vector2::new(window_size[0], window_size[1]);
+        let window_size = tataku::Vector2::new(window_size[0], window_size[1]);
         let projection_matrix = Self::create_projection(window_size);
         let projection_matrix_buffer = device.create_buffer_init(
-            &BufferInitDescriptor {
+            &wgpu::util::BufferInitDescriptor {
                 label: Some("Projection Matrix Buffer"),
-                usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
                 contents: bytemuck::cast_slice(&projection_matrix.to_raw()),
             }
         );
 
         let projection_matrix_bind_group = device.create_bind_group(
-            &BindGroupDescriptor {
+            &wgpu::BindGroupDescriptor {
                 label: Some("diffuse_bind_group"),
                 layout: &projection_matrix_bind_group_layout,
                 entries: &[
-                    BindGroupEntry {
+                    wgpu::BindGroupEntry {
                         binding: 0,
-                        resource: BindingResource::Buffer(BufferBinding {
+                        resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
                             buffer: &projection_matrix_buffer,
                             offset: 0,
                             size: NonZeroU64::new(proj_matrix_size)
@@ -290,111 +303,73 @@ impl<'window> WgpuEngine<'window> {
             }
         );
 
-        let mut pipelines = create_standard_pipeline(
-            &device, 
-            &projection_matrix_bind_group_layout, 
-            &texture_bind_group_layout
-        );
-
-
-        // create slider pipeline
-        pipelines.insert(Pipeline::Slider, create_slider_pipeline(
-            &device, 
-            &projection_matrix_bind_group_layout
-        ));
-
-        // create flashlight pipeline
-        pipelines.insert(Pipeline::Flashlight, create_flashlight_pipeline(
-            &device, 
-            &projection_matrix_bind_group_layout
-        ));
-
-
-        let sampler = device.create_sampler(&SamplerDescriptor {
-            address_mode_u: AddressMode::ClampToEdge,
-            address_mode_v: AddressMode::ClampToEdge,
-            address_mode_w: AddressMode::ClampToEdge,
-            mag_filter: FilterMode::Linear,
-            min_filter: FilterMode::Nearest,
-            mipmap_filter: FilterMode::Nearest,
-            ..Default::default()
-        });
-
-        let gaussian_blur_shader = GaussianBlurShader::new(&device);
-        let box_blur_shader = BoxBlurShader::new(&device);
-        let render_image_shader = RenderImageShader::new(
-            &device, 
-            &queue, 
-            &projection_matrix_bind_group_layout
-        );
-
-
-        let atlas_size = device.limits().max_texture_dimension_2d.min(8192);
-        let atlas_texture = Self::create_texture(
-            &device, 
-            &texture_bind_group_layout, 
-            &sampler, 
-            atlas_size, 
-            atlas_size, 
-            TextureFormat::Bgra8Unorm,
-        );
-
-        let particle_system = ParticleSystem::new(&device);
-
-        let buffer_queues = [
-            (LastPipeline::Slider, Box::new(RenderBufferQueueType::Slider(
-                RenderBufferQueue::default().init(
-                    &device, 
-                    &pipelines[&Pipeline::Slider]
-                )
-            ))),
-            (LastPipeline::Standard, Box::new(RenderBufferQueueType::Standard(
-                RenderBufferQueue::default().init(
-                    &device, 
-                    &pipelines[&Pipeline::AlphaBlending]
-                )
-            ))),
-            (LastPipeline::Flashlight, Box::new(RenderBufferQueueType::Flashlight(
-                RenderBufferQueue::default().init(
-                    &device, 
-                    &pipelines[&Pipeline::Flashlight]
-                )
-            ))),
-            (LastPipeline::GaussianBlur, Box::new(RenderBufferQueueType::GaussianBlur(
-                RenderBufferQueue::default().init(
-                    &device, 
-                    &gaussian_blur_shader.pipeline
-                )
-            ))),
-            (LastPipeline::BoxBlur, Box::new(RenderBufferQueueType::BoxBlur(
-                RenderBufferQueue::default().init(
-                    &device, 
-                    &box_blur_shader.pipeline
-                )
-            ))),
-        ].into_iter().collect();
-
-
         // because the swapchain texture can only have RenderAttachment (**annoy**)
         // we render to an intermediary texture, which can have blur applied and used for screenshots
         let intermediate_texture = device.create_texture(
-            &TextureDescriptor { 
+            &wgpu::TextureDescriptor {
                 label: Some("Render Texture"),
-                size: Extent3d { 
-                    width: config.width, 
-                    height: config.height, 
-                    depth_or_array_layers: 1 
+                size: wgpu::Extent3d {
+                    width: config.width,
+                    height: config.height,
+                    depth_or_array_layers: 1
                 },
                 mip_level_count: 1,
                 sample_count: 1,
-                dimension: TextureDimension::D2,
-                format: TextureFormat::Bgra8Unorm,
-                usage: TextureUsages::RENDER_ATTACHMENT 
-                    | TextureUsages::COPY_SRC 
-                    | TextureUsages::COPY_DST 
-                    | TextureUsages::TEXTURE_BINDING,
-                view_formats: &[ TextureFormat::Bgra8UnormSrgb ]
+                dimension: wgpu::TextureDimension::D2,
+                format: crate::FORMAT.remove_srgb_suffix(),
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                    | wgpu::TextureUsages::COPY_SRC
+                    | wgpu::TextureUsages::COPY_DST
+                    | wgpu::TextureUsages::TEXTURE_BINDING
+                    | wgpu::TextureUsages::STORAGE_BINDING,
+                view_formats: &[ 
+                    crate::FORMAT.add_srgb_suffix(),
+                    crate::FORMAT.remove_srgb_suffix() 
+                ]
             }
+        );
+
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Nearest,
+            mipmap_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
+        });
+
+        let pipelines = Self::init_pipelines(
+            &device, 
+            &texture_bind_group_layout, 
+            &projection_matrix_bind_group_layout,
+        );
+        
+
+        let intermediate_tex_ref = WgpuTextureReference::new(&intermediate_texture);
+        #[cfg(feature="vello_rendering")]
+        let vello_pipeline = shaders::vello::Pipeline::create(&device, &intermediate_tex_ref);
+
+        let gaussian_blur_pipeline = shaders::gaussian_blur::Pipeline::new(&device, &intermediate_tex_ref);
+        let box_blur_pipeline = shaders::box_blur::Pipeline::new(&device, &intermediate_tex_ref);
+        
+        let particle_system = shaders::particles::ParticleSystem::new(&device);
+
+        let atlas_size = device.limits().max_texture_dimension_2d.min(8192);
+        let atlas_texture = Self::create_texture(
+            &device,
+            &texture_bind_group_layout,
+            &sampler,
+            atlas_size,
+            atlas_size,
+            surface_format,
+        );
+
+        let buffer_queues = Self::init_buffer_queues(
+            &device, 
+            &pipelines,
+            &gaussian_blur_pipeline.pipeline,
+            &box_blur_pipeline.pipeline,
         );
 
         Box::new(Self {
@@ -403,9 +378,9 @@ impl<'window> WgpuEngine<'window> {
             queue: Arc::new(queue),
             config,
             pipelines,
-            atlas: Atlas::new(
-                atlas_size, 
-                atlas_size, 
+            atlas: tataku::Atlas::new(
+                atlas_size,
+                atlas_size,
                 LAYER_COUNT
             ),
             atlas_texture,
@@ -420,162 +395,188 @@ impl<'window> WgpuEngine<'window> {
             screenshot_pending: None,
 
             particle_system,
-            gaussian_blur_shader: RefCell::new(gaussian_blur_shader),
-            box_blur_shader: RefCell::new(box_blur_shader),
-            render_image_shader,
+            gaussian_blur_pipeline,
+            box_blur_pipeline,
 
-            scissors: ScissorManager::default(),
+            #[cfg(feature="vello_rendering")]
+            vello_pipeline,
+
+            scissors: tataku::ScissorManager::default(),
             present_modes,
-            sampler,
+            // sampler,
             can_blur,
             blur_enabled: true,
-            intermediate_texture,
+            intermediate_texture: Some(intermediate_texture),
 
             deferred_free_textures: Vec::new(),
         })
     }
 
-    pub fn render_current_surface(&mut self) -> Result<(), SurfaceError> {
+    fn init_pipelines(
+        device: &wgpu::Device,
+        texture_bind_group_layout: &wgpu::BindGroupLayout,
+        projection_matrix_bind_group_layout: &wgpu::BindGroupLayout,
+    ) -> HashMap<tataku::GraphicsPipeline, wgpu::RenderPipeline> {
+        let mut pipelines = shaders::standard::create_standard_pipeline(
+            device,
+            projection_matrix_bind_group_layout,
+            texture_bind_group_layout
+        );
+
+        // create slider pipeline
+        pipelines.insert(tataku::GraphicsPipeline::Slider, shaders::slider::create_slider_pipeline(
+            device,
+            projection_matrix_bind_group_layout
+        ));
+
+        // create flashlight pipeline
+        pipelines.insert(tataku::GraphicsPipeline::Flashlight, shaders::flashlight::create_flashlight_pipeline(
+            device,
+            projection_matrix_bind_group_layout
+        ));
+
+        pipelines
+    }
+    
+    fn init_buffer_queues(
+        device: &wgpu::Device,
+        pipelines: &HashMap<tataku::GraphicsPipeline, wgpu::RenderPipeline>,
+        gaussian_blur_pipeline: &wgpu::ComputePipeline,
+        box_blur_pipeline: &wgpu::ComputePipeline,
+    ) -> HashMap<PipelineType, Box<RenderBufferQueueType>> {
+        [
+            (PipelineType::Standard, Box::new(RenderBufferQueueType::Standard(
+                RenderBufferQueue::default().init(
+                    device,
+                    &pipelines[&tataku::GraphicsPipeline::AlphaBlending]
+                )
+            ))),
+            (PipelineType::Slider, Box::new(RenderBufferQueueType::Slider(
+                RenderBufferQueue::default().init(
+                    device,
+                    &pipelines[&tataku::GraphicsPipeline::Slider]
+                )
+            ))),
+            (PipelineType::Flashlight, Box::new(RenderBufferQueueType::Flashlight(
+                RenderBufferQueue::default().init(
+                    device,
+                    &pipelines[&tataku::GraphicsPipeline::Flashlight]
+                )
+            ))),
+
+            
+            (PipelineType::GaussianBlur, Box::new(RenderBufferQueueType::GaussianBlur(
+                RenderBufferQueue::default().init(
+                    device,
+                    gaussian_blur_pipeline
+                )
+            ))),
+            (PipelineType::BoxBlur, Box::new(RenderBufferQueueType::BoxBlur(
+                RenderBufferQueue::default().init(
+                    device,
+                    box_blur_pipeline
+                )
+            ))),
+
+            #[cfg(feature="vello")]
+            (PipelineType::Vello, Box::new(RenderBufferQueueType::Vello(
+                RenderBufferQueue::default().init(
+                    device,
+                    WgpuPipeline::None
+                )
+            ))),
+        ].into_iter().collect()
+    }
+
+
+    pub fn render_current_surface(&mut self) -> Result<(), wgpu::SurfaceError> {
         let swapchain = self.surface.get_current_texture()?;
         let size = swapchain.texture.size();
+
+        let mut texture = self.intermediate_texture.take().unwrap();
 
         // don't draw if our draw surface has no area
         if size.width == 0 || size.height == 0 { return Ok(()) }
 
-        if self.intermediate_texture.size() != size {
-            self.intermediate_texture = self.device.create_texture(
-                &TextureDescriptor {
-                    label: Some("Render Texture"),
+        if texture.size() != size {
+            let format = texture.format().remove_srgb_suffix();
+            texture = self.device.create_texture(
+                &wgpu::TextureDescriptor {
+                    label: Some("Intermediate Texture"),
                     size,
                     mip_level_count: 1,
                     sample_count: 1,
-                    dimension: self.intermediate_texture.dimension(),
-                    format: self.intermediate_texture.format(),
-                    usage: self.intermediate_texture.usage(),
-                    view_formats: &[ TextureFormat::Bgra8UnormSrgb ]
+                    dimension: texture.dimension(),
+                    format,
+                    usage: texture.usage(),
+                    view_formats: &[ format.add_srgb_suffix() ]
                 }
             );
         }
 
-        
+
         let tex = WgpuTextureReference::new(
-            &self.intermediate_texture
+            &texture
         );
         self.render(&RenderableSurface::new(
             &tex,
-            GFX_CLEAR_COLOR, 
-            Vector2::new(size.width as f32, size.height as f32), 
-            true
+            GFX_CLEAR_COLOR,
+            tataku::Vector2::new(size.width as f32, size.height as f32),
         ))?;
 
         // `texture` should now have our data, with which we can use to render the surface, as well as use for screenshots
         // again though, because the swapchain texture can only be rendered to directly for some reason, we have to use a shader
         let mut encoder = self.device
-            .create_command_encoder(&CommandEncoderDescriptor::default());
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
 
-        {
-            let output_view = swapchain
-                .texture
-                .create_view(&TextureViewDescriptor::default());
-
-            let mut render = encoder.begin_render_pass(
-                &RenderPassDescriptor {
-                    label: None,
-                    color_attachments: &[
-                        Some(RenderPassColorAttachment {
-                            view: &output_view,
-                            resolve_target: None,
-                            depth_slice: None,
-                            ops: Operations {
-                                load: LoadOp::Clear(wgpu::Color::BLACK),
-                                store: StoreOp::Store,
-                            }
-                        })
-                    ],
-                    depth_stencil_attachment: None,
-                    timestamp_writes: None,
-                    occlusion_query_set: None,
-                }
-            );
-            render.set_pipeline(&self.render_image_shader.pipeline);
-
-            let bind_group = self.device.create_bind_group(
-                &BindGroupDescriptor {
-                    label: None,
-                    layout: &self.render_image_shader.bind_group_layout,
-                    entries: &[
-                        BindGroupEntry {
-                            binding: 0,
-                            resource: BindingResource::Sampler(&self.sampler),
-                        },
-                        BindGroupEntry {
-                            binding: 1,
-                            resource: BindingResource::TextureView(&tex.view),
-                        },
-                    ]
-                }
-            );
-
-            self.render_image_shader.update_buffer(
-                &self.queue,
-                [size.width, size.height]
-            );
-            self.queue.submit([]);
-
-            render.set_bind_group(
-                0, 
-                &bind_group, 
-                &[]
-            );
-
-            render.set_bind_group(
-                1, 
-                &self.projection_matrix_bind_group, 
-                &[]
-            );
-
-            render.set_vertex_buffer(
-                0, 
-                self.render_image_shader.buffer.slice(..)
-            );
-
-            render.draw(0..6, 0..1);
-        }        
-        self.queue.submit([encoder.finish()]);
+        let view = wgpu::TextureViewDescriptor::default();
+        wgpu::util::TextureBlitter::new(
+            &self.device,
+            swapchain.texture.format(),
+        ).copy(
+            &self.device,
+            &mut encoder,
+            &texture.create_view(&view),
+            &swapchain.texture.create_view(&view)
+        );
+        
+        let i = self.queue.submit([encoder.finish()]);
+        self.device.poll(wgpu::wgt::PollType::WaitForSubmissionIndex(i)).unwrap();
         swapchain.present();
 
         if let Some(screenshot) = self.screenshot_pending.take() {
-            self.finish_screenshot(screenshot);
+            let (data, size) = self.read_texture(
+                &texture
+            );
+
+            screenshot((data, size));
         }
 
         for i in self.deferred_free_textures.take() {
             self.free_tex(i, false);
         }
 
+        self.intermediate_texture = Some(texture);
 
         Ok(())
     }
 
-    fn render(&self, renderable: &RenderableSurface) -> Result<(), SurfaceError> {
+    fn render(&mut self, renderable: &RenderableSurface) -> Result<(), wgpu::SurfaceError> {
         let mut encoder = self.device.create_command_encoder(
-            &CommandEncoderDescriptor { label: Some("Render Encoder") }
+            &wgpu::CommandEncoderDescriptor { label: Some("Render Encoder") }
         );
 
         {
             let mut render_pass = encoder.begin_render_pass(
-                &RenderPassDescriptor {
+                &wgpu::RenderPassDescriptor {
                     label: Some("Render Pass"),
-                    color_attachments: &[Some(RenderPassColorAttachment {
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                         view: &renderable.texture.view,
                         resolve_target: None,
                         depth_slice: None,
-                        ops: Operations {
-                            load: LoadOp::Clear(renderable.get_clear_color()),
-                            store: if renderable.render_target { 
-                                StoreOp::Store  // must be store for render targets to work apparently
-                            } else {
-                                StoreOp::Discard 
-                            },
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(renderable.get_clear_color()),
+                            store: wgpu::StoreOp::Store,
                         },
                     })],
                     depth_stencil_attachment: None,
@@ -584,39 +585,68 @@ impl<'window> WgpuEngine<'window> {
                 }
             );
 
-            let mut current_pipeline = Pipeline::None;
-            let mut current_scissor: Scissor = None;
+            let mut current_pipeline = tataku::GraphicsPipeline::None;
+            let mut current_scissor = None;
 
             for i in self.completed_buffers.iter() {
+                let pipeline_type = i.get_pipeline_type();
+
                 // blurs are a special case, they're compute shaders and not fragment shaders
-                let pipeline = i.get_pipeline();
-                if pipeline.is_blur() {
-                    if !self.can_blur || !self.blur_enabled { continue }
+                // vello is also a special case as it handles its own pipelines itself
+                if pipeline_type.special_render() {
+                    if pipeline_type.is_blur()
+                    && (!self.can_blur || !self.blur_enabled) {
+                        continue
+                    }
+
+                    #[cfg(feature="vello")]
+                    if pipeline_type.is_vello() && self.vello_pipeline.is_none() {
+                        continue
+                    }
 
                     // finish and submit the current render pass to free up the encoder
                     drop(render_pass);
                     self.queue.submit([encoder.finish()]);
 
+
                     // perform the blur
-                    match pipeline {
-                        Pipeline::GaussianBlur => {
-                            let RenderBufferType::GaussianBlur(buffer) = i 
+                    match pipeline_type {
+                        PipelineType::GaussianBlur => {
+                            let RenderBufferType::GaussianBlur(buffer) = i
                             else { unreachable!() };
 
-                            self.gaussian_blur_shader.borrow_mut().perform(
-                                &self.device, 
-                                &self.queue, 
+                            self.gaussian_blur_pipeline.perform(
+                                &self.device,
+                                &self.queue,
                                 renderable.texture,
                                 buffer
                             );
                         }
-                        Pipeline::BoxBlur => {
-                            let RenderBufferType::BoxBlur(buffer) = i 
+                        PipelineType::BoxBlur => {
+                            let RenderBufferType::BoxBlur(buffer) = i
                             else { unreachable!() };
 
-                            self.box_blur_shader.borrow_mut().perform(
-                                &self.device, 
-                                &self.queue, 
+                            self.box_blur_pipeline.perform(
+                                &self.device,
+                                &self.queue,
+                                renderable.texture,
+                                buffer
+                            );
+                        }
+
+                        #[cfg(feature="vello")]
+                        PipelineType::Vello => {
+                            let vello = self
+                                .vello_pipeline
+                                .as_mut()
+                                .unwrap();
+
+                            let RenderBufferType::Vello(buffer) = i
+                            else { unreachable!() };
+
+                            vello.perform(
+                                &self.device,
+                                &self.queue,
                                 renderable.texture,
                                 buffer
                             );
@@ -624,34 +654,33 @@ impl<'window> WgpuEngine<'window> {
 
                         _ => unreachable!()
                     }
-                    
+
 
                     // back to our regularly scheduled programming
                     encoder = self.device.create_command_encoder(
-                        &CommandEncoderDescriptor { 
-                            label: Some("Render Encoder") 
+                        &wgpu::CommandEncoderDescriptor {
+                            label: Some("Render Encoder")
                         }
                     );
 
-                    render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
+                    render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                         label: Some("Render Pass"),
-                        color_attachments: &[Some(RenderPassColorAttachment {
+                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                             view: &renderable.texture.view,
                             resolve_target: None,
                             depth_slice: None,
-                            ops: Operations {
-                                load: LoadOp::Load,
-                                store: StoreOp::Store, // must be store for render targets to work apparently
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Load,
+                                store: wgpu::StoreOp::Store, // must be store for render targets to work apparently
                             },
                         })],
                         depth_stencil_attachment: None,
                         timestamp_writes: None,
                         occlusion_query_set: None,
                     });
-                    current_pipeline = Pipeline::None;
-                    continue 
+                    current_pipeline = tataku::GraphicsPipeline::None;
+                    continue
                 }
-
 
                 let scissor = i.get_scissor();
                 if scissor != current_scissor {
@@ -659,8 +688,8 @@ impl<'window> WgpuEngine<'window> {
                     let [x, y, w, h] = current_scissor
                         .unwrap_or_else(|| [0.0, 0.0, renderable.size.x, renderable.size.y]);
 
-                    if renderable.size.x - x < 0.0 || renderable.size.y - y < 0.0 { 
-                        continue 
+                    if renderable.size.x - x < 0.0 || renderable.size.y - y < 0.0 {
+                        continue
                     }
 
                     let x = x.clamp(0.0, renderable.size.x);
@@ -675,27 +704,27 @@ impl<'window> WgpuEngine<'window> {
                 }
 
                 let pipeline = i.get_pipeline();
-                
+
                 if pipeline != current_pipeline {
                     current_pipeline = pipeline;
-                    let Some(pipeline) = self.pipelines.get(&pipeline) 
+                    let Some(pipeline) = self.pipelines.get(&pipeline)
                     else {
                         error!("Pipeline not created for blend mode {current_pipeline:?}");
-                        current_pipeline = Pipeline::None;
+                        current_pipeline = tataku::GraphicsPipeline::None;
                         continue
                     };
 
                     render_pass.set_pipeline(pipeline);
                     render_pass.set_bind_group(
-                        0, 
-                        &self.projection_matrix_bind_group, 
+                        0,
+                        &self.projection_matrix_bind_group,
                         &[]
                     );
 
                     if let RenderBufferType::Standard(_) = i {
                         render_pass.set_bind_group(
-                            1, 
-                            &self.atlas_texture.bind_group, 
+                            1,
+                            &self.atlas_texture.bind_group,
                             &[]
                         );
                     }
@@ -703,30 +732,30 @@ impl<'window> WgpuEngine<'window> {
 
                 if let RenderBufferType::Slider(slider) = i {
                     render_pass.set_bind_group(
-                        1, 
-                        &slider.bind_group, 
+                        1,
+                        &slider.bind_group,
                         &[]
                     );
                 }
                 if let RenderBufferType::Flashlight(flashlight) = i {
                     render_pass.set_bind_group(
-                        1, 
-                        &flashlight.bind_group, 
+                        1,
+                        &flashlight.bind_group,
                         &[]
                     );
                 }
 
                 render_pass.set_vertex_buffer(
-                    0, 
+                    0,
                     i.get_vertex_buffer().slice(..)
                 );
                 render_pass.set_index_buffer(
-                    i.get_index_buffer().slice(..), 
-                    IndexFormat::Uint32
+                    i.get_index_buffer().slice(..),
+                    wgpu::IndexFormat::Uint32
                 );
                 render_pass.draw_indexed(
-                    0..i.get_used_indices() as u32, 
-                    0, 
+                    0..i.get_used_indices() as u32,
+                    0,
                     0..1
                 );
             }
@@ -735,11 +764,10 @@ impl<'window> WgpuEngine<'window> {
 
         self.queue.submit([encoder.finish()]);
 
-
         Ok(())
     }
 
-    fn create_projection(draw_size: Vector2) -> Matrix {
+    fn create_projection(draw_size: tataku::Vector2) -> tataku::Matrix {
         let sx = 2.0 / draw_size.x;
         let sy = -2.0 / draw_size.y;
 
@@ -761,47 +789,49 @@ impl<'window> WgpuEngine<'window> {
 // texture stuff
 impl WgpuEngine<'_> {
     fn create_texture(
-        device: &Device, 
-        layout: &BindGroupLayout, 
-        sampler: &Sampler, 
-        width: u32, 
-        height: u32, 
-        format: TextureFormat,
+        device: &wgpu::Device,
+        layout: &wgpu::BindGroupLayout,
+        sampler: &wgpu::Sampler,
+        width: u32,
+        height: u32,
+        format: wgpu::TextureFormat,
     ) -> WgpuTexture {
-        let texture_size = Extent3d {
+        let texture_size = wgpu::Extent3d {
             width,
             height,
             depth_or_array_layers: 1,
         };
+        let desc = wgpu::TextureViewDescriptor {
+            label: Some("atlas_texture_view"),
+            ..Default::default()
+        };
+
+        let view_formats = [
+            format.add_srgb_suffix(), 
+            format.remove_srgb_suffix() 
+        ];
 
         let textures = (0..LAYER_COUNT).map(|_| {
             let texture = device.create_texture(
-                &TextureDescriptor {
+                &wgpu::TextureDescriptor {
                     size: texture_size,
                     mip_level_count: 1,
                     sample_count: 1,
-                    dimension: TextureDimension::D2,
+                    dimension: wgpu::TextureDimension::D2,
                     // Most images are stored using sRGB so we need to reflect that here.
                     format, //TextureFormat::Rgba8UnormSrgb,
                     // TEXTURE_BINDING tells wgpu that we want to use this texture in shaders
                     // COPY_DST means that we want to copy data to this texture
-                    usage: TextureUsages::TEXTURE_BINDING 
-                        | TextureUsages::COPY_DST 
-                        | TextureUsages::COPY_SRC 
-                        | TextureUsages::RENDER_ATTACHMENT,
+                    usage: wgpu::TextureUsages::TEXTURE_BINDING
+                        | wgpu::TextureUsages::COPY_DST
+                        | wgpu::TextureUsages::COPY_SRC
+                        | wgpu::TextureUsages::RENDER_ATTACHMENT,
                     label: Some("atlas_texture"),
-                    view_formats: &[],
+                    view_formats: &view_formats,
                 }
             );
 
-            let view = texture.create_view(&TextureViewDescriptor {
-                label: Some("atlas_texture_view"),
-                dimension: Some(TextureViewDimension::D2),
-                base_array_layer: 0,
-
-                ..Default::default()
-            });
-
+            let view = texture.create_view(&desc);
             (texture, view)
         })
         .collect::<Vec<_>>();
@@ -811,77 +841,77 @@ impl WgpuEngine<'_> {
         let view_list = textures.iter()
             .map(|a| &a.1)
             .collect::<Vec<_>>();
-
+        
         #[cfg(feature="texture_arrays")]
         let bind_group = device.create_bind_group(
-            &BindGroupDescriptor {
+            &wgpu::BindGroupDescriptor {
                 label: Some("texture array bind group"),
                 layout,
                 entries: &[
-                    BindGroupEntry {
+                    wgpu::BindGroupEntry {
                         binding: 0,
-                        resource: BindingResource::TextureViewArray(&view_list),
+                        resource: wgpu::BindingResource::TextureViewArray(&view_list),
                     },
-                    BindGroupEntry {
+                    wgpu::BindGroupEntry {
                         binding: 1,
-                        resource: BindingResource::Sampler(sampler),
+                        resource: wgpu::BindingResource::Sampler(sampler),
                     }
                 ],
             }
         );
 
         #[cfg(not(feature="texture_arrays"))]
-        let bind_group = device.create_bind_group(&BindGroupDescriptor {
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("texture array bind group"),
             layout,
             entries: &[
-                BindGroupEntry {
+                wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: BindingResource::Sampler(sampler),
+                    resource: wgpu::BindingResource::Sampler(sampler),
                 },
-                BindGroupEntry {
+                wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: BindingResource::TextureView(&textures[0].1),
+                    resource: wgpu::BindingResource::TextureView(&textures[0].1),
                 },
-                BindGroupEntry {
+                wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: BindingResource::TextureView(&textures[1].1),
+                    resource: wgpu::BindingResource::TextureView(&textures[1].1),
                 },
-                BindGroupEntry {
+                wgpu::BindGroupEntry {
                     binding: 3,
-                    resource: BindingResource::TextureView(&textures[2].1),
+                    resource: wgpu::BindingResource::TextureView(&textures[2].1),
                 },
-                BindGroupEntry {
+                wgpu::BindGroupEntry {
                     binding: 4,
-                    resource: BindingResource::TextureView(&textures[3].1),
+                    resource: wgpu::BindingResource::TextureView(&textures[3].1),
                 },
             ],
         });
-        
+
         WgpuTexture {
             textures: Arc::new(textures),
             bind_group
         }
     }
 
-    fn read_texture(&self, texture: &Texture) -> (Vec<u8>, [u32;2]) {
+    fn read_texture(&self, texture: &wgpu::Texture) -> (Vec<u8>, [u32;2]) {
         let (w, h) = (texture.width(), texture.height());
 
         let fuck = (w * 4)
-            .div_ceil(COPY_BYTES_PER_ROW_ALIGNMENT) 
-            * COPY_BYTES_PER_ROW_ALIGNMENT;
+            .div_ceil(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT)
+            * wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
 
         let size = (fuck * h) as u64; //(w * h * 4) as u64;
-        let buffer = self.device.create_buffer(&BufferDescriptor {
+        let buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Texture Reading Buffer"),
-            usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
             size,
             mapped_at_creation: false,
         });
 
-        let tex_buffer = TexelCopyBufferInfo {
+        let tex_buffer = wgpu::TexelCopyBufferInfo {
             buffer: &buffer,
-            layout: TexelCopyBufferLayout {
+            layout: wgpu::TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(fuck),
                 rows_per_image: None
@@ -889,20 +919,20 @@ impl WgpuEngine<'_> {
         };
 
         let mut encoder = self.device.create_command_encoder(
-            &CommandEncoderDescriptor { label: Some("Texture reading encoder") }
+            &wgpu::CommandEncoderDescriptor { label: Some("Texture reading encoder") }
         );
         encoder.copy_texture_to_buffer(
-            texture.as_image_copy(), 
-            tex_buffer, 
+            texture.as_image_copy(),
+            tex_buffer,
             texture.size()
         );
         self.queue.submit(Some(encoder.finish()));
 
         let slice = buffer.slice(..);
-        slice.map_async(MapMode::Read, |_| {});
+        slice.map_async(wgpu::MapMode::Read, |_| {});
         let index = self.queue.submit(None);
-        self.device.poll(wgt::PollType::WaitForSubmissionIndex(index)).unwrap();
-    
+        self.device.poll(wgpu::wgt::PollType::WaitForSubmissionIndex(index)).unwrap();
+
         let data = slice
             .get_mapped_range()
             .chunks_exact(4)
@@ -912,43 +942,36 @@ impl WgpuEngine<'_> {
         (data, [fuck / 4, h])
     }
 
-    fn finish_screenshot(&self, callback: ScreenshotCallback) {
-        let (data, size) = self.read_texture(&self.intermediate_texture);
-
-        callback((data, size));
-    }
 }
 
 
 // render code
 impl WgpuEngine<'_> {
     fn dump_last_drawn(&mut self) {
-        let Some(mut last_drawn) = self
+        let Some(mut last_buffer) = self
             .current_render_buffer.take()
         else { return };
 
-        let gaussian_blur = self.gaussian_blur_shader.borrow();
-        let box_blur = self.box_blur_shader.borrow();
-
-        let pipeline = match last_drawn.draw_type().as_blendmode() {
-            Pipeline::GaussianBlur => WgpuPipeline::Compute(&gaussian_blur.pipeline),
-            Pipeline::BoxBlur => WgpuPipeline::Compute(&box_blur.pipeline),
-            other => WgpuPipeline::Render(&self.pipelines[&other]),
+        let pipeline = match last_buffer.draw_type() {
+            PipelineType::GaussianBlur => WgpuPipeline::Compute(&self.gaussian_blur_pipeline.pipeline),
+            PipelineType::BoxBlur => WgpuPipeline::Compute(&self.box_blur_pipeline.pipeline),
+            PipelineType::Vello => WgpuPipeline::None,
+            other => WgpuPipeline::Render(&self.pipelines[&other.as_pipeline()]),
         };
-        if let Some(b) = last_drawn.dump_and_next(
-            &self.queue, 
-            &self.device, 
+        if let Some(b) = last_buffer.dump_and_next(
+            &self.queue,
+            &self.device,
             pipeline
-        ) { 
-            self.completed_buffers.push(b); 
+        ) {
+            self.completed_buffers.push(b);
         };
 
-        self.buffer_queues.insert(last_drawn.draw_type(), last_drawn);
+        self.buffer_queues.insert(last_buffer.draw_type(), last_buffer);
     }
 
-    fn check_dump_and_next(&mut self, to_draw: LastPipeline) {
-        if let Some(last_drawn) = &self.current_render_buffer
-            && last_drawn.draw_type() == to_draw 
+    fn check_dump_and_next(&mut self, to_draw: PipelineType) {
+        if let Some(last_buffer) = &self.current_render_buffer
+            && last_buffer.draw_type() == to_draw
         { return }
 
         self.dump_last_drawn();
@@ -963,10 +986,12 @@ impl WgpuEngine<'_> {
         &'a mut self,
         vtx_count: u64,
         idx_count: u64,
-        blend_mode: Pipeline
-    ) -> Option<StandardReserveData<'a>> {
+        blend_mode: tataku::GraphicsPipeline
+    ) -> Option<shaders::standard::ReserveData<'a>> {
+        use crate::shaders::standard;
+
         let scissor = self.scissors.current_scissor();
-        self.check_dump_and_next(LastPipeline::Standard);
+        self.check_dump_and_next(PipelineType::Standard);
 
         let vertex_buffer_queue = get_render_buffer!(self, Standard);
 
@@ -975,22 +1000,22 @@ impl WgpuEngine<'_> {
             .expect("didnt get vertex recording buffer");
 
         if !( // blend mode check
-            recording_buffer.blend_mode == blend_mode 
-            || recording_buffer.blend_mode == Pipeline::None
+            recording_buffer.blend_mode == blend_mode
+            || recording_buffer.blend_mode == tataku::GraphicsPipeline::None
         )
         || !( // scissor check
-            recording_buffer.scissor == Some(scissor) 
+            recording_buffer.scissor == Some(scissor)
             || recording_buffer.scissor.is_none()
         )
-        || recording_buffer.used_vertices + vtx_count > StandardBuffer::VTX_PER_BUF
-        || recording_buffer.used_indices + idx_count > StandardBuffer::IDX_PER_BUF {
+        || recording_buffer.used_vertices + vtx_count > standard::Buffer::VTX_PER_BUF
+        || recording_buffer.used_indices + idx_count > standard::Buffer::IDX_PER_BUF {
             let pipeline = WgpuPipeline::Render(
                 &self.pipelines[&blend_mode]
             );
-            
+
             if let Some(b) = vertex_buffer_queue.dump_and_next(
-                &self.queue, 
-                &self.device, 
+                &self.queue,
+                &self.device,
                 pipeline
             ) {
                 self.completed_buffers.push(RenderBufferType::Standard(b));
@@ -1000,7 +1025,7 @@ impl WgpuEngine<'_> {
             recording_buffer.blend_mode = blend_mode;
             recording_buffer.scissor = Some(scissor);
         }
-        if recording_buffer.blend_mode == Pipeline::None {
+        if recording_buffer.blend_mode == tataku::GraphicsPipeline::None {
             recording_buffer.blend_mode = blend_mode;
         }
         if recording_buffer.scissor.is_none() {
@@ -1014,7 +1039,7 @@ impl WgpuEngine<'_> {
         let used_indices = recording_buffer.used_indices;
 
         let cache = &mut vertex_buffer_queue.cpu_cache;
-        Some(StandardReserveData {
+        Some(standard::ReserveData {
             vtx: &mut cache.cpu_vtx[
                 (used_vertices - vtx_count) as usize .. used_vertices as usize
             ],
@@ -1028,17 +1053,18 @@ impl WgpuEngine<'_> {
     #[allow(clippy::too_many_arguments)]
     fn reserve_tex_quad(
         &mut self,
-        tex: &TextureReference,
+        tex: &tataku::TextureReference,
         rect: [f32; 4],
-        color: Color,
+        color: tataku::Color,
         h_flip: bool,
         v_flip: bool,
-        transform: Matrix,
-        blend_mode: Pipeline,
+        transform: tataku::Matrix,
+        blend_mode: tataku::GraphicsPipeline,
     ) {
+        use shaders::standard;
         let Some(mut reserved) = self.reserve_standard(
-            4, 
-            6, 
+            4,
+            6,
             blend_mode
         ) else { return };
 
@@ -1064,31 +1090,31 @@ impl WgpuEngine<'_> {
         #[allow(clippy::identity_op, reason = "lines the values up nicely")]
         reserved.copy_in(
         &[
-                StandardVertex {
-                    position: transform.mul_v2(Vector2::new(x, y)).into(),
+                standard::Vertex {
+                    position: transform.mul_v2(tataku::Vector2::new(x, y)).into(),
                     tex_coords: tl,
                     tex_index,
                     color,
                 },
-                StandardVertex {
-                    position: transform.mul_v2(Vector2::new(x+w, y)).into(),
+                standard::Vertex {
+                    position: transform.mul_v2(tataku::Vector2::new(x+w, y)).into(),
                     tex_coords: tr,
                     tex_index,
                     color,
                 },
-                StandardVertex {
-                    position: transform.mul_v2(Vector2::new(x, y+h)).into(),
+                standard::Vertex {
+                    position: transform.mul_v2(tataku::Vector2::new(x, y+h)).into(),
                     tex_coords: bl,
                     tex_index,
                     color,
                 },
-                StandardVertex {
-                    position: transform.mul_v2(Vector2::new(x+w, y+h)).into(),
+                standard::Vertex {
+                    position: transform.mul_v2(tataku::Vector2::new(x+w, y+h)).into(),
                     tex_coords: br,
                     tex_index,
                     color,
                 }
-            ], 
+            ],
             &[
                 0 + offset,
                 2 + offset,
@@ -1104,20 +1130,20 @@ impl WgpuEngine<'_> {
     // quad is tl,tr, bl,br
     fn reserve_quad(
         &mut self,
-        quad: [Vector2; 4],
-        color: Color,
-        transform: Matrix,
-        blend_mode: Pipeline,
+        quad: [tataku::Vector2; 4],
+        color: tataku::Color,
+        transform: tataku::Matrix,
+        blend_mode: tataku::GraphicsPipeline,
     ) {
         let Some(mut reserved) = self.reserve_standard(
-            4, 
-            6, 
+            4,
+            6,
             blend_mode
         ) else { return };
         let color = color.into();
 
         let vertices = quad.into_iter()
-            .map(|p| StandardVertex {
+            .map(|p| shaders::standard::Vertex {
                 position: transform.mul_v2(p).into(),
                 color,
                 ..Default::default()
@@ -1137,14 +1163,16 @@ impl WgpuEngine<'_> {
         ]);
     }
 
-    fn reserve_slider<'a>(
+    pub(crate) fn reserve_slider<'a>(
         &'a mut self,
         slider_grid_count: u64,
         grid_cell_count: u64,
         line_segment_count: u64,
-    ) -> Option<SliderReserveData<'a>> {
+    ) -> Option<shaders::slider::ReserveData<'a>> {
+        use shaders::slider;
+
         let scissor = self.scissors.current_scissor();
-        self.check_dump_and_next(LastPipeline::Slider);
+        self.check_dump_and_next(PipelineType::Slider);
 
         let slider_buffer_queue = get_render_buffer!(self, Slider);
 
@@ -1152,7 +1180,7 @@ impl WgpuEngine<'_> {
             .recording_buffer()
             .expect("didnt get slider recording buffer");
 
-        let scissor_check = recording_buffer.scissor == Some(scissor) 
+        let scissor_check = recording_buffer.scissor == Some(scissor)
             || recording_buffer.scissor.is_none();
 
 
@@ -1164,27 +1192,27 @@ impl WgpuEngine<'_> {
         // assert!(grid_cell_count < GRID_CELL_COUNT);
         // assert!(line_segment_count < LINE_SEGMENT_COUNT);
 
-        if slider_grid_count > SLIDER_GRID_COUNT
-        || grid_cell_count > GRID_CELL_COUNT
-        || line_segment_count > LINE_SEGMENT_COUNT {
+        if slider_grid_count > slider::SLIDER_GRID_COUNT
+        || grid_cell_count > slider::GRID_CELL_COUNT
+        || line_segment_count > slider::LINE_SEGMENT_COUNT {
             return None
         }
 
         if !scissor_check
-        || recording_buffer.used_vertices + vtx_count > SliderRenderBuffer::VTX_PER_BUF
-        || recording_buffer.used_indices + idx_count > SliderRenderBuffer::IDX_PER_BUF
-        || recording_buffer.used_slider_data + 1 > EXPECTED_SLIDER_COUNT
-        || recording_buffer.used_slider_grids + slider_grid_count > SLIDER_GRID_COUNT
-        || recording_buffer.used_grid_cells + grid_cell_count > GRID_CELL_COUNT
-        || recording_buffer.used_line_segments + line_segment_count > LINE_SEGMENT_COUNT
+        || recording_buffer.used_vertices + vtx_count > slider::Buffer::VTX_PER_BUF
+        || recording_buffer.used_indices + idx_count > slider::Buffer::IDX_PER_BUF
+        || recording_buffer.used_slider_data + 1 > slider::EXPECTED_SLIDER_COUNT
+        || recording_buffer.used_slider_grids + slider_grid_count > slider::SLIDER_GRID_COUNT
+        || recording_buffer.used_grid_cells + grid_cell_count > slider::GRID_CELL_COUNT
+        || recording_buffer.used_line_segments + line_segment_count > slider::LINE_SEGMENT_COUNT
         {
             let pipeline = WgpuPipeline::Render(
-                &self.pipelines[&Pipeline::Slider]
+                &self.pipelines[&tataku::GraphicsPipeline::Slider]
             );
             if let Some(b) = slider_buffer_queue
             .dump_and_next(
-                &self.queue, 
-                &self.device, 
+                &self.queue,
+                &self.device,
                 pipeline
             ) {
                 self.completed_buffers.push(RenderBufferType::Slider(b));
@@ -1215,7 +1243,7 @@ impl WgpuEngine<'_> {
         let slider_index = recording_buffer.used_slider_data - 1;
 
         let cache = &mut slider_buffer_queue.cpu_cache;
-        Some(SliderReserveData {
+        Some(slider::ReserveData {
             vtx: &mut cache.cpu_vtx[
                 (used_vertices - vtx_count as usize) .. used_vertices
             ],
@@ -1242,12 +1270,12 @@ impl WgpuEngine<'_> {
         })
     }
 
-
-    fn reserve_flashlight<'a>(
+    pub(crate) fn reserve_flashlight<'a>(
         &'a mut self,
-    ) -> Option<FlashlightReserveData<'a>> {
+    ) -> Option<shaders::flashlight::ReserveData<'a>> {
+        use shaders::flashlight;
         let scissor = self.scissors.current_scissor();
-        self.check_dump_and_next(LastPipeline::Flashlight);
+        self.check_dump_and_next(PipelineType::Flashlight);
 
         let buffer_queue = get_render_buffer!(self, Flashlight);
         // if let Some(RenderBufferQueueType::Slider(b)) = &mut self.last_drawn {b} else {panic!("wrong buffer type")};
@@ -1255,21 +1283,21 @@ impl WgpuEngine<'_> {
         let mut recording_buffer = buffer_queue
             .recording_buffer()
             .expect("didnt get flashlight recording buffer");
-        let scissor_check = recording_buffer.scissor == Some(scissor) 
+        let scissor_check = recording_buffer.scissor == Some(scissor)
             || recording_buffer.scissor.is_none();
 
         let vtx_count = 4;
         let idx_count = 6;
 
         if !scissor_check
-        || recording_buffer.used_vertices + vtx_count > SliderRenderBuffer::VTX_PER_BUF
-        || recording_buffer.used_indices + idx_count > SliderRenderBuffer::IDX_PER_BUF
+        || recording_buffer.used_vertices + vtx_count > flashlight::Buffer::VTX_PER_BUF
+        || recording_buffer.used_indices + idx_count > flashlight::Buffer::IDX_PER_BUF
         {
             let pipeline = WgpuPipeline::Render(
-                &self.pipelines[&Pipeline::Flashlight]
+                &self.pipelines[&tataku::GraphicsPipeline::Flashlight]
             );
             if let Some(b) = buffer_queue.dump_and_next(
-                &self.queue, 
+                &self.queue,
                 &self.device,
                 pipeline
             ) {
@@ -1292,7 +1320,7 @@ impl WgpuEngine<'_> {
         let used_indices = recording_buffer.used_indices;
 
         let cache = &mut buffer_queue.cpu_cache;
-        Some(FlashlightReserveData {
+        Some(flashlight::ReserveData {
             vtx: &mut cache.cpu_vtx[(used_vertices - vtx_count) as usize .. used_vertices as usize],
             idx: &mut cache.cpu_idx[(used_indices - idx_count) as usize .. used_indices as usize],
             flashlight_data: &mut cache.cpu_flashlights[flashlight_index as usize],
@@ -1302,28 +1330,27 @@ impl WgpuEngine<'_> {
         })
     }
 
-    fn reserve_gaussian_blur<'a>(
+    pub(crate) fn reserve_gaussian_blur<'a>(
         &'a mut self,
-    ) -> Option<GaussianBlurReserveData<'a>> {
+    ) -> Option<shaders::gaussian_blur::ReserveData<'a>> {
+        use shaders::gaussian_blur as gaussian;
         let scissor = self.scissors.current_scissor();
-        self.check_dump_and_next(LastPipeline::GaussianBlur);
+        self.check_dump_and_next(PipelineType::GaussianBlur);
 
         let buffer_queue = get_render_buffer!(self, GaussianBlur);
 
         let mut recording_buffer = buffer_queue.recording_buffer()
             .expect("didnt get blur recording buffer");
-        let scissor_check = recording_buffer.scissor == Some(scissor) 
+        let scissor_check = recording_buffer.scissor == Some(scissor)
             || recording_buffer.scissor.is_none();
 
         if !scissor_check
-            || recording_buffer.used + 1 > GaussianBlurBuffer::VTX_PER_BUF
+            || recording_buffer.used + 1 > gaussian::Buffer::VTX_PER_BUF
         {
-            let blur = self.gaussian_blur_shader.borrow();
-            let pipeline = WgpuPipeline::Compute(&blur.pipeline);
             if let Some(b) = buffer_queue.dump_and_next(
-                &self.queue, 
-                &self.device, 
-                pipeline
+                &self.queue,
+                &self.device,
+                (&self.gaussian_blur_pipeline.pipeline).into()
             ) {
                 self.completed_buffers.push(RenderBufferType::GaussianBlur(b));
             }
@@ -1337,32 +1364,30 @@ impl WgpuEngine<'_> {
         let index = recording_buffer.used - 1;
 
         let cache = &mut buffer_queue.cpu_cache;
-        Some(GaussianBlurReserveData {
+        Some(gaussian::ReserveData {
             data: &mut cache.cpu_blurs[index as usize],
             _blur_index: index as u32,
         })
     }
-    
-    fn reserve_box_blur<'a>(
+
+    pub(crate) fn reserve_box_blur<'a>(
         &'a mut self,
-    ) -> Option<BoxBlurReserveData<'a>> {
+    ) -> Option<shaders::box_blur::ReserveData<'a>> {
         let scissor = self.scissors.current_scissor();
-        self.check_dump_and_next(LastPipeline::BoxBlur);
+        self.check_dump_and_next(PipelineType::BoxBlur);
 
         let buffer_queue = get_render_buffer!(self, BoxBlur);
 
         let mut recording_buffer = buffer_queue.recording_buffer()
             .expect("didnt get blur recording buffer");
-        let scissor_check = recording_buffer.scissor == Some(scissor) 
+        let scissor_check = recording_buffer.scissor == Some(scissor)
             || recording_buffer.scissor.is_none();
 
         if !scissor_check || recording_buffer.used {
-            let blur = self.box_blur_shader.borrow();
-            let pipeline = WgpuPipeline::Compute(&blur.pipeline);
             if let Some(b) = buffer_queue.dump_and_next(
-                &self.queue, 
-                &self.device, 
-                pipeline
+                &self.queue,
+                &self.device,
+                (&self.box_blur_pipeline.pipeline).into(),
             ) {
                 self.completed_buffers.push(RenderBufferType::BoxBlur(b));
             }
@@ -1375,74 +1400,126 @@ impl WgpuEngine<'_> {
         recording_buffer.used = true;
 
         let cache = &mut buffer_queue.cpu_cache;
-        Some(BoxBlurReserveData {
+        Some(shaders::box_blur::ReserveData {
             data: &mut cache.cpu_blurs[0],
         })
     }
-    
+
+    #[cfg(feature="vello_rendering")]
+    pub(crate) fn reserve_vello<'a>(
+        &'a mut self,
+        blend_mode: tataku::GraphicsPipeline,
+    ) -> Option<shaders::vello::ReserveData<'a>> {
+        let scissor = self.scissors.current_scissor();
+        self.check_dump_and_next(PipelineType::Vello);
+
+        let buffer_queue = get_render_buffer!(self, Vello);
+
+        let mut recording_buffer = buffer_queue
+            .recording_buffer()
+            .expect("didnt get vello recording buffer");
+
+        let scissor_check = recording_buffer.scissor == Some(scissor)
+            || recording_buffer.scissor.is_none();
+
+        let blend_mode_check = recording_buffer.blend_mode == blend_mode
+            || recording_buffer.blend_mode == tataku::GraphicsPipeline::None
+            ;
+
+        if !scissor_check || !blend_mode_check {
+            if let Some(b) = buffer_queue.dump_and_next(
+                &self.queue,
+                &self.device,
+                WgpuPipeline::None
+            ) {
+                self.completed_buffers.push(RenderBufferType::Vello(b));
+            }
+            recording_buffer = buffer_queue.recording_buffer()?;
+        }
+
+        if recording_buffer.scissor.is_none() {
+            recording_buffer.scissor = Some(scissor);
+        }
+        if recording_buffer.blend_mode == tataku::GraphicsPipeline::None {
+            recording_buffer.blend_mode = blend_mode;
+        }
+
+        recording_buffer.used += 1;
+
+        Some(shaders::vello::ReserveData {
+            scene: &mut buffer_queue.cpu_cache.scene,
+        })
+    }
 
 }
 
 
 // draw helpers
 impl WgpuEngine<'_> {
-    pub(crate) fn map_blend_mode(blend_mode: Pipeline) -> BlendState {
-        match blend_mode {
-            Pipeline::AlphaBlending => BlendState::ALPHA_BLENDING,
-            Pipeline::AlphaOverwrite => BlendState::REPLACE,
-            Pipeline::PremultipliedAlpha => BlendState::PREMULTIPLIED_ALPHA_BLENDING,
-            Pipeline::AdditiveBlending => BlendState {
-                color: BlendComponent { 
-                    src_factor: BlendFactor::One, 
-                    dst_factor: BlendFactor::One, 
-                    operation: BlendOperation::Add 
+    pub(crate) fn map_pipeline(pipeline: tataku::GraphicsPipeline) -> wgpu::BlendState {
+        use wgpu:: {
+            BlendState,
+            BlendComponent,
+            BlendFactor,
+            BlendOperation
+        };
+
+        match pipeline {
+            tataku::GraphicsPipeline::AlphaBlending => BlendState::ALPHA_BLENDING,
+            tataku::GraphicsPipeline::AlphaOverwrite => BlendState::REPLACE,
+            tataku::GraphicsPipeline::PremultipliedAlpha => BlendState::PREMULTIPLIED_ALPHA_BLENDING,
+            tataku::GraphicsPipeline::AdditiveBlending => BlendState {
+                color: BlendComponent {
+                    src_factor: BlendFactor::One,
+                    dst_factor: BlendFactor::One,
+                    operation: BlendOperation::Add
                 },
-                alpha: BlendComponent { 
-                    src_factor: BlendFactor::One, 
-                    dst_factor: BlendFactor::One, 
-                    operation: BlendOperation::Add 
+                alpha: BlendComponent {
+                    src_factor: BlendFactor::One,
+                    dst_factor: BlendFactor::One,
+                    operation: BlendOperation::Add
                 }
             },
-            Pipeline::OsuAdditiveBlending => BlendState {
-                color: BlendComponent { 
-                    src_factor: BlendFactor::SrcAlpha, 
-                    dst_factor: BlendFactor::One, 
-                    operation: BlendOperation::Add 
+            tataku::GraphicsPipeline::OsuAdditiveBlending => BlendState {
+                color: BlendComponent {
+                    src_factor: BlendFactor::SrcAlpha,
+                    dst_factor: BlendFactor::One,
+                    operation: BlendOperation::Add
                 },
-                alpha: BlendComponent { 
-                    src_factor: BlendFactor::One, 
-                    dst_factor: BlendFactor::One, 
-                    operation: BlendOperation::Add 
+                alpha: BlendComponent {
+                    src_factor: BlendFactor::One,
+                    dst_factor: BlendFactor::One,
+                    operation: BlendOperation::Add
                 }
             },
-            Pipeline::SourceAlphaBlending => BlendState {
-                color: BlendComponent { 
-                    src_factor: BlendFactor::SrcAlpha, 
-                    dst_factor: BlendFactor::One, 
-                    operation: BlendOperation::Add 
+            tataku::GraphicsPipeline::SourceAlphaBlending => BlendState {
+                color: BlendComponent {
+                    src_factor: BlendFactor::SrcAlpha,
+                    dst_factor: BlendFactor::One,
+                    operation: BlendOperation::Add
                 },
-                alpha: BlendComponent { 
-                    src_factor: BlendFactor::SrcAlpha, 
-                    dst_factor: BlendFactor::One, 
-                    operation: BlendOperation::Add 
+                alpha: BlendComponent {
+                    src_factor: BlendFactor::SrcAlpha,
+                    dst_factor: BlendFactor::One,
+                    operation: BlendOperation::Add
                 }
             },
 
-            Pipeline::None
-            | Pipeline::BoxBlur
-            | Pipeline::GaussianBlur
-            | Pipeline::Slider
-            | Pipeline::Flashlight => unimplemented!("nope")
+            tataku::GraphicsPipeline::None
+            | tataku::GraphicsPipeline::BoxBlur
+            | tataku::GraphicsPipeline::GaussianBlur
+            | tataku::GraphicsPipeline::Slider
+            | tataku::GraphicsPipeline::Flashlight => unimplemented!("nope")
         }
     }
 
     fn tessellate_polygon(
-        &mut self, 
-        polygon: &[Vector2], 
-        color: Color, 
-        border: Option<f32>, 
-        transform: Matrix, 
-        blend_mode: Pipeline
+        &mut self,
+        polygon: &[tataku::Vector2],
+        color: tataku::Color,
+        border: Option<f32>,
+        transform: tataku::Matrix,
+        blend_mode: tataku::GraphicsPipeline
     ) {
         let mut polygon = polygon.iter();
         let mut path = LyonPath::builder();
@@ -1461,12 +1538,12 @@ impl WgpuEngine<'_> {
     }
 
     fn tessellate_path(
-        &mut self, 
-        path: &LyonPath, 
-        color: Color, 
-        border: Option<f32>, 
-        transform: Matrix, 
-        blend_mode: Pipeline
+        &mut self,
+        path: &LyonPath,
+        color: tataku::Color,
+        border: Option<f32>,
+        transform: tataku::Matrix,
+        blend_mode: tataku::GraphicsPipeline
     ) {
         use lyon_tessellation::{
             VertexBuffers,
@@ -1512,16 +1589,16 @@ impl WgpuEngine<'_> {
         }
 
         let mut reserved = self.reserve_standard(
-            buffers.vertices.len() as u64, 
-            buffers.indices.len() as u64, 
+            buffers.vertices.len() as u64,
+            buffers.indices.len() as u64,
             blend_mode
         ).expect("nope");
 
         // convert vertices and indices to their proper values
         let vertices = buffers.vertices
             .into_iter()
-            .map(|n| 
-                StandardVertex {
+            .map(|n|
+                shaders::standard::Vertex {
                     position: [n.x, n.y],
                     color: [color.r(), color.g(), color.b(), color.a()],
                     ..Default::default()
@@ -1540,10 +1617,9 @@ impl WgpuEngine<'_> {
 }
 
 
-
-impl GraphicsEngine for WgpuEngine<'_> {
+impl tataku::RenderingEngine for WgpuEngine<'_> {
     fn resize(
-        &mut self, 
+        &mut self,
         [width, height]: [u32; 2]
     ) {
         if width == 0 || height == 0 { return }
@@ -1552,23 +1628,23 @@ impl GraphicsEngine for WgpuEngine<'_> {
         self.config.height = height;
         self.surface.configure(&self.device, &self.config);
 
-        let window_size = Vector2::new(width as f32, height as f32);
+        let window_size = tataku::Vector2::new(width as f32, height as f32);
         self.projection_matrix = Self::create_projection(window_size);
         self.queue.write_buffer(
-            &self.projection_matrix_buffer, 
-            0, 
+            &self.projection_matrix_buffer,
+            0,
             bytemuck::cast_slice(&self.projection_matrix.to_raw())
         );
     }
 
-    fn set_vsync(&mut self, vsync: Vsync) {
+    fn set_vsync(&mut self, vsync: tataku::Vsync) {
         self.config.present_mode = VsyncUtils::map_from_vsync(
             vsync.to_okay(&self.present_modes)
         );
         self.surface.configure(&self.device, &self.config);
     }
 
-    fn vsync_modes(&self) -> Vec<Vsync> {
+    fn vsync_modes(&self) -> Vec<tataku::Vsync> {
         self.present_modes.clone()
     }
 
@@ -1583,7 +1659,7 @@ impl GraphicsEngine for WgpuEngine<'_> {
         for (n, (tex, _)) in self.atlas_texture
             .textures
             .iter()
-            .enumerate() 
+            .enumerate()
         {
             println!("Reading atlas {n}");
             let (data, [width, height]) = self.read_texture(tex);
@@ -1594,9 +1670,9 @@ impl GraphicsEngine for WgpuEngine<'_> {
 
             use image::ImageEncoder;
             png.write_image(
-                &data, 
-                width, 
-                height, 
+                &data,
+                width,
+                height,
                 image::ExtendedColorType::Rgba8,
             ).unwrap();
         }
@@ -1605,28 +1681,28 @@ impl GraphicsEngine for WgpuEngine<'_> {
 
 
     fn create_render_target(
-        &mut self, 
-        [width, height]: [u32; 2], 
-        clear_color: Color, 
-        do_render: RenderTargetDraw
-    ) -> Option<RenderTarget> {
+        &mut self,
+        [width, height]: [u32; 2],
+        clear_color: tataku::Color,
+        do_render: tataku::RenderTargetDraw,
+    ) -> Option<tataku::RenderTarget> {
         // find space in the render target atlas
         let atlased = self.atlas.try_insert(width, height)?;
 
         // create a projection and render target
         let projection = Self::create_projection(
-            Vector2::new(width as f32, height as f32)
+            tataku::Vector2::new(width as f32, height as f32)
         );
 
-        let target = RenderTarget {
+        let target = tataku::RenderTarget {
             width,
             height,
             projection,
             clear_color,
-            image: Image::new(
-                Vector2::ZERO,
+            image: tataku::Image::new(
+                tataku::Vector2::ZERO,
                 Arc::new(atlased),
-                Vector2::ONE
+                tataku::Vector2::ONE
             ),
         };
 
@@ -1637,24 +1713,28 @@ impl GraphicsEngine for WgpuEngine<'_> {
         Some(target)
     }
     fn update_render_target(
-        &mut self, 
-        target: RenderTarget, 
-        do_render: RenderTargetDraw
+        &mut self,
+        target: tataku::RenderTarget,
+        do_render: tataku::RenderTargetDraw
     ) {
-        // get the texture this target was written to
-        let textures = self.atlas_texture.textures.clone();
-
-        if !Bounds::new(Vector2::ZERO, target.image.size()).has_area() {
+        if !tataku::Bounds::new(tataku::Vector2::ZERO, target.image.size()).has_area() {
             return
         }
 
-        let Some((atlas_tex, _)) = textures.get(target.image.tex.layer as usize) 
+        // get the texture this target was written to
+        let textures = self.atlas_texture
+            .textures
+            .clone();
+
+        let Some((atlas_tex, _)) = textures.get(
+            target.image.tex.layer as usize
+        )
         else { return };
 
         // write the projection matrix
         self.queue.write_buffer(
-            &self.projection_matrix_buffer, 
-            0, 
+            &self.projection_matrix_buffer,
+            0,
             bytemuck::cast_slice(&target.projection.to_raw())
         );
         self.queue.submit([]);
@@ -1664,19 +1744,22 @@ impl GraphicsEngine for WgpuEngine<'_> {
 
         // create a temporary texture to render this target to
         let texture = self.device.create_texture(
-            &TextureDescriptor {
-                size: Extent3d {
+            &wgpu::TextureDescriptor {
+                size: wgpu::Extent3d {
                     width,
                     height,
                     depth_or_array_layers: 1,
                 },
                 mip_level_count: 1,
                 sample_count: 1,
-                dimension: TextureDimension::D2,
-                format: TextureFormat::Bgra8Unorm,
-                usage: TextureUsages::COPY_SRC | TextureUsages::RENDER_ATTACHMENT,
+                dimension: wgpu::TextureDimension::D2,
+                format: crate::FORMAT,
+                usage: wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::RENDER_ATTACHMENT,
                 label: Some("render_target_temp_tex"),
-                view_formats: &[TextureFormat::Bgra8UnormSrgb],
+                view_formats: &[ 
+                    crate::FORMAT.add_srgb_suffix(),
+                    crate::FORMAT.remove_srgb_suffix(),
+                ],
             }
         );
 
@@ -1684,17 +1767,15 @@ impl GraphicsEngine for WgpuEngine<'_> {
         let tex = WgpuTextureReference::new(&texture);
         let renderable = RenderableSurface::new(
             &tex,
-            target.clear_color, 
-            Vector2::new(width as f32, height as f32),
-            true
+            target.clear_color,
+            tataku::Vector2::new(width as f32, height as f32),
         );
 
         // clear buffers
         self.begin_render();
 
         // fill buffers
-        let transform = Matrix::identity();
-        do_render(self, transform);
+        do_render(self, tataku::Matrix::identity());
 
         // finish up
         self.end_render();
@@ -1707,7 +1788,7 @@ impl GraphicsEngine for WgpuEngine<'_> {
 
         // copy render to atlas
         let mut encoder = self.device.create_command_encoder(
-            &CommandEncoderDescriptor { 
+            &wgpu::CommandEncoderDescriptor {
                 label: Some("render_target copy encoder"),
             }
         );
@@ -1717,8 +1798,8 @@ impl GraphicsEngine for WgpuEngine<'_> {
         dest.origin.y = target.image.tex.y;
 
         encoder.copy_texture_to_texture(
-            texture.as_image_copy(), 
-            dest, 
+            texture.as_image_copy(),
+            dest,
             texture.size(),
         );
         self.queue.submit([encoder.finish()]);
@@ -1728,17 +1809,20 @@ impl GraphicsEngine for WgpuEngine<'_> {
 
         // reapply the window projection matrix
         self.queue.write_buffer(
-            &self.projection_matrix_buffer, 
-            0, 
+            &self.projection_matrix_buffer,
+            0,
             bytemuck::cast_slice(&self.projection_matrix.to_raw())
         );
 
     }
 
 
-    fn load_texture_bytes(&mut self, data: &[u8]) -> TatakuResult<TextureReference> {
+    fn load_texture_bytes(
+        &mut self, 
+        data: &[u8]
+    ) -> tataku::TatakuResult<tataku::TextureReference> {
         let diffuse_image = image::load_from_memory(data)
-            .map_err(|e| TatakuError::String(e.to_string()))?;
+            .map_err(|e| tataku::TatakuError::String(e.to_string()))?;
 
         let diffuse_rgba = diffuse_image.to_rgba8();
 
@@ -1749,27 +1833,31 @@ impl GraphicsEngine for WgpuEngine<'_> {
     }
 
     fn load_texture_rgba(
-        &mut self, 
-        data: &[u8], 
+        &mut self,
+        data: &[u8],
         [width, height]: [u32; 2]
-    ) -> TatakuResult<TextureReference> {
-        let Some(info) = self.atlas.try_insert(width, height) 
-        else { return Err(TatakuError::String("no space in atlas".to_owned())); };
+    ) -> tataku::TatakuResult<tataku::TextureReference> {
+        let Some(info) = self.atlas.try_insert(width, height)
+        else { return Err(tataku::TatakuError::String("no space in atlas".to_owned())); };
 
         if info.is_empty() { return Ok(info) }
 
-        // cast to bgra
-        let data = data
-            .chunks_exact(4)
-            .flat_map(|b| cast_from_rgba_bytes(b, self.config.format))
-            .collect::<Vec<_>>()
-        ;
+        let mut data = Cow::Borrowed(data);
 
-        let padded_width = width + 2 * ATLAS_PADDING;
-        let padded_height = height + 2 * ATLAS_PADDING;
+        if self.config.format.remove_srgb_suffix() != wgpu::TextureFormat::Rgba8Unorm {
+            // cast to bgra
+            data = data
+                .chunks_exact(4)
+                .flat_map(|b| cast_from_rgba_bytes(b, self.config.format))
+                .collect::<Vec<_>>()
+                .into();
+        }
 
-        let top_bottom_padding = || (0..padded_width * ATLAS_PADDING * 4).map(|_| 0u8);
-        let left_right_padding = || (0..ATLAS_PADDING * 4).map(|_| 0u8);
+        let padded_width = width + 2 * tataku::ATLAS_PADDING;
+        let padded_height = height + 2 * tataku::ATLAS_PADDING;
+
+        let top_bottom_padding = || (0..padded_width * tataku::ATLAS_PADDING * 4).map(|_| 0u8);
+        let left_right_padding = || (0..tataku::ATLAS_PADDING * 4).map(|_| 0u8);
 
         let data = top_bottom_padding()
             .chain(
@@ -1779,31 +1867,31 @@ impl GraphicsEngine for WgpuEngine<'_> {
             .chain(top_bottom_padding())
             .collect::<Vec<_>>();
 
-        let texture_size = Extent3d {
+        let texture_size = wgpu::Extent3d {
             width: padded_width,
             height: padded_height,
             depth_or_array_layers: 1,
         };
 
         self.queue.write_texture(
-            TexelCopyTextureInfo {
+            wgpu::TexelCopyTextureInfo {
                 texture: &self.atlas_texture.textures
                     .get(info.layer as usize)
                     .unwrap()
                     .0,
                 mip_level: 0,
-                origin: Origin3d {
-                    x: info.x.saturating_sub(ATLAS_PADDING),
-                    y: info.y.saturating_sub(ATLAS_PADDING),
+                origin: wgpu::Origin3d {
+                    x: info.x.saturating_sub(tataku::ATLAS_PADDING),
+                    y: info.y.saturating_sub(tataku::ATLAS_PADDING),
                     z: 0
                 },
-                aspect: TextureAspect::All,
+                aspect: wgpu::TextureAspect::All,
             },
             &data,
-            TexelCopyBufferLayout {
+            wgpu::TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(4 * padded_width),
-                rows_per_image: Some(padded_height),
+                rows_per_image: None,
             },
             texture_size,
         );
@@ -1811,7 +1899,11 @@ impl GraphicsEngine for WgpuEngine<'_> {
         Ok(info)
     }
 
-    fn free_tex(&mut self, tex: TextureReference, defer_until_next_draw: bool) {
+    fn free_tex(
+        &mut self, 
+        tex: tataku::TextureReference, 
+        defer_until_next_draw: bool
+    ) {
         if tex.is_empty() { return }
 
         if defer_until_next_draw {
@@ -1819,52 +1911,13 @@ impl GraphicsEngine for WgpuEngine<'_> {
             return;
         }
 
-        // // write empty data to where the texture was
-        // // this should remove the weird border when the atlas space is reused
-        // let width = tex.width + ATLAS_PADDING * 2;
-        // let height = tex.height + ATLAS_PADDING * 2;
-        // // empty pixels
-        // let data = vec![0u8; (width * height * 4) as usize];
-
-        // self.queue.write_texture(
-        //     // Tells wgpu where to copy the pixel data
-        //     ImageCopyTexture {
-        //         texture: &self.atlas_texture.textures
-        //             .get(tex.layer as usize)
-        //             .unwrap()
-        //             .0,
-        //         mip_level: 0,
-        //         origin: Origin3d {
-        //             x: tex.x - ATLAS_PADDING,
-        //             y: tex.y - ATLAS_PADDING,
-        //             z: 0
-        //         },
-        //         aspect: TextureAspect::All,
-        //     },
-        //     // The actual pixel data
-        //     &data,
-        //     // The layout of the texture
-        //     ImageDataLayout {
-        //         offset: 0,
-        //         bytes_per_row: Some(4 * width),
-        //         rows_per_image: Some(height),
-        //     },
-        //     Extent3d {
-        //         width,
-        //         height,
-        //         depth_or_array_layers: 1,
-        //     }
-        // );
-
         // remove from texture atlas
         self.atlas.remove_entry(tex);
     }
 
-    fn screenshot(&mut self, callback: ScreenshotCallback) {
+    fn screenshot(&mut self, callback: tataku::ScreenshotCallback) {
         self.screenshot_pending = Some(Box::new(callback));
     }
-
-
 
     fn begin_render(&mut self) {
         // if self.last_drawn is not None at this point, something went wrong
@@ -1875,6 +1928,8 @@ impl GraphicsEngine for WgpuEngine<'_> {
         let mut flashlight_buffers = Vec::new();
         let mut gaussian_blur_buffers = Vec::new();
         let mut box_blur_buffers = Vec::new();
+        #[cfg(feature="vello")]
+        let mut vello_buffers = Vec::new();
 
         for i in self.completed_buffers.take() {
             match i {
@@ -1883,6 +1938,8 @@ impl GraphicsEngine for WgpuEngine<'_> {
                 RenderBufferType::Flashlight(f) => flashlight_buffers.push(f),
                 RenderBufferType::GaussianBlur(f) => gaussian_blur_buffers.push(f),
                 RenderBufferType::BoxBlur(f) => box_blur_buffers.push(f),
+                #[cfg(feature="vello")]
+                RenderBufferType::Vello(b) => vello_buffers.push(b),
             }
         }
 
@@ -1893,12 +1950,15 @@ impl GraphicsEngine for WgpuEngine<'_> {
                 RenderBufferQueueType::Flashlight(f) => f.begin(flashlight_buffers.take()),
                 RenderBufferQueueType::GaussianBlur(f) => f.begin(gaussian_blur_buffers.take()),
                 RenderBufferQueueType::BoxBlur(f) => f.begin(box_blur_buffers.take()),
+
+                #[cfg(feature="vello")]
+                RenderBufferQueueType::Vello(b) => b.begin(vello_buffers.take()),
             }
         }
     }
 
     fn end_render(&mut self) {
-        let Some(mut last_queue) = self.current_render_buffer.take() 
+        let Some(mut last_queue) = self.current_render_buffer.take()
         else { return };
 
         if let Some(b) = last_queue.end(&self.queue) {
@@ -1906,15 +1966,39 @@ impl GraphicsEngine for WgpuEngine<'_> {
         }
 
         self.buffer_queues.insert(last_queue.draw_type(), last_queue);
-        
     }
 
-    fn present(&mut self) -> TatakuResult<()> {
+    fn present(&mut self) -> tataku::TatakuResult<()> {
         self.render_current_surface()
-            .map_err(|e| TatakuError::String(e.to_string()))
+            .map_err(|e| tataku::TatakuError::String(e.to_string()))
     }
 
 
+    // particle engine stuff
+    fn add_emitter(&mut self, emitter: tataku::EmitterReference) {
+        self.particle_system.add(emitter);
+    }
+
+    fn update_emitters(&mut self) {
+        self.particle_system.update(&self.device, &self.queue);
+    }
+
+    fn with_renderer(&mut self, draw: &dyn Fn(&mut dyn tataku::DrawEngine)) {
+        #[cfg(feature="vello")]
+        if self.vello_pipeline.is_some() {
+            let mut engine = shaders::vello::RenderEngine::new(
+                self
+            );
+
+            draw(&mut engine);
+            return;
+        }
+
+        draw(self);
+    }
+}
+
+impl tataku::DrawEngine for WgpuEngine<'_> {
     fn push_scissor(&mut self, scissor: [f32; 4]) {
         self.scissors.push_scissor(scissor);
     }
@@ -1922,18 +2006,16 @@ impl GraphicsEngine for WgpuEngine<'_> {
         self.scissors.pop_scissor();
     }
 
-    // draw helpers
-
     /// draw an arc with the center at 0,0
     fn draw_arc(
-        &mut self, 
-        start: f32, 
-        end: f32, 
-        radius: f32, 
-        color: Color, 
-        resolution: u32, 
-        transform: Matrix, 
-        blend_mode: Pipeline,
+        &mut self,
+        start: f32,
+        end: f32,
+        radius: f32,
+        color: tataku::Color,
+        resolution: u32,
+        transform: tataku::Matrix,
+        blend_mode: tataku::GraphicsPipeline,
     ) {
         let n = resolution;
         let x = -radius;
@@ -1948,7 +2030,7 @@ impl GraphicsEngine for WgpuEngine<'_> {
         for i in 0..=n {
             let angle = f32::lerp(start, end, i as f32 / n as f32);
             let p = Point::new(
-                cx + angle.cos() * cw, 
+                cx + angle.cos() * cw,
                 cy + angle.sin() * ch
             );
 
@@ -1965,26 +2047,27 @@ impl GraphicsEngine for WgpuEngine<'_> {
     }
 
     fn draw_circle(
-        &mut self, 
-        radius: f32, 
-        color: Color, 
-        border: Option<Border>, 
-        resolution: u32, 
-        transform: Matrix, 
-        blend_mode: Pipeline
+        &mut self,
+        radius: f32,
+        color: tataku::Color,
+        border: Option<tataku::Border>,
+        resolution: u32,
+        transform: tataku::Matrix,
+        blend_mode: tataku::GraphicsPipeline
     ) {
         let n = resolution;
         let x = -radius;
         let y = -radius;
         let w = 2.0 * radius;
         let h = 2.0 * radius;
+        use std::f32::consts::PI;
 
         let (cw, ch) = (0.5 * w, 0.5 * h);
         let (cx, cy) = (x + cw, y + ch);
         let points = (0..n).map(|i| {
             let angle = i as f32 / n as f32 * (PI * 2.0);
-            Vector2::new(
-                cx + angle.cos() * cw, 
+            tataku::Vector2::new(
+                cx + angle.cos() * cw,
                 cy + angle.sin() * ch
             )
         }).collect::<Vec<_>>();
@@ -1992,10 +2075,10 @@ impl GraphicsEngine for WgpuEngine<'_> {
         // fill
         if color.a > 0 {
             self.tessellate_polygon(
-                &points, 
-                color, 
-                None, 
-                transform, 
+                &points,
+                color,
+                None,
+                transform,
                 blend_mode
             );
         }
@@ -2003,10 +2086,10 @@ impl GraphicsEngine for WgpuEngine<'_> {
         // border
         if let Some(border) = border.filter(|b| b.color.a > 0) {
             self.tessellate_polygon(
-                &points, 
-                border.color, 
-                Some(border.width), 
-                transform, 
+                &points,
+                border.color,
+                Some(border.width),
+                transform,
                 blend_mode
             );
         }
@@ -2014,17 +2097,17 @@ impl GraphicsEngine for WgpuEngine<'_> {
     }
 
     fn draw_line(
-        &mut self, 
-        p2: Vector2, 
-        thickness: f32, 
-        color: Color, 
-        transform: Matrix, 
-        blend_mode: Pipeline,
+        &mut self,
+        p2: tataku::Vector2,
+        thickness: f32,
+        color: tataku::Color,
+        transform: tataku::Matrix,
+        blend_mode: tataku::GraphicsPipeline,
     ) {
-        let p1 = Vector2::ZERO;
+        let p1 = tataku::Vector2::ZERO;
 
         let n = p2 - p1;
-        let n = Vector2::new(-n.y, n.x).normalize() * thickness;
+        let n = tataku::Vector2::new(-n.y, n.x).normalize() * thickness;
 
         let n0 = p1 + n;
         let n1 = p2 + n;
@@ -2037,20 +2120,20 @@ impl GraphicsEngine for WgpuEngine<'_> {
 
     /// rect is [x,y,w,h]
     fn draw_rect(
-        &mut self, 
-        rect: [f32; 4], 
-        border: Option<Border>, 
-        shape: Shape, 
-        color: Color, 
-        transform: Matrix, 
-        blend_mode: Pipeline,
+        &mut self,
+        rect: [f32; 4],
+        border: Option<tataku::Border>,
+        shape: tataku::Shape,
+        color: tataku::Color,
+        transform: tataku::Matrix,
+        blend_mode: tataku::GraphicsPipeline,
     ) {
         // for some reason something gets set to infinity on screen resize and panics the tesselator, this prevents the panic
         if rect.iter().any(|n| !n.is_normal() && *n != 0.0) { return }
 
         let [x, y, w, h] = rect;
         let rect = Box2D::new(
-            Point::new(x, y), 
+            Point::new(x, y),
             Point::new(x + w, y + h)
         );
 
@@ -2058,26 +2141,26 @@ impl GraphicsEngine for WgpuEngine<'_> {
         use lyon_tessellation::path::{ Path, Winding };
         let mut path = Path::builder();
         match shape {
-            Shape::Square => path.add_rectangle(&rect, Winding::Positive),
-            Shape::Round(radius) => path.add_rounded_rectangle(
-                &rect, 
-                &BorderRadii::new(radius), 
+            tataku::Shape::Square => path.add_rectangle(&rect, Winding::Positive),
+            tataku::Shape::Round(radius) => path.add_rounded_rectangle(
+                &rect,
+                &BorderRadii::new(radius),
                 Winding::Positive
             ),
 
-            Shape::RoundSep([
-                top_left, 
-                top_right, 
-                bottom_left, 
+            tataku::Shape::RoundSep([
+                top_left,
+                top_right,
+                bottom_left,
                 bottom_right
             ]) => path.add_rounded_rectangle(
-                &rect, 
-                &BorderRadii { 
-                    top_left, 
-                    top_right, 
-                    bottom_left, 
-                    bottom_right 
-                }, 
+                &rect,
+                &BorderRadii {
+                    top_left,
+                    top_right,
+                    bottom_left,
+                    bottom_right
+                },
                 Winding::Positive
             ),
         }
@@ -2086,10 +2169,10 @@ impl GraphicsEngine for WgpuEngine<'_> {
         // fill
         if color.a > 0 {
             self.tessellate_path(
-                &path, 
-                color, 
-                None, 
-                transform, 
+                &path,
+                color,
+                None,
+                transform,
                 blend_mode
             );
         }
@@ -2097,31 +2180,31 @@ impl GraphicsEngine for WgpuEngine<'_> {
         // border
         if let Some(border) = border.filter(|b| b.color.a > 0) {
             self.tessellate_path(
-                &path, 
-                border.color, 
-                Some(border.width), 
-                transform, 
+                &path,
+                border.color,
+                Some(border.width),
+                transform,
                 blend_mode
             );
         }
     }
 
     fn draw_tex(
-        &mut self, 
-        tex: &TextureReference, 
-        color: Color, 
-        h_flip: bool, 
-        v_flip: bool, 
-        transform: Matrix, 
-        blend_mode: Pipeline,
+        &mut self,
+        tex: &tataku::TextureReference,
+        color: tataku::Color,
+        h_flip: bool,
+        v_flip: bool,
+        transform: tataku::Matrix,
+        blend_mode: tataku::GraphicsPipeline,
     ) {
         self.reserve_tex_quad(
-            tex, 
-            [0.0, 0.0, tex.width as f32, tex.height as f32], 
-            color, 
-            h_flip, 
-            v_flip, 
-            transform, 
+            tex,
+            [0.0, 0.0, tex.width as f32, tex.height as f32],
+            color,
+            h_flip,
+            v_flip,
+            transform,
             blend_mode
         );
     }
@@ -2129,13 +2212,13 @@ impl GraphicsEngine for WgpuEngine<'_> {
 
     fn draw_slider(
         &mut self,
-        quad: [Vector2; 4],
-        transform: Matrix,
+        quad: [tataku::Vector2; 4],
+        transform: tataku::Matrix,
 
-        mut slider_data: SliderData,
-        slider_grids: Vec<GridCell>,
+        mut slider_data: tataku::SliderData,
+        slider_grids: Vec<tataku::GridCell>,
         grid_cells: Vec<u32>,
-        line_segments: Vec<LineSegment>
+        line_segments: Vec<tataku::LineSegment>
     ) {
         let Some(mut reserved) = self.reserve_slider(
             slider_grids.len() as u64,
@@ -2149,7 +2232,7 @@ impl GraphicsEngine for WgpuEngine<'_> {
 
         let vertices = quad
             .into_iter()
-            .map(|p| SliderVertex {
+            .map(|p| shaders::slider::Vertex {
                 position: transform.mul_v2(p).into(),
                 slider_index: reserved.slider_index,
             })
@@ -2173,7 +2256,7 @@ impl GraphicsEngine for WgpuEngine<'_> {
 
             &slider_grids.into_iter()
                 .map(|mut a| {
-                    a.index += reserved.grid_cell_offset; 
+                    a.index += reserved.grid_cell_offset;
                     a.into()
                 })
                 .collect::<Vec<_>>(),
@@ -2192,15 +2275,15 @@ impl GraphicsEngine for WgpuEngine<'_> {
 
     fn draw_flashlight(
         &mut self,
-        quad: [Vector2; 4],
-        transform: Matrix,
-        flashlight_data: FlashlightData
+        quad: [tataku::Vector2; 4],
+        transform: tataku::Matrix,
+        flashlight_data: tataku::FlashlightData
     ) {
-        let Some(mut reserved) = self.reserve_flashlight() 
+        let Some(mut reserved) = self.reserve_flashlight()
         else { return };
 
         let vertices = quad.into_iter()
-            .map(|p| FlashlightVertex {
+            .map(|p| shaders::flashlight::Vertex {
                 position: transform.mul_v2(p).into(),
                 flashlight_index: reserved.flashlight_index,
             })
@@ -2212,13 +2295,13 @@ impl GraphicsEngine for WgpuEngine<'_> {
 
     fn draw_box_blur(
         &mut self,
-        bounds: Bounds,
+        bounds: tataku::Bounds,
         size: u32,
     ) {
-        let Some(mut reserve) = self.reserve_box_blur() 
+        let Some(mut reserve) = self.reserve_box_blur()
         else { return };
 
-        let params = BoxBlurParams::new(
+        let params = shaders::box_blur::Params::new(
             bounds.pos.x.max(0.0) as u32,
             bounds.pos.y.max(0.0) as u32,
             bounds.size.x.max(0.0) as u32,
@@ -2231,14 +2314,14 @@ impl GraphicsEngine for WgpuEngine<'_> {
 
     fn draw_gaussian_blur(
         &mut self,
-        bounds: Bounds,
+        bounds: tataku::Bounds,
         sigma: f32,
         _rounds: u32,
     ) {
-        let Some(mut reserve) = self.reserve_gaussian_blur() 
+        let Some(mut reserve) = self.reserve_gaussian_blur()
         else { return };
 
-        let params = GaussianBlurParams::new(
+        let params = shaders::gaussian_blur::Params::new(
             bounds.pos.x,
             bounds.pos.y,
             bounds.size.x,
@@ -2249,43 +2332,44 @@ impl GraphicsEngine for WgpuEngine<'_> {
         reserve.copy_in(params);
     }
 
-    // particle engine stuff
-    fn add_emitter(&mut self, emitter: EmitterReference) {
-        self.particle_system.add(emitter);
-    }
-
-    fn update_emitters(&mut self) {
-        self.particle_system.update(&self.device, &self.queue);
+    fn draw_text(
+        &mut self,
+        _transform: tataku::Matrix,
+        _blend_mode: tataku::GraphicsPipeline,
+        _layout: &parley::Layout<tataku_client_common::prelude::Color>,
+    ) {
+        todo!()
     }
 }
+
 
 
 struct VsyncUtils;
 impl VsyncUtils {
-    fn map_to_vsync(present_mode: PresentMode) -> Vsync {
+    fn map_to_vsync(present_mode: wgpu::PresentMode) -> tataku::Vsync {
         match present_mode {
-            PresentMode::AutoVsync => Vsync::AutoVsync,
-            PresentMode::AutoNoVsync => Vsync::AutoNoVsync,
-            PresentMode::Fifo => Vsync::Fifo,
-            PresentMode::FifoRelaxed => Vsync::FifoRelaxed,
-            PresentMode::Immediate => Vsync::Immediate,
-            PresentMode::Mailbox => Vsync::Mailbox,
+            wgpu::PresentMode::AutoVsync => tataku::Vsync::AutoVsync,
+            wgpu::PresentMode::AutoNoVsync => tataku::Vsync::AutoNoVsync,
+            wgpu::PresentMode::Fifo => tataku::Vsync::Fifo,
+            wgpu::PresentMode::FifoRelaxed => tataku::Vsync::FifoRelaxed,
+            wgpu::PresentMode::Immediate => tataku::Vsync::Immediate,
+            wgpu::PresentMode::Mailbox => tataku::Vsync::Mailbox,
         }
     }
-    fn map_from_vsync(vsync: Vsync) -> PresentMode {
+    fn map_from_vsync(vsync: tataku::Vsync) -> wgpu::PresentMode {
         match vsync {
-            Vsync::AutoVsync => PresentMode::AutoVsync,
-            Vsync::AutoNoVsync => PresentMode::AutoNoVsync,
-            Vsync::Fifo => PresentMode::Fifo,
-            Vsync::FifoRelaxed => PresentMode::FifoRelaxed,
-            Vsync::Immediate => PresentMode::Immediate,
-            Vsync::Mailbox => PresentMode::Mailbox,
+            tataku::Vsync::AutoVsync => wgpu::PresentMode::AutoVsync,
+            tataku::Vsync::AutoNoVsync => wgpu::PresentMode::AutoNoVsync,
+            tataku::Vsync::Fifo => wgpu::PresentMode::Fifo,
+            tataku::Vsync::FifoRelaxed => wgpu::PresentMode::FifoRelaxed,
+            tataku::Vsync::Immediate => wgpu::PresentMode::Immediate,
+            tataku::Vsync::Mailbox => wgpu::PresentMode::Mailbox,
         }
     }
 }
 
 
-fn cast_from_rgba_bytes(bytes: &[u8], format: TextureFormat) -> [u8; 4] {
+fn cast_from_rgba_bytes(bytes: &[u8], format: wgpu::TextureFormat) -> [u8; 4] {
     // incoming is rgba8
     #[allow(clippy::get_first, reason = "get(0) keeps things lined up here")]
     let r = bytes.get(0).copied().unwrap_or_default();
@@ -2295,8 +2379,8 @@ fn cast_from_rgba_bytes(bytes: &[u8], format: TextureFormat) -> [u8; 4] {
 
     match format {
         // pretend this is all it can be for now
-        TextureFormat::Bgra8Unorm
-        | TextureFormat::Bgra8UnormSrgb => [b, g, r, a],
+        wgpu::TextureFormat::Bgra8Unorm
+        | wgpu::TextureFormat::Bgra8UnormSrgb => [b, g, r, a],
 
         // just default to rgba otherwise and cry if its not
         _ => [r, g, b, a]
@@ -2304,7 +2388,7 @@ fn cast_from_rgba_bytes(bytes: &[u8], format: TextureFormat) -> [u8; 4] {
 
 }
 
-fn cast_to_rgba_bytes(bytes: &[u8], _format: TextureFormat) -> [u8; 4] {
+fn cast_to_rgba_bytes(bytes: &[u8], _format: wgpu::TextureFormat) -> [u8; 4] {
     // pretend incoming is bgra8
     #[allow(clippy::get_first, reason = "get(0) keeps things lined up here")]
     let b = bytes.get(0).copied().unwrap_or_default();
@@ -2328,24 +2412,26 @@ fn cast_to_rgba_bytes(bytes: &[u8], _format: TextureFormat) -> [u8; 4] {
 
 #[derive(Copy, Clone)]
 pub(crate) enum WgpuPipeline<'a> {
-    Render(&'a RenderPipeline),
-    Compute(&'a ComputePipeline),
+    None,
+    Render(&'a wgpu::RenderPipeline),
+    Compute(&'a wgpu::ComputePipeline),
 }
 impl WgpuPipeline<'_> {
-    pub fn get_bind_group_layout(&self, index: u32) -> BindGroupLayout {
+    pub fn get_bind_group_layout(&self, index: u32) -> wgpu::BindGroupLayout {
         match self {
+            Self::None => panic!("trying to get bind group for no pipeline!"),
             Self::Render(p) => p.get_bind_group_layout(index),
             Self::Compute(p) => p.get_bind_group_layout(index),
         }
     }
 }
-impl<'a> From<&'a ComputePipeline> for WgpuPipeline<'a> {
-    fn from(value: &'a ComputePipeline) -> Self {
+impl<'a> From<&'a wgpu::ComputePipeline> for WgpuPipeline<'a> {
+    fn from(value: &'a wgpu::ComputePipeline) -> Self {
         Self::Compute(value)
     }
 }
-impl<'a> From<&'a RenderPipeline> for WgpuPipeline<'a> {
-    fn from(value: &'a RenderPipeline) -> Self {
+impl<'a> From<&'a wgpu::RenderPipeline> for WgpuPipeline<'a> {
+    fn from(value: &'a wgpu::RenderPipeline) -> Self {
         Self::Render(value)
     }
 }

@@ -1,9 +1,9 @@
 use crate::prelude::*;
 
-pub type RenderTargetDraw = Box<dyn FnOnce(&mut dyn GraphicsEngine, Matrix) + Send + Sync>;
+pub type RenderTargetDraw = Box<dyn FnOnce(&mut dyn DrawEngine, Matrix) + Send + Sync>;
 pub type ScreenshotCallback = Box<dyn FnOnce((Vec<u8>, [u32; 2])) + Send + Sync>;
 
-pub trait GraphicsEngine {
+pub trait RenderingEngine {
     fn is_dummy(&self) -> bool { false }
 
     fn dump_atlas(&self, _path: &str) {}
@@ -21,14 +21,14 @@ pub trait GraphicsEngine {
     fn vsync_modes(&self) -> Vec<Vsync>;
 
     fn create_render_target(
-        &mut self, 
-        size: [u32; 2], 
-        clear_color: Color, 
+        &mut self,
+        size: [u32; 2],
+        clear_color: Color,
         do_render: RenderTargetDraw,
     ) -> Option<RenderTarget>;
     fn update_render_target(
-        &mut self, 
-        target: RenderTarget, 
+        &mut self,
+        target: RenderTarget,
         do_render: RenderTargetDraw,
     );
 
@@ -46,8 +46,6 @@ pub trait GraphicsEngine {
     /// take a screenshot, returning the data via callback
     fn screenshot(&mut self, callback: ScreenshotCallback);
 
-
-
     // rendering
 
     /// start a render
@@ -59,6 +57,14 @@ pub trait GraphicsEngine {
     /// present the rendered surface
     fn present(&mut self) -> TatakuResult<()>;
 
+    // particle engine stuff
+    fn add_emitter(&mut self, emitter: EmitterReference);
+    fn update_emitters(&mut self);
+
+    fn with_renderer(&mut self, draw: &dyn Fn(&mut dyn DrawEngine));
+}
+
+pub trait DrawEngine {
     /// push a scissor to the scissor stack
     fn push_scissor(&mut self, scissor: [f32; 4]);
 
@@ -70,57 +76,57 @@ pub trait GraphicsEngine {
     /// draw an arc with the center at 0,0
     #[allow(clippy::too_many_arguments)]
     fn draw_arc(
-        &mut self, 
-        start: f32, 
-        end: f32, 
-        radius: f32, 
-        color: Color, 
-        resolution: u32, 
-        transform: Matrix, 
-        blend_mode: Pipeline
+        &mut self,
+        start: f32,
+        end: f32,
+        radius: f32,
+        color: Color,
+        resolution: u32,
+        transform: Matrix,
+        blend_mode: GraphicsPipeline
     );
 
     /// draw a circle with the center at 0,0
     fn draw_circle(
-        &mut self, 
-        radius: f32, 
-        color: Color, 
-        border: Option<Border>, 
-        resolution: u32, 
-        transform: Matrix, 
-        blend_mode: Pipeline
+        &mut self,
+        radius: f32,
+        color: Color,
+        border: Option<Border>,
+        resolution: u32,
+        transform: Matrix,
+        blend_mode: GraphicsPipeline
     );
 
     /// draw a line from 0,0 to p
     fn draw_line(
-        &mut self, 
-        p: Vector2, 
-        thickness: f32, 
-        color: Color, 
-        transform: Matrix, 
-        blend_mode: Pipeline
+        &mut self,
+        p: Vector2,
+        thickness: f32,
+        color: Color,
+        transform: Matrix,
+        blend_mode: GraphicsPipeline
     );
 
     /// draw a rectangle
     fn draw_rect(
-        &mut self, 
-        rect: [f32; 4], 
-        border: Option<Border>, 
-        shape: Shape, 
-        color: Color, 
-        transform: Matrix, 
-        blend_mode: Pipeline
+        &mut self,
+        rect: [f32; 4],
+        border: Option<Border>,
+        shape: Shape,
+        color: Color,
+        transform: Matrix,
+        blend_mode: GraphicsPipeline
     );
 
     /// draw a texture with top left at 0,0
     fn draw_tex(
-        &mut self, 
-        tex: &TextureReference, 
-        color: Color, 
-        h_flip: bool, 
-        v_flip: bool, 
-        transform: Matrix, 
-        blend_mode: Pipeline
+        &mut self,
+        tex: &TextureReference,
+        color: Color,
+        h_flip: bool,
+        v_flip: bool,
+        transform: Matrix,
+        blend_mode: GraphicsPipeline
     );
 
     /// draw a slider
@@ -156,27 +162,31 @@ pub trait GraphicsEngine {
         size: u32,
     );
 
-    // particle engine stuff
-    fn add_emitter(&mut self, emitter: EmitterReference);
-    fn update_emitters(&mut self);
+
+    fn draw_text(
+        &mut self,
+        transform: Matrix,
+        blend_mode: GraphicsPipeline,
+        layout: &parley::Layout<tataku_client_common::prelude::Color>,
+    );
 }
 
 
 #[derive(Copy, Clone, Debug)]
 pub struct TextureDraw<'a> {
-    pub tex: &'a TextureReference, 
-    pub color: Color, 
-    pub h_flip: bool, 
-    pub v_flip: bool, 
-    pub transform: Matrix, 
-    pub blend_mode: Pipeline,
+    pub tex: &'a TextureReference,
+    pub color: Color,
+    pub h_flip: bool,
+    pub v_flip: bool,
+    pub transform: Matrix,
+    pub blend_mode: GraphicsPipeline,
 }
 impl<'a> TextureDraw<'a> {
     pub fn new(
-        tex: &'a TextureReference, 
-        color: Color, 
-        transform: Matrix, 
-        blend_mode: Pipeline,
+        tex: &'a TextureReference,
+        color: Color,
+        transform: Matrix,
+        blend_mode: GraphicsPipeline,
     ) -> Self {
         Self {
             tex,
@@ -191,9 +201,9 @@ impl<'a> TextureDraw<'a> {
     pub fn with_hflip(mut self, hflip: bool) -> Self {
         self.h_flip = hflip;
         self
-    } 
+    }
     pub fn with_vflip(mut self, vflip: bool) -> Self {
         self.v_flip = vflip;
         self
-    } 
+    }
 }

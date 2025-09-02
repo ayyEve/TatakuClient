@@ -215,7 +215,7 @@ impl Element {
                 param: Param::AdditiveBlending 
             } = i.event else { continue };
             // if i.start_time as i32 == i.end_time as i32 {
-                blend_mode = Some(Pipeline::OsuAdditiveBlending);
+                blend_mode = Some(GraphicsPipeline::OsuAdditiveBlending);
             // }
             break;
         }

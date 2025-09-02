@@ -2,7 +2,7 @@
 // NOTE! if you add anything here be sure to implement the pipeline for it in the graphics engines!
 #[allow(unused)]
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
-pub enum Pipeline {
+pub enum GraphicsPipeline {
     /// dont use None to actually draw, its a helper used rendering side
     None,
     #[default]
@@ -29,7 +29,7 @@ pub enum Pipeline {
     /// The box blur shader
     BoxBlur,
 }
-impl Pipeline {
+impl GraphicsPipeline {
     pub fn is_blur(&self) -> bool {
         matches!(self, Self::GaussianBlur | Self::BoxBlur)
     }

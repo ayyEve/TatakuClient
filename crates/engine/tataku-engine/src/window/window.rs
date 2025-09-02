@@ -37,7 +37,7 @@ pub struct GameWindow<'window> {
     window: &'window OnceCell<WinitWindow>,
     mouse_position_sender: TripleBufferSender<Vector2>,
 
-    graphics: Box<dyn GraphicsEngine + 'window>,
+    graphics: Box<dyn RenderingEngine + 'window>,
     pub settings: DisplaySettings,
 
     window_event_sender: Arc<Sender<WindowEvent>>,
@@ -184,8 +184,10 @@ impl<'window> GameWindow<'window> {
 
         self.graphics.begin_render();
         let options = DrawOptions::default();
-        self.render_data.iter().for_each(|d| {
-            d.draw(&options, transform, &mut *self.graphics);
+        self.graphics.with_renderer(&|graphics| {
+            self.render_data.iter().for_each(|d| {
+                d.draw(&options, transform, graphics);
+            });
         });
 
         self.graphics.end_render();
@@ -362,7 +364,7 @@ impl GameWindow<'_> {
 
     pub fn create_render_target(
         size: (u32, u32), 
-        callback: impl FnOnce(&mut dyn GraphicsEngine, Matrix) + Send + Sync + 'static
+        callback: impl FnOnce(&mut dyn DrawEngine, Matrix) + Send + Sync + 'static
     ) -> TatakuResult<RenderTarget> {
         trace!("create render target");
 
@@ -378,7 +380,7 @@ impl GameWindow<'_> {
 
     pub fn update_render_target(
         rt: RenderTarget, 
-        callback: impl FnOnce(&mut dyn GraphicsEngine, Matrix) + Send + Sync + 'static
+        callback: impl FnOnce(&mut dyn DrawEngine, Matrix) + Send + Sync + 'static
     ) {
         trace!("update render target");
 
@@ -693,7 +695,7 @@ pub trait GraphicsInitializer<'window> {
         &self,
         window: &'window winit::window::Window,
         settings: DisplaySettings
-    ) -> TatakuResult<Box<dyn GraphicsEngine + 'window>>;
+    ) -> TatakuResult<Box<dyn RenderingEngine + 'window>>;
 }
 
 pub struct WindowInitializers<'a> {

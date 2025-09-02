@@ -31,7 +31,6 @@ pub struct DrawShell<'a, Action: Send + Sync + 'static> {
     pub general_theme: GeneralUiTheme,
 
     pub font_context: &'a mut parley::FontContext,
-    pub scale_context: &'a mut parley::swash::scale::ScaleContext,
 }
 
 pub struct UpdateShell<'a, Action: Send + Sync + 'static> {
@@ -44,7 +43,7 @@ pub struct UpdateShell<'a, Action: Send + Sync + 'static> {
     pub skin_manager: &'a mut dyn SkinProvider,
 
     pub font_context: &'a mut parley::FontContext,
-    pub text_layout_context: &'a mut parley::LayoutContext,
+    pub text_layout_context: &'a mut parley::LayoutContext<Color>,
 }
 
 
@@ -56,14 +55,14 @@ pub struct LayoutShell<'a, 'css: 'a, Action: Send + Sync + 'static> {
     pub resolver: &'a mut CssResolver<'css>,
 
     pub font_context: &'a mut parley::FontContext,
-    pub text_layout_context: &'a mut parley::LayoutContext,
+    pub text_layout_context: &'a mut parley::LayoutContext<Color>,
 }
 impl<Action: Send + Sync + 'static> LayoutShell<'_,'_, Action> {
     pub fn with_context(
-        &mut self, 
-        node: impl HasNodeId, 
+        &mut self,
+        node: impl HasNodeId,
         f: impl Fn(&mut TreeData)
-    ) { 
+    ) {
         let ctx = self.tree
             .get_context_mut(node.get_id())
             .expect("no context?");

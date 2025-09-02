@@ -13,4 +13,8 @@ impl Border {
             width
         }
     }
+
+    pub fn is_nonzero(&self) -> bool {
+        self.color.a > 0 && self.width > 0.0 
+    }
 }

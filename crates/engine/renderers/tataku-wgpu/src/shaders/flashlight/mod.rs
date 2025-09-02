@@ -3,7 +3,7 @@ mod buffer;
 mod vertex;
 mod pipeline;
 
-pub use data::*;
-pub use buffer::*;
-pub use vertex::*;
-pub use pipeline::*;
+pub(crate) use data::*;
+pub(crate) use buffer::*;
+pub(crate) use vertex::*;
+pub(crate) use pipeline::*;
