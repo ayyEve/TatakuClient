@@ -26,40 +26,33 @@
     <events>
         <!-- when a new map is added, select it -->
         <mapAdded>
-            <actions>
-                <map><selectMap><passedIn/></selectMap></map>
-            </actions>
+            <map><selectMap><passedIn/></selectMap></map>
         </mapAdded>
 
         <!-- play the next map once the song ends -->
         <songEnd>
-            <actions>
-                <map><next/></map>
-            </actions>
+            <map><next/></map>
         </songEnd>
         
         <!-- when a song starts playing, send a notification -->
         <songStart>
-            <actions>
-                <game>
-                    <notification color="teal" duration="10000">
-                        Now playing: <variable>beatmaps.beatmaps[beatmaps.current].title</variable> by <variable>beatmaps.beatmaps[beatmaps.current].artist</variable>
-                    </notification>
-                </game>
-            </actions>
+            <game>
+                <notification color="teal" duration="10000">
+                    Now playing: <variable>beatmaps.beatmaps[beatmaps.current].title</variable> by <variable>beatmaps.beatmaps[beatmaps.current].artist</variable>
+                </notification>
+            </game>
         </songStart>
 
         
         <!-- previous set -->
         <keyPress key="Left">
-            <actions> <map> <previousSet/> </map> </actions>
+            <map> <previousSet/> </map>
         </keyPress>
 
         <!-- next set -->
         <keyPress key="Right">
-            <actions> <map> <nextSet/> </map> </actions>
+            <map> <nextSet/> </map>
         </keyPress>
-
     </events>
 
     <!-- the current main menu is broken up into rows -->

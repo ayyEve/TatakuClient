@@ -76,53 +76,45 @@
   <events>
     <!-- on entering menu, make sure song is playing, and is also at the proper rate -->
     <menuEnter>
-      <actions>
-        <!-- <conditional cond="!song.playing">
-          <song><play /></song>
-        </conditional> -->
-        <song>
-          <rate><variable>global.mods.speed</variable></rate>
-        </song>
+      <!-- <conditional cond="!song.playing">
+        <song><play /></song>
+      </conditional> -->
+      <song>
+        <rate><variable>global.mods.speed</variable></rate>
+      </song>
 
-        <!-- also make sure the cursor is visible -->
-        <cursor><show /></cursor>
+      <!-- also make sure the cursor is visible -->
+      <cursor><show /></cursor>
 
-        <!-- and refresh the score list -->
-        <game><refreshScores/></game>
+      <!-- and refresh the score list -->
+      <game><refreshScores/></game>
 
-        <!-- scroll to selected group and item -->
-        <custom>scroll-to-selected</custom>
-      </actions>
+      <!-- scroll to selected group and item -->
+      <custom>scroll-to-selected</custom>
     </menuEnter>
 
     <!-- on song end, restart song at preview point -->
     <songEnd>
-      <actions>
-        <!-- set position to the preview point -->
-        <song>
-          <position><variable>beatmaps.beatmaps[beatmaps.current].preview</variable></position>
-        </song>
+      <!-- set position to the preview point -->
+      <song>
+        <position><variable>beatmaps.beatmaps[beatmaps.current].preview</variable></position>
+      </song>
 
-        <song><play /></song>
-      </actions>
+      <song><play /></song>
     </songEnd>
 
     <!-- when a new map is added, select it -->
     <mapAdded>
-      <actions>
-        <map>
-          <selectMap><passedIn /></selectMap>
-        </map>
-      </actions>
+      <map>
+        <selectMap><passedIn /></selectMap>
+      </map>
     </mapAdded>
 
     <!-- make sure new songs are set with the correct rate -->
     <songStart>
-      <actions>
-        <song>
-          <rate><variable>global.mods.speed</variable></rate>
-        </song>
-      </actions>
+      <song>
+        <rate><variable>global.mods.speed</variable></rate>
+      </song>
     </songStart>
 
     <!-- <event>
@@ -152,109 +144,87 @@
 
     <!-- select set -->
     <keyPress key="Enter">
-      <actions>
-        <map><confirm /></map>
-      </actions>
+      <map><confirm /></map>
     </keyPress>
 
     <!-- previous set -->
     <keyPress key="Left">
-      <actions>
-        <map><previousSet /></map>
-      </actions>
+      <map><previousSet /></map>
     </keyPress>
 
     <!-- next set -->
     <keyPress key="Right">
-      <actions>
-        <map><nextSet /></map>
-      </actions>
+      <map><nextSet /></map>
     </keyPress>
 
     <!-- previous map -->
     <keyPress key="Up">
-      <actions>
-        <map><previousMap /></map>
-      </actions>
+      <map><previousMap /></map>
     </keyPress>
 
     <!-- next map -->
     <keyPress key="Down">
-      <actions>
-        <map><nextMap /></map>
-      </actions>
+      <map><nextMap /></map>
     </keyPress>
 
     <!-- back to main menu -->
     <keyPress key="Escape">
-      <actions>
-        <conditional cond="lobby.is_some">
-          <setMenu>lobby_menu</setMenu>
+      <conditional cond="lobby.is_some">
+        <setMenu>lobby_menu</setMenu>
 
-          <false>
-            <setMenu>main_menu</setMenu>
-          </false>
-        </conditional>
-      </actions>
+        <false>
+          <setMenu>main_menu</setMenu>
+        </false>
+      </conditional>
     </keyPress>
 
     <!-- open mods dialog -->
     <keyPress key="M" ctrl="true">
-      <actions>
-        <addDialog>mods_dialog</addDialog>
-      </actions>
+      <addDialog>mods_dialog</addDialog>
     </keyPress>
 
     <!-- nofail -->
     <keyPress key="N" ctrl="true">
-      <actions>
-        <mods>
-          <toggleMod>no_fail</toggleMod>
-        </mods>
-      </actions>
+      <mods>
+        <toggleMod>no_fail</toggleMod>
+      </mods>
     </keyPress>
 
     <!-- autoplay -->
     <keyPress key="A" ctrl="true">
-      <actions>
-        <mods>
-          <toggleMod>autoplay</toggleMod>
-        </mods>
-      </actions>
+      <mods>
+        <toggleMod>autoplay</toggleMod>
+      </mods>
     </keyPress>
 
     <!-- speed up -->
     <keyPress key="Equals" ctrl="true">
-      <actions>
-        <mods>
-          <addSpeed>0.1</addSpeed>
-        </mods>
-        <!-- notify user of speed -->
-        <delayed delay="1">
-          <game>
-            <notification color="#FFFFFF" duration="10000">
-              Speed: <display precision="2">global.mods.speed</display>
-            </notification>
-          </game>
-        </delayed>
-      </actions>
+      <mods>
+        <addSpeed>0.1</addSpeed>
+      </mods>
+      <!-- notify user of speed -->
+      <delayed delay="1">
+        <game>
+          <notification color="#FFFFFF" duration="10000">
+            Speed: <display precision="2">global.mods.speed</display>
+          </notification>
+        </game>
+      </delayed>
     </keyPress>
 
     <!-- speed down -->
     <keyPress key="Minus" ctrl="true">
-      <actions>
-        <mods>
-          <addSpeed>-0.1</addSpeed>
-        </mods>
-        <!-- notify user of speed -->
-        <delayed delay="1">
-          <game>
-            <notification color="#FFFFFF" duration="10000">
-              Speed: <display precision="2">global.mods.speed</display>
-            </notification>
-          </game>
-        </delayed>
-      </actions>
+      <mods>
+        <addSpeed>-0.1</addSpeed>
+      </mods>
+      <!-- notify user of speed -->
+      <delayed delay="1">
+        <game>
+          <notification color="#FFFFFF" duration="10000">
+            Speed: <display precision="2">global.mods.speed</display>
+          </notification>
+        </game>
+      </delayed>
     </keyPress>
   </events>
 

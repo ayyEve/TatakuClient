@@ -28,11 +28,6 @@ impl<'de> Deserialize<'de> for BuildableEvent {
             attributes: Vec<(String, FromString)>,
             error: std::marker::PhantomData<E>,
         }
-
-        #[derive(Default)]
-        struct Visitor {
-            name: String,
-        }
         impl<'de, E: Error> EnumAccess<'de> for Enum<E> {
             type Error = E;
             type Variant = Self;
@@ -80,6 +75,11 @@ impl<'de> Deserialize<'de> for BuildableEvent {
                 visitor.visit_map(MapDeserializer::new(self.attributes.into_iter()))
             }
         }
+
+        #[derive(Default)]
+        struct Visitor {
+            name: String,
+        }
         impl<'de> de::Visitor<'de> for Visitor {
             type Value = BuildableEvent;
 
@@ -95,23 +95,13 @@ impl<'de> Deserialize<'de> for BuildableEvent {
                 let mut actions = Vec::new();
 
                 while let Some(key) = map.next_key::<String>()? {
-                    if key == "actions" || key == "action" {
-                        debug_assert!(attributes.is_empty(), "duplicate actions element in event");
-
-                        let Wrapped {
-                            inner
-                        } = map.next_value()?;
-
-                        actions = inner;
-                    } else {
-                        if &key[..1] != "@" {
-                            return Err(Error::custom(format!("only attributes are allowed, got `{key}`")));
-                        }
-
+                    if &key[..1] == "@" {
                         // attributes have to be deserializable as strings
                         let value: String = map.next_value()?;
 
                         attributes.push((key, FromString::from(value)));
+                    } else {
+                        actions.push(map.next_value()?);
                     }
                 }
 
@@ -134,25 +124,20 @@ impl<'de> Deserialize<'de> for BuildableEvent {
             {
                 let (name, variant): (String, _) = data.variant()?;
 
-                println!("enum name: {name}");
                 self.name = name;
 
                 variant.struct_variant(
-                    &[],
+                    &["$value"],
                     self
                 )
             }
         }
 
-        let result = deserializer.deserialize_enum(
+        deserializer.deserialize_enum(
             "",
             &[],
             Visitor::default()
-        );
-
-        println!("{result:?}");
-
-        result
+        )
     }
 }
 
