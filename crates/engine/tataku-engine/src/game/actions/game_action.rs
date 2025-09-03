@@ -92,8 +92,6 @@ pub enum CurrentGameAction {
     /// Pause the current game and open the provided menu
     Pause {
         id: String,
-        #[cfg(feature="graphics")]
-        input: BuildableInputArguments,
     },
 
     Restart,

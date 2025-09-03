@@ -8,16 +8,12 @@ pub struct CustomMenu {
     
     #[serde(default)] pub style: Option<ArcStr>,
     #[serde(default)] pub events: BuildableEventsTag, 
-    #[serde(default)] pub inputs: BuildableInputsTag,
 }
 impl CustomMenu {
     pub fn build(
         &self, 
         values: &mut dyn Reflect,
-        variables: BuildableInputArguments,
-    ) -> Result<BuiltCustomMenu, Vec<BuildableInputError>> {
-        self.inputs.init(variables, values)?;
-
+    ) -> BuiltCustomMenu {
         let mut events: HashMap<TatakuEventType, Vec<BuildableAction>> = HashMap::new();
         for event in self
             .events
@@ -37,13 +33,13 @@ impl CustomMenu {
                 .extend(event.get_actions());
         }
         
-        Ok(BuiltCustomMenu {
+        BuiltCustomMenu {
             id: self.id.clone(),
             element: self.element.build(), 
             styles: self.style.clone().unwrap_or_default(),
             events,
             node_id: EMPTY_NODE,
-        })
+        }
     }
 }
 

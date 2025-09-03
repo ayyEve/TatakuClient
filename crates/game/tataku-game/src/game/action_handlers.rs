@@ -54,7 +54,6 @@ impl Game {
     pub(super) fn handle_custom_menu(
         &mut self, 
         id: impl ToString,
-        input: Option<BuildableInputArguments>,
     ) {
         let selector = (
             id.to_string().into(), 
@@ -63,14 +62,11 @@ impl Game {
 
         // let menu = self.custom_menus.iter().rev().find(|cm| cm.id == id);
         if let Some(menu) = self.custom_menu_manager.get_menu(selector) {
-            match menu.build(&mut self.values, input.unwrap_or_default()) {
-                Ok(m) => self.queue_state_change(
-                    GameState::SetMenu(Box::new(m))
-                ),
+            let menu = menu.build(&mut self.values);
 
-                Err(e) 
-                    => error!("Error building dialog: {e:?}"),
-            }
+            self.queue_state_change(
+                GameState::SetMenu(Box::new(menu))
+            );
         } else {
             let id = id.to_string();
             match &*id {
@@ -90,7 +86,6 @@ impl Game {
         &mut self, 
         id: impl ToString, 
         options: DialogCreateOptions,
-        input: BuildableInputArguments,
     ) {
         let id:ArcStr = id.to_string().into();
         let Some(dialog) = self.custom_menu_manager
@@ -110,22 +105,20 @@ impl Game {
             return;
         };
 
-        match dialog.build(&mut self.values, input) {
-            Ok(d) => self.ui_manager.add_dialog(
-                Box::new(d), 
-                DialogCreateOptions::merge(
-                    options, 
-                    dialog.options(),
-                ),
-                &mut self.values, 
-                &mut self.actions,
-                &mut self.text_layout_contexts,
-            ),
-            Err(e) => {
-                error!("Error building dialog: {e:?}");
-            }
-        }
+        let options = DialogCreateOptions::merge(
+            options,
+            dialog.options(),
+        );
 
+        let dialog = dialog.build(&mut self.values);
+
+        self.ui_manager.add_dialog(
+            Box::new(dialog),
+            options,
+            &mut self.values,
+            &mut self.actions,
+            &mut self.text_layout_contexts,
+        );
     }
 
 
@@ -133,10 +126,7 @@ impl Game {
     #[cfg(feature="graphics")]
     pub(super) fn handle_menu_action(&mut self, action: MenuAction) {
         match action {
-            MenuAction::SetMenu { 
-                id, 
-                input 
-            } => self.handle_custom_menu(id, Some(*input)),
+            MenuAction::SetMenu { id } => self.handle_custom_menu(id),
 
             // MenuAction::PreviousMenu(current_menu) 
             //     => self.handle_previous_menu(&current_menu),
@@ -144,8 +134,7 @@ impl Game {
             MenuAction::AddDialog {
                 id, 
                 options, 
-                input
-            } => self.handle_custom_dialog(id.to_string(), *options, *input),
+            } => self.handle_custom_dialog(id.to_string(), *options),
 
             MenuAction::AddDialogRaw {
                 dialog, 
@@ -565,7 +554,6 @@ impl Game {
 
             let CurrentGameAction::Pause { 
                 id, 
-                input 
             } = action else { unreachable!() };
             
             if !self.current_state.is_ingame() {
@@ -581,7 +569,6 @@ impl Game {
             self.current_state = GameState::None;
             self.handle_menu_action(MenuAction::SetMenu {
                 id: id.into(),
-                input: Box::new(input),
             });
             
             // make sure it has the latest window size
@@ -730,12 +717,8 @@ impl Game {
                     self.values.values.score = ReflectScore::new(&score, &info);
 
                     // show score menu
-                    self.handle_custom_menu(
-                        "score_menu",
-                        Some(BuildableInputArguments::default()
-                            .add("allow_retry", false)
-                        )
-                    );
+                    self.values.impl_insert("var.score_menu.allow_retry".into(), Box::new(false)).unwrap();
+                    self.handle_custom_menu("score_menu");
                 } else {
                     error!("Could not find map from score!");
                 }
@@ -941,7 +924,7 @@ impl Game {
             #[cfg(feature="graphics")]
             MultiplayerAction::StartMultiplayer => {
                 self.online_manager.add_lobby_listener();
-                self.handle_custom_menu("lobby_select", None);
+                self.handle_custom_menu("lobby_select");
             },
 
             #[cfg(feature="graphics")]
@@ -950,7 +933,7 @@ impl Game {
 
                 // if ingame, dont change state. this way the user can keep playing the map
                 if !self.current_state.is_ingame() {
-                    self.handle_custom_menu("main_menu", None);
+                    self.handle_custom_menu("main_menu");
                 }
 
                 self.online_manager.remove_lobby_listener();
@@ -980,7 +963,7 @@ impl Game {
                 self.multiplayer_manager = None;
                 self.online_manager.send_packet(MultiplayerPacket::Client_LeaveLobby);
                 #[cfg(feature="graphics")] 
-                self.handle_custom_menu("lobby_select", None);
+                self.handle_custom_menu("lobby_select");
             }
             #[cfg(feature="gameplay")]
             MultiplayerAction::JoinLobby { lobby_id, password } => {
@@ -1132,7 +1115,7 @@ impl Game {
                 manager.update_values(&mut self.values);
                 self.multiplayer_manager = Some(Box::new(manager));
                 #[cfg(feature="graphics")]
-                self.handle_custom_menu("lobby_menu", None);
+                self.handle_custom_menu("lobby_menu");
 
 
                 // try to update the server with our current map and mode
@@ -1177,7 +1160,7 @@ impl Game {
                 manager.update_values(&mut self.values);
                 self.multiplayer_manager = Some(Box::new(manager));
                 #[cfg(feature="graphics")]
-                self.handle_custom_menu("lobby_menu", None);
+                self.handle_custom_menu("lobby_menu");
             }
 
 

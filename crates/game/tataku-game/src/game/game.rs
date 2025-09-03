@@ -204,12 +204,8 @@ impl Game {
         }
 
         for (entries, entry_type) in [
-            ([
-                &self.builtin_menus.menus[4],
-                &self.builtin_menus.menus[9],
-            ], CustomEntryType::Menu)
-            // (self.builtin_menus.menus, CustomEntryType::Menu),
-            // (self.builtin_menus.dialogs, CustomEntryType::Dialog),
+            (self.builtin_menus.menus, CustomEntryType::Menu),
+            (self.builtin_menus.dialogs, CustomEntryType::Dialog),
         ] {
             for (name, data) in entries {
                 let _ = self.custom_menu_manager.load_entry_bytes(
@@ -343,7 +339,7 @@ impl Game {
 
         self.actions.push(InitGameTask::default());
         #[cfg(feature="graphics")]
-        self.handle_custom_menu("loading_menu", None);
+        self.handle_custom_menu("loading_menu");
     }
 
     #[cfg(feature="gameplay")]
@@ -801,10 +797,9 @@ impl Game {
                     self.handle_actions(Some(actions));
 
                     self.pending_gameplay_manager = Some(manager);
-                    #[cfg(feature="graphics")]
-                    self.actions.push(MenuAction::SetMenu {
-                        id: "pause_menu".into(),
-                        input: Box::new(BuildableInputArguments::default()),
+                    #[cfg(feature="graphics")] 
+                    self.actions.push(MenuAction::SetMenu { 
+                        id: "pause_menu".into(), 
                     });
                 } else {
                     // inputs
@@ -1384,9 +1379,8 @@ impl Game {
 
                             if !is_ingame || allow_ingame {
                                 self.handle_custom_dialog(
-                                    "settings",
-                                    DialogCreateOptions::default(),
-                                    BuildableInputArguments::default(),
+                                    "settings", 
+                                    DialogCreateOptions::default(), 
                                 );
                             }
                         }
@@ -1456,7 +1450,6 @@ impl Game {
                             debug!("Reloading current menu");
                             self.handle_custom_menu(
                                 self.ui_manager.get_menu().clone(),
-                                None
                             );
                         }
 
@@ -1687,7 +1680,6 @@ impl Game {
             self.handle_custom_dialog(
                 "user-panel",
                 DialogCreateOptions::default(),
-                BuildableInputArguments::default(),
             );
         } else {
             self.ui_manager.dialogs.retain(
@@ -1861,12 +1853,9 @@ impl Game {
         );
 
         // show score menu
-        self.handle_custom_menu(
-            "score_menu",
-            Some(BuildableInputArguments::default()
-                .add("allow_retry", false)
-            )
-        );
+        self.values.impl_insert("var.score_menu.allow_retry".into(), Box::new(false)).unwrap();
+
+        self.handle_custom_menu("score_menu");
 
     }
 
@@ -1885,7 +1874,6 @@ impl Game {
                 self.pending_gameplay_manager = Some(manager);
                 self.actions.push(MenuAction::SetMenu {
                     id: "fail_menu".into(),
-                    input: Box::new(BuildableInputArguments::default())
                 });
                 // self.queue_state_change(GameState::SetMenu(Box::new(PauseMenu::new(true))));
                 return;
@@ -1931,25 +1919,22 @@ impl Game {
             match manager.get_mode() {
                 // go back to beatmap select
                 GameplayModeInner::Replaying {..} => {
-                    self.handle_custom_menu("beatmap_select", None);
+                    self.handle_custom_menu("beatmap_select");
                 }
                 GameplayModeInner::Multiplayer { .. } => {
                     debug!("multiplayer finished gameplay");
 
                     // FIXME: show the scores lmao
                     // go back to the lobby menu
-                    self.handle_custom_menu("lobby_menu", None);
+                    self.handle_custom_menu("lobby_menu");
                 }
 
                 _ => {
                     // show score menu
-                    self.handle_custom_menu(
-                        "score_menu",
-                        Some(BuildableInputArguments::default()
-                            .add("allow_retry", true)
-                            .add("score_path", score_submit.unwrap_or_default())
-                        )
-                    );
+                    self.values.impl_insert("var.score_menu.allow_retry".into(), Box::new(true)).unwrap();
+                    self.values.impl_insert("var.score_menu.score_path".into(), Box::new(score_submit.unwrap_or_default())).unwrap();
+
+                    self.handle_custom_menu("score_menu");
 
                     // let mut menu = ScoreMenu::new(&score, manager.metadata.clone(), true, self.global.gamemode_infos.clone());
                     // menu.score_submit = score_submit;

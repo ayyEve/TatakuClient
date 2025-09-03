@@ -26,11 +26,8 @@ pub enum BuildableAction {
 
     /// Set the menu
     SetMenu { 
-        #[serde(rename="$value", alias="@id", default)]
+        #[serde(rename="$value", default)]
         id: BuildableValue,
-
-        #[serde(default)]
-        variables: DialogInputsTag,
     },
 
     /// Add a dialog
@@ -49,9 +46,6 @@ pub enum BuildableAction {
 
         #[serde(alias="@title", default)]
         title: String,
-
-        #[serde(default)]
-        variables: DialogInputsTag,
     },
 
     CloseDialog,
@@ -187,8 +181,6 @@ impl BuildableAction {
                 draggable,
                 allow_multiple,
                 title,
-
-                variables 
             } => {
                 let id = id
                     .resolve(values, passed_in)
@@ -206,7 +198,6 @@ impl BuildableAction {
                         location: DialogLocation::Auto,
                         background: true,
                     }),
-                    input: Box::new(variables.build(values, passed_in))
                 }))
             }
             
@@ -217,7 +208,6 @@ impl BuildableAction {
             #[cfg(feature="graphics")] 
             Self::SetMenu { 
                 id, 
-                variables 
             } => {
                 let id = id
                     .resolve(values, passed_in)
@@ -226,7 +216,6 @@ impl BuildableAction {
 
                 Some(TatakuAction::Menu(MenuAction::SetMenu { 
                     id: id.into(), 
-                    input: Box::new(variables.build(values, passed_in))
                 }))
             }
 
@@ -346,17 +335,13 @@ impl BuildableAction {
                 => action.build(values),
             Self::SetMenu { 
                 id, 
-                variables, 
             } => {
-                variables.resolve_pre(values);
                 id.resolve_pre(values);
             }
             Self::AddDialog { 
                 id, 
-                variables, 
                 ..
             } => {
-                variables.resolve_pre(values);
                 id.resolve_pre(values);
             }
             Self::Conditional { 
@@ -402,54 +387,5 @@ impl BuildableAction {
         }
     }
 }
-
-#[derive(Deserialize)]
-#[derive(Clone, Debug, PartialEq)]
-pub struct DialogInput {
-    #[serde(rename="@name")] pub name: String,
-    #[serde(rename="$value", default)] pub value: Option<BuildableValue>,
-}
-
-#[derive(Deserialize)]
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct DialogInputsTag {
-    #[serde(rename="$value")] pub inputs: Vec<DialogInput>,
-}
-impl DialogInputsTag {
-    fn resolve_pre(&mut self, values: &dyn Reflect) {
-        for i in self.inputs.iter_mut() {
-            let Some(value) = i.value.as_mut()
-            else { continue };
-
-            value.resolve_pre(values);
-        }
-    }
-
-    pub fn build(
-        self, 
-        values: &dyn Reflect,
-        passed_in: Option<&TatakuValue>,
-    ) -> BuildableInputArguments {
-        let mut inputs = BuildableInputArguments::default();
-        for i in self.inputs {
-            let Some(value) = i.value.as_ref() else {
-                error!("variable does not have a value!: {}", i.name);
-                continue;
-            };
-
-            let Some(value) = value.resolve(values, passed_in) 
-            else {
-                error!("variable could not be resolved!: {value:?}");
-                continue;
-            };
-
-            inputs.insert(i.name, value.into_owned());
-        }
-
-        inputs
-    }
-}
-
-
 
 pub fn _true() -> bool { true }

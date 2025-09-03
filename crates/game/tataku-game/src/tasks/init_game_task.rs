@@ -40,8 +40,7 @@ impl TatakuTask for InitGameTask {
             
             #[cfg(feature="graphics")]
             actions.push(MenuAction::SetMenu { 
-                id: "main_menu".into(), 
-                input: Box::new(BuildableInputArguments::default())
+                id: "main_menu".into(),
             });
         }
     }

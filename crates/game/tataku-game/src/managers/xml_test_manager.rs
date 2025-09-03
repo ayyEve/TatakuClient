@@ -42,34 +42,6 @@ impl XmlTestManager {
 
     }
 
-    fn handle_error(
-        ui_manager: &mut UiManager,
-        error: Vec<BuildableInputError>,
-        values: &mut ValueCollection,
-        actions: &mut ActionQueue,
-        loaded_type: &str,
-        text_layout_contexts: &mut TextLayoutContexts,
-    ) {
-        let mut children = error
-            .into_iter()
-            .map(|e| format!("{}: {}", e.variable, e.error_type))
-            .map(TextWidget::new)
-            .map(Widget::boxed)
-            .collect::<Vec<_>>();
-
-        children.insert(
-            0,
-            TextWidget::new(format!("Error creating {loaded_type}:"))
-            .boxed()
-        );
-
-        let thing = Container::new(children)
-            // .flex_direction(ui::FlexDirection::Column)
-            .boxed();
-
-        ui_manager.set_root(thing, values, actions, text_layout_contexts);
-    }
-
     pub fn load_file(
         &mut self,
         path: String,
@@ -93,63 +65,30 @@ impl XmlTestManager {
 
         match thing {
             XmlData::Menu(custom_menu) => {
-                let mut input = BuildableInputArguments::default();
-                for i in custom_menu.inputs.list.iter() {
-                    if let Some(test) = i.test_value.clone() {
-                        input.insert(i.name.clone(), test);
-                    }
-                }
+                let menu = custom_menu.build(values);
 
-                match custom_menu.build(values, input) {
-                    Ok(menu) => ui_manager.set_root(
-                        Box::new(menu),
-                        values,
-                        actions,
-                        text_layout_contexts,
-                    ),
-                    Err(e) => Self::handle_error(
-                        ui_manager,
-                        e,
-                        values,
-                        actions,
-                        "menu",
-                        text_layout_contexts,
-                    ),
-                }
+                ui_manager.set_root(
+                    Box::new(menu),
+                    values,
+                    actions,
+                    text_layout_contexts,
+                );
             }
             XmlData::Dialog(custom_dialog) => {
-                let mut input = BuildableInputArguments::default();
-                for i in custom_dialog.inputs.list.iter() {
-                    if let Some(test) = i.test_value.clone() {
-                        input.insert(i.name.clone(), test);
-                    }
-                }
-
-                match custom_dialog.build(values, input) {
-                    Ok(dialog) => {
-                        ui_manager.set_root(
-                            EmptyWidget::new_boxed(),
-                            values,
-                            actions,
-                            text_layout_contexts,
-                        );
-                        ui_manager.add_dialog(
-                            Box::new(dialog),
-                            DialogCreateOptions::default(),
-                            values,
-                            actions,
-                            text_layout_contexts,
-                        );
-                    },
-                    Err(e) => Self::handle_error(
-                        ui_manager,
-                        e,
-                        values,
-                        actions,
-                        "dialog",
-                        text_layout_contexts,
-                    ),
-                }
+                let dialog = custom_dialog.build(values);
+                ui_manager.set_root(
+                    EmptyWidget::new_boxed(),
+                    values,
+                    actions,
+                    text_layout_contexts,
+                );
+                ui_manager.add_dialog(
+                    Box::new(dialog),
+                    DialogCreateOptions::default(),
+                    values,
+                    actions,
+                    text_layout_contexts,
+                );
             }
         }
 

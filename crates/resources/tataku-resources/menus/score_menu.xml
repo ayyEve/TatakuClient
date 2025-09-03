@@ -22,12 +22,6 @@
     }
   </style>
 
-  <inputs>
-    <input name="allow_retry" path="var.score_menu.allow_retry" type="bool" default="true" />
-    <input name="score_submit_path" path="var.score_menu.submit_path" type="string" default="" />
-  </inputs>
-
-
   <events>
     <event>
       <keyPress key = "Escape" />

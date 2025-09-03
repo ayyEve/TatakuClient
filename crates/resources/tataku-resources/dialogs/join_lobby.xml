@@ -6,10 +6,6 @@
     title = "Join Lobby"
     draggable = "true"
 >
-    <inputs>
-        <input name="lobby_id" path="var.lobby_id" type="integer" required="true"/>
-    </inputs>
-
     <events>
         <!-- on menu enter, initialize our temp values/reset existing values -->
         <event>

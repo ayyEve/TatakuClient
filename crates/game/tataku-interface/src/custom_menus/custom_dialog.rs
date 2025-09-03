@@ -12,7 +12,6 @@ pub struct CustomDialog {
 
     #[serde(default)] style: Option<ArcStr>,
     #[serde(default)] events: BuildableEventsTag,
-    #[serde(default)] pub inputs: BuildableInputsTag,
 
     #[serde(rename = "$value")]
     element: Element,
@@ -21,10 +20,7 @@ impl CustomDialog {
     pub fn build(
         &self, 
         values: &mut dyn Reflect,
-        variables: BuildableInputArguments,
-    ) -> Result<BuiltCustomDialog, Vec<BuildableInputError>> {
-        self.inputs.init(variables, values)?;
-
+    ) -> BuiltCustomDialog {
         let mut events: HashMap<TatakuEventType, Vec<BuildableAction>> = HashMap::new();
         for (event, mut event_type) in self
             .events
@@ -46,7 +42,7 @@ impl CustomDialog {
                 .extend(event.get_actions());
         }
 
-        Ok(BuiltCustomDialog {
+        BuiltCustomDialog {
             id: self.id.clone(),
             title: self.title.clone(),
             element: self.element.build(), 
@@ -56,7 +52,7 @@ impl CustomDialog {
             resizable: self.resizable,
 
             node_id: EMPTY_NODE,
-        })
+        }
     }
 
     pub fn options(&self) -> DialogCreateOptions {

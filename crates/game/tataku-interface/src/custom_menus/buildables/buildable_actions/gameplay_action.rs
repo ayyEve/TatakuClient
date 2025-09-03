@@ -21,7 +21,6 @@ impl BuildableGameplayAction {
         match self {
             Self::Pause => CurrentGameAction::Pause {
                 id: "pause_menu".to_owned(),
-                input: BuildableInputArguments::default()
             },
             Self::Quit => CurrentGameAction::Free,
             Self::Resume => CurrentGameAction::Resume,
