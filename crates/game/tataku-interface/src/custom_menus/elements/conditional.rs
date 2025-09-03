@@ -10,15 +10,16 @@ pub struct ConditionalElement {
     #[serde(rename = "@style", default)] style: ArcStr,
 
     #[serde(rename = "@condition", alias = "@cond", default)] condition: ArcStr,
-    #[serde(rename = "false", default)] if_false: Option<ElementTag>,
 
-    #[serde(rename = "true", default)] if_true_tag: Option<ElementTag>,
+    #[serde(rename = "true", default)] if_true_wrapped: Option<Wrapped<Element>>,
     #[serde(rename = "$value", default)] if_true: Option<Element>,
+    #[serde(rename = "false", alias="else", default)] if_false: Option<Wrapped<Element>>,
 }
+
 impl ConditionalElement {
     fn if_true(&self) -> Option<&Element> {
-        self.if_true_tag
-            .as_deref()
+        self.if_true_wrapped.as_ref()
+            .map(|w| &w.inner)
             .or(self.if_true.as_ref())
     }
 }
@@ -29,7 +30,7 @@ impl CustomElement for ConditionalElement {
             let name = self.id
                 .as_ref()
                 .map_or_else(
-                    || format!("cond: {}", self.condition), 
+                    || format!("cond: {}", self.condition),
                     |i| format!("id: {i}")
                 );
 
@@ -44,7 +45,7 @@ impl CustomElement for ConditionalElement {
             self.class_list.clone(),
             ConditionalWidget::new(
                 if_true.build(),
-                self.if_false.as_ref().map(|i| i.build()),
+                self.if_false.as_ref().map(|i| i.inner.build()),
                 BuildableCondition::Unbuilt(self.condition.clone())
             )
             .boxed()
@@ -67,13 +68,12 @@ fn test() {
             id: Some("cond123".into()),
             class_list: "thing1 thing2".into(),
             condition: "path.to.thing.is_true".into(), 
-            if_true: Some(TextElement {
-                text: BuildableText::Text { text: "hi mom".into() },
+            if_true: TextElement {
+                text: BuildableText::Text("hi mom".into()),
                 ..Default::default()
-            }.into()),
-            if_true_tag: None,
+            }.into(),
             if_false: Some(ElementTag::new(TextElement {
-                text: BuildableText::Text { text: "bye mom".into() },
+                text: BuildableText::Text("bye mom"),
                 ..Default::default()
             })),
             ..Default::default()

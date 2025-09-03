@@ -12,14 +12,25 @@ pub struct ButtonElement {
     
     #[serde(alias="action")]
     actions: Vec<ClickAction>,
-    element: ElementTag,
+
+    #[serde(rename = "$value")]
+    element: Element,
 }
 impl CustomElement for ButtonElement {
     fn build(&self) -> Box<dyn Widget<TatakuAction>> {
-        let mut actions = self.actions
-            .iter()
-            .map(|i| (i.button, i.inner.clone()))
-            .collect::<HashMap<MouseButton2, BuildableAction>>();
+        let mut left = Vec::new();
+        let mut middle = Vec::new();
+        let mut right = Vec::new();
+
+        for action in self.actions.iter() {
+            let vec = match action.button {
+                MouseButton2::Left => &mut left,
+                MouseButton2::Middle => &mut middle,
+                MouseButton2::Right => &mut right,
+            };
+
+            vec.extend(action.inner.iter().cloned());
+        }
 
         WidgetContainer::new_boxed(
             self.style.clone(),
@@ -27,9 +38,9 @@ impl CustomElement for ButtonElement {
             self.id.clone(),
             self.class_list.clone(),
             Button::new(self.element.build())
-                .on_press_left_maybe(actions.remove(&MouseButton2::Left))
-                .on_press_middle_maybe(actions.remove(&MouseButton2::Middle))
-                .on_press_right_maybe(actions.remove(&MouseButton2::Right))
+                .on_press_left(ButtonOnClick::from_buildable_iter(left))
+                .on_press_middle(ButtonOnClick::from_buildable_iter(middle))
+                .on_press_right(ButtonOnClick::from_buildable_iter(right))
                 .active_condition_maybe(self.active_override.clone())
                 .boxed()
         )
@@ -39,7 +50,7 @@ impl CustomElement for ButtonElement {
 #[derive(Deserialize)]
 #[derive(Clone, Debug, Default, PartialEq)]
 struct ClickAction {
-    #[serde(rename="$value")] inner: BuildableAction,
+    #[serde(rename="$value")] inner: Vec<BuildableAction>,
     #[serde(rename="@button", default)] button: MouseButton2,
 }
 
@@ -62,8 +73,8 @@ fn test() {
         from_str::<ButtonElement>(r#"
             <button id="button123" class="thing1 thing2">
                 <action> <song> <play/> </song> </action>
-                
-                <element> <text> hi mom </text> </element>
+
+                <text> hi mom </text>
             </button>
         "#).unwrap(),
         ButtonElement {
@@ -72,13 +83,13 @@ fn test() {
             actions: vec![
                 ClickAction {
                     button: MouseButton2::Left,
-                    inner: BuildableAction::Song { 
-                        action: BuildableSongAction::Play 
+                    inner: BuildableAction::Song {
+                        action: BuildableSongAction::Play
                     },
                 }
-            ], 
+            ],
             element: ElementTag { inner: Element::Text(Box::new(TextElement {
-                text: BuildableText::Text { text: "hi mom".into() },
+                text: BuildableText::Text("hi mom".into()),
                 ..Default::default()
             })) } ,
             ..Default::default()

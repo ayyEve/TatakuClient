@@ -14,22 +14,22 @@
 
 <xs:group name="online-content-action">
   <xs:choice>
-      <xs:element name="audioPreview" type="buildable-value:buildableValueElement" minOccurs="1"/>
-      <xs:element name="download" type="buildable-value:buildableValueElement" minOccurs="1"/>
+      <xs:element name="audioPreview" type="buildable-value:buildableValue" minOccurs="1"/>
+      <xs:element name="download" type="buildable-value:buildableValue" minOccurs="1"/>
       <xs:element name="search" type="online-content-actions:online-content-action-search" minOccurs="1"/>
 
       <xs:element name="nextPage"/>
       <xs:element name="previousPage"/>
-      <xs:element name="setPage" type="buildable-value:buildableValueElement" minOccurs="1"/>
+      <xs:element name="setPage" type="buildable-value:buildableValue" minOccurs="1"/>
   </xs:choice>
 </xs:group>
 
 <xs:complexType name="online-content-action-search">
   <xs:all>
-    <xs:element name="engineId" type="buildable-value:buildableValueElement" minOccurs="1" />
-    <xs:element name="searchType" type="buildable-value:buildableValueElement" minOccurs="1" />
-    <xs:element name="page" type="buildable-value:buildableValueElement" minOccurs="1" />
-    <xs:element name="query" type="buildable-value:buildableValueElement" />
+    <xs:element name="engineId" type="buildable-value:buildableValue" minOccurs="1" />
+    <xs:element name="searchType" type="buildable-value:buildableValue" minOccurs="1" />
+    <xs:element name="page" type="buildable-value:buildableValue" minOccurs="1" />
+    <xs:element name="query" type="buildable-value:buildableValue" />
     
     <!-- value list -->
     <xs:element name="values" minOccurs="0">
@@ -48,8 +48,8 @@
 
 <xs:complexType name="search_value">
   <xs:all>
-    <xs:element name="id" type="buildable-value:buildableValueElement" minOccurs="1" />
-    <xs:element name="value" type="buildable-value:buildableValueElement" minOccurs="1" />
+    <xs:element name="id" type="buildable-value:buildableValue" minOccurs="1" />
+    <xs:element name="value" type="buildable-value:buildableValue" minOccurs="1" />
   </xs:all>
 </xs:complexType>
 

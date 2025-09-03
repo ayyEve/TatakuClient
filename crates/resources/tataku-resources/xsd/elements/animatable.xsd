@@ -40,11 +40,7 @@
           </xs:complexType>
         </xs:element>
 
-        <xs:element name="element">
-          <xs:complexType>
-            <xs:group ref="elements:element"/>
-          </xs:complexType>
-        </xs:element>
+        <xs:group ref="elements:element"/>
       </xs:sequence>
     </xs:extension>
   </xs:complexContent>

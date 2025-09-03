@@ -1,7 +1,8 @@
 use crate::prelude::*;
 
+const BOX_SIZE_EM: f32 = 0.75;
+
 pub struct Checkbox {
-    text: CheckboxText,
     value: CheckboxValue,
 
     active: bool,
@@ -13,16 +14,9 @@ pub struct Checkbox {
 }
 impl Checkbox {
     pub fn new(
-        text: impl Into<CheckboxText>,
         value: impl Into<CheckboxValue>,
     ) -> Self {
-        let mut text = text.into();
-        if let Err(e) = text.build() {
-            warn!("error building text: {e:?}");
-        }
-
         Self {
-            text,
             value: value.into(),
             on_toggle: None,
 
@@ -30,13 +24,6 @@ impl Checkbox {
             hovered: false,
             node_id: EMPTY_NODE,
         }
-    }
-
-    fn box_size(&self, font_size: f32) -> Vector2 {
-        Vector2::ONE * font_size * 0.75
-    }
-    fn box_padding(&self) -> Vector2 {
-        Vector2::new(5.0, 0.0)
     }
 
     pub fn on_toggle_arced(mut self, on_toggle: Arc<dyn Fn(bool) -> Message + Send + Sync>) -> Self {
@@ -53,22 +40,6 @@ impl Checkbox {
         }
         self
     }
-
-    // fn size(&self, text_style: &TextStyle) -> [CssUnit; 2] {
-    //     let text = self.text.get();
-    //     let txt_size = text_style.measure_text(text, None);
-    //     let box_size = self.box_size(text_style.font_size);
-
-    //     let size = Vector2::new(
-    //         box_size.x + txt_size.x,
-    //         box_size.y.max(txt_size.y)
-    //     ) + self.box_padding() * 2.0;
-
-    //     [
-    //         CssUnit::Pixels(f16::from_f32(size.x)),
-    //         CssUnit::Pixels(f16::from_f32(size.y))
-    //     ]
-    // }
 }
 impl Widget<TatakuAction> for Checkbox {
     fn name(&self) -> CowStr { "checkbox_widget".into() }
@@ -86,18 +57,13 @@ impl Widget<TatakuAction> for Checkbox {
     }
 
     fn init_style(&mut self, shell: &mut LayoutShell<TatakuAction>) {
-        let text_style = shell.tree
-            .get_text_style(self.node_id)
-            .unwrap();
-        // let size = self.size(text_style);
-
-        // shell.tree.update_style(
-        //     self.node_id,
-        //     |style| {
-        //         style.min_width = CssValue::Value(size[0]);
-        //         style.min_height = CssValue::Value(size[1]);
-        //     }
-        // );
+        shell.tree.update_style(
+            self.node_id,
+            |style| {
+                style.min_width = CssValue::Value(CssUnit::Em(f16::from_f32(BOX_SIZE_EM)));
+                style.min_height = CssValue::Value(CssUnit::Em(f16::from_f32(BOX_SIZE_EM)));
+            }
+        );
     }
 
     fn input(
@@ -158,144 +124,32 @@ impl Widget<TatakuAction> for Checkbox {
             .get_text_style(self.node_id)
             .unwrap();
 
-        // let box_size = self.box_size(text_style.font_size);
-        let box_padding = self.box_padding();
+        let size = BOX_SIZE_EM * text_style.font_size;
 
-        // let box_bounds = Bounds::new(
-        //     bounds.pos,
-        //     Vector2::new(
-        //         box_size.x + box_padding.x,
-        //         bounds.size.y
-        //     ),
-        // );
-
-        // let box_pos = Alignment::CENTER.resolve(
-        //     &box_bounds,
-        //     box_size,
-        //     true,
-        //     true,
-        // );
-
-        // let rect = Rectangle::new(
-        //     box_pos,
-        //     box_size,
-        //     if self.value.get() {
-        //         shell.general_theme.active_color
-        //     } else {
-        //         Color::TRANSPARENT
-        //     }
-        // ).border(Border::new(
-        //     shell.general_theme.get_color(self.active, self.hovered),
-        //     2.0
-        // )).shape(Shape::Round(2.0));
-        // shell.list.push(rect);
-
-        // let text_bounds = Bounds::new(
-        //     Vector2::new(
-        //         bounds.pos.x + box_size.x + box_padding.x,
-        //         bounds.pos.y
-        //     ),
-        //     Vector2::new(
-        //         bounds.size.x - box_size.x,
-        //         bounds.size.y
-        //     )
-        // );
-
-        // shell.list.push(text_style.create_text(
-        //     self.text.get().to_string(),
-        //     text_bounds
-        // ));
+        let rect = Rectangle::new(
+            bounds.pos,
+            Vector2::ONE * size,
+            if self.value.get() {
+                shell.general_theme.active_color
+            } else {
+                Color::TRANSPARENT
+            }
+        ).border(Border::new(
+            shell.general_theme.get_color(self.active, self.hovered),
+            2.0
+        )).shape(Shape::Round(2.0));
+        shell.list.push(rect);
     }
 
     fn update(&mut self, shell: &mut UpdateShell<TatakuAction>) {
         self.value.update(shell.values);
-
-        let old_text = self.text.get().to_owned();
-        self.text.update(shell.values);
-        let new_text = self.text.get();
-        if new_text != old_text {
-            let text_style = shell.tree
-                .get_text_style(self.node_id)
-                .unwrap();
-
-            // let size = self.size(text_style);
-            // shell.tree.update_style(
-            //     self.node_id,
-            //     |style| {
-            //         style.min_width = size[0].into();
-            //         style.min_height = size[1].into();
-            //     }
-            // );
-        }
-    }
-}
-
-
-#[derive(Debug)]
-pub enum CheckboxText {
-    Static(ArcStr),
-    Variable(BuildableText, String),
-    Buildable(BuildableText, String),
-}
-impl CheckboxText {
-    fn build(&mut self) -> Result<(), BuildableShuntingYardError> {
-        match self {
-            Self::Buildable(b, _) => b.compute(),
-            Self::Variable(b, _) => b.compute(),
-            _ => Ok(())
-        }
-    }
-
-    fn get(&self) -> &str {
-        match self {
-            Self::Static(t) => t,
-            Self::Variable(_, t) => t,
-            Self::Buildable(_, t) => t,
-        }
-    }
-    fn update(&mut self, values: &dyn Reflect) {
-        match self {
-            Self::Static(_) => {},
-            Self::Variable(path, cache) => {
-                let path = path.to_string(values);
-                if let Ok(value) = values.reflect_display(&path, None) {
-                    *cache = value;
-                } else {
-                    *cache = format!("failed: {path}");
-                }
-            }
-            Self::Buildable(
-                b, 
-                cache
-            ) => *cache = b.to_string(values),
-        }
-    }
-}
-impl From<&str> for CheckboxText {
-    fn from(value: &str) -> Self {
-        Self::Static(value.into())
-    }
-}
-impl From<String> for CheckboxText {
-    fn from(value: String) -> Self {
-        Self::Static(value.into())
-    }
-}
-impl From<ArcStr> for CheckboxText {
-    fn from(value: ArcStr) -> Self {
-        Self::Static(value)
-    }
-}
-impl From<BuildableText> for CheckboxText {
-    fn from(value: BuildableText) -> Self {
-        Self::Buildable(value, String::new())
     }
 }
 
 #[derive(Debug)]
 pub enum CheckboxValue {
     Static(bool),
-    Variable{
+    Variable {
         path: VariablePathResolver, 
         cache: bool, 
         failed: bool,
@@ -303,11 +157,6 @@ pub enum CheckboxValue {
     Condition(BuildableCondition, bool),
 }
 impl CheckboxValue {
-    pub fn condition(value: impl Into<BuildableCondition>) -> Self {
-        let value = value.into();
-        Self::Condition(value, false)
-    }
-
     fn get(&self) -> bool {
         match self {
             Self::Static(b) => *b,

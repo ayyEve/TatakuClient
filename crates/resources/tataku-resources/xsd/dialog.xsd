@@ -19,24 +19,20 @@
 <!-- entry point definition -->
 <xs:element name="dialog">
   <xs:complexType>
-    <xs:all>
+    <xs:sequence>
       <xs:element name="style" type="text:string" minOccurs="0"/>
       <xs:element name="inputs" type="common:input-variables" minOccurs="0"/>
       <xs:element name="events" type="common:event-list" minOccurs="0"/>
 
-      <xs:element name="element">
-        <xs:complexType>
-          <xs:group ref="elements:element"/>
-        </xs:complexType>
-      </xs:element>
-    </xs:all>
-    
-    <xs:attribute name="id" type="xs:string" use="required"/>
-    <xs:attribute name="title" type="xs:string"/>
+      <xs:group ref="elements:element"/>
+    </xs:sequence>
+
+    <xs:attribute name="id" type="text:string" use="required"/>
+    <xs:attribute name="title" type="text:string"/>
     <xs:attribute name="allow_multiple" type="xs:boolean"/>
     <xs:attribute name="draggable" type="xs:boolean"/>
     <xs:attribute name="resizable" type="xs:boolean"/>
   </xs:complexType>
 </xs:element>
 
-</xs:schema> 
+</xs:schema>

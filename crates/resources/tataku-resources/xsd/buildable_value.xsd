@@ -9,33 +9,16 @@
 
 <xs:import namespace="tataku/text" schemaLocation="text.xsd"/>
 
+<xs:complexType name="buildableValue" mixed="true">
+    <xs:group ref="buildable-value:buildableValue-wrapped" minOccurs="0"/>
+</xs:complexType>
 
-<xs:group name="buildableValue">
+<xs:group name="buildableValue-wrapped">
     <xs:choice>
         <xs:element name="none" />
-        <xs:element name="value"> 
-            <xs:complexType mixed="true">
-                <xs:attribute name="val" type="xs:anySimpleType"/>
-            </xs:complexType>
-        </xs:element>
-        <xs:element name="variable">
-            <xs:complexType>
-                <xs:attribute name="var" type="xs:string" />
-            </xs:complexType>
-        </xs:element>
+        <xs:element name="variable" type="text:string"/>
         <xs:element name="passedIn" />
-        <xs:element name="reference" >
-            <xs:complexType>
-                <xs:group ref="text:text" />
-                <xs:attribute name="ref" type="xs:string" />
-            </xs:complexType>
-        </xs:element>
-        <xs:element name="calc">
-            <xs:complexType mixed = "true">
-                <xs:attribute name="calc" type="text:string"/>
-                <xs:attribute name="var" type="text:string"/>
-            </xs:complexType>
-
+        <xs:element name="calc" type="text:string">
             <xs:key name="buildable_calc">
                 <xs:selector xpath="."/>
                 <xs:field xpath="@calc|@var|*"/>
@@ -43,10 +26,5 @@
         </xs:element>
     </xs:choice>
 </xs:group>
-
-<xs:complexType name="buildableValueElement" mixed="true">
-    <xs:group ref="buildable-value:buildableValue"/>
-</xs:complexType>
-
 
 </xs:schema>

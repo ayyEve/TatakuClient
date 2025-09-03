@@ -182,7 +182,7 @@ type OnClickCallback = Box<dyn Fn() -> Option<Message> + Send + Sync>;
 #[derive(Debug2)]
 pub enum ButtonOnClick {
     Message(Option<Message>),
-    BuildableAction(BuildableAction),
+    BuildableActions(Vec<BuildableAction>),
     #[debug(skip)] Callback(OnClickCallback),
 }
 impl ButtonOnClick {
@@ -196,14 +196,42 @@ impl ButtonOnClick {
             Self::Message(m) 
                 => m.clone().map(ActionResponse::Message),
 
-            Self::BuildableAction(action) => {
-                let mut a = action.clone();
-                a.build(values);
-                a.into_action(node, values, passed_in).map(ActionResponse::Action)
+            Self::BuildableActions(actions) => {
+                let actions = actions.iter().cloned()
+                    .filter_map(|mut a| {
+                        a.build(values);
+                        a.into_action(node, values, passed_in)
+                    })
+                    .collect::<Vec<_>>();
+
+                if actions.is_empty() {
+                    None
+                } else {
+                    Some(ActionResponse::Action(TatakuAction::Multiple(actions)))
+                }
             },
 
             Self::Callback(cb) 
                 => (cb)().map(ActionResponse::Message),
+        }
+    }
+
+    pub fn from_buildable_iter(iter: impl IntoIterator<Item = BuildableAction>) -> Self {
+        let mut values = iter.into_iter().collect::<Vec<_>>();
+
+        for value in values.iter_mut() {
+            if let BuildableAction::Conditional {
+                cond,
+                ..
+            } = value {
+                cond.build();
+            }
+        }
+
+        if values.is_empty() {
+            Self::Message(None)
+        } else {
+            Self::BuildableActions(values)
         }
     }
 }
@@ -219,17 +247,11 @@ impl From<Message> for ButtonOnClick {
     }
 }
 impl From<BuildableAction> for ButtonOnClick {
-    fn from(mut value: BuildableAction) -> Self {
-        if let BuildableAction::Conditional { 
-            cond, 
-            .. 
-        } = &mut value {
-            cond.build();
-        }
-
-        Self::BuildableAction(value)
+    fn from(value: BuildableAction) -> Self {
+        Self::from_buildable_iter([value].into_iter())
     }
 }
+
 impl From<OnClickCallback> for ButtonOnClick {
     fn from(value: OnClickCallback) -> Self {
         Self::Callback(value)

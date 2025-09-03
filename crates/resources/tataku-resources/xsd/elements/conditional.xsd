@@ -15,42 +15,24 @@
 <xs:complexType name="conditional-element">
   <xs:complexContent>
     <xs:extension base="elements:generic">
-      <xs:choice>
-        <xs:group ref="elements:element"/>
-        <xs:group ref="conditional-element:conditional-element-both"/>
-        <xs:group ref="conditional-element:conditional-element-true-only"/>
-      </xs:choice>
+      <xs:sequence>
+        <xs:choice>
+          <xs:group ref="elements:element"/>
+          <xs:element name="true">
+            <xs:complexType>
+              <xs:group ref="elements:element"/>
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+        <xs:element name="false" minOccurs="0">
+          <xs:complexType>
+            <xs:group ref="elements:element"/>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
       <xs:attribute name="cond" type="common:condition" use="required"/>
     </xs:extension>
   </xs:complexContent>
 </xs:complexType>
-
-
-<xs:group name="conditional-element-true-only">
-  <xs:sequence>
-    <xs:element name="true"> 
-      <xs:complexType>
-        <xs:group ref="elements:element"/>
-      </xs:complexType>
-    </xs:element>
-  </xs:sequence>
-</xs:group>
-
-<xs:group name="conditional-element-both">
-  <xs:sequence>
-    <xs:element name="true"> 
-      <xs:complexType>
-        <xs:group ref="elements:element"/>
-      </xs:complexType>
-    </xs:element>
-    <xs:element name="false">
-      <xs:complexType>
-        <xs:group ref="elements:element"/>
-      </xs:complexType>
-    </xs:element>
-  </xs:sequence>
-</xs:group>
-
-
 
 </xs:schema>

@@ -11,11 +11,11 @@
 <xs:import namespace="tataku/elements" schemaLocation="./elements.xsd"/>
 
 
-<xs:complexType name="text-element">
+<xs:complexType name="text-element" mixed="true">
   <xs:complexContent>
     <xs:extension base="elements:generic">
       <xs:sequence>
-        <xs:group ref="text:text" minOccurs="1"/>
+        <xs:group ref="text:text-wrapped" minOccurs="0" maxOccurs="unbounded"/>
       </xs:sequence>
     </xs:extension>
   </xs:complexContent>

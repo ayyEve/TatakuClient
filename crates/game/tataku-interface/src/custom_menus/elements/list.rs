@@ -7,8 +7,8 @@ pub struct ListElement {
     #[serde(rename = "@class", default)] class_list: ClassList,
     #[serde(rename = "@style", default)] style: ArcStr,
 
-    #[serde(rename = "@list_variable", alias = "@list")] list_var: ArcStr,
-    #[serde(rename = "@variable")] variable: ArcStr,
+    #[serde(rename = "@list_var", alias = "@list")] list_var: ArcStr,
+    #[serde(rename = "@variable", alias="@var")] var: ArcStr,
     #[serde(rename = "@scrollable", alias = "@scroll", default)] scrollable: bool,
     
     #[serde(alias = "$value")] element: Element,
@@ -24,7 +24,7 @@ impl CustomElement for ListElement {
                 .make_programmatic(ProgrammaticListData::new(
                     self.element.clone(),
                     self.list_var.clone(),
-                    self.variable.clone(),
+                    self.var.clone(),
                 ))
                 .scrollable(self.scrollable)
                 .drag_scroll(self.scrollable)

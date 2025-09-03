@@ -6,32 +6,32 @@ use crate::prelude::*;
 #[derive(Clone, Debug, PartialEq)]
 pub enum BuildableModAction {
     /// Add the specified mod
-    AddMod { 
-        #[serde(rename="$value", alias="$text")] 
+    AddMod {
+        #[serde(rename="$value")]
         value: BuildableValue
     },
 
     /// Remove the specified mod
-    RemoveMod { 
-        #[serde(rename="$value", alias="$text")] 
+    RemoveMod {
+        #[serde(rename="$value")]
         value: BuildableValue
     },
 
     /// Toggle the specified mod
-    ToggleMod { 
-        #[serde(rename="$value", alias="$text")] 
+    ToggleMod {
+        #[serde(rename="$value")]
         value: BuildableValue
     },
 
     /// Set the gameplay speed to the specified value
-    SetSpeed { 
-        #[serde(rename="$value", alias="$text")] 
+    SetSpeed {
+        #[serde(rename="$value")]
         value: BuildableValue
     },
 
     /// add/subtract to/from the gameplay speed by the specified amount
-    AddSpeed { 
-        #[serde(rename="$value", alias="$text")] 
+    AddSpeed {
+        #[serde(rename="$value")]
         value: BuildableValue
     },
 }

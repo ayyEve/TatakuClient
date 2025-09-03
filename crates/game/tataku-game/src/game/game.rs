@@ -204,8 +204,12 @@ impl Game {
         }
 
         for (entries, entry_type) in [
-            (self.builtin_menus.menus, CustomEntryType::Menu),
-            (self.builtin_menus.dialogs, CustomEntryType::Dialog),
+            ([
+                &self.builtin_menus.menus[4],
+                &self.builtin_menus.menus[9],
+            ], CustomEntryType::Menu)
+            // (self.builtin_menus.menus, CustomEntryType::Menu),
+            // (self.builtin_menus.dialogs, CustomEntryType::Dialog),
         ] {
             for (name, data) in entries {
                 let _ = self.custom_menu_manager.load_entry_bytes(

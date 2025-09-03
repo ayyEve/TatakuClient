@@ -21,9 +21,9 @@
   <xs:complexContent>
     <xs:extension base="elements:generic">
       <xs:all>
-        <xs:element name="min" type="buildable-value:buildableValueElement" minOccurs="0" />
-        <xs:element name="max" type="buildable-value:buildableValueElement" minOccurs="0"/>
-        <xs:element name="step" type="buildable-value:buildableValueElement" minOccurs="0"/>
+        <xs:element name="min" type="buildable-value:buildableValue" minOccurs="0" />
+        <xs:element name="max" type="buildable-value:buildableValue" minOccurs="0"/>
+        <xs:element name="step" type="buildable-value:buildableValue" minOccurs="0"/>
 
         <xs:element name="onInput" minOccurs="0">
           <xs:complexType>

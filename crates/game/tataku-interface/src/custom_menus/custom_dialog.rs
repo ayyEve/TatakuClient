@@ -14,7 +14,8 @@ pub struct CustomDialog {
     #[serde(default)] events: BuildableEventsTag,
     #[serde(default)] pub inputs: BuildableInputsTag,
 
-    element: ElementTag,
+    #[serde(rename = "$value")]
+    element: Element,
 }
 impl CustomDialog {
     pub fn build(

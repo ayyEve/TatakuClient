@@ -335,10 +335,8 @@ impl From<VariablePathResolver> for SliderValue {
 impl From<BuildableValue> for SliderValue {
     fn from(value: BuildableValue) -> Self {
         match value {
-            BuildableValue::Variable { 
-                var 
-            } => Self::Variable { 
-                variable: var, 
+            BuildableValue::Variable(variable) => Self::Variable {
+                variable,
                 value: 0.0
             },
 

@@ -3,10 +3,13 @@
 <xs:schema 
   xmlns:xs="http://www.w3.org/2001/XMLSchema"
   targetNamespace="tataku/input"
+  xmlns:text = "tataku/text"
 >
 
+<xs:import namespace="tataku/text" schemaLocation="text.xsd"/>
+
 <xs:simpleType name="key">
-    <xs:restriction base="xs:string">
+    <xs:restriction base="text:string">
       <xs:enumeration value="Key1"/>
       <xs:enumeration value="Key2"/>
       <xs:enumeration value="Key3"/>
@@ -162,7 +165,7 @@
 </xs:simpleType>
 
 <xs:simpleType name="mouse-button">
-  <xs:restriction base="xs:string">
+  <xs:restriction base="text:string">
     <xs:enumeration value="left"/>
     <xs:enumeration value="middle"/>
     <xs:enumeration value="right"/>
@@ -170,7 +173,7 @@
 </xs:simpleType>
 
 <xs:simpleType name="controller-button">
-  <xs:restriction base="xs:string">
+  <xs:restriction base="text:string">
     <xs:enumeration value="North"/>
     <xs:enumeration value="South"/>
     <xs:enumeration value="East"/>
@@ -199,11 +202,11 @@
 </xs:simpleType>
 
 <xs:simpleType name="controller-axis">
-  <xs:restriction base="xs:string">
+  <xs:restriction base="text:string">
     <xs:enumeration value="LeftStickX"/>
     <xs:enumeration value="LeftStickY"/>
     <xs:enumeration value="LeftZ"/>
-    
+
     <xs:enumeration value="RightStickX"/>
     <xs:enumeration value="RightStickY"/>
     <xs:enumeration value="RightZ"/>

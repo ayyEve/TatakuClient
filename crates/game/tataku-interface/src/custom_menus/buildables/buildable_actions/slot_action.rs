@@ -3,7 +3,7 @@ use crate::prelude::*;
 #[derive(Deserialize)]
 #[derive(Clone, Debug, PartialEq)]
 pub struct BuildableSlot {
-    pub slot: BuildableValueTag,
+    pub slot: BuildableValue,
     #[serde(rename="$value")] pub action: BuildableSlotAction,
 }
 impl BuildableSlot {
@@ -12,7 +12,7 @@ impl BuildableSlot {
         values: &mut dyn Reflect, 
         passed_in: Option<&TatakuValue>,
     ) -> Option<LobbySlotAction> {
-        let slot = match &*self.slot {
+        let slot = match &self.slot {
             BuildableValue::None => {
                 error!("slot is none?? ({:?})", self.action);
                 return None;
@@ -30,12 +30,9 @@ impl BuildableSlot {
                 }
             },
             
-            BuildableValue::Value { 
-                value, 
-                value_attribute
-            } => Cow::Borrowed(value.as_ref().or(value_attribute.as_ref())?),
+            BuildableValue::Value(value) => Cow::Borrowed(value),
             
-            BuildableValue::Variable { var } => {
+            BuildableValue::Variable(var) => {
                 let path = var.resolve_path(values).ok()?;
 
                 let var = values.reflect_as_number(&path).ok()?;

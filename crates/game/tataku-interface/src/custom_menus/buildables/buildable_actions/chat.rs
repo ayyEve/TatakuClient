@@ -5,60 +5,61 @@ use crate::prelude::*;
 #[derive(Clone, Debug, PartialEq)]
 pub enum BuildableChatAction {
     SendMessage {
-        channel: BuildableTextTag,
-        message: BuildableTextTag,
+        #[serde(rename = "@channel")]
+        channel: BuildableValue,
+        #[serde(rename="$value")]
+        message: Vec<BuildableText>,
     },
 
     OpenChannel {
-        #[serde(rename="$value", default)]
-        channel: Option<BuildableText>,
-        #[serde(rename="channel", default)]
-        channel_tag: Option<BuildableTextTag>,
+        #[serde(alias="$value", default)]
+        channel: BuildableValue,
 
         #[serde(default)]
-        password: Option<BuildableTextTag>,
+        password: Option<BuildableValue>,
     },
 
     CloseChannel {
-        #[serde(rename="$value", default)]
-        channel: Option<BuildableText>,
-        #[serde(rename="channel", default)]
-        channel_tag: Option<BuildableTextTag>,
+        #[serde(alias="$value", default)]
+        channel: BuildableValue
     }
 }
 impl BuildableChatAction {
     pub fn into_action(
         self, 
         values: &dyn Reflect, 
-        _passed_in: Option<&TatakuValue>
+        passed_in: Option<&TatakuValue>
     ) -> Option<TatakuAction> {
         match self {
             Self::SendMessage { 
                 channel, 
                 message 
-            } => Some(ChatAction::SendMessage { 
-                channel: channel.to_string(values), 
-                message: message.to_string(values),
-            }.into()),
+            } => {
+                let message: String = message.into_iter()
+                    .map(|mut text| {
+                        let _ = text.compute();
+                        text.to_string(values)
+                    }).collect();
+
+                Some(ChatAction::SendMessage {
+                    channel: channel.resolve(values, passed_in).unwrap().as_string(),
+                    message,
+                }.into())
+            },
 
             Self::OpenChannel { 
                 channel, 
-                channel_tag ,
                 password
             } => Some(ChatAction::OpenChannel { 
-                channel: channel
-                    .or(channel_tag.map(|i| i.inner))?
-                    .to_string(values),
-                password: password.map(|i| i.to_string(values)),
+                channel: channel.resolve(values, passed_in).unwrap().as_string(),
+                password: password
+                    .and_then(|i| i.resolve(values, passed_in).map(|i| i.as_string())),
             }.into()),
 
             Self::CloseChannel { 
                 channel, 
-                channel_tag 
             } => Some(ChatAction::CloseChannel { 
-                channel: channel
-                    .or(channel_tag.map(|i| i.inner))?
-                    .to_string(values),
+                channel: channel.resolve(values, passed_in).unwrap().as_string(),
             }.into()),
         }
     }
@@ -69,33 +70,23 @@ impl BuildableChatAction {
                 channel,
                 message
             } => {
-                let _ = channel.compute();
-                let _ = message.compute();
+                // let _ = channel.compute();
+                // let _ = message.compute();
             }
 
             Self::OpenChannel { 
                 channel, 
-                channel_tag ,
                 password,
             } => {
-                if let Some(channel) = channel {
-                    let _ = channel.compute();
-                }
-                if let Some(channel) = channel_tag {
-                    let _ = channel.compute();
-                }
-                if let Some(password) = password {
-                    let _ = password.compute();
-                }
+                // let _ = channel.compute();
+
+                // if let Some(password) = password {
+                //     let _ = password.compute();
+                // }
             }
 
-            Self::CloseChannel { channel, channel_tag } => {
-                if let Some(channel) = channel {
-                    let _ = channel.compute();
-                }
-                if let Some(channel) = channel_tag {
-                    let _ = channel.compute();
-                }
+            Self::CloseChannel { channel } => {
+                // let _ = channel.compute();
             }
         };
     }

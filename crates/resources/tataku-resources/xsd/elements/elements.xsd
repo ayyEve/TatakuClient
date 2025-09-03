@@ -19,8 +19,11 @@
   xmlns:text-element="tataku/elements/text"
   xmlns:list-element="tataku/elements/list"
   xmlns:row-element="tataku/elements/row"
+  xmlns:text="tataku/text"
 >
 
+
+<xs:import namespace="tataku/text" schemaLocation="../text.xsd"/>
 
 <!-- element imports -->
 <xs:import namespace="tataku/elements/row" schemaLocation="./row.xsd"/>
@@ -40,9 +43,9 @@
 <xs:import namespace="tataku/elements/gameplay-preview" schemaLocation="./gameplay_preview.xsd"/>
 
 <xs:complexType name="generic">
-  <xs:attribute name="id" type="xs:string"/>
-  <xs:attribute name="class" type="xs:string"/>
-  <xs:attribute name="style" type="xs:string"/>
+  <xs:attribute name="id" type="text:string"/>
+  <xs:attribute name="class" type="text:string"/>
+  <xs:attribute name="style" type="text:string"/>
 </xs:complexType>
 
 <xs:group name="element">

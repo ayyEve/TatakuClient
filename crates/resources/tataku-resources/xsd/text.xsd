@@ -5,66 +5,30 @@
     targetNamespace="tataku/text"
 >
 
-<xs:complexType name="textElement">
-    <xs:group ref="text:text"/>
+<xs:complexType name="text" mixed="true">
+    <xs:group ref="text:text-wrapped" />
 </xs:complexType>
 
 <xs:simpleType name="string">
     <xs:restriction base="xs:string">
-        <xs:whiteSpace value="preserve"/>
+        <xs:whiteSpace value="collapse"/>
     </xs:restriction>
 </xs:simpleType>
 
-<xs:group name="text">
+<xs:group name="text-wrapped">
     <xs:choice>
-        <xs:group ref="text:text-type"/>
-        <xs:sequence>
-            <xs:element name="list" minOccurs="0" maxOccurs="1">
-                <xs:complexType mixed="true">
-                    <xs:sequence>
-                        <xs:group ref="text:text-type" minOccurs="1" maxOccurs="unbounded"/>
-                    </xs:sequence>
-                    <xs:attribute name="join" type="text:string"/>
-                </xs:complexType>
-            </xs:element>
-        </xs:sequence>
-    </xs:choice>
-</xs:group>
-
-<xs:group name="text-type">
-    <xs:choice>
-        <xs:element name="text">
-            <xs:complexType>
-                <xs:attribute name="text" type = "text:string" use="required"/>
-            </xs:complexType>
-        </xs:element>
-
         <xs:element name="locale" type="text:string"/>
-        <xs:element name="variable">
-            <xs:complexType>
-                <xs:attribute name="var" type = "text:string" use="required"/>
-            </xs:complexType>
-        </xs:element>
+        <xs:element name="variable" type="text:string"/>
+
         <xs:element name="display">
-            <xs:complexType>
-                <xs:attribute name="var" type = "text:string" use="required"/>
-                <xs:attribute name="precision" type = "xs:long"/>
+            <xs:complexType mixed="true">
+                <xs:attribute name="precision" type="xs:long"/>
             </xs:complexType>
         </xs:element>
-        
-        <xs:element name="calc">
-            <xs:complexType>
-                <xs:attribute name="calc" type = "text:string" />
-                <xs:attribute name="var" type = "text:string" />
-            </xs:complexType>
 
-            <xs:key name="text-calc">
-                <xs:selector xpath="."/>
-                <xs:field xpath="@calc|@field"/>
-            </xs:key>
-        </xs:element>
+        <xs:element name="calc" type="text:string"/>
 
-        <xs:element name="textIter">
+        <xs:element name="iter">
             <xs:complexType>
                 <xs:attribute name="variable" type="text:string" use="required"/>
                 <xs:attribute name="property" type="text:string"/>

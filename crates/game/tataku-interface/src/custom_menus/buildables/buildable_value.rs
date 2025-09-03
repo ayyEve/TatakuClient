@@ -1,8 +1,6 @@
 use crate::prelude::*;
 
-crate::impl_tag!(BuildableValueTag, BuildableValue);
-
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 #[serde(rename_all="camelCase")]
 #[derive(Clone, Debug, Default, PartialEq)]
 pub enum BuildableValue {
@@ -10,21 +8,15 @@ pub enum BuildableValue {
     #[default] None,
 
     /// Literal value (number, string, bool)
-    Value {
-        #[serde(rename = "$value", default)] value: Option<TatakuValue>,
-        #[serde(rename = "@val", default)] value_attribute: Option<TatakuValue>,
-    },
+    #[serde(rename = "$text")]
+    Value(TatakuValue),
 
     /// Get from a variable
-    Variable {
-        #[serde(rename="@var", alias="$value")] var: VariablePathResolver,
-    },
+    #[serde(alias = "var")]
+    Variable(VariablePathResolver),
 
     /// Calculate the value from some calc string
-    Calc {
-        #[serde(rename="@calc", default)] calc: Option<ArcStr>,
-        #[serde(rename="@var", default)] var: Option<VariablePathResolver>,
-    },
+    Calc(ArcStr),
 
     #[serde(skip)]
     CalcParsed {
@@ -36,17 +28,10 @@ pub enum BuildableValue {
     PassedIn,
 }
 impl BuildableValue {
-    pub fn new_value(value: impl Into<TatakuValue>) -> Self {
-        Self::Value {
-            value: Some(value.into()),
-            value_attribute: None
-        }
-    }
-
     /// pre-emptively resolve variables. used when the element's event requires values to be moved
     pub fn resolve_pre(&mut self, values: &dyn Reflect) {
         match self {
-            Self::Variable { var } => {
+            Self::Variable(var) => {
                 let Ok(path) = var.resolve_path(values) else { return };
 
                 let Ok(val) = values.impl_get(ReflectPath::new(&path)) else {
@@ -63,59 +48,20 @@ impl BuildableValue {
                     }
                 };
 
-                *self = Self::Value { value: Some(value), value_attribute: None };
+                *self = Self::Value(value);
             }
-            Self::Calc { 
-                calc, 
-                var,
-            } => {
-                if let Some(path) = var {
-                    let Ok(path) = path
-                        .resolve_path(values)
-                        .inspect_err(|e| 
-                            error!("error with calc var {path}: {e:?}")
-                        )
-                    else {
-                        *self = Self::None;
-                        return
-                    };
-
-                    let Ok(calc_str) = values
-                        .reflect_display(&*path, None)
-                        .inspect_err(|e| 
-                            error!("error with calc var {path}: {e:?}")
-                        )
-                    else {
-                        *self = Self::None;
-                        return
-                    };
-                    let calc_str = ArcStr::from(calc_str);
-
-                    match BuildableCalc::parse(&calc_str) {
-                        Ok(calc) => {
-                            *self = Self::CalcParsed { calc, calc_str }
-                        }
-                        Err(e) => {
-                            error!("Error with calc '{calc_str}': {e:?}");
-                            *self = Self::None;
+            Self::Calc(calc_str) => {
+                match BuildableCalc::parse(&calc_str) {
+                    Ok(calc) => {
+                        *self = Self::CalcParsed {
+                            calc,
+                            calc_str: calc_str.clone()
                         }
                     }
-                } else if let Some(calc_str) = calc {
-                    match BuildableCalc::parse(&calc_str) {
-                        Ok(calc) => {
-                            *self = Self::CalcParsed { 
-                                calc, 
-                                calc_str: calc_str.clone()
-                            }
-                        }
-                        Err(e) => {
-                            error!("Error with calc '{calc_str}': {e:?}");
-                            *self = Self::None;
-                        }
+                    Err(e) => {
+                        error!("Error with calc '{calc_str}': {e:?}");
+                        *self = Self::None;
                     }
-                } else {
-                    error!("No calc!");
-                    *self = Self::None;
                 }
             }
 
@@ -131,11 +77,8 @@ impl BuildableValue {
     ) -> Option<Cow<'b, TatakuValue>> {
         match self {
             Self::None => None,
-            Self::Value { 
-                value, 
-                value_attribute
-            } => Some(Cow::Borrowed(value.as_ref().or(value_attribute.as_ref())?)),
-            Self::Calc { .. } => unreachable!("Calc should be built!"),
+            Self::Value(value) => Some(Cow::Borrowed(value)),
+            Self::Calc(..) => unreachable!("Calc should be built!"),
             Self::CalcParsed { calc, calc_str } => {
                 calc
                     .resolve(values)
@@ -145,7 +88,7 @@ impl BuildableValue {
                     .ok()
             }
 
-            Self::Variable { var } => {
+            Self::Variable(var) => {
                 let path = var.resolve_path(values).ok()?;
 
 
@@ -170,6 +113,139 @@ impl BuildableValue {
 
 }
 
+// impl<'de> serde::Deserialize<'de> for BuildableValue {
+//     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+//     where
+//         D: serde::Deserializer<'de>
+//     {
+//         struct Visitor;
+//         impl<'de> serde::de::Visitor<'de> for Visitor {
+//             type Value = BuildableValue;
+
+//             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+//                 write!(formatter, "literal value, variable path, calc string, or passed in")
+//             }
+
+//             fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E>
+//             where
+//                 E: serde::de::Error,
+//             {
+//                 Ok(BuildableValue::Value(TatakuValue::Bool(v)))
+//             }
+
+//             fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
+//             where
+//                 E: serde::de::Error,
+//             {
+//                 Ok(BuildableValue::Value(TatakuValue::F32(v as f32)))
+//             }
+
+//             fn visit_u32<E>(self, v: u32) -> Result<Self::Value, E>
+//             where
+//                 E: serde::de::Error
+//             {
+//                 Ok(BuildableValue::Value(TatakuValue::U32(v)))
+//             }
+
+//             fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
+//             where
+//                 E: serde::de::Error,
+//             {
+//                 Ok(BuildableValue::Value(TatakuValue::U64(v)))
+//             }
+
+//             fn visit_f32<E>(self, v: f32) -> Result<Self::Value, E>
+//             where
+//                 E: serde::de::Error,
+//             {
+//                 Ok(BuildableValue::Value(TatakuValue::F32(v)))
+//             }
+
+//             fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+//             where
+//                 E: serde::de::Error
+//             {
+//                 Ok(BuildableValue::Value(TatakuValue::String(v)))
+//             }
+
+//             fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+//             where
+//                 E: serde::de::Error,
+//             {
+//                 self.visit_string(v.to_owned())
+//             }
+
+//             fn visit_none<E>(self) -> Result<Self::Value, E>
+//             where
+//                 E: serde::de::Error,
+//             {
+//                 Ok(BuildableValue::None)
+//             }
+
+//             fn visit_unit<E>(self) -> Result<Self::Value, E>
+//             where
+//                 E: serde::de::Error
+//             {
+
+//             }
+
+//             fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+//             where
+//                 A: serde::de::MapAccess<'de>
+//             {
+//                 let key: Option<&str> = map.next_key()?;
+
+//                 let key = match key {
+//                     Some(key) => key,
+//                     None => return Ok(BuildableValue::None),
+//                 };
+
+//                 #[derive(Deserialize)]
+//                 struct GetText<T> {
+//                     #[serde(rename = "$text")]
+//                     text: T
+//                 }
+
+//                 match key {
+//                     "none" => Ok(BuildableValue::None),
+//                     "$text" => {
+//                         let string: String = map.next_value()?;
+
+//                         println!("got {string}");
+
+//                         self.visit_string(string)
+//                     },
+//                     "variable" | "var" => Ok(BuildableValue::Variable {
+//                         var: map.next_value::<GetText<_>>()?.text,
+//                     }),
+//                     "calc" => Ok(BuildableValue::Calc {
+//                         calc: map.next_value::<GetText<_>>()?.text,
+//                     }),
+//                     "passedIn" => Ok(BuildableValue::PassedIn),
+//                     field => Err(serde::de::Error::unknown_field(field, &[
+//                         "none",
+//                         "variable",
+//                         "calc",
+//                         "passedIn",
+//                     ])),
+//                 }
+//             }
+//         }
+
+//         let result = deserializer.deserialize_enum(
+//             "buildableValue",
+//             &[
+//                 ""
+//             ]
+//             Visitor
+//         );
+
+//         println!("{result:?}");
+
+//         result
+//     }
+// }
+
 #[test]
 fn test() {
     use quick_xml::de::from_str;
@@ -188,10 +264,7 @@ fn test() {
         Action {
             action: BuildableAction::SetValue {
                 key: "hi".into(),
-                value: BuildableValue::Value {
-                    value: Some(TatakuValue::String("hi mom".to_string())),
-                    value_attribute: None
-                }
+                value: BuildableValue::Value(TatakuValue::String("hi mom".to_string())),
             }
         }
     );
@@ -207,10 +280,7 @@ fn test() {
         Action {
             action: BuildableAction::SetValue {
                 key: "hi2".into(),
-                value: BuildableValue::Value {
-                    value: Some(TatakuValue::U32(100)),
-                    value_attribute: None
-                }
+                value: BuildableValue::Value(TatakuValue::U32(100)),
             }
         }
     );
@@ -226,9 +296,7 @@ fn test() {
         Action {
             action: BuildableAction::SetValue {
                 key: "hello".into(),
-                value: BuildableValue::Variable {
-                    var: "tacos".to_owned().into()
-                }
+                value: BuildableValue("tacos".to_owned().into()),
             }
         }
     );
@@ -256,9 +324,7 @@ fn test() {
             </action>
         "#).unwrap(), 
         Action {
-            action: BuildableAction::Song {
-                action: BuildableSongAction::Play
-            }
+            action: BuildableAction::Song(BuildableSongAction::Play)
         }
     );
 

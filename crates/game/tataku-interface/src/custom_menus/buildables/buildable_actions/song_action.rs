@@ -18,29 +18,26 @@ pub enum BuildableSongAction {
     Restart,
 
     PushQueue,
-    PopQueue {
-        #[serde(rename="$value", alias="$text", default)] 
-        value: Box<BuildableSongPlayData>,
-    },
+    PopQueue(#[serde(default)] Box<BuildableSongPlayData>),
 
     /// Seek by the specified number of ms
-    Seek { 
-        #[serde(rename="$value", alias="$text", alias="@seek")] 
-        value: BuildableValue,
+    Seek {
+        #[serde(rename="$value")]
+        value: BuildableValue
     },
 
     /// Set the song's position
     #[serde(alias="position")]
-    SetPosition { 
-        #[serde(rename="$value", alias="$text", alias="@position")] 
-        value: BuildableValue,
+    SetPosition {
+        #[serde(rename="$value")]
+        value: BuildableValue
     },
 
     /// Set the song's speed
     #[serde(alias="rate")]
-    SetRate { 
-        #[serde(rename="$value", alias="$text", alias="@rate")] 
-        value: BuildableValue,
+    SetRate {
+        #[serde(rename="$value")]
+        value: BuildableValue
     },
 }
 impl BuildableSongAction {
@@ -55,7 +52,7 @@ impl BuildableSongAction {
             Self::Toggle => Some(SongAction::Toggle),
             Self::Restart => Some(SongAction::Restart),
             Self::PushQueue => Some(SongAction::Set(SongSetAction::PushQueue)),
-            Self::PopQueue { value } 
+            Self::PopQueue(value)
                 => Some(SongAction::Set(SongSetAction::PopQueue(
                     value.resolve(values, passed_in)?,
                 ))),
@@ -95,11 +92,11 @@ impl BuildableSongAction {
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct BuildableSongPlayData {
-    #[serde(alias="@play", default)] pub play: Option<BuildableValueTag>,
-    #[serde(alias="@restart", default)] pub restart: Option<BuildableValueTag>,
-    #[serde(alias="@position", default)] pub position: Option<BuildableValueTag>,
-    #[serde(alias="@volume", default)] pub rate: Option<BuildableValueTag>,
-    #[serde(alias="@rate", default)] pub volume: Option<BuildableValueTag>,
+    #[serde(alias="@play", default)] pub play: BuildableValue,
+    #[serde(alias="@restart", default)] pub restart: BuildableValue,
+    #[serde(alias="@position", default)] pub position: BuildableValue,
+    #[serde(alias="@volume", default)] pub rate: BuildableValue,
+    #[serde(alias="@rate", default)] pub volume: BuildableValue,
 }
 impl BuildableSongPlayData {
     pub fn resolve(
@@ -110,45 +107,30 @@ impl BuildableSongPlayData {
         Some(SongPlayData { 
             play: self
                 .play
-                .as_ref()
-                .and_then(|a| a
-                    .resolve(values, passed_in)
-                    .map(|i| i.as_bool())
-                )
+                .resolve(values, passed_in)
+                .map(|i| i.as_bool())
                 .unwrap_or_default(),
 
             restart: self
                 .restart
-                .as_ref()
-                .and_then(|a| a
-                    .resolve(values, passed_in)
-                    .map(|i| i.as_bool())
-                )
+                .resolve(values, passed_in)
+                .map(|i| i.as_bool())
                 .unwrap_or_default(),
 
             position: self
                 .position
-                .as_ref()
-                .and_then(|a| a
-                    .resolve(values, passed_in)
-                    .and_then(|i| i.as_f32())
-                ), 
+                .resolve(values, passed_in)
+                .and_then(|i| i.as_f32()),
 
             rate: self
                 .rate
-                .as_ref()
-                .and_then(|a| a
-                    .resolve(values, passed_in)
-                    .and_then(|i| i.as_f32())
-                ), 
+                .resolve(values, passed_in)
+                .and_then(|i| i.as_f32()),
 
             volume: self
                 .volume
-                .as_ref()
-                .and_then(|a| a
-                    .resolve(values, passed_in)
-                    .and_then(|i| i.as_f32())
-                ), 
+                .resolve(values, passed_in)
+                .and_then(|i| i.as_f32()),
         })
     }
 }

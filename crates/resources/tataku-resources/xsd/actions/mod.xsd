@@ -11,11 +11,11 @@
 
 <xs:group name="mod-action">
   <xs:choice>
-      <xs:element name="addMod" type="buildable-value:buildableValueElement" minOccurs="1"/>
-      <xs:element name="removeMod" type="buildable-value:buildableValueElement" minOccurs="1"/>
-      <xs:element name="toggleMod" type="buildable-value:buildableValueElement" minOccurs="1"/>
-      <xs:element name="setSpeed" type="buildable-value:buildableValueElement" minOccurs="1"/>
-      <xs:element name="addSpeed" type="buildable-value:buildableValueElement" minOccurs="1"/>
+      <xs:element name="addMod" type="buildable-value:buildableValue" minOccurs="1"/>
+      <xs:element name="removeMod" type="buildable-value:buildableValue" minOccurs="1"/>
+      <xs:element name="toggleMod" type="buildable-value:buildableValue" minOccurs="1"/>
+      <xs:element name="setSpeed" type="buildable-value:buildableValue" minOccurs="1"/>
+      <xs:element name="addSpeed" type="buildable-value:buildableValue" minOccurs="1"/>
   </xs:choice>
 </xs:group>
 

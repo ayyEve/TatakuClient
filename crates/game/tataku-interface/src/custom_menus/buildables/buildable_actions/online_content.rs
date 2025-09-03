@@ -9,13 +9,13 @@ pub enum BuildableOnlineContentAction {
     #[serde(rename_all="camelCase")]
     Search {
         /// What "engine" to use to search
-        engine_id: BuildableValueTag,
+        engine_id: BuildableValue,
 
         /// What type of search to perform
-        search_type: BuildableValueTag,
+        search_type: BuildableValue,
         
         /// What page of results are we on?
-        page: BuildableValueTag,
+        page: BuildableValue,
 
         /// What search-specific settings were provided
         #[serde(alias="values", default)]
@@ -29,57 +29,38 @@ pub enum BuildableOnlineContentAction {
 
         /// What query
         #[serde(default)]
-        query: Option<BuildableValueTag>,
+        query: BuildableValue,
     },
 
     NextPage,
     PreviousPage,
     
     SetPage {
-        #[serde(rename="@page")]
-        #[serde(default)]
-        page_property: Option<usize>,
-
-        #[serde(rename="$value")]
-        #[serde(default)]
-        page_tag: Option<BuildableValue>,
+        #[serde(rename="$value", default)]
+        page: BuildableValue,
     },
 
     #[serde(alias="download")]
     StartDownload {
-        #[serde(rename="@index")]
-        #[serde(default)]
-        index_property: Option<usize>,
-
-        #[serde(rename="$value")]
-        index_tag: Option<BuildableValue>,
+        #[serde(rename="$value", default)]
+        index: BuildableValue,
     },
 
     AudioPreview {
-        #[serde(rename="@index")]
-        #[serde(default)]
-        index_property: Option<usize>,
-
-        #[serde(rename="$value")]
-        index_tag: Option<BuildableValue>,
+        #[serde(rename="$value", default)]
+        index: BuildableValue,
     },
 }
 impl BuildableOnlineContentAction {
-
     fn index(
-        index_property: Option<usize>,
-        index_tag: Option<BuildableValue>,
+        index: BuildableValue,
 
         values: &dyn Reflect,
         passed_in: Option<&TatakuValue>,
     ) -> Option<usize> {
-        index_tag
-            .and_then(|i| 
-                i.resolve(values, passed_in)
-                .and_then(|i| i.as_u64())
-            )
+        index.resolve(values, passed_in)
+            .and_then(|i| i.as_u64())
             .map(|i| i as usize)
-            .or(index_property)
     }
 
     pub fn into_action(
@@ -91,32 +72,20 @@ impl BuildableOnlineContentAction {
             Self::NextPage => Some(OnlineContentAction::NextPage),
             Self::PreviousPage => Some(OnlineContentAction::PreviousPage),
 
-            Self::SetPage { 
-                page_property, 
-                page_tag 
-            } => Some(OnlineContentAction::SetPage(Self::index(
-                page_property, 
-                page_tag, 
+            Self::SetPage { page } => Some(OnlineContentAction::SetPage(Self::index(
+                page,
                 values, 
                 passed_in
             )?)),
 
-            Self::AudioPreview { 
-                index_property, 
-                index_tag 
-            } => Some(OnlineContentAction::AudioPreview(Self::index(
-                index_property, 
-                index_tag, 
+            Self::AudioPreview { index } => Some(OnlineContentAction::AudioPreview(Self::index(
+                index,
                 values, 
                 passed_in
             )?)),
             
-            Self::StartDownload { 
-                index_property, 
-                index_tag 
-            } => Some(OnlineContentAction::Download(Self::index(
-                index_property, 
-                index_tag, 
+            Self::StartDownload { index } => Some(OnlineContentAction::Download(Self::index(
+                index,
                 values, 
                 passed_in
             )?)),
@@ -149,8 +118,8 @@ impl BuildableOnlineContentAction {
 #[serde(rename_all="camelCase")]
 #[derive(Clone, Debug, PartialEq)]
 pub struct BuildableSearchValue {
-    pub id: BuildableValueTag,
-    pub value: BuildableValueTag,
+    pub id: BuildableValue,
+    pub value: BuildableValue,
 }
 impl BuildableSearchValue {
     pub fn resolve(
@@ -168,13 +137,13 @@ impl BuildableSearchValue {
 
 struct BuildableOnlineContentSearch {
     /// What "engine" to use to search
-    engine_id: BuildableValueTag,
+    engine_id: BuildableValue,
 
     /// What type of search to perform
-    search_type: BuildableValueTag,
+    search_type: BuildableValue,
     
     /// What page of results are we on?
-    page: BuildableValueTag,
+    page: BuildableValue,
 
     /// What search-specific settings were provided
     search_values: Option<Vec<BuildableSearchValue>>,
@@ -182,7 +151,7 @@ struct BuildableOnlineContentSearch {
     search_values_key_value_path: Option<VariablePathResolver>,
 
     /// What query
-    query: Option<BuildableValueTag>,
+    query: BuildableValue,
 }
 impl BuildableOnlineContentSearch {
     fn get_value(
@@ -344,10 +313,8 @@ impl BuildableOnlineContentSearch {
                 // .collect(),
                 
             query: self.query
-                .and_then(|i| i
-                    .resolve(values, passed_in)
-                    .map(|i| i.as_string())
-                )
+                .resolve(values, passed_in)
+                .map(|i| i.as_string())
         })
     }
 }
@@ -386,5 +353,3 @@ impl<'a> Engines<'a> {
         Some(engine)
     }
 }
-
-

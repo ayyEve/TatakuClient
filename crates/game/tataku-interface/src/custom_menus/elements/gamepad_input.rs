@@ -9,8 +9,8 @@ pub struct GamepadButtonElement {
     #[serde(rename = "@style", default)] style: ArcStr,
 
     #[serde(rename = "@optional", default)] optional: bool,
-    #[serde(rename = "@variable")] variable: VariablePathResolver,
-    #[serde(default)] on_input: Option<BuildableActionTag>,
+    #[serde(rename = "@var")] var: VariablePathResolver,
+    #[serde(default)] on_input: BuildableAction,
 }
 impl CustomElement for GamepadButtonElement {
     fn build(&self) -> Box<dyn Widget<TatakuAction>> {
@@ -19,11 +19,9 @@ impl CustomElement for GamepadButtonElement {
             "gamepadButton",
             self.id.clone(),
             self.class_list.clone(),
-            GamepadButtonInput::new(
-               self.variable.clone(),
-            )
+            GamepadButtonInput::new(self.var.clone())
             .optional(self.optional)
-            .on_change_maybe(self.on_input.as_deref().cloned())
+            .on_change(self.on_input.clone())
             .boxed()
         )
     }

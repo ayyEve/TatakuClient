@@ -17,9 +17,9 @@
     <xs:element name="restart"/>
     <xs:element name="pushQueue"/>
     <xs:element name="popQueue"/>
-    <xs:element name="seek" type="buildable-value:buildableValueElement"/>
-    <xs:element name="position" type="buildable-value:buildableValueElement"/>
-    <xs:element name="rate" type="buildable-value:buildableValueElement"/>
+    <xs:element name="seek" type="buildable-value:buildableValue"/>
+    <xs:element name="position" type="buildable-value:buildableValue"/>
+    <xs:element name="rate" type="buildable-value:buildableValue"/>
   </xs:choice>
 </xs:group>
 

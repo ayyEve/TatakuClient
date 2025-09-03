@@ -3,6 +3,7 @@ use crate::prelude::*;
 #[derive(ChainableInitializer)]
 pub struct TextWidget {
     text: WidgetText,
+
     node_id: NodeId,
 
     layout: parley::Layout<Color>,
@@ -155,7 +156,7 @@ impl Widget<TatakuAction> for TextWidget {
 pub enum WidgetText {
     String(CowStr),
     Custom {
-        custom: BuildableText,
+        custom: Vec<BuildableText>,
         cached: String,
     },
 }
@@ -179,12 +180,51 @@ impl WidgetText {
         values: &dyn Reflect
     ) -> bool {
         let Self::Custom { custom, cached } = self else { return false };
-        let new = custom.to_string(values);
+        let new = custom.iter()
+            .map(|text| text.to_string(values))
+            .collect();
+
         if *cached != new {
             *cached = new;
             true
         } else {
             false
+        }
+    }
+
+    pub fn from_buildable_iter(iter: impl IntoIterator<Item = BuildableText>) -> Self {
+        let values = iter.into_iter()
+            .map(|mut text| {
+                if let Err(e) = text.compute() {
+                    error!("error parsing CustomElementText: {e:?}");
+
+                    let BuildableText::Calc { calc } = text else { unreachable!() } ;
+
+                    BuildableText::Text(format!("[Invalid calc {calc}]").into())
+                } else {
+                    text
+                }
+            })
+            .collect::<Vec<_>>();
+
+        // todo: if this is only called from TextElement (parsed from xml)
+        // this will only ever have one text element.
+        let combined_string = values.iter()
+            .try_fold(
+                String::new(),
+                |acc, text| match text {
+                    BuildableText::Text(text) => Some(acc + text),
+                    _ => None,
+                }
+            );
+
+        if let Some(string) = combined_string {
+            Self::String(string.into())
+        } else {
+            Self::Custom {
+                custom: values,
+                cached: String::new(),
+            }
         }
     }
 }
@@ -199,17 +239,7 @@ impl From<String> for WidgetText {
     }
 }
 impl From<BuildableText> for WidgetText {
-    fn from(mut value: BuildableText) -> Self {
-        if let Err(e) = value.compute() {
-            error!("error parsing CustomElementText: {e:?}");
-        }
-
-        match value {
-            BuildableText::Text { text } => Self::String(text.to_string().into()),
-            custom => Self::Custom {
-                custom,
-                cached: String::new()
-            }
-        }
+    fn from(value: BuildableText) -> Self {
+        Self::from_buildable_iter([value].into_iter())
     }
 }

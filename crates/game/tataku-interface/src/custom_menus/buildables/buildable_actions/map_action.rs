@@ -16,7 +16,7 @@ pub enum BuildableMapAction {
 
     /// Change to the previous map
     Previous {
-        #[serde(rename="$value", alias="$text", default)] 
+        #[serde(rename="$value", default)]
         action: MapActionIfNone,
     },
 
@@ -28,19 +28,19 @@ pub enum BuildableMapAction {
 
     /// Select a specific set by group id
     SelectGroup { 
-        #[serde(rename="$value", alias="$text")] 
+        #[serde(rename="$value")]
         value: BuildableValue,
     },
 
     /// Select a specific map by hash
     SelectMap { 
-        #[serde(rename="$value", alias="$text")] 
+        #[serde(rename="$value")]
         value: BuildableValue,
     },
 
     /// Set the current playmode
     SetPlaymode { 
-        #[serde(rename="$value", alias="$text")] 
+        #[serde(rename="$value")]
         value: BuildableValue,
     },
 
@@ -52,7 +52,7 @@ pub enum BuildableMapAction {
 
     /// Delete the provided map hash
     Delete {
-        #[serde(rename="$value", alias="$text")] 
+        #[serde(rename="$value")]
         value: BuildableValue,
     },
 

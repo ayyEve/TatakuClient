@@ -4,7 +4,7 @@ use crate::prelude::*;
 #[derive(Clone, Debug)]
 pub struct CustomMenu {
     #[serde(rename = "@id")] pub id: ArcStr,
-    pub element: ElementTag,
+    #[serde(rename="$value")] pub element: Element,
     
     #[serde(default)] pub style: Option<ArcStr>,
     #[serde(default)] pub events: BuildableEventsTag, 

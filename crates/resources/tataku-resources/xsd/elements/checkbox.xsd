@@ -17,13 +17,9 @@
   <xs:complexContent>
     <xs:extension base="elements:generic">
       <xs:all>
-        <xs:element name="text" minOccurs="0">
-          <xs:complexType>
-            <xs:group ref="text:text"/>
-          </xs:complexType>
-        </xs:element>
+        <xs:element name="text" minOccurs="0" type="text:text"/>
 
-        <xs:element name="value" minOccurs="0" type="xs:string"/>
+        <xs:element name="value" minOccurs="0" type="text:string"/>
 
         <xs:element name="onClick" minOccurs="0">
           <xs:complexType>
@@ -32,8 +28,8 @@
         </xs:element>
 
       </xs:all>
-      <xs:attribute name="text" type="xs:string"/>
-      <xs:attribute name="value" type="xs:string"/>
+      <xs:attribute name="text" type="text:string"/>
+      <xs:attribute name="value" type="text:string"/>
     </xs:extension>
   </xs:complexContent>
 </xs:complexType>

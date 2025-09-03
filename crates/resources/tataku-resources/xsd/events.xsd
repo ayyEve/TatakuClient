@@ -38,16 +38,10 @@
         </xs:complexType>
       </xs:element>
 
-
-      <xs:element name="custom">
+      <xs:element name="custom" type="text:text">
         <xs:annotation>
           <xs:documentation>A custom event</xs:documentation>
-          <xs:documentation>@event is the event id</xs:documentation>
         </xs:annotation>
-        <xs:complexType>
-          <xs:group ref="text:text" minOccurs="0" />
-          <xs:attribute name="event" type="xs:string" />
-        </xs:complexType>
       </xs:element>
 
   </xs:choice>

@@ -59,107 +59,29 @@
       </xs:element>
 
       <!-- setMenu -->
-      <xs:choice>
-        <!-- value only -->
-        <xs:element name="setMenu">
-          <xs:annotation>
-            <xs:documentation>Set the current menu to the provided ID</xs:documentation>
-            <xs:documentation>Note!: Only one of @id or #content should be provided</xs:documentation>
-          </xs:annotation>
-          <xs:complexType>
-            <xs:group ref="buildable-value:buildableValue" minOccurs="0">
-              <xs:annotation>
-                <xs:documentation>The menu ID</xs:documentation>
-              </xs:annotation>
-            </xs:group>
-            <xs:attribute name="id" type="xs:string">
-              <xs:annotation>
-                <xs:documentation>The menu ID</xs:documentation>
-              </xs:annotation>
-            </xs:attribute>
-          </xs:complexType>
-        </xs:element>
-
-        <!-- manually specified -->
-        <xs:element name="setMenu">
-          <xs:annotation>
-            <xs:documentation>Set the current menu to the provided ID</xs:documentation>
-          </xs:annotation>
-          <xs:complexType>
-            <xs:all>
-              <xs:element name="id" type="buildable-value:buildableValueElement" minOccurs="1">
-                <xs:annotation>
-                  <xs:documentation>The menu ID</xs:documentation>
-                </xs:annotation>
-              </xs:element>
-              <xs:element name="inputs" minOccurs="0">
-                <xs:annotation>
-                  <xs:documentation>Input variables to pass to the menu</xs:documentation>
-                </xs:annotation>
-                <xs:complexType>
-                  <xs:sequence>
-                    <xs:element name="variable" type="actions:buildable-inputs" minOccurs="1" maxOccurs="unbounded"/>
-                  </xs:sequence>
-                </xs:complexType>
-              </xs:element>
-            </xs:all>
-          </xs:complexType>
-        </xs:element>
-      </xs:choice>
+      <xs:element name="setMenu" type="buildable-value:buildableValue">
+        <xs:annotation>
+          <xs:documentation>Set the current menu to the provided ID</xs:documentation>
+        </xs:annotation>
+      </xs:element>
 
       <!-- addDialog -->
-      <xs:choice>
-        <!-- value only -->
-        <xs:element name="addDialog">
-          <xs:complexType>
-            <xs:group ref="buildable-value:buildableValue" minOccurs="0"/>
-            <xs:attribute name="id" type="xs:string"/>
-            <xs:attribute name="allow_duplicates" type="xs:boolean"/>
-          </xs:complexType>
+      <xs:element name="addDialog" type="buildable-value:buildableValue"/>
 
-          <xs:key name="dialog_id">
-            <xs:selector xpath="."/>
-            <xs:field xpath="@id|*"/>
-          </xs:key>
-        </xs:element>
-
-        <!-- manually specified -->
-        <xs:element name="addDialog">
-          <xs:complexType>
-            <xs:all>
-              <xs:element name="id" type="buildable-value:buildableValueElement"/>
-              <xs:element name="inputs" minOccurs="0">
-                <xs:complexType>
-                  <xs:sequence>
-                    <xs:element name="variable" type="actions:buildable-inputs" minOccurs="1" maxOccurs="unbounded"/>
-                  </xs:sequence>
-                </xs:complexType>
-              </xs:element>
-            </xs:all>
-            <xs:attribute name="allow_duplicates" type="xs:boolean"/>
-          </xs:complexType>
-        </xs:element>
-      </xs:choice>
-
-      
-      <xs:element name="custom">
-        <xs:complexType>
-          <xs:group ref="text:text" minOccurs="0" />
-          <xs:attribute name="event" type="xs:string" />
-        </xs:complexType>
-      </xs:element>
-      
+      <xs:element name="custom" type="buildable-value:buildableValue"/>
 
       <xs:element name="closeDialog"/>
 
       <xs:element name="setValue">
-        <xs:complexType>
-          <xs:group ref="buildable-value:buildableValue" minOccurs="1"/>
-          <xs:attribute name="key" type="xs:string" use="required"/>
+        <xs:complexType mixed="true">
+          <xs:sequence>
+            <xs:group ref="buildable-value:buildableValue-wrapped" minOccurs="0"/>
+          </xs:sequence>
+          <xs:attribute name="key" type="text:string" use="required"/>
         </xs:complexType>
       </xs:element>
 
-      <xs:element name="map"> 
+      <xs:element name="map">
         <xs:complexType>
           <xs:group ref="map-actions:map-action"/>
         </xs:complexType>
@@ -187,7 +109,7 @@
           <xs:group ref="song-actions:song-action"/>
         </xs:complexType>
       </xs:element>
-      
+
       <xs:element name="multiplayer">
         <xs:complexType>
           <xs:group ref="multiplayer-actions:multiplayer-action"/>
@@ -229,10 +151,21 @@
 
       <xs:element name="conditional">
         <xs:complexType>
-          <xs:choice minOccurs="1">
-            <xs:group ref="actions:action-cond-specified"/>
-            <xs:group ref="actions:action-type"/>
-          </xs:choice>
+          <xs:sequence>
+            <xs:choice>
+              <xs:group ref="actions:action-type"/>
+              <xs:element name="true">
+                <xs:complexType>
+                  <xs:group ref="actions:action-type"/>
+                </xs:complexType>
+              </xs:element>
+            </xs:choice>
+            <xs:element name="false" minOccurs="0">
+              <xs:complexType>
+                <xs:group ref="actions:action-type"/>
+              </xs:complexType>
+            </xs:element>
+          </xs:sequence>
           <xs:attribute name="cond" type="common:condition" use="required"/>
         </xs:complexType>
       </xs:element>
@@ -242,34 +175,16 @@
             <xs:group ref="actions:action-type" minOccurs="1" maxOccurs="unbounded"/>
         </xs:complexType>
       </xs:element>
-      
+
   </xs:choice>
 </xs:group>
 
 <xs:complexType name="buildable-inputs">
   <xs:choice>
-    <xs:group ref="buildable-value:buildableValue" />
-    <xs:element name="value" type="buildable-value:buildableValueElement" />
+    <!-- <xs:group ref="buildable-value:buildableValue" /> -->
+    <xs:element name="value" type="buildable-value:buildableValue" />
   </xs:choice>
-  <xs:attribute name="name" type="xs:string" use="required"/>
+  <xs:attribute name="name" type="text:string" use="required"/>
 </xs:complexType>
-
-
-<xs:group name="action-cond-specified">
-  <xs:sequence>
-    <xs:element name="true" minOccurs="1" maxOccurs="1">
-      <xs:complexType>
-        <xs:group ref="actions:action-type"/>
-      </xs:complexType>
-    </xs:element>
-
-    <xs:element name="false" minOccurs="0" maxOccurs="1">
-      <xs:complexType>
-        <xs:group ref="actions:action-type"/>
-      </xs:complexType>
-    </xs:element>
-  </xs:sequence>
-</xs:group>
-
 
 </xs:schema>

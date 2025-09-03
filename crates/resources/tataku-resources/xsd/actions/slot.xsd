@@ -12,7 +12,7 @@
 
 <xs:group name="slot-action">
   <xs:sequence>
-    <xs:element name="slot" type="buildable-value:buildableValueElement"/>
+    <xs:element name="slot" type="buildable-value:buildableValue"/>
     <xs:choice>
       <xs:group ref="slot-actions:slot-action-type"/>
       <xs:element name="action">

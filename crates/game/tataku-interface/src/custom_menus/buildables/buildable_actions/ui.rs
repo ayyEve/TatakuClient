@@ -6,8 +6,8 @@ use crate::prelude::*;
 #[derive(Clone, Debug, PartialEq)]
 pub enum BuildableUiAction {
     Operate {
-        target: BuildableUiOperationTargetTag,
-        operation: BuildableUiOperationTypeTag,
+        target: BuildableUiOperationTarget,
+        operation: BuildableUiOperationType,
     },
 }
 impl BuildableUiAction {
@@ -63,26 +63,17 @@ pub enum BuildableUiOperationTarget {
     Parent,
 
     Id { 
-        #[serde(rename="@id", default)] attribute: Option<ArcStr>,
-        #[serde(rename="$value", default)] tag: Option<BuildableTextTag>,
+        #[serde(rename="$value", alias="$text", default)] id: BuildableValue,
     },
     Class {
-        #[serde(rename="@class", default)] attribute: Option<ArcStr>,
-        #[serde(rename="$value", default)] tag: Option<BuildableTextTag>,
+        #[serde(rename="$value", alias="$text", default)] class: BuildableValue,
     },
 }
 impl BuildableUiOperationTarget {
-    pub fn build(&mut self, _values: &dyn Reflect) -> ShuntingYardResult<()> {
+    pub fn build(&mut self, values: &dyn Reflect) -> ShuntingYardResult<()> {
         match self {
-            Self::Class { 
-                tag: Some(tag), 
-                .. 
-            } => tag.compute()?,
-
-            Self::Id { 
-                tag: Some(tag), 
-                .. 
-            } => tag.compute()?,
+            Self::Class { class } => class.resolve_pre(values),
+            Self::Id { id } => id.resolve_pre(values),
 
             _ => {}
         }
@@ -98,36 +89,16 @@ impl BuildableUiOperationTarget {
             Self::Node => Some(UiOperationTarget::Node(node)),
             Self::Parent => Some(UiOperationTarget::Parent(node)),
             
-            Self::Id { 
-                attribute, 
-                tag 
-            } => {
-                Some(UiOperationTarget::ElementId(
-                    text_from_attr_or_tag(
-                        attribute.as_ref(), 
-                        tag.as_deref(), 
-                        values
-                    )?.into()
-                ))
+            Self::Id { id } => {
+                Some(UiOperationTarget::ElementId(id.resolve(values, None)?.as_string().into()))
             }
 
-            Self::Class { 
-                attribute, 
-                tag 
-            } => {
-                Some(UiOperationTarget::ElementClass(
-                    text_from_attr_or_tag(
-                        attribute.as_ref(), 
-                        tag.as_deref(), 
-                        values
-                    )?.into()
-                ))
+            Self::Class { class } => {
+                Some(UiOperationTarget::ElementClass(class.resolve(values, None)?.as_string().into()))
             }
         }
     }
 }
-crate::impl_tag!(BuildableUiOperationTargetTag, BuildableUiOperationTarget);
-
 
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
@@ -179,21 +150,6 @@ impl BuildableUiOperationType {
         }
     }
 }
-crate::impl_tag!(BuildableUiOperationTypeTag, BuildableUiOperationType);
-
-fn text_from_attr_or_tag(
-    attr: Option<&ArcStr>,
-    tag: Option<&BuildableText>,
-    values: &dyn Reflect,
-) -> Option<String> {
-    match (attr, tag) {
-        (Some(_), Some(_)) => panic!("both attribute and tag specified!"),
-        (Some(a), _) => Some(a.to_string()),
-        (_, Some(a)) => Some(a.to_string(values)),
-        _ => None
-    }
-}
-
 
 pub use scroll::*;
 pub use state::*;
@@ -225,7 +181,6 @@ mod scroll {
             self.scroll_to.build(values);
         }
     }
-    crate::impl_tag!(BuildableScrollOperationTag, BuildableScrollOperation);
 
     #[derive(Deserialize)]
     #[serde(rename_all="camelCase")]
@@ -243,26 +198,25 @@ mod scroll {
 
         /// scroll to the item with this id
         Id {
-            #[serde(rename="@id", default)] attr: Option<ArcStr>,
-            #[serde(rename="$value", default)] tag: Option<BuildableText>,
+            #[serde(rename="$value", default)] id: BuildableText,
         },
 
         Absolute {
-            x: BuildableValueTag,
-            y: BuildableValueTag,
+            x: BuildableValue,
+            y: BuildableValue,
         },
         Relative {
-            x: BuildableValueTag,
-            y: BuildableValueTag,
+            x: BuildableValue,
+            y: BuildableValue,
         },
 
         AbsolutePercent {
-            x: BuildableValueTag,
-            y: BuildableValueTag,
+            x: BuildableValue,
+            y: BuildableValue,
         },
         RelativePercent {
-            x: BuildableValueTag,
-            y: BuildableValueTag,
+            x: BuildableValue,
+            y: BuildableValue,
         },
     }
     impl BuildableScrollOperationType {
@@ -287,17 +241,8 @@ mod scroll {
                 } => Some(ScrollType::ScrollToActive {
                     include_children: *include_children,
                 }),
-                Self::Id { 
-                    attr,
-                    tag 
-                } => {
-                    let id = text_from_attr_or_tag(
-                        attr.as_ref(), 
-                        tag.as_ref(), 
-                        values
-                    )?;
-
-                    Some(ScrollType::ScrollToId(id.into()))
+                Self::Id { id } => {
+                    Some(ScrollType::ScrollToId(id.to_string(values).into()))
                 }
 
                 Self::Absolute { x, y } => {
@@ -318,11 +263,8 @@ mod scroll {
         
         pub fn build(&mut self, values: &dyn Reflect) {
             match self {
-                Self::Id { 
-                    tag: Some(tag), 
-                    .. 
-                } => { 
-                    if let Err(e) = tag.compute() {
+                Self::Id { id } => {
+                    if let Err(e) = id.compute() {
                         error!("error building id: {e:?}");
                     }
                 },
@@ -340,8 +282,6 @@ mod scroll {
             }
         }
     }
-
-    crate::impl_tag!(BuildableScrollOperationTypeTag, BuildableScrollOperationType);
 }
 
 mod state {
@@ -387,7 +327,6 @@ mod state {
             }
         }
     }
-    crate::impl_tag!(BuildableStateOperationTag, BuildableStateOperation);
     
     #[derive(Deserialize)]
     #[serde(rename_all="camelCase")]
@@ -444,8 +383,7 @@ mod tests {
             BuildableActionTag::new(BuildableAction::Ui {
                 action: BuildableUiAction::Operate { 
                     target: BuildableUiOperationTarget::Id { 
-                        attribute: Some("target_id".into()), 
-                        tag: None,
+                        id: "target_id".into(),
                     }.into(),
                     operation: BuildableUiOperationType::Scroll { 
                         scroll: BuildableScrollOperation { 
@@ -487,8 +425,7 @@ mod tests {
             BuildableActionTag::new(BuildableAction::Ui {
                 action: BuildableUiAction::Operate { 
                     target: BuildableUiOperationTarget::Id { 
-                        attribute: Some("group-list".into()), 
-                        tag: None,
+                        id: "group-list".into(),
                     }.into(),
                     operation: BuildableUiOperationType::Scroll { 
                         scroll: BuildableScrollOperation { 

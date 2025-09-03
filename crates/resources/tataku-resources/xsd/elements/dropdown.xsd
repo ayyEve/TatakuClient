@@ -23,11 +23,7 @@
           </xs:complexType>
         </xs:element>
 
-        <xs:element name="placeholder" minOccurs="0">
-          <xs:complexType>
-            <xs:group ref="text:text" />
-          </xs:complexType>
-        </xs:element>
+        <xs:element name="placeholder" minOccurs="0" type="text:text"/>
       </xs:all>
 
       <xs:attribute name="options_path" type="text:string" use="required"/>

@@ -45,17 +45,8 @@
             <songStart/>
             <actions>
                 <game>
-                    <notification>
-                        <color>teal</color> 
-                        <duration><value>10000</value></duration>
-                        <text>
-                            <list join=" ">
-                                <text text="Now playing: "/>
-                                <variable var="beatmaps.beatmaps[beatmaps.current].title"/>
-                                <text text=" by "/>
-                                <variable var="beatmaps.beatmaps[beatmaps.current].artist"/>
-                            </list>
-                        </text>
+                    <notification color="teal" duration="10000">
+                        Now playing: <variable>beatmaps.beatmaps[beatmaps.current].title</variable> by <variable>beatmaps.beatmaps[beatmaps.current].artist</variable>
                     </notification>
                 </game>
             </actions>
@@ -77,189 +68,158 @@
     </events>
 
     <!-- the current main menu is broken up into rows -->
-    <element>
-        <column id="pain" style = "width: fill; height: fill">
-            <!-- the first row contains the song display -->
-            <row id = "song-display">
-                <text style = "font-size: 30px; text-color: #FFFF;">
-                    <list join=" - ">
-                        <variable var="beatmaps.beatmaps[beatmaps.current].artist"/>
-                        <variable var="beatmaps.beatmaps[beatmaps.current].title"/>
-                    </list>
-                </text>
-            </row> 
+    <column id="pain" style = "width: fill; height: fill">
+        <!-- the first row contains the song display -->
+        <row id = "song-display">
+            <text style = "font-size: 30px; text-color: #FFFF;">
+                <variable>beatmaps.beatmaps[beatmaps.current].artist</variable> - <variable>beatmaps.beatmaps[beatmaps.current].title</variable>
+            </text>
+        </row>
 
-            <!-- the next row is the preview and menu buttons -->
-            <row id = "main_menu_row2" style = "width: fill; height: fill;">
-                <gameplayPreview 
-                    visualization = "menu_visualization" 
-                    blur="25.0" 
-                    blur_type="gaussian" 
-                    style = "width: 80%; height: fill;"
-                />
+        <!-- the next row is the preview and menu buttons -->
+        <row id = "main_menu_row2" style = "width: fill; height: fill;">
+            <gameplayPreview
+                visualization = "menu_visualization"
+                blur="25.0"
+                blur_type="gaussian"
+                style = "width: 80%; height: fill;"
+            />
 
-                <animatable id = "animatable" style = "width: 20%; height: fill;">
-                    <!-- TODO: fix animations!! -->
-                    <!-- <triggers>
-                        <trigger action="unhide"> <input/> </trigger>
-                        <trigger action="hide"> <noInput duration = "5000" /> </trigger>
-                    </triggers>
-                    <actions>
-                        <action id="hide">
-                            <action duration = "1000.0" >
-                                <scaleX start="0.0" end="1.0" />
-                            </action>
+            <animatable id = "animatable" style = "width: 20%; height: fill;">
+                <!-- TODO: fix animations!! -->
+                <!-- <triggers>
+                    <trigger action="unhide"> <input/> </trigger>
+                    <trigger action="hide"> <noInput duration = "5000" /> </trigger>
+                </triggers>
+                <actions>
+                    <action id="hide">
+                        <action duration = "1000.0" >
+                            <scaleX start="0.0" end="1.0" />
                         </action>
-                        <action id="unhide">
-                            <action duration = "1000.0">
-                                <scaleX start="1.0" end="0.0"/>
-                            </action>
+                    </action>
+                    <action id="unhide">
+                        <action duration = "1000.0">
+                            <scaleX start="1.0" end="0.0"/>
                         </action>
-                    </actions> -->
+                    </action>
+                </actions> -->
 
-                    <element>
-                        <column 
-                            id = "main_menu_buttons_list" 
-                            style = "width: fill; height: fill;"
-                        >
-                            <!-- Singleplayer --> 
-                            <button> 
-                                <action>
-                                    <setMenu id="beatmap_select"/>
-                                </action> 
-                                <element>
-                                    <text><text text="Play"/></text>
-                                </element>
-                            </button>
+                <column
+                    id = "main_menu_buttons_list"
+                    style = "width: fill; height: fill;"
+                >
+                    <!-- Singleplayer -->
+                    <button>
+                        <action>
+                            <setMenu>beatmap_select</setMenu>
+                        </action>
 
-                            <!-- Multiplayer --> 
-                            <button> 
-                                <action>
-                                    <conditional cond="online.logged_in">
-                                        <true>
-                                            <multiplayer><start/></multiplayer> 
-                                        </true>
-                                        <false>
-                                            <game>
-                                                <notification color="RED">
-                                                    <duration> 
-                                                        <value>5000</value>
-                                                    </duration>
-                                                    <text>
-                                                        <text text="You must be online to play multiplayer!"/>
-                                                    </text>
-                                                </notification>
-                                            </game>
-                                        </false>
-                                    </conditional>
-                                </action>
-                                <element>
-                                    <text>
-                                        <text text="Multiplayer"/>
-                                    </text>
-                                </element>
-                            </button>
-
-                            <!-- Online Content --> 
-                            <button> 
-                                <action>
-                                    <setMenu>
-                                        <value>online_content</value>
-                                    </setMenu>
-                                </action>
-                                <element>
-                                    <text>
-                                        <text text="Online Content"/>
-                                    </text>
-                                </element>
-                            </button>
-
-                            <!-- Settings --> 
-                            <button> 
-                                <action>
-                                    <addDialog id="settings"/>
-                                </action>
-                                <element>
-                                    <text><text text="Settings"/></text>
-                                </element>
-                            </button>
-
-                            <!-- Quit --> 
-                            <button> 
-                                <action>
-                                    <game><quit/></game>
-                                </action>
-                                <element>
-                                    <text><text text="Quit"/></text>
-                                </element>
-                            </button>
-                        </column>
-                    </element>
-                </animatable>
-            </row>
-
-            <!-- the next row is the media controls -->
-            <row id = "media-controls" style = "width: fill; height: auto;">
-                <!-- an inner row so the buttons arent spread out over the whole width -->
-                <row id = "song-controls" style = "width: 30%; height: fill; align-content: space-evenly;">
-                    <!-- previous song -->
-                    <button class = "fa-button">
-                        <action> <map><previous/></map> </action>
-                        <element>
-                            <text><text text="&#xF04A;"/></text>
-                        </element>
+                        <text>Play</text>
                     </button>
 
-                    <!-- seek backwards -->
-                    <button class = "fa-button">
-                        <action> <song><seek><value>-500.0</value></seek></song> </action>
-                        <element>
-                            <text><text text="&#xF048;"/></text>
-                        </element>
+                    <!-- Multiplayer -->
+                    <button>
+                        <action>
+                            <conditional cond="online.logged_in">
+                                <multiplayer><start/></multiplayer>
+
+                                <false>
+                                    <game>
+                                        <notification color="RED" duration="5000">
+                                            You must be online to play multiplayer!
+                                        </notification>
+                                    </game>
+                                </false>
+                            </conditional>
+                        </action>
+
+                        <text>Multiplayer</text>
                     </button>
 
-                    <!-- play/pause button -->
-                    <conditional cond = "song.playing">
-                        <!-- pause -->
-                        <true>
-                            <button class = "fa-button">
-                                <action> <song><pause/></song> </action>
-                                <element>
-                                    <text><text text="&#xF04C;"/></text>
-                                </element>
-                            </button>
-                        </true>
+                    <!-- Online Content -->
+                    <button>
+                        <action>
+                            <setMenu>online_content</setMenu>
+                        </action>
 
-                        <!-- play -->
-                        <false>
-                            <button class="fa-button">
-                                <action> <song><play/></song> </action>
-                                <element>
-                                    <text><text text="&#xF04B;"/></text>
-                                </element>
-                            </button>
-                        </false>
-                    </conditional>
-    
-                    
-                    <!-- seek forwards -->
+                        <text>Online Content</text>
+                    </button>
+
+                    <!-- Settings -->
+                    <button>
+                        <action>
+                            <addDialog>settings</addDialog>
+                        </action>
+
+                        <text>Settings</text>
+                    </button>
+
+                    <!-- Quit -->
+                    <button>
+                        <action>
+                            <game><quit/></game>
+                        </action>
+
+                        <text>Quit</text>
+                    </button>
+                </column>
+            </animatable>
+        </row>
+
+        <!-- the next row is the media controls -->
+        <row id = "media-controls" style = "width: fill; height: auto;">
+            <!-- an inner row so the buttons arent spread out over the whole width -->
+            <row id = "song-controls" style = "width: 30%; height: fill; align-content: space-evenly;">
+                <!-- previous song -->
+                <button class = "fa-button">
+                    <action> <map><previous/></map> </action>
+
+                    <text>&#xF04A;</text>
+                </button>
+
+                <!-- seek backwards -->
+                <button class="fa-button">
+                    <action> <map><previous/></map> </action>
+                    <action> <song><seek>-500.0</seek></song> </action>
+
+                    <text>&#xF048;</text>
+                </button>
+
+                <!-- play/pause button -->
+                <conditional cond="song.playing">
+                    <!-- pause -->
                     <button class="fa-button">
-                        <action> <song><seek><value>500.0</value></seek></song> </action>
-                        <element>
-                            <text><text text="&#xF051;"/></text>
-                        </element>
+                        <action> <song><pause/></song> </action>
+
+                        <text>&#xF04C;</text>
                     </button>
 
-                    <!-- next song -->
-                    <button class="fa-button">
-                        <action> <map><next/></map> </action>
-                        <element>
-                            <text><text text="&#xF04E;"/></text>
-                        </element>
-                    </button>
-                </row>
+                    <!-- play -->
+                    <false>
+                        <button class="fa-button">
+                            <action> <song><play/></song> </action>
+
+                            <text>&#xF04B;</text>
+                        </button>
+                    </false>
+                </conditional>
+
+                <!-- seek forwards -->
+                <button class="fa-button">
+                    <action> <map><next/></map> </action>
+                    <action> <song><seek>500.0</seek></song> </action>
+
+                    <text>&#xF051;</text>
+                </button>
+
+                <!-- next song -->
+                <button class="fa-button">
+                    <action> <map><next/></map> </action>
+
+                    <text>&#xF04E;</text>
+                </button>
             </row>
-            
-        </column>
-    </element>
+        </row>
+
+    </column>
 </menu>

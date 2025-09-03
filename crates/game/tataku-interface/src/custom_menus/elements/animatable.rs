@@ -7,10 +7,11 @@ pub struct AnimatableElement {
     #[serde(rename = "@class", default)] class_list: ClassList,
     #[serde(rename = "@style", default)] style: ArcStr,
 
-    #[serde(default)] triggers: AnimatableTriggersTag,
-    #[serde(default)] actions: AnimatableActionsTag,
+    #[serde(default)] triggers: Vec<AnimatableTrigger>,
+    #[serde(default)] actions: Vec<AnimatableActionEntry>,
 
-    element: ElementTag,
+    #[serde(rename = "$value")]
+    element: Element,
 }
 impl CustomElement for AnimatableElement {
     fn build(&self) -> Box<dyn Widget<TatakuAction>> {
@@ -20,7 +21,7 @@ impl CustomElement for AnimatableElement {
             self.id.clone(),
             self.class_list.clone(),
             TransformableWidget::new(
-                self.triggers.inner.clone(),
+                self.triggers.clone(),
                 self.actions.iter()
                     .cloned()
                     .map(|i| (i.id, i.list))
@@ -40,17 +41,12 @@ struct AnimatableActionEntry {
     #[serde(alias = "$value")] list: Vec<AnimatableAction>
 }
 
-crate::impl_tag!(self, AnimatableActionsTag, Vec<AnimatableActionEntry>);
-
 #[derive(Deserialize)]
 #[derive(Clone, Debug, PartialEq)]
 pub struct AnimatableTrigger {
     #[serde(alias = "$value")] pub trigger: AnimatableTriggerEvent,
     #[serde(rename = "@action")] pub action: String,
 }
-
-
-crate::impl_tag!(AnimatableTriggersTag, Vec<AnimatableTrigger>);
 
 
 #[derive(Serialize, Deserialize)]

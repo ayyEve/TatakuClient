@@ -9,7 +9,7 @@ pub struct SwitchElement {
 
     // #[serde(rename = "@condition", alias = "@cond")] condition: ArcStr,
     #[serde(rename = "case")] cases: Vec<CaseElement>,
-    #[serde(rename = "default", default)] default_case: Option<ElementTag>,
+    #[serde(rename = "default", default)] default_case: Option<Element>,
 }
 impl CustomElement for SwitchElement {
     fn build(&self) -> Box<dyn Widget<TatakuAction>> {

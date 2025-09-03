@@ -19,21 +19,18 @@
 <!-- entry point definition -->
 <xs:element name="menu">
   <xs:complexType>
-    <xs:all>
+    <!-- todo: replace with xs:all for xml v1.1 -->
+    <xs:sequence>
       <xs:element name="style" type="text:string" minOccurs="0"/>
       <xs:element name="events" type="common:event-list" minOccurs="0"/>
       <xs:element name="inputs" type="common:input-variables" minOccurs="0"/>
 
-      <xs:element name="element">
-        <xs:complexType>
-          <xs:group ref="elements:element"/>
-        </xs:complexType>
-      </xs:element>
-    </xs:all>
+      <xs:group ref="elements:element"/>
+    </xs:sequence>
 
     <xs:attribute name="id" type="text:string" use="required"/>
   </xs:complexType>
 </xs:element>
 
 
-</xs:schema> 
+</xs:schema>

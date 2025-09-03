@@ -5,16 +5,17 @@ use crate::prelude::*;
 #[derive(Clone, Debug, PartialEq)]
 pub enum BuildableMultiplayerAction {
     /// Join a lobby
-    CreateLobby {  
-        name: BuildableValueTag,
-        password: Option<BuildableValueTag>,
-        private: BuildableValueTag,
+    CreateLobby {
+        name: BuildableValue,
+        password: Option<BuildableValue>,
+        private: BuildableValue,
     },
 
     /// Join a lobby
-    JoinLobby { 
-        #[serde(alias="$value")] lobby_id: BuildableValue, 
-        password: Option<BuildableValueTag> 
+    JoinLobby {
+        #[serde(rename="$value")]
+        lobby_id: BuildableValue,
+        password: Option<BuildableValue>
     },
 
     /// Open the link to the lobby's beatmap
@@ -63,9 +64,9 @@ impl BuildableMultiplayerAction {
                     .get_action(values, passed_in)
                     .map(|action| MultiplayerAction::LobbyAction(LobbyAction::SlotAction(action)))
             }
-            
-            Self::JoinLobby { lobby_id, password } => Some(MultiplayerAction::JoinLobby { 
-                lobby_id: lobby_id.resolve(values, passed_in)?.as_u32()?, 
+
+            Self::JoinLobby { lobby_id, password } => Some(MultiplayerAction::JoinLobby {
+                lobby_id: lobby_id.resolve(values, passed_in)?.as_u32()?,
                 password: password
                     .and_then(|i| i
                         .resolve(values, passed_in)
@@ -74,36 +75,36 @@ impl BuildableMultiplayerAction {
                     .unwrap_or_default(),
             }),
 
-            Self::CreateLobby { 
-                name, 
-                password, 
-                private 
-            } => Some(MultiplayerAction::CreateLobby { 
-                name: name.resolve(values, passed_in)?.as_string(), 
+            Self::CreateLobby {
+                name,
+                password,
+                private
+            } => Some(MultiplayerAction::CreateLobby {
+                name: name.resolve(values, passed_in)?.as_string(),
                 password: password
                     .and_then(|i| i
                         .resolve(values, passed_in)
                         .map(|t| t.as_string())
                     )
-                    .unwrap_or_default(), 
+                    .unwrap_or_default(),
                 private: private
                     .resolve(values, passed_in)
                     .map(|i| i.as_bool())
-                    .unwrap_or_default(), 
+                    .unwrap_or_default(),
                 players: 16
             })
         }
     }
-    
+
     pub fn build(&mut self, values: &dyn Reflect) {
         match self {
             Self::SlotAction(slot_action) => {
                 slot_action.slot.resolve_pre(values);
             }
 
-            Self::JoinLobby { 
-                lobby_id, 
-                password 
+            Self::JoinLobby {
+                lobby_id,
+                password
             } => {
                 lobby_id.resolve_pre(values);
                 if let Some(password) = password.as_mut() {

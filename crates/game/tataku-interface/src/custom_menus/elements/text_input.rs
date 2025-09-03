@@ -11,9 +11,9 @@ pub struct TextInputElement {
     #[serde(rename = "@variable")] variable: String,
     #[serde(rename = "@password", default)] is_password: bool,
 
-    #[serde(default)] placeholder: BuildableTextTag,
-    #[serde(default)] on_input: Option<BuildableActionTag>,
-    #[serde(default)] on_submit: Option<BuildableActionTag>,
+    #[serde(alias = "@placeholder", default)] placeholder: BuildableText,
+    #[serde(default)] on_input: BuildableAction,
+    #[serde(default)] on_submit: BuildableAction,
 }
 impl CustomElement for TextInputElement {
     fn build(&self) -> Box<dyn Widget<TatakuAction>> {
@@ -23,14 +23,14 @@ impl CustomElement for TextInputElement {
             self.id.clone(),
             self.class_list.clone(),
             TextInput::new(
-                self.placeholder.inner.clone(),
+                self.placeholder.clone(),
                 BuildableText::Variable { 
                     variable: VariablePathResolver::new(self.variable.clone())
                 }
             )
             .secure(self.is_password)
-            .on_input_maybe(self.on_input.as_deref().cloned())
-            .on_submit_maybe(self.on_submit.as_deref().cloned())
+            .on_input(self.on_input.clone())
+            .on_submit(self.on_submit.clone())
             .boxed()
         )
     }

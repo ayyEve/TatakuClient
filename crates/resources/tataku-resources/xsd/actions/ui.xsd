@@ -11,8 +11,6 @@
 <xs:import namespace="tataku/buildable-value" schemaLocation="../buildable_value.xsd"/>
 <xs:import namespace="tataku/text" schemaLocation="../text.xsd"/>
 
-
-
 <xs:group name="ui-action">
   <xs:choice>
     <xs:element name="operate" type="ui-actions:ui-operation">
@@ -44,7 +42,7 @@
       </xs:complexType>
     </xs:element>
   </xs:all>
-  
+
 </xs:complexType>
 
 <xs:group name="ui-operation-target">
@@ -72,8 +70,8 @@
       </xs:annotation>
 
       <xs:complexType>
-        <xs:group ref="text:text" minOccurs="0" />
-        <xs:attribute name="id" type="xs:string" />
+        <!-- <xs:group ref="text:text" minOccurs="0" /> -->
+        <xs:attribute name="id" type="text:string" />
       </xs:complexType>
     </xs:element>
 
@@ -86,8 +84,8 @@
       </xs:annotation>
 
       <xs:complexType>
-        <xs:group ref="text:text" minOccurs="0" />
-        <xs:attribute name="class" type="xs:string" />
+        <!-- <xs:group ref="text:text" minOccurs="0" /> -->
+        <xs:attribute name="class" type="text:string" />
       </xs:complexType>
     </xs:element>
   </xs:choice>
@@ -96,7 +94,7 @@
 
 <xs:group name="ui-operation-type">
   <xs:choice>
-    <xs:element name="scroll" type="ui-actions:scroll-operation"> 
+    <xs:element name="scroll" type="ui-actions:scroll-operation">
       <xs:annotation>
         <xs:documentation>Perform a Scroll operation on an element</xs:documentation>
       </xs:annotation>
@@ -150,8 +148,8 @@
       <!-- TOdO: restrict to one of tag or attr, not both -->
       <xs:complexType>
         <xs:annotation><xs:documentation>The element Id to scroll to</xs:documentation></xs:annotation>
-        <xs:group ref="text:text" />
-        <xs:attribute name="id" type="xs:string" />
+        <!-- <xs:group ref="text:text" /> -->
+        <xs:attribute name="id" type="text:string" />
       </xs:complexType>
 
     </xs:element>
@@ -196,22 +194,16 @@
 
 <xs:group name="vector2">
   <xs:all>
-    <xs:element name="x">
+    <xs:element name="x" type="buildable-value:buildableValue">
       <xs:annotation>
         <xs:documentation>The X portion of this vector</xs:documentation>
       </xs:annotation>
-      <xs:complexType>
-        <xs:group ref="buildable-value:buildableValue" />
-      </xs:complexType>
     </xs:element>
 
-    <xs:element name="y">
+    <xs:element name="y" type="buildable-value:buildableValue">
       <xs:annotation>
         <xs:documentation>The Y portion of this vector</xs:documentation>
       </xs:annotation>
-      <xs:complexType>
-        <xs:group ref="buildable-value:buildableValue" />
-      </xs:complexType>
     </xs:element>
   </xs:all>
 </xs:group>

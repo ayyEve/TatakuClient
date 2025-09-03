@@ -11,48 +11,69 @@ pub enum BuildableGameAction {
     RefreshScores,
 
     /// View a score by id
-    ViewScore { 
-        #[serde(rename="$value", alias="$text")] 
+    ViewScore {
+        #[serde(rename="$value")]
         score: BuildableValue
     },
-    
+
     #[serde(rename="notification")]
     ShowNotification {
-        text: BuildableTextTag,
         #[serde(alias = "@color")] color: Color,
-        duration: BuildableValueTag,
+        // Attributes need to be wrapped so that they can be parsed as strings.
+        #[serde(rename = "@duration", default)] duration_attribute: Option<TatakuValue>,
+        #[serde(default)] duration: Option<BuildableValue>,
+        #[serde(rename = "$value")]
+        text: Vec<BuildableText>,
     },
 
     CopyToClipboard {
-        #[serde(alias="$value")]
-        text: BuildableText,
+        #[serde(rename="$value")]
+        text: Vec<BuildableText>,
     },
 }
+
 impl BuildableGameAction {
     pub fn into_action(
-        self, 
-        values: &mut dyn Reflect, 
+        self,
+        values: &mut dyn Reflect,
         passed_in: Option<&TatakuValue>
     ) -> Option<GameAction> {
         match self {
-            Self::CopyToClipboard { mut text } => {
-                let _ = text.compute();
-                let text = text.to_string(values);
+            Self::CopyToClipboard { text } => {
+                let text: String = text.into_iter()
+                    .map(|mut text| {
+                        let _ = text.compute();
+                        text.to_string(values)
+                    }).collect();
+
                 Some(GameAction::CopyToClipboard(text.into()))
             }
 
             Self::Quit => Some(GameAction::Quit),
             Self::RefreshScores => Some(GameAction::RefreshScores),
             Self::ShowNotification {
-                text, 
-                color, 
-                duration
-            } => Some(GameAction::AddNotification(Notification::new(
-                text.to_string(values),
+                text,
                 color,
-                duration.resolve(values, passed_in)?.as_f32()?,
-                NotificationOnClick::None
-            ))),
+                duration_attribute,
+                duration,
+            } => {
+                let duration = duration_attribute
+                    .map(|d| BuildableValue::Value(d))
+                    .or(duration)?;
+
+                let text: String = text.into_iter()
+                    .map(|mut text| {
+                        let _ = text.compute();
+                        text.to_string(values)
+                    }).collect();
+
+                Some(GameAction::AddNotification(Notification::new(
+                    text,
+                    color,
+                    duration.resolve(values, passed_in)?.as_f32()?,
+                    NotificationOnClick::None
+                )))
+            },
 
             Self::ViewScore { score } => {
                 let score_id = score
@@ -66,24 +87,26 @@ impl BuildableGameAction {
             }
         }
     }
-    
+
     pub fn build(&mut self, values: &dyn Reflect) {
         match self {
-            Self::ViewScore { 
-                score 
+            Self::ViewScore {
+                score
             } => score.resolve_pre(values),
-            Self::ShowNotification { 
-                text, 
-                duration, 
-                .. 
+            Self::ShowNotification {
+                text,
+                duration,
+                ..
             } => {
-                if let Err(e) = text.compute() {
-                    error!("error parsing text '{text:?}': {e:?}");
-                }
+                // if let Err(e) = text.compute() {
+                //     error!("error parsing text '{text:?}': {e:?}");
+                // }
 
-                duration.resolve_pre(values);
+                if let Some(duration) = duration {
+                    duration.resolve_pre(values);
+                }
             }
-            
+
             Self::Quit => {},
             Self::RefreshScores => {},
             Self::CopyToClipboard { .. } => {},

@@ -1,23 +1,35 @@
 use crate::prelude::*;
 
 #[derive(Deserialize)]
-#[derive(Clone, Debug, Default, PartialEq)]   
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct TextElement {
     #[serde(rename = "@id", default)] pub id: Option<ArcStr>,
     #[serde(rename = "@class", default)] pub class_list: ClassList,
     #[serde(rename = "@style", default)] pub style: ArcStr,
-    
-    #[serde(rename = "$value")] pub text: BuildableText,
+
+    #[serde(rename="$value")] pub text: Vec<BuildableText>,
 }
 impl CustomElement for TextElement {
     fn build(&self) -> Box<dyn Widget<TatakuAction>> {
+        let mut text = self.text.clone();
+
+        // Trim any literal texts in this element so you can
+        // lay them out nicer in xml
+        if let Some(BuildableText::Text(first)) = text.first_mut() {
+            *first = first.trim_start().into();
+        }
+
+        if let Some(BuildableText::Text(last)) = text.last_mut() {
+            *last = last.trim_end().into();
+        }
+
         WidgetContainer::new_boxed(
             self.style.clone(),
             "text",
             self.id.clone(),
             self.class_list.clone(),
             TextWidget::new(
-                self.text.clone()
+                WidgetText::from_buildable_iter(text.into_iter())
             )
             .boxed()
         )
@@ -37,20 +49,19 @@ fn test() {
     "#;
 
     assert_eq!(
-        quick_xml::de::from_str::<TextElement>(xml).unwrap(), 
-        
-        TextElement { 
-            id: Some("hi".into()), 
-            class_list: "thing1 thing2".into(), 
-            style: ArcStr::default(), 
+        quick_xml::de::from_str::<TextElement>(xml).unwrap(),
+
+        TextElement {
+            id: Some("hi".into()),
+            class_list: "thing1 thing2".into(),
+            style: ArcStr::default(),
             text: BuildableText::List {
                 join: ArcStr::default(),
-                list: vec![ 
-                    BuildableText::Text { text: "hi mom".into() },
-                    BuildableText::Text { text: "hi dad".into() },
+                list: vec![
+                    BuildableText::Text("hi mom".into()),
+                    BuildableText::Text("hi dad".into()),
                 ]
             }
         }
     );
 }
-

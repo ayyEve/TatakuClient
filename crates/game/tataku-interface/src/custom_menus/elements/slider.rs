@@ -8,58 +8,42 @@ pub struct SliderElement {
     #[serde(rename = "@class", default)] class_list: ClassList,
     #[serde(rename = "@style", default)] style: ArcStr,
 
-    #[serde(rename = "@variable")] variable: VariablePathResolver,
+    #[serde(rename = "@var")] var: VariablePathResolver,
 
-    #[serde(rename = "@min", default)] min_attribute: Option<TatakuValue>,
-    #[serde(rename = "@max", default)] max_attribute: Option<TatakuValue>,
-    #[serde(rename = "@step", default)] step_attribute: Option<TatakuValue>,
+    #[serde(rename = "min", alias = "@min", default)] min: BuildableValue,
+    #[serde(rename = "max", alias = "@max", default)] max: BuildableValue,
+    #[serde(rename = "step", alias = "@step", default)] step: BuildableValue,
 
-    #[serde(rename = "min", default)] min_tag: Option<BuildableValueTag>,
-    #[serde(rename = "max", default)] max_tag: Option<BuildableValueTag>,
-    #[serde(rename = "step", default)] step_tag: Option<BuildableValueTag>,
-
-    #[serde(default)] on_input: Option<BuildableActionTag>,
+    #[serde(default)] on_input: Option<BuildableAction>,
 }
 impl SliderElement {
-    #[allow(clippy::ref_option, reason="matches input variable signature")]
-    fn resolve(
-        attribute: &Option<TatakuValue>,
-        tag: &Option<BuildableValueTag>,
-    ) -> SliderValue {
-        if let Some(attribute) = attribute {
-            match attribute {
-                TatakuValue::F32(n) => SliderValue::Static(*n),
-                TatakuValue::U32(n) => SliderValue::Static(*n as f32),
-                TatakuValue::U64(n) => SliderValue::Static(*n as f32),
-                TatakuValue::String(variable) => SliderValue::Variable { 
-                    variable: variable.clone().into(), 
-                    value: 0.0 
-                },
+    fn resolve(value: BuildableValue) -> SliderValue {
+        match value {
+            BuildableValue::None => SliderValue::Error,
+            BuildableValue::Value(TatakuValue::F32(n)) => SliderValue::Static(n),
+            BuildableValue::Value(TatakuValue::U32(n)) => SliderValue::Static(n as f32),
+            BuildableValue::Value(TatakuValue::U64(n)) => SliderValue::Static(n as f32),
+            BuildableValue::Value(TatakuValue::String(variable)) => SliderValue::Variable {
+                variable: variable.clone().into(),
+                value: 0.0
+            },
 
-                TatakuValue::Bool(_) => SliderValue::Error,
-                TatakuValue::None => SliderValue::Error,
-                TatakuValue::Reflect(_) 
-                    => unreachable!("cannot deserialize into TatakuValue::Reflect"),
-            }
-        } else if let Some(tag) = tag {
-            SliderValue::Buildable {
-                buildable: tag.inner.clone(),
-                value: 0.0,
-            }
-        } else {
-            SliderValue::Error
+            BuildableValue::Value(TatakuValue::Bool(_)) => SliderValue::Error,
+            BuildableValue::Value(TatakuValue::None) => SliderValue::Error,
+            BuildableValue::Value(TatakuValue::Reflect(_))
+                => unreachable!("cannot deserialize into TatakuValue::Reflect"),
+
+            BuildableValue::Variable(var) => SliderValue::Variable { variable: var, value: 0.0 },
+            buildable => SliderValue::Buildable { buildable, value: 0.0 },
         }
     }
 }
 
 impl CustomElement for SliderElement {
     fn build(&self) -> Box<dyn Widget<TatakuAction>> {
-        let min = Self::resolve(&self.min_attribute, &self.min_tag);
-        let max = Self::resolve(&self.max_attribute, &self.max_tag);
-        let mut step = Some(Self::resolve(
-            &self.step_attribute, 
-            &self.step_tag,
-        ));
+        let min = Self::resolve(self.min.clone());
+        let max = Self::resolve(self.max.clone());
+        let mut step = Some(Self::resolve(self.step.clone()));
         
         if matches!(step, Some(SliderValue::Error)) { step = None };
 
@@ -71,8 +55,8 @@ impl CustomElement for SliderElement {
             Slider::new(
                 min,
                 max,
-                self.variable.clone(),
-                self.on_input.as_deref().cloned(),
+                self.var.clone(),
+                self.on_input.clone(),
             )
             .step_maybe(step)
             .boxed()

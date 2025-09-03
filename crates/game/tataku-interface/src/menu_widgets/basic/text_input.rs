@@ -619,21 +619,22 @@ impl Widget<TatakuAction> for TextInput {
                     shell.event_consumed = true;
 
                     if text_changed {
-                        if let WidgetText::Custom { 
-                            custom: BuildableText::Variable { 
-                                variable 
-                            },
-                            cached 
-                        } = &self.value {
-                            let Ok(variable) = variable
-                                .resolve_path(shell.values)
-                                .inspect_err(|e| warn!("{e:?}"))
-                            else { return };
+                        // todo: fixme:
+                        // if let WidgetText::Custom {
+                        //     custom: BuildableText::Variable {
+                        //         variable
+                        //     },
+                        //     cached
+                        // } = &self.value {
+                        //     let Ok(variable) = variable
+                        //         .resolve_path(shell.values)
+                        //         .inspect_err(|e| warn!("{e:?}"))
+                        //     else { return };
 
-                            let _ = shell.values
-                                .reflect_insert(&variable, cached.clone())
-                                .inspect_err(|e| warn!("{e:?}"));
-                        }
+                        //     let _ = shell.values
+                        //         .reflect_insert(&variable, cached.clone())
+                        //         .inspect_err(|e| warn!("{e:?}"));
+                        // }
                         
                         self.on_input.run(
                             &self.value.get().into_owned(),

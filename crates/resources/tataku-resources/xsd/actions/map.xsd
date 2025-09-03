@@ -20,20 +20,20 @@
           <xs:group ref="map-actions:map-action-if-none" minOccurs="0" maxOccurs="1"/>
         </xs:complexType>
       </xs:element>
-      <xs:element name="random">  
+      <xs:element name="random">
         <xs:complexType>
           <xs:attribute name="use_preview" type="xs:boolean"/>
         </xs:complexType>
       </xs:element>
 
-      <xs:element name="selectGroup" type="buildable-value:buildableValueElement"/>
-      <xs:element name="selectMap" type="buildable-value:buildableValueElement"/>
-      <xs:element name="setPlaymode" type="buildable-value:buildableValueElement"/>
+      <xs:element name="selectGroup" type="buildable-value:buildableValue"/>
+      <xs:element name="selectMap" type="buildable-value:buildableValue"/>
+      <xs:element name="setPlaymode" type="buildable-value:buildableValue"/>
 
       <xs:element name="refreshMaps"/>
-      <xs:element name="delete" type="buildable-value:buildableValueElement"/>
+      <xs:element name="delete" type="buildable-value:buildableValue"/>
       <xs:element name="deleteCurrent"/>
-      
+
       <xs:element name="nextMap"/>
       <xs:element name="nextSet"/>
       <xs:element name="previousMap"/>
@@ -46,7 +46,7 @@
   <xs:choice>
     <xs:element name="continueCurrent"/>
     <xs:element name="setNone"/>
-    <xs:element name="random"> 
+    <xs:element name="random">
       <xs:complexType>
         <xs:attribute name="use_preview" type="xs:boolean"/>
       </xs:complexType>

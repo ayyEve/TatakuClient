@@ -11,21 +11,16 @@ pub struct DropdownElement {
     // #[serde(rename = "@options_display_path", default)] options_display_path: Option<ArcStr>,
     #[serde(rename = "@selected_path")] selected_path: ArcStr,
 
-    #[serde(rename = "@placeholder", default)] placeholder_attribute: Option<ArcStr>,
-    #[serde(rename = "placeholder", default)] placeholder_tag: Option<BuildableTextTag>,
+    #[serde(alias = "@placeholder", default)] placeholder: BuildableText,
 
-    #[serde(alias = "onSelect")] on_select: BuildableActionTag,
+    #[serde(alias = "onSelect")] on_select: BuildableAction,
 }
 impl DropdownElement {
-    fn placeholder(&self) -> Option<DropdownPlaceholder> {
-        self
-            .placeholder_attribute
-            .clone()
-            .map(DropdownPlaceholder::Static)
-            .or(self.placeholder_tag
-                .clone()
-                .map(|b| b.inner.into())
-            )
+    fn placeholder(&self) -> DropdownPlaceholder {
+        match self.placeholder.clone() {
+            BuildableText::Text(t) | BuildableText::Locale(t) => DropdownPlaceholder::Static(t),
+            buildable => DropdownPlaceholder::Buildable { buildable, cache: String::new() }
+        }
     }
 }
 impl CustomElement for DropdownElement {
@@ -38,8 +33,8 @@ impl CustomElement for DropdownElement {
             Dropdown::new(
                 self.options_path.clone(),
                 self.selected_path.clone(),
-                self.on_select.inner.clone(),
-                self.placeholder().unwrap_or_default()
+                self.on_select.clone(),
+                self.placeholder()
             )
             .boxed()
         )

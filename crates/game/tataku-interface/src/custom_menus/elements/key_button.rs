@@ -9,8 +9,8 @@ pub struct KeyButtonElement {
     #[serde(rename = "@style", default)] style: ArcStr,
 
     #[serde(rename = "@optional", default)] optional: bool,
-    #[serde(rename = "@variable")] variable: VariablePathResolver,
-    #[serde(default)] on_input: Option<BuildableActionTag>,
+    #[serde(rename = "@var")] var: VariablePathResolver,
+    #[serde(default)] on_input: BuildableAction,
 }
 impl CustomElement for KeyButtonElement {
     fn build(&self) -> Box<dyn Widget<TatakuAction>> {
@@ -19,11 +19,9 @@ impl CustomElement for KeyButtonElement {
             "keyButton",
             self.id.clone(),
             self.class_list.clone(),
-            KeyButton::new(
-               self.variable.clone(),
-            )
+            KeyButton::new(self.var.clone())
             .optional(self.optional)
-            .on_change_maybe(self.on_input.as_deref().cloned())
+            .on_change(self.on_input.clone())
             .boxed()
         )
     }

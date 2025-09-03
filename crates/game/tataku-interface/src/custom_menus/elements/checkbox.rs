@@ -8,55 +8,34 @@ pub struct CheckboxElement {
     #[serde(rename = "@class", default)] class_list: ClassList,
     #[serde(rename = "@style", default)] style: ArcStr,
 
-    /// buildable text in the body
-    #[serde(default)] text: Option<BuildableTextTag>,
-    /// just a raw text string
-    #[serde(rename = "@text", default)] text_attribute: Option<ArcStr>,
-
-    /// value as buildable path in body
-    #[serde(default)] value: Option<TatakuValue>,
     /// value as a calc string
-    #[serde(rename = "@value", default)] value_calc: Option<ArcStr>,
+    #[serde(alias = "@value", default)] value: BuildableValue,
     
     /// what to run on click
-    #[serde(default)] on_click: Option<BuildableActionTag>,
+    #[serde(default)] on_click: Option<BuildableAction>,
 }
 impl CheckboxElement {
-    fn get_text(&self) -> CheckboxText {
-        if let Some(text) = self.text.clone() {
-            CheckboxText::Buildable(text.inner, String::new())
-        } else if let Some(text) = self.text_attribute.clone() {
-            CheckboxText::Static(text)
-        } else {
-            CheckboxText::Static(ArcStr::default())
-        }
-    }
     fn get_value(&self) -> CheckboxValue {
-        if let Some(value) = self.value.clone() {
-            match value {
-                TatakuValue::Bool(value) => CheckboxValue::Static(value),
-                TatakuValue::String(variable) => CheckboxValue::Variable {
-                    path: variable.into(),
-                    cache: false,
-                    failed: false,
-                },
-
-                other => {
-                    warn!("invalid checkbox value: {:?}", other);
-                    CheckboxValue::Static(false)
-                },
-            }
-        } else if let Some(value) = self.value_calc.clone() {
-            CheckboxValue::condition(value)
-        } else {
-            CheckboxValue::Static(false)
+        match self.value.clone() {
+            BuildableValue::None => CheckboxValue::Static(false),
+            BuildableValue::Value(TatakuValue::Bool(b)) => CheckboxValue::Static(b),
+            BuildableValue::Variable(var) => CheckboxValue::Variable {
+                path: var,
+                cache: false,
+                failed: false,
+             },
+            BuildableValue::Calc(calc) => CheckboxValue::Condition(calc.into(), false),
+            BuildableValue::CalcParsed { calc, calc_str } => CheckboxValue::Condition(BuildableCondition::Built(calc, calc_str), false),
+            val => {
+                error!("invalid checkbox (id = {:?}) value {val:?}", self.id);
+                CheckboxValue::Static(false)
+            },
         }
     }
 }
 
 impl CustomElement for CheckboxElement {
     fn build(&self) -> Box<dyn Widget<TatakuAction>> {
-        let text = self.get_text();
         let value = self.get_value();
 
         WidgetContainer::new_boxed(
@@ -64,11 +43,8 @@ impl CustomElement for CheckboxElement {
             "checkbox",
             self.id.clone(),
             self.class_list.clone(),
-            Checkbox::new(text, value)
-                .on_toggle_maybe(self.on_click
-                    .clone()
-                    .map(|i| i.inner)
-                )
+            Checkbox::new(value)
+                .on_toggle_maybe(self.on_click.clone())
                 .boxed()
         )
     }
