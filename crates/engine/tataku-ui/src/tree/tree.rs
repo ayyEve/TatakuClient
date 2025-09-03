@@ -463,7 +463,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
 
     pub fn handle_event(
         &mut self,
-        event: &TatakuEventType,
+        event: &TatakuEvent,
         passed_in: Option<&TatakuValue>,
         values: &mut dyn Reflect,
         actions: &mut Queue<Action>,

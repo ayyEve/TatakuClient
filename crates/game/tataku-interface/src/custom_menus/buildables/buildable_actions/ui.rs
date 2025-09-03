@@ -122,12 +122,10 @@ impl BuildableUiOperationType {
     ) -> Option<UiOperationType> {
         match self {
             Self::None => None,
-            Self::Scroll { 
-                scroll,
-            } => {
-                Some(UiOperationType::Scroll(
-                    scroll.resolve(values, passed_in)?
-                ))
+            Self::Scroll { scroll } => {
+                Some(UiOperationType::Scroll(ScrollOperation {
+                    scroll_type: scroll.resolve(values, passed_in)?,
+                }))
             }
             Self::State { 
                 state 
@@ -157,35 +155,9 @@ mod scroll {
     use super::*;
 
     #[derive(Deserialize)]
-    #[derive(Clone, Debug, Default, PartialEq)]
-    #[serde(rename_all="camelCase")]
-    pub struct BuildableScrollOperation {
-        #[serde(rename="$value")]
-        pub scroll_to: BuildableScrollOperationType,
-    }
-    impl BuildableScrollOperation {
-        pub fn resolve(
-            &self, 
-            values: &dyn Reflect, 
-            passed_in: Option<&TatakuValue>
-        ) -> Option<ScrollOperation> {
-            let scroll_type = self.scroll_to
-                .resolve(values, passed_in)?;
-
-            Some(ScrollOperation {
-                scroll_type
-            })
-        }
-        
-        pub fn build(&mut self, values: &dyn Reflect) {
-            self.scroll_to.build(values);
-        }
-    }
-
-    #[derive(Deserialize)]
     #[serde(rename_all="camelCase")]
     #[derive(Clone, Debug, Default, PartialEq)]
-    pub enum BuildableScrollOperationType {
+    pub enum BuildableScrollOperation {
         #[default] None,
 
         /// scroll to the (first) active child element
@@ -219,7 +191,7 @@ mod scroll {
             y: BuildableValue,
         },
     }
-    impl BuildableScrollOperationType {
+    impl BuildableScrollOperation {
         pub fn resolve(
             &self, 
             values: &dyn Reflect, 
@@ -387,7 +359,7 @@ mod tests {
                     }.into(),
                     operation: BuildableUiOperationType::Scroll { 
                         scroll: BuildableScrollOperation { 
-                            scroll_to: BuildableScrollOperationType::Active {
+                            scroll_to: BuildableScrollOperation::Active {
                                 include_children: false
                             }
                         }
@@ -429,7 +401,7 @@ mod tests {
                     }.into(),
                     operation: BuildableUiOperationType::Scroll { 
                         scroll: BuildableScrollOperation { 
-                            scroll_to: BuildableScrollOperationType::Active {
+                            scroll_to: BuildableScrollOperation::Active {
                                 include_children: true
                             } 
                         }

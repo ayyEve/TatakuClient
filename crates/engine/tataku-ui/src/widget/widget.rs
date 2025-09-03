@@ -23,8 +23,8 @@ pub trait Widget<Action: Send + Sync>: Send + Sync {
     }
 
     fn input(
-        &mut self, 
-        event: &InputEvent, 
+        &mut self,
+        event: &InputEvent,
         shell: &mut InputShell<Action>,
     ) {
         for i in self.children_mut() {
@@ -34,8 +34,8 @@ pub trait Widget<Action: Send + Sync>: Send + Sync {
     }
 
     fn operation(
-        &mut self, 
-        operation: &UiOperation, 
+        &mut self,
+        operation: &UiOperation,
         tree: &mut Tree<Action>,
     ) {
         for i in self.children_mut() {
@@ -59,10 +59,10 @@ pub trait Widget<Action: Send + Sync>: Send + Sync {
             i.update(shell);
         }
     }
-    
+
     fn handle_message(
-        &mut self, 
-        message: &Message, 
+        &mut self,
+        message: &Message,
         shell: &mut MessageShell<Action>,
     ) {
         for i in self.children_mut() {
@@ -72,9 +72,9 @@ pub trait Widget<Action: Send + Sync>: Send + Sync {
     }
 
     fn handle_event(
-        &mut self, 
-        event: &TatakuEventType, 
-        event_value: Option<&TatakuValue>, 
+        &mut self,
+        event: &TatakuEvent,
+        event_value: Option<&TatakuValue>,
         shell: &mut MessageShell<Action>,
     ) {
         for i in self.children_mut() {

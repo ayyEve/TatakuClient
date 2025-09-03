@@ -33,7 +33,7 @@ impl UiManager {
         text_layout_contexts: &mut TextLayoutContexts,
     ) {
         self.root_tree.handle_event(
-            &TatakuEventType::MenuLeave,
+            &TatakuEvent::MenuLeave,
             None,
             values,
             actions,
@@ -98,7 +98,7 @@ impl UiManager {
             &mut self.messages,
         );
         tree.handle_event(
-            &TatakuEventType::MenuEnter,
+            &TatakuEvent::MenuEnter,
             None,
             values,
             actions,
@@ -136,7 +136,7 @@ impl UiManager {
         else { return false };
 
         last.handle_event(
-            &TatakuEventType::MenuLeave,
+            &TatakuEvent::MenuLeave,
             None,
             values,
             actions,
@@ -179,7 +179,7 @@ impl UiManager {
     pub fn update(
         &mut self,
         input_state: &mut CurrentInputState,
-        mut tataku_events: Vec<(TatakuEventType, Option<TatakuValue>)>,
+        mut tataku_events: Vec<(TatakuEvent, Option<TatakuValue>)>,
         values: &mut dyn Reflect,
         actions: &mut ActionQueue,
         skin_manager: &mut dyn SkinProvider,
@@ -210,7 +210,7 @@ impl UiManager {
                 InputType::KeyPress(key) => {
                     let Some(key) = key.as_key() else { continue };
 
-                    tataku_events.push((TatakuEventType::KeyPress(CustomMenuKeyEvent {
+                    tataku_events.push((TatakuEvent::KeyPress(CustomMenuKeyEvent {
                         key,
                         control: input_state.mods.ctrl,
                         alt: input_state.mods.alt,
@@ -220,7 +220,7 @@ impl UiManager {
                 InputType::KeyRelease(key) => {
                     let Some(key) = key.as_key() else { continue };
 
-                    tataku_events.push((TatakuEventType::KeyRelease(CustomMenuKeyEvent {
+                    tataku_events.push((TatakuEvent::KeyRelease(CustomMenuKeyEvent {
                         key,
                         control: input_state.mods.ctrl,
                         alt: input_state.mods.alt,

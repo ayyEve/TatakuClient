@@ -66,7 +66,7 @@ pub struct Game {
     // spec_watch_action: SpectatorWatchAction,
 
     #[cfg(feature="graphics")]
-    pub queued_events: Vec<(TatakuEventType, Option<TatakuValue>)>,
+    pub queued_events: Vec<(TatakuEvent, Option<TatakuValue>)>,
 
     pub values: ValueCollection,
 }
@@ -256,7 +256,7 @@ impl Game {
 
     fn init(&mut self) {
         let now = std::time::Instant::now();
-        
+
         #[cfg(feature="graphics")] {
             self.init_fonts();
             
@@ -634,9 +634,9 @@ impl Game {
                 if self.values.song.set_state(audio.get_state()) {
                     let action = match self.values.song.state {
                         AudioState::Stopped
-                        | AudioState::Unknown => TatakuEventType::SongEnd,
-                        AudioState::Playing => TatakuEventType::SongStart,
-                        AudioState::Paused => TatakuEventType::SongPause,
+                        | AudioState::Unknown => TatakuEvent::SongEnd,
+                        AudioState::Playing => TatakuEvent::SongStart,
+                        AudioState::Paused => TatakuEvent::SongPause,
                     };
                     self.actions.push(action);
                 }
@@ -797,9 +797,9 @@ impl Game {
                     self.handle_actions(Some(actions));
 
                     self.pending_gameplay_manager = Some(manager);
-                    #[cfg(feature="graphics")] 
-                    self.actions.push(MenuAction::SetMenu { 
-                        id: "pause_menu".into(), 
+                    #[cfg(feature="graphics")]
+                    self.actions.push(MenuAction::SetMenu {
+                        id: "pause_menu".into(),
                     });
                 } else {
                     // inputs
@@ -1379,8 +1379,8 @@ impl Game {
 
                             if !is_ingame || allow_ingame {
                                 self.handle_custom_dialog(
-                                    "settings", 
-                                    DialogCreateOptions::default(), 
+                                    "settings",
+                                    DialogCreateOptions::default(),
                                 );
                             }
                         }
@@ -1621,7 +1621,7 @@ impl Game {
                     &mut self.actions,
                     &mut self.text_layout_contexts,
                 );
-                self.queued_events.push((TatakuEventType::MenuEnter, None));
+                self.queued_events.push((TatakuEvent::MenuEnter, None));
                 self.ui_manager.reload_skin(
                     &mut self.values,
                     &mut self.actions,

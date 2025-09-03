@@ -5,37 +5,29 @@ use crate::prelude::*;
 pub struct CustomMenu {
     #[serde(rename = "@id")] pub id: ArcStr,
     #[serde(rename="$value")] pub element: Element,
-    
+
     #[serde(default)] pub style: Option<ArcStr>,
-    #[serde(default)] pub events: BuildableEventsTag, 
+    #[serde(alias="event", default)] pub events: Wrapped<Vec<BuildableEvent>>,
 }
 impl CustomMenu {
     pub fn build(
-        &self, 
+        &self,
         values: &mut dyn Reflect,
     ) -> BuiltCustomMenu {
-        let mut events: HashMap<TatakuEventType, Vec<BuildableAction>> = HashMap::new();
-        for event in self
-            .events
-            .events
-            .clone()
-            .into_iter()
-            .filter(|i| i.get_event().is_some())
-        {
-            let mut event2 = event.get_event().unwrap().clone();
-            event2.build();
+        let events  = self.events.inner.iter()
+            .filter_map(|buildable| {
+                let event = BuildableEvent::resolve(
+                    &buildable.event,
+                    values
+                );
 
-            let Some(e) = event2.resolve(values) 
-            else { continue };
+                event.map(|event| (event, buildable.actions.clone()))
+            })
+            .collect();
 
-            events.entry(e)
-                .or_default()
-                .extend(event.get_actions());
-        }
-        
         BuiltCustomMenu {
             id: self.id.clone(),
-            element: self.element.build(), 
+            element: self.element.build(),
             styles: self.style.clone().unwrap_or_default(),
             events,
             node_id: EMPTY_NODE,
@@ -43,19 +35,11 @@ impl CustomMenu {
     }
 }
 
-
-#[derive(Deserialize)]
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct BuildableEventsTag {
-    #[serde(rename = "$value")] pub events: Vec<BuildableEvent>,
-}
-
-
 pub struct BuiltCustomMenu {
     pub id: ArcStr,
     pub styles: ArcStr,
     pub element: Box<dyn Widget<TatakuAction>>,
-    pub events: HashMap<TatakuEventType, Vec<BuildableAction>>,
+    pub events: HashMap<TatakuEvent, Vec<BuildableAction>>,
 
     node_id: NodeId,
 }
@@ -80,7 +64,7 @@ impl Widget<TatakuAction> for BuiltCustomMenu {
 
     fn init_style(&mut self, shell: &mut LayoutShell<TatakuAction>) {
         shell.tree.update_style(
-            self.node_id, 
+            self.node_id,
             |style| *style = style.clone()
                 .merge_parent(CssStyle::menu_layout())
         );
@@ -88,8 +72,8 @@ impl Widget<TatakuAction> for BuiltCustomMenu {
     }
 
     fn handle_message(
-        &mut self, 
-        message: &Message, 
+        &mut self,
+        message: &Message,
         shell: &mut MessageShell<TatakuAction>,
     ) {
         self.element.handle_message(message, shell);
@@ -101,13 +85,13 @@ impl Widget<TatakuAction> for BuiltCustomMenu {
 
         if let Some((action, passed_in)) = cast {
             if let Some(action) = action.into_action(
-                self.node_id, 
-                shell.values, 
+                self.node_id,
+                shell.values,
                 passed_in.as_ref()
             ) {
                 shell.actions.push(action);
             }
-            
+
             shell.handled = true;
             return
         }
@@ -128,7 +112,7 @@ impl Widget<TatakuAction> for BuiltCustomMenu {
                 shell.handled = true;
                 if let Err(e) = shell
                     .values
-                    .reflect_insert(&*tag, Box::new(incoming)) 
+                    .reflect_insert(&*tag, Box::new(incoming))
                 {
                     error!("error inserting into values: {e:?}");
                 }
@@ -139,18 +123,18 @@ impl Widget<TatakuAction> for BuiltCustomMenu {
     }
 
     fn handle_event(
-        &mut self, 
-        event: &TatakuEventType, 
-        event_value: Option<&TatakuValue>, 
+        &mut self,
+        event: &TatakuEvent,
+        event_value: Option<&TatakuValue>,
         shell: &mut MessageShell<TatakuAction>,
     ) {
-        let Some(events) = self.events.get(event) 
+        let Some(events) = self.events.get(event)
         else { return };
 
         for i in events.iter() {
             let Some(action) = i.clone().into_action(
-                self.node_id(), 
-                shell.values, 
+                self.node_id(),
+                shell.values,
                 event_value,
             ) else { continue };
             shell.actions.push(action);

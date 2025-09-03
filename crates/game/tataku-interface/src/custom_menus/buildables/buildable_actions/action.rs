@@ -20,22 +20,22 @@ pub enum BuildableAction {
 
     /// Set a value
     SetValue {
-        #[serde(rename="@key")] key: VariablePathResolver, 
+        #[serde(rename="@key")] key: VariablePathResolver,
         #[serde(rename="$value", alias="$text")] value: BuildableValue,
     },
 
     /// Set the menu
-    SetMenu { 
+    SetMenu {
         #[serde(rename="$value", default)]
         id: BuildableValue,
     },
 
     /// Add a dialog
-    AddDialog { 
+    AddDialog {
         #[serde(rename="$value", alias="@id", default)]
         id: BuildableValue,
 
-        #[serde(alias="@allow_multiple", default="_true")] 
+        #[serde(alias="@allow_multiple", default="_true")]
         allow_multiple: bool,
 
         #[serde(alias="@resizable", default)]
@@ -117,7 +117,7 @@ pub enum BuildableAction {
     Conditional {
         /// The condition to evaluate
         #[serde(rename="@condition", alias="@cond")] cond: BuildableCondition,
-        
+
         /// What to do if true
         #[serde(rename = "true")] if_true_wrapped: Option<Wrapped<Box<BuildableAction>>>,
         #[serde(rename = "$value")] if_true: Option<Box<BuildableAction>>,
@@ -136,9 +136,9 @@ pub enum BuildableAction {
 
 impl BuildableAction {
     pub fn into_action(
-        self, 
+        self,
         node: NodeId,
-        values: &mut dyn Reflect, 
+        values: &mut dyn Reflect,
         passed_in: Option<&TatakuValue>
     ) -> Option<TatakuAction> {
         match self {
@@ -173,9 +173,9 @@ impl BuildableAction {
                 action.inner.build(node, passed_in, values)
             }
 
-            #[cfg(feature="graphics")] 
-            Self::AddDialog { 
-                id, 
+            #[cfg(feature="graphics")]
+            Self::AddDialog {
+                id,
 
                 resizable,
                 draggable,
@@ -186,7 +186,7 @@ impl BuildableAction {
                     .resolve(values, passed_in)
                     .map(Cow::into_owned)
                     .and_then(|i| i.string_maybe().cloned())?;
-                    
+
                 Some(TatakuAction::Menu(MenuAction::AddDialog {
                     id: id.into(),
                     options: Box::new(DialogCreateOptions {
@@ -200,22 +200,22 @@ impl BuildableAction {
                     }),
                 }))
             }
-            
-            #[cfg(feature="graphics")] 
-            Self::CloseDialog 
+
+            #[cfg(feature="graphics")]
+            Self::CloseDialog
                 => Some(UiAction::new(node, DialogAction::Close).into()),
-            
-            #[cfg(feature="graphics")] 
-            Self::SetMenu { 
-                id, 
+
+            #[cfg(feature="graphics")]
+            Self::SetMenu {
+                id,
             } => {
                 let id = id
                     .resolve(values, passed_in)
                     .map(Cow::into_owned)
                     .and_then(|i| i.string_maybe().cloned())?;
 
-                Some(TatakuAction::Menu(MenuAction::SetMenu { 
-                    id: id.into(), 
+                Some(TatakuAction::Menu(MenuAction::SetMenu {
+                    id: id.into(),
                 }))
             }
 
@@ -240,7 +240,7 @@ impl BuildableAction {
                 .into_action(values, passed_in)
                 .map(TatakuAction::Multiplayer),
 
-            #[cfg(feature="graphics")] 
+            #[cfg(feature="graphics")]
             Self::Cursor { action } => action
                 .into_action(values, passed_in)
                 .map(TatakuAction::CursorAction),
@@ -248,10 +248,10 @@ impl BuildableAction {
             Self::Chat { action }
                 => action.into_action(values, passed_in),
 
-            #[cfg(feature="graphics")] 
+            #[cfg(feature="graphics")]
             Self::Ui { action } => {
                 Some(UiAction::new(
-                    node, 
+                    node,
                     action.into_action(node, values, passed_in)?
                 ).into())
             }
@@ -272,10 +272,10 @@ impl BuildableAction {
                 let key = key
                     .resolve_path(values)
                     .ok()?;
-                
+
                 value
                     .resolve(values, passed_in)
-                    .map(|value| 
+                    .map(|value|
                         GameAction::SetValue(key, value.into_owned()).into()
                     )
             }
@@ -283,17 +283,17 @@ impl BuildableAction {
                 event.compute().ok()?;
 
                 Some(GameAction::HandleEvent(
-                    TatakuEventType::CustomEvent(event.to_string(values)),
+                    TatakuEvent::CustomEvent(event.to_string(values)),
                     None
                 ).into())
             }
-        
 
-            Self::Conditional { 
-                cond, 
-                if_true, 
+
+            Self::Conditional {
+                cond,
+                if_true,
                 if_true_wrapped,
-                if_false 
+                if_false
             } => {
                 let if_true = if_true_wrapped
                     .map(|i| i.inner)
@@ -301,12 +301,12 @@ impl BuildableAction {
 
                 match cond.resolve(values) {
                     BuildableConditionResult::Failed => None,
-                    BuildableConditionResult::Unbuilt(a) 
+                    BuildableConditionResult::Unbuilt(a)
                         => panic!("BuildableConditions should be built! '{a}'"),
                     BuildableConditionResult::True => if_true
                         .into_action(node, values, passed_in),
                     BuildableConditionResult::False => if_false
-                        .and_then(|a| 
+                        .and_then(|a|
                             a.inner.into_action(node, values, passed_in)
                         ),
                     BuildableConditionResult::Error(_) => None,
@@ -333,22 +333,22 @@ impl BuildableAction {
                 => action.build(values),
             Self::Cursor { action }
                 => action.build(values),
-            Self::SetMenu { 
-                id, 
+            Self::SetMenu {
+                id,
             } => {
                 id.resolve_pre(values);
             }
-            Self::AddDialog { 
-                id, 
+            Self::AddDialog {
+                id,
                 ..
             } => {
                 id.resolve_pre(values);
             }
-            Self::Conditional { 
-                cond, 
-                if_true, 
+            Self::Conditional {
+                cond,
+                if_true,
                 if_true_wrapped,
-                if_false 
+                if_false
             } => {
                 cond.build();
 
@@ -363,10 +363,10 @@ impl BuildableAction {
                 }
             }
 
-            Self::Delayed { action, .. } 
+            Self::Delayed { action, .. }
                 => action.build(values),
 
-            Self::SetValue { value, .. } 
+            Self::SetValue { value, .. }
                 => value.resolve_pre(values),
 
             Self::Chat { action }

@@ -10,9 +10,9 @@ pub struct SongManager {
 }
 impl SongManager {
     fn play_song(
-        &mut self, 
-        key: ArcStr, 
-        mut params: SongPlayData, 
+        &mut self,
+        key: ArcStr,
+        mut params: SongPlayData,
         load_song: impl FnOnce(&mut AudioManager) -> TatakuResult<Arc<dyn AudioInstance>>,
         actions: &mut ActionQueue,
         engine: &mut AudioManager,
@@ -29,7 +29,7 @@ impl SongManager {
                 Self::apply_params(&song.instance, params, settings);
             }
 
-            actions.push(GameAction::HandleEvent(TatakuEventType::SongStart, None));
+            actions.push(GameAction::HandleEvent(TatakuEvent::SongStart, None));
             return Ok(());
         }
 
@@ -37,7 +37,7 @@ impl SongManager {
         let song = load_song(engine)?;
 
         // stop the current audio
-        if let Some(s) = self.current_song.as_ref() { 
+        if let Some(s) = self.current_song.as_ref() {
             s.instance.stop();
         }
 
@@ -46,12 +46,12 @@ impl SongManager {
 
         // set our current song to the loaded audio
         self.current_song = Some(SongData::new(song, key));
-        
-        actions.push(GameAction::HandleEvent(TatakuEventType::SongStart, None));
+
+        actions.push(GameAction::HandleEvent(TatakuEvent::SongStart, None));
         Ok(())
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn update_ffts(&mut self, engine: &mut AudioManager) {
         if self.fft_hooks.is_empty() { return }
         let Some(song) = &self.current_song else { return };
@@ -74,7 +74,7 @@ impl SongManager {
     }
 
     pub fn handle_song_set_action(
-        &mut self, 
+        &mut self,
         action: SongSetAction,
         actions: &mut ActionQueue,
         engine: &mut AudioManager,
@@ -97,7 +97,7 @@ impl SongManager {
             }
 
             SongSetAction::PopQueue(params) => {
-                let Some(popped) = self.song_queue.pop() 
+                let Some(popped) = self.song_queue.pop()
                 else { return Ok(()) };
 
                 if let Some(song) = self.current_song.take() {
@@ -109,24 +109,24 @@ impl SongManager {
             }
 
             SongSetAction::FromFile(
-                path, 
+                path,
                 params
             ) => self.play_song(
-                path.clone(), 
-                params, 
+                path.clone(),
+                params,
                 move |engine| engine.load_song(&*path),
                 actions,
                 engine,
                 settings,
             )?,
-            
+
             SongSetAction::FromData(
-                data, 
-                key, 
+                data,
+                key,
                 params
             ) => self.play_song(
-                key, 
-                params, 
+                key,
+                params,
                 move |engine| engine.load_song_raw(data),
                 actions,
                 engine,
@@ -138,35 +138,35 @@ impl SongManager {
     }
 
     fn apply_params(
-        song: &Arc<dyn AudioInstance>, 
-        params: SongPlayData, 
+        song: &Arc<dyn AudioInstance>,
+        params: SongPlayData,
         settings: &Settings
     ) {
         trace!("Using params: {params:?}");
         if params.play { song.play(params.restart) }
         if let Some(pos) = params.position { song.set_position(pos) }
         if let Some(rate) = params.rate { song.set_rate(rate) }
-        if let Some(vol) = params.volume { 
+        if let Some(vol) = params.volume {
             song.set_volume(vol);
         } else {
             song.set_volume(settings.get_music_vol());
         }
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     pub fn hook_fft(&mut self, hook: Weak<FFTHook>) {
         self.fft_hooks.push(hook);
     }
 
     pub fn position(&self) -> f32 {
-        let Some(song) = &self.current_song 
+        let Some(song) = &self.current_song
         else { return 0.0 };
 
         song.instance.get_position()
     }
 
     pub fn state(&self) -> AudioState {
-        let Some(song) = &self.current_song 
+        let Some(song) = &self.current_song
         else { return AudioState::Stopped };
 
         song.instance.get_state()

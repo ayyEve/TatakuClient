@@ -54,18 +54,18 @@ pub struct AnimatableTrigger {
 #[serde(rename_all="camelCase")]
 pub enum AnimatableTriggerEvent {
     Input,
-    NoInput { 
+    NoInput {
         #[serde(rename = "@duration")] duration: f32,
     },
     Hover,
     Unhover,
     Click,
-    ClickHold { 
+    ClickHold {
         #[serde(rename = "@duration")] duration: f32,
-    }, 
+    },
     Unclick,
 
-    Event(TatakuEventType),
+    Event(TatakuEvent),
     Message(String)
 }
 

@@ -1,150 +1,194 @@
 use crate::prelude::*;
 
-#[derive(Deserialize)]
 #[derive(Clone, Debug, PartialEq)]
 pub struct BuildableEvent {
-    #[serde(default)] pub event_tag: Option<BuildableEventTypeTag>,
-    #[serde(rename="$value", default)] pub event: Option<BuildableEventType>,
-    pub actions: BuildableActionsTag,
-}
-impl BuildableEvent {
-    pub fn get_event(&self) -> Option<&BuildableEventType> {
-        self.event.as_ref()
-            .or(self.event_tag.as_ref().map(|i| &i.event))
-    }
+    pub event: TatakuEvent<Wrapped<BuildableValue>>,
 
-    pub fn get_actions(&self) -> Vec<BuildableAction> {
-        self.actions.iter()
-            .cloned()
-            .map(|mut value| {
-                if let BuildableAction::Conditional { cond, .. } = &mut value {
-                    cond.build();
+    pub actions: Vec<BuildableAction>,
+}
+
+impl<'de> Deserialize<'de> for BuildableEvent {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>
+    {
+        use serde::de::{
+            self, DeserializeSeed,
+            VariantAccess, EnumAccess,
+            MapAccess, Error,
+            value::{
+                EnumAccessDeserializer,
+                MapDeserializer,
+                StrDeserializer,
+            }
+        };
+
+        struct Enum<E> {
+            name: String,
+            attributes: Vec<(String, FromString)>,
+            error: std::marker::PhantomData<E>,
+        }
+
+        #[derive(Default)]
+        struct Visitor {
+            name: String,
+        }
+        impl<'de, E: Error> EnumAccess<'de> for Enum<E> {
+            type Error = E;
+            type Variant = Self;
+
+            fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self::Variant), Self::Error>
+            where
+                V: DeserializeSeed<'de>
+            {
+                Ok((
+                    seed.deserialize(StrDeserializer::new(&self.name))?,
+                    self
+                ))
+            }
+        }
+        impl<'de, E: Error> VariantAccess<'de> for Enum<E> {
+            type Error = E;
+
+            fn unit_variant(self) -> Result<(), Self::Error> {
+                debug_assert!(self.attributes.is_empty(), "unit variants can't have attributes");
+                Ok(())
+            }
+
+            fn newtype_variant_seed<T>(self, seed: T) -> Result<T::Value, Self::Error>
+            where
+                T: DeserializeSeed<'de>
+            {
+                seed.deserialize(MapDeserializer::new(self.attributes.into_iter()))
+            }
+
+            fn tuple_variant<V>(self, _len: usize, _visitor: V) -> Result<V::Value, Self::Error>
+            where
+                V: de::Visitor<'de>
+            {
+                unimplemented!()
+            }
+
+            fn struct_variant<V>(
+                self,
+                _fields: &'static [&'static str],
+                visitor: V,
+            ) -> Result<V::Value, Self::Error>
+            where
+                V: de::Visitor<'de>
+            {
+                visitor.visit_map(MapDeserializer::new(self.attributes.into_iter()))
+            }
+        }
+        impl<'de> de::Visitor<'de> for Visitor {
+            type Value = BuildableEvent;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                write!(formatter, "a TatakuEvent and optionally some actions")
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: MapAccess<'de>
+            {
+                let mut attributes = Vec::new();
+                let mut actions = Vec::new();
+
+                while let Some(key) = map.next_key::<String>()? {
+                    if key == "actions" || key == "action" {
+                        debug_assert!(attributes.is_empty(), "duplicate actions element in event");
+
+                        let Wrapped {
+                            inner
+                        } = map.next_value()?;
+
+                        actions = inner;
+                    } else {
+                        if &key[..1] != "@" {
+                            return Err(Error::custom(format!("only attributes are allowed, got `{key}`")));
+                        }
+
+                        // attributes have to be deserializable as strings
+                        let value: String = map.next_value()?;
+
+                        attributes.push((key, FromString::from(value)));
+                    }
                 }
-                value
-            })
-            .collect()
-    }
-}
 
+                let de = EnumAccessDeserializer::new(Enum {
+                    name: self.name,
+                    attributes,
+                    error: std::marker::PhantomData,
+                });
+                let event = TatakuEvent::deserialize(de)?;
 
-#[derive(Deserialize)]
-#[serde(rename_all="camelCase")]
-#[derive(Clone, Debug, PartialEq)]
-pub enum BuildableEventType {
-    /// Song has started
-    SongStart,
+                Ok(BuildableEvent {
+                    event,
+                    actions,
+                })
+            }
 
-    /// Song was paused
-    SongPause,
+            fn visit_enum<A>(mut self, data: A) -> Result<Self::Value, A::Error>
+            where
+                A: de::EnumAccess<'de>
+            {
+                let (name, variant): (String, _) = data.variant()?;
 
-    /// Song has ended
-    SongEnd,
+                println!("enum name: {name}");
+                self.name = name;
 
-    /// Menu was entered
-    MenuEnter,
-    
-    // Menu was left
-    MenuLeave,
-
-    /// A new beatmap has been added
-    MapAdded,
-
-    /// A key press
-    KeyPress(CustomMenuKeyEvent),
-
-    /// A key release
-    KeyRelease(CustomMenuKeyEvent),
-
-    /// A controller button was pressed
-    ControllerPress(CustomMenuControllerEvent),
-
-    /// A controller button was released
-    ControllerRelease(CustomMenuControllerEvent),
-
-    /// A custom event
-    #[serde(rename="custom")]
-    CustomEvent {
-        #[serde(rename="$value", default)]
-        event_tag: Option<BuildableText>,
-
-        #[serde(rename="@event", default)]
-        event_attribute: Option<String>,
-    }
-}
-impl BuildableEventType {
-    pub fn build(&mut self) {
-        #[allow(clippy::single_match, reason = "expandability")]
-        match self {
-            Self::CustomEvent {
-                event_tag: Some(e),
-                ..
-            } => e
-                .compute()
-                .inspect_err(|e| error!("error with text: {e:?}"))
-                .nope(),
-
-            _ => {}
+                variant.struct_variant(
+                    &[],
+                    self
+                )
+            }
         }
-    }
 
+        let result = deserializer.deserialize_enum(
+            "",
+            &[],
+            Visitor::default()
+        );
+
+        println!("{result:?}");
+
+        result
+    }
+}
+
+impl BuildableEvent {
     pub fn resolve(
-        &self, 
-        values: &dyn Reflect, 
+        event: &TatakuEvent<Wrapped<BuildableValue>>,
+        values: &dyn Reflect,
         // passed_in: Option<&TatakuValue>,
-    ) -> Option<TatakuEventType> {
-        match self {
-            Self::SongStart => Some(TatakuEventType::SongStart),
-            Self::SongPause => Some(TatakuEventType::SongPause),
-            Self::SongEnd   => Some(TatakuEventType::SongEnd),
+    ) -> Option<TatakuEvent> {
+        match event {
+            // These are necessary because technically the
+            // types differ at the generic, even if not used here.
+            TatakuEvent::SongStart => Some(TatakuEvent::SongStart),
+            TatakuEvent::SongPause => Some(TatakuEvent::SongPause),
+            TatakuEvent::SongEnd   => Some(TatakuEvent::SongEnd),
 
-            Self::MenuEnter => Some(TatakuEventType::MenuEnter),
-            Self::MenuLeave => Some(TatakuEventType::MenuLeave),
+            TatakuEvent::MenuEnter => Some(TatakuEvent::MenuEnter),
+            TatakuEvent::MenuLeave => Some(TatakuEvent::MenuLeave),
 
-            Self::MapAdded => Some(TatakuEventType::MapAdded),
+            TatakuEvent::MapAdded => Some(TatakuEvent::MapAdded),
 
-            Self::KeyPress(k)   => Some(TatakuEventType::KeyPress(*k)),
-            Self::KeyRelease(k) => Some(TatakuEventType::KeyRelease(*k)),
+            TatakuEvent::KeyPress(k)   => Some(TatakuEvent::KeyPress(*k)),
+            TatakuEvent::KeyRelease(k) => Some(TatakuEvent::KeyRelease(*k)),
 
-            Self::ControllerPress(k) => Some(TatakuEventType::ControllerPress(*k)),
-            Self::ControllerRelease(k) => Some(TatakuEventType::ControllerRelease(*k)),
+            TatakuEvent::ControllerPress(k) => Some(TatakuEvent::ControllerPress(*k)),
+            TatakuEvent::ControllerRelease(k) => Some(TatakuEvent::ControllerRelease(*k)),
 
-            Self::CustomEvent {
-                event_tag,
-                event_attribute,
-            } => event_tag
-                .as_ref()
-                .map(|i| i.to_string(values))
-                .or(event_attribute.clone())
-                .map(TatakuEventType::CustomEvent),
+            TatakuEvent::CustomEvent(Wrapped {
+                inner,
+            }) => inner
+                .resolve(values, None)
+                .map(|i| i.as_string())
+                .map(TatakuEvent::CustomEvent),
         }
-
     }
 }
-
-
-
-#[derive(Deserialize)]
-#[derive(Clone, Debug, PartialEq)]
-pub struct BuildableEventTypeTag {
-    #[serde(rename="$value")] pub event: BuildableEventType,
-}
-impl Deref for BuildableEventTypeTag {
-    type Target = BuildableEventType;
-    fn deref(&self) -> &Self::Target {
-        &self.event
-    }
-}
-
-#[derive(Deserialize)]
-#[derive(Clone, Debug, PartialEq)]
-pub struct BuildableActionsTag {
-    #[serde(rename="$value")] pub actions: Vec<BuildableAction>
-}
-impl Deref for BuildableActionsTag {
-    type Target = Vec<BuildableAction>;
-    fn deref(&self) -> &Self::Target { &self.actions }
-}
-
 
 #[test]
 fn test() {

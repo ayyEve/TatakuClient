@@ -25,24 +25,21 @@
 
     <events>
         <!-- when a new map is added, select it -->
-        <event>
-            <mapAdded/>
+        <mapAdded>
             <actions>
                 <map><selectMap><passedIn/></selectMap></map>
             </actions>
-        </event>
+        </mapAdded>
 
         <!-- play the next map once the song ends -->
-        <event>
-            <songEnd/>
+        <songEnd>
             <actions>
                 <map><next/></map>
             </actions>
-        </event>
+        </songEnd>
         
         <!-- when a song starts playing, send a notification -->
-        <event>
-            <songStart/>
+        <songStart>
             <actions>
                 <game>
                     <notification color="teal" duration="10000">
@@ -50,20 +47,18 @@
                     </notification>
                 </game>
             </actions>
-        </event>
+        </songStart>
 
         
         <!-- previous set -->
-        <event>
-            <keyPress key="Left"/>
+        <keyPress key="Left">
             <actions> <map> <previousSet/> </map> </actions>
-        </event>
+        </keyPress>
 
         <!-- next set -->
-        <event>
-            <keyPress key="Right"/>
+        <keyPress key="Right">
             <actions> <map> <nextSet/> </map> </actions>
-        </event>
+        </keyPress>
 
     </events>
 

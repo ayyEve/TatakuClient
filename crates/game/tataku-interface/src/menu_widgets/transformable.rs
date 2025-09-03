@@ -3,7 +3,7 @@ use crate::prelude::*;
 #[derive(ChainableInitializer)]
 pub struct TransformableWidget {
     child: Box<dyn Widget<TatakuAction>>,
-    
+
     x_position: AnimationTimeline<f32>,
     y_position: AnimationTimeline<f32>,
     x_scale: AnimationTimeline<f32>,
@@ -136,7 +136,7 @@ impl Widget<TatakuAction> for TransformableWidget {
     fn children_mut(&mut self) -> WidgetChildrenMut<'_, TatakuAction> {
         WidgetChildrenMut::Single(&mut self.child)
     }
-    
+
     fn layout(&mut self, shell: &mut LayoutShell<TatakuAction>) -> taffy::TaffyResult<NodeId>  {
         let child = self.child.layout(shell)?;
         self.node_id = shell.tree.new_with_children(&[child])?;
@@ -144,8 +144,8 @@ impl Widget<TatakuAction> for TransformableWidget {
     }
 
     fn input(
-        &mut self, 
-        event: &InputEvent, 
+        &mut self,
+        event: &InputEvent,
         shell: &mut InputShell<TatakuAction>,
     ) {
         let game_time = shell.values.reflect_get::<f32>("game.time")
@@ -223,10 +223,10 @@ impl Widget<TatakuAction> for TransformableWidget {
         for trigger in self.triggers.iter() {
             match &trigger.trigger {
                 AnimatableTriggerEvent::NoInput { duration } => {
-                    if let Some(last) = (self.last_input)   
+                    if let Some(last) = (self.last_input)
                         .filter(|_| self.hold_start.is_none())
-                    && time - last >= *duration 
-                    && !self.skip_noinput_actions.contains(&trigger.trigger) 
+                    && time - last >= *duration
+                    && !self.skip_noinput_actions.contains(&trigger.trigger)
                     {
                         to_trigger.push(trigger.action.clone());
                         self.skip_noinput_actions.push(trigger.trigger.clone());
@@ -235,7 +235,7 @@ impl Widget<TatakuAction> for TransformableWidget {
 
                 AnimatableTriggerEvent::ClickHold { duration } => {
                     if let Some(start) = self.hold_start
-                    && time - start >= *duration 
+                    && time - start >= *duration
                         && !self.skip_clickhold_actions.contains(&trigger.trigger) {
                         to_trigger.push(trigger.action.clone());
                         self.skip_clickhold_actions.push(trigger.trigger.clone());
@@ -269,21 +269,21 @@ impl Widget<TatakuAction> for TransformableWidget {
         }
         self.child.update(shell);
     }
-    
+
     fn handle_message(
-        &mut self, 
-        message: &Message, 
+        &mut self,
+        message: &Message,
         shell: &mut MessageShell<TatakuAction>,
     ) {
         let mut to_trigger = Vec::new();
 
         for trigger in self.triggers.iter() {
-            let AnimatableTriggerEvent::Message(tag) = &trigger.trigger 
+            let AnimatableTriggerEvent::Message(tag) = &trigger.trigger
             else { continue };
 
             if &*message.tag == tag {
                 to_trigger.push(trigger.action.clone());
-            } 
+            }
         }
         if !to_trigger.is_empty() {
             let time = shell.values
@@ -297,14 +297,14 @@ impl Widget<TatakuAction> for TransformableWidget {
     }
 
     fn handle_event(
-        &mut self, 
-        event: &TatakuEventType, 
-        event_value: Option<&TatakuValue>, 
+        &mut self,
+        event: &TatakuEvent,
+        event_value: Option<&TatakuValue>,
         shell: &mut MessageShell<TatakuAction>,
     ) {
         let mut to_trigger = Vec::new();
         for trigger in self.triggers.iter() {
-            let AnimatableTriggerEvent::Event(trigger_event) = &trigger.trigger 
+            let AnimatableTriggerEvent::Event(trigger_event) = &trigger.trigger
             else { continue };
             if event == trigger_event {
                 to_trigger.push(trigger.action.clone());
@@ -315,7 +315,7 @@ impl Widget<TatakuAction> for TransformableWidget {
                 .unwrap().copied();
             self.run_triggers(to_trigger, time);
         }
-        
+
         self.child.handle_event(event, event_value, shell);
     }
 

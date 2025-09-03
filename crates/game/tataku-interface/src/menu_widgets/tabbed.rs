@@ -39,7 +39,7 @@ impl Widget<TatakuAction> for TabbedWidget {
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn operation(
-        &mut self, 
+        &mut self,
         operation: &UiOperation,
         tree: &mut Tree<TatakuAction>,
     ) {
@@ -66,7 +66,7 @@ impl Widget<TatakuAction> for TabbedWidget {
     }
 
     // fn update_styles(
-    //     &mut self, 
+    //     &mut self,
     //     shell: &mut StyleShell,
     //     display_override: Option<DisplayType>
     // ) {
@@ -110,10 +110,10 @@ impl Widget<TatakuAction> for TabbedWidget {
         let Some(child) = self.get_ele_mut() else { return };
         child.update(shell);
     }
-    
+
     fn handle_message(
-        &mut self, 
-        message: &Message, 
+        &mut self,
+        message: &Message,
         shell: &mut MessageShell<TatakuAction>,
     ) {
         let Some(child) = self.get_ele_mut() else { return };
@@ -121,9 +121,9 @@ impl Widget<TatakuAction> for TabbedWidget {
     }
 
     fn handle_event(
-        &mut self, 
-        event: &TatakuEventType, 
-        event_value: Option<&TatakuValue>, 
+        &mut self,
+        event: &TatakuEvent,
+        event_value: Option<&TatakuValue>,
         shell: &mut MessageShell<TatakuAction>,
     ) {
         let Some(child) = self.get_ele_mut() else { return };
@@ -176,7 +176,7 @@ pub struct Tab {
 }
 impl Tab {
     pub fn new(
-        name: String, 
+        name: String,
         element: Box<dyn Widget<TatakuAction>>
     ) -> Self {
         Self {

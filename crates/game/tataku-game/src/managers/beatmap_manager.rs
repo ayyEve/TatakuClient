@@ -12,13 +12,13 @@ pub struct BeatmapManager {
 
     #[reflect(alias("current"))]
     pub current_beatmap: Option<Md5Hash>,
-    
+
     #[reflect(skip)] pub ignore_beatmaps: HashSet<ArcStr>,
     pub diffs: HashMap<Md5Hash, BeatmapDifficulty>,
     pub beatmaps: HashMap<Md5Hash, Arc<BeatmapMeta>>,
 
     /// previously played maps
-    played: Vec<Md5Hash>, 
+    played: Vec<Md5Hash>,
     /// current index of previously played maps
     play_index: usize,
 
@@ -57,7 +57,7 @@ impl BeatmapManager {
     }
 
     pub fn initialize(
-        &mut self, 
+        &mut self,
         sort_by: SortBy,
         mods: &ModManager,
         playmode: &str,
@@ -106,7 +106,7 @@ impl BeatmapManager {
             .filter_map(Result::ok)
             .flat_map(|f| f
                 .filter_map(Result::ok)
-                .map(|f| f.path()) 
+                .map(|f| f.path())
             )
             .collect()
     }
@@ -123,7 +123,7 @@ impl BeatmapManager {
         info!("Reading maps");
         for f in Self::folders_to_check(settings) {
             let Some(maps) = self.check_folder(
-                f, 
+                f,
                 false
             ) else { continue };
 
@@ -162,7 +162,7 @@ impl BeatmapManager {
             let file = file.path();
             if file.is_dir() {
                 let Some(maps) = self.check_folder(
-                    &file, 
+                    &file,
                     handle_database
                 ) else { continue };
 
@@ -170,7 +170,7 @@ impl BeatmapManager {
                 continue;
             }
 
-            let Some(file) = file.to_str() 
+            let Some(file) = file.to_str()
             else { continue };
             // info!("checking {file}");
 
@@ -181,7 +181,7 @@ impl BeatmapManager {
                 }
 
                 match Io::get_file_hash(file) {
-                    Ok(hash) => if self.beatmaps.contains_key(&hash) { 
+                    Ok(hash) => if self.beatmaps.contains_key(&hash) {
                         continue;
                     },
                     Err(e) => {
@@ -221,7 +221,7 @@ impl BeatmapManager {
     }
 
     pub fn add_beatmap(
-        &mut self, 
+        &mut self,
         beatmap: &Arc<BeatmapMeta>,
         add_to_db: bool,
     ) {
@@ -232,7 +232,7 @@ impl BeatmapManager {
             // see if this beatmap is being added from another source
             if !self.beatmaps
                 .values()
-                .any(|m| m.file_path == beatmap.file_path) 
+                .any(|m| m.file_path == beatmap.file_path)
             {
                 // if so, add it to the ignore list
                 trace!("Adding {} to the ignore list", beatmap.file_path);
@@ -252,7 +252,7 @@ impl BeatmapManager {
 
             #[cfg(feature="graphics")]
             self.actions.push(GameAction::HandleEvent(
-                TatakuEventType::MapAdded, 
+                TatakuEvent::MapAdded,
                 Some(beatmap.beatmap_hash.to_string().into())
             ));
         }
@@ -267,7 +267,7 @@ impl BeatmapManager {
         // remove beatmap from ourselves
         // self.beatmaps.retain(|b| b.beatmap_hash != beatmap);
 
-        let Some(old_map) = self.beatmaps.remove(&beatmap) 
+        let Some(old_map) = self.beatmaps.remove(&beatmap)
         else { return false };
 
         if old_map.file_path.starts_with(SONGS_DIR) {
@@ -275,7 +275,7 @@ impl BeatmapManager {
             // delete the file
             if let Err(e) = std::fs::remove_file(&*old_map.file_path) {
                 self.actions.push(Notification::new_error(
-                    "Error deleting map", 
+                    "Error deleting map",
                     e
                 ));
             }
@@ -302,11 +302,11 @@ impl BeatmapManager {
 
         for beatmap in self.beatmaps.values() {
             let key = format!(
-                "[{}] // {} - {}", 
-                beatmap.creator, 
-                beatmap.artist, 
+                "[{}] // {} - {}",
+                beatmap.creator,
+                beatmap.artist,
                 beatmap.title
-            ); 
+            );
             let key = BeatmapGroupValue::Set(key);
 
             let list = set_map
@@ -357,7 +357,7 @@ impl BeatmapManager {
 
 impl BeatmapManager {
     pub fn refresh_maps(
-        &mut self, 
+        &mut self,
         current_mods: &ModManager,
         playmode: &str,
         sort_by: SortBy,
@@ -371,7 +371,7 @@ impl BeatmapManager {
     }
 
     pub fn apply_filter(
-        &mut self, 
+        &mut self,
         mods: &ModManager,
         playmode: &str,
         sort_by: SortBy,
@@ -388,7 +388,7 @@ impl BeatmapManager {
             .collect::<Vec<_>>();
 
         for group in self.unfiltered_groups.iter() {
-            
+
             // let mut selected = false;
             let maps = group.maps
             .iter()
@@ -407,7 +407,7 @@ impl BeatmapManager {
                     .get_info(mode)
                     .unwrap();
 
-                
+
                 let diff_info = {
                     let data = GetDiffValue {
                         map: meta,
@@ -417,7 +417,7 @@ impl BeatmapManager {
 
                     info.diff_values
                         .iter()
-                        .map(|dv| 
+                        .map(|dv|
                             dv.format((dv.get_diff_value)(&data))
                         )
                         .collect::<Vec<_>>()
@@ -433,7 +433,7 @@ impl BeatmapManager {
 
                 // apply filter
                 for filter in filters.iter() {
-                    if !meta.filter(filter, diff) { 
+                    if !meta.filter(filter, diff) {
                         return None;
                     }
                 }
@@ -452,7 +452,7 @@ impl BeatmapManager {
     }
 
     pub fn sort(
-        &mut self, 
+        &mut self,
         sort_by: SortBy,
     ) {
         let current_hash = self
@@ -478,10 +478,10 @@ impl BeatmapManager {
             SortBy::Creator => sort!(creator, String),
             SortBy::Difficulty => {
                 self.groups.sort_by(|a, b| {
-                    let Some(a) = self.diffs.get(&a.maps[0]) 
+                    let Some(a) = self.diffs.get(&a.maps[0])
                     else { return std::cmp::Ordering::Equal };
-                    
-                    let Some(b) = self.diffs.get(&b.maps[0]) 
+
+                    let Some(b) = self.diffs.get(&b.maps[0])
                     else { return std::cmp::Ordering::Equal };
 
                     a.diff.total_cmp(&b.diff)
@@ -493,7 +493,7 @@ impl BeatmapManager {
         for (n, i) in self
             .groups
             .iter_mut()
-            .enumerate() 
+            .enumerate()
         {
             i.id = n;
             i.selected = false;
@@ -544,18 +544,18 @@ impl BeatmapManager {
     pub fn select_map(&mut self, map_num: usize)  {
         self.selected_map = map_num;
 
-        let Some(set) = self.groups.get(self.selected_set) 
+        let Some(set) = self.groups.get(self.selected_set)
         else { return };
 
         if let Some(map) = set.maps.get(self.selected_map) {
             self.actions.push(BeatmapAction::Set(
-                *map, 
+                *map,
                 SetBeatmapOptions::default().use_preview_point(true)
             ));
         }
     }
     pub fn next_map(&mut self) {
-        let Some(set) = self.groups.get(self.selected_set) 
+        let Some(set) = self.groups.get(self.selected_set)
         else { return };
 
         self.select_map(
@@ -563,9 +563,9 @@ impl BeatmapManager {
         );
     }
     pub fn prev_map(&mut self) {
-        let Some(set) = self.groups.get(self.selected_set) 
+        let Some(set) = self.groups.get(self.selected_set)
         else { return };
-        
+
         self.select_map(
             (self.selected_map - 1).wrapping_clamp(0, set.maps.len())
         );
@@ -678,13 +678,13 @@ pub struct SelectBeatmapConfig {
 }
 impl SelectBeatmapConfig {
     pub fn new(
-        mods: ModManager, 
+        mods: ModManager,
         playmode: ArcStr,
-        restart_song: bool, 
+        restart_song: bool,
         use_preview_time: bool,
     ) -> Self {
         Self {
-            mods, 
+            mods,
             restart_song,
             use_preview_time,
             playmode

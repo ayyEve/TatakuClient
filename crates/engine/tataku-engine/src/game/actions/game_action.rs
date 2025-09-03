@@ -11,7 +11,7 @@ pub enum GameAction {
     /// Watch a replay
     WatchReplay(Box<Score>),
 
-    /// Update a value 
+    /// Update a value
     SetValue(String, TatakuValue),
 
     /// Open a score in the score menu
@@ -33,7 +33,7 @@ pub enum GameAction {
     RestartOnline,
 
     /// Handle an event
-    HandleEvent(TatakuEventType, Option<TatakuValue>),
+    HandleEvent(TatakuEvent, Option<TatakuValue>),
 
     /// Add a notification
     AddNotification(Notification),
@@ -64,18 +64,18 @@ pub enum GameAction {
 }
 
 impl From<GameAction> for TatakuAction {
-    fn from(value: GameAction) -> Self { 
-        Self::Game(Box::new(value)) 
+    fn from(value: GameAction) -> Self {
+        Self::Game(Box::new(value))
     }
 }
 
-impl From<TatakuEventType> for TatakuAction {
-    fn from(value: TatakuEventType) -> Self {
+impl From<TatakuEvent> for TatakuAction {
+    fn from(value: TatakuEvent) -> Self {
         GameAction::HandleEvent(value, None).into()
     }
 }
-impl From<(TatakuEventType, TatakuValue)> for TatakuAction {
-    fn from(value: (TatakuEventType, TatakuValue)) -> Self {
+impl From<(TatakuEvent, TatakuValue)> for TatakuAction {
+    fn from(value: (TatakuEvent, TatakuValue)) -> Self {
         GameAction::HandleEvent(value.0, Some(value.1)).into()
     }
 }
@@ -117,9 +117,9 @@ pub struct NewManager {
     pub mods: Option<ModManager>,
     /// what map hash to use
     pub map_hash: Option<Md5Hash>,
-    /// optional path to the map hash 
+    /// optional path to the map hash
     pub path: Option<ArcStr>,
-    /// what playmode to use. if none, will use 
+    /// what playmode to use. if none, will use
     pub playmode: Option<ArcStr>,
     /// what gameplay mode to use.
     pub gameplay_mode: Option<GameplayMode>,

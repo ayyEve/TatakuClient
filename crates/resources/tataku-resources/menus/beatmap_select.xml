@@ -75,8 +75,7 @@
 
   <events>
     <!-- on entering menu, make sure song is playing, and is also at the proper rate -->
-    <event>
-      <menuEnter />
+    <menuEnter>
       <actions>
         <!-- <conditional cond="!song.playing">
           <song><play /></song>
@@ -86,54 +85,45 @@
         </song>
 
         <!-- also make sure the cursor is visible -->
-        <cursor>
-          <show />
-        </cursor>
+        <cursor><show /></cursor>
 
         <!-- and refresh the score list -->
-        <game>
-          <refreshScores/>
-        </game>
+        <game><refreshScores/></game>
 
         <!-- scroll to selected group and item -->
         <custom>scroll-to-selected</custom>
       </actions>
-    </event>
+    </menuEnter>
 
     <!-- on song end, restart song at preview point -->
-    <event>
-      <songEnd />
+    <songEnd>
       <actions>
         <!-- set position to the preview point -->
         <song>
           <position><variable>beatmaps.beatmaps[beatmaps.current].preview</variable></position>
         </song>
-        <!-- play -->
-        <song>
-          <play />
-        </song>
+
+        <song><play /></song>
       </actions>
-    </event>
+    </songEnd>
 
     <!-- when a new map is added, select it -->
-    <event>
-      <mapAdded />
+    <mapAdded>
       <actions>
         <map>
           <selectMap><passedIn /></selectMap>
         </map>
       </actions>
-    </event>
+    </mapAdded>
 
     <!-- make sure new songs are set with the correct rate -->
-    <event>
-      <songStart />
+    <songStart>
       <actions>
         <song>
           <rate><variable>global.mods.speed</variable></rate>
         </song>
       </actions>
-    </event>
+    </songStart>
 
     <!-- <event>
       <custom>scroll-to-selected</custom>
@@ -161,58 +151,42 @@
     <!-- key events -->
 
     <!-- select set -->
-    <event>
-      <keyPress key="Enter" />
+    <keyPress key="Enter">
       <actions>
-        <map>
-          <confirm />
-        </map>
+        <map><confirm /></map>
       </actions>
-    </event>
+    </keyPress>
 
     <!-- previous set -->
-    <event>
-      <keyPress key="Left" />
+    <keyPress key="Left">
       <actions>
-        <map>
-          <previousSet />
-        </map>
+        <map><previousSet /></map>
       </actions>
-    </event>
+    </keyPress>
 
     <!-- next set -->
-    <event>
-      <keyPress key="Right" />
+    <keyPress key="Right">
       <actions>
-        <map>
-          <nextSet />
-        </map>
+        <map><nextSet /></map>
       </actions>
-    </event>
+    </keyPress>
 
     <!-- previous map -->
-    <event>
-      <keyPress key="Up" />
+    <keyPress key="Up">
       <actions>
-        <map>
-          <previousMap />
-        </map>
+        <map><previousMap /></map>
       </actions>
-    </event>
+    </keyPress>
 
     <!-- next map -->
-    <event>
-      <keyPress key="Down" />
+    <keyPress key="Down">
       <actions>
-        <map>
-          <nextMap />
-        </map>
+        <map><nextMap /></map>
       </actions>
-    </event>
+    </keyPress>
 
     <!-- back to main menu -->
-    <event>
-      <keyPress key="Escape" />
+    <keyPress key="Escape">
       <actions>
         <conditional cond="lobby.is_some">
           <setMenu>lobby_menu</setMenu>
@@ -222,39 +196,35 @@
           </false>
         </conditional>
       </actions>
-    </event>
+    </keyPress>
 
     <!-- open mods dialog -->
-    <event>
-      <keyPress key="M" ctrl="true" />
+    <keyPress key="M" ctrl="true">
       <actions>
         <addDialog>mods_dialog</addDialog>
       </actions>
-    </event>
+    </keyPress>
 
     <!-- nofail -->
-    <event>
-      <keyPress key="N" ctrl="true" />
+    <keyPress key="N" ctrl="true">
       <actions>
         <mods>
           <toggleMod>no_fail</toggleMod>
         </mods>
       </actions>
-    </event>
+    </keyPress>
 
     <!-- autoplay -->
-    <event>
-      <keyPress key="A" ctrl="true" />
+    <keyPress key="A" ctrl="true">
       <actions>
         <mods>
           <toggleMod>autoplay</toggleMod>
         </mods>
       </actions>
-    </event>
+    </keyPress>
 
     <!-- speed up -->
-    <event>
-      <keyPress key="Equals" ctrl="true" />
+    <keyPress key="Equals" ctrl="true">
       <actions>
         <mods>
           <addSpeed>0.1</addSpeed>
@@ -268,11 +238,10 @@
           </game>
         </delayed>
       </actions>
-    </event>
+    </keyPress>
 
     <!-- speed down -->
-    <event>
-      <keyPress key="Minus" ctrl="true" />
+    <keyPress key="Minus" ctrl="true">
       <actions>
         <mods>
           <addSpeed>-0.1</addSpeed>
@@ -286,7 +255,7 @@
           </game>
         </delayed>
       </actions>
-    </event>
+    </keyPress>
   </events>
 
   <!-- the beatmap select menu is broken up into rows -->
@@ -428,7 +397,7 @@
                     <variable>_group.id</variable>
                   </selectGroup>
                 </map>
-                <custom event="scroll-to-selected" />
+                <custom>scroll-to-selected</custom>
               </action>
 
               <text>

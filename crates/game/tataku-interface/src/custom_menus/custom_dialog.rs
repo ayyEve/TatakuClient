@@ -7,45 +7,35 @@ pub struct CustomDialog {
     #[serde(rename = "@id")] pub id: ArcStr,
     #[serde(rename = "@title")] title: ArcStr,
     #[serde(rename = "@allow_multiple", default)] allow_multiple: bool,
-    #[serde(rename = "@draggable", default)] draggable: bool, 
+    #[serde(rename = "@draggable", default)] draggable: bool,
     #[serde(rename = "@resizable", default)] resizable: bool,
 
     #[serde(default)] style: Option<ArcStr>,
-    #[serde(default)] events: BuildableEventsTag,
+    #[serde(alias="event", default)] events: Wrapped<Vec<BuildableEvent>>,
 
     #[serde(rename = "$value")]
     element: Element,
 }
 impl CustomDialog {
     pub fn build(
-        &self, 
+        &self,
         values: &mut dyn Reflect,
     ) -> BuiltCustomDialog {
-        let mut events: HashMap<TatakuEventType, Vec<BuildableAction>> = HashMap::new();
-        for (event, mut event_type) in self
-            .events
-            .events
-            .clone()
-            .into_iter()
-            .filter_map(|i| 
-                i.get_event()
-                .cloned()
-                .map(|e| (i, e))
-        ) {
-            event_type.build();
+        let events  = self.events.inner.iter()
+            .filter_map(|buildable| {
+                let event = BuildableEvent::resolve(
+                    &buildable.event,
+                    values
+                );
 
-            let Some(e) = event_type.resolve(values) 
-            else { continue };
-            
-            events.entry(e)
-                .or_default()
-                .extend(event.get_actions());
-        }
+                event.map(|event| (event, buildable.actions.clone()))
+            })
+            .collect();
 
         BuiltCustomDialog {
             id: self.id.clone(),
             title: self.title.clone(),
-            element: self.element.build(), 
+            element: self.element.build(),
             styles: self.style.clone().unwrap_or_default(),
             events,
             draggable: self.draggable,
@@ -71,7 +61,7 @@ pub struct BuiltCustomDialog {
     pub id: ArcStr,
     pub title: ArcStr,
     pub element: Box<dyn Widget<TatakuAction>>,
-    pub events: HashMap<TatakuEventType, Vec<BuildableAction>>,
+    pub events: HashMap<TatakuEvent, Vec<BuildableAction>>,
 
     pub styles: ArcStr,
 
@@ -99,15 +89,15 @@ impl Widget<TatakuAction> for BuiltCustomDialog {
     }
     fn init_style(&mut self, shell: &mut LayoutShell<TatakuAction>) {
         shell.tree.update_style(
-            self.node_id, 
+            self.node_id,
             |style| *style = CssStyle::menu_layout()
         );
         self.element.init_style(shell);
     }
 
     fn handle_message(
-        &mut self, 
-        message: &Message, 
+        &mut self,
+        message: &Message,
         shell: &mut MessageShell<TatakuAction>,
     ) {
         self.element.handle_message(message, shell);
@@ -122,8 +112,8 @@ impl Widget<TatakuAction> for BuiltCustomDialog {
 
             shell.handled = true;
             if let Some(action) = action.into_action(
-                self.node_id, 
-                shell.values, 
+                self.node_id,
+                shell.values,
                 passed_in.as_ref()
             ) {
                 shell.actions.push(action);
@@ -136,14 +126,14 @@ impl Widget<TatakuAction> for BuiltCustomDialog {
             MessageValue::Value(TatakuValue::Reflect(value)) => {
                 shell.handled = true;
 
-                let Some(value) = value.duplicate() 
+                let Some(value) = value.duplicate()
                 else {
                     error!("Error duplicating message value");
                     return
                 };
 
                 if let Err(e) = shell.values.reflect_insert(
-                    &*tag, 
+                    &*tag,
                     value
                 ) {
                     error!("Error inserting into values: {e:?}");
@@ -152,36 +142,36 @@ impl Widget<TatakuAction> for BuiltCustomDialog {
             MessageValue::Text(incoming) => {
                 shell.handled = true;
                 if let Err(e) = shell.values.reflect_insert(
-                    &*tag, 
+                    &*tag,
                     Box::new(incoming.clone())
                 ) {
                     error!("Error inserting into values: {e:?}");
                 }
             }
-            
+
             _other => warn!("Unhandled message: {message:?}"),
         }
     }
 
     fn handle_event(
-        &mut self, 
-        event: &TatakuEventType, 
-        event_value: Option<&TatakuValue>, 
+        &mut self,
+        event: &TatakuEvent,
+        event_value: Option<&TatakuValue>,
         shell: &mut MessageShell<TatakuAction>,
     ) {
-        let Some(events) = self.events.get(event) 
+        let Some(events) = self.events.get(event)
         else { return };
 
         for mut i in events.iter().cloned() {
             i.build(shell.values);
             let Some(action) = i.into_action(
-                self.node_id, 
-                shell.values, 
+                self.node_id,
+                shell.values,
                 event_value
             )
             else { continue };
 
-            shell.actions.push(action); 
+            shell.actions.push(action);
         }
     }
 }

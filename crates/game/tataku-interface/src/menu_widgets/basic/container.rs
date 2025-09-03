@@ -87,7 +87,7 @@ impl Container {
 
 
     fn validate_scroll_position(
-        &mut self, 
+        &mut self,
         tree: &mut Tree<TatakuAction>,
     ) {
         let layout = tree.get_layout(self.node_id).unwrap();
@@ -110,10 +110,10 @@ impl Container {
         tree: &mut Tree<TatakuAction>,
     ) {
         match &scroll.scroll_type {
-            ScrollType::ScrollByAmount(amt) 
+            ScrollType::ScrollByAmount(amt)
                 => self.scroll_offset += *amt,
 
-            ScrollType::ScrollToPosition(pos) 
+            ScrollType::ScrollToPosition(pos)
                 => self.scroll_offset = -*pos,
 
             ScrollType::ScrollByPercent(percent) => {
@@ -143,19 +143,19 @@ impl Container {
                 let Some((i, _)) = self
                     .children
                     .iter()
-                    .map(|c| 
+                    .map(|c|
                         (c, tree.get_context(c.node_id()).unwrap())
                     )
-                    .find(|(_, t)| 
+                    .find(|(_, t)|
                         t.element_data.id.as_deref() == Some(&**id)
                     )
                 else { return warn!("scroll: id not found: {id}")};
                 let node = i.node_id();
 
                 return self.handle_scroll_operation(
-                    &ScrollOperation { 
-                        scroll_type: ScrollType::ScrollToNode(node) 
-                    }, 
+                    &ScrollOperation {
+                        scroll_type: ScrollType::ScrollToNode(node)
+                    },
                     tree
                 );
             }
@@ -178,41 +178,41 @@ impl Container {
                 let offset = (our_bounds.size - node_bounds.size) / 2.0;
                 // .clamp(
                 //     -Vector2::from(our_bounds.size),
-                //     Vector2::ZERO, 
+                //     Vector2::ZERO,
                 // );
-                
+
                 self.scroll_offset = top + offset;
             }
 
             ScrollType::ScrollToActive {
-                include_children: false 
+                include_children: false
             } => {
                 let Some((i, _)) = self
                     .children
                     .iter()
-                    .map(|c| 
+                    .map(|c|
                         (c, tree.get_context(c.node_id()).unwrap())
                     )
-                    .find(|(_, t)| 
+                    .find(|(_, t)|
                         t.element_data.state.contains(ElementState::Active)
                     )
                 else { return warn!("scroll: no active?")};
                 let node = i.node_id();
-                
+
                 return self.handle_scroll_operation(
-                    &ScrollOperation { 
-                        scroll_type: ScrollType::ScrollToNode(node) 
-                    }, 
+                    &ScrollOperation {
+                        scroll_type: ScrollType::ScrollToNode(node)
+                    },
                     tree
                 );
             }
 
             ScrollType::ScrollToActive {
-                include_children: true 
+                include_children: true
             } => {
                 let Some(active_id) = Self::find_nested_child(
-                    tree, 
-                    self, 
+                    tree,
+                    self,
                     |tree, child| {
                         let ctx = tree.get_context(child.node_id())?;
                         Some(ctx.element_data.state.contains(ElementState::Active))
@@ -221,11 +221,11 @@ impl Container {
                     warn!("couldnt find nested active element");
                     return
                 };
-                
+
                 return self.handle_scroll_operation(
-                    &ScrollOperation { 
-                        scroll_type: ScrollType::ScrollToNode(active_id) 
-                    }, 
+                    &ScrollOperation {
+                        scroll_type: ScrollType::ScrollToNode(active_id)
+                    },
                     tree
                 );
             }
@@ -243,16 +243,16 @@ impl Container {
             if op(tree, &**child)? {
                 return Some(child.node_id());
             }
-            
+
             if let Some(res) = Self::find_nested_child(
-                tree, 
-                &**child, 
+                tree,
+                &**child,
                 op
             ) {
                 return Some(res)
             }
         }
-        
+
         None
     }
 }
@@ -275,9 +275,9 @@ impl Widget<TatakuAction> for Container {
             .collect::<taffy::TaffyResult<Vec<_>>>()?;
 
         self.node_id = shell.tree.new_with_children(&children)?;
-        
+
         shell.with_context(
-            self.node_id, 
+            self.node_id,
             |ctx| ctx.needs_inverse_transform = true,
         );
 
@@ -285,14 +285,14 @@ impl Widget<TatakuAction> for Container {
     }
 
     fn operation(
-        &mut self, 
-        operation: &UiOperation, 
+        &mut self,
+        operation: &UiOperation,
         tree: &mut Tree<TatakuAction>,
     ) {
         if operation.target.resolve(self, tree) {
             #[allow(clippy::single_match, reason = "future expansion")]
             match &operation.operation {
-                UiOperationType::Scroll(scroll) 
+                UiOperationType::Scroll(scroll)
                     => self.handle_scroll_operation(scroll, tree),
                 _ => {}
             }
@@ -347,7 +347,7 @@ impl Widget<TatakuAction> for Container {
             for (w, value) in self
                 .children
                 .iter_mut()
-                .zip(values) 
+                .zip(values)
             {
                 shell
                     .values
@@ -437,7 +437,7 @@ impl Widget<TatakuAction> for Container {
 
                         // make us its parent
                         layout_shell.tree.add_child(self.node_id, child);
-                        
+
                         // init it's style
                         e.init_style(&mut layout_shell);
 
@@ -602,7 +602,7 @@ impl Widget<TatakuAction> for Container {
 
     fn handle_event(
         &mut self,
-        event: &TatakuEventType,
+        event: &TatakuEvent,
         event_value: Option<&TatakuValue>,
         shell: &mut MessageShell<TatakuAction>,
     ) {
@@ -617,7 +617,7 @@ impl Widget<TatakuAction> for Container {
             for (i, value) in self
                 .children
                 .iter_mut()
-                .zip(values) 
+                .zip(values)
             {
                 shell
                     .values
@@ -700,9 +700,9 @@ impl DragScrollData {
         match event.event {
             InputType::MousePress(b) if hover => {
                 match b {
-                    MouseButton::Left if !self.right_pressed 
+                    MouseButton::Left if !self.right_pressed
                         => self.left_pressed = true,
-                    MouseButton::Right if !self.left_pressed 
+                    MouseButton::Right if !self.left_pressed
                         => self.right_pressed = true,
 
                     _ => return ScrollPosition::None,
@@ -713,13 +713,13 @@ impl DragScrollData {
 
             InputType::MouseRelease(b) => {
                 match b {
-                    MouseButton::Left if self.left_pressed 
+                    MouseButton::Left if self.left_pressed
                         => self.left_pressed = false,
-                    MouseButton::Right if self.right_pressed 
+                    MouseButton::Right if self.right_pressed
                         => self.right_pressed = false,
                     _ => return ScrollPosition::None
                 }
-                // if the mouse moved, we dont want to register the release key, 
+                // if the mouse moved, we dont want to register the release key,
                 // so return that it was consumed
                 self.did_move = false;
 
@@ -727,8 +727,8 @@ impl DragScrollData {
                 return ScrollPosition::Relative(Vector2::ZERO);
             }
             InputType::MouseMove(position) if hover => {
-                if !self.did_move 
-                    && (self.left_pressed || self.right_pressed) 
+                if !self.did_move
+                    && (self.left_pressed || self.right_pressed)
                     && position.distance(self.pressed_at) > DRAG_THRESHOLD {
                     self.did_move = true;
                 }

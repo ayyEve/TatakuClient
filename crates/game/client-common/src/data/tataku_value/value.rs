@@ -58,8 +58,8 @@ impl<'de> serde::Deserialize<'de> for TatakuValue {
                     Ok(n.into())
                 } else if let Ok(n) = v.parse::<bool>() {
                     Ok(n.into())
-                } 
-                
+                }
+
                 else {
                     Ok(v.into())
                 }
@@ -82,6 +82,163 @@ impl<'de> serde::Deserialize<'de> for TatakuValue {
     }
 }
 
+use serde::de::{
+    value, Error, Unexpected, IntoDeserializer
+};
+
+macro_rules! parse {
+    ($(
+        $de:ident => $visit:ident
+    ),+ $(,)?) => {$(
+        fn $de<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+        where
+            V: serde::de::Visitor<'de>
+        {
+            visitor.$visit(self.0.parse().map_err(Error::custom)?)
+        }
+    )+};
+}
+
+macro_rules! visit_string {
+    ($($de:ident)+) => {$(
+        fn $de<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+        where
+            V: serde::de::Visitor<'de>
+        {
+            visitor.visit_string(self.0)
+        }
+    )+};
+}
+
+pub struct FromString<E = value::Error>(pub String, pub std::marker::PhantomData<E>);
+impl<'de, E: Error> serde::Deserializer<'de> for FromString<E> {
+    type Error = E;
+
+    visit_string!(
+        deserialize_any deserialize_char deserialize_str
+        deserialize_string deserialize_bytes deserialize_byte_buf
+        deserialize_option deserialize_identifier deserialize_ignored_any
+    );
+
+    parse!(
+        deserialize_bool => visit_bool,
+
+        deserialize_i8 => visit_i8,
+        deserialize_i16 => visit_i16,
+        deserialize_i32 => visit_i32,
+        deserialize_i64 => visit_i64,
+
+        deserialize_u8 => visit_u8,
+        deserialize_u16 => visit_u16,
+        deserialize_u32 => visit_u32,
+        deserialize_u64 => visit_u64,
+
+        deserialize_f32 => visit_f32,
+        deserialize_f64 => visit_f64,
+    );
+
+    fn deserialize_unit<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>
+    {
+        Err(Error::invalid_type(Unexpected::Unit, &"string"))
+    }
+
+    fn deserialize_unit_struct<V>(
+        self,
+        _name: &'static str,
+        _visitor: V,
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>
+    {
+        unimplemented!()
+    }
+
+    fn deserialize_newtype_struct<V>(
+        self,
+        _name: &'static str,
+        visitor: V,
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>
+    {
+        visitor.visit_string(self.0)
+    }
+
+    fn deserialize_seq<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>
+    {
+        Err(Error::invalid_type(Unexpected::Seq, &"string"))
+    }
+
+    fn deserialize_tuple<V>(self, _len: usize, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>
+    {
+        self.deserialize_seq(visitor)
+    }
+
+    fn deserialize_tuple_struct<V>(
+        self,
+        _name: &'static str,
+        _len: usize,
+        _visitor: V,
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>
+    {
+        Err(Error::invalid_type(Unexpected::TupleVariant, &"string"))
+    }
+
+    fn deserialize_map<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>
+    {
+        Err(Error::invalid_type(Unexpected::Map, &"string"))
+    }
+
+    fn deserialize_struct<V>(
+        self,
+        _name: &'static str,
+        _fields: &'static [&'static str],
+        _visitor: V,
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>
+    {
+        Err(Error::invalid_type(Unexpected::Map, &"string"))
+    }
+
+    fn deserialize_enum<V>(
+        self,
+        _name: &'static str,
+        _variants: &'static [&'static str],
+        visitor: V,
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>
+    {
+        visitor.visit_enum(value::StringDeserializer::new(self.0))
+    }
+}
+impl<'de, E1, E2> IntoDeserializer<'de, E2> for FromString<E1>
+where
+    E1: Error,
+    E2: Error,
+{
+    type Deserializer = FromString<E2>;
+
+    fn into_deserializer(self) -> Self::Deserializer {
+        FromString(self.0, std::marker::PhantomData)
+    }
+}
+impl<E> From<String> for FromString<E> {
+    fn from(value: String) -> Self {
+        Self(value, std::marker::PhantomData)
+    }
+}
 
 impl TatakuValue {
     pub fn is_none(&self) -> bool {
@@ -608,4 +765,3 @@ impl_from!(f32, F32);
 impl_from!(f64, F32, f32);
 impl_from!(bool, Bool);
 impl_from!(String, String);
-
