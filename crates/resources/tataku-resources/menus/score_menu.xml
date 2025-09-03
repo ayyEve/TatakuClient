@@ -23,32 +23,24 @@
   </style>
 
   <events>
-    <event>
-      <keyPress key = "Escape" />
-      <actions>
-        <conditional cond="lobby.is_some">
-          <true>
-            <setMenu id="lobby_menu"/>
-          </true>
-          <false>
-            <setMenu id="beatmap_select"/>
-          </false>
-        </conditional>
-      </actions>
-    </event>
+    <keyPress key="Escape">
+      <conditional cond="lobby.is_some">
+        <setMenu>lobby_menu</setMenu>
+
+        <false>
+          <setMenu>beatmap_select</setMenu>
+        </false>
+      </conditional>
+    </keyPress>
 
     <!-- ensure temp variables have a value -->
-    <event>
-      <menuEnter />
-      <actions>
-        <setValue key = "var.score_menu.selected_user">
-          <variable var = "online.user_id"/>
-        </setValue>
-        <setValue key = "var.score_menu.selected_stat">
-          <value val = "0"/>
-        </setValue>
-      </actions>
-    </event>
+    <menuEnter>
+      <setValue key="var.score_menu.selected_user">
+        <variable>online.user_id</variable>
+      </setValue>
+
+      <setValue key="var.score_menu.selected_stat">0.0</setValue>
+    </menuEnter>
   </events>
 
   <!-- should we be lobby-oriented? -->
@@ -138,10 +130,7 @@
 
             <row>
               <text>
-                <variable>_score.username</variable>
-              </text>
-              <text>
-                <display>_score.score</display> (<display>_score.combo</display>x)
+                <variable>_score.username</variable> <display>_score.score</display> (<display>_score.combo</display>x)
               </text>
             </row>
           </button>

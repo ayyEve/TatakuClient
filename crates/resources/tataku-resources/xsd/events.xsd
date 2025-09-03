@@ -5,56 +5,60 @@
   xmlns:events="tataku/events"
   xmlns:input="tataku/input"
   xmlns:text="tataku/text"
+  xmlns:actions="tataku/actions"
 >
+
+<xs:import namespace="tataku/actions" schemaLocation="actions/actions.xsd"/>
 <xs:import namespace="tataku/input" schemaLocation="input.xsd"/>
 <xs:import namespace="tataku/text" schemaLocation="text.xsd"/>
 
-<xs:group name="event-type">
+<xs:group name="event">
   <xs:choice>
-      <xs:element name="songEnd"/>
-      <xs:element name="songPause"/>
-      <xs:element name="songStart"/>
+      <xs:element name="songEnd" type="actions:action-list"/>
+      <xs:element name="songPause" type="actions:action-list"/>
+      <xs:element name="songStart" type="actions:action-list"/>
 
-      <xs:element name="menuEnter"/>
-      <xs:element name="menuLeave"/>
+      <xs:element name="menuEnter" type="actions:action-list"/>
+      <xs:element name="menuLeave" type="actions:action-list"/>
 
-      <xs:element name="mapAdded"/>
+      <xs:element name="mapAdded" type="actions:action-list"/>
 
       <xs:element name="keyPress" type="events:key-event"/>
       <xs:element name="keyRelease" type="events:key-event"/>
 
-      <xs:element name="controllerPress">
-        <xs:complexType>
-          <xs:sequence>
-            <xs:element name="button" type="input:controller-button" />
-          </xs:sequence>
-        </xs:complexType>
-      </xs:element>
-      <xs:element name="controllerRelease">
-        <xs:complexType>
-          <xs:sequence>
-            <xs:element name="button" type="input:controller-button" />
-          </xs:sequence>
-        </xs:complexType>
-      </xs:element>
+      <xs:element name="controllerPress" type="input:controller-button"/>
+      <xs:element name="controllerRelease" type="input:controller-button"/>
 
-      <xs:element name="custom" type="text:text">
-        <xs:annotation>
-          <xs:documentation>A custom event</xs:documentation>
-        </xs:annotation>
+      <xs:element name="custom">
+        <xs:complexType>
+          <xs:complexContent>
+            <xs:extension base="actions:action-list">
+              <xs:attribute name="event" type="text:string"/>
+            </xs:extension>
+          </xs:complexContent>
+        </xs:complexType>
       </xs:element>
 
   </xs:choice>
 </xs:group>
 
-
 <xs:complexType name="key-event">
-  <xs:attribute name="key" type="input:key" use="required" />
-  <xs:attribute name="ctrl" type="xs:boolean" />
-  <xs:attribute name="alt" type="xs:boolean" />
-  <xs:attribute name="shift" type="xs:boolean" />
+  <xs:complexContent>
+    <xs:extension base="actions:action-list">
+      <xs:attribute name="key" type="input:key" use="required" />
+      <xs:attribute name="ctrl" type="xs:boolean" />
+      <xs:attribute name="alt" type="xs:boolean" />
+      <xs:attribute name="shift" type="xs:boolean" />
+    </xs:extension>
+  </xs:complexContent>
 </xs:complexType>
 
-
+<xs:complexType name="controller-button">
+  <xs:complexContent>
+    <xs:extension base="actions:action-list">
+      <xs:attribute name="button" type="input:controller-button" />
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
 
 </xs:schema>

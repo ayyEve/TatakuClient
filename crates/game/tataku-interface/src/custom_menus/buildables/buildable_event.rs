@@ -2,9 +2,16 @@ use crate::prelude::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct BuildableEvent {
-    pub event: TatakuEvent<Wrapped<BuildableValue>>,
+    pub event: TatakuEvent<CustomEvent>,
 
     pub actions: Vec<BuildableAction>,
+}
+
+#[derive(Deserialize)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct CustomEvent {
+    #[serde(rename="@event")]
+    pub event: BuildableValue,
 }
 
 impl<'de> Deserialize<'de> for BuildableEvent {
@@ -143,7 +150,7 @@ impl<'de> Deserialize<'de> for BuildableEvent {
 
 impl BuildableEvent {
     pub fn resolve(
-        event: &TatakuEvent<Wrapped<BuildableValue>>,
+        event: &TatakuEvent<CustomEvent>,
         values: &dyn Reflect,
         // passed_in: Option<&TatakuValue>,
     ) -> Option<TatakuEvent> {
@@ -165,9 +172,7 @@ impl BuildableEvent {
             TatakuEvent::ControllerPress(k) => Some(TatakuEvent::ControllerPress(*k)),
             TatakuEvent::ControllerRelease(k) => Some(TatakuEvent::ControllerRelease(*k)),
 
-            TatakuEvent::CustomEvent(Wrapped {
-                inner,
-            }) => inner
+            TatakuEvent::CustomEvent(event) => event.event
                 .resolve(values, None)
                 .map(|i| i.as_string())
                 .map(TatakuEvent::CustomEvent),

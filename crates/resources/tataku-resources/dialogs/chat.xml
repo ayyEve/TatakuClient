@@ -6,73 +6,64 @@
     title = "Chat"
 >
     <events>
-        <event>
-            <menuEnter/>
-            <actions>
-                <conditional cond="!var.current_chat_channel">
-                    <setValue key="var.current_chat_channel">
-                        <value val="#system"/>
-                    </setValue>
-                </conditional>
-            </actions>
-        </event>
+        <menuEnter>
+            <conditional cond="!var.current_chat_channel">
+                <setValue key="var.current_chat_channel">#system</setValue>
+            </conditional>
+        </menuEnter>
     </events>
 
-    <element>
-        <column>
-            <row style="width: 100%, height: 30%; align-self: end">
-                <!-- channel list-->
+    <column>
+        <row style="width: 100%, height: 30%; align-self: end">
+            <!-- channel list-->
+            <list
+                style = "flex-direction: column"
+                list = "online.chat_messages"
+                variable = "_channel"
+            >
+                <text>
+                    <variable>_channel.name</variable>
+                </text>
+            </list>
+
+            <!-- message list and input text-->
+            <column>
+                <!-- TODO: please add the ability to join text and variables to create a path, this is pain -->
                 <list 
-                    style = "flex-direction: column"
                     list = "online.chat_messages" 
                     variable = "_channel"
                 >
-                    <text>
-                        <variable var="_channel.name"/>
-                    </text>
+                    <conditional cond="_channel.name == var.current_chat_channel">
+                        <list
+                            style = "flex-direction: column"
+                            list = "_channel.messages"
+                            variable = "_message"
+                        >
+                            <text>
+                                <variable>_message.formatted</variable>
+                            </text>
+                        </list>
+                    </conditional>
                 </list>
 
-                <!-- message list and input text-->
-                <column>
-                    <!-- TODO: please add the ability to join text and variables to create a path, this is pain -->
-                    <list 
-                        list = "online.chat_messages" 
-                        variable = "_channel"
-                    >
-                        <conditional cond="_channel.name == var.current_chat_channel">
-                            <list 
-                                style = "flex-direction: column"
-                                list = "_channel.messages" 
-                                variable = "_message"
-                            >
-                                <text>
-                                    <variable var="_message.formatted"/>
-                                </text>
-                            </list>
-                        </conditional>
-                    </list>
+                <textInput variable="var.chat_input">
+                    <onSubmit>
+                        <chat>
+                            <sendMessage>
+                                <channel>
+                                    <variable>_channel.name</variable>
+                                </channel>
 
-                    <textInput variable="var.chat_input">
-                        <onSubmit>
-                            <list>
-                                <chat>
-                                    <sendMessage>
-                                        <channel>
-                                            <variable var="_channel.name"/>
-                                        </channel>
-                                        <message>
-                                            <variable var="var.chat_input"/>
-                                        </message>
-                                    </sendMessage>
-                                </chat>
-                                <setValue key="var.chat_input">
-                                    <value val=""/>
-                                </setValue>
-                            </list>
-                        </onSubmit>
-                    </textInput>
-                </column>
-            </row>
-        </column>
-    </element>
+                                <message>
+                                    <variable>var.chat_input</variable>
+                                </message>
+                            </sendMessage>
+                        </chat>
+
+                        <setValue key="var.chat_input"></setValue>
+                    </onSubmit>
+                </textInput>
+            </column>
+        </row>
+    </column>
 </dialog>

@@ -38,22 +38,18 @@
 <xs:import namespace="tataku/actions/song" schemaLocation="./song.xsd"/>
 <xs:import namespace="tataku/actions/ui" schemaLocation="./ui.xsd"/>
 
-<xs:group name="action-type">
+<xs:group name="action">
   <xs:choice>
       <!-- none -->
       <xs:element name="none"/>
 
       <!-- internal -->
-      <xs:element name="internal">
-        <xs:complexType>
-          <xs:attribute name="path" type="text:string" use="required"/>
-        </xs:complexType>
-      </xs:element>
+      <xs:element name="internal" type="text:string"/>
 
       <!-- delayed -->
       <xs:element name="delayed">
         <xs:complexType>
-          <xs:group ref="actions:action-type"/>
+          <xs:group ref="actions:action"/>
           <xs:attribute name="delay" type="xs:positiveInteger" use="required"/>
         </xs:complexType>
       </xs:element>
@@ -153,38 +149,21 @@
         <xs:complexType>
           <xs:sequence>
             <xs:choice>
-              <xs:group ref="actions:action-type"/>
-              <xs:element name="true">
-                <xs:complexType>
-                  <xs:group ref="actions:action-type"/>
-                </xs:complexType>
-              </xs:element>
+              <xs:group ref="actions:action"/>
+              <xs:element name="true" type="actions:action-list" />
             </xs:choice>
-            <xs:element name="false" minOccurs="0">
-              <xs:complexType>
-                <xs:group ref="actions:action-type"/>
-              </xs:complexType>
-            </xs:element>
+            <xs:element name="false" type="actions:action-list" minOccurs="0"/>
           </xs:sequence>
           <xs:attribute name="cond" type="common:condition" use="required"/>
         </xs:complexType>
       </xs:element>
-
-      <xs:element name="list">
-        <xs:complexType>
-            <xs:group ref="actions:action-type" minOccurs="1" maxOccurs="unbounded"/>
-        </xs:complexType>
-      </xs:element>
-
   </xs:choice>
 </xs:group>
 
-<xs:complexType name="buildable-inputs">
-  <xs:choice>
-    <!-- <xs:group ref="buildable-value:buildableValue" /> -->
-    <xs:element name="value" type="buildable-value:buildableValue" />
-  </xs:choice>
-  <xs:attribute name="name" type="text:string" use="required"/>
+<xs:complexType name="action-list">
+  <xs:sequence>
+    <xs:group ref="actions:action" maxOccurs="unbounded"/>
+  </xs:sequence>
 </xs:complexType>
 
 </xs:schema>

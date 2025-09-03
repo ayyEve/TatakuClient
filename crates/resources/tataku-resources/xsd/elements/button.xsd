@@ -19,10 +19,13 @@
     <xs:extension base="elements:generic">
       <xs:sequence>
         <!-- <xs:group ref="elements:button-onclick"/> -->
-        <xs:element name="action" minOccurs="1" maxOccurs="3">
+        <xs:element name="action" minOccurs="1" maxOccurs="unbounded">
           <xs:complexType>
-            <xs:group ref="actions:action-type"/>
-            <xs:attribute name="button" type="input:mouse-button" default="left"/>
+            <xs:complexContent>
+              <xs:extension base="actions:action-list">
+                <xs:attribute name="button" type="input:mouse-button" default="left"/>
+              </xs:extension>
+            </xs:complexContent>
           </xs:complexType>
         </xs:element>
 

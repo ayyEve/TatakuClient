@@ -23,7 +23,7 @@
     <xs:sequence>
       <xs:element name="style" type="text:string" minOccurs="0"/>
       <xs:element name="events" type="common:event-list" minOccurs="0"/>
-      <xs:element name="inputs" type="common:input-variables" minOccurs="0"/>
+      <xs:element name="event" type="common:event-list" minOccurs="0"/>
 
       <xs:group ref="elements:element"/>
     </xs:sequence>

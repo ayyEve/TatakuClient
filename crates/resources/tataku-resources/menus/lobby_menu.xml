@@ -2,7 +2,6 @@
 <?xml-model href="../xsd/menu.xsd"?>
 
 <menu id="lobby_menu">
-
     <style>
         .preview {
             position: absolute;
@@ -23,364 +22,261 @@
     </style>
 
     <events>
-
         <!-- on song end, restart song at preview point -->
-        <event>
-            <songEnd/>
-            <actions>
-                <!-- set position to the preview point -->
-                <song><position><value>0</value></position></song>
-                <!-- play -->
-                <song><play/></song>
-            </actions>
-        </event>
+        <songEnd>
+            <!-- set position to the preview point -->
+            <song><position>0</position></song>
+            <!-- play -->
+            <song><play/></song>
+        </songEnd>
 
-        <event>
-            <keyPress key = "Escape" />
-            <actions>
-                <conditional cond = "var.lobby.last_escape - now() > 2000">
-                    <true>
-                        <setMenu id="main_menu"/>
-                    </true>
-                    <false>
-                        <setValue key="var.lobby.last_escape">
-                            <calc calc="now()"/>
-                        </setValue>
-                    </false>
-                </conditional>
-            </actions>
-        </event>
+        <keyPress key = "Escape">
+            <conditional cond = "var.lobby.last_escape - now() > 2000">
+                <setMenu>main_menu</setMenu>
+
+                <false>
+                    <setValue key="var.lobby.last_escape">
+                        <calc>now()</calc>
+                    </setValue>
+                </false>
+            </conditional>
+        </keyPress>
     </events>
 
 
-    <element>
-        <row style = "width: fill; height: fill;">
-
-            <!-- slot list -->
-            <column style="width: fill; height: auto; margin: 5px;">
-                <list
-                    id = "slot_list"
-                    style = "width: auto; height: auto; flex-direction: column;"
-                    list = "lobby.player_slots"
-                    variable = "_slot"
-                    scrollable = "true"
-                >
-                    <row>
-                        <!-- slot icon -->
-                        <button class = "slot-button">
-                            <action>
-                                <conditional cond = "lobby.is_host">
-                                    <!-- if we're host -->
-                                    <conditional cond = "_slot.filled">
-                                        <!-- and the slot is filled -->
-                                        <true>
-                                            <conditional cond = "!_slot.is_host">
-                                                <!-- and the slot isnt us, kick -->
-                                                <multiplayer>
-                                                    <slot>
-                                                        <slot><variable var="_slot.id"/></slot>
-                                                        <kick/>
-                                                    </slot>
-                                                </multiplayer>
-                                            </conditional>
-                                        </true>
-                                        <false>
-                                            <!-- if the slot isnt filled -->
-                                            <conditional cond = "_slot.locked">
-                                                <!-- and the slot is locked -->
-                                                <!-- unlock it -->  
-                                                <true> 
-                                                    <multiplayer>
-                                                        <slot>
-                                                            <slot><variable var="_slot.id"/></slot>
-                                                            <unlock/>
-                                                        </slot>
-                                                    </multiplayer>
-                                                </true>
-                                                <!-- lock it -->
-                                                <false>
-                                                    <multiplayer>
-                                                        <slot>
-                                                            <slot><variable var="_slot.id"/></slot>
-                                                            <lock/>
-                                                        </slot>
-                                                    </multiplayer>
-                                                </false>
-                                            </conditional>
-                                        </false>
-                                    </conditional>
-                                </conditional>
-                            </action>
-                            <element>
-                                <conditional cond = "_slot.is_host">
-                                    <true>
-                                        <!-- crown icon -->
-                                        <text class = "slot-icon" style = "font: icon">
-                                            <text text="&#xF521;"/>
-                                        </text>
-                                    </true>
-                                    <false>
-                                        <conditional cond = "_slot.empty || _slot.filled">
-                                            <true>
-                                                <!-- lock -->
-                                                <text class = "slot-icon" style = "font: icon;">
-                                                    <text text="&#xF13E;"/>
-                                                </text>
-                                            </true>
-                                            <false>
-                                                <!-- unlock -->
-                                                <text class = "slot-icon" style = "font: icon;">
-                                                    <text text="&#xF023;"/>
-                                                </text>
-                                            </false>
-                                        </conditional>
-                                    </false>
-                                </conditional>
-                            </element>
-
-                        </button>
-
-                        <!-- slot text -->
-                        <conditional cond = "_slot.filled">
-                            <true>
-                                <button>
-                                    <action>
+    <row style = "width: fill; height: fill;">
+        <!-- slot list -->
+        <column style="width: fill; height: auto; margin: 5px;">
+            <list
+                id = "slot_list"
+                style = "width: auto; height: auto; flex-direction: column;"
+                list = "lobby.player_slots"
+                variable = "_slot"
+                scrollable = "true"
+            >
+                <row>
+                    <!-- slot icon -->
+                    <button class = "slot-button">
+                        <action>
+                            <conditional cond = "lobby.is_host">
+                                <!-- if we're host -->
+                                <conditional cond = "_slot.filled">
+                                    <!-- and the slot is filled -->
+                                    <conditional cond = "!_slot.is_host">
+                                        <!-- and the slot isnt us, kick -->
                                         <multiplayer>
                                             <slot>
-                                                <slot><variable var="_slot.id"/></slot>
-                                                <showProfile/>
+                                                <slot><variable>_slot.id</variable></slot>
+                                                <kick/>
                                             </slot>
                                         </multiplayer>
-                                    </action>
+                                    </conditional>
 
-                                    <element>
-                                        <text>
-                                            <list join = "">
-                                                <variable var="_slot.user.username"/>
-                                                <text text=" ("/>
-                                                <variable var="_slot.user.status"/>
-                                                <text text=")"/>
-                                            </list>
-                                        </text>
-                                    </element>
-                                </button>
-                            </true>
-                            <false>
-                                <button>
-                                    <action>
-                                        <conditional cond="!_slot.locked">
+                                    <false>
+                                        <!-- if the slot isnt filled -->
+                                        <conditional cond = "_slot.locked">
+                                            <!-- and the slot is locked -->
+                                            <!-- unlock it -->
                                             <multiplayer>
                                                 <slot>
-                                                    <slot><variable var="_slot.id"/></slot>
-                                                    <move/>
+                                                    <slot><variable>_slot.id</variable></slot>
+                                                    <unlock/>
                                                 </slot>
                                             </multiplayer>
-                                        </conditional>
-                                    </action>
-                                    <element>
-                                        <text>
-                                            <text text="Empty"/>
-                                        </text>
-                                    </element>
-                                </button>
-                            </false>
-                        </conditional>
 
-                    </row>
-                </list>
-            </column>
-
-            <!-- beatmap info button and gameplay preview -->
-            <column style = "width: auto; height: fill;">
-                <!-- beatmap info button -->
-                <!-- this is a mess but its also a complex button lol -->
-                <button style="width: auto; height: auto;">
-                    <action>
-                        <conditional cond="lobby.is_host">
-                            <true>
-                                <!-- if we're the host, always override the button with opening the beatmap select menu -->
-                                <setMenu id="beatmap_select"/>
-                            </true>
-                            <false>
-                                <!-- if we're not the host, and we don't have the beatmap -->
-                                <conditional cond = "!lobby.we_have_beatmap">
-                                    <multiplayer>
-                                        <!-- open a link to the beatmap -->
-                                        <openMapLink/>
-                                    </multiplayer>
-                                </conditional>
-                            </false>
-                        </conditional>
-                    </action>
-                    <element>  
-                        <conditional cond="lobby.is_host">
-                            <true>
-                                <conditional cond="lobby.we_have_beatmap">
-                                    <true>
-                                        <text>
-                                            <list>
-                                                <variable var="beatmaps.beatmaps[beatmaps.current].artist"/> 
-                                                <text text = " - "/> 
-                                                <variable var = "beatmaps.beatmaps[beatmaps.current].title"/>
-                                                <!-- newline -->
-                                                <text text="&#xA;"/>
-
-                                                <variable var="beatmaps.beatmaps[beatmaps.current].version"/> 
-                                                <text text=" // "/> 
-                                                <variable var="beatmaps.beatmaps[beatmaps.current].creator"/> 
-                                                <!-- newline -->
-                                                <text text="&#xA;"/> 
-                                                <text text="Click here to change the beatmap"/>
-                                            </list>
-                                        </text>
-                                    </true>
-                                    <false>
-                                        <conditional cond="lobby.map.is_some">
-                                            <true>
-                                                <text>
-                                                    <list>
-                                                        <variable var="lobby.info.current_beatmap.title"/>
-                                                        <text text=" ("/>
-                                                            <variable var="lobby.info.current_beatmap.mode"/>
-                                                        <text text=")"/>
-
-                                                        <!-- newline -->
-                                                        <text text="&#xA;"/>
-
-                                                        <text text="Click here to change the beatmap"/>
-                                                    </list>
-                                                </text>
-                                            </true>
+                                            <!-- lock it -->
                                             <false>
-                                                <text>
-                                                    <list>
-                                                        <text text="No beatmap"/>
-                                                        <text text="&#xA;"/> <!-- newline -->
-                                                        <text text="Click here to change the beatmap"/>
-                                                    </list>
-                                                </text>
+                                                <multiplayer>
+                                                    <slot>
+                                                        <slot><variable>_slot.id</variable></slot>
+                                                        <lock/>
+                                                    </slot>
+                                                </multiplayer>
                                             </false>
                                         </conditional>
                                     </false>
                                 </conditional>
-                            </true>
-                            <false>
-                                <!-- if not host -->
-                                <conditional cond="lobby.we_have_beatmap">
-                                    <true>
-                                        <text>
-                                            <list>
-                                                <variable var="beatmaps.beatmaps[beatmaps.current].artist"/> 
-                                                <text text=" - "/>
-                                                <variable var="beatmaps.beatmaps[beatmaps.current].title"/> 
-                                                
-                                                <!-- newline -->
-                                                <text text="&#xA;"/>
-                                                
-                                                <variable var="beatmaps.beatmaps[beatmaps.current].version"/> 
-                                                <text text=" // "/>
-                                                <variable var="beatmaps.beatmaps[beatmaps.current].creator"/>
-                                            </list>
-                                        </text>
-                                    </true>
-                                    <false>
-                                        <!-- if we dont have the beatmap -->
-                                        <conditional cond="lobby.map.is_some">
-                                            <true>
-                                                <text>
-                                                    <list>
-                                                        <variable var="lobby.info.current_beatmap.title"/>
-                                                        <text text=" ("/>
-                                                            <variable var="lobby.info.current_beatmap.mode"/>
-                                                        <text text=")"/>
-                                                    </list>
-                                                </text>
-                                            </true>
-                                            <false>
-                                                <text>
-                                                    <text text="No beatmap"/>
-                                                </text>
-                                            </false>
-                                        </conditional>
-                                    </false>
-                                </conditional>
-                            </false>
-                        </conditional>
-                    </element>
-                </button>
-                
-                <!-- leave lobby and ready/unready button -->
-                <row style = "width: fill; height: auto; justify-content: space-around">
-                    <!-- leave lobby button -->
-                    <button style= "width: auto; height: auto;">
-                        <action>
-                            <multiplayer><leave/></multiplayer>
-                        </action>
-                        <element>
-                            <text>
-                                <text text="Leave Lobby"/>
-                            </text>
-                        </element>
-                    </button>
-
-                    <!-- ready/unready button -->
-                    <button style = "width: auto">
-                        <action>
-                            <conditional cond = "lobby.we_have_beatmap">
-                                <!-- if we have the map -->
-                                <conditional cond = "lobby.our_user_state == 'ready'">
-                                    <!-- and we're ready -->
-                                    <true>
-                                        <conditional cond = "lobby.is_host">
-                                            <!-- and we're host -->
-                                            <true> 
-                                                <!-- start match -->
-                                                <multiplayer><startMatch/></multiplayer>
-                                            </true>
-                                            <!-- otherwise, unready -->
-                                            <false> <multiplayer><unready/></multiplayer> </false>
-                                        </conditional>
-                                    </true>
-                                    <false>
-                                        <!-- ready up -->
-                                        <multiplayer><ready/></multiplayer>
-                                    </false>
-                                </conditional>
-                                <!-- if we dont have the map, we dont want to have an action here -->
                             </conditional>
                         </action>
 
-                        <element>
-                            <conditional cond="lobby.we_have_beatmap &amp;&amp; lobby.our_user_state == 'ready'">
-                                <true>
-                                    <conditional cond="lobby.is_host">
-                                        <true>
-                                            <text>
-                                                <text text="Start"/>
-                                            </text>
-                                        </true>
-                                        <false>
-                                            <text>
-                                                <text text="Un-Ready"/>
-                                            </text>
-                                        </false>
+                        <conditional cond = "_slot.is_host">
+                            <!-- crown icon -->
+                            <text class = "slot-icon" style = "font: icon">&#xF521;</text>
+
+                            <false>
+                                <conditional cond = "_slot.empty || _slot.filled">
+                                    <!-- lock -->
+                                    <text class = "slot-icon" style = "font: icon;">&#xF13E;</text>
+
+                                    <false>
+                                        <!-- unlock -->
+                                        <text class = "slot-icon" style = "font: icon;">&#xF023;</text>
+                                    </false>
+                                </conditional>
+                            </false>
+                        </conditional>
+                    </button>
+
+                    <!-- slot text -->
+                    <conditional cond = "_slot.filled">
+                        <button>
+                            <action>
+                                <multiplayer>
+                                    <slot>
+                                        <slot><variable>_slot.id</variable></slot>
+                                        <showProfile/>
+                                    </slot>
+                                </multiplayer>
+                            </action>
+
+                            <text>
+                                <variable>_slot.user.username</variable> (<variable>_slot.user.status</variable>)
+                            </text>
+                        </button>
+
+                        <false>
+                            <button>
+                                <action>
+                                    <conditional cond="!_slot.locked">
+                                        <multiplayer>
+                                            <slot>
+                                                <slot><variable>_slot.id</variable></slot>
+                                                <move/>
+                                            </slot>
+                                        </multiplayer>
                                     </conditional>
-                                </true>
+                                </action>
+
+                                <text>Empty</text>
+                            </button>
+                        </false>
+                    </conditional>
+                </row>
+            </list>
+        </column>
+
+        <!-- beatmap info button and gameplay preview -->
+        <column style = "width: auto; height: fill;">
+            <!-- beatmap info button -->
+            <!-- this is a mess but its also a complex button lol -->
+            <button style="width: auto; height: auto;">
+                <action>
+                    <conditional cond="lobby.is_host">
+                        <!-- if we're the host, always override the button with opening the beatmap select menu -->
+                        <setMenu>beatmap_select</setMenu>
+
+                        <false>
+                            <!-- if we're not the host, and we don't have the beatmap -->
+                            <conditional cond = "!lobby.we_have_beatmap">
+                                <multiplayer>
+                                    <!-- open a link to the beatmap -->
+                                    <openMapLink/>
+                                </multiplayer>
+                            </conditional>
+                        </false>
+                    </conditional>
+                </action>
+
+                <conditional cond="lobby.is_host">
+                    <conditional cond="lobby.we_have_beatmap">
+                        <text>
+                            <variable>beatmaps.beatmaps[beatmaps.current].artist</variable> - <variable>beatmaps.beatmaps[beatmaps.current].title</variable><!-- newline -->&#xA;<variable>beatmaps.beatmaps[beatmaps.current].version</variable> // <variable>beatmaps.beatmaps[beatmaps.current].creator</variable><!-- newline -->&#xA;Click here to change the beatmap
+                        </text>
+
+                        <false>
+                            <conditional cond="lobby.map.is_some">
+                                <text>
+                                    <variable>lobby.info.current_beatmap.title</variable> (<variable>lobby.info.current_beatmap.mode</variable>)<!-- newline -->&#xA;Click here to change the beatmap
+                                </text>
+
                                 <false>
-                                    <!-- otherwise, show "ready" -->
                                     <text>
-                                        <text text="Ready"/>
+                                        No beatmap<!-- newline -->&#xA;Click here to change the beatmap
                                     </text>
                                 </false>
                             </conditional>
-                        </element>
-                    </button>
-                </row>
+                        </false>
+                    </conditional>
 
-            </column>
+                    <false>
+                        <!-- if not host -->
+                        <conditional cond="lobby.we_have_beatmap">
+                            <text>
+                                <variable>beatmaps.beatmaps[beatmaps.current].artist</variable> - <variable>beatmaps.beatmaps[beatmaps.current].title</variable> var=""/><!-- newline -->&#xA;<variable>beatmaps.beatmaps[beatmaps.current].version</variable> // <variable>beatmaps.beatmaps[beatmaps.current].creator</variable>
+                            </text>
 
-            <!-- preview -->
-            <gameplayPreview class="preview" blur="4"/>
-        </row>
-    </element>
+                            <false>
+                                <!-- if we dont have the beatmap -->
+                                <conditional cond="lobby.map.is_some">
+                                    <text>
+                                        <variable>lobby.info.current_beatmap.title</variable> (<variable>lobby.info.current_beatmap.mode</variable>)
+                                    </text>
+
+                                    <false>
+                                        <text>No beatmap</text>
+                                    </false>
+                                </conditional>
+                            </false>
+                        </conditional>
+                    </false>
+                </conditional>
+            </button>
+
+            <!-- leave lobby and ready/unready button -->
+            <row style = "width: fill; height: auto; justify-content: space-around">
+                <!-- leave lobby button -->
+                <button style= "width: auto; height: auto;">
+                    <action>
+                        <multiplayer><leave/></multiplayer>
+                    </action>
+
+                    <text>Leave Lobby</text>
+                </button>
+
+                <!-- ready/unready button -->
+                <button style = "width: auto">
+                    <action>
+                        <conditional cond = "lobby.we_have_beatmap">
+                            <!-- if we have the map -->
+                            <conditional cond = "lobby.our_user_state == 'ready'">
+                                <!-- and we're ready -->
+                                <conditional cond = "lobby.is_host">
+                                    <!-- and we're host -->
+                                    <!-- start match -->
+                                    <multiplayer><startMatch/></multiplayer>
+
+                                    <!-- otherwise, unready -->
+                                    <false> <multiplayer><unready/></multiplayer> </false>
+                                </conditional>
+
+                                <false>
+                                    <!-- ready up -->
+                                    <multiplayer><ready/></multiplayer>
+                                </false>
+                            </conditional>
+                            <!-- if we dont have the map, we dont want to have an action here -->
+                        </conditional>
+                    </action>
+
+                    <conditional cond="lobby.we_have_beatmap &amp;&amp; lobby.our_user_state == 'ready'">
+                        <conditional cond="lobby.is_host">
+                            <text>Start</text>
+
+                            <false>
+                                <text>Un-Ready</text>
+                            </false>
+                        </conditional>
+
+                        <false>
+                            <!-- otherwise, show "ready" -->
+                            <text>Ready</text>
+                        </false>
+                    </conditional>
+                </button>
+            </row>
+        </column>
+
+        <!-- preview -->
+        <gameplayPreview class="preview" blur="4"/>
+    </row>
 </menu>

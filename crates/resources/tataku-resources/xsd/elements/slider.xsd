@@ -25,11 +25,7 @@
         <xs:element name="max" type="buildable-value:buildableValue" minOccurs="0"/>
         <xs:element name="step" type="buildable-value:buildableValue" minOccurs="0"/>
 
-        <xs:element name="onInput" minOccurs="0">
-          <xs:complexType>
-            <xs:group ref="actions:action-type"/>
-          </xs:complexType>
-        </xs:element>
+        <xs:element name="onInput" type="actions:action-list" minOccurs="0"/>
       </xs:all>
 
       <xs:attribute name="variable" type="text:string" use="required"/>

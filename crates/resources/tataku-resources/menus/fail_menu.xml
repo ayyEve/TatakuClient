@@ -14,35 +14,24 @@
         }
     </style>
 
-    <element>
-        <column class="menu">
-            <!-- retry button -->
-            <button>
-                <action>
-                    <gameplay><retry/></gameplay>
-                </action>
-                <element>
-                    <text>
-                        <text text="Retry"/>
-                    </text>
-                </element>
-            </button>
+    <column class="menu">
+        <!-- retry button -->
+        <button>
+            <action>
+                <gameplay><retry/></gameplay>
+            </action>
 
-            <!-- quit button -->
-            <button>
-                <action>
-                    <list>
-                        <setMenu id="beatmap_select"/>
-                        <gameplay><quit/></gameplay>
-                    </list>
-                </action>
-                <element>
-                    <text>
-                        <text text="Quit"/>
-                    </text>
-                </element>
-            </button>
+            <text>Retry</text>
+        </button>
 
-        </column>
-    </element>
+        <!-- quit button -->
+        <button>
+            <action>
+                <setMenu>beatmap_select</setMenu>
+                <gameplay><quit/></gameplay>
+            </action>
+
+            <text>Quit</text>
+        </button>
+    </column>
 </menu>

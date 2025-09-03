@@ -15,57 +15,38 @@
     </style>
 
     <events>
-        <event>
-            <keyPress key="Escape" />
-            <actions>
-                <gameplay>
-                    <resume/>
-                </gameplay>
-            </actions>
-        </event>
+        <keyPress key="Escape">
+            <gameplay><resume/></gameplay>
+        </keyPress>
     </events>
 
-    <element>
-        <column class="menu">
-            <!-- resume button -->
-            <button>
-                <action>
-                    <gameplay><resume/></gameplay>
-                </action>
-                <element>
-                    <text>
-                        <text text="Resume"/>
-                    </text>
-                </element>
-            </button>
+    <column class="menu">
+        <!-- resume button -->
+        <button>
+            <action>
+                <gameplay><resume/></gameplay>
+            </action>
 
-            <!-- retry button -->
-            <button>
-                <action>    
-                    <gameplay><retry/></gameplay>
-                </action>
-                <element>
-                    <text>
-                        <text text="Retry"/>
-                    </text>
-                </element>
-            </button>
+            <text>Resume</text>
+        </button>
 
-            <!-- quit button -->
-            <button>
-                <action>
-                    <list>
-                        <gameplay><quit/></gameplay>
-                        <setMenu id="beatmap_select"/>
-                    </list>
-                </action>
-                <element>
-                    <text>
-                        <text text="Quit"/>
-                    </text>
-                </element>
-            </button>
+        <!-- retry button -->
+        <button>
+            <action>
+                <gameplay><retry/></gameplay>
+            </action>
 
-        </column>
-    </element>
+            <text>Retry</text>
+        </button>
+
+        <!-- quit button -->
+        <button>
+            <action>
+                <gameplay><quit/></gameplay>
+                <setMenu>beatmap_select</setMenu>
+            </action>
+
+            <text>Quit</text>
+        </button>
+    </column>
 </menu>

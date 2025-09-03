@@ -99,7 +99,7 @@ impl BuildableMultiplayerAction {
     pub fn build(&mut self, values: &dyn Reflect) {
         match self {
             Self::SlotAction(slot_action) => {
-                slot_action.slot.resolve_pre(values);
+                slot_action.slot.inner.resolve_pre(values);
             }
 
             Self::JoinLobby {

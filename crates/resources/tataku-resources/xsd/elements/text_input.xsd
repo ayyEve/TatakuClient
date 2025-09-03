@@ -6,10 +6,12 @@
   xmlns:elements="tataku/elements"
   xmlns:actions="tataku/actions"
   xmlns:text="tataku/text"
+  xmlns:buildable-value="tataku/buildable-value"
 >
 
 <xs:import namespace="tataku/text" schemaLocation="../text.xsd"/>
 <xs:import namespace="tataku/elements" schemaLocation="./elements.xsd"/>
+<xs:import namespace="tataku/buildable-value" schemaLocation="./buildable_value.xsd"/>
 <xs:import namespace="tataku/actions" schemaLocation="../actions/actions.xsd"/>
 
 
@@ -17,19 +19,10 @@
   <xs:complexContent>
     <xs:extension base="elements:generic">
       <xs:all>
-        <xs:element name="placeholder" minOccurs="0" type="text:text"/>
+        <xs:element name="placeholder" minOccurs="0" type="buildable-value:buildableValue"/>
 
-        <xs:element name="onInput" minOccurs="0">
-          <xs:complexType>
-            <xs:group ref="actions:action-type" />
-          </xs:complexType>
-        </xs:element>
-
-        <xs:element name="onSubmit" minOccurs="0">
-          <xs:complexType>
-            <xs:group ref="actions:action-type" />
-          </xs:complexType>
-        </xs:element>
+        <xs:element name="onInput" type="actions:action-list" minOccurs="0"/>
+        <xs:element name="onSubmit" minOccurs="0"/>
       </xs:all>
       <xs:attribute name="variable" type="text:string" use="required" />
       <xs:attribute name="placeholder" type="text:string"/>

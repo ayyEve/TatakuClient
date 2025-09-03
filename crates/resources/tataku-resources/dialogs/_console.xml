@@ -6,19 +6,13 @@
     title = "Console"
 >
     <events>
-        <event>
-            <menuEnter />
-            <actions>
-                <setValue key="var.console.in">
-                    <value val="" />
-                </setValue>
+        <menuEnter>
+            <setValue key="var.console.in"></setValue>
 
-                <setValue key="var.console.out">
-                    <calc calc="array('String')" />
-                </setValue>
-            </actions>
-        </event>
-
+            <setValue key="var.console.out">
+                <calc>array('String')</calc>
+            </setValue>
+        </menuEnter>
     </events>
 
     <column style = "width: 30%; height: 100%">
@@ -43,21 +37,19 @@
             </onInput>
 
             <onSubmit>
-                <list>
-                    <!-- Perform command, adding result to console.out -->
-                    <setValue key="var.console.out.99999999">
-                        <calc calc="display(var.console.in)" />
-                    </setValue>
+                <!-- Perform command, adding result to console.out -->
+                <setValue key="var.console.out.99999999">
+                    <calc>display(var.console.in)</calc>
+                </setValue>
 
-                    <!-- add command to output -->
-                    <setValue key="var.console.out.99999999">
-                        <variable>var.console.in</variable>
-                    </setValue>
+                <!-- add command to output -->
+                <setValue key="var.console.out.99999999">
+                    <variable>var.console.in</variable>
+                </setValue>
 
 
-                    <!-- clear input -->
-                    <setValue key="var.console.in"> <value val=""/> </setValue>
-                </list>
+                <!-- clear input -->
+                <setValue key="var.console.in"></setValue>
             </onSubmit>
         </textInput>
 

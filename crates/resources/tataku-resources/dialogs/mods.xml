@@ -12,60 +12,52 @@
         }
     </style>
 
-    <element>
-        <column style = "width: fill; height: fill; blur: 2;">
-            <row>
-                <text style = "width: fill;">
-                    <list>
-                        <text text = "Mods List    "/>
-                        <text text="Score: " />
-                        <display var="global.mods.score_multiplier" precision="2" />
-                        <text text="x" />
-                    </list>
+    <column style = "width: fill; height: fill; blur: 2;">
+        <text>Mods List</text>
+
+        <text>
+            Score: <display precision="2">global.mods.score_multiplier</display>x
+        </text>
+
+        <list
+            id = "group-list"
+            list = "global.mod_groups"
+            variable = "_group"
+            scrollable = "true"
+            style = "width: fill; height: auto; flex-direction: column;"
+        >
+            <column style = "width: fill">
+                <text>
+                    <variable>_group.name</variable>
                 </text>
-            </row>
 
-            <list
-                id = "group-list"
-                list = "global.mod_groups"
-                variable = "_group"
-                scrollable = "true"
-                style = "width: fill; height: auto; flex-direction: column;"
-            >
-                <column style = "width: fill">
-                    <text>
-                        <variable var = "_group.name"/>
-                    </text>
-                    <list
-                        id = "mod-list"
-                        list = "_group.mods"
-                        variable = "_mod"
-                        style = "flex-direction: column;"
-                    >
-                        <row style = "justify-items: space-between">
-                            <checkbox 
-                                value = "_mod.enabled"
-                                style = "width: 30%;"
-                            >
-                                <onClick>
-                                    <mods>
-                                        <toggleMod>
-                                            <variable var = "_mod.id"/>
-                                        </toggleMod>
-                                    </mods>
-                                </onClick>
-                                <text>
-                                    <variable var = "_mod.display_name"/>
-                                </text>
-                            </checkbox>
-                            <text>
-                                <variable var = "_mod.description"/>
-                            </text>
-                        </row>
-                    </list>
-                </column>
-            </list>
+                <list
+                    id = "mod-list"
+                    list = "_group.mods"
+                    variable = "_mod"
+                    style = "flex-direction: column;"
+                >
+                    <row style = "justify-items: space-between">
+                        <text>
+                            <variable>_mod.display_name</variable> <variable>_mod.description</variable>
+                        </text>
 
-        </column>
-    </element>
+                        <checkbox
+                            value = "_mod.enabled"
+                            style = "width: 30%;"
+                        >
+                            <onClick>
+                                <mods>
+                                    <toggleMod>
+                                        <variable>_mod.id</variable>
+                                    </toggleMod>
+                                </mods>
+                            </onClick>
+                        </checkbox>
+                    </row>
+                </list>
+            </column>
+        </list>
+
+    </column>
 </dialog>

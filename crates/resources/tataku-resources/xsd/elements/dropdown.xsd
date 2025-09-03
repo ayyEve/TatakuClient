@@ -17,12 +17,7 @@
   <xs:complexContent>
     <xs:extension base="elements:generic">
       <xs:all>
-        <xs:element name="onSelect" minOccurs="1" maxOccurs="1">
-          <xs:complexType>
-            <xs:group ref="actions:action-type"/>
-          </xs:complexType>
-        </xs:element>
-
+        <xs:element name="onSelect" type="actions:action-list"/>
         <xs:element name="placeholder" minOccurs="0" type="text:text"/>
       </xs:all>
 

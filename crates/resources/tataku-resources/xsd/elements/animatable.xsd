@@ -120,7 +120,7 @@
     <xs:element name="unclick"/>
     <xs:element name="event">
       <xs:complexType>
-        <xs:group ref="events:event-type"/>
+        <xs:group ref="events:event"/>
       </xs:complexType>
     </xs:element>
     

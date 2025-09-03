@@ -21,7 +21,7 @@ pub enum BuildableAction {
     /// Set a value
     SetValue {
         #[serde(rename="@key")] key: VariablePathResolver,
-        #[serde(rename="$value", alias="$text")] value: BuildableValue,
+        #[serde(rename="$value")] value: BuildableValue,
     },
 
     /// Set the menu

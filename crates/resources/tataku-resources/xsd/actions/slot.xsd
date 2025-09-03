@@ -17,7 +17,7 @@
       <xs:group ref="slot-actions:slot-action-type"/>
       <xs:element name="action">
         <xs:complexType>
-          <xs:group ref="slot-actions:slot-action-type"/>
+          <xs:group ref="slot-actions:slot-action"/>
         </xs:complexType>
       </xs:element>
     </xs:choice>

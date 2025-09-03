@@ -6,48 +6,39 @@
 
     <events>
         <!-- leave menu with escape -->
-        <event>
-            <keyPress key="Escape"/>
-            <actions>
-                <setMenu id="main_menu"/>
-            </actions>
-        </event>
+        <keyPress key="Escape">
+            <setMenu>main_menu</setMenu>
+        </keyPress>
     </events>
 
-    <element>
-        <column style="width: fill; height: fill; align-content: space-between">
-            <!-- list of lobbies -->
-            <list
-                id = "lobby_list"
-                list = "online.lobbies"
-                variable = "_lobby"
-                scrollable = "true"
-            >
-                <button style = "width: fill; height: auto; padding: 5px">
-                    <action>
-                        <multiplayer>
-                            <joinLobby><variable var="_lobby.id"/></joinLobby>
-                        </multiplayer>
-                    </action>
-                    <element>
-                        <text>
-                            <variable var="_lobby.name"/>
-                        </text>
-                    </element>
-                </button>
-            </list>
+    <column style="width: fill; height: fill; align-content: space-between">
+        <!-- list of lobbies -->
+        <list
+            id = "lobby_list"
+            list = "online.lobbies"
+            variable = "_lobby"
+            scrollable = "true"
+        >
+            <button style = "width: fill; height: auto; padding: 5px">
+                <action>
+                    <multiplayer>
+                        <joinLobby><variable>_lobby.id</variable></joinLobby>
+                    </multiplayer>
+                </action>
 
-            <!-- buttons -->
-            <row style = "width: fill; height: auto;">
-                <button>
-                    <action><addDialog id="create_lobby"/></action>
-                    <element>
-                        <text>
-                            <text text="Create Lobby"/>
-                        </text>
-                    </element>
-                </button>
-            </row>
-        </column>
-    </element>
+                <text>
+                    <variable>_lobby.name</variable>
+                </text>
+            </button>
+        </list>
+
+        <!-- buttons -->
+        <row style = "width: fill; height: auto;">
+            <button>
+                <action><addDialog>create_lobby</addDialog></action>
+
+                <text>Create Lobby</text>
+            </button>
+        </row>
+    </column>
 </menu>

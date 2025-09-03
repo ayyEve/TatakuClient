@@ -63,10 +63,10 @@ pub enum BuildableUiOperationTarget {
     Parent,
 
     Id { 
-        #[serde(rename="$value", alias="$text", default)] id: BuildableValue,
+        #[serde(rename="$value", default)] id: BuildableValue,
     },
     Class {
-        #[serde(rename="$value", alias="$text", default)] class: BuildableValue,
+        #[serde(rename="$value", default)] class: BuildableValue,
     },
 }
 impl BuildableUiOperationTarget {

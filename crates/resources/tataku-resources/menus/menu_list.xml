@@ -6,35 +6,29 @@
     
     <!-- leave menu with escape -->
     <events>
-        <event>
-            <keyPress key="Escape"/>
-            <actions>
-                <setMenu id="main_menu"/>
-            </actions>
-        </event>
+        <keyPress key="Escape">
+            <setMenu>main_menu</setMenu>
+        </keyPress>
     </events>
 
-    <element>
-        <column style = "width: fill; height: fill">
-            <text><text text="Menu List"/></text>
-            <list
-                style = "width: fill; height: auto"
-                list = "global.menu_list"
-                variable = "_menu"
-                scrollable = "true"
-            >
-                <row style = "width: fill; height: auto; margin: 10px">
-                    <button style = "width: fill; height: auto; margin: 10px">
-                        <action>
-                            <setMenu><variable var="_menu"/></setMenu>
-                        </action>
-                        <element>
-                            <text><variable var="_menu"/></text>
-                        </element>
-                    </button>
-                </row>
-            </list>
-        </column>
-    </element>
+    <column style = "width: fill; height: fill">
+        <text>Menu List</text>
 
+        <list
+            style = "width: fill; height: auto"
+            list = "global.menu_list"
+            variable = "_menu"
+            scrollable = "true"
+        >
+            <row style = "width: fill; height: auto; margin: 10px">
+                <button style = "width: fill; height: auto; margin: 10px">
+                    <action>
+                        <setMenu><variable>_menu</variable></setMenu>
+                    </action>
+
+                    <text><variable>_menu</variable></text>
+                </button>
+            </row>
+        </list>
+    </column>
 </menu>

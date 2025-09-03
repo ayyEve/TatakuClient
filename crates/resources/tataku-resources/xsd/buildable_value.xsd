@@ -18,12 +18,7 @@
         <xs:element name="none" />
         <xs:element name="variable" type="text:string"/>
         <xs:element name="passedIn" />
-        <xs:element name="calc" type="text:string">
-            <xs:key name="buildable_calc">
-                <xs:selector xpath="."/>
-                <xs:field xpath="@calc|@var|*"/>
-            </xs:key>
-        </xs:element>
+        <xs:element name="calc" type="text:string"/>
     </xs:choice>
 </xs:group>
 

@@ -19,7 +19,7 @@
       <xs:all>
         <xs:element name="onInput" minOccurs="0">
           <xs:complexType>
-            <xs:group ref="actions:action-type" />
+            <xs:group ref="actions:action" />
           </xs:complexType>
         </xs:element>
       </xs:all>

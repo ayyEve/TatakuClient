@@ -5,7 +5,7 @@ use crate::prelude::*;
 #[derive(Clone, Debug, PartialEq)]
 pub enum BuildableChatAction {
     SendMessage {
-        #[serde(rename = "@channel")]
+        #[serde(alias = "@channel")]
         channel: BuildableValue,
         #[serde(rename="$value")]
         message: Vec<BuildableText>,

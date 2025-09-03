@@ -17,13 +17,11 @@
   <xs:complexContent>
     <xs:extension base="elements:generic">
       <xs:all>
-        <xs:element name="text" minOccurs="0" type="text:text"/>
-
         <xs:element name="value" minOccurs="0" type="text:string"/>
 
         <xs:element name="onClick" minOccurs="0">
           <xs:complexType>
-            <xs:group ref="actions:action-type"/>
+            <xs:group ref="actions:action"/>
           </xs:complexType>
         </xs:element>
 

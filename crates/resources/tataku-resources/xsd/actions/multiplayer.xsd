@@ -16,9 +16,9 @@
     <xs:element name="createLobby">
       <xs:complexType>
         <xs:all>
-          <xs:element name="name" type="buildable-value:buildableValue" minOccurs="1" maxOccurs="1"/>
-          <xs:element name="password" type="buildable-value:buildableValue" minOccurs="0" maxOccurs="1"/>
-          <xs:element name="private" type="buildable-value:buildableValue" minOccurs="0" maxOccurs="1"/>
+          <xs:element name="name" type="buildable-value:buildableValue" minOccurs="1"/>
+          <xs:element name="password" type="buildable-value:buildableValue" minOccurs="0"/>
+          <xs:element name="private" type="buildable-value:buildableValue" minOccurs="0"/>
         </xs:all>
       </xs:complexType>
     </xs:element>
@@ -26,7 +26,8 @@
     <xs:element name="joinLobby">
       <xs:complexType mixed="true">
         <xs:sequence>
-          <xs:element name="password" type="buildable-value:buildableValue" minOccurs="0" maxOccurs="1"/>
+          <xs:group ref="buildable-value:buildableValue-wrapped" minOccurs="0"/>
+          <xs:element name="password" type="buildable-value:buildableValue" minOccurs="0"/>
         </xs:sequence>
       </xs:complexType>
     </xs:element>
@@ -41,7 +42,7 @@
     
     <xs:element name="slot">
       <xs:complexType>
-        <xs:group ref="slot-actions:slot-action" minOccurs="1" maxOccurs="1"/>
+        <xs:group ref="slot-actions:slot-action"/>
       </xs:complexType>
     </xs:element>
 

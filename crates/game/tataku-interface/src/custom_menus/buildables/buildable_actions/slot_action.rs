@@ -3,7 +3,7 @@ use crate::prelude::*;
 #[derive(Deserialize)]
 #[derive(Clone, Debug, PartialEq)]
 pub struct BuildableSlot {
-    pub slot: BuildableValue,
+    pub slot: Wrapped<BuildableValue>,
     #[serde(rename="$value")] pub action: BuildableSlotAction,
 }
 impl BuildableSlot {
@@ -12,7 +12,7 @@ impl BuildableSlot {
         values: &mut dyn Reflect, 
         passed_in: Option<&TatakuValue>,
     ) -> Option<LobbySlotAction> {
-        let slot = match &self.slot {
+        let slot = match &self.slot.inner {
             BuildableValue::None => {
                 error!("slot is none?? ({:?})", self.action);
                 return None;
@@ -76,7 +76,7 @@ impl BuildableSlot {
     }
 
     pub fn build(&mut self, values: &dyn Reflect) {
-        self.slot.resolve_pre(values);
+        self.slot.inner.resolve_pre(values);
     }
 }
 
