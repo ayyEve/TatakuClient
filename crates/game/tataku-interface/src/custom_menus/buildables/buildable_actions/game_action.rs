@@ -58,7 +58,7 @@ impl BuildableGameAction {
                 duration,
             } => {
                 let duration = duration_attribute
-                    .map(|d| BuildableValue::Value(d))
+                    .map(BuildableValue::Value)
                     .or(duration)?;
 
                 let text: String = text.into_iter()

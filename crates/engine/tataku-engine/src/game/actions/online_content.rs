@@ -53,60 +53,8 @@ pub struct OnlineContentSearch {
     pub page: u32,
 
     /// What search-specific settings were provided
-    pub search_values: OnlineContentSearchValueCollection,
+    pub search_values: HashMap<String, String>,
 
     /// What query
     pub query: Option<String>,
-}
-
-
-#[derive(Deserialize)]
-#[serde(rename_all="camelCase")]
-#[derive(Clone, Debug, PartialEq)]
-pub struct OnlineContentSearchValue {
-    pub id: String,
-    pub value: String,
-} 
-impl OnlineContentSearchValue {
-    pub fn new(id: impl ToString, value: impl ToString) -> Self {
-        Self {
-            id: id.to_string(),
-            value: value.to_string(),
-        }
-    }
-}
-
-#[derive(Deserialize)]
-#[serde(transparent)]
-#[derive(Clone, Debug, PartialEq)]
-pub struct OnlineContentSearchValueCollection(Vec<OnlineContentSearchValue>);
-impl OnlineContentSearchValueCollection {
-    pub fn get_value(&self, id: &str) -> Option<&String> {
-        self.0
-            .iter()
-            .find(|i| i.id == id)
-            .map(|i| &i.value)
-    }
-    pub fn get_value_or_default(&self, id: &str, default: impl ToString) -> Cow<'_, String> {
-        self.0
-            .iter()
-            .find(|i| i.id == id)
-            .map_or_else(
-                || Cow::Owned(default.to_string()), 
-                |i| Cow::Borrowed(&i.value)
-            )
-    }
-    pub fn get_values(&self, id: &str) -> Vec<&String> {
-        self.0
-            .iter()
-            .filter(|i| i.id == id)
-            .map(|i| &i.value)
-            .collect()
-    }
-
-}
-impl From<Vec<OnlineContentSearchValue>> for OnlineContentSearchValueCollection {
-    fn from(value: Vec<OnlineContentSearchValue>) -> Self {
-        Self(value)
-    }
 }

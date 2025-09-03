@@ -21,40 +21,46 @@ impl OsuDirect {
                 available_types: vec![
                     OnlineContentType::Maps,
                 ], 
-                search_options: vec![
-                    SearchOption::new(
-                        "mode",
-                        "Playmode",
-                        vec![
-                            OnlineContentSearchData::new("Unset", ""),
-                            OnlineContentSearchData::new("Osu", "0"),
-                            OnlineContentSearchData::new("Taiko", "1"),
-                            OnlineContentSearchData::new("Catch", "2"),
-                            OnlineContentSearchData::new("Mania", "3"),
-                        ]
+                search_options: [
+                    (
+                        "mode".to_owned(),
+                        SearchOption::new(
+                            "Playmode",
+                            vec![
+                                OnlineContentSearchData::new("Unset", ""),
+                                OnlineContentSearchData::new("Osu", "0"),
+                                OnlineContentSearchData::new("Taiko", "1"),
+                                OnlineContentSearchData::new("Catch", "2"),
+                                OnlineContentSearchData::new("Mania", "3"),
+                            ]
+                        )
                     ),
-                    SearchOption::new(
-                        "status",
-                        "Status",
-                        vec![
-                            OnlineContentSearchData::new("Unset", ""),
-                            OnlineContentSearchData::new("Ranked", "1"),
-                            OnlineContentSearchData::new("Pending", "2"),
-                            OnlineContentSearchData::new("All", "4"),
-                            OnlineContentSearchData::new("Graveyarded", "5"),
-                            OnlineContentSearchData::new("Approved", "6"),
-                            OnlineContentSearchData::new("Loved", "8"),
-                        ]
+                    (
+                        "status".to_owned(),
+                        SearchOption::new(
+                            "Status",
+                            vec![
+                                OnlineContentSearchData::new("Unset", ""),
+                                OnlineContentSearchData::new("Ranked", "1"),
+                                OnlineContentSearchData::new("Pending", "2"),
+                                OnlineContentSearchData::new("All", "4"),
+                                OnlineContentSearchData::new("Graveyarded", "5"),
+                                OnlineContentSearchData::new("Approved", "6"),
+                                OnlineContentSearchData::new("Loved", "8"),
+                            ]
+                        )
                     ),
-                    SearchOption::new(
-                        "nsfw",
-                        "Nsfw",
-                        vec![
-                            OnlineContentSearchData::new("Yes", "true"),
-                            OnlineContentSearchData::new("No", "false"),
-                        ]
-                    )
-                ]
+                    (
+                        "nsfw".to_owned(),
+                        SearchOption::new(
+                            "Nsfw",
+                            vec![
+                                OnlineContentSearchData::new("Yes", "true"),
+                                OnlineContentSearchData::new("No", "false"),
+                            ]
+                        ),
+                    ),
+                ].into_iter().collect()
             },
             connection: Arc::new(AsyncMutex::new(connection)),
         }
@@ -73,16 +79,24 @@ impl OnlineContentEngine for OsuDirect {
         let creds = settings.integrations.osu.clone();
 
         let mode = search.search_values
-            .get_value_or_default("mode", "");
+            .get("mode")
+            .map(|s| &**s)
+            .unwrap_or_default();
 
         let sort = search.search_values
-            .get_value_or_default("sort", "");
+            .get("sort")
+            .map(|s| &**s)
+            .unwrap_or_default();
 
         let status = search.search_values
-            .get_value_or_default("status", "");
+            .get("status")
+            .map(|s| &**s)
+            .unwrap_or_default();
 
         let nsfw = search.search_values
-            .get_value_or_default("nsfw", "");
+            .get("nsfw")
+            .map(|s| &**s)
+            .unwrap_or_default();
 
         let query = search.query.unwrap_or_default();
         let page = search.page;

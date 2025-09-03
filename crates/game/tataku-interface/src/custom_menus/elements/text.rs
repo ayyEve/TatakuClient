@@ -29,7 +29,7 @@ impl CustomElement for TextElement {
             self.id.clone(),
             self.class_list.clone(),
             TextWidget::new(
-                WidgetText::from_buildable_iter(text.into_iter())
+                WidgetText::from_buildable_iter(text)
             )
             .boxed()
         )

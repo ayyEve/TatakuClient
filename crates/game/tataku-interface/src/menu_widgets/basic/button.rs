@@ -248,7 +248,7 @@ impl From<Message> for ButtonOnClick {
 }
 impl From<BuildableAction> for ButtonOnClick {
     fn from(value: BuildableAction) -> Self {
-        Self::from_buildable_iter([value].into_iter())
+        Self::from_buildable_iter([value])
     }
 }
 

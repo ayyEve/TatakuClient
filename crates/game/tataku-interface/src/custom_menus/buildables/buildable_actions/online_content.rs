@@ -4,32 +4,10 @@ use std::str::FromStr;
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
 #[derive(Clone, Debug, PartialEq)]
-#[allow(clippy::large_enum_variant)]
 pub enum BuildableOnlineContentAction {
-    #[serde(rename_all="camelCase")]
     Search {
-        /// What "engine" to use to search
-        engine_id: BuildableValue,
-
-        /// What type of search to perform
-        search_type: BuildableValue,
-        
-        /// What page of results are we on?
-        page: BuildableValue,
-
-        /// What search-specific settings were provided
-        #[serde(alias="values", default)]
-        search_values: Option<Vec<BuildableSearchValue>>,
-
-        #[serde(alias="@valuesMapPath", default)]
-        search_values_map_path: Option<VariablePathResolver>,
-
-        #[serde(alias="@valuesKeyValuePath", default)]
-        search_values_key_value_path: Option<VariablePathResolver>,
-
-        /// What query
-        #[serde(default)]
-        query: BuildableValue,
+        #[serde(rename="$values")]
+        search: BuildableOnlineContentSearch
     },
 
     NextPage,
@@ -90,52 +68,17 @@ impl BuildableOnlineContentAction {
                 passed_in
             )?)),
             
-            Self::Search { 
-                engine_id, 
-                search_type, 
-                page, 
-                search_values, 
-                search_values_map_path, 
-                search_values_key_value_path, 
-                query 
-            } => Some(OnlineContentAction::Search(Box::new(
-                BuildableOnlineContentSearch {
-                    engine_id, 
-                    search_type, 
-                    page, 
-                    search_values, 
-                    search_values_map_path, 
-                    search_values_key_value_path, 
-                    query 
-                }.resolve(values, passed_in)?
-            ))),
+            Self::Search { search } => Some(OnlineContentAction::Search(
+                Box::new(search.resolve(values, passed_in)?)
+            )),
         }
     }
 }
 
-
 #[derive(Deserialize)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 #[derive(Clone, Debug, PartialEq)]
-pub struct BuildableSearchValue {
-    pub id: BuildableValue,
-    pub value: BuildableValue,
-}
-impl BuildableSearchValue {
-    pub fn resolve(
-        &self,
-        values: &dyn Reflect,
-        passed_in: Option<&TatakuValue>,
-    ) -> Option<OnlineContentSearchValue> {
-        Some(OnlineContentSearchValue {
-            id: self.id.resolve(values, passed_in)?.as_string(),
-            value: self.value.resolve(values, passed_in)?.as_string()
-        })
-    }
-}
-
-
-struct BuildableOnlineContentSearch {
+pub struct BuildableOnlineContentSearch {
     /// What "engine" to use to search
     engine_id: BuildableValue,
 
@@ -146,76 +89,36 @@ struct BuildableOnlineContentSearch {
     page: BuildableValue,
 
     /// What search-specific settings were provided
-    search_values: Option<Vec<BuildableSearchValue>>,
+    #[serde(alias="values", default)]
+    search_values: Option<HashMap<String, BuildableValue>>,
+    #[serde(alias="@valuesMapPath", default)]
     search_values_map_path: Option<VariablePathResolver>,
+    #[serde(alias="@valuesKeyValuePath", default)]
     search_values_key_value_path: Option<VariablePathResolver>,
 
     /// What query
+    #[serde(default)]
     query: BuildableValue,
 }
+
 impl BuildableOnlineContentSearch {
-    fn get_value(
-        search_option: &SearchOption,
-        path: &str,
-        values: &dyn Reflect,
-    ) -> Option<String> {
-        match &search_option.values {
-            SearchOptionType::Integer { .. } 
-            | SearchOptionType::Float { .. } => {
-                match values.reflect_as_number(path) {
-                    Ok(n) => {
-                        let num: f32 = n.into();
-                        return Some(num.to_string())
-                    }
-                    Err(e) => {
-                        error!("Error getting search value (number): {e:?}. path: {path}");
-                    }
-                }
-            }
-
-            SearchOptionType::List { .. } => {
-                match values.reflect_get::<OnlineContentSearchData>(path) {
-                    Ok(v) => {
-                        return Some(v.value.clone())
-                    }
-                    Err(ReflectError::ValueWrongType { .. }) => {
-                        match values.reflect_get::<String>(path) {
-                            Ok(v) => {
-                                return Some(v.to_string())
-                            }
-                            Err(e) => {
-                                error!("Error getting search value (string): {e:?}. path: {path}");
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        error!("Error getting search value (OnlineContentSearchData): {e:?}. path: {path}");
-                    }
-                }
-            }
-        }
-        
-        None
-    }
-    
-
     fn get_search_values(
         &self, 
         engine_id: &str,
         values: &dyn Reflect,
         passed_in: Option<&TatakuValue>,
-    ) -> Option<Vec<OnlineContentSearchValue>> {
-        let mut search_values = Vec::new();
+    ) -> Option<HashMap<String, String>> {
+        let mut search_values = HashMap::new();
 
-        if let Some(self_search_values) = &self
-            .search_values 
-        {
-            search_values = self_search_values
+        if let Some(buildable) = &self.search_values {
+            search_values = buildable
                 .iter()
-                .filter_map(|i| i.resolve(values, passed_in))
-                .collect::<Vec<_>>();
+                .filter_map(|(key, value)| value
+                    .resolve(values, passed_in)
+                    .map(|value| (key.clone(), value.as_string()))
+                )
+                .collect();
         } else if let Some(map_path) = &self.search_values_map_path {
-
             let map_path = map_path.resolve_path(values)
                 .inspect_err(|e| error!("error resolving path: {e:?}"))
                 .ok()?;
@@ -228,32 +131,18 @@ impl BuildableOnlineContentSearch {
                     error!("Error with search values map path '{map_path}': {e:?}")
                 )
                 .ok()?;
-            
-            for i in iter {
-                let Ok(id) = i
-                    .item
-                    .reflect_get::<String>("id")
-                    .inspect_err(|e| 
-                        error!("Error getting search values id: {e:?}")
-                    )
-                else { continue };
-                let id = id.to_string();
 
-                let Some(option) = engine
-                    .search_options
-                    .iter()
-                    .find(|i| i.id == id)
-                else { 
-                    warn!("search option id not found: {id}"); 
+            for i in iter {
+                let Some(ReflectItemIndex::Value(id)) = i.index else { break; };
+                let Some(id) = id.downcast_ref::<String>().cloned() else { continue; };
+
+                let Some(option) = engine.search_options.get(&id) else {
+                    warn!("search option id not found: {id}");
                     continue;
                 };
 
-                if let Some(value) = Self::get_value(
-                    option,
-                    "value",
-                    i.item,
-                ) {
-                    search_values.push(OnlineContentSearchValue::new(id, value));
+                if let Some(value) = option.values.get_value("value", i.item) {
+                    search_values.insert(id, value);
                 } else {
                     warn!("Search value not found: {id}");
                 }
@@ -266,23 +155,23 @@ impl BuildableOnlineContentSearch {
                 .inspect_err(|e| error!("error resolving path: {e:?}"))
                 .ok()?;
 
-            for i in engine.search_options.iter() {
-                let id = i.id.clone();
+            for (id, option) in engine.search_options.iter() {
+                let id = id.clone();
                 let path = format!("{key_value_path}.{id}");
 
-                if let Some(value) = Self::get_value(
-                    i,
-                    &path,
-                    values
-                ) {
-                    search_values.push(OnlineContentSearchValue::new(id, value));
+                if let Some(value) = option.values.get_value(&path, values) {
+                    search_values.insert(id, value);
                 } else {
                     warn!("Search value not found: {path}");
                 }
             }
         }
 
-        Some(search_values)
+        if search_values.is_empty() {
+            None
+        } else {
+            Some(search_values)
+        }
     }
 
     fn resolve(
@@ -301,7 +190,7 @@ impl BuildableOnlineContentSearch {
         Some(OnlineContentSearch {
             engine_id,
             page: self.page.resolve(values, passed_in)?.as_u32()?,
-            search_values: search_values.into(),
+            search_values,
 
             search_type: vec![OnlineContentType::from_str(
                 &self.search_type.resolve(values, passed_in)?.as_string()

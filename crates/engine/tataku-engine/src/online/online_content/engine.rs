@@ -67,7 +67,7 @@ pub struct OnlineContentCapabilities {
     pub display_name: String,
     pub available_types: Vec<OnlineContentType>,
 
-    pub search_options: Vec<SearchOption>,
+    pub search_options: HashMap<String, SearchOption>,
 }
 impl Display for OnlineContentCapabilities {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -78,18 +78,15 @@ impl Display for OnlineContentCapabilities {
 #[derive(Reflect)]
 #[derive(Clone, Debug)]
 pub struct SearchOption {
-    pub id: String,
     pub display: String,
     pub values: SearchOptionType,
 }
 impl SearchOption {
     pub fn new(
-        id: impl ToString,
         display: impl ToString,
         values: impl Into<SearchOptionType>,
     ) -> Self {
         Self {
-            id: id.to_string(),
             display: display.to_string(),
             values: values.into(),
         }
@@ -114,6 +111,52 @@ pub enum SearchOptionType {
         options: Vec<OnlineContentSearchData>,
     }
 }
+impl SearchOptionType {
+    pub fn get_value(
+        &self,
+        path: &str,
+        values: &dyn Reflect,
+    ) -> Option<String> {
+        match &self {
+            SearchOptionType::Integer { .. }
+            | SearchOptionType::Float { .. } => {
+                match values.reflect_as_number(path) {
+                    Ok(n) => {
+                        let num: f32 = n.into();
+                        return Some(num.to_string())
+                    }
+                    Err(e) => {
+                        error!("Error getting search value (number): {e:?}. path: {path}");
+                    }
+                }
+            }
+
+            SearchOptionType::List { .. } => {
+                match values.reflect_get::<OnlineContentSearchData>(path) {
+                    Ok(v) => {
+                        return Some(v.value.clone())
+                    }
+                    Err(ReflectError::ValueWrongType { .. }) => {
+                        match values.reflect_get::<String>(path) {
+                            Ok(v) => {
+                                return Some(v.to_string())
+                            }
+                            Err(e) => {
+                                error!("Error getting search value (string): {e:?}. path: {path}");
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        error!("Error getting search value (OnlineContentSearchData): {e:?}. path: {path}");
+                    }
+                }
+            }
+        }
+
+        None
+    }
+}
+
 impl From<Vec<OnlineContentSearchData>> for SearchOptionType {
     fn from(value: Vec<OnlineContentSearchData>) -> Self {
         Self::List {
