@@ -231,9 +231,9 @@
   <!-- the beatmap select menu is broken up into rows -->
   <column style="width: fill; height: fill;">
     <!-- the first row contains the dropdowns and search -->
-    <!-- <row id="top-bar"> -->
+    <row id="top-bar">
       <!-- score method -->
-      <!-- <dropdown
+      <dropdown
         id = "score_method_dropdown"
         options_path = "enums.score_methods"
         selected_path = "settings.score_method"
@@ -244,10 +244,10 @@
             <passedIn />
           </setValue>
         </onSelect>
-      </dropdown> -->
+      </dropdown>
 
       <!-- playmode -->
-      <!-- <dropdown
+      <dropdown
         id = "playmode_dropdown"
         options_path = "enums.playmodes"
         selected_path = "global.playmode"
@@ -261,10 +261,10 @@
             </setPlaymode>
           </map>
         </onSelect>
-      </dropdown> -->
+      </dropdown>
 
       <!-- sort by -->
-      <!-- <dropdown
+      <dropdown
         id = "sort_by_dropdown"
         options_path = "enums.sort_by"
         selected_path = "settings.sort_by"
@@ -276,10 +276,10 @@
             <passedIn />
           </setValue>
         </onSelect>
-      </dropdown> -->
+      </dropdown>
 
       <!-- Filter text -->
-      <!-- <textInput
+      <textInput
         style = "width: 20%; font-size: 20px;"
         variable = "beatmaps.filter_text"
         placeholder="Search"
@@ -289,9 +289,9 @@
             <refreshMaps />
           </map>
         </onInput>
-      </textInput> -->
+      </textInput>
 
-    <!-- </row> -->
+    </row>
 
     <!-- the next row has the score list, gameplay preview, and beatmap list -->
     <row id="middle">

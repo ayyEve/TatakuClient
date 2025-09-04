@@ -11,9 +11,26 @@ pub struct TextInputElement {
     #[serde(rename = "@variable")] variable: String,
     #[serde(rename = "@password", default)] is_password: bool,
 
-    #[serde(alias = "@placeholder", default)] placeholder: BuildableText,
-    #[serde(default)] on_input: BuildableAction,
-    #[serde(default)] on_submit: BuildableAction,
+    #[serde(rename = "@placeholder", default)] placeholder_attribute: Option<ArcStr>,
+    #[serde(default)] placeholder: Option<Wrapped<BuildableText>>,
+
+    #[serde(default)] on_input: Wrapped<BuildableAction>,
+    #[serde(default)] on_submit: Wrapped<BuildableAction>,
+}
+impl TextInputElement {
+    fn placeholder(&self) -> WidgetText {
+        let placeholder = self.placeholder.clone()
+            .map(|p| p.inner)
+            .or(self.placeholder_attribute.clone()
+                .map(BuildableText::Text)
+            )
+            .unwrap_or_default();
+
+        match placeholder.clone() {
+            BuildableText::Text(t) | BuildableText::Locale(t) => WidgetText::String(t.to_string().into()),
+            buildable => WidgetText::Custom { custom: vec![buildable], cached: String::new() }
+        }
+    }
 }
 impl CustomElement for TextInputElement {
     fn build(&self) -> Box<dyn Widget<TatakuAction>> {
@@ -23,14 +40,14 @@ impl CustomElement for TextInputElement {
             self.id.clone(),
             self.class_list.clone(),
             TextInput::new(
-                self.placeholder.clone(),
+                self.placeholder(),
                 BuildableText::Variable { 
                     variable: VariablePathResolver::new(self.variable.clone())
                 }
             )
             .secure(self.is_password)
-            .on_input(self.on_input.clone())
-            .on_submit(self.on_submit.clone())
+            .on_input(self.on_input.inner.clone())
+            .on_submit(self.on_submit.inner.clone())
             .boxed()
         )
     }
