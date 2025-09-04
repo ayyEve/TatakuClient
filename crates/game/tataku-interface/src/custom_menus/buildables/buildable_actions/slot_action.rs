@@ -1,18 +1,36 @@
 use crate::prelude::*;
 
-#[derive(Deserialize)]
 #[derive(Clone, Debug, PartialEq)]
 pub struct BuildableSlot {
-    pub slot: Wrapped<BuildableValue>,
-    #[serde(rename="$value")] pub action: BuildableSlotAction,
+    pub slot: BuildableValue,
+    pub action: BuildableSlotAction,
 }
+
+impl<'de> Deserialize<'de> for BuildableSlot {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>
+    {
+        #[derive(Deserialize)]
+        struct Slot(BuildableValue, BuildableSlotAction);
+
+        let Slot(slot, action) = Slot::deserialize(deserializer)?;
+
+        Ok(BuildableSlot {
+            slot,
+            action,
+        })
+    }
+}
+
+
 impl BuildableSlot {
     pub fn get_action(
         &self, 
         values: &mut dyn Reflect, 
         passed_in: Option<&TatakuValue>,
     ) -> Option<LobbySlotAction> {
-        let slot = match &self.slot.inner {
+        let slot = match &self.slot {
             BuildableValue::None => {
                 error!("slot is none?? ({:?})", self.action);
                 return None;
@@ -76,7 +94,7 @@ impl BuildableSlot {
     }
 
     pub fn build(&mut self, values: &dyn Reflect) {
-        self.slot.inner.resolve_pre(values);
+        self.slot.resolve_pre(values);
     }
 }
 

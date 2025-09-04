@@ -40,11 +40,7 @@
     <xs:element name="quit"/>
     <xs:element name="start"/>
     
-    <xs:element name="slot">
-      <xs:complexType>
-        <xs:group ref="slot-actions:slot-action"/>
-      </xs:complexType>
-    </xs:element>
+    <xs:element name="slot" type="slot-actions:slot-action"/>
 
   </xs:choice>
 </xs:group>

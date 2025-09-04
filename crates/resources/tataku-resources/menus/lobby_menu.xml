@@ -66,7 +66,7 @@
                                         <!-- and the slot isnt us, kick -->
                                         <multiplayer>
                                             <slot>
-                                                <slot><variable>_slot.id</variable></slot>
+                                                <variable>_slot.id</variable>
                                                 <kick/>
                                             </slot>
                                         </multiplayer>
@@ -79,7 +79,7 @@
                                             <!-- unlock it -->
                                             <multiplayer>
                                                 <slot>
-                                                    <slot><variable>_slot.id</variable></slot>
+                                                    <variable>_slot.id</variable>
                                                     <unlock/>
                                                 </slot>
                                             </multiplayer>
@@ -88,7 +88,7 @@
                                             <false>
                                                 <multiplayer>
                                                     <slot>
-                                                        <slot><variable>_slot.id</variable></slot>
+                                                        <variable>_slot.id</variable>
                                                         <lock/>
                                                     </slot>
                                                 </multiplayer>
@@ -123,7 +123,7 @@
                             <action>
                                 <multiplayer>
                                     <slot>
-                                        <slot><variable>_slot.id</variable></slot>
+                                        <variable>_slot.id</variable>
                                         <showProfile/>
                                     </slot>
                                 </multiplayer>
@@ -140,7 +140,7 @@
                                     <conditional cond="!_slot.locked">
                                         <multiplayer>
                                             <slot>
-                                                <slot><variable>_slot.id</variable></slot>
+                                                <variable>_slot.id</variable>
                                                 <move/>
                                             </slot>
                                         </multiplayer>

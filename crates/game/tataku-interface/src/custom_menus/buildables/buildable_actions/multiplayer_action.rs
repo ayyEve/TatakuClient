@@ -41,8 +41,10 @@ pub enum BuildableMultiplayerAction {
     StartMultiplayer,
 
     // slot actions
-    #[serde(alias="slot")]
-    SlotAction(BuildableSlot),
+    Slot {
+        #[serde(rename = "$value")]
+        slot: BuildableSlot,
+    },
 }
 impl BuildableMultiplayerAction {
     pub fn into_action(
@@ -59,8 +61,8 @@ impl BuildableMultiplayerAction {
             Self::Ready => Some(MultiplayerAction::LobbyAction(LobbyAction::Ready)),
             Self::Unready => Some(MultiplayerAction::LobbyAction(LobbyAction::Unready)),
 
-            Self::SlotAction(action) => {
-                action
+            Self::Slot { slot } => {
+                slot
                     .get_action(values, passed_in)
                     .map(|action| MultiplayerAction::LobbyAction(LobbyAction::SlotAction(action)))
             }
@@ -98,8 +100,8 @@ impl BuildableMultiplayerAction {
 
     pub fn build(&mut self, values: &dyn Reflect) {
         match self {
-            Self::SlotAction(slot_action) => {
-                slot_action.slot.inner.resolve_pre(values);
+            Self::Slot { slot } => {
+                slot.build(values);
             }
 
             Self::JoinLobby {
