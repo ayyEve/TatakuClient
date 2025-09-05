@@ -79,10 +79,6 @@ impl Widget<TatakuAction> for KeyButton {
         event: &InputEvent, 
         shell: &mut InputShell<TatakuAction>,
     ) {
-        if !self.on_change.is_built() {
-            self.on_change.build(shell.values);
-        }
-
         if shell.event_consumed { return }
         let bounds = shell.tree
             .absolute_bounds(self.node_id)
@@ -181,7 +177,7 @@ impl Widget<TatakuAction> for KeyButton {
             shell.actions.push(UiAction::new(
                 self.node_id, 
                 UiActionType::MarkDirty,
-            ));
+            ).into());
         }
     }
 

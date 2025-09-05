@@ -6,7 +6,7 @@ use std::str::FromStr;
 #[derive(Clone, Debug, PartialEq)]
 pub enum BuildableOnlineContentAction {
     Search {
-        #[serde(rename="$values")]
+        #[serde(rename="$value")]
         search: BuildableOnlineContentSearch
     },
 
@@ -80,25 +80,25 @@ impl BuildableOnlineContentAction {
 #[derive(Clone, Debug, PartialEq)]
 pub struct BuildableOnlineContentSearch {
     /// What "engine" to use to search
-    engine_id: BuildableValue,
+    engine_id: Wrapped<BuildableValue>,
 
     /// What type of search to perform
-    search_type: BuildableValue,
+    search_type: Wrapped<BuildableValue>,
     
     /// What page of results are we on?
-    page: BuildableValue,
+    page: Wrapped<BuildableValue>,
 
     /// What search-specific settings were provided
     #[serde(alias="values", default)]
     search_values: Option<HashMap<String, BuildableValue>>,
-    #[serde(alias="@valuesMapPath", default)]
+    #[serde(rename="@valuesMapPath", default)]
     search_values_map_path: Option<VariablePathResolver>,
-    #[serde(alias="@valuesKeyValuePath", default)]
+    #[serde(rename="@valuesKeyValuePath", default)]
     search_values_key_value_path: Option<VariablePathResolver>,
 
     /// What query
     #[serde(default)]
-    query: BuildableValue,
+    query: Wrapped<BuildableValue>,
 }
 
 impl BuildableOnlineContentSearch {
@@ -180,7 +180,7 @@ impl BuildableOnlineContentSearch {
         passed_in: Option<&TatakuValue>,
     ) -> Option<OnlineContentSearch> {
         let engine_id = self
-            .engine_id
+            .engine_id.inner
             .resolve(values, passed_in)?
             .as_string();
 
@@ -189,11 +189,11 @@ impl BuildableOnlineContentSearch {
 
         Some(OnlineContentSearch {
             engine_id,
-            page: self.page.resolve(values, passed_in)?.as_u32()?,
+            page: self.page.inner.resolve(values, passed_in)?.as_u32()?,
             search_values,
 
             search_type: vec![OnlineContentType::from_str(
-                &self.search_type.resolve(values, passed_in)?.as_string()
+                &self.search_type.inner.resolve(values, passed_in)?.as_string()
             ).ok()?],
                 // .iter()
                 // .filter_map(|i| OnlineContentType::from_str(
@@ -201,7 +201,7 @@ impl BuildableOnlineContentSearch {
                 // ).ok())
                 // .collect(),
                 
-            query: self.query
+            query: self.query.inner
                 .resolve(values, passed_in)
                 .map(|i| i.as_string())
         })

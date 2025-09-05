@@ -328,7 +328,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         &mut self,
         input_state: &mut CurrentInputState,
         values: &mut dyn Reflect,
-        actions: &mut Queue<Action>,
+        actions: &mut Vec<Action>,
         messages: &mut Vec<Message>,
     ) -> bool {
         let consumed = self.with_node(|tree, node| {
@@ -445,7 +445,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         &mut self,
         message: &Message,
         values: &mut dyn Reflect,
-        actions: &mut Queue<Action>,
+        actions: &mut Vec<Action>,
         messages: &mut Vec<Message>,
     ) {
         self.with_node(|tree, node| {
@@ -466,7 +466,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         event: &TatakuEvent,
         passed_in: Option<&TatakuValue>,
         values: &mut dyn Reflect,
-        actions: &mut Queue<Action>,
+        actions: &mut Vec<Action>,
         messages: &mut Vec<Message>,
     ) {
         self.with_node(|tree, node| {
@@ -498,7 +498,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
     pub fn update(
         &mut self,
         values: &mut dyn Reflect,
-        actions: &mut Queue<Action>,
+        actions: &mut Vec<Action>,
         messages: &mut Vec<Message>,
         skin_manager: &mut dyn SkinProvider,
         text_layout_contexts: &mut TextLayoutContexts,
@@ -526,7 +526,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         &mut self,
         values: &mut dyn Reflect,
         messages: &mut Vec<Message>,
-        actions: &mut Queue<Action>,
+        actions: &mut Vec<Action>,
         skin_manager: &mut dyn SkinProvider,
         text_layout_contexts: &mut TextLayoutContexts,
     ) {

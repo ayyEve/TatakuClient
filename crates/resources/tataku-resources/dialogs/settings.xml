@@ -293,7 +293,7 @@
 
                         <default>
                           <text>
-                              Unknown dropdown type: <display>_setting.type.Dropdown.options</display>
+                            Unknown dropdown type: <display>_setting.type.Dropdown.options</display>
                           </text>
                         </default>
                       </switch>
@@ -316,9 +316,9 @@
                   <!-- Divider -->
                   <case cond="display(_setting.type) == 'Divider'">
                     <row class="divider">
-                        <text class="divider-text">
-                          <variable>_setting.name</variable>
-                        </text>
+                      <text class="divider-text">
+                        <variable>_setting.name</variable>
+                      </text>
                     </row>
                   </case>
 

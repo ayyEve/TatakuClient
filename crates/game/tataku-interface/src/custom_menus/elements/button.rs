@@ -38,9 +38,9 @@ impl CustomElement for ButtonElement {
             self.id.clone(),
             self.class_list.clone(),
             Button::new(self.element.build())
-                .on_press_left(ButtonOnClick::from_buildable_iter(left))
-                .on_press_middle(ButtonOnClick::from_buildable_iter(middle))
-                .on_press_right(ButtonOnClick::from_buildable_iter(right))
+                .on_press_left(left)
+                .on_press_middle(middle)
+                .on_press_right(right)
                 .active_condition_maybe(self.active_override.clone())
                 .boxed()
         )

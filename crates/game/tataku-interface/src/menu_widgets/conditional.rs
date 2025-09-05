@@ -114,17 +114,17 @@ impl Widget<TatakuAction> for ConditionalWidget {
                     shell.actions.push(UiAction::new(
                         child.node_id(), 
                         UiActionType::OverrideDisplay(Some(DisplayType::None))
-                    ));
+                    ).into());
                 }
 
                 shell.actions.push(UiAction::new(
                     self.if_true.node_id(), 
                     UiActionType::OverrideDisplay(None)
-                ));
+                ).into());
                 shell.actions.push(UiAction::new(
                     self.node_id, 
                     UiActionType::Refresh
-                ));
+                ).into());
             }
 
             BuildableConditionResult::False if self.value => {
@@ -134,17 +134,17 @@ impl Widget<TatakuAction> for ConditionalWidget {
                     shell.actions.push(UiAction::new(
                         child.node_id(), 
                         UiActionType::OverrideDisplay(None)
-                    ));
+                    ).into());
                 }
 
                 shell.actions.push(UiAction::new(
                     self.if_true.node_id(), 
                     UiActionType::OverrideDisplay(Some(DisplayType::None))
-                ));
+                ).into());
                 shell.actions.push(UiAction::new(
                     self.node_id, 
                     UiActionType::Refresh
-                ));
+                ).into());
             }
 
             _ => {}

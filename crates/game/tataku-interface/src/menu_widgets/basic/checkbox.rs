@@ -93,7 +93,7 @@ impl Widget<TatakuAction> for Checkbox {
             InputType::MouseRelease(MouseButton::Left) if self.active => {
                 let m = self.on_toggle
                     .as_ref()
-                    .and_then(|f| f.run(
+                    .map(|f| f.run(
                         !self.value.get(), 
                         self.node_id, 
                         shell.values
@@ -224,7 +224,7 @@ impl From<BuildableCondition> for CheckboxValue {
 pub enum CheckboxOnToggle {
     #[debug(skip)]
     Callback(Arc<dyn Fn(bool) -> Message + Send + Sync>),
-    Buildable(Box<BuildableAction>),
+    Buildable(Vec<BuildableAction>),
 }
 impl CheckboxOnToggle {
     fn run(
@@ -232,20 +232,38 @@ impl CheckboxOnToggle {
         value: bool, 
         node: NodeId, 
         values: &mut dyn Reflect,
-    ) -> Option<Result<Message, TatakuAction>> {
+    ) -> Result<Message, TatakuAction> {
         match self {
-            Self::Callback(cb) => Some(Ok(cb(value))),
+            Self::Callback(cb) => Ok(cb(value)),
 
-            Self::Buildable(action) => {
-                let mut action = action.clone();
-                action.build(values);
-                
-                action.into_action(
-                    node, 
-                    values, 
-                    Some(&TatakuValue::Bool(value))
-                ).map(Err)
+            Self::Buildable(actions) => {
+                let passed_in = Some(&TatakuValue::Bool(value));
+
+                // todo: error on failed
+                let actions = actions.iter()
+                    .cloned()
+                    .filter_map(|action| action.into_action(node, values, passed_in))
+                    .collect();
+
+                Err(TatakuAction::Multiple(actions))
             },
+        }
+    }
+
+    pub fn from_buildables(mut values: Vec<BuildableAction>) -> Option<Self> {
+        for value in values.iter_mut() {
+            if let BuildableAction::Conditional {
+                cond,
+                ..
+            } = value {
+                cond.build();
+            }
+        }
+
+        if values.is_empty() {
+            None
+        } else {
+            Some(Self::Buildable(values))
         }
     }
 }
@@ -256,6 +274,6 @@ impl From<Arc<dyn Fn(bool) -> Message + Send + Sync>> for CheckboxOnToggle {
 }
 impl From<BuildableAction> for CheckboxOnToggle {
     fn from(value: BuildableAction) -> Self {
-        Self::Buildable(Box::new(value))
+        Self::from_buildables(vec![value]).unwrap()
     }
 }

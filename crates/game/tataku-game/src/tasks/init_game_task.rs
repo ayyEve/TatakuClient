@@ -27,7 +27,7 @@ impl TatakuTask for InitGameTask {
 
             // load beatmaps
             statuses.push(LoadingStatus::new("Loading beatmaps"));
-            actions.push(LoadBeatmapsTask::new(0));
+            actions.push(LoadBeatmapsTask::new(0).into());
         }
 
         
@@ -36,12 +36,12 @@ impl TatakuTask for InitGameTask {
             self.state = TatakuTaskState::Complete;
             
             info!("game init done, going to main menu");
-            actions.push(BeatmapAction::Next);
+            actions.push(BeatmapAction::Next.into());
             
             #[cfg(feature="graphics")]
             actions.push(MenuAction::SetMenu { 
                 id: "main_menu".into(),
-            });
+            }.into());
         }
     }
 }

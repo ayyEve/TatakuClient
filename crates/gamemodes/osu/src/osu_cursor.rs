@@ -106,8 +106,8 @@ impl OsuCursor {
     }
     
     pub fn init(&self, actions: &mut ActionQueue) {
-        actions.push(WindowAction::AddEmitter(self.left_emitter.get_ref()));
-        actions.push(WindowAction::AddEmitter(self.right_emitter.get_ref()));
+        actions.push(WindowAction::AddEmitter(self.left_emitter.get_ref()).into());
+        actions.push(WindowAction::AddEmitter(self.right_emitter.get_ref()).into());
     }
 
     fn add_ripple(&mut self) {

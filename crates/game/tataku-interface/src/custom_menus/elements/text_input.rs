@@ -8,14 +8,14 @@ pub struct TextInputElement {
     #[serde(rename = "@class", default)] class_list: ClassList,
     #[serde(rename = "@style", default)] style: ArcStr,
 
-    #[serde(rename = "@variable")] variable: String,
+    #[serde(rename = "@variable")] variable: ArcStr,
     #[serde(rename = "@password", default)] is_password: bool,
 
     #[serde(rename = "@placeholder", default)] placeholder_attribute: Option<ArcStr>,
     #[serde(default)] placeholder: Option<Wrapped<BuildableText>>,
 
-    #[serde(default)] on_input: Wrapped<BuildableAction>,
-    #[serde(default)] on_submit: Wrapped<BuildableAction>,
+    #[serde(default)] on_input: Wrapped<Vec<BuildableAction>>,
+    #[serde(default)] on_submit: Wrapped<Vec<BuildableAction>>,
 }
 impl TextInputElement {
     fn placeholder(&self) -> WidgetText {
@@ -41,7 +41,7 @@ impl CustomElement for TextInputElement {
             self.class_list.clone(),
             TextInput::new(
                 self.placeholder(),
-                BuildableText::Variable { 
+                BuildableText::Variable {
                     variable: VariablePathResolver::new(self.variable.clone())
                 }
             )

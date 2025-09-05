@@ -38,7 +38,7 @@ impl TatakuTask for BeatmapDownloadsCheckTask {
         // check if we need to add any beatmaps
         if let Some(map) = self.maps_to_add.pop() {
             info!("Adding map {}", map.version_string());
-            actions.push(BeatmapAction::AddBeatmap { map, add_to_db: true });
+            actions.push(BeatmapAction::AddBeatmap { map, add_to_db: true }.into());
             return 
         }
 

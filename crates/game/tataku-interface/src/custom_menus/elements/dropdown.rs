@@ -14,7 +14,7 @@ pub struct DropdownElement {
     #[serde(rename = "@placeholder", default)] placeholder_attribute: Option<ArcStr>,
     #[serde(default)] placeholder: Option<Wrapped<BuildableText>>,
 
-    #[serde(rename = "onSelect")] on_select: Wrapped<BuildableAction>,
+    #[serde(rename = "onSelect")] on_select: Wrapped<Vec<BuildableAction>>,
 }
 impl DropdownElement {
     fn placeholder(&self) -> DropdownPlaceholder {

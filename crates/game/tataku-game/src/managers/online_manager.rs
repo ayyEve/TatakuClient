@@ -237,6 +237,7 @@ impl OnlineManager {
                             .text("[Login] Unknown error logging in")
                             .color(Color::RED)
                             .duration(5000.0)
+                            .into()
                         );
                     }
                     LoginStatus::BadPassword => {
@@ -246,6 +247,7 @@ impl OnlineManager {
                             .text("[Login] Authentication failed")
                             .color(Color::RED)
                             .duration(5000.0)
+                            .into()
                         );
                     }
                     LoginStatus::NoUser => {
@@ -256,6 +258,7 @@ impl OnlineManager {
                             .text("[Login] Authentication failed")
                             .color(Color::RED)
                             .duration(5000.0)
+                            .into()
                         );
                     }
                     LoginStatus::NotActivated => {
@@ -266,6 +269,7 @@ impl OnlineManager {
                             .text("[Login] Your account is pending activation")
                             .color(Color::YELLOW)
                             .duration(5000.0)
+                            .into()
                         );
                     }
                     LoginStatus::Ok => {
@@ -280,12 +284,13 @@ impl OnlineManager {
                             .text("[Login] Logged in!")
                             .color(Color::GREEN)
                             .duration(2000.0)
+                            .into()
                         );
 
                         self.events.push(OnlineEvent::LoggedIn { 
                             user_id, 
                             username: String::new()
-                        });
+                        }.into());
 
                         // request friends list
                         self.send_packet(ChatPacket::Client_GetFriends);
@@ -308,6 +313,7 @@ impl OnlineManager {
                     .text(message)
                     .color(color)
                     .duration(duration)
+                    .into()
                 );
             }
             // server error
@@ -339,6 +345,7 @@ impl OnlineManager {
                         .text(format!("{username} is online"))
                         .duration(5000.0)
                         .color(Color::BLUE)
+                        .into()
                     );
                 }
             }
@@ -354,6 +361,7 @@ impl OnlineManager {
                             .text(format!("{username} is offline"))
                             .color(Color::BLUE)
                             .duration(5000.0)
+                            .into()
                         );
                     }
                 }
@@ -501,6 +509,7 @@ impl OnlineManager {
                     .text(format!("{username} is now spectating"))
                     .color(Color::GREEN)
                     .duration(2000.0)
+                    .into()
                 );
 
                 self.events.push(OnlineEvent::SpectatorEvent(SpectatorEvent::SpectatorJoined { user_id, username }));
@@ -517,6 +526,7 @@ impl OnlineManager {
                     .text(format!("{user} stopped spectating"))
                     .color(Color::GREEN)
                     .duration(2000.0)
+                    .into()
                 );
                 
                 self.events.push(OnlineEvent::SpectatorEvent(SpectatorEvent::SpectatorLeft { user_id }));
@@ -533,7 +543,7 @@ impl OnlineManager {
                 }
 
                 if let Some(notif) = notif {
-                    actions.push(notif);
+                    actions.push(notif.into());
                 }
             }
 

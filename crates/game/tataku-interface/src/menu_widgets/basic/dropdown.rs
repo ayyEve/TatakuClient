@@ -76,7 +76,7 @@ impl Dropdown {
 
         let message = match &self.on_change {
             DropdownOnChange::Message(message) => message.clone(),
-            DropdownOnChange::Buildable(buildable_action) => {
+            DropdownOnChange::Buildable(actions) => {
                 let passed_in = match &self.variants {
                     DropdownVariants::Static(items) 
                         => Some(items[index].clone().into()),
@@ -91,17 +91,14 @@ impl Dropdown {
                     )
                     .ok(),
                 };
+                let passed_in = passed_in.as_ref();
 
-                let action = buildable_action
-                    .clone()
-                    .into_action(
-                    self.node_id, 
-                    shell.values, 
-                    passed_in.as_ref(),
-                );
-                if let Some(action) = action {
-                    shell.actions.push(action);
-                }
+                // todo: error on bad
+                let actions = actions.iter()
+                    .cloned()
+                    .filter_map(|action| action.into_action(self.node_id, shell.values, passed_in));
+
+                shell.actions.extend(actions);
 
                 None
             }
@@ -456,7 +453,7 @@ impl Widget<TatakuAction> for Dropdown {
 type OnChange = Box<dyn Fn(usize) -> Message + Send + Sync>;
 pub enum DropdownOnChange {
     Message(Option<Message>),
-    Buildable(BuildableAction),
+    Buildable(Vec<BuildableAction>),
     Callback(OnChange),
 }
 impl <T: Into<DropdownOnChange>> From<Option<T>> for DropdownOnChange {
@@ -476,15 +473,26 @@ impl From<OnChange> for DropdownOnChange {
     }
 }
 impl From<BuildableAction> for DropdownOnChange {
-    fn from(mut value: BuildableAction) -> Self {
-        if let BuildableAction::Conditional { 
-            cond, 
-            .. 
-        } = &mut value {
-            cond.build();
+    fn from(action: BuildableAction) -> Self {
+        vec![action].into()
+    }
+}
+impl From<Vec<BuildableAction>> for DropdownOnChange {
+    fn from(mut actions: Vec<BuildableAction>) -> Self {
+        for action in actions.iter_mut() {
+            if let BuildableAction::Conditional {
+                cond,
+                ..
+            } = action {
+                cond.build();
+            }
         }
 
-        Self::Buildable(value)
+        if actions.is_empty() {
+            Self::Message(None)
+        } else {
+            Self::Buildable(actions)
+        }
     }
 }
 

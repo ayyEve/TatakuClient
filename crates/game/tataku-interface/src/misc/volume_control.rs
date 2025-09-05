@@ -203,7 +203,7 @@ impl VolumeControl {
         };
         
         if let Some(action) = action {
-            actions.push(action);
+            actions.push(action.into());
         }
 
         true

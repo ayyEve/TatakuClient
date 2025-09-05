@@ -28,7 +28,7 @@ impl NotificationOnClick {
                 actions.push(MultiplayerAction::JoinLobby {
                     lobby_id: *lobby_id,
                     password: String::new(),
-                });
+                }.into());
             }
 
             NotificationOnClick::File(file_path) => {

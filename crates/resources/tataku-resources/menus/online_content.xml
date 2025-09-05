@@ -13,7 +13,7 @@
 
       <custom>search</custom>
 
-      <setValue key="var.online_content.query"></setValue>
+      <setValue key="var.online_content.query">a</setValue>
 
       <setValue key="var.online_content.selected">9999999</setValue>
 

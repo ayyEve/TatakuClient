@@ -15,13 +15,13 @@ pub enum BuildableAction {
 
     // An internal action at <path>
     Internal {
-        #[serde(rename="@path")] path: VariablePathResolver,
+        #[serde(rename="$value")] path: VariablePathResolver,
     },
 
     /// Set a value
     SetValue {
         #[serde(rename="@key")] key: VariablePathResolver,
-        #[serde(rename="$value")] value: BuildableValue,
+        #[serde(rename="$value", default = "empty_string")] value: BuildableValue,
     },
 
     /// Set the menu
@@ -389,3 +389,4 @@ impl BuildableAction {
 }
 
 pub fn _true() -> bool { true }
+pub fn empty_string() -> BuildableValue { BuildableValue::Value(TatakuValue::String("".to_owned())) }

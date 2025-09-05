@@ -181,19 +181,19 @@ impl TatakuIntegration for MediaControlsIntegration {
             self.last_event = LastEventHelper::new(event.clone());
 
             match event {
-                MediaControlEvent::Play => actions.push(SongAction::Play),
-                MediaControlEvent::Pause => actions.push(SongAction::Pause),
-                MediaControlEvent::Toggle => actions.push(SongAction::Toggle),
-                MediaControlEvent::Next => actions.push(BeatmapAction::Next),
-                MediaControlEvent::Previous => actions.push(BeatmapAction::Previous(MapActionIfNone::ContinueCurrent)),
-                MediaControlEvent::Stop => actions.push(SongAction::Stop),
-                MediaControlEvent::Seek(dir) => actions.push(map_seek(dir, DEFAULT_SEEK_AMOUNT)),
-                MediaControlEvent::SeekBy(dir, duration) => actions.push(map_seek(dir, duration.as_secs_f32() * 1000.0)),
-                MediaControlEvent::SetPosition(position) => actions.push(SongAction::SetPosition(position.0.as_secs_f32() * 1000.0)),
-                MediaControlEvent::SetVolume(vol) => actions.push(SongAction::SetVolume(vol as f32)),
+                MediaControlEvent::Play => actions.push(SongAction::Play.into()),
+                MediaControlEvent::Pause => actions.push(SongAction::Pause.into()),
+                MediaControlEvent::Toggle => actions.push(SongAction::Toggle.into()),
+                MediaControlEvent::Next => actions.push(BeatmapAction::Next.into()),
+                MediaControlEvent::Previous => actions.push(BeatmapAction::Previous(MapActionIfNone::ContinueCurrent).into()),
+                MediaControlEvent::Stop => actions.push(SongAction::Stop.into()),
+                MediaControlEvent::Seek(dir) => actions.push(map_seek(dir, DEFAULT_SEEK_AMOUNT).into()),
+                MediaControlEvent::SeekBy(dir, duration) => actions.push(map_seek(dir, duration.as_secs_f32() * 1000.0).into()),
+                MediaControlEvent::SetPosition(position) => actions.push(SongAction::SetPosition(position.0.as_secs_f32() * 1000.0).into()),
+                MediaControlEvent::SetVolume(vol) => actions.push(SongAction::SetVolume(vol as f32).into()),
                 MediaControlEvent::OpenUri(_) => {},
                 #[cfg(feature="graphics")] 
-                MediaControlEvent::Raise => actions.push(WindowAction::RequestAttention),
+                MediaControlEvent::Raise => actions.push(WindowAction::RequestAttention.into()),
                 MediaControlEvent::Quit => {},
 
                 #[cfg(not(feature="graphics"))] _ => {} 

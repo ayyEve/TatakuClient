@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 pub struct MessageShell<'a, Action: Send + Sync + 'static> {
     pub messages: &'a mut Vec<Message>,
-    pub actions: &'a mut Queue<Action>,
+    pub actions: &'a mut Vec<Action>,
     pub tree: &'a mut Tree<Action>,
     pub values: &'a mut dyn Reflect,
     pub owner: MessageOwner,
@@ -11,7 +11,7 @@ pub struct MessageShell<'a, Action: Send + Sync + 'static> {
 
 pub struct InputShell<'a, Action: Send + Sync + 'static> {
     pub messages: &'a mut Vec<Message>,
-    pub actions: &'a mut Queue<Action>,
+    pub actions: &'a mut Vec<Action>,
     pub tree: &'a mut Tree<Action>,
     pub values: &'a mut dyn Reflect,
     pub owner: MessageOwner,
@@ -39,7 +39,7 @@ pub struct UpdateShell<'a, Action: Send + Sync + 'static> {
 
     pub owner: MessageOwner,
     pub messages: &'a mut Vec<Message>,
-    pub actions: &'a mut Queue<Action>,
+    pub actions: &'a mut Vec<Action>,
     pub skin_manager: &'a mut dyn SkinProvider,
 
     pub text_layout_contexts: &'a mut TextLayoutContexts,
@@ -74,7 +74,7 @@ pub struct GenericShell<'a, Action: Send + Sync +'static> {
     pub tree: &'a mut Tree<Action>,
     pub values: &'a mut dyn Reflect,
     pub messages: &'a mut Vec<Message>,
-    pub actions: &'a mut Queue<Action>,
+    pub actions: &'a mut Vec<Action>,
 }
 impl<'a, 'b:'a, Action: Send + Sync +'static> From<&'b mut MessageShell<'a, Action>> for GenericShell<'a, Action> {
     fn from(value: &'b mut MessageShell<'a, Action>) -> Self {

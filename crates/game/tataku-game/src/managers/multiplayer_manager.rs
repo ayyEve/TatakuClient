@@ -41,11 +41,11 @@ impl MultiplayerManager {
                 actions.push(BeatmapAction::SetFromHash(
                     map.hash, 
                     SetBeatmapOptions::default().restart_song(false)
-                ));
-                actions.push(BeatmapAction::SetPlaymode(map.mode));
+                ).into());
+                actions.push(BeatmapAction::SetPlaymode(map.mode).into());
             }
             None => {
-                actions.push(BeatmapAction::Remove);
+                actions.push(BeatmapAction::Remove.into());
             }
         }
 
@@ -85,7 +85,7 @@ impl MultiplayerManager {
                         SetBeatmapOptions::default()
                             .restart_song(false)
                             .use_preview_point(true)
-                    ));
+                    ).into());
                     self.set_state(LobbyUserState::NotReady, actions);
                 }
             }
@@ -98,7 +98,7 @@ impl MultiplayerManager {
                     actions.push(MultiplayerAction::SetBeatmap { 
                         hash: map, 
                         mode: self.selected_mode.clone() 
-                    });
+                    }.into());
                     self.set_state(LobbyUserState::NotReady, actions);
                 }
             }
@@ -151,7 +151,7 @@ impl MultiplayerManager {
                 actions.push(BeatmapAction::SetFromHash(
                     beatmap.hash, 
                     SetBeatmapOptions::default().restart_song(true)
-                ));
+                ).into());
                 self.set_state(LobbyUserState::NotReady, actions);
             }
         }
@@ -271,6 +271,7 @@ impl MultiplayerManager {
                         .text(format!("User with id {user_id} joined the match"))
                         .duration(3000.0)
                         .color(Color::PURPLE)
+                        .into()
                     );
                     self.update_values(values);
                     return Ok(None)
@@ -281,6 +282,7 @@ impl MultiplayerManager {
                     .text(format!("{} joined the match", user.username))
                     .duration(3000.0)
                     .color(Color::PURPLE)
+                    .into()
                 );
 
                 self.lobby.player_usernames.insert(*user_id, user.username);
@@ -302,6 +304,7 @@ impl MultiplayerManager {
                         .text(format!("{username} left the match"))
                         .duration(3000.0)
                         .color(Color::PURPLE)
+                        .into()
                     );
                 }
             }
@@ -394,15 +397,15 @@ impl MultiplayerManager {
                 if let Some(beatmap) = &self.lobby.current_beatmap {
                     // update the playmode
                     self.selected_mode = Some(beatmap.mode.clone().into());
-                    actions.push(BeatmapAction::SetPlaymode(beatmap.mode.clone()));
+                    actions.push(BeatmapAction::SetPlaymode(beatmap.mode.clone()).into());
                     
                     // the beatmap change handler in Self::update will handle the rest
                     actions.push(BeatmapAction::SetFromHash(
                         beatmap.hash, 
-                        SetBeatmapOptions::default().restart_song(true))
-                    );
+                        SetBeatmapOptions::default().restart_song(true)
+                    ).into());
                 } else {
-                    actions.push(BeatmapAction::Remove);
+                    actions.push(BeatmapAction::Remove.into());
                     self.set_state(LobbyUserState::NoMap, actions);
                 }
             }
@@ -416,12 +419,12 @@ impl MultiplayerManager {
 
                 
                 if !free_mods {
-                    actions.push(ModAction::SetMods(mods.clone()));
+                    actions.push(ModAction::SetMods(mods.clone()).into());
                     // values.global.mods.mods = mods.clone();
                     // values.global.mods.set_speed(*speed);
                 }
                 // TODO: do we want to force the speed even with free mods?()
-                actions.push(ModAction::SetSpeed(GameSpeed::from_u16(*speed).as_f32()));
+                actions.push(ModAction::SetSpeed(GameSpeed::from_u16(*speed).as_f32()).into());
                 // values.global.mods.set_speed(*speed);
             }
 
@@ -442,7 +445,7 @@ impl MultiplayerManager {
             MultiplayerPacket::Server_LobbyRoundComplete => {
                 info!("lobby round completed");
                 #[cfg(feature="graphics")] 
-                actions.push(MenuAction::set_menu("score_menu"));
+                actions.push(MenuAction::set_menu("score_menu").into());
             }
 
             MultiplayerPacket::Server_LobbyScoreUpdate { user_id, score } => {
@@ -484,6 +487,7 @@ impl MultiplayerManager {
                         .text("You are now the host!")
                         .duration(3000.0)
                         .color(Color::PURPLE_AMETHYST)
+                        .into()
                     );
                 }
             }
@@ -507,7 +511,7 @@ impl MultiplayerManager {
         packet: impl Into<PacketId>, 
         actions: &mut ActionQueue,
     ) {
-        actions.push(OnlineAction::Packet(Box::new(packet.into())));
+        actions.push(OnlineAction::Packet(Box::new(packet.into())).into());
     }
     fn set_state(
         &mut self, 
@@ -571,7 +575,7 @@ impl MultiplayerManager {
                     Err(e) => actions.push(Notification::new_error(
                         "Error with beatmap url request", 
                         e.to_string()
-                    )),
+                    ).into()),
 
                     Ok(resp) => {
                         #[allow(unused)] #[derive(Deserialize)]
@@ -583,6 +587,7 @@ impl MultiplayerManager {
                                 .text("shit")
                                 .duration(3000.0)
                                 .color(Color::RED)
+                                .into()
                             );
                             return; 
                         };

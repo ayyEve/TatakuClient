@@ -60,18 +60,18 @@ impl TatakuTask for LoadBeatmapsTask {
                 actions.push(BeatmapAction::AddBeatmap { 
                     map, 
                     add_to_db: false,
-                });
+                }.into());
             }
             status.items_complete += 1;
             return;
         }
 
         debug!("Done adding maps");
-        actions.push(BeatmapAction::InitializeManager);
+        actions.push(BeatmapAction::InitializeManager.into());
         status.complete = true;
         self.state = TatakuTaskState::Complete;
 
         // add a task to check the beatmaps folder for new maps
-        actions.push(TaskAction::AddTask(Box::new(CheckBeatmapFoldersTask::default())));
+        actions.push(TaskAction::AddTask(Box::new(CheckBeatmapFoldersTask::default())).into());
     }
 }

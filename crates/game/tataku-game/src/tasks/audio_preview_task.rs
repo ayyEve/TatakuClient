@@ -69,14 +69,14 @@ impl TatakuTask for AudioPreviewTask {
                         restart: true,
                         ..Default::default()
                     } 
-                )));
+                )).into());
             }
 
             Err(e) => {
                 actions.push(Notification::new_error(
                     "Error loading audio preview", 
                     e
-                ));
+                ).into());
             }
         }
 

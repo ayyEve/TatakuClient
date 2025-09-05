@@ -8,13 +8,18 @@ pub struct SliderElement {
     #[serde(rename = "@class", default)] class_list: ClassList,
     #[serde(rename = "@style", default)] style: ArcStr,
 
-    #[serde(rename = "@var")] var: VariablePathResolver,
+    #[serde(rename = "@variable")] var: VariablePathResolver,
 
-    #[serde(rename = "min", alias = "@min", default)] min: BuildableValue,
-    #[serde(rename = "max", alias = "@max", default)] max: BuildableValue,
-    #[serde(rename = "step", alias = "@step", default)] step: BuildableValue,
+    #[serde(rename = "@min", default)] min_attribute: Option<TatakuValue>,
+    #[serde(rename = "min", default)] min: Option<BuildableValue>,
 
-    #[serde(default)] on_input: Option<BuildableAction>,
+    #[serde(rename = "@max", default)] max_attribute: Option<TatakuValue>,
+    #[serde(rename = "max", default)] max: Option<BuildableValue>,
+
+    #[serde(rename = "@step", default)] step_attribute: Option<TatakuValue>,
+    #[serde(rename = "step", default)] step: Option<BuildableValue>,
+
+    #[serde(default)] on_input: Wrapped<Vec<BuildableAction>>,
 }
 impl SliderElement {
     fn resolve(value: BuildableValue) -> SliderValue {
@@ -41,9 +46,22 @@ impl SliderElement {
 
 impl CustomElement for SliderElement {
     fn build(&self) -> Box<dyn Widget<TatakuAction>> {
-        let min = Self::resolve(self.min.clone());
-        let max = Self::resolve(self.max.clone());
-        let mut step = Some(Self::resolve(self.step.clone()));
+        let min = self.min_attribute.clone()
+            .map(BuildableValue::Value)
+            .or(self.min.clone())
+            .map(Self::resolve)
+            .unwrap();
+
+        let max = self.max_attribute.clone()
+            .map(BuildableValue::Value)
+            .or(self.max.clone())
+            .map(Self::resolve)
+            .unwrap();
+
+        let mut step = self.step_attribute.clone()
+            .map(BuildableValue::Value)
+            .or(self.step.clone())
+            .map(Self::resolve);
         
         if matches!(step, Some(SliderValue::Error)) { step = None };
 
@@ -56,7 +74,7 @@ impl CustomElement for SliderElement {
                 min,
                 max,
                 self.var.clone(),
-                self.on_input.clone(),
+                Some(self.on_input.inner.clone()),
             )
             .step_maybe(step)
             .boxed()

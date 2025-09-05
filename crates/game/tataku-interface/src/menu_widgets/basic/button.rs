@@ -215,25 +215,6 @@ impl ButtonOnClick {
                 => (cb)().map(ActionResponse::Message),
         }
     }
-
-    pub fn from_buildable_iter(iter: impl IntoIterator<Item = BuildableAction>) -> Self {
-        let mut values = iter.into_iter().collect::<Vec<_>>();
-
-        for value in values.iter_mut() {
-            if let BuildableAction::Conditional {
-                cond,
-                ..
-            } = value {
-                cond.build();
-            }
-        }
-
-        if values.is_empty() {
-            Self::Message(None)
-        } else {
-            Self::BuildableActions(values)
-        }
-    }
 }
 impl<T: Into<ButtonOnClick>> From<Option<T>> for ButtonOnClick {
     fn from(value: Option<T>) -> Self {
@@ -247,8 +228,26 @@ impl From<Message> for ButtonOnClick {
     }
 }
 impl From<BuildableAction> for ButtonOnClick {
-    fn from(value: BuildableAction) -> Self {
-        Self::from_buildable_iter([value])
+    fn from(action: BuildableAction) -> Self {
+        vec![action].into()
+    }
+}
+impl From<Vec<BuildableAction>> for ButtonOnClick {
+    fn from(mut actions: Vec<BuildableAction>) -> Self {
+        for action in actions.iter_mut() {
+            if let BuildableAction::Conditional {
+                cond,
+                ..
+            } = action {
+                cond.build();
+            }
+        }
+
+        if actions.is_empty() {
+            Self::Message(None)
+        } else {
+            Self::BuildableActions(actions)
+        }
     }
 }
 

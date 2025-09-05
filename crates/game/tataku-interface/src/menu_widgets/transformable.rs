@@ -265,7 +265,7 @@ impl Widget<TatakuAction> for TransformableWidget {
             shell.actions.push(UiAction::new(
                 self.node_id,
                 UiActionType::ContextChanged
-            ));
+            ).into());
         }
         self.child.update(shell);
     }

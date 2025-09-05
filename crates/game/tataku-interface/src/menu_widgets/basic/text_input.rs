@@ -576,13 +576,6 @@ impl Widget<TatakuAction> for TextInput {
         event: &InputEvent,
         shell: &mut InputShell<TatakuAction>,
     ) {
-        if !self.on_input.is_built() {
-            self.on_input.build(shell.values);
-        }
-        if !self.on_submit.is_built() {
-            self.on_submit.build(shell.values);
-        }
-
         let text_style = shell.tree
             .get_text_style(self.node_id)
             .unwrap();

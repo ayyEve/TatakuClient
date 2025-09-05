@@ -119,7 +119,7 @@ impl DiffCalcTask {
                 entry,
                 diff
             ) {
-                actions.push(Notification::new_error("Failed to insert diff", e));
+                actions.push(Notification::new_error("Failed to insert diff", e).into());
             }
         }
 

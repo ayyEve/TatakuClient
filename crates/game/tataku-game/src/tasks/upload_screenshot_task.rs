@@ -59,7 +59,7 @@ impl TatakuTask for UploadScreenshotTask {
 
             actions.push(GameAction::AddNotification(Notification::new_text(
                 "Uploading screenshot...", Color::YELLOW, 5000.0
-            )));
+            )).into());
 
             let data = self.data.clone();
             let settings = values.reflect_get::<Settings>("settings").unwrap();
@@ -82,10 +82,10 @@ impl TatakuTask for UploadScreenshotTask {
                     Color::BLUE, 
                     5000.0, 
                     NotificationOnClick::Url(url.clone())
-                ));
-                actions.push(GameAction::CopyToClipboard(url.into()));
+                ).into());
+                actions.push(GameAction::CopyToClipboard(url.into()).into());
             }
-            Err(notif) => actions.push(notif),
+            Err(notif) => actions.push(notif.into()),
         }
 
         self.state = TatakuTaskState::Complete;

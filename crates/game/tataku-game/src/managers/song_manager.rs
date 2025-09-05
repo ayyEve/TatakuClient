@@ -29,7 +29,7 @@ impl SongManager {
                 Self::apply_params(&song.instance, params, settings);
             }
 
-            actions.push(GameAction::HandleEvent(TatakuEvent::SongStart, None));
+            actions.push(GameAction::HandleEvent(TatakuEvent::SongStart, None).into());
             return Ok(());
         }
 
@@ -47,7 +47,7 @@ impl SongManager {
         // set our current song to the loaded audio
         self.current_song = Some(SongData::new(song, key));
 
-        actions.push(GameAction::HandleEvent(TatakuEvent::SongStart, None));
+        actions.push(GameAction::HandleEvent(TatakuEvent::SongStart, None).into());
         Ok(())
     }
 

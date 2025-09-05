@@ -75,7 +75,7 @@ impl Game {
                     => panic!("Main menu could not be loaded. did eve fuck up the main_menu.xml?"),
                 _ => {
                     error!("custom menu not found! {id}, going to main menu instead");
-                    self.actions.push(MenuAction::set_menu("main_menu"));
+                    self.actions.push(MenuAction::set_menu("main_menu").into());
                 }
             }
         }
@@ -177,7 +177,7 @@ impl Game {
                     image_path: current.image_filename.clone(), 
                     elapsed: audio.get_position(), 
                     duration: audio.get_duration()
-                });
+                }.into());
             }
             #[cfg(feature="graphics")] 
             SongAction::HookFFT(hook) => self
@@ -226,7 +226,7 @@ impl Game {
         // update the song's rate
         self.actions.push(SongAction::SetRate(
             self.values.global.mods.get_speed()
-        ));
+        ).into());
 
         // apply mods to all gameplay managers
         #[cfg(feature="graphics")] 
@@ -299,7 +299,7 @@ impl Game {
                     Err(e) => self.actions.push(Notification::new_error(
                         "Error loading beatmap", 
                         e
-                    )),
+                    ).into()),
                 }
             }
 
@@ -309,7 +309,7 @@ impl Game {
                     // go back to the lobby before any checks
                     // this way if for some reason something down below fails, the user is in the lobby and not stuck in limbo
                     #[cfg(feature="graphics")] 
-                    self.actions.push(MenuAction::set_menu("lobby_menu"));
+                    self.actions.push(MenuAction::set_menu("lobby_menu").into());
 
                     if !multi.is_host() { 
                         return warn!("trying to set lobby beatmap while not the host ??");
@@ -633,6 +633,7 @@ impl Game {
                         .text("You don't have that map!")
                         .duration(5000.0)
                         .color(Color::RED)
+                        .into()
                     );
                     return;
                 };
@@ -657,7 +658,7 @@ impl Game {
                         Notification::new_error(
                             "Error loading beatmap", 
                             e
-                        )
+                        ).into()
                     ),
                 }
             }
@@ -1079,6 +1080,7 @@ impl Game {
                     .color(Color::PURPLE_AMETHYST)
                     .duration(10_000.0)
                     .onclick(NotificationOnClick::MultiplayerLobby(lobby.id))
+                    .into()
                 );
             }
 
@@ -1203,6 +1205,7 @@ impl Game {
                         .text("You have been kicked from the match")
                         .duration(3000.0)
                         .color(Color::PURPLE)
+                        .into()
                     );
                 }
             }

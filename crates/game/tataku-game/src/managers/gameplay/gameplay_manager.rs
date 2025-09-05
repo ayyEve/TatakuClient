@@ -153,7 +153,7 @@ impl GameplayManager {
             actions.push(AudioAction::new(
                 id, 
                 AudioActionType::Load { list }
-            ));
+            ).into());
         }
         // combo break sound
         actions.push(AudioAction::new(
@@ -169,7 +169,7 @@ impl GameplayManager {
                     ]
                 )
             }
-        ));
+        ).into());
 
         // make sure the gamemode has the correct mods applied
         gamemode.handle_gameplay_event(GameplayEvent::ApplyMods(current_mods.clone()));
@@ -332,7 +332,7 @@ impl GameplayManager {
             self.lead_in_time = 0.01;
         }
 
-        self.actions.push(SongAction::SetPosition(time));
+        self.actions.push(SongAction::SetPosition(time).into());
     }
 }
 
@@ -408,7 +408,7 @@ impl GameplayManager {
         #[cfg(feature="gameplay")]
         if let ReplayAction::Press(KeyPress::SkipIntro) = frame {
             if self.gameplay_mode.is_multi() {
-                self.actions.push(LobbyAction::SendSkipRequest);
+                self.actions.push(LobbyAction::SendSkipRequest.into());
             } else {
                 self.skip_intro();
             }
@@ -503,13 +503,13 @@ impl GameplayManager {
                 self.should_pause = true;
             } else if let GameplayModeInner::Multiplayer { last_escape_press, .. } = &mut *self.gameplay_mode {
                 if last_escape_press.elapsed_and_reset() < 3_000.0 {
-                    self.actions.push(MultiplayerAction::ExitMultiplayer);
+                    self.actions.push(MultiplayerAction::ExitMultiplayer.into());
                 } else {
                     self.actions.push(Notification::new_text(
                         "Press escape again to quit the lobby", 
                         Color::RED, 
                         3_000.0
-                    ));
+                    ).into());
                 }
                 
                 return true;
@@ -522,7 +522,7 @@ impl GameplayManager {
             if self.editor.is_some() {
                 self.editor = None;
                 if !self.gamemode_properties.show_cursor {
-                    self.actions.push(CursorAction::SetVisible(false));
+                    self.actions.push(CursorAction::SetVisible(false).into());
                 }
                 return true;
             }
@@ -557,14 +557,14 @@ impl GameplayManager {
                     background: false,
                     ..Default::default()
                 })
-            });
+            }.into());
 
             self.editor = Some(EditorChannels {
                 event_sender,
                 action_receiver: Arc::new(Mutex::new(action_receiver)),
             });
 
-            self.actions.push(CursorAction::SetVisible(true));
+            self.actions.push(CursorAction::SetVisible(true).into());
             return true;
         }
 
@@ -730,7 +730,7 @@ impl GameplayManager {
         self.actions.push(OnlineAction::SendSpectatorFrame {
             frame: Box::new(frame),
             force: false
-        });
+        }.into());
     }
 
     pub fn outgoing_spectator_frame_force(
@@ -741,7 +741,7 @@ impl GameplayManager {
         self.actions.push(OnlineAction::SendSpectatorFrame {
             frame: Box::new(frame),
             force: true
-        });
+        }.into());
     }
 
     pub fn add_spec_frame(&mut self, frame_host_id: u32, frame: SpectatorFrame) {
@@ -895,10 +895,10 @@ impl GameplayManagerTrait for GameplayManager {
             self.lead_in_time -= elapsed * self.game_speed();
 
             if self.lead_in_time <= 0.0 {
-                self.actions.push(SongAction::SetRate(self.game_speed()));
-                self.actions.push(SongAction::SetVolume(settings.get_music_vol()));
-                self.actions.push(SongAction::SetPosition(-self.lead_in_time));
-                self.actions.push(SongAction::Play);
+                self.actions.push(SongAction::SetRate(self.game_speed()).into());
+                self.actions.push(SongAction::SetVolume(settings.get_music_vol()).into());
+                self.actions.push(SongAction::SetPosition(-self.lead_in_time).into());
+                self.actions.push(SongAction::Play.into());
                 self.lead_in_time = 0.0;
             }
         }
@@ -980,14 +980,14 @@ impl GameplayManagerTrait for GameplayManager {
             );
 
             if new_rate <= 0.05 {
-                self.actions.push(SongAction::Pause);
+                self.actions.push(SongAction::Pause.into());
                 // self.song.pause();
 
                 self.completed = true;
                 // self.outgoing_spectator_frame_force((self.end_time + 10.0, SpectatorAction::Failed));
                 trace!("show fail menu");
             } else {
-                self.actions.push(SongAction::SetRate(new_rate));
+                self.actions.push(SongAction::SetRate(new_rate).into());
             }
 
             actions.extend(self.actions.take());
@@ -1016,7 +1016,7 @@ impl GameplayManagerTrait for GameplayManager {
             if self.gameplay_mode.is_multi() {
                 self.actions.push(LobbyAction::MapComplete(
                     Box::new(self.score.score.clone())
-                ));
+                ).into());
             } 
 
             // check if we failed
@@ -1092,7 +1092,7 @@ impl GameplayManagerTrait for GameplayManager {
                                 "Host speccing someone", 
                                 Color::BLUE, 
                                 2000.0
-                            ));
+                            ).into());
                         }
                         SpectatorAction::ReplayAction { 
                             action 
@@ -1178,7 +1178,7 @@ impl GameplayManagerTrait for GameplayManager {
                 if score_send_timer.as_millis() >= SCORE_SEND_TIME {
                     score_send_timer.elapsed_and_reset();
                     let score = self.score.score.clone();
-                    self.actions.push(LobbyAction::ScoreUpdate(Box::new(score)));
+                    self.actions.push(LobbyAction::ScoreUpdate(Box::new(score)).into());
                 }
             }
 
@@ -1428,7 +1428,7 @@ impl GameplayManagerTrait for GameplayManager {
                         volume, 
                         repeat, 
                         restart: true 
-                    })
+                    }).into()
                 );
             }
 
@@ -1545,7 +1545,7 @@ impl GameplayManagerTrait for GameplayManager {
             self.actions.push(AudioAction::new(
                 id, 
                 AudioActionType::Load { list }
-            ));
+            ).into());
         }
 
         #[cfg(feature="storyboards")]
@@ -1649,7 +1649,7 @@ impl GameplayManagerTrait for GameplayManager {
         #[cfg(feature="graphics")] 
         self.actions.push(CursorAction::SetVisible(
             !self.should_hide_cursor()
-        ));
+        ).into());
 
         self.pause_pending = false;
         self.should_pause = false;
@@ -1709,7 +1709,7 @@ impl GameplayManagerTrait for GameplayManager {
                 self.time(), 
                 SpectatorAction::UnPause
             ));
-            self.actions.push(SongAction::Play);
+            self.actions.push(SongAction::Play.into());
             self.gamemode.handle_gameplay_event(GameplayEvent::UnPaused);
         }
         
@@ -1721,13 +1721,13 @@ impl GameplayManagerTrait for GameplayManager {
     fn pause(&mut self) {
         // make sure the cursor is visible
         #[cfg(feature="graphics")] 
-        self.actions.push(CursorAction::SetVisible(true));
+        self.actions.push(CursorAction::SetVisible(true).into());
         // undo any cursor override
         #[cfg(feature="graphics")] 
-        self.actions.push(CursorAction::OverrideRippleRadius(None));
+        self.actions.push(CursorAction::OverrideRippleRadius(None).into());
 
         // self.song.pause();
-        self.actions.push(SongAction::Pause);
+        self.actions.push(SongAction::Pause.into());
         self.pause_start = Some(chrono::Utc::now().timestamp());
 
         // is there anything else we need to do?
@@ -1756,10 +1756,10 @@ impl GameplayManagerTrait for GameplayManager {
         ));
         } else {
             // reset song
-            self.actions.push(SongAction::Restart);
-            self.actions.push(SongAction::Pause);
-            self.actions.push(SongAction::SetPosition(0.0));
-            self.actions.push(SongAction::SetRate(self.game_speed()));
+            self.actions.push(SongAction::Restart.into());
+            self.actions.push(SongAction::Pause.into());
+            self.actions.push(SongAction::SetPosition(0.0).into());
+            self.actions.push(SongAction::SetRate(self.game_speed()).into());
         }
 
         self.completed = false;
@@ -1773,7 +1773,7 @@ impl GameplayManagerTrait for GameplayManager {
         self.actions.push(GameAction::from((
             self.id.clone(), 
             GameplayAction::RequestDifficulty
-        )));
+        )).into());
 
         let username = self.score.username.clone();
         self.score = IngameScore::new(
@@ -1830,7 +1830,7 @@ impl GameplayManagerTrait for GameplayManager {
 
         #[cfg(feature="gameplay")]
         if self.gameplay_mode.should_load_scores() {
-            self.actions.push(GameAction::RefreshScores);
+            self.actions.push(GameAction::RefreshScores.into());
         }
 
     }
@@ -1864,7 +1864,7 @@ impl GameplayManagerTrait for GameplayManager {
                     repeat: false, 
                     restart: true 
                 }
-            ));
+            ).into());
         }
 
         // reset combo to 0
@@ -1881,17 +1881,17 @@ impl GameplayManagerTrait for GameplayManager {
             self.lead_in_time = 0.0;
         }
 
-        self.actions.push(SongAction::SetPosition(time));
+        self.actions.push(SongAction::SetPosition(time).into());
         self.pending_time_jump = Some(time);
     }
 
     fn on_complete(&mut self) {
         // make sure the cursor is visible
         #[cfg(feature="graphics")] 
-        self.actions.push(CursorAction::SetVisible(true));
+        self.actions.push(CursorAction::SetVisible(true).into());
         // undo any cursor override
         #[cfg(feature="graphics")] 
-        self.actions.push(CursorAction::OverrideRippleRadius(None));
+        self.actions.push(CursorAction::OverrideRippleRadius(None).into());
 
         #[cfg(feature="gameplay")]
         if let GameplayModeInner::Spectator {

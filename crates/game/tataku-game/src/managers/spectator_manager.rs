@@ -100,7 +100,7 @@ impl SpectatorManager {
                 Notification::new_error(
                     "Error loading spec beatmap", 
                     e
-                )
+                ).into()
             ),
         }
 
@@ -124,7 +124,7 @@ impl SpectatorManager {
             actions.push(BeatmapAction::SetFromHash(
                 host_map.map_hash, 
                 SetBeatmapOptions::default().restart_song(true)
-            ));
+            ).into());
 
             let current_time = (self.frames.iter().fold(
                 0.0, 
@@ -177,7 +177,7 @@ impl SpectatorManager {
                         actions.push(BeatmapAction::SetFromHash(
                             beatmap_hash, 
                             SetBeatmapOptions::default().restart_song(true)
-                        ));
+                        ).into());
                         self.start_game(values, 0.0, actions);
                     } else {
                         let settings = &values.settings;
@@ -193,6 +193,7 @@ impl SpectatorManager {
                         .text("Host speccing someone")
                         .duration(2000.0)
                         .color(Color::BLUE)
+                        .into()
                     );
                 }
 
@@ -237,9 +238,9 @@ impl SpectatorManager {
         // check if we need to close something
         if key == Key::Escape {
             #[cfg(feature="graphics")] 
-            actions.push(MenuAction::set_menu("main_menu"));
+            actions.push(MenuAction::set_menu("main_menu").into());
             // resume song if paused
-            actions.push(SongAction::Play);
+            actions.push(SongAction::Play.into());
         }
     }
 

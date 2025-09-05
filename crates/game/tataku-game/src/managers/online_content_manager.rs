@@ -37,20 +37,20 @@ impl OnlineContentManager {
             OnlineContentAction::NextPage 
                 => if let Some(last) = &mut self.last_search {
                     last.page += 1;
-                    actions.push(OnlineContentAction::Search(last.clone()));
+                    actions.push(OnlineContentAction::Search(last.clone()).into());
                 },
             
             OnlineContentAction::PreviousPage 
                 => if let Some(last) = &mut self.last_search {
                     if last.page == 0 { return }
                     last.page -= 1;
-                    actions.push(OnlineContentAction::Search(last.clone()));
+                    actions.push(OnlineContentAction::Search(last.clone()).into());
                 },
 
             OnlineContentAction::SetPage(page) 
                 => if let Some(last) = &mut self.last_search {
                     last.page = page as u32;
-                    actions.push(OnlineContentAction::Search(last.clone()));
+                    actions.push(OnlineContentAction::Search(last.clone()).into());
                 },
 
             OnlineContentAction::Search(search) => {
@@ -59,7 +59,7 @@ impl OnlineContentManager {
                 actions.push(OnlineContentSearchTask::new(
                     *search,
                     self.engines.clone(),
-                ));
+                ).into());
             }
 
             OnlineContentAction::Download(id) => {
@@ -70,7 +70,7 @@ impl OnlineContentManager {
 
                 let Some(index) = index else { return };
                 let a = data.items.remove(index);
-                actions.push(a.download);
+                actions.push(a.download.into());
             }
 
             OnlineContentAction::AudioPreview(id) => {
@@ -87,8 +87,8 @@ impl OnlineContentManager {
                 let Some(preview) = &a.audio_preview 
                 else { return };
 
-                actions.push(SongAction::Set(SongSetAction::PushQueue));
-                actions.push(AudioPreviewTask::new(preview.clone()));
+                actions.push(SongAction::Set(SongSetAction::PushQueue).into());
+                actions.push(AudioPreviewTask::new(preview.clone()).into());
             }
         }
     }

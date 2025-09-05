@@ -51,7 +51,7 @@ impl Game {
 
             self.beatmap_manager.set_current(hash);
             
-            self.actions.push(GameAction::UpdatePlaymodeActual(actual_mode.into()));
+            self.actions.push(GameAction::UpdatePlaymodeActual(actual_mode.into()).into());
 
             // update beatmap settings provider
             let beatmap_prefs = Database::get_beatmap_prefs(hash);
@@ -80,11 +80,11 @@ impl Game {
                 position: Some(position),
                 ..Default::default()
             }
-        )));
+        )).into());
         // make sure the song is playing
-        self.actions.push(SongAction::Play);
+        self.actions.push(SongAction::Play.into());
         // make sure to update the background
-        self.actions.push(GameAction::UpdateBackground);
+        self.actions.push(GameAction::UpdateBackground.into());
 
     }
     
@@ -93,8 +93,8 @@ impl Game {
         self.beatmap_manager.current_beatmap = None;
 
         // stop song
-        self.actions.push(SongAction::Stop);
-        self.actions.push(GameAction::UpdateBackground);
+        self.actions.push(SongAction::Stop.into());
+        self.actions.push(GameAction::UpdateBackground.into());
     }
     
     pub(super) fn delete_beatmap(

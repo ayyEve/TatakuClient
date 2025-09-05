@@ -327,7 +327,7 @@ impl Widget<TatakuAction> for Container {
                 shell.actions.push(UiAction::new(
                     self.node_id,
                     UiActionType::ContextChanged
-                ));
+                ).into());
 
                 shell.event_consumed = true;
                 return
@@ -393,7 +393,7 @@ impl Widget<TatakuAction> for Container {
                 shell.actions.push(UiAction::new(
                     self.node_id,
                     UiActionType::ContextChanged
-                ));
+                ).into());
             }
         }
     }
@@ -471,11 +471,11 @@ impl Widget<TatakuAction> for Container {
                     shell.actions.push(UiAction::new(
                         self.node_id,
                         UiActionType::MarkDirty
-                    ));
+                    ).into());
                     shell.actions.push(UiAction::new(
                         self.node_id,
                         UiActionType::Refresh
-                    ));
+                    ).into());
                 }
             }
 

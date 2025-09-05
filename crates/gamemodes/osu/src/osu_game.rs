@@ -1357,7 +1357,7 @@ impl GameMode for OsuGame {
                             GAME_INFO, 
                             settings2.clone()
                         ) 
-                    )));
+                    )).into());
 
                     self.game_settings = Arc::new(settings);
                     self.recalculate_playfield(self.scaling_helper.window_size);
@@ -1413,7 +1413,7 @@ impl GameMode for OsuGame {
                             GAME_INFO, 
                             a.clone()
                         ) 
-                    )));
+                    )).into());
 
                     self.recalculate_playfield(self.scaling_helper.window_size);
                 }

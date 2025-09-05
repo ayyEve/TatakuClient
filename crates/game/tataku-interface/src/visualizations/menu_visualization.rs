@@ -54,7 +54,7 @@ impl MenuVisualization {
             }
         );
         let mut actions = ActionQueue::new();
-        actions.push(SongAction::HookFFT(vis_data.get_hook()));
+        actions.push(SongAction::HookFFT(vis_data.get_hook()).into());
 
         Self {
             actions,

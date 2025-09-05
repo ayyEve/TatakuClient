@@ -203,12 +203,12 @@ impl Widget<TatakuAction> for SwitchWidget {
                 shell.actions.push(UiAction::new(
                     child.widget.node_id(),
                     UiActionType::OverrideDisplay(Some(DisplayType::None))
-                ));
+                ).into());
             } else if let Some(default) = &self.default_case {
                 shell.actions.push(UiAction::new(
                     default.node_id(),
                     UiActionType::OverrideDisplay(Some(DisplayType::None))
-                ));
+                ).into());
             }
 
             if let Some(child) = self.value
@@ -217,12 +217,12 @@ impl Widget<TatakuAction> for SwitchWidget {
                 shell.actions.push(UiAction::new(
                     child.widget.node_id(),
                     UiActionType::OverrideDisplay(None)
-                ));
+                ).into());
             }  else if let Some(default) = &self.default_case {
                 shell.actions.push(UiAction::new(
                     default.node_id(),
                     UiActionType::OverrideDisplay(None)
-                ));
+                ).into());
             }
         }
 

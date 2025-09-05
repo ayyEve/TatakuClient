@@ -283,7 +283,7 @@ impl Game {
         // new beatmap check task
         self.actions.push(TaskAction::AddTask(Box::new(
             BeatmapDownloadsCheckTask::default()
-        )));
+        )).into());
 
         let mut settings = self.settings.clone();
         settings.gamemode_settings.build(self.values.global.gamemode_infos.clone());
@@ -337,7 +337,7 @@ impl Game {
             // });
         }
 
-        self.actions.push(InitGameTask::default());
+        self.actions.push(InitGameTask::default().into());
         #[cfg(feature="graphics")]
         self.handle_custom_menu("loading_menu");
     }
@@ -522,7 +522,7 @@ impl Game {
                     self.actions.push(Notification::new_error(
                         "Screenshot Error",
                         e
-                    ));
+                    ).into());
                 }
 
                 WindowEvent::GotFocus => self.input_manager.set_window_focus(true),
@@ -548,7 +548,7 @@ impl Game {
                             "Unsupported Vsync mode, changing to fallback!",
                             Color::YELLOW,
                             10_000.0
-                        ));
+                        ).into());
                         self.settings.display_settings.vsync = current.get_fallback();
                         let _ = self.window_proxy.send_event(WindowAction::SettingsUpdated(
                             self.settings.display_settings.clone()
@@ -592,7 +592,7 @@ impl Game {
                 self.actions.push(LoadImage::FreeTexture {
                     tex: *old_img.tex,
                     deferred: false
-                });
+                }.into());
             }
 
             self.background_image = image;
@@ -638,7 +638,7 @@ impl Game {
                         AudioState::Playing => TatakuEvent::SongStart,
                         AudioState::Paused => TatakuEvent::SongPause,
                     };
-                    self.actions.push(action);
+                    self.actions.push(action.into());
                 }
             } else {
                 self.values.song.set_state(AudioState::Unknown);
@@ -800,7 +800,7 @@ impl Game {
                     #[cfg(feature="graphics")]
                     self.actions.push(MenuAction::SetMenu {
                         id: "pause_menu".into(),
-                    });
+                    }.into());
                 } else {
                     // inputs
                     #[cfg(feature="graphics")]
@@ -974,7 +974,7 @@ impl Game {
                             action,
                             Some(m.mode.to_string())
                         );
-                        self.actions.push(GameAction::UpdateBackground);
+                        self.actions.push(GameAction::UpdateBackground.into());
                     }
                     #[cfg(feature="graphics")]
                     GameState::SetMenu(_menu) => {
@@ -1335,7 +1335,7 @@ impl Game {
                         mods,
                         &mut self.values.settings
                     ) {
-                        self.actions.push(action);
+                        self.actions.push(action.into());
                         return false;
                     }
                 }
@@ -1397,7 +1397,7 @@ impl Game {
                                 password: String::new(),
                                 private: false,
                                 players: 5
-                            });
+                            }.into());
 
                             // self.actions.push(MenuAction::set_menu("menu_list"));
                         }
@@ -1436,7 +1436,7 @@ impl Game {
                                 "Doing a full refresh, the game will freeze for a bit",
                                 Color::RED,
                                 5000.0
-                            ));
+                            ).into());
                             self.values.values.beatmap_manager.full_refresh(
                                 &self.values.values.settings
                             );
@@ -1477,12 +1477,12 @@ impl Game {
                             else { return true };
 
                             let mode = mode.id;
-                            self.actions.push(BeatmapAction::SetPlaymode(mode.to_string()));
+                            self.actions.push(BeatmapAction::SetPlaymode(mode.to_string()).into());
                             self.actions.push(Notification::new_text(
                                 format!("Playmode set to {mode}"),
                                 Color::CYAN,
                                 3000.0
-                            ));
+                            ).into());
                         }
 
                         _ => return true,
@@ -1723,7 +1723,7 @@ impl Game {
                             Notification::new_error(
                                 "Error extracting file",
                                 e
-                            )
+                            ).into()
                         ),
 
                         Ok(path) => {
@@ -1757,7 +1757,7 @@ impl Game {
                                     SetBeatmapOptions::default()
                                         .use_preview_point(use_preview_time)
                                         .restart_song(false)
-                                ));
+                                ).into());
                             }
                         }
                     }
@@ -1775,7 +1775,7 @@ impl Game {
                             Notification::new_error(
                                 "Error extracting file",
                                 e
-                            )
+                            ).into()
                         ),
                         Ok(path) => {
                             // set as current skin
@@ -1786,7 +1786,7 @@ impl Game {
                                     format!("Added skin {name}"),
                                     Color::BLUE,
                                     5000.0
-                                ));
+                                ).into());
                             }
                         }
                     }
@@ -1800,7 +1800,7 @@ impl Game {
                             Notification::new_error(
                                 "Error opening replay",
                                 e
-                            )
+                            ).into()
                         ),
                     }
                 }
@@ -1810,6 +1810,7 @@ impl Game {
                         .text("What is this?")
                         .color(Color::RED)
                         .duration(3_000.0)
+                        .into()
                     );
                 }
             }
@@ -1824,6 +1825,7 @@ impl Game {
                 .text("You don't have this beatmap!")
                 .duration(5_000.0)
                 .color(Color::RED)
+                .into()
             );
 
             return;
@@ -1865,8 +1867,8 @@ impl Game {
         trace!("beatmap complete");
         manager.on_complete();
         manager.score.time = chrono::Utc::now().timestamp() as u64;
-        self.actions.push(TatakuIntegrationEvent::BeatmapEnded);
-        self.actions.push(CursorAction::SetVisible(true));
+        self.actions.push(TatakuIntegrationEvent::BeatmapEnded.into());
+        self.actions.push(CursorAction::SetVisible(true).into());
 
         if manager.failed {
             trace!("player failed");
@@ -1874,7 +1876,7 @@ impl Game {
                 self.pending_gameplay_manager = Some(manager);
                 self.actions.push(MenuAction::SetMenu {
                     id: "fail_menu".into(),
-                });
+                }.into());
                 // self.queue_state_change(GameState::SetMenu(Box::new(PauseMenu::new(true))));
                 return;
             }
@@ -1898,7 +1900,7 @@ impl Game {
                         Notification::new_error(
                             "error saving replay",
                             e
-                        )
+                        ).into()
                     ),
                 }
 
@@ -1913,7 +1915,7 @@ impl Game {
                     &self.settings
                 );
                 score_submit = Some(submit_task.get_path().to_owned());
-                self.actions.push(TaskAction::AddTask(Box::new(submit_task)));
+                self.actions.push(TaskAction::AddTask(Box::new(submit_task)).into());
             }
 
             match manager.get_mode() {
@@ -2005,7 +2007,7 @@ impl Game {
             Color::BLUE,
             5000.0,
             NotificationOnClick::File(full_path.clone())
-        )));
+        )).into());
 
         if info.upload {
             self.task_manager.add_task(Box::new(

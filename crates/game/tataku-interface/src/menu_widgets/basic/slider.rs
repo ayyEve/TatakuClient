@@ -10,7 +10,7 @@ pub struct Slider {
     max: SliderValue,
 
     #[chain] step: Option<SliderValue>,
-    on_change: Option<InputAction<f32>>, 
+    on_change: InputAction<f32>,
 
     hovered: bool,
     pressed: bool,
@@ -21,7 +21,7 @@ impl Slider {
         min: impl Into<SliderValue>,
         max: impl Into<SliderValue>,
         value: impl Into<SliderValue>,
-        on_change: Option<impl Into<InputAction<f32>>>,
+        on_change: impl Into<InputAction<f32>>,
     ) -> Self {
         Self {
             min: min.into(),
@@ -29,7 +29,7 @@ impl Slider {
             // range,
             value: value.into(),
             step: None,
-            on_change: on_change.map(|i| i.into()),
+            on_change: on_change.into(),
             
             hovered: false,
             pressed: false,
@@ -77,12 +77,6 @@ impl Widget<TatakuAction> for Slider {
         event: &InputEvent,
         shell: &mut InputShell<TatakuAction>,
     ) {
-        if let Some(on_change) = self.on_change.as_mut()
-        && !on_change.is_built() {
-            on_change.build(shell.values);
-        }
-
-
         let Some(ctx) = shell.tree.get_context(self.node_id) 
         else { return };
         let active = ctx.selected.unwrap();
@@ -123,15 +117,16 @@ impl Widget<TatakuAction> for Slider {
 
                     if (value - new_value).abs() > f32::EPSILON {
                         self.value.set(new_value);
-                        if let Some(on_change) = &self.on_change {
-                            on_change.run(
-                                &new_value,
-                                self.node_id,
-                                shell.messages,
-                                shell.actions,
-                                shell.values,
-                            );
-                        } else if let SliderValue::Variable { 
+
+                        self.on_change.run(
+                            &new_value,
+                            self.node_id,
+                            shell.messages,
+                            shell.actions,
+                            shell.values,
+                        );
+
+                        if let SliderValue::Variable {
                             variable, .. 
                         } = &self.value {
                             let Ok(path) = variable

@@ -57,7 +57,7 @@ impl GameplayWidgetEditor {
         actions.push(UiAction::new(
             self.node_id(),
             DialogAction::Close,
-        ));
+        ).into());
     }
 
     fn send(
@@ -69,7 +69,7 @@ impl GameplayWidgetEditor {
             actions.push(UiAction::new(
                 self.node_id(),
                 DialogAction::Close,
-            ));
+            ).into());
         }
     }
 
@@ -525,7 +525,7 @@ impl Widget<TatakuAction> for GameplayWidgetEditor {
                     shell.actions.push(UiAction::new(
                         self.node_id(),
                         DialogAction::Close,
-                    ));
+                    ).into());
                     break;
                 }
                 Err(TryRecvError::Empty) => break,

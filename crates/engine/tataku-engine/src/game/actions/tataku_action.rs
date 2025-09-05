@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-pub type ActionQueue = Queue<TatakuAction>;
+pub type ActionQueue = Vec<TatakuAction>;
 
 /// An action from a menu (or dialog) to tell the game to do something
 #[derive(Default, Debug2)]

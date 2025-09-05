@@ -68,7 +68,7 @@ impl GameplayPreview {
             })),
 
             ..Default::default()
-        }));
+        }).into());
     }
 
 }
@@ -93,9 +93,10 @@ impl Widget<TatakuAction> for GameplayPreview {
         self.manager = Some(id.clone());
         shell.handled = true;
 
-        shell.actions.push(
-            GameAction::GameplayAction(id.clone(), GameplayAction::Resume)
-        );
+        shell.actions.push(GameAction::GameplayAction(
+            id.clone(),
+            GameplayAction::Resume
+        ).into());
     }
 
     fn update(&mut self, shell: &mut UpdateShell<TatakuAction>) {
@@ -131,7 +132,7 @@ impl Widget<TatakuAction> for GameplayPreview {
                 shell.actions.push(GameAction::GameplayAction(
                     manager, 
                     GameplayAction::FitToArea(bounds)
-                ));
+                ).into());
             };
         }
 

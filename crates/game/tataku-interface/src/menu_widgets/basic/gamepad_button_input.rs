@@ -64,10 +64,6 @@ impl Widget<TatakuAction> for GamepadButtonInput {
         event: &InputEvent, 
         shell: &mut InputShell<TatakuAction>,
     ) {
-        if !self.on_change.is_built() {
-            self.on_change.build(shell.values);
-        }
-
         if shell.event_consumed { return }
         let bounds = shell.tree
             .absolute_bounds(self.node_id)

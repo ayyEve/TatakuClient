@@ -128,7 +128,7 @@ impl TatakuTask for UploadScoreTask {
                 a.performance_rating = performance_rating;
             }
             SubmitResponse::NotSubmitted(_e, msg) => {
-                actions.push(Notification::new_error("Error submitting score", msg));
+                actions.push(Notification::new_error("Error submitting score", msg).into());
                 
                 let a = values.reflect_get_mut::<ScoreSubmitResponse>(self.get_path()).unwrap();
                 a.completed = true;

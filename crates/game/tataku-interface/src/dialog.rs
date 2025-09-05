@@ -81,11 +81,11 @@ impl DialogWidget {
         actions.push(UiAction::new(
             node, 
             DialogAction::MoveDialog(bounds.pos)
-        ));
+        ).into());
         actions.push(UiAction::new(
             node, 
             DialogAction::ResizeDialog(bounds.size)
-        ));
+        ).into());
     }
     fn resize_right(
         delta: f32,
@@ -97,7 +97,7 @@ impl DialogWidget {
         actions.push(UiAction::new(
             node, 
             DialogAction::ResizeDialog(bounds.size)
-        ));
+        ).into());
     }
     
     fn resize_up(
@@ -111,11 +111,11 @@ impl DialogWidget {
         actions.push(UiAction::new(
             node, 
             DialogAction::MoveDialog(bounds.pos)
-        ));
+        ).into());
         actions.push(UiAction::new(
             node, 
             DialogAction::ResizeDialog(bounds.size)
-        ));
+        ).into());
     }
     fn resize_down(
         delta: f32,
@@ -127,7 +127,7 @@ impl DialogWidget {
         actions.push(UiAction::new(
             node, 
             DialogAction::ResizeDialog(bounds.size)
-        ));
+        ).into());
     }
 
 
@@ -442,7 +442,7 @@ impl Widget<TatakuAction> for DialogWidget {
                 shell.actions.push(UiAction::new(
                     self.node_id(),
                     DialogAction::Close,
-                ));
+                ).into());
             }
 
             _ => {}
@@ -583,7 +583,7 @@ impl Widget<TatakuAction> for DialogTitlebar {
                     DialogAction::MoveDialog(
                         drag.pos_start + (*pos - drag.mouse_pos_start)
                     )
-                ));
+                ).into());
             }
 
             (InputType::MousePress(MouseButton::Left), _) => {

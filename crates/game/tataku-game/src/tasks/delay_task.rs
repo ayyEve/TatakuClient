@@ -53,7 +53,7 @@ impl TatakuTask for DelayTask {
         if (state.game_time - self.start_time) >= self.delay {
             self.state = TatakuTaskState::Complete;
             if let Some(task) = self.task.take() {
-                actions.push(TaskAction::AddTask(task));
+                actions.push(TaskAction::AddTask(task).into());
             }
         }
     }

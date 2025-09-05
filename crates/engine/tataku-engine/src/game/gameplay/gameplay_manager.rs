@@ -340,7 +340,14 @@ impl GameplayUpdateShell<'_> {
 
     pub fn play_hitsounds(&mut self, sounds: &[Hitsound], repeat: bool) {
         for i in sounds {
-            self.action_queue.push(AudioAction::new(i.get_id(), AudioActionType::Play { volume: i.volume, repeat, restart: true }));
+            self.action_queue.push(AudioAction::new(
+                i.get_id(),
+                AudioActionType::Play {
+                    volume: i.volume,
+                    repeat,
+                    restart: true
+                }).into()
+            );
         }
     }
 

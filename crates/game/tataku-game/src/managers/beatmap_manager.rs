@@ -254,7 +254,7 @@ impl BeatmapManager {
             self.actions.push(GameAction::HandleEvent(
                 TatakuEvent::MapAdded,
                 Some(beatmap.beatmap_hash.to_string().into())
-            ));
+            ).into());
         }
 
         if add_to_db {
@@ -277,7 +277,7 @@ impl BeatmapManager {
                 self.actions.push(Notification::new_error(
                     "Error deleting map",
                     e
-                ));
+                ).into());
             }
             // TODO: should check if this is the last beatmap in this folder
             // if so, delete the parent dir
@@ -551,7 +551,7 @@ impl BeatmapManager {
             self.actions.push(BeatmapAction::Set(
                 *map,
                 SetBeatmapOptions::default().use_preview_point(true)
-            ));
+            ).into());
         }
     }
     pub fn next_map(&mut self) {
