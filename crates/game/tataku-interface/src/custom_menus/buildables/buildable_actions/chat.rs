@@ -5,8 +5,7 @@ use crate::prelude::*;
 #[derive(Clone, Debug, PartialEq)]
 pub enum BuildableChatAction {
     SendMessage {
-        #[serde(alias = "@channel")]
-        channel: BuildableValue,
+        channel: Wrapped<BuildableValue>,
         #[serde(rename="$value")]
         message: Vec<BuildableText>,
     },
@@ -16,7 +15,7 @@ pub enum BuildableChatAction {
         channel: BuildableValue,
 
         #[serde(default)]
-        password: Option<BuildableValue>,
+        password: Option<Wrapped<BuildableValue>>,
     },
 
     CloseChannel {
@@ -42,7 +41,7 @@ impl BuildableChatAction {
                     }).collect();
 
                 Some(ChatAction::SendMessage {
-                    channel: channel.resolve(values, passed_in).unwrap().as_string(),
+                    channel: channel.inner.resolve(values, passed_in).unwrap().as_string(),
                     message,
                 }.into())
             },
@@ -53,7 +52,7 @@ impl BuildableChatAction {
             } => Some(ChatAction::OpenChannel { 
                 channel: channel.resolve(values, passed_in).unwrap().as_string(),
                 password: password
-                    .and_then(|i| i.resolve(values, passed_in).map(|i| i.as_string())),
+                    .and_then(|i| i.inner.resolve(values, passed_in).map(|i| i.as_string())),
             }.into()),
 
             Self::CloseChannel { 

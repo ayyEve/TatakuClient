@@ -6,9 +6,10 @@ use crate::prelude::*;
 pub enum BuildableMultiplayerAction {
     /// Join a lobby
     CreateLobby {
-        name: BuildableValue,
-        password: Option<BuildableValue>,
-        private: BuildableValue,
+        name: Wrapped<BuildableValue>,
+        #[serde(default)]
+        password: Option<Wrapped<BuildableValue>>,
+        private: Wrapped<BuildableValue>,
     },
 
     /// Join a lobby
@@ -82,14 +83,14 @@ impl BuildableMultiplayerAction {
                 password,
                 private
             } => Some(MultiplayerAction::CreateLobby {
-                name: name.resolve(values, passed_in)?.as_string(),
+                name: name.inner.resolve(values, passed_in)?.as_string(),
                 password: password
-                    .and_then(|i| i
+                    .and_then(|i| i.inner
                         .resolve(values, passed_in)
                         .map(|t| t.as_string())
                     )
                     .unwrap_or_default(),
-                private: private
+                private: private.inner
                     .resolve(values, passed_in)
                     .map(|i| i.as_bool())
                     .unwrap_or_default(),

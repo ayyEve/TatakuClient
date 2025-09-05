@@ -21,7 +21,14 @@ impl CustomMenu {
                     values
                 );
 
-                event.map(|event| (event, buildable.actions.clone()))
+                let actions = buildable.actions.iter().cloned()
+                    .map(|mut action| {
+                        action.build(values);
+                        action
+                    })
+                    .collect();
+
+                event.map(|event| (event, actions))
             })
             .collect();
 

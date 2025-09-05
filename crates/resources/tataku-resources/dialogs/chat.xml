@@ -54,9 +54,7 @@
                                     <variable>_channel.name</variable>
                                 </channel>
 
-                                <message>
-                                    <variable>var.chat_input</variable>
-                                </message>
+                                <variable>var.chat_input</variable>
                             </sendMessage>
                         </chat>
 
