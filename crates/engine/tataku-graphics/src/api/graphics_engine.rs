@@ -81,6 +81,7 @@ pub trait DrawEngine {
         end: f32,
         radius: f32,
         color: Color,
+        border: Option<Border>,
         resolution: u32,
         transform: Matrix,
         blend_mode: BlendMode,

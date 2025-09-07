@@ -2003,6 +2003,7 @@ impl tataku::DrawEngine for WgpuEngine<'_> {
         end: f32,
         radius: f32,
         color: tataku::Color,
+        _border: Option<tataku::Border>,
         resolution: u32,
         transform: tataku::Matrix,
         blend_mode: tataku::BlendMode,

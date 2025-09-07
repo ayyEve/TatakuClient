@@ -138,15 +138,45 @@ impl tataku_graphics::DrawEngine for RenderEngine<'_, '_> {
 
     fn draw_arc(
         &mut self,
-        _start: f32,
-        _end: f32,
-        _radius: f32,
-        _color: tataku::Color,
+        start: f32,
+        end: f32,
+        radius: f32,
+        color: tataku::Color,
+        border: Option<tataku::Border>,
         _resolution: u32,
-        _transform: tataku::Matrix,
-        _blend_mode: tataku::BlendMode
+        transform: tataku::Matrix,
+        blend_mode: tataku::BlendMode
     ) {
+        let reserve = self.scene(blend_mode).unwrap();
+        let transform = map_transform(transform);
+        let shape = vello::kurbo::Arc::new(
+            (0.0, 0.0),
+            (radius as f64, radius as f64),
+            start as f64,
+            (end - start) as f64,
+            0.0
+        );
         
+        reserve.scene.fill(
+            vello::peniko::Fill::NonZero,
+            transform,
+            map_color(color),
+            None,
+            &shape
+        );
+
+        if let Some(border) = border {
+            reserve.scene.stroke(
+                &Stroke {
+                    width: border.width as f64,
+                    ..Default::default()
+                },
+                transform,
+                map_color(border.color),
+                None,
+                &shape
+            );
+        }
     }
 
     fn draw_circle(
