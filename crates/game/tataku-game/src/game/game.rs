@@ -604,9 +604,9 @@ impl Game {
             self.resize_bg();
         }
 
-        #[cfg(feature="graphics")] self.update_display.increment();
-
+        
         // update counters
+        #[cfg(feature="graphics")] self.update_display.increment();
         #[cfg(feature="graphics")] self.fps_display.update();
         #[cfg(feature="graphics")] self.update_display.update();
         #[cfg(feature="graphics")] self.render_display.update();
@@ -621,7 +621,6 @@ impl Game {
             elapsed,
             input_state.mouse_pos
         );
-
 
 
         // update our global values
@@ -647,13 +646,10 @@ impl Game {
 
         // update any ingame managers
         #[cfg(feature="graphics")]
-        for (a, (manager, _)) in self
-            .gameplay_managers
-            .iter_mut()
-        {
+        self.gameplay_managers.retain(|a, (manager, _)| {
             if Arc::strong_count(a) == 1 {
                 manager.cleanup_textures(&mut self.skin_manager);
-                continue;
+                return false;
             }
 
             manager.update(
@@ -665,56 +661,9 @@ impl Game {
             if manager.completed {
                 manager.on_complete();
             }
-        }
-        #[cfg(feature="graphics")]
-        self.gameplay_managers.retain(|a, _| Arc::strong_count(a) > 1);
 
-        // #[cfg(feature="graphics")]
-        // let mut input_state = CurrentInputState {
-        //     mouse_pos,
-        //     mouse_moved,
-        //     scroll_delta,
-        //     mouse_down,
-        //     mouse_up,
-        //     keys_down,
-        //     keys_up,
-        //     mods,
-
-        //     controller_axes: controller_axis
-        //         .into_iter()
-        //         .flat_map(|(info, axes)|
-        //             axes
-        //             .clone()
-        //             .into_iter()
-        //             .filter_map(move |(axis, state)|
-        //                 state.changed.then_some((
-        //                     axis,
-        //                     state.value,
-        //                     info.id,
-        //                     info.name.clone()
-        //                 ))
-        //             )
-        //         )
-        //         .collect(),
-
-        //     controller_down: controller_down
-        //         .into_iter()
-        //         .flat_map(|(info, buttons)|
-        //             buttons
-        //             .into_iter()
-        //             .map(move |b| (b, info.id, info.name.clone()))
-        //         )
-        //         .collect(),
-
-        //     controller_up: controller_up
-        //         .into_iter()
-        //         .flat_map(|(info, buttons)|
-        //             buttons
-        //             .into_iter()
-        //             .map(move |b| (b, info.id, info.name.clone()))
-        //         )
-        //         .collect(),
-        // };
+            true
+        });
 
         #[cfg(feature="graphics")]
         self.ui_manager.update(

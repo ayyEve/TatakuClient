@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 #[derive(ChainableInitializer)]
 pub struct GameplayPreview {
-    beatmap: ValueChangeHelper<String>,
+    beatmap: ValueChangeHelper<Md5Hash>,
     playmode: ValueChangeHelper<String>,
     song_time: ValueChangeHelper<f32>,
 
@@ -29,7 +29,7 @@ impl GameplayPreview {
 
         Self {
             // current_mods: ModManagerHelper::new(),
-            beatmap: ValueChangeHelper::new("beatmaps.current_beatmap.map.file_path"),
+            beatmap: ValueChangeHelper::new("beatmaps.current_beatmap"),
             playmode: ValueChangeHelper::new("global.playmode_actual"),
             song_time: ValueChangeHelper::new("song.position"),
 
@@ -103,23 +103,21 @@ impl Widget<TatakuAction> for GameplayPreview {
         if let Some(gameplay) = self.widget_receiver.output_buffer_mut().take() {
             *self.gameplay.lock() = Some(gameplay);
         }
-        
-        let last_song_time = self.song_time.unwrap_or_default();
-        if let Ok(Some(time)) = self.song_time.update(shell.values)
-        && *time < last_song_time {
-            self.setup(shell.owner, shell.values, shell.actions);
-        }
-
 
         // check for map/mode changes
         let a = self.beatmap.update(shell.values);
         let b = self.playmode.update(shell.values);
-        match (a, b) {
-            (Ok(Some(_)), _)
-            | (_, Ok(Some(_))) => self.setup(shell.owner, shell.values, shell.actions),
-            _=> {}
-        }
 
+        let time_check = if let Ok(Some(time)) = self.song_time.update(shell.values)
+        { *time < self.song_time.unwrap_or_default() } else { false };
+
+        // check if time changed
+        if time_check
+        || matches!(a, Ok(Some(_))) 
+        || matches!(b, Ok(Some(_)))
+        {
+            self.setup(shell.owner, shell.values, shell.actions);
+        }
         // check for new bounds
         let bounds = shell.tree.absolute_bounds(self.node_id);
         if let Some(bounds) = bounds
