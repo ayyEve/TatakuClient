@@ -44,31 +44,30 @@ impl GameplayWidget for HealthBarElement {
 
     fn reload_skin(
         &mut self,
-        source: &TextureSource,
-        skin_manager: &mut dyn SkinProvider,
+        shell: &mut GameplayWidgetReloadSkinShell,
     ) {
         // peppy calls the healthbar texture "scorebar"
-        self.healthbar_color = skin_manager.get_texture(
+        self.healthbar_color = shell.skin_manager.get_texture(
             "scorebar-colour",
-            source,
+            shell.source,
             SkinUsage::Gamemode,
             false
         );
-        self.healthbar_color_1 = skin_manager.get_texture(
+        self.healthbar_color_1 = shell.skin_manager.get_texture(
             "scorebar-colour1",
-            source,
+            shell.source,
             SkinUsage::Gamemode,
             false
         );
-        self.healthbar_bg_image = skin_manager.get_texture(
+        self.healthbar_bg_image = shell.skin_manager.get_texture(
             "scorebar-bg",
-            source,
+            shell.source,
             SkinUsage::Gamemode,
             false
         );
-        self.healthbar_bg_image_1 = skin_manager.get_texture(
+        self.healthbar_bg_image_1 = shell.skin_manager.get_texture(
             "scorebar-bg1",
-            source,
+            shell.source,
             SkinUsage::Gamemode,
             false
         );
@@ -84,15 +83,15 @@ impl GameplayWidget for HealthBarElement {
     }
 
 
-    fn update(&mut self, manager: &mut dyn GameplayManagerTrait) {
-        self.container_size = manager.bounds().size;
+    fn update(&mut self, shell: &mut GameplayWidgetUpdateShell) {
+        self.container_size = shell.manager.bounds().size;
 
-        self.health_ratio = manager.health().get_ratio();
+        self.health_ratio = shell.manager.health().get_ratio();
         if self.last_health_ratio == -1000.0 {
             self.last_health_ratio = self.health_ratio;
         }
 
-        let time = manager.time();
+        let time = shell.manager.time();
         let time_diff = time - self.last_health_time;
         self.last_health_time = time;
 
@@ -108,10 +107,7 @@ impl GameplayWidget for HealthBarElement {
 
     fn draw(
         &mut self,
-        pos_offset: Vector2,
-        scale: Vector2,
-        _align: Alignment,
-        list: &mut RenderableCollection
+        shell: &mut GameplayWidgetDrawShell
     ) {
         let percent = self.health_ratio;
 
@@ -119,27 +115,32 @@ impl GameplayWidget for HealthBarElement {
             let tex_size = color.tex_size();
             let width = tex_size.x * percent;
 
-            let scissor = [pos_offset.x, pos_offset.y, width * scale.x, tex_size.y * scale.y];
+            let scissor = [
+                shell.pos_offset.x, 
+                shell.pos_offset.y, 
+                width * shell.scale.x, 
+                tex_size.y * shell.scale.y
+            ];
 
             // add bg
             if let Some(mut bg) = self.healthbar_bg_image.clone() {
-                bg.pos = pos_offset;
-                bg.scale *= scale;
+                bg.pos = shell.pos_offset;
+                bg.scale *= shell.scale;
 
-                list.push(bg);
+                shell.list.push(bg);
             }
             if let Some(mut bg_1) = self.healthbar_bg_image_1.clone() {
-                bg_1.pos = pos_offset;
-                bg_1.scale *= scale;
+                bg_1.pos = shell.pos_offset;
+                bg_1.scale *= shell.scale;
 
-                list.push(bg_1);
+                shell.list.push(bg_1);
             }
 
 
-            color.pos = pos_offset;
-            color.scale *= scale;
+            color.pos = shell.pos_offset;
+            color.scale *= shell.scale;
 
-            list.push(Scissored::new(
+            shell.list.push(Scissored::new(
                 scissor,
                 Box::new(color)
             ));
@@ -155,10 +156,10 @@ impl GameplayWidget for HealthBarElement {
             // // }
 
             if let Some(mut color_1) = self.healthbar_color_1.clone() {
-                color_1.pos = pos_offset;
-                color_1.scale *= scale;
+                color_1.pos = shell.pos_offset;
+                color_1.scale *= shell.scale;
 
-                list.push(Scissored::new(
+                shell.list.push(Scissored::new(
                     scissor,
                     Box::new(color_1)
                 ));
@@ -175,15 +176,18 @@ impl GameplayWidget for HealthBarElement {
             }
 
         } else {
-            let bg_size = Vector2::new(self.container_size.x / 2.0, DURATION_HEIGHT) * scale;
+            let bg_size = Vector2::new(
+                self.container_size.x / 2.0, 
+                DURATION_HEIGHT
+            ) * shell.scale;
 
             let len = self.common_game_settings.healthbar_colors.len();
             let index = ((len as f32 * percent) as usize).min(len - 1);
 
             // bg
-            list.push(
+            shell.list.push(
                 Rectangle::new(
-                    pos_offset,
+                    shell.pos_offset,
                     bg_size,
                     self.common_game_settings.healthbar_bg_color,
                 ).border(Border::new(
@@ -193,9 +197,12 @@ impl GameplayWidget for HealthBarElement {
             );
 
             // fill
-            list.push(Rectangle::new(
-                pos_offset,
-                Vector2::new((self.container_size.x / 2.0) * percent, DURATION_HEIGHT) * scale,
+            shell.list.push(Rectangle::new(
+                shell.pos_offset,
+                Vector2::new(
+                    (self.container_size.x / 2.0) * percent, 
+                    DURATION_HEIGHT
+                ) * shell.scale,
                 self.common_game_settings.healthbar_colors[index],
             ));
         }

@@ -76,19 +76,19 @@ impl GameplayWidget for DonChan {
         DEFAULT_DONCHAN_SIZE
     }
 
-    fn update(&mut self, manager: &mut dyn GameplayManagerTrait) {
-        let time = manager.time(); 
+    fn update(&mut self, shell: &mut GameplayWidgetUpdateShell) {
+        let time = shell.manager.time(); 
 
         // check init
         if !self.init {
-            let tp = manager.timing_points().timing_point_at(0.0, false);
+            let tp = shell.manager.timing_points().timing_point_at(0.0, false);
             self.set_offset(tp.time - tp.beat_length * 4.0);
             self.update_delays(tp);
             self.init = true;
         }
 
         // check timing point change
-        let current_tp = manager.timing_points().timing_point();
+        let current_tp = shell.manager.timing_points().timing_point();
         if !current_tp.is_inherited() && self.current_timing_point_time != current_tp.time {
             self.current_timing_point_time = current_tp.time;
             self.update_delays(current_tp);
@@ -101,25 +101,25 @@ impl GameplayWidget for DonChan {
 
         // TODO: figure out peppy's bullshit for this animation (it might play in reverse after)
         // // check combo milestones
-        // let diff = manager.score.combo as i32 - self.last_combo_milestone as i32;
+        // let diff = shell.manager.score.combo as i32 - self.last_combo_milestone as i32;
         // if diff >= 25 {
         //     // do combo milestone
         //     self.state = DonChanState::ComboMilestone;
-        //     self.last_combo_milestone = manager.score.combo % 25;
+        //     self.last_combo_milestone = shell.manager.score.combo % 25;
         // } else if diff < 0 {
         //     // missed, reset counter
         //     self.last_combo_milestone = 0;
         // }
 
         // check fail anim
-        let xmiss = manager.score().judgments.get("xmiss").copied().unwrap_or_default();
+        let xmiss = shell.manager.score().judgments.get("xmiss").copied().unwrap_or_default();
         if self.last_miss_count < xmiss {
             self.state = DonChanState::Fail;
             self.last_miss_count = xmiss;
-        } else if self.last_score != manager.score().score.score && self.state == DonChanState::Fail {
+        } else if self.last_score != shell.manager.score().score.score && self.state == DonChanState::Fail {
             self.state = DonChanState::Normal;
         }
-        self.last_score = manager.score().score.score;
+        self.last_score = shell.manager.score().score.score;
         
 
         // check if combo milestone anim has finished
@@ -142,44 +142,38 @@ impl GameplayWidget for DonChan {
     }
 
     #[cfg(feature="graphics")]
-    fn draw(
-        &mut self, 
-        pos_offset: Vector2, 
-        scale: Vector2, 
-        _align: Alignment,
-        list: &mut RenderableCollection,
-    ) {
+    fn draw(&mut self, shell: &mut GameplayWidgetDrawShell) {
         match self.state {
             DonChanState::Normal => {
                 if self.kiai {
                     if let Some(anim) = &self.kiai_anim {
                         let mut anim = anim.clone();
-                        anim.pos = pos_offset;
-                        anim.scale *= scale;
-                        list.push(anim);
+                        anim.pos = shell.pos_offset;
+                        anim.scale *= shell.scale;
+                        shell.list.push(anim);
                     }
                 } else if let Some(anim) = &self.normal_anim {
                     let mut anim = anim.clone();
-                    anim.pos = pos_offset;
-                    anim.scale *= scale;
-                    list.push(anim);
+                    anim.pos = shell.pos_offset;
+                    anim.scale *= shell.scale;
+                    shell.list.push(anim);
                 }
                 
             }
             DonChanState::ComboMilestone => {
                 if let Some(anim) = &self.combo_anim {
                     let mut anim = anim.clone();
-                    anim.pos = pos_offset;
-                    anim.scale *= scale;
-                    list.push(anim);
+                    anim.pos = shell.pos_offset;
+                    anim.scale *= shell.scale;
+                    shell.list.push(anim);
                 }
             }
             DonChanState::Fail => {
                 if let Some(anim) = &self.fail_anim {
                     let mut anim = anim.clone();
-                    anim.pos = pos_offset;
-                    anim.scale *= scale;
-                    list.push(anim);
+                    anim.pos = shell.pos_offset;
+                    anim.scale *= shell.scale;
+                    shell.list.push(anim);
                 }
             }
         }
@@ -197,11 +191,11 @@ impl GameplayWidget for DonChan {
     }
 
     #[cfg(feature="graphics")]
-    fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
-        self.normal_anim = load_anim("idle", source, skin_manager);
-        self.combo_anim = load_anim("clear", source, skin_manager);
-        self.kiai_anim = load_anim("kiai", source, skin_manager);
-        self.fail_anim = load_anim("fail", source, skin_manager);
+    fn reload_skin(&mut self, shell: &mut GameplayWidgetReloadSkinShell) {
+        self.normal_anim = load_anim("idle", shell.source, shell.skin_manager);
+        self.combo_anim = load_anim("clear", shell.source, shell.skin_manager);
+        self.kiai_anim = load_anim("kiai", shell.source, shell.skin_manager);
+        self.fail_anim = load_anim("fail", shell.source, shell.skin_manager);
     }
 }
 

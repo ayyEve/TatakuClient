@@ -3,20 +3,65 @@ use crate::prelude::*;
 const BOX_SIZE:Vector2 = Vector2::new(40.0, 40.0);
 
 struct JudgementCounterElement {
-    hit_counts: Vec<(String, u32)>,
+    counts: Vec<CachedJudgment>,
     button_image: Option<Image>,
-    colors: HashMap<String, Color>,
 }
 impl JudgementCounterElement {
-    pub fn build(
+    fn build(
         _: &GamemodeInfo,
         _: &Arc<CommonGameplaySettings>
     ) -> Box<dyn GameplayWidget> {
         Box::new(Self {
-            hit_counts: Vec::new(),
+            counts: Vec::new(),
             button_image: None,
-            colors: HashMap::new()
         })
+    }
+
+    fn layout(
+        text: &str,
+        button_image: Option<&Image>,
+        scale: &Vector2,
+        font_contexts: &mut TextLayoutContexts,
+    ) -> (Arc<parley::Layout<Color>>, Vector2) {
+        let mut style = TextStyle {
+            font_size: 20.0 * scale.y,
+            color: Color::WHITE,
+            ..Default::default()
+        };
+        
+        let mut layout = font_contexts.simple_text(
+            text, 
+            &style,
+        );
+        layout.break_all_lines(None);
+
+        let box_width = if let Some(btn) = button_image {
+            btn.size().x * scale.x
+        } else {
+            (BOX_SIZE * *scale).x
+        };
+
+        let mut text_size = Vector2::new(
+            layout.width(),
+            layout.height(),
+        );
+
+        let max_width = box_width - 10.0; // padding of 10
+        if text_size.x >= max_width {
+            style.font_size = 20.0 * scale.x * max_width / text_size.x;
+            layout = font_contexts.simple_text(
+                text, 
+                &style,
+            );
+            layout.break_all_lines(None);
+                
+            text_size = Vector2::new(
+                layout.width(),
+                layout.height(),
+            );
+        }
+
+        (Arc::new(layout), text_size)
     }
 }
 impl GameplayWidget for JudgementCounterElement {
@@ -26,99 +71,120 @@ impl GameplayWidget for JudgementCounterElement {
         let box_size = self.button_image.as_ref()
             .map_or(BOX_SIZE, Image::size);
 
-        Vector2::new(box_size.x, box_size.y * self.hit_counts.len() as f32)
+        Vector2::new(box_size.x, box_size.y * self.counts.len() as f32)
     }
 
-    fn update(&mut self, manager: &mut dyn GameplayManagerTrait) {
-        // TODO: improve this
-        self.hit_counts.clear();
-        let score = &manager.score().score;
+    fn update(&mut self, shell: &mut GameplayWidgetUpdateShell) {
+        let score = &shell.manager.score().score;
+        
+        if self.counts.is_empty() {
+            for j in shell.manager.judgments() {
+                if j.display_name.is_empty() { continue }
 
-        let judgments = manager.judgments();
-        if self.colors.is_empty() {
-            for judge in judgments.iter() {
-                if judge.display_name.is_empty() { continue }
-                self.colors.insert(judge.display_name.to_owned(), judge.color);
+                let (layout, size) = Self::layout(
+                    j.display_name, 
+                    self.button_image.as_ref(), 
+                    &shell.scale,
+                    shell.font_context,
+                );
+
+                self.counts.push(CachedJudgment { 
+                    judge: *j,
+                    count: score.get_judgment(j), 
+                    size,
+                    layout,
+                });
             }
+            
+            return;
         }
 
-        for judge in judgments.iter() {
-            let txt = judge.display_name;
-            if txt.is_empty() { continue }
+        for (i, judge) in shell.manager
+            .judgments()
+            .iter()
+            .filter(|j| !j.display_name.is_empty())
+            .copied()
+            .enumerate()
+        {
+            let Some(cached) = self.counts.get_mut(i)
+            else { continue };
 
-            let count = score.judgments.get(judge.id).copied().unwrap_or_default();
-            self.hit_counts.push((txt.to_owned(), count as u32));
+            let new_count = score.get_judgment(judge);
+            if cached.count == new_count { continue }
+
+            cached.count = new_count;
+
+            let text = if new_count == 0 {
+                Cow::Borrowed(judge.display_name)
+            } else {
+                format_number(new_count).into()
+            };
+
+            let (layout, size) = Self::layout(
+                &text,
+                self.button_image.as_ref(), 
+                &shell.scale,
+                shell.font_context
+            );
+
+            cached.size = size;
+            cached.layout = layout;
         }
+
     }
 
     fn draw(
         &mut self,
-        pos_offset: Vector2,
-        scale: Vector2,
-        _align: Alignment,
-        list: &mut RenderableCollection
+        shell: &mut GameplayWidgetDrawShell
     ) {
         let box_size = self.button_image
             .as_ref()
-            .map_or(BOX_SIZE, Image::size) * scale;
+            .map_or(BOX_SIZE, Image::size) * shell.scale;
 
-        for (i, (txt, count)) in self.hit_counts.iter().enumerate() {
-            let pos = pos_offset + Vector2::new(0.0, box_size.y * i as f32);
-            let box_width;
+        for (i, cache) in self.counts.iter().enumerate() {
+            let pos = shell.pos_offset + Vector2::new(0.0, box_size.y * i as f32);
+            let box_bounds = Bounds::new(pos, box_size);
 
             if let Some(mut btn) = self.button_image.clone() {
                 btn.pos = pos + box_size / 2.0;
-                btn.scale = scale;
-                box_width = btn.size().x * scale.x;
+                btn.scale = shell.scale;
+                btn.color = cache.judge.color;
 
-                if let Some(&color) = self.colors.get(txt) {
-                    btn.color = color;
-                }
-
-                list.push(btn);
+                shell.list.push(btn);
             } else {
-                box_width = (BOX_SIZE * scale).x;
-
                 // draw bg box
-                list.push(
-                    Rectangle::new(
-                        pos,
-                        BOX_SIZE * scale,
-                        self.colors.get(txt)
-                            .copied()
-                            .unwrap_or(Color::new(0.0, 0.0, 0.0, 0.8)), // TODO: get a proper color
+                shell.list.push(
+                    Rectangle::new_bounds(
+                        box_bounds,
+                        cache.judge.color,
                     )
                     .border(Border::new(Color::BLACK, 2.0))
                 );
             }
 
-            // draw text/count
-            // let mut text = Text::new(
-            //     pos,
-            //     20.0 * scale.y,
-            //     if count == &0 { txt.clone() } else { count.to_string() },
-            //     Color::WHITE,
-            //     DefaultFont::Main
-            // );
-            // let text_size = text.measure_text();
-            // let max_width = box_width - 10.0; // padding of 10
-            // if text_size.x >= max_width {
-            //     text.set_font_size(20.0 * scale.x * max_width / text_size.x);
-            // }
-            // text.center_text(&Bounds::new(pos, box_size));
+            let centered = Alignment::CENTER.resolve(
+                &box_bounds, 
+                cache.size, 
+                true, 
+                true
+            );
 
-            // list.push(text);
+            // draw text/count
+            shell.list.push(Transformed::new(
+                Transform::default()
+                    .translate(centered),
+                Box::new(Text::new(cache.layout.clone())),
+            ));
         }
     }
 
     fn reload_skin(
         &mut self,
-        source: &TextureSource,
-        skin_manager: &mut dyn SkinProvider
+        shell: &mut GameplayWidgetReloadSkinShell
     ) {
-        self.button_image = skin_manager.get_texture(
+        self.button_image = shell.skin_manager.get_texture(
             "inputoverlay-key",
-            source,
+            shell.source,
             SkinUsage::Gamemode,
             false
         );
@@ -138,3 +204,11 @@ pub const JUDGMENT_COUNTER: GameplayWidgetBuilder = GameplayWidgetBuilder {
     ),
     build: JudgementCounterElement::build,
 };
+
+
+struct CachedJudgment {
+    judge: HitJudgment,
+    count: u16,
+    layout: Arc<parley::Layout<Color>>,
+    size: Vector2,
+}

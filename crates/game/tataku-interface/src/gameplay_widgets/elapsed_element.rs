@@ -13,6 +13,11 @@ struct ElapsedElement {
     end_time: f32,
 
     elapsed: f32,
+
+    mins: i16,
+    secs: i16,
+
+    layout: Option<Arc<parley::Layout<Color>>>
 }
 impl ElapsedElement {
     fn build(
@@ -27,6 +32,11 @@ impl ElapsedElement {
             start_time: -1.0,
             end_time: -1.0,
             elapsed: 0.0,
+
+            mins: 0,
+            secs: 0,
+
+            layout: None,
         })
     }
 }
@@ -35,43 +45,64 @@ impl GameplayWidget for ElapsedElement {
     fn display_name(&self) -> &'static str { "Time Elapsed" }
     fn max_size(&self) -> Vector2 { SIZE }
 
-    fn update(&mut self, manager: &mut dyn GameplayManagerTrait) {
+    fn update(&mut self, shell: &mut GameplayWidgetUpdateShell) {
         // if the values arent set yet, set them
         if self.start_time == -1.0 {
-            self.speed = manager.mods().get_speed();
-            self.end_time = manager.end_time() / self.speed;
-            self.start_time = self.end_time - manager.metadata().duration / self.speed;
+            self.speed = shell.manager.mods().get_speed();
+            self.end_time = shell.manager.end_time() / self.speed;
+            self.start_time = self.end_time - shell.manager.metadata().duration / self.speed;
         }
 
-        self.elapsed = manager.time() / self.speed;
-    }
+        self.elapsed = shell.manager.time() / self.speed;
 
-    fn draw(
-        &mut self,
-        pos_offset: Vector2,
-        scale: Vector2,
-        _align: Alignment,
-        list: &mut RenderableCollection,
-    ) {
-        // let bounds = Bounds::new(
-        //     pos_offset,
-        //     SIZE * scale
-        // );
 
         let diff = self.elapsed - self.start_time;
         let secs = (diff / 1000.0).floor();
         let mins = (secs / 60.0).floor() as i16;
         let secs = secs as i16 % 60;
 
-        // let text = Text::new(
-        //     pos_offset,
-        //     30.0 * scale.y,
-        //     format!("{mins:02}:{secs:02}"),
-        //     Color::WHITE,
-        //     DefaultFont::Main
-        // );
-        // // text.center_text(&bounds);
-        // list.push(text);
+        if self.mins != mins || self.secs != secs {
+            self.mins = mins;
+            self.secs = secs;
+
+            let mut layout = shell.font_context.simple_text(
+                &format!("{mins:02}:{secs:02}"), 
+                &TextStyle {
+                    color: Color::WHITE,
+                    font_size: 30.0 * shell.scale.y,
+                    ..Default::default()
+                }
+            );
+
+            layout.break_all_lines(None);
+            self.layout = Some(Arc::new(layout));
+        }
+    }
+
+    fn draw(
+        &mut self,
+        shell: &mut GameplayWidgetDrawShell,
+    ) {
+        let Some(layout) = self.layout.clone() 
+        else { return };
+
+        let bounds = Bounds::new(
+            shell.pos_offset,
+            SIZE * shell.scale
+        );
+
+        shell.list.push(Transformed::new(
+            Transform::default().translate(Alignment::CENTER.resolve(
+                &bounds, 
+                Vector2::new(
+                    layout.width(),
+                    layout.height(),
+                ), 
+                true, 
+                true
+            )),
+            Box::new(Text::new(layout))
+        ));
     }
 
 }

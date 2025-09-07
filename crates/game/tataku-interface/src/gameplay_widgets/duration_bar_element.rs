@@ -24,38 +24,35 @@ impl GameplayWidget for DurationBarElement {
         Vector2::new(self.container_size.x, DURATION_HEIGHT)
     }
 
-    fn update(&mut self, manager: &mut dyn GameplayManagerTrait) {
-        self.container_size = manager.bounds().size;
-        self.duration_ratio = manager.time() / manager.end_time();
+    fn update(&mut self, shell: &mut GameplayWidgetUpdateShell) {
+        self.container_size = shell.manager.bounds().size;
+        self.duration_ratio = shell.manager.time() / shell.manager.end_time();
     }
 
     fn draw(
         &mut self, 
-        pos_offset: Vector2, 
-        scale: Vector2, 
-        _align: Alignment,
-        list: &mut RenderableCollection
+        shell: &mut GameplayWidgetDrawShell
     ) {
         // fill
-        list.push(Rectangle::new(
-            pos_offset, // - Vector2::with_y(DURATION_HEIGHT + 3.0),
+        shell.list.push(Rectangle::new(
+            shell.pos_offset, // - Vector2::with_y(DURATION_HEIGHT + 3.0),
             Vector2::new(
                 self.container_size.x * self.duration_ratio, 
                 DURATION_HEIGHT
-            ) * scale,
+            ) * shell.scale,
             self.common_game_settings.duration_color_full,
         ));
 
         // border
-        list.push(
+        shell.list.push(
             Rectangle::new(
-                pos_offset, // + Vector2::with_y(-(DURATION_HEIGHT + 3.0)),
-                Vector2::new(self.container_size.x, DURATION_HEIGHT) * scale,
+                shell.pos_offset, // + Vector2::with_y(-(DURATION_HEIGHT + 3.0)),
+                Vector2::new(self.container_size.x, DURATION_HEIGHT) * shell.scale,
                 self.common_game_settings.duration_color,
             )
             .border(Border::new(
                 self.common_game_settings.duration_border_color, 
-                1.8 * scale.x
+                1.8 * shell.scale.x
             )
         ));
     }

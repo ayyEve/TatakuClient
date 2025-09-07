@@ -273,11 +273,11 @@ impl Game {
                 let mode = self.global.playmode.clone();
 
                 match manager_from_playmode(
-                    &self.global.gamemode_infos,
+                    &self.values.global.gamemode_infos,
                     &mode, 
                     &map, 
                     mods.clone(),
-                    &self.settings,
+                    &self.values.settings,
                 ) {
                     Ok(mut manager) => {
                         let start_time = manager.start_time as u64;
@@ -653,12 +653,12 @@ impl Game {
                 let mods = self.values.global.mods.clone();
 
                 match manager_from_playmode_path_hash(
-                    &self.global.gamemode_infos,
+                    &self.values.global.gamemode_infos,
                     mode, 
                     &beatmap.file_path, 
                     beatmap.beatmap_hash, 
                     mods, 
-                    &self.settings
+                    &self.values.settings,
                 ) {
                     Ok(mut manager) => {
                         manager.set_mode(GameplayMode::Replay(score).into());
@@ -822,12 +822,12 @@ impl Game {
                             .unwrap_or_else(|| self.values.global.mods.clone());
                         
                         manager_from_playmode_path_hash(
-                            &self.global.gamemode_infos,
+                            &self.values.global.gamemode_infos,
                             &playmode, 
                             path, 
                             *map_hash, 
                             mods, 
-                            &self.settings,
+                            &self.values.settings,
                         )
                     }
                     NewManager {
@@ -856,11 +856,11 @@ impl Game {
                         );
 
                         manager_from_playmode(
-                            &self.global.gamemode_infos,
+                            &self.values.global.gamemode_infos,
                             &playmode, 
                             &meta, 
                             mods,
-                            &self.settings,
+                            &self.values.settings,
                         )
                     }
                 } {
@@ -869,6 +869,7 @@ impl Game {
                             &mut self.skin_manager, 
                             &self.values.settings
                         );
+                        manager.init_ui(&mut self.text_layout_contexts);
 
                         if let Some(mode) = config.gameplay_mode.clone() {
                             manager.set_mode(mode.into());

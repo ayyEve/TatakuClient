@@ -656,7 +656,11 @@ impl Game {
                 continue;
             }
 
-            manager.update(&mut self.values, &mut self.actions);
+            manager.update(
+                &mut self.values, 
+                &mut self.text_layout_contexts,
+                &mut self.actions,
+            );
 
             if manager.completed {
                 manager.on_complete();
@@ -763,7 +767,10 @@ impl Game {
         self.song_manager.update(&mut self.audio_manager);
 
         // update download manager
-        self.values.download_manager.update(&mut self.actions);
+        self.values.download_manager.update(
+            &mut self.actions, 
+            &mut self.text_layout_contexts,
+        );
 
         // update tasks
         let game_state = TaskGameState {
@@ -810,7 +817,12 @@ impl Game {
                     }
 
                     // update, then check if complete
-                    manager.update(&mut self.values, &mut self.actions);
+                    manager.update(
+                        &mut self.values, 
+                        &mut self.text_layout_contexts,
+                        &mut self.actions,
+                    );
+
                     if manager.completed {
                         #[cfg(feature="graphics")]
                         self.ingame_complete(manager);
@@ -933,6 +945,7 @@ impl Game {
                             song.pause();
                             if !manager.started {
                                 song.set_position(0.0);
+                                manager.init_ui(&mut self.text_layout_contexts);
                             }
                         }
 
@@ -1019,7 +1032,7 @@ impl Game {
 
         // update the notification manager
         #[cfg(feature="graphics")]
-        self.notification_manager.update();
+        self.notification_manager.update(&mut self.text_layout_contexts);
 
         let online_events = self.values
             .values

@@ -68,7 +68,7 @@ impl SpectatorManager {
             &map_path, 
             hash, 
             mods.clone(), 
-            &values.settings
+            &values.settings,
         ) {
             Ok(mut manager) => {
                 // set manager things
@@ -178,7 +178,7 @@ impl SpectatorManager {
                             beatmap_hash, 
                             SetBeatmapOptions::default().restart_song(true)
                         ));
-                        self.start_game(values, 0.0, actions);
+                        return self.start_game(values, 0.0, actions);
                     } else {
                         let settings = &values.settings;
                         info!("no beatmap, attempting to download");
