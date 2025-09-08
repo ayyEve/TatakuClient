@@ -31,7 +31,7 @@ pub enum BuildableOnlineContentAction {
 }
 impl BuildableOnlineContentAction {
     fn index(
-        index: BuildableValue,
+        index: &BuildableValue,
 
         values: &dyn Reflect,
         passed_in: Option<&TatakuValue>,
@@ -41,8 +41,8 @@ impl BuildableOnlineContentAction {
             .map(|i| i as usize)
     }
 
-    pub fn into_action(
-        self,
+    pub fn resolve(
+        &self,
         values: &dyn Reflect,
         passed_in: Option<&TatakuValue>,
     ) -> Option<OnlineContentAction> {
@@ -175,7 +175,7 @@ impl BuildableOnlineContentSearch {
     }
 
     fn resolve(
-        self,
+        &self,
         values: &dyn Reflect,
         passed_in: Option<&TatakuValue>,
     ) -> Option<OnlineContentSearch> {

@@ -91,7 +91,7 @@ impl Widget<TatakuAction> for BuiltCustomMenu {
             .cloned();
 
         if let Some((action, passed_in)) = cast {
-            if let Some(action) = action.into_action(
+            if let Some(action) = action.resolve(
                 self.node_id,
                 shell.values,
                 passed_in.as_ref()
@@ -139,7 +139,7 @@ impl Widget<TatakuAction> for BuiltCustomMenu {
         else { return };
 
         for i in events.iter() {
-            let Some(action) = i.clone().into_action(
+            let Some(action) = i.clone().resolve(
                 self.node_id(),
                 shell.values,
                 event_value,

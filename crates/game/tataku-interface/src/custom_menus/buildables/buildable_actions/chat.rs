@@ -24,8 +24,8 @@ pub enum BuildableChatAction {
     }
 }
 impl BuildableChatAction {
-    pub fn into_action(
-        self, 
+    pub fn resolve(
+        &self, 
         values: &dyn Reflect, 
         passed_in: Option<&TatakuValue>
     ) -> Option<TatakuAction> {
@@ -34,11 +34,9 @@ impl BuildableChatAction {
                 channel, 
                 message 
             } => {
-                let message: String = message.into_iter()
-                    .map(|mut text| {
-                        let _ = text.compute();
-                        text.to_string(values)
-                    }).collect();
+                let message: String = message.iter()
+                    .map(|text| text.to_string(values))
+                    .collect();
 
                 Some(ChatAction::SendMessage {
                     channel: channel.inner.resolve(values, passed_in).unwrap().as_string(),
@@ -52,6 +50,7 @@ impl BuildableChatAction {
             } => Some(ChatAction::OpenChannel { 
                 channel: channel.resolve(values, passed_in).unwrap().as_string(),
                 password: password
+                    .as_ref()
                     .and_then(|i| i.inner.resolve(values, passed_in).map(|i| i.as_string())),
             }.into()),
 

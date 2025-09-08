@@ -36,8 +36,8 @@ pub enum BuildableModAction {
     },
 }
 impl BuildableModAction {
-    pub fn into_action(
-        self, 
+    pub fn resolve(
+        &self, 
         values: &mut dyn Reflect,
         passed_in: Option<&TatakuValue>,
     ) -> Option<ModAction> {

@@ -33,18 +33,16 @@ pub enum BuildableGameAction {
 }
 
 impl BuildableGameAction {
-    pub fn into_action(
-        self,
+    pub fn resolve(
+        &self,
         values: &mut dyn Reflect,
         passed_in: Option<&TatakuValue>
     ) -> Option<GameAction> {
         match self {
             Self::CopyToClipboard { text } => {
-                let text: String = text.into_iter()
-                    .map(|mut text| {
-                        let _ = text.compute();
-                        text.to_string(values)
-                    }).collect();
+                let text: String = text.iter()
+                    .map(|text| text.to_string(values))
+                    .collect();
 
                 Some(GameAction::CopyToClipboard(text.into()))
             }
@@ -58,18 +56,17 @@ impl BuildableGameAction {
                 duration,
             } => {
                 let duration = duration_attribute
+                    .clone()
                     .map(BuildableValue::Value)
-                    .or(duration)?;
+                    .or(duration.clone())?;
 
-                let text: String = text.into_iter()
-                    .map(|mut text| {
-                        let _ = text.compute();
-                        text.to_string(values)
-                    }).collect();
+                let text: String = text.iter()
+                    .map(|text| text.to_string(values))
+                    .collect();
 
                 Some(GameAction::AddNotification(Notification::new(
                     text,
-                    color,
+                    *color,
                     duration.resolve(values, passed_in)?.as_f32()?,
                     NotificationOnClick::None
                 )))

@@ -64,8 +64,8 @@ pub enum BuildableMapAction {
     PreviousSet,
 }
 impl BuildableMapAction {
-    pub fn into_action(
-        self, 
+    pub fn resolve(
+        &self, 
         values: &mut dyn Reflect, 
         passed_in: Option<&TatakuValue>
     ) -> Option<BeatmapAction> {
@@ -75,10 +75,10 @@ impl BuildableMapAction {
 
             Self::Next => Some(BeatmapAction::Next),
             Self::Previous { action } 
-                => Some(BeatmapAction::Previous(action)),
+                => Some(BeatmapAction::Previous(*action)),
 
             Self::Random { use_preview } 
-                => Some(BeatmapAction::Random(use_preview)),
+                => Some(BeatmapAction::Random(*use_preview)),
 
             Self::DeleteCurrent 
                 => Some(BeatmapAction::DeleteCurrent(PostDelete::Next)),
@@ -101,7 +101,7 @@ impl BuildableMapAction {
             }
 
 
-            Self::SelectGroup { value} => {
+            Self::SelectGroup { value } => {
                 let num = value.resolve(values, passed_in)?.as_u32()?;
                 Some(BeatmapAction::ListAction(
                     BeatmapListAction::SelectSet(num as usize)
@@ -138,7 +138,7 @@ impl BuildableMapAction {
                 => value.build(),
 
             _ => {}
-        };
+        }
     }
 }
 

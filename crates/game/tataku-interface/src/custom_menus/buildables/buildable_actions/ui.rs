@@ -11,7 +11,7 @@ pub enum BuildableUiAction {
     },
 }
 impl BuildableUiAction {
-    pub fn into_action(
+    pub fn resolve(
         &self, 
         node: NodeId,
         values: &dyn Reflect,

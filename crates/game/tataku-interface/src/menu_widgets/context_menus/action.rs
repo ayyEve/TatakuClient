@@ -36,7 +36,7 @@ impl ContextMenuAction {
                 }
             }
             Self::Buildable(b) => {
-                if let Some(action) = b.clone().into_action(
+                if let Some(action) = b.clone().resolve(
                     node, 
                     values, 
                     passed_in.as_ref(),

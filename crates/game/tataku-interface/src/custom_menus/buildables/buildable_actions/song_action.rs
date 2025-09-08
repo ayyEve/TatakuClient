@@ -41,8 +41,8 @@ pub enum BuildableSongAction {
     },
 }
 impl BuildableSongAction {
-    pub fn into_action(
-        self, 
+    pub fn resolve(
+        &self, 
         values: &mut dyn Reflect, 
         passed_in: Option<&TatakuValue>,
     ) -> Option<SongAction> {
@@ -77,6 +77,7 @@ impl BuildableSongAction {
 
     pub fn build(&mut self) {
         match self {
+            Self::PopQueue(a) => a.build(),
             Self::Seek { value } => value.build(),
             Self::SetPosition { value } => value.build(),
             Self::SetRate { value } => value.build(),
@@ -97,36 +98,39 @@ pub struct BuildableSongPlayData {
     #[serde(alias="@rate", default)] pub volume: BuildableValue,
 }
 impl BuildableSongPlayData {
+    pub(crate) fn build(&mut self) {
+        self.play.build();
+        self.restart.build();
+        self.position.build();
+        self.rate.build();
+        self.volume.build();
+    }
+
     pub fn resolve(
         &self,
         values: &mut dyn Reflect,
         passed_in: Option<&TatakuValue>,
     ) -> Option<SongPlayData> {
         Some(SongPlayData { 
-            play: self
-                .play
+            play: self.play
                 .resolve(values, passed_in)
                 .map(|i| i.as_bool())
                 .unwrap_or_default(),
 
-            restart: self
-                .restart
+            restart: self.restart
                 .resolve(values, passed_in)
                 .map(|i| i.as_bool())
                 .unwrap_or_default(),
 
-            position: self
-                .position
+            position: self.position
                 .resolve(values, passed_in)
                 .and_then(|i| i.as_f32()),
 
-            rate: self
-                .rate
+            rate: self.rate
                 .resolve(values, passed_in)
                 .and_then(|i| i.as_f32()),
 
-            volume: self
-                .volume
+            volume: self.volume
                 .resolve(values, passed_in)
                 .and_then(|i| i.as_f32()),
         })

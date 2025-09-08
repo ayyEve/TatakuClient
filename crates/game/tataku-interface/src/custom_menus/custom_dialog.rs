@@ -118,7 +118,7 @@ impl Widget<TatakuAction> for BuiltCustomDialog {
             action.build();
 
             shell.handled = true;
-            if let Some(action) = action.into_action(
+            if let Some(action) = action.resolve(
                 self.node_id,
                 shell.values,
                 passed_in.as_ref()
@@ -171,7 +171,7 @@ impl Widget<TatakuAction> for BuiltCustomDialog {
 
         for mut i in events.iter().cloned() {
             i.build();
-            let Some(action) = i.into_action(
+            let Some(action) = i.resolve(
                 self.node_id,
                 shell.values,
                 event_value

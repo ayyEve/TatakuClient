@@ -135,8 +135,8 @@ pub enum BuildableAction {
 }
 
 impl BuildableAction {
-    pub fn into_action(
-        self,
+    pub fn resolve(
+        &self,
         node: NodeId,
         values: &mut dyn Reflect,
         passed_in: Option<&TatakuValue>
@@ -148,14 +148,15 @@ impl BuildableAction {
                 delay,
             } => {
                 let passed_in = passed_in.cloned();
+                let action = action.clone();
                 Some(TatakuAction::Delayed(
                     DelayedActionType::Callback(Arc::new(
                         move |values| action
                             .clone()
-                            .into_action(node, values, passed_in.as_ref())
+                            .resolve(node, values, passed_in.as_ref())
                             .unwrap_or(TatakuAction::None)
                     )),
-                    delay
+                    *delay
                 ))
             }
 
@@ -190,10 +191,10 @@ impl BuildableAction {
                 Some(TatakuAction::Menu(MenuAction::AddDialog {
                     id: id.into(),
                     options: Box::new(DialogCreateOptions {
-                        allow_multiple,
-                        draggable,
-                        resizable,
-                        title: Cow::Owned(title),
+                        allow_multiple: *allow_multiple,
+                        draggable: *draggable,
+                        resizable: *resizable,
+                        title: Cow::Owned(title.clone()),
                         // TODO: not auto?
                         location: DialogLocation::Auto,
                         background: true,
@@ -220,51 +221,51 @@ impl BuildableAction {
             }
 
             Self::Map { action } => action
-                .into_action(values, passed_in)
+                .resolve(values, passed_in)
                 .map(TatakuAction::Beatmap),
 
             Self::Mods { action } => action
-                .into_action(values, passed_in)
+                .resolve(values, passed_in)
                 .map(TatakuAction::Mods),
 
             Self::Song { action } => action
-                .into_action(values, passed_in)
+                .resolve(values, passed_in)
                 .map(TatakuAction::Song),
 
             Self::Game { action } => action
-                .into_action(values, passed_in)
+                .resolve(values, passed_in)
                 .map(Box::new)
                 .map(TatakuAction::Game),
 
             Self::Multiplayer { action } => action
-                .into_action(values, passed_in)
+                .resolve(values, passed_in)
                 .map(TatakuAction::Multiplayer),
 
             #[cfg(feature="graphics")]
             Self::Cursor { action } => action
-                .into_action(values, passed_in)
+                .resolve(values, passed_in)
                 .map(TatakuAction::CursorAction),
 
             Self::Chat { action }
-                => action.into_action(values, passed_in),
+                => action.resolve(values, passed_in),
 
             #[cfg(feature="graphics")]
             Self::Ui { action } => {
                 Some(UiAction::new(
                     node,
-                    action.into_action(node, values, passed_in)?
+                    action.resolve(node, values, passed_in)?
                 ).into())
             }
 
             Self::Gameplay {
                 action
             } => Some(TatakuAction::Game(Box::new(
-                GameAction::CurrentGameAction(action.into_action())
+                GameAction::CurrentGameAction(action.resolve())
             ))),
 
             Self::OnlineContent { action }
                 => action
-                .into_action(values, passed_in)
+                .resolve(values, passed_in)
                 .map(TatakuAction::OnlineContent),
 
 
@@ -279,9 +280,7 @@ impl BuildableAction {
                         GameAction::SetValue(key, value.into_owned()).into()
                     )
             }
-            Self::CustomEvent { mut event } => {
-                event.compute().ok()?;
-
+            Self::CustomEvent { event } => {
                 Some(GameAction::HandleEvent(
                     TatakuEvent::CustomEvent(event.to_string(values)),
                     None
@@ -296,18 +295,20 @@ impl BuildableAction {
                 if_false
             } => {
                 let if_true = if_true_wrapped
-                    .map(|i| i.inner)
-                    .or(if_true)?;
+                    .as_ref()
+                    .map(|i| &i.inner)
+                    .or(if_true.as_ref())?;
 
                 match cond.resolve(values) {
                     BuildableConditionResult::Failed => None,
                     BuildableConditionResult::Unbuilt(a)
                         => panic!("BuildableConditions should be built! '{a}'"),
                     BuildableConditionResult::True => if_true
-                        .into_action(node, values, passed_in),
+                        .resolve(node, values, passed_in),
                     BuildableConditionResult::False => if_false
+                        .as_ref()
                         .and_then(|a|
-                            a.inner.into_action(node, values, passed_in)
+                            a.inner.resolve(node, values, passed_in)
                         ),
                     BuildableConditionResult::Error(_) => None,
                 }
@@ -333,17 +334,12 @@ impl BuildableAction {
                 => action.build(),
             Self::Cursor { action }
                 => action.build(),
-            Self::SetMenu {
-                id,
-            } => {
-                id.build();
-            }
-            Self::AddDialog {
-                id,
-                ..
-            } => {
-                id.build();
-            }
+            Self::SetMenu { id } 
+                => id.build(),
+            
+            Self::AddDialog { id, .. } 
+            => id.build(),
+            
             Self::Conditional {
                 cond,
                 if_true,
@@ -375,7 +371,9 @@ impl BuildableAction {
             Self::Ui { action }
                 => action.build(),
 
-            Self::CustomEvent { event } => if let Err(e) = event.compute() {
+            Self::CustomEvent { 
+                event 
+            } => if let Err(e) = event.compute() {
                 error!("error building custom event tag: {e:?}");
             }
 

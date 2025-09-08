@@ -38,7 +38,7 @@ impl TatakuTask for ActionTask {
                     node,
                     passed_in
                 } => action
-                    .into_action(node, values, passed_in.as_ref())
+                    .resolve(node, values, passed_in.as_ref())
                     .unwrap_or(TatakuAction::None),
 
                 ActionTaskAction::Callback(cb) 

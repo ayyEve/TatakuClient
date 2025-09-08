@@ -199,7 +199,7 @@ impl ButtonOnClick {
             Self::BuildableActions(actions) => {
                 let actions = actions.iter().cloned()
                     .filter_map(|a| {
-                        a.into_action(node, values, passed_in)
+                        a.resolve(node, values, passed_in)
                     })
                     .collect::<Vec<_>>();
 

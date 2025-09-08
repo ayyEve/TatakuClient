@@ -48,8 +48,8 @@ pub enum BuildableMultiplayerAction {
     },
 }
 impl BuildableMultiplayerAction {
-    pub fn into_action(
-        self, 
+    pub fn resolve(
+        &self, 
         values: &mut dyn Reflect, 
         passed_in: Option<&TatakuValue>
     ) -> Option<MultiplayerAction> {
@@ -70,7 +70,7 @@ impl BuildableMultiplayerAction {
 
             Self::JoinLobby { lobby_id, password } => Some(MultiplayerAction::JoinLobby {
                 lobby_id: lobby_id.resolve(values, passed_in)?.as_u32()?,
-                password: password
+                password: password.as_ref()
                     .and_then(|i| i
                         .resolve(values, passed_in)
                         .map(|t| t.as_string())
@@ -84,7 +84,7 @@ impl BuildableMultiplayerAction {
                 private
             } => Some(MultiplayerAction::CreateLobby {
                 name: name.inner.resolve(values, passed_in)?.as_string(),
-                password: password
+                password: password.as_ref()
                     .and_then(|i| i.inner
                         .resolve(values, passed_in)
                         .map(|t| t.as_string())

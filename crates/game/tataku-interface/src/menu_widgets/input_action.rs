@@ -36,7 +36,7 @@ impl<T: Clone + Reflect> InputAction<T> {
                 // todo: error on failed
                 let a = a.iter()
                     .cloned()
-                    .filter_map(|action| action.into_action(node, values, passed_in));
+                    .filter_map(|action| action.resolve(node, values, passed_in));
 
                 actions.extend(a);
             }

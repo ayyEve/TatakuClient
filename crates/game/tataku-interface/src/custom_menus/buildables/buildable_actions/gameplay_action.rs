@@ -17,7 +17,7 @@ pub enum BuildableGameplayAction {
     Retry,
 }
 impl BuildableGameplayAction {
-    pub fn into_action(self) -> CurrentGameAction {
+    pub fn resolve(&self) -> CurrentGameAction {
         match self {
             Self::Pause => CurrentGameAction::Pause {
                 id: "pause_menu".to_owned(),

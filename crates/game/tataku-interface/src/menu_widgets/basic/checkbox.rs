@@ -242,7 +242,7 @@ impl CheckboxOnToggle {
                 // todo: error on failed
                 let actions = actions.iter()
                     .cloned()
-                    .filter_map(|action| action.into_action(node, values, passed_in))
+                    .filter_map(|action| action.resolve(node, values, passed_in))
                     .collect();
 
                 Err(TatakuAction::Multiple(actions))

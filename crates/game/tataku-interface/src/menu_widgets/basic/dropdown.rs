@@ -96,7 +96,7 @@ impl Dropdown {
                 // todo: error on bad
                 let actions = actions.iter()
                     .cloned()
-                    .filter_map(|action| action.into_action(self.node_id, shell.values, passed_in));
+                    .filter_map(|action| action.resolve(self.node_id, shell.values, passed_in));
 
                 shell.actions.extend(actions);
 
