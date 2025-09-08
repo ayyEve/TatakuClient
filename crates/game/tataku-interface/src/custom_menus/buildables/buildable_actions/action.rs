@@ -318,31 +318,31 @@ impl BuildableAction {
     }
 
     // build any values that need to be built on item creation (ie, for lists that have temporary variables)
-    pub fn build(&mut self, values: &dyn Reflect) {
+    pub fn build(&mut self) {
         match self {
             Self::Map { action }
-                => action.build(values),
+                => action.build(),
 
             Self::Mods { action }
-                => action.build(values),
+                => action.build(),
             Self::Song { action }
-                => action.build(values),
+                => action.build(),
             Self::Game { action }
-                => action.build(values),
+                => action.build(),
             Self::Multiplayer { action }
-                => action.build(values),
+                => action.build(),
             Self::Cursor { action }
-                => action.build(values),
+                => action.build(),
             Self::SetMenu {
                 id,
             } => {
-                id.resolve_pre(values);
+                id.build();
             }
             Self::AddDialog {
                 id,
                 ..
             } => {
-                id.resolve_pre(values);
+                id.build();
             }
             Self::Conditional {
                 cond,
@@ -353,27 +353,27 @@ impl BuildableAction {
                 cond.build();
 
                 if let Some(e) = if_true {
-                    e.build(values);
+                    e.build();
                 }
                 if let Some(e) = if_true_wrapped {
-                    e.inner.build(values);
+                    e.inner.build();
                 }
                 if let Some(e) = if_false {
-                    e.inner.build(values);
+                    e.inner.build();
                 }
             }
 
             Self::Delayed { action, .. }
-                => action.build(values),
+                => action.build(),
 
             Self::SetValue { value, .. }
-                => value.resolve_pre(values),
+                => value.build(),
 
             Self::Chat { action }
-                => action.build(values),
+                => action.build(),
 
             Self::Ui { action }
-                => action.build(values),
+                => action.build(),
 
             Self::CustomEvent { event } => if let Err(e) = event.compute() {
                 error!("error building custom event tag: {e:?}");

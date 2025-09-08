@@ -69,12 +69,7 @@ impl<T> From<BuildableAction> for InputAction<T> {
 impl<T> From<Vec<BuildableAction>> for InputAction<T> {
     fn from(mut actions: Vec<BuildableAction>) -> Self {
         for action in actions.iter_mut() {
-            if let BuildableAction::Conditional {
-                cond,
-                ..
-            } = action {
-                cond.build();
-            }
+            action.build();
         }
 
         if actions.is_empty() {

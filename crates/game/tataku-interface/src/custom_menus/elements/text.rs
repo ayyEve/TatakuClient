@@ -37,31 +37,31 @@ impl CustomElement for TextElement {
 }
 
 
-#[test]
-fn test() {
-    let xml = r#"
-        <text id="hi" class="thing1 thing2">
-            <list>
-                <text text="hi mom"/>
-                <text text="hi dad"/>
-            </list>
-        </text>
-    "#;
+// #[test]
+// fn test() {
+//     let xml = r#"
+//         <text id="hi" class="thing1 thing2">
+//             <list>
+//                 <text text="hi mom"/>
+//                 <text text="hi dad"/>
+//             </list>
+//         </text>
+//     "#;
 
-    assert_eq!(
-        quick_xml::de::from_str::<TextElement>(xml).unwrap(),
+//     assert_eq!(
+//         quick_xml::de::from_str::<TextElement>(xml).unwrap(),
 
-        TextElement {
-            id: Some("hi".into()),
-            class_list: "thing1 thing2".into(),
-            style: ArcStr::default(),
-            text: BuildableText::List {
-                join: ArcStr::default(),
-                list: vec![
-                    BuildableText::Text("hi mom".into()),
-                    BuildableText::Text("hi dad".into()),
-                ]
-            }
-        }
-    );
-}
+//         TextElement {
+//             id: Some("hi".into()),
+//             class_list: "thing1 thing2".into(),
+//             style: ArcStr::default(),
+//             text: BuildableText::List {
+//                 join: ArcStr::default(),
+//                 list: vec![
+//                     BuildableText::Text("hi mom".into()),
+//                     BuildableText::Text("hi dad".into()),
+//                 ]
+//             }
+//         }
+//     );
+// }

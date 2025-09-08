@@ -190,7 +190,7 @@ impl ButtonOnClick {
         &self, 
         node: NodeId,
         passed_in: Option<&TatakuValue>,
-        values: &mut dyn Reflect
+        values: &mut dyn Reflect,
     ) -> Option<ActionResponse> {
         match self {
             Self::Message(m) 
@@ -198,8 +198,7 @@ impl ButtonOnClick {
 
             Self::BuildableActions(actions) => {
                 let actions = actions.iter().cloned()
-                    .filter_map(|mut a| {
-                        a.build(values);
+                    .filter_map(|a| {
                         a.into_action(node, values, passed_in)
                     })
                     .collect::<Vec<_>>();
@@ -213,6 +212,15 @@ impl ButtonOnClick {
 
             Self::Callback(cb) 
                 => (cb)().map(ActionResponse::Message),
+        }
+    }
+
+    pub fn build(&mut self) {
+        let Self::BuildableActions(actions) = self 
+        else { return };
+
+        for a in actions {
+            a.build();
         }
     }
 }

@@ -99,19 +99,19 @@ impl BuildableMultiplayerAction {
         }
     }
 
-    pub fn build(&mut self, values: &dyn Reflect) {
+    pub fn build(&mut self) {
         match self {
             Self::Slot { slot } => {
-                slot.build(values);
+                slot.build();
             }
 
             Self::JoinLobby {
                 lobby_id,
                 password
             } => {
-                lobby_id.resolve_pre(values);
+                lobby_id.build();
                 if let Some(password) = password.as_mut() {
-                    password.resolve_pre(values);
+                    password.build();
                 }
             }
 

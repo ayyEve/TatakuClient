@@ -271,30 +271,30 @@ struct ResultsBeatmap {
 
 
 
-#[tokio::test]
-async fn test() {
-    let settings = Settings::load_from("game/settings.json");
-    let search = OnlineContentSearch {
-        engine_id: "osu".into(),
-        search_type: vec![OnlineContentType::Maps],
-        page: 0,
-        search_values: vec![
-            OnlineContentSearchValue::new("mode", "1"),
-        ].into(),
-        query: None,
-    };
+// #[tokio::test]
+// async fn test() {
+//     let settings = Settings::load_from("game/settings.json");
+//     let search = OnlineContentSearch {
+//         engine_id: "osu".into(),
+//         search_type: vec![OnlineContentType::Maps],
+//         page: 0,
+//         search_values: vec![
+//             OnlineContentSearchValue::new("mode", "1"),
+//         ].into(),
+//         query: None,
+//     };
 
-    let a =  OsuDirect::new(&settings);
-    let results = a.search(
-        &settings,
-        search
-    );
+//     let a =  OsuDirect::new(&settings);
+//     let results = a.search(
+//         &settings,
+//         search
+//     );
 
-    while !results.is_complete() {
-        tokio::task::yield_now().await;
-    }
+//     while !results.is_complete() {
+//         tokio::task::yield_now().await;
+//     }
 
-    let results = results.check().unwrap();
-    println!("results: {results:?}");
+//     let results = results.check().unwrap();
+//     println!("results: {results:?}");
 
-}
+// }

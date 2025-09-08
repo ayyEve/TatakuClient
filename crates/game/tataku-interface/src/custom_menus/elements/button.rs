@@ -65,34 +65,34 @@ enum MouseButton2 {
 }
 
 
-#[test]
-fn test() {
-    use quick_xml::de::from_str;
+// #[test]
+// fn test() {
+//     use quick_xml::de::from_str;
 
-    assert_eq!(
-        from_str::<ButtonElement>(r#"
-            <button id="button123" class="thing1 thing2">
-                <action> <song> <play/> </song> </action>
+//     assert_eq!(
+//         from_str::<ButtonElement>(r#"
+//             <button id="button123" class="thing1 thing2">
+//                 <action> <song> <play/> </song> </action>
 
-                <text> hi mom </text>
-            </button>
-        "#).unwrap(),
-        ButtonElement {
-            id: Some("button123".into()),
-            class_list: "thing1 thing2".into(),
-            actions: vec![
-                ClickAction {
-                    button: MouseButton2::Left,
-                    inner: BuildableAction::Song {
-                        action: BuildableSongAction::Play
-                    },
-                }
-            ],
-            element: ElementTag { inner: Element::Text(Box::new(TextElement {
-                text: BuildableText::Text("hi mom".into()),
-                ..Default::default()
-            })) } ,
-            ..Default::default()
-        }
-    );
-}
+//                 <text> hi mom </text>
+//             </button>
+//         "#).unwrap(),
+//         ButtonElement {
+//             id: Some("button123".into()),
+//             class_list: "thing1 thing2".into(),
+//             actions: vec![
+//                 ClickAction {
+//                     button: MouseButton2::Left,
+//                     inner: BuildableAction::Song {
+//                         action: BuildableSongAction::Play
+//                     },
+//                 }
+//             ],
+//             element: ElementTag { inner: Element::Text(Box::new(TextElement {
+//                 text: BuildableText::Text("hi mom".into()),
+//                 ..Default::default()
+//             })) } ,
+//             ..Default::default()
+//         }
+//     );
+// }

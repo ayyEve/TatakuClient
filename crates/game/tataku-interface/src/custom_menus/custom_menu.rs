@@ -23,7 +23,7 @@ impl CustomMenu {
 
                 let actions = buildable.actions.iter().cloned()
                     .map(|mut action| {
-                        action.build(values);
+                        action.build();
                         action
                     })
                     .collect();

@@ -19,5 +19,5 @@ impl BuildableCursorAction {
         }
     }
     
-    pub fn build(&mut self, _values: &dyn Reflect) {}
+    pub fn build(&mut self) {}
 }

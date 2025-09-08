@@ -88,22 +88,24 @@ impl BuildableGameAction {
         }
     }
 
-    pub fn build(&mut self, values: &dyn Reflect) {
+    pub fn build(&mut self) {
         match self {
             Self::ViewScore {
                 score
-            } => score.resolve_pre(values),
+            } => score.build(),
             Self::ShowNotification {
                 text,
                 duration,
                 ..
             } => {
-                // if let Err(e) = text.compute() {
-                //     error!("error parsing text '{text:?}': {e:?}");
-                // }
+                for i in text {
+                    if let Err(e) = i.compute() {
+                        error!("error parsing text '{i:?}': {e:?}");
+                    }
+                }
 
                 if let Some(duration) = duration {
-                    duration.resolve_pre(values);
+                    duration.build();
                 }
             }
 

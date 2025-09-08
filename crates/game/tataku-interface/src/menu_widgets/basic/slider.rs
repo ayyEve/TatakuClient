@@ -297,8 +297,9 @@ impl SliderValue {
                 buildable, 
                 value 
             } => if let Some(t) = buildable
-                .resolve(values, None) 
-            && let Some(v) = t.as_f32() {
+                    .resolve(values, None) 
+                && let Some(v) = t.as_f32() 
+            {
                 *value = v;
             }
         }
@@ -328,7 +329,9 @@ impl From<VariablePathResolver> for SliderValue {
     }
 }
 impl From<BuildableValue> for SliderValue {
-    fn from(value: BuildableValue) -> Self {
+    fn from(mut value: BuildableValue) -> Self {
+        value.build();
+
         match value {
             BuildableValue::Variable(variable) => Self::Variable {
                 variable,

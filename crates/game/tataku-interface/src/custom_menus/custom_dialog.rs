@@ -30,7 +30,7 @@ impl CustomDialog {
 
                 let actions = buildable.actions.iter().cloned()
                     .map(|mut action| {
-                        action.build(values);
+                        action.build();
                         action
                     })
                     .collect();
@@ -115,7 +115,7 @@ impl Widget<TatakuAction> for BuiltCustomDialog {
             .cloned();
 
         if let Some((mut action, passed_in)) = cast {
-            action.build(shell.values);
+            action.build();
 
             shell.handled = true;
             if let Some(action) = action.into_action(
@@ -170,7 +170,7 @@ impl Widget<TatakuAction> for BuiltCustomDialog {
         else { return };
 
         for mut i in events.iter().cloned() {
-            i.build(shell.values);
+            i.build();
             let Some(action) = i.into_action(
                 self.node_id,
                 shell.values,

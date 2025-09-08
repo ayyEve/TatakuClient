@@ -290,7 +290,7 @@ impl OnlineManager {
                         self.events.push(OnlineEvent::LoggedIn { 
                             user_id, 
                             username: String::new()
-                        }.into());
+                        });
 
                         // request friends list
                         self.send_packet(ChatPacket::Client_GetFriends);

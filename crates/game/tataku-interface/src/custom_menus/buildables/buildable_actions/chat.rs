@@ -63,29 +63,31 @@ impl BuildableChatAction {
         }
     }
 
-    pub fn build(&mut self, _values: &dyn Reflect) {
+    pub fn build(&mut self) {
         match self {
             Self::SendMessage { 
                 channel,
                 message
             } => {
-                // let _ = channel.compute();
-                // let _ = message.compute();
+                channel.inner.build();
+                for m in message {
+                    let _ = m.compute();
+                }
             }
 
             Self::OpenChannel { 
                 channel, 
                 password,
             } => {
-                // let _ = channel.compute();
+                channel.build();
 
-                // if let Some(password) = password {
-                //     let _ = password.compute();
-                // }
+                if let Some(password) = password {
+                    password.inner.build();
+                }
             }
 
             Self::CloseChannel { channel } => {
-                // let _ = channel.compute();
+                channel.build();
             }
         };
     }

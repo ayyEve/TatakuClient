@@ -69,13 +69,13 @@ impl BuildableModAction {
         }
     }
 
-    pub fn build(&mut self, values: &dyn Reflect) {
+    pub fn build(&mut self) {
         match self {
-            Self::AddMod { value } => value.resolve_pre(values),
-            Self::RemoveMod { value } => value.resolve_pre(values),
-            Self::ToggleMod { value } => value.resolve_pre(values),
-            Self::SetSpeed { value } => value.resolve_pre(values),
-            Self::AddSpeed { value } => value.resolve_pre(values),
+            Self::AddMod { value } => value.build(),
+            Self::RemoveMod { value } => value.build(),
+            Self::ToggleMod { value } => value.build(),
+            Self::SetSpeed { value } => value.build(),
+            Self::AddSpeed { value } => value.build(),
         }
     }
 }

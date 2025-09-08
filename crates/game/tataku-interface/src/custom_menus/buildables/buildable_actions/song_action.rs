@@ -75,15 +75,13 @@ impl BuildableSongAction {
     }
 
 
-    pub fn build(&mut self, values: &dyn Reflect) {
-        let thing = match self {
-            Self::Seek { value } => value,
-            Self::SetPosition { value } => value,
-            Self::SetRate { value } => value,
-            _ => return,
-        };
-
-        thing.resolve_pre(values);
+    pub fn build(&mut self) {
+        match self {
+            Self::Seek { value } => value.build(),
+            Self::SetPosition { value } => value.build(),
+            Self::SetRate { value } => value.build(),
+            _ => {},
+        }
     }
 }
 

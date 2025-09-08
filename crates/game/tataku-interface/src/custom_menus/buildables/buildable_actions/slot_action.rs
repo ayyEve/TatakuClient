@@ -93,8 +93,8 @@ impl BuildableSlot {
         }
     }
 
-    pub fn build(&mut self, values: &dyn Reflect) {
-        self.slot.resolve_pre(values);
+    pub fn build(&mut self) {
+        self.slot.build();
     }
 }
 

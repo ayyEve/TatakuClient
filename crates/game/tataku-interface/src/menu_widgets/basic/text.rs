@@ -240,6 +240,6 @@ impl From<String> for WidgetText {
 }
 impl From<BuildableText> for WidgetText {
     fn from(value: BuildableText) -> Self {
-        Self::from_buildable_iter([value].into_iter())
+        Self::from_buildable_iter([value])
     }
 }

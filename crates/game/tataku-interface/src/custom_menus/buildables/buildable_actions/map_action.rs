@@ -123,19 +123,19 @@ impl BuildableMapAction {
         }
     }
 
-    pub fn build(&mut self, values: &dyn Reflect) {
+    pub fn build(&mut self) {
         match self {
             Self::SelectGroup { value } 
-                => value.resolve_pre(values),
+                => value.build(),
                 
             Self::SelectMap { value } 
-                => value.resolve_pre(values),
+                => value.build(),
 
             Self::SetPlaymode { value } 
-                => value.resolve_pre(values),
+                => value.build(),
 
             Self::Delete { value } 
-                => value.resolve_pre(values),
+                => value.build(),
 
             _ => {}
         };

@@ -12,9 +12,9 @@ pub enum ContextMenuAction {
     Buildable(BuildableAction),
 }
 impl ContextMenuAction {
-    pub fn build(&mut self, values: &mut dyn Reflect) {
+    pub fn build(&mut self) {
         if let Self::Buildable(b) = self {
-            b.build(values);
+            b.build();
         }
     }
 
