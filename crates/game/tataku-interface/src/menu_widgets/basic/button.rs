@@ -86,7 +86,7 @@ impl Widget<TatakuAction> for Button {
                 let pos = context.inverse_global_transform * *pos;
                 self.hovered = bounds.contains(pos);
             }
-            InputType::MouseScroll(_) if self.active.is_some() => self.active = None,
+            InputType::MouseScroll {..} if self.active.is_some() => self.active = None,
             
             InputType::MousePress(mb) if self.hovered => {
                 self.active = Some(*mb);
@@ -278,7 +278,7 @@ impl VisuallyActive {
             BuildableConditionResult::True => *value = true,
             BuildableConditionResult::False => *value = false,
             BuildableConditionResult::Error(shunting_yard_error) => {
-                error!("Error with shunting yeard: {shunting_yard_error:?}");
+                error!("Error with shunting yard: {shunting_yard_error:?}");
                 *cond = BuildableCondition::Failed;
             }
         }

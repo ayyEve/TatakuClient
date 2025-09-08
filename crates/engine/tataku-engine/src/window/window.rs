@@ -302,7 +302,10 @@ impl GameWindow<'_> {
                     );
                     *pos = touch_pos;
 
-                    return Some(WindowEvent::Input(InputType::MouseScroll(scroll)))
+                    return Some(WindowEvent::Input(InputType::MouseScroll { 
+                        raw: scroll, 
+                        scroll: scroll * self.settings.scroll_sensitivity 
+                    }));
                 }
 
                 Some(WindowEvent::Input(InputType::MouseMove(touch_pos)))
@@ -641,7 +644,10 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
                     PixelDelta(p) => Vector2::new(p.x as f32, p.y as f32),
                 };
 
-                Some(WindowEvent::Input(InputType::MouseScroll(delta)))
+                Some(WindowEvent::Input(InputType::MouseScroll {
+                    raw: delta,
+                    scroll: delta * self.settings.scroll_sensitivity,
+                }))
             }
 
             WinitWindowEvent::MouseInput { 

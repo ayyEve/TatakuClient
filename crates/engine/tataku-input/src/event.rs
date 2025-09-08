@@ -10,7 +10,10 @@ pub enum InputType {
     MousePress(MouseButton),
     MouseRelease(MouseButton),
     MouseMove(Vector2),
-    MouseScroll(Vector2),
+    MouseScroll {
+        raw: Vector2,
+        scroll: Vector2,
+    },
 
     ControllerPress(GamepadButton, GamepadId, ArcStr),
     ControllerRelease(GamepadButton, GamepadId, ArcStr),
@@ -34,7 +37,7 @@ impl InputEvent {
             InputType::MouseMove(_) 
             | InputType::MousePress(_) 
             | InputType::MouseRelease(_) 
-            | InputType::MouseScroll(_)
+            | InputType::MouseScroll {..}
         )
     }
     pub fn is_keyboard(&self) -> bool {

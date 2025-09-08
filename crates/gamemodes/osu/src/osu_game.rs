@@ -1400,7 +1400,7 @@ impl GameMode for OsuGame {
                 Some(ReplayAction::Release(button))
             }
 
-            InputType::MouseScroll(delta) => {
+            InputType::MouseScroll { raw: delta, .. } => {
                 if self.move_playfield.is_some() {
                     let delta = delta / 40.0;
                     let mut a = (*self.game_settings).clone();

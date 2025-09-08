@@ -312,7 +312,7 @@ impl Widget<TatakuAction> for Container {
         let Some(layout) = shell.tree.get_layout(node_id).copied()
         else { return };
 
-        if let InputType::MouseScroll(delta) = &event.event {
+        if let InputType::MouseScroll { raw: _, scroll: delta} = &event.event {
             if shell.event_consumed { return }
             if self.check_scroll(
                 ScrollPosition::Relative(*delta),

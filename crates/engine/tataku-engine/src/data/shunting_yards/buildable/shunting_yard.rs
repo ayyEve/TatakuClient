@@ -158,7 +158,7 @@ impl<'rpn, 'values: 'rpn> GenericShuntingYard<'rpn, 'values> for BuildableShunti
         }
 
         match char {
-            '0'..='9'|'a'..='z'|'A'..='Z'|'.'|'_'|'['|']' => {
+            '0'..='9'|'a'..='z'|'A'..='Z'|'.'|'_'|'['|']'|':' => {
                 read_type.push(char);
                 Ok(true)
             },

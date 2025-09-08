@@ -24,7 +24,6 @@ pub enum BuildableShuntingYardOperator {
     Not,
 
     // special
-    Ref,
     Index,
 }
 impl<'values> _ShuntingYardOperator<'values> for BuildableShuntingYardOperator {
@@ -53,12 +52,9 @@ impl<'values> _ShuntingYardOperator<'values> for BuildableShuntingYardOperator {
             ('|', '|') => Ok(Self::Or),
             ('!', _) => Ok(Self::Not),
 
-            // special
-            (':', ':') => Ok(Self::Ref),
-
             // ignorable errors
             ('|', _) | (_, '|') 
-            | (':', _) | (_, ':') 
+            // | (':', _) | (_, ':') 
             | ('&', _) | (_, '&') 
             | ('=', _) | (_, '=') 
                 => Err(_ShuntingYardOperatorReadError::Ignore),
@@ -106,21 +102,21 @@ impl<'values> _ShuntingYardOperator<'values> for BuildableShuntingYardOperator {
             Self::Not => TatakuValue::Bool(!right.as_bool()), //if right > 0.0 { 0.0 } else { 1.0 },
         
             // special
-            Self::Ref => {
-                let path = right.as_string();
-                let path = ReflectPath::new(&path);
-                match left? {
-                    TatakuValue::Bool(b) => b.as_dyn().impl_get(path),
-                    TatakuValue::F32(n) => n.as_dyn().impl_get(path),
-                    TatakuValue::U32(n) => n.as_dyn().impl_get(path),
-                    TatakuValue::U64(n) => n.as_dyn().impl_get(path),
-                    TatakuValue::String(n) => n.as_dyn().impl_get(path),
-                    TatakuValue::Reflect(n) => n.impl_get(path),
-                    TatakuValue::None => Ok(MaybeOwnedReflect::Owned(Box::new(None::<u8>))),
-                }
-                .and_then(TatakuValue::from_reflection)
-                .unwrap_or(TatakuValue::None)
-            }
+            // Self::Ref => {
+            //     let path = right.as_string();
+            //     let path = ReflectPath::new(&path);
+            //     match left? {
+            //         TatakuValue::Bool(b) => b.as_dyn().impl_get(path),
+            //         TatakuValue::F32(n) => n.as_dyn().impl_get(path),
+            //         TatakuValue::U32(n) => n.as_dyn().impl_get(path),
+            //         TatakuValue::U64(n) => n.as_dyn().impl_get(path),
+            //         TatakuValue::String(n) => n.as_dyn().impl_get(path),
+            //         TatakuValue::Reflect(n) => n.impl_get(path),
+            //         TatakuValue::None => Ok(MaybeOwnedReflect::Owned(Box::new(None::<u8>))),
+            //     }
+            //     .and_then(TatakuValue::from_reflection)
+            //     .unwrap_or(TatakuValue::None)
+            // }
 
             Self::Index => left? + right,
         };
@@ -132,7 +128,8 @@ impl<'values> _ShuntingYardOperator<'values> for BuildableShuntingYardOperator {
 
     fn precedence(&self) -> u8 {
         match self {
-            Self::Ref | Self::Index => 6,
+            // Self::Ref | 
+            Self::Index => 6,
             Self::Pow => 5,
             Self::Mul | Self::Div => 4,
             Self::Add | Self::Sub => 3,

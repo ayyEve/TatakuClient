@@ -14,7 +14,7 @@ impl BuildableShuntingYardReadType {
         match self {
             Self::None => match c {
                 '0'..='9' => *self = Self::Number(format!("{c}")),
-                'a'..='z'|'.'|'_' => *self = Self::Variable(format!("{c}")),
+                'a'..='z'|'.'|'_'|':' => *self = Self::Variable(format!("{c}")),
                 _ => {}
             }
             Self::Number(s) => s.push(c),

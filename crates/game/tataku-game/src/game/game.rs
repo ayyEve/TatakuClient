@@ -1327,7 +1327,7 @@ impl Game {
                     self.cursor_manager.right_pressed(false);
                 }
 
-                InputType::MouseScroll(delta) => {
+                InputType::MouseScroll { raw: delta, .. } => {
                     // check for volume change
                     if delta.y != 0.0
                     && let Some(action) = self.volume_controller.on_mouse_wheel(

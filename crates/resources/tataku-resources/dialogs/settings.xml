@@ -140,7 +140,7 @@
                       </text>
 
                       <checkbox class="setting">
-                        <value>::_setting.path</value>
+                        <value>(::_setting.path)</value>
                         <onClick>
                           <setValue key="::_setting.path">
                             <passedIn />
