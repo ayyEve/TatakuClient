@@ -11,13 +11,13 @@ pub struct SliderElement {
     #[serde(rename = "@variable")] var: VariablePathResolver,
 
     #[serde(rename = "@min", default)] min_attribute: Option<TatakuValue>,
-    #[serde(rename = "min", default)] min: Option<BuildableValue>,
+    #[serde(rename = "min", default)] min: Option<Wrapped<BuildableValue>>,
 
     #[serde(rename = "@max", default)] max_attribute: Option<TatakuValue>,
-    #[serde(rename = "max", default)] max: Option<BuildableValue>,
+    #[serde(rename = "max", default)] max: Option<Wrapped<BuildableValue>>,
 
     #[serde(rename = "@step", default)] step_attribute: Option<TatakuValue>,
-    #[serde(rename = "step", default)] step: Option<BuildableValue>,
+    #[serde(rename = "step", default)] step: Option<Wrapped<BuildableValue>>,
 
     #[serde(default)] on_input: Wrapped<Vec<BuildableAction>>,
 }
@@ -48,19 +48,25 @@ impl CustomElement for SliderElement {
     fn build(&self) -> Box<dyn Widget<TatakuAction>> {
         let min = self.min_attribute.clone()
             .map(BuildableValue::Value)
-            .or(self.min.clone())
+            .or(self.min.clone()
+                .map(|v| v.inner)
+            )
             .map(Self::resolve)
             .unwrap();
 
         let max = self.max_attribute.clone()
             .map(BuildableValue::Value)
-            .or(self.max.clone())
+            .or(self.max.clone()
+                .map(|v| v.inner)
+            )
             .map(Self::resolve)
             .unwrap();
 
         let mut step = self.step_attribute.clone()
             .map(BuildableValue::Value)
-            .or(self.step.clone())
+            .or(self.step.clone()
+                .map(|v| v.inner)
+            )
             .map(Self::resolve);
         
         if matches!(step, Some(SliderValue::Error)) { step = None };
