@@ -52,6 +52,8 @@ pub enum Element {
     List(Box<ListElement>),
     Column(Box<ColumnElement>),
     Switch(Box<SwitchElement>),
+    Section(Box<SectionElement>),
+
     Animatable(Box<AnimatableElement>),
     #[serde(alias="cond", alias="if")]
     Conditional(Box<ConditionalElement>),
@@ -69,24 +71,36 @@ pub enum Element {
 }
 impl CustomElement for Element {
     fn as_element(&self) -> Option<&dyn CustomElement> {
-        match self {
-            Self::Empty => None,
-            Self::Row(e) => Some(&**e as &dyn CustomElement),
-            Self::List(e) => Some(&**e as &dyn CustomElement),
-            Self::Column(e) => Some(&**e as &dyn CustomElement),
-            Self::Switch(e) => Some(&**e as &dyn CustomElement),
-            Self::Animatable(e) => Some(&**e as &dyn CustomElement),
-            Self::Conditional(e) => Some(&**e as &dyn CustomElement),
-            Self::Text(e) => Some(&**e as &dyn CustomElement),
-            Self::GameplayPreview(e) => Some(&**e as &dyn CustomElement),
-            Self::Slider(e) => Some(&**e as &dyn CustomElement),
-            Self::Button(e) => Some(&**e as &dyn CustomElement),
-            Self::Checkbox(e) => Some(&**e as &dyn CustomElement),
-            Self::TextInput(e) => Some(&**e as &dyn CustomElement),
-            Self::KeyButton(e) => Some(&**e as &dyn CustomElement),
-            Self::GamepadButton(e) => Some(&**e as &dyn CustomElement),
-            Self::Dropdown(e) => Some(&**e as &dyn CustomElement),
+        macro_rules! impl_as_element {
+            ($($i: ident),*$(,)?) => {
+                match self {
+                    Self::Empty => None,
+                    $(
+                        Self::$i(e) => Some(&**e as &dyn CustomElement),
+                    )*
+                }
+            }
         }
+        
+        impl_as_element!(
+            Row,
+            Column,
+            Section,
+            
+            List,
+            Switch,
+            Animatable,
+            Conditional,
+            Text,
+            TextInput,
+            GameplayPreview,
+            GamepadButton,
+            Slider,
+            Button,
+            KeyButton,
+            Dropdown,
+            Checkbox,
+        )
     }
     fn build(&self) -> Box<dyn Widget<TatakuAction>> {
         match self {
@@ -109,3 +123,4 @@ pub struct Wrapped<T> {
     #[serde(rename="$value")]
     pub inner: T
 }
+
