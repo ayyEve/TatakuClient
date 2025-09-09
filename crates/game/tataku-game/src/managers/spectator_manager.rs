@@ -68,7 +68,7 @@ impl SpectatorManager {
             &map_path, 
             hash, 
             mods.clone(), 
-            &values.settings
+            &values.settings,
         ) {
             Ok(mut manager) => {
                 // set manager things

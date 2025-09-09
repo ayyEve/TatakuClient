@@ -17,80 +17,138 @@ macro_rules! number_element {
     ) => {
         struct $name {
             image: Option<SkinnedNumber>,
-            text: String,
+            // text: String,
         
             number: $t,
-            // max_size: Vector2,
+            max_size: Vector2,
+            layout: Option<Arc<parley::Layout<Color>>>,
+            layout_size: Vector2,
         }
         impl $name {
+            fn layout(
+                text: &str,
+                scale: Vector2,
+                context: &mut TextLayoutContexts,
+            ) -> (Arc<parley::Layout<Color>>, Vector2) {
+                let style = TextStyle {
+                    font_size: 30.0 * scale.y,
+                    ..Default::default()
+                };
+
+                let mut layout = context.simple_text(
+                    text,
+                    &style,
+                );
+                layout.break_all_lines(None);
+
+                let size = Vector2::new(
+                    layout.width(),
+                    layout.height(),
+                );
+
+                (Arc::new(layout), size)
+            }
+
             pub fn build(
                 _: &GamemodeInfo,
                 _: &Arc<CommonGameplaySettings>
             ) -> Box<dyn GameplayWidget> {
-                let text = format!("{}{}", $format($max_number), $symbol.map(|c| c.to_string()).unwrap_or_default());
-
                 Box::new(Self {
                     image: None,
                     // combo_size: Text::measure_text_raw(&[Font::Main], 30.0, &format!("{NUMBER}x"), Vector2::ONE, 0.0),
                     number: $max_number as $t,
-                    // max_size: text.measure_text(),
-                    text,
+
+                    layout: None,
+                    max_size: Vector2::ZERO,
+                    layout_size: Vector2::ZERO,
+                    // text,
                 })
             }
         }
 
         impl GameplayWidget for $name {
             fn display_name(&self) -> &'static str { $display }
-            fn max_size(&self) -> Vector2 { Vector2::new(100.0, 100.0) } //self.max_size }
+            fn max_size(&self) -> Vector2 { self.max_size }
 
-            fn update(&mut self, manager: &mut dyn GameplayManagerTrait) {
+            fn update(&mut self, shell: &mut GameplayWidgetUpdateShell) {
+                if self.max_size == Vector2::ZERO {
+                    let text = format!(
+                        "{}{}", 
+                        $format($max_number), 
+                        $symbol.map(|c| c.to_string()).unwrap_or_default()
+                    );
+
+                    let (_, size) = Self::layout(
+                        &text,
+                        shell.scale,
+                        shell.font_context,
+                    );
+                    self.max_size = size;
+                }
+
                 let old_number = self.number;
-                self.number = ($property)(manager) as $t;
-                // self.combo = manager.score.score.combo;
-
+                self.number = ($property)(shell.manager) as $t;
                 if self.number == old_number { return }
 
                 if let Some(image) = &mut self.image {
                     image.number = self.number as f64;
-                    // self.size = image.measure_text();
+                    self.layout_size = image.measure_text();
                 } else {
-                    self.text = ($format)(self.number);
+                    // self.text = ($format)(self.number);
                     // self.size = self.text.measure_text();
+
+                    let (layout, size) = Self::layout(
+                        &($format)(self.number),
+                        shell.scale,
+                        shell.font_context,
+                    );
+
+                    self.layout_size = size;
+                    self.layout = Some(layout);
                 }
             }
 
-            fn draw(
-                &mut self, 
-                pos_offset: Vector2, 
-                scale: Vector2, 
-                align: Alignment,
-                list: &mut RenderableCollection
-            ) {
-                // if let Some(mut image) = self.image.clone() {
-                //     image.scale = scale;
+            fn draw(&mut self, shell: &mut GameplayWidgetDrawShell) {
+                let bounds = Bounds::new(shell.pos_offset, self.max_size * shell.scale);
 
-                //     image.pos = align.resolve(
-                //         &Bounds::new(pos_offset, self.max_size),
-                //         image.measure_text(),
-                //         true,
-                //         true
-                //     );
+                if let Some(mut image) = self.image.clone() {
+                    image.scale = shell.scale;
 
-                //     list.push(image);
-                // } else {
-                //     let mut text = self.text.clone();
-                //     text.pos = align.resolve(
-                //         &Bounds::new(pos_offset, self.max_size),
-                //         text.measure_text(),
-                //         true,
-                //         true
-                //     );
-                //     text.set_font_size(30.0 * scale.y);
-                //     list.push(text);
-                // }
+                    image.pos = shell.align.resolve(
+                        &bounds,
+                        image.measure_text(),
+                        true,
+                        true
+                    );
+
+                    shell.list.push(image);
+                } else {
+                    let Some(layout) = self.layout.clone() 
+                    else { return };
+
+                    shell.list.push(Transformed::new(
+                        Transform::default().translate(shell.align.resolve(
+                            &bounds,
+                            self.layout_size,
+                            true,
+                            true
+                        )),
+                        Box::new(Text::new(layout))
+                    ));
+
+                    // let mut text = self.text.clone();
+                    // text.pos = align.resolve(
+                    //     &Bounds::new(shell.pos_offset, self.max_size),
+                    //     text.measure_text(),
+                    //     true,
+                    //     true
+                    // );
+                    // text.set_font_size(30.0 * scale.y);
+                    // list.push(text);
+                }
             }
 
-            fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+            fn reload_skin(&mut self, shell: &mut GameplayWidgetReloadSkinShell) {
                 self.image = SkinnedNumber::new(
                     Vector2::ZERO, 
                     $max_number as f64, 
@@ -98,8 +156,8 @@ macro_rules! number_element {
                     $tex_name, 
                     $symbol, 
                     $precision, 
-                    skin_manager, 
-                    source, 
+                    shell.skin_manager, 
+                    shell.source, 
                     SkinUsage::Gamemode
                 ).ok();
                 

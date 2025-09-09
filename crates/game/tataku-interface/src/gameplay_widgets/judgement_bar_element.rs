@@ -40,14 +40,13 @@ impl GameplayWidget for JudgementBarElement {
         HIT_TIMING_BAR_SIZE
     }
 
-    fn update(&mut self, manager: &mut dyn GameplayManagerTrait) {
-        self.game_time = manager.time();
-        self.hitbar_timings = manager.hitbar_timings().clone();
+    fn update(&mut self, shell: &mut GameplayWidgetUpdateShell) {
+        self.game_time = shell.manager.time();
+        self.hitbar_timings = shell.manager.hitbar_timings().clone();
 
         if self.judgment_colors.is_empty() {
-            self.judgment_colors = manager.properties().timing_bar_things.clone();
+            self.judgment_colors = shell.manager.properties().timing_bar_things.clone();
 
-            
             self.judgment_colors.sort_by(
                 |(a, _), (b, _)| b.partial_cmp(a).unwrap()
             );
@@ -59,22 +58,16 @@ impl GameplayWidget for JudgementBarElement {
 
     }
 
-    fn draw(
-        &mut self, 
-        pos_offset: Vector2, 
-        scale: Vector2, 
-        _align: Alignment,
-        list: &mut RenderableCollection
-    ) {
+    fn draw(&mut self, shell: &mut GameplayWidgetDrawShell) {
         // TODO: rework this garbage lmao
-        let timing_bar_size = HIT_TIMING_BAR_SIZE * scale;
+        let timing_bar_size = HIT_TIMING_BAR_SIZE * shell.scale;
         
         // draw hit windows
         for (window, color) in &self.judgment_colors {
             let width = (window / self.miss_window) * timing_bar_size.x;
             
-            list.push(Rectangle::new(
-                pos_offset + Vector2::new(
+            shell.list.push(Rectangle::new(
+                shell.pos_offset + Vector2::new(
                     (timing_bar_size.x - width) / 2.0, 
                     0.0
                 ),
@@ -102,14 +95,12 @@ impl GameplayWidget for JudgementBarElement {
                 1.0 - (diff - (HIT_TIMING_DURATION - HIT_TIMING_FADE)) / HIT_TIMING_FADE
             } else { 1.0 };
 
-            list.push(Rectangle::new(
-                pos_offset + Vector2::new(pos, 0.0),
+            shell.list.push(Rectangle::new(
+                shell.pos_offset + Vector2::new(pos, 0.0),
                 Vector2::new(2.0, timing_bar_size.y),
                 HIT_TIMING_BAR_COLOR.alpha(alpha),
             ));
         }
-
-        
     }
 }
 

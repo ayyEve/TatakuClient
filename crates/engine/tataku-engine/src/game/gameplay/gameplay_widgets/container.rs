@@ -1,6 +1,7 @@
 use crate::prelude::*;
 use tataku_graphics::prelude::*;
 
+#[cfg(feature="graphics")]
 pub struct GameplayWidgetContainer {
     pub element_name: String,
     pub pos_offset: Vector2,
@@ -12,18 +13,30 @@ pub struct GameplayWidgetContainer {
     pub inner: Box<dyn GameplayWidget>,
 }
 impl GameplayWidgetContainer {
-    pub fn update(&mut self, manager: &mut dyn GameplayManagerTrait) {
+    pub fn update(&mut self, shell: &mut GameplayWidgetUpdateShell) {
         if !self.layout.visible { return }
-        self.inner.update(manager);
+        shell.scale = self.scale;
+        self.inner.update(shell);
     }
 
     #[cfg(feature="graphics")]
-    pub fn draw(&mut self, list: &mut RenderableCollection) {
+    pub fn draw(
+        &mut self, 
+        list: &mut RenderableCollection,
+    ) {
         if !self.layout.visible { return }
         let align = self.layout
             .inner_align
             .unwrap_or(self.layout.align);
-        self.inner.draw(self.pos_offset, self.scale, align, list);
+
+        let mut shell = GameplayWidgetDrawShell {
+            list,
+            pos_offset: self.pos_offset,
+            scale: self.scale,
+            align,
+        }; 
+
+        self.inner.draw(&mut shell);
     }
 
     pub fn get_bounds(&self) -> Bounds {
@@ -48,10 +61,9 @@ impl GameplayWidgetContainer {
     #[cfg(feature="graphics")]
     pub fn reload_skin(
         &mut self, 
-        source: &TextureSource, 
-        skin_manager: &mut dyn SkinProvider
+        shell: &mut GameplayWidgetReloadSkinShell
     ) {
-        self.inner.reload_skin(source, skin_manager);
+        self.inner.reload_skin(shell);
     }
 
 

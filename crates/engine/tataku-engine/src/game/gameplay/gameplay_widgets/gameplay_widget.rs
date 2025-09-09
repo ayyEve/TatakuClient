@@ -1,20 +1,18 @@
 use crate::prelude::*;
 use tataku_graphics::prelude::*;
+use tataku_ui::prelude::TextLayoutContexts;
 
 pub trait GameplayWidget: Send + Sync {
     fn display_name(&self) -> &'static str;
 
     /// the max size of the element (before scaling)
     fn max_size(&self) -> Vector2;
-    fn update(&mut self, manager: &mut dyn GameplayManagerTrait);
+    fn update(&mut self, shell: &mut GameplayWidgetUpdateShell);
 
     #[cfg(feature="graphics")]
     fn draw(
         &mut self, 
-        pos_offset: Vector2, 
-        scale: Vector2, 
-        align: Alignment,
-        list: &mut RenderableCollection
+        shell: &mut GameplayWidgetDrawShell,
     );
     
     fn reset(&mut self) {}
@@ -22,7 +20,26 @@ pub trait GameplayWidget: Send + Sync {
     #[cfg(feature="graphics")]
     fn reload_skin(
         &mut self, 
-        _source: &TextureSource, 
-        _skin_manager: &mut dyn SkinProvider
+        _shell: &mut GameplayWidgetReloadSkinShell,
     ) {}
 }
+
+
+pub struct GameplayWidgetUpdateShell<'a> {
+    pub manager: &'a mut dyn GameplayManagerTrait,
+    pub font_context: &'a mut TextLayoutContexts,
+    pub scale: Vector2,
+}
+
+pub struct GameplayWidgetDrawShell<'a> {
+    pub pos_offset: Vector2, 
+    pub scale: Vector2, 
+    pub align: Alignment,
+    pub list: &'a mut RenderableCollection
+}
+
+pub struct GameplayWidgetReloadSkinShell<'a> {
+    pub source: &'a TextureSource, 
+    pub skin_manager: &'a mut dyn SkinProvider,
+}
+

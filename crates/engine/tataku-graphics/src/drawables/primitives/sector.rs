@@ -64,6 +64,7 @@ impl TatakuRenderable for Sector {
             self.end,
             self.radius,
             options.color_with_alpha(self.color),
+            self.border,
             20,
             transform * Matrix::identity().scale(self.scale).trans(self.pos),
             self.blend_mode

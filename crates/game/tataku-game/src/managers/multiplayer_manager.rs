@@ -333,8 +333,10 @@ impl MultiplayerManager {
                     
                     // only load map if we have it selected
                     if self.current_beatmap_is_selected() {
-                        let Some(mode) = self.selected_mode.clone() else { return Ok(None) };
-                        let Some(map) = values.beatmap_manager.current_beatmap() else { return Ok(None) };
+                        let Some(mode) = self.selected_mode.clone() 
+                        else { return Ok(None) };
+                        let Some(map) = values.beatmap_manager.current_beatmap() 
+                        else { return Ok(None) };
                         
                         let mods = values.global.mods.clone();
                         let infos = self.infos.clone();
@@ -346,7 +348,7 @@ impl MultiplayerManager {
                             &map.file_path, 
                             map.beatmap_hash, 
                             mods,
-                            &settings
+                            &settings,
                         ) };
                         self.beatmap_loader = Some(AsyncLoader::new(f));
                     } else {

@@ -92,9 +92,6 @@ pub struct GameplayManager {
 
     pub timing_points: TimingPointHelper,
 
-    /// center text helper (ie, for offset and global offset)
-    // #[cfg(feature="graphics")] pub center_text_helper: CenteredTextHelper,
-
     /// (map.time, note.time - hit.time)
     hitbar_timings: Vec<(f32, f32)>,
 
@@ -174,7 +171,7 @@ impl GameplayManager {
         // make sure the gamemode has the correct mods applied
         gamemode.handle_gameplay_event(GameplayEvent::ApplyMods(current_mods.clone()));
 
-        let mut gm = Self {
+        Self {
             id: Arc::new(u32::MAX),
             actions,
 
@@ -193,8 +190,6 @@ impl GameplayManager {
             end_time: properties.end_time,
             global_offset: settings.global_offset,
 
-            // #[cfg(feature="graphics")]
-            // center_text_helper: CenteredTextHelper::new(CENTER_TEXT_DRAW_TIME),
             beatmap_preferences: Database::get_beatmap_prefs(metadata.beatmap_hash),
 
             common_game_settings: Arc::new(settings.common_game_settings.clone()),
@@ -238,16 +233,11 @@ impl GameplayManager {
             map_diff: 0.0,
             pause_start: None,
             song_time: 0.0,
-        };
-
-        #[cfg(feature="graphics")] 
-        gm.init_ui();
-
-        gm
+        }
     }
 
     #[cfg(feature="graphics")]
-    fn init_ui(&mut self) {
+    pub fn init_ui(&mut self, font_contexts: &mut TextLayoutContexts) {
         let layouts = 
             std::fs::read("ui_layouts.json").ok()
             .and_then(|bytes| serde_json::from_slice(&bytes).ok())
@@ -282,8 +272,14 @@ impl GameplayManager {
         self.gamemode.build_widgets(&mut loader);
 
         // update every ui element so they're all initialized
+        let mut shell = GameplayWidgetUpdateShell {
+            manager: self,
+            font_context: font_contexts,
+            scale: Vector2::ONE,
+        };
+
         for e in loader.elements.iter_mut() {
-            e.update(self);
+            e.update(&mut shell);
         }
 
         // update our list
@@ -792,6 +788,7 @@ impl GameplayManagerTrait for GameplayManager {
     fn update(
         &mut self, 
         values: &mut dyn Reflect,
+        font_contexts: &mut TextLayoutContexts,
         actions: &mut ActionQueue,
     ) {
         let new_time = *values.reflect_get::<f32>("song.position").unwrap();
@@ -879,8 +876,14 @@ impl GameplayManagerTrait for GameplayManager {
         #[cfg(feature = "graphics")]
         if !self.gameplay_mode.is_preview() {
             let mut ui_elements = self.ui_elements.take();
+            let mut shell = GameplayWidgetUpdateShell {
+                manager: self,
+                font_context: font_contexts,
+                scale: Vector2::ONE
+            };
+
             for ui in ui_elements.iter_mut() {
-                ui.update(self);
+                ui.update(&mut shell);
             }
             self.ui_elements = ui_elements;
         }
@@ -1287,10 +1290,6 @@ impl GameplayManagerTrait for GameplayManager {
             i.draw(list);
         }
 
-        // draw center text
-        // self.center_text_helper.draw(time, self.window_size, list);
-
-
         // // draw playfield border (debug)
         // let b = self.gamemode.get_playfield();
         // list.push(Rectangle::new(
@@ -1510,6 +1509,10 @@ impl GameplayManagerTrait for GameplayManager {
         list
     }
 
+    fn all_non_user_scores(&self) -> &[IngameScore] {
+        &self.score_list
+    }
+
     #[inline]
     fn time(&self) -> f32 {
         self.song_time - (
@@ -1562,8 +1565,13 @@ impl GameplayManagerTrait for GameplayManager {
             }
         }
 
+        let mut shell = GameplayWidgetReloadSkinShell {
+            source: &source,
+            skin_manager,
+        };
+
         for i in self.ui_elements.iter_mut() {
-            i.reload_skin(&source, skin_manager);
+            i.reload_skin(&mut shell);
         }
 
         self.layout_ui();

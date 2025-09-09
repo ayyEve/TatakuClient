@@ -11,6 +11,8 @@ pub trait GameplayManagerTrait {
     fn score(&self) -> &IngameScore;
     fn score_mut(&mut self) -> &mut IngameScore;
     fn all_scores(&self) -> Vec<&IngameScore>;
+    fn all_non_user_scores(&self) -> &[IngameScore];
+    
     fn mods(&self) -> &ModManager;
     fn metadata(&self) -> &BeatmapMeta;
     fn key_counter(&self) -> &KeyCounter;
@@ -27,7 +29,11 @@ pub trait GameplayManagerTrait {
     fn bounds(&self) -> Bounds;
 
     fn apply_mods(&mut self, mods: ModManager);
-    fn update(&mut self, values: &mut dyn Reflect, actions: &mut ActionQueue);
+    fn update(&mut self, 
+        values: &mut dyn Reflect, 
+        font_context: &mut tataku_ui::prelude::TextLayoutContexts,
+        actions: &mut ActionQueue
+    );
     
     fn handle_action(
         &mut self, 
