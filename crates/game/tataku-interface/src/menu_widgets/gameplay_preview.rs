@@ -1,6 +1,5 @@
 use crate::prelude::*;
 
-#[derive(ChainableInitializer)]
 pub struct GameplayPreview {
     beatmap: ValueChangeHelper<Md5Hash>,
     playmode: ValueChangeHelper<String>,
@@ -8,16 +7,12 @@ pub struct GameplayPreview {
 
     manager: Option<GameplayId>,
 
-    #[chain] visualization: Option<MenuVisualization>,
-
     /// area to fit to
     fit_to: Option<Bounds>,
 
     widget_sender: Arc<Mutex<TripleBufferSender<Option<RenderableCollection>>>>,
     widget_receiver: TripleBufferReceiver<Option<RenderableCollection>>,
     gameplay: Mutex<Option<RenderableCollection>>,
-
-    #[chain] blur: Option<BlurType>,
     node_id: NodeId,
 }
 impl GameplayPreview {
@@ -33,8 +28,6 @@ impl GameplayPreview {
             playmode: ValueChangeHelper::new("global.playmode_actual"),
             song_time: ValueChangeHelper::new("song.position"),
 
-            visualization: None,
-
             manager: None,
             fit_to: None,
 
@@ -42,7 +35,6 @@ impl GameplayPreview {
             widget_receiver,
             gameplay: Mutex::new(None),
 
-            blur: None,
             node_id: EMPTY_NODE,
         }
     }
@@ -133,11 +125,6 @@ impl Widget<TatakuAction> for GameplayPreview {
                 ).into());
             };
         }
-
-        // update vis
-        if let Some((vis, bounds)) = self.visualization.as_mut().zip(bounds) {
-            vis.update(bounds, shell.actions);
-        }
     }
 
     fn draw(&self, shell: &mut DrawShell<TatakuAction>) {
@@ -146,27 +133,11 @@ impl Widget<TatakuAction> for GameplayPreview {
             shell.list.list.extend(gameplay.list);
         }
 
-        if let Some(blur) = self.blur {
-            let bounds = shell.tree.absolute_bounds(self.node_id).unwrap();
-            shell.list.push(Blur::new(bounds, blur));
-        }
-
-        // draw visualization
-        if let Some(vis) = &self.visualization {
-            vis.draw(shell.list);
-        }
-
         // let bounds = shell.tree.absolute_bounds(self.node_id).unwrap();
         // shell.list.push(Rectangle::new_bounds(bounds, Color::TRANSPARENT_WHITE, Some(Border::new(Color::LIME, 2.0))));
     }
 
 
-    fn reload_skin(&mut self, shell: &mut UpdateShell<TatakuAction>) {
-        if let Some(vis) = &mut self.visualization {
-            debug!("reloading vis skin");
-            vis.reload_skin(shell.skin_manager);
-        }
-    }
 }
 impl core::fmt::Debug for GameplayPreview {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -57,6 +57,9 @@
 
     <!-- the current main menu is broken up into rows -->
     <column id="pain" style = "width: fill; height: fill">
+        <!-- we have a gameplay preview below everything -->
+        <gameplayPreview style = "position: absolute; width: fill; height: fill; blur: 25.0 gaussian above" />
+
         <!-- the first row contains the song display -->
         <row id = "song-display">
             <text style = "font-size: 30px; text-color: #FFFF;">
@@ -64,14 +67,11 @@
             </text>
         </row>
 
-        <!-- the next row is the preview and menu buttons -->
+        <!-- the next row is the visualization and menu buttons -->
         <row id = "main_menu_row2" style = "width: fill; height: fill;">
-            <gameplayPreview
-                visualization = "menu_visualization"
-                blur="25.0"
-                blur_type="gaussian"
-                style = "width: 80%; height: fill;"
-            />
+            <visualization style="width: 80%; height: fill">
+                <menu-visualization />
+            </visualization>
 
             <animatable id = "animatable" style = "width: 20%; height: fill;">
                 <!-- TODO: fix animations!! -->
@@ -208,6 +208,5 @@
                 </button>
             </row>
         </row>
-
     </column>
 </menu>

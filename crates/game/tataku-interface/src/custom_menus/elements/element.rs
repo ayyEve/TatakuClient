@@ -68,6 +68,7 @@ pub enum Element {
     KeyButton(Box<KeyButtonElement>),
     GamepadButton(Box<GamepadButtonElement>),
     Dropdown(Box<DropdownElement>),
+    Visualization(Box<VisualizationElement>),
 }
 impl CustomElement for Element {
     fn as_element(&self) -> Option<&dyn CustomElement> {
@@ -100,6 +101,7 @@ impl CustomElement for Element {
             KeyButton,
             Dropdown,
             Checkbox,
+            Visualization,
         )
     }
     fn build(&self) -> Box<dyn Widget<TatakuAction>> {

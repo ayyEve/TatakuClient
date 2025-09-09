@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+
+<xs:schema 
+  targetNamespace="tataku/elements/visualization"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:elements="tataku/elements"
+  xmlns:visualization-element="tataku/elements/visualization"
+>
+
+<xs:import namespace="tataku/elements" schemaLocation="./elements.xsd"/>
+
+<xs:complexType name="visualization-element">
+  <xs:complexContent>
+    <xs:extension base="elements:generic">
+      <xs:group ref="visualization-element:type"/>
+    </xs:extension>
+  </xs:complexContent>
+</xs:complexType>
+
+<xs:group name="type">
+  <xs:choice>
+    <xs:element name="menu-visualization"/>
+  </xs:choice>
+</xs:group>
+
+
+</xs:schema>

@@ -15,6 +15,7 @@ mod text_input;
 mod animatable;
 mod conditional;
 mod gamepad_input;
+mod visualization;
 mod gameplay_preview;
 
 pub use row::*;
@@ -34,4 +35,5 @@ pub use text_input::*;
 pub use animatable::*;
 pub use conditional::*;
 pub use gamepad_input::*;
+pub use visualization::*;
 pub use gameplay_preview::*;

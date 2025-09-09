@@ -13,7 +13,6 @@ const BAR_COLOR: Color = Color::new_rgb8(0x27, 0xbf, 0xc2);
 
 
 pub struct MenuVisualization {
-    actions: ActionQueue,
     // data: Vec<FFTEntry>,
     // timer: Instant, // external use only
 
@@ -40,33 +39,26 @@ pub struct MenuVisualization {
     pub index: usize,
 
     pub vis_data: VisualizationData,
+
+    hooked: bool,
 }
 impl MenuVisualization {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         // let window_size = WindowSizeHelper::new();
         // let initial_inner_radius = window_size.y / 6.0;
-        
-        let vis_data = VisualizationData::new(
-            VisualizationConfig {
-                should_lerp: true,
-                lerp_factor: 10.0
-            }
-        );
-        let actions = vec![
-            SongAction::HookFFT(vis_data.get_hook()).into()
-        ];
 
         Self {
-            actions,
-
             rotation: 0.0,
             // data: Vec::new(),
             // timer: Instant::now(),
             other_timer: TatakuInstant::now(),
             cookie: None,
 
-            vis_data,
+            vis_data: VisualizationData::new(VisualizationConfig {
+                should_lerp: true,
+                lerp_factor: 10.0
+            }),
 
             bar_height: 1.0,
             // initial_inner_radius,
@@ -83,6 +75,8 @@ impl MenuVisualization {
             last_created: 0.0,
             created_ripple: false,
             index: 3,
+
+            hooked: false,
         }
     }
 
@@ -199,7 +193,10 @@ impl MenuVisualization {
     }
 
     pub fn update(&mut self, bounds: Bounds, actions: &mut ActionQueue) {
-        actions.extend(self.actions.take());
+        if !self.hooked {
+            self.hooked = true;
+            actions.push(SongAction::HookFFT(self.vis_data.get_hook()).into());
+        }
         self.bounds = bounds;
 
         let rotation_increment = 0.2;
