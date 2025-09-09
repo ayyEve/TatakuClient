@@ -1293,7 +1293,7 @@ impl Game {
                     // check for volume change
                     if delta.y != 0.0
                     && let Some(action) = self.volume_controller.on_mouse_wheel(
-                        delta.y / (self.settings.display_settings.scroll_sensitivity * 1.5),
+                        delta.y * 1.5,
                         mods,
                         &mut self.values.settings
                     ) {
