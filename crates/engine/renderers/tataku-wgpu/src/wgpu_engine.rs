@@ -2310,10 +2310,10 @@ impl tataku::DrawEngine for WgpuEngine<'_> {
         else { return };
 
         let params = shaders::gaussian_blur::Params::new(
-            bounds.pos.x,
-            bounds.pos.y,
-            bounds.size.x,
-            bounds.size.y,
+            bounds.pos.x.floor() as u32,
+            bounds.pos.y.floor() as u32,
+            bounds.size.x.ceil() as u32,
+            bounds.size.y.ceil() as u32,
             sigma,
         );
 
