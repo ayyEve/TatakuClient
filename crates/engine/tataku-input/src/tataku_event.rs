@@ -3,7 +3,7 @@ use crate::prelude::*;
 #[derive(Serialize, Deserialize)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[serde(rename_all="camelCase")]
-pub enum TatakuEvent<Custom = String> {
+pub enum TatakuEvent<Custom = ArcStr> {
     /// Song has ended
     SongEnd,
 

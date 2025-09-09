@@ -13,12 +13,12 @@
 
       <custom>search</custom>
 
-      <setValue key="var.online_content.query">a</setValue>
+      <setValue key="var.online_content.query"></setValue>
 
       <setValue key="var.online_content.selected">9999999</setValue>
 
       <setValue key="var.online_content.engine">
-        <variable>game.online_content.engines.0.id</variable>
+        <variable>game.online_content.engines.0</variable>
       </setValue>
     </menuEnter>
 
@@ -93,13 +93,13 @@
                 <row>
                   <text><variable>_option.display</variable></text>
 
-                  <slider variable="var.online_content.options::_option.id">
+                  <!-- <slider variable="var.online_content.options::_option.id">
                     <min><variable>_option.values.Integer.min</variable></min>
                     <max><variable>_option.values.Integer.max</variable></max>
                     <step><variable>_option.values.Integer.step</variable></step>
 
                     <onInput><custom>search</custom></onInput>
-                  </slider>
+                  </slider> -->
                 </row>
               </case>
 
@@ -107,17 +107,17 @@
                 <row>
                   <text><variable>_option.display</variable></text>
 
-                  <slider variable="var.online_content.options::_option.id">
+                  <!-- <slider variable="var.online_content.options::_option.id">
                     <min><variable>_option.values.Float.min</variable></min>
                     <max><variable>_option.values.Float.max</variable></max>
                     <step><variable>_option.values.Float.step</variable></step>
 
                     <onInput><custom>search</custom></onInput>
-                  </slider>
+                  </slider> -->
                 </row>
               </case>
 
-              <case cond="display(_option.values) == 'List'">
+              <!-- <case cond="display(_option.values) == 'List'">
                 <dropdown
                   options_path="_option.values.List.options"
                   selected_path="var.online_content.options::_option.id"
@@ -134,7 +134,7 @@
                     <custom>search</custom>
                   </onSelect>
                 </dropdown>
-              </case>
+              </case> -->
             </switch>
           </list>
         </row>
@@ -202,15 +202,14 @@
             >
               <action>
                 <conditional cond="var.online_content.selected == _result.id">
-                  <true>
-                    <onlineContent>
-                      <download>
-                        <variable>_result.id</variable>
-                      </download>
-                    </onlineContent>
+                  <onlineContent>
+                    <download>
+                      <variable>_result.id</variable>
+                    </download>
+                  </onlineContent>
 
-                    <song><pause /></song>
-                  </true>
+                  <song><pause /></song>
+
                   <false>
                     <setValue key="var.online_content.selected">
                       <variable>_result.id</variable>

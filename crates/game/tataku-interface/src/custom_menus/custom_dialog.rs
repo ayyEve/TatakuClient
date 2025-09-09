@@ -17,16 +17,10 @@ pub struct CustomDialog {
     element: Element,
 }
 impl CustomDialog {
-    pub fn build(
-        &self,
-        values: &mut dyn Reflect,
-    ) -> BuiltCustomDialog {
+    pub fn build(&self) -> BuiltCustomDialog {
         let events  = self.events.inner.iter()
-            .filter_map(|buildable| {
-                let event = BuildableEvent::resolve(
-                    &buildable.event,
-                    values
-                );
+            .map(|buildable| {
+                let event = BuildableEvent::resolve(&buildable.event);
 
                 let actions = buildable.actions.iter().cloned()
                     .map(|mut action| {
@@ -35,7 +29,7 @@ impl CustomDialog {
                     })
                     .collect();
 
-                event.map(|event| (event, actions))
+                (event, actions)
             })
             .collect();
 

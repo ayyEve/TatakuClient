@@ -65,7 +65,7 @@ impl XmlTestManager {
 
         match thing {
             XmlData::Menu(custom_menu) => {
-                let menu = custom_menu.build(values);
+                let menu = custom_menu.build();
 
                 ui_manager.set_root(
                     Box::new(menu),
@@ -75,7 +75,7 @@ impl XmlTestManager {
                 );
             }
             XmlData::Dialog(custom_dialog) => {
-                let dialog = custom_dialog.build(values);
+                let dialog = custom_dialog.build();
                 ui_manager.set_root(
                     EmptyWidget::new_boxed(),
                     values,

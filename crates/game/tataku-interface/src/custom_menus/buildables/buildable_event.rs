@@ -11,7 +11,7 @@ pub struct BuildableEvent {
 #[derive(Clone, Debug, PartialEq)]
 pub struct CustomEvent {
     #[serde(rename="@event")]
-    pub event: BuildableValue,
+    pub event: ArcStr,
 }
 
 impl<'de> Deserialize<'de> for BuildableEvent {
@@ -151,31 +151,28 @@ impl<'de> Deserialize<'de> for BuildableEvent {
 impl BuildableEvent {
     pub fn resolve(
         event: &TatakuEvent<CustomEvent>,
-        values: &dyn Reflect,
-        // passed_in: Option<&TatakuValue>,
-    ) -> Option<TatakuEvent> {
+    ) -> TatakuEvent {
         match event {
             // These are necessary because technically the
             // types differ at the generic, even if not used here.
-            TatakuEvent::SongStart => Some(TatakuEvent::SongStart),
-            TatakuEvent::SongPause => Some(TatakuEvent::SongPause),
-            TatakuEvent::SongEnd   => Some(TatakuEvent::SongEnd),
+            TatakuEvent::SongStart => TatakuEvent::SongStart,
+            TatakuEvent::SongPause => TatakuEvent::SongPause,
+            TatakuEvent::SongEnd   => TatakuEvent::SongEnd,
 
-            TatakuEvent::MenuEnter => Some(TatakuEvent::MenuEnter),
-            TatakuEvent::MenuLeave => Some(TatakuEvent::MenuLeave),
+            TatakuEvent::MenuEnter => TatakuEvent::MenuEnter,
+            TatakuEvent::MenuLeave => TatakuEvent::MenuLeave,
 
-            TatakuEvent::MapAdded => Some(TatakuEvent::MapAdded),
+            TatakuEvent::MapAdded => TatakuEvent::MapAdded,
 
-            TatakuEvent::KeyPress(k)   => Some(TatakuEvent::KeyPress(*k)),
-            TatakuEvent::KeyRelease(k) => Some(TatakuEvent::KeyRelease(*k)),
+            TatakuEvent::KeyPress(k)   => TatakuEvent::KeyPress(*k),
+            TatakuEvent::KeyRelease(k) => TatakuEvent::KeyRelease(*k),
 
-            TatakuEvent::ControllerPress(k) => Some(TatakuEvent::ControllerPress(*k)),
-            TatakuEvent::ControllerRelease(k) => Some(TatakuEvent::ControllerRelease(*k)),
+            TatakuEvent::ControllerPress(k) => TatakuEvent::ControllerPress(*k),
+            TatakuEvent::ControllerRelease(k) => TatakuEvent::ControllerRelease(*k),
 
-            TatakuEvent::CustomEvent(event) => event.event
-                .resolve(values, None)
-                .map(|i| i.as_string())
-                .map(TatakuEvent::CustomEvent),
+            TatakuEvent::CustomEvent(event) => TatakuEvent::CustomEvent(
+                event.event.clone()
+            )
         }
     }
 }

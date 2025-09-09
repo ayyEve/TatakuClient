@@ -11,40 +11,19 @@ pub struct ConditionalElement {
 
     #[serde(rename = "@condition", alias = "@cond", default)] condition: ArcStr,
 
-    #[serde(rename = "true", default)] if_true_wrapped: Option<Wrapped<Element>>,
-    #[serde(rename = "$value", default)] if_true: Option<Element>,
+    #[serde(rename = "$value", default)] if_true: Element,
     #[serde(rename = "false", alias="else", default)] if_false: Option<Wrapped<Element>>,
-}
-
-impl ConditionalElement {
-    fn if_true(&self) -> Option<&Element> {
-        self.if_true_wrapped.as_ref()
-            .map(|w| &w.inner)
-            .or(self.if_true.as_ref())
-    }
 }
 
 impl CustomElement for ConditionalElement {
     fn build(&self) -> Box<dyn Widget<TatakuAction>> {
-        let Some(if_true) = self.if_true() else {
-            let name = self.id
-                .as_ref()
-                .map_or_else(
-                    || format!("cond: {}", self.condition),
-                    |i| format!("id: {i}")
-                );
-
-            error!("Conditional Element ({name}) does not have an element for when true!");
-            return EmptyWidget::new_boxed();
-        };
-
         WidgetContainer::new_boxed(
             self.style.clone(),
             "conditional",
             self.id.clone(),
             self.class_list.clone(),
             ConditionalWidget::new(
-                if_true.build(),
+                self.if_true.build(),
                 self.if_false.as_ref().map(|i| i.inner.build()),
                 BuildableCondition::Unbuilt(self.condition.clone())
             )

@@ -9,7 +9,7 @@ pub enum BuildableAction {
 
     // A delayed action
     Delayed {
-        #[serde(rename="$value")] action: Box<BuildableAction>,
+        #[serde(rename="$value")] actions: Vec<BuildableAction>,
         #[serde(rename="@delay")] delay: u64,
     },
 
@@ -119,18 +119,17 @@ pub enum BuildableAction {
         #[serde(rename="@condition", alias="@cond")] cond: BuildableCondition,
 
         /// What to do if true
-        #[serde(rename = "true")] if_true_wrapped: Option<Wrapped<Box<BuildableAction>>>,
-        #[serde(rename = "$value")] if_true: Option<Box<BuildableAction>>,
+        #[serde(rename = "$value")] if_true: Vec<BuildableAction>,
 
         /// What to do if false
-        #[serde(rename = "false", alias="else", default)] if_false: Option<Wrapped<Box<BuildableAction>>>,
+        #[serde(rename = "false", alias="else", default)] if_false: Option<Wrapped<Vec<BuildableAction>>>,
     },
 
     /// run a custom event
     #[serde(rename="custom")]
     CustomEvent {
         #[serde(rename="$value", default)]
-        event: BuildableText,
+        event: BuildableValue,
     }
 }
 
@@ -144,18 +143,21 @@ impl BuildableAction {
         match self {
             Self::None => None,
             Self::Delayed {
-                action,
+                actions,
                 delay,
             } => {
                 let passed_in = passed_in.cloned();
-                let action = action.clone();
+                let actions = actions.clone();
+
+                let delayed = DelayedActionType::Callback(Arc::new(
+                    move |values| TatakuAction::Multiple(actions
+                        .iter()
+                        .filter_map(|a| a.resolve(node, values, passed_in.as_ref()))
+                        .collect()
+                )));
+
                 Some(TatakuAction::Delayed(
-                    DelayedActionType::Callback(Arc::new(
-                        move |values| action
-                            .clone()
-                            .resolve(node, values, passed_in.as_ref())
-                            .unwrap_or(TatakuAction::None)
-                    )),
+                    delayed,
                     *delay
                 ))
             }
@@ -281,8 +283,11 @@ impl BuildableAction {
                     )
             }
             Self::CustomEvent { event } => {
+                let event = event.resolve(values , passed_in)?;
+                let event = event.as_string();
+
                 Some(GameAction::HandleEvent(
-                    TatakuEvent::CustomEvent(event.to_string(values)),
+                    TatakuEvent::CustomEvent(event.into()),
                     None
                 ).into())
             }
@@ -291,25 +296,23 @@ impl BuildableAction {
             Self::Conditional {
                 cond,
                 if_true,
-                if_true_wrapped,
                 if_false
             } => {
-                let if_true = if_true_wrapped
-                    .as_ref()
-                    .map(|i| &i.inner)
-                    .or(if_true.as_ref())?;
-
                 match cond.resolve(values) {
                     BuildableConditionResult::Failed => None,
                     BuildableConditionResult::Unbuilt(a)
                         => panic!("BuildableConditions should be built! '{a}'"),
-                    BuildableConditionResult::True => if_true
-                        .resolve(node, values, passed_in),
-                    BuildableConditionResult::False => if_false
-                        .as_ref()
-                        .and_then(|a|
-                            a.inner.resolve(node, values, passed_in)
-                        ),
+                    BuildableConditionResult::True => Some(TatakuAction::Multiple(
+                        if_true.iter()
+                        .filter_map(|a| a.resolve(node, values, passed_in))
+                        .collect()
+                    )),
+                    BuildableConditionResult::False => if_false.as_ref()
+                        .map(|if_false| TatakuAction::Multiple(
+                            if_false.inner.iter()
+                                .filter_map(|a| a.resolve(node, values, passed_in))
+                                .collect()
+                        )),
                     BuildableConditionResult::Error(_) => None,
                 }
             }
@@ -343,24 +346,24 @@ impl BuildableAction {
             Self::Conditional {
                 cond,
                 if_true,
-                if_true_wrapped,
                 if_false
             } => {
                 cond.build();
 
-                if let Some(e) = if_true {
-                    e.build();
+                for action in if_true {
+                    action.build();
                 }
-                if let Some(e) = if_true_wrapped {
-                    e.inner.build();
-                }
-                if let Some(e) = if_false {
-                    e.inner.build();
+
+                for action in if_false.iter_mut().flat_map(|a| &mut a.inner) {
+                    action.build();
                 }
             }
 
-            Self::Delayed { action, .. }
-                => action.build(),
+            Self::Delayed { actions, .. } => {
+                for action in actions {
+                    action.build();
+                }
+            },
 
             Self::SetValue { value, .. }
                 => value.build(),
@@ -371,11 +374,8 @@ impl BuildableAction {
             Self::Ui { action }
                 => action.build(),
 
-            Self::CustomEvent { 
-                event 
-            } => if let Err(e) = event.compute() {
-                error!("error building custom event tag: {e:?}");
-            }
+            Self::CustomEvent { event }
+                => event.build(),
 
             Self::Internal { .. } => {},
             Self::None => {},

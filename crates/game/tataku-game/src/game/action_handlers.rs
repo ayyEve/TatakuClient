@@ -62,7 +62,7 @@ impl Game {
 
         // let menu = self.custom_menus.iter().rev().find(|cm| cm.id == id);
         if let Some(menu) = self.custom_menu_manager.get_menu(selector) {
-            let menu = menu.build(&mut self.values);
+            let menu = menu.build();
 
             self.queue_state_change(
                 GameState::SetMenu(Box::new(menu))
@@ -110,7 +110,7 @@ impl Game {
             dialog.options(),
         );
 
-        let dialog = dialog.build(&mut self.values);
+        let dialog = dialog.build();
 
         self.ui_manager.add_dialog(
             Box::new(dialog),

@@ -10,16 +10,10 @@ pub struct CustomMenu {
     #[serde(alias="event", default)] pub events: Wrapped<Vec<BuildableEvent>>,
 }
 impl CustomMenu {
-    pub fn build(
-        &self,
-        values: &mut dyn Reflect,
-    ) -> BuiltCustomMenu {
+    pub fn build(&self) -> BuiltCustomMenu {
         let events  = self.events.inner.iter()
-            .filter_map(|buildable| {
-                let event = BuildableEvent::resolve(
-                    &buildable.event,
-                    values
-                );
+            .map(|buildable| {
+                let event = BuildableEvent::resolve(&buildable.event);
 
                 let actions = buildable.actions.iter().cloned()
                     .map(|mut action| {
@@ -28,7 +22,7 @@ impl CustomMenu {
                     })
                     .collect();
 
-                event.map(|event| (event, actions))
+                (event, actions)
             })
             .collect();
 

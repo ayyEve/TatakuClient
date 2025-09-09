@@ -148,10 +148,7 @@
       <xs:element name="conditional">
         <xs:complexType>
           <xs:sequence>
-            <xs:choice>
-              <xs:group ref="actions:action"/>
-              <xs:element name="true" type="actions:action-list" />
-            </xs:choice>
+            <xs:group ref="actions:action" maxOccurs="unbounded"/>
             <xs:element name="false" type="actions:action-list" minOccurs="0"/>
           </xs:sequence>
           <xs:attribute name="cond" type="common:condition" use="required"/>

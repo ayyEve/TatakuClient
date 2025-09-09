@@ -5,27 +5,24 @@ use std::str::FromStr;
 #[serde(rename_all="camelCase")]
 #[derive(Clone, Debug, PartialEq)]
 pub enum BuildableOnlineContentAction {
-    Search {
-        #[serde(rename="$value")]
-        search: BuildableOnlineContentSearch
-    },
+    Search(BuildableOnlineContentSearch),
 
     NextPage,
     PreviousPage,
     
     SetPage {
-        #[serde(rename="$value", default)]
+        #[serde(rename="$value")]
         page: BuildableValue,
     },
 
     #[serde(alias="download")]
     StartDownload {
-        #[serde(rename="$value", default)]
+        #[serde(rename="$value")]
         index: BuildableValue,
     },
 
     AudioPreview {
-        #[serde(rename="$value", default)]
+        #[serde(rename="$value")]
         index: BuildableValue,
     },
 }
@@ -68,7 +65,7 @@ impl BuildableOnlineContentAction {
                 passed_in
             )?)),
             
-            Self::Search { search } => Some(OnlineContentAction::Search(
+            Self::Search(search) => Some(OnlineContentAction::Search(
                 Box::new(search.resolve(values, passed_in)?)
             )),
         }
@@ -90,7 +87,7 @@ pub struct BuildableOnlineContentSearch {
 
     /// What search-specific settings were provided
     #[serde(alias="values", default)]
-    search_values: Option<HashMap<String, BuildableValue>>,
+    search_values: Option<HashMap<String, Wrapped<BuildableValue>>>,
     #[serde(rename="@valuesMapPath", default)]
     search_values_map_path: Option<VariablePathResolver>,
     #[serde(rename="@valuesKeyValuePath", default)]
@@ -98,7 +95,7 @@ pub struct BuildableOnlineContentSearch {
 
     /// What query
     #[serde(default)]
-    query: Wrapped<BuildableValue>,
+    query: Option<Wrapped<BuildableValue>>,
 }
 
 impl BuildableOnlineContentSearch {
@@ -113,7 +110,7 @@ impl BuildableOnlineContentSearch {
         if let Some(buildable) = &self.search_values {
             search_values = buildable
                 .iter()
-                .filter_map(|(key, value)| value
+                .filter_map(|(key, value)| value.inner
                     .resolve(values, passed_in)
                     .map(|value| (key.clone(), value.as_string()))
                 )
@@ -127,7 +124,7 @@ impl BuildableOnlineContentSearch {
 
             let iter = values
                 .impl_iter(ReflectPath::new(&map_path))
-                .inspect_err(|e| 
+                .inspect_err(|e|
                     error!("Error with search values map path '{map_path}': {e:?}")
                 )
                 .ok()?;
@@ -195,15 +192,11 @@ impl BuildableOnlineContentSearch {
             search_type: vec![OnlineContentType::from_str(
                 &self.search_type.inner.resolve(values, passed_in)?.as_string()
             ).ok()?],
-                // .iter()
-                // .filter_map(|i| OnlineContentType::from_str(
-                //     &i.resolve(values, passed_in)?.as_string()
-                // ).ok())
-                // .collect(),
-                
-            query: self.query.inner
+
+            query: self.query.as_ref().and_then(|q| q.inner
                 .resolve(values, passed_in)
                 .map(|i| i.as_string())
+            )
         })
     }
 }
