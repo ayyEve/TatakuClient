@@ -5,6 +5,7 @@ const NAME: &str = "box blur";
 
 pub(crate) struct Pipeline {
     pub pipeline: wgpu::ComputePipeline,
+    blitterer: wgpu::util::TextureBlitter,
 
     vertical: BlurBindings,
     horizontal: BlurBindings,
@@ -55,8 +56,14 @@ impl Pipeline {
             &horizontal_buffer,
         );
 
+        let blitterer = wgpu::util::TextureBlitter::new(
+            device, 
+            output.view.texture().format(),
+        );
+
         Self {
             pipeline,
+            blitterer,
 
             horizontal: BlurBindings {
                 buffer: horizontal_buffer,
@@ -238,10 +245,7 @@ impl Pipeline {
 
 
         // copy the blur to the output
-        wgpu::util::TextureBlitter::new(
-            device, 
-            output.view.texture().format(),
-        ).copy(
+        self.blitterer.copy(
             device,
             &mut encoder,
             &self.horizontal.texture.create_view(

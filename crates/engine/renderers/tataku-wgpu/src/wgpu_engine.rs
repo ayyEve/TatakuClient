@@ -64,7 +64,8 @@ pub struct WgpuEngine<'window> {
     #[cfg(feature="vello_rendering")]
     vello_pipeline: Option<shaders::vello::Pipeline>,
     font_scale_context: parley::swash::scale::ScaleContext,
-
+    
+    blitterer: wgpu::util::TextureBlitter,
 
     pub(crate) scissors: tataku::ScissorManager,
 
@@ -374,6 +375,11 @@ impl<'window> WgpuEngine<'window> {
             &box_blur_pipeline.pipeline,
         );
 
+        let blitterer = wgpu::util::TextureBlitter::new(
+            &device,
+            surface_format,
+        );
+
         Box::new(Self {
             surface,
             device,
@@ -403,6 +409,7 @@ impl<'window> WgpuEngine<'window> {
             #[cfg(feature="vello_rendering")]
             vello_pipeline,
             font_scale_context: parley::swash::scale::ScaleContext::new(),
+            blitterer,
 
             scissors: tataku::ScissorManager::default(),
             present_modes,
@@ -533,18 +540,14 @@ impl<'window> WgpuEngine<'window> {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
 
         let view = wgpu::TextureViewDescriptor::default();
-        wgpu::util::TextureBlitter::new(
-            &self.device,
-            swapchain.texture.format(),
-        ).copy(
+        self.blitterer.copy(
             &self.device,
             &mut encoder,
             &texture.create_view(&view),
             &swapchain.texture.create_view(&view)
         );
         
-        let i = self.queue.submit([encoder.finish()]);
-        self.device.poll(wgpu::wgt::PollType::WaitForSubmissionIndex(i)).unwrap();
+        self.queue.submit([encoder.finish()]);
         swapchain.present();
 
         if let Some(screenshot) = self.screenshot_pending.take() {
@@ -569,6 +572,8 @@ impl<'window> WgpuEngine<'window> {
             &wgpu::CommandEncoderDescriptor { label: Some("Render Encoder") }
         );
 
+        // let time = std::time::Instant::now();
+        // let mut list = Vec::with_capacity(self.completed_buffers.len() + 1);
         {
             let mut render_pass = encoder.begin_render_pass(
                 &wgpu::RenderPassDescriptor {
@@ -593,6 +598,10 @@ impl<'window> WgpuEngine<'window> {
 
             for i in self.completed_buffers.iter() {
                 let pipeline_type = i.get_pipeline_type();
+                // list.push(format!(
+                //     "{:.2}ms -> {pipeline_type:?}", 
+                //     time.elapsed().as_secs_f32() * 1000.0
+                // ));
 
                 // blurs are a special case, they're compute shaders and not fragment shaders
                 // vello is also a special case as it handles its own pipelines itself
@@ -763,7 +772,9 @@ impl<'window> WgpuEngine<'window> {
                 );
             }
 
+            // list.push(format!("{:.2}ms: end", time.elapsed().as_secs_f32() * 1000.0));
         }
+        // println!("{}", list.join("\n"));
 
         self.queue.submit([encoder.finish()]);
 

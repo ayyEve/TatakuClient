@@ -7,6 +7,8 @@ const BASE_COLOR: AlphaColor<Srgb> = AlphaColor::from_rgba8(0, 0, 0, 0);
 pub(crate) struct Pipeline {
     renderer: vello::Renderer,
     texture: wgpu::Texture,
+
+    blitterer: wgpu::util::TextureBlitter,
 }
 impl Pipeline {
     pub fn create(
@@ -20,8 +22,16 @@ impl Pipeline {
             .inspect_err(|e| warn!("error initializing vello: {e:?}"))
             .ok()?;
 
+        let blitterer = wgpu::util::TextureBlitterBuilder::new(
+            device,
+            output.view.texture().format()
+        )
+        .blend_state(wgpu::BlendState::ALPHA_BLENDING)
+        .build();
+
         Some(Self {
             renderer,
+            blitterer,
             texture: device.create_texture(&Self::tex_desc(output.size)),
         })
     }
@@ -78,13 +88,7 @@ impl Pipeline {
                 label: Some("vello blitter encoder")
             }
         );
-        wgpu::util::TextureBlitterBuilder::new(
-            device,
-            output.view.texture().format()
-        )
-        .blend_state(wgpu::BlendState::ALPHA_BLENDING)
-        .build()
-        .copy(
+        self.blitterer.copy(
             device, 
             &mut encoder, 
             &tex_view, 
