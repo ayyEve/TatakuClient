@@ -969,7 +969,7 @@ impl WgpuEngine<'_> {
         let pipeline = match last_buffer.pipeline_type() {
             PipelineType::GaussianBlur => WgpuPipeline::Compute(&self.gaussian_blur_pipeline.pipeline),
             PipelineType::BoxBlur => WgpuPipeline::Compute(&self.box_blur_pipeline.pipeline),
-            PipelineType::Vello => WgpuPipeline::None,
+            #[cfg(feature="vello")] PipelineType::Vello => WgpuPipeline::None,
             _ => WgpuPipeline::Render(&self.pipelines[&last_buffer.graphics_pipeline()]),
         };
         if let Some(b) = last_buffer.dump_and_next(
@@ -2505,14 +2505,14 @@ fn cast_to_rgba_bytes(bytes: &[u8], _format: wgpu::TextureFormat) -> [u8; 4] {
 
 #[derive(Copy, Clone)]
 pub(crate) enum WgpuPipeline<'a> {
-    None,
+    #[cfg(feature="vello")] None,
     Render(&'a wgpu::RenderPipeline),
     Compute(&'a wgpu::ComputePipeline),
 }
 impl WgpuPipeline<'_> {
     pub fn get_bind_group_layout(&self, index: u32) -> wgpu::BindGroupLayout {
         match self {
-            Self::None => panic!("trying to get bind group for no pipeline!"),
+            #[cfg(feature="vello")] Self::None => panic!("trying to get bind group for no pipeline!"),
             Self::Render(p) => p.get_bind_group_layout(index),
             Self::Compute(p) => p.get_bind_group_layout(index),
         }

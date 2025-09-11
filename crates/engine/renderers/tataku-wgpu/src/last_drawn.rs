@@ -18,12 +18,17 @@ impl PipelineType {
     pub fn is_blur(&self) -> bool {
         matches!(self, Self::GaussianBlur | Self::BoxBlur)
     }
+    #[cfg(feature="vello")]
     pub fn is_vello(&self) -> bool {
-        matches!(self, Self::Vello)
+        return matches!(self, Self::Vello)
     }
 
     pub fn is_compute(&self) -> bool {
-        self.is_blur() || self.is_vello()
+        #[cfg(feature="vello")]
+        return self.is_blur() || self.is_vello();
+        
+        #[cfg(not(feature="vello"))]
+        self.is_blur()
     }
 
     // pub fn as_pipeline(self) -> GraphicsPipeline {

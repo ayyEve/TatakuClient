@@ -34,7 +34,7 @@ impl TextInputElement {
         widgets::TextInput::new(
             self.placeholder(),
             BuildableText::Variable {
-                variable: self.variable.clone().into()
+                variable: self.variable.clone()
             }
         )
         .secure(self.is_password)

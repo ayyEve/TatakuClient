@@ -1,7 +1,5 @@
 # cargo build dir
 /target
-# cargo dependancy locks
-cargo.lock
 # any zip files
 *.zip
 # logs
