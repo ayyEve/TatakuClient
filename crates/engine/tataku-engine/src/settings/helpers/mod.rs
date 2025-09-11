@@ -1,10 +1,10 @@
-mod osu_import;
-mod settings_trait;
-mod settings_color;
-mod settings_builder;
-mod gamemode_collection;
-mod settings_deserializer;
-mod buildable_settings_provider;
+pub mod osu_import;
+pub mod settings_trait;
+pub mod settings_color;
+pub mod settings_builder;
+pub mod gamemode_collection;
+pub mod settings_deserializer;
+pub mod buildable_settings_provider;
 
 pub use osu_import::*;
 pub use settings_trait::*;

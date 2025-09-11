@@ -1,4 +1,10 @@
 use crate::prelude::*;
+use common::reflect::*;
+use engine::settings::{
+    SettingsBuilder,
+    MakeSettingsMenu,
+    BuildableSettingsProvider,
+};
 
 #[derive(Reflect)]
 #[derive(Clone, Debug2, Default)]

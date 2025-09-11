@@ -1,5 +1,6 @@
+use crate::*;
+use style::*;
 use std::str::FromStr;
-use crate::prelude::*;
 
 #[derive(Clone, Debug)]
 pub struct QuadShorthand<T> {
@@ -57,7 +58,7 @@ impl<T> Default for QuadShorthand<T> {
 impl<T: FromStr + Clone> FromStr for QuadShorthand<T> {
     type Err = <T as FromStr>::Err;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> core::result::Result<Self, Self::Err> {
         let s = s.trim();
         let split = s.split(" ").collect::<Vec<_>>();
 

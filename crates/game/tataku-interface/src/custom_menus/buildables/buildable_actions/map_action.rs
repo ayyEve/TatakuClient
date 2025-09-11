@@ -1,4 +1,7 @@
 use crate::prelude::*;
+use common::Md5Hash;
+use tataku::TatakuValue;
+use common::reflect::Reflect;
 
 /// An action that deals with the current beatmap
 #[derive(Deserialize)]
@@ -17,7 +20,7 @@ pub enum BuildableMapAction {
     /// Change to the previous map
     Previous {
         #[serde(rename="$value", default)]
-        action: MapActionIfNone,
+        action: actions::beatmap::MapActionIfNone,
     },
 
     /// Change to a random map
@@ -68,43 +71,43 @@ impl BuildableMapAction {
         &self, 
         values: &mut dyn Reflect, 
         passed_in: Option<&TatakuValue>
-    ) -> Option<BeatmapAction> {
+    ) -> Option<actions::beatmap::BeatmapAction> {
         match self {
-            Self::Play => Some(BeatmapAction::PlaySelected),
-            Self::Confirm => Some(BeatmapAction::ConfirmSelected),
+            Self::Play => Some(actions::beatmap::BeatmapAction::PlaySelected),
+            Self::Confirm => Some(actions::beatmap::BeatmapAction::ConfirmSelected),
 
-            Self::Next => Some(BeatmapAction::Next),
+            Self::Next => Some(actions::beatmap::BeatmapAction::Next),
             Self::Previous { action } 
-                => Some(BeatmapAction::Previous(*action)),
+                => Some(actions::beatmap::BeatmapAction::Previous(*action)),
 
             Self::Random { use_preview } 
-                => Some(BeatmapAction::Random(*use_preview)),
+                => Some(actions::beatmap::BeatmapAction::Random(*use_preview)),
 
             Self::DeleteCurrent 
-                => Some(BeatmapAction::DeleteCurrent(PostDelete::Next)),
+                => Some(actions::beatmap::BeatmapAction::DeleteCurrent(actions::beatmap::PostDelete::Next)),
 
             Self::Delete { value } => {
                 let value = value.resolve(values, passed_in)?;
                 let hash = Md5Hash::try_from(value.as_string()).ok()?;
-                Some(BeatmapAction::Delete(hash))
+                Some(actions::beatmap::BeatmapAction::Delete(hash))
             }
 
-            Self::NextMap => Some(BeatmapListAction::NextMap.into()),
-            Self::NextSet => Some(BeatmapListAction::NextSet.into()),
-            Self::PreviousMap => Some(BeatmapListAction::PrevMap.into()),
-            Self::PreviousSet => Some(BeatmapListAction::PrevSet.into()),
-            Self::RefreshMaps => Some(BeatmapListAction::Refresh.into()),
+            Self::NextMap => Some(actions::beatmap::BeatmapListAction::NextMap.into()),
+            Self::NextSet => Some(actions::beatmap::BeatmapListAction::NextSet.into()),
+            Self::PreviousMap => Some(actions::beatmap::BeatmapListAction::PrevMap.into()),
+            Self::PreviousSet => Some(actions::beatmap::BeatmapListAction::PrevSet.into()),
+            Self::RefreshMaps => Some(actions::beatmap::BeatmapListAction::Refresh.into()),
 
             Self::SetPlaymode { value } => {
                 let value = value.resolve(values, passed_in)?;
-                Some(BeatmapAction::SetPlaymode(value.as_string()))
+                Some(actions::beatmap::BeatmapAction::SetPlaymode(value.as_string()))
             }
 
 
             Self::SelectGroup { value } => {
                 let num = value.resolve(values, passed_in)?.as_u32()?;
-                Some(BeatmapAction::ListAction(
-                    BeatmapListAction::SelectSet(num as usize)
+                Some(actions::beatmap::BeatmapAction::ListAction(
+                    actions::beatmap::BeatmapListAction::SelectSet(num as usize)
                 ))
             }
 
@@ -115,9 +118,9 @@ impl BuildableMapAction {
                     .try_into()
                     .ok()?;
                 
-                Some(BeatmapAction::SetFromHash(
+                Some(actions::beatmap::BeatmapAction::SetFromHash(
                     hash, 
-                    SetBeatmapOptions::default().use_preview_point(true)
+                    actions::beatmap::SetBeatmapOptions::default().use_preview_point(true)
                 ))
             }
         }
@@ -167,11 +170,11 @@ fn test() {
 
     assert_eq!(
         from_str::<Action>(r#"<action> <previous/> </action>"#).unwrap(),
-        Action { action: BuildableMapAction::Previous { action: MapActionIfNone::default()} }
+        Action { action: BuildableMapAction::Previous { action: actions::beatmap::MapActionIfNone::default()} }
     );
     assert_eq!(
         from_str::<Action>(r#"<action> <previous> <setNone/> </previous> </action>"#).unwrap(),
-        Action { action: BuildableMapAction::Previous{ action: MapActionIfNone::SetNone} }
+        Action { action: BuildableMapAction::Previous{ action: actions::beatmap::MapActionIfNone::SetNone} }
     );
 
     assert_eq!(

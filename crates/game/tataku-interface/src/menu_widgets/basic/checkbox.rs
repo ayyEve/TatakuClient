@@ -1,4 +1,22 @@
 use crate::prelude::*;
+use common::reflect::*;
+use tataku::{
+    Color,
+    Border,
+    Vector2,
+    TatakuValue,
+};
+use ui::{
+    tree::*,
+    style::*,
+    widget::*,
+    message::*,
+};
+use input::{ 
+    InputType,
+    InputEvent, 
+    MouseButton, 
+};
 
 const BOX_SIZE_EM: f32 = 0.75;
 
@@ -22,7 +40,7 @@ impl Checkbox {
 
             active: false,
             hovered: false,
-            node_id: EMPTY_NODE,
+            node_id: ui::EMPTY_NODE,
         }
     }
 
@@ -41,11 +59,11 @@ impl Checkbox {
         self
     }
 }
-impl Widget<TatakuAction> for Checkbox {
+impl Widget<actions::Action> for Checkbox {
     fn name(&self) -> CowStr { "checkbox_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn layout(&mut self, shell: &mut LayoutShell<TatakuAction>) -> taffy::TaffyResult<NodeId> {
+    fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId> {
         self.node_id = shell.tree.new_leaf()?;
 
         shell.with_context(self.node_id, |ctx| {
@@ -56,7 +74,7 @@ impl Widget<TatakuAction> for Checkbox {
         Ok(self.node_id)
     }
 
-    fn init_style(&mut self, shell: &mut LayoutShell<TatakuAction>) {
+    fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
         shell.tree.update_style(
             self.node_id,
             |style| {
@@ -69,7 +87,7 @@ impl Widget<TatakuAction> for Checkbox {
     fn input(
         &mut self, 
         event: &InputEvent, 
-        shell: &mut InputShell<TatakuAction>, 
+        shell: &mut InputShell<actions::Action>, 
     ) {
         match event.event {
             InputType::MouseMove(pos) => {
@@ -116,7 +134,7 @@ impl Widget<TatakuAction> for Checkbox {
         }
     }
 
-    fn draw(&self, shell: &mut DrawShell<TatakuAction>) {
+    fn draw(&self, shell: &mut DrawShell<actions::Action>) {
         let Some(bounds) = shell.tree.absolute_bounds(self.node_id) 
         else { return };
 
@@ -126,7 +144,7 @@ impl Widget<TatakuAction> for Checkbox {
 
         let size = BOX_SIZE_EM * text_style.font_size;
 
-        let rect = Rectangle::new(
+        let rect = graphics::Rectangle::new(
             bounds.pos,
             Vector2::ONE * size,
             if self.value.get() {
@@ -137,11 +155,11 @@ impl Widget<TatakuAction> for Checkbox {
         ).border(Border::new(
             shell.general_theme.get_color(self.active, self.hovered),
             2.0
-        )).shape(Shape::Round(2.0));
+        )).shape(graphics::Shape::Round(2.0));
         shell.list.push(rect);
     }
 
-    fn update(&mut self, shell: &mut UpdateShell<TatakuAction>) {
+    fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
         self.value.update(shell.values);
     }
 }
@@ -150,7 +168,7 @@ impl Widget<TatakuAction> for Checkbox {
 pub enum CheckboxValue {
     Static(bool),
     Variable {
-        path: VariablePathResolver, 
+        path: engine::VariablePathResolver, 
         cache: bool, 
         failed: bool,
     },
@@ -232,7 +250,7 @@ impl CheckboxOnToggle {
         value: bool, 
         node: NodeId, 
         values: &mut dyn Reflect,
-    ) -> Result<Message, TatakuAction> {
+    ) -> Result<Message, actions::Action> {
         match self {
             Self::Callback(cb) => Ok(cb(value)),
 
@@ -245,7 +263,7 @@ impl CheckboxOnToggle {
                     .filter_map(|action| action.resolve(node, values, passed_in))
                     .collect();
 
-                Err(TatakuAction::Multiple(actions))
+                Err(actions::Action::Multiple(actions))
             },
         }
     }

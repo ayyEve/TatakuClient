@@ -1,4 +1,15 @@
 use crate::prelude::*;
+use input::InputEvent;
+use tataku::{
+    Vector2,
+    Color,
+    Border,
+};
+use ui::{
+    tree::*,
+    style::*,
+    widget::*,
+};
 
 // TODO: move button (etc) active/hover/etc to states, and use css selectors to set the states
 
@@ -8,7 +19,7 @@ pub struct WidgetContainer {
     id: Option<ArcStr>,
     style_str: ArcStr,
     class: ClassList,
-    inner: Box<dyn Widget<TatakuAction>>,
+    inner: Box<dyn Widget<actions::Action>>,
 }
 impl WidgetContainer {
     pub fn new(
@@ -16,7 +27,7 @@ impl WidgetContainer {
         element_name: impl Into<ArcStr>,
         id: Option<ArcStr>,
         class: ClassList,
-        inner: Box<dyn Widget<TatakuAction>>,
+        inner: Box<dyn Widget<actions::Action>>,
     ) -> Self {
         Self {
             style_str: style,
@@ -32,8 +43,8 @@ impl WidgetContainer {
         element_name: impl Into<ArcStr>,
         id: Option<ArcStr>,
         class: ClassList,
-        inner: Box<dyn Widget<TatakuAction>>,
-    ) -> Box<dyn Widget<TatakuAction>> {
+        inner: Box<dyn Widget<actions::Action>>,
+    ) -> Box<dyn Widget<actions::Action>> {
         Self::new(
             style,
             element_name,
@@ -45,18 +56,18 @@ impl WidgetContainer {
     }
     
 }
-impl Widget<TatakuAction> for WidgetContainer {
+impl Widget<actions::Action> for WidgetContainer {
     fn name(&self) -> CowStr { self.inner.name() }
     fn node_id(&self) -> NodeId { self.inner.node_id() }
 
-    fn children(&self) -> WidgetChildren<'_, TatakuAction> {
+    fn children(&self) -> WidgetChildren<'_, actions::Action> {
         WidgetChildren::Single(&self.inner)
     }
-    fn children_mut(&mut self) -> WidgetChildrenMut<'_, TatakuAction> {
+    fn children_mut(&mut self) -> WidgetChildrenMut<'_, actions::Action> {
         WidgetChildrenMut::Single(&mut self.inner)
     }
 
-    fn init_style(&mut self, shell: &mut LayoutShell<TatakuAction>) {
+    fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
         let node = self.node_id();
         let styles = shell.resolver.resolve_style(
             &self.style_str, 
@@ -70,7 +81,7 @@ impl Widget<TatakuAction> for WidgetContainer {
         self.inner.init_style(shell);
     }
 
-    fn layout(&mut self, shell: &mut LayoutShell<TatakuAction>) -> taffy::TaffyResult<NodeId> {
+    fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId> {
         let id = self.inner.layout(shell)?;
         shell.with_context(id, |ctx| {
             ctx.element_data = ElementData {
@@ -88,7 +99,7 @@ impl Widget<TatakuAction> for WidgetContainer {
     fn operation(
         &mut self, 
         operation: &UiOperation, 
-        tree: &mut Tree<TatakuAction>,
+        tree: &mut Tree<actions::Action>,
     ) {
         if let UiOperationType::State(op) = &operation.operation {
             let Some(ctx) = tree
@@ -115,7 +126,7 @@ impl Widget<TatakuAction> for WidgetContainer {
     }
 
 
-    fn input(&mut self, event: &InputEvent, shell: &mut InputShell<TatakuAction>) {
+    fn input(&mut self, event: &InputEvent, shell: &mut InputShell<actions::Action>) {
         // let node = self.node_id();
         // let previous_state = shell.tree
         //     .get_context(node)
@@ -138,7 +149,7 @@ impl Widget<TatakuAction> for WidgetContainer {
         // }
     }
     
-    fn draw(&self, shell: &mut DrawShell<TatakuAction>) {
+    fn draw(&self, shell: &mut DrawShell<actions::Action>) {
         let node = self.node_id();
         let Some(bounds) = shell.tree.absolute_bounds(node) else { return };
         let Some(layout) = shell.tree.get_layout(node) else { return };
@@ -165,13 +176,13 @@ impl Widget<TatakuAction> for WidgetContainer {
             .resolve(shell.values)
             .as_deref()
             .copied()
-            .map(Shape::Round);
+            .map(graphics::Shape::Round);
 
         if let Some(bg) = style
             .background_color
             .resolve_copied(shell.values)
         {
-            shell.list.push(Rectangle::new_bounds(
+            shell.list.push(graphics::Rectangle::new_bounds(
                     bounds,
                     bg,
                 )
@@ -180,7 +191,7 @@ impl Widget<TatakuAction> for WidgetContainer {
             );
         } else if let Some(border) = border {
             shell.list.push(
-                Rectangle::new_bounds(
+                graphics::Rectangle::new_bounds(
                     bounds,
                     Color::TRANSPARENT,
                 )
@@ -194,7 +205,7 @@ impl Widget<TatakuAction> for WidgetContainer {
             let alignment = style
                 .image_alignment
                 .resolve_copied(shell.values)
-                .unwrap_or(Alignment::CENTER);
+                .unwrap_or(tataku::Alignment::CENTER);
 
             if let Some(&fill_mode) = style.image_stretch.value() {
                 image.fit_to(fill_mode, bounds);
@@ -228,7 +239,7 @@ impl Widget<TatakuAction> for WidgetContainer {
 
         if let Some(blur) = blur
         && blur_location == BlurLocation::Below {
-            shell.list.push(Blur::new(bounds, blur));
+            shell.list.push(graphics::Blur::new(bounds, blur));
         }
 
         // draw the inner
@@ -236,7 +247,7 @@ impl Widget<TatakuAction> for WidgetContainer {
 
         if ctx.selected == Some(true) {
             shell.list.push(
-                Rectangle::new_bounds(
+                graphics::Rectangle::new_bounds(
                     bounds,
                     Color::TRANSPARENT,
                 )
@@ -246,12 +257,12 @@ impl Widget<TatakuAction> for WidgetContainer {
 
         if let Some(blur) = blur
         && blur_location == BlurLocation::Above {
-            shell.list.push(Blur::new(bounds, blur));
+            shell.list.push(graphics::Blur::new(bounds, blur));
         }
     }
     
 
-    fn reload_skin(&mut self, shell: &mut UpdateShell<TatakuAction>) {
+    fn reload_skin(&mut self, shell: &mut UpdateShell<actions::Action>) {
         let Some(ctx) = shell.tree
             .get_context_mut(self.node_id()) 
         else { return };
@@ -264,12 +275,12 @@ impl Widget<TatakuAction> for WidgetContainer {
             {
                 let source = style.image_source
                     .resolve_cloned(shell.values)
-                    .unwrap_or(TextureSource::Skin);
+                    .unwrap_or(graphics::TextureSource::Skin);
 
                 *img = shell.skin_manager.get_texture_then(
                     &image, 
                     &source, 
-                    SkinUsage::Game, 
+                    graphics::SkinUsage::Game, 
                     style.image_grayscale
                         .resolve_copied(shell.values)
                         .unwrap_or_default(), 

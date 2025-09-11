@@ -35,8 +35,8 @@ impl ButtonItem {
     pub fn write(&self) -> TokenStream {
         let action = self.action.parse::<TokenStream>().unwrap();
         quote! { 
-            BuildableSettingType::Button {
-                action: TatakuAction::from(#action).into(),
+            engine::settings::BuildableSettingType::Button {
+                action: engine::actions::Action::from(#action).into(),
             }
         }
     }

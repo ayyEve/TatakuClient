@@ -1,13 +1,10 @@
 use tracing::*;
 
 use std::sync::Arc;
+use tataku_audio::*;
 use bass_rs::prelude::*;
-use tataku_audio::prelude::*;
-use tataku_client_common::prelude::{
-    TatakuResult,
-    AudioError,
-    FFTEntry
-};
+use tataku_client_common::errors;
+use tataku_client_common::prelude as tataku;
 
 
 lazy_static::lazy_static! {
@@ -19,17 +16,17 @@ lazy_static::lazy_static! {
 
 pub struct BassAudio(bass_rs::Bass);
 impl BassAudio {
-    fn init() -> TatakuResult<Arc<dyn AudioApi>> {
+    fn init() -> tataku::TatakuResult<Arc<dyn AudioApi>> {
         check_bass()?;
         Ok(Arc::new(BassAudio(bass_rs::Bass::init_default().map_err(map_bass_err)?)))
     }
 }
 impl AudioApi for BassAudio {
-    fn load_sample_data(&self, data: Vec<u8>) -> TatakuResult<Arc<dyn AudioInstance>> {
+    fn load_sample_data(&self, data: Vec<u8>) -> tataku::TatakuResult<Arc<dyn AudioInstance>> {
         let channel = SampleChannel::load_from_memory(data, 0, 64).map_err(map_bass_err)?;
         Ok(Arc::new(SampleChannelInstance::new(channel)))
     }
-    fn load_stream_data(&self, data: Vec<u8>) -> TatakuResult<Arc<dyn AudioInstance>> {
+    fn load_stream_data(&self, data: Vec<u8>) -> tataku::TatakuResult<Arc<dyn AudioInstance>> {
         let channel = StreamChannel::load_from_memory(data, 0).map_err(map_bass_err)?;
         Ok(Arc::new(StreamChannelInstance(channel)))
     }
@@ -142,12 +139,12 @@ impl AudioInstance for SampleChannelInstance {
         // }
     }
 
-    fn get_data(&self) -> Vec<FFTEntry> {
+    fn get_data(&self) -> Vec<tataku::FFTEntry> {
         self.data().channel
             .get_data(DataType::FFT2048, 1024)
             .unwrap_or_default()
             .into_iter()
-            .map(FFTEntry::AmplitudeOnly)
+            .map(tataku::FFTEntry::AmplitudeOnly)
             .collect()
     }
 
@@ -203,12 +200,12 @@ impl AudioInstance for StreamChannelInstance {
     fn set_repeat(&self, _: bool) {}
 
 
-    fn get_data(&self) -> Vec<FFTEntry> {
+    fn get_data(&self) -> Vec<tataku::FFTEntry> {
         self.0
         .get_data(DataType::FFT2048, 1024)
         .unwrap_or_default()
         .into_iter()
-        .map(FFTEntry::AmplitudeOnly)
+        .map(tataku::FFTEntry::AmplitudeOnly)
         .collect()
     }
 
@@ -220,11 +217,11 @@ impl AudioInstance for StreamChannelInstance {
 
 
 
-fn map_bass_err(e: BassError) -> AudioError {
+fn map_bass_err(e: BassError) -> errors::audio::AudioError {
     if [BassError::Empty, BassError::Fileform, BassError::Illparam].contains(&e) {
-        AudioError::Empty
+        errors::audio::AudioError::Empty
     } else {
-        AudioError::ApiError(format!("{e:?}"))
+        errors::audio::AudioError::ApiError(format!("{e:?}"))
     }
 }
 
@@ -232,7 +229,7 @@ fn map_bass_err(e: BassError) -> AudioError {
 
 /// check for the bass lib
 /// if not found, will be downloaded
-fn check_bass() -> TatakuResult<()> {
+fn check_bass() -> tataku::TatakuResult<()> {
     #[cfg(target_os = "linux")] 
     use tataku_client_common::prelude::Io;
 

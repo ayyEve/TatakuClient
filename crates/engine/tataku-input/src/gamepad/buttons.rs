@@ -1,4 +1,6 @@
-use crate::prelude::*;
+use crate::*;
+use common::reflect::*;
+use common::macros::Reflect;
 
 #[derive(Reflect)]
 #[derive(Serialize, Deserialize)]
@@ -72,7 +74,7 @@ impl From<gilrs::Button> for GamepadButton {
 impl std::str::FromStr for GamepadButton {
     type Err = std::convert::Infallible;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> core::result::Result<Self, Self::Err> {
         Ok(match &*s.to_lowercase() {
             "north" => Self::North,
             "south" => Self::South,

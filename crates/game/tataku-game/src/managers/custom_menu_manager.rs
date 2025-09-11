@@ -1,6 +1,11 @@
 use crate::prelude::*;
 use serde::de::DeserializeOwned;
 
+use interface::{
+    CustomMenu,
+    CustomDialog,
+};
+
 #[derive(Default)]
 pub struct CustomMenuManager {
     menu_list: Vec<CustomEntry<CustomMenu>>,
@@ -11,9 +16,9 @@ impl CustomMenuManager {
         path: Option<String>, 
         bytes: Vec<u8>, 
         source: CustomMenuSource
-    ) -> TatakuResult<CustomEntry<T>> {
+    ) -> tataku::Result<CustomEntry<T>> {
         let menu = quick_xml::de::from_reader(std::io::Cursor::new(&bytes))
-            .map_err(TatakuError::from_err)?;
+            .map_err(tataku::Error::from_err)?;
 
         Ok(CustomEntry {
             path,
@@ -28,7 +33,7 @@ impl CustomMenuManager {
         path: String, 
         source: CustomMenuSource,
         entry_type: CustomEntryType,
-    ) -> TatakuResult {
+    ) -> tataku::Result<()> {
         let bytes = std::fs::read(&path)?;
         self.load_entry_bytes(&bytes, Some(path), source, entry_type)
     }
@@ -39,7 +44,7 @@ impl CustomMenuManager {
         path: Option<String>,
         source: CustomMenuSource,
         entry_type: CustomEntryType,
-    ) -> TatakuResult {
+    ) -> tataku::Result<()> {
         match entry_type {
             CustomEntryType::Menu => {
                 self.menu_list.push(Self::load_entry_inner(

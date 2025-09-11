@@ -1,4 +1,21 @@
 use crate::prelude::*;
+use common::reflect::*;
+use tataku::{
+    Border,
+    Bounds,
+    Vector2,
+    TatakuValue,
+};
+use ui::{
+    tree::*,
+    widget::*,
+    message::*,
+};
+use input::{ 
+    InputType,
+    InputEvent, 
+    MouseButton, 
+};
 
 // default spacing between dropdown items, should probably be kept 0
 const DEFAULT_ITEM_MARGIN: f32 = 0.0;
@@ -40,7 +57,7 @@ impl Dropdown {
 
             // theme: DropdownTheme::sane_defaults(),
 
-            node_id: EMPTY_NODE
+            node_id: ui::EMPTY_NODE
         }
     }
 
@@ -68,7 +85,7 @@ impl Dropdown {
     fn set_value(
         &mut self, 
         index: usize, 
-        shell: &mut InputShell<TatakuAction>
+        shell: &mut InputShell<actions::Action>
     ) {
         self.active = false;
         self.value.set_index(index);
@@ -112,13 +129,13 @@ impl Dropdown {
         }
     }
 }
-impl Widget<TatakuAction> for Dropdown {
+impl Widget<actions::Action> for Dropdown {
     fn name(&self) -> CowStr { "dropdown_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn layout(
         &mut self, 
-        shell: &mut LayoutShell<TatakuAction>
+        shell: &mut LayoutShell<actions::Action>
     ) -> taffy::TaffyResult<NodeId> {
         self.node_id = shell.tree.new_leaf()?;
 
@@ -130,7 +147,7 @@ impl Widget<TatakuAction> for Dropdown {
         Ok(self.node_id)
     }
 
-    fn init_style(&mut self, shell: &mut LayoutShell<TatakuAction>) {
+    fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
         let text_style = shell.tree
             .get_text_style(self.node_id)
             .unwrap();
@@ -148,7 +165,7 @@ impl Widget<TatakuAction> for Dropdown {
     fn input(
         &mut self, 
         event: &InputEvent, 
-        shell: &mut InputShell<TatakuAction>,
+        shell: &mut InputShell<actions::Action>,
     ) {
         let Some(bounds) = shell.tree.bounds(self.node_id) 
         else { return };
@@ -161,11 +178,11 @@ impl Widget<TatakuAction> for Dropdown {
                 let Some(key) = input.as_key() else { return };
                 
                 match key {
-                    Key::Escape => {
+                    input::Key::Escape => {
                         self.active = false;
                         self.active_index = None;
                     }
-                    Key::Enter => {
+                    input::Key::Enter => {
                         if let Some(index) = self.active_index.take() {
                             self.set_value(index, shell);
                         }
@@ -269,21 +286,19 @@ impl Widget<TatakuAction> for Dropdown {
         }
     }
 
-    fn draw(&self, shell: &mut DrawShell<TatakuAction>) {
+    fn draw(&self, shell: &mut DrawShell<actions::Action>) {
         let theme = &shell.general_theme;
         let Some(bounds) = shell.tree.absolute_bounds(self.node_id) 
         else { return };
 
         // bounding box
-        shell.list.push(
-            Rectangle::new_bounds(
-                bounds,
-                theme.background_color,
-            ).border(Border::new(
-                theme.get_color(self.active, self.hover), 
-                2.0
-            ))
-        );
+        shell.list.push(graphics::Rectangle::new_bounds(
+            bounds,
+            theme.background_color,
+        ).border(Border::new(
+            theme.get_color(self.active, self.hover), 
+            2.0
+        )));
 
         // selected text
         let displays = self.variants.get_displays();
@@ -298,7 +313,7 @@ impl Widget<TatakuAction> for Dropdown {
         // shell.list.push(text_style.create_text(main_text.to_string(), bounds));
     }
 
-    fn draw_overlay(&self, shell: &mut DrawShell<TatakuAction>) {
+    fn draw_overlay(&self, shell: &mut DrawShell<actions::Action>) {
         if !self.active { return }
         let Some(bounds) = shell.tree.absolute_bounds(self.node_id) 
         else { return };
@@ -338,16 +353,14 @@ impl Widget<TatakuAction> for Dropdown {
             );
 
             // bounding box
-            shell.list.push(
-                Rectangle::new(
-                    offset, 
-                    bounds.size,
-                    theme.background_color.alpha(1.0),
-                ).border(Border::new(
-                    theme.get_color(n == selected, n == active), 
-                    2.0
-                ))
-            );
+            shell.list.push(graphics::Rectangle::new(
+                offset, 
+                bounds.size,
+                theme.background_color.alpha(1.0),
+            ).border(Border::new(
+                theme.get_color(n == selected, n == active), 
+                2.0
+            )));
 
             // let text = text_style.create_text(
             //     i,
@@ -357,7 +370,7 @@ impl Widget<TatakuAction> for Dropdown {
         }
     }
 
-    fn update(&mut self, shell: &mut UpdateShell<TatakuAction>) {
+    fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
         self.placeholder.update(shell.values);
         if self.variants.is_unbuilt() {
             if let Err(e) = self.variants.build(shell.values) {
@@ -498,7 +511,7 @@ impl From<Vec<BuildableAction>> for DropdownOnChange {
 
 pub enum DropdownVariants {
     Static(Vec<String>),
-    Variable(VariablePathResolver),
+    Variable(engine::VariablePathResolver),
     Built {
         items: Vec<DropdownWrapper>,
         cached_displays: Vec<String>
@@ -509,7 +522,7 @@ impl DropdownVariants {
         matches!(self, Self::Variable(_))
     }
     
-    fn build(&mut self, values: &dyn Reflect) -> TatakuResult<()> {
+    fn build(&mut self, values: &dyn Reflect) -> tataku::TatakuResult<()> {
         let Self::Variable(var) = self 
         else { return Ok(()) };
 
@@ -572,7 +585,7 @@ impl From<Vec<String>> for DropdownVariants {
 }
 impl From<ArcStr> for DropdownVariants {
     fn from(value: ArcStr) -> Self {
-        Self::Variable(VariablePathResolver::new(value))
+        Self::Variable(engine::VariablePathResolver::new(value))
     }
 }
 impl From<String> for DropdownVariants {
@@ -606,7 +619,7 @@ impl Clone for DropdownWrapper {
 
 pub enum DropdownValue {
     Index(Option<usize>),
-    Variable(VariablePathResolver, Option<usize>),
+    Variable(engine::VariablePathResolver, Option<usize>),
 }
 impl DropdownValue {
     fn index(&self) -> Option<usize> {
@@ -630,12 +643,12 @@ impl From<Option<usize>> for DropdownValue {
 }
 impl From<String> for DropdownValue {
     fn from(value: String) -> Self {
-        Self::Variable(VariablePathResolver::new(value), None)
+        Self::Variable(engine::VariablePathResolver::new(value), None)
     }
 }
 impl From<ArcStr> for DropdownValue {
     fn from(value: ArcStr) -> Self {
-        Self::Variable(VariablePathResolver::new(value), None)
+        Self::Variable(engine::VariablePathResolver::new(value), None)
     }
 }
 

@@ -1,5 +1,6 @@
 use crate::prelude::*;
-use tataku_audio::prelude::*;
+use audio::*;
+use engine::actions::audio::*;
 
 pub struct AudioManager {
     engine: Arc<dyn AudioApi>,
@@ -10,7 +11,7 @@ pub struct AudioManager {
 impl AudioManager {
     pub fn init_audio(
         engines: Vec<AudioApiInit>
-    ) -> TatakuResult<Self> {
+    ) -> tataku::TatakuResult<Self> {
         let mut api: Option<Arc<dyn AudioApi>> = None;
 
         for i in &engines {
@@ -34,7 +35,7 @@ impl AudioManager {
                 _engine_builders: engines
             })
         } else {
-            Err(TatakuError::String("Failed to load audio api".to_owned()))
+            Err(tataku::Error::String("Failed to load audio api".to_owned()))
         }
         
     }
@@ -43,14 +44,14 @@ impl AudioManager {
     pub fn amplitude_multiplier(&self) -> f32 { self.engine.amplitude_multiplier() }
 
 
-    pub fn load_song(&self, path: impl AsRef<Path>) -> TatakuResult<Arc<dyn AudioInstance>> {
+    pub fn load_song(&self, path: impl AsRef<Path>) -> tataku::TatakuResult<Arc<dyn AudioInstance>> {
         self.engine.load_stream_path(path.as_ref())
     }
-    pub fn load_song_raw(&self, bytes: Vec<u8>) -> TatakuResult<Arc<dyn AudioInstance>> {
+    pub fn load_song_raw(&self, bytes: Vec<u8>) -> tataku::TatakuResult<Arc<dyn AudioInstance>> {
         self.engine.load_stream_data(bytes)
     }
     
-    pub fn load(&self, path: impl AsRef<str>) -> TatakuResult<Arc<dyn AudioInstance>> {
+    pub fn load(&self, path: impl AsRef<str>) -> tataku::TatakuResult<Arc<dyn AudioInstance>> {
         let path = path.as_ref();
         for ext in [".wav", ".mp3", ".ogg"] {
             let path = format!("{path}{ext}");
@@ -59,17 +60,17 @@ impl AudioManager {
             }
             // error!("not found: {path}");
         }
-        Err(TatakuError::Audio(AudioError::FileDoesntExist))
+        Err(errors::audio::AudioError::FileDoesntExist.into())
     }
 
 
-        pub fn handle_action(
-            &mut self, 
-            action: AudioAction,
-            values: &mut ValueCollection,
-            #[cfg(feature="graphics")] 
-            skin: &mut SkinManager,
-        ) {
+    pub fn handle_action(
+        &mut self, 
+        action: AudioAction,
+        values: &mut ValueCollection,
+        #[cfg(feature="graphics")] 
+        skin: &mut SkinManager,
+    ) {
         let id = &action.id;
         
         match action.action {
@@ -162,4 +163,3 @@ impl Deref for SoundEntry {
         &self.sound
     }
 }
-

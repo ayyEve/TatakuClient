@@ -1,4 +1,14 @@
 use crate::prelude::*;
+use tataku::{
+    Color,
+    Border,
+    Bounds,
+    Vector2,
+};
+use engine::gameplay::stats::{
+    StatsValue,
+    StatsEntry,
+};
 
 #[derive(Clone)]
 pub struct BarGraph {
@@ -41,14 +51,14 @@ impl BarGraph {
     }
 
     
-    pub fn draw(&self, bounds: &Bounds) -> RenderableCollection {
-        let mut collection = RenderableCollection::default();
+    pub fn draw(&self, bounds: &Bounds) -> graphics::RenderableCollection {
+        let mut collection = graphics::RenderableCollection::default();
 
         let size = bounds.size;
 
         // background
         collection.push(
-            Rectangle::new(
+            graphics::Rectangle::new(
                 bounds.pos,
                 size,
                 Color::new(0.2, 0.2, 0.2, 0.7),
@@ -70,7 +80,7 @@ impl BarGraph {
                 StatsValue::Single(v) => {
                     let v = self.map_point(*v, size);
 
-                    collection.push(Line::new(
+                    collection.push(graphics::Line::new(
                         bounds.pos + Vector2::with_y(v),
                         bounds.pos + size.x_portion() + Vector2::with_y(v),
                         2.0,
@@ -84,7 +94,7 @@ impl BarGraph {
                     let x_step = size.x / mapped_points.len() as f32;
 
                     for (n, new_y) in mapped_points.iter().copied().enumerate().skip(1) {
-                        collection.push(Line::new(
+                        collection.push(graphics::Line::new(
                             bounds.pos + Vector2::new(x_step * (n-1) as f32, prev_y),
                             bounds.pos + Vector2::new(x_step * n as f32, new_y),
                             2.0,

@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use engine::gameplay::HitObject;
 
 pub trait TaikoHitObject: HitObject + Send + Sync {
     fn is_kat(&self) -> bool { false } // needed for diff calc and autoplay

@@ -1,8 +1,24 @@
 use crate::prelude::*;
+use tataku::{
+    Vector2,
+    TatakuValue,
+    Easing,
+    Animate,
+    AnimationTimeline,
+};
+use ui::{
+    tree::*,
+    widget::*,
+    message::*,
+};
+use input::{ 
+    InputEvent, 
+    InputType 
+};
 
 #[derive(ChainableInitializer)]
 pub struct TransformableWidget {
-    child: Box<dyn Widget<TatakuAction>>,
+    child: Box<dyn Widget<actions::Action>>,
 
     x_position: AnimationTimeline<f32>,
     y_position: AnimationTimeline<f32>,
@@ -28,7 +44,7 @@ impl TransformableWidget {
     pub fn new(
         triggers: Vec<AnimatableTrigger>,
         actions: HashMap<String, Vec<AnimatableAction>>,
-        child: Box<dyn Widget<TatakuAction>>,
+        child: Box<dyn Widget<actions::Action>>,
     ) -> Self {
         Self {
             x_position: AnimationTimeline::new(Vec::new(), 0.0),
@@ -41,7 +57,7 @@ impl TransformableWidget {
             actions,
             child,
 
-            node_id: EMPTY_NODE,
+            node_id: ui::EMPTY_NODE,
 
             hover: false,
             pressed: false,
@@ -111,14 +127,14 @@ impl TransformableWidget {
         }
     }
 
-    fn transform(&self) -> Transform {
+    fn transform(&self) -> graphics::Transform {
         let x_position = self.x_position.last_value();
         let y_position = self.y_position.last_value();
         let x_scale = self.x_scale.last_value();
         let y_scale = self.y_scale.last_value();
         let rotation = self.rotation.last_value();
 
-        Transform::new(
+        graphics::Transform::new(
             Vector2::new(x_position, y_position),
             Vector2::new(x_scale, y_scale),
             rotation,
@@ -126,18 +142,18 @@ impl TransformableWidget {
         )
     }
 }
-impl Widget<TatakuAction> for TransformableWidget {
+impl Widget<actions::Action> for TransformableWidget {
     fn name(&self) -> CowStr { "transformable_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn children(&self) -> WidgetChildren<'_, TatakuAction> {
+    fn children(&self) -> WidgetChildren<'_, actions::Action> {
         WidgetChildren::Single(&self.child)
     }
-    fn children_mut(&mut self) -> WidgetChildrenMut<'_, TatakuAction> {
+    fn children_mut(&mut self) -> WidgetChildrenMut<'_, actions::Action> {
         WidgetChildrenMut::Single(&mut self.child)
     }
 
-    fn layout(&mut self, shell: &mut LayoutShell<TatakuAction>) -> taffy::TaffyResult<NodeId>  {
+    fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId>  {
         let child = self.child.layout(shell)?;
         self.node_id = shell.tree.new_with_children(&[child])?;
         Ok(self.node_id)
@@ -146,7 +162,7 @@ impl Widget<TatakuAction> for TransformableWidget {
     fn input(
         &mut self,
         event: &InputEvent,
-        shell: &mut InputShell<TatakuAction>,
+        shell: &mut InputShell<actions::Action>,
     ) {
         let game_time = shell.values.reflect_get::<f32>("game.time")
             .unwrap()
@@ -214,7 +230,7 @@ impl Widget<TatakuAction> for TransformableWidget {
         self.child.input(event, shell);
     }
 
-    fn update(&mut self, shell: &mut UpdateShell<TatakuAction>) {
+    fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
         let time = shell.values.reflect_get::<f32>("game.time")
             .unwrap()
             .copied();
@@ -262,9 +278,9 @@ impl Widget<TatakuAction> for TransformableWidget {
 
             context.local_transform = transform;
 
-            shell.actions.push(UiAction::new(
+            shell.actions.push(actions::ui::UiAction::new(
                 self.node_id,
-                UiActionType::ContextChanged
+                actions::ui::UiActionType::ContextChanged
             ).into());
         }
         self.child.update(shell);
@@ -273,7 +289,7 @@ impl Widget<TatakuAction> for TransformableWidget {
     fn handle_message(
         &mut self,
         message: &Message,
-        shell: &mut MessageShell<TatakuAction>,
+        shell: &mut MessageShell<actions::Action>,
     ) {
         let mut to_trigger = Vec::new();
 
@@ -298,9 +314,9 @@ impl Widget<TatakuAction> for TransformableWidget {
 
     fn handle_event(
         &mut self,
-        event: &TatakuEvent,
+        event: &input::TatakuEvent,
         event_value: Option<&TatakuValue>,
-        shell: &mut MessageShell<TatakuAction>,
+        shell: &mut MessageShell<actions::Action>,
     ) {
         let mut to_trigger = Vec::new();
         for trigger in self.triggers.iter() {

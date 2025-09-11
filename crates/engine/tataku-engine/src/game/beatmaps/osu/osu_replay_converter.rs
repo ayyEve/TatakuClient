@@ -1,16 +1,20 @@
-use crate::prelude::*;
+use crate::*;
+use common::Score;
+use common::GameSpeed;
+use tataku::Vector2;
+use common::replays::*;
 use std::convert::TryInto;
 
 pub fn convert_osu_replay(
     filepath: impl AsRef<Path>,
-    infos: &GamemodeInfos,
-) -> TatakuResult<Score> {
+    infos: &gameplay::GamemodeInfos,
+) -> tataku::TatakuResult<Score> {
     let osu_replay = read_osu_replay(filepath)?;
     Ok(osu_replay.get_replay(infos))
 }
 
-fn read_osu_replay(file: impl AsRef<Path>) -> TatakuResult<OsuReplay> {
-    let file = Io::read_file(file)?;
+fn read_osu_replay(file: impl AsRef<Path>) -> tataku::TatakuResult<OsuReplay> {
+    let file = tataku::Io::read_file(file)?;
     let file = file.as_slice();
     let mut offset = 0;
 
@@ -60,8 +64,8 @@ fn read_osu_replay(file: impl AsRef<Path>) -> TatakuResult<OsuReplay> {
 
         macro_rules! parse {
             ($seg:expr) => {{
-                let str = split2.next().ok_or(TatakuError::String(format!("missing {} segment in health string", $seg)))?;
-                str.parse().map_err(|e| TatakuError::String(format!("parse err: {e}")))?
+                let str = split2.next().ok_or(tataku::Error::String(format!("missing {} segment in health string", $seg)))?;
+                str.parse().map_err(|e| tataku::Error::String(format!("parse err: {e}")))?
             }};
         }
 
@@ -113,10 +117,10 @@ fn read_osu_replay(file: impl AsRef<Path>) -> TatakuResult<OsuReplay> {
 }
 
 
-fn parse_lzma_stream(lzma: &mut impl std::io::BufRead) -> TatakuResult<Vec<OsuReplayFrame>>{
+fn parse_lzma_stream(lzma: &mut impl std::io::BufRead) -> tataku::TatakuResult<Vec<OsuReplayFrame>>{
     let mut replay_data_decompressed = Vec::new();
     if let Err(e) = lzma_rs::lzma_decompress(lzma, &mut replay_data_decompressed) {
-        return Err(TatakuError::String(format!("Error decompressing replay data: {e}")))
+        return Err(tataku::Error::String(format!("Error decompressing replay data: {e}")))
     }
     let replay_str = String::from_utf8_lossy(&replay_data_decompressed);
 
@@ -128,8 +132,8 @@ fn parse_lzma_stream(lzma: &mut impl std::io::BufRead) -> TatakuResult<Vec<OsuRe
 
         macro_rules! parse {
             ($seg:expr) => {{
-                let str = split2.next().ok_or(TatakuError::String(format!("missing {} segment in replay string", $seg)))?;
-                str.parse().map_err(|e| TatakuError::String(format!("{e}")))?
+                let str = split2.next().ok_or(tataku::Error::String(format!("missing {} segment in replay string", $seg)))?;
+                str.parse().map_err(|e| tataku::Error::String(format!("{e}")))?
             }};
         }
         
@@ -163,7 +167,7 @@ macro_rules! read_num {
     ($bytes:expr, $offset: expr, $t:ident) => {{
         let len = (<$t>::BITS / 8) as usize;
 
-        if *$offset + (len - 1) >= $bytes.len() { return Err(TatakuError::String(format!("buffer overflow"))); }
+        if *$offset + (len - 1) >= $bytes.len() { return Err(tataku::Error::String(format!("buffer overflow"))); }
 
         let val = <$t>::from_le_bytes($bytes[*$offset..(*$offset + len)].try_into().unwrap());
         *$offset += len;
@@ -171,7 +175,7 @@ macro_rules! read_num {
     }}
 }
 
-fn read_byte(bytes: &[u8], offset:&mut usize) -> TatakuResult<u8> {
+fn read_byte(bytes: &[u8], offset:&mut usize) -> tataku::TatakuResult<u8> {
     if *offset >= bytes.len() { return Err("buffer overflow".into()); }
 
     let b = bytes[*offset];
@@ -179,17 +183,17 @@ fn read_byte(bytes: &[u8], offset:&mut usize) -> TatakuResult<u8> {
     Ok(b)
 }
 
-fn read_short(bytes: &[u8], offset:&mut usize) -> TatakuResult<u16> {
+fn read_short(bytes: &[u8], offset:&mut usize) -> tataku::TatakuResult<u16> {
     read_num!(bytes, offset, u16)
 }
-fn read_int(bytes: &[u8], offset:&mut usize) -> TatakuResult<u32> {
+fn read_int(bytes: &[u8], offset:&mut usize) -> tataku::TatakuResult<u32> {
     read_num!(bytes, offset, u32)
 }
-fn read_long(bytes: &[u8], offset:&mut usize) -> TatakuResult<u64> {
+fn read_long(bytes: &[u8], offset:&mut usize) -> tataku::TatakuResult<u64> {
     read_num!(bytes, offset, u64)
 }
 
-fn read_string(bytes: &[u8], offset:&mut usize) -> TatakuResult<String> {
+fn read_string(bytes: &[u8], offset:&mut usize) -> tataku::TatakuResult<String> {
     let b = bytes[*offset];
     *offset += 1;
 
@@ -203,7 +207,7 @@ fn read_string(bytes: &[u8], offset:&mut usize) -> TatakuResult<String> {
         *offset += len;
         Ok(string)
     } else {
-        Err(TatakuError::String(format!("wrong first byte for uleb: {b:X}")))
+        Err(tataku::Error::String(format!("wrong first byte for uleb: {b:X}")))
     }
 }
 
@@ -252,7 +256,7 @@ pub struct OsuReplay {
     replay_frames: Vec<OsuReplayFrame>
 }
 impl OsuReplay {
-    pub fn get_score(&self, infos: &GamemodeInfos) -> Score {
+    pub fn get_score(&self, infos: &gameplay::GamemodeInfos) -> Score {
         let mut score = Score::new((&self.map_hash).try_into().unwrap(), self.username.clone(), self.game_mode.clone());
         score.score = self.score as u64;
         score.max_combo = self.max_combo;
@@ -277,7 +281,7 @@ impl OsuReplay {
         // mods
         {
             let info = infos.get_info(&self.game_mode).expect("nice try");
-            let ok_mods = ModManager::mods_for_playmode_as_hashmap(info);
+            let ok_mods = gameplay::mods::ModManager::mods_for_playmode_as_hashmap(info);
 
             let mut mods = Vec::new(); //score.mods_mut();
             if self.mods.contains(&OsuMods::Easy) { mods.push("easy"); }
@@ -298,7 +302,7 @@ impl OsuReplay {
 
     pub fn get_replay(
         &self,
-        infos: &GamemodeInfos,
+        infos: &gameplay::GamemodeInfos,
     ) -> Score {
         // let mut replay = Self::parse_frames(&self.game_mode, &self.replay_frames);
         // replay.score_data = Some(self.get_score());
@@ -308,7 +312,10 @@ impl OsuReplay {
 
     
 
-    pub fn replay_from_score_and_lzma(score: &Score, lzma: &mut impl std::io::BufRead) -> TatakuResult<Score> {
+    pub fn replay_from_score_and_lzma(
+        score: &Score, 
+        lzma: &mut impl std::io::BufRead
+    ) -> tataku::TatakuResult<Score> {
         let frames = parse_lzma_stream(lzma)?;
         let replay = Self::parse_frames(&score.playmode, &frames);
         // replay.score_data = Some(score.clone());

@@ -1,6 +1,44 @@
 use crate::prelude::*;
 use super::GameState;
 
+use common::{
+    reflect::Reflect,
+    packets::MultiplayerPacket,
+};
+
+use tataku::{
+    TatakuValue,
+    Vector2,
+    Color,
+};
+
+use engine::{
+    actions,
+    gameplay,
+    Notification,
+    TatakuIntegrationEvent,
+    gameplay::gameplay_manager::GameplayManagerTrait,
+    actions::{
+        mods::ModAction as ModAction,
+        menu::MenuAction as MenuAction,
+        song::SongAction as SongAction,
+        multiplayer::MultiplayerAction as MultiplayerAction,
+        beatmap::{
+            BeatmapAction as BeatmapAction,
+            BeatmapListAction as BeatmapListAction,
+            *,
+        },
+
+        game::{
+            GameplayId,
+            GameAction as GameAction,
+            CurrentGameAction as CurrentGameAction,
+        },
+    }
+};
+#[cfg(feature="graphics")] 
+use graphics::SkinProvider;
+
 // action handlers. here bc they're so big
 impl Game {
 
@@ -40,7 +78,7 @@ impl Game {
     // }
 
 
-    pub(super) fn handle_actions(&mut self, actions: Option<Vec<TatakuAction>>) {
+    pub(super) fn handle_actions(&mut self, actions: Option<Vec<actions::Action>>) {
         if let Some(actions) = actions {
             self.actions.extend(actions);
         }
@@ -85,7 +123,7 @@ impl Game {
     pub(super) fn handle_custom_dialog(
         &mut self, 
         id: impl ToString, 
-        options: DialogCreateOptions,
+        options: actions::menu::DialogCreateOptions,
     ) {
         let id:ArcStr = id.to_string().into();
         let Some(dialog) = self.custom_menu_manager
@@ -105,7 +143,7 @@ impl Game {
             return;
         };
 
-        let options = DialogCreateOptions::merge(
+        let options = actions::menu::DialogCreateOptions::merge(
             options,
             dialog.options(),
         );
@@ -272,7 +310,7 @@ impl Game {
                         let start_time = manager.start_time as u64;
 
                         manager.handle_action(
-                            GameplayAction::ApplyMods(mods), 
+                            actions::gameplay::GameplayAction::ApplyMods(mods), 
                             &self.settings
                         );
 
@@ -337,16 +375,16 @@ impl Game {
                         .current_beatmap() 
                     else { return };
 
-                    self.values.values.online_manager.handle_action(OnlineAction::ChatAction(
-                        ChatAction::SendMessage { 
+                    self.values.values.online_manager.handle_action(
+                        actions::chat::ChatAction::SendMessage { 
                             channel: spec_man.host_username.to_string(), 
-                            message: BeatmapLink {
+                            message: engine::online::BeatmapLink {
                                 beatmap_hash: map.beatmap_hash.to_string(),
                                 beatmap_title: map.version_string(),
                                 download_link: None,
                             }.to_string()
-                        }
-                    ));
+                        }.into()
+                    );
                 } else {
                     // play map
                     self.handle_beatmap_action(BeatmapAction::PlaySelected);
@@ -649,7 +687,7 @@ impl Game {
                     &self.values.settings,
                 ) {
                     Ok(mut manager) => {
-                        manager.set_mode(GameplayMode::Replay(score).into());
+                        manager.set_mode(actions::game::GameplayMode::Replay(score).into());
                         self.queue_state_change(GameState::Ingame(Box::new(
                             manager
                         )));
@@ -663,6 +701,7 @@ impl Game {
                 }
             }
             GameAction::SetValue(key, value) => {
+                use common::reflect::*;
                 let values = self.values.as_dyn_mut();
                 let a = format!("{value:?}");
 
@@ -704,7 +743,7 @@ impl Game {
                     self.set_current_beatmap(
                         score.beatmap_hash, 
                         SelectBeatmapConfig::new(
-                            ModManager::new(
+                            gameplay::mods::ModManager::new(
                                 score.mods.iter(),
                                 score.speed, 
                                 &info
@@ -755,8 +794,8 @@ impl Game {
                 
                 self.background_image = self.skin_manager.get_texture(
                     &filename, 
-                    &TextureSource::Raw, 
-                    SkinUsage::Background, 
+                    &graphics::TextureSource::Raw, 
+                    graphics::SkinUsage::Background, 
                     false
                 );
 
@@ -769,7 +808,7 @@ impl Game {
             #[cfg(feature="graphics")]
             GameAction::CopyToClipboard(text) => { 
                 let _ = self.window_proxy.send_event(
-                    WindowAction::CopyToClipboard(text)
+                    actions::window::WindowAction::CopyToClipboard(text)
                 ); 
             }
 
@@ -783,7 +822,7 @@ impl Game {
 
             GameAction::RefreshSkins => {
                 let mut list = vec!["None".to_owned()];
-                for f in std::fs::read_dir(SKINS_FOLDER).unwrap() {
+                for f in std::fs::read_dir(engine::SKINS_FOLDER).unwrap() {
                     list.push(f.unwrap().file_name().to_string_lossy().to_string());
                 }
                 self.values.enums.skins = list;
@@ -793,7 +832,7 @@ impl Game {
             #[cfg(feature="graphics")]
             GameAction::NewGameplayManager(config) => {
                 match match &config {
-                    NewManager {
+                    actions::game::NewManager {
                         mods,
                         map_hash: Some(map_hash),
                         path: Some(path),
@@ -814,7 +853,7 @@ impl Game {
                             &self.values.settings,
                         )
                     }
-                    NewManager {
+                    actions::game::NewManager {
                         mods,
                         map_hash,
                         playmode,
@@ -863,17 +902,18 @@ impl Game {
                         
                         if let Some(bounds) = config.area {
                             manager.handle_action(
-                                GameplayAction::FitToArea(bounds), 
+                                actions::gameplay::GameplayAction::FitToArea(bounds), 
                                 &self.settings
                             );
                         }
                         manager.reset();
 
+                        use crate::prelude::ui;
                         let id = self.next_gameplay_id();
-                        self.ui_manager.add_message(Message::new(
+                        self.ui_manager.add_message(ui::message::Message::new(
                             config.owner, 
                             "gameplay_manager_create", 
-                            MessageValue::Custom(id.clone())
+                            ui::message::MessageValue::Custom(id.clone())
                         ));
                         manager.set_id(id.clone());
 
@@ -905,7 +945,7 @@ impl Game {
                 else { return };
 
                 
-                if let &GameplayAction::RequestDifficulty = &action {
+                if let &actions::gameplay::GameplayAction::RequestDifficulty = &action {
                     gameplay.update_difficulty(&mut self.difficulty_manager);
                 } else {
                     gameplay.handle_action(action, &self.values.settings);
@@ -1004,7 +1044,7 @@ impl Game {
 
             // lobby actions
             #[cfg(feature="gameplay")]
-            MultiplayerAction::LobbyAction(LobbyAction::Leave) => {
+            MultiplayerAction::LobbyAction(actions::multiplayer::LobbyAction::Leave) => {
                 self.handle_multiplayer_action(MultiplayerAction::LeaveLobby);
             }
             #[cfg(feature="gameplay")]
@@ -1029,7 +1069,7 @@ impl Game {
     pub(super) fn handle_multiplayer_packet(
         &mut self, 
         packet: MultiplayerPacket
-    ) -> TatakuResult {
+    ) -> tataku::Result<()> {
         // if we have a multi manager, pass the packet onto it as well
         if let Some(multi_manager) 
             = &mut self.multiplayer_manager 
@@ -1075,6 +1115,7 @@ impl Game {
                     l.has_password = false;
                 }
 
+                use engine::notifications::NotificationOnClick;
                 self.actions.push(
                     Notification::default()
                     .text(format!("{username} has invited you to a multiplayer match"))

@@ -6,7 +6,7 @@ mod conditional;
 mod stats_graph;
 mod input_action;
 mod transformable;
-mod context_menus;
+pub mod context_menus;
 mod visualization;
 mod gameplay_preview;
 mod widget_container;

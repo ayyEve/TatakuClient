@@ -1,5 +1,21 @@
 use crate::prelude::*;
 
+use engine::{
+    game::diffcalc::DiffCalc,
+    beatmaps::{
+        Beatmap,
+        BeatmapMeta,
+        BeatmapType,
+    },
+    gameplay::{
+        GameMode,
+        GamemodeInfo,
+        GamemodeSettings,
+        difficulty_value::*,
+    },
+};
+
+
 
 pub const GAME_INFO: GamemodeInfo = GamemodeInfo {
     id: "utyping",
@@ -29,7 +45,7 @@ pub const GAME_INFO: GamemodeInfo = GamemodeInfo {
 
 struct UTypingGameInfo;
 impl UTypingGameInfo {
-    fn calc_acc(score: &Score) -> f32 {
+    fn calc_acc(score: &common::Score) -> f32 {
         let x100 = score.judgments.get("x100").copied().unwrap_or_default() as f32;
         let x300 = score.judgments.get("x300").copied().unwrap_or_default() as f32;
         let miss = score.judgments.get("xmiss").copied().unwrap_or_default() as f32;
@@ -42,10 +58,10 @@ impl UTypingGameInfo {
         matches!(map, BeatmapType::UTyping)
     }
 
-    fn create_game(beatmap: &Beatmap, settings: &Settings) -> TatakuResult<Box<dyn GameMode>> {
+    fn create_game(beatmap: &Beatmap, settings: &engine::Settings) -> tataku::Result<Box<dyn GameMode>> {
         Ok(Box::new(UTypingGame::new(beatmap, false, settings)?))
     }
-    fn create_diffcalc(map: &BeatmapMeta, settings: &Settings) -> TatakuResult<Box<dyn DiffCalc>> {
+    fn create_diffcalc(map: &BeatmapMeta, settings: &engine::Settings) -> tataku::Result<Box<dyn DiffCalc>> {
         Ok(Box::new(UTypingDifficultyCalculator::new(map, settings)?))
     }
 

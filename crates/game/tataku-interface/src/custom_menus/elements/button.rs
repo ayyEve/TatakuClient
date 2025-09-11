@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use ui::widget::Widget;
 
 #[derive(Deserialize)]
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -17,7 +18,7 @@ pub struct ButtonElement {
     element: Element,
 }
 impl CustomElement for ButtonElement {
-    fn build(&self) -> Box<dyn Widget<TatakuAction>> {
+    fn build(&self) -> Box<dyn Widget<actions::Action>> {
         let mut left = Vec::new();
         let mut middle = Vec::new();
         let mut right = Vec::new();
@@ -32,12 +33,12 @@ impl CustomElement for ButtonElement {
             vec.extend(action.inner.iter().cloned());
         }
 
-        WidgetContainer::new_boxed(
+        widgets::WidgetContainer::new_boxed(
             self.style.clone(),
             "button",
             self.id.clone(),
             self.class_list.clone(),
-            Button::new(self.element.build())
+            widgets::Button::new(self.element.build())
                 .on_press_left(left)
                 .on_press_middle(middle)
                 .on_press_right(right)

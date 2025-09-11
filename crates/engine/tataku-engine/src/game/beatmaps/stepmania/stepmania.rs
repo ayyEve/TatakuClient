@@ -1,4 +1,5 @@
-use crate::prelude::*;
+use crate::*;
+use common::Md5Hash;
 
 #[derive(Default, Clone)]
 #[allow(unused)]
@@ -47,7 +48,7 @@ pub struct StepmaniaBeatmap {
 }
 
 impl StepmaniaBeatmap {
-    pub fn load_multiple<P:AsRef<Path>>(path: P) -> TatakuResult<Vec<Self>> {
+    pub fn load_multiple<P:AsRef<Path>>(path: P) -> tataku::TatakuResult<Vec<Self>> {
         let mut map = Self {
             file_path: path.as_ref().to_string_lossy().to_string().into(),
             ..Default::default()
@@ -64,7 +65,7 @@ impl StepmaniaBeatmap {
         let mut meter = None;
         let mut groove_radar_values = None;
         
-        let mut lines = Io::read_lines_resolved(&path)?;
+        let mut lines = tataku::Io::read_lines_resolved(&path)?;
         while let Some(line) = lines.next() {
             // trim out comments
             let line = line.split("//").next().unwrap();
@@ -240,7 +241,7 @@ impl StepmaniaBeatmap {
                                         note.end = Some(*time);
                                         chart.notes.push(note);
                                     } else {
-                                        return Err(BeatmapError::InvalidFile.into())
+                                        return Err(errors::beatmap::BeatmapError::InvalidFile.into())
                                     }
                                 }
 
@@ -270,7 +271,7 @@ impl StepmaniaBeatmap {
 
                     let mut map = map.clone();
                     map.chart_info = chart;
-                    map.hash = Cryptography::md5(chart_info);
+                    map.hash = tataku::Cryptography::md5(chart_info);
 
                     maps.push(map);
                 }
@@ -284,7 +285,7 @@ impl StepmaniaBeatmap {
         Ok(maps)
     }
 
-    pub fn load_single<P:AsRef<Path>>(path:P, meta: &BeatmapMeta) -> TatakuResult<Self> {
+    pub fn load_single<P:AsRef<Path>>(path:P, meta: &BeatmapMeta) -> tataku::TatakuResult<Self> {
         let maps = Self::load_multiple(path)?;
 
         for map in maps {
@@ -293,20 +294,20 @@ impl StepmaniaBeatmap {
             }
         }
 
-        Err(BeatmapError::InvalidFile.into())
+        Err(errors::beatmap::BeatmapError::InvalidFile.into())
     }
 }
 
-impl TatakuBeatmap for StepmaniaBeatmap {
+impl beatmaps::TatakuBeatmap for StepmaniaBeatmap {
     fn hash(&self) -> Md5Hash {self.hash}
     fn playmode(&self, _incoming: String) -> String { "mania".to_owned() }
     
     fn slider_velocity(&self) -> f32 { 1.0 }
     // fn slider_velocity_at(&self, _time:f32) -> f32 { 400.0 }
 
-    fn get_timing_points(&self) -> Vec<TimingPoint> {
+    fn get_timing_points(&self) -> Vec<beatmaps::TimingPoint> {
         self.beat_lengths.iter().map(|&(time, beat_length)| 
-            TimingPoint {
+            beatmaps::TimingPoint {
                 time, 
                 beat_length,
                 volume: 100,
@@ -323,7 +324,7 @@ impl TatakuBeatmap for StepmaniaBeatmap {
         Arc::new(BeatmapMeta {
             file_path: self.file_path.clone(),
             beatmap_hash: self.hash,
-            beatmap_type: BeatmapType::Stepmania,
+            beatmap_type: beatmaps::BeatmapType::Stepmania,
             mode: self.playmode(String::new()).into(),
             artist: self.artist.clone(),
             title: self.title.clone(),

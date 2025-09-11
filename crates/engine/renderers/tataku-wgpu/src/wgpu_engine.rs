@@ -11,7 +11,7 @@ use tataku::Take as _;
 use tataku::MatrixHelpers as _; 
 use tataku::Interpolation as _;
 use wgpu::util::DeviceExt as _;
-use tataku::RenderingEngine as _;
+use graphics::RenderingEngine as _;
 use lyon_tessellation::geom::{ Box2D, Point };
 use winit::raw_window_handle::{ HasWindowHandle, HasDisplayHandle };
 use lyon_tessellation::path::{ builder::BorderRadii, Path as LyonPath };
@@ -54,7 +54,7 @@ pub struct WgpuEngine<'window> {
     atlas: tataku::Atlas,
     atlas_texture: WgpuTexture,
 
-    screenshot_pending: Option<tataku::ScreenshotCallback>,
+    screenshot_pending: Option<graphics::ScreenshotCallback>,
 
     // sampler: wgpu::Sampler,
     particle_system: shaders::particles::ParticleSystem,
@@ -80,8 +80,8 @@ impl<'window> WgpuEngine<'window> {
     // Creating some of the wgpu types requires async code
     pub async fn create<W:HasWindowHandle + HasDisplayHandle + Sync>(
         window: &'window W,
-        settings: &tataku::DisplaySettings,
-    ) -> Box<dyn tataku::RenderingEngine + 'window> {
+        settings: &engine::settings::display::DisplaySettings,
+    ) -> Box<dyn graphics::RenderingEngine + 'window> {
         let window_size = settings.window_size;
 
         // create a wgpu instance
@@ -110,10 +110,11 @@ impl<'window> WgpuEngine<'window> {
             .unwrap();
 
         // create the adapter
+        use engine::settings::display::PerformanceMode;
         let adapter = instance.request_adapter(&wgpu::RequestAdapterOptions {
             power_preference: match settings.performance_mode {
-                tataku::PerformanceMode::HighPerformance => wgpu::PowerPreference::HighPerformance,
-                tataku::PerformanceMode::PowerSaver => wgpu::PowerPreference::LowPower,
+                PerformanceMode::HighPerformance => wgpu::PowerPreference::HighPerformance,
+                PerformanceMode::PowerSaver => wgpu::PowerPreference::LowPower,
             },
             compatible_surface: Some(&surface),
             force_fallback_adapter: false,
@@ -1607,7 +1608,7 @@ impl WgpuEngine<'_> {
 }
 
 
-impl tataku::RenderingEngine for WgpuEngine<'_> {
+impl graphics::RenderingEngine for WgpuEngine<'_> {
     fn resize(
         &mut self,
         [width, height]: [u32; 2]
@@ -1674,8 +1675,8 @@ impl tataku::RenderingEngine for WgpuEngine<'_> {
         &mut self,
         [width, height]: [u32; 2],
         clear_color: tataku::Color,
-        do_render: tataku::RenderTargetDraw,
-    ) -> Option<tataku::RenderTarget> {
+        do_render: graphics::RenderTargetDraw,
+    ) -> Option<graphics::RenderTarget> {
         // find space in the render target atlas
         let atlased = self.atlas.try_insert(width, height)?;
 
@@ -1684,12 +1685,12 @@ impl tataku::RenderingEngine for WgpuEngine<'_> {
             tataku::Vector2::new(width as f32, height as f32)
         );
 
-        let target = tataku::RenderTarget {
+        let target = graphics::RenderTarget {
             width,
             height,
             projection,
             clear_color,
-            image: tataku::Image::new(
+            image: graphics::Image::new(
                 tataku::Vector2::ZERO,
                 Arc::new(atlased),
                 tataku::Vector2::ONE
@@ -1704,8 +1705,8 @@ impl tataku::RenderingEngine for WgpuEngine<'_> {
     }
     fn update_render_target(
         &mut self,
-        target: tataku::RenderTarget,
-        do_render: tataku::RenderTargetDraw
+        target: graphics::RenderTarget,
+        do_render: graphics::RenderTargetDraw
     ) {
         if !tataku::Bounds::new(tataku::Vector2::ZERO, target.image.size()).has_area() {
             return
@@ -1812,7 +1813,7 @@ impl tataku::RenderingEngine for WgpuEngine<'_> {
         data: &[u8]
     ) -> tataku::TatakuResult<tataku::TextureReference> {
         let diffuse_image = image::load_from_memory(data)
-            .map_err(|e| tataku::TatakuError::String(e.to_string()))?;
+            .map_err(|e| tataku::Error::String(e.to_string()))?;
 
         let diffuse_rgba = diffuse_image.to_rgba8();
 
@@ -1828,7 +1829,7 @@ impl tataku::RenderingEngine for WgpuEngine<'_> {
         [width, height]: [u32; 2]
     ) -> tataku::TatakuResult<tataku::TextureReference> {
         let Some(info) = self.atlas.try_insert(width, height)
-        else { return Err(tataku::TatakuError::String("no space in atlas".to_owned())); };
+        else { return Err(tataku::Error::String("no space in atlas".to_owned())); };
 
         if info.is_empty() { return Ok(info) }
 
@@ -1905,7 +1906,7 @@ impl tataku::RenderingEngine for WgpuEngine<'_> {
         self.atlas.remove_entry(tex);
     }
 
-    fn screenshot(&mut self, callback: tataku::ScreenshotCallback) {
+    fn screenshot(&mut self, callback: graphics::ScreenshotCallback) {
         self.screenshot_pending = Some(Box::new(callback));
     }
 
@@ -1960,7 +1961,7 @@ impl tataku::RenderingEngine for WgpuEngine<'_> {
 
     fn present(&mut self) -> tataku::TatakuResult<()> {
         self.render_current_surface()
-            .map_err(|e| tataku::TatakuError::String(e.to_string()))
+            .map_err(|e| tataku::Error::String(e.to_string()))
     }
 
 
@@ -1973,7 +1974,7 @@ impl tataku::RenderingEngine for WgpuEngine<'_> {
         self.particle_system.update(&self.device, &self.queue);
     }
 
-    fn with_renderer(&mut self, draw: &dyn Fn(&mut dyn tataku::DrawEngine)) {
+    fn with_renderer(&mut self, draw: &dyn Fn(&mut dyn graphics::DrawEngine)) {
         #[cfg(feature="vello")]
         if self.vello_pipeline.is_some() {
             let mut engine = shaders::vello::RenderEngine::new(
@@ -1988,7 +1989,7 @@ impl tataku::RenderingEngine for WgpuEngine<'_> {
     }
 }
 
-impl tataku::DrawEngine for WgpuEngine<'_> {
+impl graphics::DrawEngine for WgpuEngine<'_> {
     fn push_scissor(&mut self, scissor: [f32; 4]) {
         self.scissors.push_scissor(scissor);
     }
@@ -2114,7 +2115,7 @@ impl tataku::DrawEngine for WgpuEngine<'_> {
         &mut self,
         rect: [f32; 4],
         border: Option<tataku::Border>,
-        shape: tataku::Shape,
+        shape: graphics::Shape,
         color: tataku::Color,
         transform: tataku::Matrix,
         blend_mode: tataku::BlendMode,
@@ -2132,14 +2133,14 @@ impl tataku::DrawEngine for WgpuEngine<'_> {
         use lyon_tessellation::path::{ Path, Winding };
         let mut path = Path::builder();
         match shape {
-            tataku::Shape::Square => path.add_rectangle(&rect, Winding::Positive),
-            tataku::Shape::Round(radius) => path.add_rounded_rectangle(
+            graphics::Shape::Square => path.add_rectangle(&rect, Winding::Positive),
+            graphics::Shape::Round(radius) => path.add_rounded_rectangle(
                 &rect,
                 &BorderRadii::new(radius),
                 Winding::Positive
             ),
 
-            tataku::Shape::RoundSep([
+            graphics::Shape::RoundSep([
                 top_left,
                 top_right,
                 bottom_left,
@@ -2182,7 +2183,7 @@ impl tataku::DrawEngine for WgpuEngine<'_> {
 
     fn draw_tex(
         &mut self,
-        tex: tataku::TextureDraw,
+        tex: graphics::TextureDraw,
         transform: tataku::Matrix,
         blend_mode: tataku::BlendMode,
     ) {
@@ -2409,7 +2410,7 @@ impl tataku::DrawEngine for WgpuEngine<'_> {
             let tex = self.load_texture_rgba(&data, size).unwrap();
 
             self.draw_tex(
-                tataku::TextureDraw::new(
+                graphics::TextureDraw::new(
                     &tex,
                     tataku::Color::WHITE,
                 ),

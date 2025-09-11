@@ -1,6 +1,21 @@
 use crate::prelude::*;
 // use super::BAR_COLOR;
 
+use tataku::{
+    Color,
+    Border,
+    Bounds,
+    Vector2,
+};
+use engine::{
+    graphics,
+    beatmaps::NoteType,
+    gameplay::{
+        HitObject,
+        judgments::HitJudgment,
+    },
+};
+
 const NOTE_BORDER_SIZE:f32 = 2.0;
 const GRAVITY_SCALING:f32 = 400.0;
 
@@ -95,7 +110,7 @@ impl HitObject for UTypingNote {
         if let Some(i) = self.image.as_mut() { i.set_pos(self.pos) }
     }
     #[cfg(feature="graphics")]
-    fn draw(&mut self, _time: f32, list: &mut RenderableCollection) {
+    fn draw(&mut self, _time: f32, list: &mut graphics::RenderableCollection) {
         if self.pos.x + self.settings.note_radius < 0.0 || self.pos.x - self.settings.note_radius > 10000000.0 { return }
 
         let size = Vector2::new(self.settings.note_radius, self.settings.note_radius);
@@ -103,7 +118,7 @@ impl HitObject for UTypingNote {
         if let Some(image) = &mut self.image {
             image.draw(list);
         } else {
-            list.push(Circle::new(
+            list.push(graphics::Circle::new(
                 self.pos,
                 self.settings.note_radius,
                 Color::TRANSPARENT,
@@ -185,7 +200,11 @@ impl HitObject for UTypingNote {
     }
 
     #[cfg(feature="graphics")]
-    fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+    fn reload_skin(
+        &mut self, 
+        source: &graphics::TextureSource, 
+        skin_manager: &mut dyn graphics::SkinProvider
+    ) {
         self.image = HitCircleImageHelper::new(&self.settings, source, skin_manager);
     }
 }
@@ -234,12 +253,17 @@ impl UTypingNote {
 
 #[derive(Clone)]
 struct HitCircleImageHelper {
-    circle: Image,
-    overlay: Image,
+    circle: graphics::Image,
+    overlay: graphics::Image,
 }
 impl HitCircleImageHelper {
     #[cfg(feature="graphics")]
-    fn new(_settings: &Arc<TaikoSettings>, source: &TextureSource, skin_manager: &mut dyn SkinProvider) -> Option<Self> {
+    fn new(
+        _settings: &Arc<TaikoSettings>, 
+        source: &graphics::TextureSource, 
+        skin_manager: &mut dyn graphics::SkinProvider,
+    ) -> Option<Self> {
+        use graphics::SkinUsage;
         let scale = 1.0;
         let hitcircle = "taikohitcircle";
 
@@ -269,7 +293,7 @@ impl HitCircleImageHelper {
         self.overlay.pos = pos;
     }
     #[cfg(feature="graphics")]
-    fn draw(&mut self, list: &mut RenderableCollection) {
+    fn draw(&mut self, list: &mut graphics::RenderableCollection) {
         list.push(self.circle.clone());
         list.push(self.overlay.clone());
     }

@@ -1,4 +1,14 @@
 use crate::prelude::*;
+use tataku::{
+    Color,
+    Border,
+    Vector2,
+};
+use engine::{
+    graphics,
+    beatmaps::NoteType,
+    gameplay::HitObject,
+};
 
 #[derive(Default, Clone)]
 pub struct TaikoNote {
@@ -57,7 +67,7 @@ impl HitObject for TaikoNote {
     fn update(&mut self, _time: f32) {}
 
     #[cfg(feature="graphics")]
-    fn draw(&mut self, time: f32, list: &mut RenderableCollection) {
+    fn draw(&mut self, time: f32, list: &mut graphics::RenderableCollection) {
         let x = self.x_at(time);
         let delta_time = time - self.hit_time;
         let y = if self.hit { 
@@ -78,7 +88,7 @@ impl HitObject for TaikoNote {
             image.set_pos(self.pos);
             image.draw(list);
         } else {
-            list.push(Circle::new(
+            list.push(graphics::Circle::new(
                 self.pos,
                 if self.finisher {self.settings.note_radius * self.settings.big_note_multiplier} else {self.settings.note_radius},
                 self.get_color(),
@@ -100,7 +110,11 @@ impl HitObject for TaikoNote {
     }
 
     #[cfg(feature="graphics")]
-    fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+    fn reload_skin(
+        &mut self, 
+        source: &graphics::TextureSource, 
+        skin_manager: &mut dyn graphics::SkinProvider
+    ) {
         self.image = HitCircleImageHelper::new(
             &self.settings, 
             self.hit_type, 

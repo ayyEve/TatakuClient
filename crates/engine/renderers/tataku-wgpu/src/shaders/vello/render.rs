@@ -252,7 +252,7 @@ impl tataku_graphics::DrawEngine for RenderEngine<'_, '_> {
         &mut self,
         rect: [f32; 4],
         border: Option<tataku::Border>,
-        shape: tataku::Shape,
+        shape: graphics::Shape,
         color: tataku::Color,
         transform: tataku::Matrix,
         blend_mode: tataku::BlendMode
@@ -262,21 +262,21 @@ impl tataku_graphics::DrawEngine for RenderEngine<'_, '_> {
         let rect = map_rect(rect);
         
         match shape {
-            tataku::Shape::Square => draw(
+            graphics::Shape::Square => draw(
                 &rect,
                 border,
                 transform,
                 color,
                 reserve,
             ),
-            tataku_graphics::Shape::Round(radius) => draw(
+            graphics::Shape::Round(radius) => draw(
                 &vello::kurbo::RoundedRect::from_rect(rect, radius as f64),
                 border,
                 transform,
                 color,
                 reserve,
             ),
-            tataku_graphics::Shape::RoundSep([a,b,c,d]) => draw(
+            graphics::Shape::RoundSep([a,b,c,d]) => draw(
                 &vello::kurbo::RoundedRect::from_rect(
                     rect, 
                     (a as f64, b as f64, c as f64, d as f64)
@@ -324,9 +324,9 @@ impl tataku_graphics::DrawEngine for RenderEngine<'_, '_> {
 
     fn draw_tex(
         &mut self,
-        tex: tataku::TextureDraw,
-        transform: tataku_engine::prelude::Matrix,
-        blend_mode: tataku_engine::prelude::BlendMode
+        tex: graphics::TextureDraw,
+        transform: tataku::Matrix,
+        blend_mode: tataku::BlendMode
     ) {
         #[cfg(feature="vello_layers")] self.reset_layers();
         self.wgpu.draw_tex(

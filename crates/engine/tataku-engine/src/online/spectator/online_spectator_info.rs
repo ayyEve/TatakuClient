@@ -1,4 +1,7 @@
-use crate::prelude::*;
+use crate::*;
+use common::reflect::*;
+use common::types::network::spectator::*;
+use online::spectator::{ SpectatorList, SpectatingUser };
 
 #[derive(Reflect)]
 #[reflect(dont_clone)]
@@ -14,7 +17,7 @@ pub struct OnlineSpectatorInfo {
 
     /// when was the last spectator frame sent?
     #[reflect(skip)]
-    pub last_sent_frame: TatakuInstant,
+    pub last_sent_frame: tataku::Instant,
 
     /// list of incoming spectator frames, indexed by host_id
     #[reflect(skip)]

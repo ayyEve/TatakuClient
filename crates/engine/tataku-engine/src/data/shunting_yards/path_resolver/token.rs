@@ -1,5 +1,6 @@
-use crate::prelude::*;
+use crate::*;
 use super::*;
+use tataku::_ShuntingYardTokenType;
 
 #[doc(hidden)]
 #[derive(Debug, Clone, PartialEq)]
@@ -9,7 +10,7 @@ pub enum PathShuntingYardToken {
     Reference,
     OpenParenthesis,
 }
-impl _ShuntingYardToken<'_, String, PathShuntingYardError> for PathShuntingYardToken {
+impl tataku::_ShuntingYardToken<'_, String, PathShuntingYardError> for PathShuntingYardToken {
     type Operator = PathShuntingYardOperator;
     const OPEN_PAREN: Self = Self::OpenParenthesis;
 

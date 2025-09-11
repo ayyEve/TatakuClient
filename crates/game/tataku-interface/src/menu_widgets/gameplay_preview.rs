@@ -1,17 +1,29 @@
 use crate::prelude::*;
+use common::reflect::*;
+use tataku::Bounds;
+use graphics::RenderableCollection;
+use ui::{
+    tree::*,
+    widget::*,
+    message::*,
+};
+use engine::{
+    triple_buffer,
+    data::ValueChangeHelper,
+};
 
 pub struct GameplayPreview {
-    beatmap: ValueChangeHelper<Md5Hash>,
+    beatmap: ValueChangeHelper<common::Md5Hash>,
     playmode: ValueChangeHelper<String>,
     song_time: ValueChangeHelper<f32>,
 
-    manager: Option<GameplayId>,
+    manager: Option<actions::game::GameplayId>,
 
     /// area to fit to
     fit_to: Option<Bounds>,
 
-    widget_sender: Arc<Mutex<TripleBufferSender<Option<RenderableCollection>>>>,
-    widget_receiver: TripleBufferReceiver<Option<RenderableCollection>>,
+    widget_sender: Arc<Mutex<triple_buffer::Input<Option<RenderableCollection>>>>,
+    widget_receiver: triple_buffer::Output<Option<RenderableCollection>>,
     gameplay: Mutex<Option<RenderableCollection>>,
     node_id: NodeId,
 }
@@ -20,7 +32,7 @@ impl GameplayPreview {
         let (
             widget_sender, 
             widget_receiver
-        ) = TripleBuffer::default().split();
+        ) = triple_buffer::TripleBuffer::default().split();
 
         Self {
             // current_mods: ModManagerHelper::new(),
@@ -35,7 +47,7 @@ impl GameplayPreview {
             widget_receiver,
             gameplay: Mutex::new(None),
 
-            node_id: EMPTY_NODE,
+            node_id: ui::EMPTY_NODE,
         }
     }
 
@@ -43,13 +55,13 @@ impl GameplayPreview {
         &mut self, 
         owner: MessageOwner,
         _values: &dyn Reflect, 
-        actions: &mut ActionQueue
+        actions: &mut actions::ActionQueue
     ) {
         let widget_sender = self.widget_sender.clone();
-        actions.push(GameAction::NewGameplayManager(NewManager {
+        actions.push(actions::game::GameAction::NewGameplayManager(actions::game::NewManager {
             owner,
             playmode: None,
-            gameplay_mode: Some(GameplayMode::Preview),
+            gameplay_mode: Some(actions::game::GameplayMode::Preview),
             area: self.fit_to,
             draw_function: Some(Arc::new(move |collection| {
                 let Some(mut lock) = widget_sender.try_lock() 
@@ -64,11 +76,14 @@ impl GameplayPreview {
     }
 
 }
-impl Widget<TatakuAction> for GameplayPreview {
+impl Widget<actions::Action> for GameplayPreview {
     fn name(&self) -> CowStr { "gameplay_preview_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn layout(&mut self, shell: &mut LayoutShell<TatakuAction>) -> taffy::TaffyResult<NodeId> {
+    fn layout(
+        &mut self,
+        shell: &mut LayoutShell<actions::Action>
+    ) -> taffy::TaffyResult<NodeId> {
         self.node_id = shell.tree.new_leaf()?;
         Ok(self.node_id)
     }
@@ -76,7 +91,7 @@ impl Widget<TatakuAction> for GameplayPreview {
     fn handle_message(
         &mut self, 
         message: &Message, 
-        shell: &mut MessageShell<TatakuAction>,
+        shell: &mut MessageShell<actions::Action>,
     ) {
         if &**message.tag != "gameplay_manager_create" { return }
 
@@ -85,13 +100,13 @@ impl Widget<TatakuAction> for GameplayPreview {
         self.manager = Some(id.clone());
         shell.handled = true;
 
-        shell.actions.push(GameAction::GameplayAction(
+        shell.actions.push(actions::game::GameAction::GameplayAction(
             id.clone(),
-            GameplayAction::Resume
+            actions::gameplay::GameplayAction::Resume
         ).into());
     }
 
-    fn update(&mut self, shell: &mut UpdateShell<TatakuAction>) {
+    fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
         self.widget_receiver.update();
         if let Some(gameplay) = self.widget_receiver.output_buffer_mut().take() {
             *self.gameplay.lock() = Some(gameplay);
@@ -119,15 +134,15 @@ impl Widget<TatakuAction> for GameplayPreview {
             self.fit_to = Some(bounds);
 
             if let Some(manager) = self.manager.clone() { 
-                shell.actions.push(GameAction::GameplayAction(
+                shell.actions.push(actions::game::GameAction::GameplayAction(
                     manager, 
-                    GameplayAction::FitToArea(bounds)
+                    actions::gameplay::GameplayAction::FitToArea(bounds)
                 ).into());
             };
         }
     }
 
-    fn draw(&self, shell: &mut DrawShell<TatakuAction>) {
+    fn draw(&self, shell: &mut DrawShell<actions::Action>) {
         // add gameplay
         if let Some(gameplay) = self.gameplay.lock().take() {
             shell.list.list.extend(gameplay.list);

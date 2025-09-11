@@ -14,7 +14,7 @@ impl<T> Animate<T> {
     pub fn new(
         start_time: f32,
         duration: f32,
-        easing: Easing,
+        easing: tataku::Easing,
 
         start: T,
         end: T

@@ -1,4 +1,6 @@
 use crate::prelude::*;
+use ui::widget::Widget;
+use widgets::TabProvider;
 
 /// Only showes one item at a time
 #[derive(Deserialize)]
@@ -14,13 +16,13 @@ pub struct TabbedElement {
     #[serde(rename = "$value")] tabs: BuildableTabProvider,
 }
 impl CustomElement for TabbedElement {
-    fn build(&self) -> Box<dyn Widget<TatakuAction>> {
-        WidgetContainer::new_boxed(
+    fn build(&self) -> Box<dyn Widget<actions::Action>> {
+        widgets::WidgetContainer::new_boxed(
             self.style.clone(),
             "tabbed",
             self.id.clone(),
             self.class_list.clone(),
-                TabbedWidget::new(
+                widgets::TabbedWidget::new(
                     self.name.clone(),
                     self.tabs.build(),
                 )
@@ -74,7 +76,10 @@ impl BuildableTabProvider {
                 tabs 
             } => TabProvider::Static(
                 tabs.iter()
-                    .map(|tab| Tab::new(tab.name.clone(), tab.element.build()))
+                    .map(|tab| widgets::Tab::new(
+                        tab.name.clone(), 
+                        tab.element.build()
+                    ))
                     .collect(),
 
                 // tabs.iter()

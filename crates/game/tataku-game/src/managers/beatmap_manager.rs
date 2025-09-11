@@ -2,11 +2,37 @@ use rand::Rng;
 use crate::prelude::*;
 use std::fs::read_dir;
 
+use common::{
+    Md5Hash,
+    reflect::*,
+};
+
+use tataku::{
+    TatakuValue,
+    WrappingClamp,
+};
+use engine::{
+    actions,
+    Notification,
+    data::SortBy,
+    beatmaps::{
+        Beatmap,
+        BeatmapMeta,
+    },
+    gameplay::{
+        GamemodeInfos,
+        mods::ModManager,
+        difficulty_value::GetDiffValue,
+        gameplay_manager::DifficultyProvider,
+    },
+};
+
+
 #[derive(Reflect)]
 #[reflect(dont_clone)]
 #[derive(Default, Debug)]
 pub struct BeatmapManager {
-    #[reflect(skip)] pub actions: ActionQueue,
+    #[reflect(skip)] pub actions: actions::ActionQueue,
     #[reflect(skip)] pub initialized: bool,
     #[reflect(skip)] infos: GamemodeInfos,
 
@@ -36,7 +62,7 @@ impl BeatmapManager {
     pub fn new(infos: GamemodeInfos) -> Self {
         Self {
             infos,
-            actions: ActionQueue::new(),
+            actions: actions::ActionQueue::new(),
             initialized: false,
 
             current_beatmap: None,
@@ -97,9 +123,9 @@ impl BeatmapManager {
     }
 
 
-    pub fn folders_to_check(settings: &Settings) -> Vec<std::path::PathBuf> {
+    pub fn folders_to_check(settings: &engine::Settings) -> Vec<std::path::PathBuf> {
         let mut dirs_to_check = settings.external_games_folders.clone();
-        dirs_to_check.push(SONGS_DIR.to_owned());
+        dirs_to_check.push(engine::SONGS_DIR.to_owned());
 
         dirs_to_check.iter()
             .map(std::fs::read_dir)
@@ -112,7 +138,7 @@ impl BeatmapManager {
     }
 
     /// clear the cache and db, and do a full rescan of the songs folder
-    pub fn full_refresh(&mut self, settings: &Settings) {
+    pub fn full_refresh(&mut self, settings: &engine::Settings) {
         Database::clear_all_maps();
         self.beatmaps.clear();
         self.diffs.clear();
@@ -174,13 +200,13 @@ impl BeatmapManager {
             else { continue };
             // info!("checking {file}");
 
-            if AVAILABLE_MAP_EXTENSIONS.iter().any(|e| file.ends_with(e)) {
+            if engine::beatmaps::AVAILABLE_MAP_EXTENSIONS.iter().any(|e| file.ends_with(e)) {
                 // check file paths first
                 if ignore_paths.contains(&ArcStr::from(file)) {
                     continue
                 }
 
-                match Io::get_file_hash(file) {
+                match tataku::Io::get_file_hash(file) {
                     Ok(hash) => if self.beatmaps.contains_key(&hash) {
                         continue;
                     },
@@ -251,8 +277,8 @@ impl BeatmapManager {
             debug!("Adding beatmap {}", beatmap.version_string());
 
             #[cfg(feature="graphics")]
-            self.actions.push(GameAction::HandleEvent(
-                TatakuEvent::MapAdded,
+            self.actions.push(actions::game::GameAction::HandleEvent(
+                input::TatakuEvent::MapAdded,
                 Some(beatmap.beatmap_hash.to_string().into())
             ).into());
         }
@@ -270,7 +296,7 @@ impl BeatmapManager {
         let Some(old_map) = self.beatmaps.remove(&beatmap)
         else { return false };
 
-        if old_map.file_path.starts_with(SONGS_DIR) {
+        if old_map.file_path.starts_with(engine::SONGS_DIR) {
 
             // delete the file
             if let Err(e) = std::fs::remove_file(&*old_map.file_path) {
@@ -519,7 +545,7 @@ impl BeatmapManager {
 
         // FIXME: !!!
         // #[cfg(feature="graphics")]
-        // self.actions.push(TatakuAction::PerformOperation(
+        // self.actions.push(actions::Action::PerformOperation(
         //     snap_to_id(
         //     "beatmap_scroll",
         //     iced::widget::scrollable::RelativeOffset {
@@ -548,9 +574,9 @@ impl BeatmapManager {
         else { return };
 
         if let Some(map) = set.maps.get(self.selected_map) {
-            self.actions.push(BeatmapAction::Set(
+            self.actions.push(actions::beatmap::BeatmapAction::Set(
                 *map,
-                SetBeatmapOptions::default().use_preview_point(true)
+                actions::beatmap::SetBeatmapOptions::default().use_preview_point(true)
             ).into());
         }
     }

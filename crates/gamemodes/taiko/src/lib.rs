@@ -9,8 +9,8 @@ mod taiko_settings;
 pub use taiko_info::GAME_INFO;
 
 mod prelude {
-    pub use tataku_engine::prelude::*;
-    pub use tataku_graphics::prelude::*;
+    pub use tataku_engine as engine;
+    pub use tataku_client_common::common::*;
 
     pub use super::don_chan::*;
     pub use super::diff_calc::*;

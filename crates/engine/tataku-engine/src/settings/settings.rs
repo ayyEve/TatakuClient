@@ -1,7 +1,8 @@
-use crate::prelude::*;
-
-#[cfg(feature="graphics")]
+use crate::*;
+use common::reflect::*;
 use tataku_client_proc_macros::Settings;
+use engine::settings::*;
+
 const SETTINGS_FILE:&str = "settings.json";
 
 #[derive(Reflect, Settings)]
@@ -51,14 +52,14 @@ pub struct Settings {
     pub gamemode_settings: GamemodeSettingsCollection,
     
     #[subsetting(text="Background Game Settings")]
-    pub background_game_settings: BackgroundGameSettings,
+    pub background_game_settings: background_game::BackgroundGameSettings,
 
     #[subsetting(text="Common Game Settings")]
-    pub common_game_settings: CommonGameplaySettings,
+    pub common_game_settings: common_gameplay::CommonGameplaySettings,
 
     pub last_played_mode: String,
-    pub score_method: ScoreRetreivalMethod,
-    pub sort_by: SortBy,
+    pub score_method: engine::data::ScoreRetreivalMethod,
+    pub sort_by: engine::data::SortBy,
     
     #[setting(text="Beatmap Hitsounds")]
     pub beatmap_hitsounds: bool,
@@ -67,10 +68,10 @@ pub struct Settings {
     pub enable_diffcalc: bool,
 
     #[subsetting(text="Display Settings")]
-    pub display_settings: DisplaySettings,
+    pub display_settings: display::DisplaySettings,
     
     // cursor
-    pub cursor_settings: CursorSettings,
+    pub cursor_settings: cursor::CursorSettings,
 
     // skin settings
     #[serde(skip)] #[debug(skip)] #[reflect(skip)]
@@ -81,7 +82,7 @@ pub struct Settings {
 
     // TODO:
     #[serde(skip)] #[debug(skip)] #[reflect(skip)]
-    #[button(text="Refresh Skins", action="GameAction::RefreshSkins")] _refresh_skins_button: (),
+    #[button(text="Refresh Skins", action="actions::game::GameAction::RefreshSkins")] _refresh_skins_button: (),
 
     #[dropdown(text="Theme", path="enums.themes")]
     pub theme: SelectedTheme,
@@ -97,7 +98,7 @@ pub struct Settings {
     #[category(text="Common Keybinds")] _5: (),
 
     #[setting(text="User Panel Key")]
-    pub key_user_panel: Key,
+    pub key_user_panel: input::Key,
 
     // double tap protection
     #[serde(skip)] #[debug(skip)] #[reflect(skip)]
@@ -111,14 +112,14 @@ pub struct Settings {
 
     // integrations
     #[subsetting(text="Integrations")]
-    pub integrations: IntegrationSettings,
+    pub integrations: integration::IntegrationSettings,
 
     // other misc
     // pub last_git_hash: String,
     pub external_games_folders: Vec<String>,
     
     #[subsetting(text="Log Settings")]
-    pub logging_settings: LoggingSettings,
+    pub logging_settings: logging::LoggingSettings,
 }
 impl Settings {
     pub fn load() -> Self {
@@ -204,21 +205,21 @@ impl Settings {
     pub fn check_hashes(&mut self) {
         let osu_pw = &mut self.integrations.osu.password;
         if !osu_pw.is_empty() { 
-            *osu_pw = Cryptography::check_md5(osu_pw.clone());
+            *osu_pw = tataku::Cryptography::check_md5(osu_pw.clone());
         }
         if !self.password.is_empty() { 
-            self.password = Cryptography::check_sha512(self.password.clone());
+            self.password = tataku::Cryptography::check_sha512(self.password.clone());
         }
     }
 
     // make a backup of the setting before they're overwritten (when the file fails to load)
     fn backup_settings(settings_path: &Path) -> Option<String> {
-        if !Io::exists(settings_path) { return None }
+        if !tataku::Io::exists(settings_path) { return None }
         let settings_path = settings_path.to_string_lossy().to_string();
 
         let mut counter = 0;
         let mut file = format!("{settings_path}.bak_{counter}");
-        while Io::exists(&file) {
+        while tataku::Io::exists(&file) {
             counter += 1;
             file = format!("{settings_path}.bak_{counter}");
         }
@@ -253,12 +254,12 @@ impl Settings {
 
             // game settings
             last_played_mode: "osu".to_owned(),
-            score_method: ScoreRetreivalMethod::Local,
-            sort_by: SortBy::Title,
+            score_method: engine::data::ScoreRetreivalMethod::Local,
+            sort_by: engine::data::SortBy::Title,
             beatmap_hitsounds: true,
             enable_diffcalc: true,
             // keybinds
-            key_user_panel: Key::F8,
+            key_user_panel: input::Key::F8,
 
             // doubletap protection
             double_tap_protection_duration: 80.0,
@@ -285,7 +286,7 @@ pub enum SelectedTheme {
     /// path to theme file, name of theme
     Custom(String, String),
 }
-impl Display for SelectedTheme {
+impl std::fmt::Display for SelectedTheme {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Tataku => write!(f, "Tataku"),
@@ -294,4 +295,3 @@ impl Display for SelectedTheme {
         }
     }
 }
-

@@ -1,4 +1,12 @@
 use crate::prelude::*;
+use common::{
+    Md5Hash,
+    reflect::*,
+};
+use engine::gameplay::{
+    GamemodeInfos,
+    mods::ModManager,
+};
 
 #[derive(Reflect)]
 #[reflect(display = "debug")]
@@ -24,7 +32,7 @@ pub struct GlobalValues {
 impl GlobalValues {
     pub fn new(
         infos: GamemodeInfos,
-        settings: &Settings,
+        settings: &engine::Settings,
     ) -> Self {
         let mut s = Self {
             gamemode_infos: infos,

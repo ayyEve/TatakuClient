@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::*;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum InputType {

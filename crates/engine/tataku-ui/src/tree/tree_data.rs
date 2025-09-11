@@ -1,10 +1,13 @@
-use crate::prelude::*;
+use crate::*;
+use crate::tree::*;
+use crate::style::*;
+use crate::spatial_navigation::Direction;
 
 #[derive(Clone, Default2)]
 pub struct TreeData {
     // pub bounds: Bounds,
     pub absolute_bounds: Bounds,
-    pub local_transform: Transform,
+    pub local_transform: graphics::Transform,
 
     #[default(Matrix::identity())]
     pub global_transform: Matrix,
@@ -60,7 +63,7 @@ impl TreeData {
     pub fn set_styles<_T:Clone>(
         &mut self, 
         styles: ElementStateStyles<CssStyle, _T>, 
-        values: &dyn Reflect
+        values: &dyn common::reflect::Reflect
     ) {
         self.element_data.styles = styles.transpose();
 
@@ -77,7 +80,7 @@ impl TreeData {
             .get_style(state).0
     }
 
-    pub fn current_style(&self) -> &(CssStyle, Option<Image>) {
+    pub fn current_style(&self) -> &(CssStyle, Option<graphics::Image>) {
         self.element_data.style()
     }
     pub fn current_text_style(&self) -> &TextStyle {

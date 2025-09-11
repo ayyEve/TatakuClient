@@ -1,4 +1,18 @@
 use crate::prelude::*;
+use common::{
+    Md5Hash,
+    reflect::Reflect,
+};
+
+use engine::{
+    actions,
+    game::task::*,
+    io::AsyncLoader,
+    online_content::*,
+    beatmaps::{
+        BeatmapMeta,
+    },
+};
 
 pub struct OnlineContentSearchTask {
     engines: Vec<Arc<dyn OnlineContentEngine>>,
@@ -37,7 +51,7 @@ impl TatakuTask for OnlineContentSearchTask {
         &mut self, 
         values: &mut dyn Reflect, 
         _state: &TaskGameState, 
-        _actions: &mut ActionQueue,
+        _actions: &mut actions::ActionQueue,
     ) {
         if self.loader.is_none() {
             let results = Self::results(values);
@@ -60,7 +74,7 @@ impl TatakuTask for OnlineContentSearchTask {
             };
 
             let settings = values
-                .reflect_get::<Settings>("settings")
+                .reflect_get::<engine::Settings>("settings")
                 .unwrap();
             self.loader = Some(engine.search(&settings, self.search.clone()));
             

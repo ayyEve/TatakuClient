@@ -1,4 +1,7 @@
-use crate::prelude::*;
+use crate::*;
+use crate::tree::*;
+use crate::widget::*;
+use crate::spatial_navigation::*;
 
 pub struct SpatialNagivation<'a, Action: Send + Sync> {
     tree: &'a mut Tree<Action>,

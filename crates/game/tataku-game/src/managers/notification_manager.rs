@@ -1,4 +1,18 @@
 use crate::prelude::*;
+use graphics::SkinProvider;
+use tataku::{
+    Color,
+    Border,
+    Bounds,
+    Vector2,
+    Alignment,
+};
+
+use engine::{
+    actions,
+    Notification,
+};
+
 
 const NOTIF_Y_OFFSET:f32 = 100.0; // window_size().y - this
 const NOTIF_TEXT_SIZE:f32 = 25.0;
@@ -18,10 +32,13 @@ const NOTIF_BG_COLOR:Color = Color::new(0.0, 0.0, 0.0, 0.6);
 #[derive(Default)]
 pub struct NotificationManager {
     notifications: Vec<ProcessedNotif>,
-    notification_image: Option<Image>,
+    notification_image: Option<graphics::Image>,
 }
 impl NotificationManager {
-    pub fn update(&mut self, font_contexts: &mut TextLayoutContexts) {
+    pub fn update(
+        &mut self, 
+        font_contexts: &mut ui::widget::TextLayoutContexts
+    ) {
         self.notifications.retain_mut(|n| {
             if n.text_layout.is_none() {
                 n.init_font(font_contexts);
@@ -34,8 +51,8 @@ impl NotificationManager {
     pub fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
         self.notification_image = skin_manager.get_texture(
             "notification",
-            &TextureSource::Skin,
-            SkinUsage::Game,
+            &graphics::TextureSource::Skin,
+            graphics::SkinUsage::Game,
             true
         );
     }
@@ -43,7 +60,7 @@ impl NotificationManager {
     pub fn draw(
         &self,
         window_size: Vector2,
-        list: &mut RenderableCollection
+        list: &mut graphics::RenderableCollection
     ) {
         let mut current_pos = window_size;
 
@@ -58,7 +75,7 @@ impl NotificationManager {
         &mut self,
         window_size: Vector2,
         mouse_pos: Vector2,
-        actions: &mut ActionQueue,
+        actions: &mut actions::ActionQueue,
     ) -> bool {
         let mut current_pos = window_size;
 
@@ -89,7 +106,7 @@ impl NotificationManager {
 #[derive(Clone)]
 struct ProcessedNotif {
     size: Vector2,
-    time: TatakuInstant,
+    time: tataku::Instant,
     notification: Notification,
     remove: bool,
 
@@ -107,7 +124,7 @@ impl ProcessedNotif {
 
         Self {
             size: Vector2::ZERO,
-            time: TatakuInstant::now(),
+            time: tataku::Instant::now(),
             notification,
             remove: false,
             text_layout: None,
@@ -116,11 +133,11 @@ impl ProcessedNotif {
 
     fn init_font(
         &mut self, 
-        font_contexts: &mut TextLayoutContexts,
+        font_contexts: &mut ui::widget::TextLayoutContexts,
     ) {
         let mut layout = font_contexts.simple_text(
             &self.notification.text, 
-            &TextStyle {
+            &ui::style::TextStyle {
                 color: Color::WHITE,
                 font_size: NOTIF_TEXT_SIZE,
                 ..Default::default()
@@ -146,8 +163,8 @@ impl ProcessedNotif {
     fn draw(
         &self,
         pos_offset: Vector2,
-        image: Option<&Image>,
-        list: &mut RenderableCollection,
+        image: Option<&graphics::Image>,
+        list: &mut graphics::RenderableCollection,
     ) {
         let pos = pos_offset - (
             self.size
@@ -165,12 +182,12 @@ impl ProcessedNotif {
             list.push(image);
         } else {
             list.push(
-                Rectangle::new_bounds(bounds, NOTIF_BG_COLOR)
-                    .border(Border::new(
-                        self.notification.color,
-                        1.2
-                    ))
-                    .shape(Shape::Round(NOTIF_BORDER_ROUNDING))
+                graphics::Rectangle::new_bounds(bounds, NOTIF_BG_COLOR)
+                .border(Border::new(
+                    self.notification.color,
+                    1.2
+                ))
+                .shape(graphics::Shape::Round(NOTIF_BORDER_ROUNDING))
             );
         }
 
@@ -182,10 +199,10 @@ impl ProcessedNotif {
                 true
             );
 
-            list.push(Transformed::new(
-                Transform::default()
+            list.push(graphics::Transformed::new(
+                graphics::Transform::default()
                     .translate(centered),
-                Box::new(Text::new(layout.clone()))
+                Box::new(graphics::Text::new(layout.clone()))
             ));
         }
 

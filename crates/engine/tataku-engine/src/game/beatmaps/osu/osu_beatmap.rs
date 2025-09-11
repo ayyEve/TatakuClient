@@ -1,6 +1,10 @@
 use std::str::FromStr;
-use crate::prelude::*;
-use tataku_graphics::prelude::*;
+use crate::*;
+use common::Md5Hash;
+use tataku::{ Color, Vector2 };
+
+use beatmaps::osu::*;
+use game::beatmap_animation::OsuStoryboard;
 
 #[derive(Clone, Default)]
 pub struct OsuBeatmap {
@@ -20,25 +24,25 @@ pub struct OsuBeatmap {
 
     // events
     pub timing_points: Vec<OsuTimingPoint>,
-    pub combo_colors: Vec<Color>,
+    pub combo_colors: Vec<tataku::Color>,
     pub events: Vec<OsuEvent>,
 
-    pub storyboard: Option<StoryboardDef>
+    pub storyboard: Option<storyboard::StoryboardDef>
 }
 impl OsuBeatmap {
-    pub fn load(file_path: impl AsRef<Path>) -> TatakuResult<OsuBeatmap> {
+    pub fn load(file_path: impl AsRef<Path>) -> tataku::TatakuResult<OsuBeatmap> {
         Self::base_loader(file_path, false)
     }
 
-    pub fn load_metadata(filepath: impl AsRef<Path>) -> TatakuResult<Arc<BeatmapMeta>> {
+    pub fn load_metadata(filepath: impl AsRef<Path>) -> tataku::TatakuResult<Arc<BeatmapMeta>> {
         Ok(Self::base_loader(filepath, true)?.metadata)
     }
 
     /// loader for both metadata only and full map. removes duplicate code
-    fn base_loader(filepath: impl AsRef<Path>, metadata_only: bool) -> TatakuResult<OsuBeatmap> {
+    fn base_loader(filepath: impl AsRef<Path>, metadata_only: bool) -> tataku::TatakuResult<OsuBeatmap> {
         let file_path = filepath.as_ref();
         let parent_dir = file_path.parent().unwrap();
-        let hash = Io::get_file_hash(file_path).unwrap();
+        let hash = tataku::Io::get_file_hash(file_path).unwrap();
 
         let mut start_time = 0.0;
         let mut end_time = 0.0;
@@ -59,7 +63,7 @@ impl OsuBeatmap {
 
         let file_path = file_path.as_os_str().to_string_lossy().to_string();
         let mut current_area = BeatmapSection::Version;
-        let mut metadata = BeatmapMeta::new(file_path.clone(), hash, BeatmapType::Osu);
+        let mut metadata = BeatmapMeta::new(file_path.clone(), hash, beatmaps::BeatmapType::Osu);
 
         let mut storyboard_lines = Vec::new();
 
@@ -81,7 +85,7 @@ impl OsuBeatmap {
             stack_leniency: 1.0,
         };
 
-        for line in Io::read_lines_resolved(&file_path)? {
+        for line in tataku::Io::read_lines_resolved(&file_path)? {
             // ignore empty lines
             if line.len() < 2 { continue }
 
@@ -360,10 +364,10 @@ impl OsuBeatmap {
             // idk if this is how its supposed to be done but theres no documentation on it in the wiki
             let osb_file = std::fs::read_dir(parent_dir).ok().and_then(|files|files.filter_map(|f|f.ok()).find(|f|f.file_name().to_string_lossy().ends_with(".osb")));
             if let Some(storyboard_file) = osb_file {
-                storyboard_lines.extend(Io::read_lines_resolved(storyboard_file.path()).unwrap());
+                storyboard_lines.extend(tataku::Io::read_lines_resolved(storyboard_file.path()).unwrap());
             }
 
-            match StoryboardDef::read(storyboard_lines) {
+            match storyboard::StoryboardDef::read(storyboard_lines) {
                 Ok(s) => beatmap.storyboard = Some(s),
                 Err(e) => error!("error reading storyboard file: {e}")
             }
@@ -373,11 +377,11 @@ impl OsuBeatmap {
         // verify we have a valid beatmap
         if !metadata_only && beatmap.notes.is_empty() && beatmap.sliders.is_empty() && beatmap.spinners.is_empty() {
             // no notes
-            return Err(BeatmapError::NoNotes)?;
+            return Err(errors::beatmap::BeatmapError::NoNotes)?;
         }
         if beatmap.timing_points.is_empty() {
             // no timing points
-            return Err(BeatmapError::NoTimingPoints)?;
+            return Err(errors::beatmap::BeatmapError::NoTimingPoints)?;
         }
 
 
@@ -418,18 +422,18 @@ impl OsuBeatmap {
     }
 
 }
-impl TatakuBeatmap for OsuBeatmap {
+impl beatmaps::TatakuBeatmap for OsuBeatmap {
     fn hash(&self) -> Md5Hash { self.hash }
     fn get_beatmap_meta(&self) -> Arc<BeatmapMeta> { self.metadata.clone() }
 
-    fn get_timing_points(&self) -> Vec<TimingPoint> {
+    fn get_timing_points(&self) -> Vec<beatmaps::TimingPoint> {
         self.timing_points
             .iter().copied()
             .map(|t| t.into())
             .collect()
     }
 
-    fn playmode(&self, incoming:String) -> String {
+    fn playmode(&self, incoming: String) -> String {
         match &*self.metadata.mode {
             "osu" => incoming,
             "adofai" => panic!("osu map has adofai mode !?"),
@@ -443,14 +447,14 @@ impl TatakuBeatmap for OsuBeatmap {
 
 
 
-    fn get_events(&self) -> Vec<BeatmapEvent> {
+    fn get_events(&self) -> Vec<gameplay::BeatmapEvent> {
         self.events.iter().filter_map(|i| match i {
-            OsuEvent::Break { start_time, end_time } => Some(BeatmapEvent::Break { start: *start_time as f32, end: *end_time as f32 }),
+            OsuEvent::Break { start_time, end_time } => Some(gameplay::BeatmapEvent::Break { start: *start_time as f32, end: *end_time as f32 }),
             _ => None
         }).collect()
     }
     #[cfg(feature="graphics")]
-    fn get_animation(&self, skin_manager: &mut dyn SkinProvider) -> Option<Box<dyn BeatmapAnimation>> {
+    fn get_animation(&self, skin_manager: &mut dyn graphics::SkinProvider) -> Option<Box<dyn BeatmapAnimation>> {
         let Some(storyboard) = &self.storyboard else { return None };
         let parent_dir = Path::new(&*self.metadata.file_path).parent()?.to_string_lossy().to_string();
         match OsuStoryboard::new(
@@ -548,7 +552,7 @@ impl OsuTimingPoint {
     }
 }
 
-impl From<OsuTimingPoint> for TimingPoint {
+impl From<OsuTimingPoint> for beatmaps::TimingPoint {
     fn from(value: OsuTimingPoint) -> Self {
         Self {
             time: value.time,
@@ -586,7 +590,7 @@ pub enum OsuEvent {
     }
 }
 impl FromStr for OsuEvent {
-    type Err = TatakuError;
+    type Err = tataku::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut split = s.split(",");
@@ -616,10 +620,10 @@ impl FromStr for OsuEvent {
             }
 
             Some(other) => {
-                Err(TatakuError::String(format!("unknown event '{other}'")))
+                Err(tataku::Error::String(format!("unknown event '{other}'")))
             }
 
-            None => Err(TatakuError::String("bad event".to_owned()))
+            None => Err(tataku::Error::String("bad event".to_owned()))
         }
     }
 }

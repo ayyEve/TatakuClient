@@ -1,4 +1,4 @@
-use crate::prelude::CssStyle;
+use crate::style::CssStyle;
 
 pub(super) struct CssRuleStyleResolver<'a> {
     pub selector: simplecss::Selector<'a>,

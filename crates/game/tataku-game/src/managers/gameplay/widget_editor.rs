@@ -1,6 +1,24 @@
 use crate::prelude::*;
-use tataku_ui::prelude::*;
-use std::sync::mpsc::TryRecvError;
+use tataku_interface::menu_widgets::context_menus::*;
+use std::sync::mpsc::{ Sender, Receiver, TryRecvError };
+use tataku::{
+    Color,
+    Bounds,
+    Border,
+    Vector2,
+    Alignment,
+};
+use engine::{
+    actions,
+    gameplay::{
+        widgets::*,
+    }
+};
+use ui::{
+    tree::*,
+    widget::*,
+    message::*,
+};
 
 /// dialog
 pub struct GameplayWidgetEditor {
@@ -15,7 +33,7 @@ pub struct GameplayWidgetEditor {
 
     click_pos: Option<ClickHoldData>,
 
-    node: Box<dyn Widget<TatakuAction>>,
+    node: Box<dyn Widget<actions::Action>>,
 }
 impl GameplayWidgetEditor {
     pub fn new(
@@ -45,7 +63,7 @@ impl GameplayWidgetEditor {
 
     fn close(
         &self,
-        actions: &mut ActionQueue,
+        actions: &mut actions::ActionQueue,
     ) {
         let _ = self.sender.send(
             GameplayWidgetAction {
@@ -54,28 +72,28 @@ impl GameplayWidgetEditor {
             }
         );
 
-        actions.push(UiAction::new(
+        actions.push(actions::ui::UiAction::new(
             self.node_id(),
-            DialogAction::Close,
+            actions::dialog::DialogAction::Close,
         ).into());
     }
 
     fn send(
         &self, 
         action: GameplayWidgetAction,
-        actions: &mut ActionQueue
+        actions: &mut actions::ActionQueue
     ) {
         if self.sender.send(action).is_err() {
-            actions.push(UiAction::new(
+            actions.push(actions::ui::UiAction::new(
                 self.node_id(),
-                DialogAction::Close,
+                actions::dialog::DialogAction::Close,
             ).into());
         }
     }
 
     pub fn handle_event(
         &mut self, 
-        shell: &mut UpdateShell<TatakuAction>,
+        shell: &mut UpdateShell<actions::Action>,
         event: GameplayWidgetEvent,
     ) {
         match event.action {
@@ -100,7 +118,7 @@ impl GameplayWidgetEditor {
 
     fn build_context_menu(
         &self,
-        shell: &mut InputShell<TatakuAction>,
+        shell: &mut InputShell<actions::Action>,
         selected: usize,
     ) -> ContextMenu {
         let selected = &self.widgets[selected];
@@ -268,7 +286,7 @@ impl GameplayWidgetEditor {
 
     fn handle_left_click(
         &mut self, 
-        shell: &mut InputShell<TatakuAction>,
+        shell: &mut InputShell<actions::Action>,
         clicked: Option<usize>, 
         selected: Option<usize>,
     ) {
@@ -333,18 +351,19 @@ impl GameplayWidgetEditor {
 
     fn handle_right_click(
         &mut self,
-        shell: &mut InputShell<TatakuAction>,
+        shell: &mut InputShell<actions::Action>,
         selected: Option<usize>,
     ) {
         let Some(selected) = selected else { return };
         self.context_menu = Some(self.build_context_menu(shell, selected));
     }
 }
-impl Widget<TatakuAction> for GameplayWidgetEditor {
+impl Widget<actions::Action> for GameplayWidgetEditor {
     fn name(&self) -> CowStr { "widget_editor".into() }
     fn node_id(&self) -> NodeId { self.node.node_id() }
     
-    fn layout(&mut self, shell: &mut LayoutShell<TatakuAction>) -> taffy::TaffyResult<NodeId> {
+    fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId> {
+        use interface::CustomElement;
 
         let a = self.widgets
             .iter()
@@ -375,7 +394,7 @@ impl Widget<TatakuAction> for GameplayWidgetEditor {
             </column>
         "#);
 
-        self.node = quick_xml::de::from_str::<Element>(&list_str)
+        self.node = quick_xml::de::from_str::<interface::Element>(&list_str)
             .unwrap()
             .build();
 
@@ -404,8 +423,8 @@ impl Widget<TatakuAction> for GameplayWidgetEditor {
 
     fn input(
         &mut self, 
-        event: &InputEvent, 
-        shell: &mut InputShell<TatakuAction>,
+        event: &input::InputEvent, 
+        shell: &mut InputShell<actions::Action>,
     ) {
         if let Some(menu) = self.context_menu.as_mut() {
             menu.input(event, shell);
@@ -413,7 +432,7 @@ impl Widget<TatakuAction> for GameplayWidgetEditor {
 
         if shell.event_consumed { return }
         match event.event {
-            InputType::MouseMove(pos) => {
+            input::InputType::MouseMove(pos) => {
                 if let Some(data) = &mut self.click_pos {
                     if !data.triggered 
                         && shell.mouse_pos.distance(data.pos) > 10.0
@@ -453,7 +472,7 @@ impl Widget<TatakuAction> for GameplayWidgetEditor {
                 }
             }
 
-            InputType::MousePress(MouseButton::Left) => {
+            input::InputType::MousePress(input::MouseButton::Left) => {
                 let mut clicked = None;
                 let mut selected = None;
                 for (n, i) in self
@@ -469,11 +488,11 @@ impl Widget<TatakuAction> for GameplayWidgetEditor {
 
                 self.handle_left_click(shell, clicked, selected);
             }
-            InputType::MouseRelease(MouseButton::Left) => {
+            input::InputType::MouseRelease(input::MouseButton::Left) => {
                 self.click_pos = None;
             }
 
-            InputType::MousePress(MouseButton::Right) => {
+            input::InputType::MousePress(input::MouseButton::Right) => {
                 let mut clicked = None;
                 let mut selected = None;
                 for (n, i) in self
@@ -500,7 +519,7 @@ impl Widget<TatakuAction> for GameplayWidgetEditor {
         }
     }
 
-    fn draw(&self, shell: &mut DrawShell<TatakuAction>) {
+    fn draw(&self, shell: &mut DrawShell<actions::Action>) {
         for i in self.widgets.iter() {
             i.draw(shell);
         }
@@ -508,13 +527,13 @@ impl Widget<TatakuAction> for GameplayWidgetEditor {
         self.node.draw(shell);
     }
 
-    fn draw_overlay(&self, shell: &mut DrawShell<TatakuAction>) {
+    fn draw_overlay(&self, shell: &mut DrawShell<actions::Action>) {
         let Some(menu) = self.context_menu.as_ref() else { return };
         menu.draw(shell);
         menu.draw_overlay(shell);
     }
 
-    fn update(&mut self, shell: &mut UpdateShell<TatakuAction>) {
+    fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
         let receiver = self.receiver.clone();
         let receiver = receiver.lock();
 
@@ -522,9 +541,9 @@ impl Widget<TatakuAction> for GameplayWidgetEditor {
             match receiver.try_recv() {
                 Ok(event) => self.handle_event(shell, event),
                 Err(TryRecvError::Disconnected) => {
-                    shell.actions.push(UiAction::new(
+                    shell.actions.push(actions::ui::UiAction::new(
                         self.node_id(),
-                        DialogAction::Close,
+                        actions::dialog::DialogAction::Close,
                     ).into());
                     break;
                 }
@@ -543,7 +562,7 @@ impl Widget<TatakuAction> for GameplayWidgetEditor {
     fn handle_message(
         &mut self, 
         message: &Message, 
-        shell: &mut MessageShell<TatakuAction>,
+        shell: &mut MessageShell<actions::Action>,
     ) {
         shell.handled = true;
 
@@ -568,7 +587,7 @@ impl Widget<TatakuAction> for GameplayWidgetEditor {
                 let Some(value) = message.value.as_text_ref() 
                 else { return };
                 
-                use GameplayWidgetAnchor as Anchor;
+                use engine::gameplay::widgets::GameplayWidgetAnchor as Anchor;
                 for i in self.widgets.iter_mut() {
                     if !i.selected { continue }
                     let mut send_update = false;
@@ -720,9 +739,9 @@ impl WidgetState {
         }
     }
 
-    fn draw(&self, shell: &mut DrawShell<TatakuAction>) {
+    fn draw(&self, shell: &mut DrawShell<actions::Action>) {
         if self.hover {
-            shell.list.push(Rectangle::new_bounds(
+            shell.list.push(graphics::Rectangle::new_bounds(
                 self.bounds,
                 Color::TRANSPARENT,
             ).border(Border::new(
@@ -730,7 +749,7 @@ impl WidgetState {
                 2.0
             )));
         } else if self.selected {
-            shell.list.push(Rectangle::new_bounds(
+            shell.list.push(graphics::Rectangle::new_bounds(
                 self.bounds,
                 Color::TRANSPARENT,
             ).border(Border::new(

@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::*;
 
 #[derive(Debug, Clone)]
 pub struct Trail {

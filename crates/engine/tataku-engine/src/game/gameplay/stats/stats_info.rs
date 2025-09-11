@@ -1,4 +1,5 @@
-use crate::prelude::*;
+use crate::*;
+use tataku::Color;
 
 pub struct StatsInfo {
     pub display_name: String,

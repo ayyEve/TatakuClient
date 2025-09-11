@@ -1,4 +1,21 @@
 use crate::prelude::*;
+use tataku::{
+    Color,
+    Vector2,
+};
+
+use graphics::{
+    SkinUsage,
+    SkinSettings,
+    TextureState,
+    TextureEntry,
+    SkinProvider,
+    TextureSource,
+};
+use engine::{
+    SKINS_FOLDER,
+    window::GameWindow as GameWindow,
+};
 
 const DEFAULT_SKIN:&str = "default";
 
@@ -12,7 +29,7 @@ pub struct SkinManager {
 #[cfg(feature="graphics")]
 // static
 impl SkinManager {
-    pub fn new(settings: &Settings) -> Self {
+    pub fn new(settings: &engine::Settings) -> Self {
         let current_skin = settings.current_skin.clone();
         let current_skin_config = Arc::new(SkinSettings::from_file(
             &format!("{SKINS_FOLDER}/{current_skin}/skin.ini")
@@ -75,7 +92,7 @@ impl SkinManager {
             };
 
             // try loading the bytes. if we cant, try the next source 
-            let Ok(buf) = Io::read_file(&path) else { continue };
+            let Ok(buf) = tataku::Io::read_file(&path) else { continue };
 
             // read the file bytes as an image
             match image::load_from_memory(&buf) {
@@ -126,7 +143,7 @@ impl SkinManager {
                         error!("No texture!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
                         return TextureState::Failed;
                     };
-                    let image = Image::new(Vector2::ZERO, Arc::new(tex), scale);
+                    let image = graphics::Image::new(Vector2::ZERO, Arc::new(tex), scale);
                     return TextureState::Success(image);
                 }
             }
@@ -136,7 +153,7 @@ impl SkinManager {
     }
 }
 
-impl SkinProvider for SkinManager {
+impl graphics::SkinProvider for SkinManager {
     fn skin(&self) -> &Arc<SkinSettings> {
         &self.current_skin_config
     }
@@ -202,7 +219,7 @@ impl SkinProvider for SkinManager {
         source: &TextureSource,
         usage: SkinUsage,
         grayscale: bool,
-    ) -> Option<Image> {
+    ) -> Option<graphics::Image> {
         let texture_key = (name.to_owned(), grayscale);
         if !self.textures.contains_key(&texture_key) {
             self.textures.insert(texture_key.clone(), HashMap::new());

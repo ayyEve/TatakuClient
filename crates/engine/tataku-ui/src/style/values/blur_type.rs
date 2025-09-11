@@ -1,4 +1,6 @@
-use crate::prelude::*;
+use crate::*;
+use common::reflect::*;
+use graphics::BlurType;
 
 #[derive(Reflect, Deserialize)]
 #[serde(rename_all="camelCase")]
@@ -19,7 +21,7 @@ impl CssBlurType {
 impl std::str::FromStr for CssBlurType {
     type Err = ();
     
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> core::result::Result<Self, Self::Err> {
         match s {
             "box" => Ok(Self::Box),
             "gaussian" => Ok(Self::Gaussian),

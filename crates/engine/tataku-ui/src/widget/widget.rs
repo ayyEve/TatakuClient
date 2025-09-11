@@ -1,5 +1,7 @@
-use crate::prelude::*;
-use tataku_input::prelude::*;
+use crate::*;
+use crate::tree::*;
+use crate::widget::*;
+use crate::message::*;
 
 pub trait Widget<Action: Send + Sync>: Send + Sync {
     fn name(&self) -> CowStr;
@@ -24,7 +26,7 @@ pub trait Widget<Action: Send + Sync>: Send + Sync {
 
     fn input(
         &mut self,
-        event: &InputEvent,
+        event: &input::InputEvent,
         shell: &mut InputShell<Action>,
     ) {
         for i in self.children_mut() {
@@ -73,7 +75,7 @@ pub trait Widget<Action: Send + Sync>: Send + Sync {
 
     fn handle_event(
         &mut self,
-        event: &TatakuEvent,
+        event: &input::TatakuEvent,
         event_value: Option<&TatakuValue>,
         shell: &mut MessageShell<Action>,
     ) {

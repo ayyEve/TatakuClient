@@ -1,4 +1,14 @@
 use crate::prelude::*;
+use tataku::{
+    Color,
+    Border,
+    Bounds,
+    Vector2,
+};
+use engine::gameplay::stats::{ 
+    StatsEntry, 
+    StatsValue,
+};
 
 #[derive(Clone)]
 pub struct ScatterGraph {
@@ -41,23 +51,23 @@ impl ScatterGraph {
     }
 
 
-    pub fn draw(&self, bounds: &Bounds) -> RenderableCollection {
-        let mut collection = RenderableCollection::default();
+    pub fn draw(&self, bounds: &Bounds) -> graphics::RenderableCollection {
+        let mut collection = graphics::RenderableCollection::default();
         let size = bounds.size;
 
         // background
-        collection.push(
-            Rectangle::new(
-                bounds.pos,
-                size,
-                Color::new(0.2, 0.2, 0.2, 0.7),
-            )
-            .border(Border::new(Color::RED, 1.5))
-        );
+        collection.push(graphics::Rectangle::new(
+            bounds.pos,
+            size,
+            Color::new(0.2, 0.2, 0.2, 0.7),
+        ).border(Border::new(
+            Color::RED, 
+            1.5
+        )));
         
         // 0 line
         let zero_pos = Vector2::with_y(self.map_point(0.0, size));
-        collection.push(Line::new(
+        collection.push(graphics::Line::new(
             bounds.pos + zero_pos,
             bounds.pos + size.x_portion() + zero_pos,
             1.5,
@@ -69,7 +79,7 @@ impl ScatterGraph {
                 StatsValue::Single(v) => {
                     let v = self.map_point(*v, size);
 
-                    collection.push(Line::new(
+                    collection.push(graphics::Line::new(
                         bounds.pos + Vector2::with_y(v),
                         bounds.pos + size.x_portion() + Vector2::with_y(v),
                         1.5,
@@ -82,7 +92,7 @@ impl ScatterGraph {
 
                     for (n, &y) in mapped_points.iter().enumerate() {
                         collection.push(
-                            Circle::new(
+                            graphics::Circle::new(
                                 bounds.pos + Vector2::new(x_step * n as f32, y),
                                 2.0,
                                 i.color,

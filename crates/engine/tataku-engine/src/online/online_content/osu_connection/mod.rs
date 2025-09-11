@@ -1,3 +1,5 @@
 pub mod token;
 pub mod consts;
-pub mod osu_connection;
+mod osu_connection;
+
+pub use osu_connection::*;

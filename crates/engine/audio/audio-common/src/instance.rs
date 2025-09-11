@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::*;
 
 /// all time measurements should be in ms
 pub trait AudioInstance: Send + Sync {
@@ -19,7 +19,7 @@ pub trait AudioInstance: Send + Sync {
     fn set_rate(&self, rate: f32);
 
     fn set_repeat(&self, repeat: bool);
-    fn get_data(&self) -> Vec<FFTEntry>;
+    fn get_data(&self) -> Vec<tataku::FFTEntry>;
     fn get_duration(&self) -> f32;
 
     fn get_state(&self) -> AudioState {

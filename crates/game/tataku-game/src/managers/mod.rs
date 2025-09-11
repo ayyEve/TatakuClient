@@ -15,9 +15,9 @@ mod online_content_manager;
 #[cfg(feature="graphics")] mod custom_menu_manager;
 #[cfg(feature="graphics")] mod notification_manager;
 
+#[cfg(feature="gameplay")] mod online_manager;
 #[cfg(feature="gameplay")] mod spectator_manager;
 #[cfg(feature="gameplay")] mod multiplayer_manager;
-#[cfg(feature="gameplay")] mod online_manager;
 
 
 pub use gameplay::*;

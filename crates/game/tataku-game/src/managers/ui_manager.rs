@@ -1,4 +1,31 @@
 use crate::prelude::*;
+use common::reflect::*;
+
+use tataku::{
+    Vector2,
+    Bounds,
+};
+use engine::{
+    actions,
+};
+
+use ui::{
+    widget::{
+        Widget,
+        shells::*,
+    },
+    tree::{
+        Tree,
+        NodeId,
+    },
+    message::{
+        Message, 
+        MessageOwner,
+        MessageValue,
+    },
+};
+
+
 
 #[derive(Default2)]
 pub struct UiManager {
@@ -8,17 +35,17 @@ pub struct UiManager {
 
     /// what menu is currently being drawn?
     #[default(Self::default_tree())]
-    pub root_tree: Tree<TatakuAction>,
+    pub root_tree: Tree<actions::Action>,
 
     dialog_counter: usize,
-    pub dialogs: Vec<Tree<TatakuAction>>,
+    pub dialogs: Vec<Tree<actions::Action>>,
 }
 impl UiManager {
-    fn default_tree() -> Tree<TatakuAction> {
+    fn default_tree() -> Tree<actions::Action> {
         Tree::new(
             100, // 100 should be fine right? right??!!?
             MessageOwner::Menu,
-            EmptyWidget::new_boxed()
+            ui::EmptyWidget::new_boxed()
         )
     }
 
@@ -27,17 +54,17 @@ impl UiManager {
 
     pub fn set_root<T: Reflect>(
         &mut self,
-        root: Box<dyn Widget<TatakuAction>>,
+        root: Box<dyn Widget<actions::Action>>,
         values: &mut T,
-        actions: &mut ActionQueue,
+        actions: &mut actions::ActionQueue,
         text_layout_contexts: &mut TextLayoutContexts,
     ) {
         self.root_tree.handle_event(
-            &TatakuEvent::MenuLeave,
+            &input::TatakuEvent::MenuLeave,
             None,
             values,
             actions,
-            &mut self.messages
+            &mut self.messages,
         );
 
 
@@ -49,10 +76,10 @@ impl UiManager {
 
     pub fn add_dialog(
         &mut self,
-        dialog: Box<dyn Widget<TatakuAction>>,
-        options: DialogCreateOptions,
+        dialog: Box<dyn Widget<actions::Action>>,
+        options: actions::menu::DialogCreateOptions,
         values: &mut dyn Reflect,
-        actions: &mut ActionQueue,
+        actions: &mut actions::ActionQueue,
         text_layout_contexts: &mut TextLayoutContexts,
     ) {
         let name = dialog.name();
@@ -67,7 +94,7 @@ impl UiManager {
             }
         }
 
-        let dialog = DialogWidget::new(
+        let dialog = interface::DialogWidget::new(
             options.title,
             options.draggable,
             options.resizable,
@@ -83,7 +110,7 @@ impl UiManager {
         let mut tree = Tree::new(
             50,
             MessageOwner::Dialog(num),
-            EmptyWidget::new_boxed()
+            ui::EmptyWidget::new_boxed()
         );
 
         tree.set_node(dialog, values, text_layout_contexts);
@@ -98,7 +125,7 @@ impl UiManager {
             &mut self.messages,
         );
         tree.handle_event(
-            &TatakuEvent::MenuEnter,
+            &input::TatakuEvent::MenuEnter,
             None,
             values,
             actions,
@@ -122,7 +149,7 @@ impl UiManager {
         self.dialogs.push(tree);
     }
 
-    fn all_trees(&mut self) -> impl Iterator<Item = &mut Tree<TatakuAction>> {
+    fn all_trees(&mut self) -> impl Iterator<Item = &mut Tree<actions::Action>> {
         [&mut self.root_tree]
             .into_iter()
             .chain(self.dialogs.iter_mut())
@@ -130,13 +157,13 @@ impl UiManager {
     pub fn close_latest(
         &mut self,
         values: &mut dyn Reflect,
-        actions: &mut ActionQueue,
+        actions: &mut actions::ActionQueue,
     ) -> bool {
         let Some(last) = self.dialogs.last_mut()
         else { return false };
 
         last.handle_event(
-            &TatakuEvent::MenuLeave,
+            &input::TatakuEvent::MenuLeave,
             None,
             values,
             actions,
@@ -158,7 +185,7 @@ impl UiManager {
     pub fn force_close_all(
         &mut self,
         values: &mut dyn Reflect,
-        actions: &mut ActionQueue
+        actions: &mut actions::ActionQueue
     ) {
         for i in self.dialogs.iter_mut() {
             i.handle_message(
@@ -178,11 +205,11 @@ impl UiManager {
 
     pub fn update(
         &mut self,
-        input_state: &mut CurrentInputState,
-        mut tataku_events: Vec<(TatakuEvent, Option<TatakuValue>)>,
+        input_state: &mut ui::CurrentInputState,
+        mut tataku_events: Vec<(input::TatakuEvent, Option<tataku::TatakuValue>)>,
         values: &mut dyn Reflect,
-        actions: &mut ActionQueue,
-        skin_manager: &mut dyn SkinProvider,
+        actions: &mut actions::ActionQueue,
+        skin_manager: &mut dyn graphics::SkinProvider,
         text_layout_contexts: &mut TextLayoutContexts,
     ) {
         self.handle_inputs(input_state, values, actions);
@@ -207,20 +234,20 @@ impl UiManager {
 
         for event in input_state.events.iter() {
             match event {
-                InputType::KeyPress(key) => {
+                input::InputType::KeyPress(key) => {
                     let Some(key) = key.as_key() else { continue };
 
-                    tataku_events.push((TatakuEvent::KeyPress(CustomMenuKeyEvent {
+                    tataku_events.push((input::TatakuEvent::KeyPress(input::CustomMenuKeyEvent {
                         key,
                         control: input_state.mods.ctrl,
                         alt: input_state.mods.alt,
                         shift: input_state.mods.shift,
                     }), None));
                 }
-                InputType::KeyRelease(key) => {
+                input::InputType::KeyRelease(key) => {
                     let Some(key) = key.as_key() else { continue };
 
-                    tataku_events.push((TatakuEvent::KeyRelease(CustomMenuKeyEvent {
+                    tataku_events.push((input::TatakuEvent::KeyRelease(input::CustomMenuKeyEvent {
                         key,
                         control: input_state.mods.ctrl,
                         alt: input_state.mods.alt,
@@ -279,9 +306,9 @@ impl UiManager {
 
     fn handle_inputs(
         &mut self,
-        input_state: &mut CurrentInputState,
+        input_state: &mut ui::CurrentInputState,
         values: &mut dyn Reflect,
-        actions: &mut ActionQueue,
+        actions: &mut actions::ActionQueue,
     ) {
         // check dialogs first
         for dialog in self.dialogs.iter_mut().rev() {
@@ -307,7 +334,7 @@ impl UiManager {
     pub fn draw_menu(
         &mut self,
         values: &ValueCollection,
-        list: &mut RenderableCollection,
+        list: &mut graphics::RenderableCollection,
         text_layout_contexts: &mut TextLayoutContexts,
     ) {
         self.root_tree.draw(values, list, text_layout_contexts);
@@ -315,7 +342,7 @@ impl UiManager {
     pub fn draw_dialogs(
         &mut self,
         values: &ValueCollection,
-        list: &mut RenderableCollection,
+        list: &mut graphics::RenderableCollection,
         text_layout_contexts: &mut TextLayoutContexts,
     ) {
         for i in self.dialogs.iter_mut().rev() {
@@ -323,7 +350,7 @@ impl UiManager {
         }
     }
 
-    fn tree_with_node(&mut self, node: NodeId) -> Option<(usize, &mut Tree<TatakuAction>)> {
+    fn tree_with_node(&mut self, node: NodeId) -> Option<(usize, &mut Tree<actions::Action>)> {
         self.all_trees()
             .enumerate()
             .find(|(_, tree)| tree.has_node(node))
@@ -331,10 +358,13 @@ impl UiManager {
 
     pub fn handle_ui_action(
         &mut self,
-        action: UiAction,
+        action: actions::ui::UiAction,
         values: &mut dyn Reflect,
-        _actions: &mut ActionQueue,
+        _actions: &mut actions::ActionQueue,
     ) {
+        use actions::ui::UiActionType as UiActionType;
+        use actions::dialog::DialogAction as DialogAction;
+
         let node = action.node;
         let action = action.action;
 
@@ -444,8 +474,8 @@ impl UiManager {
     pub fn reload_skin(
         &mut self,
         values: &mut dyn Reflect,
-        actions: &mut ActionQueue,
-        skin_manager: &mut dyn SkinProvider,
+        actions: &mut actions::ActionQueue,
+        skin_manager: &mut dyn graphics::SkinProvider,
         text_layout_contexts: &mut TextLayoutContexts,
     ) {
         self.root_tree.reload_skin(

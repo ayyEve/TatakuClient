@@ -1,6 +1,42 @@
-use gilrs::Axis;
 use std::ops::Range;
 use crate::prelude::*;
+use std::f32::consts::PI;
+
+use common::{
+    replays::*,
+};
+
+use tataku::{
+    Color,
+    Border,
+    Easing,
+    Vector2,
+    Alignment,
+    EmitterVal,
+};
+use engine::{
+    actions,
+    graphics,
+    beatmaps::{
+        Beatmap,
+        NoteType,
+        BeatmapMeta,
+        TimingPoint,
+        map_difficulty,
+    },
+    gameplay,
+    gameplay::{
+        mods::*,
+        GameMode,
+        judgments::*,
+        GameplayEvent,
+        TimingPointHelper,
+        PlayfieldNonsense,
+        GameModeProperties,
+        gameplay_manager::*,
+    },
+};
+use input::gilrs::Axis;
 
 const STACK_LENIENCY:u32 = 3;
 pub const PREEMPT_MIN:f32 = 450.0;
@@ -8,7 +44,7 @@ pub const PREEMPT_MIN:f32 = 450.0;
 pub struct OsuGame {
     // lists
     pub notes: Vec<Box<dyn OsuHitObject>>,
-    actions: ActionQueue,
+    actions: actions::ActionQueue,
 
     // hit timing bar stuff
     hit_windows: Vec<(HitJudgment, Range<f32>)>,
@@ -44,8 +80,8 @@ pub struct OsuGame {
     end_time: f32,
 
     #[cfg(feature="graphics")] cursor: OsuCursor,
-    #[cfg(feature="graphics")] smoke_emitter: Option<Emitter>,
-    #[cfg(feature="graphics")] follow_point_image: Option<Image>,
+    #[cfg(feature="graphics")] smoke_emitter: Option<tataku_graphics::Emitter>,
+    #[cfg(feature="graphics")] follow_point_image: Option<tataku_graphics::Image>,
     #[cfg(feature="graphics")] judgment_helper: JudgmentImageHelper,
 
     metadata: Arc<BeatmapMeta>,
@@ -225,7 +261,11 @@ impl OsuGame {
     }
 
     #[cfg(feature="graphics")] 
-    fn draw_follow_points(&mut self, time: f32, list: &mut RenderableCollection) {
+    fn draw_follow_points(
+        &mut self, 
+        time: f32, 
+        list: &mut engine::graphics::RenderableCollection,
+    ) {
         if !self.game_settings.draw_follow_points { return; }
         if self.notes.is_empty() { return }
 
@@ -280,7 +320,7 @@ impl OsuGame {
                     // i.current_scale = Vector2::ONE * self.scaling_helper.scale;
                     list.push(i);
                 } else {
-                    list.push(Circle::new(
+                    list.push(engine::graphics::Circle::new(
                         point,
                         follow_dot_size,
                         Color::WHITE.alpha(alpha),
@@ -312,7 +352,7 @@ impl OsuGame {
         }
     }
 
-    fn map_key(&self, key: &Key) -> Option<KeyPress> {
+    fn map_key(&self, key: &input::Key) -> Option<KeyPress> {
         if key == &self.game_settings.left_key {
             Some(KeyPress::Left)
         } else if key == &self.game_settings.right_key {
@@ -324,10 +364,10 @@ impl OsuGame {
         }
     }
     
-    fn map_btn(&self, btn: &MouseButton) -> Option<KeyPress> {
-        if btn == &MouseButton::Left {
+    fn map_btn(&self, btn: &input::MouseButton) -> Option<KeyPress> {
+        if btn == &input::MouseButton::Left {
             Some(KeyPress::LeftMouse)
-        } else if btn == &MouseButton::Right {
+        } else if btn == &input::MouseButton::Right {
             Some(KeyPress::RightMouse)
         } else {
             None
@@ -338,8 +378,8 @@ impl GameMode for OsuGame {
     fn new(
         map: &Beatmap, 
         _diff_calc_only: bool,
-        settings: &Settings,
-    ) -> TatakuResult<Self> {
+        settings: &engine::Settings,
+    ) -> tataku::Result<Self> {
         let metadata = map.get_beatmap_meta();
         let mods = Arc::default();
         let effective_window_size = super::diff_calc::WINDOW_SIZE;
@@ -352,26 +392,36 @@ impl GameMode for OsuGame {
         let od = Self::get_od(&metadata, &mods);
         let scaling_helper = Arc::new(ScalingHelper::new_with_settings(&game_settings, cs, effective_window_size, mods.has_mod(HardRock)));
 
-        let timing_points = TimingPointHelper::new(map.get_timing_points(), map.slider_velocity());
+        let timing_points = TimingPointHelper::new(
+            map.get_timing_points(), 
+            map.slider_velocity(),
+        );
 
         let parent_dir = map.get_parent_dir().unwrap_or_default().to_string_lossy().to_string();
-        let mut actions = ActionQueue::new();
+        let mut actions = actions::ActionQueue::new();
         
         #[cfg(feature="graphics")] 
         let cursor = {
-            let cursor = OsuCursor::new(scaling_helper.circle_size.x / 2.0, SkinSettings::default(), parent_dir, settings);
+            let cursor = OsuCursor::new(
+                scaling_helper.circle_size.x / 2.0, 
+                graphics::SkinSettings::default(), 
+                parent_dir, 
+                settings
+            );
+
             cursor.init(&mut actions);
             cursor
         };
 
         let mut s = match map {
             Beatmap::Osu(beatmap) => {
+                use engine::beatmaps::osu::*;
                 let stack_leniency = beatmap.stack_leniency;
                 let std_settings = Arc::new(game_settings);
 
                 let get_hitsounds = |time, hitsound, hitsamples| {
                     let tp = timing_points.timing_point_at(time, true);
-                    Hitsound::from_hitsamples(hitsound, hitsamples, true, tp)
+                    engine::gameplay::Hitsound::from_hitsamples(hitsound, hitsamples, true, tp)
                 };
 
                 let mut s = Self {
@@ -526,7 +576,7 @@ impl GameMode for OsuGame {
 
                         Thing::Spinner(spinner) => {
                             let duration = spinner.end_time - spinner.time;
-                            let min_rps = map_difficulty(od, 2.0, 4.0, 6.0) * 0.6;
+                            let min_rps = engine::beatmaps::map_difficulty(od, 2.0, 4.0, 6.0) * 0.6;
 
                             let mut spins_required = (duration / 1000.0 * min_rps) as u16;
                             // fudge until we can properly calculate
@@ -550,7 +600,7 @@ impl GameMode for OsuGame {
                 s
             }
             
-            _ => return Err(BeatmapError::UnsupportedMode.into()),
+            _ => return Err(errors::beatmap::BeatmapError::UnsupportedMode.into()),
         };
 
         // wait an extra sec
@@ -886,7 +936,7 @@ impl GameMode for OsuGame {
 
         if self.new_playfield_pending {
             self.new_playfield_pending = false;
-            state.add_action(GamemodeAction::PlayfieldChanged);
+            state.add_action(gameplay::Action::PlayfieldChanged);
         }
 
         // disable the cursor particle emitter if this is a menu game
@@ -904,7 +954,12 @@ impl GameMode for OsuGame {
         // do autoplay things
         if has_autoplay {
             let mut pending_frames = Vec::new();
-            self.auto_helper.update(state.time, &self.notes, &self.scaling_helper, &mut pending_frames);
+            self.auto_helper.update(
+                state.time, 
+                &self.notes, 
+                &self.scaling_helper, 
+                &mut pending_frames
+            );
 
             // // handle presses and mouse movements now, and releases later
             for action in pending_frames {
@@ -923,7 +978,7 @@ impl GameMode for OsuGame {
         // if the map is over, say it is
         if state.time >= self.end_time {
             if !state.complete() {
-                state.add_action(GamemodeAction::MapComplete);
+                state.add_action(gameplay::Action::MapComplete);
             }
             return;
         }
@@ -1053,13 +1108,14 @@ impl GameMode for OsuGame {
     fn draw(
         &mut self, 
         state: GameplayDrawShell, 
-        list: &mut RenderableCollection
+        list: &mut tataku_graphics::RenderableCollection
     ) {
+        use engine::graphics;
         let window_size = state.window_size;
         // draw the playfield
         if !state.gameplay_mode.is_preview() {
             let alpha = self.game_settings.playfield_alpha;
-            let mut playfield = Rectangle::new_bounds(
+            let mut playfield = graphics::Rectangle::new_bounds(
                 self.scaling_helper.playfield_with_padding, 
                 Color::BLACK.alpha(alpha), 
             ).border_maybe(
@@ -1070,33 +1126,36 @@ impl GameMode for OsuGame {
             if self.move_playfield.is_some() {
                 let line_size = self.game_settings.playfield_movelines_thickness;
                 // draw x and y center lines
-                let px_line = Line::new(
+                let px_line = graphics::Line::new(
                     playfield.pos + Vector2::new(0.0, playfield.size.y/2.0),
                     playfield.pos + Vector2::new(playfield.size.x, playfield.size.y/2.0),
                     line_size,
                     Color::WHITE
                 );
-                let py_line = Line::new(
+                let py_line = graphics::Line::new(
                     playfield.pos + Vector2::new(playfield.size.x/2.0, 0.0),
                     playfield.pos + Vector2::new(playfield.size.x/2.0, playfield.size.y),
                     line_size, 
                     Color::WHITE
                 );
 
-                let wx_line = Line::new(
+                let wx_line = graphics::Line::new(
                     Vector2::new(0.0, window_size.y/2.0),
                     Vector2::new(window_size.x, window_size.y/2.0),
                     line_size,
                     Color::WHITE
                 );
-                let wy_line = Line::new(
+                let wy_line = graphics::Line::new(
                     Vector2::new(window_size.x/2.0, 0.0),
                     Vector2::new(window_size.x/2.0, window_size.y),
                     line_size, 
                     Color::WHITE
                 );
 
-                playfield.border = Some(Border::new(Color::WHITE, line_size));
+                playfield.border = Some(Border::new(
+                    Color::WHITE, 
+                    line_size
+                ));
 
                 list.push(wx_line);
                 list.push(wy_line);
@@ -1141,7 +1200,7 @@ impl GameMode for OsuGame {
             } * self.scaling_helper.scale;
             let fade_radius = radius / 5.0;
 
-            list.push(FlashlightDrawable::new(
+            list.push(graphics::FlashlightDrawable::new(
                 self.mouse_pos,
                 radius - fade_radius,
                 fade_radius,
@@ -1218,7 +1277,7 @@ impl GameMode for OsuGame {
         }
     }
     
-    fn force_update_settings(&mut self, settings: &Settings) {
+    fn force_update_settings(&mut self, settings: &engine::Settings) {
         let settings = settings.gamemode_settings::<OsuSettings>(crate::GAME_INFO).unwrap_or_default();
         // let settings = settings.osu_settings.clone();
         let settings = Arc::new(settings);
@@ -1232,7 +1291,17 @@ impl GameMode for OsuGame {
     }
 
     #[cfg(feature="graphics")]
-    fn reload_skin(&mut self, beatmap_path: &str, skin_manager: &mut dyn SkinProvider) -> TextureSource {
+    fn reload_skin(
+        &mut self, 
+        beatmap_path: &str, 
+        skin_manager: &mut dyn engine::graphics::SkinProvider
+    ) -> engine::graphics::TextureSource {
+        use engine::graphics::{
+            SkinUsage,
+            TextureSource,
+            EmitterBuilder,
+        };
+        
         let source = if self.game_settings.beatmap_skin { TextureSource::Beatmap(beatmap_path.to_owned()) } else { TextureSource::Skin };
 
         self.cursor.reload_skin(skin_manager);
@@ -1253,7 +1322,13 @@ impl GameMode for OsuGame {
             n.reload_skin(&source, skin_manager);
         }
 
-        let smoke = skin_manager.get_texture("cursor-smoke", &source, SkinUsage::Gamemode, false).map(|i| i.tex).unwrap_or_default();
+        let smoke = skin_manager.get_texture(
+            "cursor-smoke", 
+            &source, 
+            SkinUsage::Gamemode, 
+            false
+        ).map(|i| i.tex).unwrap_or_default();
+
         if let Some(emitter) = &mut self.smoke_emitter {
             emitter.image = smoke;
         } else {
@@ -1276,7 +1351,12 @@ impl GameMode for OsuGame {
     }
 
     #[cfg(feature="gameplay")] 
-    fn handle_input(&mut self, input: InputEvent) -> Option<ReplayAction> {
+    fn handle_input(&mut self, input: input::InputEvent) -> Option<ReplayAction> {
+        use input::{
+            Key,
+            InputType,
+            GamepadButton,
+        };
         match input.event {
             InputType::KeyPress(press) => {
                 let key = press.as_key()?;
@@ -1351,7 +1431,7 @@ impl GameMode for OsuGame {
                     
                     
                     let settings2 = settings.clone();
-                    self.actions.push(GameAction::UpdateSettings(Arc::new(
+                    self.actions.push(actions::game::GameAction::UpdateSettings(Arc::new(
                         move |settings| 
                         settings.update_gamemode_settings(
                             GAME_INFO, 
@@ -1407,7 +1487,7 @@ impl GameMode for OsuGame {
                     a.playfield_scale += delta.y;
                     self.game_settings = Arc::new(a.clone());
 
-                    self.actions.push(GameAction::UpdateSettings(Arc::new(
+                    self.actions.push(actions::game::GameAction::UpdateSettings(Arc::new(
                         move |settings| 
                         settings.update_gamemode_settings(
                             GAME_INFO, 
@@ -1490,8 +1570,9 @@ impl GameMode for OsuGame {
     #[cfg(feature="graphics")] 
     fn build_widgets(
         &self, 
-        loader: &mut dyn UiElementLoader
+        loader: &mut dyn engine::gameplay::widgets::UiElementLoader
     ) {
+        use engine::gameplay::widgets::*;
         // combo
         loader.change_default_layout(
             "combo", 

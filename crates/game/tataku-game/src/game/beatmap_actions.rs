@@ -1,5 +1,9 @@
 use crate::prelude::*;
 
+use common::Md5Hash;
+use engine::actions;
+use actions::beatmap::PostDelete;
+
 // beatmap related actions 
 impl Game {
     pub(super) fn set_current_beatmap(
@@ -51,7 +55,9 @@ impl Game {
 
             self.beatmap_manager.set_current(hash);
             
-            self.actions.push(GameAction::UpdatePlaymodeActual(actual_mode.into()).into());
+            self.actions.push(actions::game::GameAction::UpdatePlaymodeActual(
+                actual_mode.into()).into()
+            );
 
             // update beatmap settings provider
             let beatmap_prefs = Database::get_beatmap_prefs(hash);
@@ -72,9 +78,9 @@ impl Game {
         let position = if config.use_preview_time { beatmap.audio_preview } 
             else { 0.0 };
 
-        self.actions.push(SongAction::Set(SongSetAction::FromFile(
+        self.actions.push(actions::song::SongAction::Set(actions::song::SongSetAction::FromFile(
             beatmap.audio_filename.clone(), 
-            SongPlayData {
+            actions::song::SongPlayData {
                 play: true,
                 restart: config.restart_song,
                 position: Some(position),
@@ -82,9 +88,9 @@ impl Game {
             }
         )).into());
         // make sure the song is playing
-        self.actions.push(SongAction::Play.into());
+        self.actions.push(actions::song::SongAction::Play.into());
         // make sure to update the background
-        self.actions.push(GameAction::UpdateBackground.into());
+        self.actions.push(actions::game::GameAction::UpdateBackground.into());
 
     }
     
@@ -93,8 +99,8 @@ impl Game {
         self.beatmap_manager.current_beatmap = None;
 
         // stop song
-        self.actions.push(SongAction::Stop.into());
-        self.actions.push(GameAction::UpdateBackground.into());
+        self.actions.push(actions::song::SongAction::Stop.into());
+        self.actions.push(actions::game::GameAction::UpdateBackground.into());
     }
     
     pub(super) fn delete_beatmap(

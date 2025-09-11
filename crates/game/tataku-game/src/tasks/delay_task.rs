@@ -1,4 +1,10 @@
 use crate::prelude::*;
+use common::reflect::Reflect;
+
+use engine::{
+    actions,
+    game::task::*,
+};
 
 pub struct DelayTask {
     state: TatakuTaskState,
@@ -42,7 +48,7 @@ impl TatakuTask for DelayTask {
         &mut self,
         _values: &mut dyn Reflect, 
         state: &TaskGameState, 
-        actions: &mut ActionQueue
+        actions: &mut actions::ActionQueue
     ) {
         if matches!(self.state, TatakuTaskState::NotStarted) {
             self.start_time = state.game_time;
@@ -53,7 +59,7 @@ impl TatakuTask for DelayTask {
         if (state.game_time - self.start_time) >= self.delay {
             self.state = TatakuTaskState::Complete;
             if let Some(task) = self.task.take() {
-                actions.push(TaskAction::AddTask(task).into());
+                actions.push(actions::task::TaskAction::AddTask(task).into());
             }
         }
     }

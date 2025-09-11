@@ -1,6 +1,74 @@
-use std::sync::mpsc::TryRecvError;
-
 use crate::prelude::*;
+use ui::widget::TextLayoutContexts;
+use std::sync::mpsc::{
+    Sender,
+    Receiver,
+    TryRecvError,
+};
+
+use common::{
+    Score,
+    replays::*,
+    network::spectator::*,
+};
+
+use tataku::{
+    Color,
+    Bounds,
+    Vector2,
+};
+
+use engine::{
+    actions,
+    settings,
+    gameplay,
+    Settings,
+    BeatmapMeta,
+    Notification,
+    BeatmapAnimation,
+    beatmaps::Beatmap,
+
+    actions::{
+        song::SongAction as SongAction,
+        cursor::CursorAction as CursorAction,
+        gameplay::GameplayAction as GameplayAction,
+        audio::{
+            AudioLoadData,
+            HitsoundSource,
+            AudioAction as AudioAction,
+            AudioActionType as AudioActionType,
+        },
+        game::{
+            GameAction as GameAction,
+            GameplayId,
+        },
+        multiplayer::{
+            LobbyAction as LobbyAction,
+            MultiplayerAction as MultiplayerAction,
+        }
+    },
+    gameplay::{
+        *,
+        mods::*,
+        widgets::*,
+        judgments::*,
+        gameplay_manager::*,
+        health_manager::{
+            HealthManager,
+            DefaultHealthManager,
+        }
+    }
+};
+
+use input::{
+    Key,
+    KeyInput,
+    InputType,
+    InputEvent,
+    KeyModifiers,
+};
+
+
 
 /// how long should center text be drawn for?
 const CENTER_TEXT_DRAW_TIME:f32 = 2_000.0;
@@ -36,9 +104,9 @@ macro_rules! create_update_state {
 
 pub struct GameplayManager {
     pub id: GameplayId,
-    pub actions: ActionQueue,
+    pub actions: actions::ActionQueue,
 
-    pub beatmap: Beatmap,
+    pub beatmap: engine::beatmaps::Beatmap,
     pub metadata: Arc<BeatmapMeta>,
     pub gamemode: Box<dyn GameMode>,
     pub gamemode_properties: GameModeProperties,
@@ -53,7 +121,7 @@ pub struct GameplayManager {
     pub score: IngameScore,
     // pub score_multiplier: f32,
 
-    pub health: Box<dyn HealthManager>,
+    pub health: Box<dyn health_manager::HealthManager>,
     pub judgments: Vec<HitJudgment>,
     pub key_counter: KeyCounter,
 
@@ -74,7 +142,7 @@ pub struct GameplayManager {
     pub failed_time: f32,
     pub end_time: f32,
     pub lead_in_time: f32,
-    pub lead_in_timer: TatakuInstant,
+    pub lead_in_timer: tataku::Instant,
     
     global_offset: f32,
 
@@ -88,7 +156,7 @@ pub struct GameplayManager {
     /// used for breaks. if the user tabs out during a break, a pause is pending, but we shouldnt pause until the break is over (or almost over i guess)
     pause_pending: bool,
     pause_start: Option<i64>,
-    restart_key_hold_start: Option<TatakuInstant>,
+    restart_key_hold_start: Option<tataku::Instant>,
 
     pub timing_points: TimingPointHelper,
 
@@ -98,7 +166,7 @@ pub struct GameplayManager {
     /// list of judgement indicators to draw
     #[cfg(feature="graphics")] pub judgement_indicators: Vec<Box<dyn JudgementIndicator>>,
 
-    pub common_game_settings: Arc<CommonGameplaySettings>,
+    pub common_game_settings: Arc<settings::common_gameplay::CommonGameplaySettings>,
     window_size: Vector2,
     fit_to_bounds: Option<Bounds>,
 
@@ -120,7 +188,7 @@ pub struct GameplayManager {
 
 impl GameplayManager {
     pub fn new(
-        beatmap: Beatmap,
+        beatmap: engine::beatmaps::Beatmap,
         mut gamemode: Box<dyn GameMode>,
         mut mods: ModManager,
         settings: &Settings,
@@ -144,7 +212,7 @@ impl GameplayManager {
         score.speed = current_mods.speed;
         score.time = time as u64;
 
-        let mut actions = ActionQueue::new();
+        let mut actions = actions::ActionQueue::new();
     
         for (id, list) in properties.sound_list.clone() {
             actions.push(AudioAction::new(
@@ -186,7 +254,7 @@ impl GameplayManager {
             events: beatmap.get_events(),
 
             lead_in_time: LEAD_IN_TIME,
-            lead_in_timer: TatakuInstant::now(),
+            lead_in_timer: tataku::Instant::now(),
             end_time: properties.end_time,
             global_offset: settings.global_offset,
 
@@ -208,7 +276,7 @@ impl GameplayManager {
             #[cfg(feature="graphics")] editor: None,
             #[cfg(feature="graphics")] ui_elements: Vec::new(),
             #[cfg(feature="graphics")] judgement_indicators: Vec::new(),
-            #[cfg(feature="graphics")] animation: Box::new(EmptyAnimation),
+            #[cfg(feature="graphics")] animation: Box::new(engine::game::beatmap_animation::EmptyAnimation),
             gameplay_mode: Box::new(GameplayModeInner::Normal),
             gameplay_actions: Vec::new(),
 
@@ -246,7 +314,7 @@ impl GameplayManager {
         let info = self.gamemode_properties.info;
 
         // TODO: would be nice to make widgets from all gamemodes available (don-chan in osu!?)
-        let widgets = DEFAULT_GAMEPLAY_WIDGETS
+        let widgets = interface::DEFAULT_GAMEPLAY_WIDGETS
             .iter()
             .chain(info.available_widgets)
             .cloned()
@@ -261,7 +329,7 @@ impl GameplayManager {
             self.common_game_settings.clone()
         );
 
-        for i in DEFAULT_GAMEPLAY_WIDGETS
+        for i in interface::DEFAULT_GAMEPLAY_WIDGETS
             .iter()
             .map(|i| i.name) 
         {
@@ -378,7 +446,7 @@ impl GameplayManager {
 
     pub fn update_difficulty(
         &mut self, 
-        provider: &mut dyn DifficultyProvider
+        provider: &mut dyn gameplay_manager::DifficultyProvider
     ) {
         self.map_diff = provider.get_diff(
             &self.beatmap.get_beatmap_meta(), 
@@ -482,7 +550,7 @@ impl GameplayManager {
         if key == self.common_game_settings.map_restart_key 
             && !self.gameplay_mode.is_multi() 
         {
-            self.restart_key_hold_start = Some(TatakuInstant::now());
+            self.restart_key_hold_start = Some(tataku::Instant::now());
             return true;
         }
 
@@ -514,7 +582,7 @@ impl GameplayManager {
 
         // ui editor toggle
         #[cfg(feature = "ui")]
-        if key == Key::F9 {
+        if key == input::Key::F9 {
             if self.editor.is_some() {
                 self.editor = None;
                 if !self.gamemode_properties.show_cursor {
@@ -528,18 +596,18 @@ impl GameplayManager {
             self.ui_changed = true;
             if !self.current_mods.has_autoplay() {
                 let mut mods = (*self.current_mods).clone();
-                mods.add_mod(Autoplay);
+                mods.add_mod(mods::Autoplay);
                 self.apply_mods(mods);
             }
 
             let (
                 event_sender, 
                 event_receiver
-            ) = channel();
+            ) = std::sync::mpsc::channel();
             let (
                 action_sender, 
                 action_receiver
-            ) = channel();
+            ) = std::sync::mpsc::channel();
 
             let editor = GameplayWidgetEditor::new(
                 &self.ui_elements,
@@ -547,9 +615,9 @@ impl GameplayManager {
                 event_receiver
             );
 
-            self.actions.push(MenuAction::AddDialogRaw { 
+            self.actions.push(actions::menu::MenuAction::AddDialogRaw { 
                 dialog: Box::new(editor), 
-                options: Box::new(DialogCreateOptions {
+                options: Box::new(actions::menu::DialogCreateOptions {
                     background: false,
                     ..Default::default()
                 })
@@ -560,7 +628,7 @@ impl GameplayManager {
                 action_receiver: Arc::new(Mutex::new(action_receiver)),
             });
 
-            self.actions.push(CursorAction::SetVisible(true).into());
+            self.actions.push(actions::cursor::CursorAction::SetVisible(true).into());
             return true;
         }
 
@@ -587,7 +655,7 @@ impl GameplayManager {
 
 
         // skip intro
-        if key == Key::Space {
+        if key == input::Key::Space {
             self.handle_frame(
                 ReplayAction::Press(KeyPress::SkipIntro), 
                 false, 
@@ -723,7 +791,7 @@ impl GameplayManager {
         frame: SpectatorFrame,
     ) {
         if !self.gameplay_mode.should_send_spec_frames() { return }
-        self.actions.push(OnlineAction::SendSpectatorFrame {
+        self.actions.push(actions::online::OnlineAction::SendSpectatorFrame {
             frame: Box::new(frame),
             force: false
         }.into());
@@ -734,7 +802,7 @@ impl GameplayManager {
         frame: SpectatorFrame,
     ) {
         if !self.gameplay_mode.should_send_spec_frames() { return }
-        self.actions.push(OnlineAction::SendSpectatorFrame {
+        self.actions.push(actions::online::OnlineAction::SendSpectatorFrame {
             frame: Box::new(frame),
             force: true
         }.into());
@@ -761,7 +829,7 @@ impl GameplayManagerTrait for GameplayManager {
     fn mods(&self) -> &ModManager { &self.current_mods }
     fn metadata(&self) -> &BeatmapMeta { &self.metadata }
     fn key_counter(&self) -> &KeyCounter { &self.key_counter }
-    fn spectators(&mut self) -> &mut SpectatorList { &mut self.spectator_info.spectators }
+    fn spectators(&mut self) -> &mut engine::online::SpectatorList { &mut self.spectator_info.spectators }
     fn judgments(&self) -> &Vec<HitJudgment> { &self.judgments }
     fn health(&self) -> &dyn HealthManager { &*self.health }
     fn hitbar_timings(&self) -> Vec<(f32, f32)> { self.hitbar_timings.clone() }
@@ -787,9 +855,9 @@ impl GameplayManagerTrait for GameplayManager {
 
     fn update(
         &mut self, 
-        values: &mut dyn Reflect,
+        values: &mut dyn common::reflect::Reflect,
         font_contexts: &mut TextLayoutContexts,
-        actions: &mut ActionQueue,
+        actions: &mut actions::ActionQueue,
     ) {
         let new_time = *values.reflect_get::<f32>("song.position").unwrap();
         let settings = values
@@ -894,9 +962,10 @@ impl GameplayManagerTrait for GameplayManager {
         // check lead-in time
         if self.lead_in_time > 0.0 {
             let elapsed = self.lead_in_timer.elapsed().as_micros() as f32 / 1000.0;
-            self.lead_in_timer = TatakuInstant::now();
+            self.lead_in_timer = tataku::Instant::now();
             self.lead_in_time -= elapsed * self.game_speed();
 
+            use actions::song::SongAction as SongAction;
             if self.lead_in_time <= 0.0 {
                 self.actions.push(SongAction::SetRate(self.game_speed()).into());
                 self.actions.push(SongAction::SetVolume(settings.get_music_vol()).into());
@@ -947,7 +1016,7 @@ impl GameplayManagerTrait for GameplayManager {
         // update hit timings bar
         #[cfg(feature="graphics")] 
         self.hitbar_timings
-            .retain(|(hit_time, _)| time - hit_time < HIT_TIMING_DURATION );
+            .retain(|(hit_time, _)| time - hit_time < tataku_interface::gameplay_widgets::HIT_TIMING_DURATION );
 
         // update judgement indicators
         #[cfg(feature="graphics")] 
@@ -965,7 +1034,7 @@ impl GameplayManagerTrait for GameplayManager {
         // update score stuff now that gamemode has been updated
         let info = self.gamemode_properties.info;
         self.score.accuracy = info.calc_acc(&self.score);
-        self.score.performance = info.calc_perf(CalcPerfInfo {
+        self.score.performance = info.calc_perf(gameplay::info::CalcPerfInfo {
             score: &self.score,
             map_difficulty: self.map_diff, 
             accuracy: self.score.accuracy
@@ -1017,7 +1086,7 @@ impl GameplayManagerTrait for GameplayManager {
 
             #[cfg(feature="gameplay")]
             if self.gameplay_mode.is_multi() {
-                self.actions.push(LobbyAction::MapComplete(
+                self.actions.push(actions::multiplayer::LobbyAction::MapComplete(
                     Box::new(self.score.score.clone())
                 ).into());
             } 
@@ -1246,7 +1315,7 @@ impl GameplayManagerTrait for GameplayManager {
     }
 
     #[cfg(feature="graphics")]
-    fn draw(&mut self, list: &mut RenderableCollection) {
+    fn draw(&mut self, list: &mut graphics::RenderableCollection) {
         let time = self.time();
 
         // draw animation
@@ -1303,7 +1372,7 @@ impl GameplayManagerTrait for GameplayManager {
     fn handle_action(
         &mut self, 
         action: GameplayAction,
-        settings: &Settings,
+        settings: &engine::Settings,
     ) {
         match action {
             GameplayAction::Pause => self.pause(),
@@ -1339,11 +1408,11 @@ impl GameplayManagerTrait for GameplayManager {
 
     fn handle_gamemode_action(
         &mut self, 
-        action: GamemodeAction,
-        settings: &Settings
+        action: gameplay::Action,
+        settings: &engine::Settings
     ) {
         match action {
-            GamemodeAction::AddJudgment(judgment) => {
+            gameplay::Action::AddJudgment(judgment) => {
 
                 // increment judgment, if applicable
                 if let Some(count) = self.score.judgments.get_mut(judgment.id) {
@@ -1413,7 +1482,7 @@ impl GameplayManagerTrait for GameplayManager {
                     self.fail();
                 }
             }
-            GamemodeAction::PlayHitsound { 
+            gameplay::Action::PlayHitsound { 
                 id, 
                 volume, 
                 repeat 
@@ -1432,17 +1501,17 @@ impl GameplayManagerTrait for GameplayManager {
             }
 
 
-            GamemodeAction::AddTiming { 
+            gameplay::Action::AddTiming { 
                 hit_time, 
                 note_time
             } => {
                 let diff = hit_time - note_time;
-                self.score.insert_stat(HitVarianceStat, diff);
+                self.score.insert_stat(gameplay::stats::HitVarianceStat, diff);
                 self.hitbar_timings.push((hit_time, diff));
             }
 
             #[cfg(feature="graphics")] 
-            GamemodeAction::AddIndicator(
+            gameplay::Action::AddIndicator(
                 mut indicator
             ) => {
                 indicator.set_start_time(self.time());
@@ -1453,16 +1522,16 @@ impl GameplayManagerTrait for GameplayManager {
                 self.judgement_indicators.push(indicator);
             }
 
-            GamemodeAction::AddStat { 
+            gameplay::Action::AddStat { 
                 stat, 
                 value 
             } => self.score.insert_stat(stat, value),
 
             #[cfg(feature="graphics")] 
-            GamemodeAction::RemoveLastJudgment => self.judgement_indicators.pop().nope(),
-            GamemodeAction::ComboBreak => self.combo_break(),
-            GamemodeAction::FailGame => self.fail(),
-            GamemodeAction::ReplayAction(frame) => self.handle_frame(
+            gameplay::Action::RemoveLastJudgment => self.judgement_indicators.pop().nope(),
+            gameplay::Action::ComboBreak => self.combo_break(),
+            gameplay::Action::FailGame => self.fail(),
+            gameplay::Action::ReplayAction(frame) => self.handle_frame(
                 frame.action, 
                 true, 
                 Some(frame.time), 
@@ -1471,13 +1540,13 @@ impl GameplayManagerTrait for GameplayManager {
             ),
             
             
-            GamemodeAction::ResetHealth => self.health.reset(),
-            GamemodeAction::ReplaceHealth(new_health) 
+            gameplay::Action::ResetHealth => self.health.reset(),
+            gameplay::Action::ReplaceHealth(new_health) 
                 => self.health = new_health,
-            GamemodeAction::MapComplete => self.completed = true,
+            gameplay::Action::MapComplete => self.completed = true,
 
 
-            GamemodeAction::PlayfieldChanged => {
+            gameplay::Action::PlayfieldChanged => {
                 #[cfg(feature="graphics")] 
                 if self.animation.use_gamemode_playfield(
                     self.gamemode_properties.info
@@ -1525,8 +1594,8 @@ impl GameplayManagerTrait for GameplayManager {
     #[cfg(feature="graphics")]
     fn reload_skin(
         &mut self, 
-        skin_manager: &mut dyn SkinProvider,
-        _settings: &Settings,
+        skin_manager: &mut dyn graphics::SkinProvider,
+        _settings: &engine::Settings,
     ) {
         let parent_folder = self
             .beatmap
@@ -1593,12 +1662,12 @@ impl GameplayManagerTrait for GameplayManager {
     }
 
     #[cfg(feature="graphics")]
-    fn cleanup_textures(&mut self, skin_manager: &mut dyn SkinProvider) {
+    fn cleanup_textures(&mut self, skin_manager: &mut dyn graphics::SkinProvider) {
         // drop all texture references by dropping the gamemode
         // this should be fine since we shouldnt be re-using this gamemode at this time anyways
-        self.gamemode = Box::new(NoMode);
+        self.gamemode = Box::new(engine::gameplay::default::NoMode);
         self.gamemode_properties = self.gamemode.properties(&self.timing_points);
-        skin_manager.free_by_usage(SkinUsage::Beatmap);
+        skin_manager.free_by_usage(graphics::SkinUsage::Beatmap);
 
         let path = self.beatmap
             .get_parent_dir()
@@ -1606,7 +1675,7 @@ impl GameplayManagerTrait for GameplayManager {
             .to_string_lossy()
             .to_string();
 
-        skin_manager.free_by_source(TextureSource::Beatmap(path));
+        skin_manager.free_by_source(graphics::TextureSource::Beatmap(path));
     }
 
 
@@ -1694,7 +1763,7 @@ impl GameplayManagerTrait for GameplayManager {
                 // dont do lead in
                 self.lead_in_time = 0.0;
             } else {
-                self.lead_in_timer = TatakuInstant::now();
+                self.lead_in_timer = tataku::Instant::now();
                 self.lead_in_time = LEAD_IN_TIME;
             }
 
@@ -1774,7 +1843,7 @@ impl GameplayManagerTrait for GameplayManager {
         self.started = false;
         self.failed = false;
         self.lead_in_time = LEAD_IN_TIME / self.current_mods.get_speed();
-        self.lead_in_timer = TatakuInstant::now();
+        self.lead_in_timer = tataku::Instant::now();
 
 
         let playmode = self.gamemode_properties.playmode().to_string();
@@ -1989,7 +2058,7 @@ pub struct GameplaySpectatorInfo {
     pub last_score_sync: f32,
 
     /// who is currently spectating us?
-    pub spectators: SpectatorList
+    pub spectators: engine::online::SpectatorList
 }
 
 
@@ -2004,10 +2073,10 @@ pub fn manager_from_playmode_path_hash(
     infos: &GamemodeInfos,
     incoming_mode: &str,
     map_path: &str,
-    map_hash: Md5Hash,
+    map_hash: common::Md5Hash,
     mods: ModManager,
     settings: &Settings,
-) -> TatakuResult<GameplayManager> {
+) -> tataku::Result<GameplayManager> {
     let beatmap = Beatmap::from_path_and_hash(map_path, map_hash)?;
     let playmode = beatmap.playmode(incoming_mode.to_owned());
 
@@ -2026,7 +2095,7 @@ pub fn manager_from_playmode(
     beatmap: &BeatmapMeta,
     mods: ModManager,
     settings: &Settings,
-) -> TatakuResult<GameplayManager> {
+) -> tataku::Result<GameplayManager> {
     let beatmap = Beatmap::from_metadata(beatmap)?;
     let playmode = beatmap.playmode(incoming_mode.to_owned());
 

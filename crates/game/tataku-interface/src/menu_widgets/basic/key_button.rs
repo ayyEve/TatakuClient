@@ -1,4 +1,18 @@
 use crate::prelude::*;
+use tataku::Border;
+use common::reflect::*;
+use widgets::InputAction;
+use ui::{
+    tree::*,
+    style::*,
+    widget::*,
+};
+use input::{ 
+    Key,
+    InputType,
+    InputEvent, 
+    MouseButton, 
+};
 
 #[derive(ChainableInitializer)]
 pub struct KeyButton {
@@ -31,15 +45,15 @@ impl KeyButton {
         }
     }
 }
-impl Widget<TatakuAction> for KeyButton {
+impl Widget<actions::Action> for KeyButton {
     fn name(&self) -> CowStr { "key_input".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn layout(&mut self, shell: &mut LayoutShell<TatakuAction>) -> taffy::TaffyResult<NodeId> {
+    fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId> {
         self.node_id = shell.tree.new_leaf()?;
         Ok(self.node_id)
     }
-    fn init_style(&mut self, shell: &mut LayoutShell<TatakuAction>) {
+    fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
         let text_style = shell.tree
             .get_text_style(self.node_id)
             .unwrap();
@@ -77,7 +91,7 @@ impl Widget<TatakuAction> for KeyButton {
     fn input(
         &mut self, 
         event: &InputEvent, 
-        shell: &mut InputShell<TatakuAction>,
+        shell: &mut InputShell<actions::Action>,
     ) {
         if shell.event_consumed { return }
         let bounds = shell.tree
@@ -147,7 +161,7 @@ impl Widget<TatakuAction> for KeyButton {
     }
 
 
-    fn update(&mut self, shell: &mut UpdateShell<TatakuAction>) {
+    fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
         if self.key.update(shell.values, self.optional) {
             let ctx = shell
                 .tree
@@ -174,15 +188,15 @@ impl Widget<TatakuAction> for KeyButton {
             //         }
             //     ))
             // ));
-            shell.actions.push(UiAction::new(
+            shell.actions.push(actions::ui::UiAction::new(
                 self.node_id, 
-                UiActionType::MarkDirty,
+                actions::ui::UiActionType::MarkDirty,
             ).into());
         }
     }
 
 
-    fn draw(&self, shell: &mut DrawShell<TatakuAction>) {
+    fn draw(&self, shell: &mut DrawShell<actions::Action>) {
         let ctx = shell.tree
             .get_context(self.node_id)
             .unwrap();
@@ -194,7 +208,7 @@ impl Widget<TatakuAction> for KeyButton {
             .absolute_bounds(self.node_id)
             .unwrap();
 
-        shell.list.push(Rectangle::new_bounds(
+        shell.list.push(graphics::Rectangle::new_bounds(
             bounds, 
             shell.general_theme.background_color,
         ).border(Border::new(
@@ -218,7 +232,7 @@ impl Widget<TatakuAction> for KeyButton {
 pub enum InputButtonValue<T> {
     Static(Option<T>),
     Variable {
-        path: VariablePathResolver,
+        path: engine::VariablePathResolver,
         cache: Option<T>, 
         error_logged: bool,
     },
@@ -273,8 +287,8 @@ impl<T:Copy + Reflect + PartialEq> InputButtonValue<T> {
         false
     }
 }
-impl<T> From<VariablePathResolver> for InputButtonValue<T> {
-    fn from(path: VariablePathResolver) -> Self {
+impl<T> From<engine::VariablePathResolver> for InputButtonValue<T> {
+    fn from(path: engine::VariablePathResolver) -> Self {
         Self::Variable {
             path,
             cache: None,

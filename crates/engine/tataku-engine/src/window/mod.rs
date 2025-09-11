@@ -5,4 +5,7 @@ mod fullscreen_monitor;
 
 pub use fullscreen_monitor::*;
 #[cfg(feature="graphics")] pub use window::*;
-#[cfg(feature="graphics")] pub use window_event::*;
+// #[cfg(feature="graphics")] pub use window_event::*;
+
+#[cfg(feature="graphics")] 
+pub use window_event::WindowEvent as Event; // window::Event

@@ -1,4 +1,13 @@
 use crate::prelude::*;
+use common::reflect::Reflect;
+
+use engine::{
+    actions,
+    game::task::*,
+    beatmaps::{
+        BeatmapMeta,
+    },
+};
 
 pub struct LoadBeatmapsTask {
     state: TatakuTaskState,
@@ -31,7 +40,7 @@ impl TatakuTask for LoadBeatmapsTask {
         &mut self, 
         values: &mut dyn Reflect, 
         _state: &TaskGameState, 
-        actions: &mut ActionQueue,
+        actions: &mut actions::ActionQueue,
     ) {
         let statuses = values
             .reflect_get_mut::<Vec<LoadingStatus>>("game.loading_statuses")
@@ -54,10 +63,10 @@ impl TatakuTask for LoadBeatmapsTask {
             // trace!("Adding map {}", map.beatmap_hash);
 
             // make sure the beatmap exists before adding it
-            if !Io::exists(&*map.file_path) {
+            if !tataku::Io::exists(&*map.file_path) {
                 warn!("Beatmap exists in db but not in fs: {}", map.file_path);
             } else {
-                actions.push(BeatmapAction::AddBeatmap { 
+                actions.push(actions::beatmap::BeatmapAction::AddBeatmap { 
                     map, 
                     add_to_db: false,
                 }.into());
@@ -67,11 +76,13 @@ impl TatakuTask for LoadBeatmapsTask {
         }
 
         debug!("Done adding maps");
-        actions.push(BeatmapAction::InitializeManager.into());
+        actions.push(actions::beatmap::BeatmapAction::InitializeManager.into());
         status.complete = true;
         self.state = TatakuTaskState::Complete;
 
         // add a task to check the beatmaps folder for new maps
-        actions.push(TaskAction::AddTask(Box::new(CheckBeatmapFoldersTask::default())).into());
+        actions.push(actions::task::TaskAction::AddTask(
+            Box::new(CheckBeatmapFoldersTask::default())
+        ).into());
     }
 }

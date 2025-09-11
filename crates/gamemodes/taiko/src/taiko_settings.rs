@@ -1,4 +1,15 @@
 use crate::prelude::*;
+use common::reflect::*;
+use tataku::Color;
+use engine::{
+    input::{
+        Key,
+        GamepadButton,
+        ControllerBinding,
+    },
+    gameplay::GamemodeSettings,
+    settings::SettingsColor,
+};
 use tataku_client_proc_macros::Settings;
 
 #[derive(Reflect, Settings)]
@@ -174,10 +185,10 @@ impl TaikoControllerConfig {
 
 #[test]
 fn test() {
-    let mut settings = Settings::default();
+    let mut settings = engine::Settings::default();
     settings.save_path = "/tmp/test.json".into();
 
-    let infos = GamemodeInfos::new(vec![crate::GAME_INFO]);
+    let infos = engine::gameplay::GamemodeInfos::new(vec![crate::GAME_INFO]);
     settings.gamemode_settings.build(infos.clone());
 
 
@@ -203,7 +214,7 @@ fn test() {
     settings.save();
 
     {
-        let mut settings = Settings::load_from(&settings.save_path);
+        let mut settings = engine::Settings::load_from(&settings.save_path);
         settings.gamemode_settings.build(infos);
         let gamemode = crate::GAME_INFO.id;
 

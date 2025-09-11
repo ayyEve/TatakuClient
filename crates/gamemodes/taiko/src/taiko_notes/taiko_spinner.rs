@@ -1,5 +1,16 @@
 use crate::prelude::*;
 
+use tataku::{
+    Color,
+    Border,
+    Vector2,
+};
+use engine::{
+    graphics,
+    beatmaps::NoteType,
+    gameplay::HitObject,
+};
+
 #[cfg(feature = "graphics")]
 const SPINNER_RADIUS:f32 = 200.0;
 
@@ -19,7 +30,7 @@ pub struct TaikoSpinner {
     #[cfg(feature="graphics")] pos: Vector2, // the note in the bar, not the spinner itself
     #[cfg(feature="graphics")] don_color: Color,
     #[cfg(feature="graphics")] kat_color: Color,
-    #[cfg(feature="graphics")] spinner_image: Option<Image>,
+    #[cfg(feature="graphics")] spinner_image: Option<graphics::Image>,
     #[cfg(feature="graphics")] playfield: Arc<TaikoPlayfield>,
 }
 impl TaikoSpinner {
@@ -57,7 +68,7 @@ impl HitObject for TaikoSpinner {
     }
 
     #[cfg(feature="graphics")]
-    fn draw(&mut self, time: f32, list: &mut RenderableCollection) {
+    fn draw(&mut self, time: f32, list: &mut graphics::RenderableCollection) {
         // if done, dont draw anything
         if self.complete { return }
         self.pos = self.playfield.hit_position + Vector2::with_x(self.x_at(time));
@@ -67,14 +78,14 @@ impl HitObject for TaikoSpinner {
         // if its time to start hitting the spinner
         if self.pos.x <= self.playfield.hit_position.x {
             // bg circle
-            list.push(Circle::new(
+            list.push(graphics::Circle::new(
                 spinner_position,
                 SPINNER_RADIUS,
                 Color::YELLOW
             ).border(Border::new(Color::BLACK, NOTE_BORDER_SIZE)));
 
             // draw another circle on top which increases in radius as the counter gets closer to the reqired
-            list.push(Circle::new(
+            list.push(graphics::Circle::new(
                 spinner_position,
                 SPINNER_RADIUS * (self.hit_count as f32 / self.hits_required as f32),
                 Color::WHITE,
@@ -90,14 +101,14 @@ impl HitObject for TaikoSpinner {
                 i.pos = self.pos;
                 list.push(i);
             } else {
-                list.push(HalfCircle::new(
+                list.push(graphics::HalfCircle::new(
                     self.pos,
                     self.settings.note_radius,
                     self.don_color,
                     true
                 ));
 
-                list.push(HalfCircle::new(
+                list.push(graphics::HalfCircle::new(
                     self.pos,
                     self.settings.note_radius,
                     self.kat_color,
@@ -117,11 +128,15 @@ impl HitObject for TaikoSpinner {
     }
     
     #[cfg(feature="graphics")]
-    fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+    fn reload_skin(
+        &mut self, 
+        source: &graphics::TextureSource, 
+        skin_manager: &mut dyn graphics::SkinProvider
+    ) {
         self.spinner_image = skin_manager.get_texture(
             "spinner-warning", 
             source, 
-            SkinUsage::Gamemode, 
+            graphics::SkinUsage::Gamemode, 
             false
         );
     }

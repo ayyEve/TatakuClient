@@ -1,4 +1,5 @@
-use crate::prelude::*;
+use crate::*;
+use common::reflect::*;
 
 // some kind of identifier
 #[derive(Reflect)]
@@ -56,5 +57,5 @@ impl std::cmp::PartialEq<String> for ChatChannelType {
 pub struct ChatChannel {
     #[reflect(alias("name"))]
     pub channel_type: ChatChannelType,
-    pub messages: Vec<ChatMessage>,
+    pub messages: Vec<online::ChatMessage>,
 }

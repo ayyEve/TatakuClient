@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::*;
 
 #[derive(Clone, Debug)]
 pub enum ChatAction {
@@ -16,8 +16,8 @@ pub enum ChatAction {
         channel: String,
     },
 }
-impl From<ChatAction> for TatakuAction {
+impl From<ChatAction> for actions::Action {
     fn from(value: ChatAction) -> Self {
-        TatakuAction::Online(OnlineAction::ChatAction(value))
+        actions::Action::Online(actions::online::OnlineAction::ChatAction(value))
     }
 }

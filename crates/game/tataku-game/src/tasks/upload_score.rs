@@ -1,4 +1,16 @@
 use crate::prelude::*;
+use common::{
+    ScoreSubmit,
+    ScoreMapInfo,
+    SubmitResponse,
+    NotSubmittedReason,
+    reflect::*,
+};
+
+use engine::{
+    actions,
+    game::task::*,
+};
 
 fn score_submit_path() -> String {
     const SCORE_SUBMIT_REFLECT_PATH: &str = "var.score_submits";
@@ -14,13 +26,13 @@ fn score_submit_path() -> String {
 pub struct UploadScoreTask {
     state: TatakuTaskState,
     data: ScoreUploadData,
-    task: Option<AsyncLoader<SubmitResponse>>,
+    task: Option<engine::io::AsyncLoader<SubmitResponse>>,
 }
 impl UploadScoreTask {
     pub fn new(
-        score: Score, 
-        beatmap: &BeatmapMeta,
-        settings: &Settings,
+        score: common::Score, 
+        beatmap: &engine::BeatmapMeta,
+        settings: &engine::Settings,
     ) -> Self {
         Self {
             state: TatakuTaskState::NotStarted,
@@ -100,13 +112,13 @@ impl TatakuTask for UploadScoreTask {
         &mut self, 
         values: &mut dyn Reflect, 
         _: &TaskGameState, 
-        actions: &mut ActionQueue
+        actions: &mut actions::ActionQueue
     ) {
         let Some(task) = self.task.as_ref() else {
             self.state = TatakuTaskState::Running;
 
             let data = self.data.clone();
-            self.task = Some(AsyncLoader::new(Self::upload(data)));
+            self.task = Some(engine::io::AsyncLoader::new(Self::upload(data)));
 
             values.reflect_insert(self.get_path(), ScoreSubmitResponse::default()).unwrap();
 
@@ -128,7 +140,10 @@ impl TatakuTask for UploadScoreTask {
                 a.performance_rating = performance_rating;
             }
             SubmitResponse::NotSubmitted(_e, msg) => {
-                actions.push(Notification::new_error("Error submitting score", msg).into());
+                actions.push(engine::Notification::new_error(
+                    "Error submitting score", 
+                    msg
+                ).into());
                 
                 let a = values.reflect_get_mut::<ScoreSubmitResponse>(self.get_path()).unwrap();
                 a.completed = true;

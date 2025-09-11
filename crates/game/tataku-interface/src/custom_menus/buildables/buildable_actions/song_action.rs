@@ -1,4 +1,6 @@
 use crate::prelude::*;
+use tataku::TatakuValue;
+use common::reflect::Reflect;
 
 /// An action that deals with the Song
 #[derive(Deserialize)]
@@ -45,32 +47,32 @@ impl BuildableSongAction {
         &self, 
         values: &mut dyn Reflect, 
         passed_in: Option<&TatakuValue>,
-    ) -> Option<SongAction> {
+    ) -> Option<actions::song::SongAction> {
         match self {
-            Self::Play => Some(SongAction::Play),
-            Self::Pause => Some(SongAction::Pause),
-            Self::Toggle => Some(SongAction::Toggle),
-            Self::Restart => Some(SongAction::Restart),
-            Self::PushQueue => Some(SongAction::Set(SongSetAction::PushQueue)),
+            Self::Play => Some(actions::song::SongAction::Play),
+            Self::Pause => Some(actions::song::SongAction::Pause),
+            Self::Toggle => Some(actions::song::SongAction::Toggle),
+            Self::Restart => Some(actions::song::SongAction::Restart),
+            Self::PushQueue => Some(actions::song::SongAction::Set(actions::song::SongSetAction::PushQueue)),
             Self::PopQueue(value)
-                => Some(SongAction::Set(SongSetAction::PopQueue(
+                => Some(actions::song::SongAction::Set(actions::song::SongSetAction::PopQueue(
                     value.resolve(values, passed_in)?,
                 ))),
 
             Self::Seek { value } => value
                 .resolve(values, passed_in)
                 .and_then(|n| n.as_f32())
-                .map(SongAction::SeekBy),
+                .map(actions::song::SongAction::SeekBy),
 
             Self::SetPosition { value } => value
                 .resolve(values, passed_in)
                 .and_then(|n| n.as_f32())
-                .map(SongAction::SetPosition),
+                .map(actions::song::SongAction::SetPosition),
 
             Self::SetRate { value } => value
                 .resolve(values, passed_in)
                 .and_then(|n| n.as_f32())
-                .map(SongAction::SetRate),
+                .map(actions::song::SongAction::SetRate),
         }
     }
 
@@ -110,8 +112,8 @@ impl BuildableSongPlayData {
         &self,
         values: &mut dyn Reflect,
         passed_in: Option<&TatakuValue>,
-    ) -> Option<SongPlayData> {
-        Some(SongPlayData { 
+    ) -> Option<actions::song::SongPlayData> {
+        Some(actions::song::SongPlayData { 
             play: self.play
                 .resolve(values, passed_in)
                 .map(|i| i.as_bool())

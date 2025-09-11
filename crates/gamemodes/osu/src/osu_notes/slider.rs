@@ -1,4 +1,26 @@
+use std::f32::consts::PI;
 use crate::prelude::*;
+use tataku::{
+    Color,
+    Border,
+    Easing,
+    Vector2,
+};
+
+use engine::{
+    graphics,
+    beatmaps::{
+        osu::*,
+        NoteType,
+        map_difficulty,
+    },
+    gameplay::{
+        Hitsound,
+        HitObject,
+        judgments::HitJudgment,
+    }
+};
+
 
 const SLIDER_DOT_RADIUS:f32 = 8.0;
 const BORDER_RADIUS:f32 = 6.0;
@@ -85,14 +107,14 @@ pub struct OsuSlider {
     standard_settings: Arc<OsuSettings>,
 
     #[cfg(feature="graphics")] start_circle_image: HitCircle,
-    #[cfg(feature="graphics")] end_circle_image: Option<Image>,
-    #[cfg(feature="graphics")] slider_reverse_image: Option<Image>,
-    #[cfg(feature="graphics")] sliderball_image: Option<Animation>,
-    #[cfg(feature="graphics")] sliderball_under_image: Option<Image>,
-    #[cfg(feature="graphics")] follow_circle_image: Option<Image>,
+    #[cfg(feature="graphics")] end_circle_image: Option<graphics::Image>,
+    #[cfg(feature="graphics")] slider_reverse_image: Option<graphics::Image>,
+    #[cfg(feature="graphics")] sliderball_image: Option<graphics::Animation>,
+    #[cfg(feature="graphics")] sliderball_under_image: Option<graphics::Image>,
+    #[cfg(feature="graphics")] follow_circle_image: Option<graphics::Image>,
 
     #[cfg(feature="graphics")] approach_circle: ApproachCircle,
-    #[cfg(feature="graphics")] slider_body_render_target: Option<RenderTarget>,
+    #[cfg(feature="graphics")] slider_body_render_target: Option<graphics::RenderTarget>,
     #[cfg(feature="graphics")] slider_body_render_target_failed: Option<f32>,
     #[cfg(feature="graphics")] slider_body_loader: SliderBodyLoader,
 
@@ -103,8 +125,8 @@ pub struct OsuSlider {
     pulse_length: f32,
     beat_scale: f32,
 
-    #[cfg(feature="graphics")] slider_body: SliderDrawable,
-    #[cfg(feature="graphics")] skin: Arc<SkinSettings>,
+    #[cfg(feature="graphics")] slider_body: graphics::SliderDrawable,
+    #[cfg(feature="graphics")] skin: Arc<graphics::SkinSettings>,
 }
 impl OsuSlider {
     #[allow(clippy::too_many_arguments)]
@@ -188,6 +210,8 @@ impl OsuSlider {
 
     #[cfg(feature="graphics")] 
     fn make_body(&mut self) {
+        use graphics::TatakuRenderable;
+
         // TODO: check if we should try again
         if self.slider_body_render_target_failed.is_some() {
             return
@@ -217,7 +241,7 @@ impl OsuSlider {
         let mut max_pos = Vector2::ZERO;
         let size;
 
-        let mut drawables: Vec<Box<dyn TatakuRenderable>> = Vec::new();
+        let mut drawables: Vec<Box<dyn graphics::TatakuRenderable>> = Vec::new();
         let mut offset = Vector2::ZERO;
 
         if USE_NEW_SLIDER_RENDERING {
@@ -225,7 +249,7 @@ impl OsuSlider {
             // FIXME: figure out why radius is 0?
             if self.radius <= 0.01 { return }
 
-            let mut line_segments: Vec<LineSegment> = self.curve.segments
+            let mut line_segments: Vec<tataku::LineSegment> = self.curve.segments
                 .iter()
                 .flat_map(|segment| 
             {
@@ -251,7 +275,7 @@ impl OsuSlider {
                     max_pos.x = max_pos.x.max(p2.x);
                     max_pos.y = max_pos.y.max(p2.y);
 
-                    LineSegment { p1, p2 }
+                    tataku::LineSegment { p1, p2 }
                 }).collect::<Vec<_>>() // todo: avoid too many allocations here
             }).collect();
 
@@ -353,7 +377,7 @@ impl OsuSlider {
 
             let (slider_grids, grid_cells) = grid_cells.into_iter()
                 .fold((Vec::with_capacity(grid_cells_len), Vec::with_capacity(grid_cells_len)), |(mut indexes, mut cells), v| {
-                    indexes.push(GridCell {
+                    indexes.push(tataku::GridCell {
                         index: cells.len() as u32,
                         length: v.len() as u32,
                     });
@@ -363,7 +387,7 @@ impl OsuSlider {
                 });
 
 
-            let slider_data = SliderData {
+            let slider_data = tataku::SliderData {
                 circle_radius,
                 border_width,
                 snake_percentage: 1.0,
@@ -396,13 +420,13 @@ impl OsuSlider {
             // both body and border use the same code with a few differences, so might as well for-loop them to simplify code
             // border is first, body is 2nd, since the body must be drawn on top of the border (which creates the border)
             for (radius, color, blend_mode) in [
-                (self.radius - border_radius * 0.5, border_color, BlendMode::AlphaBlending), // border
-                (self.radius - border_radius * 1.5, color, BlendMode::AlphaOverwrite) // fill
+                (self.radius - border_radius * 0.5, border_color, tataku::BlendMode::AlphaBlending), // border
+                (self.radius - border_radius * 1.5, color, tataku::BlendMode::AlphaOverwrite) // fill
             ] {
-                let pipeline = GraphicsPipeline::Standard(blend_mode);
+                let pipeline = tataku::GraphicsPipeline::Standard(blend_mode);
 
                 // add starting circle manually
-                drawables.push(Box::new(Circle::new(
+                drawables.push(Box::new(graphics::Circle::new(
                     p,
                     radius,
                     color,
@@ -424,7 +448,7 @@ impl OsuSlider {
                     if p2.y + radius_with_border > max_pos.y { max_pos.y = p2.y + radius_with_border; }
 
                     // add a line to connect the points
-                    drawables.push(Box::new(Line::new(
+                    drawables.push(Box::new(graphics::Line::new(
                         p1,
                         p2,
                         radius,
@@ -433,7 +457,7 @@ impl OsuSlider {
 
                     // add a circle to smooth out the corners
                     // border
-                    drawables.push(Box::new(Circle::new(
+                    drawables.push(Box::new(graphics::Circle::new(
                         p2,
                         radius,
                         color,
@@ -450,8 +474,8 @@ impl OsuSlider {
         #[cfg(feature="graphics")]
         if !self.use_render_targets() { return }
 
-        let options = DrawOptions::default();
-        let callback = Box::new(move |g: &mut dyn DrawEngine, mut transform: Matrix| {
+        let options = graphics::DrawOptions::default();
+        let callback = Box::new(move |g: &mut dyn graphics::DrawEngine, mut transform: tataku::Matrix| {
             transform = transform.trans(offset);
             for d in drawables {
                 d.draw(&options, transform, g);
@@ -459,15 +483,15 @@ impl OsuSlider {
         });
 
         if let Some(target) = self.slider_body_render_target.clone() {
-            self.slider_body_loader = SliderBodyLoader::Update(AsyncLoader::new(async move {
-                GameWindow::update_render_target(
+            self.slider_body_loader = SliderBodyLoader::Update(engine::io::AsyncLoader::new(async move {
+                engine::window::GameWindow::update_render_target(
                     target,
                     callback
                 );
             }));
         } else {
-            let loader = AsyncLoader::new(async move {
-                GameWindow::create_render_target(
+            let loader = engine::io::AsyncLoader::new(async move {
+                engine::window::GameWindow::create_render_target(
                     (
                         size.x as u32,
                         size.y as u32,
@@ -700,7 +724,7 @@ impl HitObject for OsuSlider {
     }
 
     #[cfg(feature="graphics")]
-    fn draw(&mut self, _beatmap_time: f32, list: &mut RenderableCollection) {
+    fn draw(&mut self, _beatmap_time: f32, list: &mut graphics::RenderableCollection) {
         // draw shapes
         // for shape in self.shapes.iter_mut() {
         //     list.push(shape.clone());
@@ -743,7 +767,7 @@ impl HitObject for OsuSlider {
             end_circle.color.a = alpha;
             list.push(end_circle);
         } else if self.start_circle_image.circle.is_none() {
-            list.push(Circle::new(
+            list.push(graphics::Circle::new(
                 self.visual_end_pos,
                 self.radius,
                 color,
@@ -780,7 +804,7 @@ impl HitObject for OsuSlider {
                 list.push(end_circle);
 
             } else if self.start_circle_image.circle.is_none() {
-                list.push(Circle::new(
+                list.push(graphics::Circle::new(
                     self.pos,
                     self.radius,
                     self.color.alpha8(alpha),
@@ -828,7 +852,7 @@ impl HitObject for OsuSlider {
 
                 list.push(ball);
             } else {
-                list.push(Circle::new(
+                list.push(graphics::Circle::new(
                     self.slider_ball_pos,
                     self.radius,
                     color,
@@ -843,7 +867,7 @@ impl HitObject for OsuSlider {
 
                 list.push(circle);
             } else {
-                list.push(Circle::new(
+                list.push(graphics::Circle::new(
                     self.slider_ball_pos,
                     self.radius * OK_TICK_RADIUS_MULT,
                     Color::TRANSPARENT,
@@ -895,7 +919,8 @@ impl HitObject for OsuSlider {
     }
 
     #[cfg(feature="graphics")]
-    fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+    fn reload_skin(&mut self, source: &graphics::TextureSource, skin_manager: &mut dyn graphics::SkinProvider) {
+        use graphics::SkinUsage;
         self.skin = skin_manager.skin().clone();
         self.start_circle_image.reload_skin(source, skin_manager);
         self.end_circle_image = skin_manager.get_texture("sliderendcircle", source, SkinUsage::Gamemode, false);
@@ -930,7 +955,13 @@ impl HitObject for OsuSlider {
             let velocity = self.velocity;
             let frametime = ((150.0 / velocity) * frametime).max(frametime);
 
-            let mut animation = Animation::new(Vector2::ZERO, size, images, frametime, base_scale);
+            let mut animation = graphics::Animation::new(
+                Vector2::ZERO, 
+                size, 
+                images, 
+                frametime, 
+                base_scale
+            );
             animation.scale = Vector2::ONE;
 
             self.sliderball_image = Some(animation);
@@ -1130,8 +1161,7 @@ struct SliderDot {
 
     /// which slide "layer" is this on?
     slide_layer: u64,
-    dot_image: Option<Image>,
-
+    dot_image: Option<graphics::Image>,
 }
 impl SliderDot {
     pub fn new(time: f32, pos: Vector2, scale: f32, slide_layer: u64) -> Self {
@@ -1159,7 +1189,7 @@ impl SliderDot {
     }
 
     #[cfg(feature="graphics")] 
-    pub fn draw(&self, beat_scale: f32, list: &mut RenderableCollection) {
+    pub fn draw(&self, beat_scale: f32, list: &mut graphics::RenderableCollection) {
         if self.checked { return }
 
         if let Some(mut image) = self.dot_image.clone() {
@@ -1167,7 +1197,7 @@ impl SliderDot {
             image.scale = Vector2::ONE * beat_scale * self.scale * 0.8;
             list.push(image);
         } else {
-            list.push(Circle::new(
+            list.push(graphics::Circle::new(
                 self.pos,
                 SLIDER_DOT_RADIUS * self.scale * beat_scale,
                 Color::YELLOW,
@@ -1176,8 +1206,8 @@ impl SliderDot {
     }
 
     #[cfg(feature="graphics")]
-    pub fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
-        self.dot_image = skin_manager.get_texture("sliderscorepoint", source, SkinUsage::Gamemode, false);
+    pub fn reload_skin(&mut self, source: &graphics::TextureSource, skin_manager: &mut dyn graphics::SkinProvider) {
+        self.dot_image = skin_manager.get_texture("sliderscorepoint", source, graphics::SkinUsage::Gamemode, false);
     }
 }
 
@@ -1187,9 +1217,9 @@ enum SliderBodyLoader {
     None,
     New {
         min_pos: Vector2,
-        loader: AsyncLoader<TatakuResult<RenderTarget>>,
+        loader: engine::io::AsyncLoader<tataku::Result<graphics::RenderTarget>>,
     },
-    Update(AsyncLoader<()>),
+    Update(engine::io::AsyncLoader<()>),
 }
 impl SliderBodyLoader {
     fn is_none(&self) -> bool {

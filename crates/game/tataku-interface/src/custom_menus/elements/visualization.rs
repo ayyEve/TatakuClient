@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use ui::widget::Widget;
 
 #[derive(Deserialize)]
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -10,7 +11,7 @@ pub struct VisualizationElement {
     #[serde(rename = "$value", default)] visualization: VisualizationType,
 }
 impl CustomElement for VisualizationElement {
-    fn build(&self) -> Box<dyn Widget<TatakuAction>> {
+    fn build(&self) -> Box<dyn Widget<actions::Action>> {
         let vis = match self.visualization {
             VisualizationType::MenuVisualization => MenuVisualization::new(),
             // _ => { 
@@ -19,13 +20,12 @@ impl CustomElement for VisualizationElement {
             // },
         };
 
-        WidgetContainer::new_boxed(
+        widgets::WidgetContainer::new_boxed(
             self.style.clone(),
             "visualization",
             self.id.clone(),
             self.class_list.clone(),
-            VisualizationWidget::new(vis)
-            .boxed()
+            widgets::VisualizationWidget::new(vis).boxed()
         )
     }
 }

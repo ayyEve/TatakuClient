@@ -1,4 +1,17 @@
 use crate::prelude::*;
+use tataku::{
+    Alignment,
+    Bounds,
+    Vector2,
+    Color,
+};
+use engine::{
+    settings::common_gameplay::CommonGameplaySettings,
+    gameplay::{
+        widgets::*,
+        GamemodeInfo,
+    },
+};
 
 const FONT_SIZE:f32 = 30.0;
 const MAX_CHARS:usize = 7; // 1 for neg, 1 for colon, 2 for secs, 3 for mins
@@ -68,7 +81,7 @@ impl GameplayWidget for RemainingElement {
 
             let mut layout = shell.font_context.simple_text(
                 &format!("{sign}{mins:02}:{secs:02}"), 
-                &TextStyle {
+                &ui::style::TextStyle {
                     color: Color::WHITE,
                     font_size: 30.0 * shell.scale.y,
                     ..Default::default()
@@ -89,8 +102,9 @@ impl GameplayWidget for RemainingElement {
             SIZE * shell.scale
         );
 
-        shell.list.push(Transformed::new(
-            Transform::default().translate(Alignment::CENTER.resolve(
+        shell.list.push(graphics::Transformed::new(
+            graphics::Transform::default()
+            .translate(Alignment::CENTER.resolve(
                 &bounds, 
                 Vector2::new(
                     layout.width(),
@@ -99,7 +113,7 @@ impl GameplayWidget for RemainingElement {
                 true, 
                 true
             )),
-            Box::new(Text::new(layout))
+            Box::new(graphics::Text::new(layout))
         ));
     }
 }
@@ -108,7 +122,10 @@ impl GameplayWidget for RemainingElement {
 pub const REMAINING_ELEMENT: GameplayWidgetBuilder = GameplayWidgetBuilder {
     name: "remaining_timer",
     default_layout: GameplayWidgetLayout::new_default(
-        GameplayWidgetAnchor::element("judgement_bar", GameplayWidgetAlign::Right),
+        GameplayWidgetAnchor::element(
+            "judgement_bar", 
+            GameplayWidgetAlign::Right
+        ),
         Alignment::CENTER_RIGHT,
         Some(Alignment::CENTER_LEFT),
         None,

@@ -1,5 +1,5 @@
-use serde::Deserialize;
-use crate::prelude::*;
+use crate::*;
+use common::Md5Hash;
 
 
 // default fns for serde
@@ -49,11 +49,11 @@ pub struct QuaverBeatmap {
     #[serde(default)] path: ArcStr,
 }
 impl QuaverBeatmap {
-    pub fn load(path: &str) -> TatakuResult<Self> {
+    pub fn load(path: &str) -> tataku::TatakuResult<Self> {
         let lines = std::fs::read_to_string(path)?;
         let mut s:QuaverBeatmap = serde_yaml::from_str(&lines).map_err(|e| {
             error!("error parsing quaver beatmap: {:?}", e);
-            BeatmapError::InvalidFile
+            errors::beatmap::BeatmapError::InvalidFile
         })?;
 
         // fix svs
@@ -68,7 +68,7 @@ impl QuaverBeatmap {
         }
 
         if s.timing_points.is_empty() {
-            return Err(BeatmapError::NoTimingPoints.into());
+            return Err(errors::beatmap::BeatmapError::NoTimingPoints.into());
         }
 
         let first_bpm = s.timing_points.first().unwrap().bpm;
@@ -85,7 +85,7 @@ impl QuaverBeatmap {
         }
 
 
-        s.hash = Io::get_file_hash(path)?;
+        s.hash = tataku::Io::get_file_hash(path)?;
         s.path = path.to_owned().into();
 
         let parent_dir = Path::new(&path).parent().unwrap().to_str().unwrap();
@@ -96,11 +96,11 @@ impl QuaverBeatmap {
         Ok(s)
     }
 }
-impl TatakuBeatmap for QuaverBeatmap {
+impl beatmaps::TatakuBeatmap for QuaverBeatmap {
     fn hash(&self) -> Md5Hash {self.hash}
     fn playmode(&self, _incoming:String) -> String {"mania".to_owned()}
 
-    fn get_timing_points(&self) -> Vec<TimingPoint> {
+    fn get_timing_points(&self) -> Vec<beatmaps::TimingPoint> {
         self.timing_points
             .iter()
             .map(|t| (*t).into())
@@ -125,7 +125,7 @@ impl TatakuBeatmap for QuaverBeatmap {
         let mut meta = BeatmapMeta { 
             file_path: self.path.clone(), 
             beatmap_hash: self.hash, 
-            beatmap_type: BeatmapType::Quaver,
+            beatmap_type: beatmaps::BeatmapType::Quaver,
             mode: "mania".to_owned().into(), 
             artist: self.artist.clone(), 
             title: self.title.clone(), 
@@ -191,9 +191,9 @@ pub struct QuaverTimingPoint {
     #[serde(default="nan32")]
     pub bpm: f32
 }
-impl From<QuaverTimingPoint> for TimingPoint {
+impl From<QuaverTimingPoint> for beatmaps::TimingPoint {
     fn from(val: QuaverTimingPoint) -> Self {
-        TimingPoint {
+        beatmaps::TimingPoint {
             time: val.start_time,
             beat_length: 60_000.0 / val.bpm,
             ..Default::default()

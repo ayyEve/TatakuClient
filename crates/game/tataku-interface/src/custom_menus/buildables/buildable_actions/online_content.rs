@@ -1,5 +1,11 @@
 use crate::prelude::*;
 use std::str::FromStr;
+use common::reflect::*;
+use tataku::TatakuValue;
+use engine::{
+    VariablePathResolver,
+    online_content::*,
+};
 
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
@@ -42,30 +48,30 @@ impl BuildableOnlineContentAction {
         &self,
         values: &dyn Reflect,
         passed_in: Option<&TatakuValue>,
-    ) -> Option<OnlineContentAction> {
+    ) -> Option<actions::online_content::OnlineContentAction> {
         match self {
-            Self::NextPage => Some(OnlineContentAction::NextPage),
-            Self::PreviousPage => Some(OnlineContentAction::PreviousPage),
+            Self::NextPage => Some(actions::online_content::OnlineContentAction::NextPage),
+            Self::PreviousPage => Some(actions::online_content::OnlineContentAction::PreviousPage),
 
-            Self::SetPage { page } => Some(OnlineContentAction::SetPage(Self::index(
+            Self::SetPage { page } => Some(actions::online_content::OnlineContentAction::SetPage(Self::index(
                 page,
                 values, 
                 passed_in
             )?)),
 
-            Self::AudioPreview { index } => Some(OnlineContentAction::AudioPreview(Self::index(
+            Self::AudioPreview { index } => Some(actions::online_content::OnlineContentAction::AudioPreview(Self::index(
                 index,
                 values, 
                 passed_in
             )?)),
             
-            Self::StartDownload { index } => Some(OnlineContentAction::Download(Self::index(
+            Self::StartDownload { index } => Some(actions::online_content::OnlineContentAction::Download(Self::index(
                 index,
                 values, 
                 passed_in
             )?)),
             
-            Self::Search(search) => Some(OnlineContentAction::Search(
+            Self::Search(search) => Some(actions::online_content::OnlineContentAction::Search(
                 Box::new(search.resolve(values, passed_in)?)
             )),
         }

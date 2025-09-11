@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::*;
 use std::str::FromStr;
 
 #[derive(Deserialize)]
@@ -14,10 +14,10 @@ pub struct BeatmapLink {
     pub download_link: Option<String>,
 }
 impl FromStr for BeatmapLink {
-    type Err = TatakuError;
+    type Err = tataku::Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         quick_xml::de::from_str(s)
-            .map_err(TatakuError::from_err)
+            .map_err(tataku::Error::from_err)
     }
 }
 impl std::fmt::Display for BeatmapLink {

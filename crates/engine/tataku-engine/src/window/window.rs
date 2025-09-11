@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::*;
 use image::RgbaImage;
 use raw_window_handle::HasWindowHandle;
 use winit::{
@@ -16,11 +16,19 @@ use winit::{
         ActiveEventLoop,
     },
 };
+use tokio::sync::OnceCell;
 use tokio::sync::mpsc::Sender;
-use tataku_graphics::prelude::*;
-use tataku_input::prelude::MouseButton;
+use std::sync::mpsc::sync_channel;
+use std::sync::atomic::{ AtomicU32, Ordering::SeqCst };
 
-static WINDOW_PROXY: OnceCell<EventLoopProxy<WindowAction>> = OnceCell::const_new();
+use tataku::Vector2;
+use input::InputType;
+use actions::window::LoadImage;
+use engine::window::{
+    FullscreenMonitor,
+};
+
+static WINDOW_PROXY: OnceCell<EventLoopProxy<actions::window::WindowAction>> = OnceCell::const_new();
 
 
 lazy_static::lazy_static! {
@@ -35,26 +43,26 @@ lazy_static::lazy_static! {
 
 pub struct GameWindow<'window> {
     window: &'window OnceCell<WinitWindow>,
-    mouse_position_sender: TripleBufferSender<Vector2>,
+    mouse_position_sender: engine::triple_buffer::Input<tataku::Vector2>,
 
-    graphics: Box<dyn RenderingEngine + 'window>,
-    pub settings: DisplaySettings,
+    graphics: Box<dyn graphics::RenderingEngine + 'window>,
+    pub settings: settings::display::DisplaySettings,
 
-    window_event_sender: Arc<Sender<WindowEvent>>,
-    render_data: Vec<Box<dyn TatakuRenderable>>,
+    window_event_sender: Arc<Sender<window::Event>>,
+    render_data: Vec<Box<dyn graphics::TatakuRenderable>>,
 
-    frametime_timer: TatakuInstant,
-    input_timer: TatakuInstant,
+    frametime_timer: tataku::Instant,
+    input_timer: tataku::Instant,
 
     close_pending: bool,
-    queued_events: Vec<WindowEvent>,
+    queued_events: Vec<window::Event>,
 
     // input
-    controller_input: gilrs::Gilrs,
+    controller_input: input::gilrs::Gilrs,
     /// what finger ids are currently active
     finger_touches: HashSet<u64>,
     // what finger id started the touch, and where is the floating touch location
-    touch_pos: Option<(u64, Vector2)>,
+    touch_pos: Option<(u64, tataku::Vector2)>,
 
     init: WindowInitializers<'window>,
     // init_graphics: Vec<Box<dyn GraphicsInitializer<'window>>>,
@@ -65,10 +73,10 @@ pub struct GameWindow<'window> {
 }
 impl<'window> GameWindow<'window> {
     pub fn new(
-        window_event_sender: Sender<WindowEvent>,
-        mouse_position_sender: TripleBufferSender<Vector2>,
+        window_event_sender: Sender<window::Event>,
+        mouse_position_sender: engine::triple_buffer::Input<tataku::Vector2>,
         window: &'window OnceCell<WinitWindow>,
-        settings: &Settings,
+        settings: &settings::Settings,
 
         init: WindowInitializers<'window>,
     ) -> Self {
@@ -85,8 +93,8 @@ impl<'window> GameWindow<'window> {
             // window_event_receiver,
             render_data: Vec::new(),
 
-            frametime_timer: TatakuInstant::now(),
-            input_timer: TatakuInstant::now(),
+            frametime_timer: tataku::Instant::now(),
+            input_timer: tataku::Instant::now(),
 
             close_pending: false,
             queued_events: Vec::new(),
@@ -96,7 +104,7 @@ impl<'window> GameWindow<'window> {
             // integration_builders: init.integrations,
             
             // input
-            controller_input: gilrs::Gilrs::new().unwrap(),
+            controller_input: input::gilrs::Gilrs::new().unwrap(),
             finger_touches: HashSet::new(),
             touch_pos: None,
         };
@@ -106,16 +114,16 @@ impl<'window> GameWindow<'window> {
         s
     }
 
-    pub fn run(mut self, event_loop: winit::event_loop::EventLoop<WindowAction>) {
+    pub fn run(mut self, event_loop: winit::event_loop::EventLoop<actions::window::WindowAction>) {
         WINDOW_PROXY.set(event_loop.create_proxy()).unwrap();
         event_loop.run_app(&mut self).expect("nope");
     }
 
     pub fn dump_atlas() {
-        Self::send_action(WindowAction::DumpAtlas);
+        Self::send_action(actions::window::WindowAction::DumpAtlas);
     }
 
-    fn send_event(&mut self, event: WindowEvent) {
+    fn send_event(&mut self, event: window::Event) {
         // try to send without spawning a task.
         if let Err(tokio::sync::mpsc::error::TrySendError::Full(event)) = self.window_event_sender.try_send(event) {
             // warn!("Game event queue full, event is getting queued: {event:?}");
@@ -132,9 +140,15 @@ impl<'window> GameWindow<'window> {
         // check gamepad events
         while let Some(event) = self.controller_input.next_event() {
             let info = self.controller_input.gamepad(event.id);
-            if event.event == gilrs::EventType::Connected { info!("new controller: {}", info.name()) }
+            if event.event == input::gilrs::EventType::Connected { 
+                info!("new controller: {}", info.name());
+            }
 
-            self.send_event(WindowEvent::Input(InputType::RawControllerEvent(event, info.name().into(), info.power_info())));
+            self.send_event(window::Event::Input(input::InputType::RawControllerEvent(
+                event, 
+                info.name().into(), 
+                info.power_info())
+            ));
         }
 
         // send as many queued requests as we can
@@ -151,15 +165,21 @@ impl<'window> GameWindow<'window> {
 
     fn run_load_image_event(&mut self, event: LoadImage) {
         match event {
-            LoadImage::Image(data, on_done) => on_done(self.graphics.load_texture_rgba(&data, [data.width(), data.height()])),
+            LoadImage::Image(
+                data, 
+                on_done
+            ) => on_done(self.graphics.load_texture_rgba(
+                &data, 
+                [data.width(), data.height()]
+            )),
 
             LoadImage::FreeTexture { tex, deferred } => {
                 self.graphics.free_tex(tex, deferred);
             }
 
             LoadImage::CreateRenderTarget((w, h), on_done, callback) => {
-                let rt = self.graphics.create_render_target([w, h], Color::TRANSPARENT, callback);
-                on_done(rt.ok_or(TatakuError::from("failed")));
+                let rt = self.graphics.create_render_target([w, h], tataku::Color::TRANSPARENT, callback);
+                on_done(rt.ok_or(tataku::Error::from("failed")));
             }
             LoadImage::UpdateRenderTarget(target, on_done, callback) => {
                 self.graphics.update_render_target(target, callback);
@@ -175,15 +195,14 @@ impl<'window> GameWindow<'window> {
         let inner_size = self.window().inner_size();
         if inner_size.width == 0 || inner_size.height == 0 { return }
 
-
         let frametime = (self.frametime_timer.elapsed_and_reset() * 100.0).floor() as u32;
         RENDER_FRAMETIME.fetch_max(frametime, SeqCst);
         RENDER_COUNT.fetch_add(1, SeqCst);
 
-        let transform = Matrix::identity();
+        let transform = tataku::Matrix::identity();
 
         self.graphics.begin_render();
-        let options = DrawOptions::default();
+        let options = graphics::DrawOptions::default();
         self.graphics.with_renderer(&|graphics| {
             self.render_data.iter().for_each(|d| {
                 d.draw(&options, transform, graphics);
@@ -212,7 +231,7 @@ impl GameWindow<'_> {
             .filter_map(|m| m.name())
             .collect::<Vec<_>>();
 
-        self.send_event(WindowEvent::AvailableMonitors(monitors));
+        self.send_event(window::Event::AvailableMonitors(monitors));
     }
 
     fn set_fullscreen(&mut self, monitor: FullscreenMonitor) {
@@ -233,23 +252,23 @@ impl GameWindow<'_> {
         self.window().set_outer_position(winit::dpi::PhysicalPosition::new(x, y));
     }
 
-    fn set_vsync(&mut self, vsync: Vsync) {
+    fn set_vsync(&mut self, vsync: tataku::Vsync) {
         self.graphics.set_vsync(vsync);
     }
 
-    pub fn set_clipboard(content: String) -> TatakuResult {
-        use clipboard::{ClipboardProvider, ClipboardContext};
+    pub fn set_clipboard(content: String) -> tataku::TatakuResult<()> {
+        use clipboard::{ ClipboardProvider, ClipboardContext };
         let ctx:Result<ClipboardContext, Box<dyn std::error::Error>> = ClipboardProvider::new();
 
         ctx
-            .map_err(TatakuError::from_boxed_err)
+            .map_err(tataku::Error::from_boxed_err)
             .and_then(|mut ctx| ctx
                 .set_contents(content)
-                .map_err(TatakuError::from_boxed_err)
+                .map_err(tataku::Error::from_boxed_err)
             )
     }
 
-    fn handle_touch_event(&mut self, touch: Touch) -> Option<WindowEvent> {
+    fn handle_touch_event(&mut self, touch: Touch) -> Option<window::Event> {
         match touch {
             Touch { phase:TouchPhase::Started, location, id, .. } => {
                 // info!("+ touch id: {id}");
@@ -263,8 +282,12 @@ impl GameWindow<'_> {
                 if self.finger_touches.len() == 1 {
                     self.touch_pos = Some((id, touch_pos));
 
-                    self.send_event(WindowEvent::Input(InputType::MouseMove(Vector2::new(location.x as f32, location.y as f32))));
-                    Some(WindowEvent::Input(InputType::MousePress(MouseButton::Left)))
+                    self.send_event(window::Event::Input(InputType::MouseMove(
+                        tataku::Vector2::new(location.x as f32, location.y as f32)
+                    )));
+                    Some(window::Event::Input(InputType::MousePress(
+                        input::MouseButton::Left
+                    )))
                 } else {
                     None
                 }
@@ -282,7 +305,9 @@ impl GameWindow<'_> {
                 && id == start_id {
                     self.touch_pos = None;
 
-                    return Some(WindowEvent::Input(InputType::MouseRelease(MouseButton::Left)))
+                    return Some(window::Event::Input(InputType::MouseRelease(
+                        input::MouseButton::Left
+                    )))
                 }
 
                 None
@@ -302,13 +327,13 @@ impl GameWindow<'_> {
                     );
                     *pos = touch_pos;
 
-                    return Some(WindowEvent::Input(InputType::MouseScroll { 
+                    return Some(window::Event::Input(InputType::MouseScroll { 
                         raw: scroll, 
                         scroll: scroll * self.settings.scroll_sensitivity 
                     }));
                 }
 
-                Some(WindowEvent::Input(InputType::MouseMove(touch_pos)))
+                Some(window::Event::Input(InputType::MouseMove(touch_pos)))
             }
 
             _ => None,
@@ -319,20 +344,20 @@ impl GameWindow<'_> {
 
 // static fns
 impl GameWindow<'_> {
-    fn send_action(event: WindowAction) {
+    fn send_action(event: actions::window::WindowAction) {
         let Some(proxy) = WINDOW_PROXY.get() else { return };
         let _ = proxy.send_event(event);
     }
 
     pub fn refresh_monitors() {
-        Self::send_action(WindowAction::RefreshMonitors);
+        Self::send_action(actions::window::WindowAction::RefreshMonitors);
     }
 
-    pub fn load_texture_data(data: RgbaImage) -> TatakuResult<TextureReference> {
+    pub fn load_texture_data(data: RgbaImage) -> tataku::TatakuResult<tataku::TextureReference> {
         trace!("loading tex data");
 
         let (s, r) = sync_channel(1);
-        Self::send_action(WindowAction::LoadImage(Box::new(
+        Self::send_action(actions::window::WindowAction::LoadImage(Box::new(
             LoadImage::Image(data, Box::new(move |r| s.send(r).nope())))
         ));
 
@@ -367,12 +392,12 @@ impl GameWindow<'_> {
 
     pub fn create_render_target(
         size: (u32, u32), 
-        callback: impl FnOnce(&mut dyn DrawEngine, Matrix) + Send + Sync + 'static
-    ) -> TatakuResult<RenderTarget> {
+        callback: impl FnOnce(&mut dyn graphics::DrawEngine, tataku::Matrix) + Send + Sync + 'static
+    ) -> tataku::TatakuResult<graphics::RenderTarget> {
         trace!("create render target");
 
         let (s, r) = sync_channel(1);
-        Self::send_action(WindowAction::LoadImage(Box::new(LoadImage::CreateRenderTarget(
+        Self::send_action(actions::window::WindowAction::LoadImage(Box::new(LoadImage::CreateRenderTarget(
             size, 
             Box::new(move |t| s.send(t).nope()), 
             Box::new(callback)
@@ -382,13 +407,13 @@ impl GameWindow<'_> {
     }
 
     pub fn update_render_target(
-        rt: RenderTarget, 
-        callback: impl FnOnce(&mut dyn DrawEngine, Matrix) + Send + Sync + 'static
+        rt: graphics::RenderTarget, 
+        callback: impl FnOnce(&mut dyn graphics::DrawEngine, tataku::Matrix) + Send + Sync + 'static
     ) {
         trace!("update render target");
 
         let (s, r) = sync_channel(1);
-        Self::send_action(WindowAction::LoadImage(Box::new(LoadImage::UpdateRenderTarget(
+        Self::send_action(actions::window::WindowAction::LoadImage(Box::new(LoadImage::UpdateRenderTarget(
             rt, 
             Box::new(move |t| s.send(t).nope()), 
             Box::new(callback)
@@ -398,8 +423,8 @@ impl GameWindow<'_> {
     }
 
 
-    pub fn free_texture(tex: TextureReference, deferred: bool) {
-        Self::send_action(WindowAction::LoadImage(Box::new(
+    pub fn free_texture(tex: tataku::TextureReference, deferred: bool) {
+        Self::send_action(actions::window::WindowAction::LoadImage(Box::new(
             LoadImage::FreeTexture {
                 tex, 
                 deferred
@@ -410,7 +435,7 @@ impl GameWindow<'_> {
 
 
 #[cfg(feature="graphics")]
-impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
+impl winit::application::ApplicationHandler<actions::window::WindowAction> for GameWindow<'_> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if self.window.get().is_some() { return }
         event_loop.set_control_flow(ControlFlow::Poll);
@@ -501,10 +526,10 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
         self.window().set_min_inner_size(Some(to_size(self.settings.window_size.into())));
         self.set_fullscreen(self.settings.fullscreen_monitor.clone());
         self.set_vsync(self.settings.vsync);
-        self.send_event(WindowEvent::SizeChanged(self.settings.window_size.into()));
-        self.send_event(WindowEvent::IntegrationsLoaded(integrations));
+        self.send_event(window::Event::SizeChanged(self.settings.window_size.into()));
+        self.send_event(window::Event::IntegrationsLoaded(integrations));
         self.refresh_monitors_inner();
-        self.send_event(WindowEvent::VsyncModes(self.graphics.vsync_modes()));
+        self.send_event(window::Event::VsyncModes(self.graphics.vsync_modes()));
     }
 
 
@@ -516,40 +541,42 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
     fn user_event(
         &mut self,
         _event_loop: &winit::event_loop::ActiveEventLoop,
-        event: WindowAction
+        event: actions::window::WindowAction
     ) {
+        use actions::window::WindowAction as Action;
+
         match event {
-            WindowAction::LoadImage(event) => self.run_load_image_event(*event),
-            WindowAction::ShowCursor => {
+            Action::LoadImage(event) => self.run_load_image_event(*event),
+            Action::ShowCursor => {
                 self.window().set_cursor_visible(true);
             }
-            WindowAction::HideCursor => {
+            Action::HideCursor => {
                 self.window().set_cursor_visible(false);
             }
 
-            WindowAction::RequestAttention => self.window().request_user_attention(Some(winit::window::UserAttentionType::Informational)),
+            Action::RequestAttention => self.window().request_user_attention(Some(winit::window::UserAttentionType::Informational)),
 
-            WindowAction::CloseGame => {
+            Action::CloseGame => {
                 self.close_pending = true;
                 // try send because the game might already be dead at this point
-                let _ = self.window_event_sender.try_send(WindowEvent::Closed);
+                let _ = self.window_event_sender.try_send(window::Event::Closed);
             }
 
-            WindowAction::TakeScreenshot(info) => {
+            Action::TakeScreenshot(info) => {
                 let sender = self.window_event_sender.clone();
 
                 self.graphics.screenshot(Box::new(move |(data, size)| {
-                    let _ = sender.try_send(WindowEvent::ScreenshotComplete(data, size, info));
+                    let _ = sender.try_send(window::Event::ScreenshotComplete(data, size, info));
                 }));
             },
-            WindowAction::RefreshMonitors => self.refresh_monitors_inner(),
+            Action::RefreshMonitors => self.refresh_monitors_inner(),
 
-            WindowAction::RenderData(data) => {
+            Action::RenderData(data) => {
                 self.render_data = data;
                 self.window().request_redraw();
             }
 
-            WindowAction::SettingsUpdated(settings) => {
+            Action::SettingsUpdated(settings) => {
                 if self.settings.fullscreen_monitor != settings.fullscreen_monitor {
                     self.set_fullscreen(settings.fullscreen_monitor.clone());
                 }
@@ -567,13 +594,13 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
                 self.settings = settings;
             }
 
-            WindowAction::CopyToClipboard(text) => if let Err(e) = Self::set_clipboard(text.to_string()) {
+            Action::CopyToClipboard(text) => if let Err(e) = Self::set_clipboard(text.to_string()) {
                 error!("error copying to clipboard: {e:?}");
             }
 
-            WindowAction::AddEmitter(emitter) => self.graphics.add_emitter(emitter), 
+            Action::AddEmitter(emitter) => self.graphics.add_emitter(emitter), 
 
-            WindowAction::DumpAtlas => {
+            Action::DumpAtlas => {
                 self.graphics.dump_atlas("/tmp/fuck/");
             }
         }
@@ -596,7 +623,7 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
                 );
 
                 if new_size != Vector2::ZERO {
-                    self.send_event(WindowEvent::SizeChanged(new_size));
+                    self.send_event(window::Event::SizeChanged(new_size));
                 }
 
                 None
@@ -604,15 +631,15 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
 
             WinitWindowEvent::CloseRequested => {
                 event_loop.exit();
-                Some(WindowEvent::Closed)
+                Some(window::Event::Closed)
             }
-            WinitWindowEvent::DroppedFile(d) => Some(WindowEvent::FileDrop(d)),
-            WinitWindowEvent::HoveredFile(d) => Some(WindowEvent::FileHover(d)),
+            WinitWindowEvent::DroppedFile(d) => Some(window::Event::FileDrop(d)),
+            WinitWindowEvent::HoveredFile(d) => Some(window::Event::FileHover(d)),
             WinitWindowEvent::Focused(has_focus) => {
                 if has_focus {
-                    Some(WindowEvent::GotFocus)
+                    Some(window::Event::GotFocus)
                 } else {
-                    Some(WindowEvent::LostFocus)
+                    Some(window::Event::LostFocus)
                 }
             }
 
@@ -620,18 +647,18 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
                 event: e @ winit::event::KeyEvent {
                     state: ElementState::Pressed, ..
                 }, ..
-            } => Some(WindowEvent::Input(InputType::KeyPress(KeyInput::from_event(e)))),
+            } => Some(window::Event::Input(InputType::KeyPress(input::KeyInput::from_event(e)))),
             WinitWindowEvent::KeyboardInput {
                 event: e @  winit::event::KeyEvent {
                     state: ElementState::Released, ..
                 }, ..
-            } => Some(WindowEvent::Input(InputType::KeyRelease(KeyInput::from_event(e)))),
+            } => Some(window::Event::Input(InputType::KeyRelease(input::KeyInput::from_event(e)))),
 
             WinitWindowEvent::CursorMoved { position, .. } => {
                 let pos = Vector2::new(position.x as f32, position.y as f32);
                 self.mouse_position_sender.write(pos);
                 None
-                //     Some(WindowEvent::Input(InputType::MouseMove(pos))),
+                //     Some(window::Event::Input(InputType::MouseMove(pos))),
             }
 
             WinitWindowEvent::MouseWheel { 
@@ -644,7 +671,7 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
                     PixelDelta(p) => Vector2::new(p.x as f32, p.y as f32),
                 };
 
-                Some(WindowEvent::Input(InputType::MouseScroll {
+                Some(window::Event::Input(InputType::MouseScroll {
                     raw: delta,
                     scroll: delta * self.settings.scroll_sensitivity,
                 }))
@@ -654,12 +681,12 @@ impl winit::application::ApplicationHandler<WindowAction> for GameWindow<'_> {
                 state: ElementState::Pressed, 
                 button, 
                 .. 
-            }  => Some(WindowEvent::Input(InputType::MousePress(button.into()))),
+            }  => Some(window::Event::Input(InputType::MousePress(button.into()))),
             WinitWindowEvent::MouseInput { 
                 state: ElementState::Released, 
                 button, 
                 .. 
-            } => Some(WindowEvent::Input(InputType::MouseRelease(button.into()))),
+            } => Some(window::Event::Input(InputType::MouseRelease(button.into()))),
 
             WinitWindowEvent::Touch(touch) => self.handle_touch_event(touch),
             // WinitWindowEvent::Occluded(_) => todo!(),
@@ -700,12 +727,12 @@ pub trait GraphicsInitializer<'window> {
     async fn init(
         &self,
         window: &'window winit::window::Window,
-        settings: DisplaySettings
-    ) -> TatakuResult<Box<dyn RenderingEngine + 'window>>;
+        settings: settings::display::DisplaySettings
+    ) -> tataku::TatakuResult<Box<dyn graphics::RenderingEngine + 'window>>;
 }
 
 pub struct WindowInitializers<'a> {
-    pub integrations: Vec<TatakuIntegrationBuilder>,
+    pub integrations: Vec<io::TatakuIntegrationBuilder>,
     pub graphics_init: Vec<Box<dyn GraphicsInitializer<'a>>>,
     pub window_creation_barrier: Arc<std::sync::Barrier>,
 }

@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use ui::widget::Widget;
 
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
@@ -9,17 +10,17 @@ pub struct GamepadButtonElement {
     #[serde(rename = "@style", default)] style: ArcStr,
 
     #[serde(rename = "@optional", default)] optional: bool,
-    #[serde(rename = "@variable")] var: VariablePathResolver,
+    #[serde(rename = "@variable")] var: engine::VariablePathResolver,
     #[serde(default)] on_input: Wrapped<Vec<BuildableAction>>,
 }
 impl CustomElement for GamepadButtonElement {
-    fn build(&self) -> Box<dyn Widget<TatakuAction>> {
-        WidgetContainer::new_boxed(
+    fn build(&self) -> Box<dyn Widget<actions::Action>> {
+        widgets::WidgetContainer::new_boxed(
             self.style.clone(),
             "gamepadButton",
             self.id.clone(),
             self.class_list.clone(),
-            GamepadButtonInput::new(self.var.clone())
+            widgets::GamepadButtonInput::new(self.var.clone())
             .optional(self.optional)
             .on_change(self.on_input.inner.clone())
             .boxed()

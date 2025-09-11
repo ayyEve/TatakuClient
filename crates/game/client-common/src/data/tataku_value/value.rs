@@ -1,4 +1,6 @@
 use crate::prelude::*;
+use common::reflect::*;
+use core::result::Result;
 
 
 // TODO: nuke this now that we have reflect
@@ -351,10 +353,10 @@ impl TatakuValue {
             Ok(Self::Bool(*b))
         } else if let Some(s) = value.downcast_ref::<String>() {
             Ok(Self::String(s.clone()))
-        } else if let Some(s) = value.downcast_ref::<Md5Hash>() {
+        } else if let Some(s) = value.downcast_ref::<common::Md5Hash>() {
             Ok(Self::String(s.to_string()))
         } 
-        else if let Some(s) = value.downcast_ref::<GameSpeed>() {
+        else if let Some(s) = value.downcast_ref::<common::GameSpeed>() {
             Ok(Self::F32(s.as_f32()))
         }
         else {

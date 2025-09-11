@@ -1,4 +1,5 @@
-use crate::prelude::*;
+use crate::*;
+use common::reflect::*;
 
 #[derive(Reflect, FromStr)]
 #[reflect(display = "display")]
@@ -21,7 +22,7 @@ impl SortBy {
         ]
     }
 }
-impl Display for SortBy {
+impl std::fmt::Display for SortBy {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self:?}")
     }

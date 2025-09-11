@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use engine::beatmaps::NoteType;
 
 #[derive(Clone)]
 pub struct DifficultyHitObject {

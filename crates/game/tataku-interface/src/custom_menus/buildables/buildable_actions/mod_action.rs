@@ -1,4 +1,6 @@
 use crate::prelude::*;
+use tataku::TatakuValue;
+use common::reflect::Reflect;
 
 /// An action that deals with the Mod manager
 #[derive(Deserialize)]
@@ -40,32 +42,32 @@ impl BuildableModAction {
         &self, 
         values: &mut dyn Reflect,
         passed_in: Option<&TatakuValue>,
-    ) -> Option<ModAction> {
+    ) -> Option<actions::mods::ModAction> {
         match self {
             Self::AddMod { value } => value
                 .resolve(values, passed_in)
                 .and_then(|n| n.string_maybe().cloned())
-                .map(ModAction::AddMod),
+                .map(actions::mods::ModAction::AddMod),
 
             Self::RemoveMod { value } => value
                 .resolve(values, passed_in)
                 .and_then(|n| n.string_maybe().cloned())
-                .map(ModAction::RemoveMod),
+                .map(actions::mods::ModAction::RemoveMod),
 
             Self::ToggleMod { value } => value
                 .resolve(values, passed_in)
                 .and_then(|n| n.string_maybe().cloned())
-                .map(ModAction::ToggleMod),
+                .map(actions::mods::ModAction::ToggleMod),
 
             Self::SetSpeed { value } => value
                 .resolve(values, passed_in)
                 .and_then(|n| n.as_f32())
-                .map(ModAction::SetSpeed),
+                .map(actions::mods::ModAction::SetSpeed),
 
             Self::AddSpeed { value } => value
                 .resolve(values, passed_in)
                 .and_then(|n| n.as_f32())
-                .map(ModAction::AddSpeed),
+                .map(actions::mods::ModAction::AddSpeed),
         }
     }
 

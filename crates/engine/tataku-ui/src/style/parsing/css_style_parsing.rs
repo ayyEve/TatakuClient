@@ -1,5 +1,8 @@
-use crate::prelude::*;
+use crate::*;
+use core::result::Result;
 use super::value_parser::*;
+use graphics::ImageStretch;
+use graphics::TextureSource;
 
 
 macro_rules! impl_parse {
@@ -55,7 +58,7 @@ macro_rules! impl_parse {
 
 // parsing
 #[allow(clippy::result_unit_err, reason = "we dont care about the error")]
-impl CssStyle {
+impl crate::style::CssStyle {
     pub(crate) fn parse_color(s: &str) -> Result<Color, ()> {
         if s.starts_with("rgb") {
             let mut parser = CssValueParser::new(s);

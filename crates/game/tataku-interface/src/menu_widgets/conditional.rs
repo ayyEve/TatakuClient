@@ -1,9 +1,14 @@
 use crate::prelude::*;
+use ui::{
+    tree::*,
+    style::*,
+    widget::*,
+};
 
 #[derive(ChainableInitializer)]
 pub struct ConditionalWidget {
-    if_true: Box<dyn Widget<TatakuAction>>,
-    if_false: Option<Box<dyn Widget<TatakuAction>>>,
+    if_true: Box<dyn Widget<actions::Action>>,
+    if_false: Option<Box<dyn Widget<actions::Action>>>,
     cond: BuildableCondition,
 
     value: bool,
@@ -11,8 +16,8 @@ pub struct ConditionalWidget {
 }
 impl ConditionalWidget {
     pub fn new(
-        if_true: Box<dyn Widget<TatakuAction>>,
-        if_false: Option<Box<dyn Widget<TatakuAction>>>,
+        if_true: Box<dyn Widget<actions::Action>>,
+        if_false: Option<Box<dyn Widget<actions::Action>>>,
         mut cond: BuildableCondition,
     ) -> Self {
         // make sure the condition is built
@@ -24,12 +29,12 @@ impl ConditionalWidget {
             cond,
 
             value: false,
-            node_id: EMPTY_NODE
+            node_id: ui::EMPTY_NODE
         }
     }
 
     #[allow(clippy::borrowed_box)] // Box<dyn Widget> doesnt implement dyn Widget, and dereferencing and re-referencing is unecessary and ugly
-    fn get_ele(&self) -> Option<&Box<dyn Widget<TatakuAction>>> {
+    fn get_ele(&self) -> Option<&Box<dyn Widget<actions::Action>>> {
         if self.value {
             Some(&self.if_true)
         } else {
@@ -37,7 +42,7 @@ impl ConditionalWidget {
         }
     }
 
-    fn get_ele_mut(&mut self) -> Option<&mut Box<dyn Widget<TatakuAction>>> {
+    fn get_ele_mut(&mut self) -> Option<&mut Box<dyn Widget<actions::Action>>> {
         if self.value {
             Some(&mut self.if_true)
         } else {
@@ -45,23 +50,23 @@ impl ConditionalWidget {
         }
     }
 }
-impl Widget<TatakuAction> for ConditionalWidget {
+impl Widget<actions::Action> for ConditionalWidget {
     fn name(&self) -> CowStr  { "conditional_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn children(&self) -> WidgetChildren<'_, TatakuAction> {
+    fn children(&self) -> WidgetChildren<'_, actions::Action> {
         let Some(child) = self.get_ele() 
         else { return WidgetChildren::None };
         
         WidgetChildren::Single(child)
     }
-    fn children_mut(&mut self) -> WidgetChildrenMut<'_, TatakuAction> {
+    fn children_mut(&mut self) -> WidgetChildrenMut<'_, actions::Action> {
         let Some(child) = self.get_ele_mut() 
         else { return WidgetChildrenMut::None };
         
         WidgetChildrenMut::Single(child)
     }
-    fn all_children(&self) -> WidgetChildren<'_, TatakuAction> {
+    fn all_children(&self) -> WidgetChildren<'_, actions::Action> {
         let mut list = Vec::with_capacity(2);
         list.push(&self.if_true);
         if let Some(f) = &self.if_false {
@@ -70,7 +75,7 @@ impl Widget<TatakuAction> for ConditionalWidget {
 
         WidgetChildren::OwnedList(list)
     }
-    fn all_children_mut(&mut self) -> WidgetChildrenMut<'_, TatakuAction> {
+    fn all_children_mut(&mut self) -> WidgetChildrenMut<'_, actions::Action> {
         let mut list = Vec::with_capacity(2);
         list.push(&mut self.if_true);
         if let Some(f) = &mut self.if_false {
@@ -80,7 +85,7 @@ impl Widget<TatakuAction> for ConditionalWidget {
         WidgetChildrenMut::OwnedList(list)
     }
 
-    fn layout(&mut self, shell: &mut LayoutShell<TatakuAction>) -> taffy::TaffyResult<NodeId>  {
+    fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId>  {
         let mut children = Vec::with_capacity(2);
         children.push(self.if_true.layout(shell)?);
         if let Some(if_false) = self.if_false.as_mut() {
@@ -91,7 +96,7 @@ impl Widget<TatakuAction> for ConditionalWidget {
         Ok(self.node_id)
     }
     
-    fn init_style(&mut self, shell: &mut LayoutShell<TatakuAction>) {
+    fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
         for i in self.all_children_mut() {
             i.init_style(shell);
         }
@@ -101,7 +106,7 @@ impl Widget<TatakuAction> for ConditionalWidget {
         shell.tree.set_display(self.if_true.node_id(), Some(DisplayType::None));
     }
 
-    fn update(&mut self, shell: &mut UpdateShell<TatakuAction>) {
+    fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
         match self.cond.resolve(shell.values) {
             BuildableConditionResult::Error(e) => {
                 error!("\n!!!!!!!\nerror with cond {:?}\n{e:?}\n!!!!!!!", self.cond);
@@ -111,19 +116,19 @@ impl Widget<TatakuAction> for ConditionalWidget {
             BuildableConditionResult::True if !self.value => {
                 self.value = true;
                 if let Some(child) = self.if_false.as_ref() {
-                    shell.actions.push(UiAction::new(
+                    shell.actions.push(actions::ui::UiAction::new(
                         child.node_id(), 
-                        UiActionType::OverrideDisplay(Some(DisplayType::None))
+                        actions::ui::UiActionType::OverrideDisplay(Some(DisplayType::None))
                     ).into());
                 }
 
-                shell.actions.push(UiAction::new(
+                shell.actions.push(actions::ui::UiAction::new(
                     self.if_true.node_id(), 
-                    UiActionType::OverrideDisplay(None)
+                    actions::ui::UiActionType::OverrideDisplay(None)
                 ).into());
-                shell.actions.push(UiAction::new(
+                shell.actions.push(actions::ui::UiAction::new(
                     self.node_id, 
-                    UiActionType::Refresh
+                    actions::ui::UiActionType::Refresh
                 ).into());
             }
 
@@ -131,19 +136,19 @@ impl Widget<TatakuAction> for ConditionalWidget {
                 self.value = false;
 
                 if let Some(child) = self.if_false.as_ref() {
-                    shell.actions.push(UiAction::new(
+                    shell.actions.push(actions::ui::UiAction::new(
                         child.node_id(), 
-                        UiActionType::OverrideDisplay(None)
+                        actions::ui::UiActionType::OverrideDisplay(None)
                     ).into());
                 }
 
-                shell.actions.push(UiAction::new(
+                shell.actions.push(actions::ui::UiAction::new(
                     self.if_true.node_id(), 
-                    UiActionType::OverrideDisplay(Some(DisplayType::None))
+                    actions::ui::UiActionType::OverrideDisplay(Some(DisplayType::None))
                 ).into());
-                shell.actions.push(UiAction::new(
+                shell.actions.push(actions::ui::UiAction::new(
                     self.node_id, 
-                    UiActionType::Refresh
+                    actions::ui::UiActionType::Refresh
                 ).into());
             }
 
@@ -155,7 +160,7 @@ impl Widget<TatakuAction> for ConditionalWidget {
         }
     }
     
-    fn reload_skin(&mut self, shell: &mut UpdateShell<TatakuAction>) {
+    fn reload_skin(&mut self, shell: &mut UpdateShell<actions::Action>) {
         self.if_true.reload_skin(shell);
         if let Some(if_false) = self.if_false.as_mut() {
             if_false.reload_skin(shell);

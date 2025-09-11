@@ -1,4 +1,6 @@
-use crate::prelude::*;
+use crate::*;
+use common::reflect::*;
+use common::macros::Reflect;
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct AxisState {

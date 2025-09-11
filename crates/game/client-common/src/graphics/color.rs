@@ -1,5 +1,5 @@
-use std::fmt::Display;
-use tataku_common::prelude::*;
+use crate::prelude::*;
+use common::reflect::*;
 
 #[derive(Reflect)]
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -761,7 +761,7 @@ const_color!(
 );
 
 
-impl Display for Color {
+impl std::fmt::Display for Color {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Color {{r:{}, g:{}, b:{}, a:{}}}", self.r, self.g, self.b, self.a)
     }

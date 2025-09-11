@@ -5,6 +5,35 @@
 
 use crate::prelude::*;
 
+use common::{
+    replays::*,
+};
+
+use tataku::{
+    Color,
+    Bounds,
+    Vector2,
+};
+use engine::{
+    input,
+    graphics,
+    beatmaps::{
+        Beatmap,
+        TimingPoint,
+        map_difficulty,
+    },
+    gameplay,
+    gameplay::{
+        GameMode,
+        HitObject,
+        GameplayEvent,
+        TimingPointHelper,
+        PlayfieldNonsense,
+        GameModeProperties,
+        gameplay_manager::*,
+    },
+};
+
 /// how many beats between timing bars
 const BAR_SPACING:f32 = 4.0;
 
@@ -74,7 +103,7 @@ impl UTypingGame {
     }
 }
 impl GameMode for UTypingGame {
-    fn new(beatmap: &Beatmap, _:bool, settings: &Settings) -> TatakuResult<Self> {
+    fn new(beatmap: &Beatmap, _:bool, settings: &engine::Settings) -> tataku::Result<Self> {
         // let settings = Arc::new(settings.taiko_settings.clone());
         let settings = Arc::new(settings.gamemode_settings(GAME_INFO).unwrap_or_default());
         let playfield = Arc::new(Self::get_playfield(&settings, Bounds::new(Vector2::ZERO, Vector2::new(1920.0, 1080.0)), false));
@@ -124,11 +153,11 @@ impl GameMode for UTypingGame {
                     ));
                 }
             }
-            _ => return Err(BeatmapError::UnsupportedMode.into()),
+            _ => return Err(errors::beatmap::BeatmapError::UnsupportedMode.into()),
         }
 
         
-        if s.notes.is_empty() { return Err(TatakuError::Beatmap(BeatmapError::InvalidFile)); }
+        if s.notes.is_empty() { return Err(tataku::Error::Beatmap(errors::beatmap::BeatmapError::InvalidFile)); }
         s.notes.sort_by(|a, b|a.time().partial_cmp(&b.time()).unwrap());
         s.end_time = s.notes.iter().last().unwrap().time();
 
@@ -264,7 +293,7 @@ impl GameMode for UTypingGame {
         if let Some(note) = self.notes.last()
         && state.time > note.end_time(self.hitwindow_miss) && note.was_hit() {
             if !state.complete() {
-                state.add_action(GamemodeAction::MapComplete);
+                state.add_action(gameplay::Action::MapComplete);
                 // manager.completed = true;
             }
             return;
@@ -276,13 +305,13 @@ impl GameMode for UTypingGame {
     }
 
     #[cfg(feature="graphics")] 
-    fn draw(&mut self, state: GameplayDrawShell, list: &mut RenderableCollection) {
+    fn draw(&mut self, state: GameplayDrawShell, list: &mut graphics::RenderableCollection) {
 
         // draw the playfield
         list.push(self.playfield.get_rectangle(state.current_timing_point.kiai));
 
         // draw the hit area
-        list.push(Circle::new(
+        list.push(graphics::Circle::new(
             self.playfield.hit_position,
             self.game_settings.note_radius * self.game_settings.hit_area_radius_mult,
             Color::BLACK,
@@ -396,14 +425,18 @@ impl GameMode for UTypingGame {
         Some(time)
     }
 
-    fn force_update_settings(&mut self, _settings: &Settings) {}
+    fn force_update_settings(&mut self, _settings: &engine::Settings) {}
     
     #[cfg(feature="graphics")]
-    fn reload_skin(&mut self, _beatmap_path: &str, skin_manager: &mut dyn SkinProvider) -> TextureSource {
+    fn reload_skin(
+        &mut self, 
+        _beatmap_path: &str, 
+        skin_manager: &mut dyn graphics::SkinProvider
+    ) -> graphics::TextureSource {
         for i in self.notes.iter_mut() {
-            i.reload_skin(&TextureSource::Skin, skin_manager);
+            i.reload_skin(&graphics::TextureSource::Skin, skin_manager);
         }
-        TextureSource::Skin
+        graphics::TextureSource::Skin
     }
 
     #[cfg(feature="graphics")] 
@@ -429,9 +462,9 @@ impl GameMode for UTypingGame {
 
     
     #[cfg(feature="gameplay")] 
-    fn handle_input(&mut self, input: InputEvent) -> Option<ReplayAction> {
+    fn handle_input(&mut self, input: input::InputEvent) -> Option<ReplayAction> {
         match input.event {
-            InputType::KeyPress(key) => {
+            input::InputType::KeyPress(key) => {
                 let text = key.text?;
                 let c = text.chars().next()?;
                 Some(ReplayAction::MousePos(c as u8 as f32, 0.0))

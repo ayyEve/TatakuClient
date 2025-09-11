@@ -1,4 +1,6 @@
-use crate::prelude::*;
+use crate::*;
+use common::reflect::*;
+use common::MapGame;
 
 #[derive(Reflect)]
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]

@@ -1,4 +1,6 @@
 use crate::prelude::*;
+use common::reflect::Reflect;
+use tataku::{ TatakuValue, Color };
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -31,24 +33,23 @@ pub enum BuildableGameAction {
         text: Vec<BuildableText>,
     },
 }
-
 impl BuildableGameAction {
     pub fn resolve(
         &self,
         values: &mut dyn Reflect,
         passed_in: Option<&TatakuValue>
-    ) -> Option<GameAction> {
+    ) -> Option<actions::game::GameAction> {
         match self {
             Self::CopyToClipboard { text } => {
                 let text: String = text.iter()
                     .map(|text| text.to_string(values))
                     .collect();
 
-                Some(GameAction::CopyToClipboard(text.into()))
+                Some(actions::game::GameAction::CopyToClipboard(text.into()))
             }
 
-            Self::Quit => Some(GameAction::Quit),
-            Self::RefreshScores => Some(GameAction::RefreshScores),
+            Self::Quit => Some(actions::game::GameAction::Quit),
+            Self::RefreshScores => Some(actions::game::GameAction::RefreshScores),
             Self::ShowNotification {
                 text,
                 color,
@@ -64,11 +65,11 @@ impl BuildableGameAction {
                     .map(|text| text.to_string(values))
                     .collect();
 
-                Some(GameAction::AddNotification(Notification::new(
+                Some(actions::game::GameAction::AddNotification(engine::Notification::new(
                     text,
                     *color,
                     duration.resolve(values, passed_in)?.as_f32()?,
-                    NotificationOnClick::None
+                    engine::game::notifications::NotificationOnClick::None
                 )))
             },
 
@@ -80,7 +81,7 @@ impl BuildableGameAction {
 
                 debug!("score: {score_id}");
 
-                Some(GameAction::ViewScoreId(score_id))
+                Some(actions::game::GameAction::ViewScoreId(score_id))
             }
         }
     }

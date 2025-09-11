@@ -1,6 +1,7 @@
+use common::macros::Reflect;
 use crate::prelude::*;
+use common::reflect::*;
 
-use tataku_common::prelude::*;
 use HorizontalAlign::*;
 use VerticalAlign::*;
 
@@ -135,7 +136,7 @@ impl From<(HorizontalAlign, VerticalAlign)> for Alignment {
 impl std::str::FromStr for Alignment {
     type Err = &'static str;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> core::result::Result<Self, Self::Err> {
         match &*s.to_lowercase() {
             "top-left" | "top_left" | "topleft" => Ok(Self::TOP_LEFT),
             "top" | "top-center" | "top_center" | "topcenter" | "top-middle" | "top_middle" | "topmiddle" => Ok(Self::TOP_CENTER),

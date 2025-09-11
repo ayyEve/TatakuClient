@@ -1,4 +1,18 @@
 use crate::prelude::*;
+use tataku::{ 
+    Border, 
+    Vector2,
+};
+use engine::{
+    settings::common_gameplay::CommonGameplaySettings,
+    gameplay::{
+        widgets::*,
+        GamemodeInfo,
+    },
+};
+
+/// how tall is the duration bar
+pub(crate) const DURATION_HEIGHT:f32 = 35.0;
 
 struct DurationBarElement {
     common_game_settings: Arc<CommonGameplaySettings>,
@@ -34,7 +48,7 @@ impl GameplayWidget for DurationBarElement {
         shell: &mut GameplayWidgetDrawShell
     ) {
         // fill
-        shell.list.push(Rectangle::new(
+        shell.list.push(graphics::Rectangle::new(
             shell.pos_offset, // - Vector2::with_y(DURATION_HEIGHT + 3.0),
             Vector2::new(
                 self.container_size.x * self.duration_ratio, 
@@ -44,26 +58,23 @@ impl GameplayWidget for DurationBarElement {
         ));
 
         // border
-        shell.list.push(
-            Rectangle::new(
-                shell.pos_offset, // + Vector2::with_y(-(DURATION_HEIGHT + 3.0)),
-                Vector2::new(self.container_size.x, DURATION_HEIGHT) * shell.scale,
-                self.common_game_settings.duration_color,
-            )
-            .border(Border::new(
-                self.common_game_settings.duration_border_color, 
-                1.8 * shell.scale.x
-            )
-        ));
+        shell.list.push(graphics::Rectangle::new(
+            shell.pos_offset, // + Vector2::with_y(-(DURATION_HEIGHT + 3.0)),
+            Vector2::new(self.container_size.x, DURATION_HEIGHT) * shell.scale,
+            self.common_game_settings.duration_color,
+        )
+        .border(Border::new(
+            self.common_game_settings.duration_border_color, 
+            1.8 * shell.scale.x
+        )));
     }
 }
-
 
 pub const DURATION_BAR: GameplayWidgetBuilder = GameplayWidgetBuilder {
     name: "duration_bar",
     default_layout: GameplayWidgetLayout::new_default(
         GameplayWidgetAnchor::Screen, 
-        Alignment::BOTTOM_LEFT,
+        tataku::Alignment::BOTTOM_LEFT,
         None,
         None,
     ),

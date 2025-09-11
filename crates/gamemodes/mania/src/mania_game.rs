@@ -5,6 +5,37 @@
  */
 
 use crate::prelude::*;
+use common::{
+    replays::*,
+};
+
+use tataku::{
+    Color,
+    Bounds,
+    Border,
+    Vector2,
+    Alignment,
+};
+
+use engine::{
+    beatmaps::{
+        Beatmap,
+        NoteType,
+        TimingPointSearch,
+    },
+    gameplay::{
+        GameMode,
+        judgments::*,
+        GameplayEvent,
+        PlayfieldNonsense,
+        GameModeProperties,
+        gameplay_manager::{ GameplayUpdateShell, GameplayDrawShell },
+    },
+};
+
+use input::{
+    Key,
+};
 
 const OSU_SIZE: Vector2 = Vector2::new(640.0, 480.0);
 
@@ -13,7 +44,7 @@ pub struct ManiaGame {
     // map_meta: Arc<BeatmapMeta>,
     // lists
     pub columns: Vec<Vec<Box<dyn ManiaHitObject>>>,
-    hit_windows: Vec<(HitJudgment, Range<f32>)>,
+    hit_windows: Vec<(HitJudgment, std::ops::Range<f32>)>,
     miss_window: f32,
     
     // list indices
@@ -29,10 +60,10 @@ pub struct ManiaGame {
     #[cfg(feature="graphics")] sv_mult: f32,
     #[cfg(feature="graphics")] timing_bars: Vec<TimingBar>,
     #[cfg(feature="graphics")] playfield: Arc<ManiaPlayfield>,
-    #[cfg(feature="graphics")] key_images_up: HashMap<u8, Image>,
-    #[cfg(feature="graphics")] key_images_down: HashMap<u8, Image>,
+    #[cfg(feature="graphics")] key_images_up: HashMap<u8, graphics::Image>,
+    #[cfg(feature="graphics")] key_images_down: HashMap<u8, graphics::Image>,
     #[cfg(feature="graphics")] position_function: Arc<Vec<PositionPoint>>,
-    #[cfg(feature="graphics")] mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
+    #[cfg(feature="graphics")] mania_skin_settings: Option<Arc<graphics::ManiaSkinSettings>>,
 }
 impl ManiaGame {
     #[cfg(feature="graphics")] 
@@ -129,8 +160,8 @@ impl ManiaGame {
     #[cfg(feature="graphics")]
     fn load_col_images(
         &mut self, 
-        source: &TextureSource, 
-        skin_manager: &mut dyn SkinProvider
+        source: &graphics::TextureSource, 
+        skin_manager: &mut dyn graphics::SkinProvider
     ) {
         let Some(settings) = &self.mania_skin_settings 
         else { return };
@@ -151,7 +182,12 @@ impl ManiaGame {
                 (&settings.key_image_d, &mut self.key_images_down),
             ] {
                 let Some(path) = path_map.get(&col) else { continue };
-                let Some(mut img) = skin_manager.get_texture(path, source, SkinUsage::Beatmap, true) else { continue };
+                let Some(mut img) = skin_manager.get_texture(
+                    path, 
+                    source, 
+                    graphics::SkinUsage::Beatmap, 
+                    true
+                ) else { continue };
                 self.playfield.column_image(&mut img);
                 img.pos = Vector2::new(x, y);
 
@@ -272,7 +308,7 @@ impl ManiaGame {
     }
 
     #[cfg(feature="graphics")] 
-    fn draw_notes(&mut self, time: f32, list: &mut RenderableCollection) {
+    fn draw_notes(&mut self, time: f32, list: &mut graphics::RenderableCollection) {
         // draw timing bars
         for tb in self.timing_bars.iter_mut() { tb.draw(list) }
 
@@ -283,13 +319,17 @@ impl ManiaGame {
     }
 
     #[cfg(feature="graphics")] 
-    fn draw_columns(&mut self, bounds: Bounds, list: &mut RenderableCollection) {
+    fn draw_columns(
+        &mut self, 
+        bounds: Bounds, 
+        list: &mut graphics::RenderableCollection
+    ) {
 
         for col in 0..self.column_count {
             let x = self.playfield.col_pos(col);
 
             // column background
-            list.push(Rectangle::new(
+            list.push(graphics::Rectangle::new(
                 Vector2::new(x, bounds.pos.y),
                 Vector2::new(self.playfield.column_width, bounds.size.y),
                 Color::new(0.1, 0.1, 0.1, 0.8),
@@ -311,11 +351,14 @@ impl ManiaGame {
                     Color::TRANSPARENT 
                 };
 
-                list.push(Rectangle::new(
+                list.push(graphics::Rectangle::new(
                     Vector2::new(x, self.playfield.hit_y()),
                     self.playfield.note_size(),
                     color,
-                ).border(Border::new(Color::RED, self.playfield.note_border_width)));
+                ).border(Border::new(
+                    Color::RED, 
+                    self.playfield.note_border_width
+                )));
             }
         }
     }
@@ -335,7 +378,11 @@ impl ManiaGame {
 }
 
 impl GameMode for ManiaGame {
-    fn new(beatmap: &Beatmap, _: bool, settings: &Settings) -> TatakuResult<Self> {
+    fn new(
+        beatmap: &Beatmap, 
+        _: bool, 
+        settings: &engine::Settings
+    ) -> tataku::Result<Self> {
         // let metadata = beatmap.get_beatmap_meta();
 
         let game_settings = settings
@@ -431,7 +478,7 @@ impl GameMode for ManiaGame {
                 #[cfg(feature="gameplay")] 
                 let get_hitsounds = |time, hitsound, hitsamples| {
                     let tp = timing_points.timing_point_at(time);
-                    Hitsound::from_hitsamples(hitsound, hitsamples, true, tp)
+                    engine::gameplay::Hitsound::from_hitsamples(hitsound, hitsamples, true, tp)
                 };
 
                 #[cfg(feature="graphics")] 
@@ -515,7 +562,7 @@ impl GameMode for ManiaGame {
                 ));
 
                 let get_hitsounds = || {
-                    vec![Hitsound::new_simple("normal-hitnormal")]
+                    vec![engine::gameplay::Hitsound::new_simple("normal-hitnormal")]
                 };
 
                 let mut s = Self {
@@ -585,7 +632,7 @@ impl GameMode for ManiaGame {
                 ));
 
                 let get_hitsounds = || {
-                    vec![Hitsound::new_simple("normal-hitnormal")]
+                    vec![engine::gameplay::Hitsound::new_simple("normal-hitnormal")]
                 };
 
                 let mut s = Self {
@@ -646,7 +693,7 @@ impl GameMode for ManiaGame {
                 s
             }
             
-            _ => return Err(BeatmapError::UnsupportedBeatmap.into()),
+            _ => return Err(errors::beatmap::BeatmapError::UnsupportedBeatmap.into()),
         };
 
         // get end time
@@ -820,7 +867,7 @@ impl GameMode for ManiaGame {
         // dont continue if map is over
         if state.time >= self.end_time {
             if !state.complete() {
-                state.add_action(GamemodeAction::MapComplete);
+                state.add_action(engine::gameplay::Action::MapComplete);
             }
             return;
         }
@@ -849,11 +896,11 @@ impl GameMode for ManiaGame {
     }
     
     #[cfg(feature="graphics")] 
-    fn draw(&mut self, state: GameplayDrawShell, list: &mut RenderableCollection) {
+    fn draw(&mut self, state: GameplayDrawShell, list: &mut graphics::RenderableCollection) {
         let bounds = self.playfield.bounds;
 
         // playfield
-        list.push(Rectangle::new(
+        list.push(graphics::Rectangle::new(
                 Vector2::new(self.playfield.col_pos(0), bounds.pos.y),
                 Vector2::new(self.playfield.total_width, bounds.size.y),
                 Color::new(0.0, 0.0, 0.0, 0.8),
@@ -894,7 +941,7 @@ impl GameMode for ManiaGame {
 
     fn reset(&mut self, beatmap: &Beatmap) {
         #[cfg(feature="graphics")] 
-        let timing_points = TimingPointHelper::new(
+        let timing_points = engine::gameplay::TimingPointHelper::new(
             beatmap.get_timing_points(), 
             beatmap.slider_velocity()
         );
@@ -911,7 +958,11 @@ impl GameMode for ManiaGame {
         #[cfg(feature="graphics")] 
         if self.timing_bars.is_empty() {
             // load timing bars
-            let parent_tps = timing_points.iter().filter(|t|!t.is_inherited()).collect::<Vec<&TimingPoint>>();
+            let parent_tps = timing_points
+                .iter()
+                .filter(|t| !t.is_inherited())
+                .collect::<Vec<&engine::beatmaps::TimingPoint>>();
+
             let mut time = parent_tps[0].time;
             let mut tp_index = 0;
             let step = timing_points.beat_length_at(time, false);
@@ -954,11 +1005,15 @@ impl GameMode for ManiaGame {
         }
     }
 
-    fn force_update_settings(&mut self, _settings: &Settings) {}
+    fn force_update_settings(&mut self, _settings: &engine::Settings) {}
     
     #[cfg(feature="graphics")] 
-    fn reload_skin(&mut self, beatmap_path: &str, skin_manager: &mut dyn SkinProvider) -> TextureSource {
-        let source = TextureSource::Beatmap(beatmap_path.to_owned()); // TODO: add setting option
+    fn reload_skin(
+        &mut self, 
+        beatmap_path: &str, 
+        skin_manager: &mut dyn graphics::SkinProvider
+    ) -> graphics::TextureSource {
+        let source = graphics::TextureSource::Beatmap(beatmap_path.to_owned()); // TODO: add setting option
 
         // reload skin settings
         let all_mania_skin_settings = &skin_manager.skin().mania_settings;
@@ -981,7 +1036,8 @@ impl GameMode for ManiaGame {
     }
 
     #[cfg(feature="gameplay")] 
-    fn handle_input(&mut self, input: InputEvent) -> Option<ReplayAction> {
+    fn handle_input(&mut self, input: input::InputEvent) -> Option<ReplayAction> {
+        use input::InputType;
         match input.event {
             InputType::KeyPress(press) => {
                 let key = press.as_key()?;
@@ -1018,8 +1074,10 @@ impl GameMode for ManiaGame {
     #[cfg(feature="graphics")] 
     fn build_widgets(
         &self, 
-        loader: &mut dyn UiElementLoader
+        loader: &mut dyn engine::gameplay::widgets::UiElementLoader
     ) {
+        use engine::gameplay::widgets::*;
+
         // combo
         loader.change_default_layout(
             "combo",
@@ -1050,7 +1108,10 @@ impl GameMode for ManiaGame {
     fn get_playfield(&self) -> PlayfieldNonsense {
         PlayfieldNonsense::new_simple(self.playfield.bounds)
     }
-    fn properties(&self, _timing_points: &TimingPointHelper) -> GameModeProperties {
+    fn properties(
+        &self, 
+        _timing_points: &engine::gameplay::TimingPointHelper
+    ) -> GameModeProperties {
         const KEY_LIST: &[(KeyPress, &str)] = &[
             (KeyPress::Mania1, "K1"),
             (KeyPress::Mania2, "K2"),

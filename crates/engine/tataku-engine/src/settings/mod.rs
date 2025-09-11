@@ -1,23 +1,25 @@
-mod helpers;
-mod settings;
-mod cursor_settings;
-mod display_settings;
-mod logging_settings;
-mod integration_settings;
-mod common_gameplay_settings;
-mod background_game_settings;
+pub mod cursor;
+pub mod display;
+pub mod logging;
+pub mod helpers;
+pub mod settings;
+pub mod integration;
+pub mod common_gameplay;
+pub mod background_game;
 
-pub use helpers::*;
-pub use settings::*;
-pub use cursor_settings::*;
-pub use display_settings::*;
-pub use logging_settings::*;
-pub use integration_settings::*;
-pub use common_gameplay_settings::*;
-pub use background_game_settings::*;
+pub use self::helpers::*;
+pub use settings::Settings;
+// pub use settings::*;
+// pub use cursor::*;
+// pub use display::*;
+// pub use logging::*;
+// pub use integration::*;
+// pub use common_gameplay::*;
+// pub use background_game::*;
 
 
-use crate::prelude::*;
+use crate::*;
+use common::reflect::*;
 
 #[derive(Reflect)]
 #[derive(Copy, Clone, Debug)]
@@ -58,15 +60,11 @@ impl ItemFilter {
     }
 }
 
-
-#[cfg(feature="graphics")]
-use tataku_ui::prelude::Widget;
-
 #[derive(Default)]
 #[cfg(feature="graphics")]
 pub struct SettingsCategory {
     pub name: String,
-    pub properties: Vec<Box<dyn Widget<TatakuAction>>>, 
-    pub values: Vec<Box<dyn Widget<TatakuAction>>>,
+    pub properties: Vec<Box<dyn ui::widget::Widget<actions::Action>>>, 
+    pub values: Vec<Box<dyn ui::widget::Widget<actions::Action>>>,
     pub names: Vec<String>,
 }

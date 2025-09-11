@@ -1,4 +1,19 @@
 use crate::prelude::*;
+use graphics::SkinnedNumber;
+use tataku::{
+    Alignment,
+    Bounds,
+    Vector2,
+    Color,
+};
+use engine::{
+    settings::common_gameplay::CommonGameplaySettings,
+    gameplay::{
+        widgets::*,
+        GamemodeInfo,
+        gameplay_manager::GameplayManagerTrait,
+    },
+};
 
 macro_rules! number_element {
     (
@@ -28,9 +43,9 @@ macro_rules! number_element {
             fn layout(
                 text: &str,
                 scale: Vector2,
-                context: &mut TextLayoutContexts,
+                context: &mut ui::widget::TextLayoutContexts,
             ) -> (Arc<parley::Layout<Color>>, Vector2) {
-                let style = TextStyle {
+                let style = ui::style::TextStyle {
                     font_size: 30.0 * scale.y,
                     ..Default::default()
                 };
@@ -126,14 +141,14 @@ macro_rules! number_element {
                     let Some(layout) = self.layout.clone() 
                     else { return };
 
-                    shell.list.push(Transformed::new(
-                        Transform::default().translate(shell.align.resolve(
+                    shell.list.push(graphics::Transformed::new(
+                        graphics::Transform::default().translate(shell.align.resolve(
                             &bounds,
                             self.layout_size,
                             true,
                             true
                         )),
-                        Box::new(Text::new(layout))
+                        Box::new(graphics::Text::new(layout))
                     ));
 
                     // let mut text = self.text.clone();
@@ -148,7 +163,10 @@ macro_rules! number_element {
                 }
             }
 
-            fn reload_skin(&mut self, shell: &mut GameplayWidgetReloadSkinShell) {
+            fn reload_skin(
+                &mut self, 
+                shell: &mut GameplayWidgetReloadSkinShell
+            ) {
                 self.image = SkinnedNumber::new(
                     Vector2::ZERO, 
                     $max_number as f64, 
@@ -158,7 +176,7 @@ macro_rules! number_element {
                     $precision, 
                     shell.skin_manager, 
                     shell.source, 
-                    SkinUsage::Gamemode
+                    graphics::SkinUsage::Gamemode
                 ).ok();
                 
                 if let Some(image) = &mut self.image {
@@ -176,6 +194,10 @@ macro_rules! number_element {
     }
 }
 
+use tataku::{
+    format_number,
+    format_float,
+};
 
 // Score
 number_element!(

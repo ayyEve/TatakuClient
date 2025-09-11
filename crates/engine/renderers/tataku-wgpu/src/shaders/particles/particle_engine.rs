@@ -12,7 +12,7 @@ use std::{
 
 pub(crate) struct ParticleSystem {
     emitters: Vec<tataku::EmitterReference>,
-    last_update: tataku::TatakuInstant,
+    last_update: tataku::Instant,
 
     pipeline: wgpu::ComputePipeline,
 
@@ -61,7 +61,7 @@ impl ParticleSystem {
         let (sender, receiver) = sync_channel(1000);
         Self {
             emitters: Vec::new(),
-            last_update: tataku::TatakuInstant::now(),
+            last_update: tataku::Instant::now(),
 
             pipeline,
 

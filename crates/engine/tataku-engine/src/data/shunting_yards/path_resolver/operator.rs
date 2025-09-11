@@ -1,10 +1,11 @@
-use crate::prelude::*;
+use crate::*;
 use super::*;
+use tataku::_ShuntingYardOperatorReadError;
 
 #[doc(hidden)]
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct PathShuntingYardOperator;
-impl _ShuntingYardOperator<'_> for PathShuntingYardOperator {
+impl tataku::_ShuntingYardOperator<'_> for PathShuntingYardOperator {
     type Output = String;
     type Error = PathShuntingYardError;
 

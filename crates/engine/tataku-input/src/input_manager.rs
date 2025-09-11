@@ -1,5 +1,5 @@
 // use gilrs::PowerInfo;
-use crate::prelude::*;
+use crate::*;
 
 #[derive(Default)]
 pub struct InputManager {
@@ -24,7 +24,7 @@ pub struct InputManager {
     pub controller_menu_button_config: ControllerButtonMenuConfig,
     
     /// last key pressed, time it was pressed, was it a double tap? (need to know if it was a double tap for release check)
-    last_key_press: HashMap<KeyInput, (TatakuInstant, bool)>,
+    last_key_press: HashMap<KeyInput, (Instant, bool)>,
 }
 impl InputManager {
     // fn verify_controller_index_exists(

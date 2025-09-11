@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::*;
 
 pub trait TatakuTask: Send + Sync {
     fn get_id(&self) -> CowStr { self.get_name() }
@@ -8,9 +8,9 @@ pub trait TatakuTask: Send + Sync {
 
     fn run(
         &mut self, 
-        values: &mut dyn Reflect, 
+        values: &mut dyn common::reflect::Reflect, 
         state: &TaskGameState, 
-        actions: &mut ActionQueue
+        actions: &mut actions::ActionQueue
     ); 
 }
 

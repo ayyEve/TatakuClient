@@ -1,4 +1,10 @@
 use crate::prelude::*;
+use common::reflect::*;
+use tataku::TatakuValue;
+use ui::{
+    tree::*,
+    message::*,
+};
 
 type Callback = Arc<dyn Fn() + Send + Sync>;
 type MessageCallback = Arc<dyn Fn() -> Option<Message> + Send + Sync>;
@@ -23,7 +29,7 @@ impl ContextMenuAction {
         node: NodeId,
         passed_in: Option<TatakuValue>,
         values: &mut dyn Reflect,
-        actions: &mut ActionQueue,
+        actions: &mut actions::ActionQueue,
         messages: &mut Vec<Message>,
     ) {
         match self {

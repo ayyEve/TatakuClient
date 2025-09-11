@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use ui::widget::Widget;
 
 #[derive(Deserialize)]
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -10,16 +11,16 @@ pub struct RowElement {
     #[serde(alias = "$value")] children: Vec<Element>,
 }
 impl CustomElement for RowElement {
-    fn build(&self) -> Box<dyn Widget<TatakuAction>> {
+    fn build(&self) -> Box<dyn Widget<actions::Action>> {
         let mut classes = self.class_list.clone();
         classes.push("row");
 
-        WidgetContainer::new_boxed(
+        widgets::WidgetContainer::new_boxed(
             self.style.clone(),
             "row",
             self.id.clone(),
             classes,
-            Container::new(
+            widgets::Container::new(
                 self.children
                     .iter()
                     .map(|e| e.build())

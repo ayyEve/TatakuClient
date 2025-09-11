@@ -1,5 +1,6 @@
-use tataku_graphics::prelude::*;
+use tataku_graphics::*;
 use tataku_client_common::prelude::*;
+use tataku::errors::graphics::GraphicsError;
 
 pub struct DummyGraphicsEngine;
 impl RenderingEngine for DummyGraphicsEngine {
@@ -24,11 +25,11 @@ impl RenderingEngine for DummyGraphicsEngine {
     ) {}
 
     fn load_texture_bytes(&mut self, _data: &[u8]) -> TatakuResult<TextureReference> {
-        Err(TatakuError::Graphics(GraphicsError::DummyEngine))
+        Err(Error::Graphics(GraphicsError::DummyEngine))
     }
 
     fn load_texture_rgba(&mut self, _data: &[u8], _size: [u32; 2]) -> TatakuResult<TextureReference> {
-        Err(TatakuError::Graphics(GraphicsError::DummyEngine))
+        Err(Error::Graphics(GraphicsError::DummyEngine))
     }
 
     fn free_tex(&mut self, _tex: TextureReference, _defer_until_next_draw: bool) {}

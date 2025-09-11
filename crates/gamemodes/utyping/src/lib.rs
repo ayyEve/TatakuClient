@@ -9,8 +9,8 @@ pub use utyping_info::GAME_INFO;
 
 
 mod prelude {
-    pub use tataku_engine::prelude::*;
-    pub use tataku_graphics::prelude::*;
+    pub use tataku_engine as engine;
+    pub use tataku_client_common::common::*;
 
     pub use super::helpers::*;
     pub use super::utyping_info::*;

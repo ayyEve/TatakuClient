@@ -1,4 +1,22 @@
 use crate::prelude::*;
+use tataku::{
+    Border,
+    Bounds,
+    Vector2,
+};
+use ui::{
+    tree::*,
+    style::*,
+    widget::*,
+    message::*,
+};
+use input::{ 
+    Key,
+    InputType,
+    InputEvent, 
+    MouseButton, 
+};
+use widgets::context_menus::ContextMenuAction;
 
 /// NOTE: This doesn't need to be in the taffy tree (probably)
 pub struct ContextMenu {
@@ -90,16 +108,16 @@ impl ContextMenu {
     }
 }
 
-impl Widget<TatakuAction> for ContextMenu {
+impl Widget<actions::Action> for ContextMenu {
     fn name(&self) -> CowStr { "context_menu".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn layout(&mut self, shell: &mut LayoutShell<TatakuAction>) -> taffy::TaffyResult<NodeId> {
+    fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId> {
         self.node_id = shell.tree.new_leaf()?;
         Ok(self.node_id)
     }
 
-    fn init_style(&mut self, shell: &mut LayoutShell<TatakuAction>) {
+    fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
         shell.tree.update_style(
             self.node_id, 
             |s| s.position = Position::Absolute.into()
@@ -109,7 +127,7 @@ impl Widget<TatakuAction> for ContextMenu {
     fn input(
         &mut self, 
         event: &InputEvent, 
-        shell: &mut InputShell<TatakuAction>,
+        shell: &mut InputShell<actions::Action>,
     ) {
         if let Some(menu) = &mut self.submenu {
             menu.input(event, shell);
@@ -234,7 +252,7 @@ impl Widget<TatakuAction> for ContextMenu {
     }
 
     #[allow(clippy::only_used_in_recursion, reason = "required")]
-    fn update(&mut self, shell: &mut UpdateShell<TatakuAction>) {
+    fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
         if let Some(menu) = &mut self.submenu {
             menu.update(shell);
             if menu.should_close {
@@ -248,13 +266,13 @@ impl Widget<TatakuAction> for ContextMenu {
         }
     }
 
-    fn draw(&self, shell: &mut DrawShell<TatakuAction>) {
+    fn draw(&self, shell: &mut DrawShell<actions::Action>) {
         for (n, i) in self.options.iter().enumerate() {
             let pos = self.location 
                 + Vector2::new(0.0, self.item_size.y * n as f32);
             let bounds = Bounds::new(pos, self.item_size);
 
-            shell.list.push(Rectangle::new_bounds(
+            shell.list.push(graphics::Rectangle::new_bounds(
                 bounds,
                 shell.general_theme.background_color,
             ).border(Border::new(

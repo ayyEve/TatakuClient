@@ -1,4 +1,7 @@
 use crate::prelude::*;
+use ui::widget::Widget;
+use tataku::TatakuValue;
+use widgets::SliderValue;
 
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
@@ -8,7 +11,7 @@ pub struct SliderElement {
     #[serde(rename = "@class", default)] class_list: ClassList,
     #[serde(rename = "@style", default)] style: ArcStr,
 
-    #[serde(rename = "@variable")] var: VariablePathResolver,
+    #[serde(rename = "@variable")] var: engine::VariablePathResolver,
 
     #[serde(rename = "@min", default)] min_attribute: Option<TatakuValue>,
     #[serde(rename = "min", default)] min: Option<Wrapped<BuildableValue>>,
@@ -43,9 +46,8 @@ impl SliderElement {
         }
     }
 }
-
 impl CustomElement for SliderElement {
-    fn build(&self) -> Box<dyn Widget<TatakuAction>> {
+    fn build(&self) -> Box<dyn Widget<actions::Action>> {
         let min = self.min_attribute.clone()
             .map(BuildableValue::Value)
             .or(self.min.clone()
@@ -71,12 +73,12 @@ impl CustomElement for SliderElement {
         
         if matches!(step, Some(SliderValue::Error)) { step = None };
 
-        WidgetContainer::new_boxed(
+        widgets::WidgetContainer::new_boxed(
             self.style.clone(),
             "slider",
             self.id.clone(),
             self.class_list.clone(),
-            Slider::new(
+            widgets::Slider::new(
                 min,
                 max,
                 self.var.clone(),

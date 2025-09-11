@@ -1,5 +1,21 @@
 use crate::prelude::*;
-use tataku_engine::prelude::GamepadButton as GamepadButton;
+use tataku::Border;
+use ui::{
+    tree::*,
+    widget::*,
+};
+use input::{ 
+    Key,
+    InputType,
+    InputEvent, 
+    MouseButton, 
+    GamepadButton,
+};
+
+use widgets::{
+    InputAction,
+    InputButtonValue,
+};
 
 #[derive(ChainableInitializer)]
 pub struct GamepadButtonInput {
@@ -32,18 +48,18 @@ impl GamepadButtonInput {
         }
     }
 }
-impl Widget<TatakuAction> for GamepadButtonInput {
+impl Widget<actions::Action> for GamepadButtonInput {
     fn name(&self) -> CowStr { "gamepad_input".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn layout(
         &mut self, 
-        shell: &mut LayoutShell<TatakuAction>
+        shell: &mut LayoutShell<actions::Action>
     ) -> taffy::TaffyResult<NodeId> {
         self.node_id = shell.tree.new_leaf()?;
         Ok(self.node_id)
     }
-    fn init_style(&mut self, shell: &mut LayoutShell<TatakuAction>) {
+    fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
         let text_style = shell.tree
             .get_text_style(self.node_id)
             .unwrap();
@@ -62,7 +78,7 @@ impl Widget<TatakuAction> for GamepadButtonInput {
     fn input(
         &mut self, 
         event: &InputEvent, 
-        shell: &mut InputShell<TatakuAction>,
+        shell: &mut InputShell<actions::Action>,
     ) {
         if shell.event_consumed { return }
         let bounds = shell.tree
@@ -141,7 +157,7 @@ impl Widget<TatakuAction> for GamepadButtonInput {
     }
 
 
-    fn update(&mut self, shell: &mut UpdateShell<TatakuAction>) {
+    fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
         if self.button.update(shell.values, self.optional) {
             let ctx = shell
                 .tree
@@ -176,7 +192,7 @@ impl Widget<TatakuAction> for GamepadButtonInput {
     }
 
 
-    fn draw(&self, shell: &mut DrawShell<TatakuAction>) {
+    fn draw(&self, shell: &mut DrawShell<actions::Action>) {
         let ctx = shell.tree
             .get_context(self.node_id)
             .unwrap();
@@ -188,7 +204,7 @@ impl Widget<TatakuAction> for GamepadButtonInput {
             .absolute_bounds(self.node_id)
             .unwrap();
 
-        shell.list.push(Rectangle::new_bounds(
+        shell.list.push(graphics::Rectangle::new_bounds(
             bounds, 
             shell.general_theme.background_color,
         ).border(Border::new(

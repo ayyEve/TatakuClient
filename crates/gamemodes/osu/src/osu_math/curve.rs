@@ -1,5 +1,20 @@
 use crate::prelude::*;
 
+use tataku::{
+    Vector2,
+};
+use engine::{
+    beatmaps::{
+        Beatmap,
+        osu::{
+            SliderDef,
+            CurveType,
+        },
+    },
+    gameplay::TimingPointHelper,
+};
+
+
 #[derive(Copy, Clone, Debug)]
 pub struct CurveLine {
     pub p1: Vector2,

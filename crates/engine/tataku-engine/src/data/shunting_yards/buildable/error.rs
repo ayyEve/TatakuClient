@@ -1,4 +1,6 @@
-use crate::prelude::*;
+use crate::*;
+use common::reflect::ReflectError;
+use crate::data::shunting_yards::buildable::*;
 
 pub type ShuntingYardResult<T> = Result<T, BuildableShuntingYardError>;
 
@@ -41,7 +43,7 @@ impl<'a> From<ReflectError<'a>> for BuildableShuntingYardError {
     }
 }
 
-impl _ShuntingYardError for BuildableShuntingYardError {
+impl tataku::_ShuntingYardError for BuildableShuntingYardError {
     type Operator = BuildableShuntingYardOperator;
     type Token = BuildableShuntingYardToken;
 

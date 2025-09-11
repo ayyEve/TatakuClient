@@ -1,6 +1,8 @@
-#![allow(unused)]
-use crate::prelude::*;
+use crate::*;
 const DEBUG: bool = false;
+use tataku::Vector2;
+use tataku::Color;
+use beatmaps::osu::storyboard::*;
 
 #[derive(Clone, Debug)]
 pub struct StoryboardSpriteDef {
@@ -206,7 +208,7 @@ pub struct StoryboardDef {
     pub entries: Vec<StoryboardEntryDef>
 }
 impl StoryboardDef {
-    pub fn read(lines: Vec<String>) -> TatakuResult<Self> {
+    pub fn read(lines: Vec<String>) -> tataku::TatakuResult<Self> {
         let mut entries = Vec::new();
         let mut current_entry = None;
 
@@ -223,13 +225,13 @@ impl StoryboardDef {
 
                 // loop events 
                 let mut time = self.start_time;
-                let mut end_time = self.events.iter()
+                let end_time = self.events.iter()
                     .fold(
                         0f32, 
                         |v, cmd| v.max(cmd.end_time)
                     );
 
-                for i in 0..self.loops {
+                for _ in 0..self.loops {
                     // next iteration
                     time += end_time;
 
@@ -462,9 +464,10 @@ fn test() {
     // let path = "E:/Program Files/osu!/Songs/883505 nanobii - HYPERDRIVE/nanobii - HYPERDRIVE (hypercyte).osb";
     let path = "E:/Program Files/osu!/Songs/151720 ginkiha - EOS/ginkiha - EOS (alacat).osb";
 
-    let lines = Io::read_lines_resolved(path).unwrap().collect::<Vec<String>>();
+    let lines = tataku::Io::read_lines_resolved(path)
+        .unwrap()
+        .collect::<Vec<String>>();
 
     let storyboard = StoryboardDef::read(lines).unwrap();
-
-    // println!("{storyboard:#?}");
+    println!("{storyboard:#?}");
 }

@@ -1,4 +1,5 @@
-use crate::prelude::*;
+use crate::*;
+use common::reflect::*;
 
 // TODO: rename this
 #[derive(Clone, Debug)]
@@ -23,7 +24,7 @@ impl<T: Reflect + Clone + PartialEq> ValueChangeHelper<T> {
         Ok(self.value.as_ref())
     }
 
-    pub fn try_get(&self) -> TatakuResult<&T> {
+    pub fn try_get(&self) -> tataku::TatakuResult<&T> {
         Ok(self.value.as_ref().ok_or(ReflectError::entry_not_exist(&self.key))?)
     }
 }

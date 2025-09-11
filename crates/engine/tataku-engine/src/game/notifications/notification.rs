@@ -1,4 +1,7 @@
-use crate::prelude::*;
+use crate::*;
+use tataku::Color;
+use std::sync::atomic::{ AtomicUsize, Ordering };
+use engine::game::notifications::NotificationOnClick;
 
 static ID_COUNTER:AtomicUsize = AtomicUsize::new(0);
 
@@ -19,7 +22,7 @@ pub struct Notification {
     #[chain] pub duration: f32,
 
     /// what shold happen on click?
-    #[chain] pub onclick: NotificationOnClick
+    #[chain] pub onclick: game::notifications::NotificationOnClick
 }
 impl Notification {
     pub fn new(
@@ -52,7 +55,7 @@ impl Notification {
 
     pub fn new_error(
         text: impl ToString, 
-        err: impl Into<TatakuError>
+        err: impl Into<tataku::Error>
     ) -> Self {
         Self::new(
             format!("{}\n{:?}", text.to_string(), err.into()),

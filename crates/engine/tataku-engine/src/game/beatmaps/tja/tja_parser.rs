@@ -1,5 +1,5 @@
-use crate::prelude::*;
-use super::tja_beatmap::*;
+use crate::*;
+use beatmaps::tja::*;
 
 /// helper for parsing .tja files
 #[derive(Default)]
@@ -28,7 +28,7 @@ impl TjaParser {
     pub fn parse<'a>(
         mut self, 
         lines: impl Iterator<Item=&'a str>,
-    ) -> TatakuResult<Vec<TjaBeatmap>> {
+    ) -> tataku::TatakuResult<Vec<TjaBeatmap>> {
         self.bpm = 120.0;
         self.offset = 0.0;
 
@@ -134,7 +134,7 @@ impl TjaParser {
             .collect::<Vec<_>>()
             .join("\n");
 
-        course.course.hash = Cryptography::md5(lines);
+        course.course.hash = tataku::Cryptography::md5(lines);
 
         self.courses.push(course);
     }
@@ -268,7 +268,7 @@ impl ParseCourse {
         }
     }
 
-    fn parse_notes_line(&mut self, line: &str) -> TatakuResult {
+    fn parse_notes_line(&mut self, line: &str) -> tataku::TatakuResult<()> {
         if !self.in_song { return Ok(()) }
 
         let line = line.trim(); // remove any whitespace
@@ -304,7 +304,7 @@ impl ParseCourse {
                 // cry
                 _ => {
                     warn!("unknown tja note char '{symbol}'");
-                    return Err(BeatmapError::InvalidFile.into())
+                    return Err(errors::beatmap::BeatmapError::InvalidFile.into())
                 }
 
             }

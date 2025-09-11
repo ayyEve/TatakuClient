@@ -23,7 +23,7 @@ impl DividerItem {
     
     pub fn write(&self) -> TokenStream {
         quote! { 
-            BuildableSettingType::Divider
+            engine::settings::BuildableSettingType::Divider
         }
     }
 }

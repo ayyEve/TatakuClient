@@ -6,7 +6,7 @@ pub struct Io;
 impl Io {
     /// read a file into bytes
     pub fn read_file(path: impl AsRef<Path>) -> io::Result<Vec<u8>> {
-        let time = TatakuInstant::now();
+        let time = Instant::now();
         let f = std::fs::read(&path);
 
         let duration = time.as_millis();
@@ -18,7 +18,7 @@ impl Io {
 
     /// helper for the read_lines functions
     fn open_file(path: impl AsRef<Path>) -> io::Result<File>{
-        let time = TatakuInstant::now();
+        let time = Instant::now();
         let f = File::open(&path);
 
         let duration = time.as_millis();
@@ -31,7 +31,7 @@ impl Io {
 
     
     /// get a file's hash
-    pub fn get_file_hash<P:AsRef<Path>>(file_path:P) -> TatakuResult<Md5Hash> {
+    pub fn get_file_hash<P:AsRef<Path>>(file_path:P) -> TatakuResult<common::Md5Hash> {
         Ok(Cryptography::md5(Self::read_file(file_path)?))
     }
 
@@ -90,7 +90,7 @@ impl Io {
         let file = Self::open_file(filename)?;
         let lines = BufReader::new(file)
             .lines()
-            .filter_map(Result::ok);
+            .filter_map(core::result::Result::ok);
         Ok(lines)
     }
 

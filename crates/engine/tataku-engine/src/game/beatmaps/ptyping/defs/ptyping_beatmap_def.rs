@@ -1,5 +1,10 @@
-use crate::prelude::*;
-
+use crate::*;
+use engine::beatmaps::ptyping::{
+    PTypingNoteDef,
+    PTypingBeatmapInfo,
+    PTypingBeatmapMetadataDef,
+    PTypingFileCollectionDef,
+};
 
 #[derive(Clone, Default, Debug)]
 #[derive(Serialize, Deserialize)]

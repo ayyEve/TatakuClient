@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use input::TatakuEvent;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct BuildableEvent {
@@ -32,7 +33,7 @@ impl<'de> Deserialize<'de> for BuildableEvent {
 
         struct Enum<E> {
             name: String,
-            attributes: Vec<(String, FromString)>,
+            attributes: Vec<(String, tataku::FromString)>,
             error: std::marker::PhantomData<E>,
         }
         impl<'de, E: Error> EnumAccess<'de> for Enum<E> {
@@ -106,7 +107,7 @@ impl<'de> Deserialize<'de> for BuildableEvent {
                         // attributes have to be deserializable as strings
                         let value: String = map.next_value()?;
 
-                        attributes.push((key, FromString::from(value)));
+                        attributes.push((key, tataku::FromString::from(value)));
                     } else {
                         actions.push(map.next_value()?);
                     }
@@ -187,6 +188,6 @@ fn test() {
             </actions>
         </event>
     "#)
-    .map_err(|e| TatakuError::String(format!("{e}")))
+    .map_err(|e| tataku::Error::String(format!("{e}")))
     .unwrap();
 }

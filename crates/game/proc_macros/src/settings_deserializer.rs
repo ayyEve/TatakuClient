@@ -61,6 +61,8 @@ pub(crate) fn impl_settings_deserializer(ast: &syn::DeriveInput) -> Result<proc_
     Ok(quote! {
         impl<'de> Deserialize<'de> for #struct_name {
             fn deserialize<D: serde::Deserializer<'de>>(de: D) -> Result<Self, D::Error> {
+                use engine::settings::TatakuSettingOptional;
+
                 #[derive(serde::Deserialize, Default)]
                 #[serde(default)]
                 struct De {

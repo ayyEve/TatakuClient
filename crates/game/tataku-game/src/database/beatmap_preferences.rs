@@ -3,6 +3,7 @@
  */
 
 use crate::prelude::*;
+use common::reflect::*;
 
 #[derive(Settings, Reflect)]
 #[derive(Serialize, Deserialize)]
@@ -52,7 +53,7 @@ impl BeatmapPlaymodePreferences {
 
 
 impl Database {
-    pub fn get_beatmap_prefs(map_hash: Md5Hash) -> BeatmapPreferences {
+    pub fn get_beatmap_prefs(map_hash: common::Md5Hash) -> BeatmapPreferences {
         let db = Self::get();
 
         let query = format!("SELECT * FROM beatmap_preferences WHERE beatmap_hash='{map_hash}'");
@@ -66,7 +67,7 @@ impl Database {
         }
     }
     pub fn save_beatmap_prefs(
-        map_hash: Md5Hash, 
+        map_hash: common::Md5Hash, 
         prefs: &BeatmapPreferences,
     ) {
         let BeatmapPreferences { 
@@ -108,7 +109,7 @@ impl Database {
     }
 
     pub fn get_beatmap_mode_prefs(
-        map_hash: Md5Hash, 
+        map_hash: common::Md5Hash, 
         playmode: &str
     ) -> BeatmapPlaymodePreferences {
         let db = Self::get();
@@ -131,7 +132,7 @@ impl Database {
         }
     }
     pub fn save_beatmap_mode_prefs(
-        map_hash: Md5Hash, 
+        map_hash: common::Md5Hash, 
         playmode: &str, 
         prefs: &BeatmapPlaymodePreferences
     ) {

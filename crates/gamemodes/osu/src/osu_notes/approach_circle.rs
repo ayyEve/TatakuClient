@@ -1,4 +1,12 @@
 use crate::prelude::*;
+use tataku::{
+    Color,
+    Border,
+    Easing,
+    Vector2,
+};
+
+use engine::graphics;
 
 const APPROACH_CIRCLE_MULT:f32 = 4.0;
 
@@ -7,7 +15,7 @@ const APPROACH_CIRCLE_SCALE:f32 = 0.90;
 
 #[derive(Default)]
 pub struct ApproachCircle {
-    image: Option<Image>,
+    image: Option<graphics::Image>,
     base_pos: Vector2,
     pos: Vector2,
     radius: f32,
@@ -50,8 +58,17 @@ impl ApproachCircle {
         self.radius = new_radius;
     }
     #[cfg(feature="graphics")]
-    pub fn reload_texture(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
-        self.image = skin_manager.get_texture("approachcircle", source, SkinUsage::Gamemode, false);
+    pub fn reload_texture(
+        &mut self, 
+        source: &graphics::TextureSource, 
+        skin_manager: &mut dyn graphics::SkinProvider
+    ) {
+        self.image = skin_manager.get_texture(
+            "approachcircle", 
+            source, 
+            graphics::SkinUsage::Gamemode, 
+            false
+        );
     }
 
     pub fn update(&mut self, map_time: f32) {
@@ -71,7 +88,7 @@ impl ApproachCircle {
     }
 
     #[cfg(feature="graphics")]
-    pub fn draw(&self, list: &mut RenderableCollection) {
+    pub fn draw(&self, list: &mut graphics::RenderableCollection) {
         let lerp_amount = self.time_diff / self.preempt;
         let scale = self.easing_type.run_easing(
             1.0, 
@@ -86,7 +103,7 @@ impl ApproachCircle {
 
             list.push(tex);
         } else {
-            list.push(Circle::new(
+            list.push(graphics::Circle::new(
                 self.pos,
                 self.radius * scale, // self.radius is already accounting for the scaled_cs
                 Color::TRANSPARENT,

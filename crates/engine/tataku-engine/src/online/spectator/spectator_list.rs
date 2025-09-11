@@ -1,4 +1,6 @@
-use crate::prelude::*;
+use crate::*;
+use common::reflect::*;
+use online::spectator::SpectatingUser;
 
 /// helper for managing lists of spectators
 #[derive(Reflect)]

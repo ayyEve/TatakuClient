@@ -1,4 +1,21 @@
 use crate::prelude::*;
+use tataku::{
+    Color,
+    Easing,
+    Vector2,
+};
+
+use engine::{
+    beatmaps::{
+        osu::*,
+        NoteType,
+        map_difficulty,
+    },
+    gameplay::{
+        Hitsound,
+        HitObject,
+    }
+};
 
 #[derive(Default)]
 pub struct OsuNote {
@@ -112,7 +129,11 @@ impl HitObject for OsuNote {
     }
 
     #[cfg(feature="graphics")]
-    fn draw(&mut self, _beatmap_time: f32, list: &mut RenderableCollection) {
+    fn draw(
+        &mut self, 
+        _beatmap_time: f32, 
+        list: &mut tataku_graphics::RenderableCollection
+    ) {
 
         // if its not time to draw anything else, leave
         if self.time - self.map_time > self.time_preempt || self.time + self.hitwindow_miss < self.map_time || self.hit {
@@ -155,7 +176,11 @@ impl HitObject for OsuNote {
 
 
     #[cfg(feature="graphics")]
-    fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+    fn reload_skin(
+        &mut self, 
+        source: &tataku_graphics::TextureSource, 
+        skin_manager: &mut dyn tataku_graphics::SkinProvider
+    ) {
         self.circle_image.reload_skin(source, skin_manager);
         self.approach_circle.reload_texture(source, skin_manager);
     }

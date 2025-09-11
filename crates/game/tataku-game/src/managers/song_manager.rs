@@ -1,5 +1,10 @@
 use crate::prelude::*;
-use tataku_audio::prelude::*;
+use tataku_audio::*;
+use engine::{
+    actions,
+};
+use input::TatakuEvent;
+use graphics::FFTHook;
 
 #[derive(Default)]
 pub struct SongManager {
@@ -12,12 +17,12 @@ impl SongManager {
     fn play_song(
         &mut self,
         key: ArcStr,
-        mut params: SongPlayData,
-        load_song: impl FnOnce(&mut AudioManager) -> TatakuResult<Arc<dyn AudioInstance>>,
-        actions: &mut ActionQueue,
+        mut params: actions::song::SongPlayData,
+        load_song: impl FnOnce(&mut AudioManager) -> tataku::Result<Arc<dyn AudioInstance>>,
+        actions: &mut actions::ActionQueue,
         engine: &mut AudioManager,
-        settings: &Settings,
-    ) -> TatakuResult<()> {
+        settings: &engine::Settings,
+    ) -> tataku::Result<()> {
         // check if the key is the same as current
         if let Some(song) = self.current_song
             .as_ref()
@@ -29,7 +34,10 @@ impl SongManager {
                 Self::apply_params(&song.instance, params, settings);
             }
 
-            actions.push(GameAction::HandleEvent(TatakuEvent::SongStart, None).into());
+            actions.push(actions::game::GameAction::HandleEvent(
+                TatakuEvent::SongStart, 
+                None
+            ).into());
             return Ok(());
         }
 
@@ -47,7 +55,7 @@ impl SongManager {
         // set our current song to the loaded audio
         self.current_song = Some(SongData::new(song, key));
 
-        actions.push(GameAction::HandleEvent(TatakuEvent::SongStart, None).into());
+        actions.push(actions::game::GameAction::HandleEvent(TatakuEvent::SongStart, None).into());
         Ok(())
     }
 
@@ -75,12 +83,13 @@ impl SongManager {
 
     pub fn handle_song_set_action(
         &mut self,
-        action: SongSetAction,
-        actions: &mut ActionQueue,
+        action: actions::song::SongSetAction,
+        actions: &mut actions::ActionQueue,
         engine: &mut AudioManager,
-        settings: &Settings,
-    ) -> TatakuResult {
+        settings: &engine::Settings,
+    ) -> tataku::Result<()> {
         trace!("Set song: {action:?}");
+        use actions::song::SongSetAction;
 
         match action {
             SongSetAction::Remove => {
@@ -139,8 +148,8 @@ impl SongManager {
 
     fn apply_params(
         song: &Arc<dyn AudioInstance>,
-        params: SongPlayData,
-        settings: &Settings
+        params: actions::song::SongPlayData,
+        settings: &engine::Settings
     ) {
         trace!("Using params: {params:?}");
         if params.play { song.play(params.restart) }

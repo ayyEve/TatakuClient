@@ -1,6 +1,5 @@
-use crate::prelude::*;
-use simplecss::StyleSheet;
-use super::CssRuleStyleResolver;
+use crate::style::CssStyle;
+use std::collections::HashMap;
 
 /// key is the % of the animation
 /// ie "0%" or "100%" 
@@ -10,10 +9,10 @@ impl CssAnimation {
     pub fn new(body: &str) -> Self {
         let mut map = HashMap::new();
 
-        let a = StyleSheet::parse(body);
+        let a = simplecss::StyleSheet::parse(body);
         let parsed = a.rules
             .iter()
-            .map(CssRuleStyleResolver::parse)
+            .map(super::CssRuleStyleResolver::parse)
             .collect::<Vec<_>>();
 
         struct A<'a>(&'a str);

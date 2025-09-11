@@ -1,4 +1,11 @@
 use crate::prelude::*;
+use tataku::TatakuValue;
+use ui::{
+    tree::NodeId,
+    widget::*,
+    message::*,
+    style::CssStyle,
+};
 
 #[derive(Deserialize)]
 #[derive(Clone, Debug)]
@@ -42,17 +49,17 @@ impl CustomDialog {
             draggable: self.draggable,
             resizable: self.resizable,
 
-            node_id: EMPTY_NODE,
+            node_id: ui::EMPTY_NODE,
         }
     }
 
-    pub fn options(&self) -> DialogCreateOptions {
-        DialogCreateOptions {
+    pub fn options(&self) -> actions::menu::DialogCreateOptions {
+        actions::menu::DialogCreateOptions {
             draggable: self.draggable,
             resizable: self.resizable,
             allow_multiple: self.allow_multiple,
             title: Cow::Owned(self.title.to_string()),
-            location: DialogLocation::Auto,
+            location: actions::menu::DialogLocation::Auto,
             background: true,
         }
     }
@@ -61,34 +68,34 @@ impl CustomDialog {
 pub struct BuiltCustomDialog {
     pub id: ArcStr,
     pub title: ArcStr,
-    pub element: Box<dyn Widget<TatakuAction>>,
-    pub events: HashMap<TatakuEvent, Vec<BuildableAction>>,
+    pub element: Box<dyn Widget<actions::Action>>,
+    pub events: HashMap<input::TatakuEvent, Vec<BuildableAction>>,
 
     pub styles: ArcStr,
 
     pub draggable: bool,
     pub resizable: bool,
 
-    node_id: NodeId,
+    node_id: NodeId
 }
-impl Widget<TatakuAction> for BuiltCustomDialog {
+impl Widget<actions::Action> for BuiltCustomDialog {
     fn name(&self) -> CowStr { self.id.to_string().into() }
     fn node_id(&self) -> NodeId { self.node_id }
     fn get_style_str(&self) -> ArcStr { self.styles.clone() }
 
-    fn children(&self) -> WidgetChildren<'_, TatakuAction> {
+    fn children(&self) -> WidgetChildren<'_, actions::Action> {
         WidgetChildren::Single(&self.element)
     }
-    fn children_mut(&mut self) -> WidgetChildrenMut<'_, TatakuAction> {
+    fn children_mut(&mut self) -> WidgetChildrenMut<'_, actions::Action> {
         WidgetChildrenMut::Single(&mut self.element)
     }
 
-    fn layout(&mut self, shell: &mut LayoutShell<TatakuAction>) -> taffy::TaffyResult<NodeId> {
+    fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId> {
         let child = self.element.layout(shell)?;
         self.node_id = shell.tree.new_with_children(&[child])?;
         Ok(self.node_id)
     }
-    fn init_style(&mut self, shell: &mut LayoutShell<TatakuAction>) {
+    fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
         shell.tree.update_style(
             self.node_id,
             |style| *style = CssStyle::menu_layout()
@@ -99,7 +106,7 @@ impl Widget<TatakuAction> for BuiltCustomDialog {
     fn handle_message(
         &mut self,
         message: &Message,
-        shell: &mut MessageShell<TatakuAction>,
+        shell: &mut MessageShell<actions::Action>,
     ) {
         self.element.handle_message(message, shell);
         if shell.handled { return }
@@ -156,9 +163,9 @@ impl Widget<TatakuAction> for BuiltCustomDialog {
 
     fn handle_event(
         &mut self,
-        event: &TatakuEvent,
+        event: &input::TatakuEvent,
         event_value: Option<&TatakuValue>,
-        shell: &mut MessageShell<TatakuAction>,
+        shell: &mut MessageShell<actions::Action>,
     ) {
         let Some(events) = self.events.get(event)
         else { return };

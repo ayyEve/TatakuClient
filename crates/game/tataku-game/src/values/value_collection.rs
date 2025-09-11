@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use common::reflect::*;
 
 #[derive(Default)]
 pub struct ValueCollection {
@@ -23,7 +24,7 @@ impl Reflect for ValueCollection {
     fn impl_get<'v, 's>(
         &'s self, 
         path: ReflectPath<'v>
-    ) -> ReflectResult<'v, MaybeOwnedReflect<'s>> {
+    ) -> reflect::Result<'v, MaybeOwnedReflect<'s>> {
         self
             .values
             .impl_get(path.clone())
@@ -33,7 +34,7 @@ impl Reflect for ValueCollection {
     fn impl_get_mut<'v>(
         &mut self, 
         path: ReflectPath<'v>
-    ) -> ReflectResult<'v, &mut dyn Reflect> {
+    ) -> reflect::Result<'v, &mut dyn Reflect> {
         self.values
             .impl_get_mut(path.clone())
             .or_else(|_| self.custom.impl_get_mut(path))
@@ -43,7 +44,7 @@ impl Reflect for ValueCollection {
         &mut self, 
         path: ReflectPath<'v>, 
         value: Box<dyn Reflect>
-    ) -> ReflectResult<'v, ()> {
+    ) -> reflect::Result<'v, ()> {
         if self.values.impl_get(path.clone()).is_ok() {
             self.values.impl_insert(path, value)
         } else {
@@ -54,7 +55,7 @@ impl Reflect for ValueCollection {
     fn impl_iter<'v>(
         &self, 
         path: ReflectPath<'v>
-    ) -> ReflectResult<'v, ReflectIter<'_>> {
+    ) -> reflect::Result<'v, ReflectIter<'_>> {
         match (self.values.impl_iter(path.clone()), self.custom.impl_iter(path)) {
             (Ok(v), Ok(c)) => Ok(ReflectIter::new(
                 v.chain(c)
@@ -71,7 +72,7 @@ impl Reflect for ValueCollection {
     fn impl_iter_mut<'v>(
         &mut self, 
         path: ReflectPath<'v>
-    ) -> ReflectResult<'v, ReflectIterMut<'_>> {
+    ) -> reflect::Result<'v, ReflectIterMut<'_>> {
         match (self.values.impl_iter_mut(path.clone()), self.custom.impl_iter_mut(path)) {
             (Ok(v), Ok(c)) => Ok(ReflectIterMut::new(v.chain(c))),
             (Ok(v), Err(_)) => Ok(v),
@@ -83,13 +84,20 @@ impl Reflect for ValueCollection {
         }
     }
 
-    fn impl_as_number<'v>(&self, path: ReflectPath<'v>) -> ReflectResult<'v, ReflectNumber> {
+    fn impl_as_number<'v>(
+        &self, 
+        path: ReflectPath<'v>,
+    ) -> reflect::Result<'v, ReflectNumber> {
         self
             .values
             .impl_as_number(path.clone())
             .or_else(|_| self.custom.impl_as_number(path))
     }
-    fn impl_display<'v>(&self, path: ReflectPath<'v>, precision: Option<usize>) -> ReflectResult<'v, String> {
+    fn impl_display<'v>(
+        &self, 
+        path: ReflectPath<'v>, 
+        precision: Option<usize>,
+    ) -> reflect::Result<'v, String> {
         self
             .values
             .impl_display(path.clone(), precision)

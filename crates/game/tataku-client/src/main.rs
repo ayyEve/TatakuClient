@@ -1,6 +1,8 @@
 mod game;
 
 use tataku_game::prelude::*;
+use import_common::*;
+use tataku::Vector2;
 
 const DOWNLOAD_URL_BASE:&str = "https://cdn.ayyeve.dev/tataku";
 
@@ -39,7 +41,7 @@ fn start_game() {
     let (
         mouse_position_sender, 
         mouse_position_receiver
-    ) = TripleBuffer::new(&Vector2::ZERO).split();
+    ) = engine::triple_buffer::TripleBuffer::new(&Vector2::ZERO).split();
 
 
     let window_load_barrier = Arc::new(std::sync::Barrier::new(2));
@@ -68,13 +70,13 @@ fn start_game() {
 
     // setup window
     info!("creating window");
-    let settings = Settings::load();
-    let game_window = GameWindow::new(
+    let settings = engine::Settings::load();
+    let game_window = engine::window::GameWindow::new(
         game_event_sender,
         mouse_position_sender,
         &WINDOW,
         &settings,
-        WindowInitializers {
+        engine::window::WindowInitializers {
             window_creation_barrier: window_side_barrier,
             integrations: vec![
                 #[cfg(feature="discord")] integration_discord::Discord::builder(),
@@ -106,7 +108,7 @@ fn startup() {
     let game_dir = std::env::var("GAME_DIR")
         .unwrap_or(GAME_DIR.to_owned());
     
-    if !Io::exists(&game_dir)
+    if !tataku::Io::exists(&game_dir)
     && let Err(e) = std::fs::create_dir_all(&game_dir) {
         println!("Error creating game dir: {e}");
     }
@@ -120,23 +122,23 @@ fn startup() {
 
 fn setup() {
     trace!("Client setup");
-    Settings::load();
+    engine::Settings::load();
 
     // check for missing folders
     debug!("checking folders");
-    Io::check_folder(DOWNLOADS_DIR).unwrap();
-    Io::check_folder(REPLAYS_DIR).unwrap();
-    Io::check_folder(SONGS_DIR).unwrap();
-    Io::check_folder("skins").unwrap();
-    Io::check_folder("resources").unwrap();
-    Io::check_folder("resources/audio").unwrap();
-    Io::check_folder("resources/fonts").unwrap();
+    tataku::Io::check_folder(engine::DOWNLOADS_DIR).unwrap();
+    tataku::Io::check_folder(engine::REPLAYS_DIR).unwrap();
+    tataku::Io::check_folder(engine::SONGS_DIR).unwrap();
+    tataku::Io::check_folder("skins").unwrap();
+    tataku::Io::check_folder("resources").unwrap();
+    tataku::Io::check_folder("resources/audio").unwrap();
+    tataku::Io::check_folder("resources/fonts").unwrap();
 
     debug!("Folder check done, downloading files");
 
     // check for missing files
     for file in REQUIRED_FILES.iter() {
-        Io::check_file_sync(file, &download_url(file));
+        tataku::Io::check_file_sync(file, &download_url(file));
     }
 
     // hitsounds
@@ -144,7 +146,7 @@ fn setup() {
         for sample_set in ["normal", "soft", "drum"] {
             for hitsound in ["hitnormal", "hitwhistle", "hitclap", "hitfinish", "slidertick"] {
                 let file = format!("resources/audio/{mode}{sample_set}-{hitsound}.wav");
-                Io::check_file_sync(&file, &download_url(&file));
+                tataku::Io::check_file_sync(&file, &download_url(&file));
             }
         }
     }

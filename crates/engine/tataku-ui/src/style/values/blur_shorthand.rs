@@ -1,4 +1,5 @@
-use crate::prelude::*;
+use crate::*;
+use style::*;
 
 #[derive(Clone, Debug, Default)]
 pub struct BlurShorthand {
@@ -8,7 +9,7 @@ pub struct BlurShorthand {
 }
 impl FromStr for BlurShorthand {
     type Err = ();
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> core::result::Result<Self, Self::Err> {
         let s = s.trim();
         let split = s
             .split(" ")

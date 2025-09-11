@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use engine::actions;
 
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
@@ -26,9 +27,9 @@ pub enum BuildableChatAction {
 impl BuildableChatAction {
     pub fn resolve(
         &self, 
-        values: &dyn Reflect, 
-        passed_in: Option<&TatakuValue>
-    ) -> Option<TatakuAction> {
+        values: &dyn common::reflect::Reflect, 
+        passed_in: Option<&tataku::TatakuValue>
+    ) -> Option<actions::Action> {
         match self {
             Self::SendMessage { 
                 channel, 
@@ -38,7 +39,7 @@ impl BuildableChatAction {
                     .map(|text| text.to_string(values))
                     .collect();
 
-                Some(ChatAction::SendMessage {
+                Some(actions::chat::ChatAction::SendMessage {
                     channel: channel.inner.resolve(values, passed_in).unwrap().as_string(),
                     message,
                 }.into())
@@ -47,7 +48,7 @@ impl BuildableChatAction {
             Self::OpenChannel { 
                 channel, 
                 password
-            } => Some(ChatAction::OpenChannel { 
+            } => Some(actions::chat::ChatAction::OpenChannel { 
                 channel: channel.resolve(values, passed_in).unwrap().as_string(),
                 password: password
                     .as_ref()
@@ -56,7 +57,7 @@ impl BuildableChatAction {
 
             Self::CloseChannel { 
                 channel, 
-            } => Some(ChatAction::CloseChannel { 
+            } => Some(actions::chat::ChatAction::CloseChannel { 
                 channel: channel.resolve(values, passed_in).unwrap().as_string(),
             }.into()),
         }

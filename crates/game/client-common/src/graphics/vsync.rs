@@ -1,4 +1,5 @@
-use tataku_common::prelude::*;
+use crate::prelude::*;
+use common::reflect::*;
 use serde::{ Serialize, Deserialize };
 
 #[derive(Reflect)]
@@ -66,7 +67,7 @@ impl core::fmt::Display for Vsync {
 
 
 /// helper for reading settings files where vsync was a bool
-pub fn vsync_reader<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<Vsync, D::Error> {
+pub fn vsync_reader<'de, D: serde::Deserializer<'de>>(deserializer: D) -> core::result::Result<Vsync, D::Error> {
     use std::fmt;
     use serde::de::{self, Visitor};
     use Vsync::*;
@@ -79,11 +80,11 @@ pub fn vsync_reader<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result
             formatter.write_str("expected bool or vsync")
         }
 
-        fn visit_bool<E: de::Error>(self, v: bool) -> Result<Self::Value, E> {
+        fn visit_bool<E: de::Error>(self, v: bool) -> core::result::Result<Self::Value, E> {
             Ok(if v { AutoVsync } else { AutoNoVsync })
         }
 
-        fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+        fn visit_str<E: de::Error>(self, v: &str) -> core::result::Result<Self::Value, E> {
             match v {
                 "AutoVsync" => Ok(Vsync::AutoVsync),
                 "AutoNoVsync" => Ok(Vsync::AutoNoVsync),

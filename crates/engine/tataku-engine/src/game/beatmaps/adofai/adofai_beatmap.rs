@@ -1,7 +1,9 @@
 #![allow(dead_code)]
 
-use crate::prelude::*;
+use crate::*;
+use common::Md5Hash;
 use serde::Deserialize;
+use beatmaps::TimingPoint;
 
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
@@ -43,7 +45,7 @@ impl AdofaiBeatmap {
             Err(e) => panic!("error reading adofai map '{path}': {e}"),
         };
 
-        map.hash = Io::get_file_hash(path).unwrap();
+        map.hash = tataku::Io::get_file_hash(path).unwrap();
         map.file_path = path.to_owned().into();
         
         let chars = map.path_data.chars().collect::<Vec<char>>();
@@ -119,8 +121,8 @@ impl AdofaiBeatmap {
         map
     }
 }
-impl TatakuBeatmap for AdofaiBeatmap {
-    fn hash(&self) -> Md5Hash {self.hash}
+impl beatmaps::TatakuBeatmap for AdofaiBeatmap {
+    fn hash(&self) -> Md5Hash { self.hash }
 
     fn get_timing_points(&self) -> Vec<TimingPoint> {
         self.timing_points.clone()
@@ -145,7 +147,7 @@ impl TatakuBeatmap for AdofaiBeatmap {
         Arc::new(BeatmapMeta {
             file_path: self.file_path.clone(),
             beatmap_hash: self.hash(),
-            beatmap_type: BeatmapType::Adofai,
+            beatmap_type: beatmaps::BeatmapType::Adofai,
             mode: "adofai".to_owned().into(),
             artist: self.settings.artist.clone(),
             title: self.settings.song.clone(),

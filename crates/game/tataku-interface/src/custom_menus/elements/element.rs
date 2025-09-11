@@ -1,8 +1,10 @@
 use crate::prelude::*;
+use ui::widget::Widget;
+use crate::custom_menus::elements;
 
 pub trait CustomElement {
     fn as_element(&self) -> Option<&dyn CustomElement> { None }
-    fn build(&self) -> Box<dyn Widget<TatakuAction>>;
+    fn build(&self) -> Box<dyn Widget<actions::Action>>;
 }
 
 #[derive(Deserialize)]
@@ -48,27 +50,27 @@ impl From<&str> for ClassList {
 pub enum Element {
     #[default] Empty,
 
-    Row(Box<RowElement>),
-    List(Box<ListElement>),
-    Column(Box<ColumnElement>),
-    Switch(Box<SwitchElement>),
-    Section(Box<SectionElement>),
+    Row(Box<elements::RowElement>),
+    List(Box<elements::ListElement>),
+    Column(Box<elements::ColumnElement>),
+    Switch(Box<elements::SwitchElement>),
+    Section(Box<elements::SectionElement>),
 
-    Animatable(Box<AnimatableElement>),
+    Animatable(Box<elements::AnimatableElement>),
     #[serde(alias="cond", alias="if")]
-    Conditional(Box<ConditionalElement>),
+    Conditional(Box<elements::ConditionalElement>),
 
-    Text(Box<TextElement>),
-    GameplayPreview(Box<GameplayPreviewElement>),
+    Text(Box<elements::TextElement>),
+    GameplayPreview(Box<elements::GameplayPreviewElement>),
 
-    Button(Box<ButtonElement>),
-    Slider(Box<SliderElement>),
-    Checkbox(Box<CheckboxElement>),
-    TextInput(Box<TextInputElement>),
-    KeyButton(Box<KeyButtonElement>),
-    GamepadButton(Box<GamepadButtonElement>),
-    Dropdown(Box<DropdownElement>),
-    Visualization(Box<VisualizationElement>),
+    Button(Box<elements::ButtonElement>),
+    Slider(Box<elements::SliderElement>),
+    Checkbox(Box<elements::CheckboxElement>),
+    TextInput(Box<elements::TextInputElement>),
+    KeyButton(Box<elements::KeyButtonElement>),
+    GamepadButton(Box<elements::GamepadButtonElement>),
+    Dropdown(Box<elements::DropdownElement>),
+    Visualization(Box<elements::VisualizationElement>),
 }
 impl CustomElement for Element {
     fn as_element(&self) -> Option<&dyn CustomElement> {
@@ -104,9 +106,9 @@ impl CustomElement for Element {
             Visualization,
         )
     }
-    fn build(&self) -> Box<dyn Widget<TatakuAction>> {
+    fn build(&self) -> Box<dyn Widget<actions::Action>> {
         match self {
-            Self::Empty => EmptyWidget::new_boxed(),
+            Self::Empty => ui::widget::EmptyWidget::new_boxed(),
             other => other.as_element().unwrap().build(),
         }
     }

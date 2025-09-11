@@ -4,18 +4,12 @@ static mut TIME:u64 = 0;
 fn get_time() -> u64 {
     unsafe { TIME }
 }
-pub fn set_time(t: Duration) {
-    unsafe {
-        TIME = t.as_nanos() as u64;
-    }
-}
-
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct TatakuInstant(u64);
-impl TatakuInstant {
+pub struct Instant(u64);
+impl Instant {
     pub fn now() -> Self {
-        Self (get_time())
+        Self(get_time())
     }
 
     pub fn elapsed(&self) -> Duration {
@@ -32,13 +26,20 @@ impl TatakuInstant {
     }
 
     pub fn elapsed_and_reset(&mut self) -> f32 {
-        let now = TatakuInstant::now();
+        let now = Self::now();
         let dur = now.duration_since(*self).as_secs_f32() * 1000.0;
         *self = now;
         dur
     }
+
+    pub fn set_time(t: Duration) {
+        // SAFETY: its a u64, its probably fine
+        unsafe {
+            TIME = t.as_nanos() as u64;
+        }
+    }
 }
-impl Default for TatakuInstant {
+impl Default for Instant {
     fn default() -> Self {
         Self::now()
     }

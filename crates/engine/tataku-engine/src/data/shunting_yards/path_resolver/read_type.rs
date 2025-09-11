@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::*;
 
 #[doc(hidden)]
 #[derive(Default)]
@@ -14,4 +14,4 @@ impl PathShuntingYardReadType {
         }
     }
 }
-impl _ShuntingYardReadType for PathShuntingYardReadType {}
+impl tataku::_ShuntingYardReadType for PathShuntingYardReadType {}

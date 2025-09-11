@@ -1,4 +1,6 @@
-use crate::prelude::*;
+use crate::*;
+use common::reflect::*;
+use common::types::UserAction;
 
 #[derive(Reflect)]
 #[derive(Clone, Debug, Default)]

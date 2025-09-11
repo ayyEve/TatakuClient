@@ -1,4 +1,21 @@
 use crate::prelude::*;
+use common::{
+    Md5Hash,
+    serialization::{
+        Serializable,
+        SerializationReader,
+        SerializationWriter,
+        SerializationResult,
+    },
+};
+use engine::{
+    beatmaps::BeatmapMeta,
+    gameplay::{
+        mods::ModManager,
+        gameplay_manager::DifficultyProvider,
+    },
+};
+
 
 const DIFF_FILE:&str = "diffs.db2";
 
@@ -10,10 +27,10 @@ impl DifficultyManager {
         playmode: &str, 
         mods: &ModManager,
         diff: f32
-    ) -> TatakuResult {
+    ) -> tataku::Result<()> {
         Self::save_diff_entry(
             DifficultyEntry::new(
-            Cryptography::md5(playmode), 
+            tataku::Cryptography::md5(playmode), 
             map.beatmap_hash, 
                 mods
             ), 
@@ -24,11 +41,11 @@ impl DifficultyManager {
     pub fn save_diff_entry(
         entry: DifficultyEntry,
         diff: f32
-    ) -> TatakuResult {
+    ) -> tataku::Result<()> {
         let key = entry.as_key();
         
         cacache::write_sync(DIFF_FILE, key, diff.to_le_bytes())
-            .map_err(|e| TatakuError::String(e.to_string()))
+            .map_err(|e| tataku::Error::String(e.to_string()))
             .map(|_| ())
     }
 }
@@ -39,9 +56,9 @@ impl DifficultyProvider for DifficultyManager {
         map: &Arc<BeatmapMeta>, 
         playmode: &str, 
         mods: &ModManager
-    ) -> TatakuResult<f32> {
+    ) -> tataku::Result<f32> {
         let diff_entry = DifficultyEntry::new(
-            Cryptography::md5(playmode), 
+            tataku::Cryptography::md5(playmode), 
             map.beatmap_hash, 
             mods
         );
@@ -49,12 +66,12 @@ impl DifficultyProvider for DifficultyManager {
         let val = match cacache::read_sync(DIFF_FILE, diff_entry.as_key()) {
             Ok(v) => v,
             Err(cacache::Error::EntryNotFound(_, _)) => {
-                return Err(TatakuError::DiffCalcError(DiffCalcError::NoDiff));
+                return Err(tataku::Error::DiffCalcError(errors::diffcalc::DiffCalcError::NoDiff));
             }
-            Err(e) => return Err(TatakuError::String(e.to_string())),
+            Err(e) => return Err(tataku::Error::String(e.to_string())),
         };
 
-        if val.len() < 4 { return Err(TatakuError::String("not enough bytes".to_owned())) }
+        if val.len() < 4 { return Err(tataku::Error::String("not enough bytes".to_owned())) }
 
         Ok(f32::from_le_bytes(val[0..4].try_into().unwrap()))
     }

@@ -1,6 +1,19 @@
 use crate::prelude::*;
 use super::difficulty_hit_object::DifficultyHitObject;
 
+use engine::{
+    game::diffcalc::*,
+    beatmaps::{
+        NoteType,
+        Beatmap,
+        BeatmapMeta,
+    },
+    gameplay::{
+        GameMode,
+        mods::ModManager,
+    }
+};
+
 // how long each "group" of notes is (ms)
 const BUCKET_LENGTH:f32 = 500.0;
 
@@ -12,7 +25,7 @@ pub struct TaikoDifficultyCalculator {
 }
 impl TaikoDifficultyCalculator {
 
-    fn note_density(&mut self, mods: &ModManager) -> TatakuResult<Vec<f32>> {
+    fn note_density(&mut self, mods: &ModManager) -> tataku::Result<Vec<f32>> {
         let mut start_bucket_time = self.difficulty_hitobjects.first().unwrap().time;
         let mut last_note_time = start_bucket_time;
 
@@ -79,7 +92,7 @@ impl TaikoDifficultyCalculator {
         Ok(note_density)
     }
 
-    fn strain(&mut self, mods: &ModManager) -> TatakuResult<Vec<usize>> {
+    fn strain(&mut self, mods: &ModManager) -> tataku::Result<Vec<usize>> {
         // 0th hand is the dominant hand.
         let mut hands = [Thing::None; 2];
         let mut count_since_reset = 0;
@@ -142,10 +155,10 @@ impl TaikoDifficultyCalculator {
     }
 }
 impl DiffCalc for TaikoDifficultyCalculator {
-    fn new(g: &BeatmapMeta, settings: &Settings) -> TatakuResult<Self> {
+    fn new(g: &BeatmapMeta, settings: &engine::Settings) -> tataku::Result<Self> {
         let g = Beatmap::from_metadata(g)?;
         let g = TaikoGame::new(&g, true, settings)?;
-        if g.notes.is_empty() { return Err(BeatmapError::InvalidFile.into()) }
+        if g.notes.is_empty() { return Err(errors::beatmap::BeatmapError::InvalidFile.into()) }
         
         let mut difficulty_hitobjects:Vec<DifficultyHitObject> = Vec::new();
         for n in g.notes.iter().chain(g.other_notes.iter()) {
@@ -166,7 +179,7 @@ impl DiffCalc for TaikoDifficultyCalculator {
         })
     }
 
-    fn calc(&mut self, mods: &ModManager) -> TatakuResult<DiffCalcSummary> {
+    fn calc(&mut self, mods: &ModManager) -> tataku::Result<DiffCalcSummary> {
         let strain = self.strain(mods)?;
         let note_density = self.note_density(mods)?;
 

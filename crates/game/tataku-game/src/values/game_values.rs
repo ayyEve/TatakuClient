@@ -1,4 +1,22 @@
 use crate::prelude::*;
+use tataku::Vector2;
+use common::{
+    reflect::*,
+    network::multiplayer::*,
+};
+
+use engine::{
+    BeatmapMeta,
+    online_content::{
+        OnlineContentItem,
+        OnlineContentCapabilities,
+    },
+    gameplay::{
+        IngameScore,
+        GamemodeInfo,
+        GamemodeInfos,
+    },
+};
 
 #[derive(Reflect)]
 #[reflect(dont_clone)]
@@ -7,7 +25,7 @@ use crate::prelude::*;
 pub struct TatakuValues {
 
     /// The Game's settings
-    pub settings: Settings,
+    pub settings: engine::Settings,
 
     /// The current song information
     pub song: SongInfo,
@@ -23,7 +41,7 @@ pub struct TatakuValues {
 
     /// The current Tataku theme
     #[cfg(feature="graphics")] 
-    pub theme: Theme,
+    pub theme: graphics::Theme,
 
     /// The current score
     pub score: ReflectScore,
@@ -56,7 +74,7 @@ impl TatakuValues {
     pub fn new(
         infos: &GamemodeInfos, 
         online_content_engines: Vec<OnlineContentCapabilities>,
-        settings: Settings,
+        settings: engine::Settings,
     ) -> Self {
         Self {
             enums: EnumValues::new(infos),

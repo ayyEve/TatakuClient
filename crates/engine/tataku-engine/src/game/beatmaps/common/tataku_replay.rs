@@ -1,7 +1,9 @@
-use crate::prelude::*;
+use crate::*;
+use common::Score;
+use common::serialization::*;
 
 pub trait ReplayDownloader: Send + Sync + std::fmt::Debug {
-    fn get_replay(&self, settings: &Settings) -> TatakuResult<Score>;
+    fn get_replay(&self, settings: &Settings) -> tataku::TatakuResult<Score>;
 }
 
 #[derive(Debug)]
@@ -14,7 +16,7 @@ impl TatakuReplayDownloader {
 }
 
 impl ReplayDownloader for TatakuReplayDownloader {
-    fn get_replay(&self, settings: &Settings) -> TatakuResult<Score> {
+    fn get_replay(&self, settings: &Settings) -> tataku::TatakuResult<Score> {
         let base = settings.score_url.clone();
 
         let url = if let Some(hash) = &self.1 {
@@ -29,9 +31,9 @@ impl ReplayDownloader for TatakuReplayDownloader {
         
         // check if the received data 
         if bytes.is_empty() {
-            return Err(TatakuError::String("Downloaded file was empty".to_owned()));
+            return Err(tataku::Error::String("Downloaded file was empty".to_owned()));
         }
-
+        
         let score = Score::read(&mut SerializationReader::new(bytes.to_vec()))?;
         Ok(score)
     }

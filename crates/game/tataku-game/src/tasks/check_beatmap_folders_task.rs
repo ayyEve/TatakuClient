@@ -1,4 +1,10 @@
 use crate::prelude::*;
+use common::reflect::Reflect;
+
+use engine::{
+    actions,
+    game::task::*,
+};
 
 #[derive(Default)]
 pub struct CheckBeatmapFoldersTask {
@@ -15,7 +21,7 @@ impl TatakuTask for CheckBeatmapFoldersTask {
         &mut self, 
         values: &mut dyn Reflect, 
         _state: &TaskGameState,
-        _actions: &mut ActionQueue
+        _actions: &mut actions::ActionQueue
     ) {
         // if we havent started yet, initialize our values
         if self.state == TatakuTaskState::NotStarted {

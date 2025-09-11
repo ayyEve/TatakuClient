@@ -1,9 +1,14 @@
 use crate::prelude::*;
-
+use common::reflect::Reflect;
+use engine::{
+    actions,
+    game::task::*,
+    notifications::Notification,
+};
 
 pub struct AudioPreviewTask {
     preview_url: String,
-    data_loader: Option<AsyncLoader<TatakuResult<Vec<u8>>>>,
+    data_loader: Option<engine::io::AsyncLoader<tataku::Result<Vec<u8>>>>,
     state: TatakuTaskState,
 }
 impl AudioPreviewTask {
@@ -15,7 +20,7 @@ impl AudioPreviewTask {
         }
     }
 
-    async fn run_get(url: String) -> TatakuResult<Vec<u8>> {
+    async fn run_get(url: String) -> tataku::Result<Vec<u8>> {
         let bytes = reqwest::get(url)
             .await?
             .error_for_status()?
@@ -35,12 +40,12 @@ impl TatakuTask for AudioPreviewTask {
         &mut self, 
         _values: &mut dyn Reflect, 
         _state: &TaskGameState, 
-        actions: &mut ActionQueue
+        actions: &mut actions::ActionQueue
     ) {
         // if we havent started yet, setup the data loader
         if self.data_loader.is_none() {
             let url = self.preview_url.clone();
-            self.data_loader = Some(AsyncLoader::new(async move {
+            self.data_loader = Some(engine::io::AsyncLoader::new(async move {
                 Self::run_get(url).await
             }));
 
@@ -61,10 +66,10 @@ impl TatakuTask for AudioPreviewTask {
 
         match result {
             Ok(data) => {
-                actions.push(SongAction::Set(SongSetAction::FromData(
+                actions.push(actions::song::SongAction::Set(actions::song::SongSetAction::FromData(
                     data, 
                     self.preview_url.clone().into(),
-                    SongPlayData {
+                    actions::song::SongPlayData {
                         play: true,
                         restart: true,
                         ..Default::default()

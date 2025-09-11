@@ -1,0 +1,20 @@
+pub mod info;
+pub mod action;
+pub mod default;
+pub mod hitsound;
+pub mod game_mode;
+pub mod hit_object;
+pub mod properties;
+pub mod health_manager;
+pub mod difficulty_value;
+
+// pub use info::*;
+// pub use action::*;
+// pub use default::*;
+// pub use hitsound::*;
+// pub use game_mode::*;
+// pub use hit_object::*;
+pub use properties::GameModeProperties;
+// pub use health_manager::*;
+// pub use hit_judgements::*;
+// pub use difficulty_value::*;

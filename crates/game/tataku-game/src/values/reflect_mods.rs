@@ -1,4 +1,11 @@
 use crate::prelude::*;
+use common::reflect::*;
+
+use engine::gameplay::mods::{
+    ModManager,
+    GameplayMod,
+    GameplayModGroup,
+};
 
 /// A reflect-friendly version of GameplayModGroup
 #[derive(Reflect)]
@@ -27,7 +34,7 @@ impl ReflectModGroup {
         }
     }
 }
-impl Display for ReflectModGroup {
+impl std::fmt::Display for ReflectModGroup {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.name.fmt(f)
     }
@@ -68,7 +75,7 @@ impl ReflectMod {
     }
 }
 
-impl Display for ReflectMod {
+impl std::fmt::Display for ReflectMod {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.display_name.fmt(f)
     }

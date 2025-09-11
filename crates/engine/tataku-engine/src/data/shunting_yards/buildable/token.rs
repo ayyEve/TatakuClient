@@ -1,4 +1,9 @@
-use crate::prelude::*;
+use crate::*;
+use tataku::_ShuntingYardTokenType;
+use engine::data::shunting_yards::{
+    buildable::*,
+    path_resolver::VariablePathResolver
+};
 
 #[doc(hidden)]
 #[derive(Debug, Clone, PartialEq)]
@@ -10,9 +15,9 @@ pub enum BuildableShuntingYardToken {
     Function(String, usize),
     OpenParenthesis,
 }
-impl<'values> _ShuntingYardToken<
+impl<'values> tataku::_ShuntingYardToken<
     'values, 
-    Cow<'values, TatakuValue>, 
+    Cow<'values, tataku::TatakuValue>, 
     BuildableShuntingYardError
 > for BuildableShuntingYardToken {
     type Operator = BuildableShuntingYardOperator;

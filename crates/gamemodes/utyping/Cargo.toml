@@ -17,6 +17,7 @@ gameplay = []
 serde.workspace = true
 tracing.workspace = true
 lazy_static.workspace = true
+serde_json.workspace = true
 
 tataku-common.workspace = true
 tataku-engine.workspace = true

@@ -1,4 +1,8 @@
 use crate::prelude::*;
+use common::reflect::*;
+use engine::{
+    gameplay::GamemodeSettings,
+};
 use tataku_client_proc_macros::Settings;
 
 #[derive(Reflect, Settings)]

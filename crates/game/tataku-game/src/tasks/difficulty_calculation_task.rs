@@ -1,5 +1,20 @@
 use crate::prelude::*;
 use tokio::sync::oneshot;
+use common::reflect::Reflect;
+
+use engine::{
+    actions,
+    Notification,
+    beatmaps::BeatmapMeta,
+    game::{
+        task::*,
+        diffcalc::*,
+    },
+    gameplay::{
+        GamemodeInfo,
+        mods::ModManager,
+    },
+};
 
 struct PendingCalc {
     mods: ModManager,
@@ -55,7 +70,7 @@ impl DiffCalcTask {
         values: &mut dyn Reflect, 
     ) {
         let entry = DifficultyEntry::new(
-            Cryptography::md5(self.info.id), 
+            tataku::Cryptography::md5(self.info.id), 
             self.beatmap.beatmap_hash, 
             &mods
         );
@@ -113,13 +128,16 @@ impl DiffCalcTask {
         });
     }
 
-    fn complete(&mut self, actions: &mut ActionQueue) {
+    fn complete(&mut self, actions: &mut actions::ActionQueue) {
         for (entry, diff) in self.diff_entries.take() {
             if let Err(e) = DifficultyManager::save_diff_entry(
                 entry,
                 diff
             ) {
-                actions.push(Notification::new_error("Failed to insert diff", e).into());
+                actions.push(Notification::new_error(
+                    "Failed to insert diff", 
+                    e
+                ).into());
             }
         }
 
@@ -137,7 +155,7 @@ impl TatakuTask for DiffCalcTask {
         &mut self, 
         values: &mut dyn Reflect, 
         state: &TaskGameState, 
-        actions: &mut ActionQueue
+        actions: &mut actions::ActionQueue
     ) {
         if state.ingame { 
             self.state = TatakuTaskState::Paused;
@@ -157,7 +175,7 @@ impl TatakuTask for DiffCalcTask {
         if let Some(current) = &mut self.current {
             if let Ok((calc, diff)) = current.receiver.try_recv() {
                 let entry = DifficultyEntry::new(
-                    Cryptography::md5(self.info.id), 
+                    tataku::Cryptography::md5(self.info.id), 
                     self.beatmap.beatmap_hash, 
                     &current.mods
                 );

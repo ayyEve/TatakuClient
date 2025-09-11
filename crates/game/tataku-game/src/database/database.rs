@@ -63,7 +63,7 @@ pub struct Database {
 }
 impl Database {
     pub fn get<'a>() -> MutexGuard<'a, Connection> {
-        let now = TatakuInstant::now();
+        let now = tataku::Instant::now();
         let a = DATABASE.connection.lock();
         let duration = now.as_millis();
         if duration > 100.0 {info!("db lock took {duration:.4}ms to aquire")};

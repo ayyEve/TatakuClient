@@ -1,9 +1,22 @@
-use serde::Serialize;
-use tataku_engine::prelude::*;
+use serde::{ Serialize, Deserialize };
+use tataku_engine::{
+    CowStr,
+    ArcStr,
+    tataku,
+    actions,
+    Settings,
+    tataku::open_link,
+    TatakuIntegrationEvent,
+    common::reflect::Reflect,
+    io::{
+        TatakuIntegration,
+        TatakuIntegrationBuilder
+    },
+};
 
 pub struct LastFm;
 impl LastFm {
-    fn build() -> TatakuResult<Box<dyn TatakuIntegration>> {
+    fn build() -> tataku::Result<Box<dyn TatakuIntegration>> {
         Ok(Box::new(Self))
     }
 
@@ -58,14 +71,14 @@ impl TatakuIntegration for LastFm {
         &mut self, 
         #[cfg(feature="graphics")] 
         _window_handle: raw_window_handle::WindowHandle<'_>,
-    ) -> TatakuResult<()> {
+    ) -> tataku::Result<()> {
         Ok(())
     }
 
     fn check_enabled(
         &mut self, 
         _settings: &Settings
-    ) -> TatakuResult<()> {
+    ) -> tataku::Result<()> {
         Ok(())
     }
 
@@ -73,9 +86,13 @@ impl TatakuIntegration for LastFm {
         &mut self, 
         event: &TatakuIntegrationEvent,
         values: &dyn Reflect,
-        _actions: &mut ActionQueue,
+        _actions: &mut actions::ActionQueue,
     ) {
-        let TatakuIntegrationEvent::SongChanged { artist, title, .. } = event else { return };
+        let TatakuIntegrationEvent::SongChanged { 
+            artist, 
+            title, 
+            .. 
+        } = event else { return };
         let settings = values.reflect_get::<Settings>("settings").unwrap();
 
         let track = title.clone();

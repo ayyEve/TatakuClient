@@ -1,6 +1,7 @@
 use crate::prelude::*;
+use common::reflect::*;
 
-#[derive(Reflect, Settings)]
+#[derive(Reflect, tataku_client_proc_macros::Settings)]
 #[derive(Clone, Debug, PartialEq)]
 #[derive(Serialize, DeserializeSettings)]
 // #[setting(get_items="get_key_items", from_menu="keys_from_menu")]
@@ -31,7 +32,7 @@ pub struct ManiaSettings {
     
     /// col_count [col_num, 0 based]
     /// ie for 4k, key 2: mania_keys\[3]\[1]
-    pub keys: Vec<Vec<Key>>,
+    pub keys: Vec<Vec<input::Key>>,
 }
 
 #[cfg(feature="graphics")]
@@ -93,11 +94,11 @@ impl ManiaSettings {
     
 }
 
-impl GamemodeSettings for ManiaSettings {
+impl engine::gameplay::GamemodeSettings for ManiaSettings {
     fn to_value(&self) -> serde_json::Value {
         serde_json::to_value(self).unwrap()
     }
-    fn duplicate_settings(&self) -> Box<dyn GamemodeSettings> {
+    fn duplicate_settings(&self) -> Box<dyn engine::gameplay::GamemodeSettings> {
         Box::new(self.clone())
     }
 }
@@ -105,6 +106,8 @@ impl GamemodeSettings for ManiaSettings {
 
 impl Default for ManiaSettings {
     fn default() -> Self {
+        use input::Key;
+
         Self {
             // keys
             keys: vec![
@@ -186,8 +189,8 @@ impl ManiaPlayfieldSettings {
     }
 
     #[inline(always)]
-    pub fn note_size(&self) -> Vector2 {
-        Vector2::new(
+    pub fn note_size(&self) -> tataku::Vector2 {
+        tataku::Vector2::new(
             self.column_width,
             self.note_height
         )

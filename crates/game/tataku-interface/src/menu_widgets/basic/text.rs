@@ -1,4 +1,14 @@
 use crate::prelude::*;
+use common::reflect::*;
+use tataku::{
+    Color,
+    HorizontalAlign,
+};
+use ui::{
+    tree::*,
+    style::*,
+    widget::*,
+};
 
 #[derive(ChainableInitializer)]
 pub struct TextWidget {
@@ -14,7 +24,7 @@ impl TextWidget {
     pub fn new(text: impl Into<WidgetText>) -> Self {
         Self {
             text: text.into(),
-            node_id: EMPTY_NODE,
+            node_id: ui::EMPTY_NODE,
 
             layout: parley::Layout::default(),
             old_x: 0.0,
@@ -24,7 +34,7 @@ impl TextWidget {
 
     fn recreate_layout(
         &mut self,
-        tree: &mut Tree<TatakuAction>,
+        tree: &mut Tree<actions::Action>,
         text_layout_contexts: &mut TextLayoutContexts,
     ) {
         let text = self.text.get();
@@ -48,7 +58,7 @@ impl TextWidget {
 
     fn wrap_and_align(
         &mut self,
-        tree: &mut Tree<TatakuAction>,
+        tree: &mut Tree<actions::Action>,
         container_width: f32,
     ) {
         let text = self.text.get();
@@ -77,18 +87,18 @@ impl TextWidget {
         }
     }
 }
-impl Widget<TatakuAction> for TextWidget {
+impl Widget<actions::Action> for TextWidget {
     fn name(&self) -> CowStr { "text_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn layout(
         &mut self,
-        shell: &mut LayoutShell<TatakuAction>
+        shell: &mut LayoutShell<actions::Action>
     ) -> taffy::TaffyResult<NodeId> {
         self.node_id = shell.tree.new_leaf()?;
         Ok(self.node_id)
     }
-    fn init_style(&mut self, shell: &mut LayoutShell<TatakuAction>) {
+    fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
         self.recreate_layout(
             shell.tree,
             shell.text_layout_contexts
@@ -109,7 +119,7 @@ impl Widget<TatakuAction> for TextWidget {
         });
     }
 
-    fn update(&mut self, shell: &mut UpdateShell<TatakuAction>) {
+    fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
         let bounds = shell.tree.absolute_bounds(self.node_id).unwrap();
 
         let refresh_text = self.text.update(shell.values);
@@ -136,17 +146,17 @@ impl Widget<TatakuAction> for TextWidget {
         }
     }
 
-    fn draw(&self, shell: &mut DrawShell<TatakuAction>) {
+    fn draw(&self, shell: &mut DrawShell<actions::Action>) {
         // todo: handle this better
         let bounds = shell.tree.bounds(self.node_id).unwrap();
         let context = shell.tree.get_context(self.node_id).unwrap();
         let transform = context.global_transform
             * context.local_transform.matrix()
-            * Matrix::identity().trans(bounds.pos);
+            * tataku::Matrix::identity().trans(bounds.pos);
 
-        shell.list.push(Transformed {
+        shell.list.push(graphics::Transformed {
             transform,
-            drawable: Box::new(Text::new(self.layout.clone())),
+            drawable: Box::new(graphics::Text::new(self.layout.clone())),
         });
     }
 }

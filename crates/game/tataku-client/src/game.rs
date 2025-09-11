@@ -1,10 +1,12 @@
 use clap::Parser;
 use tataku_game::prelude::*;
+use tataku::Vector2;
+use tracing::*;
 
 pub fn run_game(
-    game_event_receiver: tokio::sync::mpsc::Receiver<WindowEvent>,
-    mouse_position_receiver: TripleBufferReceiver<Vector2>,
-    proxy: winit::event_loop::EventLoopProxy<WindowAction>,
+    game_event_receiver: tokio::sync::mpsc::Receiver<engine::window::Event>,
+    mouse_position_receiver: engine::triple_buffer::Output<Vector2>,
+    proxy: winit::event_loop::EventLoopProxy<engine::actions::window::WindowAction>,
 ) {
     let gamemodes;
     #[cfg(feature="dynamic_gamemodes")] {

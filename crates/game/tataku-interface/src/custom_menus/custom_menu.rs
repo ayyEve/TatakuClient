@@ -1,4 +1,11 @@
 use crate::prelude::*;
+use tataku::TatakuValue;
+use ui::{
+    tree::NodeId,
+    widget::*,
+    message::*,
+    style::CssStyle,
+};
 
 #[derive(Deserialize)]
 #[derive(Clone, Debug)]
@@ -15,7 +22,8 @@ impl CustomMenu {
             .map(|buildable| {
                 let event = BuildableEvent::resolve(&buildable.event);
 
-                let actions = buildable.actions.iter().cloned()
+                let actions = buildable.actions.iter()
+                    .cloned()
                     .map(|mut action| {
                         action.build();
                         action
@@ -31,7 +39,7 @@ impl CustomMenu {
             element: self.element.build(),
             styles: self.style.clone().unwrap_or_default(),
             events,
-            node_id: EMPTY_NODE,
+            node_id: ui::EMPTY_NODE,
         }
     }
 }
@@ -39,31 +47,31 @@ impl CustomMenu {
 pub struct BuiltCustomMenu {
     pub id: ArcStr,
     pub styles: ArcStr,
-    pub element: Box<dyn Widget<TatakuAction>>,
-    pub events: HashMap<TatakuEvent, Vec<BuildableAction>>,
+    pub element: Box<dyn Widget<actions::Action>>,
+    pub events: HashMap<input::TatakuEvent, Vec<BuildableAction>>,
 
     node_id: NodeId,
 }
-impl Widget<TatakuAction> for BuiltCustomMenu {
+impl Widget<actions::Action> for BuiltCustomMenu {
     fn name(&self) -> CowStr { self.id.to_string().into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn get_style_str(&self) -> ArcStr { self.styles.clone() }
 
-    fn children(&self) -> WidgetChildren<'_, TatakuAction> {
+    fn children(&self) -> WidgetChildren<'_, actions::Action> {
         WidgetChildren::Single(&self.element)
     }
-    fn children_mut(&mut self) -> WidgetChildrenMut<'_, TatakuAction> {
+    fn children_mut(&mut self) -> WidgetChildrenMut<'_, actions::Action> {
         WidgetChildrenMut::Single(&mut self.element)
     }
 
-    fn layout(&mut self, shell: &mut LayoutShell<TatakuAction>) -> taffy::TaffyResult<NodeId> {
+    fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId> {
         let child = self.element.layout(shell)?;
         self.node_id = shell.tree.new_with_children(&[child])?;
         Ok(self.node_id)
     }
 
-    fn init_style(&mut self, shell: &mut LayoutShell<TatakuAction>) {
+    fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
         shell.tree.update_style(
             self.node_id,
             |style| *style = style.clone()
@@ -75,7 +83,7 @@ impl Widget<TatakuAction> for BuiltCustomMenu {
     fn handle_message(
         &mut self,
         message: &Message,
-        shell: &mut MessageShell<TatakuAction>,
+        shell: &mut MessageShell<actions::Action>,
     ) {
         self.element.handle_message(message, shell);
         if shell.handled { return }
@@ -125,9 +133,9 @@ impl Widget<TatakuAction> for BuiltCustomMenu {
 
     fn handle_event(
         &mut self,
-        event: &TatakuEvent,
+        event: &input::TatakuEvent,
         event_value: Option<&TatakuValue>,
-        shell: &mut MessageShell<TatakuAction>,
+        shell: &mut MessageShell<actions::Action>,
     ) {
         let Some(events) = self.events.get(event)
         else { return };

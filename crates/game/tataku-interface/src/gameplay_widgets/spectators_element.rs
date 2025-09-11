@@ -1,4 +1,16 @@
 use crate::prelude::*;
+use tataku::{
+    Alignment,
+    Vector2,
+    Color,
+};
+use engine::{
+    settings::common_gameplay::CommonGameplaySettings,
+    gameplay::{
+        widgets::*,
+        GamemodeInfo,
+    },
+};
 
 const SPECTATOR_ITEM_SIZE:Vector2 = Vector2::new(100.0, 40.0);
 const PADDING:f32 = 4.0;
@@ -44,7 +56,7 @@ impl GameplayWidget for SpectatorsElement {
             // info!("updated spectator element list");
             // self.spectators = manager.spectators().clone();
 
-            let style = TextStyle {
+            let style = ui::style::TextStyle {
                 font_size: 30.0 * shell.scale.y,
                 line_height: SPECTATOR_ITEM_SIZE.y * shell.scale.y,
                 color: Color::WHITE,
@@ -83,16 +95,16 @@ impl GameplayWidget for SpectatorsElement {
         // if self.spectators.list.is_empty() { return }
 
         // draw spectators
-        shell.list.push(Rectangle::new(
+        shell.list.push(graphics::Rectangle::new(
             shell.pos_offset,
             *layout_size,
             Color::WHITE.alpha(0.8),
         ));
 
-        shell.list.push(Transformed::new(
-            Transform::default()
+        shell.list.push(graphics::Transformed::new(
+            graphics::Transform::default()
                 .translate(shell.pos_offset + PADDING),
-            Box::new(Text::new(layout.clone()))
+            Box::new(graphics::Text::new(layout.clone()))
         ));
 
         // for (i, user) in self.spectators.list.iter().enumerate() {
@@ -118,7 +130,7 @@ pub const SPECTATORS: GameplayWidgetBuilder = GameplayWidgetBuilder {
     default_layout: GameplayWidgetLayout::new_default(
         GameplayWidgetAnchor::element(
             "health_bar",
-            GameplayWidgetAlign::Below
+           GameplayWidgetAlign::Below
         ),
         Alignment::TOP_LEFT,
         None,

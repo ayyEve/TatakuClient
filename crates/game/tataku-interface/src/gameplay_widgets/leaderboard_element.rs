@@ -1,4 +1,31 @@
 use crate::prelude::*;
+use tataku::{
+    Alignment,
+    Border,
+    Vector2,
+    Color,
+};
+use graphics::{
+    Image,
+    SkinUsage,
+    ThemeColor,
+    Rectangle,
+    Shape,
+    Text,
+
+    Transform,
+    Transformed,
+};
+use engine::{
+    settings::common_gameplay::CommonGameplaySettings,
+    gameplay::{
+        widgets::*,
+        IngameScore,
+        GamemodeInfo,
+        mods::ModManager,
+    },
+};
+
 pub const LEADERBOARD_ITEM_SIZE:Vector2 = Vector2::new(200.0, 50.0);
 const PADDING:Vector2 = Vector2::new(5.0, 5.0);
 
@@ -37,7 +64,7 @@ impl GameplayWidget for LeaderboardElement {
         // //TODO: make this better?
         // self.scores = manager.all_scores().into_iter().cloned().collect();
         
-        let theme = Theme::default();
+        let theme = graphics::Theme::default();
         let scores = shell.manager.all_non_user_scores();
         let current = shell.manager.score();
 
@@ -78,7 +105,7 @@ impl GameplayWidget for LeaderboardElement {
         shell: &mut GameplayWidgetDrawShell
     ) {
         // draw scores
-        let theme = Theme::default();
+        let theme = graphics::Theme::default();
 
 
         let mut order = self.cache.iter()
@@ -140,10 +167,10 @@ impl GameplayWidget for LeaderboardElement {
 
             // combo text
             if let Some(layout) = cache.combo_text.clone() {
-                shell.list.push(Transformed::new(
-                    Transform::default()
+                shell.list.push(graphics::Transformed::new(
+                    graphics::Transform::default()
                         .translate(pos + (PADDING + Vector2::new(0.0, PADDING.y + 15.0)) * shell.scale),
-                    Box::new(Text::new(layout))
+                    Box::new(graphics::Text::new(layout))
                 ));
             }
         }
@@ -188,11 +215,11 @@ impl Cache {
         text: &str,
         font_size: f32,
         color: Color,
-        font_contexts: &mut TextLayoutContexts,
+        font_contexts: &mut ui::widget::TextLayoutContexts,
     ) -> Arc<parley::Layout<Color>> {
         let mut layout = font_contexts.simple_text(
             text, 
-            &TextStyle {
+            &ui::style::TextStyle {
                 font_size,
                 color,
                 ..Default::default()
@@ -210,7 +237,7 @@ impl Cache {
         let score_mods = ModManager::short_mods_string(
             &score.mods,
             false,
-            &info
+            info
         );
 
         let now = chrono::Utc::now().timestamp() as u64;
@@ -221,17 +248,17 @@ impl Cache {
         
         format!(
             "{}x, {:.2}%, {score_mods}{time_diff_str}", 
-            format_number(score.max_combo), 
+            tataku::format_number(score.max_combo), 
             info.calc_acc(score) * 100.0
         )
     }
 
     fn new(
-        score: &IngameScore,
-        theme: &Theme,
+        score: &engine::gameplay::IngameScore,
+        theme: &graphics::Theme,
         scale: &Vector2,
         info: &GamemodeInfo,
-        font_contexts: &mut TextLayoutContexts,
+        font_contexts: &mut ui::widget::TextLayoutContexts,
     ) -> Self {
         let mut is_pb = true;
         let mut color_override = None;
@@ -278,7 +305,7 @@ impl Cache {
         // score text
         // pos: pos_offset + PADDING * scale,
         let score_text = Self::layout(
-            &format!("{}: {}", score.username, format_number(score.score.score)),
+            &format!("{}: {}", score.username, tataku::format_number(score.score.score)),
             15.0 * scale.y,
             text_color,
             font_contexts,
@@ -289,7 +316,7 @@ impl Cache {
         let combo_text = Self::layout(
             &format!(
                 "{}x, {:.2}%, {score_mods}{time_diff_str}", 
-                format_number(score.max_combo), 
+                tataku::format_number(score.max_combo), 
                 info.calc_acc(score) * 100.0
             ),
             12.0 * scale.y,
@@ -307,11 +334,11 @@ impl Cache {
 
     fn update(
         &mut self, 
-        theme: &Theme,
+        theme: &graphics::Theme,
         score: &IngameScore,
         scale: &Vector2,
         info: &GamemodeInfo,
-        font_contexts: &mut TextLayoutContexts,
+        font_contexts: &mut ui::widget::TextLayoutContexts,
     ) {
 
         let score_mods = ModManager::short_mods_string(
@@ -343,7 +370,7 @@ impl Cache {
         // score text
         // pos: pos_offset + PADDING * scale,
         self.score_text = Some(Self::layout(
-            &format!("{}: {}", score.username, format_number(score.score.score)),
+            &format!("{}: {}", score.username, tataku::format_number(score.score.score)),
             15.0 * scale.y,
             text_color,
             font_contexts,
@@ -354,7 +381,7 @@ impl Cache {
         self.combo_text = Some(Self::layout(
             &format!(
                 "{}x, {:.2}%, {score_mods}{time_diff_str}", 
-                format_number(score.max_combo), 
+                tataku::format_number(score.max_combo), 
                 info.calc_acc(score) * 100.0
             ),
             12.0 * scale.y,

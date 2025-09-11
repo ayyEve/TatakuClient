@@ -1,4 +1,16 @@
 use crate::prelude::*;
+use tataku::{
+    Color,
+    Border,
+    Bounds,
+    Easing,
+    Vector2,
+    Animate,
+    AnimationTimeline,
+};
+
+use engine::graphics;
+
 
 /// needed to fix text hitcircle skins
 const TEXT_SCALE:f32 = 0.8;
@@ -16,8 +28,8 @@ pub struct HitCircle {
     /// scaled pos
     pub pos: Vector2,
 
-    pub circle: Option<Image>,
-    pub overlay: Option<Image>,
+    pub circle: Option<graphics::Image>,
+    pub overlay: Option<graphics::Image>,
     pub combo_num: u16,
 
     pub scaling_helper: Arc<ScalingHelper>,
@@ -26,9 +38,9 @@ pub struct HitCircle {
 
     /// combo num text cache
     // combo_text: Option<Text>,
-    combo_image: Option<SkinnedNumber>,
+    combo_image: Option<graphics::SkinnedNumber>,
 
-    skin_settings: Arc<SkinSettings>,
+    skin_settings: Arc<graphics::SkinSettings>,
     shake: Option<AnimationTimeline<f32>>
 }
 impl HitCircle {
@@ -58,9 +70,14 @@ impl HitCircle {
     #[cfg(feature="graphics")]
     pub fn reload_skin(
         &mut self,
-        source: &TextureSource,
-        skin_manager: &mut dyn SkinProvider
+        source: &graphics::TextureSource,
+        skin_manager: &mut dyn graphics::SkinProvider
     ) {
+        use graphics::{
+            SkinUsage,
+            SkinnedNumber,
+        };
+
         self.skin_settings = skin_manager.skin().clone();
         let radius = CIRCLE_RADIUS_BASE * self.scaling_helper.cs;
 
@@ -161,23 +178,23 @@ impl HitCircle {
         }
     }
 
-    pub fn draw(&mut self, list: &mut RenderableCollection) {
+    pub fn draw(&mut self, list: &mut graphics::RenderableCollection) {
         let note = self.note(true);
 
         if let Some(shake) = &self.shake {
             let shake = shake.last_value();
 
-            let transform = Transform {
+            let transform = graphics::Transform {
                 pos: Vector2::new(shake * 8.0 * self.scaling_helper.scale, 0.0),
                 ..Default::default()
             };
 
             let elements = note.list.into_iter()
-                .map(|element| Transformed::new(
+                .map(|element| graphics::Transformed::new(
                     transform,
                     element
                 ))
-                .map(|element| Box::new(element) as Box<dyn TatakuRenderable>);
+                .map(|element| Box::new(element) as Box<dyn graphics::TatakuRenderable>);
 
             list.list.extend(elements);
         } else {
@@ -185,8 +202,8 @@ impl HitCircle {
         }
     }
 
-    fn note(&self, include_combo_num: bool) -> RenderableCollection {
-        let mut collection = RenderableCollection::default();
+    fn note(&self, include_combo_num: bool) -> graphics::RenderableCollection {
+        let mut collection = graphics::RenderableCollection::default();
 
         // hit circle
         if let Some(mut circle) = self.circle.clone() {
@@ -202,7 +219,7 @@ impl HitCircle {
         }
 
         if collection.list.is_empty() {
-            collection.push(Circle::new(
+            collection.push(graphics::Circle::new(
                 self.pos,
                 CIRCLE_RADIUS_BASE * self.scaling_helper.cs,
                 self.color.alpha8(self.alpha),

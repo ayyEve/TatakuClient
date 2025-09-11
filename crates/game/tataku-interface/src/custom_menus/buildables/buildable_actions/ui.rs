@@ -1,4 +1,8 @@
 use crate::prelude::*;
+use ui::tree::*;
+use ui::widget::*;
+use tataku::TatakuValue;
+use common::reflect::Reflect;
 
 
 #[derive(Deserialize)]
@@ -16,7 +20,7 @@ impl BuildableUiAction {
         node: NodeId,
         values: &dyn Reflect,
         passed_in: Option<&TatakuValue>,
-    ) -> Option<UiActionType> {
+    ) -> Option<actions::ui::UiActionType> {
         match self {
             Self::Operate {
                 operation,
@@ -37,10 +41,7 @@ impl BuildableUiAction {
                 operation,
                 target,
             } => {
-                if let Err(e) = target.build() {
-                    error!("error building target: {e:?}");
-                }
-
+                target.build();
                 operation.build();
             },
         }
@@ -67,14 +68,13 @@ pub enum BuildableUiOperationTarget {
     },
 }
 impl BuildableUiOperationTarget {
-    pub fn build(&mut self) -> ShuntingYardResult<()> {
+    pub fn build(&mut self) {
         match self {
             Self::Class { class } => class.build(),
             Self::Id { id } => id.build(),
 
             _ => {}
         }
-        Ok(())
     }
 
     pub fn resolve(
@@ -196,7 +196,7 @@ mod scroll {
         ) -> Option<ScrollType> {
             macro_rules! parse_xy {
                 ($x: expr, $y: expr) => {
-                    Vector2::new(
+                    tataku::Vector2::new(
                         $x.resolve(values, passed_in)?.as_f32()?,
                         $y.resolve(values, passed_in)?.as_f32()?,
                     )

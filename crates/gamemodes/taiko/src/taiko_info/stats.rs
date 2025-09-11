@@ -1,6 +1,11 @@
 #![allow(non_upper_case_globals)]
 use crate::prelude::*;
 
+use engine::gameplay::stats::{
+    StatGroup,
+    GameModeStat,
+};
+
 pub const TaikoStatLeftPresses: GameModeStat = GameModeStat {
     name: "count_left",
     display_name: "Left Presses",

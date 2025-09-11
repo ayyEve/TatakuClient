@@ -1,23 +1,17 @@
-use crate::prelude::*;
+mod event;
+pub mod osu;
+pub mod tja;
+pub mod common;
+pub mod quaver;
+pub mod adofai;
+pub mod ptyping;
+pub mod u_typing;
+pub mod stepmania;
 
-mod osu;
-mod tja;
-mod common;
-mod quaver;
-mod adofai;
-mod ptyping;
-mod u_typing;
-mod stepmania;
+pub use self::common::*;
 
-pub use tja::*;
-pub use osu::*;
-pub use common::*;
-pub use quaver::*;
-pub use adofai::*;
-pub use ptyping::*;
-pub use u_typing::*;
-pub use stepmania::*;
-
+use crate::*;
+use tataku_common::Md5Hash;
 pub const AVAILABLE_MAP_EXTENSIONS: &[&str] = &[
     ".osu", // osu
     ".qua", // quaver
@@ -51,7 +45,7 @@ pub enum Beatmap {
     Stepmania(Box<stepmania::StepmaniaBeatmap>),
 }
 impl Beatmap {
-    pub fn load_multiple<F:AsRef<Path>>(path: F) -> TatakuResult<Vec<Beatmap>> {
+    pub fn load_multiple<F:AsRef<Path>>(path: F) -> tataku::TatakuResult<Vec<Beatmap>> {
         let path = path.as_ref();
         if path.extension().is_none() {
             // check for ptyping file (it has no extention)
@@ -59,7 +53,7 @@ impl Beatmap {
             if path.file_name().unwrap().to_string_lossy() == "song" {
                 return Ok(ptyping::PTypingBeatmap::load_multiple(path)?.into_iter().map(|b|Beatmap::PTyping(Box::new(b))).collect())
             } else {
-                return Err(TatakuError::Beatmap(BeatmapError::InvalidFile))
+                return Err(errors::beatmap::BeatmapError::InvalidFile.into())
             }
         }
         
@@ -69,19 +63,19 @@ impl Beatmap {
             "adofai" => Ok(vec![Beatmap::Adofai(Box::new(adofai::AdofaiBeatmap::load(path.to_str().unwrap())))]),
             "txt" => Ok(vec![Beatmap::UTyping(Box::new(u_typing::UTypingBeatmap::load(path)?))]),
             "ssc" | "sm" => Ok(stepmania::StepmaniaBeatmap::load_multiple(path)?.into_iter().map(|b|Beatmap::Stepmania(Box::new(b))).collect()),
-            "tja" => Ok(tja::TjaBeatmap::load_multiple(path)?.into_iter().map(|b|Beatmap::Tja(Box::new(b))).collect()),
+            "tja" => Ok(tja::TjaBeatmap::load_multiple(path)?.into_iter().map(|b| Self::Tja(Box::new(b))).collect()),
 
-            _ => Err(TatakuError::Beatmap(BeatmapError::InvalidFile)),
+            _ => Err(errors::beatmap::BeatmapError::InvalidFile.into()),
         }
     }
-    pub fn load_single<F:AsRef<Path>>(path: F, meta: &BeatmapMeta) -> TatakuResult<Beatmap> {
+    pub fn load_single<F:AsRef<Path>>(path: F, meta: &BeatmapMeta) -> tataku::TatakuResult<Self> {
         let path = path.as_ref();
         if path.extension().is_none() {
             // check for ptyping file (it has no extention)
             if path.file_name().and_then(|a|a.to_str()).filter(|a|a.ends_with("song")).is_some() {
                 return Ok(Beatmap::PTyping(Box::new(ptyping::PTypingBeatmap::load_single(path, meta)?)))
             } else {
-                return Err(TatakuError::Beatmap(BeatmapError::InvalidFile))
+                return Err(errors::beatmap::BeatmapError::InvalidFile.into())
             }
         }
         
@@ -93,19 +87,19 @@ impl Beatmap {
             "ssc" | "sm" => Ok(Beatmap::Stepmania(Box::new(stepmania::StepmaniaBeatmap::load_single(path, meta)?))),
             "tja" => Ok(Beatmap::Tja(Box::new(tja::TjaBeatmap::load_single(path, meta)?))),
             
-            _ => Err(TatakuError::Beatmap(BeatmapError::InvalidFile)),
+            _ => Err(errors::beatmap::BeatmapError::InvalidFile.into()),
         }
     }
 
     /// loading metadata only is way faster if only the meta is needed
-    pub fn load_multiple_metadata(path: impl AsRef<Path>) -> TatakuResult<Vec<Arc<BeatmapMeta>>> {
+    pub fn load_multiple_metadata(path: impl AsRef<Path>) -> tataku::TatakuResult<Vec<Arc<BeatmapMeta>>> {
         let path = path.as_ref();
         if path.extension().is_none() {
             // check for ptyping file (it has no extention)
             if path.file_name().and_then(|a|a.to_str()).filter(|a|a.ends_with("song")).is_some() {
                 return Ok(ptyping::PTypingBeatmap::load_multiple(path)?.into_iter().map(|b|b.get_beatmap_meta()).collect())
             } else {
-                return Err(TatakuError::Beatmap(BeatmapError::InvalidFile))
+                return Err(errors::beatmap::BeatmapError::InvalidFile.into())
             }
         } 
         
@@ -117,22 +111,22 @@ impl Beatmap {
             "ssc" | "sm" => Ok(stepmania::StepmaniaBeatmap::load_multiple(path)?.into_iter().map(|b|b.get_beatmap_meta()).collect()),
             "tja" => Ok(tja::TjaBeatmap::load_multiple(path)?.into_iter().map(|b|b.get_beatmap_meta()).collect()),
 
-            _ => Err(TatakuError::Beatmap(BeatmapError::InvalidFile)),
+            _ => Err(errors::beatmap::BeatmapError::InvalidFile.into()),
         }
     }
     
-    pub fn from_path_and_hash(path: impl AsRef<Path>, hash: Md5Hash) -> TatakuResult<Beatmap> {
+    pub fn from_path_and_hash(path: impl AsRef<Path>, hash: Md5Hash) -> tataku::TatakuResult<Beatmap> {
         let maps = Self::load_multiple(path)?;
         maps
             .into_iter()
             .find(|b| b.get_beatmap_meta().comp_hash(hash))
-            .ok_or(TatakuError::Beatmap(BeatmapError::NotFoundInSet))
+            .ok_or(errors::beatmap::BeatmapError::NotFoundInSet.into())
         // if maps.len() > 1 {
         // } else {
 
         // }
     }
-    pub fn from_metadata(meta: &BeatmapMeta) -> TatakuResult<Beatmap> {
+    pub fn from_metadata(meta: &BeatmapMeta) -> tataku::TatakuResult<Beatmap> {
         Self::load_single(&*meta.file_path, meta)
     }
 

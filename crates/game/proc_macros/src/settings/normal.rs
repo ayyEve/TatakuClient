@@ -91,7 +91,7 @@ impl NormalItem {
     pub fn write(&self) -> TokenStream {
         match &self.inner {
             // checkbox
-            NormalItemType::Bool => quote! { BuildableSettingType::Bool },
+            NormalItemType::Bool => quote! { engine::settings::BuildableSettingType::Bool },
 
             // slider
             f 
@@ -106,7 +106,7 @@ impl NormalItem {
                 let step = if f.is_float() {0.01f32} else {1.0};
 
                 quote! {
-                    BuildableSettingType::Number {
+                    engine::settings::BuildableSettingType::Number {
                         num_type: #ty.to_string(),
                         min: #min,
                         max: #max,
@@ -119,38 +119,38 @@ impl NormalItem {
             NormalItemType::String => {
                 let do_password = self.password_input == Some(true);
                 quote! {
-                    BuildableSettingType::String {
+                    engine::settings::BuildableSettingType::String {
                         password: #do_password,
                     }
                 }
             }
 
             // color input
-            NormalItemType::Color => quote! { BuildableSettingType::String {
+            NormalItemType::Color => quote! { engine::settings::BuildableSettingType::String {
                 password: false,
             }},
 
-            NormalItemType::SettingsColor => quote! { BuildableSettingType::String {
+            NormalItemType::SettingsColor => quote! { engine::settings::BuildableSettingType::String {
                 password: false,
             }},
 
             // key 
-            NormalItemType::Key => quote! { BuildableSettingType::Key {
+            NormalItemType::Key => quote! { engine::settings::BuildableSettingType::Key {
                 optional: false,
             }},
 
             // optional key
-            NormalItemType::OptionalKey => quote! { BuildableSettingType::Key {
+            NormalItemType::OptionalKey => quote! { engine::settings::BuildableSettingType::Key {
                 optional: true,
             }},
 
             // key 
-            NormalItemType::GamepadButton => quote! { BuildableSettingType::GamepadButton {
+            NormalItemType::GamepadButton => quote! { engine::settings::BuildableSettingType::GamepadButton {
                 optional: false,
             }},
             
             // optional key
-            NormalItemType::OptionalGamepadButton => quote! { BuildableSettingType::GamepadButton {
+            NormalItemType::OptionalGamepadButton => quote! { engine::settings::BuildableSettingType::GamepadButton {
                 optional: true,
             }},
             
@@ -194,18 +194,16 @@ impl NormalItemType {
                 let GenericArgument::Type(Type::Path(inner)) = t.args.first()?
                 else { return None };
 
-                if inner.path.is_ident("GamepadButton") {
-                    return Some(Self::OptionalGamepadButton);
-                } else if inner.path.is_ident("Key") {
-                    return Some(Self::OptionalKey);
-                } 
+                return fuck(inner.path.get_ident()?);
+            } else if first.ident == "input" {
+                let last = p.path.segments.last()?;
+                return fuck(&last.ident);
             }
 
-            return None
+            return None;
         };
 
         Some(match &*s.to_string() {
-            "Key" => Self::Key,
             "u32"  => Self::U32,
             "u64"  => Self::U64,
             "f32"  => Self::F32,
@@ -214,15 +212,24 @@ impl NormalItemType {
             "usize" => Self::Usize,
             "Color" => Self::Color,
             "String" => Self::String,
-            "Option<Key>" => Self::OptionalKey,
+
+            "Key"
+            | "input::Key" => Self::Key,
+
+            "Option<Key>"
+            | "Option<input::Key>" => Self::OptionalKey,
+
             "SettingsColor" => Self::SettingsColor,
 
-            "GamepadButton" => Self::GamepadButton,
-            "Option<GamepadButton>" => Self::OptionalGamepadButton,
+            "GamepadButton" 
+            | "input::GamepadButton" => Self::GamepadButton,
 
-            _ => {
-                // println!("unknown setting type: '{other}'");
-                Self::Unknown
+            "Option<GamepadButton>"
+            | "Option<input::GamepadButton>" => Self::OptionalGamepadButton,
+
+            other => {
+                panic!("unknown setting type: '{other}'");
+                // Self::Unknown
             }
         })
     }
@@ -240,5 +247,18 @@ impl NormalItemType {
 
     fn is_float(&self) -> bool {
         matches!(self, Self::F32 | Self::F64)
+    }
+}
+
+
+fn fuck(
+    i: &Ident,
+) -> Option<NormalItemType> {
+    if i == "GamepadButton" {
+        Some(NormalItemType::OptionalGamepadButton)
+    } else if i == "Key" {
+        Some(NormalItemType::OptionalKey)
+    } else {
+        None
     }
 }

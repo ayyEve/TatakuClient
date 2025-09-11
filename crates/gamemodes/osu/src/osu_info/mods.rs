@@ -1,5 +1,6 @@
 #![allow(non_upper_case_globals)]
 use crate::prelude::*;
+use engine::gameplay::mods::GameplayMod;
 
 pub const Flashlight: GameplayMod = GameplayMod {
     id: "flashlight",

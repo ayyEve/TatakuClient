@@ -1,4 +1,23 @@
 use crate::prelude::*;
+use common::reflect::*;
+
+use tataku::Vsync;
+
+use engine::{
+    window::FullscreenMonitor,
+    data::{
+        SortBy,
+        ScoreRetreivalMethod,
+    },
+    gameplay::{
+        GamemodeInfo, 
+        GamemodeInfos,
+    },
+    settings::{
+        settings::SelectedTheme,
+        display::PerformanceMode,
+    },
+};
 
 #[derive(Reflect)]
 #[reflect(display = "debug")]
@@ -59,7 +78,7 @@ impl Reflect for PlaymodeReflect {
     fn impl_get<'s, 'v>(
         &'s self, 
         mut path: ReflectPath<'v>
-    ) -> ReflectResult<'v, MaybeOwnedReflect<'s>> {
+    ) -> reflect::Result<'v, MaybeOwnedReflect<'s>> {
         if !path.has_next() {
             Ok(MaybeOwnedReflect::Borrowed(&self.id))
         } else {
@@ -71,7 +90,7 @@ impl Reflect for PlaymodeReflect {
     fn impl_get_mut<'s, 'v>(
         &'s mut self, 
         mut path: ReflectPath<'v>
-    ) -> ReflectResult<'v, &'s mut dyn Reflect> {
+    ) -> reflect::Result<'v, &'s mut dyn Reflect> {
         if !path.has_next() {
             Ok(&mut self.id)
         } else {
@@ -85,7 +104,7 @@ impl Reflect for PlaymodeReflect {
         &self, 
         _path: ReflectPath<'v>, 
         _precision: Option<usize>
-    ) -> ReflectResult<'v, String> {
+    ) -> reflect::Result<'v, String> {
         Ok(self.display.clone())
     }
 
@@ -97,7 +116,7 @@ impl Reflect for PlaymodeReflect {
         &mut self, 
         _path: ReflectPath<'v>, 
         _value: Box<dyn Reflect>
-    ) -> ReflectResult<'v, ()> {
+    ) -> reflect::Result<'v, ()> {
         Err(ReflectError::ImmutableContainer)
     }
 }

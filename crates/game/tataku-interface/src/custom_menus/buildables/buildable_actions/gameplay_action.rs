@@ -17,14 +17,14 @@ pub enum BuildableGameplayAction {
     Retry,
 }
 impl BuildableGameplayAction {
-    pub fn resolve(&self) -> CurrentGameAction {
+    pub fn resolve(&self) -> actions::game::CurrentGameAction {
         match self {
-            Self::Pause => CurrentGameAction::Pause {
+            Self::Pause => actions::game::CurrentGameAction::Pause {
                 id: "pause_menu".to_owned(),
             },
-            Self::Quit => CurrentGameAction::Free,
-            Self::Resume => CurrentGameAction::Resume,
-            Self::Retry => CurrentGameAction::Restart,
+            Self::Quit => actions::game::CurrentGameAction::Free,
+            Self::Resume => actions::game::CurrentGameAction::Resume,
+            Self::Retry => actions::game::CurrentGameAction::Restart,
         }
     }
 }

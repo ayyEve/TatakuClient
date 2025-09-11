@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::*;
 
 pub struct Text {
     pub layout: Arc<parley::Layout<Color>>,

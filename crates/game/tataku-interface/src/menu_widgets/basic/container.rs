@@ -1,4 +1,20 @@
 use crate::prelude::*;
+use common::reflect::*;
+use tataku::{
+    Vector2,
+    TatakuValue,
+};
+use ui::{
+    tree::*,
+    style::*,
+    widget::*,
+    message::*,
+};
+use input::{ 
+    InputType,
+    InputEvent, 
+    MouseButton, 
+};
 
 macro_rules! get_list {
     ($data: expr, $values: expr) => {{
@@ -19,7 +35,7 @@ macro_rules! get_list {
 
 #[derive(ChainableInitializer)]
 pub struct Container {
-    children: Vec<Box<dyn Widget<TatakuAction>>>,
+    children: Vec<Box<dyn Widget<actions::Action>>>,
 
     #[chain] id: CowStr,
     #[chain] scrollable: bool,
@@ -34,10 +50,10 @@ pub struct Container {
     node_id: NodeId,
 }
 impl Container {
-    pub fn new(items: Vec<Box<dyn Widget<TatakuAction>>>) -> Self {
+    pub fn new(items: Vec<Box<dyn Widget<actions::Action>>>) -> Self {
         Self {
             children: items,
-            node_id: EMPTY_NODE,
+            node_id: ui::EMPTY_NODE,
             scrollable: false,
 
             drag_scroll: false,
@@ -88,7 +104,7 @@ impl Container {
 
     fn validate_scroll_position(
         &mut self,
-        tree: &mut Tree<TatakuAction>,
+        tree: &mut Tree<actions::Action>,
     ) {
         let layout = tree.get_layout(self.node_id).unwrap();
         let size = Vector2::new(
@@ -107,7 +123,7 @@ impl Container {
     fn handle_scroll_operation(
         &mut self,
         scroll: &ScrollOperation,
-        tree: &mut Tree<TatakuAction>,
+        tree: &mut Tree<actions::Action>,
     ) {
         match &scroll.scroll_type {
             ScrollType::ScrollByAmount(amt)
@@ -235,9 +251,9 @@ impl Container {
     }
 
     fn find_nested_child(
-        tree: &Tree<TatakuAction>,
-        node: &dyn Widget<TatakuAction>,
-        op: fn(&Tree<TatakuAction>, &dyn Widget<TatakuAction>) -> Option<bool>,
+        tree: &Tree<actions::Action>,
+        node: &dyn Widget<actions::Action>,
+        op: fn(&Tree<actions::Action>, &dyn Widget<actions::Action>) -> Option<bool>,
     ) -> Option<NodeId> {
         for child in node.children() {
             if op(tree, &**child)? {
@@ -257,18 +273,18 @@ impl Container {
     }
 }
 
-impl Widget<TatakuAction> for Container {
+impl Widget<actions::Action> for Container {
     fn name(&self) -> CowStr { "container_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn children(&self) -> WidgetChildren<'_, TatakuAction> {
+    fn children(&self) -> WidgetChildren<'_, actions::Action> {
         WidgetChildren::List(&self.children)
     }
-    fn children_mut(&mut self) -> WidgetChildrenMut<'_, TatakuAction> {
+    fn children_mut(&mut self) -> WidgetChildrenMut<'_, actions::Action> {
         WidgetChildrenMut::List(&mut self.children)
     }
     
-    fn layout(&mut self, shell: &mut LayoutShell<TatakuAction>) -> taffy::TaffyResult<NodeId> {
+    fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId> {
         let children = self.children
             .iter_mut()
             .map(|w| w.layout(shell))
@@ -287,7 +303,7 @@ impl Widget<TatakuAction> for Container {
     fn operation(
         &mut self,
         operation: &UiOperation,
-        tree: &mut Tree<TatakuAction>,
+        tree: &mut Tree<actions::Action>,
     ) {
         if operation.target.resolve(self, tree) {
             #[allow(clippy::single_match, reason = "future expansion")]
@@ -306,7 +322,7 @@ impl Widget<TatakuAction> for Container {
     fn input(
         &mut self,
         event: &InputEvent,
-        shell: &mut InputShell<TatakuAction>,
+        shell: &mut InputShell<actions::Action>,
     ) {
         let node_id = self.node_id;
         let Some(layout) = shell.tree.get_layout(node_id).copied()
@@ -324,9 +340,9 @@ impl Widget<TatakuAction> for Container {
                     .unwrap();
 
                 context.local_transform.pos = self.scroll_offset;
-                shell.actions.push(UiAction::new(
+                shell.actions.push(actions::ui::UiAction::new(
                     self.node_id,
-                    UiActionType::ContextChanged
+                    actions::ui::UiActionType::ContextChanged
                 ).into());
 
                 shell.event_consumed = true;
@@ -390,15 +406,15 @@ impl Widget<TatakuAction> for Container {
                     .unwrap();
 
                 context.local_transform.pos = self.scroll_offset;
-                shell.actions.push(UiAction::new(
+                shell.actions.push(actions::ui::UiAction::new(
                     self.node_id,
-                    UiActionType::ContextChanged
+                    actions::ui::UiActionType::ContextChanged
                 ).into());
             }
         }
     }
 
-    fn update(&mut self, shell: &mut UpdateShell<TatakuAction>) {
+    fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
         if let Some(data) = &mut self.programmatic {
             let iter = get_list!(data, shell.values);
 
@@ -468,13 +484,13 @@ impl Widget<TatakuAction> for Container {
                     }
 
                     // mark the tree as dirty
-                    shell.actions.push(UiAction::new(
+                    shell.actions.push(actions::ui::UiAction::new(
                         self.node_id,
-                        UiActionType::MarkDirty
+                        actions::ui::UiActionType::MarkDirty
                     ).into());
-                    shell.actions.push(UiAction::new(
+                    shell.actions.push(actions::ui::UiAction::new(
                         self.node_id,
-                        UiActionType::Refresh
+                        actions::ui::UiActionType::Refresh
                     ).into());
                 }
             }
@@ -498,11 +514,11 @@ impl Widget<TatakuAction> for Container {
         }
     }
 
-    fn draw(&self, shell: &mut DrawShell<TatakuAction>) {
+    fn draw(&self, shell: &mut DrawShell<actions::Action>) {
         let Some(our_bounds) = shell.tree.absolute_bounds(self.node_id)
         else { return };
 
-        let mut list = RenderableCollection::default();
+        let mut list = graphics::RenderableCollection::default();
         if self.scrollable {
             std::mem::swap(shell.list, &mut list);
         }
@@ -521,11 +537,11 @@ impl Widget<TatakuAction> for Container {
             let elements = list
                 .list
                 .into_iter()
-                .map(|element| Scissored::new(
+                .map(|element| graphics::Scissored::new(
                     our_bounds.into_scissor(),
                     element
                 ))
-                .map(|element| Box::new(element) as Box<dyn TatakuRenderable>);
+                .map(|element| Box::new(element) as Box<dyn graphics::TatakuRenderable>);
 
             shell.list.list.extend(elements);
         }
@@ -538,11 +554,11 @@ impl Widget<TatakuAction> for Container {
         // }
     }
 
-    fn draw_overlay(&self, shell: &mut DrawShell<TatakuAction>) {
+    fn draw_overlay(&self, shell: &mut DrawShell<actions::Action>) {
         let Some(our_bounds) = shell.tree.absolute_bounds(self.node_id)
         else { return };
 
-        let mut list = RenderableCollection::default();
+        let mut list = graphics::RenderableCollection::default();
         if self.scrollable {
             std::mem::swap(shell.list, &mut list);
         }
@@ -560,11 +576,11 @@ impl Widget<TatakuAction> for Container {
             std::mem::swap(shell.list, &mut list);
 
             let elements = list.list.into_iter()
-                .map(|element| Scissored::new(
+                .map(|element| graphics::Scissored::new(
                     our_bounds.into_scissor(),
                     element
                 ))
-                .map(|element| Box::new(element) as Box<dyn TatakuRenderable>);
+                .map(|element| Box::new(element) as Box<dyn graphics::TatakuRenderable>);
 
             shell.list.list.extend(elements);
         }
@@ -573,7 +589,7 @@ impl Widget<TatakuAction> for Container {
     fn handle_message(
         &mut self,
         message: &Message,
-        shell: &mut MessageShell<TatakuAction>,
+        shell: &mut MessageShell<actions::Action>,
     ) {
         if let Some(data) = &mut self.programmatic {
             let iter = get_list!(data, shell.values);
@@ -602,9 +618,9 @@ impl Widget<TatakuAction> for Container {
 
     fn handle_event(
         &mut self,
-        event: &TatakuEvent,
+        event: &input::TatakuEvent,
         event_value: Option<&TatakuValue>,
-        shell: &mut MessageShell<TatakuAction>,
+        shell: &mut MessageShell<actions::Action>,
     ) {
         if let Some(data) = &mut self.programmatic {
             let iter = get_list!(data, shell.values);
@@ -633,7 +649,7 @@ impl Widget<TatakuAction> for Container {
         }
     }
 
-    fn reload_skin(&mut self, shell: &mut UpdateShell<TatakuAction>) {
+    fn reload_skin(&mut self, shell: &mut UpdateShell<actions::Action>) {
         for i in self.children.iter_mut() {
             i.reload_skin(shell);
         }
@@ -647,7 +663,7 @@ pub struct ProgrammaticListData {
     #[chain] pub template: Element,
 
     /// What variable to iterate over
-    #[chain] pub list_var: VariablePathResolver,
+    #[chain] pub list_var: engine::VariablePathResolver,
 
     /// What var name to store the iter variable in (ie the `i` in `for i in ...`)
     #[chain] pub variable: ArcStr,
@@ -658,7 +674,7 @@ impl ProgrammaticListData {
     pub fn new(template: Element, list_var: ArcStr, variable: ArcStr) -> Self {
         Self {
             template,
-            list_var: VariablePathResolver::new(list_var),
+            list_var: engine::VariablePathResolver::new(list_var),
             variable,
             error_printed: false,
         }
@@ -689,7 +705,7 @@ impl DragScrollData {
     fn check_input(
         &mut self,
         node_id: NodeId,
-        shell: &mut InputShell<TatakuAction>,
+        shell: &mut InputShell<actions::Action>,
         event: &InputEvent,
     ) -> ScrollPosition {
         let Some(bounds) = shell.tree.absolute_bounds(node_id)

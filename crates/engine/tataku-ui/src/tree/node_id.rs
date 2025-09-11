@@ -1,6 +1,8 @@
-use crate::prelude::*;
+use crate::*;
+use crate::message::MessageOwner;
 
-#[derive(Copy, Clone, Debug, Default2, Hash, Eq, PartialEq)]
+#[derive(Default2)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct NodeId {
     #[default(u64::MAX.into())]
     pub node_id: taffy::NodeId,

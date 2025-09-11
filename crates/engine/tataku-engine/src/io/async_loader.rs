@@ -1,4 +1,5 @@
-use crate::prelude::*;
+use crate::*;
+use std::sync::atomic::{ AtomicBool, Ordering };
 
 #[derive(Clone)]
 pub struct AsyncLoader<T> {

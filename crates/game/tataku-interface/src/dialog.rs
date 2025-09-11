@@ -1,5 +1,23 @@
 use crate::prelude::*;
 
+use ui::{
+    tree::*,
+    widget::*,
+    message::*,
+};
+
+use tataku::{
+    Vector2,
+    Bounds,
+    Color,
+};
+use input::{
+    InputType,
+    MouseButton,
+};
+
+use graphics::Rectangle;
+
 /// How many pixels of leniency should there be for resizing
 const LENIENCY: f32 = 5.0;
 #[derive(Copy, Clone, Default)]
@@ -35,7 +53,7 @@ impl ResizeHover {
 
 pub struct DialogWidget {
     title: CowStr,
-    node: Box<dyn Widget<TatakuAction>>,
+    node: Box<dyn Widget<actions::Action>>,
     num: usize,
 
     draggable: bool,
@@ -53,7 +71,7 @@ impl DialogWidget {
         draggable: bool,
         resizable: bool,
         draw_background: bool,
-        inner: Box<dyn Widget<TatakuAction>>,
+        inner: Box<dyn Widget<actions::Action>>,
     ) -> Self {
         Self {
             title: title.into(),
@@ -74,29 +92,29 @@ impl DialogWidget {
         delta: f32,
         mut bounds: Bounds,
         node: NodeId,
-        actions: &mut ActionQueue,
+        actions: &mut actions::ActionQueue,
     ) {
         bounds.pos.x -= delta;
         bounds.size.x += delta;
-        actions.push(UiAction::new(
+        actions.push(actions::ui::UiAction::new(
             node, 
-            DialogAction::MoveDialog(bounds.pos)
+            actions::dialog::DialogAction::MoveDialog(bounds.pos)
         ).into());
-        actions.push(UiAction::new(
+        actions.push(actions::ui::UiAction::new(
             node, 
-            DialogAction::ResizeDialog(bounds.size)
+            actions::dialog::DialogAction::ResizeDialog(bounds.size)
         ).into());
     }
     fn resize_right(
         delta: f32,
         mut bounds: Bounds,
         node: NodeId,
-        actions: &mut ActionQueue,
+        actions: &mut actions::ActionQueue,
     ) {
         bounds.size.x -= delta;
-        actions.push(UiAction::new(
+        actions.push(actions::ui::UiAction::new(
             node, 
-            DialogAction::ResizeDialog(bounds.size)
+            actions::dialog::DialogAction::ResizeDialog(bounds.size)
         ).into());
     }
     
@@ -104,29 +122,29 @@ impl DialogWidget {
         delta: f32,
         mut bounds: Bounds,
         node: NodeId,
-        actions: &mut ActionQueue,
+        actions: &mut actions::ActionQueue,
     ) {
         bounds.pos.y -= delta;
         bounds.size.y += delta;
-        actions.push(UiAction::new(
+        actions.push(actions::ui::UiAction::new(
             node, 
-            DialogAction::MoveDialog(bounds.pos)
+            actions::dialog::DialogAction::MoveDialog(bounds.pos)
         ).into());
-        actions.push(UiAction::new(
+        actions.push(actions::ui::UiAction::new(
             node, 
-            DialogAction::ResizeDialog(bounds.size)
+            actions::dialog::DialogAction::ResizeDialog(bounds.size)
         ).into());
     }
     fn resize_down(
         delta: f32,
         mut bounds: Bounds,
         node: NodeId,
-        actions: &mut ActionQueue,
+        actions: &mut actions::ActionQueue,
     ) {
         bounds.size.y -= delta;
-        actions.push(UiAction::new(
+        actions.push(actions::ui::UiAction::new(
             node, 
-            DialogAction::ResizeDialog(bounds.size)
+            actions::dialog::DialogAction::ResizeDialog(bounds.size)
         ).into());
     }
 
@@ -216,18 +234,21 @@ impl DialogWidget {
             .contains(mouse_pos);
     }
 }
-impl Widget<TatakuAction> for DialogWidget {
+impl Widget<actions::Action> for DialogWidget {
     fn name(&self) -> CowStr { self.node.name() }
     fn node_id(&self) -> NodeId { self.node.node_id() }
 
-    fn children(&self) -> WidgetChildren<'_, TatakuAction> {
+    fn children(&self) -> WidgetChildren<'_, actions::Action> {
         WidgetChildren::Single(&self.node)
     }
-    fn children_mut(&mut self) -> WidgetChildrenMut<'_, TatakuAction> {
+    fn children_mut(&mut self) -> WidgetChildrenMut<'_, actions::Action> {
         WidgetChildrenMut::Single(&mut self.node)
     }
 
-    fn layout(&mut self, shell: &mut LayoutShell<TatakuAction>) -> taffy::TaffyResult<NodeId> {
+    fn layout(
+        &mut self, 
+        shell: &mut LayoutShell<actions::Action>,
+    ) -> taffy::TaffyResult<NodeId> {
         let node = std::mem::replace(
             &mut self.node, 
             EmptyWidget::new_boxed()
@@ -241,7 +262,7 @@ impl Widget<TatakuAction> for DialogWidget {
         } else {
             vec![node]
         };
-        self.node = Container::new(children)
+        self.node = crate::menu_widgets::Container::new(children)
             // .flex_direction(FlexDirection::Column)
             // .width(FILL)
             // .height(FILL)
@@ -261,8 +282,8 @@ impl Widget<TatakuAction> for DialogWidget {
     
     fn input(
         &mut self, 
-        event: &InputEvent, 
-        shell: &mut InputShell<TatakuAction>,
+        event: &input::InputEvent, 
+        shell: &mut InputShell<actions::Action>,
     ) {
         self.node.input(event, shell);
         if shell.event_consumed {
@@ -365,12 +386,15 @@ impl Widget<TatakuAction> for DialogWidget {
         }
     }
     
-    fn draw(&self, shell: &mut DrawShell<TatakuAction>) {
+    fn draw(&self, shell: &mut DrawShell<actions::Action>) {
         let Some(bounds) = shell.tree.absolute_bounds(self.node_id()) 
         else { return };
 
         if self.draw_background {
-            shell.list.push(Blur::new(bounds, BlurType::Box { size: 2 }));
+            shell.list.push(graphics::Blur::new(
+                bounds, 
+                graphics::BlurType::Box { size: 2 },
+            ));
 
             // black background for visibility
             shell.list.push(Rectangle::new_bounds(
@@ -413,7 +437,7 @@ impl Widget<TatakuAction> for DialogWidget {
     fn handle_message(
         &mut self, 
         message: &Message, 
-        shell: &mut MessageShell<TatakuAction>,
+        shell: &mut MessageShell<actions::Action>,
     ) {
         match message.owner {
             MessageOwner::Menu => return,
@@ -439,9 +463,9 @@ impl Widget<TatakuAction> for DialogWidget {
             | "force_close"
             => {
                 debug!("close request");
-                shell.actions.push(UiAction::new(
+                shell.actions.push(actions::ui::UiAction::new(
                     self.node_id(),
-                    DialogAction::Close,
+                    actions::dialog::DialogAction::Close,
                 ).into());
             }
 
@@ -475,7 +499,7 @@ enum DragOrigin {
 struct DialogTitlebar {
     title: CowStr,
     draggable: bool,
-    node: Box<dyn Widget<TatakuAction>>,
+    node: Box<dyn Widget<actions::Action>>,
 
     drag: Option<DragData>,
 }
@@ -517,11 +541,14 @@ impl DialogTitlebar {
         quick_xml::de::from_str(&a).unwrap()
     }
 }
-impl Widget<TatakuAction> for DialogTitlebar {
+impl Widget<actions::Action> for DialogTitlebar {
     fn name(&self) -> CowStr { "titlebar_widget".into() }
     fn node_id(&self) -> NodeId { self.node.node_id() }
 
-    fn layout(&mut self, shell: &mut LayoutShell<TatakuAction>) -> taffy::TaffyResult<NodeId> {
+    fn layout(
+        &mut self, 
+        shell: &mut LayoutShell<actions::Action>,
+    ) -> taffy::TaffyResult<NodeId> {
         // self.node = Container::new(vec![
         //     // Title 
         //     TextWidget::new(&*self.title).font_size(40.0).boxed(),
@@ -542,7 +569,7 @@ impl Widget<TatakuAction> for DialogTitlebar {
         self.node.layout(shell)
     }
 
-    fn draw(&self, shell: &mut DrawShell<TatakuAction>) {
+    fn draw(&self, shell: &mut DrawShell<actions::Action>) {
         let Some(bounds) = shell.tree.absolute_bounds(self.node_id()) 
         else { return };
 
@@ -552,22 +579,22 @@ impl Widget<TatakuAction> for DialogTitlebar {
         ));
         self.node.draw(shell);
     }
-    fn draw_overlay(&self, shell: &mut DrawShell<TatakuAction>) {
+    fn draw_overlay(&self, shell: &mut DrawShell<actions::Action>) {
         self.node.draw_overlay(shell);
     }
 
-    fn update(&mut self, shell: &mut UpdateShell<TatakuAction>) {
+    fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
         self.node.update(shell);
     }
 
-    fn reload_skin(&mut self, shell: &mut UpdateShell<TatakuAction>) {
+    fn reload_skin(&mut self, shell: &mut UpdateShell<actions::Action>) {
         self.node.reload_skin(shell);
     }
 
     fn input(
         &mut self, 
-        event: &InputEvent, 
-        shell: &mut InputShell<TatakuAction>,
+        event: &input::InputEvent, 
+        shell: &mut InputShell<actions::Action>,
     ) {
         self.node.input(event, shell);
 
@@ -578,9 +605,9 @@ impl Widget<TatakuAction> for DialogTitlebar {
         let node_id = self.node_id();
         match (&event.event, &mut self.drag) {
             (InputType::MouseMove(pos), Some(drag)) => {
-                shell.actions.push(UiAction::new(
+                shell.actions.push(actions::ui::UiAction::new(
                     node_id,
-                    DialogAction::MoveDialog(
+                    actions::dialog::DialogAction::MoveDialog(
                         drag.pos_start + (*pos - drag.mouse_pos_start)
                     )
                 ).into());

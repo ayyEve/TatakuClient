@@ -1,4 +1,19 @@
 use crate::prelude::*;
+use graphics::Image;
+use tataku::{
+    Alignment,
+    Border,
+    Bounds,
+    Vector2,
+    Color,
+};
+use engine::{
+    settings::common_gameplay::CommonGameplaySettings,
+    gameplay::{
+        widgets::*,
+        GamemodeInfo,
+    },
+};
 
 const BOX_SIZE:Vector2 = Vector2::new(40.0, 40.0);
 
@@ -24,9 +39,9 @@ impl KeyCounterElement {
         text: &str,
         button_image: Option<&Image>,
         scale: &Vector2,
-        font_contexts: &mut TextLayoutContexts,
+        font_contexts: &mut ui::widget::TextLayoutContexts,
     ) -> (Arc<parley::Layout<Color>>, Vector2) {
-        let mut style = TextStyle {
+        let mut style = ui::style::TextStyle {
             font_size: 20.0 * scale.y,
             color: Color::WHITE,
             ..Default::default()
@@ -67,7 +82,6 @@ impl KeyCounterElement {
         (Arc::new(layout), text_size)
     }
 }
-
 impl GameplayWidget for KeyCounterElement {
     fn display_name(&self) -> &'static str { "Key Counter" }
 
@@ -118,7 +132,7 @@ impl GameplayWidget for KeyCounterElement {
             let text = if info.count == 0 {
                 Cow::Borrowed(&*info.label)
             } else {
-                Cow::Owned(format_number(i.count))
+                Cow::Owned(tataku::format_number(i.count))
             };
 
             let (layout, size) = Self::layout(
@@ -167,7 +181,7 @@ impl GameplayWidget for KeyCounterElement {
 
                 shell.list.push(btn);
             } else {
-                shell.list.push(Rectangle::new_bounds(
+                shell.list.push(graphics::Rectangle::new_bounds(
                     bounds,
                     if cached.held {
                         Color::new(0.8, 0.0, 0.8, 0.8)
@@ -187,9 +201,9 @@ impl GameplayWidget for KeyCounterElement {
                 true,
             );
 
-            shell.list.push(Transformed::new(
-                Transform::default().translate(centered),
-                Box::new(Text::new(cached.layout.clone()))
+            shell.list.push(graphics::Transformed::new(
+                graphics::Transform::default().translate(centered),
+                Box::new(graphics::Text::new(cached.layout.clone()))
             ));
         }
     }
@@ -209,7 +223,7 @@ impl GameplayWidget for KeyCounterElement {
         self.button_image = shell.skin_manager.get_texture(
             "inputoverlay-key",
             shell.source,
-            SkinUsage::Gamemode,
+            graphics::SkinUsage::Gamemode,
             false
         );
     }
@@ -229,7 +243,7 @@ pub const KEY_COUNTER: GameplayWidgetBuilder = GameplayWidgetBuilder {
 struct Cached {
     count: u16,
     held: bool,
-    press: KeyPress,
+    press: common::replays::KeyPress,
     layout: Arc<parley::Layout<Color>>,
     size: Vector2,
 }

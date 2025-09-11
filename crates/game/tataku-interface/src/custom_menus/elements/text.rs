@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use ui::widget::Widget;
 
 #[derive(Deserialize)]
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -10,7 +11,7 @@ pub struct TextElement {
     #[serde(rename="$value")] pub text: Vec<BuildableText>,
 }
 impl CustomElement for TextElement {
-    fn build(&self) -> Box<dyn Widget<TatakuAction>> {
+    fn build(&self) -> Box<dyn Widget<actions::Action>> {
         let mut text = self.text.clone();
 
         // Trim any literal texts in this element so you can
@@ -23,13 +24,13 @@ impl CustomElement for TextElement {
             *last = last.trim_end().into();
         }
 
-        WidgetContainer::new_boxed(
+        widgets::WidgetContainer::new_boxed(
             self.style.clone(),
             "text",
             self.id.clone(),
             self.class_list.clone(),
-            TextWidget::new(
-                WidgetText::from_buildable_iter(text)
+            widgets::TextWidget::new(
+                widgets::WidgetText::from_buildable_iter(text)
             )
             .boxed()
         )

@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::*;
 pub type FFTHook = RwLock<FFTData>;
 
 #[derive(Default, Clone)]
@@ -13,7 +13,7 @@ pub struct VisualizationData {
 
     pub data: Vec<FFTEntry>,
 
-    pub timer: TatakuInstant,
+    pub timer: Instant,
 }
 impl VisualizationData {
     pub fn new(config: VisualizationConfig) -> Self {
@@ -21,7 +21,7 @@ impl VisualizationData {
             config,
             hook: Arc::default(),
             data: Vec::new(),
-            timer: TatakuInstant::now()
+            timer: Instant::now()
         }
     }
     pub fn reset(&mut self) {

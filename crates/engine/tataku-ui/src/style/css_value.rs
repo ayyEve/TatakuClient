@@ -1,4 +1,5 @@
-use crate::prelude::*;
+use crate::*;
+use common::reflect::*;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub enum CssValue<T> {
@@ -12,7 +13,7 @@ impl<T> CssValue<T> {
     pub fn parse<E>(
         s: &str, 
         default: Self,
-        value_parser: impl Fn(&str) -> Result<T, E>
+        value_parser: impl Fn(&str) -> core::result::Result<T, E>
     ) -> Self {
         match s {
             "unset" => Self::Unset,

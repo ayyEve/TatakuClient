@@ -1,11 +1,23 @@
 use crate::prelude::*;
+use common::reflect::*;
+use tataku::TatakuValue;
+use ui::{
+    tree::*,
+    widget::*,
+    message::*,
+};
+use input::{ 
+    InputType,
+    InputEvent, 
+    MouseButton, 
+};
 
 #[derive(ChainableInitializer)]
 pub struct Button {
     #[chain] on_press_left: ButtonOnClick,
     #[chain] on_press_middle: ButtonOnClick,
     #[chain] on_press_right: ButtonOnClick,
-    child: Box<dyn Widget<TatakuAction>>,
+    child: Box<dyn Widget<actions::Action>>,
     
     active_cond: VisuallyActive,
 
@@ -16,10 +28,10 @@ pub struct Button {
     node_id: NodeId,
 }
 impl Button {
-    pub fn new(child: Box<dyn Widget<TatakuAction>>) -> Self {
+    pub fn new(child: Box<dyn Widget<actions::Action>>) -> Self {
         Self {
             child,
-            node_id: EMPTY_NODE,
+            node_id: ui::EMPTY_NODE,
             on_press_left: ButtonOnClick::Message(None),
             on_press_middle: ButtonOnClick::Message(None),
             on_press_right: ButtonOnClick::Message(None),
@@ -46,18 +58,18 @@ impl Button {
         self.on_press_left(on_press)
     }
 }
-impl Widget<TatakuAction> for Button {
+impl Widget<actions::Action> for Button {
     fn name(&self) -> CowStr { "button_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn children(&self) -> WidgetChildren<'_, TatakuAction> {
+    fn children(&self) -> WidgetChildren<'_, actions::Action> {
         WidgetChildren::Single(&self.child)
     }
-    fn children_mut(&mut self) -> WidgetChildrenMut<'_, TatakuAction> {
+    fn children_mut(&mut self) -> WidgetChildrenMut<'_, actions::Action> {
         WidgetChildrenMut::Single(&mut self.child)
     }
 
-    fn layout(&mut self, shell: &mut LayoutShell<TatakuAction>) -> taffy::TaffyResult<NodeId>  {
+    fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId>  {
         let child = self.child.layout(shell)?;
 
         self.node_id = shell.tree.new_with_children(&[ child ])?;
@@ -73,7 +85,7 @@ impl Widget<TatakuAction> for Button {
     fn input(
         &mut self, 
         event: &InputEvent, 
-        shell: &mut InputShell<TatakuAction>,
+        shell: &mut InputShell<actions::Action>,
     ) {
         let Some(bounds) = shell.tree.bounds(self.node_id) 
         else { return };
@@ -124,7 +136,7 @@ impl Widget<TatakuAction> for Button {
         self.child.input(event, shell);
     }
     
-    fn draw(&self, shell: &mut DrawShell<TatakuAction>) {
+    fn draw(&self, shell: &mut DrawShell<actions::Action>) {
         let theme = &shell.general_theme;
         let Some(bounds) = shell.tree.absolute_bounds(self.node_id) 
         else { return };
@@ -133,22 +145,20 @@ impl Widget<TatakuAction> for Button {
 
         // draw button
         shell.list.push(
-            Rectangle::new_bounds(
+            graphics::Rectangle::new_bounds(
                 bounds,
                 theme.background_color,
-            )
-            .border(Border::new(
+            ).border(tataku::Border::new(
                 theme.get_color(active, self.hovered), 
                 2.0
-            ))
-            .shape(Shape::Round(2.0))
+            )).shape(graphics::Shape::Round(2.0))
         );
 
         // draw child ontop of button
         self.child.draw(shell);
     }
 
-    fn update(&mut self, shell: &mut UpdateShell<TatakuAction>) {
+    fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
         self.active_cond.update(shell.values);
         self.child.update(shell);
 
@@ -169,7 +179,7 @@ impl Widget<TatakuAction> for Button {
     fn handle_message(
         &mut self, 
         message: &Message, 
-        shell: &mut MessageShell<TatakuAction>,
+        shell: &mut MessageShell<actions::Action>,
     ) {
         self.child.handle_message(message, shell);
     }
@@ -206,7 +216,7 @@ impl ButtonOnClick {
                 if actions.is_empty() {
                     None
                 } else {
-                    Some(ActionResponse::Action(TatakuAction::Multiple(actions)))
+                    Some(ActionResponse::Action(actions::Action::Multiple(actions)))
                 }
             },
 
@@ -303,5 +313,5 @@ impl VisuallyActive {
 #[derive(Debug)]
 pub enum ActionResponse {
     Message(Message),
-    Action(TatakuAction),
+    Action(actions::Action),
 }

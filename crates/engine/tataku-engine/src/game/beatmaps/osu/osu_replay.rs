@@ -1,4 +1,6 @@
-use crate::prelude::*;
+use crate::*;
+use common::Score;
+use beatmaps::osu::osu_replay_converter::OsuReplay;
 
 #[derive(Debug)]
 pub struct OsuReplayDownloader(Score, u64);
@@ -9,8 +11,8 @@ impl OsuReplayDownloader {
     }
 }
 
-impl ReplayDownloader for OsuReplayDownloader {
-    fn get_replay(&self, settings: &Settings) -> TatakuResult<Score> {
+impl beatmaps::ReplayDownloader for OsuReplayDownloader {
+    fn get_replay(&self, settings: &Settings) -> tataku::TatakuResult<Score> {
         let key = settings.integrations.osu.api_key.clone();
 
         let url = format!("https://osu.ppy.sh//api/get_replay?k={key}&s={}", self.1);
@@ -20,7 +22,7 @@ impl ReplayDownloader for OsuReplayDownloader {
     
         // check if the received data 
         if bytes.is_empty() {
-            return Err(TatakuError::String("Downloaded file was empty".to_owned()));
+            return Err(tataku::Error::String("Downloaded file was empty".to_owned()));
         }
 
 
@@ -31,11 +33,11 @@ impl ReplayDownloader for OsuReplayDownloader {
         let data:Wrapper = serde_json::from_slice(&bytes)?;
 
         if let Some(content) = &data.content {
-            let data = Cryptography::decode_base64(content)
-                .map_err(|e| TatakuError::String(format!("error decoding osu replay: {e}")))?;
+            let data = tataku::Cryptography::decode_base64(content)
+                .map_err(|e| tataku::Error::String(format!("error decoding osu replay: {e}")))?;
             Ok(OsuReplay::replay_from_score_and_lzma(&self.0, &mut data.as_ref())?)
         } else {
-            Err(TatakuError::String(data.error.unwrap_or("peppy api sucks".to_owned())))
+            Err(tataku::Error::String(data.error.unwrap_or("peppy api sucks".to_owned())))
         }
     }
 }

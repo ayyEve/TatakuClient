@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::*;
 
 #[derive(Clone, Copy, Debug, Default2)]
 pub struct TimingPoint {

@@ -1,4 +1,6 @@
-use crate::prelude::*;
+use crate::*;
+use common::reflect::*;
+use common::Md5Hash;
 
 // contains beatmap info unrelated to notes and timing points, etc
 #[derive(Reflect)]
@@ -7,7 +9,7 @@ use crate::prelude::*;
 pub struct BeatmapMeta {
     #[reflect(alias("path"))] pub file_path: ArcStr,
     #[reflect(alias("hash"))] pub beatmap_hash: Md5Hash,
-    #[reflect(alias("type"))] pub beatmap_type: BeatmapType,
+    #[reflect(alias("type"))] pub beatmap_type: beatmaps::BeatmapType,
 
     #[reflect(alias("playmode"))] pub mode: ArcStr,
     pub artist: ArcStr,
@@ -33,7 +35,7 @@ impl BeatmapMeta {
     pub fn new(
         file_path: String, 
         beatmap_hash: Md5Hash, 
-        beatmap_type: BeatmapType,
+        beatmap_type: beatmaps::BeatmapType,
     ) -> Self {
         Self {
             file_path: file_path.into(),
@@ -144,7 +146,7 @@ impl BeatmapMeta {
         (remaining_ms / 1000.0).floor()
     }
     
-    pub fn get_hp(&self, _mods: &ModManager) -> f32 {
+    pub fn get_hp(&self, _mods: &gameplay::mods::ModManager) -> f32 {
         self.hp
         // scale_by_mods(self.hp, 0.5, 1.4, mods).clamp(1.0, 10.0)
     }

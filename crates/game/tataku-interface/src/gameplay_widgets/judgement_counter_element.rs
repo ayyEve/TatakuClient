@@ -1,4 +1,19 @@
 use crate::prelude::*;
+use graphics::Image;
+use tataku::{
+    Alignment,
+    Border,
+    Bounds,
+    Vector2,
+    Color,
+};
+use engine::{
+    settings::common_gameplay::CommonGameplaySettings,
+    gameplay::{
+        widgets::*,
+        GamemodeInfo,
+    },
+};
 
 const BOX_SIZE:Vector2 = Vector2::new(40.0, 40.0);
 
@@ -21,9 +36,9 @@ impl JudgementCounterElement {
         text: &str,
         button_image: Option<&Image>,
         scale: &Vector2,
-        font_contexts: &mut TextLayoutContexts,
+        font_contexts: &mut ui::widget::TextLayoutContexts,
     ) -> (Arc<parley::Layout<Color>>, Vector2) {
-        let mut style = TextStyle {
+        let mut style = ui::style::TextStyle {
             font_size: 20.0 * scale.y,
             color: Color::WHITE,
             ..Default::default()
@@ -117,7 +132,7 @@ impl GameplayWidget for JudgementCounterElement {
             let text = if new_count == 0 {
                 Cow::Borrowed(judge.display_name)
             } else {
-                format_number(new_count).into()
+                tataku::format_number(new_count).into()
             };
 
             let (layout, size) = Self::layout(
@@ -153,13 +168,14 @@ impl GameplayWidget for JudgementCounterElement {
                 shell.list.push(btn);
             } else {
                 // draw bg box
-                shell.list.push(
-                    Rectangle::new_bounds(
-                        box_bounds,
-                        cache.judge.color,
-                    )
-                    .border(Border::new(Color::BLACK, 2.0))
-                );
+                shell.list.push(graphics::Rectangle::new_bounds(
+                    box_bounds,
+                    cache.judge.color,
+                )
+                .border(Border::new(
+                    Color::BLACK, 
+                    2.0
+                )));
             }
 
             let centered = Alignment::CENTER.resolve(
@@ -170,10 +186,10 @@ impl GameplayWidget for JudgementCounterElement {
             );
 
             // draw text/count
-            shell.list.push(Transformed::new(
-                Transform::default()
+            shell.list.push(graphics::Transformed::new(
+                graphics::Transform::default()
                     .translate(centered),
-                Box::new(Text::new(cache.layout.clone())),
+                Box::new(graphics::Text::new(cache.layout.clone())),
             ));
         }
     }
@@ -185,7 +201,7 @@ impl GameplayWidget for JudgementCounterElement {
         self.button_image = shell.skin_manager.get_texture(
             "inputoverlay-key",
             shell.source,
-            SkinUsage::Gamemode,
+            graphics::SkinUsage::Gamemode,
             false
         );
     }
@@ -207,7 +223,7 @@ pub const JUDGMENT_COUNTER: GameplayWidgetBuilder = GameplayWidgetBuilder {
 
 
 struct CachedJudgment {
-    judge: HitJudgment,
+    judge: engine::gameplay::judgments::HitJudgment,
     count: u16,
     layout: Arc<parley::Layout<Color>>,
     size: Vector2,

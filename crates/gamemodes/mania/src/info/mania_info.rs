@@ -1,5 +1,23 @@
 use crate::prelude::*;
 
+use engine::{
+    Settings,
+    game::diffcalc::DiffCalc,
+    beatmaps::{
+        Beatmap,
+        BeatmapType,
+        BeatmapMeta,
+    },
+    gameplay::{
+        GameMode,
+        GamemodeInfo,
+        GamemodeSettings,
+        info::CalcPerfInfo,
+        difficulty_value::*,
+    }
+};
+
+
 pub const GAME_INFO:GamemodeInfo = GamemodeInfo {
     id: "mania",
     display_name: "Mania",
@@ -32,7 +50,7 @@ pub const GAME_INFO:GamemodeInfo = GamemodeInfo {
 struct ManiaGameInfo;
 impl ManiaGameInfo {
     /// from https://wiki.quavergame.com/docs/gameplay#accuracy
-    fn calc_acc(score: &Score) -> f32 {
+    fn calc_acc(score: &common::Score) -> f32 {
         let marv = score.judgments.get("geki").copied().unwrap_or_default() as f32;
         let perf = score.judgments.get("x300").copied().unwrap_or_default() as f32;
         let great = score.judgments.get("katu").copied().unwrap_or_default() as f32;
@@ -70,10 +88,10 @@ impl ManiaGameInfo {
         matches!(map, BeatmapType::Osu | BeatmapType::Quaver | BeatmapType::Stepmania)
     }
 
-    fn create_game(beatmap: &Beatmap, settings: &Settings) -> TatakuResult<Box<dyn GameMode>> {
+    fn create_game(beatmap: &Beatmap, settings: &Settings) -> tataku::Result<Box<dyn GameMode>> {
         Ok(Box::new(ManiaGame::new(beatmap, false, settings)?))
     }
-    fn create_diffcalc(map: &BeatmapMeta, settings: &Settings) -> TatakuResult<Box<dyn DiffCalc>> {
+    fn create_diffcalc(map: &BeatmapMeta, settings: &Settings) -> tataku::Result<Box<dyn DiffCalc>> {
         Ok(Box::new(ManiaDifficultyCalculator::new(map, settings)?))
     }
 

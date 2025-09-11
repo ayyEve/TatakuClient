@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use common::replays::*;
 
 // TODO: document whatever the hell is happening here
 #[derive(Default)]
@@ -45,7 +46,7 @@ impl ManiaAutoHelper {
                 // press the key, and hold it until the note's end time
                 list.push(ReplayAction::Press(Self::get_keypress(c)));
                 state.pressed = true;
-                if note.note_type() == NoteType::Hold {
+                if note.note_type() == engine::beatmaps::NoteType::Hold {
                     state.release_time = note.end_time(0.0);
                 } else {
                     state.release_time = note.end_time(50.0);

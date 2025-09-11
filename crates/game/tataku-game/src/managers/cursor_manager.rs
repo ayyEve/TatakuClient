@@ -2,12 +2,30 @@
  * Cursor Manager
  */
 use crate::prelude::*;
+use ui::widget::TextLayoutContexts;
+
+use tataku::{
+    Color,
+    Bounds,
+    Border,
+    Vector2,
+    Alignment,
+    DefaultFont,
+    FontAwesome,
+    HorizontalAlign,
+};
+
+use engine::{
+    actions,
+    actions::cursor::CursorMode,
+};
+
 
 pub struct CursorManager {
     /// position of the visible cursor
     pub pos: Vector2,
 
-    cursor_images: HashMap<CursorMode, Image>,
+    cursor_images: HashMap<CursorMode, graphics::Image>,
     cursor_mode: CursorMode,
 
     // cached settings
@@ -22,20 +40,20 @@ pub struct CursorManager {
     left_pressed: bool,
     right_pressed: bool,
 
-    current_skin: Arc<SkinSettings>,
+    current_skin: Arc<graphics::SkinSettings>,
 
-    ripples: Vec<Trail>,
+    ripples: Vec<graphics::Trail>,
     time: f32,
 
-    settings: CursorSettings,
+    settings: engine::settings::cursor::CursorSettings,
 
     layout: Arc<parley::Layout<Color>>,
     pos_offset: Vector2,
 }
 impl CursorManager {
     pub fn new(
-        skin: Arc<SkinSettings>, 
-        settings: CursorSettings,
+        skin: Arc<graphics::SkinSettings>, 
+        settings: engine::settings::cursor::CursorSettings,
     ) -> Self {
         Self {
             pos: Vector2::ZERO,
@@ -61,7 +79,7 @@ impl CursorManager {
 
 
     #[cfg(feature="graphics")]
-    pub fn reload_skin(&mut self, skin_manager: &mut dyn SkinProvider) {
+    pub fn reload_skin(&mut self, skin_manager: &mut dyn graphics::SkinProvider) {
         self.cursor_images.clear();
         self.current_skin = skin_manager.skin().clone();
 
@@ -75,8 +93,8 @@ impl CursorManager {
         ] {
             if let Some(image) = skin_manager.get_texture(
                 mode.tex_name(),
-                &TextureSource::Skin,
-                SkinUsage::Game, true
+                &graphics::TextureSource::Skin,
+                graphics::SkinUsage::Game, true
             ) {
                 self.cursor_images.insert(mode, image);
             }
@@ -85,7 +103,7 @@ impl CursorManager {
         self.cursor_rotation = 0.0;
     }
 
-    fn get_cursor_image(&self) -> Option<&Image> {
+    fn get_cursor_image(&self) -> Option<&graphics::Image> {
         self.cursor_images.get(&self.cursor_mode)
     }
 
@@ -121,9 +139,10 @@ impl CursorManager {
 
     pub fn handle_cursor_action(
         &mut self, 
-        action: CursorAction,
+        action: actions::cursor::CursorAction,
         text_layout_contexts: &mut TextLayoutContexts,
     ) {
+        use actions::cursor::CursorAction as CursorAction;
         match action {
             CursorAction::OverrideRippleRadius(radius_maybe)
                 => self.ripple_radius_override = radius_maybe,
@@ -141,7 +160,7 @@ impl CursorManager {
                 let fallback_info = Self::fallback_cursor(self.cursor_mode);
                 let mut layout = text_layout_contexts.simple_text(
                     &fallback_info.char.to_string(), 
-                    &TextStyle {
+                    &ui::style::TextStyle {
                         font: DefaultFont::FontAwesome,
                         font_size: 32.0,
                         color: self.settings.cursor_color.color,
@@ -186,7 +205,7 @@ impl CursorManager {
         if pressed && self.settings.cursor_ripples { self.add_ripple() }
     }
 
-    pub fn draw_ripples(&self, list: &mut RenderableCollection) {
+    pub fn draw_ripples(&self, list: &mut graphics::RenderableCollection) {
         if !self.visible { return }
 
         // draw ripples
@@ -203,7 +222,7 @@ impl CursorManager {
 
     pub fn draw(
         &mut self, 
-        list: &mut RenderableCollection,
+        list: &mut graphics::RenderableCollection,
     ) {
         if !self.visible { return }
 
@@ -214,12 +233,12 @@ impl CursorManager {
             list.push(cursor.clone());
         } else {
             // use font awesome as fallback
-            list.push(Transformed::new(
-                Transform::default()
+            list.push(graphics::Transformed::new(
+                graphics::Transform::default()
                     .rotate(self.cursor_rotation)
                     .translate(self.pos)
                     ,
-                Box::new(Text::new(self.layout.clone()))
+                Box::new(graphics::Text::new(self.layout.clone()))
             ));
 
             // let mut text = Text::new(
@@ -241,7 +260,7 @@ impl CursorManager {
 
     fn add_ripple(&mut self) {
         let duration = 500.0;
-        self.ripples.push(Trail::new(self.pos, self.time, duration));
+        self.ripples.push(graphics::Trail::new(self.pos, self.time, duration));
     }
 
 }

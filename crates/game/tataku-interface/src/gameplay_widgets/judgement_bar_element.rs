@@ -1,4 +1,16 @@
 use crate::prelude::*;
+use tataku::{
+    Alignment,
+    Vector2,
+    Color,
+};
+use engine::{
+    settings::common_gameplay::CommonGameplaySettings,
+    gameplay::{
+        widgets::*,
+        GamemodeInfo,
+    },
+};
 
 const HIT_TIMING_BAR_SIZE:Vector2 = Vector2::new(300.0, 30.0);
 // const HIT_TIMING_BAR_POS:Vector2 = Vector2::new(200.0 - HIT_TIMING_BAR_SIZE.x() / 2.0, -(DURATION_HEIGHT + 3.0 + HIT_TIMING_BAR_SIZE.y() + 5.0));
@@ -66,7 +78,7 @@ impl GameplayWidget for JudgementBarElement {
         for (window, color) in &self.judgment_colors {
             let width = (window / self.miss_window) * timing_bar_size.x;
             
-            shell.list.push(Rectangle::new(
+            shell.list.push(graphics::Rectangle::new(
                 shell.pos_offset + Vector2::new(
                     (timing_bar_size.x - width) / 2.0, 
                     0.0
@@ -95,7 +107,7 @@ impl GameplayWidget for JudgementBarElement {
                 1.0 - (diff - (HIT_TIMING_DURATION - HIT_TIMING_FADE)) / HIT_TIMING_FADE
             } else { 1.0 };
 
-            shell.list.push(Rectangle::new(
+            shell.list.push(graphics::Rectangle::new(
                 shell.pos_offset + Vector2::new(pos, 0.0),
                 Vector2::new(2.0, timing_bar_size.y),
                 HIT_TIMING_BAR_COLOR.alpha(alpha),

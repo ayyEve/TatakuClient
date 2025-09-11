@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::*;
 
 /// helper for parsing numbers and variables
 #[doc(hidden)]
@@ -23,4 +23,4 @@ impl BuildableShuntingYardReadType {
         }
     }
 }
-impl _ShuntingYardReadType for BuildableShuntingYardReadType {}
+impl tataku::_ShuntingYardReadType for BuildableShuntingYardReadType {}

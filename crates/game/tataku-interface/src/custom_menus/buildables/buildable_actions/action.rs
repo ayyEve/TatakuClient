@@ -1,4 +1,18 @@
 use crate::prelude::*;
+use ui::tree::NodeId;
+use tataku::TatakuValue;
+use common::reflect::Reflect;
+use engine::VariablePathResolver;
+use engine::actions;
+// use engine::actions::{ 
+//     UiAction,
+//     GameAction,
+//     MenuAction,
+//     actions::Action,
+//     DialogLocation,
+//     DialogCreateOptions,
+//     VariablePathResolver, 
+// };
 
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
@@ -132,14 +146,13 @@ pub enum BuildableAction {
         event: BuildableValue,
     }
 }
-
 impl BuildableAction {
     pub fn resolve(
         &self,
         node: NodeId,
         values: &mut dyn Reflect,
         passed_in: Option<&TatakuValue>
-    ) -> Option<TatakuAction> {
+    ) -> Option<actions::Action> {
         match self {
             Self::None => None,
             Self::Delayed {
@@ -149,14 +162,14 @@ impl BuildableAction {
                 let passed_in = passed_in.cloned();
                 let actions = actions.clone();
 
-                let delayed = DelayedActionType::Callback(Arc::new(
-                    move |values| TatakuAction::Multiple(actions
+                let delayed = actions::action::DelayedActionType::Callback(Arc::new(
+                    move |values| actions::Action::Multiple(actions
                         .iter()
                         .filter_map(|a| a.resolve(node, values, passed_in.as_ref()))
                         .collect()
                 )));
 
-                Some(TatakuAction::Delayed(
+                Some(actions::Action::Delayed(
                     delayed,
                     *delay
                 ))
@@ -169,7 +182,7 @@ impl BuildableAction {
                     .ok()?;
 
                 let action = values
-                    .reflect_get::<BuildableSettingsAction>(&path)
+                    .reflect_get::<engine::settings::BuildableSettingsAction>(&path)
                     .map_err(|e| error!("{e:?}"))
                     .ok()?;
 
@@ -190,15 +203,15 @@ impl BuildableAction {
                     .map(Cow::into_owned)
                     .and_then(|i| i.string_maybe().cloned())?;
 
-                Some(TatakuAction::Menu(MenuAction::AddDialog {
+                Some(actions::Action::Menu(engine::actions::menu::MenuAction::AddDialog {
                     id: id.into(),
-                    options: Box::new(DialogCreateOptions {
+                    options: Box::new(actions::menu::DialogCreateOptions {
                         allow_multiple: *allow_multiple,
                         draggable: *draggable,
                         resizable: *resizable,
                         title: Cow::Owned(title.clone()),
                         // TODO: not auto?
-                        location: DialogLocation::Auto,
+                        location: actions::menu::DialogLocation::Auto,
                         background: true,
                     }),
                 }))
@@ -206,7 +219,7 @@ impl BuildableAction {
 
             #[cfg(feature="graphics")]
             Self::CloseDialog
-                => Some(UiAction::new(node, DialogAction::Close).into()),
+                => Some(actions::ui::UiAction::new(node, engine::actions::dialog::DialogAction::Close).into()),
 
             #[cfg(feature="graphics")]
             Self::SetMenu {
@@ -217,43 +230,43 @@ impl BuildableAction {
                     .map(Cow::into_owned)
                     .and_then(|i| i.string_maybe().cloned())?;
 
-                Some(TatakuAction::Menu(MenuAction::SetMenu {
+                Some(actions::Action::Menu(actions::menu::MenuAction::SetMenu {
                     id: id.into(),
                 }))
             }
 
             Self::Map { action } => action
                 .resolve(values, passed_in)
-                .map(TatakuAction::Beatmap),
+                .map(actions::Action::Beatmap),
 
             Self::Mods { action } => action
                 .resolve(values, passed_in)
-                .map(TatakuAction::Mods),
+                .map(actions::Action::Mods),
 
             Self::Song { action } => action
                 .resolve(values, passed_in)
-                .map(TatakuAction::Song),
+                .map(actions::Action::Song),
 
             Self::Game { action } => action
                 .resolve(values, passed_in)
                 .map(Box::new)
-                .map(TatakuAction::Game),
+                .map(actions::Action::Game),
 
             Self::Multiplayer { action } => action
                 .resolve(values, passed_in)
-                .map(TatakuAction::Multiplayer),
+                .map(actions::Action::Multiplayer),
 
             #[cfg(feature="graphics")]
             Self::Cursor { action } => action
                 .resolve(values, passed_in)
-                .map(TatakuAction::CursorAction),
+                .map(actions::Action::CursorAction),
 
             Self::Chat { action }
                 => action.resolve(values, passed_in),
 
             #[cfg(feature="graphics")]
             Self::Ui { action } => {
-                Some(UiAction::new(
+                Some(actions::ui::UiAction::new(
                     node,
                     action.resolve(node, values, passed_in)?
                 ).into())
@@ -261,14 +274,14 @@ impl BuildableAction {
 
             Self::Gameplay {
                 action
-            } => Some(TatakuAction::Game(Box::new(
-                GameAction::CurrentGameAction(action.resolve())
+            } => Some(actions::Action::Game(Box::new(
+                actions::game::GameAction::CurrentGameAction(action.resolve())
             ))),
 
             Self::OnlineContent { action }
                 => action
                 .resolve(values, passed_in)
-                .map(TatakuAction::OnlineContent),
+                .map(actions::Action::OnlineContent),
 
 
             Self::SetValue { key, value } => {
@@ -279,15 +292,15 @@ impl BuildableAction {
                 value
                     .resolve(values, passed_in)
                     .map(|value|
-                        GameAction::SetValue(key, value.into_owned()).into()
+                        actions::game::GameAction::SetValue(key, value.into_owned()).into()
                     )
             }
             Self::CustomEvent { event } => {
                 let event = event.resolve(values , passed_in)?;
                 let event = event.as_string();
 
-                Some(GameAction::HandleEvent(
-                    TatakuEvent::CustomEvent(event.into()),
+                Some(actions::game::GameAction::HandleEvent(
+                    input::TatakuEvent::CustomEvent(event.into()),
                     None
                 ).into())
             }
@@ -302,13 +315,13 @@ impl BuildableAction {
                     BuildableConditionResult::Failed => None,
                     BuildableConditionResult::Unbuilt(a)
                         => panic!("BuildableConditions should be built! '{a}'"),
-                    BuildableConditionResult::True => Some(TatakuAction::Multiple(
+                    BuildableConditionResult::True => Some(actions::Action::Multiple(
                         if_true.iter()
                         .filter_map(|a| a.resolve(node, values, passed_in))
                         .collect()
                     )),
                     BuildableConditionResult::False => if_false.as_ref()
-                        .map(|if_false| TatakuAction::Multiple(
+                        .map(|if_false| actions::Action::Multiple(
                             if_false.inner.iter()
                                 .filter_map(|a| a.resolve(node, values, passed_in))
                                 .collect()

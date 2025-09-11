@@ -1,4 +1,5 @@
-use crate::prelude::*;
+use crate::*;
+use common::reflect::*;
 
 #[derive(Reflect, FromStr)]
 #[reflect(display = "display")]
@@ -47,7 +48,7 @@ impl ScoreRetreivalMethod {
         }
     }
 }
-impl Display for ScoreRetreivalMethod {
+impl std::fmt::Display for ScoreRetreivalMethod {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self:?}")
     }

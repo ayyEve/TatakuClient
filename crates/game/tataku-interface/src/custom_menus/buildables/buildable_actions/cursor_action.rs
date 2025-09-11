@@ -1,4 +1,6 @@
 use crate::prelude::*;
+use tataku::TatakuValue;
+use common::reflect::Reflect;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -12,10 +14,10 @@ impl BuildableCursorAction {
         &self, 
         _values: &mut dyn Reflect, 
         _passed_in: Option<&TatakuValue>,
-    ) -> Option<CursorAction> {
+    ) -> Option<actions::cursor::CursorAction> {
         match self {
-            Self::Show => Some(CursorAction::SetVisible(true)),
-            Self::Hide => Some(CursorAction::SetVisible(false)),
+            Self::Show => Some(actions::cursor::CursorAction::SetVisible(true)),
+            Self::Hide => Some(actions::cursor::CursorAction::SetVisible(false)),
         }
     }
     

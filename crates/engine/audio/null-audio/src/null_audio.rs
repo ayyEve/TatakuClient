@@ -1,13 +1,13 @@
-use tataku_engine::prelude::*;
-use tataku_audio::prelude::*;
+use tataku_engine::*;
+use tataku_audio::*;
 
 pub struct NullAudio;
 impl AudioApi for NullAudio {
-    fn load_sample_data(&self, _: Vec<u8>) -> TatakuResult<Arc<dyn AudioInstance>> {
+    fn load_sample_data(&self, _: Vec<u8>) -> tataku::TatakuResult<Arc<dyn AudioInstance>> {
         Ok(Arc::new(NullAudioInstance))
     }
 
-    fn load_stream_data(&self, _: Vec<u8>) -> TatakuResult<Arc<dyn AudioInstance>> {
+    fn load_stream_data(&self, _: Vec<u8>) -> tataku::TatakuResult<Arc<dyn AudioInstance>> {
         Ok(Arc::new(NullAudioInstance))
     }
 
@@ -34,5 +34,5 @@ impl AudioInstance for NullAudioInstance {
     fn set_position(&self, _: f32) {}
     fn set_repeat(&self, _: bool) {}
 
-    fn get_data(&self) -> Vec<FFTEntry> { vec![] }
+    fn get_data(&self) -> Vec<tataku::FFTEntry> { vec![] }
 }

@@ -33,20 +33,20 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> Result<TokenStream> {
     }
 
     let all_lines = quote!{
-        impl MakeSettingsMenu for #struct_name {
+        impl engine::settings::MakeSettingsMenu for #struct_name {
             fn create_provider(
                 &self, 
                 prefix: String,
-                builder: &mut SettingsBuilder,
+                builder: &mut engine::settings::SettingsBuilder,
             ) {
-                use crate::prelude::*;
+                use crate::*;
                 #output
             }
         }
     };
 
-    // std::fs::create_dir_all("/tmp/debug").unwrap();
-    // std::fs::write(format!("/tmp/debug/{struct_name}-settings_impl.rs"), all_lines.to_string()).unwrap();
+    std::fs::create_dir_all("/tmp/debug").unwrap();
+    std::fs::write(format!("/tmp/debug/{struct_name}-settings_impl.rs"), all_lines.to_string()).unwrap();
     
     Ok(all_lines)
 }
@@ -83,7 +83,7 @@ impl SettingsItem {
             let prop_string = property.to_string();
 
             output.extend(quote! {
-                builder.add_item(BuildableSetting {
+                builder.add_item(engine::settings::BuildableSetting {
                     name: #text.to_owned(),
                     path: format!("{prefix}.{}", #prop_string),
                     setting_type: #tokens,

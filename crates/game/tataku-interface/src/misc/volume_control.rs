@@ -1,4 +1,14 @@
 use crate::prelude::*;
+use input::Key;
+use tataku::{
+    Vector2,
+    Color,
+    Border,
+};
+use ui::{
+    style::*,
+    widget::*,
+};
 
 /// how long should the volume thing be displayed when changed
 const VOLUME_CHANGE_DISPLAY_TIME:u64 = 2000;
@@ -10,7 +20,7 @@ pub struct VolumeControl {
     vol_selected_index: u8,
     /// when the volume was changed, or the selected index changed
     vol_selected_time: u64,
-    timer: TatakuInstant,
+    timer: tataku::Instant,
 
     settings: VolumeSettings,
     window_size: Vector2,
@@ -26,7 +36,11 @@ impl VolumeControl {
         self.window_size = window_size;
     }
 
-    fn change(&mut self, delta: f32, settings: &mut Settings) -> Option<SongAction> {
+    fn change(
+        &mut self, 
+        delta: f32, 
+        settings: &mut engine::Settings
+    ) -> Option<actions::song::SongAction> {
         let elapsed = self.elapsed();
 
         // reset index back to 0 (master) if the volume hasnt been touched in a while
@@ -46,13 +60,13 @@ impl VolumeControl {
         self.settings.music = settings.music_vol;
         self.vol_selected_time = elapsed;
 
-        Some(SongAction::SetVolume(settings.get_music_vol()))
+        Some(actions::song::SongAction::SetVolume(settings.get_music_vol()))
     }
 
 
     pub fn draw(
         &mut self, 
-        list: &mut RenderableCollection,
+        list: &mut graphics::RenderableCollection,
         text_layout_contexts: &mut TextLayoutContexts,
     ) {
         let elapsed = self.elapsed();
@@ -62,7 +76,7 @@ impl VolumeControl {
             && elapsed - self.vol_selected_time < VOLUME_CHANGE_DISPLAY_TIME
             {
             const BOX_SIZE:Vector2 = Vector2::new(300.0, 100.0);
-            let b = Rectangle::new(
+            let b = graphics::Rectangle::new(
                 self.window_size - BOX_SIZE,
                 BOX_SIZE,
                 Color::WHITE,
@@ -95,7 +109,7 @@ impl VolumeControl {
                     text,
                     &TextStyle {
                         font_size: 20.0,
-                        font: DefaultFont::Main,
+                        font: tataku::DefaultFont::Main,
                         color,
                         ..Default::default()
                     },
@@ -103,21 +117,21 @@ impl VolumeControl {
                 layout.break_all_lines(None);
 
                 // text
-                list.push(Transformed::new(
-                    Transform::default()
+                list.push(graphics::Transformed::new(
+                    graphics::Transform::default()
                         .translate(self.window_size - Vector2::new(300.0, r_offset.y)),
-                    Box::new(Text::new(layout))
+                    Box::new(graphics::Text::new(layout))
                 ));
 
                 // fill
-                list.push(Rectangle::new(
+                list.push(graphics::Rectangle::new(
                     self.window_size - r_offset,
                     Vector2::new(border_size.x * *value, border_size.y),
                     Color::BLUE,
                 ));
 
                 // border
-                list.push(Rectangle::new(
+                list.push(graphics::Rectangle::new(
                     self.window_size - r_offset,
                     border_size,
                     Color::TRANSPARENT,
@@ -166,9 +180,9 @@ impl VolumeControl {
     pub fn on_mouse_wheel(
         &mut self,
         delta: f32,
-        mods: KeyModifiers,
-        settings: &mut Settings
-    ) -> Option<SongAction> {
+        mods: input::KeyModifiers,
+        settings: &mut engine::Settings
+    ) -> Option<actions::song::SongAction> {
         if !mods.alt { return None }
 
         self.change(delta / 10.0, settings)
@@ -178,9 +192,9 @@ impl VolumeControl {
     pub fn on_key_press(
         &mut self,
         key: &Key,
-        mods: KeyModifiers,
-        actions: &mut ActionQueue,
-        settings: &mut Settings,
+        mods: input::KeyModifiers,
+        actions: &mut actions::ActionQueue,
+        settings: &mut engine::Settings,
     ) -> bool {
         let elapsed = self.elapsed();
 

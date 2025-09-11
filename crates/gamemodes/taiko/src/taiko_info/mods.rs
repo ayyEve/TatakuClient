@@ -1,5 +1,7 @@
 #![allow(non_upper_case_globals)]
 use crate::prelude::*;
+use engine::gameplay::mods::*;
+
 
 pub const FullAlt: GameplayMod = GameplayMod {
     id: "full_alt",

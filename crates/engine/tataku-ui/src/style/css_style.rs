@@ -1,10 +1,12 @@
-use crate::prelude::*;
-
+use crate::*;
+use style::*;
+use common::reflect::*;
 
 #[macro_export]
 macro_rules! create_css_value {
     ($name: ident, $default: ident; $($str: expr, $variant: ident);* $(;)?) => {
-        use $crate::prelude::*;
+        use $crate::*;
+        use common::reflect::*;
         #[derive(Deserialize, Reflect)]
         #[derive(Copy, Clone, Debug, PartialEq, Eq)]
         pub enum $name {
@@ -17,7 +19,7 @@ macro_rules! create_css_value {
         }
         impl std::str::FromStr for $name {
             type Err = ();
-            fn from_str(s: &str) -> Result<Self, Self::Err> {
+            fn from_str(s: &str) -> core::result::Result<Self, Self::Err> {
                 $(
                     if s == $str { return Ok(Self::$variant) }
                 )*
@@ -196,11 +198,11 @@ pub struct CssStyle {
 
     /// How should the element fit inside the container
     #[css(parse_with = "Self::parse_image_fit")]
-    pub image_stretch: CssValue<ImageStretch>,
+    pub image_stretch: CssValue<graphics::ImageStretch>,
 
     /// Where should the image be loaded from
     #[css(parse_with = "Self::parse_image_source")]
-    pub image_source: CssValue<TextureSource>,
+    pub image_source: CssValue<graphics::TextureSource>,
 
     /// Should the image be grayscale
     pub image_grayscale: CssValue<bool>,

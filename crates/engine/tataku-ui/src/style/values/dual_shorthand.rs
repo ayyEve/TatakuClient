@@ -1,4 +1,5 @@
-use crate::prelude::*;
+use crate::*;
+use style::*;
 
 #[derive(Clone, Debug)]
 pub struct DualShorthand<T> {
@@ -42,7 +43,7 @@ impl<T> Default for DualShorthand<T> {
 impl<T: FromStr + Clone> FromStr for DualShorthand<T> {
     type Err = <T as FromStr>::Err;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> core::result::Result<Self, Self::Err> {
         let s = s.trim();
         let mut split = s.split(" ");
 

@@ -1,9 +1,18 @@
 use crate::prelude::*;
+use input::InputEvent;
+use common::reflect::*;
+use tataku::TatakuValue;
+use ui::{
+    tree::*,
+    style::*,
+    widget::*,
+    message::*,
+};
 
 #[derive(ChainableInitializer)]
 pub struct SwitchWidget {
     cases: Vec<SwitchWidgetCase>,
-    default_case: Option<Box<dyn Widget<TatakuAction>>>,
+    default_case: Option<Box<dyn Widget<actions::Action>>>,
     // cond: BuildableCondition,
 
     value: Option<usize>,
@@ -12,7 +21,7 @@ pub struct SwitchWidget {
 impl SwitchWidget {
     pub fn new(
         mut cases: Vec<SwitchWidgetCase>,
-        default_case: Option<Box<dyn Widget<TatakuAction>>>,
+        default_case: Option<Box<dyn Widget<actions::Action>>>,
         // mut cond: BuildableCondition,
     ) -> Self {
         // make sure the conditions are built
@@ -26,12 +35,12 @@ impl SwitchWidget {
             default_case,
 
             value: None,
-            node_id: EMPTY_NODE
+            node_id: ui::EMPTY_NODE
         }
     }
 
     #[allow(clippy::borrowed_box, reason = "signature")]
-    fn get_ele(&self) -> Option<&Box<dyn Widget<TatakuAction>>> {
+    fn get_ele(&self) -> Option<&Box<dyn Widget<actions::Action>>> {
         let Some(index) = self.value else {
             return self.default_case.as_ref();
         };
@@ -39,7 +48,7 @@ impl SwitchWidget {
         Some(&self.cases.get(index)?.widget)
     }
 
-    fn get_ele_mut(&mut self) -> Option<&mut Box<dyn Widget<TatakuAction>>> {
+    fn get_ele_mut(&mut self) -> Option<&mut Box<dyn Widget<actions::Action>>> {
         let Some(index) = self.value else {
             return self.default_case.as_mut();
         };
@@ -63,22 +72,22 @@ impl SwitchWidget {
             );
     }
 }
-impl Widget<TatakuAction> for SwitchWidget {
+impl Widget<actions::Action> for SwitchWidget {
     fn name(&self) -> CowStr { "switch_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn children(&self) -> WidgetChildren<'_, TatakuAction> {
+    fn children(&self) -> WidgetChildren<'_, actions::Action> {
         self.get_ele()
             .map(WidgetChildren::Single)
             .unwrap_or_default()
     }
-    fn children_mut(&mut self) -> WidgetChildrenMut<'_, TatakuAction> {
+    fn children_mut(&mut self) -> WidgetChildrenMut<'_, actions::Action> {
         self.get_ele_mut()
             .map(WidgetChildrenMut::Single)
             .unwrap_or_default()
     }
 
-    fn all_children(&self) -> WidgetChildren<'_, TatakuAction> {
+    fn all_children(&self) -> WidgetChildren<'_, actions::Action> {
         let mut list = self.cases
             .iter()
             .map(|a| &a.widget)
@@ -89,7 +98,7 @@ impl Widget<TatakuAction> for SwitchWidget {
 
         WidgetChildren::OwnedList(list)
     }
-    fn all_children_mut(&mut self) -> WidgetChildrenMut<'_, TatakuAction> {
+    fn all_children_mut(&mut self) -> WidgetChildrenMut<'_, actions::Action> {
         let mut list = self.cases
             .iter_mut()
             .map(|a| &mut a.widget)
@@ -135,7 +144,7 @@ impl Widget<TatakuAction> for SwitchWidget {
     //     }
     // }
 
-    fn layout(&mut self, shell: &mut LayoutShell<TatakuAction>) -> taffy::TaffyResult<NodeId>  {
+    fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId>  {
         let mut children = self
             .cases
             .iter_mut()
@@ -151,7 +160,7 @@ impl Widget<TatakuAction> for SwitchWidget {
         Ok(self.node_id)
     }
 
-    fn init_style(&mut self, shell: &mut LayoutShell<TatakuAction>) {
+    fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
         for i in self.all_children_mut() {
             i.init_style(shell);
         }
@@ -166,13 +175,13 @@ impl Widget<TatakuAction> for SwitchWidget {
         }
     }
 
-    fn draw(&self, shell: &mut DrawShell<TatakuAction>) {
+    fn draw(&self, shell: &mut DrawShell<actions::Action>) {
         let Some(child) = self.get_ele()
         else { return };
 
         child.draw(shell);
     }
-    fn draw_overlay(&self, shell: &mut DrawShell<TatakuAction>) {
+    fn draw_overlay(&self, shell: &mut DrawShell<actions::Action>) {
         let Some(child) = self.get_ele()
         else { return };
 
@@ -182,7 +191,7 @@ impl Widget<TatakuAction> for SwitchWidget {
     fn input(
         &mut self,
         event: &InputEvent,
-        shell: &mut InputShell<TatakuAction>,
+        shell: &mut InputShell<actions::Action>,
     ) {
         let Some(child) = self.get_ele_mut()
         else { return };
@@ -192,7 +201,7 @@ impl Widget<TatakuAction> for SwitchWidget {
 
 
 
-    fn update(&mut self, shell: &mut UpdateShell<TatakuAction>) {
+    fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
         let previous_value = self.value;
         self.update_value(shell.values);
 
@@ -200,28 +209,28 @@ impl Widget<TatakuAction> for SwitchWidget {
             if let Some(child) = previous_value
                 .and_then(|i| self.cases.get(i))
             {
-                shell.actions.push(UiAction::new(
+                shell.actions.push(actions::ui::UiAction::new(
                     child.widget.node_id(),
-                    UiActionType::OverrideDisplay(Some(DisplayType::None))
+                    actions::ui::UiActionType::OverrideDisplay(Some(DisplayType::None))
                 ).into());
             } else if let Some(default) = &self.default_case {
-                shell.actions.push(UiAction::new(
+                shell.actions.push(actions::ui::UiAction::new(
                     default.node_id(),
-                    UiActionType::OverrideDisplay(Some(DisplayType::None))
+                    actions::ui::UiActionType::OverrideDisplay(Some(DisplayType::None))
                 ).into());
             }
 
             if let Some(child) = self.value
                 .and_then(|i| self.cases.get(i))
             {
-                shell.actions.push(UiAction::new(
+                shell.actions.push(actions::ui::UiAction::new(
                     child.widget.node_id(),
-                    UiActionType::OverrideDisplay(None)
+                    actions::ui::UiActionType::OverrideDisplay(None)
                 ).into());
             }  else if let Some(default) = &self.default_case {
-                shell.actions.push(UiAction::new(
+                shell.actions.push(actions::ui::UiAction::new(
                     default.node_id(),
-                    UiActionType::OverrideDisplay(None)
+                    actions::ui::UiActionType::OverrideDisplay(None)
                 ).into());
             }
         }
@@ -234,7 +243,7 @@ impl Widget<TatakuAction> for SwitchWidget {
     fn handle_message(
         &mut self,
         message: &Message,
-        shell: &mut MessageShell<TatakuAction>,
+        shell: &mut MessageShell<actions::Action>,
     ) {
         if let Some(child) = self.get_ele_mut() {
             child.handle_message(message, shell);
@@ -243,16 +252,16 @@ impl Widget<TatakuAction> for SwitchWidget {
 
     fn handle_event(
         &mut self,
-        event: &TatakuEvent,
+        event: &input::TatakuEvent,
         event_value: Option<&TatakuValue>,
-        shell: &mut MessageShell<TatakuAction>,
+        shell: &mut MessageShell<actions::Action>,
     ) {
         if let Some(child) = self.get_ele_mut() {
             child.handle_event(event, event_value, shell);
         }
     }
 
-    fn reload_skin(&mut self, shell: &mut UpdateShell<TatakuAction>) {
+    fn reload_skin(&mut self, shell: &mut UpdateShell<actions::Action>) {
         for i in self.cases.iter_mut() {
             i.widget.reload_skin(shell);
         }
@@ -265,5 +274,5 @@ impl Widget<TatakuAction> for SwitchWidget {
 
 pub struct SwitchWidgetCase {
     pub cond: BuildableCondition,
-    pub widget: Box<dyn Widget<TatakuAction>>,
+    pub widget: Box<dyn Widget<actions::Action>>,
 }

@@ -1,10 +1,22 @@
 use crate::prelude::*;
 
+use tataku::Color;
+use common::reflect::Reflect;
+use engine::{
+    task::*,
+    actions,
+    notifications::{
+        Notification,
+        NotificationOnClick,
+    },
+};
+
+
 pub struct UploadScreenshotTask {
     state: TatakuTaskState,
     data: ScreenshotData,
 
-    task: Option<AsyncLoader<Result<String, Notification>>>,
+    task: Option<engine::AsyncLoader<Result<String, Notification>>>,
 }
 impl UploadScreenshotTask {
     pub fn new(data: impl Into<ScreenshotData>) -> Self {
@@ -25,7 +37,7 @@ impl UploadScreenshotTask {
 
         let data = match data {
             ScreenshotData::Raw(data) => data,
-            ScreenshotData::Path(path) => Io::read_file(path)
+            ScreenshotData::Path(path) => tataku::Io::read_file(path)
                 .map_err(|e| Notification::new_error("Error loading screenshot to send to server", e))?,
         };
 
@@ -52,18 +64,21 @@ impl TatakuTask for UploadScreenshotTask {
         &mut self, 
         values: &mut dyn Reflect, 
         _: &TaskGameState, 
-        actions: &mut ActionQueue
+        actions: &mut actions::ActionQueue
     ) {
         let Some(task) = self.task.as_ref() else {
             self.state = TatakuTaskState::Running;
 
-            actions.push(GameAction::AddNotification(Notification::new_text(
+            actions.push(actions::game::GameAction::AddNotification(Notification::new_text(
                 "Uploading screenshot...", Color::YELLOW, 5000.0
             )).into());
 
             let data = self.data.clone();
-            let settings = values.reflect_get::<Settings>("settings").unwrap();
-            self.task = Some(AsyncLoader::new(Self::upload(
+            let settings = values
+                .reflect_get::<engine::Settings>("settings")
+                .unwrap();
+
+            self.task = Some(engine::AsyncLoader::new(Self::upload(
                 settings.score_url.clone(),
                 settings.username.clone(),
                 settings.password.clone(),
@@ -83,7 +98,7 @@ impl TatakuTask for UploadScreenshotTask {
                     5000.0, 
                     NotificationOnClick::Url(url.clone())
                 ).into());
-                actions.push(GameAction::CopyToClipboard(url.into()).into());
+                actions.push(actions::game::GameAction::CopyToClipboard(url.into()).into());
             }
             Err(notif) => actions.push(notif.into()),
         }

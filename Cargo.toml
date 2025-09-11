@@ -51,8 +51,8 @@ clippy.semicolon_if_nothing_returned = "warn"
 rust.unused_must_use = "deny"
 
 [workspace.dependencies]
-# tataku-common = { version = "0.19.0", registry = "tataku-registry", path = "../tataku-common/tataku-common" }
-tataku-common = { version = "0.19.0", registry = "tataku-registry" }
+tataku-common = { version = "0.20.0", registry = "tataku-registry", path = "../tataku-common/tataku-common" }
+# tataku-common = { version = "0.20.0", registry = "tataku-registry" }
 tataku-ui.path = "crates/engine/tataku-ui"
 tataku-game.path = "crates/game/tataku-game"
 tataku-client.path = "crates/game/tataku-client"

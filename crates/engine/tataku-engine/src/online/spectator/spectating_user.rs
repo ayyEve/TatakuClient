@@ -1,4 +1,5 @@
-use crate::prelude::*;
+use crate::*;
+use common::reflect::*;
 
 /// helper for spectating users since we only care about the user_id and username
 #[derive(Reflect)]

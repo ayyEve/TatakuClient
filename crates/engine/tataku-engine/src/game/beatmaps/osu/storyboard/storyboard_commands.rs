@@ -1,5 +1,8 @@
 #![allow(unused)]
-use crate::prelude::*;
+use crate::*;
+use tataku::Color;
+use tataku::Easing;
+use tataku::Vector2;
 
 /// https://osu.ppy.sh/wiki/en/Storyboard/Scripting/Commands
 #[derive(Copy, Clone, Debug)]

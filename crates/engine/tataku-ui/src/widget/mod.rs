@@ -1,9 +1,9 @@
-mod shells;
-mod widget;
-mod operations;
-mod has_node_id;
-mod empty_widget;
-mod widget_children;
+pub mod shells;
+pub mod widget;
+pub mod operations;
+pub mod has_node_id;
+pub mod empty_widget;
+pub mod widget_children;
 
 pub use shells::*;
 pub use widget::*;

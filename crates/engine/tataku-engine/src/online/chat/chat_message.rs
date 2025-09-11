@@ -1,11 +1,12 @@
-use crate::prelude::*;
+use crate::*;
+use common::reflect::*;
 
 #[derive(Reflect)]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ChatMessage {
     pub sender: String,
     // channel or username
-    pub channel: ChatChannelType, 
+    pub channel: online::ChatChannelType, 
     pub sender_id: u32,
     pub timestamp: u64, //TODO: make this not shit
     pub text: String,
@@ -19,7 +20,12 @@ impl ChatMessage {
             Err(_) => 0,
         }
     }
-    pub fn new(sender: String, channel: ChatChannelType, sender_id: u32, text: String) -> Self {
+    pub fn new(
+        sender: String, 
+        channel: online::ChatChannelType, 
+        sender_id: u32, 
+        text: String
+    ) -> Self {
         let timestamp = ChatMessage::now();
         let formatted = Self::get_formatted_text(timestamp, &sender, &text);
         

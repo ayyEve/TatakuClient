@@ -1,4 +1,6 @@
 use crate::prelude::*;
+use tataku::{ Vector2, Color };
+use std::sync::atomic::{ AtomicU32, Ordering::SeqCst };
 
 const SIZE:Vector2 = Vector2::new(180.0, 20.0);
 const TEXT_PADDING:Vector2 = Vector2::new(0.0, 2.0);
@@ -8,13 +10,13 @@ pub struct FpsDisplay {
     name: String,
     pos: Vector2,
     count: u32,
-    timer: TatakuInstant,
+    timer: tataku::Instant,
     last: f32,
 
     frametime_last: f32,
     /// what frametime to actually draw
     frametime_last_draw: f32,
-    frametime_timer: TatakuInstant,
+    frametime_timer: tataku::Instant,
     pos_count: u8,
 
     // skin_helper: CurrentSkinHelper,
@@ -26,13 +28,13 @@ impl FpsDisplay {
         Self {
             count: 0,
             last: 0.0,
-            timer: TatakuInstant::now(),
+            timer: tataku::Instant::now(),
             name: name.to_owned(),
             pos: Vector2::ZERO,
 
             frametime_last: 0.0,
             frametime_last_draw: 0.0,
-            frametime_timer: TatakuInstant::now(),
+            frametime_timer: tataku::Instant::now(),
             // skin_helper: CurrentSkinHelper::new(),
             // number_image: SkinnedNumber::new(Color::BLACK, 0.0, pos, 0.0, "fps", None, 2).await.ok(),
             pos_count
@@ -51,7 +53,7 @@ impl FpsDisplay {
         //     self.number_image = SkinnedNumber::new(Color::BLACK, 0.0, self.pos, self.frametime_last_draw as f64, "fps", None, 2).await.ok();
         // }
 
-        let now = TatakuInstant::now();
+        let now = tataku::Instant::now();
         let fps_elapsed = now.duration_since(self.timer).as_secs_f32() * 1000.0;
 
         if fps_elapsed >= 100.0 {
@@ -74,14 +76,14 @@ impl FpsDisplay {
         self.count += 1;
 
         self.frametime_last = self.frametime_last.max(self.frametime_timer.as_millis());
-        self.frametime_timer = TatakuInstant::now();
+        self.frametime_timer = tataku::Instant::now();
     }
     pub fn draw(
         &self,
-        list: &mut RenderableCollection,
-        text_layout_contexts: &mut TextLayoutContexts,
+        list: &mut graphics::RenderableCollection,
+        text_layout_contexts: &mut ui::widget::TextLayoutContexts,
     ) {
-        list.push(Rectangle::new(
+        list.push(graphics::Rectangle::new(
             self.pos,
             SIZE,
             Color::WHITE.alpha(0.8),
@@ -91,7 +93,7 @@ impl FpsDisplay {
 
         let mut layout = text_layout_contexts.simple_text(
             &text,
-            &TextStyle {
+            &ui::style::TextStyle {
                 font_size: 12.0,
                 color: Color::BLACK,
                 ..Default::default()
@@ -100,16 +102,15 @@ impl FpsDisplay {
 
         layout.break_all_lines(Some(SIZE.x));
 
-        let transform = Transform::default()
+        let transform = graphics::Transform::default()
             .translate(self.pos + TEXT_PADDING);
 
-        list.push(Transformed::new(
+        list.push(graphics::Transformed::new(
             transform,
-            Box::new(Text::new(layout.clone()))
+            Box::new(graphics::Text::new(layout.clone()))
         ));
     }
 }
-
 
 /// fps display helper, cleans up some of the code in game
 pub struct AsyncFpsDisplay {
@@ -118,7 +119,7 @@ pub struct AsyncFpsDisplay {
 
     count: Arc<AtomicU32>,
 
-    timer: TatakuInstant,
+    timer: tataku::Instant,
     last: f32,
 
     frametime_last: Arc<AtomicU32>,
@@ -140,7 +141,7 @@ impl AsyncFpsDisplay {
             frametime_last,
 
             last: 0.0,
-            timer: TatakuInstant::now(),
+            timer: tataku::Instant::now(),
             name: name.to_owned(),
             pos: Vector2::ZERO,
 
@@ -161,7 +162,7 @@ impl AsyncFpsDisplay {
         let fps_elapsed = self.timer.as_millis();
         if fps_elapsed >= 100.0 {
             // reset timer
-            self.timer = TatakuInstant::now();
+            self.timer = tataku::Instant::now();
 
             // update frametime and last updates/s
             self.frametime_last_draw = self.frametime_last
@@ -173,10 +174,10 @@ impl AsyncFpsDisplay {
 
     pub fn draw(
         &self,
-        list: &mut RenderableCollection,
-        text_layout_contexts: &mut TextLayoutContexts,
+        list: &mut graphics::RenderableCollection,
+        text_layout_contexts: &mut ui::widget::TextLayoutContexts,
     ) {
-        list.push(Rectangle::new(
+        list.push(graphics::Rectangle::new(
             self.pos,
             SIZE,
             Color::WHITE.alpha(0.8),
@@ -186,7 +187,7 @@ impl AsyncFpsDisplay {
 
         let mut layout = text_layout_contexts.simple_text(
             &text,
-            &TextStyle {
+            &ui::style::TextStyle {
                 font_size: 12.0,
                 color: Color::BLACK,
                 ..Default::default()
@@ -194,12 +195,12 @@ impl AsyncFpsDisplay {
         );
 
         layout.break_all_lines(Some(SIZE.x));
-        let transform = Transform::default()
+        let transform = graphics::Transform::default()
             .translate(self.pos + TEXT_PADDING);
 
-        list.push(Transformed::new(
+        list.push(graphics::Transformed::new(
             transform,
-            Box::new(Text::new(layout.clone())),
+            Box::new(graphics::Text::new(layout.clone())),
         ));
         
     }

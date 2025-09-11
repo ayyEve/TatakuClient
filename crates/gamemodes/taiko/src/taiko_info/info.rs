@@ -1,4 +1,23 @@
 use crate::prelude::*;
+use tataku::Color;
+
+use engine::{
+    game::diffcalc::DiffCalc,
+    beatmaps::{
+        Beatmap,
+        BeatmapMeta,
+        BeatmapType,
+    },
+    gameplay::{
+        stats::*,
+        GameMode,
+        GamemodeInfo,
+        GamemodeSettings,
+        difficulty_value::*,
+        mods::GameplayModGroupStatic,
+    },
+};
+
 
 pub static GAME_INFO: GamemodeInfo = GamemodeInfo {
     id: "taiko",
@@ -56,7 +75,7 @@ pub static GAME_INFO: GamemodeInfo = GamemodeInfo {
 
 struct TaikoGameInfo;
 impl TaikoGameInfo {
-    fn calc_acc(score: &Score) -> f32 {
+    fn calc_acc(score: &common::Score) -> f32 {
         let x100 = score.judgments.get("x100").copied().unwrap_or_default() as f32;
         let x300 = score.judgments.get("x300").copied().unwrap_or_default() as f32;
         let miss = score.judgments.get("xmiss").copied().unwrap_or_default() as f32;
@@ -88,10 +107,10 @@ impl TaikoGameInfo {
     }
 
 
-    fn create_game(beatmap: &Beatmap, settings: &Settings) -> TatakuResult<Box<dyn GameMode>> {
+    fn create_game(beatmap: &Beatmap, settings: &engine::Settings) -> tataku::Result<Box<dyn GameMode>> {
         Ok(Box::new(TaikoGame::new(beatmap, false, settings)?))
     }
-    fn create_diffcalc(map: &BeatmapMeta, settings: &Settings) -> TatakuResult<Box<dyn DiffCalc>> {
+    fn create_diffcalc(map: &BeatmapMeta, settings: &engine::Settings) -> tataku::Result<Box<dyn DiffCalc>> {
         Ok(Box::new(TaikoDifficultyCalculator::new(map, settings)?))
     }
 

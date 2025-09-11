@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use ui::widget::Widget;
 
 #[derive(Deserialize)]
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -12,17 +13,17 @@ pub struct SwitchElement {
     #[serde(rename = "default", default)] default_case: Option<Wrapped<Element>>,
 }
 impl CustomElement for SwitchElement {
-    fn build(&self) -> Box<dyn Widget<TatakuAction>> {
-        WidgetContainer::new_boxed(
+    fn build(&self) -> Box<dyn Widget<actions::Action>> {
+        widgets::WidgetContainer::new_boxed(
             self.style.clone(),
             "switch",
             self.id.clone(),
             self.class_list.clone(),
-            SwitchWidget::new(
+            widgets::SwitchWidget::new(
                 self
                     .cases
                     .iter()
-                    .map(|i| SwitchWidgetCase {
+                    .map(|i| widgets::SwitchWidgetCase {
                         cond: i.cond.clone(),
                         widget: i.element.build(),
                     })

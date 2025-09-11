@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use engine::BeatmapMeta;
 
 const BEATMAP_INSERT: &str = "
 INSERT INTO beatmaps (

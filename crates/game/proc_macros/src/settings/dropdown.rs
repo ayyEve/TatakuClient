@@ -36,8 +36,8 @@ impl DropdownItem {
     pub fn write(&self) -> TokenStream {
         if let Some(path) = &self.path {
             quote! {
-                BuildableSettingType::Dropdown {
-                    options: BuildableSettingDropdownOptions::Variable {
+                engine::settings::BuildableSettingType::Dropdown {
+                    options: engine::settings::BuildableSettingDropdownOptions::Variable {
                         var: #path .to_string(),
                     },
                 }

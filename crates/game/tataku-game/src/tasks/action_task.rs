@@ -1,4 +1,11 @@
 use crate::prelude::*;
+use ui::tree::NodeId;
+use common::reflect::Reflect;
+use engine::{
+    actions,
+    game::task::*,
+    actions::action::DelayedActionType
+};
 
 /// Just runs the action, primarily used with the DelayedTask to run actions after a certain amount of time
 pub struct ActionTask {
@@ -24,7 +31,7 @@ impl TatakuTask for ActionTask {
         &mut self, 
         values: &mut dyn Reflect, 
         _state: &TaskGameState, 
-        actions: &mut ActionQueue
+        actions: &mut actions::ActionQueue
     ) {
         if self.state == TatakuTaskState::NotStarted {
             self.state = TatakuTaskState::Running;
@@ -39,7 +46,7 @@ impl TatakuTask for ActionTask {
                     passed_in
                 } => action
                     .resolve(node, values, passed_in.as_ref())
-                    .unwrap_or(TatakuAction::None),
+                    .unwrap_or(actions::Action::None),
 
                 ActionTaskAction::Callback(cb) 
                     => cb.clone()(values),
@@ -57,14 +64,14 @@ impl TatakuTask for ActionTask {
 
 
 pub enum ActionTaskAction {
-    Action(TatakuAction), 
-    Callback(Arc<dyn Fn(&mut dyn Reflect) -> TatakuAction + Send + Sync>),
+    Action(actions::Action), 
+    Callback(Arc<dyn Fn(&mut dyn Reflect) -> actions::Action + Send + Sync>),
     
     #[cfg(feature = "ui")]
     Buildable {
-        action: Box<BuildableAction>,
+        action: Box<interface::BuildableAction>,
         node: NodeId,
-        passed_in: Option<TatakuValue>
+        passed_in: Option<tataku::TatakuValue>
     },
 }
 impl From<DelayedActionType> for ActionTaskAction {

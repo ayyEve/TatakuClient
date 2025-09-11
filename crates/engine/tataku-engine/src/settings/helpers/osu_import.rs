@@ -1,8 +1,6 @@
 #![allow(unused)]
+use crate::*;
 use std::str::FromStr;
-
-use crate::prelude::*;
-
 
 pub fn load_osu_skins(path: impl AsRef<Path>) {
     let mut path = path.as_ref();
@@ -24,9 +22,9 @@ pub fn load_osu_skins(path: impl AsRef<Path>) {
     }
 }
 
-pub fn load_osu_settings(path: impl AsRef<Path>, settings: &mut Settings) -> Result<(), TatakuError> {
+pub fn load_osu_settings(path: impl AsRef<Path>, settings: &mut Settings) -> tataku::TatakuResult<()> {
     let path = path.as_ref();
-    let data = Io::read_lines_resolved(path)?
+    let data = tataku::Io::read_lines_resolved(path)?
         .flat_map(|i| {
             let mut s = i.split("=");
             s
@@ -205,8 +203,8 @@ pub fn load_osu_settings(path: impl AsRef<Path>, settings: &mut Settings) -> Res
 }
 
 
-fn parse_key(k: &String) -> Option<Key> {
-    use crate::prelude::Key::*;
+fn parse_key(k: &String) -> Option<input::Key> {
+    use crate::input::Key::*;
 
     match &**k {
         "LeftShift" => Some(LShift),

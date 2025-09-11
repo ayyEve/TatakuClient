@@ -1,4 +1,17 @@
 use crate::prelude::*;
+use tataku::{
+    Alignment,
+    Bounds,
+    Vector2,
+    Color,
+};
+use engine::{
+    settings::common_gameplay::CommonGameplaySettings,
+    gameplay::{
+        widgets::*,
+        GamemodeInfo,
+    },
+};
 
 const FONT_SIZE:f32 = 30.0;
 const MAX_CHARS:usize = 7; // 1 for neg, 1 for colon, 2 for secs, 3 for mins
@@ -67,7 +80,7 @@ impl GameplayWidget for ElapsedElement {
 
             let mut layout = shell.font_context.simple_text(
                 &format!("{mins:02}:{secs:02}"), 
-                &TextStyle {
+                &ui::style::TextStyle {
                     color: Color::WHITE,
                     font_size: 30.0 * shell.scale.y,
                     ..Default::default()
@@ -91,8 +104,9 @@ impl GameplayWidget for ElapsedElement {
             SIZE * shell.scale
         );
 
-        shell.list.push(Transformed::new(
-            Transform::default().translate(Alignment::CENTER.resolve(
+        shell.list.push(graphics::Transformed::new(
+            graphics::Transform::default().translate(
+                Alignment::CENTER.resolve(
                 &bounds, 
                 Vector2::new(
                     layout.width(),
@@ -101,7 +115,7 @@ impl GameplayWidget for ElapsedElement {
                 true, 
                 true
             )),
-            Box::new(Text::new(layout))
+            Box::new(graphics::Text::new(layout))
         ));
     }
 
@@ -111,7 +125,10 @@ impl GameplayWidget for ElapsedElement {
 pub const ELAPSED: GameplayWidgetBuilder = GameplayWidgetBuilder {
     name: "elapsed_timer",
     default_layout: GameplayWidgetLayout::new_default(
-        GameplayWidgetAnchor::element("judgement_bar", GameplayWidgetAlign::Left),
+        GameplayWidgetAnchor::element(
+            "judgement_bar", 
+            GameplayWidgetAlign::Left
+        ),
         Alignment::CENTER_LEFT,
         Some(Alignment::CENTER_RIGHT),
         None,

@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::*;
 
 #[allow(unused)]
 pub enum WindowEvent {
@@ -15,7 +15,7 @@ pub enum WindowEvent {
     Closed,
 
     /// Window size changed
-    SizeChanged(Vector2),
+    SizeChanged(tataku::Vector2),
 
     /// A file is hovered over the window
     FileHover(PathBuf),
@@ -24,17 +24,17 @@ pub enum WindowEvent {
     FileDrop(PathBuf),
 
     /// A screenshot has been completed
-    ScreenshotComplete(Vec<u8>, [u32; 2], ScreenshotInfo),
+    ScreenshotComplete(Vec<u8>, [u32; 2], actions::window::ScreenshotInfo),
     
     /// An input event was produced
-    Input(InputType),
+    Input(input::InputType),
 
     /// Integrations have been loaded and are sent back to the game for usage
-    IntegrationsLoaded(Vec<Box<dyn TatakuIntegration>>),
+    IntegrationsLoaded(Vec<Box<dyn io::TatakuIntegration>>),
 
     /// The list of available monitors has been updated
     AvailableMonitors(Vec<String>),
 
     /// The list of available vsync modes has been updated
-    VsyncModes(Vec<Vsync>),
+    VsyncModes(Vec<tataku::Vsync>),
 }

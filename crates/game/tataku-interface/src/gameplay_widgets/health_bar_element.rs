@@ -1,4 +1,22 @@
 use crate::prelude::*;
+use tataku::{
+    Alignment,
+    Border,
+    Vector2,
+    Color,
+};
+use engine::{
+    settings::common_gameplay::CommonGameplaySettings,
+    gameplay::{
+        widgets::*,
+        GamemodeInfo,
+    },
+};
+use graphics::{
+    Image,
+    SkinUsage,
+};
+
 const HEALTH_DAMP: f32 = 1.0;
 
 struct HealthBarElement {
@@ -39,7 +57,7 @@ impl GameplayWidget for HealthBarElement {
     fn display_name(&self) -> &'static str { "Health Bar" }
 
     fn max_size(&self) -> Vector2 {
-        Vector2::new(self.container_size.x / 2.0, DURATION_HEIGHT)
+        Vector2::new(self.container_size.x / 2.0, super::DURATION_HEIGHT)
     }
 
     fn reload_skin(
@@ -140,7 +158,7 @@ impl GameplayWidget for HealthBarElement {
             color.pos = shell.pos_offset;
             color.scale *= shell.scale;
 
-            shell.list.push(Scissored::new(
+            shell.list.push(graphics::Scissored::new(
                 scissor,
                 Box::new(color)
             ));
@@ -159,7 +177,7 @@ impl GameplayWidget for HealthBarElement {
                 color_1.pos = shell.pos_offset;
                 color_1.scale *= shell.scale;
 
-                shell.list.push(Scissored::new(
+                shell.list.push(graphics::Scissored::new(
                     scissor,
                     Box::new(color_1)
                 ));
@@ -178,36 +196,32 @@ impl GameplayWidget for HealthBarElement {
         } else {
             let bg_size = Vector2::new(
                 self.container_size.x / 2.0, 
-                DURATION_HEIGHT
+                super::DURATION_HEIGHT
             ) * shell.scale;
 
             let len = self.common_game_settings.healthbar_colors.len();
             let index = ((len as f32 * percent) as usize).min(len - 1);
 
             // bg
-            shell.list.push(
-                Rectangle::new(
-                    shell.pos_offset,
-                    bg_size,
-                    self.common_game_settings.healthbar_bg_color,
-                ).border(Border::new(
-                    self.common_game_settings.healthbar_border_color,
-                    1.8
-                ))
-            );
+            shell.list.push(graphics::Rectangle::new(
+                shell.pos_offset,
+                bg_size,
+                self.common_game_settings.healthbar_bg_color,
+            ).border(Border::new(
+                self.common_game_settings.healthbar_border_color,
+                1.8
+            )));
 
             // fill
-            shell.list.push(Rectangle::new(
+            shell.list.push(graphics::Rectangle::new(
                 shell.pos_offset,
                 Vector2::new(
                     (self.container_size.x / 2.0) * percent, 
-                    DURATION_HEIGHT
+                    super::DURATION_HEIGHT
                 ) * shell.scale,
                 self.common_game_settings.healthbar_colors[index],
             ));
         }
-
-
     }
 }
 

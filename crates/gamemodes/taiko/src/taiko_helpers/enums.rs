@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use common::replays::KeyPress;
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq)]
 pub enum TaikoHit {

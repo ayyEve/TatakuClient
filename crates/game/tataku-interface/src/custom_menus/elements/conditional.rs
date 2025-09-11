@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use ui::widget::Widget;
 
 #[derive(Deserialize)]
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -16,13 +17,13 @@ pub struct ConditionalElement {
 }
 
 impl CustomElement for ConditionalElement {
-    fn build(&self) -> Box<dyn Widget<TatakuAction>> {
-        WidgetContainer::new_boxed(
+    fn build(&self) -> Box<dyn Widget<actions::Action>> {
+        widgets::WidgetContainer::new_boxed(
             self.style.clone(),
             "conditional",
             self.id.clone(),
             self.class_list.clone(),
-            ConditionalWidget::new(
+            widgets::ConditionalWidget::new(
                 self.if_true.build(),
                 self.if_false.as_ref().map(|i| i.inner.build()),
                 BuildableCondition::Unbuilt(self.condition.clone())

@@ -11,8 +11,9 @@ pub use osu_info::GAME_INFO;
 
 /// import helper
 mod prelude {
-    pub use tataku_engine::prelude::*;
-    pub use tataku_graphics::prelude::*;
+    pub use tataku_engine::input;
+    pub use tataku_engine as engine;
+    pub use tataku_client_common::common::*;
 
     pub use super::osu_math::*;
     pub use super::osu_game::*;

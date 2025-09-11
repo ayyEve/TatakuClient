@@ -1,5 +1,5 @@
-use crate::prelude::*;
-use tataku_ui::prelude::*;
+use crate::*;
+use common::reflect::*;
 
 #[derive(Reflect)]
 #[derive(Clone, Debug, Default)]
@@ -22,7 +22,7 @@ pub struct BuildableSettingsCategory {
     pub id: u16,
     pub settings: Vec<Arc<BuildableSetting>>,
 }
-impl Display for BuildableSettingsCategory {
+impl std::fmt::Display for BuildableSettingsCategory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.name.fmt(f)
     }
@@ -110,7 +110,7 @@ pub enum BuildableSettingDropdownOptions {
         var: String,
     },
 }
-impl Display for BuildableSettingDropdownOptions {
+impl std::fmt::Display for BuildableSettingDropdownOptions {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::List {..} => "List",
@@ -124,7 +124,7 @@ impl Display for BuildableSettingDropdownOptions {
 pub struct BuildableSettingDropdownListOption {
     pub name: String,
     #[reflect(skip)]
-    pub value: TatakuValue,
+    pub value: tataku::TatakuValue,
 }
 
 #[derive(Reflect)]
@@ -133,8 +133,8 @@ pub struct BuildableSettingsAction {
     #[reflect(skip)] #[debug(skip)]
     pub inner: Arc<dyn BuildableSettingsActionTrait>,
 }
-impl From<TatakuAction> for BuildableSettingsAction {
-    fn from(value: TatakuAction) -> Self {
+impl From<actions::Action> for BuildableSettingsAction {
+    fn from(value: actions::Action) -> Self {
         Self {
             inner: Arc::new(value)
         }
@@ -145,18 +145,18 @@ impl From<TatakuAction> for BuildableSettingsAction {
 pub trait BuildableSettingsActionTrait: Send + Sync {
     fn build(
         &self, 
-        node: NodeId,
-        passed_in: Option<&TatakuValue>,
+        node: ui::tree::NodeId,
+        passed_in: Option<&tataku::TatakuValue>,
         values: &dyn Reflect,
-    ) -> Option<TatakuAction>;
+    ) -> Option<actions::Action>;
 }
-impl BuildableSettingsActionTrait for TatakuAction {
+impl BuildableSettingsActionTrait for actions::Action {
     fn build(
         &self, 
-        _: NodeId,
-        _: Option<&TatakuValue>,
+        _: ui::tree::NodeId,
+        _: Option<&tataku::TatakuValue>,
         _: &dyn Reflect,
-    ) -> Option<TatakuAction> {
+    ) -> Option<actions::Action> {
         Some(self.clone())
     }
 }

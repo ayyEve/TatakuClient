@@ -1,4 +1,11 @@
 use crate::prelude::*;
+use std::f32::consts::PI;
+use engine::gameplay::stats::StatsEntry;
+use tataku::{
+    Color,
+    Border,
+    Bounds,
+};
 
 #[derive(Clone)]
 pub struct PieGraph {
@@ -21,14 +28,14 @@ impl PieGraph {
         }
     }
 
-    pub fn draw(&self, bounds: &Bounds) -> RenderableCollection {
-        let mut collection = RenderableCollection::default();
+    pub fn draw(&self, bounds: &Bounds) -> graphics::RenderableCollection {
+        let mut collection = graphics::RenderableCollection::default();
         let size = bounds.size;
         let radius = size.x / 2.0;
 
         // background
         collection.push(
-            Rectangle::new(
+            graphics::Rectangle::new(
                 bounds.pos,
                 size,
                 Color::new(0.2, 0.2, 0.2, 0.7),
@@ -52,7 +59,7 @@ impl PieGraph {
             let theta = (i.get_value() / self.sum) * 2.0 * PI;
 
             // arc
-            collection.push(Sector::new(
+            collection.push(graphics::Sector::new(
                 bounds.pos + center,
                 radius,
                 last_theta,

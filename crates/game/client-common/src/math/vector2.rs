@@ -1,3 +1,5 @@
+use crate::prelude::common::reflect::*;
+
 pub type Vector3 = cgmath::Vector3<f32>;
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -117,67 +119,6 @@ impl From<Vector2> for [f32; 2] {
     }
 }
 
-#[cfg(feature="ui")]
-impl From<taffy::geometry::Point<f32>> for Vector2 {
-    fn from(value: taffy::geometry::Point<f32>) -> Self {
-        Self::new(value.x, value.y)
-    }
-}
-
-
-#[cfg(feature="ui")]
-impl From<taffy::geometry::Size<f32>> for Vector2 {
-    fn from(value: taffy::geometry::Size<f32>) -> Self {
-        Self::new(value.width, value.height)
-    }
-}
-#[cfg(feature="ui")]
-impl From<Vector2> for taffy::geometry::Point<f32> {
-    fn from(value: Vector2) -> Self {
-        taffy::geometry::Point {
-            x: value.x,
-            y: value.y
-        }
-    }
-}
-#[cfg(feature="ui")]
-impl From<Vector2> for taffy::geometry::Size<f32> {
-    fn from(value: Vector2) -> Self {
-        taffy::geometry::Size {
-            width: value.x,
-            height: value.y
-        }
-    }
-}
-#[cfg(feature="ui")]
-impl From<Vector2> for taffy::Size<taffy::Dimension> {
-    fn from(value: Vector2) -> Self {
-        Self {
-            width: taffy::Dimension::length(value.x),
-            height: taffy::Dimension::length(value.y)
-        }
-    }
-}
-#[cfg(feature="ui")]
-impl From<Vector2> for taffy::Size<taffy::LengthPercentage> {
-    fn from(value: Vector2) -> Self {
-        Self {
-            width: taffy::LengthPercentage::length(value.x),
-            height: taffy::LengthPercentage::length(value.y)
-        }
-    }
-}
-#[cfg(feature="ui")]
-impl From<Vector2> for taffy::Size<taffy::LengthPercentageAuto> {
-    fn from(value: Vector2) -> Self {
-        Self {
-            width: taffy::LengthPercentageAuto::length(value.x),
-            height: taffy::LengthPercentageAuto::length(value.y)
-        }
-    }
-}
-
-
 impl Default for Vector2 {
     fn default() -> Self { Self::new(0.0, 0.0) }
 }
@@ -189,15 +130,8 @@ impl std::fmt::Display for Vector2 {
 }
 
 
-use tataku_common::prelude::{
-    Reflect,
-    ReflectPath,
-    ReflectError,
-    ReflectResult,
-    MaybeOwnedReflect,
-};
 impl Reflect for Vector2 {
-    fn impl_get<'s, 'v>(&'s self, mut path: ReflectPath<'v>) -> ReflectResult<'v, MaybeOwnedReflect<'s>> {
+    fn impl_get<'s, 'v>(&'s self, mut path: ReflectPath<'v>) -> reflect::Result<'v, MaybeOwnedReflect<'s>> {
         let next = path.next()
             .ok_or(ReflectError::entry_not_exist("??????"))?;
         
@@ -209,7 +143,7 @@ impl Reflect for Vector2 {
         }
     }
 
-    fn impl_get_mut<'s, 'v>(&'s mut self, mut path: ReflectPath<'v>) -> ReflectResult<'v, &'s mut dyn Reflect> {
+    fn impl_get_mut<'s, 'v>(&'s mut self, mut path: ReflectPath<'v>) -> reflect::Result<'v, &'s mut dyn Reflect> {
         let next = path.next()
             .ok_or(ReflectError::entry_not_exist("??????"))?;
         
@@ -225,7 +159,7 @@ impl Reflect for Vector2 {
         &mut self, 
         mut path: ReflectPath<'v>, 
         mut value: Box<dyn Reflect>
-    ) -> ReflectResult<'v, ()> {
+    ) -> reflect::Result<'v, ()> {
         let Some(next) = path.next() else {
             macro_rules! a {
                 ($self:ident, $t: ty) => {
@@ -258,7 +192,7 @@ impl Reflect for Vector2 {
         Some(Box::new(*self))
     }
 
-    fn impl_display<'v>(&self, mut path: ReflectPath<'v>, precision: Option<usize>) -> ReflectResult<'v, String> {
+    fn impl_display<'v>(&self, mut path: ReflectPath<'v>, precision: Option<usize>) -> reflect::Result<'v, String> {
         let Some(next) = path.next() else {
             return Ok(self.to_string());
         };
@@ -273,7 +207,7 @@ impl Reflect for Vector2 {
 
 
 // negative nancy
-impl Neg for Vector2 {
+impl std::ops::Neg for Vector2 {
     type Output = Vector2;
     fn neg(self) -> Self::Output {
         Vector2::new(-self.x, -self.y)
@@ -281,125 +215,191 @@ impl Neg for Vector2 {
 }
 
 
+#[cfg(feature="ui")]
+mod ui_impls {
+    use super::*;
+
+    impl From<taffy::geometry::Point<f32>> for Vector2 {
+        fn from(value: taffy::geometry::Point<f32>) -> Self {
+            Self::new(value.x, value.y)
+        }
+    }
+
+    impl From<taffy::geometry::Size<f32>> for Vector2 {
+        fn from(value: taffy::geometry::Size<f32>) -> Self {
+            Self::new(value.width, value.height)
+        }
+    }
+
+    impl From<Vector2> for taffy::geometry::Point<f32> {
+        fn from(value: Vector2) -> Self {
+            taffy::geometry::Point {
+                x: value.x,
+                y: value.y
+            }
+        }
+    }
+
+    impl From<Vector2> for taffy::geometry::Size<f32> {
+        fn from(value: Vector2) -> Self {
+            taffy::geometry::Size {
+                width: value.x,
+                height: value.y
+            }
+        }
+    }
+
+    impl From<Vector2> for taffy::Size<taffy::Dimension> {
+        fn from(value: Vector2) -> Self {
+            Self {
+                width: taffy::Dimension::length(value.x),
+                height: taffy::Dimension::length(value.y)
+            }
+        }
+    }
+
+    impl From<Vector2> for taffy::Size<taffy::LengthPercentage> {
+        fn from(value: Vector2) -> Self {
+            Self {
+                width: taffy::LengthPercentage::length(value.x),
+                height: taffy::LengthPercentage::length(value.y)
+            }
+        }
+    }
+
+    impl From<Vector2> for taffy::Size<taffy::LengthPercentageAuto> {
+        fn from(value: Vector2) -> Self {
+            Self {
+                width: taffy::LengthPercentageAuto::length(value.x),
+                height: taffy::LengthPercentageAuto::length(value.y)
+            }
+        }
+    }
+
+}
+
 // fuck you neb, i dont care if this isnt how math works
-use std::ops::*;
+mod math_impls {
+    use super::*;
+    use std::ops::*;
 
-// add
-impl Add<f32> for Vector2 {
-    type Output = Vector2;
-    fn add(self, rhs: f32) -> Self::Output {
-        Vector2::new(self.x + rhs, self.y + rhs)
+    // add
+    impl Add<f32> for Vector2 {
+        type Output = Vector2;
+        fn add(self, rhs: f32) -> Self::Output {
+            Vector2::new(self.x + rhs, self.y + rhs)
+        }
     }
-}
-impl Add<Vector2> for Vector2 {
-    type Output = Vector2;
-    fn add(self, rhs: Vector2) -> Self::Output {
-        Vector2::new(self.x + rhs.x, self.y + rhs.y)
+    impl Add<Vector2> for Vector2 {
+        type Output = Vector2;
+        fn add(self, rhs: Vector2) -> Self::Output {
+            Vector2::new(self.x + rhs.x, self.y + rhs.y)
+        }
     }
-}
-impl AddAssign<f32> for Vector2 {
-    fn add_assign(&mut self, rhs: f32) {
-        *self = *self + rhs;
+    impl AddAssign<f32> for Vector2 {
+        fn add_assign(&mut self, rhs: f32) {
+            *self = *self + rhs;
+        }
     }
-}
-impl AddAssign<Vector2> for Vector2 {
-    fn add_assign(&mut self, rhs: Vector2) {
-        *self = *self + rhs;
+    impl AddAssign<Vector2> for Vector2 {
+        fn add_assign(&mut self, rhs: Vector2) {
+            *self = *self + rhs;
+        }
     }
-}
 
-// sub
-impl Sub<f32> for Vector2 {
-    type Output = Vector2;
-    fn sub(self, rhs: f32) -> Self::Output {
-        self + -rhs
+    // sub
+    impl Sub<f32> for Vector2 {
+        type Output = Vector2;
+        fn sub(self, rhs: f32) -> Self::Output {
+            self + -rhs
+        }
     }
-}
-impl Sub<Vector2> for Vector2 {
-    type Output = Vector2;
-    fn sub(self, rhs: Vector2) -> Self::Output {
-        self + -rhs
+    impl Sub<Vector2> for Vector2 {
+        type Output = Vector2;
+        fn sub(self, rhs: Vector2) -> Self::Output {
+            self + -rhs
+        }
     }
-}
-impl SubAssign<f32> for Vector2 {
-    fn sub_assign(&mut self, rhs: f32) {
-        *self = *self - rhs;
+    impl SubAssign<f32> for Vector2 {
+        fn sub_assign(&mut self, rhs: f32) {
+            *self = *self - rhs;
+        }
     }
-}
-impl SubAssign<Vector2> for Vector2 {
-    fn sub_assign(&mut self, rhs: Vector2) {
-        *self = *self - rhs;
+    impl SubAssign<Vector2> for Vector2 {
+        fn sub_assign(&mut self, rhs: Vector2) {
+            *self = *self - rhs;
+        }
     }
-}
 
-// mul
-impl Mul<f32> for Vector2 {
-    type Output = Vector2;
-    fn mul(self, rhs: f32) -> Self::Output {
-        Vector2::new(self.x * rhs, self.y * rhs)
+    // mul
+    impl Mul<f32> for Vector2 {
+        type Output = Vector2;
+        fn mul(self, rhs: f32) -> Self::Output {
+            Vector2::new(self.x * rhs, self.y * rhs)
+        }
     }
-}
-impl Mul<Vector2> for Vector2 {
-    type Output = Vector2;
-    fn mul(self, rhs: Vector2) -> Self::Output {
-        Vector2::new(self.x * rhs.x, self.y * rhs.y)
+    impl Mul<Vector2> for Vector2 {
+        type Output = Vector2;
+        fn mul(self, rhs: Vector2) -> Self::Output {
+            Vector2::new(self.x * rhs.x, self.y * rhs.y)
+        }
     }
-}
-impl MulAssign<f32> for Vector2 {
-    fn mul_assign(&mut self, rhs: f32) {
-        *self = *self * rhs;
+    impl MulAssign<f32> for Vector2 {
+        fn mul_assign(&mut self, rhs: f32) {
+            *self = *self * rhs;
+        }
     }
-}
-impl MulAssign<Vector2> for Vector2 {
-    fn mul_assign(&mut self, rhs: Vector2) {
-        *self = *self * rhs;
+    impl MulAssign<Vector2> for Vector2 {
+        fn mul_assign(&mut self, rhs: Vector2) {
+            *self = *self * rhs;
+        }
     }
-}
 
-// div
-impl Div<f32> for Vector2 {
-    type Output = Vector2;
-    fn div(self, rhs: f32) -> Self::Output {
-        Vector2::new(self.x / rhs, self.y / rhs)
+    // div
+    impl Div<f32> for Vector2 {
+        type Output = Vector2;
+        fn div(self, rhs: f32) -> Self::Output {
+            Vector2::new(self.x / rhs, self.y / rhs)
+        }
     }
-}
-impl Div<Vector2> for Vector2 {
-    type Output = Vector2;
-    fn div(self, rhs: Vector2) -> Self::Output {
-        Vector2::new(self.x / rhs.x, self.y / rhs.y)
+    impl Div<Vector2> for Vector2 {
+        type Output = Vector2;
+        fn div(self, rhs: Vector2) -> Self::Output {
+            Vector2::new(self.x / rhs.x, self.y / rhs.y)
+        }
     }
-}
-impl DivAssign<f32> for Vector2 {
-    fn div_assign(&mut self, rhs: f32) {
-        *self = *self / rhs;
+    impl DivAssign<f32> for Vector2 {
+        fn div_assign(&mut self, rhs: f32) {
+            *self = *self / rhs;
+        }
     }
-}
-impl DivAssign<Vector2> for Vector2 {
-    fn div_assign(&mut self, rhs: Vector2) {
-        *self = *self / rhs;
+    impl DivAssign<Vector2> for Vector2 {
+        fn div_assign(&mut self, rhs: Vector2) {
+            *self = *self / rhs;
+        }
     }
-}
 
-// rem (mod)
-impl Rem<f32> for Vector2 {
-    type Output = Vector2;
-    fn rem(self, rhs: f32) -> Self::Output {
-        Vector2::new(self.x % rhs, self.y % rhs)
+    // rem (mod)
+    impl Rem<f32> for Vector2 {
+        type Output = Vector2;
+        fn rem(self, rhs: f32) -> Self::Output {
+            Vector2::new(self.x % rhs, self.y % rhs)
+        }
     }
-}
-impl Rem<Vector2> for Vector2 {
-    type Output = Vector2;
-    fn rem(self, rhs: Vector2) -> Self::Output {
-        Vector2::new(self.x % rhs.x, self.y % rhs.y)
+    impl Rem<Vector2> for Vector2 {
+        type Output = Vector2;
+        fn rem(self, rhs: Vector2) -> Self::Output {
+            Vector2::new(self.x % rhs.x, self.y % rhs.y)
+        }
     }
-}
-impl RemAssign<f32> for Vector2 {
-    fn rem_assign(&mut self, rhs: f32) {
-        *self = *self % rhs;
+    impl RemAssign<f32> for Vector2 {
+        fn rem_assign(&mut self, rhs: f32) {
+            *self = *self % rhs;
+        }
     }
-}
-impl RemAssign<Vector2> for Vector2 {
-    fn rem_assign(&mut self, rhs: Vector2) {
-        *self = *self % rhs;
+    impl RemAssign<Vector2> for Vector2 {
+        fn rem_assign(&mut self, rhs: Vector2) {
+            *self = *self % rhs;
+        }
     }
 }

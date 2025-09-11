@@ -1,5 +1,6 @@
-use tataku_audio::prelude::*;
-use tataku_engine::prelude::*;
+use common::reflect::*;
+use tataku_audio::*;
+use tataku_engine::*;
 use souvlaki::{ 
     MediaControlEvent, 
     MediaControls, 
@@ -8,6 +9,15 @@ use souvlaki::{
     PlatformConfig, 
     SeekDirection,
 };
+use std::time::Duration;
+use engine::{
+    io::{
+        TatakuIntegration,
+        TatakuIntegrationBuilder,
+    },
+
+};
+
 
 use tokio::sync::mpsc::unbounded_channel as event_channel;
 type EventSender = tokio::sync::mpsc::UnboundedSender<MediaControlEvent>;
@@ -30,7 +40,7 @@ pub struct MediaControlsIntegration {
     last_event: LastEventHelper,
 }
 impl MediaControlsIntegration {
-    fn build() -> TatakuResult<Box<dyn TatakuIntegration>> {
+    fn build() -> tataku::Result<Box<dyn TatakuIntegration>> {
         let (sender, receiver) = event_channel();
         Ok(Box::new(Self {
             sender,
@@ -69,7 +79,7 @@ impl TatakuIntegration for MediaControlsIntegration {
         &mut self, 
         #[cfg(feature="graphics")] 
         window_handle: raw_window_handle::WindowHandle<'_>,
-    ) -> TatakuResult<()> {
+    ) -> tataku::Result<()> {
 
         if self.media_controls.is_some() { return Ok(()) }
 
@@ -101,7 +111,7 @@ impl TatakuIntegration for MediaControlsIntegration {
     fn check_enabled(
         &mut self, 
         settings: &Settings,
-    ) -> TatakuResult<()> {
+    ) -> tataku::Result<()> {
         let Some(controls) = self.media_controls.as_mut() else { return Ok(()) };
         self.enabled = settings.integrations.media_controls;
 
@@ -127,7 +137,7 @@ impl TatakuIntegration for MediaControlsIntegration {
         &mut self, 
         event: &TatakuIntegrationEvent, 
         _values: &dyn Reflect,
-        _actions: &mut ActionQueue,
+        _actions: &mut actions::ActionQueue,
     ) {
         if !self.enabled { return }
         let Some(controls) = self.media_controls.as_mut() else { return };
@@ -157,7 +167,7 @@ impl TatakuIntegration for MediaControlsIntegration {
     fn update(
         &mut self, 
         values: &mut dyn Reflect, 
-        actions: &mut ActionQueue,
+        actions: &mut actions::ActionQueue,
     ) {
         if !self.enabled { return }
         let Some(controls) = self.media_controls.as_mut() else { return };
@@ -179,6 +189,14 @@ impl TatakuIntegration for MediaControlsIntegration {
             if event == self.last_event.event || self.last_event.time.as_millis() < MINIMUM_WAIT_BETWEEN_EVENTS { return }
 
             self.last_event = LastEventHelper::new(event.clone());
+            use actions::{
+                song::SongAction as SongAction,
+                window::WindowAction as WindowAction,
+                beatmap::{
+                    MapActionIfNone,
+                    BeatmapAction as BeatmapAction,
+                },
+            };
 
             match event {
                 MediaControlEvent::Play => actions.push(SongAction::Play.into()),
@@ -202,8 +220,8 @@ impl TatakuIntegration for MediaControlsIntegration {
     }
 }
 
-fn map_seek(dir: SeekDirection, amount: f32) -> SongAction {
-    SongAction::SeekBy(
+fn map_seek(dir: SeekDirection, amount: f32) -> actions::song::SongAction {
+    actions::song::SongAction::SeekBy(
         amount * match dir {
             SeekDirection::Forward => 1.0,
             SeekDirection::Backward => -1.0,
@@ -212,14 +230,14 @@ fn map_seek(dir: SeekDirection, amount: f32) -> SongAction {
 }
 
 
-fn map_err(e: souvlaki::Error) -> TatakuError {
-    #[cfg(not(windows))] return TatakuError::from_err(e);
-    #[cfg(windows)] TatakuError::String(format!("{e:?}"))
+fn map_err(e: souvlaki::Error) -> tataku::Error {
+    #[cfg(not(windows))] return tataku::Error::from_err(e);
+    #[cfg(windows)] tataku::Error::String(format!("{e:?}"))
 }
 
 #[derive(Default2)]
 struct LastEventHelper {
-    time: TatakuInstant,
+    time: tataku::Instant,
     
     #[default(MediaControlEvent::Pause)]
     event: MediaControlEvent,
@@ -227,7 +245,7 @@ struct LastEventHelper {
 impl LastEventHelper {
     fn new(event: MediaControlEvent) -> Self {
         Self {
-            time: TatakuInstant::now(),
+            time: tataku::Instant::now(),
             event,
         }
     }

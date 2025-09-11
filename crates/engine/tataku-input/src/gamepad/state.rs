@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::*;
 
 const AXES: &[Axis] = &[
     Axis::LeftStickX, Axis::LeftStickY, Axis::LeftTrigger,

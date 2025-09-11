@@ -1,8 +1,11 @@
-use crate::prelude::*;
+use crate::*;
+use crate::style::*;
+use crate::tree::*;
 use simplecss::StyleSheet;
 use super::CssRuleStyleResolver;
 
-const ROW_COL: &str = r#"
+
+const BASE_STYLE: &str = r#"
     row {
         flex-direction: row; 
     }
@@ -24,7 +27,7 @@ impl<'a> CssResolver<'a> {
         let mut animations = HashMap::new();
 
         let mut style = StyleSheet::parse(style_str);
-        style.parse_more(ROW_COL);
+        style.parse_more(BASE_STYLE);
         use simplecss::at_rules::at_rule::AtRule;
         for rule in style.at_rules.iter() {
             if let AtRule::Keyframes { name, frames } = rule {

@@ -19,10 +19,9 @@ mod prelude {
     pub(crate) use crate::render_buffer_type::RenderBufferType;
     pub(crate) use crate::render_buffer_queue_type::RenderBufferQueueType;
 
-    pub(crate) mod tataku {
-        pub use tataku_engine::prelude::*;
-        pub use tataku_graphics::prelude::*;
-    }
+    pub(crate) use tataku_engine as engine;
+    pub(crate) use engine::tataku;
+    pub(crate) use tataku_graphics as graphics;
 }
 
 mod shader_files {
@@ -37,22 +36,21 @@ mod shader_files {
     pub const SLIDER: &str = include_str!("../shaders/slider.wgsl");
 }
 
-use tataku_engine::prelude::*;
+use prelude::*;
 
 pub struct WgpuInit;
-
 pub(crate) const FORMAT:wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 
 #[cfg(feature="graphics")]
-#[async_trait]
-impl<'window> GraphicsInitializer<'window> for WgpuInit {
+#[engine::async_trait]
+impl<'window> engine::window::GraphicsInitializer<'window> for WgpuInit {
     fn name(&self) -> &'static str { "Wgpu Graphics" }
 
     async fn init(
         &self,
         window: &'window winit::window::Window,
-        settings: DisplaySettings
-    ) -> TatakuResult<Box<dyn tataku_graphics::RenderingEngine + 'window>> {
+        settings: engine::settings::display::DisplaySettings
+    ) -> tataku::TatakuResult<Box<dyn tataku_graphics::RenderingEngine + 'window>> {
         Ok(wgpu_engine::WgpuEngine::create(window, &settings).await)
     }
 }

@@ -1,5 +1,6 @@
 #![allow(non_upper_case_globals)]
-use crate::prelude::*;
+use crate::*;
+use gameplay::stats::*;
 
 /// hit variance stat
 pub const HitVarianceStat: GameModeStat = GameModeStat {

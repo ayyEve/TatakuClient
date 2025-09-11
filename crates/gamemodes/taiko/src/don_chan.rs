@@ -1,4 +1,19 @@
 use crate::prelude::*;
+use tataku::{
+    Vector2,
+    Alignment,
+};
+use engine::{
+    graphics,
+    graphics::Animation,
+    beatmaps::{
+        TimingPoint,
+    },
+    gameplay::{
+        widgets::*,
+        GamemodeInfo,
+    },
+};
 
 const DEFAULT_DONCHAN_SIZE:Vector2 = Vector2::new(450.0, 400.0);
 
@@ -25,7 +40,7 @@ pub struct DonChan {
 impl DonChan {
     fn build(
         _: &GamemodeInfo,
-        _: &Arc<CommonGameplaySettings>
+        _: &Arc<engine::settings::common_gameplay::CommonGameplaySettings>
     ) -> Box<dyn GameplayWidget> {
         Box::new(Self {
             state: DonChanState::Normal,
@@ -202,8 +217,8 @@ impl GameplayWidget for DonChan {
 #[cfg(feature="graphics")]
 fn load_anim(
     name: &str, 
-    source: &TextureSource,
-    skin_manager: &mut dyn SkinProvider,
+    source: &graphics::TextureSource,
+    skin_manager: &mut dyn graphics::SkinProvider,
 ) -> Option<Animation> {
     let mut frames = Vec::new();
     let mut current = 0;
@@ -211,7 +226,7 @@ fn load_anim(
     while let Some(tex) = skin_manager.get_texture(
         &format!("pippidon{name}{current}"), 
         source, 
-        SkinUsage::Gamemode, 
+        graphics::SkinUsage::Gamemode, 
         false
     ) {
         current += 1;

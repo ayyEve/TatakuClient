@@ -1,5 +1,22 @@
-use crate::prelude::*;
-use tataku_graphics::prelude::*;
+use crate::*;
+use tataku::{
+    Bounds,
+    Vector2,
+
+    Easing,
+    Animate,
+    AnimatableColor,
+    AnimationTimeline,
+};
+use graphics::{ 
+    Transform, 
+    TatakuRenderable 
+};
+use engine::{
+    beatmaps::osu::storyboard::*,
+    gameplay::PlayfieldNonsense,
+};
+
 
 const GAME_SIZE: Vector2 = Vector2::new(640.0, 480.0);
 const OFFSET: Vector2 = Vector2::new(64.0, 56.0);
@@ -16,9 +33,9 @@ impl OsuStoryboard {
     pub fn new(
         def: &StoryboardDef,
         dir: &String,
-        skin_manager: &mut dyn SkinProvider,
+        skin_manager: &mut dyn graphics::SkinProvider,
         // settings: OsuSettings,
-    ) -> TatakuResult<Self> {
+    ) -> tataku::TatakuResult<Self> {
         let playfield_size = GAME_SIZE;
 
         let transform = Transform::default();
@@ -49,7 +66,7 @@ impl OsuStoryboard {
     }
 }
 impl BeatmapAnimation for OsuStoryboard {
-    fn use_gamemode_playfield(&self, gamemode: &GamemodeInfo) -> bool {
+    fn use_gamemode_playfield(&self, gamemode: &gameplay::info::GamemodeInfo) -> bool {
         gamemode.id == "osu"
     }
 
@@ -62,7 +79,7 @@ impl BeatmapAnimation for OsuStoryboard {
         }
     }
 
-    fn draw(&self, list: &mut RenderableCollection) {
+    fn draw(&self, list: &mut graphics::RenderableCollection) {
         // list.push_scissor(self.bounds.into_scissor());
         let bounds = self.playfield;
         let scissor = bounds.into_scissor();
@@ -70,12 +87,12 @@ impl BeatmapAnimation for OsuStoryboard {
         for i in self.elements.iter() {
             if !i.visible(self.time) { continue }
 
-            let image_flip = ImageFlip::new(
+            let image_flip = graphics::ImageFlip::new(
                 i.flip_horizontal.last_value() != 0.0,
                 i.flip_vertical.last_value() != 0.0
             );
 
-            let draw_options = DrawOptions {
+            let draw_options = graphics::DrawOptions {
                 image_flip,
                 ..Default::default()
             };
@@ -101,7 +118,7 @@ impl BeatmapAnimation for OsuStoryboard {
             let alpha = i.alpha.last_value();
             let color = i.color.last_value().alpha(alpha).into();
 
-            let element: Box<dyn TatakuRenderable> = match i.element_image.clone() {
+            let element: Box<dyn graphics::TatakuRenderable> = match i.element_image.clone() {
                 ElementImage::Sprite(mut image) => {
                     image.color = color;
 
@@ -114,11 +131,11 @@ impl BeatmapAnimation for OsuStoryboard {
                 },
             };
 
-            list.push(Scissored::new(
+            list.push(graphics::Scissored::new(
                 scissor,
-                Box::new(MergeDrawOptions::new(
+                Box::new(graphics::MergeDrawOptions::new(
                     draw_options,
-                    Box::new(Transformed::new(
+                    Box::new(graphics::Transformed::new(
                         transform,
                         element
                     ))
@@ -144,7 +161,7 @@ impl BeatmapAnimation for OsuStoryboard {
             // debug!("window size: {size}");
             nonsense.scale = (nonsense.bounds.size / GAME_SIZE).min_component() * 0.90;
 
-            nonsense.bounds.pos = Alignment::CENTER.resolve(
+            nonsense.bounds.pos = tataku::Alignment::CENTER.resolve(
                 &Bounds::new(
                     nonsense.bounds.pos + OFFSET * nonsense.scale,
                     nonsense.bounds.size
@@ -204,9 +221,9 @@ impl Element {
     fn new(
         def: StoryboardEntryDef,
         parent_dir: &String,
-        image_cache: &mut HashMap<String, Image>,
-        skin_manager: &mut dyn SkinProvider
-    ) -> TatakuResult<Self> {
+        image_cache: &mut HashMap<String, graphics::Image>,
+        skin_manager: &mut dyn graphics::SkinProvider
+    ) -> tataku::TatakuResult<Self> {
         let layer;
 
         let mut blend_mode = None;
@@ -215,7 +232,7 @@ impl Element {
                 param: Param::AdditiveBlending 
             } = i.event else { continue };
             // if i.start_time as i32 == i.end_time as i32 {
-                blend_mode = Some(BlendMode::OsuAdditiveBlending);
+                blend_mode = Some(tataku::BlendMode::OsuAdditiveBlending);
             // }
             break;
         }
@@ -250,7 +267,7 @@ impl Element {
             StoryboardElementDef::Animation(anim) => {
                 let filepath = Path::new(&anim.filepath);
                 let Some(ext) = filepath.extension() else { 
-                    return Err(TatakuError::String("no extention on anim image".to_owned())); 
+                    return Err(tataku::Error::String("no extention on anim image".to_owned())); 
                 };
 
                 let ext = ext.to_str().unwrap();
@@ -277,7 +294,7 @@ impl Element {
                     counter += 1;
                 }
                 if frames.is_empty() { 
-                    return Err(TatakuError::String("anim has no frames!".to_owned())) 
+                    return Err(tataku::Error::String("anim has no frames!".to_owned())) 
                 }
 
                 let tex_size = Vector2::new(
@@ -285,7 +302,7 @@ impl Element {
                     frames[0].height as f32
                 );
 
-                let mut animation = Animation::new(
+                let mut animation = graphics::Animation::new(
                     Vector2::ZERO, 
                     Vector2::ONE, 
                     frames, 
@@ -324,7 +341,7 @@ impl Element {
             flip_vertical: AnimationTimeline::new(Vec::new(), 0.0),
 
             alpha: AnimationTimeline::new(Vec::new(), 1.0),
-            color: AnimationTimeline::new(Vec::new(), Color::WHITE.into()),
+            color: AnimationTimeline::new(Vec::new(), tataku::Color::WHITE.into()),
         };
         s.apply_commands();
 
@@ -419,7 +436,7 @@ impl Element {
         self.flip_vertical = AnimationTimeline::new(flip_vertical, 0.0);
 
         self.alpha = AnimationTimeline::new(alpha, 1.0);
-        self.color = AnimationTimeline::new(color, Color::WHITE.into());
+        self.color = AnimationTimeline::new(color, tataku::Color::WHITE.into());
 
 
         self.start_time = earliest_start;
@@ -464,21 +481,21 @@ impl Element {
 
 #[derive(Clone)]
 enum ElementImage {
-    Sprite(Image),
-    Anim(Animation),
+    Sprite(graphics::Image),
+    Anim(graphics::Animation),
 }
 
 fn try_load_image(
     filepath: &String,
-    image_cache: &mut HashMap<String, Image>,
-    skin_manager: &mut dyn SkinProvider
-) -> TatakuResult<Image> {
+    image_cache: &mut HashMap<String, graphics::Image>,
+    skin_manager: &mut dyn graphics::SkinProvider
+) -> tataku::TatakuResult<graphics::Image> {
     if let Some(image) = image_cache.get(filepath).cloned() {
         Ok(image)
     } else if let Some(i) = skin_manager.get_texture(
         filepath, 
-        &TextureSource::Raw, 
-        SkinUsage::Beatmap, 
+        &graphics::TextureSource::Raw, 
+        graphics::SkinUsage::Beatmap, 
         false
     ) {
         image_cache.insert(filepath.clone(), i.clone());
@@ -500,15 +517,15 @@ fn try_load_image(
                 .to_string();
             found = skin_manager.get_texture(
                 &filepath2, 
-                &TextureSource::Raw, 
-                SkinUsage::Beatmap, 
+                &graphics::TextureSource::Raw, 
+                graphics::SkinUsage::Beatmap, 
                 false
             );
             break;
         }
 
         let Some(image) = found else {
-            return Err(TatakuError::String(format!("Image not found: {filepath}")))
+            return Err(tataku::Error::String(format!("Image not found: {filepath}")))
         };
 
         Ok(image)

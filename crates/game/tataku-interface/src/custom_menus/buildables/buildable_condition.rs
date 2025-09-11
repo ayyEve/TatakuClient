@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use common::reflect::*;
 
 #[derive(Deserialize)]
 #[serde(from="String")]
@@ -61,5 +62,5 @@ pub enum BuildableConditionResult<'a> {
     Unbuilt(&'a str),
     True,
     False,
-    Error(BuildableShuntingYardError)
+    Error(engine::shunting_yards::buildable::BuildableShuntingYardError)
 }

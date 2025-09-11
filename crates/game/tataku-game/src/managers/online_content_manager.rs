@@ -1,15 +1,20 @@
 use crate::prelude::*;
 
+use engine::{
+    actions,
+    online_content::*,
+};
+
 pub(crate) struct OnlineContentManager {
     engines: Vec<Arc<dyn OnlineContentEngine>>,
     last_search: Option<Box<OnlineContentSearch>>,
 }
 impl OnlineContentManager {
-    pub fn new(settings: &Settings) -> Self {
+    pub fn new(settings: &engine::Settings) -> Self {
         Self {
             last_search: None,
             engines: vec![
-                Arc::new(OsuDirect::new(settings)),
+                Arc::new(engine::online_content::OsuDirect::new(settings)),
             ],
         }
     }
@@ -24,10 +29,11 @@ impl OnlineContentManager {
 
     pub fn handle_action(
         &mut self, 
-        action: OnlineContentAction,
-        actions: &mut ActionQueue,
+        action: actions::online_content::OnlineContentAction,
+        actions: &mut actions::ActionQueue,
         values: &mut ValueCollection,
     ) {
+        use actions::online_content::OnlineContentAction as OnlineContentAction;
         let data = &mut values
             .game
             .online_content
@@ -87,7 +93,9 @@ impl OnlineContentManager {
                 let Some(preview) = &a.audio_preview 
                 else { return };
 
-                actions.push(SongAction::Set(SongSetAction::PushQueue).into());
+                actions.push(actions::song::SongAction::Set(
+                    actions::song::SongSetAction::PushQueue
+                ).into());
                 actions.push(AudioPreviewTask::new(preview.clone()).into());
             }
         }

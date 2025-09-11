@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use ui::widget::Widget;
 
 #[derive(Deserialize)]
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -14,14 +15,14 @@ pub struct ListElement {
     #[serde(alias = "$value")] element: Element,
 }
 impl CustomElement for ListElement {
-    fn build(&self) -> Box<dyn Widget<TatakuAction>> {
-        WidgetContainer::new_boxed(
+    fn build(&self) -> Box<dyn Widget<actions::Action>> {
+        widgets::WidgetContainer::new_boxed(
             self.style.clone(),
             "list",
             self.id.clone(),
             self.class_list.clone(),
-            Container::new(Vec::new())
-                .make_programmatic(ProgrammaticListData::new(
+            widgets::Container::new(Vec::new())
+                .make_programmatic(widgets::ProgrammaticListData::new(
                     self.element.clone(),
                     self.list_var.clone(),
                     self.var.clone(),

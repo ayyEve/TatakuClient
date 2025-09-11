@@ -1,5 +1,13 @@
 use crate::prelude::*;
 
+use engine::{
+    gameplay::{
+        IngameScore,
+        judgments::HitJudgment,
+        health_manager::HealthManager,
+    }
+};
+
 const MAX_HEALTH:f32 = 200.0;
 const PASS_HEALTH:f32 = MAX_HEALTH / 2.0;
 
@@ -24,7 +32,6 @@ impl TaikoBatteryHealthManager {
         }
     }
 }
-
 impl HealthManager for TaikoBatteryHealthManager {
     fn is_dead(&self, song_over: bool) -> bool {
         if !song_over { return false }

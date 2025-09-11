@@ -1,4 +1,9 @@
-use crate::prelude::*;
+use crate::*;
+use common::reflect::*;
+use engine::gameplay::{
+    GamemodeInfos, 
+    GamemodeSettings,
+};
 
 #[derive(Debug, Default)]
 #[derive(Serialize, Deserialize)]
@@ -53,7 +58,7 @@ impl Reflect for GamemodeSettingsCollection {
     fn impl_get<'s, 'v>(
         &'s self, 
         mut path: ReflectPath<'v>,
-    ) -> ReflectResult<'v, MaybeOwnedReflect<'s>> {
+    ) -> reflect::Result<'v, MaybeOwnedReflect<'s>> {
         let Some(key) = path.next() else {
             return Ok((self as &dyn Reflect).into())
         };
@@ -68,7 +73,7 @@ impl Reflect for GamemodeSettingsCollection {
     fn impl_get_mut<'s, 'v>(
         &'s mut self, 
         mut path: ReflectPath<'v>
-    ) -> ReflectResult<'v, &'s mut dyn Reflect> {
+    ) -> reflect::Result<'v, &'s mut dyn Reflect> {
         let Some(key) = path.next() else {
             return Ok(self as &mut dyn Reflect)
         };
@@ -84,7 +89,7 @@ impl Reflect for GamemodeSettingsCollection {
         &mut self, 
         path: ReflectPath<'v>, 
         value: Box<dyn Reflect>,
-    ) -> ReflectResult<'v, ()> {
+    ) -> reflect::Result<'v, ()> {
         self
             .impl_get_mut(path)?
             .impl_insert(ReflectPath::new(""), value)?;
@@ -94,7 +99,7 @@ impl Reflect for GamemodeSettingsCollection {
     fn impl_as_number<'v>(
         &self, 
         mut path: ReflectPath<'v>
-    ) -> ReflectResult<'v, ReflectNumber> {
+    ) -> reflect::Result<'v, ReflectNumber> {
         let Some(key) = path.next() else {
             return Err(ReflectError::NotANumber)
         };
@@ -110,7 +115,7 @@ impl Reflect for GamemodeSettingsCollection {
         &self, 
         mut path: ReflectPath<'v>, 
         precision: Option<usize>
-    ) -> ReflectResult<'v, String> {
+    ) -> reflect::Result<'v, String> {
         let Some(key) = path.next() else {
             return Err(ReflectError::NoDisplay)
         };
@@ -179,11 +184,11 @@ impl Clone for GamemodeSettingsCollection {
 
 
 #[cfg(feature="graphics")]
-impl MakeSettingsMenu for GamemodeSettingsCollection {
+impl settings::MakeSettingsMenu for GamemodeSettingsCollection {
     fn create_provider(
         &self, 
         prefix: String,
-        builder: &mut SettingsBuilder,
+        builder: &mut settings::SettingsBuilder,
     ) {
         let infos = self.infos.as_ref().unwrap();
 

@@ -1,6 +1,6 @@
-use tataku_common::prelude::*;
+use tataku_common::reflect::*;
 
-pub type ShuntingYardStack<'rpn, Output> = Vec<ReflectResult<'rpn, Output>>;
+pub type ShuntingYardStack<'rpn, Output> = Vec<reflect::Result<'rpn, Output>>;
 
 pub trait _ShuntingYardToken<'values, Output, Error>: PartialEq {
     type Operator: _ShuntingYardOperator<'values, Output = Output, Error = Error>;

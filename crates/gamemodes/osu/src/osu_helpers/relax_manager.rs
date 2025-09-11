@@ -1,5 +1,12 @@
 use crate::prelude::*;
 
+use tataku::Vector2;
+use common::replays::*;
+use engine::{
+    beatmaps::NoteType,
+    gameplay::gameplay_manager::GameplayUpdateShell,
+};
+
 const PRESS_DURATION: f32 = 100.0;
 const USABLE_KEYS: &[KeyPress] = &[
     KeyPress::Left,
@@ -52,7 +59,6 @@ impl RelaxManager {
             match note.note_type() {
                 NoteType::Note => {}
                 NoteType::Slider | NoteType::Spinner | NoteType::Hold => {
-
                     for (key, key_state) in self.key_states.iter_mut() {
                         let KeyState::PressedSlider(index) = key_state else { continue };
                         if *index != note_index { continue }

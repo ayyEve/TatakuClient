@@ -1,4 +1,6 @@
 use crate::prelude::*;
+use tataku::TatakuValue;
+use common::reflect::Reflect;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -52,23 +54,23 @@ impl BuildableMultiplayerAction {
         &self, 
         values: &mut dyn Reflect, 
         passed_in: Option<&TatakuValue>
-    ) -> Option<MultiplayerAction> {
+    ) -> Option<actions::multiplayer::MultiplayerAction> {
         match self {
-            Self::StartMultiplayer => Some(MultiplayerAction::StartMultiplayer),
-            Self::StartMatch => Some(MultiplayerAction::LobbyAction(LobbyAction::Start)),
-            Self::OpenMapLink => Some(MultiplayerAction::LobbyAction(LobbyAction::OpenMapLink)),
-            Self::Leave => Some(MultiplayerAction::LobbyAction(LobbyAction::Leave)),
-            Self::Quit => Some(MultiplayerAction::ExitMultiplayer),
-            Self::Ready => Some(MultiplayerAction::LobbyAction(LobbyAction::Ready)),
-            Self::Unready => Some(MultiplayerAction::LobbyAction(LobbyAction::Unready)),
+            Self::StartMultiplayer => Some(actions::multiplayer::MultiplayerAction::StartMultiplayer),
+            Self::StartMatch => Some(actions::multiplayer::MultiplayerAction::LobbyAction(actions::multiplayer::LobbyAction::Start)),
+            Self::OpenMapLink => Some(actions::multiplayer::MultiplayerAction::LobbyAction(actions::multiplayer::LobbyAction::OpenMapLink)),
+            Self::Leave => Some(actions::multiplayer::MultiplayerAction::LobbyAction(actions::multiplayer::LobbyAction::Leave)),
+            Self::Quit => Some(actions::multiplayer::MultiplayerAction::ExitMultiplayer),
+            Self::Ready => Some(actions::multiplayer::MultiplayerAction::LobbyAction(actions::multiplayer::LobbyAction::Ready)),
+            Self::Unready => Some(actions::multiplayer::MultiplayerAction::LobbyAction(actions::multiplayer::LobbyAction::Unready)),
 
             Self::Slot { slot } => {
                 slot
                     .get_action(values, passed_in)
-                    .map(|action| MultiplayerAction::LobbyAction(LobbyAction::SlotAction(action)))
+                    .map(|action| actions::multiplayer::MultiplayerAction::LobbyAction(actions::multiplayer::LobbyAction::SlotAction(action)))
             }
 
-            Self::JoinLobby { lobby_id, password } => Some(MultiplayerAction::JoinLobby {
+            Self::JoinLobby { lobby_id, password } => Some(actions::multiplayer::MultiplayerAction::JoinLobby {
                 lobby_id: lobby_id.resolve(values, passed_in)?.as_u32()?,
                 password: password.as_ref()
                     .and_then(|i| i
@@ -82,7 +84,7 @@ impl BuildableMultiplayerAction {
                 name,
                 password,
                 private
-            } => Some(MultiplayerAction::CreateLobby {
+            } => Some(actions::multiplayer::MultiplayerAction::CreateLobby {
                 name: name.inner.resolve(values, passed_in)?.as_string(),
                 password: password.as_ref()
                     .and_then(|i| i.inner

@@ -19,7 +19,7 @@ impl<'de, T: Deserialize<'de>> Deserialize<'de> for TatakuSettingOptional<T> {
 #[cfg(test)]
 #[allow(unused)]
 mod test2 {
-    use crate::prelude::*;
+    use crate::*;
     use super::*;
     
     #[derive(Deserialize, Debug)]

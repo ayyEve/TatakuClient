@@ -1,5 +1,20 @@
 use crate::prelude::*;
 
+use common::{
+    Score,
+    GameSpeed,
+
+    serialization::{
+        SerializationReader,
+        SerializationWriter,
+    },
+};
+use engine::gameplay::{
+    GamemodeInfos, 
+    mods::ModManager
+};
+
+
 impl Database {
     pub fn get_scores(
         hash: &str, 
@@ -139,13 +154,14 @@ impl Database {
 
 }
 
+use engine::REPLAYS_DIR;
 /// returns the path of the replay
-pub fn save_replay(score: &Score) -> TatakuResult<String> {
+pub fn save_replay(score: &Score) -> tataku::Result<String> {
     let mut writer = SerializationWriter::new();
     writer.write(score);
 
     let hash = score.hash();
-    let actual_hash = Cryptography::md5(hash);
+    let actual_hash = tataku::Cryptography::md5(hash);
     let filename = format!("{REPLAYS_DIR}/{actual_hash}.ttkr");
 
     // save the database
@@ -153,8 +169,8 @@ pub fn save_replay(score: &Score) -> TatakuResult<String> {
     Ok(filename)
 }
 
-pub fn get_local_replay(score_hash: String) -> TatakuResult<Score> {
-    let actual_hash = Cryptography::md5(score_hash);
+pub fn get_local_replay(score_hash: String) -> tataku::Result<Score> {
+    let actual_hash = tataku::Cryptography::md5(score_hash);
     let fullpath = format!("{REPLAYS_DIR}/{actual_hash}.ttkr");
     // info!("loading replay: {fullpath}");
 
@@ -163,6 +179,6 @@ pub fn get_local_replay(score_hash: String) -> TatakuResult<Score> {
     Ok(reader.read("score")?)
 }
 
-pub fn get_local_replay_for_score(score: &Score) -> TatakuResult<Score> {
+pub fn get_local_replay_for_score(score: &Score) -> tataku::Result<Score> {
     get_local_replay(score.hash())
 }

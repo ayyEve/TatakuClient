@@ -1,4 +1,16 @@
+use std::f32::consts::PI;
 use crate::prelude::*;
+use tataku_client_common::math::Interpolation;
+use tataku::{
+    Vector2,
+    Color,
+    Bounds,
+    Border,
+};
+use graphics::{
+    VisualizationData,
+    VisualizationConfig,
+};
 
 const CUTOFF:f32 = 0.1;
 pub const VISUALIZATION_SIZE_FACTOR:f32 = 1.2;
@@ -19,7 +31,7 @@ pub struct MenuVisualization {
     bar_height: f32,
     rotation: f32,
 
-    cookie: Option<Image>,
+    cookie: Option<graphics::Image>,
     // initial_inner_radius: f32,
     current_inner_radius: f32,
 
@@ -28,7 +40,7 @@ pub struct MenuVisualization {
 
     bounds: Bounds,
 
-    other_timer: TatakuInstant, // internal use only
+    other_timer: tataku::Instant, // internal use only
     last_bass: f32, // last bass value. if current is less than this and we havent created a new ripple since, we should do that now
     created_ripple: bool, // have we drawn a ripple since the last fall?
     last_ripple: f32, // bass value of the last ripple
@@ -52,7 +64,7 @@ impl MenuVisualization {
             rotation: 0.0,
             // data: Vec::new(),
             // timer: Instant::now(),
-            other_timer: TatakuInstant::now(),
+            other_timer: tataku::Instant::now(),
             cookie: None,
 
             vis_data: VisualizationData::new(VisualizationConfig {
@@ -92,7 +104,7 @@ impl MenuVisualization {
         let time = self.other_timer.as_millis();
         let duration = 1000.0;
 
-        let trail = Trail::new(
+        let trail = graphics::Trail::new(
             self.bounds_center(),
             time,
             duration,
@@ -114,7 +126,7 @@ impl MenuVisualization {
         dist <= radius
     }
 
-    pub fn draw_cookie(&self, list: &mut RenderableCollection) {
+    pub fn draw_cookie(&self, list: &mut graphics::RenderableCollection) {
         let Some(mut cookie) = self.cookie.clone() else { return };
         cookie.pos = self.bounds_center();
         cookie.rotation = self.rotation * 2.0;
@@ -123,7 +135,7 @@ impl MenuVisualization {
         list.push(cookie);
     }
 
-    pub fn draw_vis(&self, list: &mut RenderableCollection) {
+    pub fn draw_vis(&self, list: &mut graphics::RenderableCollection) {
         let time = self.other_timer.as_millis();
 
         let pos = self.bounds_center();
@@ -175,7 +187,7 @@ impl MenuVisualization {
             let p1 = pos + theta_vector * self.current_inner_radius;
             let p2 = pos + theta_vector * l;
 
-            list.push(Line::new(
+            list.push(graphics::Line::new(
                 p1,
                 p2,
                 n,
@@ -187,15 +199,15 @@ impl MenuVisualization {
     }
 
 
-    pub fn draw(&self, list: &mut RenderableCollection) {
+    pub fn draw(&self, list: &mut graphics::RenderableCollection) {
         self.draw_vis(list);
         self.draw_cookie(list);
     }
 
-    pub fn update(&mut self, bounds: Bounds, actions: &mut ActionQueue) {
+    pub fn update(&mut self, bounds: Bounds, actions: &mut actions::ActionQueue) {
         if !self.hooked {
             self.hooked = true;
-            actions.push(SongAction::HookFFT(self.vis_data.get_hook()).into());
+            actions.push(actions::song::SongAction::HookFFT(self.vis_data.get_hook()).into());
         }
         self.bounds = bounds;
 
@@ -255,19 +267,19 @@ impl MenuVisualization {
         self.ripples.retain(|ripple| !ripple.trail.complete(time));
     }
 
-    pub fn reload_skin(&mut self, skin_manager: &mut dyn SkinProvider) {
+    pub fn reload_skin(&mut self, skin_manager: &mut dyn graphics::SkinProvider) {
         if let Some(cookie) = skin_manager.get_texture(
             "menu-osu", 
-            &TextureSource::Skin, 
-            SkinUsage::Game, 
+            &graphics::TextureSource::Skin, 
+            graphics::SkinUsage::Game, 
             false
         ) {
             self.cookie = Some(cookie);
         } else {
             self.cookie = skin_manager.get_texture(
                 "./resources/icon.png", 
-                &TextureSource::Raw, 
-                SkinUsage::Game, 
+                &graphics::TextureSource::Raw, 
+                graphics::SkinUsage::Game, 
                 false
             );
         }
@@ -289,6 +301,6 @@ impl MenuVisualization {
 }
 
 struct Ripple {
-    trail: Trail,
+    trail: graphics::Trail,
     start_radius: f32,
 }

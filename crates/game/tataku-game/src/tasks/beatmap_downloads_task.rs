@@ -1,4 +1,15 @@
 use crate::prelude::*;
+use common::reflect::Reflect;
+
+use engine::{
+    actions,
+    game::task::*,
+    beatmaps::{
+        Beatmap,
+        BeatmapMeta,
+        AVAILABLE_MAP_EXTENSIONS,
+    },
+};
 
 const DOWNLOAD_CHECK_INTERVAL:u64 = 10_000;
 const IGNORED_EXTENSIONS: &[&str] = &[
@@ -30,7 +41,7 @@ impl TatakuTask for BeatmapDownloadsCheckTask {
         &mut self, 
         _values: &mut dyn Reflect, 
         state: &TaskGameState, 
-        actions: &mut ActionQueue
+        actions: &mut actions::ActionQueue
     ) {
         // dont continue if we're ingame
         if state.ingame { return }
@@ -38,7 +49,7 @@ impl TatakuTask for BeatmapDownloadsCheckTask {
         // check if we need to add any beatmaps
         if let Some(map) = self.maps_to_add.pop() {
             info!("Adding map {}", map.version_string());
-            actions.push(BeatmapAction::AddBeatmap { map, add_to_db: true }.into());
+            actions.push(actions::beatmap::BeatmapAction::AddBeatmap { map, add_to_db: true }.into());
             return 
         }
 
@@ -75,7 +86,7 @@ impl TatakuTask for BeatmapDownloadsCheckTask {
         if state.game_time - self.last_check < DOWNLOAD_CHECK_INTERVAL { return }
 
         // get all files in the downloads dir
-        let dir = std::fs::read_dir(DOWNLOADS_DIR)
+        let dir = std::fs::read_dir(engine::DOWNLOADS_DIR)
             .unwrap()
             .filter_map(Result::ok)
             .collect::<Vec<_>>();
@@ -89,19 +100,19 @@ impl TatakuTask for BeatmapDownloadsCheckTask {
             let path = i.path();
             let Some(ext) = path.extension() else { continue };
             if ext == ".osk" {
-                if let Ok(path) = Zip::extract_single(
+                if let Ok(path) = engine::io::Zip::extract_single(
                     i.path(), 
-                    SKINS_FOLDER, 
+                    engine::SKINS_FOLDER, 
                     true, 
-                    ArchiveDelete::Always
+                    engine::io::ArchiveDelete::Always
                 ) {
                     folders.push(path);
                 }
-            } else if let Ok(path) = Zip::extract_single(
+            } else if let Ok(path) = engine::io::Zip::extract_single(
                 i.path(), 
-                SONGS_DIR, 
+                engine::SONGS_DIR, 
                 true, 
-                ArchiveDelete::Always
+                engine::io::ArchiveDelete::Always
             ) {
                 folders.push(path);
             }

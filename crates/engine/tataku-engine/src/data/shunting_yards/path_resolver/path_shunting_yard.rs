@@ -1,8 +1,12 @@
-use crate::prelude::*;
+use crate::*;
 use super::*;
+use common::reflect::*;
+use tataku::{
+    ShuntingYardStack,
+};
 
 pub(crate) struct PathShuntingYard;
-impl<'rpn, 'values: 'rpn> GenericShuntingYard<'rpn, 'values> for PathShuntingYard {
+impl<'rpn, 'values: 'rpn> tataku::GenericShuntingYard<'rpn, 'values> for PathShuntingYard {
     type Token = PathShuntingYardToken;
     type ReadType = PathShuntingYardReadType;
     type Operator = PathShuntingYardOperator;
@@ -125,6 +129,7 @@ impl<'rpn, 'values: 'rpn> GenericShuntingYard<'rpn, 'values> for PathShuntingYar
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tataku::GenericShuntingYard;
 
     #[test]
     fn test_simple() {
@@ -349,7 +354,7 @@ mod tests {
 
 #[test]
 fn test() {
-    let i = Cryptography::md5("hi mom");
+    let i = tataku::Cryptography::md5("hi mom");
     let mut map = HashMap::new();
     let v = String::from("hello");
     map.insert(i, v.clone());

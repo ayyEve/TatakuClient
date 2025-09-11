@@ -1692,6 +1692,7 @@ name = "gamemode-mania"
 version = "0.1.0"
 dependencies = [
  "serde",
+ "serde_json",
  "tataku-client-common",
  "tataku-client-proc-macros",
  "tataku-common",
@@ -1705,6 +1706,7 @@ name = "gamemode-osu"
 version = "0.1.0"
 dependencies = [
  "serde",
+ "serde_json",
  "tataku-client-common",
  "tataku-client-proc-macros",
  "tataku-common",
@@ -1718,6 +1720,7 @@ name = "gamemode-taiko"
 version = "0.1.0"
 dependencies = [
  "serde",
+ "serde_json",
  "tataku-client-common",
  "tataku-client-proc-macros",
  "tataku-common",
@@ -1732,6 +1735,7 @@ version = "0.1.0"
 dependencies = [
  "lazy_static",
  "serde",
+ "serde_json",
  "tataku-client-common",
  "tataku-client-proc-macros",
  "tataku-common",
@@ -2425,6 +2429,7 @@ dependencies = [
  "raw-window-handle",
  "reqwest",
  "serde",
+ "serde_json",
  "tataku-engine",
  "tokio",
 ]
@@ -4993,6 +4998,7 @@ dependencies = [
  "reqwest",
  "rusqlite",
  "serde",
+ "serde_json",
  "sha2",
  "strfmt",
  "taffy",
@@ -5012,9 +5018,7 @@ dependencies = [
 
 [[package]]
 name = "tataku-common"
-version = "0.19.0"
-source = "registry+https://gitlab.ayyeve.dev/tataku/tataku-rust-registry.git"
-checksum = "236a82ed42b7e8a4dcfe70f933a218195df8a679afe5aa52573832b791b289f9"
+version = "0.20.0"
 dependencies = [
  "downcast-rs 2.0.1",
  "half",
@@ -5027,9 +5031,7 @@ dependencies = [
 
 [[package]]
 name = "tataku-common-proc-macros"
-version = "0.8.0"
-source = "registry+https://gitlab.ayyeve.dev/tataku/tataku-rust-registry.git"
-checksum = "b73b0cedd145359f2733106bd97ed347aef768d8d2ee8168b0237202d51c4f1a"
+version = "0.9.0"
 dependencies = [
  "proc-macro2",
  "quote",

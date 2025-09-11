@@ -1,5 +1,22 @@
 use crate::prelude::*;
 
+use tataku::Vector2;
+use engine::{
+    game::diffcalc::{
+        DiffCalc,
+        DiffCalcSummary,
+    },
+    beatmaps::{
+        Beatmap,
+        NoteType,
+        BeatmapMeta,
+    },
+    gameplay::{
+        GameMode,
+        mods::ModManager,
+    },
+};
+
 const BUCKET_LENGTH:f32 = 500.0;
 pub const WINDOW_SIZE:Vector2 = Vector2::new(1280.0, 720.0);
 
@@ -7,7 +24,7 @@ pub struct OsuDifficultyCalculator {
     notes: Vec<OsuDifficultyHitObject>,
 }
 impl OsuDifficultyCalculator {
-    fn calc_aim(&mut self, mods: &ModManager) -> TatakuResult<Vec<f32>> {
+    fn calc_aim(&mut self, mods: &ModManager) -> tataku::Result<Vec<f32>> {
         let mut start_bucket_time = self.notes.first().unwrap().time;
 
         let bucket_length = BUCKET_LENGTH * mods.get_speed();
@@ -41,7 +58,7 @@ impl OsuDifficultyCalculator {
         Ok(aim_density)
     }
 
-    fn calc_density(&mut self, mods: &ModManager) -> TatakuResult<Vec<f32>> {
+    fn calc_density(&mut self, mods: &ModManager) -> tataku::Result<Vec<f32>> {
         let mut start_bucket_time = self.notes.first().unwrap().time;
         let mut last_note_time = start_bucket_time;
 
@@ -106,10 +123,10 @@ impl OsuDifficultyCalculator {
     }
 }
 impl DiffCalc for OsuDifficultyCalculator {
-    fn new(meta: &BeatmapMeta, settings: &Settings) -> TatakuResult<Self> {
+    fn new(meta: &BeatmapMeta, settings: &engine::Settings) -> tataku::Result<Self> {
         let g = Beatmap::from_metadata(meta)?;
         let g = OsuGame::new(&g, true, settings)?;
-        if g.notes.is_empty() { return Err(BeatmapError::InvalidFile.into()) }
+        if g.notes.is_empty() { return Err(errors::beatmap::BeatmapError::InvalidFile.into()) }
 
         let mut notes = Vec::new();
         for n in g.notes.iter() {
@@ -122,14 +139,16 @@ impl DiffCalc for OsuDifficultyCalculator {
             });
         }
 
-        notes.sort_by(|a, b| a.time.partial_cmp(&b.time).unwrap());
+        notes.sort_by(|a, b| 
+            a.time.partial_cmp(&b.time).unwrap()
+        );
 
         Ok(Self {
             notes
         })
     }
 
-    fn calc(&mut self, mods: &ModManager) -> TatakuResult<DiffCalcSummary> {
+    fn calc(&mut self, mods: &ModManager) -> tataku::Result<DiffCalcSummary> {
         let aim = self.calc_aim(mods)?;
         let note_density = self.calc_density(mods)?;
 

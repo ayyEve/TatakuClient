@@ -1,5 +1,26 @@
 use crate::prelude::*;
+use tokio::sync::RwLock;
 use tokio::task::AbortHandle;
+use common::{
+    Score,
+    Md5Hash,
+    GameSpeed,
+    reflect::*,
+};
+
+use engine::{
+    data::{
+        ValueChangeHelper,
+        ScoreRetreivalMethod,
+    },
+    beatmaps::BeatmapType,
+    gameplay::{
+        mods::*,
+        IngameScore,
+        GamemodeInfos,
+        ReplayLocation,
+    },
+};
 
 
 #[derive(Reflect)]
@@ -9,7 +30,7 @@ pub struct ScoreManager {
     pub scores: Vec<IngameScore>,
 
     #[reflect(skip)] infos: GamemodeInfos,
-    #[reflect(skip)] current_loader: Option<Arc<AsyncRwLock<ScoreLoaderHelper>>>,
+    #[reflect(skip)] current_loader: Option<Arc<RwLock<ScoreLoaderHelper>>>,
     #[reflect(skip)] abort_handle: Option<AbortHandle>,
 
     #[reflect(skip)] beatmap: ValueChangeHelper<Md5Hash>,
@@ -34,7 +55,7 @@ impl ScoreManager {
         }
     }
 
-    fn check_mods(score_mods: &[ModDefinition], mod_manager: &ModManager) -> bool {
+    fn check_mods(score_mods: &[common::ModDefinition], mod_manager: &ModManager) -> bool {
         if score_mods.len() != mod_manager.mods.len() { return false }
 
         for i in score_mods.iter() {
@@ -48,7 +69,7 @@ impl ScoreManager {
     pub fn get_scores(
         &mut self, 
         values: &mut ValueCollection
-    ) -> TatakuResult {
+    ) -> engine::tataku::Result<()> {
         if self.current_loader.take().is_some()
         && let Some(abort) = self.abort_handle.take() {
             abort.abort();
@@ -60,7 +81,7 @@ impl ScoreManager {
         let method = self.score_method();
         let infos = values.global.gamemode_infos.clone();
 
-        let scores = Arc::new(AsyncRwLock::new(ScoreLoaderHelper::default()));
+        let scores = Arc::new(RwLock::new(ScoreLoaderHelper::default()));
         self.current_loader = Some(scores.clone());
         let scores_clone = scores.clone();
         
@@ -251,6 +272,18 @@ pub struct ScoreLoaderHelper {
 
 mod osu {
     use crate::prelude::*;
+    use common::{
+        Score,
+        Md5Hash,
+        GameSpeed,
+    };
+
+    use engine::gameplay::{
+        IngameScore,
+        GamemodeInfos,
+        ReplayLocation,
+        mods::*,
+    };
     
     #[derive(Serialize, Deserialize)]
     struct OsuApiScore {
@@ -347,7 +380,7 @@ mod osu {
         hash: Md5Hash,
         playmode: &str,
         infos: &GamemodeInfos,
-    ) -> TatakuResult<Vec<IngameScore>> {
+    ) -> tataku::Result<Vec<IngameScore>> {
         let info = infos.get_info(playmode)?;
         let ok_mods = ModManager::mods_for_playmode_as_hashmap(info);
 
@@ -356,13 +389,13 @@ mod osu {
             "taiko" => 1,
             "catch" => 2,
             "mania" => 3,
-            _ => return Err(TatakuError::Beatmap(BeatmapError::UnsupportedMode))
+            _ => return Err(tataku::Error::Beatmap(errors::beatmap::BeatmapError::UnsupportedMode))
         };
 
         // let key = Settings::get().osu_api_key.clone();
         if osu_api_key.is_empty() {
             // NotificationManager::add_text_notification("You need to supply an osu api key in settings.json", 5000.0, Color::RED).await;
-            Err(TatakuError::String("no api key".to_owned()))
+            Err(tataku::Error::String("no api key".to_owned()))
         } else {
             let hash = hash.to_string();
             // need to fetch the beatmap id, because peppy doesnt allow getting scores by hash :/
@@ -430,7 +463,8 @@ mod osu {
                     let mut score = IngameScore::new(score, false, false);
                     // error!("{}", s.replay_available);
                     score.replay_location = if s.replay_available == "1" {
-                        ReplayLocation::Online(Arc::new(OsuReplayDownloader::new(score.score.clone(), id.parse().unwrap_or_default())))
+                        use engine::beatmaps::osu::ReplayDownloader;
+                        ReplayLocation::Online(Arc::new(ReplayDownloader::new(score.score.clone(), id.parse().unwrap_or_default())))
                     } else {
                         ReplayLocation::OnlineNotExist
                     };
@@ -439,7 +473,7 @@ mod osu {
                 }).collect())
                     
             } else {
-                Err(TatakuError::String("no osu map".to_owned()))
+                Err(tataku::Error::String("no osu map".to_owned()))
             }
         }
     }
@@ -447,7 +481,8 @@ mod osu {
 }
 
 mod quaver {
-    use crate::prelude::*;
+    use super::*;
+    use engine::beatmaps::quaver::QuaverReplayDownloader;
 
     pub async fn fetch_beatmap_id(map_hash: &String) -> Option<u32> {
         let url = format!("https://api.quavergame.com/v1/maps/{map_hash}");
@@ -475,12 +510,12 @@ mod quaver {
     async fn get_scores_internal(
         map_hash: &String,
         infos: &GamemodeInfos,
-    ) -> TatakuResult<Vec<IngameScore>> {
+    ) -> engine::tataku::Result<Vec<IngameScore>> {
         let info = infos.get_info("mania")?;
         let ok_mods = ModManager::mods_for_playmode_as_hashmap(info);
 
         // need to fetch the beatmap id, because peppy doesnt allow getting scores by hash :/
-        let Some(id) = fetch_beatmap_id(map_hash).await else {return Err(TatakuError::String("no osu map".to_owned()))};
+        let Some(id) = fetch_beatmap_id(map_hash).await else {return Err(engine::tataku::Error::String("no osu map".to_owned()))};
         let url = format!("https://api.quavergame.com/v1/scores/map/{id}");
 
         let bytes = reqwest::get(url).await?.bytes().await?;
@@ -587,7 +622,8 @@ mod quaver {
 }
 
 mod tataku {
-    use crate::prelude::*;
+    use super::*;
+    use engine::beatmaps::TatakuReplayDownloader;
 
     #[derive(Serialize, Deserialize)]
     struct TatakuScore {
@@ -596,7 +632,11 @@ mod tataku {
         score: Score
     }
 
-    pub async fn get_scores(map_hash: &str, playmode: &str, settings: &Settings) -> Vec<IngameScore> {
+    pub async fn get_scores(
+        map_hash: &str, 
+        playmode: &str, 
+        settings: &engine::Settings
+    ) -> Vec<IngameScore> {
         match get_scores_internal(map_hash, playmode, settings).await {
             Ok(maps) => maps,
             Err(e) => {
@@ -606,7 +646,11 @@ mod tataku {
         }
     }
 
-    async fn get_scores_internal(map_hash: &str, playmode: &str, settings: &Settings) -> TatakuResult<Vec<IngameScore>> {
+    async fn get_scores_internal(
+        map_hash: &str, 
+        playmode: &str, 
+        settings: &engine::Settings
+    ) -> engine::tataku::Result<Vec<IngameScore>> {
         let base = settings.score_url.clone();
         let url = format!("{base}/api/get_scores?hash={map_hash}&mode={playmode}");
 
@@ -618,7 +662,9 @@ mod tataku {
             if s.score_hash.is_none() {
                 score.replay_location = ReplayLocation::OnlineNotExist;
             } else {
-                score.replay_location = ReplayLocation::Online(Arc::new(TatakuReplayDownloader::new(s.score_id, s.score_hash)));
+                score.replay_location = ReplayLocation::Online(Arc::new(
+                    TatakuReplayDownloader::new(s.score_id, s.score_hash)
+                ));
             }
             score
         }).collect())

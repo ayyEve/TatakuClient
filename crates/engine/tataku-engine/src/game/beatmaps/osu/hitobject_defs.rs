@@ -1,4 +1,5 @@
-use crate::prelude::*;
+use crate::*;
+use tataku::Vector2;
 
 #[derive(Clone, Debug, Default)]
 pub struct NoteDef {

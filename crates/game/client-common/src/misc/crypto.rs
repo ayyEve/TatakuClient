@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 pub struct Cryptography;
 impl Cryptography {
-    pub fn md5(body: impl AsRef<[u8]>) -> Md5Hash {
+    pub fn md5(body: impl AsRef<[u8]>) -> common::Md5Hash {
         format!("{:x}", md5::compute(body).clone()).try_into().unwrap()
     }
 
@@ -45,11 +45,11 @@ impl Cryptography {
     }
 
 
-    pub fn decode_base64(data: impl AsRef<[u8]>) -> TatakuResult<Vec<u8>>{
+    pub fn decode_base64(data: impl AsRef<[u8]>) -> tataku::TatakuResult<Vec<u8>>{
         use base64::Engine;
         base64::engine::general_purpose::STANDARD
             .decode(data)
-            .map_err(TatakuError::from_err)
+            .map_err(Error::from_err)
     }
 
 }

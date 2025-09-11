@@ -1,4 +1,12 @@
 use crate::prelude::*;
+use engine::graphics;
+use tataku::{
+    Color,
+    Bounds,
+    Border,
+    Vector2,
+};
+
 
 #[derive(Default)]
 pub struct TaikoPlayfield {
@@ -12,8 +20,8 @@ pub struct TaikoPlayfield {
 
 impl TaikoPlayfield {
     #[cfg(feature = "graphics")]
-    pub fn get_rectangle(&self, kiai: bool) -> Rectangle {
-        Rectangle::new_bounds(
+    pub fn get_rectangle(&self, kiai: bool) -> graphics::Rectangle {
+        graphics::Rectangle::new_bounds(
             self.get_playfield_bounds(),
             Color::new(0.1, 0.1, 0.1, 1.0),
         )

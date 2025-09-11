@@ -1,7 +1,17 @@
 use crate::prelude::*;
+use widgets::*;
+use ui::{
+    tree::*,
+    widget::*,
+};
+use engine::gameplay::stats::{
+    GraphType,
+    StatsInfo,
+    StatsEntry,
+};
 
 pub struct StatsGraphWidget {
-    node: Box<dyn Widget<TatakuAction>>,
+    node: Box<dyn Widget<actions::Action>>,
     node_id: NodeId
 }
 impl StatsGraphWidget {
@@ -15,7 +25,7 @@ impl StatsGraphWidget {
         }
     }
 
-    fn view(_stats: &StatsInfo) -> Box<dyn Widget<TatakuAction>> {
+    fn view(_stats: &StatsInfo) -> Box<dyn Widget<actions::Action>> {
         EmptyWidget::new_boxed()
         // Container::new(
         //     vec![
@@ -59,20 +69,20 @@ impl StatsGraphWidget {
         // .boxed()
     }
 }
-impl Widget<TatakuAction> for StatsGraphWidget {
+impl Widget<actions::Action> for StatsGraphWidget {
     fn name(&self) -> CowStr { "stats_graph_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn children(&self) -> WidgetChildren<'_, TatakuAction> {
+    fn children(&self) -> WidgetChildren<'_, actions::Action> {
         WidgetChildren::Single(&self.node)
     }
-    fn children_mut(&mut self) -> WidgetChildrenMut<'_, TatakuAction> {
+    fn children_mut(&mut self) -> WidgetChildrenMut<'_, actions::Action> {
         WidgetChildrenMut::Single(&mut self.node)
     }
 
     fn layout(
         &mut self,
-        shell: &mut LayoutShell<TatakuAction>,
+        shell: &mut LayoutShell<actions::Action>,
     ) -> taffy::TaffyResult<NodeId> {
         let child = self.node.layout(shell)?;
         self.node_id = shell.tree.new_with_children(&[ child ])?;
@@ -106,19 +116,19 @@ impl GraphWidget {
         }
     }
 }
-impl Widget<TatakuAction> for GraphWidget {
+impl Widget<actions::Action> for GraphWidget {
     fn name(&self) -> CowStr { "stats_graph_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
     
     fn layout(
         &mut self, 
-        shell: &mut LayoutShell<TatakuAction>
+        shell: &mut LayoutShell<actions::Action>
     ) -> taffy::TaffyResult<NodeId> {
         self.node_id = shell.tree.new_leaf()?;
         Ok(self.node_id)
     }
     
-    fn draw(&self, shell: &mut DrawShell<TatakuAction>) {
+    fn draw(&self, shell: &mut DrawShell<actions::Action>) {
         let Some(bounds) = shell.tree.absolute_bounds(self.node_id) else { return };
 
         let collection = match &self.graph {

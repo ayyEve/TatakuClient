@@ -21,7 +21,7 @@ workspace = true
 [dependencies]
 tataku-ui.workspace = true
 tataku-graphics.workspace = true
-tataku-client-common = { workspace = true, optional = true }
+tataku-client-common.workspace = true
 tataku-engine = { workspace = true }
 
 taffy.workspace = true

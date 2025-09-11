@@ -1,4 +1,6 @@
+use std::f32::consts::PI;
 use crate::prelude::*;
+use tataku::Vector2;
 
 // this is essentially osu's math helper
 pub const SLIDER_DETAIL_LEVEL:u32 = 50;

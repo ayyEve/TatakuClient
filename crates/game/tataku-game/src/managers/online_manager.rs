@@ -1,4 +1,3 @@
-use PacketId::*;
 use crate::prelude::*;
 use tokio::net::TcpStream;
 use futures_util::{ SinkExt, StreamExt, stream::SplitSink };
@@ -10,6 +9,39 @@ use tokio_tungstenite::{
         Error,
         protocol::Message,
     }
+};
+pub use tokio::sync::mpsc::{ 
+    UnboundedSender as AsyncUnboundedSender,
+    UnboundedReceiver as AsyncUnboundedReceiver, 
+    unbounded_channel as async_unbounded_channel,
+};
+
+use tataku::Color;
+use common::{
+    packets::*,
+    reflect::*,
+    UserAction,
+    network::{
+        Severity,
+        LoginStatus,
+        spectator::*,
+        multiplayer::*,
+    },
+};
+use engine::{
+    actions,
+    settings,
+    online::*,
+    BeatmapMeta,
+    Notification,
+    actions::{
+        chat::ChatAction as ChatAction,
+        online::{
+            OnlineEvent as OnlineEvent,
+            OnlineAction as OnlineAction,
+            SpectatorEvent as SpectatorEvent,
+        }
+    },
 };
 
 // how many spectator frames do we buffer before sending?
@@ -97,7 +129,7 @@ impl OnlineManager {
     #[cfg(feature="gameplay")]
     pub fn start(
         &mut self,
-        settings: &Settings,
+        settings: &engine::Settings,
         runtime: &tokio::runtime::Runtime,
     ) {
         if let Some(handle) = self.handle.take() {
@@ -150,8 +182,8 @@ impl OnlineManager {
 
     pub fn update(
         &mut self,
-        settings: &Settings,
-        actions: &mut ActionQueue,
+        settings: &engine::Settings,
+        actions: &mut actions::ActionQueue,
     ) -> Vec<OnlineEvent> {
         while let Some(Ok(event)) = self.event_receiver.as_mut().map(|e| e.try_recv()) {
             match event {
@@ -219,12 +251,12 @@ impl OnlineManager {
     fn handle_packet(
         &mut self,
         packet: PacketId, 
-        log_settings: &LoggingSettings,
-        actions: &mut ActionQueue,
+        log_settings: &settings::logging::LoggingSettings,
+        actions: &mut actions::ActionQueue,
     ) {
         match packet {
             // ===== ping/pong =====
-            PacketId::Ping => { self.send_packet(Pong); },
+            PacketId::Ping => { self.send_packet(PacketId::Pong); },
             PacketId::Pong => { /* trace!("Got pong from server"); */ },
 
             // login
@@ -418,8 +450,8 @@ impl OnlineManager {
     fn handle_chat_packet(
         &mut self,
         packet: ChatPacket, 
-        log_settings: &LoggingSettings,
-        _actions: &mut ActionQueue
+        log_settings: &settings::logging::LoggingSettings,
+        _actions: &mut actions::ActionQueue
     ) {
         match packet {
             ChatPacket::Server_SendMessage { sender_id, message, channel } => {
@@ -490,7 +522,7 @@ impl OnlineManager {
         &mut self,
         packet: SpectatorPacket, 
         host_id: u32, 
-        actions: &mut ActionQueue,
+        actions: &mut actions::ActionQueue,
     ) {
         match packet {
             SpectatorPacket::Server_SpectatorFrames { frames: new_frames } => {
@@ -639,7 +671,7 @@ impl OnlineManager {
             
             // info!("Sending {} spec packets", frames.len());
             self.send_packet(SpectatorPacket::Client_SpectatorFrames {frames}.with_host(self.user_id));
-            self.spectator_info.last_sent_frame = TatakuInstant::now();
+            self.spectator_info.last_sent_frame = tataku::Instant::now();
         }
     }
 
@@ -744,7 +776,10 @@ impl SetAction {
 struct Writer(SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>);
 impl Writer {
     async fn send_packet(&mut self, packet: PacketId) -> Result<(), Error> {
-        let data = SimpleWriter::new().write(packet).done();
+
+        let data = common::serialization::SimpleWriter::new()
+            .write(packet)
+            .done();
         self.0.send(Message::Binary(data.into())).await
     }
     async fn send_ping(&mut self) -> Result<(), Error> {
@@ -775,7 +810,7 @@ impl MultiplayerData {
 
 fn network_thread(
     runtime: &tokio::runtime::Runtime,
-    settings: &Settings,
+    settings: &engine::Settings,
     event_sender: AsyncUnboundedSender<OnlineManagerEvent>,
     mut packet_receiver: AsyncUnboundedReceiver<PacketId>,
 ) -> tokio::task::JoinHandle<()> {
@@ -806,7 +841,7 @@ fn network_thread(
                 }
                 
                 // send login packet
-                if let Err(_e) = writer.send_packet(Client_UserLogin {
+                if let Err(_e) = writer.send_packet(PacketId::Client_UserLogin {
                     protocol_version: 1,
                     game: "Tataku\n0.1.0".to_owned(),
                     username: username.clone(),
@@ -838,7 +873,7 @@ fn network_thread(
 
                         match message {
                             Ok(Message::Binary(data)) => {
-                                let mut reader = SerializationReader::new(data.to_vec());
+                                let mut reader = common::serialization::SerializationReader::new(data.to_vec());
                                 
                                 while reader.can_read() {
                                     // trace!("reading packet from server");

@@ -1,5 +1,11 @@
 use crate::prelude::*;
 
+use tataku::{
+    Color,
+    Vector2,
+};
+
+
 // timing bar consts
 pub const BAR_COLOR:Color = Color::new(0.0, 0.0, 0.0, 1.0); // timing bar color
 const BAR_HEIGHT:f32 = 4.0; // how tall is a timing bar
@@ -56,10 +62,10 @@ impl TimingBar {
         self.pos.y = self.y_at(time);
     }
 
-    pub fn draw(&mut self, list: &mut RenderableCollection) {
+    pub fn draw(&mut self, list: &mut graphics::RenderableCollection) {
         if self.pos.y < 0.0 || self.pos.y > self.playfield.bounds.size.y { return }
 
-        list.push(Rectangle::new(
+        list.push(graphics::Rectangle::new(
             self.pos + Vector2::with_y(self.playfield.note_size().y),
             self.size,
             BAR_COLOR,

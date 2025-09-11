@@ -1,4 +1,5 @@
-use crate::prelude::*;
+use crate::*;
+use common::reflect::*;
 
 #[derive(Deserialize, Reflect)]
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
@@ -11,7 +12,7 @@ pub enum DisplayType {
 }
 impl FromStr for DisplayType {
     type Err = ();
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> core::result::Result<Self, Self::Err> {
         match s {
             "block" => Ok(Self::Block),
             "flex" => Ok(Self::Flex),

@@ -1,13 +1,17 @@
 use crate::prelude::*;
+use common::reflect::Reflect;
+
+use engine::{
+    actions,
+    game::task::*,
+};
 
 #[derive(Default)]
 pub struct InitGameTask {
     state: TatakuTaskState,
-
 }
 
-
-impl TatakuTask for InitGameTask {
+impl engine::Task for InitGameTask {
     fn get_name(&self) -> CowStr { Cow::Borrowed("Initialize Game") }
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Once }
     fn get_state(&self) -> TatakuTaskState { self.state }
@@ -16,7 +20,7 @@ impl TatakuTask for InitGameTask {
         &mut self,
         values: &mut dyn Reflect, 
         _state: &TaskGameState, 
-        actions: &mut ActionQueue,
+        actions: &mut actions::ActionQueue,
     ) {
         let statuses = values
             .reflect_get_mut::<Vec<LoadingStatus>>("game.loading_statuses")
@@ -36,10 +40,10 @@ impl TatakuTask for InitGameTask {
             self.state = TatakuTaskState::Complete;
             
             info!("game init done, going to main menu");
-            actions.push(BeatmapAction::Next.into());
+            actions.push(actions::beatmap::BeatmapAction::Next.into());
             
             #[cfg(feature="graphics")]
-            actions.push(MenuAction::SetMenu { 
+            actions.push(actions::menu::MenuAction::SetMenu { 
                 id: "main_menu".into(),
             }.into());
         }

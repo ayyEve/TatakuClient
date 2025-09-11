@@ -1,8 +1,13 @@
+use crate::*;
 use std::rc::Rc;
+use crate::tree::*;
+use crate::style::*;
 use super::NodeData;
-use crate::prelude::*;
-use tataku_input::prelude::*;
-use tataku_client_common::prelude::*;
+use crate::widget::*;
+use crate::message::*;
+use common::reflect::*;
+use crate::spatial_navigation::*;
+use crate::current_input_state::CurrentInputState;
 
 use slotmap::SlotMap;
 use slotmap::DefaultKey;
@@ -361,7 +366,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
             let key_mods = input_state.mods;
 
             input_state.events.retain(|event| {
-                let event = InputEvent {
+                let event = input::InputEvent {
                     event: event.clone(),
                     mouse_pos,
                     key_mods
@@ -463,7 +468,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
 
     pub fn handle_event(
         &mut self,
-        event: &TatakuEvent,
+        event: &input::TatakuEvent,
         passed_in: Option<&TatakuValue>,
         values: &mut dyn Reflect,
         actions: &mut Vec<Action>,
@@ -500,7 +505,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         values: &mut dyn Reflect,
         actions: &mut Vec<Action>,
         messages: &mut Vec<Message>,
-        skin_manager: &mut dyn SkinProvider,
+        skin_manager: &mut dyn graphics::SkinProvider,
         text_layout_contexts: &mut TextLayoutContexts,
     ) {
         if self.should_refresh {
@@ -527,7 +532,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         values: &mut dyn Reflect,
         messages: &mut Vec<Message>,
         actions: &mut Vec<Action>,
-        skin_manager: &mut dyn SkinProvider,
+        skin_manager: &mut dyn graphics::SkinProvider,
         text_layout_contexts: &mut TextLayoutContexts,
     ) {
         self.with_node(|tree, node| {
@@ -548,7 +553,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
     pub fn draw(
         &mut self,
         values: &dyn Reflect,
-        list: &mut RenderableCollection,
+        list: &mut graphics::RenderableCollection,
         text_layout_contexts: &mut TextLayoutContexts,
     ) {
         self.with_node(|tree, node| {
@@ -578,6 +583,12 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         // actions: &mut ActionQueue,
         messages: &mut [Message],
     ) -> bool {
+        use input::{ 
+            Key,
+            GamepadButton,
+            InputType,
+        };
+
         let mut consumed = false;
 
         #[derive(From)]

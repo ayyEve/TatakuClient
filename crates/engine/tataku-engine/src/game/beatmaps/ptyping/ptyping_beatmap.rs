@@ -3,7 +3,13 @@
  * src: https://github.com/Beyley/pTyping/blob/master/pTyping/Songs/SongLoaders/UTypingSongHandler.cs
  */
 
-use crate::prelude::*;
+use crate::*;
+use common::Md5Hash;
+use engine::beatmaps::ptyping::{
+    PTypingBeatmapDef,
+    PTypingMetadataText,
+    PTypingMapDef,
+};
 
 #[derive(Clone, Debug)]
 pub struct PTypingBeatmap {
@@ -23,7 +29,7 @@ pub struct PTypingBeatmap {
     duration: f32,
 }
 impl PTypingBeatmap {
-    pub fn load_multiple(path: impl AsRef<Path>) -> TatakuResult<Vec<Self>> {
+    pub fn load_multiple(path: impl AsRef<Path>) -> tataku::TatakuResult<Vec<Self>> {
         let path = path.as_ref();
         let parent_dir = path.parent().unwrap().to_string_lossy().to_string();
         let file_path = path.to_string_lossy().to_string();
@@ -70,24 +76,24 @@ impl PTypingBeatmap {
     pub fn load_single(
         path: impl AsRef<Path>, 
         meta: &BeatmapMeta
-    ) -> TatakuResult<Self> {
+    ) -> tataku::TatakuResult<Self> {
         let maps = Self::load_multiple(path)?;
 
         maps.into_iter()
             .find(|m| m.hash == meta.beatmap_hash)
-            .ok_or_else(|| BeatmapError::InvalidFile.into())
+            .ok_or_else(|| errors::beatmap::BeatmapError::InvalidFile.into())
     }
 }
-impl TatakuBeatmap for PTypingBeatmap {
+impl beatmaps::TatakuBeatmap for PTypingBeatmap {
     fn hash(&self) -> Md5Hash {
         self.hash
         // self.hash.clone()
     }
-    fn playmode(&self, _incoming:String) -> String { "utyping".to_owned() }
+    fn playmode(&self, _incoming: String) -> String { "utyping".to_owned() }
 
-    fn get_timing_points(&self) -> Vec<TimingPoint> {
+    fn get_timing_points(&self) -> Vec<beatmaps::TimingPoint> {
         let point = self.def.timing_points.first().unwrap();
-        vec![TimingPoint {
+        vec![beatmaps::TimingPoint {
             time: point.time as f32,
             beat_length: point.tempo as f32,
             volume: 100,
@@ -105,7 +111,7 @@ impl TatakuBeatmap for PTypingBeatmap {
         Arc::new(BeatmapMeta { 
             file_path: self.file_path.clone().into(), 
             beatmap_hash: self.hash(), 
-            beatmap_type: BeatmapType::UTyping,
+            beatmap_type: beatmaps::BeatmapType::UTyping,
             mode: "utyping".to_owned().into(), 
 
             artist: self.artist.ascii.clone().unwrap_or_default().into(), 

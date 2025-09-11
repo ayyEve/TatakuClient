@@ -1,4 +1,25 @@
 use crate::prelude::*;
+use tataku::{
+    Border,
+    Vector2,
+};
+use ui::{
+    tree::*,
+    style::*,
+    widget::*,
+};
+use widgets::{
+    WidgetText,
+    InputAction,
+};
+use input::{ 
+    Key,
+    KeyInput,
+    InputType,
+    InputEvent, 
+    MouseButton, 
+    KeyModifiers,
+};
 
 // TODO: should this be context aware? like if you ctrl + whatever on alphanumeric, should it always stop and non-alphanumeric?
 /// yes, it probably should
@@ -54,7 +75,7 @@ impl TextInput {
             hovered: false,
             active: false,
 
-            node_id: EMPTY_NODE,
+            node_id: ui::EMPTY_NODE,
         }
     }
 
@@ -532,7 +553,7 @@ impl TextInput {
         value.len()
     }
 
-    fn update_size(&self, tree: &mut Tree<TatakuAction>) {
+    fn update_size(&self, tree: &mut Tree<actions::Action>) {
         let text_style = tree
             .get_text_style(self.node_id)
             .unwrap();
@@ -553,11 +574,11 @@ impl TextInput {
         );
     }
 }
-impl Widget<TatakuAction> for TextInput {
+impl Widget<actions::Action> for TextInput {
     fn name(&self) -> CowStr { "text_input_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    fn layout(&mut self, shell: &mut LayoutShell<TatakuAction>) -> taffy::TaffyResult<NodeId> {
+    fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId> {
         self.node_id = shell.tree.new_leaf()?;
         shell.with_context(self.node_id, |ctx| {
             ctx.needs_inverse_transform = true;
@@ -567,14 +588,14 @@ impl Widget<TatakuAction> for TextInput {
         Ok(self.node_id)
     }
 
-    fn init_style(&mut self, shell: &mut LayoutShell<TatakuAction>) {
+    fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
         self.update_size(shell.tree);
     }
 
     fn input(
         &mut self,
         event: &InputEvent,
-        shell: &mut InputShell<TatakuAction>,
+        shell: &mut InputShell<actions::Action>,
     ) {
         let text_style = shell.tree
             .get_text_style(self.node_id)
@@ -739,7 +760,7 @@ impl Widget<TatakuAction> for TextInput {
         }
     }
 
-    fn draw(&self, shell: &mut DrawShell<TatakuAction>) {
+    fn draw(&self, shell: &mut DrawShell<actions::Action>) {
         let Some(bounds) = shell.tree.absolute_bounds(self.node_id) 
         else { return };
 
@@ -747,16 +768,13 @@ impl Widget<TatakuAction> for TextInput {
             .unwrap();
 
 
-        shell.list.push(
-            Rectangle::new_bounds(
-                bounds,
-                shell.general_theme.background_color
-            )
-            .border(Border::new(
-                shell.general_theme.get_color(self.active, self.hovered), 
-                2.0
-            ))
-        );
+        shell.list.push(graphics::Rectangle::new_bounds(
+            bounds,
+            shell.general_theme.background_color
+        ).border(Border::new(
+            shell.general_theme.get_color(self.active, self.hovered), 
+            2.0
+        )));
 
         let mut text = self.get_text().clone().into_owned();
         // shell.list.push(text_style.create_text(text.clone(), bounds));
@@ -776,7 +794,7 @@ impl Widget<TatakuAction> for TextInput {
                     // let size = text_style.measure_text(&text, None);
                     let size = Vector2::new(100.0, 16.0);
                     
-                    let cursor_bar = Rectangle::new(
+                    let cursor_bar = graphics::Rectangle::new(
                         Vector2::new(
                             bounds.pos.x + size.x,
                             bounds.pos.y
@@ -806,7 +824,7 @@ impl Widget<TatakuAction> for TextInput {
                     let size = Vector2::new(100.0, 16.0);
 
                     // TODO: scale with transform?
-                    let cursor_bar = Rectangle::new(
+                    let cursor_bar = graphics::Rectangle::new(
                         Vector2::new(
                             bounds.pos.x + offset.x,
                             bounds.pos.y
@@ -824,7 +842,7 @@ impl Widget<TatakuAction> for TextInput {
         
     }
 
-    fn update(&mut self, shell: &mut UpdateShell<TatakuAction>) {
+    fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
         if self.value.update(shell.values) | self.placeholder.update(shell.values) {
             self.update_size(shell.tree);
         }

@@ -1,4 +1,9 @@
 use crate::prelude::*;
+use engine::graphics;
+use tataku::{
+    Color,
+    Vector2,
+};
 
 /// timing bar color
 pub const BAR_COLOR:Color = Color::new(0.0, 0.0, 0.0, 1.0);
@@ -39,10 +44,10 @@ impl TimingBar {
 
 
     #[cfg(feature="graphics")]
-    pub fn draw(&mut self, list: &mut RenderableCollection) {
+    pub fn draw(&mut self, list: &mut graphics::RenderableCollection) {
         if self.pos.x + BAR_WIDTH < self.playfield.pos.x || self.pos.x - BAR_WIDTH > self.playfield.pos.x + self.playfield.size.x { return }
 
-        list.push(Rectangle::new(
+        list.push(graphics::Rectangle::new(
             self.pos,
             self.size,
             BAR_COLOR,

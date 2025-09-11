@@ -1,6 +1,9 @@
 use std::sync::Arc;
 use std::sync::LazyLock;
-use tataku_common::prelude::*;
+use tataku_common::reflection::*;
+
+
+
 static EMPTY: LazyLock<ArcStr> = LazyLock::new(|| ArcStr(String::new().into()));
 
 #[derive(Clone, Eq)]
@@ -114,15 +117,15 @@ impl serde::Serialize for ArcStr {
 }
 
 impl Reflect for ArcStr {
-    fn impl_get<'s, 'v>(&'s self, path: ReflectPath<'v>) -> ReflectResult<'v, MaybeOwnedReflect<'s>> {
+    fn impl_get<'s, 'v>(&'s self, path: ReflectPath<'v>) -> reflect::Result<'v, MaybeOwnedReflect<'s>> {
         self.0.impl_get(path)
     }
 
-    fn impl_get_mut<'s, 'v>(&'s mut self, path: ReflectPath<'v>) -> ReflectResult<'v, &'s mut dyn Reflect> {
+    fn impl_get_mut<'s, 'v>(&'s mut self, path: ReflectPath<'v>) -> reflect::Result<'v, &'s mut dyn Reflect> {
         self.0.impl_get_mut(path)
     }
 
-    fn impl_insert<'v>(&mut self, path: ReflectPath<'v>, value: Box<dyn Reflect>) -> ReflectResult<'v, ()> {
+    fn impl_insert<'v>(&mut self, path: ReflectPath<'v>, value: Box<dyn Reflect>) -> reflect::Result<'v, ()> {
         self.0.impl_insert(path, value)
     }
 
@@ -130,7 +133,7 @@ impl Reflect for ArcStr {
         Some(Box::new(self.clone()))
     }
 
-    fn impl_display<'v>(&self, _: ReflectPath<'v>, _: Option<usize>) -> ReflectResult<'v, String> {
+    fn impl_display<'v>(&self, _: ReflectPath<'v>, _: Option<usize>) -> reflect::Result<'v, String> {
         Ok(self.to_string())
     }
 

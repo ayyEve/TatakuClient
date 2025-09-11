@@ -1,5 +1,11 @@
-use crate::prelude::*;
-use tataku_input::prelude::*;
+use crate::*;
+use input::{
+    Key,
+    KeyModifiers,
+    GamepadButton,
+    InputEvent,
+    InputType,
+};
 
 #[derive(Debug)]
 pub struct CurrentInputState {

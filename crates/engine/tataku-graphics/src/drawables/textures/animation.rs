@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::*;
 
 #[derive(Clone)]
 pub struct Animation {

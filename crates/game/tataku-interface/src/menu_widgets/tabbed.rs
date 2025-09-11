@@ -1,4 +1,11 @@
 use crate::prelude::*;
+use tataku::TatakuValue;
+use ui::{
+    tree::*,
+    widget::*,
+    message::*,
+};
+use input::InputEvent;
 
 #[derive(ChainableInitializer)]
 pub struct TabbedWidget {
@@ -17,7 +24,7 @@ impl TabbedWidget {
             name: name.into(),
             tabs: tabs.into(),
             selected: 0,
-            node_id: EMPTY_NODE
+            node_id: ui::EMPTY_NODE
         }
     }
 
@@ -34,14 +41,14 @@ impl TabbedWidget {
             .get_mut(self.selected)
     }
 }
-impl Widget<TatakuAction> for TabbedWidget {
+impl Widget<actions::Action> for TabbedWidget {
     fn name(&self) -> CowStr { format!("tabbed_widget({})", self.name).into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn operation(
         &mut self,
         operation: &UiOperation,
-        tree: &mut Tree<TatakuAction>,
+        tree: &mut Tree<actions::Action>,
     ) {
         if operation.target.resolve(self, tree) {
             #[allow(clippy::single_match, reason = "will want to add more later")]
@@ -75,7 +82,7 @@ impl Widget<TatakuAction> for TabbedWidget {
     //     }
     // }
 
-    fn layout(&mut self, shell: &mut LayoutShell<TatakuAction>) -> taffy::TaffyResult<NodeId>  {
+    fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId>  {
         let children = self.tabs
             .tabs_mut()
             .iter_mut()
@@ -86,11 +93,11 @@ impl Widget<TatakuAction> for TabbedWidget {
         Ok(self.node_id)
     }
 
-    fn draw(&self, shell: &mut DrawShell<TatakuAction>) {
+    fn draw(&self, shell: &mut DrawShell<actions::Action>) {
         let Some(child) = self.get_ele() else { return };
         child.draw(shell);
     }
-    fn draw_overlay(&self, shell: &mut DrawShell<TatakuAction>) {
+    fn draw_overlay(&self, shell: &mut DrawShell<actions::Action>) {
         let Some(child) = self.get_ele() else { return };
         child.draw(shell);
     }
@@ -98,7 +105,7 @@ impl Widget<TatakuAction> for TabbedWidget {
     fn input(
         &mut self,
         event: &InputEvent,
-        shell: &mut InputShell<TatakuAction>,
+        shell: &mut InputShell<actions::Action>,
     ) {
         let Some(child) = self.get_ele_mut() else { return };
         child.input(event, shell);
@@ -106,7 +113,7 @@ impl Widget<TatakuAction> for TabbedWidget {
 
 
 
-    fn update(&mut self, shell: &mut UpdateShell<TatakuAction>) {
+    fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
         let Some(child) = self.get_ele_mut() else { return };
         child.update(shell);
     }
@@ -114,7 +121,7 @@ impl Widget<TatakuAction> for TabbedWidget {
     fn handle_message(
         &mut self,
         message: &Message,
-        shell: &mut MessageShell<TatakuAction>,
+        shell: &mut MessageShell<actions::Action>,
     ) {
         let Some(child) = self.get_ele_mut() else { return };
         child.handle_message(message, shell);
@@ -122,15 +129,15 @@ impl Widget<TatakuAction> for TabbedWidget {
 
     fn handle_event(
         &mut self,
-        event: &TatakuEvent,
+        event: &input::TatakuEvent,
         event_value: Option<&TatakuValue>,
-        shell: &mut MessageShell<TatakuAction>,
+        shell: &mut MessageShell<actions::Action>,
     ) {
         let Some(child) = self.get_ele_mut() else { return };
         child.handle_event(event, event_value, shell);
     }
 
-    fn reload_skin(&mut self, shell: &mut UpdateShell<TatakuAction>) {
+    fn reload_skin(&mut self, shell: &mut UpdateShell<actions::Action>) {
         for tab in self.tabs.tabs_mut() {
             tab.element.reload_skin(shell);
         }
@@ -172,12 +179,12 @@ impl From<Vec<Tab>> for TabProvider {
 
 pub struct Tab {
     name: String,
-    element: Box<dyn Widget<TatakuAction>>
+    element: Box<dyn Widget<actions::Action>>
 }
 impl Tab {
     pub fn new(
         name: String,
-        element: Box<dyn Widget<TatakuAction>>
+        element: Box<dyn Widget<actions::Action>>
     ) -> Self {
         Self {
             name,
@@ -186,7 +193,7 @@ impl Tab {
     }
 }
 impl Deref for Tab {
-    type Target = dyn Widget<TatakuAction>;
+    type Target = dyn Widget<actions::Action>;
     fn deref(&self) -> &Self::Target {
         &*self.element
     }

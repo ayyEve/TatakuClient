@@ -1,4 +1,6 @@
-use crate::prelude::*;
+use crate::*;
+use common::reflect::ReflectError;
+use engine::data::shunting_yards::path_resolver::*;
 
 #[doc(hidden)]
 #[derive(Debug, PartialEq)]
@@ -9,7 +11,7 @@ pub enum PathShuntingYardError {
     UnhandledToken(PathShuntingYardToken),
     ReflectError(ReflectError<'static>)
 }
-impl _ShuntingYardError for PathShuntingYardError {
+impl tataku::_ShuntingYardError for PathShuntingYardError {
     type Operator = PathShuntingYardOperator;
     type Token = PathShuntingYardToken;
 

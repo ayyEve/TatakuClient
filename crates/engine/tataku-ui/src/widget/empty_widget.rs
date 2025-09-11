@@ -1,4 +1,7 @@
-use crate::prelude::*;
+use crate::*;
+use crate::tree::*;
+use crate::style::*;
+use crate::widget::*;
 
 /// Literally an empty element
 #[derive(Default)]

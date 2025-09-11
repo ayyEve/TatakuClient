@@ -1,4 +1,18 @@
 use crate::prelude::*;
+use common::reflect::*;
+use ui::widget::TextLayoutContexts;
+use tataku::{
+    Color,
+    Bounds,
+    Border,
+    Vector2,
+    Alignment,
+};
+use engine::{
+    actions,
+    io::Downloadable,
+};
+
 
 #[derive(Reflect)]
 #[reflect(dont_clone)]
@@ -36,7 +50,7 @@ impl DownloadManager {
 
     pub fn update(
         &mut self,
-        actions: &mut ActionQueue,
+        actions: &mut actions::ActionQueue,
         font_contexts: &mut TextLayoutContexts,
     ) {
         let mut to_remove = Vec::new();
@@ -72,7 +86,7 @@ impl DownloadManager {
                     actions.push(on_complete());
                 }
             } else if !complete {
-                let style = TextStyle::default()
+                let style = ui::style::TextStyle::default()
                     .alignment(Alignment::CENTER)
                     .font_size(20.0);
 
@@ -111,7 +125,7 @@ impl DownloadManager {
     pub fn draw(
         &self, 
         window_size: Vector2, 
-        list: &mut RenderableCollection,
+        list: &mut graphics::RenderableCollection,
     ) {
         if self.statuses.is_empty() { return }
 
@@ -127,7 +141,7 @@ impl DownloadManager {
             let pos = window_size.x_portion() - Vector2::new(SIZE.x, -SIZE.y * n as f32);
 
             // progress as bg
-            list.push(Rectangle::new(
+            list.push(graphics::Rectangle::new(
                 pos,
                 Vector2::new(
                     SIZE.x * i.progress,
@@ -138,7 +152,7 @@ impl DownloadManager {
 
             // bounds
             list.push(
-                Rectangle::new(
+                graphics::Rectangle::new(
                     pos, 
                     SIZE,
                     Color::TRANSPARENT,
@@ -165,24 +179,26 @@ impl DownloadManager {
             );
 
 
-            list.push(Transformed::new(
-                Transform::default().translate(alignment.resolve(
+            list.push(graphics::Transformed::new(
+                graphics::Transform::default()
+                .translate(alignment.resolve(
                     &title_bounds,
                     title_size,
                     true,
                     true,
                 )),
-                Box::new(Text::new(title))
+                Box::new(graphics::Text::new(title))
             ));
 
-            list.push(Transformed::new(
-                Transform::default().translate(alignment.resolve(
+            list.push(graphics::Transformed::new(
+                graphics::Transform::default()
+                .translate(alignment.resolve(
                     &progress_bounds,
                     progress_size,
                     true,
                     true,
                 )),
-                Box::new(Text::new(progress))
+                Box::new(graphics::Text::new(progress))
             ));
             // list.push(style.create_text(
             //     format!("{:.2}%", i.progress),

@@ -1,5 +1,9 @@
 use crate::prelude::*;
 use std::time::SystemTime;
+use engine::{
+    actions,
+};
+use ui::widget::TextLayoutContexts;
 
 #[derive(Default)]
 pub(crate) struct XmlTestManager {
@@ -10,7 +14,7 @@ impl XmlTestManager {
         &mut self,
         ui_manager: &mut UiManager,
         values: &mut ValueCollection,
-        actions: &mut ActionQueue,
+        actions: &mut actions::ActionQueue,
         text_layout_contexts: &mut TextLayoutContexts,
     ) {
         if let Some(file) = self.current_file.as_ref() {
@@ -31,7 +35,7 @@ impl XmlTestManager {
                     text_layout_contexts,
                 ).is_err() {
                     ui_manager.set_root(
-                        EmptyWidget::new_boxed(),
+                        ui::EmptyWidget::new_boxed(),
                         values,
                         actions,
                         text_layout_contexts,
@@ -47,9 +51,9 @@ impl XmlTestManager {
         path: String,
         ui_manager: &mut UiManager,
         values: &mut ValueCollection,
-        actions: &mut ActionQueue,
+        actions: &mut actions::ActionQueue,
         text_layout_contexts: &mut TextLayoutContexts,
-    ) -> TatakuResult<()> {
+    ) -> tataku::Result<()> {
         info!("loading file: {path}");
         self.current_file = None;
         self.current_file = Some(CurrentFile {
@@ -61,7 +65,7 @@ impl XmlTestManager {
         let data = std::io::Cursor::new(bytes);
         let thing = quick_xml::de::from_reader::<_, XmlData>(data)
             .inspect_err(|e| error!("{e:?}"))
-            .map_err(TatakuError::from_err)?;
+            .map_err(tataku::Error::from_err)?;
 
         match thing {
             XmlData::Menu(custom_menu) => {
@@ -77,14 +81,14 @@ impl XmlTestManager {
             XmlData::Dialog(custom_dialog) => {
                 let dialog = custom_dialog.build();
                 ui_manager.set_root(
-                    EmptyWidget::new_boxed(),
+                    ui::EmptyWidget::new_boxed(),
                     values,
                     actions,
                     text_layout_contexts,
                 );
                 ui_manager.add_dialog(
                     Box::new(dialog),
-                    DialogCreateOptions::default(),
+                    actions::menu::DialogCreateOptions::default(),
                     values,
                     actions,
                     text_layout_contexts,
@@ -105,7 +109,7 @@ struct CurrentFile {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 enum XmlData {
-    Menu(CustomMenu),
-    Dialog(CustomDialog),
+    Menu(interface::CustomMenu),
+    Dialog(interface::CustomDialog),
     // Widget(CustomWidget),
 }

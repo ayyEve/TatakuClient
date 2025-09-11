@@ -1,4 +1,3 @@
-use tataku_engine::prelude::*;
 use discord_rich_presence::{
     DiscordIpc, 
     DiscordIpcClient,
@@ -8,19 +7,33 @@ use discord_rich_presence::{
         Activity
     }, 
 };
+use tataku_engine::{
+    error,
+    tataku,
+    CowStr,
+    actions,
+    Settings,
+    TatakuIntegrationEvent,
+    common::reflect::Reflect,
+    gameplay::GamemodeInfos,
+    io::{
+        TatakuIntegration,
+        TatakuIntegrationBuilder
+    },
+};
 
 const APP_ID:&str = "857981337423577109";
 const RECONNECT_INTERVAL: f32 = 5_000.0; // every 5 seconds try again
 
 pub struct Discord {
     client: DiscordIpcClient,
-    last_connection_attempt: Option<TatakuInstant>,
+    last_connection_attempt: Option<tataku::Instant>,
 
     enabled: bool,
     connected: bool,
 }
 impl Discord {
-    fn build() -> TatakuResult<Box<dyn TatakuIntegration>> {
+    fn build() -> tataku::Result<Box<dyn TatakuIntegration>> {
         Ok(Box::new(Self {
             client: DiscordIpcClient::new(APP_ID).map_err(DiscordError)?,
             connected: false,
@@ -37,7 +50,7 @@ impl Discord {
     }
 
     /// attempt to reconnect
-    fn reconnect(&mut self) -> TatakuResult {
+    fn reconnect(&mut self) -> tataku::Result<()> {
         // dont connect if we aren't enabled, or if we're already connected
         if !self.enabled || self.connected { return Ok(()) }
 
@@ -47,7 +60,7 @@ impl Discord {
         && last_check.as_millis() < RECONNECT_INTERVAL { 
             return Ok(()) 
         }
-        self.last_connection_attempt = Some(TatakuInstant::now());
+        self.last_connection_attempt = Some(tataku::Instant::now());
 
         // attempt to reconnect
         self.client.connect().map_err(DiscordError)?;
@@ -60,19 +73,19 @@ impl Discord {
 }
 
 impl TatakuIntegration for Discord {
-    fn name(&self) -> CowStr { Cow::Borrowed("Discord") }
+    fn name(&self) -> CowStr { CowStr::Borrowed("Discord") }
     fn init(
         &mut self, 
         #[cfg(feature="graphics")]
         _window_handle: raw_window_handle::WindowHandle<'_>,
-    ) -> TatakuResult<()> {
+    ) -> tataku::Result<()> {
         Ok(())
     }
 
     fn check_enabled(
         &mut self, 
         settings: &Settings,
-    ) -> TatakuResult<()> {
+    ) -> tataku::Result<()> {
         if self.enabled == settings.integrations.discord { return Ok(()) }
         self.enabled = settings.integrations.discord;
 
@@ -93,7 +106,7 @@ impl TatakuIntegration for Discord {
         &mut self, 
         event: &TatakuIntegrationEvent,
         values: &dyn Reflect,
-        _actions: &mut ActionQueue,
+        _actions: &mut actions::ActionQueue,
     ) {
         if !self.enabled || !self.connected { return }
 
@@ -192,7 +205,7 @@ impl Drop for Discord {
 }
 
 struct DiscordError(Box<dyn std::error::Error>);
-impl From<DiscordError> for TatakuError {
+impl From<DiscordError> for tataku::Error {
     fn from(value: DiscordError) -> Self {
         Self::String(value.0.to_string())
     }

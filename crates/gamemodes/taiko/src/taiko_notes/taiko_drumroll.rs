@@ -1,4 +1,15 @@
 use crate::prelude::*;
+use tataku::{
+    Color,
+    Border,
+    Vector2,
+};
+use engine::{
+    graphics,
+    beatmaps::NoteType,
+    gameplay::HitObject,
+};
+
 
 #[cfg(feature = "graphics")]
 const SLIDER_DOT_RADIUS:f32 = 8.0;
@@ -18,8 +29,8 @@ pub struct TaikoDrumroll {
     #[cfg(feature="graphics")] radius: f32,
     #[cfg(feature="graphics")] pos: Vector2,
     #[cfg(feature="graphics")] hit_dots: Vec<f32>, // list of times the slider was hit at
-    #[cfg(feature="graphics")] end_image: Option<Image>,
-    #[cfg(feature="graphics")] middle_image: Option<Image>,
+    #[cfg(feature="graphics")] end_image: Option<graphics::Image>,
+    #[cfg(feature="graphics")] middle_image: Option<graphics::Image>,
     #[cfg(feature="graphics")] playfield: Arc<TaikoPlayfield>,
 }
 impl TaikoDrumroll {
@@ -59,7 +70,7 @@ impl HitObject for TaikoDrumroll {
     fn update(&mut self, _time: f32) {}
     
     #[cfg(feature="graphics")]
-    fn draw(&mut self, time: f32, list: &mut RenderableCollection) {
+    fn draw(&mut self, time: f32, list: &mut graphics::RenderableCollection) {
         self.pos.x = self.playfield.hit_position.x + self.x_at(time);
         self.end_x = self.playfield.hit_position.x + self.end_x_at(time);
 
@@ -77,7 +88,7 @@ impl HitObject for TaikoDrumroll {
             list.push(image);
         } else {
             // middle
-            list.push(Rectangle::new(
+            list.push(graphics::Rectangle::new(
                 self.pos,
                 Vector2::new(self.end_x - self.pos.x, self.radius * 2.0),
                 color,
@@ -100,14 +111,14 @@ impl HitObject for TaikoDrumroll {
             
         } else {
             // start circle
-            list.push(Circle::new(
+            list.push(graphics::Circle::new(
                 self.pos + Vector2::new(0.0, self.radius),
                 self.radius,
                 color,
             ).border(border));
             
             // end circle
-            list.push(Circle::new(
+            list.push(graphics::Circle::new(
                 Vector2::new(self.end_x, self.pos.y + self.radius),
                 self.radius,
                 color,
@@ -124,14 +135,17 @@ impl HitObject for TaikoDrumroll {
             let y = self.playfield.hit_position.y + GRAVITY_SCALING * 9.81 * (diff/1000.0).powi(2) - (diff * bounce_factor);
 
             // flying dot
-            list.push(Circle::new(
+            list.push(graphics::Circle::new(
                 Vector2::new(x, y),
                 SLIDER_DOT_RADIUS,
                 Color::YELLOW,
-            ).border(Border::new(Color::BLACK, NOTE_BORDER_SIZE/2.0)));
+            ).border(Border::new(
+                Color::BLACK, 
+                NOTE_BORDER_SIZE/2.0
+            )));
 
             // "hole"
-            list.push(Circle::new(
+            list.push(graphics::Circle::new(
                 Vector2::new(x, self.pos.y + self.radius),
                 SLIDER_DOT_RADIUS,
                 BAR_COLOR,
@@ -148,7 +162,12 @@ impl HitObject for TaikoDrumroll {
     }
     
     #[cfg(feature="graphics")]
-    fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut dyn SkinProvider) {
+    fn reload_skin(
+        &mut self, 
+        source: &graphics::TextureSource, 
+        skin_manager: &mut dyn graphics::SkinProvider
+    ) {
+        use graphics::SkinUsage;
         let radius = self.settings.note_radius * if self.finisher { self.settings.big_note_multiplier } else { 1.0 };
 
         self.middle_image = skin_manager.get_texture_then("taiko-roll-middle", source, SkinUsage::Gamemode, false, |i| {

@@ -1,4 +1,11 @@
 use crate::prelude::*;
+use tataku::{
+    Color,
+    Bounds,
+    Border,
+    Vector2,
+};
+
 
 #[derive(Default)]
 pub struct UTypingPlayfield {
@@ -10,11 +17,11 @@ pub struct UTypingPlayfield {
 
 impl UTypingPlayfield {
     #[cfg(feature="graphics")] 
-    pub fn get_rectangle(&self, kiai: bool) -> Rectangle {
+    pub fn get_rectangle(&self, kiai: bool) -> engine::graphics::Rectangle {
         let width = self.bounds.size.x;
         let height = self.height;
 
-        Rectangle::new(
+        engine::graphics::Rectangle::new(
             Vector2::new(self.pos.x, self.hit_position.y - height / 2.0),
             Vector2::new(width, height),
             Color::new(0.1, 0.1, 0.1, 1.0),

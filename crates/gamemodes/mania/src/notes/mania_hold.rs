@@ -1,4 +1,15 @@
 use crate::prelude::*;
+use tataku::{
+    Color,
+    Border,
+    Vector2,
+};
+use engine::{
+    beatmaps::{
+        NoteType,
+    },
+    gameplay,
+};
 
 #[derive(Default)]
 pub struct ManiaHold {
@@ -18,14 +29,14 @@ pub struct ManiaHold {
     #[cfg(feature="graphics")] end_y: f32,
     #[cfg(feature="graphics")] sv_mult: f32,
     #[cfg(feature="graphics")] color: Color,
-    #[cfg(feature="gameplay")] hitsounds: Vec<Hitsound>,
-    #[cfg(feature="graphics")] end_image: Option<Image>,
-    #[cfg(feature="graphics")] start_image: Option<Image>,
-    #[cfg(feature="graphics")] middle_image: Option<Image>,
+    #[cfg(feature="gameplay")] hitsounds: Vec<gameplay::Hitsound>,
+    #[cfg(feature="graphics")] end_image: Option<graphics::Image>,
+    #[cfg(feature="graphics")] start_image: Option<graphics::Image>,
+    #[cfg(feature="graphics")] middle_image: Option<graphics::Image>,
     #[cfg(feature="graphics")] playfield: Arc<ManiaPlayfield>,
     #[cfg(feature="gameplay")] position_function_index: usize,
     #[cfg(feature="gameplay")] position_function: Arc<Vec<PositionPoint>>,
-    #[cfg(feature="graphics")] mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
+    #[cfg(feature="graphics")] mania_skin_settings: Option<Arc<graphics::ManiaSkinSettings>>,
 }
 impl ManiaHold {
     #[allow(clippy::too_many_arguments)]
@@ -36,9 +47,9 @@ impl ManiaHold {
         #[cfg(feature="graphics")] sv_mult: f32,
         
         #[cfg(feature="graphics")] playfield: Arc<ManiaPlayfield>, 
-        #[cfg(feature="graphics")] mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
+        #[cfg(feature="graphics")] mania_skin_settings: Option<Arc<graphics::ManiaSkinSettings>>,
 
-        #[cfg(feature="gameplay")] hitsounds: Vec<Hitsound>,
+        #[cfg(feature="gameplay")] hitsounds: Vec<gameplay::Hitsound>,
     ) -> Self {
         Self {
             time, 
@@ -66,8 +77,8 @@ impl ManiaHold {
         (a(rel_start), a(rel_end))
     }
 }
-impl HitObject for ManiaHold {
-    fn note_type(&self) -> NoteType {NoteType::Hold}
+impl gameplay::HitObject for ManiaHold {
+    fn note_type(&self) -> NoteType { NoteType::Hold }
     fn time(&self) -> f32 {self.time}
     fn end_time(&self,hw_miss:f32) -> f32 {self.end_time + hw_miss}
 
@@ -106,7 +117,7 @@ impl HitObject for ManiaHold {
     }
 
     #[cfg(feature="graphics")] 
-    fn draw(&mut self, _time: f32, list: &mut RenderableCollection) {
+    fn draw(&mut self, _time: f32, list: &mut graphics::RenderableCollection) {
         // if self.playfield.upside_down {
         //     if self.end_y < 0.0 || self.pos.y > args.window_size[1] as f64 {return}
         // } 
@@ -121,7 +132,7 @@ impl HitObject for ManiaHold {
         if self.playfield.upside_down {
             // start
             if self.pos.y > self.playfield.hit_y() {
-                list.push(Rectangle::new(
+                list.push(graphics::Rectangle::new(
                     self.pos,
                     self.playfield.note_size(),
                     color
@@ -130,7 +141,7 @@ impl HitObject for ManiaHold {
 
             // end
             if self.end_y > self.playfield.hit_y() {
-                list.push(Rectangle::new(
+                list.push(graphics::Rectangle::new(
                     Vector2::new(self.pos.x, self.end_y),
                     self.playfield.note_size(),
                     color,
@@ -145,7 +156,7 @@ impl HitObject for ManiaHold {
                 if let Some(img) = &self.middle_image {
                     list.push(img.clone());
                 } else {
-                    list.push(Rectangle::new(
+                    list.push(graphics::Rectangle::new(
                         Vector2::new(self.pos.x, y),
                         Vector2::new(self.playfield.column_width, self.end_y - y),
                         color,
@@ -158,7 +169,7 @@ impl HitObject for ManiaHold {
                 if let Some(img) = &self.start_image {
                     list.push(img.clone());
                 } else {
-                    list.push(Rectangle::new(
+                    list.push(graphics::Rectangle::new(
                         self.pos,
                         self.playfield.note_size(),
                         color,
@@ -172,7 +183,7 @@ impl HitObject for ManiaHold {
                 if let Some(img) = &self.end_image {
                     list.push(img.clone());
                 } else {
-                    list.push(Rectangle::new(
+                    list.push(graphics::Rectangle::new(
                         Vector2::new(self.pos.x, self.end_y + note_size.y),
                         self.playfield.note_size(),
                         color,
@@ -200,8 +211,8 @@ impl HitObject for ManiaHold {
     #[cfg(feature="graphics")]
     fn reload_skin(
         &mut self, 
-        source: &TextureSource, 
-        skin_manager: &mut dyn SkinProvider,
+        source: &graphics::TextureSource, 
+        skin_manager: &mut dyn graphics::SkinProvider,
     ) {
         self.start_image = None;
         self.middle_image = None;
@@ -215,7 +226,7 @@ impl HitObject for ManiaHold {
         && let Some(mut img) = skin_manager.get_texture(
             path, 
             source, 
-            SkinUsage::Gamemode, 
+            graphics::SkinUsage::Gamemode, 
             true
         ) {
             self.playfield.note_image(&mut img);
@@ -228,7 +239,7 @@ impl HitObject for ManiaHold {
         && let Some(mut img) = skin_manager.get_texture(
             path, 
             source, 
-            SkinUsage::Gamemode, 
+            graphics::SkinUsage::Gamemode, 
             true
         ) {
             img.origin = Vector2::ZERO;
@@ -243,7 +254,7 @@ impl HitObject for ManiaHold {
         && let Some(mut img) = skin_manager.get_texture(
             path, 
             source, 
-            SkinUsage::Gamemode, 
+            graphics::SkinUsage::Gamemode, 
             true
         ) {
             self.playfield.note_image(&mut img);
@@ -298,7 +309,7 @@ impl ManiaHitObject for ManiaHold {
     }
 
     #[cfg(feature="gameplay")] 
-    fn get_hitsound(&self) -> &Vec<Hitsound> {
+    fn get_hitsound(&self) -> &Vec<gameplay::Hitsound> {
         &self.hitsounds
     } 
 }

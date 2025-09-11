@@ -1,4 +1,5 @@
-use crate::prelude::*;
+use crate::*;
+use std::time::Duration;
 const ATTEMPTS: usize = 5;
 
 pub struct Zip;
@@ -41,7 +42,7 @@ impl Zip {
         dir: impl AsRef<Path>, 
         extract_to_folder: bool, 
         delete_file: ArchiveDelete
-    ) -> TatakuResult<String> {
+    ) -> tataku::TatakuResult<String> {
         let zip = zip.as_ref();
         let dir = dir.as_ref();
 

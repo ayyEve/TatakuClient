@@ -1,14 +1,16 @@
 use crate::prelude::*;
+use ui::widget::Widget;
+use widgets::WidgetText;
 
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TextInputElement {
     #[serde(rename = "@id", default)] id: Option<ArcStr>,
     #[serde(rename = "@class", default)] class_list: ClassList,
     #[serde(rename = "@style", default)] style: ArcStr,
 
-    #[serde(rename = "@variable")] variable: ArcStr,
+    #[serde(rename = "@variable")] variable: engine::VariablePathResolver,
     #[serde(rename = "@password", default)] is_password: bool,
 
     #[serde(rename = "@placeholder", default)] placeholder_attribute: Option<ArcStr>,
@@ -33,16 +35,16 @@ impl TextInputElement {
     }
 }
 impl CustomElement for TextInputElement {
-    fn build(&self) -> Box<dyn Widget<TatakuAction>> {
-        WidgetContainer::new_boxed(
+    fn build(&self) -> Box<dyn Widget<actions::Action>> {
+        widgets::WidgetContainer::new_boxed(
             self.style.clone(),
             "textInput",
             self.id.clone(),
             self.class_list.clone(),
-            TextInput::new(
+            widgets::TextInput::new(
                 self.placeholder(),
                 BuildableText::Variable {
-                    variable: VariablePathResolver::new(self.variable.clone())
+                    variable: self.variable.clone(),
                 }
             )
             .secure(self.is_password)

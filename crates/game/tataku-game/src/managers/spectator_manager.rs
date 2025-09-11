@@ -1,4 +1,43 @@
 use crate::prelude::*;
+use std::collections::VecDeque;
+
+use tataku::{
+    Color,
+};
+
+use common::{
+    Md5Hash,
+    MapGame,
+    ModDefinition,
+    network::spectator::{
+        SpectatorFrame,
+        SpectatorAction,
+    },
+};
+
+use engine::{
+    actions,
+    Notification,
+    data::ValueChangeHelper,
+    actions::{
+        game::{
+            GameplayMode,
+            SpectatorGameplayInfo,
+        },
+        beatmap::{
+            SetBeatmapOptions,
+            BeatmapAction as BeatmapAction,
+        },
+    },
+    gameplay::{
+        GamemodeInfos,
+        mods::ModManager,
+        gameplay_manager::{
+            SpectatorState,
+            GameplayManagerTrait,
+        },
+    }
+};
 
 /// Manager for when we're spectating another user
 pub struct SpectatorManager {
@@ -47,7 +86,7 @@ impl SpectatorManager {
         &mut self, 
         values: &ValueCollection, 
         current_time: f32,
-        actions: &mut ActionQueue,
+        actions: &mut actions::ActionQueue,
     ) -> Option<Box<GameplayManager>> {
         trace!("Trying to watch host play a map");
         let HostMap { 
@@ -73,7 +112,7 @@ impl SpectatorManager {
             Ok(mut manager) => {
                 // set manager things
                 manager.handle_action(
-                    GameplayAction::ApplyMods(mods), 
+                    actions::gameplay::GameplayAction::ApplyMods(mods), 
                     &values.settings
                 );
 
@@ -111,7 +150,7 @@ impl SpectatorManager {
         &mut self,
         manager: Option<&mut Box<GameplayManager>>,
         values: &mut ValueCollection,
-        actions: &mut ActionQueue,
+        actions: &mut actions::ActionQueue,
     ) -> Option<Box<GameplayManager>> { 
         // only continue if we received a map update
         let Ok(Some(_)) = self.new_map.update(values) else { return None };
@@ -141,7 +180,7 @@ impl SpectatorManager {
         &mut self,
         manager: Option<&mut Box<GameplayManager>>,
         values: &mut ValueCollection,
-        actions: &mut ActionQueue,
+        actions: &mut actions::ActionQueue,
     ) -> Option<Box<GameplayManager>> {
         // handle new maps
         if let Some(manager) = self.check_new_maps(manager, values, actions) {
@@ -231,16 +270,16 @@ impl SpectatorManager {
 
     pub fn key_down(
         &mut self, 
-        key: Key, 
-        _mods: KeyModifiers,
-        actions: &mut ActionQueue,
+        key: input::Key, 
+        _mods: input::KeyModifiers,
+        actions: &mut actions::ActionQueue,
     ) {
         // check if we need to close something
-        if key == Key::Escape {
+        if key == input::Key::Escape {
             #[cfg(feature="graphics")] 
-            actions.push(MenuAction::set_menu("main_menu").into());
+            actions.push(actions::menu::MenuAction::set_menu("main_menu").into());
             // resume song if paused
-            actions.push(SongAction::Play.into());
+            actions.push(actions::song::SongAction::Play.into());
         }
     }
 
@@ -249,13 +288,13 @@ impl SpectatorManager {
         &self, 
         beatmap_hash: Md5Hash, 
         map_game: &MapGame, 
-        settings: &Settings,
-        actions: &mut ActionQueue,
+        settings: &engine::Settings,
+        actions: &mut actions::ActionQueue,
     ) {
         match map_game {
             MapGame::Osu => {
                 // need to query the osu api to get the set id for this hashmap
-                match OsuApi::get_beatmap_by_hash(beatmap_hash, settings) {
+                match engine::online::OsuApi::get_beatmap_by_hash(beatmap_hash, settings) {
                     Ok(Some(map_info)) => {
                         // we have a thing! lets download it
                         let creds = &settings.integrations.osu;
@@ -268,11 +307,11 @@ impl SpectatorManager {
                             let url = format!("https://osu.ppy.sh/d/{id}.osz?u={username}&h={password}");
                             let path = format!("downloads/{id}.osz");
 
-                            let dl = Downloadable::new(
+                            let dl = engine::Downloadable::new(
                                 path,
-                                move || Downloader::download(DownloadOptions::new(url.clone(), 2))
+                                move || engine::io::Downloader::download(engine::io::DownloadOptions::new(url.clone(), 2))
                             );
-                            actions.push(TatakuAction::Download(Box::new(dl)));
+                            actions.push(actions::Action::Download(Box::new(dl)));
                         } else {
                             warn!("not downloading map, osu user or password missing");
                             // actions.push(  

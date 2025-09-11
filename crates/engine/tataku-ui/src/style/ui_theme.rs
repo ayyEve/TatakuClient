@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::*;
 
 #[derive(Default2)]
 pub struct GeneralUiTheme {

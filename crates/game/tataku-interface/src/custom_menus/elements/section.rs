@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use ui::widget::Widget;
 
 #[derive(Deserialize)]
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -9,13 +10,13 @@ pub struct SectionElement {
     #[serde(rename = "$value")] children: Vec<Element>,
 }
 impl CustomElement for SectionElement {
-    fn build(&self) -> Box<dyn Widget<TatakuAction>> {
-        WidgetContainer::new_boxed(
+    fn build(&self) -> Box<dyn Widget<actions::Action>> {
+        widgets::WidgetContainer::new_boxed(
             self.style.clone(),
             "section",
             self.id.clone(),
             self.class_list.clone(),
-            Container::new(self
+            widgets::Container::new(self
                 .children
                 .iter()
                 .map(|e| e.build())

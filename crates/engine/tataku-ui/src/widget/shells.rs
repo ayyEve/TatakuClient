@@ -1,4 +1,9 @@
-use crate::prelude::*;
+use crate::*;
+use crate::tree::*;
+use crate::style::*;
+use crate::widget::*;
+use crate::message::*;
+use common::reflect::*;
 
 pub struct MessageShell<'a, Action: Send + Sync + 'static> {
     pub messages: &'a mut Vec<Message>,
@@ -27,7 +32,7 @@ impl<Action: Send + Sync + 'static> InputShell<'_, Action> {
 pub struct DrawShell<'a, Action: Send + Sync + 'static> {
     pub tree: &'a Tree<Action>,
     pub values: &'a dyn Reflect,
-    pub list: &'a mut RenderableCollection,
+    pub list: &'a mut graphics::RenderableCollection,
     pub general_theme: GeneralUiTheme,
 
     pub text_layout_contexts: &'a mut TextLayoutContexts,
@@ -40,7 +45,7 @@ pub struct UpdateShell<'a, Action: Send + Sync + 'static> {
     pub owner: MessageOwner,
     pub messages: &'a mut Vec<Message>,
     pub actions: &'a mut Vec<Action>,
-    pub skin_manager: &'a mut dyn SkinProvider,
+    pub skin_manager: &'a mut dyn graphics::SkinProvider,
 
     pub text_layout_contexts: &'a mut TextLayoutContexts,
 }

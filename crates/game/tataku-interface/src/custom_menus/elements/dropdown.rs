@@ -1,4 +1,6 @@
 use crate::prelude::*;
+use ui::widget::Widget;
+use widgets::DropdownPlaceholder;
 
 #[derive(Deserialize)]
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -32,13 +34,13 @@ impl DropdownElement {
     }
 }
 impl CustomElement for DropdownElement {
-    fn build(&self) -> Box<dyn Widget<TatakuAction>> {
-        WidgetContainer::new_boxed(
+    fn build(&self) -> Box<dyn Widget<actions::Action>> {
+        widgets::WidgetContainer::new_boxed(
             self.style.clone(),
             "dropdown",
             self.id.clone(),
             self.class_list.clone(),
-            Dropdown::new(
+            widgets::Dropdown::new(
                 self.options_path.clone(),
                 self.selected_path.clone(),
                 self.on_select.inner.clone(),

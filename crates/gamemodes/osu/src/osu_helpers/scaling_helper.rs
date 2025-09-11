@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use tataku::{ Vector2, Bounds };
 
 pub const CIRCLE_RADIUS_BASE:f32 = 64.0;
 pub const OSU_NOTE_BORDER_SIZE:f32 = 2.0;

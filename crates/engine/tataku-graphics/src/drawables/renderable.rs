@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::*;
 
 pub trait TatakuRenderable: Sync + Send {
     fn get_name(&self) -> String { "Unnamed".to_owned() }

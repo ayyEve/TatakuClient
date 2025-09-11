@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::*;
 
 use tokio::{ net::TcpStream, io::{ AsyncReadExt, AsyncWriteExt } };
 
@@ -32,7 +32,7 @@ impl Downloader {
                     Ok(_) => break,
 
                     // redirected
-                    Err(TatakuError::DownloadError(DownloadError::Redirected(new_url))) => {
+                    Err(tataku::Error::DownloadError(errors::download::DownloadError::Redirected(new_url))) => {
                         // download using the new url
                         warn!("Redirected: {new_url}");
                         options.url = new_url;
@@ -57,7 +57,7 @@ impl Downloader {
     async fn perform_download(
         options: &DownloadOptions, 
         progress: &Arc<RwLock<DownloadProgress>>
-    ) -> TatakuResult<()> {
+    ) -> tataku::TatakuResult<()> {
         let params = UrlParams::parse(&options.url).unwrap();
         debug!("Got params: {params:?}");
 
@@ -129,7 +129,7 @@ impl Downloader {
                         code => {
                             let code_text = response_code_split.collect::<Vec<_>>().join(" ");
                             error!("Bad status code: {code} ({code_text:?})");
-                            return Err(TatakuError::DownloadError(DownloadError::BadStatusCode(code)));
+                            return Err(tataku::Error::DownloadError(errors::download::DownloadError::BadStatusCode(code)));
                         }
                     }
 
@@ -145,7 +145,7 @@ impl Downloader {
                         if code == 302 && key == "location" {
                             // location is the redirect url, try downloading from there.
                             let location = value.clone();
-                            return Err(TatakuError::DownloadError(DownloadError::Redirected(location)));
+                            return Err(tataku::Error::DownloadError(errors::download::DownloadError::Redirected(location)));
                         }
                     }
                 }
@@ -179,7 +179,7 @@ pub struct DownloadProgress {
     pub downloaded: usize,
 
     /// was there an error?
-    pub error: Option<TatakuError>,
+    pub error: Option<tataku::Error>,
     /// if there was an error, are we retrying?
     /// if so, the watcher should not give up
     pub retrying: bool,
@@ -255,13 +255,13 @@ enum TcpConnection {
     NonSsl(tokio::net::TcpStream)
 }
 impl TcpConnection {
-    async fn read(&mut self, buf: &mut [u8]) -> TatakuResult<usize> {
+    async fn read(&mut self, buf: &mut [u8]) -> tataku::TatakuResult<usize> {
         match self {
             Self::Ssl(stream) => Ok(stream.read(buf).await?),
             Self::NonSsl(stream) => Ok(stream.read(buf).await?),
         }
     }
-    async fn write(&mut self, buf: &[u8]) -> TatakuResult {
+    async fn write(&mut self, buf: &[u8]) -> tataku::TatakuResult<()> {
         match self {
             Self::Ssl(stream) => stream.write_all(buf).await?,
             Self::NonSsl(stream) => stream.write_all(buf).await?,
@@ -282,7 +282,7 @@ pub struct Downloadable {
     // download progress data for this item
     pub download_progress: Option<Arc<RwLock<DownloadProgress>>>,
     pub download: Arc<dyn Fn() -> Arc<RwLock<DownloadProgress>> + Send + Sync>,
-    #[chain] pub on_complete: Option<Arc<dyn Fn() -> TatakuAction + Send + Sync>>,
+    #[chain] pub on_complete: Option<Arc<dyn Fn() -> actions::Action + Send + Sync>>,
 }
 impl Downloadable {
     pub fn new(
@@ -316,7 +316,7 @@ impl std::fmt::Debug for Downloadable {
 
 
 #[tokio::test]
-async fn test() -> TatakuResult {
+async fn test() -> tataku::TatakuResult<()> {
     let file = "eveflatshading.png1";
     let url = format!("https://cdn.ayyeve.dev/{file}");
     println!("downloading {file} from url {url}");

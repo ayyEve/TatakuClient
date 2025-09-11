@@ -1,4 +1,6 @@
 use crate::prelude::*;
+use engine::beatmaps::quaver::QuaverSliderVelocity;
+use engine::gameplay::gameplay_manager::LEAD_IN_TIME;
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct SliderVelocity {

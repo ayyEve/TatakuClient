@@ -1,4 +1,14 @@
-use crate::prelude::*;
+use crate::*;
+use common::reflect::*;
+use tataku::{
+    TatakuValue, 
+    ShuntingYardStack, 
+    GenericShuntingYard 
+};
+use engine::data::shunting_yards::{
+    buildable::*,
+    path_resolver::VariablePathResolver
+};
 
 pub struct BuildableShuntingYard;
 impl<'rpn, 'values: 'rpn> BuildableShuntingYard {
@@ -117,7 +127,7 @@ impl<'rpn, 'values: 'rpn> BuildableShuntingYard {
         let filter_var = args.pop().unwrap().as_string();
         let to_check = args.pop().unwrap().as_string();
 
-        let filter = values.reflect_get::<ItemFilter>(
+        let filter = values.reflect_get::<engine::settings::ItemFilter>(
             &filter_var,
         )?;
 
@@ -245,7 +255,7 @@ impl<'rpn, 'values: 'rpn> GenericShuntingYard<'rpn, 'values> for BuildableShunti
         
         match &**function {
             "now" => stack.push(Ok(Cow::Owned(TatakuValue::F32(
-                TatakuInstant::now().as_millis()))
+                tataku::Instant::now().as_millis()))
             )),
 
             "abs" => Self::math_function(arg_count, MathFunction::Abs, stack)?,
@@ -312,9 +322,9 @@ impl<'rpn, 'values: 'rpn> GenericShuntingYard<'rpn, 'values> for BuildableShunti
 
                 let str = match &*n {
                     TatakuValue::None => "None".to_owned(),
-                    TatakuValue::F32(n) => format_float(n, precision),
-                    TatakuValue::U32(n) => format_number(*n),
-                    TatakuValue::U64(n) => format_number(*n),
+                    TatakuValue::F32(n) => tataku::format_float(n, precision),
+                    TatakuValue::U32(n) => tataku::format_number(*n),
+                    TatakuValue::U64(n) => tataku::format_number(*n),
                     TatakuValue::Bool(b) => format!("{b}"),
                     TatakuValue::String(s) => s.clone(),
                     TatakuValue::Reflect(reflect) 
@@ -424,7 +434,9 @@ impl MathFunction {
 
 #[cfg(test)]
 mod shunting_yard_tests {
-    use crate::prelude::*;
+    use super::*;
+    use tataku::TatakuValue;
+    use tataku::GenericShuntingYard;
 
     #[test]
     fn reference_test() {

@@ -1,7 +1,13 @@
 use crate::prelude::*;
+use common::reflect::*;
+use tataku::TatakuValue;
+use ui::{
+    tree::*,
+    message::*,
+};
 
 type MessageCallback<T> = Box<dyn Fn(&T) -> Message + Send + Sync>;
-type ActionCallback<T> = Box<dyn Fn(&T) -> TatakuAction + Send + Sync>;
+type ActionCallback<T> = Box<dyn Fn(&T) -> actions::Action + Send + Sync>;
 type ReflectCallback<T> = Box<dyn Fn(&T, &mut dyn Reflect) + Send + Sync>;
 
 pub enum InputAction<T> {
@@ -17,7 +23,7 @@ impl<T: Clone + Reflect> InputAction<T> {
         value: &T,
         node: NodeId,
         messages: &mut Vec<Message>,
-        actions: &mut ActionQueue,
+        actions: &mut actions::ActionQueue,
         values: &mut dyn Reflect,
     ) {
         match self {

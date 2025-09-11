@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::*;
 
 // TODO: replace check_enabled with a set_enabled, and in settings have the integrations in a HashMap<integration-name, enabled>
 pub trait TatakuIntegration: Send + Sync {
@@ -9,7 +9,7 @@ pub trait TatakuIntegration: Send + Sync {
         &mut self, 
         #[cfg(feature="graphics")]
         _window_handle: raw_window_handle::WindowHandle<'_>,
-    ) -> TatakuResult<()> { Ok(()) }
+    ) -> tataku::TatakuResult<()> { Ok(()) }
 
     /// handle if the integration should be enabled or disabled
     /// 
@@ -18,22 +18,22 @@ pub trait TatakuIntegration: Send + Sync {
     /// TODO: rename this?
     fn check_enabled(
         &mut self, 
-        settings: &Settings
-    ) -> TatakuResult<()>;
+        settings: &engine::Settings
+    ) -> tataku::TatakuResult<()>;
 
     /// handle a tataku event 
     fn handle_event(
         &mut self, 
-        _event: &TatakuIntegrationEvent, 
-        _values: &dyn Reflect,
-        _actions: &mut ActionQueue,
+        _event: &engine::integration_event::TatakuIntegrationEvent, 
+        _values: &dyn common::reflect::Reflect,
+        _actions: &mut actions::action::ActionQueue,
     ) {}
 
     /// update the integration
     fn update(
         &mut self, 
-        _values: &mut dyn Reflect, 
-        _actions: &mut ActionQueue,
+        _values: &mut dyn common::reflect::Reflect, 
+        _actions: &mut actions::action::ActionQueue,
     ) {}
 }
 
@@ -41,5 +41,5 @@ pub trait TatakuIntegration: Send + Sync {
 #[derive(Copy, Clone)]
 pub struct TatakuIntegrationBuilder {
     pub name: &'static str,
-    pub build: fn() -> TatakuResult<Box<dyn TatakuIntegration>>,
+    pub build: fn() -> tataku::TatakuResult<Box<dyn TatakuIntegration>>,
 }

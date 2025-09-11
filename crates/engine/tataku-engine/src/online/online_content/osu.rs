@@ -1,14 +1,18 @@
 #![allow(unused, reason = "osu api fields")]
 use std::str::FromStr;
 
-use crate::prelude::*;
-use super::osu_connection::osu_connection::OsuConnection;
+use crate::*;
+use online_content::{
+    *,
+    osu_connection::OsuConnection,
+};
+use tokio::sync::Mutex;
 
 // https://github.com/ppy/osu-web/blob/58514a67d1f38e9842045615993252a8810fd50b/app/Libraries/Search/BeatmapsetSearchRequestParams.php
 
 pub struct OsuDirect {
     capabilities: OnlineContentCapabilities,
-    connection: Arc<AsyncMutex<Option<OsuConnection>>>,
+    connection: Arc<Mutex<Option<OsuConnection>>>,
 }
 impl OsuDirect {
     pub fn new(settings: &Settings) -> Self {
@@ -62,7 +66,7 @@ impl OsuDirect {
                     ),
                 ].into_iter().collect()
             },
-            connection: Arc::new(AsyncMutex::new(connection)),
+            connection: Arc::new(Mutex::new(connection)),
         }
     }
 }
@@ -74,7 +78,7 @@ impl OnlineContentEngine for OsuDirect {
         &self, 
         settings: &Settings, 
         search: OnlineContentSearch,
-    ) -> AsyncLoader<OnlineContentSearchResults> {
+    ) -> io::AsyncLoader<OnlineContentSearchResults> {
         debug!("Searching: {search:?}");
         let creds = settings.integrations.osu.clone();
 
@@ -109,7 +113,7 @@ impl OnlineContentEngine for OsuDirect {
 
         let connection = self.connection.clone();
 
-        AsyncLoader::new(async move {
+        io::AsyncLoader::new(async move {
             debug!("Osu!direct: {url}");
             
             let mut connection = connection
@@ -168,12 +172,12 @@ impl OnlineContentEngine for OsuDirect {
                             creator: i.creator, 
                             map_hashes: i.beatmaps
                                 .iter()
-                                .filter_map(|i| Md5Hash::from_str(&i.checksum).ok())
+                                .filter_map(|i| common::Md5Hash::from_str(&i.checksum).ok())
                                 .collect(),
                         },
                         download: Downloadable::new(
                             format!("downloads/{filename}"),
-                            move || Downloader::download_url(url.clone(), 5),
+                            move || io::Downloader::download_url(url.clone(), 5),
                         ), 
                         audio_preview: Some(format!("https:{}", i.preview_url))
                     }

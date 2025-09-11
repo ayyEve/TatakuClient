@@ -1,4 +1,7 @@
 use crate::prelude::*;
+use common::reflect::*;
+use tataku::TatakuValue;
+
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct BuildableSlot {
@@ -29,7 +32,7 @@ impl BuildableSlot {
         &self, 
         values: &mut dyn Reflect, 
         passed_in: Option<&TatakuValue>,
-    ) -> Option<LobbySlotAction> {
+    ) -> Option<actions::multiplayer::LobbySlotAction> {
         let slot = match &self.slot {
             BuildableValue::None => {
                 error!("slot is none?? ({:?})", self.action);
@@ -84,12 +87,12 @@ impl BuildableSlot {
         let slot = slot_num as u8;
 
         match self.action {
-            BuildableSlotAction::ShowProfile => Some(LobbySlotAction::ShowProfile(slot)),
-            BuildableSlotAction::Move => Some(LobbySlotAction::MoveTo(slot)),
-            BuildableSlotAction::TransferHost => Some(LobbySlotAction::TransferHost(slot)),
-            BuildableSlotAction::Lock => Some(LobbySlotAction::Lock(slot)),
-            BuildableSlotAction::Unlock => Some(LobbySlotAction::Unlock(slot)),
-            BuildableSlotAction::Kick => Some(LobbySlotAction::Kick(slot)),
+            BuildableSlotAction::ShowProfile => Some(actions::multiplayer::LobbySlotAction::ShowProfile(slot)),
+            BuildableSlotAction::Move => Some(actions::multiplayer::LobbySlotAction::MoveTo(slot)),
+            BuildableSlotAction::TransferHost => Some(actions::multiplayer::LobbySlotAction::TransferHost(slot)),
+            BuildableSlotAction::Lock => Some(actions::multiplayer::LobbySlotAction::Lock(slot)),
+            BuildableSlotAction::Unlock => Some(actions::multiplayer::LobbySlotAction::Unlock(slot)),
+            BuildableSlotAction::Kick => Some(actions::multiplayer::LobbySlotAction::Kick(slot)),
         }
     }
 

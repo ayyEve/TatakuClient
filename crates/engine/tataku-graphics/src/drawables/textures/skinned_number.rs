@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::*;
 
 #[derive(Clone)]
 pub struct SkinnedNumber {
@@ -44,7 +44,7 @@ impl SkinnedNumber {
             let tex = skin_manager.get_texture_then(&tex, source, usage, false, |i| {
                 i.origin = Vector2::ZERO;
                 // i.size = i.tex_size();
-            }).ok_or(TatakuError::String(format!("texture does not exist: {tex}")))?;
+            }).ok_or(Error::String(format!("texture does not exist: {tex}")))?;
 
             number_textures.push(tex);
         }

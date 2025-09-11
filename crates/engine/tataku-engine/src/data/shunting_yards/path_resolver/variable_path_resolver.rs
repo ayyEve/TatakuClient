@@ -1,5 +1,7 @@
-use crate::prelude::*;
 use super::*;
+use crate::*;
+use common::reflect::*;
+use tataku::GenericShuntingYard;
 
 type AstResult = Result<Vec<PathShuntingYardToken>, PathShuntingYardError>;
 
@@ -24,18 +26,18 @@ impl VariablePathResolver {
         }
     }
 
-    pub fn resolve_path(&self, values: &dyn Reflect) -> TatakuResult<String> {
+    pub fn resolve_path(&self, values: &dyn Reflect) -> tataku::TatakuResult<String> {
         match &*self.ast {
             Ok(rpn) => {
                 let p = PathShuntingYard::evaluate_rpn(
                     rpn, 
                     values
                 )
-                .map_err(|e| TatakuError::String(format!("{e:?}")))?;
+                .map_err(|e| tataku::Error::String(format!("{e:?}")))?;
                 
                 Ok(p)
             }
-            Err(e) => Err(TatakuError::String(format!("{e:?}"))),
+            Err(e) => Err(tataku::Error::String(format!("{e:?}"))),
         }
     }
 }
@@ -60,7 +62,7 @@ impl From<VariablePathResolver> for String {
     }
 }
 
-impl Display for VariablePathResolver {
+impl std::fmt::Display for VariablePathResolver {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.var.fmt(f)
     }

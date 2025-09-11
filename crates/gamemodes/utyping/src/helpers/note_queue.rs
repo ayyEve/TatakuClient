@@ -1,5 +1,12 @@
 use crate::prelude::*;
 
+use engine::gameplay::{
+    HitObject,
+    judgments::HitJudgment,
+    gameplay_manager::GameplayUpdateShell,
+};
+
+
 #[derive(Default)]
 pub struct UTypingNoteQueue {
     pub notes: Vec<UTypingNote>,
@@ -13,7 +20,7 @@ impl UTypingNoteQueue {
         &mut self, 
         input: char, 
         time: f32, 
-        windows: &[(HitJudgment, Range<f32>)], 
+        windows: &[(HitJudgment, std::ops::Range<f32>)], 
         state: &GameplayUpdateShell<'_>,
     ) -> Option<HitJudgment> {
         let current_note = self.current_note()?;

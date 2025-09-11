@@ -1,7 +1,27 @@
-/**
+/*
  * Authored by ayyEve, RPM calculation by Nebula
 */
+
+use std::f32::consts::PI;
 use crate::prelude::*;
+use tataku::{
+    Color,
+    Border,
+    Easing,
+    Vector2,
+};
+use engine::{
+    graphics,
+    beatmaps::{
+        osu::*,
+        NoteType,
+    },
+    gameplay::{
+        Hitsound,
+        HitObject,
+        judgments::HitJudgment,
+    }
+};
 
 const SPINNER_RADIUS:f32 = 200.0;
 
@@ -40,13 +60,13 @@ pub struct OsuSpinner {
     scaling_helper: Arc<ScalingHelper>,
 
     /// main spinny
-    spinner_circle: Option<Image>,
+    spinner_circle: Option<graphics::Image>,
     /// bg, no spin
-    spinner_background: Option<Image>,
+    spinner_background: Option<graphics::Image>,
     /// also bg, no spin
-    spinner_bottom: Option<Image>,
+    spinner_bottom: Option<graphics::Image>,
     /// gets smaller towards end of spinner, from 100% to 0%
-    spinner_approach: Option<Image>,
+    spinner_approach: Option<graphics::Image>,
 
     points_queue: Vec<(HitJudgment, Vector2)>
 }
@@ -166,7 +186,7 @@ impl HitObject for OsuSpinner {
     }
 
     #[cfg(feature="graphics")]
-    fn draw(&mut self, time: f32, list: &mut RenderableCollection) {
+    fn draw(&mut self, time: f32, list: &mut graphics::RenderableCollection) {
         if !(time >= self.time && time <= self.end_time) { return }
         let scale = Vector2::ONE * self.scaling_helper.cs;
 
@@ -186,7 +206,7 @@ impl HitObject for OsuSpinner {
             i.scale = scale;
             list.push(i);
         } else if !(self.spinner_approach.is_some() || self.spinner_circle.is_some()) {
-            list.push(Circle::new(
+            list.push(graphics::Circle::new(
                 self.pos,
                 SPINNER_RADIUS,
                 Color::YELLOW,
@@ -199,7 +219,7 @@ impl HitObject for OsuSpinner {
             i.scale = Vector2::ONE * f32::lerp(1.0, 0.0, (self.current_time - self.time) / (self.end_time - self.time)) * self.scaling_helper.scale;
             list.push(i);
         } else {
-            list.push(Circle::new(
+            list.push(graphics::Circle::new(
                 self.pos,
                 SPINNER_RADIUS * (self.rotations_completed as f32 / self.rotations_required as f32).min(1.0),
                 Color::WHITE,
@@ -219,7 +239,7 @@ impl HitObject for OsuSpinner {
                     self.display_rotation.sin()
                 )
                 * SPINNER_RADIUS;
-            list.push(Line::new(
+            list.push(graphics::Line::new(
                 self.pos,
                 p2,
                 5.0,
@@ -261,8 +281,8 @@ impl HitObject for OsuSpinner {
     #[cfg(feature="graphics")]
     fn reload_skin(
         &mut self,
-        source: &TextureSource,
-        skin_manager: &mut dyn SkinProvider
+        source: &graphics::TextureSource,
+        skin_manager: &mut dyn graphics::SkinProvider
     ) {
         let pos = self.scaling_helper.scale_coords(FIELD_SIZE / 2.0);
         let scale = Vector2::ONE * self.scaling_helper.scale;
@@ -270,7 +290,7 @@ impl HitObject for OsuSpinner {
         self.spinner_circle = skin_manager.get_texture_then(
             "spinner-circle",
             source,
-            SkinUsage::Gamemode,
+            graphics::SkinUsage::Gamemode,
             false,
             |i| {
                 // const SIZE:f64 = 700.0;
@@ -282,7 +302,7 @@ impl HitObject for OsuSpinner {
         self.spinner_background = skin_manager.get_texture_then(
             "spinner-background",
             source,
-            SkinUsage::Gamemode,
+            graphics::SkinUsage::Gamemode,
             false,
             |i| {
                 // const SIZE:f64 = 667.0;
@@ -294,7 +314,7 @@ impl HitObject for OsuSpinner {
         self.spinner_bottom = skin_manager.get_texture_then(
             "spinner-bottom",
             source,
-            SkinUsage::Gamemode,
+            graphics::SkinUsage::Gamemode,
             false,
             |i| {
                 i.pos = pos;
@@ -305,7 +325,7 @@ impl HitObject for OsuSpinner {
         self.spinner_approach = skin_manager.get_texture_then(
             "spinner-approachcircle",
             source,
-            SkinUsage::Gamemode,
+            graphics::SkinUsage::Gamemode,
             false,
             |i| {
                 // const SIZE:f64 = 320.0;
@@ -328,8 +348,8 @@ impl OsuHitObject for OsuSpinner {
 
     fn press(&mut self, _time:f32) { self.holding = true; }
     fn release(&mut self, _time:f32) { self.holding = false; }
-    fn mouse_move(&mut self, pos:Vector2) { self.mouse_pos = pos; }
-    fn check_distance(&self, _:Vector2) -> bool { true }
+    fn mouse_move(&mut self, pos: Vector2) { self.mouse_pos = pos; }
+    fn check_distance(&self, _: Vector2) -> bool { true }
     fn hit(&mut self, _time: f32) {}
 
     fn new_combo(&self) -> bool { true }

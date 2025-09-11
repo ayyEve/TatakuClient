@@ -1,5 +1,22 @@
 use crate::prelude::*;
 
+use engine::{
+    game::diffcalc::DiffCalc,
+    beatmaps::{
+        Beatmap,
+        BeatmapType,
+        BeatmapMeta,
+    },
+    gameplay::{
+        GameMode,
+        GamemodeInfo,
+        GamemodeSettings,
+        difficulty_value::*,
+        mods::GameplayModGroupStatic,
+    },
+};
+
+
 pub const GAME_INFO: GamemodeInfo = GamemodeInfo {
     id: "osu",
     display_name: "Osu",
@@ -48,7 +65,7 @@ pub const GAME_INFO: GamemodeInfo = GamemodeInfo {
 
 pub struct OsuGameInfo;
 impl OsuGameInfo {
-    fn calc_acc(score: &Score) -> f32 {
+    fn calc_acc(score: &common::Score) -> f32 {
         let x50  = score.judgments.get("x50").copied().unwrap_or_default()  as f32;
         let x100 = score.judgments.get("x100").copied().unwrap_or_default() as f32;
         let x300 = score.judgments.get("x300").copied().unwrap_or_default() as f32;
@@ -64,10 +81,10 @@ impl OsuGameInfo {
         matches!(map, BeatmapType::Osu)
     }
 
-    fn create_game(beatmap: &Beatmap, settings: &Settings) -> TatakuResult<Box<dyn GameMode>> {
+    fn create_game(beatmap: &Beatmap, settings: &engine::Settings) -> tataku::Result<Box<dyn GameMode>> {
         Ok(Box::new(OsuGame::new(beatmap, false, settings)?))
     }
-    fn create_diffcalc(map: &BeatmapMeta, settings: &Settings) -> TatakuResult<Box<dyn DiffCalc>> {
+    fn create_diffcalc(map: &BeatmapMeta, settings: &engine::Settings) -> tataku::Result<Box<dyn DiffCalc>> {
         Ok(Box::new(OsuDifficultyCalculator::new(map, settings)?))
     }
 

@@ -1,4 +1,21 @@
 use crate::prelude::*;
+use std::f32::consts::PI;
+use engine::{
+    graphics,
+    graphics::TatakuRenderable,
+    actions,
+};
+
+use tataku::{
+    Color,
+    Border,
+    Vector2,
+    BlendMode,
+    EmitterVal,
+};
+
+
+
 
 const TRAIL_CREATE_TIMER:f32 = 10.0;
 const TRAIL_FADEOUT_TIMER_START:f32 = 20.0;
@@ -22,10 +39,10 @@ pub struct OsuCursor {
 
     cursor_rotation: f32,
 
-    pub cursor_image: Option<Image>,
-    pub cursor_middle_image: Option<Image>,
-    pub cursor_trail_image: Option<Image>,
-    pub trails: Vec<Trail>,
+    pub cursor_image: Option<graphics::Image>,
+    pub cursor_middle_image: Option<graphics::Image>,
+    pub cursor_trail_image: Option<graphics::Image>,
+    pub trails: Vec<graphics::Trail>,
     last_trail_time: f32,
 
     trail_create_timer: f32,
@@ -35,28 +52,28 @@ pub struct OsuCursor {
     left_pressed: bool,
     right_pressed: bool,
 
-    skin: SkinSettings,
+    skin: graphics::SkinSettings,
     beatmap_path: String,
 
-    ripples: Vec<Trail>,
-    time: TatakuInstant,
+    ripples: Vec<graphics::Trail>,
+    time: tataku::Instant,
 
-    left_emitter: Emitter,
-    right_emitter: Emitter,
+    left_emitter: graphics::Emitter,
+    right_emitter: graphics::Emitter,
     pub emitter_enabled: bool,
 
-    settings: CursorSettings,
+    settings: engine::settings::cursor::CursorSettings,
 }
 
 impl OsuCursor {
     pub fn new(
         note_radius: f32,
-        skin: SkinSettings,
+        skin: graphics::SkinSettings,
         beatmap_path: String,
-        settings: &Settings
+        settings: &engine::Settings
     ) -> Self {
         let a = PI / 4.0;
-        let builder = EmitterBuilder::default()
+        let builder = graphics::EmitterBuilder::default()
             .spawn_delay(20.0)
             .angle(EmitterVal::init_only(-a..a))
             .speed(EmitterVal::init_only(0.1..0.5))
@@ -96,7 +113,7 @@ impl OsuCursor {
             beatmap_path,
 
             ripples: Vec::new(),
-            time: TatakuInstant::now(),
+            time: tataku::Instant::now(),
 
             left_emitter,
             right_emitter,
@@ -105,7 +122,8 @@ impl OsuCursor {
         }
     }
     
-    pub fn init(&self, actions: &mut ActionQueue) {
+    pub fn init(&self, actions: &mut actions::ActionQueue) {
+        use actions::window::WindowAction;
         actions.push(WindowAction::AddEmitter(self.left_emitter.get_ref()).into());
         actions.push(WindowAction::AddEmitter(self.right_emitter.get_ref()).into());
     }
@@ -114,7 +132,7 @@ impl OsuCursor {
         let duration = 500.0;
         let time = self.time.as_millis();
 
-        self.ripples.push(Trail::new(self.pos, time, duration));
+        self.ripples.push(graphics::Trail::new(self.pos, time, duration));
     }
 
 
@@ -210,7 +228,7 @@ impl OsuCursor {
                 for i in 0..count {
                     let pos = Vector2::lerp(self.last_pos, self.pos, i as f32 / count as f32);
 
-                    self.trails.push(Trail::new(
+                    self.trails.push(graphics::Trail::new(
                         pos,
                         time + self.trail_fadeout_timer_start,
                         self.trail_fadeout_timer_duration,
@@ -225,7 +243,7 @@ impl OsuCursor {
                 self.last_trail_time = time;
                 self.last_pos = self.pos;
 
-                self.trails.push(Trail::new(
+                self.trails.push(graphics::Trail::new(
                     self.pos,
                     time + self.trail_fadeout_timer_start,
                     self.trail_fadeout_timer_duration,
@@ -234,7 +252,7 @@ impl OsuCursor {
         }
     }
 
-    pub fn draw_above(&self, list: &mut RenderableCollection) {
+    pub fn draw_above(&self, list: &mut graphics::RenderableCollection) {
         let time = self.time.as_millis();
 
         let mut radius = DEFAULT_CURSOR_SIZE;
@@ -256,7 +274,7 @@ impl OsuCursor {
                          as u8;
                     image.pos = trail.position;
 
-                    Box::new(image) as Box<dyn TatakuRenderable>
+                    Box::new(image) as Box<dyn graphics::TatakuRenderable>
                 });
 
             list.list.extend(trails);
@@ -282,7 +300,7 @@ impl OsuCursor {
 
             list.push(cursor);
         } else {
-            list.push(Circle::new(
+            list.push(graphics::Circle::new(
                 self.pos,
                 radius * self.settings.cursor_scale,
                 *self.settings.cursor_color,
@@ -305,7 +323,7 @@ impl OsuCursor {
         }
     }
 
-    pub fn draw_below(&self, list: &mut RenderableCollection) {
+    pub fn draw_below(&self, list: &mut graphics::RenderableCollection) {
         // draw ripples
         for ripple in self.ripples.iter() {
             list.list.push(ripple.ripple(
@@ -322,13 +340,36 @@ impl OsuCursor {
     #[cfg(feature="graphics")]
     pub fn reload_skin(
         &mut self,
-        skin_manager: &mut dyn SkinProvider,
+        skin_manager: &mut dyn graphics::SkinProvider,
     ) {
-        let source = if self.settings.beatmap_cursor { TextureSource::Beatmap(self.beatmap_path.clone()) } else { TextureSource::Skin };
+        use graphics::{
+            SkinUsage,
+            TextureSource,
+        };
+        let source = if self.settings.beatmap_cursor { 
+            TextureSource::Beatmap(self.beatmap_path.clone()) 
+        } else { 
+            TextureSource::Skin 
+        };
 
-        self.cursor_image = skin_manager.get_texture("cursor", &source, SkinUsage::Gamemode, false);
-        self.cursor_trail_image = skin_manager.get_texture("cursortrail", &source, SkinUsage::Gamemode, false);
-        self.cursor_middle_image = skin_manager.get_texture("cursormiddle", &source, SkinUsage::Gamemode, false);
+        self.cursor_image = skin_manager.get_texture(
+            "cursor", 
+            &source, 
+            SkinUsage::Gamemode, 
+            false
+        );
+        self.cursor_trail_image = skin_manager.get_texture(
+            "cursortrail", 
+            &source, 
+            SkinUsage::Gamemode, 
+            false
+        );
+        self.cursor_middle_image = skin_manager.get_texture(
+            "cursormiddle", 
+            &source, 
+            SkinUsage::Gamemode, 
+            false
+        );
 
         let (trail_create_timer, trail_fadeout_timer_start, trail_fadeout_timer_duration) = if self.cursor_middle_image.is_some() {
             (TRAIL_CREATE_TIMER_IF_MIDDLE, TRAIL_FADEOUT_TIMER_START_IF_MIDDLE, TRAIL_FADEOUT_TIMER_DURATION_IF_MIDDLE)
@@ -343,7 +384,12 @@ impl OsuCursor {
         self.cursor_rotation = 0.0;
 
 
-        let tex = skin_manager.get_texture("star2", &source, SkinUsage::Gamemode, false).map(|t| t.tex).unwrap_or_default();
+        let tex = skin_manager.get_texture(
+            "star2", 
+            &source, 
+            graphics::SkinUsage::Gamemode, 
+            false
+        ).map(|t| t.tex).unwrap_or_default();
         self.left_emitter.image = tex.clone();
         self.right_emitter.image = tex;
     }

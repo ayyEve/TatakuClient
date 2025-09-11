@@ -1,4 +1,5 @@
-use crate::prelude::*;
+use crate::*;
+use common::reflect::*;
 
 #[repr(C)]
 #[derive(Reflect)]
@@ -6,7 +7,7 @@ use crate::prelude::*;
 pub struct StatGroup {
     pub name: &'static str,
     pub display_name: &'static str,
-    pub stats: &'static [GameModeStat]
+    pub stats: &'static [ gameplay::stats::GameModeStat ]
 }
 impl StatGroup {
     pub fn name(&self) -> String {

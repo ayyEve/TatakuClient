@@ -2,10 +2,9 @@ use std::io::Cursor;
 use std::sync::Arc;
 use std::time::Duration;
 
-use parking_lot::Mutex;
-use parking_lot::RwLock;
-use tataku_audio::prelude::*;
-use tataku_client_common::prelude::*;
+use tataku_audio::*;
+use tataku_client_common::common::*;
+use tataku_client_common::prelude as tataku;
 
 
 use kira::{
@@ -27,23 +26,26 @@ const NO_TWEEN:Tween = Tween {
 
 pub struct KiraAudio(Mutex<KiraAudioManager<CpalBackend>>);
 impl KiraAudio {
-    fn init() -> TatakuResult<Arc<dyn AudioApi>> {
+    fn init() -> tataku::TatakuResult<Arc<dyn AudioApi>> {
         let manager = KiraAudioManager::<CpalBackend>::new(AudioManagerSettings::default())
-            .map_err(TatakuError::from_err)?;
+            .map_err(tataku::Error::from_err)?;
 
         Ok(Arc::new(KiraAudio(Mutex::new(manager))))
     }
 }
 impl AudioApi for KiraAudio {
-    fn load_sample_data(&self, data: Vec<u8>) -> TatakuResult<Arc<dyn AudioInstance>> {
+    fn load_sample_data(&self, data: Vec<u8>) -> tataku::TatakuResult<Arc<dyn AudioInstance>> {
         // TODO: StaticSoundData
         self.load_stream_data(data)
     }
 
-    fn load_stream_data(&self, data: Vec<u8>) -> TatakuResult<Arc<dyn AudioInstance>> {
+    fn load_stream_data(&self, data: Vec<u8>) -> tataku::TatakuResult<Arc<dyn AudioInstance>> {
         match StreamingSoundData::from_cursor(Cursor::new(data)) {
-            Ok(s) => Ok(Arc::new(KiraStreamAudioInstance::new(s, &mut self.0.lock()).ok_or(TatakuError::Audio(AudioError::Empty))?)),
-            Err(e) => Err(TatakuError::String(e.to_string())),
+            Ok(s) => Ok(Arc::new(
+                KiraStreamAudioInstance::new(s, &mut self.0.lock())
+                    .ok_or(tataku::Error::Audio(errors::audio::AudioError::Empty))?
+            )),
+            Err(e) => Err(tataku::Error::String(e.to_string())),
         }
     }
 
@@ -130,7 +132,7 @@ impl AudioInstance for KiraStreamAudioInstance {
         }
     }
 
-    fn get_data(&self) -> Vec<FFTEntry> {
+    fn get_data(&self) -> Vec<tataku::FFTEntry> {
         vec![]
     }
 

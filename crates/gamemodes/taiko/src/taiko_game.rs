@@ -5,8 +5,45 @@
  * NOTE! gekis and katus are for DISPLAY ONLY!!
  * they are not factored into acc!!
 */
-
 use crate::prelude::*;
+
+use common::{
+    replays::*,
+};
+
+use tataku::{
+    Color,
+    Bounds,
+    Vector2,
+    Alignment,
+};
+use engine::{
+    input,
+    graphics,
+    beatmaps::{
+        osu::*,
+        Beatmap,
+        NoteType,
+        BeatmapMeta,
+        TimingPoint,
+        map_difficulty,
+    },
+    gameplay,
+    gameplay::{
+        mods::*,
+        GameMode,
+        Hitsound,
+        judgments::*,
+        GameplayEvent,
+        TimingPointHelper,
+        PlayfieldNonsense,
+        GameModeProperties,
+        gameplay_manager::*,
+    },
+};
+use input::GamepadButton;
+
+
 
 /// how many beats between timing bars
 const BAR_SPACING:f32 = 4.0;
@@ -41,10 +78,10 @@ pub struct TaikoGame {
     metadata: Arc<BeatmapMeta>,
     taiko_settings: Arc<TaikoSettings>,
     #[cfg(feature="graphics")] timing_bars: Vec<TimingBar>,
-    #[cfg(feature="graphics")] left_kat_image: Option<Image>,
-    #[cfg(feature="graphics")] left_don_image: Option<Image>,
-    #[cfg(feature="graphics")] right_don_image: Option<Image>,
-    #[cfg(feature="graphics")] right_kat_image: Option<Image>,
+    #[cfg(feature="graphics")] left_kat_image: Option<graphics::Image>,
+    #[cfg(feature="graphics")] left_don_image: Option<graphics::Image>,
+    #[cfg(feature="graphics")] right_don_image: Option<graphics::Image>,
+    #[cfg(feature="graphics")] right_kat_image: Option<graphics::Image>,
     #[cfg(feature="graphics")] playfield: Arc<TaikoPlayfield>,
     
     #[cfg(feature="graphics")] 
@@ -53,7 +90,7 @@ pub struct TaikoGame {
 
     counter: FullAltCounter,
     
-    hit_windows: Vec<(HitJudgment, Range<f32>)>,
+    hit_windows: Vec<(HitJudgment, std::ops::Range<f32>)>,
     #[cfg(feature="graphics")] hit_cache: HashMap<TaikoHit, f32>,
     miss_window: f32,
 
@@ -130,7 +167,7 @@ impl TaikoGame {
         // if finisher, upgrade to geki or katu
         if finisher_hit {
             // remove the normal hit indicator, its being replaced with a finisher
-            state.add_action(GamemodeAction::RemoveLastJudgment);
+            state.add_action(gameplay::Action::RemoveLastJudgment);
 
             if hit_value == &TaikoHitJudgments::X100 {
                 hit_value = &TaikoHitJudgments::Katu;
@@ -273,8 +310,8 @@ impl GameMode for TaikoGame {
     fn new(
         beatmap: &Beatmap, 
         _diff_calc_only: bool, 
-        settings: &Settings
-    ) -> TatakuResult<Self> {
+        settings: &engine::Settings
+    ) -> tataku::Result<Self> {
         let metadata = beatmap.get_beatmap_meta();
 
         let settings = settings
@@ -434,11 +471,11 @@ impl GameMode for TaikoGame {
                     )));
                 }
             }
-            _ => return Err(BeatmapError::UnsupportedMode.into()),
+            _ => return Err(errors::beatmap::BeatmapError::UnsupportedMode.into()),
         };
 
         if s.notes.is_empty() && s.other_notes.is_empty() { 
-            return Err(TatakuError::Beatmap(BeatmapError::NoNotes)) 
+            return Err(tataku::Error::Beatmap(errors::beatmap::BeatmapError::NoNotes)) 
         }
 
         s.notes.sort_by(Self::sort);
@@ -756,7 +793,7 @@ impl GameMode for TaikoGame {
             self.healthbar_swap_pending = false;
 
             // reset health helper to default
-            shell.add_action(GamemodeAction::ResetHealth); // manager.health = Default::default();
+            shell.add_action(gameplay::Action::ResetHealth); // manager.health = Default::default();
 
             // if we're using battery health
             if !self.current_mods.has_mod(NoBattery) {
@@ -793,7 +830,7 @@ impl GameMode for TaikoGame {
                     -40.0
                 ) / FACTOR;
 
-                shell.add_action(GamemodeAction::replace_health(TaikoBatteryHealthManager::new(
+                shell.add_action(gameplay::Action::replace_health(TaikoBatteryHealthManager::new(
                     health_per_300,
                     health_per_100,
                     health_per_miss
@@ -831,7 +868,7 @@ impl GameMode for TaikoGame {
 
             if queue.done() {
                 if !shell.complete() && shell.time > self.end_time {
-                    shell.add_action(GamemodeAction::MapComplete);
+                    shell.add_action(gameplay::Action::MapComplete);
                     // manager.completed = true;
                 }
 
@@ -870,14 +907,14 @@ impl GameMode for TaikoGame {
     fn draw(
         &mut self, 
         shell: GameplayDrawShell, 
-        list: &mut RenderableCollection
+        list: &mut graphics::RenderableCollection
     ) {
 
         // draw the playfield
         list.push(self.playfield.get_rectangle(shell.current_timing_point.kiai));
         
         // draw the hit area
-        list.push(Circle::new(
+        list.push(graphics::Circle::new(
             self.playfield.hit_position,
             self.taiko_settings.note_radius 
                 * self.taiko_settings.hit_area_radius_mult,
@@ -918,7 +955,7 @@ impl GameMode for TaikoGame {
                         img.color.a = alpha;
                         list.push(img);
                     } else {
-                        list.push(HalfCircle::new(
+                        list.push(graphics::HalfCircle::new(
                             self.playfield.hit_position,
                             self.taiko_settings.note_radius 
                                 * self.taiko_settings.hit_area_radius_mult,
@@ -933,7 +970,7 @@ impl GameMode for TaikoGame {
                         img.color.a = alpha;
                         list.push(img);
                     } else {
-                        list.push(HalfCircle::new(
+                        list.push(graphics::HalfCircle::new(
                             self.playfield.hit_position,
                             self.taiko_settings.note_radius 
                                 * self.taiko_settings.hit_area_radius_mult,
@@ -948,7 +985,7 @@ impl GameMode for TaikoGame {
                         img.color.a = alpha;
                         list.push(img);
                     } else {
-                        list.push(HalfCircle::new(
+                        list.push(graphics::HalfCircle::new(
                             self.playfield.hit_position,
                             self.taiko_settings.note_radius 
                                 * self.taiko_settings.hit_area_radius_mult,
@@ -963,7 +1000,7 @@ impl GameMode for TaikoGame {
                         img.color.a = alpha;
                         list.push(img);
                     } else {
-                        list.push(HalfCircle::new(
+                        list.push(graphics::HalfCircle::new(
                             self.playfield.hit_position,
                             self.taiko_settings.note_radius 
                                 * self.taiko_settings.hit_area_radius_mult,
@@ -983,7 +1020,7 @@ impl GameMode for TaikoGame {
             } * self.taiko_settings.sv_multiplier * 2.0;
             let fade_radius = radius / 5.0;
 
-            list.push(FlashlightDrawable::new(
+            list.push(graphics::FlashlightDrawable::new(
                 self.playfield.hit_position,
                 radius - fade_radius,
                 fade_radius,
@@ -1103,7 +1140,7 @@ impl GameMode for TaikoGame {
         Some(time)
     }
 
-    fn force_update_settings(&mut self, settings: &Settings) {
+    fn force_update_settings(&mut self, settings: &engine::Settings) {
         let settings = settings
             .gamemode_settings::<TaikoSettings>(GAME_INFO)
             .unwrap_or_default();
@@ -1201,8 +1238,12 @@ impl GameMode for TaikoGame {
     fn reload_skin(
         &mut self, 
         beatmap_path: &str, 
-        skin_manager: &mut dyn SkinProvider
-    ) -> TextureSource {
+        skin_manager: &mut dyn graphics::SkinProvider
+    ) -> graphics::TextureSource {
+        use graphics::{
+            SkinUsage,
+            TextureSource,
+        };
         let source = TextureSource::Beatmap(beatmap_path.to_owned()); // TODO: yeah
 
         let radius = self.taiko_settings.note_radius 
@@ -1289,7 +1330,9 @@ impl GameMode for TaikoGame {
     }
 
     #[cfg(feature = "graphics")]
-    fn build_widgets(&self, loader: &mut dyn UiElementLoader) {
+    fn build_widgets(&self, loader: &mut dyn engine::gameplay::widgets::UiElementLoader) {
+        use engine::gameplay::widgets::*;
+
         // combo
         loader.change_default_layout(
             "combo",
@@ -1391,7 +1434,14 @@ impl GameMode for TaikoGame {
 
 
     #[cfg(feature="gameplay")] 
-    fn handle_input(&mut self, input: InputEvent) -> Option<ReplayAction> {
+    fn handle_input(&mut self, input: input::InputEvent) -> Option<ReplayAction> {
+        use input::{
+            InputType,
+            InputEvent,
+            MouseButton,
+        };
+
+
         match input.event {
             InputType::KeyPress(key) => {
                 let key = key.as_key()?;

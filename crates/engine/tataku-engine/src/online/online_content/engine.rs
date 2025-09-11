@@ -1,4 +1,5 @@
-use crate::prelude::*;
+use crate::*;
+use common::reflect::*;
 
 pub trait OnlineContentEngine: Send + Sync {
     fn capabilities(&self) -> &OnlineContentCapabilities;
@@ -6,8 +7,8 @@ pub trait OnlineContentEngine: Send + Sync {
     fn search(
         &self, 
         settings: &Settings, 
-        search: OnlineContentSearch,
-    ) -> AsyncLoader<OnlineContentSearchResults>; 
+        search: online::online_content::OnlineContentSearch,
+    ) -> io::AsyncLoader<OnlineContentSearchResults>; 
 }
 
 #[derive(Debug)]
@@ -52,7 +53,7 @@ pub enum OnlineContentItemType {
         artist: String,
         title: String,
         creator: String,
-        map_hashes: Vec<Md5Hash>,
+        map_hashes: Vec<common::Md5Hash>,
     },
 }
 
@@ -69,7 +70,7 @@ pub struct OnlineContentCapabilities {
 
     pub search_options: HashMap<String, SearchOption>,
 }
-impl Display for OnlineContentCapabilities {
+impl std::fmt::Display for OnlineContentCapabilities {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.engine_id.fmt(f)
     }
@@ -183,7 +184,7 @@ impl From<Range<f32>> for SearchOptionType {
     }
 }
 
-impl Display for SearchOptionType {
+impl std::fmt::Display for SearchOptionType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Integer { .. } => "Integer".fmt(f),
@@ -218,9 +219,53 @@ impl std::str::FromStr for OnlineContentType {
 }
 
 
+#[derive(Reflect)]
+#[derive(Clone, Debug)]
+#[reflect(display="display")]
+pub struct OnlineContentSearchData {
+    pub display: String,
+    pub value: String,
+}
+impl OnlineContentSearchData {
+    pub fn new(display: impl ToString, value: impl ToString) -> Self {
+        Self {
+            display: display.to_string(),
+            value: value.to_string(),
+        }
+    }
+}
+impl std::fmt::Display for OnlineContentSearchData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.display.fmt(f)
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all="camelCase")]
+#[derive(Clone, Debug, PartialEq)]
+pub struct OnlineContentSearch {
+    /// What "engine" to use to search
+    pub engine_id: String,
+
+    /// What type of search to perform
+    pub search_type: Vec<online_content::OnlineContentType>,
+    
+    /// What page of results are we on?
+    pub page: u32,
+
+    /// What search-specific settings were provided
+    pub search_values: HashMap<String, String>,
+
+    /// What query
+    pub query: Option<String>,
+}
+
+
 
 #[test]
 fn test() {
+    use crate::*;
+
     #[derive(Reflect)]
     #[reflect(dont_clone)]
     enum A {
@@ -234,8 +279,6 @@ fn test() {
             "hi".to_owned(),
         ]
     };
-
-    use crate::prelude::*;
 
     let list = a
         .as_dyn()

@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::*;
 
 #[allow(unused)]
 #[derive(Clone, Debug, Default)]
@@ -12,12 +12,12 @@ pub enum NotificationOnClick {
     MultiplayerLobby(u32)
 }
 impl NotificationOnClick {
-    pub fn do_action(&self, actions: &mut ActionQueue) {
+    pub fn do_action(&self, actions: &mut actions::ActionQueue) {
         match self {
             NotificationOnClick::None => {}
             NotificationOnClick::Url(url) => {
                 debug!("open url {url}");
-                open_link(url.clone());
+                tataku::open_link(url.clone());
             }
             NotificationOnClick::Menu(menu_name) => {
                 debug!("goto menu {menu_name}");
@@ -25,7 +25,7 @@ impl NotificationOnClick {
 
             NotificationOnClick::MultiplayerLobby(lobby_id) => {
                 debug!("join lobby {lobby_id}");
-                actions.push(MultiplayerAction::JoinLobby {
+                actions.push(actions::multiplayer::MultiplayerAction::JoinLobby {
                     lobby_id: *lobby_id,
                     password: String::new(),
                 }.into());
@@ -36,10 +36,10 @@ impl NotificationOnClick {
                 let folder = path.parent().unwrap().to_string_lossy().to_string();
                 let file = path.file_name().unwrap().to_string_lossy().to_string();
 
-                open_folder(folder, Some(file));
+                tataku::open_folder(folder, Some(file));
             }
             NotificationOnClick::Folder(folder) => {
-                open_folder(folder.clone(), None);
+                tataku::open_folder(folder.clone(), None);
             }
         }
     }

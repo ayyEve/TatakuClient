@@ -1,4 +1,18 @@
 use crate::prelude::*;
+use tataku::{
+    Color,
+    Vector2,
+    Easing,
+};
+
+use engine::{
+    gameplay::{
+        Hitsound,
+        HitObject,
+        judgments::HitJudgment,
+    }
+};
+
 
 pub trait OsuHitObject: HitObject {
     /// return the window-scaled coords of this object at `time`

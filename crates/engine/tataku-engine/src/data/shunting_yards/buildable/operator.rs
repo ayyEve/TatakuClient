@@ -1,4 +1,7 @@
-use crate::prelude::*;
+use crate::*;
+use tataku::TatakuValue;
+use tataku::_ShuntingYardOperatorReadError;
+use engine::data::shunting_yards::buildable::*;
 
 #[doc(hidden)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -26,11 +29,11 @@ pub enum BuildableShuntingYardOperator {
     // special
     Index,
 }
-impl<'values> _ShuntingYardOperator<'values> for BuildableShuntingYardOperator {
-    type Output = Cow<'values, TatakuValue>;
+impl<'values> tataku::_ShuntingYardOperator<'values> for BuildableShuntingYardOperator {
+    type Output = Cow<'values, tataku::TatakuValue>;
     type Error = BuildableShuntingYardError;
     
-    fn read(c1: char, c2: char) -> Result<Self, _ShuntingYardOperatorReadError> {
+    fn read(c1: char, c2: char) -> Result<Self, tataku::_ShuntingYardOperatorReadError> {
         match (c1, c2) {
             // math
             ('*', '*') => Ok(Self::Pow), 

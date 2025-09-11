@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::*;
 use super::consts::*;
 use std::time::SystemTime;
 
@@ -11,7 +11,7 @@ pub struct Token {
     pub refresh_token: String,
 }
 impl Token {
-    pub fn authenticate(settings: &Settings) -> TatakuResult<Self> {
+    pub fn authenticate(settings: &Settings) -> tataku::TatakuResult<Self> {
         #[derive(Serialize)]
         struct Request {
             client_id: String,
@@ -66,7 +66,7 @@ impl Token {
         })
     }
 
-    pub fn refresh(refresh_token: String) -> TatakuResult<Self> {
+    pub fn refresh(refresh_token: String) -> tataku::TatakuResult<Self> {
         #[derive(Serialize)]
         struct Request {
             client_id: String,
@@ -87,7 +87,7 @@ impl Token {
             .header("Accept", "application/json")
             .header("User-Agent", "osu!")
             .send()
-            .map_err(TatakuError::from_err)?;
+            .map_err(tataku::Error::from_err)?;
 
         #[derive(Deserialize)]
         struct Response {
@@ -103,7 +103,7 @@ impl Token {
             access_token,
             refresh_token
         } = response.json()
-            .map_err(TatakuError::from_err)?;
+            .map_err(tataku::Error::from_err)?;
 
         
         let now = SystemTime::now()

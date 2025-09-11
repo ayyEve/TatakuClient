@@ -1,4 +1,8 @@
 use crate::prelude::*;
+use engine::{
+    task::*,
+    actions,
+};
 
 #[derive(Default2)]
 pub(crate) struct TaskManager {
@@ -8,7 +12,7 @@ pub(crate) struct TaskManager {
     max_tasks: usize,
 }
 impl TaskManager {
-    pub fn add_task(&mut self, task: Box<dyn TatakuTask>) {
+    pub fn add_task(&mut self, task: Box<dyn engine::Task>) {
         info!("Adding task: {}", task.get_name());
 
         self.tasks.push(TaskInner {
@@ -21,7 +25,7 @@ impl TaskManager {
         &mut self, 
         values: &mut ValueCollection, 
         state: TaskGameState,
-        actions: &mut ActionQueue,
+        actions: &mut actions::ActionQueue,
     ) {
         let mut task_count = 0;
 
@@ -58,13 +62,13 @@ impl TaskManager {
 
 struct TaskInner {
     /// What is this task?
-    task: Box<dyn TatakuTask>,
+    task: Box<dyn engine::Task>,
 
     // /// When did it start?
     // started: TatakuInstant,
 }
 impl Deref for TaskInner {
-    type Target = Box<dyn TatakuTask>;
+    type Target = Box<dyn engine::Task>;
 
     fn deref(&self) -> &Self::Target {
         &self.task

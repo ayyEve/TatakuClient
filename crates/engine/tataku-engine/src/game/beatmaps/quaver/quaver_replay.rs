@@ -1,4 +1,5 @@
-use crate::prelude::*;
+use crate::*;
+use common::Score;
 
 #[allow(unused)]
 #[derive(Debug)]
@@ -12,9 +13,9 @@ impl QuaverReplayDownloader {
 
 
 // TODO: this
-impl ReplayDownloader for QuaverReplayDownloader {
-    fn get_replay(&self, _settings: &Settings) -> TatakuResult<Score> {
-        Err(TatakuError::String("Not Implemented".to_owned()))
+impl beatmaps::ReplayDownloader for QuaverReplayDownloader {
+    fn get_replay(&self, _settings: &Settings) -> tataku::TatakuResult<Score> {
+        Err(tataku::Error::String("Not Implemented".to_owned()))
         // https://quavergame.com/download/replay/48727123
 
         // let url = format!("https://quavergame.com/download/replay/{}", self.1);

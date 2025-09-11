@@ -1,5 +1,4 @@
 mod text;
-// mod space;
 mod button;
 mod slider;
 mod checkbox;
@@ -10,7 +9,6 @@ mod text_input;
 mod gamepad_button_input;
 
 pub use text::*;
-// pub use space::*;
 pub use button::*;
 pub use slider::*;
 pub use checkbox::*;

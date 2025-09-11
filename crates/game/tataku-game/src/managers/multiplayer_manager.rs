@@ -1,4 +1,43 @@
 use crate::prelude::*;
+use tataku::Color;
+use common::{
+    Score,
+    Md5Hash,
+    GameSpeed,
+    reflect::*,
+
+    network::multiplayer::*,
+    packets::{
+        PacketId,
+        MultiplayerPacket, 
+    },
+};
+
+use engine::{
+    actions,
+    Notification,
+    data::ValueChangeHelper,
+    actions::{
+        mods::ModAction as ModAction,
+        menu::MenuAction as MenuAction,
+        online::OnlineAction as OnlineAction,
+        beatmap::{
+            SetBeatmapOptions,
+            BeatmapAction as BeatmapAction,
+        },
+        multiplayer::{
+            LobbyAction as LobbyAction,
+            LobbySlotAction as LobbySlotAction,
+            MultiplayerAction as MultiplayerAction,
+        }
+    },
+    gameplay::{
+        IngameScore,
+        GamemodeInfos,
+        mods::ModManager,
+        gameplay_manager::GameplayManagerTrait,
+    },
+};
 
 #[derive(Debug)]
 pub struct MultiplayerManager {
@@ -18,7 +57,7 @@ pub struct MultiplayerManager {
     new_beatmap_helper: ValueChangeHelper<Md5Hash>,
 
     /// async beatmap loader
-    beatmap_loader: Option<AsyncLoader<TatakuResult<GameplayManager>>>,
+    beatmap_loader: Option<engine::io::AsyncLoader<tataku::Result<GameplayManager>>>,
 
     /// have we sent that we've loaded the beatmap?
     load_complete_sent: bool,
@@ -33,8 +72,13 @@ impl MultiplayerManager {
     pub fn new(
         lobby: CurrentLobbyInfo, 
         infos: GamemodeInfos,
-        actions: &mut ActionQueue,
+        actions: &mut actions::ActionQueue,
     ) -> Self {
+        use actions::beatmap::{
+            BeatmapAction as BeatmapAction,
+            SetBeatmapOptions,
+        };
+
         // make sure our game is up to date with the lobby's current info
         match lobby.current_beatmap.clone() {
             Some(map) => {
@@ -69,7 +113,7 @@ impl MultiplayerManager {
         &mut self,
         manager: Option<&mut Box<GameplayManager>>,
         values: &mut ValueCollection,
-        actions: &mut ActionQueue,
+        actions: &mut actions::ActionQueue,
     ) {
         let previous_map = self.current_beatmap.clone();
 
@@ -258,8 +302,8 @@ impl MultiplayerManager {
         values: &mut ValueCollection, 
         packet: &MultiplayerPacket,
         manager: Option<&mut Box<GameplayManager>>, 
-        actions: &mut ActionQueue,
-    ) -> TatakuResult<Option<GameplayManager>> {
+        actions: &mut actions::ActionQueue,
+    ) -> tataku::Result<Option<GameplayManager>> {
         match packet {
             MultiplayerPacket::Server_LobbyUserJoined { lobby_id, user_id } => {
                 if &self.lobby.info.id != lobby_id { return Ok(None) }
@@ -350,7 +394,7 @@ impl MultiplayerManager {
                             mods,
                             &settings,
                         ) };
-                        self.beatmap_loader = Some(AsyncLoader::new(f));
+                        self.beatmap_loader = Some(engine::io::AsyncLoader::new(f));
                     } else {
                         error!("not loading map: current != selected");
                     }
@@ -367,7 +411,7 @@ impl MultiplayerManager {
                         if let Some(manager) = loader.check() {
                             match manager {
                                 Ok(mut manager) => {
-                                    manager.set_mode(GameplayMode::Multiplayer.into());
+                                    manager.set_mode(actions::game::GameplayMode::Multiplayer.into());
                                     new_manager = Some(manager);
                                     self.set_state(LobbyUserState::InGame, actions);
                                 }
@@ -511,14 +555,14 @@ impl MultiplayerManager {
     fn send_packet(
         &mut self, 
         packet: impl Into<PacketId>, 
-        actions: &mut ActionQueue,
+        actions: &mut actions::ActionQueue,
     ) {
         actions.push(OnlineAction::Packet(Box::new(packet.into())).into());
     }
     fn set_state(
         &mut self, 
         new_state: LobbyUserState,
-        actions: &mut ActionQueue,
+        actions: &mut actions::ActionQueue,
     ) {
         self.send_packet(
             MultiplayerPacket::Client_LobbyUserState { new_state },
@@ -529,8 +573,8 @@ impl MultiplayerManager {
     pub fn handle_lobby_action(
         &mut self, 
         action: LobbyAction, 
-        settings: &Settings,
-        actions: &mut ActionQueue,
+        settings: &engine::Settings,
+        actions: &mut actions::ActionQueue,
     ) {
         match action {
             LobbyAction::Start => {
@@ -596,7 +640,7 @@ impl MultiplayerManager {
                         info!("url resp: {body}");
 
                         match serde_json::from_str(&body) {
-                            Ok(Resp {url: Some(url), ..}) => open_link(url),
+                            Ok(Resp {url: Some(url), ..}) => tataku::open_link(url),
                             _ => error!("some shit broke i dont care")
                         }
                     }

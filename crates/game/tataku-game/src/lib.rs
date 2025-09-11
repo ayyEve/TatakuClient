@@ -6,14 +6,17 @@ mod database;
 
 
 pub mod prelude {
+    pub(crate) use tataku_engine::exports::*;
+    
+    pub use tataku_engine::tataku;
+    pub use tataku_audio as audio;
+    pub use tataku_engine as engine;
+    pub use tataku_interface::prelude as interface;
+    pub use tataku_client_common::common as import_common;
+
     pub use crate::game::*;
     pub use crate::tasks::*;
     pub use crate::values::*;
     pub use crate::managers::*;
     pub use crate::database::*;
-    
-    pub use tataku_engine::prelude::*;
-    #[cfg(feature="graphics")] pub use tataku_ui::prelude::*;
-    #[cfg(feature="graphics")] pub use tataku_graphics::prelude::*;
-    #[cfg(feature="graphics")] pub use tataku_interface::prelude::*;
 }
