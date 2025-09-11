@@ -4,24 +4,15 @@ use ui::widget::Widget;
 #[derive(Deserialize)]
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct SectionElement {
-    #[serde(rename = "@id", default)] id: Option<ArcStr>,
-    #[serde(rename = "@class", default)] class_list: ClassList,
-    #[serde(rename = "@style", default)] style: ArcStr,
     #[serde(rename = "$value")] children: Vec<Element>,
 }
-impl CustomElement for SectionElement {
-    fn build(&self) -> Box<dyn Widget<actions::Action>> {
-        widgets::WidgetContainer::new_boxed(
-            self.style.clone(),
-            "section",
-            self.id.clone(),
-            self.class_list.clone(),
-            widgets::Container::new(self
-                .children
-                .iter()
-                .map(|e| e.build())
-                .collect()
-            ).boxed()
+impl SectionElement {
+    pub fn build(&self) -> widgets::Container {
+        widgets::Container::new(self
+            .children
+            .iter()
+            .map(|e| e.build().boxed())
+            .collect()
         )
     }
 }

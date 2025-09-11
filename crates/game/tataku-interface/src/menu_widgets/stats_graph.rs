@@ -37,12 +37,12 @@ impl StatsGraphWidget {
         //             // .margin()
         //             .boxed(),
 
-        //         // ~half the remaining vertical should be for listing the values 
+        //         // ~half the remaining vertical should be for listing the values
         //         Container::new(stats.data.iter()
         //             .filter(|i| i.show_in_list)
         //             .map(|i| TextWidget::new(format!(
-        //                     "{}: {}", 
-        //                     i.name, 
+        //                     "{}: {}",
+        //                     i.name,
         //                     format_float(i.get_value(), 2)
         //                 ))
         //                 .font_size(20.0)
@@ -54,7 +54,7 @@ impl StatsGraphWidget {
         //         .flex_direction(FlexDirection::Column)
         //         .height(CssUnit::Auto)
         //         .boxed(),
-                
+
         //         // the remaining space should be used for the graph
         //         GraphWidget::new(stats.graph_type, &stats.data)
         //             .width(FILL)
@@ -74,10 +74,10 @@ impl Widget<actions::Action> for StatsGraphWidget {
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn children(&self) -> WidgetChildren<'_, actions::Action> {
-        WidgetChildren::Single(&self.node)
+        WidgetChildren::Single(&*self.node)
     }
     fn children_mut(&mut self) -> WidgetChildrenMut<'_, actions::Action> {
-        WidgetChildrenMut::Single(&mut self.node)
+        WidgetChildrenMut::Single(&mut *self.node)
     }
 
     fn layout(
@@ -106,7 +106,7 @@ impl GraphWidget {
 
         // let one = half::f16::from_f32(1.0);
         Self {
-            graph, 
+            graph,
             // style: CssStyle {
             //     width: CssUnit::Percent(one).into(),
             //     height: CssUnit::Percent(one).into(),
@@ -119,15 +119,15 @@ impl GraphWidget {
 impl Widget<actions::Action> for GraphWidget {
     fn name(&self) -> CowStr { "stats_graph_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
-    
+
     fn layout(
-        &mut self, 
+        &mut self,
         shell: &mut LayoutShell<actions::Action>
     ) -> taffy::TaffyResult<NodeId> {
         self.node_id = shell.tree.new_leaf()?;
         Ok(self.node_id)
     }
-    
+
     fn draw(&self, shell: &mut DrawShell<actions::Action>) {
         let Some(bounds) = shell.tree.absolute_bounds(self.node_id) else { return };
 

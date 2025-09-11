@@ -37,8 +37,8 @@ pub fn run_game(
         ],
         gamemodes,
         BuiltinMenus { 
-            menus: tataku_resources::menus::ALL, 
-            dialogs: tataku_resources::dialogs::ALL, 
+            menus: tataku_resources::menus::ALL,
+            dialogs: tataku_resources::dialogs::ALL,
         }
     );
 

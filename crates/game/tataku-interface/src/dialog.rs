@@ -239,10 +239,10 @@ impl Widget<actions::Action> for DialogWidget {
     fn node_id(&self) -> NodeId { self.node.node_id() }
 
     fn children(&self) -> WidgetChildren<'_, actions::Action> {
-        WidgetChildren::Single(&self.node)
+        WidgetChildren::Single(&*self.node)
     }
     fn children_mut(&mut self) -> WidgetChildrenMut<'_, actions::Action> {
-        WidgetChildrenMut::Single(&mut self.node)
+        WidgetChildrenMut::Single(&mut *self.node)
     }
 
     fn layout(
@@ -565,7 +565,7 @@ impl Widget<actions::Action> for DialogTitlebar {
         // // .horizontal_align(AlignContent::SpaceBetween)
         // .boxed();
 
-        self.node = self.get_titlebar().build();
+        self.node = self.get_titlebar().build().boxed();
         self.node.layout(shell)
     }
 

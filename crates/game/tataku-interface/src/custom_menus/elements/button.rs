@@ -4,21 +4,16 @@ use ui::widget::Widget;
 #[derive(Deserialize)]
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ButtonElement {
-    #[serde(rename = "@id", default)] id: Option<ArcStr>,
-    #[serde(rename = "@class", default)] class_list: ClassList,
-
-    /// unparsed style string, parsed when the element is built
-    #[serde(rename = "@style", default)] style: ArcStr,
     #[serde(rename = "@active", default)] active_override: Option<BuildableCondition>,
-    
+
     #[serde(alias="action")]
     actions: Vec<ClickAction>,
 
     #[serde(rename = "$value")]
     element: Element,
 }
-impl CustomElement for ButtonElement {
-    fn build(&self) -> Box<dyn Widget<actions::Action>> {
+impl ButtonElement {
+    pub fn build(&self) -> widgets::Button {
         let mut left = Vec::new();
         let mut middle = Vec::new();
         let mut right = Vec::new();
@@ -33,18 +28,11 @@ impl CustomElement for ButtonElement {
             vec.extend(action.inner.iter().cloned());
         }
 
-        widgets::WidgetContainer::new_boxed(
-            self.style.clone(),
-            "button",
-            self.id.clone(),
-            self.class_list.clone(),
-            widgets::Button::new(self.element.build())
-                .on_press_left(left)
-                .on_press_middle(middle)
-                .on_press_right(right)
-                .active_condition_maybe(self.active_override.clone())
-                .boxed()
-        )
+        widgets::Button::new(self.element.build().boxed())
+            .on_press_left(left)
+            .on_press_middle(middle)
+            .on_press_right(right)
+            .active_condition_maybe(self.active_override.clone())
     }
 }
 

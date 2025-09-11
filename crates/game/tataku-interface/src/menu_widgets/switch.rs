@@ -40,20 +40,25 @@ impl SwitchWidget {
     }
 
     #[allow(clippy::borrowed_box, reason = "signature")]
-    fn get_ele(&self) -> Option<&Box<dyn Widget<actions::Action>>> {
-        let Some(index) = self.value else {
-            return self.default_case.as_ref();
-        };
-
-        Some(&self.cases.get(index)?.widget)
+    fn get_ele(&self) -> Option<&dyn Widget<actions::Action>> {
+        match self.value {
+            Some(index) => Some(&*self.cases.get(index)?.widget),
+            None => self.default_case.as_deref(),
+        }
     }
 
-    fn get_ele_mut(&mut self) -> Option<&mut Box<dyn Widget<actions::Action>>> {
-        let Some(index) = self.value else {
-            return self.default_case.as_mut();
-        };
+    fn get_ele_mut(&mut self) -> Option<&mut dyn Widget<actions::Action>> {
+        match self.value {
+            Some(index) => Some(&mut *self.cases.get_mut(index)?.widget),
+            None => {
+                fn reborrow(w: &mut Box<dyn Widget<actions::Action>>) -> &mut dyn Widget<actions::Action> {
+                    &mut **w
+                }
 
-        Some(&mut self.cases.get_mut(index)?.widget)
+                self.default_case.as_mut()
+                    .map(reborrow)
+            },
+        }
     }
 
     fn update_value(
@@ -90,20 +95,25 @@ impl Widget<actions::Action> for SwitchWidget {
     fn all_children(&self) -> WidgetChildren<'_, actions::Action> {
         let mut list = self.cases
             .iter()
-            .map(|a| &a.widget)
+            .map(|a| &*a.widget)
             .collect::<Vec<_>>();
-        if let Some(default) = &self.default_case {
+        if let Some(default) = self.default_case.as_deref() {
             list.push(default);
         }
 
         WidgetChildren::OwnedList(list)
     }
     fn all_children_mut(&mut self) -> WidgetChildrenMut<'_, actions::Action> {
+        fn reborrow(w: &mut Box<dyn Widget<actions::Action>>) -> &mut dyn Widget<actions::Action> {
+            &mut **w
+        }
+
         let mut list = self.cases
             .iter_mut()
             .map(|a| &mut a.widget)
+            .map(reborrow)
             .collect::<Vec<_>>();
-        if let Some(default) = &mut self.default_case {
+        if let Some(default) = self.default_case.as_deref_mut() {
             list.push(default);
         }
 

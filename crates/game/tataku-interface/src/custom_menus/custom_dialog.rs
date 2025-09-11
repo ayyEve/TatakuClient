@@ -68,7 +68,7 @@ impl CustomDialog {
 pub struct BuiltCustomDialog {
     pub id: ArcStr,
     pub title: ArcStr,
-    pub element: Box<dyn Widget<actions::Action>>,
+    pub element: widgets::WidgetBase,
     pub events: HashMap<input::TatakuEvent, Vec<BuildableAction>>,
 
     pub styles: ArcStr,

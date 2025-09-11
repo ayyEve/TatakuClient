@@ -13,15 +13,14 @@ use ui::{
 
 // TODO: move button (etc) active/hover/etc to states, and use css selectors to set the states
 
-// TODO: rename this please
-pub struct WidgetContainer {
+pub struct WidgetBase {
     element_name: ArcStr,
     id: Option<ArcStr>,
     style_str: ArcStr,
     class: ClassList,
     inner: Box<dyn Widget<actions::Action>>,
 }
-impl WidgetContainer {
+impl WidgetBase {
     pub fn new(
         style: ArcStr,
         element_name: impl Into<ArcStr>,
@@ -56,15 +55,15 @@ impl WidgetContainer {
     }
     
 }
-impl Widget<actions::Action> for WidgetContainer {
+impl Widget<actions::Action> for WidgetBase {
     fn name(&self) -> CowStr { self.inner.name() }
     fn node_id(&self) -> NodeId { self.inner.node_id() }
 
     fn children(&self) -> WidgetChildren<'_, actions::Action> {
-        WidgetChildren::Single(&self.inner)
+        WidgetChildren::Single(&*self.inner)
     }
     fn children_mut(&mut self) -> WidgetChildrenMut<'_, actions::Action> {
-        WidgetChildrenMut::Single(&mut self.inner)
+        WidgetChildrenMut::Single(&mut *self.inner)
     }
 
     fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {

@@ -9,7 +9,7 @@ mod transformable;
 pub mod context_menus;
 mod visualization;
 mod gameplay_preview;
-mod widget_container;
+mod base;
 
 pub use basic::*;
 pub use graphs::*;
@@ -22,4 +22,4 @@ pub use transformable::*;
 pub use context_menus::*;
 pub use visualization::*;
 pub use gameplay_preview::*;
-pub use widget_container::*;
+pub use base::*;

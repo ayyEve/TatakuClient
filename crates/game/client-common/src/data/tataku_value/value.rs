@@ -101,26 +101,31 @@ macro_rules! parse {
     )+};
 }
 
-macro_rules! visit_string {
-    ($($de:ident)+) => {$(
-        fn $de<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-        where
-            V: serde::de::Visitor<'de>
-        {
-            visitor.visit_string(self.0)
-        }
-    )+};
-}
+#[derive(Clone)]
+pub struct FromString<'a, E = value::Error>(pub Cow<'a, str>, pub std::marker::PhantomData<E>);
+impl<'a, E> FromString<'a, E> {
+    pub const EMPTY: Self = FromString(Cow::Borrowed(""), std::marker::PhantomData);
 
-pub struct FromString<E = value::Error>(pub String, pub std::marker::PhantomData<E>);
-impl<'de, E: Error> serde::Deserializer<'de> for FromString<E> {
+    pub fn borrow(&self) -> FromString<'_, E> {
+        FromString(Cow::from(&*self.0), std::marker::PhantomData)
+    }
+}
+impl<'de, E: Error> serde::Deserializer<'de> for FromString<'de, E> {
     type Error = E;
 
-    visit_string!(
-        deserialize_any deserialize_char deserialize_str
-        deserialize_string deserialize_bytes deserialize_byte_buf
-        deserialize_option deserialize_identifier deserialize_ignored_any
-    );
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>
+    {
+        match self.0 {
+            Cow::Borrowed(s) => visitor.visit_str(s),
+            Cow::Owned(s) => visitor.visit_string(s),
+        }
+    }
+
+    serde::forward_to_deserialize_any! {
+        char str string bytes byte_buf identifier ignored_any
+    }
 
     parse!(
         deserialize_bool => visit_bool,
@@ -138,6 +143,13 @@ impl<'de, E: Error> serde::Deserializer<'de> for FromString<E> {
         deserialize_f32 => visit_f32,
         deserialize_f64 => visit_f64,
     );
+
+    fn deserialize_option<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>
+    {
+        visitor.visit_some(self)
+    }
 
     fn deserialize_unit<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
     where
@@ -165,7 +177,7 @@ impl<'de, E: Error> serde::Deserializer<'de> for FromString<E> {
     where
         V: serde::de::Visitor<'de>
     {
-        visitor.visit_string(self.0)
+        self.deserialize_any(visitor)
     }
 
     fn deserialize_seq<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
@@ -222,22 +234,32 @@ impl<'de, E: Error> serde::Deserializer<'de> for FromString<E> {
     where
         V: serde::de::Visitor<'de>
     {
-        visitor.visit_enum(value::StringDeserializer::new(self.0))
+        visitor.visit_enum(value::CowStrDeserializer::new(self.0))
     }
 }
-impl<'de, E1, E2> IntoDeserializer<'de, E2> for FromString<E1>
+impl<'de, E1, E2> IntoDeserializer<'de, E2> for FromString<'de, E1>
 where
     E1: Error,
     E2: Error,
 {
-    type Deserializer = FromString<E2>;
+    type Deserializer = FromString<'de, E2>;
 
     fn into_deserializer(self) -> Self::Deserializer {
         FromString(self.0, std::marker::PhantomData)
     }
 }
-impl<E> From<String> for FromString<E> {
+impl<E> From<String> for FromString<'static, E> {
     fn from(value: String) -> Self {
+        Self(value.into(), std::marker::PhantomData)
+    }
+}
+impl<'a, E> From<&'a str> for FromString<'a, E> {
+    fn from(value: &'a str) -> Self {
+        Self(value.into(), std::marker::PhantomData)
+    }
+}
+impl<'a, E> From<Cow<'a, str>> for FromString<'a, E> {
+    fn from(value: Cow<'a, str>) -> Self {
         Self(value, std::marker::PhantomData)
     }
 }

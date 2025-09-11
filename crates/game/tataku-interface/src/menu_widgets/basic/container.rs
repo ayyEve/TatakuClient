@@ -256,13 +256,13 @@ impl Container {
         op: fn(&Tree<actions::Action>, &dyn Widget<actions::Action>) -> Option<bool>,
     ) -> Option<NodeId> {
         for child in node.children() {
-            if op(tree, &**child)? {
+            if op(tree, child)? {
                 return Some(child.node_id());
             }
 
             if let Some(res) = Self::find_nested_child(
                 tree,
-                &**child,
+                child,
                 op
             ) {
                 return Some(res)
@@ -278,7 +278,7 @@ impl Widget<actions::Action> for Container {
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn children(&self) -> WidgetChildren<'_, actions::Action> {
-        WidgetChildren::List(&self.children)
+        WidgetChildren::List(self.children.as_slice())
     }
     fn children_mut(&mut self) -> WidgetChildrenMut<'_, actions::Action> {
         WidgetChildrenMut::List(&mut self.children)
@@ -458,7 +458,7 @@ impl Widget<actions::Action> for Container {
                         e.init_style(&mut layout_shell);
 
                         // add to our list
-                        self.children.push(e);
+                        self.children.push(e.boxed());
                     }
 
                     // // mark the tree as dirty

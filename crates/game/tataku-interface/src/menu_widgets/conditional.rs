@@ -33,20 +33,24 @@ impl ConditionalWidget {
         }
     }
 
-    #[allow(clippy::borrowed_box)] // Box<dyn Widget> doesnt implement dyn Widget, and dereferencing and re-referencing is unecessary and ugly
-    fn get_ele(&self) -> Option<&Box<dyn Widget<actions::Action>>> {
+    fn get_ele(&self) -> Option<&dyn Widget<actions::Action>> {
         if self.value {
-            Some(&self.if_true)
+            Some(&*self.if_true)
         } else {
-            self.if_false.as_ref()
+            self.if_false.as_deref()
         }
     }
 
-    fn get_ele_mut(&mut self) -> Option<&mut Box<dyn Widget<actions::Action>>> {
+    fn get_ele_mut(&mut self) -> Option<&mut dyn Widget<actions::Action>> {
         if self.value {
-            Some(&mut self.if_true)
+            Some(&mut *self.if_true)
         } else {
+            fn reborrow(w: &mut Box<dyn Widget<actions::Action>>) -> &mut dyn Widget<actions::Action> {
+                &mut **w
+            }
+
             self.if_false.as_mut()
+                .map(reborrow)
         }
     }
 }
@@ -68,18 +72,18 @@ impl Widget<actions::Action> for ConditionalWidget {
     }
     fn all_children(&self) -> WidgetChildren<'_, actions::Action> {
         let mut list = Vec::with_capacity(2);
-        list.push(&self.if_true);
+        list.push(&*self.if_true);
         if let Some(f) = &self.if_false {
-            list.push(f);
+            list.push(&**f);
         }
 
         WidgetChildren::OwnedList(list)
     }
-    fn all_children_mut(&mut self) -> WidgetChildrenMut<'_, actions::Action> {
-        let mut list = Vec::with_capacity(2);
-        list.push(&mut self.if_true);
+    fn all_children_mut<'a>(&'a mut self) -> WidgetChildrenMut<'a, actions::Action> {
+        let mut list: Vec<&'a mut dyn Widget<actions::Action>> = Vec::with_capacity(2);
+        list.push(&mut *self.if_true);
         if let Some(f) = &mut self.if_false {
-            list.push(f);
+            list.push(&mut **f);
         }
 
         WidgetChildrenMut::OwnedList(list)

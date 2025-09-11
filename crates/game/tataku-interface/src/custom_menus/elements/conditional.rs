@@ -4,31 +4,18 @@ use ui::widget::Widget;
 #[derive(Deserialize)]
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ConditionalElement {
-    #[serde(rename = "@id", default)] id: Option<ArcStr>,
-    #[serde(rename = "@class", default)] class_list: ClassList,
-
-    /// unparsed style string, parsed when the element is built
-    #[serde(rename = "@style", default)] style: ArcStr,
-
     #[serde(rename = "@condition", alias = "@cond", default)] condition: ArcStr,
 
     #[serde(rename = "$value", default)] if_true: Element,
     #[serde(rename = "false", alias="else", default)] if_false: Option<Wrapped<Element>>,
 }
 
-impl CustomElement for ConditionalElement {
-    fn build(&self) -> Box<dyn Widget<actions::Action>> {
-        widgets::WidgetContainer::new_boxed(
-            self.style.clone(),
-            "conditional",
-            self.id.clone(),
-            self.class_list.clone(),
-            widgets::ConditionalWidget::new(
-                self.if_true.build(),
-                self.if_false.as_ref().map(|i| i.inner.build()),
-                BuildableCondition::Unbuilt(self.condition.clone())
-            )
-            .boxed()
+impl ConditionalElement {
+    pub fn build(&self) -> widgets::ConditionalWidget {
+        widgets::ConditionalWidget::new(
+            self.if_true.build().boxed(),
+            self.if_false.as_ref().map(|i| i.inner.build().boxed()),
+            BuildableCondition::Unbuilt(self.condition.clone())
         )
     }
 }
@@ -47,7 +34,7 @@ impl CustomElement for ConditionalElement {
 //         ConditionalElement {
 //             id: Some("cond123".into()),
 //             class_list: "thing1 thing2".into(),
-//             condition: "path.to.thing.is_true".into(), 
+//             condition: "path.to.thing.is_true".into(),
 //             if_true: TextElement {
 //                 text: BuildableText::Text("hi mom".into()),
 //                 ..Default::default()

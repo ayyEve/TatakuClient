@@ -5,32 +5,21 @@ use ui::widget::Widget;
 #[derive(Deserialize)]
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct AnimatableElement {
-    #[serde(rename = "@id", default)] id: Option<ArcStr>,
-    #[serde(rename = "@class", default)] class_list: ClassList,
-    #[serde(rename = "@style", default)] style: ArcStr,
-
     #[serde(default)] triggers: Vec<AnimatableTrigger>,
     #[serde(default)] actions: Vec<AnimatableActionEntry>,
 
     #[serde(rename = "$value")]
     element: Element,
 }
-impl CustomElement for AnimatableElement {
-    fn build(&self) -> Box<dyn Widget<actions::Action>> {
-        widgets::WidgetContainer::new_boxed(
-            self.style.clone(),
-            "animatable",
-            self.id.clone(),
-            self.class_list.clone(),
-            widgets::TransformableWidget::new(
-                self.triggers.clone(),
-                self.actions.iter()
-                    .cloned()
-                    .map(|i| (i.id, i.list))
-                    .collect(),
-                self.element.build()
-            )
-            .boxed()
+impl AnimatableElement {
+    pub fn build(&self) -> widgets::TransformableWidget {
+        widgets::TransformableWidget::new(
+            self.triggers.clone(),
+            self.actions.iter()
+                .cloned()
+                .map(|i| (i.id, i.list))
+                .collect(),
+            self.element.build().boxed()
         )
     }
 }

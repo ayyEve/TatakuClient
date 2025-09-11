@@ -1,15 +1,10 @@
 use crate::prelude::*;
-use ui::widget::Widget;
 use widgets::WidgetText;
 
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
 #[derive(Clone, Debug, PartialEq)]
 pub struct TextInputElement {
-    #[serde(rename = "@id", default)] id: Option<ArcStr>,
-    #[serde(rename = "@class", default)] class_list: ClassList,
-    #[serde(rename = "@style", default)] style: ArcStr,
-
     #[serde(rename = "@variable")] variable: engine::VariablePathResolver,
     #[serde(rename = "@password", default)] is_password: bool,
 
@@ -34,24 +29,17 @@ impl TextInputElement {
         }
     }
 }
-impl CustomElement for TextInputElement {
-    fn build(&self) -> Box<dyn Widget<actions::Action>> {
-        widgets::WidgetContainer::new_boxed(
-            self.style.clone(),
-            "textInput",
-            self.id.clone(),
-            self.class_list.clone(),
-            widgets::TextInput::new(
-                self.placeholder(),
-                BuildableText::Variable {
-                    variable: self.variable.clone(),
-                }
-            )
-            .secure(self.is_password)
-            .on_input(self.on_input.inner.clone())
-            .on_submit(self.on_submit.inner.clone())
-            .boxed()
+impl TextInputElement {
+    pub fn build(&self) -> widgets::TextInput {
+        widgets::TextInput::new(
+            self.placeholder(),
+            BuildableText::Variable {
+                variable: self.variable.clone().into()
+            }
         )
+        .secure(self.is_password)
+        .on_input(self.on_input.inner.clone())
+        .on_submit(self.on_submit.inner.clone())
     }
 
 }

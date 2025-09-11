@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use ui::widget::Widget;
 use tataku::TatakuValue;
 use widgets::SliderValue;
 
@@ -7,10 +6,6 @@ use widgets::SliderValue;
 #[serde(rename_all="camelCase")]
 #[derive(Clone, Debug, PartialEq)]
 pub struct SliderElement {
-    #[serde(rename = "@id", default)] id: Option<ArcStr>,
-    #[serde(rename = "@class", default)] class_list: ClassList,
-    #[serde(rename = "@style", default)] style: ArcStr,
-
     #[serde(rename = "@variable")] var: engine::VariablePathResolver,
 
     #[serde(rename = "@min", default)] min_attribute: Option<TatakuValue>,
@@ -46,8 +41,9 @@ impl SliderElement {
         }
     }
 }
-impl CustomElement for SliderElement {
-    fn build(&self) -> Box<dyn Widget<actions::Action>> {
+
+impl SliderElement {
+    pub fn build(&self) -> widgets::Slider {
         let min = self.min_attribute.clone()
             .map(BuildableValue::Value)
             .or(self.min.clone()
@@ -73,19 +69,12 @@ impl CustomElement for SliderElement {
         
         if matches!(step, Some(SliderValue::Error)) { step = None };
 
-        widgets::WidgetContainer::new_boxed(
-            self.style.clone(),
-            "slider",
-            self.id.clone(),
-            self.class_list.clone(),
-            widgets::Slider::new(
-                min,
-                max,
-                self.var.clone(),
-                Some(self.on_input.inner.clone()),
-            )
-            .step_maybe(step)
-            .boxed()
+        widgets::Slider::new(
+            min,
+            max,
+            self.var.clone(),
+            Some(self.on_input.inner.clone()),
         )
+        .step_maybe(step)
     }
 }

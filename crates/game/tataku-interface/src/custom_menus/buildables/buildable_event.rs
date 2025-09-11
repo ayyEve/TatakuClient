@@ -33,7 +33,7 @@ impl<'de> Deserialize<'de> for BuildableEvent {
 
         struct Enum<E> {
             name: String,
-            attributes: Vec<(String, tataku::FromString)>,
+            attributes: Vec<(String, tataku::FromString<'static>)>,
             error: std::marker::PhantomData<E>,
         }
         impl<'de, E: Error> EnumAccess<'de> for Enum<E> {

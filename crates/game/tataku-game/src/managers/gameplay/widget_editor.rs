@@ -363,8 +363,6 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
     fn node_id(&self) -> NodeId { self.node.node_id() }
     
     fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId> {
-        use interface::CustomElement;
-
         let a = self.widgets
             .iter()
             .map(|w| format!(r#"
@@ -396,7 +394,8 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
 
         self.node = quick_xml::de::from_str::<interface::Element>(&list_str)
             .unwrap()
-            .build();
+            .build()
+            .boxed();
 
         // self.node = Container::new(
         //     self.widgets

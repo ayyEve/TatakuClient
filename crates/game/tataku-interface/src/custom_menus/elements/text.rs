@@ -1,17 +1,12 @@
 use crate::prelude::*;
-use ui::widget::Widget;
 
 #[derive(Deserialize)]
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct TextElement {
-    #[serde(rename = "@id", default)] pub id: Option<ArcStr>,
-    #[serde(rename = "@class", default)] pub class_list: ClassList,
-    #[serde(rename = "@style", default)] pub style: ArcStr,
-
     #[serde(rename="$value")] pub text: Vec<BuildableText>,
 }
-impl CustomElement for TextElement {
-    fn build(&self) -> Box<dyn Widget<actions::Action>> {
+impl TextElement {
+    pub fn build(&self) -> widgets::TextWidget {
         let mut text = self.text.clone();
 
         // Trim any literal texts in this element so you can
@@ -24,15 +19,8 @@ impl CustomElement for TextElement {
             *last = last.trim_end().into();
         }
 
-        widgets::WidgetContainer::new_boxed(
-            self.style.clone(),
-            "text",
-            self.id.clone(),
-            self.class_list.clone(),
-            widgets::TextWidget::new(
-                widgets::WidgetText::from_buildable_iter(text)
-            )
-            .boxed()
+        widgets::TextWidget::new(
+            widgets::WidgetText::from_buildable_iter(text)
         )
     }
 }

@@ -277,6 +277,6 @@
         </column>
 
         <!-- preview -->
-        <gameplayPreview class="preview" blur="4"/>
+        <gameplayPreview class="preview"/>
     </row>
 </menu>

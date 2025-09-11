@@ -147,10 +147,10 @@ impl Widget<actions::Action> for TransformableWidget {
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn children(&self) -> WidgetChildren<'_, actions::Action> {
-        WidgetChildren::Single(&self.child)
+        WidgetChildren::Single(&*self.child)
     }
     fn children_mut(&mut self) -> WidgetChildrenMut<'_, actions::Action> {
-        WidgetChildrenMut::Single(&mut self.child)
+        WidgetChildrenMut::Single(&mut *self.child)
     }
 
     fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId>  {

@@ -47,7 +47,7 @@ impl CustomMenu {
 pub struct BuiltCustomMenu {
     pub id: ArcStr,
     pub styles: ArcStr,
-    pub element: Box<dyn Widget<actions::Action>>,
+    pub element: widgets::WidgetBase,
     pub events: HashMap<input::TatakuEvent, Vec<BuildableAction>>,
 
     node_id: NodeId,
