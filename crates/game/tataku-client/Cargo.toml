@@ -60,7 +60,7 @@ gameplay = [
     "gamemode-utyping/gameplay",
 ]
 
-
+vello_rendering = [ "tataku-wgpu/vello_rendering" ]
 
 [dependencies]
 tataku-common.workspace = true
