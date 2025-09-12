@@ -212,7 +212,7 @@ impl<'window> GameWindow<'window> {
         self.graphics.end_render();
 
         // apply
-        self.window().pre_present_notify();
+        // self.window().pre_present_notify(); FIXME: this forces vsync on wayland which is stupid
         let _ = self.graphics.present();
 
         // update
