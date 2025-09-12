@@ -1,6 +1,6 @@
 use crate::prelude::*;
 use tataku::{ Vector2, Color };
-use std::sync::atomic::{ AtomicU32, Ordering::SeqCst };
+use std::sync::atomic::{ AtomicU32, Ordering };
 
 const SIZE:Vector2 = Vector2::new(180.0, 20.0);
 const TEXT_PADDING:Vector2 = Vector2::new(0.0, 2.0);
@@ -166,9 +166,9 @@ impl AsyncFpsDisplay {
 
             // update frametime and last updates/s
             self.frametime_last_draw = self.frametime_last
-                .swap(0, SeqCst) as f32 / 100.0; // restore 2 decimal places
+                .swap(0, Ordering::Acquire) as f32 / 100.0; // restore 2 decimal places
             self.last = self.count
-                .swap(0, SeqCst) as f32 / fps_elapsed * 1000.0;
+                .swap(0, Ordering::Acquire) as f32 / fps_elapsed * 1000.0;
         }
     }
 

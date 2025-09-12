@@ -1,8 +1,11 @@
-use std::time::Duration;
+use std::{
+    time::Duration,
+    sync::atomic::{ AtomicU64, Ordering },
+};
 
-static mut TIME:u64 = 0;
+static TIME: AtomicU64 = AtomicU64::new(0);
 fn get_time() -> u64 {
-    unsafe { TIME }
+    TIME.load(Ordering::Acquire)
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -33,10 +36,7 @@ impl Instant {
     }
 
     pub fn set_time(t: Duration) {
-        // SAFETY: its a u64, its probably fine
-        unsafe {
-            TIME = t.as_nanos() as u64;
-        }
+        TIME.store(t.as_nanos() as u64, Ordering::Release);
     }
 }
 impl Default for Instant {

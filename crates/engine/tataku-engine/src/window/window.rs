@@ -19,7 +19,7 @@ use winit::{
 use tokio::sync::OnceCell;
 use tokio::sync::mpsc::Sender;
 use std::sync::mpsc::sync_channel;
-use std::sync::atomic::{ AtomicU32, Ordering::SeqCst };
+use std::sync::atomic::{ AtomicU32, Ordering };
 
 use tataku::Vector2;
 use input::InputType;
@@ -134,8 +134,8 @@ impl<'window> GameWindow<'window> {
     fn update(&mut self) {
         // increment input frametime stuff
         let frametime = (self.input_timer.elapsed_and_reset() * 100.0).floor() as u32;
-        INPUT_FRAMETIME.fetch_max(frametime, SeqCst);
-        INPUT_COUNT.fetch_add(1, SeqCst);
+        INPUT_FRAMETIME.fetch_max(frametime, Ordering::Release);
+        INPUT_COUNT.fetch_add(1, Ordering::Release);
 
         // check gamepad events
         while let Some(event) = self.controller_input.next_event() {
@@ -196,8 +196,8 @@ impl<'window> GameWindow<'window> {
         if inner_size.width == 0 || inner_size.height == 0 { return }
 
         let frametime = (self.frametime_timer.elapsed_and_reset() * 100.0).floor() as u32;
-        RENDER_FRAMETIME.fetch_max(frametime, SeqCst);
-        RENDER_COUNT.fetch_add(1, SeqCst);
+        RENDER_FRAMETIME.fetch_max(frametime, Ordering::Release);
+        RENDER_COUNT.fetch_add(1, Ordering::Release);
 
         let transform = tataku::Matrix::identity();
 
@@ -212,6 +212,7 @@ impl<'window> GameWindow<'window> {
         self.graphics.end_render();
 
         // apply
+        self.window().pre_present_notify();
         let _ = self.graphics.present();
 
         // update
@@ -693,6 +694,7 @@ impl winit::application::ApplicationHandler<actions::window::WindowAction> for G
 
             WinitWindowEvent::RedrawRequested => {
                 self.render();
+                self.window().request_redraw();
                 None
             }
 
