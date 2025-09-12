@@ -416,6 +416,7 @@ impl<Action: Send + Sync + 'static> SpatialNagivation<'_, Action> {
     }
 
     pub fn run(&mut self, config: &NavigateConfig) {
+        return;
         // debug!("starting navigation");
         let all_selectable = self.tree.all_children()
             .filter(|i| self.tree.get_context(*i).unwrap().selectable())
