@@ -24,7 +24,7 @@ pub mod prelude {
     pub(crate) use tataku_ui as ui;
     pub(crate) use tataku_graphics as graphics;
     pub(crate) use crate::menu_widgets as widgets;
-    pub(crate) use tataku_client_common::common::*;
+    pub(crate) use tataku_engine_common::common::*;
 
     
     pub use crate::misc::*;

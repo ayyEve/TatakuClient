@@ -79,6 +79,7 @@ pub struct Game {
 
     // misc
     game_start: tataku::Instant,
+    pub(super) settings_updated: bool,
 
     #[cfg(feature="graphics")] builtin_menus: BuiltinMenus,
     #[cfg(feature="graphics")] pub(super) background_image: Option<Image>,
@@ -183,6 +184,7 @@ impl Game {
 
             // misc
             game_start: tataku::Instant::now(),
+            settings_updated: false,
             #[cfg(feature="graphics")] background_loader: None,
             #[cfg(feature="graphics")] queued_events: Vec::new(),
 
@@ -385,14 +387,14 @@ impl Game {
 
         loop {
             // update our settings
-            if self.settings != settings {
+            if self.settings != settings || self.settings_updated {
                 #[cfg(feature="graphics")]
                 if self.settings.display_settings != settings.display_settings {
                     render_rate = 1.0 / self.settings.display_settings.fps_target as f32;
                     update_target = 1.0 / self.settings.display_settings.update_target as f32;
-                    self.window_proxy.send_event(
-                        actions::window::WindowAction::SettingsUpdated(self.settings.display_settings.clone())
-                    ).unwrap();
+                    self.window_proxy.send_event(actions::window::WindowAction::SettingsUpdated(
+                        self.settings.display_settings.clone()
+                    )).unwrap();
                 }
 
                 // update our timer

@@ -18,7 +18,7 @@ pub(crate) use std::collections::{ HashSet, HashMap };
 pub use gilrs;
 pub use gilrs::GamepadId;
 pub(crate) use serde::{ Serialize, Deserialize };
-pub(crate) use tataku_client_common::prelude::*;
+pub(crate) use tataku_engine_common::prelude::*;
 
 pub use crate::key::*;
 pub use crate::event::*;

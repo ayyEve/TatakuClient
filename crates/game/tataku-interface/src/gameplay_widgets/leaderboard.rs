@@ -1,17 +1,17 @@
 use crate::prelude::*;
 use tataku::{
-    Alignment,
+    Color,
     Border,
     Vector2,
-    Color,
+    Alignment,
 };
 use graphics::{
+    Text,
     Image,
+    Shape,
+    Rectangle,
     SkinUsage,
     ThemeColor,
-    Rectangle,
-    Shape,
-    Text,
 
     Transform,
     Transformed,

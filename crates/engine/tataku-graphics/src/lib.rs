@@ -5,7 +5,7 @@ mod transform;
 mod drawables;
 mod visualization;
 
-pub(crate) use tataku_client_common::prelude::*;
+pub(crate) use tataku_engine_common::prelude::*;
 pub use api::*;
 pub use skinning::*;
 pub use transform::*;

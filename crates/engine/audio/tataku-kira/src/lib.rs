@@ -3,8 +3,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use tataku_audio::*;
-use tataku_client_common::common::*;
-use tataku_client_common::prelude as tataku;
+use tataku_engine_common::common::*;
+use tataku_engine_common::prelude as tataku;
 
 
 use kira::{

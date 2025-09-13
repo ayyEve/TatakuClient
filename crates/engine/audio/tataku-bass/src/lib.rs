@@ -3,8 +3,8 @@ use tracing::*;
 use std::sync::Arc;
 use tataku_audio::*;
 use bass_rs::prelude::*;
-use tataku_client_common::errors;
-use tataku_client_common::prelude as tataku;
+use tataku_engine_common::errors;
+use tataku_engine_common::prelude as tataku;
 
 
 lazy_static::lazy_static! {
@@ -231,7 +231,7 @@ fn map_bass_err(e: BassError) -> errors::audio::AudioError {
 /// if not found, will be downloaded
 fn check_bass() -> tataku::TatakuResult<()> {
     #[cfg(target_os = "linux")] 
-    use tataku_client_common::prelude::Io;
+    use tataku_engine_common::prelude::Io;
 
     #[cfg(target_os = "windows")] let filename = "bass.dll";
     #[cfg(target_os = "linux")] let filename = "libbass.so";

@@ -299,7 +299,7 @@ impl Game {
                 let mods = self.global.mods.clone();
                 let mode = self.global.playmode.clone();
 
-                match manager_from_playmode(
+                match GameplayManager::create(
                     &self.values.global.gamemode_infos,
                     &mode, 
                     &map, 
@@ -678,11 +678,10 @@ impl Game {
 
                 let mods = self.values.global.mods.clone();
 
-                match manager_from_playmode_path_hash(
+                match GameplayManager::create(
                     &self.values.global.gamemode_infos,
                     mode, 
-                    &beatmap.file_path, 
-                    beatmap.beatmap_hash, 
+                    &beatmap, 
                     mods, 
                     &self.values.settings,
                 ) {
@@ -844,7 +843,7 @@ impl Game {
                         let mods = mods.clone()
                             .unwrap_or_else(|| self.values.global.mods.clone());
                         
-                        manager_from_playmode_path_hash(
+                        GameplayManager::create_from_path_hash(
                             &self.values.global.gamemode_infos,
                             &playmode, 
                             path, 
@@ -878,7 +877,7 @@ impl Game {
                             || self.values.global.mods.clone()
                         );
 
-                        manager_from_playmode(
+                        GameplayManager::create(
                             &self.values.global.gamemode_infos,
                             &playmode, 
                             &meta, 
@@ -955,6 +954,7 @@ impl Game {
 
             GameAction::UpdateSettings(run) => {
                 (run)(&mut self.values.settings);
+                self.settings_updated = true;
             }
 
             #[cfg(not(feature="graphics"))] _ => {} 

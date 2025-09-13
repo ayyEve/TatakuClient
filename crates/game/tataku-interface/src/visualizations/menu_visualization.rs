@@ -1,6 +1,6 @@
 use std::f32::consts::PI;
 use crate::prelude::*;
-use tataku_client_common::math::Interpolation;
+use tataku_engine_common::math::Interpolation;
 use tataku::{
     Vector2,
     Color,

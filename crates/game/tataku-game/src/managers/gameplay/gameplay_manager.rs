@@ -304,6 +304,48 @@ impl GameplayManager {
         }
     }
 
+
+    pub fn create_from_path_hash(
+        infos: &GamemodeInfos,
+        incoming_mode: &str,
+        map_path: &str,
+        map_hash: common::Md5Hash,
+        mods: ModManager,
+        settings: &Settings,
+    ) -> tataku::Result<GameplayManager> {
+        let beatmap = Beatmap::from_path_and_hash(map_path, map_hash)?;
+        let playmode = beatmap.playmode(incoming_mode.to_owned());
+
+        let info = infos.get_info(&playmode)?;
+
+        let gamemode = info.create_game(
+            &beatmap, 
+            settings
+        )?;
+        Ok(GameplayManager::new(beatmap, gamemode, mods, settings))
+    }
+
+    pub fn create(
+        infos: &GamemodeInfos,
+        incoming_mode: &str,
+        beatmap: &BeatmapMeta,
+        mods: ModManager,
+        settings: &Settings,
+    ) -> tataku::Result<GameplayManager> {
+        let beatmap = Beatmap::from_metadata(beatmap)?;
+        let playmode = beatmap.playmode(incoming_mode.to_owned());
+
+        let info = infos.get_info(&playmode)?;
+
+        let gamemode = info.create_game(
+            &beatmap, 
+            settings
+        )?;
+
+        Ok(GameplayManager::new(beatmap, gamemode, mods, settings))
+    }
+
+
     #[cfg(feature="graphics")]
     pub fn init_ui(&mut self, font_contexts: &mut TextLayoutContexts) {
         let layouts = 
@@ -2062,49 +2104,9 @@ pub struct GameplaySpectatorInfo {
 }
 
 
-    #[cfg(feature = "graphics")]
+#[cfg(feature = "graphics")]
 struct EditorChannels {
     event_sender: Sender<GameplayWidgetEvent>,
     action_receiver: Arc<Mutex<Receiver<GameplayWidgetAction>>>,
 }
 
-
-pub fn manager_from_playmode_path_hash(
-    infos: &GamemodeInfos,
-    incoming_mode: &str,
-    map_path: &str,
-    map_hash: common::Md5Hash,
-    mods: ModManager,
-    settings: &Settings,
-) -> tataku::Result<GameplayManager> {
-    let beatmap = Beatmap::from_path_and_hash(map_path, map_hash)?;
-    let playmode = beatmap.playmode(incoming_mode.to_owned());
-
-    let info = infos.get_info(&playmode)?;
-
-    let gamemode = info.create_game(
-        &beatmap, 
-        settings
-    )?;
-    Ok(GameplayManager::new(beatmap, gamemode, mods, settings))
-}
-
-pub fn manager_from_playmode(
-    infos: &GamemodeInfos,
-    incoming_mode: &str,
-    beatmap: &BeatmapMeta,
-    mods: ModManager,
-    settings: &Settings,
-) -> tataku::Result<GameplayManager> {
-    let beatmap = Beatmap::from_metadata(beatmap)?;
-    let playmode = beatmap.playmode(incoming_mode.to_owned());
-
-    let info = infos.get_info(&playmode)?;
-
-    let gamemode = info.create_game(
-        &beatmap, 
-        settings
-    )?;
-
-    Ok(GameplayManager::new(beatmap, gamemode, mods, settings))
-}

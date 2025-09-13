@@ -15,4 +15,4 @@ default = []
 
 [dependencies]
 tataku-graphics.workspace = true
-tataku-client-common.workspace = true
+tataku-engine-common.workspace = true

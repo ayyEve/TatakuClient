@@ -44,7 +44,7 @@ tataku-null-audio.workspace = true
 tataku-client-proc-macros.workspace = true
 tataku-ui = { workspace = true, optional = true }
 tataku-graphics = { workspace = true, optional = true }
-tataku-client-common = { workspace = true, features = ["sql"] }
+tataku-engine-common = { workspace = true, features = ["sql"] }
 
 # framework stuff
 tokio = { workspace = true, features = [ "full" ] }

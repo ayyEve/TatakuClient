@@ -21,7 +21,7 @@ pub const SHRINK: CssUnit = CssUnit::Auto;
 pub(crate) use std::str::FromStr;
 pub(crate) use tataku_input as input;
 pub(crate) use tataku_graphics as graphics;
-pub(crate) use tataku_client_common::prelude::*;
+pub(crate) use tataku_engine_common::prelude::*;
 
 // manual re-exports
 pub use current_input_state::CurrentInputState; // ui::EmptyWidget

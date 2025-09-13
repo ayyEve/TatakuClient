@@ -18,4 +18,4 @@ async-trait.workspace = true
 tataku-common.workspace = true
 
 tataku-engine.workspace = true
-tataku-client-common.workspace = true
+tataku-engine-common.workspace = true

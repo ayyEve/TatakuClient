@@ -1,5 +1,5 @@
 [package]
-name = "tataku-client-common"
+name = "tataku-engine-common"
 version = "0.1.0"
 authors.workspace = true
 edition.workspace = true

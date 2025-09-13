@@ -9,7 +9,7 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
-tataku-client-common.workspace = true
+tataku-engine-common.workspace = true
 tataku-audio.workspace = true
 
 # bass-rs = { version = "0.3.0", path = "/home/ayyeve/Desktop/projects/bass-rs" }

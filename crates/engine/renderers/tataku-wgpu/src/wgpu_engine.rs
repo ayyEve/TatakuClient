@@ -2336,7 +2336,7 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
         &mut self,
         transform: tataku::Matrix,
         blend_mode: tataku::BlendMode,
-        layout: &parley::Layout<tataku_client_common::prelude::Color>,
+        layout: &parley::Layout<tataku_engine_common::prelude::Color>,
     ) {
         use parley::swash::{
             FontRef,

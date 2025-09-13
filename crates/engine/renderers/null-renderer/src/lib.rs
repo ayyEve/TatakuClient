@@ -1,5 +1,5 @@
 use tataku_graphics::*;
-use tataku_client_common::prelude::*;
+use tataku_engine_common::prelude::*;
 use tataku::errors::graphics::GraphicsError;
 
 pub struct DummyGraphicsEngine;

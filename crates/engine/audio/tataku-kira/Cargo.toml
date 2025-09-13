@@ -12,5 +12,5 @@ workspace = true
 tokio.workspace = true
 parking_lot.workspace = true
 tataku-audio.workspace = true
-tataku-client-common.workspace = true
+tataku-engine-common.workspace = true
 kira = { git = "https://github.com/ayyEve/kira.git" }

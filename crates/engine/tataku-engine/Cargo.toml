@@ -37,7 +37,7 @@ tataku-ui.workspace = true
 tataku-input.workspace = true
 tataku-common.workspace = true
 tataku-graphics.workspace = true
-tataku-client-common.workspace = true
+tataku-engine-common.workspace = true
 tataku-null-renderer.workspace = true
 tataku-client-proc-macros.workspace = true
 

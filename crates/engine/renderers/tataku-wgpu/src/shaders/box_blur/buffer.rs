@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use tataku_client_common::prelude::*;
+use tataku_engine_common::prelude::*;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 
 pub(crate) const BLURS_PER_BUF:u64 = 1;

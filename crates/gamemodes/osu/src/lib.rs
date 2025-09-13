@@ -13,7 +13,7 @@ pub use osu_info::GAME_INFO;
 mod prelude {
     pub use tataku_engine::input;
     pub use tataku_engine as engine;
-    pub use tataku_client_common::common::*;
+    pub use tataku_engine_common::common::*;
 
     pub use super::osu_math::*;
     pub use super::osu_game::*;

@@ -13,7 +13,7 @@ graphics = []
 
 [dependencies]
 tataku-common.workspace = true
-tataku-client-common.workspace = true
+tataku-engine-common.workspace = true
 
 parley.workspace = true
 swash.workspace = true

@@ -2,7 +2,7 @@ use crate::prelude::*;
 use common::reflect::*;
 use widgets::InputAction;
 use std::ops::RangeInclusive;
-use tataku_client_common::math::Interpolation;
+use tataku_engine_common::math::Interpolation;
 
 use tataku::{
     Color,

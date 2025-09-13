@@ -74,9 +74,9 @@ pub mod exports {
     pub use crate as engine;
     pub use tataku_input as input;
     pub use tataku_common as common;
-    pub use tataku_client_common::errors;
-    pub use tataku_client_common::common::*;
-    pub use tataku_client_common::prelude as tataku;
+    pub use tataku_engine_common::errors;
+    pub use tataku_engine_common::common::*;
+    pub use tataku_engine_common::prelude as tataku;
     
     #[cfg(feature="graphics")] pub use tataku_ui as ui;
     #[cfg(feature="graphics")] pub use tataku_graphics as graphics;

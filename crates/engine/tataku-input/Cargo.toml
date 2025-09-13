@@ -15,7 +15,7 @@ graphics = [ "winit" ]
 
 [dependencies]
 tataku-common.workspace = true
-tataku-client-common.workspace = true
+tataku-engine-common.workspace = true
 
 tracing.workspace = true
 gilrs.workspace = true

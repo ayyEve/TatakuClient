@@ -386,11 +386,10 @@ impl MultiplayerManager {
                         let infos = self.infos.clone();
                         let map = map.clone();
                         let settings = values.settings.clone();
-                        let f = async move { manager_from_playmode_path_hash(
+                        let f = async move { GameplayManager::create(
                             &infos,
                             &mode, 
-                            &map.file_path, 
-                            map.beatmap_hash, 
+                            &map, 
                             mods,
                             &settings,
                         ) };

@@ -20,7 +20,7 @@ gameplay = []
 tataku-common.workspace = true
 tataku-engine.workspace = true
 tataku-graphics.workspace = true
-tataku-client-common.workspace = true
+tataku-engine-common.workspace = true
 tataku-client-proc-macros.workspace = true
 
 tracing.workspace = true

@@ -7,4 +7,4 @@ edition.workspace = true
 [dependencies]
 strfmt.workspace = true
 serde_json.workspace = true
-tataku-client-common.workspace = true
+tataku-engine-common.workspace = true

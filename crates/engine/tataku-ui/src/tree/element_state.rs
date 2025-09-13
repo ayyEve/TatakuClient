@@ -1,4 +1,4 @@
-use tataku_client_common::prelude::bitflags;
+use tataku_engine_common::prelude::bitflags;
 
 bitflags! {
     #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]

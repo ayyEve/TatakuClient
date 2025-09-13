@@ -188,7 +188,7 @@ fn init_logging() -> LogGuard {
 
     let tataku_crates = [
         "tataku_client",
-        "tataku_client_common",
+        "tataku_engine_common",
         "tataku_game",
         "tataku_engine",
         "tataku_wgpu",

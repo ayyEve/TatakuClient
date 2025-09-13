@@ -97,15 +97,13 @@ impl SpectatorManager {
 
         // see if our current map is the host's map
         let map = values.beatmap_manager.current_beatmap()?;
-        let map_path = map.file_path.clone();
         let hash = map.beatmap_hash;
         if hash != map_hash { return None }
 
-        match manager_from_playmode_path_hash(
+        match GameplayManager::create(
             &self.infos, 
             &playmode, 
-            &map_path, 
-            hash, 
+            map, 
             mods.clone(), 
             &values.settings,
         ) {

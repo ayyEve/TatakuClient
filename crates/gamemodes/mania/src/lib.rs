@@ -11,7 +11,7 @@ mod prelude {
     pub use engine::input;
     pub use tataku_engine as engine;
     pub use tataku_engine::graphics;
-    pub use tataku_client_common::common::*;
+    pub use tataku_engine_common::common::*;
 
     pub use super::mania_game::*;
     pub use super::mania_settings::*;

@@ -9,7 +9,7 @@ rust-version.workspace = true
 default = [
     # "debug_custom_menus"
 ]
-debug_custom_menus = [ "tataku-client-common/debug_custom_menus" ]
+debug_custom_menus = [ "tataku-engine-common/debug_custom_menus" ]
 graphics = [
     "tataku-engine/graphics"
 ]
@@ -21,8 +21,8 @@ workspace = true
 [dependencies]
 tataku-ui.workspace = true
 tataku-graphics.workspace = true
-tataku-client-common.workspace = true
-tataku-engine = { workspace = true }
+tataku-engine-common.workspace = true
+tataku-engine.workspace = true
 
 taffy.workspace = true
 parley.workspace = true
@@ -33,6 +33,7 @@ serde.workspace = true
 simplecss.workspace = true
 quick-xml.workspace = true
 half.workspace = true
+num-format.workspace = true
 
 # [dev-dependencies]
 # tataku-resources.workspace = true
