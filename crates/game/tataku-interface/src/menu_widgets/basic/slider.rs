@@ -15,11 +15,11 @@ use ui::{
     style::*,
     widget::*,
 };
-use input::{ 
+use input::{
     Key,
     InputType,
-    InputEvent, 
-    MouseButton, 
+    InputEvent,
+    MouseButton,
 };
 
 
@@ -51,7 +51,7 @@ impl Slider {
             value: value.into(),
             step: None,
             on_change: on_change.into(),
-            
+
             hovered: false,
             pressed: false,
             node_id: ui::EMPTY_NODE,
@@ -67,7 +67,7 @@ impl Widget<actions::Action> for Slider {
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn layout(
-        &mut self, 
+        &mut self,
         shell: &mut LayoutShell<actions::Action>
     ) -> taffy::TaffyResult<NodeId> {
         // let style = CssStyle {
@@ -88,7 +88,7 @@ impl Widget<actions::Action> for Slider {
 
     fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
         shell.tree.update_style(
-            self.node_id, 
+            self.node_id,
             |style| {
                 style.min_width = CssUnit::Pixels(f16::from_f32(100.0)).into();
                 style.min_height = CssUnit::Pixels(f16::from_f32(30.0)).into();
@@ -101,7 +101,7 @@ impl Widget<actions::Action> for Slider {
         event: &InputEvent,
         shell: &mut InputShell<actions::Action>,
     ) {
-        let Some(ctx) = shell.tree.get_context(self.node_id) 
+        let Some(ctx) = shell.tree.get_context(self.node_id)
         else { return };
         let active = ctx.selected.unwrap();
 
@@ -127,16 +127,11 @@ impl Widget<actions::Action> for Slider {
 
                     if let Some(snap) = &self.step {
                         // apply_snap
-                        if let Some(val) = apply_snap(
-                            &range, 
-                            value, 
-                            new_value, 
+                        new_value = apply_snap(
+                            &range,
+                            new_value,
                             snap.get()
-                        ) { 
-                            new_value = val;
-                        } else {
-                            new_value = value;
-                        }
+                        );
                     }
 
                     if (value - new_value).abs() > f32::EPSILON {
@@ -151,14 +146,13 @@ impl Widget<actions::Action> for Slider {
                         );
 
                         if let SliderValue::Variable {
-                            variable, .. 
+                            variable, ..
                         } = &self.value {
-                            let Ok(path) = variable
-                                .resolve_path(shell.values) 
+                            let Ok(path) = variable.resolve_path(shell.values)
                             else { return };
 
                             let _ = shell.values.reflect_insert(
-                                &*path, 
+                                &*path,
                                 new_value
                             );
                         }
@@ -210,16 +204,18 @@ impl Widget<actions::Action> for Slider {
     }
 
     fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
-        let _ = self.value.update(shell.values);
+        if let Err(e) = self.value.update(shell.values) {
+            println!("fuck: {e:?}");
+        }
         let _ = self.min.update(shell.values);
         let _ = self.max.update(shell.values);
-        if let Some(s) = self.step.as_mut() { 
+        if let Some(s) = self.step.as_mut() {
             let _ = s.update(shell.values);
         }
     }
 
     fn draw(&self, shell: &mut DrawShell<actions::Action>) {
-        let Some(bounds) = shell.tree.absolute_bounds(self.node_id) 
+        let Some(bounds) = shell.tree.absolute_bounds(self.node_id)
         else { return };
 
         shell.list.push(
@@ -247,7 +243,7 @@ impl Widget<actions::Action> for Slider {
         let percent = (self.value.get() - start) / (end - start);
 
         let dragger_pos = Vector2::new(
-            bounds.pos.x + bounds.size.x * percent,
+            bounds.pos.x + bounds.size.x * percent.clamp(0.0, 1.0),
             track.pos.y
         );
 
@@ -273,6 +269,7 @@ pub enum SliderValue {
     Variable {
         variable: engine::VariablePathResolver,
         value: f32,
+        error_printed: bool,
     },
     Buildable {
         buildable: BuildableValue,
@@ -303,26 +300,32 @@ impl SliderValue {
             Self::Static(_) | Self::Error => {},
             Self::Variable {
                 variable,
-                value
+                value,
+                error_printed,
             } => {
                 let path = variable
                     .resolve_path(values)?;
 
                 match values.reflect_as_number(&*path) {
-                    Ok(n) => *value = n.into(),
+                    Ok(n) => {
+                        if *error_printed { *error_printed = false; }
+                        *value = n.into();
+                    },
                     Err(e) => {
-                        warn!("error getting value at path '{path}': {e:?}");
-                        *self = Self::Error;
+                        if !*error_printed {
+                            warn!("error getting value at path '{path}': {e:?}");
+                            *error_printed = true;
+                        }
                     }
                 }
             }
 
-            Self::Buildable { 
-                buildable, 
-                value 
+            Self::Buildable {
+                buildable,
+                value,
             } => if let Some(t) = buildable
-                    .resolve(values, None) 
-                && let Some(v) = t.as_f32() 
+                    .resolve(values, None)
+                && let Some(v) = t.as_f32()
             {
                 *value = v;
             }
@@ -341,6 +344,7 @@ impl From<String> for SliderValue {
         Self::Variable {
             variable: variable.into(),
             value: 0.0,
+            error_printed: false,
         }
     }
 }
@@ -349,6 +353,7 @@ impl From<engine::VariablePathResolver> for SliderValue {
         Self::Variable {
             variable,
             value: 0.0,
+            error_printed: false,
         }
     }
 }
@@ -359,11 +364,12 @@ impl From<BuildableValue> for SliderValue {
         match value {
             BuildableValue::Variable(variable) => Self::Variable {
                 variable,
-                value: 0.0
+                value: 0.0,
+                error_printed: false,
             },
 
-            buildable => Self::Buildable { 
-                buildable, 
+            buildable => Self::Buildable {
+                buildable,
                 value: 0.0
             }
         }
@@ -375,33 +381,18 @@ impl From<BuildableValue> for SliderValue {
 
 fn apply_snap(
     range: &RangeInclusive<f32>,
-    old_value: f32,
     new_value: f32,
     snap: f32
-) -> Option<f32> {
+) -> f32 {
     let start = *range.start();
     let end = *range.end();
-    let percent = (new_value - start) / (end - start);
-    let mut new_value = f32::lerp(start, end, percent).clamp(start, end);
-    
-    // apply snap
-    let diff = (old_value - new_value).abs();
-    let snap_by_two = snap / 2.0;
-    if diff >= snap_by_two {
-        let diff2 = diff % snap;
-        let sign = if new_value < 0.0 { -1.0 } else { 1.0 };
 
-        // if the snap distance is >= half the snap amount, snap higher
-        if diff2 >= snap_by_two {
-            new_value += (snap - (diff % snap)) * sign;
-        } else {
-            new_value -= (diff % snap) * sign;
-        }
+    let offset = new_value - start;
+    let snapped_offset = (offset / snap).round() * snap;
 
-        Some(new_value.clamp(start, end))
-    } else {
-        None
-    }
+    let percent = snapped_offset / (end - start);
+
+    f32::lerp(start, end, percent).clamp(start, end)
 }
 
 #[test]
@@ -409,7 +400,7 @@ fn test_snap() {
     let range = -10.0..=10.0;
     let snap = 0.5f32;
 
-    for (oldval, mut new_value, expected) in [
+    for (_oldval, mut new_value, expected) in [
         (0.0, 1.0, 1.0),
         (0.0, 5.75, 6.0),
         (0.0, 0.2, 0.0),
@@ -420,18 +411,11 @@ fn test_snap() {
         (0.0, -0.2, 0.0),
         (0.0, -20.0, -10.0),
     ] {
-        let snapped = apply_snap(
+        new_value = apply_snap(
             &range,
-            oldval,
             new_value,
             snap
         );
-
-        if let Some(snapped) = snapped {
-            new_value = snapped;
-        } else {
-            new_value = oldval;
-        }
 
         // check whole numbers
         println!("{new_value:.2} == {expected}");

@@ -12,13 +12,37 @@
         }
     </style>
 
+    <events>
+        <menuEnter>
+            <setValue key="var.mods.speed">
+                <calc>cast(global.mods.speed.0, 'f32') / 100</calc>
+            </setValue>
+        </menuEnter>
+    </events>
+
     <column style = "width: fill; height: fill; blur: 2;">
         <text>Mods List</text>
 
-        <text>
-            Score: <display precision="2">global.mods.score_multiplier</display>x
-        </text>
+        <!-- info -->
+        <column>
+            <!-- score -->
+            <text>
+                Score: <display precision="2">global.mods.score_multiplier</display>x
+            </text>
+            
+            <row>
+                <text>Speed: </text>
+                <slider variable="var.mods.speed" min="0.4" max="2.0" step="0.1">
+                    <onInput>
+                        <setValue key="var.mods.speed"> <passedIn/> </setValue>
+                        <mods> <setSpeed> <passedIn/> </setSpeed> </mods>
+                    </onInput>
+                </slider>
+                <text> <display precision="2">var.mods.speed</display>x</text>
+            </row>
+        </column>
 
+        <!-- list -->
         <list
             id = "group-list"
             list = "global.mod_groups"

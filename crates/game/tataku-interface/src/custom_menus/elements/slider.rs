@@ -28,7 +28,8 @@ impl SliderElement {
             BuildableValue::Value(TatakuValue::U64(n)) => SliderValue::Static(n as f32),
             BuildableValue::Value(TatakuValue::String(variable)) => SliderValue::Variable {
                 variable: variable.clone().into(),
-                value: 0.0
+                value: 0.0, 
+                error_printed: false
             },
 
             BuildableValue::Value(TatakuValue::Bool(_)) => SliderValue::Error,
@@ -36,7 +37,7 @@ impl SliderElement {
             BuildableValue::Value(TatakuValue::Reflect(_))
                 => unreachable!("cannot deserialize into TatakuValue::Reflect"),
 
-            BuildableValue::Variable(var) => SliderValue::Variable { variable: var, value: 0.0 },
+            BuildableValue::Variable(var) => SliderValue::Variable { variable: var, value: 0.0, error_printed: false, },
             buildable => SliderValue::Buildable { buildable, value: 0.0 },
         }
     }

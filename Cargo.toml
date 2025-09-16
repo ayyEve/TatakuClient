@@ -7,16 +7,16 @@ edition = "2024"
 rust-version = "1.89"
 
 [workspace]
-members = [ 
-    "crates/engine/audio/*", 
-    "crates/engine/renderers/*", 
-    "crates/engine/tataku-engine", 
-    "crates/engine/tataku-input", 
-    "crates/engine/tataku-graphics", 
-    "crates/engine/tataku-ui", 
+members = [
+    "crates/engine/audio/*",
+    "crates/engine/renderers/*",
+    "crates/engine/tataku-engine",
+    "crates/engine/tataku-input",
+    "crates/engine/tataku-graphics",
+    "crates/engine/tataku-ui",
 
-    "crates/game/*", 
-    "crates/gamemodes/*" , 
+    "crates/game/*",
+    "crates/gamemodes/*" ,
     "crates/integrations/*",
     "crates/resources/*",
 ]
@@ -51,8 +51,8 @@ clippy.semicolon_if_nothing_returned = "warn"
 rust.unused_must_use = "deny"
 
 [workspace.dependencies]
-# tataku-common = { version = "0.20.0", registry = "tataku-registry", path = "../tataku-common/tataku-common" }
-tataku-common = { version = "0.20.0", registry = "tataku-registry" }
+# tataku-common = { version = "0.20.1", registry = "tataku-registry", path = "../tataku-common/tataku-common" }
+tataku-common = { version = "0.20.1", registry = "tataku-registry" }
 tataku-ui.path = "crates/engine/tataku-ui"
 tataku-game.path = "crates/game/tataku-game"
 tataku-client.path = "crates/game/tataku-client"
