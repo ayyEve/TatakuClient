@@ -160,8 +160,10 @@ impl From<GamemodeSettingsCollection> for HashMap<String, serde_json::Value> {
     }
 }
 impl PartialEq for GamemodeSettingsCollection {
-    fn eq(&self, other: &Self) -> bool {
-        self.collection.eq(&other.collection)
+    fn eq(&self, _other: &Self) -> bool {
+        // optimization because json::Value::eq is slow af
+        true
+        // self.collection.eq(&other.collection)
     }
 }
 impl Clone for GamemodeSettingsCollection {
