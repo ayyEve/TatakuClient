@@ -9,36 +9,76 @@ const TEXT_PADDING:Vector2 = Vector2::new(0.0, 2.0);
 pub struct FpsDisplay {
     name: String,
     pos: Vector2,
-    count: u32,
-    timer: tataku::Instant,
-    last: f32,
-
-    frametime_last: f32,
-    /// what frametime to actually draw
-    frametime_last_draw: f32,
-    frametime_timer: tataku::Instant,
     pos_count: u8,
-
-    // skin_helper: CurrentSkinHelper,
     // number_image: Option<SkinnedNumber>,
+
+    count: CountProvider,
+    last: f32, 
+    timer: tataku::Instant,
+
+    frametime: CountProvider,
+    frametime_last: f32,
+    frametime_timer: tataku::Instant,
 }
 impl FpsDisplay {
     /// name is what to display in text, count is which fps counter is this (only affects position)
-    pub fn new(name: &str, pos_count: u8) -> Self {
+    pub fn new_atomic(
+        name: &str,
+        pos_count: u8,
+        count: Arc<AtomicU32>,
+        frametime_last: Arc<AtomicU32>
+    ) -> Self {
+        Self::new(
+            name,
+            pos_count,
+            count.into(),
+            frametime_last.into()
+        )
+    }
+    /// name is what to display in text, count is which fps counter is this (only affects position)
+    pub fn new_counter(
+        name: &str,
+        pos_count: u8,
+    ) -> Self {
+        Self::new(
+            name,
+            pos_count,
+            CountProvider::U32(0),
+            CountProvider::F32(0.0),
+        )
+    }
+
+    fn new(
+        name: &str,
+        pos_count: u8,
+        count: CountProvider,
+        frametime: CountProvider
+    ) -> Self {
         Self {
-            count: 0,
+            count,
+            frametime,
+            pos_count,
+            // number_image: SkinnedNumber::new(Color::BLACK, 0.0, pos, 0.0, "fps", None, 2).await.ok(),
+
             last: 0.0,
+            frametime_last: 0.0,
+            frametime_timer: tataku::Instant::now(),
             timer: tataku::Instant::now(),
             name: name.to_owned(),
             pos: Vector2::ZERO,
-
-            frametime_last: 0.0,
-            frametime_last_draw: 0.0,
-            frametime_timer: tataku::Instant::now(),
-            // skin_helper: CurrentSkinHelper::new(),
-            // number_image: SkinnedNumber::new(Color::BLACK, 0.0, pos, 0.0, "fps", None, 2).await.ok(),
-            pos_count
         }
+    }
+
+    pub fn increment(&mut self) {
+        let CountProvider::U32(count) = &mut self.count 
+        else { return };
+        *count += 1;
+
+        let CountProvider::F32(frametime) = &mut self.frametime 
+        else { return };
+
+        *frametime = self.frametime_timer.as_millis().max(*frametime);
+        self.frametime_timer = tataku::Instant::now();
     }
 
     pub fn window_size_changed(&mut self, window_size: Vector2) {
@@ -49,35 +89,27 @@ impl FpsDisplay {
     }
 
     pub fn update(&mut self) {
-        // if self.skin_helper.update() {
-        //     self.number_image = SkinnedNumber::new(Color::BLACK, 0.0, self.pos, self.frametime_last_draw as f64, "fps", None, 2).await.ok();
-        // }
+        let elapsed = self.timer.as_millis();
+        if elapsed >= 100.0 {
+            // reset timer
+            self.timer = tataku::Instant::now();
 
-        let now = tataku::Instant::now();
-        let fps_elapsed = now.duration_since(self.timer).as_secs_f32() * 1000.0;
-
-        if fps_elapsed >= 100.0 {
-            self.last = self.count as f32 / fps_elapsed * 1000.0;
-            self.timer = now;
-            self.count = 0;
-
-            // frame times
-            self.frametime_last_draw = self.frametime_last;
-            self.frametime_last = 0.0;
-            // info!("{:.2}{} ({:.2}ms)", self.last, self.name, self.frametime_last);
-
+            // update frametime and last updates/s
+            let frametime = self.frametime.get_and_reset();
+            if matches!(self.frametime, CountProvider::Atomic(_)) {
+                self.frametime_last = frametime / 100.0; // restore 2 decimal places
+            } else {
+                self.frametime_last = frametime;
+            }
+            self.last = self.count.get_and_reset() / elapsed * 1000.0;
+            
+            
             // if let Some(n) = &mut self.number_image {
             //     n.number = self.frametime_last_draw as f64;
             // }
         }
     }
 
-    pub fn increment(&mut self) {
-        self.count += 1;
-
-        self.frametime_last = self.frametime_last.max(self.frametime_timer.as_millis());
-        self.frametime_timer = tataku::Instant::now();
-    }
     pub fn draw(
         &self,
         list: &mut graphics::RenderableCollection,
@@ -89,101 +121,7 @@ impl FpsDisplay {
             Color::WHITE.alpha(0.8),
         ));
 
-        let text = format!("{:.2} {} ({:.2}ms)", self.last, self.name, self.frametime_last_draw);
-
-        let mut layout = text_layout_contexts.simple_text(
-            &text,
-            &ui::style::TextStyle {
-                font_size: 12.0,
-                color: Color::BLACK,
-                ..Default::default()
-            },
-        );
-
-        layout.break_all_lines(Some(SIZE.x));
-
-        let transform = graphics::Transform::default()
-            .translate(self.pos + TEXT_PADDING);
-
-        list.push(graphics::Transformed::new(
-            transform,
-            Box::new(graphics::Text::new(layout.clone()))
-        ));
-    }
-}
-
-/// fps display helper, cleans up some of the code in game
-pub struct AsyncFpsDisplay {
-    name: String,
-    pos: Vector2,
-
-    count: Arc<AtomicU32>,
-
-    timer: tataku::Instant,
-    last: f32,
-
-    frametime_last: Arc<AtomicU32>,
-    frametime_last_draw: f32,
-
-    // window_size: WindowSizeHelper,
-    pos_count: u8,
-}
-impl AsyncFpsDisplay {
-    /// name is what to display in text, count is which fps counter is this (only affects position)
-    pub fn new(
-        name: &str,
-        pos_count: u8,
-        count: Arc<AtomicU32>,
-        frametime_last: Arc<AtomicU32>
-    ) -> Self {
-        Self {
-            count,
-            frametime_last,
-
-            last: 0.0,
-            timer: tataku::Instant::now(),
-            name: name.to_owned(),
-            pos: Vector2::ZERO,
-
-            frametime_last_draw: 0.0,
-            // window_size,
-            pos_count
-        }
-    }
-
-    pub fn window_size_changed(&mut self, window_size: Vector2) {
-        self.pos = window_size - Vector2::new(
-            SIZE.x,
-            SIZE.y * (self.pos_count+1) as f32
-        );
-    }
-
-    pub fn update(&mut self) {
-        let fps_elapsed = self.timer.as_millis();
-        if fps_elapsed >= 100.0 {
-            // reset timer
-            self.timer = tataku::Instant::now();
-
-            // update frametime and last updates/s
-            self.frametime_last_draw = self.frametime_last
-                .swap(0, Ordering::Acquire) as f32 / 100.0; // restore 2 decimal places
-            self.last = self.count
-                .swap(0, Ordering::Acquire) as f32 / fps_elapsed * 1000.0;
-        }
-    }
-
-    pub fn draw(
-        &self,
-        list: &mut graphics::RenderableCollection,
-        text_layout_contexts: &mut ui::widget::TextLayoutContexts,
-    ) {
-        list.push(graphics::Rectangle::new(
-            self.pos,
-            SIZE,
-            Color::WHITE.alpha(0.8),
-        ));
-
-        let text = format!("{:.2} {} ({:.2}ms)", self.last, self.name, self.frametime_last_draw);
+        let text = format!("{:.2} {} ({:.2}ms)", self.last, self.name, self.frametime_last);
 
         let mut layout = text_layout_contexts.simple_text(
             &text,
@@ -203,5 +141,25 @@ impl AsyncFpsDisplay {
             Box::new(graphics::Text::new(layout.clone())),
         ));
         
+    }
+}
+
+enum CountProvider {
+    U32(u32),
+    F32(f32),
+    Atomic(Arc<AtomicU32>),
+}
+impl CountProvider {
+    fn get_and_reset(&mut self) -> f32 {
+        match self {
+            Self::F32(n) => n.take(),
+            Self::U32(n) => n.take() as f32,
+            Self::Atomic(a) => a.swap(0, Ordering::Acquire) as f32,
+        }
+    }
+}
+impl From<Arc<AtomicU32>> for CountProvider {
+    fn from(value: Arc<AtomicU32>) -> Self {
+        Self::Atomic(value)
     }
 }

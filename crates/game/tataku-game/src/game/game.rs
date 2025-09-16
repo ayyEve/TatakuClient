@@ -74,8 +74,8 @@ pub struct Game {
     // fps
     #[cfg(feature="graphics")] fps_display: interface::FpsDisplay,
     #[cfg(feature="graphics")] update_display: interface::FpsDisplay,
-    #[cfg(feature="graphics")] render_display: interface::AsyncFpsDisplay,
-    #[cfg(feature="graphics")] input_display: interface::AsyncFpsDisplay,
+    #[cfg(feature="graphics")] render_display: interface::FpsDisplay,
+    #[cfg(feature="graphics")] input_display: interface::FpsDisplay,
 
     // misc
     game_start: tataku::Instant,
@@ -167,15 +167,15 @@ impl Game {
             // spec_watch_action: SpectatorWatchAction::FullMenu,
 
             // fps
-            #[cfg(feature="graphics")] render_display: interface::AsyncFpsDisplay::new(
+            #[cfg(feature="graphics")] render_display: interface::FpsDisplay::new_atomic(
                 "fps",
                 3,
                 engine::window::RENDER_COUNT.clone(),
-                engine::window::RENDER_FRAMETIME.clone()
+                engine::window::RENDER_FRAMETIME.clone(),
             ),
-            #[cfg(feature="graphics")] fps_display: interface::FpsDisplay::new("prepares/s", 2),
-            #[cfg(feature="graphics")] update_display: interface::FpsDisplay::new("updates/s", 1),
-            #[cfg(feature="graphics")] input_display: interface::AsyncFpsDisplay::new(
+            #[cfg(feature="graphics")] fps_display: interface::FpsDisplay::new_counter("prepares/s", 2),
+            #[cfg(feature="graphics")] update_display: interface::FpsDisplay::new_counter("updates/s", 1),
+            #[cfg(feature="graphics")] input_display: interface::FpsDisplay::new_atomic(
                 "inputs/s",
                 0,
                 engine::window::INPUT_COUNT.clone(),
@@ -387,7 +387,7 @@ impl Game {
 
         loop {
             // update our settings
-            if self.settings != settings || self.settings_updated {
+            if self.settings_updated || self.settings != settings {
                 #[cfg(feature="graphics")]
                 if self.settings.display_settings != settings.display_settings {
                     render_rate = 1.0 / self.settings.display_settings.fps_target as f32;
