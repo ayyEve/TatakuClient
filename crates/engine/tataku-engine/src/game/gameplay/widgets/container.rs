@@ -2,7 +2,6 @@ use crate::*;
 use tataku::{ Vector2, Bounds };
 use gameplay::widgets::*;
 
-#[cfg(feature="graphics")]
 pub struct GameplayWidgetContainer {
     pub element_name: String,
     pub pos_offset: Vector2,
@@ -20,7 +19,6 @@ impl GameplayWidgetContainer {
         self.inner.update(shell);
     }
 
-    #[cfg(feature="graphics")]
     pub fn draw(
         &mut self, 
         list: &mut graphics::RenderableCollection,
@@ -59,15 +57,12 @@ impl GameplayWidgetContainer {
         self.inner.reset();
     }
 
-    #[cfg(feature="graphics")]
     pub fn reload_skin(
         &mut self, 
         shell: &mut GameplayWidgetReloadSkinShell
     ) {
         self.inner.reload_skin(shell);
     }
-
-
 
     pub fn layout(
         elements: &mut [GameplayWidgetContainer],

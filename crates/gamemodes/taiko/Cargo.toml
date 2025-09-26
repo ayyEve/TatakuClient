@@ -8,13 +8,14 @@ rust-version.workspace = true
 [lints]
 workspace = true
 
-# [lib]
-# crate-type = ["cdylib"]
+[lib]
+crate-type = [ "lib", "cdylib" ]
 
 [features]
 default = []
-graphics = []
-gameplay = []
+graphics = [ "tataku-engine/graphics" ]
+gameplay = [ "tataku-engine/gameplay" ]
+dynamic_gamemodes = [ "graphics", "gameplay" ]
 
 [dependencies]
 tataku-common.workspace = true

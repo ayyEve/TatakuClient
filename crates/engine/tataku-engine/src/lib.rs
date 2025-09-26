@@ -66,9 +66,11 @@ pub use crate::{
         },
         task::TatakuTask as Task, // engine::Task
         notifications::Notification, // engine::Notification
-        beatmap_animation::BeatmapAnimation, // engine::BeatmapAnimation
-    }
+    },
 };
+
+#[cfg(feature="graphics")]
+pub use crate::game::beatmap_animation::BeatmapAnimation; // engine::BeatmapAnimation
 
 pub mod exports {
     pub use crate as engine;

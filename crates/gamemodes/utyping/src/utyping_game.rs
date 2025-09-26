@@ -16,7 +16,6 @@ use tataku::{
 };
 use engine::{
     input,
-    graphics,
     beatmaps::{
         Beatmap,
         TimingPoint,
@@ -29,10 +28,13 @@ use engine::{
         GameplayEvent,
         TimingPointHelper,
         PlayfieldNonsense,
-        GameModeProperties,
+        GamemodeProperties,
         gameplay_manager::*,
     },
 };
+
+#[cfg(feature="graphics")]
+use engine::graphics;
 
 /// how many beats between timing bars
 const BAR_SPACING:f32 = 4.0;
@@ -443,8 +445,8 @@ impl GameMode for UTypingGame {
     fn get_playfield(&self) -> PlayfieldNonsense {
         PlayfieldNonsense::new_simple(self.playfield.bounds)
     }
-    fn properties(&self, _: &TimingPointHelper) -> GameModeProperties {
-        GameModeProperties { 
+    fn properties(&self, _: &TimingPointHelper) -> GamemodeProperties {
+        GamemodeProperties { 
             info: &crate::GAME_INFO, 
             keys: Vec::new(), 
             end_time: self.end_time, 

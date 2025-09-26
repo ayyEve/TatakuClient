@@ -4,7 +4,6 @@ use common::Md5Hash;
 use tataku::{ Color, Vector2 };
 
 use beatmaps::osu::*;
-use game::beatmap_animation::OsuStoryboard;
 
 #[derive(Clone, Default)]
 pub struct OsuBeatmap {
@@ -449,15 +448,24 @@ impl beatmaps::TatakuBeatmap for OsuBeatmap {
 
     fn get_events(&self) -> Vec<gameplay::BeatmapEvent> {
         self.events.iter().filter_map(|i| match i {
-            OsuEvent::Break { start_time, end_time } => Some(gameplay::BeatmapEvent::Break { start: *start_time as f32, end: *end_time as f32 }),
+            OsuEvent::Break { 
+                start_time, 
+                end_time 
+            } => Some(gameplay::BeatmapEvent::Break { 
+                start: *start_time as f32, 
+                end: *end_time as f32 
+            }),
             _ => None
         }).collect()
     }
     #[cfg(feature="graphics")]
-    fn get_animation(&self, skin_manager: &mut dyn graphics::SkinProvider) -> Option<Box<dyn BeatmapAnimation>> {
+    fn get_animation(
+        &self, 
+        skin_manager: &mut dyn graphics::SkinProvider
+    ) -> Option<Box<dyn BeatmapAnimation>> {
         let Some(storyboard) = &self.storyboard else { return None };
         let parent_dir = Path::new(&*self.metadata.file_path).parent()?.to_string_lossy().to_string();
-        match OsuStoryboard::new(
+        match game::beatmap_animation::OsuStoryboard::new(
             storyboard,
             &parent_dir,
             skin_manager,

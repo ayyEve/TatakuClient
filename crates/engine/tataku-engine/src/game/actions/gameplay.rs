@@ -28,7 +28,7 @@ pub enum GameplayAction {
     },
 
     ApplyMods(gameplay::mods::ModManager),
-    SetMode(actions::game::GameplayMode),
+    SetMode(actions::game::GameplayTypeInfo),
     FitToArea(tataku::Bounds),
 
     /// The gameplay manager is requesting an update to the difficulty

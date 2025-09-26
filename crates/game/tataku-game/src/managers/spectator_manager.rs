@@ -21,7 +21,7 @@ use engine::{
     data::ValueChangeHelper,
     actions::{
         game::{
-            GameplayMode,
+            GameplayTypeInfo,
             SpectatorGameplayInfo,
         },
         beatmap::{
@@ -114,7 +114,7 @@ impl SpectatorManager {
                     &values.settings
                 );
 
-                manager.set_mode(GameplayMode::Spectator(Box::new(SpectatorGameplayInfo { 
+                manager.set_mode(GameplayTypeInfo::Spectator(Box::new(SpectatorGameplayInfo { 
                     host_id: self.host_id,
                     host_username: self.host_username.clone(),
                     pending_frames: self.frames.take(),

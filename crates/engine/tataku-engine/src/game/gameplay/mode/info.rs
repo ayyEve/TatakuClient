@@ -30,6 +30,8 @@ pub struct GamemodeInfo {
     pub stat_groups: &'static [gameplay::stats::StatGroup],
     pub judgments: &'static [gameplay::judgments::HitJudgment],
     pub diff_values: &'static [gameplay::difficulty_value::DifficultyValue],
+
+    #[cfg(feature="graphics")] // this is dangerous
     pub available_widgets: &'static [gameplay::widgets::GameplayWidgetBuilder],
 
     #[debug(skip)]
@@ -77,7 +79,8 @@ impl GamemodeInfo {
         stat_groups: &[],
         judgments: &[],
         diff_values: &[],
-        available_widgets: &[],
+
+        #[cfg(feature="graphics")] available_widgets: &[],
         calc_acc: |_| 0.0,
         calc_perf: Self::default_calc_perf,
         stats_from_groups: |_| Vec::new(),
@@ -171,6 +174,7 @@ pub struct GamemodeInfos {
     pub by_num: Arc<Vec<GamemodeInfo>>,
 
     #[cfg(feature="dynamic_gamemodes")]
+    #[reflect(skip)]
     _libraries: Arc<Vec<libloading::Library>>,
 }
 impl GamemodeInfos {
@@ -186,7 +190,7 @@ impl GamemodeInfos {
     }
 
     #[cfg(feature="dynamic_gamemodes")]
-    pub fn new(list: Vec<GamemodeLibrary>) -> Self {
+    pub fn new(list: Vec<engine::gameplay::GamemodeLibrary>) -> Self {
 
         let (libraries, by_num): (_, Vec<GamemodeInfo>) = list.into_iter()
             .map(|i| (i._lib, i.info))

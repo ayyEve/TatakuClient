@@ -65,6 +65,7 @@ impl ManiaPlayfield {
     /// calculate the note's origin and scale
     /// 
     /// this assumes notes are drawn with the origin bottom-left
+    #[cfg(feature="graphics")]
     pub fn note_image(&self, img: &mut graphics::Image) {
         let tex_size = img.tex_size();
         // img.origin = Vector2::with_y(tex_size.y - self.skin_hit_pos);
@@ -78,6 +79,7 @@ impl ManiaPlayfield {
     /// calculate the column's image's origin
     /// 
     /// this assumes notes are drawn with the origin bottom-left
+    #[cfg(feature="graphics")]
     pub fn column_image(&self, img: &mut graphics::Image) {
         let tex_size = img.tex_size();
         // img.origin = Vector2::with_y(tex_size.y - self.skin_hit_pos);

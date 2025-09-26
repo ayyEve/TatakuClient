@@ -69,7 +69,7 @@ impl TatakuIntegration for MediaControlsIntegration {
         &mut self, 
         #[cfg(feature="graphics")] 
         window_handle: raw_window_handle::WindowHandle<'_>,
-    ) -> TatakuResult<()> {
+    ) -> tataku::Result<()> {
         Ok(())
     }
     
@@ -185,6 +185,7 @@ impl TatakuIntegration for MediaControlsIntegration {
         controls.set_playback(playback).unwrap();
         
 
+        #[cfg(feature="graphics")]
         if let Ok(event) = self.receiver.try_recv() {
             if event == self.last_event.event || self.last_event.time.as_millis() < MINIMUM_WAIT_BETWEEN_EVENTS { return }
 

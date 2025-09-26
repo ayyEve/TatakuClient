@@ -14,7 +14,8 @@ default = [
     "bass_audio",
     # "kira_audio",
     "all_integrations",
-    "graphics"
+    "graphics",
+    # "dynamic_gamemodes"
 ]
 
 # integrations

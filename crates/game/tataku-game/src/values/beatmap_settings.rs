@@ -1,5 +1,7 @@
 use crate::prelude::*;
 use common::reflect::*;
+
+#[cfg(feature="graphics")]
 use engine::settings::{
     SettingsBuilder,
     MakeSettingsMenu,

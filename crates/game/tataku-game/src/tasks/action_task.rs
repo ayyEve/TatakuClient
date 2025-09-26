@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use ui::tree::NodeId;
+
 use common::reflect::Reflect;
 use engine::{
     actions,
@@ -70,7 +70,7 @@ pub enum ActionTaskAction {
     #[cfg(feature = "ui")]
     Buildable {
         action: Box<interface::BuildableAction>,
-        node: NodeId,
+        node: ui::tree::NodeId,
         passed_in: Option<tataku::TatakuValue>
     },
 }

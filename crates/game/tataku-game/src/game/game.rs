@@ -312,7 +312,8 @@ impl Game {
 
         let mut settings = self.settings.clone();
         settings.gamemode_settings.build(self.values.global.gamemode_infos.clone());
-        settings.init(&mut self.values, "settings".to_string());
+
+        #[cfg(feature="ui")] settings.init(&mut self.values, "settings".to_string());
         self.settings = settings;
 
         debug!("game init took {:.2}ms", now.elapsed().as_secs_f32() * 1000.0);
@@ -772,7 +773,7 @@ impl Game {
                     manager.window_focus_changed(got_focus);
                 }
 
-                if !manager.failed && manager.can_pause()
+                if manager.failed.is_none() && manager.can_pause()
                     && (manager.should_pause || input_state.controller_pause)
                 {
                     manager.pause();
@@ -1861,7 +1862,7 @@ impl Game {
         self.actions.push(engine::TatakuIntegrationEvent::BeatmapEnded.into());
         self.actions.push(actions::cursor::CursorAction::SetVisible(true).into());
 
-        if manager.failed {
+        if manager.failed.is_some() {
             trace!("player failed");
             if !manager.get_mode().is_multi() {
                 self.pending_gameplay_manager = Some(manager);
@@ -1909,13 +1910,13 @@ impl Game {
                 self.actions.push(actions::task::TaskAction::AddTask(Box::new(submit_task)).into());
             }
 
-            use engine::gameplay::gameplay_manager::GameplayModeInner;
+            use engine::gameplay::gameplay_manager::GameplayType;
             match manager.get_mode() {
                 // go back to beatmap select
-                GameplayModeInner::Replaying {..} => {
+                GameplayType::Replaying {..} => {
                     self.handle_custom_menu("beatmap_select");
                 }
-                GameplayModeInner::Multiplayer { .. } => {
+                GameplayType::Multiplayer { .. } => {
                     debug!("multiplayer finished gameplay");
 
                     // FIXME: show the scores lmao

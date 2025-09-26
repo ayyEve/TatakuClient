@@ -410,7 +410,7 @@ impl MultiplayerManager {
                         if let Some(manager) = loader.check() {
                             match manager {
                                 Ok(mut manager) => {
-                                    manager.set_mode(actions::game::GameplayMode::Multiplayer.into());
+                                    manager.set_mode(actions::game::GameplayTypeInfo::Multiplayer.into());
                                     new_manager = Some(manager);
                                     self.set_state(LobbyUserState::InGame, actions);
                                 }

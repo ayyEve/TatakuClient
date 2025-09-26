@@ -16,7 +16,6 @@ use tataku::{
 };
 use engine::{
     actions,
-    graphics,
     beatmaps::{
         Beatmap,
         NoteType,
@@ -32,11 +31,14 @@ use engine::{
         GameplayEvent,
         TimingPointHelper,
         PlayfieldNonsense,
-        GameModeProperties,
+        GamemodeProperties,
         gameplay_manager::*,
     },
 };
 use input::gilrs::Axis;
+
+#[cfg(feature="graphics")]
+use engine::graphics;
 
 const STACK_LENIENCY:u32 = 3;
 pub const PREEMPT_MIN:f32 = 450.0;
@@ -91,6 +93,8 @@ pub struct OsuGame {
     new_playfield_pending: bool,
 }
 impl OsuGame {
+
+    #[cfg(feature="graphics")]
     fn recalculate_playfield(&mut self, window_size: Vector2) {
         let new_scale = ScalingHelper::new_with_settings(
             &self.game_settings, 
@@ -102,11 +106,11 @@ impl OsuGame {
         self.new_playfield_pending = true;
         self.apply_playfield(Arc::new(new_scale));
     }
+
+    #[cfg(feature="graphics")]
     fn apply_playfield(&mut self, playfield: Arc<ScalingHelper>) {
         self.scaling_helper = playfield.clone();
-        #[cfg(feature="graphics")] {
-            self.cursor.note_radius = self.scaling_helper.circle_size.x / 2.0;
-        }
+        self.cursor.note_radius = self.scaling_helper.circle_size.x / 2.0;
 
         // update playfield for notes
         for note in self.notes.iter_mut() {
@@ -754,6 +758,8 @@ impl GameMode for OsuGame {
     fn handle_gameplay_event(&mut self, event: GameplayEvent) {
         match event {
             GameplayEvent::SetBounds { bounds, full_window } => {
+
+                #[cfg(feature="graphics")]
                 if full_window {
                     // self.window_size = window_size;
                     self.recalculate_playfield(bounds.size);
@@ -805,6 +811,7 @@ impl GameMode for OsuGame {
                     self.cs = Self::get_cs(&self.metadata, &self.mods);
                     let ar = Self::get_ar(&self.metadata, &self.mods);
                     
+                    #[cfg(feature="graphics")]
                     self.recalculate_playfield(self.scaling_helper.window_size);
                     self.setup_hitwindows();
 
@@ -1593,7 +1600,7 @@ impl GameMode for OsuGame {
             self.mods.has_mod(HardRock)
         )
     }
-    fn properties(&self, _timing_points: &TimingPointHelper) -> GameModeProperties {
+    fn properties(&self, _timing_points: &TimingPointHelper) -> GamemodeProperties {
         let mut sound_list = HashMap::new();
         #[cfg(feature="gameplay")] 
         for note in self.notes.iter() {
@@ -1605,7 +1612,7 @@ impl GameMode for OsuGame {
             }
         }
 
-        GameModeProperties { 
+        GamemodeProperties { 
             info: &crate::GAME_INFO, 
             keys: vec![
                 (KeyPress::Left, "L"),

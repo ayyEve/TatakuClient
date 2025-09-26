@@ -8,7 +8,7 @@ use common::{
 
 use engine::{
     actions::action::ActionQueue,
-    actions::game::GameplayMode,
+    actions::game::GameplayTypeInfo,
     gameplay::{
         mods::ModManager,
         judgments::HitJudgment,
@@ -37,7 +37,7 @@ pub trait GameplayManagerTrait {
     fn key_counter(&self) -> &KeyCounter;
     fn spectators(&mut self) -> &mut online::SpectatorList;
     fn timing_points(&self) -> &TimingPointHelper;
-    fn properties(&self) -> &gameplay::GameModeProperties;
+    fn properties(&self) -> &gameplay::GamemodeProperties;
 
     fn judgments(&self) -> &Vec<HitJudgment>;
 
@@ -46,13 +46,6 @@ pub trait GameplayManagerTrait {
     fn hitbar_timings(&self) -> Vec<(f32, f32)>;
 
     fn bounds(&self) -> tataku::Bounds;
-
-    fn apply_mods(&mut self, mods: ModManager);
-    fn update(&mut self, 
-        values: &mut dyn common::reflect::Reflect, 
-        font_context: &mut ui::widget::TextLayoutContexts,
-        actions: &mut ActionQueue
-    );
     
     fn handle_action(
         &mut self, 
@@ -65,28 +58,8 @@ pub trait GameplayManagerTrait {
         settings: &Settings
     );
 
-
-    #[cfg(feature="graphics")]
-    fn reload_skin(
-        &mut self, 
-        skin_manager: &mut dyn graphics::SkinProvider,
-        settings: &Settings,
-    );
-    
-    #[cfg(feature="graphics")] fn draw(&mut self, list: &mut graphics::RenderableCollection);
-    #[cfg(feature="graphics")] fn fit_to_area(&mut self, bounds: tataku::Bounds);
-    #[cfg(feature="graphics")] fn window_focus_changed(&mut self, got_focus: bool);
-    #[cfg(feature="graphics")] fn cleanup_textures(&mut self, skin_manager: &mut dyn graphics::SkinProvider);
-
-    fn on_complete(&mut self);
-    fn jump_to_time(&mut self, time: f32, skip_intro: bool);
-    fn combo_break(&mut self);
-
-    fn set_id(&mut self, id: actions::game::GameplayId);
-
-
-    fn set_mode(&mut self, mode: GameplayModeInner);
-    fn get_mode(&self) -> &GameplayModeInner;
+    fn set_mode(&mut self, mode: GameplayType);
+    fn get_mode(&self) -> &GameplayType;
 
 
     fn start(&mut self);
@@ -95,10 +68,7 @@ pub trait GameplayManagerTrait {
     fn fail(&mut self);
 }
 
-pub trait GameplayManagerOnline: Send + Sync {
-    fn our_spectator_list(&mut self) -> Option<online::SpectatorList>;
-}
-
+// TODO: move this???
 pub trait DifficultyProvider: Send + Sync {
     fn get_diff(
         &mut self, 
@@ -111,7 +81,7 @@ pub trait DifficultyProvider: Send + Sync {
 
 /// What gameplay method should we use for this gameplay manager?
 #[derive(Clone, Debug, Default)]
-pub enum GameplayModeInner {
+pub enum GameplayType {
     /// Just regular gameplay
     #[default]
     Normal,
@@ -166,7 +136,7 @@ pub enum GameplayModeInner {
         score_send_timer: tataku::Instant,
     },
 }
-impl GameplayModeInner {
+impl GameplayType {
 
     // convenience fns
     pub fn is_preview(&self) -> bool { matches!(self, &Self::Preview) }
@@ -202,20 +172,20 @@ impl GameplayModeInner {
     }
 }
 
-impl From<GameplayMode> for GameplayModeInner {
-    fn from(value: GameplayMode) -> Self {
+impl From<GameplayTypeInfo> for GameplayType {
+    fn from(value: GameplayTypeInfo) -> Self {
         match value {
-            GameplayMode::Normal => Self::Normal,
-            GameplayMode::Preview => Self::Preview,
-            GameplayMode::Replay(score) => Self::Replaying { score: *score, current_frame: 0 },
+            GameplayTypeInfo::Normal => Self::Normal,
+            GameplayTypeInfo::Preview => Self::Preview,
+            GameplayTypeInfo::Replay(score) => Self::Replaying { score: *score, current_frame: 0 },
             
             #[cfg(feature="gameplay")]
-            GameplayMode::Multiplayer => Self::Multiplayer { 
+            GameplayTypeInfo::Multiplayer => Self::Multiplayer { 
                 last_escape_press: tataku::Instant::now(), 
                 score_send_timer: tataku::Instant::now() 
             },
             #[cfg(feature="gameplay")]
-            GameplayMode::Spectator(a) => Self::Spectator {
+            GameplayTypeInfo::Spectator(a) => Self::Spectator {
                 state: SpectatorState::None,
                 frames: a.pending_frames,
                 host_id: a.host_id,
@@ -237,7 +207,7 @@ impl From<GameplayMode> for GameplayModeInner {
 
 pub struct GameplayDrawShell<'a> {
     pub time: f32,
-    pub gameplay_mode: &'a GameplayModeInner,
+    pub gameplay_mode: &'a GameplayType,
     pub current_timing_point: &'a beatmaps::TimingPoint,
     pub mods: &'a ModManager,
     pub score: &'a IngameScore,
@@ -261,7 +231,7 @@ pub struct GameplayUpdateShell<'a> {
     pub current_timing_point: &'a beatmaps::TimingPoint,
 
     /// the current gameplay mode
-    pub gameplay_mode: &'a GameplayModeInner,
+    pub gameplay_mode: &'a GameplayType,
 
     /// our current score
     pub score: &'a IngameScore,

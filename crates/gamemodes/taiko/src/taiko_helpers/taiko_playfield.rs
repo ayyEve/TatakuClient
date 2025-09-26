@@ -1,5 +1,8 @@
 use crate::prelude::*;
+
+#[cfg(feature="graphics")]
 use engine::graphics;
+
 use tataku::{
     Color,
     Bounds,

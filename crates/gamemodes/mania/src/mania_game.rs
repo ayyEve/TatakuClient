@@ -28,7 +28,7 @@ use engine::{
         judgments::*,
         GameplayEvent,
         PlayfieldNonsense,
-        GameModeProperties,
+        GamemodeProperties,
         gameplay_manager::{ GameplayUpdateShell, GameplayDrawShell },
     },
 };
@@ -1111,7 +1111,7 @@ impl GameMode for ManiaGame {
     fn properties(
         &self, 
         _timing_points: &engine::gameplay::TimingPointHelper
-    ) -> GameModeProperties {
+    ) -> GamemodeProperties {
         const KEY_LIST: &[(KeyPress, &str)] = &[
             (KeyPress::Mania1, "K1"),
             (KeyPress::Mania2, "K2"),
@@ -1139,7 +1139,7 @@ impl GameMode for ManiaGame {
         }
 
 
-        GameModeProperties { 
+        GamemodeProperties { 
             info: &crate::GAME_INFO, 
             keys: KEY_LIST[0..((self.column_count as usize).min(KEY_LIST.len()))].to_vec(), 
             end_time: self.end_time, 

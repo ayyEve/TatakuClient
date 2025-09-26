@@ -1,4 +1,5 @@
 use std::f32::consts::PI;
+#[cfg(feature="graphics")] use engine::graphics;
 use crate::prelude::*;
 use tataku::{
     Color,
@@ -7,8 +8,8 @@ use tataku::{
     Vector2,
 };
 
+
 use engine::{
-    graphics,
     beatmaps::{
         osu::*,
         NoteType,
@@ -48,6 +49,7 @@ pub struct OsuSlider {
     time_end_pos: Vector2,
 
     /// hit dots. if the slider isnt being held for these
+    #[cfg(feature="graphics")]
     hit_dots: Vec<SliderDot>,
 
     /// used for repeat sliders
@@ -508,6 +510,7 @@ impl OsuSlider {
         
     }
 
+    #[cfg(feature="graphics")]
     fn make_dots(&mut self) {
         self.hit_dots.clear();
         self.dot_count = 0;
@@ -704,8 +707,8 @@ impl HitObject for OsuSlider {
         }
 
 
-        let mut dots = std::mem::take(&mut self.hit_dots);
-        for dot in dots.iter_mut() {
+        #[cfg(feature="graphics")]
+        for dot in self.hit_dots.iter_mut() {
             if let Some(was_hit) = dot.update(beatmap_time, self.holding, self.mouse_pos, self.radius) {
                 if was_hit {
                     // self.add_ripple(beatmap_time, dot.pos, true);
@@ -720,7 +723,7 @@ impl HitObject for OsuSlider {
                 }
             }
         }
-        self.hit_dots = dots;
+    
     }
 
     #[cfg(feature="graphics")]
@@ -903,6 +906,7 @@ impl HitObject for OsuSlider {
         self.dot_count = 0;
         self.start_judgment = OsuHitJudgments::Miss;
 
+        #[cfg(feature="graphics")]
         self.make_dots();
     }
 
@@ -1059,6 +1063,7 @@ impl OsuHitObject for OsuSlider {
     }
 
 
+    #[cfg(feature="graphics")]
     fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {
         self.scaling_helper = new_scale.clone();
         self.pos = self.scaling_helper.scale_coords(self.def.pos);
@@ -1067,22 +1072,20 @@ impl OsuHitObject for OsuSlider {
         self.visual_end_pos = self.scaling_helper.scale_coords(self.curve.curve_lines.last().unwrap().p2);//.scale_coords(self.curve.position_at_length(self.curve.length()));
         self.time_end_pos = if self.def.slides % 2 == 1 { self.visual_end_pos } else { self.pos };
 
-        #[cfg(feature="graphics")] {
-            self.approach_circle.scale_changed(new_scale, self.radius);
-            self.start_circle_image.playfield_changed(&self.scaling_helper);
-    
-            if let Some(image) = &mut self.end_circle_image {
-               image.pos = self.scaling_helper.scale_coords(self.visual_end_pos);
-               image.scale = Vector2::ONE * self.scaling_helper.cs;
-            }
-            
-            if self.slider_body_render_target.is_some() || (!self.standard_settings.slider_render_targets && USE_NEW_SLIDER_RENDERING) {
-                // if the playfield was resized, if we dont set this to none it will use the old size and then be wrong
-                self.slider_body_render_target = None;
-                self.make_body();
-            }
-            self.make_dots();
+        self.approach_circle.scale_changed(new_scale, self.radius);
+        self.start_circle_image.playfield_changed(&self.scaling_helper);
+
+        if let Some(image) = &mut self.end_circle_image {
+            image.pos = self.scaling_helper.scale_coords(self.visual_end_pos);
+            image.scale = Vector2::ONE * self.scaling_helper.cs;
         }
+        
+        if self.slider_body_render_target.is_some() || (!self.standard_settings.slider_render_targets && USE_NEW_SLIDER_RENDERING) {
+            // if the playfield was resized, if we dont set this to none it will use the old size and then be wrong
+            self.slider_body_render_target = None;
+            self.make_body();
+        }
+        self.make_dots();
     }
 
     fn pos_at(&self, time: f32) -> Vector2 {
@@ -1150,6 +1153,8 @@ impl OsuHitObject for OsuSlider {
     fn shake(&mut self, time: f32) { self.start_circle_image.shake(time) }
 }
 
+
+#[cfg(feature="graphics")]
 /// helper struct for drawing hit slider points
 #[derive(Clone)]
 struct SliderDot {
@@ -1163,6 +1168,8 @@ struct SliderDot {
     slide_layer: u64,
     dot_image: Option<graphics::Image>,
 }
+
+#[cfg(feature="graphics")]
 impl SliderDot {
     pub fn new(time: f32, pos: Vector2, scale: f32, slide_layer: u64) -> Self {
         Self {
@@ -1211,6 +1218,8 @@ impl SliderDot {
     }
 }
 
+
+#[cfg(feature="graphics")]
 #[derive(Default)]
 enum SliderBodyLoader {
     #[default]
@@ -1221,6 +1230,8 @@ enum SliderBodyLoader {
     },
     Update(engine::io::AsyncLoader<()>),
 }
+
+#[cfg(feature="graphics")]
 impl SliderBodyLoader {
     fn is_none(&self) -> bool {
         matches!(self, Self::None)

@@ -55,7 +55,8 @@ pub static GAME_INFO: GamemodeInfo = GamemodeInfo {
     stat_groups: &[
         TaikoPressCounterStatGroup
     ],
-    available_widgets: &[ DON_CHAN ],
+
+    #[cfg(feature="graphics")] available_widgets: &[ DON_CHAN ],
 
     judgments: super::TaikoHitJudgments::variants(),
 

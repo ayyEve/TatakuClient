@@ -11,7 +11,9 @@ pub fn run_game(
     let gamemodes;
     #[cfg(feature="dynamic_gamemodes")] {
         gamemodes = vec![
-            GamemodeLibrary::load_gamemode("/home/ayyeve/Desktop/projects/tataku/tataku-client/target/release/gamemode_taiko").unwrap(),
+            engine::gameplay::GamemodeLibrary::load_gamemode(
+                "gamemodes/taiko"
+            ).unwrap(),
         ];
     }
 

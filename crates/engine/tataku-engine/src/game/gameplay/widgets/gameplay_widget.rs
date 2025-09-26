@@ -8,7 +8,6 @@ pub trait GameplayWidget: Send + Sync {
     fn max_size(&self) -> Vector2;
     fn update(&mut self, shell: &mut GameplayWidgetUpdateShell);
 
-    #[cfg(feature="graphics")]
     fn draw(
         &mut self, 
         shell: &mut GameplayWidgetDrawShell,
@@ -16,7 +15,6 @@ pub trait GameplayWidget: Send + Sync {
     
     fn reset(&mut self) {}
 
-    #[cfg(feature="graphics")]
     fn reload_skin(
         &mut self, 
         _shell: &mut GameplayWidgetReloadSkinShell,

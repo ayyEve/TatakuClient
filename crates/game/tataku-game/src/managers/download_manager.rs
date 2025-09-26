@@ -1,6 +1,6 @@
 use crate::prelude::*;
 use common::reflect::*;
-use ui::widget::TextLayoutContexts;
+#[cfg(feature="ui")] use ui::widget::TextLayoutContexts;
 use tataku::{
     Color,
     Bounds,
@@ -24,8 +24,8 @@ pub struct DownloadManager {
     // a more reflect-friendly list
     pub statuses: Vec<DownloadStatus>,
 
-    #[debug(skip)]
-    #[reflect(skip)]
+    #[cfg(feature="ui")]
+    #[debug(skip)] #[reflect(skip)]
     pub layouts: Vec<Option<[Arc<parley::Layout<Color>>; 2]>>,
 }
 impl DownloadManager {
@@ -45,24 +45,35 @@ impl DownloadManager {
             progress: 0.0,
         });
         self.downloads.push(download);
-        self.layouts.push(None);
+        
+        #[cfg(feature="ui")] self.layouts.push(None);
     }
 
     pub fn update(
         &mut self,
         actions: &mut actions::ActionQueue,
-        font_contexts: &mut TextLayoutContexts,
+
+        #[cfg(feature="ui")] font_contexts: &mut TextLayoutContexts,
     ) {
         let mut to_remove = Vec::new();
 
-        for (n, (dl, status, layouts)) in self
+        let iter = self
             .downloads
             .iter_mut()
-            .zip(self.statuses.iter_mut())
+            .zip(self.statuses.iter_mut());
+        
+        #[cfg(feature="ui")]
+        let iter = iter
             .zip(self.layouts.iter_mut())
-            .map(|((dl, status), layouts)| (dl, status, layouts))
-            .enumerate()
-        {
+            .map(|((dl, status), layouts)| (dl, status, layouts));
+
+        #[cfg(not(feature="ui"))]
+        let iter = iter.map(|(dl, status)| (dl, status, ()));
+
+        for (
+            n, 
+            (dl, status, layouts)
+        ) in iter.enumerate() {
             status.filename = dl.filename.clone();
             status.downloading = dl.download_progress.is_some();
 
@@ -85,30 +96,33 @@ impl DownloadManager {
                 if let Some(on_complete) = dl.on_complete.clone() {
                     actions.push(on_complete());
                 }
-            } else if !complete {
-                let style = ui::style::TextStyle::default()
-                    .alignment(Alignment::CENTER)
-                    .font_size(20.0);
+            } else {
+                #[cfg(feature="ui")]
+                if !complete {
+                    let style = ui::style::TextStyle::default()
+                        .alignment(Alignment::CENTER)
+                        .font_size(20.0);
 
-                let mut new_progress_layout = font_contexts.simple_text(
-                    &format!("{:.2}%", status.progress), 
-                    &style
-                );
-                new_progress_layout.break_all_lines(None);
-
-                if let Some([_, progress_layout]) = layouts {
-                    *progress_layout = Arc::new(new_progress_layout);
-                } else {
-                    let mut title_layout = font_contexts.simple_text(
-                        &status.filename, 
+                    let mut new_progress_layout = font_contexts.simple_text(
+                        &format!("{:.2}%", status.progress), 
                         &style
                     );
-                    title_layout.break_all_lines(None);
+                    new_progress_layout.break_all_lines(None);
 
-                    *layouts = Some([
-                        Arc::new(title_layout),
-                        Arc::new(new_progress_layout)
-                    ]);
+                    if let Some([_, progress_layout]) = layouts {
+                        *progress_layout = Arc::new(new_progress_layout);
+                    } else {
+                        let mut title_layout = font_contexts.simple_text(
+                            &status.filename, 
+                            &style
+                        );
+                        title_layout.break_all_lines(None);
+
+                        *layouts = Some([
+                            Arc::new(title_layout),
+                            Arc::new(new_progress_layout)
+                        ]);
+                    }
                 }
             }
         }
@@ -117,7 +131,7 @@ impl DownloadManager {
         for i in to_remove {
             self.downloads.remove(i);
             self.statuses.remove(i);
-            self.layouts.remove(i);
+            #[cfg(feature="ui")] self.layouts.remove(i);
         }
     }
 

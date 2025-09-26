@@ -6,10 +6,12 @@ use tataku::{
     Vector2,
 };
 use engine::{
-    graphics,
     beatmaps::NoteType,
     gameplay::HitObject,
 };
+
+#[cfg(feature="graphics")]
+use engine::graphics;
 
 #[cfg(feature = "graphics")]
 const SPINNER_RADIUS:f32 = 200.0;

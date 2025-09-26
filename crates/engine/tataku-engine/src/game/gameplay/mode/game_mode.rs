@@ -61,7 +61,7 @@ pub trait GameMode: Send + Sync {
         skin_manager: &mut dyn graphics::SkinProvider
     ) -> graphics::TextureSource;
 
-    fn properties(&self, timing_points: &TimingPointHelper) -> gameplay::mode::GameModeProperties;
+    fn properties(&self, timing_points: &TimingPointHelper) -> gameplay::mode::GamemodeProperties;
     fn time_jump(&mut self, _new_time: f32, _state: &mut GameplayUpdateShell) {}
 
     #[cfg(feature="graphics")] fn get_playfield(&self) -> PlayfieldNonsense;

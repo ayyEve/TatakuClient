@@ -8,13 +8,15 @@ use tataku::{
     Vector2,
 };
 use engine::{
-    graphics,
     beatmaps::NoteType,
     gameplay::{
         HitObject,
         judgments::HitJudgment,
     },
 };
+
+#[cfg(feature="graphics")]
+use engine::graphics;
 
 const NOTE_BORDER_SIZE:f32 = 2.0;
 const GRAVITY_SCALING:f32 = 400.0;
@@ -251,13 +253,14 @@ impl UTypingNote {
 }
 
 
+#[cfg(feature="graphics")]
 #[derive(Clone)]
 struct HitCircleImageHelper {
     circle: graphics::Image,
     overlay: graphics::Image,
 }
+#[cfg(feature="graphics")]
 impl HitCircleImageHelper {
-    #[cfg(feature="graphics")]
     fn new(
         _settings: &Arc<TaikoSettings>, 
         source: &graphics::TextureSource, 
@@ -292,7 +295,6 @@ impl HitCircleImageHelper {
         self.circle.pos  = pos;
         self.overlay.pos = pos;
     }
-    #[cfg(feature="graphics")]
     fn draw(&mut self, list: &mut graphics::RenderableCollection) {
         list.push(self.circle.clone());
         list.push(self.overlay.clone());

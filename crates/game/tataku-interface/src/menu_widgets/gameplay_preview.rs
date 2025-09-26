@@ -61,7 +61,7 @@ impl GameplayPreview {
         actions.push(actions::game::GameAction::NewGameplayManager(actions::game::NewManager {
             owner,
             playmode: None,
-            gameplay_mode: Some(actions::game::GameplayMode::Preview),
+            gameplay_mode: Some(actions::game::GameplayTypeInfo::Preview),
             area: self.fit_to,
             draw_function: Some(Arc::new(move |collection| {
                 let Some(mut lock) = widget_sender.try_lock() 

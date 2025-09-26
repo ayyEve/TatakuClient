@@ -230,6 +230,7 @@ impl OsuHitObject for OsuNote {
         // self.ripple_start();
     }
 
+    #[cfg(feature="graphics")]
     fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {
         self.pos = new_scale.scale_coords(self.def.pos);
         self.radius = CIRCLE_RADIUS_BASE * new_scale.cs;

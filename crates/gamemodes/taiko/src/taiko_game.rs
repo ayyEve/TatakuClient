@@ -19,7 +19,6 @@ use tataku::{
 };
 use engine::{
     input,
-    graphics,
     beatmaps::{
         osu::*,
         Beatmap,
@@ -37,12 +36,14 @@ use engine::{
         GameplayEvent,
         TimingPointHelper,
         PlayfieldNonsense,
-        GameModeProperties,
+        GamemodeProperties,
         gameplay_manager::*,
     },
 };
 use input::GamepadButton;
 
+#[cfg(feature="graphics")]
+use engine::graphics;
 
 
 /// how many beats between timing bars
@@ -1371,7 +1372,7 @@ impl GameMode for TaikoGame {
     fn get_playfield(&self) -> PlayfieldNonsense {
         PlayfieldNonsense::new_simple(self.playfield.get_playfield_bounds())
     }
-    fn properties(&self, timing_points: &TimingPointHelper) -> GameModeProperties {
+    fn properties(&self, timing_points: &TimingPointHelper) -> GamemodeProperties {
 
         // FIXME: please god optimize this
         let mut sound_list = HashMap::new();
@@ -1414,7 +1415,7 @@ impl GameMode for TaikoGame {
         //     }
         // }
 
-        GameModeProperties { 
+        GamemodeProperties { 
             info: &crate::GAME_INFO, 
             keys: vec![
                 (KeyPress::LeftKat, "LK"),

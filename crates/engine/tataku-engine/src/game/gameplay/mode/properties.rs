@@ -1,7 +1,7 @@
 use crate::*;
 
 #[derive(Default2)]
-pub struct GameModeProperties {
+pub struct GamemodeProperties {
     #[default(&gameplay::GamemodeInfo::DEFAULT)]
     pub info: &'static gameplay::GamemodeInfo,
     // pub playmode: CowStr,
@@ -13,7 +13,7 @@ pub struct GameModeProperties {
     pub audio_prefix: String,
     pub sound_list: Vec<(String, Vec<actions::audio::AudioLoadData>)>,
 }
-impl GameModeProperties {
+impl GamemodeProperties {
     pub fn playmode(&self) -> &'static str {
         self.info.id
     }

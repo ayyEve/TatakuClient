@@ -5,10 +5,12 @@ use tataku::{
     Vector2,
 };
 use engine::{
-    graphics,
     beatmaps::NoteType,
     gameplay::HitObject,
 };
+
+#[cfg(feature="graphics")]
+use engine::graphics;
 
 #[derive(Default, Clone)]
 pub struct TaikoNote {

@@ -20,7 +20,6 @@ use engine::{
     gameplay::gameplay_manager::GameplayManagerTrait,
     actions::{
         mods::ModAction as ModAction,
-        menu::MenuAction as MenuAction,
         song::SongAction as SongAction,
         multiplayer::MultiplayerAction as MultiplayerAction,
         beatmap::{
@@ -38,6 +37,8 @@ use engine::{
 };
 #[cfg(feature="graphics")] 
 use graphics::SkinProvider;
+#[cfg(feature="graphics")] 
+use engine::actions::menu::MenuAction as MenuAction;
 
 // action handlers. here bc they're so big
 impl Game {
@@ -270,7 +271,10 @@ impl Game {
         #[cfg(feature="graphics")] 
         for (m, i) in self.gameplay_managers.values_mut() {
             if i.mods.is_some() { continue }
-            m.apply_mods(self.values.global.mods.clone());
+            m.handle_action(
+                actions::gameplay::GameplayAction::ApplyMods(self.values.global.mods.clone()), 
+                &self.values.settings
+            );
         }
 
         // update the beatmap groupings to update the diffs
@@ -686,7 +690,7 @@ impl Game {
                     &self.values.settings,
                 ) {
                     Ok(mut manager) => {
-                        manager.set_mode(actions::game::GameplayMode::Replay(score).into());
+                        manager.set_mode(actions::game::GameplayTypeInfo::Replay(score).into());
                         self.queue_state_change(GameState::Ingame(Box::new(
                             manager
                         )));

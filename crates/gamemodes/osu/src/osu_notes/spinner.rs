@@ -11,7 +11,6 @@ use tataku::{
     Vector2,
 };
 use engine::{
-    graphics,
     beatmaps::{
         osu::*,
         NoteType,
@@ -23,9 +22,12 @@ use engine::{
     }
 };
 
+#[cfg(feature="graphics")]
+use engine::graphics;
+
 const SPINNER_RADIUS:f32 = 200.0;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct OsuSpinner {
     // def: SpinnerDef,
     pos: Vector2,
@@ -60,13 +62,13 @@ pub struct OsuSpinner {
     scaling_helper: Arc<ScalingHelper>,
 
     /// main spinny
-    spinner_circle: Option<graphics::Image>,
+    #[cfg(feature="graphics")] spinner_circle: Option<graphics::Image>,
     /// bg, no spin
-    spinner_background: Option<graphics::Image>,
+    #[cfg(feature="graphics")] spinner_background: Option<graphics::Image>,
     /// also bg, no spin
-    spinner_bottom: Option<graphics::Image>,
+    #[cfg(feature="graphics")] spinner_bottom: Option<graphics::Image>,
     /// gets smaller towards end of spinner, from 100% to 0%
-    spinner_approach: Option<graphics::Image>,
+    #[cfg(feature="graphics")] spinner_approach: Option<graphics::Image>,
 
     points_queue: Vec<(HitJudgment, Vector2)>
 }
@@ -85,29 +87,11 @@ impl OsuSpinner {
             // def,
             time,
             end_time,
-            current_time: 0.0,
-            missed: false,
-
-            holding: false,
-            display_rotation: 0.0,
-            rotation: 0.0,
-            rotation_windows: [0.0; 2],
-            window_start: 0.0,
-            rotation_velocity: 0.0,
-            last_mouse_angle: 0.0,
             scaling_helper,
 
             rotations_required,
-            rotations_completed: 0,
-            mouse_pos: Vector2::ZERO,
-            points_queue: Vec::new(),
 
-            last_update: 0.0,
-
-            spinner_circle: None,
-            spinner_bottom: None,
-            spinner_approach: None,
-            spinner_background: None,
+            ..Self::default()
         }
     }
 }
@@ -364,6 +348,7 @@ impl OsuHitObject for OsuSpinner {
     #[cfg(feature="graphics")]
     fn set_combo_color(&mut self, _color: Color) {}
 
+    #[cfg(feature="graphics")]
     fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {
         let scale = Vector2::ONE * new_scale.scale;
 

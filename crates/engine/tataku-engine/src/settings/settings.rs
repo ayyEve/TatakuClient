@@ -20,6 +20,8 @@ pub struct Settings {
     #[serde(skip)] #[debug(skip)] #[reflect(skip)]
     #[divider(text="Audio Settings")] _audio: (),
     
+
+    #[cfg(feature="ui")]
     #[serde(skip)] #[debug(skip)] 
     #[reflect(rename="buildable")]
     pub buildable_provider: Arc<BuildableSettingsProvider>,
@@ -165,6 +167,8 @@ impl Settings {
         }
     }
 
+
+    #[cfg(feature="ui")]
     pub fn init(
         &mut self, 
         values: &mut dyn Reflect,
