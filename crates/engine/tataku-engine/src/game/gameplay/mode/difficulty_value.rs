@@ -46,8 +46,8 @@ impl DifficultyValue {
             display(num)
         } else {
             match self.number_type {
-                DifficultyNumberType::Float => tataku::format_float(num, 2),
-                DifficultyNumberType::WholeNumber => tataku::format_number(num as u64),
+                DifficultyNumberType::Float => tataku::format_float(&num, 2),
+                DifficultyNumberType::WholeNumber => tataku::format_number(&(num as u64)),
             }
         };
         format!("{}: {num}{}", self.name, self.unit.unwrap_or_default())

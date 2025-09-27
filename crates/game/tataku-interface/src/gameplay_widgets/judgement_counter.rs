@@ -132,7 +132,7 @@ impl GameplayWidget for JudgementCounterElement {
             let text = if new_count == 0 {
                 Cow::Borrowed(judge.display_name)
             } else {
-                tataku::format_number(new_count).into()
+                tataku::format_number(&new_count).into()
             };
 
             let (layout, size) = Self::layout(

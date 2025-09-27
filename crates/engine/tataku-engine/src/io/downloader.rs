@@ -5,11 +5,11 @@ use tokio::{ net::TcpStream, io::{ AsyncReadExt, AsyncWriteExt } };
 pub struct Downloader;
 impl Downloader {
     pub fn download_url(
-        url: impl ToString, 
+        url: impl Into<String>, 
         retries: usize
     ) -> Arc<RwLock<DownloadProgress>> {
         Self::download(DownloadOptions::new(
-            url.to_string(), 
+            url.into(), 
             retries
         ))
     }
@@ -207,9 +207,9 @@ struct UrlParams {
     is_https: bool,
 }
 impl UrlParams {
-    pub fn parse(url: impl ToString) -> Option<Self> {
+    pub fn parse(url: impl Into<String>) -> Option<Self> {
         // TODO: use a regex?
-        let url = url.to_string();
+        let url = url.into();
 
         let mut s = Self {
             port: 80,

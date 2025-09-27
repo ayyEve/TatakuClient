@@ -1522,7 +1522,7 @@ impl GameMode for TaikoGame {
 
                     new_settings.controller_config.insert(
                         name.clone(), 
-                        TaikoControllerConfig::defaults(name.clone())
+                        TaikoControllerConfig::defaults(&name)
                     );
 
                     // // update the global settings
@@ -1568,7 +1568,7 @@ impl GameMode for TaikoGame {
 
                     new_settings.controller_config.insert(
                         name.clone(), 
-                        TaikoControllerConfig::defaults(name.clone())
+                        TaikoControllerConfig::defaults(&name)
                     );
 
                     // // update the global settings

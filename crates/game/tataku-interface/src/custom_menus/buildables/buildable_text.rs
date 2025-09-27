@@ -82,11 +82,11 @@ impl BuildableText {
                 if let Ok(number) = values.reflect_as_number(&variable) {
                     let precis = precision.unwrap_or(2);
                     match number {
-                        ReflectNumber::F16(n) => tataku::format_float(n, precis),
-                        ReflectNumber::F32(n) => tataku::format_float(n, precis),
-                        ReflectNumber::F64(n) => tataku::format_float(n, precis),
-                        ReflectNumber::BF16(n) => tataku::format_float(n, precis),
-                        other => tataku::format_number(i128::from(other)),
+                        ReflectNumber::F16(n) => tataku::format_float(&n, precis),
+                        ReflectNumber::F32(n) => tataku::format_float(&n, precis),
+                        ReflectNumber::F64(n) => tataku::format_float(&n, precis),
+                        ReflectNumber::BF16(n) => tataku::format_float(&n, precis),
+                        other => tataku::format_number(&i128::from(other)),
                     }
                 } else {
                     values

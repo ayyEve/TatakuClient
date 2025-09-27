@@ -144,6 +144,7 @@ impl SpectatorManager {
         None
     }
 
+    #[allow(clippy::needless_pass_by_value, reason = "its ref internally??")]
     fn check_new_maps(
         &mut self,
         manager: Option<&mut Box<GameplayManager>>,
@@ -206,7 +207,7 @@ impl SpectatorManager {
                     self.host_map = Some(HostMap::new(
                         beatmap_hash, 
                         mode, 
-                        mods, 
+                        &mods, 
                         speed
                     ));
 
@@ -346,7 +347,7 @@ impl HostMap {
     fn new(
         map_hash: Md5Hash,
         playmode: String,
-        mods: Vec<ModDefinition>,
+        mods: &[ModDefinition],
         speed: u16
     ) -> Self {
         Self { 

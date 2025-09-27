@@ -196,8 +196,8 @@ impl Database {
 
     pub fn insert_or_update(
         table_name: &str, 
-        operation: SqlOperation,
-        operation_if_failed: Option<SqlOperation>,
+        operation: &SqlOperation,
+        operation_if_failed: Option<&SqlOperation>,
     ) {
         let db = Self::get();
         let mut s:rusqlite::Statement<'_> = db.prepare(&operation.sql).unwrap();
@@ -242,13 +242,13 @@ pub struct SqlOperation<'a> {
 }
 impl<'a> SqlOperation<'a> {
     pub fn new(
-        sql: impl ToString,
-        operation_name: impl ToString,
+        sql: impl Into<String>,
+        operation_name: impl Into<String>,
         values: Vec<SqlValue<'a>>,
     ) -> Self {
         Self {
-            sql: sql.to_string(),
-            operation_name: operation_name.to_string(),
+            sql: sql.into(),
+            operation_name: operation_name.into(),
             values,
         }
     }

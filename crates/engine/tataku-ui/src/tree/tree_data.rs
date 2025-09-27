@@ -26,7 +26,7 @@ impl TreeData {
     pub fn with_style(style: CssStyle) -> Self {
         Self {
             element_data: ElementData { 
-                styles: ElementStateStyles::new(style.clone()),
+                styles: ElementStateStyles::new(style),
                 ..Default::default()
             },
             ..Default::default()

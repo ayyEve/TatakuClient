@@ -198,6 +198,7 @@ impl ManiaGame {
     }
 
     #[cfg(feature="graphics")] 
+    #[allow(clippy::needless_pass_by_value, reason = "its cloned a bunch")]
     fn apply_new_playfield(&mut self, playfield: Arc<ManiaPlayfield>) {
         self.playfield = playfield.clone();
         

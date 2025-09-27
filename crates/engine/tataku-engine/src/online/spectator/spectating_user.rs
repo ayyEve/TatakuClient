@@ -9,10 +9,10 @@ pub struct SpectatingUser {
     pub username: String,
 }
 impl SpectatingUser {
-    pub fn new(user_id: u32, username: impl ToString) -> Self {
+    pub fn new(user_id: u32, username: impl Into<String>) -> Self {
         Self {
             user_id,
-            username: username.to_string()
+            username: username.into()
         }
     }
 }

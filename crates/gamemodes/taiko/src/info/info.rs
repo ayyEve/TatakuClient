@@ -19,7 +19,7 @@ use engine::{
 };
 
 
-pub static GAME_INFO: GamemodeInfo = GamemodeInfo {
+pub static GAME_INFO:GamemodeInfo = GamemodeInfo {
     id: "taiko",
     display_name: "Taiko",
     about: "Taiko!",

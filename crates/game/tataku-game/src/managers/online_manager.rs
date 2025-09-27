@@ -595,13 +595,13 @@ impl OnlineManager {
     /// set our user's action for the server and any enabled integrations
     pub fn set_action(
         &mut self, 
-        action_info: SetAction, 
+        action_info: &SetAction, 
         incoming_mode: Option<String>,
     ) {
-        let mode = incoming_mode.clone().unwrap_or_default();
+        let mode = incoming_mode.unwrap_or_default();
 
         let action = action_info.get_action();
-        let action_text = match &action_info {
+        let action_text = match action_info {
             SetAction::Idle => "Idle".to_string(),
             SetAction::Closing => "Closing".to_string(),
 

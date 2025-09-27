@@ -21,7 +21,7 @@ impl<T: Clone + Reflect> InputAction<T> {
     pub fn run(
         &self,
         value: &T,
-        node: NodeId,
+        node: &NodeId,
         messages: &mut Vec<Message>,
         actions: &mut actions::ActionQueue,
         values: &mut dyn Reflect,

@@ -24,9 +24,9 @@ impl BeatmapSettings {
         beatmap: BeatmapPreferences, 
         playmode: BeatmapPlaymodePreferences,
         values: &mut dyn Reflect,
-        prefix: impl ToString,
+        prefix: impl Into<String>,
     ) -> Self {
-        let prefix = prefix.to_string();
+        let prefix = prefix.into();
 
         #[cfg(feature="graphics")] 
         let provider = {

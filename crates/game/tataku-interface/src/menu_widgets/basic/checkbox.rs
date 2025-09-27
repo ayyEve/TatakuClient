@@ -61,12 +61,12 @@ impl Checkbox {
 }
 impl Widget<actions::Action> for Checkbox {
     fn name(&self) -> CowStr { "checkbox_widget".into() }
-    fn node_id(&self) -> NodeId { self.node_id }
+    fn node_id(&self) -> &NodeId { &self.node_id }
 
     fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId> {
         self.node_id = shell.tree.new_leaf()?;
 
-        shell.with_context(self.node_id, |ctx| {
+        shell.with_context(&self.node_id, |ctx| {
             ctx.needs_inverse_transform = true;
             ctx.set_selectable(true);
         });
@@ -76,7 +76,7 @@ impl Widget<actions::Action> for Checkbox {
 
     fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
         shell.tree.update_style(
-            self.node_id,
+            &self.node_id,
             |style| {
                 style.min_width = CssValue::Value(CssUnit::Em(f16::from_f32(BOX_SIZE_EM)));
                 style.min_height = CssValue::Value(CssUnit::Em(f16::from_f32(BOX_SIZE_EM)));
@@ -91,10 +91,10 @@ impl Widget<actions::Action> for Checkbox {
     ) {
         match event.event {
             InputType::MouseMove(pos) => {
-                let Some(bounds) = shell.tree.bounds(self.node_id) 
+                let Some(bounds) = shell.tree.bounds(&self.node_id) 
                 else { return };
 
-                let Some(ctx) = shell.tree.get_context(self.node_id) 
+                let Some(ctx) = shell.tree.get_context(&self.node_id) 
                 else { return };
 
                 let pos = ctx.inverse_global_transform * pos;
@@ -135,11 +135,11 @@ impl Widget<actions::Action> for Checkbox {
     }
 
     fn draw(&self, shell: &mut DrawShell<actions::Action>) {
-        let Some(bounds) = shell.tree.absolute_bounds(self.node_id) 
+        let Some(bounds) = shell.tree.absolute_bounds(&self.node_id) 
         else { return };
 
         let text_style = shell.tree
-            .get_text_style(self.node_id)
+            .get_text_style(&self.node_id)
             .unwrap();
 
         let size = BOX_SIZE_EM * text_style.font_size;
@@ -260,7 +260,7 @@ impl CheckboxOnToggle {
                 // todo: error on failed
                 let actions = actions.iter()
                     .cloned()
-                    .filter_map(|action| action.resolve(node, values, passed_in))
+                    .filter_map(|action| action.resolve(&node, values, passed_in))
                     .collect();
 
                 Err(actions::Action::Multiple(actions))

@@ -248,7 +248,7 @@ impl Cache {
         
         format!(
             "{}x, {:.2}%, {score_mods}{time_diff_str}", 
-            tataku::format_number(score.max_combo), 
+            tataku::format_number(&score.max_combo), 
             info.calc_acc(score) * 100.0
         )
     }
@@ -305,7 +305,7 @@ impl Cache {
         // score text
         // pos: pos_offset + PADDING * scale,
         let score_text = Self::layout(
-            &format!("{}: {}", score.username, tataku::format_number(score.score.score)),
+            &format!("{}: {}", score.username, tataku::format_number(&score.score.score)),
             15.0 * scale.y,
             text_color,
             font_contexts,
@@ -316,7 +316,7 @@ impl Cache {
         let combo_text = Self::layout(
             &format!(
                 "{}x, {:.2}%, {score_mods}{time_diff_str}", 
-                tataku::format_number(score.max_combo), 
+                tataku::format_number(&score.max_combo), 
                 info.calc_acc(score) * 100.0
             ),
             12.0 * scale.y,
@@ -370,7 +370,7 @@ impl Cache {
         // score text
         // pos: pos_offset + PADDING * scale,
         self.score_text = Some(Self::layout(
-            &format!("{}: {}", score.username, tataku::format_number(score.score.score)),
+            &format!("{}: {}", score.username, tataku::format_number(&score.score.score)),
             15.0 * scale.y,
             text_color,
             font_contexts,
@@ -381,7 +381,7 @@ impl Cache {
         self.combo_text = Some(Self::layout(
             &format!(
                 "{}x, {:.2}%, {score_mods}{time_diff_str}", 
-                tataku::format_number(score.max_combo), 
+                tataku::format_number(&score.max_combo), 
                 info.calc_acc(score) * 100.0
             ),
             12.0 * scale.y,

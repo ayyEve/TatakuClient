@@ -80,7 +80,7 @@ impl Database {
 
         Self::insert_or_update(
             "beatmap_preferences", 
-            SqlOperation::new(
+            &SqlOperation::new(
                 "INSERT INTO beatmap_preferences (beatmap_hash, audio_offset, background_video, storyboard, beatmap_skin) VALUES (?1, ?2, ?3, ?4, ?5)", 
                 "INSERT",
                 vec![
@@ -91,7 +91,7 @@ impl Database {
                     beatmap_skin.into(),
                 ]
             ),
-            Some(SqlOperation::new(
+            Some(&SqlOperation::new(
                 "UPDATE beatmap_preferences 
                     SET audio_offset=?2, background_video=?3, storyboard=?4, beatmap_skin=?5
                     WHERE beatmap_hash=?1
@@ -142,7 +142,7 @@ impl Database {
 
         Self::insert_or_update(
             "beatmap_preferences", 
-            SqlOperation::new(
+            &SqlOperation::new(
                 "INSERT INTO beatmap_mode_preferences (beatmap_hash, playmode, scroll_speed) VALUES (?1, ?2, ?3, ?4, ?5)", 
                 "INSERT",
                 vec![
@@ -151,7 +151,7 @@ impl Database {
                     scroll_speed.into(),
                 ]
             ),
-            Some(SqlOperation::new(
+            Some(&SqlOperation::new(
                 "UPDATE beatmap_mode_preferences 
                     SET scroll_speed=?3, 
                     WHERE beatmap_hash=?1 AND playmode=?2", 

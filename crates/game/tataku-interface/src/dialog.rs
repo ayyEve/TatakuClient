@@ -236,7 +236,7 @@ impl DialogWidget {
 }
 impl Widget<actions::Action> for DialogWidget {
     fn name(&self) -> CowStr { self.node.name() }
-    fn node_id(&self) -> NodeId { self.node.node_id() }
+    fn node_id(&self) -> &NodeId { self.node.node_id() }
 
     fn children(&self) -> WidgetChildren<'_, actions::Action> {
         WidgetChildren::Single(&*self.node)
@@ -290,9 +290,7 @@ impl Widget<actions::Action> for DialogWidget {
             return;
         }
 
-        let node_id = self.node_id();
-
-        let Some(bounds) = shell.tree.absolute_bounds(node_id) 
+        let Some(bounds) = shell.tree.absolute_bounds(self.node_id()) 
         else { return };
 
         // if this was a mouse input and its inside our bounds
@@ -306,6 +304,7 @@ impl Widget<actions::Action> for DialogWidget {
             return
         }
 
+        let node_id = *self.node_id();
         match (&event.event, self.resizing) {
             (InputType::MouseMove(pos), Some(drag)) => {
                 let delta = drag.mouse_pos_start - *pos;
@@ -464,7 +463,7 @@ impl Widget<actions::Action> for DialogWidget {
             => {
                 debug!("close request");
                 shell.actions.push(actions::ui::UiAction::new(
-                    self.node_id(),
+                    *self.node_id(),
                     actions::dialog::DialogAction::Close,
                 ).into());
             }
@@ -543,7 +542,7 @@ impl DialogTitlebar {
 }
 impl Widget<actions::Action> for DialogTitlebar {
     fn name(&self) -> CowStr { "titlebar_widget".into() }
-    fn node_id(&self) -> NodeId { self.node.node_id() }
+    fn node_id(&self) -> &NodeId { self.node.node_id() }
 
     fn layout(
         &mut self, 
@@ -602,7 +601,7 @@ impl Widget<actions::Action> for DialogTitlebar {
             return
         }
 
-        let node_id = self.node_id();
+        let node_id = *self.node_id();
         match (&event.event, &mut self.drag) {
             (InputType::MouseMove(pos), Some(drag)) => {
                 shell.actions.push(actions::ui::UiAction::new(
@@ -614,7 +613,7 @@ impl Widget<actions::Action> for DialogTitlebar {
             }
 
             (InputType::MousePress(MouseButton::Left), _) => {
-                let Some(bounds) = shell.tree.absolute_bounds(node_id) 
+                let Some(bounds) = shell.tree.absolute_bounds(&node_id) 
                 else { return };
 
                 if bounds.contains(event.mouse_pos) {

@@ -1,9 +1,7 @@
 mod note;
-mod hold;
-mod hitobject;
+mod branch;
 #[cfg(feature="graphics")] mod timing_bar;
 
 pub use note::*;
-pub use hold::*;
-pub use hitobject::*;
+pub use branch::*;
 #[cfg(feature="graphics")] pub use timing_bar::*;

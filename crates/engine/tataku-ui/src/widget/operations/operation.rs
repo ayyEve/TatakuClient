@@ -44,9 +44,9 @@ impl UiOperationTarget {
     ) -> bool {
         let nid = node.node_id();
         match self {
-            Self::Node(node_id) => &nid == node_id,
+            Self::Node(node_id) => nid == node_id,
             Self::Parent(node_id) => {
-                tree.has_child(nid, *node_id) 
+                tree.has_child(nid, node_id) 
             }
 
             Self::ElementId(id) => {

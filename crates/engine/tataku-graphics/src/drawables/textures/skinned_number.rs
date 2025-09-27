@@ -148,7 +148,7 @@ impl SkinnedNumber {
         precision: usize, 
         symbol: Option<&char>
     ) -> String {
-        let mut s = format_float(num, precision);
+        let mut s = format_float(&num, precision);
 
         if precision == 0 {
             s = s.split(".").next().unwrap().to_owned();

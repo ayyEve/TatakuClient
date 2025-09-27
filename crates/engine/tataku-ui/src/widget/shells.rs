@@ -63,12 +63,11 @@ pub struct LayoutShell<'a, 'css: 'a, Action: Send + Sync + 'static> {
 impl<Action: Send + Sync + 'static> LayoutShell<'_,'_, Action> {
     pub fn with_context(
         &mut self,
-        node: impl HasNodeId,
-        f: impl Fn(&mut TreeData)
-                    
+        node: &dyn HasNodeId,
+        f: impl Fn(&mut TreeData)     
     ) {
         let ctx = self.tree
-            .get_context_mut(node.get_id())
+            .get_context_mut(node)
             .expect("no context?");
         f(ctx);
     }

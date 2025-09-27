@@ -31,7 +31,7 @@ impl<'a, Action: Send + Sync + 'static> SpatialNagivation<'a, Action> {
 
 impl<Action: Send + Sync + 'static> SpatialNagivation<'_, Action> {
     /// https://developer.mozilla.org/en-US/docs/Web/API/Element/getBoundingClientRect
-    fn get_bounding_client_rect(&self, node: taffy::NodeId) -> Option<BoundingBox> {
+    fn get_bounding_client_rect(&self, node: &taffy::NodeId) -> Option<BoundingBox> {
         let layout = self.tree.get_layout(node)?;
         let c = self.tree.get_context(node)?;
 
@@ -58,8 +58,8 @@ impl<Action: Send + Sync + 'static> SpatialNagivation<'_, Action> {
         })
     }
 
-    fn get_rect(&mut self, node: taffy::NodeId) -> Option<NodeInfo> {
-        if let Some(info) = self.rects.get(&node) {
+    fn get_rect(&mut self, node: &taffy::NodeId) -> Option<NodeInfo> {
+        if let Some(info) = self.rects.get(node) {
             return Some(*info)
         }
 
@@ -72,7 +72,7 @@ impl<Action: Send + Sync + 'static> SpatialNagivation<'_, Action> {
         
         let rect = NodeInfo {
             bounding_box: cr,
-            element: node,
+            element: *node,
             center: BoundingBox {
                 x: center.x,
                 y: center.y,
@@ -88,7 +88,7 @@ impl<Action: Send + Sync + 'static> SpatialNagivation<'_, Action> {
             }
         };
 
-        self.rects.insert(node, rect);
+        self.rects.insert(*node, rect);
         Some(rect)
     } 
 
@@ -215,7 +215,7 @@ impl<Action: Send + Sync + 'static> SpatialNagivation<'_, Action> {
 
     fn navigate(
         &mut self,
-        target: taffy::NodeId,
+        target: &taffy::NodeId,
         direction: Direction,
         candidates: &[taffy::NodeId],
         config: &NavigateConfig
@@ -227,7 +227,6 @@ impl<Action: Send + Sync + 'static> SpatialNagivation<'_, Action> {
 
         let rects = candidates
             .iter()
-            .copied()
             .filter_map(|c| self.get_rect(c))
             .collect::<Vec<_>>();
 
@@ -399,7 +398,7 @@ impl<Action: Send + Sync + 'static> SpatialNagivation<'_, Action> {
             .as_ref()
             .filter(|p| {
                 config.remember_source
-                && p.destination == target
+                && &p.destination == target
                 && p.reverse == direction
             }) 
         {
@@ -419,7 +418,7 @@ impl<Action: Send + Sync + 'static> SpatialNagivation<'_, Action> {
         return;
         // debug!("starting navigation");
         let all_selectable = self.tree.all_children()
-            .filter(|i| self.tree.get_context(*i).unwrap().selectable())
+            .filter(|i| self.tree.get_context(i).unwrap().selectable())
             .map(|i| i.get_id())
             .collect::<Vec<_>>();
 
@@ -436,13 +435,13 @@ impl<Action: Send + Sync + 'static> SpatialNagivation<'_, Action> {
                 Direction::Right,
             ] {
                 let node = self.navigate(
-                    i, 
+                    &i, 
                     dir, 
                     &candidates, 
                     config
                 );
 
-                let context = self.tree.get_context_mut(i).unwrap();
+                let context = self.tree.get_context_mut(&i).unwrap();
                 context.set_node_direction(dir, node);
             }
             // debug!("got adjacent nodes for node {:?}: above: {above:?} | below: {below:?} | left: {left:?} | right: {right:?}", context.element_data);

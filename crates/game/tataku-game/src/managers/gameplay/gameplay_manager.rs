@@ -1522,6 +1522,7 @@ impl GameplayManager {
             .any(|e| check(e, time))
     }
 
+    #[allow(clippy::needless_pass_by_value)]
     pub fn set_id(&mut self, id: GameplayId) {
         // make sure we dont add a reference count to our copy of the id
         // this makes sure things are cleaned up properly when the manager is dropped

@@ -97,7 +97,7 @@ impl HitCircleImageHelper {
 
     pub fn update_settings(
         &mut self, 
-        settings: Arc<TaikoSettings>, 
+        settings: &TaikoSettings, 
         finisher: bool
     ) {
         let radius = if finisher {

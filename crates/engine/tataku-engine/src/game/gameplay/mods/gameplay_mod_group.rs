@@ -17,9 +17,9 @@ pub struct GameplayModGroup {
     pub mods: Vec<GameplayMod>
 }
 impl GameplayModGroup {
-    pub fn new(name: impl ToString) -> Self {
+    pub fn new(name: impl Into<String>) -> Self {
         Self {
-            name: name.to_string(),
+            name: name.into(),
             mods: Vec::new()
         }
     }

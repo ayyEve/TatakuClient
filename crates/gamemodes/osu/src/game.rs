@@ -1,10 +1,8 @@
 use std::ops::Range;
 use crate::prelude::*;
+use common::replays::*;
 use std::f32::consts::PI;
-
-use common::{
-    replays::*,
-};
+#[cfg(feature="graphics")] use engine::graphics;
 
 use tataku::{
     Color,
@@ -37,8 +35,6 @@ use engine::{
 };
 use input::gilrs::Axis;
 
-#[cfg(feature="graphics")]
-use engine::graphics;
 
 const STACK_LENIENCY:u32 = 3;
 pub const PREEMPT_MIN:f32 = 450.0;
@@ -109,12 +105,12 @@ impl OsuGame {
 
     #[cfg(feature="graphics")]
     fn apply_playfield(&mut self, playfield: Arc<ScalingHelper>) {
-        self.scaling_helper = playfield.clone();
+        self.scaling_helper = playfield;
         self.cursor.note_radius = self.scaling_helper.circle_size.x / 2.0;
 
         // update playfield for notes
         for note in self.notes.iter_mut() {
-            note.playfield_changed(playfield.clone());
+            note.playfield_changed(self.scaling_helper.clone());
         }
     }
 
@@ -335,7 +331,7 @@ impl OsuGame {
     }
     
     #[cfg(feature="graphics")] 
-    fn apply_combo_colors(&mut self, colors: Vec<Color>) {
+    fn apply_combo_colors(&mut self, colors: &[Color]) {
         let mut combo_num = 0;
         let mut combo_change = 0;
 
@@ -1309,11 +1305,20 @@ impl GameMode for OsuGame {
             EmitterBuilder,
         };
         
-        let source = if self.game_settings.beatmap_skin { TextureSource::Beatmap(beatmap_path.to_owned()) } else { TextureSource::Skin };
+        let source = if self.game_settings.beatmap_skin { 
+            TextureSource::Beatmap(beatmap_path.to_owned()) 
+        } else { 
+            TextureSource::Skin 
+        };
 
         self.cursor.reload_skin(skin_manager);
         self.judgment_helper.reload_skin(skin_manager);
-        self.follow_point_image = skin_manager.get_texture("followpoint", &source, SkinUsage::Gamemode, false);
+        self.follow_point_image = skin_manager.get_texture(
+            "followpoint", 
+            &source, 
+            SkinUsage::Gamemode, 
+            false
+        );
 
         let combo_colors = if self.game_settings.use_beatmap_combo_colors && !self.beatmap_combo_colors.is_empty() {
             self.beatmap_combo_colors.clone()
@@ -1323,7 +1328,7 @@ impl GameMode for OsuGame {
             self.game_settings.combo_colors.iter().map(Color::from_hex).collect()
         };
 
-        self.apply_combo_colors(combo_colors);
+        self.apply_combo_colors(&combo_colors);
 
         for n in self.notes.iter_mut() {
             n.reload_skin(&source, skin_manager);

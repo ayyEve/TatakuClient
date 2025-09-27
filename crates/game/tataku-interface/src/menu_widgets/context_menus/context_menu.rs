@@ -110,7 +110,7 @@ impl ContextMenu {
 
 impl Widget<actions::Action> for ContextMenu {
     fn name(&self) -> CowStr { "context_menu".into() }
-    fn node_id(&self) -> NodeId { self.node_id }
+    fn node_id(&self) -> &NodeId { &self.node_id }
 
     fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId> {
         self.node_id = shell.tree.new_leaf()?;
@@ -119,7 +119,7 @@ impl Widget<actions::Action> for ContextMenu {
 
     fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
         shell.tree.update_style(
-            self.node_id, 
+            &self.node_id, 
             |s| s.position = Position::Absolute.into()
         );
     }

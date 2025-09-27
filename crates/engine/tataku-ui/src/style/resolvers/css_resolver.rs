@@ -64,7 +64,7 @@ impl<'a> CssResolver<'a> {
     pub fn resolve_style<Action: Send + Sync + 'static>(
         &mut self, 
         element_style: &str,
-        node: NodeId,
+        node: &NodeId,
         tree: &Tree<Action>,
     ) -> ElementStateStyles<CssStyle, ()> {
 
@@ -84,7 +84,7 @@ impl<'a> CssResolver<'a> {
             (ElementState::Focus, &mut states.focus.0),
         ] {
             // resolve the element's style
-            let f = fuck::A::new(tree, node, state);
+            let f = fuck::A::new(tree, *node, state);
             let mut ele_style = self
                 .parsed
                 .iter()
@@ -96,7 +96,7 @@ impl<'a> CssResolver<'a> {
 
             // resolve inheritance
             if let Some(parent) = tree.parent(node) {
-                let ctx = tree.get_context(parent).unwrap();
+                let ctx = tree.get_context(&parent).unwrap();
                 let parent_style = ctx.get_style(state); // FIXME: should this be ElementState::None?
                 ele_style = ele_style.merge_parent(parent_style.clone());
             }
@@ -129,8 +129,8 @@ mod fuck {
             }
         }
         pub fn child_index(&self) -> Option<usize> {
-            let parent = self.tree.parent(self.node)?;
-            let children = self.tree.children(parent);
+            let parent = self.tree.parent(&self.node)?;
+            let children = self.tree.children(&parent);
             children
                 .iter()
                 .position(|id| id == &self.node)
@@ -139,13 +139,13 @@ mod fuck {
 
     impl<Action: Send + Sync + 'static> simplecss::Element for A<'_, Action> {
         fn parent_element(&self) -> Option<Self> {
-            let parent = self.tree.parent(self.node)?;
+            let parent = self.tree.parent(&self.node)?;
             Some(Self::new(self.tree, parent, self.state))
         }
         
         fn prev_sibling_element(&self) -> Option<Self> {
-            let parent = self.tree.parent(self.node)?;
-            let children = self.tree.children(parent);
+            let parent = self.tree.parent(&self.node)?;
+            let children = self.tree.children(&parent);
 
             let index = children
                 .iter()
@@ -157,7 +157,7 @@ mod fuck {
         }
     
         fn has_local_name(&self, name: &str) -> bool {
-            let Some(ctx) = self.tree.get_context(self.node) 
+            let Some(ctx) = self.tree.get_context(&self.node) 
             else { return false };
 
             ctx.element_data.element_name == name
@@ -168,7 +168,7 @@ mod fuck {
             local_name: &str, 
             operator: simplecss::AttributeOperator<'_>
         ) -> bool {
-            let Some(ctx) = self.tree.get_context(self.node) 
+            let Some(ctx) = self.tree.get_context(&self.node) 
             else { return false };
             
             match local_name {

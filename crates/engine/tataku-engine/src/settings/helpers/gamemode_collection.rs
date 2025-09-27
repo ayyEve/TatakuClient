@@ -16,7 +16,7 @@ pub struct GamemodeSettingsCollection {
 }
 impl GamemodeSettingsCollection {
     pub fn build(&mut self, infos: GamemodeInfos) {
-        self.infos = Some(infos.clone());
+        self.infos = Some(infos);
         self.rebuild();
     }
 

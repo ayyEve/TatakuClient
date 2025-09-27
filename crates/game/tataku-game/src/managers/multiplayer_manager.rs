@@ -108,7 +108,7 @@ impl MultiplayerManager {
         }
     }
 
-
+    #[allow(clippy::needless_pass_by_value, reason = "its ref internally??")]
     pub fn update(
         &mut self,
         manager: Option<&mut Box<GameplayManager>>,

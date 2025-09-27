@@ -11,11 +11,11 @@ pub struct SettingsBuilder<'a> {
     current_id: u16,
 }
 impl<'a> SettingsBuilder<'a> {
-    pub fn new(values: &'a mut dyn Reflect, name: impl ToString) -> Self {
+    pub fn new(values: &'a mut dyn Reflect, name: impl Into<String>) -> Self {
         Self {
             values,
             data: BuildableSettingsProvider {
-                name: name.to_string(),
+                name: name.into(),
                 ..Default::default()
             },
             current_category: None,
@@ -38,9 +38,9 @@ impl<'a> SettingsBuilder<'a> {
 
         category.settings.push(Arc::new(setting));
     }
-    pub fn add_category<T: ToString>(
+    pub fn add_category<T: Into<String>>(
         &mut self, 
-        name: impl ToString,
+        name: impl Into<String>,
         icon: Option<T>,
     ) {
         if let Some(category) = self.current_category.take() {
@@ -49,8 +49,8 @@ impl<'a> SettingsBuilder<'a> {
         }
 
         self.current_category = Some(BuildableSettingsCategory {
-            name: name.to_string(),
-            icon: icon.map(|i| i.to_string()),
+            name: name.into(),
+            icon: icon.map(|i| i.into()),
             id: self.current_id,
             settings: Vec::new(),
         });

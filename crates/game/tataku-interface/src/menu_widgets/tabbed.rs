@@ -43,7 +43,7 @@ impl TabbedWidget {
 }
 impl Widget<actions::Action> for TabbedWidget {
     fn name(&self) -> CowStr { format!("tabbed_widget({})", self.name).into() }
-    fn node_id(&self) -> NodeId { self.node_id }
+    fn node_id(&self) -> &NodeId { &self.node_id }
 
     fn operation(
         &mut self,

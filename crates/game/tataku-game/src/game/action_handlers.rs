@@ -92,10 +92,11 @@ impl Game {
     #[cfg(feature="graphics")]
     pub(super) fn handle_custom_menu(
         &mut self, 
-        id: impl ToString,
+        id: impl Into<ArcStr>,
     ) {
+        let id = id.into();
         let selector = (
-            id.to_string().into(), 
+            id.clone(), 
             CustomMenuSource::Any
         );
 
@@ -107,7 +108,6 @@ impl Game {
                 GameState::SetMenu(Box::new(menu))
             );
         } else {
-            let id = id.to_string();
             match &*id {
                 "none" => {}
                 "main_menu" 
@@ -123,10 +123,10 @@ impl Game {
     #[cfg(feature="graphics")]
     pub(super) fn handle_custom_dialog(
         &mut self, 
-        id: impl ToString, 
+        id: impl Into<ArcStr>, 
         options: actions::menu::DialogCreateOptions,
     ) {
-        let id:ArcStr = id.to_string().into();
+        let id = id.into();
         let Some(dialog) = self.custom_menu_manager
             .get_dialog((id.clone(), CustomMenuSource::Any))
         else {
@@ -165,7 +165,7 @@ impl Game {
     #[cfg(feature="graphics")]
     pub(super) fn handle_menu_action(&mut self, action: MenuAction) {
         match action {
-            MenuAction::SetMenu { id } => self.handle_custom_menu(id),
+            MenuAction::SetMenu { id } => self.handle_custom_menu(id.into_owned()),
 
             // MenuAction::PreviousMenu(current_menu) 
             //     => self.handle_previous_menu(&current_menu),
@@ -324,7 +324,7 @@ impl Game {
                             .and_then(|i| self.online_manager.lobby(i).cloned())
                             ;
 
-                        self.handle_event(TatakuIntegrationEvent::BeatmapStarted { 
+                        self.handle_event(&TatakuIntegrationEvent::BeatmapStarted { 
                             start_time, 
                             beatmap: map, 
                             playmode: mode, 
@@ -409,7 +409,7 @@ impl Game {
                         options.restart_song,
                         options.use_preview_point,
                     );
-                    self.set_current_beatmap(hash, config);
+                    self.set_current_beatmap(hash, &config);
 
                     return;
                 }
@@ -452,7 +452,7 @@ impl Game {
                     true,
                     use_preview
                 );
-                self.set_current_beatmap(hash, config);
+                self.set_current_beatmap(hash, &config);
             }
             BeatmapAction::Remove => {
                 self.remove_current_beatmap();
@@ -470,7 +470,7 @@ impl Game {
                 self.delete_beatmap(
                     hash,
                     PostDelete::Next,
-                    config,
+                    &config,
                 );
             }
             BeatmapAction::DeleteCurrent(post_delete) => {
@@ -485,7 +485,7 @@ impl Game {
                 self.delete_beatmap(
                     map_hash,
                     post_delete,
-                    config,
+                    &config,
                 );
             }
             BeatmapAction::Next => {
@@ -494,7 +494,7 @@ impl Game {
                     false
                 );
 
-                self.next_beatmap(config);
+                self.next_beatmap(&config);
             }
             BeatmapAction::Previous(if_none) => {
                 let mut config = self.create_select_beatmap_config(
@@ -502,7 +502,7 @@ impl Game {
                     false
                 );
 
-                if self.previous_beatmap(config.clone()) { return }
+                if self.previous_beatmap(&config) { return }
 
                 // no previous map availble, handle accordingly
                 match if_none {
@@ -515,7 +515,7 @@ impl Game {
                             .random_beatmap() 
                         else { return };
 
-                        self.set_current_beatmap(hash, config);
+                        self.set_current_beatmap(hash, &config);
                     }
                     MapActionIfNone::SetNone 
                         => self.remove_current_beatmap(),
@@ -745,7 +745,7 @@ impl Game {
 
                     self.set_current_beatmap(
                         score.beatmap_hash, 
-                        SelectBeatmapConfig::new(
+                        &SelectBeatmapConfig::new(
                             gameplay::mods::ModManager::new(
                                 score.mods.iter(),
                                 score.speed, 

@@ -59,7 +59,7 @@ impl From<BeatmapAction> for actions::Action {
     fn from(value: BeatmapAction) -> Self { Self::Beatmap(value) }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum PostDelete {
     Next,
     Previous,

@@ -98,6 +98,7 @@ impl Io {
 
 /// opens a folder in the os' file explorer
 #[allow(unused)]
+#[cfg_attr(not(target_os="windows"), allow(clippy::needless_pass_by_value))]
 pub fn open_folder(path: String, selected_file: Option<String>) {
     #[cfg(target_os="windows")] {
         let mut cmd = &mut std::process::Command::new("explorer.exe");

@@ -144,7 +144,7 @@ impl TransformableWidget {
 }
 impl Widget<actions::Action> for TransformableWidget {
     fn name(&self) -> CowStr { "transformable_widget".into() }
-    fn node_id(&self) -> NodeId { self.node_id }
+    fn node_id(&self) -> &NodeId { &self.node_id }
 
     fn children(&self) -> WidgetChildren<'_, actions::Action> {
         WidgetChildren::Single(&*self.child)
@@ -191,11 +191,11 @@ impl Widget<actions::Action> for TransformableWidget {
             InputType::MouseMove(pos) => {
                 let bounds = shell
                     .tree
-                    .content_bounds(self.node_id)
+                    .content_bounds(&self.node_id)
                     .unwrap();
                 let ctx = shell
                     .tree
-                    .get_context(self.node_id)
+                    .get_context(&self.node_id)
                     .unwrap();
 
                 let pos = ctx.inverse_global_transform * *pos;
@@ -273,7 +273,7 @@ impl Widget<actions::Action> for TransformableWidget {
             let transform = self.transform();
             let context = shell
                 .tree
-                .get_context_mut(self.node_id)
+                .get_context_mut(&self.node_id)
                 .unwrap();
 
             context.local_transform = transform;

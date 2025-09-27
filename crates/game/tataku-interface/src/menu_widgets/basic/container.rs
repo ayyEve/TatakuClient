@@ -66,7 +66,7 @@ impl Container {
 
     fn check_scroll(
         &mut self,
-        scroll: ScrollPosition,
+        scroll: &ScrollPosition,
         layout: &taffy::Layout,
     ) -> bool {
         if !self.scrollable { return false }
@@ -88,7 +88,7 @@ impl Container {
                     layout.scroll_width(),
                     layout.scroll_height(),
                 );
-                self.scroll_offset = (size * -pos)
+                self.scroll_offset = (size * -*pos)
                     .clamp(-size, Vector2::ZERO);
                 true
             }
@@ -106,7 +106,7 @@ impl Container {
         &mut self,
         tree: &mut Tree<actions::Action>,
     ) {
-        let layout = tree.get_layout(self.node_id).unwrap();
+        let layout = tree.get_layout(&self.node_id).unwrap();
         let size = Vector2::new(
             layout.scroll_width(),
             layout.scroll_height(),
@@ -114,10 +114,9 @@ impl Container {
 
         self.scroll_offset = self.scroll_offset.clamp(-size, Vector2::ZERO);
 
-        let ctx = tree.get_context_mut(self.node_id).unwrap();
+        let ctx = tree.get_context_mut(&self.node_id).unwrap();
         ctx.local_transform.pos = self.scroll_offset;
-        tree.mark_dirty(self.node_id);
-        tree.mark_refresh("Container::validate_scroll_position");
+        tree.mark_dirty(&self.node_id);
     }
 
     fn handle_scroll_operation(
@@ -134,7 +133,7 @@ impl Container {
 
             ScrollType::ScrollByPercent(percent) => {
                 let layout = tree
-                    .get_layout(self.node_id).unwrap();
+                    .get_layout(&self.node_id).unwrap();
 
                 let size = Vector2::new(
                     layout.scroll_width(),
@@ -145,7 +144,7 @@ impl Container {
             }
             ScrollType::ScrollToPercent(percent) => {
                 let layout = tree
-                    .get_layout(self.node_id).unwrap();
+                    .get_layout(&self.node_id).unwrap();
 
                 let size = Vector2::new(
                     layout.scroll_width(),
@@ -170,7 +169,7 @@ impl Container {
 
                 return self.handle_scroll_operation(
                     &ScrollOperation {
-                        scroll_type: ScrollType::ScrollToNode(node)
+                        scroll_type: ScrollType::ScrollToNode(*node)
                     },
                     tree
                 );
@@ -178,13 +177,13 @@ impl Container {
 
             // scroll to a specific node id
             ScrollType::ScrollToNode(node) => {
-                let our_bounds = tree.absolute_bounds(self.node_id).unwrap();
+                let our_bounds = tree.absolute_bounds(&self.node_id).unwrap();
                 // let our_layout = tree
                 //     .get_layout(self.node_id).unwrap();
 
                 // let node_layout = tree
                 //     .get_layout(*node).unwrap();
-                let node_bounds = tree.absolute_bounds(*node).unwrap();
+                let node_bounds = tree.absolute_bounds(node).unwrap();
 
                 let top = Vector2::new(
                     node_bounds.pos.x,
@@ -217,7 +216,7 @@ impl Container {
 
                 return self.handle_scroll_operation(
                     &ScrollOperation {
-                        scroll_type: ScrollType::ScrollToNode(node)
+                        scroll_type: ScrollType::ScrollToNode(*node)
                     },
                     tree
                 );
@@ -257,7 +256,7 @@ impl Container {
     ) -> Option<NodeId> {
         for child in node.children() {
             if op(tree, child)? {
-                return Some(child.node_id());
+                return Some(*child.node_id());
             }
 
             if let Some(res) = Self::find_nested_child(
@@ -275,7 +274,7 @@ impl Container {
 
 impl Widget<actions::Action> for Container {
     fn name(&self) -> CowStr { "container_widget".into() }
-    fn node_id(&self) -> NodeId { self.node_id }
+    fn node_id(&self) -> &NodeId { &self.node_id }
 
     fn children(&self) -> WidgetChildren<'_, actions::Action> {
         WidgetChildren::List(self.children.as_slice())
@@ -293,7 +292,7 @@ impl Widget<actions::Action> for Container {
         self.node_id = shell.tree.new_with_children(&children)?;
 
         shell.with_context(
-            self.node_id,
+            &self.node_id,
             |ctx| ctx.needs_inverse_transform = true,
         );
 
@@ -324,19 +323,18 @@ impl Widget<actions::Action> for Container {
         event: &InputEvent,
         shell: &mut InputShell<actions::Action>,
     ) {
-        let node_id = self.node_id;
-        let Some(layout) = shell.tree.get_layout(node_id).copied()
+        let Some(layout) = shell.tree.get_layout(&self.node_id).copied()
         else { return };
 
         if let InputType::MouseScroll { raw: _, scroll: delta} = &event.event {
             if shell.event_consumed { return }
             if self.check_scroll(
-                ScrollPosition::Relative(*delta),
+                &ScrollPosition::Relative(*delta),
                 &layout
             ) {
                 let context = shell
                     .tree
-                    .get_context_mut(node_id)
+                    .get_context_mut(&self.node_id)
                     .unwrap();
 
                 context.local_transform.pos = self.scroll_offset;
@@ -396,13 +394,13 @@ impl Widget<actions::Action> for Container {
         if !captured && self.scrollable && self.drag_scroll {
             let offset = self
                 .drag_scroll_data
-                .check_input(self.node_id, shell, event);
+                .check_input(&self.node_id, shell, event);
 
-            if self.check_scroll(offset, &layout) {
+            if self.check_scroll(&offset, &layout) {
                 shell.event_consumed = true;
                 let context = shell
                     .tree
-                    .get_context_mut(self.node_id)
+                    .get_context_mut(&self.node_id)
                     .unwrap();
 
                 context.local_transform.pos = self.scroll_offset;
@@ -452,7 +450,7 @@ impl Widget<actions::Action> for Container {
                         };
 
                         // make us its parent
-                        layout_shell.tree.add_child(self.node_id, child);
+                        layout_shell.tree.add_child(&self.node_id, &child);
 
                         // init it's style
                         e.init_style(&mut layout_shell);
@@ -483,15 +481,8 @@ impl Widget<actions::Action> for Container {
                         shell.tree.remove(removed.node_id());
                     }
 
-                    // mark the tree as dirty
-                    shell.actions.push(actions::ui::UiAction::new(
-                        self.node_id,
-                        actions::ui::UiActionType::MarkDirty
-                    ).into());
-                    shell.actions.push(actions::ui::UiAction::new(
-                        self.node_id,
-                        actions::ui::UiActionType::Refresh
-                    ).into());
+                    // mark our node as dirty in the tree
+                    shell.tree.mark_dirty(&self.node_id);
                 }
             }
 
@@ -515,7 +506,7 @@ impl Widget<actions::Action> for Container {
     }
 
     fn draw(&self, shell: &mut DrawShell<actions::Action>) {
-        let Some(our_bounds) = shell.tree.absolute_bounds(self.node_id)
+        let Some(our_bounds) = shell.tree.absolute_bounds(&self.node_id)
         else { return };
 
         let mut list = graphics::RenderableCollection::default();
@@ -555,7 +546,7 @@ impl Widget<actions::Action> for Container {
     }
 
     fn draw_overlay(&self, shell: &mut DrawShell<actions::Action>) {
-        let Some(our_bounds) = shell.tree.absolute_bounds(self.node_id)
+        let Some(our_bounds) = shell.tree.absolute_bounds(&self.node_id)
         else { return };
 
         let mut list = graphics::RenderableCollection::default();
@@ -704,7 +695,7 @@ struct DragScrollData {
 impl DragScrollData {
     fn check_input(
         &mut self,
-        node_id: NodeId,
+        node_id: &NodeId,
         shell: &mut InputShell<actions::Action>,
         event: &InputEvent,
     ) -> ScrollPosition {

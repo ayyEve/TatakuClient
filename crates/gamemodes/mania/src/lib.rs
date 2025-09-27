@@ -1,9 +1,9 @@
-mod mania_game;
-mod diff_calc;
+mod game;
 mod info;
 mod notes;
 mod helpers;
-mod mania_settings;
+mod settings;
+mod diff_calc;
 
 pub use info::GAME_INFO;
 
@@ -14,10 +14,10 @@ mod prelude {
     #[cfg(feature="graphics")] 
     pub use tataku_engine::graphics;
 
-    pub use super::mania_game::*;
-    pub use super::mania_settings::*;
-    pub use super::diff_calc::*;
+    pub use super::game::*;
     pub use super::info::*;
     pub use super::notes::*;
     pub use super::helpers::*;
+    pub use super::settings::*;
+    pub use super::diff_calc::*;
 }

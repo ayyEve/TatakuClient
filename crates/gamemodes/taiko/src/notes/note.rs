@@ -148,11 +148,11 @@ impl TaikoHitObject for TaikoNote {
     }
 
     fn set_settings(&mut self, settings: Arc<TaikoSettings>) {
-        self.settings = settings.clone();
+        self.settings = settings;
 
         #[cfg(feature="graphics")]
         if let Some(i) = &mut self.image {
-            i.update_settings(settings, self.finisher);
+            i.update_settings(&self.settings, self.finisher);
         }
     }
 

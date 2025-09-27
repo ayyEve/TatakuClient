@@ -78,7 +78,7 @@ impl GameplayPreview {
 }
 impl Widget<actions::Action> for GameplayPreview {
     fn name(&self) -> CowStr { "gameplay_preview_widget".into() }
-    fn node_id(&self) -> NodeId { self.node_id }
+    fn node_id(&self) -> &NodeId { &self.node_id }
 
     fn layout(
         &mut self,
@@ -127,7 +127,7 @@ impl Widget<actions::Action> for GameplayPreview {
             self.setup(shell.owner, shell.values, shell.actions);
         }
         // check for new bounds
-        let bounds = shell.tree.absolute_bounds(self.node_id);
+        let bounds = shell.tree.absolute_bounds(&self.node_id);
         if let Some(bounds) = bounds
         && self.fit_to != Some(bounds) {
             // info!("fitting to area {bounds:?}");

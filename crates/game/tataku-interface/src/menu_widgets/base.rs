@@ -57,7 +57,7 @@ impl WidgetBase {
 }
 impl Widget<actions::Action> for WidgetBase {
     fn name(&self) -> CowStr { self.inner.name() }
-    fn node_id(&self) -> NodeId { self.inner.node_id() }
+    fn node_id(&self) -> &NodeId { self.inner.node_id() }
 
     fn children(&self) -> WidgetChildren<'_, actions::Action> {
         WidgetChildren::Single(&*self.inner)
@@ -82,7 +82,7 @@ impl Widget<actions::Action> for WidgetBase {
 
     fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId> {
         let id = self.inner.layout(shell)?;
-        shell.with_context(id, |ctx| {
+        shell.with_context(&id, |ctx| {
             ctx.element_data = ElementData {
                 state: ElementState::None,
                 element_name: self.element_name.clone(),

@@ -80,7 +80,7 @@ pub struct BuiltCustomDialog {
 }
 impl Widget<actions::Action> for BuiltCustomDialog {
     fn name(&self) -> CowStr { self.id.to_string().into() }
-    fn node_id(&self) -> NodeId { self.node_id }
+    fn node_id(&self) -> &NodeId { &self.node_id }
     fn get_style_str(&self) -> ArcStr { self.styles.clone() }
 
     fn children(&self) -> WidgetChildren<'_, actions::Action> {
@@ -97,7 +97,7 @@ impl Widget<actions::Action> for BuiltCustomDialog {
     }
     fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
         shell.tree.update_style(
-            self.node_id,
+            &self.node_id,
             |style| *style = CssStyle::menu_layout()
         );
         self.element.init_style(shell);
@@ -120,7 +120,7 @@ impl Widget<actions::Action> for BuiltCustomDialog {
 
             shell.handled = true;
             if let Some(action) = action.resolve(
-                self.node_id,
+                &self.node_id,
                 shell.values,
                 passed_in.as_ref()
             ) {
@@ -173,7 +173,7 @@ impl Widget<actions::Action> for BuiltCustomDialog {
         for mut i in events.iter().cloned() {
             i.build();
             let Some(action) = i.resolve(
-                self.node_id,
+                &self.node_id,
                 shell.values,
                 event_value
             )

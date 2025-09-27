@@ -312,7 +312,7 @@ impl InputManager {
 pub struct InputBinding {
     pub keyboard: Option<winit::keyboard::PhysicalKey>,
     pub mouse: Option<winit::event::MouseButton>,
-    pub controller: Option<ControllerBinding>,
+    pub controller: Option<ControllerInputBinding>,
 }
 
 // TODO: rename lol

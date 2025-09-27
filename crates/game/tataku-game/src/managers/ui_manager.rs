@@ -375,29 +375,29 @@ impl UiManager {
         };
 
         match action {
-            UiActionType::Refresh => tree.mark_refresh("Refresh"),
+            // UiActionType::Refresh => tree.mark_for_relayout("Refresh"),
 
-            UiActionType::MarkDirty => {
-                tree.mark_dirty(node);
-                tree.mark_refresh("MarkDirty");
-            }
+            // UiActionType::MarkDirty => {
+            //     tree.mark_dirty(node);
+            //     tree.mark_for_relayout("MarkDirty");
+            // }
 
             UiActionType::ContextChanged => {
-                tree.update_context(node);
+                tree.update_context(&node);
             }
 
             UiActionType::Operation(op) => {
-                tree.operate(op);
+                tree.operate(&op);
             }
 
             UiActionType::UpdateStyleWith(f) => {
-                tree.update_style(node, |s| f(s));
+                tree.update_style(&node, |s| f(s));
             }
 
-            UiActionType::OverrideDisplay(display) => {
-                tree.set_display(node, display);
-                tree.mark_refresh("UpdateDisplay");
-            }
+            // UiActionType::OverrideDisplay(display) => {
+            //     tree.override_display(node, display);
+            //     tree.mark_for_relayout("UpdateDisplay");
+            // }
 
             UiActionType::DialogAction(action) if num > 0 => {
                 num -= 1; // 0 is the menu, so subtract 1 to get the dialog index
@@ -437,7 +437,7 @@ impl UiManager {
                             ),
                             values
                         );
-                        tree.mark_refresh("resize dialog");
+                        tree.mark_for_relayout();
                     }
 
                     DialogAction::BringToFront => {

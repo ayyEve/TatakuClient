@@ -5,7 +5,7 @@ use crate::message::*;
 
 pub trait Widget<Action: Send + Sync>: Send + Sync {
     fn name(&self) -> CowStr;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> &NodeId;
 
     fn all_children(&self) -> WidgetChildren<'_, Action> { self.children() }
     fn all_children_mut(&mut self) -> WidgetChildrenMut<'_, Action> { self.children_mut() }

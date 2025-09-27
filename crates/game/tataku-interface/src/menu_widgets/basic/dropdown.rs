@@ -113,7 +113,7 @@ impl Dropdown {
                 // todo: error on bad
                 let actions = actions.iter()
                     .cloned()
-                    .filter_map(|action| action.resolve(self.node_id, shell.values, passed_in));
+                    .filter_map(|action| action.resolve(&self.node_id, shell.values, passed_in));
 
                 shell.actions.extend(actions);
 
@@ -131,7 +131,7 @@ impl Dropdown {
 }
 impl Widget<actions::Action> for Dropdown {
     fn name(&self) -> CowStr { "dropdown_widget".into() }
-    fn node_id(&self) -> NodeId { self.node_id }
+    fn node_id(&self) -> &NodeId { &self.node_id }
 
     fn layout(
         &mut self, 
@@ -139,7 +139,7 @@ impl Widget<actions::Action> for Dropdown {
     ) -> taffy::TaffyResult<NodeId> {
         self.node_id = shell.tree.new_leaf()?;
 
-        shell.with_context(self.node_id, |ctx| {
+        shell.with_context(&self.node_id, |ctx| {
             ctx.needs_inverse_transform = true;
             ctx.set_selectable(true);
         });
@@ -149,7 +149,7 @@ impl Widget<actions::Action> for Dropdown {
 
     fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
         let text_style = shell.tree
-            .get_text_style(self.node_id)
+            .get_text_style(&self.node_id)
             .unwrap();
 
         // let (w, h) = self.min_size(text_style, None);
@@ -167,10 +167,10 @@ impl Widget<actions::Action> for Dropdown {
         event: &InputEvent, 
         shell: &mut InputShell<actions::Action>,
     ) {
-        let Some(bounds) = shell.tree.bounds(self.node_id) 
+        let Some(bounds) = shell.tree.bounds(&self.node_id) 
         else { return };
 
-        let Some(context) = shell.tree.get_context(self.node_id) 
+        let Some(context) = shell.tree.get_context(&self.node_id) 
         else { return };
 
         match &event.event {
@@ -199,7 +199,7 @@ impl Widget<actions::Action> for Dropdown {
                 if self.active {
                     let item_margin = shell
                         .tree
-                        .get_style(self.node_id)
+                        .get_style(&self.node_id)
                         .unwrap()
                         .item_margin
                         .resolve_copied(shell.values)
@@ -244,7 +244,7 @@ impl Widget<actions::Action> for Dropdown {
 
                 let item_margin = shell
                     .tree
-                    .get_style(self.node_id)
+                    .get_style(&self.node_id)
                     .unwrap()
                     .item_margin
                     .resolve_copied(shell.values)
@@ -288,7 +288,7 @@ impl Widget<actions::Action> for Dropdown {
 
     fn draw(&self, shell: &mut DrawShell<actions::Action>) {
         let theme = &shell.general_theme;
-        let Some(bounds) = shell.tree.absolute_bounds(self.node_id) 
+        let Some(bounds) = shell.tree.absolute_bounds(&self.node_id) 
         else { return };
 
         // bounding box
@@ -307,7 +307,7 @@ impl Widget<actions::Action> for Dropdown {
             .unwrap_or(self.placeholder.get());
 
         let text_style = shell.tree
-            .get_text_style(self.node_id)
+            .get_text_style(&self.node_id)
             .unwrap();
 
         // shell.list.push(text_style.create_text(main_text.to_string(), bounds));
@@ -315,7 +315,7 @@ impl Widget<actions::Action> for Dropdown {
 
     fn draw_overlay(&self, shell: &mut DrawShell<actions::Action>) {
         if !self.active { return }
-        let Some(bounds) = shell.tree.absolute_bounds(self.node_id) 
+        let Some(bounds) = shell.tree.absolute_bounds(&self.node_id) 
         else { return };
         let theme = &shell.general_theme;
 
@@ -329,11 +329,11 @@ impl Widget<actions::Action> for Dropdown {
             .unwrap_or(self.variants.len());
 
         let text_style = shell.tree
-            .get_text_style(self.node_id)
+            .get_text_style(&self.node_id)
             .unwrap();
 
         let item_margin = shell.tree
-            .get_style(self.node_id).unwrap()
+            .get_style(&self.node_id).unwrap()
             .item_margin
             .resolve_copied(shell.values)
             .unwrap_or(DEFAULT_ITEM_MARGIN);
@@ -380,7 +380,7 @@ impl Widget<actions::Action> for Dropdown {
                 return;
             }
             let text_style = shell.tree
-                .get_text_style(self.node_id)
+                .get_text_style(&self.node_id)
                 .unwrap();
 
             // let (w, h) = self.min_size(text_style, None);

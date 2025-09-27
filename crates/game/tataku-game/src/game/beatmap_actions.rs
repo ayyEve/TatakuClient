@@ -9,7 +9,7 @@ impl Game {
     pub(super) fn set_current_beatmap(
         &mut self, 
         hash: Md5Hash,
-        config: SelectBeatmapConfig
+        config: &SelectBeatmapConfig
     ) {
         let beatmap = self.beatmap_manager.get_by_hash(&hash).unwrap();
         debug!(
@@ -107,7 +107,7 @@ impl Game {
         &mut self, 
         beatmap: Md5Hash, 
         post_delete: PostDelete,
-        config: SelectBeatmapConfig, 
+        config: &SelectBeatmapConfig, 
     ) {
         if self.beatmap_manager.delete_beatmap(beatmap) {
             match post_delete {
@@ -133,7 +133,7 @@ impl Game {
 
     pub(super) fn next_beatmap(
         &mut self, 
-        config: SelectBeatmapConfig, 
+        config: &SelectBeatmapConfig, 
     ) -> bool {
         match self.beatmap_manager.next_beatmap() {
             Some(map) => {
@@ -154,7 +154,7 @@ impl Game {
 
     pub(super) fn previous_beatmap(
         &mut self, 
-        config: SelectBeatmapConfig
+        config: &SelectBeatmapConfig
     ) -> bool {
         match self.beatmap_manager.previous_beatmap() {
             Some(map) => {

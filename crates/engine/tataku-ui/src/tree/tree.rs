@@ -1,5 +1,4 @@
 use crate::*;
-use std::rc::Rc;
 use crate::tree::*;
 use crate::style::*;
 use super::NodeData;
@@ -37,7 +36,7 @@ pub struct Tree<Action: Send + Sync> {
 
     pub bounds: Bounds,
     pub owner: MessageOwner,
-    should_refresh: bool,
+    needs_relayout: bool,
     selected_node: SelectedNode,
 
     use_rounding: bool,
@@ -69,7 +68,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
             node,
             root: NodeId::new(root.into(), owner),
             bounds: Bounds::default(),
-            should_refresh: false,
+            needs_relayout: false,
 
             owner,
             selected_node: SelectedNode::default(),
@@ -118,24 +117,29 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         shell.tree.root = root;
 
         node.init_style(&mut shell);
-        shell.tree.update_style(root, |s| *s = CssStyle::menu_layout());
+        shell.tree.update_style(
+            &root, 
+            |s| *s = CssStyle::menu_layout()
+        );
 
         self.node = node;
         self.update_layout(values);
     }
 
 
-    pub fn mark_refresh(&mut self, _s: &str) {
-        self.should_refresh = true;
+    pub fn mark_for_relayout(&mut self) {
+        self.needs_relayout = true;
     }
 
-    pub fn set_display(
+    /// Overrides a node's display without affecting the underlying style
+    /// 
+    /// Also marks dirty and for relayout
+    pub fn override_display(
         &mut self,
-        node: impl HasNodeId,
+        node: &dyn HasNodeId,
         display: Option<DisplayType>
     ) {
-        let node = node.get_id();
-        let Some(data) = self.nodes.get_mut(node.into())
+        let Some(data) = self.nodes.get_mut(node.get_id().into())
         else { return };
 
         if data.current_display == display { return }
@@ -156,7 +160,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
 
     pub fn update_layout(&mut self, values: &dyn Reflect) {
         // debug!("{:?} doing layout", self.owner);
-        self.should_refresh = false;
+        self.needs_relayout = false;
         use taffy::AvailableSpace::*;
         let space = taffy::Size {
             width: Definite(self.bounds.size.x),
@@ -196,7 +200,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
             return;
         }
 
-        let layout = self.get_layout(node).unwrap();
+        let layout = self.get_layout(&node).unwrap();
         let bounds = Bounds::new(
             Vector2::new(
                 layout.location.x,
@@ -208,7 +212,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
             )
         );
 
-        let context = self.context_mut(node);
+        let context = self.context_mut(&node);
         context.absolute_bounds = matrix * bounds;
         context.global_transform = matrix;
 
@@ -228,14 +232,12 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
             * context.local_transform.matrix()
             * Matrix::identity().trans(bounds.pos);
 
-        for child in self.children(node) {
+        for child in self.children(&node) {
             self.recurse_update_context(child.node_id, matrix);
         }
     }
 
-    pub fn update_context(&mut self, node: impl HasNodeId) {
-        let node = node.get_id();
-
+    pub fn update_context(&mut self, node: &dyn HasNodeId) {
         let our_matrix = self
             .get_context(node)
             .map_or_else(
@@ -243,14 +245,14 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
                 |p| p.global_transform
             );
 
-        self.recurse_update_context(node, our_matrix);
+        self.recurse_update_context(node.get_id(), our_matrix);
     }
 
-    pub fn absolute_bounds(&self, node: impl HasNodeId) -> Option<Bounds> {
+    pub fn absolute_bounds(&self, node: &dyn HasNodeId) -> Option<Bounds> {
         self.get_context(node).map(|i| i.absolute_bounds)
     }
 
-    pub fn content_bounds(&self, node: impl HasNodeId) -> Option<Bounds> {
+    pub fn content_bounds(&self, node: &dyn HasNodeId) -> Option<Bounds> {
         let layout = self.get_layout(node)?;
 
         Some(Bounds::new(
@@ -264,7 +266,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
             )
         ))
     }
-    pub fn bounds(&self, node: impl HasNodeId) -> Option<Bounds> {
+    pub fn bounds(&self, node: &dyn HasNodeId) -> Option<Bounds> {
         let layout = self.get_layout(node)?;
 
         Some(Bounds::new(
@@ -282,8 +284,8 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
 
     pub fn has_child(
         &self,
-        parent: impl HasNodeId,
-        child: impl HasNodeId,
+        parent: &dyn HasNodeId,
+        child: &dyn HasNodeId,
     ) -> bool {
         let Some(Some(parent_id)) = self.parents
             .get(child.get_id().into())
@@ -312,14 +314,14 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         t
     }
 
-    pub fn get_style(&self, node: impl HasNodeId) -> Option<&CssStyle> {
+    pub fn get_style(&self, node: &dyn HasNodeId) -> Option<&CssStyle> {
         Some(
             &self.node_context_data
             .get(node.get_id().into())?
             .current_style().0
         )
     }
-    pub fn get_text_style(&self, node: impl HasNodeId) -> Option<&TextStyle> {
+    pub fn get_text_style(&self, node: &dyn HasNodeId) -> Option<&TextStyle> {
         Some(
             self.node_context_data
             .get(node.get_id().into())?
@@ -493,10 +495,10 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
 
     pub fn operate(
         &mut self,
-        operation: UiOperation,
+        operation: &UiOperation,
     ) {
         self.with_node(|tree, node| {
-            node.operation(&operation, tree);
+            node.operation(operation, tree);
         });
     }
 
@@ -508,7 +510,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         skin_manager: &mut dyn graphics::SkinProvider,
         text_layout_contexts: &mut TextLayoutContexts,
     ) {
-        if self.should_refresh {
+        if self.needs_relayout {
             self.update_layout(values);
         }
 
@@ -666,11 +668,11 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
                 break
             };
 
-            if let Some(node) = self.get_context(current.node_id)
+            if let Some(node) = self.get_context(&current.node_id)
                 .and_then(|i| i.node_direction(direction))
             {
-                self.context_mut(current).selected = Some(false);
-                self.context_mut(node).selected = Some(true);
+                self.context_mut(&current).selected = Some(false);
+                self.context_mut(&node).selected = Some(true);
                 input.remove_from(input_state);
                 consumed = true;
                 error!("Navigated!");
@@ -691,12 +693,12 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         if self.selected_node.node.is_none() {
             // find the first selectable node
             self.selected_node.node = self.find_child(
-                self.root,
-                Rc::new(|tree, node| tree.context(node).selectable())
+                &self.root,
+                &|tree, node| tree.context(&node).selectable()
             );
 
             if let Some(node) = self.selected_node.node {
-                self.context_mut(node).selected = Some(true);
+                self.context_mut(&node).selected = Some(true);
             }
         }
 
@@ -704,26 +706,26 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
 
     // helpers for when we're certain the node is in the tree
     // private for that reason too
-    fn context(&self, node: impl HasNodeId) -> &TreeData {
-        self.get_context(node.get_id()).unwrap()
+    fn context(&self, node: &dyn HasNodeId) -> &TreeData {
+        self.get_context(node).unwrap()
     }
-    fn context_mut(&mut self, node: impl HasNodeId) -> &mut TreeData {
-        self.get_context_mut(node.get_id()).unwrap()
+    fn context_mut(&mut self, node: &dyn HasNodeId) -> &mut TreeData {
+        self.get_context_mut(node).unwrap()
     }
 
     /// this isnt the most efficient thing ever but hopefully its not used too often
     fn find_child(
         &self,
-        parent: impl HasNodeId,
-        f: Rc<dyn Fn(&Self, taffy::NodeId) -> bool>,
+        parent: &dyn HasNodeId,
+        f: &dyn Fn(&Self, taffy::NodeId) -> bool,
     ) -> Option<NodeId> {
         let parent = parent.get_id();
         if f(self, parent) {
             return Some(NodeId::new(parent, self.owner))
         }
 
-        for child in self.children(parent) {
-            if let Some(node) = self.find_child(child, f.clone()) {
+        for child in self.children(&parent) {
+            if let Some(node) = self.find_child(&child, f) {
                 return Some(node)
             }
         }
@@ -769,7 +771,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         parent_children.clear();
         parent_children.extend(children.iter().copied());
 
-        self.mark_dirty(parent);
+        self.mark_dirty(&parent);
 
         Ok(())
     }
@@ -806,7 +808,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         let child = self.children[parent_key].remove(child_index);
         self.parents[child.into()] = None;
 
-        self.mark_dirty(parent);
+        self.mark_dirty(&parent);
 
         Ok(child)
     }
@@ -827,8 +829,8 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
 
     pub fn add_child(
         &mut self,
-        parent: impl HasNodeId,
-        child: impl HasNodeId,
+        parent: &dyn HasNodeId,
+        child: &dyn HasNodeId,
     ) {
         let parent = parent.get_id();
         let child = child.get_id();
@@ -837,11 +839,11 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         let child_key = child.into();
         self.parents[child_key] = Some(parent);
         self.children[parent_key].push(child);
-        self.mark_dirty(parent);
-        self.mark_refresh("add_child");
+        self.mark_dirty(&parent);
+        self.mark_for_relayout();
     }
 
-    pub fn remove(&mut self, node: impl HasNodeId) {
+    pub fn remove(&mut self, node: &dyn HasNodeId) {
         let id = node.get_id();
         let key = id.into();
         if let Some(parent) = self.parents[key]
@@ -868,7 +870,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         self.node_context_data.clear();
     }
 
-    pub fn get_layout(&self, node: impl HasNodeId) -> Option<&taffy::Layout> {
+    pub fn get_layout(&self, node: &dyn HasNodeId) -> Option<&taffy::Layout> {
         let node = node.get_id();
 
         if self.use_rounding {
@@ -878,12 +880,12 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         }
     }
 
-    pub fn parent(&self, node: impl HasNodeId) -> Option<NodeId> {
+    pub fn parent(&self, node: &dyn HasNodeId) -> Option<NodeId> {
         self.parents
             .get(node.get_id().into())?
             .map(|i| NodeId::new(i, self.owner))
     }
-    pub fn children(&self, parent: impl HasNodeId) -> Vec<NodeId> {
+    pub fn children(&self, parent: &dyn HasNodeId) -> Vec<NodeId> {
         let Some(children) = self.children
             .get(parent.get_id().into())
         else { return Vec::new() };
@@ -894,14 +896,15 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
     }
 
 
-    pub fn get_context(&self, node: impl HasNodeId) -> Option<&TreeData> {
+    pub fn get_context(&self, node: &dyn HasNodeId) -> Option<&TreeData> {
         self.node_context_data.get(node.get_id().into())
     }
-    pub fn get_context_mut(&mut self, node: impl HasNodeId) -> Option<&mut TreeData> {
+    pub fn get_context_mut(&mut self, node: &dyn HasNodeId) -> Option<&mut TreeData> {
         self.node_context_data.get_mut(node.get_id().into())
     }
 
-    pub fn mark_dirty(&mut self, node: impl HasNodeId) {
+    /// Mark a node as dirty, also marks the tree for re-layout
+    pub fn mark_dirty(&mut self, node: &dyn HasNodeId) {
         fn mark_dirty_recursive(
             nodes: &mut SlotMap<DefaultKey, NodeData>,
             parents: &SlotMap<DefaultKey, Option<taffy::NodeId>>,
@@ -926,10 +929,11 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
             &self.parents,
             node.get_id().into()
         );
+        self.mark_for_relayout();
     }
 
 
-    pub fn update_style(&mut self, node: impl HasNodeId, f: impl Fn(&mut CssStyle)) {
+    pub fn update_style(&mut self, node: &dyn HasNodeId, f: impl Fn(&mut CssStyle)) {
         let node = node.get_id();
 
         let Some(data) = self
@@ -942,8 +946,8 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
             .into_iter()
             .for_each(|(i,_)| f(i));
 
-        self.mark_dirty(node);
-        self.mark_refresh("update_style");
+        self.mark_dirty(&node);
+        self.mark_for_relayout();
     }
 
     fn root_font_size(&self, values: &dyn Reflect) -> f32 {
@@ -984,7 +988,7 @@ impl<Action: Send + Sync + 'static> SwapTree<Action> {
     #[allow(clippy::new_ret_no_self, reason = "its the only time its used")]
     fn new(root: &dyn Widget<Action>) -> Box<dyn Widget<Action>> {
         Box::new(Self {
-            node: root.node_id(),
+            node: *root.node_id(),
             style: root.get_style_str(),
             _a: std::marker::PhantomData,
         })
@@ -992,7 +996,7 @@ impl<Action: Send + Sync + 'static> SwapTree<Action> {
 }
 impl<Action: Send + Sync + 'static> Widget<Action> for SwapTree<Action> {
     fn name(&self) -> CowStr { "SWAP TEMP".into() }
-    fn node_id(&self) -> NodeId { self.node }
+    fn node_id(&self) -> &NodeId { &self.node }
     fn get_style_str(&self) -> ArcStr { self.style.clone() }
     fn layout(&mut self, _: &mut LayoutShell<Action>) -> taffy::TaffyResult<NodeId> {
         unimplemented!()

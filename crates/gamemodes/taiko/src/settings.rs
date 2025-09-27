@@ -5,7 +5,7 @@ use engine::{
     input::{
         Key,
         GamepadButton,
-        ControllerBinding,
+        ControllerInputBinding,
     },
     gameplay::GamemodeSettings,
     settings::SettingsColor,
@@ -129,14 +129,14 @@ impl GamemodeSettings for TaikoSettings {
 #[derive(Serialize, Deserialize)]
 #[derive(Clone, Debug, PartialEq)]
 pub struct TaikoControllerConfig {
-    pub left_kat: ControllerBinding,
-    pub left_don: ControllerBinding,
-    pub right_don: ControllerBinding,
-    pub right_kat: ControllerBinding,
+    pub left_kat: ControllerInputBinding,
+    pub left_don: ControllerInputBinding,
+    pub right_don: ControllerInputBinding,
+    pub right_kat: ControllerInputBinding,
 }
 // #[cfg(feature = "gameplay")]
 impl TaikoControllerConfig {
-    fn new_default<I:Into<ControllerBinding>>(
+    fn new_default<I:Into<ControllerInputBinding>>(
         left_kat: I, 
         left_don: I, 
         right_don: I, 
@@ -149,8 +149,8 @@ impl TaikoControllerConfig {
             right_kat: right_kat.into()
         }
     }
-    pub fn defaults(controller_name: ArcStr) -> Self {
-        match &*controller_name {
+    pub fn defaults(controller_name: &str) -> Self {
+        match controller_name {
             "Taiko Controller"
             | "HORI CO.,LTD. Taiko Controller"
             | "HID-compliant game controller" => Self::new_default(

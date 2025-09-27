@@ -108,7 +108,7 @@ impl<'rpn, 'values: 'rpn> BuildableShuntingYard {
             stack
         )?.pop().unwrap();
 
-        stack.push(Ok(function.run(val)?));
+        stack.push(Ok(function.run(&val)?));
         Ok(())
     }
 
@@ -323,8 +323,8 @@ impl<'rpn, 'values: 'rpn> GenericShuntingYard<'rpn, 'values> for BuildableShunti
                 let str = match &*n {
                     TatakuValue::None => "None".to_owned(),
                     TatakuValue::F32(n) => tataku::format_float(n, precision),
-                    TatakuValue::U32(n) => tataku::format_number(*n),
-                    TatakuValue::U64(n) => tataku::format_number(*n),
+                    TatakuValue::U32(n) => tataku::format_number(n),
+                    TatakuValue::U64(n) => tataku::format_number(n),
                     TatakuValue::Bool(b) => format!("{b}"),
                     TatakuValue::String(s) => s.clone(),
                     TatakuValue::Reflect(reflect) 
@@ -400,10 +400,10 @@ enum MathFunction {
     Floor,
 }
 impl MathFunction {
-    fn run(
+    fn run<'a>(
         self, 
-        val: Cow<'_, TatakuValue>
-    ) -> Result<Cow<'_, TatakuValue>, BuildableShuntingYardError> {
+        val: &Cow<'a, TatakuValue>
+    ) -> Result<Cow<'a, TatakuValue>, BuildableShuntingYardError> {
         let num = val.as_number()
             .ok_or_else(|| BuildableShuntingYardError::NumberIsntANumber(val.as_string()))?;
 

@@ -545,7 +545,7 @@ impl Game {
                     bytes,
                     size,
                     info
-                ) => if let Err(e) = self.finish_screenshot(bytes, size, info) {
+                ) => if let Err(e) = self.finish_screenshot(&bytes, size, &info) {
                     self.actions.push(Notification::new_error(
                         "Screenshot Error",
                         e
@@ -756,7 +756,7 @@ impl Game {
         };
         self.task_manager.update(
             &mut self.values,
-            game_state,
+            &game_state,
             &mut self.actions
         );
 
@@ -897,7 +897,7 @@ impl Game {
 
                 // send logoff
                 self.online_manager.set_action(
-                    SetAction::Closing,
+                    &SetAction::Closing,
                     None
                 );
             }
@@ -961,7 +961,7 @@ impl Game {
                         }
 
                         self.online_manager.set_action(
-                            action,
+                            &action,
                             Some(m.mode.to_string())
                         );
                         self.actions.push(actions::game::GameAction::UpdateBackground.into());
@@ -969,7 +969,7 @@ impl Game {
                     #[cfg(feature="graphics")]
                     GameState::SetMenu(_menu) => {
                         self.online_manager.set_action(
-                            SetAction::Idle,
+                            &SetAction::Idle,
                             None
                         );
                     }
@@ -1549,7 +1549,7 @@ impl Game {
             actions::Action::Mods(action)
                 => self.handle_mod_action(action),
             actions::Action::Event(e)
-                => self.handle_event(*e),
+                => self.handle_event(&e),
             actions::Action::Download(dl)
                 => self.download_manager.add_download(*dl),
 
@@ -1680,9 +1680,9 @@ impl Game {
         }
     }
 
-    pub(super) fn handle_event(&mut self, event: engine::TatakuIntegrationEvent) {
+    pub(super) fn handle_event(&mut self, event: &engine::TatakuIntegrationEvent) {
         for i in self.integrations.iter_mut() {
-            i.handle_event(&event, &self.values, &mut self.actions);
+            i.handle_event(event, &self.values, &mut self.actions);
         }
     }
 
@@ -1828,7 +1828,7 @@ impl Game {
             true
         );
 
-        self.set_current_beatmap(score.beatmap_hash, config);
+        self.set_current_beatmap(score.beatmap_hash, &config);
 
         // move to a score menu with this as the score
         // let score = IngameScore::new(score, false, false);
@@ -1850,7 +1850,6 @@ impl Game {
         self.values.impl_insert("var.score_menu.allow_retry".into(), Box::new(false)).unwrap();
 
         self.handle_custom_menu("score_menu");
-
     }
 
 
@@ -1960,9 +1959,9 @@ impl Game {
     #[cfg(feature="graphics")]
     fn finish_screenshot(
         &mut self,
-        bytes: Vec<u8>,
+        bytes: &[u8],
         [width, height]: [u32; 2],
-        info: actions::window::ScreenshotInfo
+        info: &actions::window::ScreenshotInfo
     ) -> tataku::Result<()> {
         // create file
         let date = chrono::Local::now();
@@ -1983,7 +1982,7 @@ impl Game {
         // save as png
         image::save_buffer(
             path,
-            &bytes,
+            bytes,
             width,
             height,
             image::ExtendedColorType::Rgba8

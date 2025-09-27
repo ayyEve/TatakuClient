@@ -152,7 +152,9 @@ impl Branch {
         // branch 3: [chi, na, i]
         // branch 4: [chi, na, a]
         let branches = cartesian_product(&branches_per_char);
-        let branches: Vec<TextVariant> = branches.into_iter().map(TextVariant::new).collect();
+        let branches: Vec<TextVariant> = branches.into_iter()
+            .map(|i| TextVariant::new(&i))
+            .collect();
 
         Self {
             available_branches: branches.clone(),
@@ -206,8 +208,12 @@ pub struct TextVariant {
     current_chars: Vec<char>,
 }
 impl TextVariant {
-    fn new(branches: Vec<CharVariant>) -> Self {
-        let char_list = branches.iter().map(|a|a.0.clone()).collect::<Vec<_>>().concat();
+    fn new(branches: &[CharVariant]) -> Self {
+        let char_list = branches
+            .iter()
+            .map(|a| a.0.clone())
+            .collect::<Vec<_>>()
+            .concat();
 
         Self {
             char_list,

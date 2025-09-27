@@ -17,7 +17,7 @@ pub enum BuildableUiAction {
 impl BuildableUiAction {
     pub fn resolve(
         &self, 
-        node: NodeId,
+        node: &NodeId,
         values: &dyn Reflect,
         passed_in: Option<&TatakuValue>,
     ) -> Option<actions::ui::UiActionType> {
@@ -79,12 +79,12 @@ impl BuildableUiOperationTarget {
 
     pub fn resolve(
         &self, 
-        node: NodeId,
+        node: &NodeId,
         values: &dyn Reflect,
     ) -> Option<UiOperationTarget> {
         match self {
-            Self::Node => Some(UiOperationTarget::Node(node)),
-            Self::Parent => Some(UiOperationTarget::Parent(node)),
+            Self::Node => Some(UiOperationTarget::Node(*node)),
+            Self::Parent => Some(UiOperationTarget::Parent(*node)),
             
             Self::Id { id } => {
                 Some(UiOperationTarget::ElementId(id.resolve(values, None)?.as_string().into()))

@@ -145,7 +145,7 @@ impl From<actions::Action> for BuildableSettingsAction {
 pub trait BuildableSettingsActionTrait: Send + Sync {
     fn build(
         &self, 
-        node: ui::tree::NodeId,
+        node: &ui::tree::NodeId,
         passed_in: Option<&tataku::TatakuValue>,
         values: &dyn Reflect,
     ) -> Option<actions::Action>;
@@ -153,7 +153,7 @@ pub trait BuildableSettingsActionTrait: Send + Sync {
 impl BuildableSettingsActionTrait for actions::Action {
     fn build(
         &self, 
-        _: ui::tree::NodeId,
+        _: &ui::tree::NodeId,
         _: Option<&tataku::TatakuValue>,
         _: &dyn Reflect,
     ) -> Option<actions::Action> {

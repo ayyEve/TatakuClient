@@ -149,7 +149,7 @@ pub enum BuildableAction {
 impl BuildableAction {
     pub fn resolve(
         &self,
-        node: NodeId,
+        node: &NodeId,
         values: &mut dyn Reflect,
         passed_in: Option<&TatakuValue>
     ) -> Option<actions::Action> {
@@ -161,11 +161,12 @@ impl BuildableAction {
             } => {
                 let passed_in = passed_in.cloned();
                 let actions = actions.clone();
-
+                
+                let node = *node;
                 let delayed = actions::action::DelayedActionType::Callback(Arc::new(
                     move |values| actions::Action::Multiple(actions
                         .iter()
-                        .filter_map(|a| a.resolve(node, values, passed_in.as_ref()))
+                        .filter_map(|a| a.resolve(&node, values, passed_in.as_ref()))
                         .collect()
                 )));
 
@@ -218,8 +219,10 @@ impl BuildableAction {
             }
 
             #[cfg(feature="graphics")]
-            Self::CloseDialog
-                => Some(actions::ui::UiAction::new(node, engine::actions::dialog::DialogAction::Close).into()),
+            Self::CloseDialog => Some(actions::ui::UiAction::new(
+                *node, 
+                engine::actions::dialog::DialogAction::Close
+            ).into()),
 
             #[cfg(feature="graphics")]
             Self::SetMenu {
@@ -267,7 +270,7 @@ impl BuildableAction {
             #[cfg(feature="graphics")]
             Self::Ui { action } => {
                 Some(actions::ui::UiAction::new(
-                    node,
+                    *node,
                     action.resolve(node, values, passed_in)?
                 ).into())
             }

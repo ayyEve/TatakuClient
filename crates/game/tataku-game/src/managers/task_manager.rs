@@ -24,7 +24,7 @@ impl TaskManager {
     pub fn update(
         &mut self, 
         values: &mut ValueCollection, 
-        state: TaskGameState,
+        state: &TaskGameState,
         actions: &mut actions::ActionQueue,
     ) {
         let mut task_count = 0;
@@ -43,7 +43,7 @@ impl TaskManager {
             }
 
             // run the task
-            task.run(values, &state, actions);
+            task.run(values, state, actions);
 
             if task.get_state() == TatakuTaskState::Complete {
                 info!("Task complete {}", task.get_name());

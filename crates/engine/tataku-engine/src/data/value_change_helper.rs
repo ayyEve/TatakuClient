@@ -8,9 +8,9 @@ pub struct ValueChangeHelper<T: Reflect + Clone + PartialEq> {
     value: Option<T>,
 }
 impl<T: Reflect + Clone + PartialEq> ValueChangeHelper<T> {
-    pub fn new(key: impl ToString) -> Self {
+    pub fn new(key: impl Into<String>) -> Self {
         Self {
-            key: key.to_string(),
+            key: key.into(),
             value: None,
         }
     }
