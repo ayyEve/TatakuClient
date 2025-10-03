@@ -16,11 +16,7 @@ pub struct IngameScore {
 
     pub health: f32,
 
-    /// is this the current score
-    pub is_current: bool,
-
-    /// is this a user's previous score?
-    pub is_previous: bool,
+    pub score_type: ScoreType,
 
     /// is this score from the internet? (ie not local)
     #[reflect(skip)]
@@ -32,8 +28,7 @@ impl IngameScore {
             id: 0,
             score, 
             health: 1.0,
-            is_current,
-            is_previous,
+            score_type: ScoreType::new(is_current, is_previous),
             replay_location: ReplayLocation::Local,
         }
     }
@@ -69,16 +64,6 @@ impl IngameScore {
     }
 
 }
-
-#[derive(Clone, Debug, Default)]
-pub enum ReplayLocation {
-    #[default]
-    Local,
-    // url, extention
-    Online(Arc<dyn beatmaps::ReplayDownloader>),
-    OnlineNotExist,
-}
-
 impl core::ops::Deref for IngameScore {
     type Target = Score;
 
@@ -89,5 +74,37 @@ impl core::ops::Deref for IngameScore {
 impl core::ops::DerefMut for IngameScore {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.score
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub enum ReplayLocation {
+    #[default]
+    Local,
+    // url, extention
+    Online(Arc<dyn beatmaps::ReplayDownloader>),
+    OnlineNotExist,
+}
+
+#[derive(Reflect)]
+#[derive(Copy, Clone, Debug, Default)]
+pub enum ScoreType {
+    #[default] Default,
+
+    /// Is this the current score?
+    Current,
+    
+    /// Is this a user's previous score?
+    Previous,
+}
+impl ScoreType {
+    fn new(is_current: bool, is_previous: bool) -> Self {
+        if is_current { 
+            Self::Current
+        } else if is_previous {
+            Self::Previous
+        } else {
+            Self::Default
+        }
     }
 }

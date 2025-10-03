@@ -814,9 +814,11 @@ fn network_thread(
     event_sender: AsyncUnboundedSender<OnlineManagerEvent>,
     mut packet_receiver: AsyncUnboundedReceiver<PacketId>,
 ) -> tokio::task::JoinHandle<()> {
-    let server_url = settings.server_url.clone();
-    let username = settings.username.clone();
-    let password = settings.password.clone();
+    let connection = settings.connection().clone();
+        
+    let server_url = connection.server_url;
+    let username = connection.tataku_username;
+    let password = connection.tataku_password;
     let logging_settings = settings.logging_settings;
 
     runtime.spawn(async move {

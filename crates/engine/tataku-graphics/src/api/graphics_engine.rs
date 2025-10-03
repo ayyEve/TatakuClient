@@ -1,6 +1,6 @@
 use crate::*;
 
-pub type RenderTargetDraw = Box<dyn FnOnce(&mut dyn DrawEngine, Matrix) + Send + Sync>;
+pub type RenderTargetDraw = Arc<dyn Fn(&mut dyn DrawEngine, Matrix) + Send + Sync>;
 pub type ScreenshotCallback = Box<dyn FnOnce((Vec<u8>, [u32; 2])) + Send + Sync>;
 
 pub trait RenderingEngine {
@@ -20,25 +20,14 @@ pub trait RenderingEngine {
     /// Get the list of avaiable vsync modes
     fn vsync_modes(&self) -> Vec<Vsync>;
 
-    fn create_render_target(
-        &mut self,
-        size: [u32; 2],
-        clear_color: Color,
-        do_render: RenderTargetDraw,
-    ) -> Option<RenderTarget>;
-    fn update_render_target(
-        &mut self,
-        target: RenderTarget,
-        do_render: RenderTargetDraw,
-    );
 
     // texture things
 
     /// load a texture from file bytes (ie .png file)
-    fn load_texture_bytes(&mut self, data: &[u8]) -> TatakuResult<TextureReference>;
+    fn load_texture_bytes(&mut self, data: &[u8]) -> tataku::Result<TextureReference>;
 
     /// load a texture from RGBA
-    fn load_texture_rgba(&mut self, data: &[u8], size: [u32; 2]) -> TatakuResult<TextureReference>;
+    fn load_texture_rgba(&mut self, data: &[u8], size: [u32; 2]) -> tataku::Result<TextureReference>;
 
     /// free a texture
     fn free_tex(&mut self, tex: TextureReference, defer_until_next_draw: bool);
@@ -55,7 +44,7 @@ pub trait RenderingEngine {
     fn end_render(&mut self);
 
     /// present the rendered surface
-    fn present(&mut self) -> TatakuResult<()>;
+    fn present(&mut self) -> tataku::Result<()>;
 
     // particle engine stuff
     fn add_emitter(&mut self, emitter: EmitterReference);
@@ -165,6 +154,18 @@ pub trait DrawEngine {
         transform: Matrix,
         blend_mode: BlendMode,
         layout: &parley::Layout<tataku_engine_common::prelude::Color>,
+    );
+
+    // render targets
+    fn create_render_target(
+        &mut self,
+        data: &mut RenderTargetData,
+        do_render: RenderTargetDraw,
+    );
+    fn update_render_target(
+        &mut self,
+        data: &RenderTargetData,
+        do_render: RenderTargetDraw,
     );
 }
 

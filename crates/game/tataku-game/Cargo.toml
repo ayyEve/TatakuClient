@@ -44,15 +44,14 @@ tataku-null-audio.workspace = true
 tataku-client-proc-macros.workspace = true
 tataku-ui = { workspace = true, optional = true }
 tataku-graphics = { workspace = true, optional = true }
-tataku-engine-common = { workspace = true, features = ["sql"] }
+tataku-engine-common.workspace = true
 
 # framework stuff
 tokio = { workspace = true, features = [ "full" ] }
 futures-util = { workspace = true, features = [ "async-await", "sink", "std" ] }
-lazy_static.workspace = true
 async-trait.workspace = true
 async-recursion.workspace = true
-rusqlite.workspace = true
+notify.workspace = true
 
 triple_buffer = { workspace = true, optional = true }
 libloading = { workspace = true, optional = true }

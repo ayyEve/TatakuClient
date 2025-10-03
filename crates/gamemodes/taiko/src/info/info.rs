@@ -10,7 +10,7 @@ use engine::{
     },
     gameplay::{
         stats::*,
-        GameMode,
+        Gamemode,
         GamemodeInfo,
         GamemodeSettings,
         difficulty_value::*,
@@ -108,7 +108,7 @@ impl TaikoGameInfo {
     }
 
 
-    fn create_game(beatmap: &Beatmap, settings: &engine::Settings) -> tataku::Result<Box<dyn GameMode>> {
+    fn create_game(beatmap: &Beatmap, settings: &engine::Settings) -> tataku::Result<Box<dyn Gamemode>> {
         Ok(Box::new(TaikoGame::new(beatmap, false, settings)?))
     }
     fn create_diffcalc(map: &BeatmapMeta, settings: &engine::Settings) -> tataku::Result<Box<dyn DiffCalc>> {

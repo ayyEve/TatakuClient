@@ -28,9 +28,11 @@ impl LastFm {
     }
 
     pub async fn check(settings: &Settings) {
-        let username = settings.username.clone();
-        let password = settings.password.clone();
-        let url = settings.score_url.clone();
+        let connection = settings.connection().clone();
+
+        let username = connection.tataku_username;
+        let password = connection.tataku_password;
+        let url = connection.score_url;
 
         let body = serde_json::to_string(&LastFmAuthRequest { username, password }).unwrap();
         let Ok(req) = reqwest::Client::new()
@@ -47,13 +49,12 @@ impl LastFm {
     }
 
     pub async fn update(track: ArcStr, artist: ArcStr, settings: &Settings) {
-        let username = settings.username.clone().into();
-        let password = settings.password.clone().into();
-        let url = settings.score_url.clone();
+        let connection = settings.connection().clone();
+        let url = connection.score_url;
 
         let body = serde_json::to_string(&LastFmNowPlayingRequest { 
-            username, 
-            password, 
+            username: connection.tataku_username.into(), 
+            password: connection.tataku_password.into(), 
             track, 
             artist 
         }).unwrap();
@@ -98,14 +99,12 @@ impl TatakuIntegration for LastFm {
         let track = title.clone();
         let artist = artist.clone();
 
-        let username = settings.username.clone().into();
-        let password = settings.password.clone().into();
-        let url = settings.score_url.clone();
-
+        let connection = settings.connection().clone();
         tokio::spawn(async move {
+            let url = connection.score_url;
             let body = serde_json::to_string(&LastFmNowPlayingRequest { 
-                username, 
-                password, 
+                username: connection.tataku_username.into(), 
+                password: connection.tataku_password.into(), 
                 track, 
                 artist 
             }).unwrap();

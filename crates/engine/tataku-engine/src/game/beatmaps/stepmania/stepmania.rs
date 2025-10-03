@@ -1,6 +1,8 @@
 use crate::*;
 use common::Md5Hash;
 
+pub type Beatmap = StepmaniaBeatmap;
+
 #[derive(Default, Clone)]
 #[allow(unused)]
 pub struct StepmaniaBeatmap {
@@ -48,7 +50,7 @@ pub struct StepmaniaBeatmap {
 }
 
 impl StepmaniaBeatmap {
-    pub fn load_multiple<P:AsRef<Path>>(path: P) -> tataku::TatakuResult<Vec<Self>> {
+    pub fn load_multiple(path: impl AsRef<Path>) -> tataku::Result<Vec<Self>> {
         let mut map = Self {
             file_path: path.as_ref().to_string_lossy().to_string().into(),
             ..Default::default()
@@ -65,7 +67,7 @@ impl StepmaniaBeatmap {
         let mut meter = None;
         let mut groove_radar_values = None;
         
-        let mut lines = tataku::Io::read_lines_resolved(&path)?;
+        let mut lines = tataku::fs::read_lines_resolved(&path)?;
         while let Some(line) = lines.next() {
             // trim out comments
             let line = line.split("//").next().unwrap();
@@ -285,7 +287,7 @@ impl StepmaniaBeatmap {
         Ok(maps)
     }
 
-    pub fn load_single<P:AsRef<Path>>(path:P, meta: &BeatmapMeta) -> tataku::TatakuResult<Self> {
+    pub fn load_single(path: impl AsRef<Path>, meta: &BeatmapMeta) -> tataku::Result<Self> {
         let maps = Self::load_multiple(path)?;
 
         for map in maps {

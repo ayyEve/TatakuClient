@@ -8,18 +8,8 @@ pub trait TatakuTask: Send + Sync {
 
     fn run(
         &mut self, 
-        values: &mut dyn common::reflect::Reflect, 
-        state: &TaskGameState, 
-        actions: &mut actions::ActionQueue
+        shell: &mut TaskShell, 
     ); 
-}
-
-pub struct TaskGameState {
-    /// Current game time in ms
-    pub game_time: u64,
-
-    /// Are we currently in a game?
-    pub ingame: bool,
 }
 
 /// What kind of task is the task?
@@ -45,4 +35,18 @@ pub enum TatakuTaskState {
 
     /// This task has been completed
     Complete,
+}
+
+
+pub struct TaskShell<'a> {
+    /// Current game time in ms
+    pub game_time: u64,
+
+    /// Are we currently in a game?
+    pub ingame: bool,
+
+
+    pub actions: &'a mut actions::ActionQueue,
+    pub values: &'a mut dyn common::reflect::Reflect,
+    pub database: &'a dyn engine::database::DatabaseProvider,
 }

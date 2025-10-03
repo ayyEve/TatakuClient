@@ -2,6 +2,8 @@ use crate::*;
 use common::Md5Hash;
 use beatmaps::tja::*;
 
+pub type Beatmap = TjaBeatmap;
+
 /// this is technically a single course
 #[derive(Default, Debug)]
 pub struct TjaBeatmap {
@@ -38,7 +40,7 @@ pub struct TjaBeatmap {
 }
 
 impl TjaBeatmap {
-    pub fn load_multiple(path: impl AsRef<Path>) -> tataku::TatakuResult<Vec<Self>> {
+    pub fn load_multiple(path: impl AsRef<Path>) -> tataku::Result<Vec<Self>> {
         let path = path.as_ref();
 
         let mut data = std::fs::read(path)?;
@@ -47,7 +49,7 @@ impl TjaBeatmap {
             data = data[3..].to_vec();
         }
 
-        let lines = String::from_utf8(data).map_err(|_| errors::beatmap::BeatmapError::InvalidFile)?;
+        let lines = String::from_utf8(data).map_err(|_| errors::beatmap::Error::InvalidFile)?;
         let lines = lines.lines();
 
         let filename: ArcStr = path.to_string_lossy().to_string().into();
@@ -62,7 +64,7 @@ impl TjaBeatmap {
         Ok(maps)
     }
 
-    pub fn load_single(path: impl AsRef<Path>, meta: &BeatmapMeta) -> tataku::TatakuResult<Self> {
+    pub fn load_single(path: impl AsRef<Path>, meta: &BeatmapMeta) -> tataku::Result<Self> {
         let maps = Self::load_multiple(path)?;
 
         for map in maps {
@@ -71,14 +73,14 @@ impl TjaBeatmap {
             }
         }
 
-        Err(errors::beatmap::BeatmapError::NotFoundInSet.into())
+        Err(errors::beatmap::Error::NotFoundInSet.into())
     }
 
 }
 
 impl beatmaps::TatakuBeatmap for TjaBeatmap {
     fn hash(&self) -> Md5Hash { self.hash }
-    fn playmode(&self, _incoming:String) -> String { "taiko".to_owned() }
+    fn playmode(&self, _incoming: String) -> String { "taiko".to_owned() }
 
     fn get_timing_points(&self) -> Vec<beatmaps::TimingPoint> {
         let mut timing_points = Vec::new();

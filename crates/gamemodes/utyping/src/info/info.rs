@@ -8,7 +8,7 @@ use engine::{
         BeatmapType,
     },
     gameplay::{
-        GameMode,
+        Gamemode,
         GamemodeInfo,
         GamemodeSettings,
         difficulty_value::*,
@@ -58,7 +58,7 @@ impl UTypingGameInfo {
         matches!(map, BeatmapType::UTyping)
     }
 
-    fn create_game(beatmap: &Beatmap, settings: &engine::Settings) -> tataku::Result<Box<dyn GameMode>> {
+    fn create_game(beatmap: &Beatmap, settings: &engine::Settings) -> tataku::Result<Box<dyn Gamemode>> {
         Ok(Box::new(UTypingGame::new(beatmap, false, settings)?))
     }
     fn create_diffcalc(map: &BeatmapMeta, settings: &engine::Settings) -> tataku::Result<Box<dyn DiffCalc>> {

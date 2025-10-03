@@ -92,7 +92,7 @@ impl SkinManager {
             };
 
             // try loading the bytes. if we cant, try the next source 
-            let Ok(buf) = tataku::Io::read_file(&path) else { continue };
+            let Ok(buf) = tataku::fs::read_file(&path) else { continue };
 
             // read the file bytes as an image
             match image::load_from_memory(&buf) {

@@ -35,7 +35,7 @@ impl TextInputElement {
             self.placeholder(),
             BuildableText::Variable {
                 variable: self.variable.clone()
-            }
+            }.into()
         )
         .secure(self.is_password)
         .on_input(self.on_input.inner.clone())

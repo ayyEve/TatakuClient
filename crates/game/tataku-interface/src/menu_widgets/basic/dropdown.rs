@@ -37,10 +37,10 @@ pub struct Dropdown {
 }
 impl Dropdown {
     pub fn new(
-        variants: impl Into<DropdownVariants>,
-        value: impl Into<DropdownValue>,
-        on_change: impl Into<DropdownOnChange>,
-        placeholder: impl Into<DropdownPlaceholder>,
+        variants: DropdownVariants,
+        value: DropdownValue,
+        on_change: DropdownOnChange,
+        placeholder: DropdownPlaceholder,
     ) -> Self {
         let variants = variants.into();
         let value = value.into();
@@ -522,7 +522,7 @@ impl DropdownVariants {
         matches!(self, Self::Variable(_))
     }
     
-    fn build(&mut self, values: &dyn Reflect) -> tataku::TatakuResult<()> {
+    fn build(&mut self, values: &dyn Reflect) -> tataku::Result<()> {
         let Self::Variable(var) = self 
         else { return Ok(()) };
 

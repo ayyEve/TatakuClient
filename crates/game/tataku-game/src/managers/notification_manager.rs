@@ -37,7 +37,7 @@ pub struct NotificationManager {
 impl NotificationManager {
     pub fn update(
         &mut self, 
-        font_contexts: &mut ui::widget::TextLayoutContexts
+        font_contexts: &mut ui::widget::TextLayoutContexts,
     ) {
         self.notifications.retain_mut(|n| {
             if n.text_layout.is_none() {
@@ -157,7 +157,7 @@ impl ProcessedNotif {
     /// returns if the time has not expired
     fn check_time(&self) -> bool {
         if self.remove { return false }
-        self.time.elapsed().as_secs_f32() * 1000.0 < self.notification.duration
+        self.time.as_millis() < self.notification.duration
     }
 
     fn draw(

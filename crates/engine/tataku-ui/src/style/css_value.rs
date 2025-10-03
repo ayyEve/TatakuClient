@@ -7,6 +7,7 @@ pub enum CssValue<T> {
     Unset,
     Inherit,
     Value(T),
+    // Theme(ArcStr),
     Variable(ArcStr),
 }
 impl<T> CssValue<T> {
@@ -19,6 +20,7 @@ impl<T> CssValue<T> {
             "unset" => Self::Unset,
             "inherit" => Self::Inherit,
             
+            // variable
             other if other.starts_with("var(") => {
                 let var = other
                     .trim_start_matches("var(")
@@ -26,6 +28,15 @@ impl<T> CssValue<T> {
                 Self::Variable(var.to_owned().into())
             }
 
+            // theme
+            // other if other.starts_with("theme(") => {
+            //     let var = other
+            //         .trim_start_matches("theme(")
+            //         .trim_end_matches(|c| [' ', ',', ';', ')'].contains(&c));
+            //     Self::Theme(var.to_owned().into())
+            // }
+
+            // value
             other => value_parser(other)
                 .map(Self::Value)
                 .unwrap_or(default),
@@ -74,17 +85,22 @@ impl<T: std::str::FromStr> CssValue<T> {
 impl<T:Reflect + std::fmt::Debug> CssValue<T> {
     pub fn resolve<'a: 'b, 'b>(
         &'b self, 
-        values: &'a dyn Reflect
+        values: &'a dyn Reflect,
+        // theme: &'a Theme,
     ) -> Option<MaybeOwned<'b, T>> {
         match self {
             Self::Value(v) => Some(MaybeOwned::Borrowed(v)),
             Self::Variable(path) => values.reflect_get(path).ok(),
+            // Self::Theme(path) => theme.resolve(path).ok(),
             _ => None
         }
     }
 }
 impl<T:Reflect + std::fmt::Debug + Clone> CssValue<T> {
-    pub fn resolve_cloned(&self, values: &dyn Reflect) -> Option<T> {
+    pub fn resolve_cloned(
+        &self, 
+        values: &dyn Reflect,
+    ) -> Option<T> {
         match self {
             Self::Value(v) => Some(v.clone()),
             Self::Variable(path) => {
@@ -98,7 +114,10 @@ impl<T:Reflect + std::fmt::Debug + Clone> CssValue<T> {
     }
 }
 impl<T:Reflect + std::fmt::Debug + Copy> CssValue<T> {
-    pub fn resolve_copied(&self, values: &dyn Reflect) -> Option<T> {
+    pub fn resolve_copied(
+        &self, 
+        values: &dyn Reflect,
+    ) -> Option<T> {
         match self {
             Self::Value(v) => Some(*v),
             Self::Variable(path) => {

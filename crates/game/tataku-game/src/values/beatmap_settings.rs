@@ -16,13 +16,13 @@ pub struct BeatmapSettings {
     #[reflect(rename="buildable")]
     provider: BuildableSettingsProvider,
 
-    beatmap: BeatmapPreferences,
-    playmode: BeatmapPlaymodePreferences,
+    beatmap: engine::data::BeatmapPreferences,
+    playmode: engine::data::BeatmapPlaymodePreferences,
 }
 impl BeatmapSettings {
     pub fn new(
-        beatmap: BeatmapPreferences, 
-        playmode: BeatmapPlaymodePreferences,
+        beatmap: engine::data::BeatmapPreferences, 
+        playmode: engine::data::BeatmapPlaymodePreferences,
         values: &mut dyn Reflect,
         prefix: impl Into<String>,
     ) -> Self {

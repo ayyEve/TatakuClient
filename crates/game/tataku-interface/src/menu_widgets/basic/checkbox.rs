@@ -31,11 +31,9 @@ pub struct Checkbox {
     node_id: NodeId,
 }
 impl Checkbox {
-    pub fn new(
-        value: impl Into<CheckboxValue>,
-    ) -> Self {
+    pub fn new(value: CheckboxValue) -> Self {
         Self {
-            value: value.into(),
+            value,
             on_toggle: None,
 
             active: false,

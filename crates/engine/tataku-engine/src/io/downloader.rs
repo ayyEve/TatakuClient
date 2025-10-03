@@ -57,7 +57,7 @@ impl Downloader {
     async fn perform_download(
         options: &DownloadOptions, 
         progress: &Arc<RwLock<DownloadProgress>>
-    ) -> tataku::TatakuResult<()> {
+    ) -> tataku::Result<()> {
         let params = UrlParams::parse(&options.url).unwrap();
         debug!("Got params: {params:?}");
 
@@ -255,13 +255,13 @@ enum TcpConnection {
     NonSsl(tokio::net::TcpStream)
 }
 impl TcpConnection {
-    async fn read(&mut self, buf: &mut [u8]) -> tataku::TatakuResult<usize> {
+    async fn read(&mut self, buf: &mut [u8]) -> tataku::Result<usize> {
         match self {
             Self::Ssl(stream) => Ok(stream.read(buf).await?),
             Self::NonSsl(stream) => Ok(stream.read(buf).await?),
         }
     }
-    async fn write(&mut self, buf: &[u8]) -> tataku::TatakuResult<()> {
+    async fn write(&mut self, buf: &[u8]) -> tataku::Result<()> {
         match self {
             Self::Ssl(stream) => stream.write_all(buf).await?,
             Self::NonSsl(stream) => stream.write_all(buf).await?,
@@ -316,7 +316,7 @@ impl std::fmt::Debug for Downloadable {
 
 
 #[tokio::test]
-async fn test() -> tataku::TatakuResult<()> {
+async fn test() -> tataku::Result<()> {
     let file = "eveflatshading.png1";
     let url = format!("https://cdn.ayyeve.dev/{file}");
     println!("downloading {file} from url {url}");

@@ -9,7 +9,7 @@ pub trait TatakuIntegration: Send + Sync {
         &mut self, 
         #[cfg(feature="graphics")]
         _window_handle: raw_window_handle::WindowHandle<'_>,
-    ) -> tataku::TatakuResult<()> { Ok(()) }
+    ) -> tataku::Result<()> { Ok(()) }
 
     /// handle if the integration should be enabled or disabled
     /// 
@@ -19,7 +19,7 @@ pub trait TatakuIntegration: Send + Sync {
     fn check_enabled(
         &mut self, 
         settings: &engine::Settings
-    ) -> tataku::TatakuResult<()>;
+    ) -> tataku::Result<()>;
 
     /// handle a tataku event 
     fn handle_event(
@@ -41,5 +41,5 @@ pub trait TatakuIntegration: Send + Sync {
 #[derive(Copy, Clone)]
 pub struct TatakuIntegrationBuilder {
     pub name: &'static str,
-    pub build: fn() -> tataku::TatakuResult<Box<dyn TatakuIntegration>>,
+    pub build: fn() -> tataku::Result<Box<dyn TatakuIntegration>>,
 }

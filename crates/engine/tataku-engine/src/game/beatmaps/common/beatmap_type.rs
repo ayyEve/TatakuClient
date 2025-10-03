@@ -3,6 +3,7 @@ use common::reflect::*;
 use common::MapGame;
 
 #[derive(Reflect)]
+#[derive(Serialize, Deserialize)]
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub enum BeatmapType {
     #[default] Unknown,

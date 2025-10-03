@@ -10,9 +10,7 @@ use tataku::{
 };
 use engine::{
     actions,
-    gameplay::{
-        widgets::*,
-    }
+    gameplay::widgets::*
 };
 use ui::{
     tree::*,

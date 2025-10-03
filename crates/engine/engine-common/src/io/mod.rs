@@ -1,5 +1,5 @@
-mod io;
+pub mod fs;
 mod crypto;
 
-pub use io::*;
+pub use fs::*;
 pub use crypto::*;

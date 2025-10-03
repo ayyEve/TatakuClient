@@ -22,9 +22,9 @@ pub fn load_osu_skins(path: impl AsRef<Path>) {
     }
 }
 
-pub fn load_osu_settings(path: impl AsRef<Path>, settings: &mut Settings) -> tataku::TatakuResult<()> {
+pub fn load_osu_settings(path: impl AsRef<Path>, settings: &mut Settings) -> tataku::Result<()> {
     let path = path.as_ref();
-    let data = tataku::Io::read_lines_resolved(path)?
+    let data = tataku::fs::read_lines_resolved(path)?
         .flat_map(|i| {
             let mut s = i.split("=");
             s

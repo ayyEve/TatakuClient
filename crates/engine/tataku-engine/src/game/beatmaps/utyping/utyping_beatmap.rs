@@ -6,6 +6,8 @@
 use crate::*;
 use common::Md5Hash;
 
+pub type Beatmap = UTypingBeatmap;
+
 #[derive(Clone, Default, Debug)]
 pub struct UTypingBeatmap {
     // paths etc
@@ -34,23 +36,23 @@ pub struct UTypingBeatmap {
     map_duration: f32,
 }
 impl UTypingBeatmap {
-    pub fn load<P:AsRef<Path>>(path: P) -> tataku::TatakuResult<Self> {
+    pub fn load(path: impl AsRef<Path>) -> tataku::Result<Self> {
         if let Some(path) = path.as_ref().file_name()
             && path.to_str() != Some("info.txt") 
         {
-            return Err(errors::beatmap::BeatmapError::InvalidFile.into());
+            return Err(errors::beatmap::Error::InvalidFile.into());
         }
 
         let empty_text: ArcStr = String::new().into();
 
         let parent_folder = path.as_ref().parent().unwrap().to_string_lossy().to_string();
 
-        let lines = encoding_rs::SHIFT_JIS.decode(tataku::Io::read_file(path.as_ref())?.as_slice()).0.to_string().replace("\r","");
+        let lines = encoding_rs::SHIFT_JIS.decode(tataku::fs::read_file(path.as_ref())?.as_slice()).0.to_string().replace("\r","");
         let mut lines = lines.split("\n");
 
         macro_rules! next {
             ($lines:expr) => {
-                $lines.next().ok_or(errors::beatmap::BeatmapError::InvalidFile)?.to_owned()
+                $lines.next().ok_or(errors::beatmap::Error::InvalidFile)?.to_owned()
             }
         }
 
@@ -64,8 +66,8 @@ impl UTypingBeatmap {
 
         let data_filename = next!(lines); 
         let data_filepath = Path::new(&parent_folder).join(data_filename);
-        let map_data = encoding_rs::SHIFT_JIS.decode(tataku::Io::read_file(&data_filepath)?.as_slice()).0.to_string().replace("\r","");
-        if map_data.starts_with('@') { return Err(errors::beatmap::BeatmapError::InvalidFile.into())}
+        let map_data = encoding_rs::SHIFT_JIS.decode(tataku::fs::read_file(&data_filepath)?.as_slice()).0.to_string().replace("\r","");
+        if map_data.starts_with('@') { return Err(errors::beatmap::Error::InvalidFile.into())}
 
         let map_data_lines = map_data.split("\n");
         for line in map_data_lines {
@@ -170,15 +172,19 @@ impl UTypingBeatmap {
         // finish up processing
 
         // get the map's beat length
-        let list = map.events.iter().filter(|e| e.event_type == UTypingEventType::BeatlineBar).collect::<Vec<&UTypingEvent>>();
+        let list = map.events
+            .iter()
+            .filter(|e| e.event_type == UTypingEventType::BeatlineBar)
+            .collect::<Vec<&UTypingEvent>>();
+        
         if list.len() < 2 {
             warn!("Map does not have enough bar lines?");
-            return Err(errors::beatmap::BeatmapError::InvalidFile.into());
+            return Err(errors::beatmap::Error::InvalidFile.into());
         }
         map.beat_length = list[1].time - list[0].time;
 
         // get the file hash
-        map.hash = tataku::Io::get_file_hash(&data_filepath)?;
+        map.hash = tataku::fs::get_file_hash(&data_filepath)?;
 
         // get the start time
         map.start_time = map.notes[0].time;
@@ -195,7 +201,7 @@ impl UTypingBeatmap {
 }
 impl beatmaps::TatakuBeatmap for UTypingBeatmap {
     fn hash(&self) -> Md5Hash { self.hash }
-    fn playmode(&self, _incoming: String) -> String {"utyping".to_owned()}
+    fn playmode(&self, _incoming: String) -> String { "utyping".to_owned() }
 
     fn get_beatmap_meta(&self) -> Arc<BeatmapMeta> {
         let bpm = 60_000.0 / self.beat_length;

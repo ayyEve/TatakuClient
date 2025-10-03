@@ -24,7 +24,7 @@ use engine::{
     gameplay,
     gameplay::{
         mods::*,
-        GameMode,
+        Gamemode,
         judgments::*,
         GameplayEvent,
         TimingPointHelper,
@@ -374,7 +374,7 @@ impl OsuGame {
         }
     }
 }
-impl GameMode for OsuGame {
+impl Gamemode for OsuGame {
     fn new(
         map: &Beatmap, 
         _diff_calc_only: bool,
@@ -945,7 +945,7 @@ impl GameMode for OsuGame {
         // disable the cursor particle emitter if this is a menu game
         // the emitter nukes perf so its best to keep it off unless needed
         #[cfg(feature="graphics")] 
-        if state.gameplay_mode.is_preview() && self.cursor.emitter_enabled {
+        if state.gameplay_type.is_preview() && self.cursor.emitter_enabled {
             self.cursor.emitter_enabled = false;
         }
         #[cfg(feature="graphics")] 
@@ -1116,7 +1116,7 @@ impl GameMode for OsuGame {
         use engine::graphics;
         let window_size = state.window_size;
         // draw the playfield
-        if !state.gameplay_mode.is_preview() {
+        if !state.gameplay_type.is_preview() {
             let alpha = self.game_settings.playfield_alpha;
             let mut playfield = graphics::Rectangle::new_bounds(
                 self.scaling_helper.playfield_with_padding, 
@@ -1227,6 +1227,12 @@ impl GameMode for OsuGame {
         self.cursor.draw_above(list);
     }
 
+
+    fn all_notes(&self) -> Vec<&dyn engine::gameplay::HitObject> {
+        self.notes.iter()
+            .map(|i| &**i as &dyn engine::gameplay::HitObject)
+            .collect::<Vec<&dyn engine::gameplay::HitObject>>()
+    }
     
     fn reset(&mut self, _beatmap: &Beatmap) {
         // let ar = scale_by_mods(self.metadata.ar, 0.5, 1.4, &self.mods).clamp(1.0, 11.0);

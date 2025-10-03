@@ -14,7 +14,6 @@ use tataku::{
 
 use engine::{
     actions,
-    gameplay,
     Notification,
     TatakuIntegrationEvent,
     gameplay::gameplay_manager::GameplayManagerTrait,
@@ -232,7 +231,7 @@ impl Game {
                     SongAction::Restart => audio.play(true),
                     SongAction::Pause => audio.pause(),
                     SongAction::Stop => audio.stop(),
-                    SongAction::Toggle if audio.is_playing() => audio.pause(),
+                    SongAction::Toggle if matches!(audio.get_state(), tataku_audio::AudioState::Playing) => audio.pause(),
                     SongAction::Toggle => audio.play(false),
                     SongAction::SeekBy(seek) 
                         => audio.set_position(audio.get_position() + seek),
@@ -259,6 +258,15 @@ impl Game {
             ModAction::SetSpeed(speed) => mods.set_speed(speed),
             ModAction::AddSpeed(speed) => mods.set_speed(mods.get_speed() + speed),
             ModAction::SetMods(new_mods) => mods.mods = new_mods,
+
+            ModAction::PushMods => {
+                self.mods_queue.push(mods.clone());
+            }
+            ModAction::PopMods => {
+                if let Some(new_mods) = self.mods_queue.pop() {
+                    *mods = new_mods;
+                }
+            }
         }
         self.values.global.update_mods();
 
@@ -271,10 +279,9 @@ impl Game {
         #[cfg(feature="graphics")] 
         for (m, i) in self.gameplay_managers.values_mut() {
             if i.mods.is_some() { continue }
-            m.handle_action(
-                actions::gameplay::GameplayAction::ApplyMods(self.values.global.mods.clone()), 
-                &self.values.settings
-            );
+            m.add_action(actions::gameplay::GameplayAction::ApplyMods(
+                self.values.global.mods.clone()
+            ));
         }
 
         // update the beatmap groupings to update the diffs
@@ -309,14 +316,12 @@ impl Game {
                     &map, 
                     mods.clone(),
                     &self.values.settings,
+                    &*self.database,
                 ) {
                     Ok(mut manager) => {
-                        let start_time = manager.start_time as u64;
+                        let start_time = manager.start_time() as u64;
 
-                        manager.handle_action(
-                            actions::gameplay::GameplayAction::ApplyMods(mods), 
-                            &self.settings
-                        );
+                        manager.add_action(actions::gameplay::GameplayAction::ApplyMods(mods));
 
                         let multiplayer = self.multiplayer_manager
                             .as_ref()
@@ -409,7 +414,10 @@ impl Game {
                         options.restart_song,
                         options.use_preview_point,
                     );
-                    self.set_current_beatmap(hash, &config);
+                    self.set_current_beatmap(
+                        hash, 
+                        &config,
+                    );
 
                     return;
                 }
@@ -452,7 +460,10 @@ impl Game {
                     true,
                     use_preview
                 );
-                self.set_current_beatmap(hash, &config);
+                self.set_current_beatmap(
+                    hash, 
+                    &config,
+                );
             }
             BeatmapAction::Remove => {
                 self.remove_current_beatmap();
@@ -494,7 +505,9 @@ impl Game {
                     false
                 );
 
-                self.next_beatmap(&config);
+                self.next_beatmap(
+                    &config,
+                );
             }
             BeatmapAction::Previous(if_none) => {
                 let mut config = self.create_select_beatmap_config(
@@ -502,7 +515,9 @@ impl Game {
                     false
                 );
 
-                if self.previous_beatmap(&config) { return }
+                if self.previous_beatmap(
+                    &config,
+                ) { return }
 
                 // no previous map availble, handle accordingly
                 match if_none {
@@ -515,7 +530,10 @@ impl Game {
                             .random_beatmap() 
                         else { return };
 
-                        self.set_current_beatmap(hash, &config);
+                        self.set_current_beatmap(
+                            hash, 
+                            &config,
+                        );
                     }
                     MapActionIfNone::SetNone 
                         => self.remove_current_beatmap(),
@@ -534,7 +552,10 @@ impl Game {
                 map, 
                 add_to_db 
             } => {
-                self.beatmap_manager.add_beatmap(&map, add_to_db);
+                self.values.beatmap_manager.add_beatmap(
+                    &map, 
+                    add_to_db, 
+                );
 
                 if self.beatmap_manager.initialized {
                     self.values.values.beatmap_manager.refresh_maps(
@@ -688,6 +709,7 @@ impl Game {
                     &beatmap, 
                     mods, 
                     &self.values.settings,
+                    &*self.database,
                 ) {
                     Ok(mut manager) => {
                         manager.set_mode(actions::game::GameplayTypeInfo::Replay(score).into());
@@ -743,19 +765,25 @@ impl Game {
                         .copied()
                         .unwrap_or_default();
 
-                    self.set_current_beatmap(
-                        score.beatmap_hash, 
-                        &SelectBeatmapConfig::new(
-                            gameplay::mods::ModManager::new(
-                                score.mods.iter(),
-                                score.speed, 
-                                &info
+                    // update beatmap and mods
+                    {
+                        self.actions.push(ModAction::PushMods.into());
+
+                        self.set_current_beatmap(
+                            score.beatmap_hash, 
+                            &SelectBeatmapConfig::new(
+                                score.playmode.clone().into(),
+                                false,
+                                true
                             ),
-                            score.playmode.clone().into(),
-                            false,
-                            true
-                        ),
-                    );
+                        );
+                        let mods = score.mods
+                            .iter()
+                            .map(|m| m.name.clone())
+                            .collect();
+                        self.actions.push(ModAction::SetMods(mods).into());
+                        self.actions.push(ModAction::SetSpeed(score.speed.as_f32()).into());
+                    }
 
                     self.values.values.score = ReflectScore::new(&score, &info);
 
@@ -810,7 +838,7 @@ impl Game {
             },
             #[cfg(feature="graphics")]
             GameAction::CopyToClipboard(text) => { 
-                let _ = self.window_proxy.send_event(
+                self.window.send_event(
                     actions::window::WindowAction::CopyToClipboard(text)
                 ); 
             }
@@ -854,6 +882,7 @@ impl Game {
                             *map_hash, 
                             mods, 
                             &self.values.settings,
+                            &*self.database,
                         )
                     }
                     actions::game::NewManager {
@@ -887,14 +916,12 @@ impl Game {
                             &meta, 
                             mods,
                             &self.values.settings,
+                            &*self.database,
                         )
                     }
                 } {
                     Ok(mut manager) => {
-                        manager.reload_skin(
-                            &mut self.skin_manager, 
-                            &self.values.settings
-                        );
+                        manager.reload_skin(&mut self.skin_manager);
                         manager.init_ui(&mut self.text_layout_contexts);
 
                         if let Some(mode) = config.gameplay_mode.clone() {
@@ -904,10 +931,7 @@ impl Game {
                         manager.window_size_changed(self.values.game.window_size);
                         
                         if let Some(bounds) = config.area {
-                            manager.handle_action(
-                                actions::gameplay::GameplayAction::FitToArea(bounds), 
-                                &self.settings
-                            );
+                            manager.add_action(actions::gameplay::GameplayAction::FitToArea(bounds));
                         }
                         manager.reset();
 
@@ -951,7 +975,7 @@ impl Game {
                 if let &actions::gameplay::GameplayAction::RequestDifficulty = &action {
                     gameplay.update_difficulty(&mut self.difficulty_manager);
                 } else {
-                    gameplay.handle_action(action, &self.values.settings);
+                    gameplay.add_action(action);
                 }
             }
 
@@ -1087,6 +1111,7 @@ impl Game {
                 &packet, 
                 ig_manager,
                 &mut self.actions,
+                &*self.database
             )?;
 
             if let Some(manager) = manager_maybe {
@@ -1281,4 +1306,47 @@ impl Game {
         Ok(())
     }
 
+
+    pub(super) fn handle_database_action(
+        &mut self, 
+        action: actions::database::Action
+    ) {
+        use engine::actions::database::Action;
+        let db = &mut self.database;
+
+        match action {
+            Action::SaveBeatmapPlaymodePreferences { 
+                hash, 
+                playmode,
+                prefs 
+            } => if let Err(e) = db.set_beatmap_playmode_preferences(hash, &playmode, &prefs) {
+                error!("Error saving beatmap playmode preferences: {e:?}");
+            },
+            Action::SaveBeatmapPreferences { 
+                hash, 
+                prefs 
+            } => if let Err(e) = db.set_beatmap_preferences(hash, &prefs) {
+                error!("Error saving beatmap preferences: {e:?}");
+            }
+
+
+            Action::AddBeatmaps(
+                maps
+            ) => if let Err(e) = db.add_beatmaps(&maps) {
+                error!("Error adding beatmaps: {e:?}");
+            }
+
+            Action::ClearAllBeatmaps => if let Err(e) = db.clear_all_beatmaps() {
+                error!("Error clearing beatmaps: {e:?}");
+            }
+
+            Action::IgnoreBeatmap(i) => if let Err(e) = db.add_ignored_beatmap(&i) {
+                error!("Error adding ignored beatmap: {e:?}");
+            }
+
+            Action::AddScore(score) => if let Err(e) = db.add_score(&score) {
+                error!("Error adding score: {e:?}");
+            }
+        }
+    }
 }

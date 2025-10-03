@@ -2,8 +2,6 @@ mod game;
 mod tasks;
 mod values;
 mod managers;
-mod database;
-
 
 pub mod prelude {
     pub(crate) use tataku_engine::exports::*;
@@ -20,5 +18,4 @@ pub mod prelude {
     pub use crate::tasks::*;
     pub use crate::values::*;
     pub use crate::managers::*;
-    pub use crate::database::*;
 }

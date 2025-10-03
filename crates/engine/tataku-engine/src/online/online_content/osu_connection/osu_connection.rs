@@ -10,7 +10,7 @@ pub struct OsuConnection {
     token: Token,
 }
 impl OsuConnection {
-    pub fn setup_failable(settings: &Settings) -> tataku::TatakuResult<Self> {
+    pub fn setup_failable(settings: &Settings) -> tataku::Result<Self> {
         let p = std::path::Path::new(REFRESH_TOKEN_FILE);
 
         let mut token = None;

@@ -10,7 +10,7 @@ use engine::gameplay::{
 };
 
 
-pub trait GameMode: Send + Sync {
+pub trait Gamemode: Send + Sync {
     fn new(
         beatmap: &beatmaps::Beatmap, 
         diff_calc_only: bool,
@@ -73,4 +73,8 @@ pub trait GameMode: Send + Sync {
 
     #[cfg(feature="gameplay")] 
     fn handle_input(&mut self, input: input::InputEvent) -> Option<ReplayAction>;
+
+
+    fn all_notes(&self) -> Vec<&dyn gameplay::HitObject>;
 }
+

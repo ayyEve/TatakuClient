@@ -23,7 +23,7 @@ use engine::{
     },
     gameplay,
     gameplay::{
-        GameMode,
+        Gamemode,
         HitObject,
         GameplayEvent,
         TimingPointHelper,
@@ -104,7 +104,7 @@ impl UTypingGame {
         self.timing_bars.iter_mut().for_each(|n| n.update_playfield(self.playfield.clone()));
     }
 }
-impl GameMode for UTypingGame {
+impl Gamemode for UTypingGame {
     fn new(beatmap: &Beatmap, _:bool, settings: &engine::Settings) -> tataku::Result<Self> {
         // let settings = Arc::new(settings.taiko_settings.clone());
         let settings = Arc::new(settings.gamemode_settings(GAME_INFO).unwrap_or_default());
@@ -327,6 +327,12 @@ impl GameMode for UTypingGame {
     }
 
 
+    fn all_notes(&self) -> Vec<&dyn engine::gameplay::HitObject> {
+        self.notes.iter()
+            .map(|i| i as &dyn engine::gameplay::HitObject)
+            .collect::<Vec<&dyn engine::gameplay::HitObject>>()
+    }
+        
     fn reset(&mut self, beatmap: &Beatmap) {
         #[cfg(feature="graphics")] 
         let timing_points = TimingPointHelper::new(beatmap.get_timing_points(), beatmap.slider_velocity());

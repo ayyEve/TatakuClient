@@ -24,7 +24,7 @@ impl<T: Reflect + Clone + PartialEq> ValueChangeHelper<T> {
         Ok(self.value.as_ref())
     }
 
-    pub fn try_get(&self) -> tataku::TatakuResult<&T> {
+    pub fn try_get(&self) -> tataku::Result<&T> {
         Ok(self.value.as_ref().ok_or(ReflectError::entry_not_exist(&self.key))?)
     }
 }

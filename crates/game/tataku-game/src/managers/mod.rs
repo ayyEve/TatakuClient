@@ -1,9 +1,9 @@
+mod beatmap;
 mod gameplay;
 mod song_manager;
 mod task_manager;
 mod audio_manager;
 mod score_manager;
-mod beatmap_manager;
 mod download_manager;
 mod difficulty_manager;
 mod online_content_manager;
@@ -20,21 +20,21 @@ mod online_content_manager;
 #[cfg(feature="gameplay")] mod multiplayer_manager;
 
 
+pub use beatmap::*;
 pub use gameplay::*;
 pub use song_manager::*;
 pub use audio_manager::*;
 pub use score_manager::*;
-pub use beatmap_manager::*;
 pub use download_manager::*;
 pub use difficulty_manager::*;
 pub(crate) use task_manager::*;
 pub(crate) use online_content_manager::*;
 
-#[cfg(feature="graphics")] pub use ui_manager::*;
-#[cfg(feature="graphics")] pub use skin_manager::*;
-#[cfg(feature="graphics")] pub use cursor_manager::*;
-#[cfg(feature="graphics")] pub use custom_menu_manager::*;
-#[cfg(feature="graphics")] pub use notification_manager::*;
+#[cfg(feature="graphics")] pub(crate) use ui_manager::*;
+#[cfg(feature="graphics")] pub(crate) use skin_manager::*;
+#[cfg(feature="graphics")] pub(crate) use custom_menu_manager::*;
+#[cfg(feature="graphics")] pub(crate) use notification_manager::*;
+#[cfg(feature="graphics")] pub(crate) use cursor_manager::*;
 #[cfg(feature="graphics")] pub(crate) use xml_test_manager::*;
 
 #[cfg(feature="gameplay")] pub use online_manager::*;

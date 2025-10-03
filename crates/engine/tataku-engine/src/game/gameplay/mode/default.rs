@@ -8,7 +8,7 @@ use engine::gameplay::{
 // needed for std::mem::take/swap
 #[derive(Default)]
 pub struct NoMode;
-impl gameplay::GameMode for NoMode {
+impl gameplay::Gamemode for NoMode {
     fn new(
         _: &beatmaps::Beatmap, 
         _: bool, 
@@ -39,4 +39,6 @@ impl gameplay::GameMode for NoMode {
 
     #[cfg(feature="gameplay")] 
     fn handle_input(&mut self, _input: input::InputEvent) -> Option<ReplayAction> { None }
+
+    fn all_notes(&self) -> Vec<&dyn gameplay::HitObject> { Vec::new() }
 }

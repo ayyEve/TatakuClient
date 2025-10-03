@@ -9,7 +9,7 @@ use engine::{
         BeatmapMeta,
     },
     gameplay::{
-        GameMode,
+        Gamemode,
         mods::ModManager,
     }
 };

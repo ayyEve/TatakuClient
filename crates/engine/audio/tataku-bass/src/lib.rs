@@ -6,33 +6,21 @@ use bass_rs::prelude::*;
 use tataku_engine_common::errors;
 use tataku_engine_common::prelude as tataku;
 
-
-lazy_static::lazy_static! {
-    // wave file bytes with ~1 sample
-    // TODO: shouldnt it be possible to make an empty stream directly from bass? should maybe add that to the lib
-    static ref EMPTY_STREAM:Arc<StreamChannelInstance> = Arc::new(StreamChannelInstance(StreamChannel::load_from_memory(vec![0x52,0x49,0x46,0x46,0x28,0x00,0x00,0x00,0x57,0x41,0x56,0x45,0x66,0x6D,0x74,0x20,0x10,0x00,0x00,0x00,0x01,0x00,0x02,0x00,0x44,0xAC,0x00,0x00,0x88,0x58,0x01,0x00,0x02,0x00,0x08,0x00,0x64,0x61,0x74,0x61,0x04,0x00,0x00,0x00,0x80,0x80,0x80,0x80], 0).expect("error creating empty StreamChannel")));
-}
-
-
 pub struct BassAudio(bass_rs::Bass);
 impl BassAudio {
-    fn init() -> tataku::TatakuResult<Arc<dyn AudioApi>> {
+    fn init() -> tataku::Result<Arc<dyn AudioApi>> {
         check_bass()?;
         Ok(Arc::new(BassAudio(bass_rs::Bass::init_default().map_err(map_bass_err)?)))
     }
 }
 impl AudioApi for BassAudio {
-    fn load_sample_data(&self, data: Vec<u8>) -> tataku::TatakuResult<Arc<dyn AudioInstance>> {
+    fn load_sample_data(&self, data: Vec<u8>) -> tataku::Result<Arc<dyn AudioInstance>> {
         let channel = SampleChannel::load_from_memory(data, 0, 64).map_err(map_bass_err)?;
         Ok(Arc::new(SampleChannelInstance::new(channel)))
     }
-    fn load_stream_data(&self, data: Vec<u8>) -> tataku::TatakuResult<Arc<dyn AudioInstance>> {
+    fn load_stream_data(&self, data: Vec<u8>) -> tataku::Result<Arc<dyn AudioInstance>> {
         let channel = StreamChannel::load_from_memory(data, 0).map_err(map_bass_err)?;
         Ok(Arc::new(StreamChannelInstance(channel)))
-    }
-
-    fn empty_audio(&self) -> Arc<dyn AudioInstance> {
-        EMPTY_STREAM.clone()
     }
 
     fn amplitude_multiplier(&self) -> f32 {
@@ -103,18 +91,18 @@ impl AudioInstance for SampleChannelInstance {
         let _ = self.data().channel.stop();
     }
 
-    fn is_playing(&self) -> bool {
-        self.data().channel.get_playback_state() == Ok(PlaybackState::Playing)
-    }
+    fn get_state(&self) -> AudioState {
+        let Ok(state) = self.data().channel.get_playback_state() 
+        else { return AudioState::Unknown };
+        match state {
+            PlaybackState::Playing => AudioState::Playing,
+            
+            PlaybackState::Paused
+            | PlaybackState::PausedDevice => AudioState::Paused,
 
-    fn is_paused(&self) -> bool {
-        let state = self.data().channel.get_playback_state();
-        state == Ok(PlaybackState::Paused) || state == Ok(PlaybackState::PausedDevice)
-    }
-
-    fn is_stopped(&self) -> bool {
-        let state = self.data().channel.get_playback_state();
-        state == Ok(PlaybackState::Stopped) || state == Ok(PlaybackState::Stalled)
+            PlaybackState::Stopped 
+            | PlaybackState::Stalled => AudioState::Stopped,
+        }
     }
 
     fn get_position(&self) -> f32 {
@@ -170,18 +158,18 @@ impl AudioInstance for StreamChannelInstance {
         let _ = self.0.stop();
     }
 
-    fn is_playing(&self) -> bool {
-        self.0.get_playback_state() == Ok(PlaybackState::Playing)
-    }
+    fn get_state(&self) -> AudioState {
+        let Ok(state) = self.0.get_playback_state() 
+        else { return AudioState::Unknown };
+        match state {
+            PlaybackState::Playing => AudioState::Playing,
+            
+            PlaybackState::Paused
+            | PlaybackState::PausedDevice => AudioState::Paused,
 
-    fn is_paused(&self) -> bool {
-        let state = self.0.get_playback_state();
-        state == Ok(PlaybackState::Paused) || state == Ok(PlaybackState::PausedDevice)
-    }
-
-    fn is_stopped(&self) -> bool {
-        let state = self.0.get_playback_state();
-        state == Ok(PlaybackState::Stopped) || state == Ok(PlaybackState::Stalled)
+            PlaybackState::Stopped 
+            | PlaybackState::Stalled => AudioState::Stopped,
+        }
     }
 
     fn get_position(&self) -> f32 {
@@ -229,9 +217,9 @@ fn map_bass_err(e: BassError) -> errors::audio::AudioError {
 
 /// check for the bass lib
 /// if not found, will be downloaded
-fn check_bass() -> tataku::TatakuResult<()> {
+fn check_bass() -> tataku::Result<()> {
     #[cfg(target_os = "linux")] 
-    use tataku_engine_common::prelude::Io;
+    use tataku_engine_common::prelude::fs;
 
     #[cfg(target_os = "windows")] let filename = "bass.dll";
     #[cfg(target_os = "linux")] let filename = "libbass.so";
@@ -247,7 +235,7 @@ fn check_bass() -> tataku::TatakuResult<()> {
 
         // if linux, check for lib in /usr/lib
         #[cfg(target_os = "linux")]
-        if Io::exists(format!("/usr/lib/{filename}")) {
+        if fs::exists(format!("/usr/lib/{filename}")) {
             match std::fs::copy(filename, &library_path) {
                 Ok(_) => {
                     info!("Found in /usr/lib");

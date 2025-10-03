@@ -39,18 +39,18 @@ pub struct Slider {
 }
 impl Slider {
     pub fn new(
-        min: impl Into<SliderValue>,
-        max: impl Into<SliderValue>,
-        value: impl Into<SliderValue>,
-        on_change: impl Into<InputAction<f32>>,
+        min: SliderValue,
+        max: SliderValue,
+        value: SliderValue,
+        on_change: InputAction<f32>,
     ) -> Self {
         Self {
-            min: min.into(),
-            max: max.into(),
+            min,
+            max,
             // range,
-            value: value.into(),
+            value,
             step: None,
-            on_change: on_change.into(),
+            on_change,
 
             hovered: false,
             pressed: false,
@@ -295,7 +295,7 @@ impl SliderValue {
         }
     }
 
-    fn update(&mut self, values: &dyn Reflect) -> tataku::TatakuResult<()> {
+    fn update(&mut self, values: &dyn Reflect) -> tataku::Result<()> {
         match self {
             Self::Static(_) | Self::Error => {},
             Self::Variable {

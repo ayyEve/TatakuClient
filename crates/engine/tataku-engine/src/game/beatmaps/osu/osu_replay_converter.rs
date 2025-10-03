@@ -8,13 +8,13 @@ use std::convert::TryInto;
 pub fn convert_osu_replay(
     filepath: impl AsRef<Path>,
     infos: &gameplay::GamemodeInfos,
-) -> tataku::TatakuResult<Score> {
+) -> tataku::Result<Score> {
     let osu_replay = read_osu_replay(filepath)?;
     Ok(osu_replay.get_replay(infos))
 }
 
-fn read_osu_replay(file: impl AsRef<Path>) -> tataku::TatakuResult<OsuReplay> {
-    let file = tataku::Io::read_file(file)?;
+fn read_osu_replay(file: impl AsRef<Path>) -> tataku::Result<OsuReplay> {
+    let file = tataku::fs::read_file(file)?;
     let file = file.as_slice();
     let mut offset = 0;
 
@@ -117,7 +117,7 @@ fn read_osu_replay(file: impl AsRef<Path>) -> tataku::TatakuResult<OsuReplay> {
 }
 
 
-fn parse_lzma_stream(lzma: &mut impl std::io::BufRead) -> tataku::TatakuResult<Vec<OsuReplayFrame>>{
+fn parse_lzma_stream(lzma: &mut impl std::io::BufRead) -> tataku::Result<Vec<OsuReplayFrame>>{
     let mut replay_data_decompressed = Vec::new();
     if let Err(e) = lzma_rs::lzma_decompress(lzma, &mut replay_data_decompressed) {
         return Err(tataku::Error::String(format!("Error decompressing replay data: {e}")))
@@ -175,7 +175,7 @@ macro_rules! read_num {
     }}
 }
 
-fn read_byte(bytes: &[u8], offset:&mut usize) -> tataku::TatakuResult<u8> {
+fn read_byte(bytes: &[u8], offset:&mut usize) -> tataku::Result<u8> {
     if *offset >= bytes.len() { return Err("buffer overflow".into()); }
 
     let b = bytes[*offset];
@@ -183,17 +183,17 @@ fn read_byte(bytes: &[u8], offset:&mut usize) -> tataku::TatakuResult<u8> {
     Ok(b)
 }
 
-fn read_short(bytes: &[u8], offset:&mut usize) -> tataku::TatakuResult<u16> {
+fn read_short(bytes: &[u8], offset:&mut usize) -> tataku::Result<u16> {
     read_num!(bytes, offset, u16)
 }
-fn read_int(bytes: &[u8], offset:&mut usize) -> tataku::TatakuResult<u32> {
+fn read_int(bytes: &[u8], offset:&mut usize) -> tataku::Result<u32> {
     read_num!(bytes, offset, u32)
 }
-fn read_long(bytes: &[u8], offset:&mut usize) -> tataku::TatakuResult<u64> {
+fn read_long(bytes: &[u8], offset:&mut usize) -> tataku::Result<u64> {
     read_num!(bytes, offset, u64)
 }
 
-fn read_string(bytes: &[u8], offset:&mut usize) -> tataku::TatakuResult<String> {
+fn read_string(bytes: &[u8], offset:&mut usize) -> tataku::Result<String> {
     let b = bytes[*offset];
     *offset += 1;
 
@@ -315,7 +315,7 @@ impl OsuReplay {
     pub fn replay_from_score_and_lzma(
         score: &Score, 
         lzma: &mut impl std::io::BufRead
-    ) -> tataku::TatakuResult<Score> {
+    ) -> tataku::Result<Score> {
         let frames = parse_lzma_stream(lzma)?;
         let replay = Self::parse_frames(&score.playmode, &frames);
         // replay.score_data = Some(score.clone());

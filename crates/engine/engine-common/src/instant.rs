@@ -15,7 +15,7 @@ impl Instant {
         Self(get_time())
     }
 
-    pub fn elapsed(&self) -> Duration {
+    fn elapsed(&self) -> Duration {
         Duration::from_nanos(get_time() - self.0)
     }
     
@@ -28,6 +28,11 @@ impl Instant {
         self.elapsed().as_secs_f32() * 1000.0
     }
 
+    pub fn reset(&mut self) {
+        *self = Self::now();
+    }
+    
+    /// time elapsed in milliseconds
     pub fn elapsed_and_reset(&mut self) -> f32 {
         let now = Self::now();
         let dur = now.duration_since(*self).as_secs_f32() * 1000.0;

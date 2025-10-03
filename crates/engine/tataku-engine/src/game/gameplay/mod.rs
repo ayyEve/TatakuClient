@@ -11,7 +11,10 @@ pub mod gameplay_manager;
 pub use self::mode::*;
 pub use self::helpers::*;
 
-pub use game_mode::GameMode; // gameplay::GameMode
+
+pub use mods::ModManager; // gameplay::ModManager
+
+pub use game_mode::Gamemode; // gameplay::GameMode
 pub use info::{
     GamemodeInfo, // gameplay::GamemodeInfo
     GamemodeInfos, // gameplay::GamemodeInfos
@@ -21,6 +24,10 @@ pub use info::{
 pub use action::GamemodeAction as Action; // gameplay::Action
 pub use hitsound::Hitsound; // gameplay::Hitsound
 pub use hit_object::HitObject; // gameplay::HitObject
+
+pub use gameplay_manager::{
+    HitTiming, // gameplay::HitTiming
+};
 
 #[cfg(feature="dynamic_gamemodes")] 
 pub use gamemode_library::GamemodeLibrary;

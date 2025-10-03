@@ -1682,147 +1682,10 @@ impl graphics::RenderingEngine for WgpuEngine<'_> {
     }
 
 
-    fn create_render_target(
-        &mut self,
-        [width, height]: [u32; 2],
-        clear_color: tataku::Color,
-        do_render: graphics::RenderTargetDraw,
-    ) -> Option<graphics::RenderTarget> {
-        // find space in the render target atlas
-        let atlased = self.atlas.try_insert(width, height)?;
-
-        // create a projection and render target
-        let projection = Self::create_projection(
-            tataku::Vector2::new(width as f32, height as f32)
-        );
-
-        let target = graphics::RenderTarget {
-            width,
-            height,
-            projection,
-            clear_color,
-            image: graphics::Image::new(
-                tataku::Vector2::ZERO,
-                Arc::new(atlased),
-                tataku::Vector2::ONE
-            ),
-        };
-
-        // queue rendering the data to it
-        self.update_render_target(target.clone(), do_render);
-
-        // return the new render target
-        Some(target)
-    }
-    fn update_render_target(
-        &mut self,
-        target: graphics::RenderTarget,
-        do_render: graphics::RenderTargetDraw
-    ) {
-        if !tataku::Bounds::new(tataku::Vector2::ZERO, target.image.size()).has_area() {
-            return
-        }
-
-        // get the texture this target was written to
-        let textures = self.atlas_texture
-            .textures
-            .clone();
-
-        let Some((atlas_tex, _)) = textures.get(
-            target.image.tex.layer as usize
-        )
-        else { return };
-
-        // write the projection matrix
-        self.queue.write_buffer(
-            &self.projection_matrix_buffer,
-            0,
-            bytemuck::cast_slice(&target.projection.to_raw())
-        );
-        self.queue.submit([]);
-
-        let width = target.width;
-        let height = target.height;
-
-        // create a temporary texture to render this target to
-        let texture = self.device.create_texture(
-            &wgpu::TextureDescriptor {
-                size: wgpu::Extent3d {
-                    width,
-                    height,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: crate::FORMAT,
-                usage: wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::RENDER_ATTACHMENT,
-                label: Some("render_target_temp_tex"),
-                view_formats: &[ 
-                    crate::FORMAT.add_srgb_suffix(),
-                    crate::FORMAT.remove_srgb_suffix(),
-                ],
-            }
-        );
-
-        // create renderable surface
-        let tex = WgpuTextureReference::new(&texture);
-        let renderable = RenderableSurface::new(
-            &tex,
-            target.clear_color,
-            tataku::Vector2::new(width as f32, height as f32),
-        );
-
-        // clear buffers
-        self.begin_render();
-
-        // fill buffers
-        do_render(self, tataku::Matrix::identity());
-
-        // finish up
-        self.end_render();
-
-        // perform render
-        if let Err(e) = self.render(&renderable) {
-            error!("Error rendering render target: {e:?}");
-        }
-
-
-        // copy render to atlas
-        let mut encoder = self.device.create_command_encoder(
-            &wgpu::CommandEncoderDescriptor {
-                label: Some("render_target copy encoder"),
-            }
-        );
-
-        let mut dest = atlas_tex.as_image_copy();
-        dest.origin.x = target.image.tex.x;
-        dest.origin.y = target.image.tex.y;
-
-        encoder.copy_texture_to_texture(
-            texture.as_image_copy(),
-            dest,
-            texture.size(),
-        );
-        self.queue.submit([encoder.finish()]);
-
-        // remove temp texture
-        self.queue.on_submitted_work_done(move || texture.destroy());
-
-        // reapply the window projection matrix
-        self.queue.write_buffer(
-            &self.projection_matrix_buffer,
-            0,
-            bytemuck::cast_slice(&self.projection_matrix.to_raw())
-        );
-
-    }
-
-
     fn load_texture_bytes(
         &mut self, 
         data: &[u8]
-    ) -> tataku::TatakuResult<tataku::TextureReference> {
+    ) -> tataku::Result<tataku::TextureReference> {
         let diffuse_image = image::load_from_memory(data)
             .map_err(|e| tataku::Error::String(e.to_string()))?;
 
@@ -1838,7 +1701,7 @@ impl graphics::RenderingEngine for WgpuEngine<'_> {
         &mut self,
         data: &[u8],
         [width, height]: [u32; 2]
-    ) -> tataku::TatakuResult<tataku::TextureReference> {
+    ) -> tataku::Result<tataku::TextureReference> {
         let Some(info) = self.atlas.try_insert(width, height)
         else { return Err(tataku::Error::String("no space in atlas".to_owned())); };
 
@@ -1970,7 +1833,7 @@ impl graphics::RenderingEngine for WgpuEngine<'_> {
         self.buffer_queues.insert(last_queue.pipeline_type(), last_queue);
     }
 
-    fn present(&mut self) -> tataku::TatakuResult<()> {
+    fn present(&mut self) -> tataku::Result<()> {
         self.render_current_surface()
             .map_err(|e| tataku::Error::String(e.to_string()))
     }
@@ -2433,6 +2296,130 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
         }
 
     }
+
+
+    fn create_render_target(
+        &mut self,
+        data: &mut graphics::RenderTargetData,
+        do_render: graphics::RenderTargetDraw,
+    ) {
+        let width = data.width;
+        let height = data.height;
+        // find space in the render target atlas
+        // FIXME: NO UNWRAP
+        let atlased = self.atlas.try_insert(width, height).expect("FIXME");
+
+        // create a projection and render target
+        let projection = Self::create_projection(
+            tataku::Vector2::new(width as f32, height as f32)
+        );
+
+        data.tex = Arc::new(atlased);
+        data.projection = projection;
+
+        // queue rendering the data to it
+        self.update_render_target(data, do_render);
+    }
+
+    fn update_render_target(
+        &mut self,
+        data: &tataku_graphics::RenderTargetData,
+        do_render: tataku_graphics::RenderTargetDraw,
+    ) {
+        if data.tex.is_empty() {
+            return
+        }
+
+        // get the texture this target was written to
+        let textures = self.atlas_texture
+            .textures
+            .clone();
+
+        let Some((atlas_tex, _)) = textures.get(data.tex.layer as usize)
+        else { return };
+
+        // write the projection matrix
+        self.queue.write_buffer(
+            &self.projection_matrix_buffer,
+            0,
+            bytemuck::cast_slice(&data.projection.to_raw())
+        );
+        self.queue.submit([]);
+
+        // create a temporary texture to render this target to
+        let texture = self.device.create_texture(
+            &wgpu::TextureDescriptor {
+                size: wgpu::Extent3d {
+                    width: data.width,
+                    height: data.height,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: crate::FORMAT,
+                usage: wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::RENDER_ATTACHMENT,
+                label: Some("render_target_temp_tex"),
+                view_formats: &[ 
+                    crate::FORMAT.add_srgb_suffix(),
+                    crate::FORMAT.remove_srgb_suffix(),
+                ],
+            }
+        );
+
+        // create renderable surface
+        let tex = WgpuTextureReference::new(&texture);
+        let renderable = RenderableSurface::new(
+            &tex,
+            data.clear_color,
+            tataku::Vector2::new(data.width as f32, data.height as f32),
+        );
+
+        // clear buffers
+        self.begin_render();
+
+        // fill buffers
+        do_render(self, tataku::Matrix::identity());
+
+        // finish up
+        self.end_render();
+
+        // perform render
+        if let Err(e) = self.render(&renderable) {
+            error!("Error rendering render target: {e:?}");
+        }
+
+
+        // copy render to atlas
+        let mut encoder = self.device.create_command_encoder(
+            &wgpu::CommandEncoderDescriptor {
+                label: Some("render_target copy encoder"),
+            }
+        );
+
+        let mut dest = atlas_tex.as_image_copy();
+        dest.origin.x = data.tex.x;
+        dest.origin.y = data.tex.y;
+
+        encoder.copy_texture_to_texture(
+            texture.as_image_copy(),
+            dest,
+            texture.size(),
+        );
+        self.queue.submit([encoder.finish()]);
+
+        // remove temp texture
+        self.queue.on_submitted_work_done(move || texture.destroy());
+
+        // reapply the window projection matrix
+        self.queue.write_buffer(
+            &self.projection_matrix_buffer,
+            0,
+            bytemuck::cast_slice(&self.projection_matrix.to_raw())
+        );
+
+    }
+
 }
 
 

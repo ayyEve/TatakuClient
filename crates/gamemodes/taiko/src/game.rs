@@ -30,7 +30,7 @@ use engine::{
     gameplay,
     gameplay::{
         mods::*,
-        GameMode,
+        Gamemode,
         Hitsound,
         judgments::*,
         GameplayEvent,
@@ -307,7 +307,7 @@ impl TaikoGame {
     }
 }
 
-impl GameMode for TaikoGame {
+impl Gamemode for TaikoGame {
     fn new(
         beatmap: &Beatmap, 
         _diff_calc_only: bool, 
@@ -1029,6 +1029,14 @@ impl GameMode for TaikoGame {
                 Color::BLACK
             ));
         }
+    }
+
+
+    fn all_notes(&self) -> Vec<&dyn engine::gameplay::HitObject> {
+        self.notes.iter()
+            .chain(self.other_notes.iter())
+            .map(|i| &**i as &dyn engine::gameplay::HitObject)
+            .collect::<Vec<&dyn engine::gameplay::HitObject>>()
     }
 
     fn reset(&mut self, beatmap: &Beatmap) {

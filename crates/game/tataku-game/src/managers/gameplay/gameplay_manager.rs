@@ -1,6 +1,6 @@
 // massive ass file
-
 use crate::prelude::*;
+use super::helpers::*;
 
 #[cfg(feature="ui")] use ui::widget::TextLayoutContexts;
 
@@ -84,96 +84,64 @@ const CENTER_TEXT_DRAW_TIME:f32 = 2_000.0;
 /// ms between spectator score sync packets
 const SPECTATOR_SCORE_SYNC_INTERVAL:f32 = 1000.0;
 
-
-pub const SCORE_SEND_TIME:f32 = 1_000.0;
+const SCORE_SEND_TIME:f32 = 1_000.0;
 
 /// how long of a buffer should we have? (ms)
-pub const SPECTATOR_BUFFER_OK_DURATION:f32 = 500.0;
+const SPECTATOR_BUFFER_OK_DURATION:f32 = 500.0;
 
 macro_rules! create_update_state {
     ($self: ident, $time: expr, $settings: expr) => {
         GameplayUpdateShell {
             time: $time,
             game_speed: $self.game_speed(),
-            completed: $self.completed,
+            completed: $self.state.completed,
 
             mods: &$self.mods,
             current_timing_point: $self.timing_points.timing_point(),
             timing_points: &$self.timing_points,
-            gameplay_mode: &$self.gameplay_mode,
+            gameplay_type: &$self.gameplay_type_small,
             score: &$self.score,
             actions: Vec::new(),
             settings: $settings,
             action_queue: &mut $self.actions,
-            window_size: $self.window_size,
+            window_size: $self.state.window_size,
         }
     }
 }
 
 pub struct GameplayManager {
-    id: GameplayId,
     pub actions: actions::ActionQueue,
+    pub pending_frames: Vec<ReplayFrame>,
 
-    pub beatmap: engine::beatmaps::Beatmap,
-    pub metadata: Arc<BeatmapMeta>,
-    pub gamemode: Box<dyn GameMode>,
-    pub gamemode_properties: GamemodeProperties,
-    
     mods: Arc<ModManager>,
-    beatmap_preferences: BeatmapPreferences,
-    
-    gameplay_mode: Box<GameplayType>,
-    gameplay_actions: Vec<GameplayAction>,
+    timing_points: TimingPointHelper,
+
+    pub metadata: Arc<BeatmapMeta>,
     beatmap_events: Vec<BeatmapEvent>,
+    pub beatmap: engine::beatmaps::Beatmap,
+    beatmap_preferences: engine::data::BeatmapPreferences,
+    
+    pub gamemode: Box<dyn Gamemode>,
+    gamemode_properties: GamemodeProperties,
+    
+    gameplay_type: Box<GameplayType>,
+    gameplay_actions: Vec<GameplayAction>,
+    gameplay_type_small: GameplayTypeSmall,
+    gameplay_settings: Arc<GameplaySettings>,
+
 
     pub score: IngameScore,
+    pub score_list: ScoreList,
 
-    health: Box<dyn health_manager::HealthManager>,
-    judgments: Vec<HitJudgment>,
+    state: GameplayState,
     key_counter: KeyCounter,
+    judgments: Vec<HitJudgment>,
+    health: Box<dyn health_manager::HealthManager>,
 
     #[cfg(feature="graphics")] editor: Option<EditorChannels>,
     #[cfg(feature="graphics")] animation: Box<dyn BeatmapAnimation>,
     #[cfg(feature="graphics")] ui_elements: Vec<GameplayWidgetContainer>,
-    /// list of judgement indicators to draw
     #[cfg(feature="graphics")] judgement_indicators: Vec<Box<dyn JudgementIndicator>>,
-
-    pub score_list: Vec<IngameScore>,
-    scores_loaded: bool,
-
-    /// used for discord rich presence
-    pub start_time: i64,
-    pub started: bool,
-    pub completed: bool,
-    pub failed: Option<f32>,
-
-    end_time: f32,
-    lead_in_time: f32,
-    lead_in_timer: tataku::Instant,
-    
-    global_offset: f32,
-
-    /// has something about the ui been changed?
-    /// this will make the play unrankable and should not be saved
-    unrankable: bool,
-
-    /// should the manager be paused?
-    pub should_pause: bool,
-    /// is a pause pending?
-    /// used for breaks. if the user tabs out during a break, a pause is pending, but we shouldnt pause until the break is over (or almost over i guess)
-    pause_pending: bool,
-    pause_start: Option<i64>,
-    restart_key_hold_start: Option<tataku::Instant>,
-
-    timing_points: TimingPointHelper,
-
-    /// (map.time, note.time - hit.time)
-    hit_timings: Vec<(f32, f32)>,
-
-
-    gameplay_settings: Arc<GameplaySettings>,
-    window_size: Vector2,
-    fit_to_bounds: Option<Bounds>,
 
     // spectator info
     pub spectator_info: GameplaySpectatorInfo,
@@ -182,19 +150,15 @@ pub struct GameplayManager {
     /// mainly a helper for spectator
     pub on_start: Option<Box<dyn FnOnce(&mut Self) + Send + Sync>>,
 
-
-    pending_time_jump: Option<f32>,
-    pending_frames: Vec<ReplayFrame>,
-
     map_diff: f32,
-    song_time: f32,
 }
 impl GameplayManager {
-    pub fn new(
+    fn new(
         beatmap: engine::beatmaps::Beatmap,
-        mut gamemode: Box<dyn GameMode>,
+        mut gamemode: Box<dyn Gamemode>,
         mut mods: ModManager,
         settings: &Settings,
+        database: &dyn engine::database::DatabaseProvider,
     ) -> Self {
         let timing_points = TimingPointHelper::new_from_beatmap(&beatmap);
 
@@ -208,7 +172,7 @@ impl GameplayManager {
         let time = chrono::Utc::now().timestamp();
         let mut score = Score::new(
             beatmap.hash(), 
-            settings.username.clone(), 
+            settings.connection().tataku_username.clone(), 
             playmode.to_string()
         );
 
@@ -243,7 +207,6 @@ impl GameplayManager {
         gamemode.handle_gameplay_event(GameplayEvent::ApplyMods(current_mods.clone()));
 
         Self {
-            id: Arc::new(u32::MAX),
             actions,
 
             timing_points,
@@ -256,12 +219,17 @@ impl GameplayManager {
 
             beatmap_events: beatmap.get_events(),
 
-            lead_in_time: LEAD_IN_TIME,
-            lead_in_timer: tataku::Instant::now(),
-            end_time: properties.end_time,
-            global_offset: settings.global_offset,
+            state: GameplayState {
+                start_time: time,
+                lead_in_time: LEAD_IN_TIME,
+                end_time: properties.end_time,
+                global_offset: settings.global_offset,
+                ..GameplayState::default()
+            },
 
-            beatmap_preferences: Database::get_beatmap_prefs(metadata.beatmap_hash),
+            beatmap_preferences: database
+                .get_beatmap_preferences(metadata.beatmap_hash)
+                .unwrap_or_default(),
 
             gameplay_settings: Arc::new(settings.common_game_settings.clone()),
 
@@ -270,40 +238,22 @@ impl GameplayManager {
             gamemode,
             gamemode_properties: properties,
 
-            scores_loaded: false,
-            score_list: Vec::new(),
-            window_size: Vector2::ZERO,
-            start_time: time,
+            score_list: ScoreList::default(),
             
             #[cfg(feature="graphics")] editor: None,
             #[cfg(feature="graphics")] ui_elements: Vec::new(),
             #[cfg(feature="graphics")] judgement_indicators: Vec::new(),
             #[cfg(feature="graphics")] animation: Box::new(engine::game::beatmap_animation::EmptyAnimation),
-            gameplay_mode: Box::new(GameplayType::Normal),
+            gameplay_type: Box::new(GameplayType::Normal),
+            gameplay_type_small: GameplayTypeSmall::Normal,
             gameplay_actions: Vec::new(),
-
-            started: false,
-            completed: false,
-            failed: None,
-
-            hit_timings: Vec::new(),
+            pending_frames: Vec::new(),
             spectator_info: GameplaySpectatorInfo::default(),
             on_start: None,
-            fit_to_bounds: None,
-            should_pause: false,
-            pause_pending: false,
-            unrankable: false,
 
-            pending_time_jump: None,
-            pending_frames: Vec::new(),
-
-            restart_key_hold_start: None,
             map_diff: 0.0,
-            pause_start: None,
-            song_time: 0.0,
         }
     }
-
 
     pub fn create_from_path_hash(
         infos: &GamemodeInfos,
@@ -312,6 +262,7 @@ impl GameplayManager {
         map_hash: common::Md5Hash,
         mods: ModManager,
         settings: &Settings,
+        database: &dyn engine::database::DatabaseProvider,
     ) -> tataku::Result<GameplayManager> {
         let beatmap = Beatmap::from_path_and_hash(map_path, map_hash)?;
         let playmode = beatmap.playmode(incoming_mode.to_owned());
@@ -322,7 +273,14 @@ impl GameplayManager {
             &beatmap, 
             settings
         )?;
-        Ok(GameplayManager::new(beatmap, gamemode, mods, settings))
+
+        Ok(GameplayManager::new(
+            beatmap, 
+            gamemode, 
+            mods, 
+            settings,
+            database,
+        ))
     }
 
     pub fn create(
@@ -331,6 +289,7 @@ impl GameplayManager {
         beatmap: &BeatmapMeta,
         mods: ModManager,
         settings: &Settings,
+        database: &dyn engine::database::DatabaseProvider,
     ) -> tataku::Result<GameplayManager> {
         let beatmap = Beatmap::from_metadata(beatmap)?;
         let playmode = beatmap.playmode(incoming_mode.to_owned());
@@ -342,90 +301,89 @@ impl GameplayManager {
             settings
         )?;
 
-        Ok(GameplayManager::new(beatmap, gamemode, mods, settings))
+        Ok(GameplayManager::new(
+            beatmap, 
+            gamemode, 
+            mods, 
+            settings,
+            database,
+        ))
     }
 
 
-    #[cfg(feature="graphics")]
-    pub fn init_ui(&mut self, font_contexts: &mut TextLayoutContexts) {
-        let layouts = 
-            std::fs::read("ui_layouts.json").ok()
-            .and_then(|bytes| serde_json::from_slice(&bytes).ok())
-            .unwrap_or_default();
+    pub fn update(
+        &mut self, 
+        values: &mut ValueCollection,
+        #[cfg(feature="ui")] font_contexts: &mut TextLayoutContexts,
+        actions: &mut actions::ActionQueue,
+    ) {
+        match self.gameplay_type_small {
+            GameplayTypeSmall::Simulating => {
+                let time = self.time();
+                // update gamemode
+                self.update_gamemode(time, &values.settings);
 
-        let info = self.gamemode_properties.info;
+                // update score stuff now that gamemode has been updated
+                self.update_score_values();
 
-        // TODO: would be nice to make widgets from all gamemodes available (don-chan in osu!?)
-        let widgets = interface::DEFAULT_GAMEPLAY_WIDGETS
-            .iter()
-            .chain(info.available_widgets)
-            .cloned()
-            .collect::<Vec<_>>();
+                // then a few other things
+                self.check_complete();
+                self.update_gamemode_type(time);
+                self.handle_pending(&values.settings);
+            },
 
-        let mut loader = DefaultUiElementLoader::new(
-            self.gamemode_properties.playmode(),
-            layouts,
-            widgets,
+            _ => {
+                self.state.song_time = values.values.song.position;
 
-            *info,
-            self.gameplay_settings.clone()
-        );
+                self.check_time_jump(&values.settings);
+                self.check_pause_and_restart(actions);
 
-        for i in interface::DEFAULT_GAMEPLAY_WIDGETS
-            .iter()
-            .map(|i| i.name) 
-        {
-            loader.load(i);
-        }
+                // get the time with offsets
+                let time = self.time();
 
-        // Anything in the gamemode itself
-        self.gamemode.build_widgets(&mut loader);
+                self.state.update_hit_timings(time);
+                #[cfg(feature="ui")] self.update_ui(time, font_contexts);
+                #[cfg(feature="gameplay")] self.check_leadin(&values.settings);
+                #[cfg(feature="gameplay")] self.update_scores(values);
+                #[cfg(feature="gameplay")] self.update_timing_points(time);
+                #[cfg(feature="gameplay")] self.update_spectators(time);
 
-        // update every ui element so they're all initialized
-        let mut shell = GameplayWidgetUpdateShell {
-            manager: self,
-            font_context: font_contexts,
-            scale: Vector2::ONE,
-        };
+                #[cfg(feature="graphics")] self.animation.update(time);
+                
+                // update gamemode
+                self.update_gamemode(time, &values.settings);
 
-        for e in loader.elements.iter_mut() {
-            e.update(&mut shell);
-        }
-
-        // update our list
-        self.ui_elements = loader.elements;
-
-        // layout will be performed on game start (and skin load)
-    }
-
-    #[cfg(feature = "graphics")]
-    fn layout_ui(&mut self) {
-        if let Err(e) = GameplayWidgetContainer::layout(
-            &mut self.ui_elements,
-            self.gamemode.get_playfield().bounds,
-            self.window_size
-        ) {
-            error!("error laying out ui elements! {e:?}");
-        }
-
-        if let Some(channels) = &self.editor {
-            for i in self.ui_elements.iter() {
-                let r = channels
-                    .event_sender
-                    .send(GameplayWidgetEvent { 
-                    target: Some(i.element_name.clone()), 
-                    action: GameplayWidgetEventType::Update {
-                        bounds: i.get_bounds(),
-                    },
-                });
-
-                if r.is_err() {
-                    self.editor = None;
-                    break;
-                }
+                // update score stuff now that gamemode has been updated
+                self.update_score_values();
+                
+                self.check_complete();
+                self.check_failed(time);
+                self.update_gamemode_type(time);
+                self.handle_pending(&values.settings);
+                self.update_values(values);
             }
         }
+
+        actions.extend(self.actions.take());
     }
+
+    #[cfg(feature="graphics")]
+    pub fn draw(&mut self, list: &mut graphics::RenderableCollection) {
+        let time = self.time();
+
+        // draw animation below gamemode
+        self.animation.draw(list);
+
+        // draw gamemode
+        self.draw_gamemode(time, list);
+
+        // dont draw score, combo, etc if this is a menu bg
+        match self.gameplay_type_small {
+            GameplayTypeSmall::Preview | GameplayTypeSmall::Simulating => {}
+            _ => self.draw_ui(time, list),
+        }
+    }
+
 
     #[cfg(feature="gameplay")] 
     pub fn skip_intro(&mut self) {
@@ -433,55 +391,275 @@ impl GameplayManager {
         else { return };
 
         // really not sure whats happening here lol
-        if self.lead_in_time > 0.0 && time > self.lead_in_time {
-            time -= self.lead_in_time - 0.01;
-            self.lead_in_time = 0.01;
+        if self.state.lead_in_time > 0.0 && time > self.state.lead_in_time {
+            time -= self.state.lead_in_time - 0.01;
+            self.state.lead_in_time = 0.01;
         }
 
         self.actions.push(SongAction::SetPosition(time).into());
     }
 
-
-    pub fn update(
-        &mut self, 
-        values: &mut dyn common::reflect::Reflect,
-        #[cfg(feature="ui")] font_contexts: &mut TextLayoutContexts,
-        actions: &mut actions::ActionQueue,
-    ) {
-        let new_time = *values.reflect_get::<f32>("song.position").unwrap();
-        let settings = values
-            .reflect_get::<Settings>("settings")
-            .unwrap();
-
-        self.song_time = new_time;
-
-        // make sure we jump to the time we're supposed to be at
-        if let Some(time) = self.pending_time_jump {
-            self.pending_time_jump = None;
-
-            let mut state = create_update_state!(self, time, &settings);
-            self.gamemode.time_jump(time, &mut state);
+    pub fn on_complete(&mut self) {
+        #[cfg(feature="graphics")] {
+            // make sure the cursor is visible
+            self.actions.push(CursorAction::SetVisible(true).into());
+            // undo any cursor override
+            self.actions.push(CursorAction::OverrideRippleRadius(None).into());
         }
 
-        // check map restart
-        if let Some(press_time) = self.restart_key_hold_start
-        && press_time.as_millis() >= self.gameplay_settings.map_restart_delay {
+        #[cfg(feature="gameplay")]
+        if let GameplayType::Spectator {
+            buffered_score_frames, 
+            ..
+        } = &mut *self.gameplay_type {
+            // if we have a score frame we havent dealt with yet, its most likely the score frame sent once the map has ended
+            if !buffered_score_frames.is_empty() {
+                self.score.score = buffered_score_frames.last().cloned().unwrap().1;
+            }
+
+            // let mut score_menu = ScoreMenu::new(&manager.score, manager.metadata.clone(), false);
+            // score_menu.dont_close_on_back = true;
+            // self.score_menu = Some(score_menu);
+        }
+    }
+
+    // can be from either paused or new
+    pub fn start(&mut self) {
+        #[cfg(feature="graphics")] {
+            // set bounds
+            let event = if let Some(bounds) = self.state.fit_to_bounds {
+                GameplayEvent::SetBounds { 
+                    bounds, 
+                    full_window: false 
+                }
+            } else {
+                GameplayEvent::SetBounds { 
+                    bounds: Bounds::new(Vector2::ZERO, self.state.window_size), 
+                    full_window: true 
+                }
+            };
+            self.gamemode.handle_gameplay_event(event);
+
+            // set cursor visibility
+            self.actions.push(CursorAction::SetVisible(
+                !self.should_hide_cursor()
+            ).into());
+        }
+
+        self.state.pause_pending = false;
+        self.state.should_pause = false;
+
+        // offset our start time by the duration of the pause
+        if let Some(pause_time) = self.state.pause_start.take() {
+            self.state.start_time += chrono::Utc::now().timestamp() - pause_time;
+        }
+
+        if !self.state.started {
             self.reset();
-            actions.extend(self.actions.take());
+
+            //TODO: probably want to skip other things as well
+            #[cfg(feature="gameplay")]
+            if !self.gameplay_type_small.is_replay() {
+                self.outgoing_spectator_frame(|this| SpectatorFrame::new(
+                    0.0, 
+                    SpectatorAction::Play {
+                        beatmap_hash: this.beatmap.hash(),
+                        mode: this.gamemode_properties.playmode().to_string(),
+                        mods: this.score.mods.clone(),
+                        speed: this.mods.speed.as_u16(),
+                        map_game: this.metadata.beatmap_type.into(),
+                        map_link: None
+                    })
+                );
+            }
+
+            // reset lead-in
+            self.state.reset_lead_in(self.gameplay_type_small.is_preview());
+
+            // volume is set when the song is actually started (when lead_in_time is <= 0)
+            self.state.started = true;
+
+            // run the startup function
+            if let Some(on_start) 
+            = self.on_start.take() {
+                on_start(self);
+            }
+        } else if self.state.lead_in_time <= 0.0 {
+            // if this is a preview, dont do anything
+            if self.gameplay_type_small.is_preview() { return }
+
+            #[cfg(feature="gameplay")]
+            self.outgoing_spectator_frame(|s| SpectatorFrame::new(
+                s.time(), 
+                SpectatorAction::UnPause
+            ));
+            self.actions.push(SongAction::Play.into());
+            self.gamemode.handle_gameplay_event(GameplayEvent::UnPaused);
+        }
+        
+
+        // re init ui
+        #[cfg(feature="graphics")] self.layout_ui();
+    }
+
+    pub fn pause(&mut self) {
+        #[cfg(feature="graphics")] {
+            // make sure the cursor is visible
+            self.actions.push(CursorAction::SetVisible(true).into());
+            // undo any cursor override
+            self.actions.push(CursorAction::OverrideRippleRadius(None).into());
+        }
+
+        self.actions.push(SongAction::Pause.into());
+        self.state.pause_start = Some(chrono::Utc::now().timestamp());
+
+        // is there anything else we need to do?
+
+        // might mess with lead-in but meh
+        #[cfg(feature="gameplay")] 
+        self.outgoing_spectator_frame_force(
+            |this| SpectatorFrame::new(this.time(), SpectatorAction::Pause),
+        );
+
+        self.gamemode.handle_gameplay_event(GameplayEvent::Paused);
+    }
+    pub fn reset(&mut self) {
+        self.health.reset();
+        self.key_counter.reset();
+        self.timing_points.reset();
+        self.gamemode.reset(&self.beatmap);
+        self.state.reset(self.mods.get_speed());
+
+        if self.gameplay_type_small.is_preview() {
+            self.gamemode.handle_gameplay_event(GameplayEvent::ApplyMods(
+                self.mods.clone()
+            ));
+        } else {
+            // reset song
+            self.actions.push(SongAction::Restart.into());
+            self.actions.push(SongAction::Pause.into());
+            self.actions.push(SongAction::SetPosition(0.0).into());
+            self.actions.push(SongAction::SetRate(self.game_speed()).into());
+        }
+
+        if self.map_diff == 0.0 {
+            self.actions.push(GameAction::from((
+                self.state.id.clone(), 
+                GameplayAction::RequestDifficulty
+            )).into());
+        }
+
+        self.score = IngameScore::new(
+            Score {
+                speed: self.mods.speed,
+                mods: self.gamemode_properties.filter_mods(&self.mods),
+                replay: Some(Replay::new()),
+                judgments: self.judgments
+                    .iter()
+                    .map(|j| (j.id.to_owned(), 0))
+                    .collect(),
+
+                ..Score::new(
+                    self.beatmap.hash(), 
+                    self.score.username.clone(), 
+                    self.gamemode_properties.playmode().to_string()
+                )
+            }, 
+            true, 
+            false
+        );
+
+        // reset elements
+        #[cfg(feature="graphics")] {
+            self.judgement_indicators.clear();
+            for e in self.ui_elements.iter_mut() {
+                e.reset_element();
+            }
+        }
+
+        #[cfg(feature="gameplay")]
+        if self.gameplay_type.should_load_scores() {
+            self.actions.push(GameAction::RefreshScores.into());
+        }
+
+    }
+    fn fail(&mut self) {
+        if self.failed()
+        || self.mods.has_nofail() 
+        || self.mods.has_autoplay() 
+        || self.gameplay_type_small.is_preview() 
+        || self.gameplay_type_small.is_multi() { 
             return
         }
+        
+        debug!("failed");
+        self.state.failed = Some(self.time());
+    }
 
-        // check pause
-        if self.pause_pending && !self.in_break() {
-            info!("pausing");
-            self.pause();
-            self.pause_pending = false;
-            self.should_pause = true;
+    pub fn force_update_settings(&mut self, settings: &Settings) {
+        self.gamemode.force_update_settings(settings);
+        if self.state.global_offset != settings.global_offset {
+            self.state.global_offset = settings.global_offset;
+            self.increment_global_offset(0.0);
         }
+    }
 
+    fn increment_offset(&mut self, delta: f32) {
+        self.beatmap_preferences.audio_offset += delta;
+        // #[cfg(feature="graphics")]
+        // self.center_text_helper.set_value(
+        //     format!("Offset: {:.2}ms", self.beatmap_preferences.audio_offset),
+        //     self.time()
+        // );
 
+        // update the beatmap offset
+        let prefs = self.beatmap_preferences.clone();
+        let hash = self.beatmap.hash();
+        self.actions.push(actions::database::Action::SaveBeatmapPreferences { 
+            hash, 
+            prefs 
+        }.into());
+    }
+    fn increment_global_offset(&mut self, delta: f32) {
+        self.state.global_offset += delta;
+        // #[cfg(feature="graphics")]
+        // self.center_text_helper.set_value(
+        //     format!("Global Offset: {:.2}ms", self.global_offset),
+        //     self.time()
+        // );
+    }
+}
+
+// update fns
+impl GameplayManager {
+
+    #[cfg(feature="gameplay")]
+    fn update_scores(&mut self, values: &mut ValueCollection) {
+        if !self.gameplay_type.should_load_scores() { return }
+
+        let list = &values.score_list;
+
+        if !self.score_list.loaded
+            && self.gameplay_type.should_load_scores() 
+            && list.loaded 
+        {
+            self.score_list = list.clone();
+
+            for s in self.score_list.scores.iter_mut() {
+                if s.username == self.score.username {
+                    s.score_type = ScoreType::Previous;
+                }
+            }
+        }
+    }
+
+    #[cfg(feature="ui")] 
+    fn update_ui(
+        &mut self, 
+        time: f32,
+        font_contexts: &mut TextLayoutContexts,
+    ) {
         // update ui editor
-        #[cfg(feature = "graphics")]
         if let Some(channels) = &self.editor {
             let receiver = channels
                 .action_receiver.clone();
@@ -530,8 +708,7 @@ impl GameplayManager {
         }
 
         // update ui elements
-        #[cfg(feature = "graphics")]
-        if !self.gameplay_mode.is_preview() {
+        if !self.gameplay_type_small.is_preview() {
             let mut ui_elements = self.ui_elements.take();
             let mut shell = GameplayWidgetUpdateShell {
                 manager: self,
@@ -545,50 +722,89 @@ impl GameplayManager {
             self.ui_elements = ui_elements;
         }
 
-        // get the time with offsets
-        let time = self.time();
+        // update hit timings bar
 
-        // check lead-in time
-        if self.lead_in_time > 0.0 {
-            let elapsed = self.lead_in_timer.elapsed().as_micros() as f32 / 1000.0;
-            self.lead_in_timer = tataku::Instant::now();
-            self.lead_in_time -= elapsed * self.game_speed();
+        // update judgement indicators
+        self.judgement_indicators.retain(|a| a.should_keep(time));
+    }
 
-            use actions::song::SongAction as SongAction;
-            if self.lead_in_time <= 0.0 {
-                self.actions.push(SongAction::SetRate(self.game_speed()).into());
-                self.actions.push(SongAction::SetVolume(settings.get_music_vol()).into());
-                self.actions.push(SongAction::SetPosition(-self.lead_in_time).into());
-                self.actions.push(SongAction::Play.into());
-                self.lead_in_time = 0.0;
-            }
+    #[cfg(feature="gameplay")] 
+    fn update_spectators(&mut self, time: f32) {
+        if time >= self.spectator_info.last_score_sync + SPECTATOR_SCORE_SYNC_INTERVAL {
+            self.spectator_info.last_score_sync = time;
+
+            let our_score = &mut self.score.score;
+
+            // create and send the packet
+            let replay = our_score.replay.take();
+            let score = our_score.clone();
+            our_score.replay = replay;
+
+            self.outgoing_spectator_frame(|_| SpectatorFrame::new(
+                time, 
+                SpectatorAction::ScoreSync { score })
+            );
+        }
+    }
+
+    // TODO: this is kinda shit
+    fn update_values(&mut self, values: &mut ValueCollection) {
+        if *self.state.id != u32::MAX { return }
+
+        // TODO: placing
+        let score = &mut values.score;
+
+        if score.time != self.score.time {
+            *score = ReflectScore::new(&self.score, self.gamemode_properties.info);
+        } else {
+            score.update(&self.score);
+        }
+    }
+
+    fn check_pause_and_restart(&mut self, actions: &mut actions::ActionQueue) {
+        // check map restart
+        if let Some(press_time) = self.state.restart_hold_start
+        && press_time.as_millis() >= self.gameplay_settings.map_restart_delay {
+            self.reset();
+            actions.extend(self.actions.take());
+            return;
         }
 
-        #[cfg(feature="gameplay")]
-        let scores_list = values
-            .reflect_get::<Vec<IngameScore>>("score_list.scores")
-            .unwrap();
-        #[cfg(feature="gameplay")]
-        let scores_loaded = *values
-            .reflect_get::<bool>("score_list.loaded")
-            .unwrap();
-
-        #[cfg(feature="gameplay")]
-        if !self.scores_loaded 
-            && self.gameplay_mode.should_load_scores() 
-            && scores_loaded 
-        {
-            self.score_list = (*scores_list).clone();
-            self.scores_loaded = true;
-
-            for s in self.score_list.iter_mut() {
-                s.is_previous = s.username == self.score.username;
-            }
+        // check pause
+        if self.state.pause_pending && !self.in_break() {
+            self.state.pause_pending = false;
+            self.state.should_pause = true;
+            self.pause();
         }
+    }
 
+    fn check_time_jump(&mut self, settings: &Settings) {
+        // make sure we jump to the time we're supposed to be at
+        let Some(time) = self.state.pending_time_jump.take()
+        else { return };
 
-        let tp_updates = self.timing_points.update(time);
-        for tp_update in tp_updates {
+        let mut state = create_update_state!(self, time, settings);
+        self.gamemode.time_jump(time, &mut state);
+    }
+
+    fn check_leadin(&mut self, settings: &Settings) {
+        if self.state.lead_in_time <= 0.0 { return }
+
+        let elapsed = self.state.lead_in_timer.elapsed_and_reset();
+        self.state.lead_in_time -= elapsed * self.game_speed();
+
+        use actions::song::SongAction as SongAction;
+        if self.state.lead_in_time <= 0.0 {
+            self.actions.push(SongAction::SetRate(self.game_speed()).into());
+            self.actions.push(SongAction::SetVolume(settings.get_music_vol()).into());
+            self.actions.push(SongAction::SetPosition(-self.state.lead_in_time).into());
+            self.actions.push(SongAction::Play.into());
+            self.state.lead_in_time = 0.0;
+        }
+    }
+
+    fn update_timing_points(&mut self, time: f32) {
+        for tp_update in self.timing_points.update(time) {
             match tp_update {
                 TimingPointUpdate::BeatHappened(pulse_length) 
                     => self.gamemode.handle_gameplay_event(GameplayEvent::BeatHappened { 
@@ -601,26 +817,22 @@ impl GameplayManager {
                     }),
             }
         }
+    }
 
-        // update hit timings bar
-        #[cfg(feature="graphics")] 
-        self.hit_timings
-            .retain(|(hit_time, _)| time - hit_time < tataku_interface::gameplay_widgets::HIT_TIMING_DURATION );
-
-        // update judgement indicators
-        #[cfg(feature="graphics")] 
-        self.judgement_indicators.retain(|a| a.should_keep(time));
-
-        // update gamemode
-        let mut state = create_update_state!(self, time, &settings);
-
+    fn update_gamemode(
+        &mut self,
+        time: f32,
+        settings: &Settings,
+    ) {
+        let mut state = create_update_state!(self, time, settings);
 
         self.gamemode.update(&mut state);
         for action in state.actions {
-            self.handle_gamemode_action(action, &settings);
+            self.handle_gamemode_action(action, settings);
         }
+    }
 
-        // update score stuff now that gamemode has been updated
+    fn update_score_values(&mut self) {
         let info = self.gamemode_properties.info;
         self.score.accuracy = info.calc_acc(&self.score);
         self.score.performance = info.calc_perf(gameplay::info::CalcPerfInfo {
@@ -629,71 +841,74 @@ impl GameplayManager {
             accuracy: self.score.accuracy
         });
         // self.score.take_snapshot(time, self.health.get_ratio());
+    }
 
-        // do fail things
-        // TODO: handle edge cases, like replays, spec, autoplay, etc
+    // TODO: handle edge cases, like replays, spec, autoplay, etc
+    fn check_failed(&mut self, time: f32) {
         #[cfg(feature="gameplay")]
-        if let Some(failed_time) = self.failed && !self.gameplay_mode.is_multi() {
+        if let Some(failed_time) = self.state.failed && !self.gameplay_type_small.is_multi() {
             let new_rate = f32::lerp(
                 self.game_speed(), 
                 0.0, 
-                (self.time() - failed_time) / 1000.0
+                (time - failed_time) / 1000.0
             );
 
             if new_rate <= 0.05 {
                 self.actions.push(SongAction::Pause.into());
                 // self.song.pause();
 
-                self.completed = true;
+                self.state.completed = true;
                 // self.outgoing_spectator_frame_force((self.end_time + 10.0, SpectatorAction::Failed));
                 trace!("show fail menu");
             } else {
                 self.actions.push(SongAction::SetRate(new_rate).into());
             }
-
-            actions.extend(self.actions.take());
         }
+    }
 
-        // send map completed packets
-        #[allow(clippy::collapsible_if, reason = "features")]
-        if self.completed {
-            #[cfg(feature="gameplay")] {
-                let mut score = self.score.score.clone();
-                score.replay = None;
-                self.outgoing_spectator_frame_force(SpectatorFrame::new(
-                    self.end_time + 10.0, 
-                    SpectatorAction::ScoreSync { score }
-                ));
-            }
+    fn check_complete(&mut self) {
+        #[allow(clippy::collapsible_if, reason="features")]
+        if !self.state.completed { return }
 
-            #[cfg(feature="gameplay")]
-            self.outgoing_spectator_frame_force(SpectatorFrame::new(
-                self.end_time + 10.0, 
+        #[cfg(feature="gameplay")] {
+            let mut score = self.score.score.clone();
+            score.replay = None;
+
+            let time = self.state.end_time + 10.0;
+            self.outgoing_spectator_frame_force(|_| SpectatorFrame::new(
+                time, 
+                SpectatorAction::ScoreSync { score }
+            ));
+
+            self.outgoing_spectator_frame_force(|_| SpectatorFrame::new(
+                time, 
                 SpectatorAction::Buffer
             ));
 
-
-            #[cfg(feature="gameplay")]
-            if self.gameplay_mode.is_multi() {
+            if self.gameplay_type_small.is_multi() {
                 self.actions.push(actions::multiplayer::LobbyAction::MapComplete(
                     Box::new(self.score.score.clone())
                 ).into());
             } 
-
-            // check if we failed
-            if self.health.is_dead(true) && self.failed.is_none() {
-                self.fail();
-            }
         }
 
+        // check if we failed
+        if self.health.is_dead(true) && !self.failed() {
+            self.fail();
+        }
+    }
 
-        // update according to our gameplay mode
-        match &mut *self.gameplay_mode {
+    fn update_gamemode_type(&mut self, time: f32) {
+        match &mut *self.gameplay_type {
             // read inputs from replay if replaying
             GameplayType::Replaying {
                 score,
                 current_frame
-            } /* if !self.current_mods.has_autoplay() */ => {
+            } 
+            | GameplayType::Simulating {
+                score,
+                current_frame
+            } => {
                 let Some(replay) = &score.replay else { unreachable!() };
 
                 // read any frames that need to be read
@@ -726,7 +941,7 @@ impl GameplayManager {
             } => {
                 // buffer twice as long as we need
                 let buffer_duration = (time + SPECTATOR_BUFFER_OK_DURATION * 2.0)
-                    .clamp(0.0, self.end_time);
+                    .clamp(0.0, self.state.end_time);
 
                 // handle pending frames
                 while let Some(SpectatorFrame { 
@@ -845,98 +1060,119 @@ impl GameplayManager {
 
             _ => {}
         }
-
-        // handle any pending gameplay actions
-        for a in self.gameplay_actions.take() {
-            self.handle_action(a, &settings);
-        }
-
-        // if its time to send another score sync packet
-        #[cfg(feature="gameplay")]
-        if self.spectator_info.last_score_sync + SPECTATOR_SCORE_SYNC_INTERVAL <= time {
-            self.spectator_info.last_score_sync = time;
-
-            // create and send the packet
-
-            let mut score = self.score.score.clone();
-            score.replay = None;
-            self.outgoing_spectator_frame(SpectatorFrame::new(
-                time, 
-                SpectatorAction::ScoreSync { score })
-            );
-        }
-
-        // handle any frames
-        for ReplayFrame { 
-            time, 
-            action 
-        } in self.pending_frames.take() {
-            self.handle_frame(
-                action, 
-                true, 
-                Some(time), 
-                true, 
-                &settings
-            );
-        }
-
-
-        // handle animation
-        #[cfg(feature="graphics")] {
-            self.animation.update(time);
-        }
-
-        // update value collection
-        // TODO: this is kinda shit
-        if *self.id == 0 {
-            // TODO: placing
-            let score = values
-                .reflect_get_mut::<ReflectScore>("score")
-                .unwrap();
-
-            if score.time != self.score.time {
-                *score = ReflectScore::new(&self.score, self.gamemode_properties.info);
-            } else {
-                score.update(&self.score);
-            }
-        }
-
-        actions.extend(self.actions.take());
     }
 
+    fn handle_pending(&mut self, settings: &Settings) {
+        // handle any pending gameplay actions
+        for a in self.gameplay_actions.take() {
+            self.handle_action(a, settings);
+        }
+        
+        // handle any pending frames
+        if !self.pending_frames.is_empty() {
+            for ReplayFrame { 
+                time, 
+                action 
+            } in self.pending_frames.take() {
+                self.handle_frame(
+                    action, 
+                    true, 
+                    Some(time), 
+                    true, 
+                    settings
+                );
+            }
+        }
+    }
+}
 
-    #[cfg(feature="graphics")]
-    pub fn draw(&mut self, list: &mut graphics::RenderableCollection) {
-        let time = self.time();
+// graphics
+#[cfg(feature="graphics")]
+impl GameplayManager {
+    pub fn init_ui(&mut self, font_contexts: &mut TextLayoutContexts) {
+        let layouts = 
+            std::fs::read("ui_layouts.json").ok()
+            .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+            .unwrap_or_default();
 
-        // draw animation
-        self.animation.draw(list);
+        let info = self.gamemode_properties.info;
 
-        // draw gamemode
-        // if let Some(bounds) = self.fit_to_bounds {
-        //     list.push_scissor(bounds.into_scissor());
-        // todo: is this still necessary?
-        // }
+        // TODO: would be nice to make widgets from all gamemodes available (don-chan in osu!?)
+        let widgets = interface::DEFAULT_GAMEPLAY_WIDGETS
+            .iter()
+            .chain(info.available_widgets)
+            .cloned()
+            .collect::<Vec<_>>();
 
-        let state = GameplayDrawShell {
-            time,
-            gameplay_mode: &self.gameplay_mode,
-            current_timing_point: self.timing_points.timing_point(),
-            mods: &self.mods,
-            score: &self.score,
-            window_size: self.window_size
+        let mut loader = DefaultUiElementLoader::new(
+            self.gamemode_properties.playmode(),
+            layouts,
+            widgets,
+
+            *info,
+            self.gameplay_settings.clone()
+        );
+
+        for i in interface::DEFAULT_GAMEPLAY_WIDGETS
+            .iter()
+            .map(|i| i.name) 
+        {
+            loader.load(i);
+        }
+
+        // Anything in the gamemode itself
+        self.gamemode.build_widgets(&mut loader);
+
+        // update every ui element so they're all initialized
+        let mut shell = GameplayWidgetUpdateShell {
+            manager: self,
+            font_context: font_contexts,
+            scale: Vector2::ONE,
         };
-        self.gamemode.draw(state, list);
 
+        for e in loader.elements.iter_mut() {
+            e.update(&mut shell);
+        }
 
-        // if self.fit_to_bounds.is_some() {
-        //     list.pop_scissor();
-        // }
+        // update our list
+        self.ui_elements = loader.elements;
 
-        // dont draw score, combo, etc if this is a menu bg
-        if self.gameplay_mode.is_preview() { return }
+        // layout will be performed on game start (and skin load)
+    }
 
+    fn layout_ui(&mut self) {
+        if let Err(e) = GameplayWidgetContainer::layout(
+            &mut self.ui_elements,
+            self.gamemode.get_playfield().bounds,
+            self.state.window_size
+        ) {
+            error!("error laying out ui elements! {e:?}");
+        }
 
+        if let Some(channels) = &self.editor {
+            for i in self.ui_elements.iter() {
+                let r = channels
+                    .event_sender
+                    .send(GameplayWidgetEvent { 
+                    target: Some(i.element_name.clone()), 
+                    action: GameplayWidgetEventType::Update {
+                        bounds: i.get_bounds(),
+                    },
+                });
+
+                if r.is_err() {
+                    self.editor = None;
+                    break;
+                }
+            }
+        }
+    }
+
+    fn draw_ui(
+        &mut self, 
+        time: f32,
+        list: &mut graphics::RenderableCollection,
+    ) {
         // judgement indicators
         for indicator in self
             .judgement_indicators
@@ -960,13 +1196,33 @@ impl GameplayManager {
         // ))
     }
 
-
-    #[cfg(feature="graphics")]
-    pub fn reload_skin(
-        &mut self, 
-        skin_manager: &mut dyn graphics::SkinProvider,
-        _settings: &engine::Settings,
+    fn draw_gamemode(
+        &mut self,
+        time: f32,
+        list: &mut graphics::RenderableCollection,
     ) {
+        // if let Some(bounds) = self.fit_to_bounds {
+        //     list.push_scissor(bounds.into_scissor());
+        // todo: is this still necessary?
+        // }
+
+        let shell = GameplayDrawShell {
+            time,
+            gameplay_type: &self.gameplay_type_small,
+            current_timing_point: self.timing_points.timing_point(),
+            mods: &self.mods,
+            score: &self.score,
+            window_size: self.state.window_size
+        };
+        self.gamemode.draw(shell, list);
+
+        // if self.fit_to_bounds.is_some() {
+        //     list.pop_scissor();
+        // }
+    }
+
+
+    pub fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
         let parent_folder = self
             .beatmap
             .get_parent_dir()
@@ -1000,7 +1256,7 @@ impl GameplayManager {
             if self.animation.use_gamemode_playfield(self.gamemode_properties.info) {
                 self.animation.fit_to_area(self.gamemode.get_playfield());
             } else {
-                self.animation.window_size_changed(self.window_size);
+                self.animation.window_size_changed(self.state.window_size);
             }
         }
 
@@ -1016,7 +1272,6 @@ impl GameplayManager {
         self.layout_ui();
     }
 
-    #[cfg(feature="graphics")]
     pub fn cleanup_textures(&mut self, skin_manager: &mut dyn graphics::SkinProvider) {
         // drop all texture references by dropping the gamemode
         // this should be fine since we shouldnt be re-using this gamemode at this time anyways
@@ -1032,36 +1287,76 @@ impl GameplayManager {
 
         skin_manager.free_by_source(graphics::TextureSource::Beatmap(path));
     }
+
 }
 
-// getters, setters, properties
+// Getters, Setters, Properties
 impl GameplayManager {
+    #[allow(clippy::needless_pass_by_value)]
+    pub(crate) fn set_id(&mut self, id: GameplayId) {
+        // make sure we dont add a reference count to our copy of the id
+        // this makes sure things are cleaned up properly when the manager is dropped
+        self.state.id = Arc::new(*id);
+    }
+
+    pub(crate) fn started(&self) -> bool {
+        self.state.started
+    }
+    pub(crate) fn completed(&self) -> bool {
+        self.state.completed
+    }
+    pub(crate) fn failed(&self) -> bool {
+        self.state.failed.is_some()
+    }
+    pub(crate) fn start_time(&self) -> i64 {
+        self.state.start_time
+    }
 
     /// is this game pausable
     pub fn can_pause(&mut self) -> bool {
         // never allow pausing in multi
         #[cfg(feature="gameplay")]
-        if self.gameplay_mode.is_multi() { return false; }
-        self.should_pause 
+        if self.gameplay_type_small.is_multi() { return false; }
+        self.state.should_pause 
         || !(
             self.mods.has_autoplay() 
-            || self.gameplay_mode.is_replay() 
-            || self.failed.is_some()
+            || self.gameplay_type_small.is_replay() 
+            || self.failed()
         )
     }
 
+    pub fn should_pause(&self) -> bool {
+        self.state.should_pause
+    }
+
+    fn in_break(&self) -> bool {
+        let time = self.time();
+
+        fn check(event: &BeatmapEvent, time: f32) -> bool {
+            #[allow(irrefutable_let_patterns, reason = "more events will be added eventually")]
+            let BeatmapEvent::Break { start, end } = event 
+            else { return false };
+
+            time >= *start && time < *end 
+        }
+
+        self.beatmap_events
+            .iter()
+            .any(|e| check(e, time))
+    }
+
     #[inline]
-    pub fn game_speed(&self) -> f32 {
-        if self.gameplay_mode.is_preview() {
+    fn game_speed(&self) -> f32 {
+        if self.gameplay_type_small.is_preview() {
             1.0 // TODO:
         } else {
             self.mods.get_speed()
         }
     }
 
-    pub fn should_hide_cursor(&self) -> bool {
-        if self.gameplay_mode.is_preview()
-        || self.gameplay_mode.is_replay() 
+    fn should_hide_cursor(&self) -> bool {
+        if self.gameplay_type_small.is_preview()
+        || self.gameplay_type_small.is_replay() 
         || self.mods.has_autoplay() {
             false
         } else {
@@ -1071,16 +1366,15 @@ impl GameplayManager {
 
     pub fn should_save_score(&self) -> bool {
         !(
-            self.gameplay_mode.is_replay() 
+            self.gameplay_type_small.is_replay() 
             || self.mods.has_autoplay() 
-            || self.unrankable
+            || self.state.unrankable
         )
     }
 
-
     pub fn update_difficulty(
         &mut self, 
-        provider: &mut dyn gameplay_manager::DifficultyProvider
+        provider: &mut dyn engine::database::DifficultyProvider
     ) {
         self.map_diff = provider.get_diff(
             &self.beatmap.get_beatmap_meta(), 
@@ -1092,9 +1386,8 @@ impl GameplayManager {
     }
 }
 
-// Input Handlers
+// Input/Event Handlers
 impl GameplayManager {
-
     fn handle_frame(
         &mut self,
         frame: ReplayAction,
@@ -1106,7 +1399,7 @@ impl GameplayManager {
         // note to self: force is used when the frames are from the gamemode's update function
         #[cfg(feature="gameplay")]
         if let ReplayAction::Press(KeyPress::SkipIntro) = frame {
-            if self.gameplay_mode.is_multi() {
+            if self.gameplay_type_small.is_multi() {
                 self.actions.push(LobbyAction::SendSkipRequest.into());
             } else {
                 self.skip_intro();
@@ -1117,7 +1410,7 @@ impl GameplayManager {
         }
 
         let add_frames = !(
-            self.mods.has_autoplay() || self.gameplay_mode.is_replay()
+            self.mods.has_autoplay() || self.gameplay_type_small.is_replay()
         );
 
         if force || add_frames {
@@ -1148,7 +1441,7 @@ impl GameplayManager {
 
                 #[cfg(feature="gameplay")]
                 self.outgoing_spectator_frame(
-                    SpectatorFrame::new(time, SpectatorAction::ReplayAction { 
+                    |_| SpectatorFrame::new(time, SpectatorAction::ReplayAction { 
                         action: frame.action 
                     }),
                 );
@@ -1156,9 +1449,306 @@ impl GameplayManager {
         }
     }
 
+    pub fn add_action(&mut self, action: GameplayAction) {
+        self.gameplay_actions.push(action);
+    }
+    fn handle_action(
+        &mut self, 
+        action: GameplayAction,
+        settings: &engine::Settings,
+    ) {
+        match action {
+            GameplayAction::Pause => self.pause(),
+            GameplayAction::Resume => self.start(),
+            GameplayAction::JumpToTime { 
+                time, 
+                skip_intro
+            } => {
+                if skip_intro {
+                    self.state.lead_in_time = 0.0;
+                }
+
+                self.state.pending_time_jump = Some(time);
+                self.actions.push(SongAction::SetPosition(time).into());
+            },
+
+            GameplayAction::ApplyMods(mut mods) => {
+                if self.gameplay_type_small.is_preview() {
+                    mods.add_mod(Autoplay);
+                }
+
+                self.mods = Arc::new(mods);
+                self.gamemode.handle_gameplay_event(GameplayEvent::ApplyMods(
+                    self.mods.clone()
+                ));
+            },
+            
+            GameplayAction::FitToArea(bounds) => {
+                // info!("fitting to area: {bounds:?}");
+                self.state.fit_to_bounds = Some(bounds);
+                self.gamemode.handle_gameplay_event(GameplayEvent::SetBounds { 
+                    bounds, 
+                    full_window: false 
+                });
+
+                // if the anim uses the gamemode playfield, it will get updated once the gamemode's playfield is updated
+                #[cfg(feature="graphics")]
+                if self.animation.use_gamemode_playfield(self.gamemode_properties.info) {
+                    self.animation.fit_to_area(self.gamemode.get_playfield());
+                } else {
+                    // .is_fullscreen(true) = hack-ish
+                    self.animation.fit_to_area(
+                        PlayfieldNonsense::new_simple(bounds).is_fullscreen(true)
+                    );
+                }
+
+                self.layout_ui();
+            },
+
+            GameplayAction::AddReplayAction { 
+                action, 
+                should_save 
+            } => self.handle_frame(
+                action, 
+                true, 
+                Some(self.time()), 
+                should_save, 
+                settings
+            ),
+        
+            // not used here
+            GameplayAction::RequestDifficulty => {}
+        }
+    }
+
+    fn handle_gamemode_action(
+        &mut self, 
+        action: gameplay::Action,
+        settings: &engine::Settings
+    ) {
+        match action {
+            gameplay::Action::AddJudgment(judgment) => {
+
+                // increment judgment, if applicable
+                if let Some(count) = self.score.judgments.get_mut(judgment.id) {
+                    *count += 1;
+                }
+
+                // do score
+                let combo_mult = (
+                    self.score.combo as f32 
+                    * self.mods.score_multiplier
+                ).floor() as u16;
+
+                let score = judgment.base_score_value;
+
+                let score = match judgment.combo_multiplier {
+                    ComboMultiplier::None => score,
+                    ComboMultiplier::Custom(mult) => (score as f32 * mult) as i32,
+                    ComboMultiplier::Linear { 
+                        combo, 
+                        multiplier, 
+                        combo_cap 
+                    } => {
+                        let combo_mult = combo_cap.map_or(
+                            combo_mult, 
+                            |cap| combo_mult.min(cap)
+                        );
+                        
+                        let times = (combo_mult % combo).max(1) as f32;
+
+                        (score as f32 * (multiplier * times)) as i32
+                    }
+                };
+
+                match score {
+                    score @ i32::MIN..=0 
+                        => self.score.score.score -= score.unsigned_abs() as u64,
+
+                    score @ 1.. 
+                        => self.score.score.score += score as u64,
+                }
+
+                // do combo
+                match judgment.affects_combo {
+                    AffectsCombo::Increment => {
+                        self.score.combo += 1;
+                        self.score.max_combo = self.score.max_combo.max(self.score.combo);
+                    }
+                    AffectsCombo::Reset => {
+                        self.handle_gamemode_action(
+                            gameplay::action::GamemodeAction::ComboBreak,
+                            settings
+                        );
+                    },
+                    AffectsCombo::Ignore => {},
+                }
+
+                // do health
+                self.health.apply_hit(&judgment, &self.score);
+                self.score.health = self.health.get_ratio();
+
+                // check health
+                if self.health.is_dead(false) {
+                    self.fail();
+                }
+
+                // check sd/pf mods
+                if self.mods.has_sudden_death() && judgment.fails_sudden_death {
+                    // TODO: change the judgment to a miss
+                    self.fail();
+                }
+                if self.mods.has_perfect() && judgment.fails_perfect {
+                    self.fail();
+                }
+            }
+            
+            #[cfg(feature="gameplay")] 
+            gameplay::Action::PlayHitsound { 
+                id, 
+                volume, 
+                repeat 
+            } => {
+                // TODO: timing point volume?
+                // let timing_point = self.beatmap.control_point_at(note_time);
+                // if self.gameplay_mode.is_preview() { vol *= settings.background_game_settings.hitsound_volume };
+                self.actions.push(AudioAction::new(
+                    id, 
+                    AudioActionType::Play { 
+                        volume, 
+                        repeat, 
+                        restart: true 
+                    }).into()
+                );
+            }
+
+
+            gameplay::Action::AddTiming { 
+                hit_time, 
+                note_time
+            } => {
+                let diff = hit_time - note_time;
+                self.score.insert_stat(gameplay::stats::HitVarianceStat, diff);
+                
+                self.state.hit_timings.push(HitTiming::new(hit_time, diff));
+            }
+
+            gameplay::Action::AddStat { 
+                stat, 
+                value 
+            } => self.score.insert_stat(stat, value),
+
+            gameplay::Action::ComboBreak => {
+                // play hitsound
+                #[cfg(feature="gameplay")]
+                if self.score.combo >= 20 && !self.gameplay_type_small.is_preview() {
+                    self.actions.push(AudioAction::new(
+                        "combobreak", 
+                        AudioActionType::Play { 
+                            volume: 1.0, 
+                            repeat: false, 
+                            restart: true 
+                        }
+                    ).into());
+                }
+
+                // reset combo to 0
+                self.score.combo = 0;
+            }
+            gameplay::Action::FailGame => self.fail(),
+            gameplay::Action::ReplayAction(frame) => self.handle_frame(
+                frame.action, 
+                true, 
+                Some(frame.time), 
+                true, 
+                settings
+            ),
+            
+            
+            gameplay::Action::ResetHealth => self.health.reset(),
+            gameplay::Action::ReplaceHealth(new_health) 
+                => self.health = new_health,
+            gameplay::Action::MapComplete => self.state.completed = true,
+
+
+            #[cfg(feature="graphics")] 
+            gameplay::Action::AddIndicator(
+                mut indicator
+            ) => {
+                indicator.set_start_time(self.time());
+                indicator.set_draw_duration(
+                    self.gameplay_settings.hit_indicator_draw_duration, 
+                    settings
+                );
+                self.judgement_indicators.push(indicator);
+            }
+
+            #[cfg(feature="graphics")] 
+            gameplay::Action::RemoveLastJudgment => {
+                self.judgement_indicators.pop();
+            }
+
+            #[cfg(feature="graphics")]
+            gameplay::Action::PlayfieldChanged => {
+                if self.animation.use_gamemode_playfield(
+                    self.gamemode_properties.info
+                ) {
+                    self.animation.fit_to_area(self.gamemode.get_playfield());
+                }
+
+                self.layout_ui();
+            }
+
+            #[cfg(not(all(feature="graphics", feature="gameplay")))] 
+            _ => {}
+        }
+    }
 
     #[cfg(feature="gameplay")]
-    pub fn key_down(
+    fn should_skip_input(&self) -> bool {
+        // never skip input for multi, because you can keep playing if you failed
+        if self.gameplay_type_small.is_multi() { return false }
+        self.failed() || self.gameplay_type.skip_input()
+    }
+
+    #[cfg(feature="gameplay")]
+    pub fn handle_input(&mut self, input: InputEvent, settings: &Settings) {
+        match &input.event {
+            InputType::KeyPress(key_input) => {
+                if self.key_down(key_input, input.key_mods, settings) {
+                    return 
+                }
+            }
+            InputType::KeyRelease(key_input) => {
+                let Some(key) = key_input.as_key() else { return };
+
+                // check map restart key
+                if key == self.gameplay_settings.map_restart_key {
+                    self.state.restart_hold_start = None;
+                    return;
+                }
+            }
+            
+            _ => {}
+        }
+
+        if self.should_skip_input() { return }
+
+        let Some(frame) = self.gamemode.handle_input(input) 
+        else { return };
+
+        self.handle_frame(
+            frame, 
+            false, 
+            None, 
+            true,
+            settings,
+        );
+
+    }
+
+    #[cfg(feature="gameplay")]
+    fn key_down(
         &mut self, 
         key_input: &KeyInput, 
         mods: KeyModifiers,
@@ -1167,28 +1757,28 @@ impl GameplayManager {
         if key_input.repeat { return false }
         let Some(key) = key_input.as_key() else { return false };
 
-        if (self.gameplay_mode.is_replay() || self.mods.has_autoplay()) 
-            && !self.gameplay_mode.is_preview() 
+        if (self.gameplay_type_small.is_replay() || self.mods.has_autoplay()) 
+            && !self.gameplay_type_small.is_preview() 
         {
             // check replay-only keys
             if key == Key::Escape {
-                self.started = false;
-                self.completed = true;
+                self.state.started = false;
+                self.state.completed = true;
                 return true;
             }
         }
 
         // check map restart key
         if key == self.gameplay_settings.map_restart_key 
-            && !self.gameplay_mode.is_multi() 
+            && !self.gameplay_type_small.is_multi() 
         {
-            self.restart_key_hold_start = Some(tataku::Instant::now());
+            self.state.restart_hold_start = Some(tataku::Instant::now());
             return true;
         }
 
-        if self.failed.is_some() && key == Key::Escape && !self.gameplay_mode.is_multi() {
+        if self.failed() && key == Key::Escape && !self.gameplay_type_small.is_multi() {
             // set the failed time to negative, so it triggers the end
-            self.failed = Some(-1000.0);
+            self.state.failed = Some(-1000.0);
         }
 
         if self.should_skip_input() { return false }
@@ -1196,8 +1786,8 @@ impl GameplayManager {
 
         if key == Key::Escape {
             if self.can_pause() {
-                self.should_pause = true;
-            } else if let GameplayType::Multiplayer { last_escape_press, .. } = &mut *self.gameplay_mode {
+                self.state.should_pause = true;
+            } else if let GameplayType::Multiplayer { last_escape_press, .. } = &mut *self.gameplay_type {
                 if last_escape_press.elapsed_and_reset() < 3_000.0 {
                     self.actions.push(MultiplayerAction::ExitMultiplayer.into());
                 } else {
@@ -1225,11 +1815,11 @@ impl GameplayManager {
 
 
             // ensure autoplay is enabled
-            self.unrankable = true;
+            self.state.unrankable = true;
             if !self.mods.has_autoplay() {
                 let mut mods = (*self.mods).clone();
                 mods.add_mod(mods::Autoplay);
-                self.apply_mods(mods);
+                self.gameplay_actions.push(GameplayAction::ApplyMods(mods));
             }
 
             let (
@@ -1302,11 +1892,10 @@ impl GameplayManager {
         false
     }
 
-
     #[cfg(feature="graphics")]
     pub fn window_size_changed(&mut self, window_size: Vector2) {
-        self.window_size = window_size;
-        if self.fit_to_bounds.is_none() {
+        self.state.window_size = window_size;
+        if self.state.fit_to_bounds.is_none() {
             self.gamemode.handle_gameplay_event(GameplayEvent::SetBounds { 
                 bounds: Bounds::new(Vector2::ZERO, window_size), 
                 full_window: true
@@ -1322,235 +1911,42 @@ impl GameplayManager {
         self.layout_ui();
     }
 
-
-    #[cfg(feature="gameplay")]
-    pub fn handle_input(&mut self, input: InputEvent, settings: &Settings) {
-        match &input.event {
-            InputType::KeyPress(key_input) => {
-                if self.key_down(key_input, input.key_mods, settings) {
-                    return 
-                }
-            }
-            InputType::KeyRelease(key_input) => {
-                let Some(key) = key_input.as_key() else { return };
-
-                // check map restart key
-                if key == self.gameplay_settings.map_restart_key {
-                    self.restart_key_hold_start = None;
-                    return;
-                }
-            }
-            
-            _ => {}
-        }
-
-        if self.should_skip_input() { return }
-
-        let Some(frame) = self.gamemode.handle_input(input) 
-        else { return };
-
-        self.handle_frame(
-            frame, 
-            false, 
-            None, 
-            true,
-            settings,
-        );
-
-    }
-
-
-    fn apply_mods(&mut self, mut mods: ModManager) {
-        if self.gameplay_mode.is_preview() {
-            mods.add_mod(Autoplay);
-        }
-
-        self.mods = Arc::new(mods);
-        self.gamemode.handle_gameplay_event(GameplayEvent::ApplyMods(
-            self.mods.clone()
-        ));
-    }
-
-
-
     #[cfg(feature="graphics")]
     pub fn window_focus_changed(&mut self, got_focus: bool) {
         // info!("window focus changed");
         if got_focus {
-            self.pause_pending = false;
+            self.state.pause_pending = false;
         } else if self.can_pause() {
             if self.in_break() { 
-                self.pause_pending = true;
+                self.state.pause_pending = true;
             } else { 
-                self.should_pause = true;
+                self.state.should_pause = true;
             }
         }
-    }
-
-
-
-    #[cfg(feature="graphics")]
-    fn fit_to_area(&mut self, bounds: Bounds) {
-        // info!("fitting to area: {bounds:?}");
-        self.fit_to_bounds = Some(bounds);
-        self.gamemode.handle_gameplay_event(GameplayEvent::SetBounds { 
-            bounds, 
-            full_window: false 
-        });
-
-        // if the anim uses the gamemode playfield, it will get updated once the gamemode's playfield is updated
-        #[cfg(feature="graphics")]
-        if self.animation.use_gamemode_playfield(self.gamemode_properties.info) {
-            self.animation.fit_to_area(self.gamemode.get_playfield());
-        } else {
-            // .is_fullscreen(true) = hack-ish
-            self.animation.fit_to_area(
-                PlayfieldNonsense::new_simple(bounds).is_fullscreen(true)
-            );
-        }
-
-        self.layout_ui();
-    }
-
-
-    fn combo_break(&mut self) {
-        // play hitsound
-        if self.score.combo >= 20 && !self.gameplay_mode.is_preview() {
-            self.actions.push(AudioAction::new(
-                "combobreak", 
-                AudioActionType::Play { 
-                    volume: 1.0, 
-                    repeat: false, 
-                    restart: true 
-                }
-            ).into());
-        }
-
-        // reset combo to 0
-        self.score.combo = 0;
-    }
-
-    /// the time set here will be properly applied next update call, as async is required
-    pub fn jump_to_time(
-        &mut self, 
-        time: f32, 
-        skip_intro: bool
-    ) {
-        if skip_intro {
-            self.lead_in_time = 0.0;
-        }
-
-        self.actions.push(SongAction::SetPosition(time).into());
-        self.pending_time_jump = Some(time);
-    }
-
-    pub fn on_complete(&mut self) {
-        // make sure the cursor is visible
-        #[cfg(feature="graphics")] 
-        self.actions.push(CursorAction::SetVisible(true).into());
-        // undo any cursor override
-        #[cfg(feature="graphics")] 
-        self.actions.push(CursorAction::OverrideRippleRadius(None).into());
-
-        #[cfg(feature="gameplay")]
-        if let GameplayType::Spectator {
-            buffered_score_frames, ..
-        } = &mut *self.gameplay_mode {
-            // if we have a score frame we havent dealt with yet, its most likely the score frame sent once the map has ended
-            if !buffered_score_frames.is_empty() {
-                self.score.score = buffered_score_frames.last().cloned().unwrap().1;
-            }
-
-            // let mut score_menu = ScoreMenu::new(&manager.score, manager.metadata.clone(), false);
-            // score_menu.dont_close_on_back = true;
-            // self.score_menu = Some(score_menu);
-        }
-    }
-
-}
-
-// other misc stuff that isnt touched often and i just wanted it out of the way
-impl GameplayManager {
-    #[cfg(feature="gameplay")]
-    fn should_skip_input(&self) -> bool {
-        // never skip input for multi, because you can keep playing if you failed
-        if self.gameplay_mode.is_multi() { return false }
-        self.failed.is_some() || self.gameplay_mode.skip_input()
-    }
-
-    pub fn increment_offset(&mut self, delta: f32) {
-        self.beatmap_preferences.audio_offset += delta;
-        // #[cfg(feature="graphics")]
-        // self.center_text_helper.set_value(
-        //     format!("Offset: {:.2}ms", self.beatmap_preferences.audio_offset),
-        //     self.time()
-        // );
-
-        // update the beatmap offset
-        let new_prefs = self.beatmap_preferences.clone();
-        let hash = self.beatmap.hash();
-        Database::save_beatmap_prefs(hash, &new_prefs);
-    }
-
-    pub fn increment_global_offset(&mut self, delta: f32) {
-        self.global_offset += delta;
-        // #[cfg(feature="graphics")]
-        // self.center_text_helper.set_value(
-        //     format!("Global Offset: {:.2}ms", self.global_offset),
-        //     self.time()
-        // );
-    }
-
-    pub fn force_update_settings(&mut self, settings: &Settings) {
-        self.gamemode.force_update_settings(settings);
-        self.global_offset = settings.global_offset;
-    }
-
-    fn in_break(&self) -> bool {
-        let time = self.time();
-
-        fn check(event: &BeatmapEvent, time: f32) -> bool {
-            #[allow(irrefutable_let_patterns, reason = "more events will be added eventually")]
-            let BeatmapEvent::Break { start, end } = event 
-            else { return false };
-
-            time >= *start && time < *end 
-        }
-
-        self.beatmap_events
-            .iter()
-            .any(|e| check(e, time))
-    }
-
-    #[allow(clippy::needless_pass_by_value)]
-    pub fn set_id(&mut self, id: GameplayId) {
-        // make sure we dont add a reference count to our copy of the id
-        // this makes sure things are cleaned up properly when the manager is dropped
-        self.id = Arc::new(*id);
     }
 }
 
 // Spectator Stuff
 #[cfg(feature="gameplay")]
 impl GameplayManager {
-    pub fn outgoing_spectator_frame(
+    fn outgoing_spectator_frame(
         &mut self, 
-        frame: SpectatorFrame,
+        frame: impl FnOnce(&Self) -> SpectatorFrame,
     ) {
-        if !self.gameplay_mode.should_send_spec_frames() { return }
+        if !self.gameplay_type.should_send_spec_frames() { return }
         self.actions.push(actions::online::OnlineAction::SendSpectatorFrame {
-            frame: Box::new(frame),
+            frame: Box::new(frame(self)),
             force: false
         }.into());
     }
 
-    pub fn outgoing_spectator_frame_force(
+    fn outgoing_spectator_frame_force(
         &mut self, 
-        frame: SpectatorFrame,
+        frame: impl FnOnce(&Self) -> SpectatorFrame,
     ) {
-        if !self.gameplay_mode.should_send_spec_frames() { return }
+        if !self.gameplay_type.should_send_spec_frames() { return }
         self.actions.push(actions::online::OnlineAction::SendSpectatorFrame {
-            frame: Box::new(frame),
+            frame: Box::new(frame(self)),
             force: true
         }.into());
     }
@@ -1560,7 +1956,7 @@ impl GameplayManager {
             frames, 
             host_id, 
             ..
-        } = &mut *self.gameplay_mode else { return };
+        } = &mut *self.gameplay_type else { return };
 
         if *host_id == frame_host_id {
             frames.push_back(frame);
@@ -1569,7 +1965,7 @@ impl GameplayManager {
 }
 
 impl GameplayManagerTrait for GameplayManager {
-    fn end_time(&self) -> f32 { self.end_time }
+    fn end_time(&self) -> f32 { self.state.end_time }
 
     fn score(&self) -> &IngameScore { &self.score }
     fn score_mut(&mut self) -> &mut IngameScore { &mut self.score }
@@ -1579,213 +1975,18 @@ impl GameplayManagerTrait for GameplayManager {
     fn spectators(&mut self) -> &mut engine::online::SpectatorList { &mut self.spectator_info.spectators }
     fn judgments(&self) -> &Vec<HitJudgment> { &self.judgments }
     fn health(&self) -> &dyn HealthManager { &*self.health }
-    fn hitbar_timings(&self) -> Vec<(f32, f32)> { self.hit_timings.clone() }
+    fn hit_timings(&self) -> &Vec<HitTiming> { &self.state.hit_timings }
     fn timing_points(&self) -> &TimingPointHelper { &self.timing_points }
 
     fn properties(&self) -> &GamemodeProperties { &self.gamemode_properties }
 
     fn bounds(&self) -> Bounds {
-        self.fit_to_bounds.unwrap_or(Bounds::new(Vector2::ZERO, self.window_size))
+        self.state.fit_to_bounds.unwrap_or(Bounds::new(Vector2::ZERO, self.state.window_size))
     }
-
-
-    fn handle_action(
-        &mut self, 
-        action: GameplayAction,
-        settings: &engine::Settings,
-    ) {
-        match action {
-            GameplayAction::Pause => self.pause(),
-            GameplayAction::Resume => self.start(),
-            GameplayAction::JumpToTime { 
-                time, 
-                skip_intro
-            } => self.jump_to_time(time, skip_intro),
-
-            GameplayAction::ApplyMods(mods) => self.apply_mods(mods),
-            
-            GameplayAction::FitToArea(bounds) => {
-                #[cfg(feature="graphics")] 
-                self.fit_to_area(bounds);
-            },
-            GameplayAction::SetMode(mode) => self.set_mode(mode.into()),
-
-            GameplayAction::AddReplayAction { 
-                action, 
-                should_save 
-            } => self.handle_frame(
-                action, 
-                true, 
-                Some(self.time()), 
-                should_save, 
-                settings
-            ),
-        
-            // not used here
-            GameplayAction::RequestDifficulty => {}
-        }
-    }
-
-    fn handle_gamemode_action(
-        &mut self, 
-        action: gameplay::Action,
-        settings: &engine::Settings
-    ) {
-        match action {
-            gameplay::Action::AddJudgment(judgment) => {
-
-                // increment judgment, if applicable
-                if let Some(count) = self.score.judgments.get_mut(judgment.id) {
-                    *count += 1;
-                }
-
-                // do score
-                let combo_mult = (
-                    self.score.combo as f32 
-                    * self.mods.score_multiplier
-                ).floor() as u16;
-
-                let score = judgment.base_score_value;
-
-                let score = match judgment.combo_multiplier {
-                    ComboMultiplier::None => score,
-                    ComboMultiplier::Custom(mult) => (score as f32 * mult) as i32,
-                    ComboMultiplier::Linear { 
-                        combo, 
-                        multiplier, 
-                        combo_cap 
-                    } => {
-                        let combo_mult = combo_cap.map_or(
-                            combo_mult, 
-                            |cap| combo_mult.min(cap)
-                        );
-                        
-                        let times = (combo_mult % combo).max(1) as f32;
-
-                        (score as f32 * (multiplier * times)) as i32
-                    }
-                };
-
-                match score {
-                    score @ i32::MIN..=0 
-                        => self.score.score.score -= score.unsigned_abs() as u64,
-
-                    score @ 1.. 
-                        => self.score.score.score += score as u64,
-                }
-
-                // do combo
-                match judgment.affects_combo {
-                    AffectsCombo::Increment => {
-                        self.score.combo += 1;
-                        self.score.max_combo = self.score.max_combo.max(self.score.combo);
-                    }
-                    AffectsCombo::Reset => self.combo_break(),
-                    AffectsCombo::Ignore => {},
-                }
-
-                // do health
-                self.health.apply_hit(&judgment, &self.score);
-                self.score.health = self.health.get_ratio();
-
-                // check health
-                if self.health.is_dead(false) {
-                    self.fail();
-                }
-
-                // check sd/pf mods
-                if self.mods.has_sudden_death() && judgment.fails_sudden_death {
-                    // TODO: change the judgment to a miss
-                    self.fail();
-                }
-                if self.mods.has_perfect() && judgment.fails_perfect {
-                    self.fail();
-                }
-            }
-            gameplay::Action::PlayHitsound { 
-                id, 
-                volume, 
-                repeat 
-            } => {
-                // TODO: timing point volume?
-                // let timing_point = self.beatmap.control_point_at(note_time);
-                // if self.gameplay_mode.is_preview() { vol *= settings.background_game_settings.hitsound_volume };
-                self.actions.push(AudioAction::new(
-                    id, 
-                    AudioActionType::Play { 
-                        volume, 
-                        repeat, 
-                        restart: true 
-                    }).into()
-                );
-            }
-
-
-            gameplay::Action::AddTiming { 
-                hit_time, 
-                note_time
-            } => {
-                let diff = hit_time - note_time;
-                self.score.insert_stat(gameplay::stats::HitVarianceStat, diff);
-                self.hit_timings.push((hit_time, diff));
-            }
-
-            #[cfg(feature="graphics")] 
-            gameplay::Action::AddIndicator(
-                mut indicator
-            ) => {
-                indicator.set_start_time(self.time());
-                indicator.set_draw_duration(
-                    self.gameplay_settings.hit_indicator_draw_duration, 
-                    settings
-                );
-                self.judgement_indicators.push(indicator);
-            }
-
-            gameplay::Action::AddStat { 
-                stat, 
-                value 
-            } => self.score.insert_stat(stat, value),
-
-            #[cfg(feature="graphics")] 
-            gameplay::Action::RemoveLastJudgment => self.judgement_indicators.pop().nope(),
-            gameplay::Action::ComboBreak => self.combo_break(),
-            gameplay::Action::FailGame => self.fail(),
-            gameplay::Action::ReplayAction(frame) => self.handle_frame(
-                frame.action, 
-                true, 
-                Some(frame.time), 
-                true, 
-                settings
-            ),
-            
-            
-            gameplay::Action::ResetHealth => self.health.reset(),
-            gameplay::Action::ReplaceHealth(new_health) 
-                => self.health = new_health,
-            gameplay::Action::MapComplete => self.completed = true,
-
-
-            gameplay::Action::PlayfieldChanged => {
-                #[cfg(feature="graphics")] 
-                if self.animation.use_gamemode_playfield(
-                    self.gamemode_properties.info
-                ) {
-                    self.animation.fit_to_area(self.gamemode.get_playfield());
-                }
-
-                #[cfg(feature = "graphics")]
-                self.layout_ui();
-            }
-
-            #[cfg(not(feature="graphics"))] 
-            _ => {}
-        }
-    }
-
 
     fn all_scores(&self) -> Vec<&IngameScore> {
         let mut list = self.score_list
+            .scores
             .iter()
             .chain([&self.score])
             .collect::<Vec<_>>();
@@ -1799,257 +2000,27 @@ impl GameplayManagerTrait for GameplayManager {
     }
 
     fn all_non_user_scores(&self) -> &[IngameScore] {
-        &self.score_list
+        &self.score_list.scores
     }
 
     #[inline]
     fn time(&self) -> f32 {
-        self.song_time - (
-            self.lead_in_time 
-            + self.beatmap_preferences.audio_offset 
-            + self.global_offset
-        )
-    }
-
-    // can be from either paused or new
-    fn start(&mut self) {
-        #[cfg(feature="graphics")] {
-            let event = if let Some(bounds) = self.fit_to_bounds {
-                GameplayEvent::SetBounds { 
-                    bounds, 
-                    full_window: false 
-                }
-            } else {
-                GameplayEvent::SetBounds { 
-                    bounds: Bounds::new(Vector2::ZERO, self.window_size), 
-                    full_window: true 
-                }
-            };
-
-            self.gamemode.handle_gameplay_event(event);
-        }
-        
-
-        #[cfg(feature="graphics")] 
-        self.actions.push(CursorAction::SetVisible(
-            !self.should_hide_cursor()
-        ).into());
-
-        self.pause_pending = false;
-        self.should_pause = false;
-
-        // offset our start time by the duration of the pause
-        if let Some(pause_time) = self.pause_start.take() {
-            self.start_time += chrono::Utc::now().timestamp() - pause_time;
-        }
-
-        // re init ui
-        #[cfg(feature = "graphics")]
-        self.layout_ui();
-
-        if !self.started {
-            self.reset();
-
-            //TODO: probably want to skip other things as well
-            if !self.gameplay_mode.is_replay() {
-                #[cfg(feature="gameplay")]
-                self.outgoing_spectator_frame(SpectatorFrame::new(
-                    0.0, 
-                    SpectatorAction::Play {
-                        beatmap_hash: self.beatmap.hash(),
-                        mode: self.gamemode_properties.playmode().to_string(),
-                        mods: self.score.mods.clone(),
-                        speed: self.mods.speed.as_u16(),
-                        map_game: self.metadata.beatmap_type.into(),
-                        map_link: None
-                    })
-                );
-            }
-
-            if self.gameplay_mode.is_preview() {
-                // dont do lead in
-                self.lead_in_time = 0.0;
-            } else {
-                self.lead_in_timer = tataku::Instant::now();
-                self.lead_in_time = LEAD_IN_TIME;
-            }
-
-            // volume is set when the song is actually started (when lead_in_time is <= 0)
-            self.started = true;
-
-            // run the startup code
-            if let Some(on_start) 
-                = self.on_start.take() 
-            {
-                on_start(self);
-            }
-
-        } else if self.lead_in_time <= 0.0 {
-            // if this is a preview, dont do anything
-            if self.gameplay_mode.is_preview() { return }
-
-            #[cfg(feature="gameplay")]
-            self.outgoing_spectator_frame(SpectatorFrame::new(
-                self.time(), 
-                SpectatorAction::UnPause
-            ));
-            self.actions.push(SongAction::Play.into());
-            self.gamemode.handle_gameplay_event(GameplayEvent::UnPaused);
-        }
-        
-
-        #[cfg(feature = "graphics")]
-        self.layout_ui();
-    }
-
-    fn pause(&mut self) {
-        // make sure the cursor is visible
-        #[cfg(feature="graphics")] 
-        self.actions.push(CursorAction::SetVisible(true).into());
-        // undo any cursor override
-        #[cfg(feature="graphics")] 
-        self.actions.push(CursorAction::OverrideRippleRadius(None).into());
-
-        // self.song.pause();
-        self.actions.push(SongAction::Pause.into());
-        self.pause_start = Some(chrono::Utc::now().timestamp());
-
-        // is there anything else we need to do?
-
-        // might mess with lead-in but meh
-        let time = self.time();
-        #[cfg(feature="gameplay")]
-        self.outgoing_spectator_frame_force(
-            SpectatorFrame::new(time, SpectatorAction::Pause),
-        );
-
-        self.gamemode.handle_gameplay_event(GameplayEvent::Paused);
-    }
-    fn reset(&mut self) {
-        self.gamemode.reset(&self.beatmap);
-        self.health.reset();
-        self.key_counter.reset();
-        self.hit_timings.clear();
-        #[cfg(feature="graphics")] 
-        self.judgement_indicators.clear();
-        self.restart_key_hold_start = None;
-
-        if self.gameplay_mode.is_preview() {
-        self.gamemode.handle_gameplay_event(GameplayEvent::ApplyMods(
-            self.mods.clone()
-        ));
-        } else {
-            // reset song
-            self.actions.push(SongAction::Restart.into());
-            self.actions.push(SongAction::Pause.into());
-            self.actions.push(SongAction::SetPosition(0.0).into());
-            self.actions.push(SongAction::SetRate(self.game_speed()).into());
-        }
-
-        self.failed = None;
-        self.started = false;
-        self.completed = false;
-        self.lead_in_time = LEAD_IN_TIME / self.mods.get_speed();
-        self.lead_in_timer = tataku::Instant::now();
-
-
-        let playmode = self.gamemode_properties.playmode().to_string();
-        self.actions.push(GameAction::from((
-            self.id.clone(), 
-            GameplayAction::RequestDifficulty
-        )).into());
-
-        let username = self.score.username.clone();
-        self.score = IngameScore::new(
-            Score::new(
-                self.beatmap.hash(), 
-                username, 
-                playmode
-            ), 
-            true, 
-            false
-        );
-
-        self.score.speed = self.mods.speed;
-        self.timing_points.reset();
-
-        // get all available mods for this playmode
-        {
-            // self.score_multiplier = self
-            //     .current_mods
-            //     .calculate_score_multiplier(self.gamemode_properties.info);
-
-            self.score.mods = self.mods.map_mods_to_thing(
-                self.gamemode_properties.info
-            );
-
-            // for m in self.score.mods.iter() {
-            //     self.score_multiplier *= m.score_multiplier;
-            // }
-        }
-        if self.score.replay.is_none() {
-            self.score.replay = Some(Replay::new());
-        }
-
-        if !self.gameplay_mode.is_replay() {
-            // only reset the replay if we arent replaying
-            self.score.replay = Some(Replay::new());
-            self.score.speed = self.mods.speed;
-        } else {
-            // if let Some(score) = &self.replay.score_data {
-            //     self.score.username = score.username.clone();
-            // }
-        }
-
-        // reset elements
-        #[cfg(feature = "graphics")]
-        for e in self.ui_elements.iter_mut() {
-            e.reset_element();
-        }
-
-        // re-add judgments to score
-        for j in &self.judgments {
-            self.score.judgments.insert(j.id.to_owned(), 0);
-        }
-
-        #[cfg(feature="gameplay")]
-        if self.gameplay_mode.should_load_scores() {
-            self.actions.push(GameAction::RefreshScores.into());
-        }
-
-    }
-    fn fail(&mut self) {
-        #[cfg(feature="gameplay")] 
-        let a = self.gameplay_mode.is_multi();
-        #[cfg(not(feature="gameplay"))] 
-        let a = false;
-
-        if self.failed.is_some()
-            || self.mods.has_nofail() 
-            || self.mods.has_autoplay() 
-            || self.gameplay_mode.is_preview() 
-            || a
-        { 
-            return
-        }
-        
-        debug!("failed");
-        self.failed = Some(self.time());
+        self.state.time(&self.beatmap_preferences)
     }
 
     /// using a getter for this since we dont want anything to directly change it
-    fn get_mode(&self) -> &GameplayType {
-        &self.gameplay_mode
-    }
+    fn get_mode(&self) -> GameplayTypeSmall { self.gameplay_type_small }
     fn set_mode(&mut self, mode: GameplayType) {
         // println!("setting gameplay mode to {mode:?}");
+
 
         match &mode {
             GameplayType::Normal => {
                 // dont think there's anything to do for this one, since its the default
             }
 
-            GameplayType::Replaying { score, .. } => {
+            GameplayType::Replaying { score, .. } 
+            | GameplayType::Simulating { score, .. } => {
                 // load speed from score
                 self.mods = Arc::new(ModManager::new(
                     score.mods.iter(),
@@ -2060,12 +2031,12 @@ impl GameplayManagerTrait for GameplayManager {
                 self.score.username = score.username.clone();
                 self.score.mods = self
                     .mods
-                    .map_mods_to_thing(self.gamemode_properties.info);
+                    .filter_mods_for_mode(self.gamemode_properties.info);
             }
 
             GameplayType::Preview => {
-                self.lead_in_time = 0.0;
-                self.pending_time_jump = Some(self.time());
+                self.state.lead_in_time = 0.0;
+                self.state.pending_time_jump = Some(self.time());
 
                 let mut mods = self.mods.as_ref().clone();
                 mods.add_mod(Autoplay);
@@ -2085,11 +2056,11 @@ impl GameplayManagerTrait for GameplayManager {
             }
         }
 
-        self.gameplay_mode = Box::new(mode);
+        self.gameplay_type = Box::new(mode);
+        self.gameplay_type_small = GameplayTypeSmall::from(&*self.gameplay_type);
     }
 
 }
-
 impl Drop for GameplayManager {
     fn drop(&mut self) {
         if self.gamemode_properties.playmode() != "none" {
@@ -2098,27 +2069,9 @@ impl Drop for GameplayManager {
     }
 }
 
-#[derive(Default)]
-pub struct GameplaySpectatorInfo {
-    /// when was the last time the score was synchronized?
-    pub last_score_sync: f32,
 
-    /// who is currently spectating us?
-    pub spectators: engine::online::SpectatorList
-}
-
-
-#[cfg(feature = "graphics")]
+#[cfg(feature="graphics")]
 struct EditorChannels {
     event_sender: Sender<GameplayWidgetEvent>,
     action_receiver: Arc<Mutex<Receiver<GameplayWidgetAction>>>,
-}
-
-
-#[derive(Copy, Clone, Debug, Default)]
-pub enum GameplayManagerState {
-    Started,
-    Completed,
-    Failed(f32),
-    #[default] None,
 }

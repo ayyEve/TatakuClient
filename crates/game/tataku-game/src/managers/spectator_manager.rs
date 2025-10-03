@@ -87,6 +87,7 @@ impl SpectatorManager {
         values: &ValueCollection, 
         current_time: f32,
         actions: &mut actions::ActionQueue,
+        database: &dyn engine::database::DatabaseProvider,
     ) -> Option<Box<GameplayManager>> {
         trace!("Trying to watch host play a map");
         let HostMap { 
@@ -106,13 +107,11 @@ impl SpectatorManager {
             map, 
             mods.clone(), 
             &values.settings,
+            database,
         ) {
             Ok(mut manager) => {
                 // set manager things
-                manager.handle_action(
-                    actions::gameplay::GameplayAction::ApplyMods(mods), 
-                    &values.settings
-                );
+                manager.add_action(actions::gameplay::GameplayAction::ApplyMods(mods));
 
                 manager.set_mode(GameplayTypeInfo::Spectator(Box::new(SpectatorGameplayInfo { 
                     host_id: self.host_id,
@@ -124,10 +123,10 @@ impl SpectatorManager {
                 // manager.replay.score_data = Some(Score::new(map.beatmap_hash, self.host_username.clone(), mode.clone()));
                 manager.on_start = Some(Box::new(move |manager| {
                     trace!("Jumping to time {current_time}");
-                    manager.jump_to_time(
-                        current_time.max(0.0), 
-                        current_time > 0.0
-                    );
+                    manager.add_action(actions::gameplay::GameplayAction::JumpToTime { 
+                        time: current_time.max(0.0), 
+                        skip_intro: current_time > 0.0,
+                    });
                 }));
 
                 return Some(Box::new(manager));
@@ -150,6 +149,7 @@ impl SpectatorManager {
         manager: Option<&mut Box<GameplayManager>>,
         values: &mut ValueCollection,
         actions: &mut actions::ActionQueue,
+        database: &dyn engine::database::DatabaseProvider,
     ) -> Option<Box<GameplayManager>> { 
         // only continue if we received a map update
         let Ok(Some(_)) = self.new_map.update(values) else { return None };
@@ -169,7 +169,7 @@ impl SpectatorManager {
                 |t, f| f.time.max(t)) - 2000.0
             ).max(0.0);
             
-            return self.start_game(values, current_time, actions);
+            return self.start_game(values, current_time, actions, database);
         }
 
         None
@@ -180,9 +180,15 @@ impl SpectatorManager {
         manager: Option<&mut Box<GameplayManager>>,
         values: &mut ValueCollection,
         actions: &mut actions::ActionQueue,
+        database: &dyn engine::database::DatabaseProvider,
     ) -> Option<Box<GameplayManager>> {
         // handle new maps
-        if let Some(manager) = self.check_new_maps(manager, values, actions) {
+        if let Some(manager) = self.check_new_maps(
+            manager, 
+            values, 
+            actions, 
+            database,
+        ) {
             return Some(manager)
         }
 
@@ -216,7 +222,7 @@ impl SpectatorManager {
                             beatmap_hash, 
                             SetBeatmapOptions::default().restart_song(true)
                         ).into());
-                        self.start_game(values, 0.0, actions);
+                        self.start_game(values, 0.0, actions, database);
                     } else {
                         let settings = &values.settings;
                         info!("no beatmap, attempting to download");

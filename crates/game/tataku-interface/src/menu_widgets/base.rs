@@ -23,14 +23,14 @@ pub struct WidgetBase {
 impl WidgetBase {
     pub fn new(
         style: ArcStr,
-        element_name: impl Into<ArcStr>,
+        element_name: ArcStr,
         id: Option<ArcStr>,
         class: ClassList,
         inner: Box<dyn Widget<actions::Action>>,
     ) -> Self {
         Self {
             style_str: style,
-            element_name: element_name.into(),
+            element_name,
             id,
             class,
             inner,
@@ -39,7 +39,7 @@ impl WidgetBase {
 
     pub fn new_boxed(
         style: ArcStr,
-        element_name: impl Into<ArcStr>,
+        element_name: ArcStr,
         id: Option<ArcStr>,
         class: ClassList,
         inner: Box<dyn Widget<actions::Action>>,

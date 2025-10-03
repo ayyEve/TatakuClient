@@ -45,6 +45,9 @@ pub enum Action {
     /// Perform a task action
     Task(actions::task::TaskAction),
 
+    /// Perform a database operation
+    Database(actions::database::Action),
+
     /// Perform a cursor action
     #[cfg(feature="graphics")]
     CursorAction(actions::cursor::CursorAction),
@@ -83,16 +86,13 @@ impl Clone for actions::Action {
             Self::Download(a) => Self::Download(a.clone()),
             Self::OnlineContent(a) => Self::OnlineContent(a.clone()),
             Self::Event(a) => Self::Event(a.clone()),
+            Self::Database(a) => Self::Database(a.clone()),
             Self::Multiple(a) => Self::Multiple(a.clone()),
             
-            #[cfg(feature="graphics")]
-            Self::Menu(a) => Self::Menu(a.clone()),
-            #[cfg(feature="graphics")]
-            Self::Ui(a) => Self::Ui(a.clone()),
-            #[cfg(feature="graphics")]
-            Self::CursorAction(a) => Self::CursorAction(*a),
-            #[cfg(feature="graphics")]
-            Self::WindowAction(a) => Self::WindowAction(a.clone()),
+            #[cfg(feature="graphics")] Self::Menu(a) => Self::Menu(a.clone()),
+            #[cfg(feature="graphics")] Self::Ui(a) => Self::Ui(a.clone()),
+            #[cfg(feature="graphics")] Self::CursorAction(a) => Self::CursorAction(*a),
+            #[cfg(feature="graphics")] Self::WindowAction(a) => Self::WindowAction(a.clone()),
 
             
             Self::Task(_) => panic!("trying to clone TaskAction"),

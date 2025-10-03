@@ -28,15 +28,15 @@ impl CustomMenuManager {
         })
     }
     
-    pub fn load_entry(
-        &mut self, 
-        path: String, 
-        source: CustomMenuSource,
-        entry_type: CustomEntryType,
-    ) -> tataku::Result<()> {
-        let bytes = std::fs::read(&path)?;
-        self.load_entry_bytes(&bytes, Some(path), source, entry_type)
-    }
+    // pub fn load_entry(
+    //     &mut self, 
+    //     path: String, 
+    //     source: CustomMenuSource,
+    //     entry_type: CustomEntryType,
+    // ) -> tataku::Result<()> {
+    //     let bytes = std::fs::read(&path)?;
+    //     self.load_entry_bytes(&bytes, Some(path), source, entry_type)
+    // }
     
     pub fn load_entry_bytes(
         &mut self, 
@@ -96,15 +96,15 @@ impl CustomMenuManager {
         reloaded
     }
 
-    pub fn clear(&mut self, source: CustomMenuSource) -> bool {
-        let mut has_entries = !self.menu_list.is_empty();
-        has_entries |= !self.dialog_list.is_empty();
+    // pub fn clear(&mut self, source: CustomMenuSource) -> bool {
+    //     let mut has_entries = !self.menu_list.is_empty();
+    //     has_entries |= !self.dialog_list.is_empty();
 
-        self.menu_list.retain(|src| src.source.check(&source));
-        self.dialog_list.retain(|src| src.source.check(&source));
+    //     self.menu_list.retain(|src| src.source.check(&source));
+    //     self.dialog_list.retain(|src| src.source.check(&source));
 
-        has_entries
-    }
+    //     has_entries
+    // }
 
 
     pub fn update_values(&self, values: &mut ValueCollection) {
@@ -206,8 +206,9 @@ impl From<&str> for CustomEntrySelector {
 pub enum CustomMenuSource {
     /// Will pick the last loaded menu from the list 
     #[default] Any,
-
+    
     /// Will explicitly load the menu from the skin
+    #[allow(unused, reason = "future use")]
     Skin,
 
     /// Will load the menu from the game

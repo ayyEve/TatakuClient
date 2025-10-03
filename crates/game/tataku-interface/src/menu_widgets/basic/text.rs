@@ -21,9 +21,9 @@ pub struct TextWidget {
     old_width: f32,
 }
 impl TextWidget {
-    pub fn new(text: impl Into<WidgetText>) -> Self {
+    pub fn new(text: WidgetText) -> Self {
         Self {
-            text: text.into(),
+            text,
             node_id: ui::EMPTY_NODE,
 
             layout: parley::Layout::default(),

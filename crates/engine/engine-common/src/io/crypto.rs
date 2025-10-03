@@ -45,7 +45,7 @@ impl Cryptography {
     }
 
 
-    pub fn decode_base64(data: impl AsRef<[u8]>) -> tataku::TatakuResult<Vec<u8>>{
+    pub fn decode_base64(data: impl AsRef<[u8]>) -> tataku::Result<Vec<u8>>{
         use base64::Engine;
         base64::engine::general_purpose::STANDARD
             .decode(data)

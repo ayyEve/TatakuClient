@@ -68,7 +68,8 @@ impl ScoreManager {
 
     pub fn get_scores(
         &mut self, 
-        values: &mut ValueCollection
+        values: &mut ValueCollection,
+        database: &dyn engine::database::ScoreProvider,
     ) -> engine::tataku::Result<()> {
         if self.current_loader.take().is_some()
         && let Some(abort) = self.abort_handle.take() {
@@ -90,15 +91,15 @@ impl ScoreManager {
             | ScoreRetreivalMethod::LocalMods => {
                 let mods = self.mods.as_ref().cloned().unwrap_or_default();
 
-                let handle = tokio::spawn(async move {
-                    let map_hash = map_hash.to_string();
-                    let mut local_scores = Database::get_scores(
-                        &map_hash, 
+                // FIXME: need to async this somehow?
+                // let handle = tokio::spawn(async move {
+                    let mut local_scores = database.get_scores(
+                        map_hash, 
                         &playmode, 
                         &infos
-                    );
+                    ).unwrap_or_default();
 
-
+                let handle = tokio::spawn(async move {
                     if method.filter_by_mods() {
                         local_scores.retain(|s| Self::check_mods(&s.mods, &mods));
                     }
@@ -200,7 +201,11 @@ impl ScoreManager {
         self.score_method.as_ref().copied().unwrap_or_default()
     }
     
-    pub fn update(&mut self, values: &mut ValueCollection) {
+    pub fn update(
+        &mut self, 
+        values: &mut ValueCollection,
+        database: &dyn engine::database::ScoreProvider
+    ) {
         let did_update = 
             self.beatmap.update(values).ok().and_then(|a| a).is_some() // if the map changed
             | self.playmode.update(values).unwrap().is_some() // or the actual playmode changed
@@ -220,7 +225,7 @@ impl ScoreManager {
             values.score_list.loaded = false;
             
             // and then get new scores
-            if let Err(e) = self.get_scores(values) {
+            if let Err(e) = self.get_scores(values, database) {
                 warn!("error getting scores: {e}");
             }
         }
@@ -651,7 +656,7 @@ mod tataku {
         playmode: &str, 
         settings: &engine::Settings
     ) -> engine::tataku::Result<Vec<IngameScore>> {
-        let base = settings.score_url.clone();
+        let base = settings.connection().score_url.clone();
         let url = format!("{base}/api/get_scores?hash={map_hash}&mode={playmode}");
 
         let bytes = reqwest::get(url).await?.bytes().await?.to_vec();

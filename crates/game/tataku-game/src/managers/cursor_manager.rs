@@ -21,64 +21,39 @@ use engine::{
 };
 
 
-pub struct CursorManager {
+#[derive(Default2)]
+pub(crate) struct CursorManager {
     /// position of the visible cursor
-    pub pos: Vector2,
+    pos: Vector2,
+    current_skin: Arc<graphics::SkinSettings>,
+    settings: engine::settings::cursor::CursorSettings,
 
-    cursor_images: HashMap<CursorMode, graphics::Image>,
+    // state data
+
     cursor_mode: CursorMode,
-
-    // cached settings
-    ripple_radius_override: Option<f32>,
-    // ripple_image: Option<Image>,
-
-    cursor_rotation: f32,
+    cursor_images: HashMap<CursorMode, graphics::Image>,
 
     /// should the cursor be visible?
+    #[default(true)] 
     visible: bool,
+    cursor_rotation: f32,
 
     left_pressed: bool,
     right_pressed: bool,
 
-    current_skin: Arc<graphics::SkinSettings>,
 
-    ripples: Vec<graphics::Trail>,
     time: f32,
+    ripples: Vec<graphics::Trail>,
+    // ripple_image: Option<Image>,
+    ripple_radius_override: Option<f32>,
 
-    settings: engine::settings::cursor::CursorSettings,
 
+    // fallback cursor config
+    #[default(Arc::new(parley::Layout::new()))]
     layout: Arc<parley::Layout<Color>>,
     pos_offset: Vector2,
 }
 impl CursorManager {
-    pub fn new(
-        skin: Arc<graphics::SkinSettings>, 
-        settings: engine::settings::cursor::CursorSettings,
-    ) -> Self {
-        Self {
-            pos: Vector2::ZERO,
-            pos_offset: Vector2::ZERO,
-
-            cursor_images: HashMap::new(),
-            cursor_mode: CursorMode::Normal,
-
-            current_skin: skin,
-            cursor_rotation: 0.0,
-
-            left_pressed: false,
-            right_pressed: false,
-            visible: true,
-            ripple_radius_override: None,
-            settings,
-            layout: Arc::new(parley::Layout::new()),
-
-            ripples: Vec::new(),
-            time: 0.0,
-        }
-    }
-
-
-    #[cfg(feature="graphics")]
     pub fn reload_skin(&mut self, skin_manager: &mut dyn graphics::SkinProvider) {
         self.cursor_images.clear();
         self.current_skin = skin_manager.skin().clone();
@@ -146,10 +121,11 @@ impl CursorManager {
         match action {
             CursorAction::OverrideRippleRadius(radius_maybe)
                 => self.ripple_radius_override = radius_maybe,
+            
             CursorAction::SetVisible(show) => {
                 // trace!("setting cursor visible = {show}");
                 self.visible = show;
-            },
+            }
 
             CursorAction::SetCursorMode(new_mode) => {
                 // if self.cursor_mode == new_mode { return }
@@ -196,6 +172,19 @@ impl CursorManager {
         self.ripples.retain(|ripple| !ripple.complete(time));
     }
 
+    pub fn update_settings(
+        &mut self, 
+        settings: engine::settings::cursor::CursorSettings,
+        actions: &mut actions::ActionQueue
+    ) {
+        self.settings = settings;
+
+        // refresh color
+        actions.push(actions::cursor::CursorAction::SetCursorMode(
+            self.cursor_mode
+        ).into());
+    }
+
     pub fn left_pressed(&mut self, pressed: bool) {
         self.left_pressed = pressed;
         if pressed && self.settings.cursor_ripples { self.add_ripple() }
@@ -220,10 +209,7 @@ impl CursorManager {
         }
     }
 
-    pub fn draw(
-        &mut self, 
-        list: &mut graphics::RenderableCollection,
-    ) {
+    pub fn draw(&mut self, list: &mut graphics::RenderableCollection) {
         if !self.visible { return }
 
         // draw cursor itself
@@ -293,5 +279,4 @@ impl FallbackCursorInfo {
             extra_offset
         }
     }
-
 }

@@ -1,13 +1,13 @@
 use clap::Parser;
 use tataku_game::prelude::*;
-use tataku::Vector2;
 use tracing::*;
 
 pub fn run_game(
-    game_event_receiver: tokio::sync::mpsc::Receiver<engine::window::Event>,
-    mouse_position_receiver: engine::triple_buffer::Output<Vector2>,
-    proxy: winit::event_loop::EventLoopProxy<engine::actions::window::WindowAction>,
+    window_data: engine::window::WindowData,
+    window_counters: engine::window::WindowCounters,
 ) {
+
+    // gamemodes
     let gamemodes;
     #[cfg(feature="dynamic_gamemodes")] {
         gamemodes = vec![
@@ -27,21 +27,27 @@ pub fn run_game(
     }
 
 
+    // database
+    let database;
+    #[cfg(feature="sqlite")] {
+        database = Box::new(tataku_sqlite::Database::new());
+    }
+
     // start the game
     trace!("creating game");
     let mut game = Game::new(
-        game_event_receiver,
-        mouse_position_receiver,
-        proxy,
+        window_data,
+        window_counters,
+        BuiltinMenus { 
+            menus: tataku_resources::menus::ALL,
+            dialogs: tataku_resources::dialogs::ALL,
+        },
         vec![
             #[cfg(feature="kira_audio")] tataku_kira::KiraAudioInit, 
             #[cfg(feature="bass_audio")] tataku_bass::BassAudioInit,
         ],
         gamemodes,
-        BuiltinMenus { 
-            menus: tataku_resources::menus::ALL,
-            dialogs: tataku_resources::dialogs::ALL,
-        }
+        database,
     );
 
 

@@ -26,11 +26,9 @@ pub struct GamepadButtonInput {
     node_id: NodeId,
 }
 impl GamepadButtonInput {
-    pub fn new(
-        button: impl Into<InputButtonValue<GamepadButton>>, 
-    ) -> Self {
+    pub fn new(button: InputButtonValue<GamepadButton>) -> Self {
         Self {
-            button: button.into(),
+            button,
             optional: false,
             
             on_change: InputAction::default(),

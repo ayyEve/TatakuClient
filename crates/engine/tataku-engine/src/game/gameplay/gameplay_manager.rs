@@ -26,6 +26,7 @@ pub const LEAD_IN_TIME:f32 = 1000.0;
 pub trait GameplayManagerTrait {
     fn time(&self) -> f32;
     fn end_time(&self) -> f32;
+    fn bounds(&self) -> tataku::Bounds;
 
     fn score(&self) -> &IngameScore;
     fn score_mut(&mut self) -> &mut IngameScore;
@@ -35,50 +36,46 @@ pub trait GameplayManagerTrait {
     fn mods(&self) -> &ModManager;
     fn metadata(&self) -> &BeatmapMeta;
     fn key_counter(&self) -> &KeyCounter;
-    fn spectators(&mut self) -> &mut online::SpectatorList;
     fn timing_points(&self) -> &TimingPointHelper;
     fn properties(&self) -> &gameplay::GamemodeProperties;
+    fn spectators(&mut self) -> &mut online::SpectatorList;
 
     fn judgments(&self) -> &Vec<HitJudgment>;
-
     fn health(&self) -> &dyn gameplay::health_manager::HealthManager;
 
-    fn hitbar_timings(&self) -> Vec<(f32, f32)>;
+    fn hit_timings(&self) -> &Vec<HitTiming>;
 
-    fn bounds(&self) -> tataku::Bounds;
-    
-    fn handle_action(
-        &mut self, 
-        action: actions::gameplay::GameplayAction,
-        settings: &Settings,
-    );
-    fn handle_gamemode_action(
-        &mut self, 
-        action: gameplay::action::GamemodeAction,
-        settings: &Settings
-    );
-
+    fn get_mode(&self) -> GameplayTypeSmall;
     fn set_mode(&mut self, mode: GameplayType);
-    fn get_mode(&self) -> &GameplayType;
-
-
-    fn start(&mut self);
-    fn pause(&mut self);
-    fn reset(&mut self);
-    fn fail(&mut self);
 }
 
-// TODO: move this???
-pub trait DifficultyProvider: Send + Sync {
-    fn get_diff(
-        &mut self, 
-        map: &Arc<BeatmapMeta>, 
-        playmode: &str, 
-        mods: &ModManager
-    ) -> tataku::TatakuResult<f32>;
+#[derive(Copy, Clone)]
+pub enum GameplayTypeSmall {
+    Normal,
+    Preview,
+    Replaying,
+    Spectator,
+    Multiplayer,
+    Simulating,
 }
-
-
+impl GameplayTypeSmall {
+    pub fn is_preview(&self) -> bool { matches!(self, Self::Preview) }
+    pub fn is_multi(&self) -> bool { matches!(self, Self::Multiplayer) }
+    pub fn is_replay(&self) -> bool { matches!(self, Self::Replaying | Self::Simulating) }
+    pub fn is_simulation(&self) -> bool { matches!(self, Self::Simulating) }
+}
+impl From<&GameplayType> for GameplayTypeSmall {
+    fn from(value: &GameplayType) -> Self {
+        match value {
+            GameplayType::Normal => Self::Normal,
+            GameplayType::Preview => Self::Preview,
+            GameplayType::Replaying { .. } => Self::Replaying,
+            GameplayType::Multiplayer { .. } => Self::Multiplayer,
+            GameplayType::Spectator { .. } => Self::Spectator,
+            GameplayType::Simulating { .. } => Self::Simulating,
+        }
+    }
+}
 /// What gameplay method should we use for this gameplay manager?
 #[derive(Clone, Debug, Default)]
 pub enum GameplayType {
@@ -135,19 +132,28 @@ pub enum GameplayType {
         last_escape_press: tataku::Instant,
         score_send_timer: tataku::Instant,
     },
+
+    /// This manager is simulating a replay
+    Simulating {
+        /// What score+replay are we watching?
+        score: Score,
+
+        /// What frame index are we at?
+        current_frame: usize,
+    },
 }
 impl GameplayType {
-
-    // convenience fns
-    pub fn is_preview(&self) -> bool { matches!(self, &Self::Preview) }
-    #[cfg(feature="gameplay")]
-    pub fn is_multi(&self) -> bool { matches!(self, &Self::Multiplayer { .. }) }
-    pub fn is_replay(&self) -> bool { matches!(self, &Self::Replaying {..}) }
+    // // convenience fns
+    // pub fn is_preview(&self) -> bool { matches!(self, &Self::Preview) }
+    // #[cfg(feature="gameplay")]
+    // pub fn is_multi(&self) -> bool { matches!(self, &Self::Multiplayer { .. }) }
+    // pub fn is_replay(&self) -> bool { matches!(self, &Self::Replaying {..}) }
+    // pub fn is_simulation(&self) -> bool { matches!(self, &Self::Simulating {..}) }
 
     pub fn should_load_scores(&self) -> bool {
         match self {
             Self::Normal | Self::Replaying {..} => true,
-            Self::Preview {..} => false,
+            Self::Preview {..} | Self::Simulating { .. } => false,
 
             #[cfg(feature="gameplay")]
             Self::Spectator {..} => true,
@@ -162,7 +168,7 @@ impl GameplayType {
         match self {
             // send spec frames for normal gameplay and multi, not for anything else
             Self::Normal | Self::Multiplayer {..} => true,
-            Self::Replaying {..} | Self::Spectator {..} | Self::Preview {..} => false,
+            Self::Replaying {..} | Self::Spectator {..} | Self::Preview {..} | Self::Simulating { .. } => false,
         }
     }
 
@@ -207,7 +213,7 @@ impl From<GameplayTypeInfo> for GameplayType {
 
 pub struct GameplayDrawShell<'a> {
     pub time: f32,
-    pub gameplay_mode: &'a GameplayType,
+    pub gameplay_type: &'a GameplayTypeSmall,
     pub current_timing_point: &'a beatmaps::TimingPoint,
     pub mods: &'a ModManager,
     pub score: &'a IngameScore,
@@ -231,7 +237,7 @@ pub struct GameplayUpdateShell<'a> {
     pub current_timing_point: &'a beatmaps::TimingPoint,
 
     /// the current gameplay mode
-    pub gameplay_mode: &'a GameplayType,
+    pub gameplay_type: &'a GameplayTypeSmall,
 
     /// our current score
     pub score: &'a IngameScore,
@@ -360,4 +366,21 @@ pub enum SpectatorState {
 #[derive(Debug)]
 pub enum SpectatorManagerAction {
     QuitSpec,
+}
+
+
+#[derive(Clone, Copy, Debug)]
+pub struct HitTiming {
+    pub map_time: f32,
+
+    /// note.time - hit.time
+    pub hit_diff: f32,
+}
+impl HitTiming {
+    pub fn new(time: f32, diff: f32) -> Self {
+        Self {
+            map_time: time,
+            hit_diff: diff,
+        }
+    }
 }

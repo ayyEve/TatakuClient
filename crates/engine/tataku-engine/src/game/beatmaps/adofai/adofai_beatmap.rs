@@ -5,6 +5,8 @@ use common::Md5Hash;
 use serde::Deserialize;
 use beatmaps::TimingPoint;
 
+pub type Beatmap = AdofaiBeatmap;
+
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
 pub struct AdofaiBeatmap {
@@ -28,7 +30,8 @@ pub struct AdofaiBeatmap {
     audio_file: ArcStr,
 }
 impl AdofaiBeatmap {
-    pub fn load(path: &str) -> Self {
+    pub fn load(path: impl AsRef<Path>) -> Self {
+        let path = path.as_ref();
         let file_contents = std::fs::read_to_string(path).unwrap();
 
         let allowed_chars = [
@@ -42,11 +45,11 @@ impl AdofaiBeatmap {
 
         let mut map:AdofaiBeatmap = match serde_json::from_str(&file_contents) {
             Ok(m) => m,
-            Err(e) => panic!("error reading adofai map '{path}': {e}"),
+            Err(e) => panic!("error reading adofai map '{}': {e}", path.display()),
         };
 
-        map.hash = tataku::Io::get_file_hash(path).unwrap();
-        map.file_path = path.to_owned().into();
+        map.hash = tataku::fs::get_file_hash(path).unwrap();
+        map.file_path = path.to_str().unwrap().into();
         
         let chars = map.path_data.chars().collect::<Vec<char>>();
 

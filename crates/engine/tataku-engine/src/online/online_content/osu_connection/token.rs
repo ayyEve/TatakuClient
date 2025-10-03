@@ -11,7 +11,7 @@ pub struct Token {
     pub refresh_token: String,
 }
 impl Token {
-    pub fn authenticate(settings: &Settings) -> tataku::TatakuResult<Self> {
+    pub fn authenticate(settings: &Settings) -> tataku::Result<Self> {
         #[derive(Serialize)]
         struct Request {
             client_id: String,
@@ -66,7 +66,7 @@ impl Token {
         })
     }
 
-    pub fn refresh(refresh_token: String) -> tataku::TatakuResult<Self> {
+    pub fn refresh(refresh_token: String) -> tataku::Result<Self> {
         #[derive(Serialize)]
         struct Request {
             client_id: String,

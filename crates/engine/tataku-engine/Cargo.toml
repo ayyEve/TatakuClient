@@ -42,7 +42,6 @@ tataku-null-renderer.workspace = true
 tataku-client-proc-macros.workspace = true
 
 # framework stuff
-lazy_static.workspace = true
 parking_lot.workspace = true
 async-trait.workspace = true
 bitflags.workspace = true

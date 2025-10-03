@@ -1,17 +1,8 @@
 use crate::prelude::*;
-use common::{
-    Md5Hash,
-    reflect::Reflect,
-};
-
 use engine::{
-    actions,
     game::task::*,
     io::AsyncLoader,
     online_content::*,
-    beatmaps::{
-        BeatmapMeta,
-    },
 };
 
 pub struct OnlineContentSearchTask {
@@ -34,12 +25,8 @@ impl OnlineContentSearchTask {
         }
     }
 
-    fn results(values: &mut dyn Reflect) -> &mut OnlineContentReflectResults {
-        values
-            .reflect_get_mut::<OnlineContentReflectResults>(
-                "game.online_content.results"
-            )
-            .unwrap()
+    fn results(values: &mut ValueCollection) -> &mut OnlineContentReflectResults {
+        &mut values.game.online_content.results
     }
 }
 impl TatakuTask for OnlineContentSearchTask {
@@ -47,12 +34,9 @@ impl TatakuTask for OnlineContentSearchTask {
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Once }
     fn get_state(&self) -> TatakuTaskState { self.state }
 
-    fn run(
-        &mut self, 
-        values: &mut dyn Reflect, 
-        _state: &TaskGameState, 
-        _actions: &mut actions::ActionQueue,
-    ) {
+    fn run(&mut self, shell: &mut TaskShell) {
+        let values = ValueCollection::from_reflect_mut(shell.values);
+
         if self.loader.is_none() {
             let results = Self::results(values);
             results.completed = false;
@@ -73,10 +57,7 @@ impl TatakuTask for OnlineContentSearchTask {
                 return;
             };
 
-            let settings = values
-                .reflect_get::<engine::Settings>("settings")
-                .unwrap();
-            self.loader = Some(engine.search(&settings, self.search.clone()));
+            self.loader = Some(engine.search(&values.settings, self.search.clone()));
             
             self.state = TatakuTaskState::Running;
             return;
@@ -84,9 +65,7 @@ impl TatakuTask for OnlineContentSearchTask {
 
         let Some(loader) = &self.loader 
         else { 
-            let results = Self::results(values);
-
-            results.completed = true;
+            Self::results(values).completed = true;
             self.state = TatakuTaskState::Complete;
             return;
         };
@@ -95,11 +74,7 @@ impl TatakuTask for OnlineContentSearchTask {
         else { return };
 
         // remove maps from the list that we already have
-        let beatmaps = values
-            .reflect_get::<HashMap<Md5Hash, Arc<BeatmapMeta>>>(
-                "beatmaps.beatmaps_by_hash"
-            )
-            .unwrap();
+        let beatmaps = &values.beatmap_manager.beatmaps;
 
         search_results.items.retain(|i| {
             #[allow(irrefutable_let_patterns, reason = "expandability")]

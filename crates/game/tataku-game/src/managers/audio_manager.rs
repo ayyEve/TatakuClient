@@ -11,7 +11,7 @@ pub struct AudioManager {
 impl AudioManager {
     pub fn init_audio(
         engines: Vec<AudioApiInit>
-    ) -> tataku::TatakuResult<Self> {
+    ) -> tataku::Result<Self> {
         let mut api: Option<Arc<dyn AudioApi>> = None;
 
         for i in &engines {
@@ -44,14 +44,14 @@ impl AudioManager {
     pub fn amplitude_multiplier(&self) -> f32 { self.engine.amplitude_multiplier() }
 
 
-    pub fn load_song(&self, path: impl AsRef<Path>) -> tataku::TatakuResult<Arc<dyn AudioInstance>> {
+    pub fn load_song(&self, path: impl AsRef<Path>) -> tataku::Result<Arc<dyn AudioInstance>> {
         self.engine.load_stream_path(path.as_ref())
     }
-    pub fn load_song_raw(&self, bytes: Vec<u8>) -> tataku::TatakuResult<Arc<dyn AudioInstance>> {
+    pub fn load_song_raw(&self, bytes: Vec<u8>) -> tataku::Result<Arc<dyn AudioInstance>> {
         self.engine.load_stream_data(bytes)
     }
     
-    pub fn load(&self, path: impl AsRef<str>) -> tataku::TatakuResult<Arc<dyn AudioInstance>> {
+    pub fn load(&self, path: impl AsRef<str>) -> tataku::Result<Arc<dyn AudioInstance>> {
         let path = path.as_ref();
         for ext in [".wav", ".mp3", ".ogg"] {
             let path = format!("{path}{ext}");

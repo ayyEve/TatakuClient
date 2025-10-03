@@ -33,7 +33,7 @@ impl SkinnedNumber {
 
         source: &TextureSource,
         usage: SkinUsage,
-    ) -> TatakuResult<Self> {
+    ) -> tataku::Result<Self> {
         let texture_name = texture_name.as_ref();
         let rotation = 0.0;
         let scale = Vector2::ONE;

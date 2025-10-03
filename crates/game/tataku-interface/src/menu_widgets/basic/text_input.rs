@@ -58,14 +58,14 @@ pub struct TextInput {
 }
 impl TextInput {
     pub fn new(
-        placeholder: impl Into<WidgetText>,
-        value: impl Into<WidgetText>,
+        placeholder: WidgetText,
+        value: WidgetText,
     ) -> Self {
         Self {
             cursor: Cursor::Position(0),
 
-            placeholder: placeholder.into(),
-            value: value.into(),
+            placeholder,
+            value,
             secure: false,
 
             on_input: InputAction::default(),
@@ -1122,7 +1122,7 @@ fn test() {
     ];
 
     for i in tests.iter().copied().flatten() {
-        let mut input = TextInput::new("", base_txt);
+        let mut input = TextInput::new("".into(), base_txt.into());
 
         input.cursor = i.input_cursor;
         input.handle_key(&i.input_event.0, i.input_event.1);

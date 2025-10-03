@@ -9,7 +9,7 @@ use engine::{
         BeatmapMeta,
     },
     gameplay::{
-        GameMode,
+        Gamemode,
         GamemodeInfo,
         GamemodeSettings,
         info::CalcPerfInfo,
@@ -88,7 +88,7 @@ impl ManiaGameInfo {
         matches!(map, BeatmapType::Osu | BeatmapType::Quaver | BeatmapType::Stepmania)
     }
 
-    fn create_game(beatmap: &Beatmap, settings: &Settings) -> tataku::Result<Box<dyn GameMode>> {
+    fn create_game(beatmap: &Beatmap, settings: &Settings) -> tataku::Result<Box<dyn Gamemode>> {
         Ok(Box::new(ManiaGame::new(beatmap, false, settings)?))
     }
     fn create_diffcalc(map: &BeatmapMeta, settings: &Settings) -> tataku::Result<Box<dyn DiffCalc>> {

@@ -39,7 +39,7 @@ use engine::{
     },
 };
 
-#[derive(Debug)]
+#[derive(Debug2)]
 pub struct MultiplayerManager {
     /// lobby data
     pub lobby: CurrentLobbyInfo,
@@ -56,8 +56,10 @@ pub struct MultiplayerManager {
     /// helper to get new beatmaps
     new_beatmap_helper: ValueChangeHelper<Md5Hash>,
 
-    /// async beatmap loader
-    beatmap_loader: Option<engine::io::AsyncLoader<tataku::Result<GameplayManager>>>,
+    // /// async beatmap loader
+    // beatmap_loader: Option<engine::io::AsyncLoader<tataku::Result<GameplayManager>>>,
+    #[debug(skip)]
+    beatmap_loader: Option<tataku::Result<GameplayManager>>,
 
     /// have we sent that we've loaded the beatmap?
     load_complete_sent: bool,
@@ -165,7 +167,7 @@ impl MultiplayerManager {
 
         // if we're loading the beatmap, check if its done
         if let Some(loader) = &self.beatmap_loader
-        && !self.load_complete_sent && loader.is_complete() {
+        && !self.load_complete_sent && loader.is_ok() {
             self.load_complete_sent = true;
             self.send_packet(
                 MultiplayerPacket::Client_LobbyMapLoaded,
@@ -303,6 +305,7 @@ impl MultiplayerManager {
         packet: &MultiplayerPacket,
         manager: Option<&mut Box<GameplayManager>>, 
         actions: &mut actions::ActionQueue,
+        database: &dyn engine::database::DatabaseProvider,
     ) -> tataku::Result<Option<GameplayManager>> {
         match packet {
             MultiplayerPacket::Server_LobbyUserJoined { lobby_id, user_id } => {
@@ -386,14 +389,19 @@ impl MultiplayerManager {
                         let infos = self.infos.clone();
                         let map = map.clone();
                         let settings = values.settings.clone();
-                        let f = async move { GameplayManager::create(
-                            &infos,
-                            &mode, 
-                            &map, 
-                            mods,
-                            &settings,
-                        ) };
-                        self.beatmap_loader = Some(engine::io::AsyncLoader::new(f));
+                        let f = 
+                        // let f = async move { 
+                            GameplayManager::create(
+                                &infos,
+                                &mode, 
+                                &map, 
+                                mods,
+                                &settings,
+                                database,
+                            );
+                        // };
+                        self.beatmap_loader = Some(f);
+                        // self.beatmap_loader = Some(engine::io::AsyncLoader::new(f));
                     } else {
                         error!("not loading map: current != selected");
                     }
@@ -406,8 +414,8 @@ impl MultiplayerManager {
                 if manager.is_none() {
                     let mut new_manager = None;
 
-                    if let Some(loader) = &self.beatmap_loader {
-                        if let Some(manager) = loader.check() {
+                    if let Some(loader) = self.beatmap_loader.take() {
+                        if let Some(manager) = Some(loader) { // .check() {
                             match manager {
                                 Ok(mut manager) => {
                                     manager.set_mode(actions::game::GameplayTypeInfo::Multiplayer.into());
@@ -498,7 +506,7 @@ impl MultiplayerManager {
 
                 // update the manager
                 if let Some(manager) = manager {
-                    manager.score_list = self.lobby.player_scores.iter()
+                    manager.score_list.scores = self.lobby.player_scores.iter()
                         .filter(|(u,_)| u != &&self.lobby.our_user_id) // make sure we dont re-add our own score in
                         .map(|(_,s)| IngameScore::new(
                             s.clone(), 
@@ -509,6 +517,7 @@ impl MultiplayerManager {
                     
                     manager
                         .score_list
+                        .scores
                         .sort_by(|a, b| b.score.score.cmp(&a.score.score));
                 }
             }
@@ -608,7 +617,7 @@ impl MultiplayerManager {
                 else { return };
 
                 let hash = beatmap.hash;
-                let score_url = settings.score_url.clone();
+                let score_url = settings.connection().score_url.clone();
 
 
                 // TODO: maybe move to a task?

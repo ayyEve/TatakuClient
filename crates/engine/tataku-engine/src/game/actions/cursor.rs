@@ -24,10 +24,13 @@ impl From<CursorMode> for CursorAction {
 
 
 #[allow(unused)]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
 pub enum CursorMode {
     /// regular cursor image
+    #[default] 
     Normal,
+
+    
     HorizontalResize,
     VerticalResize,
     

@@ -27,12 +27,7 @@ impl TatakuTask for ActionTask {
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Once }
     fn get_state(&self) -> TatakuTaskState { self.state }
     
-    fn run(
-        &mut self, 
-        values: &mut dyn Reflect, 
-        _state: &TaskGameState, 
-        actions: &mut actions::ActionQueue
-    ) {
+    fn run(&mut self, shell: &mut TaskShell) {
         if self.state == TatakuTaskState::NotStarted {
             self.state = TatakuTaskState::Running;
         }
@@ -45,15 +40,15 @@ impl TatakuTask for ActionTask {
                     node,
                     passed_in
                 } => action
-                    .resolve(&node, values, passed_in.as_ref())
+                    .resolve(&node, shell.values, passed_in.as_ref())
                     .unwrap_or(actions::Action::None),
 
                 ActionTaskAction::Callback(cb) 
-                    => cb.clone()(values),
+                    => cb.clone()(shell.values),
                 
                 ActionTaskAction::Action(a) => a,
             };
-            actions.push(action);
+            shell.actions.push(action);
         }
 
         if self.action.is_none() {

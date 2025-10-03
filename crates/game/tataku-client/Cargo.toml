@@ -16,6 +16,7 @@ default = [
     "all_integrations",
     "graphics",
     # "dynamic_gamemodes"
+    "sqlite"
 ]
 
 # integrations
@@ -29,6 +30,7 @@ discord = [ "integration-discord" ]
 lastfm = [ "integration-lastfm" ]
 media_controls = [ "integration-media-controls" ]
 # ipc = [ "integration-ipc" ]
+sqlite = [ "tataku-sqlite" ]
 
 # audio
 bass_audio = [ "tataku-bass" ]
@@ -65,11 +67,11 @@ vello_rendering = [ "tataku-wgpu/vello_rendering" ]
 
 [dependencies]
 tataku-common.workspace = true
-tataku-wgpu = { workspace = true, optional = true, features = ["graphics"] }
+tataku-game.workspace = true
 tataku-resources.workspace = true
 tataku-bass = { workspace = true, optional = true }
 tataku-kira = { workspace = true, optional = true }
-tataku-game = { workspace = true }
+tataku-wgpu = { workspace = true, optional = true, features = ["graphics"] }
 
 # Gamemodes
 gamemode-osu.workspace = true
@@ -82,6 +84,8 @@ integration-discord = { workspace = true, optional = true }
 integration-lastfm = { workspace = true, optional = true }
 integration-media-controls = { workspace = true, optional = true }
 
+# database
+tataku-sqlite = { workspace = true, optional = true }
 
 
 # framework stuff

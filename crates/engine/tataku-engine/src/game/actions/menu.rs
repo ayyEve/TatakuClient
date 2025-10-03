@@ -102,6 +102,7 @@ pub enum DialogLocation {
 
     /// near the cursor
     Cursor,
+    
     /// centered on the screen
     Center,
 

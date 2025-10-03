@@ -23,11 +23,9 @@ pub struct KeyButton {
     node_id: NodeId,
 }
 impl KeyButton {
-    pub fn new(
-        key: impl Into<InputButtonValue<Key>>, 
-    ) -> Self {
+    pub fn new(key: InputButtonValue<Key>) -> Self {
         Self {
-            key: key.into(),
+            key,
             optional: false,
             
             on_change: InputAction::default(),

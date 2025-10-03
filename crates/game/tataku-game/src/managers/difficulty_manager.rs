@@ -10,10 +10,8 @@ use common::{
 };
 use engine::{
     beatmaps::BeatmapMeta,
-    gameplay::{
-        mods::ModManager,
-        gameplay_manager::DifficultyProvider,
-    },
+    gameplay::mods::ModManager,
+    database::DifficultyProvider,
 };
 
 

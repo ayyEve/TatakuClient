@@ -9,7 +9,7 @@ impl Game {
     pub(super) fn set_current_beatmap(
         &mut self, 
         hash: Md5Hash,
-        config: &SelectBeatmapConfig
+        config: &SelectBeatmapConfig,
     ) {
         let beatmap = self.beatmap_manager.get_by_hash(&hash).unwrap();
         debug!(
@@ -60,11 +60,17 @@ impl Game {
             );
 
             // update beatmap settings provider
-            let beatmap_prefs = Database::get_beatmap_prefs(hash);
-            let playmode_prefs = Database::get_beatmap_mode_prefs(
-                hash, 
-                actual_mode
-            );
+            let beatmap_prefs = self
+                .database
+                .get_beatmap_preferences(hash)
+                .unwrap_or_default();
+            let playmode_prefs = self
+                .database
+                .get_beatmap_playmode_preferences(
+                    hash, 
+                    actual_mode
+                )
+                .unwrap_or_default();
             
             self.values.values.beatmap_settings = BeatmapSettings::new(
                 beatmap_prefs, 
@@ -75,8 +81,7 @@ impl Game {
         }
 
         // set the song
-        let position = if config.use_preview_time { beatmap.audio_preview } 
-            else { 0.0 };
+        let position = if config.use_preview_time { beatmap.audio_preview } else { 0.0 };
 
         self.actions.push(actions::song::SongAction::Set(actions::song::SongSetAction::FromFile(
             beatmap.audio_filename.clone(), 
@@ -91,7 +96,6 @@ impl Game {
         self.actions.push(actions::song::SongAction::Play.into());
         // make sure to update the background
         self.actions.push(actions::game::GameAction::UpdateBackground.into());
-
     }
     
     pub(super) fn remove_current_beatmap(&mut self) {
@@ -109,7 +113,7 @@ impl Game {
         post_delete: PostDelete,
         config: &SelectBeatmapConfig, 
     ) {
-        if self.beatmap_manager.delete_beatmap(beatmap) {
+        if self.values.beatmap_manager.delete_beatmap(beatmap) {
             match post_delete {
                 // select next beatmap
                 PostDelete::Next => { 
@@ -154,7 +158,7 @@ impl Game {
 
     pub(super) fn previous_beatmap(
         &mut self, 
-        config: &SelectBeatmapConfig
+        config: &SelectBeatmapConfig,
     ) -> bool {
         match self.beatmap_manager.previous_beatmap() {
             Some(map) => {

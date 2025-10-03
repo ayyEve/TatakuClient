@@ -160,3 +160,16 @@ impl BuildableSettingsActionTrait for actions::Action {
         Some(self.clone())
     }
 }
+
+impl<F> BuildableSettingsActionTrait for F 
+where F: Fn(&ui::tree::NodeId, Option<&tataku::TatakuValue>, &dyn Reflect) -> Option<actions::Action> + Send + Sync
+{
+    fn build(
+        &self, 
+        node: &tataku_ui::tree::NodeId,
+        passed_in: Option<&tataku::TatakuValue>,
+        values: &dyn Reflect,
+    ) -> Option<actions::Action> {
+        self(node, passed_in, values)
+    }
+}

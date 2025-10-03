@@ -73,8 +73,8 @@ impl SliderElement {
         widgets::Slider::new(
             min,
             max,
-            self.var.clone(),
-            Some(self.on_input.inner.clone()),
+            self.var.clone().into(),
+            Some(self.on_input.inner.clone()).into(),
         )
         .step_maybe(step)
     }

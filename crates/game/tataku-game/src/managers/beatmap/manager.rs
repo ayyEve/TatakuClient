@@ -1,20 +1,18 @@
 use rand::Rng;
 use crate::prelude::*;
 use std::fs::read_dir;
+use tataku::WrappingClamp;
 
 use common::{
     Md5Hash,
     reflect::*,
 };
 
-use tataku::{
-    TatakuValue,
-    WrappingClamp,
-};
 use engine::{
     actions,
     Notification,
     data::SortBy,
+    database::DifficultyProvider,
     beatmaps::{
         Beatmap,
         BeatmapMeta,
@@ -23,7 +21,6 @@ use engine::{
         GamemodeInfos,
         mods::ModManager,
         difficulty_value::GetDiffValue,
-        gameplay_manager::DifficultyProvider,
     },
 };
 
@@ -40,7 +37,7 @@ pub struct BeatmapManager {
     pub current_beatmap: Option<Md5Hash>,
 
     #[reflect(skip)] pub ignore_beatmaps: HashSet<ArcStr>,
-    pub diffs: HashMap<Md5Hash, BeatmapDifficulty>,
+    diffs: HashMap<Md5Hash, BeatmapDifficulty>,
     pub beatmaps: HashMap<Md5Hash, Arc<BeatmapMeta>>,
 
     /// previously played maps
@@ -139,7 +136,8 @@ impl BeatmapManager {
 
     /// clear the cache and db, and do a full rescan of the songs folder
     pub fn full_refresh(&mut self, settings: &engine::Settings) {
-        Database::clear_all_maps();
+        self.actions.push(actions::database::Action::ClearAllBeatmaps.into());
+
         self.beatmaps.clear();
         self.diffs.clear();
         self.initialized = false;
@@ -150,7 +148,7 @@ impl BeatmapManager {
         for f in Self::folders_to_check(settings) {
             let Some(maps) = self.check_folder(
                 f,
-                false
+                false,
             ) else { continue };
 
             new_beatmaps.extend(maps);
@@ -158,8 +156,7 @@ impl BeatmapManager {
 
         self.initialized = true;
         if !new_beatmaps.is_empty() {
-            info!("Inserting maps into database");
-            Database::insert_beatmaps(&new_beatmaps);
+            self.actions.push(actions::database::Action::AddBeatmaps(new_beatmaps).into());
         }
     }
 
@@ -189,7 +186,7 @@ impl BeatmapManager {
             if file.is_dir() {
                 let Some(maps) = self.check_folder(
                     &file,
-                    handle_database
+                    handle_database,
                 ) else { continue };
 
                 maps_to_add_to_database.extend(maps);
@@ -206,7 +203,7 @@ impl BeatmapManager {
                     continue
                 }
 
-                match tataku::Io::get_file_hash(file) {
+                match tataku::fs::get_file_hash(file) {
                     Ok(hash) => if self.beatmaps.contains_key(&hash) {
                         continue;
                     },
@@ -233,16 +230,16 @@ impl BeatmapManager {
             }
         }
 
-        match handle_database {
-            HandleDatabase::No => Some(maps_to_add_to_database),
-            HandleDatabase::Yes => {
-                Database::insert_beatmaps(&maps_to_add_to_database);
-                None
-            }
-            HandleDatabase::YesAndReturnNewMaps => {
-                Database::insert_beatmaps(&maps_to_add_to_database);
-                Some(maps_to_add_to_database)
-            }
+        if handle_database.insert_into_database() {
+            self.actions.push(actions::database::Action::AddBeatmaps(
+                maps_to_add_to_database.clone()
+            ).into());
+        }
+
+        if handle_database.return_new_maps() {
+            Some(maps_to_add_to_database)
+        } else {
+            None
         }
     }
 
@@ -263,7 +260,9 @@ impl BeatmapManager {
                 // if so, add it to the ignore list
                 trace!("Adding {} to the ignore list", beatmap.file_path);
                 self.ignore_beatmaps.insert(beatmap.file_path.clone());
-                Database::add_ignored(&beatmap.file_path);
+                self.actions.push(actions::database::Action::IgnoreBeatmap(
+                    engine::data::IgnoredBeatmap::Path(beatmap.file_path.to_string())
+                ).into());
             }
 
             return;
@@ -284,7 +283,7 @@ impl BeatmapManager {
         }
 
         if add_to_db {
-            Database::insert_beatmaps(std::slice::from_ref(beatmap));
+            self.actions.push(actions::database::Action::AddBeatmaps(vec![beatmap.clone()]).into());
         }
 
     }
@@ -310,7 +309,10 @@ impl BeatmapManager {
         } else {
             // file is probably in an external folder, just add this file to the ignore list
             self.ignore_beatmaps.insert(old_map.file_path.clone());
-            Database::add_ignored(&old_map.file_path);
+
+            self.actions.push(actions::database::Action::IgnoreBeatmap(
+                engine::data::IgnoredBeatmap::Hash(beatmap)
+            ).into());
         }
 
         self.current_beatmap == Some(beatmap)
@@ -323,7 +325,7 @@ impl BeatmapManager {
 
 
     // getters
-    pub fn all_by_sets(&self, _group_by: GroupBy) -> Vec<BeatmapGroup> {
+    pub fn all_by_sets(&self, _group_by: engine::data::GroupBy) -> Vec<BeatmapGroup> {
         let mut set_map: HashMap<BeatmapGroupValue, BeatmapGroup> = HashMap::new();
 
         for beatmap in self.beatmaps.values() {
@@ -389,7 +391,7 @@ impl BeatmapManager {
         sort_by: SortBy,
         diff_manager: &mut dyn DifficultyProvider,
     ) {
-        let group_by = GroupBy::default(); //values.settings.group_by;
+        let group_by = engine::data::GroupBy::default(); //values.settings.group_by;
         //TODO: allow grouping by not just map set
         self.unfiltered_groups = self.all_by_sets(group_by);
 
@@ -595,159 +597,5 @@ impl BeatmapManager {
         self.select_map(
             (self.selected_map - 1).wrapping_clamp(0, set.maps.len())
         );
-    }
-}
-
-
-#[allow(unused)]
-#[derive(Reflect)]
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
-pub enum GroupBy {
-    #[default]
-    Set,
-    Collections,
-}
-impl GroupBy {
-    pub fn list() -> Vec<Self> {
-        vec![
-            Self::Set,
-            Self::Collections,
-        ]
-    }
-}
-impl TryFrom<&TatakuValue> for GroupBy {
-    type Error = String;
-    fn try_from(value: &TatakuValue) -> Result<Self, Self::Error> {
-        match value {
-            TatakuValue::String(s) => {
-                match &**s {
-                    "Set" | "set" => Ok(Self::Set),
-                    "Collections" | "collections" => Ok(Self::Collections),
-                    other => Err(format!("invalid GroupBy str: '{other}'"))
-                }
-            }
-            TatakuValue::U64(n) => {
-                match *n {
-                    0 => Ok(Self::Set),
-                    1 => Ok(Self::Collections),
-                    other => Err(format!("Invalid GroupBy number: {other}")),
-                }
-            }
-
-            other => Err(format!("Invalid GroupBy value: {other:?}"))
-        }
-    }
-}
-impl From<GroupBy> for TatakuValue {
-    fn from(val: GroupBy) -> Self {
-        TatakuValue::String(format!("{val:?}"))
-    }
-}
-
-/// FIXME: this is a bad name for this
-#[derive(Copy, Clone)]
-pub enum HandleDatabase {
-    No,
-    Yes,
-    YesAndReturnNewMaps
-}
-impl From<bool> for HandleDatabase {
-    fn from(value: bool) -> Self {
-        if value { Self::Yes } else { Self::No }
-    }
-}
-
-
-/// A group of beatmaps
-#[derive(Reflect)]
-#[derive(Debug, Clone)]
-pub struct BeatmapGroup {
-    pub name: String,
-    pub group_value: BeatmapGroupValue,
-    pub maps: Vec<Md5Hash>,
-}
-impl BeatmapGroup {
-    pub fn new(group: BeatmapGroupValue) -> Self {
-        Self {
-            name: group.get_name().clone(),
-            group_value: group,
-            maps: Vec::new()
-        }
-    }
-
-    pub fn get_name(&self) -> &String {
-        self.group_value.get_name()
-    }
-}
-
-#[derive(Reflect)]
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum BeatmapGroupValue {
-    Set(String),
-    Collection(String),
-}
-impl BeatmapGroupValue {
-    pub fn get_name(&self) -> &String {
-        match self {
-            Self::Set(name) => name,
-            Self::Collection(name) => name,
-        }
-    }
-}
-
-#[derive(Default, Debug, Clone)]
-pub struct SelectBeatmapConfig {
-    pub restart_song: bool,
-    pub use_preview_time: bool,
-    pub mods: ModManager,
-    pub playmode: ArcStr,
-}
-impl SelectBeatmapConfig {
-    pub fn new(
-        mods: ModManager,
-        playmode: ArcStr,
-        restart_song: bool,
-        use_preview_time: bool,
-    ) -> Self {
-        Self {
-            mods,
-            restart_song,
-            use_preview_time,
-            playmode
-        }
-    }
-}
-
-
-
-#[derive(Reflect)]
-#[derive(Debug, Clone)]
-pub struct BeatmapListGroup {
-    pub id: usize,
-    pub selected: bool,
-    pub name: String,
-    pub maps: Vec<Md5Hash>,
-}
-impl BeatmapListGroup {
-    fn has_hash(&self, hash: &Md5Hash) -> Option<usize> {
-        self
-            .maps
-            .iter()
-            .position(|i| i == hash)
-    }
-}
-
-
-#[derive(Reflect)]
-#[reflect(dont_clone)]
-#[derive(Debug, Default)]
-#[reflect(display="display")]
-pub struct BeatmapDifficulty {
-    pub diff: f32,
-    pub info: Box<str>,
-}
-impl std::fmt::Display for BeatmapDifficulty {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.info.fmt(f)
     }
 }

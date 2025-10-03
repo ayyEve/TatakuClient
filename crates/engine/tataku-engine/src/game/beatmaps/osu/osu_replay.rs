@@ -12,7 +12,7 @@ impl OsuReplayDownloader {
 }
 
 impl beatmaps::ReplayDownloader for OsuReplayDownloader {
-    fn get_replay(&self, settings: &Settings) -> tataku::TatakuResult<Score> {
+    fn get_replay(&self, settings: &Settings) -> tataku::Result<Score> {
         let key = settings.integrations.osu.api_key.clone();
 
         let url = format!("https://osu.ppy.sh//api/get_replay?k={key}&s={}", self.1);

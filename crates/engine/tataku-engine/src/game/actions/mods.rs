@@ -2,6 +2,12 @@ use crate::*;
 
 #[derive(Clone, Debug)]
 pub enum ModAction {
+    /// Push the current mods to a queue
+    PushMods,
+
+    /// Pop the latest mod collection
+    PopMods,
+
     /// Add a mod
     AddMod(String),
 

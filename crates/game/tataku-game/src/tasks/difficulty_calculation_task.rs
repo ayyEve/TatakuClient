@@ -84,10 +84,10 @@ impl DiffCalcTask {
                 return;
             }
 
-            let settings = values.reflect_get("settings").unwrap();
+            let values = ValueCollection::from_reflect(values);
 
             // otherwise, try to get the diff calc
-            match self.info.create_diffcalc(&self.beatmap, &settings) {
+            match self.info.create_diffcalc(&self.beatmap, &values.settings) {
                 Ok(c) => self.diff_calc = Some(c),
                 Err(e) => {
                     error!("couldnt get calc: {e}");
@@ -151,13 +151,8 @@ impl TatakuTask for DiffCalcTask {
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Once }
     fn get_state(&self) -> TatakuTaskState { self.state }
 
-    fn run(
-        &mut self, 
-        values: &mut dyn Reflect, 
-        state: &TaskGameState, 
-        actions: &mut actions::ActionQueue
-    ) {
-        if state.ingame { 
+    fn run(&mut self, shell: &mut TaskShell) {
+        if shell.ingame { 
             self.state = TatakuTaskState::Paused;
 
             // stop any existing calc
@@ -191,14 +186,14 @@ impl TatakuTask for DiffCalcTask {
 
         // try to get the next map
         if let Some(mods) = self.iter.next() {
-            self.run_calc(mods, values);
+            self.run_calc(mods, shell.values);
         } 
         // try to get any inturrupted
         else if let Some(mods) = self.inturrupted.pop() {
-            self.run_calc(mods, values);
+            self.run_calc(mods, shell.values);
         } else {
             // done
-            self.complete(actions);
+            self.complete(shell.actions);
         }
     }
 }

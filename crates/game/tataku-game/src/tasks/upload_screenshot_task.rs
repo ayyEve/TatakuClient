@@ -1,7 +1,5 @@
 use crate::prelude::*;
-
 use tataku::Color;
-use common::reflect::Reflect;
 use engine::{
     task::*,
     actions,
@@ -37,7 +35,7 @@ impl UploadScreenshotTask {
 
         let data = match data {
             ScreenshotData::Raw(data) => data,
-            ScreenshotData::Path(path) => tataku::Io::read_file(path)
+            ScreenshotData::Path(path) => tataku::fs::read_file(path)
                 .map_err(|e| Notification::new_error("Error loading screenshot to send to server", e))?,
         };
 
@@ -60,28 +58,24 @@ impl TatakuTask for UploadScreenshotTask {
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Once }
     fn get_state(&self) -> TatakuTaskState { self.state }
 
-    fn run(
-        &mut self, 
-        values: &mut dyn Reflect, 
-        _: &TaskGameState, 
-        actions: &mut actions::ActionQueue
-    ) {
+    fn run(&mut self, shell: &mut TaskShell) {
         let Some(task) = self.task.as_ref() else {
             self.state = TatakuTaskState::Running;
 
-            actions.push(actions::game::GameAction::AddNotification(Notification::new_text(
+            shell.actions.push(actions::game::GameAction::AddNotification(Notification::new_text(
                 "Uploading screenshot...", Color::YELLOW, 5000.0
             )).into());
 
             let data = self.data.clone();
-            let settings = values
+            let settings = shell.values
                 .reflect_get::<engine::Settings>("settings")
                 .unwrap();
+            let connection = settings.connection().clone();
 
             self.task = Some(engine::AsyncLoader::new(Self::upload(
-                settings.score_url.clone(),
-                settings.username.clone(),
-                settings.password.clone(),
+                connection.score_url,
+                connection.tataku_username,
+                connection.tataku_password,
                 data,
             )));
 
@@ -92,15 +86,15 @@ impl TatakuTask for UploadScreenshotTask {
 
         match received {
             Ok(url) => {
-                actions.push(Notification::new(
+                shell.actions.push(Notification::new(
                     format!("Screenshot uploaded {url}"), 
                     Color::BLUE, 
                     5000.0, 
                     NotificationOnClick::Url(url.clone())
                 ).into());
-                actions.push(actions::game::GameAction::CopyToClipboard(url.into()).into());
+                shell.actions.push(actions::game::GameAction::CopyToClipboard(url.into()).into());
             }
-            Err(notif) => actions.push(notif.into()),
+            Err(notif) => shell.actions.push(notif.into()),
         }
 
         self.state = TatakuTaskState::Complete;

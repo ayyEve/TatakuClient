@@ -52,11 +52,11 @@ pub struct GamemodeInfo {
 
     #[debug(skip)]
     #[reflect(skip)]
-    pub create_game: fn(&beatmaps::Beatmap, &Settings) -> tataku::TatakuResult<Box<dyn gameplay::GameMode>>,
+    pub create_game: fn(&beatmaps::Beatmap, &Settings) -> tataku::Result<Box<dyn gameplay::Gamemode>>,
 
     #[debug(skip)]
     #[reflect(skip)]
-    pub create_diffcalc: fn(&BeatmapMeta, &Settings) -> tataku::TatakuResult<Box<dyn game::diffcalc::DiffCalc>>,
+    pub create_diffcalc: fn(&BeatmapMeta, &Settings) -> tataku::Result<Box<dyn game::diffcalc::DiffCalc>>,
 
 
     #[debug(skip)]
@@ -147,7 +147,7 @@ impl GamemodeInfo {
         &self, 
         map: &beatmaps::Beatmap, 
         settings: &Settings
-    ) -> tataku::TatakuResult<Box<dyn gameplay::GameMode>> {
+    ) -> tataku::Result<Box<dyn gameplay::Gamemode>> {
         (self.create_game)(map, settings)
     }
     
@@ -155,7 +155,7 @@ impl GamemodeInfo {
         &self, 
         map: &BeatmapMeta, 
         settings: &Settings
-    ) -> tataku::TatakuResult<Box<dyn engine::game::diffcalc::DiffCalc>> {
+    ) -> tataku::Result<Box<dyn engine::game::diffcalc::DiffCalc>> {
         (self.create_diffcalc)(map, settings)
     }
 
@@ -233,7 +233,7 @@ impl GamemodeInfos {
             _libraries: Arc::new(libraries),
         }
     }
-    pub fn get_info(&self, gamemode: &str) -> tataku::TatakuResult<&GamemodeInfo> {
+    pub fn get_info(&self, gamemode: &str) -> tataku::Result<&GamemodeInfo> {
         Ok(self.by_id
             .get(gamemode)
             .ok_or(errors::game_mode::GameModeError::UnknownGameMode)?)
@@ -280,8 +280,8 @@ pub mod external {
         pub can_load_beatmap: fn(&beatmaps::BeatmapType) -> bool,
         pub stats_from_groups: fn(&HashMap<String, HashMap<String, Vec<f32>>>) -> Vec<gameplay::stats::StatsInfo>,
         
-        pub create_game: fn(&beatmaps::Beatmap, &Settings) -> tataku::TatakuResult<Box<dyn gameplay::GameMode>>,
-        pub create_diffcalc: fn(&BeatmapMeta, &Settings) -> tataku::TatakuResult<Box<dyn game::diffcalc::DiffCalc>>,
+        pub create_game: fn(&beatmaps::Beatmap, &Settings) -> tataku::Result<Box<dyn gameplay::Gamemode>>,
+        pub create_diffcalc: fn(&BeatmapMeta, &Settings) -> tataku::Result<Box<dyn game::diffcalc::DiffCalc>>,
 
         pub serialize_settings: fn(Box<dyn GamemodeSettings>) -> serde_json::Value,
         pub deserialize_settings: fn(serde_json::Value) -> Option<Box<dyn GamemodeSettings>>,

@@ -10,7 +10,7 @@ pub struct GamepadButtonElement {
 }
 impl GamepadButtonElement {
     pub fn build(&self) -> widgets::GamepadButtonInput {
-        widgets::GamepadButtonInput::new(self.var.clone())
+        widgets::GamepadButtonInput::new(self.var.clone().into())
             .optional(self.optional)
             .on_change(self.on_input.inner.clone())
     }

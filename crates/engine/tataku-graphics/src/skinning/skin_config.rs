@@ -47,7 +47,7 @@ pub struct SkinSettings {
 }
 #[allow(unused, dead_code)]
 impl SkinSettings {
-    pub fn from_file(path: &str) -> TatakuResult<Self> {
+    pub fn from_file(path: &str) -> tataku::Result<Self> {
         enum SkinSection {
             General,
             Colors, // colours
@@ -58,11 +58,11 @@ impl SkinSettings {
         let mut s = Self::default();
 
         // return defaults if skin does not exist
-        if !Io::exists(path) { return Ok(s) }
+        if !tataku::fs::exists(path) { return Ok(s) }
 
         // read lines
         let mut current_area = SkinSection::General;
-        let mut lines = Io::read_lines(path)?;
+        let mut lines = tataku::fs::read_lines(path)?;
 
         while let Some(Ok(line)) = lines.next() {
             // split out comments, and trim wacky chars

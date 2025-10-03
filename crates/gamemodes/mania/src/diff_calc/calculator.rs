@@ -1,6 +1,6 @@
 use crate::prelude::*;
 use engine::*;
-use engine::gameplay::GameMode;
+use engine::gameplay::Gamemode;
 
 // how long each "group" of notes is (ms)
 const BUCKET_LENGTH:f32 = 500.0;

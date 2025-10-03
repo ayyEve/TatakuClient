@@ -71,6 +71,8 @@ impl GameplayWidget for LeaderboardElement {
         let properties = shell.manager.properties();
         let info = properties.info;
 
+        let mut is_pb = true;
+        
         if self.cache.len() != scores.len() {
             self.cache.clear();
             for score in scores {
@@ -78,6 +80,7 @@ impl GameplayWidget for LeaderboardElement {
                     score, 
                     &theme,
                     &shell.scale,
+                    &mut is_pb,
                     info,
                     shell.font_context,
                 ));
@@ -230,6 +233,16 @@ impl Cache {
         Arc::new(layout)
     }
 
+    fn time_str(score_time: u64) -> String {
+        let now = chrono::Utc::now().timestamp() as u64;
+        let time_diff = now as i64 - score_time as i64;
+        if time_diff < 60 * 5 { 
+            format!(" | {time_diff}s")
+        } else { 
+            String::new() 
+        }
+    }
+
     fn combo_text(
         score: &IngameScore,
         info: &GamemodeInfo,
@@ -240,12 +253,7 @@ impl Cache {
             info
         );
 
-        let now = chrono::Utc::now().timestamp() as u64;
-        let time_diff = now as i64 - score.time as i64;
-        let time_diff_str = (time_diff < 60 * 5)
-            .then(|| format!(" | {time_diff}s"))
-            .unwrap_or_default();
-        
+        let time_diff_str = Self::time_str(score.time);
         format!(
             "{}x, {:.2}%, {score_mods}{time_diff_str}", 
             tataku::format_number(&score.max_combo), 
@@ -257,21 +265,35 @@ impl Cache {
         score: &engine::gameplay::IngameScore,
         theme: &graphics::Theme,
         scale: &Vector2,
+        is_pb: &mut bool,
         info: &GamemodeInfo,
         font_contexts: &mut ui::widget::TextLayoutContexts,
     ) -> Self {
-        let mut is_pb = true;
         let mut color_override = None;
+        use engine::gameplay::ScoreType;
 
-        if score.is_current {
-            color_override = Some(theme.get_color(ThemeColor::LeaderboardCurrentScore).unwrap_or(Color::RED));
-        } else if score.is_previous {
-            if is_pb {
-                is_pb = false;
-                color_override = Some(theme.get_color(ThemeColor::LeaderboardPreviousBest).unwrap_or(Color::BLUE));
-            } else {
-                color_override = Some(theme.get_color(ThemeColor::LeaderboardPreviousScores).unwrap_or(Color::BLUE));
+        match score.score_type {
+            ScoreType::Current => {
+                color_override = Some(theme
+                    .get_color(ThemeColor::LeaderboardCurrentScore)
+                    .unwrap_or(Color::RED)
+                );
             }
+            ScoreType::Previous => {
+                if *is_pb {
+                    *is_pb = false;
+                    color_override = Some(theme
+                        .get_color(ThemeColor::LeaderboardPreviousBest)
+                        .unwrap_or(Color::BLUE)
+                    );
+                } else {
+                    color_override = Some(theme
+                        .get_color(ThemeColor::LeaderboardPreviousScores)
+                        .unwrap_or(Color::BLUE)
+                    );
+                }
+            }
+            _ => {}
         }
 
         // let text_color = if let Some(color) = text_color_override {
@@ -288,19 +310,6 @@ impl Cache {
             .get_color(ThemeColor::LeaderboardText)
             .unwrap_or(Color::WHITE);
         // };
-        
-
-        let score_mods = ModManager::short_mods_string(
-            &score.mods,
-            false,
-            info
-        );
-
-        let now = chrono::Utc::now().timestamp() as u64;
-        let time_diff = now as i64 - score.time as i64;
-        let time_diff_str = (time_diff < 60 * 5)
-            .then(|| format!(" | {time_diff}s"))
-            .unwrap_or_default();
 
         // score text
         // pos: pos_offset + PADDING * scale,
@@ -314,11 +323,7 @@ impl Cache {
         // combo text
         // pos: pos_offset + (PADDING + Vector2::new(0.0, PADDING.y + 15.0)) * scale
         let combo_text = Self::layout(
-            &format!(
-                "{}x, {:.2}%, {score_mods}{time_diff_str}", 
-                tataku::format_number(&score.max_combo), 
-                info.calc_acc(score) * 100.0
-            ),
+            &Self::combo_text(score, info),
             12.0 * scale.y,
             text_color,
             font_contexts,
@@ -340,18 +345,6 @@ impl Cache {
         info: &GamemodeInfo,
         font_contexts: &mut ui::widget::TextLayoutContexts,
     ) {
-
-        let score_mods = ModManager::short_mods_string(
-            &score.mods,
-            false,
-            info
-        );
-
-        let now = chrono::Utc::now().timestamp() as u64;
-        let time_diff = now as i64 - score.time as i64;
-        let time_diff_str = (time_diff < 60 * 5)
-            .then(|| format!(" | {time_diff}s"))
-            .unwrap_or_default();
         // let text_color = if let Some(color) = text_color_override {
         //     color
         // }
@@ -379,11 +372,7 @@ impl Cache {
         // combo text
         // pos: pos_offset + (PADDING + Vector2::new(0.0, PADDING.y + 15.0)) * scale
         self.combo_text = Some(Self::layout(
-            &format!(
-                "{}x, {:.2}%, {score_mods}{time_diff_str}", 
-                tataku::format_number(&score.max_combo), 
-                info.calc_acc(score) * 100.0
-            ),
+            &Self::combo_text(score, info),
             12.0 * scale.y,
             text_color,
             font_contexts,

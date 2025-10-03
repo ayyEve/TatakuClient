@@ -4,9 +4,9 @@ pub trait TatakuRenderable: Sync + Send {
     fn get_name(&self) -> String { "Unnamed".to_owned() }
     
     fn get_pipeline(&self) -> GraphicsPipeline;
-    fn set_pipeline(&mut self, blend_mode: GraphicsPipeline);
-    fn with_pipeline(mut self, blend_mode: GraphicsPipeline) -> Self where Self:Sized { 
-        self.set_pipeline(blend_mode); 
+    fn set_pipeline(&mut self, pipeline: GraphicsPipeline);
+    fn with_pipeline(mut self, pipeline: GraphicsPipeline) -> Self where Self:Sized { 
+        self.set_pipeline(pipeline); 
         self 
     }
 

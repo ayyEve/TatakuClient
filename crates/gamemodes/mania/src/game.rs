@@ -24,7 +24,7 @@ use engine::{
         TimingPointSearch,
     },
     gameplay::{
-        GameMode,
+        Gamemode,
         judgments::*,
         GameplayEvent,
         PlayfieldNonsense,
@@ -378,7 +378,7 @@ impl ManiaGame {
     
 }
 
-impl GameMode for ManiaGame {
+impl Gamemode for ManiaGame {
     fn new(
         beatmap: &Beatmap, 
         _: bool, 
@@ -938,6 +938,13 @@ impl GameMode for ManiaGame {
         if game_time >= time { return None }
 
         Some(time)
+    }
+
+    fn all_notes(&self) -> Vec<&dyn engine::gameplay::HitObject> {
+        self.columns.iter()
+            .flat_map(|i| i.iter())
+            .map(|i| &**i as &dyn engine::gameplay::HitObject)
+            .collect::<Vec<&dyn engine::gameplay::HitObject>>()
     }
 
     fn reset(&mut self, beatmap: &Beatmap) {

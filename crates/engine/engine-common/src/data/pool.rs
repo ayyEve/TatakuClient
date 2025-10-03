@@ -71,7 +71,7 @@ impl<T> Pool<T> {
 impl<T:Clone> Pool<T> {
     /// convenience function if init type is clone
     pub fn new_cloning(size: usize, init: T) -> Self {
-        Self::new(size, |_|init.clone())
+        Self::new(size, |_| init.clone())
     }
 }
 

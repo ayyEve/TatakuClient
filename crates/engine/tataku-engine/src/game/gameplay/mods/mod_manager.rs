@@ -99,7 +99,7 @@ impl ModManager {
         list.join(" ")
     }
 
-    pub fn map_mods_to_thing(
+    pub fn filter_mods_for_mode(
         &self, 
         mode: &GamemodeInfo,
     ) -> Vec<ModDefinition> {

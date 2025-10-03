@@ -118,7 +118,7 @@ pub struct OsuSlider {
     #[cfg(feature="graphics")] approach_circle: ApproachCircle,
     #[cfg(feature="graphics")] slider_body_render_target: Option<graphics::RenderTarget>,
     #[cfg(feature="graphics")] slider_body_render_target_failed: Option<f32>,
-    #[cfg(feature="graphics")] slider_body_loader: SliderBodyLoader,
+    // #[cfg(feature="graphics")] slider_body_loader: SliderBodyLoader,
 
     #[cfg(feature="gameplay")] hitsounds: Vec<Vec<Hitsound>>,
     #[cfg(feature="gameplay")] pub(crate) sliderdot_hitsound: Hitsound,
@@ -219,8 +219,8 @@ impl OsuSlider {
             return
         }
 
-        // wait for other load operations to complete first
-        if !self.slider_body_loader.is_none() { return }
+        // // wait for other load operations to complete first
+        // if !self.slider_body_loader.is_none() { return }
 
         let mut color = self.skin.slider_track_override.filter(
             |c| c != &Color::BLACK 
@@ -477,35 +477,48 @@ impl OsuSlider {
         if !self.use_render_targets() { return }
 
         let options = graphics::DrawOptions::default();
-        let callback = Box::new(move |g: &mut dyn graphics::DrawEngine, mut transform: tataku::Matrix| {
+        let callback = Arc::new(move |g: &mut dyn graphics::DrawEngine, mut transform: tataku::Matrix| {
             transform = transform.trans(offset);
-            for d in drawables {
+            for d in &drawables {
                 d.draw(&options, transform, g);
             }
         });
 
-        if let Some(target) = self.slider_body_render_target.clone() {
-            self.slider_body_loader = SliderBodyLoader::Update(engine::io::AsyncLoader::new(async move {
-                engine::window::GameWindow::update_render_target(
-                    target,
-                    callback
-                );
-            }));
+        if let Some(target) = &mut self.slider_body_render_target {
+            target.update_arced(callback);
+            // self.slider_body_loader = SliderBodyLoader::Update(engine::io::AsyncLoader::new(async move {
+            //     engine::window::GameWindow::update_render_target(
+            //         target,
+            //         callback
+            //     );
+            // }));
         } else {
-            let loader = engine::io::AsyncLoader::new(async move {
-                engine::window::GameWindow::create_render_target(
-                    (
-                        size.x as u32,
-                        size.y as u32,
-                    ), 
-                    callback
-                )
-            });
+            let mut rt = graphics::RenderTarget::new_arced_callback(
+                graphics::RenderTargetData::new(
+                    [size.x as u32, size.y as u32],
+                    Color::TRANSPARENT,
+                ),
+                callback,
+            );
+            rt.pos = min_pos;
+            rt.origin = Vector2::ZERO;
 
-            self.slider_body_loader = SliderBodyLoader::New {
-                min_pos,
-                loader,
-            };
+            self.slider_body_render_target = Some(rt);
+
+            // let loader = engine::io::AsyncLoader::new(async move {
+            //     engine::window::GameWindow::create_render_target(
+            //         (
+            //             size.x as u32,
+            //             size.y as u32,
+            //         ), 
+            //         callback
+            //     )
+            // });
+
+            // self.slider_body_loader = SliderBodyLoader::New {
+            //     min_pos,
+            //     loader,
+            // };
         }
         
     }
@@ -631,27 +644,27 @@ impl HitObject for OsuSlider {
                 return
             }
     
-            match &self.slider_body_loader {
-                SliderBodyLoader::New { min_pos, loader } => if loader.is_complete() {
-                    let value = loader.check().unwrap();
+            // match &self.slider_body_loader {
+            //     SliderBodyLoader::New { min_pos, loader } => if loader.is_complete() {
+            //         let value = loader.check().unwrap();
     
-                    if let Ok(mut slider_body_render_target) = value {
-                        slider_body_render_target.image.pos = *min_pos;
-                        slider_body_render_target.image.origin = Vector2::ZERO;
-                        self.slider_body_render_target = Some(slider_body_render_target);
-                    } else {
-                        warn!("failed to slider");
-                        self.slider_body_render_target_failed = Some(self.map_time);
-                    }
+            //         if let Ok(mut slider_body_render_target) = value {
+            //             slider_body_render_target.pos = *min_pos;
+            //             slider_body_render_target.origin = Vector2::ZERO;
+            //             self.slider_body_render_target = Some(slider_body_render_target);
+            //         } else {
+            //             warn!("failed to slider");
+            //             self.slider_body_render_target_failed = Some(self.map_time);
+            //         }
     
-                    self.slider_body_loader = SliderBodyLoader::None;
-                }
-                SliderBodyLoader::Update(new) => if new.is_complete() {
+            //         self.slider_body_loader = SliderBodyLoader::None;
+            //     }
+            //     SliderBodyLoader::Update(new) => if new.is_complete() {
     
-                    self.slider_body_loader = SliderBodyLoader::None;
-                }
-                _ => {}
-            }
+            //         self.slider_body_loader = SliderBodyLoader::None;
+            //     }
+            //     _ => {}
+            // }
             
             if alpha > 0 && self.slider_body_render_target.is_none() && (self.use_render_targets() || self.slider_body.slider_data.circle_radius == 0.0) {
                 self.make_body();
@@ -743,10 +756,11 @@ impl HitObject for OsuSlider {
 
         // slider body
         if self.use_render_targets() {
-            if let Some(rt) = &self.slider_body_render_target {
-                let mut b = rt.image.clone();
-                b.color.a = alpha;
-                list.push(b);
+            if let Some(mut rt) = self.slider_body_render_target.clone() {
+                // let mut b = rt.as_image();
+                // b.color.a = alpha;
+                rt.color.a = alpha;
+                list.push(rt);
             }
         } else {
             list.push(self.slider_body.clone());
@@ -1219,21 +1233,21 @@ impl SliderDot {
 }
 
 
-#[cfg(feature="graphics")]
-#[derive(Default)]
-enum SliderBodyLoader {
-    #[default]
-    None,
-    New {
-        min_pos: Vector2,
-        loader: engine::io::AsyncLoader<tataku::Result<graphics::RenderTarget>>,
-    },
-    Update(engine::io::AsyncLoader<()>),
-}
+// #[cfg(feature="graphics")]
+// #[derive(Default)]
+// enum SliderBodyLoader {
+//     #[default]
+//     None,
+//     New {
+//         min_pos: Vector2,
+//         loader: engine::io::AsyncLoader<tataku::Result<graphics::RenderTarget>>,
+//     },
+//     Update(engine::io::AsyncLoader<()>),
+// }
 
-#[cfg(feature="graphics")]
-impl SliderBodyLoader {
-    fn is_none(&self) -> bool {
-        matches!(self, Self::None)
-    }
-}
+// #[cfg(feature="graphics")]
+// impl SliderBodyLoader {
+//     fn is_none(&self) -> bool {
+//         matches!(self, Self::None)
+//     }
+// }

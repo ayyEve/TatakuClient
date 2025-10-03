@@ -7,6 +7,7 @@ use tataku::{
 use engine::{
     settings::common_gameplay::CommonGameplaySettings,
     gameplay::{
+        HitTiming,
         widgets::*,
         GamemodeInfo,
     },
@@ -22,7 +23,7 @@ const HIT_TIMING_FADE:f32 = 300.0;
 const HIT_TIMING_BAR_COLOR:Color = Color::new(0.0, 0.0, 0.0, 1.0);
 
 struct JudgementBarElement {
-    hitbar_timings: Vec<(f32, f32)>,
+    hitbar_timings: Vec<HitTiming>,
     judgment_colors: Vec<(f32, Color)>,
 
     /// not so much miss as it is the largest window
@@ -54,7 +55,7 @@ impl GameplayWidget for JudgementBarElement {
 
     fn update(&mut self, shell: &mut GameplayWidgetUpdateShell) {
         self.game_time = shell.manager.time();
-        self.hitbar_timings = shell.manager.hitbar_timings().clone();
+        self.hitbar_timings = shell.manager.hit_timings().clone();
 
         if self.judgment_colors.is_empty() {
             self.judgment_colors = shell.manager.properties().timing_bar_things.clone();
@@ -89,11 +90,11 @@ impl GameplayWidget for JudgementBarElement {
         }
         
         // draw hit timings
-        for &(hit_time, mut diff) in self.hitbar_timings.iter() {
-            diff = if diff < 0.0 { 
-                diff.max(-self.miss_window) 
+        for hit in self.hitbar_timings.iter().copied() {
+            let diff = if hit.hit_diff < 0.0 { 
+                hit.hit_diff.max(-self.miss_window) 
             } else { 
-                diff.min(self.miss_window) 
+                hit.hit_diff.min(self.miss_window) 
             };
 
             let pos = (timing_bar_size.x / 2.0) 
@@ -102,7 +103,7 @@ impl GameplayWidget for JudgementBarElement {
 
 
             // draw diff line
-            let diff = self.game_time - hit_time;
+            let diff = self.game_time - hit.map_time;
             let alpha = if diff > HIT_TIMING_DURATION - HIT_TIMING_FADE {
                 1.0 - (diff - (HIT_TIMING_DURATION - HIT_TIMING_FADE)) / HIT_TIMING_FADE
             } else { 1.0 };
