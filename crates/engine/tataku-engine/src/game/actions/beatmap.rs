@@ -7,14 +7,7 @@ pub enum BeatmapAction {
     PlaySelected,
 
     /// Set the current beatmap
-    /// 
-    /// map, use audio preview time, restart song?
     Set(Md5Hash, SetBeatmapOptions),
-
-    /// Set the current beatmap
-    /// 
-    /// map hash, use audio preview time, restart song?
-    SetFromHash(Md5Hash, SetBeatmapOptions),
 
     /// Remove the current beatmap
     Remove,

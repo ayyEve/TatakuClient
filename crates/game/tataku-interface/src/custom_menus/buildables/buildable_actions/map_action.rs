@@ -118,7 +118,7 @@ impl BuildableMapAction {
                     .try_into()
                     .ok()?;
                 
-                Some(actions::beatmap::BeatmapAction::SetFromHash(
+                Some(actions::beatmap::BeatmapAction::Set(
                     hash, 
                     actions::beatmap::SetBeatmapOptions::default().use_preview_point(true)
                 ))

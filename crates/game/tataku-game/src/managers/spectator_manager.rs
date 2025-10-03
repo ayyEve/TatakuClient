@@ -159,7 +159,7 @@ impl SpectatorManager {
 
         let host_map = self.host_map.as_ref()?;
         if values.beatmap_manager.beatmaps.contains_key(&host_map.map_hash) {
-            actions.push(BeatmapAction::SetFromHash(
+            actions.push(BeatmapAction::Set(
                 host_map.map_hash, 
                 SetBeatmapOptions::default().restart_song(true)
             ).into());
@@ -218,7 +218,7 @@ impl SpectatorManager {
                     ));
 
                     if values.beatmap_manager.get_by_hash(&beatmap_hash).is_some() {
-                        actions.push(BeatmapAction::SetFromHash(
+                        actions.push(BeatmapAction::Set(
                             beatmap_hash, 
                             SetBeatmapOptions::default().restart_song(true)
                         ).into());

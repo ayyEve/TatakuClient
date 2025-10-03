@@ -70,6 +70,7 @@ impl RenderTarget {
     }
 }
 
+#[cfg(feature="graphics")]
 impl TatakuRenderable for RenderTarget {
     fn get_pipeline(&self) -> GraphicsPipeline {
         GraphicsPipeline::Standard(self.blend_mode)

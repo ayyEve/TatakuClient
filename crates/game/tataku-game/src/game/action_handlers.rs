@@ -83,16 +83,15 @@ impl Game {
             self.actions.extend(actions);
         }
 
+        self.actions.extend(self.values.beatmap_manager.actions.take());
+
         for action in self.actions.take() {
             self.handle_action(action);
         }
     }
 
     #[cfg(feature="graphics")]
-    pub(super) fn handle_custom_menu(
-        &mut self, 
-        id: impl Into<ArcStr>,
-    ) {
+    pub(super) fn handle_custom_menu(&mut self, id: impl Into<ArcStr>) {
         let id = id.into();
         let selector = (
             id.clone(), 
@@ -400,15 +399,7 @@ impl Game {
                 }
             }
 
-            BeatmapAction::Set(
-                hash, 
-                options
-            ) => self.handle_beatmap_action(BeatmapAction::SetFromHash(
-                hash, 
-                options
-            )),
-            
-            BeatmapAction::SetFromHash(hash, options) => {
+            BeatmapAction::Set(hash, options) => {
                 if self.beatmap_manager.has_hash(&hash) {
                     let config = self.create_select_beatmap_config(
                         options.restart_song,
@@ -439,7 +430,7 @@ impl Game {
                             .random_beatmap() 
                         else { return };
 
-                        self.handle_beatmap_action(BeatmapAction::SetFromHash(
+                        self.handle_beatmap_action(BeatmapAction::Set(
                             map, 
                             options.use_preview_point(preview)
                         ));
@@ -521,7 +512,7 @@ impl Game {
 
                 // no previous map availble, handle accordingly
                 match if_none {
-                    MapActionIfNone::ContinueCurrent => return,
+                    MapActionIfNone::ContinueCurrent => {},
                     MapActionIfNone::Random(use_preview) => {
                         config.use_preview_time = use_preview;
 
@@ -535,8 +526,7 @@ impl Game {
                             &config,
                         );
                     }
-                    MapActionIfNone::SetNone 
-                        => self.remove_current_beatmap(),
+                    MapActionIfNone::SetNone => self.remove_current_beatmap(),
                 }
             }
 
@@ -604,11 +594,11 @@ impl Game {
             _ => {}
         }
 
-        // handle beatmap manager actions
-        let bm_actions = self.beatmap_manager.actions.take();
-        for i in bm_actions {
-            self.handle_action(i);
-        }
+        // // handle beatmap manager actions
+        // self.actions.extend(self.values.beatmap_manager.actions.take());
+        // // for i in bm_actions {
+        // //     self.handle_action(i);
+        // // }
     }
 
     #[cfg(feature="graphics")] 
@@ -1314,6 +1304,8 @@ impl Game {
         use engine::actions::database::Action;
         let db = &mut self.database;
 
+        println!("{action:?}");
+
         match action {
             Action::SaveBeatmapPlaymodePreferences { 
                 hash, 
@@ -1321,7 +1313,7 @@ impl Game {
                 prefs 
             } => if let Err(e) = db.set_beatmap_playmode_preferences(hash, &playmode, &prefs) {
                 error!("Error saving beatmap playmode preferences: {e:?}");
-            },
+            }
             Action::SaveBeatmapPreferences { 
                 hash, 
                 prefs 

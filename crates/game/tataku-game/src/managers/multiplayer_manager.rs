@@ -84,7 +84,7 @@ impl MultiplayerManager {
         // make sure our game is up to date with the lobby's current info
         match lobby.current_beatmap.clone() {
             Some(map) => {
-                actions.push(BeatmapAction::SetFromHash(
+                actions.push(BeatmapAction::Set(
                     map.hash, 
                     SetBeatmapOptions::default().restart_song(false)
                 ).into());
@@ -126,7 +126,7 @@ impl MultiplayerManager {
                 // if nothing was selected, make sure we revert back to the previous beatmap
                 if let Some(old_map) = *previous_map {
                     warn!("selecting previous map");
-                    actions.push(BeatmapAction::SetFromHash(
+                    actions.push(BeatmapAction::Set(
                         old_map, 
                         SetBeatmapOptions::default()
                             .restart_song(false)
@@ -194,7 +194,7 @@ impl MultiplayerManager {
             // if the map that was just added is the lobby's map, set it as our current map
             if let Some(beatmap) = &self.lobby.current_beatmap
             && new_hash == &beatmap.hash {
-                actions.push(BeatmapAction::SetFromHash(
+                actions.push(BeatmapAction::Set(
                     beatmap.hash, 
                     SetBeatmapOptions::default().restart_song(true)
                 ).into());
@@ -453,7 +453,7 @@ impl MultiplayerManager {
                     actions.push(BeatmapAction::SetPlaymode(beatmap.mode.clone()).into());
                     
                     // the beatmap change handler in Self::update will handle the rest
-                    actions.push(BeatmapAction::SetFromHash(
+                    actions.push(BeatmapAction::Set(
                         beatmap.hash, 
                         SetBeatmapOptions::default().restart_song(true)
                     ).into());

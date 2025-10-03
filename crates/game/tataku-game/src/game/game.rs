@@ -386,10 +386,10 @@ impl Game {
         };
 
         loop {
-            if settings_update_receiver.recv().is_ok()
+            if settings_update_receiver.try_recv().is_ok()
             && last_settings_save.as_millis() > 1000.0 {
                 // consume any extra pending updates
-                while settings_update_receiver.recv().is_ok() {}
+                while settings_update_receiver.try_recv().is_ok() {}
 
                 self.settings = engine::Settings::load_from(&settings.save_path);
                 self.settings_updated = true;
@@ -1517,22 +1517,21 @@ impl Game {
                 )));
             }
 
+            #[cfg(feature="graphics")]
+            actions::Action::Menu(action)
+                => self.handle_menu_action(action),
 
             #[cfg(feature="gameplay")]
             actions::Action::Online(action)
                 => self.online_manager.handle_action(action),
 
-            #[cfg(feature="graphics")]
-            actions::Action::Menu(action)
-                => self.handle_menu_action(action),
-
-            actions::Action::Audio(action)
-                => self.audio_manager.handle_action(
-                    action,
-                    &mut self.values,
-                    #[cfg(feature="graphics")]
-                    &mut self.skin_manager,
-                ),
+            #[cfg(feature="gameplay")]
+            actions::Action::Audio(action) => self.audio_manager.handle_action(
+                action,
+                &mut self.values,
+                #[cfg(feature="graphics")]
+                &mut self.skin_manager,
+            ),
             actions::Action::Beatmap(action)
                 => self.handle_beatmap_action(action),
             actions::Action::Game(action)
@@ -1562,8 +1561,7 @@ impl Game {
             // task actions
             actions::Action::Task(actions::task::TaskAction::AddTask(task)) => {
                 if !self.values.settings.enable_diffcalc
-                    && task.get_id() == Cow::Borrowed("diff_calc")
-                {
+                && task.get_id() == Cow::Borrowed("diff_calc") {
                     return
                 }
 
@@ -1594,7 +1592,7 @@ impl Game {
                 }
             }
 
-            #[cfg(not(feature="graphics"))]
+            #[cfg(not(all(feature="graphics", feature="gameplay")))]
             _ => {}
         }
     }
