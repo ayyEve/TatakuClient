@@ -4,20 +4,6 @@ use crate::tree::*;
 use simplecss::StyleSheet;
 use super::CssRuleStyleResolver;
 
-
-const BASE_STYLE: &str = r#"
-    row {
-        flex-direction: row; 
-    }
-    column {
-        flex-direction: column;
-    }
-
-    text {
-        width: 100%;
-    }
-"#;
-
 pub struct CssResolver<'a> {
     parsed: Vec<CssRuleStyleResolver<'a>>,
     animations: HashMap<String, CssAnimation>,
@@ -26,8 +12,9 @@ impl<'a> CssResolver<'a> {
     pub fn new(style_str: &'a str) -> Self {
         let mut animations = HashMap::new();
 
-        let mut style = StyleSheet::parse(style_str);
-        style.parse_more(BASE_STYLE);
+        let mut style = StyleSheet::parse(tataku_resources::styles::DEFAULT);
+        style.parse_more(style_str);
+
         use simplecss::at_rules::at_rule::AtRule;
         for rule in style.at_rules.iter() {
             if let AtRule::Keyframes { name, frames } = rule {

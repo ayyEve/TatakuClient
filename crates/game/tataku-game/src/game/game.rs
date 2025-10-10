@@ -30,8 +30,8 @@ const TRANSITION_TIME:f32 = 500.0;
 #[cfg(not(feature="dynamic_gamemodes"))] pub type IncomingGamemode = engine::gameplay::GamemodeInfo;
 
 pub struct BuiltinMenus {
-    pub menus: &'static [(&'static str, &'static [u8])],
-    pub dialogs: &'static [(&'static str, &'static [u8])],
+    pub menus: &'static [(&'static str, &'static str)],
+    pub dialogs: &'static [(&'static str, &'static str)],
 }
 
 pub struct Game {
@@ -231,7 +231,7 @@ impl Game {
             (self.builtin_menus.dialogs, CustomEntryType::Dialog),
         ] {
             for (name, data) in entries {
-                let _ = self.custom_menu_manager.load_entry_bytes(
+                let _ = self.custom_menu_manager.load_entry(
                     data,
                     None,
                     CustomMenuSource::Game,

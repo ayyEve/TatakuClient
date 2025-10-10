@@ -11,8 +11,8 @@ use ui::{
 };
 
 #[derive(ChainableInitializer)]
-pub struct TextWidget {
-    text: WidgetText,
+pub struct Text {
+    pub text: WidgetText,
 
     node_id: NodeId,
 
@@ -20,7 +20,7 @@ pub struct TextWidget {
     old_x: f32,
     old_width: f32,
 }
-impl TextWidget {
+impl Text {
     pub fn new(text: impl Into<WidgetText>) -> Self {
         Self {
             text: text.into(),
@@ -30,6 +30,10 @@ impl TextWidget {
             old_x: 0.0,
             old_width: 0.0,
         }
+    }
+
+    pub fn text_layout(&self) -> &parley::Layout<Color> {
+        &self.layout
     }
 
     fn recreate_layout(
@@ -87,7 +91,7 @@ impl TextWidget {
         }
     }
 }
-impl Widget<actions::Action> for TextWidget {
+impl Widget<actions::Action> for Text {
     fn name(&self) -> CowStr { "text_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
@@ -163,6 +167,7 @@ impl Widget<actions::Action> for TextWidget {
 
 
 // TODO: rename?
+#[derive(Clone)]
 pub enum WidgetText {
     String(CowStr),
     Custom {

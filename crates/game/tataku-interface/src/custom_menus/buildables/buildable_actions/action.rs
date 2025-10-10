@@ -113,12 +113,6 @@ pub enum BuildableAction {
         action: BuildableChatAction,
     },
 
-    /// Perform a ui action
-    Ui {
-        #[serde(rename="$value")]
-        action: BuildableUiAction,
-    },
-
     /// Perform an online content action
     OnlineContent {
         #[serde(rename="$value")]
@@ -264,14 +258,6 @@ impl BuildableAction {
             Self::Chat { action }
                 => action.resolve(values, passed_in),
 
-            #[cfg(feature="graphics")]
-            Self::Ui { action } => {
-                Some(actions::ui::UiAction::new(
-                    node,
-                    action.resolve(node, values, passed_in)?
-                ).into())
-            }
-
             Self::Gameplay {
                 action
             } => Some(actions::Action::Game(Box::new(
@@ -382,9 +368,6 @@ impl BuildableAction {
                 => value.build(),
 
             Self::Chat { action }
-                => action.build(),
-
-            Self::Ui { action }
                 => action.build(),
 
             Self::CustomEvent { event }

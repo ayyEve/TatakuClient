@@ -10,9 +10,7 @@ pub trait Widget<Action: Send + Sync>: Send + Sync {
     fn all_children(&self) -> WidgetChildren<'_, Action> { self.children() }
     fn all_children_mut(&mut self) -> WidgetChildrenMut<'_, Action> { self.children_mut() }
 
-    /// helper for default actions
     fn children(&self) -> WidgetChildren<'_, Action> { WidgetChildren::None }
-    /// helper for default actions
     fn children_mut(&mut self) -> WidgetChildrenMut<'_, Action> { WidgetChildrenMut::None }
 
     fn get_style_str(&self) -> ArcStr { ArcStr::default() }
@@ -32,16 +30,6 @@ pub trait Widget<Action: Send + Sync>: Send + Sync {
         for i in self.children_mut() {
             if shell.event_consumed { return }
             i.input(event, shell);
-        }
-    }
-
-    fn operation(
-        &mut self,
-        operation: &UiOperation,
-        tree: &mut Tree<Action>,
-    ) {
-        for i in self.children_mut() {
-            i.operation(operation, tree);
         }
     }
 
@@ -93,5 +81,88 @@ pub trait Widget<Action: Send + Sync>: Send + Sync {
 
     fn boxed(self) -> Box<dyn Widget<Action>> where Self:Sized + 'static {
         Box::new(self)
+    }
+}
+
+impl<Action: Send + Sync> Widget<Action> for Box<dyn Widget<Action>> {
+    fn name(&self) -> CowStr {
+        Widget::name(&**self)
+    }
+
+    fn node_id(&self) -> NodeId {
+        Widget::node_id(&**self)
+    }
+
+    fn layout(&mut self, shell: &mut LayoutShell<Action>) -> taffy::TaffyResult<NodeId> {
+        Widget::layout(&mut **self, shell)
+    }
+
+    fn all_children(&self) -> WidgetChildren<'_, Action> {
+        Widget::all_children(&**self)
+    }
+
+    fn all_children_mut(&mut self) -> WidgetChildrenMut<'_, Action> {
+        Widget::all_children_mut(&mut **self)
+    }
+
+    fn children(&self) -> WidgetChildren<'_, Action> {
+        Widget::children(&**self)
+    }
+
+    fn children_mut(&mut self) -> WidgetChildrenMut<'_, Action> {
+        Widget::children_mut(&mut **self)
+    }
+
+    fn get_style_str(&self) -> ArcStr {
+        Widget::get_style_str(&**self)
+    }
+
+    fn init_style(&mut self, shell: &mut LayoutShell<Action>) {
+        Widget::init_style(&mut **self, shell);
+    }
+
+    fn input(
+        &mut self,
+        event: &tataku_input::InputEvent,
+        shell: &mut InputShell<Action>,
+    ) {
+        Widget::input(&mut **self, event, shell);
+    }
+
+    fn draw(&self, shell: &mut DrawShell<Action>) {
+        Widget::draw(&**self, shell);
+    }
+
+    fn draw_overlay(&self, shell: &mut DrawShell<Action>) {
+        Widget::draw_overlay(&**self, shell);
+    }
+
+    fn update(&mut self, shell: &mut UpdateShell<Action>) {
+        Widget::update(&mut **self, shell);
+    }
+
+    fn handle_message(
+        &mut self,
+        message: &Message,
+        shell: &mut MessageShell<Action>,
+    ) {
+        Widget::handle_message(&mut **self, message, shell);
+    }
+
+    fn handle_event(
+        &mut self,
+        event: &tataku_input::TatakuEvent,
+        event_value: Option<&TatakuValue>,
+        shell: &mut MessageShell<Action>,
+    ) {
+        Widget::handle_event(&mut **self, event, event_value, shell);
+    }
+
+    fn reload_skin(&mut self, shell: &mut UpdateShell<Action>) {
+        Widget::reload_skin(&mut **self, shell);
+    }
+
+    fn boxed(self) -> Box<dyn Widget<Action>> where Self:Sized + 'static {
+        self
     }
 }

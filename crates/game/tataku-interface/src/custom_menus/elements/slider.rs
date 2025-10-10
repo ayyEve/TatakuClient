@@ -74,7 +74,7 @@ impl SliderElement {
             min,
             max,
             self.var.clone(),
-            Some(self.on_input.inner.clone()),
+            self.on_input.inner.clone(),
         )
         .step_maybe(step)
     }

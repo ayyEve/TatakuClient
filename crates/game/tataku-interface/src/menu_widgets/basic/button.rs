@@ -13,11 +13,11 @@ use input::{
 };
 
 #[derive(ChainableInitializer)]
-pub struct Button {
-    #[chain] on_press_left: ButtonOnClick,
-    #[chain] on_press_middle: ButtonOnClick,
-    #[chain] on_press_right: ButtonOnClick,
-    child: Box<dyn Widget<actions::Action>>,
+pub struct Button<T = Box<dyn Widget<actions::Action>>> {
+    pub on_press_left: Option<ButtonOnClick>,
+    pub on_press_middle: Option<ButtonOnClick>,
+    pub on_press_right: Option<ButtonOnClick>,
+    pub child: T,
     
     active_cond: VisuallyActive,
 
@@ -27,14 +27,14 @@ pub struct Button {
 
     node_id: NodeId,
 }
-impl Button {
-    pub fn new(child: Box<dyn Widget<actions::Action>>) -> Self {
+impl<T> Button<T> {
+    pub fn new(child: T) -> Self {
         Self {
             child,
             node_id: ui::EMPTY_NODE,
-            on_press_left: ButtonOnClick::Message(None),
-            on_press_middle: ButtonOnClick::Message(None),
-            on_press_right: ButtonOnClick::Message(None),
+            on_press_left: None,
+            on_press_middle: None,
+            on_press_right: None,
             active_cond: VisuallyActive::None,
 
             active: None,
@@ -53,20 +53,33 @@ impl Button {
         self.active_condition(cond)
     }
     
+    pub fn on_press_left(mut self, on_press: Option<impl Into<ButtonOnClick>>) -> Self {
+        self.on_press_left = on_press.map(Into::into);
+        self
+    }
 
-    pub fn on_press(self, on_press: impl Into<ButtonOnClick>) -> Self {
-        self.on_press_left(on_press)
+    pub fn on_press_middle(mut self, on_press: Option<impl Into<ButtonOnClick>>) -> Self {
+        self.on_press_middle = on_press.map(Into::into);
+        self
+    }
+
+    pub fn on_press_right(mut self, on_press: Option<impl Into<ButtonOnClick>>) -> Self {
+        self.on_press_right = on_press.map(Into::into);
+        self
     }
 }
-impl Widget<actions::Action> for Button {
+impl<T> Widget<actions::Action> for Button<T>
+where
+    T: Widget<actions::Action>
+{
     fn name(&self) -> CowStr { "button_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn children(&self) -> WidgetChildren<'_, actions::Action> {
-        WidgetChildren::Single(&*self.child)
+        WidgetChildren::Single(&self.child)
     }
     fn children_mut(&mut self) -> WidgetChildrenMut<'_, actions::Action> {
-        WidgetChildrenMut::Single(&mut *self.child)
+        WidgetChildrenMut::Single(&mut self.child)
     }
 
     fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId>  {
@@ -112,6 +125,8 @@ impl Widget<actions::Action> for Button {
                     MouseButton::Right => &self.on_press_right,
                     _ => return,
                 };
+
+                let Some(action) = action else { return; };
 
                 if let Some(message) = action.resolve(
                     self.node_id,
@@ -191,7 +206,6 @@ type OnClickCallback = Box<dyn Fn() -> Option<Message> + Send + Sync>;
 
 #[derive(Debug2)]
 pub enum ButtonOnClick {
-    Message(Option<Message>),
     BuildableActions(Vec<BuildableAction>),
     #[debug(skip)] Callback(OnClickCallback),
 }
@@ -203,9 +217,6 @@ impl ButtonOnClick {
         values: &mut dyn Reflect,
     ) -> Option<ActionResponse> {
         match self {
-            Self::Message(m) 
-                => m.clone().map(ActionResponse::Message),
-
             Self::BuildableActions(actions) => {
                 let actions = actions.iter().cloned()
                     .filter_map(|a| {
@@ -234,17 +245,7 @@ impl ButtonOnClick {
         }
     }
 }
-impl<T: Into<ButtonOnClick>> From<Option<T>> for ButtonOnClick {
-    fn from(value: Option<T>) -> Self {
-        let Some(value) = value else { return Self::Message(None) };
-        value.into()
-    }
-}
-impl From<Message> for ButtonOnClick {
-    fn from(value: Message) -> Self {
-        Self::Message(Some(value))
-    }
-}
+
 impl From<BuildableAction> for ButtonOnClick {
     fn from(action: BuildableAction) -> Self {
         vec![action].into()
@@ -261,14 +262,18 @@ impl From<Vec<BuildableAction>> for ButtonOnClick {
             }
         }
 
-        if actions.is_empty() {
-            Self::Message(None)
-        } else {
-            Self::BuildableActions(actions)
-        }
+        Self::BuildableActions(actions)
     }
 }
 
+impl<F> From<Box<F>> for ButtonOnClick
+where
+    F: Fn() -> Option<Message> + Send + Sync + 'static
+{
+    fn from(value: Box<F>) -> Self {
+        Self::Callback(value)
+    }
+}
 impl From<OnClickCallback> for ButtonOnClick {
     fn from(value: OnClickCallback) -> Self {
         Self::Callback(value)

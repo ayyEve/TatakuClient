@@ -95,36 +95,6 @@ impl Widget<actions::Action> for WidgetBase {
         Ok(id)
     }
 
-    fn operation(
-        &mut self, 
-        operation: &UiOperation, 
-        tree: &mut Tree<actions::Action>,
-    ) {
-        if let UiOperationType::State(op) = &operation.operation {
-            let Some(ctx) = tree
-                .get_context_mut(self.node_id())
-            else { return };
-
-            match op {
-                StateOperation::Add(state) => {
-                    ctx.element_data.state |= *state;
-                }
-                StateOperation::Remove(state) => {
-                    ctx.element_data.state.remove(*state);
-                }
-                StateOperation::Toggle(state) => {
-                    ctx.element_data.state.toggle(*state);
-                }
-            }
-            return;
-        }
-        
-        for i in self.children_mut() {
-            i.operation(operation, tree);
-        }
-    }
-
-
     fn input(&mut self, event: &InputEvent, shell: &mut InputShell<actions::Action>) {
         // let node = self.node_id();
         // let previous_state = shell.tree

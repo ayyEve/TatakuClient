@@ -30,8 +30,7 @@ pub struct EnumValues {
     pub performance_mode: Vec<PerformanceMode>,
     pub score_methods: Vec<ScoreRetreivalMethod>,
 
-    pub playmodes: HashMap<String, PlaymodeReflect>,
-
+    pub playmodes: HashMap<String, String>,
 
     // modifiable enums
     pub skins: Vec<String>,
@@ -43,7 +42,7 @@ impl EnumValues {
         let playmodes = infos
             .by_num
             .iter()
-            .map(|g| (g.id.to_string(), PlaymodeReflect::new(g)))
+            .map(|g| (g.id.into(), g.display_name.into()))
             .collect();
 
         Self {
@@ -58,65 +57,5 @@ impl EnumValues {
             themes: vec![ SelectedTheme::Tataku, SelectedTheme::Osu ],
             monitors: Vec::new(),
         }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct PlaymodeReflect {
-    id: String,
-    display: String,
-}
-impl PlaymodeReflect {
-    fn new(info: &GamemodeInfo) -> Self {
-        Self {
-            id: info.id.to_owned(),
-            display: info.display_name.to_owned(),
-        }
-    }
-}
-impl Reflect for PlaymodeReflect {
-    fn impl_get<'s, 'v>(
-        &'s self, 
-        mut path: ReflectPath<'v>
-    ) -> reflect::Result<'v, MaybeOwnedReflect<'s>> {
-        if !path.has_next() {
-            Ok(MaybeOwnedReflect::Borrowed(&self.id))
-        } else {
-            Err(ReflectError::EntryNotExist { 
-                entry: path.next().unwrap().into() 
-            })
-        }
-    }
-    fn impl_get_mut<'s, 'v>(
-        &'s mut self, 
-        mut path: ReflectPath<'v>
-    ) -> reflect::Result<'v, &'s mut dyn Reflect> {
-        if !path.has_next() {
-            Ok(&mut self.id)
-        } else {
-            Err(ReflectError::EntryNotExist { 
-                entry: path.next().unwrap().into() 
-            })
-        }
-    }
-    
-    fn impl_display<'v>(
-        &self, 
-        _path: ReflectPath<'v>, 
-        _precision: Option<usize>
-    ) -> reflect::Result<'v, String> {
-        Ok(self.display.clone())
-    }
-
-    fn duplicate(&self) -> Option<Box<dyn Reflect>> {
-        Some(Box::new(self.clone()))
-    }
-    
-    fn impl_insert<'v>(
-        &mut self, 
-        _path: ReflectPath<'v>, 
-        _value: Box<dyn Reflect>
-    ) -> reflect::Result<'v, ()> {
-        Err(ReflectError::ImmutableContainer)
     }
 }

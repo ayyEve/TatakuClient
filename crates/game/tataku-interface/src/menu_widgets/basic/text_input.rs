@@ -46,8 +46,8 @@ pub struct TextInput {
     placeholder: WidgetText,
     value: WidgetText,
     
-    #[chain] on_input: InputAction<String>,
-    #[chain] on_submit: InputAction<String>,
+    on_input: Option<InputAction<String>>,
+    on_submit: Option<InputAction<String>>,
     
     cursor: Cursor,
     pressed: bool,
@@ -68,8 +68,8 @@ impl TextInput {
             value: value.into(),
             secure: false,
 
-            on_input: InputAction::default(),
-            on_submit: InputAction::default(),
+            on_input: None,
+            on_submit: None,
 
             pressed: false,
             hovered: false,
@@ -77,6 +77,16 @@ impl TextInput {
 
             node_id: ui::EMPTY_NODE,
         }
+    }
+
+    pub fn on_input(mut self, on_input: Option<impl Into<InputAction<String>>>) -> Self {
+        self.on_input = on_input.map(Into::into);
+        self
+    }
+
+    pub fn on_submit(mut self, on_submit: Option<impl Into<InputAction<String>>>) -> Self {
+        self.on_submit = on_submit.map(Into::into);
+        self
     }
 
     fn get_text(&self) -> Cow<'_, str> {
@@ -605,14 +615,16 @@ impl Widget<actions::Action> for TextInput {
             InputType::KeyPress(press) if self.active => {
                 if let Some(Key::Enter) = press.as_key() {
 
-                    self.on_submit.run(
-                        &self.value.get().into_owned(),
-                        self.node_id,
-                        shell.messages,
-                        shell.actions,
-                        shell.values,
-                    );
-                    
+                    if let Some(on_submit) = &self.on_submit {
+                        on_submit.run(
+                            &self.value.get().into_owned(),
+                            self.node_id,
+                            shell.messages,
+                            shell.actions,
+                            shell.values,
+                        );
+                    }
+
                     shell.event_consumed = true;
                     self.active = false;
                     return;
@@ -650,13 +662,15 @@ impl Widget<actions::Action> for TextInput {
                         //         .inspect_err(|e| warn!("{e:?}"));
                         // }
                         
-                        self.on_input.run(
-                            &self.value.get().into_owned(),
-                            self.node_id,
-                            shell.messages,
-                            shell.actions,
-                            shell.values,
-                        );
+                        if let Some(on_input) = &self.on_input {
+                            on_input.run(
+                                &self.value.get().into_owned(),
+                                self.node_id,
+                                shell.messages,
+                                shell.actions,
+                                shell.values,
+                            );
+                        }
                     }
                 }
             }

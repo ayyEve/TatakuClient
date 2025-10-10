@@ -102,7 +102,11 @@ impl ContextMenu {
             self.item_size.x,
             self.item_size.y * index as f32,
         );
-        self.submenu = Some(Box::new(menu.build(self.location + location)));
+
+        let mut submenu = menu();
+        submenu.location = self.location + location;
+
+        self.submenu = Some(Box::new(submenu));
 
         true
     }
@@ -295,7 +299,6 @@ impl Widget<actions::Action> for ContextMenu {
     }
 }
 
-#[derive(Clone)]
 pub struct ContextMenuOption {
     pub name: CowStr,
     pub option_type: ContextMenuOptionType,
@@ -312,7 +315,8 @@ impl ContextMenuOption {
     }
 }
 
-#[derive(Clone)]
+pub type ContextMenuBuilder = Box<dyn Fn() -> ContextMenu + Send + Sync>;
+
 #[derive(From)]
 pub enum ContextMenuOptionType {
     SubMenu(ContextMenuBuilder),
@@ -322,28 +326,5 @@ pub enum ContextMenuOptionType {
 impl From<ContextMenuAction> for ContextMenuOptionType {
     fn from(value: ContextMenuAction) -> Self {
         Self::Action(Box::new(value))
-    }
-}
-impl From<Message> for ContextMenuOptionType {
-    fn from(value: Message) -> Self {
-        Self::Action(Box::new(value.into()))
-    }
-}
-
-#[derive(Clone, Default)]
-pub struct ContextMenuBuilder {
-    pub options: Vec<ContextMenuOption>,
-}
-impl ContextMenuBuilder {
-    pub fn build(&self, location: Vector2) -> ContextMenu {
-        ContextMenu::new(self.options.clone(), location)
-    }
-    
-    pub fn add_option(&mut self, option: ContextMenuOption) {
-        self.options.push(option);
-    }
-    pub fn with_option(mut self, option: ContextMenuOption) -> Self {
-        self.add_option(option);
-        self
     }
 }

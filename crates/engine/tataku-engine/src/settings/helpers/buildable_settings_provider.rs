@@ -133,30 +133,26 @@ pub struct BuildableSettingsAction {
     #[reflect(skip)] #[debug(skip)]
     pub inner: Arc<dyn BuildableSettingsActionTrait>,
 }
-impl From<actions::Action> for BuildableSettingsAction {
-    fn from(value: actions::Action) -> Self {
-        Self {
-            inner: Arc::new(value)
-        }
-    }
-}
-
 
 pub trait BuildableSettingsActionTrait: Send + Sync {
     fn build(
-        &self, 
+        &self,
         node: ui::tree::NodeId,
         passed_in: Option<&tataku::TatakuValue>,
         values: &dyn Reflect,
     ) -> Option<actions::Action>;
 }
-impl BuildableSettingsActionTrait for actions::Action {
+
+impl<F> BuildableSettingsActionTrait for F
+where
+    F: Fn() -> Option<actions::Action> + Send + Sync
+{
     fn build(
-        &self, 
-        _: ui::tree::NodeId,
-        _: Option<&tataku::TatakuValue>,
-        _: &dyn Reflect,
+        &self,
+        _node: tataku_ui::tree::NodeId,
+        _passed_in: Option<&tataku::TatakuValue>,
+        _values: &dyn Reflect,
     ) -> Option<actions::Action> {
-        Some(self.clone())
+        self()
     }
 }

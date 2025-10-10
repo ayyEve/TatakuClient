@@ -5,7 +5,7 @@ use tataku::TatakuValue;
 use common::types::network::spectator::SpectatorFrame;
 pub type GameplayId = Arc<u32>;
 
-#[derive(Clone, Debug2)]
+#[derive(Debug2)]
 pub enum GameAction {
     /// Fully quit the game
     Quit,
@@ -111,7 +111,7 @@ impl From<CurrentGameAction> for actions::Action {
 #[derive(Default, Clone, Debug2)]
 pub struct NewManager {
     /// who is requesting the manager?
-    pub owner: ui::message::MessageOwner,
+    pub owner: ui::message::MessageSource,
     /// what mods should be used? if none, will use the global mods (and will update mods when global mods update)
     pub mods: Option<gameplay::mods::ModManager>,
     /// what map hash to use

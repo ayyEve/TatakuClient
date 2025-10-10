@@ -31,6 +31,12 @@ impl TextInputElement {
 }
 impl TextInputElement {
     pub fn build(&self) -> widgets::TextInput {
+        let on_input = self.on_input.inner.clone();
+        let on_input = (!on_input.is_empty()).then_some(on_input);
+
+        let on_submit = self.on_submit.inner.clone();
+        let on_submit = (!on_submit.is_empty()).then_some(on_submit);
+
         widgets::TextInput::new(
             self.placeholder(),
             BuildableText::Variable {
@@ -38,8 +44,8 @@ impl TextInputElement {
             }
         )
         .secure(self.is_password)
-        .on_input(self.on_input.inner.clone())
-        .on_submit(self.on_submit.inner.clone())
+        .on_input(on_input)
+        .on_submit(on_submit)
     }
 
 }

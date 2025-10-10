@@ -2,7 +2,8 @@ use std::io::Write;
 
 const INCLUDE_DIRS: &[&str] = &[
     "menus",
-    "dialogs"
+    "dialogs",
+    "styles",
 ];
 
 fn main() {
@@ -65,7 +66,7 @@ fn read_folder(
         #[cfg(target_os = "linux")] let path_str = format!("\"{}\"", path.display());
         println!("cargo::rerun-if-changed={path_str}");
 
-        let line = format!("pub const {const_name_display}:&[u8] = include_bytes!({path_str});");
+        let line = format!("pub const {const_name_display}: &str = include_str!({path_str});");
         
         let tabs = "    ".repeat(indent);
         output
@@ -76,7 +77,7 @@ fn read_folder(
     
     let all = list.join(",");
     output
-        .write_all(format!("pub const ALL: &[(&str, &[u8])] = &[{all}];").as_bytes())
+        .write_all(format!("pub const ALL: &[(&str, &str)] = &[{all}];").as_bytes())
         .expect("error writing to output file");
 
     output

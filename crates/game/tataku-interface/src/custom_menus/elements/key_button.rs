@@ -10,8 +10,11 @@ pub struct KeyButtonElement {
 }
 impl KeyButtonElement {
     pub fn build(&self) -> widgets::KeyButton {
+        let on_input = self.on_input.inner.clone();
+        let on_input = (!on_input.is_empty()).then_some(on_input);
+
         widgets::KeyButton::new(self.var.clone())
             .optional(self.optional)
-            .on_change(self.on_input.inner.clone())
+            .on_change(on_input)
     }
 }

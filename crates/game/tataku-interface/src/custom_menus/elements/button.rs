@@ -28,6 +28,10 @@ impl ButtonElement {
             vec.extend(action.inner.iter().cloned());
         }
 
+        let left = (!left.is_empty()).then_some(left);
+        let middle = (!middle.is_empty()).then_some(middle);
+        let right = (!right.is_empty()).then_some(right);
+
         widgets::Button::new(self.element.build().boxed())
             .on_press_left(left)
             .on_press_middle(middle)

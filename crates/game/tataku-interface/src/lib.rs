@@ -19,7 +19,7 @@ pub mod prelude {
     };
 
     pub(crate) use tataku_engine as engine;
-    pub(crate) use engine::{ input, actions};
+    pub(crate) use engine::{ input, actions };
 
     pub(crate) use tataku_ui as ui;
     pub(crate) use tataku_graphics as graphics;

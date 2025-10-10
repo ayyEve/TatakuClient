@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use serde::de::DeserializeOwned;
 
 use interface::{
     CustomMenu,
@@ -12,60 +11,37 @@ pub struct CustomMenuManager {
     dialog_list: Vec<CustomEntry<CustomDialog>>,
 }
 impl CustomMenuManager {
-    fn load_entry_inner<T: DeserializeOwned>(
-        path: Option<String>, 
-        bytes: Vec<u8>, 
-        source: CustomMenuSource
-    ) -> tataku::Result<CustomEntry<T>> {
-        let menu = quick_xml::de::from_reader(std::io::Cursor::new(&bytes))
-            .map_err(tataku::Error::from_err)?;
-
-        Ok(CustomEntry {
-            path,
-            source,
-            inner: menu,
-            bytes,
-        })
-    }
-    
     pub fn load_entry(
         &mut self, 
-        path: String, 
-        source: CustomMenuSource,
-        entry_type: CustomEntryType,
-    ) -> tataku::Result<()> {
-        let bytes = std::fs::read(&path)?;
-        self.load_entry_bytes(&bytes, Some(path), source, entry_type)
-    }
-    
-    pub fn load_entry_bytes(
-        &mut self, 
-        bytes: &[u8], 
+        data: &str,
         path: Option<String>,
         source: CustomMenuSource,
         entry_type: CustomEntryType,
     ) -> tataku::Result<()> {
         match entry_type {
             CustomEntryType::Menu => {
-                self.menu_list.push(Self::load_entry_inner(
+                let menu = quick_xml::de::from_str(data)
+                    .map_err(tataku::Error::from_err)?;
+
+                self.menu_list.push(CustomEntry {
                     path,
-                    bytes.to_vec(),
-                    source
-                )?);
+                    source,
+                    inner: menu,
+                });
             }
             CustomEntryType::Dialog => {
-                self.dialog_list.push(Self::load_entry_inner(
+                let dialog = quick_xml::de::from_str(data)
+                    .map_err(tataku::Error::from_err)?;
+
+                self.dialog_list.push(CustomEntry {
                     path,
-                    bytes.to_vec(),
-                    source
-                )?);
+                    source,
+                    inner: dialog,
+                });
             }
         }
         Ok(())
     }
-
-
-
 
     pub fn reload_entries(
         &mut self, 
@@ -75,20 +51,32 @@ impl CustomMenuManager {
 
         for i in self.menu_list.iter_mut().filter(|m| !m.source.check(&source) ) {
             let Some(path) = &i.path else { continue };
-            let Ok(bytes) = std::fs::read(path) else { continue };
+            let Ok(data) = std::fs::read_to_string(path) else { continue };
 
-            match Self::load_entry_inner(
-                Some(path.clone()), 
-                bytes, 
-                i.source
-            ) {
+            match quick_xml::de::from_str(&data) {
                 Ok(menu) => {
+                    i.inner = menu;
+
                     reloaded = true;
-                    i.inner = menu.inner;
-                    i.bytes = menu.bytes;
-                }
+                },
                 Err(e) => {
                     error!("error reloading custom menu {path}: {e:?}");
+                }
+            }
+        }
+
+        for i in self.dialog_list.iter_mut().filter(|m| !m.source.check(&source) ) {
+            let Some(path) = &i.path else { continue };
+            let Ok(data) = std::fs::read_to_string(path) else { continue };
+
+            match quick_xml::de::from_str(&data) {
+                Ok(dialog) => {
+                    i.inner = dialog;
+
+                    reloaded = true;
+                },
+                Err(e) => {
+                    error!("error reloading custom dialog {path}: {e:?}");
                 }
             }
         }
@@ -167,7 +155,6 @@ struct CustomEntry<T> {
     inner: T,
     
     path: Option<String>,
-    bytes: Vec<u8>,
 }
 
 

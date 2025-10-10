@@ -12,6 +12,6 @@ impl GamepadButtonElement {
     pub fn build(&self) -> widgets::GamepadButtonInput {
         widgets::GamepadButtonInput::new(self.var.clone())
             .optional(self.optional)
-            .on_change(self.on_input.inner.clone())
+            .on_change(Some(self.on_input.inner.clone()))
     }
 }
