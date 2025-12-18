@@ -9,8 +9,7 @@ text {
     width: 100%;
 }
 
-dropdown > * {
+dropdown column {
     position: absolute;
-    margin: 8px;
-    flex-direction: column;
+    gap: 8px;
 }

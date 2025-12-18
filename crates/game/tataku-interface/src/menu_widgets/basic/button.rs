@@ -42,6 +42,16 @@ impl<T> Button<T> {
         }
     }
 
+    pub fn into_widget_base(self) -> widgets::WidgetBase<Self> {
+        widgets::WidgetBase::new(
+            ArcStr::default(),
+            "button",
+            None,
+            ClassList::default(),
+            self,
+        )
+    }
+
     pub fn active_condition(mut self, mut cond: BuildableCondition) -> Self {
         cond.build();
         self.active_cond = VisuallyActive::Condition { cond, value: false };
@@ -140,7 +150,7 @@ where
                         ActionResponse::Action(action) 
                             => shell.actions.push(action),
                     }
-                    // shell.event_consumed = true;
+                    shell.event_consumed = true;
                     return;
                 }
             }

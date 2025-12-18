@@ -50,7 +50,8 @@ impl Dropdown {
         let variants = variants.into();
         let value = value.into();
 
-        let main_button = DropdownButton::new(widgets::Text::new(placeholder.clone()));
+        let main_button = widgets::Button::new(widgets::Text::new(placeholder.clone()))
+            .into_widget_base();
 
         Self {
             value,
@@ -77,28 +78,20 @@ impl Dropdown {
         index: usize,
         shell: &mut MessageShell<actions::Action>
     ) {
+        let DropdownVariants::Buttons { enum_variants, .. } = &mut self.variants else {
+            unreachable!("dropdown variants are built");
+        };
+
         self.active = false;
         self.value.set_index(index);
         // debug!("setting value to {index} ({})", self.variants.get_displays()[index]);
 
         let message = match &self.on_change {
             DropdownOnChange::Buildable(actions) => {
-                // let passed_in = match &self.variants {
-                //     DropdownVariants::Static(items)
-                //         => Some(items[index].clone().into()),
-                //     DropdownVariants::Variable(_) => None,
-                //     DropdownVariants::Built {
-                //         items,
-                //         ..
-                //     } => TatakuValue::from_reflection(
-                //         items[index].value.duplicate().unwrap()
-                //     ).inspect_err(|e|
-                //         warn!("didnt reflect: {e:?}")
-                //     )
-                //     .ok(),
-                // };
-                let passed_in = None;
-                let passed_in = passed_in.as_ref();
+                let passed_in = enum_variants[index].clone();
+                let passed_in = Some(&TatakuValue::Reflect(Box::new(passed_in)));
+
+                info!("set value: {passed_in:?}");
 
                 // todo: error on bad
                 let actions = actions.iter()
@@ -123,7 +116,29 @@ impl Widget<actions::Action> for Dropdown {
     fn name(&self) -> CowStr { "dropdown_widget".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
-    // todo: children
+    fn children(&self) -> WidgetChildren<'_, actions::Action> {
+        let DropdownVariants::Buttons { buttons, .. } = &self.variants else {
+            unreachable!("dropdown variants are built");
+        };
+
+        let buttons = buttons.iter()
+            .map(|button| button as &dyn Widget<_>)
+            .collect();
+
+        WidgetChildren::OwnedList(buttons)
+    }
+
+    fn children_mut(&mut self) -> WidgetChildrenMut<'_, actions::Action> {
+        let DropdownVariants::Buttons { buttons, .. } = &mut self.variants else {
+            unreachable!("dropdown variants are built");
+        };
+
+        let buttons = buttons.iter_mut()
+            .map(|button| button as &mut dyn Widget<_>)
+            .collect();
+
+        WidgetChildrenMut::OwnedList(buttons)
+    }
 
     fn layout(
         &mut self,
@@ -132,9 +147,9 @@ impl Widget<actions::Action> for Dropdown {
         let node_id = shell.tree.new_leaf()?;
         self.node_id = node_id;
 
-        self.main_button.on_press_left = Some(Box::new(move || Some(Message::new(
+        self.main_button.inner.on_press_left = Some(Box::new(move || Some(Message::new(
             MessageSource::Menu,
-            "activate",
+            "toggle_dropdown",
             Some(MessageTarget::Node(node_id)),
             Box::new(()),
         ))).into());
@@ -158,8 +173,15 @@ impl Widget<actions::Action> for Dropdown {
 
         self.container = shell.tree.new_with_children(&children)?;
 
+        shell.with_context(self.container, |ctx| {
+            ctx.element_data = ElementData {
+                element_name: "column".into(),
+                ..Default::default()
+            }
+        });
+
         if let Some(index) = self.value.index() {
-            self.main_button.child.text = buttons[index].child.text.clone();
+            self.main_button.inner.child.text = buttons[index].inner.child.text.clone();
         }
 
         self.main_button.layout(shell)?;
@@ -184,6 +206,15 @@ impl Widget<actions::Action> for Dropdown {
             variant.init_style(shell);
         }
 
+        let styles = shell.resolver.resolve_style(
+            "",
+            self.container,
+            shell.tree,
+        );
+
+        let ctx = shell.tree.get_context_mut(self.container).unwrap();
+        ctx.set_styles(styles, shell.values);
+
         self.main_button.init_style(shell);
 
         // Wait until the tree is recomputed to set min and max widths
@@ -194,15 +225,21 @@ impl Widget<actions::Action> for Dropdown {
         event: &InputEvent,
         shell: &mut InputShell<actions::Action>,
     ) {
-        let Some(bounds) = shell.tree.bounds(self.node_id)
-        else { return };
-
-        let Some(context) = shell.tree.get_context(self.node_id)
-        else { return };
-
         let DropdownVariants::Buttons { buttons, .. } = &mut self.variants else {
             unreachable!("dropdown variants are built");
         };
+
+        self.main_button.input(event, shell);
+
+        if self.active {
+            for variant in buttons {
+                if shell.event_consumed { return; }
+
+                variant.input(event, shell);
+            }
+        }
+
+        if shell.event_consumed { return; }
 
         match &event.event {
             InputType::KeyPress(input) if self.active => {
@@ -216,29 +253,16 @@ impl Widget<actions::Action> for Dropdown {
             }
 
             InputType::MousePress(MouseButton::Left) if self.active => {
-                let pos = context.inverse_global_transform * event.mouse_pos;
-                if !bounds.contains(pos) {
-                    self.active = false;
-                }
+                self.active = false;
             }
 
             _ => {}
-        }
-
-        if !shell.event_consumed {
-            self.main_button.input(event, shell);
-
-            if self.active {
-                for variant in buttons {
-                    variant.input(event, shell);
-                }
-            }
         }
     }
 
     fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
         if self.value.index().is_none() {
-            self.main_button.child.text = self.placeholder.clone();
+            self.main_button.inner.child.text = self.placeholder.clone();
         }
 
         self.main_button.update(shell);
@@ -251,6 +275,9 @@ impl Widget<actions::Action> for Dropdown {
             variant.update(shell);
         }
 
+        let Some(button) = shell.tree.get_layout(self.main_button.node_id()) else { return; };
+        let height = button.size.height;
+
         let Some(container) = shell.tree.get_layout(self.container) else { return; };
         let width = container.size.width;
 
@@ -259,6 +286,11 @@ impl Widget<actions::Action> for Dropdown {
 
             shell.tree.update_style(self.node_id, |style| {
                 style.width = CssValue::Value(CssUnit::Pixels(f16::from_f32(width)));
+            });
+
+            // todo: move to a more appropriate place
+            shell.tree.update_style(self.container, |style| {
+                style.margin_top = CssValue::Value(CssUnit::Pixels(f16::from_f32(height)));
             });
         }
 
@@ -331,12 +363,12 @@ impl Widget<actions::Action> for Dropdown {
             unreachable!("dropdown variants are built");
         };
 
-        if !shell.handled {
-            self.main_button.handle_message(message, shell);
+        if shell.handled { return };
 
-            for variant in buttons {
-                variant.handle_message(message, shell);
-            }
+        self.main_button.handle_message(message, shell);
+
+        for variant in buttons {
+            variant.handle_message(message, shell);
         }
 
         if !matches!(message.target, Some(MessageTarget::Node(n)) if n == self.node_id) { return; }
@@ -350,8 +382,8 @@ impl Widget<actions::Action> for Dropdown {
                 shell.handled = true;
             },
 
-            "activate" => {
-                self.active = true;
+            "toggle_dropdown" => {
+                self.active = !self.active;
 
                 shell.handled = true;
             },
@@ -488,7 +520,7 @@ impl From<Vec<BuildableAction>> for DropdownOnChange {
     }
 }
 
-type DropdownButton = widgets::Button<widgets::Text>;
+type DropdownButton = widgets::WidgetBase<widgets::Button<widgets::Text>>;
 
 pub enum DropdownVariants {
     Variable(engine::VariablePathResolver),
@@ -525,15 +557,22 @@ impl DropdownVariants {
                 },
             }
 
-            let callback = Box::new(move || Some(Message::new(
-                MessageSource::Menu,
-                "select_index",
-                Some(MessageTarget::Node(dropdown)),
-                Box::new(index),
-            )));
+            let value_debug = value.clone();
+
+            let callback = Box::new(move || {
+                info!("button callback: {index} - {value_debug}");
+
+                Some(Message::new(
+                    MessageSource::Menu,
+                    "select_index",
+                    Some(MessageTarget::Node(dropdown)),
+                    Box::new(index),
+                ))
+            });
 
             let button = widgets::Button::new(widgets::Text::new(value))
-                .on_press_left(Some(callback));
+                .on_press_left(Some(callback))
+                .into_widget_base();
 
             buttons.push(button);
         }
