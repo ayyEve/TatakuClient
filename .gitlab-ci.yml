@@ -79,7 +79,8 @@ prepare-release:
       when: never # Do not run this job when a tag is created manually
     - if: $CI_MERGE_REQUEST_ID
       when: never # Do not run this job for merge requests
-    - if: $CI_COMMIT_REF_PROTECTED # Run this job when commits are pushed or merged to a protected branch
+    - if: $CI_COMMIT_REF_PROTECTED # Run this job only when commits are pushed or merged to a protected branch
+    - when: never
   script:
     - echo Removing old tag and release on branch $CI_COMMIT_BRANCH
     - 'curl -X DELETE -H "PRIVATE-TOKEN: $GITLAB_API_TOKEN" "https://gitlab.ayyeve.dev/api/v4/projects/$CI_PROJECT_ID/repository/tags/latest-$CI_COMMIT_BRANCH" || _ignore=$?'
@@ -93,7 +94,8 @@ releases:
       when: never # Do not run this job when a tag is created manually
     - if: $CI_MERGE_REQUEST_ID
       when: never # Do not run this job for merge requests
-    - if: $CI_COMMIT_REF_PROTECTED # Run this job when commits are pushed or merged to a protected branch
+    - if: $CI_COMMIT_REF_PROTECTED # Run this job only when commits are pushed or merged to a protected branch
+    - when: never
   needs:
     - job: build-linux
       artifacts: true
