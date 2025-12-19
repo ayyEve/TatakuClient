@@ -24,7 +24,10 @@ impl TextInputElement {
             .unwrap_or_default();
 
         match placeholder.clone() {
-            BuildableText::Text(t) | BuildableText::Locale(t) => WidgetText::String(t.to_string().into()),
+            BuildableText::Text(t) | BuildableText::Locale(t) => WidgetText::String {
+                value: t.to_string().into(),
+                updated: false,
+            },
             buildable => WidgetText::Custom { custom: vec![buildable], cached: String::new() }
         }
     }
@@ -39,9 +42,7 @@ impl TextInputElement {
 
         widgets::TextInput::new(
             self.placeholder(),
-            BuildableText::Variable {
-                variable: self.variable.clone()
-            }
+            self.variable.clone(),
         )
         .secure(self.is_password)
         .on_input(on_input)
