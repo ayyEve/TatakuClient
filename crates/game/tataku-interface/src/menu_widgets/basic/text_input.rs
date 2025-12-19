@@ -46,6 +46,8 @@ pub struct TextInput {
     value: String,
     variable: engine::VariablePathResolver,
     text: widgets::Text,
+
+    load_from_variable: bool,
     
     on_input: Option<InputAction<String>>,
     on_submit: Option<InputAction<String>>,
@@ -65,17 +67,19 @@ impl TextInput {
         let text = widgets::Text::new("");
 
         Self {
-            cursor: Cursor::Position(0),
+            secure: false,
 
             placeholder: placeholder.into(),
             value: String::new(),
             text,
             variable: variable.into(),
-            secure: false,
+
+            load_from_variable: true,
 
             on_input: None,
             on_submit: None,
 
+            cursor: Cursor::Position(0),
             pressed: false,
             hovered: false,
             active: false,
@@ -844,7 +848,9 @@ impl Widget<actions::Action> for TextInput {
             }
         };
 
-        if self.value.is_empty() {
+        if self.load_from_variable {
+            self.load_from_variable = false;
+
             match shell.values.reflect_get::<String>(&variable) {
                 Ok(value) => {
                     self.value = value.to_string();
