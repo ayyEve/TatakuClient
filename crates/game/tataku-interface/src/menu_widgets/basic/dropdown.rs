@@ -78,7 +78,7 @@ impl Dropdown {
         index: usize,
         shell: &mut MessageShell<actions::Action>
     ) {
-        let DropdownVariants::Buttons { enum_variants, .. } = &mut self.variants else {
+        let DropdownVariants::Buttons { enum_values, .. } = &mut self.variants else {
             unreachable!("dropdown variants are built");
         };
 
@@ -88,10 +88,10 @@ impl Dropdown {
 
         let message = match &self.on_change {
             DropdownOnChange::Buildable(actions) => {
-                let passed_in = enum_variants[index].clone();
-                let passed_in = Some(&TatakuValue::Reflect(Box::new(passed_in)));
+                let passed_in = enum_values[index].duplicate().unwrap();
+                let passed_in = Some(&TatakuValue::Reflect(passed_in));
 
-                info!("set value: {passed_in:?}");
+                // info!("set value: {passed_in:?}");
 
                 // todo: error on bad
                 let actions = actions.iter()
@@ -159,6 +159,7 @@ impl Widget<actions::Action> for Dropdown {
             self.variants = DropdownVariants::Buttons {
                 buttons: Vec::new(),
                 enum_variants: Vec::new(),
+                enum_values: Vec::new(),
             };
         }
 
@@ -527,6 +528,7 @@ pub enum DropdownVariants {
     Buttons {
         buttons: Vec<DropdownButton>,
         enum_variants: Vec<String>,
+        enum_values: Vec<Box<dyn Reflect>>,
     },
 }
 impl DropdownVariants {
@@ -536,15 +538,30 @@ impl DropdownVariants {
 
         let path = var.resolve_path(values)?;
 
-        let mut enum_variants = Vec::new();
         let mut buttons = Vec::new();
+        let mut enum_variants = Vec::new();
+        let mut enum_values = Vec::new();
 
         for (index, variant) in values.reflect_iter(&*path)?.enumerate() {
-            let value = variant.reflect_display(ReflectPath::EMPTY, None)?;
+            let value = match variant.index {
+                // This may be useful even though it currently is not implemented this way
+                // Some(ReflectItemIndex::Number(index)) => {
+                //     Box::new(index)
+                // },
+                Some(ReflectItemIndex::Value(reflect)) => {
+                    reflect.duplicate().unwrap()
+                },
+                _ => {
+                    variant.duplicate().unwrap()
+                },
+            };
+            let display = variant.reflect_display(ReflectPath::EMPTY, None)?;
+
+            enum_values.push(value);
 
             match variant.index {
                 Some(ReflectItemIndex::Number(_n)) => {
-                    enum_variants.push(value.clone());
+                    enum_variants.push(display.clone());
                 },
                 Some(ReflectItemIndex::Value(v)) => {
                     let s = v.downcast_ref::<String>()
@@ -557,11 +574,7 @@ impl DropdownVariants {
                 },
             }
 
-            let value_debug = value.clone();
-
             let callback = Box::new(move || {
-                info!("button callback: {index} - {value_debug}");
-
                 Some(Message::new(
                     MessageSource::Menu,
                     "select_index",
@@ -570,7 +583,7 @@ impl DropdownVariants {
                 ))
             });
 
-            let button = widgets::Button::new(widgets::Text::new(value))
+            let button = widgets::Button::new(widgets::Text::new(display))
                 .on_press_left(Some(callback))
                 .into_widget_base();
 
@@ -580,6 +593,7 @@ impl DropdownVariants {
         *self = Self::Buttons {
             buttons,
             enum_variants,
+            enum_values,
         };
 
         Ok(())

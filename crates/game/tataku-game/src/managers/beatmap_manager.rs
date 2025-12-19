@@ -431,8 +431,7 @@ impl BeatmapManager {
 
                 let info = self.infos
                     .get_info(mode)
-                    .unwrap();
-
+                    .ok()?;
 
                 let diff_info = {
                     let data = GetDiffValue {
