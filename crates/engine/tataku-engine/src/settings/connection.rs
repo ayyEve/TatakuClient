@@ -55,6 +55,7 @@ pub struct ConnectionSettings {
     pub current: ConnectionSettingsProfile,
 }
 
+#[cfg(feature="graphics")]
 impl settings::MakeSettingsMenu for ConnectionSettings {
     fn create_provider(
         &self, 

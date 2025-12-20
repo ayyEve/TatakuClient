@@ -622,9 +622,9 @@ impl MultiplayerManager {
 
                 // TODO: maybe move to a task?
                 // or maybe readd direct????
-                let req = reqwest::blocking::get(
+                let req = ureq::get(
                     format!("{score_url}/api/get_beatmap_url?hash={hash}")
-                );
+                ).call();
                 match req {
                     Err(e) => actions.push(Notification::new_error(
                         "Error with beatmap url request", 
@@ -635,7 +635,7 @@ impl MultiplayerManager {
                         #[allow(unused)] #[derive(Deserialize)]
                         struct Resp { error: Option<String>, url: Option<String> }
                         
-                        let Ok(body) = resp.text() else { 
+                        let Ok(body) = resp.into_body().read_to_string() else { 
                             actions.push(
                                 Notification::default()
                                 .text("shit")

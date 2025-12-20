@@ -70,7 +70,9 @@ impl From<&GameplayType> for GameplayTypeSmall {
             GameplayType::Normal => Self::Normal,
             GameplayType::Preview => Self::Preview,
             GameplayType::Replaying { .. } => Self::Replaying,
+            #[cfg(feature="graphics")]
             GameplayType::Multiplayer { .. } => Self::Multiplayer,
+            #[cfg(feature="graphics")]
             GameplayType::Spectator { .. } => Self::Spectator,
             GameplayType::Simulating { .. } => Self::Simulating,
         }

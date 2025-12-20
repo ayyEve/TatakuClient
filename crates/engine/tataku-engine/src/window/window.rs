@@ -69,6 +69,12 @@ impl<'window> GameWindow<'window> {
     ) -> Self {
         let now = std::time::Instant::now();
 
+        let controller_mappings = settings.sdl_controller_mappings.join("\n");
+        let controller_input = input::gilrs::GilrsBuilder::new()
+            .add_mappings(&controller_mappings)
+            .build()
+            .unwrap();
+
         let s = Self {
             window,
             counters: window_counters,
@@ -88,11 +94,9 @@ impl<'window> GameWindow<'window> {
             queued_events: Vec::new(),
 
             init,
-            // init_graphics: init.graphics_init,
-            // integration_builders: init.integrations,
             
             // input
-            controller_input: input::gilrs::Gilrs::new().unwrap(),
+            controller_input,
             finger_touches: HashSet::new(),
             touch_pos: None,
         };

@@ -70,17 +70,14 @@ impl UploadScoreTask {
         if let Ok(replay_data) = serde_json::to_string(&data.score_submit) {
             let url = format!("{}/score_submit", data.score_url);
             
-            let c = reqwest::Client::new();
-            let res = c
-                .post(url)
+            let res = ureq::post(url)
                 .header("Content-Type", "application/json")
-                .body(replay_data)
-                .send()
-                .await;
+                .send(replay_data)
+                ;
 
             match res {
                 Ok(resp) => {
-                    let txt = resp.text().await.unwrap();
+                    let txt = resp.into_body().read_to_string().unwrap();
                     info!("got score submit response: {txt}");
 
                     match serde_json::from_str::<SubmitResponse>(&txt) {

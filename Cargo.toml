@@ -140,8 +140,10 @@ rustls = { version = "0.23.26", default-features = false }
 native-tls = "0.2.14"
 tokio-native-tls = "0.3.1"
 tokio-tungstenite = { version = "0.27", features = [ "rustls-tls-native-roots" ] }
-reqwest = { version = "0.12.15", features = [ "json", "blocking" ] }
+# reqwest = { version = "0.12.15", features = [ "json", "blocking" ] }
 rustls-graviola = "0.3.0"
+ureq = "3.1.4"
+
 
 # serde
 serde = { version = "1.0.219", features = [ "derive" ] }

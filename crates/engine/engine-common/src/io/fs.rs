@@ -51,10 +51,10 @@ pub fn check_file_sync(path: impl AsRef<Path>, download_url: &str) {
     if !path.exists() {
         info!("Check failed for '{path:?}', downloading from '{download_url}'");
         
-        let bytes = reqwest::blocking::get(download_url)
-            .expect("error with request")
-            .bytes()
-            .expect("error converting to bytes");
+        let bytes = ureq::get(download_url)
+            .call().expect("error with request")
+            .into_body()
+            .read_to_vec().expect("error converting to bytes");
 
         std::fs::write(path, bytes)
             .expect("Error saving file");

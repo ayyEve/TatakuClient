@@ -39,10 +39,10 @@ impl UploadScreenshotTask {
                 .map_err(|e| Notification::new_error("Error loading screenshot to send to server", e))?,
         };
 
-        let r = reqwest::Client::new().post(url).body(data).send().await
+        let r = ureq::post(url).send(data)
             .map_err(|e| Notification::new_error("Error sending screenshot request", e.to_string()))?;
 
-        let s = r.text().await
+        let s = r.into_body().read_to_string()
             .map_err(|e| Notification::new_error("Error reading screenshot response", e.to_string()))?;
 
         let id = s.parse::<i64>()

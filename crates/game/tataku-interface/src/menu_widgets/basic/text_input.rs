@@ -530,6 +530,8 @@ impl TextInput {
                 Some(false)
             }
 
+            _ if mods.ctrl || mods.alt => None,
+
             _ => Some(false)
         }
     }
@@ -636,6 +638,7 @@ impl Widget<actions::Action> for TextInput {
                     shell.event_consumed = true;
 
                     if text_changed {
+
                         // todo: fixme:
                         // if let WidgetText::Custom {
                         //     custom: BuildableText::Variable {
@@ -661,6 +664,7 @@ impl Widget<actions::Action> for TextInput {
                             shell.values,
                         );
                     }
+                
                 }
             }
 

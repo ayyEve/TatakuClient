@@ -24,7 +24,10 @@ impl ReplayDownloader for TatakuReplayDownloader {
         };
         
         // this will be a full .ttkr file, aka a replay binary file
-        let bytes = reqwest::blocking::get(url)?.error_for_status()?.bytes()?;
+        let bytes = ureq::get(url)
+            .call()?
+            .into_body()
+            .read_to_vec()?;
         
         // check if the received data 
         if bytes.is_empty() {

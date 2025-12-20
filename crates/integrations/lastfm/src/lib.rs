@@ -35,13 +35,12 @@ impl LastFm {
         let url = connection.score_url;
 
         let body = serde_json::to_string(&LastFmAuthRequest { username, password }).unwrap();
-        let Ok(req) = reqwest::Client::new()
-            .post(format!("{url}/lastfm/check"))
-            .header("Content-Type", "application/json")
-            .body(body)
-            .send().await else { return };
+        let Ok(req) = ureq::post(format!("{url}/lastfm/check"))
+            .content_type("application/json")
+            .send(body)
+        else { return };
 
-        let txt = req.text().await.unwrap();
+        let txt = req.into_body().read_to_string().unwrap();
         if let Ok(resp) = serde_json::from_str::<LastFMAuthReponse>(&txt)
         && let Some(url) = resp.auth_url { 
             open_link(url); 
@@ -58,11 +57,10 @@ impl LastFm {
             track, 
             artist 
         }).unwrap();
-        let Ok(_) = reqwest::Client::new()
-            .post(format!("{url}/lastfm/set_now_playing"))
-            .header("Content-Type", "application/json")
-            .body(body)
-            .send().await else { return };
+        let Ok(_) = ureq::post(format!("{url}/lastfm/set_now_playing"))
+            .content_type("application/json")
+            .send(body)
+        else { return };
     }
 }
 impl TatakuIntegration for LastFm {
@@ -108,11 +106,10 @@ impl TatakuIntegration for LastFm {
                 track, 
                 artist 
             }).unwrap();
-            let Ok(_) = reqwest::Client::new()
-                .post(format!("{url}/lastfm/set_now_playing"))
-                .header("Content-Type", "application/json")
-                .body(body)
-                .send().await else { return };
+            let Ok(_) = ureq::post(format!("{url}/lastfm/set_now_playing"))
+                .content_type("application/json")
+                .send(body)
+            else { return };
         });
     }
 

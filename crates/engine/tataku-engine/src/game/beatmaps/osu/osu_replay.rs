@@ -18,7 +18,10 @@ impl beatmaps::ReplayDownloader for OsuReplayDownloader {
         let url = format!("https://osu.ppy.sh//api/get_replay?k={key}&s={}", self.1);
 
         // what gets downloaded from the api is not the full .osr file, its just the lzma stream.
-        let bytes = reqwest::blocking::get(url)?.bytes()?;
+        let bytes = ureq::get(url)
+            .call()?
+            .into_body()
+            .read_to_vec()?;
     
         // check if the received data 
         if bytes.is_empty() {

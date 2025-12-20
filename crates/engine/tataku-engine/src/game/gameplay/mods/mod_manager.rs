@@ -139,7 +139,7 @@ impl ModManager {
     pub fn new(
         mods: impl Iterator<Item=impl AsRef<str>>,
         speed: impl Into<GameSpeed>,
-        info: &GamemodeInfo
+        info: &GamemodeInfo,
     ) -> Self {
         let speed = speed.into();
         let mods = mods
@@ -207,7 +207,9 @@ impl ModManager {
             .collect::<Vec<_>>();
 
 
-        if include_speed && !self.speed.is_default() { list.push(format!("({:.2}x)", self.get_speed())) }
+        if include_speed && !self.speed.is_default() { 
+            list.push(format!("({:.2}x)", self.get_speed()));
+        }
 
         list.join(" ")
     }

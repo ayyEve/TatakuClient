@@ -20,13 +20,11 @@ impl AudioPreviewTask {
     }
 
     async fn run_get(url: String) -> tataku::Result<Vec<u8>> {
-        let bytes = reqwest::get(url)
-            .await?
-            .error_for_status()?
-            .bytes()
-            .await?
-            ;
-        Ok(bytes.to_vec())
+        let bytes = ureq::get(&url)
+            .call()?
+            .into_body()
+            .read_to_vec()?;
+        Ok(bytes)
     }
 }
 

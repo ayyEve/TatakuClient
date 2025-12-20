@@ -359,8 +359,7 @@ mod osu {
     pub async fn fetch_beatmap_id(api_key: &str, map_hash: &str) -> Option<String> {
         let url = format!("https://osu.ppy.sh/api/get_beatmaps?k={api_key}&h={map_hash}");
         trace!("osu beatmap id lookup");
-        let bytes = reqwest::get(url).await.ok()?.bytes().await.ok()?.to_vec();
-        let maps: Vec<OsuApiBeatmap> = serde_json::from_slice(bytes.as_slice()).ok()?;
+        let maps = super::make_request::<Vec<OsuApiBeatmap>>(&url).ok()?;
 
         maps.first().map(|m|m.beatmap_id.clone())
     }
@@ -407,9 +406,8 @@ mod osu {
             if let Some(id) = fetch_beatmap_id(osu_api_key, &hash).await {
                 let url = format!("https://osu.ppy.sh/api/get_scores?k={osu_api_key}&b={id}&m={mode}");
 
-                let bytes = reqwest::get(url).await?.bytes().await?;
-                let bytes = bytes.to_vec();
-                let osu_scores:Vec<OsuApiScore> = serde_json::from_slice(bytes.as_slice()).unwrap_or_default();
+                let osu_scores = super::make_request::<Vec<OsuApiScore>>(&url)
+                    .unwrap_or_default();
 
                 Ok(osu_scores.iter().map(|s| {
 
@@ -491,8 +489,7 @@ mod quaver {
 
     pub async fn fetch_beatmap_id(map_hash: &String) -> Option<u32> {
         let url = format!("https://api.quavergame.com/v1/maps/{map_hash}");
-        let bytes = reqwest::get(url).await.ok()?.bytes().await.ok()?;
-        let resp:QuaverResponse = serde_json::from_slice(&bytes).ok()?;
+        let resp = make_request::<QuaverResponse>(&url).ok()?;
 
         resp.map.map(|m|m.id)
     }
@@ -523,10 +520,7 @@ mod quaver {
         let Some(id) = fetch_beatmap_id(map_hash).await else {return Err(engine::tataku::Error::String("no osu map".to_owned()))};
         let url = format!("https://api.quavergame.com/v1/scores/map/{id}");
 
-        let bytes = reqwest::get(url).await?.bytes().await?;
-        // online_scores = quaver::scores_from_api_response(bytes);
-
-        let resp:QuaverResponse = serde_json::from_slice(&bytes)?;
+        let resp = make_request::<QuaverResponse>(&url)?;
 
         Ok(resp.scores.unwrap_or_default().iter().map(|s| {
             let mut judgments = HashMap::new();
@@ -659,8 +653,7 @@ mod tataku {
         let base = settings.connection().score_url.clone();
         let url = format!("{base}/api/get_scores?hash={map_hash}&mode={playmode}");
 
-        let bytes = reqwest::get(url).await?.bytes().await?.to_vec();
-        let maps: Vec<TatakuScore> = serde_json::from_slice(bytes.as_slice())?;
+        let maps = make_request::<Vec<TatakuScore>>(&url)?;
 
         Ok(maps.into_iter().map(|s| {
             let mut score = IngameScore::new(s.score, false, false);
@@ -675,4 +668,14 @@ mod tataku {
         }).collect())
     }
 
+}
+
+
+fn make_request<T: serde::de::DeserializeOwned>(url: &str) -> engine::tataku::Result<T> {
+    let a = ureq::get(url)
+        .call()?
+        .into_body()
+        .read_to_vec()?;
+
+    Ok(serde_json::from_slice(&a)?)
 }

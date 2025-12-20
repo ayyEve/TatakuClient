@@ -69,7 +69,7 @@ parley.workspace = true
 
 # networking
 tokio-tungstenite = { workspace = true, features = [ "rustls-tls-native-roots" ], optional = true }
-reqwest = { workspace = true, features = ["json"] }
+ureq.workspace = true
 rustls.workspace = true
 native-tls.workspace = true
 tokio-native-tls.workspace = true

@@ -246,8 +246,10 @@ fn check_bass() -> tataku::Result<()> {
         } 
 
         // download it from the web
-        let bytes = reqwest::blocking::get(format!("https://cdn.ayyeve.dev/tataku/lib/bass/{filename}"))?
-            .bytes()?;
+        let bytes = ureq::get(format!("https://cdn.ayyeve.dev/tataku/lib/bass/{filename}"))
+            .call()?
+            .into_body()
+            .read_to_vec()?;
 
         std::fs::write(&library_path, bytes)?;
 

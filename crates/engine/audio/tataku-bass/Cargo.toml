@@ -16,6 +16,6 @@ tataku-audio.workspace = true
 bass-rs = { version = "0.2.3" }
 
 parking_lot.workspace = true
-reqwest.workspace = true
+ureq.workspace = true
 
 tracing.workspace = true

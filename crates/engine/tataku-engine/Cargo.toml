@@ -63,7 +63,7 @@ taffy = { workspace = true, optional = true }
 simplecss = { workspace = true, optional = true }
 
 # networking
-reqwest = { workspace = true, features = ["json"] }
+ureq.workspace = true
 native-tls.workspace = true
 tokio-native-tls.workspace = true
 

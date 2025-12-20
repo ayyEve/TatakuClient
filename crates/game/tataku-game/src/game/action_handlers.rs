@@ -34,6 +34,7 @@ use engine::{
         },
     }
 };
+
 #[cfg(feature="graphics")] 
 use graphics::SkinProvider;
 #[cfg(feature="graphics")] 
@@ -51,33 +52,7 @@ impl Game {
             .unwrap_or_default()
         )
     }
-
-    // #[cfg(feature="graphics")]
-    // fn handle_previous_menu(&mut self, current_menu: &str)  {
-    //     let in_multi = self.multiplayer_manager.is_some();
-    //     let in_spec = self.spectator_manager.is_some();
-
-    //     if in_multi { 
-    //         return self.handle_custom_menu("lobby_menu", None);
-    //     }
-    //     if in_spec { 
-    //         return self.handle_custom_menu("beatmap_select", None); 
-    //     }
-
-    //     match current_menu {
-    //         // score menu with no multi or spec is the beatmap select menu
-    //         "score_menu" => self.handle_custom_menu("beatmap_select", None), 
-
-    //         // beatmap menu with no multi or spec is the main menu
-    //         "beatmap_select" => self.handle_custom_menu("main_menu", None),
-
-    //         _ => {
-    //             error!("unhandled previous menu request for menu {current_menu}");
-    //         }
-    //     }
-    // }
-
-
+    
     pub(super) fn handle_actions(&mut self, actions: Option<Vec<actions::Action>>) {
         if let Some(actions) = actions {
             self.actions.extend(actions);
@@ -230,7 +205,11 @@ impl Game {
                     SongAction::Restart => audio.play(true),
                     SongAction::Pause => audio.pause(),
                     SongAction::Stop => audio.stop(),
-                    SongAction::Toggle if matches!(audio.get_state(), tataku_audio::AudioState::Playing) => audio.pause(),
+                    SongAction::Toggle if matches!(
+                        audio.get_state(), 
+                        tataku_audio::AudioState::Playing
+                    ) => audio.pause(),
+                    
                     SongAction::Toggle => audio.play(false),
                     SongAction::SeekBy(seek) 
                         => audio.set_position(audio.get_position() + seek),
@@ -1303,8 +1282,7 @@ impl Game {
     ) {
         use engine::actions::database::Action;
         let db = &mut self.database;
-
-        println!("{action:?}");
+        // println!("{action:?}");
 
         match action {
             Action::SaveBeatmapPlaymodePreferences { 

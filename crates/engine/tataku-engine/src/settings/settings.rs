@@ -113,6 +113,8 @@ pub struct Settings {
     // other misc
     // pub last_git_hash: String,
     pub external_games_folders: Vec<String>,
+
+    pub sdl_controller_mappings: Vec<String>,
     
     #[subsetting(text="Log Settings")]
     pub logging_settings: logging::LoggingSettings,
