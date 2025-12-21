@@ -912,10 +912,8 @@ impl Gamemode for TaikoGame {
         shell: GameplayDrawShell, 
         list: &mut graphics::RenderableCollection
     ) {
-
         // draw the playfield
         list.push(self.playfield.get_rectangle(shell.current_timing_point.kiai));
-        list.push(self.playfield.get_rectangle(true));
         
         // draw the hit area
         list.push(graphics::Circle::new(

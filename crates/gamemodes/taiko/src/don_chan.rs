@@ -156,12 +156,6 @@ impl GameplayWidget for DonChan {
 
     #[cfg(feature="graphics")]
     fn draw(&mut self, shell: &mut GameplayWidgetDrawShell) {
-        shell.list.push(graphics::Rectangle::new(
-            shell.pos_offset,
-            DEFAULT_DONCHAN_SIZE * shell.scale,
-            tataku::Color::LIME,
-        ));
-
         match self.state {
             DonChanState::Normal => {
                 if self.kiai {

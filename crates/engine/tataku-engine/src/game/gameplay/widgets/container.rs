@@ -98,8 +98,12 @@ impl GameplayWidgetContainer {
                     saved_size,
                     relative
                 } => {
+                    // FIXME: the scale value above is moving things to wrong locations
+                    // setting the scale to 1.0 here fixes it but its obviously not correct
                     if let Some(saved_size) = saved_size {
                         scale = (playfield.size / saved_size).min_component();
+                    } else {
+                        scale = 1.0;
                     }
 
                     e.scale = e.layout.scale * scale;
