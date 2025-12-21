@@ -56,7 +56,7 @@ impl ConditionalWidget {
 }
 impl Widget<actions::Action> for ConditionalWidget {
     fn name(&self) -> CowStr  { "conditional_widget".into() }
-    fn node_id(&self) -> NodeId { self.node_id }
+    fn node_id(&self) -> &NodeId { &self.node_id }
 
     fn children(&self) -> WidgetChildren<'_, actions::Action> {
         let Some(child) = self.get_ele() 
@@ -107,7 +107,7 @@ impl Widget<actions::Action> for ConditionalWidget {
 
         // set the true condition widget to DisplayType::None so its hidden
         // do not do this for the false widget because if it exists it should be visible by default
-        shell.tree.set_display(self.if_true.node_id(), Some(DisplayType::None));
+        shell.tree.override_display(self.if_true.node_id(), Some(DisplayType::None));
     }
 
     fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
@@ -120,40 +120,33 @@ impl Widget<actions::Action> for ConditionalWidget {
             BuildableConditionResult::True if !self.value => {
                 self.value = true;
                 if let Some(child) = self.if_false.as_ref() {
-                    shell.actions.push(actions::ui::UiAction::new(
+                    shell.tree.override_display(
                         child.node_id(), 
-                        actions::ui::UiActionType::OverrideDisplay(Some(DisplayType::None))
-                    ).into());
+                        Some(DisplayType::None),
+                    );
                 }
 
-                shell.actions.push(actions::ui::UiAction::new(
+                shell.tree.override_display(
                     self.if_true.node_id(), 
-                    actions::ui::UiActionType::OverrideDisplay(None)
-                ).into());
-                shell.actions.push(actions::ui::UiAction::new(
-                    self.node_id, 
-                    actions::ui::UiActionType::Refresh
-                ).into());
+                    None,
+                );
+                shell.tree.mark_for_relayout();
             }
 
             BuildableConditionResult::False if self.value => {
                 self.value = false;
 
                 if let Some(child) = self.if_false.as_ref() {
-                    shell.actions.push(actions::ui::UiAction::new(
+                    shell.tree.override_display(
                         child.node_id(), 
-                        actions::ui::UiActionType::OverrideDisplay(None)
-                    ).into());
+                        None,
+                    );
                 }
-
-                shell.actions.push(actions::ui::UiAction::new(
+                
+                shell.tree.override_display(
                     self.if_true.node_id(), 
-                    actions::ui::UiActionType::OverrideDisplay(Some(DisplayType::None))
-                ).into());
-                shell.actions.push(actions::ui::UiAction::new(
-                    self.node_id, 
-                    actions::ui::UiActionType::Refresh
-                ).into());
+                    Some(DisplayType::None),
+                );
             }
 
             _ => {}

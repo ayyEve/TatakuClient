@@ -11,7 +11,7 @@ pub struct Token {
     pub refresh_token: String,
 }
 impl Token {
-    pub fn authenticate(settings: &Settings) -> tataku::TatakuResult<Self> {
+    pub fn authenticate(settings: &Settings) -> tataku::Result<Self> {
         #[derive(Serialize)]
         struct Request {
             client_id: String,
@@ -23,20 +23,19 @@ impl Token {
         }
         let osu_integration = settings.integrations.osu.clone();
 
-        let response = reqwest::blocking::Client::new()
-            .post(TOKEN_URL)
-            .json(&Request {
+
+        let response = ureq::post(TOKEN_URL)
+            .content_type("application/json")
+            .header("Accept", "application/json")
+            .header("User-Agent", "osu!")
+            .send(serde_json::to_string(&Request {
                 client_id: LAZER_CLIENT_ID.to_owned(), // osu lazer's client id
                 client_secret: LAZER_CLIENT_SECRET.to_owned(), // osu lazer's client secret
                 username: osu_integration.username.clone(),
                 password: osu_integration.password.clone(),
                 grant_type: "password".to_owned(),
                 scope: "*".to_owned(),
-            })
-            .header("Content-Type", "application/json")
-            .header("Accept", "application/json")
-            .header("User-Agent", "osu!")
-            .send()?;
+            }).unwrap())?;
         
         #[derive(Deserialize)]
         struct Response {
@@ -51,7 +50,9 @@ impl Token {
             expires_in,
             access_token,
             refresh_token
-        } = response.json()?;
+        } = serde_json::from_slice(
+            &response.into_body().read_to_vec()?
+        )?;
 
         let now = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
@@ -66,7 +67,7 @@ impl Token {
         })
     }
 
-    pub fn refresh(refresh_token: String) -> tataku::TatakuResult<Self> {
+    pub fn refresh(refresh_token: String) -> tataku::Result<Self> {
         #[derive(Serialize)]
         struct Request {
             client_id: String,
@@ -75,19 +76,16 @@ impl Token {
             refresh_token: String,
         }
 
-        let response = reqwest::blocking::Client::new()
-            .post(TOKEN_URL)
-            .json(&Request {
+        let response = ureq::post(TOKEN_URL)
+            .content_type("application/json")
+            .header("Accept", "application/json")
+            .header("User-Agent", "osu!")
+            .send(serde_json::to_string(&Request {
                 client_id: LAZER_CLIENT_ID.to_owned(), // osu lazer's client id
                 client_secret: LAZER_CLIENT_SECRET.to_owned(), // osu lazer's client secret
                 grant_type: "refresh_token".to_owned(),
                 refresh_token,
-            })
-            .header("Content-Type", "application/json")
-            .header("Accept", "application/json")
-            .header("User-Agent", "osu!")
-            .send()
-            .map_err(tataku::Error::from_err)?;
+            }).unwrap())?;
 
         #[derive(Deserialize)]
         struct Response {
@@ -102,8 +100,9 @@ impl Token {
             expires_in,
             access_token,
             refresh_token
-        } = response.json()
-            .map_err(tataku::Error::from_err)?;
+        } = serde_json::from_slice(
+            &response.into_body().read_to_vec()?
+        )?;
 
         
         let now = SystemTime::now()

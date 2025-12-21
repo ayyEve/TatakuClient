@@ -1,5 +1,5 @@
+pub mod io;
 pub mod data;
-pub mod misc;
 pub mod math;
 pub mod utils;
 pub mod errors;
@@ -10,12 +10,13 @@ pub mod graphics;
 pub mod prelude {
     pub use crate::common::*;
 
-    pub use crate::errors::error::Error;
-    pub use crate::errors::error::TatakuResult;
-    pub use crate::errors::error::TatakuResult as Result;
+    pub use crate::errors::error::{
+        Error, // tataku::Error
+        TatakuResult as Result, // tataku::Result
+    };
 
+    pub use crate::io::*;
     pub use crate::errors;
-    pub use crate::misc::*;
     pub use crate::data::*;
     pub use crate::math::*;
     pub use crate::utils::*;
@@ -49,7 +50,6 @@ pub mod common {
     pub use tracing::*;
 
     pub use bitflags::bitflags;
-    pub use lazy_static::lazy_static;
     pub use parking_lot::{ Mutex, RwLock, MutexGuard };
 
     pub use serde;

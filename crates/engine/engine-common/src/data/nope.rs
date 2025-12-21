@@ -6,12 +6,14 @@
 /// 
 /// ```rust
 /// match a {
+///     c => no_return_thing(b),
 ///     b => returns_thing(b), // angry!!
 /// }
 /// ```
 /// 
 /// ```rust
 /// match a {
+///     c => no_return_thing(b),
 ///     b => returns_thing(b).nope(), // happy :D
 /// }
 /// ```

@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use common::reflect::Reflect;
 
 use engine::{
     actions,
@@ -37,19 +36,17 @@ impl TatakuTask for BeatmapDownloadsCheckTask {
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Continuous }
     fn get_state(&self) -> TatakuTaskState { TatakuTaskState::Running } // no real point in saying we arent running, since we run for one update every ~10s
 
-    fn run(
-        &mut self, 
-        _values: &mut dyn Reflect, 
-        state: &TaskGameState, 
-        actions: &mut actions::ActionQueue
-    ) {
+    fn run(&mut self, shell: &mut TaskShell) {
         // dont continue if we're ingame
-        if state.ingame { return }
+        if shell.ingame { return }
 
         // check if we need to add any beatmaps
         if let Some(map) = self.maps_to_add.pop() {
             info!("Adding map {}", map.version_string());
-            actions.push(actions::beatmap::BeatmapAction::AddBeatmap { map, add_to_db: true }.into());
+            shell.actions.push(actions::beatmap::BeatmapAction::AddBeatmap { 
+                map, 
+                add_to_db: true 
+            }.into());
             return 
         }
 
@@ -83,7 +80,7 @@ impl TatakuTask for BeatmapDownloadsCheckTask {
         }
 
         // only check the folder every X seconds
-        if state.game_time - self.last_check < DOWNLOAD_CHECK_INTERVAL { return }
+        if shell.game_time - self.last_check < DOWNLOAD_CHECK_INTERVAL { return }
 
         // get all files in the downloads dir
         let dir = std::fs::read_dir(engine::DOWNLOADS_DIR)

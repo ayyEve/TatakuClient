@@ -8,12 +8,12 @@ pub struct StatsInfo {
 }
 impl StatsInfo {
     pub fn new(
-        display_name: impl ToString, 
+        display_name: impl Into<String>, 
         graph_type: GraphType, 
         data: Vec<StatsEntry>,
     ) -> Self {
         Self {
-            display_name: display_name.to_string(),
+            display_name: display_name.into(),
             graph_type,
             data: Arc::new(data),
         }
@@ -40,14 +40,14 @@ pub struct StatsEntry {
 }
 impl StatsEntry {
     pub fn new_f32(
-        name: impl ToString, 
+        name: impl Into<String>, 
         value: f32, 
         color: Color, 
         show_in_graph: bool, 
         show_in_list: bool
     ) -> Self {
         Self {
-            name: name.to_string(),
+            name: name.into(),
             value: StatsValue::Single(value),
             color,
             show_in_graph,
@@ -56,7 +56,7 @@ impl StatsEntry {
         }
     }
     pub fn new_list(
-        name: impl ToString, 
+        name: impl Into<String>, 
         values: Vec<f32>, 
         color: Color, 
         show_in_graph: bool, 
@@ -64,7 +64,7 @@ impl StatsEntry {
         concat_method: ConcatMethod
     ) -> Self {
         Self {
-            name: name.to_string(),
+            name: name.into(),
             value: StatsValue::List(values),
             color,
             show_in_graph,

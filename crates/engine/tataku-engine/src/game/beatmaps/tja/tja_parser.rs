@@ -28,7 +28,7 @@ impl TjaParser {
     pub fn parse<'a>(
         mut self, 
         lines: impl Iterator<Item=&'a str>,
-    ) -> tataku::TatakuResult<Vec<TjaBeatmap>> {
+    ) -> tataku::Result<Vec<TjaBeatmap>> {
         self.bpm = 120.0;
         self.offset = 0.0;
 
@@ -268,7 +268,7 @@ impl ParseCourse {
         }
     }
 
-    fn parse_notes_line(&mut self, line: &str) -> tataku::TatakuResult<()> {
+    fn parse_notes_line(&mut self, line: &str) -> tataku::Result<()> {
         if !self.in_song { return Ok(()) }
 
         let line = line.trim(); // remove any whitespace

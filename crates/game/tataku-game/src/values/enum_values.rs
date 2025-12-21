@@ -7,6 +7,7 @@ use engine::{
     window::FullscreenMonitor,
     data::{
         SortBy,
+        GroupBy,
         ScoreRetreivalMethod,
     },
     gameplay::{

@@ -39,18 +39,20 @@ pub use crate::exports::*;
 
 // manual re-exports
 pub use crate::{
+    settings::Settings, // engine::Settings
+    integration_event::TatakuIntegrationEvent, // engine::TatakuIntegrationEvent
+
     io::{
         Downloadable, // engine::Downloadable
         AsyncLoader, // engine::AsyncLoader
     }, 
-    settings::Settings, // engine::Settings
-    integration_event::TatakuIntegrationEvent, // engine::TatakuIntegrationEvent
 
     online::{
         online_content, // engine::online_content
     },
 
     data::{
+        database, // engine::database
         shunting_yards, // engine::shunting_yards
         shunting_yards::path_resolver::VariablePathResolver, // engine::VariablePathResolver
     },
@@ -61,14 +63,18 @@ pub use crate::{
         beatmaps, // engine::beatmaps
         gameplay, // engine::gameplay
         notifications, // engine::notifications
+        notifications::Notification, // engine::Notification
         beatmaps::{
             BeatmapMeta, // engine::BeatmapMeta
         },
-        task::TatakuTask as Task, // engine::Task
-        notifications::Notification, // engine::Notification
-        beatmap_animation::BeatmapAnimation, // engine::BeatmapAnimation
-    }
+        task::{
+            TatakuTask as Task, // engine::Task
+        }, 
+    },
 };
+
+#[cfg(feature="graphics")]
+pub use crate::game::beatmap_animation::BeatmapAnimation; // engine::BeatmapAnimation
 
 pub mod exports {
     pub use crate as engine;
@@ -80,5 +86,4 @@ pub mod exports {
     
     #[cfg(feature="graphics")] pub use tataku_ui as ui;
     #[cfg(feature="graphics")] pub use tataku_graphics as graphics;
-
 }

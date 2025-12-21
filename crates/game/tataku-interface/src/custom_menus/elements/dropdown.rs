@@ -31,9 +31,9 @@ impl DropdownElement {
 impl DropdownElement {
     pub fn build(&self) -> widgets::Dropdown {
         widgets::Dropdown::new(
-            self.options_path.clone(),
-            self.selected_path.clone(),
-            self.on_select.inner.clone(),
+            self.options_path.clone().into(),
+            self.selected_path.clone().into(),
+            self.on_select.inner.clone().into(),
             self.placeholder()
         )
     }

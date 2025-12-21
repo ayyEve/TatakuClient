@@ -18,7 +18,7 @@ impl VisualizationWidget {
 }
 impl Widget<actions::Action> for VisualizationWidget {
     fn name(&self) -> CowStr { "visualization".into() }
-    fn node_id(&self) -> NodeId { self.node_id }
+    fn node_id(&self) -> &NodeId { &self.node_id }
 
     fn layout(
         &mut self, 
@@ -29,7 +29,7 @@ impl Widget<actions::Action> for VisualizationWidget {
     }
 
     fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
-        let Some(bounds) = shell.tree.absolute_bounds(self.node_id)
+        let Some(bounds) = shell.tree.absolute_bounds(&self.node_id)
         else { return };
 
         self.vis.update(bounds, shell.actions);

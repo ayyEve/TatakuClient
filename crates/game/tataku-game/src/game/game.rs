@@ -1,7 +1,9 @@
 use std::rc::Rc;
 use crate::prelude::*;
-use chrono::{ Datelike, Timelike };
+use input::TatakuEvent;
 use common::reflect::Reflect;
+use chrono::{ Datelike, Timelike };
+
 use tataku::{
     Color,
     Vector2,
@@ -12,15 +14,6 @@ use engine::{
     actions::game::GameplayId,
     notifications::Notification,
     gameplay::gameplay_manager::GameplayManagerTrait,
-};
-use input::{
-    TatakuEvent,
-};
-
-#[cfg(feature="graphics")]
-use graphics::{
-    Image,
-    SkinProvider,
 };
 
 /// how long transitions between states should last
@@ -41,9 +34,11 @@ pub struct Game {
 
     pub(super) current_state: GameState,
     pub(super) queued_state: GameState,
-    #[cfg(feature="graphics")] window_event_receiver: tokio::sync::mpsc::Receiver<engine::window::Event>,
-    #[cfg(feature="graphics")] mouse_position_receiver: triple_buffer::Output<Vector2>,
-    #[cfg(feature="graphics")] pub(super) window_proxy: winit::event_loop::EventLoopProxy<actions::window::WindowAction>,
+
+    #[cfg(feature="graphics")] pub(super) window: engine::window::WindowData,
+    // #[cfg(feature="graphics")] window_event_receiver: tokio::sync::mpsc::Receiver<engine::window::Event>,
+    // #[cfg(feature="graphics")] mouse_position_receiver: triple_buffer::Output<Vector2>,
+    // #[cfg(feature="graphics")] pub(super) window_proxy: winit::event_loop::EventLoopProxy<actions::window::WindowAction>,
 
     // managers
     pub song_manager: SongManager,
@@ -70,51 +65,36 @@ pub struct Game {
 
 
     integrations: Vec<Box<dyn engine::io::TatakuIntegration>>,
+    pub(super) database: Box<dyn engine::database::DatabaseProvider>,
 
-    // fps
-    #[cfg(feature="graphics")] fps_display: interface::FpsDisplay,
-    #[cfg(feature="graphics")] update_display: interface::FpsDisplay,
-    #[cfg(feature="graphics")] render_display: interface::FpsDisplay,
-    #[cfg(feature="graphics")] input_display: interface::FpsDisplay,
 
     // misc
     game_start: tataku::Instant,
     pub(super) settings_updated: bool,
 
+    #[cfg(feature="graphics")] wallpapers: Vec<graphics::Image>,
+    #[cfg(feature="graphics")] fps_counters: FpsCounters,
     #[cfg(feature="graphics")] builtin_menus: BuiltinMenus,
-    #[cfg(feature="graphics")] pub(super) background_image: Option<Image>,
-    #[cfg(feature="graphics")] wallpapers: Vec<Image>,
-    #[cfg(feature="graphics")] background_loader: Option<engine::io::AsyncLoader<Option<Image>>>,
+    #[cfg(feature="graphics")] pub(super) background_image: Option<graphics::Image>,
+    #[cfg(feature="graphics")] pub queued_events: Vec<(TatakuEvent, Option<TatakuValue>)>,
+    #[cfg(feature="graphics")] background_loader: Option<engine::io::AsyncLoader<Option<graphics::Image>>>,
     // spec_watch_action: SpectatorWatchAction,
 
-    #[cfg(feature="graphics")]
-    pub queued_events: Vec<(TatakuEvent, Option<TatakuValue>)>,
+    pub(super) mods_queue: Vec<engine::gameplay::mods::ModManager>,
 
     pub values: ValueCollection,
 }
 impl Game {
     pub fn new(
-        #[cfg(feature="graphics")]
-        window_event_receiver: tokio::sync::mpsc::Receiver<engine::window::Event>,
-        #[cfg(feature="graphics")]
-        mouse_position_receiver: triple_buffer::Output<Vector2>,
-
-        #[cfg(feature="graphics")]
-        window_proxy: winit::event_loop::EventLoopProxy<actions::window::WindowAction>,
-
-        audio_engines: Vec<audio::AudioApiInit>,
+        #[cfg(feature="graphics")] window: engine::window::WindowData,
+        #[cfg(feature="graphics")] window_counters: engine::window::WindowCounters,
+        #[cfg(feature="graphics")] builtin_menus: BuiltinMenus,
+        #[cfg(feature="gameplay")] audio_engines: Vec<audio::AudioApiInit>,
         gamemodes: Vec<IncomingGamemode>,
-
-        #[cfg(feature="graphics")]
-        builtin_menus: BuiltinMenus,
+        database: Box<dyn engine::database::DatabaseProvider>,
     ) -> Self {
         let settings = engine::Settings::load();
         let infos = engine::gameplay::GamemodeInfos::new(gamemodes);
-        #[cfg(feature = "graphics")]
-        let skin_manager = SkinManager::new(&settings);
-
-        let online_content_manager = OnlineContentManager::new(&settings);
-        let online_content_engines = online_content_manager.get_capabilities();
 
         Self {
             actions: actions::ActionQueue::new(),
@@ -125,71 +105,53 @@ impl Game {
             ),
 
             // engine
-            #[cfg(feature="graphics")] window_proxy,
-            #[cfg(feature="graphics")] window_event_receiver,
-            #[cfg(feature="graphics")] mouse_position_receiver,
-            #[cfg(feature="gameplay")] input_manager: input::InputManager::default(),
-            #[cfg(feature="graphics")] volume_controller: interface::VolumeControl::default(),
-            #[cfg(feature="graphics")] background_image: None,
-            #[cfg(feature="graphics")] wallpapers: Vec::new(),
+            #[cfg(feature="graphics")] window,
             #[cfg(feature="graphics")] builtin_menus,
+            #[cfg(feature="graphics")] wallpapers: Vec::new(),
+            #[cfg(feature="graphics")] background_image: None,
+            #[cfg(feature="graphics")] volume_controller: interface::VolumeControl::default(),
+            
+            // managers
             #[cfg(feature="gameplay")] spectator_manager: None,
             #[cfg(feature="gameplay")] multiplayer_manager: None,
-
-            difficulty_manager: DifficultyManager,
-            online_content_manager,
-
-            song_manager: SongManager::default(),
+            #[cfg(feature="gameplay")] pending_gameplay_manager: None,
+            #[cfg(feature="gameplay")] input_manager: input::InputManager::default(),
+            #[cfg(feature="gameplay")] 
             audio_manager: AudioManager::init_audio(audio_engines)
                 .expect("failed to initialize audio engine!"),
-            score_manager: ScoreManager::new(infos.clone()),
+
+            database,
+            online_content_manager: OnlineContentManager::new(&settings),
+            difficulty_manager: DifficultyManager,
+
+            song_manager: SongManager::default(),
             task_manager: TaskManager::default(),
+            score_manager: ScoreManager::new(infos.clone()),
 
-
-            #[cfg(feature="graphics")] cursor_manager: CursorManager::new(
-                skin_manager.skin().clone(),
-                settings.cursor_settings.clone(),
-            ),
-            #[cfg(feature="graphics")] skin_manager,
             #[cfg(feature="graphics")] xml_test_manager: None,
-            #[cfg(feature="gameplay")] pending_gameplay_manager: None,
             #[cfg(feature="graphics")] ui_manager: UiManager::default(),
             #[cfg(feature="graphics")] gameplay_managers: HashMap::new(),
+            #[cfg(feature="graphics")] cursor_manager: CursorManager::default(),
+            #[cfg(feature="graphics")] skin_manager: SkinManager::new(&settings),
             #[cfg(feature="graphics")] custom_menu_manager: CustomMenuManager::default(),
             #[cfg(feature="graphics")] notification_manager: NotificationManager::default(),
-
             #[cfg(feature="graphics")] text_layout_contexts: ui::widget::TextLayoutContexts::new(),
-
+            
             integrations: Vec::new(),
-
             current_state: GameState::None,
             queued_state: GameState::None,
             // spec_watch_action: SpectatorWatchAction::FullMenu,
-
-            // fps
-            #[cfg(feature="graphics")] render_display: interface::FpsDisplay::new_atomic(
-                "fps",
-                3,
-                engine::window::RENDER_COUNT.clone(),
-                engine::window::RENDER_FRAMETIME.clone(),
-            ),
-            #[cfg(feature="graphics")] fps_display: interface::FpsDisplay::new_counter("prepares/s", 2),
-            #[cfg(feature="graphics")] update_display: interface::FpsDisplay::new_counter("updates/s", 1),
-            #[cfg(feature="graphics")] input_display: interface::FpsDisplay::new_atomic(
-                "inputs/s",
-                0,
-                engine::window::INPUT_COUNT.clone(),
-                engine::window::INPUT_FRAMETIME.clone()
-            ),
 
             // misc
             game_start: tataku::Instant::now(),
             settings_updated: false,
             #[cfg(feature="graphics")] background_loader: None,
             #[cfg(feature="graphics")] queued_events: Vec::new(),
+            #[cfg(feature="graphics")] fps_counters: FpsCounters::new(window_counters),
 
+            mods_queue: Vec::new(),
             values: ValueCollection {
-                values: TatakuValues::new(&infos, online_content_engines, settings),
+                values: TatakuValues::new(&infos, settings),
                 custom: common::reflect::DynMap::default()
             },
         }
@@ -284,6 +246,11 @@ impl Game {
             self.init_fonts();
             
             // init the default cursor
+            self.cursor_manager.reload_skin(&mut self.skin_manager);
+            self.cursor_manager.update_settings(
+                self.settings.cursor_settings.clone(), 
+                &mut self.actions
+            );
             self.cursor_manager.handle_cursor_action(
                 actions::cursor::CursorAction::SetCursorMode(
                     actions::cursor::CursorMode::Normal
@@ -305,20 +272,28 @@ impl Game {
             );
         }
 
+        // init online content
+        self.values.game.online_content.init(
+            self.online_content_manager.get_capabilities()
+        );
+
         // new beatmap check task
         self.actions.push(actions::task::TaskAction::AddTask(Box::new(
             BeatmapDownloadsCheckTask::default()
         )).into());
 
-        let mut settings = self.settings.clone();
-        settings.gamemode_settings.build(self.values.global.gamemode_infos.clone());
-        settings.init(&mut self.values, "settings".to_string());
-        self.settings = settings;
+
+        self.values.values.settings.gamemode_settings.build(
+            self.values.values.global.gamemode_infos.clone()
+        );
+        
+        #[cfg(feature="ui")] {
+            let mut settings = self.settings.clone();
+            settings.init(&mut self.values, "settings".to_string());
+            self.settings = settings;
+        }
 
         debug!("game init took {:.2}ms", now.elapsed().as_secs_f32() * 1000.0);
-
-
-
 
         // download first maps
         {
@@ -374,10 +349,11 @@ impl Game {
 
         let mut update_timer = tataku::Instant::now();
         #[cfg(feature="graphics")] let mut draw_timer = tataku::Instant::now();
-        let mut last_draw_offset = 0.0;
+        #[cfg(feature="graphics")] let mut last_draw_offset = 0.0;
 
         let game_start = std::time::Instant::now();
         let mut last_setting_update = None;
+        let mut last_settings_save = tataku::Instant::now();
 
         #[cfg(feature="graphics")]
         let mut render_rate   = 1.0 / self.settings.display_settings.fps_target as f32;
@@ -385,36 +361,57 @@ impl Game {
 
         let mut settings = self.settings.clone();
 
+        
+        let (_guard2, settings_update_receiver) = {
+            let (sender, receiver) = std::sync::mpsc::channel::<()>();
+
+            let mut watcher = notify::recommended_watcher(move |e| {
+                if let Ok(notify::Event {
+                    kind: notify::EventKind::Modify(notify::event::ModifyKind::Data(
+                        notify::event::DataChange::Content,
+                    )),
+                    ..
+                }) = e { 
+                    let _ = sender.send(());
+                };
+            }).unwrap();
+
+            notify::Watcher::watch(
+                &mut watcher, 
+                Path::new(&settings.save_path), 
+                notify::RecursiveMode::NonRecursive,
+            ).unwrap();
+
+            (watcher, receiver)
+        };
+
         loop {
+            if settings_update_receiver.try_recv().is_ok()
+            && last_settings_save.as_millis() > 1000.0 {
+                // consume any extra pending updates
+                while settings_update_receiver.try_recv().is_ok() {}
+
+                self.settings = engine::Settings::load_from(&settings.save_path);
+                self.settings_updated = true;
+            }
+
             // update our settings
             if self.settings_updated || self.settings != settings {
                 #[cfg(feature="graphics")]
                 if self.settings.display_settings != settings.display_settings {
                     render_rate = 1.0 / self.settings.display_settings.fps_target as f32;
                     update_target = 1.0 / self.settings.display_settings.update_target as f32;
-                    self.window_proxy.send_event(actions::window::WindowAction::SettingsUpdated(
+                    self.window.send_event(actions::window::WindowAction::SettingsUpdated(
                         self.settings.display_settings.clone()
-                    )).unwrap();
+                    ));
                 }
 
                 // update our timer
                 last_setting_update = Some(tataku::Instant::now());
 
                 #[cfg(feature="graphics")]
-                let skin_changed = self.settings.current_skin != settings.current_skin;
-
-                #[cfg(feature="graphics")]
-                if skin_changed {
-                    self.skin_manager.change_skin(
-                        &self.values.settings.current_skin
-                    );
-
-                    for (i, _) in self
-                        .gameplay_managers
-                        .values_mut()
-                    {
-                        i.reload_skin(&mut self.skin_manager, &self.values.settings);
-                    }
+                if self.settings.current_skin != settings.current_skin {
+                    self.reload_skin();
                 }
 
                 #[cfg(feature="graphics")]
@@ -422,7 +419,7 @@ impl Game {
                     self.load_theme();
                 }
 
-                if self.settings.server_url != settings.server_url {
+                if self.settings.connection().changed(settings.connection()) {
                     self.online_manager.reset();
                 }
 
@@ -447,22 +444,15 @@ impl Game {
 
                 // update game mode with new information
                 if let GameState::Ingame(igm) = &mut self.current_state {
-                    #[cfg(feature="graphics")]
-                    if skin_changed {
-                        igm.reload_skin(
-                            &mut self.skin_manager,
-                            &self.values.settings
-                        );
-                    }
                     igm.force_update_settings(&self.values.settings);
                 }
 
-                #[cfg(feature="graphics")]
                 for (i, _) in self.gameplay_managers.values_mut() {
                     i.force_update_settings(&self.values.settings);
                 }
 
                 settings = self.settings.clone();
+                self.settings_updated = false;
             }
 
             // wait 100ms before writing settings changes
@@ -470,6 +460,7 @@ impl Game {
             && last_update.as_millis() > 500.0 {
                 self.settings.clone().save();
                 last_setting_update = None;
+                last_settings_save.elapsed_and_reset();
             }
 
             // update our instant's time
@@ -508,6 +499,35 @@ impl Game {
         }
 
     }
+    
+    #[cfg(feature="graphics")]
+    fn reload_skin(&mut self) {
+        self.skin_manager.change_skin(
+            &self.values.settings.current_skin
+        );
+
+        self.cursor_manager.reload_skin(&mut self.skin_manager);
+        self.notification_manager.reload_skin(&mut self.skin_manager);
+
+        self.ui_manager.reload_skin(
+            &mut self.values, 
+            &mut self.actions, 
+            &mut self.skin_manager, 
+            &mut self.text_layout_contexts
+        );
+
+        // reload gameplay skin
+        for (i, _) in self
+            .gameplay_managers
+            .values_mut()
+        {
+            i.reload_skin(&mut self.skin_manager);
+        }
+
+        if let GameState::Ingame(igm) = &mut self.current_state {
+            igm.reload_skin(&mut self.skin_manager);
+        }
+    }
 
     /// use this for cleanup, not to tell the game to close
     /// to tell the game to close, set the state to GameState::Closing
@@ -534,17 +554,16 @@ impl Game {
         #[cfg(feature="graphics")]
         let mut window_size = self.values.game.window_size;
         #[cfg(feature="graphics")]
-        while let Ok(e) = self.window_event_receiver.try_recv() {
+        while let Ok(e) = self.window.event_receiver.try_recv() {
             use engine::window::Event;
             match e {
-                #[cfg(feature="graphics")]
                 Event::FileDrop(path) => self.handle_file_drop(path),
                 Event::Closed => { self.close_game(); return true }
                 Event::ScreenshotComplete(
                     bytes,
                     size,
                     info
-                ) => if let Err(e) = self.finish_screenshot(bytes, size, info) {
+                ) => if let Err(e) = self.finish_screenshot(&bytes, size, &info) {
                     self.actions.push(Notification::new_error(
                         "Screenshot Error",
                         e
@@ -576,7 +595,7 @@ impl Game {
                             10_000.0
                         ).into());
                         self.settings.display_settings.vsync = current.get_fallback();
-                        let _ = self.window_proxy.send_event(actions::window::WindowAction::SettingsUpdated(
+                        self.window.send_event(actions::window::WindowAction::SettingsUpdated(
                             self.settings.display_settings.clone()
                         ));
                     }
@@ -597,10 +616,7 @@ impl Game {
             self.ui_manager.window_size_changed(window_size, &self.values);
 
             self.volume_controller.window_size_changed(window_size);
-            self.update_display.window_size_changed(window_size);
-            self.fps_display.window_size_changed(window_size);
-            self.input_display.window_size_changed(window_size);
-            self.render_display.window_size_changed(window_size);
+            self.fps_counters.window_size_changed(window_size);
 
             if let Some(manager) = self.current_state.get_ingame() {
                 manager.window_size_changed(window_size);
@@ -632,11 +648,10 @@ impl Game {
 
         
         // update counters
-        #[cfg(feature="graphics")] self.update_display.increment();
-        #[cfg(feature="graphics")] self.fps_display.update();
-        #[cfg(feature="graphics")] self.update_display.update();
-        #[cfg(feature="graphics")] self.render_display.update();
-        #[cfg(feature="graphics")] self.input_display.update();
+        #[cfg(feature="graphics")] {
+            self.fps_counters.update_display.increment();
+            self.fps_counters.update();
+        }
 
         // read input events
         let mut input_state = self.handle_inputs();
@@ -671,45 +686,45 @@ impl Game {
             }
         }
 
-        // update any ingame managers
-        #[cfg(feature="graphics")]
-        self.gameplay_managers.retain(|a, (manager, _)| {
-            if Arc::strong_count(a) == 1 {
-                manager.cleanup_textures(&mut self.skin_manager);
-                return false;
-            }
+        #[cfg(feature="graphics")] {
+            // update any ingame managers
+            self.gameplay_managers.retain(|a, (manager, _)| {
+                if Arc::strong_count(a) == 1 {
+                    manager.cleanup_textures(&mut self.skin_manager);
+                    return false;
+                }
+    
+                manager.update(
+                    &mut self.values, 
+                    &mut self.text_layout_contexts,
+                    &mut self.actions,
+                );
+    
+                if manager.completed() {
+                    manager.on_complete();
+                }
+    
+                true
+            });
 
-            manager.update(
-                &mut self.values, 
-                &mut self.text_layout_contexts,
-                &mut self.actions,
-            );
-
-            if manager.completed {
-                manager.on_complete();
-            }
-
-            true
-        });
-
-        #[cfg(feature="graphics")]
-        self.ui_manager.update(
-            &mut input_state,
-            self.queued_events.take(),
-            &mut self.values,
-            &mut self.actions,
-            &mut self.skin_manager,
-            &mut self.text_layout_contexts,
-        );
-
-        #[cfg(feature="graphics")]
-        if let Some(tester) = &mut self.xml_test_manager {
-            tester.update(
-                &mut self.ui_manager,
+            // update ui manager
+            self.ui_manager.update(
+                &mut input_state,
+                self.queued_events.take(),
                 &mut self.values,
                 &mut self.actions,
+                &mut self.skin_manager,
                 &mut self.text_layout_contexts,
             );
+
+            if let Some(tester) = &mut self.xml_test_manager {
+                tester.update(
+                    &mut self.ui_manager,
+                    &mut self.values,
+                    &mut self.actions,
+                    &mut self.text_layout_contexts,
+                );
+            }
         }
 
         // update spec and multi managers
@@ -718,7 +733,8 @@ impl Game {
             if let Some(manager) = spec.update(
                 manager,
                 &mut self.values,
-                &mut self.actions
+                &mut self.actions,
+                &*self.database,
             ) {
                 self.queue_state_change(GameState::Ingame(manager));
             }
@@ -737,7 +753,7 @@ impl Game {
 
 
         // update score manager
-        self.score_manager.update(&mut self.values);
+        self.score_manager.update(&mut self.values, &*self.database);
 
         // update song manager
         self.song_manager.update(&mut self.audio_manager);
@@ -749,15 +765,16 @@ impl Game {
         );
 
         // update tasks
-        let game_state = engine::game::task::TaskGameState {
+        let mut game_state = engine::game::task::TaskShell {
             ingame: self.current_state.is_ingame(),
             game_time: self.game_start.as_millis() as u64,
+
+            database: &*self.database,
+            values: &mut self.values,
+            actions: &mut self.actions
+
         };
-        self.task_manager.update(
-            &mut self.values,
-            game_state,
-            &mut self.actions
-        );
+        self.task_manager.update(&mut game_state);
 
         // run actions
         self.handle_actions(None);
@@ -772,8 +789,8 @@ impl Game {
                     manager.window_focus_changed(got_focus);
                 }
 
-                if !manager.failed && manager.can_pause()
-                    && (manager.should_pause || input_state.controller_pause)
+                if !manager.failed() && manager.can_pause()
+                    && (manager.should_pause() || input_state.controller_pause)
                 {
                     manager.pause();
                     let actions = manager.actions.take();
@@ -798,7 +815,7 @@ impl Game {
                         &mut self.actions,
                     );
 
-                    if manager.completed {
+                    if manager.completed() {
                         #[cfg(feature="graphics")]
                         self.ingame_complete(manager);
                         // a menu is queued up, we dont need to reapply current_state
@@ -817,10 +834,7 @@ impl Game {
                     match *into {
                         GameState::Ingame(mut g) => {
                             #[cfg(feature="graphics")]
-                            g.reload_skin(
-                                &mut self.skin_manager,
-                                &self.values.settings
-                            );
+                            g.reload_skin(&mut self.skin_manager);
 
                             // let trans = self.transition.take();
                             let elapsed = self.game_start.as_millis();
@@ -892,11 +906,11 @@ impl Game {
                 self.settings.clone().save();
                 self.current_state = GameState::Closing;
                 #[cfg(feature="graphics")]
-                let _ = self.window_proxy.send_event(actions::window::WindowAction::CloseGame);
+                self.window.send_event(actions::window::WindowAction::CloseGame);
 
                 // send logoff
                 self.online_manager.set_action(
-                    SetAction::Closing,
+                    &SetAction::Closing,
                     None
                 );
             }
@@ -918,7 +932,7 @@ impl Game {
                             .instance()
                         {
                             song.pause();
-                            if !manager.started {
+                            if !manager.started() {
                                 song.set_position(0.0);
                                 manager.init_ui(&mut self.text_layout_contexts);
                             }
@@ -927,15 +941,12 @@ impl Game {
                         // make sure it has the latest window size and skin
                         #[cfg(feature="graphics")] {
                             manager.window_size_changed(self.values.game.window_size);
-                            manager.reload_skin(
-                                &mut self.skin_manager,
-                                &self.values.settings
-                            );
+                            manager.reload_skin(&mut self.skin_manager);
                         }
                         manager.start();
 
                         let m = manager.metadata.clone();
-                        let start_time = manager.start_time;
+                        let start_time = manager.start_time();
 
                         let action;
                         if let Some(manager) = &self
@@ -960,7 +971,7 @@ impl Game {
                         }
 
                         self.online_manager.set_action(
-                            action,
+                            &action,
                             Some(m.mode.to_string())
                         );
                         self.actions.push(actions::game::GameAction::UpdateBackground.into());
@@ -968,7 +979,7 @@ impl Game {
                     #[cfg(feature="graphics")]
                     GameState::SetMenu(_menu) => {
                         self.online_manager.set_action(
-                            SetAction::Idle,
+                            &SetAction::Idle,
                             None
                         );
                     }
@@ -1242,22 +1253,7 @@ impl Game {
 
 
         // draw fps's
-        self.fps_display.draw(
-            &mut render_queue,
-            &mut self.text_layout_contexts
-        );
-        self.update_display.draw(
-            &mut render_queue,
-            &mut self.text_layout_contexts
-        );
-        self.render_display.draw(
-            &mut render_queue,
-            &mut self.text_layout_contexts
-        );
-        self.input_display.draw(
-            &mut render_queue,
-            &mut self.text_layout_contexts
-        );
+        self.fps_counters.draw(&mut render_queue, &mut self.text_layout_contexts);
 
         // draw the download manager
         self.download_manager.draw(self.values.game.window_size, &mut render_queue);
@@ -1275,9 +1271,9 @@ impl Game {
         self.cursor_manager.draw(&mut render_queue);
         
         // toss the items to the window to render
-        let _ = self.window_proxy.send_event(actions::window::WindowAction::RenderData(render_queue.take()));
+        self.window.send_event(actions::window::WindowAction::RenderData(render_queue.take()));
 
-        self.fps_display.increment();
+        self.fps_counters.fps_display.increment();
 
         // let elapsed = timer.elapsed().as_secs_f32() * 1000.0;
         // if elapsed > 1000.0/144.0 {warn!("render took a while: {elapsed}")}
@@ -1286,7 +1282,7 @@ impl Game {
 
     #[cfg(feature="graphics")]
     fn handle_inputs(&mut self) -> ui::CurrentInputState {
-        let mouse_pos = *self.mouse_position_receiver.read();
+        let mouse_pos = *self.window.mouse_position_receiver.read();
         let mouse_moved = mouse_pos != self.input_manager.mouse_pos;
 
         let mut controller_pause = false;
@@ -1356,10 +1352,10 @@ impl Game {
 
                     match key {
                         // screenshot
-                        Key::F12 => self.window_proxy.send_event(actions::window::WindowAction::TakeScreenshot(actions::window::ScreenshotInfo {
+                        Key::F12 => self.window.send_event(actions::window::WindowAction::TakeScreenshot(actions::window::ScreenshotInfo {
                             // if shift is pressed, upload to server, and get link
                             upload: mods.shift,
-                        })).unwrap(),
+                        })),
 
                         // settings menu
                         Key::O if mods.ctrl => {
@@ -1431,7 +1427,7 @@ impl Game {
                                 5000.0
                             ).into());
                             self.values.values.beatmap_manager.full_refresh(
-                                &self.values.values.settings
+                                &self.values.values.settings,
                             );
                         }
 
@@ -1523,22 +1519,21 @@ impl Game {
                 )));
             }
 
+            #[cfg(feature="graphics")]
+            actions::Action::Menu(action)
+                => self.handle_menu_action(action),
 
             #[cfg(feature="gameplay")]
             actions::Action::Online(action)
                 => self.online_manager.handle_action(action),
 
-            #[cfg(feature="graphics")]
-            actions::Action::Menu(action)
-                => self.handle_menu_action(action),
-
-            actions::Action::Audio(action)
-                => self.audio_manager.handle_action(
-                    action,
-                    &mut self.values,
-                    #[cfg(feature="graphics")]
-                    &mut self.skin_manager,
-                ),
+            #[cfg(feature="gameplay")]
+            actions::Action::Audio(action) => self.audio_manager.handle_action(
+                action,
+                &mut self.values,
+                #[cfg(feature="graphics")]
+                &mut self.skin_manager,
+            ),
             actions::Action::Beatmap(action)
                 => self.handle_beatmap_action(action),
             actions::Action::Game(action)
@@ -1550,9 +1545,13 @@ impl Game {
             actions::Action::Mods(action)
                 => self.handle_mod_action(action),
             actions::Action::Event(e)
-                => self.handle_event(*e),
+                => self.handle_event(&e),
             actions::Action::Download(dl)
                 => self.download_manager.add_download(*dl),
+
+            actions::Action::Database(action) => {
+                self.handle_database_action(action);
+            },
 
             actions::Action::OnlineContent(action)
                 => self.online_content_manager.handle_action(
@@ -1564,8 +1563,7 @@ impl Game {
             // task actions
             actions::Action::Task(actions::task::TaskAction::AddTask(task)) => {
                 if !self.values.settings.enable_diffcalc
-                    && task.get_id() == Cow::Borrowed("diff_calc")
-                {
+                && task.get_id() == Cow::Borrowed("diff_calc") {
                     return
                 }
 
@@ -1581,7 +1579,7 @@ impl Game {
 
             #[cfg(feature="graphics")]
             actions::Action::WindowAction(action)
-                => self.window_proxy.send_event(*action).nope(),
+                => self.window.send_event(*action),
 
             #[cfg(feature="graphics")]
             actions::Action::Ui(action) => self.ui_manager.handle_ui_action(
@@ -1596,7 +1594,7 @@ impl Game {
                 }
             }
 
-            #[cfg(not(feature="graphics"))]
+            #[cfg(not(all(feature="graphics", feature="gameplay")))]
             _ => {}
         }
     }
@@ -1681,9 +1679,9 @@ impl Game {
         }
     }
 
-    pub(super) fn handle_event(&mut self, event: engine::TatakuIntegrationEvent) {
+    pub(super) fn handle_event(&mut self, event: &engine::TatakuIntegrationEvent) {
         for i in self.integrations.iter_mut() {
-            i.handle_event(&event, &self.values, &mut self.actions);
+            i.handle_event(event, &self.values, &mut self.actions);
         }
     }
 
@@ -1701,113 +1699,117 @@ impl Game {
         let path = path.as_ref();
         info!("File dropped: {path:?}");
 
-        if let Some(ext) = path.extension() {
-            let ext = ext.to_str().unwrap();
-            match ext {
-                // osu | quaver | ptyping zipped set file
-                "osz" | "qp" | "ptm" => {
-                    match engine::io::Zip::extract_single(
-                        path,
-                        engine::SONGS_DIR,
-                        true,
-                        engine::io::ArchiveDelete::Always
-                    ) {
-                        Err(e) => self.actions.push(
-                            Notification::new_error(
-                                "Error extracting file",
-                                e
-                            ).into()
-                        ),
+        let Some(ext) = path.extension() 
+        else { return };
 
-                        Ok(path) => {
-                            // load the map
-                            let Some(last) = self
-                                .beatmap_manager
-                                .check_folder(
+
+        let ext = ext.to_str().unwrap();
+        match ext {
+            // osu | quaver | ptyping zipped set file
+            "osz" | "qp" | "ptm" => {
+                match engine::io::Zip::extract_single(
+                    path,
+                    engine::SONGS_DIR,
+                    true,
+                    engine::io::ArchiveDelete::Always
+                ) {
+                    Err(e) => self.actions.push(
+                        Notification::new_error(
+                            "Error extracting file",
+                            e
+                        ).into()
+                    ),
+
+                    Ok(path) => {
+                        // load the map
+                        let Some(last) = self
+                            .values
+                            .beatmap_manager
+                            .check_folder(
                                 path,
                                 HandleDatabase::YesAndReturnNewMaps,
                             ).and_then(|l| l.last().cloned())
-                            else {
-                                warn!("didnt get any beatmaps from beatmap file drop");
-                                return;
-                            };
+                        else {
+                            warn!("didnt get any beatmaps from beatmap file drop");
+                            return;
+                        };
 
-                            // set it as current map if wanted
-                            let mut use_preview_time = true;
-                            let change_map = match &self.current_state {
-                                GameState::SetMenu(menu) => {
-                                    if menu.name() == "main_menu" {
-                                        use_preview_time = false;
-                                    }
-                                    true
+                        // set it as current map if wanted
+                        let mut use_preview_time = true;
+                        let change_map = match &self.current_state {
+                            GameState::SetMenu(menu) => {
+                                if menu.name() == "main_menu" {
+                                    use_preview_time = false;
                                 }
-                                _ => false,
-                            };
-
-                            if change_map {
-                                self.actions.push(actions::beatmap::BeatmapAction::Set(
-                                    last.beatmap_hash,
-                                    actions::beatmap::SetBeatmapOptions::default()
-                                        .use_preview_point(use_preview_time)
-                                        .restart_song(false)
-                                ).into());
+                                true
                             }
+                            _ => false,
+                        };
+
+                        if change_map {
+                            self.actions.push(actions::beatmap::BeatmapAction::Set(
+                                last.beatmap_hash,
+                                actions::beatmap::SetBeatmapOptions::default()
+                                    .use_preview_point(use_preview_time)
+                                    .restart_song(false)
+                            ).into());
                         }
                     }
-                }
-
-                // osu skin file
-                "osk" => {
-                    match engine::io::Zip::extract_single(
-                        path,
-                        engine::SKINS_FOLDER,
-                        true,
-                        engine::io::ArchiveDelete::Never
-                    ) {
-                        Err(e) => self.actions.push(
-                            Notification::new_error(
-                                "Error extracting file",
-                                e
-                            ).into()
-                        ),
-                        Ok(path) => {
-                            // set as current skin
-                            if let Some(folder) = Path::new(&path).file_name() {
-                                let name = folder.to_string_lossy().to_string();
-                                self.values.settings.current_skin = name.clone();
-                                self.actions.push(Notification::new_text(
-                                    format!("Added skin {name}"),
-                                    Color::BLUE,
-                                    5000.0
-                                ).into());
-                            }
-                        }
-                    }
-                }
-
-                // tataku | osu replay
-                "ttkr" | "osr" => {
-                    match Self::read_replay_path(path, &self.global.gamemode_infos) {
-                        Ok(score) => self.try_open_replay(score),
-                        Err(e) => self.actions.push(
-                            Notification::new_error(
-                                "Error opening replay",
-                                e
-                            ).into()
-                        ),
-                    }
-                }
-
-                _ => {
-                    self.actions.push(Notification::default()
-                        .text("What is this?")
-                        .color(Color::RED)
-                        .duration(3_000.0)
-                        .into()
-                    );
                 }
             }
+
+            // osu skin file
+            "osk" => {
+                match engine::io::Zip::extract_single(
+                    path,
+                    engine::SKINS_FOLDER,
+                    true,
+                    engine::io::ArchiveDelete::Never
+                ) {
+                    Err(e) => self.actions.push(
+                        Notification::new_error(
+                            "Error extracting file",
+                            e
+                        ).into()
+                    ),
+                    Ok(path) => {
+                        // set as current skin
+                        if let Some(folder) = Path::new(&path).file_name() {
+                            let name = folder.to_string_lossy().to_string();
+                            self.values.settings.current_skin = name.clone();
+                            self.actions.push(Notification::new_text(
+                                format!("Added skin {name}"),
+                                Color::BLUE,
+                                5000.0
+                            ).into());
+                        }
+                    }
+                }
+            }
+
+            // tataku | osu replay
+            "ttkr" | "osr" => {
+                match Self::read_replay_path(path, &self.global.gamemode_infos) {
+                    Ok(score) => self.try_open_replay(score),
+                    Err(e) => self.actions.push(
+                        Notification::new_error(
+                            "Error opening replay",
+                            e
+                        ).into()
+                    ),
+                }
+            }
+
+            _ => {
+                self.actions.push(Notification::default()
+                    .text("What is this?")
+                    .color(Color::RED)
+                    .duration(3_000.0)
+                    .into()
+                );
+            }
         }
+    
     }
 
     #[cfg(feature="graphics")]
@@ -1829,7 +1831,7 @@ impl Game {
             true
         );
 
-        self.set_current_beatmap(score.beatmap_hash, config);
+        self.set_current_beatmap(score.beatmap_hash, &config);
 
         // move to a score menu with this as the score
         // let score = IngameScore::new(score, false, false);
@@ -1851,7 +1853,6 @@ impl Game {
         self.values.impl_insert("var.score_menu.allow_retry".into(), Box::new(false)).unwrap();
 
         self.handle_custom_menu("score_menu");
-
     }
 
 
@@ -1863,7 +1864,7 @@ impl Game {
         self.actions.push(engine::TatakuIntegrationEvent::BeatmapEnded.into());
         self.actions.push(actions::cursor::CursorAction::SetVisible(true).into());
 
-        if manager.failed {
+        if manager.failed() {
             trace!("player failed");
             if !manager.get_mode().is_multi() {
                 self.pending_gameplay_manager = Some(manager);
@@ -1886,8 +1887,19 @@ impl Game {
             let mut score_submit = None;
             if manager.should_save_score() {
                 // save score
-                Database::save_score(&score);
-                match save_replay(&score) {
+                self.actions.push(actions::database::Action::AddScore(
+                    Box::new(score.score.clone())
+                ).into());
+
+                let mut writer = common::serialization::SerializationWriter::new();
+                writer.write(&score.score);
+
+                let hash = score.hash();
+                let actual_hash = tataku::Cryptography::md5(hash);
+                let filename = format!("{}/{actual_hash}.ttkr", engine::REPLAYS_DIR);
+
+                // save the database
+                match std::fs::write(&filename, writer.data()) {
                     Ok(_) => trace!("replay saved ok"),
                     Err(e) => self.actions.push(
                         Notification::new_error(
@@ -1911,13 +1923,13 @@ impl Game {
                 self.actions.push(actions::task::TaskAction::AddTask(Box::new(submit_task)).into());
             }
 
-            use engine::gameplay::gameplay_manager::GameplayModeInner;
+            use engine::gameplay::gameplay_manager::GameplayTypeSmall;
             match manager.get_mode() {
                 // go back to beatmap select
-                GameplayModeInner::Replaying {..} => {
+                GameplayTypeSmall::Replaying => {
                     self.handle_custom_menu("beatmap_select");
                 }
-                GameplayModeInner::Multiplayer { .. } => {
+                GameplayTypeSmall::Multiplayer => {
                     debug!("multiplayer finished gameplay");
 
                     // FIXME: show the scores lmao
@@ -1948,7 +1960,7 @@ impl Game {
         let theme = match &self.settings.theme {
             SelectedTheme::Tataku => graphics::tataku_theme(),
             SelectedTheme::Osu => graphics::osu_theme(),
-            SelectedTheme::Custom(path, _) => tataku::Io::read_file(path)
+            SelectedTheme::Custom(path, _) => tataku::fs::read_file(path)
                 .ok()
                 .and_then(|b| serde_json::from_slice(&b).ok())
                 .unwrap_or_default(),
@@ -1961,9 +1973,9 @@ impl Game {
     #[cfg(feature="graphics")]
     fn finish_screenshot(
         &mut self,
-        bytes: Vec<u8>,
+        bytes: &[u8],
         [width, height]: [u32; 2],
-        info: actions::window::ScreenshotInfo
+        info: &actions::window::ScreenshotInfo
     ) -> tataku::Result<()> {
         // create file
         let date = chrono::Local::now();
@@ -1984,7 +1996,7 @@ impl Game {
         // save as png
         image::save_buffer(
             path,
-            &bytes,
+            bytes,
             width,
             height,
             image::ExtendedColorType::Rgba8
@@ -2051,7 +2063,7 @@ impl Game {
         use_preview_time: bool,
     ) -> SelectBeatmapConfig {
         SelectBeatmapConfig::new(
-            self.global.mods.clone(),
+            // self.global.mods.clone(),
             self.global.playmode.clone(),
             restart_song,
             use_preview_time,
@@ -2136,4 +2148,59 @@ pub enum SpectatorWatchAction {
     FullMenu,
     OpenDialog,
     MultiSpec,
+}
+
+
+
+#[cfg(feature="graphics")]
+struct FpsCounters {
+    fps_display: interface::FpsDisplay,
+    update_display: interface::FpsDisplay,
+    render_display: interface::FpsDisplay,
+    input_display: interface::FpsDisplay,
+}
+#[cfg(feature="graphics")]
+impl FpsCounters {
+    fn new(window: engine::window::WindowCounters) -> Self {
+        Self {
+            render_display: interface::FpsDisplay::new_atomic(
+                "fps",
+                3,
+                window.render_count,
+                window.render_frametime,
+            ),
+            fps_display: interface::FpsDisplay::new_counter("prepares/s", 2),
+            update_display: interface::FpsDisplay::new_counter("updates/s", 1),
+            input_display: interface::FpsDisplay::new_atomic(
+                "inputs/s",
+                0,
+                window.input_count,
+                window.input_frametime,
+            ),
+        }
+    }
+    
+    fn window_size_changed(&mut self, window_size: Vector2) {
+        self.update_display.window_size_changed(window_size);
+        self.fps_display.window_size_changed(window_size);
+        self.input_display.window_size_changed(window_size);
+        self.render_display.window_size_changed(window_size);
+    }
+
+    fn update(&mut self) {
+        self.fps_display.update();
+        self.update_display.update();
+        self.render_display.update();
+        self.input_display.update();
+    }
+    fn draw(
+        &self,
+        list: &mut graphics::RenderableCollection,
+        contexts: &mut ui::widget::TextLayoutContexts,
+    ) {
+        self.fps_display.draw(list, contexts);
+        self.update_display.draw(list, contexts);
+        self.render_display.draw(list, contexts);
+        self.input_display.draw(list, contexts);
+    }
 }

@@ -26,11 +26,9 @@ pub struct GamepadButtonInput {
     node_id: NodeId,
 }
 impl GamepadButtonInput {
-    pub fn new(
-        button: impl Into<InputButtonValue<GamepadButton>>, 
-    ) -> Self {
+    pub fn new(button: InputButtonValue<GamepadButton>) -> Self {
         Self {
-            button: button.into(),
+            button,
             optional: false,
             
             on_change: None,
@@ -55,7 +53,7 @@ impl GamepadButtonInput {
 }
 impl Widget<actions::Action> for GamepadButtonInput {
     fn name(&self) -> CowStr { "gamepad_input".into() }
-    fn node_id(&self) -> NodeId { self.node_id }
+    fn node_id(&self) -> &NodeId { &self.node_id }
 
     fn layout(
         &mut self, 
@@ -66,7 +64,7 @@ impl Widget<actions::Action> for GamepadButtonInput {
     }
     fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
         let text_style = shell.tree
-            .get_text_style(self.node_id)
+            .get_text_style(&self.node_id)
             .unwrap();
 
         // let w = f16::from_f32(text_style.measure_text("Press a button", None).x);
@@ -87,12 +85,12 @@ impl Widget<actions::Action> for GamepadButtonInput {
     ) {
         if shell.event_consumed { return }
         let bounds = shell.tree
-            .absolute_bounds(self.node_id)
+            .absolute_bounds(&self.node_id)
             .unwrap();
 
         let ctx = shell
             .tree
-            .get_context_mut(self.node_id)
+            .get_context_mut(&self.node_id)
             .unwrap();
         let state = &mut ctx.element_data.state;
         let active = state.contains(ElementState::Active);
@@ -114,7 +112,7 @@ impl Widget<actions::Action> for GamepadButtonInput {
                     if let Some(on_change) = &self.on_change {
                         on_change.run(
                             &None,
-                            self.node_id,
+                            &self.node_id,
                             shell.messages,
                             shell.actions,
                             shell.values,
@@ -152,7 +150,7 @@ impl Widget<actions::Action> for GamepadButtonInput {
                 if let Some(on_change) = &self.on_change {
                     on_change.run(
                         &None,
-                        self.node_id,
+                        &self.node_id,
                         shell.messages,
                         shell.actions,
                         shell.values,
@@ -170,7 +168,7 @@ impl Widget<actions::Action> for GamepadButtonInput {
         if self.button.update(shell.values, self.optional) {
             let ctx = shell
                 .tree
-                .get_context(self.node_id)
+                .get_context(&self.node_id)
                 .unwrap();
 
             let txt = ctx
@@ -203,14 +201,14 @@ impl Widget<actions::Action> for GamepadButtonInput {
 
     fn draw(&self, shell: &mut DrawShell<actions::Action>) {
         let ctx = shell.tree
-            .get_context(self.node_id)
+            .get_context(&self.node_id)
             .unwrap();
 
         let active = ctx.element_data.state.contains(ElementState::Active);
         let hover = ctx.element_data.state.contains(ElementState::Hover);
 
         let bounds = shell.tree
-            .absolute_bounds(self.node_id)
+            .absolute_bounds(&self.node_id)
             .unwrap();
 
         shell.list.push(graphics::Rectangle::new_bounds(

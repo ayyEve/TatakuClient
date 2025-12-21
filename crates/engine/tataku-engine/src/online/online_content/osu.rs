@@ -120,8 +120,7 @@ impl OnlineContentEngine for OsuDirect {
                 .lock()
                 .await;
 
-            let mut client = reqwest::Client::new();
-            let mut request = client.get(url);
+            let mut request = ureq::get(url);
 
             if let Some(conn) = &*connection {
                 let bearer = conn.bearer();
@@ -131,12 +130,12 @@ impl OnlineContentEngine for OsuDirect {
 
 
             let response = request
-                .send()
-                .await
+                .call()
                 .expect("Error with request");
 
             let body = response
-                .text().await
+                .into_body()
+                .read_to_string()
                 .expect("Error converting to text");
 
             // debug!("Got results: \n{body}");

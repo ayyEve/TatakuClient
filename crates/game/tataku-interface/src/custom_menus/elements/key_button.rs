@@ -13,7 +13,7 @@ impl KeyButtonElement {
         let on_input = self.on_input.inner.clone();
         let on_input = (!on_input.is_empty()).then_some(on_input);
 
-        widgets::KeyButton::new(self.var.clone())
+        widgets::KeyButton::new(self.var.clone().into())
             .optional(self.optional)
             .on_change(on_input)
     }

@@ -41,12 +41,12 @@ impl Notification {
         }
     }
     pub fn new_text(
-        text: impl ToString, 
+        text: impl Into<String>, 
         color: Color, 
         duration: f32
     ) -> Self {
         Self::new(
-            text.to_string(), 
+            text.into(), 
             color, 
             duration, 
             NotificationOnClick::None
@@ -54,11 +54,11 @@ impl Notification {
     }
 
     pub fn new_error(
-        text: impl ToString, 
+        text: impl Into<String>, 
         err: impl Into<tataku::Error>
     ) -> Self {
         Self::new(
-            format!("{}\n{:?}", text.to_string(), err.into()),
+            format!("{}\n{:?}", text.into(), err.into()),
             Color::RED,
             5_000.0, 
             NotificationOnClick::None,

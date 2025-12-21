@@ -11,24 +11,11 @@ impl RenderingEngine for DummyGraphicsEngine {
     fn set_blur(&mut self, _: bool) {}
     fn vsync_modes(&self) -> Vec<Vsync> { Vsync::list() }
 
-    fn create_render_target(
-        &mut self, 
-        _size: [u32; 2], 
-        _clear_color: Color, 
-        _do_render: RenderTargetDraw
-    ) -> Option<RenderTarget> { None }
-
-    fn update_render_target(
-        &mut self, 
-        _target: RenderTarget, 
-        _do_render: RenderTargetDraw
-    ) {}
-
-    fn load_texture_bytes(&mut self, _data: &[u8]) -> TatakuResult<TextureReference> {
+    fn load_texture_bytes(&mut self, _data: &[u8]) -> tataku::Result<TextureReference> {
         Err(Error::Graphics(GraphicsError::DummyEngine))
     }
 
-    fn load_texture_rgba(&mut self, _data: &[u8], _size: [u32; 2]) -> TatakuResult<TextureReference> {
+    fn load_texture_rgba(&mut self, _data: &[u8], _size: [u32; 2]) -> tataku::Result<TextureReference> {
         Err(Error::Graphics(GraphicsError::DummyEngine))
     }
 
@@ -37,7 +24,7 @@ impl RenderingEngine for DummyGraphicsEngine {
 
     fn begin_render(&mut self) {}
     fn end_render(&mut self) {}
-    fn present(&mut self) -> TatakuResult<()> { Ok(()) }
+    fn present(&mut self) -> tataku::Result<()> { Ok(()) }
 
     fn add_emitter(&mut self, _emitter: EmitterReference) {}
     fn update_emitters(&mut self) {}

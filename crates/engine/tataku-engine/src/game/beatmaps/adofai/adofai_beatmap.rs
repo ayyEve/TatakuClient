@@ -5,6 +5,8 @@ use common::Md5Hash;
 use serde::Deserialize;
 use beatmaps::TimingPoint;
 
+pub type Beatmap = AdofaiBeatmap;
+
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
 pub struct AdofaiBeatmap {
@@ -28,7 +30,8 @@ pub struct AdofaiBeatmap {
     audio_file: ArcStr,
 }
 impl AdofaiBeatmap {
-    pub fn load(path: &str) -> Self {
+    pub fn load(path: impl AsRef<Path>) -> Self {
+        let path = path.as_ref();
         let file_contents = std::fs::read_to_string(path).unwrap();
 
         let allowed_chars = [
@@ -42,11 +45,11 @@ impl AdofaiBeatmap {
 
         let mut map:AdofaiBeatmap = match serde_json::from_str(&file_contents) {
             Ok(m) => m,
-            Err(e) => panic!("error reading adofai map '{path}': {e}"),
+            Err(e) => panic!("error reading adofai map '{}': {e}", path.display()),
         };
 
-        map.hash = tataku::Io::get_file_hash(path).unwrap();
-        map.file_path = path.to_owned().into();
+        map.hash = tataku::fs::get_file_hash(path).unwrap();
+        map.file_path = path.to_str().unwrap().into();
         
         let chars = map.path_data.chars().collect::<Vec<char>>();
 
@@ -170,6 +173,7 @@ impl beatmaps::TatakuBeatmap for AdofaiBeatmap {
     fn slider_velocity(&self) -> f32 { 1.0 }
 }
 
+// https://github.com/Luxusio/ADOFAI-Map-Converter/blob/master/src/main/java/io/luxus/lib/adofai/type/LegacyTileAngle.java
 fn char2beat(c: char) -> f32 {
     match c {
         '!' => -1.0, // hold, 8/8
@@ -196,6 +200,61 @@ fn char2beat(c: char) -> f32 {
         }
     }
 }
+
+struct Angle {
+    /// degrees
+    angle: f32,
+    relative: bool,
+}
+impl Angle {
+    fn new(angle: f32, relative: bool) -> Self {
+        Self {
+            angle,
+            relative
+        }
+    }
+
+    fn from_char(c: char) -> Option<Self> {
+        match c {
+            'R' => Some(Self::new(0.0, false)),
+            'p' => Some(Self::new(15.0, false)),
+            'J' => Some(Self::new(30.0, false)),
+            'E' => Some(Self::new(45.0, false)),
+            'T' => Some(Self::new(60.0, false)),
+            'o' => Some(Self::new(75.0, false)),
+            'U' => Some(Self::new(90.0, false)),
+            'q' => Some(Self::new(105.0, false)),
+            'G' => Some(Self::new(120.0, false)),
+            'Q' => Some(Self::new(135.0, false)),
+            'H' => Some(Self::new(150.0, false)),
+            'W' => Some(Self::new(165.0, false)),
+            'L' => Some(Self::new(180.0, false)),
+            'x' => Some(Self::new(195.0, false)),
+            'N' => Some(Self::new(210.0, false)),
+            'Z' => Some(Self::new(225.0, false)),
+            'F' => Some(Self::new(240.0, false)),
+            'V' => Some(Self::new(255.0, false)),
+            'D' => Some(Self::new(270.0, false)),
+            'Y' => Some(Self::new(285.0, false)),
+            'B' => Some(Self::new(300.0, false)),
+            'C' => Some(Self::new(315.0, false)),
+            'M' => Some(Self::new(330.0, false)),
+            'A' => Some(Self::new(345.0, false)),
+            '5' => Some(Self::new(108.0, true)),
+            '6' => Some(Self::new(252.0, true)),
+            '7' => Some(Self::new(900.0 / 7.0, true)),
+            '8' => Some(Self::new(360.0 - 900.0 / 7.0, true)),
+            't' => Some(Self::new(60.0, true)),
+            'h' => Some(Self::new(120.0, true)),
+            'j' => Some(Self::new(240.0, true)),
+            'y' => Some(Self::new(300.0, true)),
+            '!' => Some(Self::new(0.0, true)),
+            _ => None,
+        }
+    }
+}
+
+
 
 #[derive(Deserialize, Default)]
 #[serde(rename_all="camelCase", default)]

@@ -36,7 +36,7 @@ impl GlobalValues {
     ) -> Self {
         let mut s = Self {
             gamemode_infos: infos,
-            username: settings.username.clone(),
+            username: settings.connection().tataku_username.clone(),
             ..Default::default()
         };
         let a: ArcStr = settings.last_played_mode.clone().into();

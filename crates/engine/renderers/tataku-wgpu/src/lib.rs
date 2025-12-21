@@ -50,7 +50,7 @@ impl<'window> engine::window::GraphicsInitializer<'window> for WgpuInit {
         &self,
         window: &'window winit::window::Window,
         settings: engine::settings::display::DisplaySettings
-    ) -> tataku::TatakuResult<Box<dyn tataku_graphics::RenderingEngine + 'window>> {
+    ) -> tataku::Result<Box<dyn tataku_graphics::RenderingEngine + 'window>> {
         Ok(wgpu_engine::WgpuEngine::create(window, &settings).await)
     }
 }

@@ -68,7 +68,8 @@ impl ScoreManager {
 
     pub fn get_scores(
         &mut self, 
-        values: &mut ValueCollection
+        values: &mut ValueCollection,
+        database: &dyn engine::database::ScoreProvider,
     ) -> engine::tataku::Result<()> {
         if self.current_loader.take().is_some()
         && let Some(abort) = self.abort_handle.take() {
@@ -90,15 +91,15 @@ impl ScoreManager {
             | ScoreRetreivalMethod::LocalMods => {
                 let mods = self.mods.as_ref().cloned().unwrap_or_default();
 
-                let handle = tokio::spawn(async move {
-                    let map_hash = map_hash.to_string();
-                    let mut local_scores = Database::get_scores(
-                        &map_hash, 
+                // FIXME: need to async this somehow?
+                // let handle = tokio::spawn(async move {
+                    let mut local_scores = database.get_scores(
+                        map_hash, 
                         &playmode, 
                         &infos
-                    );
+                    ).unwrap_or_default();
 
-
+                let handle = tokio::spawn(async move {
                     if method.filter_by_mods() {
                         local_scores.retain(|s| Self::check_mods(&s.mods, &mods));
                     }
@@ -200,7 +201,11 @@ impl ScoreManager {
         self.score_method.as_ref().copied().unwrap_or_default()
     }
     
-    pub fn update(&mut self, values: &mut ValueCollection) {
+    pub fn update(
+        &mut self, 
+        values: &mut ValueCollection,
+        database: &dyn engine::database::ScoreProvider
+    ) {
         let did_update = 
             self.beatmap.update(values).ok().and_then(|a| a).is_some() // if the map changed
             | self.playmode.update(values).unwrap().is_some() // or the actual playmode changed
@@ -220,7 +225,7 @@ impl ScoreManager {
             values.score_list.loaded = false;
             
             // and then get new scores
-            if let Err(e) = self.get_scores(values) {
+            if let Err(e) = self.get_scores(values, database) {
                 warn!("error getting scores: {e}");
             }
         }
@@ -354,8 +359,7 @@ mod osu {
     pub async fn fetch_beatmap_id(api_key: &str, map_hash: &str) -> Option<String> {
         let url = format!("https://osu.ppy.sh/api/get_beatmaps?k={api_key}&h={map_hash}");
         trace!("osu beatmap id lookup");
-        let bytes = reqwest::get(url).await.ok()?.bytes().await.ok()?.to_vec();
-        let maps: Vec<OsuApiBeatmap> = serde_json::from_slice(bytes.as_slice()).ok()?;
+        let maps = super::make_request::<Vec<OsuApiBeatmap>>(&url).ok()?;
 
         maps.first().map(|m|m.beatmap_id.clone())
     }
@@ -402,9 +406,8 @@ mod osu {
             if let Some(id) = fetch_beatmap_id(osu_api_key, &hash).await {
                 let url = format!("https://osu.ppy.sh/api/get_scores?k={osu_api_key}&b={id}&m={mode}");
 
-                let bytes = reqwest::get(url).await?.bytes().await?;
-                let bytes = bytes.to_vec();
-                let osu_scores:Vec<OsuApiScore> = serde_json::from_slice(bytes.as_slice()).unwrap_or_default();
+                let osu_scores = super::make_request::<Vec<OsuApiScore>>(&url)
+                    .unwrap_or_default();
 
                 Ok(osu_scores.iter().map(|s| {
 
@@ -486,8 +489,7 @@ mod quaver {
 
     pub async fn fetch_beatmap_id(map_hash: &String) -> Option<u32> {
         let url = format!("https://api.quavergame.com/v1/maps/{map_hash}");
-        let bytes = reqwest::get(url).await.ok()?.bytes().await.ok()?;
-        let resp:QuaverResponse = serde_json::from_slice(&bytes).ok()?;
+        let resp = make_request::<QuaverResponse>(&url).ok()?;
 
         resp.map.map(|m|m.id)
     }
@@ -518,10 +520,7 @@ mod quaver {
         let Some(id) = fetch_beatmap_id(map_hash).await else {return Err(engine::tataku::Error::String("no osu map".to_owned()))};
         let url = format!("https://api.quavergame.com/v1/scores/map/{id}");
 
-        let bytes = reqwest::get(url).await?.bytes().await?;
-        // online_scores = quaver::scores_from_api_response(bytes);
-
-        let resp:QuaverResponse = serde_json::from_slice(&bytes)?;
+        let resp = make_request::<QuaverResponse>(&url)?;
 
         Ok(resp.scores.unwrap_or_default().iter().map(|s| {
             let mut judgments = HashMap::new();
@@ -651,11 +650,10 @@ mod tataku {
         playmode: &str, 
         settings: &engine::Settings
     ) -> engine::tataku::Result<Vec<IngameScore>> {
-        let base = settings.score_url.clone();
+        let base = settings.connection().score_url.clone();
         let url = format!("{base}/api/get_scores?hash={map_hash}&mode={playmode}");
 
-        let bytes = reqwest::get(url).await?.bytes().await?.to_vec();
-        let maps: Vec<TatakuScore> = serde_json::from_slice(bytes.as_slice())?;
+        let maps = make_request::<Vec<TatakuScore>>(&url)?;
 
         Ok(maps.into_iter().map(|s| {
             let mut score = IngameScore::new(s.score, false, false);
@@ -670,4 +668,14 @@ mod tataku {
         }).collect())
     }
 
+}
+
+
+fn make_request<T: serde::de::DeserializeOwned>(url: &str) -> engine::tataku::Result<T> {
+    let a = ureq::get(url)
+        .call()?
+        .into_body()
+        .read_to_vec()?;
+
+    Ok(serde_json::from_slice(&a)?)
 }

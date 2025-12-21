@@ -35,7 +35,7 @@ impl OsuStoryboard {
         dir: &String,
         skin_manager: &mut dyn graphics::SkinProvider,
         // settings: OsuSettings,
-    ) -> tataku::TatakuResult<Self> {
+    ) -> tataku::Result<Self> {
         let playfield_size = GAME_SIZE;
 
         let transform = Transform::default();
@@ -223,7 +223,7 @@ impl Element {
         parent_dir: &String,
         image_cache: &mut HashMap<String, graphics::Image>,
         skin_manager: &mut dyn graphics::SkinProvider
-    ) -> tataku::TatakuResult<Self> {
+    ) -> tataku::Result<Self> {
         let layer;
 
         let mut blend_mode = None;
@@ -489,7 +489,7 @@ fn try_load_image(
     filepath: &String,
     image_cache: &mut HashMap<String, graphics::Image>,
     skin_manager: &mut dyn graphics::SkinProvider
-) -> tataku::TatakuResult<graphics::Image> {
+) -> tataku::Result<graphics::Image> {
     if let Some(image) = image_cache.get(filepath).cloned() {
         Ok(image)
     } else if let Some(i) = skin_manager.get_texture(

@@ -1,14 +1,14 @@
 use crate::*;
 use common::replays::{ ReplayAction, ReplayFrame };
 use engine::gameplay::{
-    properties::GameModeProperties,
+    properties::GamemodeProperties,
     gameplay_manager::*,
 };
 
 // needed for std::mem::take/swap
 #[derive(Default)]
 pub struct NoMode;
-impl gameplay::GameMode for NoMode {
+impl gameplay::Gamemode for NoMode {
     fn new(
         _: &beatmaps::Beatmap, 
         _: bool, 
@@ -35,8 +35,10 @@ impl gameplay::GameMode for NoMode {
 
     #[cfg(feature="graphics")] 
     fn get_playfield(&self) -> gameplay::PlayfieldNonsense { gameplay::PlayfieldNonsense::default() }
-    fn properties(&self, _: &gameplay::TimingPointHelper) -> GameModeProperties { GameModeProperties::default() }
+    fn properties(&self, _: &gameplay::TimingPointHelper) -> GamemodeProperties { GamemodeProperties::default() }
 
     #[cfg(feature="gameplay")] 
     fn handle_input(&mut self, _input: input::InputEvent) -> Option<ReplayAction> { None }
+
+    fn all_notes(&self) -> Vec<&dyn gameplay::HitObject> { Vec::new() }
 }

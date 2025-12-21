@@ -42,7 +42,6 @@ tataku-null-renderer.workspace = true
 tataku-client-proc-macros.workspace = true
 
 # framework stuff
-lazy_static.workspace = true
 parking_lot.workspace = true
 async-trait.workspace = true
 bitflags.workspace = true
@@ -64,7 +63,7 @@ taffy = { workspace = true, optional = true }
 simplecss = { workspace = true, optional = true }
 
 # networking
-reqwest = { workspace = true, features = ["json"] }
+ureq.workspace = true
 native-tls.workspace = true
 tokio-native-tls.workspace = true
 

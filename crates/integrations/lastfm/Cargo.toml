@@ -13,7 +13,7 @@ workspace = true
 graphics = []
 
 [dependencies]
-reqwest.workspace = true
+ureq.workspace = true
 tataku-engine.workspace = true
 raw-window-handle.workspace = true
 

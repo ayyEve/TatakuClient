@@ -6,6 +6,7 @@ use common::Md5Hash;
 #[derive(Reflect)]
 #[reflect(display="debug")]
 #[derive(Clone, Debug, Default)]
+#[derive(Serialize, Deserialize)]
 pub struct BeatmapMeta {
     #[reflect(alias("path"))] pub file_path: ArcStr,
     #[reflect(alias("hash"))] pub beatmap_hash: Md5Hash,
@@ -68,13 +69,6 @@ impl BeatmapMeta {
         format!("{artist} - {title} [{}]", self.version)  
     }
 
-    
-    /// helper function for checking hashes
-    pub fn comp_hash(&self, other: Md5Hash) -> bool {
-        self.beatmap_hash == other
-    }
-
-
     pub fn get_parent_dir(&self) -> Option<PathBuf> {
         Some(Path::new(&self.file_path).parent()?.to_path_buf())
     }
@@ -133,10 +127,7 @@ impl BeatmapMeta {
         || self.version.to_ascii_lowercase().contains(filter_str) 
     }
 
-}
 
-// getter helpers
-impl BeatmapMeta {
     pub fn mins(&self, speed: f32) -> f32 {
         ((self.duration / speed) / 60000.0).floor() 
     }
@@ -145,15 +136,14 @@ impl BeatmapMeta {
         let remaining_ms = (self.duration / speed) - mins * 60_000.0;
         (remaining_ms / 1000.0).floor()
     }
-    
-    pub fn get_hp(&self, _mods: &gameplay::mods::ModManager) -> f32 {
-        self.hp
-        // scale_by_mods(self.hp, 0.5, 1.4, mods).clamp(1.0, 10.0)
-    }
 }
-
 impl std::cmp::PartialEq for BeatmapMeta {
     fn eq(&self, other: &Self) -> bool {
         self.beatmap_hash == other.beatmap_hash 
+    }
+}
+impl std::cmp::PartialEq<Md5Hash> for BeatmapMeta {
+    fn eq(&self, other: &Md5Hash) -> bool {
+        &self.beatmap_hash == other 
     }
 }

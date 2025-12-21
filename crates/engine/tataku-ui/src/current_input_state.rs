@@ -49,4 +49,3 @@ impl CurrentInputState {
             .collect()
     }
 }
-

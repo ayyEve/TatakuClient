@@ -64,7 +64,7 @@ impl From<WindowAction> for actions::Action {
     }
 }
 
-pub type LoadImageCallback<T> = Box<dyn FnOnce(tataku::TatakuResult<T>) + Send + Sync>;
+pub type LoadImageCallback<T> = Box<dyn FnOnce(tataku::Result<T>) + Send + Sync>;
 #[derive(Debug2)]
 pub enum LoadImage {
     #[debug(skip)] Image(RgbaImage, LoadImageCallback<tataku::TextureReference>),

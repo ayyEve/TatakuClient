@@ -163,3 +163,4 @@ impl From<Arc<AtomicU32>> for CountProvider {
         Self::Atomic(value)
     }
 }
+

@@ -40,16 +40,11 @@ pub struct Dropdown {
 }
 impl Dropdown {
     pub fn new(
-        variants: impl Into<DropdownVariants>,
-        value: impl Into<DropdownValue>,
-        on_change: impl Into<DropdownOnChange>,
-        placeholder: impl Into<widgets::WidgetText>,
+        variants: DropdownVariants,
+        value: DropdownValue,
+        on_change: DropdownOnChange,
+        placeholder: widgets::WidgetText,
     ) -> Self {
-        let placeholder = placeholder.into();
-
-        let variants = variants.into();
-        let value = value.into();
-
         let main_button = widgets::Button::new(widgets::Text::new(placeholder.clone()))
             .into_widget_base();
 
@@ -62,7 +57,7 @@ impl Dropdown {
             variants,
             main_button,
 
-            on_change: on_change.into(),
+            on_change,
 
             active: false,
 
@@ -96,7 +91,7 @@ impl Dropdown {
                 // todo: error on bad
                 let actions = actions.iter()
                     .cloned()
-                    .filter_map(|action| action.resolve(self.node_id, shell.values, passed_in));
+                    .filter_map(|action| action.resolve(&self.node_id, shell.values, passed_in));
 
                 shell.actions.extend(actions);
 
@@ -114,7 +109,7 @@ impl Dropdown {
 }
 impl Widget<actions::Action> for Dropdown {
     fn name(&self) -> CowStr { "dropdown_widget".into() }
-    fn node_id(&self) -> NodeId { self.node_id }
+    fn node_id(&self) -> &NodeId { &self.node_id }
 
     fn children(&self) -> WidgetChildren<'_, actions::Action> {
         let DropdownVariants::Buttons { buttons, .. } = &self.variants else {
@@ -174,7 +169,7 @@ impl Widget<actions::Action> for Dropdown {
 
         self.container = shell.tree.new_with_children(&children)?;
 
-        shell.with_context(self.container, |ctx| {
+        shell.with_context(&self.container, |ctx| {
             ctx.element_data = ElementData {
                 element_name: "column".into(),
                 ..Default::default()
@@ -187,10 +182,10 @@ impl Widget<actions::Action> for Dropdown {
 
         self.main_button.layout(shell)?;
 
-        shell.tree.add_child(self.node_id, self.main_button.node_id());
-        shell.tree.add_child(self.node_id, self.container);
+        shell.tree.add_child(&self.node_id, self.main_button.node_id());
+        shell.tree.add_child(&self.node_id, &self.container);
 
-        shell.with_context(self.node_id, |ctx| {
+        shell.with_context(&self.node_id, |ctx| {
             ctx.needs_inverse_transform = true;
             ctx.set_selectable(true);
         });
@@ -209,11 +204,11 @@ impl Widget<actions::Action> for Dropdown {
 
         let styles = shell.resolver.resolve_style(
             "",
-            self.container,
+            &self.container,
             shell.tree,
         );
 
-        let ctx = shell.tree.get_context_mut(self.container).unwrap();
+        let ctx = shell.tree.get_context_mut(&self.container).unwrap();
         ctx.set_styles(styles, shell.values);
 
         self.main_button.init_style(shell);
@@ -279,18 +274,18 @@ impl Widget<actions::Action> for Dropdown {
         let Some(button) = shell.tree.get_layout(self.main_button.node_id()) else { return; };
         let height = button.size.height;
 
-        let Some(container) = shell.tree.get_layout(self.container) else { return; };
+        let Some(container) = shell.tree.get_layout(&self.container) else { return; };
         let width = container.size.width;
 
         if (self.width - width).abs() > f32::EPSILON {
             self.width = width;
 
-            shell.tree.update_style(self.node_id, |style| {
+            shell.tree.update_style(&self.node_id, |style| {
                 style.width = CssValue::Value(CssUnit::Pixels(f16::from_f32(width)));
             });
 
             // todo: move to a more appropriate place
-            shell.tree.update_style(self.container, |style| {
+            shell.tree.update_style(&self.container, |style| {
                 style.margin_top = CssValue::Value(CssUnit::Pixels(f16::from_f32(height)));
             });
         }
@@ -395,7 +390,7 @@ impl Widget<actions::Action> for Dropdown {
 
     fn draw(&self, shell: &mut DrawShell<actions::Action>) {
         let theme = &shell.general_theme;
-        let Some(bounds) = shell.tree.absolute_bounds(self.node_id)
+        let Some(bounds) = shell.tree.absolute_bounds(&self.node_id)
         else { return };
 
         self.main_button.draw(shell);
@@ -425,7 +420,7 @@ impl Widget<actions::Action> for Dropdown {
     fn draw_overlay(&self, shell: &mut DrawShell<actions::Action>) {
         if !self.active { return }
 
-        let Some(bounds) = shell.tree.absolute_bounds(self.node_id)
+        let Some(bounds) = shell.tree.absolute_bounds(&self.node_id)
         else { return };
 
         let theme = &shell.general_theme;
@@ -532,7 +527,7 @@ pub enum DropdownVariants {
     },
 }
 impl DropdownVariants {
-    fn build(&mut self, dropdown: NodeId, values: &dyn Reflect) -> tataku::TatakuResult<()> {
+    fn build(&mut self, dropdown: NodeId, values: &dyn Reflect) -> tataku::Result<()> {
         let Self::Variable(var) = self
         else { return Ok(()) };
 
@@ -583,7 +578,7 @@ impl DropdownVariants {
                 ))
             });
 
-            let button = widgets::Button::new(widgets::Text::new(display))
+            let button = widgets::Button::new(widgets::Text::new(display.into()))
                 .on_press_left(Some(callback))
                 .into_widget_base();
 

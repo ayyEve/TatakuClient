@@ -12,13 +12,16 @@ impl OsuReplayDownloader {
 }
 
 impl beatmaps::ReplayDownloader for OsuReplayDownloader {
-    fn get_replay(&self, settings: &Settings) -> tataku::TatakuResult<Score> {
+    fn get_replay(&self, settings: &Settings) -> tataku::Result<Score> {
         let key = settings.integrations.osu.api_key.clone();
 
         let url = format!("https://osu.ppy.sh//api/get_replay?k={key}&s={}", self.1);
 
         // what gets downloaded from the api is not the full .osr file, its just the lzma stream.
-        let bytes = reqwest::blocking::get(url)?.bytes()?;
+        let bytes = ureq::get(url)
+            .call()?
+            .into_body()
+            .read_to_vec()?;
     
         // check if the received data 
         if bytes.is_empty() {

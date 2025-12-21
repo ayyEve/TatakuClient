@@ -1,13 +1,13 @@
-mod osu_math;
-mod osu_game;
-mod osu_info;
-mod osu_notes;
+mod math;
+mod game;
+mod info;
+mod notes;
+mod helpers;
+mod settings;
 mod diff_calc;
-mod osu_helpers;
-mod osu_settings;
-#[cfg(feature="graphics")] mod osu_cursor;
+#[cfg(feature="graphics")] mod cursor;
 
-pub use osu_info::GAME_INFO;
+pub use info::GAME_INFO;
 
 /// import helper
 mod prelude {
@@ -15,12 +15,12 @@ mod prelude {
     pub use tataku_engine as engine;
     pub use tataku_engine_common::common::*;
 
-    pub use super::osu_math::*;
-    pub use super::osu_game::*;
-    pub use super::osu_info::*;
-    pub use super::osu_notes::*;
-    pub use super::osu_helpers::*;
-    pub use super::osu_settings::*;
-    #[cfg(feature="graphics")] pub use super::osu_cursor::*;
+    pub use super::math::*;
+    pub use super::game::*;
+    pub use super::info::*;
+    pub use super::notes::*;
+    pub use super::helpers::*;
+    pub use super::settings::*;
+    #[cfg(feature="graphics")] pub use super::cursor::*;
     pub use super::diff_calc::OsuDifficultyCalculator;
 }

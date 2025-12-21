@@ -73,14 +73,12 @@ pub struct TatakuValues {
 impl TatakuValues {
     pub fn new(
         infos: &GamemodeInfos, 
-        online_content_engines: Vec<OnlineContentCapabilities>,
         settings: engine::Settings,
     ) -> Self {
         Self {
             enums: EnumValues::new(infos),
             #[cfg(feature="gameplay")]
             online_manager: OnlineManager::new(),
-            game: GameValues::new(online_content_engines),
             global: GlobalValues::new(infos.clone(), &settings),
             beatmap_manager: BeatmapManager::new(infos.clone()),
             settings,
@@ -187,14 +185,6 @@ pub struct GameValues {
     pub loading_statuses: Vec<LoadingStatus>,
     pub online_content: OnlineContentValues,
 }
-impl GameValues {
-    pub fn new(online_content_engines: Vec<OnlineContentCapabilities>) -> Self {
-        Self {
-            online_content: OnlineContentValues::new(online_content_engines),
-            ..Default::default()
-        }
-    }
-}
 
 #[derive(Reflect)]
 #[derive(Default, Debug)]
@@ -204,8 +194,8 @@ pub struct OnlineContentValues {
     pub results: OnlineContentReflectResults,
 }
 impl OnlineContentValues {
-    pub fn new(engines: Vec<OnlineContentCapabilities>) -> Self {
-        let engines = engines
+    pub fn init(&mut self, engines: Vec<OnlineContentCapabilities>) {
+        self.engines = engines
             .into_iter()
             .enumerate()
             .flat_map(|(n, i)| [
@@ -215,11 +205,6 @@ impl OnlineContentValues {
                 (n.to_string(), i) 
             ])
             .collect::<HashMap<_,_>>();
-
-        Self {
-            engines,
-            results: OnlineContentReflectResults::default(),
-        }
     }
 }
 

@@ -595,13 +595,13 @@ impl OnlineManager {
     /// set our user's action for the server and any enabled integrations
     pub fn set_action(
         &mut self, 
-        action_info: SetAction, 
+        action_info: &SetAction, 
         incoming_mode: Option<String>,
     ) {
-        let mode = incoming_mode.clone().unwrap_or_default();
+        let mode = incoming_mode.unwrap_or_default();
 
         let action = action_info.get_action();
-        let action_text = match &action_info {
+        let action_text = match action_info {
             SetAction::Idle => "Idle".to_string(),
             SetAction::Closing => "Closing".to_string(),
 
@@ -814,9 +814,11 @@ fn network_thread(
     event_sender: AsyncUnboundedSender<OnlineManagerEvent>,
     mut packet_receiver: AsyncUnboundedReceiver<PacketId>,
 ) -> tokio::task::JoinHandle<()> {
-    let server_url = settings.server_url.clone();
-    let username = settings.username.clone();
-    let password = settings.password.clone();
+    let connection = settings.connection().clone();
+        
+    let server_url = connection.server_url;
+    let username = connection.tataku_username;
+    let password = connection.tataku_password;
     let logging_settings = settings.logging_settings;
 
     runtime.spawn(async move {

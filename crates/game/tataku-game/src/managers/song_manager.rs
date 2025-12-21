@@ -1,17 +1,16 @@
 use crate::prelude::*;
+use input::TatakuEvent;
 use tataku_audio::*;
 use engine::{
     actions,
 };
-use input::TatakuEvent;
-use graphics::FFTHook;
 
 #[derive(Default)]
 pub struct SongManager {
     song_queue: Vec<SongData>,
     current_song: Option<SongData>,
 
-    #[cfg(feature="graphics")] fft_hooks: Vec<Weak<FFTHook>>,
+    #[cfg(feature="graphics")] fft_hooks: Vec<Weak<graphics::FFTHook>>,
 }
 impl SongManager {
     fn play_song(
@@ -163,7 +162,7 @@ impl SongManager {
     }
 
     #[cfg(feature="graphics")]
-    pub fn hook_fft(&mut self, hook: Weak<FFTHook>) {
+    pub fn hook_fft(&mut self, hook: Weak<graphics::FFTHook>) {
         self.fft_hooks.push(hook);
     }
 

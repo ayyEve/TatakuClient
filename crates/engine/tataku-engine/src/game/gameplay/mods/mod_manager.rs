@@ -5,9 +5,7 @@ use gameplay::mods::*;
 use common::reflect::*;
 use common::ModDefinition;
 use gameplay::GamemodeInfo;
-
-
-pub const SPEED_STEP: u16 = 5;
+use std::ops::RangeInclusive;
 
 #[derive(Reflect)]
 #[reflect(display="debug")]
@@ -24,9 +22,20 @@ pub struct ModManager {
     pub score_multiplier: f32,
 }
 
+// const speed stuff
+impl ModManager {
+    pub const MIN_SPEED: u8 = 35;
+    pub const MAX_SPEED: u8 = 255;
+    pub const SPEED_STEP: u8 = 5;
+    pub const SPEED_RANGE: RangeInclusive<u8> = Self::MIN_SPEED..=Self::MAX_SPEED;
+    pub fn speed_iter() -> impl Iterator<Item=u8> {
+        Self::SPEED_RANGE.step_by(Self::SPEED_STEP as usize)
+    }
+}
 
 // static 
 impl ModManager {
+
     fn iter_mod_groups(
         mode: &GamemodeInfo
     ) -> impl Iterator<Item=GameplayModGroup> {
@@ -99,7 +108,7 @@ impl ModManager {
         list.join(" ")
     }
 
-    pub fn map_mods_to_thing(
+    pub fn filter_mods_for_mode(
         &self, 
         mode: &GamemodeInfo,
     ) -> Vec<ModDefinition> {
@@ -139,7 +148,7 @@ impl ModManager {
     pub fn new(
         mods: impl Iterator<Item=impl AsRef<str>>,
         speed: impl Into<GameSpeed>,
-        info: &GamemodeInfo
+        info: &GamemodeInfo,
     ) -> Self {
         let speed = speed.into();
         let mods = mods
@@ -162,9 +171,17 @@ impl ModManager {
         self.speed.as_f32()
     }
     pub fn set_speed(&mut self, speed: impl Into<GameSpeed>) {
-        let a = speed.into().as_u16();
-        let speed_fixed = a - a % SPEED_STEP;
-        self.speed = GameSpeed::from_u16(speed_fixed);
+        self.speed = speed.into();
+    }
+    pub fn add_speed(&mut self, speed: impl Into<GameSpeed>) {
+        let s1 = self.speed.as_u8() as i16;
+        let s2 = speed.into().as_u8() as i16;
+
+        let sum = s1 + s2;
+        self.speed = GameSpeed::from_u8(sum.clamp(
+            Self::MIN_SPEED as i16,
+            Self::MAX_SPEED as i16,
+        ) as u8);
     }
 
     pub fn calculate_score_multiplier(
@@ -207,7 +224,9 @@ impl ModManager {
             .collect::<Vec<_>>();
 
 
-        if include_speed && !self.speed.is_default() { list.push(format!("({:.2}x)", self.get_speed())) }
+        if include_speed && self.speed.as_u8() != 100 { 
+            list.push(format!("({:.2}x)", self.get_speed()));
+        }
 
         list.join(" ")
     }
@@ -294,7 +313,7 @@ impl ModManager {
 
     pub fn as_md5(&self) -> common::Md5Hash {
         let mods = self.mods_sorted();
-        let mods_str = format!("{}{}", mods.join(""), self.speed.as_u16());
+        let mods_str = format!("{}{}", mods.join(""), self.speed);
         tataku::Cryptography::md5(mods_str)
     }
 

@@ -14,7 +14,7 @@ pub mod difficulty_value;
 // pub use hitsound::*;
 // pub use game_mode::*;
 // pub use hit_object::*;
-pub use properties::GameModeProperties;
+pub use properties::GamemodeProperties;
 // pub use health_manager::*;
 // pub use hit_judgements::*;
 // pub use difficulty_value::*;

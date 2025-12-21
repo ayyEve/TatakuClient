@@ -6,12 +6,12 @@ pub trait DiffCalc: Send + Sync {
     fn new(
         g: &engine::BeatmapMeta, 
         settings: &settings::Settings
-    ) -> tataku::TatakuResult<Self> where Self:Sized;
+    ) -> tataku::Result<Self> where Self:Sized;
 
     fn calc(
         &mut self, 
         mods: &gameplay::mods::ModManager
-    ) -> tataku::TatakuResult<DiffCalcSummary>;
+    ) -> tataku::Result<DiffCalcSummary>;
 }
 
 #[derive(Default)]
@@ -23,7 +23,7 @@ pub struct DiffCalcSummary {
 }
 impl DiffCalcSummary {
     #[allow(unused)]
-    pub fn save(&self, path: impl AsRef<Path>) -> tataku::TatakuResult<()> {
+    pub fn save(&self, path: impl AsRef<Path>) -> tataku::Result<()> {
         std::fs::write(path, serde_json::to_string_pretty(self)?)?;
         Ok(())
     }

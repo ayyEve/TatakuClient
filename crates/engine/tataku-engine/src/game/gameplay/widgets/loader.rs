@@ -1,7 +1,6 @@
 use crate::*;
 use gameplay::widgets::*;
 
-
 pub trait UiElementLoader: Send + Sync {
     /// Load a ui element
     fn load(

@@ -1,0 +1,13 @@
+[package]
+name = "tataku-sqlite"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+tataku-engine.workspace = true
+rusqlite.workspace = true

@@ -1,5 +1,4 @@
 use crate::*;
-use tataku_graphics::FFTHook;
 use tataku_engine_common::prelude::*;
 
 #[derive(Clone, Debug)]
@@ -38,7 +37,7 @@ pub enum SongAction {
 
     /// Add a hook to fft data
     #[cfg(feature="graphics")]
-    HookFFT(Weak<FFTHook>),
+    HookFFT(Weak<graphics::FFTHook>),
 }
 
 #[derive(Clone, Debug)]

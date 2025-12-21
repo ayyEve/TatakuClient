@@ -8,6 +8,7 @@ pub mod action;
 pub mod online;
 pub mod beatmap;
 pub mod gameplay;
+pub mod database;
 pub mod multiplayer;
 pub mod online_content;
 

@@ -121,7 +121,7 @@ pub struct NewManager {
     /// what playmode to use. if none, will use
     pub playmode: Option<ArcStr>,
     /// what gameplay mode to use.
-    pub gameplay_mode: Option<GameplayMode>,
+    pub gameplay_mode: Option<GameplayTypeInfo>,
     /// if it should be bound to an area
     pub area: Option<tataku::Bounds>,
     /// if there is a different draw function that should be used (mainly for widgets)
@@ -130,7 +130,7 @@ pub struct NewManager {
 }
 
 #[derive(Debug, Clone, Default)]
-pub enum GameplayMode {
+pub enum GameplayTypeInfo {
     #[default]
     Normal,
     Preview,

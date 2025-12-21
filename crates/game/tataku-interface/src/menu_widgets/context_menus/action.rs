@@ -22,8 +22,8 @@ impl ContextMenuAction {
 
     pub fn run(
         &self,
-        node: NodeId,
-        passed_in: Option<TatakuValue>,
+        node: &NodeId,
+        passed_in: Option<&TatakuValue>,
         values: &mut dyn Reflect,
         actions: &mut actions::ActionQueue,
         messages: &mut Vec<Message>,
@@ -38,7 +38,7 @@ impl ContextMenuAction {
                 if let Some(action) = b.clone().resolve(
                     node, 
                     values, 
-                    passed_in.as_ref(),
+                    passed_in,
                 ) {
                     actions.push(action);
                 }

@@ -56,7 +56,6 @@ impl FontAwesome {
         char::from_u32(c).unwrap_or_else(|| panic!("invalid char: {c:#06x}"))
     }
 }
-
 impl std::fmt::Display for FontAwesome {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.get_char().fmt(f)

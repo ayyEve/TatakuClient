@@ -10,8 +10,8 @@ use ui::{
     widget::*,
 };
 
-/// how long should the volume thing be displayed when changed
-const VOLUME_CHANGE_DISPLAY_TIME:u64 = 2000;
+/// how long should the volume thing be displayed when changed (ms)
+const VOLUME_CHANGE_DISPLAY_TIME:f32 = 2_000.0;
 
 #[derive(Default)]
 /// helper to move volume things out of game, cleaning up code
@@ -19,16 +19,15 @@ pub struct VolumeControl {
     /// 0-2, 0 = master, 1 = effect, 2 = music
     vol_selected_index: u8,
     /// when the volume was changed, or the selected index changed
-    vol_selected_time: u64,
+    vol_selected_time: f32,
     timer: tataku::Instant,
 
     settings: VolumeSettings,
     window_size: Vector2,
 }
 impl VolumeControl {
-    fn elapsed(&self) -> u64 {self.timer.elapsed().as_millis() as u64}
     fn _visible(&self) -> bool {
-        let elapsed = self.elapsed();
+        let elapsed = self.timer.as_millis();
         elapsed - self.vol_selected_time < VOLUME_CHANGE_DISPLAY_TIME
     }
 
@@ -41,10 +40,10 @@ impl VolumeControl {
         delta: f32, 
         settings: &mut engine::Settings
     ) -> Option<actions::song::SongAction> {
-        let elapsed = self.elapsed();
+        let elapsed = self.timer.as_millis();
 
         // reset index back to 0 (master) if the volume hasnt been touched in a while
-        if elapsed - self.vol_selected_time > VOLUME_CHANGE_DISPLAY_TIME + 1000 {
+        if elapsed - self.vol_selected_time > VOLUME_CHANGE_DISPLAY_TIME + 1000.0 {
             self.vol_selected_index = 0;
         }
 
@@ -69,12 +68,11 @@ impl VolumeControl {
         list: &mut graphics::RenderableCollection,
         text_layout_contexts: &mut TextLayoutContexts,
     ) {
-        let elapsed = self.elapsed();
+        let elapsed = self.timer.as_millis();
 
         // draw the volume things if needed
-        if self.vol_selected_time > 0
-            && elapsed - self.vol_selected_time < VOLUME_CHANGE_DISPLAY_TIME
-            {
+        if self.vol_selected_time > 0.0
+        && elapsed - self.vol_selected_time < VOLUME_CHANGE_DISPLAY_TIME {
             const BOX_SIZE:Vector2 = Vector2::new(300.0, 100.0);
             let b = graphics::Rectangle::new(
                 self.window_size - BOX_SIZE,
@@ -144,7 +142,7 @@ impl VolumeControl {
     }
 
     pub fn on_mouse_move(&mut self, mouse_pos: Vector2) {
-        let elapsed = self.elapsed();
+        let elapsed = self.timer.as_millis();
 
         let master_pos = Vector2::new(
             self.window_size.x - 300.0,
@@ -161,8 +159,8 @@ impl VolumeControl {
 
         // check if mouse moved over a volume button
         if mouse_pos.x >= master_pos.x
-            && self.vol_selected_time > 0
-            && elapsed as f32 - (self.vol_selected_time as f32) < VOLUME_CHANGE_DISPLAY_TIME as f32
+        && self.vol_selected_time > 0.0
+        && elapsed - self.vol_selected_time < VOLUME_CHANGE_DISPLAY_TIME
         {
             if mouse_pos.y >= music_pos.y {
                 self.vol_selected_index = 2;
@@ -196,7 +194,7 @@ impl VolumeControl {
         actions: &mut actions::ActionQueue,
         settings: &mut engine::Settings,
     ) -> bool {
-        let elapsed = self.elapsed();
+        let elapsed = self.timer.as_millis();
 
         if !mods.alt { return false }
         let action = match key {

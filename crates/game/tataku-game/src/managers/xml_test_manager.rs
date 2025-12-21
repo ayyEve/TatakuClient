@@ -46,6 +46,7 @@ impl XmlTestManager {
 
     }
 
+    #[allow(clippy::needless_pass_by_value, reason = "its technically consumed")]
     pub fn load_file(
         &mut self,
         path: String,

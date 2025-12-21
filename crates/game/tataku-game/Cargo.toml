@@ -11,7 +11,7 @@ workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = [ ]
+default = []
 gameplay = [ "tokio-tungstenite", "tataku-engine/gameplay" ]
 # kira_audio = ["rustfft", "uuid"]
 debug_hitsounds = [ "tataku-engine/debug_hitsounds" ]
@@ -44,15 +44,14 @@ tataku-null-audio.workspace = true
 tataku-client-proc-macros.workspace = true
 tataku-ui = { workspace = true, optional = true }
 tataku-graphics = { workspace = true, optional = true }
-tataku-engine-common = { workspace = true, features = ["sql"] }
+tataku-engine-common.workspace = true
 
 # framework stuff
 tokio = { workspace = true, features = [ "full" ] }
 futures-util = { workspace = true, features = [ "async-await", "sink", "std" ] }
-lazy_static.workspace = true
 async-trait.workspace = true
 async-recursion.workspace = true
-rusqlite.workspace = true
+notify.workspace = true
 
 triple_buffer = { workspace = true, optional = true }
 libloading = { workspace = true, optional = true }
@@ -70,7 +69,7 @@ parley.workspace = true
 
 # networking
 tokio-tungstenite = { workspace = true, features = [ "rustls-tls-native-roots" ], optional = true }
-reqwest = { workspace = true, features = ["json"] }
+ureq.workspace = true
 rustls.workspace = true
 native-tls.workspace = true
 tokio-native-tls.workspace = true

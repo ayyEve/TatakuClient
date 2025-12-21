@@ -7,14 +7,7 @@ pub enum BeatmapAction {
     PlaySelected,
 
     /// Set the current beatmap
-    /// 
-    /// map, use audio preview time, restart song?
     Set(Md5Hash, SetBeatmapOptions),
-
-    /// Set the current beatmap
-    /// 
-    /// map hash, use audio preview time, restart song?
-    SetFromHash(Md5Hash, SetBeatmapOptions),
 
     /// Remove the current beatmap
     Remove,
@@ -59,7 +52,7 @@ impl From<BeatmapAction> for actions::Action {
     fn from(value: BeatmapAction) -> Self { Self::Beatmap(value) }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum PostDelete {
     Next,
     Previous,

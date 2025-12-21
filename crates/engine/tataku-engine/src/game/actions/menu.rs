@@ -7,12 +7,6 @@ pub enum MenuAction {
         id: CowStr,
     },
 
-    // /// Go to the previous menu
-    // /// 
-    // /// NOTE these are predefined previous menus, not built on a stack
-    // /// TODO: should we make it a stack?
-    // PreviousMenu(CowStr),
-
     /// Add a custom dialog
     AddDialog {
         id: CowStr,
@@ -37,9 +31,6 @@ impl Clone for MenuAction {
         match self {
             Self::AddDialogRaw { .. } => panic!("Trying to clone AddDialogRaw!"),
             Self::SetMenu { id } => Self::SetMenu { id: id.clone() },
-
-            // MenuAction::PreviousMenu(c) 
-            //     => Self::PreviousMenu(c.clone()),
 
             MenuAction::AddDialog { 
                 id, 
@@ -111,6 +102,7 @@ pub enum DialogLocation {
 
     /// near the cursor
     Cursor,
+    
     /// centered on the screen
     Center,
 

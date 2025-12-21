@@ -11,6 +11,8 @@ use engine::beatmaps::ptyping::{
     PTypingMapDef,
 };
 
+pub type Beatmap = PTypingBeatmap;
+
 #[derive(Clone, Debug)]
 pub struct PTypingBeatmap {
     // paths etc
@@ -29,7 +31,7 @@ pub struct PTypingBeatmap {
     duration: f32,
 }
 impl PTypingBeatmap {
-    pub fn load_multiple(path: impl AsRef<Path>) -> tataku::TatakuResult<Vec<Self>> {
+    pub fn load_multiple(path: impl AsRef<Path>) -> tataku::Result<Vec<Self>> {
         let path = path.as_ref();
         let parent_dir = path.parent().unwrap().to_string_lossy().to_string();
         let file_path = path.to_string_lossy().to_string();
@@ -76,7 +78,7 @@ impl PTypingBeatmap {
     pub fn load_single(
         path: impl AsRef<Path>, 
         meta: &BeatmapMeta
-    ) -> tataku::TatakuResult<Self> {
+    ) -> tataku::Result<Self> {
         let maps = Self::load_multiple(path)?;
 
         maps.into_iter()

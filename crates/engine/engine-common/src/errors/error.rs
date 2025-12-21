@@ -15,7 +15,7 @@ pub enum Error {
 
     String(String),
     SerializationError(common::serialization::SerializationError),
-    ReqwestError(reqwest::Error),
+    ReqwestError(ureq::Error),
     DownloadError(errors::download::DownloadError),
 
     DiffCalcError(errors::diffcalc::DiffCalcError),

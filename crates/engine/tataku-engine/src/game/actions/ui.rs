@@ -17,12 +17,12 @@ impl UiAction {
 
 #[derive(Debug2)]
 pub enum UiActionType {
-    Refresh,
-    MarkDirty,
+    // Refresh,
+    // MarkDirty,
     UpdateStyleWith(#[debug(skip)] Arc<dyn Fn(&mut ui::style::CssStyle) + Send + Sync>),
 
-    /// Only update the display of a node. 
-    OverrideDisplay(Option<ui::style::DisplayType>),
+    // /// Only update the display of a node. 
+    // OverrideDisplay(Option<ui::style::DisplayType>),
 
     /// Rebuild the contexts for this node and its children
     ContextChanged,

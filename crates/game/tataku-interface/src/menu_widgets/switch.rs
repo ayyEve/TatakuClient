@@ -79,7 +79,7 @@ impl SwitchWidget {
 }
 impl Widget<actions::Action> for SwitchWidget {
     fn name(&self) -> CowStr { "switch_widget".into() }
-    fn node_id(&self) -> NodeId { self.node_id }
+    fn node_id(&self) -> &NodeId { &self.node_id }
 
     fn children(&self) -> WidgetChildren<'_, actions::Action> {
         self.get_ele()
@@ -178,7 +178,7 @@ impl Widget<actions::Action> for SwitchWidget {
         // set all cases to DisplayType::None so they're hidden
         // do not do this for the default case because if it exists it should be visible by default
         for i in self.cases.iter() {
-            shell.tree.set_display(
+            shell.tree.override_display(
                 i.widget.node_id(),
                 Some(DisplayType::None)
             );
@@ -219,29 +219,23 @@ impl Widget<actions::Action> for SwitchWidget {
             if let Some(child) = previous_value
                 .and_then(|i| self.cases.get(i))
             {
-                shell.actions.push(actions::ui::UiAction::new(
-                    child.widget.node_id(),
-                    actions::ui::UiActionType::OverrideDisplay(Some(DisplayType::None))
-                ).into());
+                shell.tree.override_display(
+                    child.widget.node_id(), 
+                    Some(DisplayType::None),
+                );
             } else if let Some(default) = &self.default_case {
-                shell.actions.push(actions::ui::UiAction::new(
-                    default.node_id(),
-                    actions::ui::UiActionType::OverrideDisplay(Some(DisplayType::None))
-                ).into());
+                shell.tree.override_display(
+                    default.node_id(), 
+                    Some(DisplayType::None),
+                );
             }
 
             if let Some(child) = self.value
                 .and_then(|i| self.cases.get(i))
             {
-                shell.actions.push(actions::ui::UiAction::new(
-                    child.widget.node_id(),
-                    actions::ui::UiActionType::OverrideDisplay(None)
-                ).into());
-            }  else if let Some(default) = &self.default_case {
-                shell.actions.push(actions::ui::UiAction::new(
-                    default.node_id(),
-                    actions::ui::UiActionType::OverrideDisplay(None)
-                ).into());
+                shell.tree.override_display(&child.widget, None);
+            } else if let Some(default) = &self.default_case {
+                shell.tree.override_display(default, None);
             }
         }
 

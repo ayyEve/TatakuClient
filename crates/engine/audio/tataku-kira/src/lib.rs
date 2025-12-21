@@ -26,7 +26,7 @@ const NO_TWEEN:Tween = Tween {
 
 pub struct KiraAudio(Mutex<KiraAudioManager<CpalBackend>>);
 impl KiraAudio {
-    fn init() -> tataku::TatakuResult<Arc<dyn AudioApi>> {
+    fn init() -> tataku::Result<Arc<dyn AudioApi>> {
         let manager = KiraAudioManager::<CpalBackend>::new(AudioManagerSettings::default())
             .map_err(tataku::Error::from_err)?;
 
@@ -34,12 +34,12 @@ impl KiraAudio {
     }
 }
 impl AudioApi for KiraAudio {
-    fn load_sample_data(&self, data: Vec<u8>) -> tataku::TatakuResult<Arc<dyn AudioInstance>> {
+    fn load_sample_data(&self, data: Vec<u8>) -> tataku::Result<Arc<dyn AudioInstance>> {
         // TODO: StaticSoundData
         self.load_stream_data(data)
     }
 
-    fn load_stream_data(&self, data: Vec<u8>) -> tataku::TatakuResult<Arc<dyn AudioInstance>> {
+    fn load_stream_data(&self, data: Vec<u8>) -> tataku::Result<Arc<dyn AudioInstance>> {
         match StreamingSoundData::from_cursor(Cursor::new(data)) {
             Ok(s) => Ok(Arc::new(
                 KiraStreamAudioInstance::new(s, &mut self.0.lock())
@@ -47,10 +47,6 @@ impl AudioApi for KiraAudio {
             )),
             Err(e) => Err(tataku::Error::String(e.to_string())),
         }
-    }
-
-    fn empty_audio(&self) -> Arc<dyn AudioInstance> {
-        self.load_stream_data(vec![0x52,0x49,0x46,0x46,0x28,0x00,0x00,0x00,0x57,0x41,0x56,0x45,0x66,0x6D,0x74,0x20,0x10,0x00,0x00,0x00,0x01,0x00,0x02,0x00,0x44,0xAC,0x00,0x00,0x88,0x58,0x01,0x00,0x02,0x00,0x08,0x00,0x64,0x61,0x74,0x61,0x04,0x00,0x00,0x00,0x80,0x80,0x80,0x80]).unwrap()
     }
 }
 
@@ -89,19 +85,18 @@ impl AudioInstance for KiraStreamAudioInstance {
         handle.stop(NO_TWEEN);
     }
 
-    fn is_playing(&self) -> bool {
-        let handle = self.0.read();
-        handle.state() == PlaybackState::Playing
-    }
+    fn get_state(&self) -> AudioState {
+        match self.0.read().state() {
+            PlaybackState::Resuming
+            | PlaybackState::WaitingToResume
+            | PlaybackState::Playing => AudioState::Playing,
+            
+            PlaybackState::Pausing 
+            | PlaybackState::Paused => AudioState::Paused,
 
-    fn is_paused(&self) -> bool {
-        let handle = self.0.read();
-        handle.state() == PlaybackState::Paused || handle.state() == PlaybackState::Pausing
-    }
-
-    fn is_stopped(&self) -> bool {
-        let handle = self.0.read();
-        handle.state() == PlaybackState::Stopped || handle.state() == PlaybackState::Stopping
+            PlaybackState::Stopping
+            | PlaybackState::Stopped => AudioState::Stopped,
+        }
     }
 
     fn get_position(&self) -> f32 {

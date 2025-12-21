@@ -54,7 +54,7 @@ pub struct BuiltCustomMenu {
 }
 impl Widget<actions::Action> for BuiltCustomMenu {
     fn name(&self) -> CowStr { self.id.to_string().into() }
-    fn node_id(&self) -> NodeId { self.node_id }
+    fn node_id(&self) -> &NodeId { &self.node_id }
 
     fn get_style_str(&self) -> ArcStr { self.styles.clone() }
 
@@ -73,7 +73,7 @@ impl Widget<actions::Action> for BuiltCustomMenu {
 
     fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
         shell.tree.update_style(
-            self.node_id,
+            &self.node_id,
             |style| *style = style.clone()
                 .merge_parent(CssStyle::menu_layout())
         );
@@ -94,7 +94,7 @@ impl Widget<actions::Action> for BuiltCustomMenu {
 
         if let Some((action, passed_in)) = cast {
             if let Some(action) = action.resolve(
-                self.node_id,
+                &self.node_id,
                 shell.values,
                 passed_in.as_ref()
             ) {

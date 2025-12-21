@@ -84,11 +84,11 @@ pub struct SearchOption {
 }
 impl SearchOption {
     pub fn new(
-        display: impl ToString,
+        display: impl Into<String>,
         values: impl Into<SearchOptionType>,
     ) -> Self {
         Self {
-            display: display.to_string(),
+            display: display.into(),
             values: values.into(),
         }
     }
@@ -227,10 +227,10 @@ pub struct OnlineContentSearchData {
     pub value: String,
 }
 impl OnlineContentSearchData {
-    pub fn new(display: impl ToString, value: impl ToString) -> Self {
+    pub fn new(display: impl Into<String>, value: impl Into<String>) -> Self {
         Self {
-            display: display.to_string(),
-            value: value.to_string(),
+            display: display.into(),
+            value: value.into(),
         }
     }
 }

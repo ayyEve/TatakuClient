@@ -19,6 +19,8 @@ members = [
     "crates/gamemodes/*" ,
     "crates/integrations/*",
     "crates/resources/*",
+
+    "crates/databases/*"
 ]
 default-members = [ "crates/game/tataku-client" ]
 resolver = "2"
@@ -42,7 +44,7 @@ clippy.map_unwrap_or = "warn"
 clippy.match_wild_err_arm = "warn"
 clippy.needless_continue = "warn"
 clippy.needless_for_each = "warn"
-# clippy.needless_pass_by_value = "warn"
+clippy.needless_pass_by_value = "warn"
 clippy.option_option = "warn"
 clippy.option_as_ref_cloned = "deny"
 clippy.ref_option = "warn"
@@ -52,7 +54,7 @@ rust.unused_must_use = "deny"
 
 [workspace.dependencies]
 # tataku-common = { version = "0.20.1", registry = "tataku-registry", path = "../tataku-common/tataku-common" }
-tataku-common = { version = "0.20.1", registry = "tataku-registry" }
+tataku-common = { version = "0.21.0", registry = "tataku-registry" }
 tataku-ui.path = "crates/engine/tataku-ui"
 tataku-game.path = "crates/game/tataku-game"
 tataku-client.path = "crates/game/tataku-client"
@@ -85,7 +87,9 @@ integration-discord.path = "crates/integrations/discord"
 integration-lastfm.path = "crates/integrations/lastfm"
 integration-media-controls.path = "crates/integrations/media_controls"
 
-
+# databases
+tataku-sqlite.path = "crates/databases/tataku-sqlite"
+tataku-redb.path = "crates/databases/tataku-redb"
 
 # framework stuff
 lazy_static = "1.5.0"
@@ -98,11 +102,12 @@ async-recursion = "1.1.1"
 triple_buffer = "8.1.0"
 crossbeam = "0.8.4"
 bitflags = "2.9"
+notify = "8.2.0"
 
 libloading = "0.8.6"
 
 # image stuff
-image = { version = "0.25.5", default-features = false, features = [ "png", "jpeg", "gif" ]}
+image = { version = "0.25.5", default-features = false, features = [ "png", "jpeg", "gif" ] }
 parley = "0.5.0"
 swash = "0.2.5"
 
@@ -135,8 +140,10 @@ rustls = { version = "0.23.26", default-features = false }
 native-tls = "0.2.14"
 tokio-native-tls = "0.3.1"
 tokio-tungstenite = { version = "0.27", features = [ "rustls-tls-native-roots" ] }
-reqwest = { version = "0.12.15", features = [ "json", "blocking" ] }
+# reqwest = { version = "0.12.15", features = [ "json", "blocking" ] }
 rustls-graviola = "0.3.0"
+ureq = "3.1.4"
+
 
 # serde
 serde = { version = "1.0.219", features = [ "derive" ] }

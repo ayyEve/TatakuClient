@@ -1,22 +1,40 @@
-mod taiko_game;
-mod don_chan;
+mod game;
+mod info;
+mod notes;
+mod helpers;
+mod settings;
 mod diff_calc;
-mod taiko_info;
-mod taiko_notes;
-mod taiko_helpers;
-mod taiko_settings;
+#[cfg(feature="graphics")] mod don_chan;
 
-pub use taiko_info::GAME_INFO;
+pub use info::GAME_INFO;
+
+
+/// external for when we build as a dynamic gamemode
+mod external {
+    use tataku_engine::gameplay::info::external;
+    const EXTERN:external::GamemodeInfo = crate::GAME_INFO.as_extern();
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn version() -> u8 { 
+        1
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn game_info() -> &'static external::GamemodeInfo {
+        &EXTERN
+    }
+}
+
 
 mod prelude {
     pub use tataku_engine as engine;
     pub use tataku_engine_common::common::*;
 
-    pub use super::don_chan::*;
+    pub use super::info::*;
+    pub use super::game::*;
+    pub use super::notes::*;
+    pub use super::helpers::*;
+    pub use super::settings::*;
     pub use super::diff_calc::*;
-    pub use super::taiko_info::*;
-    pub use super::taiko_game::*;
-    pub use super::taiko_notes::*;
-    pub use super::taiko_helpers::*;
-    pub use super::taiko_settings::*;
+    #[cfg(feature="graphics")] pub use super::don_chan::*;
 }

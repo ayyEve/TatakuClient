@@ -142,15 +142,15 @@ impl InputManager {
                 // else { return };
 
                 match event.event {
-                    gilrs::EventType::ButtonPressed(b, _) => {
-                        self.events.push(InputType::ControllerPress(b.into(), event.id, name.clone()));
+                    gilrs::EventType::ButtonPressed(b, c) => {
+                        self.events.push(InputType::ControllerPress((b, c).into(), event.id, name.clone()));
 
                         // let b = b.into();
                         // controller.buttons_down.insert(b);
                         // controller.buttons.insert(b);
                     }
-                    gilrs::EventType::ButtonReleased(b, _) => {
-                        self.events.push(InputType::ControllerRelease(b.into(), event.id, name.clone()));
+                    gilrs::EventType::ButtonReleased(b, c) => {
+                        self.events.push(InputType::ControllerRelease((b, c).into(), event.id, name.clone()));
                         // let b = b.into();
                         // controller.buttons_up.insert(b);
                         // controller.buttons.remove(&b);
@@ -166,7 +166,7 @@ impl InputManager {
 
                     // is this like, for ps2 analog buttons?
                     // gilrs::EventType::ButtonChanged(_, _, _) => todo!(),
-
+                    
                     // cheating (?)
                     // gilrs::EventType::ButtonRepeated(_, _) => todo!(),
 
@@ -312,7 +312,7 @@ impl InputManager {
 pub struct InputBinding {
     pub keyboard: Option<winit::keyboard::PhysicalKey>,
     pub mouse: Option<winit::event::MouseButton>,
-    pub controller: Option<ControllerBinding>,
+    pub controller: Option<ControllerInputBinding>,
 }
 
 // TODO: rename lol

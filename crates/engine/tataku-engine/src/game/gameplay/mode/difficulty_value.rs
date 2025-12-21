@@ -46,8 +46,8 @@ impl DifficultyValue {
             display(num)
         } else {
             match self.number_type {
-                DifficultyNumberType::Float => tataku::format_float(num, 2),
-                DifficultyNumberType::WholeNumber => tataku::format_number(num as u64),
+                DifficultyNumberType::Float => tataku::format_float(&num, 2),
+                DifficultyNumberType::WholeNumber => tataku::format_number(&(num as u64)),
             }
         };
         format!("{}: {num}{}", self.name, self.unit.unwrap_or_default())
@@ -117,7 +117,7 @@ pub const DURATION_DIFF_VALUE: DifficultyValue = DifficultyValue {
     step: None,
     unit: None,
     display: Some(display_time),
-    get_diff_value: |info| info.map.duration * info.mods.speed.as_f32(),
+    get_diff_value: |info| info.map.duration * info.mods.get_speed(),
 };
 
 fn display_time(ms: f32) -> String {

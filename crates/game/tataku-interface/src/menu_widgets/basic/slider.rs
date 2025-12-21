@@ -39,18 +39,18 @@ pub struct Slider {
 }
 impl Slider {
     pub fn new(
-        min: impl Into<SliderValue>,
-        max: impl Into<SliderValue>,
-        value: impl Into<SliderValue>,
-        on_change: impl Into<InputAction<f32>>,
+        min: SliderValue,
+        max: SliderValue,
+        value: SliderValue,
+        on_change: InputAction<f32>,
     ) -> Self {
         Self {
-            min: min.into(),
-            max: max.into(),
+            min,
+            max,
             // range,
-            value: value.into(),
+            value,
             step: None,
-            on_change: on_change.into(),
+            on_change,
 
             hovered: false,
             pressed: false,
@@ -64,7 +64,7 @@ impl Slider {
 }
 impl Widget<actions::Action> for Slider {
     fn name(&self) -> CowStr { "slider_widget".into() }
-    fn node_id(&self) -> NodeId { self.node_id }
+    fn node_id(&self) -> &NodeId { &self.node_id }
 
     fn layout(
         &mut self,
@@ -78,7 +78,7 @@ impl Widget<actions::Action> for Slider {
 
         self.node_id = shell.tree.new_leaf()?;
 
-        shell.with_context(self.node_id, |ctx| {
+        shell.with_context(&self.node_id, |ctx| {
             ctx.needs_inverse_transform = true;
             ctx.set_selectable(true);
         });
@@ -88,7 +88,7 @@ impl Widget<actions::Action> for Slider {
 
     fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
         shell.tree.update_style(
-            self.node_id,
+            &self.node_id,
             |style| {
                 style.min_width = CssUnit::Pixels(f16::from_f32(100.0)).into();
                 style.min_height = CssUnit::Pixels(f16::from_f32(30.0)).into();
@@ -101,7 +101,7 @@ impl Widget<actions::Action> for Slider {
         event: &InputEvent,
         shell: &mut InputShell<actions::Action>,
     ) {
-        let Some(ctx) = shell.tree.get_context(self.node_id)
+        let Some(ctx) = shell.tree.get_context(&self.node_id)
         else { return };
         let active = ctx.selected.unwrap();
 
@@ -109,7 +109,7 @@ impl Widget<actions::Action> for Slider {
             InputType::MouseMove(pos) => {
                 let pos = ctx.inverse_global_transform * *pos;
                 let bounds = shell.tree
-                    .content_bounds(self.node_id)
+                    .content_bounds(&self.node_id)
                     .unwrap();
                 self.hovered = bounds.contains(pos);
 
@@ -139,7 +139,7 @@ impl Widget<actions::Action> for Slider {
 
                         self.on_change.run(
                             &new_value,
-                            self.node_id,
+                            &self.node_id,
                             shell.messages,
                             shell.actions,
                             shell.values,
@@ -215,7 +215,7 @@ impl Widget<actions::Action> for Slider {
     }
 
     fn draw(&self, shell: &mut DrawShell<actions::Action>) {
-        let Some(bounds) = shell.tree.absolute_bounds(self.node_id)
+        let Some(bounds) = shell.tree.absolute_bounds(&self.node_id)
         else { return };
 
         shell.list.push(
@@ -295,7 +295,7 @@ impl SliderValue {
         }
     }
 
-    fn update(&mut self, values: &dyn Reflect) -> tataku::TatakuResult<()> {
+    fn update(&mut self, values: &dyn Reflect) -> tataku::Result<()> {
         match self {
             Self::Static(_) | Self::Error => {},
             Self::Variable {

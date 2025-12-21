@@ -2,11 +2,11 @@ use crate::*;
 
 #[derive(Serialize, Deserialize)]
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
-pub struct ControllerBinding {
+pub struct ControllerInputBinding {
     pub button: Option<GamepadButton>,
     pub axis: Option<AxisConfig>
 }
-impl ControllerBinding {
+impl ControllerInputBinding {
     pub fn new(button: Option<GamepadButton>, axis: Option<AxisConfig>) -> Self {
         Self {
             button, 
@@ -23,7 +23,7 @@ impl ControllerBinding {
     }
 }
 
-impl From<Axis> for ControllerBinding {
+impl From<Axis> for ControllerInputBinding {
     fn from(value: Axis) -> Self {
         Self {
             button: None,
@@ -31,7 +31,7 @@ impl From<Axis> for ControllerBinding {
         }
     }
 }
-impl From<GamepadButton> for ControllerBinding {
+impl From<GamepadButton> for ControllerInputBinding {
     fn from(value: GamepadButton) -> Self {
         Self {
             button: Some(value),

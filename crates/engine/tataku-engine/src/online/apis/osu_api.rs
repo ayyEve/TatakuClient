@@ -1,7 +1,6 @@
 // FIXME: use the tataku-osu-api or whatever. dont duplicate code
 
 use crate::*;
-use tataku::TatakuResult;
 
 
 pub struct OsuApi;
@@ -9,18 +8,20 @@ impl OsuApi {
     pub fn get_beatmap_by_hash(
         hash: impl std::fmt::Display, 
         settings: &Settings
-    ) -> TatakuResult<Option<OsuApiBeatmap>> {
+    ) -> tataku::Result<Option<OsuApiBeatmap>> {
         // let hash = hash.as_ref();
         
         // need to query the osu api to get the set id for this hashmap
         let key = settings.integrations.osu.api_key.clone();
 
         // if no key, return error
-        if key.is_empty() { return TatakuResult::Err(tataku::Error::String("no osu api key".to_owned())) }
+        if key.is_empty() { return Err(tataku::Error::String("no osu api key".to_owned())) }
 
         // do the query
-        let api_resp = reqwest::blocking::get(format!("https://osu.ppy.sh/api/get_beatmaps?k={key}&h={hash}")).map_err(|e| tataku::Error::String(format!("error with osu api beatmap request: {e}")))?;
-        let data = api_resp.text().map_err(|e| tataku::Error::String(format!("error getting text for osu api beatmap request: {e}")))?;
+        let data = ureq::get(format!("https://osu.ppy.sh/api/get_beatmaps?k={key}&h={hash}"))
+            .call()?
+            .into_body()
+            .read_to_string()?;
         
         // we got a response, return it
         debug!("osu get_beatmaps response: {data}");

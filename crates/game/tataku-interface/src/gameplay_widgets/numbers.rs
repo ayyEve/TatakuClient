@@ -182,7 +182,7 @@ const SCORE_CONF: NumberConfig<u64> = NumberConfig {
     max_number: 1_000_000_000,
     precision: 0,
     symbol: None,
-    format: format_number,
+    format: |n| format_number(&n),
     property: |m: &mut dyn GameplayManagerTrait| m.score().score.score,
 };
 pub const SCORE:GameplayWidgetBuilder = GameplayWidgetBuilder {
@@ -204,7 +204,7 @@ const COMBO_CONF:NumberConfig<u16> = NumberConfig {
     max_number: 10_000,
     precision: 0,
     symbol: Some('x'),
-    format: format_number,
+    format: |n| format_number(&n),
     property: |m: &mut dyn GameplayManagerTrait| m.score().score.combo,
 };
 pub const COMBO:GameplayWidgetBuilder = GameplayWidgetBuilder {
@@ -226,7 +226,7 @@ const ACCURACY_CONF: NumberConfig<f32> = NumberConfig {
     max_number: 100.0,
     precision: 2,
     symbol: Some('%'),
-    format: |acc: f32| format_float(acc, 2),
+    format: |acc: f32| format_float(&acc, 2),
     property: |m: &mut dyn GameplayManagerTrait| m.score().score.accuracy * 100.0,
 };
 pub const ACCURACY: GameplayWidgetBuilder = GameplayWidgetBuilder {
@@ -249,7 +249,7 @@ const PERFORMANCE_CONF: NumberConfig<f32> = NumberConfig {
     max_number: 10_000.0,
     precision: 2,
     symbol: None,
-    format: |perf: f32| format_float(perf, 2),
+    format: |perf: f32| format_float(&perf, 2),
     property: |m: &mut dyn GameplayManagerTrait| m.score().score.performance,
 };
 pub const PERFORMANCE: GameplayWidgetBuilder = GameplayWidgetBuilder {

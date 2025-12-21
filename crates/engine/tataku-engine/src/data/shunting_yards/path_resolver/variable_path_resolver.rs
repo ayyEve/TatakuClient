@@ -26,7 +26,7 @@ impl VariablePathResolver {
         }
     }
 
-    pub fn resolve_path(&self, values: &dyn Reflect) -> tataku::TatakuResult<String> {
+    pub fn resolve_path(&self, values: &dyn Reflect) -> tataku::Result<String> {
         match &*self.ast {
             Ok(rpn) => {
                 let p = PathShuntingYard::evaluate_rpn(

@@ -1,9 +1,9 @@
-mod mania_note;
-mod mania_hold;
-mod mania_hitobject;
-#[cfg(feature="graphics")] mod mania_timing_bar;
+mod note;
+mod hold;
+mod hitobject;
+#[cfg(feature="graphics")] mod timing_bar;
 
-pub use mania_note::*;
-pub use mania_hold::*;
-pub use mania_hitobject::*;
-#[cfg(feature="graphics")] pub use mania_timing_bar::*;
+pub use note::*;
+pub use hold::*;
+pub use hitobject::*;
+#[cfg(feature="graphics")] pub use timing_bar::*;

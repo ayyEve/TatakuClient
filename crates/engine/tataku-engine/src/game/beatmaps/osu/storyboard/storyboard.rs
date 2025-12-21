@@ -208,7 +208,7 @@ pub struct StoryboardDef {
     pub entries: Vec<StoryboardEntryDef>
 }
 impl StoryboardDef {
-    pub fn read(lines: Vec<String>) -> tataku::TatakuResult<Self> {
+    pub fn read(lines: Vec<String>) -> tataku::Result<Self> {
         let mut entries = Vec::new();
         let mut current_entry = None;
 
@@ -464,7 +464,7 @@ fn test() {
     // let path = "E:/Program Files/osu!/Songs/883505 nanobii - HYPERDRIVE/nanobii - HYPERDRIVE (hypercyte).osb";
     let path = "E:/Program Files/osu!/Songs/151720 ginkiha - EOS/ginkiha - EOS (alacat).osb";
 
-    let lines = tataku::Io::read_lines_resolved(path)
+    let lines = tataku::fs::read_lines_resolved(path)
         .unwrap()
         .collect::<Vec<String>>();
 

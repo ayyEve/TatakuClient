@@ -39,7 +39,7 @@ use engine::{
     },
 };
 
-#[derive(Debug)]
+#[derive(Debug2)]
 pub struct MultiplayerManager {
     /// lobby data
     pub lobby: CurrentLobbyInfo,
@@ -56,8 +56,10 @@ pub struct MultiplayerManager {
     /// helper to get new beatmaps
     new_beatmap_helper: ValueChangeHelper<Md5Hash>,
 
-    /// async beatmap loader
-    beatmap_loader: Option<engine::io::AsyncLoader<tataku::Result<GameplayManager>>>,
+    // /// async beatmap loader
+    // beatmap_loader: Option<engine::io::AsyncLoader<tataku::Result<GameplayManager>>>,
+    #[debug(skip)]
+    beatmap_loader: Option<tataku::Result<GameplayManager>>,
 
     /// have we sent that we've loaded the beatmap?
     load_complete_sent: bool,
@@ -82,7 +84,7 @@ impl MultiplayerManager {
         // make sure our game is up to date with the lobby's current info
         match lobby.current_beatmap.clone() {
             Some(map) => {
-                actions.push(BeatmapAction::SetFromHash(
+                actions.push(BeatmapAction::Set(
                     map.hash, 
                     SetBeatmapOptions::default().restart_song(false)
                 ).into());
@@ -108,7 +110,7 @@ impl MultiplayerManager {
         }
     }
 
-
+    #[allow(clippy::needless_pass_by_value, reason = "its ref internally??")]
     pub fn update(
         &mut self,
         manager: Option<&mut Box<GameplayManager>>,
@@ -124,7 +126,7 @@ impl MultiplayerManager {
                 // if nothing was selected, make sure we revert back to the previous beatmap
                 if let Some(old_map) = *previous_map {
                     warn!("selecting previous map");
-                    actions.push(BeatmapAction::SetFromHash(
+                    actions.push(BeatmapAction::Set(
                         old_map, 
                         SetBeatmapOptions::default()
                             .restart_song(false)
@@ -165,7 +167,7 @@ impl MultiplayerManager {
 
         // if we're loading the beatmap, check if its done
         if let Some(loader) = &self.beatmap_loader
-        && !self.load_complete_sent && loader.is_complete() {
+        && !self.load_complete_sent && loader.is_ok() {
             self.load_complete_sent = true;
             self.send_packet(
                 MultiplayerPacket::Client_LobbyMapLoaded,
@@ -180,7 +182,7 @@ impl MultiplayerManager {
             self.send_packet(
                 MultiplayerPacket::Client_LobbyUserModsChanged { 
                     mods, 
-                    speed: speed.as_u16(),
+                    speed: speed.as_u8(),
                 }, 
                 actions
             );
@@ -192,7 +194,7 @@ impl MultiplayerManager {
             // if the map that was just added is the lobby's map, set it as our current map
             if let Some(beatmap) = &self.lobby.current_beatmap
             && new_hash == &beatmap.hash {
-                actions.push(BeatmapAction::SetFromHash(
+                actions.push(BeatmapAction::Set(
                     beatmap.hash, 
                     SetBeatmapOptions::default().restart_song(true)
                 ).into());
@@ -303,6 +305,7 @@ impl MultiplayerManager {
         packet: &MultiplayerPacket,
         manager: Option<&mut Box<GameplayManager>>, 
         actions: &mut actions::ActionQueue,
+        database: &dyn engine::database::DatabaseProvider,
     ) -> tataku::Result<Option<GameplayManager>> {
         match packet {
             MultiplayerPacket::Server_LobbyUserJoined { lobby_id, user_id } => {
@@ -386,14 +389,19 @@ impl MultiplayerManager {
                         let infos = self.infos.clone();
                         let map = map.clone();
                         let settings = values.settings.clone();
-                        let f = async move { GameplayManager::create(
-                            &infos,
-                            &mode, 
-                            &map, 
-                            mods,
-                            &settings,
-                        ) };
-                        self.beatmap_loader = Some(engine::io::AsyncLoader::new(f));
+                        let f = 
+                        // let f = async move { 
+                            GameplayManager::create(
+                                &infos,
+                                &mode, 
+                                &map, 
+                                mods,
+                                &settings,
+                                database,
+                            );
+                        // };
+                        self.beatmap_loader = Some(f);
+                        // self.beatmap_loader = Some(engine::io::AsyncLoader::new(f));
                     } else {
                         error!("not loading map: current != selected");
                     }
@@ -406,11 +414,11 @@ impl MultiplayerManager {
                 if manager.is_none() {
                     let mut new_manager = None;
 
-                    if let Some(loader) = &self.beatmap_loader {
-                        if let Some(manager) = loader.check() {
+                    if let Some(loader) = self.beatmap_loader.take() {
+                        if let Some(manager) = Some(loader) { // .check() {
                             match manager {
                                 Ok(mut manager) => {
-                                    manager.set_mode(actions::game::GameplayMode::Multiplayer.into());
+                                    manager.set_mode(actions::game::GameplayTypeInfo::Multiplayer.into());
                                     new_manager = Some(manager);
                                     self.set_state(LobbyUserState::InGame, actions);
                                 }
@@ -445,7 +453,7 @@ impl MultiplayerManager {
                     actions.push(BeatmapAction::SetPlaymode(beatmap.mode.clone()).into());
                     
                     // the beatmap change handler in Self::update will handle the rest
-                    actions.push(BeatmapAction::SetFromHash(
+                    actions.push(BeatmapAction::Set(
                         beatmap.hash, 
                         SetBeatmapOptions::default().restart_song(true)
                     ).into());
@@ -469,7 +477,7 @@ impl MultiplayerManager {
                     // values.global.mods.set_speed(*speed);
                 }
                 // TODO: do we want to force the speed even with free mods?()
-                actions.push(ModAction::SetSpeed(GameSpeed::from_u16(*speed).as_f32()).into());
+                actions.push(ModAction::SetSpeed(GameSpeed::from_u8(*speed)).into());
                 // values.global.mods.set_speed(*speed);
             }
 
@@ -498,7 +506,7 @@ impl MultiplayerManager {
 
                 // update the manager
                 if let Some(manager) = manager {
-                    manager.score_list = self.lobby.player_scores.iter()
+                    manager.score_list.scores = self.lobby.player_scores.iter()
                         .filter(|(u,_)| u != &&self.lobby.our_user_id) // make sure we dont re-add our own score in
                         .map(|(_,s)| IngameScore::new(
                             s.clone(), 
@@ -509,6 +517,7 @@ impl MultiplayerManager {
                     
                     manager
                         .score_list
+                        .scores
                         .sort_by(|a, b| b.score.score.cmp(&a.score.score));
                 }
             }
@@ -608,14 +617,14 @@ impl MultiplayerManager {
                 else { return };
 
                 let hash = beatmap.hash;
-                let score_url = settings.score_url.clone();
+                let score_url = settings.connection().score_url.clone();
 
 
                 // TODO: maybe move to a task?
                 // or maybe readd direct????
-                let req = reqwest::blocking::get(
+                let req = ureq::get(
                     format!("{score_url}/api/get_beatmap_url?hash={hash}")
-                );
+                ).call();
                 match req {
                     Err(e) => actions.push(Notification::new_error(
                         "Error with beatmap url request", 
@@ -626,7 +635,7 @@ impl MultiplayerManager {
                         #[allow(unused)] #[derive(Deserialize)]
                         struct Resp { error: Option<String>, url: Option<String> }
                         
-                        let Ok(body) = resp.text() else { 
+                        let Ok(body) = resp.into_body().read_to_string() else { 
                             actions.push(
                                 Notification::default()
                                 .text("shit")

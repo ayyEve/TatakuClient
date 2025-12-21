@@ -1,8 +1,5 @@
 use crate::prelude::*;
-use engine::{
-    task::*,
-    actions,
-};
+use engine::task::*;
 
 #[derive(Default2)]
 pub(crate) struct TaskManager {
@@ -21,12 +18,7 @@ impl TaskManager {
         });
     }
 
-    pub fn update(
-        &mut self, 
-        values: &mut ValueCollection, 
-        state: TaskGameState,
-        actions: &mut actions::ActionQueue,
-    ) {
+    pub fn update(&mut self, shell: &mut TaskShell) {
         let mut task_count = 0;
 
         // update our tasks
@@ -43,7 +35,7 @@ impl TaskManager {
             }
 
             // run the task
-            task.run(values, &state, actions);
+            task.run(shell);
 
             if task.get_state() == TatakuTaskState::Complete {
                 info!("Task complete {}", task.get_name());

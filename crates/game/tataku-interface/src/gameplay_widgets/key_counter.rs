@@ -132,7 +132,7 @@ impl GameplayWidget for KeyCounterElement {
             let text = if info.count == 0 {
                 Cow::Borrowed(&*info.label)
             } else {
-                Cow::Owned(tataku::format_number(i.count))
+                Cow::Owned(tataku::format_number(&i.count))
             };
 
             let (layout, size) = Self::layout(

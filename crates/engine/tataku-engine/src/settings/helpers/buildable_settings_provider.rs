@@ -136,20 +136,20 @@ pub struct BuildableSettingsAction {
 
 pub trait BuildableSettingsActionTrait: Send + Sync {
     fn build(
-        &self,
-        node: ui::tree::NodeId,
+        &self, 
+        node: &ui::tree::NodeId,
         passed_in: Option<&tataku::TatakuValue>,
         values: &dyn Reflect,
     ) -> Option<actions::Action>;
 }
 
-impl<F> BuildableSettingsActionTrait for F
+impl<F> BuildableSettingsActionTrait for F 
 where
     F: Fn() -> Option<actions::Action> + Send + Sync
 {
     fn build(
-        &self,
-        _node: tataku_ui::tree::NodeId,
+        &self, 
+        _node: &tataku_ui::tree::NodeId,
         _passed_in: Option<&tataku::TatakuValue>,
         _values: &dyn Reflect,
     ) -> Option<actions::Action> {

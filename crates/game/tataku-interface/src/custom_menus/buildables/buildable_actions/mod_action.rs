@@ -62,11 +62,13 @@ impl BuildableModAction {
             Self::SetSpeed { value } => value
                 .resolve(values, passed_in)
                 .and_then(|n| n.as_f32())
+                .map(common::GameSpeed::from_f32)
                 .map(actions::mods::ModAction::SetSpeed),
 
             Self::AddSpeed { value } => value
                 .resolve(values, passed_in)
                 .and_then(|n| n.as_f32())
+                .map(common::GameSpeed::from_f32)
                 .map(actions::mods::ModAction::AddSpeed),
         }
     }

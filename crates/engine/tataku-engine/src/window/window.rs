@@ -18,28 +18,15 @@ use winit::{
 };
 use tokio::sync::OnceCell;
 use tokio::sync::mpsc::Sender;
+use std::sync::atomic::Ordering;
 use std::sync::mpsc::sync_channel;
-use std::sync::atomic::{ AtomicU32, Ordering };
 
 use tataku::Vector2;
 use input::InputType;
 use actions::window::LoadImage;
-use engine::window::{
-    FullscreenMonitor,
-};
+use engine::window::FullscreenMonitor;
 
 static WINDOW_PROXY: OnceCell<EventLoopProxy<actions::window::WindowAction>> = OnceCell::const_new();
-
-
-lazy_static::lazy_static! {
-
-    pub static ref RENDER_COUNT: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
-    pub static ref RENDER_FRAMETIME: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
-
-    pub static ref INPUT_COUNT: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
-    pub static ref INPUT_FRAMETIME: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
-}
-
 
 pub struct GameWindow<'window> {
     window: &'window OnceCell<WinitWindow>,
@@ -65,30 +52,37 @@ pub struct GameWindow<'window> {
     touch_pos: Option<(u64, tataku::Vector2)>,
 
     init: WindowInitializers<'window>,
-    // init_graphics: Vec<Box<dyn GraphicsInitializer<'window>>>,
-    // integration_builders: Vec<TatakuIntegrationBuilder>,
+    counters: WindowCounters,
 
     #[cfg(not(feature = "graphics"))]
     _phantom_data: std::marker::PhantomData<&'window ()>,
 }
 impl<'window> GameWindow<'window> {
     pub fn new(
-        window_event_sender: Sender<window::Event>,
+        event_sender: Sender<window::Event>,
         mouse_position_sender: engine::triple_buffer::Input<tataku::Vector2>,
         window: &'window OnceCell<WinitWindow>,
         settings: &settings::Settings,
-
+        
+        #[cfg(feature="graphics")] window_counters: WindowCounters,
         init: WindowInitializers<'window>,
     ) -> Self {
         let now = std::time::Instant::now();
 
+        let controller_mappings = settings.sdl_controller_mappings.join("\n");
+        let controller_input = input::gilrs::GilrsBuilder::new()
+            .add_mappings(&controller_mappings)
+            .build()
+            .unwrap();
+
         let s = Self {
             window,
+            counters: window_counters,
 
             graphics: Box::new(tataku_null_renderer::DummyGraphicsEngine),
             settings: settings.display_settings.clone(),
 
-            window_event_sender: Arc::new(window_event_sender),
+            window_event_sender: Arc::new(event_sender),
             mouse_position_sender,
             // window_event_receiver,
             render_data: Vec::new(),
@@ -100,11 +94,9 @@ impl<'window> GameWindow<'window> {
             queued_events: Vec::new(),
 
             init,
-            // init_graphics: init.graphics_init,
-            // integration_builders: init.integrations,
             
             // input
-            controller_input: input::gilrs::Gilrs::new().unwrap(),
+            controller_input,
             finger_touches: HashSet::new(),
             touch_pos: None,
         };
@@ -134,8 +126,8 @@ impl<'window> GameWindow<'window> {
     fn update(&mut self) {
         // increment input frametime stuff
         let frametime = (self.input_timer.elapsed_and_reset() * 100.0).floor() as u32;
-        INPUT_FRAMETIME.fetch_max(frametime, Ordering::Release);
-        INPUT_COUNT.fetch_add(1, Ordering::Release);
+        self.counters.input_frametime.fetch_max(frametime, Ordering::Release);
+        self.counters.input_count.fetch_add(1, Ordering::Release);
 
         // check gamepad events
         while let Some(event) = self.controller_input.next_event() {
@@ -177,15 +169,7 @@ impl<'window> GameWindow<'window> {
                 self.graphics.free_tex(tex, deferred);
             }
 
-            LoadImage::CreateRenderTarget((w, h), on_done, callback) => {
-                let rt = self.graphics.create_render_target([w, h], tataku::Color::TRANSPARENT, callback);
-                on_done(rt.ok_or(tataku::Error::from("failed")));
-            }
-            LoadImage::UpdateRenderTarget(target, on_done, callback) => {
-                self.graphics.update_render_target(target, callback);
-                on_done(Ok(()));
-            }
-
+            _ => {}
         }
 
         trace!("Done loading tex");
@@ -196,8 +180,8 @@ impl<'window> GameWindow<'window> {
         if inner_size.width == 0 || inner_size.height == 0 { return }
 
         let frametime = (self.frametime_timer.elapsed_and_reset() * 100.0).floor() as u32;
-        RENDER_FRAMETIME.fetch_max(frametime, Ordering::Release);
-        RENDER_COUNT.fetch_add(1, Ordering::Release);
+        self.counters.render_frametime.fetch_max(frametime, Ordering::Release);
+        self.counters.render_count.fetch_add(1, Ordering::Release);
 
         let transform = tataku::Matrix::identity();
 
@@ -257,7 +241,7 @@ impl GameWindow<'_> {
         self.graphics.set_vsync(vsync);
     }
 
-    pub fn set_clipboard(content: String) -> tataku::TatakuResult<()> {
+    pub fn set_clipboard(content: String) -> tataku::Result<()> {
         use clipboard::{ ClipboardProvider, ClipboardContext };
         let ctx:Result<ClipboardContext, Box<dyn std::error::Error>> = ClipboardProvider::new();
 
@@ -350,11 +334,7 @@ impl GameWindow<'_> {
         let _ = proxy.send_event(event);
     }
 
-    pub fn refresh_monitors() {
-        Self::send_action(actions::window::WindowAction::RefreshMonitors);
-    }
-
-    pub fn load_texture_data(data: RgbaImage) -> tataku::TatakuResult<tataku::TextureReference> {
+    pub fn load_texture_data(data: RgbaImage) -> tataku::Result<tataku::TextureReference> {
         trace!("loading tex data");
 
         let (s, r) = sync_channel(1);
@@ -365,64 +345,6 @@ impl GameWindow<'_> {
         // if this unwrap fails, the receiver was dropped, meaning it was never sent, which means the thread is dead, which means give up
         r.recv().unwrap()
     }
-
-    // // this is called from functions without real access to async, so we have to be dumb here
-    // pub fn load_font_data(
-    //     font: ActualFont, 
-    //     size: f32, 
-    //     wait_for_complete: bool
-    // ) -> TatakuResult<()> {
-    //     // NOTE: this will hang the main thread if this is run there
-    //     if wait_for_complete {
-    //         let (s, r) = sync_channel(1);
-    //         Self::send_event(WindowAction::LoadImage(Box::new(LoadImage::Font(
-    //             font, 
-    //             size, 
-    //             Some(Box::new(move |r| s.send(r).nope()))
-    //         ))));
-
-    //         return r.recv().unwrap();
-    //     } else {
-    //         Self::send_event(WindowAction::LoadImage(
-    //             Box::new(LoadImage::Font(font, size, None))
-    //         ));
-    //     }
-    //     Ok(())
-    // }
-
-
-    pub fn create_render_target(
-        size: (u32, u32), 
-        callback: impl FnOnce(&mut dyn graphics::DrawEngine, tataku::Matrix) + Send + Sync + 'static
-    ) -> tataku::TatakuResult<graphics::RenderTarget> {
-        trace!("create render target");
-
-        let (s, r) = sync_channel(1);
-        Self::send_action(actions::window::WindowAction::LoadImage(Box::new(LoadImage::CreateRenderTarget(
-            size, 
-            Box::new(move |t| s.send(t).nope()), 
-            Box::new(callback)
-        ))));
-
-        r.recv().unwrap()
-    }
-
-    pub fn update_render_target(
-        rt: graphics::RenderTarget, 
-        callback: impl FnOnce(&mut dyn graphics::DrawEngine, tataku::Matrix) + Send + Sync + 'static
-    ) {
-        trace!("update render target");
-
-        let (s, r) = sync_channel(1);
-        Self::send_action(actions::window::WindowAction::LoadImage(Box::new(LoadImage::UpdateRenderTarget(
-            rt, 
-            Box::new(move |t| s.send(t).nope()), 
-            Box::new(callback)
-        ))));
-
-        let _ = r.recv().unwrap();
-    }
-
 
     pub fn free_texture(tex: tataku::TextureReference, deferred: bool) {
         Self::send_action(actions::window::WindowAction::LoadImage(Box::new(
@@ -730,11 +652,35 @@ pub trait GraphicsInitializer<'window> {
         &self,
         window: &'window winit::window::Window,
         settings: settings::display::DisplaySettings
-    ) -> tataku::TatakuResult<Box<dyn graphics::RenderingEngine + 'window>>;
+    ) -> tataku::Result<Box<dyn graphics::RenderingEngine + 'window>>;
 }
 
 pub struct WindowInitializers<'a> {
     pub integrations: Vec<io::TatakuIntegrationBuilder>,
     pub graphics_init: Vec<Box<dyn GraphicsInitializer<'a>>>,
     pub window_creation_barrier: Arc<std::sync::Barrier>,
+}
+
+
+#[cfg(feature="graphics")]
+pub struct WindowData {
+    pub event_receiver: tokio::sync::mpsc::Receiver<engine::window::Event>,
+    pub mouse_position_receiver: triple_buffer::Output<Vector2>,
+    pub proxy: winit::event_loop::EventLoopProxy<actions::window::WindowAction>,
+}
+#[cfg(feature="graphics")]
+impl WindowData {
+    pub fn send_event(&mut self, action: actions::window::WindowAction) {
+        self.proxy.send_event(action).unwrap();
+    }
+}
+
+#[cfg(feature="graphics")]
+#[derive(Clone, Default)]
+pub struct WindowCounters {
+    pub render_count: Arc<std::sync::atomic::AtomicU32>,
+    pub render_frametime: Arc<std::sync::atomic::AtomicU32>,
+
+    pub input_count: Arc<std::sync::atomic::AtomicU32>,
+    pub input_frametime: Arc<std::sync::atomic::AtomicU32>,
 }

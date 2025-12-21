@@ -2,8 +2,6 @@ use std::sync::Arc;
 use std::sync::LazyLock;
 use tataku_common::reflection::*;
 
-
-
 static EMPTY: LazyLock<ArcStr> = LazyLock::new(|| ArcStr(String::new().into()));
 
 #[derive(Clone, Eq)]
@@ -147,28 +145,5 @@ impl Stringable for ArcStr {
 impl<'a> From<&'a ArcStr> for ReflectPath<'a> {
     fn from(value: &'a ArcStr) -> Self {
         ReflectPath::new(&value.0)
-    }
-}
-
-
-#[cfg(feature = "sql")] 
-mod sql {
-    use super::*;
-    use rusqlite::types::Value;
-    use rusqlite::types::FromSql;
-    use rusqlite::types::ValueRef;
-    use rusqlite::types::ToSqlOutput;
-    use rusqlite::types::FromSqlResult;
-
-    impl rusqlite::ToSql for ArcStr {
-        fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
-            Ok(ToSqlOutput::Owned(Value::Text(self.0.to_string())))
-        }
-    }
-
-    impl FromSql for ArcStr {
-        fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
-            String::column_result(value).map(ArcStr::from)
-        }
     }
 }

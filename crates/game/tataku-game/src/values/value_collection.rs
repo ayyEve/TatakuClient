@@ -6,6 +6,15 @@ pub struct ValueCollection {
     pub values: TatakuValues,
     pub custom: DynMap,
 }
+impl ValueCollection {
+    pub(crate) fn from_reflect(values: &dyn Reflect) -> &Self {
+        values.downcast_ref().unwrap()
+    }
+    pub(crate) fn from_reflect_mut(values: &mut dyn Reflect) -> &mut Self {
+        values.downcast_mut().unwrap()
+    }
+}
+
 impl Deref for ValueCollection {
     type Target = TatakuValues;
 

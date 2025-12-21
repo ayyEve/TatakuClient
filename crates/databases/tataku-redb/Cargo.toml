@@ -1,0 +1,16 @@
+[package]
+name = "tataku-redb"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+tataku-engine.workspace = true
+
+serde.workspace = true
+redb = "3.1.0"
+serde-binary = "0.5.0"

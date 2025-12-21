@@ -33,7 +33,7 @@ impl SkinnedNumber {
 
         source: &TextureSource,
         usage: SkinUsage,
-    ) -> TatakuResult<Self> {
+    ) -> tataku::Result<Self> {
         let texture_name = texture_name.as_ref();
         let rotation = 0.0;
         let scale = Vector2::ONE;
@@ -148,7 +148,7 @@ impl SkinnedNumber {
         precision: usize, 
         symbol: Option<&char>
     ) -> String {
-        let mut s = format_float(num, precision);
+        let mut s = format_float(&num, precision);
 
         if precision == 0 {
             s = s.split(".").next().unwrap().to_owned();

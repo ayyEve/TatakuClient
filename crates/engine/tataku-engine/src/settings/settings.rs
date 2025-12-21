@@ -20,6 +20,8 @@ pub struct Settings {
     #[serde(skip)] #[debug(skip)] #[reflect(skip)]
     #[divider(text="Audio Settings")] _audio: (),
     
+
+    #[cfg(feature="ui")]
     #[serde(skip)] #[debug(skip)] 
     #[reflect(rename="buildable")]
     pub buildable_provider: Arc<BuildableSettingsProvider>,
@@ -37,15 +39,9 @@ pub struct Settings {
     // connection
     #[serde(skip)] #[debug(skip)] #[reflect(skip)]
     #[divider(text="Connection Settings")] _connections: (),
-    
-    #[setting(text="Tataku Username")]
-    pub username: String,
-    #[setting(text="Tataku Password", password=true)]
-    pub password: String,
-    #[setting(text="Tataku Server Url")]
-    pub server_url: String,
-    #[setting(text="Tataku Score Url")]
-    pub score_url: String,
+
+    #[subsetting()]
+    pub connection_settings: connection::ConnectionSettings,
     
     // game settings
     #[subsetting()]
@@ -117,6 +113,8 @@ pub struct Settings {
     // other misc
     // pub last_git_hash: String,
     pub external_games_folders: Vec<String>,
+
+    pub sdl_controller_mappings: Vec<String>,
     
     #[subsetting(text="Log Settings")]
     pub logging_settings: logging::LoggingSettings,
@@ -165,6 +163,11 @@ impl Settings {
         }
     }
 
+    pub fn connection(&self) -> &connection::ConnectionSettingsProfile {
+        &self.connection_settings.current
+    }
+
+    #[cfg(feature="ui")]
     pub fn init(
         &mut self, 
         values: &mut dyn Reflect,
@@ -207,19 +210,21 @@ impl Settings {
         if !osu_pw.is_empty() { 
             *osu_pw = tataku::Cryptography::check_md5(osu_pw.clone());
         }
-        if !self.password.is_empty() { 
-            self.password = tataku::Cryptography::check_sha512(self.password.clone());
+
+        let tataku_pw = &mut self.connection_settings.current.tataku_password;
+        if !tataku_pw.is_empty() { 
+            *tataku_pw = tataku::Cryptography::check_sha512(tataku_pw.clone());
         }
     }
 
     // make a backup of the setting before they're overwritten (when the file fails to load)
     fn backup_settings(settings_path: &Path) -> Option<String> {
-        if !tataku::Io::exists(settings_path) { return None }
+        if !tataku::fs::exists(settings_path) { return None }
         let settings_path = settings_path.to_string_lossy().to_string();
 
         let mut counter = 0;
         let mut file = format!("{settings_path}.bak_{counter}");
-        while tataku::Io::exists(&file) {
+        while tataku::fs::exists(&file) {
             counter += 1;
             file = format!("{settings_path}.bak_{counter}");
         }
@@ -248,9 +253,9 @@ impl Settings {
             global_offset: 0.0,
 
             // login
-            username: "Guest".to_owned(),
-            server_url: "wss://server.tataku.ca".to_owned(),
-            score_url: "https://scores.tataku.ca".to_owned(),
+            // username: "Guest".to_owned(),
+            // server_url: "wss://server.tataku.ca".to_owned(),
+            // score_url: "https://scores.tataku.ca".to_owned(),
 
             // game settings
             last_played_mode: "osu".to_owned(),

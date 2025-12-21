@@ -318,7 +318,6 @@ fn merge_test() {
         ..Default::default()
     };
 
-
     let merged = child.merge(parent);
     assert_eq!(merged.width, CssValue::Inherit);
 }

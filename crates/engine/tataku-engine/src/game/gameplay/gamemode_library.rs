@@ -1,26 +1,29 @@
-use crate::prelude::*;
+use crate::*;
 use std::ffi::OsString;
 
 pub struct GamemodeLibrary {
     pub _lib: libloading::Library,
-    pub info: GameModeInfo,
+    pub info: engine::gameplay::GamemodeInfo,
 }
 impl GamemodeLibrary {
-    pub fn load_gamemode(path: impl AsRef<Path>) -> TatakuResult<Self> {
+    pub fn load_gamemode(path: impl AsRef<Path>) -> tataku::Result<Self> {
         let lib = unsafe {
             libloading::Library::new(lib_path(path.as_ref()))
-        }.map_err(|e| TatakuError::String(e.to_string()))?;
+        }.map_err(|e| tataku::Error::String(e.to_string()))?;
 
-        let info = **unsafe {
-            lib.get::<&'static GameModeInfo>(b"GAME_INFO")
-        }.map_err(|e| TatakuError::String(e.to_string()))?;
+        // let info = **unsafe {
+        //     lib.get::<&'static engine::gameplay::GamemodeInfo>(b"GAME_INFO")
+        // }.map_err(|e| tataku::Error::String(e.to_string()))?;
+        let info = *unsafe {
+            lib.get::<fn() -> engine::gameplay::GamemodeInfo>(b"game_info")
+        }.map_err(|e| tataku::Error::String(e.to_string()))?;
+        let info = info();
         
         Ok(Self {
             _lib: lib,
             info,
         })
     }
-
 }
 
 
@@ -39,7 +42,7 @@ fn lib_path(path: &Path) -> OsString {
 
 #[test]
 fn test() {
-    let path = "/home/ayyeve/Desktop/projects/tataku/tataku-client/target/release/gamemode_taiko";
-    let a = GamemodeLibrary::load_gamemode(Path::new(path).to_path_buf()).unwrap();
-    println!("{:?}", a.info)
+    let path = "../../../game/gamemodes/taiko";
+    let a = GamemodeLibrary::load_gamemode(path).unwrap();
+    println!("{:?}", a.info);
 }

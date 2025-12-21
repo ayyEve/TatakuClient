@@ -1,15 +1,11 @@
 use crate::prelude::*;
+use engine::game::task::*;
 use common::{
     ScoreSubmit,
     ScoreMapInfo,
     SubmitResponse,
     NotSubmittedReason,
     reflect::*,
-};
-
-use engine::{
-    actions,
-    game::task::*,
 };
 
 fn score_submit_path() -> String {
@@ -34,12 +30,14 @@ impl UploadScoreTask {
         beatmap: &engine::BeatmapMeta,
         settings: &engine::Settings,
     ) -> Self {
+        let connection = settings.connection().clone();
+
         Self {
             state: TatakuTaskState::NotStarted,
             data: ScoreUploadData { 
                 score_submit: ScoreSubmit {
-                    username: settings.username.clone(),
-                    password: settings.password.clone(),
+                    username: connection.tataku_username.clone(),
+                    password: connection.tataku_password.clone(),
                     game: "tataku".to_owned(),
                     map_info: ScoreMapInfo {
                         game: beatmap.beatmap_type.into(),
@@ -48,7 +46,7 @@ impl UploadScoreTask {
                     },
                     score,
                 }, 
-                score_url: settings.score_url.clone(),
+                score_url: connection.score_url.clone(),
                 path: score_submit_path(),
                 // delay: 0
             },
@@ -72,17 +70,14 @@ impl UploadScoreTask {
         if let Ok(replay_data) = serde_json::to_string(&data.score_submit) {
             let url = format!("{}/score_submit", data.score_url);
             
-            let c = reqwest::Client::new();
-            let res = c
-                .post(url)
+            let res = ureq::post(url)
                 .header("Content-Type", "application/json")
-                .body(replay_data)
-                .send()
-                .await;
+                .send(replay_data)
+                ;
 
             match res {
                 Ok(resp) => {
-                    let txt = resp.text().await.unwrap();
+                    let txt = resp.into_body().read_to_string().unwrap();
                     info!("got score submit response: {txt}");
 
                     match serde_json::from_str::<SubmitResponse>(&txt) {
@@ -108,19 +103,14 @@ impl TatakuTask for UploadScoreTask {
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Once }
     fn get_state(&self) -> TatakuTaskState { self.state }
 
-    fn run(
-        &mut self, 
-        values: &mut dyn Reflect, 
-        _: &TaskGameState, 
-        actions: &mut actions::ActionQueue
-    ) {
+    fn run(&mut self, shell: &mut TaskShell) {
         let Some(task) = self.task.as_ref() else {
             self.state = TatakuTaskState::Running;
 
             let data = self.data.clone();
             self.task = Some(engine::io::AsyncLoader::new(Self::upload(data)));
 
-            values.reflect_insert(self.get_path(), ScoreSubmitResponse::default()).unwrap();
+            shell.values.reflect_insert(self.get_path(), ScoreSubmitResponse::default()).unwrap();
 
             return;
         };
@@ -133,19 +123,21 @@ impl TatakuTask for UploadScoreTask {
                 placing,
                 performance_rating,
             } => {
-                let a = values.reflect_get_mut::<ScoreSubmitResponse>(self.get_path()).unwrap();
+                let a = shell.values.reflect_get_mut::<ScoreSubmitResponse>(self.get_path()).unwrap();
                 a.completed = true;
                 a.score_id = score_id;
                 a.placing = placing;
                 a.performance_rating = performance_rating;
             }
             SubmitResponse::NotSubmitted(_e, msg) => {
-                actions.push(engine::Notification::new_error(
+                shell.actions.push(engine::Notification::new_error(
                     "Error submitting score", 
                     msg
                 ).into());
                 
-                let a = values.reflect_get_mut::<ScoreSubmitResponse>(self.get_path()).unwrap();
+                let a = shell.values
+                    .reflect_get_mut::<ScoreSubmitResponse>(self.get_path())
+                    .unwrap();
                 a.completed = true;
 
                 // TODO: try again?

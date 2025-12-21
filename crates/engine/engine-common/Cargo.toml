@@ -11,7 +11,6 @@ workspace = true
 [features]
 default = [ "ui" ]
 ui = [ "taffy" ]
-sql = [ "rusqlite" ]
 debug_custom_menus = []
 
 [dependencies]
@@ -20,7 +19,6 @@ tataku-client-proc-macros.workspace = true
 
 taffy = { workspace = true, optional = true }
 parking_lot.workspace = true
-lazy_static.workspace = true
 bitflags.workspace = true
 tracing.workspace = true
 strfmt.workspace = true
@@ -29,14 +27,12 @@ half.workspace = true
 cgmath.workspace = true
 serde.workspace = true
 guillotiere.workspace = true
-reqwest.workspace = true
+ureq.workspace = true
 image.workspace = true
 rand.workspace = true
 num-format.workspace = true
 paste.workspace = true
 serde_json.workspace = true
-
-rusqlite = { workspace = true, optional = true }
 
 md5.workspace = true
 sha2.workspace = true

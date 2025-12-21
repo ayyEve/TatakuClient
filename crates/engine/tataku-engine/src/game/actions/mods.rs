@@ -1,7 +1,15 @@
+use tataku_common::GameSpeed;
+
 use crate::*;
 
 #[derive(Clone, Debug)]
 pub enum ModAction {
+    /// Push the current mods to a queue
+    PushMods,
+
+    /// Pop the latest mod collection
+    PopMods,
+
     /// Add a mod
     AddMod(String),
 
@@ -12,10 +20,10 @@ pub enum ModAction {
     ToggleMod(String),
 
     /// Set the speed
-    SetSpeed(f32),
+    SetSpeed(GameSpeed),
 
     /// Add/remove to the speed
-    AddSpeed(f32),
+    AddSpeed(GameSpeed),
 
     /// Set all mods that are active
     SetMods(HashSet<String>)

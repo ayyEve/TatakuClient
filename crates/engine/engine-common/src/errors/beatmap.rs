@@ -1,3 +1,5 @@
+pub type Error = BeatmapError;
+
 #[derive(Clone, Debug)]
 pub enum BeatmapError {
     /// The beatmap file failed to parse

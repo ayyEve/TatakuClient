@@ -8,6 +8,7 @@ fn nan64() -> f64 { f64::NAN }
 fn nan32() -> f32 { f32::NAN }
 fn default_diff_name() -> ArcStr { "default diff name".to_owned().into() }
 
+pub type Beatmap = QuaverBeatmap;
 
 #[derive(Deserialize)]
 #[serde(rename_all="PascalCase")]
@@ -49,7 +50,9 @@ pub struct QuaverBeatmap {
     #[serde(default)] path: ArcStr,
 }
 impl QuaverBeatmap {
-    pub fn load(path: &str) -> tataku::TatakuResult<Self> {
+    pub fn load(path: impl AsRef<Path>) -> tataku::Result<Self> {
+        let path = path.as_ref();
+
         let lines = std::fs::read_to_string(path)?;
         let mut s:QuaverBeatmap = serde_yaml::from_str(&lines).map_err(|e| {
             error!("error parsing quaver beatmap: {:?}", e);
@@ -85,10 +88,10 @@ impl QuaverBeatmap {
         }
 
 
-        s.hash = tataku::Io::get_file_hash(path)?;
-        s.path = path.to_owned().into();
+        s.hash = tataku::fs::get_file_hash(path)?;
+        s.path = path.to_str().unwrap().into();
 
-        let parent_dir = Path::new(&path).parent().unwrap().to_str().unwrap();
+        let parent_dir = path.parent().unwrap().to_str().unwrap();
         s.audio_file = format!("{}/{}", parent_dir, s.audio_file).into();
         s.background_file = format!("{}/{}", parent_dir, s.background_file).into();
         // debug!("bg: {}", s.background_file);

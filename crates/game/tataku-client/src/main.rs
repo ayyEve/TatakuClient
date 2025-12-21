@@ -41,11 +41,13 @@ fn start_game() {
     let (
         mouse_position_sender, 
         mouse_position_receiver
-    ) = engine::triple_buffer::TripleBuffer::new(&Vector2::ZERO).split();
+    ) = engine::triple_buffer::triple_buffer(&Vector2::ZERO);
+    let window_counters = engine::window::WindowCounters::default();
 
 
     let window_load_barrier = Arc::new(std::sync::Barrier::new(2));
     let window_side_barrier = window_load_barrier.clone();
+    let window_counters2 = window_counters.clone();
 
     let e = winit::event_loop::EventLoop::with_user_event()
         .build()
@@ -60,9 +62,12 @@ fn start_game() {
         trace!("window ready");
 
         game::run_game(
-            game_event_receiver,
-            mouse_position_receiver,
-            proxy,
+            engine::window::WindowData {
+                event_receiver: game_event_receiver,
+                mouse_position_receiver,
+                proxy,
+            },
+            window_counters2,
         );
     });
 
@@ -76,6 +81,7 @@ fn start_game() {
         mouse_position_sender,
         &WINDOW,
         &settings,
+        window_counters,
         engine::window::WindowInitializers {
             window_creation_barrier: window_side_barrier,
             integrations: vec![
@@ -86,8 +92,7 @@ fn start_game() {
             graphics_init: vec![
                 Box::new(tataku_wgpu::WgpuInit)
             ],
-
-        }
+        },
     );
 
 
@@ -108,7 +113,7 @@ fn startup() {
     let game_dir = std::env::var("GAME_DIR")
         .unwrap_or(GAME_DIR.to_owned());
     
-    if !tataku::Io::exists(&game_dir)
+    if !tataku::fs::exists(&game_dir)
     && let Err(e) = std::fs::create_dir_all(&game_dir) {
         println!("Error creating game dir: {e}");
     }
@@ -126,19 +131,19 @@ fn setup() {
 
     // check for missing folders
     debug!("checking folders");
-    tataku::Io::check_folder(engine::DOWNLOADS_DIR).unwrap();
-    tataku::Io::check_folder(engine::REPLAYS_DIR).unwrap();
-    tataku::Io::check_folder(engine::SONGS_DIR).unwrap();
-    tataku::Io::check_folder("skins").unwrap();
-    tataku::Io::check_folder("resources").unwrap();
-    tataku::Io::check_folder("resources/audio").unwrap();
-    tataku::Io::check_folder("resources/fonts").unwrap();
+    tataku::fs::check_folder(engine::DOWNLOADS_DIR).unwrap();
+    tataku::fs::check_folder(engine::REPLAYS_DIR).unwrap();
+    tataku::fs::check_folder(engine::SONGS_DIR).unwrap();
+    tataku::fs::check_folder("skins").unwrap();
+    tataku::fs::check_folder("resources").unwrap();
+    tataku::fs::check_folder("resources/audio").unwrap();
+    tataku::fs::check_folder("resources/fonts").unwrap();
 
     debug!("Folder check done, downloading files");
 
     // check for missing files
     for file in REQUIRED_FILES.iter() {
-        tataku::Io::check_file_sync(file, &download_url(file));
+        tataku::fs::check_file_sync(file, &download_url(file));
     }
 
     // hitsounds
@@ -146,7 +151,7 @@ fn setup() {
         for sample_set in ["normal", "soft", "drum"] {
             for hitsound in ["hitnormal", "hitwhistle", "hitclap", "hitfinish", "slidertick"] {
                 let file = format!("resources/audio/{mode}{sample_set}-{hitsound}.wav");
-                tataku::Io::check_file_sync(&file, &download_url(&file));
+                tataku::fs::check_file_sync(&file, &download_url(&file));
             }
         }
     }

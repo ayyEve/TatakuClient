@@ -23,14 +23,14 @@ pub struct WidgetBase<T = Box<dyn Widget<actions::Action>>> {
 impl<T> WidgetBase<T> {
     pub fn new(
         style: ArcStr,
-        element_name: impl Into<ArcStr>,
+        element_name: ArcStr,
         id: Option<ArcStr>,
         class: ClassList,
         inner: T,
     ) -> Self {
         Self {
             style_str: style,
-            element_name: element_name.into(),
+            element_name,
             id,
             class,
             inner,
@@ -60,7 +60,7 @@ where
     T: Widget<actions::Action>,
 {
     fn name(&self) -> CowStr { self.inner.name() }
-    fn node_id(&self) -> NodeId { self.inner.node_id() }
+    fn node_id(&self) -> &NodeId { self.inner.node_id() }
 
     fn children(&self) -> WidgetChildren<'_, actions::Action> {
         WidgetChildren::Single(&self.inner)
@@ -85,7 +85,7 @@ where
 
     fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId> {
         let id = self.inner.layout(shell)?;
-        shell.with_context(id, |ctx| {
+        shell.with_context(&id, |ctx| {
             ctx.element_data = ElementData {
                 state: ElementState::None,
                 element_name: self.element_name.clone(),

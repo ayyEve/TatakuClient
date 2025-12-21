@@ -28,9 +28,9 @@ impl Hitsound {
         }
     }
     
-    pub fn new_simple(filename: impl ToString) -> Self {
+    pub fn new_simple(filename: impl Into<String>) -> Self {
         Self::new(
-            filename.to_string()
+            filename.into()
                 .trim_end_matches(".wav")
                 .trim_end_matches(".mp3"),
             None,

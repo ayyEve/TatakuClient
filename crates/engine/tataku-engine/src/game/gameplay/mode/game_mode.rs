@@ -1,16 +1,18 @@
 use crate::*;
+
+#[cfg(feature="gameplay")] 
 use common::replays::ReplayAction;
+
+#[cfg(feature="gameplay")] 
+use engine::gameplay::gameplay_manager::GameplayDrawShell;
 
 use engine::gameplay::{
     helpers::*,
-    gameplay_manager::{
-        GameplayUpdateShell,
-        GameplayDrawShell,
-    },
+    gameplay_manager::GameplayUpdateShell,
 };
 
 
-pub trait GameMode: Send + Sync {
+pub trait Gamemode: Send + Sync {
     fn new(
         beatmap: &beatmaps::Beatmap, 
         diff_calc_only: bool,
@@ -61,7 +63,7 @@ pub trait GameMode: Send + Sync {
         skin_manager: &mut dyn graphics::SkinProvider
     ) -> graphics::TextureSource;
 
-    fn properties(&self, timing_points: &TimingPointHelper) -> gameplay::mode::GameModeProperties;
+    fn properties(&self, timing_points: &TimingPointHelper) -> gameplay::mode::GamemodeProperties;
     fn time_jump(&mut self, _new_time: f32, _state: &mut GameplayUpdateShell) {}
 
     #[cfg(feature="graphics")] fn get_playfield(&self) -> PlayfieldNonsense;
@@ -73,4 +75,8 @@ pub trait GameMode: Send + Sync {
 
     #[cfg(feature="gameplay")] 
     fn handle_input(&mut self, input: input::InputEvent) -> Option<ReplayAction>;
+
+
+    fn all_notes(&self) -> Vec<&dyn gameplay::HitObject>;
 }
+

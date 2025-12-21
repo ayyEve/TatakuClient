@@ -108,7 +108,7 @@ impl<'rpn, 'values: 'rpn> BuildableShuntingYard {
             stack
         )?.pop().unwrap();
 
-        stack.push(Ok(function.run(val)?));
+        stack.push(Ok(Cow::Owned(function.run(val.as_ref())?)));
         Ok(())
     }
 
@@ -323,8 +323,8 @@ impl<'rpn, 'values: 'rpn> GenericShuntingYard<'rpn, 'values> for BuildableShunti
                 let str = match &*n {
                     TatakuValue::None => "None".to_owned(),
                     TatakuValue::F32(n) => tataku::format_float(n, precision),
-                    TatakuValue::U32(n) => tataku::format_number(*n),
-                    TatakuValue::U64(n) => tataku::format_number(*n),
+                    TatakuValue::U32(n) => tataku::format_number(n),
+                    TatakuValue::U64(n) => tataku::format_number(n),
                     TatakuValue::Bool(b) => format!("{b}"),
                     TatakuValue::String(s) => s.clone(),
                     TatakuValue::Reflect(reflect) 
@@ -400,14 +400,14 @@ enum MathFunction {
     Floor,
 }
 impl MathFunction {
-    fn run(
+    fn run<'a>(
         self, 
-        val: Cow<'_, TatakuValue>
-    ) -> Result<Cow<'_, TatakuValue>, BuildableShuntingYardError> {
+        val: &TatakuValue
+    ) -> Result<TatakuValue, BuildableShuntingYardError> {
         let num = val.as_number()
             .ok_or_else(|| BuildableShuntingYardError::NumberIsntANumber(val.as_string()))?;
 
-        Ok(Cow::Owned(match self {
+        Ok(match self {
             Self::Abs => num.abs(),
             Self::Sin => num.sin(),
             Self::Cos => num.cos(),
@@ -416,7 +416,7 @@ impl MathFunction {
             Self::Round => num.round(),
             Self::Ceil => num.ceil(),
             Self::Floor => num.floor(),
-        }.into()))
+        }.into())
     }
     fn str(self) -> &'static str {
         match self {

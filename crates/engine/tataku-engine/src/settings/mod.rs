@@ -3,19 +3,13 @@ pub mod display;
 pub mod logging;
 pub mod helpers;
 pub mod settings;
+pub mod connection;
 pub mod integration;
 pub mod common_gameplay;
 pub mod background_game;
 
 pub use self::helpers::*;
 pub use settings::Settings;
-// pub use settings::*;
-// pub use cursor::*;
-// pub use display::*;
-// pub use logging::*;
-// pub use integration::*;
-// pub use common_gameplay::*;
-// pub use background_game::*;
 
 
 use crate::*;

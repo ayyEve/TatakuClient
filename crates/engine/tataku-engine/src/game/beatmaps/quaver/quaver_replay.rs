@@ -14,7 +14,7 @@ impl QuaverReplayDownloader {
 
 // TODO: this
 impl beatmaps::ReplayDownloader for QuaverReplayDownloader {
-    fn get_replay(&self, _settings: &Settings) -> tataku::TatakuResult<Score> {
+    fn get_replay(&self, _settings: &Settings) -> tataku::Result<Score> {
         Err(tataku::Error::String("Not Implemented".to_owned()))
         // https://quavergame.com/download/replay/48727123
 

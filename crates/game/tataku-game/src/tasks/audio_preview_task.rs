@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use common::reflect::Reflect;
 use engine::{
     actions,
     game::task::*,
@@ -21,13 +20,11 @@ impl AudioPreviewTask {
     }
 
     async fn run_get(url: String) -> tataku::Result<Vec<u8>> {
-        let bytes = reqwest::get(url)
-            .await?
-            .error_for_status()?
-            .bytes()
-            .await?
-            ;
-        Ok(bytes.to_vec())
+        let bytes = ureq::get(&url)
+            .call()?
+            .into_body()
+            .read_to_vec()?;
+        Ok(bytes)
     }
 }
 
@@ -36,12 +33,7 @@ impl TatakuTask for AudioPreviewTask {
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Once }
     fn get_state(&self) -> TatakuTaskState { self.state }
 
-    fn run(
-        &mut self, 
-        _values: &mut dyn Reflect, 
-        _state: &TaskGameState, 
-        actions: &mut actions::ActionQueue
-    ) {
+    fn run(&mut self, shell: &mut TaskShell) {
         // if we havent started yet, setup the data loader
         if self.data_loader.is_none() {
             let url = self.preview_url.clone();
@@ -66,7 +58,7 @@ impl TatakuTask for AudioPreviewTask {
 
         match result {
             Ok(data) => {
-                actions.push(actions::song::SongAction::Set(actions::song::SongSetAction::FromData(
+                shell.actions.push(actions::song::SongAction::Set(actions::song::SongSetAction::FromData(
                     data, 
                     self.preview_url.clone().into(),
                     actions::song::SongPlayData {
@@ -78,7 +70,7 @@ impl TatakuTask for AudioPreviewTask {
             }
 
             Err(e) => {
-                actions.push(Notification::new_error(
+                shell.actions.push(Notification::new_error(
                     "Error loading audio preview", 
                     e
                 ).into());

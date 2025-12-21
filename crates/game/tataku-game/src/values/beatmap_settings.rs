@@ -1,5 +1,7 @@
 use crate::prelude::*;
 use common::reflect::*;
+
+#[cfg(feature="graphics")]
 use engine::settings::{
     SettingsBuilder,
     MakeSettingsMenu,
@@ -14,17 +16,17 @@ pub struct BeatmapSettings {
     #[reflect(rename="buildable")]
     provider: BuildableSettingsProvider,
 
-    beatmap: BeatmapPreferences,
-    playmode: BeatmapPlaymodePreferences,
+    beatmap: engine::data::BeatmapPreferences,
+    playmode: engine::data::BeatmapPlaymodePreferences,
 }
 impl BeatmapSettings {
     pub fn new(
-        beatmap: BeatmapPreferences, 
-        playmode: BeatmapPlaymodePreferences,
+        beatmap: engine::data::BeatmapPreferences, 
+        playmode: engine::data::BeatmapPlaymodePreferences,
         values: &mut dyn Reflect,
-        prefix: impl ToString,
+        prefix: impl Into<String>,
     ) -> Self {
-        let prefix = prefix.to_string();
+        let prefix = prefix.into();
 
         #[cfg(feature="graphics")] 
         let provider = {

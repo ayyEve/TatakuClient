@@ -45,6 +45,9 @@ pub enum Action {
     /// Perform a task action
     Task(actions::task::TaskAction),
 
+    /// Perform a database operation
+    Database(actions::database::Action),
+
     /// Perform a cursor action
     #[cfg(feature="graphics")]
     CursorAction(actions::cursor::CursorAction),

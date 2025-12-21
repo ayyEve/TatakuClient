@@ -10,9 +10,7 @@ use tataku::{
 };
 use engine::{
     actions,
-    gameplay::{
-        widgets::*,
-    }
+    gameplay::widgets::*
 };
 use ui::{
     tree::*,
@@ -73,7 +71,7 @@ impl GameplayWidgetEditor {
         );
 
         actions.push(actions::ui::UiAction::new(
-            self.node_id(),
+            *self.node_id(),
             actions::dialog::DialogAction::Close,
         ).into());
     }
@@ -85,7 +83,7 @@ impl GameplayWidgetEditor {
     ) {
         if self.sender.send(action).is_err() {
             actions.push(actions::ui::UiAction::new(
-                self.node_id(),
+                *self.node_id(),
                 actions::dialog::DialogAction::Close,
             ).into());
         }
@@ -384,8 +382,8 @@ impl GameplayWidgetEditor {
 }
 impl Widget<actions::Action> for GameplayWidgetEditor {
     fn name(&self) -> CowStr { "widget_editor".into() }
-    fn node_id(&self) -> NodeId { self.node.node_id() }
-
+    fn node_id(&self) -> &NodeId { self.node.node_id() }
+    
     fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId> {
         let a = self.widgets
             .iter()
@@ -565,7 +563,7 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
                 Ok(event) => self.handle_event(shell, event),
                 Err(TryRecvError::Disconnected) => {
                     shell.actions.push(actions::ui::UiAction::new(
-                        self.node_id(),
+                        *self.node_id(),
                         actions::dialog::DialogAction::Close,
                     ).into());
                     break;

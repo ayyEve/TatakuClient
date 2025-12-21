@@ -37,11 +37,11 @@ pub enum GamepadButton {
     RightThumb,
 
     // dunno
-    Unknown,
+    Unknown(u32),
 }
 
-impl From<gilrs::Button> for GamepadButton {
-    fn from(value: gilrs::Button) -> Self {
+impl From<(gilrs::Button, gilrs::ev::Code)> for GamepadButton {
+    fn from((value, code): (gilrs::Button, gilrs::ev::Code)) -> Self {
         use gilrs::Button;
 
         match value {
@@ -66,7 +66,7 @@ impl From<gilrs::Button> for GamepadButton {
             Button::DPadDown => GamepadButton::DPadDown,
             Button::DPadLeft => GamepadButton::DPadLeft,
             Button::DPadRight => GamepadButton::DPadRight,
-            Button::Unknown => GamepadButton::Unknown,
+            Button::Unknown => GamepadButton::Unknown(code.into_u32()),
         }
     }
 }
@@ -100,7 +100,7 @@ impl std::str::FromStr for GamepadButton {
             "left_thumb" | "leftthumb" | "lthumb" => Self::LeftThumb,
             "right_thumb" | "rightthumb" | "rthumb" => Self::RightThumb,
 
-            _ => Self::Unknown,
+            s => Self::Unknown(s.parse().unwrap_or_default()),
         })
     }
 }
