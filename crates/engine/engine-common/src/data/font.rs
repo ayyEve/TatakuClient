@@ -1,5 +1,7 @@
 use crate::prelude::*;
+use common::reflect::*;
 
+#[derive(common::macros::Reflect)]
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]

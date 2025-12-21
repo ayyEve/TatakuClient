@@ -1395,7 +1395,9 @@ impl Game {
 
                         // debug
                         Key::T if mods.ctrl && mods.shift => {
-                            self.ui_manager.root_tree.print(&self.values);
+                            // self.ui_manager.root_tree.print(&self.values);
+                            let xml = self.ui_manager.root_tree.export_xml(&self.values);
+                            std::fs::write("/tmp/test.xml", xml).unwrap();
                         }
 
                         // console dialog

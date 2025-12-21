@@ -128,9 +128,9 @@ pub(crate) fn derive(derive: &syn::DeriveInput) -> proc_macro2::TokenStream {
 
         _ => panic!("nope")
     }
+
     
-    // let tokens = 
-    quote! {
+    let tokens = quote! {
         impl #impl_generics #type_name #ty_generics where #where_clause {
             pub fn parse_css(rule: &simplecss::Rule) -> Self {
                 let mut this = Self::default();
@@ -164,12 +164,42 @@ pub(crate) fn derive(derive: &syn::DeriveInput) -> proc_macro2::TokenStream {
                     #( #shorthand_fields: (), )*
                 }
             }
+        
+        
+            pub fn export_xml(
+                &self, 
+                lines: &mut Vec<String>,
+                indent: usize,
+                values: &dyn Reflect,
+            ) {
+                fn value_str<V: std::fmt::Debug + Reflect>(
+                    v: &CssValue<V>, 
+                    values: &dyn Reflect
+                ) -> String {
+                    match v.resolve(values) {
+                        Some(v) => format!("{:?}", *v),
+                        None => format!("{v:?}")
+                    }
+                }
+                
+                let spacing = "  ".repeat(indent);
+                lines.push(format!("{spacing}<style>"));
+                {
+                    let spacing = "  ".repeat(indent+1);
+                    #(
+                        let id = stringify!(#fields);
+                        let value = value_str(&self.#fields, values);
+
+                        lines.push(format!("{spacing}<{id}>{value}</{id}>"));
+                    )*
+                }
+                lines.push(format!("{spacing}</style>"));
+            }
         }
-    }
+    }; 
+    // println!("{tokens}");
 
-    // ; println!("{tokens}");
-
-    // tokens
+    tokens
 }
 
 

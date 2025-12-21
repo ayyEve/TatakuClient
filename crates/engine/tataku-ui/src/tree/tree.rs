@@ -956,6 +956,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
             tree: self,
         }.print(root);
     }
+
 }
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -987,5 +988,79 @@ impl<Action: Send + Sync + 'static> Widget<Action> for SwapTree<Action> {
     fn get_style_str(&self) -> ArcStr { self.style.clone() }
     fn layout(&mut self, _: &mut LayoutShell<Action>) -> taffy::TaffyResult<NodeId> {
         unimplemented!()
+    }
+}
+
+
+mod export_tree {
+    use super::LayoutTree;
+    use taffy::TraversePartialTree;
+    use tataku_engine_common::prelude::*;
+
+    impl<A: Send + Sync + 'static> super::Tree<A> {
+        pub fn export_xml(&mut self, values: &dyn super::Reflect) -> String {
+            let mut lines = Vec::new();
+            let id = self.root.node_id;
+
+            let tree = LayoutTree {
+                values,
+                tree: self,
+                viewport: Vector2::ZERO,
+                root_font_size: 0.0,
+                use_rounding: false,
+            };
+
+            Self::export_node_xml(
+                &tree, 
+                &mut lines, 
+                0,
+                id,
+            );
+
+            lines.join("\n")
+        }
+
+        fn export_node_xml(
+            tree: &LayoutTree<A>, 
+            lines: &mut Vec<String>,
+            indent: usize,
+            id: taffy::NodeId,
+        ) {
+            let spacing = "  ".repeat(indent);
+            let ctx = tree.tree.context(id);
+            let data = &ctx.element_data;
+            let style = tree.tree.get_style(id).unwrap();
+
+            let ele = &data.element_name;
+            let ele_id = data.id.as_ref()
+                .map(|i| format!("id='{i}'"))
+                .unwrap_or_default();
+
+            let class_list = if !data.class_list.is_empty() {
+                format!("class='{}'", super::ArcStr::join(&data.class_list, " "))
+            } else { String::new() };
+
+            lines.push(format!("{spacing}<{ele} {ele_id} {class_list}>"));
+            // style
+            style.export_xml(
+                lines,
+                indent + 1,
+                tree.values,
+            );
+            lines.push(String::new());
+            
+            let children = tree.child_ids(id);
+            for i in children {
+                Self::export_node_xml(
+                    tree, 
+                    lines, 
+                    indent + 1, 
+                    i
+                );
+            }
+
+            lines.push(format!("{spacing}</{ele}>"));
+        }
+
     }
 }
