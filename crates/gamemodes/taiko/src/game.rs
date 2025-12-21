@@ -130,9 +130,9 @@ impl TaikoGame {
         let od = Self::get_od(&self.metadata, &self.current_mods);
 
         // windows
-        let w_miss = map_difficulty(od, 135.0, 95.0, 70.0);
-        let w_100 = map_difficulty(od, 120.0, 80.0, 50.0);
         let w_300 = map_difficulty(od, 50.0, 35.0, 20.0);
+        let w_100 = map_difficulty(od, 120.0, 80.0, 50.0);
+        let w_miss = map_difficulty(od, 135.0, 95.0, 70.0);
 
         // use TaikoHitJudgments::*;
         self.hit_windows = vec![
@@ -142,6 +142,8 @@ impl TaikoGame {
         ];
         self.miss_window = w_miss;
 
+        
+        // spinner required hits calculation
         let diff_map = map_difficulty(od, 3.0, 5.0, 7.5);
         for note in self.other_notes.iter_mut() {
             if note.note_type() == NoteType::Spinner {
