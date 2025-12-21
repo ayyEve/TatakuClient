@@ -52,7 +52,7 @@ pub struct DisplaySettings {
     pub performance_mode: PerformanceMode,
     
     #[serde(skip)] #[reflect(skip)] #[debug(skip)] 
-    #[button(text="Refresh Monitors", action="actions::window::WindowAction::RefreshMonitors")] 
+    #[button(text="Refresh Monitors", action="actions::window::WindowAction::RefreshMonitors")]
     _refresh_monitors: (),
 
     #[setting(text="Hide Decorations")]

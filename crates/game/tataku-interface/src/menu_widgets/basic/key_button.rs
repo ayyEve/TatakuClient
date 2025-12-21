@@ -18,7 +18,7 @@ use input::{
 pub struct KeyButton {
     key: InputButtonValue<Key>,
     #[chain] optional: bool,
-    #[chain] on_change: InputAction<Option<Key>>,
+    on_change: Option<InputAction<Option<Key>>>,
 
     node_id: NodeId,
 }
@@ -28,9 +28,14 @@ impl KeyButton {
             key,
             optional: false,
             
-            on_change: InputAction::default(),
+            on_change: None,
             node_id: NodeId::default(),
         }
+    }
+
+    pub fn on_change(mut self, on_change: Option<impl Into<InputAction<Option<Key>>>>) -> Self {
+        self.on_change = on_change.map(Into::into);
+        self
     }
 
     fn text(&self, active: bool) -> CowStr {
@@ -108,13 +113,15 @@ impl Widget<actions::Action> for KeyButton {
                         *k = None;
                     }
 
-                    self.on_change.run(
-                        &None,
-                        &self.node_id,
-                        shell.messages,
-                        shell.actions,
-                        shell.values,
-                    );
+                    if let Some(on_change) = &self.on_change {
+                        on_change.run(
+                            &None,
+                            &self.node_id,
+                            shell.messages,
+                            shell.actions,
+                            shell.values,
+                        );
+                    }
                 }
             } else {
                 let Some(key) = key.as_key() else {
@@ -125,13 +132,15 @@ impl Widget<actions::Action> for KeyButton {
                     *k = Some(key);
                 }
 
-                self.on_change.run(
-                    &Some(key),
-                    &self.node_id,
-                    shell.messages,
-                    shell.actions,
-                    shell.values,
-                );
+                if let Some(on_change) = &self.on_change {
+                    on_change.run(
+                        &Some(key),
+                        &self.node_id,
+                        shell.messages,
+                        shell.actions,
+                        shell.values,
+                    );
+                }
             }
         }
         let hover = ctx.element_data.state.contains(ElementState::Hover);

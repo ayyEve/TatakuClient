@@ -6,15 +6,11 @@ use ui::{
     message::*,
 };
 
-type Callback = Arc<dyn Fn() + Send + Sync>;
-type MessageCallback = Arc<dyn Fn() -> Option<Message> + Send + Sync>;
+type MessageCallback = Box<dyn Fn() -> Option<Message> + Send + Sync>;
 
 #[derive(From)]
-#[derive(Clone)]
 pub enum ContextMenuAction {
-    Message(Option<Message>),
-    Callback(Callback),
-    MessageCallback(MessageCallback),
+    Callback(MessageCallback),
     Buildable(BuildableAction),
 }
 impl ContextMenuAction {
@@ -33,10 +29,7 @@ impl ContextMenuAction {
         messages: &mut Vec<Message>,
     ) {
         match self {
-            Self::Message(None) => {}
-            Self::Message(Some(m)) => messages.push(m.clone()),
-            Self::Callback(cb) => cb(),
-            Self::MessageCallback(cb) => {
+            Self::Callback(cb) => {
                 if let Some(m) = cb() {
                     messages.push(m);
                 }
@@ -51,10 +44,5 @@ impl ContextMenuAction {
                 }
             },
         }
-    }
-}
-impl From<Message> for ContextMenuAction {
-    fn from(value: Message) -> Self {
-        Self::Message(Some(value))
     }
 }

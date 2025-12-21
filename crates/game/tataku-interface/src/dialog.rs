@@ -29,11 +29,11 @@ struct ResizeHover {
 }
 impl ResizeHover {
     fn get_drag_origin(
-        Self { 
-            left, 
-            right, 
-            top, 
-            bottom 
+        Self {
+            left,
+            right,
+            top,
+            bottom
         }: Self
     ) -> Option<DragOrigin> {
         match (top, left, bottom, right) {
@@ -97,11 +97,11 @@ impl DialogWidget {
         bounds.pos.x -= delta;
         bounds.size.x += delta;
         actions.push(actions::ui::UiAction::new(
-            node, 
+            node,
             actions::dialog::DialogAction::MoveDialog(bounds.pos)
         ).into());
         actions.push(actions::ui::UiAction::new(
-            node, 
+            node,
             actions::dialog::DialogAction::ResizeDialog(bounds.size)
         ).into());
     }
@@ -113,11 +113,11 @@ impl DialogWidget {
     ) {
         bounds.size.x -= delta;
         actions.push(actions::ui::UiAction::new(
-            node, 
+            node,
             actions::dialog::DialogAction::ResizeDialog(bounds.size)
         ).into());
     }
-    
+
     fn resize_up(
         delta: f32,
         mut bounds: Bounds,
@@ -127,11 +127,11 @@ impl DialogWidget {
         bounds.pos.y -= delta;
         bounds.size.y += delta;
         actions.push(actions::ui::UiAction::new(
-            node, 
+            node,
             actions::dialog::DialogAction::MoveDialog(bounds.pos)
         ).into());
         actions.push(actions::ui::UiAction::new(
-            node, 
+            node,
             actions::dialog::DialogAction::ResizeDialog(bounds.size)
         ).into());
     }
@@ -143,7 +143,7 @@ impl DialogWidget {
     ) {
         bounds.size.y -= delta;
         actions.push(actions::ui::UiAction::new(
-            node, 
+            node,
             actions::dialog::DialogAction::ResizeDialog(bounds.size)
         ).into());
     }
@@ -246,11 +246,11 @@ impl Widget<actions::Action> for DialogWidget {
     }
 
     fn layout(
-        &mut self, 
+        &mut self,
         shell: &mut LayoutShell<actions::Action>,
     ) -> taffy::TaffyResult<NodeId> {
         let node = std::mem::replace(
-            &mut self.node, 
+            &mut self.node,
             EmptyWidget::new_boxed()
         );
 
@@ -271,18 +271,18 @@ impl Widget<actions::Action> for DialogWidget {
 
         self.node.layout(shell)
     }
-    
+
     // fn update_styles(
-    //     &mut self, 
+    //     &mut self,
     //     shell: &mut StyleShell,
     //     _display_override: Option<DisplayType>
     // ) {
     //     self.node.update_styles(shell, None);
     // }
-    
+
     fn input(
-        &mut self, 
-        event: &input::InputEvent, 
+        &mut self,
+        event: &input::InputEvent,
         shell: &mut InputShell<actions::Action>,
     ) {
         self.node.input(event, shell);
@@ -299,7 +299,7 @@ impl Widget<actions::Action> for DialogWidget {
             shell.event_consumed = true;
         }
 
-        // resize 
+        // resize
         if !self.resizable {
             return
         }
@@ -312,7 +312,7 @@ impl Widget<actions::Action> for DialogWidget {
                     mouse_pos_start: *pos,
                     ..drag
                 });
-                    
+
                 match drag.origin {
                     DragOrigin::Left => {
                         self.check_left(&bounds, *pos);
@@ -369,9 +369,9 @@ impl Widget<actions::Action> for DialogWidget {
                     self.resize_hover
                 ) {
                     shell.event_consumed = true;
-                    self.resizing = Some(DragData { 
-                        pos_start: Vector2::ZERO, // doesnt matter for resize 
-                        mouse_pos_start: event.mouse_pos, 
+                    self.resizing = Some(DragData {
+                        pos_start: Vector2::ZERO, // doesnt matter for resize
+                        mouse_pos_start: event.mouse_pos,
                         origin,
                     });
                 }
@@ -384,21 +384,21 @@ impl Widget<actions::Action> for DialogWidget {
             _ => {}
         }
     }
-    
+
     fn draw(&self, shell: &mut DrawShell<actions::Action>) {
-        let Some(bounds) = shell.tree.absolute_bounds(self.node_id()) 
+        let Some(bounds) = shell.tree.absolute_bounds(self.node_id())
         else { return };
 
         if self.draw_background {
             shell.list.push(graphics::Blur::new(
-                bounds, 
+                bounds,
                 graphics::BlurType::Box { size: 2 },
             ));
 
             // black background for visibility
             shell.list.push(Rectangle::new_bounds(
-                bounds, 
-                Color::BLACK.alpha(0.9), 
+                bounds,
+                Color::BLACK.alpha(0.9),
             ));
         }
 
@@ -409,56 +409,60 @@ impl Widget<actions::Action> for DialogWidget {
         let color = Color::CRIMSON;
         if self.resize_hover.left {
             shell.list.push(Rectangle::new_bounds(
-                Self::left_bound(&bounds), 
-                color, 
+                Self::left_bound(&bounds),
+                color,
             ));
         }
         if self.resize_hover.right {
             shell.list.push(Rectangle::new_bounds(
-                Self::right_bound(&bounds), 
-                color, 
+                Self::right_bound(&bounds),
+                color,
             ));
         }
         if self.resize_hover.top {
             shell.list.push(Rectangle::new_bounds(
-                Self::top_bound(&bounds), 
-                color, 
+                Self::top_bound(&bounds),
+                color,
             ));
         }
         if self.resize_hover.bottom {
             shell.list.push(Rectangle::new_bounds(
-                Self::bottom_bound(&bounds), 
+                Self::bottom_bound(&bounds),
                 color,
             ));
         }
     }
-    
+
     fn handle_message(
-        &mut self, 
-        message: &Message, 
+        &mut self,
+        message: &Message,
         shell: &mut MessageShell<actions::Action>,
     ) {
-        match message.owner {
-            MessageOwner::Menu => return,
-            MessageOwner::Dialog(num) => {
-                if &**message.tag == "set_num"
-                && let MessageValue::Number(n) = message.value {
-                    self.num = n;
+        match message.source {
+            MessageSource::Menu => return,
+            MessageSource::Dialog(num) => {
+                if &*message.tag == "set_num" {
+                    let Some(n) = message.value.downcast_ref::<usize>() else {
+                        error!("set_num not a usize");
+                        return;
+                    };
+
+                    self.num = *n;
                     return;
                 }
-                
+
                 if num != self.num { return }
             }
         }
 
         self.node.handle_message(
-            message, 
+            message,
             shell,
         );
 
         if shell.handled { return }
-        match &**message.tag {
-            "close" 
+        match &*message.tag {
+            "close"
             | "force_close"
             => {
                 debug!("close request");
@@ -471,7 +475,7 @@ impl Widget<actions::Action> for DialogWidget {
             _ => {}
         }
     }
-    
+
 }
 
 
@@ -520,8 +524,8 @@ impl DialogTitlebar {
         let a = format!(r#"
         <row style="width: fill">
             <!-- Title -->
-            <text style="font_size: 40.0"> 
-                <text text="{title}"/> 
+            <text style="font_size: 40.0">
+                <text text="{title}"/>
             </text>
 
             <!-- Close Button -->
@@ -545,13 +549,13 @@ impl Widget<actions::Action> for DialogTitlebar {
     fn node_id(&self) -> &NodeId { self.node.node_id() }
 
     fn layout(
-        &mut self, 
+        &mut self,
         shell: &mut LayoutShell<actions::Action>,
     ) -> taffy::TaffyResult<NodeId> {
         // self.node = Container::new(vec![
-        //     // Title 
+        //     // Title
         //     TextWidget::new(&*self.title).font_size(40.0).boxed(),
-            
+
         //     // close button
         //     Button::new(Box::new(TextWidget::new("X").font_size(20.0)))
         //         // .padding(MeasurableUnit::Pixels(5.0))
@@ -569,12 +573,12 @@ impl Widget<actions::Action> for DialogTitlebar {
     }
 
     fn draw(&self, shell: &mut DrawShell<actions::Action>) {
-        let Some(bounds) = shell.tree.absolute_bounds(self.node_id()) 
+        let Some(bounds) = shell.tree.absolute_bounds(self.node_id())
         else { return };
 
         shell.list.push(Rectangle::new_bounds(
-            bounds, 
-            Color::WHITE.alpha(0.5), 
+            bounds,
+            Color::WHITE.alpha(0.5),
         ));
         self.node.draw(shell);
     }
@@ -591,8 +595,8 @@ impl Widget<actions::Action> for DialogTitlebar {
     }
 
     fn input(
-        &mut self, 
-        event: &input::InputEvent, 
+        &mut self,
+        event: &input::InputEvent,
         shell: &mut InputShell<actions::Action>,
     ) {
         self.node.input(event, shell);
@@ -618,9 +622,9 @@ impl Widget<actions::Action> for DialogTitlebar {
 
                 if bounds.contains(event.mouse_pos) {
                     shell.event_consumed = true;
-                    self.drag = Some(DragData { 
-                        pos_start: bounds.pos, 
-                        mouse_pos_start: event.mouse_pos, 
+                    self.drag = Some(DragData {
+                        pos_start: bounds.pos,
+                        mouse_pos_start: event.mouse_pos,
                         origin: DragOrigin::Left, // doesnt matter for movement
                     });
                 }

@@ -1,4 +1,5 @@
 use crate::*;
+use common::reflect::*;
 
 #[derive(Copy, Clone, Debug, Default)]
 pub enum ImageFlip {
@@ -240,6 +241,8 @@ impl TatakuRenderable for Image {
 
 
 
+
+#[derive(common::macros::Reflect)]
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub enum ImageStretch {
     /// The image is resized to fill the given dimension. 

@@ -13,20 +13,20 @@ use ui::{
 
 // TODO: move button (etc) active/hover/etc to states, and use css selectors to set the states
 
-pub struct WidgetBase {
+pub struct WidgetBase<T = Box<dyn Widget<actions::Action>>> {
     element_name: ArcStr,
     id: Option<ArcStr>,
     style_str: ArcStr,
     class: ClassList,
-    inner: Box<dyn Widget<actions::Action>>,
+    pub inner: T,
 }
-impl WidgetBase {
+impl<T> WidgetBase<T> {
     pub fn new(
         style: ArcStr,
         element_name: ArcStr,
         id: Option<ArcStr>,
         class: ClassList,
-        inner: Box<dyn Widget<actions::Action>>,
+        inner: T,
     ) -> Self {
         Self {
             style_str: style,
@@ -37,33 +37,36 @@ impl WidgetBase {
         }
     }
 
-    pub fn new_boxed(
-        style: ArcStr,
-        element_name: ArcStr,
-        id: Option<ArcStr>,
-        class: ClassList,
-        inner: Box<dyn Widget<actions::Action>>,
-    ) -> Box<dyn Widget<actions::Action>> {
-        Self::new(
-            style,
-            element_name,
-            id,
-            class,
-            inner
-        )
-        .boxed()
-    }
+    // pub fn new_boxed(
+    //     style: ArcStr,
+    //     element_name: impl Into<ArcStr>,
+    //     id: Option<ArcStr>,
+    //     class: ClassList,
+    //     inner: Box<dyn Widget<actions::Action>>,
+    // ) -> Box<dyn Widget<actions::Action>> {
+    //     Self::new(
+    //         style,
+    //         element_name,
+    //         id,
+    //         class,
+    //         inner
+    //     )
+    //     .boxed()
+    // }
     
 }
-impl Widget<actions::Action> for WidgetBase {
+impl<T> Widget<actions::Action> for WidgetBase<T>
+where
+    T: Widget<actions::Action>,
+{
     fn name(&self) -> CowStr { self.inner.name() }
     fn node_id(&self) -> &NodeId { self.inner.node_id() }
 
     fn children(&self) -> WidgetChildren<'_, actions::Action> {
-        WidgetChildren::Single(&*self.inner)
+        WidgetChildren::Single(&self.inner)
     }
     fn children_mut(&mut self) -> WidgetChildrenMut<'_, actions::Action> {
-        WidgetChildrenMut::Single(&mut *self.inner)
+        WidgetChildrenMut::Single(&mut self.inner)
     }
 
     fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
@@ -94,36 +97,6 @@ impl Widget<actions::Action> for WidgetBase {
 
         Ok(id)
     }
-
-    fn operation(
-        &mut self, 
-        operation: &UiOperation, 
-        tree: &mut Tree<actions::Action>,
-    ) {
-        if let UiOperationType::State(op) = &operation.operation {
-            let Some(ctx) = tree
-                .get_context_mut(self.node_id())
-            else { return };
-
-            match op {
-                StateOperation::Add(state) => {
-                    ctx.element_data.state |= *state;
-                }
-                StateOperation::Remove(state) => {
-                    ctx.element_data.state.remove(*state);
-                }
-                StateOperation::Toggle(state) => {
-                    ctx.element_data.state.toggle(*state);
-                }
-            }
-            return;
-        }
-        
-        for i in self.children_mut() {
-            i.operation(operation, tree);
-        }
-    }
-
 
     fn input(&mut self, event: &InputEvent, shell: &mut InputShell<actions::Action>) {
         // let node = self.node_id();

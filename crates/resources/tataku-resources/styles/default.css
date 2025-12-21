@@ -1,0 +1,15 @@
+row {
+    flex-direction: row;
+}
+column {
+    flex-direction: column;
+}
+
+text {
+    width: 100%;
+}
+
+dropdown column {
+    position: absolute;
+    gap: 8px;
+}

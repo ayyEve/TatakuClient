@@ -78,21 +78,26 @@ impl settings::MakeSettingsMenu for ConnectionSettings {
 
         self.current.create_provider(prefix.clone() + ".current", builder);
 
-        let save_action = actions::game::GameAction::UpdateSettings(
-            Arc::new(|settings| {
-                let conn_settings = &mut settings.connection_settings;
+        let save_action = || {
+            let action = actions::game::GameAction::UpdateSettings(
+                Arc::new(|settings| {
+                    let conn_settings = &mut settings.connection_settings;
 
-                let current = conn_settings.current.clone();
-                for i in conn_settings.profiles.iter_mut() {
-                    if i.profile_name == current.profile_name {
-                        *i = current;
-                        return
+                    let current = conn_settings.current.clone();
+                    for i in conn_settings.profiles.iter_mut() {
+                        if i.profile_name == current.profile_name {
+                            *i = current;
+                            return
+                        }
                     }
-                }
 
-                conn_settings.profiles.push(current);
-            })
-        );
+                    conn_settings.profiles.push(current);
+                })
+            );
+
+            Some(action.into())
+        };
+
         builder.add_item(BuildableSetting {
             name: "Save".into(),
             path: prefix.clone() + "",
@@ -101,10 +106,9 @@ impl settings::MakeSettingsMenu for ConnectionSettings {
             visible_if: None,
             setting_type: BuildableSettingType::Button {
                 action: BuildableSettingsAction {
-                    inner: Arc::new(actions::Action::from(save_action))
+                    inner: Arc::new(save_action)
                 }
             },
         });
-
     }
 }

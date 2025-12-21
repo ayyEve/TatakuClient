@@ -112,7 +112,7 @@ impl Widget<actions::Action> for BuiltCustomDialog {
         if shell.handled { return }
 
         let cast = message.value
-            .try_downcast_ref::<(BuildableAction, Option<TatakuValue>)>()
+            .downcast_ref::<(BuildableAction, Option<TatakuValue>)>()
             .cloned();
 
         if let Some((mut action, passed_in)) = cast {
@@ -129,36 +129,7 @@ impl Widget<actions::Action> for BuiltCustomDialog {
             return
         }
 
-        let tag = message.tag.clone();
-        match &message.value {
-            MessageValue::Value(TatakuValue::Reflect(value)) => {
-                shell.handled = true;
-
-                let Some(value) = value.duplicate()
-                else {
-                    error!("Error duplicating message value");
-                    return
-                };
-
-                if let Err(e) = shell.values.reflect_insert(
-                    &*tag,
-                    value
-                ) {
-                    error!("Error inserting into values: {e:?}");
-                }
-            }
-            MessageValue::Text(incoming) => {
-                shell.handled = true;
-                if let Err(e) = shell.values.reflect_insert(
-                    &*tag,
-                    Box::new(incoming.clone())
-                ) {
-                    error!("Error inserting into values: {e:?}");
-                }
-            }
-
-            _other => warn!("Unhandled message: {message:?}"),
-        }
+        warn!("unhandled message: {message:?}");
     }
 
     fn handle_event(

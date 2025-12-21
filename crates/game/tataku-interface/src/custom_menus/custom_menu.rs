@@ -89,7 +89,7 @@ impl Widget<actions::Action> for BuiltCustomMenu {
         if shell.handled { return }
 
         let cast = message.value
-            .try_downcast_ref::<(BuildableAction, Option<TatakuValue>)>()
+            .downcast_ref::<(BuildableAction, Option<TatakuValue>)>()
             .cloned();
 
         if let Some((action, passed_in)) = cast {
@@ -105,30 +105,7 @@ impl Widget<actions::Action> for BuiltCustomMenu {
             return
         }
 
-        let tag = message.tag.clone();
-        match message.value.clone() {
-            MessageValue::Value(TatakuValue::Reflect(value)) => {
-                shell.handled = true;
-
-                if let Err(e) = shell
-                    .values
-                    .reflect_insert(&*tag, value)
-                {
-                    error!("error inserting into values: {e:?}");
-                }
-            }
-            MessageValue::Text(incoming) => {
-                shell.handled = true;
-                if let Err(e) = shell
-                    .values
-                    .reflect_insert(&*tag, Box::new(incoming))
-                {
-                    error!("error inserting into values: {e:?}");
-                }
-            }
-
-            other => warn!("unhandled message: {other:?}"),
-        }
+        warn!("unhandled message: {message:?}");
     }
 
     fn handle_event(

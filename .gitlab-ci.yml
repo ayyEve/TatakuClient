@@ -7,7 +7,7 @@ workflow:
     on_new_commit: interruptible
   rules:
     - if: $CI_COMMIT_BRANCH # Run always for branch pipelines
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_COMMIT_REF_PROTECTED
+    - if: $CI_MERGE_REQUEST_SOURCE_BRANCH_PROTECTED
       when: never # Do not run for merge requests on protected branches. These have automatic releases.
     - if: $CI_PIPELINE_SOURCE == "merge_request_event" # Run for non-protected merge requests
 
@@ -23,6 +23,8 @@ build-linux:
     - ~/.cargo/bin/cargo mommy build --release
   after_script:
     - echo "LINUX_JOB=$CI_JOB_URL" >> job.env
+    # curl image doesn't have git and i cba
+    - echo DATETIME="$(git show -s --format='%cd' --date=format:'%Y%m%d%H%M')" >> job.env
   tags:
     - docker
     - linux
@@ -77,34 +79,30 @@ prepare-release:
       when: never # Do not run this job when a tag is created manually
     - if: $CI_MERGE_REQUEST_ID
       when: never # Do not run this job for merge requests
-    - if: $CI_COMMIT_REF_PROTECTED # Run this job when commits are pushed or merged to a protected branch
+    - if: $CI_COMMIT_REF_PROTECTED == "true" # Run this job only when commits are pushed or merged to a protected branch
+      when: on_success
   script:
-    - echo DATETIME='$(git show -s --format="%cd" --date=format:"%Y%m%d%H%M")' >> vars.env
-    - echo Removing old tag and release
-    - "curl -X DELETE -H 'PRIVATE-TOKEN: $GITLAB_API_TOKEN' 'https://gitlab.ayyeve.dev/api/v4/projects/$CI_PROJECT_ID/repository/tags/latest-$CI_COMMIT_BRANCH' || _ignore=$?"
-  artifacts:
-    reports:
-      dotenv: vars.env
+    - echo Removing old tag and release on branch $CI_COMMIT_BRANCH
+    - 'curl -X DELETE -H "PRIVATE-TOKEN: $GITLAB_API_TOKEN" "https://gitlab.ayyeve.dev/api/v4/projects/$CI_PROJECT_ID/repository/tags/latest-$CI_COMMIT_BRANCH" || _ignore=$?'
 
 releases:
   stage: release
-  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  image: registry.gitlab.com/gitlab-org/cli:latest
   interruptible: true
   rules:
     - if: $CI_COMMIT_TAG
       when: never # Do not run this job when a tag is created manually
     - if: $CI_MERGE_REQUEST_ID
       when: never # Do not run this job for merge requests
-    - if: $CI_COMMIT_REF_PROTECTED # Run this job when commits are pushed or merged to a protected branch
+    - if: $CI_COMMIT_REF_PROTECTED == "true" # Run this job only when commits are pushed or merged to a protected branch
+      when: on_success
   needs:
-    - job: prepare-release
-      artifacts: true
     - job: build-linux
       artifacts: true
     - job: build-windows
       artifacts: true
   script:
-    - echo Creating release $CI_COMMIT_BRANCH-$DATETIME
+    - echo Creating release "$CI_COMMIT_BRANCH-$DATETIME"
   release:
     tag_name: latest-$CI_COMMIT_BRANCH
     name: $CI_COMMIT_BRANCH-$DATETIME

@@ -30,7 +30,7 @@ pub struct GameplayPreview {
 impl GameplayPreview {
     pub fn new() -> Self {
         let (
-            widget_sender, 
+            widget_sender,
             widget_receiver
         ) = triple_buffer::TripleBuffer::default().split();
 
@@ -52,19 +52,19 @@ impl GameplayPreview {
     }
 
     pub fn setup(
-        &mut self, 
-        owner: MessageOwner,
-        _values: &dyn Reflect, 
+        &mut self,
+        source: MessageSource,
+        _values: &dyn Reflect,
         actions: &mut actions::ActionQueue
     ) {
         let widget_sender = self.widget_sender.clone();
         actions.push(actions::game::GameAction::NewGameplayManager(actions::game::NewManager {
-            owner,
+            owner: source,
             playmode: None,
             gameplay_mode: Some(actions::game::GameplayTypeInfo::Preview),
             area: self.fit_to,
             draw_function: Some(Arc::new(move |collection| {
-                let Some(mut lock) = widget_sender.try_lock() 
+                let Some(mut lock) = widget_sender.try_lock()
                 else { return };
 
                 *lock.input_buffer_mut() = Some(collection);
@@ -89,13 +89,16 @@ impl Widget<actions::Action> for GameplayPreview {
     }
 
     fn handle_message(
-        &mut self, 
-        message: &Message, 
+        &mut self,
+        message: &Message,
         shell: &mut MessageShell<actions::Action>,
     ) {
-        if &**message.tag != "gameplay_manager_create" { return }
+        if &*message.tag != "gameplay_manager_create" { return }
 
-        let id = message.value.clone().downcast::<u32>();
+        let Some(id) = message.value.downcast_ref::<actions::game::GameplayId>() else {
+            error!("gameplay_manager_create is not GameplayId");
+            return;
+        };
 
         self.manager = Some(id.clone());
         shell.handled = true;
@@ -121,10 +124,10 @@ impl Widget<actions::Action> for GameplayPreview {
 
         // check if time changed
         if time_check
-        || matches!(a, Ok(Some(_))) 
+        || matches!(a, Ok(Some(_)))
         || matches!(b, Ok(Some(_)))
         {
-            self.setup(shell.owner, shell.values, shell.actions);
+            self.setup(shell.source, shell.values, shell.actions);
         }
         // check for new bounds
         let bounds = shell.tree.absolute_bounds(&self.node_id);
@@ -133,9 +136,9 @@ impl Widget<actions::Action> for GameplayPreview {
             // info!("fitting to area {bounds:?}");
             self.fit_to = Some(bounds);
 
-            if let Some(manager) = self.manager.clone() { 
+            if let Some(manager) = self.manager.clone() {
                 shell.actions.push(actions::game::GameAction::GameplayAction(
-                    manager, 
+                    manager,
                     actions::gameplay::GameplayAction::FitToArea(bounds)
                 ).into());
             };

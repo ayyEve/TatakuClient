@@ -68,37 +68,40 @@ pub enum Action {
     /// Handle multiple actions
     Multiple(Vec<Self>),
 }
-impl Clone for actions::Action {
-    fn clone(&self) -> Self {
-        match self {
-            Self::None => Self::None,
+// impl Clone for actions::Action {
+//     fn clone(&self) -> Self {
+//         match self {
+//             Self::None => Self::None,
 
-            Self::Delayed(a, time) 
-                => Self::Delayed(a.clone(), *time),
+//             Self::Delayed(a, time)
+//                 => Self::Delayed(a.clone(), *time),
 
-            Self::Audio(a) => Self::Audio(a.clone()),
-            Self::Game(a) => Self::Game(a.clone()),
-            Self::Online(a) => Self::Online(a.clone()),
-            Self::Beatmap(a) => Self::Beatmap(a.clone()),
-            Self::Song(a) => Self::Song(a.clone()),
-            Self::Mods(a) => Self::Mods(a.clone()),
-            Self::Multiplayer(a) => Self::Multiplayer(a.clone()),
-            Self::Download(a) => Self::Download(a.clone()),
-            Self::OnlineContent(a) => Self::OnlineContent(a.clone()),
-            Self::Event(a) => Self::Event(a.clone()),
-            Self::Database(a) => Self::Database(a.clone()),
-            Self::Multiple(a) => Self::Multiple(a.clone()),
+//             Self::Audio(a) => Self::Audio(a.clone()),
+//             Self::Game(a) => Self::Game(a.clone()),
+//             Self::Online(a) => Self::Online(a.clone()),
+//             Self::Beatmap(a) => Self::Beatmap(a.clone()),
+//             Self::Song(a) => Self::Song(a.clone()),
+//             Self::Mods(a) => Self::Mods(a.clone()),
+//             Self::Multiplayer(a) => Self::Multiplayer(a.clone()),
+//             Self::Download(a) => Self::Download(a.clone()),
+//             Self::OnlineContent(a) => Self::OnlineContent(a.clone()),
+//             Self::Event(a) => Self::Event(a.clone()),
+//             Self::Multiple(a) => Self::Multiple(a.clone()),
             
-            #[cfg(feature="graphics")] Self::Menu(a) => Self::Menu(a.clone()),
-            #[cfg(feature="graphics")] Self::Ui(a) => Self::Ui(a.clone()),
-            #[cfg(feature="graphics")] Self::CursorAction(a) => Self::CursorAction(*a),
-            #[cfg(feature="graphics")] Self::WindowAction(a) => Self::WindowAction(a.clone()),
-
+//             #[cfg(feature="graphics")]
+//             Self::Menu(a) => Self::Menu(a.clone()),
+//             #[cfg(feature="graphics")]
+//             Self::CursorAction(a) => Self::CursorAction(*a),
+//             #[cfg(feature="graphics")]
+//             Self::WindowAction(a) => Self::WindowAction(a.clone()),
             
-            Self::Task(_) => panic!("trying to clone TaskAction"),
-        }
-    }
-}
+
+//             #[cfg(feature="graphics")]
+//             Self::Ui(_) => panic!("trying to clone UiAction"),
+//             Self::Task(_) => panic!("trying to clone TaskAction"),
+//         }
+//     }
+// }
 
 
 
@@ -126,7 +129,6 @@ impl From<engine::Downloadable> for actions::Action {
     }
 }
 
-#[derive(Clone)]
 pub enum DelayedActionType {
     Action(Box<actions::Action>),
     Callback(Arc<dyn Fn(&mut dyn Reflect) -> actions::Action + Send + Sync>)

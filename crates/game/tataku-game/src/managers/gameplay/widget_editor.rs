@@ -77,7 +77,7 @@ impl GameplayWidgetEditor {
     }
 
     fn send(
-        &self, 
+        &self,
         action: GameplayWidgetAction,
         actions: &mut actions::ActionQueue
     ) {
@@ -90,7 +90,7 @@ impl GameplayWidgetEditor {
     }
 
     pub fn handle_event(
-        &mut self, 
+        &mut self,
         shell: &mut UpdateShell<actions::Action>,
         event: GameplayWidgetEvent,
     ) {
@@ -121,139 +121,161 @@ impl GameplayWidgetEditor {
     ) -> ContextMenu {
         let selected = &self.widgets[selected];
 
+        let source = shell.source;
+
         let mut options = Vec::new();
 
         options.push(ContextMenuOption::new(
-            selected.name.clone(), 
+            selected.name.clone(),
             ContextMenuOptionType::TextOnly
         ));
 
         // align
-        options.push({
-            const ALL_ALIGN: &[(&str, Alignment)] = &[
-                ("Top Left", Alignment::TOP_LEFT), ("Top Middle", Alignment::TOP_CENTER), ("Top Right", Alignment::TOP_RIGHT),
-                ("Center Left", Alignment::CENTER_LEFT), ("Center", Alignment::CENTER), ("Center Right", Alignment::CENTER_RIGHT),
-                ("Bottom Left", Alignment::BOTTOM_LEFT), ("Bottom Middle", Alignment::BOTTOM_MIDDLE), ("Bottom Right", Alignment::BOTTOM_RIGHT)
-            ];
+        let selected_align = selected.layout.align;
+        options.push(ContextMenuOption::new(
+            "Alignment",
+            ContextMenuOptionType::SubMenu(Box::new(move || {
+                const ALL_ALIGN: &[(&str, Alignment)] = &[
+                    ("Top Left", Alignment::TOP_LEFT), ("Top Middle", Alignment::TOP_CENTER), ("Top Right", Alignment::TOP_RIGHT),
+                    ("Center Left", Alignment::CENTER_LEFT), ("Center", Alignment::CENTER), ("Center Right", Alignment::CENTER_RIGHT),
+                    ("Bottom Left", Alignment::BOTTOM_LEFT), ("Bottom Middle", Alignment::BOTTOM_MIDDLE), ("Bottom Right", Alignment::BOTTOM_RIGHT)
+                ];
 
-            let mut align_builder = ContextMenuBuilder::default();
-            for &(label, align) in ALL_ALIGN {
-                align_builder.add_option(ContextMenuOption::new(
-                    if align == selected.layout.align {
-                        Cow::Owned(format!("{label} ✓"))
-                    } else {
-                        Cow::Borrowed(label)
-                    },
-                    Message::new(
-                        shell.owner, 
+                let mut options = Vec::new();
+
+                for &(label, align) in ALL_ALIGN {
+                    let message = Box::new(move || Some(Message::new(
+                        source,
                         "align",
-                        MessageValue::Custom(Arc::new(align))
-                    )
-                ));
-            }
+                        None,
+                        Box::new(align),
+                    )));
 
-            ContextMenuOption::new("Alignment", align_builder)
-        });
+                    options.push(ContextMenuOption::new(
+                        if align == selected_align {
+                            Cow::Owned(format!("{label} ✓"))
+                        } else {
+                            Cow::Borrowed(label)
+                        },
+                        ContextMenuAction::Callback(message)
+                    ));
+                }
+
+                ContextMenu::new(options, Vector2::ZERO)
+            }))
+        ));
 
         // visible
         options.push(ContextMenuOption::new(
             if selected.layout.visible { "Visible ✓" } else { "Visible" },
-            Message::new(
-                shell.owner,
+            ContextMenuAction::Callback(Box::new(move || Some(Message::new(
+                source,
                 "visible",
-                MessageValue::Click
-            )
+                None,
+                Box::new(()),
+            ))))
         ));
         // anchor
         options.push(ContextMenuOption::new(
             "Anchor",
-            ContextMenuOptionType::SubMenu(
-                ContextMenuBuilder::default()
-                .with_option(ContextMenuOption::new(
-                    "Screen",
-                    Message::new(
-                        shell.owner,
-                        "anchor",
-                        MessageValue::Text("screen".to_string())
-                    )
-                ))
-                .with_option(ContextMenuOption::new(
-                    "Playfield",
-                    Message::new(
-                        shell.owner,
-                        "anchor",
-                        MessageValue::Text("playfield".to_string())
-                    )
-                ))
-                .with_option(ContextMenuOption::new(
-                    "Element",
-                    Message::new(
-                        shell.owner,
-                        "anchor",
-                        MessageValue::Text("element".to_string())
-                    )
-                ))
-            )
+            ContextMenuOptionType::SubMenu(Box::new(move || ContextMenu::new(
+                vec![
+                    ContextMenuOption::new(
+                        "Screen",
+                        ContextMenuAction::Callback(Box::new(move || Some(Message::new(
+                            source,
+                            "anchor",
+                            None,
+                            Box::new("screen".to_string()),
+                        ))))
+                    ),
+                    ContextMenuOption::new(
+                        "Playfield",
+                        ContextMenuAction::Callback(Box::new(move || Some(Message::new(
+                            source,
+                            "anchor",
+                            None,
+                            Box::new("playfield".to_string()),
+                        ))))
+                    ),
+                    ContextMenuOption::new(
+                        "Element",
+                        ContextMenuAction::Callback(Box::new(move || Some(Message::new(
+                            source,
+                            "anchor",
+                            None,
+                            Box::new("element".to_string())
+                        ))))
+                    ),
+                ],
+                Vector2::ZERO
+            )))
         ));
 
         fn make_relative_align(
             current: GameplayWidgetAlign,
-            owner: MessageOwner,
+            source: MessageSource,
         ) -> ContextMenuOptionType {
-            const ALL_INNER_ALIGN: &[(&str, GameplayWidgetAlign)] = &[
-                ("Inside", GameplayWidgetAlign::Inside),
-                ("Above", GameplayWidgetAlign::Above),
-                ("Below", GameplayWidgetAlign::Below),
-                ("Left", GameplayWidgetAlign::Left),
-                ("Right", GameplayWidgetAlign::Right),
-            ];
-            
-            let mut builder = ContextMenuBuilder::default();
-            for &(label, a) in ALL_INNER_ALIGN {
-                builder.add_option(ContextMenuOption::new(
-                    if a == current {
-                        Cow::Owned(format!("{label} ✓"))
-                    } else {
-                        Cow::Borrowed(label)
-                    }, 
-                    Message::new(
-                        owner, 
-                        "relative_align",
-                        MessageValue::Custom(Arc::new(a))
-                    )
-                ));
-            }
+            let menu = Box::new(move || {
+                const ALL_INNER_ALIGN: &[(&str, GameplayWidgetAlign)] = &[
+                    ("Inside", GameplayWidgetAlign::Inside),
+                    ("Above", GameplayWidgetAlign::Above),
+                    ("Below", GameplayWidgetAlign::Below),
+                    ("Left", GameplayWidgetAlign::Left),
+                    ("Right", GameplayWidgetAlign::Right),
+                ];
 
-            ContextMenuOptionType::SubMenu(builder)
+                let mut options = Vec::default();
+                for &(label, a) in ALL_INNER_ALIGN {
+                    options.push(ContextMenuOption::new(
+                        if a == current {
+                            Cow::Owned(format!("{label} ✓"))
+                        } else {
+                            Cow::Borrowed(label)
+                        },
+                        ContextMenuAction::Callback(Box::new(move || Some(Message::new(
+                            source,
+                            "relative_align",
+                            None,
+                            Box::new(a)
+                        ))))
+                    ));
+                }
+
+                ContextMenu::new(options, Vector2::ZERO)
+            });
+
+            ContextMenuOptionType::SubMenu(menu)
         }
 
         // anchor options
         match &selected.layout.anchor {
             GameplayWidgetAnchor::Screen => {},
-            GameplayWidgetAnchor::Playfield { 
+            GameplayWidgetAnchor::Playfield {
                 relative,
                 ..
             } => {
                 options.push(ContextMenuOption::new(
                     "Relative Align",
-                    make_relative_align(*relative, shell.owner),
+                    make_relative_align(*relative, shell.source),
                 ));
             }
-            GameplayWidgetAnchor::Element { 
+            GameplayWidgetAnchor::Element {
                 relative ,
                 ..
             } => {
                 options.push(ContextMenuOption::new(
                     "Relative Align",
-                    make_relative_align(*relative, shell.owner),
+                    make_relative_align(*relative, shell.source),
                 ));
                 options.push(ContextMenuOption::new(
                     "Select Parent",
-                    Message::new(
-                        shell.owner,
+                    ContextMenuAction::Callback(Box::new(move || Some(Message::new(
+                        source,
                         "select_parent",
-                        MessageValue::Click
-                    ),
+                        None,
+                        Box::new(())
+                    ))))
                 ));
             }
         }
@@ -262,20 +284,22 @@ impl GameplayWidgetEditor {
         // reset
         options.push(ContextMenuOption::new(
             "Reset",
-            Message::new(
-                shell.owner,
+            ContextMenuAction::Callback(Box::new(move || Some(Message::new(
+                source,
                 "reset",
-                MessageValue::Click,
-            )
+                None,
+                Box::new(()),
+            ))))
         ));
         // reset to default
         options.push(ContextMenuOption::new(
             "Default",
-            Message::new(
-                shell.owner,
+            ContextMenuAction::Callback(Box::new(move || Some(Message::new(
+                source,
                 "reset_default",
-                MessageValue::Click,
-            )
+                None,
+                Box::new(()),
+            ))))
         ));
 
         ContextMenu::new(options, shell.mouse_pos)
@@ -283,9 +307,9 @@ impl GameplayWidgetEditor {
 
 
     fn handle_left_click(
-        &mut self, 
+        &mut self,
         shell: &mut InputShell<actions::Action>,
-        clicked: Option<usize>, 
+        clicked: Option<usize>,
         selected: Option<usize>,
     ) {
         match self.click_action {
@@ -294,10 +318,10 @@ impl GameplayWidgetEditor {
                     self.widgets[clicked].selected = true;
                     shell.event_consumed = true;
 
-                    self.click_pos = Some(ClickHoldData { 
-                        pos: shell.mouse_pos, 
-                        triggered: false, 
-                        selected: clicked, 
+                    self.click_pos = Some(ClickHoldData {
+                        pos: shell.mouse_pos,
+                        triggered: false,
+                        selected: clicked,
                     });
                 } else {
                     self.context_menu = None;
@@ -313,7 +337,7 @@ impl GameplayWidgetEditor {
 
                     let mid = (clicked + selected) / 2;
                     let (
-                        left, 
+                        left,
                         right
                     ) = self.widgets.split_at_mut(mid);
 
@@ -328,16 +352,16 @@ impl GameplayWidgetEditor {
                     };
 
                     match &mut selected.layout.anchor {
-                        GameplayWidgetAnchor::Element { 
-                            element, 
-                            .. 
+                        GameplayWidgetAnchor::Element {
+                            element,
+                            ..
                         } => {
                             *element = clicked.name.clone().into();
                         },
 
                         _ => {
-                            selected.layout.anchor = GameplayWidgetAnchor::Element { 
-                                element: clicked.name.clone().into(), 
+                            selected.layout.anchor = GameplayWidgetAnchor::Element {
+                                element: clicked.name.clone().into(),
                                 relative: GameplayWidgetAlign::Inside,
                             };
                         }
@@ -367,8 +391,8 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
                 <button>
                     <action>
                     Message::new(
-                        shell.owner, 
-                        w.name.clone(), 
+                        shell.owner,
+                        w.name.clone(),
                         MessageValue::Click,
                     )
                     </action>
@@ -382,8 +406,8 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
             .collect::<Vec<_>>()
             .join("");
         let list_str = format!(r#"
-            <column 
-                scollable="true" 
+            <column
+                scollable="true"
                 style="width: fill; height: fill"
             >
                 {a}
@@ -401,8 +425,8 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
         //         .map(|w| {
         //             Button::new(TextWidget::new(w.name.clone()).boxed())
         //             .on_press(Message::new(
-        //                 shell.owner, 
-        //                 w.name.clone(), 
+        //                 shell.owner,
+        //                 w.name.clone(),
         //                 MessageValue::Click,
         //             ))
         //             .boxed()
@@ -419,8 +443,8 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
     }
 
     fn input(
-        &mut self, 
-        event: &input::InputEvent, 
+        &mut self,
+        event: &input::InputEvent,
         shell: &mut InputShell<actions::Action>,
     ) {
         if let Some(menu) = self.context_menu.as_mut() {
@@ -431,7 +455,7 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
         match event.event {
             input::InputType::MouseMove(pos) => {
                 if let Some(data) = &mut self.click_pos {
-                    if !data.triggered 
+                    if !data.triggered
                         && shell.mouse_pos.distance(data.pos) > 10.0
                     {
                         data.triggered = true;
@@ -444,10 +468,10 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
                         let mut layout = selected.layout.clone();
                         layout.offset += pos - data.pos;
                         self.send(
-                            GameplayWidgetAction { 
-                                target: selected.name.clone(), 
+                            GameplayWidgetAction {
+                                target: selected.name.clone(),
                                 action: GameplayWidgetActionType::Move(layout),
-                            }, 
+                            },
                             shell.actions,
                         );
                     }
@@ -479,7 +503,7 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
                 {
                     if i.selected { selected = Some(n); }
                     if i.hover { clicked = Some(n); }
-                
+
                     if selected.is_some() && clicked.is_some() { break }
                 }
 
@@ -511,7 +535,7 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
 
                 self.handle_right_click(shell, clicked);
             }
-            
+
             _ => {}
         }
     }
@@ -557,21 +581,23 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
     }
 
     fn handle_message(
-        &mut self, 
-        message: &Message, 
+        &mut self,
+        message: &Message,
         shell: &mut MessageShell<actions::Action>,
     ) {
         shell.handled = true;
 
-        match &**message.tag {
+        match &*message.tag {
             "align" => {
-                let value = *message.value.downcast::<Alignment>();
+                let Some(value) = message.value.downcast_ref::<Alignment>().copied()
+                else { return };
+
                 for i in self.widgets.iter_mut() {
                     if !i.selected { continue }
                     i.layout.align = value;
 
-                    let action = GameplayWidgetAction { 
-                        target: i.name.clone(), 
+                    let action = GameplayWidgetAction {
+                        target: i.name.clone(),
                         action: GameplayWidgetActionType::Move(i.layout.clone()),
                     };
 
@@ -579,16 +605,16 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
                     break;
                 }
             }
-            
+
             "anchor" => {
-                let Some(value) = message.value.as_text_ref() 
+                let Some(value) = message.value.downcast_ref::<String>()
                 else { return };
-                
+
                 use engine::gameplay::widgets::GameplayWidgetAnchor as Anchor;
                 for i in self.widgets.iter_mut() {
                     if !i.selected { continue }
                     let mut send_update = false;
-                    
+
                     match (&**value, &mut i.layout.anchor) {
                         // dont change anything if the incoming type is already correct
                         ("element", Anchor::Element {..}) => break,
@@ -599,15 +625,15 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
                             send_update = true;
                         },
 
-                        ("element", a) => { 
-                            *a = Anchor::Element { 
+                        ("element", a) => {
+                            *a = Anchor::Element {
                                 element: Cow::Borrowed(""),
                                 relative: GameplayWidgetAlign::Inside,
                             };
                         },
 
                         ("playfield", a) => {
-                            *a = Anchor::Playfield { 
+                            *a = Anchor::Playfield {
                                 saved_size: None,
                                 relative: GameplayWidgetAlign::Inside,
                             };
@@ -618,8 +644,8 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
                     };
 
                     if send_update {
-                        let action = GameplayWidgetAction { 
-                            target: i.name.clone(), 
+                        let action = GameplayWidgetAction {
+                            target: i.name.clone(),
                             action: GameplayWidgetActionType::Move(i.layout.clone()),
                         };
                         self.send(action, shell.actions);
@@ -630,25 +656,26 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
             }
 
             "relative_align" => {
-                let value = *message
-                    .value.downcast::<GameplayWidgetAlign>();
+                let Some(value) = message.value
+                    .downcast_ref::<GameplayWidgetAlign>().copied()
+                else { return};
 
                 for i in self.widgets.iter_mut() {
                     if !i.selected { continue }
                     match &mut i.layout.anchor {
                         GameplayWidgetAnchor::Screen => {},
-                        GameplayWidgetAnchor::Element { 
+                        GameplayWidgetAnchor::Element {
                             relative,
                             ..
-                        } | GameplayWidgetAnchor::Playfield { 
+                        } | GameplayWidgetAnchor::Playfield {
                             relative,
                             ..
                         } => {
                             *relative = value;
                         }
                     }
-                    let action = GameplayWidgetAction { 
-                        target: i.name.clone(), 
+                    let action = GameplayWidgetAction {
+                        target: i.name.clone(),
                         action: GameplayWidgetActionType::Move(i.layout.clone()),
                     };
 
@@ -665,8 +692,8 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
             "reset" => {
                 if let Some(selected) = self.get_selected() {
                     selected.layout = selected.original_layout.clone();
-                    let action = GameplayWidgetAction { 
-                        target: selected.name.clone(), 
+                    let action = GameplayWidgetAction {
+                        target: selected.name.clone(),
                         action: GameplayWidgetActionType::Move(
                             selected.original_layout.clone()
                         ),
@@ -678,12 +705,12 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
                     );
                 }
             }
-            
+
             "reset_default" => {
                 if let Some(selected) = self.get_selected() {
                     selected.layout = selected.default_layout.clone();
-                    let action = GameplayWidgetAction { 
-                        target: selected.name.clone(), 
+                    let action = GameplayWidgetAction {
+                        target: selected.name.clone(),
                         action: GameplayWidgetActionType::Move(
                             selected.default_layout.clone()
                         ),
@@ -742,7 +769,7 @@ impl WidgetState {
                 self.bounds,
                 Color::TRANSPARENT,
             ).border(Border::new(
-                shell.general_theme.hover_color, 
+                shell.general_theme.hover_color,
                 2.0
             )));
         } else if self.selected {
@@ -750,7 +777,7 @@ impl WidgetState {
                 self.bounds,
                 Color::TRANSPARENT,
             ).border(Border::new(
-                shell.general_theme.active_color, 
+                shell.general_theme.active_color,
                 2.0
             )));
         }

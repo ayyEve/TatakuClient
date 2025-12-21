@@ -5,7 +5,6 @@ use tataku::{
 };
 use ui::{
     tree::*,
-    style::*,
     widget::*,
 };
 use widgets::{
@@ -44,10 +43,14 @@ pub struct TextInput {
     #[chain] secure: bool,
 
     placeholder: WidgetText,
-    value: WidgetText,
+    value: String,
+    variable: engine::VariablePathResolver,
+    text: widgets::Text,
+
+    load_from_variable: bool,
     
-    #[chain] on_input: InputAction<String>,
-    #[chain] on_submit: InputAction<String>,
+    on_input: Option<InputAction<String>>,
+    on_submit: Option<InputAction<String>>,
     
     cursor: Cursor,
     pressed: bool,
@@ -59,18 +62,24 @@ pub struct TextInput {
 impl TextInput {
     pub fn new(
         placeholder: WidgetText,
-        value: WidgetText,
+        variable: engine::VariablePathResolver,
     ) -> Self {
-        Self {
-            cursor: Cursor::Position(0),
+        let text = widgets::Text::new("".into());
 
-            placeholder,
-            value,
+        Self {
             secure: false,
 
-            on_input: InputAction::default(),
-            on_submit: InputAction::default(),
+            placeholder,
+            value: String::new(),
+            text,
+            variable,
 
+            load_from_variable: true,
+
+            on_input: None,
+            on_submit: None,
+
+            cursor: Cursor::Position(0),
             pressed: false,
             hovered: false,
             active: false,
@@ -79,20 +88,29 @@ impl TextInput {
         }
     }
 
-    fn get_text(&self) -> Cow<'_, str> {
-        let value = self.value.get();
-        if value.is_empty() {
+    pub fn on_input(mut self, on_input: Option<impl Into<InputAction<String>>>) -> Self {
+        self.on_input = on_input.map(Into::into);
+        self
+    }
+
+    pub fn on_submit(mut self, on_submit: Option<impl Into<InputAction<String>>>) -> Self {
+        self.on_submit = on_submit.map(Into::into);
+        self
+    }
+
+    fn visible_text(&self) -> Cow<'_, str> {
+        if self.value.is_empty() {
             self.placeholder.get()
         } else if self.secure {
-            Cow::Owned("*".repeat(value.len()))
+            Cow::Owned("*".repeat(self.value.len()))
         } else {
-            value
+            Cow::Borrowed(&self.value)
         }
     }
 
     fn handle_control_action(
-        &mut self, 
-        action: ControlAction, 
+        &mut self,
+        action: ControlAction,
         shift_pressed: bool
     ) {
         if let Cursor::Selection { start, .. } = self.cursor
@@ -102,13 +120,13 @@ impl TextInput {
             return
         }
 
-        let value = self.value.get();
-        let len = value.len();
-        let indices = value.char_indices();
+        let len = self.value.len();
+        let indices = self.value.char_indices();
+
         fn next(
-            indices: std::str::CharIndices<'_>, 
-            index: usize, 
-            len: usize, 
+            indices: std::str::CharIndices<'_>,
+            index: usize,
+            len: usize,
             forwards: bool
         ) -> usize {
             if forwards {
@@ -132,10 +150,10 @@ impl TextInput {
             ControlAction::Delete => {
                 if let Cursor::Position(index) = self.cursor {
                     let end = next(indices, index, len, true);
-                    self.cursor = Cursor::Selection { 
-                        start: index, 
-                        end, 
-                        forward_select: true 
+                    self.cursor = Cursor::Selection {
+                        start: index,
+                        end,
+                        forward_select: true
                     };
                 }
 
@@ -144,10 +162,10 @@ impl TextInput {
             ControlAction::Backspace => {
                 if let Cursor::Position(index) = self.cursor {
                     let start = next(indices, index, len, false);
-                    self.cursor = Cursor::Selection { 
-                        start, 
-                        end: index, 
-                        forward_select: false 
+                    self.cursor = Cursor::Selection {
+                        start,
+                        end: index,
+                        forward_select: false
                     };
                 }
 
@@ -159,56 +177,56 @@ impl TextInput {
                 match self.cursor {
                     Cursor::Position(i) => {
                         let start = next(
-                            indices, 
-                            i, 
-                            len, 
+                            indices,
+                            i,
+                            len,
                             false
                         );
 
                         if shift_pressed {
-                            self.cursor = Cursor::Selection { 
-                                start, 
-                                end: i, 
-                                forward_select: false 
+                            self.cursor = Cursor::Selection {
+                                start,
+                                end: i,
+                                forward_select: false
                             };
                         } else {
                             self.cursor = Cursor::Position(start);
                         }
                     }
-                    Cursor::Selection { 
-                        start, 
-                        end, 
-                        forward_select 
+                    Cursor::Selection {
+                        start,
+                        end,
+                        forward_select
                     } => {
                         if shift_pressed {
                             if forward_select {
-                                self.cursor = Cursor::Selection { 
-                                    start, 
+                                self.cursor = Cursor::Selection {
+                                    start,
                                     end: next(
-                                        indices, 
-                                        end, 
-                                        len, 
+                                        indices,
+                                        end,
+                                        len,
                                         false
-                                    ), 
-                                    forward_select 
+                                    ),
+                                    forward_select
                                 };
                             } else {
-                                self.cursor = Cursor::Selection { 
+                                self.cursor = Cursor::Selection {
                                     start: next(
-                                        indices, 
-                                        start, 
-                                        len, 
+                                        indices,
+                                        start,
+                                        len,
                                         false
-                                    ), 
-                                    end, 
+                                    ),
+                                    end,
                                     forward_select,
                                 };
                             }
                         } else {
                             self.cursor = Cursor::Position(next(
-                                indices, 
-                                start, 
-                                len, 
+                                indices,
+                                start,
+                                len,
                                 false
                             ));
                         }
@@ -222,44 +240,44 @@ impl TextInput {
                         let end = next(indices, i, len, true);
 
                         if shift_pressed {
-                            self.cursor = Cursor::Selection { 
-                                start: i, 
-                                end, 
-                                forward_select: true 
+                            self.cursor = Cursor::Selection {
+                                start: i,
+                                end,
+                                forward_select: true
                             };
                         } else {
                             self.cursor = Cursor::Position(end);
                         }
                     }
-                    Cursor::Selection { 
-                        start, 
-                        end, 
-                        forward_select 
+                    Cursor::Selection {
+                        start,
+                        end,
+                        forward_select
                     } => {
                         if shift_pressed {
                             if forward_select {
-                                self.cursor = Cursor::Selection { 
-                                    start, 
-                                    end: next(indices, end, len, true), 
-                                    forward_select 
+                                self.cursor = Cursor::Selection {
+                                    start,
+                                    end: next(indices, end, len, true),
+                                    forward_select
                                 };
                             } else {
-                                self.cursor = Cursor::Selection { 
+                                self.cursor = Cursor::Selection {
                                     start: next(
-                                        indices, 
-                                        start, 
-                                        len, 
+                                        indices,
+                                        start,
+                                        len,
                                         true
-                                    ), 
-                                    end, 
-                                    forward_select 
+                                    ),
+                                    end,
+                                    forward_select
                                 };
                             }
                         } else {
                             self.cursor = Cursor::Position(next(
-                                indices, 
-                                end, 
-                                len, 
+                                indices,
+                                end,
+                                len,
                                 true
                             ));
                         }
@@ -272,31 +290,29 @@ impl TextInput {
 
 
         // make sure we use Position if the selection's start and end are the same
-        self.cursor.validate();
+        self.cursor.normalize();
     }
 
     fn replace_selection(&mut self, text: &str) {
-        let Cursor::Selection { start, end, .. } = self.cursor 
-        else { 
-            unreachable!("should not be calling this unless cursor is selection") 
+        let Cursor::Selection { start, end, .. } = self.cursor
+        else {
+            unreachable!("should not be calling this unless cursor is selection")
         };
-        let value = self.value.get();
 
         let diff = end - start;
-        let (start, split) = value.split_at(start);
+        let (start, split) = self.value.split_at(start);
         let end = split.split_at(diff).1;
 
         self.cursor = Cursor::Position(start.len() + text.len());
-        self.value.set(format!("{start}{text}{end}"));
+        self.value = format!("{start}{text}{end}");
     }
 
     fn add_text(&mut self, text: &str) {
         match &mut self.cursor {
             Cursor::Position(i) => {
-                let value = self.value.get();
-                let (start, end) = value.split_at(*i);
+                let (start, end) = self.value.split_at(*i);
 
-                self.value.set(format!("{start}{text}{end}"));
+                self.value = format!("{start}{text}{end}");
                 *i += text.len();
             }
             Cursor::Selection { .. } => {
@@ -315,7 +331,7 @@ impl TextInput {
             return Some(true);
         }
         
-        let len = self.value.get().len();
+        let len = self.value.len();
 
         match key.as_key()? {
             Key::Backspace if mods.ctrl => {
@@ -370,12 +386,9 @@ impl TextInput {
                     Cursor::Position(n) => {
                         if *n > 0 {
                             *n -= 1;
-                            let mut value = self.value.get()
-                                .clone()
-                                .into_owned();
 
-                            value.remove(*n);
-                            self.value.set(value);
+                            self.value.remove(*n);
+
                             Some(true)
                         } else {
                             Some(false)
@@ -391,12 +404,7 @@ impl TextInput {
                 match self.cursor {
                     Cursor::Position(n) => {
                         if n < len {
-                            let mut value = self.value.get()
-                                .clone()
-                                .into_owned();
-
-                            value.remove(n);
-                            self.value.set(value);
+                            self.value.remove(n);
 
                             Some(true)
                         } else {
@@ -414,7 +422,7 @@ impl TextInput {
                 match &mut self.cursor {
                     Cursor::Position(index) => if *index > 0 {
                         let n = *index-1;
-                        
+
                         if mods.shift {
                             self.cursor = Cursor::Selection { 
                                 start: n, 
@@ -458,7 +466,7 @@ impl TextInput {
 
                 }
 
-                self.cursor.validate();
+                self.cursor.normalize();
                 Some(false)
             }
 
@@ -504,7 +512,7 @@ impl TextInput {
                     }
                 }
 
-                self.cursor.validate();
+                self.cursor.normalize();
                 Some(false)
             }
             Key::Up => {
@@ -512,7 +520,7 @@ impl TextInput {
                     Cursor::Position(n) => *n = len,
                     Cursor::Selection { end, .. } => *end = len,
                 }
-                self.cursor.validate();
+                self.cursor.normalize();
                 Some(false)
             }
             Key::Down => {
@@ -520,7 +528,7 @@ impl TextInput {
                     Cursor::Position(n) => *n = 0,
                     Cursor::Selection { start, .. } => *start = 0,
                 }
-                self.cursor.validate();
+                self.cursor.normalize();
                 Some(false)
             }
 
@@ -536,55 +544,62 @@ impl TextInput {
         }
     }
 
-    fn index_rel_pos(&self, text_style: &TextStyle, mut rel_x: f32) -> usize {
-        // let (font_size, text_scale) = Text::get_font_size_scaled(
-        //     text_style.font_size
-        // );
+    fn position_to_index(&self, pos: f32) -> usize {
+        let layout = self.text.text_layout();
 
-        let value = self.value.get();
+        if self.value.is_empty() { // since the layout would be the placeholder
+            return 0;
+        } else if pos >= layout.full_width() {
+            return self.value.len();
+        }
 
-        // for (i, ch) in value.char_indices() {
-        //     let Some(data) = ActualFont::get_font(text_style.font)
-        //         .get_character(font_size, ch)
-        //     else { continue };
-        //     rel_x -= data.advance_width() * text_scale;
-            
-        //     if rel_x <= 0.0 { return i }
-        // }
+        let result = parley::Cluster::from_point(
+            layout,
+            pos,
+            0.0,
+        );
 
-        value.len()
+        match result {
+            Some((cluster, side)) => match side {
+                parley::ClusterSide::Left => cluster.text_range().start,
+                parley::ClusterSide::Right => cluster.text_range().end - 1,
+            },
+            None => 0,
+        }
     }
 
-    fn update_size(&self, tree: &mut Tree<actions::Action>) {
-        let text_style = tree
-            .get_text_style(&self.node_id)
-            .unwrap();
-        
-        let min_height = f16::from_f32(text_style.line_height);
-        // let min_width = f16::from_f32(text_style
-        //     .measure_text(&self.get_text(), None)
-        //     .x
-        //     .max(200.0)
-        // );
+    fn index_to_position(&self, index: usize) -> f32 {
+        let layout = self.text.text_layout();
 
-        tree.update_style(
-            &self.node_id, 
-            |style| {
-                // style.min_width = CssUnit::Pixels(min_width).into();
-                style.min_height = CssUnit::Pixels(min_height).into();
-            }
-        );
+        if index >= self.value.len() {
+            return layout.full_width();
+        };
+
+        parley::Cluster::from_byte_index(
+            layout,
+            index,
+        )
+            .and_then(|cluster| cluster.visual_offset())
+            .unwrap()
     }
 }
 impl Widget<actions::Action> for TextInput {
     fn name(&self) -> CowStr { "text_input_widget".into() }
     fn node_id(&self) -> &NodeId { &self.node_id }
 
-    fn layout(
-        &mut self, 
-        shell: &mut LayoutShell<actions::Action>
-    ) -> taffy::TaffyResult<NodeId> {
-        self.node_id = shell.tree.new_leaf()?;
+    fn children(&self) -> WidgetChildren<'_, actions::Action> {
+        WidgetChildren::Single(&self.text)
+    }
+
+    fn children_mut(&mut self) -> WidgetChildrenMut<'_, actions::Action> {
+        WidgetChildrenMut::Single(&mut self.text)
+    }
+
+    fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId> {
+        let text = self.text.layout(shell)?;
+
+        self.node_id = shell.tree.new_with_children(&[text])?;
+
         shell.with_context(&self.node_id, |ctx| {
             ctx.needs_inverse_transform = true;
             ctx.set_selectable(true);
@@ -594,7 +609,7 @@ impl Widget<actions::Action> for TextInput {
     }
 
     fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
-        self.update_size(shell.tree);
+        self.text.init_style(shell);
     }
 
     fn input(
@@ -602,22 +617,20 @@ impl Widget<actions::Action> for TextInput {
         event: &InputEvent,
         shell: &mut InputShell<actions::Action>,
     ) {
-        let text_style = shell.tree
-            .get_text_style(&self.node_id)
-            .unwrap();
-
         match &event.event {
             InputType::KeyPress(press) if self.active => {
                 if let Some(Key::Enter) = press.as_key() {
 
-                    self.on_submit.run(
-                        &self.value.get().into_owned(),
-                        &self.node_id,
-                        shell.messages,
-                        shell.actions,
-                        shell.values,
-                    );
-                    
+                    if let Some(on_submit) = &self.on_submit {
+                        on_submit.run(
+                            &self.value,
+                            &self.node_id,
+                            shell.messages,
+                            shell.actions,
+                            shell.values,
+                        );
+                    }
+
                     shell.event_consumed = true;
                     self.active = false;
                     return;
@@ -655,16 +668,17 @@ impl Widget<actions::Action> for TextInput {
                         //         .reflect_insert(&variable, cached.clone())
                         //         .inspect_err(|e| warn!("{e:?}"));
                         // }
-                        
-                        self.on_input.run(
-                            &self.value.get().into_owned(),
-                            &self.node_id,
-                            shell.messages,
-                            shell.actions,
-                            shell.values,
-                        );
+
+                        if let Some(on_input) = &self.on_input {
+                            on_input.run(
+                                &self.value,
+                                &self.node_id,
+                                shell.messages,
+                                shell.actions,
+                                shell.values,
+                            );
+                        }
                     }
-                
                 }
             }
 
@@ -679,11 +693,9 @@ impl Widget<actions::Action> for TextInput {
 
                 if self.pressed {
                     use std::cmp::Ordering;
-                    let index = self.index_rel_pos(
-                        text_style, 
-                        pos.x - bounds.pos.x
-                    );
-                    
+
+                    let index = self.position_to_index(pos.x - bounds.pos.x);
+
                     match self.cursor {
                         Cursor::Position(i) => {
                             match index.cmp(&i) {
@@ -735,7 +747,7 @@ impl Widget<actions::Action> for TextInput {
                         }
                     }
 
-                    self.cursor.validate();
+                    self.cursor.normalize();
                 }
             }
             InputType::MousePress(MouseButton::Left) => {
@@ -752,10 +764,10 @@ impl Widget<actions::Action> for TextInput {
 
                 if self.pressed {
                     shell.event_consumed = true;
-                    self.cursor = Cursor::Position(self.index_rel_pos(
-                        text_style,
-                        pos.x - bounds.pos.x
-                    ));
+
+                    let index = self.position_to_index(pos.x - bounds.pos.x);
+
+                    self.cursor = Cursor::Position(index);
                 }
             }
             InputType::MouseRelease(MouseButton::Left) => {
@@ -771,10 +783,6 @@ impl Widget<actions::Action> for TextInput {
         let Some(bounds) = shell.tree.absolute_bounds(&self.node_id) 
         else { return };
 
-        let text_style = shell.tree.get_text_style(&self.node_id)
-            .unwrap();
-
-
         shell.list.push(graphics::Rectangle::new_bounds(
             bounds,
             shell.general_theme.background_color
@@ -783,76 +791,83 @@ impl Widget<actions::Action> for TextInput {
             2.0
         )));
 
-        let mut text = self.get_text().clone().into_owned();
-        // shell.list.push(text_style.create_text(text.clone(), bounds));
+        self.text.draw(shell);
 
-        if self.active && !self.value.get().is_empty() {
-            match self.cursor {
-                Cursor::Position(i) => {
-                    // TODO: make sure we handle these when setting the index
-                    assert!(i <= text.len());
-                    assert!(text.is_char_boundary(i));
-                    if i < text.len() {
-                        let split = text.split_at(i).0;
-                        text = split.to_owned();
-                    }
-                    
-                    // TODO: scale with transform?
-                    // let size = text_style.measure_text(&text, None);
-                    let size = Vector2::new(100.0, 16.0);
-                    
-                    let cursor_bar = graphics::Rectangle::new(
-                        Vector2::new(
-                            bounds.pos.x + size.x,
-                            bounds.pos.y
-                        ),
-                        Vector2::new(
-                            2.0,
-                            bounds.size.y
-                        ),
-                        shell.general_theme.active_color,
-                    );
-                    shell.list.push(cursor_bar);
-                }
-                Cursor::Selection { start, end, .. } => {
-                    assert!(end > start);
-                    assert!(text.is_char_boundary(start));
-                    assert!(text.is_char_boundary(end));
+        if !self.active || self.value.is_empty() { return; }
 
-                    let diff = end - start;
-                    let (start, split) = text.split_at(start);
-                    // let offset = text_style
-                    //     .measure_text(start, None);
-                    let offset = Vector2::new(10.0, 0.0);
+        let layout = self.text.text_layout();
+        let height = layout.height(); // since there is only one line
 
-                    let split = split.split_at(diff).0;
-                    // let size = text_style
-                    //     .measure_text(split, None);
-                    let size = Vector2::new(100.0, 16.0);
+        let y_offset = (bounds.size.y - height) / 2.0;
 
-                    // TODO: scale with transform?
-                    let cursor_bar = graphics::Rectangle::new(
-                        Vector2::new(
-                            bounds.pos.x + offset.x,
-                            bounds.pos.y
-                        ),
-                        Vector2::new(
-                            size.x,
-                            bounds.size.y
-                        ),
-                        shell.general_theme.active_color.alpha(0.7)
-                    );
-                    shell.list.push(cursor_bar);
-                }
+        match self.cursor {
+            Cursor::Position(i) => {
+                let pos = self.index_to_position(i);
+
+                let cursor_bar = graphics::Rectangle::new(
+                    Vector2::new(
+                        bounds.pos.x + pos,
+                        bounds.pos.y + y_offset
+                    ),
+                    Vector2::new(
+                        2.0,
+                        height
+                    ),
+                    shell.general_theme.active_color,
+                );
+                shell.list.push(cursor_bar);
+            }
+            Cursor::Selection { start, end, .. } => {
+                assert!(end > start);
+
+                let start = self.index_to_position(start);
+                let end = self.index_to_position(end);
+
+                let cursor_bar = graphics::Rectangle::new(
+                    Vector2::new(
+                        bounds.pos.x + start,
+                        bounds.pos.y + y_offset
+                    ),
+                    Vector2::new(
+                        end - start,
+                        height,
+                    ),
+                    shell.general_theme.active_color.alpha(0.7)
+                );
+                shell.list.push(cursor_bar);
             }
         }
         
     }
 
     fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
-        if self.value.update(shell.values) | self.placeholder.update(shell.values) {
-            self.update_size(shell.tree);
+        self.placeholder.update(shell.values);
+
+        let variable = match self.variable.resolve_path(shell.values) {
+            Ok(v) => v,
+            Err(e) => {
+                warn!("invalid variable path: {e:?}");
+                return;
+            }
+        };
+
+        if self.load_from_variable {
+            self.load_from_variable = false;
+
+            match shell.values.reflect_get::<String>(&variable) {
+                Ok(value) => {
+                    self.value = value.to_string();
+                },
+                Err(e) => {
+                    warn!("invalid text input path: {e:?}");
+                },
+            }
+        } else if let Err(e) = shell.values.reflect_insert(&variable, self.value.clone()) {
+            warn!("failed to insert text input to reflect: {e:?}");
         }
+
+        self.text.text.set(self.visible_text().into_owned());
+        self.text.update(shell);
     }
 }
 
@@ -866,7 +881,7 @@ enum Cursor {
     }
 }
 impl Cursor {
-    fn validate(&mut self) {
+    fn normalize(&mut self) {
         use std::cmp::Ordering;
         if let Self::Selection { start, end, .. } = *self {
             match start.cmp(&end) {
@@ -1142,7 +1157,7 @@ fn test() {
         assert_eq!(input.cursor, i.expected);
         if let Some(text) = &i.expected_text {
             println!("{text}");
-            assert!(input.value.get() == *text);
+            assert!(input.value == *text);
         }
     }
 

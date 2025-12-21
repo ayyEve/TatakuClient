@@ -19,8 +19,8 @@ use ui::{
         NodeId,
     },
     message::{
-        Message, 
-        MessageOwner,
+        Message,
+        MessageSource,
         MessageValue,
     },
 };
@@ -44,7 +44,7 @@ impl UiManager {
     fn default_tree() -> Tree<actions::Action> {
         Tree::new(
             100, // 100 should be fine right? right??!!?
-            MessageOwner::Menu,
+            MessageSource::Menu,
             ui::EmptyWidget::new_boxed()
         )
     }
@@ -69,7 +69,7 @@ impl UiManager {
 
 
         self.current_menu = root.name().into_owned();
-        self.messages.retain(|m| !m.owner.is_menu());
+        self.messages.retain(|m| !m.source.is_menu());
         self.root_tree.set_node(root, values, text_layout_contexts);
     }
 
@@ -109,16 +109,17 @@ impl UiManager {
         self.dialog_counter += 1;
         let mut tree = Tree::new(
             50,
-            MessageOwner::Dialog(num),
+            MessageSource::Dialog(num),
             ui::EmptyWidget::new_boxed()
         );
 
         tree.set_node(dialog, values, text_layout_contexts);
         tree.handle_message(
             &Message::new(
-                tree.owner,
+                tree.source,
                 "set_num",
-                MessageValue::Number(num),
+                None,
+                Box::new(num),
             ),
             values,
             actions,
@@ -171,9 +172,10 @@ impl UiManager {
         );
         last.handle_message(
             &Message::new(
-                last.owner,
+                last.source,
                 "force_close",
-                MessageValue::Click
+                None,
+                Box::new(()),
             ),
             values,
             actions,
@@ -190,9 +192,10 @@ impl UiManager {
         for i in self.dialogs.iter_mut() {
             i.handle_message(
                 &Message::new(
-                    i.owner,
+                    i.source,
                     "force_close",
-                    MessageValue::Click
+                    None,
+                    Box::new(()),
                 ),
                 values,
                 actions,
@@ -218,7 +221,7 @@ impl UiManager {
             let Some(tree) = [&mut self.root_tree]
                 .into_iter()
                 .chain(self.dialogs.iter_mut())
-                .find(|t| t.owner.is_eq(m.owner))
+                .find(|t| t.source == m.source)
             else {
                 warn!("no tree for message {m:?}");
                 continue
@@ -278,20 +281,20 @@ impl UiManager {
         // update dialogs
         for dialog in self.dialogs.iter_mut().rev() {
             dialog.update(
-                values, 
-                actions, 
-                &mut self.messages, 
-                skin_manager, 
+                values,
+                actions,
+                &mut self.messages,
+                skin_manager,
                 text_layout_contexts
             );
         }
 
         // update the root widget
         self.root_tree.update(
-            values, 
-            actions, 
-            &mut self.messages, 
-            skin_manager, 
+            values,
+            actions,
+            &mut self.messages,
+            skin_manager,
             text_layout_contexts
         );
 
@@ -384,10 +387,6 @@ impl UiManager {
 
             UiActionType::ContextChanged => {
                 tree.update_context(&node);
-            }
-
-            UiActionType::Operation(op) => {
-                tree.operate(&op);
             }
 
             UiActionType::UpdateStyleWith(f) => {

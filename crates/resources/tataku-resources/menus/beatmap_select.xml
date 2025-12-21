@@ -4,53 +4,45 @@
 <menu id="beatmap_select">
   <style>
     #score-list {
-      width: 8%; 
       height: fill; 
       justify-content: space-between;
+      gap: 2px;
     }
 
     #group-list {
-      width: fill; 
-      height: fill; 
       flex-direction: column; 
-      
-      flex-shrink: 1; 
-      flex-grow: 1; 
-      flex-basis: 0;
+
+      justify-content: space-around;
+      gap: 2px;
     }
 
     .group-item {
-      width: fill; 
       padding: 2px; 
-      margin: 2px;
+      justify-content: space-between;
+      gap: 2px;
     }
 
     .map-list {
-        width: fill;
-        height: auto;
-        margin: 2px;
-        
-        justify-content: space-around; 
-        align-content: end; 
-        flex-wrap: wrap; 
-        flex-direction: column; 
+      width: 100%;
+      flex-direction: column;
+
+      justify-content: space-between;
+      gap: 2px;
     }
     .map-item {
-        width: auto;
-        height: auto;
-        flex-shrink: 0.0;
-        padding: 5px;
-        margin: 2px;
+      padding: 5px;
     }
     .map-item-inner {
-        width: fill; 
-        height: fill; 
-        padding: 5px; 
-        margin: 2px;
+      width: fill;
+      height: fill;
+      padding: 5px;
+    }
+    .align-end {
+      justify-content: end;
     }
 
     .diff-info {
-        font-size: 14px;
+      font-size: 14px;
     }
 
     #top-bar {
@@ -63,6 +55,8 @@
       width: fill;
       height: 80%;
       max-height: fill;
+
+      justify-items: space-between;
     }
 
     #bottom-bar {
@@ -296,7 +290,7 @@
     <!-- the next row has the score list, gameplay preview, and beatmap list -->
     <row id="middle">
       <!-- score list -->
-      <column id="score-list">
+      <column id="score-list" style="flex-basis: 10%;">
         <!-- score list -->
         <conditional id="scores_list" cond="score_list.loaded">
           <conditional cond="score_list.scores.is_empty">
@@ -348,17 +342,18 @@
       </column>
 
       <!-- gameplay preview and map list -->
-      <row style="width: 92%; height: fill; ">
-        <gameplayPreview style="width: 40%; height: fill" />
+      <row style="flex-basis: 90%; height: fill; ">
+        <gameplayPreview style="flex-basis: 40%; height: fill;" />
 
         <!-- beatmap group list -->
         <list
           id = "group-list"
+          style = "flex-basis: 50%; height: fill;"
           list = "beatmaps.groups"
           variable = "_group"
           scrollable = "true"
         >
-          <column id="group-item">
+          <column class="group-item">
             <!-- set info -->
             <button active="_group.selected">
               <action>
@@ -376,13 +371,13 @@
             </button>
 
             <!-- map items -->
-            <conditional cond="_group.selected">
-              <list
-                style = "width: fill; height: auto; margin: 2px; flex-direction: column;"
-                list = "_group.maps"
-                variable = "_map"
-              >
-                <column class="map-list">
+            <row class="align-end">
+              <conditional cond="_group.selected" style="flex-basis: 80%"> <!-- todo: try fit-content -->
+                <list
+                  class = "map-list"
+                  list = "_group.maps"
+                  variable = "_map"
+                >
                   <button
                     class = "map-item"
                     active = "beatmaps.current == _map"
@@ -414,7 +409,7 @@
                     <column class="map-item-inner">
                       <!-- title and stuff -->
                       <conditional cond="beatmaps.diffs[_map].diff > 0.0">
-                        <text style="flex-shrink: 0.0">
+                        <text>
                           <display>beatmaps.beatmaps[_map].playmode</display> - <variable>beatmaps.beatmaps[_map].version</variable> (diff: <display>beatmaps.diffs[_map].diff</display>)
                         </text>
 
@@ -431,9 +426,9 @@
                       </text>
                     </column>
                   </button>
-                </column>
-              </list>
-            </conditional>
+                </list>
+              </conditional>
+            </row>
           </column>
         </list>
       </row>

@@ -1,6 +1,6 @@
+mod base;
 mod basic;
 mod graphs;
-mod tabbed;
 mod switch;
 mod conditional;
 mod stats_graph;
@@ -9,11 +9,10 @@ mod transformable;
 pub mod context_menus;
 mod visualization;
 mod gameplay_preview;
-mod base;
 
+pub use base::*;
 pub use basic::*;
 pub use graphs::*;
-pub use tabbed::*;
 pub use switch::*;
 pub use conditional::*;
 pub use stats_graph::*;
@@ -22,4 +21,3 @@ pub use transformable::*;
 pub use context_menus::*;
 pub use visualization::*;
 pub use gameplay_preview::*;
-pub use base::*;

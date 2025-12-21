@@ -108,7 +108,7 @@ impl<'rpn, 'values: 'rpn> BuildableShuntingYard {
             stack
         )?.pop().unwrap();
 
-        stack.push(Ok(function.run(&val)?));
+        stack.push(Ok(Cow::Owned(function.run(val.as_ref())?)));
         Ok(())
     }
 
@@ -402,12 +402,12 @@ enum MathFunction {
 impl MathFunction {
     fn run<'a>(
         self, 
-        val: &Cow<'a, TatakuValue>
-    ) -> Result<Cow<'a, TatakuValue>, BuildableShuntingYardError> {
+        val: &TatakuValue
+    ) -> Result<TatakuValue, BuildableShuntingYardError> {
         let num = val.as_number()
             .ok_or_else(|| BuildableShuntingYardError::NumberIsntANumber(val.as_string()))?;
 
-        Ok(Cow::Owned(match self {
+        Ok(match self {
             Self::Abs => num.abs(),
             Self::Sin => num.sin(),
             Self::Cos => num.cos(),
@@ -416,7 +416,7 @@ impl MathFunction {
             Self::Round => num.round(),
             Self::Ceil => num.ceil(),
             Self::Floor => num.floor(),
-        }.into()))
+        }.into())
     }
     fn str(self) -> &'static str {
         match self {

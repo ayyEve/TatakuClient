@@ -909,7 +909,8 @@ impl Game {
                         self.ui_manager.add_message(ui::message::Message::new(
                             config.owner, 
                             "gameplay_manager_create", 
-                            ui::message::MessageValue::Custom(id.clone())
+                            None,
+                            Box::new(id.clone()),
                         ));
                         manager.set_id(id.clone());
 

@@ -11,8 +11,8 @@ use ui::{
 };
 
 #[derive(ChainableInitializer)]
-pub struct TextWidget {
-    text: WidgetText,
+pub struct Text {
+    pub text: WidgetText,
 
     node_id: NodeId,
 
@@ -20,7 +20,7 @@ pub struct TextWidget {
     old_x: f32,
     old_width: f32,
 }
-impl TextWidget {
+impl Text {
     pub fn new(text: WidgetText) -> Self {
         Self {
             text,
@@ -30,6 +30,10 @@ impl TextWidget {
             old_x: 0.0,
             old_width: 0.0,
         }
+    }
+
+    pub fn text_layout(&self) -> &parley::Layout<Color> {
+        &self.layout
     }
 
     fn recreate_layout(
@@ -87,7 +91,7 @@ impl TextWidget {
         }
     }
 }
-impl Widget<actions::Action> for TextWidget {
+impl Widget<actions::Action> for Text {
     fn name(&self) -> CowStr { "text_widget".into() }
     fn node_id(&self) -> &NodeId { &self.node_id }
 
@@ -163,8 +167,12 @@ impl Widget<actions::Action> for TextWidget {
 
 
 // TODO: rename?
+#[derive(Clone)]
 pub enum WidgetText {
-    String(CowStr),
+    String {
+        value: CowStr,
+        updated: bool,
+    },
     Custom {
         custom: Vec<BuildableText>,
         cached: String,
@@ -173,32 +181,39 @@ pub enum WidgetText {
 impl WidgetText {
     pub fn get(&self) -> Cow<'_, str> {
         match self {
-            Self::String(Cow::Borrowed(s)) => Cow::Borrowed(*s),
-            Self::String(Cow::Owned(s)) => Cow::Borrowed(s),
+            Self::String { value: Cow::Borrowed(s), .. } => Cow::Borrowed(*s),
+            Self::String { value: Cow::Owned(s), .. } => Cow::Borrowed(s),
             Self::Custom { cached, .. } => Cow::Borrowed(cached),
         }
     }
     pub fn set(&mut self, value: String) {
-        match self {
-            Self::String(cow) => *cow = Cow::Owned(value),
-            Self::Custom { cached, .. } => *cached = value,
-        }
+        let old = self.get();
+        let updated = old != value;
+
+        *self = Self::String {
+            value: Cow::Owned(value),
+            updated,
+        };
     }
 
     pub fn update(
         &mut self,
         values: &dyn Reflect
     ) -> bool {
-        let Self::Custom { custom, cached } = self else { return false };
-        let new = custom.iter()
-            .map(|text| text.to_string(values))
-            .collect();
+        match self {
+            Self::String { updated, .. } => updated.take(),
+            Self::Custom { custom, cached } => {
+                let new = custom.iter()
+                    .map(|text| text.to_string(values))
+                    .collect();
 
-        if *cached != new {
-            *cached = new;
-            true
-        } else {
-            false
+                if *cached != new {
+                    *cached = new;
+                    true
+                } else {
+                    false
+                }
+            },
         }
     }
 
@@ -229,7 +244,10 @@ impl WidgetText {
             );
 
         if let Some(string) = combined_string {
-            Self::String(string.into())
+            Self::String {
+                value: string.into(),
+                updated: false,
+            }
         } else {
             Self::Custom {
                 custom: values,
@@ -240,12 +258,18 @@ impl WidgetText {
 }
 impl From<&str> for WidgetText {
     fn from(value: &str) -> Self {
-        Self::String(Cow::Owned(value.to_owned()))
+        Self::String {
+            value: Cow::Owned(value.to_owned()),
+            updated: false,
+        }
     }
 }
 impl From<String> for WidgetText {
     fn from(value: String) -> Self {
-        Self::String(value.into())
+        Self::String {
+            value: value.into(),
+            updated: false,
+        }
     }
 }
 impl From<BuildableText> for WidgetText {

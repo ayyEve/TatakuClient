@@ -1,4 +1,6 @@
+use tataku_common::reflect::*;
 
+#[derive(tataku_common::macros::Reflect)]
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum AnimationIterationCount {
     Value(u32),

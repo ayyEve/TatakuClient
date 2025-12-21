@@ -1,8 +1,7 @@
 use crate::*;
 use ui::tree::NodeId;
-use ui::widget::UiOperation;
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct UiAction {
     pub node: NodeId,
     pub action: UiActionType,
@@ -16,7 +15,7 @@ impl UiAction {
     }
 }
 
-#[derive(Clone, Debug2)]
+#[derive(Debug2)]
 pub enum UiActionType {
     // Refresh,
     // MarkDirty,
@@ -30,13 +29,6 @@ pub enum UiActionType {
 
     /// Run a dialog action
     DialogAction(actions::dialog::DialogAction),
-
-    Operation(UiOperation),
-}
-impl From<UiOperation> for UiActionType {
-    fn from(value: UiOperation) -> Self {
-        Self::Operation(value)
-    }
 }
 
 impl From<UiAction> for actions::Action {

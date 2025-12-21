@@ -4960,6 +4960,7 @@ dependencies = [
  "tataku-engine-common",
  "tataku-graphics",
  "tataku-input",
+ "tataku-resources",
 ]
 
 [[package]]

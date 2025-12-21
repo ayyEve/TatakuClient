@@ -13,7 +13,7 @@ use crate::message::*;
 
 pub const EMPTY_NODE: NodeId = NodeId {
     node_id: taffy::NodeId::new(u64::MAX),
-    owner: MessageOwner::Menu,
+    source: MessageSource::Menu,
 };
 pub const FILL: CssUnit = CssUnit::Percent(f16::from_f32_const(1.0));
 pub const SHRINK: CssUnit = CssUnit::Auto;

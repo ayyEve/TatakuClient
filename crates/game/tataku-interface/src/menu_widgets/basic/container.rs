@@ -299,25 +299,6 @@ impl Widget<actions::Action> for Container {
         Ok(self.node_id)
     }
 
-    fn operation(
-        &mut self,
-        operation: &UiOperation,
-        tree: &mut Tree<actions::Action>,
-    ) {
-        if operation.target.resolve(self, tree) {
-            #[allow(clippy::single_match, reason = "future expansion")]
-            match &operation.operation {
-                UiOperationType::Scroll(scroll)
-                    => self.handle_scroll_operation(scroll, tree),
-                _ => {}
-            }
-        } else {
-            for i in self.children.iter_mut() {
-                i.operation(operation, tree);
-            }
-        }
-    }
-
     fn input(
         &mut self,
         event: &InputEvent,
@@ -437,7 +418,7 @@ impl Widget<actions::Action> for Container {
                         let mut layout_shell = LayoutShell {
                             tree: shell.tree,
                             values: shell.values,
-                            owner: shell.owner,
+                            source: shell.source,
                             ui_scale: 1.0, // TODO:!
                             resolver: &mut resolver,
                             text_layout_contexts: shell.text_layout_contexts,

@@ -10,7 +10,7 @@ pub struct MessageShell<'a, Action: Send + Sync + 'static> {
     pub actions: &'a mut Vec<Action>,
     pub tree: &'a mut Tree<Action>,
     pub values: &'a mut dyn Reflect,
-    pub owner: MessageOwner,
+    pub source: MessageSource,
     pub handled: bool,
 }
 
@@ -19,7 +19,7 @@ pub struct InputShell<'a, Action: Send + Sync + 'static> {
     pub actions: &'a mut Vec<Action>,
     pub tree: &'a mut Tree<Action>,
     pub values: &'a mut dyn Reflect,
-    pub owner: MessageOwner,
+    pub source: MessageSource,
     pub mouse_pos: Vector2,
 
     pub event_consumed: bool,
@@ -42,7 +42,7 @@ pub struct UpdateShell<'a, Action: Send + Sync + 'static> {
     pub tree: &'a mut Tree<Action>,
     pub values: &'a mut dyn Reflect,
 
-    pub owner: MessageOwner,
+    pub source: MessageSource,
     pub messages: &'a mut Vec<Message>,
     pub actions: &'a mut Vec<Action>,
     pub skin_manager: &'a mut dyn graphics::SkinProvider,
@@ -54,7 +54,7 @@ pub struct UpdateShell<'a, Action: Send + Sync + 'static> {
 pub struct LayoutShell<'a, 'css: 'a, Action: Send + Sync + 'static> {
     pub tree: &'a mut Tree<Action>,
     pub values: &'a mut dyn Reflect,
-    pub owner: MessageOwner,
+    pub source: MessageSource,
     pub ui_scale: f32,
     pub resolver: &'a mut CssResolver<'css>,
 
@@ -64,7 +64,7 @@ impl<Action: Send + Sync + 'static> LayoutShell<'_,'_, Action> {
     pub fn with_context(
         &mut self,
         node: &dyn HasNodeId,
-        f: impl Fn(&mut TreeData)     
+        f: impl Fn(&mut TreeData)
     ) {
         let ctx = self.tree
             .get_context_mut(node)

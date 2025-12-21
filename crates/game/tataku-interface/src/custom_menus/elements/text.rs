@@ -6,7 +6,7 @@ pub struct TextElement {
     #[serde(rename="$value")] pub text: Vec<BuildableText>,
 }
 impl TextElement {
-    pub fn build(&self) -> widgets::TextWidget {
+    pub fn build(&self) -> widgets::Text {
         let mut text = self.text.clone();
 
         // Trim any literal texts in this element so you can
@@ -19,7 +19,7 @@ impl TextElement {
             *last = last.trim_end().into();
         }
 
-        widgets::TextWidget::new(
+        widgets::Text::new(
             widgets::WidgetText::from_buildable_iter(text)
         )
     }

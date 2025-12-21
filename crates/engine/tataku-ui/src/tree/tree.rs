@@ -35,7 +35,7 @@ pub struct Tree<Action: Send + Sync> {
     root: NodeId,
 
     pub bounds: Bounds,
-    pub owner: MessageOwner,
+    pub source: MessageSource,
     needs_relayout: bool,
     selected_node: SelectedNode,
 
@@ -44,7 +44,7 @@ pub struct Tree<Action: Send + Sync> {
 impl<Action: Send + Sync + 'static> Tree<Action> {
     pub fn new(
         capacity: usize,
-        owner: MessageOwner,
+        source: MessageSource,
         node: Box<dyn Widget<Action>>,
     ) -> Self {
         let mut nodes = SlotMap::with_capacity(capacity);
@@ -66,11 +66,11 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
             parents,
 
             node,
-            root: NodeId::new(root.into(), owner),
+            root: NodeId::new(root.into(), source),
             bounds: Bounds::default(),
             needs_relayout: false,
 
-            owner,
+            source,
             selected_node: SelectedNode::default(),
 
             use_rounding: true,
@@ -78,7 +78,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
     }
 
     pub fn has_node(&self, node: NodeId) -> bool {
-        node.owner == self.owner
+        node.source == self.source
     }
 
     #[allow(clippy::borrowed_box)]
@@ -103,7 +103,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
 
         // layout the new node
         let mut shell = LayoutShell {
-            owner: self.owner,
+            source: self.source,
             tree: self,
             values,
             ui_scale,
@@ -340,7 +340,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
     ) -> bool {
         let consumed = self.with_node(|tree, node| {
             let mut shell = InputShell {
-                owner: tree.owner,
+                source: tree.source,
                 messages,
                 actions,
                 tree,
@@ -460,7 +460,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
                 values,
                 actions,
                 messages,
-                owner: tree.owner,
+                source: tree.source,
                 tree,
                 handled: false
             };
@@ -481,7 +481,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
                 values,
                 actions,
                 messages,
-                owner: tree.owner,
+                source: tree.source,
                 tree,
                 handled: false
             };
@@ -490,15 +490,6 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
                 passed_in,
                 &mut shell
             );
-        });
-    }
-
-    pub fn operate(
-        &mut self,
-        operation: &UiOperation,
-    ) {
-        self.with_node(|tree, node| {
-            node.operation(operation, tree);
         });
     }
 
@@ -517,7 +508,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         // update the root widget
         self.with_node(|tree, node| {
             let mut shell = UpdateShell {
-                owner: tree.owner,
+                source: tree.source,
                 tree,
                 values,
                 actions,
@@ -540,7 +531,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         self.with_node(|tree, node| {
             // update the root widget
             let mut shell = UpdateShell {
-                owner: tree.owner,
+                source: tree.source,
                 tree,
                 values,
                 actions,
@@ -585,7 +576,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         // actions: &mut ActionQueue,
         messages: &mut [Message],
     ) -> bool {
-        use input::{ 
+        use input::{
             Key,
             GamepadButton,
             InputType,
@@ -721,7 +712,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
     ) -> Option<NodeId> {
         let parent = parent.get_id();
         if f(self, parent) {
-            return Some(NodeId::new(parent, self.owner))
+            return Some(NodeId::new(parent, self.source))
         }
 
         for child in self.children(&parent) {
@@ -743,7 +734,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         let _ = self.children.insert(Vec::new());
         let _ = self.parents.insert(None);
 
-        Ok(NodeId::new(id.into(), self.owner))
+        Ok(NodeId::new(id.into(), self.source))
     }
 
     fn set_children(
@@ -883,7 +874,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
     pub fn parent(&self, node: &dyn HasNodeId) -> Option<NodeId> {
         self.parents
             .get(node.get_id().into())?
-            .map(|i| NodeId::new(i, self.owner))
+            .map(|i| NodeId::new(i, self.source))
     }
     pub fn children(&self, parent: &dyn HasNodeId) -> Vec<NodeId> {
         let Some(children) = self.children
@@ -891,7 +882,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         else { return Vec::new() };
 
         children.iter()
-            .map(|i| NodeId::new(*i, self.owner))
+            .map(|i| NodeId::new(*i, self.source))
             .collect()
     }
 
@@ -969,6 +960,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
             tree: self,
         }.print(root);
     }
+
 }
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -1000,5 +992,79 @@ impl<Action: Send + Sync + 'static> Widget<Action> for SwapTree<Action> {
     fn get_style_str(&self) -> ArcStr { self.style.clone() }
     fn layout(&mut self, _: &mut LayoutShell<Action>) -> taffy::TaffyResult<NodeId> {
         unimplemented!()
+    }
+}
+
+
+mod export_tree {
+    use super::LayoutTree;
+    use taffy::TraversePartialTree;
+    use tataku_engine_common::prelude::*;
+
+    impl<A: Send + Sync + 'static> super::Tree<A> {
+        pub fn export_xml(&mut self, values: &dyn super::Reflect) -> String {
+            let mut lines = Vec::new();
+            let id = self.root.node_id;
+
+            let tree = LayoutTree {
+                values,
+                tree: self,
+                viewport: Vector2::ZERO,
+                root_font_size: 0.0,
+                use_rounding: false,
+            };
+
+            Self::export_node_xml(
+                &tree, 
+                &mut lines, 
+                0,
+                id,
+            );
+
+            lines.join("\n")
+        }
+
+        fn export_node_xml(
+            tree: &LayoutTree<A>, 
+            lines: &mut Vec<String>,
+            indent: usize,
+            id: taffy::NodeId,
+        ) {
+            let spacing = "  ".repeat(indent);
+            let ctx = tree.tree.context(&id);
+            let data = &ctx.element_data;
+            let style = tree.tree.get_style(&id).unwrap();
+
+            let ele = &data.element_name;
+            let ele_id = data.id.as_ref()
+                .map(|i| format!("id='{i}'"))
+                .unwrap_or_default();
+
+            let class_list = if !data.class_list.is_empty() {
+                format!("class='{}'", super::ArcStr::join(&data.class_list, " "))
+            } else { String::new() };
+
+            lines.push(format!("{spacing}<{ele} {ele_id} {class_list}>"));
+            // style
+            style.export_xml(
+                lines,
+                indent + 1,
+                tree.values,
+            );
+            lines.push(String::new());
+            
+            let children = tree.child_ids(id);
+            for i in children {
+                Self::export_node_xml(
+                    tree, 
+                    lines, 
+                    indent + 1, 
+                    i
+                );
+            }
+
+            lines.push(format!("{spacing}</{ele}>"));
+        }
+
     }
 }
