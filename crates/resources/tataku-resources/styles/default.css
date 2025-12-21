@@ -9,7 +9,11 @@ text {
     width: 100%;
 }
 
-dropdown column {
+button {
+    padding: 4px;
+}
+
+dropdown > column {
     position: absolute;
     gap: 8px;
 }

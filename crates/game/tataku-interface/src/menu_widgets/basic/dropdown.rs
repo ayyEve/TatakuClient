@@ -18,9 +18,6 @@ use input::{
     MouseButton,
 };
 
-// default spacing between dropdown items, should probably be kept 0
-const DEFAULT_ITEM_MARGIN: f32 = 0.0;
-
 #[derive(ChainableInitializer)]
 pub struct Dropdown {
     #[chain] placeholder: widgets::WidgetText,
@@ -73,12 +70,15 @@ impl Dropdown {
         index: usize,
         shell: &mut MessageShell<actions::Action>
     ) {
-        let DropdownVariants::Buttons { enum_values, .. } = &mut self.variants else {
+        let DropdownVariants::Buttons { enum_values, enum_variants, .. } = &mut self.variants else {
             unreachable!("dropdown variants are built");
         };
 
         self.active = false;
         self.value.set_index(index);
+
+        self.main_button.inner.child.text.set(enum_variants[index].clone());
+
         // debug!("setting value to {index} ({})", self.variants.get_displays()[index]);
 
         let message = match &self.on_change {
@@ -263,7 +263,7 @@ impl Widget<actions::Action> for Dropdown {
 
         self.main_button.update(shell);
 
-        let DropdownVariants::Buttons { buttons, .. } = &mut self.variants else {
+        let DropdownVariants::Buttons { buttons, enum_variants, .. } = &mut self.variants else {
             unreachable!("dropdown variants are built");
         };
 
@@ -310,18 +310,10 @@ impl Widget<actions::Action> for Dropdown {
                 Ok(Ok(TatakuValue::U32(index))) => Some(index as usize),
                 Ok(Ok(TatakuValue::U64(index))) => Some(index as usize),
                 Ok(Ok(TatakuValue::String(enum_variant))) => {
-                    let DropdownVariants::Buttons { enum_variants, .. } = &self.variants else {
-                        unreachable!("dropdown variants are built");
-                    };
-
                     enum_variants.iter().position(|x| x == &enum_variant)
                 },
                 Ok(Ok(TatakuValue::Reflect(reflect))) => match reflect.reflect_display(ReflectPath::EMPTY, None) {
                     Ok(enum_variant) => {
-                        let DropdownVariants::Buttons { enum_variants, .. } = &self.variants else {
-                            unreachable!("dropdown variants are built");
-                        };
-
                         enum_variants.iter().position(|x| x == &enum_variant)
                     },
                     Err(e) => {
@@ -345,9 +337,12 @@ impl Widget<actions::Action> for Dropdown {
                 }
             };
 
+            if *index != selected && let Some(selected) = selected {
+                self.main_button.inner.child.text.set(enum_variants[selected].clone());
+            }
+
             *index = selected;
         }
-
     }
 
     fn handle_message(
