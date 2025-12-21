@@ -915,6 +915,7 @@ impl Gamemode for TaikoGame {
 
         // draw the playfield
         list.push(self.playfield.get_rectangle(shell.current_timing_point.kiai));
+        list.push(self.playfield.get_rectangle(true));
         
         // draw the hit area
         list.push(graphics::Circle::new(
@@ -925,7 +926,9 @@ impl Gamemode for TaikoGame {
         ));
 
         // draw timing lines
-        for tb in self.timing_bars.iter_mut() { tb.draw(list) }
+        for tb in self.timing_bars.iter_mut() { 
+            tb.draw(list);
+        }
 
         // draw notes
         // earlier notes are drawn on top of later notes

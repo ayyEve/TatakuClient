@@ -6,9 +6,7 @@ use tataku::{
 use engine::{
     graphics,
     graphics::Animation,
-    beatmaps::{
-        TimingPoint,
-    },
+    beatmaps::TimingPoint,
     gameplay::{
         widgets::*,
         GamemodeInfo,
@@ -158,6 +156,12 @@ impl GameplayWidget for DonChan {
 
     #[cfg(feature="graphics")]
     fn draw(&mut self, shell: &mut GameplayWidgetDrawShell) {
+        shell.list.push(graphics::Rectangle::new(
+            shell.pos_offset,
+            DEFAULT_DONCHAN_SIZE * shell.scale,
+            tataku::Color::LIME,
+        ));
+
         match self.state {
             DonChanState::Normal => {
                 if self.kiai {
@@ -173,7 +177,6 @@ impl GameplayWidget for DonChan {
                     anim.scale *= shell.scale;
                     shell.list.push(anim);
                 }
-                
             }
             DonChanState::ComboMilestone => {
                 if let Some(anim) = &self.combo_anim {

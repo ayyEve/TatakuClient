@@ -199,15 +199,15 @@ impl TatakuTask for DiffCalcTask {
 }
 
 struct DiffCalcTaskIter {
-    speed: u16,
+    speed: u8,
     mod_mutations: Vec<HashSet<String>>,
 
-    speed_iter: Box<dyn Iterator<Item = u16> + Send + Sync>,
+    speed_iter: Box<dyn Iterator<Item = u8> + Send + Sync>,
     mods_iter: Box<dyn Iterator<Item = HashSet<String>> + Send + Sync>
 }
 impl DiffCalcTaskIter {
     pub fn new(mod_mutations: Vec<HashSet<String>>) -> Self {
-        let mut speed_iter = Box::new((50..=1000).step_by(5));
+        let mut speed_iter = Box::new(ModManager::speed_iter());
         let speed = speed_iter.next().unwrap();
         let mods_iter = Box::new(mod_mutations.clone().into_iter());
 

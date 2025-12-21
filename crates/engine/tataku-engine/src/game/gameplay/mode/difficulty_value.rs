@@ -117,7 +117,7 @@ pub const DURATION_DIFF_VALUE: DifficultyValue = DifficultyValue {
     step: None,
     unit: None,
     display: Some(display_time),
-    get_diff_value: |info| info.map.duration * info.mods.speed.as_f32(),
+    get_diff_value: |info| info.map.duration * info.mods.get_speed(),
 };
 
 fn display_time(ms: f32) -> String {

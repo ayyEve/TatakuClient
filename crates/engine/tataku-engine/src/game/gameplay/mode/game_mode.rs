@@ -1,12 +1,14 @@
 use crate::*;
+
+#[cfg(feature="gameplay")] 
 use common::replays::ReplayAction;
+
+#[cfg(feature="gameplay")] 
+use engine::gameplay::gameplay_manager::GameplayDrawShell;
 
 use engine::gameplay::{
     helpers::*,
-    gameplay_manager::{
-        GameplayUpdateShell,
-        GameplayDrawShell,
-    },
+    gameplay_manager::GameplayUpdateShell,
 };
 
 

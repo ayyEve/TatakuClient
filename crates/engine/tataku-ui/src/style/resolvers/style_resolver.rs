@@ -334,7 +334,7 @@ impl taffy::FlexboxItemStyle for CssStyleResolver<'_> {
     }
 
     fn flex_grow(&self) -> f32 {
-        self.resolve(&self.style.flex_grow)
+        self.resolve_or(&self.style.flex_grow, 0.0)
     }
 
     fn flex_shrink(&self) -> f32 {

@@ -354,7 +354,7 @@ impl HostMap {
         map_hash: Md5Hash,
         playmode: String,
         mods: &[ModDefinition],
-        speed: u16
+        speed: u8
     ) -> Self {
         Self { 
             map_hash, 

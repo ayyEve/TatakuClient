@@ -669,7 +669,7 @@ impl engine::database::ScoreProvider for Database {
             &s.combo, &s.max_combo,
             &s.accuracy,
             // s.x50, s.x100, s.x300, s.xgeki, s.xkatu, s.xmiss, 
-            &s.speed.as_u16(),
+            &s.speed.as_u8(),
             &s.version,
             &s.mods_string_sorted(),
             &s.judgment_string()

@@ -5,6 +5,7 @@ use core::result::Result;
 
 use taffy::{
     Dimension,
+    CompactLength,
     LengthPercentage,
     LengthPercentageAuto,
 };
@@ -15,6 +16,15 @@ pub enum CssUnit<T:Reflect+Copy=f16> {
     /// Automatic
     #[default]
     Auto,
+
+    /// Minimum Content
+    MinContent,
+    /// Maximum Content
+    MaxContent,
+    /// Fit Content
+    FitContent,
+
+
     /// Pixels
     Pixels(T),
     /// Percent of the parent
@@ -39,24 +49,30 @@ pub enum CssUnit<T:Reflect+Copy=f16> {
 impl<T: IntoF32 + Copy + Reflect> CssUnit<T> {
 
     // resolve the inner value regardless of variant
-    fn resolve_inner(
+    fn resolve_inner<T2>(
         self,
         viewport: Vector2,
         font_size: f32,
         root_font_size: f32,
-    ) -> f32 {
+
+        from_raw: fn(CompactLength) -> T2
+    ) -> Result<f32, T2> {
         match self {
-            Self::Auto => 0.0,
-            Self::Percent(n) => n.into_f32(),
-            Self::Pixels(n) => n.into_f32(),
+            Self::Auto => Ok(0.0),
+            Self::MinContent => Err(from_raw(CompactLength::fit_content_percent(1.0))),
+            Self::MaxContent => Err(from_raw(CompactLength::min_content())),
+            Self::FitContent => Err(from_raw(CompactLength::max_content())),
 
-            Self::Em(n) => n.into_f32() * font_size,
-            Self::Rem(n) => n.into_f32() * root_font_size,
+            Self::Percent(n) => Ok(n.into_f32()),
+            Self::Pixels(n) => Ok(n.into_f32()),
 
-            Self::ViewportWidth(n) => n.into_f32() * viewport.x * 0.01,
-            Self::ViewportHeight(n) => n.into_f32() * viewport.y * 0.01,
-            Self::ViewportMin(n) => n.into_f32() * viewport.x.min(viewport.y) * 0.01,
-            Self::ViewportMax(n) => n.into_f32() * viewport.x.max(viewport.y) * 0.01,
+            Self::Em(n) => Ok(n.into_f32() * font_size),
+            Self::Rem(n) => Ok(n.into_f32() * root_font_size),
+
+            Self::ViewportWidth(n) => Ok(n.into_f32() * viewport.x * 0.01),
+            Self::ViewportHeight(n) => Ok(n.into_f32() * viewport.y * 0.01),
+            Self::ViewportMin(n) => Ok(n.into_f32() * viewport.x.min(viewport.y) * 0.01),
+            Self::ViewportMax(n) => Ok(n.into_f32() * viewport.x.max(viewport.y) * 0.01),
         }
     }
 
@@ -67,12 +83,18 @@ impl<T: IntoF32 + Copy + Reflect> CssUnit<T> {
         font_size: f32,
         root_font_size: f32,
     ) -> Dimension {
-        let n = self.resolve_inner(viewport, font_size, root_font_size);
-        
-        match self {
-            Self::Auto => Dimension::auto(),
-            Self::Percent(_) => Dimension::percent(n.into_f32()),
-            _ => Dimension::length(n.into_f32()),
+        let n = self.resolve_inner(
+            viewport, 
+            font_size, 
+            root_font_size, 
+            |a| unsafe { Dimension::from_raw(a) }
+        );
+
+        match (n, self) {
+            (Err(n), _) => n,
+            (Ok(_), Self::Auto) => Dimension::auto(),
+            (Ok(n), Self::Percent(_)) => Dimension::percent(n.into_f32()),
+            (Ok(n), _) => Dimension::length(n.into_f32()),
         }
     }
     pub fn resolve_length_percent(
@@ -81,12 +103,18 @@ impl<T: IntoF32 + Copy + Reflect> CssUnit<T> {
         font_size: f32,
         root_font_size: f32,
     ) -> LengthPercentage {
-        let n = self.resolve_inner(viewport, font_size, root_font_size);
+        let n = self.resolve_inner(
+            viewport, 
+            font_size, 
+            root_font_size, 
+            |a| unsafe { LengthPercentage::from_raw(a) }
+        );
 
-        match self {
-            Self::Auto => LengthPercentage::percent(1.0),
-            Self::Percent(_) => LengthPercentage::percent(n.into_f32()),
-            _ => LengthPercentage::length(n.into_f32()),
+        match (n, self) {
+            (Err(n), _) => n,
+            (Ok(_), Self::Auto) => LengthPercentage::percent(1.0),
+            (Ok(n), Self::Percent(_)) => LengthPercentage::percent(n.into_f32()),
+            (Ok(n), _) => LengthPercentage::length(n.into_f32()),
         }
     }
     pub fn resolve_length_percent_auto(
@@ -95,19 +123,23 @@ impl<T: IntoF32 + Copy + Reflect> CssUnit<T> {
         font_size: f32,
         root_font_size: f32,
     ) -> LengthPercentageAuto {
-        let n = self.resolve_inner(viewport, font_size, root_font_size);
+        let n = self.resolve_inner(
+            viewport, 
+            font_size, 
+            root_font_size,
+            |a| unsafe { LengthPercentageAuto::from_raw(a) }
+        );
         
-        match self {
-            Self::Auto => LengthPercentageAuto::auto(),
-            Self::Percent(_) => LengthPercentageAuto::percent(n.into_f32()),
-            _ => LengthPercentageAuto::length(n.into_f32()),
+        match (n, self) {
+            (Err(n), _) => n,
+            (Ok(_), Self::Auto) => LengthPercentageAuto::auto(),
+            (Ok(n), Self::Percent(_)) => LengthPercentageAuto::percent(n.into_f32()),
+            (Ok(n), _) => LengthPercentageAuto::length(n.into_f32()),
         }
     }
 }
 
-impl<T> FromStr for CssUnit<T> 
-where T: FromStr + IntoF32 + std::ops::Div<Output = T> + Copy + Reflect
-{
+impl<T: FromStr + IntoF32> FromStr for CssUnit<T> {
     type Err = CssUnitError<T>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -158,6 +190,10 @@ where T: FromStr + IntoF32 + std::ops::Div<Output = T> + Copy + Reflect
             match s {
                 "auto" => Ok(Self::Auto),
                 "fill" => Ok(Self::Percent(T::from_f32(1.0))),
+                "min-content" => Ok(Self::MinContent),
+                "max-content" => Ok(Self::MaxContent),
+                "fit-content" => Ok(Self::FitContent),
+
                 _ => Err(Self::Err::UnknownUnit(s.to_owned().into())),
             }
         }
@@ -174,7 +210,7 @@ pub enum CssUnitError<T:FromStr> {
 }
 
 
-pub trait IntoF32 {
+pub trait IntoF32: Copy + std::ops::Div<Output = Self> + Reflect  {
     fn into_f32(self) -> f32;
     fn from_f32(n: f32) -> Self;
 }

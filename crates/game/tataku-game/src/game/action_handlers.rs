@@ -234,7 +234,7 @@ impl Game {
             ModAction::RemoveMod(mod_name) => mods.remove_mod(mod_name),
             ModAction::ToggleMod(mod_name) => mods.toggle_mod(mod_name).nope(),
             ModAction::SetSpeed(speed) => mods.set_speed(speed),
-            ModAction::AddSpeed(speed) => mods.set_speed(mods.get_speed() + speed),
+            ModAction::AddSpeed(speed) => mods.add_speed(speed),
             ModAction::SetMods(new_mods) => mods.mods = new_mods,
 
             ModAction::PushMods => {
@@ -751,7 +751,7 @@ impl Game {
                             .map(|m| m.name.clone())
                             .collect();
                         self.actions.push(ModAction::SetMods(mods).into());
-                        self.actions.push(ModAction::SetSpeed(score.speed.as_f32()).into());
+                        self.actions.push(ModAction::SetSpeed(score.speed).into());
                     }
 
                     self.values.values.score = ReflectScore::new(&score, &info);

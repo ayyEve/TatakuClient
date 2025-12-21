@@ -466,7 +466,7 @@ impl GameplayManager {
                         beatmap_hash: this.beatmap.hash(),
                         mode: this.gamemode_properties.playmode().to_string(),
                         mods: this.score.mods.clone(),
-                        speed: this.mods.speed.as_u16(),
+                        speed: this.mods.speed.as_u8(),
                         map_game: this.metadata.beatmap_type.into(),
                         map_link: None
                     })

@@ -34,7 +34,7 @@ impl ReplayDownloader for TatakuReplayDownloader {
             return Err(tataku::Error::String("Downloaded file was empty".to_owned()));
         }
         
-        let score = Score::read(&mut SerializationReader::new(bytes.to_vec()))?;
+        let score = Score::read(&mut SerializationReader::new(bytes))?;
         Ok(score)
     }
 }

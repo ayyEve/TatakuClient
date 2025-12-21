@@ -182,7 +182,7 @@ impl MultiplayerManager {
             self.send_packet(
                 MultiplayerPacket::Client_LobbyUserModsChanged { 
                     mods, 
-                    speed: speed.as_u16(),
+                    speed: speed.as_u8(),
                 }, 
                 actions
             );
@@ -477,7 +477,7 @@ impl MultiplayerManager {
                     // values.global.mods.set_speed(*speed);
                 }
                 // TODO: do we want to force the speed even with free mods?()
-                actions.push(ModAction::SetSpeed(GameSpeed::from_u16(*speed).as_f32()).into());
+                actions.push(ModAction::SetSpeed(GameSpeed::from_u8(*speed)).into());
                 // values.global.mods.set_speed(*speed);
             }
 

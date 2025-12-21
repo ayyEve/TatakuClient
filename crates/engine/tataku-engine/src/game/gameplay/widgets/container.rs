@@ -102,10 +102,10 @@ impl GameplayWidgetContainer {
                         scale = (playfield.size / saved_size).min_component();
                     }
 
-                    let offset = e.layout.offset * scale;
                     e.scale = e.layout.scale * scale;
+                    e.pos_offset = bounds.pos + e.layout.offset * scale;
                     
-                    e.pos_offset = offset + bounds.pos + e.layout.align.resolve(
+                    e.pos_offset += e.layout.align.resolve(
                         &playfield,
                         bounds.size,
                         relative.vertical() || relative.inside(),
