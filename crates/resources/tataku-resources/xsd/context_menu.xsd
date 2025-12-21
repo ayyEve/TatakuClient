@@ -1,0 +1,78 @@
+<?xml version="1.0"?>
+<xs:schema 
+  xmlns:xs = "http://www.w3.org/2001/XMLSchema"
+  targetNamespace="tataku/context-menu"
+
+  xmlns:context_menu = "tataku/context-menu"
+  xmlns:elements = "tataku/elements"
+  xmlns:actions = "tataku/actions"
+  xmlns:events = "tataku/events"
+  xmlns:common = "tataku/common"
+  xmlns:text = "tataku/text"
+>
+  
+
+<!-- imports -->
+<xs:import namespace="tataku/elements" schemaLocation="elements/elements.xsd"/>
+<xs:import namespace="tataku/actions" schemaLocation="actions/actions.xsd"/>
+<xs:import namespace="tataku/events" schemaLocation="events.xsd"/>
+<xs:import namespace="tataku/common" schemaLocation="common.xsd"/>
+<xs:import namespace="tataku/text" schemaLocation="text.xsd"/>
+
+
+<!-- entry point definition -->
+<xs:element name="context-menu">
+  <xs:complexType>
+    <xs:sequence>
+        <xs:sequence>
+            <xs:element ref="context_menu:context-menu-option" />
+        </xs:sequence>
+    </xs:sequence>
+
+    <xs:attribute name="id" type="text:string" use="required"/>
+  </xs:complexType>
+</xs:element>
+
+
+
+<xs:element name="context-menu-option">
+  <xs:complexType>
+    <xs:sequence>
+        <xs:sequence>
+            <xs:element ref="context_menu:context-menu-option-type"/>
+        </xs:sequence>
+    </xs:sequence>
+
+    <xs:attribute name="name" type="text:string" use="required"/>
+  </xs:complexType>
+</xs:element>
+
+<xs:element name="context-menu-option-type">
+  <xs:complexType>
+    <xs:choice>
+        <xs:element name="textOnly" />
+        <xs:element name="subMenu">
+            <xs:complexType>
+                <xs:sequence>
+                    <xs:element ref="context_menu:context-menu-option" />
+                </xs:sequence>
+            </xs:complexType>
+        </xs:element>
+
+        <xs:element name="action">
+            <xs:complexType>
+                <xs:sequence>
+                    <xs:group ref="actions:action" />
+                </xs:sequence>
+            </xs:complexType>
+        </xs:element>
+    </xs:choice>
+
+    <xs:attribute name="name" type="text:string" use="required"/>
+  </xs:complexType>
+</xs:element>
+
+
+
+
+</xs:schema>

@@ -56,6 +56,7 @@ pub struct Settings {
     pub last_played_mode: String,
     pub score_method: engine::data::ScoreRetreivalMethod,
     pub sort_by: engine::data::SortBy,
+    pub group_by: engine::data::GroupBy,
     
     #[setting(text="Beatmap Hitsounds")]
     pub beatmap_hitsounds: bool,
@@ -261,6 +262,7 @@ impl Settings {
             last_played_mode: "osu".to_owned(),
             score_method: engine::data::ScoreRetreivalMethod::Local,
             sort_by: engine::data::SortBy::Title,
+            group_by: engine::data::GroupBy::Set,
             beatmap_hitsounds: true,
             enable_diffcalc: true,
             // keybinds

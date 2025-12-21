@@ -11,8 +11,12 @@ use common::{
 use engine::{
     actions,
     Notification,
-    data::SortBy,
     database::DifficultyProvider,
+    data::{
+        SortBy,
+        GroupBy,
+        BeatmapCollection,
+    },
     beatmaps::{
         Beatmap,
         BeatmapMeta,
@@ -40,6 +44,8 @@ pub struct BeatmapManager {
     diffs: HashMap<Md5Hash, BeatmapDifficulty>,
     pub beatmaps: HashMap<Md5Hash, Arc<BeatmapMeta>>,
 
+    pub collections: Vec<BeatmapCollection>,
+
     /// previously played maps
     played: Vec<Md5Hash>,
     /// current index of previously played maps
@@ -66,6 +72,7 @@ impl BeatmapManager {
             // beatmaps: Vec::new(),
             beatmaps: HashMap::new(),
             ignore_beatmaps: HashSet::new(),
+            collections: Vec::new(),
             diffs: HashMap::new(),
 
             played: Vec::new(),
@@ -82,13 +89,14 @@ impl BeatmapManager {
     pub fn initialize(
         &mut self,
         sort_by: SortBy,
+        group_by: GroupBy,
         mods: &ModManager,
         playmode: &str,
         diff_manager: &mut impl DifficultyProvider,
     ) {
         trace!("Beatmap manager initialized");
         self.initialized = true;
-        self.refresh_maps(mods, playmode, sort_by, diff_manager);
+        self.refresh_maps(mods, playmode, sort_by, group_by, diff_manager);
     }
 
     pub fn add_played(&mut self, map: Md5Hash) {
@@ -325,23 +333,40 @@ impl BeatmapManager {
 
 
     // getters
-    pub fn all_by_sets(&self, _group_by: engine::data::GroupBy) -> Vec<BeatmapGroup> {
+    pub fn all_by_sets(&self, group_by: engine::data::GroupBy) -> Vec<BeatmapGroup> {
         let mut set_map: HashMap<BeatmapGroupValue, BeatmapGroup> = HashMap::new();
 
-        for beatmap in self.beatmaps.values() {
-            let key = format!(
-                "[{}] // {} - {}",
-                beatmap.creator,
-                beatmap.artist,
-                beatmap.title
-            );
-            let key = BeatmapGroupValue::Set(key);
+        match group_by {
+            tataku_engine::data::GroupBy::Set => {
+                for beatmap in self.beatmaps.values() {
+                    let key = format!(
+                        "[{}] // {} - {}",
+                        beatmap.creator,
+                        beatmap.artist,
+                        beatmap.title
+                    );
+                    let key = BeatmapGroupValue::Set(key);
 
-            let list = set_map
-                .entry(key.clone())
-                .or_insert_with(|| BeatmapGroup::new(key.clone()));
+                    let list = set_map
+                        .entry(key.clone())
+                        .or_insert_with(|| BeatmapGroup::new(key.clone()));
 
-            list.maps.push(beatmap.beatmap_hash);
+                    list.maps.push(beatmap.beatmap_hash);
+                }
+            }
+            tataku_engine::data::GroupBy::Collections => {
+                for i in self.collections.iter() {
+                    let key = BeatmapGroupValue::Collection(i.name.clone());
+                    
+                    let list = set_map
+                        .entry(key.clone())
+                        .or_insert_with(|| BeatmapGroup::new(key.clone()));
+
+                    for i in i.beatmaps.iter() {
+                        list.maps.push(*i);
+                    }
+                }
+            }
         }
 
         set_map.into_values().collect()
@@ -389,9 +414,9 @@ impl BeatmapManager {
         current_mods: &ModManager,
         playmode: &str,
         sort_by: SortBy,
+        group_by: GroupBy,
         diff_manager: &mut dyn DifficultyProvider,
     ) {
-        let group_by = engine::data::GroupBy::default(); //values.settings.group_by;
         //TODO: allow grouping by not just map set
         self.unfiltered_groups = self.all_by_sets(group_by);
 

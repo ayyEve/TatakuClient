@@ -512,6 +512,7 @@ impl Game {
             BeatmapAction::InitializeManager => {
                 self.values.values.beatmap_manager.initialize(
                     self.values.values.settings.sort_by, 
+                    self.values.values.settings.group_by, 
                     &self.values.values.global.mods, 
                     &self.values.values.global.playmode, 
                     &mut self.difficulty_manager,
@@ -531,6 +532,7 @@ impl Game {
                         &self.values.values.global.mods, 
                         &self.values.values.global.playmode, 
                         self.values.values.settings.sort_by,
+                        self.values.values.settings.group_by,
                         &mut self.difficulty_manager,
                     );
                 }
@@ -544,6 +546,7 @@ impl Game {
                             &self.values.values.global.mods, 
                             &self.values.values.global.playmode, 
                             self.values.values.settings.sort_by,
+                            self.values.values.settings.group_by,
                             &mut self.difficulty_manager,
                         );
                     }
@@ -566,6 +569,55 @@ impl Game {
 
                     BeatmapListAction::SelectSet(set_id) 
                         => self.beatmap_manager.select_set(set_id),
+                }
+            }
+
+            // beatmap collection actions 
+            BeatmapAction::CollectionAction(action) => {
+                let name = action.collection();
+                let mut new = false;
+
+                let collection = self.values.beatmap_manager
+                    .collections
+                    .iter_mut()
+                    .find(|i| &i.name == name)
+                    ;
+
+                let collection = match collection {
+                    Some(c) => c,
+                    None => {
+                        new = true;
+                        self.values.beatmap_manager.collections.push(engine::data::BeatmapCollection {
+                            name: name.clone(),
+                            ..Default::default()
+                        });
+                        
+                        self.values.beatmap_manager.collections.last_mut().unwrap()
+                    }
+                };
+
+                
+                match action {
+                    CollectionAction::Create { .. } => {}
+                    CollectionAction::Add { map, ..} => {
+                        collection.beatmaps.push(map);
+                    },
+                    CollectionAction::Remove { map, ..} => {
+                        collection.beatmaps.retain(|h| h != &map);
+                    },
+                }
+
+                let res = if new {
+                    self.database.add_beatmap_collection(collection)
+                } else {
+                    self.database.update_beatmap_collection(collection)
+                };
+
+                if let Err(e) = res {
+                    self.actions.push(Notification::new_error(
+                        "Error adding/updating collections in db", 
+                        e,
+                    ).into());
                 }
             }
 

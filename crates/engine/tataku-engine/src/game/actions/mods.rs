@@ -23,7 +23,7 @@ pub enum ModAction {
     SetSpeed(GameSpeed),
 
     /// Add/remove to the speed
-    AddSpeed(GameSpeed),
+    AddSpeed(i8),
 
     /// Set all mods that are active
     SetMods(HashSet<String>)

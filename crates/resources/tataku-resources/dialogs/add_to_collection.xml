@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<?xml-model href="../xsd/dialog.xsd"?>
+<dialog 
+    id="add_to_collection"
+    title="Add to Collection"
+>
+    <column style = "width: fill; height: fill">
+        <text>Beatmap Collections</text>
+
+        <row>
+            <text>Create New</text>
+
+            <textInput variable="tmp.new_collection_name" placeholder="Name">
+                <onSubmit>
+                    <map><collection><create>
+                        <variable>tmp.new_collection_name</variable>
+                    </create></collection></map>
+    
+                    <setValue key="tmp.new_collection_name"></setValue>
+                </onSubmit>
+            </textInput>
+        </row>
+
+        <list
+            style = "width: fill; height: auto; flex-direction: column;"
+            list = "beatmaps.collections"
+            variable = "_collection"
+            scrollable = "true"
+        >
+            <row style = "width: fill; height: auto; margin: 10px">
+                <text><variable>_collection.name</variable></text>
+
+                <button style = "width: fill; height: auto; margin: 10px">
+                    <action>
+                        <map>
+                            <collection>
+                                <add>
+                                    <collection><variable>_collection.name</variable></collection>
+                                    <map><variable>beatmaps.current</variable></map>
+                                </add>
+                            </collection>
+                        </map>
+                        <closeDialog />
+                    </action>
+
+                    <text>Add</text>
+                </button>
+            </row>
+        </list>
+    </column>
+</dialog>

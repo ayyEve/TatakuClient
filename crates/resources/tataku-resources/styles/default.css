@@ -9,6 +9,10 @@ text {
     width: 100%;
 }
 
+textInput {
+    min-width: 10em;
+}
+
 button {
     padding: 4px;
 }

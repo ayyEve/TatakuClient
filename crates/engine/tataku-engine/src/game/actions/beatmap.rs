@@ -41,6 +41,9 @@ pub enum BeatmapAction {
     /// Perform an action on the list
     ListAction(BeatmapListAction),
 
+    /// Perform an action on a collection
+    CollectionAction(CollectionAction),
+
     /// Add a beatmap
     AddBeatmap { map: Arc<engine::BeatmapMeta>, add_to_db: bool },
 
@@ -117,4 +120,38 @@ pub struct SetBeatmapOptions {
     #[chain] pub use_preview_point: bool,
     #[chain] pub restart_song: bool,
     #[chain] pub if_none: MapActionIfNone
+}
+
+
+/// An action that affects the list of beatmaps
+#[derive(Clone, Debug)]
+pub enum CollectionAction {
+    Create {
+        collection: String,
+    },
+
+    Add {
+        map: Md5Hash,
+        collection: String,
+    },
+    
+    Remove {
+        map: Md5Hash,
+        collection: String,
+    },
+}
+impl CollectionAction {
+    pub fn collection(&self) -> &String {
+        match self {
+            Self::Add { collection, .. }
+            | Self::Remove { collection, .. }
+            | Self::Create { collection }
+            => collection
+        }
+    }
+}
+impl From<CollectionAction> for BeatmapAction {
+    fn from(value: CollectionAction) -> Self {
+        Self::CollectionAction(value)
+    }
 }

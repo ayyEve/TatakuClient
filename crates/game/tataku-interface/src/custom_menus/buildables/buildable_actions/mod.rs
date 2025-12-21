@@ -8,6 +8,7 @@ mod game_action;
 mod cursor_action;
 mod online_content;
 mod gameplay_action;
+mod collection_action;
 mod multiplayer_action;
 
 pub use chat::*;

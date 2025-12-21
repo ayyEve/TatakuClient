@@ -13,6 +13,7 @@ pub struct LoadBeatmapsTask {
 
     /// list of ignored file paths
     ignored_list: Vec<engine::data::IgnoredBeatmap>,
+    collections: Vec<engine::data::BeatmapCollection>,
 
     /// list of maps loaded from the database
     existing_maps: Vec<Arc<BeatmapMeta>>,
@@ -24,6 +25,7 @@ impl LoadBeatmapsTask {
             status_index,
             ignored_list: Vec::new(),
             existing_maps: Vec::new(),
+            collections: Vec::new(),
         }
     }
 }
@@ -42,7 +44,12 @@ impl TatakuTask for LoadBeatmapsTask {
         if self.state == TatakuTaskState::NotStarted {
             self.ignored_list = shell.database.get_ignored_beatmaps().unwrap_or_default();
             self.existing_maps = shell.database.get_beatmaps().unwrap_or_default();
+            self.collections = shell.database.get_beatmap_collections().unwrap_or_default();
             status.item_count = self.existing_maps.len();
+
+            shell.values.reflect_get_mut::<BeatmapManager>("beatmaps")
+                .unwrap()
+                .collections = self.collections.clone();
 
             self.state = TatakuTaskState::Running;
             debug!("Got existing maps");

@@ -22,7 +22,9 @@ impl CustomMenu {
             .map(|buildable| {
                 let event = BuildableEvent::resolve(&buildable.event);
 
-                let actions = buildable.actions.iter()
+                let actions = buildable
+                    .actions
+                    .iter()
                     .cloned()
                     .map(|mut action| {
                         action.build();

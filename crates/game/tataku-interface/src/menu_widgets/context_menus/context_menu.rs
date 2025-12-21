@@ -8,7 +8,6 @@ use ui::{
     tree::*,
     style::*,
     widget::*,
-    message::*,
 };
 use input::{ 
     Key,
@@ -111,7 +110,6 @@ impl ContextMenu {
         true
     }
 }
-
 impl Widget<actions::Action> for ContextMenu {
     fn name(&self) -> CowStr { "context_menu".into() }
     fn node_id(&self) -> &NodeId { &self.node_id }

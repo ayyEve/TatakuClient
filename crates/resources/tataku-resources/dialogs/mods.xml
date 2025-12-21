@@ -15,7 +15,7 @@
     <events>
         <menuEnter>
             <setValue key="var.mods.speed">
-                <calc>cast(global.mods.speed.0, 'f32') / 100</calc>
+                <calc>global.mods.speed.0</calc>
             </setValue>
         </menuEnter>
     </events>
@@ -32,13 +32,13 @@
             
             <row>
                 <text>Speed: </text>
-                <slider variable="var.mods.speed" min="0.4" max="2.0" step="0.1">
+                <slider variable="var.mods.speed" min="40" max="200" step="5">
                     <onInput>
                         <setValue key="var.mods.speed"> <passedIn/> </setValue>
                         <mods> <setSpeed> <passedIn/> </setSpeed> </mods>
                     </onInput>
                 </slider>
-                <text> <display precision="2">var.mods.speed</display>x</text>
+                <text> <calc>var.mods.speed / 100</calc>x</text>
             </row>
         </column>
 

@@ -6,11 +6,11 @@ use ui::{
     message::*,
 };
 
-type MessageCallback = Box<dyn Fn() -> Option<Message> + Send + Sync>;
+type Callback = Box<dyn Fn() -> Option<Message> + Send + Sync>;
 
 #[derive(From)]
 pub enum ContextMenuAction {
-    Callback(MessageCallback),
+    Callback(Callback),
     Buildable(BuildableAction),
 }
 impl ContextMenuAction {

@@ -173,9 +173,9 @@ impl ModManager {
     pub fn set_speed(&mut self, speed: impl Into<GameSpeed>) {
         self.speed = speed.into();
     }
-    pub fn add_speed(&mut self, speed: impl Into<GameSpeed>) {
+    pub fn add_speed(&mut self, speed: i8) {
         let s1 = self.speed.as_u8() as i16;
-        let s2 = speed.into().as_u8() as i16;
+        let s2 = speed as i16;
 
         let sum = s1 + s2;
         self.speed = GameSpeed::from_u8(sum.clamp(

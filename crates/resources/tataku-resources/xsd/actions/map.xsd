@@ -39,6 +39,11 @@
       <xs:element name="previousMap"/>
       <xs:element name="previousSet"/>
 
+      <xs:element name="collection">
+        <xs:complexType>
+          <xs:group ref="map-actions:collection-action" />
+        </xs:complexType>
+      </xs:element>
   </xs:choice>
 </xs:group>
 
@@ -53,5 +58,30 @@
     </xs:element>
   </xs:choice>
 </xs:group>
+
+<xs:group name="collection-action">
+  <xs:choice>
+    <xs:element name="create" type="buildable-value:buildableValue" />
+
+    <xs:element name="add">
+      <xs:complexType>
+        <xs:all>
+          <xs:element name="map" type="buildable-value:buildableValue"/>
+          <xs:element name="collection" type="buildable-value:buildableValue"/>
+        </xs:all>
+      </xs:complexType>
+    </xs:element>
+
+    <xs:element name="remove">
+      <xs:complexType>
+        <xs:all>
+          <xs:element name="map" type="buildable-value:buildableValue"/>
+          <xs:element name="collection" type="buildable-value:buildableValue"/>
+        </xs:all>
+      </xs:complexType>
+    </xs:element>
+  </xs:choice>
+</xs:group>
+
 
 </xs:schema>

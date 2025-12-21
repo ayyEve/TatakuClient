@@ -6,7 +6,29 @@
     title = "Beatmap Options"
 >
     <row>
-        <!-- copy hash -->
+
+        <!-- Settings -->
+        <button>
+            <action>
+                <addDialog>beatmap_settings</addDialog>
+                <closeDialog />
+            </action>
+
+            <text>Settings</text>
+        </button>
+
+        <!-- Add to Collection -->
+        <button>
+            <action>
+                <addDialog>add_to_collection</addDialog>
+                <closeDialog />
+            </action>
+
+            <text>Add to Collection</text>
+        </button>
+
+
+        <!-- Copy Hash -->
         <button>
             <action>
                 <game>
@@ -14,6 +36,7 @@
                         <variable>beatmaps.current_beatmap.map.hash</variable>
                     </copyToClipboard>
                 </game>
+                <closeDialog />
             </action>
 
             <text>Copy Hash</text>
@@ -23,19 +46,10 @@
         <button>
             <action>
                 <map><deleteCurrent/></map>
+                <closeDialog />
             </action>
 
             <text>Delete</text>
-        </button>
-
-
-        <!-- open settings -->
-        <button>
-            <action>
-                <addDialog>beatmap_settings</addDialog>
-            </action>
-
-            <text>Open Settings</text>
         </button>
     </row>
 </dialog>

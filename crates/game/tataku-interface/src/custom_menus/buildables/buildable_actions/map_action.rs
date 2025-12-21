@@ -1,7 +1,9 @@
 use crate::prelude::*;
-use common::Md5Hash;
 use tataku::TatakuValue;
-use common::reflect::Reflect;
+use common::{
+    Md5Hash,
+    reflect::Reflect,
+};
 
 /// An action that deals with the current beatmap
 #[derive(Deserialize)]
@@ -59,6 +61,11 @@ pub enum BuildableMapAction {
         value: BuildableValue,
     },
 
+    /// Change to the previous map
+    Collection {
+        #[serde(rename="$value")]
+        action: super::collection_action::BuildableCollectionAction,
+    },
 
     // TODO: document the difference between BeatmapAction::Next and BeatmapListAction::NextSet
     NextMap,
@@ -83,8 +90,9 @@ impl BuildableMapAction {
             Self::Random { use_preview } 
                 => Some(actions::beatmap::BeatmapAction::Random(*use_preview)),
 
-            Self::DeleteCurrent 
-                => Some(actions::beatmap::BeatmapAction::DeleteCurrent(actions::beatmap::PostDelete::Next)),
+            Self::DeleteCurrent => Some(actions::beatmap::BeatmapAction::DeleteCurrent(
+                actions::beatmap::PostDelete::Next
+            )),
 
             Self::Delete { value } => {
                 let value = value.resolve(values, passed_in)?;
@@ -123,6 +131,10 @@ impl BuildableMapAction {
                     actions::beatmap::SetBeatmapOptions::default().use_preview_point(true)
                 ))
             }
+
+            Self::Collection { 
+                action 
+            } => action.resolve(values, passed_in),
         }
     }
 
@@ -139,6 +151,9 @@ impl BuildableMapAction {
 
             Self::Delete { value } 
                 => value.build(),
+
+            Self::Collection { action } 
+                => action.build(),
 
             _ => {}
         }

@@ -426,9 +426,39 @@ impl data::database::BeatmapProvider for Database {
 
     fn update_beatmap_collection(
         &mut self, 
-        _collection: &data::BeatmapCollection
+        collection: &data::BeatmapCollection
     ) -> tataku::Result<()> {
-        todo!("pain and suffering");
+        let _ = self.remove_beatmap_collection(&collection.name);
+
+        for chunk in collection.beatmaps.chunks(MAX_INSERTS_PER_STATEMENT) {
+            let values = chunk
+                .iter()
+                .map(common::Md5Hash::to_string)
+                .collect::<Vec<_>>();
+            
+            let values = values
+                .iter()
+                .flat_map(|a| vec![ collection.name.as_str(), a.as_str() ])
+                .collect::<Vec<_>>();
+
+            let values = values.iter()
+                .map(|i| i as &dyn ToSql)
+                .collect::<Vec<_>>();
+
+            const SQL: &str = "INSERT INTO beatmap_collections (collection_name, beatmap_hash) VALUES ";
+            let query = SQL.to_string() + &Self::make_values_str(
+                2,
+                chunk.len()
+            );
+
+            self.connection
+                .prepare(&query)
+                .expect(&query)
+                .execute(&*values)
+                .map_err(Self::map_err)?;
+        }
+
+        Ok(())
     }
 
     fn add_beatmap_collection(
@@ -467,7 +497,7 @@ impl data::database::BeatmapProvider for Database {
     }
 
     fn remove_beatmap_collection(&mut self, name: &str) -> tataku::Result<()> {
-        const QUERY: &str = "dELETE FROM beatmap_collections WHERE collection_name=?1";
+        const QUERY: &str = "DELETE FROM beatmap_collections WHERE collection_name=?1";
 
         self.connection
             .prepare(QUERY)
