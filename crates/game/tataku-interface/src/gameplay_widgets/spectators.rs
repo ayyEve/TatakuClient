@@ -35,7 +35,7 @@ impl SpectatorsElement {
 impl GameplayWidget for SpectatorsElement {
     fn display_name(&self) -> &'static str { "Spectators" }
 
-    fn max_size(&self) -> Vector2 {
+    fn preferred_size(&self) -> Vector2 {
         // TODO: setup a proper size
         Vector2::new(
             SPECTATOR_ITEM_SIZE.x,

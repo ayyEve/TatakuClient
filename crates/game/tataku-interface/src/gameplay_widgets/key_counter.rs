@@ -85,7 +85,7 @@ impl KeyCounterElement {
 impl GameplayWidget for KeyCounterElement {
     fn display_name(&self) -> &'static str { "Key Counter" }
 
-    fn max_size(&self) -> Vector2 {
+    fn preferred_size(&self) -> Vector2 {
         let box_size = self.button_image
             .as_ref()
             .map_or(BOX_SIZE, Image::size);

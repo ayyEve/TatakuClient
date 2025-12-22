@@ -56,7 +56,7 @@ impl RemainingElement {
 
 impl GameplayWidget for RemainingElement {
     fn display_name(&self) -> &'static str { "Time Elapsed" }
-    fn max_size(&self) -> Vector2 { SIZE }
+    fn preferred_size(&self) -> Vector2 { SIZE }
 
     fn update(&mut self, shell: &mut GameplayWidgetUpdateShell) {
         // if the values arent set yet, set them

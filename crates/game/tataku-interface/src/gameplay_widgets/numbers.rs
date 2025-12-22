@@ -60,7 +60,7 @@ impl<T: _CanNum> Number<T> {
 }
 impl<T: _CanNum> GameplayWidget for Number<T> {
     fn display_name(&self) -> &'static str { self.config.display }
-    fn max_size(&self) -> Vector2 { self.max_size }
+    fn preferred_size(&self) -> Vector2 { self.max_size }
 
     fn update(&mut self, shell: &mut GameplayWidgetUpdateShell) {
         if self.max_size == Vector2::ZERO {

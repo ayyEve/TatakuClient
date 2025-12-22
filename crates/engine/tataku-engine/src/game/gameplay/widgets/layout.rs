@@ -104,7 +104,7 @@ pub fn layout(
 
             let Some(anchored_to) = layed_out
                 .iter()
-                .find(|e| &e.element_name == anchored_to)
+                .find(|e| &e.name == anchored_to)
                 else { continue };
 
             let anchored_bounds = Bounds::new(
@@ -136,7 +136,7 @@ pub fn layout(
             let found = layed_out
                 .iter()
                 .chain(remainder.iter())
-                .any(|e| &e.element_name == anchored_to);
+                .any(|e| &e.name == anchored_to);
 
             if !found {
                 return Err(GameplayWidgetLayoutError::InvalidElementReference(

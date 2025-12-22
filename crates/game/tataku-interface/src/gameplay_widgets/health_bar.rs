@@ -56,7 +56,7 @@ impl HealthBarElement {
 impl GameplayWidget for HealthBarElement {
     fn display_name(&self) -> &'static str { "Health Bar" }
 
-    fn max_size(&self) -> Vector2 {
+    fn preferred_size(&self) -> Vector2 {
         Vector2::new(self.container_size.x / 2.0, super::DURATION_HEIGHT)
     }
 
@@ -198,7 +198,7 @@ impl GameplayWidget for HealthBarElement {
             }
 
         } else {
-            let bg_size = self.max_size();
+            let bg_size = self.preferred_size();
 
             let len = self.common_game_settings.healthbar_colors.len();
             let index = ((len as f32 * percent) as usize).min(len - 1);

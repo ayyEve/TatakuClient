@@ -85,7 +85,7 @@ impl DonChan {
 impl GameplayWidget for DonChan {
     fn display_name(&self) -> &'static str { "DonChan" }
 
-    fn max_size(&self) -> Vector2 {
+    fn preferred_size(&self) -> Vector2 {
         DEFAULT_DONCHAN_SIZE
     }
 

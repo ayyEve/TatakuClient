@@ -52,7 +52,7 @@ impl LeaderboardElement {
 impl GameplayWidget for LeaderboardElement {
     fn display_name(&self) -> &'static str { "Leaderboard" }
 
-    fn max_size(&self) -> Vector2 {
+    fn preferred_size(&self) -> Vector2 {
         Vector2::new(
             LEADERBOARD_ITEM_SIZE.x,
             LEADERBOARD_ITEM_SIZE.y * 10.0

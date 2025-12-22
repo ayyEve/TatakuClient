@@ -5,13 +5,13 @@ pub trait UiElementLoader: Send + Sync {
     /// Load a ui element
     fn load(
         &mut self,
-        name: &str,
+        name: &'static str,
     );
 
     /// Change the default layout for a ui element
     fn change_default_layout(
         &mut self,
-        name: &str,
+        name: &'static str,
         layout: GameplayWidgetLayout,
     );
 }
@@ -50,7 +50,7 @@ impl DefaultUiElementLoader {
 impl UiElementLoader for DefaultUiElementLoader {
     fn load(
         &mut self,
-        name: &str,
+        name: &'static str,
     ) {
         let Some(builder) = self.widget_builders
             .iter()
@@ -72,9 +72,9 @@ impl UiElementLoader for DefaultUiElementLoader {
         // if layout.scale.y.abs() < 0.01 { layout.scale.y = 1.0 }
 
         self.elements.push(GameplayWidgetContainer {
-            element_name: name.to_string(),
+            name: Cow::Borrowed(name),
             visible: true,
-            preferred_size: inner.max_size(),
+            preferred_size: inner.preferred_size(),
             resolved_pos: tataku::Vector2::ZERO,
             layout,
             default_layout,
@@ -84,11 +84,11 @@ impl UiElementLoader for DefaultUiElementLoader {
 
     fn change_default_layout(
         &mut self,
-        name: &str,
+        name: &'static str,
         layout: GameplayWidgetLayout,
     ) {
         // let name = format!("{}_{name}", self.playmode);
-        let Some(element) = self.elements.iter_mut().find(|e| e.element_name == name) else {
+        let Some(element) = self.elements.iter_mut().find(|e| e.name == name) else {
             return warn!("ele not found: {name}")
         };
 

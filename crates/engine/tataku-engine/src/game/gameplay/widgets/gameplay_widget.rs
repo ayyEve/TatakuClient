@@ -4,19 +4,18 @@ use tataku::Vector2;
 pub trait GameplayWidget: Send + Sync {
     fn display_name(&self) -> &'static str;
 
-    /// the max size of the element (before scaling)
-    fn max_size(&self) -> Vector2;
+    fn preferred_size(&self) -> Vector2;
     fn update(&mut self, shell: &mut GameplayWidgetUpdateShell);
 
     fn draw(
-        &mut self, 
+        &mut self,
         shell: &mut GameplayWidgetDrawShell,
     );
-    
+
     fn reset(&mut self) {}
 
     fn reload_skin(
-        &mut self, 
+        &mut self,
         _shell: &mut GameplayWidgetReloadSkinShell,
     ) {}
 }
@@ -34,6 +33,6 @@ pub struct GameplayWidgetDrawShell<'a> {
 }
 
 pub struct GameplayWidgetReloadSkinShell<'a> {
-    pub source: &'a graphics::TextureSource, 
+    pub source: &'a graphics::TextureSource,
     pub skin_manager: &'a mut dyn graphics::SkinProvider,
 }

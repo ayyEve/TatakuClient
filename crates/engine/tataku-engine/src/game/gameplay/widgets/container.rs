@@ -2,7 +2,7 @@ use crate::*;
 use gameplay::widgets::*;
 
 pub struct GameplayWidgetContainer {
-    pub element_name: String,
+    pub name: CowStr,
     pub visible: bool,
 
     pub preferred_size: tataku::Vector2,

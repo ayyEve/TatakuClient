@@ -34,7 +34,7 @@ impl DurationBarElement {
 impl GameplayWidget for DurationBarElement {
     fn display_name(&self) -> &'static str { "Duration Bar" }
 
-    fn max_size(&self) -> Vector2 {
+    fn preferred_size(&self) -> Vector2 {
         Vector2::new(self.container_size.x, DURATION_HEIGHT)
     }
 

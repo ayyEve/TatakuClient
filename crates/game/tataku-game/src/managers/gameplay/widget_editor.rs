@@ -802,7 +802,7 @@ impl WidgetState {
         let layout = widget.layout().clone();
 
         Self {
-            name: widget.element_name.clone(),
+            name: widget.name.to_string(),
             visible: widget.visible,
             hover: false,
             selected: false,

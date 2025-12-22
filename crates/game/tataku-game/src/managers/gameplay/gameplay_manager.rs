@@ -312,7 +312,7 @@ impl GameplayManager {
 
 
     pub fn update(
-        &mut self, 
+        &mut self,
         values: &mut ValueCollection,
         #[cfg(feature="ui")] font_contexts: &mut TextLayoutContexts,
         actions: &mut actions::ActionQueue,
@@ -655,7 +655,7 @@ impl GameplayManager {
 
     #[cfg(feature="ui")]
     fn update_ui(
-        &mut self, 
+        &mut self,
         time: f32,
         font_contexts: &mut TextLayoutContexts,
     ) {
@@ -677,7 +677,7 @@ impl GameplayManager {
                             .ui_elements
                             .iter_mut()
                             .find(|i|
-                                i.element_name == action.target
+                                i.name == action.target
                             )
                         else { continue };
 
@@ -1154,7 +1154,7 @@ impl GameplayManager {
                 let r = channels
                     .event_sender
                     .send(GameplayWidgetEvent {
-                    target: Some(i.element_name.clone()),
+                    target: Some(i.name.to_string()),
                     action: GameplayWidgetEventType::Update {
                         bounds: i.resolved_bounds(),
                     },

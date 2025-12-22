@@ -47,7 +47,7 @@ impl JudgementBarElement {
 impl GameplayWidget for JudgementBarElement {
     fn display_name(&self) -> &'static str { "Judgement Bar" }
 
-    fn max_size(&self) -> Vector2 {
+    fn preferred_size(&self) -> Vector2 {
         // let items_width = HIT_TIMING_BAR_SIZE.x; // * (self.timing_bar_things.0.len() + 1) as f64;
         // Vector2::new(items_width, HIT_TIMING_BAR_SIZE.y)
         HIT_TIMING_BAR_SIZE
