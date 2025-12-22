@@ -359,97 +359,94 @@
         </conditional>
       </column>
 
-      <!-- gameplay preview and map list -->
-      <row style="width: 90%; height: fill; ">
-        <gameplayPreview style="width: 40%; height: fill;" />
+      <gameplayPreview style="width: 40%; height: fill;" />
 
-        <!-- beatmap group list -->
-        <list
-          id = "group-list"
-          style = "width: 50%; height: fill;"
-          list = "beatmaps.groups"
-          variable = "_group"
-          scroll = "vertical"
-        >
-          <column class="group-item">
-            <!-- set info -->
-            <button active="_group.selected">
-              <action>
-                <map>
-                  <selectGroup>
-                    <variable>_group.id</variable>
-                  </selectGroup>
-                </map>
-                <custom>scroll-to-selected</custom>
-              </action>
+      <!-- beatmap group list -->
+      <list
+        id = "group-list"
+        style = "width: 50%; height: fill;"
+        list = "beatmaps.groups"
+        variable = "_group"
+        scroll = "vertical"
+      >
+        <column class="group-item">
+          <!-- set info -->
+          <button active="_group.selected">
+            <action>
+              <map>
+                <selectGroup>
+                  <variable>_group.id</variable>
+                </selectGroup>
+              </map>
+              <custom>scroll-to-selected</custom>
+            </action>
 
-              <text>
-                <variable>_group.name</variable>
-              </text>
-            </button>
+            <text>
+              <variable>_group.name</variable>
+            </text>
+          </button>
 
-            <!-- map items -->
-            <row class="align-end">
-              <conditional cond="_group.selected" style="flex-basis: 80%"> <!-- todo: try fit-content -->
-                <list
-                  class = "map-list"
-                  list = "_group.maps"
-                  variable = "_map"
+          <!-- map items -->
+          <row class="align-end">
+            <conditional cond="_group.selected" style="width: 80%">
+              <list
+                class = "map-list"
+                list = "_group.maps"
+                variable = "_map"
+              >
+                <button
+                  class = "map-item"
+                  active = "beatmaps.current == _map"
                 >
-                  <button
-                    class = "map-item"
-                    active = "beatmaps.current == _map"
-                  >
-                    <action button="left">
-                      <conditional cond="beatmaps.current == _map">
-                        <!-- if the map is selected -->
-                        <!-- confirm it -->
-                        <map> <confirm /> </map>
+                  <action button="left">
+                    <conditional cond="beatmaps.current == _map">
+                      <!-- if the map is selected -->
+                      <!-- confirm it -->
+                      <map> <confirm /> </map>
 
-                        <!-- otherwise, set it as the selected map  -->
-                        <false>
-                          <map>
-                            <selectMap>
-                              <variable>_map</variable>
-                            </selectMap>
-                          </map>
-                        </false>
-                      </conditional>
-                    </action>
+                      <!-- otherwise, set it as the selected map  -->
+                      <false>
+                        <map>
+                          <selectMap>
+                            <variable>_map</variable>
+                          </selectMap>
+                        </map>
+                      </false>
+                    </conditional>
+                  </action>
 
-                    <action button="right">
-                      <map>
-                        <selectMap> <variable>_map</variable> </selectMap>
-                      </map>
-                      <addDialog>beatmap_context_menu</addDialog>
-                    </action>
+                  <action button="right">
+                    <map>
+                      <selectMap> <variable>_map</variable> </selectMap>
+                    </map>
+                    <addDialog>beatmap_context_menu</addDialog>
+                  </action>
 
-                    <column class="map-item-inner">
-                      <!-- title and stuff -->
-                      <conditional cond="beatmaps.diffs[_map].diff > 0.0">
-                        <text>
-                          <display>beatmaps.beatmaps[_map].playmode</display> - <variable>beatmaps.beatmaps[_map].version</variable> (diff: <display>beatmaps.diffs[_map].diff</display>)
-                        </text>
-
-                        <false>
-                          <text>
-                            <display>beatmaps.beatmaps[_map].playmode</display> - <variable>beatmaps.beatmaps[_map].version</variable>
-                          </text>
-                        </false>
-                      </conditional>
-
-                      <!-- diff info -->
-                      <text class="diff-info">
-                        <variable>beatmaps.diffs[_map].info</variable>
+                  <column class="map-item-inner">
+                    <!-- title and stuff -->
+                    <conditional cond="beatmaps.diffs[_map].diff > 0.0">
+                      <text>
+                        <display>beatmaps.beatmaps[_map].playmode</display> - <variable>beatmaps.beatmaps[_map].version</variable> (diff: <display>beatmaps.diffs[_map].diff</display>)
                       </text>
-                    </column>
-                  </button>
-                </list>
-              </conditional>
-            </row>
-          </column>
-        </list>
-      </row>
+
+                      <false>
+                        <text>
+                          <display>beatmaps.beatmaps[_map].playmode</display> - <variable>beatmaps.beatmaps[_map].version</variable>
+                        </text>
+                      </false>
+                    </conditional>
+
+                    <!-- diff info -->
+                    <text class="diff-info">
+                      <variable>beatmaps.diffs[_map].info</variable>
+                    </text>
+                  </column>
+                </button>
+              </list>
+            </conditional>
+          </row>
+        </column>
+      </list>
     </row>
 
     <!-- Bottom bar things -->
