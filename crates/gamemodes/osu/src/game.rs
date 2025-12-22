@@ -93,12 +93,12 @@ impl OsuGame {
     #[cfg(feature="graphics")]
     fn recalculate_playfield(&mut self, window_size: Vector2) {
         let new_scale = ScalingHelper::new_with_settings(
-            &self.game_settings, 
-            self.cs, 
-            window_size, 
+            &self.game_settings,
+            self.cs,
+            window_size,
             self.mods.has_mod(HardRock)
         );
-        
+
         self.new_playfield_pending = true;
         self.apply_playfield(Arc::new(new_scale));
     }
@@ -128,7 +128,7 @@ impl OsuGame {
         //     note.set_stack_count(0)
         // }
 
-        
+
         // Extend the end index to include objects they are stacked on
         let mut extended_end_index = self.notes.len();
 
@@ -175,7 +175,7 @@ impl OsuGame {
         }
 
 
-        
+
         // Reverse pass for stack calculation.
         let extended_start_index = self.notes.len() - 1;
 
@@ -198,13 +198,13 @@ impl OsuGame {
         ];
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn add_judgement_indicator(
-        pos: Vector2, 
-        hit_value: &HitJudgment, 
-        scaling_helper: &Arc<ScalingHelper>, 
-        judgment_helper: &JudgmentImageHelper, 
-        settings: &OsuSettings, 
+        pos: Vector2,
+        hit_value: &HitJudgment,
+        scaling_helper: &Arc<ScalingHelper>,
+        judgment_helper: &JudgmentImageHelper,
+        settings: &OsuSettings,
         state: &mut GameplayUpdateShell<'_>
     ) {
         if hit_value.tex_name.is_empty() { return }
@@ -220,7 +220,7 @@ impl OsuGame {
         }
 
         state.add_indicator(BasicJudgementIndicator::new(
-            pos, 
+            pos,
             state.time,
             CIRCLE_RADIUS_BASE * scaling_helper.cs * (1.0/3.0),
             color,
@@ -231,9 +231,9 @@ impl OsuGame {
 
     #[inline]
     fn scale_by_mods<V:std::ops::Mul<Output=V>>(
-        val:V, 
-        ez_scale: V, 
-        hr_scale: V, 
+        val:V,
+        ez_scale: V,
+        hr_scale: V,
         mods: &ModManager
     ) -> V {
         if mods.has_mod(Easy) {
@@ -260,10 +260,10 @@ impl OsuGame {
         Self::scale_by_mods(meta.cs, 0.5, 1.3, mods).clamp(1.0, 10.0)
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn draw_follow_points(
-        &mut self, 
-        time: f32, 
+        &mut self,
+        time: f32,
         list: &mut engine::graphics::RenderableCollection,
     ) {
         if !self.game_settings.draw_follow_points { return; }
@@ -300,7 +300,7 @@ impl OsuGame {
                 let lerp_amount = i as f32 / follow_dot_count;
                 let time_at_this_point = f32::lerp(n1_time, n2_time, lerp_amount);
                 let point = Vector2::lerp(n1_pos, n2_pos, lerp_amount);
-                
+
                 // get the alpha
                 let alpha_lerp_amount = (time_at_this_point - time) / (n2_time - n1_time);
                 let alpha = if !(0.0..=2.0).contains(&alpha_lerp_amount) {
@@ -329,8 +329,8 @@ impl OsuGame {
             }
         }
     }
-    
-    #[cfg(feature="graphics")] 
+
+    #[cfg(feature="graphics")]
     fn apply_combo_colors(&mut self, colors: &[Color]) {
         let mut combo_num = 0;
         let mut combo_change = 0;
@@ -363,7 +363,7 @@ impl OsuGame {
             None
         }
     }
-    
+
     fn map_btn(&self, btn: &input::MouseButton) -> Option<KeyPress> {
         if btn == &input::MouseButton::Left {
             Some(KeyPress::LeftMouse)
@@ -376,14 +376,14 @@ impl OsuGame {
 }
 impl Gamemode for OsuGame {
     fn new(
-        map: &Beatmap, 
+        map: &Beatmap,
         _diff_calc_only: bool,
         settings: &engine::Settings,
     ) -> tataku::Result<Self> {
         let metadata = map.get_beatmap_meta();
         let mods = Arc::default();
         let effective_window_size = super::diff_calc::WINDOW_SIZE;
-        
+
         let game_settings = settings.gamemode_settings(crate::GAME_INFO).unwrap_or_default();
         // settings.osu_settings.clone();
 
@@ -393,19 +393,19 @@ impl Gamemode for OsuGame {
         let scaling_helper = Arc::new(ScalingHelper::new_with_settings(&game_settings, cs, effective_window_size, mods.has_mod(HardRock)));
 
         let timing_points = TimingPointHelper::new(
-            map.get_timing_points(), 
+            map.get_timing_points(),
             map.slider_velocity(),
         );
 
         let parent_dir = map.get_parent_dir().unwrap_or_default().to_string_lossy().to_string();
         let mut actions = actions::ActionQueue::new();
-        
-        #[cfg(feature="graphics")] 
+
+        #[cfg(feature="graphics")]
         let cursor = {
             let cursor = OsuCursor::new(
-                scaling_helper.circle_size.x / 2.0, 
-                graphics::SkinSettings::default(), 
-                parent_dir, 
+                scaling_helper.circle_size.x / 2.0,
+                graphics::SkinSettings::default(),
+                parent_dir,
                 settings
             );
 
@@ -431,20 +431,20 @@ impl Gamemode for OsuGame {
                     window_mouse_pos: Vector2::ZERO,
                     hit_windows: Vec::new(),
                     miss_window: 0.0,
-        
+
                     hold_count: 0,
                     end_time: 0.0,
-        
+
                     move_playfield: None,
                     scaling_helper: scaling_helper.clone(),
                     cs,
 
                     use_controller_cursor: false,
-        
+
                     game_settings: std_settings.clone(),
                     auto_helper: StandardAutoHelper::default(),
                     relax_manager: RelaxManager::default(),
-                    
+
                     #[cfg(feature="graphics")] new_combos: Vec::new(),
                     stack_leniency,
                     // window_size,
@@ -497,7 +497,7 @@ impl Gamemode for OsuGame {
                     }
                 }
 
-                let mut all_items = 
+                let mut all_items =
                     beatmap.notes.iter().map(Thing::Note)
                     .chain(beatmap.sliders.iter().map(|s| Thing::Slider(s, if s.curve_points.is_empty() || s.length == 0.0 { None } else { Some(Box::new(get_curve(s, map, &timing_points))) } )))
                     .chain(beatmap.spinners.iter().map(Thing::Spinner))
@@ -518,7 +518,7 @@ impl Gamemode for OsuGame {
                     if i.new_combo() { combo_num = 0 }
 
                     // if new combo, add counter to combo
-                    #[cfg(feature="graphics")] 
+                    #[cfg(feature="graphics")]
                     if combo_num == 0 {
                         s.new_combos.push(counter);
                     }
@@ -548,7 +548,7 @@ impl Gamemode for OsuGame {
                                 new_combo: slider.new_combo,
                                 color_skip: slider.color_skip,
                             };
-        
+
                             let hitsounds = get_hitsounds(note.time, note.hitsound, note.hitsamples.clone());
                             s.notes.push(Box::new(OsuNote::new(
                                 note,
@@ -587,7 +587,7 @@ impl Gamemode for OsuGame {
                                     spins_required = 0;
                                 }
                             }
-                            
+
                             s.notes.push(Box::new(OsuSpinner::new(
                                 spinner,
                                 scaling_helper.clone(),
@@ -599,7 +599,7 @@ impl Gamemode for OsuGame {
 
                 s
             }
-            
+
             _ => return Err(errors::beatmap::BeatmapError::UnsupportedMode.into()),
         };
 
@@ -612,12 +612,12 @@ impl Gamemode for OsuGame {
     }
 
     fn handle_replay_frame(
-        &mut self, 
-        frame: ReplayFrame, 
+        &mut self,
+        frame: ReplayFrame,
         state: &mut GameplayUpdateShell
     ) {
         const ALLOWED_PRESSES:&[KeyPress] = &[
-            KeyPress::Left, 
+            KeyPress::Left,
             KeyPress::Right,
             KeyPress::Dash,
             KeyPress::LeftMouse,
@@ -628,7 +628,7 @@ impl Gamemode for OsuGame {
             ReplayAction::Press(key) if ALLOWED_PRESSES.contains(&key) => {
                 self.hold_count += 1;
 
-                #[cfg(feature="graphics")] 
+                #[cfg(feature="graphics")]
                 match key {
                     KeyPress::Left | KeyPress::LeftMouse => self.cursor.left_pressed(true),
                     KeyPress::Right | KeyPress::RightMouse => self.cursor.right_pressed(true),
@@ -654,7 +654,7 @@ impl Gamemode for OsuGame {
                     if (in_hitwindow || is_visible) && !note.was_hit() && note.note_type() != NoteType::Spinner {
                         if in_hitwindow {
                             hittable_notes.push(note);
-                        } else { 
+                        } else {
                             visible_notes.push(note);
                         }
                     }
@@ -662,24 +662,24 @@ impl Gamemode for OsuGame {
 
                 if hittable_notes.is_empty() && visible_notes.is_empty() { return } // no notes to check
                 hittable_notes.sort_by(|a, b| a.time().partial_cmp(&b.time()).unwrap());
-                
+
                 for note in hittable_notes {
                     if !note.check_distance(self.mouse_pos) { continue }
                     let note_time = note.time();
-                    
+
                     if let Some(judge) = state.check_judgment(&self.hit_windows, frame.time, note_time) {
                         note.set_judgment(judge);
 
                         if judge == &OsuHitJudgments::X300 && !self.game_settings.show_300s {
                             // dont show the judgment
                         } else {
-                            #[cfg(feature="graphics")] 
+                            #[cfg(feature="graphics")]
                             Self::add_judgement_indicator(
-                                note.point_draw_pos(frame.time), 
-                                judge, 
-                                &self.scaling_helper, 
-                                &self.judgment_helper, 
-                                &self.game_settings, 
+                                note.point_draw_pos(frame.time),
+                                judge,
+                                &self.scaling_helper,
+                                &self.judgment_helper,
+                                &self.game_settings,
                                 state
                             );
                         }
@@ -692,7 +692,7 @@ impl Gamemode for OsuGame {
                             note.hit(frame.time);
 
                             // play the sound
-                            #[cfg(feature="gameplay")] 
+                            #[cfg(feature="gameplay")]
                             state.play_hitsounds(&note.get_hitsound(), false);
                         }
 
@@ -705,7 +705,7 @@ impl Gamemode for OsuGame {
                 for note in visible_notes {
                     if !note.check_distance(self.mouse_pos) { continue }
 
-                    #[cfg(feature="graphics")] 
+                    #[cfg(feature="graphics")]
                     note.shake(frame.time);
                     break
                 }
@@ -713,8 +713,8 @@ impl Gamemode for OsuGame {
             // dont continue if no keys were being held (happens when leaving a menu)
             ReplayAction::Release(key) if ALLOWED_PRESSES.contains(&key) && self.hold_count > 0 => {
                 self.hold_count -= 1;
-                
-                #[cfg(feature="graphics")] 
+
+                #[cfg(feature="graphics")]
                 match key {
                     KeyPress::Left | KeyPress::LeftMouse => self.cursor.left_pressed(false),
                     KeyPress::Right | KeyPress::RightMouse => self.cursor.right_pressed(false),
@@ -736,11 +736,11 @@ impl Gamemode for OsuGame {
                 // scale the coords from playfield to window
                 let pos = self.scaling_helper.scale_coords(Vector2::new(x, y));
                 self.mouse_pos = pos;
-                #[cfg(feature="graphics")] 
+                #[cfg(feature="graphics")]
                 if let Some(emitter) = &mut self.smoke_emitter {
                     emitter.position = pos;
                 }
-                #[cfg(feature="graphics")] 
+                #[cfg(feature="graphics")]
                 self.cursor.cursor_pos(pos);
 
                 for note in self.notes.iter_mut() {
@@ -761,10 +761,10 @@ impl Gamemode for OsuGame {
                     self.recalculate_playfield(bounds.size);
                 } else {
                     self.apply_playfield(Arc::new(ScalingHelper::new_offset_scale(
-                        self.cs, 
-                        bounds.size, 
-                        bounds.pos, 
-                        0.80, 
+                        self.cs,
+                        bounds.size,
+                        bounds.pos,
+                        0.80,
                         self.mods.has_mod(HardRock)
                     )));
                 }
@@ -806,14 +806,14 @@ impl Gamemode for OsuGame {
                 if has_easy_or_hr || had_easy_or_hr != has_easy_or_hr {
                     self.cs = Self::get_cs(&self.metadata, &self.mods);
                     let ar = Self::get_ar(&self.metadata, &self.mods);
-                    
+
                     #[cfg(feature="graphics")]
                     self.recalculate_playfield(self.scaling_helper.window_size);
                     self.setup_hitwindows();
 
                     set_ar = Some(ar);
                 }
-            
+
                 if last_easing != new_easing || last_easing_type != new_easing_type {
                     // use out as default easing type
                     if new_easing_type.is_empty() && !new_easing.is_empty() {
@@ -858,7 +858,7 @@ impl Gamemode for OsuGame {
                     set_easing = Some(easing);
                 }
 
-                #[cfg(feature="graphics")] 
+                #[cfg(feature="graphics")]
                 if has_otb != had_otb {
                     if has_otb {
                         let timing_points = self.timing_points
@@ -868,12 +868,12 @@ impl Gamemode for OsuGame {
                             .collect::<Vec<_>>();
                         let mut index = 0;
                         // info!("tp: {} -> {}", timing_points[index].time, timing_points[index].beat_length);
-                        
+
                         for note in self.notes.iter_mut() {
                             // check next timing point
                             if let Some(next) = timing_points.get(index + 1)
-                            && next.time <= note.time() { 
-                                index += 1; 
+                            && next.time <= note.time() {
+                                index += 1;
                                 // info!("tp: {} -> {}", timing_points[index].time, timing_points[index].beat_length);
                             }
 
@@ -892,7 +892,7 @@ impl Gamemode for OsuGame {
                             } else {
                                 note.set_approach_easing(Easing::Linear);
                             }
-                            
+
                         }
 
                         set_easing = None;
@@ -904,7 +904,7 @@ impl Gamemode for OsuGame {
 
                 if set_ar.is_some() || set_easing.is_some() {
                     for note in self.notes.iter_mut() {
-                        #[cfg(feature="graphics")] 
+                        #[cfg(feature="graphics")]
                         if let Some(easing) = set_easing {
                             note.set_approach_easing(easing);
                         }
@@ -915,7 +915,7 @@ impl Gamemode for OsuGame {
                 }
 
             }
-        
+
             GameplayEvent::BeatHappened { pulse_length } => {
                 for i in self.notes.iter_mut() {
                     i.beat_happened(pulse_length);
@@ -932,7 +932,7 @@ impl Gamemode for OsuGame {
     }
 
     fn update(
-        &mut self, 
+        &mut self,
         state: &mut GameplayUpdateShell,
     ) {
         state.action_queue.extend(self.actions.take());
@@ -944,11 +944,11 @@ impl Gamemode for OsuGame {
 
         // disable the cursor particle emitter if this is a menu game
         // the emitter nukes perf so its best to keep it off unless needed
-        #[cfg(feature="graphics")] 
+        #[cfg(feature="graphics")]
         if state.gameplay_type.is_preview() && self.cursor.emitter_enabled {
             self.cursor.emitter_enabled = false;
         }
-        #[cfg(feature="graphics")] 
+        #[cfg(feature="graphics")]
         self.cursor.update();
 
         let has_autoplay = state.mods.has_autoplay();
@@ -958,9 +958,9 @@ impl Gamemode for OsuGame {
         if has_autoplay {
             let mut pending_frames = Vec::new();
             self.auto_helper.update(
-                state.time, 
-                &self.notes, 
-                &self.scaling_helper, 
+                state.time,
+                &self.notes,
+                &self.scaling_helper,
                 &mut pending_frames
             );
 
@@ -969,13 +969,13 @@ impl Gamemode for OsuGame {
                 state.add_replay_action(action);
             }
         }
-        
+
         if has_relax {
             self.relax_manager.update(state.time);
         }
 
         // update emitter
-        #[cfg(feature="graphics")] 
+        #[cfg(feature="graphics")]
         if let Some(e) = self.smoke_emitter.as_mut() { e.update(state.time) }
 
         // if the map is over, say it is
@@ -992,20 +992,20 @@ impl Gamemode for OsuGame {
             let end_time = note.end_time(self.miss_window);
 
             // play queued sounds
-            #[cfg(feature="gameplay")] 
+            #[cfg(feature="gameplay")]
             for hitsound in note.get_sound_queue() {
                 state.play_hitsounds(&hitsound, false);
             }
 
             for (judgment, pos) in note.pending_combo() {
                 state.add_judgment(judgment);
-                #[cfg(feature="graphics")] 
+                #[cfg(feature="graphics")]
                 Self::add_judgement_indicator(
-                    pos, 
-                    &judgment, 
-                    &self.scaling_helper, 
-                    &self.judgment_helper, 
-                    &self.game_settings, 
+                    pos,
+                    &judgment,
+                    &self.scaling_helper,
+                    &self.judgment_helper,
+                    &self.game_settings,
                     state
                 );
             }
@@ -1022,7 +1022,7 @@ impl Gamemode for OsuGame {
             }
 
             // check if note was missed
-            
+
             // if the time is leading in, we dont want to check if any notes have been missed
             if state.time < 0.0 { continue }
 
@@ -1035,13 +1035,13 @@ impl Gamemode for OsuGame {
                         let j = OsuHitJudgments::Miss;
                         state.add_judgment(j);
 
-                        #[cfg(feature="graphics")] 
+                        #[cfg(feature="graphics")]
                         Self::add_judgement_indicator(
-                            note.point_draw_pos(state.time), 
-                            &j, 
-                            &self.scaling_helper, 
-                            &self.judgment_helper, 
-                            &self.game_settings, 
+                            note.point_draw_pos(state.time),
+                            &j,
+                            &self.scaling_helper,
+                            &self.judgment_helper,
+                            &self.game_settings,
                             state
                         );
                     }
@@ -1050,15 +1050,15 @@ impl Gamemode for OsuGame {
                         // internally checks distance
                         let judge = note.check_release_points(state.time);
                         state.add_judgment(judge);
-                        
+
                         if judge != OsuHitJudgments::X300 || self.game_settings.show_300s {
-                            #[cfg(feature="graphics")] 
+                            #[cfg(feature="graphics")]
                             Self::add_judgement_indicator(
-                                note.point_draw_pos(state.time), 
-                                &judge, 
-                                &self.scaling_helper, 
-                                &self.judgment_helper, 
-                                &self.game_settings, 
+                                note.point_draw_pos(state.time),
+                                &judge,
+                                &self.scaling_helper,
+                                &self.judgment_helper,
+                                &self.game_settings,
                                 state
                             );
                         }
@@ -1068,7 +1068,7 @@ impl Gamemode for OsuGame {
                             note.hit(state.time);
 
                             // play the sound
-                            #[cfg(feature="gameplay")] 
+                            #[cfg(feature="gameplay")]
                             state.play_hitsounds(&note.get_hitsound(), false);
                         }
                     }
@@ -1076,22 +1076,22 @@ impl Gamemode for OsuGame {
                     NoteType::Spinner => {
                         let j = OsuHitJudgments::SpinnerMiss;
                         state.add_judgment(j);
-                        #[cfg(feature="graphics")] 
+                        #[cfg(feature="graphics")]
                         Self::add_judgement_indicator(
-                            note.point_draw_pos(state.time), 
+                            note.point_draw_pos(state.time),
                             &j,
-                            &self.scaling_helper, 
-                            &self.judgment_helper, 
-                            &self.game_settings, 
+                            &self.scaling_helper,
+                            &self.judgment_helper,
+                            &self.game_settings,
                             state
                         );
                     }
 
                     _ => {},
                 }
-                
+
                 // force the note to be misssed
-                note.miss(); 
+                note.miss();
             }
         }
 
@@ -1107,10 +1107,10 @@ impl Gamemode for OsuGame {
 
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn draw(
-        &mut self, 
-        state: GameplayDrawShell, 
+        &mut self,
+        state: GameplayDrawShell,
         list: &mut tataku_graphics::RenderableCollection
     ) {
         use engine::graphics;
@@ -1119,8 +1119,8 @@ impl Gamemode for OsuGame {
         if !state.gameplay_type.is_preview() {
             let alpha = self.game_settings.playfield_alpha;
             let mut playfield = graphics::Rectangle::new_bounds(
-                self.scaling_helper.playfield_with_padding, 
-                Color::BLACK.alpha(alpha), 
+                self.scaling_helper.playfield_with_padding,
+                Color::BLACK.alpha(alpha),
             ).border_maybe(
                 state.current_timing_point.kiai
                     .then_some(Border::new(Color::YELLOW.alpha(alpha), 2.0))
@@ -1138,7 +1138,7 @@ impl Gamemode for OsuGame {
                 let py_line = graphics::Line::new(
                     playfield.pos + Vector2::new(playfield.size.x/2.0, 0.0),
                     playfield.pos + Vector2::new(playfield.size.x/2.0, playfield.size.y),
-                    line_size, 
+                    line_size,
                     Color::WHITE
                 );
 
@@ -1151,12 +1151,12 @@ impl Gamemode for OsuGame {
                 let wy_line = graphics::Line::new(
                     Vector2::new(window_size.x/2.0, 0.0),
                     Vector2::new(window_size.x/2.0, window_size.y),
-                    line_size, 
+                    line_size,
                     Color::WHITE
                 );
 
                 playfield.border = Some(Border::new(
-                    Color::WHITE, 
+                    Color::WHITE,
                     line_size
                 ));
 
@@ -1219,7 +1219,7 @@ impl Gamemode for OsuGame {
         }
 
         // need to draw the smoke particles on top of everything
-        if let Some(e) = self.smoke_emitter.as_ref() { 
+        if let Some(e) = self.smoke_emitter.as_ref() {
             e.draw(list);
         }
 
@@ -1233,7 +1233,7 @@ impl Gamemode for OsuGame {
             .map(|i| &**i as &dyn engine::gameplay::HitObject)
             .collect::<Vec<&dyn engine::gameplay::HitObject>>()
     }
-    
+
     fn reset(&mut self, _beatmap: &Beatmap) {
         // let ar = scale_by_mods(self.metadata.ar, 0.5, 1.4, &self.mods).clamp(1.0, 11.0);
 
@@ -1247,25 +1247,25 @@ impl Gamemode for OsuGame {
 
         // reset the smoke particles
         #[cfg(feature="graphics")] {
-            if let Some(e) = self.smoke_emitter.as_mut() { 
-                e.reset(0.0); 
+            if let Some(e) = self.smoke_emitter.as_mut() {
+                e.reset(0.0);
             }
             self.cursor.reset();
         }
     }
 
-    #[cfg(feature="gameplay")] 
+    #[cfg(feature="gameplay")]
     fn skip_intro(&mut self, game_time: f32) -> Option<f32> {
         if self.notes.is_empty() { return None }
 
         let time = self.notes[0].time() - self.notes[0].get_preempt();
         if time < game_time || time < 0.0 { return None }
-        
+
         Some(time)
     }
 
     fn time_jump(
-        &mut self, 
+        &mut self,
         new_time: f32,
         state: &mut GameplayUpdateShell
     ) {
@@ -1275,9 +1275,9 @@ impl Gamemode for OsuGame {
 
         let mut pending_frames = Vec::new();
         self.auto_helper.time_skip(
-            new_time, 
-            &self.notes, 
-            &self.scaling_helper, 
+            new_time,
+            &self.notes,
+            &self.scaling_helper,
             &mut pending_frames
         );
 
@@ -1285,7 +1285,7 @@ impl Gamemode for OsuGame {
             state.add_replay_action(i);
         }
     }
-    
+
     fn force_update_settings(&mut self, settings: &engine::Settings) {
         let settings = settings.gamemode_settings::<OsuSettings>(crate::GAME_INFO).unwrap_or_default();
         // let settings = settings.osu_settings.clone();
@@ -1301,8 +1301,8 @@ impl Gamemode for OsuGame {
 
     #[cfg(feature="graphics")]
     fn reload_skin(
-        &mut self, 
-        beatmap_path: &str, 
+        &mut self,
+        beatmap_path: &str,
         skin_manager: &mut dyn engine::graphics::SkinProvider
     ) -> engine::graphics::TextureSource {
         use engine::graphics::{
@@ -1310,19 +1310,19 @@ impl Gamemode for OsuGame {
             TextureSource,
             EmitterBuilder,
         };
-        
-        let source = if self.game_settings.beatmap_skin { 
-            TextureSource::Beatmap(beatmap_path.to_owned()) 
-        } else { 
-            TextureSource::Skin 
+
+        let source = if self.game_settings.beatmap_skin {
+            TextureSource::Beatmap(beatmap_path.to_owned())
+        } else {
+            TextureSource::Skin
         };
 
         self.cursor.reload_skin(skin_manager);
         self.judgment_helper.reload_skin(skin_manager);
         self.follow_point_image = skin_manager.get_texture(
-            "followpoint", 
-            &source, 
-            SkinUsage::Gamemode, 
+            "followpoint",
+            &source,
+            SkinUsage::Gamemode,
             false
         );
 
@@ -1341,9 +1341,9 @@ impl Gamemode for OsuGame {
         }
 
         let smoke = skin_manager.get_texture(
-            "cursor-smoke", 
-            &source, 
-            SkinUsage::Gamemode, 
+            "cursor-smoke",
+            &source,
+            SkinUsage::Gamemode,
             false
         ).map(|i| i.tex).unwrap_or_default();
 
@@ -1368,7 +1368,7 @@ impl Gamemode for OsuGame {
         source
     }
 
-    #[cfg(feature="gameplay")] 
+    #[cfg(feature="gameplay")]
     fn handle_input(&mut self, input: input::InputEvent) -> Option<ReplayAction> {
         use input::{
             Key,
@@ -1423,9 +1423,9 @@ impl Gamemode for OsuGame {
                     self.use_controller_cursor = false;
                 }
                 self.window_mouse_pos = pos;
-                
+
                 if let Some((original, mouse_start)) = self.move_playfield {
-                    
+
                     let mut settings = (*self.game_settings).clone();
                     let mut change = original + (pos - mouse_start);
 
@@ -1446,22 +1446,22 @@ impl Gamemode for OsuGame {
 
                     settings.playfield_x_offset = change.x;
                     settings.playfield_y_offset = change.y;
-                    
-                    
+
+
                     let settings2 = settings.clone();
                     self.actions.push(actions::game::GameAction::UpdateSettings(Arc::new(
-                        move |settings| 
+                        move |settings|
                         settings.update_gamemode_settings(
-                            GAME_INFO, 
+                            GAME_INFO,
                             settings2.clone()
-                        ) 
+                        )
                     )).into());
 
                     self.game_settings = Arc::new(settings);
                     self.recalculate_playfield(self.scaling_helper.window_size);
                     return None;
                 }
-                
+
 
                 // convert window pos to playfield pos
                 let pos = self.scaling_helper.descale_coords(pos);
@@ -1471,7 +1471,7 @@ impl Gamemode for OsuGame {
             InputType::MousePress(btn) => {
                 // if the user has mouse input disabled, return
                 if self.game_settings.ignore_mouse_buttons { return None }
-                
+
                 let button = self.map_btn(&btn)?;
 
                 // if relax is enabled, and the user doesn't want manual input, return
@@ -1506,11 +1506,11 @@ impl Gamemode for OsuGame {
                     self.game_settings = Arc::new(a.clone());
 
                     self.actions.push(actions::game::GameAction::UpdateSettings(Arc::new(
-                        move |settings| 
+                        move |settings|
                         settings.update_gamemode_settings(
-                            GAME_INFO, 
+                            GAME_INFO,
                             a.clone()
-                        ) 
+                        )
                     )).into());
 
                     self.recalculate_playfield(self.scaling_helper.window_size);
@@ -1544,7 +1544,7 @@ impl Gamemode for OsuGame {
             InputType::ControllerAxis(Axis::LeftStickX, value, _id, _name) => {
                 // -1.0 to 1.0
                 // where -1 is 0, and 1 is scaling_helper.playfield_scaled_with_cs_border.whatever
-                
+
                 if !self.use_controller_cursor {
                     // info!("switched to controller input");
                     self.use_controller_cursor = true;
@@ -1556,7 +1556,7 @@ impl Gamemode for OsuGame {
 
                 let normalized = (value + 1.0) / 2.0;
                 new_pos.x = playfield.pos.x + f32::lerp(0.0, playfield.size.x, normalized);
-                        
+
                 let new_pos = scaling_helper.descale_coords(new_pos);
                 Some(ReplayAction::MousePos(new_pos.x, new_pos.y))
             }
@@ -1568,7 +1568,7 @@ impl Gamemode for OsuGame {
                     // info!("switched to controller input");
                     self.use_controller_cursor = true;
                 }
-                
+
 
                 let mut new_pos = self.mouse_pos;
                 let scaling_helper = self.scaling_helper.clone();
@@ -1585,24 +1585,6 @@ impl Gamemode for OsuGame {
         }
     }
 
-    #[cfg(feature="graphics")] 
-    fn build_widgets(
-        &self, 
-        loader: &mut dyn engine::gameplay::widgets::UiElementLoader
-    ) {
-        use engine::gameplay::widgets::*;
-        // combo
-        loader.change_default_layout(
-            "combo", 
-            GameplayWidgetLayout::new_default(
-                GameplayWidgetAnchor::element("duration_bar", GameplayWidgetAlign::Above),
-                Alignment::TOP_LEFT,
-                None,
-                None,
-            )
-        );
-    }
-
     #[cfg(feature="graphics")] fn get_playfield(&self) -> PlayfieldNonsense {
         PlayfieldNonsense::new(
             self.scaling_helper.playfield,
@@ -1613,31 +1595,31 @@ impl Gamemode for OsuGame {
     }
     fn properties(&self, _timing_points: &TimingPointHelper) -> GamemodeProperties {
         let mut sound_list = HashMap::new();
-        #[cfg(feature="gameplay")] 
+        #[cfg(feature="gameplay")]
         for note in self.notes.iter() {
             for hitsound in note.get_all_hitsounds().iter().flatten() {
                 sound_list.insert(
-                    hitsound.get_id(), 
+                    hitsound.get_id(),
                     hitsound.load_data(None::<String>)
                 );
             }
         }
 
-        GamemodeProperties { 
-            info: &crate::GAME_INFO, 
+        GamemodeProperties {
+            info: &crate::GAME_INFO,
             keys: vec![
                 (KeyPress::Left, "L"),
                 (KeyPress::Right, "R"),
                 (KeyPress::LeftMouse, "M1"),
                 (KeyPress::RightMouse, "M2"),
-            ], 
-            end_time: self.end_time, 
-            show_cursor: false, 
+            ],
+            end_time: self.end_time,
+            show_cursor: false,
             audio_prefix: String::new(),
             timing_bar_things: self.hit_windows
                 .iter()
                 .map(|(j, w)| (w.end, j.color))
-                .collect(), 
+                .collect(),
 
             sound_list: sound_list.into_iter().collect(),
         }

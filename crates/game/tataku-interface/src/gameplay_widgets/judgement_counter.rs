@@ -43,9 +43,9 @@ impl JudgementCounterElement {
             color: Color::WHITE,
             ..Default::default()
         };
-        
+
         let mut layout = font_contexts.simple_text(
-            text, 
+            text,
             &style,
         );
         layout.break_all_lines(None);
@@ -65,11 +65,11 @@ impl JudgementCounterElement {
         if text_size.x >= max_width {
             style.font_size = 20.0 * scale.x * max_width / text_size.x;
             layout = font_contexts.simple_text(
-                text, 
+                text,
                 &style,
             );
             layout.break_all_lines(None);
-                
+
             text_size = Vector2::new(
                 layout.width(),
                 layout.height(),
@@ -91,26 +91,26 @@ impl GameplayWidget for JudgementCounterElement {
 
     fn update(&mut self, shell: &mut GameplayWidgetUpdateShell) {
         let score = &shell.manager.score().score;
-        
+
         if self.counts.is_empty() {
             for j in shell.manager.judgments() {
                 if j.display_name.is_empty() { continue }
 
                 let (layout, size) = Self::layout(
-                    j.display_name, 
-                    self.button_image.as_ref(), 
+                    j.display_name,
+                    self.button_image.as_ref(),
                     &shell.scale,
                     shell.font_context,
                 );
 
-                self.counts.push(CachedJudgment { 
+                self.counts.push(CachedJudgment {
                     judge: *j,
-                    count: score.get_judgment(j), 
+                    count: score.get_judgment(j),
                     size,
                     layout,
                 });
             }
-            
+
             return;
         }
 
@@ -137,7 +137,7 @@ impl GameplayWidget for JudgementCounterElement {
 
             let (layout, size) = Self::layout(
                 &text,
-                self.button_image.as_ref(), 
+                self.button_image.as_ref(),
                 &shell.scale,
                 shell.font_context
             );
@@ -154,18 +154,20 @@ impl GameplayWidget for JudgementCounterElement {
     ) {
         let box_size = self.button_image
             .as_ref()
-            .map_or(BOX_SIZE, Image::size) * shell.scale;
+            .map_or(BOX_SIZE, Image::size);
 
         for (i, cache) in self.counts.iter().enumerate() {
-            let pos = shell.pos_offset + Vector2::new(0.0, box_size.y * i as f32);
+            let pos = Vector2::new(0.0, box_size.y * i as f32);
             let box_bounds = Bounds::new(pos, box_size);
 
             if let Some(mut btn) = self.button_image.clone() {
                 btn.pos = pos + box_size / 2.0;
-                btn.scale = shell.scale;
                 btn.color = cache.judge.color;
 
-                shell.list.push(btn);
+                shell.list.push(graphics::Transformed {
+                    transform: shell.transform,
+                    drawable: Box::new(btn)
+                });
             } else {
                 // draw bg box
                 shell.list.push(graphics::Rectangle::new_bounds(
@@ -173,24 +175,24 @@ impl GameplayWidget for JudgementCounterElement {
                     cache.judge.color,
                 )
                 .border(Border::new(
-                    Color::BLACK, 
+                    Color::BLACK,
                     2.0
                 )));
             }
 
             let centered = Alignment::CENTER.resolve(
-                &box_bounds, 
-                cache.size, 
-                true, 
+                &box_bounds,
+                cache.size,
+                true,
                 true
             );
 
             // draw text/count
-            shell.list.push(graphics::Transformed::new(
-                graphics::Transform::default()
-                    .translate(centered),
-                Box::new(graphics::Text::new(cache.layout.clone())),
-            ));
+            shell.list.push(graphics::Transformed {
+                transform: shell.transform * tataku::Matrix::identity()
+                    .trans(centered),
+                drawable: Box::new(graphics::Text::new(cache.layout.clone())),
+            });
         }
     }
 
@@ -209,15 +211,15 @@ impl GameplayWidget for JudgementCounterElement {
 
 pub const JUDGMENT_COUNTER: GameplayWidgetBuilder = GameplayWidgetBuilder {
     name: "judgement_counter",
-    default_layout: GameplayWidgetLayout::new_default(
-        GameplayWidgetAnchor::element(
-            "key_counter",
-            GameplayWidgetAlign::Below
-        ),
-        Alignment::BOTTOM_LEFT,
-        None,
-        None,
-    ),
+    default_layout: GameplayWidgetLayout {
+        anchor: GameplayWidgetAnchor::Element {
+            element: Cow::Borrowed("key_counter"),
+            horizontal_side: Side::Inside,
+            vertical_side: Side::Outside,
+        },
+        align: Alignment::BOTTOM_RIGHT,
+        transform: graphics::Transform::identity(),
+    },
     build: JudgementCounterElement::build,
 };
 

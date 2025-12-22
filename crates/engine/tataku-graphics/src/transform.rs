@@ -1,6 +1,7 @@
 use crate::*;
 
 #[derive(Copy, Clone, Debug, Default2)]
+#[derive(Serialize, Deserialize)]
 pub struct Transform {
     pub origin: Vector2,
     #[default(Vector2::ONE)]
@@ -9,7 +10,7 @@ pub struct Transform {
     pub pos: Vector2,
 }
 impl Transform {
-    pub fn new(
+    pub const fn new(
         pos: Vector2,
         scale: Vector2,
         rotation: f32,
@@ -20,6 +21,15 @@ impl Transform {
             scale,
             rotation,
             pos,
+        }
+    }
+
+    pub const fn identity() -> Self {
+        Self {
+            origin: Vector2::ZERO,
+            scale: Vector2::ONE,
+            rotation: 0.0,
+            pos: Vector2::ZERO,
         }
     }
 
@@ -146,7 +156,7 @@ impl TatakuRenderable for Scissored {
         transform: Matrix,
         g: &mut dyn DrawEngine,
     ) {
-        g.push_scissor(self.scissor);
+        g.push_scissor(self.scissor); // todo: BREAKING CHANGE: multiply by transform
         self.drawable.draw(options, transform, g);
         g.pop_scissor();
     }

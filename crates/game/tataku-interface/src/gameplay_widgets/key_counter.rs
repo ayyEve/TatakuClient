@@ -46,9 +46,9 @@ impl KeyCounterElement {
             color: Color::WHITE,
             ..Default::default()
         };
-        
+
         let mut layout = font_contexts.simple_text(
-            text, 
+            text,
             &style,
         );
         layout.break_all_lines(None);
@@ -68,11 +68,11 @@ impl KeyCounterElement {
         if text_size.x >= max_width {
             style.font_size = 20.0 * scale.x * max_width / text_size.x;
             layout = font_contexts.simple_text(
-                text, 
+                text,
                 &style,
             );
             layout.break_all_lines(None);
-                
+
             text_size = Vector2::new(
                 layout.width(),
                 layout.height(),
@@ -110,8 +110,8 @@ impl GameplayWidget for KeyCounterElement {
                     shell.font_context,
                 );
 
-                self.counts.push(Cached { 
-                    count: info.count, 
+                self.counts.push(Cached {
+                    count: info.count,
                     held: info.held,
                     press,
                     size,
@@ -121,7 +121,7 @@ impl GameplayWidget for KeyCounterElement {
 
             return;
         }
-        
+
         for i in self.counts.iter_mut() {
             let info = &counter.keys[&i.press];
             i.held = info.held;
@@ -136,9 +136,9 @@ impl GameplayWidget for KeyCounterElement {
             };
 
             let (layout, size) = Self::layout(
-                &text, 
-                self.button_image.as_ref(), 
-                &shell.scale, 
+                &text,
+                self.button_image.as_ref(),
+                &shell.scale,
                 shell.font_context
             );
 
@@ -153,7 +153,7 @@ impl GameplayWidget for KeyCounterElement {
     ) {
         let box_size = self.button_image
             .as_ref()
-            .map_or(BOX_SIZE, Image::size) * shell.scale;
+            .map_or(BOX_SIZE, Image::size);
 
         // if let Some(bg) = &self.background_image {
         //     let mut bg = bg.clone();
@@ -162,49 +162,55 @@ impl GameplayWidget for KeyCounterElement {
         // }
 
         for (i, cached) in self.counts.iter().enumerate() {
-            let pos = shell.pos_offset + Vector2::new(
+            let pos = Vector2::new(
                 0.0,
                 box_size.y * i as f32
             );
             let bounds = Bounds::new(
                 pos,
-                box_size * shell.scale,
+                box_size,
             );
 
             // draw bg box
             if let Some(mut btn) = self.button_image.clone() {
                 btn.pos = pos + box_size / 2.0;
-                btn.scale = shell.scale;
                 if cached.held {
                     btn.scale *= 1.1;
                 }
 
-                shell.list.push(btn);
+                shell.list.push(graphics::Transformed {
+                    transform: shell.transform,
+                    drawable: Box::new(btn),
+                });
             } else {
-                shell.list.push(graphics::Rectangle::new_bounds(
-                    bounds,
-                    if cached.held {
-                        Color::new(0.8, 0.0, 0.8, 0.8)
-                    } else {
-                        Color::new(0.0, 0.0, 0.0, 0.8)
-                    },
-                ).border(Border::new(
-                    Color::BLACK,
-                    2.0
-                )));
+                shell.list.push(graphics::Transformed {
+                    transform: shell.transform,
+                    drawable: Box::new(graphics::Rectangle::new_bounds(
+                        bounds,
+                        if cached.held {
+                            Color::new(0.8, 0.0, 0.8, 0.8)
+                        } else {
+                            Color::new(0.0, 0.0, 0.0, 0.8)
+                        },
+                    ).border(Border::new(
+                        Color::BLACK,
+                        2.0
+                    )))
+                });
             }
 
             let centered = Alignment::CENTER.resolve(
                 &bounds,
                 cached.size,
-                true, 
+                true,
                 true,
             );
 
-            shell.list.push(graphics::Transformed::new(
-                graphics::Transform::default().translate(centered),
-                Box::new(graphics::Text::new(cached.layout.clone()))
-            ));
+            shell.list.push(graphics::Transformed {
+                transform: shell.transform * tataku::Matrix::identity()
+                    .trans(centered),
+                drawable: Box::new(graphics::Text::new(cached.layout.clone())),
+            });
         }
     }
 
@@ -231,12 +237,11 @@ impl GameplayWidget for KeyCounterElement {
 
 pub const KEY_COUNTER: GameplayWidgetBuilder = GameplayWidgetBuilder {
     name: "key_counter",
-    default_layout: GameplayWidgetLayout::new_default(
-        GameplayWidgetAnchor::Screen,
-        Alignment::CENTER_RIGHT,
-        None,
-        None,
-    ),
+    default_layout: GameplayWidgetLayout {
+        anchor: GameplayWidgetAnchor::Screen,
+        align: Alignment::CENTER_RIGHT,
+        transform: graphics::Transform::identity(),
+    },
     build: KeyCounterElement::build,
 };
 

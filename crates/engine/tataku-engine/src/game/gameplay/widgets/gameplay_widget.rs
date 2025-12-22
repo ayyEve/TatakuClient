@@ -29,9 +29,7 @@ pub struct GameplayWidgetUpdateShell<'a> {
 }
 
 pub struct GameplayWidgetDrawShell<'a> {
-    pub pos_offset: Vector2, 
-    pub scale: Vector2, 
-    pub align: tataku::Alignment,
+    pub transform: tataku::Matrix,
     pub list: &'a mut graphics::RenderableCollection
 }
 
@@ -39,4 +37,3 @@ pub struct GameplayWidgetReloadSkinShell<'a> {
     pub source: &'a graphics::TextureSource, 
     pub skin_manager: &'a mut dyn graphics::SkinProvider,
 }
-

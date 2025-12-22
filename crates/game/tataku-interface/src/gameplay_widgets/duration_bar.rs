@@ -1,6 +1,6 @@
 use crate::prelude::*;
-use tataku::{ 
-    Border, 
+use tataku::{
+    Border,
     Vector2,
 };
 use engine::{
@@ -44,39 +44,44 @@ impl GameplayWidget for DurationBarElement {
     }
 
     fn draw(
-        &mut self, 
+        &mut self,
         shell: &mut GameplayWidgetDrawShell
     ) {
         // fill
-        shell.list.push(graphics::Rectangle::new(
-            shell.pos_offset, // - Vector2::with_y(DURATION_HEIGHT + 3.0),
-            Vector2::new(
-                self.container_size.x * self.duration_ratio, 
-                DURATION_HEIGHT
-            ) * shell.scale,
-            self.common_game_settings.duration_color_full,
-        ));
+        shell.list.push(graphics::Transformed {
+            transform: shell.transform,
+            drawable: Box::new(graphics::Rectangle::new(
+                Vector2::ZERO,
+                Vector2::new(
+                    self.container_size.x * self.duration_ratio,
+                    DURATION_HEIGHT
+                ) ,
+                self.common_game_settings.duration_color_full,
+            )),
+        });
 
         // border
-        shell.list.push(graphics::Rectangle::new(
-            shell.pos_offset, // + Vector2::with_y(-(DURATION_HEIGHT + 3.0)),
-            Vector2::new(self.container_size.x, DURATION_HEIGHT) * shell.scale,
-            self.common_game_settings.duration_color,
-        )
-        .border(Border::new(
-            self.common_game_settings.duration_border_color, 
-            1.8 * shell.scale.x
-        )));
+        shell.list.push(graphics::Transformed {
+            transform: shell.transform,
+            drawable: Box::new(graphics::Rectangle::new(
+                Vector2::ZERO,
+                Vector2::new(self.container_size.x, DURATION_HEIGHT),
+                self.common_game_settings.duration_color,
+            )
+            .border(Border::new(
+                self.common_game_settings.duration_border_color,
+                1.8
+            ))),
+        });
     }
 }
 
 pub const DURATION_BAR: GameplayWidgetBuilder = GameplayWidgetBuilder {
     name: "duration_bar",
-    default_layout: GameplayWidgetLayout::new_default(
-        GameplayWidgetAnchor::Screen, 
-        tataku::Alignment::BOTTOM_LEFT,
-        None,
-        None,
-    ),
+    default_layout: GameplayWidgetLayout {
+        anchor: GameplayWidgetAnchor::Screen,
+        align: tataku::Alignment::BOTTOM_LEFT,
+        transform: graphics::Transform::identity(),
+    },
     build: DurationBarElement::build,
 };

@@ -129,38 +129,42 @@ impl GameplayWidget for HealthBarElement {
     ) {
         let percent = self.health_ratio;
 
-        if let Some(mut color) = self.healthbar_color.clone() {
+        if let Some(color) = self.healthbar_color.clone() {
             let tex_size = color.tex_size();
             let width = tex_size.x * percent;
 
+            let scissor = shell.transform * tataku::Bounds::new(
+                Vector2::ZERO,
+                Vector2::new(width, tex_size.y),
+            );
+
             let scissor = [
-                shell.pos_offset.x, 
-                shell.pos_offset.y, 
-                width * shell.scale.x, 
-                tex_size.y * shell.scale.y
+                scissor.pos.x,
+                scissor.pos.y,
+                scissor.size.x,
+                scissor.size.y,
             ];
 
             // add bg
-            if let Some(mut bg) = self.healthbar_bg_image.clone() {
-                bg.pos = shell.pos_offset;
-                bg.scale *= shell.scale;
-
-                shell.list.push(bg);
+            if let Some(bg) = self.healthbar_bg_image.clone() {
+                shell.list.push(graphics::Transformed {
+                    transform: shell.transform,
+                    drawable: Box::new(bg),
+                });
             }
-            if let Some(mut bg_1) = self.healthbar_bg_image_1.clone() {
-                bg_1.pos = shell.pos_offset;
-                bg_1.scale *= shell.scale;
-
-                shell.list.push(bg_1);
+            if let Some(bg_1) = self.healthbar_bg_image_1.clone() {
+                shell.list.push(graphics::Transformed {
+                    transform: shell.transform,
+                    drawable: Box::new(bg_1),
+                });
             }
-
-
-            color.pos = shell.pos_offset;
-            color.scale *= shell.scale;
 
             shell.list.push(graphics::Scissored::new(
                 scissor,
-                Box::new(color)
+                Box::new(graphics::Transformed {
+                    transform: shell.transform,
+                    drawable: Box::new(color),
+                }),
             ));
 
             // // add drained health
@@ -173,13 +177,13 @@ impl GameplayWidget for HealthBarElement {
             //     ));
             // // }
 
-            if let Some(mut color_1) = self.healthbar_color_1.clone() {
-                color_1.pos = shell.pos_offset;
-                color_1.scale *= shell.scale;
-
+            if let Some(color_1) = self.healthbar_color_1.clone() {
                 shell.list.push(graphics::Scissored::new(
                     scissor,
-                    Box::new(color_1)
+                    Box::new(graphics::Transformed {
+                        transform: shell.transform,
+                        drawable: Box::new(color_1),
+                    }),
                 ));
 
                 // // add drained health
@@ -194,33 +198,36 @@ impl GameplayWidget for HealthBarElement {
             }
 
         } else {
-            let bg_size = Vector2::new(
-                self.container_size.x / 2.0, 
-                super::DURATION_HEIGHT
-            ) * shell.scale;
+            let bg_size = self.max_size();
 
             let len = self.common_game_settings.healthbar_colors.len();
             let index = ((len as f32 * percent) as usize).min(len - 1);
 
             // bg
-            shell.list.push(graphics::Rectangle::new(
-                shell.pos_offset,
-                bg_size,
-                self.common_game_settings.healthbar_bg_color,
-            ).border(Border::new(
-                self.common_game_settings.healthbar_border_color,
-                1.8
-            )));
+            shell.list.push(graphics::Transformed {
+                transform: shell.transform,
+                drawable: Box::new(graphics::Rectangle::new(
+                    Vector2::ZERO,
+                    bg_size,
+                    self.common_game_settings.healthbar_bg_color,
+                ).border(Border::new(
+                    self.common_game_settings.healthbar_border_color,
+                    1.8
+                )))
+            });
 
             // fill
-            shell.list.push(graphics::Rectangle::new(
-                shell.pos_offset,
-                Vector2::new(
-                    (self.container_size.x / 2.0) * percent, 
-                    super::DURATION_HEIGHT
-                ) * shell.scale,
-                self.common_game_settings.healthbar_colors[index],
-            ));
+            shell.list.push(graphics::Transformed {
+                transform: shell.transform,
+                drawable: Box::new(graphics::Rectangle::new(
+                    Vector2::ZERO,
+                    Vector2::new(
+                        (self.container_size.x / 2.0) * percent,
+                        super::DURATION_HEIGHT
+                    ),
+                    self.common_game_settings.healthbar_colors[index],
+                ))
+            });
         }
     }
 }
@@ -228,11 +235,10 @@ impl GameplayWidget for HealthBarElement {
 
 pub const HEALTH_BAR: GameplayWidgetBuilder = GameplayWidgetBuilder {
     name: "health_bar",
-    default_layout: GameplayWidgetLayout::new_default(
-        GameplayWidgetAnchor::Screen,
-        Alignment::TOP_LEFT,
-        None,
-        None,
-    ),
+    default_layout: GameplayWidgetLayout {
+        anchor: GameplayWidgetAnchor::Screen,
+        align: Alignment::TOP_LEFT,
+        transform: graphics::Transform::identity(),
+    },
     build: HealthBarElement::build,
 };

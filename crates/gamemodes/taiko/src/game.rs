@@ -1,7 +1,7 @@
 /*
  * Taiko game mode
  * Author: ayyEve
- * 
+ *
  * NOTE! gekis and katus are for DISPLAY ONLY!!
  * they are not factored into acc!!
 */
@@ -84,13 +84,13 @@ pub struct TaikoGame {
     #[cfg(feature="graphics")] right_don_image: Option<graphics::Image>,
     #[cfg(feature="graphics")] right_kat_image: Option<graphics::Image>,
     #[cfg(feature="graphics")] playfield: Arc<TaikoPlayfield>,
-    
-    #[cfg(feature="graphics")] 
+
+    #[cfg(feature="graphics")]
     #[default(JudgmentImageHelper::new(TaikoHitJudgments::variants().to_vec()))]
     judgement_helper: JudgmentImageHelper,
 
     counter: FullAltCounter,
-    
+
     hit_windows: Vec<(HitJudgment, std::ops::Range<f32>)>,
     #[cfg(feature="graphics")] hit_cache: HashMap<TaikoHit, f32>,
     miss_window: f32,
@@ -102,8 +102,8 @@ pub struct TaikoGame {
 }
 impl TaikoGame {
     fn get_hitsound(
-        note_time: f32, 
-        hit_type: HitType, 
+        note_time: f32,
+        hit_type: HitType,
         finisher: bool,
         timing_points: &TimingPointHelper,
     ) -> Vec<Hitsound> {
@@ -115,11 +115,11 @@ impl TaikoGame {
         };
 
         Hitsound::from_hitsamples(
-            hitsound, 
-            HitSamples::default(), 
-            false, 
+            hitsound,
+            HitSamples::default(),
+            false,
             timing_points.timing_point_at(
-                note_time, 
+                note_time,
                 true
             )
         )
@@ -142,13 +142,13 @@ impl TaikoGame {
         ];
         self.miss_window = w_miss;
 
-        
+
         // spinner required hits calculation
         let diff_map = map_difficulty(od, 3.0, 5.0, 7.5);
         for note in self.other_notes.iter_mut() {
             if note.note_type() == NoteType::Spinner {
                 let length = note.end_time(0.0) - note.time();
-                let required_hits = ((length / 1000.0 * diff_map) * 1.65).max(1.0) as u16; 
+                let required_hits = ((length / 1000.0 * diff_map) * 1.65).max(1.0) as u16;
                 note.set_required_hits(required_hits);
             }
         }
@@ -157,14 +157,14 @@ impl TaikoGame {
 
     #[cfg(feature="graphics")]
     fn add_hit_indicator(
-        mut hit_value: &HitJudgment, 
-        finisher_hit: bool, 
-        game_settings: &TaikoSettings, 
+        mut hit_value: &HitJudgment,
+        finisher_hit: bool,
+        game_settings: &TaikoSettings,
         playfield: &TaikoPlayfield,
-        judgment_helper: &JudgmentImageHelper, 
+        judgment_helper: &JudgmentImageHelper,
         state: &mut GameplayUpdateShell,
     ) {
-        let pos = playfield.hit_position 
+        let pos = playfield.hit_position
             + Vector2::with_y(game_settings.judgement_indicator_offset);
 
         // if finisher, upgrade to geki or katu
@@ -179,10 +179,10 @@ impl TaikoGame {
             }
         }
 
-        let mut image = if game_settings.use_skin_judgments { 
-            judgment_helper.get_from_scorehit(hit_value) 
-        } else { 
-            None 
+        let mut image = if game_settings.use_skin_judgments {
+            judgment_helper.get_from_scorehit(hit_value)
+        } else {
+            None
         };
 
         if let Some(image) = &mut image {
@@ -193,10 +193,10 @@ impl TaikoGame {
         }
 
         state.add_indicator(BasicJudgementIndicator::new(
-            pos, 
+            pos,
             state.time,
-            game_settings.note_radius 
-                * 0.5 
+            game_settings.note_radius
+                * 0.5
                 * if finisher_hit { game_settings.big_note_multiplier } else { 1.0 },
             hit_value.color,
             image
@@ -205,9 +205,9 @@ impl TaikoGame {
 
     #[inline]
     pub fn scale_by_mods<V:std::ops::Mul<Output=V>>(
-        val: V, 
-        ez_scale: V, 
-        hr_scale: V, 
+        val: V,
+        ez_scale: V,
+        hr_scale: V,
         mods: &ModManager
     ) -> V {
         if mods.has_mod(Easy) {
@@ -225,11 +225,11 @@ impl TaikoGame {
         Self::scale_by_mods(meta.od, 0.5, 1.4, mods)
             .clamp(1.0, 10.0)
     }
-    
+
 
     pub fn get_taiko_playfield(
-        settings: &TaikoSettings, 
-        bounds: Bounds, 
+        settings: &TaikoSettings,
+        bounds: Bounds,
         full_window: bool
     ) -> TaikoPlayfield {
         let half_note_width = settings.note_radius * settings.big_note_multiplier;
@@ -247,13 +247,13 @@ impl TaikoGame {
         // load hit_position
         let base = if settings.hit_position_relative_to_window_size {
             bounds.size - Vector2::new(
-                bounds.size.x, 
+                bounds.size.x,
                 bounds.size.y / settings.hit_position_relative_height_div
-            ) 
+            )
         } else { Vector2::ZERO };
 
-        let hit_position = bounds.pos 
-            + base 
+        let hit_position = bounds.pos
+            + base
             + Vector2::new(x_offset + half_note_width, y_offset);
 
         TaikoPlayfield {
@@ -262,7 +262,7 @@ impl TaikoGame {
             hit_position,
             // full_window
         }
-    } 
+    }
 
     #[allow(clippy::borrowed_box, reason = "matches sort_by signature")]
     fn sort(
@@ -275,7 +275,7 @@ impl TaikoGame {
     }
 
     fn map_gamepad_button(
-        &self, 
+        &self,
         config: &TaikoControllerConfig,
         btn: GamepadButton,
     ) -> Option<KeyPress> {
@@ -288,7 +288,7 @@ impl TaikoGame {
         } else if self.taiko_settings.gamepad_right_kat == Some(btn) {
             Some(KeyPress::RightKat)
         }
-        
+
         else if config.left_kat.check_button(btn) {
             Some(KeyPress::LeftKat)
         } else if config.left_don.check_button(btn) {
@@ -297,7 +297,7 @@ impl TaikoGame {
             Some(KeyPress::RightDon)
         } else if config.right_kat.check_button(btn) {
             Some(KeyPress::RightKat)
-        } 
+        }
 
         // skip
         else if GamepadButton::North == btn {
@@ -311,8 +311,8 @@ impl TaikoGame {
 
 impl Gamemode for TaikoGame {
     fn new(
-        beatmap: &Beatmap, 
-        _diff_calc_only: bool, 
+        beatmap: &Beatmap,
+        _diff_calc_only: bool,
         settings: &engine::Settings
     ) -> tataku::Result<Self> {
         let metadata = beatmap.get_beatmap_meta();
@@ -322,15 +322,15 @@ impl Gamemode for TaikoGame {
             .unwrap_or_default();
         let settings = Arc::new(settings);
 
-        #[cfg(feature="graphics")] 
+        #[cfg(feature="graphics")]
         let playfield = Arc::new(Self::get_taiko_playfield(
-            &settings, 
-            Bounds::new(Vector2::ZERO, Vector2::new(1920.0, 1080.0)), 
+            &settings,
+            Bounds::new(Vector2::ZERO, Vector2::new(1920.0, 1080.0)),
             true
         ));
-        
+
         let timing_points = TimingPointHelper::new(
-            beatmap.get_timing_points(), 
+            beatmap.get_timing_points(),
             beatmap.slider_velocity()
         );
 
@@ -338,8 +338,8 @@ impl Gamemode for TaikoGame {
             taiko_settings: settings.clone(),
             #[cfg(feature="graphics")] playfield: playfield.clone(),
             metadata,
-            
-            #[cfg(feature="graphics")] 
+
+            #[cfg(feature="graphics")]
             hit_cache: TaikoHit::ALL
                 .iter()
                 .map(|i| (*i, -999.9))
@@ -371,16 +371,16 @@ impl Gamemode for TaikoGame {
                     let v2 = 100.0 * (beatmap.slider_multiplier * 1.4);
                     let bl = timing_points.beat_length_at(time, true);
                     let end_time = time + (l / v2 * bl);
-                    
+
                     // convert vars
                     let v = timing_points.slider_velocity_at(time);
                     let bl = timing_points.beat_length_at(time, beatmap.beatmap_version < 8);
                     let skip_period = (bl / beatmap.slider_tick_rate)
                         .min((end_time - time) / slides as f32);
 
-                    if skip_period > 0.0 
-                        && &*beatmap.metadata.mode != "taiko" 
-                        && l / v * 1000.0 < 2.0 * bl 
+                    if skip_period > 0.0
+                        && &*beatmap.metadata.mode != "taiko"
+                        && l / v * 1000.0 < 2.0 * bl
                     {
                         let mut i = 0;
                         let mut j = time;
@@ -398,7 +398,7 @@ impl Gamemode for TaikoGame {
                             let finisher = (hitsound & 4) > 0;
                             sound_types.push((hit_type, finisher));
                         }
-                        
+
                         let unified_sound_addition = sound_types.is_empty();
                         if unified_sound_addition {
                             sound_types.push((HitType::Don, false));
@@ -415,7 +415,7 @@ impl Gamemode for TaikoGame {
                                 #[cfg(feature="graphics")] playfield.clone(),
                             )));
 
-                            if !unified_sound_addition { 
+                            if !unified_sound_addition {
                                 i = (i + 1) % sound_types.len();
                             }
 
@@ -424,9 +424,9 @@ impl Gamemode for TaikoGame {
                         }
                     } else {
                         s.other_notes.push(Box::new(TaikoDrumroll::new(
-                            time, 
-                            end_time, 
-                            finisher, 
+                            time,
+                            end_time,
+                            finisher,
                             settings.clone(),
                             #[cfg(feature="graphics")] playfield.clone(),
                         )));
@@ -435,8 +435,8 @@ impl Gamemode for TaikoGame {
                 for spinner in beatmap.spinners.iter() {
                     s.other_notes.push(Box::new(TaikoSpinner::new(
                         spinner.time,
-                        spinner.end_time, 
-                        0, 
+                        spinner.end_time,
+                        0,
                         settings.clone(),
                         #[cfg(feature="graphics")] playfield.clone(),
                     )));
@@ -456,9 +456,9 @@ impl Gamemode for TaikoGame {
 
                 for drumroll in beatmap.drumrolls.iter() {
                     s.other_notes.push(Box::new(TaikoDrumroll::new(
-                        drumroll.time, 
-                        drumroll.end_time, 
-                        drumroll.is_big, 
+                        drumroll.time,
+                        drumroll.end_time,
+                        drumroll.is_big,
                         settings.clone(),
                         #[cfg(feature="graphics")] playfield.clone(),
                     )));
@@ -467,8 +467,8 @@ impl Gamemode for TaikoGame {
                 for balloon in beatmap.balloons.iter() {
                     s.other_notes.push(Box::new(TaikoSpinner::new(
                         balloon.time,
-                        balloon.end_time, 
-                        balloon.hits_required as u16, 
+                        balloon.end_time,
+                        balloon.hits_required as u16,
                         settings.clone(),
                         #[cfg(feature="graphics")] playfield.clone(),
                     )));
@@ -477,8 +477,8 @@ impl Gamemode for TaikoGame {
             _ => return Err(errors::beatmap::BeatmapError::UnsupportedMode.into()),
         };
 
-        if s.notes.is_empty() && s.other_notes.is_empty() { 
-            return Err(tataku::Error::Beatmap(errors::beatmap::BeatmapError::NoNotes)) 
+        if s.notes.is_empty() && s.other_notes.is_empty() {
+            return Err(tataku::Error::Beatmap(errors::beatmap::BeatmapError::NoNotes))
         }
 
         s.notes.sort_by(Self::sort);
@@ -499,8 +499,8 @@ impl Gamemode for TaikoGame {
     }
 
     fn handle_replay_frame(
-        &mut self, 
-        frame: ReplayFrame, 
+        &mut self,
+        frame: ReplayFrame,
         shell: &mut GameplayUpdateShell,
     ) {
         let ReplayAction::Press(key) = frame.action else { return };
@@ -513,12 +513,12 @@ impl Gamemode for TaikoGame {
             KeyPress::RightKat => TaikoHit::RightKat,
             _ => TaikoHit::LeftKat
         };
-        let is_left = taiko_hit_type == TaikoHit::LeftKat 
+        let is_left = taiko_hit_type == TaikoHit::LeftKat
             || taiko_hit_type == TaikoHit::LeftDon;
-        
-        if is_left { 
+
+        if is_left {
             shell.add_stat(TaikoStatLeftPresses, 1.0);
-        } else { 
+        } else {
             shell.add_stat(TaikoStatRightPresses, 1.0);
         }
 
@@ -528,7 +528,7 @@ impl Gamemode for TaikoGame {
         }
 
         let mut hit_type: HitType = key.into();
-        #[cfg(feature="gameplay")] 
+        #[cfg(feature="gameplay")]
         let mut finisher_sound = false;
         // let mut sound = match hit_type {HitType::Don => "don", HitType::Kat => "kat"};
 
@@ -540,7 +540,7 @@ impl Gamemode for TaikoGame {
             // if theres no more notes to hit, return after playing the sound
             if queue.done() { continue; }
 
-            // check for finisher 2nd hit. 
+            // check for finisher 2nd hit.
             if !did_hit && self.last_judgment != TaikoHitJudgments::Miss
             && let Some(last_note) = queue.previous_note()
             && last_note.check_finisher(hit_type, frame.time, shell.game_speed) {
@@ -552,12 +552,12 @@ impl Gamemode for TaikoGame {
                 //     _ => return, // this shouldnt happen, last judgment will always be one of the above
                 // };
                 let j = if [
-                    &TaikoHitJudgments::X300, 
+                    &TaikoHitJudgments::X300,
                     &TaikoHitJudgments::Geki
                 ].contains(&&self.last_judgment) {
                     &TaikoHitJudgments::Geki
                 } else if [
-                    &TaikoHitJudgments::X100, 
+                    &TaikoHitJudgments::X100,
                     &TaikoHitJudgments::Katu
                 ].contains(&&self.last_judgment) {
                     &TaikoHitJudgments::Katu
@@ -570,14 +570,14 @@ impl Gamemode for TaikoGame {
 
                 #[cfg(feature="graphics")] {
                     Self::add_hit_indicator(
-                        j, 
-                        true, 
-                        &self.taiko_settings, 
-                        &self.playfield, 
-                        &self.judgement_helper, 
+                        j,
+                        true,
+                        &self.taiko_settings,
+                        &self.playfield,
+                        &self.judgement_helper,
                         shell
                     );
-                    
+
                     // draw drum
                     *self.hit_cache.get_mut(&taiko_hit_type).unwrap() = shell.time;
                 }
@@ -591,16 +591,16 @@ impl Gamemode for TaikoGame {
                 match note.note_type() {
                     NoteType::Note => {
                         let hit_maybe = shell.check_judgment_condition(
-                            &self.hit_windows, 
-                            frame.time, 
-                            note_time, 
-                            || has_relax || note.hit_type() == hit_type, 
+                            &self.hit_windows,
+                            frame.time,
+                            note_time,
+                            || has_relax || note.hit_type() == hit_type,
                             &TaikoHitJudgments::Miss
                         );
 
                         if let Some(judge) = hit_maybe {
                             // if note.finisher_sound() { sound = match hit_type { HitType::Don => "bigdon", HitType::Kat => "bigkat" } }
-                            
+
                             #[cfg(feature="gameplay")] {
                                 finisher_sound = note.finisher_sound();
                             }
@@ -617,23 +617,23 @@ impl Gamemode for TaikoGame {
 
                             #[cfg(feature="graphics")]
                             Self::add_hit_indicator(
-                                judge, 
-                                false, 
-                                &self.taiko_settings, 
-                                &self.playfield, 
-                                &self.judgement_helper, 
+                                judge,
+                                false,
+                                &self.taiko_settings,
+                                &self.playfield,
+                                &self.judgement_helper,
                                 shell
                             );
-                            
+
                             self.last_judgment = *judge;
                             queue.next();
                         }
                     }
 
                     // slider or spinner, special hit stuff
-                    NoteType::Slider if note.hit(shell.time, hit_type) 
+                    NoteType::Slider if note.hit(shell.time, hit_type)
                         => shell.add_judgment(TaikoHitJudgments::SliderPoint),
-                    NoteType::Spinner if note.hit(shell.time, hit_type) 
+                    NoteType::Spinner if note.hit(shell.time, hit_type)
                         => shell.add_judgment(TaikoHitJudgments::SpinnerPoint),
                     _ => {}
                 }
@@ -643,7 +643,7 @@ impl Gamemode for TaikoGame {
                     hit_time = note_time;
                 }
             }
-            
+
             did_hit = true;
         }
 
@@ -661,14 +661,14 @@ impl Gamemode for TaikoGame {
         }
 
         // play sound
-        #[cfg(feature="gameplay")] 
+        #[cfg(feature="gameplay")]
         shell.play_hitsounds(
             &Self::get_hitsound(
                 hit_time,
                 hit_type,
                 finisher_sound,
                 shell.timing_points,
-            ), 
+            ),
             false
         );
     }
@@ -685,9 +685,9 @@ impl Gamemode for TaikoGame {
 
                 // let old_no_finisher = old_mods.has_mod(NoFinisher);
                 let new_no_finisher = self.current_mods.has_mod(NoFinisher);
-                
+
                 // update bars
-                #[cfg(feature="graphics")] 
+                #[cfg(feature="graphics")]
                 if current_sv_static != old_sv_static {
                     for bar in self.timing_bars.iter_mut() {
                         if current_sv_static {
@@ -708,9 +708,9 @@ impl Gamemode for TaikoGame {
                     .notes.iter_mut()
                     .chain(self.other_notes.iter_mut())
                 {
-                    
+
                     // set note svs
-                    #[cfg(feature="graphics")] 
+                    #[cfg(feature="graphics")]
                     if current_sv_static != old_sv_static {
                         if current_sv_static {
                             note.set_sv(self.taiko_settings.sv_multiplier);
@@ -734,58 +734,58 @@ impl Gamemode for TaikoGame {
                 }
             }
 
-            #[cfg(feature="graphics")] 
-            GameplayEvent::SetBounds { 
-                bounds, 
-                full_window 
+            #[cfg(feature="graphics")]
+            GameplayEvent::SetBounds {
+                bounds,
+                full_window
             } => {
                 self.playfield = Arc::new(Self::get_taiko_playfield(
-                    &self.taiko_settings, 
-                    bounds, 
+                    &self.taiko_settings,
+                    bounds,
                     full_window
                 ));
 
                 // update notes
                 for note in self.notes.iter_mut()
                     .chain(self.other_notes.iter_mut())
-                { 
+                {
                     note.playfield_changed(self.playfield.clone());
                 }
 
                 // update timing bars
-                #[cfg(feature="graphics")] 
+                #[cfg(feature="graphics")]
                 for tb in self.timing_bars.iter_mut() {
                     tb.playfield_changed(self.playfield.clone());
                 }
 
                 // update hit indicator sprite positions
                 #[cfg(feature="graphics")]
-                for i in [ 
-                    &mut self.left_kat_image, 
-                    &mut self.left_don_image, 
-                    &mut self.right_don_image, 
-                    &mut self.right_kat_image 
+                for i in [
+                    &mut self.left_kat_image,
+                    &mut self.left_don_image,
+                    &mut self.right_don_image,
+                    &mut self.right_kat_image
                 ] {
                     let Some(i) = i else { continue };
                     i.pos = self.playfield.hit_position;
                 }
             }
-            
-            #[cfg(feature="graphics")] 
+
+            #[cfg(feature="graphics")]
             GameplayEvent::BeatHappened { pulse_length } => {
                 self.notes
                     .iter_mut()
                     .chain(self.other_notes.iter_mut())
                     .for_each(|n| n.beat_happened(pulse_length));
             }
-            #[cfg(feature="graphics")] 
+            #[cfg(feature="graphics")]
             GameplayEvent::KiaiChanged { enabled } => {
                 self.notes
                     .iter_mut()
                     .chain(self.other_notes.iter_mut())
                     .for_each(|n| n.kiai_changed(enabled));
             }
-            
+
             _ => {}
         }
     }
@@ -808,28 +808,28 @@ impl Gamemode for TaikoGame {
 
                 // this is essentially stolen from peppy's 2016 osu code
                 let hp = map_difficulty(
-                    self.metadata.hp, 
-                    0.5, 
-                    0.75, 
+                    self.metadata.hp,
+                    0.5,
+                    0.75,
                     0.98
                 );
                 let normal_health = MAX_HEALTH / (0.06 * 6.0 * note_count * hp);
-                
+
                 // random fudge because osu makes no sense
                 const FACTOR: f32 = 15.0;
                 let normal_health = normal_health / FACTOR;
 
                 let health_per_300 = normal_health * 6.0;
                 let health_per_100 = normal_health * map_difficulty(
-                    self.metadata.hp, 
-                    6.0, 
-                    2.2, 
+                    self.metadata.hp,
+                    6.0,
+                    2.2,
                     2.2
                 );
                 let health_per_miss = map_difficulty(
-                    self.metadata.hp, 
-                    -6.0, 
-                    -25.0, 
+                    self.metadata.hp,
+                    -6.0,
+                    -25.0,
                     -40.0
                 ) / FACTOR;
 
@@ -857,13 +857,13 @@ impl Gamemode for TaikoGame {
 
             for frame in pending_frames.into_iter() {
                 self.handle_replay_frame(
-                    ReplayFrame::new(shell.time, frame), 
+                    ReplayFrame::new(shell.time, frame),
                     shell
                 );
             }
 
         }
-        
+
         for queue in [&mut self.notes, &mut self.other_notes] {
             for note in queue.notes.iter_mut() {
                 note.update(shell.time);
@@ -887,11 +887,11 @@ impl Gamemode for TaikoGame {
 
                     #[cfg(feature="graphics")]
                     Self::add_hit_indicator(
-                        &j, 
-                        false, 
-                        &self.taiko_settings, 
-                        &self.playfield, 
-                        &self.judgement_helper, 
+                        &j,
+                        false,
+                        &self.taiko_settings,
+                        &self.playfield,
+                        &self.judgement_helper,
                         shell
                     );
                 }
@@ -900,31 +900,31 @@ impl Gamemode for TaikoGame {
             }
         }
 
-        #[cfg(feature="graphics")] 
-        for tb in self.timing_bars.iter_mut() { 
-            tb.update(shell.time); 
+        #[cfg(feature="graphics")]
+        for tb in self.timing_bars.iter_mut() {
+            tb.update(shell.time);
         }
     }
-    
+
     #[cfg(feature = "graphics")]
     fn draw(
-        &mut self, 
-        shell: GameplayDrawShell, 
+        &mut self,
+        shell: GameplayDrawShell,
         list: &mut graphics::RenderableCollection
     ) {
         // draw the playfield
         list.push(self.playfield.get_rectangle(shell.current_timing_point.kiai));
-        
+
         // draw the hit area
         list.push(graphics::Circle::new(
             self.playfield.hit_position,
-            self.taiko_settings.note_radius 
+            self.taiko_settings.note_radius
                 * self.taiko_settings.hit_area_radius_mult,
             Color::BLACK,
         ));
 
         // draw timing lines
-        for tb in self.timing_bars.iter_mut() { 
+        for tb in self.timing_bars.iter_mut() {
             tb.draw(list);
         }
 
@@ -942,7 +942,7 @@ impl Gamemode for TaikoGame {
                 .unwrap_or(core::cmp::Ordering::Equal)
         });
 
-        for note in note_list { 
+        for note in note_list {
             note.draw(shell.time, list);
         }
 
@@ -961,7 +961,7 @@ impl Gamemode for TaikoGame {
                     } else {
                         list.push(graphics::HalfCircle::new(
                             self.playfield.hit_position,
-                            self.taiko_settings.note_radius 
+                            self.taiko_settings.note_radius
                                 * self.taiko_settings.hit_area_radius_mult,
                             self.taiko_settings.kat_color.alpha8(alpha),
                             true
@@ -976,7 +976,7 @@ impl Gamemode for TaikoGame {
                     } else {
                         list.push(graphics::HalfCircle::new(
                             self.playfield.hit_position,
-                            self.taiko_settings.note_radius 
+                            self.taiko_settings.note_radius
                                 * self.taiko_settings.hit_area_radius_mult,
                             self.taiko_settings.don_color.alpha8(alpha),
                             true
@@ -991,7 +991,7 @@ impl Gamemode for TaikoGame {
                     } else {
                         list.push(graphics::HalfCircle::new(
                             self.playfield.hit_position,
-                            self.taiko_settings.note_radius 
+                            self.taiko_settings.note_radius
                                 * self.taiko_settings.hit_area_radius_mult,
                             self.taiko_settings.don_color.alpha8(alpha),
                             false
@@ -1006,7 +1006,7 @@ impl Gamemode for TaikoGame {
                     } else {
                         list.push(graphics::HalfCircle::new(
                             self.playfield.hit_position,
-                            self.taiko_settings.note_radius 
+                            self.taiko_settings.note_radius
                                 * self.taiko_settings.hit_area_radius_mult,
                             self.taiko_settings.kat_color.alpha8(alpha),
                             false
@@ -1043,25 +1043,25 @@ impl Gamemode for TaikoGame {
     }
 
     fn reset(&mut self, beatmap: &Beatmap) {
-        #[cfg(feature="graphics")] 
+        #[cfg(feature="graphics")]
         let timing_points = TimingPointHelper::new(
-            beatmap.get_timing_points(), 
+            beatmap.get_timing_points(),
             beatmap.slider_velocity()
         );
 
         for queue in [&mut self.notes, &mut self.other_notes] {
             queue.index = 0;
-            
+
             for note in queue.iter_mut() {
                 note.reset();
 
                 // set note svs
-                #[cfg(feature="graphics")] 
+                #[cfg(feature="graphics")]
                 if self.current_mods.has_mod(NoSV) {
                     note.set_sv(self.taiko_settings.sv_multiplier);
                 } else {
                     let sv = timing_points
-                        .slider_velocity_at(note.time()) 
+                        .slider_velocity_at(note.time())
                         / SV_FACTOR;
 
                     note.set_sv(sv* self.taiko_settings.sv_multiplier);
@@ -1080,49 +1080,49 @@ impl Gamemode for TaikoGame {
                     .iter()
                     .filter(|t| !t.is_inherited())
                     .collect::<Vec<&TimingPoint>>();
-                
+
                 let mut sv = self.taiko_settings.sv_multiplier;
                 let mut time = parent_tps[0].time;
                 let mut tp_index = 0;
                 let step = timing_points.beat_length_at(time, false);
                 time %= step; // get the earliest bar line possible
-    
+
                 loop {
                     if !self.current_mods.has_mod(NoSV) {
-                        sv = (timing_points.slider_velocity_at(time) / SV_FACTOR) 
+                        sv = (timing_points.slider_velocity_at(time) / SV_FACTOR)
                             * self.taiko_settings.sv_multiplier;
                     }
-    
+
                     // if theres a bpm change, adjust the current time to that of the bpm change
                     let next_bar_time = timing_points
                         .beat_length_at(time, false)
                         * BAR_SPACING; // bar spacing is actually the timing point measure
-    
+
                     // edge case for aspire maps
                     if next_bar_time.is_nan() || next_bar_time == 0.0 { break; }
-    
+
                     // add timing bar at current time
                     self.timing_bars.push(TimingBar::new(
-                        time, 
-                        sv, 
+                        time,
+                        sv,
                         self.playfield.clone()
                     ));
-    
-                    if tp_index < parent_tps.len() 
-                        && parent_tps[tp_index].time <= time + next_bar_time 
+
+                    if tp_index < parent_tps.len()
+                        && parent_tps[tp_index].time <= time + next_bar_time
                     {
                         time = parent_tps[tp_index].time;
                         tp_index += 1;
                         continue;
                     }
-    
+
                     // why isnt this accounting for bpm changes? because the bpm change doesnt always happen inline with the bar idiot
                     time += next_bar_time;
                     if time >= self.end_time || time.is_nan() { break }
-                } 
-    
+                }
+
             }
-            
+
             // reset hitcache times
             for t in self.hit_cache.values_mut() {
                 *t = -999.9;
@@ -1132,11 +1132,11 @@ impl Gamemode for TaikoGame {
         self.healthbar_swap_pending = true;
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn skip_intro(&mut self, game_time: f32) -> Option<f32> {
         let x_needed = self.playfield.pos.x + self.playfield.size.x;
         let mut time = self.end_time; //manager.time();
-        
+
         for queue in [&self.notes, &self.other_notes] {
             if queue.index > 0 { return None }
 
@@ -1147,7 +1147,7 @@ impl Gamemode for TaikoGame {
         }
 
         if game_time >= time { return None }
-        
+
         if time < 0.0 { return None }
         Some(time)
     }
@@ -1159,11 +1159,11 @@ impl Gamemode for TaikoGame {
 
         if settings == *self.taiko_settings { return }
         let settings = Arc::new(settings);
-        #[cfg(feature="graphics")] 
+        #[cfg(feature="graphics")]
         let playfield = {
             let playfield = Arc::new(Self::get_taiko_playfield(
-                &settings, 
-                self.playfield.bounds, 
+                &settings,
+                self.playfield.bounds,
                 false
             ));
 
@@ -1187,7 +1187,7 @@ impl Gamemode for TaikoGame {
 
             #[cfg(feature="graphics")] {
                 n.playfield_changed(self.playfield.clone());
-                
+
                 // set note svs
                 if sv_static {
                     n.set_sv(self.taiko_settings.sv_multiplier);
@@ -1208,7 +1208,7 @@ impl Gamemode for TaikoGame {
             for bar in self.timing_bars.iter_mut() {
                 bar.set_settings(settings.clone());
                 bar.playfield_changed(playfield.clone());
-    
+
                 if sv_static {
                     bar.speed = self.taiko_settings.sv_multiplier;
                 } else {
@@ -1224,18 +1224,18 @@ impl Gamemode for TaikoGame {
             // update images
             let radius = settings.note_radius * settings.hit_area_radius_mult;
             let scale = Vector2::ONE * (radius * 2.0) / TAIKO_HIT_INDICATOR_TEX_SIZE.x;
-    
-            for i in [ 
-                &mut self.left_don_image, 
-                &mut self.right_kat_image 
+
+            for i in [
+                &mut self.left_don_image,
+                &mut self.right_kat_image
             ] {
                 let Some(i) = i else { continue };
                 i.scale = scale;
                 i.pos = self.playfield.hit_position;
             }
-    
-            for i in [ 
-                &mut self.left_kat_image, 
+
+            for i in [
+                &mut self.left_kat_image,
                 &mut self.right_don_image
             ] {
                 let Some(i) = i else { continue };
@@ -1245,11 +1245,11 @@ impl Gamemode for TaikoGame {
         }
 
     }
-    
+
     #[cfg(feature="graphics")]
     fn reload_skin(
-        &mut self, 
-        beatmap_path: &str, 
+        &mut self,
+        beatmap_path: &str,
         skin_manager: &mut dyn graphics::SkinProvider
     ) -> graphics::TextureSource {
         use graphics::{
@@ -1258,31 +1258,31 @@ impl Gamemode for TaikoGame {
         };
         let source = TextureSource::Beatmap(beatmap_path.to_owned()); // TODO: yeah
 
-        let radius = self.taiko_settings.note_radius 
+        let radius = self.taiko_settings.note_radius
             * self.taiko_settings.hit_area_radius_mult;
-        let scale = Vector2::ONE 
-            * (radius * 2.0) 
+        let scale = Vector2::ONE
+            * (radius * 2.0)
             / TAIKO_HIT_INDICATOR_TEX_SIZE.x;
 
         if let Some(mut don) = skin_manager.get_texture(
-            "taiko-drum-inner", 
-            &source, 
-            SkinUsage::Gamemode, 
+            "taiko-drum-inner",
+            &source,
+            SkinUsage::Gamemode,
             true
         ) {
             don.origin.x = (don.tex_size() / don.base_scale).x;
             don.pos = self.playfield.hit_position;
             don.scale = scale;
             self.left_don_image = Some(don.clone());
-            
+
             let mut rdon = don;
             rdon.scale *= Vector2::new(-1.0, 1.0);
             self.right_don_image = Some(rdon);
         }
         if let Some(mut kat) = skin_manager.get_texture(
-            "taiko-drum-outer", 
-            &source, 
-            SkinUsage::Gamemode, 
+            "taiko-drum-outer",
+            &source,
+            SkinUsage::Gamemode,
             true
         ) {
             kat.origin.x = 0.0;
@@ -1290,7 +1290,7 @@ impl Gamemode for TaikoGame {
             kat.scale = scale;
             self.right_kat_image = Some(kat.clone());
 
-            let mut lkat = kat; 
+            let mut lkat = kat;
             lkat.scale *= Vector2::new(-1.0, 1.0);
             self.left_kat_image = Some(lkat);
         }
@@ -1309,11 +1309,11 @@ impl Gamemode for TaikoGame {
         source
     }
 
-    
+
     fn time_jump(&mut self, new_time: f32, _state: &mut GameplayUpdateShell) {
         let mut latest_time = 0f32;
-        #[cfg(feature="graphics")] 
-        for i in self.hit_cache.values() { 
+        #[cfg(feature="graphics")]
+        for i in self.hit_cache.values() {
             latest_time = latest_time.max(*i);
         }
         // info!("{new_time} < {latest_time}");
@@ -1323,7 +1323,7 @@ impl Gamemode for TaikoGame {
                 let mut index = 0;
                 for (i, note) in queue
                     .iter_mut()
-                    .enumerate() 
+                    .enumerate()
                 {
                     note.reset();
                     if note.time() <= new_time {
@@ -1332,9 +1332,9 @@ impl Gamemode for TaikoGame {
                 }
                 queue.index = index;
             }
-            
+
             // reset hitcache times
-            #[cfg(feature="graphics")] 
+            #[cfg(feature="graphics")]
             for t in self.hit_cache.values_mut() {
                 *t = -999.9;
             }
@@ -1348,29 +1348,27 @@ impl Gamemode for TaikoGame {
         // combo
         loader.change_default_layout(
             "combo",
-            GameplayWidgetLayout::new_default(
-                GameplayWidgetAnchor::Playfield {
-                    saved_size: None,
-                    relative: GameplayWidgetAlign::Inside,
+            GameplayWidgetLayout {
+                anchor: GameplayWidgetAnchor::Playfield {
+                    horizontal_side: Side::Inside,
+                    vertical_side: Side::Inside,
                 },
-                Alignment::CENTER_LEFT,
-                None,
-                None,
-            ),
+                align: Alignment::CENTER_LEFT,
+                transform: graphics::Transform::identity(),
+            },
         );
 
         // Leaderboard
         loader.change_default_layout(
             "leaderboard",
-            GameplayWidgetLayout::new_default(
-                GameplayWidgetAnchor::Playfield {
-                    saved_size: None,
-                    relative: GameplayWidgetAlign::Below
+            GameplayWidgetLayout {
+                anchor: GameplayWidgetAnchor::Playfield {
+                    horizontal_side: Side::Inside,
+                    vertical_side: Side::Outside,
                 },
-                Alignment::BOTTOM_LEFT,
-                None,
-                None,
-            ),
+                align: Alignment::BOTTOM_LEFT,
+                transform: graphics::Transform::identity(),
+            },
         );
 
         // don chan
@@ -1379,7 +1377,7 @@ impl Gamemode for TaikoGame {
         );
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn get_playfield(&self) -> PlayfieldNonsense {
         PlayfieldNonsense::new_simple(self.playfield.get_playfield_bounds())
     }
@@ -1387,7 +1385,7 @@ impl Gamemode for TaikoGame {
 
         // FIXME: please god optimize this
         let mut sound_list = HashMap::new();
-        for time in 
+        for time in
             self.notes.iter().map(|n| n.time())
             .chain(self.other_notes.iter().map(|n| n.time()))
             .chain(timing_points.iter().map(|t| t.time))
@@ -1399,9 +1397,9 @@ impl Gamemode for TaikoGame {
                 (HitType::Kat, true),
             ] {
                 let hitsound = Self::get_hitsound(
-                    time, 
-                    hit, 
-                    finisher, 
+                    time,
+                    hit,
+                    finisher,
                     timing_points
                 );
 
@@ -1415,9 +1413,9 @@ impl Gamemode for TaikoGame {
 
         // for hitsound in [0, 1, 2, 4, 8] {
         //     let hitsound = Hitsound::from_hitsamples(
-        //         hitsound, 
-        //         HitSamples::default(), 
-        //         false, 
+        //         hitsound,
+        //         HitSamples::default(),
+        //         false,
         //         &TimingPoint::default(),
         //     );
         //     for i in hitsound {
@@ -1426,26 +1424,26 @@ impl Gamemode for TaikoGame {
         //     }
         // }
 
-        GamemodeProperties { 
-            info: &crate::GAME_INFO, 
+        GamemodeProperties {
+            info: &crate::GAME_INFO,
             keys: vec![
                 (KeyPress::LeftKat, "LK"),
                 (KeyPress::LeftDon, "LD"),
                 (KeyPress::RightDon, "RD"),
                 (KeyPress::RightKat, "RK"),
-            ], 
-            end_time: self.end_time, 
-            show_cursor: false, 
+            ],
+            end_time: self.end_time,
+            show_cursor: false,
             audio_prefix: "taiko".to_owned(),
             timing_bar_things: self.hit_windows.iter()
                 .map(|(j, w)| (w.end, j.color))
-                .collect(), 
+                .collect(),
             sound_list: sound_list.into_iter().collect()
         }
     }
 
 
-    #[cfg(feature="gameplay")] 
+    #[cfg(feature="gameplay")]
     fn handle_input(&mut self, input: input::InputEvent) -> Option<ReplayAction> {
         use input::{
             InputType,
@@ -1473,7 +1471,7 @@ impl Gamemode for TaikoGame {
 
             InputType::KeyRelease(key) => {
                 let key = key.as_key()?;
-                
+
                 if key == self.taiko_settings.left_kat {
                     Some(ReplayAction::Release(KeyPress::LeftKat))
                 } else if key == self.taiko_settings.left_don {
@@ -1489,7 +1487,7 @@ impl Gamemode for TaikoGame {
 
             InputType::MousePress(btn) => {
                 if self.taiko_settings.ignore_mouse_buttons { return None }
-                
+
                 match btn {
                     MouseButton::Left => Some(ReplayAction::Press(KeyPress::LeftDon)),
                     MouseButton::Right => Some(ReplayAction::Press(KeyPress::LeftKat)),
@@ -1499,7 +1497,7 @@ impl Gamemode for TaikoGame {
 
             InputType::MouseRelease(btn) => {
                 if self.taiko_settings.ignore_mouse_buttons { return None }
-                
+
                 match btn {
                     MouseButton::Left => Some(ReplayAction::Release(KeyPress::LeftDon)),
                     MouseButton::Right => Some(ReplayAction::Release(KeyPress::LeftKat)),
@@ -1509,7 +1507,7 @@ impl Gamemode for TaikoGame {
 
             InputType::ControllerPress(
                 btn,
-                id, 
+                id,
                 name
             ) => {
                 if let Some(config) = self
@@ -1532,7 +1530,7 @@ impl Gamemode for TaikoGame {
                         .clone();
 
                     new_settings.controller_config.insert(
-                        name.clone(), 
+                        name.clone(),
                         TaikoControllerConfig::defaults(&name)
                     );
 
@@ -1542,7 +1540,7 @@ impl Gamemode for TaikoGame {
                     //     settings.taiko_settings = new_settings.clone();
                     //     // settings.save().await;
                     // }
-                    
+
                     self.taiko_settings = Arc::new(new_settings);
                     // rerun the handler now that the thing is setup
                     self.handle_input(
@@ -1555,14 +1553,14 @@ impl Gamemode for TaikoGame {
             }
 
             InputType::ControllerRelease(
-                btn, 
-                id, 
+                btn,
+                id,
                 name
             ) => {
                 if let Some(config) = self
                     .taiko_settings
                     .controller_config
-                    .get(&name) 
+                    .get(&name)
                 {
                     self.map_gamepad_button(config, btn)
                         .map(ReplayAction::Release)
@@ -1578,7 +1576,7 @@ impl Gamemode for TaikoGame {
                         .clone();
 
                     new_settings.controller_config.insert(
-                        name.clone(), 
+                        name.clone(),
                         TaikoControllerConfig::defaults(&name)
                     );
 
@@ -1588,7 +1586,7 @@ impl Gamemode for TaikoGame {
                     //     settings.taiko_settings = new_settings.clone();
                     //     // settings.save(&mut self.actions);
                     // }
-                    
+
                     self.taiko_settings = Arc::new(new_settings);
 
                     // rerun the handler now that the thing is setup
@@ -1600,7 +1598,7 @@ impl Gamemode for TaikoGame {
                     )
                 }
             }
-            
+
 
             _ => None
         }

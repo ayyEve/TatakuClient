@@ -26,7 +26,7 @@ impl<T: _CanNum> Number<T> {
         Self {
             config,
             number: config.max_number,
-            
+
             image: None,
             layout: None,
             max_size: Vector2::ZERO,
@@ -65,8 +65,8 @@ impl<T: _CanNum> GameplayWidget for Number<T> {
     fn update(&mut self, shell: &mut GameplayWidgetUpdateShell) {
         if self.max_size == Vector2::ZERO {
             let text = format!(
-                "{}{}", 
-                (self.config.format)(self.config.max_number), 
+                "{}{}",
+                (self.config.format)(self.config.max_number),
                 self.config.symbol.map(|c| c.to_string()).unwrap_or_default()
             );
 
@@ -101,32 +101,19 @@ impl<T: _CanNum> GameplayWidget for Number<T> {
     }
 
     fn draw(&mut self, shell: &mut GameplayWidgetDrawShell) {
-        let bounds = Bounds::new(shell.pos_offset, self.max_size * shell.scale);
-
-        if let Some(mut image) = self.image.clone() {
-            image.scale = shell.scale;
-
-            image.pos = shell.align.resolve(
-                &bounds,
-                image.measure_text(),
-                true,
-                true
-            );
-
-            shell.list.push(image);
+        if let Some(image) = self.image.clone() {
+            shell.list.push(graphics::Transformed {
+                transform: shell.transform,
+                drawable: Box::new(image)
+            });
         } else {
-            let Some(layout) = self.layout.clone() 
+            let Some(layout) = self.layout.clone()
             else { return };
 
-            shell.list.push(graphics::Transformed::new(
-                graphics::Transform::default().translate(shell.align.resolve(
-                    &bounds,
-                    self.layout_size,
-                    true,
-                    true
-                )),
-                Box::new(graphics::Text::new(layout))
-            ));
+            shell.list.push(graphics::Transformed {
+                transform: shell.transform,
+                drawable: Box::new(graphics::Text::new(layout))
+            });
 
             // let mut text = self.text.clone();
             // text.pos = align.resolve(
@@ -141,21 +128,21 @@ impl<T: _CanNum> GameplayWidget for Number<T> {
     }
 
     fn reload_skin(
-        &mut self, 
+        &mut self,
         shell: &mut GameplayWidgetReloadSkinShell
     ) {
         self.image = SkinnedNumber::new(
-            Vector2::ZERO, 
-            self.config.max_number.as_f64(), 
-            Color::WHITE, 
-            self.config.tex_name, 
-            self.config.symbol, 
-            self.config.precision, 
-            shell.skin_manager, 
-            shell.source, 
+            Vector2::ZERO,
+            self.config.max_number.as_f64(),
+            Color::WHITE,
+            self.config.tex_name,
+            self.config.symbol,
+            self.config.precision,
+            shell.skin_manager,
+            shell.source,
             graphics::SkinUsage::Gamemode
         ).ok();
-        
+
         if let Some(image) = &mut self.image {
             // self.max_size = image.measure_text();
             image.number = self.number.as_f64();
@@ -187,12 +174,11 @@ const SCORE_CONF: NumberConfig<u64> = NumberConfig {
 };
 pub const SCORE:GameplayWidgetBuilder = GameplayWidgetBuilder {
     name: "score",
-    default_layout: GameplayWidgetLayout::new_default(
-        GameplayWidgetAnchor::Screen,
-        Alignment::TOP_RIGHT,
-        None,
-        None,
-    ),
+    default_layout: GameplayWidgetLayout {
+        anchor: GameplayWidgetAnchor::Screen,
+        align: Alignment::TOP_RIGHT,
+        transform: graphics::Transform::identity(),
+    },
     build: |_,_| Box::new(Number::new(SCORE_CONF)),
 };
 
@@ -209,12 +195,15 @@ const COMBO_CONF:NumberConfig<u16> = NumberConfig {
 };
 pub const COMBO:GameplayWidgetBuilder = GameplayWidgetBuilder {
     name: "combo",
-    default_layout: GameplayWidgetLayout::new_default(
-        GameplayWidgetAnchor::element("duration_bar", GameplayWidgetAlign::Above),
-        Alignment::TOP_LEFT,
-        None,
-        None,
-    ),
+    default_layout: GameplayWidgetLayout {
+        anchor: GameplayWidgetAnchor::Element {
+            element: Cow::Borrowed("duration_bar"),
+            horizontal_side: Side::Inside,
+            vertical_side: Side::Outside,
+        },
+        align: Alignment::TOP_LEFT,
+        transform: graphics::Transform::identity(),
+    },
     build: |_,_| Box::new(Number::new(COMBO_CONF)),
 };
 
@@ -233,12 +222,15 @@ pub const ACCURACY: GameplayWidgetBuilder = GameplayWidgetBuilder {
     name: "accuracy",
     build: |_,_| Box::new(Number::new(ACCURACY_CONF)),
     // below score
-    default_layout: GameplayWidgetLayout::new_default(
-        GameplayWidgetAnchor::element("score", GameplayWidgetAlign::Below), 
-        Alignment::BOTTOM_RIGHT,
-        None,
-        None,
-    ),
+    default_layout: GameplayWidgetLayout {
+        anchor: GameplayWidgetAnchor::Element {
+            element: Cow::Borrowed("score"),
+            horizontal_side: Side::Inside,
+            vertical_side: Side::Outside,
+        },
+        align: Alignment::BOTTOM_RIGHT,
+        transform: graphics::Transform::identity(),
+    },
 };
 
 
@@ -256,12 +248,15 @@ pub const PERFORMANCE: GameplayWidgetBuilder = GameplayWidgetBuilder {
     name: "performance",
     build: |_,_| Box::new(Number::new(PERFORMANCE_CONF)),
     // below acc
-    default_layout: GameplayWidgetLayout::new_default(
-        GameplayWidgetAnchor::element("accuracy", GameplayWidgetAlign::Below), 
-        Alignment::BOTTOM_RIGHT,
-        None,
-        None,
-    ),
+    default_layout: GameplayWidgetLayout {
+        anchor: GameplayWidgetAnchor::Element {
+            element: Cow::Borrowed("accuracy"),
+            horizontal_side: Side::Inside,
+            vertical_side: Side::Outside,
+        },
+        align: Alignment::BOTTOM_RIGHT,
+        transform: graphics::Transform::identity(),
+    },
 };
 
 

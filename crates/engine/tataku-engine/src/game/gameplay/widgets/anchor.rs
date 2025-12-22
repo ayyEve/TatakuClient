@@ -1,23 +1,22 @@
 use crate::*;
-use gameplay::widgets::GameplayWidgetAlign;
 
 #[derive(Serialize, Deserialize)]
 #[derive(Clone, Debug, Default, PartialEq)]
 pub enum GameplayWidgetAnchor {
-    /// Anchored to the screen 
-    /// 
+    /// Anchored to the screen
+    ///
     /// Position can be absolute with this + UIElementAlign::TopLeft
     #[default]
     Screen,
 
     /// Anchored to the playfield
-    /// 
+    ///
     /// field is size of screen when saved (if element should scale with playfield)
     Playfield {
-        saved_size: Option<tataku::Vector2>,
-
-        /// Where should this element be relative to the playfield
-        relative: GameplayWidgetAlign,
+        /// Relative orientation of the x axis
+        horizontal_side: Side,
+        /// Relative orientation of the y axis
+        vertical_side: Side,
     },
 
     /// Anchored to an element, scaling is determined from the parent element
@@ -25,18 +24,19 @@ pub enum GameplayWidgetAnchor {
         /// What element to anchor to
         element: CowStr,
 
-        /// Where should this element be relative to the parent
-        relative: GameplayWidgetAlign,
+        /// Relative orientation of the x axis
+        horizontal_side: Side,
+        /// Relative orientation of the y axis
+        vertical_side: Side,
     },
 }
-impl GameplayWidgetAnchor {
-    pub const fn element(
-        element: &'static str, 
-        relative: GameplayWidgetAlign,
-    ) -> Self {
-        Self::Element {
-            element: Cow::Borrowed(element),
-            relative
-        }
-    }
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub enum Side {
+    /// Inside the parent
+    Inside,
+
+    /// Outside the parent,
+    Outside,
 }

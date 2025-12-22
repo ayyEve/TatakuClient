@@ -63,7 +63,7 @@ impl GameplayWidget for LeaderboardElement {
     fn update(&mut self, shell: &mut GameplayWidgetUpdateShell) {
         // //TODO: make this better?
         // self.scores = manager.all_scores().into_iter().cloned().collect();
-        
+
         let theme = graphics::Theme::default();
         let scores = shell.manager.all_non_user_scores();
         let current = shell.manager.score();
@@ -72,12 +72,12 @@ impl GameplayWidget for LeaderboardElement {
         let info = properties.info;
 
         let mut is_pb = true;
-        
+
         if self.cache.len() != scores.len() {
             self.cache.clear();
             for score in scores {
                 self.cache.push(Cache::new(
-                    score, 
+                    score,
                     &theme,
                     &shell.scale,
                     &mut is_pb,
@@ -94,10 +94,10 @@ impl GameplayWidget for LeaderboardElement {
             .chain([(&mut self.current, current)])
         {
             cache.update(
-                &theme, 
-                score, 
-                &shell.scale, 
-                info, 
+                &theme,
+                score,
+                &shell.scale,
+                info,
                 shell.font_context
             );
         }
@@ -118,13 +118,10 @@ impl GameplayWidget for LeaderboardElement {
         order.sort();
 
         for (n, cache) in order.into_iter().enumerate() {
-            let pos = shell.pos_offset 
-                + Vector2::with_y(LEADERBOARD_ITEM_SIZE.y + 5.0) 
-                * (n as f32) 
-                * shell.scale;
+            let pos = Vector2::with_y(LEADERBOARD_ITEM_SIZE.y + 5.0)
+                * (n as f32);
 
-            const PADDING:Vector2 = Vector2::new(5.0, 5.0);
-            let size = LEADERBOARD_ITEM_SIZE * shell.scale;
+            let size = LEADERBOARD_ITEM_SIZE;
 
             let color = if let Some(color) = cache.color_override {
                 color
@@ -145,36 +142,40 @@ impl GameplayWidget for LeaderboardElement {
                 img.color = color;
                 img.set_size(size);
 
-                shell.list.push(img);
+                shell.list.push(graphics::Transformed {
+                    transform: shell.transform,
+                    drawable: Box::new(img),
+                });
             } else {
                 // bounding rect
-                shell.list.push(
-                    Rectangle::new(
+                shell.list.push(graphics::Transformed {
+                    transform: shell.transform,
+                    drawable: Box::new(Rectangle::new(
                         pos,
                         size,
                         Color::new(0.2, 0.2, 0.2, 1.0),
                     )
                     .shape(Shape::Round(5.0))
-                    .border(Border::new(color, 1.5 * shell.scale.y))
-                );
+                    .border(Border::new(color, 1.5)))
+                });
             }
 
             // score text
             if let Some(layout) = cache.score_text.clone() {
-                shell.list.push(Transformed::new(
-                    Transform::default()
-                        .translate(pos + PADDING * shell.scale),
-                    Box::new(Text::new(layout))
-                ));
+                shell.list.push(Transformed {
+                    transform: shell.transform * tataku::Matrix::identity()
+                        .trans(pos + PADDING),
+                    drawable: Box::new(Text::new(layout))
+                });
             }
 
             // combo text
             if let Some(layout) = cache.combo_text.clone() {
-                shell.list.push(graphics::Transformed::new(
-                    graphics::Transform::default()
-                        .translate(pos + (PADDING + Vector2::new(0.0, PADDING.y + 15.0)) * shell.scale),
-                    Box::new(graphics::Text::new(layout))
-                ));
+                shell.list.push(graphics::Transformed {
+                    transform: shell.transform * tataku::Matrix::identity()
+                        .trans(pos + (PADDING + Vector2::new(0.0, PADDING.y + 15.0))),
+                    drawable: Box::new(graphics::Text::new(layout))
+                });
             }
         }
 
@@ -196,12 +197,11 @@ impl GameplayWidget for LeaderboardElement {
 
 pub const LEADERBOARD: GameplayWidgetBuilder = GameplayWidgetBuilder {
     name: "leaderboard",
-    default_layout: GameplayWidgetLayout::new_default(
-        GameplayWidgetAnchor::Screen,
-        Alignment::CENTER_LEFT,
-        None,
-        None,
-    ),
+    default_layout: GameplayWidgetLayout {
+        anchor: GameplayWidgetAnchor::Screen,
+        align: Alignment::CENTER_LEFT,
+        transform: Transform::identity(),
+    },
     build: LeaderboardElement::build,
 };
 
@@ -221,7 +221,7 @@ impl Cache {
         font_contexts: &mut ui::widget::TextLayoutContexts,
     ) -> Arc<parley::Layout<Color>> {
         let mut layout = font_contexts.simple_text(
-            text, 
+            text,
             &ui::style::TextStyle {
                 font_size,
                 color,
@@ -236,10 +236,10 @@ impl Cache {
     fn time_str(score_time: u64) -> String {
         let now = chrono::Utc::now().timestamp() as u64;
         let time_diff = now as i64 - score_time as i64;
-        if time_diff < 60 * 5 { 
+        if time_diff < 60 * 5 {
             format!(" | {time_diff}s")
-        } else { 
-            String::new() 
+        } else {
+            String::new()
         }
     }
 
@@ -255,8 +255,8 @@ impl Cache {
 
         let time_diff_str = Self::time_str(score.time);
         format!(
-            "{}x, {:.2}%, {score_mods}{time_diff_str}", 
-            tataku::format_number(&score.max_combo), 
+            "{}x, {:.2}%, {score_mods}{time_diff_str}",
+            tataku::format_number(&score.max_combo),
             info.calc_acc(score) * 100.0
         )
     }
@@ -338,7 +338,7 @@ impl Cache {
     }
 
     fn update(
-        &mut self, 
+        &mut self,
         theme: &graphics::Theme,
         score: &IngameScore,
         scale: &Vector2,

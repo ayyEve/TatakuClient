@@ -69,9 +69,9 @@ impl GameplayWidget for SpectatorsElement {
                     format!("Spectators: ({})\n", spectators.list.len()),
                     |i, v| i + &v.username + "\n"
                 );
-            
+
             let mut layout = shell.font_context.simple_text(
-                text.trim(), 
+                text.trim(),
                 &style,
             );
 
@@ -89,23 +89,26 @@ impl GameplayWidget for SpectatorsElement {
         &mut self,
         shell: &mut GameplayWidgetDrawShell,
     ) {
-        let Some((layout, layout_size)) = &self.layout 
+        let Some((layout, layout_size)) = &self.layout
         else { return };
 
         // if self.spectators.list.is_empty() { return }
 
         // draw spectators
-        shell.list.push(graphics::Rectangle::new(
-            shell.pos_offset,
-            *layout_size,
-            Color::WHITE.alpha(0.8),
-        ));
+        shell.list.push(graphics::Transformed {
+            transform: shell.transform,
+            drawable: Box::new(graphics::Rectangle::new(
+                Vector2::ZERO,
+                *layout_size,
+                Color::WHITE.alpha(0.8),
+            ))
+        });
 
-        shell.list.push(graphics::Transformed::new(
-            graphics::Transform::default()
-                .translate(shell.pos_offset + PADDING),
-            Box::new(graphics::Text::new(layout.clone()))
-        ));
+        shell.list.push(graphics::Transformed {
+            transform: shell.transform * tataku::Matrix::identity()
+                .trans(Vector2::ONE * PADDING),
+            drawable: Box::new(graphics::Text::new(layout.clone())),
+        });
 
         // for (i, user) in self.spectators.list.iter().enumerate() {
         //     // draw username
@@ -127,14 +130,14 @@ impl GameplayWidget for SpectatorsElement {
 
 pub const SPECTATORS: GameplayWidgetBuilder = GameplayWidgetBuilder {
     name: "spectators",
-    default_layout: GameplayWidgetLayout::new_default(
-        GameplayWidgetAnchor::element(
-            "health_bar",
-           GameplayWidgetAlign::Below
-        ),
-        Alignment::TOP_LEFT,
-        None,
-        None,
-    ),
+    default_layout: GameplayWidgetLayout {
+        anchor: GameplayWidgetAnchor::Element {
+            element: Cow::Borrowed("health_bar"),
+            horizontal_side: Side::Inside,
+            vertical_side: Side::Outside,
+        },
+        align: Alignment::BOTTOM_LEFT,
+        transform: graphics::Transform::identity(),
+    },
     build: SpectatorsElement::build,
 };

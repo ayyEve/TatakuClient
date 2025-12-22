@@ -87,7 +87,7 @@ impl GameplayWidgetEditor {
         if self.sender.send(action).is_err() {
             actions.push(actions::ui::UiAction::new(
                 self.node_id(),
-                source, 
+                source,
                 actions::dialog::DialogAction::Close,
             ).into());
         }
@@ -171,7 +171,7 @@ impl GameplayWidgetEditor {
 
         // visible
         options.push(ContextMenuOption::new(
-            if selected.layout.visible { "Visible ✓" } else { "Visible" },
+            if selected.visible { "Visible ✓" } else { "Visible" },
             ContextMenuAction::Callback(Box::new(move || Some(Message::new(
                 source,
                 "visible",
@@ -216,17 +216,15 @@ impl GameplayWidgetEditor {
             )))
         ));
 
-        fn make_relative_align(
-            current: GameplayWidgetAlign,
+        fn make_side(
+            current: Side,
+            tag: &'static str,
             source: MessageSource,
         ) -> ContextMenuOptionType {
             let menu = Box::new(move || {
-                const ALL_INNER_ALIGN: &[(&str, GameplayWidgetAlign)] = &[
-                    ("Inside", GameplayWidgetAlign::Inside),
-                    ("Above", GameplayWidgetAlign::Above),
-                    ("Below", GameplayWidgetAlign::Below),
-                    ("Left", GameplayWidgetAlign::Left),
-                    ("Right", GameplayWidgetAlign::Right),
+                const ALL_INNER_ALIGN: &[(&str, Side)] = &[
+                    ("Inside", Side::Inside),
+                    ("Outside", Side::Outside),
                 ];
 
                 let mut options = Vec::default();
@@ -239,7 +237,7 @@ impl GameplayWidgetEditor {
                         },
                         ContextMenuAction::Callback(Box::new(move || Some(Message::new(
                             source,
-                            "relative_align",
+                            tag,
                             None,
                             Box::new(a)
                         ))))
@@ -256,21 +254,30 @@ impl GameplayWidgetEditor {
         match &selected.layout.anchor {
             GameplayWidgetAnchor::Screen => {},
             GameplayWidgetAnchor::Playfield {
-                relative,
-                ..
+                horizontal_side,
+                vertical_side,
             } => {
                 options.push(ContextMenuOption::new(
-                    "Relative Align",
-                    make_relative_align(*relative, shell.source),
+                    "Horizontal Side",
+                    make_side(*horizontal_side, "horizontal_side", shell.source),
+                ));
+                options.push(ContextMenuOption::new(
+                    "Vertical Side",
+                    make_side(*vertical_side, "vertical_side", shell.source),
                 ));
             }
             GameplayWidgetAnchor::Element {
-                relative ,
+                horizontal_side,
+                vertical_side,
                 ..
             } => {
                 options.push(ContextMenuOption::new(
-                    "Relative Align",
-                    make_relative_align(*relative, shell.source),
+                    "Horizontal Side",
+                    make_side(*horizontal_side, "horizontal_side", shell.source),
+                ));
+                options.push(ContextMenuOption::new(
+                    "Vertical Side",
+                    make_side(*vertical_side, "vertical_side", shell.source),
                 ));
                 options.push(ContextMenuOption::new(
                     "Select Parent",
@@ -366,7 +373,8 @@ impl GameplayWidgetEditor {
                         _ => {
                             selected.layout.anchor = GameplayWidgetAnchor::Element {
                                 element: clicked.name.clone().into(),
-                                relative: GameplayWidgetAlign::Inside,
+                                horizontal_side: Side::Inside,
+                                vertical_side: Side::Inside,
                             };
                         }
                     }
@@ -387,7 +395,7 @@ impl GameplayWidgetEditor {
 impl Widget<actions::Action> for GameplayWidgetEditor {
     fn name(&self) -> CowStr { "widget_editor".into() }
     fn node_id(&self) -> NodeId { self.node.node_id() }
-    
+
     fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId> {
         let a = self.widgets
             .iter()
@@ -470,7 +478,7 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
                     if data.triggered {
                         let selected = &self.widgets[data.selected];
                         let mut layout = selected.layout.clone();
-                        layout.offset += pos - data.pos;
+                        layout.transform.pos += pos - data.pos;
                         self.send(
                             shell.source,
                             GameplayWidgetAction {
@@ -634,14 +642,15 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
                         ("element", a) => {
                             *a = Anchor::Element {
                                 element: Cow::Borrowed(""),
-                                relative: GameplayWidgetAlign::Inside,
+                                horizontal_side: Side::Inside,
+                                vertical_side: Side::Inside,
                             };
                         },
 
                         ("playfield", a) => {
                             *a = Anchor::Playfield {
-                                saved_size: None,
-                                relative: GameplayWidgetAlign::Inside,
+                                horizontal_side: Side::Inside,
+                                vertical_side: Side::Inside,
                             };
                             send_update = true;
                         }
@@ -661,9 +670,9 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
                 }
             }
 
-            "relative_align" => {
+            "horizontal_side" => {
                 let Some(value) = message.value
-                    .downcast_ref::<GameplayWidgetAlign>().copied()
+                    .downcast_ref::<Side>().copied()
                 else { return};
 
                 for i in self.widgets.iter_mut() {
@@ -671,13 +680,42 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
                     match &mut i.layout.anchor {
                         GameplayWidgetAnchor::Screen => {},
                         GameplayWidgetAnchor::Element {
-                            relative,
+                            horizontal_side,
                             ..
                         } | GameplayWidgetAnchor::Playfield {
-                            relative,
+                            horizontal_side,
                             ..
                         } => {
-                            *relative = value;
+                            *horizontal_side = value;
+                        }
+                    }
+                    let action = GameplayWidgetAction {
+                        target: i.name.clone(),
+                        action: GameplayWidgetActionType::Move(i.layout.clone()),
+                    };
+
+                    self.send(shell.source, action, shell.actions);
+
+                    break;
+                }
+            }
+            "vertical_side" => {
+                let Some(value) = message.value
+                    .downcast_ref::<Side>().copied()
+                else { return};
+
+                for i in self.widgets.iter_mut() {
+                    if !i.selected { continue }
+                    match &mut i.layout.anchor {
+                        GameplayWidgetAnchor::Screen => {},
+                        GameplayWidgetAnchor::Element {
+                            vertical_side,
+                            ..
+                        } | GameplayWidgetAnchor::Playfield {
+                            vertical_side,
+                            ..
+                        } => {
+                            *vertical_side = value;
                         }
                     }
                     let action = GameplayWidgetAction {
@@ -706,7 +744,7 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
                     };
 
                     self.send(
-                        shell.source, 
+                        shell.source,
                         action,
                         shell.actions
                     );
@@ -724,7 +762,7 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
                     };
 
                     self.send(
-                        shell.source, 
+                        shell.source,
                         action,
                         shell.actions
                     );
@@ -749,6 +787,8 @@ enum ClickAction {
 
 struct WidgetState {
     name: String,
+    visible: bool,
+
     layout: GameplayWidgetLayout,
     original_layout: GameplayWidgetLayout,
     default_layout: GameplayWidgetLayout,
@@ -759,15 +799,18 @@ struct WidgetState {
 }
 impl WidgetState {
     fn new(widget: &GameplayWidgetContainer) -> Self {
+        let layout = widget.layout().clone();
+
         Self {
             name: widget.element_name.clone(),
+            visible: widget.visible,
             hover: false,
             selected: false,
-            layout: widget.layout.clone(),
-            original_layout: widget.layout.clone(),
+            layout: layout.clone(),
+            original_layout: layout,
             default_layout: widget.default_layout.clone(),
 
-            bounds: widget.get_bounds(),
+            bounds: widget.resolved_bounds(),
         }
     }
 

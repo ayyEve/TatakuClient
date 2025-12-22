@@ -80,7 +80,7 @@ impl GameplayWidget for RemainingElement {
             self.secs = secs;
 
             let mut layout = shell.font_context.simple_text(
-                &format!("{sign}{mins:02}:{secs:02}"), 
+                &format!("{sign}{mins:02}:{secs:02}"),
                 &ui::style::TextStyle {
                     color: Color::WHITE,
                     font_size: 30.0 * shell.scale.y,
@@ -94,41 +94,27 @@ impl GameplayWidget for RemainingElement {
     }
 
     fn draw(&mut self, shell: &mut GameplayWidgetDrawShell) {
-        let Some(layout) = self.layout.clone() 
+        let Some(layout) = self.layout.clone()
         else { return };
 
-        let bounds = Bounds::new(
-            shell.pos_offset,
-            SIZE * shell.scale
-        );
-
-        shell.list.push(graphics::Transformed::new(
-            graphics::Transform::default()
-            .translate(Alignment::CENTER.resolve(
-                &bounds, 
-                Vector2::new(
-                    layout.width(),
-                    layout.height(),
-                ), 
-                true, 
-                true
-            )),
-            Box::new(graphics::Text::new(layout))
-        ));
+        shell.list.push(graphics::Transformed {
+            transform: shell.transform,
+            drawable: Box::new(graphics::Text::new(layout))
+        });
     }
 }
 
 
 pub const REMAINING_ELEMENT: GameplayWidgetBuilder = GameplayWidgetBuilder {
     name: "remaining_timer",
-    default_layout: GameplayWidgetLayout::new_default(
-        GameplayWidgetAnchor::element(
-            "judgement_bar", 
-            GameplayWidgetAlign::Right
-        ),
-        Alignment::CENTER_RIGHT,
-        Some(Alignment::CENTER_LEFT),
-        None,
-    ),
+    default_layout: GameplayWidgetLayout {
+        anchor: GameplayWidgetAnchor::Element {
+            element: Cow::Borrowed("duration_bar"),
+            horizontal_side: Side::Inside,
+            vertical_side: Side::Outside,
+        },
+        align: Alignment::TOP_RIGHT,
+        transform: graphics::Transform::identity(),
+    },
     build: RemainingElement::build,
 };

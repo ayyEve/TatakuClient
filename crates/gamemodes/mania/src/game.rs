@@ -46,7 +46,7 @@ pub struct ManiaGame {
     pub columns: Vec<Vec<Box<dyn ManiaHitObject>>>,
     hit_windows: Vec<(HitJudgment, std::ops::Range<f32>)>,
     miss_window: f32,
-    
+
     // list indices
     column_indices: Vec<usize>,
     /// true if held
@@ -56,7 +56,7 @@ pub struct ManiaGame {
     column_count: u8,
     auto_helper: ManiaAutoHelper,
     game_settings: Arc<ManiaSettings>,
-    
+
     #[cfg(feature="graphics")] sv_mult: f32,
     #[cfg(feature="graphics")] timing_bars: Vec<TimingBar>,
     #[cfg(feature="graphics")] playfield: Arc<ManiaPlayfield>,
@@ -66,7 +66,7 @@ pub struct ManiaGame {
     #[cfg(feature="graphics")] mania_skin_settings: Option<Arc<graphics::ManiaSkinSettings>>,
 }
 impl ManiaGame {
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     pub fn get_color(&self, col: u8) -> Color {
         match col {
             0|3 => Color::BLUE_ORCHID,
@@ -80,12 +80,12 @@ impl ManiaGame {
         (*self.column_indices.get_mut(col).unwrap()) += 1;
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn integrate_velocity(&mut self, mut slider_velocities: Vec<SliderVelocity>) {
         let mut position_function = vec![PositionPoint::default()];
 
         if slider_velocities.is_empty() {
-            position_function.push(PositionPoint { 
+            position_function.push(PositionPoint {
                 time: self.end_time,
                 position: self.end_time,
             });
@@ -143,7 +143,7 @@ impl ManiaGame {
         }
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn set_sv_mult_notes(&mut self) {
         for col in self.columns.iter_mut() {
             for note in col.iter_mut() {
@@ -156,19 +156,19 @@ impl ManiaGame {
             t.set_sv(self.sv_mult);
         }
     }
-    
+
     #[cfg(feature="graphics")]
     fn load_col_images(
-        &mut self, 
-        source: &graphics::TextureSource, 
+        &mut self,
+        source: &graphics::TextureSource,
         skin_manager: &mut dyn graphics::SkinProvider
     ) {
-        let Some(settings) = &self.mania_skin_settings 
+        let Some(settings) = &self.mania_skin_settings
         else { return };
 
         self.key_images_down.clear();
         self.key_images_up.clear();
-        
+
         let note_size = self.playfield.note_size();
         let y = self.playfield.hit_y() + note_size.y;
 
@@ -183,9 +183,9 @@ impl ManiaGame {
             ] {
                 let Some(path) = path_map.get(&col) else { continue };
                 let Some(mut img) = skin_manager.get_texture(
-                    path, 
-                    source, 
-                    graphics::SkinUsage::Beatmap, 
+                    path,
+                    source,
+                    graphics::SkinUsage::Beatmap,
                     true
                 ) else { continue };
                 self.playfield.column_image(&mut img);
@@ -197,11 +197,11 @@ impl ManiaGame {
         }
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     #[allow(clippy::needless_pass_by_value, reason = "its cloned a bunch")]
     fn apply_new_playfield(&mut self, playfield: Arc<ManiaPlayfield>) {
         self.playfield = playfield.clone();
-        
+
         for col in self.columns.iter_mut() {
             for note in col.iter_mut() {
                 note.playfield_changed(playfield.clone());
@@ -218,10 +218,10 @@ impl ManiaGame {
             let x = self.playfield.col_pos(col);
 
             for image_map in [
-                &mut self.key_images_down, 
+                &mut self.key_images_down,
                 &mut self.key_images_up
             ] {
-                let Some(img) = image_map.get_mut(&col) 
+                let Some(img) = image_map.get_mut(&col)
                 else { continue };
                 self.playfield.column_image(img);
 
@@ -236,10 +236,10 @@ impl ManiaGame {
 
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     pub fn pos_at(
-        position_function: &Arc<Vec<PositionPoint>>, 
-        time: f32, 
+        position_function: &Arc<Vec<PositionPoint>>,
+        time: f32,
         current_index: &mut usize
     ) -> f32 {
         let (index, b) = position_function.iter()
@@ -257,19 +257,19 @@ impl ManiaGame {
     }
 
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn add_hit_indicator(
-        column: usize, 
-        hit_value: &HitJudgment, 
-        column_count: u8, 
-        game_settings: &Arc<ManiaSettings>, 
-        playfield: &Arc<ManiaPlayfield>, 
+        column: usize,
+        hit_value: &HitJudgment,
+        column_count: u8,
+        game_settings: &Arc<ManiaSettings>,
+        playfield: &Arc<ManiaPlayfield>,
         state: &mut GameplayUpdateShell
     ) {
         let color = hit_value.color;
         let image = None;
         let bounds = playfield.bounds;
-        
+
         let total_width = column_count as f32 * playfield.column_width;
         let x_offset = playfield.x_offset + (bounds.size.x - total_width) / 2.0;
 
@@ -284,7 +284,7 @@ impl ManiaGame {
         );
 
         state.add_indicator(BasicJudgementIndicator::new(
-            pos, 
+            pos,
             state.time,
             playfield.column_width / 2.0 * (2.0 / 3.0),
             color,
@@ -308,7 +308,7 @@ impl ManiaGame {
         }
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn draw_notes(&mut self, time: f32, list: &mut graphics::RenderableCollection) {
         // draw timing bars
         for tb in self.timing_bars.iter_mut() { tb.draw(list) }
@@ -319,10 +319,10 @@ impl ManiaGame {
         }
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn draw_columns(
-        &mut self, 
-        bounds: Bounds, 
+        &mut self,
+        bounds: Bounds,
         list: &mut graphics::RenderableCollection
     ) {
 
@@ -337,19 +337,19 @@ impl ManiaGame {
             ).border(Border::new(Color::GREEN, 1.2)));
 
             // hit area/button state for this col
-            let map = if self.column_states[col as usize] { 
-                &self.key_images_down 
-            } else { 
+            let map = if self.column_states[col as usize] {
+                &self.key_images_down
+            } else {
                 &self.key_images_up
             };
 
             if let Some(img) = map.get(&col) {
                 list.push(img.clone());
             } else {
-                let color = if self.column_states[col as usize] { 
-                    self.get_color(col) 
-                } else { 
-                    Color::TRANSPARENT 
+                let color = if self.column_states[col as usize] {
+                    self.get_color(col)
+                } else {
+                    Color::TRANSPARENT
                 };
 
                 list.push(graphics::Rectangle::new(
@@ -357,7 +357,7 @@ impl ManiaGame {
                     self.playfield.note_size(),
                     color,
                 ).border(Border::new(
-                    Color::RED, 
+                    Color::RED,
                     self.playfield.note_border_width
                 )));
             }
@@ -375,13 +375,13 @@ impl ManiaGame {
             )
             .map(|i| ((base_key as usize + i) as u8).into())
     }
-    
+
 }
 
 impl Gamemode for ManiaGame {
     fn new(
-        beatmap: &Beatmap, 
-        _: bool, 
+        beatmap: &Beatmap,
+        _: bool,
         settings: &engine::Settings
     ) -> tataku::Result<Self> {
         // let metadata = beatmap.get_beatmap_meta();
@@ -393,7 +393,7 @@ impl Gamemode for ManiaGame {
         let playfields = &game_settings
             .playfield_settings
             .clone();
-        
+
         // windows
         let hit_windows = vec![
             (ManiaHitJudgments::Marvelous, 0.0..18.0),
@@ -406,9 +406,9 @@ impl Gamemode for ManiaGame {
 
         let miss_window = hit_windows.last().unwrap().1.end;
 
-        #[cfg(feature="graphics")] 
+        #[cfg(feature="graphics")]
         const DEFAULT_SNAP: Color = Color::SILVER;
-        #[cfg(feature="graphics")] 
+        #[cfg(feature="graphics")]
         const SNAP_COLORS:&[(f32, Color)] = &[
             (0.0,        Color::RED),
             (1.0,        Color::RED),
@@ -439,10 +439,10 @@ impl Gamemode for ManiaGame {
 
         let timing_points = beatmap.get_timing_points();
 
-        #[cfg(feature="graphics")] 
+        #[cfg(feature="graphics")]
         let get_color = |time| {
             let tp = timing_points.control_point_at(time);
-        
+
             let offset = tp.time;
             let length = tp.beat_length;
 
@@ -450,7 +450,7 @@ impl Gamemode for ManiaGame {
 
             let diff = time - offset;
             let snap = (diff / length) % 1.0;
-            
+
             // temp/debug
             let mut closest_snap = (0.0, 99999.0);
 
@@ -463,7 +463,7 @@ impl Gamemode for ManiaGame {
                     closest_snap = (1.0 / *time, diff);
                 }
             }
-            
+
             // debug!("threshold: {}", threshold);
             // debug!("snap: {} - {:.1}", snap,  1.0 / snap);
             // debug!("lowestdiff: {:.5} {:.5}", closest_snap.0, closest_snap.1);
@@ -475,17 +475,17 @@ impl Gamemode for ManiaGame {
         let mut s = match beatmap {
             Beatmap::Osu(beatmap) => {
                 let column_count = (beatmap.metadata.cs as u8).clamp(1, 9);
-                
-                #[cfg(feature="gameplay")] 
+
+                #[cfg(feature="gameplay")]
                 let get_hitsounds = |time, hitsound, hitsamples| {
                     let tp = timing_points.timing_point_at(time);
                     engine::gameplay::Hitsound::from_hitsamples(hitsound, hitsamples, true, tp)
                 };
 
-                #[cfg(feature="graphics")] 
+                #[cfg(feature="graphics")]
                 let playfield = Arc::new(ManiaPlayfield::new(
-                    playfields[(column_count - 1) as usize].clone(), 
-                    Bounds::new(Vector2::ZERO, OSU_SIZE), 
+                    playfields[(column_count - 1) as usize].clone(),
+                    Bounds::new(Vector2::ZERO, OSU_SIZE),
                     column_count,
                     0.0,
                     true,
@@ -544,10 +544,10 @@ impl Gamemode for ManiaGame {
                     )));
                 }
 
-                #[cfg(feature="graphics")] 
+                #[cfg(feature="graphics")]
                 s.integrate_velocity(beatmap.timing_points.iter().filter(|b| b.is_inherited()).map(|&b| SliderVelocity {
                     time: b.time,
-                    slider_velocity: 100.0 / (-b.beat_length) 
+                    slider_velocity: 100.0 / (-b.beat_length)
                 }).collect());
 
                 s
@@ -555,8 +555,8 @@ impl Gamemode for ManiaGame {
             Beatmap::Quaver(beatmap) => {
                 let column_count = beatmap.mode.into();
                 let playfield = Arc::new(ManiaPlayfield::new(
-                    playfields[(column_count - 1) as usize].clone(), 
-                    Bounds::new(Vector2::ZERO, OSU_SIZE), 
+                    playfields[(column_count - 1) as usize].clone(),
+                    Bounds::new(Vector2::ZERO, OSU_SIZE),
                     column_count,
                     0.0,
                     true
@@ -588,7 +588,7 @@ impl Gamemode for ManiaGame {
                 for note in beatmap.hit_objects.iter() {
                     let column = note.lane - 1;
                     let time = note.start_time;
-                    #[cfg(feature="graphics")] 
+                    #[cfg(feature="graphics")]
                     let x = s.playfield.col_pos(column);
 
                     if let Some(end_time) = note.end_time {
@@ -616,7 +616,7 @@ impl Gamemode for ManiaGame {
                         )));
                     }
                 }
-                #[cfg(feature="graphics")] 
+                #[cfg(feature="graphics")]
                 s.integrate_velocity(beatmap.slider_velocities.iter().map(|&x| x.into()).collect());
 
                 s
@@ -625,8 +625,8 @@ impl Gamemode for ManiaGame {
                 // stepmania maps are always 4k
                 let column_count = 4;
                 let playfield = Arc::new(ManiaPlayfield::new(
-                    playfields[(column_count - 1) as usize].clone(), 
-                    Bounds::new(Vector2::ZERO, OSU_SIZE), 
+                    playfields[(column_count - 1) as usize].clone(),
+                    Bounds::new(Vector2::ZERO, OSU_SIZE),
                     column_count,
                     0.0,
                     true
@@ -659,7 +659,7 @@ impl Gamemode for ManiaGame {
                 for note in beatmap.chart_info.notes.iter() {
                     let column = note.column;
                     let time = note.start;
-                    #[cfg(feature="graphics")] 
+                    #[cfg(feature="graphics")]
                     let x = s.playfield.col_pos(column);
 
                     if let Some(end_time) = note.end {
@@ -688,12 +688,12 @@ impl Gamemode for ManiaGame {
                     }
                 }
 
-                #[cfg(feature="graphics")] 
+                #[cfg(feature="graphics")]
                 s.integrate_velocity(Vec::new());
 
                 s
             }
-            
+
             _ => return Err(errors::beatmap::BeatmapError::UnsupportedBeatmap.into()),
         };
 
@@ -710,8 +710,8 @@ impl Gamemode for ManiaGame {
     }
 
     fn handle_replay_frame(
-        &mut self, 
-        frame: ReplayFrame, 
+        &mut self,
+        frame: ReplayFrame,
         state: &mut GameplayUpdateShell
     ) {
         match frame.action {
@@ -723,7 +723,7 @@ impl Gamemode for ManiaGame {
                     // we need a hitsound though
                     let thing = self.columns[col].last().unwrap();
 
-                    #[cfg(feature="gameplay")] 
+                    #[cfg(feature="gameplay")]
                     state.play_hitsounds(thing.get_hitsound(), false);
                     return;
                 }
@@ -736,18 +736,18 @@ impl Gamemode for ManiaGame {
                     note.hit(frame.time);
 
                     // add the judgment
-                    #[cfg(feature="graphics")] 
+                    #[cfg(feature="graphics")]
                     Self::add_hit_indicator(
-                        col, 
-                        &judge, 
-                        self.column_count, 
-                        &self.game_settings, 
-                        &self.playfield, 
+                        col,
+                        &judge,
+                        self.column_count,
+                        &self.game_settings,
+                        &self.playfield,
                         state
                     );
-                    
+
                     // play the hit sound
-                    #[cfg(feature="gameplay")] 
+                    #[cfg(feature="gameplay")]
                     state.play_hitsounds(note.get_hitsound(), false);
 
                     // incrememnt note index if this is not a slider
@@ -774,22 +774,22 @@ impl Gamemode for ManiaGame {
                     let note_time = note.end_time(0.0);
 
                     if let Some(&judge) = state.check_judgment(&self.hit_windows, frame.time, note_time) {
-    
+
                         // tell the note it was hit
                         note.hit(frame.time);
-    
+
                         // add the judgment
-                        #[cfg(feature="graphics")] 
+                        #[cfg(feature="graphics")]
                         Self::add_hit_indicator(
-                            col, 
-                            &judge, 
-                            self.column_count, 
-                            &self.game_settings, 
-                            &self.playfield, 
+                            col,
+                            &judge,
+                            self.column_count,
+                            &self.game_settings,
+                            &self.playfield,
                             state
                         );
-    
-                        // increment note index 
+
+                        // increment note index
                         self.next_note(col);
                     } else { // outside of any window, ignore
                         // play sound
@@ -800,18 +800,18 @@ impl Gamemode for ManiaGame {
                     }
                 }
             }
-        
+
             _ => {}
         }
     }
 
     fn handle_gameplay_event(&mut self, event: GameplayEvent) {
         match event {
-            #[cfg(feature="graphics")] 
+            #[cfg(feature="graphics")]
             GameplayEvent::SetBounds { bounds, full_window } => {
                 let mut playfield = ManiaPlayfield::new(
-                    self.game_settings.playfield_settings[(self.column_count - 1) as usize].clone(), 
-                    bounds, 
+                    self.game_settings.playfield_settings[(self.column_count - 1) as usize].clone(),
+                    bounds,
                     self.column_count,
                     self.mania_skin_settings.as_ref().map(|s| OSU_SIZE.y - s.hit_position).unwrap_or_default(),
                     full_window
@@ -828,7 +828,7 @@ impl Gamemode for ManiaGame {
                 // }
                 self.apply_new_playfield(Arc::new(playfield));
             }
-        
+
             GameplayEvent::ApplyMods(_mods) => {}
 
             GameplayEvent::BeatHappened { pulse_length } => {
@@ -849,7 +849,7 @@ impl Gamemode for ManiaGame {
     }
 
     fn update(
-        &mut self, 
+        &mut self,
         state: &mut GameplayUpdateShell
     ) {
         if state.mods.has_autoplay() {
@@ -884,19 +884,19 @@ impl Gamemode for ManiaGame {
 
                 let j = ManiaHitJudgments::Miss;
                 state.add_judgment(j);
-                #[cfg(feature="graphics")] 
+                #[cfg(feature="graphics")]
                 Self::add_hit_indicator(col, &j, self.column_count, &self.game_settings, &self.playfield, state);
                 self.next_note(col);
             }
         }
-        
-        #[cfg(feature="graphics")] 
-        for tb in self.timing_bars.iter_mut() { 
+
+        #[cfg(feature="graphics")]
+        for tb in self.timing_bars.iter_mut() {
             tb.update(state.time);
         }
     }
-    
-    #[cfg(feature="graphics")] 
+
+    #[cfg(feature="graphics")]
     fn draw(&mut self, state: GameplayDrawShell, list: &mut graphics::RenderableCollection) {
         let bounds = self.playfield.bounds;
 
@@ -906,7 +906,7 @@ impl Gamemode for ManiaGame {
                 Vector2::new(self.playfield.total_width, bounds.size.y),
                 Color::new(0.0, 0.0, 0.0, 0.8),
             ).border(Border::new(
-                if state.current_timing_point.kiai { Color::YELLOW } else { Color::BLACK }, 
+                if state.current_timing_point.kiai { Color::YELLOW } else { Color::BLACK },
                 1.2
             ))
         );
@@ -919,7 +919,7 @@ impl Gamemode for ManiaGame {
         self.draw_notes(state.time, list);
     }
 
-    #[cfg(feature="gameplay")] 
+    #[cfg(feature="gameplay")]
     fn skip_intro(&mut self, game_time: f32) -> Option<f32> {
         // make sure we havent hit a note yet
         for &c in self.column_indices.iter() { if c > 0 { return None } }
@@ -948,9 +948,9 @@ impl Gamemode for ManiaGame {
     }
 
     fn reset(&mut self, beatmap: &Beatmap) {
-        #[cfg(feature="graphics")] 
+        #[cfg(feature="graphics")]
         let timing_points = engine::gameplay::TimingPointHelper::new(
-            beatmap.get_timing_points(), 
+            beatmap.get_timing_points(),
             beatmap.slider_velocity()
         );
 
@@ -963,7 +963,7 @@ impl Gamemode for ManiaGame {
         }
 
         // setup timing bars
-        #[cfg(feature="graphics")] 
+        #[cfg(feature="graphics")]
         if self.timing_bars.is_empty() {
             // load timing bars
             let parent_tps = timing_points
@@ -1014,11 +1014,11 @@ impl Gamemode for ManiaGame {
     }
 
     fn force_update_settings(&mut self, _settings: &engine::Settings) {}
-    
-    #[cfg(feature="graphics")] 
+
+    #[cfg(feature="graphics")]
     fn reload_skin(
-        &mut self, 
-        beatmap_path: &str, 
+        &mut self,
+        beatmap_path: &str,
         skin_manager: &mut dyn graphics::SkinProvider
     ) -> graphics::TextureSource {
         let source = graphics::TextureSource::Beatmap(beatmap_path.to_owned()); // TODO: add setting option
@@ -1031,19 +1031,19 @@ impl Gamemode for ManiaGame {
                 break;
             }
         }
-        
+
         for c in self.columns.iter_mut() {
             for n in c.iter_mut() {
                 n.reload_skin(&source, skin_manager);
             }
         }
-        
+
         self.load_col_images(&source, skin_manager);
 
         source
     }
 
-    #[cfg(feature="gameplay")] 
+    #[cfg(feature="gameplay")]
     fn handle_input(&mut self, input: input::InputEvent) -> Option<ReplayAction> {
         use input::InputType;
         match input.event {
@@ -1051,7 +1051,7 @@ impl Gamemode for ManiaGame {
                 let key = press.as_key()?;
 
                 // check sv change keys
-                #[cfg(feature="graphics")] 
+                #[cfg(feature="graphics")]
                 if key == Key::F4 || key == Key::F3 {
                     if key == Key::F4 {
                         self.sv_mult += self.game_settings.sv_change_delta;
@@ -1079,9 +1079,9 @@ impl Gamemode for ManiaGame {
         }
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn build_widgets(
-        &self, 
+        &self,
         loader: &mut dyn engine::gameplay::widgets::UiElementLoader
     ) {
         use engine::gameplay::widgets::*;
@@ -1089,35 +1089,23 @@ impl Gamemode for ManiaGame {
         // combo
         loader.change_default_layout(
             "combo",
-            GameplayWidgetLayout::new_default( // centered on the playfield
-                GameplayWidgetAnchor::Playfield {
-                    saved_size: None,
-                    relative: GameplayWidgetAlign::Inside,
+            GameplayWidgetLayout {
+                anchor: GameplayWidgetAnchor::Playfield {
+                    horizontal_side: Side::Inside,
+                    vertical_side: Side::Inside,
                 },
-                Alignment::CENTER,
-                None,
-                None,
-            )
-        );
-
-        // Leaderboard
-        loader.change_default_layout(
-            "leaderboard", 
-            GameplayWidgetLayout::new_default(
-                GameplayWidgetAnchor::Screen,
-                Alignment::CENTER_LEFT,
-                None,
-                None,
-            )
+                align: Alignment::CENTER,
+                transform: graphics::Transform::identity(), // todo: add vertical offset
+            }
         );
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn get_playfield(&self) -> PlayfieldNonsense {
         PlayfieldNonsense::new_simple(self.playfield.bounds)
     }
     fn properties(
-        &self, 
+        &self,
         _timing_points: &engine::gameplay::TimingPointHelper
     ) -> GamemodeProperties {
         const KEY_LIST: &[(KeyPress, &str)] = &[
@@ -1133,13 +1121,13 @@ impl Gamemode for ManiaGame {
         ];
 
         let mut sound_list = HashMap::new();
-        #[cfg(feature="gameplay")] 
+        #[cfg(feature="gameplay")]
         for col in self.columns.iter() {
             for note in col.iter() {
                 let hitsounds = note.get_hitsound();
                 for hitsound in hitsounds {
                     sound_list.insert(
-                        hitsound.get_id(), 
+                        hitsound.get_id(),
                         hitsound.load_data(Some("mania-"))
                     );
                 }
@@ -1147,16 +1135,16 @@ impl Gamemode for ManiaGame {
         }
 
 
-        GamemodeProperties { 
-            info: &crate::GAME_INFO, 
-            keys: KEY_LIST[0..((self.column_count as usize).min(KEY_LIST.len()))].to_vec(), 
-            end_time: self.end_time, 
-            show_cursor: false, 
+        GamemodeProperties {
+            info: &crate::GAME_INFO,
+            keys: KEY_LIST[0..((self.column_count as usize).min(KEY_LIST.len()))].to_vec(),
+            end_time: self.end_time,
+            show_cursor: false,
             audio_prefix: "mania".to_owned(),
             timing_bar_things: self.hit_windows
                 .iter()
                 .map(|(j, w)| (w.end, j.color))
-                .collect(), 
+                .collect(),
 
             sound_list: sound_list.into_iter().collect(),
         }

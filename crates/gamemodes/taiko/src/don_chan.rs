@@ -90,7 +90,7 @@ impl GameplayWidget for DonChan {
     }
 
     fn update(&mut self, shell: &mut GameplayWidgetUpdateShell) {
-        let time = shell.manager.time(); 
+        let time = shell.manager.time();
 
         // check init
         if !self.init {
@@ -133,7 +133,7 @@ impl GameplayWidget for DonChan {
             self.state = DonChanState::Normal;
         }
         self.last_score = shell.manager.score().score.score;
-        
+
 
         // check if combo milestone anim has finished
         if self.state == DonChanState::ComboMilestone
@@ -160,32 +160,32 @@ impl GameplayWidget for DonChan {
             DonChanState::Normal => {
                 if self.kiai {
                     if let Some(anim) = &self.kiai_anim {
-                        let mut anim = anim.clone();
-                        anim.pos = shell.pos_offset;
-                        anim.scale *= shell.scale;
-                        shell.list.push(anim);
+                        shell.list.push(graphics::Transformed {
+                            transform: shell.transform,
+                            drawable: Box::new(anim.clone())
+                        });
                     }
                 } else if let Some(anim) = &self.normal_anim {
-                    let mut anim = anim.clone();
-                    anim.pos = shell.pos_offset;
-                    anim.scale *= shell.scale;
-                    shell.list.push(anim);
+                    shell.list.push(graphics::Transformed {
+                        transform: shell.transform,
+                        drawable: Box::new(anim.clone())
+                    });
                 }
             }
             DonChanState::ComboMilestone => {
                 if let Some(anim) = &self.combo_anim {
-                    let mut anim = anim.clone();
-                    anim.pos = shell.pos_offset;
-                    anim.scale *= shell.scale;
-                    shell.list.push(anim);
+                    shell.list.push(graphics::Transformed {
+                        transform: shell.transform,
+                        drawable: Box::new(anim.clone())
+                    });
                 }
             }
             DonChanState::Fail => {
                 if let Some(anim) = &self.fail_anim {
-                    let mut anim = anim.clone();
-                    anim.pos = shell.pos_offset;
-                    anim.scale *= shell.scale;
-                    shell.list.push(anim);
+                    shell.list.push(graphics::Transformed {
+                        transform: shell.transform,
+                        drawable: Box::new(anim.clone())
+                    });
                 }
             }
         }
@@ -213,7 +213,7 @@ impl GameplayWidget for DonChan {
 
 #[cfg(feature="graphics")]
 fn load_anim(
-    name: &str, 
+    name: &str,
     source: &graphics::TextureSource,
     skin_manager: &mut dyn graphics::SkinProvider,
 ) -> Option<Animation> {
@@ -221,9 +221,9 @@ fn load_anim(
     let mut current = 0;
 
     while let Some(tex) = skin_manager.get_texture(
-        &format!("pippidon{name}{current}"), 
-        source, 
-        graphics::SkinUsage::Gamemode, 
+        &format!("pippidon{name}{current}"),
+        source,
+        graphics::SkinUsage::Gamemode,
         false
     ) {
         current += 1;
@@ -258,14 +258,13 @@ pub enum DonChanState {
 
 pub const DON_CHAN: GameplayWidgetBuilder = GameplayWidgetBuilder {
     name: "don_chan",
-    default_layout: GameplayWidgetLayout::new_default(
-        GameplayWidgetAnchor::Playfield {
-            saved_size: None,
-            relative: GameplayWidgetAlign::Above
+    default_layout: GameplayWidgetLayout {
+        anchor: GameplayWidgetAnchor::Playfield {
+            horizontal_side: Side::Inside,
+            vertical_side: Side::Outside,
         },
-        Alignment::TOP_LEFT,
-        None,
-        None,
-    ),
+        align: Alignment::TOP_LEFT,
+        transform: graphics::Transform::identity(),
+    },
     build: DonChan::build,
 };
