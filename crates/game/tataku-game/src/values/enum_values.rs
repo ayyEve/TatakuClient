@@ -4,15 +4,12 @@ use common::reflect::*;
 use tataku::Vsync;
 
 use engine::{
+    gameplay::GamemodeInfos,
     window::FullscreenMonitor,
     data::{
         SortBy,
         GroupBy,
         ScoreRetreivalMethod,
-    },
-    gameplay::{
-        GamemodeInfo, 
-        GamemodeInfos,
     },
     settings::{
         settings::SelectedTheme,

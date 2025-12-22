@@ -585,7 +585,7 @@ impl TextInput {
 }
 impl Widget<actions::Action> for TextInput {
     fn name(&self) -> CowStr { "text_input_widget".into() }
-    fn node_id(&self) -> &NodeId { &self.node_id }
+    fn node_id(&self) -> NodeId { self.node_id }
 
     fn children(&self) -> WidgetChildren<'_, actions::Action> {
         WidgetChildren::Single(&self.text)
@@ -600,7 +600,7 @@ impl Widget<actions::Action> for TextInput {
 
         self.node_id = shell.tree.new_with_children(&[text])?;
 
-        shell.with_context(&self.node_id, |ctx| {
+        shell.with_context(self.node_id, |ctx| {
             ctx.needs_inverse_transform = true;
             ctx.set_selectable(true);
         });
@@ -624,7 +624,8 @@ impl Widget<actions::Action> for TextInput {
                     if let Some(on_submit) = &self.on_submit {
                         on_submit.run(
                             &self.value,
-                            &self.node_id,
+                            self.node_id,
+                            shell.source,
                             shell.messages,
                             shell.actions,
                             shell.values,
@@ -672,7 +673,8 @@ impl Widget<actions::Action> for TextInput {
                         if let Some(on_input) = &self.on_input {
                             on_input.run(
                                 &self.value,
-                                &self.node_id,
+                                self.node_id,
+                                shell.source,
                                 shell.messages,
                                 shell.actions,
                                 shell.values,
@@ -684,11 +686,11 @@ impl Widget<actions::Action> for TextInput {
 
 
             InputType::MouseMove(pos) => {
-                let Some(ctx) = shell.tree.get_context(&self.node_id) 
+                let Some(ctx) = shell.tree.get_context(self.node_id) 
                 else { return };
 
                 let pos = ctx.inverse_global_transform * *pos;
-                let bounds = shell.tree.bounds(&self.node_id).unwrap();
+                let bounds = shell.tree.bounds(self.node_id).unwrap();
                 self.hovered = bounds.contains(pos);
 
                 if self.pressed {
@@ -754,12 +756,12 @@ impl Widget<actions::Action> for TextInput {
                 self.active = self.hovered;
                 self.pressed = self.active;
 
-                let Some(ctx) = shell.tree.get_context(&self.node_id) 
+                let Some(ctx) = shell.tree.get_context(self.node_id) 
                 else { return };
 
                 let pos = ctx.inverse_global_transform * event.mouse_pos;
                 let bounds = shell.tree
-                    .content_bounds(&self.node_id)
+                    .content_bounds(self.node_id)
                     .unwrap();
 
                 if self.pressed {
@@ -780,7 +782,7 @@ impl Widget<actions::Action> for TextInput {
     }
 
     fn draw(&self, shell: &mut DrawShell<actions::Action>) {
-        let Some(bounds) = shell.tree.absolute_bounds(&self.node_id) 
+        let Some(bounds) = shell.tree.absolute_bounds(self.node_id) 
         else { return };
 
         shell.list.push(graphics::Rectangle::new_bounds(

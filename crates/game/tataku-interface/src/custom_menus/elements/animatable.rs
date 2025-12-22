@@ -8,8 +8,7 @@ pub struct AnimatableElement {
     #[serde(default)] triggers: Vec<AnimatableTrigger>,
     #[serde(default)] actions: Vec<AnimatableActionEntry>,
 
-    #[serde(rename = "$value")]
-    element: Element,
+    #[serde(rename = "$value")] element: Element,
 }
 impl AnimatableElement {
     pub fn build(&self) -> widgets::TransformableWidget {

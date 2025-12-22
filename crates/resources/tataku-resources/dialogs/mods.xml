@@ -47,7 +47,7 @@
             id = "group-list"
             list = "global.mod_groups"
             variable = "_group"
-            scrollable = "true"
+            scroll = "vertical"
             style = "width: fill; height: auto; flex-direction: column;"
         >
             <column style = "width: fill">

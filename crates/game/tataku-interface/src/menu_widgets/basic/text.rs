@@ -42,7 +42,7 @@ impl Text {
         text_layout_contexts: &mut TextLayoutContexts,
     ) {
         let text = self.text.get();
-        let text_style = tree.get_text_style(&self.node_id).unwrap();
+        let text_style = tree.get_text_style(self.node_id).unwrap();
 
         self.layout = text_layout_contexts.simple_text(
             &text,
@@ -52,7 +52,7 @@ impl Text {
         if !text.is_empty() {
             let widths = self.layout.calculate_content_widths();
 
-            tree.update_style(&self.node_id, |style| {
+            tree.update_style(self.node_id, |style| {
                 // fixme: there is an off-by-one somewhere
                 style.min_width = CssUnit::Pixels(f16::from_f32(widths.min.ceil() + 1.0)).into();
                 style.max_width = CssUnit::Pixels(f16::from_f32(widths.max.ceil() + 1.0)).into();
@@ -66,7 +66,7 @@ impl Text {
         container_width: f32,
     ) {
         let text = self.text.get();
-        let text_style = tree.get_text_style(&self.node_id).unwrap();
+        let text_style = tree.get_text_style(self.node_id).unwrap();
 
         if !text.is_empty() {
             self.layout.break_all_lines(Some(container_width));
@@ -85,7 +85,7 @@ impl Text {
 
             let height = self.layout.height();
 
-            tree.update_style(&self.node_id, |style| {
+            tree.update_style(self.node_id, |style| {
                 style.height = CssUnit::Pixels(f16::from_f32(height)).into();
             });
         }
@@ -93,7 +93,7 @@ impl Text {
 }
 impl Widget<actions::Action> for Text {
     fn name(&self) -> CowStr { "text_widget".into() }
-    fn node_id(&self) -> &NodeId { &self.node_id }
+    fn node_id(&self) -> NodeId { self.node_id }
 
     fn layout(
         &mut self,
@@ -109,7 +109,7 @@ impl Widget<actions::Action> for Text {
         );
 
         let text_style = shell.tree
-            .get_text_style(&self.node_id)
+            .get_text_style(self.node_id)
             .unwrap();
         let min_height = text_style.line_height;
 
@@ -118,13 +118,13 @@ impl Widget<actions::Action> for Text {
             f32::MAX,
         );
 
-        shell.tree.update_style(&self.node_id, |style| {
+        shell.tree.update_style(self.node_id, |style| {
             style.min_height = CssUnit::Pixels(f16::from_f32(min_height)).into();
         });
     }
 
     fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
-        let bounds = shell.tree.absolute_bounds(&self.node_id).unwrap();
+        let bounds = shell.tree.absolute_bounds(self.node_id).unwrap();
 
         let refresh_text = self.text.update(shell.values);
 
@@ -152,8 +152,8 @@ impl Widget<actions::Action> for Text {
 
     fn draw(&self, shell: &mut DrawShell<actions::Action>) {
         // todo: handle this better
-        let bounds = shell.tree.bounds(&self.node_id).unwrap();
-        let context = shell.tree.get_context(&self.node_id).unwrap();
+        let bounds = shell.tree.bounds(self.node_id).unwrap();
+        let context = shell.tree.get_context(self.node_id).unwrap();
         let transform = context.global_transform
             * context.local_transform.matrix()
             * tataku::Matrix::identity().trans(bounds.pos);

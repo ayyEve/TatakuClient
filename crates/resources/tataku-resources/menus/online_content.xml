@@ -192,7 +192,7 @@
         <list
           list = "game.online_content.results.items"
           variable = "_result"
-          scrollable = "true"
+          scroll = "vertical"
           style = "flex-direction: column"
         >
           <row>

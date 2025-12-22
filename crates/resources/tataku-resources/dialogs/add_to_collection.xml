@@ -25,7 +25,7 @@
             style = "width: fill; height: auto; flex-direction: column;"
             list = "beatmaps.collections"
             variable = "_collection"
-            scrollable = "true"
+            scroll = "vertical"
         >
             <row style = "width: fill; height: auto; margin: 10px">
                 <text><variable>_collection.name</variable></text>

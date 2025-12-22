@@ -29,7 +29,7 @@ impl KeyButton {
             optional: false,
             
             on_change: None,
-            node_id: NodeId::default(),
+            node_id: ui::EMPTY_NODE,
         }
     }
 
@@ -50,7 +50,7 @@ impl KeyButton {
 }
 impl Widget<actions::Action> for KeyButton {
     fn name(&self) -> CowStr { "key_input".into() }
-    fn node_id(&self) -> &NodeId { &self.node_id }
+    fn node_id(&self) -> NodeId { self.node_id }
 
     fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId> {
         self.node_id = shell.tree.new_leaf()?;
@@ -58,13 +58,13 @@ impl Widget<actions::Action> for KeyButton {
     }
     fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
         let text_style = shell.tree
-            .get_text_style(&self.node_id)
+            .get_text_style(self.node_id)
             .unwrap();
 
         // let w = f16::from_f32(text_style.measure_text("Press a key", None).x);
         let h = f16::from_f32(text_style.line_height);
         shell.tree.update_style(
-            &self.node_id, 
+            self.node_id, 
             |style| {
                 // style.min_width = CssUnit::Pixels(w).into();
                 style.min_height = CssUnit::Pixels(h).into();
@@ -98,10 +98,10 @@ impl Widget<actions::Action> for KeyButton {
     ) {
         if shell.event_consumed { return }
         let bounds = shell.tree
-            .absolute_bounds(&self.node_id)
+            .absolute_bounds(self.node_id)
             .unwrap();
 
-        let ctx = shell.tree.get_context_mut(&self.node_id).unwrap();
+        let ctx = shell.tree.get_context_mut(self.node_id).unwrap();
         if ctx.element_data.state.contains(ElementState::Active) && event.is_keyboard()
         && let InputType::KeyPress(key) = &event.event {
             ctx.element_data.state.remove(ElementState::Active);
@@ -116,7 +116,8 @@ impl Widget<actions::Action> for KeyButton {
                     if let Some(on_change) = &self.on_change {
                         on_change.run(
                             &None,
-                            &self.node_id,
+                            self.node_id,
+                            shell.source,
                             shell.messages,
                             shell.actions,
                             shell.values,
@@ -135,7 +136,8 @@ impl Widget<actions::Action> for KeyButton {
                 if let Some(on_change) = &self.on_change {
                     on_change.run(
                         &Some(key),
-                        &self.node_id,
+                        self.node_id,
+                        shell.source,
                         shell.messages,
                         shell.actions,
                         shell.values,
@@ -172,7 +174,7 @@ impl Widget<actions::Action> for KeyButton {
         if self.key.update(shell.values, self.optional) {
             let ctx = shell
                 .tree
-                .get_context(&self.node_id)
+                .get_context(self.node_id)
                 .unwrap();
 
             let txt = ctx
@@ -196,21 +198,21 @@ impl Widget<actions::Action> for KeyButton {
             //     ))
             // ));
 
-            shell.tree.mark_dirty(&self.node_id);
+            shell.tree.mark_dirty(self.node_id);
         }
     }
 
 
     fn draw(&self, shell: &mut DrawShell<actions::Action>) {
         let ctx = shell.tree
-            .get_context(&self.node_id)
+            .get_context(self.node_id)
             .unwrap();
 
         let active = ctx.element_data.state.contains(ElementState::Active);
         let hover = ctx.element_data.state.contains(ElementState::Hover);
 
         let bounds = shell.tree
-            .absolute_bounds(&self.node_id)
+            .absolute_bounds(self.node_id)
             .unwrap();
 
         shell.list.push(graphics::Rectangle::new_bounds(

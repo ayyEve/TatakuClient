@@ -4,12 +4,18 @@ use ui::tree::NodeId;
 #[derive(Debug)]
 pub struct UiAction {
     pub node: NodeId,
+    pub source: ui::MessageSource,
     pub action: UiActionType,
 }
 impl UiAction {
-    pub fn new(node: NodeId, action: impl Into<UiActionType>) -> Self {
+    pub fn new(
+        node: NodeId, 
+        source: ui::MessageSource,
+        action: impl Into<UiActionType>,
+    ) -> Self {
         Self {
             node,
+            source, 
             action: action.into(),
         }
     }

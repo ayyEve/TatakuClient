@@ -400,7 +400,7 @@ enum MathFunction {
     Floor,
 }
 impl MathFunction {
-    fn run<'a>(
+    fn run(
         self, 
         val: &TatakuValue
     ) -> Result<TatakuValue, BuildableShuntingYardError> {

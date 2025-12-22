@@ -20,5 +20,4 @@ parley.workspace = true
 tataku-input.workspace = true
 tataku-common.workspace = true
 tataku-graphics.workspace = true
-tataku-resources.workspace = true
 tataku-engine-common.workspace = true

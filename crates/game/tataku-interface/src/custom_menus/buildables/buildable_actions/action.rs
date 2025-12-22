@@ -143,7 +143,8 @@ pub enum BuildableAction {
 impl BuildableAction {
     pub fn resolve(
         &self,
-        node: &NodeId,
+        node: NodeId,
+        source: ui::MessageSource,
         values: &mut dyn Reflect,
         passed_in: Option<&TatakuValue>
     ) -> Option<actions::Action> {
@@ -156,11 +157,10 @@ impl BuildableAction {
                 let passed_in = passed_in.cloned();
                 let actions = actions.clone();
                 
-                let node = *node;
                 let delayed = actions::action::DelayedActionType::Callback(Arc::new(
                     move |values| actions::Action::Multiple(actions
                         .iter()
-                        .filter_map(|a| a.resolve(&node, values, passed_in.as_ref()))
+                        .filter_map(|a| a.resolve(node, source, values, passed_in.as_ref()))
                         .collect()
                 )));
 
@@ -214,7 +214,8 @@ impl BuildableAction {
 
             #[cfg(feature="graphics")]
             Self::CloseDialog => Some(actions::ui::UiAction::new(
-                *node, 
+                node, 
+                source,
                 engine::actions::dialog::DialogAction::Close
             ).into()),
 
@@ -306,13 +307,13 @@ impl BuildableAction {
                         => panic!("BuildableConditions should be built! '{a}'"),
                     BuildableConditionResult::True => Some(actions::Action::Multiple(
                         if_true.iter()
-                        .filter_map(|a| a.resolve(node, values, passed_in))
+                        .filter_map(|a| a.resolve(node, source, values, passed_in))
                         .collect()
                     )),
                     BuildableConditionResult::False => if_false.as_ref()
                         .map(|if_false| actions::Action::Multiple(
                             if_false.inner.iter()
-                                .filter_map(|a| a.resolve(node, values, passed_in))
+                                .filter_map(|a| a.resolve(node, source, values, passed_in))
                                 .collect()
                         )),
                     BuildableConditionResult::Error(_) => None,

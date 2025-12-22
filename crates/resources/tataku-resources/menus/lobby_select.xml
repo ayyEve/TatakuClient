@@ -17,7 +17,7 @@
             id = "lobby_list"
             list = "online.lobbies"
             variable = "_lobby"
-            scrollable = "true"
+            scroll = "vertical"
         >
             <button style = "width: fill; height: auto; padding: 5px">
                 <action>

@@ -38,9 +38,10 @@ impl TatakuTask for ActionTask {
                 ActionTaskAction::Buildable {
                     action,
                     node,
+                    source,
                     passed_in
                 } => action
-                    .resolve(&node, shell.values, passed_in.as_ref())
+                    .resolve(node, source, shell.values, passed_in.as_ref())
                     .unwrap_or(actions::Action::None),
 
                 ActionTaskAction::Callback(cb) 
@@ -66,7 +67,8 @@ pub enum ActionTaskAction {
     Buildable {
         action: Box<interface::BuildableAction>,
         node: ui::tree::NodeId,
-        passed_in: Option<tataku::TatakuValue>
+        source: ui::MessageSource,
+        passed_in: Option<tataku::TatakuValue>,
     },
 }
 impl From<DelayedActionType> for ActionTaskAction {

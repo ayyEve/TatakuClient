@@ -20,7 +20,8 @@ impl<T: Clone + Reflect> InputAction<T> {
     pub fn run(
         &self,
         value: &T,
-        node: &NodeId,
+        node: NodeId,
+        source: ui::MessageSource,
         messages: &mut Vec<Message>,
         actions: &mut actions::ActionQueue,
         values: &mut dyn Reflect,
@@ -43,7 +44,12 @@ impl<T: Clone + Reflect> InputAction<T> {
                 // todo: error on failed
                 let a = a.iter()
                     .cloned()
-                    .filter_map(|action| action.resolve(node, values, passed_in));
+                    .filter_map(|action| action.resolve(
+                        node, 
+                        source, 
+                        values, 
+                        passed_in
+                    ));
 
                 actions.extend(a);
             }

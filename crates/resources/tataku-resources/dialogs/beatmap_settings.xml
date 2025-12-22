@@ -11,7 +11,7 @@
             list = "beatmap_settings.buildable.categories"
             variable = "_category"
             style = "flex-direction: column; flex-wrap: wrap;"
-            scrollable = "true"
+            scroll = "vertical"
         >
             <list
                 list = "_category.settings"

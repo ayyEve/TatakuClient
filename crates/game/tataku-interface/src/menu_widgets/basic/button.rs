@@ -83,7 +83,7 @@ where
     T: Widget<actions::Action>
 {
     fn name(&self) -> CowStr { "button_widget".into() }
-    fn node_id(&self) -> &NodeId { &self.node_id }
+    fn node_id(&self) -> NodeId { self.node_id }
 
     fn children(&self) -> WidgetChildren<'_, actions::Action> {
         WidgetChildren::Single(&self.child)
@@ -97,7 +97,7 @@ where
 
         self.node_id = shell.tree.new_with_children(&[ child ])?;
         
-        shell.with_context(&self.node_id, |ctx| {
+        shell.with_context(self.node_id, |ctx| {
             ctx.needs_inverse_transform = true;
             ctx.set_selectable(true);
         });
@@ -110,10 +110,10 @@ where
         event: &InputEvent, 
         shell: &mut InputShell<actions::Action>,
     ) {
-        let Some(bounds) = shell.tree.bounds(&self.node_id) 
+        let Some(bounds) = shell.tree.bounds(self.node_id) 
         else { return };
 
-        let context = shell.tree.get_context(&self.node_id).unwrap();
+        let context = shell.tree.get_context(self.node_id).unwrap();
  
         match &event.event {
             InputType::MouseMove(pos) => {
@@ -139,7 +139,8 @@ where
                 let Some(action) = action else { return; };
 
                 if let Some(message) = action.resolve(
-                    &self.node_id,
+                    self.node_id,
+                    shell.source,
                     None,
                     shell.values
                 ) {
@@ -163,7 +164,7 @@ where
     
     fn draw(&self, shell: &mut DrawShell<actions::Action>) {
         let theme = &shell.general_theme;
-        let Some(bounds) = shell.tree.absolute_bounds(&self.node_id) 
+        let Some(bounds) = shell.tree.absolute_bounds(self.node_id) 
         else { return };
 
         let active = self.active.is_some() || self.active_cond.get();
@@ -187,7 +188,7 @@ where
         self.active_cond.update(shell.values);
         self.child.update(shell);
 
-        let Some(ctx) = shell.tree.get_context_mut(&self.node_id)
+        let Some(ctx) = shell.tree.get_context_mut(self.node_id)
         else { return };
 
         let active = ctx.element_data.state.contains(ElementState::Active);
@@ -222,7 +223,8 @@ pub enum ButtonOnClick {
 impl ButtonOnClick {
     pub fn resolve(
         &self, 
-        node: &NodeId,
+        node: NodeId,
+        source: ui::MessageSource,
         passed_in: Option<&TatakuValue>,
         values: &mut dyn Reflect,
     ) -> Option<ActionResponse> {
@@ -230,7 +232,7 @@ impl ButtonOnClick {
             Self::BuildableActions(actions) => {
                 let actions = actions.iter().cloned()
                     .filter_map(|a| {
-                        a.resolve(node, values, passed_in)
+                        a.resolve(node, source, values, passed_in)
                     })
                     .collect::<Vec<_>>();
 

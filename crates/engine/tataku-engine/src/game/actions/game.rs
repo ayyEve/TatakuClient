@@ -26,7 +26,7 @@ pub enum GameAction {
 
     /// Handle a message
     #[cfg(feature="graphics")]
-    HandleMessage(ui::message::Message),
+    HandleMessage(ui::Message),
 
     /// Refresh the scores list
     RefreshScores,
@@ -111,7 +111,7 @@ impl From<CurrentGameAction> for actions::Action {
 #[derive(Default, Clone, Debug2)]
 pub struct NewManager {
     /// who is requesting the manager?
-    pub owner: ui::message::MessageSource,
+    pub owner: ui::MessageSource,
     /// what mods should be used? if none, will use the global mods (and will update mods when global mods update)
     pub mods: Option<gameplay::mods::ModManager>,
     /// what map hash to use

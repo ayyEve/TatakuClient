@@ -1,7 +1,6 @@
 use crate::*;
 use crate::tree::*;
 use crate::style::*;
-use crate::widget::*;
 use crate::message::*;
 use common::reflect::*;
 
@@ -47,6 +46,7 @@ pub struct UpdateShell<'a, Action: Send + Sync + 'static> {
     pub actions: &'a mut Vec<Action>,
     pub skin_manager: &'a mut dyn graphics::SkinProvider,
 
+    pub default_css: &'a str,
     pub text_layout_contexts: &'a mut TextLayoutContexts,
 }
 
@@ -58,12 +58,13 @@ pub struct LayoutShell<'a, 'css: 'a, Action: Send + Sync + 'static> {
     pub ui_scale: f32,
     pub resolver: &'a mut CssResolver<'css>,
 
+    // pub default_css: &'a str,
     pub text_layout_contexts: &'a mut TextLayoutContexts,
 }
 impl<Action: Send + Sync + 'static> LayoutShell<'_,'_, Action> {
     pub fn with_context(
         &mut self,
-        node: &dyn HasNodeId,
+        node: NodeId,
         f: impl Fn(&mut TreeData)
     ) {
         let ctx = self.tree

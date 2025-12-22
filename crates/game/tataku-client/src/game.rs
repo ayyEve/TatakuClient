@@ -41,6 +41,7 @@ pub fn run_game(
         BuiltinMenus { 
             menus: tataku_resources::menus::ALL,
             dialogs: tataku_resources::dialogs::ALL,
+            default_css: tataku_resources::styles::DEFAULT,
         },
         vec![
             #[cfg(feature="kira_audio")] tataku_kira::KiraAudioInit, 

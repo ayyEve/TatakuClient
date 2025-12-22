@@ -137,7 +137,7 @@ pub struct BuildableSettingsAction {
 pub trait BuildableSettingsActionTrait: Send + Sync {
     fn build(
         &self, 
-        node: &ui::tree::NodeId,
+        node: ui::tree::NodeId,
         passed_in: Option<&tataku::TatakuValue>,
         values: &dyn Reflect,
     ) -> Option<actions::Action>;
@@ -149,7 +149,7 @@ where
 {
     fn build(
         &self, 
-        _node: &tataku_ui::tree::NodeId,
+        _node: tataku_ui::tree::NodeId,
         _passed_in: Option<&tataku::TatakuValue>,
         _values: &dyn Reflect,
     ) -> Option<actions::Action> {

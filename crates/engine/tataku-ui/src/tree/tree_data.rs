@@ -18,7 +18,7 @@ pub struct TreeData {
     pub needs_inverse_transform: bool,
 
     pub selected: Option<bool>,
-    adjacent_nodes: [Option<taffy::NodeId>; 4],
+    adjacent_nodes: [Option<NodeId>; 4],
 
     pub element_data: ElementData,
 }
@@ -40,7 +40,7 @@ impl TreeData {
         self.selected = selectable.then_some(false);
     }
 
-    pub fn node_direction(&self, direction: Direction) -> Option<taffy::NodeId> {
+    pub fn node_direction(&self, direction: Direction) -> Option<NodeId> {
         self.adjacent_nodes[direction as u8 as usize]
         // match direction {
         //     Direction::Up => self.node_above,
@@ -49,7 +49,7 @@ impl TreeData {
         //     Direction::Right => self.node_right,
         // }
     }
-    pub fn set_node_direction(&mut self, direction: Direction, node: Option<taffy::NodeId>) {
+    pub fn set_node_direction(&mut self, direction: Direction, node: Option<NodeId>) {
         self.adjacent_nodes[direction as u8 as usize] = node;
         // match direction {
         //     Direction::Up => self.node_above,

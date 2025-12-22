@@ -52,7 +52,7 @@
                 style = "width: auto; height: auto; flex-direction: column;"
                 list = "lobby.player_slots"
                 variable = "_slot"
-                scrollable = "true"
+                scroll = "vertical"
             >
                 <row>
                     <!-- slot icon -->

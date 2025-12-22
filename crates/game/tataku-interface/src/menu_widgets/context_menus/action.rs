@@ -22,7 +22,8 @@ impl ContextMenuAction {
 
     pub fn run(
         &self,
-        node: &NodeId,
+        node: NodeId,
+        source: ui::MessageSource,
         passed_in: Option<&TatakuValue>,
         values: &mut dyn Reflect,
         actions: &mut actions::ActionQueue,
@@ -37,6 +38,7 @@ impl ContextMenuAction {
             Self::Buildable(b) => {
                 if let Some(action) = b.clone().resolve(
                     node, 
+                    source, 
                     values, 
                     passed_in,
                 ) {

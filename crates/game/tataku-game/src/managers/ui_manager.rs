@@ -1,27 +1,21 @@
 use crate::prelude::*;
 use common::reflect::*;
+use engine::actions;
 
 use tataku::{
     Vector2,
     Bounds,
 };
-use engine::{
-    actions,
-};
 
 use ui::{
+    tree::Tree,
     widget::{
         Widget,
         shells::*,
     },
-    tree::{
-        Tree,
-        NodeId,
-    },
     message::{
         Message,
         MessageSource,
-        MessageValue,
     },
 };
 
@@ -39,8 +33,17 @@ pub struct UiManager {
 
     dialog_counter: usize,
     pub dialogs: Vec<Tree<actions::Action>>,
+
+    pub default_css: &'static str,
 }
 impl UiManager {
+    pub fn new(default_css: &'static str) -> Self {
+        Self {
+            default_css,
+            ..Self::default()
+        }
+    }
+
     fn default_tree() -> Tree<actions::Action> {
         Tree::new(
             100, // 100 should be fine right? right??!!?
@@ -70,7 +73,7 @@ impl UiManager {
 
         self.current_menu = root.name().into_owned();
         self.messages.retain(|m| !m.source.is_menu());
-        self.root_tree.set_node(root, values, text_layout_contexts);
+        self.root_tree.set_node(root, values, self.default_css, text_layout_contexts);
     }
 
 
@@ -113,7 +116,7 @@ impl UiManager {
             ui::EmptyWidget::new_boxed()
         );
 
-        tree.set_node(dialog, values, text_layout_contexts);
+        tree.set_node(dialog, values, self.default_css, text_layout_contexts);
         tree.handle_message(
             &Message::new(
                 tree.source,
@@ -285,6 +288,8 @@ impl UiManager {
                 actions,
                 &mut self.messages,
                 skin_manager,
+                
+                self.default_css,
                 text_layout_contexts
             );
         }
@@ -295,6 +300,8 @@ impl UiManager {
             actions,
             &mut self.messages,
             skin_manager,
+
+            self.default_css,
             text_layout_contexts
         );
 
@@ -353,10 +360,10 @@ impl UiManager {
         }
     }
 
-    fn tree_with_node(&mut self, node: NodeId) -> Option<(usize, &mut Tree<actions::Action>)> {
+    fn tree_source(&mut self, source: MessageSource) -> Option<(usize, &mut Tree<actions::Action>)> {
         self.all_trees()
             .enumerate()
-            .find(|(_, tree)| tree.has_node(node))
+            .find(|(_, tree)| tree.source == source)
     }
 
     pub fn handle_ui_action(
@@ -369,9 +376,10 @@ impl UiManager {
         use actions::dialog::DialogAction as DialogAction;
 
         let node = action.node;
+        let source = action.source;
         let action = action.action;
 
-        let Some((mut num, tree)) = self.tree_with_node(node)
+        let Some((mut num, tree)) = self.tree_source(source)
         else {
             warn!("couldnt find tree with provided node id!");
             return
@@ -386,11 +394,11 @@ impl UiManager {
             // }
 
             UiActionType::ContextChanged => {
-                tree.update_context(&node);
+                tree.update_context(node);
             }
 
             UiActionType::UpdateStyleWith(f) => {
-                tree.update_style(&node, |s| f(s));
+                tree.update_style(node, |s| f(s));
             }
 
             // UiActionType::OverrideDisplay(display) => {
@@ -482,6 +490,8 @@ impl UiManager {
             &mut self.messages,
             actions,
             skin_manager,
+
+            self.default_css,
             text_layout_contexts,
         );
 
@@ -491,6 +501,7 @@ impl UiManager {
                 &mut self.messages,
                 actions,
                 skin_manager,
+                self.default_css,
                 text_layout_contexts,
             );
         }

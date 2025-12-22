@@ -19,7 +19,7 @@
         <list
             list = "var.console.out"
             variable = "_line"
-            scrollable = "true"
+            scroll = "vertical"
             style = "width: 100%; flex-direction: column;"
         >
             <text style = "width: 100%">

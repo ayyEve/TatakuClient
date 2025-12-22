@@ -3,6 +3,7 @@
 <xs:schema 
   targetNamespace="tataku/elements/list"
   xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:list="tataku/elements/list"
   xmlns:elements="tataku/elements"
   xmlns:text="tataku/text"
 >
@@ -20,9 +21,19 @@
 
       <xs:attribute name="list" type="text:string" use="required"/>
       <xs:attribute name="variable" type="text:string" use="required"/>
-      <xs:attribute name="scrollable" type="xs:boolean" default="false"/>
+      <xs:attribute name="scroll" type="list:scroll-type" default="none"/>
     </xs:extension>
   </xs:complexContent>
 </xs:complexType>
+
+
+<xs:simpleType name="scroll-type">
+    <xs:restriction base="text:string">
+      <xs:enumeration value="none"/>
+      <xs:enumeration value="vertical"/>
+      <xs:enumeration value="horizontal"/>
+      <xs:enumeration value="both"/>
+    </xs:restriction>
+</xs:simpleType>
 
 </xs:schema>

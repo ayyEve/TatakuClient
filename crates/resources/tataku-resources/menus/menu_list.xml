@@ -18,7 +18,7 @@
             style = "width: fill; height: auto"
             list = "global.menu_list"
             variable = "_menu"
-            scrollable = "true"
+            scroll = "vertical"
         >
             <row style = "width: fill; height: auto; margin: 10px">
                 <button style = "width: fill; height: auto; margin: 10px">

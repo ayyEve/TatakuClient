@@ -958,7 +958,7 @@ impl Game {
 
                         use crate::prelude::ui;
                         let id = self.next_gameplay_id();
-                        self.ui_manager.add_message(ui::message::Message::new(
+                        self.ui_manager.add_message(ui::Message::new(
                             config.owner, 
                             "gameplay_manager_create", 
                             None,

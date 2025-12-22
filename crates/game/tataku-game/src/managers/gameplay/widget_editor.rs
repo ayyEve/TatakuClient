@@ -61,6 +61,7 @@ impl GameplayWidgetEditor {
 
     fn close(
         &self,
+        source: MessageSource,
         actions: &mut actions::ActionQueue,
     ) {
         let _ = self.sender.send(
@@ -71,19 +72,22 @@ impl GameplayWidgetEditor {
         );
 
         actions.push(actions::ui::UiAction::new(
-            *self.node_id(),
+            self.node_id(),
+            source,
             actions::dialog::DialogAction::Close,
         ).into());
     }
 
     fn send(
         &self,
+        source: MessageSource,
         action: GameplayWidgetAction,
         actions: &mut actions::ActionQueue
     ) {
         if self.sender.send(action).is_err() {
             actions.push(actions::ui::UiAction::new(
-                *self.node_id(),
+                self.node_id(),
+                source, 
                 actions::dialog::DialogAction::Close,
             ).into());
         }
@@ -104,7 +108,7 @@ impl GameplayWidgetEditor {
                 }
             }
             GameplayWidgetEventType::Close => {
-                self.close(shell.actions);
+                self.close(shell.source, shell.actions);
             }
         }
     }
@@ -382,7 +386,7 @@ impl GameplayWidgetEditor {
 }
 impl Widget<actions::Action> for GameplayWidgetEditor {
     fn name(&self) -> CowStr { "widget_editor".into() }
-    fn node_id(&self) -> &NodeId { self.node.node_id() }
+    fn node_id(&self) -> NodeId { self.node.node_id() }
     
     fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId> {
         let a = self.widgets
@@ -468,6 +472,7 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
                         let mut layout = selected.layout.clone();
                         layout.offset += pos - data.pos;
                         self.send(
+                            shell.source,
                             GameplayWidgetAction {
                                 target: selected.name.clone(),
                                 action: GameplayWidgetActionType::Move(layout),
@@ -563,7 +568,8 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
                 Ok(event) => self.handle_event(shell, event),
                 Err(TryRecvError::Disconnected) => {
                     shell.actions.push(actions::ui::UiAction::new(
-                        *self.node_id(),
+                        self.node_id(),
+                        shell.source,
                         actions::dialog::DialogAction::Close,
                     ).into());
                     break;
@@ -601,7 +607,7 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
                         action: GameplayWidgetActionType::Move(i.layout.clone()),
                     };
 
-                    self.send(action, shell.actions);
+                    self.send(shell.source, action, shell.actions);
                     break;
                 }
             }
@@ -648,7 +654,7 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
                             target: i.name.clone(),
                             action: GameplayWidgetActionType::Move(i.layout.clone()),
                         };
-                        self.send(action, shell.actions);
+                        self.send(shell.source, action, shell.actions);
                     }
 
                     break;
@@ -679,7 +685,7 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
                         action: GameplayWidgetActionType::Move(i.layout.clone()),
                     };
 
-                    self.send(action, shell.actions);
+                    self.send(shell.source, action, shell.actions);
 
                     break;
                 }
@@ -700,6 +706,7 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
                     };
 
                     self.send(
+                        shell.source, 
                         action,
                         shell.actions
                     );
@@ -717,6 +724,7 @@ impl Widget<actions::Action> for GameplayWidgetEditor {
                     };
 
                     self.send(
+                        shell.source, 
                         action,
                         shell.actions
                     );

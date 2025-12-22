@@ -92,28 +92,34 @@ impl DialogWidget {
         delta: f32,
         mut bounds: Bounds,
         node: NodeId,
+        source: MessageSource,
         actions: &mut actions::ActionQueue,
     ) {
         bounds.pos.x -= delta;
         bounds.size.x += delta;
-        actions.push(actions::ui::UiAction::new(
-            node,
-            actions::dialog::DialogAction::MoveDialog(bounds.pos)
-        ).into());
-        actions.push(actions::ui::UiAction::new(
-            node,
+
+        for action in [
+            actions::dialog::DialogAction::MoveDialog(bounds.pos),
             actions::dialog::DialogAction::ResizeDialog(bounds.size)
-        ).into());
+        ] {
+            actions.push(actions::ui::UiAction::new(
+                node,
+                source,
+                action
+            ).into());
+        }
     }
     fn resize_right(
         delta: f32,
         mut bounds: Bounds,
         node: NodeId,
+        source: MessageSource,
         actions: &mut actions::ActionQueue,
     ) {
         bounds.size.x -= delta;
         actions.push(actions::ui::UiAction::new(
             node,
+            source, 
             actions::dialog::DialogAction::ResizeDialog(bounds.size)
         ).into());
     }
@@ -122,28 +128,34 @@ impl DialogWidget {
         delta: f32,
         mut bounds: Bounds,
         node: NodeId,
+        source: MessageSource,
         actions: &mut actions::ActionQueue,
     ) {
         bounds.pos.y -= delta;
         bounds.size.y += delta;
-        actions.push(actions::ui::UiAction::new(
-            node,
-            actions::dialog::DialogAction::MoveDialog(bounds.pos)
-        ).into());
-        actions.push(actions::ui::UiAction::new(
-            node,
-            actions::dialog::DialogAction::ResizeDialog(bounds.size)
-        ).into());
+
+        for action in [
+            actions::dialog::DialogAction::MoveDialog(bounds.pos),
+            actions::dialog::DialogAction::ResizeDialog(bounds.size),
+        ] {
+            actions.push(actions::ui::UiAction::new(
+                node,
+                source,
+                action,
+            ).into());
+        }
     }
     fn resize_down(
         delta: f32,
         mut bounds: Bounds,
         node: NodeId,
+        source: MessageSource,
         actions: &mut actions::ActionQueue,
     ) {
         bounds.size.y -= delta;
         actions.push(actions::ui::UiAction::new(
             node,
+            source,
             actions::dialog::DialogAction::ResizeDialog(bounds.size)
         ).into());
     }
@@ -236,7 +248,7 @@ impl DialogWidget {
 }
 impl Widget<actions::Action> for DialogWidget {
     fn name(&self) -> CowStr { self.node.name() }
-    fn node_id(&self) -> &NodeId { self.node.node_id() }
+    fn node_id(&self) -> NodeId { self.node.node_id() }
 
     fn children(&self) -> WidgetChildren<'_, actions::Action> {
         WidgetChildren::Single(&*self.node)
@@ -304,7 +316,7 @@ impl Widget<actions::Action> for DialogWidget {
             return
         }
 
-        let node_id = *self.node_id();
+        let node_id = self.node_id();
         match (&event.event, self.resizing) {
             (InputType::MouseMove(pos), Some(drag)) => {
                 let delta = drag.mouse_pos_start - *pos;
@@ -312,48 +324,49 @@ impl Widget<actions::Action> for DialogWidget {
                     mouse_pos_start: *pos,
                     ..drag
                 });
+                let source = shell.source;
 
                 match drag.origin {
                     DragOrigin::Left => {
                         self.check_left(&bounds, *pos);
-                        Self::resize_left(delta.x, bounds, node_id, shell.actions);
+                        Self::resize_left(delta.x, bounds, node_id, source, shell.actions);
                     }
                     DragOrigin::Right => {
                         self.check_right(&bounds, *pos);
-                        Self::resize_right(delta.x, bounds, node_id, shell.actions);
+                        Self::resize_right(delta.x, bounds, node_id, source, shell.actions);
                     }
                     DragOrigin::Top => {
                         self.check_top(&bounds, *pos);
-                        Self::resize_up(delta.y, bounds, node_id, shell.actions);
+                        Self::resize_up(delta.y, bounds, node_id, source, shell.actions);
                     }
                     DragOrigin::Bottom => {
                         self.check_bottom(&bounds, *pos);
-                        Self::resize_down(delta.y, bounds, node_id, shell.actions);
+                        Self::resize_down(delta.y, bounds, node_id, source, shell.actions);
                     }
 
                     DragOrigin::BottomLeft => {
                         self.check_left(&bounds, *pos);
                         self.check_bottom(&bounds, *pos);
-                        Self::resize_down(delta.y, bounds, node_id, shell.actions);
-                        Self::resize_left(delta.x, bounds, node_id, shell.actions);
+                        Self::resize_down(delta.y, bounds, node_id, source, shell.actions);
+                        Self::resize_left(delta.x, bounds, node_id, source, shell.actions);
                     }
                     DragOrigin::BottomRight => {
                         self.check_bottom(&bounds, *pos);
                         self.check_right(&bounds, *pos);
-                        Self::resize_down(delta.y, bounds, node_id, shell.actions);
-                        Self::resize_right(delta.x, bounds, node_id, shell.actions);
+                        Self::resize_down(delta.y, bounds, node_id, source, shell.actions);
+                        Self::resize_right(delta.x, bounds, node_id, source, shell.actions);
                     }
                     DragOrigin::TopLeft => {
                         self.check_top(&bounds, *pos);
                         self.check_left(&bounds, *pos);
-                        Self::resize_up(delta.y, bounds, node_id, shell.actions);
-                        Self::resize_left(delta.x, bounds, node_id, shell.actions);
+                        Self::resize_up(delta.y, bounds, node_id, source, shell.actions);
+                        Self::resize_left(delta.x, bounds, node_id, source, shell.actions);
                     }
                     DragOrigin::TopRight => {
                         self.check_top(&bounds, *pos);
                         self.check_right(&bounds, *pos);
-                        Self::resize_down(delta.y, bounds, node_id, shell.actions);
-                        Self::resize_right(delta.x, bounds, node_id, shell.actions);
+                        Self::resize_down(delta.y, bounds, node_id, source, shell.actions);
+                        Self::resize_right(delta.x, bounds, node_id, source, shell.actions);
                     }
                 }
             }
@@ -466,8 +479,10 @@ impl Widget<actions::Action> for DialogWidget {
             | "force_close"
             => {
                 debug!("close request");
+
                 shell.actions.push(actions::ui::UiAction::new(
-                    *self.node_id(),
+                    self.node_id(),
+                    shell.source,
                     actions::dialog::DialogAction::Close,
                 ).into());
             }
@@ -546,7 +561,7 @@ impl DialogTitlebar {
 }
 impl Widget<actions::Action> for DialogTitlebar {
     fn name(&self) -> CowStr { "titlebar_widget".into() }
-    fn node_id(&self) -> &NodeId { self.node.node_id() }
+    fn node_id(&self) -> NodeId { self.node.node_id() }
 
     fn layout(
         &mut self,
@@ -605,11 +620,12 @@ impl Widget<actions::Action> for DialogTitlebar {
             return
         }
 
-        let node_id = *self.node_id();
+        let node_id = self.node_id();
         match (&event.event, &mut self.drag) {
             (InputType::MouseMove(pos), Some(drag)) => {
                 shell.actions.push(actions::ui::UiAction::new(
                     node_id,
+                    shell.source,
                     actions::dialog::DialogAction::MoveDialog(
                         drag.pos_start + (*pos - drag.mouse_pos_start)
                     )
@@ -617,7 +633,7 @@ impl Widget<actions::Action> for DialogTitlebar {
             }
 
             (InputType::MousePress(MouseButton::Left), _) => {
-                let Some(bounds) = shell.tree.absolute_bounds(&node_id) 
+                let Some(bounds) = shell.tree.absolute_bounds(node_id) 
                 else { return };
 
                 if bounds.contains(event.mouse_pos) {

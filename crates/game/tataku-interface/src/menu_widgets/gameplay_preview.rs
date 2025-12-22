@@ -78,7 +78,7 @@ impl GameplayPreview {
 }
 impl Widget<actions::Action> for GameplayPreview {
     fn name(&self) -> CowStr { "gameplay_preview_widget".into() }
-    fn node_id(&self) -> &NodeId { &self.node_id }
+    fn node_id(&self) -> NodeId { self.node_id }
 
     fn layout(
         &mut self,
@@ -119,8 +119,9 @@ impl Widget<actions::Action> for GameplayPreview {
         let a = self.beatmap.update(shell.values);
         let b = self.playmode.update(shell.values);
 
-        let time_check = if let Ok(Some(time)) = self.song_time.update(shell.values)
-        { *time < self.song_time.unwrap_or_default() } else { false };
+        let old_time = self.song_time.unwrap_or_default();
+        let _ = self.song_time.update(shell.values);
+        let time_check = self.song_time.unwrap_or_default() < old_time;
 
         // check if time changed
         if time_check
@@ -130,7 +131,7 @@ impl Widget<actions::Action> for GameplayPreview {
             self.setup(shell.source, shell.values, shell.actions);
         }
         // check for new bounds
-        let bounds = shell.tree.absolute_bounds(&self.node_id);
+        let bounds = shell.tree.absolute_bounds(self.node_id);
         if let Some(bounds) = bounds
         && self.fit_to != Some(bounds) {
             // info!("fitting to area {bounds:?}");

@@ -21,7 +21,7 @@ impl StatsGraphWidget {
         Self {
             // stats,
             node,
-            node_id: NodeId::default(),
+            node_id: ui::EMPTY_NODE,
         }
     }
 
@@ -71,7 +71,7 @@ impl StatsGraphWidget {
 }
 impl Widget<actions::Action> for StatsGraphWidget {
     fn name(&self) -> CowStr { "stats_graph_widget".into() }
-    fn node_id(&self) -> &NodeId { &self.node_id }
+    fn node_id(&self) -> NodeId { self.node_id }
 
     fn children(&self) -> WidgetChildren<'_, actions::Action> {
         WidgetChildren::Single(&*self.node)
@@ -112,13 +112,13 @@ impl GraphWidget {
             //     height: CssUnit::Percent(one).into(),
             //     ..Default::default()
             // },
-            node_id: NodeId::default(),
+            node_id: ui::EMPTY_NODE,
         }
     }
 }
 impl Widget<actions::Action> for GraphWidget {
     fn name(&self) -> CowStr { "graph_widget".into() }
-    fn node_id(&self) -> &NodeId { &self.node_id }
+    fn node_id(&self) -> NodeId { self.node_id }
 
     fn layout(
         &mut self,
@@ -129,7 +129,7 @@ impl Widget<actions::Action> for GraphWidget {
     }
 
     fn draw(&self, shell: &mut DrawShell<actions::Action>) {
-        let Some(bounds) = shell.tree.absolute_bounds(&self.node_id) 
+        let Some(bounds) = shell.tree.absolute_bounds(self.node_id) 
         else { return };
 
         let collection = match &self.graph {

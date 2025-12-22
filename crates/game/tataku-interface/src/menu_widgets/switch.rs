@@ -79,7 +79,7 @@ impl SwitchWidget {
 }
 impl Widget<actions::Action> for SwitchWidget {
     fn name(&self) -> CowStr { "switch_widget".into() }
-    fn node_id(&self) -> &NodeId { &self.node_id }
+    fn node_id(&self) -> NodeId { self.node_id }
 
     fn children(&self) -> WidgetChildren<'_, actions::Action> {
         self.get_ele()
@@ -233,9 +233,9 @@ impl Widget<actions::Action> for SwitchWidget {
             if let Some(child) = self.value
                 .and_then(|i| self.cases.get(i))
             {
-                shell.tree.override_display(&child.widget, None);
+                shell.tree.override_display(child.widget.node_id(), None);
             } else if let Some(default) = &self.default_case {
-                shell.tree.override_display(default, None);
+                shell.tree.override_display(default.node_id(), None);
             }
         }
 

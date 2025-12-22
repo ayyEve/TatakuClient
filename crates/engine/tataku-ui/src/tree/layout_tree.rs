@@ -7,9 +7,9 @@ use taffy::Size;
 use taffy::LayoutPartialTree;
 use taffy::TraversePartialTree;
 
-pub struct TaffyTreeChildIter<'a>(core::slice::Iter<'a, taffy::NodeId>);
+pub struct TaffyTreeChildIter<'a>(core::slice::Iter<'a, NodeId>);
 impl Iterator for TaffyTreeChildIter<'_> {
-    type Item = taffy::NodeId;
+    type Item = NodeId;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
@@ -29,7 +29,7 @@ pub(super) struct LayoutTree<'a, Action: Send + Sync> {
 impl<Action: Send + Sync> LayoutTree<'_, Action> {
     pub fn compute_layout(
         &mut self, 
-        node_id: taffy::NodeId,
+        node_id: NodeId,
         available_space: Size<taffy::AvailableSpace>,
     ) {
         taffy::compute_root_layout(self, node_id, available_space);
@@ -38,7 +38,7 @@ impl<Action: Send + Sync> LayoutTree<'_, Action> {
         }
     }
 
-    pub(crate) fn print(&mut self, root: taffy::NodeId) {
+    pub(crate) fn print(&mut self, root: NodeId) {
         taffy::util::print_tree(self, root);
     }
 }
@@ -46,7 +46,7 @@ impl<Action: Send + Sync> LayoutTree<'_, Action> {
 impl<Action: Send + Sync> taffy::CacheTree for LayoutTree<'_, Action> {
     fn cache_get(
         &self,
-        node_id: taffy::NodeId,
+        node_id: NodeId,
         known_dimensions: Size<Option<f32>>,
         available_space: Size<taffy::AvailableSpace>,
         run_mode: taffy::RunMode,
@@ -59,7 +59,7 @@ impl<Action: Send + Sync> taffy::CacheTree for LayoutTree<'_, Action> {
 
     fn cache_store(
         &mut self,
-        node_id: taffy::NodeId,
+        node_id: NodeId,
         known_dimensions: Size<Option<f32>>,
         available_space: Size<taffy::AvailableSpace>,
         run_mode: taffy::RunMode,
@@ -71,7 +71,7 @@ impl<Action: Send + Sync> taffy::CacheTree for LayoutTree<'_, Action> {
             .store(known_dimensions, available_space, run_mode, layout_output);
     }
 
-    fn cache_clear(&mut self, node_id: taffy::NodeId) {
+    fn cache_clear(&mut self, node_id: NodeId) {
         self.tree
             .nodes[node_id.into()]
             .cache
@@ -82,15 +82,15 @@ impl<Action: Send + Sync> taffy::CacheTree for LayoutTree<'_, Action> {
 impl<Action: Send + Sync> taffy::TraversePartialTree for LayoutTree<'_, Action> {
     type ChildIter<'b> = TaffyTreeChildIter<'b> where Self:'b;
 
-    fn child_ids(&self, parent_node_id: taffy::NodeId) -> Self::ChildIter<'_> {
+    fn child_ids(&self, parent_node_id: NodeId) -> Self::ChildIter<'_> {
         TaffyTreeChildIter(self.tree.children[parent_node_id.into()].iter())
     }
 
-    fn child_count(&self, parent_node_id: taffy::NodeId) -> usize {
+    fn child_count(&self, parent_node_id: NodeId) -> usize {
         self.tree.children[parent_node_id.into()].len()
     }
 
-    fn get_child_id(&self, parent_node_id: taffy::NodeId, child_index: usize) -> taffy::NodeId {
+    fn get_child_id(&self, parent_node_id: NodeId, child_index: usize) -> NodeId {
         self.tree.children[parent_node_id.into()][child_index]
     }
 }
@@ -100,12 +100,12 @@ impl<Action: Send + Sync> taffy::LayoutFlexboxContainer for LayoutTree<'_, Actio
     type FlexboxItemStyle<'b> = CssStyleResolver<'b> where Self: 'b;
 
     #[inline(always)]
-    fn get_flexbox_container_style(&self, node_id: taffy::NodeId) -> Self::FlexboxContainerStyle<'_> {
+    fn get_flexbox_container_style(&self, node_id: NodeId) -> Self::FlexboxContainerStyle<'_> {
         self.get_core_container_style(node_id)
     }
 
     #[inline(always)]
-    fn get_flexbox_child_style(&self, child_node_id: taffy::NodeId) -> Self::FlexboxItemStyle<'_> {
+    fn get_flexbox_child_style(&self, child_node_id: NodeId) -> Self::FlexboxItemStyle<'_> {
         self.get_core_container_style(child_node_id)
     }
 }
@@ -115,12 +115,12 @@ impl<Action: Send + Sync> taffy::LayoutBlockContainer for LayoutTree<'_, Action>
     type BlockItemStyle<'b> = CssStyleResolver<'b> where Self: 'b;
 
     #[inline(always)]
-    fn get_block_container_style(&self, node_id: taffy::NodeId) -> Self::BlockContainerStyle<'_> {
+    fn get_block_container_style(&self, node_id: NodeId) -> Self::BlockContainerStyle<'_> {
         self.get_core_container_style(node_id)
     }
 
     #[inline(always)]
-    fn get_block_child_style(&self, child_node_id: taffy::NodeId) -> Self::BlockItemStyle<'_> {
+    fn get_block_child_style(&self, child_node_id: NodeId) -> Self::BlockItemStyle<'_> {
         self.get_core_container_style(child_node_id)
     }
 }
@@ -131,7 +131,7 @@ impl<Action: Send + Sync> taffy::LayoutPartialTree for LayoutTree<'_, Action> {
 
     fn get_core_container_style(
         &self, 
-        node_id: taffy::NodeId
+        node_id: NodeId
     ) -> Self::CoreContainerStyle<'_> {
         CssStyleResolver {
             values: self.values,
@@ -143,7 +143,7 @@ impl<Action: Send + Sync> taffy::LayoutPartialTree for LayoutTree<'_, Action> {
 
     fn set_unrounded_layout(
         &mut self, 
-        node_id: taffy::NodeId, 
+        node_id: NodeId, 
         layout: &taffy::Layout
     ) {
         self.tree.nodes[node_id.into()].unrounded_layout = *layout;
@@ -151,7 +151,7 @@ impl<Action: Send + Sync> taffy::LayoutPartialTree for LayoutTree<'_, Action> {
 
     fn compute_child_layout(
         &mut self, 
-        node: taffy::NodeId, 
+        node: NodeId, 
         inputs: taffy::LayoutInput
     ) -> taffy::LayoutOutput {
         // If RunMode is PerformHiddenLayout then this indicates that an ancestor node is `Display::None`
@@ -210,17 +210,17 @@ impl<Action: Send + Sync> taffy::LayoutPartialTree for LayoutTree<'_, Action> {
 
 impl<Action: Send + Sync> taffy::TraverseTree for LayoutTree<'_, Action> {}
 impl<Action: Send + Sync> taffy::RoundTree for LayoutTree<'_, Action> {
-    fn get_unrounded_layout(&self, node_id: taffy::NodeId) -> taffy::Layout {
+    fn get_unrounded_layout(&self, node_id: NodeId) -> taffy::Layout {
         self.tree.nodes[node_id.into()].unrounded_layout
     }
 
-    fn set_final_layout(&mut self, node_id: taffy::NodeId, layout: &taffy::Layout) {
+    fn set_final_layout(&mut self, node_id: NodeId, layout: &taffy::Layout) {
         self.tree.nodes[node_id.into()].final_layout = *layout;
     }
 }
 
 impl<Action: Send + Sync> taffy::PrintTree for LayoutTree<'_, Action> {
-    fn get_debug_label(&self, node_id: taffy::NodeId) -> &'static str {
+    fn get_debug_label(&self, node_id: NodeId) -> &'static str {
         let node = self.tree.nodes.get(node_id.into()).unwrap();
         let ctx = &self
             .tree
@@ -258,7 +258,7 @@ impl<Action: Send + Sync> taffy::PrintTree for LayoutTree<'_, Action> {
         }
     }
 
-    fn get_final_layout(&self, node_id: taffy::NodeId) -> taffy::Layout {
+    fn get_final_layout(&self, node_id: NodeId) -> taffy::Layout {
         if self.use_rounding {
             self.tree.nodes[node_id.into()].final_layout
         } else {

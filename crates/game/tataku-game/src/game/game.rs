@@ -22,7 +22,9 @@ const TRANSITION_TIME:f32 = 500.0;
 #[cfg(feature="dynamic_gamemodes")] pub type IncomingGamemode = engine::gameplay::GamemodeLibrary;
 #[cfg(not(feature="dynamic_gamemodes"))] pub type IncomingGamemode = engine::gameplay::GamemodeInfo;
 
+#[derive(Copy, Clone)]
 pub struct BuiltinMenus {
+    pub default_css: &'static str,
     pub menus: &'static [(&'static str, &'static str)],
     pub dialogs: &'static [(&'static str, &'static str)],
 }
@@ -129,7 +131,7 @@ impl Game {
             score_manager: ScoreManager::new(infos.clone()),
 
             #[cfg(feature="graphics")] xml_test_manager: None,
-            #[cfg(feature="graphics")] ui_manager: UiManager::default(),
+            #[cfg(feature="graphics")] ui_manager: UiManager::new(builtin_menus.default_css),
             #[cfg(feature="graphics")] gameplay_managers: HashMap::new(),
             #[cfg(feature="graphics")] cursor_manager: CursorManager::default(),
             #[cfg(feature="graphics")] skin_manager: SkinManager::new(&settings),
@@ -1505,9 +1507,8 @@ impl Game {
 
     pub(super) fn handle_action(
         &mut self,
-        action: impl Into<actions::Action> + 'static
+        action: actions::Action
     ) {
-        let action = action.into();
         // debug!("handling action: {action:?}");
 
         match action {

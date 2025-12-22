@@ -1,11 +1,10 @@
 use crate::*;
 use crate::tree::*;
-use crate::widget::*;
 use crate::spatial_navigation::*;
 
 pub struct SpatialNagivation<'a, Action: Send + Sync> {
     tree: &'a mut Tree<Action>,
-    rects: HashMap<taffy::NodeId, NodeInfo>,
+    rects: HashMap<NodeId, NodeInfo>,
 }
 impl<'a, Action: Send + Sync + 'static> SpatialNagivation<'a, Action> {
     pub fn new(tree: &'a mut Tree<Action>) -> Self {
@@ -14,7 +13,7 @@ impl<'a, Action: Send + Sync + 'static> SpatialNagivation<'a, Action> {
             rects: HashMap::new(),
         }
     }
-    fn remove_target(list: &mut Vec<taffy::NodeId>, target: taffy::NodeId) {
+    fn remove_target(list: &mut Vec<NodeId>, target: NodeId) {
         // remove target from candidates
         let mut existing = None;
         for (n, i) in list.iter().enumerate() {
@@ -31,7 +30,7 @@ impl<'a, Action: Send + Sync + 'static> SpatialNagivation<'a, Action> {
 
 impl<Action: Send + Sync + 'static> SpatialNagivation<'_, Action> {
     /// https://developer.mozilla.org/en-US/docs/Web/API/Element/getBoundingClientRect
-    fn get_bounding_client_rect(&self, node: &taffy::NodeId) -> Option<BoundingBox> {
+    fn get_bounding_client_rect(&self, node: NodeId) -> Option<BoundingBox> {
         let layout = self.tree.get_layout(node)?;
         let c = self.tree.get_context(node)?;
 
@@ -58,8 +57,8 @@ impl<Action: Send + Sync + 'static> SpatialNagivation<'_, Action> {
         })
     }
 
-    fn get_rect(&mut self, node: &taffy::NodeId) -> Option<NodeInfo> {
-        if let Some(info) = self.rects.get(node) {
+    fn get_rect(&mut self, node: NodeId) -> Option<NodeInfo> {
+        if let Some(info) = self.rects.get(&node) {
             return Some(*info)
         }
 
@@ -72,7 +71,7 @@ impl<Action: Send + Sync + 'static> SpatialNagivation<'_, Action> {
         
         let rect = NodeInfo {
             bounding_box: cr,
-            element: *node,
+            element: node,
             center: BoundingBox {
                 x: center.x,
                 y: center.y,
@@ -88,7 +87,7 @@ impl<Action: Send + Sync + 'static> SpatialNagivation<'_, Action> {
             }
         };
 
-        self.rects.insert(*node, rect);
+        self.rects.insert(node, rect);
         Some(rect)
     } 
 
@@ -215,11 +214,11 @@ impl<Action: Send + Sync + 'static> SpatialNagivation<'_, Action> {
 
     fn navigate(
         &mut self,
-        target: &taffy::NodeId,
+        target: NodeId,
         direction: Direction,
-        candidates: &[taffy::NodeId],
+        candidates: &[NodeId],
         config: &NavigateConfig
-    ) -> Option<taffy::NodeId> {
+    ) -> Option<NodeId> {
         if candidates.is_empty() { 
             error!("candidates empty!");
             return None 
@@ -227,7 +226,7 @@ impl<Action: Send + Sync + 'static> SpatialNagivation<'_, Action> {
 
         let rects = candidates
             .iter()
-            .filter_map(|c| self.get_rect(c))
+            .filter_map(|c| self.get_rect(*c))
             .collect::<Vec<_>>();
 
         if rects.is_empty() { 
@@ -398,7 +397,7 @@ impl<Action: Send + Sync + 'static> SpatialNagivation<'_, Action> {
             .as_ref()
             .filter(|p| {
                 config.remember_source
-                && &p.destination == target
+                && p.destination == target
                 && p.reverse == direction
             }) 
         {
@@ -418,8 +417,7 @@ impl<Action: Send + Sync + 'static> SpatialNagivation<'_, Action> {
         return;
         // debug!("starting navigation");
         let all_selectable = self.tree.all_children()
-            .filter(|i| self.tree.get_context(i).unwrap().selectable())
-            .map(|i| i.get_id())
+            .filter(|i| self.tree.get_context(*i).unwrap().selectable())
             .collect::<Vec<_>>();
 
         let selectable = all_selectable.clone();
@@ -435,13 +433,13 @@ impl<Action: Send + Sync + 'static> SpatialNagivation<'_, Action> {
                 Direction::Right,
             ] {
                 let node = self.navigate(
-                    &i, 
+                    i, 
                     dir, 
                     &candidates, 
                     config
                 );
 
-                let context = self.tree.get_context_mut(&i).unwrap();
+                let context = self.tree.get_context_mut(i).unwrap();
                 context.set_node_direction(dir, node);
             }
             // debug!("got adjacent nodes for node {:?}: above: {above:?} | below: {below:?} | left: {left:?} | right: {right:?}", context.element_data);
@@ -455,7 +453,7 @@ impl<Action: Send + Sync + 'static> SpatialNagivation<'_, Action> {
 #[derive(Copy, Clone)]
 struct NodeInfo {
     bounding_box: BoundingBox,
-    element: taffy::NodeId,
+    element: NodeId,
     center: BoundingBox,
 }
 impl Deref for NodeInfo {
@@ -491,9 +489,9 @@ pub struct NavigateConfig {
 
 #[allow(unused)]
 struct ConfigPrevious {
-    target: taffy::NodeId,
-    element: taffy::NodeId,
-    destination: taffy::NodeId,
+    target: NodeId,
+    element: NodeId,
+    destination: NodeId,
     reverse: Direction,
 }
 

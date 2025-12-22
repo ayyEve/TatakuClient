@@ -318,7 +318,7 @@
               <list
                 list = "score_list.scores"
                 variable = "_score"
-                scrollable = "true"
+                scroll = "vertical"
                 style = "width: fill; height: fill; flex-direction: column;"
               >
                 <button style="width: fill; height: auto; margin: 5px">
@@ -369,7 +369,7 @@
           style = "width: 50%; height: fill;"
           list = "beatmaps.groups"
           variable = "_group"
-          scrollable = "true"
+          scroll = "vertical"
         >
           <column class="group-item">
             <!-- set info -->

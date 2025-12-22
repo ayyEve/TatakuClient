@@ -56,7 +56,7 @@ impl ConditionalWidget {
 }
 impl Widget<actions::Action> for ConditionalWidget {
     fn name(&self) -> CowStr  { "conditional_widget".into() }
-    fn node_id(&self) -> &NodeId { &self.node_id }
+    fn node_id(&self) -> NodeId { self.node_id }
 
     fn children(&self) -> WidgetChildren<'_, actions::Action> {
         let Some(child) = self.get_ele() 
