@@ -250,7 +250,7 @@ where
                     .unwrap_or(graphics::TextureSource::Skin);
 
                 *img = shell.skin_manager.get_texture_then(
-                    &image, 
+                    Path::new(&*image), 
                     &source, 
                     graphics::SkinUsage::Game, 
                     style.image_grayscale

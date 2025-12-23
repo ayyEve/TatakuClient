@@ -81,16 +81,28 @@ impl HitCircle {
         self.skin_settings = skin_manager.skin().clone();
         let radius = CIRCLE_RADIUS_BASE * self.scaling_helper.cs;
 
-        self.circle = skin_manager.get_texture_then("hitcircle", source, SkinUsage::Gamemode, false, |i| {
-            i.pos = self.pos;
-            i.scale = Vector2::ONE * self.scaling_helper.cs;
-            i.color = self.color;
-        });
+        self.circle = skin_manager.get_texture_then(
+            Path::new("hitcircle"), 
+            source, 
+            SkinUsage::Gamemode, 
+            false, 
+            |i| {
+                i.pos = self.pos;
+                i.scale = Vector2::ONE * self.scaling_helper.cs;
+                i.color = self.color;
+            }
+        );
 
-        self.overlay = skin_manager.get_texture_then("hitcircleoverlay", source, SkinUsage::Gamemode, false, |i| {
-            i.pos = self.pos;
-            i.scale = Vector2::ONE * self.scaling_helper.cs;
-        });
+        self.overlay = skin_manager.get_texture_then(
+            Path::new("hitcircleoverlay"), 
+            source, 
+            SkinUsage::Gamemode, 
+            false, 
+            |i| {
+                i.pos = self.pos;
+                i.scale = Vector2::ONE * self.scaling_helper.cs;
+            }
+        );
 
         self.combo_image = SkinnedNumber::new(
             self.pos,

@@ -1,13 +1,15 @@
 use std::f32::consts::PI;
-#[cfg(feature="graphics")] use engine::graphics;
+#[cfg(feature="graphics")] 
+use engine::graphics;
+
 use crate::prelude::*;
+
 use tataku::{
     Color,
     Border,
     Easing,
     Vector2,
 };
-
 
 use engine::{
     beatmaps::{
@@ -941,9 +943,9 @@ impl HitObject for OsuSlider {
         use graphics::SkinUsage;
         self.skin = skin_manager.skin().clone();
         self.start_circle_image.reload_skin(source, skin_manager);
-        self.end_circle_image = skin_manager.get_texture("sliderendcircle", source, SkinUsage::Gamemode, false);
-        self.slider_reverse_image = skin_manager.get_texture("reversearrow", source, SkinUsage::Gamemode, false);
-        self.follow_circle_image = skin_manager.get_texture("sliderfollowcircle", source, SkinUsage::Gamemode, false);
+        self.end_circle_image = skin_manager.get_texture(Path::new("sliderendcircle"), source, SkinUsage::Gamemode, false);
+        self.slider_reverse_image = skin_manager.get_texture(Path::new("reversearrow"), source, SkinUsage::Gamemode, false);
+        self.follow_circle_image = skin_manager.get_texture(Path::new("sliderfollowcircle"), source, SkinUsage::Gamemode, false);
 
         self.approach_circle.reload_texture(source, skin_manager);
 
@@ -952,12 +954,13 @@ impl HitObject for OsuSlider {
         }
 
         // slider ball
-        self.sliderball_under_image = skin_manager.get_texture("sliderb-nd", source, SkinUsage::Gamemode, false);
+        self.sliderball_under_image = skin_manager.get_texture(Path::new("sliderb-nd"), source, SkinUsage::Gamemode, false);
 
         let mut i = 0;
         let mut images = Vec::new();
         loop {
-            let Some(image) = skin_manager.get_texture(&format!("sliderb{i}"), source, SkinUsage::Gamemode, false) else { break };
+            let name = format!("sliderb{i}");
+            let Some(image) = skin_manager.get_texture(Path::new(&name), source, SkinUsage::Gamemode, false) else { break };
             images.push(image);
             i += 1;
         }
@@ -1228,7 +1231,7 @@ impl SliderDot {
 
     #[cfg(feature="graphics")]
     pub fn reload_skin(&mut self, source: &graphics::TextureSource, skin_manager: &mut dyn graphics::SkinProvider) {
-        self.dot_image = skin_manager.get_texture("sliderscorepoint", source, graphics::SkinUsage::Gamemode, false);
+        self.dot_image = skin_manager.get_texture(Path::new("sliderscorepoint"), source, graphics::SkinUsage::Gamemode, false);
     }
 }
 

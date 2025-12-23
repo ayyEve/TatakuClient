@@ -183,7 +183,7 @@ impl ManiaGame {
             ] {
                 let Some(path) = path_map.get(&col) else { continue };
                 let Some(mut img) = skin_manager.get_texture(
-                    path,
+                    Path::new(path),
                     source,
                     graphics::SkinUsage::Beatmap,
                     true

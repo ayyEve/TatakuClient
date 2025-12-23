@@ -462,15 +462,14 @@ impl beatmaps::TatakuBeatmap for OsuBeatmap {
     #[cfg(feature="graphics")]
     fn get_animation(
         &self, 
-        skin_manager: &mut dyn graphics::SkinProvider
+        skin_manager: &mut dyn graphics::SkinProvider,
     ) -> Option<Box<dyn BeatmapAnimation>> {
         let Some(storyboard) = &self.storyboard else { return None };
-        let parent_dir = Path::new(&*self.metadata.file_path).parent()?.to_string_lossy().to_string();
+        let parent_dir = Path::new(&*self.metadata.file_path).parent()?;
         match game::beatmap_animation::OsuStoryboard::new(
             storyboard,
-            &parent_dir,
+            parent_dir,
             skin_manager,
-            // OsuSettings::default(), // TODO: !!!!!
         ) {
             Ok(sb) => {
                 trace!("made anim");

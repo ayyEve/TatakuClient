@@ -272,7 +272,7 @@ impl HitObject for OsuSpinner {
         let scale = Vector2::ONE * self.scaling_helper.scale;
 
         self.spinner_circle = skin_manager.get_texture_then(
-            "spinner-circle",
+            Path::new("spinner-circle"),
             source,
             graphics::SkinUsage::Gamemode,
             false,
@@ -284,7 +284,7 @@ impl HitObject for OsuSpinner {
         );
 
         self.spinner_background = skin_manager.get_texture_then(
-            "spinner-background",
+            Path::new("spinner-background"),
             source,
             graphics::SkinUsage::Gamemode,
             false,
@@ -296,7 +296,7 @@ impl HitObject for OsuSpinner {
         );
 
         self.spinner_bottom = skin_manager.get_texture_then(
-            "spinner-bottom",
+            Path::new("spinner-bottom"),
             source,
             graphics::SkinUsage::Gamemode,
             false,
@@ -307,7 +307,7 @@ impl HitObject for OsuSpinner {
         );
 
         self.spinner_approach = skin_manager.get_texture_then(
-            "spinner-approachcircle",
+            Path::new("spinner-approachcircle"),
             source,
             graphics::SkinUsage::Gamemode,
             false,

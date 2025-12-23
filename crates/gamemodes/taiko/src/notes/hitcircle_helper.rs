@@ -2,7 +2,6 @@ use crate::prelude::*;
 use tataku::{
     Color,
     Vector2,
-
 };
 
 use engine::graphics::{
@@ -43,8 +42,9 @@ impl HitCircleImageHelper {
         };
 
         let scale = Vector2::ONE * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
+        let overlay_name = format!("{hitcircle}overlay");
         let overlay = skin_manager.get_texture_then(
-            &format!("{hitcircle}overlay"), 
+            Path::new(&overlay_name), 
             source, 
             SkinUsage::Gamemode, 
             false, 
@@ -55,7 +55,7 @@ impl HitCircleImageHelper {
         )?;
 
         let circle = skin_manager.get_texture_then(
-            hitcircle, 
+            Path::new(hitcircle), 
             source, 
             SkinUsage::Gamemode, 
             false,

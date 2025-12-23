@@ -1320,7 +1320,7 @@ impl Gamemode for OsuGame {
         self.cursor.reload_skin(skin_manager);
         self.judgment_helper.reload_skin(skin_manager);
         self.follow_point_image = skin_manager.get_texture(
-            "followpoint",
+            Path::new("followpoint"),
             &source,
             SkinUsage::Gamemode,
             false
@@ -1341,7 +1341,7 @@ impl Gamemode for OsuGame {
         }
 
         let smoke = skin_manager.get_texture(
-            "cursor-smoke",
+            Path::new("cursor-smoke"),
             &source,
             SkinUsage::Gamemode,
             false

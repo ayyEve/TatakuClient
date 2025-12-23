@@ -272,16 +272,28 @@ impl HitCircleImageHelper {
 
 
         let scale = Vector2::ONE * scale;
-        let circle = skin_manager.get_texture_then(hitcircle, source, SkinUsage::Gamemode, false, |i| {
-            i.pos = Vector2::ZERO;
-            i.scale = scale;
-            // circle.color = color;
-        });
-        let overlay = skin_manager.get_texture_then(&format!("{hitcircle}overlay"), source, SkinUsage::Gamemode, false, |i| {
-            i.pos = Vector2::ZERO;
-            i.scale = scale;
-            // overlay.color = color;
-        });
+        let circle = skin_manager.get_texture_then(
+            Path::new(hitcircle), 
+            source, 
+            SkinUsage::Gamemode, 
+            false, 
+            |i| {
+                i.pos = Vector2::ZERO;
+                i.scale = scale;
+                // circle.color = color;
+            }
+        );
+        let overlay = skin_manager.get_texture_then(
+            Path::new(&format!("{hitcircle}overlay")), 
+            source, 
+            SkinUsage::Gamemode, 
+            false, 
+            |i| {
+                i.pos = Vector2::ZERO;
+                i.scale = scale;
+                // overlay.color = color;
+            }
+        );
 
         if overlay.is_none() || circle.is_none() { return None }
 

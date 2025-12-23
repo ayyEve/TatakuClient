@@ -136,7 +136,7 @@ impl HitObject for TaikoSpinner {
         skin_manager: &mut dyn graphics::SkinProvider
     ) {
         self.spinner_image = skin_manager.get_texture(
-            "spinner-warning", 
+            Path::new("spinner-warning"), 
             source, 
             graphics::SkinUsage::Gamemode, 
             false

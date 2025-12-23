@@ -221,7 +221,7 @@ fn load_anim(
     let mut current = 0;
 
     while let Some(tex) = skin_manager.get_texture(
-        &format!("pippidon{name}{current}"),
+        Path::new(&format!("pippidon{name}{current}")),
         source,
         graphics::SkinUsage::Gamemode,
         false

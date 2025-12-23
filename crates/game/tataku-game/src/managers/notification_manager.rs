@@ -50,7 +50,7 @@ impl NotificationManager {
     #[cfg(feature="graphics")]
     pub fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
         self.notification_image = skin_manager.get_texture(
-            "notification",
+            Path::new("notification"),
             &graphics::TextureSource::Skin,
             graphics::SkinUsage::Game,
             true

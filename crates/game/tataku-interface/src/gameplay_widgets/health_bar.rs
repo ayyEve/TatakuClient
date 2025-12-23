@@ -66,25 +66,25 @@ impl GameplayWidget for HealthBarElement {
     ) {
         // peppy calls the healthbar texture "scorebar"
         self.healthbar_color = shell.skin_manager.get_texture(
-            "scorebar-colour",
+            Path::new("scorebar-colour"),
             shell.source,
             SkinUsage::Gamemode,
             false
         );
         self.healthbar_color_1 = shell.skin_manager.get_texture(
-            "scorebar-colour1",
+            Path::new("scorebar-colour1"),
             shell.source,
             SkinUsage::Gamemode,
             false
         );
         self.healthbar_bg_image = shell.skin_manager.get_texture(
-            "scorebar-bg",
+            Path::new("scorebar-bg"),
             shell.source,
             SkinUsage::Gamemode,
             false
         );
         self.healthbar_bg_image_1 = shell.skin_manager.get_texture(
-            "scorebar-bg1",
+            Path::new("scorebar-bg1"),
             shell.source,
             SkinUsage::Gamemode,
             false

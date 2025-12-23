@@ -1265,7 +1265,7 @@ impl Gamemode for TaikoGame {
             / TAIKO_HIT_INDICATOR_TEX_SIZE.x;
 
         if let Some(mut don) = skin_manager.get_texture(
-            "taiko-drum-inner",
+            Path::new("taiko-drum-inner"),
             &source,
             SkinUsage::Gamemode,
             true
@@ -1280,7 +1280,7 @@ impl Gamemode for TaikoGame {
             self.right_don_image = Some(rdon);
         }
         if let Some(mut kat) = skin_manager.get_texture(
-            "taiko-drum-outer",
+            Path::new("taiko-drum-outer"),
             &source,
             SkinUsage::Gamemode,
             true

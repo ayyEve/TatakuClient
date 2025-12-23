@@ -64,7 +64,7 @@ impl ApproachCircle {
         skin_manager: &mut dyn graphics::SkinProvider
     ) {
         self.image = skin_manager.get_texture(
-            "approachcircle", 
+            Path::new("approachcircle"), 
             source, 
             graphics::SkinUsage::Gamemode, 
             false

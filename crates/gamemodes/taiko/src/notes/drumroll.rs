@@ -172,17 +172,29 @@ impl HitObject for TaikoDrumroll {
         use graphics::SkinUsage;
         let radius = self.settings.note_radius * if self.finisher { self.settings.big_note_multiplier } else { 1.0 };
 
-        self.middle_image = skin_manager.get_texture_then("taiko-roll-middle", source, SkinUsage::Gamemode, false, |i| {
-            i.origin.x = 0.0;
-            i.color = Color::YELLOW;
-            i.scale = Vector2::ONE * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
-        });
+        self.middle_image = skin_manager.get_texture_then(
+            Path::new("taiko-roll-middle"), 
+            source, 
+            SkinUsage::Gamemode, 
+            false, 
+            |i| {
+                i.origin.x = 0.0;
+                i.color = Color::YELLOW;
+                i.scale = Vector2::ONE * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
+            }
+        );
 
-        self.end_image = skin_manager.get_texture_then("taiko-roll-end", source, SkinUsage::Gamemode, false, |i| {
-            i.origin.x = 0.0;
-            i.color = Color::YELLOW;
-            i.scale = Vector2::ONE * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
-        });
+        self.end_image = skin_manager.get_texture_then(
+            Path::new("taiko-roll-end"), 
+            source, 
+            SkinUsage::Gamemode, 
+            false, 
+            |i| {
+                i.origin.x = 0.0;
+                i.color = Color::YELLOW;
+                i.scale = Vector2::ONE * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
+            }
+        );
 
     }
 }

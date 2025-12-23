@@ -947,7 +947,7 @@ impl Game {
                         }
                         manager.start();
 
-                        let m = manager.metadata.clone();
+                        let m = manager.metadata().clone();
                         let start_time = manager.start_time();
 
                         let action;
@@ -955,18 +955,18 @@ impl Game {
                             .spectator_manager
                         {
                             action = SetAction::Spectating {
-                                artist: m.artist.clone(),
-                                title: m.title.clone(),
-                                version: m.version.clone(),
-                                creator: m.creator.clone(),
+                                artist: m.artist,
+                                title: m.title,
+                                version: m.version,
+                                creator: m.creator,
                                 player: manager.host_username.clone(),
                             }
                         } else {
                             action = SetAction::Playing {
-                                artist: m.artist.clone(),
-                                title: m.title.clone(),
-                                version: m.version.clone(),
-                                creator: m.creator.clone(),
+                                artist: m.artist,
+                                title: m.title,
+                                version: m.version,
+                                creator: m.creator,
                                 multiplayer_lobby_name: None,
                                 start_time
                             };
@@ -1624,7 +1624,7 @@ impl Game {
             GameState::InMenu => {}
             mut state => {
                 if let Some(game) = state.get_ingame() {
-                    let meta = game.beatmap.get_beatmap_meta();
+                    let meta = game.metadata().clone();
                     debug!(
                         "Starting/resuming game: {} ({})",
                         meta.version_string(),
@@ -1861,7 +1861,7 @@ impl Game {
     pub(super) fn ingame_complete(&mut self, mut manager: Box<GameplayManager>) {
         trace!("beatmap complete");
         manager.on_complete();
-        manager.score.time = chrono::Utc::now().timestamp() as u64;
+        manager.score_mut().time = chrono::Utc::now().timestamp() as u64;
         self.actions.push(engine::TatakuIntegrationEvent::BeatmapEnded.into());
         self.actions.push(actions::cursor::CursorAction::SetVisible(true).into());
 
@@ -1876,7 +1876,7 @@ impl Game {
                 return;
             }
         } else {
-            let mut score = manager.score.clone();
+            let mut score = manager.score().clone();
             let info = self.global
                 .gamemode_infos
                 .get_info(&score.playmode)

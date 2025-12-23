@@ -32,7 +32,7 @@ pub struct OsuStoryboard {
 impl OsuStoryboard {
     pub fn new(
         def: &StoryboardDef,
-        dir: &String,
+        dir: &Path,
         skin_manager: &mut dyn graphics::SkinProvider,
         // settings: OsuSettings,
     ) -> tataku::Result<Self> {
@@ -44,10 +44,15 @@ impl OsuStoryboard {
             playfield_size
         );
 
-        let mut image_cache = HashMap::new();
+        // let mut image_cache = HashMap::new();
         let mut elements = Vec::new();
         for e in def.entries.clone() {
-            elements.push(Element::new(e, dir, &mut image_cache, skin_manager)?);
+            elements.push(Element::new(
+                e, 
+                dir, 
+                // &mut image_cache, 
+                skin_manager
+            )?);
         }
         elements.sort_by(Element::sort);
 
@@ -220,8 +225,8 @@ struct Element {
 impl Element {
     fn new(
         def: StoryboardEntryDef,
-        parent_dir: &String,
-        image_cache: &mut HashMap<String, graphics::Image>,
+        parent_dir: &Path,
+        // image_cache: &mut HashMap<String, graphics::Image>,
         skin_manager: &mut dyn graphics::SkinProvider
     ) -> tataku::Result<Self> {
         let layer;
@@ -242,14 +247,11 @@ impl Element {
 
         let image = match def.element.clone() {
             StoryboardElementDef::Sprite(sprite) => {
-                let filepath = format!("{parent_dir}/{}", sprite.filepath)
-                    .replace("\\\\", "/")
-                    .replace("\\", "/")
-                ;
+                let filepath = parent_dir.join(&sprite.filepath);
 
                 let mut image = try_load_image(
                     &filepath, 
-                    image_cache, 
+                    // image_cache, 
                     skin_manager
                 )?;
 
@@ -276,14 +278,16 @@ impl Element {
                 let mut frames = Vec::new();
                 let mut counter = 0;
                 loop {
-                    let filepath = format!("{parent_dir}/{filename}{counter}.{ext}")
-                        .replace("\\\\", "/")
-                        .replace("\\", "/")
-                    ;
+                    let filepath = format!("{filename}{counter}.{ext}");
+                    let path = parent_dir.join(&filepath);
+                    // let filepath = format!("{parent_dir}/{filename}{counter}.{ext}")
+                    //     .replace("\\\\", "/")
+                    //     .replace("\\", "/")
+                    // ;
 
                     let Ok(image) = try_load_image(
-                        &filepath, 
-                        image_cache, 
+                        &path, 
+                        // image_cache, 
                         skin_manager
                     ) else {
                         if counter == 0 { error!("image not found: {filepath}"); }
@@ -486,23 +490,24 @@ enum ElementImage {
 }
 
 fn try_load_image(
-    filepath: &String,
-    image_cache: &mut HashMap<String, graphics::Image>,
+    file_path: &Path,
+    // image_cache: &mut HashMap<String, graphics::Image>,
     skin_manager: &mut dyn graphics::SkinProvider
 ) -> tataku::Result<graphics::Image> {
-    if let Some(image) = image_cache.get(filepath).cloned() {
-        Ok(image)
-    } else if let Some(i) = skin_manager.get_texture(
-        filepath, 
+    // if let Some(image) = image_cache.get(filepath).cloned() {
+    //     Ok(image)
+    // } else 
+    if let Some(i) = skin_manager.get_texture(
+        file_path, 
         &graphics::TextureSource::Raw, 
         graphics::SkinUsage::Beatmap, 
         false
     ) {
-        image_cache.insert(filepath.clone(), i.clone());
+        // image_cache.insert(filepath.clone(), i.clone());
         Ok(i)
     } else {
         // try to find a file with the same name but different case
-        let file_path = Path::new(&filepath);
+        // let file_path = Path::new(&filepath);
         let parent = file_path.parent().unwrap();
         let filename = file_path.file_name().unwrap().to_ascii_lowercase();
 
@@ -511,10 +516,7 @@ fn try_load_image(
         for file in files.filter_map(Result::ok) {
             if file.file_name().to_ascii_lowercase() != filename { continue }
             // let filename = file.file_name().to_str().unwrap();
-            let filepath2 = parent
-                .join(file.file_name())
-                .to_string_lossy()
-                .to_string();
+            let filepath2 = parent.join(file.file_name());
             found = skin_manager.get_texture(
                 &filepath2, 
                 &graphics::TextureSource::Raw, 
@@ -525,7 +527,7 @@ fn try_load_image(
         }
 
         let Some(image) = found else {
-            return Err(tataku::Error::String(format!("Image not found: {filepath}")))
+            return Err(tataku::Error::String(format!("Image not found: {}", file_path.display())))
         };
 
         Ok(image)

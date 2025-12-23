@@ -1,9 +1,9 @@
 use crate::prelude::*;
 use std::f32::consts::PI;
 use engine::{
+    actions,
     graphics,
     graphics::TatakuRenderable,
-    actions,
 };
 
 use tataku::{
@@ -353,19 +353,19 @@ impl OsuCursor {
         };
 
         self.cursor_image = skin_manager.get_texture(
-            "cursor", 
+            Path::new("cursor"), 
             &source, 
             SkinUsage::Gamemode, 
             false
         );
         self.cursor_trail_image = skin_manager.get_texture(
-            "cursortrail", 
+            Path::new("cursortrail"), 
             &source, 
             SkinUsage::Gamemode, 
             false
         );
         self.cursor_middle_image = skin_manager.get_texture(
-            "cursormiddle", 
+            Path::new("cursormiddle"), 
             &source, 
             SkinUsage::Gamemode, 
             false
@@ -385,7 +385,7 @@ impl OsuCursor {
 
 
         let tex = skin_manager.get_texture(
-            "star2", 
+            Path::new("star2"), 
             &source, 
             graphics::SkinUsage::Gamemode, 
             false

@@ -67,7 +67,7 @@ impl CursorManager {
             CursorMode::Text
         ] {
             if let Some(image) = skin_manager.get_texture(
-                mode.tex_name(),
+                Path::new(mode.tex_name()),
                 &graphics::TextureSource::Skin,
                 graphics::SkinUsage::Game, true
             ) {

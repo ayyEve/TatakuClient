@@ -6,7 +6,7 @@ pub trait SkinProvider: Send + Sync + 'static {
 
     fn get_texture(
         &mut self,
-        name: &str,
+        name: &Path,
         source: &TextureSource,
         usage: SkinUsage,
         grayscale: bool,
@@ -22,7 +22,7 @@ impl dyn SkinProvider {
     /// helper since most texture loads will look something like this
     pub fn get_texture_then(
         &mut self,
-        name: &str,
+        name: &Path,
         source: &TextureSource,
         usage: SkinUsage,
         grayscale: bool,

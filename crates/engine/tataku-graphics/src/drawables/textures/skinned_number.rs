@@ -40,11 +40,11 @@ impl SkinnedNumber {
 
         let mut number_textures = Vec::new();
         for i in 0..10 {
-            let tex = format!("{texture_name}-{i}");
-            let tex = skin_manager.get_texture_then(&tex, source, usage, false, |i| {
+            let name = format!("{texture_name}-{i}");
+            let tex = skin_manager.get_texture_then(Path::new(&name), source, usage, false, |i| {
                 i.origin = Vector2::ZERO;
                 // i.size = i.tex_size();
-            }).ok_or(Error::String(format!("texture does not exist: {tex}")))?;
+            }).ok_or(Error::String(format!("texture does not exist: {name}")))?;
 
             number_textures.push(tex);
         }
@@ -60,7 +60,7 @@ impl SkinnedNumber {
         ];
         for (c, name) in chars {
             let name = format!("{texture_name}-{name}");
-            let Some(mut tex) = skin_manager.get_texture(&name, source, usage, false) else { continue }; 
+            let Some(mut tex) = skin_manager.get_texture(Path::new(&name), source, usage, false) else { continue }; 
             tex.origin = Vector2::ZERO;
             symbol_textures.insert(c, tex);
         }

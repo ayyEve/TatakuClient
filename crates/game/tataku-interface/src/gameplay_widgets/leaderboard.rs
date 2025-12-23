@@ -183,7 +183,7 @@ impl GameplayWidget for LeaderboardElement {
         shell: &mut GameplayWidgetReloadSkinShell
     ) {
         self.image = shell.skin_manager.get_texture(
-            "menu-button-background",
+            Path::new("menu-button-background"),
             shell.source,
             SkinUsage::Gamemode,
             false

@@ -7,9 +7,9 @@ use common::{
 };
 
 use tataku::{
-    TatakuValue,
-    Vector2,
     Color,
+    Vector2,
+    TatakuValue,
 };
 
 use engine::{
@@ -845,7 +845,7 @@ impl Game {
                 else { return };
                 
                 self.background_image = self.skin_manager.get_texture(
-                    &filename, 
+                    Path::new(&filename), 
                     &graphics::TextureSource::Raw, 
                     graphics::SkinUsage::Background, 
                     false

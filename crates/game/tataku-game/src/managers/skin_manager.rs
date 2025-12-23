@@ -23,7 +23,7 @@ const DEFAULT_SKIN:&str = "default";
 pub struct SkinManager {
     skin_name: String,
     current_skin_config: Arc<SkinSettings>,
-    textures: HashMap<(String, bool), HashMap<TextureSource, TextureEntry>>,
+    textures: HashMap<(PathBuf, bool), HashMap<TextureSource, TextureEntry>>,
 }
 
 #[cfg(feature="graphics")]
@@ -65,30 +65,35 @@ impl SkinManager {
     // try to load a skin from the provided source. does not try fallbacks
     fn load_texture(
         source: &TextureSource,
-        name: impl AsRef<str> + Send + Sync, 
+        name: &Path, 
         grayscale: bool,
 
         skin_name: &str
     ) -> TextureState {
-        let name = name.as_ref();
-        
+        let mut path = name.to_path_buf();
+        let filename = path.file_name().unwrap().to_string_lossy().into_owned();
+        path.pop();
+
         // get paths to check for this source
         // try to load 2x resolution first
         let to_attempt = match source {
             // raw textures wont have a @2x variant
-            TextureSource::Raw => vec![ (name.to_owned(), Vector2::ONE) ],
+            TextureSource::Raw => vec![ (filename + ".png", Vector2::ONE) ],
 
             // everything else should
-            _ => vec![ (format!("{name}@2x"), Vector2::ONE / 2.0), (name.to_owned(), Vector2::ONE) ]
+            _ => vec![ 
+                (filename.clone() + "@2x.png", Vector2::ONE / 2.0), 
+                (filename + ".png", Vector2::ONE) 
+            ],
         };
 
         for (tex_name, scale) in to_attempt {
             // get the expected path to the texture file 
             let path = match &source {
-                TextureSource::Raw => Path::new(&tex_name).to_path_buf(),
-                TextureSource::Beatmap(beatmap_path) => Path::new(&beatmap_path).join(format!("{tex_name}.png")),
-                TextureSource::Skin => Path::new(SKINS_FOLDER).join(skin_name).join(format!("{tex_name}.png")),
-                TextureSource::DefaultSkin => Path::new(SKINS_FOLDER).join(DEFAULT_SKIN).join(format!("{tex_name}.png")),
+                TextureSource::Raw => path.join(&tex_name),
+                TextureSource::Beatmap(beatmap_path) => Path::new(beatmap_path).join(&path).join(&tex_name),
+                TextureSource::Skin => Path::new(SKINS_FOLDER).join(skin_name).join(&path).join(&tex_name),
+                TextureSource::DefaultSkin => Path::new(SKINS_FOLDER).join(DEFAULT_SKIN).join(&path).join(&tex_name),
             };
 
             // try loading the bytes. if we cant, try the next source 
@@ -215,12 +220,13 @@ impl graphics::SkinProvider for SkinManager {
 
     fn get_texture(
         &mut self, 
-        name: &str, 
+        name: &Path, 
         source: &TextureSource,
         usage: SkinUsage,
         grayscale: bool,
     ) -> Option<graphics::Image> {
-        let texture_key = (name.to_owned(), grayscale);
+        let name = name.to_path_buf();
+        let texture_key = (name.clone(), grayscale);
         if !self.textures.contains_key(&texture_key) {
             self.textures.insert(texture_key.clone(), HashMap::new());
         }
@@ -240,7 +246,7 @@ impl graphics::SkinProvider for SkinManager {
                 | Some(TextureEntry { image: TextureState::Unloaded, .. })
                 => {
                     // try to load the texture
-                    let result = Self::load_texture(&source, name, grayscale, &self.skin_name);
+                    let result = Self::load_texture(&source, &name, grayscale, &self.skin_name);
                     entry.insert(source, TextureEntry { usage, image: result.clone() });
 
                     match result {

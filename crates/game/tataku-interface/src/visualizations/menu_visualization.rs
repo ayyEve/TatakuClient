@@ -269,7 +269,7 @@ impl MenuVisualization {
 
     pub fn reload_skin(&mut self, skin_manager: &mut dyn graphics::SkinProvider) {
         if let Some(cookie) = skin_manager.get_texture(
-            "menu-osu", 
+            Path::new("menu-osu"), 
             &graphics::TextureSource::Skin, 
             graphics::SkinUsage::Game, 
             false
@@ -277,7 +277,7 @@ impl MenuVisualization {
             self.cookie = Some(cookie);
         } else {
             self.cookie = skin_manager.get_texture(
-                "./resources/icon.png", 
+                Path::new("./resources/icon.png"), 
                 &graphics::TextureSource::Raw, 
                 graphics::SkinUsage::Game, 
                 false

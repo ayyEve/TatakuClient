@@ -111,7 +111,7 @@ impl gameplay::HitObject for ManiaNote {
         else { return };
 
         let Some(mut img) = skin_manager.get_texture(
-            path, 
+            Path::new(path), 
             source, 
             graphics::SkinUsage::Gamemode, 
             true

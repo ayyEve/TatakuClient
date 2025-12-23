@@ -198,7 +198,7 @@ impl GameplayWidget for JudgementCounterElement {
         shell: &mut GameplayWidgetReloadSkinShell
     ) {
         self.button_image = shell.skin_manager.get_texture(
-            "inputoverlay-key",
+            Path::new("inputoverlay-key"),
             shell.source,
             graphics::SkinUsage::Gamemode,
             false

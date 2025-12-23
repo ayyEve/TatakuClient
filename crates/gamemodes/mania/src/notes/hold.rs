@@ -5,10 +5,8 @@ use tataku::{
     Vector2,
 };
 use engine::{
-    beatmaps::{
-        NoteType,
-    },
     gameplay,
+    beatmaps::NoteType,
 };
 
 #[derive(Default)]
@@ -224,7 +222,7 @@ impl gameplay::HitObject for ManiaHold {
         // start
         if let Some(path) = settings.note_image_h.get(&self.column)
         && let Some(mut img) = skin_manager.get_texture(
-            path, 
+            Path::new(path), 
             source, 
             graphics::SkinUsage::Gamemode, 
             true
@@ -237,7 +235,7 @@ impl gameplay::HitObject for ManiaHold {
         // middle
         if let Some(path) = settings.note_image_l.get(&self.column)
         && let Some(mut img) = skin_manager.get_texture(
-            path, 
+            Path::new(path), 
             source, 
             graphics::SkinUsage::Gamemode, 
             true
@@ -252,7 +250,7 @@ impl gameplay::HitObject for ManiaHold {
         // end
         if let Some(path) = settings.note_image_t.get(&self.column)
         && let Some(mut img) = skin_manager.get_texture(
-            path, 
+            Path::new(path), 
             source, 
             graphics::SkinUsage::Gamemode, 
             true

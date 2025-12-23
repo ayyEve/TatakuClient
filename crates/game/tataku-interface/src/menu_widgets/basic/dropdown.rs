@@ -420,7 +420,9 @@ impl Widget<actions::Action> for Dropdown {
 
         let theme = &shell.general_theme;
 
-        let DropdownVariants::Buttons { buttons, .. } = &self.variants else {
+        let DropdownVariants::Buttons { 
+            buttons, .. 
+        } = &self.variants else {
             unreachable!("dropdown variants are built");
         };
 

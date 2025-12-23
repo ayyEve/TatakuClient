@@ -34,14 +34,13 @@ pub struct GameplayWidgetEditor {
     node: Box<dyn Widget<actions::Action>>,
 }
 impl GameplayWidgetEditor {
-    pub fn new(
+    pub fn new<'a>(
         // builders: Vec<GameplayWidgetBuilder>,
-        widgets: &[GameplayWidgetContainer],
+        widgets: impl Iterator<Item=&'a GameplayWidgetContainer>,
         sender: Sender<GameplayWidgetAction>,
         receiver: Receiver<GameplayWidgetEvent>,
     ) -> Self {
         let widgets = widgets
-            .iter()
             .map(WidgetState::new)
             .collect();
 
