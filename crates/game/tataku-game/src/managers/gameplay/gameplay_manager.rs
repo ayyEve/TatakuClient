@@ -2071,7 +2071,7 @@ impl GameplayManagerTrait for GameplayManager {
             }
         }
 
-        self.gameplay_type = Box::new(mode);
+        *self.gameplay_type = mode;
         self.gameplay_type_small = GameplayTypeSmall::from(&*self.gameplay_type);
     }
 

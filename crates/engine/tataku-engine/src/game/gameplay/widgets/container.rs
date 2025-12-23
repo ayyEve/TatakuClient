@@ -1,6 +1,7 @@
 use crate::*;
 use gameplay::widgets::*;
 
+#[derive(Debug2)]
 pub struct GameplayWidgetContainer {
     pub name: CowStr,
     pub visible: bool,
@@ -12,6 +13,7 @@ pub struct GameplayWidgetContainer {
     pub layout: Option<GameplayWidgetLayout>,
     pub default_layout: GameplayWidgetLayout,
 
+    #[debug(skip)]
     pub inner: Box<dyn GameplayWidget>,
 }
 impl GameplayWidgetContainer {
