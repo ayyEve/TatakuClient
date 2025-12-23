@@ -47,6 +47,8 @@ pub trait GameplayManagerTrait {
 
     fn get_mode(&self) -> GameplayTypeSmall;
     fn set_mode(&mut self, mode: GameplayType);
+
+    fn mark_dirty(&mut self, element_name: &str);
 }
 
 #[derive(Copy, Clone)]

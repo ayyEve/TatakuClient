@@ -140,7 +140,7 @@ pub struct GameplayManager {
 
     #[cfg(feature="graphics")] editor: Option<EditorChannels>,
     #[cfg(feature="graphics")] animation: Box<dyn BeatmapAnimation>,
-    #[cfg(feature="graphics")] ui_elements: WidgetTree,
+    #[cfg(feature="graphics")] widget_tree: WidgetTree,
     #[cfg(feature="graphics")] judgement_indicators: Vec<Box<dyn JudgementIndicator>>,
 
     // spectator info
@@ -241,7 +241,7 @@ impl GameplayManager {
             score_list: ScoreList::default(),
 
             #[cfg(feature="graphics")] editor: None,
-            #[cfg(feature="graphics")] ui_elements: WidgetTree::new(),
+            #[cfg(feature="graphics")] widget_tree: WidgetTree::new(),
             #[cfg(feature="graphics")] judgement_indicators: Vec::new(),
             #[cfg(feature="graphics")] animation: Box::new(engine::game::beatmap_animation::EmptyAnimation),
             gameplay_type: Box::new(GameplayType::Normal),
@@ -583,7 +583,7 @@ impl GameplayManager {
         // reset elements
         #[cfg(feature="graphics")] {
             self.judgement_indicators.clear();
-            for e in self.ui_elements.elements_mut() {
+            for e in self.widget_tree.elements_mut() {
                 e.reset_element();
             }
         }
@@ -684,23 +684,21 @@ impl GameplayManager {
                             continue
                         }
 
-                        let Some(ele) = self
-                            .ui_elements
-                            .elements_mut()
-                            .find(|i|
-                                i.name == action.target
-                            )
+                        let Some(ele) = self.widget_tree
+                            .element_mut(&action.target)
                         else { continue };
 
                         match action.action {
                             GameplayWidgetActionType::Add(layout) => {
                                 ele.layout = Some(layout);
                                 ele.visible = true;
-                                self.layout_ui();
+
+                                self.widget_tree.mark_dirty(&action.target);
                             }
                             GameplayWidgetActionType::Move(layout) => {
                                 ele.layout = Some(layout);
-                                self.layout_ui();
+
+                                self.widget_tree.mark_dirty(&action.target);
                             }
                             GameplayWidgetActionType::Remove => {
                                 ele.visible = false;
@@ -720,17 +718,25 @@ impl GameplayManager {
 
         // update ui elements
         if !self.gameplay_type_small.is_preview() {
-            let mut ui_elements = self.ui_elements.take();
+            let mut ui_elements = self.widget_tree.elements.take();
+
             let mut shell = GameplayWidgetUpdateShell {
                 manager: self,
                 font_context: font_contexts,
                 scale: Vector2::ONE
             };
 
-            for ui in ui_elements.elements_mut() {
+            let iter = ui_elements.iter_mut()
+                .filter_map(|ui| ui.as_mut());
+
+            for ui in iter {
                 ui.update(&mut shell);
             }
-            self.ui_elements = ui_elements;
+            self.widget_tree.elements = ui_elements;
+        }
+
+        if self.widget_tree.dirty() {
+            self.layout_ui();
         }
 
         // update hit timings bar
@@ -1146,13 +1152,13 @@ impl GameplayManager {
         }
 
         // update our list
-        self.ui_elements.add_elements(loader.elements);
+        self.widget_tree.add_elements(loader.elements);
 
         // layout will be performed on game start (and skin load)
     }
 
     fn layout_ui(&mut self) {
-        if let Err(e) = self.ui_elements.layout(
+        if let Err(e) = self.widget_tree.layout(
             self.gamemode.get_playfield().bounds,
             self.state.window_size
         ) {
@@ -1160,7 +1166,7 @@ impl GameplayManager {
         }
 
         if let Some(channels) = &self.editor {
-            for i in self.ui_elements.elements() {
+            for i in self.widget_tree.elements() {
                 let r = channels
                     .event_sender
                     .send(GameplayWidgetEvent {
@@ -1197,7 +1203,7 @@ impl GameplayManager {
         };
 
         // ui elements
-        for i in self.ui_elements.elements() {
+        for i in self.widget_tree.elements() {
             i.draw(&mut shell);
         }
 
@@ -1280,7 +1286,7 @@ impl GameplayManager {
             skin_manager,
         };
 
-        for i in self.ui_elements.elements_mut() {
+        for i in self.widget_tree.elements_mut() {
             i.reload_skin(&mut shell);
         }
 
@@ -1847,7 +1853,7 @@ impl GameplayManager {
             ) = std::sync::mpsc::channel();
 
             let editor = GameplayWidgetEditor::new(
-                self.ui_elements.elements(),
+                self.widget_tree.elements(),
                 action_sender,
                 event_receiver
             );
@@ -1923,6 +1929,7 @@ impl GameplayManager {
             self.animation.window_size_changed(window_size);
         }
 
+        self.widget_tree.mark_all_dirty();
         self.layout_ui();
     }
 
@@ -2075,6 +2082,9 @@ impl GameplayManagerTrait for GameplayManager {
         self.gameplay_type_small = GameplayTypeSmall::from(&*self.gameplay_type);
     }
 
+    fn mark_dirty(&mut self, element_name: &str) {
+        self.widget_tree.mark_dirty(element_name);
+    }
 }
 impl Drop for GameplayManager {
     fn drop(&mut self) {

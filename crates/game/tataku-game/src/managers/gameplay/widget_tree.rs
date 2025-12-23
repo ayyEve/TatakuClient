@@ -21,7 +21,7 @@ use engine::{
 #[derive(Debug)]
 pub struct WidgetTree {
     /// Root node has None
-    elements: Vec<Option<GameplayWidgetContainer>>,
+    pub(super) elements: Vec<Option<GameplayWidgetContainer>>,
 
     elements_by_name: HashMap<CowStr, usize>,
 
@@ -32,7 +32,7 @@ pub struct WidgetTree {
     empty_slots: Vec<usize>,
 }
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct Node {
     dirty: bool,
 
@@ -44,6 +44,16 @@ pub struct Node {
 impl Default for WidgetTree {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl Default for Node {
+    fn default() -> Self {
+        Self {
+            dirty: true,
+            parent: None,
+            children: Vec::new(),
+        }
     }
 }
 
@@ -180,6 +190,8 @@ impl WidgetTree {
             warn!("Dangling references in gameplay widgets! Expected parent {element_name} with {children}");
             // todo: handle them properly instead of just warning
         }
+
+        self.mark_root_dirty();
     }
 
     /// Returns true if successful.
@@ -213,30 +225,59 @@ impl WidgetTree {
 
                 self.empty_slots.push(index);
 
+                self.mark_root_dirty();
+
                 true
             },
             Remove::WithChildren => unimplemented!("remove with children"),
         }
     }
 
+    pub fn dirty(&self) -> bool {
+        self.nodes[0].as_ref().expect("missing root")
+            .dirty
+    }
+
+    /// Mark the root node only as dirty.
+    /// Used to check if the tree contains dirty nodes.
+    fn mark_root_dirty(&mut self) {
+        // Use the root node to mark the tree as containing some dirty nodes
+        self.nodes[0].as_mut().expect("missing root")
+            .dirty = true;
+    }
+
+    fn _mark_dirty(&mut self, index: usize) {
+        let mut make_dirty = VecDeque::new();
+        make_dirty.push_back(index);
+
+        while let Some(i) = make_dirty.pop_front() {
+            let current = self.nodes[i].as_mut().expect("missing node");
+
+            // If node is dirty then so is its subtree
+            if !current.dirty {
+                current.dirty = true;
+
+                make_dirty.extend(&current.children);
+            }
+        }
+
+        self.mark_root_dirty();
+    }
+
     /// Returns true if successful.
     /// Returns false if element does not exist.
     pub fn mark_dirty(&mut self, name: &str) -> bool {
-        let mut index = self.elements_by_name.get(name).copied();
-
-        if index.is_none() {
+        let Some(index) = self.elements_by_name.get(name).copied() else {
             return false;
         };
 
-        while let Some(i) = index {
-            let current = self.nodes[i].as_mut().expect("missing node");
-
-            current.dirty = true;
-
-            index = current.parent;
-        }
+        self._mark_dirty(index);
 
         true
+    }
+
+    pub fn mark_all_dirty(&mut self) {
+        self._mark_dirty(0);
     }
 
     pub fn layout(
@@ -244,7 +285,10 @@ impl WidgetTree {
         playfield: Bounds,
         screen_size: Vector2,
     ) -> Result<(), GameplayWidgetLayoutError> {
-        info!("{self:?}");
+        if !self.dirty() { return Ok(()); }
+
+        self.nodes[0].as_mut().expect("missing root")
+            .dirty = false;
 
         let screen_bounds = Bounds::new(
             Vector2::ZERO,
@@ -256,8 +300,14 @@ impl WidgetTree {
             node_queue: self.nodes[0].as_ref().expect("missing root")
                 .children.clone().into(),
         };
+        let dirty_nodes = iter
+            .filter(|&index| self.nodes[index].as_ref().expect("mising node").dirty)
+            .collect::<Vec<_>>();
 
-        for index in iter {
+        for index in dirty_nodes {
+            self.nodes[index].as_mut().expect("missing node")
+                .dirty = false;
+
             let element = self.elements[index]
                 .as_mut().expect("missing node");
 
@@ -267,7 +317,7 @@ impl WidgetTree {
                 GameplayWidgetAnchor::Screen => {
                     element.resolved_pos = layout.align.resolve(
                         &screen_bounds,
-                        element.preferred_size,
+                        element.inner.preferred_size(),
                         true,
                         true,
                     );
@@ -275,7 +325,7 @@ impl WidgetTree {
                 GameplayWidgetAnchor::Playfield { horizontal_side, vertical_side } => {
                     element.resolved_pos = layout.align.resolve(
                         &playfield,
-                        element.preferred_size,
+                        element.inner.preferred_size(),
                         matches!(horizontal_side, Side::Inside),
                         matches!(vertical_side, Side::Inside),
                     );
@@ -300,7 +350,7 @@ impl WidgetTree {
 
                         Bounds::new(
                             anchored_to.resolved_pos,
-                            anchored_to.preferred_size,
+                            anchored_to.inner.preferred_size(),
                         )
                     };
 
@@ -310,7 +360,7 @@ impl WidgetTree {
 
                     element.resolved_pos = layout.align.resolve(
                         &anchored_bounds,
-                        element.preferred_size,
+                        element.inner.preferred_size(),
                         matches!(horizontal_side, Side::Inside),
                         matches!(vertical_side, Side::Inside),
                     );
@@ -341,15 +391,13 @@ impl<'a> Iterator for BreadthFirstIndex<'a> {
     type Item = usize;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let node = self.node_queue.pop_front()?;
+        let index = self.node_queue.pop_front()?;
 
-        let children = &self.nodes[node]
-            .as_ref().expect("missing node")
-            .children;
+        let node = self.nodes[index].as_ref().expect("missing node");
 
-        self.node_queue.extend(children);
+        self.node_queue.extend(&node.children);
 
-        Some(node)
+        Some(index)
     }
 }
 

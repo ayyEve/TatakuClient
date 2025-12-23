@@ -76,6 +76,7 @@ impl<T: _CanNum> GameplayWidget for Number<T> {
                 shell.font_context,
             );
             self.max_size = size;
+            shell.manager.mark_dirty(&self.config.display.to_lowercase());
         }
 
         let old_number = self.number;
