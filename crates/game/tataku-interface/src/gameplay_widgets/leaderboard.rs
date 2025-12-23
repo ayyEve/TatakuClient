@@ -6,7 +6,6 @@ use tataku::{
     Alignment,
 };
 use graphics::{
-    Text,
     Image,
     Shape,
     Rectangle,
@@ -14,7 +13,6 @@ use graphics::{
     ThemeColor,
 
     Transform,
-    Transformed,
 };
 use engine::{
     settings::common_gameplay::CommonGameplaySettings,
@@ -134,45 +132,42 @@ impl GameplayWidget for LeaderboardElement {
             };
 
             if let Some(mut img) = self.image.clone() {
-                img.pos = pos;
-                img.origin = Vector2::ZERO;
                 img.color = color;
-                img.set_size(size);
 
-                shell.list.push(graphics::Transformed {
-                    transform: shell.transform,
-                    drawable: Box::new(img),
-                });
+                let transform = Transform {
+                    pos,
+                    scale: LEADERBOARD_ITEM_SIZE / img.size(),
+                    ..Transform::identity()
+                };
+
+                shell.list.push(img.with_transform(shell.transform * transform.matrix()));
             } else {
                 // bounding rect
-                shell.list.push(graphics::Transformed {
-                    transform: shell.transform,
-                    drawable: Box::new(Rectangle::new(
-                        pos,
-                        size,
-                        Color::new(0.2, 0.2, 0.2, 1.0),
-                    )
-                    .shape(Shape::Round(5.0))
-                    .border(Border::new(color, 1.5)))
-                });
+                shell.list.push(Rectangle::new(
+                    size,
+                    Color::new(0.2, 0.2, 0.2, 1.0),
+                )
+                .shape(Shape::Round(5.0))
+                .border(Border::new(color, 1.5))
+                .with_transform(shell.transform * tataku::Matrix::identity()
+                    .trans(pos)
+                ));
             }
 
             // score text
             if let Some(layout) = cache.score_text.clone() {
-                shell.list.push(Transformed {
-                    transform: shell.transform * tataku::Matrix::identity()
+                shell.list.push(graphics::Text::new(layout)
+                    .with_transform(shell.transform * tataku::Matrix::identity()
                         .trans(pos + PADDING),
-                    drawable: Box::new(Text::new(layout))
-                });
+                ));
             }
 
             // combo text
             if let Some(layout) = cache.combo_text.clone() {
-                shell.list.push(graphics::Transformed {
-                    transform: shell.transform * tataku::Matrix::identity()
+                shell.list.push(graphics::Text::new(layout)
+                    .with_transform(shell.transform * tataku::Matrix::identity()
                         .trans(pos + (PADDING + Vector2::new(0.0, PADDING.y + 15.0))),
-                    drawable: Box::new(graphics::Text::new(layout))
-                });
+                ));
             }
         }
 

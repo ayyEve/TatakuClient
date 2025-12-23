@@ -18,27 +18,6 @@ pub trait SkinProvider: Send + Sync + 'static {
     fn free_all_unused(&mut self);
 }
 
-impl dyn SkinProvider {
-    /// helper since most texture loads will look something like this
-    pub fn get_texture_then(
-        &mut self,
-        name: &Path,
-        source: &TextureSource,
-        usage: SkinUsage,
-        grayscale: bool,
-        mut on_loaded: impl FnMut(&mut Image)
-    ) -> Option<Image> {
-        self
-        .get_texture(name, source, usage, grayscale)
-        .map(|mut i| {
-            on_loaded(&mut i);
-            i
-        })
-    }
-}
-
-
-
 #[derive(Reflect)]
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum TextureSource {

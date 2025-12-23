@@ -3,11 +3,6 @@ use crate::*;
 #[derive(Clone)]
 pub struct SkinnedNumber {
     pub color: Color,
-    pub pos: Vector2,
-    pub rotation: f32,
-    pub scale: Vector2,
-
-    pub origin: Vector2,
     pub spacing_override: Option<f32>,
 
     number_textures: Vec<Image>,
@@ -23,28 +18,23 @@ pub struct SkinnedNumber {
 impl SkinnedNumber {
     #[cfg(feature = "graphics")]
     pub fn new<TN: AsRef<str>>(
-        pos: Vector2, 
-        number: f64, 
-        color: Color, 
-        texture_name: TN, 
-        symbol: Option<char>, 
-        floating_precision: usize, 
+        number: f64,
+        color: Color,
+        texture_name: TN,
+        symbol: Option<char>,
+        floating_precision: usize,
         skin_manager: &mut dyn SkinProvider,
 
         source: &TextureSource,
         usage: SkinUsage,
     ) -> tataku::Result<Self> {
         let texture_name = texture_name.as_ref();
-        let rotation = 0.0;
-        let scale = Vector2::ONE;
 
         let mut number_textures = Vec::new();
         for i in 0..10 {
             let name = format!("{texture_name}-{i}");
-            let tex = skin_manager.get_texture_then(Path::new(&name), source, usage, false, |i| {
-                i.origin = Vector2::ZERO;
-                // i.size = i.tex_size();
-            }).ok_or(Error::String(format!("texture does not exist: {name}")))?;
+            let tex = skin_manager.get_texture(Path::new(&name), source, usage, false)
+                .ok_or(Error::String(format!("texture does not exist: {name}")))?;
 
             number_textures.push(tex);
         }
@@ -60,17 +50,13 @@ impl SkinnedNumber {
         ];
         for (c, name) in chars {
             let name = format!("{texture_name}-{name}");
-            let Some(mut tex) = skin_manager.get_texture(Path::new(&name), source, usage, false) else { continue }; 
-            tex.origin = Vector2::ZERO;
+            let Some(tex) = skin_manager.get_texture(Path::new(&name), source, usage, false) else { continue };
+
             symbol_textures.insert(c, tex);
         }
 
         Ok(Self {
             color,
-            pos,
-            scale,
-            origin: Vector2::ZERO,
-            rotation,
             number,
 
             cache: Arc::new(RwLock::new((number, Self::number_as_text_base(number, floating_precision, symbol.as_ref())))),
@@ -87,18 +73,18 @@ impl SkinnedNumber {
         let last = self.cache.read();
         if last.0 == self.number { return last.1.clone(); }
         drop(last);
-        
+
 
         let s = Self::number_as_text_base(
-            self.number, 
-            self.floating_precision, 
+            self.number,
+            self.floating_precision,
             self.symbol.as_ref()
         );
         *self.cache.write() = (self.number, s.clone());
         s
     }
 
-    
+
     pub fn get_char_tex(&self, c: char) -> Option<&Image> {
         let num = match c {
             '0' => 0,
@@ -119,33 +105,33 @@ impl SkinnedNumber {
         if num > 9 { panic!("trying to get tex for num > 9") }
         &self.number_textures[num]
     }
-    
+
     pub fn measure_text(&self) -> Vector2 {
         let s = self.number_as_text();
 
         let mut width = 0.0;
         let mut max_height:f32 = 0.0;
-        let x_spacing = self.spacing_override.unwrap_or_default() * self.scale.x;
+        let x_spacing = self.spacing_override.unwrap_or_default();
 
         for c in s.chars() {
             if let Some(t) = self.get_char_tex(c) {
-                let t = t.size() * self.scale;
+                let t = t.size();
                 width += t.x + x_spacing;
                 max_height = max_height.max(t.y);
             }
         }
-        
+
         Vector2::new(width - x_spacing, max_height)
     }
 
-    pub fn center_text(&mut self, rect:&Bounds) {
-        let text_size = self.measure_text();
-        self.pos = rect.pos + (rect.size - text_size) / 2.0;
-    }
+    // pub fn center_text(&mut self, rect:&Bounds) {
+    //     let text_size = self.measure_text();
+    //     self.pos = rect.pos + (rect.size - text_size) / 2.0;
+    // }
 
     fn number_as_text_base(
-        num: f64, 
-        precision: usize, 
+        num: f64,
+        precision: usize,
         symbol: Option<&char>
     ) -> String {
         let mut s = format_float(&num, precision);
@@ -179,30 +165,23 @@ impl TatakuRenderable for SkinnedNumber {
     fn draw(
         &self, 
         options: &DrawOptions, 
-        mut transform: Matrix, 
+        transform: Matrix,
         g: &mut dyn DrawEngine
     ) {
         let color = options.color_with_alpha(self.color);
-        let x_spacing = self.spacing_override.unwrap_or_default() * self.scale.x;
-
-        transform = transform * Matrix::identity()
-            .trans(-self.origin) // apply origin
-            .rot(self.rotation) // rotate
-            .scale(self.scale) // scale
-            .trans(self.pos) // move to pos
-        ;
+        let x_spacing = self.spacing_override.unwrap_or_default();
 
         // TODO: cache `s`
         let s = self.number_as_text();
         let mut current_pos = Vector2::ZERO;
 
         for c in s.chars() {
-            let Some(mut t) = self.get_char_tex(c).cloned() else { continue }; 
+            let Some(mut t) = self.get_char_tex(c).cloned() else { continue };
             t.color = color;
             // t.set_scissor(self.scissor);
             t.set_pipeline(GraphicsPipeline::Standard(self.blend_mode));
             t.draw(options, transform.trans(current_pos), g);
-            current_pos.x += t.size().x * self.scale.x + x_spacing;
+            current_pos.x += t.size().x + x_spacing;
         }
     }
 }

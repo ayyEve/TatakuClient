@@ -18,6 +18,8 @@ pub mod prelude {
         Deserialize,
     };
 
+    pub(crate) use tataku_graphics::TatakuRenderable;
+
     pub(crate) use tataku_engine as engine;
     pub(crate) use engine::{ input, actions };
 

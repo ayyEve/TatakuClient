@@ -3,22 +3,19 @@ use crate::*;
 #[derive(Copy, Clone)]
 pub struct Line {
     color: Color,
-    p1: Vector2,
-    p2: Vector2,
+    vector: Vector2,
     thickness: f32,
 
     blend_mode: BlendMode,
 }
 impl Line {
     pub fn new(
-        p1: Vector2, 
-        p2: Vector2, 
+        vector: Vector2,
         thickness: f32, 
         color: Color,
     ) -> Self {
         Self {
-            p1,
-            p2,
+            vector,
             thickness,
             color,
             blend_mode: BlendMode::AlphaBlending,
@@ -45,10 +42,9 @@ impl TatakuRenderable for Line {
         g: &mut dyn DrawEngine
     ) {
         let color = options.color_with_alpha(self.color);
-        let transform = transform * Matrix::identity().trans(self.p1);
 
         g.draw_line(
-            self.p2 - self.p1, 
+            self.vector,
             self.thickness, 
             color, 
             transform, 

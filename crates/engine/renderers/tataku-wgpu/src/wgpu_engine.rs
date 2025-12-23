@@ -24,6 +24,13 @@ const MAX_DEPTH:f32 = 8192.0 * 8192.0;
 /// background color
 const GFX_CLEAR_COLOR:tataku::Color = tataku::Color::BLACK;
 
+const QUAD: [tataku::Vector2; 4] = [
+    tataku::Vector2::ZERO,
+    tataku::Vector2::new(1.0, 0.0),
+    tataku::Vector2::new(0.0, 1.0),
+    tataku::Vector2::ONE,
+];
+
 macro_rules! get_render_buffer {
     ($self: ident, $t: ident) => {{
         let b = $self.current_render_buffer
@@ -1984,10 +1991,10 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
         self.reserve_quad(quad, color, transform, blend_mode);
     }
 
-    /// rect is [x,y,w,h]
+    /// size is [w,h]
     fn draw_rect(
         &mut self,
-        rect: [f32; 4],
+        size: [f32; 2],
         border: Option<tataku::Border>,
         shape: graphics::Shape,
         color: tataku::Color,
@@ -1995,14 +2002,12 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
         blend_mode: tataku::BlendMode,
     ) {
         // for some reason something gets set to infinity on screen resize and panics the tesselator, this prevents the panic
-        if rect.iter().any(|n| !n.is_normal() && *n != 0.0) { return }
+        if size.iter().any(|n| !n.is_normal() && *n != 0.0) { return }
 
-        let [x, y, w, h] = rect;
         let rect = Box2D::new(
-            Point::new(x, y),
-            Point::new(x + w, y + h)
+            Point::zero(),
+            Point::new(size[0], size[1]),
         );
-
 
         use lyon_tessellation::path::{ Path, Winding };
         let mut path = Path::builder();
@@ -2075,7 +2080,6 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
 
     fn draw_slider(
         &mut self,
-        quad: [tataku::Vector2; 4],
         transform: tataku::Matrix,
 
         mut slider_data: tataku::SliderData,
@@ -2093,8 +2097,7 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
             return
         };
 
-        let vertices = quad
-            .into_iter()
+        let vertices = QUAD.into_iter()
             .map(|p| shaders::slider::Vertex {
                 position: transform.mul_v2(p).into(),
                 slider_index: reserved.slider_index,
@@ -2138,14 +2141,15 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
 
     fn draw_flashlight(
         &mut self,
-        quad: [tataku::Vector2; 4],
         transform: tataku::Matrix,
-        flashlight_data: tataku::FlashlightData
+        mut flashlight_data: tataku::FlashlightData
     ) {
         let Some(mut reserved) = self.reserve_flashlight()
         else { return };
 
-        let vertices = quad.into_iter()
+        flashlight_data.center = transform * flashlight_data.center;
+
+        let vertices = QUAD.into_iter()
             .map(|p| shaders::flashlight::Vertex {
                 position: transform.mul_v2(p).into(),
                 flashlight_index: reserved.flashlight_index,

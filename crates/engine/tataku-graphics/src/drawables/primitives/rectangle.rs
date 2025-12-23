@@ -3,13 +3,9 @@ use crate::*;
 #[derive(Copy, Clone)]
 #[derive(ChainableInitializer)]
 pub struct Rectangle {
-    inner: Bounds,
-    
-    pub color: Color,
-    pub rotation: f32,
+    size: Vector2,
 
-    pub origin: Vector2,
-    pub scale: Vector2,
+    pub color: Color,
     blend_mode: BlendMode,
 
     #[chain] pub shape: Shape,
@@ -17,28 +13,17 @@ pub struct Rectangle {
 }
 impl Rectangle {
     pub fn new(
-        pos: Vector2, 
         size: Vector2, 
         color: Color, 
     ) -> Self {
-        Self::new_bounds(Bounds::new(pos, size), color)
-    }
-
-    pub fn new_bounds(
-        bounds: Bounds, 
-        color: Color,
-    ) -> Self {
         Self {
-            inner: bounds,
-            scale: Vector2::ONE,
+            size,
 
             color,
-            rotation: 0.0,
             shape: Shape::Square,
             blend_mode: BlendMode::AlphaBlending,
 
             border: None,
-            origin: bounds.size / 2.0,
         }
     }
 
@@ -76,19 +61,10 @@ impl TatakuRenderable for Rectangle {
             b.color = options.border_color_with_alpha(b.color); 
             b 
         });
-        
-        let transform = transform * Matrix::identity()
-            .trans(-self.origin) // apply origin
-            .rot(self.rotation) // rotate to rotate
-            .trans(self.origin) // undo origin
-            .scale(self.scale) // scale to size
-            .trans(self.inner.pos) // move to pos
-        ;
 
         g.draw_rect(
             [
-                0.0, 0.0, 
-                self.inner.size.x, self.inner.size.y
+                self.size.x, self.size.y
             ], 
             border, 
             self.shape, 
@@ -96,32 +72,5 @@ impl TatakuRenderable for Rectangle {
             transform, 
             self.blend_mode
         );
-    }
-}
-
-impl From<Bounds> for Rectangle {
-    fn from(other: Bounds) -> Self {
-        Self {
-            inner: other,
-            color: Color::BLACK,
-            rotation: 0.0,
-            origin: other.size / 2.0,
-            scale: Vector2::ONE,
-            blend_mode: BlendMode::default(),
-            shape: Shape::Square,
-            border: None
-        }
-    }
-}
-
-impl Deref for Rectangle {
-    type Target = Bounds;
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-impl DerefMut for Rectangle {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.inner
     }
 }

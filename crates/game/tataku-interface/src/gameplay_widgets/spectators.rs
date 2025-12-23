@@ -92,20 +92,15 @@ impl GameplayWidget for SpectatorsElement {
         // if self.spectators.list.is_empty() { return }
 
         // draw spectators
-        shell.list.push(graphics::Transformed {
-            transform: shell.transform,
-            drawable: Box::new(graphics::Rectangle::new(
-                Vector2::ZERO,
-                *layout_size,
-                Color::WHITE.alpha(0.8),
-            ))
-        });
+        shell.list.push(graphics::Rectangle::new(
+            *layout_size,
+            Color::WHITE.alpha(0.8),
+        ).with_transform(shell.transform));
 
-        shell.list.push(graphics::Transformed {
-            transform: shell.transform * tataku::Matrix::identity()
-                .trans(Vector2::ONE * PADDING),
-            drawable: Box::new(graphics::Text::new(layout.clone())),
-        });
+        shell.list.push(graphics::Text::new(layout.clone())
+            .with_transform(shell.transform * tataku::Matrix::identity()
+                .trans(Vector2::ONE * PADDING)
+        ));
 
         // for (i, user) in self.spectators.list.iter().enumerate() {
         //     // draw username

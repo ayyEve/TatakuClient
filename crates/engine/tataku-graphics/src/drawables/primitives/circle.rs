@@ -5,7 +5,6 @@ use crate::*;
 pub struct Circle {
     // current
     pub color: Color,
-    pub pos: Vector2,
     pub radius: f32,
     blend_mode: BlendMode,
 
@@ -14,13 +13,11 @@ pub struct Circle {
 }
 impl Circle {
     pub fn new(
-        pos: Vector2, 
         radius: f32, 
         color: Color, 
     ) -> Self {
         Self {
             color,
-            pos,
             radius,
             blend_mode: BlendMode::AlphaBlending,
 
@@ -56,11 +53,6 @@ impl TatakuRenderable for Circle {
     ) {
         let color = options.color_with_alpha(self.color);
         let border = self.border.map(|mut b|{ b.color = options.border_color_with_alpha(b.color); b });
-
-        let transform = transform * Matrix::identity()
-            // .scale(self)
-            .trans(self.pos)
-        ;
 
         g.draw_circle(
             self.radius, 

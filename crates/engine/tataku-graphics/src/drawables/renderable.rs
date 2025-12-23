@@ -17,8 +17,85 @@ pub trait TatakuRenderable: Sync + Send {
         transform: Matrix, 
         g: &mut dyn DrawEngine,
     );
+
+    fn with_transform(self, transform: tataku::Matrix) -> Transformed<Self> where Self: Sized {
+        Transformed {
+            transform,
+            drawable: self,
+        }
+    }
+
+    fn with_scissor(self, scissor: Bounds) -> Scissored<Self> where Self: Sized {
+        Scissored {
+            scissor,
+            drawable: self,
+        }
+    }
+
+    fn merge_draw_options(self, draw_options: DrawOptions) -> MergeDrawOptions<Self> where Self: Sized {
+        MergeDrawOptions {
+            draw_options,
+            drawable: self,
+        }
+    }
+
+    fn boxed(self) -> Box<dyn TatakuRenderable> where Self: Sized + 'static {
+        Box::new(self)
+    }
 }
 
+impl TatakuRenderable for Box<dyn TatakuRenderable> {
+    fn get_pipeline(&self) -> GraphicsPipeline {
+        TatakuRenderable::get_pipeline(&**self)
+    }
+
+    fn set_pipeline(&mut self, pipeline: GraphicsPipeline) {
+        TatakuRenderable::set_pipeline(&mut **self, pipeline);
+    }
+
+    fn draw(
+        &self,
+        options: &DrawOptions,
+        transform: Matrix,
+        g: &mut dyn DrawEngine,
+    ) {
+        TatakuRenderable::draw(
+            &**self,
+            options,
+            transform,
+            g,
+        );
+    }
+
+    fn get_name(&self) -> String {
+        TatakuRenderable::get_name(&**self)
+    }
+
+    fn with_transform(self, transform: tataku::Matrix) -> Transformed<Self> where Self: Sized {
+        Transformed {
+            transform,
+            drawable: self,
+        }
+    }
+
+    fn with_scissor(self, scissor: Bounds) -> Scissored<Self> where Self: Sized {
+        Scissored {
+            scissor,
+            drawable: self,
+        }
+    }
+
+    fn merge_draw_options(self, draw_options: DrawOptions) -> MergeDrawOptions<Self> where Self: Sized {
+        MergeDrawOptions {
+            draw_options,
+            drawable: self,
+        }
+    }
+
+    fn boxed(self) -> Box<dyn TatakuRenderable> where Self: Sized + 'static {
+        self
+    }
+}
 
 /// draw option overrides
 #[derive(Copy, Clone, Debug, Default)]

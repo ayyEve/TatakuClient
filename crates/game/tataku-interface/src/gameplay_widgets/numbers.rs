@@ -2,7 +2,6 @@ use crate::prelude::*;
 use graphics::SkinnedNumber;
 use tataku::{
     Color,
-    Bounds,
     Vector2,
     Alignment,
     format_float,
@@ -103,18 +102,12 @@ impl<T: _CanNum> GameplayWidget for Number<T> {
 
     fn draw(&self, shell: &mut GameplayWidgetDrawShell) {
         if let Some(image) = self.image.clone() {
-            shell.list.push(graphics::Transformed {
-                transform: shell.transform,
-                drawable: Box::new(image)
-            });
+            shell.list.push(image.with_transform(shell.transform));
         } else {
             let Some(layout) = self.layout.clone()
             else { return };
 
-            shell.list.push(graphics::Transformed {
-                transform: shell.transform,
-                drawable: Box::new(graphics::Text::new(layout))
-            });
+            shell.list.push(graphics::Text::new(layout).with_transform(shell.transform));
 
             // let mut text = self.text.clone();
             // text.pos = align.resolve(
@@ -133,7 +126,6 @@ impl<T: _CanNum> GameplayWidget for Number<T> {
         shell: &mut GameplayWidgetReloadSkinShell
     ) {
         self.image = SkinnedNumber::new(
-            Vector2::ZERO,
             self.config.max_number.as_f64(),
             Color::WHITE,
             self.config.tex_name,

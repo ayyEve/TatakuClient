@@ -23,7 +23,7 @@ pub struct ManiaHold {
 
     #[cfg(feature="graphics")] end_relative_pos: f32,
     #[cfg(feature="graphics")] start_relative_pos: f32,
-    
+
     #[cfg(feature="graphics")] end_y: f32,
     #[cfg(feature="graphics")] sv_mult: f32,
     #[cfg(feature="graphics")] color: Color,
@@ -39,18 +39,18 @@ pub struct ManiaHold {
 impl ManiaHold {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        time: f32, end_time: f32, column: u8, 
-        #[cfg(feature="graphics")] color: Color, 
-        #[cfg(feature="graphics")] x: f32, 
+        time: f32, end_time: f32, column: u8,
+        #[cfg(feature="graphics")] color: Color,
+        #[cfg(feature="graphics")] x: f32,
         #[cfg(feature="graphics")] sv_mult: f32,
-        
-        #[cfg(feature="graphics")] playfield: Arc<ManiaPlayfield>, 
+
+        #[cfg(feature="graphics")] playfield: Arc<ManiaPlayfield>,
         #[cfg(feature="graphics")] mania_skin_settings: Option<Arc<graphics::ManiaSkinSettings>>,
 
         #[cfg(feature="gameplay")] hitsounds: Vec<gameplay::Hitsound>,
     ) -> Self {
         Self {
-            time, 
+            time,
             column,
             end_time,
             #[cfg(feature="graphics")] color,
@@ -63,7 +63,7 @@ impl ManiaHold {
         }
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn y_at(&mut self, beatmap_time: f32) -> (f32, f32) {
         let speed = self.sv_mult * if self.playfield.upside_down {-1.0} else {1.0};
 
@@ -85,27 +85,27 @@ impl gameplay::HitObject for ManiaHold {
             let (start, end) = self.y_at(beatmap_time);
             self.pos.y = start;
             self.end_y = end;
-    
+
             if self.playfield.upside_down {
                 std::mem::swap(&mut self.end_y, &mut self.pos.y);
             }
-            
+
             let note_size = self.playfield.note_size();
             let y = if self.holding {self.playfield.hit_y()} else {self.pos.y}; // + note_size.y / 2.0;
-    
+
             // update start tex
             if let Some(img) = self.start_image.as_mut() {
                 img.pos = self.pos;
             }
-    
+
             // update middle tex
             if let Some(img) = &mut self.middle_image {
                 img.pos = Vector2::new(self.pos.x, y);
                 let length = self.end_y - (y - note_size.y / 2.0);
-    
-                img.scale.y = length / img.tex_size().y;
+
+                img.scale.y = length / img.size().y;
             }
-    
+
             // update end tex
             if let Some(img) = &mut self.end_image {
                 img.pos = Vector2::new(self.pos.x, self.end_y);
@@ -114,15 +114,15 @@ impl gameplay::HitObject for ManiaHold {
         }
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn draw(&mut self, _time: f32, list: &mut graphics::RenderableCollection) {
         // if self.playfield.upside_down {
         //     if self.end_y < 0.0 || self.pos.y > args.window_size[1] as f64 {return}
-        // } 
+        // }
         let note_size = self.playfield.note_size();
 
         let border = Border::new(
-            Color::BLACK, 
+            Color::BLACK,
             self.playfield.note_border_width
         );
         let color = self.color;
@@ -199,7 +199,7 @@ impl gameplay::HitObject for ManiaHold {
         self.holding = false;
         self.hold_starts.clear();
         self.hold_ends.clear();
-        
+
         #[cfg(feature="graphics")] {
             self.pos.y = 0.0;
             self.position_function_index = 0;
@@ -208,41 +208,41 @@ impl gameplay::HitObject for ManiaHold {
 
     #[cfg(feature="graphics")]
     fn reload_skin(
-        &mut self, 
-        source: &graphics::TextureSource, 
+        &mut self,
+        source: &graphics::TextureSource,
         skin_manager: &mut dyn graphics::SkinProvider,
     ) {
         self.start_image = None;
         self.middle_image = None;
         self.end_image = None;
 
-        let Some(settings) = &self.mania_skin_settings 
+        let Some(settings) = &self.mania_skin_settings
         else { return };
-        
+
         // start
         if let Some(path) = settings.note_image_h.get(&self.column)
         && let Some(mut img) = skin_manager.get_texture(
-            Path::new(path), 
-            source, 
-            graphics::SkinUsage::Gamemode, 
+            Path::new(path),
+            source,
+            graphics::SkinUsage::Gamemode,
             true
         ) {
             self.playfield.note_image(&mut img);
             img.color = self.color;
             self.start_image = Some(img);
         }
-        
+
         // middle
         if let Some(path) = settings.note_image_l.get(&self.column)
         && let Some(mut img) = skin_manager.get_texture(
-            Path::new(path), 
-            source, 
-            graphics::SkinUsage::Gamemode, 
+            Path::new(path),
+            source,
+            graphics::SkinUsage::Gamemode,
             true
         ) {
             img.origin = Vector2::ZERO;
             img.color = Color::WHITE;
-            img.scale.x = self.playfield.column_width / img.tex_size().x;
+            img.scale.x = self.playfield.column_width / img.size().x;
 
             self.middle_image = Some(img);
         }
@@ -250,9 +250,9 @@ impl gameplay::HitObject for ManiaHold {
         // end
         if let Some(path) = settings.note_image_t.get(&self.column)
         && let Some(mut img) = skin_manager.get_texture(
-            Path::new(path), 
-            source, 
-            graphics::SkinUsage::Gamemode, 
+            Path::new(path),
+            source,
+            graphics::SkinUsage::Gamemode,
             true
         ) {
             self.playfield.note_image(&mut img);
@@ -264,7 +264,7 @@ impl gameplay::HitObject for ManiaHold {
 }
 impl ManiaHitObject for ManiaHold {
     fn was_hit(&self) -> bool {
-        !self.hold_starts.is_empty()  
+        !self.hold_starts.is_empty()
     }
 
     // key pressed
@@ -278,12 +278,12 @@ impl ManiaHitObject for ManiaHold {
     }
 
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn set_sv_mult(&mut self, sv: f32) {
         self.sv_mult = sv;
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn set_position_function(&mut self, p: Arc<Vec<PositionPoint>>) {
         self.position_function = p;
 
@@ -291,7 +291,7 @@ impl ManiaHitObject for ManiaHold {
         self.end_relative_pos = ManiaGame::pos_at(&self.position_function, self.end_time, &mut 0);
     }
     
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn playfield_changed(&mut self, playfield: Arc<ManiaPlayfield>) {
         self.playfield = playfield;
         self.pos.x = self.playfield.col_pos(self.column);
@@ -302,12 +302,12 @@ impl ManiaHitObject for ManiaHold {
             if flip { img.scale.y *= -1.0; }
         }
         if let Some(img) = self.middle_image.as_mut() {
-            img.scale.x = self.playfield.column_width / img.tex_size().x;
+            img.scale.x = self.playfield.column_width / img.size().x;
         }
     }
 
-    #[cfg(feature="gameplay")] 
+    #[cfg(feature="gameplay")]
     fn get_hitsound(&self) -> &Vec<gameplay::Hitsound> {
         &self.hitsounds
-    } 
+    }
 }

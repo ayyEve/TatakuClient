@@ -80,7 +80,7 @@ pub struct OsuGame {
     #[cfg(feature="graphics")] cursor: OsuCursor,
     #[cfg(feature="graphics")] smoke_emitter: Option<tataku_graphics::Emitter>,
     #[cfg(feature="graphics")] follow_point_image: Option<tataku_graphics::Image>,
-    #[cfg(feature="graphics")] judgment_helper: JudgmentImageHelper,
+    #[cfg(feature="graphics")] judgment_helper: JudgmentImages,
 
     metadata: Arc<BeatmapMeta>,
     mods: Arc<ModManager>,
@@ -203,7 +203,7 @@ impl OsuGame {
         pos: Vector2,
         hit_value: &HitJudgment,
         scaling_helper: &Arc<ScalingHelper>,
-        judgment_helper: &JudgmentImageHelper,
+        judgment_helper: &JudgmentImages,
         settings: &OsuSettings,
         state: &mut GameplayUpdateShell<'_>
     ) {
@@ -449,7 +449,7 @@ impl Gamemode for OsuGame {
                     stack_leniency,
                     // window_size,
                     #[cfg(feature="graphics")] follow_point_image: None,
-                    #[cfg(feature="graphics")] judgment_helper: JudgmentImageHelper::new(OsuHitJudgments::variants().to_vec()),
+                    #[cfg(feature="graphics")] judgment_helper: JudgmentImages::new(OsuHitJudgments::variants().to_vec()),
                     metadata,
                     mods,
                     timing_points: map.get_timing_points(),

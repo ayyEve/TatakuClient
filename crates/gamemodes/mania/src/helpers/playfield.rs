@@ -21,9 +21,9 @@ pub struct ManiaPlayfield {
 }
 impl ManiaPlayfield {
     pub fn new(
-        mut settings: ManiaPlayfieldSettings, 
-        bounds: Bounds, 
-        col_count: u8, 
+        mut settings: ManiaPlayfieldSettings,
+        bounds: Bounds,
+        col_count: u8,
         skin_hit_pos: f32,
         full_window: bool,
     ) -> Self {
@@ -35,7 +35,7 @@ impl ManiaPlayfield {
         }
 
         Self {
-            settings, 
+            settings,
             bounds,
             // col_count,
             total_width,
@@ -63,13 +63,13 @@ impl ManiaPlayfield {
     }
 
     /// calculate the note's origin and scale
-    /// 
+    ///
     /// this assumes notes are drawn with the origin bottom-left
     #[cfg(feature="graphics")]
     pub fn note_image(&self, img: &mut graphics::Image) {
-        let tex_size = img.tex_size();
+        let tex_size = img.size();
         // img.origin = Vector2::with_y(tex_size.y - self.skin_hit_pos);
-        
+
         let a = f32::from_bits(self.column_origin.load(Ordering::Relaxed));
         img.origin = Vector2::with_y(a + tex_size.y / 2.0);
 
@@ -77,11 +77,11 @@ impl ManiaPlayfield {
     }
 
     /// calculate the column's image's origin
-    /// 
+    ///
     /// this assumes notes are drawn with the origin bottom-left
     #[cfg(feature="graphics")]
     pub fn column_image(&self, img: &mut graphics::Image) {
-        let tex_size = img.tex_size();
+        let tex_size = img.size();
         // img.origin = Vector2::with_y(tex_size.y - self.skin_hit_pos);
         img.origin = Vector2::with_y(tex_size.y - self.skin_hit_pos);
 
@@ -90,7 +90,7 @@ impl ManiaPlayfield {
         let a:u32 = unsafe {std::mem::transmute_copy(&img.origin.y)};
         self.column_origin.store(a, Ordering::Release);
 
-        img.scale = Vector2::ONE * (self.column_width / img.tex_size().x);
+        img.scale = Vector2::ONE * (self.column_width / img.size().x);
     }
 
 }
@@ -99,7 +99,7 @@ impl ManiaPlayfield {
 impl Deref for ManiaPlayfield {
     type Target = ManiaPlayfieldSettings;
 
-    fn deref(&self) -> &Self::Target { 
-        &self.settings 
+    fn deref(&self) -> &Self::Target {
+        &self.settings
     }
 }

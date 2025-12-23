@@ -1,10 +1,9 @@
 use crate::*;
 
-#[derive(Copy, Clone, Debug, Default2)]
+#[derive(Copy, Clone, Debug)]
 #[derive(Serialize, Deserialize)]
 pub struct Transform {
     pub origin: Vector2,
-    #[default(Vector2::ONE)]
     pub scale: Vector2,
     pub rotation: f32,
     pub pos: Vector2,
@@ -86,14 +85,20 @@ impl Transform {
     }
 }
 
-pub struct Transformed {
-    pub transform: Matrix,
-    pub drawable: Box<dyn TatakuRenderable>,
+impl Default for Transform {
+    fn default() -> Self {
+        Self::identity()
+    }
 }
-impl Transformed {
+
+pub struct Transformed<T = Box<dyn TatakuRenderable>> {
+    pub transform: Matrix,
+    pub drawable: T,
+}
+impl<T> Transformed<T> {
     pub fn new(
         transform: Transform,
-        drawable: Box<dyn TatakuRenderable>,
+        drawable: T,
     ) -> Self {
         Self {
             transform: transform.matrix(),
@@ -103,7 +108,7 @@ impl Transformed {
 }
 
 #[cfg(feature="graphics")]
-impl TatakuRenderable for Transformed {
+impl<T: TatakuRenderable> TatakuRenderable for Transformed<T> {
     fn get_pipeline(&self) -> GraphicsPipeline {
         self.drawable.get_pipeline()
     }
@@ -124,14 +129,14 @@ impl TatakuRenderable for Transformed {
 }
 
 
-pub struct Scissored {
-    pub scissor: [f32; 4],
-    pub drawable: Box<dyn TatakuRenderable>
+pub struct Scissored<T = Box<dyn TatakuRenderable>> {
+    pub scissor: Bounds,
+    pub drawable: T
 }
-impl Scissored {
+impl<T> Scissored<T> {
     pub fn new(
-        scissor: [f32; 4],
-        drawable: Box<dyn TatakuRenderable>
+        scissor: Bounds,
+        drawable: T
     ) -> Self {
         Self {
             scissor,
@@ -141,7 +146,7 @@ impl Scissored {
 }
 
 #[cfg(feature="graphics")]
-impl TatakuRenderable for Scissored {
+impl<T: TatakuRenderable> TatakuRenderable for Scissored<T> {
     fn get_pipeline(&self) -> GraphicsPipeline {
         self.drawable.get_pipeline()
     }
@@ -156,20 +161,21 @@ impl TatakuRenderable for Scissored {
         transform: Matrix,
         g: &mut dyn DrawEngine,
     ) {
-        g.push_scissor(self.scissor); // todo: BREAKING CHANGE: multiply by transform
+        let scissor = transform * self.scissor;
+        g.push_scissor(scissor.into_scissor());
         self.drawable.draw(options, transform, g);
         g.pop_scissor();
     }
 }
 
-pub struct MergeDrawOptions {
+pub struct MergeDrawOptions<T = Box<dyn TatakuRenderable>> {
     pub draw_options: DrawOptions,
-    pub drawable: Box<dyn TatakuRenderable>
+    pub drawable: T
 }
-impl MergeDrawOptions {
+impl<T> MergeDrawOptions<T> {
     pub fn new(
         draw_options: DrawOptions,
-        drawable: Box<dyn TatakuRenderable>
+        drawable: T,
     ) -> Self {
         Self {
             draw_options,
@@ -179,7 +185,7 @@ impl MergeDrawOptions {
 }
 
 #[cfg(feature="graphics")]
-impl TatakuRenderable for MergeDrawOptions {
+impl<T: TatakuRenderable> TatakuRenderable for MergeDrawOptions<T> {
     fn get_pipeline(&self) -> GraphicsPipeline {
         self.drawable.get_pipeline()
     }

@@ -1,7 +1,7 @@
 use crate::*;
 
 pub struct FlashlightDrawable {
-    pub pos: Vector2,
+    pub center: Vector2,
     pub radius: f32,
     pub fade_radius: f32,
     pub bounds: Bounds,
@@ -10,14 +10,14 @@ pub struct FlashlightDrawable {
 }
 impl FlashlightDrawable {
     pub fn new(
-        pos: Vector2, 
+        center: Vector2,
         radius: f32, 
         fade_radius: f32, 
         bounds: Bounds, 
         color: Color
     ) -> Self {
         Self {
-            pos, 
+            center,
             radius, 
             fade_radius, 
             bounds,
@@ -41,10 +41,9 @@ impl TatakuRenderable for FlashlightDrawable {
         g: &mut dyn DrawEngine,
     ) {
         g.draw_flashlight(
-            self.bounds.into_quad(), 
             transform, 
             FlashlightData {
-                center: self.pos,
+                center: self.center,
                 flashlight_radius: self.radius,
                 fade_radius: self.fade_radius,
                 color: self.color,

@@ -23,6 +23,8 @@ pub struct DonChan {
     kiai_anim:   Option<Animation>,
     fail_anim:   Option<Animation>,
 
+    size: Vector2,
+
     init: bool,
     current_timing_point_time: f32,
 
@@ -56,6 +58,8 @@ impl DonChan {
             last_miss_count: 0,
             last_score: 0,
 
+            size: DEFAULT_DONCHAN_SIZE,
+
             combo_anim_last_index: 0,
         })
     }
@@ -86,7 +90,7 @@ impl GameplayWidget for DonChan {
     fn display_name(&self) -> &'static str { "DonChan" }
 
     fn preferred_size(&self) -> Vector2 {
-        DEFAULT_DONCHAN_SIZE
+        self.size
     }
 
     fn update(&mut self, shell: &mut GameplayWidgetUpdateShell) {
@@ -151,6 +155,36 @@ impl GameplayWidget for DonChan {
         for i in self.all_anims() {
             let Some(anim) = i else { continue };
             anim.update(time);
+        }
+
+        let mut size = DEFAULT_DONCHAN_SIZE;
+
+        match self.state {
+            DonChanState::Normal => {
+                if self.kiai {
+                    if let Some(anim) = &self.kiai_anim {
+                        size = anim.size();
+                    }
+                } else if let Some(anim) = &self.normal_anim {
+                    size = anim.size();
+                }
+            }
+            DonChanState::ComboMilestone => {
+                if let Some(anim) = &self.combo_anim {
+                    size = anim.size();
+                }
+            }
+            DonChanState::Fail => {
+                if let Some(anim) = &self.fail_anim {
+                    size = anim.size();
+                }
+            }
+        }
+
+        if size != self.size {
+            info!("donchan {size:?}");
+            self.size = size;
+            shell.manager.mark_dirty("don_chan");
         }
     }
 
@@ -240,8 +274,7 @@ fn load_anim(
             50.0, // this is getting overwritten later anyways
             Vector2::ONE
         );
-        anim.origin.x = 0.0;
-        anim.origin.y *= 2.0; // since its center, just double it to get the bottom
+        anim.origin = Vector2::ZERO;
 
         Some(anim)
     }
@@ -261,7 +294,7 @@ pub const DON_CHAN: GameplayWidgetBuilder = GameplayWidgetBuilder {
     default_layout: GameplayWidgetLayout {
         anchor: GameplayWidgetAnchor::Playfield {
             horizontal_side: Side::Inside,
-            vertical_side: Side::Outside,
+            vertical_side: Side::Inside,
         },
         align: Alignment::TOP_LEFT,
         transform: graphics::Transform::identity(),

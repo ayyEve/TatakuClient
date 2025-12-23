@@ -4,14 +4,6 @@ use crate::*;
 pub struct RenderTarget {
     pub blend_mode: BlendMode,
     pub color: Color,
-    pub pos: Vector2,
-    pub scale: Vector2,
-    pub rotation: f32,
-    
-    /// origin of rotation/scale in px, relative to image position
-    /// 
-    /// BEFORE SCALE
-    pub origin: Vector2,
 
     pub flip: ImageFlip,
 
@@ -46,12 +38,8 @@ impl RenderTarget {
         Image {
             blend_mode: self.blend_mode,
             tex: self.data.read().tex.clone(),
-            base_scale: Vector2::ONE,
-            origin: self.origin,
             color: self.color,
-            pos: self.pos,
-            scale: self.scale,
-            rotation: self.rotation,
+            base_scale: 1.0,
             flip: self.flip,
             draw_debug: false,
         }
@@ -135,4 +123,3 @@ impl RenderTargetData {
 //         }
 //     }
 // }
-

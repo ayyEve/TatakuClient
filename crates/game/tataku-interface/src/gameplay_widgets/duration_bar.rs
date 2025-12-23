@@ -51,31 +51,24 @@ impl GameplayWidget for DurationBarElement {
 
     fn draw(&self, shell: &mut GameplayWidgetDrawShell) {
         // fill
-        shell.list.push(graphics::Transformed {
-            transform: shell.transform,
-            drawable: Box::new(graphics::Rectangle::new(
-                Vector2::ZERO,
-                Vector2::new(
-                    self.container_size.x * self.duration_ratio,
-                    DURATION_HEIGHT
-                ) ,
-                self.common_game_settings.duration_color_full,
-            )),
-        });
+        shell.list.push(graphics::Rectangle::new(
+            Vector2::new(
+                self.container_size.x * self.duration_ratio,
+                DURATION_HEIGHT
+            ),
+            self.common_game_settings.duration_color_full,
+        ).with_transform(shell.transform));
 
         // border
-        shell.list.push(graphics::Transformed {
-            transform: shell.transform,
-            drawable: Box::new(graphics::Rectangle::new(
-                Vector2::ZERO,
-                Vector2::new(self.container_size.x, DURATION_HEIGHT),
-                self.common_game_settings.duration_color,
-            )
-            .border(Border::new(
-                self.common_game_settings.duration_border_color,
-                1.8
-            ))),
-        });
+        shell.list.push(graphics::Rectangle::new(
+            Vector2::new(self.container_size.x, DURATION_HEIGHT),
+            self.common_game_settings.duration_color,
+        )
+        .border(Border::new(
+            self.common_game_settings.duration_border_color,
+            1.8
+        ))
+        .with_transform(shell.transform));
     }
 }
 

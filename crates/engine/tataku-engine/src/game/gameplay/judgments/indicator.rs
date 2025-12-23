@@ -1,6 +1,7 @@
 use crate::*;
 use tataku::Vector2;
 use tataku::Color;
+use graphics::TatakuRenderable;
 
 pub trait JudgementIndicator: Send + Sync {
     fn should_keep(&self, map_time: f32) -> bool;
@@ -82,9 +83,10 @@ impl JudgementIndicator for BasicJudgementIndicator {
             list.push(img);
         } else {
             list.push(graphics::Circle::new(
-                self.pos,
                 self.radius,
                 self.color.alpha8(alpha),
+            ).with_transform(tataku::Matrix::identity()
+                .trans(self.pos)
             ));
         }
     }

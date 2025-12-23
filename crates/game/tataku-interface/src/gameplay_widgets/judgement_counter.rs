@@ -83,6 +83,7 @@ impl GameplayWidget for JudgementCounterElement {
     fn display_name(&self) -> &'static str { "Judgement Counter" }
 
     fn preferred_size(&self) -> Vector2 {
+        // todo: mark dirty
         let box_size = self.button_image.as_ref()
             .map_or(BOX_SIZE, Image::size);
 
@@ -158,23 +159,24 @@ impl GameplayWidget for JudgementCounterElement {
             let box_bounds = Bounds::new(pos, box_size);
 
             if let Some(mut btn) = self.button_image.clone() {
-                btn.pos = pos + box_size / 2.0;
                 btn.color = cache.judge.color;
 
-                shell.list.push(graphics::Transformed {
-                    transform: shell.transform,
-                    drawable: Box::new(btn)
-                });
+                shell.list.push(btn.with_transform(shell.transform * tataku::Matrix::identity()
+                    .trans(pos + box_size / 2.0)
+                ));
             } else {
                 // draw bg box
-                shell.list.push(graphics::Rectangle::new_bounds(
-                    box_bounds,
+                shell.list.push(graphics::Rectangle::new(
+                    box_size,
                     cache.judge.color,
                 )
                 .border(Border::new(
                     Color::BLACK,
                     2.0
-                )));
+                ))
+                .with_transform(shell.transform * tataku::Matrix::identity()
+                    .trans(pos)
+                ));
             }
 
             let centered = Alignment::CENTER.resolve(
@@ -185,11 +187,10 @@ impl GameplayWidget for JudgementCounterElement {
             );
 
             // draw text/count
-            shell.list.push(graphics::Transformed {
-                transform: shell.transform * tataku::Matrix::identity()
-                    .trans(centered),
-                drawable: Box::new(graphics::Text::new(cache.layout.clone())),
-            });
+            shell.list.push(graphics::Text::new(cache.layout.clone())
+                .with_transform(shell.transform * tataku::Matrix::identity()
+                    .trans(centered)
+            ));
         }
     }
 

@@ -86,6 +86,7 @@ impl GameplayWidget for KeyCounterElement {
     fn display_name(&self) -> &'static str { "Key Counter" }
 
     fn preferred_size(&self) -> Vector2 {
+        // todo: mark dirty
         let box_size = self.button_image
             .as_ref()
             .map_or(BOX_SIZE, Image::size);
@@ -169,32 +170,31 @@ impl GameplayWidget for KeyCounterElement {
             );
 
             // draw bg box
-            if let Some(mut btn) = self.button_image.clone() {
-                btn.pos = pos + box_size / 2.0;
+            if let Some(btn) = self.button_image.clone() {
+                let mut transform = tataku::Matrix::identity()
+                    .trans(pos + box_size / 2.0);
+
                 if cached.held {
-                    btn.scale *= 1.1;
+                    transform = transform.scale(Vector2::ONE * 1.1);
                 }
 
-                shell.list.push(graphics::Transformed {
-                    transform: shell.transform,
-                    drawable: Box::new(btn),
-                });
+                shell.list.push(btn.with_transform(shell.transform * transform));
             } else {
-                shell.list.push(graphics::Transformed {
-                    transform: shell.transform,
-                    drawable: Box::new(graphics::Rectangle::new_bounds(
-                        bounds,
-                        if cached.held {
-                            Color::new(0.8, 0.0, 0.8, 0.8)
-                        } else {
-                            Color::new(0.0, 0.0, 0.0, 0.8)
-                        },
-                    ).border(Border::new(
-                        Color::BLACK,
-                        2.0
-                    )))
-                });
-            }
+                shell.list.push(graphics::Rectangle::new(
+                    box_size,
+                    if cached.held {
+                        Color::new(0.8, 0.0, 0.8, 0.8)
+                    } else {
+                        Color::new(0.0, 0.0, 0.0, 0.8)
+                    },
+                ).border(Border::new(
+                    Color::BLACK,
+                    2.0
+                ))
+                .with_transform(shell.transform * tataku::Matrix::identity()
+                    .trans(pos)
+                ));
+        }
 
             let centered = Alignment::CENTER.resolve(
                 &bounds,
@@ -203,11 +203,10 @@ impl GameplayWidget for KeyCounterElement {
                 true,
             );
 
-            shell.list.push(graphics::Transformed {
-                transform: shell.transform * tataku::Matrix::identity()
+            shell.list.push(graphics::Text::new(cached.layout.clone())
+                .with_transform(shell.transform * tataku::Matrix::identity()
                     .trans(centered),
-                drawable: Box::new(graphics::Text::new(cached.layout.clone())),
-            });
+            ));
         }
     }
 

@@ -225,7 +225,7 @@ impl ManiaGame {
                 else { continue };
                 self.playfield.column_image(img);
 
-                let tex_size = img.tex_size();
+                let tex_size = img.size();
                 // img.origin = Vector2::new(0.0, tex_size.y-playfield.note_yoffset);
                 // img.origin = Vector2::with_y(tex_size.y);
 

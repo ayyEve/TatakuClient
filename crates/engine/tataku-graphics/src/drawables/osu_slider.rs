@@ -31,16 +31,8 @@ impl TatakuRenderable for SliderDrawable {
         transform: Matrix, 
         g: &mut dyn DrawEngine
     ) {
-        let quad = [
-            Vector2::ZERO,
-            Vector2::new(0.0, 1.0),
-            Vector2::new(1.0, 0.0),
-            Vector2::ONE,
-        ];
-
         let transform = transform * Matrix::identity()
-            .scale(self.size)
-            .trans(self.slider_data.grid_origin);
+            .scale(self.size);
 
         let mut slider_data = self.slider_data;
         let alpha = Color::to_f32(self.alpha);
@@ -49,7 +41,6 @@ impl TatakuRenderable for SliderDrawable {
         slider_data.border_color.a = Color::to_u8(Color::to_f32(slider_data.border_color.a) * alpha);
 
         g.draw_slider(
-            quad,
             transform,
             slider_data,
             self.slider_grids.clone(),

@@ -2,9 +2,8 @@ use crate::*;
 
 #[derive(Clone)]
 pub struct Animation {
-    pub size: Vector2,
-    pub origin: Vector2,
-    pub base_scale: Vector2,
+    pub base_scale: f32,
+    pub max_size: Vector2,
 
     /// when did the current frame start being drawn?
     /// this will always be related to the delay
@@ -21,37 +20,34 @@ pub struct Animation {
 
     // current
     pub color: Color,
-    pub pos: Vector2,
-    pub scale: Vector2,
-    pub rotation: f32, 
 
     pub draw_debug: bool,
 }
 impl Animation {
     pub fn new(
-        pos: Vector2, 
-        size: Vector2, 
         frames: Vec<Arc<TextureReference>>, 
         frame_delay: f32, 
-        base_scale: Vector2,
+        base_scale: f32,
     ) -> Self {
-        // let scale = Vector2::new(tex.get_width() as f64 / size.x, tex.get_height() as f64 / size.y);
-        let tex_size = Vector2::new(
-            frames[0].width as f32, 
-            frames[0].height as f32
-        );
-        let scale = size / tex_size;
+        let max_width = frames.iter()
+            .map(|tex| tex.width)
+            .max()
+            .unwrap_or_default();
 
-        let rotation = 0.0;
-        let color = Color::WHITE;
-        let origin = tex_size / 2.0;
+        let max_height = frames.iter()
+            .map(|tex| tex.height)
+            .max()
+            .unwrap_or_default();
+
+        let max_size = Vector2::new(
+            max_width as f32,
+            max_height as f32,
+        );
 
         Self {
-            pos,
-            scale,
-            rotation,
-            color,
+            color: Color::WHITE,
             base_scale,
+            max_size,
             blend_mode: BlendMode::AlphaBlending,
 
             frames,
@@ -59,8 +55,6 @@ impl Animation {
             frame_delay,
             frame_start_time: 0.0,
 
-            size: tex_size,
-            origin,
             draw_debug: false,
         }
     }
@@ -88,7 +82,7 @@ impl Animation {
     }
 
     pub fn size(&self) -> Vector2 {
-        self.size * self.scale
+        self.max_size * self.base_scale
     }
 
     pub fn set_start_time(&mut self, time: f32) {
@@ -99,12 +93,8 @@ impl Animation {
         Image {
             tex: self.frames[self.frame_index].clone(),
             base_scale: self.base_scale,
-            origin: self.origin,
             blend_mode: self.blend_mode,
             color: self.color,
-            pos: self.pos,
-            scale: self.scale,
-            rotation: self.rotation,
             draw_debug: self.draw_debug,
             flip: ImageFlip::None,
         }
@@ -131,13 +121,6 @@ impl TatakuRenderable for Animation {
         g: &mut dyn DrawEngine
     ) {
         let color = options.color_with_alpha(self.color);
-
-        let transform = transform
-            .trans(-self.origin) // apply origin
-            .rot(self.rotation) // rotate
-            .scale(self.scale * self.base_scale) // scale
-            .trans(self.pos) // move to pos
-        ;
 
         g.draw_tex(
             TextureDraw::new(

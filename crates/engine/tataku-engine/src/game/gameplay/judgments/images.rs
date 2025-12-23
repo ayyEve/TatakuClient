@@ -1,12 +1,11 @@
 use crate::*;
-use tataku::Vector2;
 use gameplay::judgments::HitJudgment;
 
-pub struct JudgmentImageHelper {
-    images: HashMap<String, Option<graphics::Animation>>,
+pub struct JudgmentImages {
+    images: HashMap<&'static str, Option<graphics::Animation>>,
     variants: Vec<HitJudgment>
 }
-impl JudgmentImageHelper {
+impl JudgmentImages {
     pub fn new(variants: Vec<HitJudgment>) -> Self {
         Self {
             images: HashMap::new(),
@@ -23,7 +22,6 @@ impl JudgmentImageHelper {
         self.images.clear();
 
         for i in self.variants.iter() {
-            let k = i.id.to_owned();
             if i.tex_name.is_empty() { continue }
 
             // try to load an animation
@@ -55,9 +53,8 @@ impl JudgmentImageHelper {
 
             // debug!("trying to load tex {img}, got? {}", tex.is_some());
             if textures.is_empty() {
-                self.images.insert(k, None);
+                self.images.insert(i.id, None);
             } else {
-                let size = textures[0].size();
                 let base_scale = textures[0].base_scale;
                 let frametime = 1000.0 / skin_manager.skin().animation_framerate as f32;
                 let frames = textures
@@ -66,13 +63,11 @@ impl JudgmentImageHelper {
                     .collect();
 
                 let animation = graphics::Animation::new(
-                    Vector2::ZERO, 
-                    size, 
                     frames, 
                     frametime, 
                     base_scale
                 );
-                self.images.insert(k, Some(animation));
+                self.images.insert(i.id, Some(animation));
             }
 
         }

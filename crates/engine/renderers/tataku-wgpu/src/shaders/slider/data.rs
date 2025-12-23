@@ -16,14 +16,13 @@ pub(crate) struct GpuSliderData {
     // slider velocity (neb to describe this properly)
     pub slider_velocity: f32,
 
-    /// Origin position of grid in viewport space
-    pub grid_origin: [f32; 2],
     /// Size of the slider in grid units
     pub grid_size: [u32; 2],
     /// Grid cells of this slider. This represents the start index into the
     //// `slider_grids` array, where the length of the slice is the area of the
     // grid, as given by `grid_size`.
     pub grid_index: u32,
+    pub _padding: u32,
 
     /// Colour of the body of slider
     pub body_color: [f32; 4],
@@ -37,9 +36,9 @@ impl From<tataku::SliderData> for GpuSliderData {
             border_width: value.border_width,
             snake_percentage: value.snake_percentage,
             slider_velocity: value.slider_velocity,
-            grid_origin: value.grid_origin.into(),
             grid_size: value.grid_size,
             grid_index: value.grid_index,
+            _padding: 0,
             body_color: value.body_color.into(),
             border_color: value.border_color.into(),
         }

@@ -86,8 +86,8 @@ pub struct TaikoGame {
     #[cfg(feature="graphics")] playfield: Arc<TaikoPlayfield>,
 
     #[cfg(feature="graphics")]
-    #[default(JudgmentImageHelper::new(TaikoHitJudgments::variants().to_vec()))]
-    judgement_helper: JudgmentImageHelper,
+    #[default(JudgmentImages::new(TaikoHitJudgments::variants().to_vec()))]
+    judgement_helper: JudgmentImages,
 
     counter: FullAltCounter,
 
@@ -161,7 +161,7 @@ impl TaikoGame {
         finisher_hit: bool,
         game_settings: &TaikoSettings,
         playfield: &TaikoPlayfield,
-        judgment_helper: &JudgmentImageHelper,
+        judgment_helper: &JudgmentImages,
         state: &mut GameplayUpdateShell,
     ) {
         let pos = playfield.hit_position
@@ -1270,7 +1270,7 @@ impl Gamemode for TaikoGame {
             SkinUsage::Gamemode,
             true
         ) {
-            don.origin.x = (don.tex_size() / don.base_scale).x;
+            don.origin.x = (don.size() / don.base_scale).x;
             don.pos = self.playfield.hit_position;
             don.scale = scale;
             self.left_don_image = Some(don.clone());
@@ -1295,7 +1295,7 @@ impl Gamemode for TaikoGame {
             self.left_kat_image = Some(lkat);
         }
 
-        self.judgement_helper = JudgmentImageHelper::new(
+        self.judgement_helper = JudgmentImages::new(
             TaikoHitJudgments::variants().to_vec()
         );
 

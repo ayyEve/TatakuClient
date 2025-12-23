@@ -95,10 +95,9 @@ impl GameplayWidget for ElapsedElement {
         let Some(layout) = self.layout.clone()
         else { return };
 
-        shell.list.push(graphics::Transformed {
-            transform: shell.transform,
-            drawable: Box::new(graphics::Text::new(layout)),
-        });
+        shell.list.push(graphics::Text::new(layout)
+            .with_transform(shell.transform)
+        );
     }
 
 }

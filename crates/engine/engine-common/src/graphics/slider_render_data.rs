@@ -32,8 +32,6 @@ pub struct SliderData {
     // slider velocity (neb to describe this properly)
     pub slider_velocity: f32,
 
-    /// Origin position of grid in viewport space
-    pub grid_origin: Vector2,
     /// Size of the slider in grid units
     pub grid_size: [u32; 2],
     /// Grid cells of this slider. This represents the start index into the

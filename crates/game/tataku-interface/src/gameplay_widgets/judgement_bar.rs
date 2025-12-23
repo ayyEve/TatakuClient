@@ -79,17 +79,15 @@ impl GameplayWidget for JudgementBarElement {
         for (window, color) in &self.judgment_colors {
             let width = (window / self.miss_window) * timing_bar_size.x;
 
-            shell.list.push(graphics::Transformed {
-                transform: shell.transform,
-                drawable: Box::new(graphics::Rectangle::new(
-                    Vector2::new(
-                        (timing_bar_size.x - width) / 2.0,
-                        0.0
-                    ),
-                    Vector2::new(width, timing_bar_size.y),
-                    *color,
-                )),
-            });
+            shell.list.push(graphics::Rectangle::new(
+                Vector2::new(width, timing_bar_size.y),
+                *color,
+            ).with_transform(shell.transform * tataku::Matrix::identity()
+                .trans(Vector2::new(
+                    (timing_bar_size.x - width) / 2.0,
+                    0.0
+                ))
+            ));
         }
 
         // draw hit timings
@@ -111,14 +109,12 @@ impl GameplayWidget for JudgementBarElement {
                 1.0 - (diff - (HIT_TIMING_DURATION - HIT_TIMING_FADE)) / HIT_TIMING_FADE
             } else { 1.0 };
 
-            shell.list.push(graphics::Transformed {
-                transform: shell.transform,
-                drawable: Box::new(graphics::Rectangle::new(
-                    Vector2::new(pos, 0.0),
-                    Vector2::new(2.0, timing_bar_size.y),
-                    HIT_TIMING_BAR_COLOR.alpha(alpha),
-                ))
-            });
+            shell.list.push(graphics::Rectangle::new(
+                Vector2::new(2.0, timing_bar_size.y),
+                HIT_TIMING_BAR_COLOR.alpha(alpha),
+            ).with_transform(shell.transform * tataku::Matrix::identity()
+                .trans(Vector2::new(pos, 0.0))
+            ));
         }
     }
 }

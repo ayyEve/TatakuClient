@@ -1,5 +1,5 @@
 use std::f32::consts::PI;
-#[cfg(feature="graphics")] 
+#[cfg(feature="graphics")]
 use engine::graphics;
 
 use crate::prelude::*;
@@ -153,10 +153,10 @@ impl OsuSlider {
         let radius = CIRCLE_RADIUS_BASE * scaling_helper.cs;
 
         const SAMPLE_SETS:[&str; 4] = ["normal", "normal", "soft", "drum"];
-        #[cfg(feature="gameplay")] 
+        #[cfg(feature="gameplay")]
         let sliderdot_hitsound = Hitsound::new_simple(format!("{}-slidertick", SAMPLE_SETS[def.hitsamples.addition_set as usize]));
 
-        #[cfg(feature="gameplay")] 
+        #[cfg(feature="gameplay")]
         let hitsounds = def.edge_sets.iter().enumerate().map(|(n, &[normal_set, addition_set])| {
             let mut samples = def.hitsamples.clone();
             samples.normal_set = normal_set;
@@ -167,9 +167,9 @@ impl OsuSlider {
             hitsound_fn(def.time, hitsound, samples)
         }).collect();
 
-        #[cfg(feature="graphics")] 
+        #[cfg(feature="graphics")]
         let approach_circle = ApproachCircle::new(def.pos, time, radius, time_preempt, scaling_helper.clone());
-        #[cfg(feature="graphics")] 
+        #[cfg(feature="graphics")]
         let start_circle_image = HitCircle::new(
             def.pos,
             scaling_helper.clone(),
@@ -192,7 +192,7 @@ impl OsuSlider {
 
             scaling_helper,
             standard_settings,
-            
+
             #[cfg(feature="graphics")] start_circle_image,
             #[cfg(feature="graphics")] approach_circle,
 
@@ -207,12 +207,12 @@ impl OsuSlider {
         }
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn use_render_targets(&self) -> bool {
         self.standard_settings.slider_render_targets || !USE_NEW_SLIDER_RENDERING
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn make_body(&mut self) {
         use graphics::TatakuRenderable;
 
@@ -225,7 +225,7 @@ impl OsuSlider {
         // if !self.slider_body_loader.is_none() { return }
 
         let mut color = self.skin.slider_track_override.filter(
-            |c| c != &Color::BLACK 
+            |c| c != &Color::BLACK
                 && self.standard_settings.use_skin_slider_body_color
         ).unwrap_or_else(|| {
             const DARKER:f32 = 2.0/3.0;
@@ -255,7 +255,7 @@ impl OsuSlider {
 
             let mut line_segments: Vec<tataku::LineSegment> = self.curve.segments
                 .iter()
-                .flat_map(|segment| 
+                .flat_map(|segment|
             {
                 let points = segment.all_points();
 
@@ -430,11 +430,14 @@ impl OsuSlider {
                 let pipeline = tataku::GraphicsPipeline::Standard(blend_mode);
 
                 // add starting circle manually
-                drawables.push(Box::new(graphics::Circle::new(
-                    p,
-                    radius,
-                    color,
-                ).with_pipeline(pipeline)));
+                drawables.push(graphics::Transformed {
+                    transform: tataku::Matrix::identity()
+                        .trans(p),
+                    drawable: Box::new(graphics::Circle::new(
+                        radius,
+                        color,
+                    ).with_pipeline(pipeline)),
+                });
 
                 // add all lines
                 for line in self.curve.curve_lines.iter() {
@@ -452,20 +455,25 @@ impl OsuSlider {
                     if p2.y + radius_with_border > max_pos.y { max_pos.y = p2.y + radius_with_border; }
 
                     // add a line to connect the points
-                    drawables.push(Box::new(graphics::Line::new(
-                        p1,
-                        p2,
-                        radius,
-                        color
-                    ).with_pipeline(pipeline)));
+                    drawables.push(graphics::Transformed {
+                        transform: tataku::Matrix::identity()
+                            .trans(p1),
+                        drawable: Box::new(graphics::Line::new(
+                            p2 - p1,
+                            radius,
+                            color
+                        ).with_pipeline(pipeline)),
+                    });
 
                     // add a circle to smooth out the corners
                     // border
-                    drawables.push(Box::new(graphics::Circle::new(
-                        p2,
-                        radius,
-                        color,
-                    ).with_pipeline(pipeline)));
+                    drawables.push(graphics::Transformed {
+                        transform: p2,
+                        drawable: Box::new(graphics::Circle::new(
+                            radius,
+                            color,
+                        ).with_pipeline(pipeline)),
+                    });
                 }
             }
 
@@ -512,7 +520,7 @@ impl OsuSlider {
             //         (
             //             size.x as u32,
             //             size.y as u32,
-            //         ), 
+            //         ),
             //         callback
             //     )
             // });
@@ -522,7 +530,7 @@ impl OsuSlider {
             //     loader,
             // };
         }
-        
+
     }
 
     #[cfg(feature="graphics")]
@@ -613,12 +621,12 @@ impl HitObject for OsuSlider {
 
     fn update(&mut self, beatmap_time: f32) {
         self.map_time = beatmap_time;
-        #[cfg(feature="graphics")] 
+        #[cfg(feature="graphics")]
         self.start_circle_image.update(beatmap_time);
 
         self.beat_scale = f32::lerp(
-            BEAT_SCALE, 
-            1.0, 
+            BEAT_SCALE,
+            1.0,
             (beatmap_time - self.last_beat) / self.pulse_length
         ).clamp(1.0, BEAT_SCALE);
 
@@ -632,24 +640,24 @@ impl HitObject for OsuSlider {
         self.slider_ball_pos = self.scaling_helper.scale_coords(self.curve.position_at_time(beatmap_time));
         let distance = self.slider_ball_pos.distance(self.mouse_pos); //((self.slider_ball_pos.x - self.mouse_pos.x).powi(2) + (self.slider_ball_pos.y - self.mouse_pos.y).powi(2)).sqrt();
         self.sliding_ok = self.holding && distance <= self.radius * OK_RADIUS_MULT;
-        
+
         #[cfg(feature="graphics")] {
             let alpha = self.get_alpha();
             self.approach_circle.set_alpha(alpha);
             self.approach_circle.update(beatmap_time);
-    
+
             if self.time - beatmap_time > self.time_preempt || self.curve.end_time < beatmap_time {
                 if self.slider_body_render_target.is_some() && alpha == 0 {
                     self.slider_body_render_target = None;
                 }
-    
+
                 return
             }
-    
+
             // match &self.slider_body_loader {
             //     SliderBodyLoader::New { min_pos, loader } => if loader.is_complete() {
             //         let value = loader.check().unwrap();
-    
+
             //         if let Ok(mut slider_body_render_target) = value {
             //             slider_body_render_target.pos = *min_pos;
             //             slider_body_render_target.origin = Vector2::ZERO;
@@ -658,16 +666,16 @@ impl HitObject for OsuSlider {
             //             warn!("failed to slider");
             //             self.slider_body_render_target_failed = Some(self.map_time);
             //         }
-    
+
             //         self.slider_body_loader = SliderBodyLoader::None;
             //     }
             //     SliderBodyLoader::Update(new) => if new.is_complete() {
-    
+
             //         self.slider_body_loader = SliderBodyLoader::None;
             //     }
             //     _ => {}
             // }
-            
+
             if alpha > 0 && self.slider_body_render_target.is_none() && (self.use_render_targets() || self.slider_body.slider_data.circle_radius == 0.0) {
                 self.make_body();
             }
@@ -712,7 +720,7 @@ impl HitObject for OsuSlider {
             // check cursor
             if self.sliding_ok {
                 self.pending_combo.push((OsuHitJudgments::SliderEnd, pos));
-                #[cfg(feature="gameplay")] 
+                #[cfg(feature="gameplay")]
                 self.sound_queue.push(self.get_hitsound());
                 // self.add_ripple(beatmap_time, pos, false);
             } else {
@@ -730,7 +738,7 @@ impl HitObject for OsuSlider {
 
 
                     self.pending_combo.push((OsuHitJudgments::SliderDot, dot.pos));
-                    #[cfg(feature="gameplay")] 
+                    #[cfg(feature="gameplay")]
                     self.sound_queue.push(vec![self.sliderdot_hitsound.clone()]);
                 } else {
                     self.pending_combo.push((OsuHitJudgments::SliderDotMiss, dot.pos));
@@ -738,7 +746,7 @@ impl HitObject for OsuSlider {
                 }
             }
         }
-    
+
     }
 
     #[cfg(feature="graphics")]
@@ -966,7 +974,7 @@ impl HitObject for OsuSlider {
         }
 
         if !images.is_empty() {
-            let size = images[0].tex_size();
+            let size = images[0].size();
             let base_scale = images[0].base_scale;
 
             let images = images.into_iter().map(|i|i.tex).collect::<Vec<_>>();
@@ -977,10 +985,10 @@ impl HitObject for OsuSlider {
             let frametime = ((150.0 / velocity) * frametime).max(frametime);
 
             let mut animation = graphics::Animation::new(
-                Vector2::ZERO, 
-                size, 
-                images, 
-                frametime, 
+                Vector2::ZERO,
+                size,
+                images,
+                frametime,
                 base_scale
             );
             animation.scale = Vector2::ONE;
@@ -1096,7 +1104,7 @@ impl OsuHitObject for OsuSlider {
             image.pos = self.scaling_helper.scale_coords(self.visual_end_pos);
             image.scale = Vector2::ONE * self.scaling_helper.cs;
         }
-        
+
         if self.slider_body_render_target.is_some() || (!self.standard_settings.slider_render_targets && USE_NEW_SLIDER_RENDERING) {
             // if the playfield was resized, if we dont set this to none it will use the old size and then be wrong
             self.slider_body_render_target = None;
@@ -1119,7 +1127,7 @@ impl OsuHitObject for OsuSlider {
         //TODO: cache these and only update if the difference is above some threshhold so we dont absolutely spam render targets\
         self.standard_settings = settings;
 
-        #[cfg(feature="graphics")] 
+        #[cfg(feature="graphics")]
         if (self.slider_body_render_target.is_some() || (!self.standard_settings.slider_render_targets && USE_NEW_SLIDER_RENDERING)) && (self.standard_settings.slider_body_alpha != old_body_alpha || old_border_alpha != self.standard_settings.slider_border_alpha) {
             self.make_body();
         }
@@ -1130,7 +1138,7 @@ impl OsuHitObject for OsuSlider {
         self.time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn set_combo_color(&mut self, color: Color) {
         self.color = color;
 
@@ -1140,33 +1148,33 @@ impl OsuHitObject for OsuSlider {
         }
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn point_draw_pos(&self, time: f32) -> Vector2 { self.pos_at(time) }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn set_approach_easing(&mut self, easing: Easing) {
         self.approach_circle.easing_type = easing;
     }
 
-    #[cfg(feature="gameplay")] 
+    #[cfg(feature="gameplay")]
     fn get_hitsound(&self) -> Vec<Hitsound> {
         // println!("playing hitsound index {}/{}", self.sound_index+1, self.def.edge_sets.len());
         let index = self.sound_index.min(self.def.edge_sets.len() - 1);
         self.hitsounds[index].clone()
     }
 
-    #[cfg(feature="gameplay")] 
+    #[cfg(feature="gameplay")]
     fn get_all_hitsounds(&self) -> Vec<Vec<Hitsound>> { vec![
         self.get_hitsound(),
         vec![ self.sliderdot_hitsound.clone() ]
     ] }
 
-    #[cfg(feature="gameplay")] 
+    #[cfg(feature="gameplay")]
     fn get_sound_queue(&mut self) -> Vec<Vec<Hitsound>> {
         std::mem::take(&mut self.sound_queue)
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn shake(&mut self, time: f32) { self.start_circle_image.shake(time) }
 }
 
@@ -1212,7 +1220,7 @@ impl SliderDot {
         }
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     pub fn draw(&self, beat_scale: f32, list: &mut graphics::RenderableCollection) {
         if self.checked { return }
 

@@ -23,14 +23,13 @@ struct SliderData {
     // slider velocity (neb to describe this properly)
     slider_velocity: f32,
 
-    // Origin position of grid in viewport space
-    grid_origin: array<f32, 2>,
     // Size of the slider in grid units
     grid_size: array<u32, 2>,
     // Grid cells of this slider. This represents the start index into the
     // `slider_grids` array, where the length of the slice is the area of the
     // grid, as given by `grid_size`.
     grid_index: u32,
+    _padding: u32,
 
     // Colour of the body of slider
     body_color: array<f32, 4>, // todo: consider interpolating between two colours by distance
@@ -85,9 +84,7 @@ fn slider_fs_main(input: FragmentInputs) -> @location(0) vec4<f32> {
 
     let cell_size = circle_radius + border_width;
 
-
-    let slider_grid_origin = cast_vec2_f32(slider.grid_origin);
-    let position = input.position.xy - slider_grid_origin;
+    let position = input.position.xy;
 
     // Calculate the index of the grid cell we are currently in
     let grid_index_bad = floor(position / cell_size);

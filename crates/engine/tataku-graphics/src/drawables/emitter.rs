@@ -122,12 +122,17 @@ impl Emitter {
         let lock = self.pool.read();
 
         for i in lock.iter_used() {
-            let mut image = Image::new(i.position, Arc::new(i.image), Vector2::ONE);
+            let mut image = Image::new(Arc::new(i.image), 1.0);
             image.color = i.color;
-            image.scale = Vector2::ONE * i.scale;
             image.set_pipeline(self.blend_mode);
 
-            list.push(image);
+            let transform = Matrix::identity()
+                .scale(Vector2::ONE * i.scale);
+
+            list.push(Transformed {
+                transform,
+                drawable: image,
+            });
         }
     }
 

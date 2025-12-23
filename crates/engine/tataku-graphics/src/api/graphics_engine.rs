@@ -100,7 +100,7 @@ pub trait DrawEngine {
     /// draw a rectangle
     fn draw_rect(
         &mut self,
-        rect: [f32; 4],
+        size: [f32; 2],
         border: Option<Border>,
         shape: Shape,
         color: Color,
@@ -119,7 +119,6 @@ pub trait DrawEngine {
     /// draw a slider
     fn draw_slider(
         &mut self,
-        quad: [Vector2; 4],
         transform: Matrix,
 
         slider_data: SliderData,
@@ -131,7 +130,6 @@ pub trait DrawEngine {
     /// draw a flashlight
     fn draw_flashlight(
         &mut self,
-        quad: [Vector2; 4],
         transform: Matrix,
         flashlight_data: FlashlightData
     );

@@ -5,8 +5,6 @@ use crate::*;
 // TODO: care
 #[derive(Copy, Clone)]
 pub struct Sector {
-    pub pos: Vector2,
-    pub scale: Vector2,
     pub color: Color,
 
     pub radius: f32,
@@ -19,7 +17,6 @@ pub struct Sector {
 }
 impl Sector {
     pub fn new(
-        pos: Vector2, 
         radius: f32, 
         start: f32, 
         end: f32, 
@@ -32,8 +29,6 @@ impl Sector {
             end,
 
             color,
-            pos,
-            scale: Vector2::ONE,
 
             border,
             blend_mode: BlendMode::AlphaBlending,
@@ -66,7 +61,7 @@ impl TatakuRenderable for Sector {
             options.color_with_alpha(self.color),
             self.border,
             20,
-            transform * Matrix::identity().scale(self.scale).trans(self.pos),
+            transform,
             self.blend_mode
         );
     }

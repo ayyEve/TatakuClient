@@ -95,7 +95,6 @@ impl GameplayWidget for HealthBarElement {
             &mut self.healthbar_bg_image
         ] {
             let Some(i) = i else { continue };
-            i.origin = Vector2::ZERO;
             i.color = Color::WHITE;
         }
     }
@@ -140,34 +139,15 @@ impl GameplayWidget for HealthBarElement {
                 Vector2::new(width, tex_size.y),
             );
 
-            let scissor = [
-                scissor.pos.x,
-                scissor.pos.y,
-                scissor.size.x,
-                scissor.size.y,
-            ];
-
             // add bg
             if let Some(bg) = self.healthbar_bg_image.clone() {
-                shell.list.push(graphics::Transformed {
-                    transform: shell.transform,
-                    drawable: Box::new(bg),
-                });
+                shell.list.push(bg.with_transform(shell.transform));
             }
             if let Some(bg_1) = self.healthbar_bg_image_1.clone() {
-                shell.list.push(graphics::Transformed {
-                    transform: shell.transform,
-                    drawable: Box::new(bg_1),
-                });
+                shell.list.push(bg_1.with_transform(shell.transform));
             }
 
-            shell.list.push(graphics::Scissored::new(
-                scissor,
-                Box::new(graphics::Transformed {
-                    transform: shell.transform,
-                    drawable: Box::new(color),
-                }),
-            ));
+            shell.list.push(color.with_transform(shell.transform).with_scissor(scissor));
 
             // // add drained health
             // let width2 = bg_size.x * self.last_health_ratio;
@@ -180,13 +160,7 @@ impl GameplayWidget for HealthBarElement {
             // // }
 
             if let Some(color_1) = self.healthbar_color_1.clone() {
-                shell.list.push(graphics::Scissored::new(
-                    scissor,
-                    Box::new(graphics::Transformed {
-                        transform: shell.transform,
-                        drawable: Box::new(color_1),
-                    }),
-                ));
+                shell.list.push(color_1.with_transform(shell.transform).with_scissor(scissor));
 
                 // // add drained health
                 // let width2 = bg_size.x * self.last_health_ratio;
@@ -206,30 +180,23 @@ impl GameplayWidget for HealthBarElement {
             let index = ((len as f32 * percent) as usize).min(len - 1);
 
             // bg
-            shell.list.push(graphics::Transformed {
-                transform: shell.transform,
-                drawable: Box::new(graphics::Rectangle::new(
-                    Vector2::ZERO,
-                    bg_size,
-                    self.common_game_settings.healthbar_bg_color,
-                ).border(Border::new(
-                    self.common_game_settings.healthbar_border_color,
-                    1.8
-                )))
-            });
+            shell.list.push(graphics::Rectangle::new(
+                bg_size,
+                self.common_game_settings.healthbar_bg_color,
+            ).border(Border::new(
+                self.common_game_settings.healthbar_border_color,
+                1.8
+            ))
+            .with_transform(shell.transform));
 
             // fill
-            shell.list.push(graphics::Transformed {
-                transform: shell.transform,
-                drawable: Box::new(graphics::Rectangle::new(
-                    Vector2::ZERO,
-                    Vector2::new(
-                        (self.container_size.x / 2.0) * percent,
-                        super::DURATION_HEIGHT
-                    ),
-                    self.common_game_settings.healthbar_colors[index],
-                ))
-            });
+            shell.list.push(graphics::Rectangle::new(
+                Vector2::new(
+                    (self.container_size.x / 2.0) * percent,
+                    super::DURATION_HEIGHT
+                ),
+                self.common_game_settings.healthbar_colors[index],
+            ).with_transform(shell.transform));
         }
     }
 }
