@@ -100,7 +100,7 @@ impl<T: _CanNum> GameplayWidget for Number<T> {
         }
     }
 
-    fn draw(&mut self, shell: &mut GameplayWidgetDrawShell) {
+    fn draw(&self, shell: &mut GameplayWidgetDrawShell) {
         if let Some(image) = self.image.clone() {
             shell.list.push(graphics::Transformed {
                 transform: shell.transform,

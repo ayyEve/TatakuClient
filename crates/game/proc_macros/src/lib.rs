@@ -89,9 +89,15 @@ pub fn impl_chainable_initializer(input: proc_macro::TokenStream) -> proc_macro:
     // Parse the string representation
     let ast:DeriveInput = syn::parse(input).unwrap();
 
+    let (
+        impl_generics, 
+        ty_generics, 
+        where_clause
+    ) = ast.generics.split_for_impl();
+
     // Build the impl
     let Data::Struct(s) = &ast.data else { panic!("no") };
-    let struct_name = &ast.ident;
+    let type_name = &ast.ident;
 
     let mut tys = Vec::new();
     let mut idents = Vec::new();
@@ -106,7 +112,7 @@ pub fn impl_chainable_initializer(input: proc_macro::TokenStream) -> proc_macro:
     }
 
     quote! {
-        impl #struct_name { #(
+        impl #impl_generics #type_name #ty_generics where #where_clause { #(
             pub fn #idents(mut self, val: impl Into<#tys>) -> Self {
                 self.#idents = val.into();
                 self

@@ -1104,7 +1104,7 @@ impl GameplayManager {
             .cloned()
             .collect::<Vec<_>>();
 
-        let mut loader = DefaultUiElementLoader::new(
+        let mut loader = UiElementLoader::new(
             self.gamemode_properties.playmode(),
             layouts,
             widgets,
@@ -1187,7 +1187,7 @@ impl GameplayManager {
         };
 
         // ui elements
-        for i in self.ui_elements.iter_mut() {
+        for i in self.ui_elements.iter() {
             i.draw(&mut shell);
         }
 

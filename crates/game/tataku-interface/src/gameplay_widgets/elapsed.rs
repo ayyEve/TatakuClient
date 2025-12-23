@@ -91,10 +91,7 @@ impl GameplayWidget for ElapsedElement {
         }
     }
 
-    fn draw(
-        &mut self,
-        shell: &mut GameplayWidgetDrawShell,
-    ) {
+    fn draw(&self, shell: &mut GameplayWidgetDrawShell) {
         let Some(layout) = self.layout.clone()
         else { return };
 

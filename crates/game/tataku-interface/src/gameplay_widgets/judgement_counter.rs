@@ -148,10 +148,7 @@ impl GameplayWidget for JudgementCounterElement {
 
     }
 
-    fn draw(
-        &mut self,
-        shell: &mut GameplayWidgetDrawShell
-    ) {
+    fn draw(&self, shell: &mut GameplayWidgetDrawShell) {
         let box_size = self.button_image
             .as_ref()
             .map_or(BOX_SIZE, Image::size);

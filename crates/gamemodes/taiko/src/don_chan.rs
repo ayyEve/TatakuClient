@@ -155,7 +155,7 @@ impl GameplayWidget for DonChan {
     }
 
     #[cfg(feature="graphics")]
-    fn draw(&mut self, shell: &mut GameplayWidgetDrawShell) {
+    fn draw(&self, shell: &mut GameplayWidgetDrawShell) {
         match self.state {
             DonChanState::Normal => {
                 if self.kiai {

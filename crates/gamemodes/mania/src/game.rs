@@ -1082,7 +1082,7 @@ impl Gamemode for ManiaGame {
     #[cfg(feature="graphics")]
     fn build_widgets(
         &self,
-        loader: &mut dyn engine::gameplay::widgets::UiElementLoader
+        loader: &mut engine::gameplay::widgets::UiElementLoader
     ) {
         use engine::gameplay::widgets::*;
 

@@ -103,10 +103,7 @@ impl GameplayWidget for LeaderboardElement {
         }
     }
 
-    fn draw(
-        &mut self,
-        shell: &mut GameplayWidgetDrawShell
-    ) {
+    fn draw(&self, shell: &mut GameplayWidgetDrawShell) {
         // draw scores
         let theme = graphics::Theme::default();
 

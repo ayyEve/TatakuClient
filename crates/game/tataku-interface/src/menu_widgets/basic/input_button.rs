@@ -14,18 +14,53 @@ use input::{
     MouseButton, 
 };
 
+pub trait InputButtonType: Send + Sync {
+    type Output: Copy + std::fmt::Debug + Reflect + PartialEq + Send + Sync;
+    fn press_txt() -> CowStr;
+
+    fn from_event(e: &InputEvent) -> Option<Self::Output>;
+}
+impl InputButtonType for input::Key {
+    type Output = Self;
+    fn press_txt() -> CowStr { "Press a Key".into() }
+
+    fn from_event(e: &InputEvent) -> Option<Self::Output> {
+        let InputType::KeyPress(key) = &e.event
+        else { return None };
+
+        let Some(key) = key.as_key() else {
+            error!("couldnt convert KeyInput to Key: {key:?}");
+            return None;
+        };
+
+        Some(key)
+    }
+}
+impl InputButtonType for input::GamepadButton {
+    type Output = Self;
+    fn press_txt() -> CowStr { "Press a Controller Button".into() }
+    
+    fn from_event(e: &InputEvent) -> Option<Self::Output> {
+        let InputType::ControllerPress(btn, _, _) = &e.event
+        else { return None };
+
+        Some(*btn)
+    }
+}
+
+
 #[derive(ChainableInitializer)]
-pub struct KeyButton {
-    key: InputButtonValue<Key>,
+pub struct InputButton<T: InputButtonType> {
+    input: InputButtonValue<T::Output>,
     #[chain] optional: bool,
-    on_change: Option<InputAction<Option<Key>>>,
+    on_change: Option<InputAction<Option<T::Output>>>,
 
     node_id: NodeId,
 }
-impl KeyButton {
-    pub fn new(key: InputButtonValue<Key>) -> Self {
+impl<T: InputButtonType> InputButton<T> {
+    pub fn new(input: InputButtonValue<T::Output>) -> Self {
         Self {
-            key,
+            input,
             optional: false,
             
             on_change: None,
@@ -33,23 +68,23 @@ impl KeyButton {
         }
     }
 
-    pub fn on_change(mut self, on_change: Option<impl Into<InputAction<Option<Key>>>>) -> Self {
+    pub fn on_change(mut self, on_change: Option<impl Into<InputAction<Option<T::Output>>>>) -> Self {
         self.on_change = on_change.map(Into::into);
         self
     }
 
     fn text(&self, active: bool) -> CowStr {
         if active {
-            "Press a key".into()
-        } else if let Some(k) = self.key.get() {
-            format!("{k:?}").into()
+            T::press_txt()
+        } else if let Some(i) = self.input.get() {
+            format!("{i:?}").into()
         } else {
             "None".into()
         }
     }
 }
-impl Widget<actions::Action> for KeyButton {
-    fn name(&self) -> CowStr { "key_input".into() }
+impl<T: InputButtonType> Widget<actions::Action> for InputButton<T> {
+    fn name(&self) -> CowStr { "input_button".into() }
     fn node_id(&self) -> NodeId { self.node_id }
 
     fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId> {
@@ -107,35 +142,16 @@ impl Widget<actions::Action> for KeyButton {
             ctx.element_data.state.remove(ElementState::Active);
             shell.event_consumed = true;
 
-            if key.is_key(Key::Escape) {
-                if event.key_mods.ctrl && self.optional {
-                    if let InputButtonValue::Static(k) = &mut self.key {
-                        *k = None;
-                    }
-
-                    if let Some(on_change) = &self.on_change {
-                        on_change.run(
-                            &None,
-                            self.node_id,
-                            shell.source,
-                            shell.messages,
-                            shell.actions,
-                            shell.values,
-                        );
-                    }
-                }
-            } else {
-                let Some(key) = key.as_key() else {
-                    error!("couldnt convert KeyInput to Key: {key:?}");
-                    return;
-                };
-                if let InputButtonValue::Static(k) = &mut self.key {
-                    *k = Some(key);
+            if key.is_key(Key::Escape) 
+            && event.key_mods.ctrl && self.optional 
+            {
+                if let InputButtonValue::Static(k) = &mut self.input {
+                    *k = None;
                 }
 
                 if let Some(on_change) = &self.on_change {
                     on_change.run(
-                        &Some(key),
+                        &None,
                         self.node_id,
                         shell.source,
                         shell.messages,
@@ -145,6 +161,26 @@ impl Widget<actions::Action> for KeyButton {
                 }
             }
         }
+
+        if !shell.event_consumed 
+        && let Some(i) = T::from_event(event)
+        {
+            if let InputButtonValue::Static(k) = &mut self.input {
+                *k = Some(i);
+            }
+
+            if let Some(on_change) = &self.on_change {
+                on_change.run(
+                    &Some(i),
+                    self.node_id,
+                    shell.source,
+                    shell.messages,
+                    shell.actions,
+                    shell.values,
+                );
+            }
+        }
+
         let hover = ctx.element_data.state.contains(ElementState::Hover);
 
         match event.event {
@@ -171,7 +207,7 @@ impl Widget<actions::Action> for KeyButton {
 
 
     fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
-        if self.key.update(shell.values, self.optional) {
+        if self.input.update(shell.values, self.optional) {
             let ctx = shell
                 .tree
                 .get_context(self.node_id)

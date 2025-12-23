@@ -43,10 +43,7 @@ impl GameplayWidget for DurationBarElement {
         self.duration_ratio = shell.manager.time() / shell.manager.end_time();
     }
 
-    fn draw(
-        &mut self,
-        shell: &mut GameplayWidgetDrawShell
-    ) {
+    fn draw(&self, shell: &mut GameplayWidgetDrawShell) {
         // fill
         shell.list.push(graphics::Transformed {
             transform: shell.transform,

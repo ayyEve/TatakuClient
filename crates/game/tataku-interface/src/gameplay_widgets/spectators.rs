@@ -85,10 +85,7 @@ impl GameplayWidget for SpectatorsElement {
         }
     }
 
-    fn draw(
-        &mut self,
-        shell: &mut GameplayWidgetDrawShell,
-    ) {
+    fn draw(&self, shell: &mut GameplayWidgetDrawShell) {
         let Some((layout, layout_size)) = &self.layout
         else { return };
 

@@ -6,11 +6,7 @@ pub trait GameplayWidget: Send + Sync {
 
     fn preferred_size(&self) -> Vector2;
     fn update(&mut self, shell: &mut GameplayWidgetUpdateShell);
-
-    fn draw(
-        &mut self,
-        shell: &mut GameplayWidgetDrawShell,
-    );
+    fn draw(&self, shell: &mut GameplayWidgetDrawShell);
 
     fn reset(&mut self) {}
 

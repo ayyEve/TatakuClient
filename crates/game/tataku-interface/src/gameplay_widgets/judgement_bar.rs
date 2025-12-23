@@ -71,7 +71,7 @@ impl GameplayWidget for JudgementBarElement {
 
     }
 
-    fn draw(&mut self, shell: &mut GameplayWidgetDrawShell) {
+    fn draw(&self, shell: &mut GameplayWidgetDrawShell) {
         // TODO: rework this garbage lmao
         let timing_bar_size = HIT_TIMING_BAR_SIZE;
 

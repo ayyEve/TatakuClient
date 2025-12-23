@@ -477,8 +477,8 @@ pub enum ElementType {
     Slider(Box<elements::SliderElement>),
     Checkbox(Box<elements::CheckboxElement>),
     TextInput(Box<elements::TextInputElement>),
-    KeyButton(Box<elements::KeyButtonElement>),
-    GamepadButton(Box<elements::GamepadButtonElement>),
+    KeyButton(Box<elements::InputButtonElement<input::Key>>),
+    GamepadButton(Box<elements::InputButtonElement<input::Key>>),
     Dropdown(Box<elements::DropdownElement>),
     Visualization(Box<elements::VisualizationElement>),
 }

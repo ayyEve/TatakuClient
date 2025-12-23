@@ -1,22 +1,7 @@
 use crate::*;
 use gameplay::widgets::*;
 
-pub trait UiElementLoader: Send + Sync {
-    /// Load a ui element
-    fn load(
-        &mut self,
-        name: &'static str,
-    );
-
-    /// Change the default layout for a ui element
-    fn change_default_layout(
-        &mut self,
-        name: &'static str,
-        layout: GameplayWidgetLayout,
-    );
-}
-
-pub struct DefaultUiElementLoader {
+pub struct UiElementLoader {
     pub layouts: HashMap<String, GameplayWidgetLayout>,
     pub elements: Vec<GameplayWidgetContainer>,
     pub playmode: CowStr,
@@ -26,7 +11,7 @@ pub struct DefaultUiElementLoader {
     info: gameplay::GamemodeInfo,
     settings: Arc<settings::common_gameplay::CommonGameplaySettings>,
 }
-impl DefaultUiElementLoader {
+impl UiElementLoader {
     pub fn new(
         playmode: impl Into<CowStr>,
         layouts: HashMap<String, GameplayWidgetLayout>,
@@ -45,10 +30,8 @@ impl DefaultUiElementLoader {
             settings,
         }
     }
-}
 
-impl UiElementLoader for DefaultUiElementLoader {
-    fn load(
+    pub fn load(
         &mut self,
         name: &'static str,
     ) {
@@ -82,7 +65,7 @@ impl UiElementLoader for DefaultUiElementLoader {
         });
     }
 
-    fn change_default_layout(
+    pub fn change_default_layout(
         &mut self,
         name: &'static str,
         layout: GameplayWidgetLayout,

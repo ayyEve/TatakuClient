@@ -123,10 +123,7 @@ impl GameplayWidget for HealthBarElement {
         }
     }
 
-    fn draw(
-        &mut self,
-        shell: &mut GameplayWidgetDrawShell
-    ) {
+    fn draw(&self, shell: &mut GameplayWidgetDrawShell) {
         let percent = self.health_ratio;
 
         if let Some(color) = self.healthbar_color.clone() {

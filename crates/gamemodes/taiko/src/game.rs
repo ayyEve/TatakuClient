@@ -1342,7 +1342,7 @@ impl Gamemode for TaikoGame {
     }
 
     #[cfg(feature = "graphics")]
-    fn build_widgets(&self, loader: &mut dyn engine::gameplay::widgets::UiElementLoader) {
+    fn build_widgets(&self, loader: &mut engine::gameplay::widgets::UiElementLoader) {
         use engine::gameplay::widgets::*;
 
         // combo

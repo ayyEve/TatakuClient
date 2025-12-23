@@ -71,7 +71,7 @@ pub trait Gamemode: Send + Sync {
     /// setup any gamemode specific ui elements for this gamemode
     /// ie combo and leaderboard, since the pos is different per-mode
     #[cfg(feature="graphics")]
-    fn build_widgets(&self, _loader: &mut dyn gameplay::widgets::UiElementLoader) {}
+    fn build_widgets(&self, _loader: &mut gameplay::widgets::UiElementLoader) {}
 
     #[cfg(feature="gameplay")] 
     fn handle_input(&mut self, input: input::InputEvent) -> Option<ReplayAction>;
