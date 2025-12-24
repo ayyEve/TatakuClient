@@ -29,7 +29,8 @@ pub struct TaikoNote {
     #[cfg(feature="graphics")] bounce_factor: f32,
     #[cfg(feature="graphics")] playfield: Arc<TaikoPlayfield>,
 
-    #[cfg(feature="graphics")] image: Option<ImageCircle>,
+    #[cfg(feature="graphics")] circle: Option<graphics::Image>,
+    #[cfg(feature="graphics")] overlay: Option<graphics::Image>,
 }
 impl TaikoNote {
     pub fn new(
@@ -93,14 +94,24 @@ impl HitObject for TaikoNote {
             self.settings.note_radius
         };
 
-        if let Some(image) = &mut self.image {
+        if let Some(image) = &self.overlay {
             let transform = graphics::Transform {
                 pos: self.pos,
                 scale: Vector2::ONE * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE,
                 ..graphics::Transform::identity()
             };
 
-            image.draw(transform.matrix(), list);
+            list.push(image.clone().with_transform(transform.matrix()));
+        }
+
+        if let Some(image) = &self.circle {
+            let transform = graphics::Transform {
+                pos: self.pos,
+                scale: Vector2::ONE * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE,
+                ..graphics::Transform::identity()
+            };
+
+            list.push(image.clone().with_transform(transform.matrix()));
         } else {
             let transform = graphics::Transform {
                 pos: self.pos,
@@ -108,12 +119,16 @@ impl HitObject for TaikoNote {
                 ..graphics::Transform::identity()
             };
 
-            list.push(graphics::Circle::new(
-                self.get_color(),
-            ).border(Border::new(
-                Color::BLACK,
-                NOTE_BORDER_SIZE
-            )).with_transform(transform.matrix()));
+            let mut circle = graphics::Circle::new(self.get_color());
+
+            if self.overlay.is_none() {
+                circle.border = Some(Border::new(
+                    Color::BLACK,
+                    NOTE_BORDER_SIZE
+                ));
+            }
+
+            list.push(circle.with_transform(transform.matrix()));
         }
     }
 
@@ -133,10 +148,25 @@ impl HitObject for TaikoNote {
         source: &graphics::TextureSource,
         skin_manager: &mut dyn graphics::SkinProvider
     ) {
-        self.image = ImageCircle::load_from_skin(
-            self.finisher,
+        let hitcircle = if self.finisher {
+            "taikobigcircle"
+        } else {
+            "taikohitcircle"
+        };
+
+        let overlay_name = format!("{hitcircle}overlay");
+        self.overlay = skin_manager.get_texture(
+            Path::new(&overlay_name),
             source,
-            skin_manager,
+            graphics::SkinUsage::Gamemode,
+            false,
+        );
+
+        self.circle = skin_manager.get_texture(
+            Path::new(hitcircle),
+            source,
+            graphics::SkinUsage::Gamemode,
+            false,
         );
     }
 }

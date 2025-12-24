@@ -199,7 +199,7 @@ impl CursorManager {
 
         // draw ripples
         for ripple in self.ripples.iter() {
-            list.list.push(ripple.ripple(
+            list.push(ripple.ripple(
                 self.time,
                 0.0,
                 self.settings.cursor_ripple_final_radius,
@@ -212,20 +212,20 @@ impl CursorManager {
     pub fn draw(&mut self, list: &mut graphics::RenderableCollection) {
         if !self.visible { return }
 
+        let transform = graphics::Transform {
+            pos: self.pos,
+            rotation: self.cursor_rotation,
+            ..graphics::Transform::identity()
+        };
+
         // draw cursor itself
-        if let Some(mut cursor) = self.get_cursor_image().cloned() {
-            cursor.pos = self.pos;
-            cursor.rotation = self.cursor_rotation;
-            list.push(cursor.clone());
+        if let Some(cursor) = self.get_cursor_image().cloned() {
+            list.push(cursor.with_transform(transform.matrix()));
         } else {
             // use font awesome as fallback
-            list.push(graphics::Transformed::new(
-                graphics::Transform::default()
-                    .rotate(self.cursor_rotation)
-                    .translate(self.pos)
-                    ,
-                Box::new(graphics::Text::new(self.layout.clone()))
-            ));
+            list.push(graphics::Text::new(self.layout.clone())
+                .with_transform(transform.matrix())
+            );
 
             // let mut text = Text::new(
             //     self.pos,

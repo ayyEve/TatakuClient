@@ -1,7 +1,6 @@
 use crate::prelude::*;
 use tataku::{
     Color,
-    Vector2,
 };
 
 use graphics::{
@@ -78,12 +77,12 @@ impl SkinManager {
         // try to load 2x resolution first
         let to_attempt = match source {
             // raw textures wont have a @2x variant
-            TextureSource::Raw => vec![ (filename + ".png", Vector2::ONE) ],
+            TextureSource::Raw => vec![ (filename + ".png", 1.0) ],
 
             // everything else should
             _ => vec![ 
-                (filename.clone() + "@2x.png", Vector2::ONE / 2.0), 
-                (filename + ".png", Vector2::ONE) 
+                (filename.clone() + "@2x.png", 0.5),
+                (filename + ".png", 1.0)
             ],
         };
 
@@ -148,7 +147,7 @@ impl SkinManager {
                         error!("No texture!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
                         return TextureState::Failed;
                     };
-                    let image = graphics::Image::new(Vector2::ZERO, Arc::new(tex), scale);
+                    let image = graphics::Image::new(Arc::new(tex), scale);
                     return TextureState::Success(image);
                 }
             }

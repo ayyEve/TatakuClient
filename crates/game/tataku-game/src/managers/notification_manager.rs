@@ -172,37 +172,41 @@ impl ProcessedNotif {
         );
 
         // bg
-        let bounds = Bounds::new(pos, self.size);
-
         if let Some(mut image) = image.cloned() {
-            image.pos = bounds.pos;
-            image.set_size(self.size);
+            let stretch = graphics::ImageStretch::Cover;
+
+            let transform = graphics::Transform {
+                pos,
+                scale: stretch.fit_to(image.size(), self.size),
+                ..graphics::Transform::identity()
+            };
+
             image.color = self.notification.color;
 
-            list.push(image);
+            list.push(image.with_transform(transform.matrix()));
         } else {
-            list.push(
-                graphics::Rectangle::new_bounds(bounds, NOTIF_BG_COLOR)
-                .border(Border::new(
-                    self.notification.color,
-                    1.2
-                ))
-                .shape(graphics::Shape::Round(NOTIF_BORDER_ROUNDING))
-            );
+            list.push(graphics::Rectangle::new(self.size, NOTIF_BG_COLOR)
+            .border(Border::new(
+                self.notification.color,
+                1.2
+            ))
+            .shape(graphics::Shape::Round(NOTIF_BORDER_ROUNDING))
+            .with_transform(tataku::Matrix::identity()
+                .trans(pos)
+            ));
         }
 
         if let Some(layout) = &self.text_layout {
             let centered = Alignment::CENTER.resolve(
-                &bounds, 
-                self.size, 
+                &Bounds::new(pos, self.size),
+                Vector2::new(layout.width(), layout.height()),
                 true, 
                 true
             );
 
-            list.push(graphics::Transformed::new(
-                graphics::Transform::default()
-                    .translate(centered),
-                Box::new(graphics::Text::new(layout.clone()))
+            list.push(graphics::Text::new(layout.clone())
+                .with_transform(tataku::Matrix::identity()
+                    .trans(centered)
             ));
         }
 

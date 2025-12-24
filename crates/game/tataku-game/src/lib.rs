@@ -10,6 +10,8 @@ pub mod prelude {
     pub use tataku_audio as audio;
     pub use tataku_engine as engine;
 
+    pub use tataku_graphics::TatakuRenderable;
+
     #[cfg(feature="ui")]
     pub use tataku_interface::prelude as interface;
     pub use tataku_engine_common::common as import_common;

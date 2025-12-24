@@ -106,6 +106,7 @@ impl OsuCoords {
     }
 
     /// turn playfield (osu) coords into window coords
+    #[expect(clippy::wrong_self_convention, reason = "this is not a Rust type conversion method")]
     pub fn to_window(&self, mut osu_coords: Vector2) -> Vector2 {
         if self.flip_vertical {
             osu_coords.y = FIELD_SIZE.y - osu_coords.y;
@@ -114,6 +115,7 @@ impl OsuCoords {
         self.playfield.pos + osu_coords * self.scale
     }
     /// turn window coords into playfield coords
+    #[expect(clippy::wrong_self_convention, reason = "this is not a Rust type conversion method")]
     pub fn to_osu(&self, window_coords: Vector2) -> Vector2 {
         let mut v = (window_coords - self.playfield.pos) / self.scale;
         if self.flip_vertical { v.y = FIELD_SIZE.y - v.y }

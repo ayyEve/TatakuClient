@@ -169,12 +169,7 @@ impl ManiaGame {
         self.key_images_down.clear();
         self.key_images_up.clear();
 
-        let note_size = self.playfield.note_size();
-        let y = self.playfield.hit_y() + note_size.y;
-
         for col in 0..self.column_count {
-            let x = self.playfield.col_pos(col);
-
             for (path_map, image_map) in [
                 // up images
                 (&settings.key_image, &mut self.key_images_up),
@@ -182,14 +177,12 @@ impl ManiaGame {
                 (&settings.key_image_d, &mut self.key_images_down),
             ] {
                 let Some(path) = path_map.get(&col) else { continue };
-                let Some(mut img) = skin_manager.get_texture(
+                let Some(img) = skin_manager.get_texture(
                     Path::new(path),
                     source,
                     graphics::SkinUsage::Beatmap,
                     true
                 ) else { continue };
-                self.playfield.column_image(&mut img);
-                img.pos = Vector2::new(x, y);
 
                 image_map.insert(col, img);
             }
@@ -211,29 +204,6 @@ impl ManiaGame {
         for timing_bar in self.timing_bars.iter_mut() {
             timing_bar.playfield_changed(playfield.clone());
         }
-
-        let note_size = self.playfield.note_size();
-        let y = playfield.hit_y() + note_size.y;
-        for col in 0..self.column_count {
-            let x = self.playfield.col_pos(col);
-
-            for image_map in [
-                &mut self.key_images_down,
-                &mut self.key_images_up
-            ] {
-                let Some(img) = image_map.get_mut(&col)
-                else { continue };
-                self.playfield.column_image(img);
-
-                let tex_size = img.size();
-                // img.origin = Vector2::new(0.0, tex_size.y-playfield.note_yoffset);
-                // img.origin = Vector2::with_y(tex_size.y);
-
-                img.scale = Vector2::ONE * (note_size.x / tex_size.x);
-                img.pos = Vector2::new(x, y);
-            }
-        }
-
     }
 
     #[cfg(feature="graphics")]
@@ -283,13 +253,28 @@ impl ManiaGame {
             if playfield.upside_down {playfield.hit_pos + game_settings.judgement_indicator_offset} else {bounds.size.y - playfield.hit_pos - game_settings.judgement_indicator_offset}
         );
 
-        state.add_indicator(BasicJudgementIndicator::new(
-            pos,
-            state.time,
-            playfield.column_width / 2.0 * (2.0 / 3.0),
-            color,
-            image
-        ));
+        if let Some(image) = image {
+            let transform = graphics::Transform {
+                pos,
+                ..graphics::Transform::identity()
+            };
+
+            state.add_indicator(ImageJudgementIndicator::new(
+                image,
+                transform
+            ));
+        } else {
+            let transform = graphics::Transform {
+                pos,
+                scale: Vector2::ONE * playfield.column_width / 2.0 * (2.0 / 3.0),
+                ..graphics::Transform::identity()
+            };
+
+            state.add_indicator(BasicJudgementIndicator::new(
+                color,
+                transform
+            ));
+        }
     }
 
 
@@ -331,10 +316,12 @@ impl ManiaGame {
 
             // column background
             list.push(graphics::Rectangle::new(
-                Vector2::new(x, bounds.pos.y),
                 Vector2::new(self.playfield.column_width, bounds.size.y),
                 Color::new(0.1, 0.1, 0.1, 0.8),
-            ).border(Border::new(Color::GREEN, 1.2)));
+            ).border(Border::new(Color::GREEN, 1.2))
+            .with_transform(tataku::Matrix::identity()
+                .trans(Vector2::new(x, bounds.pos.y))
+            ));
 
             // hit area/button state for this col
             let map = if self.column_states[col as usize] {
@@ -343,8 +330,13 @@ impl ManiaGame {
                 &self.key_images_up
             };
 
-            if let Some(img) = map.get(&col) {
-                list.push(img.clone());
+            if let Some(img) = map.get(&col).cloned() {
+                let transform = graphics::Transform {
+                    pos: Vector2::new(x, self.playfield.hit_y()),
+                    ..graphics::Transform::identity()
+                };
+
+                list.push(img.with_transform(transform.matrix()));
             } else {
                 let color = if self.column_states[col as usize] {
                     self.get_color(col)
@@ -353,13 +345,14 @@ impl ManiaGame {
                 };
 
                 list.push(graphics::Rectangle::new(
-                    Vector2::new(x, self.playfield.hit_y()),
                     self.playfield.note_size(),
                     color,
                 ).border(Border::new(
                     Color::RED,
                     self.playfield.note_border_width
-                )));
+                )).with_transform(tataku::Matrix::identity()
+                    .trans(Vector2::new(x, self.playfield.hit_y()))
+                ));
             }
         }
     }
@@ -902,15 +895,14 @@ impl Gamemode for ManiaGame {
 
         // playfield
         list.push(graphics::Rectangle::new(
-                Vector2::new(self.playfield.col_pos(0), bounds.pos.y),
-                Vector2::new(self.playfield.total_width, bounds.size.y),
-                Color::new(0.0, 0.0, 0.0, 0.8),
-            ).border(Border::new(
-                if state.current_timing_point.kiai { Color::YELLOW } else { Color::BLACK },
-                1.2
-            ))
-        );
-
+            Vector2::new(self.playfield.total_width, bounds.size.y),
+            Color::new(0.0, 0.0, 0.0, 0.8),
+        ).border(Border::new(
+            if state.current_timing_point.kiai { Color::YELLOW } else { Color::BLACK },
+            1.2
+        )).with_transform(tataku::Matrix::identity()
+            .trans(Vector2::new(self.playfield.col_pos(0), bounds.pos.y))
+        ));
 
         // draw columns
         self.draw_columns(bounds, list);

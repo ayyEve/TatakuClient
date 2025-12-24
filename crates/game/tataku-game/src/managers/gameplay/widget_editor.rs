@@ -814,22 +814,25 @@ impl WidgetState {
     }
 
     fn draw(&self, shell: &mut DrawShell<actions::Action>) {
+        let transform = tataku::Matrix::identity()
+            .trans(self.bounds.pos);
+
         if self.hover {
-            shell.list.push(graphics::Rectangle::new_bounds(
-                self.bounds,
+            shell.list.push(graphics::Rectangle::new(
+                self.bounds.size,
                 Color::TRANSPARENT,
             ).border(Border::new(
                 shell.general_theme.hover_color,
                 2.0
-            )));
+            )).with_transform(transform));
         } else if self.selected {
-            shell.list.push(graphics::Rectangle::new_bounds(
-                self.bounds,
+            shell.list.push(graphics::Rectangle::new(
+                self.bounds.size,
                 Color::TRANSPARENT,
             ).border(Border::new(
                 shell.general_theme.active_color,
                 2.0
-            )));
+            )).with_transform(transform));
         }
     }
 }

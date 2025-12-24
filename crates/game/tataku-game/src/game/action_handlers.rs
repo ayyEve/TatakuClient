@@ -8,7 +8,6 @@ use common::{
 
 use tataku::{
     Color,
-    Vector2,
     TatakuValue,
 };
 
@@ -850,12 +849,6 @@ impl Game {
                     graphics::SkinUsage::Background, 
                     false
                 );
-
-                if let Some(i) = &mut self.background_image {
-                    i.origin = Vector2::ZERO;
-                }
-
-                self.resize_bg();
             },
             #[cfg(feature="graphics")]
             GameAction::CopyToClipboard(text) => { 

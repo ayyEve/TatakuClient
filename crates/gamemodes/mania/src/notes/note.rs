@@ -76,15 +76,24 @@ impl gameplay::HitObject for ManiaNote {
     fn draw(&mut self, _time: f32, list: &mut graphics::RenderableCollection) {
         if self.hit || self.pos.y + self.playfield.note_size().y < self.playfield.bounds.pos.y || self.pos.y > self.playfield.bounds.pos.y + self.playfield.bounds.size.y { return } 
         
-        if let Some(mut img) = self.note_image.clone() {
-            img.pos = self.pos;
-            list.push(img);
+        if let Some(img) = self.note_image.clone() {
+            let transform = graphics::Transform {
+                pos: self.pos,
+                ..graphics::Transform::identity()
+            };
+
+            list.push(img.with_transform(transform.matrix()));
         } else {
+            let transform = graphics::Transform {
+                pos: self.pos,
+                ..graphics::Transform::identity()
+            };
+
             list.push(graphics::Rectangle::new(
-                self.pos,
                 self.playfield.note_size(),
                 self.color,
-            ).border(Border::new(Color::BLACK, self.playfield.note_border_width)));
+            ).border(Border::new(Color::BLACK, self.playfield.note_border_width))
+            .with_transform(transform.matrix()));
         }
     }
 
@@ -110,16 +119,12 @@ impl gameplay::HitObject for ManiaNote {
         let Some(path) = settings.note_image.get(&self.column) 
         else { return };
 
-        let Some(mut img) = skin_manager.get_texture(
+        self.note_image = skin_manager.get_texture(
             Path::new(path), 
             source, 
             graphics::SkinUsage::Gamemode, 
             true
-        ) else { return };
-        
-        self.playfield.note_image(&mut img);
-        img.color = self.color;
-        self.note_image = Some(img);
+        );
     }
 }
 impl ManiaHitObject for ManiaNote {
@@ -147,10 +152,6 @@ impl ManiaHitObject for ManiaNote {
     fn playfield_changed(&mut self, playfield: Arc<ManiaPlayfield>) {
         self.playfield = playfield;
         self.pos.x = self.playfield.col_pos(self.column);
-
-        if let Some(img) = &mut self.note_image {
-            self.playfield.note_image(img);
-        }
     }
 
     #[cfg(feature="gameplay")] 

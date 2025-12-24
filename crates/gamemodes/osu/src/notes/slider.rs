@@ -51,8 +51,7 @@ pub struct OsuSlider {
     time_end_pos: Vector2,
 
     /// hit dots. if the slider isnt being held for these
-    #[cfg(feature="graphics")]
-    hit_dots: Vec<SliderDot>,
+    #[cfg(feature="graphics")] hit_dots: Vec<SliderDot>,
 
     /// used for repeat sliders
     pending_combo: Vec<(HitJudgment, Vector2)>,
@@ -127,6 +126,8 @@ pub struct OsuSlider {
     last_beat: f32,
     pulse_length: f32,
     beat_scale: f32,
+
+    #[cfg(feature="graphics")] bounds: tataku::Bounds,
 
     #[cfg(feature="graphics")] slider_body: graphics::SliderDrawable,
     #[cfg(feature="graphics")] skin: Arc<graphics::SkinSettings>,
@@ -244,7 +245,7 @@ impl OsuSlider {
         let mut max_pos = Vector2::ZERO;
         let size;
 
-        let mut drawables: Vec<Box<dyn graphics::TatakuRenderable>> = Vec::new();
+        let mut drawables = graphics::RenderableCollection::default();
         let mut offset = Vector2::ZERO;
 
         if USE_NEW_SLIDER_RENDERING {
@@ -395,7 +396,6 @@ impl OsuSlider {
                 border_width,
                 snake_percentage: 1.0,
                 slider_velocity: self.velocity,
-                grid_origin: min_pos,
                 grid_size,
                 grid_index: 0,
                 body_color: color,
@@ -410,9 +410,8 @@ impl OsuSlider {
 
 
             let mut slider_body = self.slider_body.clone();
-            slider_body.slider_data.grid_origin = Vector2::ZERO; // reset grid origin when rendering to a target
             slider_body.alpha = 255;
-            drawables.push(Box::new(slider_body));
+            drawables.push(slider_body);
         } else {
             // starting point
             let p: Vector2 = self.coords.to_window(self.curve.curve_lines[0].p1);
@@ -429,14 +428,14 @@ impl OsuSlider {
                 let pipeline = tataku::GraphicsPipeline::Standard(blend_mode);
 
                 // add starting circle manually
-                drawables.push(graphics::Transformed {
-                    transform: tataku::Matrix::identity()
-                        .trans(p),
-                    drawable: Box::new(graphics::Circle::new(
-                        radius,
-                        color,
-                    ).with_pipeline(pipeline)),
-                });
+                drawables.push(graphics::Circle::new(color)
+                    .with_pipeline(pipeline)
+                    .with_transform(graphics::Transform {
+                        pos: p,
+                        scale: Vector2::ONE * radius,
+                        ..graphics::Transform::identity()
+                    }.matrix())
+                );
 
                 // add all lines
                 for line in self.curve.curve_lines.iter() {
@@ -454,25 +453,25 @@ impl OsuSlider {
                     if p2.y + radius_with_border > max_pos.y { max_pos.y = p2.y + radius_with_border; }
 
                     // add a line to connect the points
-                    drawables.push(graphics::Transformed {
-                        transform: tataku::Matrix::identity()
-                            .trans(p1),
-                        drawable: Box::new(graphics::Line::new(
-                            p2 - p1,
-                            radius,
-                            color
-                        ).with_pipeline(pipeline)),
-                    });
+                    drawables.push(graphics::Line::new(
+                        p2 - p1,
+                        radius,
+                        color,
+                    ).with_pipeline(pipeline)
+                    .with_transform(tataku::Matrix::identity()
+                        .trans(p1)
+                    ));
 
                     // add a circle to smooth out the corners
                     // border
-                    drawables.push(graphics::Transformed {
-                        transform: p2,
-                        drawable: Box::new(graphics::Circle::new(
-                            radius,
-                            color,
-                        ).with_pipeline(pipeline)),
-                    });
+                    drawables.push(graphics::Circle::new(color)
+                        .with_pipeline(pipeline)
+                        .with_transform(graphics::Transform {
+                            pos: p2,
+                            scale: Vector2::ONE * radius,
+                            ..graphics::Transform::identity()
+                        }.matrix())
+                    );
                 }
             }
 
@@ -480,6 +479,10 @@ impl OsuSlider {
             offset = -min_pos;
         }
 
+        self.bounds = tataku::Bounds::new(
+            min_pos,
+            size,
+        );
 
         // draw it to the render target
         #[cfg(feature="graphics")]
@@ -488,7 +491,7 @@ impl OsuSlider {
         let options = graphics::DrawOptions::default();
         let callback = Arc::new(move |g: &mut dyn graphics::DrawEngine, mut transform: tataku::Matrix| {
             transform = transform.trans(offset);
-            for d in &drawables {
+            for d in &drawables.list {
                 d.draw(&options, transform, g);
             }
         });
@@ -502,15 +505,13 @@ impl OsuSlider {
             //     );
             // }));
         } else {
-            let mut rt = graphics::RenderTarget::new_arced_callback(
+            let rt = graphics::RenderTarget::new_arced_callback(
                 graphics::RenderTargetData::new(
                     [size.x as u32, size.y as u32],
                     Color::TRANSPARENT,
                 ),
                 callback,
             );
-            rt.pos = min_pos;
-            rt.origin = Vector2::ZERO;
 
             self.slider_body_render_target = Some(rt);
 
@@ -766,10 +767,11 @@ impl HitObject for OsuSlider {
         // slider body
         if self.use_render_targets() {
             if let Some(mut rt) = self.slider_body_render_target.clone() {
-                // let mut b = rt.as_image();
-                // b.color.a = alpha;
                 rt.color.a = alpha;
-                list.push(rt);
+
+                list.push(rt.with_transform(tataku::Matrix::identity()
+                    .trans(self.bounds.pos)
+                ));
             }
         } else {
             list.push(self.slider_body.clone());
@@ -791,28 +793,43 @@ impl HitObject for OsuSlider {
         // end pos
         if let Some(mut end_circle) = self.end_circle_image.clone() {
             end_circle.color.a = alpha;
-            list.push(end_circle);
+
+            let transform = graphics::Transform {
+                pos: self.visual_end_pos,
+                ..graphics::Transform::identity()
+            };
+
+            list.push(end_circle.with_transform(transform.matrix()));
         } else if self.start_circle_image.circle.is_none() {
-            list.push(graphics::Circle::new(
-                self.visual_end_pos,
-                self.radius,
-                color,
-            ).border(Border::new(
-                if end_repeat { Color::YELLOW } else { Color::WHITE }.alpha8(alpha),
-                self.coords.border_width
-            )));
+            let transform = graphics::Transform {
+                pos: self.visual_end_pos,
+                scale: Vector2::ONE * self.radius,
+                ..graphics::Transform::identity()
+            };
+
+            list.push(graphics::Circle::new(color)
+                .border(Border::new(
+                    if end_repeat { Color::YELLOW } else { Color::WHITE }.alpha8(alpha),
+                    self.coords.border_width
+                ))
+                .with_transform(transform.matrix())
+            );
         }
 
         if end_repeat
         && let Some(mut reverse_arrow) = self.slider_reverse_image.clone() {
-            reverse_arrow.pos = self.visual_end_pos;
             reverse_arrow.color.a = alpha;
-            reverse_arrow.scale = Vector2::ONE * self.beat_scale * self.coords.cs;
 
             let l = self.curve.curve_lines.last().unwrap();
-            reverse_arrow.rotation = (l.p1 - l.p2).atan2_wrong();
 
-            list.push(reverse_arrow);
+            let transform = graphics::Transform {
+                pos: self.visual_end_pos,
+                scale: Vector2::ONE * self.beat_scale * self.coords.cs,
+                rotation: (l.p1 - l.p2).atan2_wrong(),
+                ..graphics::Transform::identity()
+            };
+
+            list.push(reverse_arrow.with_transform(transform.matrix()));
         }
 
 
@@ -826,30 +843,43 @@ impl HitObject for OsuSlider {
             if let Some(end_circle) = &self.end_circle_image {
                 let mut end_circle = end_circle.clone();
                 end_circle.color.a = alpha;
-                end_circle.pos = self.pos;
-                list.push(end_circle);
 
+                let transform = graphics::Transform {
+                    pos: self.pos,
+                    ..graphics::Transform::identity()
+                };
+
+                list.push(end_circle.with_transform(transform.matrix()));
             } else if self.start_circle_image.circle.is_none() {
-                list.push(graphics::Circle::new(
-                    self.pos,
-                    self.radius,
-                    self.color.alpha8(alpha),
-                ).border(Border::new(
-                    if start_repeat { Color::YELLOW } else { Color::WHITE }.alpha8(alpha),
-                    self.coords.border_width
-                )));
+                let transform = graphics::Transform {
+                    pos: self.pos,
+                    scale: Vector2::ONE * self.radius,
+                    ..graphics::Transform::identity()
+                };
+
+                list.push(graphics::Circle::new(self.color.alpha8(alpha))
+                    .border(Border::new(
+                        if start_repeat { Color::YELLOW } else { Color::WHITE }.alpha8(alpha),
+                        self.coords.border_width
+                    ))
+                    .with_transform(transform.matrix())
+                );
             }
 
             if start_repeat
             && let Some(mut reverse_arrow) = self.slider_reverse_image.clone() {
-                reverse_arrow.pos = self.pos;
                 reverse_arrow.color.a = alpha;
-                reverse_arrow.scale = Vector2::ONE * self.beat_scale * self.coords.cs;
 
                 let l = self.curve.curve_lines.first().unwrap();
-                reverse_arrow.rotation = (l.p2 - l.p1).atan2_wrong();
 
-                list.push(reverse_arrow);
+                let transform = graphics::Transform {
+                    pos: self.pos,
+                    scale: Vector2::ONE * self.beat_scale * self.coords.cs,
+                    rotation: (l.p2 - l.p1).atan2_wrong(),
+                    ..graphics::Transform::identity()
+                };
+
+                list.push(reverse_arrow.with_transform(transform.matrix()));
             }
         }
 
@@ -861,46 +891,68 @@ impl HitObject for OsuSlider {
 
             // under
             if let Some(mut ball) = self.sliderball_under_image.clone() {
-                ball.pos = self.slider_ball_pos;
-                ball.scale = scale;
-                // ball.color = color;
                 ball.color.a = alpha;
 
-                list.push(ball);
+                let transform = graphics::Transform {
+                    pos: self.slider_ball_pos,
+                    scale,
+                    ..graphics::Transform::identity()
+                };
+
+                list.push(ball.with_transform(transform.matrix()));
             }
 
             // inner
             if let Some(mut ball) = self.sliderball_image.clone() {
-                ball.pos = self.slider_ball_pos;
-                ball.scale = scale;
                 ball.color = color;
-                ball.rotation = rotation;
 
-                list.push(ball);
+                let transform = graphics::Transform {
+                    pos: self.slider_ball_pos,
+                    scale,
+                    rotation,
+                    ..graphics::Transform::identity()
+                };
+
+                list.push(ball.with_transform(transform.matrix()));
             } else {
-                list.push(graphics::Circle::new(
-                    self.slider_ball_pos,
-                    self.radius,
-                    color,
-                ).border(Border::new(Color::WHITE.alpha8(alpha), 2.0)));
+                let transform = graphics::Transform {
+                    pos: self.slider_ball_pos,
+                    scale: Vector2::ONE * self.radius,
+                    ..graphics::Transform::identity()
+                };
+
+                list.push(graphics::Circle::new(color)
+                    .border(Border::new(Color::WHITE.alpha8(alpha), 2.0))
+                    .with_transform(transform.matrix())
+                );
             }
 
             // radius thingy
             if let Some(mut circle) = self.follow_circle_image.clone() {
-                circle.pos = self.slider_ball_pos;
-                circle.scale = scale;
                 circle.color = color;
 
-                list.push(circle);
+                let transform = graphics::Transform {
+                    pos: self.slider_ball_pos,
+                    scale,
+                    rotation,
+                    ..graphics::Transform::identity()
+                };
+
+                list.push(circle.with_transform(transform.matrix()));
             } else {
-                list.push(graphics::Circle::new(
-                    self.slider_ball_pos,
-                    self.radius * OK_TICK_RADIUS_MULT,
-                    Color::TRANSPARENT,
-                ).border(Border::new(
-                    if self.sliding_ok {Color::LIME} else {Color::RED}.alpha8(alpha),
-                    2.0
-                )));
+                let transform = graphics::Transform {
+                    pos: self.slider_ball_pos,
+                    scale: Vector2::ONE * self.radius * OK_TICK_RADIUS_MULT,
+                    ..graphics::Transform::identity()
+                };
+
+                list.push(graphics::Circle::new(Color::TRANSPARENT)
+                    .border(Border::new(
+                        if self.sliding_ok {Color::LIME} else {Color::RED}.alpha8(alpha),
+                        2.0
+                    ))
+                    .with_transform(transform.matrix())
+                );
             }
         }
 
@@ -973,7 +1025,6 @@ impl HitObject for OsuSlider {
         }
 
         if !images.is_empty() {
-            let size = images[0].size();
             let base_scale = images[0].base_scale;
 
             let images = images.into_iter().map(|i|i.tex).collect::<Vec<_>>();
@@ -983,14 +1034,11 @@ impl HitObject for OsuSlider {
             let velocity = self.velocity;
             let frametime = ((150.0 / velocity) * frametime).max(frametime);
 
-            let mut animation = graphics::Animation::new(
-                Vector2::ZERO,
-                size,
+            let animation = graphics::Animation::new(
                 images,
                 frametime,
                 base_scale
             );
-            animation.scale = Vector2::ONE;
 
             self.sliderball_image = Some(animation);
         } else {
@@ -1098,11 +1146,6 @@ impl OsuHitObject for OsuSlider {
 
         self.approach_circle.scale_changed(new_scale, self.radius);
         self.start_circle_image.playfield_changed(&self.coords);
-
-        if let Some(image) = &mut self.end_circle_image {
-            image.pos = self.coords.to_window(self.visual_end_pos);
-            image.scale = Vector2::ONE * self.coords.cs;
-        }
 
         if self.slider_body_render_target.is_some() || (!self.standard_settings.slider_render_targets && USE_NEW_SLIDER_RENDERING) {
             // if the playfield was resized, if we dont set this to none it will use the old size and then be wrong
@@ -1223,16 +1266,25 @@ impl SliderDot {
     pub fn draw(&self, beat_scale: f32, list: &mut graphics::RenderableCollection) {
         if self.checked { return }
 
-        if let Some(mut image) = self.dot_image.clone() {
-            image.pos = self.pos;
-            image.scale = Vector2::ONE * beat_scale * self.scale * 0.8;
-            list.push(image);
+        if let Some(image) = self.dot_image.clone() {
+            let transform = graphics::Transform {
+                pos: self.pos,
+                scale: Vector2::ONE * beat_scale * self.scale * 0.8,
+                ..graphics::Transform::identity()
+            };
+
+            list.push(image.with_transform(transform.matrix()));
         } else {
-            list.push(graphics::Circle::new(
-                self.pos,
-                SLIDER_DOT_RADIUS * self.scale * beat_scale,
-                Color::YELLOW,
-            ).border(Border::new(Color::WHITE, OSU_NOTE_BORDER_SIZE * self.scale)));
+            let transform = graphics::Transform {
+                pos: self.pos,
+                scale: Vector2::ONE * SLIDER_DOT_RADIUS * self.scale * beat_scale,
+                ..graphics::Transform::identity()
+            };
+
+            list.push(graphics::Circle::new(Color::YELLOW)
+                .border(Border::new(Color::WHITE, OSU_NOTE_BORDER_SIZE * self.scale))
+                .with_transform(transform.matrix())
+            );
         }
     }
 

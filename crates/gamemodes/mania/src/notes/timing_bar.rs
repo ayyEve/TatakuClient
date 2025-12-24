@@ -66,9 +66,10 @@ impl TimingBar {
         if self.pos.y < 0.0 || self.pos.y > self.playfield.bounds.size.y { return }
 
         list.push(graphics::Rectangle::new(
-            self.pos + Vector2::with_y(self.playfield.note_size().y),
             self.size,
             BAR_COLOR,
+        ).with_transform(tataku::Matrix::identity()
+            .trans(self.pos + Vector2::with_y(self.playfield.note_size().y))
         ));
 
     }

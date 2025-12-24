@@ -94,14 +94,15 @@ impl ScatterGraph {
                     let x_step = size.x / mapped_points.len() as f32;
 
                     for (n, &y) in mapped_points.iter().enumerate() {
-                        collection.push(
-                            graphics::Circle::new(
-                                2.0,
-                                i.color,
-                            ).resolution(32u32)
-                            .with_transform(tataku::Matrix::identity()
-                                .trans(bounds.pos + Vector2::new(x_step * n as f32, y))
-                            )
+                        let transform = graphics::Transform {
+                            pos: bounds.pos + Vector2::new(x_step * n as f32, y),
+                            scale: Vector2::ONE * 2.0,
+                            ..graphics::Transform::identity()
+                        };
+
+                        collection.push(graphics::Circle::new(i.color)
+                            .resolution(32u32)
+                            .with_transform(transform.matrix())
                         );
                     }
                     

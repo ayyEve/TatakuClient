@@ -614,7 +614,6 @@ impl Game {
         #[cfg(feature="graphics")]
         if self.values.game.window_size != window_size {
             self.values.game.window_size = window_size;
-            self.resize_bg();
             self.ui_manager.window_size_changed(window_size, &self.values);
 
             self.volume_controller.window_size_changed(window_size);
@@ -644,8 +643,6 @@ impl Game {
             if self.background_image.is_none() && !self.wallpapers.is_empty() {
                 self.background_image = Some(self.wallpapers[0].clone());
             }
-
-            self.resize_bg();
         }
 
         
@@ -1168,7 +1165,6 @@ impl Game {
 
         // draw dim
         render_queue.push(graphics::Rectangle::new(
-            Vector2::ZERO,
             self.values.game.window_size,
             Color::BLACK.alpha(self.settings.background_dim),
         ));
@@ -1220,7 +1216,6 @@ impl Game {
                 let alpha = diff / (TRANSITION_TIME / 2.0);
 
                 render_queue.push(graphics::Rectangle::new(
-                    Vector2::ZERO,
                     self.game.window_size,
                     Color::new(0.0, 0.0, 0.0, alpha),
                 ));
@@ -1237,7 +1232,6 @@ impl Game {
                 let alpha = 1.0 - diff / (TRANSITION_TIME / 2.0);
 
                 render_queue.push(graphics::Rectangle::new(
-                    Vector2::ZERO,
                     self.game.window_size,
                     Color::new(0.0, 0.0, 0.0, alpha),
                 ));
@@ -1684,14 +1678,6 @@ impl Game {
         for i in self.integrations.iter_mut() {
             i.handle_event(event, &self.values, &mut self.actions);
         }
-    }
-
-    #[cfg(feature="graphics")]
-    pub(super) fn resize_bg(&mut self) {
-        let Some(bg) = &mut self.background_image
-        else { return };
-
-        bg.fit_to_bg_size(self.values.game.window_size);
     }
 
     /// Drag and Drop

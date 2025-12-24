@@ -256,21 +256,25 @@ impl Widget<actions::Action> for Slider {
             track.pos.y
         );
 
-        shell.list.push(graphics::Circle::new(
-            (bounds.size.y / 2.0) * 5.0/6.0,
-            shell.general_theme.default_color
-        ).border(Border::new(
-            if self.pressed {
-                shell.general_theme.active_color
-            } else if self.hovered {
-                shell.general_theme.hover_color
-            } else {
-                shell.general_theme.default_color
-            },
-            2.0
-        )).with_transform(tataku::Matrix::identity()
-            .trans(dragger_pos)
-        ));
+        let transform = graphics::Transform {
+            pos: dragger_pos,
+            scale: Vector2::ONE * (bounds.size.y / 2.0) * 5.0/6.0,
+            ..graphics::Transform::identity()
+        };
+
+        shell.list.push(graphics::Circle::new(shell.general_theme.default_color)
+            .border(Border::new(
+                if self.pressed {
+                    shell.general_theme.active_color
+                } else if self.hovered {
+                    shell.general_theme.hover_color
+                } else {
+                    shell.general_theme.default_color
+                },
+                2.0
+            ))
+            .with_transform(transform.matrix())
+        );
     }
 }
 

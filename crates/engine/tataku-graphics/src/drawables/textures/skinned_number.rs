@@ -180,7 +180,11 @@ impl TatakuRenderable for SkinnedNumber {
             t.color = color;
             // t.set_scissor(self.scissor);
             t.set_pipeline(GraphicsPipeline::Standard(self.blend_mode));
-            t.draw(options, transform.trans(current_pos), g);
+
+            let transform = transform * Matrix::identity()
+                .trans(current_pos);
+
+            t.draw(options, transform, g);
             current_pos.x += t.size().x + x_spacing;
         }
     }

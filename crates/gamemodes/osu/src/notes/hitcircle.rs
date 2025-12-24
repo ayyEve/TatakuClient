@@ -141,29 +141,64 @@ impl HitCircle {
     }
 
     pub fn draw(&mut self, list: &mut graphics::RenderableCollection) {
+        let shake_transform = if let Some(shake) = &self.shake {
+            let shake = shake.last_value();
+
+            graphics::Transform {
+                pos: Vector2::new(shake * 8.0 * self.coords.scale, 0.0),
+                ..graphics::Transform::identity()
+            }.matrix()
+        } else {
+            tataku::Matrix::identity()
+        };
+
         // hit circle
-        if let Some(mut circle) = self.circle.clone() {
-            circle.pos = self.pos;
-            circle.color.a = self.alpha;
-            collection.push(circle);
-        }
-
         if let Some(mut overlay) = self.overlay.clone() {
-            overlay.pos = self.pos;
             overlay.color.a = self.alpha;
-            collection.push(overlay);
+
+            let transform = graphics::Transform {
+                pos: self.pos,
+                ..graphics::Transform::identity()
+            };
+
+            list.push(overlay.with_transform(
+                shake_transform * transform.matrix()
+            ));
         }
 
-        if collection.list.is_empty() {
-            collection.push(graphics::Circle::new(
-                self.pos,
-                CIRCLE_RADIUS_BASE * self.coords.cs,
-                self.color.alpha8(self.alpha),
-            ).border(Border::new(
-                Color::WHITE.alpha8(self.alpha),
-                self.coords.border_width
-            )));
+        if let Some(mut circle) = self.circle.clone() {
+            circle.color.a = self.alpha;
+
+            let transform = graphics::Transform {
+                pos: self.pos,
+                ..graphics::Transform::identity()
+            };
+
+            list.push(circle.with_transform(
+                shake_transform * transform.matrix()
+            ));
+        } else {
+            let transform = graphics::Transform {
+                pos: self.pos,
+                scale: Vector2::ONE * CIRCLE_RADIUS_BASE * self.coords.cs,
+                ..graphics::Transform::identity()
+            };
+
+            let mut circle = graphics::Circle::new(self.color.alpha8(self.alpha));
+
+            if self.overlay.is_none() {
+                circle.border = Some(Border::new(
+                    Color::WHITE.alpha8(self.alpha),
+                    self.coords.border_width
+                ));
+            }
+
+            list.push(circle.with_transform(
+                shake_transform * transform.matrix()
+            ));
         }
+
+        let include_combo_num = true;
 
         if include_combo_num {
             let size = self.coords.circle_size;
@@ -171,36 +206,29 @@ impl HitCircle {
 
             if let Some(mut image) = self.combo_image.clone() {
                 image.color.a = self.alpha;
-                image.center_text(&rect);
-                collection.push(image);
+
+                let text_size = image.measure_text();
+
+                let pos = tataku::Alignment::CENTER.resolve(
+                    &rect,
+                    text_size,
+                    true,
+                    true,
+                );
+
+                let transform = graphics::Transform {
+                    pos,
+                    ..graphics::Transform::identity()
+                };
+
+                list.push(image.with_transform(
+                    shake_transform * transform.matrix()
+                ))
             // } else if let Some(mut text) = self.combo_text.clone() {
                 // text.color.a = self.alpha;
                 // text.center_text(&rect);
                 // collection.push(text);
             }
-        }
-
-        let radius = CIRCLE_RADIUS_BASE * self.coords.cs;
-        let rect = Bounds::new(self.pos - Vector2::ONE * radius / 2.0, Vector2::ONE * radius);
-
-        if let Some(shake) = &self.shake {
-            let shake = shake.last_value();
-
-            let transform = graphics::Transform {
-                pos: Vector2::new(shake * 8.0 * self.coords.scale, 0.0),
-                ..Default::default()
-            };
-
-            let elements = note.list.into_iter()
-                .map(|element| graphics::Transformed::new(
-                    transform,
-                    element
-                ))
-                .map(|element| Box::new(element) as Box<dyn graphics::TatakuRenderable>);
-
-            list.list.extend(elements);
-        } else {
-            list.list.extend(note.list);
         }
     }
 

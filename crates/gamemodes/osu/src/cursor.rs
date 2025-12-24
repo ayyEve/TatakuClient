@@ -261,20 +261,24 @@ impl OsuCursor {
         }
 
         if let Some(image) = &self.cursor_trail_image {
-            let mut image = image.clone();
-            image.scale = Vector2::ONE * self.settings.cursor_scale;
-            image.set_pipeline(BlendMode::SourceAlphaBlending.into());
-
             let trails = self.trails.iter()
                 .map(|trail| {
                     let mut image = image.clone();
 
                     image.color.a = ((1.0 - trail.progress(time))
                         .clamp(0.0, 1.0) * 255.0)
-                         as u8;
-                    image.pos = trail.position;
+                        as u8;
 
-                    Box::new(image) as Box<dyn graphics::TatakuRenderable>
+                    let transform = graphics::Transform {
+                        pos: trail.position,
+                        scale: Vector2::ONE * self.settings.cursor_scale,
+                        ..graphics::Transform::identity()
+                    };
+
+                    image
+                        .with_pipeline(BlendMode::SourceAlphaBlending.into())
+                        .with_transform(transform.matrix())
+                        .boxed()
                 });
 
             list.list.extend(trails);
@@ -287,46 +291,56 @@ impl OsuCursor {
 
 
         // draw cursor itself
-        if let Some(mut cursor) = self.cursor_image.clone() {
-            cursor.pos = self.pos;
-            cursor.rotation = self.cursor_rotation;
-            // cursor.color = self.color;
+        if let Some(cursor) = self.cursor_image.clone() {
 
-            if self.left_pressed || self.right_pressed {
-                cursor.scale = Vector2::ONE * PRESSED_CURSOR_SCALE * self.settings.cursor_scale;
+            let scale = if self.left_pressed || self.right_pressed {
+                Vector2::ONE * PRESSED_CURSOR_SCALE * self.settings.cursor_scale
             } else {
-                cursor.scale = Vector2::ONE * self.settings.cursor_scale;
-            }
+                Vector2::ONE * self.settings.cursor_scale
+            };
 
-            list.push(cursor);
+            let transform = graphics::Transform {
+                pos: self.pos,
+                rotation: self.cursor_rotation,
+                scale,
+                ..graphics::Transform::identity()
+            };
+
+            list.push(cursor.with_transform(transform.matrix()));
         } else {
-            list.push(graphics::Circle::new(
-                self.pos,
-                radius * self.settings.cursor_scale,
-                *self.settings.cursor_color,
-            ).border_maybe(
-                if self.settings.cursor_border > 0.0 {
+            let transform = graphics::Transform {
+                pos: self.pos,
+                scale: Vector2::ONE * radius * self.settings.cursor_scale,
+                ..graphics::Transform::identity()
+            };
+
+            list.push(graphics::Circle::new(*self.settings.cursor_color)
+                .border_maybe(if self.settings.cursor_border > 0.0 {
                     Some(Border::new(
                         *self.settings.cursor_border_color,
                         self.settings.cursor_border
                     ))
-                } else { None }
-            ));
+                } else { None })
+                .with_transform(transform.matrix())
+            );
         }
 
 
-        if let Some(mut cursor) = self.cursor_middle_image.clone() {
-            cursor.pos = self.pos;
-            cursor.scale = Vector2::ONE * self.settings.cursor_scale;
+        if let Some(cursor) = self.cursor_middle_image.clone() {
+            let transform = graphics::Transform {
+                pos: self.pos,
+                scale: Vector2::ONE * self.settings.cursor_scale,
+                ..graphics::Transform::identity()
+            };
 
-            list.push(cursor);
+            list.push(cursor.with_transform(transform.matrix()));
         }
     }
 
     pub fn draw_below(&self, list: &mut graphics::RenderableCollection) {
         // draw ripples
         for ripple in self.ripples.iter() {
-            list.list.push(ripple.ripple(
+            list.push(ripple.ripple(
                 self.time.as_millis(),
                 0.0,
                 self.settings.cursor_ripple_final_radius,

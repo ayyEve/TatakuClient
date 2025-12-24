@@ -156,23 +156,23 @@ impl DownloadManager {
 
             // progress as bg
             list.push(graphics::Rectangle::new(
-                pos,
                 Vector2::new(
                     SIZE.x * i.progress,
                     SIZE.y
                 ),
                 Color::TRANSPARENT,
+            ).with_transform(tataku::Matrix::identity()
+                .trans(pos)
             ));
 
             // bounds
-            list.push(
-                graphics::Rectangle::new(
-                    pos, 
-                    SIZE,
-                    Color::TRANSPARENT,
-                )
-                .border(Border::new(Color::BLACK, 2.0))
-            );
+            list.push(graphics::Rectangle::new(
+                SIZE,
+                Color::TRANSPARENT,
+            ).border(Border::new(Color::BLACK, 2.0))
+            .with_transform(tataku::Matrix::identity()
+                .trans(pos)
+            ));
 
             let size = Vector2::new(SIZE.x, SIZE.y / 2.0);
             let alignment = Alignment::CENTER;
@@ -193,34 +193,25 @@ impl DownloadManager {
             );
 
 
-            list.push(graphics::Transformed::new(
-                graphics::Transform::default()
-                .translate(alignment.resolve(
-                    &title_bounds,
-                    title_size,
-                    true,
-                    true,
-                )),
-                Box::new(graphics::Text::new(title))
+            list.push(graphics::Text::new(title)
+                .with_transform(tataku::Matrix::identity()
+                    .trans(alignment.resolve(
+                        &title_bounds,
+                        title_size,
+                        true,
+                        true,
+                    ))
             ));
 
-            list.push(graphics::Transformed::new(
-                graphics::Transform::default()
-                .translate(alignment.resolve(
-                    &progress_bounds,
-                    progress_size,
-                    true,
-                    true,
-                )),
-                Box::new(graphics::Text::new(progress))
+            list.push(graphics::Text::new(progress)
+                .with_transform(tataku::Matrix::identity()
+                    .trans(alignment.resolve(
+                        &progress_bounds,
+                        progress_size,
+                        true,
+                        true,
+                    ))
             ));
-            // list.push(style.create_text(
-            //     format!("{:.2}%", i.progress),
-            //     Bounds::new(
-            //         pos + Vector2::new(0.0, SIZE.y / 2.0),
-            //         Vector2::new(SIZE.x, SIZE.y / 2.0)
-            //     )
-            // ));
         }
 
     }

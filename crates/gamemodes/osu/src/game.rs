@@ -9,7 +9,6 @@ use tataku::{
     Border,
     Easing,
     Vector2,
-    Alignment,
     EmitterVal,
 };
 use engine::{
@@ -1136,44 +1135,47 @@ impl Gamemode for OsuGame {
         // draw the playfield
         if !state.gameplay_type.is_preview() {
             let alpha = self.game_settings.playfield_alpha;
-            let mut playfield = graphics::Rectangle::new_bounds(
-                self.coords.playfield_with_padding,
-                Color::BLACK.alpha(alpha),
-            ).border_maybe(
-                state.current_timing_point.kiai
-                    .then_some(Border::new(Color::YELLOW.alpha(alpha), 2.0))
-            );
+
+            let mut playfield_border = state.current_timing_point.kiai
+                .then_some(Border::new(Color::YELLOW.alpha(alpha), 2.0));
+
+            let playfield = self.coords.playfield_with_padding;
 
             if self.move_playfield.is_some() {
                 let line_size = self.game_settings.playfield_movelines_thickness;
                 // draw x and y center lines
                 let px_line = graphics::Line::new(
-                    playfield.pos + Vector2::new(0.0, playfield.size.y/2.0),
-                    playfield.pos + Vector2::new(playfield.size.x, playfield.size.y/2.0),
+                    Vector2::with_x(playfield.size.x),
                     line_size,
                     Color::WHITE
+                ).with_transform(tataku::Matrix::identity()
+                    .trans(playfield.pos + Vector2::new(0.0, playfield.size.y/2.0))
                 );
                 let py_line = graphics::Line::new(
-                    playfield.pos + Vector2::new(playfield.size.x/2.0, 0.0),
-                    playfield.pos + Vector2::new(playfield.size.x/2.0, playfield.size.y),
+                    Vector2::with_y(playfield.size.y),
                     line_size,
                     Color::WHITE
+                ).with_transform(tataku::Matrix::identity()
+                    .trans(playfield.pos + Vector2::new(playfield.size.x/2.0, 0.0))
                 );
 
                 let wx_line = graphics::Line::new(
-                    Vector2::new(0.0, window_size.y/2.0),
-                    Vector2::new(window_size.x, window_size.y/2.0),
+                    Vector2::with_x(window_size.x),
                     line_size,
                     Color::WHITE
+                ).with_transform(tataku::Matrix::identity()
+                    .trans(Vector2::new(0.0, window_size.y/2.0))
                 );
                 let wy_line = graphics::Line::new(
-                    Vector2::new(window_size.x/2.0, 0.0),
-                    Vector2::new(window_size.x/2.0, window_size.y),
+                    Vector2::with_y(window_size.y),
                     line_size,
                     Color::WHITE
+                ).with_transform(tataku::Matrix::identity()
+                    .trans(
+                    Vector2::new(window_size.x/2.0, 0.0))
                 );
 
-                playfield.border = Some(Border::new(
+                playfield_border = Some(Border::new(
                     Color::WHITE,
                     line_size
                 ));
@@ -1183,6 +1185,14 @@ impl Gamemode for OsuGame {
                 list.push(px_line);
                 list.push(py_line);
             }
+
+            let playfield = graphics::Rectangle::new(
+                playfield.size,
+                Color::BLACK.alpha(alpha),
+            ).border_maybe(playfield_border)
+            .with_transform(tataku::Matrix::identity()
+                .trans(playfield.pos)
+            );
 
             list.push(playfield);
         }
