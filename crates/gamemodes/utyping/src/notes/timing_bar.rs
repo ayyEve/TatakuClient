@@ -47,10 +47,10 @@ impl UTypingTimingBar {
         if self.pos.x + BAR_WIDTH < 0.0 || self.pos.x - BAR_WIDTH > 1000000.0 { return }
 
         list.push(engine::graphics::Rectangle::new(
-            self.pos,
             self.size,
             BAR_COLOR,
+        ).with_transform(tataku::Matrix::identity()
+            .trans(self.pos)
         ));
     }
 }
-

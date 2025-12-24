@@ -32,7 +32,7 @@ pub struct HitCircle {
     pub overlay: Option<graphics::Image>,
     pub combo_num: u16,
 
-    pub scaling_helper: Arc<ScalingHelper>,
+    pub coords: Arc<OsuCoords>,
     alpha: u8,
     color: Color,
 
@@ -46,17 +46,17 @@ pub struct HitCircle {
 impl HitCircle {
     pub fn new(
         base_pos: Vector2,
-        scaling_helper: Arc<ScalingHelper>,
+        coords: Arc<OsuCoords>,
         combo_num: u16
     ) -> Self {
         Self {
             circle: None,
             overlay: None,
             base_pos,
-            pos: scaling_helper.scale_coords(base_pos),
+            pos: coords.to_window(base_pos),
             skin_settings: Arc::default(),
             combo_num,
-            scaling_helper,
+            coords,
 
             combo_image: None,
             // combo_text: None,
@@ -79,33 +79,25 @@ impl HitCircle {
         };
 
         self.skin_settings = skin_manager.skin().clone();
-        let radius = CIRCLE_RADIUS_BASE * self.scaling_helper.cs;
 
-        self.circle = skin_manager.get_texture_then(
-            Path::new("hitcircle"), 
-            source, 
-            SkinUsage::Gamemode, 
-            false, 
-            |i| {
-                i.pos = self.pos;
-                i.scale = Vector2::ONE * self.scaling_helper.cs;
-                i.color = self.color;
-            }
-        );
+        self.circle = skin_manager.get_texture(
+            Path::new("hitcircle"),
+            source,
+            SkinUsage::Gamemode,
+            false,
+        ).map(|mut i| {
+            i.color = self.color;
+            i
+        });
 
-        self.overlay = skin_manager.get_texture_then(
-            Path::new("hitcircleoverlay"), 
-            source, 
-            SkinUsage::Gamemode, 
-            false, 
-            |i| {
-                i.pos = self.pos;
-                i.scale = Vector2::ONE * self.scaling_helper.cs;
-            }
+        self.overlay = skin_manager.get_texture(
+            Path::new("hitcircleoverlay"),
+            source,
+            SkinUsage::Gamemode,
+            false,
         );
 
         self.combo_image = SkinnedNumber::new(
-            self.pos,
             self.combo_num as f64,
             Color::WHITE,
             &self.skin_settings.hitcircle_prefix,
@@ -117,57 +109,15 @@ impl HitCircle {
             SkinUsage::Gamemode,
         ).ok();
 
-        let rect = Bounds::new(self.pos - Vector2::ONE * radius / 2.0, Vector2::ONE * radius);
         if let Some(combo) = &mut self.combo_image {
             combo.spacing_override = Some(-(self.skin_settings.hitcircle_overlap as f32));
-            combo.scale = Vector2::ONE * self.scaling_helper.cs * TEXT_SCALE;
-            combo.center_text(&rect);
-            // self.combo_text = None;
-        // } else if self.combo_text.is_none() {
-        //     let mut text = Text::new(
-        //         Vector2::ZERO,
-        //         radius,
-        //         self.combo_num,
-        //         Color::WHITE,
-        //         DefaultFont::Main
-        //     );
-        //     text.line_height = radius / 2.0;
-        //     text.center_text(&rect);
-
-        //     self.combo_text = Some(text);
         }
 
     }
 
-    pub fn playfield_changed(&mut self, new_scale: &Arc<ScalingHelper>) {
-        self.pos = new_scale.scale_coords(self.base_pos);
-        let scale = Vector2::ONE * new_scale.cs;
-        self.scaling_helper = new_scale.clone();
-
-        // update circle positions
-        if let Some(overlay) = &mut self.overlay {
-            overlay.pos = self.pos;
-            overlay.scale = scale;
-        }
-        if let Some(circle) = &mut self.circle {
-            circle.pos = self.pos;
-            circle.scale = scale;
-        }
-
-        // update combo text position
-        let radius = CIRCLE_RADIUS_BASE * new_scale.cs;
-        let rect = Bounds::new(self.pos - Vector2::ONE * radius / 2.0, Vector2::ONE * radius);
-
-        if let Some(image) = &mut self.combo_image {
-            image.spacing_override = Some(-(self.skin_settings.hitcircle_overlap as f32));
-            image.scale = scale * TEXT_SCALE;
-            image.center_text(&rect);
-        }
-        // if let Some(text) = &mut self.combo_text {
-        //     text.set_font_size(radius);
-        //     text.center_text(&rect);
-        // }
-
+    pub fn playfield_changed(&mut self, new_scale: &Arc<OsuCoords>) {
+        self.pos = new_scale.to_window(self.base_pos);
+        self.coords = new_scale.clone();
     }
 
     pub fn set_alpha(&mut self, alpha: u8) {
@@ -191,32 +141,6 @@ impl HitCircle {
     }
 
     pub fn draw(&mut self, list: &mut graphics::RenderableCollection) {
-        let note = self.note(true);
-
-        if let Some(shake) = &self.shake {
-            let shake = shake.last_value();
-
-            let transform = graphics::Transform {
-                pos: Vector2::new(shake * 8.0 * self.scaling_helper.scale, 0.0),
-                ..Default::default()
-            };
-
-            let elements = note.list.into_iter()
-                .map(|element| graphics::Transformed::new(
-                    transform,
-                    element
-                ))
-                .map(|element| Box::new(element) as Box<dyn graphics::TatakuRenderable>);
-
-            list.list.extend(elements);
-        } else {
-            list.list.extend(note.list);
-        }
-    }
-
-    fn note(&self, include_combo_num: bool) -> graphics::RenderableCollection {
-        let mut collection = graphics::RenderableCollection::default();
-
         // hit circle
         if let Some(mut circle) = self.circle.clone() {
             circle.pos = self.pos;
@@ -233,16 +157,16 @@ impl HitCircle {
         if collection.list.is_empty() {
             collection.push(graphics::Circle::new(
                 self.pos,
-                CIRCLE_RADIUS_BASE * self.scaling_helper.cs,
+                CIRCLE_RADIUS_BASE * self.coords.cs,
                 self.color.alpha8(self.alpha),
             ).border(Border::new(
                 Color::WHITE.alpha8(self.alpha),
-                self.scaling_helper.border_width
+                self.coords.border_width
             )));
         }
 
         if include_combo_num {
-            let size = self.scaling_helper.circle_size;
+            let size = self.coords.circle_size;
             let rect = Bounds::new(self.pos - size / 2.0, size);
 
             if let Some(mut image) = self.combo_image.clone() {
@@ -256,9 +180,29 @@ impl HitCircle {
             }
         }
 
-        collection
-    }
+        let radius = CIRCLE_RADIUS_BASE * self.coords.cs;
+        let rect = Bounds::new(self.pos - Vector2::ONE * radius / 2.0, Vector2::ONE * radius);
 
+        if let Some(shake) = &self.shake {
+            let shake = shake.last_value();
+
+            let transform = graphics::Transform {
+                pos: Vector2::new(shake * 8.0 * self.coords.scale, 0.0),
+                ..Default::default()
+            };
+
+            let elements = note.list.into_iter()
+                .map(|element| graphics::Transformed::new(
+                    transform,
+                    element
+                ))
+                .map(|element| Box::new(element) as Box<dyn graphics::TatakuRenderable>);
+
+            list.list.extend(elements);
+        } else {
+            list.list.extend(note.list);
+        }
+    }
 
     pub fn shake(&mut self, time: f32) {
         if self.shake.is_some() && !SHAKE_INTURRUPT { return }

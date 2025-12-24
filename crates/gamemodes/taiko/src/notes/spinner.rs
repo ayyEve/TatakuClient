@@ -79,19 +79,24 @@ impl HitObject for TaikoSpinner {
 
         // if its time to start hitting the spinner
         if self.pos.x <= self.playfield.hit_position.x {
+            let mut transform = graphics::Transform {
+                pos: spinner_position,
+                scale: Vector2::ONE * SPINNER_RADIUS,
+                ..graphics::Transform::identity()
+            };
+
             // bg circle
             list.push(graphics::Circle::new(
-                spinner_position,
-                SPINNER_RADIUS,
                 Color::YELLOW
-            ).border(Border::new(Color::BLACK, NOTE_BORDER_SIZE)));
+            ).border(Border::new(Color::BLACK, NOTE_BORDER_SIZE))
+            .with_transform(transform.matrix()));
 
             // draw another circle on top which increases in radius as the counter gets closer to the reqired
+            transform.scale *= self.hit_count as f32 / self.hits_required as f32;
             list.push(graphics::Circle::new(
-                spinner_position,
-                SPINNER_RADIUS * (self.hit_count as f32 / self.hits_required as f32),
                 Color::WHITE,
-            ).border(Border::new(Color::BLACK, NOTE_BORDER_SIZE)));
+            ).border(Border::new(Color::BLACK, NOTE_BORDER_SIZE))
+            .with_transform(transform.matrix()));
             
             //TODO: draw a counter
 
@@ -99,23 +104,28 @@ impl HitObject for TaikoSpinner {
             
             if self.pos.x + self.settings.note_radius < self.playfield.pos.x || self.pos.x - self.settings.note_radius > self.playfield.pos.x + self.playfield.size.x { return }
             if let Some(image) = &self.spinner_image {
-                let mut i = image.clone();
-                i.pos = self.pos;
-                list.push(i);
+                let transform = graphics::Transform {
+                    pos: self.pos,
+                    ..graphics::Transform::identity()
+                };
+
+                list.push(image.clone().with_transform(transform.matrix()));
             } else {
-                list.push(graphics::HalfCircle::new(
-                    self.pos,
-                    self.settings.note_radius,
-                    self.don_color,
-                    true
-                ));
+                let transform = graphics::Transform {
+                    pos: self.pos,
+                    scale: Vector2::ONE * self.settings.note_radius,
+                    ..graphics::Transform::identity()
+                };
 
                 list.push(graphics::HalfCircle::new(
-                    self.pos,
-                    self.settings.note_radius,
+                    self.don_color,
+                    true
+                ).with_transform(transform.matrix()));
+
+                list.push(graphics::HalfCircle::new(
                     self.kat_color,
                     false
-                ));
+                ).with_transform(transform.matrix()));
             }
         }
     }
@@ -177,12 +187,6 @@ impl TaikoHitObject for TaikoSpinner {
 
     fn set_settings(&mut self, settings: Arc<TaikoSettings>) {
         self.settings = settings.clone();
-        
-        #[cfg(feature="graphics")]
-        if let Some(i) = &mut self.spinner_image {
-            let radius = settings.note_radius;
-            i.scale = Vector2::ONE * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
-        }
     }
 
     fn set_required_hits(&mut self, required_hits: u16) {

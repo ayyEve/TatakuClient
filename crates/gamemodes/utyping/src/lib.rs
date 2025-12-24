@@ -12,6 +12,8 @@ mod prelude {
     pub use tataku_engine as engine;
     pub use tataku_engine_common::common::*;
 
+    pub use tataku_graphics::TatakuRenderable;
+
     pub use super::helpers::*;
     pub use super::info::*;
     pub use super::notes::*;

@@ -1883,7 +1883,6 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
         &mut self,
         start: f32,
         end: f32,
-        radius: f32,
         color: tataku::Color,
         _border: Option<tataku::Border>,
         resolution: u32,
@@ -1891,10 +1890,10 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
         blend_mode: tataku::BlendMode,
     ) {
         let n = resolution;
-        let x = -radius;
-        let y = -radius;
-        let w = 2.0 * radius;
-        let h = 2.0 * radius;
+        let x = -1.0;
+        let y = -1.0;
+        let w = 2.0;
+        let h = 2.0;
 
         let (cw, ch) = (0.5 * w, 0.5 * h);
         let (cx, cy) = (x + cw, y + ch);
@@ -1921,7 +1920,6 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
 
     fn draw_circle(
         &mut self,
-        radius: f32,
         color: tataku::Color,
         border: Option<tataku::Border>,
         resolution: u32,
@@ -1929,10 +1927,10 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
         blend_mode: tataku::BlendMode
     ) {
         let n = resolution;
-        let x = -radius;
-        let y = -radius;
-        let w = 2.0 * radius;
-        let h = 2.0 * radius;
+        let x = -1.0;
+        let y = -1.0;
+        let w = 2.0;
+        let h = 2.0;
         use std::f32::consts::PI;
 
         let (cw, ch) = (0.5 * w, 0.5 * h);

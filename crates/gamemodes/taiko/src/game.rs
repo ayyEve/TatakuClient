@@ -161,7 +161,7 @@ impl TaikoGame {
         finisher_hit: bool,
         game_settings: &TaikoSettings,
         playfield: &TaikoPlayfield,
-        judgment_helper: &JudgmentImages,
+        judgement_images: &JudgmentImages,
         state: &mut GameplayUpdateShell,
     ) {
         let pos = playfield.hit_position
@@ -179,28 +179,40 @@ impl TaikoGame {
             }
         }
 
-        let mut image = if game_settings.use_skin_judgments {
-            judgment_helper.get_from_scorehit(hit_value)
+        let image = if game_settings.use_skin_judgments {
+            judgement_images.get_from_scorehit(hit_value)
         } else {
             None
         };
 
-        if let Some(image) = &mut image {
-            image.pos = pos;
+        if let Some(image) = image {
+            let max_radius = game_settings.note_radius * game_settings.big_note_multiplier;
 
-            let radius = game_settings.note_radius * game_settings.big_note_multiplier;
-            image.scale = Vector2::ONE * (radius * 2.0) / TAIKO_JUDGEMENT_TEX_SIZE;
+            let transform = graphics::Transform {
+                pos,
+                scale: Vector2::ONE * (max_radius * 2.0) / TAIKO_JUDGEMENT_TEX_SIZE,
+                ..graphics::Transform::identity()
+            };
+
+            state.add_indicator(ImageJudgementIndicator::new(
+                image,
+                transform
+            ));
+        } else {
+            let radius = 0.5 * game_settings.note_radius
+                * if finisher_hit { game_settings.big_note_multiplier } else { 1.0 };
+
+            let transform = graphics::Transform {
+                pos,
+                scale: Vector2::ONE * radius,
+                ..graphics::Transform::identity()
+            };
+
+            state.add_indicator(BasicJudgementIndicator::new(
+                hit_value.color,
+                transform
+            ));
         }
-
-        state.add_indicator(BasicJudgementIndicator::new(
-            pos,
-            state.time,
-            game_settings.note_radius
-                * 0.5
-                * if finisher_hit { game_settings.big_note_multiplier } else { 1.0 },
-            hit_value.color,
-            image
-        ));
     }
 
     #[inline]
@@ -757,18 +769,6 @@ impl Gamemode for TaikoGame {
                 for tb in self.timing_bars.iter_mut() {
                     tb.playfield_changed(self.playfield.clone());
                 }
-
-                // update hit indicator sprite positions
-                #[cfg(feature="graphics")]
-                for i in [
-                    &mut self.left_kat_image,
-                    &mut self.left_don_image,
-                    &mut self.right_don_image,
-                    &mut self.right_kat_image
-                ] {
-                    let Some(i) = i else { continue };
-                    i.pos = self.playfield.hit_position;
-                }
             }
 
             #[cfg(feature="graphics")]
@@ -917,11 +917,13 @@ impl Gamemode for TaikoGame {
 
         // draw the hit area
         list.push(graphics::Circle::new(
-            self.playfield.hit_position,
-            self.taiko_settings.note_radius
-                * self.taiko_settings.hit_area_radius_mult,
             Color::BLACK,
-        ));
+        ).with_transform(graphics::Transform {
+            pos: self.playfield.hit_position,
+            scale: Vector2::ONE * self.taiko_settings.note_radius
+                * self.taiko_settings.hit_area_radius_mult,
+            ..graphics::Transform::identity()
+        }.matrix()));
 
         // draw timing lines
         for tb in self.timing_bars.iter_mut() {
@@ -952,65 +954,72 @@ impl Gamemode for TaikoGame {
             if shell.time - hit_time > lifetime_time { continue }
             let alpha = 1.0 - (shell.time - hit_time) / (lifetime_time * 4.0);
             let alpha = (alpha.clamp(0.0, 1.0) * 255.0) as u8;
+
+            let radius = self.taiko_settings.note_radius
+                * self.taiko_settings.hit_area_radius_mult;
+            let scale = Vector2::ONE
+                * (radius * 2.0)
+                / TAIKO_HIT_INDICATOR_TEX_SIZE.x;
+
+            let image_transform = graphics::Transform {
+                pos: self.playfield.hit_position,
+                scale,
+                ..graphics::Transform::identity()
+            };
+
+            let basic_transform = graphics::Transform {
+                pos: self.playfield.hit_position,
+                scale: Vector2::ONE * radius,
+                ..graphics::Transform::identity()
+            };
+
             match hit_type {
                 TaikoHit::LeftKat => {
                     if let Some(kat) = &self.left_kat_image {
                         let mut img = kat.clone();
                         img.color.a = alpha;
-                        list.push(img);
+                        list.push(img.with_transform(image_transform.matrix()));
                     } else {
                         list.push(graphics::HalfCircle::new(
-                            self.playfield.hit_position,
-                            self.taiko_settings.note_radius
-                                * self.taiko_settings.hit_area_radius_mult,
                             self.taiko_settings.kat_color.alpha8(alpha),
                             true
-                        ));
+                        ).with_transform(basic_transform.matrix()));
                     }
                 }
                 TaikoHit::LeftDon => {
                     if let Some(don) = &self.left_don_image {
                         let mut img = don.clone();
                         img.color.a = alpha;
-                        list.push(img);
+                        list.push(img.with_transform(image_transform.matrix()));
                     } else {
                         list.push(graphics::HalfCircle::new(
-                            self.playfield.hit_position,
-                            self.taiko_settings.note_radius
-                                * self.taiko_settings.hit_area_radius_mult,
                             self.taiko_settings.don_color.alpha8(alpha),
                             true
-                        ));
+                        ).with_transform(basic_transform.matrix()));
                     }
                 }
                 TaikoHit::RightDon => {
                     if let Some(don) = &self.right_don_image {
                         let mut img = don.clone();
                         img.color.a = alpha;
-                        list.push(img);
+                        list.push(img.with_transform(image_transform.matrix()));
                     } else {
                         list.push(graphics::HalfCircle::new(
-                            self.playfield.hit_position,
-                            self.taiko_settings.note_radius
-                                * self.taiko_settings.hit_area_radius_mult,
                             self.taiko_settings.don_color.alpha8(alpha),
                             false
-                        ));
+                        ).with_transform(basic_transform.matrix()));
                     }
                 }
                 TaikoHit::RightKat => {
                     if let Some(kat) = &self.right_kat_image {
                         let mut img = kat.clone();
                         img.color.a = alpha;
-                        list.push(img);
+                        list.push(img.with_transform(image_transform.matrix()));
                     } else {
                         list.push(graphics::HalfCircle::new(
-                            self.playfield.hit_position,
-                            self.taiko_settings.note_radius
-                                * self.taiko_settings.hit_area_radius_mult,
                             self.taiko_settings.kat_color.alpha8(alpha),
                             false
-                        ));
+                        ).with_transform(basic_transform.matrix()));
                     }
                 }
             }
@@ -1220,28 +1229,6 @@ impl Gamemode for TaikoGame {
                     bar.speed = sv;
                 }
             }
-
-            // update images
-            let radius = settings.note_radius * settings.hit_area_radius_mult;
-            let scale = Vector2::ONE * (radius * 2.0) / TAIKO_HIT_INDICATOR_TEX_SIZE.x;
-
-            for i in [
-                &mut self.left_don_image,
-                &mut self.right_kat_image
-            ] {
-                let Some(i) = i else { continue };
-                i.scale = scale;
-                i.pos = self.playfield.hit_position;
-            }
-
-            for i in [
-                &mut self.left_kat_image,
-                &mut self.right_don_image
-            ] {
-                let Some(i) = i else { continue };
-                i.scale = scale * Vector2::new(-1.0, 1.0);
-                i.pos = self.playfield.hit_position;
-            }
         }
 
     }
@@ -1258,41 +1245,23 @@ impl Gamemode for TaikoGame {
         };
         let source = TextureSource::Beatmap(beatmap_path.to_owned()); // TODO: yeah
 
-        let radius = self.taiko_settings.note_radius
-            * self.taiko_settings.hit_area_radius_mult;
-        let scale = Vector2::ONE
-            * (radius * 2.0)
-            / TAIKO_HIT_INDICATOR_TEX_SIZE.x;
-
-        if let Some(mut don) = skin_manager.get_texture(
+        if let Some(don) = skin_manager.get_texture(
             Path::new("taiko-drum-inner"),
             &source,
             SkinUsage::Gamemode,
             true
         ) {
-            don.origin.x = (don.size() / don.base_scale).x;
-            don.pos = self.playfield.hit_position;
-            don.scale = scale;
             self.left_don_image = Some(don.clone());
-
-            let mut rdon = don;
-            rdon.scale *= Vector2::new(-1.0, 1.0);
-            self.right_don_image = Some(rdon);
+            self.right_don_image = Some(don);
         }
-        if let Some(mut kat) = skin_manager.get_texture(
+        if let Some(kat) = skin_manager.get_texture(
             Path::new("taiko-drum-outer"),
             &source,
             SkinUsage::Gamemode,
             true
         ) {
-            kat.origin.x = 0.0;
-            kat.pos = self.playfield.hit_position;
-            kat.scale = scale;
             self.right_kat_image = Some(kat.clone());
-
-            let mut lkat = kat;
-            lkat.scale *= Vector2::new(-1.0, 1.0);
-            self.left_kat_image = Some(lkat);
+            self.left_kat_image = Some(kat);
         }
 
         self.judgement_helper = JudgmentImages::new(

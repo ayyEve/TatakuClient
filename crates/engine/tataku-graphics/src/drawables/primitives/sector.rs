@@ -57,7 +57,6 @@ impl TatakuRenderable for Sector {
         g.draw_arc(
             self.start,
             self.end,
-            self.radius,
             options.color_with_alpha(self.color),
             self.border,
             20,

@@ -785,13 +785,15 @@ impl Widget<actions::Action> for TextInput {
         let Some(bounds) = shell.tree.absolute_bounds(self.node_id) 
         else { return };
 
-        shell.list.push(graphics::Rectangle::new_bounds(
-            bounds,
+        shell.list.push(graphics::Rectangle::new(
+            bounds.size,
             shell.general_theme.background_color
         ).border(Border::new(
             shell.general_theme.get_color(self.active, self.hovered), 
             2.0
-        )));
+        )).with_transform(tataku::Matrix::identity()
+            .trans(bounds.pos)
+        ));
 
         self.text.draw(shell);
 
@@ -808,14 +810,15 @@ impl Widget<actions::Action> for TextInput {
 
                 let cursor_bar = graphics::Rectangle::new(
                     Vector2::new(
-                        bounds.pos.x + pos,
-                        bounds.pos.y + y_offset
-                    ),
-                    Vector2::new(
                         2.0,
                         height
                     ),
                     shell.general_theme.active_color,
+                ).with_transform(tataku::Matrix::identity()
+                    .trans(Vector2::new(
+                        bounds.pos.x + pos,
+                        bounds.pos.y + y_offset
+                    ))
                 );
                 shell.list.push(cursor_bar);
             }
@@ -827,14 +830,15 @@ impl Widget<actions::Action> for TextInput {
 
                 let cursor_bar = graphics::Rectangle::new(
                     Vector2::new(
-                        bounds.pos.x + start,
-                        bounds.pos.y + y_offset
-                    ),
-                    Vector2::new(
                         end - start,
                         height,
                     ),
                     shell.general_theme.active_color.alpha(0.7)
+                ).with_transform(tataku::Matrix::identity()
+                    .trans(Vector2::new(
+                        bounds.pos.x + start,
+                        bounds.pos.y + y_offset
+                    ))
                 );
                 shell.list.push(cursor_bar);
             }

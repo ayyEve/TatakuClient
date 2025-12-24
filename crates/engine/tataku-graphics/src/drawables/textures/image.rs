@@ -88,61 +88,7 @@ impl Image {
         self.tex_size() * self.base_scale
     }
 
-    // /// NOTE: this will change the origin to top-left
-    // pub fn fit_to(&mut self, fit: ImageStretch, bounds: Bounds) {
-    //     let image_size = self.tex_size();
-    //     let size = bounds.size;
 
-    //     match fit {
-    //         ImageStretch::Fill => {
-    //             self.set_size(bounds.size);
-    //         }
-    //         ImageStretch::Contain => {
-    //             // resize to maintain aspect ratio
-    //             let ratio = image_size.y / image_size.x;
-                
-    //             let new_size = if image_size.x > image_size.y {
-    //                 // use width as base
-    //                 Vector2::new(
-    //                     size.x,
-    //                     size.x * ratio
-    //                 )
-    //             } else {
-    //                 // use height as base
-    //                 Vector2::new(
-    //                     size.y * ratio,
-    //                     size.y
-    //                 )
-    //             };
-
-    //             // TODO: transform to Contain
-
-    //             self.set_size(new_size);
-    //         }
-    //         ImageStretch::Cover => {
-    //             // resize to maintain aspect ratio
-    //             let ratio = image_size.y / image_size.x;
-
-    //             let new_size = if image_size.x > image_size.y {
-    //                 // use width as base
-    //                 Vector2::new(
-    //                     size.x,
-    //                     size.x * ratio
-    //                 )
-    //             } else {
-    //                 // use height as base
-    //                 Vector2::new(
-    //                     size.y * ratio,
-    //                     size.y
-    //                 )
-    //             };
-                
-    //             // TODO: transform to Cover
-    //             self.set_size(new_size);
-    //         }
-    //         ImageStretch::None => {},
-    //     }
-    // }
 
     // pub fn fit_to_bg_size(&mut self, size: Vector2) {
     //     self.fit_to(ImageStretch::Contain, Bounds::new(Vector2::ZERO, size));
@@ -222,4 +168,60 @@ pub enum ImageStretch {
 
     /// The image is not resized
     None,
+}
+
+impl ImageStretch {
+    /// Returns the scale needed to fit an image in the container.
+    pub fn fit_to(self, image_size: Vector2, container_size: Vector2) -> Vector2 {
+        match self {
+            ImageStretch::Fill => {
+                container_size / image_size
+            }
+            ImageStretch::Contain => {
+                // resize to maintain aspect ratio
+                let ratio = image_size.y / image_size.x;
+
+                let new_size = if image_size.x > image_size.y {
+                    // use width as base
+                    Vector2::new(
+                        container_size.x,
+                        container_size.x * ratio
+                    )
+                } else {
+                    // use height as base
+                    Vector2::new(
+                        container_size.y * ratio,
+                        container_size.y
+                    )
+                };
+
+                // TODO: transform to Contain
+
+                new_size / image_size
+            }
+            ImageStretch::Cover => {
+                // resize to maintain aspect ratio
+                let ratio = image_size.y / image_size.x;
+
+                let new_size = if image_size.x > image_size.y {
+                    // use width as base
+                    Vector2::new(
+                        container_size.x,
+                        container_size.x * ratio
+                    )
+                } else {
+                    // use height as base
+                    Vector2::new(
+                        container_size.y * ratio,
+                        container_size.y
+                    )
+                };
+
+                // TODO: transform to Cover
+
+                new_size / image_size
+            }
+            ImageStretch::None => Vector2::ONE,
+        }
+    }
 }

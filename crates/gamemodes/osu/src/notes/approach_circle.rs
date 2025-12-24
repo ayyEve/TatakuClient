@@ -19,7 +19,7 @@ pub struct ApproachCircle {
     base_pos: Vector2,
     pos: Vector2,
     radius: f32,
-    scaling_helper: Arc<ScalingHelper>,
+    coords: Arc<OsuCoords>,
     alpha: u8,
     color: Color,
 
@@ -31,20 +31,20 @@ pub struct ApproachCircle {
 }
 impl ApproachCircle {
     pub fn new(
-        base_pos: Vector2, 
-        time: f32, 
-        radius: f32, 
-        preempt: f32, 
-        scaling_helper: Arc<ScalingHelper>
+        base_pos: Vector2,
+        time: f32,
+        radius: f32,
+        preempt: f32,
+        coords: Arc<OsuCoords>
     ) -> Self {
         Self {
             base_pos,
-            pos: scaling_helper.scale_coords(base_pos),
+            pos: coords.to_window(base_pos),
             time,
             radius,
             preempt,
             color: Color::WHITE,
-            scaling_helper,
+            coords,
 
             alpha: 0,
             image: None,
@@ -52,21 +52,21 @@ impl ApproachCircle {
             easing_type: Easing::Linear
         }
     }
-    pub fn scale_changed(&mut self, new_scale: Arc<ScalingHelper>, new_radius: f32) {
-        self.scaling_helper = new_scale;
-        self.pos = self.scaling_helper.scale_coords(self.base_pos);
+    pub fn scale_changed(&mut self, new_scale: Arc<OsuCoords>, new_radius: f32) {
+        self.coords = new_scale;
+        self.pos = self.coords.to_window(self.base_pos);
         self.radius = new_radius;
     }
     #[cfg(feature="graphics")]
     pub fn reload_texture(
-        &mut self, 
-        source: &graphics::TextureSource, 
+        &mut self,
+        source: &graphics::TextureSource,
         skin_manager: &mut dyn graphics::SkinProvider
     ) {
         self.image = skin_manager.get_texture(
-            Path::new("approachcircle"), 
-            source, 
-            graphics::SkinUsage::Gamemode, 
+            Path::new("approachcircle"),
+            source,
+            graphics::SkinUsage::Gamemode,
             false
         );
     }
@@ -91,26 +91,34 @@ impl ApproachCircle {
     pub fn draw(&self, list: &mut graphics::RenderableCollection) {
         let lerp_amount = self.time_diff / self.preempt;
         let scale = self.easing_type.run_easing(
-            1.0, 
-            APPROACH_CIRCLE_MULT, 
+            1.0,
+            APPROACH_CIRCLE_MULT,
             lerp_amount.max(0.0)
         );
 
         if let Some(mut tex) = self.image.clone() {
-            tex.pos = self.pos;
             tex.color = self.color.alpha8(self.alpha);
-            tex.scale = Vector2::ONE * self.scaling_helper.cs * scale * APPROACH_CIRCLE_SCALE;
 
-            list.push(tex);
+            let transform = graphics::Transform {
+                pos: self.pos,
+                scale: Vector2::ONE * self.coords.cs * scale * APPROACH_CIRCLE_SCALE,
+                ..graphics::Transform::identity()
+            };
+
+            list.push(tex.with_transform(transform.matrix()));
         } else {
+            let transform = graphics::Transform {
+                pos: self.pos,
+                scale: Vector2::ONE * self.radius * scale, // self.radius is already accounting for the scaled_cs
+                ..graphics::Transform::identity()
+            };
+
             list.push(graphics::Circle::new(
-                self.pos,
-                self.radius * scale, // self.radius is already accounting for the scaled_cs
                 Color::TRANSPARENT,
             ).border(Border::new(
-                self.color.alpha8(self.alpha), 
-                OSU_NOTE_BORDER_SIZE * self.scaling_helper.cs)
-            ));
+                self.color.alpha8(self.alpha),
+                OSU_NOTE_BORDER_SIZE * self.coords.cs)
+            ).with_transform(transform.matrix()));
         }
     }
 }

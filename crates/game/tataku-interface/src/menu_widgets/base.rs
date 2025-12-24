@@ -1,7 +1,6 @@
 use crate::prelude::*;
 use input::InputEvent;
 use tataku::{
-    Vector2,
     Color,
     Border,
 };
@@ -154,42 +153,53 @@ where
             .background_color
             .resolve_copied(shell.values)
         {
-            shell.list.push(graphics::Rectangle::new_bounds(
-                    bounds,
+            shell.list.push(graphics::Rectangle::new(
+                    bounds.size,
                     bg,
                 )
                 .border_maybe(border)
                 .shape_maybe(shape)
+                .with_transform(tataku::Matrix::identity()
+                    .trans(bounds.pos)
+                )
             );
         } else if let Some(border) = border {
             shell.list.push(
-                graphics::Rectangle::new_bounds(
-                    bounds,
+                graphics::Rectangle::new(
+                    bounds.size,
                     Color::TRANSPARENT,
                 )
                 .border(border)
                 .shape_maybe(shape)
+                .with_transform(tataku::Matrix::identity()
+                    .trans(bounds.pos)
+                )
             );
         }
 
         // image
-        if let Some(mut image) = image.clone() {
+        if let Some(image) = image.clone() {
             let alignment = style
                 .image_alignment
                 .resolve_copied(shell.values)
                 .unwrap_or(tataku::Alignment::CENTER);
 
-            if let Some(&fill_mode) = style.image_stretch.value() {
-                image.fit_to(fill_mode, bounds);
-            }
+            let fill_mode = style.image_stretch.value().copied()
+                .unwrap_or(graphics::ImageStretch::None);
 
-            image.pos = alignment.resolve(
+            let scale = fill_mode.fit_to(image.size(), bounds.size);
+
+            let pos = alignment.resolve(
                 &bounds,
                 image.size(),
                 true, true
             );
 
-            shell.list.push(image);
+            shell.list.push(image.with_transform(graphics::Transform {
+                pos,
+                scale,
+                ..graphics::Transform::identity()
+            }.matrix()));
         }
 
         // blur
@@ -219,11 +229,14 @@ where
 
         if ctx.selected == Some(true) {
             shell.list.push(
-                graphics::Rectangle::new_bounds(
-                    bounds,
+                graphics::Rectangle::new(
+                    bounds.size,
                     Color::TRANSPARENT,
                 )
                 .border(Border::new(Color::RED, 3.0))
+                .with_transform(tataku::Matrix::identity()
+                    .trans(bounds.pos)
+                )
             );
         }
 
@@ -249,14 +262,13 @@ where
                     .resolve_cloned(shell.values)
                     .unwrap_or(graphics::TextureSource::Skin);
 
-                *img = shell.skin_manager.get_texture_then(
+                *img = shell.skin_manager.get_texture(
                     Path::new(&*image), 
                     &source, 
                     graphics::SkinUsage::Game, 
                     style.image_grayscale
                         .resolve_copied(shell.values)
                         .unwrap_or_default(), 
-                    |image| image.origin = Vector2::ZERO,
                 );
             }
         }

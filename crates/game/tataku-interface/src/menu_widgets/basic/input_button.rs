@@ -251,13 +251,16 @@ impl<T: InputButtonType> Widget<actions::Action> for InputButton<T> {
             .absolute_bounds(self.node_id)
             .unwrap();
 
-        shell.list.push(graphics::Rectangle::new_bounds(
-            bounds, 
+        shell.list.push(graphics::Rectangle::new(
+            bounds.size,
             shell.general_theme.background_color,
         ).border(Border::new(
             shell.general_theme.get_color(active, hover), 
             1.2
-        )));
+        ))
+        .with_transform(tataku::Matrix::identity()
+            .trans(bounds.pos)
+        ));
 
         let style = ctx
             .element_data

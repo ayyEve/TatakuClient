@@ -98,8 +98,7 @@ pub struct OsuSlider {
     /// (time, hitsound)
     sound_queue: Vec<Vec<Hitsound>>,
 
-    /// scaling helper, should greatly improve rendering speed due to locking
-    scaling_helper: Arc<ScalingHelper>,
+    coords: Arc<OsuCoords>,
 
     /// is the mouse in a good state for sliding? (pos + key down)
     sliding_ok: bool,
@@ -139,7 +138,7 @@ impl OsuSlider {
         curve: Curve,
         ar: f32,
         combo_num: u16,
-        scaling_helper: Arc<ScalingHelper>,
+        coords: Arc<OsuCoords>,
         standard_settings: Arc<OsuSettings>,
         hitsound_fn: impl Fn(f32, u8, HitSamples) -> Vec<Hitsound>,
         velocity: f32
@@ -147,10 +146,10 @@ impl OsuSlider {
         let time = def.time;
         let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
 
-        let pos = scaling_helper.scale_coords(def.pos);
-        let visual_end_pos = scaling_helper.scale_coords(curve.curve_lines.last().unwrap().p2);
+        let pos = coords.to_window(def.pos);
+        let visual_end_pos = coords.to_window(curve.curve_lines.last().unwrap().p2);
         let time_end_pos = if def.slides % 2 == 1 {visual_end_pos} else {pos};
-        let radius = CIRCLE_RADIUS_BASE * scaling_helper.cs;
+        let radius = CIRCLE_RADIUS_BASE * coords.cs;
 
         const SAMPLE_SETS:[&str; 4] = ["normal", "normal", "soft", "drum"];
         #[cfg(feature="gameplay")]
@@ -168,11 +167,11 @@ impl OsuSlider {
         }).collect();
 
         #[cfg(feature="graphics")]
-        let approach_circle = ApproachCircle::new(def.pos, time, radius, time_preempt, scaling_helper.clone());
+        let approach_circle = ApproachCircle::new(def.pos, time, radius, time_preempt, coords.clone());
         #[cfg(feature="graphics")]
         let start_circle_image = HitCircle::new(
             def.pos,
-            scaling_helper.clone(),
+            coords.clone(),
             combo_num
         );
 
@@ -190,7 +189,7 @@ impl OsuSlider {
             moving_forward: true,
             start_judgment: OsuHitJudgments::Miss,
 
-            scaling_helper,
+            coords,
             standard_settings,
 
             #[cfg(feature="graphics")] start_circle_image,
@@ -239,9 +238,9 @@ impl OsuSlider {
 
         color.a = Color::to_u8(self.standard_settings.slider_body_alpha);
         let border_color = BORDER_COLOR.alpha(self.standard_settings.slider_border_alpha); //self.skin.slider_border.unwrap_or(BORDER_COLOR);
-        let border_radius = BORDER_RADIUS * self.scaling_helper.cs;
+        let border_radius = BORDER_RADIUS * self.coords.cs;
 
-        let mut min_pos = self.scaling_helper.window_size;
+        let mut min_pos = self.coords.window_size;
         let mut max_pos = Vector2::ZERO;
         let size;
 
@@ -263,15 +262,15 @@ impl OsuSlider {
                 if points.is_empty() { return Vec::new(); }
 
                 // Calculate bounds of first point
-                let first = self.scaling_helper.scale_coords(*points.first().unwrap());
+                let first = self.coords.to_window(*points.first().unwrap());
                 min_pos.x = min_pos.x.min(first.x);
                 min_pos.y = min_pos.y.min(first.y);
                 max_pos.x = max_pos.x.max(first.x);
                 max_pos.y = max_pos.y.max(first.y);
 
                 points.windows(2).map(|points| {
-                    let p1 = self.scaling_helper.scale_coords(points[0]);
-                    let p2 = self.scaling_helper.scale_coords(points[1]);
+                    let p1 = self.coords.to_window(points[0]);
+                    let p2 = self.coords.to_window(points[1]);
 
                     // Calculate bounds of remaining points
                     min_pos.x = min_pos.x.min(p2.x);
@@ -416,7 +415,7 @@ impl OsuSlider {
             drawables.push(Box::new(slider_body));
         } else {
             // starting point
-            let p: Vector2 = self.scaling_helper.scale_coords(self.curve.curve_lines[0].p1);
+            let p: Vector2 = self.coords.to_window(self.curve.curve_lines[0].p1);
 
             let radius_with_border = self.radius - border_radius * 0.5;
             // circles with a border have extra radius because of the border (i think its 0.5x the border width)
@@ -441,8 +440,8 @@ impl OsuSlider {
 
                 // add all lines
                 for line in self.curve.curve_lines.iter() {
-                    let p1 = self.scaling_helper.scale_coords(line.p1);
-                    let p2 = self.scaling_helper.scale_coords(line.p2);
+                    let p1 = self.coords.to_window(line.p1);
+                    let p2 = self.coords.to_window(line.p2);
 
                     if p1.x - radius_with_border < min_pos.x { min_pos.x = p1.x - radius_with_border; }
                     if p1.y - radius_with_border < min_pos.y { min_pos.y = p1.y - radius_with_border; }
@@ -557,8 +556,8 @@ impl OsuSlider {
 
             let dot = SliderDot::new(
                 *t,
-                self.scaling_helper.scale_coords(self.curve.position_at_time(*t)),
-                self.scaling_helper.scale,
+                self.coords.to_window(self.curve.position_at_time(*t)),
+                self.coords.scale,
                 slide_counter
             );
 
@@ -637,7 +636,7 @@ impl HitObject for OsuSlider {
         // });
 
         // check sliding ok
-        self.slider_ball_pos = self.scaling_helper.scale_coords(self.curve.position_at_time(beatmap_time));
+        self.slider_ball_pos = self.coords.to_window(self.curve.position_at_time(beatmap_time));
         let distance = self.slider_ball_pos.distance(self.mouse_pos); //((self.slider_ball_pos.x - self.mouse_pos.x).powi(2) + (self.slider_ball_pos.y - self.mouse_pos.y).powi(2)).sqrt();
         self.sliding_ok = self.holding && distance <= self.radius * OK_RADIUS_MULT;
 
@@ -800,7 +799,7 @@ impl HitObject for OsuSlider {
                 color,
             ).border(Border::new(
                 if end_repeat { Color::YELLOW } else { Color::WHITE }.alpha8(alpha),
-                self.scaling_helper.border_width
+                self.coords.border_width
             )));
         }
 
@@ -808,7 +807,7 @@ impl HitObject for OsuSlider {
         && let Some(mut reverse_arrow) = self.slider_reverse_image.clone() {
             reverse_arrow.pos = self.visual_end_pos;
             reverse_arrow.color.a = alpha;
-            reverse_arrow.scale = Vector2::ONE * self.beat_scale * self.scaling_helper.cs;
+            reverse_arrow.scale = Vector2::ONE * self.beat_scale * self.coords.cs;
 
             let l = self.curve.curve_lines.last().unwrap();
             reverse_arrow.rotation = (l.p1 - l.p2).atan2_wrong();
@@ -837,7 +836,7 @@ impl HitObject for OsuSlider {
                     self.color.alpha8(alpha),
                 ).border(Border::new(
                     if start_repeat { Color::YELLOW } else { Color::WHITE }.alpha8(alpha),
-                    self.scaling_helper.border_width
+                    self.coords.border_width
                 )));
             }
 
@@ -845,7 +844,7 @@ impl HitObject for OsuSlider {
             && let Some(mut reverse_arrow) = self.slider_reverse_image.clone() {
                 reverse_arrow.pos = self.pos;
                 reverse_arrow.color.a = alpha;
-                reverse_arrow.scale = Vector2::ONE * self.beat_scale * self.scaling_helper.cs;
+                reverse_arrow.scale = Vector2::ONE * self.beat_scale * self.coords.cs;
 
                 let l = self.curve.curve_lines.first().unwrap();
                 reverse_arrow.rotation = (l.p2 - l.p1).atan2_wrong();
@@ -858,7 +857,7 @@ impl HitObject for OsuSlider {
         if self.map_time < self.curve.end_time && self.map_time >= self.time {
             let rotation = PI * 2.0 - (self.pos_at(self.map_time + 0.1) - self.slider_ball_pos).atan2();
 
-            let scale = Vector2::ONE * self.scaling_helper.cs;
+            let scale = Vector2::ONE * self.coords.cs;
 
             // under
             if let Some(mut ball) = self.sliderball_under_image.clone() {
@@ -1089,20 +1088,20 @@ impl OsuHitObject for OsuSlider {
 
 
     #[cfg(feature="graphics")]
-    fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {
-        self.scaling_helper = new_scale.clone();
-        self.pos = self.scaling_helper.scale_coords(self.def.pos);
-        self.radius = CIRCLE_RADIUS_BASE * self.scaling_helper.cs;
+    fn playfield_changed(&mut self, new_scale: Arc<OsuCoords>) {
+        self.coords = new_scale.clone();
+        self.pos = self.coords.to_window(self.def.pos);
+        self.radius = CIRCLE_RADIUS_BASE * self.coords.cs;
 
-        self.visual_end_pos = self.scaling_helper.scale_coords(self.curve.curve_lines.last().unwrap().p2);//.scale_coords(self.curve.position_at_length(self.curve.length()));
+        self.visual_end_pos = self.coords.to_window(self.curve.curve_lines.last().unwrap().p2);//.scale_coords(self.curve.position_at_length(self.curve.length()));
         self.time_end_pos = if self.def.slides % 2 == 1 { self.visual_end_pos } else { self.pos };
 
         self.approach_circle.scale_changed(new_scale, self.radius);
-        self.start_circle_image.playfield_changed(&self.scaling_helper);
+        self.start_circle_image.playfield_changed(&self.coords);
 
         if let Some(image) = &mut self.end_circle_image {
-            image.pos = self.scaling_helper.scale_coords(self.visual_end_pos);
-            image.scale = Vector2::ONE * self.scaling_helper.cs;
+            image.pos = self.coords.to_window(self.visual_end_pos);
+            image.scale = Vector2::ONE * self.coords.cs;
         }
 
         if self.slider_body_render_target.is_some() || (!self.standard_settings.slider_render_targets && USE_NEW_SLIDER_RENDERING) {
@@ -1117,7 +1116,7 @@ impl OsuHitObject for OsuSlider {
         if time >= self.curve.end_time {
             self.time_end_pos
         } else {
-            self.scaling_helper.scale_coords(self.curve.position_at_time(time))
+            self.coords.to_window(self.curve.position_at_time(time))
         }
     }
 

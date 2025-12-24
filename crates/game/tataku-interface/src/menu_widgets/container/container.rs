@@ -517,11 +517,8 @@ impl Widget<actions::Action> for Container {
             let elements = list
                 .list
                 .into_iter()
-                .map(|element| graphics::Scissored::new(
-                    our_bounds.into_scissor(),
-                    element
-                ))
-                .map(|element| Box::new(element) as Box<dyn graphics::TatakuRenderable>);
+                .map(|element| element.with_scissor(our_bounds))
+                .map(|element| element.boxed());
 
             shell.list.list.extend(elements);
         }
@@ -556,11 +553,8 @@ impl Widget<actions::Action> for Container {
             std::mem::swap(shell.list, &mut list);
 
             let elements = list.list.into_iter()
-                .map(|element| graphics::Scissored::new(
-                    our_bounds.into_scissor(),
-                    element
-                ))
-                .map(|element| Box::new(element) as Box<dyn graphics::TatakuRenderable>);
+                .map(|element| element.with_scissor(our_bounds))
+                .map(|element| element.boxed());
 
             shell.list.list.extend(elements);
         }

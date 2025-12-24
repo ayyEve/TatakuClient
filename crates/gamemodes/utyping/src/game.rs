@@ -314,10 +314,12 @@ impl Gamemode for UTypingGame {
 
         // draw the hit area
         list.push(graphics::Circle::new(
-            self.playfield.hit_position,
-            self.game_settings.note_radius * self.game_settings.hit_area_radius_mult,
             Color::BLACK,
-        ));
+        ).with_transform(graphics::Transform {
+            pos: self.playfield.hit_position,
+            scale: Vector2::ONE * self.game_settings.note_radius * self.game_settings.hit_area_radius_mult,
+            ..graphics::Transform::identity()
+        }.matrix()));
 
         // draw timing lines
         for tb in self.timing_bars.iter_mut() { tb.draw(state.time, list); }

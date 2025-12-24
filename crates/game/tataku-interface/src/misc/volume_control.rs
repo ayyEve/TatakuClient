@@ -75,12 +75,12 @@ impl VolumeControl {
         && elapsed - self.vol_selected_time < VOLUME_CHANGE_DISPLAY_TIME {
             const BOX_SIZE:Vector2 = Vector2::new(300.0, 100.0);
             let b = graphics::Rectangle::new(
-                self.window_size - BOX_SIZE,
                 BOX_SIZE,
                 Color::WHITE,
-            )
-                .border(Border::new(Color::BLACK, 1.2))
-            ;
+            ).border(Border::new(Color::BLACK, 1.2))
+            .with_transform(tataku::Matrix::identity()
+                .trans(self.window_size - BOX_SIZE)
+            );
 
             // text 100px wide, bar 190px (10px padding)
             let border_padding = 10.0;
@@ -115,27 +115,28 @@ impl VolumeControl {
                 layout.break_all_lines(None);
 
                 // text
-                list.push(graphics::Transformed::new(
-                    graphics::Transform::default()
-                        .translate(self.window_size - Vector2::new(300.0, r_offset.y)),
-                    Box::new(graphics::Text::new(layout))
-                ));
+                list.push(graphics::Text::new(layout)
+                    .with_transform(tataku::Matrix::identity()
+                        .trans(self.window_size - Vector2::new(300.0, r_offset.y)),
+                    )
+                );
 
                 // fill
                 list.push(graphics::Rectangle::new(
-                    self.window_size - r_offset,
                     Vector2::new(border_size.x * *value, border_size.y),
                     Color::BLUE,
+                ).with_transform(tataku::Matrix::identity()
+                    .trans(self.window_size - r_offset)
                 ));
 
                 // border
                 list.push(graphics::Rectangle::new(
-                    self.window_size - r_offset,
                     border_size,
                     Color::TRANSPARENT,
-                )
-                    .border(Border::new(Color::RED, 1.0))
-                );
+                ).border(Border::new(Color::RED, 1.0))
+                .with_transform(tataku::Matrix::identity()
+                    .trans(self.window_size - r_offset)
+                ));
             }
 
         }

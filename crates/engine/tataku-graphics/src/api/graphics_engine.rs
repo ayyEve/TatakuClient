@@ -62,13 +62,12 @@ pub trait DrawEngine {
 
     // drawing
 
-    /// draw an arc with the center at 0,0
+    /// draw an arc with the center at 0,0 and radius 1
     #[allow(clippy::too_many_arguments)]
     fn draw_arc(
         &mut self,
         start: f32,
         end: f32,
-        radius: f32,
         color: Color,
         border: Option<Border>,
         resolution: u32,
@@ -76,10 +75,9 @@ pub trait DrawEngine {
         blend_mode: BlendMode,
     );
 
-    /// draw a circle with the center at 0,0
+    /// draw a circle with the center at 0,0 and radius 1
     fn draw_circle(
         &mut self,
-        radius: f32,
         color: Color,
         border: Option<Border>,
         resolution: u32,

@@ -384,41 +384,11 @@ impl Widget<actions::Action> for Dropdown {
     }
 
     fn draw(&self, shell: &mut DrawShell<actions::Action>) {
-        let theme = &shell.general_theme;
-        let Some(bounds) = shell.tree.absolute_bounds(self.node_id)
-        else { return };
-
         self.main_button.draw(shell);
-
-        // bounding box
-        // shell.list.push(graphics::Rectangle::new_bounds(
-        //     bounds,
-        //     theme.background_color,
-        // ).border(Border::new(
-        //     theme.get_color(self.active, self.hover),
-        //     2.0
-        // )));
-
-        // selected text
-        // let displays = self.variants.get_displays();
-        // let main_text = self.value.index()
-        //     .and_then(|n| displays.get(n).map(|s| s.as_str()))
-        //     .unwrap_or(self.placeholder.get());
-
-        // let text_style = shell.tree
-        //     .get_text_style(self.node_id)
-        //     .unwrap();
-
-        // shell.list.push(text_style.create_text(main_text.to_string(), bounds));
     }
 
     fn draw_overlay(&self, shell: &mut DrawShell<actions::Action>) {
         if !self.active { return }
-
-        let Some(bounds) = shell.tree.absolute_bounds(self.node_id)
-        else { return };
-
-        let theme = &shell.general_theme;
 
         let DropdownVariants::Buttons { 
             buttons, .. 
@@ -429,56 +399,6 @@ impl Widget<actions::Action> for Dropdown {
         for variant in buttons {
             variant.draw(shell);
         }
-
-        // let selected = self
-        //     .value
-        //     .index()
-        //     .unwrap_or(self.variants.len());
-
-        // let active = self
-        //     .active_index
-        //     .unwrap_or(self.variants.len());
-
-        // let text_style = shell.tree
-        //     .get_text_style(self.node_id)
-        //     .unwrap();
-
-        // let item_margin = shell.tree
-        //     .get_style(self.node_id).unwrap()
-        //     .item_margin
-        //     .resolve_copied(shell.values)
-        //     .unwrap_or(DEFAULT_ITEM_MARGIN);
-
-        // draw all options
-        // TODO: margin between items
-        // for (n, i) in self
-        //     .variants
-        //     .get_displays()
-        //     .iter()
-        //     .cloned()
-        //     .enumerate()
-        // {
-        //     let offset = Vector2::new(
-        //         bounds.pos.x,
-        //         bounds.pos.y + (bounds.size.y + item_margin) * (n + 1) as f32,
-        //     );
-
-        //     // bounding box
-        //     shell.list.push(graphics::Rectangle::new(
-        //         offset,
-        //         bounds.size,
-        //         theme.background_color.alpha(1.0),
-        //     ).border(Border::new(
-        //         theme.get_color(n == selected, n == active),
-        //         2.0
-        //     )));
-
-        //     // let text = text_style.create_text(
-        //     //     i,
-        //     //     Bounds::new(offset, bounds.size)
-        //     // );
-        //     // shell.list.push(text);
-        // }
     }
 }
 

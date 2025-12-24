@@ -16,11 +16,11 @@ const USABLE_KEYS: &[KeyPress] = &[
 ];
 
 #[derive(Default2)]
-pub struct RelaxManager {
+pub struct RelaxPlay {
     #[default(USABLE_KEYS.iter().map(|k| (*k, KeyState::Unpressed)).collect())]
     key_states: HashMap<KeyPress, KeyState>
 }
-impl RelaxManager {
+impl RelaxPlay {
     fn find_free_key(&self) -> Option<KeyPress> {
         for i in USABLE_KEYS {
             if self.key_states.get(i).unwrap().is_free() {

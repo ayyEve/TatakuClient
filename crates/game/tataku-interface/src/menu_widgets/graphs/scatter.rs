@@ -57,21 +57,23 @@ impl ScatterGraph {
 
         // background
         collection.push(graphics::Rectangle::new(
-            bounds.pos,
             size,
             Color::new(0.2, 0.2, 0.2, 0.7),
         ).border(Border::new(
             Color::RED, 
             1.5
-        )));
+        )).with_transform(tataku::Matrix::identity()
+            .trans(bounds.pos)
+        ));
         
         // 0 line
         let zero_pos = Vector2::with_y(self.map_point(0.0, size));
         collection.push(graphics::Line::new(
-            bounds.pos + zero_pos,
-            bounds.pos + size.x_portion() + zero_pos,
+            size.x_portion(),
             1.5,
             Color::WHITE,
+        ).with_transform(tataku::Matrix::identity()
+            .trans(bounds.pos + zero_pos)
         ));
 
         for i in self.data.iter() {
@@ -80,10 +82,11 @@ impl ScatterGraph {
                     let v = self.map_point(*v, size);
 
                     collection.push(graphics::Line::new(
-                        bounds.pos + Vector2::with_y(v),
-                        bounds.pos + size.x_portion() + Vector2::with_y(v),
+                        size.x_portion(),
                         1.5,
                         i.color,
+                    ).with_transform(tataku::Matrix::identity()
+                        .trans(bounds.pos + Vector2::with_y(v))
                     ));
                 }
                 StatsValue::List(points) => {
@@ -93,10 +96,12 @@ impl ScatterGraph {
                     for (n, &y) in mapped_points.iter().enumerate() {
                         collection.push(
                             graphics::Circle::new(
-                                bounds.pos + Vector2::new(x_step * n as f32, y),
                                 2.0,
                                 i.color,
                             ).resolution(32u32)
+                            .with_transform(tataku::Matrix::identity()
+                                .trans(bounds.pos + Vector2::new(x_step * n as f32, y))
+                            )
                         );
                     }
                     

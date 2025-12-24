@@ -116,9 +116,10 @@ impl FpsDisplay {
         text_layout_contexts: &mut ui::widget::TextLayoutContexts,
     ) {
         list.push(graphics::Rectangle::new(
-            self.pos,
             SIZE,
             Color::WHITE.alpha(0.8),
+        ).with_transform(tataku::Matrix::identity()
+            .trans(self.pos)
         ));
 
         let text = format!("{:.2} {} ({:.2}ms)", self.last, self.name, self.frametime_last);
@@ -133,13 +134,11 @@ impl FpsDisplay {
         );
 
         layout.break_all_lines(Some(SIZE.x));
-        let transform = graphics::Transform::default()
-            .translate(self.pos + TEXT_PADDING);
 
-        list.push(graphics::Transformed::new(
-            transform,
-            Box::new(graphics::Text::new(layout.clone())),
-        ));
+        list.push(graphics::Text::new(layout.clone())
+            .with_transform(tataku::Matrix::identity()
+                .trans(self.pos + TEXT_PADDING))
+        );
         
     }
 }
@@ -163,4 +162,3 @@ impl From<Arc<AtomicU32>> for CountProvider {
         Self::Atomic(value)
     }
 }
-

@@ -7,7 +7,7 @@ pub const OSU_NOTE_BORDER_SIZE:f32 = 2.0;
 pub const FIELD_SIZE:Vector2 = Vector2::new(512.0, 384.0); // 4:3
 
 #[derive(Copy, Clone, Default)]
-pub struct ScalingHelper {
+pub struct OsuCoords {
     // pub settings_offset: Vector2,
 
     // /// scale setting in settings
@@ -37,11 +37,11 @@ pub struct ScalingHelper {
     /// playfield with note size padding
     pub playfield_with_padding: Bounds,
 }
-impl ScalingHelper {
+impl OsuCoords {
     pub fn new_with_settings(
-        settings: &OsuSettings, 
-        cs: f32, 
-        window_size: Vector2, 
+        settings: &OsuSettings,
+        cs: f32,
+        window_size: Vector2,
         flip_vertical: bool
     ) -> Self {
         let (scale, offset) = settings.get_playfield();
@@ -49,10 +49,10 @@ impl ScalingHelper {
         Self::new_offset_scale(cs, window_size, offset, scale, flip_vertical)
     }
     pub fn new_offset_scale(
-        cs: f32, 
-        window_size: Vector2, 
-        settings_offset: Vector2, 
-        settings_scale: f32, 
+        cs: f32,
+        window_size: Vector2,
+        settings_offset: Vector2,
+        settings_scale: f32,
         flip_vertical: bool
     ) -> Self {
         Self::new_offset_scale_custom_size(cs, window_size, settings_offset, settings_scale, flip_vertical, FIELD_SIZE)
@@ -106,7 +106,7 @@ impl ScalingHelper {
     }
 
     /// turn playfield (osu) coords into window coords
-    pub fn scale_coords(&self, mut osu_coords: Vector2) -> Vector2 {
+    pub fn to_window(&self, mut osu_coords: Vector2) -> Vector2 {
         if self.flip_vertical {
             osu_coords.y = FIELD_SIZE.y - osu_coords.y;
         }
@@ -114,7 +114,7 @@ impl ScalingHelper {
         self.playfield.pos + osu_coords * self.scale
     }
     /// turn window coords into playfield coords
-    pub fn descale_coords(&self, window_coords: Vector2) -> Vector2 {
+    pub fn to_osu(&self, window_coords: Vector2) -> Vector2 {
         let mut v = (window_coords - self.playfield.pos) / self.scale;
         if self.flip_vertical { v.y = FIELD_SIZE.y - v.y }
         v

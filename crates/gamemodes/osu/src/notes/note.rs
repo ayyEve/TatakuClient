@@ -40,10 +40,9 @@ pub struct OsuNote {
     radius: f32,
     /// when the hitcircle should start being drawn
     time_preempt: f32,
-    /// what is the scaling value? needed for approach circle
-    // (lol)
-    scaling_helper: Arc<ScalingHelper>,
-    
+
+    coords: Arc<OsuCoords>,
+
     /// current map time
     map_time: f32,
     /// current mouse pos
@@ -62,27 +61,27 @@ impl OsuNote {
         def: NoteDef,
         ar: f32,
         combo_num: u16,
-        scaling_helper: Arc<ScalingHelper>, 
+        coords: Arc<OsuCoords>,
         standard_settings: Arc<OsuSettings>,
         hitsounds: Vec<Hitsound>,
     ) -> Self {
         let time = def.time;
         let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
 
-        let pos = scaling_helper.scale_coords(def.pos);
-        let radius = CIRCLE_RADIUS_BASE * scaling_helper.cs;
-        
+        let pos = coords.to_window(def.pos);
+        let radius = CIRCLE_RADIUS_BASE * coords.cs;
+
         Self {
             pos,
             time,
             radius,
             time_preempt,
             standard_settings,
-            
+
             #[cfg(feature="graphics")]
             circle_image: HitCircle::new(
                 def.pos,
-                scaling_helper.clone(),
+                coords.clone(),
                 combo_num
             ),
 
@@ -92,11 +91,11 @@ impl OsuNote {
                 time,
                 radius,
                 time_preempt,
-                scaling_helper.clone()
+                coords.clone()
             ),
 
             def,
-            scaling_helper,
+            coords,
             hitsounds,
 
             ..Self::default()
@@ -130,8 +129,8 @@ impl HitObject for OsuNote {
 
     #[cfg(feature="graphics")]
     fn draw(
-        &mut self, 
-        _beatmap_time: f32, 
+        &mut self,
+        _beatmap_time: f32,
         list: &mut tataku_graphics::RenderableCollection
     ) {
 
@@ -177,8 +176,8 @@ impl HitObject for OsuNote {
 
     #[cfg(feature="graphics")]
     fn reload_skin(
-        &mut self, 
-        source: &tataku_graphics::TextureSource, 
+        &mut self,
+        source: &tataku_graphics::TextureSource,
         skin_manager: &mut dyn tataku_graphics::SkinProvider
     ) {
         self.circle_image.reload_skin(source, skin_manager);
@@ -231,14 +230,14 @@ impl OsuHitObject for OsuNote {
     }
 
     #[cfg(feature="graphics")]
-    fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {
-        self.pos = new_scale.scale_coords(self.def.pos);
+    fn playfield_changed(&mut self, new_scale: Arc<OsuCoords>) {
+        self.pos = new_scale.to_window(self.def.pos);
         self.radius = CIRCLE_RADIUS_BASE * new_scale.cs;
-        self.scaling_helper = new_scale.clone();
+        self.coords = new_scale.clone();
 
         #[cfg(feature="graphics")] {
             self.approach_circle.scale_changed(new_scale, self.radius);
-            self.circle_image.playfield_changed(&self.scaling_helper);
+            self.circle_image.playfield_changed(&self.coords);
         }
     }
 
@@ -252,7 +251,7 @@ impl OsuHitObject for OsuNote {
 
     #[cfg(feature="graphics")]
     fn point_draw_pos(&self, _: f32) -> Vector2 { self.pos }
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn set_combo_color(&mut self, color: Color) {
         self.color = color;
         self.circle_image.set_color(color);

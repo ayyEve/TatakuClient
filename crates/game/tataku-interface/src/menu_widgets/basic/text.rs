@@ -158,10 +158,7 @@ impl Widget<actions::Action> for Text {
             * context.local_transform.matrix()
             * tataku::Matrix::identity().trans(bounds.pos);
 
-        shell.list.push(graphics::Transformed {
-            transform,
-            drawable: Box::new(graphics::Text::new(self.layout.clone())),
-        });
+        shell.list.push(graphics::Text::new(self.layout.clone()).with_transform(transform));
     }
 }
 

@@ -143,19 +143,22 @@ impl Widget<actions::Action> for Checkbox {
 
         let size = BOX_SIZE_EM * text_style.font_size;
 
-        let rect = graphics::Rectangle::new(
-            bounds.pos,
-            Vector2::ONE * size,
-            if self.value.get() {
-                shell.general_theme.active_color
-            } else {
-                Color::TRANSPARENT
-            }
-        ).border(Border::new(
-            shell.general_theme.get_color(self.active, self.hovered),
-            2.0
-        )).shape(graphics::Shape::Round(2.0));
-        shell.list.push(rect);
+        shell.list.push(
+            graphics::Rectangle::new(
+                Vector2::ONE * size,
+                if self.value.get() {
+                    shell.general_theme.active_color
+                } else {
+                    Color::TRANSPARENT
+                }
+            ).border(Border::new(
+                shell.general_theme.get_color(self.active, self.hovered),
+                2.0
+            )).shape(graphics::Shape::Round(2.0))
+            .with_transform(tataku::Matrix::identity()
+                .trans(bounds.pos)
+            )
+        );
     }
 
     fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {

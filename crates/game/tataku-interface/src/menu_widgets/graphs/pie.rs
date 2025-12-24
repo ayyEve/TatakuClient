@@ -36,11 +36,13 @@ impl PieGraph {
         // background
         collection.push(
             graphics::Rectangle::new(
-                bounds.pos,
                 size,
                 Color::new(0.2, 0.2, 0.2, 0.7),
             )
             .border(Border::new(Color::RED, 1.5))
+            .with_transform(tataku::Matrix::identity()
+                .trans(bounds.pos)
+            )
         );
 
         // // mid
@@ -60,12 +62,13 @@ impl PieGraph {
 
             // arc
             collection.push(graphics::Sector::new(
-                bounds.pos + center,
                 radius,
                 last_theta,
                 last_theta + theta,
                 i.color,
                 None
+            ).with_transform(tataku::Matrix::identity()
+                .trans(bounds.pos + center)
             ));
 
             last_theta += theta;

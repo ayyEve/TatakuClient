@@ -58,7 +58,7 @@ pub struct OsuGame {
     hold_count: u16,
 
     /// scaling helper to help with scaling
-    scaling_helper: Arc<ScalingHelper>,
+    coords: Arc<OsuCoords>,
     /// needed for scaling recalc
     cs: f32,
     stack_leniency: f32,
@@ -66,9 +66,8 @@ pub struct OsuGame {
     /// cached settings
     game_settings: Arc<OsuSettings>,
 
-    /// autoplay helper
-    auto_helper: StandardAutoHelper,
-    relax_manager: RelaxManager,
+    auto_replay: AutoReplay,
+    relax_play: RelaxPlay,
 
     /// list of note_indices which are new_combos
     #[cfg(feature="graphics")] new_combos: Vec<usize>,
@@ -92,7 +91,7 @@ impl OsuGame {
 
     #[cfg(feature="graphics")]
     fn recalculate_playfield(&mut self, window_size: Vector2) {
-        let new_scale = ScalingHelper::new_with_settings(
+        let new_scale = OsuCoords::new_with_settings(
             &self.game_settings,
             self.cs,
             window_size,
@@ -104,20 +103,20 @@ impl OsuGame {
     }
 
     #[cfg(feature="graphics")]
-    fn apply_playfield(&mut self, playfield: Arc<ScalingHelper>) {
-        self.scaling_helper = playfield;
-        self.cursor.note_radius = self.scaling_helper.circle_size.x / 2.0;
+    fn apply_playfield(&mut self, playfield: Arc<OsuCoords>) {
+        self.coords = playfield;
+        self.cursor.note_radius = self.coords.circle_size.x / 2.0;
 
         // update playfield for notes
         for note in self.notes.iter_mut() {
-            note.playfield_changed(self.scaling_helper.clone());
+            note.playfield_changed(self.coords.clone());
         }
     }
 
     // TODO: finish this
     #[allow(dead_code, unused_variables)]
     fn apply_stacking(&mut self) {
-        let stack_offset = self.scaling_helper.cs / 10.0;
+        let stack_offset = self.coords.cs / 10.0;
 
         let stack_vector = Vector2::ONE * stack_offset;
 
@@ -202,7 +201,7 @@ impl OsuGame {
     fn add_judgement_indicator(
         pos: Vector2,
         hit_value: &HitJudgment,
-        scaling_helper: &Arc<ScalingHelper>,
+        coords: &Arc<OsuCoords>,
         judgment_helper: &JudgmentImages,
         settings: &OsuSettings,
         state: &mut GameplayUpdateShell<'_>
@@ -214,18 +213,29 @@ impl OsuGame {
             .and_then(|_| judgment_helper.get_from_scorehit(hit_value));
 
         if let Some(image) = &mut image {
-            image.pos = pos;
-            let scale = Vector2::ONE * scaling_helper.cs;
-            image.scale = scale;
+            let transform = graphics::Transform {
+                pos,
+                scale: Vector2::ONE * coords.cs,
+                ..graphics::Transform::identity()
+            };
+
+            state.add_indicator(ImageJudgementIndicator::new(
+                image.clone(),
+                transform
+            ));
+        } else {
+            let transform = graphics::Transform {
+                pos,
+                scale: Vector2::ONE * CIRCLE_RADIUS_BASE * coords.cs * (1.0 / 3.0),
+                ..graphics::Transform::identity()
+            };
+
+            state.add_indicator(BasicJudgementIndicator::new(
+                color,
+                transform
+            ));
         }
 
-        state.add_indicator(BasicJudgementIndicator::new(
-            pos,
-            state.time,
-            CIRCLE_RADIUS_BASE * scaling_helper.cs * (1.0/3.0),
-            color,
-            image
-        ));
     }
 
 
@@ -269,8 +279,8 @@ impl OsuGame {
         if !self.game_settings.draw_follow_points { return; }
         if self.notes.is_empty() { return }
 
-        let follow_dot_size = 3.0 * self.scaling_helper.scale;
-        let follow_dot_distance = 20.0 * self.scaling_helper.scale;
+        let follow_dot_size = 3.0 * self.coords.scale;
+        let follow_dot_distance = 20.0 * self.coords.scale;
 
         for i in 0..self.notes.len() - 1 {
             if self.new_combos.contains(&(i + 1)) { continue }
@@ -314,17 +324,25 @@ impl OsuGame {
                 if alpha == 0.0 { continue }
 
                 // add point
-                if let Some(mut i) = self.follow_point_image.clone() {
-                    i.pos = point;
-                    i.rotation = direction;
-                    // i.current_scale = Vector2::ONE * self.scaling_helper.scale;
-                    list.push(i);
+                if let Some(i) = self.follow_point_image.clone() {
+                    let transform = graphics::Transform {
+                        pos: point,
+                        rotation: direction,
+                        // scale: Vector2::ONE * self.coords.scale,
+                        ..graphics::Transform::identity()
+                    };
+
+                    list.push(i.with_transform(transform.matrix()));
                 } else {
+                    let transform = graphics::Transform {
+                        pos: point,
+                        scale: Vector2::ONE * follow_dot_size,
+                        ..graphics::Transform::identity()
+                    };
+
                     list.push(engine::graphics::Circle::new(
-                        point,
-                        follow_dot_size,
                         Color::WHITE.alpha(alpha),
-                    ));
+                    ).with_transform(transform.matrix()));
                 }
             }
         }
@@ -390,7 +408,7 @@ impl Gamemode for OsuGame {
         let cs = Self::get_cs(&metadata, &mods);
         let ar = Self::get_ar(&metadata, &mods);
         let od = Self::get_od(&metadata, &mods);
-        let scaling_helper = Arc::new(ScalingHelper::new_with_settings(&game_settings, cs, effective_window_size, mods.has_mod(HardRock)));
+        let coords = Arc::new(OsuCoords::new_with_settings(&game_settings, cs, effective_window_size, mods.has_mod(HardRock)));
 
         let timing_points = TimingPointHelper::new(
             map.get_timing_points(),
@@ -403,7 +421,7 @@ impl Gamemode for OsuGame {
         #[cfg(feature="graphics")]
         let cursor = {
             let cursor = OsuCursor::new(
-                scaling_helper.circle_size.x / 2.0,
+                coords.circle_size.x / 2.0,
                 graphics::SkinSettings::default(),
                 parent_dir,
                 settings
@@ -436,14 +454,14 @@ impl Gamemode for OsuGame {
                     end_time: 0.0,
 
                     move_playfield: None,
-                    scaling_helper: scaling_helper.clone(),
+                    coords: coords.clone(),
                     cs,
 
                     use_controller_cursor: false,
 
                     game_settings: std_settings.clone(),
-                    auto_helper: StandardAutoHelper::default(),
-                    relax_manager: RelaxManager::default(),
+                    auto_replay: AutoReplay::default(),
+                    relax_play: RelaxPlay::default(),
 
                     #[cfg(feature="graphics")] new_combos: Vec::new(),
                     stack_leniency,
@@ -533,7 +551,7 @@ impl Gamemode for OsuGame {
                                 note.clone(),
                                 ar,
                                 combo_num as u16,
-                                scaling_helper.clone(),
+                                coords.clone(),
                                 std_settings.clone(),
                                 get_hitsounds(note.time, note.hitsound, note.hitsamples.clone())
                             )));
@@ -554,7 +572,7 @@ impl Gamemode for OsuGame {
                                 note,
                                 ar,
                                 combo_num as u16,
-                                scaling_helper.clone(),
+                                coords.clone(),
                                 std_settings.clone(),
                                 hitsounds,
                             )));
@@ -566,7 +584,7 @@ impl Gamemode for OsuGame {
                                 *curve,
                                 ar,
                                 combo_num as u16,
-                                scaling_helper.clone(),
+                                coords.clone(),
                                 std_settings.clone(),
                                 get_hitsounds,
                                 timing_points.slider_velocity_at(slider.time)
@@ -590,7 +608,7 @@ impl Gamemode for OsuGame {
 
                             s.notes.push(Box::new(OsuSpinner::new(
                                 spinner,
-                                scaling_helper.clone(),
+                                coords.clone(),
                                 spins_required
                             )));
                         }
@@ -677,7 +695,7 @@ impl Gamemode for OsuGame {
                             Self::add_judgement_indicator(
                                 note.point_draw_pos(frame.time),
                                 judge,
-                                &self.scaling_helper,
+                                &self.coords,
                                 &self.judgment_helper,
                                 &self.game_settings,
                                 state
@@ -734,7 +752,7 @@ impl Gamemode for OsuGame {
             }
             ReplayAction::MousePos(x, y) => {
                 // scale the coords from playfield to window
-                let pos = self.scaling_helper.scale_coords(Vector2::new(x, y));
+                let pos = self.coords.to_window(Vector2::new(x, y));
                 self.mouse_pos = pos;
                 #[cfg(feature="graphics")]
                 if let Some(emitter) = &mut self.smoke_emitter {
@@ -760,7 +778,7 @@ impl Gamemode for OsuGame {
                     // self.window_size = window_size;
                     self.recalculate_playfield(bounds.size);
                 } else {
-                    self.apply_playfield(Arc::new(ScalingHelper::new_offset_scale(
+                    self.apply_playfield(Arc::new(OsuCoords::new_offset_scale(
                         self.cs,
                         bounds.size,
                         bounds.pos,
@@ -808,7 +826,7 @@ impl Gamemode for OsuGame {
                     let ar = Self::get_ar(&self.metadata, &self.mods);
 
                     #[cfg(feature="graphics")]
-                    self.recalculate_playfield(self.scaling_helper.window_size);
+                    self.recalculate_playfield(self.coords.window_size);
                     self.setup_hitwindows();
 
                     set_ar = Some(ar);
@@ -957,10 +975,10 @@ impl Gamemode for OsuGame {
         // do autoplay things
         if has_autoplay {
             let mut pending_frames = Vec::new();
-            self.auto_helper.update(
+            self.auto_replay.update(
                 state.time,
                 &self.notes,
-                &self.scaling_helper,
+                &self.coords,
                 &mut pending_frames
             );
 
@@ -971,7 +989,7 @@ impl Gamemode for OsuGame {
         }
 
         if has_relax {
-            self.relax_manager.update(state.time);
+            self.relax_play.update(state.time);
         }
 
         // update emitter
@@ -1003,7 +1021,7 @@ impl Gamemode for OsuGame {
                 Self::add_judgement_indicator(
                     pos,
                     &judgment,
-                    &self.scaling_helper,
+                    &self.coords,
                     &self.judgment_helper,
                     &self.game_settings,
                     state
@@ -1012,7 +1030,7 @@ impl Gamemode for OsuGame {
 
             // check relax stuff
             if has_relax && !has_autoplay {
-                self.relax_manager.check_note(
+                self.relax_play.check_note(
                     self.mouse_pos,
                     end_time,
                     note,
@@ -1039,7 +1057,7 @@ impl Gamemode for OsuGame {
                         Self::add_judgement_indicator(
                             note.point_draw_pos(state.time),
                             &j,
-                            &self.scaling_helper,
+                            &self.coords,
                             &self.judgment_helper,
                             &self.game_settings,
                             state
@@ -1056,7 +1074,7 @@ impl Gamemode for OsuGame {
                             Self::add_judgement_indicator(
                                 note.point_draw_pos(state.time),
                                 &judge,
-                                &self.scaling_helper,
+                                &self.coords,
                                 &self.judgment_helper,
                                 &self.game_settings,
                                 state
@@ -1080,7 +1098,7 @@ impl Gamemode for OsuGame {
                         Self::add_judgement_indicator(
                             note.point_draw_pos(state.time),
                             &j,
-                            &self.scaling_helper,
+                            &self.coords,
                             &self.judgment_helper,
                             &self.game_settings,
                             state
@@ -1100,7 +1118,7 @@ impl Gamemode for OsuGame {
         // so if the key is released on the same frame its checked, it will count as not held
         // which makes sense, but we dont want that
         if has_autoplay {
-            for action in self.auto_helper.get_release_queue() {
+            for action in self.auto_replay.get_release_queue() {
                 state.add_replay_action(action);
             }
         }
@@ -1119,7 +1137,7 @@ impl Gamemode for OsuGame {
         if !state.gameplay_type.is_preview() {
             let alpha = self.game_settings.playfield_alpha;
             let mut playfield = graphics::Rectangle::new_bounds(
-                self.scaling_helper.playfield_with_padding,
+                self.coords.playfield_with_padding,
                 Color::BLACK.alpha(alpha),
             ).border_maybe(
                 state.current_timing_point.kiai
@@ -1173,7 +1191,7 @@ impl Gamemode for OsuGame {
         // if flashlight is enabled, we want to scissor all items by the playfield
         // this prevents things like approach circles and ripples from showing up outside the flashlight radius
         if has_flashlight {
-            // list.push_scissor(self.scaling_helper.playfield_with_padding.into_scissor());
+            // list.push_scissor(self.coords.playfield_with_padding.into_scissor());
             // todo: fix this
         }
 
@@ -1200,14 +1218,14 @@ impl Gamemode for OsuGame {
                 0..=99 => 125.0,
                 100..=199 => 100.0,
                 _ => 75.0
-            } * self.scaling_helper.scale;
+            } * self.coords.scale;
             let fade_radius = radius / 5.0;
 
             list.push(graphics::FlashlightDrawable::new(
                 self.mouse_pos,
                 radius - fade_radius,
                 fade_radius,
-                self.scaling_helper.playfield_with_padding,
+                self.coords.playfield_with_padding,
                 Color::BLACK
             ));
         }
@@ -1274,10 +1292,10 @@ impl Gamemode for OsuGame {
         }
 
         let mut pending_frames = Vec::new();
-        self.auto_helper.time_skip(
+        self.auto_replay.time_skip(
             new_time,
             &self.notes,
-            &self.scaling_helper,
+            &self.coords,
             &mut pending_frames
         );
 
@@ -1391,7 +1409,7 @@ impl Gamemode for OsuGame {
                 // if relax is enabled, and the user doesn't want manual input, return
                 if self.mods.has_mod(Relax) {
                     if !self.game_settings.manual_input_with_relax { return None; }
-                    self.relax_manager.key_pressed(key);
+                    self.relax_play.key_pressed(key);
                 }
 
                 Some(ReplayAction::Press(key))
@@ -1411,7 +1429,7 @@ impl Gamemode for OsuGame {
                 // if relax is enabled, and the user doesn't want manual input, return
                 if self.mods.has_mod(Relax) {
                     if !self.game_settings.manual_input_with_relax { return None; }
-                    self.relax_manager.key_released(key);
+                    self.relax_play.key_released(key);
                 }
 
                 Some(ReplayAction::Release(key))
@@ -1431,10 +1449,10 @@ impl Gamemode for OsuGame {
 
                     // check playfield snapping
                     // TODO: can this be simplified?
-                    let playfield_size = self.scaling_helper.playfield_with_padding.size;
+                    let playfield_size = self.coords.playfield_with_padding.size;
 
                     // what the offset should be if playfield is centered
-                    let center_offset = (self.scaling_helper.window_size - FIELD_SIZE * self.scaling_helper.scale) / 2.0 - (self.scaling_helper.window_size - playfield_size) / 2.0;
+                    let center_offset = (self.coords.window_size - FIELD_SIZE * self.coords.scale) / 2.0 - (self.coords.window_size - playfield_size) / 2.0;
 
                     let snap_threshold = settings.playfield_snap;
                     if (center_offset.x - change.x).abs() < snap_threshold {
@@ -1458,13 +1476,13 @@ impl Gamemode for OsuGame {
                     )).into());
 
                     self.game_settings = Arc::new(settings);
-                    self.recalculate_playfield(self.scaling_helper.window_size);
+                    self.recalculate_playfield(self.coords.window_size);
                     return None;
                 }
 
 
                 // convert window pos to playfield pos
-                let pos = self.scaling_helper.descale_coords(pos);
+                let pos = self.coords.to_osu(pos);
                 Some(ReplayAction::MousePos(pos.x, pos.y))
             }
 
@@ -1477,7 +1495,7 @@ impl Gamemode for OsuGame {
                 // if relax is enabled, and the user doesn't want manual input, return
                 if self.mods.has_mod(Relax) {
                     if !self.game_settings.manual_input_with_relax { return None; }
-                    self.relax_manager.key_pressed(button);
+                    self.relax_play.key_pressed(button);
                 }
 
                 Some(ReplayAction::Press(button))
@@ -1492,7 +1510,7 @@ impl Gamemode for OsuGame {
                 // if relax is enabled, and the user doesn't want manual input, return
                 if self.mods.has_mod(Relax) {
                     if !self.game_settings.manual_input_with_relax { return None; }
-                    self.relax_manager.key_released(button);
+                    self.relax_play.key_released(button);
                 }
 
                 Some(ReplayAction::Release(button))
@@ -1513,7 +1531,7 @@ impl Gamemode for OsuGame {
                         )
                     )).into());
 
-                    self.recalculate_playfield(self.scaling_helper.window_size);
+                    self.recalculate_playfield(self.coords.window_size);
                 }
 
                 None
@@ -1543,7 +1561,7 @@ impl Gamemode for OsuGame {
 
             InputType::ControllerAxis(Axis::LeftStickX, value, _id, _name) => {
                 // -1.0 to 1.0
-                // where -1 is 0, and 1 is scaling_helper.playfield_scaled_with_cs_border.whatever
+                // where -1 is 0, and 1 is coords.playfield_scaled_with_cs_border.whatever
 
                 if !self.use_controller_cursor {
                     // info!("switched to controller input");
@@ -1551,13 +1569,13 @@ impl Gamemode for OsuGame {
                 }
 
                 let mut new_pos = self.mouse_pos;
-                let scaling_helper = self.scaling_helper.clone();
-                let playfield = scaling_helper.playfield_with_padding;
+                let coords = self.coords.clone();
+                let playfield = coords.playfield_with_padding;
 
                 let normalized = (value + 1.0) / 2.0;
                 new_pos.x = playfield.pos.x + f32::lerp(0.0, playfield.size.x, normalized);
 
-                let new_pos = scaling_helper.descale_coords(new_pos);
+                let new_pos = coords.to_osu(new_pos);
                 Some(ReplayAction::MousePos(new_pos.x, new_pos.y))
             }
 
@@ -1571,13 +1589,13 @@ impl Gamemode for OsuGame {
 
 
                 let mut new_pos = self.mouse_pos;
-                let scaling_helper = self.scaling_helper.clone();
-                let playfield = scaling_helper.playfield_with_padding;
+                let coords = self.coords.clone();
+                let playfield = coords.playfield_with_padding;
 
                 let normalized = (value + 1.0) / 2.0;
                 new_pos.y = playfield.pos.y + f32::lerp(playfield.size.y, 0.0, normalized);
 
-                let new_pos = scaling_helper.descale_coords(new_pos);
+                let new_pos = coords.to_osu(new_pos);
                 Some(ReplayAction::MousePos(new_pos.x, new_pos.y))
             }
 
@@ -1587,9 +1605,9 @@ impl Gamemode for OsuGame {
 
     #[cfg(feature="graphics")] fn get_playfield(&self) -> PlayfieldNonsense {
         PlayfieldNonsense::new(
-            self.scaling_helper.playfield,
-            self.scaling_helper.scale,
-            self.scaling_helper.circle_size,
+            self.coords.playfield,
+            self.coords.scale,
+            self.coords.circle_size,
             self.mods.has_mod(HardRock)
         )
     }

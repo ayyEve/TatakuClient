@@ -194,32 +194,20 @@ impl GameplayWidget for DonChan {
             DonChanState::Normal => {
                 if self.kiai {
                     if let Some(anim) = &self.kiai_anim {
-                        shell.list.push(graphics::Transformed {
-                            transform: shell.transform,
-                            drawable: Box::new(anim.clone())
-                        });
+                        shell.list.push(anim.clone().with_transform(shell.transform));
                     }
                 } else if let Some(anim) = &self.normal_anim {
-                    shell.list.push(graphics::Transformed {
-                        transform: shell.transform,
-                        drawable: Box::new(anim.clone())
-                    });
+                    shell.list.push(anim.clone().with_transform(shell.transform));
                 }
             }
             DonChanState::ComboMilestone => {
                 if let Some(anim) = &self.combo_anim {
-                    shell.list.push(graphics::Transformed {
-                        transform: shell.transform,
-                        drawable: Box::new(anim.clone())
-                    });
+                    shell.list.push(anim.clone().with_transform(shell.transform));
                 }
             }
             DonChanState::Fail => {
                 if let Some(anim) = &self.fail_anim {
-                    shell.list.push(graphics::Transformed {
-                        transform: shell.transform,
-                        drawable: Box::new(anim.clone())
-                    });
+                    shell.list.push(anim.clone().with_transform(shell.transform));
                 }
             }
         }
@@ -253,6 +241,7 @@ fn load_anim(
 ) -> Option<Animation> {
     let mut frames = Vec::new();
     let mut current = 0;
+    let mut base_scale = 1.0;
 
     while let Some(tex) = skin_manager.get_texture(
         Path::new(&format!("pippidon{name}{current}")),
@@ -260,6 +249,11 @@ fn load_anim(
         graphics::SkinUsage::Gamemode,
         false
     ) {
+        if current == 0 {
+            // assume all textures have the same scale
+            base_scale = tex.base_scale;
+        }
+
         current += 1;
         frames.push(tex.tex);
     }
@@ -267,14 +261,11 @@ fn load_anim(
     if frames.is_empty() {
         None
     } else {
-        let mut anim = Animation::new(
-            Vector2::ZERO,
-            DEFAULT_DONCHAN_SIZE / 2.0,
+        let anim = Animation::new(
             frames,
             50.0, // this is getting overwritten later anyways
-            Vector2::ONE
+            base_scale,
         );
-        anim.origin = Vector2::ZERO;
 
         Some(anim)
     }

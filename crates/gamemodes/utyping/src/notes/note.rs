@@ -48,7 +48,7 @@ pub struct UTypingNote {
     /// what char are we trying to hit?
     hit_index: usize,
 
-    #[cfg(feature="graphics")] image: Option<HitCircleImageHelper>,
+    #[cfg(feature="graphics")] image: Option<HitCircle>,
 
     pub judgment: Option<HitJudgment>
 }
@@ -121,10 +121,13 @@ impl HitObject for UTypingNote {
             image.draw(list);
         } else {
             list.push(graphics::Circle::new(
-                self.pos,
-                self.settings.note_radius,
                 Color::TRANSPARENT,
-            ).border(Border::new(Color::RED, NOTE_BORDER_SIZE)));
+            ).border(Border::new(Color::RED, NOTE_BORDER_SIZE))
+            .with_transform(graphics::Transform {
+                pos: self.pos,
+                scale: Vector2::ONE * self.settings.note_radius,
+                ..graphics::Transform::identity()
+            }.matrix()));
         }
 
 
@@ -207,7 +210,7 @@ impl HitObject for UTypingNote {
         source: &graphics::TextureSource, 
         skin_manager: &mut dyn graphics::SkinProvider
     ) {
-        self.image = HitCircleImageHelper::new(&self.settings, source, skin_manager);
+        self.image = HitCircle::new(&self.settings, source, skin_manager);
     }
 }
 
@@ -255,60 +258,53 @@ impl UTypingNote {
 
 #[cfg(feature="graphics")]
 #[derive(Clone)]
-struct HitCircleImageHelper {
+struct HitCircle {
+    pos: Vector2,
+
     circle: graphics::Image,
     overlay: graphics::Image,
 }
 #[cfg(feature="graphics")]
-impl HitCircleImageHelper {
+impl HitCircle {
     fn new(
         _settings: &Arc<TaikoSettings>, 
         source: &graphics::TextureSource, 
         skin_manager: &mut dyn graphics::SkinProvider,
     ) -> Option<Self> {
         use graphics::SkinUsage;
-        let scale = 1.0;
         let hitcircle = "taikohitcircle";
 
-
-        let scale = Vector2::ONE * scale;
-        let circle = skin_manager.get_texture_then(
+        let circle = skin_manager.get_texture(
             Path::new(hitcircle), 
             source, 
             SkinUsage::Gamemode, 
-            false, 
-            |i| {
-                i.pos = Vector2::ZERO;
-                i.scale = scale;
-                // circle.color = color;
-            }
+            false,
         );
-        let overlay = skin_manager.get_texture_then(
+        let overlay = skin_manager.get_texture(
             Path::new(&format!("{hitcircle}overlay")), 
             source, 
             SkinUsage::Gamemode, 
-            false, 
-            |i| {
-                i.pos = Vector2::ZERO;
-                i.scale = scale;
-                // overlay.color = color;
-            }
+            false,
         );
 
         if overlay.is_none() || circle.is_none() { return None }
 
         Some(Self {
+            pos: Vector2::ZERO,
+
             circle: circle.unwrap(),
             overlay: overlay.unwrap(),
         })
     }
 
     fn set_pos(&mut self, pos: Vector2) {
-        self.circle.pos  = pos;
-        self.overlay.pos = pos;
+        self.pos = pos;
     }
     fn draw(&mut self, list: &mut graphics::RenderableCollection) {
-        list.push(self.circle.clone());
-        list.push(self.overlay.clone());
+        let transform = tataku::Matrix::identity()
+            .trans(self.pos);
+
+        list.push(self.circle.clone().with_transform(transform));
+        list.push(self.overlay.clone().with_transform(transform));
     }
 }

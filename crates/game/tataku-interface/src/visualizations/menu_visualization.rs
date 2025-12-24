@@ -127,12 +127,16 @@ impl MenuVisualization {
     }
 
     pub fn draw_cookie(&self, list: &mut graphics::RenderableCollection) {
-        let Some(mut cookie) = self.cookie.clone() else { return };
-        cookie.pos = self.bounds_center();
-        cookie.rotation = self.rotation * 2.0;
-        // cookie.set_size(Vector2::ONE * self.initial_inner_radius);
-        cookie.set_size(Vector2::ONE * self.current_inner_radius * 2.05);
-        list.push(cookie);
+        let Some(cookie) = self.cookie.clone() else { return };
+
+        let transform = graphics::Transform {
+            pos: self.bounds_center(),
+            rotation: self.rotation * 2.0,
+            scale: Vector2::ONE * self.current_inner_radius * 2.05 / cookie.size(),
+            ..graphics::Transform::identity()
+        };
+
+        list.push(cookie.with_transform(transform.matrix()));
     }
 
     pub fn draw_vis(&self, list: &mut graphics::RenderableCollection) {
@@ -149,7 +153,7 @@ impl MenuVisualization {
                     ripple.start_radius * 2.0,
                     Color::WHITE.alpha(0.5),
                     Some(Border::new(Color::WHITE, 2.0)),
-                )
+                ).boxed()
             });
 
         list.list.extend(ripples);
@@ -188,11 +192,12 @@ impl MenuVisualization {
             let p2 = pos + theta_vector * l;
 
             list.push(graphics::Line::new(
-                p1,
-                p2,
+                p2 - p1,
                 n,
                 // COLORS[i % COLORS.len()]
                 if i == self.index { Color::RED } else { BAR_COLOR }
+            ).with_transform(tataku::Matrix::identity()
+                .trans(p1)
             ));
         }
         

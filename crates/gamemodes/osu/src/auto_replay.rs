@@ -17,7 +17,7 @@ use engine::{
 // ];
 
 #[derive(Default)]
-pub struct StandardAutoHelper {
+pub struct AutoReplay {
     point_trail_start_time: f32,
     point_trail_end_time: f32,
     point_trail_start_pos: Vector2,
@@ -30,7 +30,7 @@ pub struct StandardAutoHelper {
 
     press_counter: usize,
 }
-impl StandardAutoHelper {
+impl AutoReplay {
     pub fn get_release_queue(&mut self) -> Vec<ReplayAction> {
         std::mem::take(&mut self.release_queue)
     }
@@ -44,16 +44,16 @@ impl StandardAutoHelper {
     }
 
     pub fn update(
-        &mut self, 
-        time: f32, 
-        notes: &[Box<dyn OsuHitObject>], 
-        scaling_helper: &Arc<ScalingHelper>, 
+        &mut self,
+        time: f32,
+        notes: &[Box<dyn OsuHitObject>],
+        coords: &Arc<OsuCoords>,
         frames: &mut Vec<ReplayAction>
     ) {
         let mut any_checked = false;
 
         let map_over = time > notes.last().map_or(
-            0.0, 
+            0.0,
             |n| n.end_time(100.0)
         );
         if map_over { return; }
@@ -67,35 +67,35 @@ impl StandardAutoHelper {
                     let k = self.holding.remove(&i).unwrap_or(KeyPress::LeftMouse);
                     self.release_queue.push(ReplayAction::Release(k));
 
-                    let pos = scaling_helper.descale_coords(note.pos_at(time));
+                    let pos = coords.to_osu(note.pos_at(time));
                     if i+1 >= notes.len() {
                         self.point_trail_start_pos = pos;
                         self.point_trail_end_pos = pos;
                         continue;
                     }
-                    
+
                     let next_note = &notes[i + 1];
 
                     self.point_trail_start_pos = pos;
-                    self.point_trail_end_pos = scaling_helper.descale_coords(next_note.pos_at(self.point_trail_end_time));
-                    
+                    self.point_trail_end_pos = coords.to_osu(next_note.pos_at(self.point_trail_end_time));
+
                     self.point_trail_start_time = time;
                     self.point_trail_end_time = next_note.time();
                 } else {
-                    let pos = scaling_helper.descale_coords(note.pos_at(time));
+                    let pos = coords.to_osu(note.pos_at(time));
                     // move the mouse to the pos
                     frames.push(ReplayAction::MousePos(pos.x, pos.y));
                 }
-                
+
                 any_checked = true;
                 continue;
             }
-            
+
             if time >= note.time() {
-                let pos = scaling_helper.descale_coords(note.pos_at(time));
+                let pos = coords.to_osu(note.pos_at(time));
                 // move the mouse to the pos
                 frames.push(ReplayAction::MousePos(pos.x, pos.y));
-                
+
                 self.press_counter += 1;
                 let k = self.get_key();
                 frames.push(ReplayAction::Press(k));
@@ -109,8 +109,8 @@ impl StandardAutoHelper {
                 // if this was the last note
                 if i + 1 >= notes.len() {
                     self.point_trail_start_pos = pos;
-                    self.point_trail_end_pos = scaling_helper.descale_coords(scaling_helper.window_size / 2.0);
-                    
+                    self.point_trail_end_pos = coords.to_osu(coords.window_size / 2.0);
+
                     self.point_trail_start_time = 0.0;
                     self.point_trail_end_time = 1.0;
                     continue;
@@ -120,8 +120,8 @@ impl StandardAutoHelper {
                 let next_note = &notes[i + 1];
 
                 self.point_trail_start_pos = pos;
-                self.point_trail_end_pos = scaling_helper.descale_coords(next_note.pos_at(self.point_trail_end_time));
-                
+                self.point_trail_end_pos = coords.to_osu(next_note.pos_at(self.point_trail_end_time));
+
                 self.point_trail_start_time = time;
                 self.point_trail_end_time = next_note.time();
 
@@ -135,22 +135,22 @@ impl StandardAutoHelper {
         let duration = self.point_trail_end_time - self.point_trail_start_time;
         let current = time - self.point_trail_start_time;
         let len = current / duration;
-        
+
         let new_pos = Vector2::lerp(self.point_trail_start_pos, self.point_trail_end_pos, len.clamp(0.0, 1.0));
         frames.push(ReplayAction::MousePos(new_pos.x, new_pos.y));
     }
 
     pub fn time_skip(
-        &mut self, 
-        new_time: f32, 
-        notes: &[Box<dyn OsuHitObject>], 
-        scaling_helper: &Arc<ScalingHelper>, 
+        &mut self,
+        new_time: f32,
+        notes: &[Box<dyn OsuHitObject>],
+        coords: &Arc<OsuCoords>,
         frames: &mut Vec<ReplayAction>
     ) {
         let map_over = new_time > notes
             .last()
             .map_or(
-                0.0, 
+                0.0,
                 |n| n.end_time(100.0)
             );
         if map_over { return; }
@@ -163,34 +163,34 @@ impl StandardAutoHelper {
 
             if self.holding.contains_key(&i) {
                 if new_time >= note.end_time(0.0) {
-                    let pos = scaling_helper.descale_coords(note.pos_at(new_time));
+                    let pos = coords.to_osu(note.pos_at(new_time));
                     if i + 1 >= notes.len() {
                         self.point_trail_start_pos = pos;
                         self.point_trail_end_pos = pos;
                         continue;
                     }
-                    
+
                     let next_note = &notes[i + 1];
 
                     self.point_trail_start_pos = pos;
-                    self.point_trail_end_pos = scaling_helper.descale_coords(next_note.pos_at(self.point_trail_end_time));
-                    
+                    self.point_trail_end_pos = coords.to_osu(next_note.pos_at(self.point_trail_end_time));
+
                     self.point_trail_start_time = new_time;
                     self.point_trail_end_time = next_note.time();
                 } else {
-                    let pos = scaling_helper.descale_coords(note.pos_at(new_time));
+                    let pos = coords.to_osu(note.pos_at(new_time));
                     // move the mouse to the pos
                     mouse_pos = Some(pos);
                 }
-                
+
                 continue;
             }
-            
+
             if new_time >= note.time() {
-                let pos = scaling_helper.descale_coords(note.pos_at(new_time));
+                let pos = coords.to_osu(note.pos_at(new_time));
                 // move the mouse to the pos
                 mouse_pos = Some(pos);
-                
+
                 self.press_counter += 1;
                 let k = self.get_key();
                 if note.note_type() != NoteType::Note {
@@ -200,8 +200,8 @@ impl StandardAutoHelper {
                 // if this was the last note
                 if i + 1 >= notes.len() {
                     self.point_trail_start_pos = pos;
-                    self.point_trail_end_pos = scaling_helper.descale_coords(scaling_helper.window_size / 2.0);
-                    
+                    self.point_trail_end_pos = coords.to_osu(coords.window_size / 2.0);
+
                     self.point_trail_start_time = 0.0;
                     self.point_trail_end_time = 1.0;
                     continue;
@@ -211,8 +211,8 @@ impl StandardAutoHelper {
                 let next_note = &notes[i + 1];
 
                 self.point_trail_start_pos = pos;
-                self.point_trail_end_pos = scaling_helper.descale_coords(next_note.pos_at(self.point_trail_end_time));
-                
+                self.point_trail_end_pos = coords.to_osu(next_note.pos_at(self.point_trail_end_time));
+
                 self.point_trail_start_time = new_time;
                 self.point_trail_end_time = next_note.time();
             }

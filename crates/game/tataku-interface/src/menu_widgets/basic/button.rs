@@ -171,13 +171,16 @@ where
 
         // draw button
         shell.list.push(
-            graphics::Rectangle::new_bounds(
-                bounds,
+            graphics::Rectangle::new(
+                bounds.size,
                 theme.background_color,
             ).border(tataku::Border::new(
                 theme.get_color(active, self.hovered), 
                 2.0
             )).shape(graphics::Shape::Round(2.0))
+            .with_transform(tataku::Matrix::identity()
+                .trans(bounds.pos)
+            )
         );
 
         // draw child ontop of button

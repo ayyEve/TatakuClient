@@ -84,47 +84,61 @@ impl HitObject for TaikoDrumroll {
 
         // middle segment
         if let Some(image) = &self.middle_image {
-            let mut image = image.clone();
-            image.pos = self.pos + Vector2::with_y(self.radius);
-            image.scale.x = self.end_x - self.pos.x;
-            list.push(image);
+            let scale = (self.end_x - self.pos.x) / image.size().x;
+
+            let transform = graphics::Transform {
+                pos: self.pos + Vector2::with_y(self.radius),
+                scale: Vector2::new(scale, 1.0),
+                ..graphics::Transform::identity()
+            };
+
+            list.push(image.clone().with_transform(transform.matrix()));
         } else {
             // middle
             list.push(graphics::Rectangle::new(
-                self.pos,
                 Vector2::new(self.end_x - self.pos.x, self.radius * 2.0),
                 color,
-            ).border(border));
+            ).border(border)
+            .with_transform(tataku::Matrix::identity()
+                .trans(self.pos)
+            ));
         }
 
         // start + end circles
         if let Some(image) = &self.end_image {
             // start
-            let mut start = image.clone();
-            start.pos = self.pos + Vector2::new(0.0, self.radius);
-            start.scale.x *= -1.0;
-            // start.origin.x = start.tex_size().x;
-            list.push(start);
+            list.push(image.clone().with_transform(graphics::Transform {
+                pos: self.pos + Vector2::new(0.0, self.radius),
+                scale: Vector2::new(-1.0, 1.0),
+                ..graphics::Transform::identity()
+            }.matrix()));
 
             // end
-            let mut end = image.clone();
-            end.pos = Vector2::new(self.end_x, self.pos.y + self.radius);
-            list.push(end);
+            list.push(image.clone().with_transform(graphics::Transform {
+                pos: Vector2::new(self.end_x, self.pos.y + self.radius),
+                ..graphics::Transform::identity()
+            }.matrix()));
             
         } else {
             // start circle
             list.push(graphics::Circle::new(
-                self.pos + Vector2::new(0.0, self.radius),
-                self.radius,
                 color,
-            ).border(border));
+            ).border(border)
+            .with_transform(graphics::Transform {
+                pos: self.pos + Vector2::new(0.0, self.radius),
+                scale: Vector2::ONE * self.radius,
+                ..graphics::Transform::identity()
+            }.matrix()));
             
             // end circle
             list.push(graphics::Circle::new(
-                Vector2::new(self.end_x, self.pos.y + self.radius),
-                self.radius,
                 color,
-            ).border(border));
+            ).border(border)
+            .with_transform(graphics::Transform {
+                pos: Vector2::new(self.end_x, self.pos.y + self.radius),
+                scale: Vector2::ONE * self.radius,
+                ..graphics::Transform::identity()
+            }.matrix()));
         }
 
 
@@ -138,20 +152,24 @@ impl HitObject for TaikoDrumroll {
 
             // flying dot
             list.push(graphics::Circle::new(
-                Vector2::new(x, y),
-                SLIDER_DOT_RADIUS,
                 Color::YELLOW,
             ).border(Border::new(
                 Color::BLACK, 
                 NOTE_BORDER_SIZE/2.0
-            )));
+            )).with_transform(graphics::Transform {
+                pos: Vector2::new(x, y),
+                scale: Vector2::ONE * SLIDER_DOT_RADIUS,
+                ..graphics::Transform::identity()
+            }.matrix()));
 
             // "hole"
             list.push(graphics::Circle::new(
-                Vector2::new(x, self.pos.y + self.radius),
-                SLIDER_DOT_RADIUS,
                 BAR_COLOR,
-            ));
+            ).with_transform(graphics::Transform {
+                pos: Vector2::new(x, self.pos.y + self.radius),
+                scale: Vector2::ONE * SLIDER_DOT_RADIUS,
+                ..graphics::Transform::identity()
+            }.matrix()));
         }
     }
 
@@ -169,33 +187,25 @@ impl HitObject for TaikoDrumroll {
         source: &graphics::TextureSource, 
         skin_manager: &mut dyn graphics::SkinProvider
     ) {
-        use graphics::SkinUsage;
-        let radius = self.settings.note_radius * if self.finisher { self.settings.big_note_multiplier } else { 1.0 };
-
-        self.middle_image = skin_manager.get_texture_then(
+        self.middle_image = skin_manager.get_texture(
             Path::new("taiko-roll-middle"), 
             source, 
-            SkinUsage::Gamemode, 
+            graphics::SkinUsage::Gamemode,
             false, 
-            |i| {
-                i.origin.x = 0.0;
-                i.color = Color::YELLOW;
-                i.scale = Vector2::ONE * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
-            }
-        );
+        ).map(|mut i| {
+            i.color = Color::YELLOW;
+            i
+        });
 
-        self.end_image = skin_manager.get_texture_then(
+        self.end_image = skin_manager.get_texture(
             Path::new("taiko-roll-end"), 
             source, 
-            SkinUsage::Gamemode, 
-            false, 
-            |i| {
-                i.origin.x = 0.0;
-                i.color = Color::YELLOW;
-                i.scale = Vector2::ONE * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
-            }
-        );
-
+            graphics::SkinUsage::Gamemode,
+            false,
+        ).map(|mut i| {
+            i.color = Color::YELLOW;
+            i
+        });
     }
 }
 impl TaikoHitObject for TaikoDrumroll {
@@ -212,13 +222,6 @@ impl TaikoHitObject for TaikoDrumroll {
     
     fn set_settings(&mut self, settings: Arc<TaikoSettings>) {
         self.settings = settings;
-
-        #[cfg(feature="graphics")]
-        for i in [&mut self.middle_image, &mut self.end_image] {
-            let Some(i) = i else { continue };
-            // let radius = self.settings.note_radius * if self.finisher {self.settings.big_note_multiplier} else {1.0};
-            i.scale = Vector2::ONE * (self.radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
-        }
     }
     
     fn toggle_finishers(&mut self, enabled: bool) {

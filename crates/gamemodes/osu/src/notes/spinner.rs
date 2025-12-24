@@ -59,7 +59,7 @@ pub struct OsuSpinner {
     /// should we count mouse movements?
     holding: bool,
 
-    scaling_helper: Arc<ScalingHelper>,
+    coords: Arc<OsuCoords>,
 
     /// main spinny
     #[cfg(feature="graphics")] spinner_circle: Option<graphics::Image>,
@@ -76,18 +76,18 @@ pub struct OsuSpinner {
 impl OsuSpinner {
     pub fn new(
         def: &SpinnerDef,
-        scaling_helper: Arc<ScalingHelper>,
+        coords: Arc<OsuCoords>,
         rotations_required: u16
     ) -> Self {
         let time = def.time;
         let end_time = def.end_time;
 
         Self {
-            pos: scaling_helper.scale_coords(FIELD_SIZE / 2.0),
+            pos: coords.to_window(FIELD_SIZE / 2.0),
             // def,
             time,
             end_time,
-            scaling_helper,
+            coords,
 
             rotations_required,
 
@@ -172,7 +172,7 @@ impl HitObject for OsuSpinner {
     #[cfg(feature="graphics")]
     fn draw(&mut self, time: f32, list: &mut graphics::RenderableCollection) {
         if !(time >= self.time && time <= self.end_time) { return }
-        let scale = Vector2::ONE * self.scaling_helper.cs;
+        let scale = Vector2::ONE * self.coords.cs;
 
         let border = Border::new(
             Color::BLACK,
@@ -200,7 +200,7 @@ impl HitObject for OsuSpinner {
 
         // draw another circle on top which increases in radius as the counter gets closer to the reqired
         if let Some(mut i) = self.spinner_approach.clone() {
-            i.scale = Vector2::ONE * f32::lerp(1.0, 0.0, (self.current_time - self.time) / (self.end_time - self.time)) * self.scaling_helper.scale;
+            i.scale = Vector2::ONE * f32::lerp(1.0, 0.0, (self.current_time - self.time) / (self.end_time - self.time)) * self.coords.scale;
             list.push(i);
         } else {
             list.push(graphics::Circle::new(
@@ -268,8 +268,8 @@ impl HitObject for OsuSpinner {
         source: &graphics::TextureSource,
         skin_manager: &mut dyn graphics::SkinProvider
     ) {
-        let pos = self.scaling_helper.scale_coords(FIELD_SIZE / 2.0);
-        let scale = Vector2::ONE * self.scaling_helper.scale;
+        let pos = self.coords.to_window(FIELD_SIZE / 2.0);
+        let scale = Vector2::ONE * self.coords.scale;
 
         self.spinner_circle = skin_manager.get_texture_then(
             Path::new("spinner-circle"),
@@ -349,11 +349,11 @@ impl OsuHitObject for OsuSpinner {
     fn set_combo_color(&mut self, _color: Color) {}
 
     #[cfg(feature="graphics")]
-    fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {
+    fn playfield_changed(&mut self, new_scale: Arc<OsuCoords>) {
         let scale = Vector2::ONE * new_scale.scale;
 
-        self.pos = new_scale.scale_coords(FIELD_SIZE / 2.0);
-        self.scaling_helper = new_scale;
+        self.pos = new_scale.to_window(FIELD_SIZE / 2.0);
+        self.coords = new_scale;
 
         for i in [
             &mut self.spinner_circle,
@@ -374,7 +374,7 @@ impl OsuHitObject for OsuSpinner {
         self.pos + Vector2::new(
             r.cos(),
             r.sin()
-        ) * self.scaling_helper.scale * 20.0
+        ) * self.coords.scale * 20.0
     }
 
     fn set_settings(&mut self, _settings: Arc<OsuSettings>) {

@@ -23,12 +23,17 @@ pub struct TaikoPlayfield {
 
 impl TaikoPlayfield {
     #[cfg(feature = "graphics")]
-    pub fn get_rectangle(&self, kiai: bool) -> graphics::Rectangle {
-        graphics::Rectangle::new_bounds(
-            self.get_playfield_bounds(),
+    pub fn get_rectangle(&self, kiai: bool) -> impl TatakuRenderable + 'static {
+        let bounds = self.get_playfield_bounds();
+
+        graphics::Rectangle::new(
+            bounds.size,
             Color::new(0.1, 0.1, 0.1, 1.0),
         )
         .border_maybe(kiai.then_some(Border::new(Color::YELLOW, 2.0)))
+        .with_transform(tataku::Matrix::identity()
+            .trans(bounds.pos)
+        )
     }
 
     pub fn get_playfield_bounds(&self) -> Bounds {

@@ -409,9 +409,11 @@ impl Widget<actions::Action> for DialogWidget {
             ));
 
             // black background for visibility
-            shell.list.push(Rectangle::new_bounds(
-                bounds,
+            shell.list.push(Rectangle::new(
+                bounds.size,
                 Color::BLACK.alpha(0.9),
+            ).with_transform(tataku::Matrix::identity()
+                .trans(bounds.pos)
             ));
         }
 
@@ -421,27 +423,43 @@ impl Widget<actions::Action> for DialogWidget {
 
         let color = Color::CRIMSON;
         if self.resize_hover.left {
-            shell.list.push(Rectangle::new_bounds(
-                Self::left_bound(&bounds),
+            let bounds = Self::left_bound(&bounds);
+
+            shell.list.push(Rectangle::new(
+                bounds.size,
                 color,
+            ).with_transform(tataku::Matrix::identity()
+                .trans(bounds.pos)
             ));
         }
         if self.resize_hover.right {
-            shell.list.push(Rectangle::new_bounds(
-                Self::right_bound(&bounds),
+            let bounds = Self::right_bound(&bounds);
+
+            shell.list.push(Rectangle::new(
+                bounds.size,
                 color,
+            ).with_transform(tataku::Matrix::identity()
+                .trans(bounds.pos)
             ));
         }
         if self.resize_hover.top {
-            shell.list.push(Rectangle::new_bounds(
-                Self::top_bound(&bounds),
+            let bounds = Self::top_bound(&bounds);
+
+            shell.list.push(Rectangle::new(
+                bounds.size,
                 color,
+            ).with_transform(tataku::Matrix::identity()
+                .trans(bounds.pos)
             ));
         }
         if self.resize_hover.bottom {
-            shell.list.push(Rectangle::new_bounds(
-                Self::bottom_bound(&bounds),
+            let bounds = Self::bottom_bound(&bounds);
+
+            shell.list.push(Rectangle::new(
+                bounds.size,
                 color,
+            ).with_transform(tataku::Matrix::identity()
+                .trans(bounds.pos)
             ));
         }
     }
@@ -591,9 +609,11 @@ impl Widget<actions::Action> for DialogTitlebar {
         let Some(bounds) = shell.tree.absolute_bounds(self.node_id())
         else { return };
 
-        shell.list.push(Rectangle::new_bounds(
-            bounds,
+        shell.list.push(Rectangle::new(
+            bounds.size,
             Color::WHITE.alpha(0.5),
+        ).with_transform(tataku::Matrix::identity()
+            .trans(bounds.pos)
         ));
         self.node.draw(shell);
     }

@@ -220,8 +220,11 @@ impl Widget<actions::Action> for Slider {
         else { return };
 
         shell.list.push(
-            graphics::Rectangle::new_bounds(bounds, Color::TRANSPARENT)
+            graphics::Rectangle::new(bounds.size, Color::TRANSPARENT)
                 .border(Border::new(Color::PUMPKIN_ORANGE, 2.0))
+                .with_transform(tataku::Matrix::identity()
+                    .trans(bounds.pos)
+            )
         );
 
         // draw track
@@ -236,7 +239,12 @@ impl Widget<actions::Action> for Slider {
             )
         );
 
-        shell.list.push(graphics::Rectangle::new_bounds(bounds, Color::BLACK));
+        shell.list.push(graphics::Rectangle::new(
+            bounds.size,
+            Color::BLACK
+        ).with_transform(tataku::Matrix::identity()
+            .trans(bounds.pos)
+        ));
 
         // draw slider
         let start = self.min.get();
@@ -249,7 +257,6 @@ impl Widget<actions::Action> for Slider {
         );
 
         shell.list.push(graphics::Circle::new(
-            dragger_pos,
             (bounds.size.y / 2.0) * 5.0/6.0,
             shell.general_theme.default_color
         ).border(Border::new(
@@ -261,7 +268,9 @@ impl Widget<actions::Action> for Slider {
                 shell.general_theme.default_color
             },
             2.0
-        )));
+        )).with_transform(tataku::Matrix::identity()
+            .trans(dragger_pos)
+        ));
     }
 }
 

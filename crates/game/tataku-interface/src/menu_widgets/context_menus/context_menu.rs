@@ -274,10 +274,9 @@ impl Widget<actions::Action> for ContextMenu {
         for (n, i) in self.options.iter().enumerate() {
             let pos = self.location 
                 + Vector2::new(0.0, self.item_size.y * n as f32);
-            let bounds = Bounds::new(pos, self.item_size);
 
-            shell.list.push(graphics::Rectangle::new_bounds(
-                bounds,
+            shell.list.push(graphics::Rectangle::new(
+                self.item_size,
                 shell.general_theme.background_color,
             ).border(Border::new(
                 shell.general_theme.get_color(
@@ -285,7 +284,9 @@ impl Widget<actions::Action> for ContextMenu {
                     self.hover_index == Some(n)
                 ),
                 2.0
-            )));
+            )).with_transform(tataku::Matrix::identity()
+                .trans(pos)
+            ));
 
             // shell.list.push(self.text_style.create_text(
             //     i.name.clone().into_owned(),

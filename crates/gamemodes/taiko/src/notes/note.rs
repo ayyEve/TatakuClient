@@ -21,33 +21,34 @@ pub struct TaikoNote {
     finisher: bool,
     hit: bool,
     missed: bool,
-    
+
     settings: Arc<TaikoSettings>,
-    
+
     #[cfg(feature="graphics")] speed: f32,
     #[cfg(feature="graphics")] pos: Vector2,
     #[cfg(feature="graphics")] bounce_factor: f32,
     #[cfg(feature="graphics")] playfield: Arc<TaikoPlayfield>,
-    #[cfg(feature="graphics")] image: Option<HitCircleImageHelper>,
+
+    #[cfg(feature="graphics")] image: Option<ImageCircle>,
 }
 impl TaikoNote {
     pub fn new(
-        time: f32, 
+        time: f32,
         hit_type: HitType, 
         finisher: bool, 
-        settings: Arc<TaikoSettings>, 
+        settings: Arc<TaikoSettings>,
         #[cfg(feature="graphics")] playfield: Arc<TaikoPlayfield>
     ) -> Self {
 
         Self {
-            time, 
-            hit_type, 
+            time,
+            hit_type,
             base_finisher: finisher,
             finisher,
             settings,
             #[cfg(feature="graphics")] playfield,
             #[cfg(feature="graphics")] bounce_factor: 1.6,
-            
+
             ..Default::default()
         }
     }
@@ -72,32 +73,47 @@ impl HitObject for TaikoNote {
     fn draw(&mut self, time: f32, list: &mut graphics::RenderableCollection) {
         let x = self.x_at(time);
         let delta_time = time - self.hit_time;
-        let y = if self.hit { 
-            GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2) - (delta_time * self.bounce_factor) 
-        } else if self.missed { 
-            GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2) 
+        let y = if self.hit {
+            GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2) - (delta_time * self.bounce_factor)
+        } else if self.missed {
+            GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2)
         } else { 0.0 };
 
         self.pos = self.playfield.hit_position + Vector2::new(x, y);
 
-        if self.pos.x + self.settings.note_radius < self.playfield.pos.x 
-            || self.pos.x - self.settings.note_radius > self.playfield.pos.x + self.playfield.size.x 
-        { 
-            return 
+        if self.pos.x + self.settings.note_radius < self.playfield.pos.x
+            || self.pos.x - self.settings.note_radius > self.playfield.pos.x + self.playfield.size.x
+        {
+            return
         }
 
-        if let Some(image) = &mut self.image {
-            image.set_pos(self.pos);
-            image.draw(list);
+        let radius = if self.finisher {
+            self.settings.note_radius * self.settings.big_note_multiplier
         } else {
+            self.settings.note_radius
+        };
+
+        if let Some(image) = &mut self.image {
+            let transform = graphics::Transform {
+                pos: self.pos,
+                scale: Vector2::ONE * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE,
+                ..graphics::Transform::identity()
+            };
+
+            image.draw(transform.matrix(), list);
+        } else {
+            let transform = graphics::Transform {
+                pos: self.pos,
+                scale: Vector2::ONE * radius,
+                ..graphics::Transform::identity()
+            };
+
             list.push(graphics::Circle::new(
-                self.pos,
-                if self.finisher {self.settings.note_radius * self.settings.big_note_multiplier} else {self.settings.note_radius},
                 self.get_color(),
             ).border(Border::new(
-                Color::BLACK, 
+                Color::BLACK,
                 NOTE_BORDER_SIZE
-            )));
+            )).with_transform(transform.matrix()));
         }
     }
 
@@ -114,15 +130,13 @@ impl HitObject for TaikoNote {
     #[cfg(feature="graphics")]
     fn reload_skin(
         &mut self, 
-        source: &graphics::TextureSource, 
+        source: &graphics::TextureSource,
         skin_manager: &mut dyn graphics::SkinProvider
     ) {
-        self.image = HitCircleImageHelper::new(
-            &self.settings, 
-            self.hit_type, 
-            self.finisher, 
-            source, 
-            skin_manager
+        self.image = ImageCircle::load_from_skin(
+            self.finisher,
+            source,
+            skin_manager,
         );
     }
 }
@@ -149,29 +163,23 @@ impl TaikoHitObject for TaikoNote {
 
     fn set_settings(&mut self, settings: Arc<TaikoSettings>) {
         self.settings = settings;
-
-        #[cfg(feature="graphics")]
-        if let Some(i) = &mut self.image {
-            i.update_settings(&self.settings, self.finisher);
-        }
     }
 
-    
     fn toggle_finishers(&mut self, enabled: bool) {
         self.finisher = self.base_finisher && enabled;
         self.set_settings(self.settings.clone());
     }
-    
+
     #[cfg(feature="graphics")] fn get_sv(&self) -> f32 { self.speed }
     #[cfg(feature="graphics")] fn set_sv(&mut self, sv:f32) { self.speed = sv }
     #[cfg(feature="gameplay")] fn finisher_sound(&self) -> bool { self.base_finisher }
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn playfield_changed(&mut self, new_playfield: Arc<TaikoPlayfield>) {
         self.playfield = new_playfield;
     }
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn get_playfield(&self) -> Arc<TaikoPlayfield> {
         self.playfield.clone()
     }
-    
+
 }

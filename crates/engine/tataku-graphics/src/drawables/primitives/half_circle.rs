@@ -3,19 +3,16 @@ use crate::*;
 #[derive(Copy, Clone)]
 pub struct HalfCircle {
     pub color: Color,
-    pub radius: f32,
     pub left_side: bool,
         blend_mode: BlendMode,
 }
 impl HalfCircle {
     pub fn new(
-        radius: f32, 
         color: Color, 
         left_side: bool
     ) -> Self {
         Self {
             color,
-            radius,
             left_side,
             blend_mode: BlendMode::AlphaBlending,
         }
@@ -46,7 +43,6 @@ impl TatakuRenderable for HalfCircle {
         g.draw_arc(
             start_angle, 
             start_angle+PI, 
-            self.radius, 
             options.color_with_alpha(self.color), 
             None,
             20, 
