@@ -20,6 +20,9 @@ const BOX_SIZE:Vector2 = Vector2::new(40.0, 40.0);
 struct JudgementCounterElement {
     counts: Vec<CachedJudgment>,
     button_image: Option<Image>,
+
+    // reload_skins doesn't have widget manager and doesn't really need it
+    dirty: bool,
 }
 impl JudgementCounterElement {
     fn build(
@@ -29,6 +32,7 @@ impl JudgementCounterElement {
         Box::new(Self {
             counts: Vec::new(),
             button_image: None,
+            dirty: true,
         })
     }
 
@@ -37,7 +41,7 @@ impl JudgementCounterElement {
         button_image: Option<&Image>,
         scale: &Vector2,
         font_contexts: &mut ui::widget::TextLayoutContexts,
-    ) -> (Arc<parley::Layout<Color>>, Vector2) {
+    ) -> Arc<parley::Layout<Color>> {
         let mut style = ui::style::TextStyle {
             font_size: 20.0 * scale.y,
             color: Color::WHITE,
@@ -53,37 +57,26 @@ impl JudgementCounterElement {
         let box_width = if let Some(btn) = button_image {
             btn.size().x * scale.x
         } else {
-            (BOX_SIZE * *scale).x
+            BOX_SIZE.x * scale.x
         };
 
-        let mut text_size = Vector2::new(
-            layout.width(),
-            layout.height(),
-        );
-
-        let max_width = box_width - 10.0; // padding of 10
-        if text_size.x >= max_width {
-            style.font_size = 20.0 * scale.x * max_width / text_size.x;
+        let max_width = box_width - 10.0; // padding of 5 from both sides
+        if layout.width() >= max_width {
+            style.font_size = 20.0 * scale.y / layout.width() * max_width;
             layout = font_contexts.simple_text(
                 text,
                 &style,
             );
             layout.break_all_lines(None);
-
-            text_size = Vector2::new(
-                layout.width(),
-                layout.height(),
-            );
         }
 
-        (Arc::new(layout), text_size)
+        Arc::new(layout)
     }
 }
 impl GameplayWidget for JudgementCounterElement {
     fn display_name(&self) -> &'static str { "Judgement Counter" }
 
     fn preferred_size(&self) -> Vector2 {
-        // todo: mark dirty
         let box_size = self.button_image.as_ref()
             .map_or(BOX_SIZE, Image::size);
 
@@ -94,10 +87,10 @@ impl GameplayWidget for JudgementCounterElement {
         let score = &shell.manager.score().score;
 
         if self.counts.is_empty() {
-            for j in shell.manager.judgments() {
+            for j in shell.manager.judgments().iter().copied() {
                 if j.display_name.is_empty() { continue }
 
-                let (layout, size) = Self::layout(
+                let layout = Self::layout(
                     j.display_name,
                     self.button_image.as_ref(),
                     &shell.scale,
@@ -105,48 +98,49 @@ impl GameplayWidget for JudgementCounterElement {
                 );
 
                 self.counts.push(CachedJudgment {
-                    judge: *j,
+                    judge: j,
                     count: score.get_judgment(j),
-                    size,
                     layout,
                 });
             }
 
-            return;
+            self.dirty = true;
+        } else {
+            for (i, judge) in shell.manager
+                .judgments()
+                .iter()
+                .filter(|j| !j.display_name.is_empty())
+                .copied()
+                .enumerate()
+            {
+                let Some(cached) = self.counts.get_mut(i)
+                else { continue };
+
+                let new_count = score.get_judgment(judge);
+                if cached.count == new_count { continue }
+
+                cached.count = new_count;
+
+                let text = if new_count == 0 {
+                    Cow::Borrowed(judge.display_name)
+                } else {
+                    tataku::format_number(&new_count).into()
+                };
+
+                cached.layout = Self::layout(
+                    &text,
+                    self.button_image.as_ref(),
+                    &shell.scale,
+                    shell.font_context
+                );
+            }
         }
 
-        for (i, judge) in shell.manager
-            .judgments()
-            .iter()
-            .filter(|j| !j.display_name.is_empty())
-            .copied()
-            .enumerate()
-        {
-            let Some(cached) = self.counts.get_mut(i)
-            else { continue };
+        if self.dirty {
+            self.dirty = false;
 
-            let new_count = score.get_judgment(judge);
-            if cached.count == new_count { continue }
-
-            cached.count = new_count;
-
-            let text = if new_count == 0 {
-                Cow::Borrowed(judge.display_name)
-            } else {
-                tataku::format_number(&new_count).into()
-            };
-
-            let (layout, size) = Self::layout(
-                &text,
-                self.button_image.as_ref(),
-                &shell.scale,
-                shell.font_context
-            );
-
-            cached.size = size;
-            cached.layout = layout;
+            shell.manager.mark_dirty(JUDGMENT_COUNTER.name);
         }
-
     }
 
     fn draw(&self, shell: &mut GameplayWidgetDrawShell) {
@@ -156,14 +150,17 @@ impl GameplayWidget for JudgementCounterElement {
 
         for (i, cache) in self.counts.iter().enumerate() {
             let pos = Vector2::new(0.0, box_size.y * i as f32);
-            let box_bounds = Bounds::new(pos, box_size);
 
             if let Some(mut btn) = self.button_image.clone() {
+                let transform = graphics::Transform {
+                    pos,
+                    ..graphics::Transform::identity()
+                };
+
+                // todo: setting?
                 btn.color = cache.judge.color;
 
-                shell.list.push(btn.with_transform(shell.transform * tataku::Matrix::identity()
-                    .trans(pos + box_size / 2.0)
-                ));
+                shell.list.push(btn.with_transform(shell.transform * transform.matrix()));
             } else {
                 // draw bg box
                 shell.list.push(graphics::Rectangle::new(
@@ -180,10 +177,13 @@ impl GameplayWidget for JudgementCounterElement {
             }
 
             let centered = Alignment::CENTER.resolve(
-                &box_bounds,
-                cache.size,
+                &Bounds::new(pos, box_size),
+                Vector2::new(
+                    cache.layout.width(),
+                    cache.layout.height()
+                ),
                 true,
-                true
+                true,
             );
 
             // draw text/count
@@ -198,12 +198,18 @@ impl GameplayWidget for JudgementCounterElement {
         &mut self,
         shell: &mut GameplayWidgetReloadSkinShell
     ) {
+        let size = self.preferred_size();
+
         self.button_image = shell.skin_manager.get_texture(
             Path::new("inputoverlay-key"),
             shell.source,
             graphics::SkinUsage::Gamemode,
             false
         );
+
+        if size != self.preferred_size() {
+            self.dirty = true;
+        }
     }
 }
 
@@ -226,5 +232,4 @@ struct CachedJudgment {
     judge: engine::gameplay::judgments::HitJudgment,
     count: u16,
     layout: Arc<parley::Layout<Color>>,
-    size: Vector2,
 }

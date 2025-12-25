@@ -17,9 +17,14 @@ use engine::{
 
 const BOX_SIZE:Vector2 = Vector2::new(40.0, 40.0);
 
+// todo: merge this type with judgement counter
+// todo: wrap both in a container that is centre aligned, so they look nicer
 struct KeyCounterElement {
     counts: Vec<Cached>,
-    button_image: Option<Image>
+    button_image: Option<Image>,
+
+    // reload_skins doesn't have widget manager and doesn't really need it
+    dirty: bool,
 }
 impl KeyCounterElement {
     fn build(
@@ -32,6 +37,7 @@ impl KeyCounterElement {
 
             // background_image,
             button_image: None,
+            dirty: true,
         })
     }
 
@@ -40,7 +46,7 @@ impl KeyCounterElement {
         button_image: Option<&Image>,
         scale: &Vector2,
         font_contexts: &mut ui::widget::TextLayoutContexts,
-    ) -> (Arc<parley::Layout<Color>>, Vector2) {
+    ) -> Arc<parley::Layout<Color>> {
         let mut style = ui::style::TextStyle {
             font_size: 20.0 * scale.y,
             color: Color::WHITE,
@@ -56,40 +62,29 @@ impl KeyCounterElement {
         let box_width = if let Some(btn) = button_image {
             btn.size().x * scale.x
         } else {
-            (BOX_SIZE * *scale).x
+            BOX_SIZE.x * scale.x
         };
 
-        let mut text_size = Vector2::new(
-            layout.width(),
-            layout.height(),
-        );
-
-        let max_width = box_width - 10.0; // padding of 10
-        if text_size.x >= max_width {
-            style.font_size = 20.0 * scale.x * max_width / text_size.x;
+        let max_width = box_width - 10.0; // padding of 5 from both sides
+        if layout.width() >= max_width {
+            style.font_size = 20.0 * scale.y / layout.width() * max_width;
             layout = font_contexts.simple_text(
                 text,
                 &style,
             );
             layout.break_all_lines(None);
-
-            text_size = Vector2::new(
-                layout.width(),
-                layout.height(),
-            );
         }
 
-        (Arc::new(layout), text_size)
+        Arc::new(layout)
     }
 }
 impl GameplayWidget for KeyCounterElement {
     fn display_name(&self) -> &'static str { "Key Counter" }
 
     fn preferred_size(&self) -> Vector2 {
-        // todo: mark dirty
-        let box_size = self.button_image
-            .as_ref()
+        let box_size = self.button_image.as_ref()
             .map_or(BOX_SIZE, Image::size);
+
         Vector2::new(box_size.x, box_size.y * self.counts.len() as f32)
     }
 
@@ -104,7 +99,7 @@ impl GameplayWidget for KeyCounterElement {
                 let press = counter.key_order[i];
                 let info = &counter.keys[&press];
 
-                let (layout, size) = Self::layout(
+                let layout = Self::layout(
                     &info.label,
                     self.button_image.as_ref(),
                     &shell.scale,
@@ -115,36 +110,40 @@ impl GameplayWidget for KeyCounterElement {
                     count: info.count,
                     held: info.held,
                     press,
-                    size,
                     layout,
                 });
             }
 
-            return;
+            self.dirty = true;
+        } else {
+            for i in self.counts.iter_mut() {
+                let info = &counter.keys[&i.press];
+                i.held = info.held;
+
+                if i.count == info.count { continue }
+                i.count = info.count;
+
+                let text = if info.count == 0 {
+                    Cow::Borrowed(&*info.label)
+                } else {
+                    Cow::Owned(tataku::format_number(&i.count))
+                };
+
+                let layout = Self::layout(
+                    &text,
+                    self.button_image.as_ref(),
+                    &shell.scale,
+                    shell.font_context
+                );
+
+                i.layout = layout;
+            }
         }
 
-        for i in self.counts.iter_mut() {
-            let info = &counter.keys[&i.press];
-            i.held = info.held;
+        if self.dirty {
+            self.dirty = false;
 
-            if i.count == info.count { continue }
-            i.count = info.count;
-
-            let text = if info.count == 0 {
-                Cow::Borrowed(&*info.label)
-            } else {
-                Cow::Owned(tataku::format_number(&i.count))
-            };
-
-            let (layout, size) = Self::layout(
-                &text,
-                self.button_image.as_ref(),
-                &shell.scale,
-                shell.font_context
-            );
-
-            i.size = size;
-            i.layout = layout;
+            shell.manager.mark_dirty(KEY_COUNTER.name);
         }
     }
 
@@ -164,21 +163,25 @@ impl GameplayWidget for KeyCounterElement {
                 0.0,
                 box_size.y * i as f32
             );
-            let bounds = Bounds::new(
-                pos,
-                box_size,
-            );
 
             // draw bg box
             if let Some(btn) = self.button_image.clone() {
-                let mut transform = tataku::Matrix::identity()
-                    .trans(pos + box_size / 2.0);
+                let transform = if cached.held {
+                    // todo: pad preferred_size by x1.1
+                    graphics::Transform {
+                        origin: btn.size() / 2.0, // use center origin for scaling
+                        scale: Vector2::ONE * 1.1,
+                        pos: pos + btn.size() / 2.0, // top left
+                        ..graphics::Transform::identity()
+                    }
+                } else {
+                    graphics::Transform {
+                        pos,
+                        ..graphics::Transform::identity()
+                    }
+                };
 
-                if cached.held {
-                    transform = transform.scale(Vector2::ONE * 1.1);
-                }
-
-                shell.list.push(btn.with_transform(shell.transform * transform));
+                shell.list.push(btn.with_transform(shell.transform * transform.matrix()));
             } else {
                 shell.list.push(graphics::Rectangle::new(
                     box_size,
@@ -194,11 +197,14 @@ impl GameplayWidget for KeyCounterElement {
                 .with_transform(shell.transform * tataku::Matrix::identity()
                     .trans(pos)
                 ));
-        }
+            }
 
             let centered = Alignment::CENTER.resolve(
-                &bounds,
-                cached.size,
+                &Bounds::new(pos, box_size),
+                Vector2::new(
+                    cached.layout.width(),
+                    cached.layout.height()
+                ),
                 true,
                 true,
             );
@@ -214,6 +220,8 @@ impl GameplayWidget for KeyCounterElement {
         &mut self,
         shell: &mut GameplayWidgetReloadSkinShell
     ) {
+        let size = self.preferred_size();
+
         // let mut background_image = shell.skin_manager.get_texture("inputoverlay-background", false;
         // if let Some(image) = &mut background_image {
         //     image.current_rotation = 90f64.to_radians();
@@ -228,6 +236,10 @@ impl GameplayWidget for KeyCounterElement {
             graphics::SkinUsage::Gamemode,
             false
         );
+
+        if size != self.preferred_size() {
+            self.dirty = true;
+        }
     }
 }
 
@@ -246,5 +258,4 @@ struct Cached {
     held: bool,
     press: common::replays::KeyPress,
     layout: Arc<parley::Layout<Color>>,
-    size: Vector2,
 }

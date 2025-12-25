@@ -78,7 +78,7 @@ impl Image {
         }
     }
 
-    pub fn tex_size(&self) -> Vector2 {
+    fn tex_size(&self) -> Vector2 {
         Vector2::new(
             self.tex.width as f32, 
             self.tex.height as f32,
@@ -112,6 +112,9 @@ impl TatakuRenderable for Image {
         g: &mut dyn DrawEngine,
     ) {
         let color = options.color_with_alpha(self.color);
+
+        let transform = transform * tataku::Matrix::identity()
+            .scale(Vector2::ONE * self.base_scale);
 
         let flip = self.flip.xor(options.image_flip);
         g.draw_tex(

@@ -89,14 +89,6 @@ impl GameplayWidget for HealthBarElement {
             SkinUsage::Gamemode,
             false
         );
-
-        for i in [
-            &mut self.healthbar_color,
-            &mut self.healthbar_bg_image
-        ] {
-            let Some(i) = i else { continue };
-            i.color = Color::WHITE;
-        }
     }
 
 
@@ -131,7 +123,7 @@ impl GameplayWidget for HealthBarElement {
         let percent = self.health_ratio;
 
         if let Some(color) = self.healthbar_color.clone() {
-            let tex_size = color.tex_size();
+            let tex_size = color.size();
             let width = tex_size.x * percent;
 
             let scissor = shell.transform * tataku::Bounds::new(
