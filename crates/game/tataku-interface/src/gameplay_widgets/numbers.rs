@@ -16,7 +16,6 @@ pub struct Number<T: _CanNum> {
     config: NumberConfig<T>,
     image: Option<SkinnedNumber>,
     number: T,
-    max_size: Vector2,
     layout: Option<Arc<parley::Layout<Color>>>,
     layout_size: Vector2,
 }
@@ -28,7 +27,6 @@ impl<T: _CanNum> Number<T> {
 
             image: None,
             layout: None,
-            max_size: Vector2::ZERO,
             layout_size: Vector2::ZERO,
         }
     }
@@ -59,25 +57,9 @@ impl<T: _CanNum> Number<T> {
 }
 impl<T: _CanNum> GameplayWidget for Number<T> {
     fn display_name(&self) -> &'static str { self.config.display }
-    fn preferred_size(&self) -> Vector2 { self.max_size }
+    fn preferred_size(&self) -> Vector2 { self.layout_size }
 
     fn update(&mut self, shell: &mut GameplayWidgetUpdateShell) {
-        if self.max_size == Vector2::ZERO {
-            let text = format!(
-                "{}{}",
-                (self.config.format)(self.config.max_number),
-                self.config.symbol.map(|c| c.to_string()).unwrap_or_default()
-            );
-
-            let (_, size) = Self::layout(
-                &text,
-                shell.scale,
-                shell.font_context,
-            );
-            self.max_size = size;
-            shell.manager.mark_dirty(&self.config.display.to_lowercase());
-        }
-
         let old_number = self.number;
         self.number = (self.config.property)(shell.manager);
         if self.number == old_number { return }
@@ -86,9 +68,6 @@ impl<T: _CanNum> GameplayWidget for Number<T> {
             image.number = self.number.as_f64();
             self.layout_size = image.measure_text();
         } else {
-            // self.text = ($format)(self.number);
-            // self.size = self.text.measure_text();
-
             let (layout, size) = Self::layout(
                 &(self.config.format)(self.number),
                 shell.scale,
@@ -98,6 +77,9 @@ impl<T: _CanNum> GameplayWidget for Number<T> {
             self.layout_size = size;
             self.layout = Some(layout);
         }
+
+        // fixme: disgusting
+        shell.manager.mark_dirty(&self.config.display.to_lowercase());
     }
 
     fn draw(&self, shell: &mut GameplayWidgetDrawShell) {
@@ -108,16 +90,6 @@ impl<T: _CanNum> GameplayWidget for Number<T> {
             else { return };
 
             shell.list.push(graphics::Text::new(layout).with_transform(shell.transform));
-
-            // let mut text = self.text.clone();
-            // text.pos = align.resolve(
-            //     &Bounds::new(shell.pos_offset, self.max_size),
-            //     text.measure_text(),
-            //     true,
-            //     true
-            // );
-            // text.set_font_size(30.0 * scale.y);
-            // list.push(text);
         }
     }
 
@@ -137,7 +109,6 @@ impl<T: _CanNum> GameplayWidget for Number<T> {
         ).ok();
 
         if let Some(image) = &mut self.image {
-            // self.max_size = image.measure_text();
             image.number = self.number.as_f64();
         }
     }
