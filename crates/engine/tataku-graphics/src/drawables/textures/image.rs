@@ -88,14 +88,6 @@ impl Image {
         self.tex_size() * self.base_scale
     }
 
-
-
-    // pub fn fit_to_bg_size(&mut self, size: Vector2) {
-    //     self.fit_to(ImageStretch::Contain, Bounds::new(Vector2::ZERO, size));
-    //     self.origin = Vector2::ZERO;
-    //     self.pos = (size - self.size()) / 2.0;
-    // }
-
     pub fn reference_count(&self) -> usize {
         Arc::strong_count(&self.tex)
     }
@@ -178,46 +170,38 @@ impl ImageStretch {
                 container_size / image_size
             }
             ImageStretch::Contain => {
-                // resize to maintain aspect ratio
-                let ratio = image_size.y / image_size.x;
-
+                // Scale along longest axis
                 let new_size = if image_size.x > image_size.y {
-                    // use width as base
+                    // use container width
                     Vector2::new(
                         container_size.x,
-                        container_size.x * ratio
+                        container_size.x / image_size.x * image_size.y,
                     )
                 } else {
-                    // use height as base
+                    // use container height
                     Vector2::new(
-                        container_size.y * ratio,
-                        container_size.y
+                        container_size.y / image_size.y * image_size.x,
+                        container_size.y,
                     )
                 };
-
-                // TODO: transform to Contain
 
                 new_size / image_size
             }
             ImageStretch::Cover => {
-                // resize to maintain aspect ratio
-                let ratio = image_size.y / image_size.x;
-
-                let new_size = if image_size.x > image_size.y {
-                    // use width as base
+                // Scale along shortest axis
+                let new_size = if image_size.x < image_size.y {
+                    // use container width
                     Vector2::new(
                         container_size.x,
-                        container_size.x * ratio
+                        container_size.x / image_size.x * image_size.y,
                     )
                 } else {
-                    // use height as base
+                    // use container height
                     Vector2::new(
-                        container_size.y * ratio,
-                        container_size.y
+                        container_size.y / image_size.y * image_size.x,
+                        container_size.y,
                     )
                 };
-
-                // TODO: transform to Cover
 
                 new_size / image_size
             }
