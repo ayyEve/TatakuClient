@@ -19,11 +19,11 @@ const BUCKET_LENGTH:f32 = 500.0;
 
 const WRITE_DEBUG_FILES:bool = false;
 
-pub struct TaikoDifficultyCalculator {
+pub struct DifficultyCalculator {
     difficulty_hitobjects: Vec<DifficultyHitObject>,
     version_string: String,
 }
-impl TaikoDifficultyCalculator {
+impl DifficultyCalculator {
 
     fn note_density(&mut self, mods: &ModManager) -> tataku::Result<Vec<f32>> {
         let mut start_bucket_time = self.difficulty_hitobjects.first().unwrap().time;
@@ -154,7 +154,7 @@ impl TaikoDifficultyCalculator {
         Ok(change_density)
     }
 }
-impl DiffCalc for TaikoDifficultyCalculator {
+impl DiffCalc for DifficultyCalculator {
     fn new(g: &BeatmapMeta, settings: &engine::Settings) -> tataku::Result<Self> {
         let g = Beatmap::from_metadata(g)?;
         let g = TaikoGame::new(&g, true, settings)?;

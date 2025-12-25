@@ -8,9 +8,9 @@ const COMBO_MULTIPLIER: ComboMultiplier = ComboMultiplier::Linear {
     combo_cap: Some(80)
 };
 
-pub struct TaikoHitJudgments;
+pub struct HitJudgments;
 #[allow(non_upper_case_globals)]
-impl TaikoHitJudgments {
+impl HitJudgments {
     pub const Geki: HitJudgment = HitJudgment::new(
         "xgeki",
         "Geki",

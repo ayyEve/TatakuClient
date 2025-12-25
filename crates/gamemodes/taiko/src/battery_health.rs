@@ -11,14 +11,14 @@ use engine::{
 const MAX_HEALTH:f32 = 200.0;
 const PASS_HEALTH:f32 = MAX_HEALTH / 2.0;
 
-pub struct TaikoBatteryHealthManager {
+pub struct BatteryHealth {
     health: f32,
 
     health_per_300: f32,
     health_per_100: f32,
     health_per_miss: f32,
 }
-impl TaikoBatteryHealthManager {
+impl BatteryHealth {
     pub fn new(
         health_per_300: f32,
         health_per_100: f32,
@@ -32,7 +32,7 @@ impl TaikoBatteryHealthManager {
         }
     }
 }
-impl HealthManager for TaikoBatteryHealthManager {
+impl HealthManager for BatteryHealth {
     fn is_dead(&self, song_over: bool) -> bool {
         if !song_over { return false }
         self.health < PASS_HEALTH

@@ -18,31 +18,31 @@ pub trait TaikoHitObject: HitObject + Send + Sync {
 
     /// returns true if a finisher was successfully hit
     fn check_finisher(
-        &self, 
-        _hit_type: HitType, 
-        _time: f32, 
+        &self,
+        _hit_type: HitType,
+        _time: f32,
         _game_speed: f32
     ) -> bool { false }
 
-    #[cfg(feature="graphics")] 
-    fn get_playfield(&self) -> Arc<TaikoPlayfield>;
-    fn set_settings(&mut self, settings: Arc<TaikoSettings>);
+    #[cfg(feature="graphics")]
+    fn get_playfield(&self) -> Arc<Playfield>;
+    fn set_settings(&mut self, settings: Arc<Settings>);
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn x_at(&self, time: f32) -> f32 {
         // (self.time() - time) * self.get_sv()
-        ((self.time() - time) / SV_OVERRIDE) 
-            * self.get_sv() 
+        ((self.time() - time) / SV_OVERRIDE)
+            * self.get_sv()
             * self.get_playfield().size.x
     }
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn end_x_at(&self, time: f32) -> f32 {
-        ((self.end_time(0.0) - time) / SV_OVERRIDE) 
-            * self.get_sv() 
+        ((self.end_time(0.0) - time) / SV_OVERRIDE)
+            * self.get_sv()
             * self.get_playfield().size.x
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn time_at(&self, x: f32) -> f32 {
         -(x / self.get_sv()) + self.time()
     }
@@ -50,7 +50,7 @@ pub trait TaikoHitObject: HitObject + Send + Sync {
     fn hit_type(&self) -> HitType {
         if self.is_kat() { HitType::Kat } else { HitType::Don }
     }
-    
+
     fn was_hit(&self) -> bool;
     fn force_hit(&mut self) {}
 
@@ -59,8 +59,8 @@ pub trait TaikoHitObject: HitObject + Send + Sync {
 
     fn hits_to_complete(&self) -> u32 { 1 }
 
-    #[cfg(feature="graphics")] 
-    fn playfield_changed(&mut self, _new_playfield: Arc<TaikoPlayfield>);
+    #[cfg(feature="graphics")]
+    fn playfield_changed(&mut self, _new_playfield: Arc<Playfield>);
 
     /// only used by spinners
     fn set_required_hits(&mut self, _required_hits: u16) {}

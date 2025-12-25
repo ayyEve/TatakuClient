@@ -285,7 +285,7 @@ pub const DON_CHAN: GameplayWidgetBuilder = GameplayWidgetBuilder {
     default_layout: GameplayWidgetLayout {
         anchor: GameplayWidgetAnchor::Playfield {
             horizontal_side: Side::Inside,
-            vertical_side: Side::Inside,
+            vertical_side: Side::Outside,
         },
         align: Alignment::TOP_LEFT,
         transform: graphics::Transform::identity(),

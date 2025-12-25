@@ -16,17 +16,17 @@ const BAR_WIDTH:f32 = 4.0;
 pub struct TimingBar {
     pub pos: Vector2,
     pub size: Vector2,
-    
+
     pub time: f32,
     pub speed: f32,
-    pub playfield: Arc<TaikoPlayfield>,
+    pub playfield: Arc<Playfield>,
 }
 impl TimingBar {
-    pub fn new(time: f32, speed: f32, playfield: Arc<TaikoPlayfield>) -> Self {
+    pub fn new(time: f32, speed: f32, playfield: Arc<Playfield>) -> Self {
         let size = Vector2::new(BAR_WIDTH, playfield.height);
 
         Self {
-            time, 
+            time,
             speed,
             pos: Vector2::new(0.0, playfield.hit_position.y - size.y/2.0),
             playfield,
@@ -55,13 +55,13 @@ impl TimingBar {
         ));
     }
 
-    pub fn playfield_changed(&mut self, new: Arc<TaikoPlayfield>) {
+    pub fn playfield_changed(&mut self, new: Arc<Playfield>) {
         self.playfield = new;
         self.pos.y = self.playfield.hit_position.y - self.size.y/2.0;
         self.size.y = self.playfield.height;
     }
 
-    pub fn set_settings(&mut self, _settings: Arc<TaikoSettings>) {
+    pub fn set_settings(&mut self, _settings: Arc<Settings>) {
         // self.size = Vector2::new(BAR_WIDTH, self.settings.get_playfield(0.0, false).size.y);
         // self.pos = Vector2::new(0.0, self.settings.hit_position.y - self.size.y/2.0);
     }

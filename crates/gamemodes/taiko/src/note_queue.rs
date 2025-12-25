@@ -1,11 +1,11 @@
 use crate::prelude::*;
 
 #[derive(Default)]
-pub struct TaikoNoteQueue {
+pub struct NoteQueue {
     pub notes: Vec<Box<dyn TaikoHitObject>>,
     pub index: usize,
 }
-impl TaikoNoteQueue {
+impl NoteQueue {
     pub fn done(&self) -> bool { self.index >= self.notes.len() }
     pub fn next(&mut self) { self.index += 1; }
 
@@ -38,14 +38,14 @@ impl TaikoNoteQueue {
     }
 }
 
-impl Deref for TaikoNoteQueue {
+impl Deref for NoteQueue {
     type Target = Vec<Box<dyn TaikoHitObject>>;
 
     fn deref(&self) -> &Self::Target {
         &self.notes
     }
 }
-impl DerefMut for TaikoNoteQueue {
+impl DerefMut for NoteQueue {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.notes
     }

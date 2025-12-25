@@ -12,7 +12,7 @@ use tataku::{
 
 
 #[derive(Default)]
-pub struct TaikoPlayfield {
+pub struct Playfield {
     pub bounds: Bounds,
     pub height: f32,
 
@@ -21,7 +21,7 @@ pub struct TaikoPlayfield {
     // pub full_window: bool,
 }
 
-impl TaikoPlayfield {
+impl Playfield {
     #[cfg(feature = "graphics")]
     pub fn get_rectangle(&self, kiai: bool) -> impl TatakuRenderable + 'static {
         let bounds = self.get_playfield_bounds();
@@ -46,7 +46,7 @@ impl TaikoPlayfield {
         )
     }
 }
-impl Deref for TaikoPlayfield {
+impl Deref for Playfield {
     type Target = Bounds;
     fn deref(&self) -> &Self::Target {
         &self.bounds

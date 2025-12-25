@@ -2,13 +2,13 @@ use crate::prelude::*;
 use common::replays::KeyPress;
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq)]
-pub enum TaikoHit {
+pub enum Hit {
     LeftKat,
     LeftDon,
     RightDon,
     RightKat
 }
-impl TaikoHit {
+impl Hit {
     pub const ALL: &[Self] = &[
         Self::LeftDon,
         Self::LeftKat,

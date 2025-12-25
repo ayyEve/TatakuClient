@@ -1,9 +1,14 @@
+mod hit;
 mod game;
 mod info;
 mod notes;
-mod helpers;
 mod settings;
 mod diff_calc;
+mod playfield;
+mod note_queue;
+mod auto_replay;
+mod battery_health;
+mod full_alt_counter;
 #[cfg(feature="graphics")] mod don_chan;
 
 pub use info::GAME_INFO;
@@ -32,11 +37,16 @@ mod prelude {
 
     pub use tataku_graphics::TatakuRenderable;
 
-    pub use super::info::*;
+    pub use super::hit::*;
     pub use super::game::*;
+    pub use super::info::*;
     pub use super::notes::*;
-    pub use super::helpers::*;
     pub use super::settings::*;
     pub use super::diff_calc::*;
+    pub use super::playfield::*;
+    pub use super::note_queue::*;
+    pub use super::auto_replay::*;
+    pub use super::battery_health::*;
+    pub use super::full_alt_counter::*;
     #[cfg(feature="graphics")] pub use super::don_chan::*;
 }

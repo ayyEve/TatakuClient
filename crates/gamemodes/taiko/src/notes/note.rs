@@ -13,7 +13,7 @@ use engine::{
 use engine::graphics;
 
 #[derive(Default, Clone)]
-pub struct TaikoNote {
+pub struct Note {
     time: f32, // ms
     hit_time: f32,
     hit_type: HitType,
@@ -22,23 +22,23 @@ pub struct TaikoNote {
     hit: bool,
     missed: bool,
 
-    settings: Arc<TaikoSettings>,
+    settings: Arc<Settings>,
 
     #[cfg(feature="graphics")] speed: f32,
     #[cfg(feature="graphics")] pos: Vector2,
     #[cfg(feature="graphics")] bounce_factor: f32,
-    #[cfg(feature="graphics")] playfield: Arc<TaikoPlayfield>,
+    #[cfg(feature="graphics")] playfield: Arc<Playfield>,
 
     #[cfg(feature="graphics")] circle: Option<graphics::Image>,
     #[cfg(feature="graphics")] overlay: Option<graphics::Image>,
 }
-impl TaikoNote {
+impl Note {
     pub fn new(
         time: f32,
-        hit_type: HitType, 
-        finisher: bool, 
-        settings: Arc<TaikoSettings>,
-        #[cfg(feature="graphics")] playfield: Arc<TaikoPlayfield>
+        hit_type: HitType,
+        finisher: bool,
+        settings: Arc<Settings>,
+        #[cfg(feature="graphics")] playfield: Arc<Playfield>
     ) -> Self {
 
         Self {
@@ -63,7 +63,7 @@ impl TaikoNote {
         }
     }
 }
-impl HitObject for TaikoNote {
+impl HitObject for Note {
     fn note_type(&self) -> NoteType { NoteType::Note }
     fn time(&self) -> f32 { self.time }
     fn end_time(&self, hw_miss: f32) -> f32 { self.time + hw_miss }
@@ -97,7 +97,7 @@ impl HitObject for TaikoNote {
         if let Some(image) = &self.overlay {
             let transform = graphics::Transform {
                 pos: self.pos,
-                scale: Vector2::ONE * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE,
+                scale: Vector2::ONE * (radius * 2.0) / NOTE_TEX_SIZE,
                 ..graphics::Transform::identity()
             };
 
@@ -107,7 +107,7 @@ impl HitObject for TaikoNote {
         if let Some(image) = &self.circle {
             let transform = graphics::Transform {
                 pos: self.pos,
-                scale: Vector2::ONE * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE,
+                scale: Vector2::ONE * (radius * 2.0) / NOTE_TEX_SIZE,
                 ..graphics::Transform::identity()
             };
 
@@ -144,7 +144,7 @@ impl HitObject for TaikoNote {
 
     #[cfg(feature="graphics")]
     fn reload_skin(
-        &mut self, 
+        &mut self,
         source: &graphics::TextureSource,
         skin_manager: &mut dyn graphics::SkinProvider
     ) {
@@ -170,7 +170,7 @@ impl HitObject for TaikoNote {
         );
     }
 }
-impl TaikoHitObject for TaikoNote {
+impl TaikoHitObject for Note {
     fn was_hit(&self) -> bool { self.hit || self.missed }
     fn force_hit(&mut self) { self.hit = true }
     fn is_kat(&self) -> bool { self.hit_type == HitType::Kat }
@@ -191,7 +191,7 @@ impl TaikoHitObject for TaikoNote {
         self.finisher && hit_type == self.hit_type && (time - self.hit_time) < FINISHER_LENIENCY * game_speed
     }
 
-    fn set_settings(&mut self, settings: Arc<TaikoSettings>) {
+    fn set_settings(&mut self, settings: Arc<Settings>) {
         self.settings = settings;
     }
 
@@ -204,11 +204,11 @@ impl TaikoHitObject for TaikoNote {
     #[cfg(feature="graphics")] fn set_sv(&mut self, sv:f32) { self.speed = sv }
     #[cfg(feature="gameplay")] fn finisher_sound(&self) -> bool { self.base_finisher }
     #[cfg(feature="graphics")]
-    fn playfield_changed(&mut self, new_playfield: Arc<TaikoPlayfield>) {
+    fn playfield_changed(&mut self, new_playfield: Arc<Playfield>) {
         self.playfield = new_playfield;
     }
     #[cfg(feature="graphics")]
-    fn get_playfield(&self) -> Arc<TaikoPlayfield> {
+    fn get_playfield(&self) -> Arc<Playfield> {
         self.playfield.clone()
     }
 

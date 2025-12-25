@@ -5,18 +5,18 @@ use engine::beatmaps::NoteType;
 
 
 #[derive(Default)]
-pub struct TaikoAutoHelper {
+pub struct AutoReplay {
     don_presses: u32,
     kat_presses: u32,
 
     last_hit: f32,
     last_update: f32,
 }
-impl TaikoAutoHelper {
+impl AutoReplay {
     pub fn update(
-        &mut self, 
-        time: f32, 
-        queues: &mut [TaikoNoteQueue], 
+        &mut self,
+        time: f32,
+        queues: &mut [NoteQueue],
         frames: &mut Vec<ReplayAction>
     ) {
         let catching_up = time - self.last_update > 20.0;
@@ -33,7 +33,7 @@ impl TaikoAutoHelper {
 
                 // if note is a drumroll/spinner, we need to time when to hit it
                 // if note is a note, we need to hit it and move on
-                
+
                 // check if we're catching up
                 if catching_up {
                     // pretend the note was hit
@@ -47,7 +47,7 @@ impl TaikoAutoHelper {
                     let end_time = note.end_time(0.0);
 
                     // check if time is up
-                    if time > end_time { 
+                    if time > end_time {
                         // queue_index = i + 1;
                         continue;
                     }
@@ -55,7 +55,7 @@ impl TaikoAutoHelper {
                     // check if its time to do another hit
                     let duration = end_time - note.time();
                     let time_between_hits = duration / (note.hits_to_complete() as f32);
-                    
+
                     // if its not time to do another hit yet
                     if time - self.last_hit < time_between_hits { break }
                 }
@@ -85,7 +85,7 @@ impl TaikoAutoHelper {
 
                         // don, left side
                         (false, 0) => frames.push(ReplayAction::Press(KeyPress::LeftDon)),
-                        
+
                         // don, right side
                         (false, 1) => frames.push(ReplayAction::Press(KeyPress::RightDon)),
 

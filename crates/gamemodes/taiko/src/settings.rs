@@ -16,7 +16,7 @@ use tataku_client_proc_macros::Settings;
 #[derive(Clone, PartialEq, Debug)]
 #[derive(Serialize, DeserializeSettings)]
 #[serde(default)]
-pub struct TaikoSettings {
+pub struct Settings {
     // input
     #[setting(text="Left Kat")]
     pub left_kat: Key,
@@ -63,7 +63,7 @@ pub struct TaikoSettings {
 
     #[setting(text="Use Skin Judgments")]
     pub use_skin_judgments: bool,
-    
+
     /// how far above the hit position should hit indicators be?
     #[setting(text="Hit Judgment Y-Offset", range(0.0, 100.0))]
     pub judgement_indicator_offset: f32,
@@ -77,7 +77,7 @@ pub struct TaikoSettings {
     #[setting(text="Right Kat (Gamepad)")]
     pub gamepad_right_kat: Option<GamepadButton>,
 }
-impl Default for TaikoSettings {
+impl Default for Settings {
     fn default() -> Self {
         Self {
             // input
@@ -90,7 +90,7 @@ impl Default for TaikoSettings {
 
             // sv
             sv_multiplier: 1.1,
-            
+
             // size stuff
             note_radius: 42.0,
             big_note_multiplier: 1.666666,
@@ -101,10 +101,10 @@ impl Default for TaikoSettings {
             hit_position_relative_height_div: 1.375, // 3/8s the way down the screen
             playfield_x_offset: 200.0,
             playfield_y_offset: 0.0,
-        
+
             don_color: Color::from_hex("#E74721").into(),
             kat_color: Color::from_hex("#3797CA").into(),
-            
+
             judgement_indicator_offset: 0.0,
             use_skin_judgments: true,
 
@@ -116,7 +116,7 @@ impl Default for TaikoSettings {
     }
 }
 
-impl GamemodeSettings for TaikoSettings {
+impl GamemodeSettings for Settings {
     fn to_value(&self) -> serde_json::Value {
         serde_json::to_value(self).unwrap()
     }
@@ -137,9 +137,9 @@ pub struct TaikoControllerConfig {
 // #[cfg(feature = "gameplay")]
 impl TaikoControllerConfig {
     fn new_default<I:Into<ControllerInputBinding>>(
-        left_kat: I, 
-        left_don: I, 
-        right_don: I, 
+        left_kat: I,
+        left_don: I,
+        right_don: I,
         right_kat: I
     ) -> Self {
         Self {
@@ -154,28 +154,28 @@ impl TaikoControllerConfig {
             "Taiko Controller"
             | "HORI CO.,LTD. Taiko Controller"
             | "HID-compliant game controller" => Self::new_default(
-                GamepadButton::LeftBumper, 
-                GamepadButton::LeftThumb, 
-                GamepadButton::RightThumb, 
+                GamepadButton::LeftBumper,
+                GamepadButton::LeftThumb,
+                GamepadButton::RightThumb,
                 GamepadButton::RightBumper
             ),
 
             "Xbox Controller"
             | "Xbox One Game Controller" => Self::new_default(
-                GamepadButton::DPadLeft, 
-                GamepadButton::DPadDown, 
-                GamepadButton::South, 
+                GamepadButton::DPadLeft,
+                GamepadButton::DPadDown,
+                GamepadButton::South,
                 GamepadButton::East
             ),
 
             // "Wireless Controller"
-            // | "Sony Interactive Entertainment Wireless Controller" 
+            // | "Sony Interactive Entertainment Wireless Controller"
             //     => Self::new_default(17, 15, 0, 2),
 
             _ => Self::new_default(
-                GamepadButton::DPadLeft, 
-                GamepadButton::DPadDown, 
-                GamepadButton::South, 
+                GamepadButton::DPadLeft,
+                GamepadButton::DPadDown,
+                GamepadButton::South,
                 GamepadButton::East
             )
         }
@@ -221,7 +221,7 @@ impl TaikoControllerConfig {
 //         let t_settings = settings
 //             .gamemode_settings::<TaikoSettings>(gamemode)
 //             .unwrap();
-        
+
 //         assert_eq!(t_settings.left_don, Key::Calculator, "save test");
 //     }
 // }
