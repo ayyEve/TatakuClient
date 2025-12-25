@@ -97,15 +97,15 @@ impl BarGraph {
                     let x_step = size.x / mapped_points.len() as f32;
 
                     for (n, new_y) in mapped_points.iter().copied().enumerate().skip(1) {
-                        let start = bounds.pos + Vector2::new(x_step * (n-1) as f32, prev_y);
-                        let end = bounds.pos + Vector2::new(x_step * n as f32, new_y);
+                        let start = Vector2::new(x_step * (n-1) as f32, prev_y);
+                        let end = Vector2::new(x_step * n as f32, new_y);
 
                         collection.push(graphics::Line::new(
                             end - start,
                             2.0,
                             i.color
                         ).with_transform(tataku::Matrix::identity()
-                            .trans(start)
+                            .trans(bounds.pos + start)
                         ));
 
                         prev_y = new_y;
