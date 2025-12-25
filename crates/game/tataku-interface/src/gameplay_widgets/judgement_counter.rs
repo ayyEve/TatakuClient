@@ -20,9 +20,6 @@ const BOX_SIZE:Vector2 = Vector2::new(40.0, 40.0);
 struct JudgementCounterElement {
     counts: Vec<CachedJudgment>,
     button_image: Option<Image>,
-
-    // reload_skins doesn't have widget manager and doesn't really need it
-    dirty: bool,
 }
 impl JudgementCounterElement {
     fn build(
@@ -32,7 +29,6 @@ impl JudgementCounterElement {
         Box::new(Self {
             counts: Vec::new(),
             button_image: None,
-            dirty: true,
         })
     }
 
@@ -104,42 +100,38 @@ impl GameplayWidget for JudgementCounterElement {
                 });
             }
 
-            self.dirty = true;
-        } else {
-            for (i, judge) in shell.manager
-                .judgments()
-                .iter()
-                .filter(|j| !j.display_name.is_empty())
-                .copied()
-                .enumerate()
-            {
-                let Some(cached) = self.counts.get_mut(i)
-                else { continue };
+            shell.manager.mark_dirty(JUDGMENT_COUNTER.name);
 
-                let new_count = score.get_judgment(judge);
-                if cached.count == new_count { continue }
-
-                cached.count = new_count;
-
-                let text = if new_count == 0 {
-                    Cow::Borrowed(judge.display_name)
-                } else {
-                    tataku::format_number(&new_count).into()
-                };
-
-                cached.layout = Self::layout(
-                    &text,
-                    self.button_image.as_ref(),
-                    &shell.scale,
-                    shell.font_context
-                );
-            }
+            return;
         }
 
-        if self.dirty {
-            self.dirty = false;
+        for (i, judge) in shell.manager
+            .judgments()
+            .iter()
+            .filter(|j| !j.display_name.is_empty())
+            .copied()
+            .enumerate()
+        {
+            let Some(cached) = self.counts.get_mut(i)
+            else { continue };
 
-            shell.manager.mark_dirty(JUDGMENT_COUNTER.name);
+            let new_count = score.get_judgment(judge);
+            if cached.count == new_count { continue }
+
+            cached.count = new_count;
+
+            let text = if new_count == 0 {
+                Cow::Borrowed(judge.display_name)
+            } else {
+                tataku::format_number(&new_count).into()
+            };
+
+            cached.layout = Self::layout(
+                &text,
+                self.button_image.as_ref(),
+                &shell.scale,
+                shell.font_context
+            );
         }
     }
 
@@ -198,18 +190,12 @@ impl GameplayWidget for JudgementCounterElement {
         &mut self,
         shell: &mut GameplayWidgetReloadSkinShell
     ) {
-        let size = self.preferred_size();
-
         self.button_image = shell.skin_manager.get_texture(
             Path::new("inputoverlay-key"),
             shell.source,
             graphics::SkinUsage::Gamemode,
             false
         );
-
-        if size != self.preferred_size() {
-            self.dirty = true;
-        }
     }
 }
 

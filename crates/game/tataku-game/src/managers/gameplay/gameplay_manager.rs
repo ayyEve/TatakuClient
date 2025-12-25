@@ -510,7 +510,11 @@ impl GameplayManager {
 
 
         // re init ui
-        #[cfg(feature="graphics")] self.layout_ui();
+        #[cfg(feature="graphics")] {
+            // todo: is this needed?
+            self.widget_tree.mark_all_dirty();
+            self.layout_ui();
+        }
     }
 
     pub fn pause(&mut self) {
@@ -1290,6 +1294,7 @@ impl GameplayManager {
             i.reload_skin(&mut shell);
         }
 
+        self.widget_tree.mark_all_dirty();
         self.layout_ui();
     }
 
@@ -1523,6 +1528,9 @@ impl GameplayManager {
                     );
                 }
 
+                // technically only elements that anchor to the gameplay need relayout,
+                // but we dont distinguish them from screen elements atm.
+                self.widget_tree.mark_all_dirty();
                 self.layout_ui();
             },
 
@@ -1717,6 +1725,8 @@ impl GameplayManager {
                     self.animation.fit_to_area(self.gamemode.get_playfield());
                 }
 
+                // todo: is this correct?
+                self.widget_tree.mark_all_dirty();
                 self.layout_ui();
             }
 

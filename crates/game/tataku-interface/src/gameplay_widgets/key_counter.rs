@@ -22,9 +22,6 @@ const BOX_SIZE:Vector2 = Vector2::new(40.0, 40.0);
 struct KeyCounterElement {
     counts: Vec<Cached>,
     button_image: Option<Image>,
-
-    // reload_skins doesn't have widget manager and doesn't really need it
-    dirty: bool,
 }
 impl KeyCounterElement {
     fn build(
@@ -37,7 +34,6 @@ impl KeyCounterElement {
 
             // background_image,
             button_image: None,
-            dirty: true,
         })
     }
 
@@ -114,36 +110,32 @@ impl GameplayWidget for KeyCounterElement {
                 });
             }
 
-            self.dirty = true;
-        } else {
-            for i in self.counts.iter_mut() {
-                let info = &counter.keys[&i.press];
-                i.held = info.held;
+            shell.manager.mark_dirty(KEY_COUNTER.name);
 
-                if i.count == info.count { continue }
-                i.count = info.count;
-
-                let text = if info.count == 0 {
-                    Cow::Borrowed(&*info.label)
-                } else {
-                    Cow::Owned(tataku::format_number(&i.count))
-                };
-
-                let layout = Self::layout(
-                    &text,
-                    self.button_image.as_ref(),
-                    &shell.scale,
-                    shell.font_context
-                );
-
-                i.layout = layout;
-            }
+            return;
         }
 
-        if self.dirty {
-            self.dirty = false;
+        for i in self.counts.iter_mut() {
+            let info = &counter.keys[&i.press];
+            i.held = info.held;
 
-            shell.manager.mark_dirty(KEY_COUNTER.name);
+            if i.count == info.count { continue }
+            i.count = info.count;
+
+            let text = if info.count == 0 {
+                Cow::Borrowed(&*info.label)
+            } else {
+                Cow::Owned(tataku::format_number(&i.count))
+            };
+
+            let layout = Self::layout(
+                &text,
+                self.button_image.as_ref(),
+                &shell.scale,
+                shell.font_context
+            );
+
+            i.layout = layout;
         }
     }
 
@@ -220,8 +212,6 @@ impl GameplayWidget for KeyCounterElement {
         &mut self,
         shell: &mut GameplayWidgetReloadSkinShell
     ) {
-        let size = self.preferred_size();
-
         // let mut background_image = shell.skin_manager.get_texture("inputoverlay-background", false;
         // if let Some(image) = &mut background_image {
         //     image.current_rotation = 90f64.to_radians();
@@ -236,10 +226,6 @@ impl GameplayWidget for KeyCounterElement {
             graphics::SkinUsage::Gamemode,
             false
         );
-
-        if size != self.preferred_size() {
-            self.dirty = true;
-        }
     }
 }
 
