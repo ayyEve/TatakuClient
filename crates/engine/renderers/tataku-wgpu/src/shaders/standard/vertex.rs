@@ -51,18 +51,4 @@ impl Vertex {
             ]
         }
     }
-
-    pub fn apply_matrix(mut self, matrix: &tataku::Matrix) -> Self {
-        // matrix
-        let pos = cgmath::Vector4::new(
-            self.position[0], 
-            self.position[1], 
-            0.0, 
-            1.0
-        );
-        let new_pos = matrix * pos;
-        self.position = [new_pos.x, new_pos.y];
-
-        self
-    }
 }

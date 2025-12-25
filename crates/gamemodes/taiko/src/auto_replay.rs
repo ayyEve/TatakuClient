@@ -28,7 +28,10 @@ impl AutoReplay {
             let mut queue_index = queue.index;
             let mut note_hit = false;
 
-            for (i, note) in queue.iter_mut().enumerate().skip(queue_index).filter(|(_, note)|time > note.time() && !note.was_hit()) {
+            for (i, note) in queue.iter_mut().enumerate()
+                .skip(queue_index)
+                .filter(|(_, note)| time > note.time())
+            {
                 // note is the note we need to hit
 
                 // if note is a drumroll/spinner, we need to time when to hit it
@@ -37,14 +40,28 @@ impl AutoReplay {
                 // check if we're catching up
                 if catching_up {
                     // pretend the note was hit
-                    note.force_hit();
+                    match note {
+                        HitObject::Note(note) => note.hit(note.time),
+                        HitObject::Drumroll(_) => {},
+                        HitObject::Spinner(spinner) => spinner.hit_count = spinner.hits_required,
+                    }
+
                     queue_index = i;
                     continue;
                 }
 
                 if note.note_type() != NoteType::Note {
-                    // this is a drumroll or a spinner
-                    let end_time = note.end_time(0.0);
+                    let (end_time, hits_to_complete) = match note {
+                        HitObject::Note(_) => unreachable!(),
+                        HitObject::Drumroll(drumroll) => (
+                            drumroll.end_time,
+                            50.0,
+                        ),
+                        HitObject::Spinner(spinner) => (
+                            spinner.end_time,
+                            spinner.hits_required as f32,
+                        ),
+                    };
 
                     // check if time is up
                     if time > end_time {
@@ -54,7 +71,7 @@ impl AutoReplay {
 
                     // check if its time to do another hit
                     let duration = end_time - note.time();
-                    let time_between_hits = duration / (note.hits_to_complete() as f32);
+                    let time_between_hits = duration / hits_to_complete;
 
                     // if its not time to do another hit yet
                     if time - self.last_hit < time_between_hits { break }
@@ -63,8 +80,20 @@ impl AutoReplay {
 
                 // perform the hit
                 self.last_hit = time;
-                let is_kat = note.is_kat();
-                let is_finisher = note.is_finisher();
+                let (is_kat, is_finisher) = match note {
+                    HitObject::Note(note) => (
+                        matches!(note.hit_type, HitType::Kat),
+                        note.base_finisher,
+                    ),
+                    HitObject::Drumroll(drumroll) => (
+                        false,
+                        drumroll.base_finisher,
+                    ),
+                    HitObject::Spinner(spinner) => (
+                        matches!(spinner.last_hit.unwrap_or_default(), HitType::Don),
+                        false,
+                    ),
+                };
 
                 if is_finisher {
                     if is_kat {

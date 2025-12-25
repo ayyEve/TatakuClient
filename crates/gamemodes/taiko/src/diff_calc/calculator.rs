@@ -160,12 +160,10 @@ impl DiffCalc for DifficultyCalculator {
         let g = TaikoGame::new(&g, true, settings)?;
         if g.notes.is_empty() { return Err(errors::beatmap::BeatmapError::InvalidFile.into()) }
         
-        let mut difficulty_hitobjects:Vec<DifficultyHitObject> = Vec::new();
-        for n in g.notes.iter().chain(g.other_notes.iter()) {
-            let x = DifficultyHitObject::new(&**n);
-            difficulty_hitobjects.push(x);
-        }
-        
+        let mut difficulty_hitobjects: Vec<DifficultyHitObject> = g.notes.iter()
+            .chain(g.other_notes.iter())
+            .map(Into::into)
+            .collect();
 
         difficulty_hitobjects.sort_by(|a, b| {
             let a = a.time;

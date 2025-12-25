@@ -41,12 +41,10 @@ pub struct Settings {
     #[setting(text="Big Note Scale", range(1.0, 5.0))]
     pub big_note_multiplier: f32,
 
-    pub hit_position_relative_to_window_size: bool,
-    pub hit_position_relative_height_div: f32,
-    #[setting(text="Playfield Horizontal Offset", range(0.0, 500.0))]
-    pub playfield_x_offset: f32,
-    #[setting(text="Playfield Vertical Offset", range(0.0, 200.0))]
-    pub playfield_y_offset: f32,
+    #[setting(text="Playfield Horizontal Fractional Position", range(0.0, 1.0))]
+    pub playfield_x_pos: f32,
+    #[setting(text="Playfield Vertical Fractional Position", range(0.0, 1.0))]
+    pub playfield_y_pos: f32,
 
     /// hit area raidus multiplier, 1.0 = note radius
     #[setting(text="Hit Area Radius Scale", range(1.0, 5.0))]
@@ -97,10 +95,8 @@ impl Default for Settings {
             hit_area_radius_mult: 1.2,
             playfield_height_padding: 8.0,
             // hit area stuff
-            hit_position_relative_to_window_size: true,
-            hit_position_relative_height_div: 1.375, // 3/8s the way down the screen
-            playfield_x_offset: 200.0,
-            playfield_y_offset: 0.0,
+            playfield_x_pos: 0.2,
+            playfield_y_pos: 3.0 / 8.0,
 
             don_color: Color::from_hex("#E74721").into(),
             kat_color: Color::from_hex("#3797CA").into(),

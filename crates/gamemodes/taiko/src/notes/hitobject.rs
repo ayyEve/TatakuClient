@@ -1,70 +1,83 @@
 use crate::prelude::*;
-use engine::gameplay::HitObject;
 
-pub trait TaikoHitObject: HitObject + Send + Sync {
-    fn is_kat(&self) -> bool { false } // needed for diff calc and autoplay
+#[cfg(feature="graphics")]
+use engine::graphics;
 
-    #[cfg(feature="graphics")] fn get_sv(&self) -> f32;
-    #[cfg(feature="graphics")] fn set_sv(&mut self, sv: f32);
+#[derive(Clone, From)]
+pub enum HitObject {
+    Note(super::Note),
+    Drumroll(super::Drumroll),
+    Spinner(super::Spinner),
+}
 
-    /// does this hit object play a finisher sound when hit?
-    #[cfg(feature="gameplay")] fn finisher_sound(&self) -> bool { false }
-
-    /// used by autoplay, is this note a finisher?
-    fn is_finisher(&self) -> bool { false }
-
-    /// does this object count as a miss if it is not hit?
-    fn causes_miss(&self) -> bool;
-
-    /// returns true if a finisher was successfully hit
-    fn check_finisher(
-        &self,
-        _hit_type: HitType,
-        _time: f32,
-        _game_speed: f32
-    ) -> bool { false }
-
-    #[cfg(feature="graphics")]
-    fn get_playfield(&self) -> Arc<Playfield>;
-    fn set_settings(&mut self, settings: Arc<Settings>);
-
-    #[cfg(feature="graphics")]
-    fn x_at(&self, time: f32) -> f32 {
-        // (self.time() - time) * self.get_sv()
-        ((self.time() - time) / SV_OVERRIDE)
-            * self.get_sv()
-            * self.get_playfield().size.x
-    }
-    #[cfg(feature="graphics")]
-    fn end_x_at(&self, time: f32) -> f32 {
-        ((self.end_time(0.0) - time) / SV_OVERRIDE)
-            * self.get_sv()
-            * self.get_playfield().size.x
+impl HitObject {
+    pub fn time(&self) -> f32 {
+        match self {
+            HitObject::Note(note) => note.time,
+            HitObject::Drumroll(drumroll) => drumroll.time,
+            HitObject::Spinner(spinner) => spinner.time,
+        }
     }
 
-    #[cfg(feature="graphics")]
-    fn time_at(&self, x: f32) -> f32 {
-        -(x / self.get_sv()) + self.time()
+    pub fn note_type(&self) -> engine::beatmaps::NoteType {
+        use engine::beatmaps::NoteType;
+
+        match self {
+            HitObject::Note(_) => NoteType::Note,
+            HitObject::Drumroll(_) => NoteType::Slider,
+            HitObject::Spinner(_) => NoteType::Spinner,
+        }
     }
 
-    fn hit_type(&self) -> HitType {
-        if self.is_kat() { HitType::Kat } else { HitType::Don }
+    pub fn get_speed(&self) -> f32 {
+        match self {
+            HitObject::Note(note) => note.speed,
+            HitObject::Drumroll(drumroll) => drumroll.speed,
+            HitObject::Spinner(spinner) => spinner.speed,
+        }
     }
 
-    fn was_hit(&self) -> bool;
-    fn force_hit(&mut self) {}
+    pub fn set_speed(&mut self, speed: f32) {
+        match self {
+            HitObject::Note(note) => note.speed = speed,
+            HitObject::Drumroll(drumroll) => drumroll.speed = speed,
+            HitObject::Spinner(spinner) => spinner.speed = speed,
+        }
+    }
 
-    fn hit(&mut self, _time: f32, _hit_type: HitType) -> bool { false }
-    fn miss(&mut self, _time: f32) {}
+    pub fn draw(&self, shell: &mut DrawShell) {
+        match self {
+            HitObject::Note(note) => note.draw(shell),
+            HitObject::Drumroll(drumroll) => drumroll.draw(shell),
+            HitObject::Spinner(spinner) => spinner.draw(shell),
+        }
+    }
 
-    fn hits_to_complete(&self) -> u32 { 1 }
+    pub fn reset(&mut self) {
+        match self {
+            HitObject::Note(note) => note.reset(),
+            HitObject::Drumroll(drumroll) => drumroll.reset(),
+            HitObject::Spinner(spinner) => spinner.reset(),
+        }
+    }
 
     #[cfg(feature="graphics")]
-    fn playfield_changed(&mut self, _new_playfield: Arc<Playfield>);
+    pub fn reload_skin(
+        &mut self,
+        source: &graphics::TextureSource,
+        skin_manager: &mut dyn graphics::SkinProvider
+    ) {
+        match self {
+            HitObject::Note(note) => note.reload_skin(source, skin_manager),
+            HitObject::Drumroll(drumroll) => drumroll.reload_skin(source, skin_manager),
+            HitObject::Spinner(spinner) => spinner.reload_skin(source, skin_manager),
+        }
+    }
+}
 
-    /// only used by spinners
-    fn set_required_hits(&mut self, _required_hits: u16) {}
-
-    /// used if no_finisher mod is enabled/disabled
-    fn toggle_finishers(&mut self, _enabled: bool) {}
+pub struct DrawShell<'a> {
+    pub time: f32,
+    pub list: &'a mut engine::graphics::RenderableCollection,
+    pub settings: &'a Settings,
+    pub playfield: &'a Playfield,
 }

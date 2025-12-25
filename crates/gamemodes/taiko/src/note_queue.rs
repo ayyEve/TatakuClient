@@ -2,44 +2,26 @@ use crate::prelude::*;
 
 #[derive(Default)]
 pub struct NoteQueue {
-    pub notes: Vec<Box<dyn TaikoHitObject>>,
+    pub notes: Vec<HitObject>,
     pub index: usize,
 }
 impl NoteQueue {
     pub fn done(&self) -> bool { self.index >= self.notes.len() }
     pub fn next(&mut self) { self.index += 1; }
 
-    // some if missed, bool is if miss judgment should be applied
-    pub fn check_missed(&mut self, time: f32, miss_window: f32) -> Option<bool> {
-        if let Some(note) = self.current_note() {
-            if note.end_time(miss_window) < time {
-                if note.causes_miss() {
-                    note.miss(time);
-                    Some(true)
-                } else {
-                    Some(false)
-                }
-            } else {
-                None
-            }
-        } else {
-            None
-        }
-    }
-    
     #[inline]
-    pub fn current_note(&mut self) -> Option<&mut Box<dyn TaikoHitObject>> {
+    pub fn current_note(&mut self) -> Option<&mut HitObject> {
         self.notes.get_mut(self.index)
     }
     #[inline]
     #[allow(clippy::borrowed_box)]
-    pub fn previous_note(&self) -> Option<&Box<dyn TaikoHitObject>> {
+    pub fn previous_note(&self) -> Option<&HitObject> {
         self.notes.get(self.index - 1)
     }
 }
 
 impl Deref for NoteQueue {
-    type Target = Vec<Box<dyn TaikoHitObject>>;
+    type Target = Vec<HitObject>;
 
     fn deref(&self) -> &Self::Target {
         &self.notes

@@ -10,18 +10,23 @@ pub struct DifficultyHitObject {
     // pub hits_to_complete: u32
 }
 
-impl DifficultyHitObject {
-    pub fn new(base: &dyn TaikoHitObject) -> Self {
-        let time = base.time();
-        // let end_time = base.end_time(0.0);
-        // let hits_to_complete = base.hits_to_complete();
+impl From<&HitObject> for DifficultyHitObject {
+    fn from(hit: &HitObject) -> Self {
+        let time = hit.time();
+        let note_type = hit.note_type();
+
+        let is_kat = match hit {
+            HitObject::Note(note) => matches!(note.hit_type, HitType::Kat),
+            HitObject::Drumroll(_) => false,
+            HitObject::Spinner(spinner) => spinner.last_hit
+                .map(|hit_type| matches!(hit_type, HitType::Kat))
+                .unwrap_or(false),
+        };
 
         Self {
             time,
-            // end_time,
-            // hits_to_complete,
-            note_type: base.note_type(),
-            is_kat: base.is_kat(),
+            note_type,
+            is_kat,
         }
     }
 }
