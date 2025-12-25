@@ -126,13 +126,13 @@ impl Emitter {
             image.color = i.color;
             image.set_pipeline(self.blend_mode);
 
-            let transform = Matrix::identity()
-                .scale(Vector2::ONE * i.scale);
+            let transform= Transform {
+                origin: image.size() / 2.0,
+                scale: Vector2::ONE * i.scale,
+                ..Transform::identity()
+            };
 
-            list.push(Transformed {
-                transform,
-                drawable: image,
-            });
+            list.push(image.with_transform(transform.matrix()));
         }
     }
 

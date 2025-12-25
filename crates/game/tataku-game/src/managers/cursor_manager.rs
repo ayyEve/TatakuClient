@@ -212,35 +212,27 @@ impl CursorManager {
     pub fn draw(&mut self, list: &mut graphics::RenderableCollection) {
         if !self.visible { return }
 
-        let transform = graphics::Transform {
-            pos: self.pos,
-            rotation: self.cursor_rotation,
-            ..graphics::Transform::identity()
-        };
-
         // draw cursor itself
         if let Some(cursor) = self.get_cursor_image().cloned() {
+            let transform = graphics::Transform {
+                origin: cursor.size() / 2.0,
+                pos: self.pos,
+                rotation: self.cursor_rotation,
+                ..graphics::Transform::identity()
+            };
+
             list.push(cursor.with_transform(transform.matrix()));
         } else {
+            let transform = graphics::Transform {
+                pos: self.pos,
+                rotation: self.cursor_rotation,
+                ..graphics::Transform::identity()
+            };
+
             // use font awesome as fallback
             list.push(graphics::Text::new(self.layout.clone())
                 .with_transform(transform.matrix())
             );
-
-            // let mut text = Text::new(
-            //     self.pos,
-            //     32.0,
-            //     c,
-            //     self.settings.cursor_color.color,
-            //     DefaultFont::FontAwesome
-            // );
-            // text.rotation = self.cursor_rotation;
-
-            // if align == Alignment::CENTER {
-            //     let size = text.measure_text();
-            //     text.pos -= size / 2.0;
-            // }
-            // list.push(text);
         }
     }
 
