@@ -37,19 +37,20 @@ impl Trail {
         fill_color: Color,
         border: Option<Border>,
     ) -> impl TatakuRenderable + 'static {
-        let progress= self.progress(time);
+        let progress = self.progress(time);
 
-        Circle::new(
-            fill_color.alpha(Interpolation::lerp(
-                fill_color.a(),
-                0.0,
-                progress
-            )),
-        ).border_maybe(border)
-        .with_transform(Transform {
-            pos: self.position,
-            scale: Vector2::ONE * Interpolation::lerp(start_radius, end_radius, progress),
-            ..Transform::identity()
-        }.matrix())
+        let color = fill_color.alpha(Interpolation::lerp(
+            fill_color.a(),
+            0.0,
+            progress
+        ));
+
+        Circle::new(color)
+            .border_maybe(border)
+            .with_transform(Transform {
+                pos: self.position,
+                scale: Vector2::ONE * Interpolation::lerp(start_radius, end_radius, progress),
+                ..Transform::identity()
+            }.matrix())
     }
 }

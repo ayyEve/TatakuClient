@@ -130,10 +130,10 @@ impl MenuVisualization {
         let Some(cookie) = self.cookie.clone() else { return };
 
         let transform = graphics::Transform {
-            pos: self.bounds_center(),
+            origin: cookie.size() / 2.0, // center
             rotation: self.rotation * 2.0,
             scale: Vector2::ONE * self.current_inner_radius * 2.05 / cookie.size(),
-            ..graphics::Transform::identity()
+            pos: self.bounds_center(),
         };
 
         list.push(cookie.with_transform(transform.matrix()));
@@ -188,8 +188,8 @@ impl MenuVisualization {
             let theta = self.rotation + a * i as f32;
             let theta_vector = Vector2::from_angle(theta);
 
-            let p1 = pos + theta_vector * self.current_inner_radius;
-            let p2 = pos + theta_vector * l;
+            let p1 = theta_vector * self.current_inner_radius;
+            let p2 = theta_vector * l;
 
             list.push(graphics::Line::new(
                 p2 - p1,
@@ -197,7 +197,7 @@ impl MenuVisualization {
                 // COLORS[i % COLORS.len()]
                 if i == self.index { Color::RED } else { BAR_COLOR }
             ).with_transform(tataku::Matrix::identity()
-                .trans(p1)
+                .trans(pos + p1)
             ));
         }
         
@@ -282,7 +282,7 @@ impl MenuVisualization {
             self.cookie = Some(cookie);
         } else {
             self.cookie = skin_manager.get_texture(
-                Path::new("./resources/icon.png"), 
+                Path::new("./resources/icon"),
                 &graphics::TextureSource::Raw, 
                 graphics::SkinUsage::Game, 
                 false
