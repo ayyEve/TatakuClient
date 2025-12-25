@@ -80,7 +80,7 @@ impl SkinManager {
 
         if path.extension().is_none() {
             // skin textures should be png
-            path.set_extension(".png");
+            path.set_extension("png");
         }
 
         // get paths to check for this source
