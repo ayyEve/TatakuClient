@@ -192,7 +192,9 @@ impl ImageStretch {
             }
             ImageStretch::Cover => {
                 // Scale along shortest axis
-                let new_size = if image_size.x < image_size.y {
+                let ratio = image_size / container_size;
+
+                let new_size = if ratio.x < ratio.y {
                     // use container width
                     Vector2::new(
                         container_size.x,

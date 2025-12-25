@@ -282,7 +282,7 @@ impl MenuVisualization {
             self.cookie = Some(cookie);
         } else {
             self.cookie = skin_manager.get_texture(
-                Path::new("./resources/icon"),
+                Path::new("./resources/icon.png"),
                 &graphics::TextureSource::Raw, 
                 graphics::SkinUsage::Game, 
                 false

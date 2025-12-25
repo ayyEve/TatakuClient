@@ -64,35 +64,48 @@ impl SkinManager {
     // try to load a skin from the provided source. does not try fallbacks
     fn load_texture(
         source: &TextureSource,
-        name: &Path, 
+        path: &Path,
         grayscale: bool,
 
         skin_name: &str
     ) -> TextureState {
-        let mut path = name.to_path_buf();
-        let filename = path.file_name().unwrap().to_string_lossy().into_owned();
-        path.pop();
+        let mut path = path.to_owned();
+
+        let Some(mut file_name_2x) = path.file_stem().map(ToOwned::to_owned) else {
+            error!("trying to load directory as texture: {}", path.display());
+            return TextureState::Failed;
+        };
+
+        file_name_2x.push("@2.png");
+
+        if path.extension().is_none() {
+            // skin textures should be png
+            path.set_extension(".png");
+        }
 
         // get paths to check for this source
         // try to load 2x resolution first
         let to_attempt = match source {
             // raw textures wont have a @2x variant
-            TextureSource::Raw => vec![ (filename + ".png", 1.0) ],
+            TextureSource::Raw => vec![ (path, 1.0) ],
 
             // everything else should
             _ => vec![ 
-                (filename.clone() + "@2x.png", 0.5),
-                (filename + ".png", 1.0)
+                (
+                    path.with_file_name(file_name_2x),
+                    0.5
+                ),
+                (path, 1.0)
             ],
         };
 
-        for (tex_name, scale) in to_attempt {
+        for (path, scale) in to_attempt {
             // get the expected path to the texture file 
             let path = match &source {
-                TextureSource::Raw => path.join(&tex_name),
-                TextureSource::Beatmap(beatmap_path) => Path::new(beatmap_path).join(&path).join(&tex_name),
-                TextureSource::Skin => Path::new(SKINS_FOLDER).join(skin_name).join(&path).join(&tex_name),
-                TextureSource::DefaultSkin => Path::new(SKINS_FOLDER).join(DEFAULT_SKIN).join(&path).join(&tex_name),
+                TextureSource::Raw => path,
+                TextureSource::Beatmap(beatmap_path) => Path::new(beatmap_path).join(&path),
+                TextureSource::Skin => Path::new(SKINS_FOLDER).join(skin_name).join(&path),
+                TextureSource::DefaultSkin => Path::new(SKINS_FOLDER).join(DEFAULT_SKIN).join(&path),
             };
 
             // try loading the bytes. if we cant, try the next source 

@@ -1159,8 +1159,22 @@ impl Game {
         let mut render_queue = graphics::RenderableCollection::default();
 
         // draw background image
-        if let Some(img) = &self.background_image {
-            render_queue.push(img.clone());
+        if let Some(img) = self.background_image.clone() {
+            let stretch = graphics::ImageStretch::Cover;
+
+            let scale = stretch.fit_to(
+                img.size(),
+                self.values.game.window_size,
+            );
+
+            let transform = graphics::Transform {
+                origin: img.size() / 2.0, // center
+                scale,
+                pos: self.values.game.window_size / 2.0, // center to the window
+                ..graphics::Transform::identity()
+            };
+
+            render_queue.push(img.with_transform(transform.matrix()));
         }
 
         // draw dim
