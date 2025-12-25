@@ -63,9 +63,7 @@ impl TatakuRenderable for Rectangle {
         });
 
         g.draw_rect(
-            [
-                self.size.x, self.size.y
-            ], 
+            self.size,
             border, 
             self.shape, 
             color, 

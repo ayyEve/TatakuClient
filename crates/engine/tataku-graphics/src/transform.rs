@@ -109,6 +109,8 @@ impl<T> Transformed<T> {
 
 #[cfg(feature="graphics")]
 impl<T: TatakuRenderable> TatakuRenderable for Transformed<T> {
+    fn get_name(&self) -> String { self.drawable.get_name() }
+
     fn get_pipeline(&self) -> GraphicsPipeline {
         self.drawable.get_pipeline()
     }
@@ -147,6 +149,8 @@ impl<T> Scissored<T> {
 
 #[cfg(feature="graphics")]
 impl<T: TatakuRenderable> TatakuRenderable for Scissored<T> {
+    fn get_name(&self) -> String { self.drawable.get_name() }
+
     fn get_pipeline(&self) -> GraphicsPipeline {
         self.drawable.get_pipeline()
     }
@@ -186,6 +190,8 @@ impl<T> MergeDrawOptions<T> {
 
 #[cfg(feature="graphics")]
 impl<T: TatakuRenderable> TatakuRenderable for MergeDrawOptions<T> {
+    fn get_name(&self) -> String { self.drawable.get_name() }
+
     fn get_pipeline(&self) -> GraphicsPipeline {
         self.drawable.get_pipeline()
     }

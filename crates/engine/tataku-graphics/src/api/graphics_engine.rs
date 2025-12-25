@@ -98,7 +98,7 @@ pub trait DrawEngine {
     /// draw a rectangle
     fn draw_rect(
         &mut self,
-        size: [f32; 2],
+        size: Vector2,
         border: Option<Border>,
         shape: Shape,
         color: Color,

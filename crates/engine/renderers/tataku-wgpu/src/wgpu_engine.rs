@@ -1530,7 +1530,10 @@ impl WgpuEngine<'_> {
         transform: tataku::Matrix,
         blend_mode: tataku::BlendMode
     ) {
-        let mut polygon = polygon.iter();
+        let mut polygon = polygon.iter()
+            .copied()
+            .map(|vertex| transform * vertex);
+
         let mut path = LyonPath::builder();
         path.begin(
             polygon.next().map(|p| Point::new(p.x, p.y)).unwrap()
@@ -1543,7 +1546,7 @@ impl WgpuEngine<'_> {
         path.end(true);
         let path = path.build();
 
-        self.tessellate_path(&path, color, border, transform, blend_mode);
+        self.tessellate_path(&path, color, border, blend_mode);
     }
 
     fn tessellate_path(
@@ -1551,7 +1554,6 @@ impl WgpuEngine<'_> {
         path: &LyonPath,
         color: tataku::Color,
         border: Option<f32>,
-        transform: tataku::Matrix,
         blend_mode: tataku::BlendMode
     ) {
         use lyon_tessellation::{
@@ -1606,13 +1608,11 @@ impl WgpuEngine<'_> {
         // convert vertices and indices to their proper values
         let vertices = buffers.vertices
             .into_iter()
-            .map(|n|
-                shaders::standard::Vertex {
-                    position: [n.x, n.y],
-                    color: [color.r(), color.g(), color.b(), color.a()],
-                    ..Default::default()
-                }.apply_matrix(&transform)
-            )
+            .map(|n| shaders::standard::Vertex {
+                position: [n.x, n.y],
+                color: [color.r(), color.g(), color.b(), color.a()],
+                ..Default::default()
+            })
             .collect::<Vec<_>>();
 
         // insert the vertices and indices into the render buffer
@@ -1901,10 +1901,13 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
         let mut path = LyonPath::builder();
         for i in 0..=n {
             let angle = f32::lerp(start, end, i as f32 / n as f32);
-            let p = Point::new(
+
+            let p = tataku::Vector2::new(
                 cx + angle.cos() * cw,
-                cy + angle.sin() * ch
+                cy + angle.sin() * ch,
             );
+            let p = transform * p;
+            let p = Point::new(p.x, p.y);
 
             if i == 0 {
                 path.begin(p);
@@ -1915,7 +1918,7 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
         path.end(false);
         let path = path.build();
 
-        self.tessellate_path(&path, color, None, transform, blend_mode);
+        self.tessellate_path(&path, color, None, blend_mode);
     }
 
     fn draw_circle(
@@ -1989,10 +1992,9 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
         self.reserve_quad(quad, color, transform, blend_mode);
     }
 
-    /// size is [w,h]
     fn draw_rect(
         &mut self,
-        size: [f32; 2],
+        size: tataku::Vector2,
         border: Option<tataku::Border>,
         shape: graphics::Shape,
         color: tataku::Color,
@@ -2000,11 +2002,14 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
         blend_mode: tataku::BlendMode,
     ) {
         // for some reason something gets set to infinity on screen resize and panics the tesselator, this prevents the panic
-        if size.iter().any(|n| !n.is_normal() && *n != 0.0) { return }
+        if [size.x, size.y].into_iter().any(|n| !n.is_normal() && n != 0.0) { return }
+
+        let min = transform * tataku::Vector2::ZERO;
+        let max = transform * size;
 
         let rect = Box2D::new(
-            Point::zero(),
-            Point::new(size[0], size[1]),
+            Point::new(min.x, min.y),
+            Point::new(max.x, max.y),
         );
 
         use lyon_tessellation::path::{ Path, Winding };
@@ -2041,7 +2046,6 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
                 &path,
                 color,
                 None,
-                transform,
                 blend_mode
             );
         }
@@ -2052,7 +2056,6 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
                 &path,
                 border.color,
                 Some(border.width),
-                transform,
                 blend_mode
             );
         }
