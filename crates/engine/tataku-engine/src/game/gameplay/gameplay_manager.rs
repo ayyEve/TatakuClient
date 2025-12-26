@@ -10,13 +10,11 @@ use engine::{
     actions::action::ActionQueue,
     actions::game::GameplayTypeInfo,
     gameplay::{
-        mods::ModManager,
+        mods::Mods,
         judgments::HitJudgment,
-        helpers::{
-            IngameScore,
-            KeyCounter,
-            TimingPointHelper,
-        },
+        IngameScore,
+        KeyCounter,
+        TimingPointProgress,
     }
 };
 
@@ -32,16 +30,16 @@ pub trait GameplayManagerTrait {
     fn score_mut(&mut self) -> &mut IngameScore;
     fn all_scores(&self) -> Vec<&IngameScore>;
     fn all_non_user_scores(&self) -> &[IngameScore];
-    
-    fn mods(&self) -> &ModManager;
+
+    fn mods(&self) -> &Mods;
     fn metadata(&self) -> &BeatmapMeta;
     fn key_counter(&self) -> &KeyCounter;
-    fn timing_points(&self) -> &TimingPointHelper;
+    fn timing_points(&self) -> &TimingPointProgress;
     fn properties(&self) -> &gameplay::GamemodeProperties;
     fn spectators(&mut self) -> &mut online::SpectatorList;
 
     fn judgments(&self) -> &Vec<HitJudgment>;
-    fn health(&self) -> &dyn gameplay::health_manager::HealthManager;
+    fn health(&self) -> &dyn gameplay::health::Health;
 
     fn hit_timings(&self) -> &Vec<HitTiming>;
 
@@ -188,11 +186,11 @@ impl From<GameplayTypeInfo> for GameplayType {
             GameplayTypeInfo::Normal => Self::Normal,
             GameplayTypeInfo::Preview => Self::Preview,
             GameplayTypeInfo::Replay(score) => Self::Replaying { score: *score, current_frame: 0 },
-            
+
             #[cfg(feature="gameplay")]
-            GameplayTypeInfo::Multiplayer => Self::Multiplayer { 
-                last_escape_press: tataku::Instant::now(), 
-                score_send_timer: tataku::Instant::now() 
+            GameplayTypeInfo::Multiplayer => Self::Multiplayer {
+                last_escape_press: tataku::Instant::now(),
+                score_send_timer: tataku::Instant::now()
             },
             #[cfg(feature="gameplay")]
             GameplayTypeInfo::Spectator(a) => Self::Spectator {
@@ -219,7 +217,7 @@ pub struct GameplayDrawShell<'a> {
     pub time: f32,
     pub gameplay_type: &'a GameplayTypeSmall,
     pub current_timing_point: &'a beatmaps::TimingPoint,
-    pub mods: &'a ModManager,
+    pub mods: &'a Mods,
     pub score: &'a IngameScore,
     pub window_size: Vector2,
 }
@@ -235,7 +233,7 @@ pub struct GameplayUpdateShell<'a> {
     pub completed: bool,
 
     /// current mods
-    pub mods: &'a ModManager,
+    pub mods: &'a Mods,
 
     /// the current timing point
     pub current_timing_point: &'a beatmaps::TimingPoint,
@@ -247,7 +245,7 @@ pub struct GameplayUpdateShell<'a> {
     pub score: &'a IngameScore,
 
     // all timing points
-    pub timing_points: &'a TimingPointHelper,
+    pub timing_points: &'a TimingPointProgress,
 
     /// list of actions to be performed
     pub actions: Vec<gameplay::Action>,

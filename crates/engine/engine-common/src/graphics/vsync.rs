@@ -66,14 +66,14 @@ impl core::fmt::Display for Vsync {
 
 
 
-/// helper for reading settings files where vsync was a bool
-pub fn vsync_reader<'de, D: serde::Deserializer<'de>>(deserializer: D) -> core::result::Result<Vsync, D::Error> {
+/// Deserializes vsync as a bool or a variant string.
+pub fn vsync<'de, D: serde::Deserializer<'de>>(deserializer: D) -> core::result::Result<Vsync, D::Error> {
     use std::fmt;
-    use serde::de::{self, Visitor};
+    use serde::de;
     use Vsync::*;
 
-    struct VsyncReader;
-    impl Visitor<'_> for VsyncReader {
+    struct Visitor;
+    impl de::Visitor<'_> for Visitor {
         type Value = Vsync;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -97,17 +97,16 @@ pub fn vsync_reader<'de, D: serde::Deserializer<'de>>(deserializer: D) -> core::
         }
     }
 
-    deserializer.deserialize_any(VsyncReader)
+    deserializer.deserialize_any(Visitor)
 }
 
 
 #[test]
-/// test to make sure the vsync_reader fn works correctly
-fn vsync_reader_test() {
+fn vsync_deserialize_test() {
 
     #[derive(Serialize, Deserialize, Eq, PartialEq, Debug)]
     struct Test {
-        #[serde(deserialize_with = "vsync_reader")]
+        #[serde(deserialize_with = "vsync")]
         v: Vsync
     }
     #[derive(Serialize)]

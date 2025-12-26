@@ -34,7 +34,7 @@ use engine::{
         Hitsound,
         judgments::*,
         GameplayEvent,
-        TimingPointHelper,
+        TimingPointProgress,
         PlayfieldNonsense,
         GamemodeProperties,
         gameplay_manager::*,
@@ -97,7 +97,7 @@ pub struct TaikoGame {
 
     #[default(HitJudgments::Miss)]
     last_judgment: HitJudgment,
-    current_mods: Arc<ModManager>,
+    current_mods: Arc<Mods>,
     healthbar_swap_pending: bool,
 }
 impl TaikoGame {
@@ -105,7 +105,7 @@ impl TaikoGame {
         note_time: f32,
         hit_type: HitType,
         finisher: bool,
-        timing_points: &TimingPointHelper,
+        timing_points: &TimingPointProgress,
     ) -> Vec<Hitsound> {
         let hitsound = match (hit_type, finisher) {
             (HitType::Don, false) => 1, // normal is don
@@ -221,7 +221,7 @@ impl TaikoGame {
         val: V,
         ez_scale: V,
         hr_scale: V,
-        mods: &ModManager
+        mods: &Mods
     ) -> V {
         if mods.has_mod(Easy) {
             val * ez_scale
@@ -234,7 +234,7 @@ impl TaikoGame {
 
 
     #[inline]
-    pub fn od(meta: &BeatmapMeta, mods: &ModManager) -> f32 {
+    pub fn od(meta: &BeatmapMeta, mods: &Mods) -> f32 {
         Self::scale_by_mods(meta.od, 0.5, 1.4, mods)
             .clamp(1.0, 10.0)
     }
@@ -301,7 +301,7 @@ impl Gamemode for TaikoGame {
             Bounds::new(Vector2::ZERO, Vector2::new(1920.0, 1080.0))
         );
 
-        let timing_points = TimingPointHelper::new(
+        let timing_points = TimingPointProgress::new(
             beatmap.get_timing_points(),
             beatmap.slider_velocity()
         );
@@ -753,7 +753,7 @@ impl Gamemode for TaikoGame {
         if self.healthbar_swap_pending {
             self.healthbar_swap_pending = false;
 
-            // reset health helper to default
+            // reset health to default
             shell.add_action(gameplay::Action::ResetHealth); // manager.health = Default::default();
 
             // if we're using battery health
@@ -1015,14 +1015,9 @@ impl Gamemode for TaikoGame {
         }
     }
 
-
-    fn all_notes(&self) -> Vec<&dyn engine::gameplay::HitObject> {
-        vec![]
-    }
-
     fn reset(&mut self, beatmap: &Beatmap) {
         #[cfg(feature="graphics")]
-        let timing_points = TimingPointHelper::new(
+        let timing_points = TimingPointProgress::new(
             beatmap.get_timing_points(),
             beatmap.slider_velocity()
         );
@@ -1288,7 +1283,7 @@ impl Gamemode for TaikoGame {
     fn get_playfield(&self) -> PlayfieldNonsense {
         PlayfieldNonsense::new_simple(self.playfield.bounds)
     }
-    fn properties(&self, timing_points: &TimingPointHelper) -> GamemodeProperties {
+    fn properties(&self, timing_points: &TimingPointProgress) -> GamemodeProperties {
 
         // FIXME: please god optimize this
         let mut sound_list = HashMap::new();

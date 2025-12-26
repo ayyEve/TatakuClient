@@ -3,11 +3,11 @@ pub type Scissor = Option<[f32; 4]>;
 const BASE: [f32; 4] = [f32::MIN, f32::MIN, f32::MAX, f32::MAX];
 
 #[derive(Default)]
-pub struct ScissorManager {
+pub struct ScissorStack {
     scissors: Vec<[f32; 4]>,
     current_scissor: Scissor,
 }
-impl ScissorManager {
+impl ScissorStack {
     pub fn push_scissor(&mut self, scissor: [f32; 4]) {
         self.scissors.push(scissor);
         self.recalc_current_scissor(true);

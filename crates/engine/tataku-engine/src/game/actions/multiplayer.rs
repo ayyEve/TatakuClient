@@ -11,7 +11,7 @@ pub enum MultiplayerAction {
 
     /// Join the provided lobby with the provided password
     JoinLobby {
-        lobby_id: u32, 
+        lobby_id: u32,
         password: String
     },
 
@@ -20,9 +20,9 @@ pub enum MultiplayerAction {
 
     /// Create a lobby
     CreateLobby {
-        name: String, 
-        password: String, 
-        private: bool, 
+        name: String,
+        password: String,
+        private: bool,
         players: u8,
     },
 
@@ -52,8 +52,8 @@ pub enum LobbyAction {
 
     /// Ready up
     Ready,
-    
-    /// Unready 
+
+    /// Unready
     Unready,
 
     /// Leave the current lobby
@@ -81,7 +81,7 @@ pub enum LobbyAction {
     LoadComplete,
 
     /// Notify the lobby that our mods changed
-    UpdateMods(gameplay::mods::ModManager),
+    UpdateMods(gameplay::mods::Mods),
 
     /// Give host to a user id
     ChangeHost(u32),
@@ -100,7 +100,7 @@ pub enum LobbySlotAction {
 
     /// Lock the provided slot
     Lock(u8),
-    
+
     /// Unlock the provided slot
     Unlock(u8),
 

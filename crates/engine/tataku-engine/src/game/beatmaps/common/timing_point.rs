@@ -85,7 +85,7 @@ impl TimingPointSearch for Vec<TimingPoint> {
 
             if t.time <= time {
                 tp = t;
-            } else { 
+            } else {
                 break;
             }
         }
@@ -96,7 +96,7 @@ impl TimingPointSearch for Vec<TimingPoint> {
         for t in self.iter() {
             if t.time <= time {
                 tp = t;
-            } else { 
+            } else {
                 break;
             }
         }

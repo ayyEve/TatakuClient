@@ -703,8 +703,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
 
     }
 
-    // helpers for when we're certain the node is in the tree
-    // private for that reason too
+    // for internal use
     fn context(&self, node: NodeId) -> &TreeData {
         self.get_context(node).unwrap()
     }

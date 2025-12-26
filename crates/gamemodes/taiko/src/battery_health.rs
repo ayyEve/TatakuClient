@@ -4,7 +4,7 @@ use engine::{
     gameplay::{
         IngameScore,
         judgments::HitJudgment,
-        health_manager::HealthManager,
+        health::Health,
     }
 };
 
@@ -32,7 +32,7 @@ impl BatteryHealth {
         }
     }
 }
-impl HealthManager for BatteryHealth {
+impl Health for BatteryHealth {
     fn is_dead(&self, song_over: bool) -> bool {
         if !song_over { return false }
         self.health < PASS_HEALTH
@@ -47,17 +47,17 @@ impl HealthManager for BatteryHealth {
     }
 
     fn apply_hit(&mut self, hit_judgment: &HitJudgment, _score: &IngameScore) {
-        self.health += match hit_judgment.id {
+        let delta = match hit_judgment.id {
             "x300" => self.health_per_300,
             "x100" => self.health_per_100,
             "xmiss" => self.health_per_miss,
             _ => return
         };
 
-        self.validate_health();
-    }
-
-    fn validate_health(&mut self) {
-        self.health = self.health.clamp(0.0, MAX_HEALTH);
+        self.health = f32::clamp(
+            self.health + delta,
+            0.0,
+            MAX_HEALTH
+        );
     }
 }

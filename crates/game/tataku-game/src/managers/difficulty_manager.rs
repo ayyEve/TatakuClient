@@ -10,7 +10,7 @@ use common::{
 };
 use engine::{
     beatmaps::BeatmapMeta,
-    gameplay::mods::ModManager,
+    gameplay::mods::Mods,
     database::DifficultyProvider,
 };
 
@@ -21,17 +21,17 @@ const DIFF_FILE:&str = "diffs.db2";
 pub struct DifficultyManager;
 impl DifficultyManager {
     pub fn save_diff(
-        map: &Arc<BeatmapMeta>, 
-        playmode: &str, 
-        mods: &ModManager,
+        map: &Arc<BeatmapMeta>,
+        playmode: &str,
+        mods: &Mods,
         diff: f32
     ) -> tataku::Result<()> {
         Self::save_diff_entry(
             DifficultyEntry::new(
-            tataku::Cryptography::md5(playmode), 
-            map.beatmap_hash, 
+            tataku::Cryptography::md5(playmode),
+            map.beatmap_hash,
                 mods
-            ), 
+            ),
             diff
         )
     }
@@ -41,7 +41,7 @@ impl DifficultyManager {
         diff: f32
     ) -> tataku::Result<()> {
         let key = entry.as_key();
-        
+
         cacache::write_sync(DIFF_FILE, key, diff.to_le_bytes())
             .map_err(|e| tataku::Error::String(e.to_string()))
             .map(|_| ())
@@ -50,14 +50,14 @@ impl DifficultyManager {
 
 impl DifficultyProvider for DifficultyManager {
     fn get_diff(
-        &mut self, 
-        map: &Arc<BeatmapMeta>, 
-        playmode: &str, 
-        mods: &ModManager
+        &mut self,
+        map: &Arc<BeatmapMeta>,
+        playmode: &str,
+        mods: &Mods
     ) -> tataku::Result<f32> {
         let diff_entry = DifficultyEntry::new(
-            tataku::Cryptography::md5(playmode), 
-            map.beatmap_hash, 
+            tataku::Cryptography::md5(playmode),
+            map.beatmap_hash,
             mods
         );
 
@@ -82,7 +82,7 @@ pub struct DifficultyEntry {
     pub mods: Md5Hash,
 }
 impl DifficultyEntry {
-    pub fn new(playmode: impl Into<Md5Hash>, map_hash: Md5Hash, mods: &ModManager) -> Self {
+    pub fn new(playmode: impl Into<Md5Hash>, map_hash: Md5Hash, mods: &Mods) -> Self {
         Self {
             playmode: playmode.into(),
             map_hash,

@@ -20,7 +20,7 @@ use engine::{
         widgets::*,
         IngameScore,
         GamemodeInfo,
-        mods::ModManager,
+        mods::Mods,
     },
 };
 
@@ -239,7 +239,7 @@ impl Cache {
         score: &IngameScore,
         info: &GamemodeInfo,
     ) -> String {
-        let score_mods = ModManager::short_mods_string(
+        let score_mods = Mods::short_mods_string(
             &score.mods,
             false,
             info

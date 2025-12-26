@@ -26,7 +26,7 @@ use engine::{
         Gamemode,
         HitObject,
         GameplayEvent,
-        TimingPointHelper,
+        TimingPointProgress,
         PlayfieldNonsense,
         GamemodeProperties,
         gameplay_manager::*,
@@ -63,8 +63,8 @@ pub struct UTypingGame {
 }
 impl UTypingGame {
     pub fn get_playfield(
-        settings: &TaikoSettings, 
-        bounds: Bounds, 
+        settings: &TaikoSettings,
+        bounds: Bounds,
         full_window: bool
     ) -> UTypingPlayfield {
         let half_note_width = settings.note_radius * settings.big_note_multiplier;
@@ -81,7 +81,7 @@ impl UTypingGame {
 
         // load hit_position
         let base = if settings.hit_position_relative_to_window_size {
-            bounds.size - Vector2::new(bounds.size.x, bounds.size.y / settings.hit_position_relative_height_div) 
+            bounds.size - Vector2::new(bounds.size.x, bounds.size.y / settings.hit_position_relative_height_div)
         } else { Vector2::ZERO };
 
         let hit_position = bounds.pos + base + Vector2::new(x_offset + half_note_width, y_offset);
@@ -91,7 +91,7 @@ impl UTypingGame {
             height,
             hit_position
         }
-    } 
+    }
 
     pub fn update_playfield(&mut self, bounds: Bounds, full_window: bool) {
         self.playfield = Arc::new(Self::get_playfield(&self.game_settings, bounds, full_window));
@@ -100,7 +100,7 @@ impl UTypingGame {
         self.notes.iter_mut().for_each(|n| n.update_playfield(self.playfield.clone()));
 
         // update timing bars
-        #[cfg(feature="graphics")] 
+        #[cfg(feature="graphics")]
         self.timing_bars.iter_mut().for_each(|n| n.update_playfield(self.playfield.clone()));
     }
 }
@@ -135,9 +135,9 @@ impl Gamemode for UTypingGame {
 
                     // info!("adding {} at {time}", note.text);
                     s.notes.push(UTypingNote::new(
-                        time, 
-                        note.text.clone(), 
-                        settings.clone(), 
+                        time,
+                        note.text.clone(),
+                        settings.clone(),
                         playfield.clone(),
                     ));
                 }
@@ -148,9 +148,9 @@ impl Gamemode for UTypingGame {
                 for note in beatmap.def.hit_objects.iter() {
                     // info!("adding {} at {}", note.text, note.time);
                     s.notes.push(UTypingNote::new(
-                        note.time as f32, 
-                        note.text.clone(), 
-                        settings.clone(), 
+                        note.time as f32,
+                        note.text.clone(),
+                        settings.clone(),
                         playfield.clone(),
                     ));
                 }
@@ -158,7 +158,7 @@ impl Gamemode for UTypingGame {
             _ => return Err(errors::beatmap::BeatmapError::UnsupportedMode.into()),
         }
 
-        
+
         if s.notes.is_empty() { return Err(tataku::Error::Beatmap(errors::beatmap::BeatmapError::InvalidFile)); }
         s.notes.sort_by(|a, b|a.time().partial_cmp(&b.time()).unwrap());
         s.end_time = s.notes.iter().last().unwrap().time();
@@ -167,7 +167,7 @@ impl Gamemode for UTypingGame {
     }
 
     fn handle_replay_frame(
-        &mut self, 
+        &mut self,
         frame: ReplayFrame,
         state: &mut GameplayUpdateShell
     ) {
@@ -189,8 +189,8 @@ impl Gamemode for UTypingGame {
 
         let hit_windows = vec![
             (UTypingHitJudgment::X300, 0.0..self.hitwindow_300),
-            (UTypingHitJudgment::X100, self.hitwindow_300..self.hitwindow_100), 
-            (UTypingHitJudgment::Miss, self.hitwindow_100..self.hitwindow_miss), 
+            (UTypingHitJudgment::X100, self.hitwindow_300..self.hitwindow_100),
+            (UTypingHitJudgment::Miss, self.hitwindow_100..self.hitwindow_miss),
         ];
 
         if let Some(judgment) = self.notes.check(input_char, frame.time, &hit_windows, state) {
@@ -210,9 +210,9 @@ impl Gamemode for UTypingGame {
 
     fn handle_gameplay_event(&mut self, event: GameplayEvent) {
         match event {
-            GameplayEvent::SetBounds { 
-                bounds, 
-                full_window 
+            GameplayEvent::SetBounds {
+                bounds,
+                full_window
             } => {
                 self.update_playfield(bounds, full_window);
             }
@@ -222,7 +222,7 @@ impl Gamemode for UTypingGame {
     }
 
     fn update(
-        &mut self, 
+        &mut self,
         state: &mut GameplayUpdateShell
     ) {
         // do autoplay things
@@ -286,7 +286,7 @@ impl Gamemode for UTypingGame {
                 self.notes.next();
             }
         }
-        
+
 
         // update notes
         for note in self.notes.iter_mut() { note.update(state.time) }
@@ -300,13 +300,13 @@ impl Gamemode for UTypingGame {
             }
             return;
         }
-        
+
         // TODO: might move tbs to a (time, speed) tuple
-        #[cfg(feature="graphics")] 
+        #[cfg(feature="graphics")]
         for tb in self.timing_bars.iter_mut() { tb.update(state.time); }
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn draw(&mut self, state: GameplayDrawShell, list: &mut graphics::RenderableCollection) {
 
         // draw the playfield
@@ -323,22 +323,15 @@ impl Gamemode for UTypingGame {
 
         // draw timing lines
         for tb in self.timing_bars.iter_mut() { tb.draw(state.time, list); }
-        
+
         // draw notes
         for note in self.notes.iter_mut() { note.draw(state.time, list); }
     }
 
-
-    fn all_notes(&self) -> Vec<&dyn engine::gameplay::HitObject> {
-        self.notes.iter()
-            .map(|i| i as &dyn engine::gameplay::HitObject)
-            .collect::<Vec<&dyn engine::gameplay::HitObject>>()
-    }
-        
     fn reset(&mut self, beatmap: &Beatmap) {
-        #[cfg(feature="graphics")] 
-        let timing_points = TimingPointHelper::new(beatmap.get_timing_points(), beatmap.slider_velocity());
-        
+        #[cfg(feature="graphics")]
+        let timing_points = TimingPointProgress::new(beatmap.get_timing_points(), beatmap.slider_velocity());
+
         for note in self.notes.iter_mut() {
             note.reset();
 
@@ -350,7 +343,7 @@ impl Gamemode for UTypingGame {
             //     note.set_sv(sv);
             // }
         }
-        
+
         // TODO: use proper values lol
         let od = 0.0; //beatmap.get_beatmap_meta().od;
         // setup hitwindows
@@ -359,7 +352,7 @@ impl Gamemode for UTypingGame {
         self.hitwindow_300 = map_difficulty(od, 50.0, 35.0, 20.0);
 
         // setup timing bars
-        #[cfg(feature="graphics")] 
+        #[cfg(feature="graphics")]
         if self.timing_bars.is_empty() {
             // load timing bars
             let parent_tps = timing_points.iter().filter(|t|!t.is_inherited()).collect::<Vec<&TimingPoint>>();
@@ -398,13 +391,13 @@ impl Gamemode for UTypingGame {
 
             trace!("created {} timing bars", self.timing_bars.len());
         }
-        
+
         // reset hitcache times
         // self.hit_cache.iter_mut().for_each(|(_, t)| *t = -999.9);
     }
 
 
-    #[cfg(feature="gameplay")] 
+    #[cfg(feature="gameplay")]
     fn skip_intro(&mut self, game_time: f32) -> Option<f32> {
         // if self.note_index > 0 {return}
 
@@ -430,17 +423,17 @@ impl Gamemode for UTypingGame {
         //         manager.lead_in_time = 0.01;
         //     }
         // }
-        
+
         if time < 0.0 { return None }
         Some(time)
     }
 
     fn force_update_settings(&mut self, _settings: &engine::Settings) {}
-    
+
     #[cfg(feature="graphics")]
     fn reload_skin(
-        &mut self, 
-        _beatmap_path: &str, 
+        &mut self,
+        _beatmap_path: &str,
         skin_manager: &mut dyn graphics::SkinProvider
     ) -> graphics::TextureSource {
         for i in self.notes.iter_mut() {
@@ -449,29 +442,29 @@ impl Gamemode for UTypingGame {
         graphics::TextureSource::Skin
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn get_playfield(&self) -> PlayfieldNonsense {
         PlayfieldNonsense::new_simple(self.playfield.bounds)
     }
-    fn properties(&self, _: &TimingPointHelper) -> GamemodeProperties {
-        GamemodeProperties { 
-            info: &crate::GAME_INFO, 
-            keys: Vec::new(), 
-            end_time: self.end_time, 
-            show_cursor: false, 
+    fn properties(&self, _: &TimingPointProgress) -> GamemodeProperties {
+        GamemodeProperties {
+            info: &crate::GAME_INFO,
+            keys: Vec::new(),
+            end_time: self.end_time,
+            show_cursor: false,
             audio_prefix: String::new(),
             timing_bar_things: vec![
                 (self.hitwindow_100,  Color::new(0.3411, 0.8901, 0.0745, 1.0)),
                 (self.hitwindow_300,  Color::new(0.1960, 0.7372, 0.9058, 1.0)),
                 (self.hitwindow_miss, Color::new(0.8549, 0.6823, 0.2745, 1.0))
-            ], 
+            ],
             sound_list: Vec::new(),
         }
     }
 
 
-    
-    #[cfg(feature="gameplay")] 
+
+    #[cfg(feature="gameplay")]
     fn handle_input(&mut self, input: input::InputEvent) -> Option<ReplayAction> {
         match input.event {
             input::InputType::KeyPress(key) => {

@@ -59,7 +59,7 @@ pub mod common {
     pub use crate::data::Take;
     pub use crate::data::ArcStr;
     pub use crate::math::Interpolation;
-    pub use crate::math::MatrixHelpers;
+    pub use crate::math::MatrixExt;
 }
 
 // proc macro exports

@@ -23,7 +23,7 @@ use engine::{
     },
     gameplay::{
         GamemodeInfos,
-        mods::ModManager,
+        mods::Mods,
         difficulty_value::GetDiffValue,
     },
 };
@@ -90,7 +90,7 @@ impl BeatmapManager {
         &mut self,
         sort_by: SortBy,
         group_by: GroupBy,
-        mods: &ModManager,
+        mods: &Mods,
         playmode: &str,
         diff_manager: &mut impl DifficultyProvider,
     ) {
@@ -411,7 +411,7 @@ impl BeatmapManager {
 impl BeatmapManager {
     pub fn refresh_maps(
         &mut self,
-        current_mods: &ModManager,
+        current_mods: &Mods,
         playmode: &str,
         sort_by: SortBy,
         group_by: GroupBy,
@@ -425,7 +425,7 @@ impl BeatmapManager {
 
     pub fn apply_filter(
         &mut self,
-        mods: &ModManager,
+        mods: &Mods,
         playmode: &str,
         sort_by: SortBy,
         diff_manager: &mut dyn DifficultyProvider,

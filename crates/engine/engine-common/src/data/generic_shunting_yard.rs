@@ -346,7 +346,7 @@ pub trait GenericShuntingYard<'rpn, 'values: 'rpn> {
         matches!(last.get_type(), _ShuntingYardTokenType::Function)
     }
 
-    fn get_function_helper(
+    fn function_args(
         function: &str,
         needed_arg_count: usize,
         provided_arg_count: usize,

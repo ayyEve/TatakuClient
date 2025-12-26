@@ -1,7 +1,7 @@
 use crate::*;
 use common::reflect::Reflect;
 
-use settings::buildable_settings_provider::*;
+use settings::provider::*;
 
 pub struct SettingsBuilder<'a> {
     pub values: &'a mut dyn Reflect,
@@ -30,16 +30,16 @@ impl<'a> SettingsBuilder<'a> {
     }
 
     pub fn add_item(
-        &mut self, 
+        &mut self,
         setting: BuildableSetting,
     ) {
-        let Some(category) = &mut self.current_category 
+        let Some(category) = &mut self.current_category
         else { panic!("no current category when adding {}", setting.path) };
 
         category.settings.push(Arc::new(setting));
     }
     pub fn add_category<T: Into<String>>(
-        &mut self, 
+        &mut self,
         name: impl Into<String>,
         icon: Option<T>,
     ) {

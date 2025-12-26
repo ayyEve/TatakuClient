@@ -15,7 +15,6 @@ macro_rules! check_bounds {
 pub trait Interpolation {
     fn lerp(start: Self, end: Self, amount: f32) -> Self;
 
-    // helpers since many of the easing fns are just different powers
     fn ease_in_exp(start: Self, end: Self, amount: f32, pow: i32) -> Self;
     fn ease_out_exp(start: Self, end: Self, amount: f32, pow: i32) -> Self;
     fn ease_inout_exp(start: Self, end: Self, amount: f32, pow: i32) -> Self;
@@ -68,7 +67,6 @@ impl<T> Interpolation for T where T: Copy + std::ops::Add<Output=T> + std::ops::
         start + (end - start) * amount
     }
 
-    // helpers
     fn ease_in_exp(start: T, end: T, amount: f32, pow: i32) -> T {
         check_bounds!(start, end, amount);
         Self::lerp(start, end, amount.powi(pow))

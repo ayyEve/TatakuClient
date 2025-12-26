@@ -14,7 +14,7 @@ pub fn read_file(path: impl AsRef<Path>) -> std::io::Result<Vec<u8>> {
     f
 }
 
-/// helper for the read_lines functions
+/// open file and measure how long it took
 fn open_file(path: impl AsRef<Path>) -> std::io::Result<File>{
     let time = Instant::now();
     let f = File::open(&path);

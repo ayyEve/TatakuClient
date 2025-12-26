@@ -59,7 +59,7 @@ pub struct Game {
     #[cfg(feature="graphics")] pub(super) xml_test_manager: Option<XmlTestManager>,
     #[cfg(feature="graphics")] pub(super) notification_manager: NotificationManager,
     #[cfg(feature="graphics")] pub(super) gameplay_managers: HashMap<GameplayId, (GameplayManager, actions::game::NewManager)>,
-    
+
     #[cfg(feature="gameplay")] pub(super) input_manager: input::InputManager,
     #[cfg(feature="gameplay")] pub(super) spectator_manager: Option<Box<SpectatorManager>>,
     #[cfg(feature="gameplay")] pub(super) multiplayer_manager: Option<Box<MultiplayerManager>>,
@@ -82,7 +82,7 @@ pub struct Game {
     #[cfg(feature="graphics")] background_loader: Option<engine::io::AsyncLoader<Option<graphics::Image>>>,
     // spec_watch_action: SpectatorWatchAction,
 
-    pub(super) mods_queue: Vec<engine::gameplay::mods::ModManager>,
+    pub(super) mods_queue: Vec<engine::gameplay::mods::Mods>,
 
     pub values: ValueCollection,
 }
@@ -112,13 +112,13 @@ impl Game {
             #[cfg(feature="graphics")] wallpapers: Vec::new(),
             #[cfg(feature="graphics")] background_image: None,
             #[cfg(feature="graphics")] volume_controller: interface::VolumeControl::default(),
-            
+
             // managers
             #[cfg(feature="gameplay")] spectator_manager: None,
             #[cfg(feature="gameplay")] multiplayer_manager: None,
             #[cfg(feature="gameplay")] pending_gameplay_manager: None,
             #[cfg(feature="gameplay")] input_manager: input::InputManager::default(),
-            #[cfg(feature="gameplay")] 
+            #[cfg(feature="gameplay")]
             audio_manager: AudioManager::init_audio(audio_engines)
                 .expect("failed to initialize audio engine!"),
 
@@ -138,7 +138,7 @@ impl Game {
             #[cfg(feature="graphics")] custom_menu_manager: CustomMenuManager::default(),
             #[cfg(feature="graphics")] notification_manager: NotificationManager::default(),
             #[cfg(feature="graphics")] text_layout_contexts: ui::widget::TextLayoutContexts::new(),
-            
+
             integrations: Vec::new(),
             current_state: GameState::None,
             queued_state: GameState::None,
@@ -160,7 +160,7 @@ impl Game {
     }
 
     #[cfg(feature="graphics")]
-    pub fn make_xml_helper(&mut self, path: String) {
+    pub fn load_xml_test(&mut self, path: String) {
         let mut tester = XmlTestManager::default();
         if tester.load_file(
             path,
@@ -235,7 +235,7 @@ impl Game {
                 .register_fonts(data.into(), None);
 
             font_context.collection.append_generic_families(
-                parley::GenericFamily::Emoji, 
+                parley::GenericFamily::Emoji,
                 ids.into_iter().map(|(i, _)| i)
             );
         }
@@ -246,11 +246,11 @@ impl Game {
 
         #[cfg(feature="graphics")] {
             self.init_fonts();
-            
+
             // init the default cursor
             self.cursor_manager.reload_skin(&mut self.skin_manager);
             self.cursor_manager.update_settings(
-                self.settings.cursor_settings.clone(), 
+                self.settings.cursor_settings.clone(),
                 &mut self.actions
             );
             self.cursor_manager.handle_cursor_action(
@@ -288,7 +288,7 @@ impl Game {
         self.values.values.settings.gamemode_settings.build(
             self.values.values.global.gamemode_infos.clone()
         );
-        
+
         #[cfg(feature="ui")] {
             let mut settings = self.settings.clone();
             settings.init(&mut self.values, "settings".to_string());
@@ -373,14 +373,14 @@ impl Game {
                         notify::event::DataChange::Content,
                     )),
                     ..
-                }) = e { 
+                }) = e {
                     let _ = sender.send(());
                 };
             }).unwrap();
 
             notify::Watcher::watch(
-                &mut watcher, 
-                Path::new(&settings.save_path), 
+                &mut watcher,
+                Path::new(&settings.save_path),
                 notify::RecursiveMode::NonRecursive,
             ).unwrap();
 
@@ -501,7 +501,7 @@ impl Game {
         }
 
     }
-    
+
     #[cfg(feature="graphics")]
     fn reload_skin(&mut self) {
         self.skin_manager.change_skin(
@@ -512,9 +512,9 @@ impl Game {
         self.notification_manager.reload_skin(&mut self.skin_manager);
 
         self.ui_manager.reload_skin(
-            &mut self.values, 
-            &mut self.actions, 
-            &mut self.skin_manager, 
+            &mut self.values,
+            &mut self.actions,
+            &mut self.skin_manager,
             &mut self.text_layout_contexts
         );
 
@@ -645,7 +645,7 @@ impl Game {
             }
         }
 
-        
+
         // update counters
         #[cfg(feature="graphics")] {
             self.fps_counters.update_display.increment();
@@ -694,15 +694,15 @@ impl Game {
                 }
     
                 manager.update(
-                    &mut self.values, 
+                    &mut self.values,
                     &mut self.text_layout_contexts,
                     &mut self.actions,
                 );
-    
+
                 if manager.completed() {
                     manager.on_complete();
                 }
-    
+
                 true
             });
 
@@ -759,7 +759,7 @@ impl Game {
 
         // update download manager
         self.values.download_manager.update(
-            &mut self.actions, 
+            &mut self.actions,
             &mut self.text_layout_contexts,
         );
 
@@ -809,7 +809,7 @@ impl Game {
 
                     // update, then check if complete
                     manager.update(
-                        &mut self.values, 
+                        &mut self.values,
                         &mut self.text_layout_contexts,
                         &mut self.actions,
                     );
@@ -1273,13 +1273,13 @@ impl Game {
 
         // volume control
         self.volume_controller.draw(
-            &mut render_queue, 
+            &mut render_queue,
             &mut self.text_layout_contexts
         );
 
         // draw cursor
         self.cursor_manager.draw(&mut render_queue);
-        
+
         // toss the items to the window to render
         self.window.send_event(actions::window::WindowAction::RenderData(render_queue.take()));
 
@@ -1520,7 +1520,6 @@ impl Game {
         // debug!("handling action: {action:?}");
 
         match action {
-            actions::Action::None => {},
             actions::Action::Delayed(action, delay) => {
                 self.task_manager.add_task(Box::new(DelayTask::new(
                     ActionTask::new(action),
@@ -1582,7 +1581,7 @@ impl Game {
             #[cfg(feature="graphics")]
             actions::Action::CursorAction(action)
                 => self.cursor_manager.handle_cursor_action(
-                    action, 
+                    action,
                     &mut self.text_layout_contexts
                 ),
 
@@ -1700,7 +1699,7 @@ impl Game {
         let path = path.as_ref();
         info!("File dropped: {path:?}");
 
-        let Some(ext) = path.extension() 
+        let Some(ext) = path.extension()
         else { return };
 
 
@@ -1810,7 +1809,7 @@ impl Game {
                 );
             }
         }
-    
+
     }
 
     #[cfg(feature="graphics")]
@@ -2180,7 +2179,7 @@ impl FpsCounters {
             ),
         }
     }
-    
+
     fn window_size_changed(&mut self, window_size: Vector2) {
         self.update_display.window_size_changed(window_size);
         self.fps_display.window_size_changed(window_size);

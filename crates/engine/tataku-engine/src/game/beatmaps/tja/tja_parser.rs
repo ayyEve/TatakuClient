@@ -1,9 +1,8 @@
 use crate::*;
 use beatmaps::tja::*;
 
-/// helper for parsing .tja files
 #[derive(Default)]
-pub(super) struct TjaParser {
+pub(super) struct Tja {
     title: ArcStr,
     title_en: ArcStr,
 
@@ -19,12 +18,12 @@ pub(super) struct TjaParser {
     audio_filename: ArcStr,
     image_filename: ArcStr,
 
-    current_course: ParseCourse,
-    courses: Vec<ParseCourse>,
+    current_course: Course,
+    courses: Vec<Course>,
 
     course_lines: Vec<ArcStr>
 }
-impl TjaParser {
+impl Tja {
     pub fn parse<'a>(
         mut self, 
         lines: impl Iterator<Item=&'a str>,
@@ -43,7 +42,7 @@ impl TjaParser {
                 if !self.current_course.is_valid() {
 
                     let c = self.current_course.course.take();
-                    self.current_course = ParseCourse {
+                    self.current_course = Course {
                         course: TjaBeatmap {
                             course_name: c.course_name,
                             course_creator: c.course_creator,
@@ -53,7 +52,7 @@ impl TjaParser {
                             ..self.get_default_beatmap()
                         },
 
-                        ..ParseCourse::new(&self)
+                        ..Course::new(&self)
                     }
                 }
 
@@ -126,7 +125,7 @@ impl TjaParser {
     }
 
     pub fn complete_course(&mut self) {
-        let mut course = ParseCourse::new(self);
+        let mut course = Course::new(self);
         std::mem::swap(&mut self.current_course, &mut course);
 
         let lines = self.course_lines.iter()
@@ -142,7 +141,7 @@ impl TjaParser {
 
 
 #[derive(Default)]
-struct ParseCourse {
+struct Course {
     course: TjaBeatmap,
 
     /// list of required hits for the balloons
@@ -164,8 +163,8 @@ struct ParseCourse {
     in_song: bool,
     complete: bool,
 }
-impl ParseCourse {
-    pub fn new(parser: &TjaParser) -> Self { 
+impl Course {
+    pub fn new(parser: &Tja) -> Self {
         Self {
             course: parser.get_default_beatmap(),
             current_time: -parser.offset * 1000.0,

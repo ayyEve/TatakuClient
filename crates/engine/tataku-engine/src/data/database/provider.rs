@@ -7,23 +7,23 @@ pub trait DatabaseProvider: BeatmapProvider + BeatmapPreferencesProvider + Score
 pub trait BeatmapPreferencesProvider {
     // beatmap prefs
     fn get_beatmap_preferences(
-        &self, 
+        &self,
         map: Md5Hash,
     ) -> tataku::Result<data::BeatmapPreferences>;
     fn set_beatmap_preferences(
-        &mut self, 
+        &mut self,
         map: Md5Hash,
         prefs: &data::BeatmapPreferences,
     ) -> tataku::Result<()>;
 
     // beatmap playmode prefs
     fn get_beatmap_playmode_preferences(
-        &self, 
+        &self,
         map: Md5Hash,
         playmode: &str,
     ) -> tataku::Result<data::BeatmapPlaymodePreferences>;
     fn set_beatmap_playmode_preferences(
-        &mut self, 
+        &mut self,
         map: Md5Hash,
         playmode: &str,
         prefs: &data::BeatmapPlaymodePreferences
@@ -50,17 +50,17 @@ pub trait BeatmapProvider {
 
 pub trait DifficultyProvider: Send + Sync {
     fn get_diff(
-        &mut self, 
-        map: &Arc<BeatmapMeta>, 
-        playmode: &str, 
-        mods: &engine::gameplay::ModManager
+        &mut self,
+        map: &Arc<BeatmapMeta>,
+        playmode: &str,
+        mods: &engine::gameplay::Mods
     ) -> tataku::Result<f32>;
 }
 
 pub trait ScoreProvider {
     fn get_scores(
-        &self, 
-        map: Md5Hash, 
+        &self,
+        map: Md5Hash,
         playmode: &str,
         infos: &engine::gameplay::GamemodeInfos,
     ) -> tataku::Result<Vec<common::Score>>;

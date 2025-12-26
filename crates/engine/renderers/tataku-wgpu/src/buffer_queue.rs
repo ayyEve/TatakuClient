@@ -8,14 +8,14 @@ pub(crate) struct RenderBufferQueue<B:RenderBufferable> {
     recording_buffer: Option<Box<B>>,
 }
 impl<B:RenderBufferable> RenderBufferQueue<B> {
-    /// inline helper to create a render buffer on the queue
     pub fn init<'a>(
-        mut self, 
         device: &wgpu::Device, 
         pipeline: impl Into<WgpuPipeline<'a>>
     ) -> Self {
-        self.create_render_buffer(device, pipeline.into());
-        self
+        let mut s = Self::default();
+
+        s.create_render_buffer(device, pipeline.into());
+        s
     }
 
     /// Get the first used buffer

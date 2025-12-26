@@ -2,7 +2,7 @@ use std::f32::consts::PI;
 use crate::prelude::*;
 use tataku::Vector2;
 
-// this is essentially osu's math helper
+// this is essentially osu's math
 pub const SLIDER_DETAIL_LEVEL:u32 = 50;
 pub const TWO_PI:f32 = PI * 2.0;
 

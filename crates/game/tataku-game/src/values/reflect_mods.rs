@@ -2,7 +2,7 @@ use crate::prelude::*;
 use common::reflect::*;
 
 use engine::gameplay::mods::{
-    ModManager,
+    Mods,
     GameplayMod,
     GameplayModGroup,
 };
@@ -18,7 +18,7 @@ pub struct ReflectModGroup {
 impl ReflectModGroup {
     pub fn from_group(
         group: &GameplayModGroup,
-        mods: &ModManager,
+        mods: &Mods,
     ) -> Self {
         Self {
             name: group.name.clone(),
@@ -28,7 +28,7 @@ impl ReflectModGroup {
         }
     }
 
-    pub fn update(&mut self, mods: &ModManager) {
+    pub fn update(&mut self, mods: &Mods) {
         for m in self.mods.iter_mut() {
             m.enabled = mods.has_mod(&m.id);
         }
@@ -59,7 +59,7 @@ pub struct ReflectMod {
 impl ReflectMod {
     fn from_mod(
         inner: GameplayMod,
-        mods: &ModManager
+        mods: &Mods
     ) -> Self {
         Self {
             id: inner.id.to_owned(),

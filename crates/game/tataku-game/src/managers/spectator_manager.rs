@@ -18,7 +18,7 @@ use common::{
 use engine::{
     actions,
     Notification,
-    data::ValueChangeHelper,
+    data::ValueChange,
     actions::{
         game::{
             GameplayTypeInfo,
@@ -31,7 +31,7 @@ use engine::{
     },
     gameplay::{
         GamemodeInfos,
-        mods::ModManager,
+        mods::Mods,
         gameplay_manager::{
             SpectatorState,
             GameplayManagerTrait,
@@ -52,14 +52,13 @@ pub struct SpectatorManager {
 
     /// list of id,username for other spectators
     pub spectator_cache: HashMap<u32, ArcStr>,
-    new_map: ValueChangeHelper<Md5Hash>,
-    // own_beatmap: ValueChangeHelper<Arc<BeatmapMeta>>,
+    new_map: ValueChange<Md5Hash>,
 
     infos: GamemodeInfos,
 }
 impl SpectatorManager {
     pub fn new(
-        host_id: u32, 
+        host_id: u32,
         host_username: impl Into<ArcStr>,
         infos: GamemodeInfos,
     ) -> Self {
@@ -73,8 +72,7 @@ impl SpectatorManager {
             spectator_cache: HashMap::new(),
             host_map: None,
 
-            // own_beatmap: ValueChangeHelper::new("map.hash"),
-            new_map: ValueChangeHelper::new("global.new_map_hash"),
+            new_map: ValueChange::new("global.new_map_hash"),
         }
     }
 
@@ -83,17 +81,17 @@ impl SpectatorManager {
     }
 
     fn start_game(
-        &mut self, 
-        values: &ValueCollection, 
+        &mut self,
+        values: &ValueCollection,
         current_time: f32,
         actions: &mut actions::ActionQueue,
         database: &dyn engine::database::DatabaseProvider,
     ) -> Option<Box<GameplayManager>> {
         trace!("Trying to watch host play a map");
-        let HostMap { 
-            map_hash, 
-            playmode, 
-            mods 
+        let HostMap {
+            map_hash,
+            playmode,
+            mods
         } = self.host_map.clone()?;
 
         // see if our current map is the host's map
@@ -102,10 +100,11 @@ impl SpectatorManager {
         if hash != map_hash { return None }
 
         match GameplayManager::create(
-            &self.infos, 
-            &playmode, 
-            map, 
-            mods.clone(), 
+            &self.infos,
+            &playmode,
+            map,
+            Some(current_time.max(0.0)),
+            mods.clone(),
             &values.settings,
             database,
         ) {
@@ -113,7 +112,7 @@ impl SpectatorManager {
                 // set manager things
                 manager.add_action(actions::gameplay::GameplayAction::ApplyMods(mods));
 
-                manager.set_mode(GameplayTypeInfo::Spectator(Box::new(SpectatorGameplayInfo { 
+                manager.set_mode(GameplayTypeInfo::Spectator(Box::new(SpectatorGameplayInfo {
                     host_id: self.host_id,
                     host_username: self.host_username.clone(),
                     pending_frames: self.frames.take(),
@@ -121,20 +120,13 @@ impl SpectatorManager {
                 })).into());
 
                 // manager.replay.score_data = Some(Score::new(map.beatmap_hash, self.host_username.clone(), mode.clone()));
-                manager.on_start = Some(Box::new(move |manager| {
-                    trace!("Jumping to time {current_time}");
-                    manager.add_action(actions::gameplay::GameplayAction::JumpToTime { 
-                        time: current_time.max(0.0), 
-                        skip_intro: current_time > 0.0,
-                    });
-                }));
 
                 return Some(Box::new(manager));
             }
 
             Err(e) => actions.push(
                 Notification::new_error(
-                    "Error loading spec beatmap", 
+                    "Error loading spec beatmap",
                     e
                 ).into()
             ),
@@ -150,7 +142,7 @@ impl SpectatorManager {
         values: &mut ValueCollection,
         actions: &mut actions::ActionQueue,
         database: &dyn engine::database::DatabaseProvider,
-    ) -> Option<Box<GameplayManager>> { 
+    ) -> Option<Box<GameplayManager>> {
         // only continue if we received a map update
         let Ok(Some(_)) = self.new_map.update(values) else { return None };
 
@@ -160,15 +152,15 @@ impl SpectatorManager {
         let host_map = self.host_map.as_ref()?;
         if values.beatmap_manager.beatmaps.contains_key(&host_map.map_hash) {
             actions.push(BeatmapAction::Set(
-                host_map.map_hash, 
+                host_map.map_hash,
                 SetBeatmapOptions::default().restart_song(true)
             ).into());
 
             let current_time = (self.frames.iter().fold(
-                0.0, 
+                0.0,
                 |t, f| f.time.max(t)) - 2000.0
             ).max(0.0);
-            
+
             return self.start_game(values, current_time, actions, database);
         }
 
@@ -184,42 +176,42 @@ impl SpectatorManager {
     ) -> Option<Box<GameplayManager>> {
         // handle new maps
         if let Some(manager) = self.check_new_maps(
-            manager, 
-            values, 
-            actions, 
+            manager,
+            values,
+            actions,
             database,
         ) {
             return Some(manager)
         }
 
         // check all incoming frames
-        while let Some(SpectatorFrame { 
-            time: _, 
-            action 
+        while let Some(SpectatorFrame {
+            time: _,
+            action
         }) = self.frames.pop_front() {
             debug!("Handling spec frame: {action:?}");
 
             // debug!("Packet: {action:?}");
             match action {
-                SpectatorAction::Play { 
-                    beatmap_hash, 
-                    mode, 
-                    mods, 
-                    speed, 
-                    map_game, 
+                SpectatorAction::Play {
+                    beatmap_hash,
+                    mode,
+                    mods,
+                    speed,
+                    map_game,
                     map_link: _
                 } => {
                     info!("got play: {beatmap_hash}, {mode}, {mods:?}");
                     self.host_map = Some(HostMap::new(
-                        beatmap_hash, 
-                        mode, 
-                        &mods, 
+                        beatmap_hash,
+                        mode,
+                        &mods,
                         speed
                     ));
 
                     if values.beatmap_manager.get_by_hash(&beatmap_hash).is_some() {
                         actions.push(BeatmapAction::Set(
-                            beatmap_hash, 
+                            beatmap_hash,
                             SetBeatmapOptions::default().restart_song(true)
                         ).into());
                         self.start_game(values, 0.0, actions, database);
@@ -274,14 +266,14 @@ impl SpectatorManager {
 
 
     pub fn key_down(
-        &mut self, 
-        key: input::Key, 
+        &mut self,
+        key: input::Key,
         _mods: input::KeyModifiers,
         actions: &mut actions::ActionQueue,
     ) {
         // check if we need to close something
         if key == input::Key::Escape {
-            #[cfg(feature="graphics")] 
+            #[cfg(feature="graphics")]
             actions.push(actions::menu::MenuAction::set_menu("main_menu").into());
             // resume song if paused
             actions.push(actions::song::SongAction::Play.into());
@@ -290,9 +282,9 @@ impl SpectatorManager {
 
 
     fn download_beatmap(
-        &self, 
-        beatmap_hash: Md5Hash, 
-        map_game: &MapGame, 
+        &self,
+        beatmap_hash: Md5Hash,
+        map_game: &MapGame,
         settings: &engine::Settings,
         actions: &mut actions::ActionQueue,
     ) {
@@ -319,7 +311,7 @@ impl SpectatorManager {
                             actions.push(actions::Action::Download(Box::new(dl)));
                         } else {
                             warn!("not downloading map, osu user or password missing");
-                            // actions.push(  
+                            // actions.push(
                             //     Notification::default()
                             //         .text("Click here to download the beatmap")
                             //         .color(Color::RED)
@@ -347,7 +339,7 @@ impl SpectatorManager {
 struct HostMap {
     map_hash: Md5Hash,
     playmode: String,
-    mods: ModManager,
+    mods: Mods,
 }
 impl HostMap {
     fn new(
@@ -356,12 +348,12 @@ impl HostMap {
         mods: &[ModDefinition],
         speed: u8
     ) -> Self {
-        Self { 
-            map_hash, 
-            playmode, 
-            mods: ModManager::default()
+        Self {
+            map_hash,
+            playmode,
+            mods: Mods::default()
                 .with_speed(speed)
-                .with_mods(mods.iter()) 
+                .with_mods(mods.iter())
         }
     }
 }

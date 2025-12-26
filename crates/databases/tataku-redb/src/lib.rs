@@ -17,7 +17,7 @@ impl Database {
     }
 }
 
-#[allow(clippy::needless_pass_by_value, reason = "map_err helpers")]
+#[allow(clippy::needless_pass_by_value, reason = "used in map_err")]
 impl Database {
     fn transaction_err(err: redb::TransactionError) -> tataku::Error {
         tataku::Error::String(err.to_string())

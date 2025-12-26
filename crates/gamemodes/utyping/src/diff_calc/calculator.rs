@@ -6,7 +6,7 @@ use engine::{
         BeatmapMeta,
     },
     gameplay::{
-        mods::ModManager,
+        mods::Mods,
     }
 };
 
@@ -16,7 +16,7 @@ impl DiffCalc for UTypingDifficultyCalculator {
         Ok(Self {})
     }
 
-    fn calc(&mut self, _mods: &ModManager) -> tataku::Result<DiffCalcSummary> {
+    fn calc(&mut self, _mods: &Mods) -> tataku::Result<DiffCalcSummary> {
         Ok(DiffCalcSummary::default())
     }
 }

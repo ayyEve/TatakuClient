@@ -55,7 +55,7 @@ impl TjaBeatmap {
         let filename: ArcStr = path.to_string_lossy().to_string().into();
         let parent: ArcStr = path.parent().unwrap().to_string_lossy().to_string().into();
 
-        let mut maps = super::tja_parser::TjaParser::default().parse(lines)?;
+        let mut maps = super::tja_parser::Tja::default().parse(lines)?;
         for map in maps.iter_mut() {
             map.directory = parent.clone();
             map.filename = filename.clone();
@@ -145,22 +145,22 @@ impl beatmaps::TatakuBeatmap for TjaBeatmap {
             self.course_creator.clone()
         };
 
-        Arc::new(BeatmapMeta { 
-            file_path: self.filename.clone(), 
-            beatmap_hash: self.hash, 
-            beatmap_type: beatmaps::BeatmapType::Tja, 
-            mode: "taiko".into(), 
-            artist: self.subtitle.clone(), 
-            title: self.title.clone(), 
-            artist_unicode: self.subtitle_unicode.clone(), 
-            title_unicode: self.title_unicode.clone(), 
-            creator, 
-            version: self.course_name.clone(), 
-            audio_filename: format!("{}/{}", self.directory, self.audio_path).into(), 
-            image_filename: format!("{}/{}", self.directory, self.image_path).into(), 
-            audio_preview: self.preview_time, 
-            duration, 
-            bpm_min: 60_000.0 / bl_min, 
+        Arc::new(BeatmapMeta {
+            file_path: self.filename.clone(),
+            beatmap_hash: self.hash,
+            beatmap_type: beatmaps::BeatmapType::Tja,
+            mode: "taiko".into(),
+            artist: self.subtitle.clone(),
+            title: self.title.clone(),
+            artist_unicode: self.subtitle_unicode.clone(),
+            title_unicode: self.title_unicode.clone(),
+            creator,
+            version: self.course_name.clone(),
+            audio_filename: format!("{}/{}", self.directory, self.audio_path).into(),
+            image_filename: format!("{}/{}", self.directory, self.image_path).into(),
+            audio_preview: self.preview_time,
+            duration,
+            bpm_min: 60_000.0 / bl_min,
             bpm_max: 60_000.0 / bl_max,
 
             ..Default::default()
@@ -199,7 +199,7 @@ pub enum TjaCourseEventType {
 #[test]
 fn test() {
     let path = "C:/Users/Vee/Desktop/tataku/tja-maps/Songs/01 Pop/360°/360.tja";
-    
+
     let res = TjaBeatmap::load_multiple(path);
     println!("{res:?}");
 }

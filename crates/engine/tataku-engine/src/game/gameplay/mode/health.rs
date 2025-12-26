@@ -4,8 +4,8 @@ use gameplay::{
     judgments::HitJudgment,
 };
 
-pub trait HealthManager: Send + Sync {
-    /// is this health manager out of health (did the user fail?)
+pub trait Health: Send + Sync {
+    /// did the user fail?
     fn is_dead(&self, song_over: bool) -> bool;
 
     /// ratio of health to max health
@@ -15,20 +15,17 @@ pub trait HealthManager: Send + Sync {
     /// ie, the user restarted the map
     fn reset(&mut self);
 
-    /// verify health is within valid bounds
-    fn validate_health(&mut self) {}
-
     /// apply a hit judgment to ourself
     fn apply_hit(&mut self, hit_judgment: &HitJudgment, score: &IngameScore);
 }
 
 #[derive(Default2)]
-pub struct DefaultHealthManager {
+pub struct DefaultHealth {
     #[default(80.0)] current_health: f32,
     #[default(80.0)] initial_health: f32,
     #[default(80.0)] max_health: f32,
 }
-impl HealthManager for DefaultHealthManager {
+impl Health for DefaultHealth {
     fn is_dead(&self, _song_over: bool) -> bool {
         self.current_health <= 0.0
     }
@@ -41,13 +38,11 @@ impl HealthManager for DefaultHealthManager {
         self.current_health = self.initial_health;
     }
 
-    fn validate_health(&mut self) {
-        if self.current_health < 0.0 { self.current_health = 0.0 }
-        if self.current_health > self.max_health { self.current_health = self.max_health }
-    }
-
     fn apply_hit(&mut self, hit_judgment: &HitJudgment, _score: &IngameScore) {
-        self.current_health += hit_judgment.health;
-        self.validate_health();
+        self.current_health = f32::clamp(
+            self.current_health + hit_judgment.health,
+            0.0,
+            self.max_health
+        )
     }
 }

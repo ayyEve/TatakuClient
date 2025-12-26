@@ -2,7 +2,7 @@ use crate::*;
 use beatmaps::TimingPoint;
 
 #[derive(Default)]
-pub struct TimingPointHelper {
+pub struct TimingPointProgress {
     timing_point_index: usize,
     control_point_index: usize,
     timing_points: Vec<TimingPoint>,
@@ -10,7 +10,7 @@ pub struct TimingPointHelper {
 
     next_beat: f32,
 }
-impl TimingPointHelper {
+impl TimingPointProgress {
     pub fn timing_point(&self) -> &TimingPoint { 
         self.indexed(self.timing_point_index) 
     }
@@ -154,7 +154,7 @@ impl TimingPointHelper {
 
 }
 
-impl Deref for TimingPointHelper {
+impl Deref for TimingPointProgress {
     type Target = Vec<TimingPoint>;
     
     fn deref(&self) -> &Self::Target {

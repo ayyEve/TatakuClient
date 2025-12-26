@@ -54,7 +54,7 @@ pub struct ManiaGame {
 
     end_time: f32,
     column_count: u8,
-    auto_helper: ManiaAutoHelper,
+    auto_replay: AutoReplay,
     game_settings: Arc<ManiaSettings>,
 
     #[cfg(feature="graphics")] sv_mult: f32,
@@ -847,7 +847,7 @@ impl Gamemode for ManiaGame {
     ) {
         if state.mods.has_autoplay() {
             let mut frames = Vec::new();
-            self.auto_helper.update(&self.columns, &mut self.column_indices, state.time, &mut frames);
+            self.auto_replay.update(&self.columns, &mut self.column_indices, state.time, &mut frames);
             for frame in frames {
                 self.handle_replay_frame(ReplayFrame::new(state.time, frame), state);
             }
@@ -932,16 +932,9 @@ impl Gamemode for ManiaGame {
         Some(time)
     }
 
-    fn all_notes(&self) -> Vec<&dyn engine::gameplay::HitObject> {
-        self.columns.iter()
-            .flat_map(|i| i.iter())
-            .map(|i| &**i as &dyn engine::gameplay::HitObject)
-            .collect::<Vec<&dyn engine::gameplay::HitObject>>()
-    }
-
     fn reset(&mut self, beatmap: &Beatmap) {
         #[cfg(feature="graphics")]
-        let timing_points = engine::gameplay::TimingPointHelper::new(
+        let timing_points = engine::gameplay::TimingPointProgress::new(
             beatmap.get_timing_points(),
             beatmap.slider_velocity()
         );
@@ -1098,7 +1091,7 @@ impl Gamemode for ManiaGame {
     }
     fn properties(
         &self,
-        _timing_points: &engine::gameplay::TimingPointHelper
+        _timing_points: &engine::gameplay::TimingPointProgress
     ) -> GamemodeProperties {
         const KEY_LIST: &[(KeyPress, &str)] = &[
             (KeyPress::Mania1, "K1"),

@@ -17,7 +17,7 @@ pub struct DisplaySettings {
     #[setting(text="FPS Limit", range(15.0, 1_000.0))]
     pub fps_target: u64,
 
-    #[serde(deserialize_with = "vsync_reader")]
+    #[serde(deserialize_with = "vsync")]
     #[dropdown(text="Vsync", path="enums.vsync")]
     pub vsync: tataku::Vsync,
     

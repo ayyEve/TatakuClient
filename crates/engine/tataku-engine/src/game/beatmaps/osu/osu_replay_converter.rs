@@ -281,7 +281,7 @@ impl OsuReplay {
         // mods
         {
             let info = infos.get_info(&self.game_mode).expect("nice try");
-            let ok_mods = gameplay::mods::ModManager::mods_for_playmode_as_hashmap(info);
+            let ok_mods = gameplay::mods::Mods::mods_for_playmode_as_hashmap(info);
 
             let mut mods = Vec::new(); //score.mods_mut();
             if self.mods.contains(&OsuMods::Easy) { mods.push("easy"); }

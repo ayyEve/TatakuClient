@@ -10,8 +10,8 @@ use engine::gameplay::{
 pub struct NoMode;
 impl gameplay::Gamemode for NoMode {
     fn new(
-        _: &beatmaps::Beatmap, 
-        _: bool, 
+        _: &beatmaps::Beatmap,
+        _: bool,
         _: &Settings
     ) -> Result<Self, tataku::Error> where Self: Sized {
         Ok(Self {})
@@ -21,7 +21,7 @@ impl gameplay::Gamemode for NoMode {
     fn update(&mut self, _: &mut GameplayUpdateShell) { }
     #[cfg(feature="graphics")]
     fn draw(&mut self, _: GameplayDrawShell, _: &mut graphics::RenderableCollection) {}
-    #[cfg(feature="gameplay")] 
+    #[cfg(feature="gameplay")]
     fn skip_intro(&mut self, _: f32) -> Option<f32> { None }
 
     fn reset(&mut self, _: &beatmaps::Beatmap) {}
@@ -29,16 +29,14 @@ impl gameplay::Gamemode for NoMode {
     fn handle_gameplay_event(&mut self, _: gameplay::GameplayEvent) {}
     
     #[cfg(feature="graphics")]
-    fn reload_skin(&mut self, _: &str, _: &mut dyn graphics::SkinProvider) -> graphics::TextureSource { 
-        graphics::TextureSource::Raw 
+    fn reload_skin(&mut self, _: &str, _: &mut dyn graphics::SkinProvider) -> graphics::TextureSource {
+        graphics::TextureSource::Raw
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn get_playfield(&self) -> gameplay::PlayfieldNonsense { gameplay::PlayfieldNonsense::default() }
-    fn properties(&self, _: &gameplay::TimingPointHelper) -> GamemodeProperties { GamemodeProperties::default() }
+    fn properties(&self, _: &gameplay::TimingPointProgress) -> GamemodeProperties { GamemodeProperties::default() }
 
-    #[cfg(feature="gameplay")] 
+    #[cfg(feature="gameplay")]
     fn handle_input(&mut self, _input: input::InputEvent) -> Option<ReplayAction> { None }
-
-    fn all_notes(&self) -> Vec<&dyn gameplay::HitObject> { Vec::new() }
 }

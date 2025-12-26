@@ -1,48 +1,49 @@
 use crate::*;
 
-#[cfg(feature="gameplay")] 
+#[cfg(feature="gameplay")]
 use common::replays::ReplayAction;
 
-#[cfg(feature="gameplay")] 
+#[cfg(feature="gameplay")]
 use engine::gameplay::gameplay_manager::GameplayDrawShell;
 
 use engine::gameplay::{
-    helpers::*,
+    TimingPointProgress,
+    PlayfieldNonsense,
     gameplay_manager::GameplayUpdateShell,
 };
 
 
 pub trait Gamemode: Send + Sync {
     fn new(
-        beatmap: &beatmaps::Beatmap, 
+        beatmap: &beatmaps::Beatmap,
         diff_calc_only: bool,
         settings: &Settings,
     ) -> Result<Self, tataku::Error> where Self:Sized;
 
     fn handle_replay_frame(
-        &mut self, 
-        frame: common::replays::ReplayFrame, 
+        &mut self,
+        frame: common::replays::ReplayFrame,
         state: &mut GameplayUpdateShell
     );
 
     fn handle_gameplay_event(&mut self, event: gameplay::GameplayEvent);
 
     fn update(
-        &mut self, 
+        &mut self,
         state: &mut GameplayUpdateShell
     );
 
     #[cfg(feature="graphics")]
     fn draw(
-        &mut self, 
-        state: GameplayDrawShell, 
+        &mut self,
+        state: GameplayDrawShell,
         list: &mut graphics::RenderableCollection,
     );
 
-    #[cfg(feature="gameplay")] 
+    #[cfg(feature="gameplay")]
     fn skip_intro(&mut self, time: f32) -> Option<f32>;
     fn reset(&mut self, beatmap: &beatmaps::Beatmap);
-    
+
     // fn pause(&mut self) {}
     // fn unpause(&mut self) {}
     // #[cfg(feature="graphics")]
@@ -58,12 +59,12 @@ pub trait Gamemode: Send + Sync {
 
     #[cfg(feature="graphics")]
     fn reload_skin(
-        &mut self, 
-        beatmap_path: &str, 
+        &mut self,
+        beatmap_path: &str,
         skin_manager: &mut dyn graphics::SkinProvider
     ) -> graphics::TextureSource;
 
-    fn properties(&self, timing_points: &TimingPointHelper) -> gameplay::mode::GamemodeProperties;
+    fn properties(&self, timing_points: &TimingPointProgress) -> gameplay::mode::GamemodeProperties;
     fn time_jump(&mut self, _new_time: f32, _state: &mut GameplayUpdateShell) {}
 
     #[cfg(feature="graphics")] fn get_playfield(&self) -> PlayfieldNonsense;
@@ -73,10 +74,6 @@ pub trait Gamemode: Send + Sync {
     #[cfg(feature="graphics")]
     fn build_widgets(&self, _loader: &mut gameplay::widgets::UiElementLoader) {}
 
-    #[cfg(feature="gameplay")] 
+    #[cfg(feature="gameplay")]
     fn handle_input(&mut self, input: input::InputEvent) -> Option<ReplayAction>;
-
-
-    fn all_notes(&self) -> Vec<&dyn gameplay::HitObject>;
 }
-

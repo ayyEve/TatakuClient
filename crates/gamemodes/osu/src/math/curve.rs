@@ -11,7 +11,7 @@ use engine::{
             CurveType,
         },
     },
-    gameplay::TimingPointHelper,
+    gameplay::TimingPointProgress,
 };
 
 
@@ -49,9 +49,9 @@ pub struct Curve {
 #[allow(dead_code)]
 impl Curve {
     fn new(
-        slider: SliderDef, 
-        path: Vec<CurveSegment>, 
-        timing_points: &TimingPointHelper
+        slider: SliderDef,
+        path: Vec<CurveSegment>,
+        timing_points: &TimingPointProgress
     ) -> Self {
         let slider_multiplier = timing_points.slider_velocity_base;
 
@@ -79,9 +79,9 @@ impl Curve {
     }
     
     pub fn get_length_required(&self, time: f32) -> f32 {
-        let mut pos = (time - self.slider.time) 
+        let mut pos = (time - self.slider.time)
             / (self.length() / self.slider.slides as f32);
-        
+
         if pos % 2.0 > 1.0 {
             pos = 1.0 - (pos % 1.0);
         } else {
@@ -90,7 +90,7 @@ impl Curve {
 
         self.lengths.last().unwrap() * pos
     }
-    
+
     pub fn position_at_time(&self, time:f32) -> Vector2 {
         if self.lengths.is_empty() { return self.slider.pos }
         if time < self.slider.time { return self.slider.pos }
@@ -100,7 +100,7 @@ impl Curve {
 
     pub fn position_at_length(&self, length:f32) -> Vector2 {
         if self.curve_lines.is_empty() || self.lengths.is_empty() {return self.slider.pos}
-        
+
         if length == 0.0 {return self.curve_lines[0].p1}
         let end = *self.lengths.last().unwrap();
 
@@ -115,11 +115,11 @@ impl Curve {
 
         let length_next = self.lengths[i];
         let length_previous = if i == 0 {0.0} else {self.lengths[i - 1]};
-        
+
         let mut res = self.curve_lines[i].p1;
-    
+
         if length_next != length_previous {
-            let n = (self.curve_lines[i].p2 - self.curve_lines[i].p1) 
+            let n = (self.curve_lines[i].p2 - self.curve_lines[i].p1)
                 * ((length - length_previous) / (length_next - length_previous));
             res += n;
         }
@@ -132,11 +132,11 @@ impl Curve {
 #[derive(Clone, Debug)]
 pub enum CurveSegment {
     Bezier {
-        curve: Vec<Vector2>, 
+        curve: Vec<Vector2>,
     },
 
     Linear {
-        p1: Vector2, 
+        p1: Vector2,
         p2: Vector2
     },
 
@@ -162,9 +162,9 @@ impl CurveSegment {
 
 
 pub fn get_curve(
-    slider: &SliderDef, 
-    beatmap: &Beatmap, 
-    timing_points: &TimingPointHelper
+    slider: &SliderDef,
+    beatmap: &Beatmap,
+    timing_points: &TimingPointProgress
 ) -> Curve {
     let mut points = slider.curve_points.clone();
     points.insert(0, slider.pos);
@@ -226,15 +226,15 @@ pub fn get_curve(
                     //Newer maps always use the one in the else clause.
                     if (i > 0 && points[i] == points[i - 1]) || i == points.len() - 1 {
                         let curve = create_bezier(
-                            &points[last_index..i + 1], 
+                            &points[last_index..i + 1],
                             true
                         );
                         path.push(CurveSegment::Bezier { curve });
-                        
+
                         last_index = i;
                     }
                 }
-            
+
                 i += 1;
             }
         }
@@ -254,7 +254,7 @@ pub fn get_curve(
             let a = points[0];
             let b = points[1];
             let c = points[2];
-            
+
             // all 3 points are on a straight line, avoid undefined behaviour:
             if is_straight_line(a,b,c) {
                 let mut slider = slider.clone();
@@ -287,7 +287,7 @@ pub fn get_curve(
             }
         }
     }
-    
+
 
     let mut smooth_path = Vec::new();
     for i in path.iter() {
@@ -332,15 +332,15 @@ pub fn get_curve(
         curve.score_times.push(t);
         t += ms_between_ticks;
     }
-    
+
     curve
 }
 
 fn catmull_rom(
-    value1: Vector2, 
-    value2: Vector2, 
-    value3: Vector2, 
-    value4: Vector2, 
+    value1: Vector2,
+    value2: Vector2,
+    value3: Vector2,
+    value4: Vector2,
     amount: f32
 ) -> Vector2 {
     let num = amount * amount;
@@ -355,4 +355,3 @@ fn catmull_rom(
     
     result
 }
-

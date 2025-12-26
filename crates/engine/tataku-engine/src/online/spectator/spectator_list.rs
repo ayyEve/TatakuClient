@@ -2,7 +2,6 @@ use crate::*;
 use common::reflect::*;
 use online::spectator::SpectatingUser;
 
-/// helper for managing lists of spectators
 #[derive(Reflect)]
 #[derive(Clone, Debug, Default)]
 pub struct SpectatorList {

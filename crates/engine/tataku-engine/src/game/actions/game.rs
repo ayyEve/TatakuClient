@@ -113,7 +113,7 @@ pub struct NewManager {
     /// who is requesting the manager?
     pub owner: ui::MessageSource,
     /// what mods should be used? if none, will use the global mods (and will update mods when global mods update)
-    pub mods: Option<gameplay::mods::ModManager>,
+    pub mods: Option<gameplay::mods::Mods>,
     /// what map hash to use
     pub map_hash: Option<common::Md5Hash>,
     /// optional path to the map hash

@@ -186,7 +186,8 @@ impl From<MapStatus> for QuaverRankedStatus {
 }
 
 
-/// key count helper
+/// key count
+///
 /// called game mode in quaver
 enum QuaverGameMode {
     FourKey,

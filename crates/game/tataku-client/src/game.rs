@@ -38,13 +38,13 @@ pub fn run_game(
     let mut game = Game::new(
         window_data,
         window_counters,
-        BuiltinMenus { 
+        BuiltinMenus {
             menus: tataku_resources::menus::ALL,
             dialogs: tataku_resources::dialogs::ALL,
             default_css: tataku_resources::styles::DEFAULT,
         },
         vec![
-            #[cfg(feature="kira_audio")] tataku_kira::KiraAudioInit, 
+            #[cfg(feature="kira_audio")] tataku_kira::KiraAudioInit,
             #[cfg(feature="bass_audio")] tataku_bass::BassAudioInit,
         ],
         gamemodes,
@@ -54,7 +54,7 @@ pub fn run_game(
 
     let args = GameArgs::parse();
     if let Some(test_path) = args.xml_test {
-        game.make_xml_helper(test_path);
+        game.load_xml_test(test_path);
     }
 
     

@@ -26,7 +26,7 @@ use engine::{
         Gamemode,
         judgments::*,
         GameplayEvent,
-        TimingPointHelper,
+        TimingPointProgress,
         PlayfieldNonsense,
         GamemodeProperties,
         gameplay_manager::*,
@@ -56,7 +56,6 @@ pub struct OsuGame {
     /// how many keys are being held?
     hold_count: u16,
 
-    /// scaling helper to help with scaling
     coords: Arc<OsuCoords>,
     /// needed for scaling recalc
     cs: f32,
@@ -78,10 +77,10 @@ pub struct OsuGame {
     #[cfg(feature="graphics")] cursor: OsuCursor,
     #[cfg(feature="graphics")] smoke_emitter: Option<tataku_graphics::Emitter>,
     #[cfg(feature="graphics")] follow_point_image: Option<tataku_graphics::Image>,
-    #[cfg(feature="graphics")] judgment_helper: JudgmentImages,
+    #[cfg(feature="graphics")] judgement_images: JudgmentImages,
 
     metadata: Arc<BeatmapMeta>,
-    mods: Arc<ModManager>,
+    mods: Arc<Mods>,
     timing_points: Vec<TimingPoint>,
 
     new_playfield_pending: bool,
@@ -201,7 +200,7 @@ impl OsuGame {
         pos: Vector2,
         hit_value: &HitJudgment,
         coords: &Arc<OsuCoords>,
-        judgment_helper: &JudgmentImages,
+        judgement_images: &JudgmentImages,
         settings: &OsuSettings,
         state: &mut GameplayUpdateShell<'_>
     ) {
@@ -209,7 +208,7 @@ impl OsuGame {
 
         let color = hit_value.color;
         let mut image = settings.use_skin_judgments.then_some(())
-            .and_then(|_| judgment_helper.get_from_scorehit(hit_value));
+            .and_then(|_| judgement_images.get_from_scorehit(hit_value));
 
         if let Some(image) = &mut image {
             let transform = graphics::Transform {
@@ -243,7 +242,7 @@ impl OsuGame {
         val:V,
         ez_scale: V,
         hr_scale: V,
-        mods: &ModManager
+        mods: &Mods
     ) -> V {
         if mods.has_mod(Easy) {
             val * ez_scale
@@ -255,17 +254,17 @@ impl OsuGame {
     }
 
     #[inline]
-    pub fn get_ar(meta: &BeatmapMeta, mods: &ModManager) -> f32 {
+    pub fn get_ar(meta: &BeatmapMeta, mods: &Mods) -> f32 {
         Self::scale_by_mods(meta.ar, 0.5, 1.4, mods).clamp(1.0, 11.0)
     }
 
     #[inline]
-    pub fn get_od(meta: &BeatmapMeta, mods: &ModManager) -> f32 {
+    pub fn get_od(meta: &BeatmapMeta, mods: &Mods) -> f32 {
         Self::scale_by_mods(meta.od, 0.5, 1.4, mods).clamp(1.0, 10.0)
     }
 
     #[inline]
-    pub fn get_cs(meta: &BeatmapMeta, mods: &ModManager) -> f32 {
+    pub fn get_cs(meta: &BeatmapMeta, mods: &Mods) -> f32 {
         Self::scale_by_mods(meta.cs, 0.5, 1.3, mods).clamp(1.0, 10.0)
     }
 
@@ -409,7 +408,7 @@ impl Gamemode for OsuGame {
         let od = Self::get_od(&metadata, &mods);
         let coords = Arc::new(OsuCoords::new_with_settings(&game_settings, cs, effective_window_size, mods.has_mod(HardRock)));
 
-        let timing_points = TimingPointHelper::new(
+        let timing_points = TimingPointProgress::new(
             map.get_timing_points(),
             map.slider_velocity(),
         );
@@ -466,7 +465,7 @@ impl Gamemode for OsuGame {
                     stack_leniency,
                     // window_size,
                     #[cfg(feature="graphics")] follow_point_image: None,
-                    #[cfg(feature="graphics")] judgment_helper: JudgmentImages::new(OsuHitJudgments::variants().to_vec()),
+                    #[cfg(feature="graphics")] judgement_images: JudgmentImages::new(OsuHitJudgments::variants().to_vec()),
                     metadata,
                     mods,
                     timing_points: map.get_timing_points(),
@@ -695,7 +694,7 @@ impl Gamemode for OsuGame {
                                 note.point_draw_pos(frame.time),
                                 judge,
                                 &self.coords,
-                                &self.judgment_helper,
+                                &self.judgement_images,
                                 &self.game_settings,
                                 state
                             );
@@ -1021,7 +1020,7 @@ impl Gamemode for OsuGame {
                     pos,
                     &judgment,
                     &self.coords,
-                    &self.judgment_helper,
+                    &self.judgement_images,
                     &self.game_settings,
                     state
                 );
@@ -1057,7 +1056,7 @@ impl Gamemode for OsuGame {
                             note.point_draw_pos(state.time),
                             &j,
                             &self.coords,
-                            &self.judgment_helper,
+                            &self.judgement_images,
                             &self.game_settings,
                             state
                         );
@@ -1074,7 +1073,7 @@ impl Gamemode for OsuGame {
                                 note.point_draw_pos(state.time),
                                 &judge,
                                 &self.coords,
-                                &self.judgment_helper,
+                                &self.judgement_images,
                                 &self.game_settings,
                                 state
                             );
@@ -1098,7 +1097,7 @@ impl Gamemode for OsuGame {
                             note.point_draw_pos(state.time),
                             &j,
                             &self.coords,
-                            &self.judgment_helper,
+                            &self.judgement_images,
                             &self.game_settings,
                             state
                         );
@@ -1255,13 +1254,6 @@ impl Gamemode for OsuGame {
         self.cursor.draw_above(list);
     }
 
-
-    fn all_notes(&self) -> Vec<&dyn engine::gameplay::HitObject> {
-        self.notes.iter()
-            .map(|i| &**i as &dyn engine::gameplay::HitObject)
-            .collect::<Vec<&dyn engine::gameplay::HitObject>>()
-    }
-
     fn reset(&mut self, _beatmap: &Beatmap) {
         // let ar = scale_by_mods(self.metadata.ar, 0.5, 1.4, &self.mods).clamp(1.0, 11.0);
 
@@ -1346,7 +1338,7 @@ impl Gamemode for OsuGame {
         };
 
         self.cursor.reload_skin(skin_manager);
-        self.judgment_helper.reload_skin(skin_manager);
+        self.judgement_images.reload_skin(skin_manager);
         self.follow_point_image = skin_manager.get_texture(
             Path::new("followpoint"),
             &source,
@@ -1621,7 +1613,7 @@ impl Gamemode for OsuGame {
             self.mods.has_mod(HardRock)
         )
     }
-    fn properties(&self, _timing_points: &TimingPointHelper) -> GamemodeProperties {
+    fn properties(&self, _timing_points: &TimingPointProgress) -> GamemodeProperties {
         let mut sound_list = HashMap::new();
         #[cfg(feature="gameplay")]
         for note in self.notes.iter() {

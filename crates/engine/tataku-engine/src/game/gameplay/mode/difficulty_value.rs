@@ -7,7 +7,7 @@ pub struct DifficultyValue {
     /// internal id of this value
     #[default("none")]
     pub id: &'static str,
-    
+
     /// display name for this value
     #[default("None")]
     pub name: &'static str,
@@ -129,6 +129,6 @@ fn display_time(ms: f32) -> String {
 
 pub struct GetDiffValue<'a> {
     pub map: &'a BeatmapMeta,
-    pub mods: &'a gameplay::mods::ModManager,
+    pub mods: &'a gameplay::mods::Mods,
     pub diff: f32,
 }

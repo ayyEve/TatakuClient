@@ -57,9 +57,6 @@ pub struct MenuVisualization {
 impl MenuVisualization {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
-        // let window_size = WindowSizeHelper::new();
-        // let initial_inner_radius = window_size.y / 6.0;
-
         Self {
             rotation: 0.0,
             // data: Vec::new(),

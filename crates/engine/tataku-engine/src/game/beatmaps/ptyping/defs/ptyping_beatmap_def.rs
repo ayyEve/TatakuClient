@@ -27,7 +27,7 @@ pub struct PTypingBeatmapDef {
 pub struct PTypingEventDef {
     pub start: f64,
     
-    #[serde(deserialize_with = "infinity_reader")]
+    #[serde(deserialize_with = "infinity")]
     pub end: f64,
     pub text: Option<String>,
     pub backing_type: u8
@@ -49,13 +49,13 @@ pub struct PTypingDifficultyDef {
     pub strictness: f32,
 }
 
-/// helper for reading "Infinity" from json files when it should be an f64
-fn infinity_reader<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<f64, D::Error> {
+/// parses "Infinity" string from json files as an f64
+fn infinity<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<f64, D::Error> {
     use std::fmt;
-    use serde::de::{self, Visitor};
+    use serde::de;
 
-    struct InfinityReader;
-    impl Visitor<'_> for InfinityReader {
+    struct Visitor;
+    impl de::Visitor<'_> for Visitor {
         type Value = f64;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -77,5 +77,5 @@ fn infinity_reader<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<
         }
     }
 
-    deserializer.deserialize_any(InfinityReader)
+    deserializer.deserialize_any(Visitor)
 }

@@ -9,13 +9,13 @@ use ui::{
 };
 use engine::{
     triple_buffer,
-    data::ValueChangeHelper,
+    data::ValueChange,
 };
 
 pub struct GameplayPreview {
-    beatmap: ValueChangeHelper<common::Md5Hash>,
-    playmode: ValueChangeHelper<String>,
-    song_time: ValueChangeHelper<f32>,
+    beatmap: ValueChange<common::Md5Hash>,
+    playmode: ValueChange<String>,
+    song_time: ValueChange<f32>,
 
     manager: Option<actions::game::GameplayId>,
 
@@ -35,10 +35,9 @@ impl GameplayPreview {
         ) = triple_buffer::TripleBuffer::default().split();
 
         Self {
-            // current_mods: ModManagerHelper::new(),
-            beatmap: ValueChangeHelper::new("beatmaps.current_beatmap"),
-            playmode: ValueChangeHelper::new("global.playmode_actual"),
-            song_time: ValueChangeHelper::new("song.position"),
+            beatmap: ValueChange::new("beatmaps.current_beatmap"),
+            playmode: ValueChange::new("global.playmode_actual"),
+            song_time: ValueChange::new("song.position"),
 
             manager: None,
             fit_to: None,

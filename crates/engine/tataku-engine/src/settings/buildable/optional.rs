@@ -1,17 +1,18 @@
 use serde::de::{ Deserialize, Deserializer };
 
 #[derive(Debug, Default)]
-pub enum TatakuSettingOptional<T> {
+pub enum OptionalSetting<T> {
     #[default]
+    // No value provided, use default setting
     NoValue,
+    Value(T),
     Err(String),
-    Value(T)
 }
-impl<'de, T: Deserialize<'de>> Deserialize<'de> for TatakuSettingOptional<T> {
+impl<'de, T: Deserialize<'de>> Deserialize<'de> for OptionalSetting<T> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match T::deserialize(deserializer) {
-            Ok(t) => Ok(TatakuSettingOptional::Value(t)),
-            Err(e) => Ok(TatakuSettingOptional::Err(e.to_string())),
+            Ok(t) => Ok(OptionalSetting::Value(t)),
+            Err(e) => Ok(OptionalSetting::Err(e.to_string())),
         }
     }
 }
@@ -24,8 +25,8 @@ mod test2 {
     
     #[derive(Deserialize, Debug)]
     struct Test {
-        a: TatakuSettingOptional<String>,
-        b: TatakuSettingOptional<i32>,
+        a: OptionalSetting<String>,
+        b: OptionalSetting<i32>,
     }
 
 

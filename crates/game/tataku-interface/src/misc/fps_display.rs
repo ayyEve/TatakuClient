@@ -5,7 +5,6 @@ use std::sync::atomic::{ AtomicU32, Ordering };
 const SIZE:Vector2 = Vector2::new(180.0, 20.0);
 const TEXT_PADDING:Vector2 = Vector2::new(0.0, 2.0);
 
-/// fps display helper, cleans up some of the code in game
 pub struct FpsDisplay {
     name: String,
     pos: Vector2,

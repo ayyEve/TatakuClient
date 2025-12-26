@@ -1,11 +1,11 @@
 use crate::*;
-use gameplay::health_manager::HealthManager;
+use gameplay::health::Health;
 
 pub enum GamemodeAction {
     /// Add a stat
-    AddStat { 
-        stat: gameplay::stats::GameModeStat, 
-        value: f32 
+    AddStat {
+        stat: gameplay::stats::GameModeStat,
+        value: f32
     },
 
     /// Play a hitsound
@@ -44,7 +44,7 @@ pub enum GamemodeAction {
     ResetHealth,
 
     /// replace the health with a custom health manager
-    ReplaceHealth(Box<dyn HealthManager>),
+    ReplaceHealth(Box<dyn Health>),
 
     /// let the manager know the map has no more notes
     MapComplete,
@@ -54,7 +54,7 @@ pub enum GamemodeAction {
 }
 
 impl GamemodeAction {
-    pub fn replace_health(health: impl HealthManager + 'static) -> Self {
+    pub fn replace_health(health: impl Health + 'static) -> Self {
         Self::ReplaceHealth(Box::new(health))
     }
 }

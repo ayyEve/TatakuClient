@@ -1,6 +1,9 @@
 // massive ass file
 use crate::prelude::*;
-use super::helpers::*;
+use super::{
+    state::GameplayState,
+    spectator_info::GameplaySpectatorInfo,
+};
 
 #[cfg(feature="ui")] use ui::widget::TextLayoutContexts;
 
@@ -54,9 +57,9 @@ use engine::{
         mods::*,
         judgments::*,
         gameplay_manager::*,
-        health_manager::{
-            HealthManager,
-            DefaultHealthManager,
+        health::{
+            Health,
+            DefaultHealth,
         }
     }
 };
@@ -113,10 +116,10 @@ pub struct GameplayManager {
     pub actions: actions::ActionQueue,
     pending_frames: Vec<ReplayFrame>,
 
-    mods: Arc<ModManager>,
-    
+    mods: Arc<Mods>,
+
     metadata: Arc<BeatmapMeta>,
-    timing_points: TimingPointHelper,
+    timing_points: TimingPointProgress,
     beatmap_events: Vec<BeatmapEvent>,
     beatmap: engine::beatmaps::Beatmap,
     beatmap_preferences: engine::data::BeatmapPreferences,
@@ -136,7 +139,7 @@ pub struct GameplayManager {
     state: GameplayState,
     key_counter: KeyCounter,
     judgments: Vec<HitJudgment>,
-    health: Box<dyn health_manager::HealthManager>,
+    health: Box<dyn health::Health>,
 
     #[cfg(feature="graphics")] editor: Option<EditorChannels>,
     #[cfg(feature="graphics")] animation: Box<dyn BeatmapAnimation>,
@@ -146,21 +149,18 @@ pub struct GameplayManager {
     // spectator info
     pub spectator_info: GameplaySpectatorInfo,
 
-    /// what should the game do on start?
-    /// mainly a helper for spectator
-    pub on_start: Option<Box<dyn FnOnce(&mut Self) + Send + Sync>>,
-
     map_diff: f32,
 }
 impl GameplayManager {
     fn new(
         beatmap: engine::beatmaps::Beatmap,
+        start_time: Option<f32>,
         mut gamemode: Box<dyn Gamemode>,
-        mut mods: ModManager,
+        mut mods: Mods,
         settings: &Settings,
         database: &dyn engine::database::DatabaseProvider,
     ) -> Self {
-        let timing_points = TimingPointHelper::new_from_beatmap(&beatmap);
+        let timing_points = TimingPointProgress::new_from_beatmap(&beatmap);
 
         let properties = gamemode.properties(&timing_points);
         let playmode = properties.playmode();
@@ -203,6 +203,14 @@ impl GameplayManager {
             }
         ).into());
 
+        let mut gameplay_actions = Vec::new();
+
+        if let Some(time) = start_time {
+            trace!("Jumping to time {time}");
+
+            gameplay_actions.push(GameplayAction::JumpToTime { time });
+        }
+
         // make sure the gamemode has the correct mods applied
         gamemode.handle_gameplay_event(GameplayEvent::ApplyMods(current_mods.clone()));
 
@@ -211,7 +219,7 @@ impl GameplayManager {
 
             timing_points,
             mods: current_mods,
-            health: Box::new(DefaultHealthManager::default()),
+            health: Box::new(DefaultHealth::default()),
             key_counter: KeyCounter::new(&properties.keys),
 
             judgments: properties.info.judgments.to_vec(),
@@ -246,10 +254,9 @@ impl GameplayManager {
             #[cfg(feature="graphics")] animation: Box::new(engine::game::beatmap_animation::EmptyAnimation),
             gameplay_type: Box::new(GameplayType::Normal),
             gameplay_type_small: GameplayTypeSmall::Normal,
-            gameplay_actions: Vec::new(),
+            gameplay_actions,
             pending_frames: Vec::new(),
             spectator_info: GameplaySpectatorInfo::default(),
-            on_start: None,
 
             map_diff: 0.0,
         }
@@ -260,7 +267,8 @@ impl GameplayManager {
         infos: &GamemodeInfos,
         incoming_mode: &str,
         beatmap: Beatmap,
-        mods: ModManager,
+        start_time: Option<f32>,
+        mods: Mods,
         settings: &Settings,
         database: &dyn engine::database::DatabaseProvider,
     ) -> tataku::Result<GameplayManager> {
@@ -273,30 +281,33 @@ impl GameplayManager {
 
         Ok(GameplayManager::new(
             beatmap,
+            start_time,
             gamemode,
             mods,
             settings,
             database,
         ))
     }
-    
+
     pub fn create_from_path_hash(
         infos: &GamemodeInfos,
         incoming_mode: &str,
         map_path: &str,
         map_hash: common::Md5Hash,
-        mods: ModManager,
+        start_time: Option<f32>,
+        mods: Mods,
         settings: &Settings,
         database: &dyn engine::database::DatabaseProvider,
     ) -> tataku::Result<GameplayManager> {
         let beatmap = Beatmap::from_path_and_hash(map_path, map_hash)?;
 
         Self::create_inner(
-            infos, 
-            incoming_mode, 
-            beatmap, 
-            mods, 
-            settings, 
+            infos,
+            incoming_mode,
+            beatmap,
+            start_time,
+            mods,
+            settings,
             database
         )
     }
@@ -306,17 +317,19 @@ impl GameplayManager {
         infos: &GamemodeInfos,
         incoming_mode: &str,
         beatmap: &BeatmapMeta,
-        mods: ModManager,
+        start_time: Option<f32>,
+        mods: Mods,
         settings: &Settings,
         database: &dyn engine::database::DatabaseProvider,
     ) -> tataku::Result<GameplayManager> {
         let beatmap = Beatmap::from_metadata(beatmap)?;
         Self::create_inner(
-            infos, 
-            incoming_mode, 
-            beatmap, 
-            mods, 
-            settings, 
+            infos,
+            incoming_mode,
+            beatmap,
+            start_time,
+            mods,
+            settings,
             database
         )
     }
@@ -489,12 +502,6 @@ impl GameplayManager {
 
             // volume is set when the song is actually started (when lead_in_time is <= 0)
             self.state.started = true;
-
-            // run the startup function
-            if let Some(on_start)
-            = self.on_start.take() {
-                on_start(self);
-            }
         } else if self.state.lead_in_time <= 0.0 {
             // if this is a preview, dont do anything
             if self.gameplay_type_small.is_preview() { return }
@@ -1009,10 +1016,7 @@ impl GameplayManager {
                         }
 
                         SpectatorAction::TimeJump { time }
-                            => self.gameplay_actions.push(GameplayAction::JumpToTime {
-                                time,
-                                skip_intro: true
-                            }),
+                            => self.gameplay_actions.push(GameplayAction::JumpToTime { time }),
 
                         other => warn!("ingame manager told to handle unexpected spec action: {other:?}"),
                     }
@@ -1486,11 +1490,8 @@ impl GameplayManager {
         match action {
             GameplayAction::Pause => self.pause(),
             GameplayAction::Resume => self.start(),
-            GameplayAction::JumpToTime {
-                time,
-                skip_intro
-            } => {
-                if skip_intro {
+            GameplayAction::JumpToTime { time } => {
+                if time > 0.0 {
                     self.state.lead_in_time = 0.0;
                 }
 
@@ -2001,14 +2002,14 @@ impl GameplayManagerTrait for GameplayManager {
 
     fn score(&self) -> &IngameScore { &self.score }
     fn score_mut(&mut self) -> &mut IngameScore { &mut self.score }
-    fn mods(&self) -> &ModManager { &self.mods }
+    fn mods(&self) -> &Mods { &self.mods }
     fn metadata(&self) -> &BeatmapMeta { &self.metadata }
     fn key_counter(&self) -> &KeyCounter { &self.key_counter }
     fn spectators(&mut self) -> &mut engine::online::SpectatorList { &mut self.spectator_info.spectators }
     fn judgments(&self) -> &Vec<HitJudgment> { &self.judgments }
-    fn health(&self) -> &dyn HealthManager { &*self.health }
+    fn health(&self) -> &dyn Health { &*self.health }
     fn hit_timings(&self) -> &Vec<HitTiming> { &self.state.hit_timings }
-    fn timing_points(&self) -> &TimingPointHelper { &self.timing_points }
+    fn timing_points(&self) -> &TimingPointProgress { &self.timing_points }
 
     fn properties(&self) -> &GamemodeProperties { &self.gamemode_properties }
 
@@ -2054,7 +2055,7 @@ impl GameplayManagerTrait for GameplayManager {
             GameplayType::Replaying { score, .. }
             | GameplayType::Simulating { score, .. } => {
                 // load speed from score
-                self.mods = Arc::new(ModManager::new(
+                self.mods = Arc::new(Mods::new(
                     score.mods.iter(),
                     score.speed,
                     self.gamemode_properties.info

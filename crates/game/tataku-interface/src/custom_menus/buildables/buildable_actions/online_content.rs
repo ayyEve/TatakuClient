@@ -125,7 +125,11 @@ impl BuildableOnlineContentSearch {
             let map_path = map_path.resolve_path(values)
                 .inspect_err(|e| error!("error resolving path: {e:?}"))
                 .ok()?;
-            let engines = Engines::new(values);
+            let engines = values
+                .reflect_get::<HashMap<String, OnlineContentCapabilities>>(
+                    "game.online_content.engines"
+                )
+                .expect("no engines?");
             let engine = engines.get(engine_id)?;
 
             let iter = values
@@ -151,7 +155,11 @@ impl BuildableOnlineContentSearch {
                 }
             }
         } else if let Some(key_value_path) = &self.search_values_key_value_path {
-            let engines = Engines::new(values);
+            let engines = values
+                .reflect_get::<HashMap<String, OnlineContentCapabilities>>(
+                    "game.online_content.engines"
+                )
+                .expect("no engines?");
             let engine = engines.get(engine_id)?;
 
             let key_value_path = key_value_path.resolve_path(values)
@@ -204,40 +212,5 @@ impl BuildableOnlineContentSearch {
                 .map(|i| i.as_string())
             )
         })
-    }
-}
-
-
-/// helper struct to reduce code
-struct Engines<'a> {
-    engines: MaybeOwned<'a, HashMap<String, OnlineContentCapabilities>>,
-}
-impl<'a> Engines<'a> {
-    fn new(values: &'a dyn Reflect) -> Self {
-        let engines = values
-            .reflect_get::<HashMap<String, OnlineContentCapabilities>>(
-                "game.online_content.engines"
-            )
-            .expect("no engines?");
-
-        Self {
-            engines
-        }
-    }
-
-    fn get(
-        &self, 
-        engine_id: &str,
-    ) -> Option<&OnlineContentCapabilities> {
-        let Some(engine) = self
-            .engines
-            .values()
-            .find(|e| e.engine_id == engine_id)
-        else { 
-            warn!("engine {engine_id} not found!"); 
-            return None
-        };
-
-        Some(engine)
     }
 }

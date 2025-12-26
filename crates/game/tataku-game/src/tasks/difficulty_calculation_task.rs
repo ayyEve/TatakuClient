@@ -12,12 +12,12 @@ use engine::{
     },
     gameplay::{
         GamemodeInfo,
-        mods::ModManager,
+        mods::Mods,
     },
 };
 
 struct PendingCalc {
-    mods: ModManager,
+    mods: Mods,
     abort: tokio::task::AbortHandle,
     receiver: oneshot::Receiver<(Box<dyn DiffCalc>, f32)>
 }
@@ -35,14 +35,14 @@ pub struct DiffCalcTask {
     diff_entries: Vec<(DifficultyEntry, f32)>,
     iter: DiffCalcTaskIter,
 
-    inturrupted: Vec<ModManager>,
+    inturrupted: Vec<Mods>,
     current: Option<PendingCalc>,
 
     // abort_handle: Option<tokio::task::AbortHandle>
 }
 impl DiffCalcTask {
     pub fn new(
-        beatmap: Arc<BeatmapMeta>, 
+        beatmap: Arc<BeatmapMeta>,
         info: GamemodeInfo,
     ) -> Self {
         let mod_mutations = vec![HashSet::new()];
@@ -66,12 +66,12 @@ impl DiffCalcTask {
 
     fn run_calc(
         &mut self,
-        mods: ModManager,
-        values: &mut dyn Reflect, 
+        mods: Mods,
+        values: &mut dyn Reflect,
     ) {
         let entry = DifficultyEntry::new(
-            tataku::Cryptography::md5(self.info.id), 
-            self.beatmap.beatmap_hash, 
+            tataku::Cryptography::md5(self.info.id),
+            self.beatmap.beatmap_hash,
             &mods
         );
 
@@ -105,12 +105,12 @@ impl DiffCalcTask {
         let mut diff_calc = self.diff_calc.take().unwrap();
         let task = tokio::spawn(async move {
             // println!("diffcalcing!");
-            let mut diff = 
+            let mut diff =
                 diff_calc
                 .calc(&mods2)
                 .unwrap_or_default()
                 .diff;
-            
+
             if !diff.is_normal() {
                 diff = 0.0;
             }
@@ -135,7 +135,7 @@ impl DiffCalcTask {
                 diff
             ) {
                 actions.push(Notification::new_error(
-                    "Failed to insert diff", 
+                    "Failed to insert diff",
                     e
                 ).into());
             }
@@ -152,7 +152,7 @@ impl TatakuTask for DiffCalcTask {
     fn get_state(&self) -> TatakuTaskState { self.state }
 
     fn run(&mut self, shell: &mut TaskShell) {
-        if shell.ingame { 
+        if shell.ingame {
             self.state = TatakuTaskState::Paused;
 
             // stop any existing calc
@@ -162,7 +162,7 @@ impl TatakuTask for DiffCalcTask {
             }
 
             return;
-        } else { 
+        } else {
             self.state = TatakuTaskState::Running;
         }
 
@@ -170,8 +170,8 @@ impl TatakuTask for DiffCalcTask {
         if let Some(current) = &mut self.current {
             if let Ok((calc, diff)) = current.receiver.try_recv() {
                 let entry = DifficultyEntry::new(
-                    tataku::Cryptography::md5(self.info.id), 
-                    self.beatmap.beatmap_hash, 
+                    tataku::Cryptography::md5(self.info.id),
+                    self.beatmap.beatmap_hash,
                     &current.mods
                 );
 
@@ -187,7 +187,7 @@ impl TatakuTask for DiffCalcTask {
         // try to get the next map
         if let Some(mods) = self.iter.next() {
             self.run_calc(mods, shell.values);
-        } 
+        }
         // try to get any inturrupted
         else if let Some(mods) = self.inturrupted.pop() {
             self.run_calc(mods, shell.values);
@@ -207,7 +207,7 @@ struct DiffCalcTaskIter {
 }
 impl DiffCalcTaskIter {
     pub fn new(mod_mutations: Vec<HashSet<String>>) -> Self {
-        let mut speed_iter = Box::new(ModManager::speed_iter());
+        let mut speed_iter = Box::new(Mods::speed_iter());
         let speed = speed_iter.next().unwrap();
         let mods_iter = Box::new(mod_mutations.clone().into_iter());
 
@@ -222,12 +222,12 @@ impl DiffCalcTaskIter {
 }
 
 impl Iterator for DiffCalcTaskIter {
-    type Item = ModManager;
+    type Item = Mods;
     fn next(&mut self) -> Option<Self::Item> {
         // get the next set of mods
         if let Some(mods) = self.mods_iter.next() {
             Some(
-                ModManager::default()
+                Mods::default()
                 .with_mods(mods.iter())
                 .with_speed(self.speed)
             )

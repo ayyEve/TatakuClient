@@ -14,10 +14,10 @@ impl engine::game::diffcalc::DiffCalc for ManiaDifficultyCalculator {
     fn new(g: &beatmaps::BeatmapMeta, settings: &engine::Settings) -> tataku::Result<Self> {
         let g = beatmaps::Beatmap::from_metadata(g)?;
         let g = crate::game::ManiaGame::new(&g, true, settings)?;
-        if g.columns.iter().fold(0, |sum, c| sum + c.len()) == 0 { 
-            return Err(errors::beatmap::BeatmapError::InvalidFile.into()) 
+        if g.columns.iter().fold(0, |sum, c| sum + c.len()) == 0 {
+            return Err(errors::beatmap::BeatmapError::InvalidFile.into())
         }
-        
+
         let mut difficulty_hitobjects:Vec<DifficultyHitObject> = Vec::new();
         for c in 0..g.columns.len() {
             for n in g.columns[c].iter() {
@@ -28,7 +28,7 @@ impl engine::game::diffcalc::DiffCalc for ManiaDifficultyCalculator {
                 }
             }
         }
-        
+
         difficulty_hitobjects.sort_by(|a, b| {
             let a = a.time;
             let b = b.time;
@@ -43,8 +43,8 @@ impl engine::game::diffcalc::DiffCalc for ManiaDifficultyCalculator {
     }
 
     fn calc(
-        &mut self, 
-        mods: &gameplay::mods::ModManager
+        &mut self,
+        mods: &gameplay::mods::Mods
     ) -> tataku::Result<game::diffcalc::DiffCalcSummary> {
         // let strain = self.strain(mods)?;
         let note_density = self.note_density(mods)?;
@@ -58,13 +58,13 @@ impl engine::game::diffcalc::DiffCalc for ManiaDifficultyCalculator {
 
             // let combined = strain_value + density_value;
             // diff.push(combined);
-            
+
             diff.push(density / self.col_count as f32);
             // if WRITE_DEBUG_FILES {
             //     lines.push(format!("{},{},{}", strain_value, density_value, combined));
             // }
         }
-        
+
         // let count = diff.len() as f32;
 
         let mut difficulty = 0.0;
@@ -82,7 +82,7 @@ impl engine::game::diffcalc::DiffCalc for ManiaDifficultyCalculator {
 
         difficulty /= (1.0 - weight) / (1.0 - PERCENT);
 
-        
+
         let diff = game::diffcalc::DiffCalcSummary {
             diff: difficulty,
             ..Default::default()
@@ -92,10 +92,10 @@ impl engine::game::diffcalc::DiffCalc for ManiaDifficultyCalculator {
 }
 
 impl ManiaDifficultyCalculator {
-    
+
     fn note_density(
-        &mut self, 
-        mods: &gameplay::mods::ModManager
+        &mut self,
+        mods: &gameplay::mods::Mods
     ) -> tataku::Result<Vec<f32>> {
         let mut start_bucket_time = self.difficulty_hitobjects.first().unwrap().time;
         let mut last_note_time = start_bucket_time;
@@ -126,7 +126,7 @@ impl ManiaDifficultyCalculator {
 
         // Push last changes amount.
         note_density.push(density);
-        
+
         Ok(note_density)
     }
 
@@ -140,7 +140,7 @@ impl ManiaDifficultyCalculator {
     //     let mut change_density = Vec::new();
     //     let mut changes = 0;
 
-        
+
     //     let bucket_length = BUCKET_LENGTH * mods.speed;
 
     //     for o in self.difficulty_hitobjects.iter() {
@@ -168,7 +168,7 @@ impl ManiaDifficultyCalculator {
     //                     changes += 1;
     //                     hands[hand_index] = current_note;
     //                 }
-                    
+
     //                 count_since_reset += 1;
     //             },
 
@@ -180,7 +180,7 @@ impl ManiaDifficultyCalculator {
 
     //     // Push last changes amount.
     //     change_density.push(changes);
-        
+
     //     Ok(change_density)
     // }
 }

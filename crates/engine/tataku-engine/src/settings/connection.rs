@@ -62,7 +62,7 @@ impl settings::MakeSettingsMenu for ConnectionSettings {
         prefix: String,
         builder: &mut settings::SettingsBuilder,
     ) {
-        use settings::buildable_settings_provider::*;
+        use settings::provider::*;
         builder.add_item(BuildableSetting {
             name: "Connection Profile".into(),
             path: prefix.clone() + ".current",

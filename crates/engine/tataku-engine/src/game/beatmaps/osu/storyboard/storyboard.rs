@@ -307,7 +307,6 @@ impl StoryboardDef {
 
             let mut split = line.split(",");
 
-            // helper because this code was already ugly
             macro_rules! parse_or_continue {
                 ($name: ident, $T:ty) => {
                     let Some($name) = split.next().and_then(|s| s.parse::<$T>().ok()) 

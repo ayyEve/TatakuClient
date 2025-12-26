@@ -47,7 +47,6 @@ impl OsuBeatmap {
         let mut start_time = 0.0;
         let mut end_time = 0.0;
 
-        /// helper enum
         #[derive(Debug)]
         enum BeatmapSection {
             Version,

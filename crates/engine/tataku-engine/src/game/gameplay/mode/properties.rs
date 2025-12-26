@@ -22,7 +22,7 @@ impl GamemodeProperties {
 // mods stuff
 use common::ModDefinition;
 use engine::gameplay::mods::{
-    ModManager,
+    Mods,
     GameplayMod,
     GameplayModGroup,
     default_mod_groups,
@@ -44,7 +44,7 @@ impl GamemodeProperties {
             .collect()
     }
 
-    pub fn filter_mods(&self, mods: &ModManager) -> Vec<ModDefinition> {
+    pub fn filter_mods(&self, mods: &Mods) -> Vec<ModDefinition> {
         let ok_mods = self.mods_as_hashmap();
 
         mods.mods.iter()

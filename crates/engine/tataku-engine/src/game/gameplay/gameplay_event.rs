@@ -28,5 +28,5 @@ pub enum GameplayEvent {
         full_window: bool,
     },
 
-    ApplyMods(Arc<gameplay::mods::ModManager>),
+    ApplyMods(Arc<gameplay::mods::Mods>),
 }

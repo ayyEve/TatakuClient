@@ -163,7 +163,7 @@ impl RenderBufferable for Buffer {
     }
 }
 
-/// helper for creating buffers, since SliderRenderBuffer has so goddamn many
+/// create slider buffer with COPY_DST usage
 fn create_buffer<T>(
     device: &wgpu::Device, 
     t: wgpu::BufferUsages, 

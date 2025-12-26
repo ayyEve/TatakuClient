@@ -9,14 +9,14 @@ use common::{
     network::multiplayer::*,
     packets::{
         PacketId,
-        MultiplayerPacket, 
+        MultiplayerPacket,
     },
 };
 
 use engine::{
     actions,
     Notification,
-    data::ValueChangeHelper,
+    data::ValueChange,
     actions::{
         mods::ModAction as ModAction,
         menu::MenuAction as MenuAction,
@@ -34,7 +34,7 @@ use engine::{
     gameplay::{
         IngameScore,
         GamemodeInfos,
-        mods::ModManager,
+        mods::Mods,
         gameplay_manager::GameplayManagerTrait,
     },
 };
@@ -45,16 +45,15 @@ pub struct MultiplayerManager {
     pub lobby: CurrentLobbyInfo,
 
     /// what is the current beatmap we have selected?
-    current_beatmap: ValueChangeHelper<Md5Hash>,
-    
+    current_beatmap: ValueChange<Md5Hash>,
+
     /// what playmode is selected by the host?
     selected_mode: Option<ArcStr>,
 
     /// what mods are currently enabled?
-    current_mods: ValueChangeHelper<ModManager>,
+    current_mods: ValueChange<Mods>,
 
-    /// helper to get new beatmaps
-    new_beatmap_helper: ValueChangeHelper<Md5Hash>,
+    new_beatmap: ValueChange<Md5Hash>,
 
     // /// async beatmap loader
     // beatmap_loader: Option<engine::io::AsyncLoader<tataku::Result<GameplayManager>>>,
@@ -72,7 +71,7 @@ pub struct MultiplayerManager {
 
 impl MultiplayerManager {
     pub fn new(
-        lobby: CurrentLobbyInfo, 
+        lobby: CurrentLobbyInfo,
         infos: GamemodeInfos,
         actions: &mut actions::ActionQueue,
     ) -> Self {
@@ -85,7 +84,7 @@ impl MultiplayerManager {
         match lobby.current_beatmap.clone() {
             Some(map) => {
                 actions.push(BeatmapAction::Set(
-                    map.hash, 
+                    map.hash,
                     SetBeatmapOptions::default().restart_song(false)
                 ).into());
                 actions.push(BeatmapAction::SetPlaymode(map.mode).into());
@@ -98,11 +97,11 @@ impl MultiplayerManager {
         Self {
             lobby,
             infos,
-            current_beatmap: ValueChangeHelper::new("beatmaps.current.map.beatmap_hash"),
+            current_beatmap: ValueChange::new("beatmaps.current.map.beatmap_hash"),
             selected_mode: None,
-            current_mods: ValueChangeHelper::new("global.mods"),
+            current_mods: ValueChange::new("global.mods"),
 
-            new_beatmap_helper: ValueChangeHelper::new("global.new_map_hash"),
+            new_beatmap: ValueChange::new("global.new_map_hash"),
 
             beatmap_loader: None,
             load_complete_sent: false,
@@ -127,7 +126,7 @@ impl MultiplayerManager {
                 if let Some(old_map) = *previous_map {
                     warn!("selecting previous map");
                     actions.push(BeatmapAction::Set(
-                        old_map, 
+                        old_map,
                         SetBeatmapOptions::default()
                             .restart_song(false)
                             .use_preview_point(true)
@@ -141,9 +140,9 @@ impl MultiplayerManager {
             // so, update the lobby with the selected map
             Ok(Some(map)) if self.is_host() => {
                 if !self.current_beatmap_is_selected() {
-                    actions.push(MultiplayerAction::SetBeatmap { 
-                        hash: map, 
-                        mode: self.selected_mode.clone() 
+                    actions.push(MultiplayerAction::SetBeatmap {
+                        hash: map,
+                        mode: self.selected_mode.clone()
                     }.into());
                     self.set_state(LobbyUserState::NotReady, actions);
                 }
@@ -180,22 +179,22 @@ impl MultiplayerManager {
             let speed = mods.speed;
             let mods = mods.mods.clone();
             self.send_packet(
-                MultiplayerPacket::Client_LobbyUserModsChanged { 
-                    mods, 
+                MultiplayerPacket::Client_LobbyUserModsChanged {
+                    mods,
                     speed: speed.as_u8(),
-                }, 
+                },
                 actions
             );
         }
-    
+
         // check if a new beatmap was added
-        if let Some(Some(new_hash)) = self.new_beatmap_helper.update(values).ok().filter(|_| manager.is_none()) {
+        if let Some(Some(new_hash)) = self.new_beatmap.update(values).ok().filter(|_| manager.is_none()) {
 
             // if the map that was just added is the lobby's map, set it as our current map
             if let Some(beatmap) = &self.lobby.current_beatmap
             && new_hash == &beatmap.hash {
                 actions.push(BeatmapAction::Set(
-                    beatmap.hash, 
+                    beatmap.hash,
                     SetBeatmapOptions::default().restart_song(true)
                 ).into());
                 self.set_state(LobbyUserState::NotReady, actions);
@@ -205,7 +204,7 @@ impl MultiplayerManager {
 
     pub fn update_values(&self, values: &mut ValueCollection) {
 
-        
+
         if let Some(lobby) = values.values.lobby.as_mut() {
             if let Some(playmode) = self.lobby.current_beatmap.as_ref().and_then(|b| values.values.global.gamemode_infos.get_info(&b.mode).ok()) {
                 lobby.update(&self.lobby, playmode);
@@ -283,7 +282,7 @@ impl MultiplayerManager {
                     LobbySlot::Locked => data.locked = true,
                     LobbySlot::Unknown => {},
                 }
-            
+
                 list.push(data);
             }
 
@@ -292,7 +291,7 @@ impl MultiplayerManager {
 
     }
 
-    
+
     fn current_beatmap_is_selected(&self) -> bool {
         let Some(current_map) = self.current_beatmap.as_ref() else { return false };
         let Some(selected) = &self.lobby.current_beatmap else { return false };
@@ -300,10 +299,10 @@ impl MultiplayerManager {
     }
 
     pub fn handle_packet(
-        &mut self, 
-        values: &mut ValueCollection, 
+        &mut self,
+        values: &mut ValueCollection,
         packet: &MultiplayerPacket,
-        manager: Option<&mut Box<GameplayManager>>, 
+        manager: Option<&mut Box<GameplayManager>>,
         actions: &mut actions::ActionQueue,
         database: &dyn engine::database::DatabaseProvider,
     ) -> tataku::Result<Option<GameplayManager>> {
@@ -312,7 +311,7 @@ impl MultiplayerManager {
                 if &self.lobby.info.id != lobby_id { return Ok(None) }
                 self.lobby.info.players.push(LobbyUser { user_id: *user_id, ..Default::default() });
 
-                let Some(user) = values.online_manager.get_user(*user_id) else { 
+                let Some(user) = values.online_manager.get_user(*user_id) else {
                     actions.push(
                         Notification::default()
                         .text(format!("User with id {user_id} joined the match"))
@@ -343,7 +342,7 @@ impl MultiplayerManager {
                 if let Some(slot) = self.lobby.slots.values_mut().find(|s| **s == LobbySlot::Filled { user: *user_id }) {
                     *slot = LobbySlot::Empty;
                 }
-                
+
                 if user_id != &self.lobby.our_user_id {
                     let username = self.lobby.player_usernames.remove(user_id).unwrap_or_default();
                     actions.push(
@@ -363,7 +362,7 @@ impl MultiplayerManager {
             }
 
             MultiplayerPacket::Server_LobbyUserState { user_id, new_state } => {
-                if let Some(user) = 
+                if let Some(user) =
                 self.lobby.info.players
                     .iter_mut()
                     .find(|u| &u.user_id == user_id) {
@@ -377,24 +376,25 @@ impl MultiplayerManager {
 
                 // if the server wants us to load the map and we arent already doing that, do it
                 if self.beatmap_loader.is_none() {
-                    
+
                     // only load map if we have it selected
                     if self.current_beatmap_is_selected() {
-                        let Some(mode) = self.selected_mode.clone() 
+                        let Some(mode) = self.selected_mode.clone()
                         else { return Ok(None) };
-                        let Some(map) = values.beatmap_manager.current_beatmap() 
+                        let Some(map) = values.beatmap_manager.current_beatmap()
                         else { return Ok(None) };
-                        
+
                         let mods = values.global.mods.clone();
                         let infos = self.infos.clone();
                         let map = map.clone();
                         let settings = values.settings.clone();
-                        let f = 
-                        // let f = async move { 
+                        let f =
+                        // let f = async move {
                             GameplayManager::create(
                                 &infos,
-                                &mode, 
-                                &map, 
+                                &mode,
+                                &map,
+                                None,
                                 mods,
                                 &settings,
                                 database,
@@ -439,9 +439,9 @@ impl MultiplayerManager {
                 }
             }
 
-            MultiplayerPacket::Server_LobbyMapChange { 
-                lobby_id, 
-                new_map 
+            MultiplayerPacket::Server_LobbyMapChange {
+                lobby_id,
+                new_map
             } => {
                 if &self.lobby.id != lobby_id { return Ok(None) };
                 self.lobby.info.current_beatmap = Some(new_map.clone());
@@ -451,10 +451,10 @@ impl MultiplayerManager {
                     // update the playmode
                     self.selected_mode = Some(beatmap.mode.clone().into());
                     actions.push(BeatmapAction::SetPlaymode(beatmap.mode.clone()).into());
-                    
+
                     // the beatmap change handler in Self::update will handle the rest
                     actions.push(BeatmapAction::Set(
-                        beatmap.hash, 
+                        beatmap.hash,
                         SetBeatmapOptions::default().restart_song(true)
                     ).into());
                 } else {
@@ -470,7 +470,7 @@ impl MultiplayerManager {
                 // lobby.mods = mods;
                 // lobby.speed = speed;
 
-                
+
                 if !free_mods {
                     actions.push(ModAction::SetMods(mods.clone()).into());
                     // values.global.mods.mods = mods.clone();
@@ -497,7 +497,7 @@ impl MultiplayerManager {
 
             MultiplayerPacket::Server_LobbyRoundComplete => {
                 info!("lobby round completed");
-                #[cfg(feature="graphics")] 
+                #[cfg(feature="graphics")]
                 actions.push(MenuAction::set_menu("score_menu").into());
             }
 
@@ -509,22 +509,22 @@ impl MultiplayerManager {
                     manager.score_list.scores = self.lobby.player_scores.iter()
                         .filter(|(u,_)| u != &&self.lobby.our_user_id) // make sure we dont re-add our own score in
                         .map(|(_,s)| IngameScore::new(
-                            s.clone(), 
+                            s.clone(),
                             false,
                             false
                         ))
                         .collect();
-                    
+
                     manager
                         .score_list
                         .scores
                         .sort_by(|a, b| b.score.score.cmp(&a.score.score));
                 }
             }
-            
-            MultiplayerPacket::Server_LobbyStateChange { 
-                lobby_id, 
-                new_state 
+
+            MultiplayerPacket::Server_LobbyStateChange {
+                lobby_id,
+                new_state
             } => {
                 if lobby_id != &self.lobby.id { return Ok(None) }
                 self.lobby.info.state = *new_state;
@@ -556,19 +556,19 @@ impl MultiplayerManager {
         }
 
         self.update_values(values);
-        
+
         Ok(None)
     }
 
     fn send_packet(
-        &mut self, 
-        packet: impl Into<PacketId>, 
+        &mut self,
+        packet: impl Into<PacketId>,
         actions: &mut actions::ActionQueue,
     ) {
         actions.push(OnlineAction::Packet(Box::new(packet.into())).into());
     }
     fn set_state(
-        &mut self, 
+        &mut self,
         new_state: LobbyUserState,
         actions: &mut actions::ActionQueue,
     ) {
@@ -579,8 +579,8 @@ impl MultiplayerManager {
     }
 
     pub fn handle_lobby_action(
-        &mut self, 
-        action: LobbyAction, 
+        &mut self,
+        action: LobbyAction,
         settings: &engine::Settings,
         actions: &mut actions::ActionQueue,
     ) {
@@ -605,15 +605,15 @@ impl MultiplayerManager {
                 // dont include the replay for this message
                 score.replay = None;
                 self.send_packet(
-                    MultiplayerPacket::Client_LobbyMapComplete { 
-                        score: *score 
-                    }, 
+                    MultiplayerPacket::Client_LobbyMapComplete {
+                        score: *score
+                    },
                     actions,
                 );
             }
 
             LobbyAction::OpenMapLink => {
-                let Some(beatmap) = &self.lobby.current_beatmap 
+                let Some(beatmap) = &self.lobby.current_beatmap
                 else { return };
 
                 let hash = beatmap.hash;
@@ -627,15 +627,15 @@ impl MultiplayerManager {
                 ).call();
                 match req {
                     Err(e) => actions.push(Notification::new_error(
-                        "Error with beatmap url request", 
+                        "Error with beatmap url request",
                         e.to_string()
                     ).into()),
 
                     Ok(resp) => {
                         #[allow(unused)] #[derive(Deserialize)]
                         struct Resp { error: Option<String>, url: Option<String> }
-                        
-                        let Ok(body) = resp.into_body().read_to_string() else { 
+
+                        let Ok(body) = resp.into_body().read_to_string() else {
                             actions.push(
                                 Notification::default()
                                 .text("shit")
@@ -643,7 +643,7 @@ impl MultiplayerManager {
                                 .color(Color::RED)
                                 .into()
                             );
-                            return; 
+                            return;
                         };
                         info!("url resp: {body}");
 
@@ -657,48 +657,48 @@ impl MultiplayerManager {
 
             // slot actions
             LobbyAction::SlotAction(LobbySlotAction::ShowProfile(slot)) => {
-                let Some(LobbySlot::Filled { user: _ }) = self.lobby.slots.get(&slot) 
+                let Some(LobbySlot::Filled { user: _ }) = self.lobby.slots.get(&slot)
                 else { return };
 
                 // TODO: set values for user_id and slot_id, then open dialog
                 // self.actions.push()
             }
-            
+
             LobbyAction::SlotAction(LobbySlotAction::MoveTo(slot)) => {
-                let Some(LobbySlot::Empty) = self.lobby.slots.get(&slot) 
+                let Some(LobbySlot::Empty) = self.lobby.slots.get(&slot)
                 else { return };
 
                 let user = self.lobby.our_user_id;
                 self.send_packet(
-                    MultiplayerPacket::Client_LobbySlotChange { 
-                        slot, 
-                        new_status: LobbySlot::Filled { user } 
-                    }, 
+                    MultiplayerPacket::Client_LobbySlotChange {
+                        slot,
+                        new_status: LobbySlot::Filled { user }
+                    },
                     actions
                 );
             }
 
             LobbyAction::SlotAction(LobbySlotAction::TransferHost(slot)) => {
                 if !self.is_host() { return }
-                let Some(LobbySlot::Filled { user }) = self.lobby.slots.get(&slot) 
+                let Some(LobbySlot::Filled { user }) = self.lobby.slots.get(&slot)
                 else { return };
 
                 self.send_packet(
-                    MultiplayerPacket::Client_LobbyChangeHost { 
-                        new_host: *user 
+                    MultiplayerPacket::Client_LobbyChangeHost {
+                        new_host: *user
                     },
                     actions,
                 );
             }
 
-            LobbyAction::SlotAction(LobbySlotAction::Lock(slot)) 
+            LobbyAction::SlotAction(LobbySlotAction::Lock(slot))
             | LobbyAction::SlotAction(LobbySlotAction::Kick(slot))
             => {
                 if !self.is_host() { return }
                 self.send_packet(
-                    MultiplayerPacket::Client_LobbySlotChange { 
-                        slot, 
-                        new_status: LobbySlot::Locked 
+                    MultiplayerPacket::Client_LobbySlotChange {
+                        slot,
+                        new_status: LobbySlot::Locked
                     },
                     actions
                 );
@@ -706,9 +706,9 @@ impl MultiplayerManager {
             LobbyAction::SlotAction(LobbySlotAction::Unlock(slot)) => {
                 if !self.is_host() { return }
                 self.send_packet(
-                    MultiplayerPacket::Client_LobbySlotChange { 
-                        slot, 
-                        new_status: LobbySlot::Empty 
+                    MultiplayerPacket::Client_LobbySlotChange {
+                        slot,
+                        new_status: LobbySlot::Empty
                     },
                     actions
                 );
@@ -717,7 +717,7 @@ impl MultiplayerManager {
             _ => {}
         }
     }
-    
+
     pub fn is_host(&self) -> bool {
         self.lobby.is_host()
     }

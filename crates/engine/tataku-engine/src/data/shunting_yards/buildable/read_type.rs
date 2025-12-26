@@ -1,6 +1,6 @@
 use crate::*;
 
-/// helper for parsing numbers and variables
+/// Parses numbers and variables
 #[doc(hidden)]
 #[derive(Default)]
 pub enum BuildableShuntingYardReadType {

@@ -14,7 +14,6 @@ use ui::{
 const VOLUME_CHANGE_DISPLAY_TIME:f32 = 2_000.0;
 
 #[derive(Default)]
-/// helper to move volume things out of game, cleaning up code
 pub struct VolumeControl {
     /// 0-2, 0 = master, 1 = effect, 2 = music
     vol_selected_index: u8,

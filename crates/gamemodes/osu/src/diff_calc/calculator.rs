@@ -13,7 +13,7 @@ use engine::{
     },
     gameplay::{
         Gamemode,
-        mods::ModManager,
+        mods::Mods,
     },
 };
 
@@ -24,7 +24,7 @@ pub struct OsuDifficultyCalculator {
     notes: Vec<OsuDifficultyHitObject>,
 }
 impl OsuDifficultyCalculator {
-    fn calc_aim(&mut self, mods: &ModManager) -> tataku::Result<Vec<f32>> {
+    fn calc_aim(&mut self, mods: &Mods) -> tataku::Result<Vec<f32>> {
         let mut start_bucket_time = self.notes.first().unwrap().time;
 
         let bucket_length = BUCKET_LENGTH * mods.get_speed();
@@ -54,11 +54,11 @@ impl OsuDifficultyCalculator {
 
         // Push last changes amount.
         aim_density.push(aims);
-        
+
         Ok(aim_density)
     }
 
-    fn calc_density(&mut self, mods: &ModManager) -> tataku::Result<Vec<f32>> {
+    fn calc_density(&mut self, mods: &Mods) -> tataku::Result<Vec<f32>> {
         let mut start_bucket_time = self.notes.first().unwrap().time;
         let mut last_note_time = start_bucket_time;
 
@@ -86,7 +86,7 @@ impl OsuDifficultyCalculator {
 
                     last_note_time = o.end_time;
                 },
-                
+
                 NoteType::Spinner => {
                     // TODO: assume d,k are evenly spread across duration.
 
@@ -97,7 +97,7 @@ impl OsuDifficultyCalculator {
 
                     // for i in 0..count {
                     //     let time = o.time + add_per * (i as f32);
-                        
+
                     //     if time > start_bucket_time + BUCKET_LENGTH {
                     //         note_density.push(density);
                     //         density = 0.0;
@@ -118,7 +118,7 @@ impl OsuDifficultyCalculator {
 
         // Push last changes amount.
         note_density.push(density);
-        
+
         Ok(note_density)
     }
 }
@@ -139,7 +139,7 @@ impl DiffCalc for OsuDifficultyCalculator {
             });
         }
 
-        notes.sort_by(|a, b| 
+        notes.sort_by(|a, b|
             a.time.partial_cmp(&b.time).unwrap()
         );
 
@@ -148,7 +148,7 @@ impl DiffCalc for OsuDifficultyCalculator {
         })
     }
 
-    fn calc(&mut self, mods: &ModManager) -> tataku::Result<DiffCalcSummary> {
+    fn calc(&mut self, mods: &Mods) -> tataku::Result<DiffCalcSummary> {
         let aim = self.calc_aim(mods)?;
         let note_density = self.calc_density(mods)?;
 

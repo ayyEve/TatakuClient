@@ -10,7 +10,7 @@ use engine::{
     },
     gameplay::{
         Gamemode,
-        mods::ModManager,
+        mods::Mods,
     }
 };
 
@@ -25,7 +25,7 @@ pub struct DifficultyCalculator {
 }
 impl DifficultyCalculator {
 
-    fn note_density(&mut self, mods: &ModManager) -> tataku::Result<Vec<f32>> {
+    fn note_density(&mut self, mods: &Mods) -> tataku::Result<Vec<f32>> {
         let mut start_bucket_time = self.difficulty_hitobjects.first().unwrap().time;
         let mut last_note_time = start_bucket_time;
 
@@ -53,7 +53,7 @@ impl DifficultyCalculator {
 
                     last_note_time = o_time;
                 },
-                
+
                 NoteType::Spinner => {
                     // TODO: assume d,k are evenly spread across duration.
 
@@ -64,7 +64,7 @@ impl DifficultyCalculator {
 
                     // for i in 0..count {
                     //     let time = o.time + add_per * (i as f32);
-                        
+
                     //     if time > start_bucket_time + BUCKET_LENGTH {
                     //         note_density.push(density);
                     //         density = 0.0;
@@ -88,11 +88,11 @@ impl DifficultyCalculator {
 
         // Push last changes amount.
         note_density.push(density);
-        
+
         Ok(note_density)
     }
 
-    fn strain(&mut self, mods: &ModManager) -> tataku::Result<Vec<usize>> {
+    fn strain(&mut self, mods: &Mods) -> tataku::Result<Vec<usize>> {
         // 0th hand is the dominant hand.
         let mut hands = [Thing::None; 2];
         let mut count_since_reset = 0;
@@ -102,7 +102,7 @@ impl DifficultyCalculator {
         let mut change_density = Vec::new();
         let mut changes = 0;
 
-        
+
         let bucket_length = BUCKET_LENGTH * mods.get_speed();
 
         for o in self.difficulty_hitobjects.iter() {
@@ -130,11 +130,11 @@ impl DifficultyCalculator {
                         changes += 1;
                         hands[hand_index] = current_note;
                     }
-                    
+
                     count_since_reset += 1;
                 },
 
-                NoteType::Slider 
+                NoteType::Slider
                 | NoteType::Spinner => {
                     // Reset hands for sliders and spinners.
                     for i in hands.iter_mut() {
@@ -150,7 +150,7 @@ impl DifficultyCalculator {
 
         // Push last changes amount.
         change_density.push(changes);
-        
+
         Ok(change_density)
     }
 }
@@ -159,7 +159,7 @@ impl DiffCalc for DifficultyCalculator {
         let g = Beatmap::from_metadata(g)?;
         let g = TaikoGame::new(&g, true, settings)?;
         if g.notes.is_empty() { return Err(errors::beatmap::BeatmapError::InvalidFile.into()) }
-        
+
         let mut difficulty_hitobjects: Vec<DifficultyHitObject> = g.notes.iter()
             .chain(g.other_notes.iter())
             .map(Into::into)
@@ -177,7 +177,7 @@ impl DiffCalc for DifficultyCalculator {
         })
     }
 
-    fn calc(&mut self, mods: &ModManager) -> tataku::Result<DiffCalcSummary> {
+    fn calc(&mut self, mods: &Mods) -> tataku::Result<DiffCalcSummary> {
         let strain = self.strain(mods)?;
         let note_density = self.note_density(mods)?;
 
@@ -195,7 +195,7 @@ impl DiffCalc for DifficultyCalculator {
                 lines.push(format!("{strain_value},{density_value},{combined}"));
             }
         }
-        
+
         // let count = diff.len() as f32;
 
         let mut difficulty = 0.0;
@@ -233,7 +233,7 @@ impl DiffCalc for DifficultyCalculator {
                 .replace("?", "")
                 .replace("|", "")
                 ;
-            
+
             std::fs::write(format!("./csv/{file_name}.csv"), lines.join("\n"))?;
 
             {
@@ -346,7 +346,7 @@ enum Thing {
 
 //     // let path = "C:/Users/Eve/Desktop/Projects/rust/tataku/tataku-client/songs";
 //     let path = "D:/Games/osu!/Songs";
-    
+
 
 //     for folder in std::fs::read_dir(path)? {
 //         let f = folder?;
@@ -367,7 +367,7 @@ enum Thing {
 
 //     // muzu
 //     // let map = "D:/Games/osu!/Songs/60452 Reasoner - Coming Home (Ambient Mix)/Reasoner - Coming Home (Ambient Mix) (Blue Dragon) [Taiko Muzukashii].osu";
-    
+
 //     // cancer
 //     // let map =  "D:/Games/osu!/Songs/646325 Diabarha - Uranoid/Diabarha - Uranoid (Dargin) [Futsuu].osu";
 

@@ -11,7 +11,6 @@ mod diff_calc;
 
 pub use info::GAME_INFO;
 
-/// import helper
 mod prelude {
     pub use tataku_engine::input;
     pub use tataku_engine as engine;

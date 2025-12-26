@@ -41,15 +41,17 @@ impl TatakuTask for ActionTask {
                     source,
                     passed_in
                 } => action
-                    .resolve(node, source, shell.values, passed_in.as_ref())
-                    .unwrap_or(actions::Action::None),
+                    .resolve(node, source, shell.values, passed_in.as_ref()),
 
                 ActionTaskAction::Callback(cb) 
-                    => cb.clone()(shell.values),
+                    => Some(cb(shell.values)),
                 
-                ActionTaskAction::Action(a) => a,
+                ActionTaskAction::Action(a) => Some(a),
             };
-            shell.actions.push(action);
+
+            if let Some(action) = action {
+                shell.actions.push(action);
+            }
         }
 
         if self.action.is_none() {

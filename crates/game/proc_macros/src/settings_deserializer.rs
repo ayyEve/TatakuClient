@@ -30,7 +30,7 @@ pub(crate) fn impl_settings_deserializer(ast: &syn::DeriveInput) -> Result<proc_
                         skip = true;
                     }
 
-                    
+
                     Ok(())
                 });
 
@@ -38,20 +38,20 @@ pub(crate) fn impl_settings_deserializer(ast: &syn::DeriveInput) -> Result<proc_
             }
             // if f.attrs.iter().any(|a| a.path.is_ident("serde") && a.tokens.to_string().contains("skip")) { continue }
 
-            let Some(ident) = f.ident.as_ref() else { continue }; 
+            let Some(ident) = f.ident.as_ref() else { continue };
             tys.push(&f.ty);
             idents.push(ident);
 
         //     let ident = f.ident.as_ref().unwrap().to_string();
         //     let ty = f.ty.to_token_stream().to_string();
-        //     de_impl.push(format!("{ident}: TatakuSettingOptional<{ty}>,"));
+        //     de_impl.push(format!("{ident}: OptionalSetting<{ty}>,"));
 
         //     convert_def.extend([
         //         format!("// {ident}"),
         //         format!("match other.{ident} {{"),
-        //         format!("TatakuSettingOptional::NoValue => (),"),
-        //         format!("TatakuSettingOptional::Err(e) => warn!(\"Error reading {struct_name}.{ident}: {{}}\", e),"),
-        //         format!("TatakuSettingOptional::Value(v) => output.{ident} = v,"),
+        //         format!("OptionalSetting::NoValue => (),"),
+        //         format!("OptionalSetting::Err(e) => warn!(\"Error reading {struct_name}.{ident}: {{}}\", e),"),
+        //         format!("OptionalSetting::Value(v) => output.{ident} = v,"),
         //         format!("}}\n"),
         //     ]);
         }
@@ -61,22 +61,22 @@ pub(crate) fn impl_settings_deserializer(ast: &syn::DeriveInput) -> Result<proc_
     Ok(quote! {
         impl<'de> Deserialize<'de> for #struct_name {
             fn deserialize<D: serde::Deserializer<'de>>(de: D) -> Result<Self, D::Error> {
-                use engine::settings::TatakuSettingOptional;
+                use engine::settings::OptionalSetting;
 
                 #[derive(serde::Deserialize, Default)]
                 #[serde(default)]
                 struct De {
-                    #(#idents: TatakuSettingOptional<#tys>,)*
+                    #(#idents: OptionalSetting<#tys>,)*
                 }
 
                 let other = De::deserialize(de)?;
                 let mut output = Self::default();
-                
+
                 #(
                     match other.#idents {
-                        TatakuSettingOptional::NoValue => (),
-                        TatakuSettingOptional::Err(e) => warn!("Error reading {}.{}: {{e}}", stringify!(#struct_name), stringify!(#idents)),
-                        TatakuSettingOptional::Value(v) => output.#idents = v,
+                        OptionalSetting::NoValue => (),
+                        OptionalSetting::Err(e) => warn!("Error reading {}.{}: {{e}}", stringify!(#struct_name), stringify!(#idents)),
+                        OptionalSetting::Value(v) => output.#idents = v,
                     }
                 )*
 
@@ -84,7 +84,7 @@ pub(crate) fn impl_settings_deserializer(ast: &syn::DeriveInput) -> Result<proc_
             }
         }
     })
-    
+
     // // finish off the struct def
     // de_impl.push(format!("}}"));
 

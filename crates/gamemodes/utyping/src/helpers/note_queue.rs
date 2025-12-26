@@ -114,4 +114,3 @@ impl DerefMut for UTypingNoteQueue {
         &mut self.notes
     }
 }
-

@@ -4,11 +4,8 @@ use common::reflect::Reflect;
 pub type ActionQueue = Vec<actions::Action>;
 
 /// An action from a menu (or dialog) to tell the game to do something
-#[derive(Default, Debug2)]
+#[derive(Debug2)]
 pub enum Action {
-    /// Don't do anything (this is a helper)
-    #[default] None,
-
     /// A delayed action
     #[debug(skip)]
     Delayed(DelayedActionType, u64),

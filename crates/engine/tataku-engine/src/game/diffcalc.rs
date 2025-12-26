@@ -10,7 +10,7 @@ pub trait DiffCalc: Send + Sync {
 
     fn calc(
         &mut self, 
-        mods: &gameplay::mods::ModManager
+        mods: &gameplay::mods::Mods
     ) -> tataku::Result<DiffCalcSummary>;
 }
 

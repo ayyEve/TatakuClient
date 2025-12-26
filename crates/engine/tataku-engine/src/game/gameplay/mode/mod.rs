@@ -5,7 +5,7 @@ pub mod hitsound;
 pub mod game_mode;
 pub mod hit_object;
 pub mod properties;
-pub mod health_manager;
+pub mod health;
 pub mod difficulty_value;
 
 // pub use info::*;
@@ -13,8 +13,6 @@ pub mod difficulty_value;
 // pub use default::*;
 // pub use hitsound::*;
 // pub use game_mode::*;
-// pub use hit_object::*;
 pub use properties::GamemodeProperties;
-// pub use health_manager::*;
 // pub use hit_judgements::*;
 // pub use difficulty_value::*;

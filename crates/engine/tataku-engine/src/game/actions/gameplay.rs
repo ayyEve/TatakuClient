@@ -13,7 +13,6 @@ pub enum GameplayAction {
     /// Jump to a certain time
     JumpToTime {
         time: f32,
-        skip_intro: bool,
     },
 
     /// Add a replay action
@@ -22,12 +21,12 @@ pub enum GameplayAction {
         action: ReplayAction,
 
         /// Should this action be saved to the replay?
-        /// 
+        ///
         /// Helpful for spammy actions to keep filesize low (ie cursor position)
         should_save: bool,
     },
 
-    ApplyMods(gameplay::mods::ModManager),
+    ApplyMods(gameplay::mods::Mods),
     FitToArea(tataku::Bounds),
 
     /// The gameplay manager is requesting an update to the difficulty

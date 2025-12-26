@@ -68,7 +68,7 @@ impl Database {
 
     pub fn new() -> Self {
         let connection = Connection::open("tataku.db").unwrap();
-        
+
         // scores table
         connection.execute(
             "CREATE TABLE IF NOT EXISTS scores (
@@ -108,9 +108,9 @@ impl Database {
                 audio_filename TEXT,
                 image_filename TEXT,
                 audio_preview REAL,
-                
+
                 duration REAL,
-                
+
                 hp REAL,
                 od REAL,
                 cs REAL,
@@ -123,7 +123,7 @@ impl Database {
             "CREATE TABLE IF NOT EXISTS ignore_maps (
                 beatmap_path TEXT,
                 beatmap_hash TEXT,
-                
+
                 PRIMARY KEY (beatmap_path, beatmap_hash)
             )", [])
         .expect("error creating db table");
@@ -175,23 +175,23 @@ impl Database {
 
         // // setup operation performer
         // tokio::spawn(async move {
-            
+
         //     while let Some(op) = receiver.recv().await {
         //         match op {
         //             DatabaseQuery::InsertOrUpdate { sql, table_name, operation, sql_if_failed , operation_if_failed } => {
-                        
+
         //             },
         //         }
         //     }
         // });
-        
+
         // Arc::new(Self {connection})
         Self { connection }
     }
 
     pub fn insert_or_update(
         &self,
-        table_name: &str, 
+        table_name: &str,
         operation: &SqlOperation,
         operation_if_failed: Option<&SqlOperation>,
     ) -> Result<(), rusqlite::Error> {
@@ -203,10 +203,10 @@ impl Database {
 
         // if error, probably exists, update instead
         if let Err(e) = s.execute(&*values) {
-            let Some(operation) = operation_if_failed 
-            else { 
+            let Some(operation) = operation_if_failed
+            else {
                 error!("Failed op {} for table {table_name}: {e}", operation.operation_name);
-                return Err(e) 
+                return Err(e)
             };
 
             self.insert_or_update(table_name, operation, None)?;
@@ -291,7 +291,7 @@ impl data::database::BeatmapProvider for Database {
                 .execute(&*values)
                 .map_err(Self::map_err)?;
         }
-    
+
         Ok(())
     }
 
@@ -312,9 +312,9 @@ impl data::database::BeatmapProvider for Database {
         let mut s = self.connection
             .prepare("SELECT * FROM ignore_maps")
             .unwrap();
-        
+
         let list =  s.query_map(
-            [], 
+            [],
             |row| {
                 let path = row.get::<_, String>("beatmap_path")?;
                 let hash = row.get::<_, String>("beatmap_hash")?;
@@ -322,14 +322,14 @@ impl data::database::BeatmapProvider for Database {
                 let hash_maybe = common::Md5Hash::from_str(&hash);
 
                 match (path.is_empty(), hash.is_empty()) {
-                    (true, false) if hash_maybe.is_ok() 
+                    (true, false) if hash_maybe.is_ok()
                         => Ok(data::IgnoredBeatmap::Hash(hash_maybe.unwrap())),
 
                     (false, true) => Ok(data::IgnoredBeatmap::Path(path)),
 
                     _ => Err(rusqlite::Error::FromSqlConversionFailure(
-                        0, 
-                        rusqlite::types::Type::Blob, 
+                        0,
+                        rusqlite::types::Type::Blob,
                         "ignore angry".into()
                     ))
                 }
@@ -346,7 +346,7 @@ impl data::database::BeatmapProvider for Database {
     }
 
     fn add_ignored_beatmap(
-        &mut self, 
+        &mut self,
         ignored: &data::IgnoredBeatmap
     ) -> tataku::Result<()> {
         const SQL: &str = "INSERT INTO ignore_maps (beatmap_path, beatmap_hash) VALUES ";
@@ -368,7 +368,7 @@ impl data::database::BeatmapProvider for Database {
     }
 
     fn remove_ignored_beatmap(
-        &mut self, 
+        &mut self,
         ignored: &data::IgnoredBeatmap,
     ) -> tataku::Result<()> {
         let column = match ignored {
@@ -391,7 +391,6 @@ impl data::database::BeatmapProvider for Database {
 
     // collections
     fn get_beatmap_collections(&self) -> tataku::Result<Vec<data::BeatmapCollection>> {
-        // helper struct
         struct BeatmapCollectionEntry {
             name: String,
             beatmap: String
@@ -400,7 +399,7 @@ impl data::database::BeatmapProvider for Database {
         let query = "SELECT * FROM beatmap_collections";
         let mut s = self.connection.prepare(query).expect(query);
         let rows = s.query_map(
-            [], 
+            [],
             |row| Ok(BeatmapCollectionEntry {
                 name: row.get("collection_name")?,
                 beatmap: row.get("beatmap_hash")?,
@@ -425,7 +424,7 @@ impl data::database::BeatmapProvider for Database {
     }
 
     fn update_beatmap_collection(
-        &mut self, 
+        &mut self,
         collection: &data::BeatmapCollection
     ) -> tataku::Result<()> {
         let _ = self.remove_beatmap_collection(&collection.name);
@@ -435,7 +434,7 @@ impl data::database::BeatmapProvider for Database {
                 .iter()
                 .map(common::Md5Hash::to_string)
                 .collect::<Vec<_>>();
-            
+
             let values = values
                 .iter()
                 .flat_map(|a| vec![ collection.name.as_str(), a.as_str() ])
@@ -462,7 +461,7 @@ impl data::database::BeatmapProvider for Database {
     }
 
     fn add_beatmap_collection(
-        &mut self, 
+        &mut self,
         collection: &data::BeatmapCollection,
     ) -> tataku::Result<()> {
         for chunk in collection.beatmaps.chunks(MAX_INSERTS_PER_STATEMENT) {
@@ -470,7 +469,7 @@ impl data::database::BeatmapProvider for Database {
                 .iter()
                 .map(common::Md5Hash::to_string)
                 .collect::<Vec<_>>();
-            
+
             let values = values
                 .iter()
                 .flat_map(|a| vec![ collection.name.as_str(), a.as_str() ])
@@ -519,7 +518,7 @@ impl engine::database::BeatmapPreferencesProvider for Database {
             .prepare(QUERY)
             .expect(QUERY)
             .query_map(
-                [ &map.to_string() ], 
+                [ &map.to_string() ],
                 |row| Ok(data::BeatmapPreferences {
                     audio_offset: row.get("audio_offset")?,
                     background_video: row.get("background_video")?,
@@ -532,31 +531,31 @@ impl engine::database::BeatmapPreferencesProvider for Database {
             .ok_or_else(|| tataku::Error::String("no row?".into()))
     }
     fn set_beatmap_preferences(
-        &mut self, 
+        &mut self,
         map: common::Md5Hash,
         prefs: &engine::data::BeatmapPreferences,
     ) -> tataku::Result<()> {
-        let engine::data::BeatmapPreferences { 
-            audio_offset, 
-            background_video, 
-            storyboard, 
+        let engine::data::BeatmapPreferences {
+            audio_offset,
+            background_video,
+            storyboard,
             beatmap_skin,
         } = prefs;
         let map_hash = Box::new(map.to_string());
 
         self.insert_or_update(
-            "beatmap_preferences", 
+            "beatmap_preferences",
             &SqlOperation::new(
                 "INSERT INTO beatmap_preferences (
-                    beatmap_hash, 
-                    audio_offset, 
-                    background_video, 
-                    storyboard, 
+                    beatmap_hash,
+                    audio_offset,
+                    background_video,
+                    storyboard,
                     beatmap_skin
-                ) VALUES (?1, ?2, ?3, ?4, ?5)", 
+                ) VALUES (?1, ?2, ?3, ?4, ?5)",
                 "INSERT",
                 vec![
-                    map_hash.clone().into(), 
+                    map_hash.clone().into(),
                     audio_offset.into(),
                     background_video.into(),
                     storyboard.into(),
@@ -564,13 +563,13 @@ impl engine::database::BeatmapPreferencesProvider for Database {
                 ]
             ),
             Some(&SqlOperation::new(
-                "UPDATE beatmap_preferences 
+                "UPDATE beatmap_preferences
                     SET audio_offset=?2, background_video=?3, storyboard=?4, beatmap_skin=?5
                     WHERE beatmap_hash=?1
-                ", 
+                ",
                 "UPDATE",
                 vec![
-                    map_hash.clone().into(), 
+                    map_hash.clone().into(),
                     audio_offset.into(),
                     background_video.into(),
                     storyboard.into(),
@@ -591,7 +590,7 @@ impl engine::database::BeatmapPreferencesProvider for Database {
         let query = "SELECT * FROM beatmap_mode_preferences WHERE beatmap_hash=?1 AND playmode=?2";
         let mut s = self.connection.prepare(query).expect(query);
         s.query_map(
-            [ &map.to_string(), playmode ], 
+            [ &map.to_string(), playmode ],
             |row| Ok(data::BeatmapPlaymodePreferences {
                 scroll_speed: row.get("scroll_speed")?,
             })
@@ -601,35 +600,35 @@ impl engine::database::BeatmapPreferencesProvider for Database {
         .ok_or_else(|| tataku::Error::String("no row?".into()))
     }
     fn set_beatmap_playmode_preferences(
-        &mut self, 
+        &mut self,
         map: common::Md5Hash,
         playmode: &str,
         prefs: &data::BeatmapPlaymodePreferences
     ) -> tataku::Result<()> {
-        let data::BeatmapPlaymodePreferences { 
-            scroll_speed 
+        let data::BeatmapPlaymodePreferences {
+            scroll_speed
         } = prefs;
 
         let map_hash = Box::new(map.to_string());
 
         self.insert_or_update(
-            "beatmap_preferences", 
+            "beatmap_preferences",
             &SqlOperation::new(
-                "INSERT INTO beatmap_mode_preferences (beatmap_hash, playmode, scroll_speed) VALUES (?1, ?2, ?3, ?4, ?5)", 
+                "INSERT INTO beatmap_mode_preferences (beatmap_hash, playmode, scroll_speed) VALUES (?1, ?2, ?3, ?4, ?5)",
                 "INSERT",
                 vec![
-                    (&map_hash).into(), 
+                    (&map_hash).into(),
                     (&playmode).into(),
                     scroll_speed.into(),
                 ]
             ),
             Some(&SqlOperation::new(
-                "UPDATE beatmap_mode_preferences 
-                    SET scroll_speed=?3, 
-                    WHERE beatmap_hash=?1 AND playmode=?2", 
+                "UPDATE beatmap_mode_preferences
+                    SET scroll_speed=?3,
+                    WHERE beatmap_hash=?1 AND playmode=?2",
                 "UPDATE",
                 vec![
-                    (&map_hash).into(), 
+                    (&map_hash).into(),
                     (&playmode).into(),
                     scroll_speed.into(),
                 ]
@@ -641,17 +640,17 @@ impl engine::database::BeatmapPreferencesProvider for Database {
 
 impl engine::database::ScoreProvider for Database {
     fn get_scores(
-        &self, 
-        map: common::Md5Hash, 
+        &self,
+        map: common::Md5Hash,
         playmode: &str,
         infos: &tataku_engine::gameplay::GamemodeInfos,
     ) -> tataku::Result<Vec<common::Score>> {
         let mut s = self.connection
             .prepare("SELECT * FROM scores WHERE map_hash=? AND playmode=?")
             .unwrap();
-        
+
         let list = s.query_map(
-            [&map.to_string(), playmode], 
+            [&map.to_string(), playmode],
             |r| db_score::map_row(r, playmode, infos)
         )
         .map_err(Self::map_err)?
@@ -676,7 +675,7 @@ impl engine::database::ScoreProvider for Database {
             combo, max_combo,
             accuracy,
             x50, x100, x300, geki, katu, xmiss,
-            speed, 
+            speed,
             version,
             mods_string,
             judgments
@@ -698,7 +697,7 @@ impl engine::database::ScoreProvider for Database {
             &s.score,
             &s.combo, &s.max_combo,
             &s.accuracy,
-            // s.x50, s.x100, s.x300, s.xgeki, s.xkatu, s.xmiss, 
+            // s.x50, s.x100, s.x300, s.xgeki, s.xkatu, s.xmiss,
             &s.speed.as_u8(),
             &s.version,
             &s.mods_string_sorted(),
@@ -725,16 +724,16 @@ mod db_beatmap {
     INSERT INTO beatmaps (
         beatmap_path, beatmap_hash, beatmap_type,
 
-        playmode, 
+        playmode,
         artist, artist_unicode,
         title, title_unicode,
         creator, version,
 
         audio_filename, image_filename,
         audio_preview, duration,
-        
+
         hp, od, cs, ar,
-        
+
         bpm_min, bpm_max
     ) VALUES ";
 
@@ -784,7 +783,7 @@ mod db_beatmap {
         fn arcstr(s: &ArcStr) -> Box<String> {
             Box::new(s.to_string())
         }
-        
+
         vec![
             arcstr(&map.file_path).into(), hash.into(), beatmap_type.into(),
 
@@ -792,7 +791,7 @@ mod db_beatmap {
             arcstr(&map.artist).into(), arcstr(&map.artist_unicode).into(),
             arcstr(&map.title).into(), arcstr(&map.title_unicode).into(),
             arcstr(&map.creator).into(), arcstr(&map.version).into(),
-            
+
             arcstr(&map.audio_filename).into(), arcstr(&map.image_filename).into(),
             (&map.audio_preview).into(), (&map.duration).into(),
 
@@ -863,7 +862,7 @@ mod db_score {
         // this is bad but its fineee
         if let Some((mods_string, info)) = mods_string.zip(infos.get_info(playmode).ok()) {
             let mods = mods_string.split("|");
-            let all_mods = engine::gameplay::mods::ModManager::mods_for_playmode_as_hashmap(info);
+            let all_mods = engine::gameplay::mods::Mods::mods_for_playmode_as_hashmap(info);
             for m in mods {
                 let Some(m) = all_mods.get(m) else { continue };
                 score.mods.push((*m).into());
@@ -878,7 +877,7 @@ mod db_score {
 pub struct SqlOperation<'a> {
     pub sql: String,
     pub operation_name: String,
-    pub values: Vec<SqlValue<'a>>, 
+    pub values: Vec<SqlValue<'a>>,
 }
 impl<'a> SqlOperation<'a> {
     pub fn new(
@@ -924,7 +923,7 @@ impl<'a> Deref for SqlValue<'a> {
 #[test]
 fn test_make_values_str() {
     assert_eq!(
-        "(?1, ?2, ?3, ?4),\n(?5, ?6, ?7, ?8),\n(?9, ?10, ?11, ?12)", 
+        "(?1, ?2, ?3, ?4),\n(?5, ?6, ?7, ?8),\n(?9, ?10, ?11, ?12)",
         Database::make_values_str(4, 3)
     );
 }

@@ -5,14 +5,14 @@ use common::{
 };
 use engine::gameplay::{
     GamemodeInfos,
-    mods::ModManager,
+    mods::Mods,
 };
 
 #[derive(Reflect)]
 #[reflect(display = "debug")]
 #[derive(Default, Debug, Clone)]
 pub struct GlobalValues {
-    pub mods: ModManager,
+    pub mods: Mods,
     pub mod_groups: Vec<ReflectModGroup>,
 
     #[reflect(alias("infos"))]
@@ -47,29 +47,29 @@ impl GlobalValues {
     }
 
     pub fn update_playmode(
-        &mut self, 
+        &mut self,
         playmode: impl Into<ArcStr>,
     ) {
         let playmode = playmode.into();
         self.playmode = playmode.clone();
-        let Ok(info) = self.gamemode_infos.get_info(&playmode) 
+        let Ok(info) = self.gamemode_infos.get_info(&playmode)
         else { return };
 
         self.playmode_display = info.display_name.to_owned().into();
     }
     pub fn update_playmode_actual(
-        &mut self, 
+        &mut self,
         playmode: impl Into<ArcStr>,
     ) {
         let playmode = playmode.into();
         self.playmode_actual = playmode.clone();
-        let Ok(info) = self.gamemode_infos.get_info(&playmode) 
+        let Ok(info) = self.gamemode_infos.get_info(&playmode)
         else { return };
         self.playmode_actual_display = info.display_name.to_owned().into();
 
 
         // update mod groups
-        let mod_groups = ModManager::mod_groups_for_playmode(info);
+        let mod_groups = Mods::mod_groups_for_playmode(info);
         self.mod_groups = mod_groups
             .iter()
             .map(|group| ReflectModGroup::from_group(group, &self.mods))

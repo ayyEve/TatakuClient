@@ -5,7 +5,7 @@ use cgmath::SquareMatrix;
 /// Column Major
 pub type Matrix = cgmath::Matrix4<f32>;
 
-pub trait MatrixHelpers {
+pub trait MatrixExt {
     fn identity() -> Self where Self:Sized;
     fn to_raw(&self) -> [[f32; 4]; 4];
 
@@ -21,7 +21,7 @@ pub trait MatrixHelpers {
     fn rot(self, rads: f32) -> Self;
     fn scale(self, s: Vector2) -> Self;
 }
-impl MatrixHelpers for Matrix {
+impl MatrixExt for Matrix {
     fn identity() -> Self where Self:Sized {
         Matrix::one()
     }
@@ -35,7 +35,7 @@ impl MatrixHelpers for Matrix {
 
     fn from_orient(pos: Vector2) -> Self where Self: Sized {
         let len = pos.x * pos.x + pos.y * pos.y;
-        if len == 0.0 { return <Self as MatrixHelpers>::identity() }
+        if len == 0.0 { return <Self as MatrixExt>::identity() }
 
         let len = len.sqrt();
         let c = pos.x / len;

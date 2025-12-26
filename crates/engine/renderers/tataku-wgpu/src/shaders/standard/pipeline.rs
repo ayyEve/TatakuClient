@@ -36,7 +36,7 @@ pub(crate) fn create_standard_pipeline(
         tataku::BlendMode::OsuAdditiveBlending,
         tataku::BlendMode::SourceAlphaBlending,
     ] {
-        let blend_state = WgpuEngine::map_blend_mode(blend_mode);
+        let blend_state = map_blend_mode(blend_mode);
 
         let pipeline = device.create_render_pipeline(
             &wgpu::RenderPipelineDescriptor {
@@ -86,4 +86,55 @@ pub(crate) fn create_standard_pipeline(
     }
 
     pipelines
+}
+
+pub(crate) fn map_blend_mode(blend_mode: tataku::BlendMode) -> wgpu::BlendState {
+    use wgpu:: {
+        BlendState,
+        BlendComponent,
+        BlendFactor,
+        BlendOperation
+    };
+
+    match blend_mode {
+        tataku::BlendMode::AlphaBlending => BlendState::ALPHA_BLENDING,
+        tataku::BlendMode::AlphaOverwrite => BlendState::REPLACE,
+        tataku::BlendMode::PremultipliedAlpha => BlendState::PREMULTIPLIED_ALPHA_BLENDING,
+        tataku::BlendMode::AdditiveBlending => BlendState {
+            color: BlendComponent {
+                src_factor: BlendFactor::One,
+                dst_factor: BlendFactor::One,
+                operation: BlendOperation::Add
+            },
+            alpha: BlendComponent {
+                src_factor: BlendFactor::One,
+                dst_factor: BlendFactor::One,
+                operation: BlendOperation::Add
+            }
+        },
+        tataku::BlendMode::OsuAdditiveBlending => BlendState {
+            color: BlendComponent {
+                src_factor: BlendFactor::SrcAlpha,
+                dst_factor: BlendFactor::One,
+                operation: BlendOperation::Add
+            },
+            alpha: BlendComponent {
+                src_factor: BlendFactor::One,
+                dst_factor: BlendFactor::One,
+                operation: BlendOperation::Add
+            }
+        },
+        tataku::BlendMode::SourceAlphaBlending => BlendState {
+            color: BlendComponent {
+                src_factor: BlendFactor::SrcAlpha,
+                dst_factor: BlendFactor::One,
+                operation: BlendOperation::Add
+            },
+            alpha: BlendComponent {
+                src_factor: BlendFactor::SrcAlpha,
+                dst_factor: BlendFactor::One,
+                operation: BlendOperation::Add
+            }
+        },
+    }
 }

@@ -159,7 +159,6 @@ fn setup() {
     debug!("File check done");
 }
 
-// helper functions
 #[must_use]
 struct LogGuard {
     _guards: [tracing_appender::non_blocking::WorkerGuard; 2],

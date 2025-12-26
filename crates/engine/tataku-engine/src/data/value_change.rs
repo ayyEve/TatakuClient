@@ -3,11 +3,11 @@ use common::reflect::*;
 
 // TODO: rename this
 #[derive(Clone, Debug)]
-pub struct ValueChangeHelper<T: Reflect + Clone + PartialEq> {
+pub struct ValueChange<T: Reflect + Clone + PartialEq> {
     key: String,
     value: Option<T>,
 }
-impl<T: Reflect + Clone + PartialEq> ValueChangeHelper<T> {
+impl<T: Reflect + Clone + PartialEq> ValueChange<T> {
     pub fn new(key: impl Into<String>) -> Self {
         Self {
             key: key.into(),
@@ -29,7 +29,7 @@ impl<T: Reflect + Clone + PartialEq> ValueChangeHelper<T> {
     }
 }
 
-impl<T: Reflect + Clone + PartialEq> Deref for ValueChangeHelper<T> {
+impl<T: Reflect + Clone + PartialEq> Deref for ValueChange<T> {
     type Target = Option<T>;
     fn deref(&self) -> &Self::Target {
         &self.value

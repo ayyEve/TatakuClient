@@ -12,7 +12,7 @@ use std::ops::RangeInclusive;
 #[derive(Serialize, Deserialize)]
 #[derive(Clone, Debug, Default2)]
 #[serde(default)]
-pub struct ModManager {
+pub struct Mods {
     /// use get/set_speed instead of direct access to this
     pub speed: GameSpeed,
     pub mods: HashSet<String>,
@@ -23,7 +23,7 @@ pub struct ModManager {
 }
 
 // const speed stuff
-impl ModManager {
+impl Mods {
     pub const MIN_SPEED: u8 = 35;
     pub const MAX_SPEED: u8 = 255;
     pub const SPEED_STEP: u8 = 5;
@@ -34,7 +34,7 @@ impl ModManager {
 }
 
 // static 
-impl ModManager {
+impl Mods {
 
     fn iter_mod_groups(
         mode: &GamemodeInfo
@@ -112,7 +112,7 @@ impl ModManager {
         &self, 
         mode: &GamemodeInfo,
     ) -> Vec<ModDefinition> {
-        let ok_mods = ModManager::mods_for_playmode_as_hashmap(mode);
+        let ok_mods = Mods::mods_for_playmode_as_hashmap(mode);
 
         self.mods.iter()
             .filter_map(|m| ok_mods.get(m))
@@ -144,7 +144,7 @@ impl ModManager {
 }
 
 // instance
-impl ModManager {
+impl Mods {
     pub fn new(
         mods: impl Iterator<Item=impl AsRef<str>>,
         speed: impl Into<GameSpeed>,
@@ -250,7 +250,6 @@ impl ModManager {
         self.mods_list(false, mode)
     }
 
-    // inline helpers
     // /// add a single mod
     // pub fn with_mod(mut self, m: impl AsRef<str>) -> Self {
     //     self.add_mod(m);
@@ -319,15 +318,15 @@ impl ModManager {
 
 }
 
-impl PartialEq for ModManager {
+impl PartialEq for Mods {
     fn eq(&self, other: &Self) -> bool {
         self.speed == other.speed && self.mods == other.mods
     }
 }
-impl Eq for ModManager {}
+impl Eq for Mods {}
 
 // lets pretend this is correct for now
-impl Hash for ModManager {
+impl Hash for Mods {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.speed.hash(state);
         let mods = self.mods_sorted();

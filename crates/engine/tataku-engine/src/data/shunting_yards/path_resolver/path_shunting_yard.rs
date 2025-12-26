@@ -30,8 +30,8 @@ impl<'rpn, 'values: 'rpn> tataku::GenericShuntingYard<'rpn, 'values> for PathShu
                 operator_queue.push(Self::Token::Reference);
                 Self::open_paren(
                     read_type,
-                    output_queue, 
-                    operator_queue, 
+                    output_queue,
+                    operator_queue,
                     function_arg_stack,
                 )?;
 
@@ -40,8 +40,8 @@ impl<'rpn, 'values: 'rpn> tataku::GenericShuntingYard<'rpn, 'values> for PathShu
             ']' => {
                 Self::close_paren(
                     read_type,
-                    output_queue, 
-                    operator_queue, 
+                    output_queue,
+                    operator_queue,
                     function_arg_stack,
                 )?;
 
@@ -80,7 +80,7 @@ impl<'rpn, 'values: 'rpn> tataku::GenericShuntingYard<'rpn, 'values> for PathShu
         token: &'rpn Self::Token,
         _values: &'values dyn Reflect,
     ) -> Result<Self::Output, ReflectError<'rpn>> {
-        let PathShuntingYardToken::Static(s) = token 
+        let PathShuntingYardToken::Static(s) = token
         else { panic!("trying to resolve non-value token type") };
         Ok(s.clone())
     }
@@ -90,13 +90,13 @@ impl<'rpn, 'values: 'rpn> tataku::GenericShuntingYard<'rpn, 'values> for PathShu
         stack: &mut ShuntingYardStack<'rpn, Self::Output>, 
         values: &'values dyn Reflect,
     ) -> Result<(), Self::Error> {
-        let PathShuntingYardToken::Reference = function_token 
+        let PathShuntingYardToken::Reference = function_token
         else { panic!("trying to resolve non-reference token type") };
 
-        let value = Self::get_function_helper(
-            "reference", 
-            1, 
-            1, 
+        let value = Self::function_args(
+            "reference",
+            1,
+            1,
             stack
         )?.pop().unwrap();
 
@@ -148,7 +148,7 @@ mod tests {
 
         let values = DynMap::default();
         let res = PathShuntingYard::evaluate_rpn(
-            &ast, 
+            &ast,
             &values
         );
 
@@ -187,7 +187,7 @@ mod tests {
         };
 
         let res = PathShuntingYard::evaluate_rpn(
-            &ast, 
+            &ast,
             &values
         );
 
@@ -225,7 +225,7 @@ mod tests {
         };
 
         let res = PathShuntingYard::evaluate_rpn(
-            &ast, 
+            &ast,
             &values
         );
 
@@ -266,7 +266,7 @@ mod tests {
         };
 
         let res = PathShuntingYard::evaluate_rpn(
-            &ast, 
+            &ast,
             &values
         );
 
@@ -305,7 +305,7 @@ mod tests {
         };
 
         let res = PathShuntingYard::evaluate_rpn(
-            &ast, 
+            &ast,
             &values
         );
 
@@ -344,7 +344,7 @@ mod tests {
         };
 
         let res = PathShuntingYard::evaluate_rpn(
-            &ast, 
+            &ast,
             &values
         );
 

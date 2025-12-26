@@ -77,15 +77,6 @@ impl Emitter {
         }
     }
 
-    /// helper for generating a random value from the init range in `range`
-    fn init_val(range: &EmitterVal, rng: &mut ThreadRng) -> f32 {
-        if range.initial.start == range.initial.end {
-            range.initial.end
-        } else {
-            rng.random_range(range.initial.clone())
-        }
-    }
-
     pub fn update(&mut self, time: f32) {
         
         if self.last_time + self.spawn_delay < time {
@@ -98,16 +89,16 @@ impl Emitter {
             if let Some(particle) = lock.next() {
                 particle.position = self.position;
 
-                let angle = Self::init_val(&self.angle, &mut rng);
-                let speed = Self::init_val(&self.speed, &mut rng);
+                let angle = init_val(&self.angle, &mut rng);
+                let speed = init_val(&self.speed, &mut rng);
                 particle.velocity = Vector2::from_angle(angle) * speed;
 
-                particle.scale = Self::init_val(&self.scale, &mut rng);
-                particle.rotation = Self::init_val(&self.rotation, &mut rng);
-                particle.lifetime = Self::init_val(&self.life, &mut rng);
+                particle.scale = init_val(&self.scale, &mut rng);
+                particle.rotation = init_val(&self.rotation, &mut rng);
+                particle.lifetime = init_val(&self.life, &mut rng);
                 particle.lifetime_max = particle.lifetime;
 
-                let opacity = Self::init_val(&self.opacity, &mut rng);
+                let opacity = init_val(&self.opacity, &mut rng);
                 particle.color = self.color.alpha(opacity);
                 particle.image = *self.image;
             }
@@ -151,8 +142,6 @@ impl Emitter {
 }
 
 
-/// helper for building emitters
-/// useful if you have multiple emitters which only have one or two settings different between them
 #[derive(Clone, Default2)]
 #[derive(ChainableInitializer)]
 pub struct EmitterBuilder {
@@ -175,5 +164,13 @@ impl EmitterBuilder {
         let mut e = Emitter::new(time, self.spawn_delay, self.position, self.angle, self.speed, self.scale, self.life, self.opacity, self.rotation, self.color, self.image, self.blend_mode);
         e.should_emit = self.should_emit;
         e
+    }
+}
+
+fn init_val(range: &EmitterVal, rng: &mut ThreadRng) -> f32 {
+    if range.initial.start == range.initial.end {
+        range.initial.end
+    } else {
+        rng.random_range(range.initial.clone())
     }
 }

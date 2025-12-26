@@ -1222,7 +1222,7 @@ impl OsuHitObject for OsuSlider {
 
 
 #[cfg(feature="graphics")]
-/// helper struct for drawing hit slider points
+/// struct for drawing hit slider points
 #[derive(Clone)]
 struct SliderDot {
     time: f32,
