@@ -2,6 +2,8 @@ use crate::prelude::*;
 use input::InputEvent;
 use common::reflect::*;
 use tataku::TatakuValue;
+use tataku_engine::VariablePathResolver;
+
 use ui::{
     tree::*,
     style::*,
@@ -15,7 +17,9 @@ pub struct SwitchWidget {
     default_case: Option<Box<dyn Widget<actions::Action>>>,
     // cond: BuildableCondition,
 
-    value: Option<usize>,
+    #[chain] value: SwitchWidgetValue,
+
+    index: Option<usize>,
     node_id: NodeId,
 }
 impl SwitchWidget {
@@ -33,22 +37,23 @@ impl SwitchWidget {
             // cond,
             cases,
             default_case,
+            value: SwitchWidgetValue::None,
 
-            value: None,
+            index: None,
             node_id: ui::EMPTY_NODE
         }
     }
 
     #[allow(clippy::borrowed_box, reason = "signature")]
     fn get_ele(&self) -> Option<&dyn Widget<actions::Action>> {
-        match self.value {
+        match self.index {
             Some(index) => Some(&*self.cases.get(index)?.widget),
             None => self.default_case.as_deref(),
         }
     }
 
     fn get_ele_mut(&mut self) -> Option<&mut dyn Widget<actions::Action>> {
-        match self.value {
+        match self.index {
             Some(index) => Some(&mut *self.cases.get_mut(index)?.widget),
             None => {
                 fn reborrow(w: &mut Box<dyn Widget<actions::Action>>) -> &mut dyn Widget<actions::Action> {
@@ -64,12 +69,18 @@ impl SwitchWidget {
     fn update_value(
         &mut self,
         values: &dyn Reflect,
+
+        // might be nice to have in the future so i included it here
+        // for now its always None
+        passed_in: Option<&TatakuValue>,
     ) {
-        self.value = self
+        let switch_value = self.value.resolve(values, passed_in);
+
+        self.index = self
             .cases
             .iter()
             .position(|i|
-                match i.cond.resolve(values) {
+                match i.cond.resolve(values, switch_value.as_deref(), passed_in) {
                     BuildableConditionResult::True => true,
                     BuildableConditionResult::False => false,
                     _ => false,
@@ -212,11 +223,11 @@ impl Widget<actions::Action> for SwitchWidget {
 
 
     fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
-        let previous_value = self.value;
-        self.update_value(shell.values);
+        let previous_index = self.index;
+        self.update_value(shell.values, None);
 
-        if self.value != previous_value {
-            if let Some(child) = previous_value
+        if self.index != previous_index {
+            if let Some(child) = previous_index
                 .and_then(|i| self.cases.get(i))
             {
                 shell.tree.override_display(
@@ -230,7 +241,7 @@ impl Widget<actions::Action> for SwitchWidget {
                 );
             }
 
-            if let Some(child) = self.value
+            if let Some(child) = self.index
                 .and_then(|i| self.cases.get(i))
             {
                 shell.tree.override_display(child.widget.node_id(), None);
@@ -276,7 +287,82 @@ impl Widget<actions::Action> for SwitchWidget {
 }
 
 
+#[derive(Default, From)]
+pub enum SwitchWidgetValue {
+    #[default]
+    None,
+    Value(BuildableValue),
+    Enum(VariablePathResolver),
+}
+impl SwitchWidgetValue {
+    pub fn resolve<'a>(&'a self, values: &'a dyn Reflect, passed_in: Option<&'a TatakuValue>) -> Option<Cow<'a, TatakuValue>> {
+        match self {
+            Self::None => None,
+            Self::Value(v) => v.resolve(values, passed_in),
+            Self::Enum(e) => {
+                let path = e.resolve_path(values)
+                    .inspect_err(|err| warn!("Failed to resolve path '{e}': {err}"))
+                    .ok()?;
+
+                values.reflect_display(&path, None).ok()
+                    .map(tataku::TatakuValue::String)
+                    .map(Cow::Owned)
+            }
+        }
+    }
+}
+
 pub struct SwitchWidgetCase {
-    pub cond: BuildableCondition,
+    pub cond: SwitchWidgetCaseCond,
     pub widget: Box<dyn Widget<actions::Action>>,
+}
+impl SwitchWidgetCase {
+    pub fn new(
+        cond: SwitchWidgetCaseCond,
+        widget: Box<dyn Widget<actions::Action>>
+    ) -> Self {
+        Self {
+            cond,
+            widget,
+        }
+    }
+}
+
+#[derive(From)]
+pub enum SwitchWidgetCaseCond {
+    Value(BuildableValue),
+    Cond(BuildableCondition),
+}
+impl SwitchWidgetCaseCond {
+    pub fn build(&mut self) {
+        match self {
+            Self::Cond(c) => c.build(),
+            Self::Value(v) => v.build(),
+        }
+    }
+
+    pub fn resolve(
+        &self, 
+        values: &dyn Reflect, 
+        switch_value: Option<&TatakuValue>,
+
+        passed_in: Option<&TatakuValue>,
+    ) -> BuildableConditionResult<'_> {
+        // too long otherwise
+        type Bcr<'a> = BuildableConditionResult<'a>;
+
+        match self {
+            Self::Cond(c) => c.resolve(values),
+            Self::Value(v) => {
+                let Some(switch_val) = switch_value 
+                else { return Bcr::Unbuilt("no switch value") };
+
+                let Some(our_val) = v
+                    .resolve(values, passed_in)
+                else { return Bcr::Failed };
+                
+                Bcr::from(&*our_val == switch_val)
+            }
+        }
+    }
 }

@@ -1,6 +1,5 @@
 use crate::prelude::*;
 use tataku::TatakuValue;
-use widgets::SliderValue;
 
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
@@ -19,8 +18,10 @@ pub struct SliderElement {
 
     #[serde(default)] on_input: Wrapped<Vec<BuildableAction>>,
 }
+#[cfg(feature="graphics")]
 impl SliderElement {
-    fn resolve(value: BuildableValue) -> SliderValue {
+    fn resolve(value: BuildableValue) -> widgets::SliderValue {
+        use widgets::SliderValue;
         match value {
             BuildableValue::None => SliderValue::Error,
             BuildableValue::Value(TatakuValue::F32(n)) => SliderValue::Static(n),
@@ -41,9 +42,7 @@ impl SliderElement {
             buildable => SliderValue::Buildable { buildable, value: 0.0 },
         }
     }
-}
 
-impl SliderElement {
     pub fn build(&self) -> widgets::Slider {
         let min = self.min_attribute.clone()
             .map(BuildableValue::Value)
@@ -68,7 +67,7 @@ impl SliderElement {
             )
             .map(Self::resolve);
         
-        if matches!(step, Some(SliderValue::Error)) { step = None };
+        if matches!(step, Some(widgets::SliderValue::Error)) { step = None };
 
         widgets::Slider::new(
             min,

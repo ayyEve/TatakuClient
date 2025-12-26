@@ -12,6 +12,8 @@ pub struct DropdownElement {
 
     #[serde(rename = "onSelect")] on_select: Wrapped<Vec<BuildableAction>>,
 }
+
+#[cfg(feature="graphics")]
 impl DropdownElement {
     fn placeholder(&self) -> widgets::WidgetText {
         let placeholder = self.placeholder.clone()
@@ -27,8 +29,7 @@ impl DropdownElement {
             cached: String::new()
         }
     }
-}
-impl DropdownElement {
+
     pub fn build(&self) -> widgets::Dropdown {
         widgets::Dropdown::new(
             self.options_path.clone().into(),

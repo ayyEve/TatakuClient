@@ -9,6 +9,7 @@ pub enum BuildableCursorAction {
     Show,
     Hide,
 }
+#[cfg(feature="graphics")]
 impl BuildableCursorAction {
     pub fn resolve(
         &self, 

@@ -16,6 +16,7 @@ pub enum BuildableGameplayAction {
     /// Retry a pending game
     Retry,
 }
+#[cfg(feature="graphics")]
 impl BuildableGameplayAction {
     pub fn resolve(&self) -> actions::game::CurrentGameAction {
         match self {

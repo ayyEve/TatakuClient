@@ -30,6 +30,8 @@ pub enum BuildableValue {
     /// The value is passed in from the widget, ie a slider's value when changed
     PassedIn,
 }
+
+#[cfg(feature="graphics")]
 impl BuildableValue {
     pub fn build(&mut self) {
         let Self::Calc(calc_str) = self else { return };

@@ -49,6 +49,8 @@ pub enum BuildableMultiplayerAction {
         slot: BuildableSlot,
     },
 }
+
+#[cfg(feature="graphics")]
 impl BuildableMultiplayerAction {
     pub fn resolve(
         &self, 

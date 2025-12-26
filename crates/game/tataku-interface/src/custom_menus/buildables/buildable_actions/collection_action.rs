@@ -24,6 +24,8 @@ pub enum BuildableCollectionAction {
         map: Wrapped<BuildableValue>,
     },
 }
+
+#[cfg(feature="graphics")]
 impl BuildableCollectionAction {
     pub fn resolve(
         &self, 

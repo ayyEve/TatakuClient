@@ -38,6 +38,8 @@ pub enum BuildableText {
         #[serde(rename = "@join")] join: ArcStr,
     },
 }
+
+#[cfg(feature="graphics")]
 impl BuildableText {
     /// Parses Self::Calc into Self::CalcParsed
     pub fn compute(&mut self) -> ShuntingYardResult<()> {

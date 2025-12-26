@@ -12,6 +12,7 @@ pub struct ButtonElement {
     #[serde(rename = "$value")]
     element: Element,
 }
+#[cfg(feature="graphics")]
 impl ButtonElement {
     pub fn build(&self) -> widgets::Button {
         let mut left = Vec::new();

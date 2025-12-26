@@ -35,5 +35,5 @@ quick-xml.workspace = true
 half.workspace = true
 num-format.workspace = true
 
-# [dev-dependencies]
-# tataku-resources.workspace = true
+[dev-dependencies]
+tataku-resources.workspace = true

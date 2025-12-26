@@ -6,6 +6,7 @@ use ui::widget::Widget;
 pub struct SectionElement {
     #[serde(rename = "$value")] children: Vec<Element>,
 }
+#[cfg(feature="graphics")]
 impl SectionElement {
     pub fn build(&self) -> widgets::Container {
         widgets::Container::new(self

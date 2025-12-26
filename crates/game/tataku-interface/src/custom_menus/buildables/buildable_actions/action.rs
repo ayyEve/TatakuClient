@@ -140,6 +140,8 @@ pub enum BuildableAction {
         event: BuildableValue,
     }
 }
+
+#[cfg(feature="graphics")]
 impl BuildableAction {
     pub fn resolve(
         &self,

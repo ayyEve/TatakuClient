@@ -4,10 +4,10 @@
   targetNamespace="tataku/elements/text"
   xmlns:xs="http://www.w3.org/2001/XMLSchema"
   xmlns:elements="tataku/elements"
-  xmlns:text="tataku/text"
+  xmlns:buildable="tataku/buildable"
 >
 
-<xs:import namespace="tataku/text" schemaLocation="../text.xsd"/>
+<xs:import namespace="tataku/buildable" schemaLocation="../buildable.xsd"/>
 <xs:import namespace="tataku/elements" schemaLocation="./elements.xsd"/>
 
 
@@ -15,7 +15,7 @@
   <xs:complexContent>
     <xs:extension base="elements:generic">
       <xs:sequence>
-        <xs:group ref="text:text-wrapped" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:group ref="buildable:text" minOccurs="0" maxOccurs="unbounded"/>
       </xs:sequence>
     </xs:extension>
   </xs:complexContent>

@@ -9,6 +9,8 @@ pub enum BuildableCondition {
     Built(BuildableCalc, ArcStr),
     Failed,
 }
+
+#[cfg(feature="graphics")]
 impl BuildableCondition {
     pub fn is_unbuilt(&self) -> bool {
         matches!(self, Self::Unbuilt(_))
@@ -63,4 +65,13 @@ pub enum BuildableConditionResult<'a> {
     True,
     False,
     Error(engine::shunting_yards::buildable::BuildableShuntingYardError)
+}
+impl From<bool> for BuildableConditionResult<'_> {
+    fn from(value: bool) -> Self {
+        if value {
+            Self::True
+        } else {
+            Self::False
+        }
+    }
 }

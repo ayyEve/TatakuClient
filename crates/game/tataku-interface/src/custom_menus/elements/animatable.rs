@@ -1,5 +1,7 @@
 use crate::prelude::*;
 use tataku::Vector2;
+
+#[cfg(feature="graphics")] 
 use ui::widget::Widget;
 
 #[derive(Deserialize)]
@@ -10,6 +12,7 @@ pub struct AnimatableElement {
 
     #[serde(rename = "$value")] element: Element,
 }
+#[cfg(feature="graphics")]
 impl AnimatableElement {
     pub fn build(&self) -> widgets::TransformableWidget {
         widgets::TransformableWidget::new(
@@ -121,3 +124,4 @@ pub enum TransformTypeTag {
     //     #[serde(rename="@end")] end: f32
     // },
 }
+

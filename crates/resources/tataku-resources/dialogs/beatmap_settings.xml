@@ -19,9 +19,12 @@
                 style = "width: fill; height: fill; flex-direction: column; justify-content: space-between;"
             >
                 <!-- <conditional cond="check_filter(var.settings.filter, _setting.name)"> -->
-                <switch style="width: fill; height: 1em;">
+                <switch 
+                    on_enum = "_setting.type"
+                    style = "width: fill; height: 1em;"
+                >
                     <!-- Boolean (Checkbox) -->
-                    <case cond="display(_setting.type) == 'Bool'">
+                    <case value="Bool">
                         <row>
                             <text>
                                 <variable>_setting.name</variable>
@@ -40,7 +43,7 @@
                     </case>
 
                     <!-- Color (TextInput) -->
-                    <case cond="display(_setting.type) == 'Color'">
+                    <case value="Color">
                         <row class="setting">
                             <text class="setting-text">
                                 <variable>_setting.name</variable>
@@ -63,7 +66,7 @@
                     </case>
 
                     <!-- String (TextInput) -->
-                    <case cond="display(_setting.type) == 'String'">
+                    <case value="String">
                         <row class="setting">
                             <text class="setting-text">
                                 <variable>_setting.name</variable>
@@ -92,7 +95,7 @@
                     </case>
 
                     <!-- Key (KeyInput) -->
-                    <case cond="display(_setting.type) == 'Key'">
+                    <case value="Key">
                         <row class="setting">
                             <text class="setting-text">
                                 <variable>_setting.name</variable>
@@ -109,7 +112,7 @@
                     </case>
 
                     <!-- Number (Slider) -->
-                    <case cond="display(_setting.type) == 'Number'">
+                    <case value="Number">
                         <row style="width: fill; ">
                             <text class="setting-text">
                                 <variable>_setting.name</variable>:
@@ -140,18 +143,18 @@
                     </case>
 
                     <!-- Dropdown -->
-                    <case cond="display(_setting.type) == 'Dropdown'">
+                    <case value="Dropdown">
                         <row style="width: fill; ">
                             <text class="setting-text">
                                 <variable>_setting.name</variable>:
                             </text>
 
-                            <switch>
-                                <case cond="display(_setting.type.Dropdown.options) == 'List'">
+                            <switch on_enum="_setting.type.Dropdown.options"> 
+                                <case value="List">
                                     <text>not yet implemented, sorry!</text>
                                 </case>
 
-                                <case cond="display(_setting.type.Dropdown.options) == 'Variable'">
+                                <case value="Variable">
                                     <dropdown
                                         options_path="::_setting.type.Dropdown.options.Variable.var"
                                         selected_path="::_setting.path"
@@ -174,7 +177,7 @@
                     </case>
 
                     <!-- Button -->
-                    <case cond="display(_setting.type) == 'Button'">
+                    <case value="Button">
                         <button class="setting">
                             <action>
                                 <internal>_setting.type.Button.action</internal>
@@ -187,7 +190,7 @@
                     </case>
 
                     <!-- Divider -->
-                    <case cond="display(_setting.type) == 'Divider'">
+                    <case value="Divider">
                         <row class="divider">
                             <text class="divider-text">
                                 <variable>_setting.name</variable>

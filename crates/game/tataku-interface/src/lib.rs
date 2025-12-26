@@ -1,6 +1,7 @@
+pub mod custom_menus;
+
 #[cfg(feature="graphics")] pub mod misc;
 #[cfg(feature="graphics")] pub mod dialog;
-#[cfg(feature="graphics")] pub mod custom_menus;
 #[cfg(feature="graphics")] pub mod menu_widgets;
 #[cfg(feature="graphics")] pub mod visualizations;
 #[cfg(feature="graphics")] pub mod gameplay_widgets;
@@ -47,4 +48,34 @@ pub mod prelude {
         crate::gameplay_widgets::PERFORMANCE,
         crate::gameplay_widgets::SPECTATORS
     ];
+}
+
+#[cfg(not(feature="graphics"))] 
+pub(crate) mod prelude {
+    pub use tataku_engine::{
+        ChainableInitializer,
+        tracing::*,
+        Default2,
+        Debug2,
+        From,
+
+        Serialize,
+        Deserialize,
+    };
+
+    pub use tataku_ui as ui;
+    pub use tataku_engine as engine;
+    pub use engine::{ input, actions };
+    pub use tataku_engine_common::common::*;
+    
+    pub use crate::custom_menus::*;
+}
+
+#[test]
+fn test() {
+    use crate::custom_menus::CustomDialog;
+    let a = tataku_resources::dialogs::SETTINGS;
+
+    let b = quick_xml::de::from_str::<CustomDialog>(a).unwrap();
+
 }

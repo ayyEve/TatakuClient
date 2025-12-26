@@ -10,6 +10,8 @@ use engine::data::shunting_yards::buildable::{
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct BuildableCalc(Arc<Vec<BuildableShuntingYardToken>>);
+
+#[cfg(feature="graphics")]
 impl BuildableCalc {
     pub fn parse(expr: impl AsRef<str>) -> ShuntingYardResult<Self> {
         let expr = expr.as_ref();

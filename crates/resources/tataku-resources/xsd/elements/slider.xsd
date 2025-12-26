@@ -3,7 +3,7 @@
 <xs:schema 
   targetNamespace="tataku/elements/slider"
   xmlns:xs="http://www.w3.org/2001/XMLSchema"
-  xmlns:buildable-value="tataku/buildable-value"
+  xmlns:buildable="tataku/buildable"
   xmlns:elements="tataku/elements"
   xmlns:actions="tataku/actions"
   xmlns:text="tataku/text"
@@ -14,21 +14,21 @@
 <xs:import namespace="tataku/text" schemaLocation="../text.xsd"/>
 <xs:import namespace="tataku/elements" schemaLocation="./elements.xsd"/>
 <xs:import namespace="tataku/actions" schemaLocation="../actions/actions.xsd"/>
-<xs:import namespace="tataku/buildable-value" schemaLocation="../buildable_value.xsd"/>
+<xs:import namespace="tataku/buildable" schemaLocation="../buildable.xsd"/>
 
 
 <xs:complexType name="slider-element">
   <xs:complexContent>
     <xs:extension base="elements:generic">
       <xs:all>
-        <xs:element name="min" type="buildable-value:buildableValue" minOccurs="0" />
-        <xs:element name="max" type="buildable-value:buildableValue" minOccurs="0"/>
-        <xs:element name="step" type="buildable-value:buildableValue" minOccurs="0"/>
+        <xs:element name="min" type="buildable:value" minOccurs="0" />
+        <xs:element name="max" type="buildable:value" minOccurs="0" />
+        <xs:element name="step" type="buildable:value" minOccurs="0" />
 
         <xs:element name="onInput" type="actions:action-list" minOccurs="0"/>
       </xs:all>
 
-      <xs:attribute name="variable" type="text:string" use="required"/>
+      <xs:attribute name="variable" type="text:variable-path" use="required"/>
       <xs:attribute name="min" type="slider-element:slider-attribute" />
       <xs:attribute name="max" type="slider-element:slider-attribute" />
       <xs:attribute name="step" type="slider-element:slider-attribute" />

@@ -5,6 +5,7 @@ use crate::prelude::*;
 pub struct TextElement {
     #[serde(rename="$value")] pub text: Vec<BuildableText>,
 }
+#[cfg(feature="graphics")]
 impl TextElement {
     pub fn build(&self) -> widgets::Text {
         let mut text = self.text.clone();

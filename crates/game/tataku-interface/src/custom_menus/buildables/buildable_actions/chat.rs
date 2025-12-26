@@ -24,6 +24,8 @@ pub enum BuildableChatAction {
         channel: BuildableValue
     }
 }
+
+#[cfg(feature="graphics")]
 impl BuildableChatAction {
     pub fn resolve(
         &self, 

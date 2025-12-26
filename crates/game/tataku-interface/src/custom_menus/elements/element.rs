@@ -442,6 +442,7 @@ impl<'de> Deserialize<'de> for Element {
     }
 }
 
+#[cfg(feature="graphics")]
 impl Element {
     pub fn build(&self) -> widgets::WidgetBase {
         widgets::WidgetBase::new(
@@ -482,6 +483,7 @@ pub enum ElementType {
     Dropdown(Box<elements::DropdownElement>),
     Visualization(Box<elements::VisualizationElement>),
 }
+#[cfg(feature="graphics")]
 impl ElementType {
     pub fn build(&self) -> Box<dyn Widget<actions::Action>> {
         macro_rules! build {
@@ -523,4 +525,15 @@ impl ElementType {
 pub struct Wrapped<T> {
     #[serde(rename="$value")]
     pub inner: T
+}
+impl<T> Deref for Wrapped<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+impl<T> DerefMut for Wrapped<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
 }

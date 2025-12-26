@@ -27,6 +27,7 @@ impl<'de> Deserialize<'de> for BuildableSlot {
 }
 
 
+#[cfg(feature="graphics")]
 impl BuildableSlot {
     pub fn get_action(
         &self, 

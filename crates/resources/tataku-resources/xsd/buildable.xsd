@@ -1,0 +1,53 @@
+<?xml version="1.0"?>
+
+<xs:schema 
+  targetNamespace="tataku/buildable"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:buildable="tataku/buildable"
+  xmlns:text="tataku/text"
+>
+
+<xs:import namespace="tataku/text" schemaLocation="text.xsd"/>
+
+<xs:complexType name="value" mixed="true">
+    <xs:group ref="buildable:value" minOccurs="0"/>
+</xs:complexType>
+
+<xs:group name="value">
+    <xs:choice>
+        <xs:element name="none" />
+        <xs:element name="variable" type="text:variable-path"/>
+        <xs:element name="passedIn" />
+        <xs:element name="calc" type="text:string"/>
+    </xs:choice>
+</xs:group>
+
+
+<xs:complexType name="text" mixed="true">
+    <xs:group ref="buildable:text" />
+</xs:complexType>
+
+<xs:group name="text">
+    <xs:choice>
+        <xs:element name="locale" type="text:string"/>
+        <xs:element name="variable" type="text:string"/>
+
+        <xs:element name="display">
+            <xs:complexType mixed="true">
+                <xs:attribute name="precision" type="xs:long"/>
+            </xs:complexType>
+        </xs:element>
+
+        <xs:element name="calc" type="text:string"/>
+
+        <xs:element name="iter">
+            <xs:complexType>
+                <xs:attribute name="variable" type="text:string" use="required"/>
+                <xs:attribute name="property" type="text:string"/>
+                <xs:attribute name="join" type="text:string" use="required"/>
+            </xs:complexType>
+        </xs:element>
+    </xs:choice>
+</xs:group>
+
+</xs:schema>

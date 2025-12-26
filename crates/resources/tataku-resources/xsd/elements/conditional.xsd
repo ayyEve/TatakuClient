@@ -4,11 +4,11 @@
   targetNamespace="tataku/elements/conditional"
   xmlns:xs="http://www.w3.org/2001/XMLSchema"
   xmlns:elements="tataku/elements"
-  xmlns:common="tataku/common"
+  xmlns:text="tataku/text"
   xmlns:conditional-element="tataku/elements/conditional"
 >
 
-<xs:import namespace="tataku/common" schemaLocation="../common.xsd"/>
+<xs:import namespace="tataku/text" schemaLocation="../text.xsd"/>
 <xs:import namespace="tataku/elements" schemaLocation="./elements.xsd"/>
 
 
@@ -30,7 +30,7 @@
           </xs:complexType>
         </xs:element>
       </xs:sequence>
-      <xs:attribute name="cond" type="common:condition" use="required"/>
+      <xs:attribute name="cond" type="text:condition" use="required"/>
     </xs:extension>
   </xs:complexContent>
 </xs:complexType>

@@ -5,6 +5,7 @@ use crate::prelude::*;
 pub struct VisualizationElement {
     #[serde(rename = "$value", default)] visualization: VisualizationType,
 }
+#[cfg(feature="graphics")]
 impl VisualizationElement {
     pub fn build(&self) -> widgets::VisualizationWidget {
         let vis = match self.visualization {

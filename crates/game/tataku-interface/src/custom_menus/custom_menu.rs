@@ -16,6 +16,7 @@ pub struct CustomMenu {
     #[serde(default)] pub style: Option<ArcStr>,
     #[serde(alias="event", default)] pub events: Wrapped<Vec<BuildableEvent>>,
 }
+#[cfg(feature="graphics")]
 impl CustomMenu {
     pub fn build(&self) -> BuiltCustomMenu {
         let events  = self.events.inner.iter()
@@ -46,6 +47,7 @@ impl CustomMenu {
     }
 }
 
+#[cfg(feature="graphics")]
 pub struct BuiltCustomMenu {
     pub id: ArcStr,
     pub styles: ArcStr,
@@ -54,6 +56,7 @@ pub struct BuiltCustomMenu {
 
     node_id: NodeId,
 }
+#[cfg(feature="graphics")]
 impl Widget<actions::Action> for BuiltCustomMenu {
     fn name(&self) -> CowStr { self.id.to_string().into() }
     fn node_id(&self) -> NodeId { self.node_id }

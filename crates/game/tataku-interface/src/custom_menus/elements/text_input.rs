@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use widgets::WidgetText;
 
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
@@ -14,8 +13,9 @@ pub struct TextInputElement {
     #[serde(default)] on_input: Wrapped<Vec<BuildableAction>>,
     #[serde(default)] on_submit: Wrapped<Vec<BuildableAction>>,
 }
+#[cfg(feature="graphics")]
 impl TextInputElement {
-    fn placeholder(&self) -> WidgetText {
+    fn placeholder(&self) -> widgets::WidgetText {
         let placeholder = self.placeholder.clone()
             .map(|p| p.inner)
             .or(self.placeholder_attribute.clone()
@@ -24,15 +24,18 @@ impl TextInputElement {
             .unwrap_or_default();
 
         match placeholder.clone() {
-            BuildableText::Text(t) | BuildableText::Locale(t) => WidgetText::String {
+            BuildableText::Text(t) | BuildableText::Locale(t) => widgets::WidgetText::String {
                 value: t.to_string().into(),
                 updated: false,
             },
-            buildable => WidgetText::Custom { custom: vec![buildable], cached: String::new() }
+            buildable => widgets::WidgetText::Custom { 
+                custom: vec![buildable], 
+                cached: String::new() 
+            }
         }
     }
-}
-impl TextInputElement {
+
+
     pub fn build(&self) -> widgets::TextInput {
         let on_input = self.on_input.inner.clone();
         let on_input = (!on_input.is_empty()).then_some(on_input);

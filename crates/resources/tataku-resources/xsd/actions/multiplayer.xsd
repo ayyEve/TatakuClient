@@ -4,10 +4,10 @@
   targetNamespace="tataku/actions/multiplayer"
   xmlns:xs="http://www.w3.org/2001/XMLSchema"
   xmlns:slot-actions="tataku/actions/slot"
-  xmlns:buildable-value="tataku/buildable-value"
+  xmlns:buildable="tataku/buildable"
 >
 
-<xs:import namespace="tataku/buildable-value" schemaLocation="../buildable_value.xsd"/>
+<xs:import namespace="tataku/buildable" schemaLocation="../buildable.xsd"/>
 <xs:import namespace="tataku/actions/slot" schemaLocation="./slot.xsd"/>
 
 
@@ -16,9 +16,9 @@
     <xs:element name="createLobby">
       <xs:complexType>
         <xs:all>
-          <xs:element name="name" type="buildable-value:buildableValue" minOccurs="1"/>
-          <xs:element name="password" type="buildable-value:buildableValue" minOccurs="0"/>
-          <xs:element name="private" type="buildable-value:buildableValue" minOccurs="0"/>
+          <xs:element name="name" type="buildable:value" minOccurs="1"/>
+          <xs:element name="password" type="buildable:value" minOccurs="0"/>
+          <xs:element name="private" type="buildable:value" minOccurs="0"/>
         </xs:all>
       </xs:complexType>
     </xs:element>
@@ -26,8 +26,8 @@
     <xs:element name="joinLobby">
       <xs:complexType mixed="true">
         <xs:sequence>
-          <xs:group ref="buildable-value:buildableValue-wrapped" minOccurs="0"/>
-          <xs:element name="password" type="buildable-value:buildableValue" minOccurs="0"/>
+          <xs:group ref="buildable:value" minOccurs="0"/>
+          <xs:element name="password" type="buildable:value" minOccurs="0"/>
         </xs:sequence>
       </xs:complexType>
     </xs:element>

@@ -4,32 +4,32 @@
   targetNamespace="tataku/actions/online-content"
   xmlns:xs="http://www.w3.org/2001/XMLSchema"
   xmlns:text="tataku/text"
-  xmlns:buildable-value="tataku/buildable-value"
+  xmlns:buildable="tataku/buildable"
   xmlns:online-content-actions="tataku/actions/online-content"
 >
 
-<xs:import namespace="tataku/buildable-value" schemaLocation="../buildable_value.xsd"/>
+<xs:import namespace="tataku/buildable" schemaLocation="../buildable.xsd"/>
 <xs:import namespace="tataku/text" schemaLocation="../text.xsd"/>
 
 
 <xs:group name="online-content-action">
   <xs:choice>
-      <xs:element name="audioPreview" type="buildable-value:buildableValue" minOccurs="1"/>
-      <xs:element name="download" type="buildable-value:buildableValue" minOccurs="1"/>
+      <xs:element name="audioPreview" type="buildable:value" minOccurs="1"/>
+      <xs:element name="download" type="buildable:value" minOccurs="1"/>
       <xs:element name="search" type="online-content-actions:online-content-action-search" minOccurs="1"/>
 
       <xs:element name="nextPage"/>
       <xs:element name="previousPage"/>
-      <xs:element name="setPage" type="buildable-value:buildableValue" minOccurs="1"/>
+      <xs:element name="setPage" type="buildable:value" minOccurs="1"/>
   </xs:choice>
 </xs:group>
 
 <xs:complexType name="online-content-action-search">
   <xs:all>
-    <xs:element name="engineId" type="buildable-value:buildableValue" minOccurs="1" />
-    <xs:element name="searchType" type="buildable-value:buildableValue" minOccurs="1" />
-    <xs:element name="page" type="buildable-value:buildableValue" minOccurs="1" />
-    <xs:element name="query" type="buildable-value:buildableValue" />
+    <xs:element name="engineId" type="buildable:value" minOccurs="1" />
+    <xs:element name="searchType" type="buildable:value" minOccurs="1" />
+    <xs:element name="page" type="buildable:value" minOccurs="1" />
+    <xs:element name="query" type="buildable:value" />
     
     <!-- value list -->
     <xs:element name="values" minOccurs="0">
@@ -48,8 +48,8 @@
 
 <xs:complexType name="search_value">
   <xs:all>
-    <xs:element name="id" type="buildable-value:buildableValue" minOccurs="1" />
-    <xs:element name="value" type="buildable-value:buildableValue" minOccurs="1" />
+    <xs:element name="id" type="buildable:value" minOccurs="1" />
+    <xs:element name="value" type="buildable:value" minOccurs="1" />
   </xs:all>
 </xs:complexType>
 

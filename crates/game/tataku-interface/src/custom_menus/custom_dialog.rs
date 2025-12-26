@@ -1,7 +1,5 @@
 use crate::prelude::*;
-use tataku::TatakuValue;
 use ui::{
-    tree::NodeId,
     widget::*,
     message::*,
     style::CssStyle,
@@ -23,6 +21,7 @@ pub struct CustomDialog {
     #[serde(rename = "$value")]
     element: Element,
 }
+#[cfg(feature="graphics")]
 impl CustomDialog {
     pub fn build(&self) -> BuiltCustomDialog {
         let events  = self.events.inner.iter()
@@ -65,6 +64,7 @@ impl CustomDialog {
     }
 }
 
+#[cfg(feature="graphics")]
 pub struct BuiltCustomDialog {
     pub id: ArcStr,
     pub title: ArcStr,
@@ -76,11 +76,13 @@ pub struct BuiltCustomDialog {
     pub draggable: bool,
     pub resizable: bool,
 
-    node_id: NodeId
+    node_id: ui::tree::NodeId
 }
+
+#[cfg(feature="graphics")]
 impl Widget<actions::Action> for BuiltCustomDialog {
     fn name(&self) -> CowStr { self.id.to_string().into() }
-    fn node_id(&self) -> NodeId { self.node_id }
+    fn node_id(&self) -> ui::tree::NodeId { self.node_id }
     fn get_style_str(&self) -> ArcStr { self.styles.clone() }
 
     fn children(&self) -> WidgetChildren<'_, actions::Action> {
@@ -90,7 +92,7 @@ impl Widget<actions::Action> for BuiltCustomDialog {
         WidgetChildrenMut::Single(&mut self.element)
     }
 
-    fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId> {
+    fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<ui::tree::NodeId> {
         let child = self.element.layout(shell)?;
         self.node_id = shell.tree.new_with_children(&[child])?;
         Ok(self.node_id)
@@ -112,7 +114,7 @@ impl Widget<actions::Action> for BuiltCustomDialog {
         if shell.handled { return }
 
         let cast = message.value
-            .downcast_ref::<(BuildableAction, Option<TatakuValue>)>()
+            .downcast_ref::<(BuildableAction, Option<tataku::TatakuValue>)>()
             .cloned();
 
         if let Some((mut action, passed_in)) = cast {
@@ -136,7 +138,7 @@ impl Widget<actions::Action> for BuiltCustomDialog {
     fn handle_event(
         &mut self,
         event: &input::TatakuEvent,
-        event_value: Option<&TatakuValue>,
+        event_value: Option<&tataku::TatakuValue>,
         shell: &mut MessageShell<actions::Action>,
     ) {
         let Some(events) = self.events.get(event)
