@@ -1,14 +1,14 @@
 use crate::prelude::*;
 use common::reflect::*;
 
-use std::ops::{ 
-    Add, AddAssign, 
+use std::ops::{
+    Add, AddAssign,
     Sub, SubAssign,
-    Mul, MulAssign, 
-    Div, DivAssign, 
+    Mul, MulAssign,
+    Div, DivAssign,
     Deref, DerefMut,
-    Rem, RemAssign, 
-    Neg, 
+    Rem, RemAssign,
+    Neg,
 };
 use std::cmp::{
     PartialEq,
@@ -17,7 +17,7 @@ use std::cmp::{
 
 
 /// Wrapper type to implement floating-point operations on u8 colors
-/// 
+///
 #[derive(Reflect)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -31,7 +31,7 @@ impl ColorField {
     pub const fn f32_to_u8(n: f32) -> u8 {
         (n.clamp(0.0, 1.0) * Self::MAX_VAL as f32) as u8
     }
-    
+
     #[inline(always)]
     pub const fn u8_to_f32(n: u8) -> f32 {
         (n as f32) / Self::MAX_VAL as f32
@@ -53,7 +53,7 @@ impl ColorField {
 }
 
 impl Default for ColorField {
-    fn default() -> Self { Self::MAX }
+    fn default() -> Self { Self::new_u8(0) }
 }
 
 impl AsRef<u8> for ColorField {
@@ -122,64 +122,66 @@ impl PartialOrd<f32> for ColorField {
 impl Neg for ColorField {
     type Output = Self;
     fn neg(self) -> Self::Output {
-        Self(255 - self.0)
+        Self(Self::MAX_VAL - self.0)
     }
 }
 
 macro_rules! impl_math {
-    ($($(+ $assign:ident)? $trait: ident $op_fn: ident),*$(,)?) => { $(
-        impl_math!(@a $($assign)? $trait $op_fn);
-    )*};
-
-    (@a assign $trait: ident $op_fn: ident) => {
-        impl $trait<Self> for ColorField {
-            fn $op_fn(&mut self, rhs: Self) {
-                self.0.$op_fn(rhs.0);
-            }
-        }
-        impl $trait<u8> for ColorField {
-            fn $op_fn(&mut self, rhs: u8) {
-                self.0.$op_fn(rhs);
-            }
-        }
-        impl $trait<f32> for ColorField {
-            fn $op_fn(&mut self, rhs: f32) {
-                let mut lhs = self.to_f32();
-                lhs.$op_fn(rhs);
-                *self = Self::new_f32(lhs);
-            }
-        }
-    };
-
-    (@a $trait: ident $op_fn: ident) => {
+    ($($trait: ident),*$(,)?) => { $(paste::paste! {
         impl $trait<Self> for ColorField {
             type Output = Self;
-            
-            fn $op_fn(self, rhs: Self) -> Self::Output {
-                Self(self.0.$op_fn(rhs.0))
-            }
-        }
-        impl $trait<u8> for ColorField {
-            type Output = Self;
-            
-            fn $op_fn(self, rhs: u8) -> Self::Output {
-                Self(self.0.$op_fn(rhs))
-            }
-        }
-        impl $trait<f32> for ColorField {
-            type Output = Self;
-            
-            fn $op_fn(self, rhs: f32) -> Self::Output {
+
+            fn [<$trait:lower>](self, rhs: Self) -> Self::Output {
                 let lhs = self.to_f32();
-                Self::new_f32(lhs.$op_fn(rhs))
+                let rhs = rhs.to_f32();
+                Self::new_f32(lhs.[<$trait:lower>](rhs))
             }
         }
-    };
+        impl $trait<u8> for ColorField {
+            type Output = Self;
+
+            fn [<$trait:lower>](self, rhs: u8) -> Self::Output {
+                let lhs = self.to_f32();
+                let rhs = Self::u8_to_f32(rhs);
+                Self::new_f32(lhs.[<$trait:lower>](rhs))
+            }
+        }
+        impl $trait<f32> for ColorField {
+            type Output = Self;
+
+            fn [<$trait:lower>](self, rhs: f32) -> Self::Output {
+                let lhs = self.to_f32();
+                Self::new_f32(lhs.[<$trait:lower>](rhs))
+            }
+        }
+
+        impl [<$trait Assign>]<Self> for ColorField {
+            fn [<$trait:lower _assign>](&mut self, rhs: Self) {
+                let lhs = self.to_f32();
+                let rhs = rhs.to_f32();
+                *self = Self::new_f32(lhs.[<$trait:lower>](rhs));
+            }
+        }
+        impl [<$trait Assign>]<u8> for ColorField {
+            fn [<$trait:lower _assign>](&mut self, rhs: u8) {
+                let lhs = self.to_f32();
+                let rhs = Self::u8_to_f32(rhs);
+                *self = Self::new_f32(lhs.[<$trait:lower>](rhs));
+            }
+        }
+        impl [<$trait Assign>]<f32> for ColorField {
+            fn [<$trait:lower _assign>](&mut self, rhs: f32) {
+                let lhs = self.to_f32();
+                *self = Self::new_f32(lhs.[<$trait:lower>](rhs));
+            }
+        }
+
+    })*};
 }
 impl_math![
-    Add add, +assign AddAssign add_assign,
-    Sub sub, +assign SubAssign sub_assign,
-    Mul mul, +assign MulAssign mul_assign,
-    Div div, +assign DivAssign div_assign,
-    Rem rem, +assign RemAssign rem_assign,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Rem,
 ];
