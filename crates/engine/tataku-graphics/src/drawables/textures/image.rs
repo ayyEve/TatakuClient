@@ -56,8 +56,6 @@ pub struct Image {
     /// underlying scale of this image, mainly used for 2x res sprites
     pub base_scale: f32,
 
-    pub blend_mode: BlendMode,
-
     pub color: Color,
 
     pub flip: ImageFlip,
@@ -72,7 +70,6 @@ impl Image {
             color: Color::WHITE,
             tex,
             flip: ImageFlip::None,
-            blend_mode: BlendMode::AlphaBlending,
             base_scale,
             draw_debug: false,
         }
@@ -96,14 +93,6 @@ impl Image {
 #[cfg(feature="graphics")]
 impl TatakuRenderable for Image {
     fn get_name(&self) -> String { "Texture".to_owned() }
-    
-    fn get_pipeline(&self) -> GraphicsPipeline { GraphicsPipeline::Standard(self.blend_mode) }
-    fn set_pipeline(&mut self, pipeline: GraphicsPipeline) { 
-        let GraphicsPipeline::Standard(blend_mode) = pipeline 
-        else { return };
-
-        self.blend_mode = blend_mode; 
-    }
 
     fn draw(
         &self, 
@@ -117,13 +106,16 @@ impl TatakuRenderable for Image {
             .scale(Vector2::ONE * self.base_scale);
 
         let flip = self.flip.xor(options.image_flip);
+
+        let Some(blend_mode) = options.blend_mode() else { return; };
+
         g.draw_tex(
             TextureDraw::new(
                 &self.tex, 
                 color,
             ).with_flip(flip),
             transform, 
-            self.blend_mode
+            blend_mode
         );
 
         // if self.draw_debug {

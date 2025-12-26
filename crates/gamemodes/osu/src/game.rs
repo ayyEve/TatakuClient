@@ -1247,7 +1247,7 @@ impl Gamemode for OsuGame {
 
         // need to draw the smoke particles on top of everything
         if let Some(e) = self.smoke_emitter.as_ref() {
-            e.draw(list);
+            e.draw(graphics::DrawOptions::default(), list);
         }
 
         // draw the cursor on top of smoke tho

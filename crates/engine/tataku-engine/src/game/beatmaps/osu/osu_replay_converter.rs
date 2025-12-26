@@ -33,14 +33,14 @@ fn read_osu_replay(file: impl AsRef<Path>) -> tataku::Result<OsuReplay> {
 
     let score = read_int(file, &mut offset)?;
     let max_combo = read_short(file, &mut offset)?;
-    
+
     let perfect = read_byte(file, &mut offset)? == 1;
     let mods_num = read_int(file, &mut offset)?;
     let health_str = read_string(file, &mut offset)?;
     let timestamp = read_long(file, &mut offset)?;
 
     let data_len = read_int(file, &mut offset)? as usize;
-    
+
     if offset + (data_len - 1) >= file.len() { return Err("buffer overflow".into()) }
     let mut replay_data = &file[offset..(offset + data_len)]; offset += data_len;
 
@@ -136,7 +136,7 @@ fn parse_lzma_stream(lzma: &mut impl std::io::BufRead) -> tataku::Result<Vec<Osu
                 str.parse().map_err(|e| tataku::Error::String(format!("{e}")))?
             }};
         }
-        
+
         let time:i64 = parse!("time");
         let x:f32    = parse!("x");
         let y:f32    = parse!("y");
@@ -150,7 +150,7 @@ fn parse_lzma_stream(lzma: &mut impl std::io::BufRead) -> tataku::Result<Vec<Osu
                 key_presses.push(OsuKeys::from_num(i));
             }
         }
-        
+
         replay_frames.push(OsuReplayFrame {
             time: accumulated_time,
             x,
@@ -277,7 +277,7 @@ impl OsuReplay {
         } else if self.mods.contains(&OsuMods::HalfTime) {
             score.speed = GameSpeed::from_f32(0.75);
         }
-        
+
         // mods
         {
             let info = infos.get_info(&self.game_mode).expect("nice try");
@@ -294,7 +294,7 @@ impl OsuReplay {
                 score.mods.push((*m).into());
             }
 
-        }       
+        }
 
         score
     }
@@ -313,7 +313,7 @@ impl OsuReplay {
     
 
     pub fn replay_from_score_and_lzma(
-        score: &Score, 
+        score: &Score,
         lzma: &mut impl std::io::BufRead
     ) -> tataku::Result<Score> {
         let frames = parse_lzma_stream(lzma)?;
@@ -375,14 +375,14 @@ impl OsuReplay {
                 // check press and release
                 for k in KEYS.iter() {
 
-                    // press 
+                    // press
                     if !last_keys.contains(k) && f.keys.contains(k) {
                         let key = k.to_keypress(game_mode);
 
                         replay.frames.push(ReplayFrame::new(f.time as f32, ReplayAction::Press(key)));
                     }
-                    
-                    // release 
+
+                    // release
                     if last_keys.contains(k) && !f.keys.contains(k) && game_mode != "taiko" {
                         let key = k.to_keypress(game_mode);
 
@@ -399,7 +399,7 @@ impl OsuReplay {
 
 
 
-} 
+}
 
 
 #[derive(Clone, Debug)]
@@ -419,39 +419,39 @@ pub struct OsuHealth {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum OsuMods {
-    None, //	0	
-    NoFail, //	1 (0)	
-    Easy, //	2 (1)	
+    None, //	0
+    NoFail, //	1 (0)
+    Easy, //	2 (1)
     TouchDevice, //	4 (2)	Replaces unused NoVideo mod
-    Hidden, //	8 (3)	
-    HardRock, //	16 (4)	
-    SuddenDeath, //	32 (5)	
-    DoubleTime, //	64 (6)	
-    Relax, //	128 (7)	
-    HalfTime, //	256 (8)	
+    Hidden, //	8 (3)
+    HardRock, //	16 (4)
+    SuddenDeath, //	32 (5)
+    DoubleTime, //	64 (6)
+    Relax, //	128 (7)
+    HalfTime, //	256 (8)
     Nightcore, //	512 (9)	always used with DT : 512 + 64 = 576
-    Flashlight, //	1024 (10)	
-    Autoplay, //	2048 (11)	
-    SpunOut, //	4096 (12)	
+    Flashlight, //	1024 (10)
+    Autoplay, //	2048 (11)
+    SpunOut, //	4096 (12)
     Relax2, //	8192 (13)	Autopilot
-    Perfect, //	16384 (14)	
-    Key4, //	32768 (15)	
-    Key5, //	65536 (16)	
-    Key6, //	131072 (17)	
-    Key7, //	262144 (18)	
-    Key8, //	524288 (19)	
+    Perfect, //	16384 (14)
+    Key4, //	32768 (15)
+    Key5, //	65536 (16)
+    Key6, //	131072 (17)
+    Key7, //	262144 (18)
+    Key8, //	524288 (19)
     KeyMod, //	1015808	k4+k5+k6+k7+k8
-    FadeIn, //	1048576 (20)	
-    Random, //	2097152 (21)	
+    FadeIn, //	1048576 (20)
+    Random, //	2097152 (21)
     LastMod, //	4194304 (22)	Cinema
     TargetPractice, //	8388608 (23)	osu!cuttingedge only
-    Key9, //	16777216 (24)	
-    Coop, //	33554432 (25)	
-    Key1, //	67108864 (26)	
-    Key3, //	134217728 (27)	
-    Key2, //	268435456 (28)	
-    ScoreV2, //	536870912 (29)	
-    Mirror, //	1073741824 (30)	
+    Key9, //	16777216 (24)
+    Coop, //	33554432 (25)
+    Key1, //	67108864 (26)
+    Key3, //	134217728 (27)
+    Key2, //	268435456 (28)
+    ScoreV2, //	536870912 (29)
+    Mirror, //	1073741824 (30)
 }
 impl OsuMods {
     fn from_num(num: u32) -> Self {

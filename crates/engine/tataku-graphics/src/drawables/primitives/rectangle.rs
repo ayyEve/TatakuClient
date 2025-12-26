@@ -6,7 +6,6 @@ pub struct Rectangle {
     size: Vector2,
 
     pub color: Color,
-    blend_mode: BlendMode,
 
     #[chain] pub shape: Shape,
     pub border: Option<Border>,
@@ -21,7 +20,6 @@ impl Rectangle {
 
             color,
             shape: Shape::Square,
-            blend_mode: BlendMode::AlphaBlending,
 
             border: None,
         }
@@ -41,14 +39,6 @@ impl Rectangle {
 impl TatakuRenderable for Rectangle {
     fn get_name(&self) -> String { "Rectangle".to_owned() }
 
-    fn get_pipeline(&self) -> GraphicsPipeline { GraphicsPipeline::Standard(self.blend_mode) }
-    fn set_pipeline(&mut self, pipeline: GraphicsPipeline) { 
-        let GraphicsPipeline::Standard(blend_mode) = pipeline 
-        else { return };
-
-        self.blend_mode = blend_mode; 
-    }
-
     fn draw(
         &self, 
         options: &DrawOptions, 
@@ -62,13 +52,15 @@ impl TatakuRenderable for Rectangle {
             b 
         });
 
+        let Some(blend_mode) = options.blend_mode() else { return; };
+
         g.draw_rect(
             self.size,
             border, 
             self.shape, 
             color, 
             transform, 
-            self.blend_mode
+            blend_mode
         );
     }
 }

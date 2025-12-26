@@ -2,7 +2,6 @@ use crate::*;
 
 #[derive(Clone, Default)]
 pub struct RenderTarget {
-    pub blend_mode: BlendMode,
     pub color: Color,
 
     pub flip: ImageFlip,
@@ -36,7 +35,6 @@ impl RenderTarget {
 
     pub fn as_image(&self) -> Image {
         Image {
-            blend_mode: self.blend_mode,
             tex: self.data.read().tex.clone(),
             color: self.color,
             base_scale: 1.0,
@@ -60,14 +58,7 @@ impl RenderTarget {
 
 #[cfg(feature="graphics")]
 impl TatakuRenderable for RenderTarget {
-    fn get_pipeline(&self) -> GraphicsPipeline {
-        GraphicsPipeline::Standard(self.blend_mode)
-    }
-
-    fn set_pipeline(&mut self, pipeline: GraphicsPipeline) {
-        let GraphicsPipeline::Standard(bm) = pipeline else { return };
-        self.blend_mode = bm;
-    }
+    fn get_name(&self) -> String { "Render Target".to_string() }
 
     fn draw(
         &self, 

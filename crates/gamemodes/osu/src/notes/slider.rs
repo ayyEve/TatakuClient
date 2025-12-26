@@ -429,7 +429,10 @@ impl OsuSlider {
 
                 // add starting circle manually
                 drawables.push(graphics::Circle::new(color)
-                    .with_pipeline(pipeline)
+                    .merge_draw_options(graphics::DrawOptions {
+                        pipeline: Some(pipeline),
+                        ..Default::default()
+                    })
                     .with_transform(graphics::Transform {
                         pos: p,
                         scale: Vector2::ONE * radius,
@@ -457,7 +460,10 @@ impl OsuSlider {
                         p2 - p1,
                         radius,
                         color,
-                    ).with_pipeline(pipeline)
+                    ).merge_draw_options(graphics::DrawOptions {
+                        pipeline: Some(pipeline),
+                        ..Default::default()
+                    })
                     .with_transform(tataku::Matrix::identity()
                         .trans(p1)
                     ));
@@ -465,7 +471,10 @@ impl OsuSlider {
                     // add a circle to smooth out the corners
                     // border
                     drawables.push(graphics::Circle::new(color)
-                        .with_pipeline(pipeline)
+                        .merge_draw_options(graphics::DrawOptions {
+                            pipeline: Some(pipeline),
+                            ..Default::default()
+                        })
                         .with_transform(graphics::Transform {
                             pos: p2,
                             scale: Vector2::ONE * radius,

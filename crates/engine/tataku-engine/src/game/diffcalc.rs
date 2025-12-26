@@ -4,12 +4,12 @@ pub use gameplay::mode::*;
 
 pub trait DiffCalc: Send + Sync {
     fn new(
-        g: &engine::BeatmapMeta, 
+        g: &engine::BeatmapMeta,
         settings: &settings::Settings
     ) -> tataku::Result<Self> where Self:Sized;
 
     fn calc(
-        &mut self, 
+        &mut self,
         mods: &gameplay::mods::Mods
     ) -> tataku::Result<DiffCalcSummary>;
 }

@@ -91,6 +91,7 @@ impl Default for Transform {
     }
 }
 
+#[derive(Clone)]
 pub struct Transformed<T = Box<dyn TatakuRenderable>> {
     pub transform: Matrix,
     pub drawable: T,
@@ -111,14 +112,6 @@ impl<T> Transformed<T> {
 impl<T: TatakuRenderable> TatakuRenderable for Transformed<T> {
     fn get_name(&self) -> String { self.drawable.get_name() }
 
-    fn get_pipeline(&self) -> GraphicsPipeline {
-        self.drawable.get_pipeline()
-    }
-
-    fn set_pipeline(&mut self, blend_mode: GraphicsPipeline) {
-        self.drawable.set_pipeline(blend_mode);
-    }
-
     fn draw(
         &self,
         options: &DrawOptions,
@@ -131,6 +124,7 @@ impl<T: TatakuRenderable> TatakuRenderable for Transformed<T> {
 }
 
 
+#[derive(Clone)]
 pub struct Scissored<T = Box<dyn TatakuRenderable>> {
     pub scissor: Bounds,
     pub drawable: T
@@ -151,14 +145,6 @@ impl<T> Scissored<T> {
 impl<T: TatakuRenderable> TatakuRenderable for Scissored<T> {
     fn get_name(&self) -> String { self.drawable.get_name() }
 
-    fn get_pipeline(&self) -> GraphicsPipeline {
-        self.drawable.get_pipeline()
-    }
-
-    fn set_pipeline(&mut self, blend_mode: GraphicsPipeline) {
-        self.drawable.set_pipeline(blend_mode);
-    }
-
     fn draw(
         &self,
         options: &DrawOptions,
@@ -172,6 +158,7 @@ impl<T: TatakuRenderable> TatakuRenderable for Scissored<T> {
     }
 }
 
+#[derive(Clone)]
 pub struct MergeDrawOptions<T = Box<dyn TatakuRenderable>> {
     pub draw_options: DrawOptions,
     pub drawable: T
@@ -191,14 +178,6 @@ impl<T> MergeDrawOptions<T> {
 #[cfg(feature="graphics")]
 impl<T: TatakuRenderable> TatakuRenderable for MergeDrawOptions<T> {
     fn get_name(&self) -> String { self.drawable.get_name() }
-
-    fn get_pipeline(&self) -> GraphicsPipeline {
-        self.drawable.get_pipeline()
-    }
-
-    fn set_pipeline(&mut self, blend_mode: GraphicsPipeline) {
-        self.drawable.set_pipeline(blend_mode);
-    }
 
     fn draw(
         &self,

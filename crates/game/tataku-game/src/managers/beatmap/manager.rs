@@ -357,7 +357,7 @@ impl BeatmapManager {
             tataku_engine::data::GroupBy::Collections => {
                 for i in self.collections.iter() {
                     let key = BeatmapGroupValue::Collection(i.name.clone());
-                    
+
                     let list = set_map
                         .entry(key.clone())
                         .or_insert_with(|| BeatmapGroup::new(key.clone()));

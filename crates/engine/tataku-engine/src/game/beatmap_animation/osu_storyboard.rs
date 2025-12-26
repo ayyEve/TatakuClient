@@ -124,12 +124,12 @@ impl BeatmapAnimation for OsuStoryboard {
 
             let element: Box<dyn graphics::TatakuRenderable> = match i.element_image.clone() {
                 ElementImage::Sprite(mut image) => {
-                    image.color = color;
+                    image.drawable.color = color;
 
                     Box::new(image)
                 },
                 ElementImage::Anim(mut animation) => {
-                    animation.color = color;
+                    animation.drawable.color = color;
 
                     Box::new(animation)
                 },
@@ -243,7 +243,7 @@ impl Element {
             StoryboardElementDef::Sprite(sprite) => {
                 let filepath = parent_dir.join(&sprite.filepath);
 
-                let mut image = try_load_image(
+                let image = try_load_image(
                     &filepath,
                     // image_cache,
                     skin_manager
@@ -253,9 +253,12 @@ impl Element {
                 initial_pos = sprite.pos;
                 origin = sprite.origin.resolve(image.size());
 
-                if let Some(b) = blend_mode { image.set_pipeline(b.into()); }
+                let pipeline = blend_mode.map(Into::into);
 
-                ElementImage::Sprite(image)
+                ElementImage::Sprite(image.merge_draw_options(graphics::DrawOptions {
+                    pipeline,
+                    ..Default::default()
+                }))
             }
             StoryboardElementDef::Animation(anim) => {
                 let filepath = Path::new(&anim.filepath);
@@ -297,19 +300,23 @@ impl Element {
                     frames[0].height as f32
                 );
 
-                let mut animation = graphics::Animation::new(
+                let animation = graphics::Animation::new(
                     frames,
                     anim.frame_delay,
                     1.0,
                 );
                 // animation.draw_debug = true;
-                if let Some(b) = blend_mode { animation.set_pipeline(b.into()); }
+
+                let pipeline = blend_mode.map(Into::into);
 
                 initial_pos = anim.pos;
                 origin = anim.origin.resolve(tex_size);
                 layer = anim.layer;
 
-                ElementImage::Anim(animation)
+                ElementImage::Anim(animation.merge_draw_options(graphics::DrawOptions {
+                    pipeline,
+                    ..Default::default()
+                }))
             }
         };
 
@@ -442,7 +449,7 @@ impl Element {
 
     fn update(&mut self, time: f32) {
         if let ElementImage::Anim(anim) = &mut self.element_image {
-            anim.update(time);
+            anim.drawable.update(time);
         }
 
         self.x_position.update(time);
@@ -460,7 +467,7 @@ impl Element {
 
     fn reset(&mut self) {
         if let ElementImage::Anim(anim) = &mut self.element_image {
-            anim.update(0.0);
+            anim.drawable.update(0.0);
         }
     }
 
@@ -472,8 +479,8 @@ impl Element {
 
 #[derive(Clone)]
 enum ElementImage {
-    Sprite(graphics::Image),
-    Anim(graphics::Animation),
+    Sprite(graphics::MergeDrawOptions<graphics::Image>),
+    Anim(graphics::MergeDrawOptions<graphics::Animation>),
 }
 
 fn try_load_image(

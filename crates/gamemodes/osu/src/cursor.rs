@@ -276,7 +276,10 @@ impl OsuCursor {
                     };
 
                     image
-                        .with_pipeline(BlendMode::SourceAlphaBlending.into())
+                        .merge_draw_options(graphics::DrawOptions {
+                            pipeline: Some(BlendMode::SourceAlphaBlending.into()),
+                            ..Default::default()
+                        })
                         .with_transform(transform.matrix())
                         .boxed()
                 });
@@ -285,8 +288,8 @@ impl OsuCursor {
         }
 
         if self.emitter_enabled {
-            self.left_emitter.draw(list);
-            self.right_emitter.draw(list);
+            self.left_emitter.draw(graphics::DrawOptions::default(), list);
+            self.right_emitter.draw(graphics::DrawOptions::default(), list);
         }
 
 

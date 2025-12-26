@@ -12,7 +12,6 @@ pub struct SkinnedNumber {
     pub symbol: Option<char>,
     pub floating_precision: usize,
     
-    blend_mode: BlendMode,
     cache: Arc<RwLock<(f64, String)>>,
 }
 impl SkinnedNumber {
@@ -65,7 +64,6 @@ impl SkinnedNumber {
             symbol,
             floating_precision,
             spacing_override: None,
-            blend_mode: BlendMode::AlphaBlending,
         })
     }
 
@@ -149,14 +147,6 @@ impl SkinnedNumber {
 impl TatakuRenderable for SkinnedNumber {
     fn get_name(&self) -> String { "Skinned number".to_owned() }
 
-    fn get_pipeline(&self) -> GraphicsPipeline { GraphicsPipeline::Standard(self.blend_mode) }
-    fn set_pipeline(&mut self, pipeline: GraphicsPipeline) { 
-        let GraphicsPipeline::Standard(blend_mode) = pipeline 
-        else { return };
-
-        self.blend_mode = blend_mode; 
-    }
-
     fn draw(
         &self, 
         options: &DrawOptions, 
@@ -173,8 +163,6 @@ impl TatakuRenderable for SkinnedNumber {
         for c in s.chars() {
             let Some(mut t) = self.get_char_tex(c).cloned() else { continue };
             t.color = color;
-            // t.set_scissor(self.scissor);
-            t.set_pipeline(GraphicsPipeline::Standard(self.blend_mode));
 
             let transform = transform * Matrix::identity()
                 .trans(current_pos);

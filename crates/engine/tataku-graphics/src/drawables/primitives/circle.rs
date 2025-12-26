@@ -5,7 +5,6 @@ use crate::*;
 pub struct Circle {
     // current
     pub color: Color,
-    blend_mode: BlendMode,
 
     pub border: Option<Border>,
     #[chain] pub resolution: u32,
@@ -16,7 +15,6 @@ impl Circle {
     ) -> Self {
         Self {
             color,
-            blend_mode: BlendMode::AlphaBlending,
 
             border: None,
             resolution: 128,
@@ -34,14 +32,6 @@ impl Circle {
 impl TatakuRenderable for Circle {
     fn get_name(&self) -> String { "Circle".to_owned() }
 
-    fn get_pipeline(&self) -> GraphicsPipeline { GraphicsPipeline::Standard(self.blend_mode) }
-    fn set_pipeline(&mut self, pipeline: GraphicsPipeline) { 
-        let GraphicsPipeline::Standard(blend_mode) = pipeline 
-        else { return };
-
-        self.blend_mode = blend_mode; 
-    }
-
     fn draw(
         &self, 
         options: &DrawOptions, 
@@ -51,12 +41,14 @@ impl TatakuRenderable for Circle {
         let color = options.color_with_alpha(self.color);
         let border = self.border.map(|mut b|{ b.color = options.border_color_with_alpha(b.color); b });
 
+        let Some(blend_mode) = options.blend_mode() else { return; };
+
         g.draw_circle(
             color, 
             border, 
             self.resolution, 
             transform, 
-            self.blend_mode
+            blend_mode
         );
     }
 }

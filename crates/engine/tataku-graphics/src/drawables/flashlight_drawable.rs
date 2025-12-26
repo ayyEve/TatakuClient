@@ -29,17 +29,19 @@ impl FlashlightDrawable {
 impl TatakuRenderable for FlashlightDrawable {
     fn get_name(&self) -> String { "Flashlight".to_owned() }
 
-    fn get_pipeline(&self) -> GraphicsPipeline { GraphicsPipeline::Flashlight }
-    fn set_pipeline(&mut self, _blend_mode: GraphicsPipeline) { }
-
-
     #[cfg(feature="graphics")]
     fn draw(
         &self, 
-        _options: &DrawOptions,
+        options: &DrawOptions,
         transform: Matrix, 
         g: &mut dyn DrawEngine,
     ) {
+        if !matches!(options.pipeline, None | Some(GraphicsPipeline::Flashlight))
+        {
+            error!("expected flashlight, got {:?}", options.pipeline);
+            return;
+        }
+
         g.draw_flashlight(
             transform, 
             FlashlightData {

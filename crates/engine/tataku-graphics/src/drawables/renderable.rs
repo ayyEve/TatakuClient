@@ -3,13 +3,6 @@ use crate::*;
 pub trait TatakuRenderable: Sync + Send {
     fn get_name(&self) -> String { "Unnamed".to_owned() }
     
-    fn get_pipeline(&self) -> GraphicsPipeline;
-    fn set_pipeline(&mut self, pipeline: GraphicsPipeline);
-    fn with_pipeline(mut self, pipeline: GraphicsPipeline) -> Self where Self:Sized { 
-        self.set_pipeline(pipeline); 
-        self 
-    }
-
     #[cfg(feature="graphics")]
     fn draw(
         &self, 
@@ -45,14 +38,6 @@ pub trait TatakuRenderable: Sync + Send {
 }
 
 impl TatakuRenderable for Box<dyn TatakuRenderable> {
-    fn get_pipeline(&self) -> GraphicsPipeline {
-        TatakuRenderable::get_pipeline(&**self)
-    }
-
-    fn set_pipeline(&mut self, pipeline: GraphicsPipeline) {
-        TatakuRenderable::set_pipeline(&mut **self, pipeline);
-    }
-
     fn draw(
         &self,
         options: &DrawOptions,
@@ -107,6 +92,8 @@ pub struct DrawOptions {
     pub border_color: Option<Color>,
 
     pub image_flip: ImageFlip,
+
+    pub pipeline: Option<GraphicsPipeline>,
 }
 impl DrawOptions {
     fn apply_alpha(alpha: Option<u8>, other: u8) -> u8 {
@@ -151,6 +138,15 @@ impl DrawOptions {
         self.border_color(other).alpha8(self.border_alpha(other.a))
     }
 
+    pub fn blend_mode(&self) -> Option<BlendMode> {
+        let GraphicsPipeline::Standard(blend_mode) = self.pipeline.unwrap_or_default() else {
+            error!("expected blend mode, found pipeline: {:?}", self.pipeline);
+
+            return None;
+        };
+
+        Some(blend_mode)
+    }
 
     /// Merge self with other
     /// 
@@ -163,7 +159,8 @@ impl DrawOptions {
             border_alpha: merge_opts(self.border_alpha, other.border_alpha),
             color: other.color.or(self.color),
             border_color: other.border_color.or(self.border_color),
-            image_flip: self.image_flip.xor(other.image_flip),
+            image_flip: other.image_flip.xor(self.image_flip),
+            pipeline: other.pipeline.or(self.pipeline)
         }
     }
 }

@@ -21,13 +21,10 @@ pub struct SliderDrawable {
     pub line_segments: Vec<LineSegment>,
 }
 impl TatakuRenderable for SliderDrawable {
-    fn get_pipeline(&self) -> GraphicsPipeline { GraphicsPipeline::Slider }
-    fn set_pipeline(&mut self, _blend_mode: GraphicsPipeline) {}
-
     #[cfg(feature="graphics")]
     fn draw(
         &self, 
-        _options: &DrawOptions,
+        options: &DrawOptions,
         transform: Matrix, 
         g: &mut dyn DrawEngine
     ) {
@@ -39,6 +36,12 @@ impl TatakuRenderable for SliderDrawable {
 
         slider_data.body_color.a = Color::to_u8(Color::to_f32(slider_data.body_color.a) * alpha);
         slider_data.border_color.a = Color::to_u8(Color::to_f32(slider_data.border_color.a) * alpha);
+
+        if !matches!(options.pipeline, None | Some(GraphicsPipeline::Slider))
+        {
+            error!("expected slider, got {:?}", options.pipeline);
+            return;
+        }
 
         g.draw_slider(
             transform,

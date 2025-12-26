@@ -27,7 +27,6 @@ pub struct Emitter {
     pub color: Color,
 
     pub image: Arc<TextureReference>,
-    pub blend_mode: GraphicsPipeline,
     
     pool: Arc<RwLock<Pool<Particle>>>,
 }
@@ -47,7 +46,6 @@ impl Emitter {
     
         color: Color,
         image: Arc<TextureReference>,
-        blend_mode: GraphicsPipeline,
     ) -> Self {
         let capacity = (life.end * spawn_delay) as usize;
 
@@ -73,12 +71,10 @@ impl Emitter {
             image,
             pool,
             last_time: time,
-            blend_mode,
         }
     }
 
     pub fn update(&mut self, time: f32) {
-        
         if self.last_time + self.spawn_delay < time {
             self.last_time = time;
             if !self.should_emit || self.image.is_empty() { return }
@@ -109,13 +105,12 @@ impl Emitter {
     // TODO: can we move this into a shader?
     // all the positions etc are generated on the gpu so its a bit silly to do this
     #[cfg(feature="graphics")]
-    pub fn draw(&self, list: &mut RenderableCollection) {
+    pub fn draw(&self, options: DrawOptions, list: &mut RenderableCollection) {
         let lock = self.pool.read();
 
         for i in lock.iter_used() {
             let mut image = Image::new(Arc::new(i.image), 1.0);
             image.color = i.color;
-            image.set_pipeline(self.blend_mode);
 
             let transform= Transform {
                 origin: image.size() / 2.0,
@@ -123,7 +118,7 @@ impl Emitter {
                 ..Transform::identity()
             };
 
-            list.push(image.with_transform(transform.matrix()));
+            list.push(image.with_transform(transform.matrix()).merge_draw_options(options));
         }
     }
 
@@ -157,11 +152,22 @@ pub struct EmitterBuilder {
     #[chain] image: Arc<TextureReference>,
     #[default(true)]
     #[chain] should_emit: bool,
-    #[chain] blend_mode: GraphicsPipeline,
 }
 impl EmitterBuilder {
     pub fn build(self, time: f32) -> Emitter {
-        let mut e = Emitter::new(time, self.spawn_delay, self.position, self.angle, self.speed, self.scale, self.life, self.opacity, self.rotation, self.color, self.image, self.blend_mode);
+        let mut e = Emitter::new(
+            time,
+            self.spawn_delay,
+            self.position,
+            self.angle,
+            self.speed,
+            self.scale,
+            self.life,
+            self.opacity,
+            self.rotation,
+            self.color,
+            self.image,
+        );
         e.should_emit = self.should_emit;
         e
     }
