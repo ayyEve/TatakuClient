@@ -72,7 +72,7 @@ impl JudgementIndicator for BasicJudgementIndicator {
             - (map_time - (self.time + (self.draw_duration - fade_duration))) 
             / fade_duration
         ;
-        let alpha = (alpha.clamp(0.0, 1.0) * 255.0) as u8;
+        let alpha = tataku::ColorField::new_f32(alpha);
         
         if let Some(mut img) = self.image.clone() {
             img.update(map_time);
@@ -84,7 +84,7 @@ impl JudgementIndicator for BasicJudgementIndicator {
             list.push(graphics::Circle::new(
                 self.pos,
                 self.radius,
-                self.color.alpha8(alpha),
+                self.color.with_alpha(alpha),
             ));
         }
     }

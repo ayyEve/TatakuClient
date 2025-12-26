@@ -118,7 +118,7 @@ impl FpsDisplay {
         list.push(graphics::Rectangle::new(
             self.pos,
             SIZE,
-            Color::WHITE.alpha(0.8),
+            Color::WHITE.with_alpha_f32(0.8),
         ));
 
         let text = format!("{:.2} {} ({:.2}ms)", self.last, self.name, self.frametime_last);

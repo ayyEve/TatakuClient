@@ -97,7 +97,7 @@ impl GameplayWidget for SpectatorsElement {
             drawable: Box::new(graphics::Rectangle::new(
                 Vector2::ZERO,
                 *layout_size,
-                Color::WHITE.alpha(0.8),
+                Color::WHITE.with_alpha_f32(0.8),
             ))
         });
 

@@ -9,7 +9,7 @@ use tataku::{
 const BAR_WIDTH:f32 = 4.0;
 
 /// timing bar color
-pub const BAR_COLOR:Color = Color::new(0.0, 0.0, 0.0, 1.0);
+pub const BAR_COLOR:Color = Color::BLACK;
 
 // timing bar struct
 //TODO: might be able to reduce this to a (time, speed) and just calc pos on draw

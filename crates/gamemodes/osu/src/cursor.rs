@@ -12,6 +12,7 @@ use tataku::{
     Vector2,
     BlendMode,
     EmitterVal,
+    ColorField,
 };
 
 
@@ -269,9 +270,7 @@ impl OsuCursor {
                 .map(|trail| {
                     let mut image = image.clone();
 
-                    image.color.a = ((1.0 - trail.progress(time))
-                        .clamp(0.0, 1.0) * 255.0)
-                         as u8;
+                    image.color.a = ColorField::new_f32(1.0 - trail.progress(time));
                     image.pos = trail.position;
 
                     Box::new(image) as Box<dyn graphics::TatakuRenderable>
@@ -330,8 +329,8 @@ impl OsuCursor {
                 self.time.as_millis(),
                 0.0,
                 self.settings.cursor_ripple_final_radius,
-                self.settings.cursor_ripple_color.alpha(0.2),
-                Some(Border::new(self.settings.cursor_ripple_color.alpha(0.5), 2.0))
+                self.settings.cursor_ripple_color.with_alpha_f32(0.2),
+                Some(Border::new(self.settings.cursor_ripple_color.with_alpha_f32(0.5), 2.0))
             ));
         }
     }

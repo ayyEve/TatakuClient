@@ -7,7 +7,7 @@ use tataku::{
 
 
 // timing bar consts
-pub const BAR_COLOR:Color = Color::new(0.0, 0.0, 0.0, 1.0); // timing bar color
+pub const BAR_COLOR:Color = Color::BLACK; // timing bar color
 const BAR_HEIGHT:f32 = 4.0; // how tall is a timing bar
 
 

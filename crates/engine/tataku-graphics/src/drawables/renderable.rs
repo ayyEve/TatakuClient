@@ -23,8 +23,8 @@ pub trait TatakuRenderable: Sync + Send {
 /// draw option overrides
 #[derive(Copy, Clone, Debug, Default)]
 pub struct DrawOptions {
-    pub alpha: Option<u8>,
-    pub border_alpha: Option<u8>,
+    pub alpha: Option<ColorField>,
+    pub border_alpha: Option<ColorField>,
 
     pub color: Option<Color>,
     pub border_color: Option<Color>,
@@ -32,23 +32,19 @@ pub struct DrawOptions {
     pub image_flip: ImageFlip,
 }
 impl DrawOptions {
-    fn apply_alpha(alpha: Option<u8>, other: u8) -> u8 {
-        Color::to_u8((
-            Color::to_f32(alpha.unwrap_or(Color::MAX)) 
-            * Color::to_f32(other)
-        ).clamp(0.0, 1.0))
+    fn apply_alpha(alpha: Option<ColorField>, other: ColorField) -> ColorField {
+        alpha.unwrap_or(ColorField::MAX) * other
     }
 
     /// get the modified alpha value for the provided alpha
-    pub fn alpha(&self, other: u8) -> u8 {
+    pub fn alpha(&self, other: ColorField) -> ColorField {
         Self::apply_alpha(self.alpha, other)
     }
     /// get the modified alpha value for the provided border alpha
-    pub fn border_alpha(&self, other: u8) -> u8 {
+    pub fn border_alpha(&self, other: ColorField) -> ColorField {
         let b = Self::apply_alpha(self.border_alpha, other);
-        let a = self.alpha.unwrap_or(Color::MAX);
-
-        Color::to_u8(Color::to_f32(b) * Color::to_f32(a))
+        let a = self.alpha.unwrap_or(ColorField::MAX);
+        b * a
     }
 
     /// get the modified color value for the provided color
@@ -59,7 +55,7 @@ impl DrawOptions {
 
     /// get the modified color with the modified alpha for the provided color
     pub fn color_with_alpha(&self, other: Color) -> Color {
-        self.color(other).alpha8(self.alpha(other.a))
+        self.color(other).with_alpha(self.alpha(other.a))
     }
 
     
@@ -71,7 +67,7 @@ impl DrawOptions {
 
     /// get the modified color with the modified alpha for the provided border color
     pub fn border_color_with_alpha(&self, other: Color) -> Color {
-        self.border_color(other).alpha8(self.border_alpha(other.a))
+        self.border_color(other).with_alpha(self.border_alpha(other.a))
     }
 
 

@@ -20,7 +20,7 @@ pub const HIT_TIMING_DURATION:f32 = 1_500.0;
 /// how long to fade out for
 const HIT_TIMING_FADE:f32 = 300.0;
 /// hit timing bar color
-const HIT_TIMING_BAR_COLOR:Color = Color::new(0.0, 0.0, 0.0, 1.0);
+const HIT_TIMING_BAR_COLOR:Color = Color::BLACK;
 
 struct JudgementBarElement {
     hitbar_timings: Vec<HitTiming>,
@@ -116,7 +116,7 @@ impl GameplayWidget for JudgementBarElement {
                 drawable: Box::new(graphics::Rectangle::new(
                     Vector2::new(pos, 0.0),
                     Vector2::new(2.0, timing_bar_size.y),
-                    HIT_TIMING_BAR_COLOR.alpha(alpha),
+                    HIT_TIMING_BAR_COLOR.with_alpha_f32(alpha),
                 ))
             });
         }

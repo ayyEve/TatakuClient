@@ -43,8 +43,8 @@ impl Trail {
             Circle::new(
                 self.position,
                 Interpolation::lerp(start_radius, end_radius, progress),
-                fill_color.alpha(Interpolation::lerp(
-                    fill_color.a(), 
+                fill_color.with_alpha_f32(Interpolation::lerp(
+                    fill_color.a.to_f32(), 
                     0.0,
                     progress
                 )),

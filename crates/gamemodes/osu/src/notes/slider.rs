@@ -9,6 +9,7 @@ use tataku::{
     Border,
     Easing,
     Vector2,
+    ColorField,
 };
 
 use engine::{
@@ -229,16 +230,12 @@ impl OsuSlider {
                 && self.standard_settings.use_skin_slider_body_color
         ).unwrap_or_else(|| {
             const DARKER:f32 = 2.0/3.0;
-            Color::new(
-                self.color.r() * DARKER,
-                self.color.g() * DARKER,
-                self.color.b() * DARKER,
-                self.color.a()
-            )
+            (self.color * DARKER)
+                .with_alpha(self.color.a)
         });
 
-        color.a = Color::to_u8(self.standard_settings.slider_body_alpha);
-        let border_color = BORDER_COLOR.alpha(self.standard_settings.slider_border_alpha); //self.skin.slider_border.unwrap_or(BORDER_COLOR);
+        color.a = ColorField::new_f32(self.standard_settings.slider_body_alpha);
+        let border_color = BORDER_COLOR.with_alpha_f32(self.standard_settings.slider_border_alpha); //self.skin.slider_border.unwrap_or(BORDER_COLOR);
         let border_radius = BORDER_RADIUS * self.scaling_helper.cs;
 
         let mut min_pos = self.scaling_helper.window_size;
@@ -412,7 +409,7 @@ impl OsuSlider {
 
             let mut slider_body = self.slider_body.clone();
             slider_body.slider_data.grid_origin = Vector2::ZERO; // reset grid origin when rendering to a target
-            slider_body.alpha = 255;
+            slider_body.alpha = ColorField::MAX;
             drawables.push(Box::new(slider_body));
         } else {
             // starting point
@@ -587,13 +584,13 @@ impl OsuSlider {
     //     }
     // }
 
-    fn get_alpha(&self) -> u8 {
+    fn get_alpha(&self) -> ColorField {
         let mut alpha = (1.0 - ((self.time - (self.time_preempt * (2.0/3.0))) - self.map_time) / (self.time_preempt * (1.0/3.0))) / 3.0;
         if self.map_time >= self.curve.end_time {
             alpha = ((self.curve.end_time + self.hitwindow_miss) - self.map_time) / self.hitwindow_miss;
         }
 
-        Color::to_u8(alpha.clamp(0.0, 1.0))
+        ColorField::new_f32(alpha)
     }
 
     // fn ripple_start(&mut self) {
@@ -753,7 +750,7 @@ impl HitObject for OsuSlider {
 
         // color
         let alpha = self.get_alpha();
-        let color = self.color.alpha8(alpha);
+        let color = self.color.with_alpha(alpha);
         self.slider_body.alpha = alpha;
 
         // slider body
@@ -791,7 +788,7 @@ impl HitObject for OsuSlider {
                 self.radius,
                 color,
             ).border(Border::new(
-                if end_repeat { Color::YELLOW } else { Color::WHITE }.alpha8(alpha),
+                if end_repeat { Color::YELLOW } else { Color::WHITE }.with_alpha(alpha),
                 self.scaling_helper.border_width
             )));
         }
@@ -826,9 +823,9 @@ impl HitObject for OsuSlider {
                 list.push(graphics::Circle::new(
                     self.pos,
                     self.radius,
-                    self.color.alpha8(alpha),
+                    self.color.with_alpha(alpha),
                 ).border(Border::new(
-                    if start_repeat { Color::YELLOW } else { Color::WHITE }.alpha8(alpha),
+                    if start_repeat { Color::YELLOW } else { Color::WHITE }.with_alpha(alpha),
                     self.scaling_helper.border_width
                 )));
             }
@@ -875,7 +872,7 @@ impl HitObject for OsuSlider {
                     self.slider_ball_pos,
                     self.radius,
                     color,
-                ).border(Border::new(Color::WHITE.alpha8(alpha), 2.0)));
+                ).border(Border::new(Color::WHITE.with_alpha(alpha), 2.0)));
             }
 
             // radius thingy
@@ -891,7 +888,7 @@ impl HitObject for OsuSlider {
                     self.radius * OK_TICK_RADIUS_MULT,
                     Color::TRANSPARENT,
                 ).border(Border::new(
-                    if self.sliding_ok {Color::LIME} else {Color::RED}.alpha8(alpha),
+                    if self.sliding_ok {Color::LIME} else {Color::RED}.with_alpha(alpha),
                     2.0
                 )));
             }

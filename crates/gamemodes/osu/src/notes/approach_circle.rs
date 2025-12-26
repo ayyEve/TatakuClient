@@ -4,6 +4,7 @@ use tataku::{
     Border,
     Easing,
     Vector2,
+    ColorField,
 };
 
 use engine::graphics;
@@ -20,8 +21,8 @@ pub struct ApproachCircle {
     pos: Vector2,
     radius: f32,
     scaling_helper: Arc<ScalingHelper>,
-    alpha: u8,
     color: Color,
+    alpha: ColorField,
 
     preempt: f32,
     time: f32,
@@ -43,13 +44,10 @@ impl ApproachCircle {
             time,
             radius,
             preempt,
-            color: Color::WHITE,
             scaling_helper,
-
-            alpha: 0,
-            image: None,
             time_diff: time,
-            easing_type: Easing::Linear
+            easing_type: Easing::Linear,
+            ..Default::default()
         }
     }
     pub fn scale_changed(&mut self, new_scale: Arc<ScalingHelper>, new_radius: f32) {
@@ -77,10 +75,10 @@ impl ApproachCircle {
 
     pub fn reset(&mut self) {
         self.time_diff = 9999.0;
-        self.alpha = 0;
+        self.alpha = ColorField::new_u8(0);
     }
 
-    pub fn set_alpha(&mut self, alpha: u8) {
+    pub fn set_alpha(&mut self, alpha: ColorField) {
         self.alpha = alpha;
     }
     pub fn set_color(&mut self, color: Color) {
@@ -98,7 +96,7 @@ impl ApproachCircle {
 
         if let Some(mut tex) = self.image.clone() {
             tex.pos = self.pos;
-            tex.color = self.color.alpha8(self.alpha);
+            tex.color = self.color.with_alpha(self.alpha);
             tex.scale = Vector2::ONE * self.scaling_helper.cs * scale * APPROACH_CIRCLE_SCALE;
 
             list.push(tex);
@@ -108,7 +106,7 @@ impl ApproachCircle {
                 self.radius * scale, // self.radius is already accounting for the scaled_cs
                 Color::TRANSPARENT,
             ).border(Border::new(
-                self.color.alpha8(self.alpha), 
+                self.color.with_alpha(self.alpha), 
                 OSU_NOTE_BORDER_SIZE * self.scaling_helper.cs)
             ));
         }

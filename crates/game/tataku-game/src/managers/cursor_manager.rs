@@ -203,8 +203,8 @@ impl CursorManager {
                 self.time,
                 0.0,
                 self.settings.cursor_ripple_final_radius,
-                self.settings.cursor_ripple_color.alpha(0.2),
-                Some(Border::new(self.settings.cursor_ripple_color.alpha(0.5), 2.0))
+                self.settings.cursor_ripple_color.with_alpha_f32(0.2),
+                Some(Border::new(self.settings.cursor_ripple_color.with_alpha_f32(0.5), 2.0))
             ));
         }
     }

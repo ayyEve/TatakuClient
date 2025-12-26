@@ -347,8 +347,7 @@ impl OsuBeatmap {
                         let r:u8 = val_split.next().unwrap_or_default().parse().unwrap_or_default();
                         let g:u8 = val_split.next().unwrap_or_default().parse().unwrap_or_default();
                         let b:u8 = val_split.next().unwrap_or_default().parse().unwrap_or_default();
-                        let c = |a| {a as f32 / 255.0};
-                        let color = Color::new(c(r), c(g), c(b), 1.0);
+                        let color = Color::new_rgb8(r, g, b);
 
                         beatmap.combo_colors.push(color);
                     }

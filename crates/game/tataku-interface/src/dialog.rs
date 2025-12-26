@@ -411,7 +411,7 @@ impl Widget<actions::Action> for DialogWidget {
             // black background for visibility
             shell.list.push(Rectangle::new_bounds(
                 bounds,
-                Color::BLACK.alpha(0.9),
+                Color::BLACK.with_alpha_f32(0.9),
             ));
         }
 
@@ -593,7 +593,7 @@ impl Widget<actions::Action> for DialogTitlebar {
 
         shell.list.push(Rectangle::new_bounds(
             bounds,
-            Color::WHITE.alpha(0.5),
+            Color::WHITE.with_alpha_f32(0.5),
         ));
         self.node.draw(shell);
     }

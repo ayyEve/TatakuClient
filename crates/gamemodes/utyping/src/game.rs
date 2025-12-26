@@ -459,9 +459,9 @@ impl Gamemode for UTypingGame {
             show_cursor: false, 
             audio_prefix: String::new(),
             timing_bar_things: vec![
-                (self.hitwindow_100,  Color::new(0.3411, 0.8901, 0.0745, 1.0)),
-                (self.hitwindow_300,  Color::new(0.1960, 0.7372, 0.9058, 1.0)),
-                (self.hitwindow_miss, Color::new(0.8549, 0.6823, 0.2745, 1.0))
+                (self.hitwindow_100,  Color::new_f32(0.3411, 0.8901, 0.0745, 1.0)),
+                (self.hitwindow_300,  Color::new_f32(0.1960, 0.7372, 0.9058, 1.0)),
+                (self.hitwindow_miss, Color::new_f32(0.8549, 0.6823, 0.2745, 1.0))
             ], 
             sound_list: Vec::new(),
         }

@@ -323,7 +323,7 @@ impl OsuGame {
                     list.push(engine::graphics::Circle::new(
                         point,
                         follow_dot_size,
-                        Color::WHITE.alpha(alpha),
+                        Color::WHITE.with_alpha_f32(alpha),
                     ));
                 }
             }
@@ -1120,10 +1120,10 @@ impl Gamemode for OsuGame {
             let alpha = self.game_settings.playfield_alpha;
             let mut playfield = graphics::Rectangle::new_bounds(
                 self.scaling_helper.playfield_with_padding,
-                Color::BLACK.alpha(alpha),
+                Color::BLACK.with_alpha_f32(alpha),
             ).border_maybe(
                 state.current_timing_point.kiai
-                    .then_some(Border::new(Color::YELLOW.alpha(alpha), 2.0))
+                    .then_some(Border::new(Color::YELLOW.with_alpha_f32(alpha), 2.0))
             );
 
             if self.move_playfield.is_some() {

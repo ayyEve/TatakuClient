@@ -1,11 +1,10 @@
 use crate::*;
 use tataku::{
+    Color,
     Bounds,
     Vector2,
-
     Easing,
     Animate,
-    AnimatableColor,
     AnimationTimeline,
 };
 use graphics::{ 
@@ -121,7 +120,7 @@ impl BeatmapAnimation for OsuStoryboard {
                 .translate(self.transform.pos);
 
             let alpha = i.alpha.last_value();
-            let color = i.color.last_value().alpha(alpha).into();
+            let color = i.color.last_value().with_alpha_f32(alpha);
 
             let element: Box<dyn graphics::TatakuRenderable> = match i.element_image.clone() {
                 ElementImage::Sprite(mut image) => {
@@ -220,7 +219,7 @@ struct Element {
     flip_vertical: AnimationTimeline<f32>,
 
     alpha: AnimationTimeline<f32>,
-    color: AnimationTimeline<AnimatableColor>,
+    color: AnimationTimeline<Color>,
 }
 impl Element {
     fn new(
@@ -345,7 +344,7 @@ impl Element {
             flip_vertical: AnimationTimeline::new(Vec::new(), 0.0),
 
             alpha: AnimationTimeline::new(Vec::new(), 1.0),
-            color: AnimationTimeline::new(Vec::new(), tataku::Color::WHITE.into()),
+            color: AnimationTimeline::new(Vec::new(), tataku::Color::WHITE),
         };
         s.apply_commands();
 
@@ -409,7 +408,7 @@ impl Element {
                     alpha.push(Animate::new(i.start_time, duration, i.easing.into(), start, end)),
 
                 StoryboardEvent::Color { start, end } =>
-                    color.push(Animate::new(i.start_time, duration, i.easing.into(), start.into(), end.into())),
+                    color.push(Animate::new(i.start_time, duration, i.easing.into(), start, end)),
 
                 StoryboardEvent::Parameter { param } => match param {
                     Param::FlipHorizontal => {
@@ -440,7 +439,7 @@ impl Element {
         self.flip_vertical = AnimationTimeline::new(flip_vertical, 0.0);
 
         self.alpha = AnimationTimeline::new(alpha, 1.0);
-        self.color = AnimationTimeline::new(color, tataku::Color::WHITE.into());
+        self.color = AnimationTimeline::new(color, tataku::Color::WHITE);
 
 
         self.start_time = earliest_start;

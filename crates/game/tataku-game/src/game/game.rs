@@ -1170,7 +1170,7 @@ impl Game {
         render_queue.push(graphics::Rectangle::new(
             Vector2::ZERO,
             self.values.game.window_size,
-            Color::BLACK.alpha(self.settings.background_dim),
+            Color::BLACK.with_alpha_f32(self.settings.background_dim),
         ));
 
         // draw cursor ripples
@@ -1222,7 +1222,7 @@ impl Game {
                 render_queue.push(graphics::Rectangle::new(
                     Vector2::ZERO,
                     self.game.window_size,
-                    Color::new(0.0, 0.0, 0.0, alpha),
+                    Color::BLACK.with_alpha_f32(alpha),
                 ));
             }
             GameState::TransitionEnding {
@@ -1239,7 +1239,7 @@ impl Game {
                 render_queue.push(graphics::Rectangle::new(
                     Vector2::ZERO,
                     self.game.window_size,
-                    Color::new(0.0, 0.0, 0.0, alpha),
+                    Color::BLACK.with_alpha_f32(alpha),
                 ));
             }
 

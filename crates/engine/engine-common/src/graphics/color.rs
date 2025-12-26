@@ -1,77 +1,71 @@
 use crate::prelude::*;
 use common::reflect::*;
-
 #[derive(Reflect)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(from = "String", into = "String")]
 pub struct Color {
-    pub r: u8,
-    pub g: u8,
-    pub b: u8,
-    pub a: u8,
+    pub r: ColorField,
+    pub g: ColorField,
+    pub b: ColorField,
+    pub a: ColorField,
 }
 // constant colors
 #[allow(dead_code)]
 impl Color {
-    pub const MAX: u8 = 0xFF;
-
-    #[inline(always)]
-    pub const fn to_u8(n: f32) -> u8 {
-        (n.clamp(0.0, 1.0) * Self::MAX as f32) as u8
-    }
-    
-    #[inline(always)]
-    pub const fn to_f32(n: u8) -> f32 {
-        (n as f32) / Self::MAX as f32
-    }
 
     #[inline]
-    pub const fn new(r: f32, g: f32, b: f32, a: f32) -> Self { 
+    pub const fn new(
+        r: ColorField, 
+        g: ColorField, 
+        b: ColorField, 
+        a: ColorField
+    ) -> Self { 
         Self {
-            r: Self::to_u8(r), 
-            g: Self::to_u8(g), 
-            b: Self::to_u8(b), 
-            a: Self::to_u8(a),
+            r, 
+            g, 
+            b, 
+            a,
         } 
     }
 
-    pub const fn new_all(n: f32) -> Self {
-        Self::new_all8(Self::to_u8(n))
+    #[inline]
+    pub const fn new_f32(
+        r: f32, 
+        g: f32, 
+        b: f32, 
+        a: f32
+    ) -> Self { 
+        Self {
+            r: ColorField::new_f32(r), 
+            g: ColorField::new_f32(g), 
+            b: ColorField::new_f32(b), 
+            a: ColorField::new_f32(a),
+        } 
     }
-    pub const fn new_all8(n: u8) -> Self {
+
+    pub const fn new_all(n: ColorField) -> Self {
         Self {
             r: n,
             g: n,
             b: n,
-            a: n
+            a: n,
         }
     }
 
-
-    pub const fn alpha(self, a: f32) -> Self {
-        self.alpha8(Color::to_u8(a))
-    }
-    pub const fn alpha8(mut self, a: u8) -> Self {
+    pub const fn with_alpha(mut self, a: ColorField) -> Self {
         self.a = a;
         self
     }
-
-    pub const fn r8(&self) -> u8 { self.r }
-    pub const fn g8(&self) -> u8 { self.g }
-    pub const fn b8(&self) -> u8 { self.b }
-    pub const fn a8(&self) -> u8 { self.a }
-
-    pub const fn r(&self) -> f32 { Self::to_f32(self.r8()) }
-    pub const fn g(&self) -> f32 { Self::to_f32(self.g8()) }
-    pub const fn b(&self) -> f32 { Self::to_f32(self.b8()) }
-    pub const fn a(&self) -> f32 { Self::to_f32(self.a8()) }
+    pub const fn with_alpha_f32(self, a: f32) -> Self {
+        self.with_alpha(ColorField::new_f32(a))
+    }
 
     pub fn from_hex(hex: impl AsRef<str>) -> Self {
         let hex = hex.as_ref();
         Self::try_from_hex(hex).unwrap_or_else(|| {
             println!("malformed hex: '{hex}'"); 
-            Color::new_all8(0)
+            Color::WHITE
         })
     }
 
@@ -124,18 +118,23 @@ impl Color {
     }
 
     pub const fn new_rgb8(r: u8, g: u8, b: u8) -> Self {
-        Self::new_rgba8(r, g, b, Self::MAX)
+        Self::new_rgba8(r, g, b, ColorField::MAX_VAL)
     }
     
     pub const fn new_rgba8(r: u8, g: u8, b: u8, a: u8) -> Self {
-        Self { r, g, b, a}
+        Self { 
+            r: ColorField::new_u8(r), 
+            g: ColorField::new_u8(g), 
+            b: ColorField::new_u8(b), 
+            a: ColorField::new_u8(a)
+        }
     }
 
     pub fn to_hex(self) -> String {
-        let r = self.r;
-        let g = self.g;
-        let b = self.b;
-        let a = self.a;
+        let r = self.r.to_u8();
+        let g = self.g.to_u8();
+        let b = self.b.to_u8();
+        let a = self.a.to_u8();
 
         format!("#{r:02X}{g:02X}{b:02X}{a:02X}")
     }
@@ -151,7 +150,7 @@ macro_rules! const_color {
         #[allow(clippy::excessive_precision)]
         impl Color {
             $(
-                pub const $name:Color = Color::new($r, $g, $b, $a);
+                pub const $name:Color = Color::new_f32($r, $g, $b, $a);
             )*
 
             pub fn from_name(s: &str) -> Option<Self> {
@@ -780,7 +779,23 @@ impl From<Color> for String {
 
 impl From<Color> for [f32; 4] {
     fn from(c: Color) -> Self {
-        [ c.r(), c.g(), c.b(), c.a() ]
+        [ 
+            c.r.to_f32(), 
+            c.g.to_f32(), 
+            c.b.to_f32(), 
+            c.a.to_f32() 
+        ]
+    }
+}
+
+impl From<Color> for [u8; 4] {
+    fn from(c: Color) -> Self {
+        [ 
+            c.r.to_u8(), 
+            c.g.to_u8(), 
+            c.b.to_u8(), 
+            c.a.to_u8(),
+        ]
     }
 }
 
@@ -805,11 +820,11 @@ mod color_math {
     impl Neg for Color {
         type Output = Self;
         fn neg(self) -> Self::Output {
-            Self::new_rgba8(
-                255 - self.r8(),
-                255 - self.g8(),
-                255 - self.b8(),
-                255 - self.a8(),
+            Self::new(
+                -self.r,
+                -self.g,
+                -self.b,
+                -self.a,
             )
         }
     }
@@ -818,17 +833,17 @@ mod color_math {
     impl Add<f32> for Color {
         type Output = Color;
         fn add(self, rhs: f32) -> Self::Output {
-            self + Color::new_all(rhs)
+            self + Color::new_all(rhs.into())
         }
     }
     impl Add<Color> for Color {
         type Output = Color;
         fn add(self, rhs: Color) -> Self::Output {
             Color::new(
-                self.r() + rhs.r(), 
-                self.g() + rhs.g(),
-                self.b() + rhs.b(), 
-                self.a() + rhs.a(),
+                self.r + rhs.r, 
+                self.g + rhs.g,
+                self.b + rhs.b, 
+                self.a + rhs.a,
             )
         }
     }
@@ -854,10 +869,10 @@ mod color_math {
         type Output = Color;
         fn sub(self, rhs: Color) -> Self::Output {
             Self::new(
-                self.r() - rhs.r(),
-                self.g() - rhs.g(),
-                self.b() - rhs.b(),
-                self.a() - rhs.a(),
+                self.r - rhs.r,
+                self.g - rhs.g,
+                self.b - rhs.b,
+                self.a - rhs.a,
             )
         }
     }
@@ -876,17 +891,17 @@ mod color_math {
     impl Mul<f32> for Color {
         type Output = Color;
         fn mul(self, rhs: f32) -> Self::Output {
-            self * Self::new_all(rhs)
+            self * Self::new_all(rhs.into())
         }
     }
     impl Mul<Color> for Color {
         type Output = Color;
         fn mul(self, rhs: Color) -> Self::Output {
             Self::new(
-                self.r() * rhs.r(),
-                self.g() * rhs.g(),
-                self.b() * rhs.b(),
-                self.a() * rhs.a(),
+                self.r * rhs.r,
+                self.g * rhs.g,
+                self.b * rhs.b,
+                self.a * rhs.a,
             )
         }
     }
@@ -905,17 +920,17 @@ mod color_math {
     impl Div<f32> for Color {
         type Output = Color;
         fn div(self, rhs: f32) -> Self::Output {
-            self / Self::new_all(rhs)
+            self / Self::new_all(rhs.into())
         }
     }
     impl Div<Color> for Color {
         type Output = Color;
         fn div(self, rhs: Color) -> Self::Output {
             Self::new(
-                self.r() / rhs.r(),
-                self.g() / rhs.g(),
-                self.b() / rhs.b(),
-                self.a() / rhs.a(),
+                self.r / rhs.r,
+                self.g / rhs.g,
+                self.b / rhs.b,
+                self.a / rhs.a,
             )
         }
     }
@@ -934,17 +949,17 @@ mod color_math {
     impl Rem<f32> for Color {
         type Output = Color;
         fn rem(self, rhs: f32) -> Self::Output {
-            self % Color::new_all(rhs)
+            self % Color::new_all(rhs.into())
         }
     }
     impl Rem<Color> for Color {
         type Output = Color;
         fn rem(self, rhs: Color) -> Self::Output {
-            Color::new_rgba8(
-                self.r8() % rhs.r8(), 
-                self.g8() % rhs.g8(),
-                self.b8() % rhs.b8(), 
-                self.a8() % rhs.a8(),
+            Color::new(
+                self.r % rhs.r, 
+                self.g % rhs.g,
+                self.b % rhs.b, 
+                self.a % rhs.a,
             )
         }
     }

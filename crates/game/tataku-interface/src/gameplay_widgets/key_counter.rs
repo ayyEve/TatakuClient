@@ -185,9 +185,9 @@ impl GameplayWidget for KeyCounterElement {
                     drawable: Box::new(graphics::Rectangle::new_bounds(
                         bounds,
                         if cached.held {
-                            Color::new(0.8, 0.0, 0.8, 0.8)
+                            Color::new_f32(0.8, 0.0, 0.8, 0.8)
                         } else {
-                            Color::new(0.0, 0.0, 0.0, 0.8)
+                            Color::new_f32(0.0, 0.0, 0.0, 0.8)
                         },
                     ).border(Border::new(
                         Color::BLACK,

@@ -7,15 +7,14 @@
 */
 use crate::prelude::*;
 
-use common::{
-    replays::*,
-};
+use common::replays::*;
 
 use tataku::{
     Color,
     Bounds,
     Vector2,
     Alignment,
+    ColorField,
 };
 use engine::{
     input,
@@ -949,9 +948,11 @@ impl Gamemode for TaikoGame {
         // draw hit indicators
         let lifetime_time = DRUM_LIFETIME_TIME * shell.mods.get_speed();
         for (hit_type, hit_time) in self.hit_cache.iter() {
+            
+
             if shell.time - hit_time > lifetime_time { continue }
             let alpha = 1.0 - (shell.time - hit_time) / (lifetime_time * 4.0);
-            let alpha = (alpha.clamp(0.0, 1.0) * 255.0) as u8;
+            let alpha = ColorField::new_f32(alpha);
             match hit_type {
                 TaikoHit::LeftKat => {
                     if let Some(kat) = &self.left_kat_image {
@@ -963,7 +964,7 @@ impl Gamemode for TaikoGame {
                             self.playfield.hit_position,
                             self.taiko_settings.note_radius
                                 * self.taiko_settings.hit_area_radius_mult,
-                            self.taiko_settings.kat_color.alpha8(alpha),
+                            self.taiko_settings.kat_color.with_alpha(alpha),
                             true
                         ));
                     }
@@ -978,7 +979,7 @@ impl Gamemode for TaikoGame {
                             self.playfield.hit_position,
                             self.taiko_settings.note_radius
                                 * self.taiko_settings.hit_area_radius_mult,
-                            self.taiko_settings.don_color.alpha8(alpha),
+                            self.taiko_settings.don_color.with_alpha(alpha),
                             true
                         ));
                     }
@@ -993,7 +994,7 @@ impl Gamemode for TaikoGame {
                             self.playfield.hit_position,
                             self.taiko_settings.note_radius
                                 * self.taiko_settings.hit_area_radius_mult,
-                            self.taiko_settings.don_color.alpha8(alpha),
+                            self.taiko_settings.don_color.with_alpha(alpha),
                             false
                         ));
                     }
@@ -1008,7 +1009,7 @@ impl Gamemode for TaikoGame {
                             self.playfield.hit_position,
                             self.taiko_settings.note_radius
                                 * self.taiko_settings.hit_area_radius_mult,
-                            self.taiko_settings.kat_color.alpha8(alpha),
+                            self.taiko_settings.kat_color.with_alpha(alpha),
                             false
                         ));
                     }

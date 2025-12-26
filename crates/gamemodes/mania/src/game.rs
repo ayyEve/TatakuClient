@@ -333,7 +333,7 @@ impl ManiaGame {
             list.push(graphics::Rectangle::new(
                 Vector2::new(x, bounds.pos.y),
                 Vector2::new(self.playfield.column_width, bounds.size.y),
-                Color::new(0.1, 0.1, 0.1, 0.8),
+                Color::new_f32(0.1, 0.1, 0.1, 0.8),
             ).border(Border::new(Color::GREEN, 1.2)));
 
             // hit area/button state for this col
@@ -904,7 +904,7 @@ impl Gamemode for ManiaGame {
         list.push(graphics::Rectangle::new(
                 Vector2::new(self.playfield.col_pos(0), bounds.pos.y),
                 Vector2::new(self.playfield.total_width, bounds.size.y),
-                Color::new(0.0, 0.0, 0.0, 0.8),
+                Color::BLACK.with_alpha_f32(0.8),
             ).border(Border::new(
                 if state.current_timing_point.kiai { Color::YELLOW } else { Color::BLACK },
                 1.2

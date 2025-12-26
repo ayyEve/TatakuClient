@@ -1,6 +1,6 @@
 use crate::prelude::*;
 use tataku::{
-    Color,
+    ColorField,
     Vector2,
 };
 
@@ -110,12 +110,12 @@ impl SkinManager {
                         for i in img.pixels_mut() {
                             let [r, g, b, _a] = &mut i.0;
 
-                            let rf = Color::to_f32(*r);
-                            let gf = Color::to_f32(*g);
-                            let bf = Color::to_f32(*b);
+                            let rf = ColorField::u8_to_f32(*r);
+                            let gf = ColorField::u8_to_f32(*g);
+                            let bf = ColorField::u8_to_f32(*b);
 
                             let gray = 0.299 * rf + 0.587 * gf + 0.114 * bf;
-                            let n = Color::to_u8(gray);
+                            let n = ColorField::f32_to_u8(gray);
                             
                             *r = n;
                             *g = n;

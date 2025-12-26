@@ -834,7 +834,7 @@ impl Widget<actions::Action> for TextInput {
                         end - start,
                         height,
                     ),
-                    shell.general_theme.active_color.alpha(0.7)
+                    shell.general_theme.active_color.with_alpha_f32(0.7)
                 );
                 shell.list.push(cursor_bar);
             }

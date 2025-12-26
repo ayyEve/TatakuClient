@@ -147,7 +147,7 @@ impl MenuVisualization {
                     time,
                     ripple.start_radius,
                     ripple.start_radius * 2.0,
-                    Color::WHITE.alpha(0.5),
+                    Color::WHITE.with_alpha_f32(0.5),
                     Some(Border::new(Color::WHITE, 2.0)),
                 )
             });

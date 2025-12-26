@@ -6,6 +6,7 @@ use tataku::{
     Easing,
     Vector2,
     Animate,
+    ColorField,
     AnimationTimeline,
 };
 
@@ -33,7 +34,7 @@ pub struct HitCircle {
     pub combo_num: u16,
 
     pub scaling_helper: Arc<ScalingHelper>,
-    alpha: u8,
+    alpha: ColorField,
     color: Color,
 
     /// combo num text cache
@@ -50,20 +51,12 @@ impl HitCircle {
         combo_num: u16
     ) -> Self {
         Self {
-            circle: None,
-            overlay: None,
             base_pos,
             pos: scaling_helper.scale_coords(base_pos),
-            skin_settings: Arc::default(),
             combo_num,
             scaling_helper,
 
-            combo_image: None,
-            // combo_text: None,
-
-            alpha: 0,
-            color: Color::WHITE,
-            shake: None
+            ..Default::default()
         }
     }
 
@@ -170,7 +163,7 @@ impl HitCircle {
 
     }
 
-    pub fn set_alpha(&mut self, alpha: u8) {
+    pub fn set_alpha(&mut self, alpha: ColorField) {
         self.alpha = alpha;
     }
     pub fn set_color(&mut self, color: Color) {
@@ -234,9 +227,9 @@ impl HitCircle {
             collection.push(graphics::Circle::new(
                 self.pos,
                 CIRCLE_RADIUS_BASE * self.scaling_helper.cs,
-                self.color.alpha8(self.alpha),
+                self.color.with_alpha(self.alpha),
             ).border(Border::new(
-                Color::WHITE.alpha8(self.alpha),
+                Color::WHITE.with_alpha(self.alpha),
                 self.scaling_helper.border_width
             )));
         }

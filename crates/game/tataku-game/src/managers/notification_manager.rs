@@ -27,7 +27,7 @@ const NOTIF_BORDER_ROUNDING:f32 = 5.0;
 const NOTIF_PADDING:Vector2 = Vector2::new(4.0, 4.0);
 
 /// what background color should the notifs have?
-const NOTIF_BG_COLOR:Color = Color::new(0.0, 0.0, 0.0, 0.6);
+const NOTIF_BG_COLOR:Color = Color::BLACK.with_alpha_f32(0.6);
 
 #[derive(Default)]
 pub struct NotificationManager {

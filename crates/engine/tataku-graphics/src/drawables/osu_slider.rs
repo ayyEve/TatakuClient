@@ -5,7 +5,7 @@ pub struct SliderDrawable {
     /// bounding size of the slider
     pub size: Vector2,
     /// alpha of whole drawable, mainly used for fade in
-    pub alpha: u8,
+    pub alpha: ColorField,
 
 
     /// slider data to be passed onto the shader
@@ -43,10 +43,13 @@ impl TatakuRenderable for SliderDrawable {
             .trans(self.slider_data.grid_origin);
 
         let mut slider_data = self.slider_data;
-        let alpha = Color::to_f32(self.alpha);
-
-        slider_data.body_color.a = Color::to_u8(Color::to_f32(slider_data.body_color.a) * alpha);
-        slider_data.border_color.a = Color::to_u8(Color::to_f32(slider_data.border_color.a) * alpha);
+        
+        slider_data.body_color.a *= self.alpha;
+        slider_data.border_color.a *= self.alpha;
+        
+        // let alpha = Color::to_f32(self.alpha);
+        // slider_data.body_color.a = Color::to_u8(Color::to_f32(slider_data.body_color.a) * alpha);
+        // slider_data.border_color.a = Color::to_u8(Color::to_f32(slider_data.border_color.a) * alpha);
 
         g.draw_slider(
             quad,

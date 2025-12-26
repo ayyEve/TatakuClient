@@ -61,7 +61,7 @@ impl BarGraph {
             graphics::Rectangle::new(
                 bounds.pos,
                 size,
-                Color::new(0.2, 0.2, 0.2, 0.7),
+                Color::new_f32(0.2, 0.2, 0.2, 0.7),
             )
             .border(Border::new(Color::RED, 1.5))
         );

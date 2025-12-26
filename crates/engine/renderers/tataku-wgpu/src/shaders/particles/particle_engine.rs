@@ -151,7 +151,7 @@ impl ParticleSystem {
 
             cpu_p.scale = particle.scale;
             cpu_p.rotation = particle.rotation;
-            cpu_p.color.a = (particle.opacity.clamp(0.0, 1.0) * 255.0) as u8;
+            cpu_p.color.a = tataku::ColorField::new_f32(particle.opacity);
         }
 
         Some(buffer)

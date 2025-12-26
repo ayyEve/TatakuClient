@@ -150,7 +150,7 @@ impl GameplayWidget for LeaderboardElement {
                     drawable: Box::new(Rectangle::new(
                         pos,
                         size,
-                        Color::new(0.2, 0.2, 0.2, 1.0),
+                        Color::new_f32(0.2, 0.2, 0.2, 1.0),
                     )
                     .shape(Shape::Round(5.0))
                     .border(Border::new(color, 1.5)))

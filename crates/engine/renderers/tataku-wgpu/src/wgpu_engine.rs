@@ -1602,7 +1602,7 @@ impl WgpuEngine<'_> {
             .map(|n|
                 shaders::standard::Vertex {
                     position: [n.x, n.y],
-                    color: [color.r(), color.g(), color.b(), color.a()],
+                    color: color.into(),
                     ..Default::default()
                 }.apply_matrix(&transform)
             )
@@ -2277,8 +2277,8 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
             let size = [image.placement.width, image.placement.height];
 
             let data = image.data.iter()
-                .map(|&alpha| g.color.alpha8(alpha))
-                .flat_map(|color| [color.r, color.g, color.b, color.a])
+                .map(|&alpha| g.color.with_alpha(alpha.into()))
+                .flat_map(<[u8; 4]>::from)
                 .collect::<Vec<_>>();
 
             let tex = self.load_texture_rgba(&data, size).unwrap();

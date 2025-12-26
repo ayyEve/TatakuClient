@@ -24,7 +24,7 @@ impl UTypingPlayfield {
         engine::graphics::Rectangle::new(
             Vector2::new(self.pos.x, self.hit_position.y - height / 2.0),
             Vector2::new(width, height),
-            Color::new(0.1, 0.1, 0.1, 1.0),
+            Color::new_f32(0.1, 0.1, 0.1, 1.0),
             
         ).border_maybe(
             kiai.then_some(Border::new(Color::YELLOW, 2.0))

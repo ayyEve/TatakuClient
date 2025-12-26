@@ -108,7 +108,7 @@ impl Emitter {
                 particle.lifetime_max = particle.lifetime;
 
                 let opacity = Self::init_val(&self.opacity, &mut rng);
-                particle.color = self.color.alpha(opacity);
+                particle.color = self.color.with_alpha_f32(opacity);
                 particle.image = *self.image;
             }
 
