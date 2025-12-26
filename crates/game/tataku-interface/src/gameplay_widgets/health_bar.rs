@@ -102,7 +102,12 @@ impl GameplayWidget for HealthBarElement {
 
 
     fn update(&mut self, shell: &mut GameplayWidgetUpdateShell) {
-        self.container_size = shell.manager.bounds().size;
+        let new_size = shell.manager.bounds().size;
+
+        if new_size != self.container_size {
+            self.container_size = new_size;
+            shell.manager.mark_dirty(HEALTH_BAR.name);
+        }
 
         self.health_ratio = shell.manager.health().get_ratio();
         if self.last_health_ratio == -1000.0 {

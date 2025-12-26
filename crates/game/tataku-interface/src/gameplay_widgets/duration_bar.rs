@@ -39,7 +39,13 @@ impl GameplayWidget for DurationBarElement {
     }
 
     fn update(&mut self, shell: &mut GameplayWidgetUpdateShell) {
-        self.container_size = shell.manager.bounds().size;
+        let new_size = shell.manager.bounds().size;
+
+        if new_size != self.container_size {
+            self.container_size = new_size;
+            shell.manager.mark_dirty(DURATION_BAR.name);
+        }
+
         self.duration_ratio = shell.manager.time() / shell.manager.end_time();
     }
 

@@ -1,17 +1,17 @@
 use crate::*;
 use gameplay::widgets::*;
 
+#[derive(Debug2)]
 pub struct GameplayWidgetContainer {
     pub name: CowStr,
     pub visible: bool,
-
-    pub preferred_size: tataku::Vector2,
 
     pub resolved_pos: tataku::Vector2,
 
     pub layout: Option<GameplayWidgetLayout>,
     pub default_layout: GameplayWidgetLayout,
 
+    #[debug(skip)]
     pub inner: Box<dyn GameplayWidget>,
 }
 impl GameplayWidgetContainer {
@@ -35,7 +35,7 @@ impl GameplayWidgetContainer {
     }
 
     pub fn resolved_bounds(&self) -> tataku::Bounds {
-        tataku::Bounds::new(self.resolved_pos, self.preferred_size)
+        tataku::Bounds::new(self.resolved_pos, self.inner.preferred_size())
     }
 
     pub fn layout(&self) -> &GameplayWidgetLayout {

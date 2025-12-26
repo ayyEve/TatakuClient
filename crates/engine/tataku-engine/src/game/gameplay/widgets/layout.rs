@@ -1,10 +1,5 @@
 use crate::*;
-use tataku::{ Bounds, Vector2 };
-use gameplay::widgets::{
-    GameplayWidgetAnchor,
-    GameplayWidgetContainer,
-    Side,
-};
+use gameplay::widgets::GameplayWidgetAnchor;
 
 #[derive(Serialize, Deserialize)]
 #[derive(Clone, Debug, Default)]
@@ -38,4 +33,3 @@ pub enum GameplayWidgetLayoutError {
     CyclicDependencyDetected,
     InvalidElementReference(String),
 }
-

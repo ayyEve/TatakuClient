@@ -57,7 +57,6 @@ impl UiElementLoader {
         self.elements.push(GameplayWidgetContainer {
             name: Cow::Borrowed(name),
             visible: true,
-            preferred_size: inner.preferred_size(),
             resolved_pos: tataku::Vector2::ZERO,
             layout,
             default_layout,
