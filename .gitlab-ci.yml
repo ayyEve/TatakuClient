@@ -101,6 +101,7 @@ releases:
       artifacts: true
     - job: build-windows
       artifacts: true
+    - job: prepare-release
   script:
     - echo Creating release "$CI_COMMIT_BRANCH-$DATETIME"
   release:
