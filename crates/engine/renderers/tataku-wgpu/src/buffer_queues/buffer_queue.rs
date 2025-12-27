@@ -28,7 +28,7 @@ impl<B:RenderBufferable> RenderBufferQueue<B> {
     }
 
     /// set up the buffers to be writable
-    pub fn begin(&mut self, mut recorded: Vec<Box<B>>) {
+    pub fn reset(&mut self, mut recorded: Vec<Box<B>>) {
         for b in recorded.iter_mut() { 
             b.reset(); 
         }
@@ -41,7 +41,7 @@ impl<B:RenderBufferable> RenderBufferQueue<B> {
     }
 
     /// finish writing all data to the buffers
-    pub fn end(&mut self, queue: &wgpu::Queue) -> Option<Box<B>> {
+    pub fn finish(&mut self, queue: &wgpu::Queue) -> Option<Box<B>> {
         self.dump(queue)
     }
 

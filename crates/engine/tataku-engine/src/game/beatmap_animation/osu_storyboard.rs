@@ -255,8 +255,8 @@ impl Element {
                     skin_manager
                 )?;
 
-                image.origin = Vector2::ZERO;
                 image.pos = Vector2::ZERO;
+                image.origin = Vector2::ZERO;
 
                 layer = sprite.layer;
                 initial_pos = sprite.pos;

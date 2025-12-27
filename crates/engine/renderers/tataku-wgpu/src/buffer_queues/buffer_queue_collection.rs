@@ -94,10 +94,7 @@ impl BufferQueueCollection {
         );
     }
 
-
-    pub fn begin_render(&mut self) {
-        // if self.last_drawn is not None at this point, something went wrong
-        assert!(self.current_render_buffer.is_none());
+    pub fn reset_completed(&mut self) {
 
         let mut standard_buffers = Vec::new();
         let mut slider_buffers = Vec::new();
@@ -122,16 +119,22 @@ impl BufferQueueCollection {
         for i in &mut self.buffer_queues {
             let Some(i) = i else { panic!("None in buffer queues??") };
             match &mut **i {
-                RenderBufferQueueType::Slider(s) => s.begin(slider_buffers.take()),
-                RenderBufferQueueType::Standard(v) => v.begin(standard_buffers.take()),
-                RenderBufferQueueType::Flashlight(f) => f.begin(flashlight_buffers.take()),
-                RenderBufferQueueType::GaussianBlur(f) => f.begin(gaussian_blur_buffers.take()),
-                RenderBufferQueueType::BoxBlur(f) => f.begin(box_blur_buffers.take()),
+                RenderBufferQueueType::Slider(s) => s.reset(slider_buffers.take()),
+                RenderBufferQueueType::Standard(v) => v.reset(standard_buffers.take()),
+                RenderBufferQueueType::Flashlight(f) => f.reset(flashlight_buffers.take()),
+                RenderBufferQueueType::GaussianBlur(f) => f.reset(gaussian_blur_buffers.take()),
+                RenderBufferQueueType::BoxBlur(f) => f.reset(box_blur_buffers.take()),
 
                 #[cfg(feature="vello")]
                 RenderBufferQueueType::Vello(b) => b.begin(vello_buffers.take()),
             }
         }
+    }
+
+    pub fn begin_render(&mut self) {
+        // if self.last_drawn is not None at this point, something went wrong
+        assert!(self.current_render_buffer.is_none());
+        self.reset_completed();
     }
 
     pub fn end_render(&mut self) {

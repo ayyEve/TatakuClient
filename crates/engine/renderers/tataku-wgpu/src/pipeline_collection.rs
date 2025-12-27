@@ -26,12 +26,6 @@ impl PipelineCollection {
         let box_blur = shaders::box_blur::Pipeline::new(device, intermediate_tex_ref);
         let gaussian_blur = shaders::gaussian_blur::Pipeline::new(device, intermediate_tex_ref);
 
-        let mut pipelines = shaders::standard::create_standard_pipelines(
-            device,
-            projection_matrix,
-            atlas,
-        );
-
         let slider = shaders::slider::create_slider_pipeline(
             device,
             projection_matrix
@@ -41,8 +35,11 @@ impl PipelineCollection {
             projection_matrix
         );
 
-        pipelines.sort_by_key(|(k, _)| (*k) as u8);
-        let standard = pipelines.into_iter().map(|(_,p)| p).collect::<Vec<_>>();
+        let standard = create_standard_pipelines(
+            device, 
+            projection_matrix, 
+            atlas,
+        );
 
         Self {
             slider,
@@ -55,6 +52,40 @@ impl PipelineCollection {
             #[cfg(feature="vello_rendering")] 
             vello_,
         }
+    }
+
+    pub fn atlas_resized(
+        &mut self, 
+        device: &wgpu::Device,
+
+        buffer_queues: &mut BufferQueueCollection,
+        projection_matrix: &crate::ProjectionMatrix,
+        atlas: &crate::atlas::WgpuAtlas,
+    ) {
+        self.standard = create_standard_pipelines(
+            device, 
+            projection_matrix, 
+            atlas
+        );
+
+        buffer_queues.reset_completed();
+        
+        // if this isnt true, we have a big problem lol...
+        assert!(buffer_queues.current_render_buffer.is_none());
+
+        let a = buffer_queues
+            .buffer_queues
+            .get_mut(PipelineType::Standard as u8 as usize)
+            .unwrap()
+            .as_mut()
+            .unwrap();
+
+        *a = Box::new(RenderBufferQueueType::Standard(
+            RenderBufferQueue::default().init(
+                device,
+                &self.standard[0]
+            )
+        ));
     }
 
     pub fn init_buffer_queues(
@@ -186,4 +217,22 @@ impl PipelineCollection {
         }
     }
 
+}
+
+
+fn create_standard_pipelines(
+    device: &wgpu::Device,
+    projection_matrix: &crate::ProjectionMatrix,
+    atlas: &crate::atlas::WgpuAtlas,
+) -> Vec<wgpu::RenderPipeline> {
+
+    let mut pipelines = shaders::standard::create_standard_pipelines(
+        device,
+        projection_matrix,
+        atlas,
+    );
+    pipelines.sort_by_key(|(k, _)| (*k) as u8);
+    pipelines.into_iter()
+        .map(|(_, p)| p)
+        .collect::<Vec<_>>()
 }

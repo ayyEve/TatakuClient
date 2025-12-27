@@ -536,12 +536,30 @@ impl<'window> WgpuEngine<'window> {
         [width, height]: [u32; 2],
         glyph: bool,
     ) -> Option<tataku::TextureReference> {
-        let info = self.atlas.reserve(
+        use crate::atlas::AtlasResult;
+
+        let result = self.atlas.reserve(
             width, 
             height, 
             glyph,
             &self.device,
-        )?;
+        );
+        let info = match result {
+            AtlasResult::Ok(a) => a,
+            AtlasResult::Resized(a) => {
+                self.pipelines.atlas_resized(
+                    &self.device, 
+                    &mut self.buffer_queues,
+                    &self.projection_matrix, 
+                    &self.atlas
+                );
+                a
+            },
+            AtlasResult::NoSpace => {
+                error!("Error inserting size ({width},{height}) into atlas!");
+                return None;
+            },
+        };
 
         if info.is_empty() { return Some(info) }
 
@@ -1349,14 +1367,29 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
         let width = data.width;
         let height = data.height;
         // find space in the render target atlas
-        let Some(atlased) = self.atlas.reserve(
+        let atlased = self.atlas.reserve(
             width, 
             height, 
             false,
             &self.device,
-        ) else { 
-            error!("Error inserting size ({width},{height}) into atlas!");
-            return 
+        );
+
+        use crate::atlas::AtlasResult;
+        let atlased = match atlased {
+            AtlasResult::Ok(a) => a,
+            AtlasResult::Resized(a) => {
+                self.pipelines.atlas_resized(
+                    &self.device, 
+                    &mut self.buffer_queues,
+                    &self.projection_matrix, 
+                    &self.atlas,
+                );
+                a
+            },
+            AtlasResult::NoSpace => {
+                error!("Error inserting size ({width},{height}) into atlas!");
+                return
+            },
         };
 
         // create a projection and render target

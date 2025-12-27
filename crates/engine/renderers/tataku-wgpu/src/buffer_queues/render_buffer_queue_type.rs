@@ -45,19 +45,19 @@ impl RenderBufferQueueType {
     pub fn end(&mut self, queue: &wgpu::Queue) -> Option<RenderBufferType> {
         match self {
             Self::Standard(v) => v
-                .end(queue)
+                .finish(queue)
                 .map(RenderBufferType::Standard),
             Self::Slider(s) => s
-                .end(queue)
+                .finish(queue)
                 .map(RenderBufferType::Slider),
             Self::Flashlight(f) => f
-                .end(queue)
+                .finish(queue)
                 .map(RenderBufferType::Flashlight),
             Self::GaussianBlur(f) => f
-                .end(queue)
+                .finish(queue)
                 .map(RenderBufferType::GaussianBlur),
             Self::BoxBlur(f) => f
-                .end(queue)
+                .finish(queue)
                 .map(RenderBufferType::BoxBlur),
 
             #[cfg(feature="vello")]

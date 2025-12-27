@@ -86,7 +86,8 @@ impl WgpuAtlas {
         height: u32,
         glyph: bool,
         device: &wgpu::Device,
-    ) -> Option<tataku::TextureReference> {
+
+    ) -> AtlasResult {
         if glyph {
             return self.glyph_atlas.reserve(
                 width, 
@@ -96,14 +97,19 @@ impl WgpuAtlas {
         }
 
         if let Some(a) = self.atlas.try_insert(width, height) {
-            return Some(a);
+            return AtlasResult::Ok(a);
         }
 
         if (self.textures.len() as u32) < Self::LAYER_COUNT.end {
             self.add_layer(device);
-            self.atlas.try_insert(width, height)
+
+            if let Some(a) = self.atlas.try_insert(width, height) {
+                AtlasResult::Resized(a)
+            } else {
+                AtlasResult::NoSpace
+            }
         } else {
-            None
+            AtlasResult::NoSpace
         }
     }
     
@@ -297,10 +303,10 @@ impl GlyphAtlas {
         width: u32, 
         height: u32,
         glyph_layer: u32,
-    ) -> Option<tataku::TextureReference> {
+    ) -> AtlasResult {
         use tataku::ATLAS_PADDING;
         if width == 0 || height == 0 {
-            return Some(tataku::TextureReference::empty())
+            return AtlasResult::Ok(tataku::TextureReference::empty())
         }
         let width2 = width + ATLAS_PADDING * 2;
         let height2 = height + ATLAS_PADDING * 2;
@@ -324,10 +330,10 @@ impl GlyphAtlas {
 
         if x + w > self.size[0] 
         || y + h > self.size[1] {
-            return None
+            return AtlasResult::NoSpace
         }
 
-        Some(tataku::TextureReference::new(
+        AtlasResult::Ok(tataku::TextureReference::new(
             [x, y],
             [width, height],
             glyph_layer,
@@ -336,4 +342,11 @@ impl GlyphAtlas {
             self.size,
         ))
     }
+}
+
+
+pub enum AtlasResult {
+    Ok(tataku::TextureReference),
+    Resized(tataku::TextureReference),
+    NoSpace
 }
