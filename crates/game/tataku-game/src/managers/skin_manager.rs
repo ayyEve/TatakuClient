@@ -80,20 +80,28 @@ impl SkinManager {
         skin_name: &str
     ) -> TextureState {
         let mut path = name.to_path_buf();
-        let filename = path.file_name().unwrap().to_string_lossy().into_owned();
         path.pop();
 
         // get paths to check for this source
         // try to load 2x resolution first
         let to_attempt = match source {
-            // raw textures wont have a @2x variant
-            TextureSource::Raw => vec![ (filename + ".png", Vector2::ONE) ],
+            // raw textures wont have a @2x variant, and should include the ext
+            TextureSource::Raw => {
+                let filename = name.file_name().unwrap().to_string_lossy().into_owned();
+                vec![ 
+                    (filename.clone(), Vector2::ONE),
+                ]
+            },
 
-            // everything else should
-            _ => vec![ 
-                (filename.clone() + "@2x.png", Vector2::ONE / 2.0), 
-                (filename + ".png", Vector2::ONE) 
-            ],
+            // everything else could have an @2x variant, and shouldn't include the file ext
+            _ => {
+                let filename = name.file_stem().unwrap().to_string_lossy().into_owned();
+
+                vec![ 
+                    (filename.clone() + "@2x.png", Vector2::ONE / 2.0), 
+                    (filename + ".png", Vector2::ONE) 
+                ]
+            },
         };
 
         for (tex_name, scale) in to_attempt {

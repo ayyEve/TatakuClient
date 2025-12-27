@@ -490,19 +490,14 @@ enum ElementImage {
 
 fn try_load_image(
     file_path: &Path,
-    // image_cache: &mut HashMap<String, graphics::Image>,
     skin_manager: &mut dyn graphics::SkinProvider
 ) -> tataku::Result<graphics::Image> {
-    // if let Some(image) = image_cache.get(filepath).cloned() {
-    //     Ok(image)
-    // } else 
     if let Some(i) = skin_manager.get_texture(
         file_path, 
         &graphics::TextureSource::Raw, 
         graphics::SkinUsage::Beatmap, 
         false
     ) {
-        // image_cache.insert(filepath.clone(), i.clone());
         Ok(i)
     } else {
         // try to find a file with the same name but different case
