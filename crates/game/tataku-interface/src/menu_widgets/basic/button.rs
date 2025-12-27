@@ -127,6 +127,12 @@ where
                 self.active = Some(*mb);
                 shell.event_consumed = true;
             }
+            InputType::MousePressCancel(mb) => {
+                if self.active == Some(*mb) {
+                    self.active = None;
+                    shell.event_consumed = true;
+                }
+            }
 
             InputType::MouseRelease(mb) if self.active == Some(*mb) => {
                 let action = match mb {

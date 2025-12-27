@@ -126,9 +126,12 @@ impl Widget<actions::Action> for Checkbox {
                 if let CheckboxValue::Static(b) = &mut self.value {
                     *b = !*b;
                 }
-                // shell.event_consumed = true;
             }
 
+            InputType::MousePressCancel(MouseButton::Left) if self.active => {
+                self.active = false;
+                shell.event_consumed = true;
+            }
             _ => {}
         }
     }

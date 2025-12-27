@@ -170,6 +170,11 @@ impl Widget<actions::Action> for Slider {
                 // never consume a mouse release event
             }
 
+            InputType::MousePressCancel(MouseButton::Left) => {
+                self.pressed = false;
+                shell.event_consumed = true;
+            }
+
             InputType::KeyPress(press) => {
                 let Some(key) = press.key else { return };
                 let range = self.range();

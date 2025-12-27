@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{menu_widgets::container::drag_scroll_data::DragScrollResult, prelude::*};
 use common::reflect::*;
 use tataku::{
     Vector2,
@@ -67,6 +67,56 @@ impl Container {
         }
     }
 
+    // TODO: nested scrollable containers might be funky with this
+    // we probably shouldnt support those though, or only when the inner scroll is at its scroll limits?
+    fn check_drag_scroll(
+        &mut self,
+        event: &InputEvent,
+        layout: &taffy::Layout,
+        shell: &mut InputShell<'_, actions::Action>,
+    ) -> bool {
+        if self.scroll_direction.is_none() || !self.drag_scroll {
+            return false
+        }
+
+        let result = self
+            .drag_scroll_data
+            .check_input(self.node_id, shell, event);
+
+        match result {
+            DragScrollResult::None => false,
+            DragScrollResult::SendIgnore(b) => {
+                let event = input::InputEvent {
+                    event: input::InputType::MousePressCancel(b),
+                    key_mods: event.key_mods,
+                    mouse_pos: event.mouse_pos,
+                };
+                self.input(&event, shell);
+                true
+            }
+
+            DragScrollResult::Scroll(offset) => {
+                if self.check_scroll(&offset, layout) {
+                    let context = shell
+                        .tree
+                        .get_context_mut(self.node_id)
+                        .unwrap();
+
+                    context.local_transform.pos = self.scroll_offset;
+                    shell.tree.mark_dirty(self.node_id);
+                    // shell.actions.push(actions::ui::UiAction::new(
+                    //     self.node_id,
+                    //     shell.source,
+                    //     actions::ui::UiActionType::ContextChanged
+                    // ).into());
+                    return true;
+                }
+                
+                false
+            }
+        }
+    }
+
     fn check_scroll(
         &mut self,
         scroll: &ScrollPosition,
@@ -77,7 +127,6 @@ impl Container {
         }
 
         match scroll {
-            ScrollPosition::None => false,
             ScrollPosition::Relative(delta) => {
                 let a = self.scroll_offset + *delta;
                 let new_scroll = Vector2::new(
@@ -340,6 +389,10 @@ impl Widget<actions::Action> for Container {
             }
         }
 
+        if self.check_drag_scroll(event, &layout, shell) {
+            shell.event_consumed = true;
+            return;
+        }
 
         let mut captured = false;
         if let Some(data) = &mut self.programmatic {
@@ -382,27 +435,6 @@ impl Widget<actions::Action> for Container {
         }
 
         shell.event_consumed = captured;
-
-        if !captured && self.scroll_direction.is_some() && self.drag_scroll {
-            let offset = self
-                .drag_scroll_data
-                .check_input(self.node_id, shell, event);
-
-            if self.check_scroll(&offset, &layout) {
-                shell.event_consumed = true;
-                let context = shell
-                    .tree
-                    .get_context_mut(self.node_id)
-                    .unwrap();
-
-                context.local_transform.pos = self.scroll_offset;
-                shell.actions.push(actions::ui::UiAction::new(
-                    self.node_id,
-                    shell.source,
-                    actions::ui::UiActionType::ContextChanged
-                ).into());
-            }
-        }
     }
 
     fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
@@ -644,8 +676,6 @@ impl Widget<actions::Action> for Container {
 
 
 pub(super) enum ScrollPosition {
-    None,
-
     /// move a relative amount
     Relative(Vector2),
 

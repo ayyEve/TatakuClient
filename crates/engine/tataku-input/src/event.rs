@@ -7,10 +7,12 @@ pub enum InputType {
     KeyRelease(KeyInput),
 
     // mouse input
+    MouseMove(Vector2),
     MousePress(MouseButton),
     MouseRelease(MouseButton),
-    MouseMove(Vector2),
     MouseScroll(ScrollInput),
+    /// sent when a previous mouse press should be ignored/cancelled
+    MousePressCancel(MouseButton),
 
     ControllerPress(GamepadButton, GamepadId, ArcStr),
     ControllerRelease(GamepadButton, GamepadId, ArcStr),

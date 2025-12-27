@@ -244,7 +244,6 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
                 || Matrix::identity().trans(self.bounds.pos),
                 |p| p.global_transform
             );
-
         self.recurse_update_context(node, our_matrix);
     }
 

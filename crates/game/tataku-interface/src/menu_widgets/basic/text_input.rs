@@ -785,6 +785,13 @@ impl Widget<actions::Action> for TextInput {
                 self.pressed = false;
                 // self.active = false;
             }
+            InputType::MousePressCancel(MouseButton::Left) => {
+                if self.active {
+                    self.active = false;
+                    self.pressed = false;
+                    shell.event_consumed = true;
+                }
+            }
             
             _ => {}
         }
