@@ -225,7 +225,6 @@ impl Element {
     fn new(
         def: StoryboardEntryDef,
         parent_dir: &Path,
-        // image_cache: &mut HashMap<String, graphics::Image>,
         skin_manager: &mut dyn graphics::SkinProvider
     ) -> tataku::Result<Self> {
         let layer;
@@ -246,11 +245,13 @@ impl Element {
 
         let image = match def.element.clone() {
             StoryboardElementDef::Sprite(sprite) => {
-                let filepath = parent_dir.join(&sprite.filepath);
+                let path = sprite.filepath
+                    .replace("\\\\", "/")
+                    .replace("\\", "/")
+                ;
 
                 let mut image = try_load_image(
-                    &filepath, 
-                    // image_cache, 
+                    &parent_dir.join(&path), 
                     skin_manager
                 )?;
 
@@ -266,27 +267,27 @@ impl Element {
                 ElementImage::Sprite(image)
             }
             StoryboardElementDef::Animation(anim) => {
-                let filepath = Path::new(&anim.filepath);
+                let path = anim.filepath
+                    .replace("\\\\", "/")
+                    .replace("\\", "/")
+                ;
+                let filepath = parent_dir.join(&path);
                 let Some(ext) = filepath.extension() else { 
                     return Err(tataku::Error::String("no extention on anim image".to_owned())); 
                 };
-
+                
                 let ext = ext.to_str().unwrap();
-                let filename = filepath.to_str().unwrap().trim_end_matches(&format!(".{ext}"));
+                let filename = filepath.file_stem().unwrap().to_str().unwrap();
+                let parent_dir = filepath.parent().unwrap();
 
                 let mut frames = Vec::new();
                 let mut counter = 0;
                 loop {
                     let filepath = format!("{filename}{counter}.{ext}");
                     let path = parent_dir.join(&filepath);
-                    // let filepath = format!("{parent_dir}/{filename}{counter}.{ext}")
-                    //     .replace("\\\\", "/")
-                    //     .replace("\\", "/")
-                    // ;
 
                     let Ok(image) = try_load_image(
                         &path, 
-                        // image_cache, 
                         skin_manager
                     ) else {
                         if counter == 0 { error!("image not found: {filepath}"); }

@@ -475,7 +475,7 @@ impl beatmaps::TatakuBeatmap for OsuBeatmap {
                 Some(Box::new(sb))
             }
             Err(e) => {
-                error!("error loading anim: {e:?}");
+                error!("error loading storyboard: {e:?}");
                 None
             }
         }
