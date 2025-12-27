@@ -1,11 +1,12 @@
 mod atlas;
 mod shaders;
-mod last_drawn;
 mod wgpu_engine;
 mod wgpu_pipeline;
 mod buffer_queues;
+mod pipeline_type;
 mod projection_matrix;
 mod renderable_surface;
+mod pipeline_collection;
 
 mod prelude {
     pub(crate) use tracing::*;
@@ -16,7 +17,8 @@ mod prelude {
     pub(crate) use crate::buffer_queues::*;
     pub(crate) use crate::wgpu_pipeline::*;
     pub(crate) use crate::projection_matrix::*;
-    pub(crate) use crate::last_drawn::PipelineType;
+    pub(crate) use crate::pipeline_collection::*;
+    pub(crate) use crate::pipeline_type::PipelineType;
 
     pub(crate) use tataku_engine as engine;
     pub(crate) use engine::tataku;

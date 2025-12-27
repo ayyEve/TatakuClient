@@ -165,8 +165,8 @@ impl<'window> GameWindow<'window> {
                 [data.width(), data.height()]
             )),
 
-            LoadImage::FreeTexture { tex, deferred } => {
-                self.graphics.free_tex(tex, deferred);
+            LoadImage::FreeTexture(tex) => {
+                self.graphics.free_tex(tex);
             }
 
             _ => {}
@@ -346,12 +346,9 @@ impl GameWindow<'_> {
         r.recv().unwrap()
     }
 
-    pub fn free_texture(tex: tataku::TextureReference, deferred: bool) {
+    pub fn free_texture(tex: tataku::TextureReference) {
         Self::send_action(actions::window::WindowAction::LoadImage(Box::new(
-            LoadImage::FreeTexture {
-                tex, 
-                deferred
-            }
+            LoadImage::FreeTexture(tex)
         )));
     }
 }

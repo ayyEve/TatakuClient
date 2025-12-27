@@ -1,13 +1,14 @@
 
 // TODO: rename this
+#[repr(u8)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum PipelineType {
     Standard,
     Slider,
     Flashlight,
 
-    GaussianBlur,
     BoxBlur,
+    GaussianBlur,
 
     #[cfg(feature="vello")]
     Vello,

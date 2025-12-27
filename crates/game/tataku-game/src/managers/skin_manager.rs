@@ -178,7 +178,7 @@ impl graphics::SkinProvider for SkinManager {
                     continue
                 }
 
-                GameWindow::free_texture(*i.tex, false);
+                GameWindow::free_texture(*i.tex);
             }
 
             a.image = TextureState::Unloaded;
@@ -200,7 +200,7 @@ impl graphics::SkinProvider for SkinManager {
                     continue
                 }
 
-                GameWindow::free_texture(*i.tex, false);
+                GameWindow::free_texture(*i.tex);
             }
 
             entry.image = TextureState::Unloaded;
@@ -211,7 +211,7 @@ impl graphics::SkinProvider for SkinManager {
         for i in self.textures.values_mut().flat_map(HashMap::values_mut) {
             if let TextureState::Success(im) = &i.image {
                 if im.reference_count() > 1 { continue }
-                GameWindow::free_texture(*im.tex, false);
+                GameWindow::free_texture(*im.tex);
                 i.image = TextureState::Unloaded;
             }
         }

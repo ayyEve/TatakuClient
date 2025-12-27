@@ -1,7 +1,6 @@
 // WARNING: there is a lot of just data and setup code in this
 use std::sync::Arc;
 use std::borrow::Cow;
-use std::collections::HashMap;
 
 use crate::prelude::*;
 use crate::atlas::WgpuAtlas;
@@ -9,7 +8,6 @@ use crate::renderable_surface::*;
 use graphics::RenderingEngine as _;
 
 use tataku::{
-    Take as _,
     MatrixHelpers as _, 
     Interpolation as _,
 };
@@ -27,53 +25,30 @@ use lyon_tessellation:: {
 /// background color
 const GFX_CLEAR_COLOR:tataku::Color = tataku::Color::BLACK;
 
-macro_rules! get_render_buffer {
-    ($self: ident, $t: ident) => {{
-        let b = $self.current_render_buffer
-            .as_mut()
-            .expect("last drawn type not set");
-
-        if let RenderBufferQueueType::$t(b2) = &mut **b {b2}
-            else { panic!("wrong buffer type") }
-    }}
-}
-
 pub struct WgpuEngine<'window> {
     surface: wgpu::Surface<'window>,
     device: wgpu::Device,
     queue: Arc<wgpu::Queue>,
     config: wgpu::SurfaceConfiguration,
 
-    pipelines: HashMap<tataku::GraphicsPipeline, wgpu::RenderPipeline>,
-
-    buffer_queues: HashMap<PipelineType, Box<RenderBufferQueueType>>,
-    completed_buffers: Vec<RenderBufferType>,
-    current_render_buffer: Option<Box<RenderBufferQueueType>>,
-
+    pipelines: PipelineCollection, 
+    buffer_queues: BufferQueueCollection,
+    particle_system: shaders::particles::ParticleSystem,
+    
     atlas: WgpuAtlas,
     projection_matrix: ProjectionMatrix,
 
-
+    intermediate_texture: Option<wgpu::Texture>,
     screenshot_pending: Option<graphics::ScreenshotCallback>,
 
-    particle_system: shaders::particles::ParticleSystem,
-    gaussian_blur_pipeline: shaders::gaussian_blur::Pipeline,
-    box_blur_pipeline: shaders::box_blur::Pipeline,
-
-    #[cfg(feature="vello_rendering")]
-    vello_pipeline: Option<shaders::vello::Pipeline>,
+    blitterer: wgpu::util::TextureBlitter,
     font_scale_context: parley::swash::scale::ScaleContext,
     
-    blitterer: wgpu::util::TextureBlitter,
-
     pub(crate) scissors: tataku::ScissorManager,
 
-    present_modes: Vec<tataku::Vsync>,
     can_blur: bool,
     blur_enabled: bool,
-
-    intermediate_texture: Option<wgpu::Texture>,
-    deferred_free_textures: Vec<tataku::TextureReference>,
+    present_modes: Vec<tataku::Vsync>,
 }
 impl<'window> WgpuEngine<'window> {
 
@@ -212,29 +187,20 @@ impl<'window> WgpuEngine<'window> {
             }
         );
 
-        let pipelines = Self::init_pipelines(
+        let pipelines = PipelineCollection::new(
             &device, 
-            &atlas.layout, 
-            &projection_matrix.layout,
+            &projection_matrix,
+            &atlas, 
+            &WgpuTextureReference::new(&intermediate_texture),
         );
-        
-
-        let intermediate_tex_ref = WgpuTextureReference::new(&intermediate_texture);
-        #[cfg(feature="vello_rendering")]
-        let vello_pipeline = shaders::vello::Pipeline::create(&device, &intermediate_tex_ref);
-
-        let gaussian_blur_pipeline = shaders::gaussian_blur::Pipeline::new(&device, &intermediate_tex_ref);
-        let box_blur_pipeline = shaders::box_blur::Pipeline::new(&device, &intermediate_tex_ref);
         
         let particle_system = shaders::particles::ParticleSystem::new(&device);
 
-
-
-        let buffer_queues = Self::init_buffer_queues(
-            &device, 
+        // let buffer_queues = pipelines.init_buffer_queues(&device);
+        let buffer_queues = BufferQueueCollection::new(
+            queue.clone(),
+            device.clone(),
             &pipelines,
-            &gaussian_blur_pipeline.pipeline,
-            &box_blur_pipeline.pipeline,
         );
 
         let blitterer = wgpu::util::TextureBlitter::new(
@@ -250,110 +216,24 @@ impl<'window> WgpuEngine<'window> {
             pipelines,
             atlas,
 
-            current_render_buffer: None,
             buffer_queues,
-            completed_buffers: Vec::new(),
 
             projection_matrix,
             screenshot_pending: None,
 
             particle_system,
-            gaussian_blur_pipeline,
-            box_blur_pipeline,
 
-            #[cfg(feature="vello_rendering")]
-            vello_pipeline,
+            #[cfg(feature="vello_rendering")] vello_pipeline,
             font_scale_context: parley::swash::scale::ScaleContext::new(),
             blitterer,
 
             scissors: tataku::ScissorManager::default(),
             present_modes,
-            // sampler,
             can_blur,
             blur_enabled: true,
             intermediate_texture: Some(intermediate_texture),
-
-            deferred_free_textures: Vec::new(),
         })
     }
-
-
-    fn init_pipelines(
-        device: &wgpu::Device,
-        texture_bind_group_layout: &wgpu::BindGroupLayout,
-        projection_matrix_bind_group_layout: &wgpu::BindGroupLayout,
-    ) -> HashMap<tataku::GraphicsPipeline, wgpu::RenderPipeline> {
-        let mut pipelines = shaders::standard::create_standard_pipeline(
-            device,
-            projection_matrix_bind_group_layout,
-            texture_bind_group_layout
-        );
-
-        // create slider pipeline
-        pipelines.insert(tataku::GraphicsPipeline::Slider, shaders::slider::create_slider_pipeline(
-            device,
-            projection_matrix_bind_group_layout
-        ));
-
-        // create flashlight pipeline
-        pipelines.insert(tataku::GraphicsPipeline::Flashlight, shaders::flashlight::create_flashlight_pipeline(
-            device,
-            projection_matrix_bind_group_layout
-        ));
-
-        pipelines
-    }
-    
-    fn init_buffer_queues(
-        device: &wgpu::Device,
-        pipelines: &HashMap<tataku::GraphicsPipeline, wgpu::RenderPipeline>,
-        gaussian_blur_pipeline: &wgpu::ComputePipeline,
-        box_blur_pipeline: &wgpu::ComputePipeline,
-    ) -> HashMap<PipelineType, Box<RenderBufferQueueType>> {
-        [
-            (PipelineType::Standard, Box::new(RenderBufferQueueType::Standard(
-                RenderBufferQueue::default().init(
-                    device,
-                    &pipelines[&tataku::GraphicsPipeline::Standard(tataku::BlendMode::AlphaBlending)]
-                )
-            ))),
-            (PipelineType::Slider, Box::new(RenderBufferQueueType::Slider(
-                RenderBufferQueue::default().init(
-                    device,
-                    &pipelines[&tataku::GraphicsPipeline::Slider]
-                )
-            ))),
-            (PipelineType::Flashlight, Box::new(RenderBufferQueueType::Flashlight(
-                RenderBufferQueue::default().init(
-                    device,
-                    &pipelines[&tataku::GraphicsPipeline::Flashlight]
-                )
-            ))),
-
-            
-            (PipelineType::GaussianBlur, Box::new(RenderBufferQueueType::GaussianBlur(
-                RenderBufferQueue::default().init(
-                    device,
-                    gaussian_blur_pipeline
-                )
-            ))),
-            (PipelineType::BoxBlur, Box::new(RenderBufferQueueType::BoxBlur(
-                RenderBufferQueue::default().init(
-                    device,
-                    box_blur_pipeline
-                )
-            ))),
-
-            #[cfg(feature="vello")]
-            (PipelineType::Vello, Box::new(RenderBufferQueueType::Vello(
-                RenderBufferQueue::default().init(
-                    device,
-                    WgpuPipeline::None
-                )
-            ))),
-        ].into_iter().collect()
-    }
-
 
     pub fn render_current_surface(&mut self) -> Result<(), wgpu::SurfaceError> {
         let swapchain = self.surface.get_current_texture()?;
@@ -415,9 +295,6 @@ impl<'window> WgpuEngine<'window> {
         }
 
         self.atlas.clear_glyphs();
-        for i in self.deferred_free_textures.take() {
-            self.free_tex(i, false);
-        }
 
         self.intermediate_texture = Some(texture);
 
@@ -453,7 +330,7 @@ impl<'window> WgpuEngine<'window> {
             let mut current_pipeline = tataku::GraphicsPipeline::None;
             let mut current_scissor = None;
 
-            for i in self.completed_buffers.iter() {
+            for i in self.buffer_queues.completed_buffers.iter() {
                 let pipeline_type = i.get_pipeline_type();
                 // list.push(format!(
                 //     "{:.2}ms -> {pipeline_type:?}", 
@@ -477,52 +354,14 @@ impl<'window> WgpuEngine<'window> {
                     drop(render_pass);
                     self.queue.submit([encoder.finish()]);
 
-
                     // perform the compute shader
-                    match pipeline_type {
-                        PipelineType::GaussianBlur => {
-                            let RenderBufferType::GaussianBlur(buffer) = i
-                            else { unreachable!() };
-
-                            self.gaussian_blur_pipeline.perform(
-                                &self.device,
-                                &self.queue,
-                                renderable.texture,
-                                buffer
-                            );
-                        }
-                        PipelineType::BoxBlur => {
-                            let RenderBufferType::BoxBlur(buffer) = i
-                            else { unreachable!() };
-
-                            self.box_blur_pipeline.perform(
-                                &self.device,
-                                &self.queue,
-                                renderable.texture,
-                                buffer
-                            );
-                        }
-
-                        #[cfg(feature="vello")]
-                        PipelineType::Vello => {
-                            let vello = self
-                                .vello_pipeline
-                                .as_mut()
-                                .unwrap();
-
-                            let RenderBufferType::Vello(buffer) = i
-                            else { unreachable!() };
-
-                            vello.perform(
-                                &self.device,
-                                &self.queue,
-                                renderable.texture,
-                                buffer
-                            );
-                        }
-
-                        _ => unreachable!()
-                    }
+                    self.pipelines.perform_compute_pipeline(
+                        pipeline_type, 
+                        i, 
+                        &self.device, 
+                        &self.queue, 
+                        renderable.texture
+                    );
 
 
                     // back to our regularly scheduled programming
@@ -576,12 +415,13 @@ impl<'window> WgpuEngine<'window> {
 
                 if pipeline != current_pipeline {
                     current_pipeline = pipeline;
-                    let Some(pipeline) = self.pipelines.get(&pipeline)
-                    else {
-                        error!("Pipeline not created for blend mode {current_pipeline:?}");
-                        current_pipeline = tataku::GraphicsPipeline::None;
-                        continue
-                    };
+                    let pipeline = self.pipelines.get(pipeline);
+                    // let Some(pipeline) = self.pipelines.get(pipeline)
+                    // else {
+                    //     error!("Pipeline not created for blend mode {current_pipeline:?}");
+                    //     current_pipeline = tataku::GraphicsPipeline::None;
+                    //     continue
+                    // };
 
                     render_pass.set_pipeline(pipeline);
                     render_pass.set_bind_group(
@@ -639,7 +479,6 @@ impl<'window> WgpuEngine<'window> {
     }
 
 
-
     pub(crate) fn texture_to_bytes(
         &self, 
         texture: &wgpu::Texture,
@@ -690,7 +529,6 @@ impl<'window> WgpuEngine<'window> {
 
         (data, [fuck / 4, h])
     }
-
 
     fn load_texture(
         &mut self, 
@@ -762,510 +600,6 @@ impl<'window> WgpuEngine<'window> {
     }
     
 }
-
-
-// render code
-impl WgpuEngine<'_> {
-    fn dump_last_drawn(&mut self) {
-        let Some(mut last_buffer) = self
-            .current_render_buffer.take()
-        else { return };
-
-        let pipeline = match last_buffer.pipeline_type() {
-            PipelineType::GaussianBlur => WgpuPipeline::Compute(&self.gaussian_blur_pipeline.pipeline),
-            PipelineType::BoxBlur => WgpuPipeline::Compute(&self.box_blur_pipeline.pipeline),
-            #[cfg(feature="vello")] PipelineType::Vello => WgpuPipeline::None,
-            _ => WgpuPipeline::Render(&self.pipelines[&last_buffer.graphics_pipeline()]),
-        };
-        if let Some(b) = last_buffer.dump_and_next(
-            &self.queue,
-            &self.device,
-            pipeline
-        ) {
-            self.completed_buffers.push(b);
-        };
-
-        self.buffer_queues.insert(last_buffer.pipeline_type(), last_buffer);
-    }
-
-    fn check_dump_and_next(&mut self, to_draw: PipelineType) {
-        if let Some(last_buffer) = &self.current_render_buffer
-            && last_buffer.pipeline_type() == to_draw
-        { return }
-
-        self.dump_last_drawn();
-        self.current_render_buffer = Some(self.buffer_queues
-            .remove(&to_draw)
-            .unwrap_or_else(|| panic!("buffer queue did not have a queue for type {to_draw:?}. Did you forget to create a buffer queue for it?"))
-        );
-    }
-
-    /// returns reserve data
-    fn reserve_standard<'a>(
-        &'a mut self,
-        vtx_count: u64,
-        idx_count: u64,
-        blend_mode: tataku::BlendMode
-    ) -> Option<shaders::standard::ReserveData<'a>> {
-        use crate::shaders::standard;
-
-        let scissor = self.scissors.current_scissor();
-        self.check_dump_and_next(PipelineType::Standard);
-
-        let vertex_buffer_queue = get_render_buffer!(self, Standard);
-
-        let mut recording_buffer = vertex_buffer_queue
-            .recording_buffer()
-            .expect("didnt get vertex recording buffer");
-
-        if !( // blend mode check
-            recording_buffer.blend_mode.is_none()
-            || recording_buffer.blend_mode.unwrap() == blend_mode
-        )
-        || !( // scissor check
-            recording_buffer.scissor == Some(scissor)
-            || recording_buffer.scissor.is_none()
-        )
-        || recording_buffer.used_vertices + vtx_count > standard::Buffer::VTX_PER_BUF
-        || recording_buffer.used_indices + idx_count > standard::Buffer::IDX_PER_BUF {
-            let pipeline = WgpuPipeline::Render(
-                &self.pipelines[&tataku::GraphicsPipeline::Standard(blend_mode)]
-            );
-
-            if let Some(b) = vertex_buffer_queue.dump_and_next(
-                &self.queue,
-                &self.device,
-                pipeline
-            ) {
-                self.completed_buffers.push(RenderBufferType::Standard(b));
-            }
-
-            recording_buffer = vertex_buffer_queue.recording_buffer()?;
-            recording_buffer.blend_mode = Some(blend_mode);
-            recording_buffer.scissor = Some(scissor);
-        }
-        if recording_buffer.blend_mode.is_none() {
-            recording_buffer.blend_mode = Some(blend_mode);
-        }
-        if recording_buffer.scissor.is_none() {
-            recording_buffer.scissor = Some(scissor);
-        }
-
-        recording_buffer.used_indices += idx_count;
-        recording_buffer.used_vertices += vtx_count;
-
-        let used_vertices = recording_buffer.used_vertices;
-        let used_indices = recording_buffer.used_indices;
-
-        let cache = &mut vertex_buffer_queue.cpu_cache;
-        Some(standard::ReserveData {
-            vtx: &mut cache.cpu_vtx[
-                (used_vertices - vtx_count) as usize .. used_vertices as usize
-            ],
-            idx: &mut cache.cpu_idx[
-                (used_indices - idx_count) as usize .. used_indices as usize
-            ],
-            idx_offset: used_vertices - vtx_count,
-        })
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn reserve_tex_quad(
-        &mut self,
-        tex: &tataku::TextureReference,
-        rect: [f32; 4],
-        color: tataku::Color,
-        h_flip: bool,
-        v_flip: bool,
-        transform: tataku::Matrix,
-        blend_mode: tataku::BlendMode,
-    ) {
-        use shaders::standard;
-        let Some(mut reserved) = self.reserve_standard(
-            4,
-            6,
-            blend_mode
-        ) else { return };
-
-        let [x, y, w, h] = rect;
-        let color = color.into();
-
-        let mut tl = tex.uvs.tl;
-        let mut tr = tex.uvs.tr;
-        let mut bl = tex.uvs.bl;
-        let mut br = tex.uvs.br;
-
-        if h_flip {
-            std::mem::swap(&mut tl, &mut tr);
-            std::mem::swap(&mut bl, &mut br);
-        }
-        if v_flip {
-            std::mem::swap(&mut tl, &mut bl);
-            std::mem::swap(&mut tr, &mut br);
-        }
-
-        let tex_index = tex.layer as i32;
-        let offset = reserved.idx_offset as u32;
-        #[allow(clippy::identity_op, reason = "lines the values up nicely")]
-        reserved.copy_in(
-        &[
-                standard::Vertex {
-                    position: transform.mul_v2(tataku::Vector2::new(x, y)).into(),
-                    tex_coords: tl,
-                    tex_index,
-                    color,
-                },
-                standard::Vertex {
-                    position: transform.mul_v2(tataku::Vector2::new(x+w, y)).into(),
-                    tex_coords: tr,
-                    tex_index,
-                    color,
-                },
-                standard::Vertex {
-                    position: transform.mul_v2(tataku::Vector2::new(x, y+h)).into(),
-                    tex_coords: bl,
-                    tex_index,
-                    color,
-                },
-                standard::Vertex {
-                    position: transform.mul_v2(tataku::Vector2::new(x+w, y+h)).into(),
-                    tex_coords: br,
-                    tex_index,
-                    color,
-                }
-            ],
-            &[
-                0 + offset,
-                2 + offset,
-                1 + offset,
-
-                1 + offset,
-                2 + offset,
-                3 + offset,
-            ]
-        );
-    }
-
-    // quad is tl,tr, bl,br
-    fn reserve_quad(
-        &mut self,
-        quad: [tataku::Vector2; 4],
-        color: tataku::Color,
-        transform: tataku::Matrix,
-        blend_mode: tataku::BlendMode,
-    ) {
-        let Some(mut reserved) = self.reserve_standard(
-            4,
-            6,
-            blend_mode
-        ) else { return };
-        let color = color.into();
-
-        let vertices = quad.into_iter()
-            .map(|p| shaders::standard::Vertex {
-                position: transform.mul_v2(p).into(),
-                color,
-                ..Default::default()
-            })
-            .collect::<Vec<_>>();
-
-        let offset = reserved.idx_offset as u32;
-        #[allow(clippy::identity_op, reason = "lines the values up nicely")]
-        reserved.copy_in(&vertices, &[
-            0 + offset,
-            2 + offset,
-            1 + offset,
-
-            1 + offset,
-            2 + offset,
-            3 + offset,
-        ]);
-    }
-
-    pub(crate) fn reserve_slider<'a>(
-        &'a mut self,
-        slider_grid_count: u64,
-        grid_cell_count: u64,
-        line_segment_count: u64,
-    ) -> Option<shaders::slider::ReserveData<'a>> {
-        use shaders::slider;
-
-        let scissor = self.scissors.current_scissor();
-        self.check_dump_and_next(PipelineType::Slider);
-
-        let slider_buffer_queue = get_render_buffer!(self, Slider);
-
-        let mut recording_buffer = slider_buffer_queue
-            .recording_buffer()
-            .expect("didnt get slider recording buffer");
-
-        let scissor_check = recording_buffer.scissor == Some(scissor)
-            || recording_buffer.scissor.is_none();
-
-
-        let vtx_count = 4;
-        let idx_count = 6;
-
-        // FIXME:
-        // assert!(slider_grid_count < SLIDER_GRID_COUNT);
-        // assert!(grid_cell_count < GRID_CELL_COUNT);
-        // assert!(line_segment_count < LINE_SEGMENT_COUNT);
-
-        if slider_grid_count > slider::SLIDER_GRID_COUNT
-        || grid_cell_count > slider::GRID_CELL_COUNT
-        || line_segment_count > slider::LINE_SEGMENT_COUNT {
-            return None
-        }
-
-        if !scissor_check
-        || recording_buffer.used_vertices + vtx_count > slider::Buffer::VTX_PER_BUF
-        || recording_buffer.used_indices + idx_count > slider::Buffer::IDX_PER_BUF
-        || recording_buffer.used_slider_data + 1 > slider::EXPECTED_SLIDER_COUNT
-        || recording_buffer.used_slider_grids + slider_grid_count > slider::SLIDER_GRID_COUNT
-        || recording_buffer.used_grid_cells + grid_cell_count > slider::GRID_CELL_COUNT
-        || recording_buffer.used_line_segments + line_segment_count > slider::LINE_SEGMENT_COUNT
-        {
-            let pipeline = WgpuPipeline::Render(
-                &self.pipelines[&tataku::GraphicsPipeline::Slider]
-            );
-            if let Some(b) = slider_buffer_queue
-            .dump_and_next(
-                &self.queue,
-                &self.device,
-                pipeline
-            ) {
-                self.completed_buffers.push(RenderBufferType::Slider(b));
-            }
-            recording_buffer = slider_buffer_queue.recording_buffer()?;
-        }
-
-        if recording_buffer.scissor.is_none() {
-            recording_buffer.scissor = Some(scissor);
-        }
-
-        recording_buffer.used_indices += idx_count;
-        recording_buffer.used_vertices += vtx_count;
-
-        recording_buffer.used_slider_data += 1;
-        recording_buffer.used_slider_grids += slider_grid_count;
-        recording_buffer.used_grid_cells += grid_cell_count;
-        recording_buffer.used_line_segments += line_segment_count;
-
-        let used_vertices = recording_buffer.used_vertices as usize;
-        let used_indices = recording_buffer.used_indices as usize;
-
-        let used_slider_grids = recording_buffer.used_slider_grids as usize;
-        let used_grid_cells = recording_buffer.used_grid_cells as usize;
-        let used_line_segments = recording_buffer.used_line_segments as usize;
-
-        // reserve slider vertex data
-        let slider_index = recording_buffer.used_slider_data - 1;
-
-        let cache = &mut slider_buffer_queue.cpu_cache;
-        Some(slider::ReserveData {
-            vtx: &mut cache.cpu_vtx[
-                (used_vertices - vtx_count as usize) .. used_vertices
-            ],
-            idx: &mut cache.cpu_idx[
-                (used_indices - idx_count as usize) .. used_indices
-            ],
-
-            slider_data: &mut cache.slider_data[slider_index as usize],
-            slider_grids: &mut cache.slider_grids[
-                (used_slider_grids - slider_grid_count as usize) .. used_slider_grids
-            ],
-            grid_cells: &mut cache.grid_cells[
-                (used_grid_cells - grid_cell_count as usize) .. used_grid_cells
-                ],
-            line_segments: &mut cache.line_segments[
-                (used_line_segments - line_segment_count as usize) .. used_line_segments
-            ],
-
-            idx_offset: used_vertices as u64 - vtx_count,
-            slider_index: slider_index as u32,
-            slider_grid_offset: used_slider_grids as u32 - slider_grid_count as u32,
-            grid_cell_offset: used_grid_cells as u32 - grid_cell_count as u32,
-            line_segment_offset: used_line_segments as u32 - line_segment_count as u32,
-        })
-    }
-
-    pub(crate) fn reserve_flashlight<'a>(
-        &'a mut self,
-    ) -> Option<shaders::flashlight::ReserveData<'a>> {
-        use shaders::flashlight;
-        let scissor = self.scissors.current_scissor();
-        self.check_dump_and_next(PipelineType::Flashlight);
-
-        let buffer_queue = get_render_buffer!(self, Flashlight);
-        // if let Some(RenderBufferQueueType::Slider(b)) = &mut self.last_drawn {b} else {panic!("wrong buffer type")};
-
-        let mut recording_buffer = buffer_queue
-            .recording_buffer()
-            .expect("didnt get flashlight recording buffer");
-        let scissor_check = recording_buffer.scissor == Some(scissor)
-            || recording_buffer.scissor.is_none();
-
-        let vtx_count = 4;
-        let idx_count = 6;
-
-        if !scissor_check
-        || recording_buffer.used_vertices + vtx_count > flashlight::Buffer::VTX_PER_BUF
-        || recording_buffer.used_indices + idx_count > flashlight::Buffer::IDX_PER_BUF
-        {
-            let pipeline = WgpuPipeline::Render(
-                &self.pipelines[&tataku::GraphicsPipeline::Flashlight]
-            );
-            if let Some(b) = buffer_queue.dump_and_next(
-                &self.queue,
-                &self.device,
-                pipeline
-            ) {
-                self.completed_buffers.push(RenderBufferType::Flashlight(b));
-            }
-            recording_buffer = buffer_queue.recording_buffer()?;
-        }
-        if recording_buffer.scissor.is_none() {
-            recording_buffer.scissor = Some(scissor);
-        }
-
-        recording_buffer.used_flashlights += 1;
-        recording_buffer.used_vertices += vtx_count;
-        recording_buffer.used_indices += idx_count;
-
-
-        // reserve flashlight vertex data
-        let flashlight_index = recording_buffer.used_flashlights - 1;
-        let used_vertices = recording_buffer.used_vertices;
-        let used_indices = recording_buffer.used_indices;
-
-        let cache = &mut buffer_queue.cpu_cache;
-        Some(flashlight::ReserveData {
-            vtx: &mut cache.cpu_vtx[(used_vertices - vtx_count) as usize .. used_vertices as usize],
-            idx: &mut cache.cpu_idx[(used_indices - idx_count) as usize .. used_indices as usize],
-            flashlight_data: &mut cache.cpu_flashlights[flashlight_index as usize],
-
-            idx_offset: used_vertices - vtx_count,
-            flashlight_index: flashlight_index as u32,
-        })
-    }
-
-    pub(crate) fn reserve_gaussian_blur<'a>(
-        &'a mut self,
-    ) -> Option<shaders::gaussian_blur::ReserveData<'a>> {
-        use shaders::gaussian_blur as gaussian;
-        let scissor = self.scissors.current_scissor();
-        self.check_dump_and_next(PipelineType::GaussianBlur);
-
-        let buffer_queue = get_render_buffer!(self, GaussianBlur);
-
-        let mut recording_buffer = buffer_queue.recording_buffer()
-            .expect("didnt get blur recording buffer");
-        let scissor_check = recording_buffer.scissor == Some(scissor)
-            || recording_buffer.scissor.is_none();
-
-        if !scissor_check
-            || recording_buffer.used + 1 > gaussian::Buffer::VTX_PER_BUF
-        {
-            if let Some(b) = buffer_queue.dump_and_next(
-                &self.queue,
-                &self.device,
-                (&self.gaussian_blur_pipeline.pipeline).into()
-            ) {
-                self.completed_buffers.push(RenderBufferType::GaussianBlur(b));
-            }
-            recording_buffer = buffer_queue.recording_buffer()?;
-        }
-        if recording_buffer.scissor.is_none() {
-            recording_buffer.scissor = Some(scissor);
-        }
-
-        recording_buffer.used += 1;
-        let index = recording_buffer.used - 1;
-
-        let cache = &mut buffer_queue.cpu_cache;
-        Some(gaussian::ReserveData {
-            data: &mut cache.cpu_blurs[index as usize],
-            _blur_index: index as u32,
-        })
-    }
-
-    pub(crate) fn reserve_box_blur<'a>(
-        &'a mut self,
-    ) -> Option<shaders::box_blur::ReserveData<'a>> {
-        let scissor = self.scissors.current_scissor();
-        self.check_dump_and_next(PipelineType::BoxBlur);
-
-        let buffer_queue = get_render_buffer!(self, BoxBlur);
-
-        let mut recording_buffer = buffer_queue.recording_buffer()
-            .expect("didnt get blur recording buffer");
-        let scissor_check = recording_buffer.scissor == Some(scissor)
-            || recording_buffer.scissor.is_none();
-
-        if !scissor_check || recording_buffer.used {
-            if let Some(b) = buffer_queue.dump_and_next(
-                &self.queue,
-                &self.device,
-                (&self.box_blur_pipeline.pipeline).into(),
-            ) {
-                self.completed_buffers.push(RenderBufferType::BoxBlur(b));
-            }
-            recording_buffer = buffer_queue.recording_buffer()?;
-        }
-        if recording_buffer.scissor.is_none() {
-            recording_buffer.scissor = Some(scissor);
-        }
-
-        recording_buffer.used = true;
-
-        let cache = &mut buffer_queue.cpu_cache;
-        Some(shaders::box_blur::ReserveData {
-            data: &mut cache.cpu_blurs[0],
-        })
-    }
-
-    #[cfg(feature="vello_rendering")]
-    pub(crate) fn reserve_vello<'a>(
-        &'a mut self,
-    ) -> Option<shaders::vello::ReserveData<'a>> {
-        let scissor = self.scissors.current_scissor();
-        self.check_dump_and_next(PipelineType::Vello);
-
-        let buffer_queue = get_render_buffer!(self, Vello);
-
-        let mut recording_buffer = buffer_queue
-            .recording_buffer()
-            .expect("didnt get vello recording buffer");
-
-        let scissor_check = 
-            recording_buffer.scissor == Some(scissor)
-            || recording_buffer.scissor.is_none()
-            ;
-
-        if !scissor_check {
-            if let Some(b) = buffer_queue.dump_and_next(
-                &self.queue,
-                &self.device,
-                WgpuPipeline::None
-            ) {
-                self.completed_buffers.push(RenderBufferType::Vello(b));
-            }
-            recording_buffer = buffer_queue.recording_buffer()?;
-        }
-
-        if recording_buffer.scissor.is_none() {
-            recording_buffer.scissor = Some(scissor);
-        }
-
-        recording_buffer.used += 1;
-
-        Some(shaders::vello::ReserveData {
-            scene: &mut buffer_queue.cpu_cache.scene,
-        })
-    }
-
-}
-
 
 // draw helpers
 impl WgpuEngine<'_> {
@@ -1395,10 +729,13 @@ impl WgpuEngine<'_> {
 
         }
 
-        let mut reserved = self.reserve_standard(
+        let mut reserved = self.buffer_queues.reserve_standard(
             buffers.vertices.len() as u64,
             buffers.indices.len() as u64,
-            blend_mode
+            blend_mode,
+
+            &self.scissors,
+            &self.pipelines,
         ).expect("nope");
 
         // convert vertices and indices to their proper values
@@ -1440,6 +777,13 @@ impl graphics::RenderingEngine for WgpuEngine<'_> {
             window_size, 
             &self.queue
         );
+    }
+
+    fn begin_render(&mut self) {
+        self.buffer_queues.begin_render();
+    }
+    fn end_render(&mut self) {
+        self.buffer_queues.end_render();
     }
 
     fn set_vsync(&mut self, vsync: tataku::Vsync) {
@@ -1492,14 +836,8 @@ impl graphics::RenderingEngine for WgpuEngine<'_> {
     fn free_tex(
         &mut self, 
         tex: tataku::TextureReference, 
-        defer_until_next_draw: bool
     ) {
         if tex.is_empty() { return }
-
-        if defer_until_next_draw {
-            self.deferred_free_textures.push(tex);
-            return;
-        }
 
         // remove from texture atlas
         self.atlas.remove(tex);
@@ -1507,55 +845,6 @@ impl graphics::RenderingEngine for WgpuEngine<'_> {
 
     fn screenshot(&mut self, callback: graphics::ScreenshotCallback) {
         self.screenshot_pending = Some(Box::new(callback));
-    }
-
-    fn begin_render(&mut self) {
-        // if self.last_drawn is not None at this point, something went wrong
-        assert!(self.current_render_buffer.is_none());
-
-        let mut standard_buffers = Vec::new();
-        let mut slider_buffers = Vec::new();
-        let mut flashlight_buffers = Vec::new();
-        let mut gaussian_blur_buffers = Vec::new();
-        let mut box_blur_buffers = Vec::new();
-        #[cfg(feature="vello")]
-        let mut vello_buffers = Vec::new();
-
-        for i in self.completed_buffers.take() {
-            match i {
-                RenderBufferType::Standard(v) => standard_buffers.push(v),
-                RenderBufferType::Slider(s) => slider_buffers.push(s),
-                RenderBufferType::Flashlight(f) => flashlight_buffers.push(f),
-                RenderBufferType::GaussianBlur(f) => gaussian_blur_buffers.push(f),
-                RenderBufferType::BoxBlur(f) => box_blur_buffers.push(f),
-                #[cfg(feature="vello")]
-                RenderBufferType::Vello(b) => vello_buffers.push(b),
-            }
-        }
-
-        for i in self.buffer_queues.values_mut() {
-            match &mut **i {
-                RenderBufferQueueType::Slider(s) => s.begin(slider_buffers.take()),
-                RenderBufferQueueType::Standard(v) => v.begin(standard_buffers.take()),
-                RenderBufferQueueType::Flashlight(f) => f.begin(flashlight_buffers.take()),
-                RenderBufferQueueType::GaussianBlur(f) => f.begin(gaussian_blur_buffers.take()),
-                RenderBufferQueueType::BoxBlur(f) => f.begin(box_blur_buffers.take()),
-
-                #[cfg(feature="vello")]
-                RenderBufferQueueType::Vello(b) => b.begin(vello_buffers.take()),
-            }
-        }
-    }
-
-    fn end_render(&mut self) {
-        let Some(mut last_queue) = self.current_render_buffer.take()
-        else { return };
-
-        if let Some(b) = last_queue.end(&self.queue) {
-            self.completed_buffers.push(b);
-        }
-
-        self.buffer_queues.insert(last_queue.pipeline_type(), last_queue);
     }
 
     fn present(&mut self) -> tataku::Result<()> {
@@ -1706,7 +995,15 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
         let n3 = p2 - n;
 
         let quad = [ n0, n2, n1, n3 ];
-        self.reserve_quad(quad, color, transform, blend_mode);
+        self.buffer_queues.reserve_quad(
+            quad, 
+            color, 
+            transform, 
+            blend_mode,
+
+            &self.scissors,
+            &self.pipelines,
+        );
     }
 
     /// rect is [x,y,w,h]
@@ -1786,14 +1083,17 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
         transform: tataku::Matrix,
         blend_mode: tataku::BlendMode,
     ) {
-        self.reserve_tex_quad(
+        self.buffer_queues.reserve_tex_quad(
             tex.tex,
             [0.0, 0.0, tex.tex.width as f32, tex.tex.height as f32],
             tex.color,
             tex.flip.flip_h(),
             tex.flip.flip_v(),
             transform,
-            blend_mode
+            blend_mode,
+
+            &self.scissors,
+            &self.pipelines,
         );
     }
 
@@ -1808,10 +1108,13 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
         grid_cells: Vec<u32>,
         line_segments: Vec<tataku::LineSegment>
     ) {
-        let Some(mut reserved) = self.reserve_slider(
+        let Some(mut reserved) = self.buffer_queues.reserve_slider(
             slider_grids.len() as u64,
             grid_cells.len() as u64,
-            line_segments.len() as u64
+            line_segments.len() as u64,
+
+            &self.scissors,
+            &self.pipelines,
         ) else {
             // self.dump_atlas("debug/atlas");
             // panic!("couldnt reserve slider?");
@@ -1867,7 +1170,10 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
         transform: tataku::Matrix,
         flashlight_data: tataku::FlashlightData
     ) {
-        let Some(mut reserved) = self.reserve_flashlight()
+        let Some(mut reserved) = self.buffer_queues.reserve_flashlight(
+            &self.scissors,
+            &self.pipelines,
+        )
         else { return };
 
         let vertices = quad.into_iter()
@@ -1886,7 +1192,10 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
         bounds: tataku::Bounds,
         size: u32,
     ) {
-        let Some(mut reserve) = self.reserve_box_blur()
+        let Some(mut reserve) = self.buffer_queues.reserve_box_blur(
+            &self.scissors,
+            &self.pipelines,
+        )
         else { return };
 
         let params = shaders::box_blur::Params::new(
@@ -1906,7 +1215,10 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
         sigma: f32,
         _rounds: u32,
     ) {
-        let Some(mut reserve) = self.reserve_gaussian_blur()
+        let Some(mut reserve) = self.buffer_queues.reserve_gaussian_blur(
+            &self.scissors,
+            &self.pipelines,
+        )
         else { return };
 
         let params = shaders::gaussian_blur::Params::new(

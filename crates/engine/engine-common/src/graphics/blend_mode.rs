@@ -38,6 +38,16 @@ pub enum BlendMode {
     /// because peppy stupid
     OsuAdditiveBlending,
 }
+impl BlendMode {
+    pub const ALL: &[Self] = &[
+        Self::AlphaBlending,
+        Self::AlphaOverwrite,
+        Self::PremultipliedAlpha,
+        Self::AdditiveBlending,
+        Self::SourceAlphaBlending,
+        Self::OsuAdditiveBlending,
+    ];
+}
 
 impl From<BlendMode> for GraphicsPipeline {
     fn from(value: BlendMode) -> Self {

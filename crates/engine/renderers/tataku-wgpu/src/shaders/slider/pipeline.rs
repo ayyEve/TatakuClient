@@ -3,7 +3,7 @@ use crate::shaders::slider;
 
 pub(crate) fn create_slider_pipeline(
     device: &wgpu::Device,
-    projection_matrix_bind_group_layout: &wgpu::BindGroupLayout,
+    projection_matrix: &ProjectionMatrix,
 ) -> wgpu::RenderPipeline {
     let slider_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("Slider Shader"),
@@ -74,7 +74,7 @@ pub(crate) fn create_slider_pipeline(
         &wgpu::PipelineLayoutDescriptor {
             label: Some("Slider Pipeline Layout"),
             bind_group_layouts: &[
-                projection_matrix_bind_group_layout,
+                &projection_matrix.layout,
                 &slider_bind_group_layout,
             ],
             push_constant_ranges: &[],

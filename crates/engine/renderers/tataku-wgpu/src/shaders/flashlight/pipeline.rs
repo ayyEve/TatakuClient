@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 pub(crate) fn create_flashlight_pipeline(
     device: &wgpu::Device,
-    projection_matrix_bind_group_layout: &wgpu::BindGroupLayout,
+    projection_matrix: &ProjectionMatrix,
 ) -> wgpu::RenderPipeline {
     let shader = device.create_shader_module(
         wgpu::ShaderModuleDescriptor {
@@ -35,7 +35,7 @@ pub(crate) fn create_flashlight_pipeline(
         &wgpu::PipelineLayoutDescriptor {
             label: Some("Flashlight Pipeline Layout"),
             bind_group_layouts: &[
-                projection_matrix_bind_group_layout,
+                &projection_matrix.layout,
                 &bind_group_layout,
             ],
             push_constant_ranges: &[],

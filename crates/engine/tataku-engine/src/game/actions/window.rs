@@ -68,10 +68,7 @@ pub type LoadImageCallback<T> = Box<dyn FnOnce(tataku::Result<T>) + Send + Sync>
 #[derive(Debug2)]
 pub enum LoadImage {
     #[debug(skip)] Image(RgbaImage, LoadImageCallback<tataku::TextureReference>),
-    FreeTexture {
-        tex: tataku::TextureReference, 
-        deferred: bool
-    },
+    FreeTexture(tataku::TextureReference),
 
     #[debug(skip)] CreateRenderTarget((u32, u32), LoadImageCallback<graphics::RenderTarget>, graphics::RenderTargetDraw),
     #[debug(skip)] UpdateRenderTarget(graphics::RenderTarget, LoadImageCallback<()>, graphics::RenderTargetDraw),

@@ -1,12 +1,11 @@
-use crate::prelude::*;
-use std::collections::HashMap;
+use crate::{atlas::WgpuAtlas, prelude::*};
 use crate::wgpu_engine::WgpuEngine;
 
-pub(crate) fn create_standard_pipeline(
+pub(crate) fn create_standard_pipelines(
     device: &wgpu::Device,
-    projection_matrix_bind_group_layout: &wgpu::BindGroupLayout,
-    texture_bind_group_layout: &wgpu::BindGroupLayout,
-) -> HashMap<tataku::GraphicsPipeline, wgpu::RenderPipeline> {
+    projection_matrix: &crate::ProjectionMatrix,
+    atlas: &WgpuAtlas,
+) -> Vec<(tataku::BlendMode, wgpu::RenderPipeline)> {
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("Standard Shader"),
         source: wgpu::ShaderSource::Wgsl(crate::shader_files::SHADER.into()),
@@ -16,23 +15,16 @@ pub(crate) fn create_standard_pipeline(
         &wgpu::PipelineLayoutDescriptor {
             label: Some("Standard Render Pipeline Layout"),
             bind_group_layouts: &[
-                projection_matrix_bind_group_layout,
-                texture_bind_group_layout,
+                &projection_matrix.layout,
+                &atlas.layout,
             ],
             push_constant_ranges: &[],
         }
     );
 
 
-    let mut pipelines = HashMap::new();
-    for blend_mode in [
-        tataku::BlendMode::AlphaBlending,
-        tataku::BlendMode::AlphaOverwrite,
-        tataku::BlendMode::PremultipliedAlpha,
-        tataku::BlendMode::AdditiveBlending,
-        tataku::BlendMode::OsuAdditiveBlending,
-        tataku::BlendMode::SourceAlphaBlending,
-    ] {
+    let mut pipelines = Vec::new();
+    for blend_mode in tataku::BlendMode::ALL.iter().copied() {
         let blend_state = WgpuEngine::map_blend_mode(blend_mode);
 
         let pipeline = device.create_render_pipeline(
@@ -76,10 +68,10 @@ pub(crate) fn create_standard_pipeline(
         );
 
 
-        pipelines.insert(
-            tataku::GraphicsPipeline::Standard(blend_mode), 
+        pipelines.push((
+            blend_mode, 
             pipeline
-        );
+        ));
     }
 
     pipelines

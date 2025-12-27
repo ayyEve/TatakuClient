@@ -30,7 +30,7 @@ pub trait RenderingEngine {
     fn load_texture_rgba(&mut self, data: &[u8], size: [u32; 2]) -> tataku::Result<TextureReference>;
 
     /// free a texture
-    fn free_tex(&mut self, tex: TextureReference, defer_until_next_draw: bool);
+    fn free_tex(&mut self, tex: TextureReference);
 
     /// take a screenshot, returning the data via callback
     fn screenshot(&mut self, callback: ScreenshotCallback);
