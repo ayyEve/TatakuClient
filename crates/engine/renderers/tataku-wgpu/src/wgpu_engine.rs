@@ -53,7 +53,7 @@ pub struct WgpuEngine<'window> {
 impl<'window> WgpuEngine<'window> {
 
     // Creating some of the wgpu types requires async code
-    pub async fn create<W:HasWindowHandle + HasDisplayHandle + Sync>(
+    pub async fn create<W:HasWindowHandle + HasDisplayHandle + Sync + ?Sized>(
         window: &'window W,
         settings: &engine::settings::display::DisplaySettings,
     ) -> Box<dyn graphics::RenderingEngine + 'window> {

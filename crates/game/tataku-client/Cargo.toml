@@ -51,6 +51,7 @@ graphics = [
     "integration-lastfm/graphics",
     "integration-discord/graphics",
     "integration-media-controls/graphics",
+    "tataku-winit",
     "tataku-wgpu",
     "gameplay"
 ]
@@ -68,6 +69,7 @@ vello_rendering = [ "tataku-wgpu/vello_rendering" ]
 tataku-common.workspace = true
 tataku-game.workspace = true
 tataku-resources.workspace = true
+tataku-winit = { workspace = true, optional = true }
 tataku-bass = { workspace = true, optional = true }
 tataku-kira = { workspace = true, optional = true }
 tataku-wgpu = { workspace = true, optional = true, features = ["graphics"] }

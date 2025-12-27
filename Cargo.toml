@@ -8,6 +8,7 @@ rust-version = "1.89"
 
 [workspace]
 members = [
+    # engine
     "crates/engine/audio/*",
     "crates/engine/renderers/*",
     "crates/engine/tataku-engine",
@@ -15,12 +16,19 @@ members = [
     "crates/engine/tataku-graphics",
     "crates/engine/tataku-ui",
 
-    "crates/game/*",
+    # game
+    "crates/game/proc_macros",
+    "crates/game/tataku-client",
+    "crates/game/tataku-game",
+    "crates/game/tataku-interface",
+    "crates/game/windows/*",
+
+
     "crates/gamemodes/*" ,
     "crates/integrations/*",
     "crates/resources/*",
 
-    "crates/databases/*"
+    "crates/databases/*", 
 ]
 default-members = [ "crates/game/tataku-client" ]
 resolver = "2"
@@ -75,6 +83,9 @@ tataku-null-audio.path = "crates/engine/audio/null-audio"
 # Renderers
 tataku-wgpu.path = "crates/engine/renderers/tataku-wgpu"
 tataku-null-renderer.path = "crates/engine/renderers/null-renderer"
+
+# Windows
+tataku-winit.path = "crates/game/windows/tataku-winit"
 
 # Gamemodes
 gamemode-osu.path = "crates/gamemodes/osu"

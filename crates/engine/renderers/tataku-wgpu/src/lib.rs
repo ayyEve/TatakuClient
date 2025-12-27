@@ -46,7 +46,7 @@ impl<'window> engine::window::GraphicsInitializer<'window> for WgpuInit {
 
     async fn init(
         &self,
-        window: &'window winit::window::Window,
+        window: &'window dyn engine::window::Windowable,
         settings: engine::settings::display::DisplaySettings
     ) -> tataku::Result<Box<dyn tataku_graphics::RenderingEngine + 'window>> {
         Ok(wgpu_engine::WgpuEngine::create(window, &settings).await)

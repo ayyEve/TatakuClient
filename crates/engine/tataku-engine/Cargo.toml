@@ -20,9 +20,7 @@ ui = [ "taffy", "triple_buffer", "simplecss" ]
 
 # removes as much graphics-side stuff as possible
 graphics = [ 
-    "winit", 
     "ui", 
-    "clipboard", 
     "raw-window-handle", 
     "image", 
     "tataku-graphics/graphics", 
@@ -41,6 +39,7 @@ tataku-null-renderer.workspace = true
 tataku-client-proc-macros.workspace = true
 
 # framework stuff
+raw-window-handle = { workspace = true, optional = true }
 parking_lot.workspace = true
 async-trait.workspace = true
 bitflags.workspace = true
@@ -51,11 +50,6 @@ libloading = { workspace = true, optional = true }
 
 # image stuff
 image = { workspace = true, optional = true }
-
-# windowing
-winit = { workspace = true, features = ["serde"], optional = true }
-raw-window-handle = { workspace = true, optional = true }
-clipboard = { workspace = true, optional = true }
 
 # gui
 taffy = { workspace = true, optional = true }

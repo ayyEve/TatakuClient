@@ -3,8 +3,10 @@ use tataku_game::prelude::*;
 use tracing::*;
 
 pub fn run_game(
+    settings: engine::Settings,
     window_data: engine::window::WindowData,
     window_counters: engine::window::WindowCounters,
+    texture_manager: Box<dyn engine::window::TextureManager>,
 ) {
 
     // gamemodes
@@ -38,6 +40,7 @@ pub fn run_game(
     let mut game = Game::new(
         window_data,
         window_counters,
+        texture_manager,
         BuiltinMenus { 
             menus: tataku_resources::menus::ALL,
             dialogs: tataku_resources::dialogs::ALL,
@@ -49,6 +52,7 @@ pub fn run_game(
         ],
         gamemodes,
         database,
+        settings, 
     );
 
 

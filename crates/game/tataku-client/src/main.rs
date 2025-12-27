@@ -49,37 +49,13 @@ fn start_game() {
     let window_side_barrier = window_load_barrier.clone();
     let window_counters2 = window_counters.clone();
 
-    let e = winit::event_loop::EventLoop::with_user_event()
-        .build()
-        .unwrap();
-    let proxy = e.create_proxy();
-
-    // start game
-    let game = std::thread::spawn(move || {
-        // wait for the window side to be ready
-        // window_load_barrier.wait().await;
-        window_load_barrier.wait();
-        trace!("window ready");
-
-        game::run_game(
-            engine::window::WindowData {
-                event_receiver: game_event_receiver,
-                mouse_position_receiver,
-                proxy,
-            },
-            window_counters2,
-        );
-    });
-
-    static WINDOW: tokio::sync::OnceCell<winit::window::Window> = tokio::sync::OnceCell::const_new();
-
     // setup window
     info!("creating window");
     let settings = engine::Settings::load();
-    let game_window = engine::window::GameWindow::new(
+
+    let game_window = tataku_winit::TatakuWinitWindow::new(
         game_event_sender,
         mouse_position_sender,
-        &WINDOW,
         &settings,
         window_counters,
         engine::window::WindowInitializers {
@@ -94,10 +70,31 @@ fn start_game() {
             ],
         },
     );
+    use engine::window::TatakuWindow;
+    let tex_manager = game_window.get_texture_manager();
+    let action_sender = game_window.get_action_sender();
 
+    // start game
+    let game = std::thread::spawn(move || {
+        // wait for the window side to be ready
+        // window_load_barrier.wait().await;
+        window_load_barrier.wait();
+        trace!("window ready");
+
+        game::run_game(
+            settings, 
+            engine::window::WindowData {
+                event_receiver: game_event_receiver,
+                mouse_position_receiver,
+                action_sender,
+            },
+            window_counters2,
+            tex_manager,
+        );
+    });
 
     trace!("window running");
-    game_window.run(e);
+    game_window.run();
 
     // wait for game to finish
     game.join().unwrap();

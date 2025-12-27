@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use tataku::{
-    ColorField,
     Vector2,
+    ColorField,
 };
 
 use graphics::{
@@ -12,15 +12,17 @@ use graphics::{
     SkinProvider,
     TextureSource,
 };
-use engine::{
-    SKINS_FOLDER,
-    window::GameWindow as GameWindow,
-};
+use engine::SKINS_FOLDER;
+
+#[cfg(feature="graphics")]
+use tataku_engine::window::TextureManager;
 
 const DEFAULT_SKIN:&str = "default";
 
 #[cfg(feature="graphics")]
 pub struct SkinManager {
+    texture_manager: Box<dyn engine::window::TextureManager>,
+
     skin_name: String,
     current_skin_config: Arc<SkinSettings>,
     textures: HashMap<(PathBuf, bool), HashMap<TextureSource, TextureEntry>>,
@@ -29,13 +31,18 @@ pub struct SkinManager {
 #[cfg(feature="graphics")]
 // static
 impl SkinManager {
-    pub fn new(settings: &engine::Settings) -> Self {
+    pub fn new(
+        texture_manager: Box<dyn engine::window::TextureManager>,
+        settings: &engine::Settings,
+    ) -> Self {
         let current_skin = settings.current_skin.clone();
         let current_skin_config = Arc::new(SkinSettings::from_file(
             &format!("{SKINS_FOLDER}/{current_skin}/skin.ini")
         ).unwrap_or_default());
         
         Self {
+            texture_manager,
+
             skin_name: current_skin,
             current_skin_config,
             textures: HashMap::new()
@@ -64,6 +71,8 @@ impl SkinManager {
 
     // try to load a skin from the provided source. does not try fallbacks
     fn load_texture(
+        texture_manager: &mut dyn TextureManager,
+
         source: &TextureSource,
         name: &Path, 
         grayscale: bool,
@@ -124,7 +133,7 @@ impl SkinManager {
                     }
 
                     // send the bytes to the gpu to load into the texture atlas
-                    let Ok(tex) = GameWindow::load_texture_data(img) 
+                    let Ok(tex) = texture_manager.load_texture_data(img) 
                     else {
                         // #[cfg(feature="renderdoc")] { 
                         //     if let Ok(renderdoc) = renderdoc::RenderDoc::<renderdoc::V140>::new() {
@@ -133,7 +142,7 @@ impl SkinManager {
                         // }
 
 
-                        GameWindow::dump_atlas();
+                        texture_manager.dump_atlas();
                         error!("No texture!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
                         error!("No texture!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
                         error!("No texture!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
@@ -178,7 +187,7 @@ impl graphics::SkinProvider for SkinManager {
                     continue
                 }
 
-                GameWindow::free_texture(*i.tex);
+                self.texture_manager.free_texture(*i.tex);
             }
 
             a.image = TextureState::Unloaded;
@@ -200,7 +209,7 @@ impl graphics::SkinProvider for SkinManager {
                     continue
                 }
 
-                GameWindow::free_texture(*i.tex);
+                self.texture_manager.free_texture(*i.tex);
             }
 
             entry.image = TextureState::Unloaded;
@@ -211,7 +220,7 @@ impl graphics::SkinProvider for SkinManager {
         for i in self.textures.values_mut().flat_map(HashMap::values_mut) {
             if let TextureState::Success(im) = &i.image {
                 if im.reference_count() > 1 { continue }
-                GameWindow::free_texture(*im.tex);
+                self.texture_manager.free_texture(*im.tex);
                 i.image = TextureState::Unloaded;
             }
         }
@@ -246,7 +255,7 @@ impl graphics::SkinProvider for SkinManager {
                 | Some(TextureEntry { image: TextureState::Unloaded, .. })
                 => {
                     // try to load the texture
-                    let result = Self::load_texture(&source, &name, grayscale, &self.skin_name);
+                    let result = Self::load_texture(&mut *self.texture_manager, &source, &name, grayscale, &self.skin_name);
                     entry.insert(source, TextureEntry { usage, image: result.clone() });
 
                     match result {

@@ -1,0 +1,19 @@
+[package]
+name = "tataku-winit"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+tataku-engine.workspace = true
+tataku-null-renderer.workspace = true
+
+clipboard.workspace = true
+image.workspace = true
+raw-window-handle.workspace = true
+winit.workspace = true
+tokio.workspace = true

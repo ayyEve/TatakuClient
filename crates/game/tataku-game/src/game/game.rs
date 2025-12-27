@@ -38,9 +38,6 @@ pub struct Game {
     pub(super) queued_state: GameState,
 
     #[cfg(feature="graphics")] pub(super) window: engine::window::WindowData,
-    // #[cfg(feature="graphics")] window_event_receiver: tokio::sync::mpsc::Receiver<engine::window::Event>,
-    // #[cfg(feature="graphics")] mouse_position_receiver: triple_buffer::Output<Vector2>,
-    // #[cfg(feature="graphics")] pub(super) window_proxy: winit::event_loop::EventLoopProxy<actions::window::WindowAction>,
 
     // managers
     pub song_manager: SongManager,
@@ -90,12 +87,13 @@ impl Game {
     pub fn new(
         #[cfg(feature="graphics")] window: engine::window::WindowData,
         #[cfg(feature="graphics")] window_counters: engine::window::WindowCounters,
+        #[cfg(feature="graphics")] texture_manager: Box<dyn engine::window::TextureManager>,
         #[cfg(feature="graphics")] builtin_menus: BuiltinMenus,
         #[cfg(feature="gameplay")] audio_engines: Vec<audio::AudioApiInit>,
         gamemodes: Vec<IncomingGamemode>,
         database: Box<dyn engine::database::DatabaseProvider>,
+        settings: engine::Settings,
     ) -> Self {
-        let settings = engine::Settings::load();
         let infos = engine::gameplay::GamemodeInfos::new(gamemodes);
 
         Self {
@@ -134,7 +132,7 @@ impl Game {
             #[cfg(feature="graphics")] ui_manager: UiManager::new(builtin_menus.default_css),
             #[cfg(feature="graphics")] gameplay_managers: HashMap::new(),
             #[cfg(feature="graphics")] cursor_manager: CursorManager::default(),
-            #[cfg(feature="graphics")] skin_manager: SkinManager::new(&settings),
+            #[cfg(feature="graphics")] skin_manager: SkinManager::new(texture_manager, &settings),
             #[cfg(feature="graphics")] custom_menu_manager: CustomMenuManager::default(),
             #[cfg(feature="graphics")] notification_manager: NotificationManager::default(),
             #[cfg(feature="graphics")] text_layout_contexts: ui::widget::TextLayoutContexts::new(),
@@ -633,7 +631,7 @@ impl Game {
 
             // unload the old image so the atlas can reuse the space
             if let Some(old_img) = self.background_image.take() {
-                self.actions.push(actions::window::LoadImage::FreeTexture(*old_img.tex).into());
+                self.actions.push(actions::window::WindowAction::FreeTexture(*old_img.tex).into());
             }
 
             self.background_image = image;

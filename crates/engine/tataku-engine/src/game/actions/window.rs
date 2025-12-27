@@ -1,6 +1,8 @@
 use image::RgbaImage;
 use crate::*;
 
+pub type LoadImageCallback<T> = Box<dyn FnOnce(tataku::Result<T>) + Send + Sync>;
+
 #[derive(Debug2)]
 pub enum WindowAction {
     /// Show the system cursor
@@ -19,7 +21,10 @@ pub enum WindowAction {
     TakeScreenshot(ScreenshotInfo),
 
     /// Load an image
-    LoadImage(Box<LoadImage>),
+    #[debug(skip)] LoadTexture(RgbaImage, LoadImageCallback<tataku::TextureReference>),
+    
+    /// Free an image
+    FreeTexture(tataku::TextureReference),
 
     /// Copy some text to the clipboard
     CopyToClipboard(ArcStr),
@@ -38,44 +43,10 @@ pub enum WindowAction {
 
     DumpAtlas,
 }
-impl Clone for WindowAction {
-    fn clone(&self) -> Self {
-        match self {
-            Self::DumpAtlas => Self::DumpAtlas,
-            Self::CloseGame => Self::CloseGame,
-            Self::ShowCursor => Self::ShowCursor,
-            Self::HideCursor => Self::HideCursor,
-            Self::RefreshMonitors => Self::RefreshMonitors,
-            Self::RequestAttention => Self::RequestAttention,
-            Self::TakeScreenshot(arg0) => Self::TakeScreenshot(arg0.clone()),
-            Self::CopyToClipboard(arg0) => Self::CopyToClipboard(arg0.clone()),
-            Self::SettingsUpdated(arg0) => Self::SettingsUpdated(arg0.clone()),
-
-            Self::LoadImage(_) => panic!("trying to clone LoadImage"),
-            Self::RenderData(_) => panic!("trying to clone RenderData"),
-            Self::AddEmitter(_) => panic!("trying to clone AddEmitter"),
-        }
-    }
-}
 
 impl From<WindowAction> for actions::Action {
     fn from(value: WindowAction) -> Self {
         Self::WindowAction(Box::new(value))
-    }
-}
-
-pub type LoadImageCallback<T> = Box<dyn FnOnce(tataku::Result<T>) + Send + Sync>;
-#[derive(Debug2)]
-pub enum LoadImage {
-    #[debug(skip)] Image(RgbaImage, LoadImageCallback<tataku::TextureReference>),
-    FreeTexture(tataku::TextureReference),
-
-    #[debug(skip)] CreateRenderTarget((u32, u32), LoadImageCallback<graphics::RenderTarget>, graphics::RenderTargetDraw),
-    #[debug(skip)] UpdateRenderTarget(graphics::RenderTarget, LoadImageCallback<()>, graphics::RenderTargetDraw),
-}
-impl From<LoadImage> for actions::Action {
-    fn from(value: LoadImage) -> Self {
-        Self::WindowAction(Box::new(WindowAction::LoadImage(Box::new(value))))
     }
 }
 
