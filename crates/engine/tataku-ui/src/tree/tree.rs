@@ -621,7 +621,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
                             let InputType::KeyPress(k) = e
                             else { return true };
 
-                            !k.is_key(key)
+                            k.key != Some(key)
                         });
                     },
                     Self::Controller(btn) => {

@@ -10,7 +10,6 @@ pub struct InputManager {
 
     pub events: Vec<InputType>,
 
-
     /// currently pressed keys, internal use only
     keys: HashSet<KeyInput>,
     key_mods: KeyModifiers,
@@ -51,18 +50,27 @@ impl InputManager {
         self.double_tap_protection = protection;
     }
 
+    fn map_mods(k: Key) -> Option<KeyModifiers> {
+        match k {
+            Key::LAlt | Key::RAlt => Some(KeyModifiers::ALT),
+            Key::LControl | Key::RControl => Some(KeyModifiers::CTRL),
+            Key::LShift | Key::RShift => Some(KeyModifiers::SHIFT),
+            _ => None
+        }
+    }
+
     pub fn handle_input(&mut self, e: InputType) {
         use InputType as Input;
 
         match &e {
             // keyboard input
-            Input::KeyPress(key) if !self.keys.contains(key) => {
+            Input::KeyPress(input) if !self.keys.contains(input) => {
                 let mut ok_to_continue = true;
 
                 if let Some(check) = self.double_tap_protection && let Some((
                     press_time, 
                     is_double_tap
-                )) = self.last_key_press.get_mut(key) {
+                )) = self.last_key_press.get_mut(input) {
                     let since = press_time.as_millis();
                     if since <= check {
                         warn!("stopped a doubletap of duration {since:.4}ms");
@@ -73,48 +81,40 @@ impl InputManager {
 
                 if !ok_to_continue { return }
 
-                if let winit::keyboard::Key::Character(txt) = &key.logical {
+                if let Some(txt) = &input.text {
                     self.text_cache += txt;
                 }
 
-                self.keys.insert(key.clone());
+                self.keys.insert(input.clone());
 
-                if let Some(k) = key.as_key() {
-                    match k {
-                        Key::LAlt | Key::RAlt => self.key_mods.alt = true,
-                        Key::LControl | Key::RControl => self.key_mods.ctrl = true,
-                        Key::LShift | Key::RShift => self.key_mods.shift = true,
-                        _ => {}
-                    }
+                if let Some(k) = input.key 
+                && let Some(m) = Self::map_mods(k) {
+                    self.key_mods.insert(m);
                 }
 
                 // self.keys_down.insert((key.clone(), TatakuInstant::now()));
                 // self.last_key_press.insert(key, (TatakuInstant::now(), false));
             }
-            Input::KeyRelease(key) => {
+            Input::KeyRelease(input) => {
                 let mut ok_to_continue = true;
 
                 if self.double_tap_protection.is_some()
-                && let Some((_, is_double_tap)) = self.last_key_press.get(key)
+                && let Some((_, is_double_tap)) = self.last_key_press.get(input)
                 && *is_double_tap {
                     ok_to_continue = false;
                 }
                 
                 if ok_to_continue {
-                    self.keys.remove(key);
+                    self.keys.remove(input);
                     // self.keys_up.insert((key, TatakuInstant::now()));
                     // self.last_key_press.remove(&key);
 
-                    if let Some(k) = key.as_key() {
-                        match k {
-                            Key::LAlt | Key::RAlt => self.key_mods.alt = false,
-                            Key::LControl | Key::RControl => self.key_mods.ctrl = false,
-                            Key::LShift | Key::RShift => self.key_mods.shift = false,
-                            _ => {}
-                        }
+                    if let Some(k) = input.key 
+                    && let Some(m) = Self::map_mods(k) {
+                        self.key_mods.remove(m);
                     }
                 } else {
-                    self.last_key_press.remove(key);
+                    self.last_key_press.remove(input);
                     return;
                 }
             }
@@ -310,8 +310,8 @@ impl InputManager {
 
 
 pub struct InputBinding {
-    pub keyboard: Option<winit::keyboard::PhysicalKey>,
-    pub mouse: Option<winit::event::MouseButton>,
+    pub keyboard: Option<Key>,
+    pub mouse: Option<MouseButton>,
     pub controller: Option<ControllerInputBinding>,
 }
 

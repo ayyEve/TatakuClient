@@ -1048,7 +1048,7 @@ impl Gamemode for ManiaGame {
         use input::InputType;
         match input.event {
             InputType::KeyPress(press) => {
-                let key = press.as_key()?;
+                let key = press.key?;
 
                 // check sv change keys
                 #[cfg(feature="graphics")]
@@ -1070,7 +1070,7 @@ impl Gamemode for ManiaGame {
 
 
             InputType::KeyRelease(release) => {
-                let key = release.as_key()?;
+                let key = release.key?;
                 let game_key = self.key_2_keypress(key)?;
                 Some(ReplayAction::Release(game_key))
             }

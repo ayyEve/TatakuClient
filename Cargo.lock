@@ -4843,7 +4843,6 @@ dependencies = [
  "tracing",
  "triple_buffer",
  "ureq",
- "winit",
 ]
 
 [[package]]
@@ -4864,10 +4863,10 @@ version = "0.1.0"
 dependencies = [
  "gilrs",
  "serde",
+ "smol_str",
  "tataku-common",
  "tataku-engine-common",
  "tracing",
- "winit",
 ]
 
 [[package]]
@@ -4971,6 +4970,7 @@ dependencies = [
  "image",
  "lyon_tessellation",
  "parley",
+ "raw-window-handle",
  "tataku-engine",
  "tataku-engine-common",
  "tataku-graphics",
@@ -4978,7 +4978,6 @@ dependencies = [
  "tracing",
  "vello",
  "wgpu",
- "winit",
 ]
 
 [[package]]

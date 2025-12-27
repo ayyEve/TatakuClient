@@ -1,10 +1,11 @@
+mod conv;
+
 use tataku_engine::*;
 use std::sync::atomic::Ordering;
 
 use image::RgbaImage;
 use raw_window_handle::HasWindowHandle;
 use winit::{
-    window::Window as WinitWindow,
     event::{
         WindowEvent as WinitWindowEvent,
         StartCause,
@@ -13,6 +14,7 @@ use winit::{
         ElementState
     },
     event_loop::{ 
+        EventLoop,
         ControlFlow, 
         EventLoopProxy,
         ActiveEventLoop,
@@ -31,15 +33,13 @@ use engine::window::{
     WindowInitializers,
 };
 
-static WINDOW: OnceCell<WinitWindow> = OnceCell::const_new();
-
-pub struct TatakuWinitWindow<'window> {
-    event_loop: Option<winit::event_loop::EventLoop<actions::window::WindowAction>>,
+pub struct WinitWindow<'window> {
+    window: Option<&'window OnceCell<winit::window::Window>>,
     proxy: EventLoopProxy<actions::window::WindowAction>,
     mouse_position_sender: engine::triple_buffer::Input<tataku::Vector2>,
 
     graphics: Box<dyn graphics::RenderingEngine + 'window>,
-    pub settings: settings::display::DisplaySettings,
+    settings: settings::display::DisplaySettings,
 
     window_event_sender: Arc<Sender<window::Event>>,
     render_data: Vec<Box<dyn graphics::TatakuRenderable>>,
@@ -60,39 +60,29 @@ pub struct TatakuWinitWindow<'window> {
     init: WindowInitializers<'window>,
     counters: WindowCounters,
 }
-impl<'window> TatakuWinitWindow<'window> {
+impl<'window> WinitWindow<'window> {
     pub fn new(
-        event_sender: Sender<window::Event>,
-        mouse_position_sender: engine::triple_buffer::Input<tataku::Vector2>,
-        settings: &settings::Settings,
-        
-        window_counters: WindowCounters,
-        init: WindowInitializers<'window>,
+        event_loop: &EventLoop<actions::window::WindowAction>,
+        values: window::WindowCreateValues<'window, '_>,
     ) -> Self {
         let now = std::time::Instant::now();
 
-        let controller_mappings = settings.sdl_controller_mappings.join("\n");
+        let controller_mappings = values.settings.sdl_controller_mappings.join("\n");
         let controller_input = input::gilrs::GilrsBuilder::new()
             .add_mappings(&controller_mappings)
             .build()
             .unwrap();
 
-
-        let event_loop = winit::event_loop::EventLoop::with_user_event()
-            .build()
-            .unwrap();
-
         let s = Self {
+            window: None,
             proxy: event_loop.create_proxy(),
-            event_loop: Some(event_loop),
-            counters: window_counters,
+            counters: values.counters,
 
             graphics: Box::new(tataku_null_renderer::DummyGraphicsEngine),
-            settings: settings.display_settings.clone(),
+            settings: values.settings.display_settings.clone(),
 
-            window_event_sender: Arc::new(event_sender),
-            mouse_position_sender,
-            // window_event_receiver,
+            window_event_sender: Arc::new(values.event_sender),
+            mouse_position_sender: values.mouse_position_sender,
             render_data: Vec::new(),
 
             frametime_timer: tataku::Instant::now(),
@@ -101,7 +91,7 @@ impl<'window> TatakuWinitWindow<'window> {
             close_pending: false,
             queued_events: Vec::new(),
 
-            init,
+            init: values.init,
             
             // input
             controller_input,
@@ -112,11 +102,6 @@ impl<'window> TatakuWinitWindow<'window> {
         debug!("window took {:.2}", now.elapsed().as_secs_f32() * 1000.0);
 
         s
-    }
-
-    pub fn run(mut self) {
-        let event_loop = self.event_loop.take().unwrap();
-        event_loop.run_app(&mut self).expect("nope");
     }
 
     fn send_event(&mut self, event: window::Event) {
@@ -186,13 +171,13 @@ impl<'window> TatakuWinitWindow<'window> {
         self.graphics.update_emitters();
     }
 
-    fn window(&self) -> &'window WinitWindow {
-        WINDOW.get().unwrap()
+    fn window(&self) -> &'window winit::window::Window {
+        self.window.unwrap().get().unwrap()
     }
 }
 
 // input and state stuff
-impl TatakuWinitWindow<'_> {
+impl WinitWindow<'_> {
     fn refresh_monitors_inner(&mut self) {
         let monitors = self.window()
             .available_monitors()
@@ -222,18 +207,6 @@ impl TatakuWinitWindow<'_> {
 
     fn set_vsync(&mut self, vsync: tataku::Vsync) {
         self.graphics.set_vsync(vsync);
-    }
-
-    pub fn set_clipboard(content: String) -> tataku::Result<()> {
-        use clipboard::{ ClipboardProvider, ClipboardContext };
-        let ctx:Result<ClipboardContext, Box<dyn std::error::Error>> = ClipboardProvider::new();
-
-        ctx
-            .map_err(tataku::Error::from_boxed_err)
-            .and_then(|mut ctx| ctx
-                .set_contents(content)
-                .map_err(tataku::Error::from_boxed_err)
-            )
     }
 
     fn handle_touch_event(&mut self, touch: Touch) -> Option<window::Event> {
@@ -281,7 +254,7 @@ impl TatakuWinitWindow<'_> {
                 None
             }
 
-            Touch { phase:TouchPhase::Moved, location, id, .. } => {
+            Touch { phase: TouchPhase::Moved, location, id, .. } => {
                 let touch_pos = Vector2::new(location.x as f32, location.y as f32);
 
                 if self.finger_touches.len() > 1
@@ -289,16 +262,14 @@ impl TatakuWinitWindow<'_> {
                     if id != *start_id { return None }
 
                     let delta = touch_pos - *pos;
-                    let scroll = Vector2::new(
-                        delta.x / 10.0,
-                        delta.y / 10.0
-                    );
                     *pos = touch_pos;
 
-                    return Some(window::Event::Input(InputType::MouseScroll { 
-                        raw: scroll, 
-                        scroll: scroll * self.settings.scroll_sensitivity 
-                    }));
+                    return Some(window::Event::Input(InputType::MouseScroll(
+                        input::ScrollInput {
+                            value: input::ScrollType::Pixels(delta),
+                            sensitivity: self.settings.scroll_sensitivity,
+                        }
+                    )));
                 }
 
                 Some(window::Event::Input(InputType::MouseMove(touch_pos)))
@@ -310,16 +281,21 @@ impl TatakuWinitWindow<'_> {
 
 }
 
-impl winit::application::ApplicationHandler<actions::window::WindowAction> for TatakuWinitWindow<'_> {
+impl winit::application::ApplicationHandler<actions::window::WindowAction> for WinitWindow<'_> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        if WINDOW.get().is_some() { return }
+        match self.window {
+            None => panic!("Window ready to be initialized before self.window is set!"),
+            Some(i) if i.initialized() => return,
+            _ => {}
+        }
+
         event_loop.set_control_flow(ControlFlow::Poll);
 
         #[allow(unused_mut)]
         let mut attribs = winit::window::WindowAttributes::default()
             .with_title("Tataku!")
-            .with_min_inner_size(to_size(Vector2::ONE))
-            .with_inner_size(to_size(self.settings.window_size.into()))
+            .with_min_inner_size(conv::to_size(Vector2::ONE))
+            .with_inner_size(conv::to_size(self.settings.window_size.into()))
             .with_decorations(!self.settings.hide_decorations)
             ;
 
@@ -358,7 +334,8 @@ impl winit::application::ApplicationHandler<actions::window::WindowAction> for T
             Err(e) => warn!("error setting window icon: {e}")
         }
 
-        WINDOW.set(window).unwrap();
+        self.window.unwrap().set(window).unwrap();
+
         info!("Window created");
 
         // initialize graphics
@@ -398,7 +375,7 @@ impl winit::application::ApplicationHandler<actions::window::WindowAction> for T
             integrations.push(i);
         }
 
-        self.window().set_min_inner_size(Some(to_size(self.settings.window_size.into())));
+        self.window().set_min_inner_size(Some(conv::to_size(self.settings.window_size.into())));
         self.set_fullscreen(self.settings.fullscreen_monitor.clone());
         self.set_vsync(self.settings.vsync);
         self.send_event(window::Event::SizeChanged(self.settings.window_size.into()));
@@ -409,7 +386,7 @@ impl winit::application::ApplicationHandler<actions::window::WindowAction> for T
 
 
     fn new_events(&mut self, _event_loop: &ActiveEventLoop, _cause: StartCause) {
-        if WINDOW.get().is_none() { return }
+        if self.window.is_none() { return }
         self.update();
     }
 
@@ -428,18 +405,13 @@ impl winit::application::ApplicationHandler<actions::window::WindowAction> for T
                 &data, 
                 [data.width(), data.height()]
             )),
-            Action::FreeTexture(
-                tex
-            ) => self.graphics.free_tex(tex),
+            Action::FreeTexture(tex) => self.graphics.free_tex(tex),
 
-            Action::ShowCursor => {
-                self.window().set_cursor_visible(true);
-            }
-            Action::HideCursor => {
-                self.window().set_cursor_visible(false);
-            }
+            Action::ShowCursor => self.window().set_cursor_visible(true),
+            Action::HideCursor => self.window().set_cursor_visible(false),
 
             Action::RequestAttention => self.window().request_user_attention(Some(winit::window::UserAttentionType::Informational)),
+            Action::RefreshMonitors => self.refresh_monitors_inner(),
 
             Action::CloseGame => {
                 self.close_pending = true;
@@ -453,9 +425,8 @@ impl winit::application::ApplicationHandler<actions::window::WindowAction> for T
                 self.graphics.screenshot(Box::new(move |(data, size)| {
                     let _ = sender.try_send(window::Event::ScreenshotComplete(data, size, info));
                 }));
-            },
-            Action::RefreshMonitors => self.refresh_monitors_inner(),
-
+            }
+            
             Action::RenderData(data) => {
                 self.render_data = data;
                 self.window().request_redraw();
@@ -479,15 +450,22 @@ impl winit::application::ApplicationHandler<actions::window::WindowAction> for T
                 self.settings = settings;
             }
 
-            Action::CopyToClipboard(text) => if let Err(e) = Self::set_clipboard(text.to_string()) {
-                error!("error copying to clipboard: {e:?}");
+            Action::CopyToClipboard(text) => {
+                use clipboard::{ ClipboardProvider, ClipboardContext };
+                let ctx:Result<ClipboardContext, Box<dyn std::error::Error>> = ClipboardProvider::new();
+
+                if let Err(e) = ctx
+                .map_err(tataku::Error::from_boxed_err)
+                .and_then(|mut ctx| ctx
+                    .set_contents(text.to_string())
+                    .map_err(tataku::Error::from_boxed_err)
+                ) {
+                    error!("error copying to clipboard: {e:?}");
+                }
             }
 
             Action::AddEmitter(emitter) => self.graphics.add_emitter(emitter), 
-
-            Action::DumpAtlas => {
-                self.graphics.dump_atlas("/tmp/fuck/");
-            }
+            Action::DumpAtlas => self.graphics.dump_atlas("/tmp/fuck/"),
         }
     }
 
@@ -532,12 +510,17 @@ impl winit::application::ApplicationHandler<actions::window::WindowAction> for T
                 event: e @ winit::event::KeyEvent {
                     state: ElementState::Pressed, ..
                 }, ..
-            } => Some(window::Event::Input(InputType::KeyPress(input::KeyInput::from_event(e)))),
+            } => Some(window::Event::Input(InputType::KeyPress(
+                conv::keyboard::key(&e).unwrap_or_default()
+            ))),
+            
             WinitWindowEvent::KeyboardInput {
                 event: e @  winit::event::KeyEvent {
                     state: ElementState::Released, ..
                 }, ..
-            } => Some(window::Event::Input(InputType::KeyRelease(input::KeyInput::from_event(e)))),
+            } => Some(window::Event::Input(InputType::KeyRelease(
+                conv::keyboard::key(&e).unwrap_or_default()
+            ))),
 
             WinitWindowEvent::CursorMoved { position, .. } => {
                 let pos = Vector2::new(position.x as f32, position.y as f32);
@@ -549,29 +532,27 @@ impl winit::application::ApplicationHandler<actions::window::WindowAction> for T
             WinitWindowEvent::MouseWheel { 
                 delta, 
                 .. 
-            } => {
-                use winit::event::MouseScrollDelta::{ LineDelta, PixelDelta };
-                let delta = match delta {
-                    LineDelta(x, y) => Vector2::new(x, y),
-                    PixelDelta(p) => Vector2::new(p.x as f32, p.y as f32),
-                };
-
-                Some(window::Event::Input(InputType::MouseScroll {
-                    raw: delta,
-                    scroll: delta * self.settings.scroll_sensitivity,
-                }))
-            }
+            } => Some(window::Event::Input(InputType::MouseScroll(
+                input::ScrollInput {
+                    value: conv::mouse::scroll(delta),
+                    sensitivity: self.settings.scroll_sensitivity,
+                }
+            ))),
 
             WinitWindowEvent::MouseInput { 
                 state: ElementState::Pressed, 
                 button, 
                 .. 
-            }  => Some(window::Event::Input(InputType::MousePress(button.into()))),
+            }  => Some(window::Event::Input(InputType::MousePress(
+                conv::mouse::button(button)
+            ))),
             WinitWindowEvent::MouseInput { 
                 state: ElementState::Released, 
                 button, 
                 .. 
-            } => Some(window::Event::Input(InputType::MouseRelease(button.into()))),
+            } => Some(window::Event::Input(InputType::MouseRelease(
+                conv::mouse::button(button)
+            ))),
 
             WinitWindowEvent::Touch(touch) => self.handle_touch_event(touch),
             // WinitWindowEvent::Occluded(_) => todo!(),
@@ -588,21 +569,14 @@ impl winit::application::ApplicationHandler<actions::window::WindowAction> for T
         if let Some(event) = event { self.send_event(event); }
     }
 
-
     fn exiting(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop) {
         warn!("window closing");
     }
 }
 
 
-fn to_size(s: Vector2) -> winit::dpi::Size {
-    winit::dpi::Size::Logical(winit::dpi::LogicalSize::new(
-        s.x as f64, 
-        s.y as f64
-    ))
-}
 
-impl<'w> engine::window::TatakuWindow<'w> for TatakuWinitWindow<'w> {
+impl<'w> engine::window::Window<'w> for WinitWindow<'w> {
     fn get_texture_manager(&self) -> Box<dyn window::TextureManager> {
         Box::new(WinitTextureManager {
             proxy: self.proxy.clone(),
@@ -611,7 +585,46 @@ impl<'w> engine::window::TatakuWindow<'w> for TatakuWinitWindow<'w> {
     fn get_action_sender(&self) -> Box<dyn window::WindowActionSender> {
         Box::new(WinitActionSender(self.proxy.clone()))
     }
+
+    fn run(mut self: Box<Self>, data: &'w mut dyn std::any::Any) {
+        let w = data.downcast_mut::<WinitWindowData>().unwrap();
+        self.window = Some(&w.winit_window);
+
+        let event_loop = *w.event_loop.take().unwrap();
+        event_loop.run_app(&mut self).expect("nope");
+    }
 }
+
+struct WinitWindowData {
+    event_loop: Option<Box<EventLoop<actions::window::WindowAction>>>,
+    winit_window: OnceCell<winit::window::Window>,
+}
+
+
+pub const WINIT_CREATOR: window::WindowCreator = window::WindowCreator {
+    create,
+};
+
+fn create<'w, 's>(
+    values: window::WindowCreateValues<'w, 's>,
+) -> (Box<dyn window::Window<'w> + 'w>, Box<dyn std::any::Any>) {
+    let event_loop = winit::event_loop::EventLoop::with_user_event()
+        .build()
+        .unwrap();
+    
+    let window: WinitWindow<'w> = WinitWindow::new(
+        &event_loop,
+        values
+    );
+    
+    let data = WinitWindowData {
+        event_loop: Some(Box::new(event_loop)),
+        winit_window: OnceCell::new(),
+    };
+
+    (Box::new(window), Box::new(data))
+}
+
 
 struct WinitActionSender(EventLoopProxy<actions::window::WindowAction>);
 impl engine::window::WindowActionSender for WinitActionSender {

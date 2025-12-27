@@ -192,49 +192,55 @@ impl Widget<actions::Action> for ContextMenu {
             }
 
             InputType::KeyPress(key) => {
-                if key.is_key(Key::Up) {
-                    if let Some(index) = &mut self.active_index {
-                        *index = (*index - 1).clamp(0, self.options.len());
-                    }
-                } else if key.is_key(Key::Down) || key.is_key(Key::Tab) {
-                    if let Some(index) = &mut self.active_index {
-                        *index = (*index + 1).clamp(0, self.options.len());
-                    } else {
-                        self.active_index = Some(0);
-                    }
-                } else if key.is_key(Key::Enter) || key.is_key(Key::Space) {
-                    if let Some(active) = self.active_index {
-                        match &self.options[active].option_type {
-                            ContextMenuOptionType::TextOnly => {}
-                            ContextMenuOptionType::SubMenu(_) => {
-                                self.try_make_submenu(active);
-                            }
+                let Some(k) = key.key else { return };
 
-                            ContextMenuOptionType::Action(action) => {
-                                self.should_close = true;
-                                self.should_close_parent = true;
-                                action.run(
-                                    shell.tree.node.node_id(),
-                                    shell.source,
-                                    None,
-                                    shell.values,
-                                    shell.actions,
-                                    shell.messages
-                                );
+                match k {
+                    Key::Up => {
+                        if let Some(index) = &mut self.active_index {
+                            *index = (*index - 1).clamp(0, self.options.len());
+                        }
+                    }
+                    Key::Down | Key::Tab => {
+                        if let Some(index) = &mut self.active_index {
+                            *index = (*index + 1).clamp(0, self.options.len());
+                        } else {
+                            self.active_index = Some(0);
+                        }
+                    }
+
+                    Key::Enter | Key::Space => {
+                        if let Some(active) = self.active_index {
+                            match &self.options[active].option_type {
+                                ContextMenuOptionType::TextOnly => {}
+                                ContextMenuOptionType::SubMenu(_) => {
+                                    self.try_make_submenu(active);
+                                }
+
+                                ContextMenuOptionType::Action(action) => {
+                                    self.should_close = true;
+                                    self.should_close_parent = true;
+                                    action.run(
+                                        shell.tree.node.node_id(),
+                                        shell.source,
+                                        None,
+                                        shell.values,
+                                        shell.actions,
+                                        shell.messages
+                                    );
+                                }
                             }
                         }
                     }
-                } 
 
-                // TODO: need to vary between left and right depending on which way the context menu opens
-                // ie if the menu opens to the left (non-default) these will need to be reversed
-                else if key.is_key(Key::Left) {
-                    if self.active_index.is_some() {
+
+                    // TODO: need to vary between left and right depending on which way the context menu opens
+                    // ie if the menu opens to the left (non-default) these will need to be reversed
+                    
+                    Key::Left => if self.active_index.is_some() {
                         self.should_close = true;
                         self.should_close_parent = false;
                     }
-                } else if key.is_key(Key::Right) { 
-                    if let Some(active) = self.active_index {
+                    Key::Right => if let Some(active) = self.active_index {
                         self.try_make_submenu(active);
 
                         // if a submenu was created, init it with the active index 0 (first), 
@@ -243,11 +249,10 @@ impl Widget<actions::Action> for ContextMenu {
                             menu.active_index = Some(0);
                         }
                     }
-                } 
-                
-                else {
-                    return;
+
+                    _ => return
                 }
+                
                 shell.event_consumed = true;
             }
 

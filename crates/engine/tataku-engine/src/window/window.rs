@@ -7,13 +7,13 @@ pub trait GraphicsInitializer<'window> {
     fn name(&self) -> &'static str;
     async fn init(
         &self,
-        window: &'window dyn Windowable,
+        window: &'window dyn RawWindow,
         settings: settings::display::DisplaySettings
     ) -> tataku::Result<Box<dyn graphics::RenderingEngine + 'window>>;
 }
 
-pub trait Windowable: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle + Sync {}
-impl<T> Windowable for T where T: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle + Sync {}
+pub trait RawWindow: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle + Sync {}
+impl<T> RawWindow for T where T: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle + Sync {}
 
 pub struct WindowInitializers<'a> {
     pub integrations: Vec<io::TatakuIntegrationBuilder>,
@@ -47,17 +47,25 @@ pub struct WindowCounters {
 }
 
 
-pub trait TatakuWindow<'window> {
-    // fn new(
-    //     event_sender: Sender<window::Event>,
-    //     mouse_position_sender: engine::triple_buffer::Input<tataku::Vector2>,
-    //     settings: &settings::Settings,
-        
-    //     #[cfg(feature="graphics")] window_counters: WindowCounters,
-    //     init: WindowInitializers<'window>,
-    // ) -> Self;
+pub struct WindowCreator {
+    pub create: for<'w, 's> fn(WindowCreateValues<'w, 's>) -> (Box<dyn Window<'w> + 'w>, Box<dyn std::any::Any>),
+}
+pub struct WindowCreateValues<'w, 's> {
+    pub event_sender: tokio::sync::mpsc::Sender<window::Event>,
+    pub mouse_position_sender: engine::triple_buffer::Input<tataku::Vector2>,
+    pub settings: &'s settings::Settings,
+    
+    pub counters: WindowCounters,
+    pub init: WindowInitializers<'w>,
+}
+
+
+
+pub trait Window<'window> {
     fn get_texture_manager(&self) -> Box<dyn TextureManager>;
     fn get_action_sender(&self) -> Box<dyn WindowActionSender>;
+
+    fn run(self: Box<Self>, data: &'window mut dyn std::any::Any);
 }
 
 pub trait TextureManager: Send + Sync {

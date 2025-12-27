@@ -26,7 +26,6 @@ ui = [ "taffy", "quick-xml", "triple_buffer" ]
 
 # removes as much graphics-side stuff as possible
 graphics = [ 
-    "winit", 
     "ui", 
     "image", 
     "tataku-engine/graphics", 
@@ -58,9 +57,6 @@ libloading = { workspace = true, optional = true }
 
 # image stuff
 image = { workspace = true, optional = true }
-
-# windowing
-winit = { workspace = true, features = ["serde"], optional = true }
 
 # gui
 taffy = { workspace = true, optional = true }

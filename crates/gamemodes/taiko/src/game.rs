@@ -1452,59 +1452,56 @@ impl Gamemode for TaikoGame {
             MouseButton,
         };
 
+        fn map_key(
+            key: input::Key,
+            settings: &TaikoSettings,
+        ) -> Option<KeyPress> {
+            if key == settings.left_kat {
+                Some(KeyPress::LeftKat)
+            } else if key == settings.left_don {
+                Some(KeyPress::LeftDon)
+            } else if key == settings.right_don {
+                Some(KeyPress::RightDon)
+            } else if key == settings.right_kat {
+                Some(KeyPress::RightKat)
+            } else {
+                None
+            }
+        }
+
+        fn map_mouse(
+            btn: input::MouseButton,
+            settings: &TaikoSettings,
+        ) -> Option<KeyPress> {
+            if settings.ignore_mouse_buttons { return None }
+
+            match btn {
+                MouseButton::Left => Some(KeyPress::LeftDon),
+                MouseButton::Right => Some(KeyPress::LeftKat),
+                _ => None
+            }
+        }
 
         match input.event {
-            InputType::KeyPress(key) => {
-                let key = key.as_key()?;
+            InputType::KeyPress(input) => map_key(
+                input.key?,
+                &self.taiko_settings,
+            ).map(ReplayAction::Press),
 
-                if key == self.taiko_settings.left_kat {
-                    Some(ReplayAction::Press(KeyPress::LeftKat))
-                } else if key == self.taiko_settings.left_don {
-                    Some(ReplayAction::Press(KeyPress::LeftDon))
-                } else if key == self.taiko_settings.right_don {
-                    Some(ReplayAction::Press(KeyPress::RightDon))
-                } else if key == self.taiko_settings.right_kat {
-                    Some(ReplayAction::Press(KeyPress::RightKat))
-                } else {
-                    None
-                }
-            }
+            InputType::KeyRelease(input) => map_key(
+                input.key?,
+                &self.taiko_settings,
+            ).map(ReplayAction::Release),
+            
+            InputType::MousePress(btn) => map_mouse(
+                btn,
+                &self.taiko_settings,
+            ).map(ReplayAction::Press),
 
-            InputType::KeyRelease(key) => {
-                let key = key.as_key()?;
-
-                if key == self.taiko_settings.left_kat {
-                    Some(ReplayAction::Release(KeyPress::LeftKat))
-                } else if key == self.taiko_settings.left_don {
-                    Some(ReplayAction::Release(KeyPress::LeftDon))
-                } else if key == self.taiko_settings.right_don {
-                    Some(ReplayAction::Release(KeyPress::RightDon))
-                } else if key == self.taiko_settings.right_kat {
-                    Some(ReplayAction::Release(KeyPress::RightKat))
-                } else {
-                    None
-                }
-            }
-
-            InputType::MousePress(btn) => {
-                if self.taiko_settings.ignore_mouse_buttons { return None }
-
-                match btn {
-                    MouseButton::Left => Some(ReplayAction::Press(KeyPress::LeftDon)),
-                    MouseButton::Right => Some(ReplayAction::Press(KeyPress::LeftKat)),
-                    _ => None
-                }
-            }
-
-            InputType::MouseRelease(btn) => {
-                if self.taiko_settings.ignore_mouse_buttons { return None }
-
-                match btn {
-                    MouseButton::Left => Some(ReplayAction::Release(KeyPress::LeftDon)),
-                    MouseButton::Right => Some(ReplayAction::Release(KeyPress::LeftKat)),
-                    _ => None
-                }
-            }
+            InputType::MouseRelease(btn) => map_mouse(
+                btn,
+                &self.taiko_settings
+            ).map(ReplayAction::Release),
 
             InputType::ControllerPress(
                 btn,

@@ -6,6 +6,9 @@ mod mouse_button;
 mod input_manager;
 mod key_modifiers;
 
+// re-export smol_str for convenience
+pub use smol_str;
+
 #[cfg(feature = "gameplay")]
 pub use input_manager::*;
 pub use key_modifiers::*;

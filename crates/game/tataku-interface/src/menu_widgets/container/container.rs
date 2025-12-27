@@ -313,10 +313,14 @@ impl Widget<actions::Action> for Container {
         let Some(layout) = shell.tree.get_layout(self.node_id).copied()
         else { return };
 
-        if let InputType::MouseScroll { raw: _, scroll: delta} = &event.event {
+        if let InputType::MouseScroll(scroll) = &event.event {
             if shell.event_consumed { return }
+            let delta = scroll.get_delta(
+                5.0
+            );
+
             if self.check_scroll(
-                &ScrollPosition::Relative(*delta),
+                &ScrollPosition::Relative(delta),
                 &layout
             ) {
                 let context = shell

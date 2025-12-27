@@ -1,8 +1,8 @@
 mod game;
 
-use tataku_game::prelude::*;
-use import_common::*;
 use tataku::Vector2;
+use import_common::*;
+use tataku_game::prelude::*;
 
 const DOWNLOAD_URL_BASE:&str = "https://cdn.ayyeve.dev/tataku";
 
@@ -53,12 +53,12 @@ fn start_game() {
     info!("creating window");
     let settings = engine::Settings::load();
 
-    let game_window = tataku_winit::TatakuWinitWindow::new(
-        game_event_sender,
+    let values = engine::window::WindowCreateValues {
+        event_sender: game_event_sender,
         mouse_position_sender,
-        &settings,
-        window_counters,
-        engine::window::WindowInitializers {
+        settings: &settings,
+        counters: window_counters,
+        init: engine::window::WindowInitializers {
             window_creation_barrier: window_side_barrier,
             integrations: vec![
                 #[cfg(feature="discord")] integration_discord::Discord::builder(),
@@ -69,8 +69,15 @@ fn start_game() {
                 Box::new(tataku_wgpu::WgpuInit)
             ],
         },
+    };
+
+    let (
+        game_window, 
+        mut data
+    ) = (tataku_winit::WINIT_CREATOR.create)(
+        values
     );
-    use engine::window::TatakuWindow;
+
     let tex_manager = game_window.get_texture_manager();
     let action_sender = game_window.get_action_sender();
 
@@ -94,7 +101,7 @@ fn start_game() {
     });
 
     trace!("window running");
-    game_window.run();
+    game_window.run(&mut *data);
 
     // wait for game to finish
     game.join().unwrap();

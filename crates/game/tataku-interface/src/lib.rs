@@ -70,12 +70,3 @@ pub(crate) mod prelude {
     
     pub use crate::custom_menus::*;
 }
-
-#[test]
-fn test() {
-    use crate::custom_menus::CustomDialog;
-    let a = tataku_resources::dialogs::SETTINGS;
-
-    let b = quick_xml::de::from_str::<CustomDialog>(a).unwrap();
-
-}

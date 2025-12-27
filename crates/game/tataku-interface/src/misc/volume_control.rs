@@ -177,13 +177,19 @@ impl VolumeControl {
 
     pub fn on_mouse_wheel(
         &mut self,
-        delta: f32,
+        scroll: input::ScrollInput,
         mods: input::KeyModifiers,
         settings: &mut engine::Settings
     ) -> Option<actions::song::SongAction> {
-        if !mods.alt { return None }
+        if !mods.contains(input::KeyModifiers::ALT) { return None }
 
-        self.change(delta / 10.0, settings)
+        let delta = match scroll.value {
+            input::ScrollType::Pixels(p) => p.y,
+            input::ScrollType::Lines([_, delta]) => delta as f32,
+        };
+
+        if delta == 0.0 { return None }
+        self.change(delta / 100.0, settings)
     }
 
     // #[cfg(feature="graphics")]
@@ -196,7 +202,7 @@ impl VolumeControl {
     ) -> bool {
         let elapsed = self.timer.as_millis();
 
-        if !mods.alt { return false }
+        if !mods.contains(input::KeyModifiers::ALT) { return false }
         let action = match key {
             Key::Right => self.change(0.1, settings),
             Key::Left => self.change(-0.1, settings),

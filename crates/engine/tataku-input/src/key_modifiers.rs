@@ -1,7 +1,12 @@
-// TODO: convert this to bits
-#[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
-pub struct KeyModifiers {
-    pub ctrl: bool,
-    pub alt: bool,
-    pub shift: bool,
+use tataku_engine_common::common::bitflags;
+
+bitflags! {
+    #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
+    pub struct KeyModifiers: u8 {
+        // Constants are always `pub`
+        const CTRL = 1;
+        const ALT = 2;
+        const SHIFT = 3;
+    }
 }
+

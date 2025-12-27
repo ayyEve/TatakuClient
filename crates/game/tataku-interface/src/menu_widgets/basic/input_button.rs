@@ -28,7 +28,7 @@ impl InputButtonType for input::Key {
         let InputType::KeyPress(key) = &e.event
         else { return None };
 
-        let Some(key) = key.as_key() else {
+        let Some(key) = key.key else {
             error!("couldnt convert KeyInput to Key: {key:?}");
             return None;
         };
@@ -138,12 +138,12 @@ impl<T: InputButtonType> Widget<actions::Action> for InputButton<T> {
 
         let ctx = shell.tree.get_context_mut(self.node_id).unwrap();
         if ctx.element_data.state.contains(ElementState::Active) && event.is_keyboard()
-        && let InputType::KeyPress(key) = &event.event {
+        && let InputType::KeyPress(input) = &event.event {
             ctx.element_data.state.remove(ElementState::Active);
             shell.event_consumed = true;
 
-            if key.is_key(Key::Escape) 
-            && event.key_mods.ctrl && self.optional 
+            if input.key == Some(Key::Escape) 
+            && event.key_mods.contains(input::KeyModifiers::CTRL) && self.optional 
             {
                 if let InputButtonValue::Static(k) = &mut self.input {
                     *k = None;

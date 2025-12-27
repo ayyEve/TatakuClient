@@ -239,7 +239,7 @@ impl Widget<actions::Action> for Dropdown {
 
         match &event.event {
             InputType::KeyPress(input) if self.active => {
-                let Some(key) = input.as_key() else { return };
+                let Some(key) = input.key else { return };
 
                 if key == input::Key::Escape {
                     self.active = false;

@@ -1741,7 +1741,7 @@ impl GameplayManager {
                 }
             }
             InputType::KeyRelease(key_input) => {
-                let Some(key) = key_input.as_key() else { return };
+                let Some(key) = key_input.key else { return };
 
                 // check map restart key
                 if key == self.gameplay_settings.map_restart_key {
@@ -1776,7 +1776,7 @@ impl GameplayManager {
         settings: &Settings,
     ) -> bool {
         if key_input.repeat { return false }
-        let Some(key) = key_input.as_key() else { return false };
+        let Some(key) = key_input.key else { return false };
 
         if (self.gameplay_type_small.is_replay() || self.mods.has_autoplay())
             && !self.gameplay_type_small.is_preview()
@@ -1805,112 +1805,107 @@ impl GameplayManager {
         if self.should_skip_input() { return false }
 
 
-        if key == Key::Escape {
-            if self.can_pause() {
-                self.state.should_pause = true;
-            } else if let GameplayType::Multiplayer { last_escape_press, .. } = &mut *self.gameplay_type {
-                if last_escape_press.elapsed_and_reset() < 3_000.0 {
-                    self.actions.push(MultiplayerAction::ExitMultiplayer.into());
-                } else {
-                    self.actions.push(Notification::new_text(
-                        "Press escape again to quit the lobby",
-                        Color::RED,
-                        3_000.0
-                    ).into());
+        match key {
+            Key::Escape => {
+                if self.can_pause() {
+                    self.state.should_pause = true;
+                } else if let GameplayType::Multiplayer { last_escape_press, .. } = &mut *self.gameplay_type {
+                    if last_escape_press.elapsed_and_reset() < 3_000.0 {
+                        self.actions.push(MultiplayerAction::ExitMultiplayer.into());
+                    } else {
+                        self.actions.push(Notification::new_text(
+                            "Press escape again to quit the lobby",
+                            Color::RED,
+                            3_000.0
+                        ).into());
+                    }
+                }
+                true 
+            }
+
+            // ui editor toggle
+            #[cfg(feature = "ui")]
+            input::Key::F9 => {
+                if self.editor.is_some() {
+                    self.editor = None;
+                    if !self.gamemode_properties.show_cursor {
+                        self.actions.push(CursorAction::SetVisible(false).into());
+                    }
+                    return true;
                 }
 
-                return true;
-            }
-        }
 
-        // ui editor toggle
-        #[cfg(feature = "ui")]
-        if key == input::Key::F9 {
-            if self.editor.is_some() {
-                self.editor = None;
-                if !self.gamemode_properties.show_cursor {
-                    self.actions.push(CursorAction::SetVisible(false).into());
+                // ensure autoplay is enabled
+                self.state.unrankable = true;
+                if !self.mods.has_autoplay() {
+                    let mut mods = (*self.mods).clone();
+                    mods.add_mod(mods::Autoplay);
+                    self.gameplay_actions.push(GameplayAction::ApplyMods(mods));
                 }
-                return true;
+
+                let (
+                    event_sender,
+                    event_receiver
+                ) = std::sync::mpsc::channel();
+                let (
+                    action_sender,
+                    action_receiver
+                ) = std::sync::mpsc::channel();
+
+                let editor = GameplayWidgetEditor::new(
+                    self.widget_tree.elements(),
+                    action_sender,
+                    event_receiver
+                );
+
+                self.actions.push(actions::menu::MenuAction::AddDialogRaw {
+                    dialog: Box::new(editor),
+                    options: Box::new(actions::menu::DialogCreateOptions {
+                        background: false,
+                        ..Default::default()
+                    })
+                }.into());
+
+                self.editor = Some(EditorChannels {
+                    event_sender,
+                    action_receiver: Arc::new(Mutex::new(action_receiver)),
+                });
+
+                self.actions.push(actions::cursor::CursorAction::SetVisible(true).into());
+                true
             }
 
+            // skip intro
+            input::Key::Space => {
+                self.handle_frame(
+                    ReplayAction::Press(KeyPress::SkipIntro),
+                    false,
+                    None,
+                    true,
+                    settings,
+                );
 
-            // ensure autoplay is enabled
-            self.state.unrankable = true;
-            if !self.mods.has_autoplay() {
-                let mut mods = (*self.mods).clone();
-                mods.add_mod(mods::Autoplay);
-                self.gameplay_actions.push(GameplayAction::ApplyMods(mods));
+                true
             }
 
-            let (
-                event_sender,
-                event_receiver
-            ) = std::sync::mpsc::channel();
-            let (
-                action_sender,
-                action_receiver
-            ) = std::sync::mpsc::channel();
+            // check for offset changing keys
+            _ => {
+                let mut t = 0.0;
+                if key == self.gameplay_settings.key_offset_up { t = 5.0 }
+                if key == self.gameplay_settings.key_offset_down { t = -5.0 }
+                if t != 0.0 {
+                    if mods.contains(KeyModifiers::SHIFT) {
+                        self.increment_global_offset(t);
+                    } else {
+                        self.increment_offset(t);
+                    }
 
-            let editor = GameplayWidgetEditor::new(
-                self.widget_tree.elements(),
-                action_sender,
-                event_receiver
-            );
-
-            self.actions.push(actions::menu::MenuAction::AddDialogRaw {
-                dialog: Box::new(editor),
-                options: Box::new(actions::menu::DialogCreateOptions {
-                    background: false,
-                    ..Default::default()
-                })
-            }.into());
-
-            self.editor = Some(EditorChannels {
-                event_sender,
-                action_receiver: Arc::new(Mutex::new(action_receiver)),
-            });
-
-            self.actions.push(actions::cursor::CursorAction::SetVisible(true).into());
-            return true;
+                    return true
+                }
+                
+                false
+            }
         }
-
-        // check for offset changing keys
-        if mods.shift {
-            let mut t = 0.0;
-            if key == self.gameplay_settings.key_offset_up { t = 5.0 }
-            if key == self.gameplay_settings.key_offset_down { t = -5.0 }
-
-            if t != 0.0 {
-                self.increment_global_offset(t);
-                return true;
-            }
-        } else {
-            if key == self.gameplay_settings.key_offset_up {
-                self.increment_offset(5.0);
-                return true;
-            }
-            if key == self.gameplay_settings.key_offset_down {
-                self.increment_offset(-5.0);
-                return true;
-            }
-        }
-
-
-        // skip intro
-        if key == input::Key::Space {
-            self.handle_frame(
-                ReplayAction::Press(KeyPress::SkipIntro),
-                false,
-                None,
-                true,
-                settings,
-            );
-
-            return true;
-        }
-
-        false
     }
 
     #[cfg(feature="graphics")]

@@ -323,56 +323,62 @@ impl TextInput {
     // returns if the key was consumed, and if so, if the text was updated
     fn handle_key(
         &mut self, 
-        key: &KeyInput, 
+        input: &KeyInput, 
         mods: KeyModifiers,
     ) -> Option<bool> {
-        if let Some(text) = &key.text {
+        if let Some(text) = &input.text {
+            println!("adding text: {text}");
             self.add_text(text);
             return Some(true);
         }
         
         let len = self.value.len();
 
-        match key.as_key()? {
-            Key::Backspace if mods.ctrl => {
+        let ctrl = mods.contains(KeyModifiers::CTRL);
+        let shift = mods.contains(KeyModifiers::SHIFT);
+
+        println!("key: {:?}", input.key);
+
+        match input.key? {
+            Key::Backspace if ctrl => {
                 self.handle_control_action(
                     ControlAction::Backspace, 
-                    mods.shift
+                    shift
                 );
                 Some(true)
             }
-            Key::Delete if mods.ctrl => {
+            Key::Delete if ctrl => {
                 self.handle_control_action(
                     ControlAction::Delete, 
-                    mods.shift
+                    shift
                 );
                 Some(true)
             }
-            Key::Left if mods.ctrl => {
+            Key::Left if ctrl => {
                 self.handle_control_action(
                     ControlAction::CursorLeft, 
-                    mods.shift
+                    shift
                 );
                 Some(true)
             }
-            Key::Right if mods.ctrl => {
+            Key::Right if ctrl => {
                 self.handle_control_action(
                     ControlAction::CursorRight, 
-                    mods.shift
+                    shift
                 );
                 Some(true)
             }
-            Key::Up if mods.ctrl => {
+            Key::Up if ctrl => {
                 self.handle_control_action(
                     ControlAction::CursorUp, 
-                    mods.shift
+                    shift
                 );
                 Some(true)
             }
-            Key::Down if mods.ctrl => {
+            Key::Down if ctrl => {
                 self.handle_control_action(
                     ControlAction::CursorDown, 
-                    mods.shift
+                    shift
                 );
                 Some(true)
             }
@@ -382,6 +388,7 @@ impl TextInput {
                 Some(true)
             }
             Key::Backspace => {
+                println!("backspace");
                 match &mut self.cursor {
                     Cursor::Position(n) => {
                         if *n > 0 {
@@ -423,7 +430,7 @@ impl TextInput {
                     Cursor::Position(index) => if *index > 0 {
                         let n = *index-1;
 
-                        if mods.shift {
+                        if shift {
                             self.cursor = Cursor::Selection { 
                                 start: n, 
                                 end: *index,
@@ -442,7 +449,7 @@ impl TextInput {
                     } => if *end > 0 {
                         let n = *end - 1;
 
-                        if mods.shift && *start != n {
+                        if shift && *start != n {
                             *end = n;
                         } else {
                             self.cursor = Cursor::Position(n);
@@ -457,7 +464,7 @@ impl TextInput {
                     } => if *start > 0 {
                         let n = *start - 1;
 
-                        if mods.shift {
+                        if shift {
                             *start = n;
                         } else {
                             self.cursor = Cursor::Position(n);
@@ -475,7 +482,7 @@ impl TextInput {
                     Cursor::Position(index) => if *index < len {
                         let n = *index + 1;
 
-                        if mods.shift {
+                        if shift {
                             self.cursor = Cursor::Selection { 
                                 start: *index, 
                                 end: n,
@@ -491,7 +498,7 @@ impl TextInput {
                         .. 
                     } => if *end < len {
                         let n = *end + 1;
-                        if mods.shift {
+                        if shift {
                             *end = n;
                         } else {
                             self.cursor = Cursor::Position(n);
@@ -504,7 +511,7 @@ impl TextInput {
                         forward_select: false 
                     } => if *end < len {
                         let n = *start + 1;
-                        if mods.shift && n != *end {
+                        if shift && n != *end {
                             *start = n;
                         } else {
                             self.cursor = Cursor::Position(n);
@@ -538,7 +545,7 @@ impl TextInput {
                 Some(false)
             }
 
-            _ if mods.ctrl || mods.alt => None,
+            _ if mods.contains(KeyModifiers::CTRL | KeyModifiers::ALT) => None,
 
             _ => Some(false)
         }
@@ -619,31 +626,33 @@ impl Widget<actions::Action> for TextInput {
     ) {
         match &event.event {
             InputType::KeyPress(press) if self.active => {
-                if let Some(Key::Enter) = press.as_key() {
 
-                    if let Some(on_submit) = &self.on_submit {
-                        on_submit.run(
-                            &self.value,
-                            self.node_id,
-                            shell.source,
-                            shell.messages,
-                            shell.actions,
-                            shell.values,
-                        );
+                match press.key {
+                    Some(Key::Enter) => {
+                        if let Some(on_submit) = &self.on_submit {
+                            on_submit.run(
+                                &self.value,
+                                self.node_id,
+                                shell.source,
+                                shell.messages,
+                                shell.actions,
+                                shell.values,
+                            );
+                        }
+
+                        shell.event_consumed = true;
+                        self.active = false;
+                        return;
                     }
 
-                    shell.event_consumed = true;
-                    self.active = false;
-                    return;
+                    Some(Key::Tab) => {
+                        shell.event_consumed = true;
+                        self.active = false;
+                        // TODO: event to select the next element
+                        return;
+                    }
+                    _ => {}
                 }
-
-                if let Some(Key::Tab) = press.as_key() {
-                    shell.event_consumed = true;
-                    self.active = false;
-                    // TODO: event to select the next element
-                    return;
-                }
-
 
                 if let Some(text_changed) = self.handle_key(
                     press, 
@@ -944,34 +953,49 @@ fn test() {
     let len = base_txt.len();
 
     let none = KeyModifiers::default();
-    let ctrl = KeyModifiers { ctrl: true, ..Default::default() };
-    let shift = KeyModifiers { shift: true, ..Default::default() };
-    let ctrl_shift = KeyModifiers { ctrl: true, shift: true, ..Default::default() };
+    let ctrl = KeyModifiers::CTRL;
+    let shift = KeyModifiers::SHIFT;
+    let ctrl_shift = KeyModifiers::CTRL | KeyModifiers::SHIFT;
+
+    fn test_key(k: Key) -> KeyInput {
+        KeyInput {
+            key: Some(k),
+            text: None,
+            repeat: false,
+        }
+    }
+    fn test_key_text(t: &'static str) -> KeyInput {
+        KeyInput {
+            key: None,
+            text: Some(input::smol_str::SmolStr::new(t)),
+            repeat: false,
+        }
+    }
 
     let tests: &[&[TestCase]] = &[
         // test left out of bounds (left arrow)
         &[
             TestCase::new(
                 Cursor::Position(0),
-                (KeyInput::test_key(Key::Left), none),
+                (test_key(Key::Left), none),
                 Cursor::Position(0),
                 None
             ),
             TestCase::new(
                 Cursor::Position(0),
-                (KeyInput::test_key(Key::Left), ctrl),
+                (test_key(Key::Left), ctrl),
                 Cursor::Position(0),
                 None
             ),
             TestCase::new(
                 Cursor::Position(0),
-                (KeyInput::test_key(Key::Left), shift),
+                (test_key(Key::Left), shift),
                 Cursor::Position(0),
                 None
             ),
             TestCase::new(
                 Cursor::Position(0),
-                (KeyInput::test_key(Key::Left), ctrl_shift),
+                (test_key(Key::Left), ctrl_shift),
                 Cursor::Position(0),
                 None
             ),
@@ -981,25 +1005,25 @@ fn test() {
         &[
             TestCase::new(
                 Cursor::Position(0),
-                (KeyInput::test_key(Key::Down), none),
+                (test_key(Key::Down), none),
                 Cursor::Position(0),
                 None
             ),
             TestCase::new(
                 Cursor::Position(0),
-                (KeyInput::test_key(Key::Down), ctrl),
+                (test_key(Key::Down), ctrl),
                 Cursor::Position(0),
                 None
             ),
             TestCase::new(
                 Cursor::Position(0),
-                (KeyInput::test_key(Key::Down), shift),
+                (test_key(Key::Down), shift),
                 Cursor::Position(0),
                 None
             ),
             TestCase::new(
                 Cursor::Position(0),
-                (KeyInput::test_key(Key::Down), ctrl_shift),
+                (test_key(Key::Down), ctrl_shift),
                 Cursor::Position(0),
                 None
             ),
@@ -1009,25 +1033,25 @@ fn test() {
         &[
             TestCase::new(
                 Cursor::Position(len),
-                (KeyInput::test_key(Key::Right), none),
+                (test_key(Key::Right), none),
                 Cursor::Position(len),
                 None
             ),
             TestCase::new(
                 Cursor::Position(len),
-                (KeyInput::test_key(Key::Right), ctrl),
+                (test_key(Key::Right), ctrl),
                 Cursor::Position(len),
                 None
             ),
             TestCase::new(
                 Cursor::Position(len),
-                (KeyInput::test_key(Key::Right), shift),
+                (test_key(Key::Right), shift),
                 Cursor::Position(len),
                 None
             ),
             TestCase::new(
                 Cursor::Position(len),
-                (KeyInput::test_key(Key::Right), ctrl_shift),
+                (test_key(Key::Right), ctrl_shift),
                 Cursor::Position(len),
                 None
             ),
@@ -1037,25 +1061,25 @@ fn test() {
         &[
             TestCase::new(
                 Cursor::Position(len),
-                (KeyInput::test_key(Key::Up), none),
+                (test_key(Key::Up), none),
                 Cursor::Position(len),
                 None
             ),
             TestCase::new(
                 Cursor::Position(len),
-                (KeyInput::test_key(Key::Up), ctrl),
+                (test_key(Key::Up), ctrl),
                 Cursor::Position(len),
                 None
             ),
             TestCase::new(
                 Cursor::Position(len),
-                (KeyInput::test_key(Key::Up), shift),
+                (test_key(Key::Up), shift),
                 Cursor::Position(len),
                 None
             ),
             TestCase::new(
                 Cursor::Position(len),
-                (KeyInput::test_key(Key::Up), ctrl_shift),
+                (test_key(Key::Up), ctrl_shift),
                 Cursor::Position(len),
                 None
             ),
@@ -1066,25 +1090,25 @@ fn test() {
         &[
             TestCase::new(
                 Cursor::Position(5),
-                (KeyInput::test_key(Key::Left), none),
+                (test_key(Key::Left), none),
                 Cursor::Position(4),
                 None
             ),
             TestCase::new(
                 Cursor::Position(3),
-                (KeyInput::test_key(Key::Left), ctrl),
+                (test_key(Key::Left), ctrl),
                 Cursor::Position(0),
                 None
             ),
             TestCase::new(
                 Cursor::Position(5),
-                (KeyInput::test_key(Key::Left), shift),
+                (test_key(Key::Left), shift),
                 Cursor::Selection { start: 4, end: 5, forward_select: false },
                 None
             ),
             TestCase::new(
                 Cursor::Position(5),
-                (KeyInput::test_key(Key::Left), ctrl_shift),
+                (test_key(Key::Left), ctrl_shift),
                 Cursor::Selection { start: 0, end: 5, forward_select: false },
                 None
             ),
@@ -1094,27 +1118,27 @@ fn test() {
         &[
             TestCase::new(
                 Cursor::Position(1),
-                (KeyInput::test_key(Key::Right), none),
+                (test_key(Key::Right), none),
                 Cursor::Position(2),
                 None
             ),
             TestCase::new(
                 Cursor::Position(0),
-                (KeyInput::test_key(Key::Right), ctrl),
+                (test_key(Key::Right), ctrl),
                 Cursor::Position(4),
                 None
             ),
 
             TestCase::new(
                 Cursor::Position(1),
-                (KeyInput::test_key(Key::Right), shift),
+                (test_key(Key::Right), shift),
                 Cursor::Selection { start: 1, end: 2, forward_select: true },
                 None
             ),
 
             TestCase::new(
                 Cursor::Position(1),
-                (KeyInput::test_key(Key::Right), ctrl_shift),
+                (test_key(Key::Right), ctrl_shift),
                 Cursor::Selection { start: 1, end: 4, forward_select: true },
                 None
             ),
@@ -1126,7 +1150,7 @@ fn test() {
             // index
             TestCase::new(
                 Cursor::Position(4),
-                (KeyInput::test_key_text("A"), none),
+                (test_key_text("A"), none),
                 Cursor::Position(5),
                 Some("someA test text")
             ),
@@ -1134,7 +1158,7 @@ fn test() {
             // selection
             TestCase::new(
                 Cursor::Selection { start: 0, end: 5, forward_select: true },
-                (KeyInput::test_key_text("A"), none),
+                (test_key_text("A"), none),
                 Cursor::Position(1),
                 Some("Atest text")
             ),
@@ -1152,7 +1176,7 @@ fn test() {
         println!(
             "{:?} + {} ({:?}) -> {:?}", 
             i.input_cursor, 
-            i.input_event.0.text.as_ref().map(|k| k.to_string()).unwrap_or(format!("{:?}", i.input_event.0.logical)), 
+            i.input_event.0.text.as_ref().map(|k| k.to_string()).unwrap_or(format!("{:?}", i.input_event.0.key)), 
             i.input_event.1, 
             i.expected
         );

@@ -114,6 +114,7 @@ triple_buffer = "8.1.0"
 crossbeam = "0.8.4"
 bitflags = "2.9"
 notify = "8.2.0"
+smol_str = "*"
 
 libloading = "0.8.6"
 
@@ -128,12 +129,12 @@ guillotiere = "0.6.2"
 lyon_tessellation = "1.0.15"
 half = "2.6"
 
-# windowing
+# graphics
 bytemuck = { version = "1.21.0", features = [ "derive" ] }
-winit = { version = "0.30.12", features = [ "serde" ] }
 raw-window-handle = "0.6.2"
 clipboard = "0.5.0"
 wgpu = "26.0.1"
+winit = "0.30.12"
 
 # gamepad input
 gilrs = { version = "0.11.0", features = [ "serde-serialize" ] }

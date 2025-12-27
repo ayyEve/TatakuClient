@@ -12,7 +12,7 @@ use tataku::{
     Interpolation as _,
 };
 
-use winit::raw_window_handle::{ 
+use raw_window_handle::{ 
     HasWindowHandle, 
     HasDisplayHandle 
 };
@@ -556,7 +556,7 @@ impl<'window> WgpuEngine<'window> {
                 a
             },
             AtlasResult::NoSpace => {
-                error!("Error inserting size ({width},{height}) into atlas!");
+                error!("Error inserting size ({width}x{height}) into atlas!");
                 return None;
             },
         };

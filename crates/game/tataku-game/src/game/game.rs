@@ -1311,11 +1311,10 @@ impl Game {
                     self.cursor_manager.right_pressed(false);
                 }
 
-                InputType::MouseScroll { raw: delta, .. } => {
+                InputType::MouseScroll(scroll) => {
                     // check for volume change
-                    if delta.y != 0.0
-                    && let Some(action) = self.volume_controller.on_mouse_wheel(
-                        delta.y * 1.5,
+                    if let Some(action) = self.volume_controller.on_mouse_wheel(
+                        *scroll,
                         mods,
                         &mut self.values.settings
                     ) {
@@ -1329,7 +1328,7 @@ impl Game {
                 }
 
                 InputType::KeyPress(key) => {
-                    let Some(key) = key.as_key()
+                    let Some(key) = key.key
                     else { return true };
 
                     if self.volume_controller.on_key_press(
@@ -1347,15 +1346,18 @@ impl Game {
                         return false;
                     }
 
+                    let ctrl = mods.contains(KeyModifiers::CTRL);
+                    let shift = mods.contains(KeyModifiers::SHIFT);
+
                     match key {
                         // screenshot
                         Key::F12 => self.window.send_event(actions::window::WindowAction::TakeScreenshot(actions::window::ScreenshotInfo {
                             // if shift is pressed, upload to server, and get link
-                            upload: mods.shift,
+                            upload: shift,
                         })),
 
                         // settings menu
-                        Key::O if mods.ctrl => {
+                        Key::O if ctrl => {
                             let is_ingame = self.current_state.is_ingame();
                             let allow_ingame = self.settings
                                 .common_game_settings
@@ -1370,12 +1372,12 @@ impl Game {
                         }
 
                         // debug
-                        Key::PageUp if mods.ctrl => {
+                        Key::PageUp if ctrl => {
                             debug!("{:#?}", self.values.values);
                         }
 
                         // custom menu list
-                        Key::M if mods.ctrl && mods.shift => {
+                        Key::M if ctrl && shift => {
                             self.actions.push(actions::multiplayer::MultiplayerAction::CreateLobby {
                                 name: "a".to_string(),
                                 password: String::new(),
@@ -1387,7 +1389,7 @@ impl Game {
                         }
 
                         // debug
-                        Key::T if mods.ctrl && mods.shift => {
+                        Key::T if ctrl && shift => {
                             // self.ui_manager.root_tree.print(&self.values);
                             let xml = self.ui_manager.root_tree.export_xml(&self.values);
                             std::fs::write("/tmp/test.xml", xml).unwrap();
@@ -1417,7 +1419,7 @@ impl Game {
                         ) => {}
 
                         // full refresh
-                        Key::F5 if mods.ctrl => {
+                        Key::F5 if ctrl => {
                             self.actions.push(Notification::new_text(
                                 "Doing a full refresh, the game will freeze for a bit",
                                 Color::RED,
@@ -1429,7 +1431,7 @@ impl Game {
                         }
 
                         // reload custom menus
-                        Key::R if mods.ctrl => {
+                        Key::R if ctrl => {
                             debug!("Reloading custom menus/dialogs");
                             self.load_custom_menus();
 
@@ -1447,7 +1449,7 @@ impl Game {
                         | Key::Key2
                         | Key::Key3
                         | Key::Key4
-                        if mods.ctrl => {
+                        if ctrl => {
                             let index = match key {
                                 Key::Key1 => 0,
                                 Key::Key2 => 1,

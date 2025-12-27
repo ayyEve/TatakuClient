@@ -1377,7 +1377,7 @@ impl Gamemode for OsuGame {
         };
         match input.event {
             InputType::KeyPress(press) => {
-                let key = press.as_key()?;
+                let key = press.key?;
 
                 // playfield adjustment
                 if key == Key::LControl {
@@ -1398,7 +1398,7 @@ impl Gamemode for OsuGame {
             }
 
             InputType::KeyRelease(release) => {
-                let key = release.as_key()?;
+                let key = release.key?;
 
                 // playfield adjustment
                 if key == Key::LControl {
@@ -1498,11 +1498,11 @@ impl Gamemode for OsuGame {
                 Some(ReplayAction::Release(button))
             }
 
-            InputType::MouseScroll { raw: delta, .. } => {
+            InputType::MouseScroll(scroll) => {
                 if self.move_playfield.is_some() {
-                    let delta = delta / 40.0;
+                    let delta = scroll.get_delta(10.0).y;
                     let mut a = (*self.game_settings).clone();
-                    a.playfield_scale += delta.y;
+                    a.playfield_scale += delta;
                     self.game_settings = Arc::new(a.clone());
 
                     self.actions.push(actions::game::GameAction::UpdateSettings(Arc::new(

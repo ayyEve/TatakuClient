@@ -171,7 +171,7 @@ impl Widget<actions::Action> for Slider {
             }
 
             InputType::KeyPress(press) => {
-                let Some(key) = press.as_key() else { return };
+                let Some(key) = press.key else { return };
                 let range = self.range();
 
                 match key {
