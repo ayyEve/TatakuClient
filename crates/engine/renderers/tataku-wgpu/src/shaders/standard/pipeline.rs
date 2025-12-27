@@ -9,9 +9,6 @@ pub(crate) fn create_standard_pipeline(
 ) -> HashMap<tataku::GraphicsPipeline, wgpu::RenderPipeline> {
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("Standard Shader"),
-        #[cfg(feature="texture_arrays")]
-        source: wgpu::ShaderSource::Wgsl(crate::shader_files::SHADER_TEX_ARRAY.into()),
-        #[cfg(not(feature="texture_arrays"))]
         source: wgpu::ShaderSource::Wgsl(crate::shader_files::SHADER.into()),
     });
 

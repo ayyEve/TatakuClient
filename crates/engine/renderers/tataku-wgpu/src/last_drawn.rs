@@ -1,5 +1,3 @@
-// use crate::prelude::*;
-// use tataku::GraphicsPipeline;
 
 // TODO: rename this
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]

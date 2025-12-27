@@ -39,7 +39,6 @@ kira_audio = [ "tataku-kira" ]
 storyboards = [ "tataku-game/storyboards" ]
 dynamic_gamemodes = [ "tataku-game/dynamic_gamemodes" ]
 
-texture_arrays = [ "tataku-wgpu/texture_arrays" ]
 debug_sliders = [ "gamemode-osu/debug_sliders" ]
 
 # helper for testing

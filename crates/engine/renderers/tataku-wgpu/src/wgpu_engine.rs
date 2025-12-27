@@ -4,22 +4,25 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 
 use crate::prelude::*;
-use crate::texture::WgpuTexture;
+use crate::atlas::WgpuAtlas;
 use crate::renderable_surface::*;
-
-use tataku::Take as _;
-use tataku::MatrixHelpers as _; 
-use tataku::Interpolation as _;
-use wgpu::util::DeviceExt as _;
 use graphics::RenderingEngine as _;
-use lyon_tessellation::geom::{ Box2D, Point };
-use winit::raw_window_handle::{ HasWindowHandle, HasDisplayHandle };
-use lyon_tessellation::path::{ builder::BorderRadii, Path as LyonPath };
 
+use tataku::{
+    Take as _,
+    MatrixHelpers as _, 
+    Interpolation as _,
+};
 
-// must not go past 16
-const LAYER_COUNT:u32 = 12;
-const MAX_DEPTH:f32 = 8192.0 * 8192.0;
+use winit::raw_window_handle::{ 
+    HasWindowHandle, 
+    HasDisplayHandle 
+};
+
+use lyon_tessellation:: {
+    geom::{ Box2D, Point },
+    path::{ builder::BorderRadii, Path as LyonPath },
+};
 
 /// background color
 const GFX_CLEAR_COLOR:tataku::Color = tataku::Color::BLACK;
@@ -47,16 +50,12 @@ pub struct WgpuEngine<'window> {
     completed_buffers: Vec<RenderBufferType>,
     current_render_buffer: Option<Box<RenderBufferQueueType>>,
 
-    projection_matrix: tataku::Matrix,
-    projection_matrix_buffer: wgpu::Buffer,
-    projection_matrix_bind_group: wgpu::BindGroup,
+    atlas: WgpuAtlas,
+    projection_matrix: ProjectionMatrix,
 
-    atlas: tataku::Atlas,
-    atlas_texture: WgpuTexture,
 
     screenshot_pending: Option<graphics::ScreenshotCallback>,
 
-    // sampler: wgpu::Sampler,
     particle_system: shaders::particles::ParticleSystem,
     gaussian_blur_pipeline: shaders::gaussian_blur::Pipeline,
     box_blur_pipeline: shaders::box_blur::Pipeline,
@@ -124,14 +123,11 @@ impl<'window> WgpuEngine<'window> {
         // create device and queue
         let (device, queue) = adapter.request_device(
             &wgpu::DeviceDescriptor {
-                #[cfg(feature="texture_arrays")]
                 required_features: wgpu::Features::TEXTURE_BINDING_ARRAY
                     | wgpu::Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING
                     | wgpu::Features::BGRA8UNORM_STORAGE,
-                #[cfg(not(feature="texture_arrays"))]
-                required_features: wgpu::Features::default(),
                 required_limits: wgpu::Limits {
-                    max_binding_array_elements_per_shader_stage: LAYER_COUNT,
+                    max_binding_array_elements_per_shader_stage: WgpuAtlas::LAYER_COUNT.end,
                     ..Default::default()
                 },
                 memory_hints: wgpu::MemoryHints::Performance,
@@ -180,130 +176,14 @@ impl<'window> WgpuEngine<'window> {
         };
         surface.configure(&device, &config);
 
-        #[cfg(feature="texture_arrays")]
-        let texture_bind_group_layout = device.create_bind_group_layout(
-            &wgpu::BindGroupLayoutDescriptor {
-                label: Some("atlas group layout"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
-                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            multisampled: false,
-                        },
-                        count: NonZeroU32::new(LAYER_COUNT),
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                        count: None,
-                    },
-                ],
-            }
+        let atlas = WgpuAtlas::new(
+            &device,
+            surface_format,
         );
 
-        #[cfg(not(feature="texture_arrays"))]
-        let texture_bind_group_layout = device.create_bind_group_layout(
-            &wgpu::BindGroupLayoutDescriptor {
-                label: Some("atlas group layout"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
-                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            multisampled: false,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
-                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            multisampled: false,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
-                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            multisampled: false,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 4,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
-                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            multisampled: false,
-                        },
-                        count: None,
-                    },
-                ],
-            }
-        );
-
-        let proj_matrix_size = std::mem::size_of::<[[f32; 4]; 4]>() as u64;
-        let projection_matrix_bind_group_layout = device.create_bind_group_layout(
-            &wgpu::BindGroupLayoutDescriptor {
-                label: Some("Texture/Sampler bind group layout"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::VERTEX,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: NonZeroU64::new(proj_matrix_size)
-                        },
-                        count: None,
-                    },
-                ]
-            }
-        );
-
-        let window_size = tataku::Vector2::new(window_size[0], window_size[1]);
-        let projection_matrix = Self::create_projection(window_size);
-        let projection_matrix_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Projection Matrix Buffer"),
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                contents: bytemuck::cast_slice(&projection_matrix.to_raw()),
-            }
-        );
-
-        let projection_matrix_bind_group = device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
-                label: Some("diffuse_bind_group"),
-                layout: &projection_matrix_bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                            buffer: &projection_matrix_buffer,
-                            offset: 0,
-                            size: NonZeroU64::new(proj_matrix_size)
-                        }),
-                    },
-                ],
-            }
+        let projection_matrix = ProjectionMatrix::new(
+            tataku::Vector2::new(window_size[0], window_size[1]),
+            &device,
         );
 
         // because the swapchain texture can only have RenderAttachment (**annoy**)
@@ -332,20 +212,10 @@ impl<'window> WgpuEngine<'window> {
             }
         );
 
-        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::FilterMode::Nearest,
-            ..Default::default()
-        });
-
         let pipelines = Self::init_pipelines(
             &device, 
-            &texture_bind_group_layout, 
-            &projection_matrix_bind_group_layout,
+            &atlas.layout, 
+            &projection_matrix.layout,
         );
         
 
@@ -358,15 +228,7 @@ impl<'window> WgpuEngine<'window> {
         
         let particle_system = shaders::particles::ParticleSystem::new(&device);
 
-        let atlas_size = device.limits().max_texture_dimension_2d.min(8192);
-        let atlas_texture = Self::create_texture(
-            &device,
-            &texture_bind_group_layout,
-            &sampler,
-            atlas_size,
-            atlas_size,
-            surface_format,
-        );
+
 
         let buffer_queues = Self::init_buffer_queues(
             &device, 
@@ -386,20 +248,13 @@ impl<'window> WgpuEngine<'window> {
             queue: Arc::new(queue),
             config,
             pipelines,
-            atlas: tataku::Atlas::new(
-                atlas_size,
-                atlas_size,
-                LAYER_COUNT
-            ),
-            atlas_texture,
+            atlas,
 
             current_render_buffer: None,
             buffer_queues,
             completed_buffers: Vec::new(),
 
             projection_matrix,
-            projection_matrix_buffer,
-            projection_matrix_bind_group,
             screenshot_pending: None,
 
             particle_system,
@@ -421,6 +276,7 @@ impl<'window> WgpuEngine<'window> {
             deferred_free_textures: Vec::new(),
         })
     }
+
 
     fn init_pipelines(
         device: &wgpu::Device,
@@ -551,13 +407,14 @@ impl<'window> WgpuEngine<'window> {
         swapchain.present();
 
         if let Some(screenshot) = self.screenshot_pending.take() {
-            let (data, size) = self.read_texture(
+            let (data, size) = self.texture_to_bytes(
                 &texture
             );
 
             screenshot((data, size));
         }
 
+        self.atlas.clear_glyphs();
         for i in self.deferred_free_textures.take() {
             self.free_tex(i, false);
         }
@@ -729,14 +586,14 @@ impl<'window> WgpuEngine<'window> {
                     render_pass.set_pipeline(pipeline);
                     render_pass.set_bind_group(
                         0,
-                        &self.projection_matrix_bind_group,
+                        &self.projection_matrix.bind_group,
                         &[]
                     );
 
                     if let RenderBufferType::Standard(_) = i {
                         render_pass.set_bind_group(
                             1,
-                            &self.atlas_texture.bind_group,
+                            &self.atlas.bind_group,
                             &[]
                         );
                     }
@@ -781,134 +638,12 @@ impl<'window> WgpuEngine<'window> {
         Ok(())
     }
 
-    fn create_projection(draw_size: tataku::Vector2) -> tataku::Matrix {
-        let sx = 2.0 / draw_size.x;
-        let sy = -2.0 / draw_size.y;
-
-        // setup depth range
-        let far = MAX_DEPTH;
-        let near = -far;
-        let depth_range = 1.0 / (far - near);
-
-        [
-            [sx, 0.0, 0.0, 0.0],
-            [0.0, sy, 0.0, 0.0],
-            [0.0, 0.0, depth_range, 0.0],
-            [-1.0, 1.0, -near * depth_range, 1.0]
-        ].into()
-    }
-
-}
-
-// texture stuff
-impl WgpuEngine<'_> {
-    fn create_texture(
-        device: &wgpu::Device,
-        layout: &wgpu::BindGroupLayout,
-        sampler: &wgpu::Sampler,
-        width: u32,
-        height: u32,
-        format: wgpu::TextureFormat,
-    ) -> WgpuTexture {
-        let texture_size = wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        };
-        let desc = wgpu::TextureViewDescriptor {
-            label: Some("atlas_texture_view"),
-            ..Default::default()
-        };
-
-        let view_formats = [
-            format.add_srgb_suffix(), 
-            format.remove_srgb_suffix() 
-        ];
-
-        let textures = (0..LAYER_COUNT).map(|_| {
-            let texture = device.create_texture(
-                &wgpu::TextureDescriptor {
-                    size: texture_size,
-                    mip_level_count: 1,
-                    sample_count: 1,
-                    dimension: wgpu::TextureDimension::D2,
-                    // Most images are stored using sRGB so we need to reflect that here.
-                    format, //TextureFormat::Rgba8UnormSrgb,
-                    // TEXTURE_BINDING tells wgpu that we want to use this texture in shaders
-                    // COPY_DST means that we want to copy data to this texture
-                    usage: wgpu::TextureUsages::TEXTURE_BINDING
-                        | wgpu::TextureUsages::COPY_DST
-                        | wgpu::TextureUsages::COPY_SRC
-                        | wgpu::TextureUsages::RENDER_ATTACHMENT,
-                    label: Some("atlas_texture"),
-                    view_formats: &view_formats,
-                }
-            );
-
-            let view = texture.create_view(&desc);
-            (texture, view)
-        })
-        .collect::<Vec<_>>();
 
 
-        #[cfg(feature="texture_arrays")]
-        let view_list = textures.iter()
-            .map(|a| &a.1)
-            .collect::<Vec<_>>();
-        
-        #[cfg(feature="texture_arrays")]
-        let bind_group = device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
-                label: Some("texture array bind group"),
-                layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureViewArray(&view_list),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wgpu::BindingResource::Sampler(sampler),
-                    }
-                ],
-            }
-        );
-
-        #[cfg(not(feature="texture_arrays"))]
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("texture array bind group"),
-            layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::Sampler(sampler),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&textures[0].1),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: wgpu::BindingResource::TextureView(&textures[1].1),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: wgpu::BindingResource::TextureView(&textures[2].1),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: wgpu::BindingResource::TextureView(&textures[3].1),
-                },
-            ],
-        });
-
-        WgpuTexture {
-            textures: Arc::new(textures),
-            bind_group
-        }
-    }
-
-    fn read_texture(&self, texture: &wgpu::Texture) -> (Vec<u8>, [u32;2]) {
+    pub(crate) fn texture_to_bytes(
+        &self, 
+        texture: &wgpu::Texture,
+    ) -> (Vec<u8>, [u32;2]) {
         let (w, h) = (texture.width(), texture.height());
 
         let fuck = (w * 4)
@@ -956,6 +691,76 @@ impl WgpuEngine<'_> {
         (data, [fuck / 4, h])
     }
 
+
+    fn load_texture(
+        &mut self, 
+        rgba: &[u8],
+        [width, height]: [u32; 2],
+        glyph: bool,
+    ) -> Option<tataku::TextureReference> {
+        let info = self.atlas.reserve(
+            width, 
+            height, 
+            glyph,
+            &self.device,
+        )?;
+
+        if info.is_empty() { return Some(info) }
+
+        let mut data = Cow::Borrowed(rgba);
+
+        if self.config.format.remove_srgb_suffix() != wgpu::TextureFormat::Rgba8Unorm {
+            // cast to bgra
+            data = data
+                .chunks_exact(4)
+                .flat_map(|b| cast_from_rgba_bytes(b, self.config.format))
+                .collect::<Vec<_>>()
+                .into();
+        }
+
+        let padded_width = width + 2 * tataku::ATLAS_PADDING;
+        let padded_height = height + 2 * tataku::ATLAS_PADDING;
+
+        let top_bottom_padding = || (0..padded_width * tataku::ATLAS_PADDING * 4).map(|_| 0u8);
+        let left_right_padding = || (0..tataku::ATLAS_PADDING * 4).map(|_| 0u8);
+
+        let data = top_bottom_padding()
+            .chain(
+                data.chunks_exact(width as usize * 4)
+                    .flat_map(|data| left_right_padding().chain(data.iter().copied()).chain(left_right_padding()))
+            )
+            .chain(top_bottom_padding())
+            .collect::<Vec<_>>();
+
+        let texture_size = wgpu::Extent3d {
+            width: padded_width,
+            height: padded_height,
+            depth_or_array_layers: 1,
+        };
+
+        self.queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: self.atlas.get_texture(&info),
+                mip_level: 0,
+                origin: wgpu::Origin3d {
+                    x: info.x.saturating_sub(tataku::ATLAS_PADDING),
+                    y: info.y.saturating_sub(tataku::ATLAS_PADDING),
+                    z: 0
+                },
+                aspect: wgpu::TextureAspect::All,
+            },
+            &data,
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(4 * padded_width),
+                rows_per_image: None,
+            },
+            texture_size,
+        );
+
+        Some(info)
+    }
+    
 }
 
 
@@ -1631,11 +1436,9 @@ impl graphics::RenderingEngine for WgpuEngine<'_> {
         self.surface.configure(&self.device, &self.config);
 
         let window_size = tataku::Vector2::new(width as f32, height as f32);
-        self.projection_matrix = Self::create_projection(window_size);
-        self.queue.write_buffer(
-            &self.projection_matrix_buffer,
-            0,
-            bytemuck::cast_slice(&self.projection_matrix.to_raw())
+        self.projection_matrix.update_projection(
+            window_size, 
+            &self.queue
         );
     }
 
@@ -1656,29 +1459,7 @@ impl graphics::RenderingEngine for WgpuEngine<'_> {
 
 
     fn dump_atlas(&self, path: &str) {
-        std::fs::create_dir_all(path).unwrap();
-
-        for (n, (tex, _)) in self.atlas_texture
-            .textures
-            .iter()
-            .enumerate()
-        {
-            println!("Reading atlas {n}");
-            let (data, [width, height]) = self.read_texture(tex);
-
-            let path = format!("{path}/atlas_{n}.png");
-            let file = std::fs::File::create(&path).unwrap();
-            let png = image::codecs::png::PngEncoder::new(file);
-
-            use image::ImageEncoder;
-            png.write_image(
-                &data,
-                width,
-                height,
-                image::ExtendedColorType::Rgba8,
-            ).unwrap();
-        }
-
+        self.atlas.dump(self, path);
     }
 
 
@@ -1702,66 +1483,10 @@ impl graphics::RenderingEngine for WgpuEngine<'_> {
         data: &[u8],
         [width, height]: [u32; 2]
     ) -> tataku::Result<tataku::TextureReference> {
-        let Some(info) = self.atlas.try_insert(width, height)
-        else { return Err(tataku::Error::String("no space in atlas".to_owned())); };
-
-        if info.is_empty() { return Ok(info) }
-
-        let mut data = Cow::Borrowed(data);
-
-        if self.config.format.remove_srgb_suffix() != wgpu::TextureFormat::Rgba8Unorm {
-            // cast to bgra
-            data = data
-                .chunks_exact(4)
-                .flat_map(|b| cast_from_rgba_bytes(b, self.config.format))
-                .collect::<Vec<_>>()
-                .into();
-        }
-
-        let padded_width = width + 2 * tataku::ATLAS_PADDING;
-        let padded_height = height + 2 * tataku::ATLAS_PADDING;
-
-        let top_bottom_padding = || (0..padded_width * tataku::ATLAS_PADDING * 4).map(|_| 0u8);
-        let left_right_padding = || (0..tataku::ATLAS_PADDING * 4).map(|_| 0u8);
-
-        let data = top_bottom_padding()
-            .chain(
-                data.chunks_exact(width as usize * 4)
-                    .flat_map(|data| left_right_padding().chain(data.iter().copied()).chain(left_right_padding()))
-            )
-            .chain(top_bottom_padding())
-            .collect::<Vec<_>>();
-
-        let texture_size = wgpu::Extent3d {
-            width: padded_width,
-            height: padded_height,
-            depth_or_array_layers: 1,
-        };
-
-        self.queue.write_texture(
-            wgpu::TexelCopyTextureInfo {
-                texture: &self.atlas_texture.textures
-                    .get(info.layer as usize)
-                    .unwrap()
-                    .0,
-                mip_level: 0,
-                origin: wgpu::Origin3d {
-                    x: info.x.saturating_sub(tataku::ATLAS_PADDING),
-                    y: info.y.saturating_sub(tataku::ATLAS_PADDING),
-                    z: 0
-                },
-                aspect: wgpu::TextureAspect::All,
-            },
-            &data,
-            wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(4 * padded_width),
-                rows_per_image: None,
-            },
-            texture_size,
-        );
-
-        Ok(info)
+        self.load_texture(data, [width, height], false)
+        .ok_or_else(|| tataku::Error::String(
+            "no space in atlas".to_owned()
+        ))
     }
 
     fn free_tex(
@@ -1777,7 +1502,7 @@ impl graphics::RenderingEngine for WgpuEngine<'_> {
         }
 
         // remove from texture atlas
-        self.atlas.remove_entry(tex);
+        self.atlas.remove(tex);
     }
 
     fn screenshot(&mut self, callback: graphics::ScreenshotCallback) {
@@ -2281,7 +2006,13 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
                 .flat_map(<[u8; 4]>::from)
                 .collect::<Vec<_>>();
 
-            let tex = self.load_texture_rgba(&data, size).unwrap();
+            let Some(tex) = self.load_texture(
+                &data, 
+                size, 
+                true
+            )
+            else { return };
+            // let tex = self.load_texture_rgba(&data, size).unwrap();
 
             self.draw_tex(
                 graphics::TextureDraw::new(
@@ -2292,7 +2023,7 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
                 blend_mode,
             );
 
-            self.free_tex(tex, true);
+            // self.free_tex(tex, true);
         }
 
     }
@@ -2306,11 +2037,18 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
         let width = data.width;
         let height = data.height;
         // find space in the render target atlas
-        // FIXME: NO UNWRAP
-        let atlased = self.atlas.try_insert(width, height).expect("FIXME");
+        let Some(atlased) = self.atlas.reserve(
+            width, 
+            height, 
+            false,
+            &self.device,
+        ) else { 
+            error!("Error inserting size ({width},{height}) into atlas!");
+            return 
+        };
 
         // create a projection and render target
-        let projection = Self::create_projection(
+        let projection = ProjectionMatrix::create_projection(
             tataku::Vector2::new(width as f32, height as f32)
         );
 
@@ -2331,19 +2069,12 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
         }
 
         // get the texture this target was written to
-        let textures = self.atlas_texture
-            .textures
+        let atlas_tex = self.atlas
+            .get_texture(&data.tex)
             .clone();
 
-        let Some((atlas_tex, _)) = textures.get(data.tex.layer as usize)
-        else { return };
-
         // write the projection matrix
-        self.queue.write_buffer(
-            &self.projection_matrix_buffer,
-            0,
-            bytemuck::cast_slice(&data.projection.to_raw())
-        );
+        self.projection_matrix.write_projection(data.projection, &self.queue);
         self.queue.submit([]);
 
         // create a temporary texture to render this target to
@@ -2412,11 +2143,7 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
         self.queue.on_submitted_work_done(move || texture.destroy());
 
         // reapply the window projection matrix
-        self.queue.write_buffer(
-            &self.projection_matrix_buffer,
-            0,
-            bytemuck::cast_slice(&self.projection_matrix.to_raw())
-        );
+        self.projection_matrix.reapply_projection(&self.queue);
 
     }
 
@@ -2488,30 +2215,4 @@ fn cast_to_rgba_bytes(bytes: &[u8], _format: wgpu::TextureFormat) -> [u8; 4] {
     //     _ => [r, g, b, a]
     // }
 
-}
-
-#[derive(Copy, Clone)]
-pub(crate) enum WgpuPipeline<'a> {
-    #[cfg(feature="vello")] None,
-    Render(&'a wgpu::RenderPipeline),
-    Compute(&'a wgpu::ComputePipeline),
-}
-impl WgpuPipeline<'_> {
-    pub fn get_bind_group_layout(&self, index: u32) -> wgpu::BindGroupLayout {
-        match self {
-            #[cfg(feature="vello")] Self::None => panic!("trying to get bind group for no pipeline!"),
-            Self::Render(p) => p.get_bind_group_layout(index),
-            Self::Compute(p) => p.get_bind_group_layout(index),
-        }
-    }
-}
-impl<'a> From<&'a wgpu::ComputePipeline> for WgpuPipeline<'a> {
-    fn from(value: &'a wgpu::ComputePipeline) -> Self {
-        Self::Compute(value)
-    }
-}
-impl<'a> From<&'a wgpu::RenderPipeline> for WgpuPipeline<'a> {
-    fn from(value: &'a wgpu::RenderPipeline) -> Self {
-        Self::Render(value)
-    }
 }

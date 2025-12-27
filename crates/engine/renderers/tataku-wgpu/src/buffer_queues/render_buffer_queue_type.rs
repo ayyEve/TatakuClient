@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use crate::buffer_queue::RenderBufferQueue;
+use crate::buffer_queues::RenderBufferQueue;
 
 pub enum RenderBufferQueueType {
     Standard(RenderBufferQueue<shaders::standard::Buffer>),

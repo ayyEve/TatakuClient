@@ -1,15 +1,12 @@
 use guillotiere::*;
 
-pub type TextureReference = AtlasData;
 pub const ATLAS_PADDING:u32 = 2;
 
 pub struct Atlas {
-    available_width: u32,
-    available_height: u32,
+    width: u32,
+    height: u32,
 
     allocators: Vec<AtlasAllocator>,
-
-    empty_tex: TextureReference,
 } 
 impl Atlas {
     pub fn new(width: u32, height: u32, layers: u32) -> Self {
@@ -18,31 +15,47 @@ impl Atlas {
             .collect();
         
         Self {
-            available_width: width,
-            available_height: height,
+            width,
+            height,
             allocators,
-            empty_tex: TextureReference::empty(),
         }
     }
 
+    /// Add an empty layer to the atlas
+    pub fn add_layer(&mut self) {
+        self.allocators.push(AtlasAllocator::new(size2(
+            self.width as i32, 
+            self.height as i32
+        )));
+    }
+
+    pub fn layer_count(&self) -> usize {
+        self.allocators.len()
+    }
+
     pub fn try_insert(&mut self, width: u32, height: u32) -> Option<AtlasData> {
-        if width == 0 || height == 0 { return Some(self.empty_tex) }
+        if width == 0 || height == 0 { return Some(TextureReference::empty()) }
         self.allocators
             .iter_mut()
             .enumerate()
             .find_map(|(n, alloc)| alloc.allocate(size2((width + ATLAS_PADDING * 2) as i32, (height + ATLAS_PADDING * 2) as i32)).map(|a|(n as u32, a)))
-            .map(|(layer, i)| AtlasData::new(i, layer, self.available_width, self.available_height))
+            .map(|(layer, i)| AtlasData::from_alloc(i, layer, self.width, self.height))
     }
     
     pub fn remove_entry(&mut self, entry: TextureReference) {
         if entry.is_empty() { return }
-        self.allocators.get_mut(entry.layer as usize).unwrap().deallocate(entry.id);
+        self.allocators
+            .get_mut(entry.layer as usize)
+            .unwrap()
+            .deallocate(AllocId::deserialize(entry.id));
     }
 }
 
+pub type TextureReference = AtlasData;
 #[derive(Copy, Clone, Debug)]
 pub struct AtlasData {
-    id: AllocId,
+    id: u32,
+    pub tag: AtlasTag,
 
     pub x: u32,
     pub y: u32,
@@ -53,9 +66,41 @@ pub struct AtlasData {
     pub uvs: Uvs,
 }
 impl AtlasData {
-    fn new(alloc_info: Allocation, layer: u32, total_width: u32, total_height: u32) -> Self {
+    pub fn new(
+        [x, y]: [u32; 2],
+        [w, h]: [u32; 2],
+        layer: u32,
+        id: u32,
+        tag: AtlasTag,
+        total_size: [u32; 2],
+    ) -> Self {
+        Self {
+            id,
+            tag,
+
+            x,
+            y,
+            layer,
+            width: w,
+            height: h,
+
+            uvs: Uvs::new(
+                x, y, w, h, 
+                total_size[0], 
+                total_size[1]
+            ),
+        }
+    }
+
+    fn from_alloc(
+        alloc_info: Allocation, 
+        layer: u32, 
+        total_width: u32, 
+        total_height: u32
+    ) -> Self {
         let [x, y] = alloc_info.rectangle.min.to_array();
         let [x2, y2] = alloc_info.rectangle.max.to_array();
+        
         let [x, y, x2, y2] = [
             x as u32 + ATLAS_PADDING, 
             y as u32 + ATLAS_PADDING, 
@@ -65,27 +110,26 @@ impl AtlasData {
 
         let w = x2 - x;
         let h = y2 - y;
-        
-        Self {
-            id: alloc_info.id,
 
-            x,
-            y,
+        Self::new(
+            [x, y],
+            [w, h],
             layer,
-            width: w,
-            height: h,
-
-            uvs: Uvs::new(x, y, w, h, total_width, total_height),
-        }
+            alloc_info.id.serialize(),
+            AtlasTag::NonEmpty, 
+            [ total_width, total_height ],
+        )
     }
 
     pub fn is_empty(&self) -> bool {
-        self.width == 0 || self.height == 0
+        self.tag == AtlasTag::Empty
+        || self.width == 0 || self.height == 0
     }
 
     pub fn empty() -> Self {
         Self {
-            id: AllocId::deserialize(0),
+            id: 0,
+            tag: AtlasTag::Empty,
             x: 0,
             y: 0,
             layer: 0,
@@ -102,6 +146,16 @@ impl Default for AtlasData {
     }
 }
 
+
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub enum AtlasTag {
+    Empty,
+    #[default]
+    NonEmpty,
+    Glyph,
+    Custom(u8),
+}
+
 #[derive(Copy, Clone, Debug)]
 pub struct Uvs {
     pub tl: [f32; 2],
@@ -110,7 +164,14 @@ pub struct Uvs {
     pub br: [f32; 2],
 }
 impl Uvs {
-    fn new(x: u32, y: u32, w: u32, h: u32, total_w: u32, total_h: u32) -> Self {
+    pub fn new(
+        x: u32, 
+        y: u32, 
+        w: u32, 
+        h: u32, 
+        total_w: u32, 
+        total_h: u32,
+    ) -> Self {
         let [x, y, w, h] = [x as f32, y as f32, w as f32, h as f32];
 
         Self {

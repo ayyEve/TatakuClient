@@ -16,7 +16,6 @@ debug_perf_rating = []
 debug_custom_menus = []
 
 storyboards = []
-texture_arrays = []
 ui = [ "taffy", "triple_buffer", "simplecss" ]
 
 # removes as much graphics-side stuff as possible
