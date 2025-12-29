@@ -60,7 +60,7 @@ pub fn create_setting(input: proc_macro::TokenStream) -> proc_macro::TokenStream
     let ast = syn::parse(input).unwrap();
 
     #[cfg(not(feature="graphics"))]
-    return proc_macro::TokenStream::from(quote! {});
+    return proc_macro::TokenStream::from(quote::quote! {});
 
     #[cfg(feature="graphics")]
     wrap_result(settings::impl_settings(&ast))
