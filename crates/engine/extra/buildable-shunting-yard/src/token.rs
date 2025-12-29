@@ -1,38 +1,34 @@
 use crate::*;
-use tataku::_ShuntingYardTokenType;
-use engine::data::shunting_yards::{
-    buildable::*,
-    path_resolver::VariablePathResolver
-};
+use ::shunting_yard::TokenType;
 
 #[doc(hidden)]
 #[derive(Debug, Clone, PartialEq)]
-pub enum BuildableShuntingYardToken {
+pub enum Token {
     Number(f32),
     Variable(VariablePathResolver),
     StringLiteral(String),
-    Operation(BuildableShuntingYardOperator),
+    Operation(crate::Operator),
     Function(String, usize),
     OpenParenthesis,
 }
-impl<'values> tataku::_ShuntingYardToken<
+impl<'values> ::shunting_yard::Token<
     'values, 
     Cow<'values, tataku::TatakuValue>, 
-    BuildableShuntingYardError
-> for BuildableShuntingYardToken {
-    type Operator = BuildableShuntingYardOperator;
+    Error
+> for Token {
+    type Operator = crate::Operator;
     const OPEN_PAREN: Self = Self::OpenParenthesis;
 
-    fn get_type(&self) -> _ShuntingYardTokenType {
+    fn get_type(&self) -> TokenType {
         match self {
             Self::Number(_) 
             | Self::Variable(_) 
             | Self::StringLiteral(_) 
-                => _ShuntingYardTokenType::Value,
+                => TokenType::Value,
 
-            Self::Operation(_) => _ShuntingYardTokenType::Operator,
-            Self::Function(_,_) => _ShuntingYardTokenType::Function,
-            Self::OpenParenthesis => _ShuntingYardTokenType::Unknown,
+            Self::Operation(_) => TokenType::Operator,
+            Self::Function(_,_) => TokenType::Function,
+            Self::OpenParenthesis => TokenType::Unknown,
         }
     }
 

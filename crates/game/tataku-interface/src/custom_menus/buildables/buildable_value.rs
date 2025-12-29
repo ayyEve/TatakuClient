@@ -2,6 +2,7 @@ use crate::prelude::*;
 use common::reflect::*;
 use tataku::TatakuValue;
 use engine::VariablePathResolver;
+use buildable_shunting_yard::BuildableCalc;
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all="camelCase")]
@@ -22,10 +23,7 @@ pub enum BuildableValue {
     Calc(ArcStr),
 
     #[serde(skip)]
-    CalcParsed {
-        calc: BuildableCalc, 
-        calc_str: ArcStr,
-    },
+    CalcParsed(BuildableCalc),
 
     /// The value is passed in from the widget, ie a slider's value when changed
     PassedIn,
@@ -34,14 +32,11 @@ pub enum BuildableValue {
 #[cfg(feature="graphics")]
 impl BuildableValue {
     pub fn build(&mut self) {
-        let Self::Calc(calc_str) = self else { return };
-        match BuildableCalc::parse(&calc_str) {
-            Ok(calc) => {
-                *self = Self::CalcParsed {
-                    calc,
-                    calc_str: calc_str.clone()
-                }
-            }
+        let Self::Calc(calc_str) = self 
+        else { return };
+
+        match BuildableCalc::parse(calc_str.clone()) {
+            Ok(calc) => *self = Self::CalcParsed(calc),
             Err(e) => {
                 error!("Error with calc '{calc_str}': {e:?}");
                 *self = Self::None;
@@ -58,11 +53,11 @@ impl BuildableValue {
             Self::None => None,
             Self::Value(value) => Some(Cow::Borrowed(value)),
             Self::Calc(..) => unreachable!("Calc should be built!"),
-            Self::CalcParsed { calc, calc_str } => {
+            Self::CalcParsed(calc) => {
                 calc
                     .resolve(values)
                     .inspect_err(|e| 
-                        error!("error with calc '{calc_str}': {e:?}")
+                        error!("error with calc '{}': {e:?}", calc.expr)
                     )
                     .ok()
             }

@@ -24,9 +24,6 @@ pub struct Dropdown {
 
     on_change: DropdownOnChange,
 
-    /// is dropdown visible?
-    active: bool,
-
     width: f32,
     node_id: NodeId,
 }
@@ -51,8 +48,6 @@ impl Dropdown {
 
             on_change,
 
-            active: false,
-
             // theme: DropdownTheme::sane_defaults(),
 
             width: 0.0,
@@ -69,7 +64,7 @@ impl Dropdown {
             unreachable!("dropdown variants are built");
         };
 
-        self.active = false;
+        shell.state_mut(self.node_id).unwrap().set_active(false);
         self.value.set_index(index);
 
         self.main_button.inner.child.text.set(enum_variants[index].clone());
@@ -225,31 +220,38 @@ impl Widget<actions::Action> for Dropdown {
             unreachable!("dropdown variants are built");
         };
 
+        let Some(state) = shell.state(self.node_id) 
+        else { return };
+        let active = state.active();
+
         self.main_button.input(event, shell);
 
-        if self.active {
+        if active {
             for variant in buttons {
                 if shell.event_consumed { return; }
 
                 variant.input(event, shell);
             }
         }
-
         if shell.event_consumed { return; }
 
+        let state = shell.state_mut(self.node_id).unwrap();
         match &event.event {
-            InputType::KeyPress(input) if self.active => {
+            InputType::KeyPress(input) if active => {
                 let Some(key) = input.key else { return };
 
                 if key == input::Key::Escape {
-                    self.active = false;
+                    state.set_active(false);
 
                     shell.event_consumed = true;
                 }
             }
 
-            InputType::MousePress(MouseButton::Left) if self.active => {
-                self.active = false;
+            InputType::MousePress(MouseButton::Left) if active => {
+                state.set_active(false);
+            }
+            InputType::MousePressCancel(MouseButton::Left) if active => {
+                state.set_active(false);
             }
 
             _ => {}
@@ -374,7 +376,10 @@ impl Widget<actions::Action> for Dropdown {
             },
 
             "toggle_dropdown" => {
-                self.active = !self.active;
+                let Some(state) = shell.state_mut(self.node_id) 
+                else { return };
+
+                state.toggle(ElementState::Active);
 
                 shell.handled = true;
             },
@@ -384,41 +389,13 @@ impl Widget<actions::Action> for Dropdown {
     }
 
     fn draw(&self, shell: &mut DrawShell<actions::Action>) {
-        let theme = &shell.general_theme;
-        let Some(bounds) = shell.tree.absolute_bounds(self.node_id)
-        else { return };
-
         self.main_button.draw(shell);
-
-        // bounding box
-        // shell.list.push(graphics::Rectangle::new_bounds(
-        //     bounds,
-        //     theme.background_color,
-        // ).border(Border::new(
-        //     theme.get_color(self.active, self.hover),
-        //     2.0
-        // )));
-
-        // selected text
-        // let displays = self.variants.get_displays();
-        // let main_text = self.value.index()
-        //     .and_then(|n| displays.get(n).map(|s| s.as_str()))
-        //     .unwrap_or(self.placeholder.get());
-
-        // let text_style = shell.tree
-        //     .get_text_style(self.node_id)
-        //     .unwrap();
-
-        // shell.list.push(text_style.create_text(main_text.to_string(), bounds));
     }
 
     fn draw_overlay(&self, shell: &mut DrawShell<actions::Action>) {
-        if !self.active { return }
-
-        let Some(bounds) = shell.tree.absolute_bounds(self.node_id)
+        let Some(state) = shell.state(self.node_id) 
         else { return };
-
-        let theme = &shell.general_theme;
+        if !state.active() { return }
 
         let DropdownVariants::Buttons { 
             buttons, .. 
@@ -429,56 +406,6 @@ impl Widget<actions::Action> for Dropdown {
         for variant in buttons {
             variant.draw(shell);
         }
-
-        // let selected = self
-        //     .value
-        //     .index()
-        //     .unwrap_or(self.variants.len());
-
-        // let active = self
-        //     .active_index
-        //     .unwrap_or(self.variants.len());
-
-        // let text_style = shell.tree
-        //     .get_text_style(self.node_id)
-        //     .unwrap();
-
-        // let item_margin = shell.tree
-        //     .get_style(self.node_id).unwrap()
-        //     .item_margin
-        //     .resolve_copied(shell.values)
-        //     .unwrap_or(DEFAULT_ITEM_MARGIN);
-
-        // draw all options
-        // TODO: margin between items
-        // for (n, i) in self
-        //     .variants
-        //     .get_displays()
-        //     .iter()
-        //     .cloned()
-        //     .enumerate()
-        // {
-        //     let offset = Vector2::new(
-        //         bounds.pos.x,
-        //         bounds.pos.y + (bounds.size.y + item_margin) * (n + 1) as f32,
-        //     );
-
-        //     // bounding box
-        //     shell.list.push(graphics::Rectangle::new(
-        //         offset,
-        //         bounds.size,
-        //         theme.background_color.alpha(1.0),
-        //     ).border(Border::new(
-        //         theme.get_color(n == selected, n == active),
-        //         2.0
-        //     )));
-
-        //     // let text = text_style.create_text(
-        //     //     i,
-        //     //     Bounds::new(offset, bounds.size)
-        //     // );
-        //     // shell.list.push(text);
-        // }
     }
 }
 
@@ -576,7 +503,7 @@ impl DropdownVariants {
             });
 
             let button = widgets::Button::new(widgets::Text::new(display.into()))
-                .on_press_left(Some(callback))
+                .on_press_left(Some(widgets::ButtonOnClick::Callback(callback)))
                 .into_widget_base();
 
             buttons.push(button);

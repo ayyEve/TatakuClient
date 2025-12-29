@@ -1,9 +1,11 @@
 use crate::prelude::*;
 use common::reflect::*;
-use engine::{
-    shunting_yards::buildable::ShuntingYardResult,
-    VariablePathResolver
+use engine::VariablePathResolver;
+use buildable_shunting_yard::{
+    BuildableCalc,
+    ShuntingYardResult as ShuntingYardResult
 };
+
 
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase")]
@@ -30,7 +32,7 @@ pub enum BuildableText {
 
     
     /// calc but parsed, should not be read into
-    #[serde(skip)] CalcParsed(BuildableCalc, ArcStr),
+    #[serde(skip)] CalcParsed(BuildableCalc),
 
     Iter {
         #[serde(rename = "@variable")] variable: ArcStr,
@@ -45,8 +47,7 @@ impl BuildableText {
     pub fn compute(&mut self) -> ShuntingYardResult<()> {
         match self {
             Self::Calc { calc } => {
-                let s = calc.clone();
-                *self = Self::CalcParsed(BuildableCalc::parse(&s)?, s);
+                *self = Self::CalcParsed(BuildableCalc::parse(calc.clone())?);
             }
             // because json pointers use '/' and not '.', but '.' is nicer for locale
             // "dialog.confirmation.yes" (us) vs "dialog/confirmation/yes" (json)
@@ -99,7 +100,8 @@ impl BuildableText {
                 }
             },
 
-            Self::CalcParsed(calc, calc_str) => {
+            Self::CalcParsed(calc) => {
+                let calc_str = &calc.expr;
                 match calc.resolve(values) {
                     Ok(val) => val.as_string(),
                     Err(e) => {

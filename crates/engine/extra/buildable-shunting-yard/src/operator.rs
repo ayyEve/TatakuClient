@@ -1,11 +1,10 @@
 use crate::*;
 use tataku::TatakuValue;
-use tataku::_ShuntingYardOperatorReadError;
-use engine::data::shunting_yards::buildable::*;
+use ::shunting_yard::OperatorReadError;
 
 #[doc(hidden)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum BuildableShuntingYardOperator {
+pub enum Operator {
     // math
     Add,
     Sub,
@@ -29,11 +28,11 @@ pub enum BuildableShuntingYardOperator {
     // special
     Index,
 }
-impl<'values> tataku::_ShuntingYardOperator<'values> for BuildableShuntingYardOperator {
+impl<'values> ::shunting_yard::Operator<'values> for Operator {
     type Output = Cow<'values, tataku::TatakuValue>;
-    type Error = BuildableShuntingYardError;
+    type Error = crate::Error;
     
-    fn read(c1: char, c2: char) -> Result<Self, tataku::_ShuntingYardOperatorReadError> {
+    fn read(c1: char, c2: char) -> Result<Self, OperatorReadError> {
         match (c1, c2) {
             // math
             ('*', '*') => Ok(Self::Pow), 
@@ -60,10 +59,10 @@ impl<'values> tataku::_ShuntingYardOperator<'values> for BuildableShuntingYardOp
             // | (':', _) | (_, ':') 
             | ('&', _) | (_, '&') 
             | ('=', _) | (_, '=') 
-                => Err(_ShuntingYardOperatorReadError::Ignore),
+                => Err(OperatorReadError::Ignore),
             
             // err
-            _ => Err(_ShuntingYardOperatorReadError::Unknown),
+            _ => Err(OperatorReadError::Unknown),
         }
     }
 

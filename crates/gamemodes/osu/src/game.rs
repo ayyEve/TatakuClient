@@ -9,7 +9,6 @@ use tataku::{
     Border,
     Easing,
     Vector2,
-    Alignment,
     EmitterVal,
 };
 use engine::{

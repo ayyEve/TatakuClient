@@ -9,6 +9,7 @@ rust-version = "1.89"
 [workspace]
 members = [
     # engine
+    "crates/engine/extra/*",
     "crates/engine/audio/*",
     "crates/engine/renderers/*",
     "crates/engine/tataku-engine",
@@ -63,15 +64,23 @@ rust.unused_must_use = "deny"
 [workspace.dependencies]
 # tataku-common = { version = "0.20.1", registry = "tataku-registry", path = "../tataku-common/tataku-common" }
 tataku-common = { version = "0.21.0", registry = "tataku-registry" }
+
+# bulk engine imports
+tataku-client-proc-macros.path = "crates/game/proc_macros"
 tataku-ui.path = "crates/engine/tataku-ui"
-tataku-game.path = "crates/game/tataku-game"
-tataku-client.path = "crates/game/tataku-client"
 tataku-input.path = "crates/engine/tataku-input"
 tataku-engine.path = "crates/engine/tataku-engine"
 tataku-graphics.path = "crates/engine/tataku-graphics"
 tataku-engine-common.path = "crates/engine/engine-common"
+# bulk engine extra imports
+shunting-yard.path = "crates/engine/extra/shunting-yard"
+path-shunting-yard.path = "crates/engine/extra/path-shunting-yard"
+buildable-shunting-yard.path = "crates/engine/extra/buildable-shunting-yard"
+
+#  bulk game imports
+tataku-game.path = "crates/game/tataku-game"
+tataku-client.path = "crates/game/tataku-client"
 tataku-interface.path = "crates/game/tataku-interface"
-tataku-client-proc-macros.path = "crates/game/proc_macros"
 tataku-resources.path = "crates/resources/tataku-resources"
 
 # Audio

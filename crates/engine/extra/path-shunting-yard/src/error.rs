@@ -1,19 +1,17 @@
-use crate::*;
-use common::reflect::ReflectError;
-use engine::data::shunting_yards::path_resolver::*;
+use tataku_engine_common::common::common::reflect::ReflectError;
 
 #[doc(hidden)]
 #[derive(Debug, PartialEq)]
-pub enum PathShuntingYardError {
+pub enum Error {
     Unknown,
     EmptyExpression,
 
-    UnhandledToken(PathShuntingYardToken),
+    UnhandledToken(crate::Token),
     ReflectError(ReflectError<'static>)
 }
-impl tataku::_ShuntingYardError for PathShuntingYardError {
-    type Operator = PathShuntingYardOperator;
-    type Token = PathShuntingYardToken;
+impl shunting_yard::Error for Error {
+    type Operator = crate::Operator;
+    type Token = crate::Token;
 
     const NO_OPERATION: Self = Self::EmptyExpression;
     const UNEXPECTED_COMMA: Self = Self::Unknown;
@@ -38,7 +36,7 @@ impl tataku::_ShuntingYardError for PathShuntingYardError {
         Self::Unknown
     }
 }
-impl<'a> From<ReflectError<'a>> for PathShuntingYardError {
+impl<'a> From<ReflectError<'a>> for Error {
     fn from(value: ReflectError<'a>) -> Self {
         Self::ReflectError(value.to_owned())
     }

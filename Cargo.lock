@@ -623,6 +623,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "buildable-shunting-yard"
+version = "0.1.0"
+dependencies = [
+ "path-shunting-yard",
+ "shunting-yard",
+ "tataku-engine-common",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3477,6 +3486,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "35fb2e5f958ec131621fdd531e9fc186ed768cbe395337403ae56c17a74c68ec"
 
 [[package]]
+name = "path-shunting-yard"
+version = "0.1.0"
+dependencies = [
+ "shunting-yard",
+ "tataku-engine-common",
+]
+
+[[package]]
 name = "peniko"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4293,6 +4310,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
+name = "shunting-yard"
+version = "0.1.0"
+dependencies = [
+ "tataku-common",
+]
+
+[[package]]
 name = "signal-hook-registry"
 version = "1.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4747,6 +4771,7 @@ version = "0.5.0"
 dependencies = [
  "async-trait",
  "bitflags 2.9.4",
+ "buildable-shunting-yard",
  "encoding_rs",
  "fs_extra",
  "half",
@@ -4756,12 +4781,14 @@ dependencies = [
  "native-tls",
  "num-format",
  "parking_lot",
+ "path-shunting-yard",
  "quick-xml 0.38.3",
  "rand 0.9.2",
  "raw-window-handle",
  "serde",
  "serde_json",
  "serde_yaml",
+ "shunting-yard",
  "simplecss",
  "strfmt",
  "taffy",
@@ -4873,12 +4900,14 @@ dependencies = [
 name = "tataku-interface"
 version = "0.1.0"
 dependencies = [
+ "buildable-shunting-yard",
  "chrono",
  "half",
  "num-format",
  "parley",
  "quick-xml 0.38.3",
  "serde",
+ "shunting-yard",
  "simplecss",
  "taffy",
  "tataku-engine",

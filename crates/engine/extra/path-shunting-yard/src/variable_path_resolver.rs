@@ -1,14 +1,15 @@
-use super::*;
 use crate::*;
 use common::reflect::*;
-use tataku::GenericShuntingYard;
+use shunting_yard::ShuntingYard;
+use tataku_engine_common::common::*;
 
-type AstResult = Result<Vec<PathShuntingYardToken>, PathShuntingYardError>;
+type AstResult = Result<Vec<Token>, Error>;
 
 /// resolves variable paths, ie tmp.some_map::_something.id::game.blah
 #[derive(Clone, Debug)]
 #[derive(Serialize, Deserialize)]
 #[serde(from="String", into="String")]
+#[serde(crate="tataku_engine_common::prelude::serde")]
 pub struct VariablePathResolver {
     pub(crate) var: ArcStr,
     ast: Arc<AstResult>,
@@ -65,5 +66,11 @@ impl From<VariablePathResolver> for String {
 impl std::fmt::Display for VariablePathResolver {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.var.fmt(f)
+    }
+}
+
+impl AsRef<str> for VariablePathResolver {
+    fn as_ref(&self) -> &str {
+        &self.var
     }
 }

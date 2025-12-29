@@ -1,16 +1,17 @@
 use crate::*;
-use super::*;
 use common::reflect::*;
-use tataku::{
-    ShuntingYardStack,
+use tataku_engine_common::common::*;
+use shunting_yard::{
+    Stack,
+    ShuntingYard,
 };
 
 pub(crate) struct PathShuntingYard;
-impl<'rpn, 'values: 'rpn> tataku::GenericShuntingYard<'rpn, 'values> for PathShuntingYard {
-    type Token = PathShuntingYardToken;
-    type ReadType = PathShuntingYardReadType;
-    type Operator = PathShuntingYardOperator;
-    type Error = PathShuntingYardError;
+impl<'rpn, 'values: 'rpn> ShuntingYard<'rpn, 'values> for PathShuntingYard {
+    type Token = crate::Token;
+    type ReadType = crate::ReadType;
+    type Operator = crate::Operator;
+    type Error = crate::Error;
     type Output = String;
 
     fn read_check_char(
@@ -60,9 +61,9 @@ impl<'rpn, 'values: 'rpn> tataku::GenericShuntingYard<'rpn, 'values> for PathShu
         _is_open_paren: bool,
     ) -> Result<(), Self::Error> {
         // any "operation" is really a function
-        if matches!(operator_queue.last(), Some(Self::Token::Operation(PathShuntingYardOperator))) {
+        if matches!(operator_queue.last(), Some(Self::Token::Operation(Operator))) {
             operator_queue.pop();
-            operator_queue.push(PathShuntingYardToken::Reference);
+            operator_queue.push(Token::Reference);
         }
 
         match read_type {
@@ -80,17 +81,17 @@ impl<'rpn, 'values: 'rpn> tataku::GenericShuntingYard<'rpn, 'values> for PathShu
         token: &'rpn Self::Token,
         _values: &'values dyn Reflect,
     ) -> Result<Self::Output, ReflectError<'rpn>> {
-        let PathShuntingYardToken::Static(s) = token 
+        let Token::Static(s) = token 
         else { panic!("trying to resolve non-value token type") };
         Ok(s.clone())
     }
 
     fn run_function(
         function_token: &'rpn Self::Token, 
-        stack: &mut ShuntingYardStack<'rpn, Self::Output>, 
+        stack: &mut Stack<'rpn, Self::Output>, 
         values: &'values dyn Reflect,
     ) -> Result<(), Self::Error> {
-        let PathShuntingYardToken::Reference = function_token 
+        let Token::Reference = function_token 
         else { panic!("trying to resolve non-reference token type") };
 
         let value = Self::get_function_helper(
@@ -112,7 +113,7 @@ impl<'rpn, 'values: 'rpn> tataku::GenericShuntingYard<'rpn, 'values> for PathShu
         Ok(())
     }
 
-    fn post_process_resolved(stack: &mut ShuntingYardStack<'rpn, Self::Output>) {
+    fn post_process_resolved(stack: &mut Stack<'rpn, Self::Output>) {
         let a = stack
             .take()
             .into_iter()
@@ -129,7 +130,7 @@ impl<'rpn, 'values: 'rpn> tataku::GenericShuntingYard<'rpn, 'values> for PathShu
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tataku::GenericShuntingYard;
+    use shunting_yard::ShuntingYard;
 
     #[test]
     fn test_simple() {
@@ -142,7 +143,7 @@ mod tests {
         assert_eq!(
             ast,
             vec![
-                PathShuntingYardToken::Static("game.test.hi_123".into()),
+                Token::Static("game.test.hi_123".into()),
             ]
         );
 
@@ -167,9 +168,9 @@ mod tests {
         assert_eq!(
             ast,
             vec![
-                PathShuntingYardToken::Static("game".into()),
-                PathShuntingYardToken::Static("game.test".into()),
-                PathShuntingYardToken::Reference,
+                Token::Static("game".into()),
+                Token::Static("game.test".into()),
+                Token::Reference,
             ]
         );
 
@@ -206,8 +207,8 @@ mod tests {
         assert_eq!(
             ast,
             vec![
-                PathShuntingYardToken::Static("game.test".into()),
-                PathShuntingYardToken::Reference,
+                Token::Static("game.test".into()),
+                Token::Reference,
             ]
         );
 
@@ -245,10 +246,10 @@ mod tests {
         assert_eq!(
             ast,
             vec![
-                PathShuntingYardToken::Static("game".into()),
-                PathShuntingYardToken::Static("game.test".into()),
-                PathShuntingYardToken::Reference,
-                PathShuntingYardToken::Static("hi_123".into()),
+                Token::Static("game".into()),
+                Token::Static("game.test".into()),
+                Token::Reference,
+                Token::Static("hi_123".into()),
             ]
         );
 
@@ -285,9 +286,9 @@ mod tests {
         assert_eq!(
             ast,
             vec![
-                PathShuntingYardToken::Static("game.test".into()),
-                PathShuntingYardToken::Reference,
-                PathShuntingYardToken::Static("hi_123".into()),
+                Token::Static("game.test".into()),
+                Token::Reference,
+                Token::Static("hi_123".into()),
             ]
         );
 
@@ -323,10 +324,10 @@ mod tests {
         assert_eq!(
             ast,
             vec![
-                PathShuntingYardToken::Static("game".into()),
-                PathShuntingYardToken::Static("game.test".into()),
-                PathShuntingYardToken::Reference,
-                PathShuntingYardToken::Static("hi_123".into()),
+                Token::Static("game".into()),
+                Token::Static("game.test".into()),
+                Token::Reference,
+                Token::Static("hi_123".into()),
             ]
         );
 
@@ -350,17 +351,4 @@ mod tests {
 
         assert_eq!(res, Ok(str_result.to_owned()));
     }
-}
-
-#[test]
-fn test() {
-    let i = tataku::Cryptography::md5("hi mom");
-    let mut map = HashMap::new();
-    let v = String::from("hello");
-    map.insert(i, v.clone());
-
-    let n = i.to_string();
-    let a = map.impl_get(ReflectPath::new(&n)).unwrap();
-    let t = a.as_ref().impl_display(ReflectPath::EMPTY, None).unwrap();
-    assert_eq!(t, v);
 }

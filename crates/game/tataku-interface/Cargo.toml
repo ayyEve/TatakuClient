@@ -23,10 +23,11 @@ tataku-ui.workspace = true
 tataku-graphics.workspace = true
 tataku-engine-common.workspace = true
 tataku-engine.workspace = true
+shunting-yard.workspace = true
+buildable-shunting-yard.workspace = true
 
 taffy.workspace = true
 parley.workspace = true
-# async-recursion.workspace = true
 
 chrono.workspace = true
 serde.workspace = true

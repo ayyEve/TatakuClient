@@ -1,12 +1,10 @@
 mod from;
+mod chainable;
 mod css_parse;
 mod custom_debug;
 mod custom_default;
 mod settings_deserializer;
 #[cfg(feature="graphics")] mod settings;
-
-use quote::*;
-use syn::*;
 
 #[proc_macro_derive(From, attributes(from))]
 pub fn impl_from(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -59,70 +57,34 @@ pub fn impl_parse_css(input: proc_macro::TokenStream) -> proc_macro::TokenStream
 pub fn create_setting(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // Parse the string representation
     #[cfg(feature="graphics")]
-    let ast: DeriveInput = syn::parse(input).unwrap();
+    let ast = syn::parse(input).unwrap();
 
     #[cfg(not(feature="graphics"))]
     return proc_macro::TokenStream::from(quote! {});
 
     #[cfg(feature="graphics")]
-    match settings::impl_settings(&ast) {
-        Ok(tokens) => proc_macro::TokenStream::from(tokens),
-        Err(e) => proc_macro::TokenStream::from(e.into_compile_error()),
-    }
+    wrap_result(settings::impl_settings(&ast))
 }
 
 #[proc_macro_derive(DeserializeSettings)]
 pub fn impl_settings_deserializer(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    // Parse the string representation
     let ast = syn::parse(input).unwrap();
-
-    // Build and return the impl
-    match settings_deserializer::impl_settings_deserializer(&ast) {
-        Ok(tokens) => proc_macro::TokenStream::from(tokens),
-        Err(e) => proc_macro::TokenStream::from(e.into_compile_error()),
-    }
+    wrap_result(settings_deserializer::impl_settings_deserializer(&ast))
 }
 
 
 #[proc_macro_derive(ChainableInitializer, attributes(chain))]
 pub fn impl_chainable_initializer(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // Parse the string representation
-    let ast:DeriveInput = syn::parse(input).unwrap();
+    let ast = syn::parse(input).unwrap();
 
-    let (
-        impl_generics, 
-        ty_generics, 
-        where_clause
-    ) = ast.generics.split_for_impl();
+    wrap_result(chainable::impl_chainable(&ast))
+}
 
-    // Build the impl
-    let Data::Struct(s) = &ast.data else { panic!("no") };
-    let type_name = &ast.ident;
-
-    let mut tys = Vec::new();
-    let mut idents = Vec::new();
-    let mut idents_maybe = Vec::new();
-
-    for f in s.fields.iter() {
-        if !f.attrs.iter().any(|a| a.path().is_ident("chain")) { continue }
-        let Some(ident) = &f.ident else { panic!("ghjskslgd") }; 
-        tys.push(&f.ty);
-        idents.push(ident);
-        idents_maybe.push(format_ident!("{ident}_maybe"));
-    }
-
-    quote! {
-        impl #impl_generics #type_name #ty_generics where #where_clause { #(
-            pub fn #idents(mut self, val: impl Into<#tys>) -> Self {
-                self.#idents = val.into();
-                self
-            }
-
-            pub fn #idents_maybe(mut self, val: Option<impl Into<#tys>>) -> Self {
-                let Some(val) = val else { return self };
-                self.#idents = val.into();
-                self
-            }
-        )* }
-    }.into()
+fn wrap_result(r: syn::Result<proc_macro2::TokenStream>) -> proc_macro::TokenStream {
+    let tokens = match r {
+        Ok(tokens) => tokens,
+        Err(e) => e.into_compile_error(),
+    };
+    proc_macro::TokenStream::from(tokens)
 }

@@ -1,12 +1,11 @@
-use crate::*;
 
 #[doc(hidden)]
 #[derive(Default)]
-pub(crate) enum PathShuntingYardReadType {
+pub(crate) enum ReadType {
     #[default] None,
     Static(String),
 }
-impl PathShuntingYardReadType {
+impl ReadType {
     pub fn push(&mut self, c: char) {
         match self {
             Self::Static(s) => s.push(c),
@@ -14,4 +13,4 @@ impl PathShuntingYardReadType {
         }
     }
 }
-impl tataku::_ShuntingYardReadType for PathShuntingYardReadType {}
+// impl shunting_yard::ReadType for PathShuntingYardReadType {}

@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use widgets::context_menus::ContextMenuAction;
 use tataku::{
     Border,
     Bounds,
@@ -15,7 +16,6 @@ use input::{
     InputEvent, 
     MouseButton, 
 };
-use widgets::context_menus::ContextMenuAction;
 
 /// NOTE: This doesn't need to be in the taffy tree (probably)
 pub struct ContextMenu {

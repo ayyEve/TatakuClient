@@ -2,7 +2,6 @@ use crate::prelude::*;
 use graphics::SkinnedNumber;
 use tataku::{
     Color,
-    Bounds,
     Vector2,
     Alignment,
     format_float,

@@ -1,21 +1,20 @@
 use crate::*;
 use common::reflect::ReflectError;
-use crate::data::shunting_yards::buildable::*;
 
-pub type ShuntingYardResult<T> = Result<T, BuildableShuntingYardError>;
+pub type ShuntingYardResult<T> = core::result::Result<T, Error>;
 
 #[derive(Debug, PartialEq)]
-pub enum BuildableShuntingYardError {
+pub enum Error {
     NoMath,
     UnexpectedComma,
     InvalidOperator(char),
-    InvalidToken(BuildableShuntingYardToken),
+    InvalidToken(crate::Token),
     InvalidFunction(String),
     EntryDoesntExist(String),
     ValueIsntANumber(String),
     ValueIsntABool,
-    MissingLeftSide(BuildableShuntingYardOperator),
-    MissingRightSide(BuildableShuntingYardOperator),
+    MissingLeftSide(crate::Operator),
+    MissingRightSide(crate::Operator),
     MissingFunctionArgument(String),
 
     ArgumentWrongCount {
@@ -37,15 +36,15 @@ pub enum BuildableShuntingYardError {
     ReflectError(ReflectError<'static>)
 }
 
-impl<'a> From<ReflectError<'a>> for BuildableShuntingYardError {
+impl<'a> From<ReflectError<'a>> for Error {
     fn from(value: ReflectError<'a>) -> Self {
         Self::ReflectError(value.to_owned())
     }
 }
 
-impl tataku::_ShuntingYardError for BuildableShuntingYardError {
-    type Operator = BuildableShuntingYardOperator;
-    type Token = BuildableShuntingYardToken;
+impl ::shunting_yard::Error for Error {
+    type Operator = crate::Operator;
+    type Token = crate::Token;
 
     const NO_OPERATION: Self = Self::NoMath;
     const UNEXPECTED_COMMA: Self = Self::UnexpectedComma;

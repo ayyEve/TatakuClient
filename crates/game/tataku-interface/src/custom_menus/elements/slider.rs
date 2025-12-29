@@ -75,6 +75,6 @@ impl SliderElement {
             self.var.clone().into(),
             self.on_input.inner.clone().into(),
         )
-        .step_maybe(step)
+        .step(step)
     }
 }

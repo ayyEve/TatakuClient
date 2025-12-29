@@ -23,9 +23,6 @@ const BOX_SIZE_EM: f32 = 0.75;
 pub struct Checkbox {
     value: CheckboxValue,
 
-    active: bool,
-    hovered: bool,
-
     on_toggle: Option<CheckboxOnToggle>,
     
     node_id: NodeId,
@@ -35,9 +32,6 @@ impl Checkbox {
         Self {
             value,
             on_toggle: None,
-
-            active: false,
-            hovered: false,
             node_id: ui::EMPTY_NODE,
         }
     }
@@ -87,26 +81,30 @@ impl Widget<actions::Action> for Checkbox {
         event: &InputEvent, 
         shell: &mut InputShell<actions::Action>, 
     ) {
+        let Some(state) = shell.state(self.node_id) 
+        else { return };
+
         match event.event {
             InputType::MouseMove(pos) => {
                 let Some(bounds) = shell.tree.bounds(self.node_id) 
                 else { return };
-
-                let Some(ctx) = shell.tree.get_context(self.node_id) 
-                else { return };
+                let ctx = shell.tree.get_context_mut(self.node_id).unwrap(); // unwrap is fine here because we know it exists from higher up
 
                 let pos = ctx.inverse_global_transform * pos;
 
-                self.hovered = bounds.contains(pos);
-                if self.active { self.active = false }
+                ctx.element_data.state.set_hover(bounds.contains(pos));
+                ctx.element_data.state.set_active(false);
             }
 
-            InputType::MousePress(MouseButton::Left) if self.hovered => {
-                self.active = true;
+            InputType::MousePress(MouseButton::Left) if state.hover() => {
+                shell.state_mut(self.node_id)
+                    .unwrap()
+                    .set_active(true);
+                
                 shell.event_consumed = true;
             }
 
-            InputType::MouseRelease(MouseButton::Left) if self.active => {
+            InputType::MouseRelease(MouseButton::Left) if state.active() => {
                 let m = self.on_toggle
                     .as_ref()
                     .map(|f| f.run(
@@ -118,7 +116,7 @@ impl Widget<actions::Action> for Checkbox {
 
                 if let Some(m) = m {
                     match m {
-                        Ok(m) => shell.publish(m),
+                        Ok(m) => shell.messages.push(m),
                         Err(action) => shell.actions.push(action),
                     }
                 }
@@ -128,8 +126,10 @@ impl Widget<actions::Action> for Checkbox {
                 }
             }
 
-            InputType::MousePressCancel(MouseButton::Left) if self.active => {
-                self.active = false;
+            InputType::MousePressCancel(MouseButton::Left) if state.active() => {
+                shell.state_mut(self.node_id)
+                    .unwrap()
+                    .set_active(false);
                 shell.event_consumed = true;
             }
             _ => {}
@@ -138,6 +138,8 @@ impl Widget<actions::Action> for Checkbox {
 
     fn draw(&self, shell: &mut DrawShell<actions::Action>) {
         let Some(bounds) = shell.tree.absolute_bounds(self.node_id) 
+        else { return };
+        let Some(state) = shell.state(self.node_id)
         else { return };
 
         let text_style = shell.tree
@@ -155,7 +157,7 @@ impl Widget<actions::Action> for Checkbox {
                 Color::TRANSPARENT
             }
         ).border(Border::new(
-            shell.general_theme.get_color(self.active, self.hovered),
+            shell.general_theme.get_color(state.active(), state.hover()),
             2.0
         )).shape(graphics::Shape::Round(2.0));
         shell.list.push(rect);

@@ -11,7 +11,7 @@ use engine::{
 #[serde(rename_all="camelCase")]
 #[derive(Clone, Debug, PartialEq)]
 pub enum BuildableOnlineContentAction {
-    Search(BuildableOnlineContentSearch),
+    Search(Box<BuildableOnlineContentSearch>),
 
     NextPage,
     PreviousPage,

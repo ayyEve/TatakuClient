@@ -53,10 +53,6 @@ pub struct TextInput {
     on_submit: Option<InputAction<String>>,
     
     cursor: Cursor,
-    pressed: bool,
-    hovered: bool,
-    active: bool,
-
     node_id: NodeId,
 }
 impl TextInput {
@@ -80,10 +76,6 @@ impl TextInput {
             on_submit: None,
 
             cursor: Cursor::Position(0),
-            pressed: false,
-            hovered: false,
-            active: false,
-
             node_id: ui::EMPTY_NODE,
         }
     }
@@ -325,67 +317,67 @@ impl TextInput {
         &mut self, 
         input: &KeyInput, 
         mods: KeyModifiers,
-    ) -> Option<bool> {
+    ) -> HandleKeyResult {
         if let Some(text) = &input.text {
-            println!("adding text: {text}");
             self.add_text(text);
-            return Some(true);
+            return HandleKeyResult::TextChanged;
         }
+
+        let Some(key) = input.key 
+        else { return HandleKeyResult::Ignored };
         
         let len = self.value.len();
 
         let ctrl = mods.contains(KeyModifiers::CTRL);
         let shift = mods.contains(KeyModifiers::SHIFT);
 
-        println!("key: {:?}", input.key);
-
-        match input.key? {
+        match key {
             Key::Backspace if ctrl => {
                 self.handle_control_action(
                     ControlAction::Backspace, 
                     shift
                 );
-                Some(true)
+                HandleKeyResult::TextChanged
             }
             Key::Delete if ctrl => {
                 self.handle_control_action(
                     ControlAction::Delete, 
                     shift
                 );
-                Some(true)
+                HandleKeyResult::TextChanged
             }
             Key::Left if ctrl => {
                 self.handle_control_action(
                     ControlAction::CursorLeft, 
                     shift
                 );
-                Some(true)
+                HandleKeyResult::TextChanged
             }
             Key::Right if ctrl => {
                 self.handle_control_action(
                     ControlAction::CursorRight, 
                     shift
                 );
-                Some(true)
+                HandleKeyResult::TextChanged
             }
             Key::Up if ctrl => {
                 self.handle_control_action(
                     ControlAction::CursorUp, 
                     shift
                 );
-                Some(true)
+                HandleKeyResult::TextChanged
             }
             Key::Down if ctrl => {
                 self.handle_control_action(
                     ControlAction::CursorDown, 
                     shift
                 );
-                Some(true)
+                HandleKeyResult::TextChanged
             }
 
             Key::Space => {
                 self.add_text(" ");
-                Some(true)
+                HandleKeyResult::TextChanged
             }
             Key::Backspace => {
                 println!("backspace");
@@ -396,14 +388,14 @@ impl TextInput {
 
                             self.value.remove(*n);
 
-                            Some(true)
+                            HandleKeyResult::TextChanged
                         } else {
-                            Some(false)
+                            HandleKeyResult::Consumed
                         }
                     }
                     Cursor::Selection { .. } => {
                         self.replace_selection("");
-                        Some(true)
+                        HandleKeyResult::TextChanged
                     }
                 }
             }
@@ -413,14 +405,14 @@ impl TextInput {
                         if n < len {
                             self.value.remove(n);
 
-                            Some(true)
+                            HandleKeyResult::TextChanged
                         } else {
-                            Some(false)
+                            HandleKeyResult::Consumed
                         }
                     }
                     Cursor::Selection { .. } => {
                         self.replace_selection("");
-                        Some(true)
+                        HandleKeyResult::TextChanged
                     }
                 }
             }
@@ -474,7 +466,7 @@ impl TextInput {
                 }
 
                 self.cursor.normalize();
-                Some(false)
+                HandleKeyResult::Consumed
             }
 
             Key::Right => {
@@ -520,7 +512,7 @@ impl TextInput {
                 }
 
                 self.cursor.normalize();
-                Some(false)
+                HandleKeyResult::Consumed
             }
             Key::Up => {
                 match &mut self.cursor {
@@ -528,7 +520,7 @@ impl TextInput {
                     Cursor::Selection { end, .. } => *end = len,
                 }
                 self.cursor.normalize();
-                Some(false)
+                HandleKeyResult::Consumed
             }
             Key::Down => {
                 match &mut self.cursor {
@@ -536,18 +528,15 @@ impl TextInput {
                     Cursor::Selection { start, .. } => *start = 0,
                 }
                 self.cursor.normalize();
-                Some(false)
+                HandleKeyResult::Consumed
             }
 
         
-            Key::Escape => {
-                self.active = false;
-                Some(false)
-            }
+            Key::Escape => HandleKeyResult::RemoveActive,
 
-            _ if mods.contains(KeyModifiers::CTRL | KeyModifiers::ALT) => None,
+            _ if mods.contains(KeyModifiers::CTRL | KeyModifiers::ALT) => HandleKeyResult::Ignored,
 
-            _ => Some(false)
+            _ => HandleKeyResult::Consumed
         }
     }
 
@@ -624,11 +613,17 @@ impl Widget<actions::Action> for TextInput {
         event: &InputEvent,
         shell: &mut InputShell<actions::Action>,
     ) {
+        let Some(state) = shell.state_mut(self.node_id) 
+        else { return };
+
         match &event.event {
-            InputType::KeyPress(press) if self.active => {
+            InputType::KeyPress(press) if state.active() => {
 
                 match press.key {
                     Some(Key::Enter) => {
+                        state.set_active(false);
+                        shell.event_consumed = true;
+
                         if let Some(on_submit) = &self.on_submit {
                             on_submit.run(
                                 &self.value,
@@ -639,28 +634,30 @@ impl Widget<actions::Action> for TextInput {
                                 shell.values,
                             );
                         }
-
-                        shell.event_consumed = true;
-                        self.active = false;
                         return;
                     }
 
                     Some(Key::Tab) => {
+                        state.set_active(false);
                         shell.event_consumed = true;
-                        self.active = false;
                         // TODO: event to select the next element
                         return;
                     }
                     _ => {}
                 }
 
-                if let Some(text_changed) = self.handle_key(
+                match self.handle_key(
                     press, 
                     event.key_mods
                 ) {
-                    shell.event_consumed = true;
-
-                    if text_changed {
+                    HandleKeyResult::Ignored => {}
+                    HandleKeyResult::Consumed => shell.event_consumed = true,
+                    HandleKeyResult::RemoveActive => {
+                        state.set_active(false);
+                        shell.event_consumed = true;
+                    }
+                    HandleKeyResult::TextChanged => {
+                        shell.event_consumed = true;
 
                         // todo: fixme:
                         // if let WidgetText::Custom {
@@ -695,14 +692,18 @@ impl Widget<actions::Action> for TextInput {
 
 
             InputType::MouseMove(pos) => {
-                let Some(ctx) = shell.tree.get_context(self.node_id) 
-                else { return };
-
-                let pos = ctx.inverse_global_transform * *pos;
                 let bounds = shell.tree.bounds(self.node_id).unwrap();
-                self.hovered = bounds.contains(pos);
+                let Some(state) = shell.with_ctx_mut(
+                    self.node_id, 
+                    |ctx| {
+                        let pos = ctx.inverse_global_transform * *pos;
+                        ctx.element_data.state.set_hover(bounds.contains(pos));
 
-                if self.pressed {
+                        ctx.element_data.state
+                    }
+                ) else { return };
+
+                if state.pressed() {
                     use std::cmp::Ordering;
 
                     let index = self.position_to_index(pos.x - bounds.pos.x);
@@ -762,8 +763,9 @@ impl Widget<actions::Action> for TextInput {
                 }
             }
             InputType::MousePress(MouseButton::Left) => {
-                self.active = self.hovered;
-                self.pressed = self.active;
+                let hover = state.hover();
+                state.set_active(hover);
+                state.set_pressed(hover);
 
                 let Some(ctx) = shell.tree.get_context(self.node_id) 
                 else { return };
@@ -773,24 +775,19 @@ impl Widget<actions::Action> for TextInput {
                     .content_bounds(self.node_id)
                     .unwrap();
 
-                if self.pressed {
+                if hover {
                     shell.event_consumed = true;
-
                     let index = self.position_to_index(pos.x - bounds.pos.x);
-
                     self.cursor = Cursor::Position(index);
                 }
             }
             InputType::MouseRelease(MouseButton::Left) => {
-                self.pressed = false;
+                state.set_pressed(false);
                 // self.active = false;
             }
-            InputType::MousePressCancel(MouseButton::Left) => {
-                if self.active {
-                    self.active = false;
-                    self.pressed = false;
-                    shell.event_consumed = true;
-                }
+            InputType::MousePressCancel(MouseButton::Left) if state.active() => {
+                state.remove(ElementState::Active | ElementState::Pressed);
+                shell.event_consumed = true;
             }
             
             _ => {}
@@ -798,20 +795,22 @@ impl Widget<actions::Action> for TextInput {
     }
 
     fn draw(&self, shell: &mut DrawShell<actions::Action>) {
-        let Some(bounds) = shell.tree.absolute_bounds(self.node_id) 
-        else { return };
+        let Some((bounds, state)) = shell.with_ctx(
+            self.node_id,
+            |ctx| (ctx.absolute_bounds, ctx.element_data.state)
+        ) else { return };
 
         shell.list.push(graphics::Rectangle::new_bounds(
             bounds,
             shell.general_theme.background_color
         ).border(Border::new(
-            shell.general_theme.get_color(self.active, self.hovered), 
+            shell.general_theme.for_state(state), 
             2.0
         )));
 
         self.text.draw(shell);
 
-        if !self.active || self.value.is_empty() { return; }
+        if !state.active() || self.value.is_empty() { return; }
 
         let layout = self.text.text_layout();
         let height = layout.height(); // since there is only one line
@@ -928,6 +927,22 @@ impl ControlAction {
     fn delete_text(self) -> bool {
         matches!(self, Self::Delete | Self::Backspace)
     }
+}
+
+#[derive(Copy, Clone)]
+enum HandleKeyResult {
+    /// Event was ignored
+    Ignored,
+
+    /// Consumed the event but text was not changed
+    Consumed,
+
+    /// Consumed the event and text was changed
+    TextChanged,
+
+    /// consumed the event, and the element's active state should be removed
+    /// TODO: rename to something better
+    RemoveActive,
 }
 
 #[test]

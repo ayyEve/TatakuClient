@@ -33,8 +33,6 @@ pub struct Slider {
     #[chain] step: Option<SliderValue>,
     on_change: InputAction<f32>,
 
-    hovered: bool,
-    pressed: bool,
     node_id: NodeId,
 }
 impl Slider {
@@ -52,8 +50,6 @@ impl Slider {
             step: None,
             on_change,
 
-            hovered: false,
-            pressed: false,
             node_id: ui::EMPTY_NODE,
         }
     }
@@ -101,25 +97,25 @@ impl Widget<actions::Action> for Slider {
         event: &InputEvent,
         shell: &mut InputShell<actions::Action>,
     ) {
-        let Some(ctx) = shell.tree.get_context(self.node_id)
+        let Some(content_bounds) = shell.tree.content_bounds(self.node_id)
         else { return };
-        let active = ctx.selected.unwrap();
+        let Some(ctx) = shell.tree.get_context_mut(self.node_id)
+        else { return };
+        let state = &mut ctx.element_data.state;
+        let focused = ctx.selected == Some(true) || state.focus();
 
         match &event.event {
             InputType::MouseMove(pos) => {
                 let pos = ctx.inverse_global_transform * *pos;
-                let bounds = shell.tree
-                    .content_bounds(self.node_id)
-                    .unwrap();
-                self.hovered = bounds.contains(pos);
+                state.set_hover(content_bounds.contains(pos));
 
-                if self.pressed {
+                if state.active() {
                     let value = self.value.get();
                     let range = self.range();
                     let start = *range.start();
                     let end = *range.end();
 
-                    let percent = (pos.x - bounds.pos.x) / bounds.size.x;
+                    let percent = (pos.x - content_bounds.pos.x) / content_bounds.size.x;
                     let mut new_value = f32::lerp(start, end, percent)
                         .clamp(start, end);
                     // (start + percent * (end - start))
@@ -161,17 +157,17 @@ impl Widget<actions::Action> for Slider {
                 }
             }
 
-            InputType::MousePress(MouseButton::Left) if self.hovered => {
-                self.pressed = true;
+            InputType::MousePress(MouseButton::Left) if state.hover() => {
+                state.set_active(true);
                 shell.event_consumed = true;
             }
             InputType::MouseRelease(MouseButton::Left) => {
-                self.pressed = false;
+                state.set_active(false);
                 // never consume a mouse release event
             }
 
             InputType::MousePressCancel(MouseButton::Left) => {
-                self.pressed = false;
+                state.set_active(false);
                 shell.event_consumed = true;
             }
 
@@ -180,7 +176,7 @@ impl Widget<actions::Action> for Slider {
                 let range = self.range();
 
                 match key {
-                    Key::Left => if active || self.hovered {
+                    Key::Left => if focused || state.hover() {
                         shell.event_consumed = true;
                         self.value.set((
                             self.value.get() - self.step
@@ -190,7 +186,7 @@ impl Widget<actions::Action> for Slider {
                             .clamp(*range.start(), *range.end())
                         );
                     }
-                    Key::Right => if active || self.hovered {
+                    Key::Right => if focused || state.hover() {
                         shell.event_consumed = true;
                         self.value.set((
                             self.value.get() + self.step
@@ -221,8 +217,11 @@ impl Widget<actions::Action> for Slider {
     }
 
     fn draw(&self, shell: &mut DrawShell<actions::Action>) {
-        let Some(bounds) = shell.tree.absolute_bounds(self.node_id)
-        else { return };
+        let Some((bounds, state)) = shell.with_ctx(
+            self.node_id, 
+            |c| (c.absolute_bounds, c.element_data.state)
+        ) else { return };
+        
 
         shell.list.push(
             graphics::Rectangle::new_bounds(bounds, Color::TRANSPARENT)
@@ -258,13 +257,7 @@ impl Widget<actions::Action> for Slider {
             (bounds.size.y / 2.0) * 5.0/6.0,
             shell.general_theme.default_color
         ).border(Border::new(
-            if self.pressed {
-                shell.general_theme.active_color
-            } else if self.hovered {
-                shell.general_theme.hover_color
-            } else {
-                shell.general_theme.default_color
-            },
+            shell.general_theme.for_state(state),
             2.0
         )));
     }

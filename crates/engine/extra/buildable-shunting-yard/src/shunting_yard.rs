@@ -1,21 +1,16 @@
 use crate::*;
 use common::reflect::*;
-use tataku::{
-    TatakuValue, 
-    ShuntingYardStack, 
-    GenericShuntingYard 
-};
-use engine::data::shunting_yards::{
-    buildable::*,
-    path_resolver::VariablePathResolver
-};
+use tataku::TatakuValue;
+
+use path_shunting_yard::VariablePathResolver;
+use ::shunting_yard::ShuntingYard;
 
 pub struct BuildableShuntingYard;
 impl<'rpn, 'values: 'rpn> BuildableShuntingYard {
     fn create_array(
         arg_count: usize,
-        stack: &mut ShuntingYardStack<'rpn, <Self as GenericShuntingYard<'rpn,'values>>::Output>,
-    ) -> Result<(), BuildableShuntingYardError> {
+        stack: &mut ::shunting_yard::Stack<'rpn, <Self as ShuntingYard<'rpn,'values>>::Output>,
+    ) -> Result<(), Error> {
         let val = Self::get_function_helper(
             "create_array", 
             1, 
@@ -37,7 +32,7 @@ impl<'rpn, 'values: 'rpn> BuildableShuntingYard {
             "bool" => TatakuValue::Reflect(Box::new(Vec::<bool>::new())),
             "String" => TatakuValue::Reflect(Box::new(Vec::<String>::new())),
 
-            other => return Err(BuildableShuntingYardError::ArgumentWrongType { 
+            other => return Err(Error::ArgumentWrongType { 
                 expected: "<primitive>".to_string(), 
                 received: other.to_string(),
             }),
@@ -50,8 +45,8 @@ impl<'rpn, 'values: 'rpn> BuildableShuntingYard {
 
     fn cast(
         arg_count: usize,
-        stack: &mut ShuntingYardStack<'rpn, <Self as GenericShuntingYard<'rpn,'values>>::Output>,
-    ) -> Result<(), BuildableShuntingYardError> {
+        stack: &mut ::shunting_yard::Stack<'rpn, <Self as ShuntingYard<'rpn,'values>>::Output>,
+    ) -> Result<(), Error> {
         let mut args = Self::get_function_helper(
             "cast", 
             2, 
@@ -64,7 +59,7 @@ impl<'rpn, 'values: 'rpn> BuildableShuntingYard {
 
         let Some(value) = value.as_f32() 
         else { 
-            return Err(BuildableShuntingYardError::ArgumentWrongType { 
+            return Err(Error::ArgumentWrongType { 
                 expected: "<number>".to_string(), 
                 received: value.type_name().to_string() 
             });
@@ -78,7 +73,7 @@ impl<'rpn, 'values: 'rpn> BuildableShuntingYard {
                     )*
 
                     other => {
-                        return Err(BuildableShuntingYardError::ArgumentWrongType { 
+                        return Err(Error::ArgumentWrongType { 
                             expected: "<number type>".to_string(), 
                             received: other.to_string() 
                         });
@@ -99,8 +94,8 @@ impl<'rpn, 'values: 'rpn> BuildableShuntingYard {
     fn math_function(
         arg_count: usize,
         function: MathFunction,
-        stack: &mut ShuntingYardStack<'rpn, <Self as GenericShuntingYard<'rpn,'values>>::Output>,
-    ) -> Result<(), BuildableShuntingYardError> {
+        stack: &mut ::shunting_yard::Stack<'rpn, <Self as ShuntingYard<'rpn,'values>>::Output>,
+    ) -> Result<(), Error> {
         let val = Self::get_function_helper(
             function.str(), 
             1, 
@@ -115,8 +110,8 @@ impl<'rpn, 'values: 'rpn> BuildableShuntingYard {
     fn check_filter(
         arg_count: usize,
         values: &dyn Reflect,
-        stack: &mut ShuntingYardStack<'rpn, <Self as GenericShuntingYard<'rpn,'values>>::Output>,
-    ) -> Result<(), BuildableShuntingYardError> {
+        stack: &mut ::shunting_yard::Stack<'rpn, <Self as ShuntingYard<'rpn,'values>>::Output>,
+    ) -> Result<(), Error> {
         let mut args = Self::get_function_helper(
             "check_filter", 
             2, 
@@ -127,7 +122,7 @@ impl<'rpn, 'values: 'rpn> BuildableShuntingYard {
         let filter_var = args.pop().unwrap().as_string();
         let to_check = args.pop().unwrap().as_string();
 
-        let filter = values.reflect_get::<engine::settings::ItemFilter>(
+        let filter = values.reflect_get::<tataku::ItemFilter>(
             &filter_var,
         )?;
 
@@ -137,11 +132,11 @@ impl<'rpn, 'values: 'rpn> BuildableShuntingYard {
         Ok(())
     }
 }
-impl<'rpn, 'values: 'rpn> GenericShuntingYard<'rpn, 'values> for BuildableShuntingYard {
-    type Token = BuildableShuntingYardToken;
-    type ReadType = BuildableShuntingYardReadType;
-    type Operator = BuildableShuntingYardOperator;
-    type Error = BuildableShuntingYardError;
+impl<'rpn, 'values: 'rpn> ShuntingYard<'rpn, 'values> for BuildableShuntingYard {
+    type Token = crate::Token;
+    type ReadType = crate::ReadType;
+    type Operator = crate::Operator;
+    type Error = crate::Error;
     type Output = Cow<'values, TatakuValue>;
 
     fn read_check_char(
@@ -220,11 +215,11 @@ impl<'rpn, 'values: 'rpn> GenericShuntingYard<'rpn, 'values> for BuildableShunti
         values: &'values dyn Reflect,
     ) -> Result<Self::Output, ReflectError<'rpn>> {
         match token {
-            BuildableShuntingYardToken::Number(num) 
+            Token::Number(num) 
                 => Ok(Cow::Owned(TatakuValue::from(*num))),
-            BuildableShuntingYardToken::StringLiteral(s) 
+            Token::StringLiteral(s) 
                 => Ok(Cow::Owned(TatakuValue::from(s.clone()))),
-            BuildableShuntingYardToken::Variable(var) => match &*var.var {
+            Token::Variable(var) => match var.as_ref() {
                 "true"  => Ok(Cow::Owned(TatakuValue::Bool(true))),
                 "false" => Ok(Cow::Owned(TatakuValue::Bool(false))),
                 _var => {
@@ -244,10 +239,10 @@ impl<'rpn, 'values: 'rpn> GenericShuntingYard<'rpn, 'values> for BuildableShunti
 
     fn run_function(
         function_token: &'rpn Self::Token, 
-        stack: &mut ShuntingYardStack<'rpn, Self::Output>, 
+        stack: &mut ::shunting_yard::Stack<'rpn, Self::Output>, 
         values: &'values dyn Reflect,
     ) -> Result<(), Self::Error> {
-        let BuildableShuntingYardToken::Function(
+        let Token::Function(
             function, 
             arg_count
         ) = function_token else { unreachable!() };
@@ -304,7 +299,7 @@ impl<'rpn, 'values: 'rpn> GenericShuntingYard<'rpn, 'values> for BuildableShunti
                     let n = stack
                         .pop()
                         .ok_or_else(|| 
-                            BuildableShuntingYardError::MissingFunctionArgument(
+                            Error::MissingFunctionArgument(
                                 function.to_owned()
                             )
                         )??;
@@ -312,7 +307,7 @@ impl<'rpn, 'values: 'rpn> GenericShuntingYard<'rpn, 'values> for BuildableShunti
                     precision = n
                         .as_u64()
                         .ok_or_else(|| 
-                            BuildableShuntingYardError::ArgumentWrongType { 
+                            Error::ArgumentWrongType { 
                                 expected: "number".to_owned(), 
                                 received: n.type_name().to_owned(), 
                             }
@@ -380,7 +375,7 @@ impl<'rpn, 'values: 'rpn> GenericShuntingYard<'rpn, 'values> for BuildableShunti
             "cast" => Self::cast(arg_count, stack)?,
             "check_filter" => Self::check_filter(arg_count, values, stack)?,
 
-            other => return Err(BuildableShuntingYardError::InvalidFunction(other.to_string())),
+            other => return Err(Error::InvalidFunction(other.to_string())),
         }
         
         Ok(())
@@ -403,9 +398,9 @@ impl MathFunction {
     fn run(
         self, 
         val: &TatakuValue
-    ) -> Result<TatakuValue, BuildableShuntingYardError> {
+    ) -> Result<TatakuValue, Error> {
         let num = val.as_number()
-            .ok_or_else(|| BuildableShuntingYardError::NumberIsntANumber(val.as_string()))?;
+            .ok_or_else(|| Error::NumberIsntANumber(val.as_string()))?;
 
         Ok(match self {
             Self::Abs => num.abs(),
@@ -436,7 +431,7 @@ impl MathFunction {
 mod shunting_yard_tests {
     use super::*;
     use tataku::TatakuValue;
-    use tataku::GenericShuntingYard;
+    use ::shunting_yard::ShuntingYard;
 
     #[test]
     fn reference_test() {
@@ -531,9 +526,9 @@ mod shunting_yard_tests {
             assert_eq!(
                 tokens,
                 vec![
-                    BuildableShuntingYardToken::Variable("hi.mom".to_string().into()),
-                    BuildableShuntingYardToken::Number(3.0),
-                    BuildableShuntingYardToken::Function("display".to_string(), 2)
+                    Token::Variable("hi.mom".to_string().into()),
+                    Token::Number(3.0),
+                    Token::Function("display".to_string(), 2)
                 ]
             );
         }
@@ -549,14 +544,14 @@ mod shunting_yard_tests {
             assert_eq!(
                 tokens,
                 vec![
-                    BuildableShuntingYardToken::Variable("hi.mom".to_string().into()),
-                    BuildableShuntingYardToken::Number(1.0),
-                    BuildableShuntingYardToken::Number(2.0),
-                    BuildableShuntingYardToken::Number(3.0),
-                    BuildableShuntingYardToken::Number(4.0),
-                    BuildableShuntingYardToken::Number(5.0),
-                    BuildableShuntingYardToken::Number(6.0),
-                    BuildableShuntingYardToken::Function("display".to_string(), 7)
+                    Token::Variable("hi.mom".to_string().into()),
+                    Token::Number(1.0),
+                    Token::Number(2.0),
+                    Token::Number(3.0),
+                    Token::Number(4.0),
+                    Token::Number(5.0),
+                    Token::Number(6.0),
+                    Token::Function("display".to_string(), 7)
                 ]
             );
         }
@@ -572,14 +567,14 @@ mod shunting_yard_tests {
             assert_eq!(
                 tokens,
                 vec![
-                    BuildableShuntingYardToken::Variable("hi.mom".to_string().into()),
+                    Token::Variable("hi.mom".to_string().into()),
 
                     // calc inner fn
-                    BuildableShuntingYardToken::Number(123.0),
-                    BuildableShuntingYardToken::StringLiteral("no u".to_string()),
-                    BuildableShuntingYardToken::Function("calc".to_string(), 2),
+                    Token::Number(123.0),
+                    Token::StringLiteral("no u".to_string()),
+                    Token::Function("calc".to_string(), 2),
                     
-                    BuildableShuntingYardToken::Function("display".to_string(), 2),
+                    Token::Function("display".to_string(), 2),
                 ]
             );
         }

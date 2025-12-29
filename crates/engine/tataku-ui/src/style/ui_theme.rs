@@ -24,4 +24,10 @@ impl GeneralUiTheme {
             self.default_color
         }
     }
+    pub fn for_state(&self, state: ElementState) -> Color {
+        self.get_color(
+            state.active(),
+            state.hover(),
+        )
+    }
 }
