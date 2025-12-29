@@ -282,11 +282,12 @@ impl Game {
             BeatmapDownloadsCheckTask::default()
         )).into());
 
-
+        // initialize the gamemode settings
         self.values.values.settings.gamemode_settings.build(
             self.values.values.global.gamemode_infos.clone()
         );
         
+        // build the settings provider for use by custom menus
         #[cfg(feature="ui")] {
             let mut settings = self.settings.clone();
             settings.init(&mut self.values, "settings".to_string());
@@ -337,6 +338,7 @@ impl Game {
             // });
         }
 
+        self.actions.push(actions::game::GameAction::RefreshSkins.into());
         self.actions.push(InitGameTask::default().into());
         #[cfg(feature="graphics")]
         self.handle_custom_menu("loading_menu");
@@ -1869,7 +1871,6 @@ impl Game {
                 self.actions.push(actions::menu::MenuAction::SetMenu {
                     id: "fail_menu".into(),
                 }.into());
-                // self.queue_state_change(GameState::SetMenu(Box::new(PauseMenu::new(true))));
                 return;
             }
         } else {

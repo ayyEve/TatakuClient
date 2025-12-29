@@ -629,7 +629,7 @@ fn create<'w, 's>(
 struct WinitActionSender(EventLoopProxy<actions::window::WindowAction>);
 impl engine::window::WindowActionSender for WinitActionSender {
     fn send(&mut self, action: actions::window::WindowAction) {
-        self.0.send_event(action).unwrap();
+        let _ = self.0.send_event(action);
     }
 }
 

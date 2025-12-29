@@ -12,6 +12,7 @@ pub struct ProgrammaticListData {
     #[chain] pub variable: ArcStr,
 
     pub(super) error_printed: bool,
+    pub(super) cached_path: String,
 }
 impl ProgrammaticListData {
     pub fn new(template: Element, list_var: ArcStr, variable: ArcStr) -> Self {
@@ -20,6 +21,7 @@ impl ProgrammaticListData {
             list_var: engine::VariablePathResolver::new(list_var),
             variable,
             error_printed: false,
+            cached_path: String::new(),
         }
     }
 

@@ -137,14 +137,15 @@ impl Widget<actions::Action> for Dropdown {
         let node_id = shell.tree.new_leaf()?;
         self.node_id = node_id;
 
+        let source = shell.source;
         self.main_button.inner.on_press_left = Some(Box::new(move || Some(Message::new(
-            MessageSource::Menu,
+            source,
             "toggle_dropdown",
             Some(MessageTarget::Node(node_id)),
             Box::new(()),
         ))).into());
 
-        if let Err(e) = self.variants.build(self.node_id, shell.values) {
+        if let Err(e) = self.variants.build(self.node_id, source, shell.values) {
             error!("error building variants: {e:?}");
             self.variants = DropdownVariants::Buttons {
                 buttons: Vec::new(),
@@ -451,11 +452,23 @@ pub enum DropdownVariants {
     },
 }
 impl DropdownVariants {
-    fn build(&mut self, dropdown: NodeId, values: &dyn Reflect) -> tataku::Result<()> {
+    fn build(&mut self, dropdown: NodeId, source: MessageSource, values: &dyn Reflect) -> tataku::Result<()> {
         let Self::Variable(var) = self
         else { return Ok(()) };
 
+        // FIXME: for some reason when building settings these can be the wrong type ????
+        // println!("building variants");
+
+        // println!("resolving path: {var}");
+
+        // if var.as_ref().starts_with("::_setting.type.Dropdown") {
+        //     if let Ok(d) = values.reflect_get::<engine::settings::BuildableSetting>("_setting") {
+        //         println!("actual type: {d:?}");
+        //     }
+        // }
+
         let path = var.resolve_path(values)?;
+        // println!("got path: {path}");
 
         let mut buttons = Vec::new();
         let mut enum_variants = Vec::new();
@@ -495,7 +508,7 @@ impl DropdownVariants {
 
             let callback = Box::new(move || {
                 Some(Message::new(
-                    MessageSource::Menu,
+                    source,
                     "select_index",
                     Some(MessageTarget::Node(dropdown)),
                     Box::new(index),
