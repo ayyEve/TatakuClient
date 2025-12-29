@@ -56,8 +56,8 @@ impl Game {
             self.beatmap_manager.set_current(hash);
             
             self.actions.push(actions::game::GameAction::UpdatePlaymodeActual(
-                actual_mode.into()).into()
-            );
+                actual_mode.into()
+            ).into());
 
             // update beatmap settings provider
             let beatmap_prefs = self
