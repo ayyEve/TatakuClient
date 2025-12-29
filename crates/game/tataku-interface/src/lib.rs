@@ -5,7 +5,7 @@
 #[cfg(feature="graphics")] pub mod visualizations;
 #[cfg(feature="graphics")] pub mod gameplay_widgets;
 
-#[cfg(feature="graphics")] 
+#[cfg(feature="graphics")]
 pub mod prelude {
     pub(crate) use tataku_engine::{
         ChainableInitializer,
@@ -28,7 +28,8 @@ pub mod prelude {
     pub(crate) use crate::menu_widgets as widgets;
     pub(crate) use tataku_engine_common::common::*;
 
-    
+    pub use parley;
+
     pub use crate::misc::*;
     pub use crate::dialog::*;
     pub use crate::custom_menus::*;

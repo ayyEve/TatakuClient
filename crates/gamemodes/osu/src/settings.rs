@@ -9,7 +9,7 @@ use engine::gameplay::GamemodeSettings;
 #[derive(Clone, Debug, PartialEq)]
 #[derive(Serialize, DeserializeSettings)]
 #[serde(default)]
-pub struct OsuSettings {
+pub struct Settings {
     // input
     #[setting(text="Osu Key 1")]
     pub left_key: Key,
@@ -35,7 +35,7 @@ pub struct OsuSettings {
     // display
     #[setting(text="Follow Points")]
     pub draw_follow_points: bool,
-    pub combo_colors: Vec<String>,
+    pub combo_colors: Vec<engine::settings::SettingsColor>,
     #[setting(text="Show x300s")]
     pub show_300s: bool,
 
@@ -76,12 +76,12 @@ pub struct OsuSettings {
     #[setting(text="Slider Render Targets")]
     pub slider_render_targets: bool,
 }
-impl OsuSettings {
+impl Settings {
     pub fn get_playfield(&self) -> (f32, Vector2) {
         (self.playfield_scale, Vector2::new(self.playfield_x_offset, self.playfield_y_offset))
     }
 }
-impl Default for OsuSettings {
+impl Default for Settings {
     fn default() -> Self {
         Self {
             // keys
@@ -101,10 +101,10 @@ impl Default for OsuSettings {
             show_300s: true,
 
             combo_colors: vec![
-                "#FFC000".to_owned(),
-                "#00CA00".to_owned(),
-                "#127CFF".to_owned(),
-                "#F21839".to_owned()
+                "#FFC000".parse().unwrap(),
+                "#00CA00".parse().unwrap(),
+                "#127CFF".parse().unwrap(),
+                "#F21839".parse().unwrap(),
             ],
 
             hit_ripples: true,
@@ -127,7 +127,7 @@ impl Default for OsuSettings {
     }
 }
 
-impl GamemodeSettings for OsuSettings {
+impl GamemodeSettings for Settings {
     fn to_value(&self) -> serde_json::Value {
         serde_json::to_value(self).unwrap()
     }

@@ -34,7 +34,6 @@ pub struct OsuCursor {
     pub pos: Vector2,
     last_pos: Vector2,
 
-    pub note_radius: f32,
     // ripple_image: Option<Image>,
 
     cursor_rotation: f32,
@@ -67,10 +66,9 @@ pub struct OsuCursor {
 
 impl OsuCursor {
     pub fn new(
-        note_radius: f32,
         skin: graphics::SkinSettings,
         beatmap_path: String,
-        settings: &engine::Settings
+        settings: engine::settings::cursor::CursorSettings,
     ) -> Self {
         let a = PI / 4.0;
         let builder = graphics::EmitterBuilder::default()
@@ -108,7 +106,6 @@ impl OsuCursor {
 
             left_pressed: false,
             right_pressed: false,
-            note_radius,
             skin,
             beatmap_path,
 
@@ -118,10 +115,10 @@ impl OsuCursor {
             left_emitter,
             right_emitter,
 
-            settings: settings.cursor_settings.clone(),
+            settings,
         }
     }
-    
+
     pub fn init(&self, actions: &mut actions::ActionQueue) {
         use actions::window::WindowAction;
         actions.push(WindowAction::AddEmitter(self.left_emitter.get_ref()).into());
@@ -181,9 +178,6 @@ impl OsuCursor {
         if pressed && self.settings.cursor_ripples {
             self.add_ripple();
         }
-    }
-    pub fn cursor_pos(&mut self, pos: Vector2) {
-        self.pos = pos;
     }
 
     pub fn update(&mut self) {
@@ -270,6 +264,7 @@ impl OsuCursor {
                         as u8;
 
                     let transform = graphics::Transform {
+                        origin: image.size() / 2.0,
                         pos: trail.position,
                         scale: Vector2::ONE * self.settings.cursor_scale,
                         ..graphics::Transform::identity()
@@ -303,10 +298,10 @@ impl OsuCursor {
             };
 
             let transform = graphics::Transform {
+                origin: cursor.size() / 2.0,
                 pos: self.pos,
                 rotation: self.cursor_rotation,
                 scale,
-                ..graphics::Transform::identity()
             };
 
             list.push(cursor.with_transform(transform.matrix()));
@@ -331,6 +326,7 @@ impl OsuCursor {
 
         if let Some(cursor) = self.cursor_middle_image.clone() {
             let transform = graphics::Transform {
+                origin: cursor.size() / 2.0,
                 pos: self.pos,
                 scale: Vector2::ONE * self.settings.cursor_scale,
                 ..graphics::Transform::identity()
@@ -363,28 +359,28 @@ impl OsuCursor {
             SkinUsage,
             TextureSource,
         };
-        let source = if self.settings.beatmap_cursor { 
-            TextureSource::Beatmap(self.beatmap_path.clone()) 
-        } else { 
-            TextureSource::Skin 
+        let source = if self.settings.beatmap_cursor {
+            TextureSource::Beatmap(self.beatmap_path.clone())
+        } else {
+            TextureSource::Skin
         };
 
         self.cursor_image = skin_manager.get_texture(
-            Path::new("cursor"), 
-            &source, 
-            SkinUsage::Gamemode, 
+            Path::new("cursor"),
+            &source,
+            SkinUsage::Gamemode,
             false
         );
         self.cursor_trail_image = skin_manager.get_texture(
-            Path::new("cursortrail"), 
-            &source, 
-            SkinUsage::Gamemode, 
+            Path::new("cursortrail"),
+            &source,
+            SkinUsage::Gamemode,
             false
         );
         self.cursor_middle_image = skin_manager.get_texture(
-            Path::new("cursormiddle"), 
-            &source, 
-            SkinUsage::Gamemode, 
+            Path::new("cursormiddle"),
+            &source,
+            SkinUsage::Gamemode,
             false
         );
 
@@ -402,9 +398,9 @@ impl OsuCursor {
 
 
         let tex = skin_manager.get_texture(
-            Path::new("star2"), 
-            &source, 
-            graphics::SkinUsage::Gamemode, 
+            Path::new("star2"),
+            &source,
+            graphics::SkinUsage::Gamemode,
             false
         ).map(|t| t.tex).unwrap_or_default();
         self.left_emitter.image = tex.clone();

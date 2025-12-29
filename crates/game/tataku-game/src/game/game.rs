@@ -363,7 +363,7 @@ impl Game {
 
         let mut settings = self.settings.clone();
 
-        
+
         let (_guard2, settings_update_receiver) = {
             let (sender, receiver) = std::sync::mpsc::channel::<()>();
 
@@ -692,7 +692,7 @@ impl Game {
                     manager.cleanup_textures(&mut self.skin_manager);
                     return false;
                 }
-    
+
                 manager.update(
                     &mut self.values,
                     &mut self.text_layout_contexts,
@@ -804,7 +804,7 @@ impl Game {
                     // inputs
                     #[cfg(feature="graphics")]
                     for input in input_state.into_events() {
-                        manager.handle_input(input, &self.settings);
+                        manager.handle_input(input, &self.values.settings, &mut self.text_layout_contexts);
                     }
 
                     // update, then check if complete

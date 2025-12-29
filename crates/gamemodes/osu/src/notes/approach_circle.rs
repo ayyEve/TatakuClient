@@ -16,47 +16,16 @@ const APPROACH_CIRCLE_SCALE:f32 = 0.90;
 #[derive(Default)]
 pub struct ApproachCircle {
     image: Option<graphics::Image>,
-    base_pos: Vector2,
-    pos: Vector2,
-    radius: f32,
-    coords: Arc<OsuCoords>,
-    alpha: u8,
-    color: Color,
-
-    preempt: f32,
-    time: f32,
-    time_diff: f32,
-
     pub easing_type: Easing
 }
 impl ApproachCircle {
-    pub fn new(
-        base_pos: Vector2,
-        time: f32,
-        radius: f32,
-        preempt: f32,
-        coords: Arc<OsuCoords>
-    ) -> Self {
+    pub fn new() -> Self {
         Self {
-            base_pos,
-            pos: coords.to_window(base_pos),
-            time,
-            radius,
-            preempt,
-            color: Color::WHITE,
-            coords,
-
-            alpha: 0,
             image: None,
-            time_diff: time,
             easing_type: Easing::Linear
         }
     }
-    pub fn scale_changed(&mut self, new_scale: Arc<OsuCoords>, new_radius: f32) {
-        self.coords = new_scale;
-        self.pos = self.coords.to_window(self.base_pos);
-        self.radius = new_radius;
-    }
+
     #[cfg(feature="graphics")]
     pub fn reload_texture(
         &mut self,
@@ -71,54 +40,50 @@ impl ApproachCircle {
         );
     }
 
-    pub fn update(&mut self, map_time: f32) {
-        self.time_diff = self.time - map_time;
-    }
-
-    pub fn reset(&mut self) {
-        self.time_diff = 9999.0;
-        self.alpha = 0;
-    }
-
-    pub fn set_alpha(&mut self, alpha: u8) {
-        self.alpha = alpha;
-    }
-    pub fn set_color(&mut self, color: Color) {
-        self.color = color;
-    }
-
     #[cfg(feature="graphics")]
-    pub fn draw(&self, list: &mut graphics::RenderableCollection) {
-        let lerp_amount = self.time_diff / self.preempt;
+    pub fn draw(
+        &self,
+        note_time: f32,
+        color_index: usize,
+        shell: &mut DrawShell
+    ) {
+        let color = shell.combo_color(color_index)
+            .alpha8(shell.alpha);
+
+        let lerp_amount = (note_time - shell.time) / shell.fade_in_time;
+
         let scale = self.easing_type.run_easing(
             1.0,
             APPROACH_CIRCLE_MULT,
-            lerp_amount.max(0.0)
+            lerp_amount.clamp(0.0, 1.0),
         );
 
         if let Some(mut tex) = self.image.clone() {
-            tex.color = self.color.alpha8(self.alpha);
+            tex.color = color;
 
             let transform = graphics::Transform {
-                pos: self.pos,
-                scale: Vector2::ONE * self.coords.cs * scale * APPROACH_CIRCLE_SCALE,
+                origin: tex.size() / 2.0,
+                scale: Vector2::ONE * CIRCLE_RADIUS_BASE * scale * APPROACH_CIRCLE_SCALE,
                 ..graphics::Transform::identity()
             };
 
-            list.push(tex.with_transform(transform.matrix()));
+            shell.list.push(tex.with_transform(
+                shell.transform * transform.matrix()
+            ));
         } else {
             let transform = graphics::Transform {
-                pos: self.pos,
-                scale: Vector2::ONE * self.radius * scale, // self.radius is already accounting for the scaled_cs
+                scale: Vector2::ONE * CIRCLE_RADIUS_BASE * scale,
                 ..graphics::Transform::identity()
             };
 
-            list.push(graphics::Circle::new(
+            shell.list.push(graphics::Circle::new(
                 Color::TRANSPARENT,
             ).border(Border::new(
-                self.color.alpha8(self.alpha),
-                OSU_NOTE_BORDER_SIZE * self.coords.cs)
-            ).with_transform(transform.matrix()));
+                color,
+                OSU_NOTE_BORDER_SIZE * shell.coords.cs)
+            ).with_transform(
+                shell.transform * transform.matrix()
+            ));
         }
     }
 }

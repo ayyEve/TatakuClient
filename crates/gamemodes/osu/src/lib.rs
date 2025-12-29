@@ -18,6 +18,8 @@ mod prelude {
 
     pub use tataku_graphics::TatakuRenderable;
 
+    pub use tataku_interface::prelude as interface;
+
     pub use super::math::*;
     pub use super::game::*;
     pub use super::info::*;
@@ -27,5 +29,5 @@ mod prelude {
     pub use super::relax_play::*;
     pub use super::auto_replay::*;
     #[cfg(feature="graphics")] pub use super::cursor::*;
-    pub use super::diff_calc::OsuDifficultyCalculator;
+    pub use super::diff_calc::DifficultyCalculator;
 }

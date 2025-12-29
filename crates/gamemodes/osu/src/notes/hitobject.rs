@@ -1,62 +1,126 @@
 use crate::prelude::*;
+
 use tataku::{
     Color,
-    Vector2,
-    Easing,
+    Interpolation,
 };
 
-use engine::{
-    gameplay::{
-        Hitsound,
-        HitObject,
-        judgments::HitJudgment,
+use engine::gameplay::{ Hitsound, TimingPointProgress };
+
+#[derive(From)]
+pub enum HitObject {
+    Circle(Note),
+    Slider(Slider),
+    Spinner(Spinner),
+}
+
+impl HitObject {
+    pub fn time(&self) -> f32 {
+        match self {
+            HitObject::Circle(note) => note.time,
+            HitObject::Slider(slider) => slider.time,
+            HitObject::Spinner(spinner) => spinner.time,
+        }
     }
-};
 
+    pub fn update(&mut self, shell: &mut UpdateShell) {
+        match self {
+            HitObject::Circle(note) => note.update(shell),
+            HitObject::Slider(slider) => slider.update(shell),
+            HitObject::Spinner(spinner) => spinner.update(shell),
+        }
+    }
 
-pub trait OsuHitObject: HitObject {
-    /// return the window-scaled coords of this object at `time`
-    fn pos_at(&self, time: f32) -> Vector2;
+    pub fn reset(&mut self) {
+        match self {
+            HitObject::Circle(note) => note.reset(),
+            HitObject::Slider(slider) => slider.reset(),
+            HitObject::Spinner(spinner) => spinner.reset(),
+        }
+    }
 
-    fn new_combo(&self) -> bool;
+    pub fn reload_skin(
+        &mut self,
+        source: &tataku_graphics::TextureSource,
+        skin_manager: &mut dyn tataku_graphics::SkinProvider,
+    ) {
+        match self {
+            HitObject::Circle(note) => note.reload_skin(source, skin_manager),
+            HitObject::Slider(slider) => slider.reload_skin(source, skin_manager),
+            HitObject::Spinner(spinner) => spinner.reload_skin(source, skin_manager),
+        }
+    }
+}
 
-    fn pending_combo(&mut self) -> Vec<(HitJudgment, Vector2)> { Vec::new() }
+pub struct UpdateShell<'a> {
+    pub time: f32,
+    pub hitwindow_miss: f32,
+    pub cursor_pos: tataku::Vector2,
+    pub holding: bool,
 
-    #[cfg(feature="graphics")]
-    fn playfield_changed(&mut self, new_scale: Arc<OsuCoords>);
-    fn set_settings(&mut self, settings: Arc<OsuSettings>);
+    pub settings: &'a Settings,
+    pub coords: &'a OsuCoords,
+    pub timing_points: &'a TimingPointProgress,
 
-    fn press(&mut self, _time: f32) {}
-    fn release(&mut self, _time: f32) {}
-    fn mouse_move(&mut self, pos: Vector2);
+    pub hitsounds: &'a mut Vec<Hitsound>,
 
-    fn was_hit(&self) -> bool;
-    fn get_preempt(&self) -> f32;
+    pub font_contexts: &'a mut engine::ui::widget::TextLayoutContexts
+}
 
-    #[cfg(feature="gameplay")]
-    fn get_hitsound(&self) -> Vec<Hitsound>;
-    #[cfg(feature="gameplay")]
-    fn get_all_hitsounds(&self) -> Vec<Vec<Hitsound>> { vec![ self.get_hitsound() ] }
-    #[cfg(feature="gameplay")]
-    fn get_sound_queue(&mut self) -> Vec<Vec<Hitsound>> { vec![] }
+pub struct DrawShell<'a> {
+    pub time: f32,
+    pub fade_in_time: f32,
+    pub fade_out_time: f32,
+    pub hitwindow_miss: f32,
 
-    fn set_hitwindow_miss(&mut self, window: f32);
+    pub alpha: u8,
 
-    #[cfg(feature="graphics")]
-    fn point_draw_pos(&self, time: f32) -> Vector2;
-    #[cfg(feature="graphics")]
-    fn shake(&mut self, _time: f32) {}
-    #[cfg(feature="graphics")]
-    fn set_combo_color(&mut self, color: Color);
-    #[cfg(feature="graphics")]
-    fn set_approach_easing(&mut self, easing: Easing);
+    pub combo_colors: &'a [Color],
 
-    fn miss(&mut self);
-    fn hit(&mut self, time: f32);
-    fn set_judgment(&mut self, _j: &HitJudgment) {}
-    fn set_ar(&mut self, ar: f32);
+    pub last_beat: f32,
+    pub pulse_length: f32,
 
-    fn check_distance(&self, mouse_pos: Vector2) -> bool;
-    fn check_release_points(&mut self, _time: f32) -> HitJudgment { OsuHitJudgments::Miss } // miss default, bc we only care about sliders
+    pub list: &'a mut engine::graphics::RenderableCollection,
+    pub transform: tataku::Matrix,
+    pub settings: &'a Settings,
+    pub coords: &'a OsuCoords,
+    pub slider_track_override: Option<Color>,
+}
 
+impl DrawShell<'_> {
+    pub fn combo_color(&self, color_index: usize) -> Color {
+        self.combo_colors[color_index % self.combo_colors.len()]
+    }
+
+    pub fn alpha(&self, note_time: f32, hit_time: f32) -> u8 {
+        let alpha = Color::to_f32(self.alpha);
+
+        let alpha = alpha
+            * self.fade_in(note_time)
+            * self.fade_out(hit_time);
+
+        Color::to_u8(alpha)
+    }
+
+    pub fn fade_in(&self, note_time: f32) -> f32 {
+        let t = (note_time - self.time) / self.fade_in_time;
+        let t = t.clamp(1.0 / 3.0, 1.0);
+
+        f32::lerp(
+            1.0,
+            0.0,
+            (3.0 * t - 1.0) / 2.0,
+        )
+    }
+
+    pub fn fade_out(&self, hit_time: f32) -> f32 {
+        let t = (self.time - hit_time) / self.fade_out_time;
+        let t = t.clamp(0.0, 1.0);
+
+        f32::lerp(
+            1.0,
+            0.0,
+            t,
+        )
+    }
 }

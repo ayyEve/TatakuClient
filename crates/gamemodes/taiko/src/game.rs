@@ -450,7 +450,7 @@ impl Gamemode for TaikoGame {
             .max_by(|a, b| a.partial_cmp(b).unwrap())
             .unwrap_or_default();
 
-        s.start_time = start_time + 5000.0;
+        s.start_time = start_time - 5000.0;
 
         let end_time = [
             s.notes.last(),
@@ -1106,7 +1106,7 @@ impl Gamemode for TaikoGame {
 
     #[cfg(feature="graphics")]
     fn skip_intro(&mut self, game_time: f32) -> Option<f32> {
-        if self.start_time > 0.0 && self.start_time < game_time {
+        if self.start_time > 0.0 && game_time < self.start_time {
             Some(self.start_time)
         } else {
             None

@@ -7,17 +7,13 @@ use crate::prelude::*;
 use tataku::{
     Color,
     Border,
-    Easing,
     Vector2,
 };
 use engine::{
     beatmaps::{
         osu::*,
-        NoteType,
     },
     gameplay::{
-        Hitsound,
-        HitObject,
         judgments::HitJudgment,
     }
 };
@@ -28,14 +24,11 @@ use engine::graphics;
 const SPINNER_RADIUS:f32 = 200.0;
 
 #[derive(Clone, Default)]
-pub struct OsuSpinner {
-    // def: SpinnerDef,
-    pos: Vector2,
-    time: f32, // ms
-    end_time: f32, // ms
+pub struct Spinner {
+    pub time: f32,
+    pub end_time: f32,
+
     last_update: f32,
-    current_time: f32,
-    missed: bool,
 
     /// display rotation of the spinner (for display only)
     display_rotation: f32,
@@ -47,19 +40,14 @@ pub struct OsuSpinner {
     window_start: f32,
     /// how fast the spinner is spinning
     rotation_velocity: f32,
-    mouse_pos: Vector2,
 
     /// what was the last rotation value?
     last_mouse_angle: f32,
     /// how many rotations is needed to pass this spinner
-    rotations_required: u16,
+    pub rotations_required: u16,
     /// how many rotations have been completed?
-    rotations_completed: u16,
-
-    /// should we count mouse movements?
-    holding: bool,
-
-    coords: Arc<OsuCoords>,
+    pub rotations_completed: u16,
+    pub missed: bool,
 
     /// main spinny
     #[cfg(feature="graphics")] spinner_circle: Option<graphics::Image>,
@@ -70,47 +58,44 @@ pub struct OsuSpinner {
     /// gets smaller towards end of spinner, from 100% to 0%
     #[cfg(feature="graphics")] spinner_approach: Option<graphics::Image>,
 
-    points_queue: Vec<(HitJudgment, Vector2)>
+    points_queue: Vec<HitJudgment>
 }
 
-impl OsuSpinner {
+impl Spinner {
     pub fn new(
         def: &SpinnerDef,
-        coords: Arc<OsuCoords>,
         rotations_required: u16
     ) -> Self {
         let time = def.time;
         let end_time = def.end_time;
 
         Self {
-            pos: coords.to_window(FIELD_SIZE / 2.0),
-            // def,
             time,
             end_time,
-            coords,
 
             rotations_required,
 
             ..Self::default()
         }
     }
-}
-impl HitObject for OsuSpinner {
-    fn time(&self) -> f32 { self.time }
-    fn end_time(&self,_:f32) -> f32 { self.end_time }
-    fn note_type(&self) -> NoteType { NoteType::Spinner }
 
-    fn update(&mut self, beatmap_time: f32) {
+    pub fn update(&mut self, shell: &mut UpdateShell) {
         const WINDOW_PERIOD_MILLIS: f32 = 1000.0;
 
+        if self.missed { return; }
+
+        let cursor_pos = shell.coords.to_osu(shell.cursor_pos);
+
+        let center = FIELD_SIZE / 2.0;
+
         let mut diff = 0.0;
-        let pos_diff = self.mouse_pos - self.pos;
+        let pos_diff = cursor_pos - center;
         let mouse_angle = pos_diff.y.atan2(pos_diff.x);
 
-        if beatmap_time >= self.time && beatmap_time <= self.end_time {
+        if shell.time >= self.time && shell.time <= self.end_time {
             // if the mouse is being held, use the mouse angle.
             // otherwise, it should be 0 since the user's spins do not count
-            if self.holding {
+            if shell.holding {
                 diff = mouse_angle - self.last_mouse_angle;
             }
             // fix diff (this is stupid)
@@ -122,7 +107,7 @@ impl HitObject for OsuSpinner {
             // longer time, without needing to store
             // a queue of frame data.
 
-            let time_delta = beatmap_time - self.window_start;
+            let time_delta = shell.time - self.window_start;
             let ratio = time_delta / WINDOW_PERIOD_MILLIS;
 
             if ratio >= 1.0 {
@@ -142,18 +127,18 @@ impl HitObject for OsuSpinner {
             let current_window_proportion = ratio.fract();
             let previous_window_proportion = 1.0 - current_window_proportion;
 
-            self.window_start = beatmap_time - WINDOW_PERIOD_MILLIS * current_window_proportion;
+            self.window_start = shell.time - WINDOW_PERIOD_MILLIS * current_window_proportion;
 
             let amount = self.rotation_windows[0] * previous_window_proportion + self.rotation_windows[1];
 
             self.rotation_velocity = amount / WINDOW_PERIOD_MILLIS;
 
             // update display rotation
-            self.display_rotation += self.rotation_velocity * (beatmap_time - self.last_update);
+            self.display_rotation += self.rotation_velocity * (shell.time - self.last_update);
             if self.display_rotation >= PI * 2.0 || self.display_rotation <= -PI * 2.0 {
                 self.rotations_completed += 1;
                 if self.rotations_completed >= self.rotations_required && (self.rotations_completed - self.rotations_required) % 3 == 0 {
-                    self.points_queue.push((OsuHitJudgments::SpinnerPoint, self.pos));
+                    self.points_queue.push(OsuHitJudgments::SpinnerPoint);
                 }
             }
             self.display_rotation %= PI * 2.0;
@@ -165,14 +150,16 @@ impl HitObject for OsuSpinner {
         }
 
         self.last_mouse_angle = mouse_angle;
-        self.last_update = beatmap_time;
-        self.current_time = beatmap_time;
+        self.last_update = shell.time;
     }
 
     #[cfg(feature="graphics")]
-    fn draw(&mut self, time: f32, list: &mut graphics::RenderableCollection) {
-        if !(time >= self.time && time <= self.end_time) { return }
-        let scale = Vector2::ONE * self.coords.cs;
+    pub fn draw(&self, shell: &mut DrawShell) {
+        if shell.time < self.time || shell.time > self.end_time { return }
+
+        let center = FIELD_SIZE / 2.0;
+
+        let scale = Vector2::ONE * shell.coords.cs;
 
         let border = Border::new(
             Color::BLACK,
@@ -182,63 +169,72 @@ impl HitObject for OsuSpinner {
         // bg circle
         if let Some(i) = self.spinner_background.clone() {
             let transform = graphics::Transform {
-                pos: self.pos,
+                origin: i.size() / 2.0, // center
                 scale,
+                pos: center,
                 ..graphics::Transform::identity()
             };
 
-            list.push(i.with_transform(transform.matrix()));
+            shell.list.push(i.with_transform(
+                shell.transform * transform.matrix()
+            ));
         }
 
         // bottom circle
         if let Some(i) = self.spinner_bottom.clone() {
             let transform = graphics::Transform {
-                pos: self.pos,
+                origin: i.size() / 2.0, // center
                 scale,
+                pos: center,
                 ..graphics::Transform::identity()
             };
 
-            list.push(i.with_transform(transform.matrix()));
+            shell.list.push(i.with_transform(
+                shell.transform * transform.matrix()
+            ));
         } else if !(self.spinner_approach.is_some() || self.spinner_circle.is_some()) {
             let transform = graphics::Transform {
-                pos: self.pos,
                 scale: Vector2::ONE * SPINNER_RADIUS,
+                pos: center,
                 ..graphics::Transform::identity()
             };
 
-            list.push(graphics::Circle::new(Color::YELLOW)
+            shell.list.push(graphics::Circle::new(Color::YELLOW)
                 .border(border)
-                .with_transform(transform.matrix())
+                .with_transform(shell.transform * transform.matrix())
             );
         }
 
 
         // draw another circle on top which increases in radius as the counter gets closer to the reqired
         if let Some(i) = self.spinner_approach.clone() {
-            let scale = Vector2::ONE *
+            let scale = scale *
                 f32::lerp(
                     1.0,
                     0.0,
-                    (self.current_time - self.time) / (self.end_time - self.time)
-                ) * self.coords.scale;
+                    (shell.time - self.time) / (self.end_time - self.time)
+                );
 
             let transform = graphics::Transform {
-                pos: self.pos,
+                origin: i.size() / 2.0, // center
                 scale,
+                pos: center,
                 ..graphics::Transform::identity()
             };
 
-            list.push(i.with_transform(transform.matrix()));
+            shell.list.push(i.with_transform(
+                shell.transform * transform.matrix()
+            ));
         } else {
             let transform = graphics::Transform {
-                pos: self.pos,
                 scale: Vector2::ONE * SPINNER_RADIUS * (self.rotations_completed as f32 / self.rotations_required as f32).min(1.0),
+                pos: center,
                 ..graphics::Transform::identity()
             };
 
-            list.push(graphics::Circle::new(Color::WHITE)
+            shell.list.push(graphics::Circle::new(Color::WHITE)
                 .border(border)
-                .with_transform(transform.matrix())
+                .with_transform(shell.transform * transform.matrix())
             );
         }
 
@@ -246,13 +242,15 @@ impl HitObject for OsuSpinner {
         // draw line to show rotation
         if let Some(i) = self.spinner_circle.clone() {
             let transform = graphics::Transform {
-                pos: self.pos,
+                origin: i.size() / 2.0, // center
                 scale,
                 rotation: self.display_rotation,
-                ..graphics::Transform::identity()
+                pos: center,
             };
 
-            list.push(i.with_transform(transform.matrix()));
+            shell.list.push(i.with_transform(
+                shell.transform * transform.matrix()
+            ));
         } else {
             let vector = Vector2::new(
                     self.display_rotation.cos(),
@@ -260,14 +258,16 @@ impl HitObject for OsuSpinner {
                 )
                 * SPINNER_RADIUS;
 
+            let transform = graphics::Transform {
+                pos: center,
+                ..graphics::Transform::identity()
+            };
 
-            list.push(graphics::Line::new(
+            shell.list.push(graphics::Line::new(
                 vector,
                 5.0,
                 Color::GREEN
-            ).with_transform(tataku::Matrix::identity()
-                .trans(self.pos)
-            ));
+            ).with_transform(shell.transform * transform.matrix()));
         }
 
         // draw a counter
@@ -287,23 +287,21 @@ impl HitObject for OsuSpinner {
         // list.push(txt);
     }
 
-    fn reset(&mut self) {
-        self.missed = false;
-        self.holding = false;
+    pub fn reset(&mut self) {
         self.rotation = 0.0;
         self.last_update = 0.0;
-        self.current_time = 0.0;
         self.last_mouse_angle = 0.0;
         self.display_rotation = 0.0;
         self.rotation_velocity = 0.0;
         self.rotations_completed = 0;
         self.rotation_windows = [0.0; 2];
+        self.missed = false;
 
         self.points_queue.clear();
     }
 
     #[cfg(feature="graphics")]
-    fn reload_skin(
+    pub fn reload_skin(
         &mut self,
         source: &graphics::TextureSource,
         skin_manager: &mut dyn graphics::SkinProvider
@@ -336,57 +334,5 @@ impl HitObject for OsuSpinner {
             false,
         );
 
-    }
-}
-
-impl OsuHitObject for OsuSpinner {
-    fn miss(&mut self) { self.missed = true }
-    fn was_hit(&self) -> bool {
-        self.missed || self.rotations_completed >= self.rotations_required
-    } //{ self.last_update >= self.end_time }
-    fn get_preempt(&self) -> f32 { 0.0 }
-    fn set_hitwindow_miss(&mut self, _window: f32) {}
-    fn set_ar(&mut self, _ar: f32) {}
-
-    fn press(&mut self, _time:f32) { self.holding = true; }
-    fn release(&mut self, _time:f32) { self.holding = false; }
-    fn mouse_move(&mut self, pos: Vector2) { self.mouse_pos = pos; }
-    fn check_distance(&self, _: Vector2) -> bool { true }
-    fn hit(&mut self, _time: f32) {}
-
-    fn new_combo(&self) -> bool { true }
-
-
-    #[cfg(feature="graphics")]
-    fn point_draw_pos(&self, _: f32) -> Vector2 { self.pos }
-    #[cfg(feature="graphics")]
-    fn set_approach_easing(&mut self, _easing: Easing) {}
-    #[cfg(feature="gameplay")]
-    fn get_hitsound(&self) -> Vec<Hitsound> { vec![] }
-    #[cfg(feature="graphics")]
-    fn set_combo_color(&mut self, _color: Color) {}
-
-    #[cfg(feature="graphics")]
-    fn playfield_changed(&mut self, new_scale: Arc<OsuCoords>) {
-        self.pos = new_scale.to_window(FIELD_SIZE / 2.0);
-        self.coords = new_scale;
-    }
-
-    fn pos_at(&self, time: f32) -> Vector2 {
-        if time < self.time || time >= self.end_time { return self.pos }
-
-        let r = self.last_mouse_angle + (time - self.last_update) / (4.0*PI);
-        self.pos + Vector2::new(
-            r.cos(),
-            r.sin()
-        ) * self.coords.scale * 20.0
-    }
-
-    fn set_settings(&mut self, _settings: Arc<OsuSettings>) {
-        // self.standard_settings = settings;
-    }
-
-    fn pending_combo(&mut self) -> Vec<(HitJudgment, Vector2)> {
-        self.points_queue.take()
     }
 }

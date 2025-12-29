@@ -3,67 +3,83 @@ use tataku::{
     Color,
     Border,
     Bounds,
-    Easing,
     Vector2,
-    Animate,
-    AnimationTimeline,
 };
 
-use engine::graphics;
+use engine::{
+    graphics,
+    ui,
+};
 
+use interface::parley;
 
 /// needed to fix text hitcircle skins
 const TEXT_SCALE:f32 = 0.8;
 
-/// how long a single shake is
-const SHAKE_TIME:f32 = 20.0;
-/// how many shakes to perform
-const SHAKE_COUNT:usize = 6;
-/// can a shake request inturrupt another shake?
-const SHAKE_INTURRUPT: bool = true;
-
 #[derive(Clone, Default)]
 pub struct HitCircle {
-    pub base_pos: Vector2,
-    /// scaled pos
-    pub pos: Vector2,
-
     pub circle: Option<graphics::Image>,
     pub overlay: Option<graphics::Image>,
     pub combo_num: u16,
 
-    pub coords: Arc<OsuCoords>,
-    alpha: u8,
-    color: Color,
-
     /// combo num text cache
-    // combo_text: Option<Text>,
-    combo_image: Option<graphics::SkinnedNumber>,
+    combo_layout: Option<Arc<parley::Layout<Color>>>,
+    combo_scale: f32,
+    combo_size: Vector2,
 
-    skin_settings: Arc<graphics::SkinSettings>,
-    shake: Option<AnimationTimeline<f32>>
+    combo_image: Option<graphics::SkinnedNumber>,
 }
 impl HitCircle {
-    pub fn new(
-        base_pos: Vector2,
-        coords: Arc<OsuCoords>,
-        combo_num: u16
-    ) -> Self {
+    pub fn new(combo_num: u16) -> Self {
         Self {
             circle: None,
             overlay: None,
-            base_pos,
-            pos: coords.to_window(base_pos),
-            skin_settings: Arc::default(),
             combo_num,
-            coords,
+
+            combo_layout: None,
+            combo_size: Vector2::ZERO,
+            combo_scale: 0.0,
 
             combo_image: None,
-            // combo_text: None,
+        }
+    }
 
-            alpha: 0,
-            color: Color::WHITE,
-            shake: None
+    fn text_layout(
+        text: &str,
+        scale: f32,
+        context: &mut ui::widget::TextLayoutContexts,
+    ) -> (Arc<parley::Layout<Color>>, Vector2) {
+        let style = ui::style::TextStyle {
+            font_size: 30.0 * scale,
+            ..Default::default()
+        };
+
+        let mut layout = context.simple_text(
+            text,
+            &style,
+        );
+        layout.break_all_lines(None);
+
+        let size = Vector2::new(
+            layout.width(),
+            layout.height(),
+        );
+
+        (Arc::new(layout), size)
+    }
+
+    pub fn update(&mut self, shell: &mut UpdateShell) {
+        if self.combo_layout.is_none()
+        || self.combo_scale != shell.coords.cs {
+            let (layout, size) = Self::text_layout(
+                &self.combo_num.to_string(),
+                shell.coords.cs,
+                shell.font_contexts,
+            );
+
+            self.combo_size = size;
+            self.combo_layout = Some(layout);
+            self.combo_scale = shell.coords.cs;
         }
     }
 
@@ -71,24 +87,19 @@ impl HitCircle {
     pub fn reload_skin(
         &mut self,
         source: &graphics::TextureSource,
-        skin_manager: &mut dyn graphics::SkinProvider
+        skin_manager: &mut dyn graphics::SkinProvider,
     ) {
         use graphics::{
             SkinUsage,
             SkinnedNumber,
         };
 
-        self.skin_settings = skin_manager.skin().clone();
-
         self.circle = skin_manager.get_texture(
             Path::new("hitcircle"),
             source,
             SkinUsage::Gamemode,
             false,
-        ).map(|mut i| {
-            i.color = self.color;
-            i
-        });
+        );
 
         self.overlay = skin_manager.get_texture(
             Path::new("hitcircleoverlay"),
@@ -100,7 +111,7 @@ impl HitCircle {
         self.combo_image = SkinnedNumber::new(
             self.combo_num as f64,
             Color::WHITE,
-            &self.skin_settings.hitcircle_prefix,
+            skin_manager.skin().hitcircle_prefix.clone(),
             None,
             0,
             skin_manager,
@@ -109,200 +120,98 @@ impl HitCircle {
             SkinUsage::Gamemode,
         ).ok();
 
-        if let Some(combo) = &mut self.combo_image {
-            combo.spacing_override = Some(-(self.skin_settings.hitcircle_overlap as f32));
-        }
+        self.combo_layout = None;
+
+        // if let Some(combo) = &mut self.combo_image {
+        //     combo.spacing_override = Some(-(settings.hitcircle_overlap as f32));
+        // }
 
     }
 
-    pub fn playfield_changed(&mut self, new_scale: &Arc<OsuCoords>) {
-        self.pos = new_scale.to_window(self.base_pos);
-        self.coords = new_scale.clone();
-    }
-
-    pub fn set_alpha(&mut self, alpha: u8) {
-        self.alpha = alpha;
-    }
-    pub fn set_color(&mut self, color: Color) {
-        self.color = color;
-        if let Some(circle) = &mut self.circle {
-            circle.color = color;
-        }
-    }
-
-    pub fn update(&mut self, time: f32) {
-        if let Some(shake) = &mut self.shake {
-            shake.update(time);
-
-            if shake.is_empty() {
-                self.shake = None;
-            }
-        }
-    }
-
-    pub fn draw(&mut self, list: &mut graphics::RenderableCollection) {
-        let shake_transform = if let Some(shake) = &self.shake {
-            let shake = shake.last_value();
-
-            graphics::Transform {
-                pos: Vector2::new(shake * 8.0 * self.coords.scale, 0.0),
-                ..graphics::Transform::identity()
-            }.matrix()
-        } else {
-            tataku::Matrix::identity()
-        };
+    pub fn draw(
+        &self,
+        color_index: usize,
+        shell: &mut DrawShell
+    ) {
+        let color = shell.combo_color(color_index)
+            .alpha8(shell.alpha);
 
         // hit circle
         if let Some(mut overlay) = self.overlay.clone() {
-            overlay.color.a = self.alpha;
+            overlay.color.a = shell.alpha;
 
             let transform = graphics::Transform {
-                pos: self.pos,
+                origin: overlay.size() / 2.0,
                 ..graphics::Transform::identity()
             };
 
-            list.push(overlay.with_transform(
-                shake_transform * transform.matrix()
+            shell.list.push(overlay.with_transform(
+                shell.transform * transform.matrix()
             ));
         }
 
         if let Some(mut circle) = self.circle.clone() {
-            circle.color.a = self.alpha;
+            circle.color = color;
 
             let transform = graphics::Transform {
-                pos: self.pos,
+                origin: circle.size() / 2.0,
                 ..graphics::Transform::identity()
             };
 
-            list.push(circle.with_transform(
-                shake_transform * transform.matrix()
+            shell.list.push(circle.with_transform(
+                shell.transform * transform.matrix()
             ));
         } else {
+            let mut circle = graphics::Circle::new(color);
+
             let transform = graphics::Transform {
-                pos: self.pos,
-                scale: Vector2::ONE * CIRCLE_RADIUS_BASE * self.coords.cs,
+                scale: Vector2::ONE * CIRCLE_RADIUS_BASE,
                 ..graphics::Transform::identity()
             };
-
-            let mut circle = graphics::Circle::new(self.color.alpha8(self.alpha));
 
             if self.overlay.is_none() {
                 circle.border = Some(Border::new(
-                    Color::WHITE.alpha8(self.alpha),
-                    self.coords.border_width
+                    Color::WHITE.alpha8(shell.alpha),
+                    shell.coords.border_width
                 ));
             }
 
-            list.push(circle.with_transform(
-                shake_transform * transform.matrix()
+            shell.list.push(circle.with_transform(
+                shell.transform * transform.matrix()
             ));
         }
 
         let include_combo_num = true;
 
         if include_combo_num {
-            let size = self.coords.circle_size;
-            let rect = Bounds::new(self.pos - size / 2.0, size);
-
             if let Some(mut image) = self.combo_image.clone() {
-                image.color.a = self.alpha;
+                image.color.a = shell.alpha;
 
                 let text_size = image.measure_text();
 
-                let pos = tataku::Alignment::CENTER.resolve(
-                    &rect,
-                    text_size,
-                    true,
-                    true,
-                );
-
                 let transform = graphics::Transform {
-                    pos,
+                    origin: text_size / 2.0,
                     ..graphics::Transform::identity()
                 };
 
-                list.push(image.with_transform(
-                    shake_transform * transform.matrix()
-                ))
-            // } else if let Some(mut text) = self.combo_text.clone() {
-                // text.color.a = self.alpha;
-                // text.center_text(&rect);
-                // collection.push(text);
+                shell.list.push(image.with_transform(
+                    shell.transform * transform.matrix()
+                ));
+            } else if let Some(layout) = self.combo_layout.clone() {
+                let transform = graphics::Transform {
+                    origin: self.combo_size / 2.0,
+                    scale: Vector2::ONE * shell.coords.cs.recip(),
+                    ..graphics::Transform::identity()
+                };
+
+                shell.list.push(graphics::Text::new(layout)
+                    .with_transform(shell.transform * transform.matrix())
+                    .merge_draw_options(graphics::DrawOptions {
+                        alpha: Some(shell.alpha),
+                        ..Default::default()
+                    })
+                );
             }
         }
     }
-
-    pub fn shake(&mut self, time: f32) {
-        if self.shake.is_some() && !SHAKE_INTURRUPT { return }
-
-        let shake = shake(
-            time,
-            SHAKE_TIME,
-            SHAKE_COUNT,
-            Easing::Linear,
-        );
-
-        self.shake = Some(shake);
-    }
-
-    // pub fn ripple(&self, time: f32) -> TransformGroup {
-    //     let scale = 1.0..1.4;
-    //     let mut group = self.note(false);
-
-    //     // make it ripple and add it to the list
-    //     group.ripple_scale_range(0.0, 240.0, time, scale, None, Some(0.5));
-    //     group
-    // }
-
-}
-
-pub fn shake(
-    start_time: f32,
-    time_between_shakes: f32,
-    shake_count: usize,
-    easing: Easing,
-) -> AnimationTimeline<f32> {
-    let mut animations = Vec::with_capacity(shake_count);
-
-    animations.push(Animate::new(
-        start_time,
-        time_between_shakes / 2.0,
-        easing,
-        0.0,
-        1.0,
-    ));
-
-    if shake_count > 1 {
-        for i in 0..shake_count-1 {
-            let (start, end) = if i % 2 == 0 {
-                (1.0, -1.0)
-            } else {
-                (-1.0, 1.0)
-            };
-
-            animations.push(Animate::new(
-                start_time + time_between_shakes * (i as f32 + 0.5),
-                time_between_shakes,
-                easing,
-                start,
-                end,
-            ));
-        }
-    }
-
-    let (start, end) = if shake_count % 2 == 0 {
-        (-1.0, 0.0)
-    } else {
-        (1.0, 0.0)
-    };
-
-    animations.push(Animate::new(
-        start_time + time_between_shakes * (shake_count as f32 + 0.5) ,
-        time_between_shakes / 2.0,
-        easing,
-        start,
-        end,
-    ));
-
-    AnimationTimeline::new(animations, 0.0)
 }

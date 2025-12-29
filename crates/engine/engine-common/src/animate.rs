@@ -38,10 +38,10 @@ where
         let elapsed = (time - self.start_time).clamp(0.0, self.duration);
 
         // % for interpolation
-        let mut factor = elapsed / self.duration;
-        if self.duration == 0.0 {
-            factor = 1.0;
-        }
+        let factor = elapsed / self.duration;
+        // if self.duration == 0.0 {
+        //     factor = 1.0;
+        // }
 
         self.easing.run_easing(self.start.clone(), self.end.clone(), factor)
     }
@@ -66,15 +66,15 @@ impl<T> AnimationTimeline<T> {
         }
     }
 
-    pub fn push(&mut self, aninmation: Animate<T>) {
-        let result = self.animations.binary_search_by(|a| aninmation.start_time.total_cmp(&a.start_time));
+    pub fn push(&mut self, animation: Animate<T>) {
+        let result = self.animations.binary_search_by(|a| animation.start_time.total_cmp(&a.start_time));
 
         let index = match result {
             Ok(i) => i,
             Err(i) => i,
         };
 
-        self.animations.insert(index, aninmation);
+        self.animations.insert(index, animation);
     }
 
     /// Returns animations in reverse time order.
@@ -105,17 +105,17 @@ where
     pub fn update(&mut self, time: f32) -> bool {
         if self.is_empty() { return false; }
 
-        // let position = self.animations.iter()
-        //     // Get index of last animation in progress
-        //     .position(|animation| time < animation.start_time + animation.duration)
-        //     // If we are after all animations, snap to the last animation.
-        //     .unwrap_or_default();
-
-        let position = self.animations.iter().rev()
-            .position(|animation| animation.start_time <= time)
+        let position = self.animations.iter().enumerate()
+            .rev()
+            .find_map(|(index, animation)|
+                if animation.start_time <= time {
+                    Some(index)
+                } else {
+                    None
+                }
+            )
             // If we are before all animations, snap to the first animation.
             .unwrap_or(self.animations.len() - 1);
-
 
         let animation = &self.animations[position];
 
@@ -170,8 +170,8 @@ impl From<AnimatableColor> for Color {
 mod c {
     use super::AnimatableColor;
     use std::ops::{
-        Add, 
-        Sub, 
+        Add,
+        Sub,
         Mul
     };
 

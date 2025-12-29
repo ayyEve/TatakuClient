@@ -14,7 +14,6 @@ impl NoteQueue {
         self.notes.get_mut(self.index)
     }
     #[inline]
-    #[allow(clippy::borrowed_box)]
     pub fn previous_note(&self) -> Option<&HitObject> {
         self.notes.get(self.index - 1)
     }

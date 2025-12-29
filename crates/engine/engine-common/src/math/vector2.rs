@@ -52,7 +52,15 @@ impl Vector2 {
         let direction = v2 - *self;
         (direction.x / direction.length()).acos()
     }
-    
+
+    // Component-wise abs
+    pub fn abs(self) -> Self {
+        Self::new(
+            self.x.abs(),
+            self.y.abs(),
+        )
+    }
+
     /// Get only this vector's x value
     /// This is horribly named
     pub fn x_portion(mut self) -> Self {

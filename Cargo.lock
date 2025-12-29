@@ -1725,6 +1725,7 @@ dependencies = [
  "tataku-engine",
  "tataku-engine-common",
  "tataku-graphics",
+ "tataku-interface",
  "tracing",
 ]
 

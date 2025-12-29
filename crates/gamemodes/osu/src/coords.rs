@@ -39,7 +39,7 @@ pub struct OsuCoords {
 }
 impl OsuCoords {
     pub fn new_with_settings(
-        settings: &OsuSettings,
+        settings: &Settings,
         cs: f32,
         window_size: Vector2,
         flip_vertical: bool

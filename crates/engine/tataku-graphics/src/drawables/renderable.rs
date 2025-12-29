@@ -2,12 +2,12 @@ use crate::*;
 
 pub trait TatakuRenderable: Sync + Send {
     fn get_name(&self) -> String { "Unnamed".to_owned() }
-    
+
     #[cfg(feature="graphics")]
     fn draw(
-        &self, 
+        &self,
         options: &DrawOptions,
-        transform: Matrix, 
+        transform: Matrix,
         g: &mut dyn DrawEngine,
     );
 
@@ -97,10 +97,10 @@ pub struct DrawOptions {
 }
 impl DrawOptions {
     fn apply_alpha(alpha: Option<u8>, other: u8) -> u8 {
-        Color::to_u8((
-            Color::to_f32(alpha.unwrap_or(Color::MAX)) 
+        Color::to_u8(
+            Color::to_f32(alpha.unwrap_or(Color::MAX))
             * Color::to_f32(other)
-        ).clamp(0.0, 1.0))
+        )
     }
 
     /// get the modified alpha value for the provided alpha
@@ -126,7 +126,7 @@ impl DrawOptions {
         self.color(other).alpha8(self.alpha(other.a))
     }
 
-    
+
     /// get the modified color value for the provided border color
     /// (this really just returns our color or the provided color if we dont have one)
     pub fn border_color(&self, other: Color) -> Color {
@@ -149,9 +149,9 @@ impl DrawOptions {
     }
 
     /// Merge self with other
-    /// 
+    ///
     /// Color and border color will be whichever is Some(), or other's if both are Some()
-    /// 
+    ///
     /// Will also xor the image flips
     pub fn merge(self, other: Self) -> Self {
         Self {

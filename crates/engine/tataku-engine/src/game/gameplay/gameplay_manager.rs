@@ -256,6 +256,8 @@ pub struct GameplayUpdateShell<'a> {
     /// Action queue
     pub action_queue: &'a mut ActionQueue,
 
+    pub font_contexts: &'a mut ui::widget::TextLayoutContexts,
+
     pub window_size: Vector2,
 }
 impl GameplayUpdateShell<'_> {

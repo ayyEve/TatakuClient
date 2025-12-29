@@ -1,13 +1,7 @@
 use crate::*;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct SliderDrawable {
-    /// bounding size of the slider
-    pub size: Vector2,
-    /// alpha of whole drawable, mainly used for fade in
-    pub alpha: u8,
-
-
     /// slider data to be passed onto the shader
     pub slider_data: SliderData,
 
@@ -23,16 +17,13 @@ pub struct SliderDrawable {
 impl TatakuRenderable for SliderDrawable {
     #[cfg(feature="graphics")]
     fn draw(
-        &self, 
+        &self,
         options: &DrawOptions,
-        transform: Matrix, 
+        transform: Matrix,
         g: &mut dyn DrawEngine
     ) {
-        let transform = transform * Matrix::identity()
-            .scale(self.size);
-
         let mut slider_data = self.slider_data;
-        let alpha = Color::to_f32(self.alpha);
+        let alpha = Color::to_f32(options.alpha.unwrap_or(u8::MAX));
 
         slider_data.body_color.a = Color::to_u8(Color::to_f32(slider_data.body_color.a) * alpha);
         slider_data.border_color.a = Color::to_u8(Color::to_f32(slider_data.border_color.a) * alpha);

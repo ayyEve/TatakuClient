@@ -32,6 +32,11 @@ pub struct SliderData {
     // slider velocity (neb to describe this properly)
     pub slider_velocity: f32,
 
+    // Size of slider body
+    pub size: Vector2,
+    /// Scale of the playfield
+    pub scale: f32,
+
     /// Size of the slider in grid units
     pub grid_size: [u32; 2],
     /// Grid cells of this slider. This represents the start index into the

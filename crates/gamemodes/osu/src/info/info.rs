@@ -45,7 +45,7 @@ pub const GAME_INFO: GamemodeInfo = GamemodeInfo {
         OVERALL_DIFFICULTY,
         APPROACH_DIFFICULTY,
         CIRCLE_SIZE_DIFFICULTY,
-        
+
         BPM_DIFF_VALUE,
         DURATION_DIFF_VALUE,
     ],
@@ -56,7 +56,7 @@ pub const GAME_INFO: GamemodeInfo = GamemodeInfo {
     create_diffcalc: OsuGameInfo::create_diffcalc,
     can_load_beatmap: OsuGameInfo::can_load_beatmap,
 
-    
+
     serialize_settings: OsuGameInfo::serialize_settings,
     deserialize_settings: OsuGameInfo::deserialize_settings,
 
@@ -72,12 +72,12 @@ impl OsuGameInfo {
         let geki = score.judgments.get("geki").copied().unwrap_or_default() as f32;
         let katu = score.judgments.get("katu").copied().unwrap_or_default() as f32;
         let miss = score.judgments.get("xmiss").copied().unwrap_or_default() as f32;
-    
-        (50.0 * x50 + 100.0 * (x100 + katu) + 300.0 * (x300 + geki)) 
+
+        (50.0 * x50 + 100.0 * (x100 + katu) + 300.0 * (x300 + geki))
         / (300.0 * (miss + x50 + x100 + x300 + katu + geki))
     }
 
-    fn can_load_beatmap(map: &BeatmapType) -> bool { 
+    fn can_load_beatmap(map: &BeatmapType) -> bool {
         matches!(map, BeatmapType::Osu)
     }
 
@@ -85,22 +85,22 @@ impl OsuGameInfo {
         Ok(Box::new(OsuGame::new(beatmap, false, settings)?))
     }
     fn create_diffcalc(map: &BeatmapMeta, settings: &engine::Settings) -> tataku::Result<Box<dyn DiffCalc>> {
-        Ok(Box::new(OsuDifficultyCalculator::new(map, settings)?))
+        Ok(Box::new(DifficultyCalculator::new(map, settings)?))
     }
 
 
     fn deserialize_settings(value: serde_json::Value) -> Option<Box<dyn GamemodeSettings>> {
         if value.is_null() {
-            let settings: Box<dyn GamemodeSettings> = Box::new(OsuSettings::default());
+            let settings: Box<dyn GamemodeSettings> = Box::new(Settings::default());
             return Some(settings);
         }
 
-        let parsed = serde_json::from_value::<OsuSettings>(value).ok()?; 
+        let parsed = serde_json::from_value::<Settings>(value).ok()?;
         let a: Box<dyn GamemodeSettings> = Box::new(parsed);
         Some(a)
     }
     fn serialize_settings(s: Box<dyn GamemodeSettings>) -> serde_json::Value {
-        let s = *s.downcast::<OsuSettings>().unwrap();
+        let s = *s.downcast::<Settings>().unwrap();
         serde_json::to_value(&s).unwrap()
     }
 

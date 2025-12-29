@@ -1,4 +1,5 @@
 mod note;
+mod shake;
 mod slider;
 mod spinner;
 mod hitobject;
@@ -6,6 +7,7 @@ mod hitobject;
 #[cfg(feature="graphics")] mod approach_circle;
 
 pub use note::*;
+pub use shake::*;
 pub use slider::*;
 pub use spinner::*;
 pub use hitobject::*;

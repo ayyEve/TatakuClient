@@ -1,275 +1,120 @@
 use crate::prelude::*;
-use tataku::{
-    Color,
-    Easing,
-    Vector2,
-};
+use tataku::Vector2;
 
 use engine::{
     beatmaps::{
         osu::*,
-        NoteType,
-        map_difficulty,
     },
-    gameplay::{
-        Hitsound,
-        HitObject,
-    }
 };
 
 #[derive(Default)]
-pub struct OsuNote {
-    /// note definition
-    def: NoteDef,
+pub struct Note {
     /// note position
-    pos: Vector2,
+    pub pos: Vector2,
     /// note time in ms
-    time: f32,
+    pub time: f32,
 
-    hitwindow_miss: f32,
-
-    /// was the note hit?
-    hit: bool,
+    /// time when the note was hit
+    pub hit_time: Option<f32>,
     /// was the note missed?
-    missed: bool,
+    pub missed: bool,
+
+    pub hitsound: u8,
+    pub hitsamples: HitSamples,
 
     /// combo color
-    color: Color,
-
-    /// note radius (scaled by cs and size)
-    radius: f32,
-    /// when the hitcircle should start being drawn
-    time_preempt: f32,
-
-    coords: Arc<OsuCoords>,
-
-    /// current map time
-    map_time: f32,
-    /// current mouse pos
-    mouse_pos: Vector2,
-
-    /// cached settings for this game
-    standard_settings: Arc<OsuSettings>,
-
+    color_index: usize,
     #[cfg(feature="graphics")] circle_image: HitCircle,
-    #[cfg(feature="graphics")] approach_circle: ApproachCircle,
+    #[cfg(feature="graphics")] pub approach_circle: ApproachCircle,
 
-    hitsounds: Vec<Hitsound>,
+    #[cfg(feature="graphics")] pub shake: Shake,
 }
-impl OsuNote {
+impl Note {
     pub fn new(
-        def: NoteDef,
-        ar: f32,
+        def: &NoteDef,
         combo_num: u16,
-        coords: Arc<OsuCoords>,
-        standard_settings: Arc<OsuSettings>,
-        hitsounds: Vec<Hitsound>,
+        color_index: usize,
     ) -> Self {
         let time = def.time;
-        let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
+        let pos = def.pos;
 
-        let pos = coords.to_window(def.pos);
-        let radius = CIRCLE_RADIUS_BASE * coords.cs;
+        let hitsound = def.hitsound;
+        let hitsamples = def.hitsamples.clone();
 
         Self {
             pos,
             time,
-            radius,
-            time_preempt,
-            standard_settings,
+
+            hitsound,
+            hitsamples,
+
+            color_index,
 
             #[cfg(feature="graphics")]
-            circle_image: HitCircle::new(
-                def.pos,
-                coords.clone(),
-                combo_num
-            ),
+            circle_image: HitCircle::new(combo_num),
 
             #[cfg(feature="graphics")]
-            approach_circle: ApproachCircle::new(
-                def.pos,
-                time,
-                radius,
-                time_preempt,
-                coords.clone()
-            ),
-
-            def,
-            coords,
-            hitsounds,
+            approach_circle: ApproachCircle::new(),
 
             ..Self::default()
         }
     }
 
-    fn get_alpha(&self) -> u8 {
-        // fade in
-        let mut alpha = (1.0 - ((self.time - (self.time_preempt * (2.0/3.0))) - self.map_time) / (self.time_preempt * (1.0/3.0))) / 3.0;
+    pub fn update(&mut self, shell: &mut UpdateShell) {
+        #[cfg(feature = "graphics")]
+        self.shake.update(shell.time);
 
-        // if after time, fade out
-        if self.map_time >= self.time {
-            alpha = ((self.time + self.hitwindow_miss) - self.map_time) / self.hitwindow_miss;
-        }
-
-        Color::to_u8(alpha.clamp(0.0, 1.0))
-    }
-}
-
-impl HitObject for OsuNote {
-    fn note_type(&self) -> NoteType { NoteType::Note }
-    fn time(&self) -> f32 { self.time }
-    fn end_time(&self, hw_miss:f32) -> f32 { self.time + hw_miss }
-    fn update(&mut self, beatmap_time: f32) {
-        self.map_time = beatmap_time;
-        #[cfg(feature="graphics")]
-        self.approach_circle.update(beatmap_time);
-        #[cfg(feature="graphics")]
-        self.circle_image.update(beatmap_time);
+        #[cfg(feature = "graphics")]
+        self.circle_image.update(shell);
     }
 
     #[cfg(feature="graphics")]
-    fn draw(
-        &mut self,
-        _beatmap_time: f32,
-        list: &mut tataku_graphics::RenderableCollection
-    ) {
+    pub fn draw(&self, shell: &mut DrawShell) {
+        let hit_time = self.hit_time.unwrap_or(self.time + shell.hitwindow_miss);
 
         // if its not time to draw anything else, leave
-        if self.time - self.map_time > self.time_preempt || self.time + self.hitwindow_miss < self.map_time || self.hit {
+        if self.time - shell.time > shell.fade_in_time
+            || shell.time - hit_time > shell.fade_out_time
+        {
             return
         }
 
-        let alpha = self.get_alpha();
+        let alpha = shell.alpha(self.time, hit_time);
+
+        let transform = shell.transform
+            * self.shake.transform(2.0)
+            * engine::graphics::Transform {
+                pos: shell.coords.to_window(self.pos),
+                scale: Vector2::ONE * shell.coords.cs,
+                ..Default::default()
+            }.matrix();
+
+        let mut shell = DrawShell {
+            transform,
+            alpha,
+            list: shell.list,
+            ..*shell
+        };
 
         // note
-        self.circle_image.set_alpha(alpha);
-        self.circle_image.draw(list);
+        self.circle_image.draw(self.color_index, &mut shell);
 
         // timing circle
-        self.approach_circle.set_alpha(alpha);
-        self.approach_circle.draw(list);
-
-        // draw shapes
-        // for shape in self.shapes.iter() {
-        //     list.push(shape.clone());
-        // }
+        self.approach_circle.draw(self.time, self.color_index, &mut shell);
     }
 
-    fn reset(&mut self) {
-        self.hit = false;
+    pub fn reset(&mut self) {
+        self.hit_time = None;
         self.missed = false;
-
-        #[cfg(feature="graphics")]
-        self.approach_circle.reset();
     }
-
-    fn time_jump(&mut self, new_time: f32) {
-        if new_time > self.time {
-            self.hit = true;
-            self.missed = true;
-        } else {
-            self.hit = false;
-            self.missed = false;
-        }
-    }
-
 
     #[cfg(feature="graphics")]
-    fn reload_skin(
+    pub fn reload_skin(
         &mut self,
         source: &tataku_graphics::TextureSource,
-        skin_manager: &mut dyn tataku_graphics::SkinProvider
+        skin_manager: &mut dyn tataku_graphics::SkinProvider,
     ) {
         self.circle_image.reload_skin(source, skin_manager);
         self.approach_circle.reload_texture(source, skin_manager);
     }
-}
-
-impl OsuHitObject for OsuNote {
-    fn miss(&mut self) { self.missed = true }
-    fn was_hit(&self) -> bool { self.hit || self.missed }
-    fn mouse_move(&mut self, pos: Vector2) { self.mouse_pos = pos }
-    fn get_preempt(&self) -> f32 { self.time_preempt }
-    fn new_combo(&self) -> bool { self.def.new_combo }
-    fn pos_at(&self, _time: f32) -> Vector2 { self.pos }
-    fn set_hitwindow_miss(&mut self, window: f32) {
-        self.hitwindow_miss = window;
-    }
-
-    fn check_distance(&self, _mouse_pos: Vector2) -> bool {
-        let distance = (self.pos.x - self.mouse_pos.x).powi(2) + (self.pos.y - self.mouse_pos.y).powi(2);
-        distance <= self.radius.powi(2)
-    }
-
-    fn hit(&mut self, _time: f32) {
-        self.hit = true;
-
-        // if self.standard_settings.hit_ripples {
-        //     let mut group = TransformGroup::new(self.pos).alpha(0.0).border_alpha(1.0);
-
-        //     group.push(Circle::new(
-        //         Vector2::ZERO,
-        //         self.radius,
-        //         Color::TRANSPARENT,
-        //     ).border(Border::new(self.color, 2.0)));
-
-        //     let duration = 500.0;
-        //     group.ripple(
-        //         0.0,
-        //         duration,
-        //         time,
-        //         self.standard_settings.ripple_scale,
-        //         true,
-        //         None
-        //     );
-
-        //     self.shapes.push(group);
-        // }
-
-        // self.ripple_start();
-    }
-
-    #[cfg(feature="graphics")]
-    fn playfield_changed(&mut self, new_scale: Arc<OsuCoords>) {
-        self.pos = new_scale.to_window(self.def.pos);
-        self.radius = CIRCLE_RADIUS_BASE * new_scale.cs;
-        self.coords = new_scale.clone();
-
-        #[cfg(feature="graphics")] {
-            self.approach_circle.scale_changed(new_scale, self.radius);
-            self.circle_image.playfield_changed(&self.coords);
-        }
-    }
-
-    fn set_settings(&mut self, settings: Arc<OsuSettings>) {
-        self.standard_settings = settings;
-    }
-
-    fn set_ar(&mut self, ar: f32) {
-        self.time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
-    }
-
-    #[cfg(feature="graphics")]
-    fn point_draw_pos(&self, _: f32) -> Vector2 { self.pos }
-    #[cfg(feature="graphics")]
-    fn set_combo_color(&mut self, color: Color) {
-        self.color = color;
-        self.circle_image.set_color(color);
-        if self.standard_settings.approach_combo_color {
-            self.approach_circle.set_color(color);
-        }
-    }
-
-    #[cfg(feature="graphics")]
-    fn set_approach_easing(&mut self, easing: Easing) {
-        self.approach_circle.easing_type = easing;
-    }
-
-    #[cfg(feature="gameplay")]
-    fn get_hitsound(&self) -> Vec<Hitsound> {
-        self.hitsounds.clone()
-    }
-
-    #[cfg(feature="graphics")]
-    fn shake(&mut self, time: f32) { self.circle_image.shake(time) }
 }

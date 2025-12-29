@@ -20,10 +20,10 @@ use engine::{
 const BUCKET_LENGTH:f32 = 500.0;
 pub const WINDOW_SIZE:Vector2 = Vector2::new(1280.0, 720.0);
 
-pub struct OsuDifficultyCalculator {
-    notes: Vec<OsuDifficultyHitObject>,
+pub struct DifficultyCalculator {
+    notes: Vec<DifficultyHitObject>,
 }
-impl OsuDifficultyCalculator {
+impl DifficultyCalculator {
     fn calc_aim(&mut self, mods: &Mods) -> tataku::Result<Vec<f32>> {
         let mut start_bucket_time = self.notes.first().unwrap().time;
 
@@ -122,21 +122,15 @@ impl OsuDifficultyCalculator {
         Ok(note_density)
     }
 }
-impl DiffCalc for OsuDifficultyCalculator {
+impl DiffCalc for DifficultyCalculator {
     fn new(meta: &BeatmapMeta, settings: &engine::Settings) -> tataku::Result<Self> {
         let g = Beatmap::from_metadata(meta)?;
         let g = OsuGame::new(&g, true, settings)?;
         if g.notes.is_empty() { return Err(errors::beatmap::BeatmapError::InvalidFile.into()) }
 
-        let mut notes = Vec::new();
+        let mut notes: Vec<DifficultyHitObject> = Vec::new();
         for n in g.notes.iter() {
-            notes.push(OsuDifficultyHitObject {
-                pos: n.pos_at(n.time()),
-                end_pos: n.pos_at(n.end_time(0.0)),
-                time: n.time(),
-                end_time: n.end_time(0.0),
-                note_type: n.note_type()
-            });
+            notes.push(n.into());
         }
 
         notes.sort_by(|a, b|
@@ -193,11 +187,19 @@ impl DiffCalc for OsuDifficultyCalculator {
     }
 }
 
-
-struct OsuDifficultyHitObject {
+#[derive(Default2)]
+struct DifficultyHitObject {
     pos: Vector2,
     end_pos: Vector2,
     time: f32,
     end_time: f32,
+    #[default(NoteType::Note)]
     note_type: NoteType
+}
+
+impl From<&HitObject> for DifficultyHitObject {
+    fn from(value: &HitObject) -> Self {
+        // todo: this
+        DifficultyHitObject::default()
+    }
 }

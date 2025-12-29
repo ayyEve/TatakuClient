@@ -93,7 +93,7 @@ const SCORE_SEND_TIME:f32 = 1_000.0;
 const SPECTATOR_BUFFER_OK_DURATION:f32 = 500.0;
 
 macro_rules! create_update_state {
-    ($self: ident, $time: expr, $settings: expr) => {
+    ($self: ident, $time: expr, $settings: expr, $font_contexts:expr) => {
         GameplayUpdateShell {
             time: $time,
             game_speed: $self.game_speed(),
@@ -107,6 +107,7 @@ macro_rules! create_update_state {
             actions: Vec::new(),
             settings: $settings,
             action_queue: &mut $self.actions,
+            font_contexts: $font_contexts,
             window_size: $self.state.window_size,
         }
     }
@@ -345,7 +346,7 @@ impl GameplayManager {
             GameplayTypeSmall::Simulating => {
                 let time = self.time();
                 // update gamemode
-                self.update_gamemode(time, &values.settings);
+                self.update_gamemode(time, &values.settings, #[cfg(feature="ui")] font_contexts);
 
                 // update score stuff now that gamemode has been updated
                 self.update_score_values();
@@ -353,13 +354,13 @@ impl GameplayManager {
                 // then a few other things
                 self.check_complete();
                 self.update_gamemode_type(time);
-                self.handle_pending(&values.settings);
+                self.handle_pending(&values.settings, font_contexts);
             },
 
             _ => {
                 self.state.song_time = values.values.song.position;
 
-                self.check_time_jump(&values.settings);
+                self.check_time_jump(&values.settings, font_contexts);
                 self.check_pause_and_restart(actions);
 
                 // get the time with offsets
@@ -375,7 +376,7 @@ impl GameplayManager {
                 #[cfg(feature="graphics")] self.animation.update(time);
 
                 // update gamemode
-                self.update_gamemode(time, &values.settings);
+                self.update_gamemode(time, &values.settings, #[cfg(feature="ui")] font_contexts);
 
                 // update score stuff now that gamemode has been updated
                 self.update_score_values();
@@ -383,7 +384,7 @@ impl GameplayManager {
                 self.check_complete();
                 self.check_failed(time);
                 self.update_gamemode_type(time);
-                self.handle_pending(&values.settings);
+                self.handle_pending(&values.settings, font_contexts);
                 self.update_values(values);
             }
         }
@@ -806,12 +807,16 @@ impl GameplayManager {
         }
     }
 
-    fn check_time_jump(&mut self, settings: &Settings) {
+    fn check_time_jump(
+        &mut self,
+        settings: &Settings,
+        #[cfg(feature="ui")] font_contexts: &mut TextLayoutContexts,
+    ) {
         // make sure we jump to the time we're supposed to be at
         let Some(time) = self.state.pending_time_jump.take()
         else { return };
 
-        let mut state = create_update_state!(self, time, settings);
+        let mut state = create_update_state!(self, time, settings, font_contexts);
         self.gamemode.time_jump(time, &mut state);
     }
 
@@ -851,12 +856,13 @@ impl GameplayManager {
         &mut self,
         time: f32,
         settings: &Settings,
+        #[cfg(feature="ui")] font_contexts: &mut TextLayoutContexts,
     ) {
-        let mut state = create_update_state!(self, time, settings);
+        let mut state = create_update_state!(self, time, settings, font_contexts);
 
         self.gamemode.update(&mut state);
         for action in state.actions {
-            self.handle_gamemode_action(action, settings);
+            self.handle_gamemode_action(action, settings, font_contexts);
         }
     }
 
@@ -1087,10 +1093,14 @@ impl GameplayManager {
         }
     }
 
-    fn handle_pending(&mut self, settings: &Settings) {
+    fn handle_pending(
+        &mut self,
+        settings: &Settings,
+        #[cfg(feature="ui")] font_contexts: &mut TextLayoutContexts,
+    ) {
         // handle any pending gameplay actions
         for a in self.gameplay_actions.take() {
-            self.handle_action(a, settings);
+            self.handle_action(a, settings, font_contexts);
         }
 
         // handle any pending frames
@@ -1104,7 +1114,8 @@ impl GameplayManager {
                     true,
                     Some(time),
                     true,
-                    settings
+                    settings,
+                    font_contexts,
                 );
             }
         }
@@ -1424,7 +1435,8 @@ impl GameplayManager {
         force: bool,
         force_time: Option<f32>,
         should_add: bool,
-        settings: &Settings
+        settings: &Settings,
+        #[cfg(feature="ui")] font_contexts: &mut TextLayoutContexts,
     ) {
         // note to self: force is used when the frames are from the gamemode's update function
         #[cfg(feature="gameplay")]
@@ -1456,12 +1468,13 @@ impl GameplayManager {
             let mut state = create_update_state!(
                 self,
                 self.time(),
-                settings
+                settings,
+                font_contexts
             );
             self.gamemode.handle_replay_frame(frame, &mut state);
 
             for action in state.actions.take() {
-                self.handle_gamemode_action(action, settings);
+                self.handle_gamemode_action(action, settings, font_contexts);
             }
 
             if add_frames && should_add {
@@ -1486,6 +1499,7 @@ impl GameplayManager {
         &mut self,
         action: GameplayAction,
         settings: &engine::Settings,
+        #[cfg(feature="ui")] font_contexts: &mut TextLayoutContexts,
     ) {
         match action {
             GameplayAction::Pause => self.pause(),
@@ -1543,7 +1557,8 @@ impl GameplayManager {
                 true,
                 Some(self.time()),
                 should_save,
-                settings
+                settings,
+                font_contexts,
             ),
 
             // not used here
@@ -1554,7 +1569,8 @@ impl GameplayManager {
     fn handle_gamemode_action(
         &mut self,
         action: gameplay::Action,
-        settings: &engine::Settings
+        settings: &engine::Settings,
+        #[cfg(feature="ui")] font_contexts: &mut TextLayoutContexts,
     ) {
         match action {
             gameplay::Action::AddJudgment(judgment) => {
@@ -1608,7 +1624,8 @@ impl GameplayManager {
                     AffectsCombo::Reset => {
                         self.handle_gamemode_action(
                             gameplay::action::GamemodeAction::ComboBreak,
-                            settings
+                            settings,
+                            font_contexts,
                         );
                     },
                     AffectsCombo::Ignore => {},
@@ -1691,7 +1708,8 @@ impl GameplayManager {
                 true,
                 Some(frame.time),
                 true,
-                settings
+                settings,
+                font_contexts,
             ),
 
 
@@ -1744,10 +1762,15 @@ impl GameplayManager {
     }
 
     #[cfg(feature="gameplay")]
-    pub fn handle_input(&mut self, input: InputEvent, settings: &Settings) {
+    pub fn handle_input(
+        &mut self,
+        input: InputEvent,
+        settings: &Settings,
+        #[cfg(feature="ui")] font_contexts: &mut TextLayoutContexts,
+    ) {
         match &input.event {
             InputType::KeyPress(key_input) => {
-                if self.key_down(key_input, input.key_mods, settings) {
+                if self.key_down(key_input, input.key_mods, settings, font_contexts) {
                     return
                 }
             }
@@ -1775,6 +1798,7 @@ impl GameplayManager {
             None,
             true,
             settings,
+            font_contexts,
         );
 
     }
@@ -1785,6 +1809,7 @@ impl GameplayManager {
         key_input: &KeyInput,
         mods: KeyModifiers,
         settings: &Settings,
+        #[cfg(feature="ui")] font_contexts: &mut TextLayoutContexts,
     ) -> bool {
         if key_input.repeat { return false }
         let Some(key) = key_input.as_key() else { return false };
@@ -1916,6 +1941,7 @@ impl GameplayManager {
                 None,
                 true,
                 settings,
+                font_contexts,
             );
 
             return true;
