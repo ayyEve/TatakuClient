@@ -17,15 +17,15 @@ pub struct Settings {
     #[serde(skip)]
     pub save_path: String,
 
-    #[serde(skip)] #[debug(skip)] #[reflect(skip)]
-    #[divider(text="Audio Settings")] _audio: (),
-    
-
     #[cfg(feature="ui")]
     #[serde(skip)] #[debug(skip)] 
     #[reflect(rename="buildable")]
     pub buildable_provider: Arc<BuildableSettingsProvider>,
 
+
+    #[serde(skip)] #[debug(skip)] #[reflect(skip)]
+    #[divider(text="Audio Settings")] _audio: (),
+    
     // audio
     // #[setting(text="Master Volume")]
     pub master_vol: f32,
@@ -178,6 +178,7 @@ impl Settings {
         #[cfg(feature = "graphics")]
         self.create_provider(prefix, &mut builder);
         self.buildable_provider = Arc::new(builder.done());
+        println!("{:?}", self.buildable_provider);
     }
 
     pub fn gamemode_settings<G: serde::de::DeserializeOwned>(

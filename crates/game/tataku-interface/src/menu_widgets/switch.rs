@@ -357,10 +357,9 @@ impl SwitchWidgetCaseCond {
                 let Some(switch_val) = switch_value 
                 else { return Bcr::Unbuilt("no switch value") };
 
-                let Some(our_val) = v
-                    .resolve(values, passed_in)
+                let Some(our_val) = v.resolve(values, passed_in)
                 else { return Bcr::Failed };
-                
+
                 Bcr::from(&*our_val == switch_val)
             }
         }

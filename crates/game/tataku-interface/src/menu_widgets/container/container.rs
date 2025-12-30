@@ -19,23 +19,6 @@ use super::{
     drag_scroll_data::DragScrollData
 };
 
-macro_rules! get_list {
-    ($data: expr, $values: expr) => {{
-        let path = $data.list_var.clone();
-        let Ok(path) = path.resolve_path($values)
-            .inspect_err(|e| $data.print_err(e))
-        else { return };
-
-        let Ok(iter) = $values
-            .reflect_iter(&*path)
-            .inspect_err(|e| $data.print_err(e))
-        else { return };
-
-        iter
-    }}
-}
-
-
 #[derive(ChainableInitializer)]
 pub struct Container {
     children: Vec<Box<dyn Widget<actions::Action>>>,
@@ -156,6 +139,73 @@ impl Container {
     pub fn make_programmatic(mut self, data: ProgrammaticListData) -> Self {
         self.programmatic = Some(data);
         self
+    }
+
+    // TODO: rename this please
+    fn with_children_before_iter<Shell: HasTreeMut<actions::Action>, E>(
+        &mut self,
+        shell: &mut Shell,
+        before_iter: impl FnOnce(&mut Self, &[Box<dyn Reflect>], &String, &mut Shell),
+        mut cb: impl FnMut(&mut Shell, &mut Box<dyn Widget<actions::Action>>) -> WithChildrenResult<E>
+    ) -> Result<(), E> {
+        if let Some(data) = &mut self.programmatic {
+            // resolve the path
+            let path = data.list_var.clone();
+            let variable = data.variable.clone();
+            
+            let Ok(path) = path.resolve_path(shell.values_mut())
+                .inspect_err(|e| data.print_err(e))
+            else { return Ok(()) };
+
+            // get the values used for iteration
+            let Ok(iter) = shell.values_mut()
+                .reflect_iter(&*path)
+                .inspect_err(|e| data.print_err(e))
+            else { return Ok(()) };
+
+            // clone and collect them to avoid borrow issues
+            let values = iter
+                .filter_map(|v| v.duplicate())
+                .collect::<Vec<_>>();
+
+            // run the before_iter callback
+            before_iter(self, &values, &path, shell);
+
+            // iter over children and their associated values
+            let path = ReflectPath::new(&variable);
+            for (child, value) in self
+                .children
+                .iter_mut()
+                .zip(values)
+            {
+                shell.values_mut()
+                    .impl_insert(path.clone(), value)
+                    .expect("error inserting into values");
+
+                match cb(shell, child) {
+                    WithChildrenResult::Break => break,
+                    WithChildrenResult::Continue => {},
+                    WithChildrenResult::Error(e) => return Err(e),
+                }
+            }
+        } else {
+            for child in self.children.iter_mut() {
+                match cb(shell, child) {
+                    WithChildrenResult::Break => break,
+                    WithChildrenResult::Continue => {},
+                    WithChildrenResult::Error(e) => return Err(e),
+                }
+            }
+        }
+
+        Ok(())
+    }
+    fn with_children<Shell: HasTreeMut<actions::Action>, E>(
+        &mut self,
+        shell: &mut Shell,
+        cb: impl FnMut(&mut Shell, &mut Box<dyn Widget<actions::Action>>) -> WithChildrenResult<E>
+    ) -> Result<(), E> {
+        self.with_children_before_iter(shell, |_,_,_,_|(), cb)
     }
 
 
@@ -339,10 +389,16 @@ impl Widget<actions::Action> for Container {
     }
     
     fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId> {
-        let children = self.children
-            .iter_mut()
-            .map(|w| w.layout(shell))
-            .collect::<taffy::TaffyResult<Vec<_>>>()?;
+        let mut children = Vec::with_capacity(self.children.len());
+        self.with_children(shell, |shell, child| {
+            match child.layout(shell) {
+                Ok(node) => {
+                    children.push(node);
+                    WithChildrenResult::Continue
+                }
+                Err(e) => WithChildrenResult::Error(e),
+            }
+        })?;
 
         self.node_id = shell.tree.new_with_children(&children)?;
 
@@ -395,69 +451,44 @@ impl Widget<actions::Action> for Container {
         }
 
         let mut captured = false;
-        if let Some(data) = &mut self.programmatic {
-            let iter = get_list!(data, shell.values);
+        let drag_scroll = self.drag_scroll;
+        let _ = self.with_children(shell, |shell, child| {
+            child.input(event, shell);
 
-            let values = iter
-                .filter_map(|v| v.duplicate())
-                .collect::<Vec<_>>();
-
-            let path = ReflectPath::new(&data.variable);
-            for (w, value) in self
-                .children
-                .iter_mut()
-                .zip(values)
-            {
-                shell
-                    .values
-                    .impl_insert(path.clone(), value)
-                    .expect("error inserting into values");
-                w.input(event, shell);
-
-                captured |= shell.event_consumed;
-                if self.drag_scroll {
-                    shell.event_consumed = false;
-                } else if captured {
-                    break;
-                }
+            captured |= shell.event_consumed;
+            if drag_scroll {
+                shell.event_consumed = false;
+            } else if captured {
+                return WithChildrenResult::<()>::Break;
             }
-        } else {
-            for i in self.children.iter_mut() {
-                i.input(event, shell);
 
-                captured |= shell.event_consumed;
-                if self.drag_scroll {
-                    shell.event_consumed = false;
-                } else if captured {
-                    break;
-                }
-            }
-        }
+            WithChildrenResult::Continue
+        });
 
         shell.event_consumed = captured;
     }
 
     fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
-        if let Some(data) = &mut self.programmatic {
-            let iter = get_list!(data, shell.values);
+        let _ = self.with_children_before_iter(
+            shell, 
+            |this, values, resolved_path, shell| {
+                let data = this.programmatic.as_mut().unwrap();
+                if &data.cached_path != resolved_path {
+                    data.cached_path = resolved_path.clone();
+                    while let Some(child) = this.children.pop() {
+                        shell.tree.remove(child.node_id());
+                    }
+                }
 
-            let values = iter
-                .filter_map(|v| v.duplicate())
-                .collect::<Vec<_>>();
-
-            // FIXME: need to reload skin for added children
-            // make sure our list of children is the same length as the list of values
-            let diff = self.children.len() as i64 - values.len() as i64;
-            match diff {
-                0 => {} // children and values are the same length, nothing to do
-                (..0) => {
-                    // children is too small, need to add elements
-                    let style = shell.tree.node.get_style_str(); // e.get_style_str();
-                    let mut resolver = CssResolver::new(&style, shell.default_css);
-
-                    for _ in 0..diff.abs() {
-                        // create the new element
-                        let mut e = data.template.build();
+                // FIXME: need to reload skin for added children
+                // make sure our list of children is the same length as the list of values
+                let diff = this.children.len() as i64 - values.len() as i64;
+                match diff {
+                    0 => {} // children and values are the same length, nothing to do
+                    (..0) => {
+                        // children is too small, need to add elements
+                        let style = shell.tree.node.get_style_str(); // e.get_style_str();
+                        let mut resolver = CssResolver::new(&style, shell.default_css);
 
                         let mut layout_shell = LayoutShell {
                             tree: shell.tree,
@@ -467,67 +498,65 @@ impl Widget<actions::Action> for Container {
                             resolver: &mut resolver,
                             text_layout_contexts: shell.text_layout_contexts,
                         };
+                        let variable = ReflectPath::new(&data.variable);
 
-                        // add it to the tree
-                        let child = match e.layout(&mut layout_shell) {
-                            Ok(n) => n,
-                            Err(e) => panic!("Error laying out new custom list child! {e}"), // FIXME: not panic?
-                        };
+                        for _ in 0..diff.abs() {
+                            // create the new element
+                            let mut e = data.template.build();
 
-                        // make us its parent
-                        layout_shell.tree.add_child(self.node_id, child);
+                            let i = this.children.len();
+                            let v = values[i].duplicate().unwrap();
+                            layout_shell.values.impl_insert(variable.clone(), v).unwrap();
 
-                        // init it's style
-                        e.init_style(&mut layout_shell);
+                            // add it to the tree
+                            let child = match e.layout(&mut layout_shell) {
+                                Ok(n) => n,
+                                Err(e) => panic!("Error laying out new custom list child! {e}"), // FIXME: not panic?
+                            };
 
-                        // add to our list
-                        self.children.push(e.boxed());
+                            // make us its parent
+                            layout_shell.tree.add_child(this.node_id, child);
+
+                            // init it's style
+                            e.init_style(&mut layout_shell);
+
+                            // add to our list
+                            this.children.push(e.boxed());
+                        }
+
+                        // // mark the tree as dirty
+                        // shell.actions.push(UiAction::new(
+                        //     self.node_id,
+                        //     UiActionType::MarkDirty
+                        // ));
+                        // shell.actions.push(UiAction::new(
+                        //     self.node_id,
+                        //     UiActionType::Refresh
+                        // ));
                     }
+                    (1..) => {
+                        // too many elements, remove some
+                        for _ in 0..diff.abs() {
+                            // remove it from our list
+                            let removed = this
+                                .children
+                                .swap_remove(0);
 
-                    // // mark the tree as dirty
-                    // shell.actions.push(UiAction::new(
-                    //     self.node_id,
-                    //     UiActionType::MarkDirty
-                    // ));
-                    // shell.actions.push(UiAction::new(
-                    //     self.node_id,
-                    //     UiActionType::Refresh
-                    // ));
-                }
-                (1..) => {
-                    // too many elements, remove some
-                    for _ in 0..diff.abs() {
-                        // remove it from our list
-                        let removed = self
-                            .children
-                            .swap_remove(0);
+                            // remove it from the tree
+                            shell.tree.remove(removed.node_id());
+                        }
 
-                        // remove it from the tree
-                        shell.tree.remove(removed.node_id());
+                        // mark our node as dirty in the tree
+                        shell.tree.mark_dirty(this.node_id);
                     }
-
-                    // mark our node as dirty in the tree
-                    shell.tree.mark_dirty(self.node_id);
                 }
-            }
 
-            let path = ReflectPath::new(&data.variable);
-            for (i, value) in self
-                .children
-                .iter_mut()
-                .zip(values)
-            {
-                shell.values
-                    .impl_insert(path.clone(), value)
-                    .expect("error inserting into values");
-                i.update(shell);
-            }
-
-        } else {
-            for i in self.children.iter_mut() {
-                i.update(shell);
-            }
-        }
+            }, 
+            |shell, child| {
+                child.update(shell);
+                WithChildrenResult::<()>::Continue
+            },
+        );
     }
 
     fn draw(&self, shell: &mut DrawShell<actions::Action>) {
@@ -607,29 +636,10 @@ impl Widget<actions::Action> for Container {
         message: &Message,
         shell: &mut MessageShell<actions::Action>,
     ) {
-        if let Some(data) = &mut self.programmatic {
-            let iter = get_list!(data, shell.values);
-
-            let values_ = iter
-                .filter_map(|v| v.duplicate())
-                .collect::<Vec<_>>();
-
-            let path = ReflectPath::new(&data.variable);
-            for (i, value) in self
-                .children
-                .iter_mut()
-                .zip(values_)
-            {
-                shell.values
-                    .impl_insert(path.clone(), value)
-                    .expect("error inserting into values");
-                i.handle_message(message, shell);
-            }
-        } else {
-            for i in self.children.iter_mut() {
-                i.handle_message(message, shell);
-            }
-        }
+        let _ = self.with_children(shell, |shell, child| {
+            child.handle_message(message, shell); 
+            WithChildrenResult::<()>::Continue
+        });
     }
 
     fn handle_event(
@@ -638,31 +648,10 @@ impl Widget<actions::Action> for Container {
         event_value: Option<&TatakuValue>,
         shell: &mut MessageShell<actions::Action>,
     ) {
-        if let Some(data) = &mut self.programmatic {
-            let iter = get_list!(data, shell.values);
-
-            let values = iter
-                .filter_map(|v| v.duplicate())
-                .collect::<Vec<_>>();
-
-            let path = ReflectPath::new(&data.variable);
-            for (i, value) in self
-                .children
-                .iter_mut()
-                .zip(values)
-            {
-                shell
-                    .values
-                    .impl_insert(path.clone(), value)
-                    .expect("error inserting into values");
-
-                i.handle_event(event, event_value, shell);
-            }
-        } else {
-            for i in self.children.iter_mut() {
-                i.handle_event(event, event_value, shell);
-            }
-        }
+        let _ = self.with_children(shell, |shell, child| {
+            child.handle_event(event, event_value, shell); 
+            WithChildrenResult::<()>::Continue
+        });
     }
 
     fn reload_skin(&mut self, shell: &mut UpdateShell<actions::Action>) {
@@ -674,6 +663,11 @@ impl Widget<actions::Action> for Container {
 }
 
 
+enum WithChildrenResult<E> {
+    Continue,
+    Break, 
+    Error(E)
+}
 
 pub(super) enum ScrollPosition {
     /// move a relative amount

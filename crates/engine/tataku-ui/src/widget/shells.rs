@@ -31,6 +31,7 @@ impl<A: Send + Sync + 'static> HasTree<A> for LayoutShell<'_, '_, A> {
 }
 impl<A: Send + Sync + 'static> HasTreeMut<A> for LayoutShell<'_, '_, A> {
     fn tree_mut(&mut self) -> &mut Tree<A> { self.tree }
+    fn values_mut(&mut self) -> &mut dyn Reflect { self.values }
 }
 
 // Input shell
@@ -49,6 +50,7 @@ impl<A: Send + Sync + 'static> HasTree<A> for InputShell<'_, A> {
 }
 impl<A: Send + Sync + 'static> HasTreeMut<A> for InputShell<'_, A> {
     fn tree_mut(&mut self) -> &mut Tree<A> { self.tree }
+    fn values_mut(&mut self) -> &mut dyn Reflect { self.values }
 }
 
 // Message shell
@@ -65,6 +67,7 @@ impl<A: Send + Sync + 'static> HasTree<A> for MessageShell<'_, A> {
 }
 impl<A: Send + Sync + 'static> HasTreeMut<A> for MessageShell<'_, A> {
     fn tree_mut(&mut self) -> &mut Tree<A> { self.tree }
+    fn values_mut(&mut self) -> &mut dyn Reflect { self.values }
 }
 
 
@@ -86,6 +89,7 @@ impl<A: Send + Sync + 'static> HasTree<A> for UpdateShell<'_, A> {
 }
 impl<A: Send + Sync + 'static> HasTreeMut<A> for UpdateShell<'_, A> {
     fn tree_mut(&mut self) -> &mut Tree<A> { self.tree }
+    fn values_mut(&mut self) -> &mut dyn Reflect { self.values }
 }
 
 
@@ -93,6 +97,7 @@ impl<A: Send + Sync + 'static> HasTreeMut<A> for UpdateShell<'_, A> {
 pub struct DrawShell<'a, Action: Send + Sync + 'static> {
     pub tree: &'a Tree<Action>,
     pub values: &'a dyn Reflect,
+
     pub list: &'a mut graphics::RenderableCollection,
     pub general_theme: GeneralUiTheme,
 
@@ -100,44 +105,6 @@ pub struct DrawShell<'a, Action: Send + Sync + 'static> {
 }
 impl<A: Send + Sync + 'static> HasTree<A> for DrawShell<'_, A> {
     fn tree(&self) -> &Tree<A> { self.tree }
-}
-
-
-pub struct GenericShell<'a, Action: Send + Sync +'static> {
-    pub tree: &'a mut Tree<Action>,
-    pub values: &'a mut dyn Reflect,
-    pub messages: &'a mut Vec<Message>,
-    pub actions: &'a mut Vec<Action>,
-}
-impl<'a, 'b:'a, Action: Send + Sync +'static> From<&'b mut MessageShell<'a, Action>> for GenericShell<'a, Action> {
-    fn from(value: &'b mut MessageShell<'a, Action>) -> Self {
-        Self {
-            tree: value.tree,
-            values: value.values,
-            messages: value.messages,
-            actions: value.actions
-        }
-    }
-}
-impl<'a, 'b:'a, Action: Send + Sync +'static> From<&'b mut UpdateShell<'a, Action>> for GenericShell<'a, Action> {
-    fn from(value: &'a mut UpdateShell<'b, Action>) -> Self {
-        Self {
-            tree: value.tree,
-            values: value.values,
-            messages: value.messages,
-            actions: value.actions
-        }
-    }
-}
-impl<'a, 'b:'a, Action: Send + Sync +'static> From<&'b mut InputShell<'a, Action>> for GenericShell<'a, Action> {
-    fn from(value: &'b mut InputShell<'a, Action>) -> Self {
-        Self {
-            tree: value.tree,
-            values: value.values,
-            messages: value.messages,
-            actions: value.actions
-        }
-    }
 }
 
 pub struct TextLayoutContexts {
@@ -188,6 +155,7 @@ pub trait HasTree<A: Send + Sync + 'static> {
 
 pub trait HasTreeMut<A: Send + Sync + 'static>: HasTree<A> {
     fn tree_mut(&mut self) -> &mut Tree<A>;
+    fn values_mut(&mut self) -> &mut dyn Reflect;
 
     fn state_mut(&mut self, node_id: NodeId) -> Option<&mut ElementState> {
         Some(&mut self.tree_mut().get_context_mut(node_id)?.element_data.state)
