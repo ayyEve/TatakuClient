@@ -33,13 +33,13 @@ pub fn impl_default2(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     custom_default::derive(&ast).into()
 }
 
-#[proc_macro_derive(ParseCss, attributes(css))]
+#[proc_macro_derive(ParseCss, attributes(css, parse_with, shorthand, shorthand_fields))]
 pub fn impl_parse_css(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // Parse the string representation
     let ast = syn::parse(input).unwrap();
 
     // Build the impl
-    css_parse::derive(&ast).into()
+    expand_result(css_parse::derive(&ast))
 }
 
 
@@ -63,13 +63,13 @@ pub fn create_setting(input: proc_macro::TokenStream) -> proc_macro::TokenStream
     return proc_macro::TokenStream::from(quote::quote! {});
 
     #[cfg(feature="graphics")]
-    wrap_result(settings::impl_settings(&ast))
+    expand_result(settings::impl_settings(&ast))
 }
 
 #[proc_macro_derive(DeserializeSettings)]
 pub fn impl_settings_deserializer(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = syn::parse(input).unwrap();
-    wrap_result(settings_deserializer::impl_settings_deserializer(&ast))
+    expand_result(settings_deserializer::impl_settings_deserializer(&ast))
 }
 
 
@@ -78,10 +78,10 @@ pub fn impl_chainable_initializer(input: proc_macro::TokenStream) -> proc_macro:
     // Parse the string representation
     let ast = syn::parse(input).unwrap();
 
-    wrap_result(chainable::impl_chainable(&ast))
+    expand_result(chainable::impl_chainable(&ast))
 }
 
-fn wrap_result(r: syn::Result<proc_macro2::TokenStream>) -> proc_macro::TokenStream {
+fn expand_result(r: syn::Result<proc_macro2::TokenStream>) -> proc_macro::TokenStream {
     let tokens = match r {
         Ok(tokens) => tokens,
         Err(e) => e.into_compile_error(),

@@ -49,7 +49,7 @@ pub struct CssStyle {
 
     // Overflow properties
     /// How children overflowing their container should affect layout
-    #[css(shorthand = "DualShorthand")] _overflow: (),
+    #[shorthand(DualShorthand)] _overflow: (),
     pub overflow_x: CssValue<Overflow>,
     pub overflow_y: CssValue<Overflow>,
 
@@ -61,24 +61,24 @@ pub struct CssStyle {
     pub position: CssValue<Position>,
 
     /// How should the position of this element be tweaked relative to the layout defined?
-    #[css(shorthand = "QuadShorthand")] _inset: (),
+    #[shorthand(QuadShorthand)] _inset: (),
     pub inset_top: CssValue<CssUnit>,
     pub inset_left: CssValue<CssUnit>,
     pub inset_bottom: CssValue<CssUnit>,
     pub inset_right: CssValue<CssUnit>,
 
     // Size properties
-    #[css(shorthand = "DualShorthand", size)] _size: (),
+    #[shorthand(DualShorthand as size)] _size: (),
     pub width: CssValue<CssUnit>,
     pub height: CssValue<CssUnit>,
 
     /// Controls the minimum size of the item
-    #[css(shorthand = "DualShorthand", size)] _min_size: (),
+    #[shorthand(DualShorthand as size)] _min_size: (),
     pub min_width: CssValue<CssUnit>,
     pub min_height: CssValue<CssUnit>,
 
     /// Controls the maximum size of the item
-    #[css(shorthand = "DualShorthand", size)] _max_size: (),
+    #[shorthand(DualShorthand as size)] _max_size: (),
     pub max_width: CssValue<CssUnit>,
     pub max_height: CssValue<CssUnit>,
 
@@ -93,7 +93,7 @@ pub struct CssStyle {
     pub item_margin: CssValue<f32>,
 
     /// How large should the margin be on each side?
-    #[css(shorthand = "QuadShorthand")] _margin: (),
+    #[shorthand(QuadShorthand)] _margin: (),
     pub margin_top: CssValue<CssUnit>,
     pub margin_left: CssValue<CssUnit>,
     pub margin_bottom: CssValue<CssUnit>,
@@ -101,7 +101,7 @@ pub struct CssStyle {
 
 
     /// How large should the padding be on each side?
-    #[css(shorthand = "QuadShorthand")] _padding: (),
+    #[shorthand(QuadShorthand)] _padding: (),
     pub padding_top: CssValue<CssUnit>,
     pub padding_left: CssValue<CssUnit>,
     pub padding_bottom: CssValue<CssUnit>,
@@ -109,7 +109,7 @@ pub struct CssStyle {
 
 
     /// How large should the border be on each side?
-    #[css(shorthand = "QuadShorthand")] _border_width: (),
+    #[shorthand(QuadShorthand)] _border_width: (),
     pub border_width_top: CssValue<CssUnit>,
     pub border_width_left: CssValue<CssUnit>,
     pub border_width_bottom: CssValue<CssUnit>,
@@ -119,11 +119,11 @@ pub struct CssStyle {
     pub border_radius: CssValue<f32>,
 
     /// The border color
-    #[css(parse_with = "Self::parse_color")]
+    #[parse_with(Self::parse_color)]
     pub border_color: CssValue<Color>,
 
     /// The background color
-    #[css(parse_with = "Self::parse_color")]
+    #[parse_with(Self::parse_color)]
     pub background_color: CssValue<Color>,
 
     // Alignment properties
@@ -148,7 +148,7 @@ pub struct CssStyle {
     pub justify_content: CssValue<JustifyContent>,
 
     /// How large should the gaps between items in a grid or flex container be?
-    #[css(shorthand = "DualShorthand")] _gap: (),
+    #[shorthand(DualShorthand)] _gap: (),
     pub gap_x: CssValue<CssUnit>,
     pub gap_y: CssValue<CssUnit>,
 
@@ -176,12 +176,12 @@ pub struct CssStyle {
 
     // text properties
     #[css(default = "CssValue::Inherit")]
-    #[css(parse_with = "Self::parse_font")]
+    #[parse_with(Self::parse_font)]
     pub font: CssValue<DefaultFont>,
     #[css(default = "CssValue::Inherit")]
     pub font_size: CssValue<f32>,
     #[css(default = "CssValue::Inherit")]
-    #[css(parse_with = "Self::parse_color")]
+    #[parse_with(Self::parse_color)]
     pub text_color: CssValue<Color>,
     #[css(default = "CssValue::Inherit")]
     pub line_height: CssValue<f32>,
@@ -197,11 +197,11 @@ pub struct CssStyle {
     pub image_alignment: CssValue<Alignment>,
 
     /// How should the element fit inside the container
-    #[css(parse_with = "Self::parse_image_fit")]
+    #[parse_with(Self::parse_image_fit)]
     pub image_stretch: CssValue<graphics::ImageStretch>,
 
     /// Where should the image be loaded from
-    #[css(parse_with = "Self::parse_image_source")]
+    #[parse_with(Self::parse_image_source)]
     pub image_source: CssValue<graphics::TextureSource>,
 
     /// Should the image be grayscale
@@ -220,8 +220,8 @@ pub struct CssStyle {
     pub animation_iteration_count: CssValue<AnimationIterationCount>,
 
     // blur properties
-    #[css(shorthand = "BlurShorthand")]
-    #[css(shorthand_fields("blur_amount", "blur_type", "blur_location"))]
+    #[shorthand(BlurShorthand)]
+    #[shorthand_fields(blur_amount, blur_type, blur_location)]
     _blur: (),
 
     /// How much to blur, 0 is none
@@ -304,7 +304,24 @@ impl CssStyle {
     }
 }
 
+// TODO: maybe not use a string to store values?
+#[derive(Default)]
+pub struct CssPropertyCollection(Vec<(CssProperty, String)>);
+impl CssPropertyCollection {
+    pub fn parse_css(rule: &simplecss::Rule) -> Self {
+        let mut this = Self::default();
 
+        for d in rule.declarations.iter() {
+            if let Ok(variant) = CssProperty::from_str(d.value) {
+                this.0.push((variant, d.value.to_string()));
+            } else {
+                warn!("unknown css property: {}", d.value);
+            }
+        }
+
+        this
+    }
+}
 
 #[test]
 fn merge_test() {
