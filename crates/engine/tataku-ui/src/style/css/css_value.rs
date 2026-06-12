@@ -7,7 +7,7 @@ pub enum CssValue<T> {
     Unset,
     Inherit,
     Value(T),
-    // Theme(ArcStr),
+    Theme(ArcStr),
     Variable(ArcStr),
 }
 impl<T> CssValue<T> {
@@ -29,12 +29,12 @@ impl<T> CssValue<T> {
             }
 
             // theme
-            // other if other.starts_with("theme(") => {
-            //     let var = other
-            //         .trim_start_matches("theme(")
-            //         .trim_end_matches(|c| [' ', ',', ';', ')'].contains(&c));
-            //     Self::Theme(var.to_owned().into())
-            // }
+            other if other.starts_with("theme(") => {
+                let var = other
+                    .trim_start_matches("theme(")
+                    .trim_end_matches(|c| [' ', ',', ';', ')'].contains(&c));
+                Self::Theme(var.to_owned().into())
+            }
 
             // value
             other => value_parser(other)

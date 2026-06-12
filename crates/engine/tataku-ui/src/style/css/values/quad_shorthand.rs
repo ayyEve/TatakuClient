@@ -1,5 +1,4 @@
-use crate::*;
-use style::*;
+use crate::style::css::*;
 use std::str::FromStr;
 
 #[derive(Clone, Debug)]

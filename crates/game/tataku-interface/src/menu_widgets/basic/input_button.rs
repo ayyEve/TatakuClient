@@ -98,11 +98,11 @@ impl<T: InputButtonType> Widget<actions::Action> for InputButton<T> {
 
         // let w = f16::from_f32(text_style.measure_text("Press a key", None).x);
         let h = f16::from_f32(text_style.line_height);
-        shell.tree.update_style(
+        shell.tree.set_overrides(
             self.node_id, 
-            |style| {
-                // style.min_width = CssUnit::Pixels(w).into();
-                style.min_height = CssUnit::Pixels(h).into();
+            |s| {
+                // s.min_width = Some(CssUnit::Pixels(w));
+                s.min_height = Some(CssUnit::Pixels(h));
             }
         );
     }
@@ -208,19 +208,22 @@ impl<T: InputButtonType> Widget<actions::Action> for InputButton<T> {
 
     fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
         if self.input.update(shell.values, self.optional) {
-            let ctx = shell
-                .tree
-                .get_context(self.node_id)
-                .unwrap();
+            let Some(state) = shell.state(self.node_id) 
+            else { return };
+            let Some(txt) = shell.tree.get_text_style(self.node_id)
+            else { return };
 
-            let txt = ctx
-                .element_data
-                .style().0
-                .text_style(shell.values);
+            // let ctx = shell
+            //     .tree
+            //     .get_context(self.node_id)
+            //     .unwrap();
 
-            let active = ctx.element_data
-                .state
-                .contains(ElementState::Active);
+            // let txt = ctx
+            //     .element_data
+            //     .style().0
+            //     .text_style(shell.values);
+
+            let active = state.contains(ElementState::Active);
 
             // let min = txt.measure_text(&self.text(active), None);
 
@@ -240,12 +243,13 @@ impl<T: InputButtonType> Widget<actions::Action> for InputButton<T> {
 
 
     fn draw(&self, shell: &mut DrawShell<actions::Action>) {
-        let ctx = shell.tree
-            .get_context(self.node_id)
-            .unwrap();
+        let Some(state) = shell.state(self.node_id) 
+        else { return };
+        let Some(style) = shell.tree.get_text_style(self.node_id) 
+        else { return };
 
-        let active = ctx.element_data.state.contains(ElementState::Active);
-        let hover = ctx.element_data.state.contains(ElementState::Hover);
+        let active = state.contains(ElementState::Active);
+        let hover = state.contains(ElementState::Hover);
 
         let bounds = shell.tree
             .absolute_bounds(self.node_id)
@@ -259,10 +263,6 @@ impl<T: InputButtonType> Widget<actions::Action> for InputButton<T> {
             1.2
         )));
 
-        let style = ctx
-            .element_data
-            .style().0
-            .text_style(shell.values);
 
         // shell.list.push(style.create_text(
         //     self.text(active).into_owned(),

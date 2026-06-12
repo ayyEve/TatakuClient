@@ -11,13 +11,12 @@ use ui::{
     widget::*,
 };
 
-// TODO: move button (etc) active/hover/etc to states, and use css selectors to set the states
-
 pub struct WidgetBase<T = Box<dyn Widget<actions::Action>>> {
     element_name: ArcStr,
     id: Option<ArcStr>,
     style_str: ArcStr,
     class: ClassList,
+
     pub inner: T,
 }
 impl<T> WidgetBase<T> {
@@ -77,8 +76,7 @@ where
             shell.tree,
         );
 
-        let ctx = shell.tree.get_context_mut(node).unwrap();
-        ctx.set_styles(styles, shell.values);
+        shell.tree.set_styles(node, styles);
 
         self.inner.init_style(shell);
     }
@@ -98,15 +96,21 @@ where
         Ok(id)
     }
 
-    fn input(&mut self, event: &InputEvent, shell: &mut InputShell<actions::Action>) {
-        // let node = self.node_id();
-        // let previous_state = shell.tree
-        //     .get_context(node)
-        //     .unwrap()
-        //     .element_data
-        //     .state;
-        
+    fn input(
+        &mut self, 
+        event: &InputEvent, 
+        shell: &mut InputShell<actions::Action>
+    ) {
+        let node = self.node_id();
+
+        let Some(state) = shell.state(node) 
+        else { return };
         self.inner.input(event, shell);
+
+        let new_state = shell.state(node).unwrap();
+        if new_state != state {
+            shell.tree.mark_dirty(node);
+        }
         
         // update the style if the state changed
         // let ctx = shell.tree.get_context(node).unwrap();
@@ -127,7 +131,8 @@ where
         let Some(layout) = shell.tree.get_layout(node) else { return };
         let Some(ctx) = shell.tree.get_context(node) else { return };
 
-        let (style, image) = ctx.current_style();
+        let (_, image) = ctx.element_data.style(); //.current_style();
+        let style = shell.tree.get_style(node).unwrap();
 
         // background
         let mut border = style.border_color
@@ -234,28 +239,35 @@ where
     }
     
 
+    // FIXME:
     fn reload_skin(&mut self, shell: &mut UpdateShell<actions::Action>) {
+        let Some(style) = shell.tree.get_style(self.node_id()) 
+        else { return };
+
+        let image = style.image.resolve_cloned(shell.values);
+        let image_source = style.image_source
+            .resolve_cloned(shell.values)
+            .unwrap_or(graphics::TextureSource::Skin);
+        let image_grayscale = style.image_grayscale
+            .resolve_copied(shell.values)
+            .unwrap_or_default();
+
         let Some(ctx) = shell.tree
             .get_context_mut(self.node_id()) 
         else { return };
 
-        for (style, img) in ctx
+
+        
+
+        for (_, img) in ctx
             .element_data.styles.all_mut()
         {
-            if let Some(image) = style.image
-                .resolve(shell.values)
-            {
-                let source = style.image_source
-                    .resolve_cloned(shell.values)
-                    .unwrap_or(graphics::TextureSource::Skin);
-
+            if let Some(image) = &image {
                 *img = shell.skin_manager.get_texture_then(
-                    Path::new(&*image), 
-                    &source, 
+                    Path::new(image), 
+                    &image_source, 
                     graphics::SkinUsage::Game, 
-                    style.image_grayscale
-                        .resolve_copied(shell.values)
-                        .unwrap_or_default(), 
+                    image_grayscale, 
                     |image| image.origin = Vector2::ZERO,
                 );
             }

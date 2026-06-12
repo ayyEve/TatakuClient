@@ -58,7 +58,7 @@ macro_rules! impl_parse {
 
 // parsing
 #[allow(clippy::result_unit_err, reason = "we dont care about the error")]
-impl crate::style::CssStyle {
+impl crate::style::css::CssStyle {
     pub(crate) fn parse_color(s: &str) -> Result<Color, ()> {
         if s.starts_with("rgb") {
             let mut parser = CssValueParser::new(s);

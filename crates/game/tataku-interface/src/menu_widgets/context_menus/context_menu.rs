@@ -119,12 +119,12 @@ impl Widget<actions::Action> for ContextMenu {
         Ok(self.node_id)
     }
 
-    fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
-        shell.tree.update_style(
-            self.node_id, 
-            |s| s.position = Position::Absolute.into()
-        );
-    }
+    // fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
+    //     shell.tree.set_overrides(
+    //         self.node_id, 
+    //         |s| s.position = Position::Absolute.into()
+    //     );
+    // }
 
     fn input(
         &mut self, 

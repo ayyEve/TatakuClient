@@ -52,10 +52,10 @@ impl Text {
         if !text.is_empty() {
             let widths = self.layout.calculate_content_widths();
 
-            tree.update_style(self.node_id, |style| {
+            tree.set_overrides(self.node_id, |style| {
                 // fixme: there is an off-by-one somewhere
-                style.min_width = CssUnit::Pixels(f16::from_f32(widths.min.ceil() + 1.0)).into();
-                style.max_width = CssUnit::Pixels(f16::from_f32(widths.max.ceil() + 1.0)).into();
+                style.min_width = Some(CssUnit::Pixels(f16::from_f32(widths.min.ceil() + 1.0)));
+                style.max_width = Some(CssUnit::Pixels(f16::from_f32(widths.max.ceil() + 1.0)));
             });
         }
     }
@@ -85,8 +85,8 @@ impl Text {
 
             let height = self.layout.height();
 
-            tree.update_style(self.node_id, |style| {
-                style.height = CssUnit::Pixels(f16::from_f32(height)).into();
+            tree.set_overrides(self.node_id, |style| {
+                style.height = Some(CssUnit::Pixels(f16::from_f32(height)));
             });
         }
     }
@@ -118,8 +118,8 @@ impl Widget<actions::Action> for Text {
             f32::MAX,
         );
 
-        shell.tree.update_style(self.node_id, |style| {
-            style.min_height = CssUnit::Pixels(f16::from_f32(min_height)).into();
+        shell.tree.set_overrides(self.node_id, |style| {
+            style.min_height = Some(CssUnit::Pixels(f16::from_f32(min_height)));
         });
     }
 

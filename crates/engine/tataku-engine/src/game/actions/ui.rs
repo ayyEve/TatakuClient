@@ -25,7 +25,7 @@ impl UiAction {
 pub enum UiActionType {
     // Refresh,
     // MarkDirty,
-    UpdateStyleWith(#[debug(skip)] Arc<dyn Fn(&mut ui::style::CssStyle) + Send + Sync>),
+    // UpdateStyleWith(#[debug(skip)] Arc<dyn Fn(&mut ui::style::CssStyle) + Send + Sync>),
 
     // /// Only update the display of a node. 
     // OverrideDisplay(Option<ui::style::DisplayType>),

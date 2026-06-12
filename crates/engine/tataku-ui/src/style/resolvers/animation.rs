@@ -1,10 +1,10 @@
-use crate::style::CssStyle;
 use std::collections::HashMap;
+use crate::style::css::StyleProperty;
 
 /// key is the % of the animation
 /// ie "0%" or "100%" 
 #[derive(Clone)]
-pub struct CssAnimation(pub HashMap<u8, CssStyle>);
+pub struct CssAnimation(pub HashMap<u8, Vec<StyleProperty>>);
 impl CssAnimation {
     pub fn new(body: &str) -> Self {
         let mut map = HashMap::new();
@@ -47,7 +47,7 @@ impl CssAnimation {
         Self(map)
     }
 
-    pub fn get(&self, val: u8) -> Option<&CssStyle> {
+    pub fn get(&self, val: u8) -> Option<&Vec<StyleProperty>> {
         self.0.get(&val)
     }
 }

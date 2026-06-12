@@ -83,11 +83,11 @@ impl Widget<actions::Action> for Slider {
     }
 
     fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
-        shell.tree.update_style(
+        shell.tree.set_overrides(
             self.node_id,
             |style| {
-                style.min_width = CssUnit::Pixels(f16::from_f32(100.0)).into();
-                style.min_height = CssUnit::Pixels(f16::from_f32(30.0)).into();
+                style.min_width = Some(CssUnit::Pixels(f16::from_f32(100.0)));
+                style.min_height = Some(CssUnit::Pixels(f16::from_f32(30.0)));
             }
         );
     }

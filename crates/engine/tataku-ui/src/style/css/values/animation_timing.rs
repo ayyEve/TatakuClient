@@ -1,4 +1,4 @@
-use super::super::parsing::value_parser::CssValueParser;
+use crate::style::css::parsing::value_parser::CssValueParser;
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub enum AnimationTimingFunction {

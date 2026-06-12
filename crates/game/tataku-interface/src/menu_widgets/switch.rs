@@ -189,9 +189,9 @@ impl Widget<actions::Action> for SwitchWidget {
         // set all cases to DisplayType::None so they're hidden
         // do not do this for the default case because if it exists it should be visible by default
         for i in self.cases.iter() {
-            shell.tree.override_display(
+            shell.tree.set_overrides(
                 i.widget.node_id(),
-                Some(DisplayType::None)
+                |s| s.display = Some(DisplayType::None)
             );
         }
     }
@@ -230,23 +230,23 @@ impl Widget<actions::Action> for SwitchWidget {
             if let Some(child) = previous_index
                 .and_then(|i| self.cases.get(i))
             {
-                shell.tree.override_display(
+                shell.tree.set_overrides(
                     child.widget.node_id(), 
-                    Some(DisplayType::None),
+                    |s| s.display = Some(DisplayType::None),
                 );
             } else if let Some(default) = &self.default_case {
-                shell.tree.override_display(
+                shell.tree.set_overrides(
                     default.node_id(), 
-                    Some(DisplayType::None),
+                    |s| s.display = Some(DisplayType::None),
                 );
             }
 
             if let Some(child) = self.index
                 .and_then(|i| self.cases.get(i))
             {
-                shell.tree.override_display(child.widget.node_id(), None);
+                shell.tree.set_overrides(child.widget.node_id(), |s| s.display = None);
             } else if let Some(default) = &self.default_case {
-                shell.tree.override_display(default.node_id(), None);
+                shell.tree.set_overrides(default.node_id(), |s| s.display = None);
             }
         }
 

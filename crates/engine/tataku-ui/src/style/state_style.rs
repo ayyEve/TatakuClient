@@ -1,13 +1,17 @@
 use crate::tree::*;
 
+// TODO: overhaul this to allow multiple states at once
+
+// pub struct ElementStateStyles<Style, T>(Vec<(ElementState, Style, T)>);
+
 #[derive(Clone, Debug, Default)]
-pub struct ElementStateStyles<Style, T:Clone> {
+pub struct ElementStateStyles<Style, T> {
     pub none: (Style, T),
     pub active: (Style, T),
     pub hover: (Style, T),
     pub focus: (Style, T),
 }
-impl<Style: Clone, T:Default+Clone> ElementStateStyles<Style, T> {
+impl<Style: Clone, T:Default> ElementStateStyles<Style, T> {
     pub fn new(style: Style) -> Self {
         Self {
             active: (style.clone(), T::default()),
@@ -18,7 +22,7 @@ impl<Style: Clone, T:Default+Clone> ElementStateStyles<Style, T> {
     }
 }
 
-impl<Style, T:Clone> ElementStateStyles<Style, T> {
+impl<Style, T> ElementStateStyles<Style, T> {
     pub fn get_style(&self, state: ElementState) -> &(Style, T) {
         if state.contains(ElementState::Active) {
             &self.active
@@ -60,7 +64,7 @@ impl<Style, T:Clone> ElementStateStyles<Style, T> {
         ]
     }
 
-    pub fn transpose<T2:Default+Clone>(self) -> ElementStateStyles<Style, T2> {
+    pub fn transpose<T2:Default>(self) -> ElementStateStyles<Style, T2> {
         ElementStateStyles {
             none: (self.none.0, T2::default()),
             active: (self.active.0, T2::default()),

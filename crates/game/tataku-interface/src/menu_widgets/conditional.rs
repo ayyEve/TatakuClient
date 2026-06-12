@@ -107,7 +107,7 @@ impl Widget<actions::Action> for ConditionalWidget {
 
         // set the true condition widget to DisplayType::None so its hidden
         // do not do this for the false widget because if it exists it should be visible by default
-        shell.tree.override_display(self.if_true.node_id(), Some(DisplayType::None));
+        shell.tree.set_overrides(self.if_true.node_id(), |s| s.display = Some(DisplayType::None));
     }
 
     fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
@@ -120,15 +120,15 @@ impl Widget<actions::Action> for ConditionalWidget {
             BuildableConditionResult::True if !self.value => {
                 self.value = true;
                 if let Some(child) = self.if_false.as_ref() {
-                    shell.tree.override_display(
+                    shell.tree.set_overrides(
                         child.node_id(), 
-                        Some(DisplayType::None),
+                        |s| s.display = Some(DisplayType::None),
                     );
                 }
 
-                shell.tree.override_display(
+                shell.tree.set_overrides(
                     self.if_true.node_id(), 
-                    None,
+                    |s| s.display = None,
                 );
                 shell.tree.mark_for_relayout();
             }
@@ -137,15 +137,15 @@ impl Widget<actions::Action> for ConditionalWidget {
                 self.value = false;
 
                 if let Some(child) = self.if_false.as_ref() {
-                    shell.tree.override_display(
+                    shell.tree.set_overrides(
                         child.node_id(), 
-                        None,
+                        |s| s.display = None,
                     );
                 }
                 
-                shell.tree.override_display(
+                shell.tree.set_overrides(
                     self.if_true.node_id(), 
-                    Some(DisplayType::None),
+                    |s| s.display = Some(DisplayType::None),
                 );
             }
 

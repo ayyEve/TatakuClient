@@ -1,6 +1,11 @@
 use crate::*;
-use style::*;
 use common::reflect::*;
+use style::{
+    css::{
+        values::*,
+        CssValue,
+    }
+};
 
 #[macro_export]
 macro_rules! create_css_value {
@@ -59,6 +64,11 @@ pub struct CssStyle {
     // Position properties
     /// What should the `position` value of this struct use as a base offset?
     pub position: CssValue<Position>,
+
+    /// for absolute positioning, the y-coord of the element
+    pub top: CssValue<CssUnit>,
+    /// for absolute positioning, the x-coord of the element
+    pub left: CssValue<CssUnit>,
 
     /// How should the position of this element be tweaked relative to the layout defined?
     #[shorthand(QuadShorthand)] _inset: (),
@@ -245,10 +255,10 @@ impl CssStyle {
             .alignment_maybe(self.text_alignment.value().copied())
     }
 
-    pub fn menu_layout() -> CssStyle {
+    pub fn menu_layout() -> Self {
         let zero = f16::from_f32(0.0);
 
-        CssStyle {
+        Self {
             display: DisplayType::Flex.into(),
             flex_direction: FlexDirection::Column.into(),
             box_sizing: BoxSizing::ContentBox.into(),
@@ -304,37 +314,3 @@ impl CssStyle {
     }
 }
 
-// TODO: maybe not use a string to store values?
-#[derive(Default)]
-pub struct CssPropertyCollection(Vec<(CssProperty, String)>);
-impl CssPropertyCollection {
-    pub fn parse_css(rule: &simplecss::Rule) -> Self {
-        let mut this = Self::default();
-
-        for d in rule.declarations.iter() {
-            if let Ok(variant) = CssProperty::from_str(d.value) {
-                this.0.push((variant, d.value.to_string()));
-            } else {
-                warn!("unknown css property: {}", d.value);
-            }
-        }
-
-        this
-    }
-}
-
-#[test]
-fn merge_test() {
-    let parent = CssStyle {
-        width: CssValue::Value(CssUnit::Pixels(f16::from_f32(100.0))),
-        ..Default::default()
-    };
-
-    let child = CssStyle {
-        width: CssValue::Inherit,
-        ..Default::default()
-    };
-
-    let merged = child.merge(parent);
-    assert_eq!(merged.width, CssValue::Inherit);
-}

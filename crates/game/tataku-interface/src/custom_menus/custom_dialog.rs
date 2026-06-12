@@ -2,7 +2,6 @@ use crate::prelude::*;
 use ui::{
     widget::*,
     message::*,
-    style::CssStyle,
 };
 
 #[derive(Deserialize)]
@@ -98,10 +97,10 @@ impl Widget<actions::Action> for BuiltCustomDialog {
         Ok(self.node_id)
     }
     fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
-        shell.tree.update_style(
-            self.node_id,
-            |style| *style = CssStyle::menu_layout()
-        );
+        // shell.tree.set_overrides(
+        //     self.node_id,
+        //     |style| *style = CssStyle::menu_layout()
+        // );
         self.element.init_style(shell);
     }
 

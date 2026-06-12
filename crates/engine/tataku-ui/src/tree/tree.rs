@@ -1,7 +1,8 @@
 use crate::*;
 use crate::tree::*;
 use crate::style::*;
-use super::NodeData;
+use crate::style::css::*;
+use super::LayoutData;
 use crate::widget::*;
 use crate::message::*;
 use common::reflect::*;
@@ -17,7 +18,7 @@ pub struct Tree<Action: Send + Sync> {
     // tree: TaffyTree<TreeData>,
 
     /// The [`NodeData`] for each node stored in this tree
-    pub(super) nodes: SlotMap<DefaultKey, NodeData>,
+    pub(super) nodes: SlotMap<DefaultKey, LayoutData>,
 
     /// Functions/closures that compute the intrinsic size of leaf nodes
     pub(super) node_context_data: SparseSecondaryMap<DefaultKey, TreeData>,
@@ -49,10 +50,10 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         node: Box<dyn Widget<Action>>,
     ) -> Self {
         let mut nodes = SlotMap::with_capacity(capacity);
-        let root = nodes.insert(NodeData::default());
+        let root = nodes.insert(LayoutData::new(StyleStack::menu_layout()));
 
         let mut node_context_data = SparseSecondaryMap::with_capacity(capacity);
-        node_context_data.insert(root, TreeData::with_style(CssStyle::menu_layout()));
+        node_context_data.insert(root, TreeData::default());
 
         let mut children = SlotMap::with_capacity(capacity);
         children.insert(Vec::new());
@@ -114,12 +115,11 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
             .layout(&mut shell)
             .expect("failed to layout new node?");
         shell.tree.root = root;
-
+        
         node.init_style(&mut shell);
-        shell.tree.update_style(
-            root, 
-            |s| *s = CssStyle::menu_layout()
-        );
+        shell.tree
+            .nodes[root.into()]
+            .style = StyleStack::menu_layout();
 
         self.node = node;
         self.update_layout(values);
@@ -133,16 +133,18 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
     /// Overrides a node's display without affecting the underlying style
     /// 
     /// Also marks dirty and for relayout
-    pub fn override_display(
+    pub fn set_overrides(
         &mut self,
         node: NodeId,
-        display: Option<DisplayType>
+        f: impl FnOnce(&mut Box<dyn StylePropertyGroup>),
     ) {
         let Some(data) = self.nodes.get_mut(node.into())
         else { return };
 
-        if data.current_display == display { return }
-        data.current_display = display;
+        f(&mut data.style.get_group(StyleId::Overrides).unwrap());
+
+        // if data.current_display == display { return }
+        // data.current_display = display;
 
         self.mark_dirty(node);
     }
@@ -166,6 +168,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
             height: Definite(self.bounds.size.y),
         };
 
+
         let root = self.root;
         super::LayoutTree {
             viewport: self.bounds.size,
@@ -176,6 +179,32 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         }.compute_layout(root, space);
 
         self.update_contexts();
+    }
+
+    fn update_styles_inner(&mut self, node: NodeId, values: &dyn Reflect) {
+        if node != self.root {
+            let node = node.into();
+            let a = &mut self.nodes[node];
+            
+            if a.cache.is_empty() {
+                let parent = self.parents[node].unwrap().into();
+                assert_ne!(node, parent);
+
+                let parent_style = self.nodes[parent].style.clone();
+
+                let a = &mut self.nodes[node];
+                a.style = parent_style;
+
+                let b = &self.node_context_data[node];
+                // FIXME: !!!!!!!!!!!!!!!!!!!!!!
+                // let style = &b.element_data.style().0;
+                // a.current_style.merge_with_collection(style);
+            }
+        }
+        let children = self.children.keys().collect::<Vec<_>>();
+        for i in children {
+            self.update_styles_inner(i.into(), values);
+        }
     }
 
 
@@ -203,7 +232,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         let bounds = Bounds::new(
             Vector2::new(
                 layout.location.x,
-                layout.location.y
+                layout.location.y,
             ),
             Vector2::new(
                 layout.size.width,
@@ -230,7 +259,6 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         matrix = matrix
             * context.local_transform.matrix()
             * Matrix::identity().trans(bounds.pos);
-
 
         for child in self.children(node).into_owned() {
             self.recurse_update_context(child, matrix);
@@ -313,21 +341,35 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         t
     }
 
-    pub fn get_style(&self, node: NodeId) -> Option<&CssStyle> {
+
+
+    // pub fn set_styles<_T>(
+    //     &mut self, 
+    //     node: NodeId,
+    //     styles: ElementStateStyles<StylePropertyCollection, _T>, 
+    // ) {
+    //     let Some(ctx) = self.get_context_mut(node)
+    //     else { return };
+    //     ctx.element_data.styles = styles.transpose();
+    //     self.mark_dirty(node);
+    // }
+    pub fn get_style(&self, node: NodeId) -> Option<&StyleStack> {
         Some(
-            &self.node_context_data
+            &self.nodes
             .get(node.into())?
-            .current_style().0
+            .style
         )
     }
     pub fn get_text_style(&self, node: NodeId) -> Option<&TextStyle> {
         Some(
-            self.node_context_data
-            .get(node.into())?
-            .current_text_style()
+            &self.nodes
+                .get(node.into())?
+                .text_style
         )
     }
 
+
+    
     // widget things
 
     pub fn handle_inputs(
@@ -376,67 +418,6 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
 
                 !shell.event_consumed.take()
             });
-
-
-            // macro_rules! handle_event {
-            //     ($list: expr, $map: ident) => {
-            //         $list.retain(|a| {
-            //             node.input(
-            //                 &InputEvent {
-            //                     event: InputType::$map(a.clone()),
-            //                     key_mods,
-            //                     mouse_pos,
-            //                 },
-            //                 &mut shell
-            //             );
-            //             !std::mem::take(&mut shell.event_consumed)
-            //         });
-            //     }
-            // }
-
-            // handle_event!(input_state.keys_down.0, KeyPress);
-            // handle_event!(input_state.keys_up.0, KeyRelease);
-            // handle_event!(input_state.mouse_down, MousePress);
-            // handle_event!(input_state.mouse_up, MouseRelease);
-
-            // input_state.controller_down
-            //     .retain(|(a, id, name)| {
-            //     node.input(
-            //         &InputEvent {
-            //             event: InputType::ControllerPress(*a, *id, name.clone()),
-            //             key_mods,
-            //             mouse_pos,
-            //         },
-            //         &mut shell
-            //     );
-            //     !shell.event_consumed.take()
-            // });
-
-            // input_state.controller_up
-            //     .retain(|(a, id, name)| {
-            //     node.input(
-            //         &InputEvent {
-            //             event: InputType::ControllerRelease(*a, *id, name.clone()),
-            //             key_mods,
-            //             mouse_pos,
-            //         },
-            //         &mut shell
-            //     );
-            //     !shell.event_consumed.take()
-            // });
-
-            // input_state.controller_axes
-            //     .retain(|(a, value, id, name)| {
-            //     node.input(
-            //         &InputEvent {
-            //             event: InputType::ControllerAxis(*a, *value, *id, name.clone()),
-            //             key_mods,
-            //             mouse_pos,
-            //         },
-            //         &mut shell
-            //     );
-            //     shell.event_consumed.take()
-            // });
 
             shell.event_consumed
         });
@@ -735,7 +716,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
 // taffy tree things
 impl<Action: Send + Sync + 'static> Tree<Action> {
     pub fn new_leaf(&mut self) -> taffy::TaffyResult<NodeId> {
-        let id = self.nodes.insert(NodeData::default());
+        let id = self.nodes.insert(LayoutData::default());
         self.node_context_data.insert(id, TreeData::default());
         let _ = self.children.insert(Vec::new());
         let _ = self.parents.insert(None);
@@ -892,7 +873,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
     /// Mark a node as dirty, also marks the tree for re-layout
     pub fn mark_dirty(&mut self, node: NodeId) {
         fn mark_dirty_recursive(
-            nodes: &mut SlotMap<DefaultKey, NodeData>,
+            nodes: &mut SlotMap<DefaultKey, LayoutData>,
             parents: &SlotMap<DefaultKey, Option<NodeId>>,
             node_key: DefaultKey,
         ) {
@@ -919,28 +900,29 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
     }
 
 
-    pub fn update_style(&mut self, node: NodeId, f: impl Fn(&mut CssStyle)) {
-        let Some(data) = self
-            .node_context_data
-            .get_mut(node.into())
-        else { return };
+    // // FIXME: implement new api
+    // pub fn update_style(&mut self, node: NodeId, f: impl Fn(&mut CssStyle)) {
+    //     let Some(data) = self
+    //         .node_context_data
+    //         .get_mut(node.into())
+    //     else { return };
 
-        data.element_data.styles
-            .all_mut()
-            .into_iter()
-            .for_each(|(i,_)| f(i));
+    //     // data.element_data.styles
+    //     //     .all_mut()
+    //     //     .into_iter()
+    //     //     .for_each(|(i,_)| f(i));
 
-        self.mark_dirty(node);
-        self.mark_for_relayout();
-    }
+    //     self.mark_dirty(node);
+    //     self.mark_for_relayout();
+    // }
 
     fn root_font_size(&self, values: &dyn Reflect) -> f32 {
-        self.node_context_data
+        self.nodes
             .get(self.root.into())
             .unwrap()
-            .current_style().0
-            .font_size
-            .resolve_copied(values)
+            .style
+            .get(CssProperty::FontSize)
+            .and_then(|p| p.value().resolve_copied(values))
             .unwrap_or(32.0)
     }
     pub fn print(&mut self, values: &dyn Reflect) {
@@ -1041,13 +1023,13 @@ mod export_tree {
             } else { String::new() };
 
             lines.push(format!("{spacing}<{ele} {ele_id} {class_list}>"));
-            // style
-            style.export_xml(
-                lines,
-                indent + 1,
-                tree.values,
-            );
-            lines.push(String::new());
+            // // style
+            // style.export_xml(
+            //     lines,
+            //     indent + 1,
+            //     tree.values,
+            // );
+            // lines.push(String::new());
             
             let children = tree.child_ids(id);
             for i in children {

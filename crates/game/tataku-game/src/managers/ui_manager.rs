@@ -402,9 +402,9 @@ impl UiManager {
                 tree.update_context(node);
             }
 
-            UiActionType::UpdateStyleWith(f) => {
-                tree.update_style(node, |s| f(s));
-            }
+            // UiActionType::UpdateStyleWith(f) => {
+            //     tree.update_style(node, |s| f(s));
+            // }
 
             // UiActionType::OverrideDisplay(display) => {
             //     tree.override_display(node, display);

@@ -1,5 +1,5 @@
 use crate::*;
-use style::*;
+use style::css::*;
 
 #[derive(Clone, Debug, Default)]
 pub struct BlurShorthand {

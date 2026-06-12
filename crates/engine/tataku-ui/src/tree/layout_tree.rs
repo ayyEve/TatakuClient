@@ -96,8 +96,8 @@ impl<Action: Send + Sync> taffy::TraversePartialTree for LayoutTree<'_, Action> 
 }
 
 impl<Action: Send + Sync> taffy::LayoutFlexboxContainer for LayoutTree<'_, Action> {
-    type FlexboxContainerStyle<'b> = CssStyleResolver<'b> where Self: 'b;
-    type FlexboxItemStyle<'b> = CssStyleResolver<'b> where Self: 'b;
+    type FlexboxContainerStyle<'b> = NodeStyleResolver<'b> where Self: 'b;
+    type FlexboxItemStyle<'b> = NodeStyleResolver<'b> where Self: 'b;
 
     #[inline(always)]
     fn get_flexbox_container_style(&self, node_id: NodeId) -> Self::FlexboxContainerStyle<'_> {
@@ -111,8 +111,8 @@ impl<Action: Send + Sync> taffy::LayoutFlexboxContainer for LayoutTree<'_, Actio
 }
 
 impl<Action: Send + Sync> taffy::LayoutBlockContainer for LayoutTree<'_, Action> {
-    type BlockContainerStyle<'b> = CssStyleResolver<'b> where Self: 'b;
-    type BlockItemStyle<'b> = CssStyleResolver<'b> where Self: 'b;
+    type BlockContainerStyle<'b> = NodeStyleResolver<'b> where Self: 'b;
+    type BlockItemStyle<'b> = NodeStyleResolver<'b> where Self: 'b;
 
     #[inline(always)]
     fn get_block_container_style(&self, node_id: NodeId) -> Self::BlockContainerStyle<'_> {
@@ -126,16 +126,18 @@ impl<Action: Send + Sync> taffy::LayoutBlockContainer for LayoutTree<'_, Action>
 }
 
 impl<Action: Send + Sync> taffy::LayoutPartialTree for LayoutTree<'_, Action> {
-    type CoreContainerStyle<'b> = CssStyleResolver<'b> where Self: 'b;
+    type CoreContainerStyle<'b> = NodeStyleResolver<'b> where Self: 'b;
     type CustomIdent = Arc<str>;
 
     fn get_core_container_style(
         &self, 
         node_id: NodeId
     ) -> Self::CoreContainerStyle<'_> {
-        CssStyleResolver {
+        let a = self.tree.nodes.get(node_id.into()).unwrap();
+        
+        NodeStyleResolver {
             values: self.values,
-            style: &self.tree.node_context_data.get(node_id.into()).unwrap().current_style().0,
+            style: &a.style,
             viewport: self.viewport,
             root_font_size: self.root_font_size
         }
@@ -172,17 +174,13 @@ impl<Action: Send + Sync> taffy::LayoutPartialTree for LayoutTree<'_, Action> {
             inputs, 
             |tree, node, inputs| 
         {
-            let data = &tree.tree.nodes[node.into()];
-            
-            let display_mode = data
-                .current_display
-                .or_else(|| tree.tree
-                    .node_context_data[node.into()]
-                    .current_style().0
-                    .display
-                    .resolve_copied(tree.values)
-                )
-                .unwrap_or_default();
+            let display_mode = tree.tree
+                .nodes[node.into()]
+                .style
+                .get(css::CssProperty::Display)
+                .and_then(|p| p.value::<DisplayType>().resolve_copied(tree.values))
+                .unwrap_or_default()
+                ;
 
             let has_children = tree.child_count(node) > 0;
 
@@ -221,17 +219,16 @@ impl<Action: Send + Sync> taffy::RoundTree for LayoutTree<'_, Action> {
 
 impl<Action: Send + Sync> taffy::PrintTree for LayoutTree<'_, Action> {
     fn get_debug_label(&self, node_id: NodeId) -> &'static str {
-        let node = self.tree.nodes.get(node_id.into()).unwrap();
-        let ctx = &self
-            .tree
-            .node_context_data[node_id.into()];
-        let style = &ctx.current_style().0;
-        let display = node
-            .current_display
-            .or_else(|| style.display.resolve_copied(self.values));
+        let ctx = self.tree.nodes.get(node_id.into()).unwrap();
+        let style = &ctx.style;
 
-        let dir = style.flex_direction
-            .resolve_copied(self.values)
+        let display = style
+            .get(css::CssProperty::Display)
+            .and_then(|p| p.value::<DisplayType>().resolve_copied(self.values))
+            ;
+
+        let dir = style.get(css::CssProperty::FlexDirection)
+            .and_then(|p| p.value::<FlexDirection>().resolve_copied(self.values))
             .unwrap_or_default();
         
         fn flex(none: bool, dir: FlexDirection) -> &'static str {

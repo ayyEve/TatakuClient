@@ -20,7 +20,7 @@ impl<Action: Send + Sync + 'static> Widget<Action> for EmptyWidget {
 
     fn layout(&mut self, shell: &mut LayoutShell<Action>) -> taffy::TaffyResult<NodeId> {
         self.0 = shell.tree.new_leaf()?;
-        shell.tree.override_display(self.0, Some(DisplayType::None));
+        shell.tree.set_overrides(self.0, |s| s.set_property(css::StyleProperty::Display(DisplayType::None.into())));
         
         Ok(self.0)
     }

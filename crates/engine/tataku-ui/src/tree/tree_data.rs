@@ -23,7 +23,7 @@ pub struct TreeData {
     pub element_data: ElementData,
 }
 impl TreeData {
-    pub fn with_style(style: CssStyle) -> Self {
+    pub fn with_style(style: PropertyCollection) -> Self {
         Self {
             element_data: ElementData { 
                 styles: ElementStateStyles::new(style),
@@ -41,7 +41,7 @@ impl TreeData {
     }
 
     pub fn node_direction(&self, direction: Direction) -> Option<NodeId> {
-        self.adjacent_nodes[direction as u8 as usize]
+        self.adjacent_nodes[direction as usize]
         // match direction {
         //     Direction::Up => self.node_above,
         //     Direction::Down => self.node_below,
@@ -50,43 +50,12 @@ impl TreeData {
         // }
     }
     pub fn set_node_direction(&mut self, direction: Direction, node: Option<NodeId>) {
-        self.adjacent_nodes[direction as u8 as usize] = node;
+        self.adjacent_nodes[direction as usize] = node;
         // match direction {
         //     Direction::Up => self.node_above,
         //     Direction::Down => self.node_below,
         //     Direction::Left => self.node_left,
         //     Direction::Right => self.node_right,
         // }
-    }
-
-
-    pub fn set_styles<_T:Clone>(
-        &mut self, 
-        styles: ElementStateStyles<CssStyle, _T>, 
-        values: &dyn common::reflect::Reflect
-    ) {
-        self.element_data.styles = styles.transpose();
-
-        for i in ElementState::list() {
-            let txt = self.element_data.styles.get_style(*i).0.text_style(values);
-            let (s, _) = self.element_data.text_styles.get_style_mut(*i);
-            *s = txt;
-        }
-    }
-
-    pub fn get_style(&self, state: ElementState) -> &CssStyle {
-        &self.element_data
-            .styles
-            .get_style(state).0
-    }
-
-    pub fn current_style(&self) -> &(CssStyle, Option<graphics::Image>) {
-        self.element_data.style()
-    }
-    pub fn current_text_style(&self) -> &TextStyle {
-        &self.element_data
-            .text_styles
-            .get_style(self.element_data.state)
-            .0
     }
 }

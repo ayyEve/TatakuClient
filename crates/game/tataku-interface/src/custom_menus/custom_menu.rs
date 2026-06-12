@@ -1,10 +1,9 @@
 use crate::prelude::*;
 use tataku::TatakuValue;
 use ui::{
-    tree::NodeId,
     widget::*,
     message::*,
-    style::CssStyle,
+    tree::NodeId,
 };
 
 #[derive(Deserialize)]
@@ -77,11 +76,11 @@ impl Widget<actions::Action> for BuiltCustomMenu {
     }
 
     fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
-        shell.tree.update_style(
-            self.node_id,
-            |style| *style = style.clone()
-                .merge_parent(CssStyle::menu_layout())
-        );
+        // shell.tree.update_style(
+        //     self.node_id,
+        //     |style| *style = style.clone()
+        //         .merge_parent(CssStyle::menu_layout())
+        // );
         self.element.init_style(shell);
     }
 

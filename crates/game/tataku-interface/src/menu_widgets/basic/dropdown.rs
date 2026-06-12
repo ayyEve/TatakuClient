@@ -204,8 +204,7 @@ impl Widget<actions::Action> for Dropdown {
             shell.tree,
         );
 
-        let ctx = shell.tree.get_context_mut(self.container).unwrap();
-        ctx.set_styles(styles, shell.values);
+        shell.tree.set_styles(self.node_id, styles);
 
         self.main_button.init_style(shell);
 
@@ -282,15 +281,15 @@ impl Widget<actions::Action> for Dropdown {
 
         if (self.width - width).abs() > f32::EPSILON {
             self.width = width;
+            
 
-            shell.tree.update_style(self.node_id, |style| {
-                style.width = CssValue::Value(CssUnit::Pixels(f16::from_f32(width)));
-            });
-
-            // todo: move to a more appropriate place
-            shell.tree.update_style(self.container, |style| {
-                style.margin_top = CssValue::Value(CssUnit::Pixels(f16::from_f32(height)));
-            });
+            shell.tree.set_overrides(
+                self.node_id, 
+                |s| {
+                    s.width = Some(CssUnit::Pixels(f16::from_f32(width)));
+                    s.top = Some(CssUnit::Pixels(f16::from_f32(height)));
+                }
+            );
         }
 
         if let DropdownValue::Variable(

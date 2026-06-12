@@ -20,8 +20,8 @@ pub(crate) use tataku_graphics as graphics;
 pub(crate) use tataku_engine_common::prelude::*;
 
 // manual re-exports
-pub use current_input_state::CurrentInputState; // ui::CurrentInputState
 pub use crate::widget::EmptyWidget; // ui::EmptyWidget
+pub use current_input_state::CurrentInputState; // ui::CurrentInputState
 pub use message::{
     Message, // ui::Message
     MessageSource, // ui::MessageSource

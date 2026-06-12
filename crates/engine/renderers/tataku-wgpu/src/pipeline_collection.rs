@@ -75,7 +75,7 @@ impl PipelineCollection {
 
         let a = buffer_queues
             .buffer_queues
-            .get_mut(PipelineType::Standard as u8 as usize)
+            .get_mut(PipelineType::Standard as usize)
             .unwrap()
             .as_mut()
             .unwrap();
@@ -140,7 +140,7 @@ impl PipelineCollection {
         match p {
             GraphicsPipeline::Slider => &self.slider,
             GraphicsPipeline::Flashlight => &self.flashlight,
-            GraphicsPipeline::Standard(b) => &self.standard[b as u8 as usize],
+            GraphicsPipeline::Standard(b) => &self.standard[b as usize],
 
             _ => unimplemented!()
         }
@@ -155,7 +155,7 @@ impl PipelineCollection {
             GraphicsPipeline::GaussianBlur => WgpuPipeline::Compute(&self.gaussian_blur.pipeline),
             GraphicsPipeline::Slider => WgpuPipeline::Render(&self.slider),
             GraphicsPipeline::Flashlight => WgpuPipeline::Render(&self.flashlight),
-            GraphicsPipeline::Standard(b) => WgpuPipeline::Render(&self.standard[b as u8 as usize]),
+            GraphicsPipeline::Standard(b) => WgpuPipeline::Render(&self.standard[b as usize]),
             // _ => GraphicsPipeline::Standard(&self.pipelines[&last_buffer.graphics_pipeline()]),
 
             // #[cfg(feature="vello")] PipelineType::Vello => WgpuPipeline::None,

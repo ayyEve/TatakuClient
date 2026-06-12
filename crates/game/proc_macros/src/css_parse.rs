@@ -3,7 +3,7 @@ use quote::*;
 use syn::parse::Parse;
 use proc_macro2::TokenStream;
 
-// TODO: clean this up once the css parsing has been moved to CssPropertyCollection
+// TODO: clean this up once the css parsing has been moved to PropertyCollection
 
 const CSS_ATTRIBUTE: &str = "css";
 const NAME_ATTRIBUTE: &str = "name";
@@ -22,7 +22,6 @@ pub(crate) fn derive(derive: &syn::DeriveInput) -> Result<proc_macro2::TokenStre
         where_clause
     ) = derive.generics.split_for_impl();
 
-    let mut match_tokens = proc_macro2::TokenStream::new();
     let mut shorthand_init_tokens = proc_macro2::TokenStream::new();
     let mut shorthand_cleanup_tokens = proc_macro2::TokenStream::new();
     
@@ -42,6 +41,12 @@ pub(crate) fn derive(derive: &syn::DeriveInput) -> Result<proc_macro2::TokenStre
     
     let mut enum_variants = Vec::new();
     let mut shorthand_enum_variants = Vec::new();
+
+    let mut style_enum_variants = Vec::new();
+    let mut style_enum_variant_css_prop = Vec::new();
+    let mut style_enum_as_value = Vec::new();
+
+    let mut into_property_list = Vec::new();
     
     match &derive.data {
         syn::Data::Struct(s) => {
@@ -77,12 +82,6 @@ pub(crate) fn derive(derive: &syn::DeriveInput) -> Result<proc_macro2::TokenStre
                     shorthand_tys.push(ty.clone());
                     shorthand_variables.push(var_name.clone());
 
-                    // match_tokens.extend(quote! {
-                    //     #property_text => {
-                    //         #ident_trim = std::str::FromStr::from_str(d.value)
-                    //             .unwrap_or_default();
-                    //     }
-                    // });
                     shorthand_property_texts.push(property_text.clone());
 
                     let mut do_shorthand = |fields: Vec<TokenStream>, props: Vec<TokenStream>| {
@@ -181,21 +180,28 @@ pub(crate) fn derive(derive: &syn::DeriveInput) -> Result<proc_macro2::TokenStre
                         .apply_to_field(ident.to_string().as_str());
                     let variant_name = parse(&variant_name);
                     enum_variants.push(variant_name.clone());
+                    
+                    let ty = &i.ty;
 
-                    // match_tokens.extend(quote! {
-                    //     #property_text => this.#ident = CssValue::parse(
-                    //         d.value, 
-                    //         #default, 
-                    //         #parse_with
-                    //     ),
-                    // });
-                    // from_collection_match_tokens.extend(quote! {
-                    //     CssProperty::#variant_name => self.#ident = CssValue::parse(
-                    //         value, 
-                    //         #default, 
-                    //         #parse_with
-                    //     ),
-                    // });
+                    style_enum_variants.extend(quote! {
+                        #variant_name (#ty),
+                    });
+                    style_enum_variant_css_prop.extend(quote! {
+                        Self::#variant_name(_) => CssProperty::#variant_name,
+                    });
+
+                    into_property_list.extend(quote! {
+                        match self.#ident {
+                            CssValue::Unset => {}
+                            CssValue::Inherit if skip_inherited => {},
+                            other => list.push(StyleProperty::#variant_name (other)),
+                        }
+                    });
+
+                    style_enum_as_value.extend(quote! {
+                        Self::#variant_name(v) => (v as &dyn std::any::Any).downcast_ref::<CssValue<T>>().unwrap(),
+                    });
+
                 }
             }
         }
@@ -233,49 +239,15 @@ pub(crate) fn derive(derive: &syn::DeriveInput) -> Result<proc_macro2::TokenStre
 
                 this
             }
-            pub fn merge(self, parent: Self) -> Self {
-                Self {
-                    #(
-                        #field_idents: self.#field_idents.check_unset(parent.#field_idents),
-                    )*
-                    #( #shorthand_field_idents: (), )*
-                }
+            
+            pub fn into_property_list(self, skip_inherited: bool) -> Vec<StyleProperty> {
+                let mut list = Vec::new();
+
+                #( #into_property_list )*
+
+                list
             }
 
-            pub fn merge_parent(self, parent: Self) -> Self {
-                Self {
-                    #(
-                        #field_idents: self.#field_idents.check_inherit(parent.#field_idents),
-                    )*
-                    #( #shorthand_field_idents: (), )*
-                }
-            }
-        
-
-            pub fn merge_with_collection(&mut self, collection: &CssPropertyCollection) {
-                for (key, value) in collection.0.iter() {
-                    match *key {
-                        #(
-                            CssProperty::#enum_variants => {
-                                self.#field_idents = CssValue::parse(
-                                    value, 
-                                    #defaults, 
-                                    #parse_withs
-                                );
-                            },
-                        )*
-
-                        #(
-                            CssProperty::#shorthand_enum_variants => {
-                                if let Ok(#shorthand_variables) = #shorthand_tys::from_str(value) {
-                                    #shorthand_fuck
-                                }
-                            },
-                        )*
-                    }
-                }
-            }
-        
             pub fn export_xml(
                 &self, 
                 lines: &mut Vec<String>,
@@ -310,13 +282,8 @@ pub(crate) fn derive(derive: &syn::DeriveInput) -> Result<proc_macro2::TokenStre
         #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
         #[repr(u8)]
         pub enum CssProperty {
-            #(
-                #enum_variants,
-            )*
-
-            #(
-                #shorthand_enum_variants,
-            )*
+            #( #enum_variants, )*
+            #( #shorthand_enum_variants, )*
         }
 
         impl std::str::FromStr for CssProperty {
@@ -333,6 +300,28 @@ pub(crate) fn derive(derive: &syn::DeriveInput) -> Result<proc_macro2::TokenStre
                 })
             }
         }
+    
+        #[derive(Clone, Debug)]
+        pub enum StyleProperty {
+            #( #style_enum_variants )*
+        }
+        impl StyleProperty {
+            pub fn css_property(&self) -> CssProperty {
+                match self {
+                    #( #style_enum_variant_css_prop )*
+                }
+            }
+            pub fn is_property(&self, prop: CssProperty) -> bool {
+                self.css_property() == prop
+            }
+
+            pub fn value<T: std::any::Any>(&self) -> &CssValue<T> {
+                match self {
+                    #( #style_enum_as_value )*
+                }
+            }
+        }
+    
     }; 
     // println!("{tokens}");
 

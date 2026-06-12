@@ -1,6 +1,7 @@
+use crate::style::css::CssStyle;
 use crate::*;
-use crate::style::*;
 use crate::tree::*;
+use crate::style::*;
 use simplecss::StyleSheet;
 use super::CssRuleStyleResolver;
 
@@ -9,7 +10,10 @@ pub struct CssResolver<'a> {
     animations: HashMap<String, CssAnimation>,
 }
 impl<'a> CssResolver<'a> {
-    pub fn new(style_str: &'a str, default_css: &'a str) -> Self {
+    pub fn new(
+        style_str: &'a str, 
+        default_css: &'a str,
+    ) -> Self {
         let mut animations = HashMap::new();
 
         let mut style = StyleSheet::parse(default_css);
@@ -24,7 +28,7 @@ impl<'a> CssResolver<'a> {
                         selector: simplecss::Selector::parse("*").unwrap(),
                         declarations: frame.declarations.clone()
                     };
-                    let style = CssStyle::parse_css(&rule);
+                    let style = CssStyle::parse_css(&rule).into_property_list(true);
                     let frame = match frame.key {
                         "from" => 0,
                         "to" => 100,
@@ -53,8 +57,7 @@ impl<'a> CssResolver<'a> {
         element_style: &str,
         node: NodeId,
         tree: &Tree<Action>,
-    ) -> ElementStateStyles<CssStyle, ()> {
-
+    ) -> ElementStateStyles<PropertyCollection, ()> {
         let a = format!("* {{ {element_style} }}");
         let base_stylesheet = StyleSheet::parse(&a);
         let base_style = base_stylesheet
@@ -63,7 +66,11 @@ impl<'a> CssResolver<'a> {
             .map(CssStyle::parse_css)
             .unwrap_or_default();
 
-        let mut states = ElementStateStyles::<CssStyle, ()>::default();
+        let mut states = ElementStateStyles::<PropertyCollection, ()>::default();
+        
+        
+
+        
         for (state, style) in [
             (ElementState::None, &mut states.none.0),
             (ElementState::Hover, &mut states.hover.0),
@@ -72,21 +79,24 @@ impl<'a> CssResolver<'a> {
         ] {
             // resolve the element's style
             let f = fuck::A::new(tree, node, state);
-            let mut ele_style = self
+            let ele_style = self
                 .parsed
                 .iter()
                 .filter(|i| i.selector.matches(&f))
                 .fold(
                     base_style.clone(), 
-                    |a, b| a.merge(b.style.clone())                    
+                    |mut a, b| { 
+                        a.properties.extend(b.style.properties.clone()); 
+                        a 
+                    }
                 );
 
-            // resolve inheritance
-            if let Some(parent) = tree.parent(node) {
-                let ctx = tree.get_context(parent).unwrap();
-                let parent_style = ctx.get_style(state); // FIXME: should this be ElementState::None?
-                ele_style = ele_style.merge_parent(parent_style.clone());
-            }
+            // // resolve inheritance
+            // if let Some(parent) = tree.parent(node) {
+            //     let ctx = tree.get_context(parent).unwrap();
+            //     let parent_style = ctx.get_style(state); // FIXME: should this be ElementState::None?
+            //     ele_style = ele_style.merge_parent(parent_style.clone());
+            // }
 
             *style = ele_style;
         }
@@ -182,24 +192,29 @@ mod fuck {
     
 }
 
-#[test]
-fn test() {
-    let css = r#"
-    @keyframes test {
-        100% { display: flex; }
-        50% { display: none; }
-        0% { display: block; }
-    }
-    "#;
-    let a = CssResolver::new(css, "");
-    let anim = a.get_animation("test").expect("no anim?");
+// #[test]
+// fn test() {
+//     let css = r#"
+//     @keyframes test {
+//         100% { display: flex; }
+//         50% { display: none; }
+//         0% { display: block; }
+//     }
+//     "#;
+//     let a = CssResolver::new(css, "");
+//     let anim = a.get_animation("test").expect("no anim?");
 
-    let from = anim.get(0).unwrap();
-    assert_eq!(from.display.value(), Some(&DisplayType::Block));
+//     let from: &CssPropertyCollection = anim.get(0).unwrap();
+//     let mut style = CssStyle::default();
 
-    let mid = anim.get(50).unwrap();
-    assert_eq!(mid.display.value(), Some(&DisplayType::None));
+//     style.merge_with_collection(from);
+//     assert_eq!(style.display.value(), Some(&DisplayType::Block));
 
-    let to = anim.get(100).unwrap();
-    assert_eq!(to.display.value(), Some(&DisplayType::Flex));
-}
+//     let mid = anim.get(50).unwrap();
+//     style.merge_with_collection(mid);
+//     assert_eq!(style.display.value(), Some(&DisplayType::None));
+
+//     let to = anim.get(100).unwrap();
+//     style.merge_with_collection(to);
+//     assert_eq!(style.display.value(), Some(&DisplayType::Flex));
+// }

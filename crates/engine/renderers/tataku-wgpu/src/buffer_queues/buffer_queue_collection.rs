@@ -71,7 +71,7 @@ impl BufferQueueCollection {
             self.completed_buffers.push(b);
         };
 
-        let i = last_buffer.pipeline_type() as u8 as usize;
+        let i = last_buffer.pipeline_type() as usize;
         self.buffer_queues[i] = Some(last_buffer);
     }
 
@@ -88,7 +88,7 @@ impl BufferQueueCollection {
 
         self.dump_last_drawn(pipelines);
         self.current_render_buffer = Some(self
-            .buffer_queues[to_draw as u8 as usize]
+            .buffer_queues[to_draw as usize]
             .take()
             .unwrap_or_else(|| panic!("buffer queue did not have a queue for type {to_draw:?}. Did you forget to create a buffer queue for it?"))
         );
@@ -145,7 +145,7 @@ impl BufferQueueCollection {
             self.completed_buffers.push(b);
         }
 
-        let i = last_queue.pipeline_type() as u8 as usize;
+        let i = last_queue.pipeline_type() as usize;
         self.buffer_queues[i] = Some(last_queue);
     }
 

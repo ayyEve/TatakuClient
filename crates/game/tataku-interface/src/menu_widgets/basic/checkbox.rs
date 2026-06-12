@@ -67,11 +67,11 @@ impl Widget<actions::Action> for Checkbox {
     }
 
     fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
-        shell.tree.update_style(
-            self.node_id,
-            |style| {
-                style.min_width = CssValue::Value(CssUnit::Em(f16::from_f32(BOX_SIZE_EM)));
-                style.min_height = CssValue::Value(CssUnit::Em(f16::from_f32(BOX_SIZE_EM)));
+        shell.tree.set_overrides(
+            self.node_id, 
+            |s| {
+                s.min_width = Some(CssUnit::Em(f16::from_f32(BOX_SIZE_EM)));
+                s.min_height = Some(CssUnit::Em(f16::from_f32(BOX_SIZE_EM)));
             }
         );
     }
