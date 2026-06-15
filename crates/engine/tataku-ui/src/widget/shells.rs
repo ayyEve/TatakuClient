@@ -4,17 +4,17 @@ use crate::style::*;
 use crate::message::*;
 use common::reflect::*;
 
-pub struct LayoutShell<'a, 'css: 'a, Action: Send + Sync + 'static> {
+pub struct LayoutShell<'a, Action: Send + Sync + 'static> {
     pub tree: &'a mut Tree<Action>,
     pub values: &'a mut dyn Reflect,
     pub source: MessageSource,
     pub ui_scale: f32,
-    pub resolver: &'a mut CssResolver<'css>,
+    pub resolver: &'a mut CssResolver,
 
     // pub default_css: &'a str,
     pub text_layout_contexts: &'a mut TextLayoutContexts,
 }
-impl<Action: Send + Sync + 'static> LayoutShell<'_,'_, Action> {
+impl<Action: Send + Sync + 'static> LayoutShell<'_, Action> {
     pub fn with_context(
         &mut self,
         node: NodeId,
@@ -26,10 +26,10 @@ impl<Action: Send + Sync + 'static> LayoutShell<'_,'_, Action> {
         f(ctx);
     }
 }
-impl<A: Send + Sync + 'static> HasTree<A> for LayoutShell<'_, '_, A> {
+impl<A: Send + Sync + 'static> HasTree<A> for LayoutShell<'_, A> {
     fn tree(&self) -> &Tree<A> { self.tree }
 }
-impl<A: Send + Sync + 'static> HasTreeMut<A> for LayoutShell<'_, '_, A> {
+impl<A: Send + Sync + 'static> HasTreeMut<A> for LayoutShell<'_, A> {
     fn tree_mut(&mut self) -> &mut Tree<A> { self.tree }
     fn values_mut(&mut self) -> &mut dyn Reflect { self.values }
 }

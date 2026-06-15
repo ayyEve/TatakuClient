@@ -104,3 +104,4 @@ serde_json.workspace = true
 tracing.workspace = true
 tracing-subscriber = { version =  "0.3.18", features = [ "chrono" ] }
 tracing-appender = "0.2.3"
+selectors = "0.38.0"

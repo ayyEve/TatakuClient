@@ -14,8 +14,7 @@ use taffy::LengthPercentageAuto;
 
 pub struct NodeStyleResolver<'a> {
     pub values: &'a dyn Reflect,
-    pub style: &'a StyleStack,
-    // pub style_overrides: &'a LayoutDataOverrides,
+    pub style: &'a Style,
 
     pub viewport: Vector2,
     pub root_font_size: f32,

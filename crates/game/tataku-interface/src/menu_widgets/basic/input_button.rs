@@ -102,7 +102,7 @@ impl<T: InputButtonType> Widget<actions::Action> for InputButton<T> {
             self.node_id, 
             |s| {
                 // s.min_width = Some(CssUnit::Pixels(w));
-                s.min_height = Some(CssUnit::Pixels(h));
+                s.set_property(css::StyleProperty::MinHeight(CssUnit::Pixels(h).into()));
             }
         );
     }

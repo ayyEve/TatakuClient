@@ -5,6 +5,7 @@ use tataku::{
     Color,
     Border,
 };
+use tataku_ui::style::css::CssProperty;
 use ui::{
     tree::*,
     style::*,
@@ -35,24 +36,6 @@ impl<T> WidgetBase<T> {
             inner,
         }
     }
-
-    // pub fn new_boxed(
-    //     style: ArcStr,
-    //     element_name: impl Into<ArcStr>,
-    //     id: Option<ArcStr>,
-    //     class: ClassList,
-    //     inner: Box<dyn Widget<actions::Action>>,
-    // ) -> Box<dyn Widget<actions::Action>> {
-    //     Self::new(
-    //         style,
-    //         element_name,
-    //         id,
-    //         class,
-    //         inner
-    //     )
-    //     .boxed()
-    // }
-    
 }
 impl<T> Widget<actions::Action> for WidgetBase<T>
 where
@@ -77,7 +60,6 @@ where
         );
 
         shell.tree.set_styles(node, styles);
-
         self.inner.init_style(shell);
     }
 
@@ -86,6 +68,7 @@ where
         shell.with_context(id, |ctx| {
             ctx.element_data = ElementData {
                 state: ElementState::None,
+                default_style: self.style_str.clone(),
                 element_name: self.element_name.clone(),
                 id: self.id.clone(),
                 class_list: self.class.0.clone(),
@@ -131,13 +114,13 @@ where
         let Some(layout) = shell.tree.get_layout(node) else { return };
         let Some(ctx) = shell.tree.get_context(node) else { return };
 
-        let (_, image) = ctx.element_data.style(); //.current_style();
+        // let (_, image) = ctx.element_data.style(); //.current_style();
         let style = shell.tree.get_style(node).unwrap();
 
         // background
-        let mut border = style.border_color
-            .resolve(shell.values)
-            .map(|color| Border::new(*color, 2.0));
+        let mut border = style
+            .get_resolved::<Color>(CssProperty::BorderColor, shell.values)
+            .map(|color| Border::new(color, 2.0));
 
         let border_top = layout.border.top;
         if border_top > 0.0 {
@@ -149,15 +132,10 @@ where
         }
 
         let shape = style
-            .border_radius
-            .resolve(shell.values)
-            .as_deref()
-            .copied()
+            .get_resolved::<f32>(CssProperty::BorderRadius, shell.values)
             .map(graphics::Shape::Round);
 
-        if let Some(bg) = style
-            .background_color
-            .resolve_copied(shell.values)
+        if let Some(bg) = style.get_resolved(CssProperty::BackgroundColor, shell.values)
         {
             shell.list.push(graphics::Rectangle::new_bounds(
                     bounds,
@@ -177,37 +155,37 @@ where
             );
         }
 
-        // image
-        if let Some(mut image) = image.clone() {
-            let alignment = style
-                .image_alignment
-                .resolve_copied(shell.values)
-                .unwrap_or(tataku::Alignment::CENTER);
+        // FIXME:
+        // // image
+        // if let Some(mut image) = image.clone() {
+        //     let alignment = style
+        //         .get_resolved(CssProperty::ImageAlignment, shell.values)
+        //         .unwrap_or(tataku::Alignment::CENTER);
 
-            if let Some(&fill_mode) = style.image_stretch.value() {
-                image.fit_to(fill_mode, bounds);
-            }
+        //     if let Some(&fill_mode) = style.image_stretch.value() {
+        //         image.fit_to(fill_mode, bounds);
+        //     }
 
-            image.pos = alignment.resolve(
-                &bounds,
-                image.size(),
-                true, true
-            );
+        //     image.pos = alignment.resolve(
+        //         &bounds,
+        //         image.size(),
+        //         true, true
+        //     );
 
-            shell.list.push(image);
-        }
+        //     shell.list.push(image);
+        // }
 
         // blur
-        let blur_amount = style.blur_amount
-            .resolve_copied(shell.values)
+        let blur_amount = style
+            .get_resolved::<f32>(CssProperty::BlurAmount, shell.values)
             .unwrap_or_default();
 
-        let blur_type = style.blur_type
-            .resolve_copied(shell.values)
+        let blur_type = style
+            .get_resolved(CssProperty::BlurType, shell.values)
             .unwrap_or(CssBlurType::Box);
 
-        let blur_location = style.blur_location
-            .resolve_copied(shell.values)
+        let blur_location = style
+            .get_resolved::<BlurLocation>(CssProperty::BlurLocation, shell.values)
             .unwrap_or_default();
 
         let blur = if blur_amount > 0.0 {
@@ -244,34 +222,34 @@ where
         let Some(style) = shell.tree.get_style(self.node_id()) 
         else { return };
 
-        let image = style.image.resolve_cloned(shell.values);
-        let image_source = style.image_source
-            .resolve_cloned(shell.values)
-            .unwrap_or(graphics::TextureSource::Skin);
-        let image_grayscale = style.image_grayscale
-            .resolve_copied(shell.values)
-            .unwrap_or_default();
+        // let image = style.image.resolve_cloned(shell.values);
+        // let image_source = style.image_source
+        //     .resolve_cloned(shell.values)
+        //     .unwrap_or(graphics::TextureSource::Skin);
+        // let image_grayscale = style.image_grayscale
+        //     .resolve_copied(shell.values)
+        //     .unwrap_or_default();
 
-        let Some(ctx) = shell.tree
-            .get_context_mut(self.node_id()) 
-        else { return };
+        // let Some(ctx) = shell.tree
+        //     .get_context_mut(self.node_id()) 
+        // else { return };
 
 
         
 
-        for (_, img) in ctx
-            .element_data.styles.all_mut()
-        {
-            if let Some(image) = &image {
-                *img = shell.skin_manager.get_texture_then(
-                    Path::new(image), 
-                    &image_source, 
-                    graphics::SkinUsage::Game, 
-                    image_grayscale, 
-                    |image| image.origin = Vector2::ZERO,
-                );
-            }
-        }
+        // for (_, img) in ctx
+        //     .element_data.styles.all_mut()
+        // {
+        //     if let Some(image) = &image {
+        //         *img = shell.skin_manager.get_texture_then(
+        //             Path::new(image), 
+        //             &image_source, 
+        //             graphics::SkinUsage::Game, 
+        //             image_grayscale, 
+        //             |image| image.origin = Vector2::ZERO,
+        //         );
+        //     }
+        // }
 
         self.inner.reload_skin(shell);
     }

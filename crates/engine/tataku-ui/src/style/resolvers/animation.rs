@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use tataku_engine_common::data::ArcStr;
+
 use crate::style::css::StyleProperty;
 
 /// key is the % of the animation
@@ -16,14 +18,14 @@ impl CssAnimation {
             .collect::<Vec<_>>();
 
         struct A<'a>(&'a str);
-        impl simplecss::Element for A<'_> {
+        impl simplecss::Element<ArcStr> for A<'_> {
             fn has_local_name(&self, name: &str) -> bool { name == self.0 }
 
             // keyframe names dont have anything else
             fn parent_element(&self) -> Option<Self> { None }
             fn prev_sibling_element(&self) -> Option<Self> { None }
-            fn attribute_matches(&self, _local_name: &str, _operator: simplecss::AttributeOperator<'_>) -> bool { false }
-            fn pseudo_class_matches(&self, _class: simplecss::PseudoClass<'_>) -> bool { false }
+            fn attribute_matches(&self, _local_name: &str, _operator: &simplecss::AttributeOperator<ArcStr>) -> bool { false }
+            fn pseudo_class_matches(&self, _class: &simplecss::PseudoClass<ArcStr>) -> bool { false }
         }
 
         for i in 0..=100 {

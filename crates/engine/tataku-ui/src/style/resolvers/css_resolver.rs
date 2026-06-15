@@ -5,14 +5,14 @@ use crate::style::*;
 use simplecss::StyleSheet;
 use super::CssRuleStyleResolver;
 
-pub struct CssResolver<'a> {
-    parsed: Vec<CssRuleStyleResolver<'a>>,
+pub struct CssResolver {
+    parsed: Vec<CssRuleStyleResolver>,
     animations: HashMap<String, CssAnimation>,
 }
-impl<'a> CssResolver<'a> {
+impl CssResolver {
     pub fn new(
-        style_str: &'a str, 
-        default_css: &'a str,
+        style_str: &str, 
+        default_css: &str,
     ) -> Self {
         let mut animations = HashMap::new();
 
@@ -29,7 +29,7 @@ impl<'a> CssResolver<'a> {
                         declarations: frame.declarations.clone()
                     };
                     let style = CssStyle::parse_css(&rule).into_property_list(true);
-                    let frame = match frame.key {
+                    let frame = match &*frame.key {
                         "from" => 0,
                         "to" => 100,
                         other => if let Ok(n) = other.parse::<u8>() { n } 
@@ -57,51 +57,38 @@ impl<'a> CssResolver<'a> {
         element_style: &str,
         node: NodeId,
         tree: &Tree<Action>,
-    ) -> ElementStateStyles<PropertyCollection, ()> {
+    ) -> Style {
         let a = format!("* {{ {element_style} }}");
-        let base_stylesheet = StyleSheet::parse(&a);
-        let base_style = base_stylesheet
-            .rules
+        let base_stylesheet = StyleSheet::<ArcStr>::parse(&a);
+        let base_layer = base_stylesheet.rules
             .first()
-            .map(CssStyle::parse_css)
-            .unwrap_or_default();
+            .map_or(
+                StyleLayer::empty_base(), 
+                |r| StyleLayer::from_css_rule(Some(LayerId::Base), r)
+            );
 
-        let mut states = ElementStateStyles::<PropertyCollection, ()>::default();
+        let mut style = Style::new(base_layer);
         
-        
+        let f = fuck::CanMatch::new(tree, node);
+        for i in self.parsed.iter() {
+            use fuck::MatchResult;
+            match f.matches(&i.selector) {
+                MatchResult::NoMatch => {},
 
-        
-        for (state, style) in [
-            (ElementState::None, &mut states.none.0),
-            (ElementState::Hover, &mut states.hover.0),
-            (ElementState::Active, &mut states.active.0),
-            (ElementState::Focus, &mut states.focus.0),
-        ] {
-            // resolve the element's style
-            let f = fuck::A::new(tree, node, state);
-            let ele_style = self
-                .parsed
-                .iter()
-                .filter(|i| i.selector.matches(&f))
-                .fold(
-                    base_style.clone(), 
-                    |mut a, b| { 
-                        a.properties.extend(b.style.properties.clone()); 
-                        a 
-                    }
-                );
-
-            // // resolve inheritance
-            // if let Some(parent) = tree.parent(node) {
-            //     let ctx = tree.get_context(parent).unwrap();
-            //     let parent_style = ctx.get_style(state); // FIXME: should this be ElementState::None?
-            //     ele_style = ele_style.merge_parent(parent_style.clone());
-            // }
-
-            *style = ele_style;
+                // TODO: optimize when things will always match, ie combine them into a single layer
+                // just need to consider specificity order when implementing that 
+                MatchResult::WillAlwaysMatch 
+                | MatchResult::Matches => {
+                    let layer = StyleLayer::new(
+                        LayerId::Selector(i.selector.clone()), 
+                        StaticStyleLayer::from_property_list(i.style.clone()).into()
+                    );
+                    style.add_layer(layer);
+                }
+            }
         }
 
-        states
+        style
     }
 
     pub fn get_animation(&self, name: &str) -> Option<CssAnimation> {
@@ -112,17 +99,25 @@ impl<'a> CssResolver<'a> {
 mod fuck {
     use super::*;
 
-    pub struct A<'a, Action: Send + Sync> {
+    #[derive(Copy, Clone, Debug)]
+    pub enum MatchResult {
+        NoMatch,
+        Matches,
+        WillAlwaysMatch,
+    }
+
+    pub struct CanMatch<'a, Action: Send + Sync> {
         pub tree: &'a Tree<Action>,
         pub node: NodeId,
-        state: ElementState
+
+        has_pseudo_class: std::cell::Cell<bool>,
     }
-    impl<'a, Action: Send + Sync + 'static> A<'a, Action>{
-        pub fn new(tree: &'a Tree<Action>, node: NodeId, state: ElementState) -> Self {
+    impl<'a, Action: Send + Sync + 'static> CanMatch<'a, Action>{
+        pub fn new(tree: &'a Tree<Action>, node: NodeId) -> Self {
             Self {
                 tree,
                 node,
-                state
+                has_pseudo_class: std::cell::Cell::new(false),
             }
         }
         pub fn child_index(&self) -> Option<usize> {
@@ -132,12 +127,24 @@ mod fuck {
                 .iter()
                 .position(|id| id == &self.node)
         }
+
+        pub fn matches(&self, selector: &simplecss::Selector<ArcStr>) -> MatchResult {
+            self.has_pseudo_class.set(false);
+
+            let matches = selector.matches(self);
+
+            match (matches, self.has_pseudo_class.get()) {
+                (false, _) => MatchResult::NoMatch,
+                (true, true) => MatchResult::Matches,
+                (true, false) => MatchResult::WillAlwaysMatch,
+            }
+        }
     }
 
-    impl<Action: Send + Sync + 'static> simplecss::Element for A<'_, Action> {
+    impl<Action: Send + Sync + 'static> simplecss::Element<ArcStr> for CanMatch<'_, Action> {
         fn parent_element(&self) -> Option<Self> {
             let parent = self.tree.parent(self.node)?;
-            Some(Self::new(self.tree, parent, self.state))
+            Some(Self::new(self.tree, parent))
         }
         
         fn prev_sibling_element(&self) -> Option<Self> {
@@ -150,7 +157,7 @@ mod fuck {
 
             let sibling = *children.get(index - 1)?;
 
-            Some(Self::new(self.tree, sibling, self.state))
+            Some(Self::new(self.tree, sibling))
         }
     
         fn has_local_name(&self, name: &str) -> bool {
@@ -163,7 +170,7 @@ mod fuck {
         fn attribute_matches(
             &self, 
             local_name: &str, 
-            operator: simplecss::AttributeOperator<'_>
+            operator: &simplecss::AttributeOperator<ArcStr>
         ) -> bool {
             let Some(ctx) = self.tree.get_context(self.node) 
             else { return false };
@@ -176,17 +183,25 @@ mod fuck {
             }
         }
     
-        fn pseudo_class_matches(&self, class: simplecss::PseudoClass<'_>) -> bool {
-            use simplecss::PseudoClass;
-            let state = self.state;
-            match class {
-                PseudoClass::FirstChild => self.child_index() == Some(0),
-                PseudoClass::Active => state.contains(ElementState::Active),
-                PseudoClass::Hover => state.contains(ElementState::Hover),
-                PseudoClass::Focus => state.contains(ElementState::Focus),
-
-                _ => false,
+        // always return true since pseudoclasses can change
+        fn pseudo_class_matches(&self, class: &simplecss::PseudoClass<ArcStr>) -> bool {
+            if let simplecss::PseudoClass::FirstChild = class {
+                return self.child_index() == Some(0)
             }
+
+
+            self.has_pseudo_class.set(true);
+            true
+            // use simplecss::PseudoClass;
+            // let state = self.state;
+            // match class {
+            //     PseudoClass::FirstChild => self.child_index() == Some(0),
+            //     PseudoClass::Active => state.contains(ElementState::Active),
+            //     PseudoClass::Hover => state.contains(ElementState::Hover),
+            //     PseudoClass::Focus => state.contains(ElementState::Focus),
+
+            //     _ => false,
+            // }
         }
     }
     

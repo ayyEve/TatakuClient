@@ -54,8 +54,12 @@ impl Text {
 
             tree.set_overrides(self.node_id, |style| {
                 // fixme: there is an off-by-one somewhere
-                style.min_width = Some(CssUnit::Pixels(f16::from_f32(widths.min.ceil() + 1.0)));
-                style.max_width = Some(CssUnit::Pixels(f16::from_f32(widths.max.ceil() + 1.0)));
+
+                let min = CssUnit::Pixels(f16::from_f32(widths.min.ceil() + 1.0));
+                let max = CssUnit::Pixels(f16::from_f32(widths.max.ceil() + 1.0));
+
+                style.set_property(css::StyleProperty::MinWidth(min.into()));
+                style.set_property(css::StyleProperty::MaxWidth(max.into()));
             });
         }
     }
@@ -86,7 +90,8 @@ impl Text {
             let height = self.layout.height();
 
             tree.set_overrides(self.node_id, |style| {
-                style.height = Some(CssUnit::Pixels(f16::from_f32(height)));
+                let height = CssUnit::Pixels(f16::from_f32(height));
+                style.set_property(css::StyleProperty::Height(height.into()));
             });
         }
     }
@@ -119,7 +124,8 @@ impl Widget<actions::Action> for Text {
         );
 
         shell.tree.set_overrides(self.node_id, |style| {
-            style.min_height = Some(CssUnit::Pixels(f16::from_f32(min_height)));
+                let min_height = CssUnit::Pixels(f16::from_f32(min_height));
+                style.set_property(css::StyleProperty::MinHeight(min_height.into()));
         });
     }
 

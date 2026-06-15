@@ -107,7 +107,10 @@ impl Widget<actions::Action> for ConditionalWidget {
 
         // set the true condition widget to DisplayType::None so its hidden
         // do not do this for the false widget because if it exists it should be visible by default
-        shell.tree.set_overrides(self.if_true.node_id(), |s| s.display = Some(DisplayType::None));
+        shell.tree.set_overrides(
+            self.if_true.node_id(), 
+            |s| s.set_property(css::StyleProperty::Display(DisplayType::None.into()))
+        );
     }
 
     fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
@@ -122,13 +125,13 @@ impl Widget<actions::Action> for ConditionalWidget {
                 if let Some(child) = self.if_false.as_ref() {
                     shell.tree.set_overrides(
                         child.node_id(), 
-                        |s| s.display = Some(DisplayType::None),
+                        |s| s.set_property(css::StyleProperty::Display(DisplayType::None.into())),
                     );
                 }
 
                 shell.tree.set_overrides(
                     self.if_true.node_id(), 
-                    |s| s.display = None,
+                    |s| s.remove_property(css::CssProperty::Display),
                 );
                 shell.tree.mark_for_relayout();
             }
@@ -139,13 +142,13 @@ impl Widget<actions::Action> for ConditionalWidget {
                 if let Some(child) = self.if_false.as_ref() {
                     shell.tree.set_overrides(
                         child.node_id(), 
-                        |s| s.display = None,
+                        |s| s.remove_property(css::CssProperty::Display),
                     );
                 }
                 
                 shell.tree.set_overrides(
                     self.if_true.node_id(), 
-                    |s| s.display = Some(DisplayType::None),
+                    |s| s.set_property(css::StyleProperty::Display(DisplayType::None.into())),
                 );
             }
 

@@ -2,7 +2,7 @@ use crate::style::*;
 
 #[derive(Default)]
 pub(super) struct LayoutData {
-    pub style: StyleStack,
+    pub style: Style,
     pub text_style: TextStyle,
 
     /// The always unrounded results of the layout computation. We must store this separately from the rounded
@@ -20,7 +20,7 @@ pub(super) struct LayoutData {
     // pub detailed_layout_info: taffy::DetailedLayoutInfo,
 }
 impl LayoutData {
-    pub fn new(style: StyleStack) -> Self {
+    pub fn new(style: Style) -> Self {
         Self {
             style,
             ..Default::default()
@@ -28,24 +28,3 @@ impl LayoutData {
     }
 }
 
-
-// #[derive(Copy, Clone, Debug, Default)]
-// pub struct LayoutDataOverrides {
-//     // display type
-//     pub display: Option<DisplayType>,
-
-//     pub top: Option<CssUnit>,
-//     pub left: Option<CssUnit>,
-
-//     // Size properties
-//     pub width: Option<CssUnit>,
-//     pub height: Option<CssUnit>,
-
-//     /// Controls the minimum size of the item
-//     pub min_width: Option<CssUnit>,
-//     pub min_height: Option<CssUnit>,
-
-//     /// Controls the maximum size of the item
-//     pub max_width: Option<CssUnit>,
-//     pub max_height: Option<CssUnit>,
-// }

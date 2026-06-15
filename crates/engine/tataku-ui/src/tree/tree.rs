@@ -15,8 +15,6 @@ use slotmap::DefaultKey;
 use slotmap::SparseSecondaryMap;
 
 pub struct Tree<Action: Send + Sync> {
-    // tree: TaffyTree<TreeData>,
-
     /// The [`NodeData`] for each node stored in this tree
     pub(super) nodes: SlotMap<DefaultKey, LayoutData>,
 
@@ -50,7 +48,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         node: Box<dyn Widget<Action>>,
     ) -> Self {
         let mut nodes = SlotMap::with_capacity(capacity);
-        let root = nodes.insert(LayoutData::new(StyleStack::menu_layout()));
+        let root = nodes.insert(LayoutData::new(Style::menu_layout()));
 
         let mut node_context_data = SparseSecondaryMap::with_capacity(capacity);
         node_context_data.insert(root, TreeData::default());
@@ -119,7 +117,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         node.init_style(&mut shell);
         shell.tree
             .nodes[root.into()]
-            .style = StyleStack::menu_layout();
+            .style = Style::menu_layout();
 
         self.node = node;
         self.update_layout(values);
@@ -136,15 +134,19 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
     pub fn set_overrides(
         &mut self,
         node: NodeId,
-        f: impl FnOnce(&mut Box<dyn StylePropertyGroup>),
+        f: impl FnOnce(&mut StyleLayer),
     ) {
         let Some(data) = self.nodes.get_mut(node.into())
         else { return };
 
-        f(&mut data.style.get_group(StyleId::Overrides).unwrap());
-
-        // if data.current_display == display { return }
-        // data.current_display = display;
+        let overrides = data.style.get_layer(&LayerId::Overrides);
+        if let Some(overrides) = overrides {
+            f(overrides);
+        } else {
+            let mut overrides = StyleLayer::new(LayerId::Overrides, StaticStyleLayer::default().into());
+            f(&mut overrides);
+            data.style.add_layer_unchecked(overrides);
+        }
 
         self.mark_dirty(node);
     }
@@ -181,31 +183,31 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         self.update_contexts();
     }
 
-    fn update_styles_inner(&mut self, node: NodeId, values: &dyn Reflect) {
-        if node != self.root {
-            let node = node.into();
-            let a = &mut self.nodes[node];
+    // fn update_styles_inner(&mut self, node: NodeId, values: &dyn Reflect) {
+    //     if node != self.root {
+    //         let node = node.into();
+    //         let a = &mut self.nodes[node];
             
-            if a.cache.is_empty() {
-                let parent = self.parents[node].unwrap().into();
-                assert_ne!(node, parent);
+    //         if a.cache.is_empty() {
+    //             let parent = self.parents[node].unwrap().into();
+    //             assert_ne!(node, parent);
 
-                let parent_style = self.nodes[parent].style.clone();
+    //             let parent_style = self.nodes[parent].style.clone();
 
-                let a = &mut self.nodes[node];
-                a.style = parent_style;
+    //             let a = &mut self.nodes[node];
+    //             a.style = parent_style;
 
-                let b = &self.node_context_data[node];
-                // FIXME: !!!!!!!!!!!!!!!!!!!!!!
-                // let style = &b.element_data.style().0;
-                // a.current_style.merge_with_collection(style);
-            }
-        }
-        let children = self.children.keys().collect::<Vec<_>>();
-        for i in children {
-            self.update_styles_inner(i.into(), values);
-        }
-    }
+    //             let b = &self.node_context_data[node];
+    //             // FIXME: !!!!!!!!!!!!!!!!!!!!!!
+    //             // let style = &b.element_data.style().0;
+    //             // a.current_style.merge_with_collection(style);
+    //         }
+    //     }
+    //     let children = self.children.keys().collect::<Vec<_>>();
+    //     for i in children {
+    //         self.update_styles_inner(i.into(), values);
+    //     }
+    // }
 
 
     pub fn update_contexts(&mut self) {
@@ -343,17 +345,17 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
 
 
 
-    // pub fn set_styles<_T>(
-    //     &mut self, 
-    //     node: NodeId,
-    //     styles: ElementStateStyles<StylePropertyCollection, _T>, 
-    // ) {
-    //     let Some(ctx) = self.get_context_mut(node)
-    //     else { return };
-    //     ctx.element_data.styles = styles.transpose();
-    //     self.mark_dirty(node);
-    // }
-    pub fn get_style(&self, node: NodeId) -> Option<&StyleStack> {
+    pub fn set_styles(
+        &mut self, 
+        node: NodeId,
+        styles: Style, 
+    ) {
+        let Some(layout_data) = self.nodes.get_mut(node.into())
+        else { return };
+        layout_data.style = styles; //.transpose();
+        self.mark_dirty(node);
+    }
+    pub fn get_style(&self, node: NodeId) -> Option<&Style> {
         Some(
             &self.nodes
             .get(node.into())?
@@ -1011,7 +1013,7 @@ mod export_tree {
             let spacing = "  ".repeat(indent);
             let ctx = tree.tree.context(id);
             let data = &ctx.element_data;
-            let style = tree.tree.get_style(id).unwrap();
+            // let style = tree.tree.get_style(id).unwrap();
 
             let ele = &data.element_name;
             let ele_id = data.id.as_ref()

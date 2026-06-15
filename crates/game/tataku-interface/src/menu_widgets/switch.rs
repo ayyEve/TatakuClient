@@ -191,7 +191,7 @@ impl Widget<actions::Action> for SwitchWidget {
         for i in self.cases.iter() {
             shell.tree.set_overrides(
                 i.widget.node_id(),
-                |s| s.display = Some(DisplayType::None)
+                |s| s.set_property(css::StyleProperty::Display(DisplayType::None.into()))
             );
         }
     }
@@ -232,21 +232,21 @@ impl Widget<actions::Action> for SwitchWidget {
             {
                 shell.tree.set_overrides(
                     child.widget.node_id(), 
-                    |s| s.display = Some(DisplayType::None),
+                    |s| s.set_property(css::StyleProperty::Display(DisplayType::None.into())),
                 );
             } else if let Some(default) = &self.default_case {
                 shell.tree.set_overrides(
                     default.node_id(), 
-                    |s| s.display = Some(DisplayType::None),
+                    |s| s.set_property(css::StyleProperty::Display(DisplayType::None.into())),
                 );
             }
 
             if let Some(child) = self.index
                 .and_then(|i| self.cases.get(i))
             {
-                shell.tree.set_overrides(child.widget.node_id(), |s| s.display = None);
+                shell.tree.set_overrides(child.widget.node_id(), |s| s.remove_property(css::CssProperty::Display));
             } else if let Some(default) = &self.default_case {
-                shell.tree.set_overrides(default.node_id(), |s| s.display = None);
+                shell.tree.set_overrides(default.node_id(), |s| s.remove_property(css::CssProperty::Display));
             }
         }
 

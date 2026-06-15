@@ -211,22 +211,22 @@ pub(crate) fn derive(derive: &syn::DeriveInput) -> Result<proc_macro2::TokenStre
     
     let tokens = quote! {
         impl #impl_generics #type_name #ty_generics where #where_clause {
-            pub fn parse_css(rule: &simplecss::Rule) -> Self {
+            pub fn parse_css(rule: &simplecss::Rule<ArcStr>) -> Self {
                 let mut this = Self::default();
                 #shorthand_init_tokens
 
                 for d in rule.declarations.iter() {
-                    match d.name {
+                    match &*d.name {
                         #(
                             #property_texts => this.#field_idents = CssValue::parse(
-                                d.value, 
+                                &d.value, 
                                 #defaults, 
                                 #parse_withs
                             ),
                         )*
                         #(
                             #shorthand_property_texts => {
-                                #shorthand_variables = std::str::FromStr::from_str(d.value)
+                                #shorthand_variables = std::str::FromStr::from_str(&d.value)
                                     .unwrap_or_default();
                             }
                         )*
@@ -323,7 +323,7 @@ pub(crate) fn derive(derive: &syn::DeriveInput) -> Result<proc_macro2::TokenStre
         }
     
     }; 
-    // println!("{tokens}");
+    println!("{tokens}");
 
     Ok(tokens)
 }

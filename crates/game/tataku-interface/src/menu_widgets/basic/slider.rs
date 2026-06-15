@@ -86,8 +86,9 @@ impl Widget<actions::Action> for Slider {
         shell.tree.set_overrides(
             self.node_id,
             |style| {
-                style.min_width = Some(CssUnit::Pixels(f16::from_f32(100.0)));
-                style.min_height = Some(CssUnit::Pixels(f16::from_f32(30.0)));
+                use css::StyleProperty::{MinWidth, MinHeight};
+                style.set_property(MinWidth(CssUnit::Pixels(f16::from_f32(100.0)).into()));
+                style.set_property(MinHeight(CssUnit::Pixels(f16::from_f32(30.0)).into()));
             }
         );
     }

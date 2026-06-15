@@ -70,8 +70,10 @@ impl Widget<actions::Action> for Checkbox {
         shell.tree.set_overrides(
             self.node_id, 
             |s| {
-                s.min_width = Some(CssUnit::Em(f16::from_f32(BOX_SIZE_EM)));
-                s.min_height = Some(CssUnit::Em(f16::from_f32(BOX_SIZE_EM)));
+                use css::StyleProperty::{ MinWidth, MinHeight };
+                let u = CssUnit::Em(f16::from_f32(BOX_SIZE_EM));
+                s.set_property(MinWidth(u.into()));
+                s.set_property(MinHeight(u.into()));
             }
         );
     }
