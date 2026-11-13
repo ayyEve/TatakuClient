@@ -1279,7 +1279,12 @@ impl Gamemode for TaikoGame {
             let mut rdon = don;
             rdon.scale *= Vector2::new(-1.0, 1.0);
             self.right_don_image = Some(rdon);
+        } else {
+            self.left_don_image = None;
+            self.right_don_image = None;
         }
+        
+
         if let Some(mut kat) = skin_manager.get_texture(
             Path::new("taiko-drum-outer"),
             &source,
@@ -1294,6 +1299,9 @@ impl Gamemode for TaikoGame {
             let mut lkat = kat;
             lkat.scale *= Vector2::new(-1.0, 1.0);
             self.left_kat_image = Some(lkat);
+        } else {
+            self.right_kat_image = None;
+            self.left_kat_image = None;
         }
 
         self.judgement_helper = JudgmentImageHelper::new(

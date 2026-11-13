@@ -12,8 +12,8 @@ pub trait SkinProvider: Send + Sync + 'static {
         grayscale: bool,
     ) -> Option<Image>;
 
-    fn free_by_source(&mut self, source: TextureSource);
-    fn free_by_usage(&mut self, usage: SkinUsage);
+    fn free_by_source(&mut self, source: TextureSource, force: bool);
+    fn free_by_usage(&mut self, usage: SkinUsage, force: bool);
 
     fn free_all_unused(&mut self);
 }

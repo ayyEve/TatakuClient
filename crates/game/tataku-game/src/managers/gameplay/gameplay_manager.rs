@@ -1304,7 +1304,7 @@ impl GameplayManager {
         // this should be fine since we shouldnt be re-using this gamemode at this time anyways
         self.gamemode = Box::new(engine::gameplay::default::NoMode);
         self.gamemode_properties = self.gamemode.properties(&self.timing_points);
-        skin_manager.free_by_usage(graphics::SkinUsage::Beatmap);
+        skin_manager.free_by_usage(graphics::SkinUsage::Beatmap, true);
 
         let path = self.beatmap
             .get_parent_dir()
@@ -1312,7 +1312,7 @@ impl GameplayManager {
             .to_string_lossy()
             .to_string();
 
-        skin_manager.free_by_source(graphics::TextureSource::Beatmap(path));
+        skin_manager.free_by_source(graphics::TextureSource::Beatmap(path), true);
     }
 
 }

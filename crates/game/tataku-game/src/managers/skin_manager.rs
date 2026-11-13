@@ -57,13 +57,15 @@ impl SkinManager {
 
     pub fn change_skin(&mut self, new_skin: &str) {
         if self.skin_name == new_skin { return }
+        info!("Changing skin to {new_skin}");
+
         self.skin_name = new_skin.to_owned();
         self.current_skin_config = Arc::new(SkinSettings::from_file(
             &format!("{SKINS_FOLDER}/{new_skin}/skin.ini")
         ).unwrap_or_default());
 
         // free up the last skin's images in the atlas for reuse
-        self.free_by_source(TextureSource::Skin);
+        self.free_by_source(TextureSource::Skin, true);
         self.free_all_unused();
     }
 
@@ -180,19 +182,20 @@ impl graphics::SkinProvider for SkinManager {
         &self.current_skin_config
     }
 
-    fn free_by_source(&mut self, source: TextureSource) {
+    fn free_by_source(&mut self, source: TextureSource, force: bool) {
         let mut warned = false;
 
         for i in self.textures.values_mut() {
             let Some(a) = i.get_mut(&source) else { continue };
 
             if let TextureState::Success(i) = &a.image {
-                if i.reference_count() > 1 {
+                if i.reference_count() > 1 && !force {
                     if !warned {
                         trace!("Texture(s) still have references, not freeing: {source:?}");
                         warned = true;
                     }
-                    continue
+
+                    continue;
                 }
 
                 self.texture_manager.free_texture(*i.tex);
@@ -201,20 +204,20 @@ impl graphics::SkinProvider for SkinManager {
             a.image = TextureState::Unloaded;
         }
     }
-    fn free_by_usage(&mut self, usage: SkinUsage) {
+    fn free_by_usage(&mut self, usage: SkinUsage, force: bool) {
         let mut warned = false;
 
         for entry in self.textures.values_mut().flat_map(HashMap::values_mut) {
             if entry.usage != usage { continue }
 
             if let TextureState::Success(i) = &entry.image {
-                if i.reference_count() > 1 {
+                if i.reference_count() > 1 && !force {
                     if !warned {
                         debug!("Texture(s) still have references, not freeing: {usage:?}");
                         warned = true;
                     }
 
-                    continue
+                    continue;
                 }
 
                 self.texture_manager.free_texture(*i.tex);
