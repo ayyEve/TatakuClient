@@ -80,11 +80,9 @@ impl PipelineCollection {
             .as_mut()
             .unwrap();
 
-        *a = Box::new(RenderBufferQueueType::Standard(
-            RenderBufferQueue::default().init(
-                device,
-                &self.standard[0]
-            )
+        **a = RenderBufferQueueType::Standard(RenderBufferQueue::default().init(
+            device,
+            &self.standard[0]
         ));
     }
 

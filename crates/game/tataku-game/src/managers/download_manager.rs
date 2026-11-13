@@ -101,7 +101,7 @@ impl DownloadManager {
                 if !complete {
                     let style = ui::style::TextStyle::default()
                         .alignment(Alignment::CENTER)
-                        .font_size(20.0);
+                        .font_size(20.0_f32);
 
                     let mut new_progress_layout = font_contexts.simple_text(
                         &format!("{:.2}%", status.progress), 

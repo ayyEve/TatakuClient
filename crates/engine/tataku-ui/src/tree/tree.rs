@@ -94,8 +94,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
 
         // TODO: refresh layout when scale changes
         let ui_scale = values.reflect_get::<f32>("settings.ui_scale")
-            .map(|i| *i)
-            .unwrap_or(1.0);
+            .map_or(1.0, |i| *i);
 
         let style = node.get_style_str();
         let mut resolver = CssResolver::new(&style, default_css);

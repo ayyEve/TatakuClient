@@ -311,7 +311,7 @@ pub fn shake(
         }
     }
 
-    let (start, end) = if shake_count % 2 == 0 {
+    let (start, end) = if shake_count.is_multiple_of(2) {
         (-1.0, 0.0)
     } else {
         (1.0, 0.0)

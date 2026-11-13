@@ -715,7 +715,7 @@ impl Game {
                     self.actions.push(
                         Notification::default()
                         .text("You don't have that map!")
-                        .duration(5000.0)
+                        .duration(5000.0_f32)
                         .color(Color::RED)
                         .into()
                     );
@@ -1171,7 +1171,7 @@ impl Game {
                     Notification::default()
                     .text(format!("{username} has invited you to a multiplayer match"))
                     .color(Color::PURPLE_AMETHYST)
-                    .duration(10_000.0)
+                    .duration(10_000.0_f32)
                     .onclick(NotificationOnClick::MultiplayerLobby(lobby.id))
                     .into()
                 );
@@ -1296,7 +1296,7 @@ impl Game {
                     self.actions.push(
                         Notification::default()
                         .text("You have been kicked from the match")
-                        .duration(3000.0)
+                        .duration(3000.0_f32)
                         .color(Color::PURPLE)
                         .into()
                     );

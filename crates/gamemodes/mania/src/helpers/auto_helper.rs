@@ -28,6 +28,7 @@ impl ManiaAutoHelper {
             if column_indices[c] >= columns[c].len() {continue}
 
             // catch up??
+            #[allow(clippy::needless_range_loop, reason = "readability")]
             for i in column_indices[c]..columns[c].len() {
                 let note = &columns[c][i];
                 if time > note.end_time(100.0) && !note.was_hit() {

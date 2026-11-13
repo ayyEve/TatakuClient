@@ -21,6 +21,9 @@ pub struct GameplayState {
     /// Current time of the song
     pub song_time: f32,
 
+    /// Where are we getting timing info from?
+    pub timing_source: TimingSource,
+
     /// Used for discord rich presence
     pub start_time: i64,
 
@@ -86,6 +89,7 @@ impl GameplayState {
         self.failed = None;
         self.started = false;
         self.completed = false;
+        self.timing_source = TimingSource::Audio;
         self.lead_in_time = LEAD_IN_TIME / speed;
         self.lead_in_timer = tataku::Instant::now();
     }
@@ -99,4 +103,36 @@ impl GameplayState {
         }
     }
 
+}
+
+#[derive(Copy, Clone, Default)]
+pub enum TimingSource {
+    #[default]
+    Audio,
+    Internal {
+        offset: f32,
+        timer: tataku::Instant,
+    }
+}
+impl TimingSource {
+    pub fn is_internal(&self) -> bool {
+        matches!(self, Self::Internal { .. })
+    }
+    
+    pub fn make_internal(&mut self, audio_time: f32) {
+        *self = Self::Internal { 
+            offset: audio_time, 
+            timer: tataku::Instant::now()
+        }
+    }
+
+    pub fn time(self, audio_time: f32) -> f32 {
+        match self {
+            Self::Audio => audio_time,
+            Self::Internal { 
+                offset, 
+                timer 
+            } => offset + timer.as_millis()
+        }
+    }
 }

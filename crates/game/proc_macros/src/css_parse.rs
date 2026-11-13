@@ -22,7 +22,7 @@ pub(crate) fn derive(derive: &syn::DeriveInput) -> Result<proc_macro2::TokenStre
         where_clause
     ) = derive.generics.split_for_impl();
 
-    let mut match_tokens = proc_macro2::TokenStream::new();
+    // let mut match_tokens = proc_macro2::TokenStream::new();
     let mut shorthand_init_tokens = proc_macro2::TokenStream::new();
     let mut shorthand_cleanup_tokens = proc_macro2::TokenStream::new();
     

@@ -176,7 +176,7 @@ impl Widget<actions::Action> for Slider {
                 let range = self.range();
 
                 match key {
-                    Key::Left => if focused || state.hover() {
+                    Key::Left if focused || state.hover() => {
                         shell.event_consumed = true;
                         self.value.set((
                             self.value.get() - self.step
@@ -186,7 +186,7 @@ impl Widget<actions::Action> for Slider {
                             .clamp(*range.start(), *range.end())
                         );
                     }
-                    Key::Right => if focused || state.hover() {
+                    Key::Right if focused || state.hover() => {
                         shell.event_consumed = true;
                         self.value.set((
                             self.value.get() + self.step

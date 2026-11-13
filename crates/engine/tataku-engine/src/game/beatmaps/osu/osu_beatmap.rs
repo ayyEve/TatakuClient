@@ -376,11 +376,11 @@ impl OsuBeatmap {
         // verify we have a valid beatmap
         if !metadata_only && beatmap.notes.is_empty() && beatmap.sliders.is_empty() && beatmap.spinners.is_empty() {
             // no notes
-            return Err(errors::beatmap::BeatmapError::NoNotes)?;
+            return Err(errors::beatmap::BeatmapError::NoNotes.into());
         }
         if beatmap.timing_points.is_empty() {
             // no timing points
-            return Err(errors::beatmap::BeatmapError::NoTimingPoints)?;
+            return Err(errors::beatmap::BeatmapError::NoTimingPoints.into());
         }
 
 

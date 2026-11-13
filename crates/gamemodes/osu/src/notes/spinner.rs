@@ -152,7 +152,7 @@ impl HitObject for OsuSpinner {
             self.display_rotation += self.rotation_velocity * (beatmap_time - self.last_update);
             if self.display_rotation >= PI * 2.0 || self.display_rotation <= -PI * 2.0 {
                 self.rotations_completed += 1;
-                if self.rotations_completed >= self.rotations_required && (self.rotations_completed - self.rotations_required) % 3 == 0 {
+                if self.rotations_completed >= self.rotations_required && (self.rotations_completed - self.rotations_required).is_multiple_of(3) {
                     self.points_queue.push((OsuHitJudgments::SpinnerPoint, self.pos));
                 }
             }

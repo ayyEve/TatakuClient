@@ -1804,7 +1804,7 @@ impl Game {
                 self.actions.push(Notification::default()
                     .text("What is this?")
                     .color(Color::RED)
-                    .duration(3_000.0)
+                    .duration(3_000.0_f32)
                     .into()
                 );
             }
@@ -1818,7 +1818,7 @@ impl Game {
             self.actions.push(
                 Notification::default()
                 .text("You don't have this beatmap!")
-                .duration(5_000.0)
+                .duration(5_000.0_f32)
                 .color(Color::RED)
                 .into()
             );

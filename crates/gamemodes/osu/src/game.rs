@@ -1352,7 +1352,7 @@ impl Gamemode for OsuGame {
             // create the emitter
             let emitter = EmitterBuilder::default()
                 .should_emit(false)
-                .spawn_delay(10.0)
+                .spawn_delay(10.0_f32)
                 .life(500.0..2000.0)
                 .image(smoke)
                 .scale(EmitterVal::init_only(0.8..1.5))

@@ -523,7 +523,7 @@ impl<'window> WgpuEngine<'window> {
 
         let data = slice
             .get_mapped_range()
-            .chunks_exact(4)
+            .as_chunks::<4>().0.iter()
             .flat_map(|b| cast_to_rgba_bytes(b, texture.format()))
             .collect();
 
@@ -568,7 +568,7 @@ impl<'window> WgpuEngine<'window> {
         if self.config.format.remove_srgb_suffix() != wgpu::TextureFormat::Rgba8Unorm {
             // cast to bgra
             data = data
-                .chunks_exact(4)
+                .as_chunks::<4>().0.iter()
                 .flat_map(|b| cast_from_rgba_bytes(b, self.config.format))
                 .collect::<Vec<_>>()
                 .into();

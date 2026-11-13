@@ -120,7 +120,8 @@ impl ParticleSystem {
             .get_mapped_range();
 
         let particles:Vec<super::GpuParticle> = data
-            .chunks_exact(super::GpuParticle::count_size(1))
+            .as_chunks::<{super::GpuParticle::count_size(1)}>()
+            .0.iter()
             .map(|bytes| bytemuck::cast_slice(bytes)[0])
             .collect();
 

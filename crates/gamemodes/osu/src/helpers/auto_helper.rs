@@ -36,7 +36,7 @@ impl StandardAutoHelper {
     }
 
     pub fn get_key(&self) -> KeyPress {
-        if self.press_counter % 2 == 0 {
+        if self.press_counter.is_multiple_of(2) {
             KeyPress::LeftMouse
         } else {
             KeyPress::RightMouse

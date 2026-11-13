@@ -328,6 +328,12 @@ impl GameplayManager {
         #[cfg(feature="ui")] font_contexts: &mut TextLayoutContexts,
         actions: &mut actions::ActionQueue,
     ) {
+
+        let song = values.values.song;
+        if song.stopped && self.started() && song.position > 0.0 && !self.state.timing_source.is_internal() {
+            self.state.timing_source.make_internal(song.position);
+        }
+
         match self.gameplay_type_small {
             GameplayTypeSmall::Simulating => {
                 let time = self.time();
@@ -344,7 +350,7 @@ impl GameplayManager {
             },
 
             _ => {
-                self.state.song_time = values.values.song.position;
+                self.state.song_time = self.state.timing_source.time(values.values.song.position);
 
                 self.check_time_jump(&values.settings);
                 self.check_pause_and_restart(actions);
@@ -2009,9 +2015,7 @@ impl GameplayManagerTrait for GameplayManager {
             .collect::<Vec<_>>();
 
         // sort by points
-        list.sort_by(|a, b|
-            b.score.score.cmp(&a.score.score)
-        );
+        list.sort_by_key(|a| a.score.score);
 
         list
     }

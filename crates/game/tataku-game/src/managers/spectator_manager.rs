@@ -235,7 +235,7 @@ impl SpectatorManager {
                     actions.push(
                         Notification::default()
                         .text("Host speccing someone")
-                        .duration(2000.0)
+                        .duration(2000.0_f32)
                         .color(Color::BLUE)
                         .into()
                     );

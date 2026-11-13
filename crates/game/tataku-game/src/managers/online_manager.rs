@@ -268,7 +268,7 @@ impl OnlineManager {
                             Notification::default()
                             .text("[Login] Unknown error logging in")
                             .color(Color::RED)
-                            .duration(5000.0)
+                            .duration(5000.0_f32)
                             .into()
                         );
                     }
@@ -278,7 +278,7 @@ impl OnlineManager {
                             Notification::default()
                             .text("[Login] Authentication failed")
                             .color(Color::RED)
-                            .duration(5000.0)
+                            .duration(5000.0_f32)
                             .into()
                         );
                     }
@@ -289,7 +289,7 @@ impl OnlineManager {
                             Notification::default()
                             .text("[Login] Authentication failed")
                             .color(Color::RED)
-                            .duration(5000.0)
+                            .duration(5000.0_f32)
                             .into()
                         );
                     }
@@ -300,7 +300,7 @@ impl OnlineManager {
                             Notification::default()
                             .text("[Login] Your account is pending activation")
                             .color(Color::YELLOW)
-                            .duration(5000.0)
+                            .duration(5000.0_f32)
                             .into()
                         );
                     }
@@ -315,7 +315,7 @@ impl OnlineManager {
                             Notification::default()
                             .text("[Login] Logged in!")
                             .color(Color::GREEN)
-                            .duration(2000.0)
+                            .duration(2000.0_f32)
                             .into()
                         );
 
@@ -336,9 +336,9 @@ impl OnlineManager {
                 severity
             } => {
                 let (color, duration) = match severity {
-                    Severity::Info => (Color::GREEN, 3000.0),
-                    Severity::Warning => (Color::YELLOW, 5000.0),
-                    Severity::Error => (Color::RED, 7000.0),
+                    Severity::Info => (Color::GREEN, 3000.0_f32),
+                    Severity::Warning => (Color::YELLOW, 5000.0_f32),
+                    Severity::Error => (Color::RED, 7000.0_f32),
                 };
 
                 actions.push(Notification::default()
@@ -375,7 +375,7 @@ impl OnlineManager {
                     actions.push(
                         Notification::default()
                         .text(format!("{username} is online"))
-                        .duration(5000.0)
+                        .duration(5000.0_f32)
                         .color(Color::BLUE)
                         .into()
                     );
@@ -392,7 +392,7 @@ impl OnlineManager {
                             Notification::default()
                             .text(format!("{username} is offline"))
                             .color(Color::BLUE)
-                            .duration(5000.0)
+                            .duration(5000.0_f32)
                             .into()
                         );
                     }
@@ -540,7 +540,7 @@ impl OnlineManager {
                     Notification::default()
                     .text(format!("{username} is now spectating"))
                     .color(Color::GREEN)
-                    .duration(2000.0)
+                    .duration(2000.0_f32)
                     .into()
                 );
 
@@ -557,7 +557,7 @@ impl OnlineManager {
                     Notification::default()
                     .text(format!("{user} stopped spectating"))
                     .color(Color::GREEN)
-                    .duration(2000.0)
+                    .duration(2000.0_f32)
                     .into()
                 );
                 
@@ -774,6 +774,7 @@ impl SetAction {
 
 
 struct Writer(SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>);
+#[allow(clippy::result_large_err, reason="not my error")]
 impl Writer {
     async fn send_packet(&mut self, packet: PacketId) -> Result<(), Error> {
 
