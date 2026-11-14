@@ -1,5 +1,4 @@
 use crate::*;
-use style::*;
 
 #[derive(Clone, Debug)]
 pub struct DualShorthand<T> {

@@ -1,4 +1,4 @@
-use rand::Rng;
+use rand::RngExt;
 use crate::prelude::*;
 use std::fs::read_dir;
 use tataku::WrappingClamp;

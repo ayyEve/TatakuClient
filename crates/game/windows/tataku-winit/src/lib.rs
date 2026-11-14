@@ -451,14 +451,15 @@ impl winit::application::ApplicationHandler<actions::window::WindowAction> for W
             }
 
             Action::CopyToClipboard(text) => {
-                use clipboard::{ ClipboardProvider, ClipboardContext };
-                let ctx:Result<ClipboardContext, Box<dyn std::error::Error>> = ClipboardProvider::new();
+                use arboard::Clipboard;
+
+                let ctx = Clipboard::new();
 
                 if let Err(e) = ctx
-                .map_err(tataku::Error::from_boxed_err)
+                .map_err(tataku::Error::from_err)
                 .and_then(|mut ctx| ctx
-                    .set_contents(text.to_string())
-                    .map_err(tataku::Error::from_boxed_err)
+                    .set_text(text.to_string())
+                    .map_err(tataku::Error::from_err)
                 ) {
                     error!("error copying to clipboard: {e:?}");
                 }

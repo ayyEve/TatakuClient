@@ -156,9 +156,9 @@ impl HitObject for UTypingNote {
         const MAX_COUNT: usize = 5;
         let over_max = lines.len() > MAX_COUNT;
 
-        #[allow(clippy::needless_range_loop)]
-        for i in 0..lines.len().min(MAX_COUNT) {
-            let i = &lines[i];
+        // #[allow(clippy::needless_range_loop)]
+        // for i in 0..lines.len().min(MAX_COUNT) {
+            // let i = &lines[i];
             // let len = i.len();
 
             // draw text to hit
@@ -175,7 +175,8 @@ impl HitObject for UTypingNote {
             // t.center_text(&rect);
             // rect.pos.y += t.measure_text().y + 5.0;
             // list.push(t);
-        }
+        // }
+
         if over_max {
             // draw text to hit
             // let mut t = Text::new(

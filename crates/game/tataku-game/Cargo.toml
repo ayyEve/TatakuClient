@@ -83,6 +83,3 @@ renderdoc = { version = "*", optional = true }
 
 # logging
 tracing.workspace = true
-
-[build-dependencies]
-tataku-common.workspace = true

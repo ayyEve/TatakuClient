@@ -1,6 +1,7 @@
 struct VertexInput {
     @location(0) pos: vec2<f32>,
     
+    @interpolate(flat)
     @location(1) flashlight_index: u32,
 }
 
@@ -8,6 +9,7 @@ struct FragmentInput {
     //The position of the fragment
     @builtin(position) position: vec4<f32>,
 
+    @interpolate(flat)
     @location(0) flashlight_index: u32,
 }
 

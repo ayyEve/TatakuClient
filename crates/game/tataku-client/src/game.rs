@@ -34,6 +34,9 @@ pub fn run_game(
     #[cfg(feature="sqlite")] {
         database = Box::new(tataku_sqlite::Database::new());
     }
+    #[cfg(feature="redb")] {
+        database = Box::new(tataku_redb::Database::new());
+    }
 
     // start the game
     trace!("creating game");

@@ -42,8 +42,8 @@ impl ParticleSystem {
         let pipeline_layout = device.create_pipeline_layout(
             &wgpu::PipelineLayoutDescriptor {
                 label: Some("Compute Pipeline layout"),
-                bind_group_layouts: &[ &buffer.layout ],
-                push_constant_ranges: &[],
+                bind_group_layouts: &[ Some(&buffer.layout) ],
+                immediate_size: 0,
             }
         );
 
@@ -117,7 +117,8 @@ impl ParticleSystem {
         let data = buffer
             .readable_particle_buffer
             .slice(..written_size as u64)
-            .get_mapped_range();
+            .get_mapped_range()
+            .unwrap();
 
         let particles:Vec<super::GpuParticle> = data
             .as_chunks::<{super::GpuParticle::count_size(1)}>()

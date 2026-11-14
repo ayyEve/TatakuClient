@@ -12,7 +12,7 @@ workspace = true
 tataku-engine.workspace = true
 tataku-null-renderer.workspace = true
 
-clipboard.workspace = true
+arboard.workspace = true
 image.workspace = true
 raw-window-handle.workspace = true
 winit.workspace = true

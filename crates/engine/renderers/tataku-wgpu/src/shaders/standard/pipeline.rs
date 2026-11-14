@@ -15,10 +15,10 @@ pub(crate) fn create_standard_pipelines(
         &wgpu::PipelineLayoutDescriptor {
             label: Some("Standard Render Pipeline Layout"),
             bind_group_layouts: &[
-                &projection_matrix.layout,
-                &atlas.layout,
+                Some(&projection_matrix.layout),
+                Some(&atlas.layout),
             ],
-            push_constant_ranges: &[],
+            immediate_size: 0,
         }
     );
 
@@ -35,7 +35,7 @@ pub(crate) fn create_standard_pipelines(
                 vertex: wgpu::VertexState {
                     module: &shader,
                     entry_point: Some("vs_main"),
-                    buffers: &[ super::Vertex::layout() ],
+                    buffers: &[ Some(super::Vertex::layout()) ],
                     compilation_options: wgpu::PipelineCompilationOptions::default(),
                 },
                 fragment: Some(wgpu::FragmentState {
@@ -63,10 +63,9 @@ pub(crate) fn create_standard_pipelines(
                     mask: !0,
                     alpha_to_coverage_enabled: false,
                 },
-                multiview: None,
+                multiview_mask: None,
             }
         );
-
 
         pipelines.push((
             blend_mode, 

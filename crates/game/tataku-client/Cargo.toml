@@ -31,6 +31,7 @@ lastfm = [ "integration-lastfm" ]
 media_controls = [ "integration-media-controls" ]
 # ipc = [ "integration-ipc" ]
 sqlite = [ "tataku-sqlite" ]
+redb = [ "tataku-redb" ]
 
 # audio
 bass_audio = [ "tataku-bass" ]
@@ -87,6 +88,7 @@ integration-media-controls = { workspace = true, optional = true }
 
 # database
 tataku-sqlite = { workspace = true, optional = true }
+tataku-redb = { workspace = true, optional = true }
 
 
 # framework stuff
@@ -102,5 +104,5 @@ serde_json.workspace = true
 
 # logging
 tracing.workspace = true
-tracing-subscriber = { version =  "0.3.18", features = [ "chrono" ] }
-tracing-appender = "0.2.3"
+tracing-subscriber = { version =  "0.3", features = [ "chrono" ] }
+tracing-appender = "0.2"

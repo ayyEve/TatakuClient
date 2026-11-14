@@ -35,10 +35,10 @@ pub(crate) fn create_flashlight_pipeline(
         &wgpu::PipelineLayoutDescriptor {
             label: Some("Flashlight Pipeline Layout"),
             bind_group_layouts: &[
-                &projection_matrix.layout,
-                &bind_group_layout,
+                Some(&projection_matrix.layout),
+                Some(&bind_group_layout),
             ],
-            push_constant_ranges: &[],
+            immediate_size: 0,
         }
     );
 
@@ -49,7 +49,7 @@ pub(crate) fn create_flashlight_pipeline(
         vertex: wgpu::VertexState {
             module: &shader,
             entry_point: Some("flashlight_vs_main"),
-            buffers: &[ super::Vertex::layout() ],
+            buffers: &[ Some(super::Vertex::layout()) ],
             compilation_options: wgpu::PipelineCompilationOptions::default(),
         },
         fragment: Some(wgpu::FragmentState {
@@ -77,6 +77,6 @@ pub(crate) fn create_flashlight_pipeline(
             mask: !0,
             alpha_to_coverage_enabled: false,
         },
-        multiview: None,
+        multiview_mask: None,
     })
 }

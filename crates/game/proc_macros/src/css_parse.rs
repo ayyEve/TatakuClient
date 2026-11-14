@@ -386,6 +386,7 @@ impl CssAttributes {
                 
                 let s = attr.parse_args::<Shorthand>()?;
                 a.shorthand = Some(s.value);
+                #[allow(clippy::collapsible_if, reason = "readability and future stuff maybe")]
                 if let Some(extra) = s.extra {
                     if extra._value == "size" {
                         a.size = true;

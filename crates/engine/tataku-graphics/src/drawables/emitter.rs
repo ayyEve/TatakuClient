@@ -1,7 +1,7 @@
 use crate::*;
 use std::sync::Arc;
 use std::ops::Range;
-use rand::{ rngs::ThreadRng, Rng };
+use rand::{ rngs::ThreadRng, RngExt };
 
 pub struct Emitter {
     /// time of last spawned particle

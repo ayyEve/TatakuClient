@@ -1,3 +1,5 @@
+enable wgpu_binding_array;
+
 struct VertexInputs {
     @location(0) pos: vec3<f32>,
     @location(1) tex_coord: vec2<f32>,
@@ -22,7 +24,7 @@ struct FragmentInputs {
     // Texture coordinate
     @location(0) tex_coord: vec2<f32>,
     // texture index
-    @location(1) tex_index: i32,
+    @location(1) @interpolate(flat) tex_index: i32,
     // The Vertex color
     @location(2) vertex_col: vec4<f32>,
 }

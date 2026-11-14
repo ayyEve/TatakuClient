@@ -184,8 +184,8 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         self.recurse_update_context(self.root, matrix);
 
         // update spatial navigation
-        SpatialNagivation::new(self)
-            .run(&NavigateConfig::default());
+        // SpatialNagivation::new(self)
+        //     .run(&NavigateConfig::default());
     }
 
     fn recurse_update_context(

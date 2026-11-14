@@ -1,5 +1,5 @@
 // WARNING: there is a lot of just data and setup code in this
-use std::sync::Arc;
+use std::sync::{Arc, atomic::AtomicBool};
 use std::borrow::Cow;
 
 use crate::prelude::*;
@@ -21,6 +21,7 @@ use lyon_tessellation:: {
     geom::{ Box2D, Point },
     path::{ builder::BorderRadii, Path as LyonPath },
 };
+use wgpu::ExperimentalFeatures;
 
 /// background color
 const GFX_CLEAR_COLOR:tataku::Color = tataku::Color::BLACK;
@@ -49,6 +50,8 @@ pub struct WgpuEngine<'window> {
     can_blur: bool,
     blur_enabled: bool,
     present_modes: Vec<tataku::Vsync>,
+
+    device_dead: Arc<AtomicBool>,
 }
 impl<'window> WgpuEngine<'window> {
 
@@ -60,7 +63,8 @@ impl<'window> WgpuEngine<'window> {
         let window_size = settings.window_size;
 
         // create a wgpu instance
-        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            display: None,
             backends: wgpu::Backends::VULKAN | wgpu::Backends::METAL, // | Backends::GL,
             flags: wgpu::InstanceFlags::empty(),
             memory_budget_thresholds: wgpu::MemoryBudgetThresholds {
@@ -71,11 +75,13 @@ impl<'window> WgpuEngine<'window> {
                 gl: wgpu::GlBackendOptions {
                     gles_minor_version: wgpu::Gles3MinorVersion::Automatic,
                     fence_behavior: wgpu::GlFenceBehavior::Normal,
+                    ..Default::default()
                 },
-                dx12: wgpu::Dx12BackendOptions {
-                    shader_compiler: wgpu::Dx12Compiler::default()
-                },
-                noop: wgpu::NoopBackendOptions { enable: false }
+                dx12: wgpu::Dx12BackendOptions::default(),
+                noop: wgpu::NoopBackendOptions { 
+                    enable: false, 
+                    ..Default::default() 
+                }
             },
         });
 
@@ -93,11 +99,13 @@ impl<'window> WgpuEngine<'window> {
             },
             compatible_surface: Some(&surface),
             force_fallback_adapter: false,
+            apply_limit_buckets: false,
         }).await.unwrap();
 
         // create device and queue
         let (device, queue) = adapter.request_device(
             &wgpu::DeviceDescriptor {
+                experimental_features: ExperimentalFeatures::disabled(),
                 required_features: wgpu::Features::TEXTURE_BINDING_ARRAY
                     | wgpu::Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING
                     | wgpu::Features::BGRA8UNORM_STORAGE,
@@ -107,9 +115,16 @@ impl<'window> WgpuEngine<'window> {
                 },
                 memory_hints: wgpu::MemoryHints::Performance,
                 label: Some("device request"),
-                trace: wgpu::Trace::Off
-            },
+                trace: wgpu::Trace::Off,
+            }
         ).await.unwrap();
+
+        let device_dead = Arc::new(AtomicBool::new(false));
+        let device_dead2 = device_dead.clone();
+        device.set_device_lost_callback(move |reason, s| {
+            error!("wgpu device lost: {reason:?}, {s}");
+            device_dead2.store(true, std::sync::atomic::Ordering::Release);
+        });
 
         let can_blur = device.features().contains(wgpu::Features::BGRA8UNORM_STORAGE);
         if !can_blur { warn!("Blur unsupported on this device!"); }
@@ -146,6 +161,7 @@ impl<'window> WgpuEngine<'window> {
             present_mode: wgpu::PresentMode::AutoNoVsync, //surface_caps.present_modes[0],
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
+            color_space: wgpu::SurfaceColorSpace::Srgb,
 
             desired_maximum_frame_latency: 1,
         };
@@ -232,17 +248,39 @@ impl<'window> WgpuEngine<'window> {
             can_blur,
             blur_enabled: true,
             intermediate_texture: Some(intermediate_texture),
+            device_dead,
         })
     }
 
-    pub fn render_current_surface(&mut self) -> Result<(), wgpu::SurfaceError> {
-        let swapchain = self.surface.get_current_texture()?;
+    pub fn reconfigure_surface(&mut self) {
+
+    }
+
+    pub fn render_current_surface(&mut self) {
+        let swapchain = match self.surface.get_current_texture() {
+            wgpu::CurrentSurfaceTexture::Success(tex) => tex,
+            wgpu::CurrentSurfaceTexture::Suboptimal(tex) => tex,
+            wgpu::CurrentSurfaceTexture::Timeout => return,
+            wgpu::CurrentSurfaceTexture::Occluded => return,
+            wgpu::CurrentSurfaceTexture::Outdated => {
+                self.reconfigure_surface();
+                return;
+            },
+            wgpu::CurrentSurfaceTexture::Lost => {
+                if self.device_dead.load(std::sync::atomic::Ordering::Relaxed) {
+                    panic!("device is dead")
+                };
+                self.reconfigure_surface();
+                return;
+            },
+            wgpu::CurrentSurfaceTexture::Validation => panic!("validation error (??)"),
+        };
         let size = swapchain.texture.size();
 
         let mut texture = self.intermediate_texture.take().unwrap();
 
         // don't draw if our draw surface has no area
-        if size.width == 0 || size.height == 0 { return Ok(()) }
+        if size.width == 0 || size.height == 0 { return }
 
         if texture.size() != size {
             let format = texture.format().remove_srgb_suffix();
@@ -260,7 +298,6 @@ impl<'window> WgpuEngine<'window> {
             );
         }
 
-
         let tex = WgpuTextureReference::new(
             &texture
         );
@@ -268,7 +305,7 @@ impl<'window> WgpuEngine<'window> {
             &tex,
             GFX_CLEAR_COLOR,
             tataku::Vector2::new(size.width as f32, size.height as f32),
-        ))?;
+        ));
 
         // `texture` should now have our data, with which we can use to render the surface, as well as use for screenshots
         // again though, because the swapchain texture can only be rendered to directly for some reason, we have to use a shader
@@ -284,7 +321,7 @@ impl<'window> WgpuEngine<'window> {
         );
         
         self.queue.submit([encoder.finish()]);
-        swapchain.present();
+        self.queue.present(swapchain);
 
         if let Some(screenshot) = self.screenshot_pending.take() {
             let (data, size) = self.texture_to_bytes(
@@ -297,11 +334,9 @@ impl<'window> WgpuEngine<'window> {
         self.atlas.clear_glyphs();
 
         self.intermediate_texture = Some(texture);
-
-        Ok(())
     }
 
-    fn render(&mut self, renderable: &RenderableSurface) -> Result<(), wgpu::SurfaceError> {
+    fn render(&mut self, renderable: &RenderableSurface) {
         let mut encoder = self.device.create_command_encoder(
             &wgpu::CommandEncoderDescriptor { label: Some("Render Encoder") }
         );
@@ -324,6 +359,7 @@ impl<'window> WgpuEngine<'window> {
                     depth_stencil_attachment: None,
                     timestamp_writes: None,
                     occlusion_query_set: None,
+                    multiview_mask: None,
                 }
             );
 
@@ -385,6 +421,7 @@ impl<'window> WgpuEngine<'window> {
                         depth_stencil_attachment: None,
                         timestamp_writes: None,
                         occlusion_query_set: None,
+                        multiview_mask: None,
                     });
                     current_pipeline = tataku::GraphicsPipeline::None;
                     continue
@@ -474,8 +511,6 @@ impl<'window> WgpuEngine<'window> {
         // println!("{}", list.join("\n"));
 
         self.queue.submit([encoder.finish()]);
-
-        Ok(())
     }
 
 
@@ -519,10 +554,11 @@ impl<'window> WgpuEngine<'window> {
         let slice = buffer.slice(..);
         slice.map_async(wgpu::MapMode::Read, |_| {});
         let index = self.queue.submit(None);
-        self.device.poll(wgpu::wgt::PollType::WaitForSubmissionIndex(index)).unwrap();
+        self.device.poll(wgpu::wgt::PollType::Wait { submission_index: Some(index), timeout: None }).unwrap();
 
         let data = slice
             .get_mapped_range()
+            .unwrap()
             .as_chunks::<4>().0.iter()
             .flat_map(|b| cast_to_rgba_bytes(b, texture.format()))
             .collect();
@@ -866,8 +902,8 @@ impl graphics::RenderingEngine for WgpuEngine<'_> {
     }
 
     fn present(&mut self) -> tataku::Result<()> {
-        self.render_current_surface()
-            .map_err(|e| tataku::Error::String(e.to_string()))
+        self.render_current_surface();
+        Ok(())
     }
 
 
@@ -1461,10 +1497,7 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
         self.end_render();
 
         // perform render
-        if let Err(e) = self.render(&renderable) {
-            error!("Error rendering render target: {e:?}");
-        }
-
+        self.render(&renderable);
 
         // copy render to atlas
         let mut encoder = self.device.create_command_encoder(

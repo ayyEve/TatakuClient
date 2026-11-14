@@ -74,10 +74,10 @@ pub(crate) fn create_slider_pipeline(
         &wgpu::PipelineLayoutDescriptor {
             label: Some("Slider Pipeline Layout"),
             bind_group_layouts: &[
-                &projection_matrix.layout,
-                &slider_bind_group_layout,
+                Some(&projection_matrix.layout),
+                Some(&slider_bind_group_layout),
             ],
-            push_constant_ranges: &[],
+            immediate_size: 0,
         }
     );
 
@@ -88,7 +88,7 @@ pub(crate) fn create_slider_pipeline(
         vertex: wgpu::VertexState {
             module: &slider_shader,
             entry_point: Some("slider_vs_main"),
-            buffers: &[ slider::Vertex::layout() ],
+            buffers: &[ Some(slider::Vertex::layout()) ],
             compilation_options: wgpu::PipelineCompilationOptions::default(),
         },
         fragment: Some(wgpu::FragmentState {
@@ -116,6 +116,6 @@ pub(crate) fn create_slider_pipeline(
             mask: !0,
             alpha_to_coverage_enabled: false,
         },
-        multiview: None,
+        multiview_mask: None,
     })
 }
