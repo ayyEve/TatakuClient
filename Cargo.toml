@@ -112,9 +112,9 @@ tataku-sqlite.path = "crates/databases/tataku-sqlite"
 tataku-redb.path = "crates/databases/tataku-redb"
 
 # framework stuff
-lazy_static = "1.5.0"
-parking_lot = "0.12.3"
-tokio = { version = "1.44.2", features = [ "full" ] }
+lazy_static = "1.5.1"
+parking_lot = "0.13.0"
+tokio = { version = "1.54", features = [ "full" ] }
 rusqlite = { version = "0.37.0", features = [ "bundled" ] }
 futures-util = { version = "0.3.31", features = [ "async-await", "sink", "std" ] }
 async-trait = "0.1.87"
@@ -123,7 +123,7 @@ triple_buffer = "8.1.0"
 crossbeam = "0.8.4"
 bitflags = "2.9"
 notify = "8.2.0"
-smol_str = "*"
+smol_str = "0.2.2"
 
 libloading = "0.8.6"
 
@@ -154,10 +154,10 @@ slotmap = "1.0.7"
 
 # taffy = { version = "0.8.3", features = [ "serde" ], git="https://github.com/DioxusLabs/taffy.git", branch="units" }
 simplecss = { version = "0.2.2", git = "https://github.com/ayyEve/simplecss.git", features = ["at_rules"] }
-quick-xml = { version = "0.38.3", features = [ "serialize" ]}
+quick-xml = { version = "0.42.0", features = [ "serialize" ]}
 
 # networking
-rustls = { version = "0.23.26", default-features = false }
+rustls = { version = "0.23.46", default-features = false }
 native-tls = "0.2.14"
 tokio-native-tls = "0.3.1"
 tokio-tungstenite = { version = "0.27", features = [ "rustls-tls-native-roots" ] }

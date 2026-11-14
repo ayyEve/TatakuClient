@@ -157,6 +157,8 @@ mod fuck {
         ) -> bool {
             let Some(ctx) = self.tree.get_context(self.node) 
             else { return false };
+
+            // println!("attribute_matches - local name: {local_name} -> {operator:?}");
             
             match local_name {
                 "id" => ctx.element_data.id.as_ref().map(|id| operator.matches(id)).unwrap_or_default(),

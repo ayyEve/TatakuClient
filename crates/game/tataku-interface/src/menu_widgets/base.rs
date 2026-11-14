@@ -37,23 +37,9 @@ impl<T> WidgetBase<T> {
         }
     }
 
-    // pub fn new_boxed(
-    //     style: ArcStr,
-    //     element_name: impl Into<ArcStr>,
-    //     id: Option<ArcStr>,
-    //     class: ClassList,
-    //     inner: Box<dyn Widget<actions::Action>>,
-    // ) -> Box<dyn Widget<actions::Action>> {
-    //     Self::new(
-    //         style,
-    //         element_name,
-    //         id,
-    //         class,
-    //         inner
-    //     )
-    //     .boxed()
-    // }
-    
+    pub fn append_styles(&mut self, styles: &str) {
+        self.style_str = ArcStr::from(self.style_str.to_string() + styles);
+    }
 }
 impl<T> Widget<actions::Action> for WidgetBase<T>
 where
@@ -155,11 +141,11 @@ where
             .resolve_copied(shell.values)
         {
             shell.list.push(graphics::Rectangle::new_bounds(
-                    bounds,
-                    bg,
-                )
-                .border_maybe(border)
-                .shape_maybe(shape)
+                bounds,
+                bg,
+            )
+            .border_maybe(border)
+            .shape_maybe(shape)
             );
         } else if let Some(border) = border {
             shell.list.push(

@@ -1395,6 +1395,15 @@ impl Game {
                             // self.ui_manager.root_tree.print(&self.values);
                             let xml = self.ui_manager.root_tree.export_xml(&self.values);
                             std::fs::write("/tmp/test.xml", xml).unwrap();
+                            info!("wrote root tree node to /tmp/test.xml");
+
+                            for i in self.ui_manager.dialogs.iter_mut() {
+                                let xml = i.export_xml(&self.values);
+                                let name = i.get_node().name();
+                                let file = format!("/tmp/{name}.xml");
+                                std::fs::write(&file, xml).unwrap();
+                                info!("wrote dialog tree to {file}");
+                            }
                         }
 
                         // console dialog

@@ -14,7 +14,7 @@
 
         #song-display {
             width: fill; 
-            height: auto; 
+            <!-- height: auto;  -->
             padding: 8px; 
             border-radius: 5px; 
 

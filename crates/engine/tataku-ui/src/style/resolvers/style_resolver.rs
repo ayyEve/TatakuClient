@@ -1,7 +1,6 @@
 use std::fmt::Debug;
 
 use crate::*;
-use style::*;
 use common::reflect::*;
 
 use taffy::Size;

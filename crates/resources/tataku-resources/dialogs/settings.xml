@@ -6,31 +6,32 @@
   title = "Settings"
 >
   <style>
-        #category-list {
-            flex-direction: row; 
-            align-items: space-between;
-        }
+    #category-list {
+        flex-direction: column; 
+        align-items: space-between;
+    }
 
-        .setting {
-          width: fill;
-          height: 2em;
-        }
-        .setting-text {
-          width: 25%;
-          height: fill;
-        }
-        .setting-inner {
-          width: 75%;
-          height: fill;
-        }
+    .setting {
+        width: fill;
+        min-height: 2em;
+        justify-content: space-between;
+    }
+    .setting-text {
+        width: 50%;
+        height: fill;
+    }
+    .setting-inner {
+        width: 50%;
+        height: fill;
+    }
 
-        .divider {
-          width: fill;
-          margin-top: 10px;
-        }
-        .divider-text {
-          width: fill;
-        }
+    .divider {
+        width: fill;
+        margin-top: 10px;
+    }
+    .divider-text {
+        width: fill;
+    }
   </style>
 
   <events>
@@ -70,9 +71,9 @@
         </action>
       </actions> -->
 
-      <row style="width: 33%; height: fill;">
-        <!-- category list an filter input on the left -->
-        <column style="height: fill; justify-content: space-between;">
+      <row style="width: 66%; height: fill;">
+        <!-- category list and filter input on the left -->
+        <column style="width: 33%; height: fill; justify-content: space-between;">
           <!-- search text -->
           <textInput variable="var.settings.filter">
             <placeholder>Search</placeholder>
@@ -114,7 +115,7 @@
           </row>
         </column>
 
-        <column style="height: fill">
+        <column style="width: 66%; height: fill">
           <!-- current category -->
           <column style="width: fill;">
             <!-- selected category name -->
@@ -131,16 +132,16 @@
             >
               <switch 
                 on_enum = "_setting.type"
-                style = "width: fill; height: 1em;"
+                style = "width: fill; min-height: 1em; "
               >
                 <!-- Boolean (Checkbox) -->
                 <case value="Bool">
-                  <row>
-                    <text>
+                  <row class="setting">
+                    <text class="setting-text">
                       <variable>_setting.name</variable>
                     </text>
 
-                    <checkbox class="setting">
+                    <checkbox class="setting-inner">
                       <value>(::_setting.path)</value>
                       <onClick>
                         <setValue key="::_setting.path">

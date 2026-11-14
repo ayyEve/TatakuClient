@@ -131,41 +131,7 @@ impl Widget<actions::Action> for SwitchWidget {
         WidgetChildrenMut::OwnedList(list)
     }
 
-    // fn update_styles(
-    //     &mut self,
-    //     shell: &mut StyleShell,
-    //     _display_override: Option<DisplayType>,
-    // ) {
-    //     return;
-
-    //     let mut first_found = false;
-
-    //     for i in self.cases.iter_mut() {
-    //         if !first_found
-    //             && i.cond.resolve(shell.values) == BuildableConditionResult::True
-    //         {
-    //             first_found = true;
-    //             i.widget.update_styles(
-    //                 shell,
-    //                 None
-    //             );
-    //         } else {
-    //             i.widget.update_styles(
-    //                 shell,
-    //                 Some(DisplayType::None)
-    //             );
-    //         }
-    //     }
-
-    //     if let Some(default) = &mut self.default_case {
-    //         default.update_styles(
-    //             shell,
-    //             (!first_found).then_some(DisplayType::None)
-    //         );
-    //     }
-    // }
-
-    fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId>  {
+    fn layout(&mut self, shell: &mut LayoutShell<actions::Action>) -> taffy::TaffyResult<NodeId> {
         let mut children = self
             .cases
             .iter_mut()
@@ -248,6 +214,7 @@ impl Widget<actions::Action> for SwitchWidget {
             } else if let Some(default) = &self.default_case {
                 shell.tree.override_display(default.node_id(), None);
             }
+
         }
 
         if let Some(child) = self.get_ele_mut() {
@@ -277,11 +244,8 @@ impl Widget<actions::Action> for SwitchWidget {
     }
 
     fn reload_skin(&mut self, shell: &mut UpdateShell<actions::Action>) {
-        for i in self.cases.iter_mut() {
-            i.widget.reload_skin(shell);
-        }
-        if let Some(default) = self.default_case.as_mut() {
-            default.reload_skin(shell);
+        for i in self.all_children_mut() {
+            i.reload_skin(shell);
         }
     }
 }

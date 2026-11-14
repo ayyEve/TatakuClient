@@ -2,7 +2,6 @@ use crate::prelude::*;
 use ui::{
     widget::*,
     message::*,
-    style::CssStyle,
 };
 
 #[derive(Deserialize)]
@@ -21,6 +20,7 @@ pub struct CustomDialog {
     #[serde(rename = "$value")]
     element: Element,
 }
+
 #[cfg(feature="graphics")]
 impl CustomDialog {
     pub fn build(&self) -> BuiltCustomDialog {
@@ -39,10 +39,15 @@ impl CustomDialog {
             })
             .collect();
 
+        let mut element = self.element.build();
+        if let Some(style) = &self.style {
+            element.append_styles(style);
+        }
+
         BuiltCustomDialog {
             id: self.id.clone(),
             title: self.title.clone(),
-            element: self.element.build(),
+            element,
             styles: self.style.clone().unwrap_or_default(),
             events,
             draggable: self.draggable,
@@ -66,15 +71,15 @@ impl CustomDialog {
 
 #[cfg(feature="graphics")]
 pub struct BuiltCustomDialog {
-    pub id: ArcStr,
-    pub title: ArcStr,
-    pub element: widgets::WidgetBase,
-    pub events: HashMap<input::TatakuEvent, Vec<BuildableAction>>,
+    id: ArcStr,
+    title: ArcStr,
+    element: widgets::WidgetBase,
+    events: HashMap<input::TatakuEvent, Vec<BuildableAction>>,
 
-    pub styles: ArcStr,
+    styles: ArcStr,
 
-    pub draggable: bool,
-    pub resizable: bool,
+    draggable: bool,
+    resizable: bool,
 
     node_id: ui::tree::NodeId
 }
@@ -100,7 +105,7 @@ impl Widget<actions::Action> for BuiltCustomDialog {
     fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
         shell.tree.update_style(
             self.node_id,
-            |style| *style = CssStyle::menu_layout()
+            |style| *style = ui::style::CssStyle::menu_layout()
         );
         self.element.init_style(shell);
     }

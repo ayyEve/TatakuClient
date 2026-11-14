@@ -1074,6 +1074,7 @@ impl GameplayManager {
                 last_escape_press: _,
                 score_send_timer,
             } => {
+                #[allow(clippy::collapsible_match, reason="readability")]
                 if score_send_timer.as_millis() >= SCORE_SEND_TIME {
                     score_send_timer.elapsed_and_reset();
                     let score = self.score.score.clone();
