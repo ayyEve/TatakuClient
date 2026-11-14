@@ -111,7 +111,7 @@ pub struct RenderTargetData {
     pub height: u32,
     pub clear_color: Color,
 
-    #[default(Matrix::identity())]
+    #[default(Matrix::IDENTITY)]
     pub projection: Matrix,
     pub tex: Arc<TextureReference>,
 }

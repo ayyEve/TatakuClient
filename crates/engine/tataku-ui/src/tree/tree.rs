@@ -180,7 +180,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
 
     pub fn update_contexts(&mut self) {
         // update absolute positions and matrices
-        let matrix = Matrix::identity().trans(self.bounds.pos);
+        let matrix = Matrix::IDENTITY.trans(self.bounds.pos);
         self.recurse_update_context(self.root, matrix);
 
         // update spatial navigation
@@ -218,7 +218,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         if context.needs_inverse_transform {
             context.inverse_global_transform = context
                 .global_transform
-                .inverse()
+                .try_inverse()
                 .unwrap_or_else(|| {
                     // eprintln!("could not invert transform: {:#?}", context.global_transform);
                     context.global_transform
@@ -228,7 +228,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
 
         matrix = matrix
             * context.local_transform.matrix()
-            * Matrix::identity().trans(bounds.pos);
+            * Matrix::IDENTITY.trans(bounds.pos);
 
 
         for child in self.children(node).into_owned() {
@@ -240,7 +240,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         let our_matrix = self
             .get_context(node)
             .map_or_else(
-                || Matrix::identity().trans(self.bounds.pos),
+                || Matrix::IDENTITY.trans(self.bounds.pos),
                 |p| p.global_transform
             );
         self.recurse_update_context(node, our_matrix);

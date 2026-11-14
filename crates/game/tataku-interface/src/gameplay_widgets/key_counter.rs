@@ -204,7 +204,7 @@ impl GameplayWidget for KeyCounterElement {
             );
 
             shell.list.push(graphics::Transformed {
-                transform: shell.transform * tataku::Matrix::identity()
+                transform: shell.transform * tataku::Matrix::IDENTITY
                     .trans(centered),
                 drawable: Box::new(graphics::Text::new(cached.layout.clone())),
             });

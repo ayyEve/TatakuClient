@@ -121,9 +121,9 @@ impl Widget<actions::Action> for GameplayPreview {
 
         let old_time = self.song_time.unwrap_or_default();
         let _ = self.song_time.update(shell.values);
-        let time_check = self.song_time.unwrap_or_default() < old_time;
+        let time_check = self.song_time.unwrap_or_default() + 5_000.0 < old_time;
 
-        trace!("{a:?} {b:?} {time_check}");
+        // trace!("{a:?} {b:?} {time_check}");
 
         // check if time changed
         if time_check

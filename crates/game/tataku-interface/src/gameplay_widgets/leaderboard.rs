@@ -160,7 +160,7 @@ impl GameplayWidget for LeaderboardElement {
             // score text
             if let Some(layout) = cache.score_text.clone() {
                 shell.list.push(Transformed {
-                    transform: shell.transform * tataku::Matrix::identity()
+                    transform: shell.transform * tataku::Matrix::IDENTITY
                         .trans(pos + PADDING),
                     drawable: Box::new(Text::new(layout))
                 });
@@ -169,7 +169,7 @@ impl GameplayWidget for LeaderboardElement {
             // combo text
             if let Some(layout) = cache.combo_text.clone() {
                 shell.list.push(graphics::Transformed {
-                    transform: shell.transform * tataku::Matrix::identity()
+                    transform: shell.transform * tataku::Matrix::IDENTITY
                         .trans(pos + (PADDING + Vector2::new(0.0, PADDING.y + 15.0))),
                     drawable: Box::new(graphics::Text::new(layout))
                 });

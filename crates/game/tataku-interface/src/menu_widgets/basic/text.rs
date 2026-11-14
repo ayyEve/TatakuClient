@@ -156,7 +156,7 @@ impl Widget<actions::Action> for Text {
         let context = shell.tree.get_context(self.node_id).unwrap();
         let transform = context.global_transform
             * context.local_transform.matrix()
-            * tataku::Matrix::identity().trans(bounds.pos);
+            * tataku::Matrix::IDENTITY.trans(bounds.pos);
 
         shell.list.push(graphics::Transformed {
             transform,

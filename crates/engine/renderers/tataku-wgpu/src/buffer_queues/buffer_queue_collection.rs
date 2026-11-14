@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-use tataku::MatrixHelpers as _;
+use tataku::MatrixExt as _;
 use tataku::Take as _;
 
 macro_rules! get_render_buffer {

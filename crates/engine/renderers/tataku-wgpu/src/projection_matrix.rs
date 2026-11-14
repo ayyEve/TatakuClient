@@ -1,6 +1,5 @@
 use crate::prelude::*;
 use wgpu::util::DeviceExt;
-use engine::MatrixHelpers;
 
 const MAX_DEPTH:f32 = 8192.0 * 8192.0;
 
@@ -45,7 +44,7 @@ impl ProjectionMatrix {
             &wgpu::util::BufferInitDescriptor {
                 label: Some("Projection Matrix Buffer"),
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                contents: bytemuck::cast_slice(&matrix.to_raw()),
+                contents: bytemuck::cast_slice(&matrix.to_cols_array()),
             }
         );
 
@@ -87,7 +86,7 @@ impl ProjectionMatrix {
         queue.write_buffer(
             &self.buffer,
             0,
-            bytemuck::cast_slice(&projection.to_raw())
+            bytemuck::cast_slice(&projection.to_cols_array())
         );
     }
 
@@ -108,12 +107,12 @@ impl ProjectionMatrix {
         let near = -far;
         let depth_range = 1.0 / (far - near);
 
-        [
+        tataku::Matrix::from_cols_array_2d(&[
             [sx, 0.0, 0.0, 0.0],
             [0.0, sy, 0.0, 0.0],
             [0.0, 0.0, depth_range, 0.0],
             [-1.0, 1.0, -near * depth_range, 1.0]
-        ].into()
+        ])
     }
 }
 

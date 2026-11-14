@@ -57,7 +57,7 @@ impl TatakuRenderable for Circle {
         let color = options.color_with_alpha(self.color);
         let border = self.border.map(|mut b|{ b.color = options.border_color_with_alpha(b.color); b });
 
-        let transform = transform * Matrix::identity()
+        let transform = transform * Matrix::IDENTITY
             // .scale(self)
             .trans(self.pos)
         ;

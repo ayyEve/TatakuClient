@@ -1205,7 +1205,7 @@ impl GameplayManager {
         }
 
         let mut shell = GameplayWidgetDrawShell {
-            transform: tataku::Matrix::identity(),
+            transform: tataku::Matrix::IDENTITY,
             list,
         };
 

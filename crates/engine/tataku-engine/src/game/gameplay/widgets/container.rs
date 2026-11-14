@@ -23,7 +23,7 @@ impl GameplayWidgetContainer {
     pub fn draw(&self, shell: &mut GameplayWidgetDrawShell) {
         if !self.visible { return }
 
-        let transform = tataku::Matrix::identity()
+        let transform = tataku::Matrix::IDENTITY
             .trans(self.resolved_pos);
 
         let mut shell = GameplayWidgetDrawShell {

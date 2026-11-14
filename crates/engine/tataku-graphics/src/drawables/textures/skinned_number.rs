@@ -185,7 +185,7 @@ impl TatakuRenderable for SkinnedNumber {
         let color = options.color_with_alpha(self.color);
         let x_spacing = self.spacing_override.unwrap_or_default() * self.scale.x;
 
-        transform = transform * Matrix::identity()
+        transform *= Matrix::IDENTITY
             .trans(-self.origin) // apply origin
             .rot(self.rotation) // rotate
             .scale(self.scale) // scale

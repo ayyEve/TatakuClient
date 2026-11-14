@@ -38,7 +38,7 @@ impl TatakuRenderable for SliderDrawable {
             Vector2::ONE,
         ];
 
-        let transform = transform * Matrix::identity()
+        let transform = transform * Matrix::IDENTITY
             .scale(self.size)
             .trans(self.slider_data.grid_origin);
 

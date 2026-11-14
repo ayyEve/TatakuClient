@@ -23,7 +23,7 @@ tataku-graphics.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 image.workspace = true
-cgmath.workspace = true
+glam.workspace = true
 raw-window-handle.workspace = true
 
 # wgpu

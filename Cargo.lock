@@ -159,15 +159,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "approx"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f2a05fd1bd10b2527e20a2cd32d8873d115b8b39fe219ee25f42a8aca6ba278"
-dependencies = [
- "num-traits",
-]
-
-[[package]]
 name = "arboard"
 version = "3.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -733,16 +724,6 @@ name = "cfg_aliases"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f079e83a288787bcd14a6aea84cee5c87a67c5a3e660c30f557a3d24761b3527"
-
-[[package]]
-name = "cgmath"
-version = "0.18.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a98d30140e3296250832bbaaff83b27dcd6fa3cc70fb6f1f3e5c9c0023b5317"
-dependencies = [
- "approx",
- "num-traits",
-]
 
 [[package]]
 name = "chacha20"
@@ -1855,6 +1836,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "glam"
+version = "0.34.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "627003914c6057c9c8f0832ee4f870b5a4f599d0cfa83f4072675114860cd0ff"
+
+[[package]]
 name = "glob"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2386,7 +2373,7 @@ source = "git+https://github.com/ayyEve/kira.git#b4084a6acad4e6d6db6f4630f9c2b8d
 dependencies = [
  "atomic-arena",
  "cpal",
- "glam",
+ "glam 0.30.10",
  "mint",
  "paste",
  "ringbuf",
@@ -4938,7 +4925,7 @@ version = "0.1.0"
 dependencies = [
  "base64 0.23.1",
  "bitflags 2.13.2",
- "cgmath",
+ "glam 0.34.3",
  "guillotiere 0.7.0",
  "half",
  "image",
@@ -5120,7 +5107,7 @@ name = "tataku-wgpu"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
- "cgmath",
+ "glam 0.34.3",
  "image",
  "lyon_tessellation",
  "parley",

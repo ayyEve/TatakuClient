@@ -45,7 +45,7 @@ impl TatakuRenderable for Line {
         g: &mut dyn DrawEngine
     ) {
         let color = options.color_with_alpha(self.color);
-        let transform = transform * Matrix::identity().trans(self.p1);
+        let transform = transform * Matrix::IDENTITY.trans(self.p1);
 
         g.draw_line(
             self.p2 - self.p1, 

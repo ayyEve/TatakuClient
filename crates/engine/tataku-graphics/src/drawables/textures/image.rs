@@ -204,7 +204,7 @@ impl TatakuRenderable for Image {
     ) {
         let color = options.color_with_alpha(self.color);
         
-        transform = transform * Matrix::identity()
+        transform *= Matrix::IDENTITY
             .trans(-self.origin) // apply origin
             .rot(self.rotation) // rotate
             .scale(self.scale * self.base_scale) // scale

@@ -8,7 +8,7 @@ use crate::renderable_surface::*;
 use graphics::RenderingEngine as _;
 
 use tataku::{
-    MatrixHelpers as _, 
+    MatrixExt as _, 
     Interpolation as _,
 };
 
@@ -1235,7 +1235,7 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
                 position: transform.mul_v2(p).into(),
                 flashlight_index: reserved.flashlight_index,
             })
-            .collect::<Vec<_>>();
+            .collect::<Vec<_>>(); 
 
         reserved.copy_in(&vertices, flashlight_data);
     }
@@ -1491,7 +1491,7 @@ impl graphics::DrawEngine for WgpuEngine<'_> {
         self.begin_render();
 
         // fill buffers
-        do_render(self, tataku::Matrix::identity());
+        do_render(self, tataku::Matrix::IDENTITY);
 
         // finish up
         self.end_render();

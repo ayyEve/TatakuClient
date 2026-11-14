@@ -152,7 +152,7 @@ impl<'window> WinitWindow<'window> {
         self.counters.render_frametime.fetch_max(frametime, Ordering::Release);
         self.counters.render_count.fetch_add(1, Ordering::Release);
 
-        let transform = tataku::Matrix::identity();
+        let transform = tataku::Matrix::IDENTITY;
         let options = graphics::DrawOptions::default();
 
         self.graphics.begin_render();

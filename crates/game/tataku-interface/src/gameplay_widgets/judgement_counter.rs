@@ -186,7 +186,7 @@ impl GameplayWidget for JudgementCounterElement {
 
             // draw text/count
             shell.list.push(graphics::Transformed {
-                transform: shell.transform * tataku::Matrix::identity()
+                transform: shell.transform * tataku::Matrix::IDENTITY
                     .trans(centered),
                 drawable: Box::new(graphics::Text::new(cache.layout.clone())),
             });

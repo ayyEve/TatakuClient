@@ -77,7 +77,7 @@ impl TatakuRenderable for Rectangle {
             b 
         });
         
-        let transform = transform * Matrix::identity()
+        let transform = transform * Matrix::IDENTITY
             .trans(-self.origin) // apply origin
             .rot(self.rotation) // rotate to rotate
             .trans(self.origin) // undo origin

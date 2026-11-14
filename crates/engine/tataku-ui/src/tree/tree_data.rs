@@ -9,10 +9,10 @@ pub struct TreeData {
     pub absolute_bounds: Bounds,
     pub local_transform: graphics::Transform,
 
-    #[default(Matrix::identity())]
+    #[default(Matrix::IDENTITY)]
     pub global_transform: Matrix,
     
-    #[default(Matrix::identity())]
+    #[default(Matrix::IDENTITY)]
     pub inverse_global_transform: Matrix,
 
     pub needs_inverse_transform: bool,

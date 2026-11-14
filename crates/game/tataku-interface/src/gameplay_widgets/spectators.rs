@@ -102,7 +102,7 @@ impl GameplayWidget for SpectatorsElement {
         });
 
         shell.list.push(graphics::Transformed {
-            transform: shell.transform * tataku::Matrix::identity()
+            transform: shell.transform * tataku::Matrix::IDENTITY
                 .trans(Vector2::ONE * PADDING),
             drawable: Box::new(graphics::Text::new(layout.clone())),
         });

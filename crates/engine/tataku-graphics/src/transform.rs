@@ -60,7 +60,7 @@ impl Transform {
     }
 
     pub fn matrix(&self) -> Matrix {
-        Matrix::identity()
+        Matrix::IDENTITY
             .trans(-self.origin) // apply origin
             .rot(self.rotation) // rotate
             .scale(self.scale) // scale
@@ -118,7 +118,7 @@ impl TatakuRenderable for Transformed {
         mut transform: Matrix,
         g: &mut dyn DrawEngine,
     ) {
-        transform = transform * self.transform;
+        transform *= self.transform;
         self.drawable.draw(options, transform, g);
     }
 }

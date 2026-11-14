@@ -133,7 +133,7 @@ parley = "0.5.0"
 swash = "0.2"
 
 # math stuff
-cgmath = "0.18"
+glam = "0.34"
 guillotiere = "0.7"
 lyon_tessellation = "1.0"
 half = "2.7"
