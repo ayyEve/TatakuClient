@@ -120,13 +120,13 @@ pub fn tataku_theme() -> Theme {
     let colors = [
         // main menu
         (ThemeColor::MainMenuPrimary, Color::WHITE),
-        (ThemeColor::MainMenuSecondary, Color::new(1.0, 1.0, 1.0, 0.1)),
+        (ThemeColor::MainMenuSecondary, Color::new_f32(1.0, 1.0, 1.0, 0.1)),
         
         // beatmap select
-        (ThemeColor::BeatmapSelectSetBg, Color::new(0.2, 0.2, 0.2, 1.0)),
+        (ThemeColor::BeatmapSelectSetBg, Color::new_f32(0.2, 0.2, 0.2, 1.0)),
         (ThemeColor::BeatmapSelectSetHover, Color::BLUE),
         (ThemeColor::BeatmapSelectSetSelect, Color::RED),
-        (ThemeColor::BeatmapSelectMapBg, Color::new(0.2, 0.2, 0.2, 1.0)),
+        (ThemeColor::BeatmapSelectMapBg, Color::new_f32(0.2, 0.2, 0.2, 1.0)),
         (ThemeColor::BeatmapSelectMapHover, Color::BLUE),
         (ThemeColor::BeatmapSelectMapSelect, Color::RED),
         (ThemeColor::BeatmapSelectText, Color::WHITE),
@@ -163,12 +163,12 @@ pub fn osu_theme() -> Theme {
     let blue = Color::new_rgba8(0, 150, 236, 240);
 
     let lighten = 0.3;
-    let lighten = Color::new(lighten, lighten, lighten, 1.0);
+    let lighten = Color::new_f32(lighten, lighten, lighten, 1.0);
     
     let colors = [
         // main menu
         (ThemeColor::MainMenuPrimary, Color::WHITE),
-        (ThemeColor::MainMenuSecondary, Color::new(1.0, 1.0, 1.0, 0.1)),
+        (ThemeColor::MainMenuSecondary, Color::new_f32(1.0, 1.0, 1.0, 0.1)),
 
         // beatmap select
         (ThemeColor::BeatmapSelectSetBg, pink),
@@ -182,15 +182,15 @@ pub fn osu_theme() -> Theme {
         (ThemeColor::BeatmapSelectTextSelected, Color::BLACK),
 
         // leaderboard
-        (ThemeColor::LeaderboardBg, Color::BLACK.alpha(0.5)),
-        (ThemeColor::LeaderboardHover, lighten.alpha(0.5)),
-        (ThemeColor::LeaderboardSelect, lighten.alpha(0.5)),
+        (ThemeColor::LeaderboardBg, Color::BLACK.with_alpha_f32(0.5)),
+        (ThemeColor::LeaderboardHover, lighten.with_alpha_f32(0.5)),
+        (ThemeColor::LeaderboardSelect, lighten.with_alpha_f32(0.5)),
         (ThemeColor::LeaderboardText, Color::WHITE),
         (ThemeColor::LeaderboardTextHovered, Color::WHITE),
         (ThemeColor::LeaderboardTextSelected, Color::WHITE),
 
         (ThemeColor::LeaderboardPreviousBest, Color::new_rgba8(255, 69, 0, 150)),
-        (ThemeColor::LeaderboardCurrentScore, Color::BLACK.alpha(0.5)),
+        (ThemeColor::LeaderboardCurrentScore, Color::BLACK.with_alpha_f32(0.5)),
 
     ].into_iter().collect::<HashMap<ThemeColor, Color>>();
 

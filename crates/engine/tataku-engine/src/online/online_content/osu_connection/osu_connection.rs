@@ -1,5 +1,5 @@
 // TODO: if request fails due to expired token, get new token and try again
-use crate::*;
+use crate::{settings::integration::OsuIntegration, *};
 use super::{
     token::Token,
     consts::*,
@@ -10,7 +10,7 @@ pub struct OsuConnection {
     token: Token,
 }
 impl OsuConnection {
-    pub fn setup_failable(settings: &Settings) -> tataku::Result<Self> {
+    pub fn setup_failable(settings: &OsuIntegration) -> tataku::Result<Self> {
         let p = std::path::Path::new(REFRESH_TOKEN_FILE);
 
         let mut token = None;
@@ -31,7 +31,7 @@ impl OsuConnection {
         })
     }
 
-    pub fn setup(settings: &Settings) -> Option<Self> {
+    pub fn setup(settings: &OsuIntegration) -> Option<Self> {
         for _ in 0..5 {
             let Ok(a) = Self::setup_failable(settings)
                 .inspect_err(|e| error!("{e:?}")) 

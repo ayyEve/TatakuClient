@@ -4,7 +4,10 @@ use tataku_common::reflection::*;
 
 static EMPTY: LazyLock<ArcStr> = LazyLock::new(|| ArcStr(String::new().into()));
 
+
 #[derive(Clone, Eq)]
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(from="String", into="String")]
 pub struct ArcStr(Arc<str>);
 impl ArcStr {
     pub fn unknown() -> Self {
@@ -101,16 +104,9 @@ impl AsRef<std::ffi::OsStr> for ArcStr {
     }
 }
 
-impl<'de> serde::Deserialize<'de> for ArcStr {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where D: serde::Deserializer<'de> {
-        let s = String::deserialize(deserializer)?;
-        Ok(s.into())
-    }
-}
-impl serde::Serialize for ArcStr {
-    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        <&str>::serialize(&&*self.0, serializer)
+impl From<ArcStr> for String {
+    fn from(value: ArcStr) -> Self {
+        value.0.to_string()
     }
 }
 

@@ -84,37 +84,40 @@ impl Note {
             return;
         }
 
+        let color = match self.hit_type {
+            HitType::Don => shell.settings.don_color.color,
+            HitType::Kat => shell.settings.kat_color.color,
+        };
+
         if let Some(image) = self.overlay.clone() {
             let transform = graphics::Transform {
                 origin: image.size() / 2.0,
                 scale: Vector2::ONE * (radius * 2.0) / NOTE_TEX_SIZE,
                 pos,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             shell.list.push(image.with_transform(transform.matrix()));
         }
 
-        if let Some(image) = self.circle.clone() {
+        if let Some(mut image) = self.circle.clone() {
             let transform = graphics::Transform {
                 origin: image.size() / 2.0,
                 scale: Vector2::ONE * (radius * 2.0) / NOTE_TEX_SIZE,
                 pos,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
+
+            image.color = color;
 
             shell.list.push(image.with_transform(transform.matrix()));
         } else {
             let transform = graphics::Transform {
                 scale: Vector2::ONE * radius,
                 pos,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
-            let color = match self.hit_type {
-                HitType::Don => shell.settings.don_color.color,
-                HitType::Kat => shell.settings.kat_color.color,
-            };
 
             let mut circle = graphics::Circle::new(color);
 

@@ -23,10 +23,10 @@ impl TatakuRenderable for SliderDrawable {
         g: &mut dyn DrawEngine
     ) {
         let mut slider_data = self.slider_data;
-        let alpha = Color::to_f32(options.alpha.unwrap_or(u8::MAX));
+        let alpha = options.alpha.unwrap_or(ColorField::MAX);
 
-        slider_data.body_color.a = Color::to_u8(Color::to_f32(slider_data.body_color.a) * alpha);
-        slider_data.border_color.a = Color::to_u8(Color::to_f32(slider_data.border_color.a) * alpha);
+        slider_data.body_color.a *= alpha;
+        slider_data.border_color.a *= alpha;
 
         if !matches!(options.pipeline, None | Some(GraphicsPipeline::Slider))
         {

@@ -15,10 +15,10 @@ pub struct Sector {
 }
 impl Sector {
     pub fn new(
-        radius: f32, 
-        start: f32, 
-        end: f32, 
-        color: Color, 
+        radius: f32,
+        start: f32,
+        end: f32,
+        color: Color,
         border: Option<Border>
     ) -> Self {
         Self {
@@ -39,8 +39,8 @@ impl TatakuRenderable for Sector {
 
     fn draw(
         &self,
-        options: &DrawOptions, 
-        transform: Matrix, 
+        options: &DrawOptions,
+        transform: Matrix,
         g: &mut dyn DrawEngine
     ) {
         let Some(blend_mode) = options.blend_mode() else { return; };

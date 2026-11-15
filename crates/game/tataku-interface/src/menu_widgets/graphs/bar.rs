@@ -37,8 +37,8 @@ impl BarGraph {
         }
 
         Self {
-            min, 
-            max, 
+            min,
+            max,
             data
         }
     }
@@ -50,7 +50,7 @@ impl BarGraph {
         data.iter().map(|x| (self.max - x.clamp(self.min, self.max)) * size.y / (self.max - self.min).abs()).collect()
     }
 
-    
+
     pub fn draw(&self, bounds: &Bounds) -> graphics::RenderableCollection {
         let mut collection = graphics::RenderableCollection::default();
 
@@ -60,10 +60,10 @@ impl BarGraph {
         collection.push(
             graphics::Rectangle::new(
                 size,
-                Color::new(0.2, 0.2, 0.2, 0.7),
+                Color::new_f32(0.2, 0.2, 0.2, 0.7),
             )
             .border(Border::new(Color::RED, 1.5))
-            .with_transform(tataku::Matrix::identity()
+            .with_transform(tataku::Matrix::IDENTITY
                 .trans(bounds.pos)
             )
         );
@@ -86,13 +86,13 @@ impl BarGraph {
                         size.x_portion(),
                         2.0,
                         i.color,
-                    ).with_transform(tataku::Matrix::identity()
+                    ).with_transform(tataku::Matrix::IDENTITY
                         .trans(bounds.pos + Vector2::with_y(v))
                     ));
                 }
                 StatsValue::List(points) => {
                     let mapped_points = self.map_points(points, size);
-                    
+
                     let mut prev_y = mapped_points[0];
                     let x_step = size.x / mapped_points.len() as f32;
 
@@ -104,16 +104,16 @@ impl BarGraph {
                             end - start,
                             2.0,
                             i.color
-                        ).with_transform(tataku::Matrix::identity()
+                        ).with_transform(tataku::Matrix::IDENTITY
                             .trans(bounds.pos + start)
                         ));
 
                         prev_y = new_y;
                     }
-                    
+
                 }
             }
-            
+
         }
 
         collection

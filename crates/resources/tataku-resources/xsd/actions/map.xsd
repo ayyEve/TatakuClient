@@ -4,10 +4,10 @@
   targetNamespace="tataku/actions/map"
   xmlns:xs="http://www.w3.org/2001/XMLSchema"
   xmlns:map-actions="tataku/actions/map"
-  xmlns:buildable-value="tataku/buildable-value"
+  xmlns:buildable="tataku/buildable"
 >
 
-<xs:import namespace="tataku/buildable-value" schemaLocation="../buildable_value.xsd"/>
+<xs:import namespace="tataku/buildable" schemaLocation="../buildable.xsd"/>
 
 
 <xs:group name="map-action">
@@ -26,12 +26,12 @@
         </xs:complexType>
       </xs:element>
 
-      <xs:element name="selectGroup" type="buildable-value:buildableValue"/>
-      <xs:element name="selectMap" type="buildable-value:buildableValue"/>
-      <xs:element name="setPlaymode" type="buildable-value:buildableValue"/>
+      <xs:element name="selectGroup" type="buildable:value"/>
+      <xs:element name="selectMap" type="buildable:value"/>
+      <xs:element name="setPlaymode" type="buildable:value"/>
 
       <xs:element name="refreshMaps"/>
-      <xs:element name="delete" type="buildable-value:buildableValue"/>
+      <xs:element name="delete" type="buildable:value"/>
       <xs:element name="deleteCurrent"/>
 
       <xs:element name="nextMap"/>
@@ -61,13 +61,13 @@
 
 <xs:group name="collection-action">
   <xs:choice>
-    <xs:element name="create" type="buildable-value:buildableValue" />
+    <xs:element name="create" type="buildable:value" />
 
     <xs:element name="add">
       <xs:complexType>
         <xs:all>
-          <xs:element name="map" type="buildable-value:buildableValue"/>
-          <xs:element name="collection" type="buildable-value:buildableValue"/>
+          <xs:element name="map" type="buildable:value"/>
+          <xs:element name="collection" type="buildable:value"/>
         </xs:all>
       </xs:complexType>
     </xs:element>
@@ -75,8 +75,8 @@
     <xs:element name="remove">
       <xs:complexType>
         <xs:all>
-          <xs:element name="map" type="buildable-value:buildableValue"/>
-          <xs:element name="collection" type="buildable-value:buildableValue"/>
+          <xs:element name="map" type="buildable:value"/>
+          <xs:element name="collection" type="buildable:value"/>
         </xs:all>
       </xs:complexType>
     </xs:element>

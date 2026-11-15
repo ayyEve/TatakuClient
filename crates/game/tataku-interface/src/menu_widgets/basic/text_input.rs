@@ -11,24 +11,24 @@ use widgets::{
     WidgetText,
     InputAction,
 };
-use input::{ 
+use input::{
     Key,
     KeyInput,
     InputType,
-    InputEvent, 
-    MouseButton, 
+    InputEvent,
+    MouseButton,
     KeyModifiers,
 };
 
 // TODO: should this be context aware? like if you ctrl + whatever on alphanumeric, should it always stop and non-alphanumeric?
 /// yes, it probably should
-/// 
+///
 /// what tokens to stop at when ctrl+(arrow_key|backspace)-ing
-const TOKENS: &[char] = &[ 
-    '.', ',', 
-    '"', '\'', 
-    ' ', 
-    '(', ')', 
+const TOKENS: &[char] = &[
+    '.', ',',
+    '"', '\'',
+    ' ',
+    '(', ')',
     '[', ']',
     ';', ':',
 ];
@@ -48,15 +48,11 @@ pub struct TextInput {
     text: widgets::Text,
 
     load_from_variable: bool,
-    
+
     on_input: Option<InputAction<String>>,
     on_submit: Option<InputAction<String>>,
-    
-    cursor: Cursor,
-    pressed: bool,
-    hovered: bool,
-    active: bool,
 
+    cursor: Cursor,
     node_id: NodeId,
 }
 impl TextInput {
@@ -80,10 +76,6 @@ impl TextInput {
             on_submit: None,
 
             cursor: Cursor::Position(0),
-            pressed: false,
-            hovered: false,
-            active: false,
-
             node_id: ui::EMPTY_NODE,
         }
     }
@@ -171,7 +163,7 @@ impl TextInput {
 
                 self.replace_selection("");
             }
-            
+
             ControlAction::CursorLeft => {
                 // TODO: start here when you wake up
                 match self.cursor {
@@ -322,66 +314,73 @@ impl TextInput {
     }
     // returns if the key was consumed, and if so, if the text was updated
     fn handle_key(
-        &mut self, 
-        key: &KeyInput, 
+        &mut self,
+        input: &KeyInput,
         mods: KeyModifiers,
-    ) -> Option<bool> {
-        if let Some(text) = &key.text {
+    ) -> HandleKeyResult {
+        if let Some(text) = &input.text {
             self.add_text(text);
-            return Some(true);
+            return HandleKeyResult::TextChanged;
         }
-        
+
+        let Some(key) = input.key
+        else { return HandleKeyResult::Ignored };
+
         let len = self.value.len();
 
-        match key.as_key()? {
-            Key::Backspace if mods.ctrl => {
+        let ctrl = mods.contains(KeyModifiers::CTRL);
+        let shift = mods.contains(KeyModifiers::SHIFT);
+
+        match key {
+            Key::Backspace if ctrl => {
                 self.handle_control_action(
-                    ControlAction::Backspace, 
-                    mods.shift
+                    ControlAction::Backspace,
+                    shift
                 );
-                Some(true)
+                HandleKeyResult::TextChanged
             }
-            Key::Delete if mods.ctrl => {
+            Key::Delete if ctrl => {
                 self.handle_control_action(
-                    ControlAction::Delete, 
-                    mods.shift
+                    ControlAction::Delete,
+                    shift
                 );
-                Some(true)
+                HandleKeyResult::TextChanged
             }
-            Key::Left if mods.ctrl => {
+            Key::Left if ctrl => {
                 self.handle_control_action(
-                    ControlAction::CursorLeft, 
-                    mods.shift
+                    ControlAction::CursorLeft,
+                    shift
                 );
-                Some(true)
+                HandleKeyResult::TextChanged
             }
-            Key::Right if mods.ctrl => {
+            Key::Right if ctrl => {
                 self.handle_control_action(
-                    ControlAction::CursorRight, 
-                    mods.shift
+                    ControlAction::CursorRight,
+                    shift
                 );
-                Some(true)
+                HandleKeyResult::TextChanged
             }
-            Key::Up if mods.ctrl => {
+            Key::Up if ctrl => {
                 self.handle_control_action(
-                    ControlAction::CursorUp, 
-                    mods.shift
+                    ControlAction::CursorUp,
+                    shift
                 );
-                Some(true)
+                HandleKeyResult::TextChanged
             }
-            Key::Down if mods.ctrl => {
+            Key::Down if ctrl => {
                 self.handle_control_action(
-                    ControlAction::CursorDown, 
-                    mods.shift
+                    ControlAction::CursorDown,
+                    shift
                 );
-                Some(true)
+                HandleKeyResult::TextChanged
             }
 
             Key::Space => {
                 self.add_text(" ");
-                Some(true)
+                HandleKeyResult::TextChanged
             }
             Key::Backspace => {
+                println!("backspace");
                 match &mut self.cursor {
                     Cursor::Position(n) => {
                         if *n > 0 {
@@ -389,14 +388,14 @@ impl TextInput {
 
                             self.value.remove(*n);
 
-                            Some(true)
+                            HandleKeyResult::TextChanged
                         } else {
-                            Some(false)
+                            HandleKeyResult::Consumed
                         }
                     }
                     Cursor::Selection { .. } => {
                         self.replace_selection("");
-                        Some(true)
+                        HandleKeyResult::TextChanged
                     }
                 }
             }
@@ -406,14 +405,14 @@ impl TextInput {
                         if n < len {
                             self.value.remove(n);
 
-                            Some(true)
+                            HandleKeyResult::TextChanged
                         } else {
-                            Some(false)
+                            HandleKeyResult::Consumed
                         }
                     }
                     Cursor::Selection { .. } => {
                         self.replace_selection("");
-                        Some(true)
+                        HandleKeyResult::TextChanged
                     }
                 }
             }
@@ -423,9 +422,9 @@ impl TextInput {
                     Cursor::Position(index) => if *index > 0 {
                         let n = *index-1;
 
-                        if mods.shift {
-                            self.cursor = Cursor::Selection { 
-                                start: n, 
+                        if shift {
+                            self.cursor = Cursor::Selection {
+                                start: n,
                                 end: *index,
                                 forward_select: false
                             };
@@ -435,14 +434,14 @@ impl TextInput {
                     }
 
                     // select going forwards
-                    Cursor::Selection { 
-                        start, 
-                        end, 
-                        forward_select: true 
+                    Cursor::Selection {
+                        start,
+                        end,
+                        forward_select: true
                     } => if *end > 0 {
                         let n = *end - 1;
 
-                        if mods.shift && *start != n {
+                        if shift && *start != n {
                             *end = n;
                         } else {
                             self.cursor = Cursor::Position(n);
@@ -450,14 +449,14 @@ impl TextInput {
                     }
 
                     // select going backwards
-                    Cursor::Selection { 
-                        start, 
-                        forward_select: false, 
-                        .. 
+                    Cursor::Selection {
+                        start,
+                        forward_select: false,
+                        ..
                     } => if *start > 0 {
                         let n = *start - 1;
 
-                        if mods.shift {
+                        if shift {
                             *start = n;
                         } else {
                             self.cursor = Cursor::Position(n);
@@ -467,7 +466,7 @@ impl TextInput {
                 }
 
                 self.cursor.normalize();
-                Some(false)
+                HandleKeyResult::Consumed
             }
 
             Key::Right => {
@@ -475,9 +474,9 @@ impl TextInput {
                     Cursor::Position(index) => if *index < len {
                         let n = *index + 1;
 
-                        if mods.shift {
-                            self.cursor = Cursor::Selection { 
-                                start: *index, 
+                        if shift {
+                            self.cursor = Cursor::Selection {
+                                start: *index,
                                 end: n,
                                 forward_select: true
                             };
@@ -485,26 +484,26 @@ impl TextInput {
                             *index = n;
                         }
                     }
-                    Cursor::Selection { 
-                        end, 
-                        forward_select: true, 
-                        .. 
+                    Cursor::Selection {
+                        end,
+                        forward_select: true,
+                        ..
                     } => if *end < len {
                         let n = *end + 1;
-                        if mods.shift {
+                        if shift {
                             *end = n;
                         } else {
                             self.cursor = Cursor::Position(n);
                         }
                     }
 
-                    Cursor::Selection { 
-                        start, 
-                        end, 
-                        forward_select: false 
+                    Cursor::Selection {
+                        start,
+                        end,
+                        forward_select: false
                     } => if *end < len {
                         let n = *start + 1;
-                        if mods.shift && n != *end {
+                        if shift && n != *end {
                             *start = n;
                         } else {
                             self.cursor = Cursor::Position(n);
@@ -513,7 +512,7 @@ impl TextInput {
                 }
 
                 self.cursor.normalize();
-                Some(false)
+                HandleKeyResult::Consumed
             }
             Key::Up => {
                 match &mut self.cursor {
@@ -521,7 +520,7 @@ impl TextInput {
                     Cursor::Selection { end, .. } => *end = len,
                 }
                 self.cursor.normalize();
-                Some(false)
+                HandleKeyResult::Consumed
             }
             Key::Down => {
                 match &mut self.cursor {
@@ -529,18 +528,15 @@ impl TextInput {
                     Cursor::Selection { start, .. } => *start = 0,
                 }
                 self.cursor.normalize();
-                Some(false)
+                HandleKeyResult::Consumed
             }
 
-        
-            Key::Escape => {
-                self.active = false;
-                Some(false)
-            }
 
-            _ if mods.ctrl || mods.alt => None,
+            Key::Escape => HandleKeyResult::RemoveActive,
 
-            _ => Some(false)
+            _ if mods.contains(KeyModifiers::CTRL | KeyModifiers::ALT) => HandleKeyResult::Ignored,
+
+            _ => HandleKeyResult::Consumed
         }
     }
 
@@ -617,41 +613,51 @@ impl Widget<actions::Action> for TextInput {
         event: &InputEvent,
         shell: &mut InputShell<actions::Action>,
     ) {
-        match &event.event {
-            InputType::KeyPress(press) if self.active => {
-                if let Some(Key::Enter) = press.as_key() {
+        let Some(state) = shell.state_mut(self.node_id)
+        else { return };
 
-                    if let Some(on_submit) = &self.on_submit {
-                        on_submit.run(
-                            &self.value,
-                            self.node_id,
-                            shell.source,
-                            shell.messages,
-                            shell.actions,
-                            shell.values,
-                        );
+        match &event.event {
+            InputType::KeyPress(press) if state.active() => {
+
+                match press.key {
+                    Some(Key::Enter) => {
+                        state.set_active(false);
+                        shell.event_consumed = true;
+
+                        if let Some(on_submit) = &self.on_submit {
+                            on_submit.run(
+                                &self.value,
+                                self.node_id,
+                                shell.source,
+                                shell.messages,
+                                shell.actions,
+                                shell.values,
+                            );
+                        }
+                        return;
                     }
 
-                    shell.event_consumed = true;
-                    self.active = false;
-                    return;
+                    Some(Key::Tab) => {
+                        state.set_active(false);
+                        shell.event_consumed = true;
+                        // TODO: event to select the next element
+                        return;
+                    }
+                    _ => {}
                 }
 
-                if let Some(Key::Tab) = press.as_key() {
-                    shell.event_consumed = true;
-                    self.active = false;
-                    // TODO: event to select the next element
-                    return;
-                }
-
-
-                if let Some(text_changed) = self.handle_key(
-                    press, 
+                match self.handle_key(
+                    press,
                     event.key_mods
                 ) {
-                    shell.event_consumed = true;
-
-                    if text_changed {
+                    HandleKeyResult::Ignored => {}
+                    HandleKeyResult::Consumed => shell.event_consumed = true,
+                    HandleKeyResult::RemoveActive => {
+                        state.set_active(false);
+                        shell.event_consumed = true;
+                    }
+                    HandleKeyResult::TextChanged => {
+                        shell.event_consumed = true;
 
                         // todo: fixme:
                         // if let WidgetText::Custom {
@@ -686,14 +692,18 @@ impl Widget<actions::Action> for TextInput {
 
 
             InputType::MouseMove(pos) => {
-                let Some(ctx) = shell.tree.get_context(self.node_id) 
-                else { return };
-
-                let pos = ctx.inverse_global_transform * *pos;
                 let bounds = shell.tree.bounds(self.node_id).unwrap();
-                self.hovered = bounds.contains(pos);
+                let Some(state) = shell.with_ctx_mut(
+                    self.node_id,
+                    |ctx| {
+                        let pos = ctx.inverse_global_transform * *pos;
+                        ctx.element_data.state.set_hover(bounds.contains(pos));
 
-                if self.pressed {
+                        ctx.element_data.state
+                    }
+                ) else { return };
+
+                if state.pressed() {
                     use std::cmp::Ordering;
 
                     let index = self.position_to_index(pos.x - bounds.pos.x);
@@ -702,48 +712,48 @@ impl Widget<actions::Action> for TextInput {
                         Cursor::Position(i) => {
                             match index.cmp(&i) {
                                 Ordering::Equal => {}
-                                Ordering::Less => self.cursor = Cursor::Selection { 
-                                    start: index, 
-                                    end: i, 
+                                Ordering::Less => self.cursor = Cursor::Selection {
+                                    start: index,
+                                    end: i,
                                     forward_select: false
                                 },
-                                Ordering::Greater => self.cursor = Cursor::Selection { 
-                                    start: i, 
-                                    end: index, 
+                                Ordering::Greater => self.cursor = Cursor::Selection {
+                                    start: i,
+                                    end: index,
                                     forward_select: true
                                 }
                             }
                         }
-                        Cursor::Selection { 
-                            start, 
-                            end, 
-                            forward_select 
+                        Cursor::Selection {
+                            start,
+                            end,
+                            forward_select
                         } => {
                             if forward_select {
                                 if index >= start {
-                                    self.cursor = Cursor::Selection { 
-                                        start, 
-                                        end: index, 
-                                        forward_select: true 
+                                    self.cursor = Cursor::Selection {
+                                        start,
+                                        end: index,
+                                        forward_select: true
                                     };
                                 } else {
-                                    self.cursor = Cursor::Selection { 
-                                        start: index, 
-                                        end: start, 
-                                        forward_select: false 
+                                    self.cursor = Cursor::Selection {
+                                        start: index,
+                                        end: start,
+                                        forward_select: false
                                     };
                                 }
                             } else if index <= end {
-                                self.cursor = Cursor::Selection { 
-                                    start: index, 
-                                    end, 
-                                    forward_select: false 
+                                self.cursor = Cursor::Selection {
+                                    start: index,
+                                    end,
+                                    forward_select: false
                                 };
                             } else {
-                                self.cursor = Cursor::Selection { 
-                                    start: end, 
-                                    end: index, 
-                                    forward_select: true 
+                                self.cursor = Cursor::Selection {
+                                    start: end,
+                                    end: index,
+                                    forward_select: true
                                 };
                             }
                         }
@@ -753,10 +763,11 @@ impl Widget<actions::Action> for TextInput {
                 }
             }
             InputType::MousePress(MouseButton::Left) => {
-                self.active = self.hovered;
-                self.pressed = self.active;
+                let hover = state.hover();
+                state.set_active(hover);
+                state.set_pressed(hover);
 
-                let Some(ctx) = shell.tree.get_context(self.node_id) 
+                let Some(ctx) = shell.tree.get_context(self.node_id)
                 else { return };
 
                 let pos = ctx.inverse_global_transform * event.mouse_pos;
@@ -764,40 +775,44 @@ impl Widget<actions::Action> for TextInput {
                     .content_bounds(self.node_id)
                     .unwrap();
 
-                if self.pressed {
+                if hover {
                     shell.event_consumed = true;
-
                     let index = self.position_to_index(pos.x - bounds.pos.x);
-
                     self.cursor = Cursor::Position(index);
                 }
             }
             InputType::MouseRelease(MouseButton::Left) => {
-                self.pressed = false;
+                state.set_pressed(false);
                 // self.active = false;
             }
-            
+            InputType::MousePressCancel(MouseButton::Left) if state.active() => {
+                state.remove(ElementState::Active | ElementState::Pressed);
+                shell.event_consumed = true;
+            }
+
             _ => {}
         }
     }
 
     fn draw(&self, shell: &mut DrawShell<actions::Action>) {
-        let Some(bounds) = shell.tree.absolute_bounds(self.node_id) 
-        else { return };
+        let Some((bounds, state)) = shell.with_ctx(
+            self.node_id,
+            |ctx| (ctx.absolute_bounds, ctx.element_data.state)
+        ) else { return };
 
         shell.list.push(graphics::Rectangle::new(
             bounds.size,
             shell.general_theme.background_color
         ).border(Border::new(
-            shell.general_theme.get_color(self.active, self.hovered), 
+            shell.general_theme.for_state(state),
             2.0
-        )).with_transform(tataku::Matrix::identity()
+        )).with_transform(tataku::Matrix::IDENTITY
             .trans(bounds.pos)
         ));
 
         self.text.draw(shell);
 
-        if !self.active || self.value.is_empty() { return; }
+        if !state.active() || self.value.is_empty() { return; }
 
         let layout = self.text.text_layout();
         let height = layout.height(); // since there is only one line
@@ -814,7 +829,7 @@ impl Widget<actions::Action> for TextInput {
                         height
                     ),
                     shell.general_theme.active_color,
-                ).with_transform(tataku::Matrix::identity()
+                ).with_transform(tataku::Matrix::IDENTITY
                     .trans(Vector2::new(
                         bounds.pos.x + pos,
                         bounds.pos.y + y_offset
@@ -833,8 +848,8 @@ impl Widget<actions::Action> for TextInput {
                         end - start,
                         height,
                     ),
-                    shell.general_theme.active_color.alpha(0.7)
-                ).with_transform(tataku::Matrix::identity()
+                    shell.general_theme.active_color.with_alpha_f32(0.7)
+                ).with_transform(tataku::Matrix::IDENTITY
                     .trans(Vector2::new(
                         bounds.pos.x + start,
                         bounds.pos.y + y_offset
@@ -843,7 +858,7 @@ impl Widget<actions::Action> for TextInput {
                 shell.list.push(cursor_bar);
             }
         }
-        
+
     }
 
     fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
@@ -893,10 +908,10 @@ impl Cursor {
             match start.cmp(&end) {
                 Ordering::Less => {}
                 Ordering::Equal => *self = Cursor::Position(start),
-                Ordering::Greater => *self = Cursor::Selection { 
-                    start: end, 
-                    end: start, 
-                    forward_select: true 
+                Ordering::Greater => *self = Cursor::Selection {
+                    start: end,
+                    end: start,
+                    forward_select: true
                 },
             }
         }
@@ -916,6 +931,22 @@ impl ControlAction {
     fn delete_text(self) -> bool {
         matches!(self, Self::Delete | Self::Backspace)
     }
+}
+
+#[derive(Copy, Clone)]
+enum HandleKeyResult {
+    /// Event was ignored
+    Ignored,
+
+    /// Consumed the event but text was not changed
+    Consumed,
+
+    /// Consumed the event and text was changed
+    TextChanged,
+
+    /// consumed the event, and the element's active state should be removed
+    /// TODO: rename to something better
+    RemoveActive,
 }
 
 #[test]
@@ -948,34 +979,49 @@ fn test() {
     let len = base_txt.len();
 
     let none = KeyModifiers::default();
-    let ctrl = KeyModifiers { ctrl: true, ..Default::default() };
-    let shift = KeyModifiers { shift: true, ..Default::default() };
-    let ctrl_shift = KeyModifiers { ctrl: true, shift: true, ..Default::default() };
+    let ctrl = KeyModifiers::CTRL;
+    let shift = KeyModifiers::SHIFT;
+    let ctrl_shift = KeyModifiers::CTRL | KeyModifiers::SHIFT;
+
+    fn test_key(k: Key) -> KeyInput {
+        KeyInput {
+            key: Some(k),
+            text: None,
+            repeat: false,
+        }
+    }
+    fn test_key_text(t: &'static str) -> KeyInput {
+        KeyInput {
+            key: None,
+            text: Some(input::smol_str::SmolStr::new(t)),
+            repeat: false,
+        }
+    }
 
     let tests: &[&[TestCase]] = &[
         // test left out of bounds (left arrow)
         &[
             TestCase::new(
                 Cursor::Position(0),
-                (KeyInput::test_key(Key::Left), none),
+                (test_key(Key::Left), none),
                 Cursor::Position(0),
                 None
             ),
             TestCase::new(
                 Cursor::Position(0),
-                (KeyInput::test_key(Key::Left), ctrl),
+                (test_key(Key::Left), ctrl),
                 Cursor::Position(0),
                 None
             ),
             TestCase::new(
                 Cursor::Position(0),
-                (KeyInput::test_key(Key::Left), shift),
+                (test_key(Key::Left), shift),
                 Cursor::Position(0),
                 None
             ),
             TestCase::new(
                 Cursor::Position(0),
-                (KeyInput::test_key(Key::Left), ctrl_shift),
+                (test_key(Key::Left), ctrl_shift),
                 Cursor::Position(0),
                 None
             ),
@@ -985,25 +1031,25 @@ fn test() {
         &[
             TestCase::new(
                 Cursor::Position(0),
-                (KeyInput::test_key(Key::Down), none),
+                (test_key(Key::Down), none),
                 Cursor::Position(0),
                 None
             ),
             TestCase::new(
                 Cursor::Position(0),
-                (KeyInput::test_key(Key::Down), ctrl),
+                (test_key(Key::Down), ctrl),
                 Cursor::Position(0),
                 None
             ),
             TestCase::new(
                 Cursor::Position(0),
-                (KeyInput::test_key(Key::Down), shift),
+                (test_key(Key::Down), shift),
                 Cursor::Position(0),
                 None
             ),
             TestCase::new(
                 Cursor::Position(0),
-                (KeyInput::test_key(Key::Down), ctrl_shift),
+                (test_key(Key::Down), ctrl_shift),
                 Cursor::Position(0),
                 None
             ),
@@ -1013,25 +1059,25 @@ fn test() {
         &[
             TestCase::new(
                 Cursor::Position(len),
-                (KeyInput::test_key(Key::Right), none),
+                (test_key(Key::Right), none),
                 Cursor::Position(len),
                 None
             ),
             TestCase::new(
                 Cursor::Position(len),
-                (KeyInput::test_key(Key::Right), ctrl),
+                (test_key(Key::Right), ctrl),
                 Cursor::Position(len),
                 None
             ),
             TestCase::new(
                 Cursor::Position(len),
-                (KeyInput::test_key(Key::Right), shift),
+                (test_key(Key::Right), shift),
                 Cursor::Position(len),
                 None
             ),
             TestCase::new(
                 Cursor::Position(len),
-                (KeyInput::test_key(Key::Right), ctrl_shift),
+                (test_key(Key::Right), ctrl_shift),
                 Cursor::Position(len),
                 None
             ),
@@ -1041,25 +1087,25 @@ fn test() {
         &[
             TestCase::new(
                 Cursor::Position(len),
-                (KeyInput::test_key(Key::Up), none),
+                (test_key(Key::Up), none),
                 Cursor::Position(len),
                 None
             ),
             TestCase::new(
                 Cursor::Position(len),
-                (KeyInput::test_key(Key::Up), ctrl),
+                (test_key(Key::Up), ctrl),
                 Cursor::Position(len),
                 None
             ),
             TestCase::new(
                 Cursor::Position(len),
-                (KeyInput::test_key(Key::Up), shift),
+                (test_key(Key::Up), shift),
                 Cursor::Position(len),
                 None
             ),
             TestCase::new(
                 Cursor::Position(len),
-                (KeyInput::test_key(Key::Up), ctrl_shift),
+                (test_key(Key::Up), ctrl_shift),
                 Cursor::Position(len),
                 None
             ),
@@ -1070,25 +1116,25 @@ fn test() {
         &[
             TestCase::new(
                 Cursor::Position(5),
-                (KeyInput::test_key(Key::Left), none),
+                (test_key(Key::Left), none),
                 Cursor::Position(4),
                 None
             ),
             TestCase::new(
                 Cursor::Position(3),
-                (KeyInput::test_key(Key::Left), ctrl),
+                (test_key(Key::Left), ctrl),
                 Cursor::Position(0),
                 None
             ),
             TestCase::new(
                 Cursor::Position(5),
-                (KeyInput::test_key(Key::Left), shift),
+                (test_key(Key::Left), shift),
                 Cursor::Selection { start: 4, end: 5, forward_select: false },
                 None
             ),
             TestCase::new(
                 Cursor::Position(5),
-                (KeyInput::test_key(Key::Left), ctrl_shift),
+                (test_key(Key::Left), ctrl_shift),
                 Cursor::Selection { start: 0, end: 5, forward_select: false },
                 None
             ),
@@ -1098,27 +1144,27 @@ fn test() {
         &[
             TestCase::new(
                 Cursor::Position(1),
-                (KeyInput::test_key(Key::Right), none),
+                (test_key(Key::Right), none),
                 Cursor::Position(2),
                 None
             ),
             TestCase::new(
                 Cursor::Position(0),
-                (KeyInput::test_key(Key::Right), ctrl),
+                (test_key(Key::Right), ctrl),
                 Cursor::Position(4),
                 None
             ),
 
             TestCase::new(
                 Cursor::Position(1),
-                (KeyInput::test_key(Key::Right), shift),
+                (test_key(Key::Right), shift),
                 Cursor::Selection { start: 1, end: 2, forward_select: true },
                 None
             ),
 
             TestCase::new(
                 Cursor::Position(1),
-                (KeyInput::test_key(Key::Right), ctrl_shift),
+                (test_key(Key::Right), ctrl_shift),
                 Cursor::Selection { start: 1, end: 4, forward_select: true },
                 None
             ),
@@ -1130,7 +1176,7 @@ fn test() {
             // index
             TestCase::new(
                 Cursor::Position(4),
-                (KeyInput::test_key_text("A"), none),
+                (test_key_text("A"), none),
                 Cursor::Position(5),
                 Some("someA test text")
             ),
@@ -1138,12 +1184,12 @@ fn test() {
             // selection
             TestCase::new(
                 Cursor::Selection { start: 0, end: 5, forward_select: true },
-                (KeyInput::test_key_text("A"), none),
+                (test_key_text("A"), none),
                 Cursor::Position(1),
                 Some("Atest text")
             ),
         ]
-        
+
     ];
 
     for i in tests.iter().copied().flatten() {
@@ -1154,10 +1200,10 @@ fn test() {
 
         println!();
         println!(
-            "{:?} + {} ({:?}) -> {:?}", 
-            i.input_cursor, 
-            i.input_event.0.text.as_ref().map(|k| k.to_string()).unwrap_or(format!("{:?}", i.input_event.0.logical)), 
-            i.input_event.1, 
+            "{:?} + {} ({:?}) -> {:?}",
+            i.input_cursor,
+            i.input_event.0.text.as_ref().map(|k| k.to_string()).unwrap_or(format!("{:?}", i.input_event.0.key)),
+            i.input_event.1,
             i.expected
         );
         assert_eq!(input.cursor, i.expected);

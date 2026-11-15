@@ -2,7 +2,7 @@ use crate::*;
 
 #[derive(Default2)]
 pub struct GeneralUiTheme {
-    #[default(Color::BLACK.alpha(0.8))]
+    #[default(Color::BLACK.with_alpha_f32(0.8))]
     pub background_color: Color,
     
     #[default(Color::WHITE)]
@@ -23,5 +23,11 @@ impl GeneralUiTheme {
         } else {
             self.default_color
         }
+    }
+    pub fn for_state(&self, state: ElementState) -> Color {
+        self.get_color(
+            state.active(),
+            state.hover(),
+        )
     }
 }

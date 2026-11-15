@@ -1,6 +1,5 @@
 use crate::prelude::*;
-use crate::wgpu_engine::WgpuPipeline;
-use crate::buffer_queue::RenderBufferable;
+use crate::buffer_queues::RenderBufferable;
 
 const QUAD_PER_BUF:u64 = 3000;
 

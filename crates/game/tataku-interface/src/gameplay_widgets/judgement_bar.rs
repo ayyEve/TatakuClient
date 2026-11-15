@@ -20,7 +20,7 @@ pub const HIT_TIMING_DURATION:f32 = 1_500.0;
 /// how long to fade out for
 const HIT_TIMING_FADE:f32 = 300.0;
 /// hit timing bar color
-const HIT_TIMING_BAR_COLOR:Color = Color::new(0.0, 0.0, 0.0, 1.0);
+const HIT_TIMING_BAR_COLOR:Color = Color::BLACK;
 
 struct JudgementBarElement {
     hitbar_timings: Vec<HitTiming>,
@@ -82,7 +82,7 @@ impl GameplayWidget for JudgementBarElement {
             shell.list.push(graphics::Rectangle::new(
                 Vector2::new(width, timing_bar_size.y),
                 *color,
-            ).with_transform(shell.transform * tataku::Matrix::identity()
+            ).with_transform(shell.transform * tataku::Matrix::IDENTITY
                 .trans(Vector2::new(
                     (timing_bar_size.x - width) / 2.0,
                     0.0
@@ -111,8 +111,8 @@ impl GameplayWidget for JudgementBarElement {
 
             shell.list.push(graphics::Rectangle::new(
                 Vector2::new(2.0, timing_bar_size.y),
-                HIT_TIMING_BAR_COLOR.alpha(alpha),
-            ).with_transform(shell.transform * tataku::Matrix::identity()
+                HIT_TIMING_BAR_COLOR.with_alpha_f32(alpha),
+            ).with_transform(shell.transform * tataku::Matrix::IDENTITY
                 .trans(Vector2::new(pos, 0.0))
             ));
         }
@@ -129,7 +129,7 @@ pub const JUDGMENT_BAR: GameplayWidgetBuilder = GameplayWidgetBuilder {
             vertical_side: Side::Outside,
         },
         align: Alignment::TOP_CENTER,
-        transform: graphics::Transform::identity(),
+        transform: graphics::Transform::IDENTITY,
     },
     build: JudgementBarElement::build,
 };

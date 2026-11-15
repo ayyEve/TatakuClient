@@ -3,11 +3,11 @@
 <xs:schema 
   targetNamespace="tataku/actions/game"
   xmlns:xs="http://www.w3.org/2001/XMLSchema"
-  xmlns:buildable-value="tataku/buildable-value"
+  xmlns:buildable="tataku/buildable"
   xmlns:text="tataku/text"
 >
 
-<xs:import namespace="tataku/buildable-value" schemaLocation="../buildable_value.xsd"/>
+<xs:import namespace="tataku/buildable" schemaLocation="../buildable.xsd"/>
 <xs:import namespace="tataku/text" schemaLocation="../text.xsd"/>
 
 
@@ -16,14 +16,14 @@
       <xs:element name="quit"/>
       <xs:element name="refreshScores"/>
 
-      <xs:element name="viewScore" type="buildable-value:buildableValue"/>
+      <xs:element name="viewScore" type="buildable:value"/>
 
       <xs:element name="notification">
         <xs:complexType mixed="true">
           <xs:sequence>
-            <xs:element name="color" type="buildable-value:buildableValue" minOccurs="0"/>
-            <xs:element name="duration" type="buildable-value:buildableValue" minOccurs="0"/>
-            <xs:group ref="text:text-wrapped" minOccurs="0" maxOccurs="unbounded"/>
+            <xs:element name="color" type="buildable:value" minOccurs="0"/>
+            <xs:element name="duration" type="buildable:value" minOccurs="0"/>
+            <xs:group ref="buildable:text" minOccurs="0" maxOccurs="unbounded"/>
           </xs:sequence>
           <xs:attribute name="color" type="text:string"/>
           <xs:attribute name="duration"/>
@@ -39,7 +39,7 @@
         </xs:key>
       </xs:element>
 
-      <xs:element name="copyToClipboard" type="text:text"/>
+      <xs:element name="copyToClipboard" type="buildable:text"/>
   </xs:choice>
 </xs:group>
 

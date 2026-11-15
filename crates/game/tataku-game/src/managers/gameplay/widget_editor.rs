@@ -814,7 +814,7 @@ impl WidgetState {
     }
 
     fn draw(&self, shell: &mut DrawShell<actions::Action>) {
-        let transform = tataku::Matrix::identity()
+        let transform = tataku::Matrix::IDENTITY
             .trans(self.bounds.pos);
 
         if self.hover {

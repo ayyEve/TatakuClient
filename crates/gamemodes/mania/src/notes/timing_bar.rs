@@ -7,7 +7,7 @@ use tataku::{
 
 
 // timing bar consts
-pub const BAR_COLOR:Color = Color::new(0.0, 0.0, 0.0, 1.0); // timing bar color
+pub const BAR_COLOR:Color = Color::BLACK; // timing bar color
 const BAR_HEIGHT:f32 = 4.0; // how tall is a timing bar
 
 
@@ -28,7 +28,7 @@ pub struct TimingBar {
 impl TimingBar {
     pub fn new(time: f32, width: f32, playfield: Arc<ManiaPlayfield>) -> Self {
         Self {
-            time, 
+            time,
             size: Vector2::new(width, BAR_HEIGHT),
             speed: 1.0,
             pos: Vector2::with_x(playfield.col_pos(0)),
@@ -51,7 +51,7 @@ impl TimingBar {
         self.playfield.hit_y() - (self.relative_y - ManiaGame::pos_at(&self.position_function, time, &mut self.position_function_index)) * speed
     }
 
-    
+
     pub fn set_position_function(&mut self, p: Arc<Vec<PositionPoint>>) {
         self.position_function = p;
 
@@ -68,7 +68,7 @@ impl TimingBar {
         list.push(graphics::Rectangle::new(
             self.size,
             BAR_COLOR,
-        ).with_transform(tataku::Matrix::identity()
+        ).with_transform(tataku::Matrix::IDENTITY
             .trans(self.pos + Vector2::with_y(self.playfield.note_size().y))
         ));
 
@@ -77,7 +77,7 @@ impl TimingBar {
     pub fn reset(&mut self) {
         self.position_function_index = 0;
     }
-    
+
     pub fn playfield_changed(&mut self, playfield: Arc<ManiaPlayfield>) {
         self.pos.x = playfield.col_pos(0);
         self.playfield = playfield;

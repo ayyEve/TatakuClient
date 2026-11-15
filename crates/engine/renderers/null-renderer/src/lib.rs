@@ -19,7 +19,7 @@ impl RenderingEngine for DummyGraphicsEngine {
         Err(Error::Graphics(GraphicsError::DummyEngine))
     }
 
-    fn free_tex(&mut self, _tex: TextureReference, _defer_until_next_draw: bool) {}
+    fn free_tex(&mut self, _tex: TextureReference) {}
     fn screenshot(&mut self, _callback: ScreenshotCallback) {}
 
     fn begin_render(&mut self) {}

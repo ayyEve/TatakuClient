@@ -9,7 +9,7 @@ use tataku::{
 const BAR_WIDTH:f32 = 4.0;
 
 /// timing bar color
-pub const BAR_COLOR:Color = Color::new(0.0, 0.0, 0.0, 1.0);
+pub const BAR_COLOR:Color = Color::BLACK;
 
 // timing bar struct
 //TODO: might be able to reduce this to a (time, speed) and just calc pos on draw
@@ -17,7 +17,7 @@ pub const BAR_COLOR:Color = Color::new(0.0, 0.0, 0.0, 1.0);
 pub struct UTypingTimingBar {
     pos: Vector2,
     size: Vector2,
-    
+
     time: f32,
     speed: f32,
     playfield: Arc<UTypingPlayfield>,
@@ -27,7 +27,7 @@ impl UTypingTimingBar {
         let size = Vector2::new(BAR_WIDTH, playfield.height);
 
         Self {
-            time, 
+            time,
             speed,
             pos: Vector2::new(0.0, playfield.hit_position.y - size.y/2.0),
             playfield,
@@ -49,7 +49,7 @@ impl UTypingTimingBar {
         list.push(engine::graphics::Rectangle::new(
             self.size,
             BAR_COLOR,
-        ).with_transform(tataku::Matrix::identity()
+        ).with_transform(tataku::Matrix::IDENTITY
             .trans(self.pos)
         ));
     }

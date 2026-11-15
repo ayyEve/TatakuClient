@@ -3,10 +3,10 @@
 <xs:schema 
   targetNamespace="tataku/actions/song"
   xmlns:xs="http://www.w3.org/2001/XMLSchema"
-  xmlns:buildable-value="tataku/buildable-value"
+  xmlns:buildable="tataku/buildable"
 >
 
-<xs:import namespace="tataku/buildable-value" schemaLocation="../buildable_value.xsd"/>
+<xs:import namespace="tataku/buildable" schemaLocation="../buildable.xsd"/>
 
 
 <xs:group name="song-action">
@@ -17,9 +17,9 @@
     <xs:element name="restart"/>
     <xs:element name="pushQueue"/>
     <xs:element name="popQueue"/>
-    <xs:element name="seek" type="buildable-value:buildableValue"/>
-    <xs:element name="position" type="buildable-value:buildableValue"/>
-    <xs:element name="rate" type="buildable-value:buildableValue"/>
+    <xs:element name="seek" type="buildable:value"/>
+    <xs:element name="position" type="buildable:value"/>
+    <xs:element name="rate" type="buildable:value"/>
   </xs:choice>
 </xs:group>
 

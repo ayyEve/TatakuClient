@@ -37,6 +37,18 @@ pub use tracing::*;
 // tataku exports
 pub use crate::exports::*;
 
+
+// shunting yard re-exports
+
+// /// engine::shunting_yards
+// pub mod shunting_yards {
+//     pub use shunting_yard::GenericShuntingYard;
+//     pub use path_shunting_yard::VariablePathResolver; // engine::VariablePathResolver
+//     pub use buildable_shunting_yard::BuildableShuntingYard;
+// }
+pub use buildable_shunting_yard::BuildableCalc;
+pub use path_shunting_yard::VariablePathResolver;
+
 // manual re-exports
 pub use crate::{
     settings::Settings, // engine::Settings
@@ -53,8 +65,6 @@ pub use crate::{
 
     data::{
         database, // engine::database
-        shunting_yards, // engine::shunting_yards
-        shunting_yards::path_resolver::VariablePathResolver, // engine::VariablePathResolver
     },
 
     game::{

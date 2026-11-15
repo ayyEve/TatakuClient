@@ -389,8 +389,8 @@ impl TatakuValue {
                     .duplicate()
                     .map(Self::Reflect)
                     .ok_or(ReflectError::wrong_type(
+                        "TatakuValue",
                         value.type_name(), 
-                        "TatakuValue"
                     )),
             }
         }

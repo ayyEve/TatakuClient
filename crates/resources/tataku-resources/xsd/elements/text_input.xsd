@@ -6,12 +6,12 @@
   xmlns:elements="tataku/elements"
   xmlns:actions="tataku/actions"
   xmlns:text="tataku/text"
-  xmlns:buildable-value="tataku/buildable-value"
+  xmlns:buildable="tataku/buildable"
 >
 
 <xs:import namespace="tataku/text" schemaLocation="../text.xsd"/>
 <xs:import namespace="tataku/elements" schemaLocation="./elements.xsd"/>
-<xs:import namespace="tataku/buildable-value" schemaLocation="./buildable_value.xsd"/>
+<xs:import namespace="tataku/buildable" schemaLocation="./buildable.xsd"/>
 <xs:import namespace="tataku/actions" schemaLocation="../actions/actions.xsd"/>
 
 
@@ -19,7 +19,7 @@
   <xs:complexContent>
     <xs:extension base="elements:generic">
       <xs:all>
-        <xs:element name="placeholder" minOccurs="0" type="buildable-value:buildableValue"/>
+        <xs:element name="placeholder" minOccurs="0" type="buildable:value"/>
 
         <xs:element name="onInput" type="actions:action-list" minOccurs="0"/>
         <xs:element name="onSubmit" minOccurs="0"/>

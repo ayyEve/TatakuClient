@@ -12,6 +12,7 @@ pub struct ButtonElement {
     #[serde(rename = "$value")]
     element: Element,
 }
+#[cfg(feature="graphics")]
 impl ButtonElement {
     pub fn build(&self) -> widgets::Button {
         let mut left = Vec::new();
@@ -36,7 +37,7 @@ impl ButtonElement {
             .on_press_left(left)
             .on_press_middle(middle)
             .on_press_right(right)
-            .active_condition_maybe(self.active_override.clone())
+            .active_cond(self.active_override.clone())
     }
 }
 

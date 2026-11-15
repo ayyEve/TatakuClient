@@ -3,8 +3,10 @@ use tataku_game::prelude::*;
 use tracing::*;
 
 pub fn run_game(
+    settings: engine::Settings,
     window_data: engine::window::WindowData,
     window_counters: engine::window::WindowCounters,
+    texture_manager: Box<dyn engine::window::TextureManager>,
 ) {
 
     // gamemodes
@@ -32,12 +34,16 @@ pub fn run_game(
     #[cfg(feature="sqlite")] {
         database = Box::new(tataku_sqlite::Database::new());
     }
+    #[cfg(feature="redb")] {
+        database = Box::new(tataku_redb::Database::new());
+    }
 
     // start the game
     trace!("creating game");
     let mut game = Game::new(
         window_data,
         window_counters,
+        texture_manager,
         BuiltinMenus {
             menus: tataku_resources::menus::ALL,
             dialogs: tataku_resources::dialogs::ALL,
@@ -49,6 +55,7 @@ pub fn run_game(
         ],
         gamemodes,
         database,
+        settings,
     );
 
 
@@ -57,7 +64,7 @@ pub fn run_game(
         game.load_xml_test(test_path);
     }
 
-    
+
     trace!("running game");
     game.game_loop();
     warn!("game closed");

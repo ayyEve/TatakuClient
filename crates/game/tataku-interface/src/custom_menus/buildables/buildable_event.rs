@@ -149,6 +149,7 @@ impl<'de> Deserialize<'de> for BuildableEvent {
     }
 }
 
+#[cfg(feature="graphics")]
 impl BuildableEvent {
     pub fn resolve(
         event: &TatakuEvent<CustomEvent>,

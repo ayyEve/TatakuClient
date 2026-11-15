@@ -3,16 +3,16 @@
 <xs:schema 
   targetNamespace="tataku/actions/slot"
   xmlns:xs="http://www.w3.org/2001/XMLSchema"
-  xmlns:buildable-value="tataku/buildable-value"
+  xmlns:buildable="tataku/buildable"
   xmlns:slot-actions="tataku/actions/slot"
 >
 
-<xs:import namespace="tataku/buildable-value" schemaLocation="../buildable_value.xsd"/>
+<xs:import namespace="tataku/buildable" schemaLocation="../buildable.xsd"/>
 
 
 <xs:complexType name="slot-action" mixed="true">
   <xs:sequence>
-    <xs:group ref="buildable-value:buildableValue-wrapped" minOccurs="0"/>
+    <xs:group ref="buildable:value" minOccurs="0"/>
     <xs:choice>
       <xs:element name="showProfile"/>
       <xs:element name="move"/>

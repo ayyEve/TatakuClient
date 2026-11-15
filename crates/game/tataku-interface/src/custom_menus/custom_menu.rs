@@ -1,24 +1,25 @@
 use crate::prelude::*;
 use tataku::TatakuValue;
 use ui::{
-    tree::NodeId,
     widget::*,
     message::*,
+    tree::NodeId,
     style::CssStyle,
 };
 
 #[derive(Deserialize)]
 #[derive(Clone, Debug)]
 pub struct CustomMenu {
-    #[serde(rename = "@id")] pub id: ArcStr,
+    #[serde(rename="@id")] pub id: ArcStr,
     #[serde(rename="$value")] pub element: Element,
 
     #[serde(default)] pub style: Option<ArcStr>,
     #[serde(alias="event", default)] pub events: Wrapped<Vec<BuildableEvent>>,
 }
+#[cfg(feature="graphics")]
 impl CustomMenu {
     pub fn build(&self) -> BuiltCustomMenu {
-        let events  = self.events.inner.iter()
+        let events = self.events.inner.iter()
             .map(|buildable| {
                 let event = BuildableEvent::resolve(&buildable.event);
 
@@ -36,9 +37,14 @@ impl CustomMenu {
             })
             .collect();
 
+        let element = self.element.build();
+        // if let Some(style) = &self.style {
+        //     element.append_styles(style);
+        // }
+
         BuiltCustomMenu {
             id: self.id.clone(),
-            element: self.element.build(),
+            element,
             styles: self.style.clone().unwrap_or_default(),
             events,
             node_id: ui::EMPTY_NODE,
@@ -46,6 +52,7 @@ impl CustomMenu {
     }
 }
 
+#[cfg(feature="graphics")]
 pub struct BuiltCustomMenu {
     pub id: ArcStr,
     pub styles: ArcStr,
@@ -54,6 +61,7 @@ pub struct BuiltCustomMenu {
 
     node_id: NodeId,
 }
+#[cfg(feature="graphics")]
 impl Widget<actions::Action> for BuiltCustomMenu {
     fn name(&self) -> CowStr { self.id.to_string().into() }
     fn node_id(&self) -> NodeId { self.node_id }

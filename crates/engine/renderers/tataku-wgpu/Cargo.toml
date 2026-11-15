@@ -9,8 +9,7 @@ rust-version.workspace = true
 workspace = true
 
 [features]
-default = [ "texture_arrays" ]
-texture_arrays = []
+default = []
 vello_layers = []
 
 graphics = [ "tataku-engine/graphics" ]
@@ -23,14 +22,14 @@ tataku-graphics.workspace = true
 
 tokio.workspace = true
 tracing.workspace = true
-winit.workspace = true
 image.workspace = true
-cgmath.workspace = true
+glam.workspace = true
+raw-window-handle.workspace = true
 
 # wgpu
 bytemuck.workspace = true
 wgpu.workspace = true
 lyon_tessellation.workspace = true
 
-vello = { version = "0.5.0", git="https://github.com/linebender/vello.git", optional = true }
+vello = { version = "0.5.0", optional = true }
 parley.workspace = true

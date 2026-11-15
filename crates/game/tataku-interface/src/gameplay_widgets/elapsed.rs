@@ -112,7 +112,7 @@ pub const ELAPSED: GameplayWidgetBuilder = GameplayWidgetBuilder {
             vertical_side: Side::Outside,
         },
         align: Alignment::TOP_LEFT,
-        transform: graphics::Transform::identity(),
+        transform: graphics::Transform::IDENTITY,
     },
     build: ElapsedElement::build,
 };

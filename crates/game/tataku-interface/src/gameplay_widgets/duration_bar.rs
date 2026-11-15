@@ -77,7 +77,7 @@ pub const DURATION_BAR: GameplayWidgetBuilder = GameplayWidgetBuilder {
     default_layout: GameplayWidgetLayout {
         anchor: GameplayWidgetAnchor::Screen,
         align: tataku::Alignment::BOTTOM_LEFT,
-        transform: graphics::Transform::identity(),
+        transform: graphics::Transform::IDENTITY,
     },
     build: DurationBarElement::build,
 };

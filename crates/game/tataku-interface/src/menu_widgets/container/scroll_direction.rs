@@ -12,6 +12,9 @@ pub enum ScrollDirection {
     Both,
 }
 impl ScrollDirection {
+    pub(super) fn is_none(self) -> bool {
+        matches!(self, Self::None)
+    }
     pub(super) fn is_some(self) -> bool {
         matches!(self, Self::Horizontal | Self::Vertical | Self::Both)
     }

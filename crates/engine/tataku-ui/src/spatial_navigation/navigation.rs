@@ -106,24 +106,22 @@ impl<Action: Send + Sync + 'static> SpatialNagivation<'_, Action> {
 
         for rect in rects.iter().copied() {
             let center = &rect.center;
-            let x;
-            let y;
 
-            if center.x < target_rect.left {
-                x = 0;
+            let x = if center.x < target_rect.left {
+                0
             } else if center.x <= target_rect.right {
-                x = 1;
+                1
             } else {
-                x = 2;
-            }
+                2
+            };
 
-            if center.y < target_rect.top {
-                y = 0;
+            let y = if center.y < target_rect.top {
+                0
             } else if center.y <= target_rect.bottom {
-                y = 1;
+                1
             } else {
-                y = 2;
-            }
+                2
+            };
 
             let group_id = y * 3 + x;
             groups[group_id].push(rect);
@@ -414,7 +412,6 @@ impl<Action: Send + Sync + 'static> SpatialNagivation<'_, Action> {
     }
 
     pub fn run(&mut self, config: &NavigateConfig) {
-        return;
         // debug!("starting navigation");
         let all_selectable = self.tree.all_children()
             .filter(|i| self.tree.get_context(*i).unwrap().selectable())

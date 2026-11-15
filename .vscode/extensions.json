@@ -1,0 +1,10 @@
+{
+    "recommendations": [
+        "redhat.vscode-xml",
+        "mihelcic.colored-regions",
+        "fill-labs.dependi",
+        "vadimcn.vscode-lldb",
+        "polymeilex.wgsl",
+        "tamasfe.even-better-toml"
+    ]
+}

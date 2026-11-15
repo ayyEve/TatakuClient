@@ -6,24 +6,23 @@ use ui::{
     widget::*,
     message::*,
 };
-use input::{ 
+use input::{
     InputType,
-    InputEvent, 
-    MouseButton, 
+    InputEvent,
+    MouseButton,
 };
 
 #[derive(ChainableInitializer)]
 pub struct Button<T = Box<dyn Widget<actions::Action>>> {
-    pub on_press_left: Option<ButtonOnClick>,
-    pub on_press_middle: Option<ButtonOnClick>,
-    pub on_press_right: Option<ButtonOnClick>,
+    #[chain] pub on_press_left: Option<ButtonOnClick>,
+    #[chain] pub on_press_middle: Option<ButtonOnClick>,
+    #[chain] pub on_press_right: Option<ButtonOnClick>,
     pub child: T,
-    
-    active_cond: VisuallyActive,
+
+    #[chain] active_cond: VisuallyActive,
 
     /// did a click start on us (and the cursor has not moved)
-    active: Option<MouseButton>,
-    hovered: bool,
+    pressed: Option<MouseButton>,
 
     node_id: NodeId,
 }
@@ -37,8 +36,7 @@ impl<T> Button<T> {
             on_press_right: None,
             active_cond: VisuallyActive::None,
 
-            active: None,
-            hovered: false,
+            pressed: None,
         }
     }
 
@@ -50,32 +48,6 @@ impl<T> Button<T> {
             ClassList::default(),
             self,
         )
-    }
-
-    pub fn active_condition(mut self, mut cond: BuildableCondition) -> Self {
-        cond.build();
-        self.active_cond = VisuallyActive::Condition { cond, value: false };
-        self
-    }
-
-    pub fn active_condition_maybe(self, cond: Option<BuildableCondition>) -> Self {
-        let Some(cond) = cond else { return self };
-        self.active_condition(cond)
-    }
-    
-    pub fn on_press_left(mut self, on_press: Option<impl Into<ButtonOnClick>>) -> Self {
-        self.on_press_left = on_press.map(Into::into);
-        self
-    }
-
-    pub fn on_press_middle(mut self, on_press: Option<impl Into<ButtonOnClick>>) -> Self {
-        self.on_press_middle = on_press.map(Into::into);
-        self
-    }
-
-    pub fn on_press_right(mut self, on_press: Option<impl Into<ButtonOnClick>>) -> Self {
-        self.on_press_right = on_press.map(Into::into);
-        self
     }
 }
 impl<T> Widget<actions::Action> for Button<T>
@@ -96,39 +68,55 @@ where
         let child = self.child.layout(shell)?;
 
         self.node_id = shell.tree.new_with_children(&[ child ])?;
-        
+
         shell.with_context(self.node_id, |ctx| {
             ctx.needs_inverse_transform = true;
             ctx.set_selectable(true);
         });
-        
+
         Ok(self.node_id)
     }
 
     fn input(
-        &mut self, 
-        event: &InputEvent, 
+        &mut self,
+        event: &InputEvent,
         shell: &mut InputShell<actions::Action>,
     ) {
-        let Some(bounds) = shell.tree.bounds(self.node_id) 
+        let Some(bounds) = shell.tree.bounds(self.node_id)
         else { return };
 
-        let context = shell.tree.get_context(self.node_id).unwrap();
- 
+        let Some(ctx) = shell.tree.get_context_mut(self.node_id)
+        else { return };
+        let state = &mut ctx.element_data.state;
+
         match &event.event {
             InputType::MouseMove(pos) => {
-                if self.active.is_some() { self.active = None }
-                let pos = context.inverse_global_transform * *pos;
-                self.hovered = bounds.contains(pos);
+                if self.pressed.is_some() {
+                    self.pressed = None;
+                    state.set_active(false);
+                }
+                let pos = ctx.inverse_global_transform * *pos;
+                state.set_hover(bounds.contains(pos));
             }
-            InputType::MouseScroll {..} if self.active.is_some() => self.active = None,
-            
-            InputType::MousePress(mb) if self.hovered => {
-                self.active = Some(*mb);
-                shell.event_consumed = true;
+            InputType::MouseScroll {..} if self.pressed.is_some() => {
+                state.set_active(false);
+                self.pressed = None;
             }
 
-            InputType::MouseRelease(mb) if self.active == Some(*mb) => {
+            InputType::MousePress(mb) if state.hover() => {
+                self.pressed = Some(*mb);
+                state.set_active(true);
+                shell.event_consumed = true;
+            }
+            InputType::MousePressCancel(mb) => {
+                if self.pressed == Some(*mb) {
+                    self.pressed = None;
+                    state.set_active(false);
+                    shell.event_consumed = true;
+                }
+            }
+
+            InputType::MouseRelease(mb) if self.pressed == Some(*mb) => {
                 let action = match mb {
                     MouseButton::Left => &self.on_press_left,
                     MouseButton::Middle => &self.on_press_middle,
@@ -145,10 +133,10 @@ where
                     shell.values
                 ) {
                     match message {
-                        ActionResponse::Message(message) 
-                            => shell.publish(message),
+                        ActionResponse::Message(message)
+                            => shell.messages.push(message),
 
-                        ActionResponse::Action(action) 
+                        ActionResponse::Action(action)
                             => shell.actions.push(action),
                     }
                     shell.event_consumed = true;
@@ -161,13 +149,24 @@ where
 
         self.child.input(event, shell);
     }
-    
-    fn draw(&self, shell: &mut DrawShell<actions::Action>) {
-        let theme = &shell.general_theme;
-        let Some(bounds) = shell.tree.absolute_bounds(self.node_id) 
+
+    fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
+        self.active_cond.update(shell.values);
+        self.child.update(shell);
+
+        let Some(state) = shell.state_mut(self.node_id)
         else { return };
 
-        let active = self.active.is_some() || self.active_cond.get();
+        state.set_active(self.active_cond.get());
+    }
+
+    fn draw(&self, shell: &mut DrawShell<actions::Action>) {
+        let theme = &shell.general_theme;
+
+        let Some((bounds, state)) = shell.with_ctx(
+            self.node_id,
+            |ctx| (ctx.absolute_bounds, ctx.element_data.state)
+        ) else { return };
 
         // draw button
         shell.list.push(
@@ -175,10 +174,10 @@ where
                 bounds.size,
                 theme.background_color,
             ).border(tataku::Border::new(
-                theme.get_color(active, self.hovered), 
+                theme.for_state(state),
                 2.0
             )).shape(graphics::Shape::Round(2.0))
-            .with_transform(tataku::Matrix::identity()
+            .with_transform(tataku::Matrix::IDENTITY
                 .trans(bounds.pos)
             )
         );
@@ -187,27 +186,10 @@ where
         self.child.draw(shell);
     }
 
-    fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
-        self.active_cond.update(shell.values);
-        self.child.update(shell);
-
-        let Some(ctx) = shell.tree.get_context_mut(self.node_id)
-        else { return };
-
-        let active = ctx.element_data.state.contains(ElementState::Active);
-        let new_active = self.active_cond.get();
-        if new_active != active {
-            if new_active {
-                ctx.element_data.state.insert(ElementState::Active);
-            } else {
-                ctx.element_data.state.remove(ElementState::Active);
-            }
-        }
-    }
 
     fn handle_message(
-        &mut self, 
-        message: &Message, 
+        &mut self,
+        message: &Message,
         shell: &mut MessageShell<actions::Action>,
     ) {
         self.child.handle_message(message, shell);
@@ -225,7 +207,7 @@ pub enum ButtonOnClick {
 }
 impl ButtonOnClick {
     pub fn resolve(
-        &self, 
+        &self,
         node: NodeId,
         source: ui::MessageSource,
         passed_in: Option<&TatakuValue>,
@@ -246,13 +228,13 @@ impl ButtonOnClick {
                 }
             },
 
-            Self::Callback(cb) 
+            Self::Callback(cb)
                 => (cb)().map(ActionResponse::Message),
         }
     }
 
     pub fn build(&mut self) {
-        let Self::BuildableActions(actions) = self 
+        let Self::BuildableActions(actions) = self
         else { return };
 
         for a in actions {
@@ -269,12 +251,13 @@ impl From<BuildableAction> for ButtonOnClick {
 impl From<Vec<BuildableAction>> for ButtonOnClick {
     fn from(mut actions: Vec<BuildableAction>) -> Self {
         for action in actions.iter_mut() {
-            if let BuildableAction::Conditional {
-                cond,
-                ..
-            } = action {
-                cond.build();
-            }
+            action.build();
+            // if let BuildableAction::Conditional {
+            //     cond,
+            //     ..
+            // } = action {
+            //     cond.build();
+            // }
         }
 
         Self::BuildableActions(actions)
@@ -295,7 +278,7 @@ impl From<OnClickCallback> for ButtonOnClick {
     }
 }
 
-// TODO: rename? 
+// TODO: rename?
 enum VisuallyActive {
     None,
     Condition {
@@ -305,14 +288,14 @@ enum VisuallyActive {
 }
 impl VisuallyActive {
     fn update(&mut self, values: &dyn Reflect) {
-        let Self::Condition { 
-            cond, 
-            value 
+        let Self::Condition {
+            cond,
+            value
         } = self else { return };
-        
+
         match cond.resolve(values) {
             BuildableConditionResult::Failed => {},
-            BuildableConditionResult::Unbuilt(_) => unreachable!("should be built"),
+            BuildableConditionResult::Unbuilt(_) => panic!("should be built"),
             BuildableConditionResult::True => *value = true,
             BuildableConditionResult::False => *value = false,
             BuildableConditionResult::Error(shunting_yard_error) => {
@@ -320,11 +303,25 @@ impl VisuallyActive {
                 *cond = BuildableCondition::Failed;
             }
         }
-    } 
+    }
     fn get(&self) -> bool {
         match self {
             Self::None => false,
             Self::Condition { value, .. } => *value,
+        }
+    }
+}
+impl From<Option<BuildableCondition>> for VisuallyActive {
+    fn from(value: Option<BuildableCondition>) -> Self {
+        match value {
+            None => Self::None,
+            Some(mut cond) => {
+                cond.build();
+                Self::Condition {
+                    cond,
+                    value: false
+                }
+            }
         }
     }
 }

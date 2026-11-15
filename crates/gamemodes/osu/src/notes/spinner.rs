@@ -137,7 +137,7 @@ impl Spinner {
             self.display_rotation += self.rotation_velocity * (shell.time - self.last_update);
             if self.display_rotation >= PI * 2.0 || self.display_rotation <= -PI * 2.0 {
                 self.rotations_completed += 1;
-                if self.rotations_completed >= self.rotations_required && (self.rotations_completed - self.rotations_required) % 3 == 0 {
+                if self.rotations_completed >= self.rotations_required && (self.rotations_completed - self.rotations_required).is_multiple_of(3) {
                     self.points_queue.push(OsuHitJudgments::SpinnerPoint);
                 }
             }
@@ -172,7 +172,7 @@ impl Spinner {
                 origin: i.size() / 2.0, // center
                 scale,
                 pos: center,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             shell.list.push(i.with_transform(
@@ -186,7 +186,7 @@ impl Spinner {
                 origin: i.size() / 2.0, // center
                 scale,
                 pos: center,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             shell.list.push(i.with_transform(
@@ -196,7 +196,7 @@ impl Spinner {
             let transform = graphics::Transform {
                 scale: Vector2::ONE * SPINNER_RADIUS,
                 pos: center,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             shell.list.push(graphics::Circle::new(Color::YELLOW)
@@ -219,7 +219,7 @@ impl Spinner {
                 origin: i.size() / 2.0, // center
                 scale,
                 pos: center,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             shell.list.push(i.with_transform(
@@ -229,7 +229,7 @@ impl Spinner {
             let transform = graphics::Transform {
                 scale: Vector2::ONE * SPINNER_RADIUS * (self.rotations_completed as f32 / self.rotations_required as f32).min(1.0),
                 pos: center,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             shell.list.push(graphics::Circle::new(Color::WHITE)
@@ -260,7 +260,7 @@ impl Spinner {
 
             let transform = graphics::Transform {
                 pos: center,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             shell.list.push(graphics::Line::new(

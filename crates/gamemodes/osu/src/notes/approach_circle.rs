@@ -48,7 +48,7 @@ impl ApproachCircle {
         shell: &mut DrawShell
     ) {
         let color = shell.combo_color(color_index)
-            .alpha8(shell.alpha);
+            .with_alpha(shell.alpha);
 
         let lerp_amount = (note_time - shell.time) / shell.fade_in_time;
 
@@ -64,7 +64,7 @@ impl ApproachCircle {
             let transform = graphics::Transform {
                 origin: tex.size() / 2.0,
                 scale: Vector2::ONE * CIRCLE_RADIUS_BASE * scale * APPROACH_CIRCLE_SCALE,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             shell.list.push(tex.with_transform(
@@ -73,7 +73,7 @@ impl ApproachCircle {
         } else {
             let transform = graphics::Transform {
                 scale: Vector2::ONE * CIRCLE_RADIUS_BASE * scale,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             shell.list.push(graphics::Circle::new(

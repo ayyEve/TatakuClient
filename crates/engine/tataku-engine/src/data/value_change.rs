@@ -3,18 +3,19 @@ use common::reflect::*;
 
 // TODO: rename this
 #[derive(Clone, Debug)]
-pub struct ValueChange<T: Reflect + Clone + PartialEq> {
+pub struct ValueChange<T> {
     key: String,
     value: Option<T>,
 }
-impl<T: Reflect + Clone + PartialEq> ValueChange<T> {
+impl<T> ValueChange<T> {
     pub fn new(key: impl Into<String>) -> Self {
         Self {
             key: key.into(),
             value: None,
         }
     }
-
+}
+impl<T: Reflect + Clone + PartialEq> ValueChange<T> {
     pub fn update(&mut self, values: &dyn Reflect) -> Result<Option<&T>, ReflectError<'_>> {
         let value = values.reflect_get::<T>(&self.key)?;
         let value = &*value;
@@ -29,7 +30,7 @@ impl<T: Reflect + Clone + PartialEq> ValueChange<T> {
     }
 }
 
-impl<T: Reflect + Clone + PartialEq> Deref for ValueChange<T> {
+impl<T> Deref for ValueChange<T> {
     type Target = Option<T>;
     fn deref(&self) -> &Self::Target {
         &self.value

@@ -42,6 +42,7 @@ pub enum BuildableSongAction {
         value: BuildableValue
     },
 }
+#[cfg(feature="graphics")]
 impl BuildableSongAction {
     pub fn resolve(
         &self, 
@@ -99,6 +100,8 @@ pub struct BuildableSongPlayData {
     #[serde(alias="@volume", default)] pub rate: BuildableValue,
     #[serde(alias="@rate", default)] pub volume: BuildableValue,
 }
+
+#[cfg(feature="graphics")]
 impl BuildableSongPlayData {
     pub(crate) fn build(&mut self) {
         self.play.build();

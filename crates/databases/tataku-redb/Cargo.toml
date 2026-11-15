@@ -12,5 +12,5 @@ workspace = true
 tataku-engine.workspace = true
 
 serde.workspace = true
-redb = "3.1.0"
-serde-binary = "0.5.0"
+redb = "4.6"
+serde-binary = "0.5"

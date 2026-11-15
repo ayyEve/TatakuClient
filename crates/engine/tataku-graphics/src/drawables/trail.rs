@@ -39,8 +39,8 @@ impl Trail {
     ) -> impl TatakuRenderable + 'static {
         let progress = self.progress(time);
 
-        let color = fill_color.alpha(Interpolation::lerp(
-            fill_color.a(),
+        let color = fill_color.with_alpha_f32(Interpolation::lerp(
+            fill_color.a.to_f32(),
             0.0,
             progress
         ));
@@ -50,7 +50,7 @@ impl Trail {
             .with_transform(Transform {
                 pos: self.position,
                 scale: Vector2::ONE * Interpolation::lerp(start_radius, end_radius, progress),
-                ..Transform::identity()
+                ..Transform::IDENTITY
             }.matrix())
     }
 }

@@ -9,7 +9,7 @@ pub struct Line {
 impl Line {
     pub fn new(
         vector: Vector2,
-        thickness: f32, 
+        thickness: f32,
         color: Color,
     ) -> Self {
         Self {
@@ -25,9 +25,9 @@ impl TatakuRenderable for Line {
     fn get_name(&self) -> String { "Line".to_owned() }
 
     fn draw(
-        &self, 
-        options: &DrawOptions, 
-        transform: Matrix, 
+        &self,
+        options: &DrawOptions,
+        transform: Matrix,
         g: &mut dyn DrawEngine
     ) {
         let color = options.color_with_alpha(self.color);
@@ -36,9 +36,9 @@ impl TatakuRenderable for Line {
 
         g.draw_line(
             self.vector,
-            self.thickness, 
-            color, 
-            transform, 
+            self.thickness,
+            color,
+            transform,
             blend_mode
         );
     }

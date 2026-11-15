@@ -1,0 +1,13 @@
+[package]
+name = "path-shunting-yard"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+tataku-engine-common.workspace = true
+shunting-yard.workspace = true

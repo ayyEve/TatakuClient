@@ -7,15 +7,14 @@
 */
 use crate::prelude::*;
 
-use common::{
-    replays::*,
-};
+use common::replays::*;
 
 use tataku::{
     Color,
     Bounds,
     Vector2,
     Alignment,
+    ColorField,
 };
 use engine::{
     input,
@@ -79,10 +78,8 @@ pub struct TaikoGame {
     metadata: Arc<BeatmapMeta>,
     settings: Settings,
     #[cfg(feature="graphics")] timing_bars: Vec<TimingBar>,
-    #[cfg(feature="graphics")] left_kat_image: Option<graphics::Image>,
-    #[cfg(feature="graphics")] left_don_image: Option<graphics::Image>,
-    #[cfg(feature="graphics")] right_don_image: Option<graphics::Image>,
-    #[cfg(feature="graphics")] right_kat_image: Option<graphics::Image>,
+    #[cfg(feature="graphics")] kat_image: Option<graphics::Image>,
+    #[cfg(feature="graphics")] don_image: Option<graphics::Image>,
     #[cfg(feature="graphics")] playfield: Playfield,
 
     #[cfg(feature="graphics")]
@@ -192,7 +189,7 @@ impl TaikoGame {
                 origin: image.size() / 2.0, // center,
                 pos,
                 scale: Vector2::ONE * (max_radius * 2.0) / JUDGEMENT_TEX_SIZE,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             state.add_indicator(ImageJudgementIndicator::new(
@@ -206,7 +203,7 @@ impl TaikoGame {
             let transform = graphics::Transform {
                 pos,
                 scale: Vector2::ONE * radius,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             state.add_indicator(BasicJudgementIndicator::new(
@@ -287,7 +284,7 @@ impl Gamemode for TaikoGame {
     fn new(
         beatmap: &Beatmap,
         _diff_calc_only: bool,
-        settings: &engine::Settings
+        settings: &engine::Settings,
     ) -> tataku::Result<Self> {
         let metadata = beatmap.get_beatmap_meta();
 
@@ -301,10 +298,7 @@ impl Gamemode for TaikoGame {
             Bounds::new(Vector2::ZERO, Vector2::new(1920.0, 1080.0))
         );
 
-        let timing_points = TimingPointProgress::new(
-            beatmap.get_timing_points(),
-            beatmap.slider_velocity()
-        );
+        let timing_points = TimingPointProgress::new_from_beatmap(beatmap);
 
         let mut s = Self {
             settings,
@@ -476,7 +470,8 @@ impl Gamemode for TaikoGame {
         frame: ReplayFrame,
         shell: &mut GameplayUpdateShell,
     ) {
-        let ReplayAction::Press(key) = frame.action else { return };
+        let ReplayAction::Press(key) = frame.action
+        else { return };
 
         // turn the keypress into a hit type
         let taiko_hit_type = match key {
@@ -653,7 +648,9 @@ impl Gamemode for TaikoGame {
         );
     }
 
-    fn handle_gameplay_event(&mut self, event: GameplayEvent) {
+    fn handle_gameplay_event(&mut self, shell: &mut GameplayCustomShell<'_, GameplayEvent>) {
+        let event = shell.custom.clone();
+
         match event {
             GameplayEvent::ApplyMods(mods) => {
                 let old_sv_mult = self.settings.sv_multiplier;
@@ -891,7 +888,7 @@ impl Gamemode for TaikoGame {
             pos: self.playfield.hit_position,
             scale: Vector2::ONE * self.settings.note_radius
                 * self.settings.hit_area_radius_mult,
-            ..graphics::Transform::identity()
+            ..graphics::Transform::IDENTITY
         }.matrix()));
 
         let mut draw_shell = DrawShell {
@@ -923,9 +920,11 @@ impl Gamemode for TaikoGame {
         // draw hit indicators
         let lifetime_time = DRUM_LIFETIME_TIME * shell.mods.get_speed();
         for (hit_type, hit_time) in self.hit_cache.iter() {
+
+
             if shell.time - hit_time > lifetime_time { continue }
             let alpha = 1.0 - (shell.time - hit_time) / (lifetime_time * 4.0);
-            let alpha = (alpha.clamp(0.0, 1.0) * 255.0) as u8;
+            let alpha = ColorField::new_f32(alpha);
 
             let radius = self.settings.note_radius
                 * self.settings.hit_area_radius_mult;
@@ -933,63 +932,83 @@ impl Gamemode for TaikoGame {
                 * (radius * 2.0)
                 / HIT_INDICATOR_TEX_SIZE.x;
 
-            let image_transform = graphics::Transform {
+            let mut image_transform = graphics::Transform {
                 pos: self.playfield.hit_position,
                 scale,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             let basic_transform = graphics::Transform {
                 pos: self.playfield.hit_position,
                 scale: Vector2::ONE * radius,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             match hit_type {
                 Hit::LeftKat => {
-                    if let Some(kat) = &self.left_kat_image {
+                    if let Some(kat) = &self.kat_image {
                         let mut img = kat.clone();
-                        img.color.a = alpha;
+
+                        img.flip = graphics::ImageFlip::Horizontal;
+                        img.color = self.settings.kat_color.with_alpha(alpha);
+
+                        image_transform.origin.x = img.size().x;
+                        image_transform.origin.y = img.size().y / 2.0;
+
                         list.push(img.with_transform(image_transform.matrix()));
                     } else {
                         list.push(graphics::HalfCircle::new(
-                            self.settings.kat_color.alpha8(alpha),
+                            self.settings.kat_color.with_alpha(alpha),
                             true
                         ).with_transform(basic_transform.matrix()));
                     }
                 }
                 Hit::LeftDon => {
-                    if let Some(don) = &self.left_don_image {
+                    if let Some(don) = &self.don_image {
                         let mut img = don.clone();
-                        img.color.a = alpha;
+
+                        img.color = self.settings.don_color.with_alpha(alpha);
+
+                        image_transform.origin.x = img.size().x;
+                        image_transform.origin.y = img.size().y / 2.0;
+
                         list.push(img.with_transform(image_transform.matrix()));
                     } else {
                         list.push(graphics::HalfCircle::new(
-                            self.settings.don_color.alpha8(alpha),
+                            self.settings.don_color.with_alpha(alpha),
                             true
                         ).with_transform(basic_transform.matrix()));
                     }
                 }
                 Hit::RightDon => {
-                    if let Some(don) = &self.right_don_image {
+                    if let Some(don) = &self.don_image {
                         let mut img = don.clone();
-                        img.color.a = alpha;
+
+                        img.color = self.settings.don_color.with_alpha(alpha);
+                        img.flip = graphics::ImageFlip::Horizontal;
+
+                        image_transform.origin.y = img.size().y / 2.0;
+
                         list.push(img.with_transform(image_transform.matrix()));
                     } else {
                         list.push(graphics::HalfCircle::new(
-                            self.settings.don_color.alpha8(alpha),
+                            self.settings.don_color.with_alpha(alpha),
                             false
                         ).with_transform(basic_transform.matrix()));
                     }
                 }
                 Hit::RightKat => {
-                    if let Some(kat) = &self.right_kat_image {
+                    if let Some(kat) = &self.kat_image {
                         let mut img = kat.clone();
-                        img.color.a = alpha;
+
+                        img.color = self.settings.kat_color.with_alpha(alpha);
+
+                        image_transform.origin.y = img.size().y / 2.0;
+
                         list.push(img.with_transform(image_transform.matrix()));
                     } else {
                         list.push(graphics::HalfCircle::new(
-                            self.settings.kat_color.alpha8(alpha),
+                            self.settings.kat_color.with_alpha(alpha),
                             false
                         ).with_transform(basic_transform.matrix()));
                     }
@@ -1015,13 +1034,7 @@ impl Gamemode for TaikoGame {
         }
     }
 
-    fn reset(&mut self, beatmap: &Beatmap) {
-        #[cfg(feature="graphics")]
-        let timing_points = TimingPointProgress::new(
-            beatmap.get_timing_points(),
-            beatmap.slider_velocity()
-        );
-
+    fn reset(&mut self, shell: &GameplayCustomShell<'_, &Beatmap>) {
         for queue in [&mut self.notes, &mut self.other_notes] {
             queue.index = 0;
 
@@ -1033,7 +1046,7 @@ impl Gamemode for TaikoGame {
                 if self.current_mods.has_mod(NoSV) {
                     note.set_speed(self.settings.sv_multiplier);
                 } else {
-                    let sv = timing_points
+                    let sv = shell.timing_points
                         .slider_velocity_at(note.time())
                         / 1000.0;
 
@@ -1049,7 +1062,7 @@ impl Gamemode for TaikoGame {
         #[cfg(feature="graphics")] {
             if self.timing_bars.is_empty() {
                 // load timing bars
-                let parent_tps = timing_points
+                let parent_tps = shell.timing_points
                     .iter()
                     .filter(|t| !t.is_inherited())
                     .collect::<Vec<&TimingPoint>>();
@@ -1057,17 +1070,17 @@ impl Gamemode for TaikoGame {
                 let mut sv = self.settings.sv_multiplier;
                 let mut time = parent_tps[0].time;
                 let mut tp_index = 0;
-                let step = timing_points.beat_length_at(time, false);
+                let step = shell.timing_points.beat_length_at(time, false);
                 time %= step; // get the earliest bar line possible
 
                 loop {
                     if !self.current_mods.has_mod(NoSV) {
-                        sv = (timing_points.slider_velocity_at(time) / 1000.0)
+                        sv = (shell.timing_points.slider_velocity_at(time) / 1000.0)
                             * self.settings.sv_multiplier;
                     }
 
                     // if theres a bpm change, adjust the current time to that of the bpm change
-                    let next_bar_time = timing_points
+                    let next_bar_time = shell.timing_points
                         .beat_length_at(time, false)
                         * BAR_SPACING; // bar spacing is actually the timing point measure
 
@@ -1178,24 +1191,18 @@ impl Gamemode for TaikoGame {
         };
         let source = TextureSource::Beatmap(beatmap_path.to_owned()); // TODO: yeah
 
-        if let Some(don) = skin_manager.get_texture(
+        self.don_image = skin_manager.get_texture(
             Path::new("taiko-drum-inner"),
             &source,
             SkinUsage::Gamemode,
             true
-        ) {
-            self.left_don_image = Some(don.clone());
-            self.right_don_image = Some(don);
-        }
-        if let Some(kat) = skin_manager.get_texture(
+        );
+        self.kat_image = skin_manager.get_texture(
             Path::new("taiko-drum-outer"),
             &source,
             SkinUsage::Gamemode,
             true
-        ) {
-            self.right_kat_image = Some(kat.clone());
-            self.left_kat_image = Some(kat);
-        }
+        );
 
         self.judgement_images = JudgmentImages::new(
             HitJudgments::variants().to_vec()
@@ -1256,7 +1263,7 @@ impl Gamemode for TaikoGame {
                     vertical_side: Side::Inside,
                 },
                 align: Alignment::CENTER_LEFT,
-                transform: graphics::Transform::identity(),
+                transform: graphics::Transform::IDENTITY,
             },
         );
 
@@ -1269,7 +1276,7 @@ impl Gamemode for TaikoGame {
                     vertical_side: Side::Outside,
                 },
                 align: Alignment::BOTTOM_LEFT,
-                transform: graphics::Transform::identity(),
+                transform: graphics::Transform::IDENTITY,
             },
         );
 
@@ -1353,59 +1360,56 @@ impl Gamemode for TaikoGame {
             MouseButton,
         };
 
+        fn map_key(
+            key: input::Key,
+            settings: &Settings,
+        ) -> Option<KeyPress> {
+            if key == settings.left_kat {
+                Some(KeyPress::LeftKat)
+            } else if key == settings.left_don {
+                Some(KeyPress::LeftDon)
+            } else if key == settings.right_don {
+                Some(KeyPress::RightDon)
+            } else if key == settings.right_kat {
+                Some(KeyPress::RightKat)
+            } else {
+                None
+            }
+        }
+
+        fn map_mouse(
+            btn: input::MouseButton,
+            settings: &Settings,
+        ) -> Option<KeyPress> {
+            if settings.ignore_mouse_buttons { return None }
+
+            match btn {
+                MouseButton::Left => Some(KeyPress::LeftDon),
+                MouseButton::Right => Some(KeyPress::LeftKat),
+                _ => None
+            }
+        }
 
         match input.event {
-            InputType::KeyPress(key) => {
-                let key = key.as_key()?;
+            InputType::KeyPress(input) => map_key(
+                input.key?,
+                &self.settings,
+            ).map(ReplayAction::Press),
 
-                if key == self.settings.left_kat {
-                    Some(ReplayAction::Press(KeyPress::LeftKat))
-                } else if key == self.settings.left_don {
-                    Some(ReplayAction::Press(KeyPress::LeftDon))
-                } else if key == self.settings.right_don {
-                    Some(ReplayAction::Press(KeyPress::RightDon))
-                } else if key == self.settings.right_kat {
-                    Some(ReplayAction::Press(KeyPress::RightKat))
-                } else {
-                    None
-                }
-            }
+            InputType::KeyRelease(input) => map_key(
+                input.key?,
+                &self.settings,
+            ).map(ReplayAction::Release),
 
-            InputType::KeyRelease(key) => {
-                let key = key.as_key()?;
+            InputType::MousePress(btn) => map_mouse(
+                btn,
+                &self.settings,
+            ).map(ReplayAction::Press),
 
-                if key == self.settings.left_kat {
-                    Some(ReplayAction::Release(KeyPress::LeftKat))
-                } else if key == self.settings.left_don {
-                    Some(ReplayAction::Release(KeyPress::LeftDon))
-                } else if key == self.settings.right_don {
-                    Some(ReplayAction::Release(KeyPress::RightDon))
-                } else if key == self.settings.right_kat {
-                    Some(ReplayAction::Release(KeyPress::RightKat))
-                } else {
-                    None
-                }
-            }
-
-            InputType::MousePress(btn) => {
-                if self.settings.ignore_mouse_buttons { return None }
-
-                match btn {
-                    MouseButton::Left => Some(ReplayAction::Press(KeyPress::LeftDon)),
-                    MouseButton::Right => Some(ReplayAction::Press(KeyPress::LeftKat)),
-                    _ => None
-                }
-            }
-
-            InputType::MouseRelease(btn) => {
-                if self.settings.ignore_mouse_buttons { return None }
-
-                match btn {
-                    MouseButton::Left => Some(ReplayAction::Release(KeyPress::LeftDon)),
-                    MouseButton::Right => Some(ReplayAction::Release(KeyPress::LeftKat)),
-                    _ => None
-                }
-            }
+            InputType::MouseRelease(btn) => map_mouse(
+                btn,
+                &self.settings
+            ).map(ReplayAction::Release),
 
             InputType::ControllerPress(
                 btn,

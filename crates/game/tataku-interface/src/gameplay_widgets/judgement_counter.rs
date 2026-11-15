@@ -146,7 +146,7 @@ impl GameplayWidget for JudgementCounterElement {
             if let Some(mut btn) = self.button_image.clone() {
                 let transform = graphics::Transform {
                     pos,
-                    ..graphics::Transform::identity()
+                    ..graphics::Transform::IDENTITY
                 };
 
                 // todo: setting?
@@ -163,7 +163,7 @@ impl GameplayWidget for JudgementCounterElement {
                     Color::BLACK,
                     2.0
                 ))
-                .with_transform(shell.transform * tataku::Matrix::identity()
+                .with_transform(shell.transform * tataku::Matrix::IDENTITY
                     .trans(pos)
                 ));
             }
@@ -180,7 +180,7 @@ impl GameplayWidget for JudgementCounterElement {
 
             // draw text/count
             shell.list.push(graphics::Text::new(cache.layout.clone())
-                .with_transform(shell.transform * tataku::Matrix::identity()
+                .with_transform(shell.transform * tataku::Matrix::IDENTITY
                     .trans(centered)
             ));
         }
@@ -208,7 +208,7 @@ pub const JUDGMENT_COUNTER: GameplayWidgetBuilder = GameplayWidgetBuilder {
             vertical_side: Side::Outside,
         },
         align: Alignment::BOTTOM_RIGHT,
-        transform: graphics::Transform::identity(),
+        transform: graphics::Transform::IDENTITY,
     },
     build: JudgementCounterElement::build,
 };

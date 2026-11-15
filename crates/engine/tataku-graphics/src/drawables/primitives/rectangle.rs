@@ -12,8 +12,8 @@ pub struct Rectangle {
 }
 impl Rectangle {
     pub fn new(
-        size: Vector2, 
-        color: Color, 
+        size: Vector2,
+        color: Color,
     ) -> Self {
         Self {
             size,
@@ -40,26 +40,26 @@ impl TatakuRenderable for Rectangle {
     fn get_name(&self) -> String { "Rectangle".to_owned() }
 
     fn draw(
-        &self, 
-        options: &DrawOptions, 
-        transform: Matrix, 
+        &self,
+        options: &DrawOptions,
+        transform: Matrix,
         g: &mut dyn DrawEngine
     ) {
         let color = options.color_with_alpha(self.color);
-        
-        let border = self.border.map(|mut b| { 
-            b.color = options.border_color_with_alpha(b.color); 
-            b 
+
+        let border = self.border.map(|mut b| {
+            b.color = options.border_color_with_alpha(b.color);
+            b
         });
 
         let Some(blend_mode) = options.blend_mode() else { return; };
 
         g.draw_rect(
             self.size,
-            border, 
-            self.shape, 
-            color, 
-            transform, 
+            border,
+            self.shape,
+            color,
+            transform,
             blend_mode
         );
     }

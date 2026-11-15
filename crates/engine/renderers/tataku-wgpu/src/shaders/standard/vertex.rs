@@ -32,7 +32,7 @@ impl Vertex {
                 // tex index
                 wgpu::VertexAttribute {
                     offset: (
-                        size_of::<[f32;2]>() 
+                        size_of::<[f32;2]>()
                         + size_of::<[f32;2]>()
                     ) as wgpu::BufferAddress,
                     shader_location: 2,
@@ -41,8 +41,8 @@ impl Vertex {
                 // color
                 wgpu::VertexAttribute {
                     offset: (
-                        size_of::<[f32;2]>() 
-                        + size_of::<[f32;2]>() 
+                        size_of::<[f32;2]>()
+                        + size_of::<[f32;2]>()
                         + size_of::<i32>()
                     ) as wgpu::BufferAddress,
                     shader_location: 3,
@@ -50,5 +50,19 @@ impl Vertex {
                 },
             ]
         }
+    }
+
+    pub fn apply_matrix(mut self, matrix: &tataku::Matrix) -> Self {
+        // matrix
+        let pos = glam::f32::Vec4::new(
+            self.position[0],
+            self.position[1],
+            0.0,
+            1.0
+        );
+        let new_pos = matrix * pos;
+        self.position = [new_pos.x, new_pos.y];
+
+        self
     }
 }

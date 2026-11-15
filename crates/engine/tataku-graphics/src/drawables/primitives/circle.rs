@@ -11,7 +11,7 @@ pub struct Circle {
 }
 impl Circle {
     pub fn new(
-        color: Color, 
+        color: Color,
     ) -> Self {
         Self {
             color,
@@ -33,9 +33,9 @@ impl TatakuRenderable for Circle {
     fn get_name(&self) -> String { "Circle".to_owned() }
 
     fn draw(
-        &self, 
-        options: &DrawOptions, 
-        transform: Matrix, 
+        &self,
+        options: &DrawOptions,
+        transform: Matrix,
         g: &mut dyn DrawEngine,
     ) {
         let color = options.color_with_alpha(self.color);
@@ -44,10 +44,10 @@ impl TatakuRenderable for Circle {
         let Some(blend_mode) = options.blend_mode() else { return; };
 
         g.draw_circle(
-            color, 
-            border, 
-            self.resolution, 
-            transform, 
+            color,
+            border,
+            self.resolution,
+            transform,
             blend_mode
         );
     }

@@ -12,7 +12,7 @@ pub struct FpsDisplay {
     // number_image: Option<SkinnedNumber>,
 
     count: CountProvider,
-    last: f32, 
+    last: f32,
     timer: tataku::Instant,
 
     frametime: CountProvider,
@@ -69,11 +69,11 @@ impl FpsDisplay {
     }
 
     pub fn increment(&mut self) {
-        let CountProvider::U32(count) = &mut self.count 
+        let CountProvider::U32(count) = &mut self.count
         else { return };
         *count += 1;
 
-        let CountProvider::F32(frametime) = &mut self.frametime 
+        let CountProvider::F32(frametime) = &mut self.frametime
         else { return };
 
         *frametime = self.frametime_timer.as_millis().max(*frametime);
@@ -101,8 +101,8 @@ impl FpsDisplay {
                 self.frametime_last = frametime;
             }
             self.last = self.count.get_and_reset() / elapsed * 1000.0;
-            
-            
+
+
             // if let Some(n) = &mut self.number_image {
             //     n.number = self.frametime_last_draw as f64;
             // }
@@ -116,8 +116,8 @@ impl FpsDisplay {
     ) {
         list.push(graphics::Rectangle::new(
             SIZE,
-            Color::WHITE.alpha(0.8),
-        ).with_transform(tataku::Matrix::identity()
+            Color::WHITE.with_alpha_f32(0.8),
+        ).with_transform(tataku::Matrix::IDENTITY
             .trans(self.pos)
         ));
 
@@ -135,10 +135,10 @@ impl FpsDisplay {
         layout.break_all_lines(Some(SIZE.x));
 
         list.push(graphics::Text::new(layout.clone())
-            .with_transform(tataku::Matrix::identity()
+            .with_transform(tataku::Matrix::IDENTITY
                 .trans(self.pos + TEXT_PADDING))
         );
-        
+
     }
 }
 

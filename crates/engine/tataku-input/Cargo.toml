@@ -9,9 +9,12 @@ rust-version.workspace = true
 workspace = true
 
 [features]
-default = [ "gameplay", "graphics" ]
+default = [ 
+    "gameplay", 
+    # "graphics" 
+]
 gameplay = []
-graphics = [ "winit" ]
+# graphics = []
 
 [dependencies]
 tataku-common.workspace = true
@@ -20,5 +23,4 @@ tataku-engine-common.workspace = true
 tracing.workspace = true
 gilrs.workspace = true
 serde.workspace = true
-
-winit = { workspace = true, optional = true }
+smol_str.workspace = true

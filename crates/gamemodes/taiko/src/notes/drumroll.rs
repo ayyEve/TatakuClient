@@ -83,10 +83,10 @@ impl Drumroll {
             ) / image.size();
 
             let transform = graphics::Transform {
-                origin: Vector2::with_y(image.size().y), // left-center
+                origin: Vector2::with_y(image.size().y / 2.0), // left-center
                 scale,
                 pos,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             shell.list.push(image.with_transform(transform.matrix()));
@@ -95,7 +95,7 @@ impl Drumroll {
                 Vector2::new(end_x - x, radius * 2.0),
                 color,
             ).border(border)
-            .with_transform(tataku::Matrix::identity()
+            .with_transform(tataku::Matrix::IDENTITY
                 .trans(pos - Vector2::with_y(radius))
             ));
         }
@@ -107,14 +107,14 @@ impl Drumroll {
                 origin: image.size() / 2.0, // center
                 scale: Vector2::new(-1.0, 1.0),
                 pos,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             }.matrix()));
 
             // end
             shell.list.push(image.clone().with_transform(graphics::Transform {
                 origin: image.size() / 2.0, // center
                 pos: end_pos,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             }.matrix()));
 
         } else {
@@ -124,7 +124,7 @@ impl Drumroll {
                 .with_transform(graphics::Transform {
                     pos,
                     scale: Vector2::ONE * radius,
-                    ..graphics::Transform::identity()
+                    ..graphics::Transform::IDENTITY
                 }.matrix())
             );
 
@@ -134,7 +134,7 @@ impl Drumroll {
                 .with_transform(graphics::Transform {
                     pos: end_pos,
                     scale: Vector2::ONE * radius,
-                    ..graphics::Transform::identity()
+                    ..graphics::Transform::IDENTITY
                 }.matrix())
             );
         }
@@ -157,7 +157,7 @@ impl Drumroll {
                 )).with_transform(graphics::Transform {
                     pos: dot_pos,
                     scale: Vector2::ONE * SLIDER_DOT_RADIUS,
-                    ..graphics::Transform::identity()
+                    ..graphics::Transform::IDENTITY
                 }.matrix())
             );
 
@@ -166,7 +166,7 @@ impl Drumroll {
                 .with_transform(graphics::Transform {
                     pos: hole_pos,
                     scale: Vector2::ONE * SLIDER_DOT_RADIUS,
-                    ..graphics::Transform::identity()
+                    ..graphics::Transform::IDENTITY
                 }.matrix())
             );
         }

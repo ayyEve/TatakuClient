@@ -1,0 +1,88 @@
+use crate::prelude::*;
+
+#[derive(tataku::Default2)]
+pub(crate) struct RenderBufferQueue<B:RenderBufferable> {
+    pub cpu_cache: B::Cache,
+    #[default(Vec::with_capacity(3))]
+    queued_buffers: Vec<Box<B>>,
+    recording_buffer: Option<Box<B>>,
+}
+impl<B:RenderBufferable> RenderBufferQueue<B> {
+    pub fn init<'a>(
+        mut self,
+        device: &wgpu::Device,
+        pipeline: impl Into<WgpuPipeline<'a>>
+    ) -> Self {
+        self.create_render_buffer(device, pipeline.into());
+        self
+    }
+
+    /// Get the first used buffer
+    #[allow(clippy::borrowed_box)]
+    pub fn first_used(&self) -> Option<&Box<B>> {
+        self.recording_buffer
+            .iter()
+            .chain(self.queued_buffers.iter())
+            .find(|b| b.should_write())
+    }
+
+    /// set up the buffers to be writable
+    pub fn reset(&mut self, mut recorded: Vec<Box<B>>) {
+        for b in recorded.iter_mut() {
+            b.reset();
+        }
+        self.queued_buffers.extend(recorded);
+
+        // the recording buffer can be <Some> if it was not used in the previous draw call
+        if self.recording_buffer.is_none() {
+            self.recording_buffer = self.queued_buffers.pop();
+        }
+    }
+
+    /// finish writing all data to the buffers
+    pub fn finish(&mut self, queue: &wgpu::Queue) -> Option<Box<B>> {
+        self.dump(queue)
+    }
+
+    /// write the data in the cpu cache to the gpu
+    pub fn dump(&mut self, queue: &wgpu::Queue) -> Option<Box<B>> {
+        let mut recording_buffer = self.recording_buffer.take()?;
+        if recording_buffer.should_write() {
+            recording_buffer.dump(queue, &mut self.cpu_cache);
+            Some(recording_buffer)
+        } else {
+            self.queued_buffers.push(recording_buffer);
+            None
+        }
+    }
+
+    /// get the current recording buffer
+    pub fn recording_buffer(&mut self) -> Option<&mut Box<B>> {
+        self.recording_buffer.as_mut()
+    }
+
+    /// create a render buffer on the gpu
+    pub fn create_render_buffer(
+        &mut self,
+        device: &wgpu::Device,
+        pipeline: WgpuPipeline
+    ) {
+        self.queued_buffers.push(Box::new(B::create_new_buffer(device, pipeline)));
+    }
+
+    /// dump the cached data to the gpu, and set up the next recording buffer, creating a new buffer on the gpu if no existing buffers are available
+    pub fn dump_and_next(
+        &mut self,
+        queue: &wgpu::Queue,
+        device: &wgpu::Device,
+        pipeline: WgpuPipeline
+    ) -> Option<Box<B>> {
+        let dumped: Option<Box<B>> = self.dump(queue);
+        if self.queued_buffers.is_empty() {
+            self.create_render_buffer(device, pipeline);
+        }
+
+        self.recording_buffer = self.queued_buffers.pop();
+        dumped
+    }
+}

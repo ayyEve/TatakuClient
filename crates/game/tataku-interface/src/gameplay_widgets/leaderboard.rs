@@ -137,7 +137,7 @@ impl GameplayWidget for LeaderboardElement {
                 let transform = Transform {
                     pos,
                     scale: LEADERBOARD_ITEM_SIZE / img.size(),
-                    ..Transform::identity()
+                    ..Transform::IDENTITY
                 };
 
                 shell.list.push(img.with_transform(shell.transform * transform.matrix()));
@@ -145,11 +145,11 @@ impl GameplayWidget for LeaderboardElement {
                 // bounding rect
                 shell.list.push(Rectangle::new(
                     size,
-                    Color::new(0.2, 0.2, 0.2, 1.0),
+                    Color::new_f32(0.2, 0.2, 0.2, 1.0),
                 )
                 .shape(Shape::Round(5.0))
                 .border(Border::new(color, 1.5))
-                .with_transform(shell.transform * tataku::Matrix::identity()
+                .with_transform(shell.transform * tataku::Matrix::IDENTITY
                     .trans(pos)
                 ));
             }
@@ -157,7 +157,7 @@ impl GameplayWidget for LeaderboardElement {
             // score text
             if let Some(layout) = cache.score_text.clone() {
                 shell.list.push(graphics::Text::new(layout)
-                    .with_transform(shell.transform * tataku::Matrix::identity()
+                    .with_transform(shell.transform * tataku::Matrix::IDENTITY
                         .trans(pos + PADDING),
                 ));
             }
@@ -165,7 +165,7 @@ impl GameplayWidget for LeaderboardElement {
             // combo text
             if let Some(layout) = cache.combo_text.clone() {
                 shell.list.push(graphics::Text::new(layout)
-                    .with_transform(shell.transform * tataku::Matrix::identity()
+                    .with_transform(shell.transform * tataku::Matrix::IDENTITY
                         .trans(pos + (PADDING + Vector2::new(0.0, PADDING.y + 15.0))),
                 ));
             }
@@ -192,7 +192,7 @@ pub const LEADERBOARD: GameplayWidgetBuilder = GameplayWidgetBuilder {
     default_layout: GameplayWidgetLayout {
         anchor: GameplayWidgetAnchor::Screen,
         align: Alignment::CENTER_LEFT,
-        transform: Transform::identity(),
+        transform: Transform::IDENTITY,
     },
     build: LeaderboardElement::build,
 };

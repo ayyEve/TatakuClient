@@ -24,7 +24,7 @@ tracing.workspace = true
 strfmt.workspace = true
 
 half.workspace = true
-cgmath.workspace = true
+glam.workspace = true
 serde.workspace = true
 guillotiere.workspace = true
 ureq.workspace = true

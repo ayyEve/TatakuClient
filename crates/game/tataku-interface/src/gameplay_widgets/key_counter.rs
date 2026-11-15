@@ -164,12 +164,12 @@ impl GameplayWidget for KeyCounterElement {
                         origin: btn.size() / 2.0, // use center origin for scaling
                         scale: Vector2::ONE * 1.1,
                         pos: pos + btn.size() / 2.0, // top left
-                        ..graphics::Transform::identity()
+                        ..graphics::Transform::IDENTITY
                     }
                 } else {
                     graphics::Transform {
                         pos,
-                        ..graphics::Transform::identity()
+                        ..graphics::Transform::IDENTITY
                     }
                 };
 
@@ -178,15 +178,15 @@ impl GameplayWidget for KeyCounterElement {
                 shell.list.push(graphics::Rectangle::new(
                     box_size,
                     if cached.held {
-                        Color::new(0.8, 0.0, 0.8, 0.8)
+                        Color::new_f32(0.8, 0.0, 0.8, 0.8)
                     } else {
-                        Color::new(0.0, 0.0, 0.0, 0.8)
+                        Color::new_f32(0.0, 0.0, 0.0, 0.8)
                     },
                 ).border(Border::new(
                     Color::BLACK,
                     2.0
                 ))
-                .with_transform(shell.transform * tataku::Matrix::identity()
+                .with_transform(shell.transform * tataku::Matrix::IDENTITY
                     .trans(pos)
                 ));
             }
@@ -202,7 +202,7 @@ impl GameplayWidget for KeyCounterElement {
             );
 
             shell.list.push(graphics::Text::new(cached.layout.clone())
-                .with_transform(shell.transform * tataku::Matrix::identity()
+                .with_transform(shell.transform * tataku::Matrix::IDENTITY
                     .trans(centered),
             ));
         }
@@ -234,7 +234,7 @@ pub const KEY_COUNTER: GameplayWidgetBuilder = GameplayWidgetBuilder {
     default_layout: GameplayWidgetLayout {
         anchor: GameplayWidgetAnchor::Screen,
         align: Alignment::CENTER_RIGHT,
-        transform: graphics::Transform::identity(),
+        transform: graphics::Transform::IDENTITY,
     },
     build: KeyCounterElement::build,
 };

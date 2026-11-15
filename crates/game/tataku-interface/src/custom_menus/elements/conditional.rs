@@ -10,6 +10,7 @@ pub struct ConditionalElement {
     #[serde(rename = "false", alias="else", default)] if_false: Option<Wrapped<Element>>,
 }
 
+#[cfg(feature="graphics")]
 impl ConditionalElement {
     pub fn build(&self) -> widgets::ConditionalWidget {
         widgets::ConditionalWidget::new(

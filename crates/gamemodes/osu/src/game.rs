@@ -16,7 +16,6 @@ use engine::{
     beatmaps::{
         Beatmap,
         BeatmapMeta,
-        TimingPoint,
         map_difficulty,
     },
     gameplay,
@@ -99,7 +98,6 @@ pub struct OsuGame {
 
     metadata: Arc<BeatmapMeta>,
     mods: Arc<Mods>,
-    timing_points: Vec<TimingPoint>,
 
     new_playfield_pending: bool,
 }
@@ -223,7 +221,7 @@ impl OsuGame {
             let transform = graphics::Transform {
                 pos,
                 scale: Vector2::ONE * coords.cs,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             state.add_indicator(ImageJudgementIndicator::new(
@@ -234,7 +232,7 @@ impl OsuGame {
             let transform = graphics::Transform {
                 pos,
                 scale: Vector2::ONE * CIRCLE_RADIUS_BASE * coords.cs * (1.0 / 3.0),
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             state.add_indicator(BasicJudgementIndicator::new(
@@ -341,7 +339,7 @@ impl OsuGame {
                         pos: point,
                         rotation: direction,
                         // scale: Vector2::ONE * self.coords.scale,
-                        ..graphics::Transform::identity()
+                        ..graphics::Transform::IDENTITY
                     };
 
                     list.push(i.with_transform(transform.matrix()));
@@ -349,11 +347,11 @@ impl OsuGame {
                     let transform = graphics::Transform {
                         pos: point,
                         scale: Vector2::ONE * follow_dot_size,
-                        ..graphics::Transform::identity()
+                        ..graphics::Transform::IDENTITY
                     };
 
                     list.push(engine::graphics::Circle::new(
-                        Color::WHITE.alpha(alpha),
+                        Color::WHITE.with_alpha_f32(alpha),
                     ).with_transform(transform.matrix()));
                 }
             }
@@ -402,10 +400,7 @@ impl Gamemode for OsuGame {
 
         let fade_time = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
 
-        let timing_points = TimingPointProgress::new(
-            map.get_timing_points(),
-            map.slider_velocity(),
-        );
+        let timing_points = TimingPointProgress::new_from_beatmap(map);
 
         let parent_dir = map.get_parent_dir().unwrap_or_default().to_string_lossy().to_string();
         let mut actions = actions::ActionQueue::new();
@@ -466,7 +461,6 @@ impl Gamemode for OsuGame {
                     #[cfg(feature="graphics")] judgement_images: JudgmentImages::new(OsuHitJudgments::variants().to_vec()),
                     metadata,
                     mods,
-                    timing_points: map.get_timing_points(),
                     #[cfg(feature="graphics")] smoke_emitter: None,
                     #[cfg(feature="graphics")] cursor,
 
@@ -813,7 +807,9 @@ impl Gamemode for OsuGame {
         }
     }
 
-    fn handle_gameplay_event(&mut self, event: GameplayEvent) {
+    fn handle_gameplay_event(&mut self, shell: &mut GameplayCustomShell<'_, GameplayEvent>) {
+        let event = shell.custom.clone();
+
         match event {
             GameplayEvent::SetBounds { bounds, full_window } => {
                 #[cfg(feature="graphics")]
@@ -923,7 +919,7 @@ impl Gamemode for OsuGame {
                 #[cfg(feature="graphics")]
                 if has_otb != had_otb {
                     if has_otb {
-                        let timing_points = self.timing_points
+                        let timing_points = shell.timing_points
                             .iter()
                             .filter(|t| !t.is_inherited())
                             .copied()
@@ -1025,7 +1021,7 @@ impl Gamemode for OsuGame {
         #[cfg(feature="graphics")]
         self.cursor.update();
 
-        let has_autoplay = shell.mods.has_autoplay();
+        let has_autoplay: bool = shell.mods.has_autoplay();
         let has_relax = shell.mods.has_mod(Relax);
 
         // do autoplay things
@@ -1196,7 +1192,7 @@ impl Gamemode for OsuGame {
             let alpha = self.settings.playfield_alpha;
 
             let mut playfield_border = shell.current_timing_point.kiai
-                .then_some(Border::new(Color::YELLOW.alpha(alpha), 2.0));
+                .then_some(Border::new(Color::YELLOW.with_alpha_f32(alpha), 2.0));
 
             let playfield = self.coords.playfield_with_padding;
 
@@ -1207,14 +1203,14 @@ impl Gamemode for OsuGame {
                     Vector2::with_x(playfield.size.x),
                     line_size,
                     Color::WHITE
-                ).with_transform(tataku::Matrix::identity()
+                ).with_transform(tataku::Matrix::IDENTITY
                     .trans(playfield.pos + Vector2::new(0.0, playfield.size.y/2.0))
                 );
                 let py_line = graphics::Line::new(
                     Vector2::with_y(playfield.size.y),
                     line_size,
                     Color::WHITE
-                ).with_transform(tataku::Matrix::identity()
+                ).with_transform(tataku::Matrix::IDENTITY
                     .trans(playfield.pos + Vector2::new(playfield.size.x/2.0, 0.0))
                 );
 
@@ -1222,14 +1218,14 @@ impl Gamemode for OsuGame {
                     Vector2::with_x(window_size.x),
                     line_size,
                     Color::WHITE
-                ).with_transform(tataku::Matrix::identity()
+                ).with_transform(tataku::Matrix::IDENTITY
                     .trans(Vector2::new(0.0, window_size.y/2.0))
                 );
                 let wy_line = graphics::Line::new(
                     Vector2::with_y(window_size.y),
                     line_size,
                     Color::WHITE
-                ).with_transform(tataku::Matrix::identity()
+                ).with_transform(tataku::Matrix::IDENTITY
                     .trans(
                     Vector2::new(window_size.x/2.0, 0.0))
                 );
@@ -1247,9 +1243,9 @@ impl Gamemode for OsuGame {
 
             let playfield = graphics::Rectangle::new(
                 playfield.size,
-                Color::BLACK.alpha(alpha),
+                Color::BLACK.with_alpha_f32(alpha),
             ).border_maybe(playfield_border)
-            .with_transform(tataku::Matrix::identity()
+            .with_transform(tataku::Matrix::IDENTITY
                 .trans(playfield.pos)
             );
 
@@ -1288,12 +1284,12 @@ impl Gamemode for OsuGame {
                 fade_in_time: self.fade_in_time,
                 fade_out_time: self.fade_out_time,
                 hitwindow_miss: self.miss_window,
-                alpha: u8::MAX,
+                alpha: tataku::ColorField::MAX,
                 combo_colors: &combo_colors,
                 last_beat: self.last_beat,
                 pulse_length: self.pulse_length,
                 list,
-                transform: tataku::Matrix::identity(),
+                transform: tataku::Matrix::IDENTITY,
                 settings: &self.settings,
                 coords: &self.coords,
                 slider_track_override: None, // todo:
@@ -1346,8 +1342,10 @@ impl Gamemode for OsuGame {
         self.cursor.draw_above(list);
     }
 
-    fn reset(&mut self, _beatmap: &Beatmap) {
+    fn reset(&mut self, _: &GameplayCustomShell<'_, &Beatmap>) {
         self.notes_skip = 0;
+
+        self.auto_replay.get_release_queue();
 
         // reset notes
         for note in self.notes.iter_mut() {
@@ -1383,8 +1381,16 @@ impl Gamemode for OsuGame {
             note.reset();
 
             if note.time() < new_time {
-                if let HitObject::Circle(note) = note {
-                    note.missed = true;
+                match note {
+                    HitObject::Circle(note) => {
+                        note.missed = true;
+                    },
+                    HitObject::Slider(slider) => {
+                        slider.initial_hit = Some(OsuHitJudgments::Miss);
+                    },
+                    HitObject::Spinner(spinner) => {
+                        spinner.missed = true;
+                    },
                 }
 
                 if self.notes_skip + 1 == i {
@@ -1448,7 +1454,7 @@ impl Gamemode for OsuGame {
             // create the emitter
             let emitter = EmitterBuilder::default()
                 .should_emit(false)
-                .spawn_delay(10.0)
+                .spawn_delay(10.0_f32)
                 .life(500.0..2000.0)
                 .image(smoke)
                 .scale(EmitterVal::init_only(0.8..1.5))
@@ -1472,7 +1478,7 @@ impl Gamemode for OsuGame {
         };
         match input.event {
             InputType::KeyPress(press) => {
-                let key = press.as_key()?;
+                let key = press.key?;
 
                 // playfield adjustment
                 if key == Key::LControl {
@@ -1493,7 +1499,7 @@ impl Gamemode for OsuGame {
             }
 
             InputType::KeyRelease(release) => {
-                let key = release.as_key()?;
+                let key = release.key?;
 
                 // playfield adjustment
                 if key == Key::LControl {
@@ -1591,11 +1597,11 @@ impl Gamemode for OsuGame {
                 Some(ReplayAction::Release(button))
             }
 
-            InputType::MouseScroll { raw: delta, .. } => {
+            InputType::MouseScroll(scroll) => {
                 if self.move_playfield.is_some() {
-                    let delta = delta / 40.0;
+                    let delta = scroll.get_delta(10.0).y;
 
-                    self.settings.playfield_scale += delta.y;
+                    self.settings.playfield_scale += delta;
 
                     let settings = self.settings.clone();
                     self.actions.push(actions::game::GameAction::UpdateSettings(Arc::new(

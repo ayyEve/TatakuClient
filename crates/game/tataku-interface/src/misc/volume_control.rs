@@ -35,8 +35,8 @@ impl VolumeControl {
     }
 
     fn change(
-        &mut self, 
-        delta: f32, 
+        &mut self,
+        delta: f32,
         settings: &mut engine::Settings
     ) -> Option<actions::song::SongAction> {
         let elapsed = self.timer.as_millis();
@@ -63,7 +63,7 @@ impl VolumeControl {
 
 
     pub fn draw(
-        &mut self, 
+        &mut self,
         list: &mut graphics::RenderableCollection,
         text_layout_contexts: &mut TextLayoutContexts,
     ) {
@@ -77,7 +77,7 @@ impl VolumeControl {
                 BOX_SIZE,
                 Color::WHITE,
             ).border(Border::new(Color::BLACK, 1.2))
-            .with_transform(tataku::Matrix::identity()
+            .with_transform(tataku::Matrix::IDENTITY
                 .trans(self.window_size - BOX_SIZE)
             );
 
@@ -97,10 +97,10 @@ impl VolumeControl {
                     (90 - 30 * n) as f32
                 );
 
-                let color = if self.vol_selected_index == n as u8 { 
-                    Color::RED 
-                } else { 
-                    Color::BLACK 
+                let color = if self.vol_selected_index == n as u8 {
+                    Color::RED
+                } else {
+                    Color::BLACK
                 };
                 let mut layout = text_layout_contexts.simple_text(
                     text,
@@ -115,7 +115,7 @@ impl VolumeControl {
 
                 // text
                 list.push(graphics::Text::new(layout)
-                    .with_transform(tataku::Matrix::identity()
+                    .with_transform(tataku::Matrix::IDENTITY
                         .trans(self.window_size - Vector2::new(300.0, r_offset.y)),
                     )
                 );
@@ -124,7 +124,7 @@ impl VolumeControl {
                 list.push(graphics::Rectangle::new(
                     Vector2::new(border_size.x * *value, border_size.y),
                     Color::BLUE,
-                ).with_transform(tataku::Matrix::identity()
+                ).with_transform(tataku::Matrix::IDENTITY
                     .trans(self.window_size - r_offset)
                 ));
 
@@ -133,7 +133,7 @@ impl VolumeControl {
                     border_size,
                     Color::TRANSPARENT,
                 ).border(Border::new(Color::RED, 1.0))
-                .with_transform(tataku::Matrix::identity()
+                .with_transform(tataku::Matrix::IDENTITY
                     .trans(self.window_size - r_offset)
                 ));
             }
@@ -177,13 +177,19 @@ impl VolumeControl {
 
     pub fn on_mouse_wheel(
         &mut self,
-        delta: f32,
+        scroll: input::ScrollInput,
         mods: input::KeyModifiers,
         settings: &mut engine::Settings
     ) -> Option<actions::song::SongAction> {
-        if !mods.alt { return None }
+        if !mods.contains(input::KeyModifiers::ALT) { return None }
 
-        self.change(delta / 10.0, settings)
+        let delta = match scroll.value {
+            input::ScrollType::Pixels(p) => p.y,
+            input::ScrollType::Lines([_, delta]) => delta as f32,
+        };
+
+        if delta == 0.0 { return None }
+        self.change(delta / 100.0, settings)
     }
 
     // #[cfg(feature="graphics")]
@@ -196,7 +202,7 @@ impl VolumeControl {
     ) -> bool {
         let elapsed = self.timer.as_millis();
 
-        if !mods.alt { return false }
+        if !mods.contains(input::KeyModifiers::ALT) { return false }
         let action = match key {
             Key::Right => self.change(0.1, settings),
             Key::Left => self.change(-0.1, settings),
@@ -213,7 +219,7 @@ impl VolumeControl {
 
             _ => return false,
         };
-        
+
         if let Some(action) = action {
             actions.push(action.into());
         }

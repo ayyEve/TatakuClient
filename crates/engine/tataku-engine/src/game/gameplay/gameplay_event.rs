@@ -8,7 +8,7 @@ pub enum BeatmapEvent {
     Break { start: f32, end: f32 }
 }
 
-
+#[derive(Clone)]
 pub enum GameplayEvent {
     Paused,
     UnPaused,

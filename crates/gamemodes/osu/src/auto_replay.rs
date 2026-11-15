@@ -94,18 +94,18 @@ impl AutoReplay {
                     } else if time >= slider.time {
                         any_checked = true;
 
-                        if !self.holding.contains_key(&i) {
+                        let slider_ball_pos = slider.curve.position_at_time(time);
+
+                        // move the mouse to the pos
+                        frames.push(ReplayAction::MousePos(slider_ball_pos.x, slider_ball_pos.y));
+
+                        if !self.holding.contains_key(&i) && slider.initial_hit.is_none() {
                             self.press_counter += 1;
 
                             let k = self.get_key();
                             frames.push(ReplayAction::Press(k));
                             self.holding.insert(i, k);
                         }
-
-                        let slider_ball_pos = slider.curve.position_at_time(time);
-
-                        // move the mouse to the pos
-                        frames.push(ReplayAction::MousePos(slider_ball_pos.x, slider_ball_pos.y));
 
                         false
                     } else {
@@ -132,7 +132,7 @@ impl AutoReplay {
                     } else if time >= spinner.time {
                         any_checked = true;
 
-                        if !self.holding.contains_key(&i) {
+                        if !self.holding.contains_key(&i) && !spinner.missed {
                             self.press_counter += 1;
 
                             let k = self.get_key();

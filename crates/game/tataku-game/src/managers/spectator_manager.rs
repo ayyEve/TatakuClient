@@ -103,13 +103,13 @@ impl SpectatorManager {
             &self.infos,
             &playmode,
             map,
-            Some(current_time.max(0.0)),
             mods.clone(),
             &values.settings,
             database,
         ) {
             Ok(mut manager) => {
                 // set manager things
+                manager.add_action(actions::gameplay::GameplayAction::JumpToTime { time: current_time.max(0.0) });
                 manager.add_action(actions::gameplay::GameplayAction::ApplyMods(mods));
 
                 manager.set_mode(GameplayTypeInfo::Spectator(Box::new(SpectatorGameplayInfo {
@@ -227,7 +227,7 @@ impl SpectatorManager {
                     actions.push(
                         Notification::default()
                         .text("Host speccing someone")
-                        .duration(2000.0)
+                        .duration(2000.0_f32)
                         .color(Color::BLUE)
                         .into()
                     );

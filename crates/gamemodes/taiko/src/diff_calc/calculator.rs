@@ -184,7 +184,7 @@ impl DiffCalc for DifficultyCalculator {
         let mut diff = Vec::new();
 
         let mut lines = vec!["strainvalue,densityvalue,combined,diff".to_owned()];
-        for (strain, density) in strain.into_iter().zip(note_density.into_iter()) {
+        for (strain, density) in strain.into_iter().zip(note_density) {
             let strain_value = (strain as f32).powf(1.75);
             let density_value = density;
 

@@ -88,8 +88,9 @@
             variable = "_option"
             style = "flex-direction: row; justify-content: space-between; "
           >
-            <switch>
-              <case cond="display(_option.values) == 'Integer'">
+            <switch on_enum="_option.values"> 
+
+              <case value="Integer">
                 <row>
                   <text><variable>_option.display</variable></text>
 
@@ -103,7 +104,7 @@
                 </row>
               </case>
 
-              <case cond="display(_option.values) == 'Float'">
+              <case value="Float">
                 <row>
                   <text><variable>_option.display</variable></text>
 
@@ -117,7 +118,7 @@
                 </row>
               </case>
 
-              <!-- <case cond="display(_option.values) == 'List'">
+              <!-- <case value="List">
                 <dropdown
                   options_path="_option.values.List.options"
                   selected_path="var.online_content.options::_option.id"

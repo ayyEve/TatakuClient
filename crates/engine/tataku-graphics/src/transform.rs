@@ -23,14 +23,12 @@ impl Transform {
         }
     }
 
-    pub const fn identity() -> Self {
-        Self {
-            origin: Vector2::ZERO,
-            scale: Vector2::ONE,
-            rotation: 0.0,
-            pos: Vector2::ZERO,
-        }
-    }
+    pub const IDENTITY: Self = Self {
+        origin: Vector2::ZERO,
+        scale: Vector2::ONE,
+        rotation: 0.0,
+        pos: Vector2::ZERO,
+    };
 
     pub fn rotate(self, angle: f32) -> Self {
         let x = angle.cos() * self.pos.x - angle.sin() * self.pos.y;
@@ -59,7 +57,7 @@ impl Transform {
     }
 
     pub fn matrix(&self) -> Matrix {
-        Matrix::identity()
+        Matrix::IDENTITY
             .trans(-self.origin) // apply origin
             .rot(self.rotation) // rotate
             .scale(self.scale) // scale
@@ -87,7 +85,7 @@ impl Transform {
 
 impl Default for Transform {
     fn default() -> Self {
-        Self::identity()
+        Self::IDENTITY
     }
 }
 
@@ -118,7 +116,7 @@ impl<T: TatakuRenderable> TatakuRenderable for Transformed<T> {
         mut transform: Matrix,
         g: &mut dyn DrawEngine,
     ) {
-        transform = transform * self.transform;
+        transform *= self.transform;
         self.drawable.draw(options, transform, g);
     }
 }

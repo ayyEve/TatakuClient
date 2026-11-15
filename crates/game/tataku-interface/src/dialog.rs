@@ -119,7 +119,7 @@ impl DialogWidget {
         bounds.size.x -= delta;
         actions.push(actions::ui::UiAction::new(
             node,
-            source, 
+            source,
             actions::dialog::DialogAction::ResizeDialog(bounds.size)
         ).into());
     }
@@ -302,7 +302,7 @@ impl Widget<actions::Action> for DialogWidget {
             return;
         }
 
-        let Some(bounds) = shell.tree.absolute_bounds(self.node_id()) 
+        let Some(bounds) = shell.tree.absolute_bounds(self.node_id())
         else { return };
 
         // if this was a mouse input and its inside our bounds
@@ -411,8 +411,8 @@ impl Widget<actions::Action> for DialogWidget {
             // black background for visibility
             shell.list.push(Rectangle::new(
                 bounds.size,
-                Color::BLACK.alpha(0.9),
-            ).with_transform(tataku::Matrix::identity()
+                Color::BLACK.with_alpha_f32(0.9),
+            ).with_transform(tataku::Matrix::IDENTITY
                 .trans(bounds.pos)
             ));
         }
@@ -428,7 +428,7 @@ impl Widget<actions::Action> for DialogWidget {
             shell.list.push(Rectangle::new(
                 bounds.size,
                 color,
-            ).with_transform(tataku::Matrix::identity()
+            ).with_transform(tataku::Matrix::IDENTITY
                 .trans(bounds.pos)
             ));
         }
@@ -438,7 +438,7 @@ impl Widget<actions::Action> for DialogWidget {
             shell.list.push(Rectangle::new(
                 bounds.size,
                 color,
-            ).with_transform(tataku::Matrix::identity()
+            ).with_transform(tataku::Matrix::IDENTITY
                 .trans(bounds.pos)
             ));
         }
@@ -448,7 +448,7 @@ impl Widget<actions::Action> for DialogWidget {
             shell.list.push(Rectangle::new(
                 bounds.size,
                 color,
-            ).with_transform(tataku::Matrix::identity()
+            ).with_transform(tataku::Matrix::IDENTITY
                 .trans(bounds.pos)
             ));
         }
@@ -458,7 +458,7 @@ impl Widget<actions::Action> for DialogWidget {
             shell.list.push(Rectangle::new(
                 bounds.size,
                 color,
-            ).with_transform(tataku::Matrix::identity()
+            ).with_transform(tataku::Matrix::IDENTITY
                 .trans(bounds.pos)
             ));
         }
@@ -611,8 +611,8 @@ impl Widget<actions::Action> for DialogTitlebar {
 
         shell.list.push(Rectangle::new(
             bounds.size,
-            Color::WHITE.alpha(0.5),
-        ).with_transform(tataku::Matrix::identity()
+            Color::WHITE.with_alpha_f32(0.5),
+        ).with_transform(tataku::Matrix::IDENTITY
             .trans(bounds.pos)
         ));
         self.node.draw(shell);
@@ -653,7 +653,7 @@ impl Widget<actions::Action> for DialogTitlebar {
             }
 
             (InputType::MousePress(MouseButton::Left), _) => {
-                let Some(bounds) = shell.tree.absolute_bounds(node_id) 
+                let Some(bounds) = shell.tree.absolute_bounds(node_id)
                 else { return };
 
                 if bounds.contains(event.mouse_pos) {

@@ -4,53 +4,6 @@ use crate::style::*;
 use crate::message::*;
 use common::reflect::*;
 
-pub struct MessageShell<'a, Action: Send + Sync + 'static> {
-    pub messages: &'a mut Vec<Message>,
-    pub actions: &'a mut Vec<Action>,
-    pub tree: &'a mut Tree<Action>,
-    pub values: &'a mut dyn Reflect,
-    pub source: MessageSource,
-    pub handled: bool,
-}
-
-pub struct InputShell<'a, Action: Send + Sync + 'static> {
-    pub messages: &'a mut Vec<Message>,
-    pub actions: &'a mut Vec<Action>,
-    pub tree: &'a mut Tree<Action>,
-    pub values: &'a mut dyn Reflect,
-    pub source: MessageSource,
-    pub mouse_pos: Vector2,
-
-    pub event_consumed: bool,
-}
-impl<Action: Send + Sync + 'static> InputShell<'_, Action> {
-    pub fn publish(&mut self, message: Message) {
-        self.messages.push(message);
-    }
-}
-pub struct DrawShell<'a, Action: Send + Sync + 'static> {
-    pub tree: &'a Tree<Action>,
-    pub values: &'a dyn Reflect,
-    pub list: &'a mut graphics::RenderableCollection,
-    pub general_theme: GeneralUiTheme,
-
-    pub text_layout_contexts: &'a mut TextLayoutContexts,
-}
-
-pub struct UpdateShell<'a, Action: Send + Sync + 'static> {
-    pub tree: &'a mut Tree<Action>,
-    pub values: &'a mut dyn Reflect,
-
-    pub source: MessageSource,
-    pub messages: &'a mut Vec<Message>,
-    pub actions: &'a mut Vec<Action>,
-    pub skin_manager: &'a mut dyn graphics::SkinProvider,
-
-    pub default_css: &'a str,
-    pub text_layout_contexts: &'a mut TextLayoutContexts,
-}
-
-
 pub struct LayoutShell<'a, 'css: 'a, Action: Send + Sync + 'static> {
     pub tree: &'a mut Tree<Action>,
     pub values: &'a mut dyn Reflect,
@@ -73,43 +26,85 @@ impl<Action: Send + Sync + 'static> LayoutShell<'_,'_, Action> {
         f(ctx);
     }
 }
+impl<A: Send + Sync + 'static> HasTree<A> for LayoutShell<'_, '_, A> {
+    fn tree(&self) -> &Tree<A> { self.tree }
+}
+impl<A: Send + Sync + 'static> HasTreeMut<A> for LayoutShell<'_, '_, A> {
+    fn tree_mut(&mut self) -> &mut Tree<A> { self.tree }
+    fn values_mut(&mut self) -> &mut dyn Reflect { self.values }
+}
 
-
-pub struct GenericShell<'a, Action: Send + Sync +'static> {
-    pub tree: &'a mut Tree<Action>,
-    pub values: &'a mut dyn Reflect,
+// Input shell
+pub struct InputShell<'a, Action: Send + Sync + 'static> {
     pub messages: &'a mut Vec<Message>,
     pub actions: &'a mut Vec<Action>,
+    pub tree: &'a mut Tree<Action>,
+    pub values: &'a mut dyn Reflect,
+    pub source: MessageSource,
+    pub mouse_pos: Vector2,
+
+    pub event_consumed: bool,
 }
-impl<'a, 'b:'a, Action: Send + Sync +'static> From<&'b mut MessageShell<'a, Action>> for GenericShell<'a, Action> {
-    fn from(value: &'b mut MessageShell<'a, Action>) -> Self {
-        Self {
-            tree: value.tree,
-            values: value.values,
-            messages: value.messages,
-            actions: value.actions
-        }
-    }
+impl<A: Send + Sync + 'static> HasTree<A> for InputShell<'_, A> {
+    fn tree(&self) -> &Tree<A> { self.tree }
 }
-impl<'a, 'b:'a, Action: Send + Sync +'static> From<&'b mut UpdateShell<'a, Action>> for GenericShell<'a, Action> {
-    fn from(value: &'a mut UpdateShell<'b, Action>) -> Self {
-        Self {
-            tree: value.tree,
-            values: value.values,
-            messages: value.messages,
-            actions: value.actions
-        }
-    }
+impl<A: Send + Sync + 'static> HasTreeMut<A> for InputShell<'_, A> {
+    fn tree_mut(&mut self) -> &mut Tree<A> { self.tree }
+    fn values_mut(&mut self) -> &mut dyn Reflect { self.values }
 }
-impl<'a, 'b:'a, Action: Send + Sync +'static> From<&'b mut InputShell<'a, Action>> for GenericShell<'a, Action> {
-    fn from(value: &'b mut InputShell<'a, Action>) -> Self {
-        Self {
-            tree: value.tree,
-            values: value.values,
-            messages: value.messages,
-            actions: value.actions
-        }
-    }
+
+// Message shell
+pub struct MessageShell<'a, Action: Send + Sync + 'static> {
+    pub messages: &'a mut Vec<Message>,
+    pub actions: &'a mut Vec<Action>,
+    pub tree: &'a mut Tree<Action>,
+    pub values: &'a mut dyn Reflect,
+    pub source: MessageSource,
+    pub handled: bool,
+}
+impl<A: Send + Sync + 'static> HasTree<A> for MessageShell<'_, A> {
+    fn tree(&self) -> &Tree<A> { self.tree }
+}
+impl<A: Send + Sync + 'static> HasTreeMut<A> for MessageShell<'_, A> {
+    fn tree_mut(&mut self) -> &mut Tree<A> { self.tree }
+    fn values_mut(&mut self) -> &mut dyn Reflect { self.values }
+}
+
+
+// Update shell
+pub struct UpdateShell<'a, Action: Send + Sync + 'static> {
+    pub tree: &'a mut Tree<Action>,
+    pub values: &'a mut dyn Reflect,
+
+    pub source: MessageSource,
+    pub messages: &'a mut Vec<Message>,
+    pub actions: &'a mut Vec<Action>,
+    pub skin_manager: &'a mut dyn graphics::SkinProvider,
+
+    pub default_css: &'a str,
+    pub text_layout_contexts: &'a mut TextLayoutContexts,
+}
+impl<A: Send + Sync + 'static> HasTree<A> for UpdateShell<'_, A> {
+    fn tree(&self) -> &Tree<A> { self.tree }
+}
+impl<A: Send + Sync + 'static> HasTreeMut<A> for UpdateShell<'_, A> {
+    fn tree_mut(&mut self) -> &mut Tree<A> { self.tree }
+    fn values_mut(&mut self) -> &mut dyn Reflect { self.values }
+}
+
+
+// Draw shell
+pub struct DrawShell<'a, Action: Send + Sync + 'static> {
+    pub tree: &'a Tree<Action>,
+    pub values: &'a dyn Reflect,
+
+    pub list: &'a mut graphics::RenderableCollection,
+    pub general_theme: GeneralUiTheme,
+
+    pub text_layout_contexts: &'a mut TextLayoutContexts,
+}
+impl<A: Send + Sync + 'static> HasTree<A> for DrawShell<'_, A> {
+    fn tree(&self) -> &Tree<A> { self.tree }
 }
 
 pub struct TextLayoutContexts {
@@ -143,3 +138,32 @@ impl TextLayoutContexts {
         layout
     }
 }
+
+
+
+pub trait HasTree<A: Send + Sync + 'static> {
+    fn tree(&self) -> &Tree<A>;
+
+    fn state(&self, node_id: NodeId) -> Option<ElementState> {
+        Some(self.tree().get_context(node_id)?.element_data.state)
+    }
+    fn with_ctx<T>(&self, node_id: NodeId, f: impl FnOnce(&TreeData) -> T) -> Option<T> {
+        let ctx = self.tree().get_context(node_id)?;
+        Some(f(ctx))
+    } 
+}
+
+pub trait HasTreeMut<A: Send + Sync + 'static>: HasTree<A> {
+    fn tree_mut(&mut self) -> &mut Tree<A>;
+    fn values_mut(&mut self) -> &mut dyn Reflect;
+
+    fn state_mut(&mut self, node_id: NodeId) -> Option<&mut ElementState> {
+        Some(&mut self.tree_mut().get_context_mut(node_id)?.element_data.state)
+    }
+
+    fn with_ctx_mut<T>(&mut self, node_id: NodeId, f: impl FnOnce(&mut TreeData) -> T) -> Option<T> {
+        let ctx = self.tree_mut().get_context_mut(node_id)?;
+        Some(f(ctx))
+    } 
+}
+

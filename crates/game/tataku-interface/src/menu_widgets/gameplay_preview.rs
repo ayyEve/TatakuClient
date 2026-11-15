@@ -14,7 +14,7 @@ use engine::{
 
 pub struct GameplayPreview {
     beatmap: ValueChange<common::Md5Hash>,
-    playmode: ValueChange<String>,
+    playmode: ValueChange<Arc<str>>, // FIXME: should be ArcStr but ArcStr is reflect as Arc<str>
     song_time: ValueChange<f32>,
 
     manager: Option<actions::game::GameplayId>,
@@ -59,7 +59,8 @@ impl GameplayPreview {
         let widget_sender = self.widget_sender.clone();
         actions.push(actions::game::GameAction::NewGameplayManager(actions::game::NewManager {
             owner: source,
-            playmode: None,
+            jump_to_current_audio_time: true,
+            playmode: self.playmode.as_ref().cloned().map(ArcStr::from),
             gameplay_mode: Some(actions::game::GameplayTypeInfo::Preview),
             area: self.fit_to,
             draw_function: Some(Arc::new(move |collection| {
@@ -102,10 +103,10 @@ impl Widget<actions::Action> for GameplayPreview {
         self.manager = Some(id.clone());
         shell.handled = true;
 
-        shell.actions.push(actions::game::GameAction::GameplayAction(
-            id.clone(),
-            actions::gameplay::GameplayAction::Resume
-        ).into());
+        // shell.actions.push(actions::game::GameAction::GameplayAction(
+        //     id.clone(),
+        //     actions::gameplay::GameplayAction::Resume
+        // ).into());
     }
 
     fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
@@ -120,15 +121,19 @@ impl Widget<actions::Action> for GameplayPreview {
 
         let old_time = self.song_time.unwrap_or_default();
         let _ = self.song_time.update(shell.values);
-        let time_check = self.song_time.unwrap_or_default() < old_time;
+        let time_check = self.song_time.unwrap_or_default() + 5_000.0 < old_time;
+
+        // trace!("{a:?} {b:?} {time_check}");
 
         // check if time changed
         if time_check
         || matches!(a, Ok(Some(_)))
         || matches!(b, Ok(Some(_)))
         {
+            trace!("setup");
             self.setup(shell.source, shell.values, shell.actions);
         }
+
         // check for new bounds
         let bounds = shell.tree.absolute_bounds(self.node_id);
         if let Some(bounds) = bounds

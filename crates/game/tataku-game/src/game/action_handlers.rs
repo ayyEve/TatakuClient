@@ -34,15 +34,15 @@ use engine::{
     }
 };
 
-#[cfg(feature="graphics")] 
+#[cfg(feature="graphics")]
 use graphics::SkinProvider;
-#[cfg(feature="graphics")] 
+#[cfg(feature="graphics")]
 use engine::actions::menu::MenuAction as MenuAction;
 
 // action handlers. here bc they're so big
 impl Game {
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn next_gameplay_id(&self) -> GameplayId {
         Arc::new(self.gameplay_managers
             .keys()
@@ -51,7 +51,7 @@ impl Game {
             .unwrap_or_default()
         )
     }
-    
+
     pub(super) fn handle_actions(&mut self, actions: Option<Vec<actions::Action>>) {
         if let Some(actions) = actions {
             self.actions.extend(actions);
@@ -68,7 +68,7 @@ impl Game {
     pub(super) fn handle_custom_menu(&mut self, id: impl Into<ArcStr>) {
         let id = id.into();
         let selector = (
-            id.clone(), 
+            id.clone(),
             CustomMenuSource::Any
         );
 
@@ -82,7 +82,7 @@ impl Game {
         } else {
             match &*id {
                 "none" => {}
-                "main_menu" 
+                "main_menu"
                     => panic!("Main menu could not be loaded. did eve fuck up the main_menu.xml?"),
                 _ => {
                     error!("custom menu not found! {id}, going to main menu instead");
@@ -94,8 +94,8 @@ impl Game {
 
     #[cfg(feature="graphics")]
     pub(super) fn handle_custom_dialog(
-        &mut self, 
-        id: impl Into<ArcStr>, 
+        &mut self,
+        id: impl Into<ArcStr>,
         options: actions::menu::DialogCreateOptions,
     ) {
         let id = id.into();
@@ -104,9 +104,9 @@ impl Game {
         else {
             // if id == "settings" {
             //     self.ui_manager.add_dialog(
-            //         Box::new(SettingsMenu::new(&self.values.settings)), 
+            //         Box::new(SettingsMenu::new(&self.values.settings)),
             //         SettingsMenu::DEFAULT_OPTIONS,
-            //         &mut self.values, 
+            //         &mut self.values,
             //         &mut self.actions,
             //     );
             // } else {
@@ -139,22 +139,22 @@ impl Game {
         match action {
             MenuAction::SetMenu { id } => self.handle_custom_menu(id.into_owned()),
 
-            // MenuAction::PreviousMenu(current_menu) 
+            // MenuAction::PreviousMenu(current_menu)
             //     => self.handle_previous_menu(&current_menu),
 
             MenuAction::AddDialog {
-                id, 
-                options, 
+                id,
+                options,
             } => self.handle_custom_dialog(id.to_string(), *options),
 
             MenuAction::AddDialogRaw {
-                dialog, 
+                dialog,
                 options
             } => {
                 self.ui_manager.add_dialog(
-                    dialog, 
-                    *options, 
-                    &mut self.values, 
+                    dialog,
+                    *options,
+                    &mut self.values,
                     &mut self.actions,
                     &mut self.text_layout_contexts,
                 );
@@ -167,36 +167,36 @@ impl Game {
             // needs to be before trying to get the audio because audio might be none when this is run
             SongAction::Set(action) => {
                 if let Err(e) = self.song_manager.handle_song_set_action(
-                    action, 
-                    &mut self.actions, 
+                    action,
+                    &mut self.actions,
                     &mut self.audio_manager,
                     &self.values.settings
                 ) {
                     error!("Error handling SongMenuSetAction: {e:?}");
                 }
 
-                let Some(audio) = self.song_manager.instance() 
+                let Some(audio) = self.song_manager.instance()
                 else { return };
-                
+
                 let Some(current) = self.beatmap_manager
                     .current_beatmap()
                 else { return };
 
-                self.actions.push(TatakuIntegrationEvent::SongChanged { 
-                    artist: current.artist.clone(), 
-                    title: current.title.clone(), 
-                    image_path: current.image_filename.clone(), 
-                    elapsed: audio.get_position(), 
+                self.actions.push(TatakuIntegrationEvent::SongChanged {
+                    artist: current.artist.clone(),
+                    title: current.title.clone(),
+                    image_path: current.image_filename.clone(),
+                    elapsed: audio.get_position(),
                     duration: audio.get_duration()
                 }.into());
             }
-            #[cfg(feature="graphics")] 
+            #[cfg(feature="graphics")]
             SongAction::HookFFT(hook) => self
                 .song_manager
                 .hook_fft(hook),
-            
+
             other => {
-                let Some(audio) = self.song_manager.instance() 
+                let Some(audio) = self.song_manager.instance()
                 else { return };
 
                 match other {
@@ -205,17 +205,17 @@ impl Game {
                     SongAction::Pause => audio.pause(),
                     SongAction::Stop => audio.stop(),
                     SongAction::Toggle if matches!(
-                        audio.get_state(), 
+                        audio.get_state(),
                         tataku_audio::AudioState::Playing
                     ) => audio.pause(),
-                    
+
                     SongAction::Toggle => audio.play(false),
-                    SongAction::SeekBy(seek) 
+                    SongAction::SeekBy(seek)
                         => audio.set_position(audio.get_position() + seek),
                     SongAction::SetPosition(pos) => audio.set_position(pos),
                     SongAction::SetRate(rate) => audio.set_rate(rate),
                     SongAction::SetVolume(vol) => audio.set_volume(vol),
-                    
+
                     // handled above
                     _other => unreachable!()
                 }
@@ -253,7 +253,7 @@ impl Game {
         ).into());
 
         // apply mods to all gameplay managers
-        #[cfg(feature="graphics")] 
+        #[cfg(feature="graphics")]
         for (m, i) in self.gameplay_managers.values_mut() {
             if i.mods.is_some() { continue }
             m.add_action(actions::gameplay::GameplayAction::ApplyMods(
@@ -266,8 +266,8 @@ impl Game {
         let playmode = self.global.playmode.clone();
         let sort_by = self.values.settings.sort_by;
         self.values.beatmap_manager.apply_filter(
-            &mods, 
-            &playmode, 
+            &mods,
+            &playmode,
             sort_by,
             &mut self.difficulty_manager,
         );
@@ -289,9 +289,8 @@ impl Game {
 
                 match GameplayManager::create(
                     &self.values.global.gamemode_infos,
-                    &mode, 
-                    &map, 
-                    None,
+                    &mode,
+                    &map,
                     mods.clone(),
                     &self.values.settings,
                     &*self.database,
@@ -307,22 +306,22 @@ impl Game {
                             .and_then(|i| self.online_manager.lobby(i).cloned())
                             ;
 
-                        self.handle_event(&TatakuIntegrationEvent::BeatmapStarted { 
-                            start_time, 
-                            beatmap: map, 
-                            playmode: mode, 
-                            multiplayer, 
+                        self.handle_event(&TatakuIntegrationEvent::BeatmapStarted {
+                            start_time,
+                            beatmap: map,
+                            playmode: mode,
+                            multiplayer,
                             spectator: self.spectator_manager
                                 .as_ref()
                                 .map(|s| s.host_username.clone())
                         });
-                        
+
                         self.queue_state_change(
                             GameState::Ingame(Box::new(manager))
                         );
                     }
                     Err(e) => self.actions.push(Notification::new_error(
-                        "Error loading beatmap", 
+                        "Error loading beatmap",
                         e
                     ).into()),
                 }
@@ -333,38 +332,38 @@ impl Game {
                 if let Some(multi) = &mut self.multiplayer_manager {
                     // go back to the lobby before any checks
                     // this way if for some reason something down below fails, the user is in the lobby and not stuck in limbo
-                    #[cfg(feature="graphics")] 
+                    #[cfg(feature="graphics")]
                     self.actions.push(MenuAction::set_menu("lobby_menu").into());
 
-                    if !multi.is_host() { 
+                    if !multi.is_host() {
                         return warn!("trying to set lobby beatmap while not the host ??");
                     };
 
                     let Some(map) = self
                         .values.values
                         .beatmap_manager
-                        .current_beatmap() 
+                        .current_beatmap()
                     else { return };
 
                     let playmode = &self.values.values.global.playmode;
                     self.values.values.online_manager.update_lobby_beatmap(
-                        map, 
+                        map,
                         playmode.to_string()
                     );
 
                 } else if let Some(spec_man) = self
                     .spectator_manager
-                    .as_mut() 
+                    .as_mut()
                 {
                     let Some(map) = self
                         .values.values
                         .beatmap_manager
-                        .current_beatmap() 
+                        .current_beatmap()
                     else { return };
 
                     self.values.values.online_manager.handle_action(
-                        actions::chat::ChatAction::SendMessage { 
-                            channel: spec_man.host_username.to_string(), 
+                        actions::chat::ChatAction::SendMessage {
+                            channel: spec_man.host_username.to_string(),
                             message: engine::online::BeatmapLink {
                                 beatmap_hash: map.beatmap_hash.to_string(),
                                 beatmap_title: map.version_string(),
@@ -385,7 +384,7 @@ impl Game {
                         options.use_preview_point,
                     );
                     self.set_current_beatmap(
-                        hash, 
+                        hash,
                         &config,
                     );
 
@@ -401,29 +400,29 @@ impl Game {
 
                 match options.if_none {
                     MapActionIfNone::ContinueCurrent => {},
-                    MapActionIfNone::SetNone 
-                        => self.handle_beatmap_action(BeatmapAction::Remove), 
+                    MapActionIfNone::SetNone
+                        => self.handle_beatmap_action(BeatmapAction::Remove),
                     MapActionIfNone::Random(preview) => {
                         let Some(map) = self
                             .beatmap_manager
-                            .random_beatmap() 
+                            .random_beatmap()
                         else { return };
 
                         self.handle_beatmap_action(BeatmapAction::Set(
-                            map, 
+                            map,
                             options.use_preview_point(preview)
                         ));
                     }
                 }
             }
 
-            BeatmapAction::SetPlaymode(new_mode) 
+            BeatmapAction::SetPlaymode(new_mode)
                 => self.update_playmode(&new_mode),
 
             BeatmapAction::Random(use_preview) => {
                 let Some(hash) = self
                     .beatmap_manager
-                    .random_beatmap() 
+                    .random_beatmap()
                 else { return };
 
                 let config = self.create_select_beatmap_config(
@@ -431,7 +430,7 @@ impl Game {
                     use_preview
                 );
                 self.set_current_beatmap(
-                    hash, 
+                    hash,
                     &config,
                 );
             }
@@ -459,10 +458,10 @@ impl Game {
                 else { return };
 
                 let config = self.create_select_beatmap_config(
-                    true, 
+                    true,
                     true
                 );
-                
+
                 self.delete_beatmap(
                     map_hash,
                     post_delete,
@@ -471,7 +470,7 @@ impl Game {
             }
             BeatmapAction::Next => {
                 let config = self.create_select_beatmap_config(
-                    true, 
+                    true,
                     false
                 );
 
@@ -481,7 +480,7 @@ impl Game {
             }
             BeatmapAction::Previous(if_none) => {
                 let mut config = self.create_select_beatmap_config(
-                    true, 
+                    true,
                     false
                 );
 
@@ -497,11 +496,11 @@ impl Game {
 
                         let Some(hash) = self
                             .beatmap_manager
-                            .random_beatmap() 
+                            .random_beatmap()
                         else { return };
 
                         self.set_current_beatmap(
-                            hash, 
+                            hash,
                             &config,
                         );
                     }
@@ -511,26 +510,26 @@ impl Game {
 
             BeatmapAction::InitializeManager => {
                 self.values.values.beatmap_manager.initialize(
-                    self.values.values.settings.sort_by, 
-                    self.values.values.settings.group_by, 
-                    &self.values.values.global.mods, 
-                    &self.values.values.global.playmode, 
+                    self.values.values.settings.sort_by,
+                    self.values.values.settings.group_by,
+                    &self.values.values.global.mods,
+                    &self.values.values.global.playmode,
                     &mut self.difficulty_manager,
                 );
             }
-            BeatmapAction::AddBeatmap { 
-                map, 
-                add_to_db 
+            BeatmapAction::AddBeatmap {
+                map,
+                add_to_db
             } => {
                 self.values.beatmap_manager.add_beatmap(
-                    &map, 
-                    add_to_db, 
+                    &map,
+                    add_to_db,
                 );
 
                 if self.beatmap_manager.initialized {
                     self.values.values.beatmap_manager.refresh_maps(
-                        &self.values.values.global.mods, 
-                        &self.values.values.global.playmode, 
+                        &self.values.values.global.mods,
+                        &self.values.values.global.playmode,
                         self.values.values.settings.sort_by,
                         self.values.values.settings.group_by,
                         &mut self.difficulty_manager,
@@ -543,15 +542,15 @@ impl Game {
                 match list_action {
                     BeatmapListAction::Refresh => {
                         self.values.values.beatmap_manager.refresh_maps(
-                            &self.values.values.global.mods, 
-                            &self.values.values.global.playmode, 
+                            &self.values.values.global.mods,
+                            &self.values.values.global.playmode,
                             self.values.values.settings.sort_by,
                             self.values.values.settings.group_by,
                             &mut self.difficulty_manager,
                         );
                     }
 
-                    BeatmapListAction::ApplyFilter { 
+                    BeatmapListAction::ApplyFilter {
                         filter
                     } => {
                         self.beatmap_manager.filter_text = filter.unwrap_or_default();
@@ -567,12 +566,12 @@ impl Game {
                     BeatmapListAction::NextSet => self.beatmap_manager.next_set(),
                     BeatmapListAction::PrevSet => self.beatmap_manager.prev_set(),
 
-                    BeatmapListAction::SelectSet(set_id) 
+                    BeatmapListAction::SelectSet(set_id)
                         => self.beatmap_manager.select_set(set_id),
                 }
             }
 
-            // beatmap collection actions 
+            // beatmap collection actions
             BeatmapAction::CollectionAction(action) => {
                 let name = action.collection();
                 let mut new = false;
@@ -591,12 +590,12 @@ impl Game {
                             name: name.clone(),
                             ..Default::default()
                         });
-                        
+
                         self.values.beatmap_manager.collections.last_mut().unwrap()
                     }
                 };
 
-                
+
                 match action {
                     CollectionAction::Create { .. } => {}
                     CollectionAction::Add { map, ..} => {
@@ -615,7 +614,7 @@ impl Game {
 
                 if let Err(e) = res {
                     self.actions.push(Notification::new_error(
-                        "Error adding/updating collections in db", 
+                        "Error adding/updating collections in db",
                         e,
                     ).into());
                 }
@@ -632,14 +631,14 @@ impl Game {
         // // }
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     pub(super) fn handle_current_game_action(&mut self, action: CurrentGameAction) {
         if matches!(action, CurrentGameAction::Pause {..}) {
 
-            let CurrentGameAction::Pause { 
-                id, 
+            let CurrentGameAction::Pause {
+                id,
             } = action else { unreachable!() };
-            
+
             if !self.current_state.is_ingame() {
                 warn!("got pause for current gameplay but no current gameplay");
                 return
@@ -647,25 +646,25 @@ impl Game {
 
             let GameState::Ingame(gameplay) = self
                 .current_state
-                .take() 
+                .take()
             else { unreachable!() };
 
             self.current_state = GameState::None;
             self.handle_menu_action(MenuAction::SetMenu {
                 id: id.into(),
             });
-            
+
             // make sure it has the latest window size
             self.pending_gameplay_manager = Some(gameplay);
-            
+
             return;
         }
 
         let Some(mut manager) = self.pending_gameplay_manager
-            .take() 
-        else { 
+            .take()
+        else {
             warn!("Got action {action:?} but no pending gameplay manager");
-            return 
+            return
         };
 
         match action {
@@ -684,14 +683,14 @@ impl Game {
                 self.queue_state_change(GameState::Ingame(manager));
             }
             CurrentGameAction::Free => {
-                #[cfg(feature="graphics")] 
+                #[cfg(feature="graphics")]
                 manager.cleanup_textures(&mut self.skin_manager);
             }
 
             CurrentGameAction::Pause { .. } => unreachable!(),
         }
     }
-    
+
     pub(super) fn handle_game_action(&mut self, action: GameAction) {
         match action {
             #[cfg(feature="gameplay")]
@@ -700,8 +699,8 @@ impl Game {
             #[cfg(feature="gameplay")]
             GameAction::RestartOnline => self.init_online(),
 
-            #[cfg(feature="graphics")] 
-            GameAction::CurrentGameAction(action) 
+            #[cfg(feature="graphics")]
+            GameAction::CurrentGameAction(action)
                 => self.handle_current_game_action(action),
 
             #[cfg(feature="gameplay")]
@@ -710,12 +709,12 @@ impl Game {
                 let mode = &score.playmode;
 
                 let Some(beatmap) = self.beatmap_manager
-                    .get_by_hash(&map) 
+                    .get_by_hash(&map)
                 else {
                     self.actions.push(
                         Notification::default()
                         .text("You don't have that map!")
-                        .duration(5000.0)
+                        .duration(5000.0_f32)
                         .color(Color::RED)
                         .into()
                     );
@@ -726,10 +725,9 @@ impl Game {
 
                 match GameplayManager::create(
                     &self.values.global.gamemode_infos,
-                    mode, 
-                    &beatmap, 
-                    None,
-                    mods, 
+                    mode,
+                    &beatmap,
+                    mods,
                     &self.values.settings,
                     &*self.database,
                 ) {
@@ -741,7 +739,7 @@ impl Game {
                     }
                     Err(e) => self.actions.push(
                         Notification::new_error(
-                            "Error loading beatmap", 
+                            "Error loading beatmap",
                             e
                         ).into()
                     ),
@@ -753,22 +751,22 @@ impl Game {
                 let a = format!("{value:?}");
 
                 let r = match value {
-                    TatakuValue::F32(n) 
+                    TatakuValue::F32(n)
                         => values.reflect_insert(&key, n),
-                    TatakuValue::U32(n) 
+                    TatakuValue::U32(n)
                         => values.reflect_insert(&key, n),
-                    TatakuValue::U64(n) 
+                    TatakuValue::U64(n)
                         => values.reflect_insert(&key, n),
-                    TatakuValue::Bool(b) 
+                    TatakuValue::Bool(b)
                         => values.reflect_insert(&key, b),
-                    TatakuValue::String(s) 
+                    TatakuValue::String(s)
                         => values.reflect_insert(&key, s),
-                    TatakuValue::Reflect(reflect) 
+                    TatakuValue::Reflect(reflect)
                         => values.impl_insert(
-                            ReflectPath::new(&key), 
+                            ReflectPath::new(&key),
                             reflect
                         ),
-                    
+
                     other => {
                         warn!("OTHER NOT HANDLED!!! {other:?}");
                         Ok(())
@@ -792,7 +790,7 @@ impl Game {
                         self.actions.push(ModAction::PushMods.into());
 
                         self.set_current_beatmap(
-                            score.beatmap_hash, 
+                            score.beatmap_hash,
                             &SelectBeatmapConfig::new(
                                 score.playmode.clone().into(),
                                 false,
@@ -817,11 +815,11 @@ impl Game {
                 }
             }
             #[cfg(feature="graphics")]
-            GameAction::HandleMessage(message) 
+            GameAction::HandleMessage(message)
                 => self.ui_manager.add_message(message),
 
             GameAction::RefreshScores => self.score_manager.force_update = true,
-            #[cfg(feature="graphics")] 
+            #[cfg(feature="graphics")]
             GameAction::ViewScoreId(id) => {
                 if let Some(score) = self.score_manager.get_score(id) {
                     self.handle_game_action(GameAction::ViewScore(score.clone()));
@@ -829,11 +827,11 @@ impl Game {
             }
             #[cfg(feature="graphics")]
             GameAction::HandleEvent(
-                event, 
+                event,
                 param
             ) => self.queued_events.push((event, param)),
-            
-            #[cfg(feature="graphics")] 
+
+            #[cfg(feature="graphics")]
             GameAction::AddNotification(
                 notif
             ) => self.notification_manager.add_notification(notif),
@@ -842,21 +840,29 @@ impl Game {
             GameAction::UpdateBackground => {
                 let Some(filename) = self.values.current_beatmap_prop(
                     |b| b.image_filename.clone()
-                ) 
+                )
                 else { return };
-                
+
                 self.background_image = self.skin_manager.get_texture(
-                    Path::new(&filename), 
-                    &graphics::TextureSource::Raw, 
-                    graphics::SkinUsage::Background, 
+                    Path::new(&filename),
+                    &graphics::TextureSource::Raw,
+                    graphics::SkinUsage::Background,
                     false
                 );
+
+
+                if self.background_image.is_none() && !self.wallpapers.is_empty() {
+                    self.background_image = Some(self.wallpapers[0].clone());
+                }
+
+                // unload the old image so the atlas can reuse the space
+                self.skin_manager.free_by_usage(graphics::SkinUsage::Background, false);
             },
             #[cfg(feature="graphics")]
-            GameAction::CopyToClipboard(text) => { 
+            GameAction::CopyToClipboard(text) => {
                 self.window.send_event(
                     actions::window::WindowAction::CopyToClipboard(text)
-                ); 
+                );
             }
 
             GameAction::RefreshPlaymodeValues => {
@@ -890,14 +896,13 @@ impl Game {
                             .unwrap_or_else(|| self.values.global.playmode.clone());
                         let mods = mods.clone()
                             .unwrap_or_else(|| self.values.global.mods.clone());
-                        
+
                         GameplayManager::create_from_path_hash(
                             &self.values.global.gamemode_infos,
-                            &playmode, 
-                            path, 
-                            *map_hash, 
-                            None,
-                            mods, 
+                            &playmode,
+                            path,
+                            *map_hash,
+                            mods,
                             &self.values.settings,
                             &*self.database,
                         )
@@ -917,7 +922,7 @@ impl Game {
 
                         let Some(meta) = self
                             .beatmap_manager
-                            .get_by_hash(&map_hash) 
+                            .get_by_hash(&map_hash)
                         else { return };
                         let playmode = playmode.clone().unwrap_or_else(
                             || self.values.global.playmode_actual.clone()
@@ -929,9 +934,8 @@ impl Game {
 
                         GameplayManager::create(
                             &self.values.global.gamemode_infos,
-                            &playmode, 
-                            &meta, 
-                            None,
+                            &playmode,
+                            &meta,
                             mods,
                             &self.values.settings,
                             &*self.database,
@@ -945,19 +949,24 @@ impl Game {
                         if let Some(mode) = config.gameplay_mode.clone() {
                             manager.set_mode(mode.into());
                         }
-                        
+
                         manager.window_size_changed(self.values.game.window_size);
-                        
+
                         if let Some(bounds) = config.area {
                             manager.add_action(actions::gameplay::GameplayAction::FitToArea(bounds));
                         }
                         manager.reset();
 
+                        if config.jump_to_current_audio_time {
+                            let time = self.values.song.position;
+                            manager.add_action(actions::gameplay::GameplayAction::JumpToTime { time });
+                        }
+
                         use crate::prelude::ui;
                         let id = self.next_gameplay_id();
                         self.ui_manager.add_message(ui::Message::new(
-                            config.owner, 
-                            "gameplay_manager_create", 
+                            config.owner,
+                            "gameplay_manager_create",
                             None,
                             Box::new(id.clone()),
                         ));
@@ -966,7 +975,7 @@ impl Game {
                         self.gameplay_managers.insert(id, (manager, config));
                     }
 
-                    Err(e) 
+                    Err(e)
                         => error!("Error creating gameplay manager: {e}"),
                 }
             }
@@ -990,7 +999,7 @@ impl Game {
                 })
                 else { return };
 
-                
+
                 if let &actions::gameplay::GameplayAction::RequestDifficulty = &action {
                     gameplay.update_difficulty(&mut self.difficulty_manager);
                 } else {
@@ -1004,7 +1013,7 @@ impl Game {
                 self.settings_updated = true;
             }
 
-            #[cfg(not(feature="graphics"))] _ => {} 
+            #[cfg(not(feature="graphics"))] _ => {}
         }
     }
 
@@ -1029,21 +1038,21 @@ impl Game {
             }
 
             #[cfg(feature="gameplay")]
-            MultiplayerAction::CreateLobby { 
-                name, 
-                password, 
-                private, 
-                players 
+            MultiplayerAction::CreateLobby {
+                name,
+                password,
+                private,
+                players
             } => {
                 self.online_manager.multiplayer_data.lobby_creation_pending = true;
                 info!("sending create");
 
                 self.online_manager.send_packet(
-                    MultiplayerPacket::Client_CreateLobby { 
-                        name, 
-                        password, 
-                        private, 
-                        players 
+                    MultiplayerPacket::Client_CreateLobby {
+                        name,
+                        password,
+                        private,
+                        players
                     }
                 );
             }
@@ -1051,14 +1060,14 @@ impl Game {
             MultiplayerAction::LeaveLobby => {
                 self.multiplayer_manager = None;
                 self.online_manager.send_packet(MultiplayerPacket::Client_LeaveLobby);
-                #[cfg(feature="graphics")] 
+                #[cfg(feature="graphics")]
                 self.handle_custom_menu("lobby_select");
             }
             #[cfg(feature="gameplay")]
             MultiplayerAction::JoinLobby { lobby_id, password } => {
                 self.online_manager.multiplayer_data.lobby_join_pending = true;
-                if let Some(multi_manager) 
-                    = &mut self.multiplayer_manager 
+                if let Some(multi_manager)
+                    = &mut self.multiplayer_manager
                 {
                     // if we're already in this lobby, dont do anything
                     if multi_manager.lobby.id == lobby_id { return }
@@ -1067,15 +1076,15 @@ impl Game {
                     self.handle_multiplayer_action(MultiplayerAction::LeaveLobby);
                 }
 
-                self.online_manager.send_packet(MultiplayerPacket::Client_JoinLobby { 
-                    lobby_id, 
-                    password 
+                self.online_manager.send_packet(MultiplayerPacket::Client_JoinLobby {
+                    lobby_id,
+                    password
                 });
             }
 
             #[cfg(feature="gameplay")]
             MultiplayerAction::SetBeatmap { hash, mode } => {
-                let Some(map) = self.beatmap_manager.get_by_hash(&hash) 
+                let Some(map) = self.beatmap_manager.get_by_hash(&hash)
                 else { return };
 
                 let mode = mode
@@ -1096,13 +1105,13 @@ impl Game {
             }
             #[cfg(feature="gameplay")]
             MultiplayerAction::LobbyAction(action) => {
-                let Some(multi_manager) 
-                    = &mut self.multiplayer_manager 
+                let Some(multi_manager)
+                    = &mut self.multiplayer_manager
                 else { return };
 
                 multi_manager.handle_lobby_action(
-                    action, 
-                    &self.values.settings, 
+                    action,
+                    &self.values.settings,
                     &mut self.actions
                 );
             }
@@ -1114,20 +1123,20 @@ impl Game {
 
     #[cfg(feature="gameplay")]
     pub(super) fn handle_multiplayer_packet(
-        &mut self, 
+        &mut self,
         packet: MultiplayerPacket
     ) -> tataku::Result<()> {
         // if we have a multi manager, pass the packet onto it as well
-        if let Some(multi_manager) 
-            = &mut self.multiplayer_manager 
+        if let Some(multi_manager)
+            = &mut self.multiplayer_manager
         {
             let ig_manager = self
                 .current_state
                 .get_ingame();
 
             let manager_maybe = multi_manager.handle_packet(
-                &mut self.values, 
-                &packet, 
+                &mut self.values,
+                &packet,
                 ig_manager,
                 &mut self.actions,
                 &*self.database
@@ -1145,11 +1154,11 @@ impl Game {
                 self.online_manager.lobbies = lobbies;
             }
 
-            MultiplayerPacket::Server_LobbyInvite { 
-                inviter_id, 
-                lobby 
+            MultiplayerPacket::Server_LobbyInvite {
+                inviter_id,
+                lobby
             } => {
-                let username = if let Some(user) 
+                let username = if let Some(user)
                     = self.online_manager.users.get(&inviter_id)
                 {
                     user.username.clone()
@@ -1159,7 +1168,7 @@ impl Game {
 
                 // mark the lobby we have saved as without password, so the user isnt prompted to enter the password
                 // since we were invited, we can join without the password
-                if let Some(l) = self.online_manager.lobby(lobby.id) { 
+                if let Some(l) = self.online_manager.lobby(lobby.id) {
                     l.has_password = false;
                 }
 
@@ -1168,25 +1177,25 @@ impl Game {
                     Notification::default()
                     .text(format!("{username} has invited you to a multiplayer match"))
                     .color(Color::PURPLE_AMETHYST)
-                    .duration(10_000.0)
+                    .duration(10_000.0_f32)
                     .onclick(NotificationOnClick::MultiplayerLobby(lobby.id))
                     .into()
                 );
             }
 
-            MultiplayerPacket::Server_CreateLobby { 
-                success, 
-                lobby 
+            MultiplayerPacket::Server_CreateLobby {
+                success,
+                lobby
             } => {
-                let Some(lobby) = lobby.filter(|_| success) 
-                else { 
-                    warn!("no success or lobby"); 
-                    return Ok(()) 
+                let Some(lobby) = lobby.filter(|_| success)
+                else {
+                    warn!("no success or lobby");
+                    return Ok(())
                 };
 
-                if !self.online_manager.multiplayer_data.lobby_creation_pending { 
-                    warn!("no join pending"); 
-                    return Ok(()) 
+                if !self.online_manager.multiplayer_data.lobby_creation_pending {
+                    warn!("no join pending");
+                    return Ok(())
                 }
 
                 let our_id = self.online_manager.user_id;
@@ -1194,13 +1203,13 @@ impl Game {
 
 
                 let mut info = CurrentLobbyInfo::new(
-                    lobby, 
+                    lobby,
                     our_id
                 );
                 self.online_manager.update_usernames(&mut info);
 
                 let manager = MultiplayerManager::new(
-                    info, 
+                    info,
                     self.global.gamemode_infos.clone(),
                     &mut self.actions,
                 );
@@ -1213,39 +1222,39 @@ impl Game {
                 // try to update the server with our current map and mode
                 let Some(map_hash) = self.values.current_beatmap_prop(
                     |b| b.beatmap_hash
-                ) 
+                )
                 else { return Ok(()) };
 
                 let Some(map) = self.beatmap_manager
-                    .get_by_hash(&map_hash) 
+                    .get_by_hash(&map_hash)
                 else { return Ok(()) };
 
                 let mode = self.global.playmode.clone();
                 self.online_manager.update_lobby_beatmap(&map, mode.to_string());
             }
-            MultiplayerPacket::Server_JoinLobby { 
-                success, 
-                lobby 
+            MultiplayerPacket::Server_JoinLobby {
+                success,
+                lobby
             } => {
-                let Some(lobby) = lobby.filter(|_| success) 
-                else { 
-                    return Ok(()) 
+                let Some(lobby) = lobby.filter(|_| success)
+                else {
+                    return Ok(())
                 };
-                if !self.online_manager.multiplayer_data.lobby_join_pending { 
-                    return Ok(()) 
+                if !self.online_manager.multiplayer_data.lobby_join_pending {
+                    return Ok(())
                 }
 
                 let our_id = self.online_manager.user_id;
                 if our_id == 0 { return Ok (()) }
 
                 let mut info = CurrentLobbyInfo::new(
-                    lobby, 
+                    lobby,
                     our_id
                 );
                 self.online_manager.update_usernames(&mut info);
 
                 let manager = MultiplayerManager::new(
-                    info, 
+                    info,
                     self.global.gamemode_infos.clone(),
                     &mut self.actions,
                 );
@@ -1269,20 +1278,20 @@ impl Game {
                     .map(|index| self.online_manager.lobbies.remove(index));
             }
 
-            MultiplayerPacket::Server_LobbyUserJoined { 
-                lobby_id, 
-                user_id 
+            MultiplayerPacket::Server_LobbyUserJoined {
+                lobby_id,
+                user_id
             } => {
-                if let Some(l) = self.online_manager.lobby(lobby_id) { 
+                if let Some(l) = self.online_manager.lobby(lobby_id) {
                     l.players.push(user_id);
                 }
             }
 
-            MultiplayerPacket::Server_LobbyUserLeft { 
-                lobby_id, 
-                user_id 
+            MultiplayerPacket::Server_LobbyUserLeft {
+                lobby_id,
+                user_id
             } => {
-                if let Some(l) = self.online_manager.lobby(lobby_id) { 
+                if let Some(l) = self.online_manager.lobby(lobby_id) {
                     l.players.retain(|u| u != &user_id);
                 }
 
@@ -1293,7 +1302,7 @@ impl Game {
                     self.actions.push(
                         Notification::default()
                         .text("You have been kicked from the match")
-                        .duration(3000.0)
+                        .duration(3000.0_f32)
                         .color(Color::PURPLE)
                         .into()
                     );
@@ -1301,20 +1310,20 @@ impl Game {
             }
 
 
-            MultiplayerPacket::Server_LobbyMapChange { 
-                lobby_id, 
+            MultiplayerPacket::Server_LobbyMapChange {
+                lobby_id,
                 new_map
             } => {
-                if let Some(l) = self.online_manager.lobby(lobby_id) { 
+                if let Some(l) = self.online_manager.lobby(lobby_id) {
                     l.current_beatmap = Some(new_map.title.clone());
                 };
             }
 
-            MultiplayerPacket::Server_LobbyStateChange { 
-                lobby_id, 
-                new_state 
+            MultiplayerPacket::Server_LobbyStateChange {
+                lobby_id,
+                new_state
             } => {
-                if let Some(l) = self.online_manager.lobby(lobby_id) { 
+                if let Some(l) = self.online_manager.lobby(lobby_id) {
                     l.state = new_state;
                 }
             }
@@ -1327,7 +1336,7 @@ impl Game {
 
 
     pub(super) fn handle_database_action(
-        &mut self, 
+        &mut self,
         action: actions::database::Action
     ) {
         use engine::actions::database::Action;
@@ -1335,16 +1344,16 @@ impl Game {
         // println!("{action:?}");
 
         match action {
-            Action::SaveBeatmapPlaymodePreferences { 
-                hash, 
+            Action::SaveBeatmapPlaymodePreferences {
+                hash,
                 playmode,
-                prefs 
+                prefs
             } => if let Err(e) = db.set_beatmap_playmode_preferences(hash, &playmode, &prefs) {
                 error!("Error saving beatmap playmode preferences: {e:?}");
             }
-            Action::SaveBeatmapPreferences { 
-                hash, 
-                prefs 
+            Action::SaveBeatmapPreferences {
+                hash,
+                prefs
             } => if let Err(e) = db.set_beatmap_preferences(hash, &prefs) {
                 error!("Error saving beatmap preferences: {e:?}");
             }

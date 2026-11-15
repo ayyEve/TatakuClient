@@ -99,7 +99,9 @@ impl Zip {
             let Some(outpath) = file.enclosed_name() else { continue };
             let outpath = dir.join(outpath);
 
-            if file.name().ends_with('/') {
+            let Ok(name) = file.name() else { continue };
+
+            if name.ends_with('/') {
                 debug!("File {i} extracted to \"{outpath:?}\"");
                 std::fs::create_dir_all(&outpath).unwrap();
             } else {

@@ -7,13 +7,12 @@ pub enum InputType {
     KeyRelease(KeyInput),
 
     // mouse input
+    MouseMove(Vector2),
     MousePress(MouseButton),
     MouseRelease(MouseButton),
-    MouseMove(Vector2),
-    MouseScroll {
-        raw: Vector2,
-        scroll: Vector2,
-    },
+    MouseScroll(ScrollInput),
+    /// sent when a previous mouse press should be ignored/cancelled
+    MousePressCancel(MouseButton),
 
     ControllerPress(GamepadButton, GamepadId, ArcStr),
     ControllerRelease(GamepadButton, GamepadId, ArcStr),
@@ -55,5 +54,34 @@ impl InputEvent {
             | InputType::ControllerRelease(_,_,_)
             | InputType::ControllerAxis(_,_,_,_)
         )
+    }
+}
+
+
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub struct ScrollInput {
+    pub sensitivity: f32,
+    pub value: ScrollType
+}
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub enum ScrollType {
+    Pixels(Vector2),
+    Lines([i32; 2]),
+}
+impl ScrollInput {
+    pub fn get_delta(self, pixels_per_line: f32) -> Vector2 {
+        match self.value {
+            ScrollType::Pixels(p) => Vector2::new(
+                p.x,
+                p.y * self.sensitivity
+            ),
+            ScrollType::Lines([
+                x, 
+                y
+            ]) => Vector2::new(
+                x as f32, 
+                y as f32 * self.sensitivity * pixels_per_line
+            ),
+        }
     }
 }

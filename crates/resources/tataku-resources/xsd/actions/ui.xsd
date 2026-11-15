@@ -4,11 +4,11 @@
   targetNamespace="tataku/actions/ui"
   xmlns:xs="http://www.w3.org/2001/XMLSchema"
   xmlns:ui-actions="tataku/actions/ui"
-  xmlns:buildable-value="tataku/buildable-value"
+  xmlns:buildable="tataku/buildable"
   xmlns:text="tataku/text"
 >
 
-<xs:import namespace="tataku/buildable-value" schemaLocation="../buildable_value.xsd"/>
+<xs:import namespace="tataku/buildable" schemaLocation="../buildable.xsd"/>
 <xs:import namespace="tataku/text" schemaLocation="../text.xsd"/>
 
 <xs:group name="ui-action">
@@ -194,13 +194,13 @@
 
 <xs:group name="vector2">
   <xs:all>
-    <xs:element name="x" type="buildable-value:buildableValue">
+    <xs:element name="x" type="buildable:value">
       <xs:annotation>
         <xs:documentation>The X portion of this vector</xs:documentation>
       </xs:annotation>
     </xs:element>
 
-    <xs:element name="y" type="buildable-value:buildableValue">
+    <xs:element name="y" type="buildable:value">
       <xs:annotation>
         <xs:documentation>The Y portion of this vector</xs:documentation>
       </xs:annotation>

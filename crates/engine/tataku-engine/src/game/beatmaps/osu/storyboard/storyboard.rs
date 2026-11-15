@@ -253,6 +253,7 @@ impl StoryboardDef {
 
         for (n, line) in lines.into_iter().enumerate() {
             if line.is_empty() || line.starts_with("//") { continue }
+            if line == "[Events]" { continue }
 
             // check if there's a new element
             if let Some(new_ele) = StoryboardElementDef::read(&line) {

@@ -42,8 +42,8 @@ impl ParticleSystem {
         let pipeline_layout = device.create_pipeline_layout(
             &wgpu::PipelineLayoutDescriptor {
                 label: Some("Compute Pipeline layout"),
-                bind_group_layouts: &[ &buffer.layout ],
-                push_constant_ranges: &[],
+                bind_group_layouts: &[ Some(&buffer.layout) ],
+                immediate_size: 0,
             }
         );
 
@@ -117,10 +117,12 @@ impl ParticleSystem {
         let data = buffer
             .readable_particle_buffer
             .slice(..written_size as u64)
-            .get_mapped_range();
+            .get_mapped_range()
+            .unwrap();
 
         let particles:Vec<super::GpuParticle> = data
-            .chunks_exact(super::GpuParticle::count_size(1))
+            .as_chunks::<{super::GpuParticle::count_size(1)}>()
+            .0.iter()
             .map(|bytes| bytemuck::cast_slice(bytes)[0])
             .collect();
 
@@ -151,7 +153,7 @@ impl ParticleSystem {
 
             cpu_p.scale = particle.scale;
             cpu_p.rotation = particle.rotation;
-            cpu_p.color.a = (particle.opacity.clamp(0.0, 1.0) * 255.0) as u8;
+            cpu_p.color.a = tataku::ColorField::new_f32(particle.opacity);
         }
 
         Some(buffer)

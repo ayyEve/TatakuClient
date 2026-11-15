@@ -30,10 +30,10 @@ impl Shake {
 
             graphics::Transform {
                 pos: Vector2::new(shake * 8.0 * scale, 0.0),
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             }.matrix()
         } else {
-            tataku::Matrix::identity()
+            tataku::Matrix::IDENTITY
         }
     }
 }

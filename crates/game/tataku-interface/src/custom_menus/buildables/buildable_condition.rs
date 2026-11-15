@@ -1,24 +1,29 @@
 use crate::prelude::*;
 use common::reflect::*;
+use engine::BuildableCalc;
 
 #[derive(Deserialize)]
 #[serde(from="String")]
 #[derive(Clone, Debug, PartialEq)]
 pub enum BuildableCondition {
     Unbuilt(ArcStr),
-    Built(BuildableCalc, ArcStr),
+    Built(BuildableCalc),
     Failed,
 }
+
+#[cfg(feature="graphics")]
 impl BuildableCondition {
     pub fn is_unbuilt(&self) -> bool {
         matches!(self, Self::Unbuilt(_))
     }
 
     pub fn build(&mut self) {
-        let BuildableCondition::Unbuilt(s) = self else { return };
-        match BuildableCalc::parse(format!("{s} == true")) {
+        let BuildableCondition::Unbuilt(s) = self 
+        else { return };
+        
+        match BuildableCalc::parse(format!("{s} == true").into()) {
             Ok(built) 
-                => *self = BuildableCondition::Built(built, s.clone()),
+                => *self = BuildableCondition::Built(built),
                 
             Err(e) => {
                 error!("Error building conditional: {e:?}");
@@ -31,12 +36,12 @@ impl BuildableCondition {
         match self {
             Self::Failed => BuildableConditionResult::Failed,
             Self::Unbuilt(calc_str) => BuildableConditionResult::Unbuilt(calc_str),
-            Self::Built(calc, calc_str) => {
+            Self::Built(calc) => {
                 match calc.resolve(values).map(|n| n.as_bool()) {
                     Ok(true) => BuildableConditionResult::True,
                     Ok(false) => BuildableConditionResult::False,
                     Err(e) => {
-                        error!("Error with shunting yard calc. calc_str: '{calc_str}' calc: {calc:?}, error: {e:?}");
+                        error!("Error with shunting yard calc. calc_str: '{}' calc: {calc:?}, error: {e:?}", calc.expr);
                         BuildableConditionResult::Error(e)
                     }
                 }
@@ -62,5 +67,14 @@ pub enum BuildableConditionResult<'a> {
     Unbuilt(&'a str),
     True,
     False,
-    Error(engine::shunting_yards::buildable::BuildableShuntingYardError)
+    Error(buildable_shunting_yard::Error)
+}
+impl From<bool> for BuildableConditionResult<'_> {
+    fn from(value: bool) -> Self {
+        if value {
+            Self::True
+        } else {
+            Self::False
+        }
+    }
 }

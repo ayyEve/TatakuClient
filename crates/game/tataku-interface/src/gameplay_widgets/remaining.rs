@@ -1,8 +1,8 @@
 use crate::prelude::*;
 use tataku::{
-    Alignment,
-    Vector2,
     Color,
+    Vector2,
+    Alignment,
 };
 use engine::{
     settings::common_gameplay::CommonGameplaySettings,
@@ -17,8 +17,8 @@ const MAX_CHARS:usize = 7; // 1 for neg, 1 for colon, 2 for secs, 3 for mins
 const SIZE:Vector2 = Vector2::new(FONT_SIZE * MAX_CHARS as f32, FONT_SIZE);
 
 struct RemainingElement {
-    // remaining_image: Option<SkinnedNumber>,
-    // remaining_bounds: Bounds,
+    // image: Option<SkinnedNumber>,
+    // bounds: Bounds,
 
     speed: f32,
     start_time: f32,
@@ -37,8 +37,8 @@ impl RemainingElement {
         _: &Arc<CommonGameplaySettings>
     ) -> Box<dyn GameplayWidget> {
         Box::new(Self {
-            // elapsed_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::ZERO, 0.0, "normal", None, 0).await.ok(),
-            // elapsed_bounds: Bounds::new(Vector2::ZERO, SIZE),
+            // image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::ZERO, 0.0, "normal", None, 0).await.ok(),
+            // bounds: Bounds::new(Vector2::ZERO, SIZE),
 
             speed: 1.0,
             start_time: -1.0,
@@ -110,7 +110,7 @@ pub const REMAINING_ELEMENT: GameplayWidgetBuilder = GameplayWidgetBuilder {
             vertical_side: Side::Outside,
         },
         align: Alignment::TOP_RIGHT,
-        transform: graphics::Transform::identity(),
+        transform: graphics::Transform::IDENTITY,
     },
     build: RemainingElement::build,
 };

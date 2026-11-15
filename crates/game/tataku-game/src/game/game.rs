@@ -38,9 +38,6 @@ pub struct Game {
     pub(super) queued_state: GameState,
 
     #[cfg(feature="graphics")] pub(super) window: engine::window::WindowData,
-    // #[cfg(feature="graphics")] window_event_receiver: tokio::sync::mpsc::Receiver<engine::window::Event>,
-    // #[cfg(feature="graphics")] mouse_position_receiver: triple_buffer::Output<Vector2>,
-    // #[cfg(feature="graphics")] pub(super) window_proxy: winit::event_loop::EventLoopProxy<actions::window::WindowAction>,
 
     // managers
     pub song_manager: SongManager,
@@ -74,12 +71,11 @@ pub struct Game {
     game_start: tataku::Instant,
     pub(super) settings_updated: bool,
 
-    #[cfg(feature="graphics")] wallpapers: Vec<graphics::Image>,
+    #[cfg(feature="graphics")] pub(super) wallpapers: Vec<graphics::Image>,
     #[cfg(feature="graphics")] fps_counters: FpsCounters,
     #[cfg(feature="graphics")] builtin_menus: BuiltinMenus,
     #[cfg(feature="graphics")] pub(super) background_image: Option<graphics::Image>,
     #[cfg(feature="graphics")] pub queued_events: Vec<(TatakuEvent, Option<TatakuValue>)>,
-    #[cfg(feature="graphics")] background_loader: Option<engine::io::AsyncLoader<Option<graphics::Image>>>,
     // spec_watch_action: SpectatorWatchAction,
 
     pub(super) mods_queue: Vec<engine::gameplay::mods::Mods>,
@@ -90,21 +86,24 @@ impl Game {
     pub fn new(
         #[cfg(feature="graphics")] window: engine::window::WindowData,
         #[cfg(feature="graphics")] window_counters: engine::window::WindowCounters,
+        #[cfg(feature="graphics")] texture_manager: Box<dyn engine::window::TextureManager>,
         #[cfg(feature="graphics")] builtin_menus: BuiltinMenus,
         #[cfg(feature="gameplay")] audio_engines: Vec<audio::AudioApiInit>,
         gamemodes: Vec<IncomingGamemode>,
         database: Box<dyn engine::database::DatabaseProvider>,
+        settings: engine::Settings,
     ) -> Self {
-        let settings = engine::Settings::load();
         let infos = engine::gameplay::GamemodeInfos::new(gamemodes);
+
+        let runtime = Rc::new(tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+        );
+        let _guard = runtime.enter();
 
         Self {
             actions: actions::ActionQueue::new(),
-            runtime: Rc::new(tokio::runtime::Builder::new_multi_thread()
-                .enable_all()
-                .build()
-                .unwrap()
-            ),
 
             // engine
             #[cfg(feature="graphics")] window,
@@ -134,7 +133,7 @@ impl Game {
             #[cfg(feature="graphics")] ui_manager: UiManager::new(builtin_menus.default_css),
             #[cfg(feature="graphics")] gameplay_managers: HashMap::new(),
             #[cfg(feature="graphics")] cursor_manager: CursorManager::default(),
-            #[cfg(feature="graphics")] skin_manager: SkinManager::new(&settings),
+            #[cfg(feature="graphics")] skin_manager: SkinManager::new(texture_manager, &settings),
             #[cfg(feature="graphics")] custom_menu_manager: CustomMenuManager::default(),
             #[cfg(feature="graphics")] notification_manager: NotificationManager::default(),
             #[cfg(feature="graphics")] text_layout_contexts: ui::widget::TextLayoutContexts::new(),
@@ -147,7 +146,6 @@ impl Game {
             // misc
             game_start: tataku::Instant::now(),
             settings_updated: false,
-            #[cfg(feature="graphics")] background_loader: None,
             #[cfg(feature="graphics")] queued_events: Vec::new(),
             #[cfg(feature="graphics")] fps_counters: FpsCounters::new(window_counters),
 
@@ -156,6 +154,7 @@ impl Game {
                 values: TatakuValues::new(&infos, settings),
                 custom: common::reflect::DynMap::default()
             },
+            runtime,
         }
     }
 
@@ -284,11 +283,12 @@ impl Game {
             BeatmapDownloadsCheckTask::default()
         )).into());
 
-
+        // initialize the gamemode settings
         self.values.values.settings.gamemode_settings.build(
             self.values.values.global.gamemode_infos.clone()
         );
 
+        // build the settings provider for use by custom menus
         #[cfg(feature="ui")] {
             let mut settings = self.settings.clone();
             settings.init(&mut self.values, "settings".to_string());
@@ -339,6 +339,7 @@ impl Game {
             // });
         }
 
+        self.actions.push(actions::game::GameAction::RefreshSkins.into());
         self.actions.push(InitGameTask::default().into());
         #[cfg(feature="graphics")]
         self.handle_custom_menu("loading_menu");
@@ -623,29 +624,6 @@ impl Game {
                 manager.window_size_changed(window_size);
             }
         }
-
-        // check bg loaded
-        #[cfg(feature="graphics")]
-        if let Some(loader) = self.background_loader.clone()
-        && let Some(image) = loader.check() {
-            self.background_loader = None;
-
-            // unload the old image so the atlas can reuse the space
-            if let Some(old_img) = self.background_image.take() {
-                self.actions.push(actions::window::LoadImage::FreeTexture {
-                    tex: *old_img.tex,
-                    deferred: false
-                }.into());
-            }
-
-            self.background_image = image;
-
-            if self.background_image.is_none() && !self.wallpapers.is_empty() {
-                self.background_image = Some(self.wallpapers[0].clone());
-            }
-        }
-
-
         // update counters
         #[cfg(feature="graphics")] {
             self.fps_counters.update_display.increment();
@@ -1171,7 +1149,7 @@ impl Game {
                 origin: img.size() / 2.0, // center
                 scale,
                 pos: self.values.game.window_size / 2.0, // center to the window
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             render_queue.push(img.with_transform(transform.matrix()));
@@ -1180,7 +1158,7 @@ impl Game {
         // draw dim
         render_queue.push(graphics::Rectangle::new(
             self.values.game.window_size,
-            Color::BLACK.alpha(self.settings.background_dim),
+            Color::BLACK.with_alpha_f32(self.settings.background_dim),
         ));
 
         // draw cursor ripples
@@ -1231,7 +1209,7 @@ impl Game {
 
                 render_queue.push(graphics::Rectangle::new(
                     self.game.window_size,
-                    Color::new(0.0, 0.0, 0.0, alpha),
+                    Color::BLACK.with_alpha_f32(alpha),
                 ));
             }
             GameState::TransitionEnding {
@@ -1247,7 +1225,7 @@ impl Game {
 
                 render_queue.push(graphics::Rectangle::new(
                     self.game.window_size,
-                    Color::new(0.0, 0.0, 0.0, alpha),
+                    Color::BLACK.with_alpha_f32(alpha),
                 ));
             }
 
@@ -1324,11 +1302,10 @@ impl Game {
                     self.cursor_manager.right_pressed(false);
                 }
 
-                InputType::MouseScroll { raw: delta, .. } => {
+                InputType::MouseScroll(scroll) => {
                     // check for volume change
-                    if delta.y != 0.0
-                    && let Some(action) = self.volume_controller.on_mouse_wheel(
-                        delta.y * 1.5,
+                    if let Some(action) = self.volume_controller.on_mouse_wheel(
+                        *scroll,
                         mods,
                         &mut self.values.settings
                     ) {
@@ -1342,7 +1319,7 @@ impl Game {
                 }
 
                 InputType::KeyPress(key) => {
-                    let Some(key) = key.as_key()
+                    let Some(key) = key.key
                     else { return true };
 
                     if self.volume_controller.on_key_press(
@@ -1360,15 +1337,18 @@ impl Game {
                         return false;
                     }
 
+                    let ctrl = mods.contains(KeyModifiers::CTRL);
+                    let shift = mods.contains(KeyModifiers::SHIFT);
+
                     match key {
                         // screenshot
                         Key::F12 => self.window.send_event(actions::window::WindowAction::TakeScreenshot(actions::window::ScreenshotInfo {
                             // if shift is pressed, upload to server, and get link
-                            upload: mods.shift,
+                            upload: shift,
                         })),
 
                         // settings menu
-                        Key::O if mods.ctrl => {
+                        Key::O if ctrl => {
                             let is_ingame = self.current_state.is_ingame();
                             let allow_ingame = self.settings
                                 .common_game_settings
@@ -1383,12 +1363,12 @@ impl Game {
                         }
 
                         // debug
-                        Key::PageUp if mods.ctrl => {
+                        Key::PageUp if ctrl => {
                             debug!("{:#?}", self.values.values);
                         }
 
                         // custom menu list
-                        Key::M if mods.ctrl && mods.shift => {
+                        Key::M if ctrl && shift => {
                             self.actions.push(actions::multiplayer::MultiplayerAction::CreateLobby {
                                 name: "a".to_string(),
                                 password: String::new(),
@@ -1400,10 +1380,19 @@ impl Game {
                         }
 
                         // debug
-                        Key::T if mods.ctrl && mods.shift => {
+                        Key::T if ctrl && shift => {
                             // self.ui_manager.root_tree.print(&self.values);
                             let xml = self.ui_manager.root_tree.export_xml(&self.values);
                             std::fs::write("/tmp/test.xml", xml).unwrap();
+                            info!("wrote root tree node to /tmp/test.xml");
+
+                            for i in self.ui_manager.dialogs.iter_mut() {
+                                let xml = i.export_xml(&self.values);
+                                let name = i.get_node().name();
+                                let file = format!("/tmp/{name}.xml");
+                                std::fs::write(&file, xml).unwrap();
+                                info!("wrote dialog tree to {file}");
+                            }
                         }
 
                         // console dialog
@@ -1430,7 +1419,7 @@ impl Game {
                         ) => {}
 
                         // full refresh
-                        Key::F5 if mods.ctrl => {
+                        Key::F5 if ctrl => {
                             self.actions.push(Notification::new_text(
                                 "Doing a full refresh, the game will freeze for a bit",
                                 Color::RED,
@@ -1442,7 +1431,7 @@ impl Game {
                         }
 
                         // reload custom menus
-                        Key::R if mods.ctrl => {
+                        Key::R if ctrl => {
                             debug!("Reloading custom menus/dialogs");
                             self.load_custom_menus();
 
@@ -1460,7 +1449,7 @@ impl Game {
                         | Key::Key2
                         | Key::Key3
                         | Key::Key4
-                        if mods.ctrl => {
+                        if ctrl => {
                             let index = match key {
                                 Key::Key1 => 0,
                                 Key::Key2 => 1,
@@ -1804,7 +1793,7 @@ impl Game {
                 self.actions.push(Notification::default()
                     .text("What is this?")
                     .color(Color::RED)
-                    .duration(3_000.0)
+                    .duration(3_000.0_f32)
                     .into()
                 );
             }
@@ -1818,7 +1807,7 @@ impl Game {
             self.actions.push(
                 Notification::default()
                 .text("You don't have this beatmap!")
-                .duration(5_000.0)
+                .duration(5_000.0_f32)
                 .color(Color::RED)
                 .into()
             );
@@ -1871,7 +1860,6 @@ impl Game {
                 self.actions.push(actions::menu::MenuAction::SetMenu {
                     id: "fail_menu".into(),
                 }.into());
-                // self.queue_state_change(GameState::SetMenu(Box::new(PauseMenu::new(true))));
                 return;
             }
         } else {

@@ -124,6 +124,8 @@ pub struct NewManager {
     pub gameplay_mode: Option<GameplayTypeInfo>,
     /// if it should be bound to an area
     pub area: Option<tataku::Bounds>,
+    /// if it should automatically jump to the current audio's time (needed for some gamemodes to not spam previously "hit" notes)
+    pub jump_to_current_audio_time: bool,
     /// if there is a different draw function that should be used (mainly for widgets)
     #[debug(skip)]
     pub draw_function: Option<Arc<dyn Fn(graphics::RenderableCollection) + Send + Sync + 'static>>,

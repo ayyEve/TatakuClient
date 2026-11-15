@@ -5,8 +5,8 @@ use tataku::{
     Bounds,
     Vector2,
 };
-use engine::gameplay::stats::{ 
-    StatsEntry, 
+use engine::gameplay::stats::{
+    StatsEntry,
     StatsValue,
 };
 
@@ -37,8 +37,8 @@ impl ScatterGraph {
         }
 
         Self {
-            min, 
-            max, 
+            min,
+            max,
             data
         }
     }
@@ -58,21 +58,21 @@ impl ScatterGraph {
         // background
         collection.push(graphics::Rectangle::new(
             size,
-            Color::new(0.2, 0.2, 0.2, 0.7),
+            Color::new_f32(0.2, 0.2, 0.2, 0.7),
         ).border(Border::new(
-            Color::RED, 
+            Color::RED,
             1.5
-        )).with_transform(tataku::Matrix::identity()
+        )).with_transform(tataku::Matrix::IDENTITY
             .trans(bounds.pos)
         ));
-        
+
         // 0 line
         let zero_pos = Vector2::with_y(self.map_point(0.0, size));
         collection.push(graphics::Line::new(
             size.x_portion(),
             1.5,
             Color::WHITE,
-        ).with_transform(tataku::Matrix::identity()
+        ).with_transform(tataku::Matrix::IDENTITY
             .trans(bounds.pos + zero_pos)
         ));
 
@@ -85,7 +85,7 @@ impl ScatterGraph {
                         size.x_portion(),
                         1.5,
                         i.color,
-                    ).with_transform(tataku::Matrix::identity()
+                    ).with_transform(tataku::Matrix::IDENTITY
                         .trans(bounds.pos + Vector2::with_y(v))
                     ));
                 }
@@ -97,7 +97,7 @@ impl ScatterGraph {
                         let transform = graphics::Transform {
                             pos: bounds.pos + Vector2::new(x_step * n as f32, y),
                             scale: Vector2::ONE * 2.0,
-                            ..graphics::Transform::identity()
+                            ..graphics::Transform::IDENTITY
                         };
 
                         collection.push(graphics::Circle::new(i.color)
@@ -105,10 +105,10 @@ impl ScatterGraph {
                             .with_transform(transform.matrix())
                         );
                     }
-                    
+
                 }
             }
-            
+
         }
 
         collection

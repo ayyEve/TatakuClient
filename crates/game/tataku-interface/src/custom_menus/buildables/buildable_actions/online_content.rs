@@ -11,7 +11,7 @@ use engine::{
 #[serde(rename_all="camelCase")]
 #[derive(Clone, Debug, PartialEq)]
 pub enum BuildableOnlineContentAction {
-    Search(BuildableOnlineContentSearch),
+    Search(Box<BuildableOnlineContentSearch>),
 
     NextPage,
     PreviousPage,
@@ -32,6 +32,8 @@ pub enum BuildableOnlineContentAction {
         index: BuildableValue,
     },
 }
+
+#[cfg(feature="graphics")]
 impl BuildableOnlineContentAction {
     fn index(
         index: &BuildableValue,
@@ -104,6 +106,7 @@ pub struct BuildableOnlineContentSearch {
     query: Option<Wrapped<BuildableValue>>,
 }
 
+#[cfg(feature="graphics")]
 impl BuildableOnlineContentSearch {
     fn get_search_values(
         &self, 

@@ -5,7 +5,7 @@
   xmlns:xs="http://www.w3.org/2001/XMLSchema"
   xmlns:actions="tataku/actions"
   xmlns:common="tataku/common"
-  xmlns:buildable-value="tataku/buildable-value"
+  xmlns:buildable="tataku/buildable"
   xmlns:text="tataku/text"
 
 
@@ -22,7 +22,7 @@
   xmlns:ui-actions="tataku/actions/ui"
 >
 
-<xs:import namespace="tataku/buildable-value" schemaLocation="../buildable_value.xsd"/>
+<xs:import namespace="tataku/buildable" schemaLocation="../buildable.xsd"/>
 <xs:import namespace="tataku/text" schemaLocation="../text.xsd"/>
 <xs:import namespace="tataku/common" schemaLocation="../common.xsd"/>
 
@@ -55,23 +55,23 @@
       </xs:element>
 
       <!-- setMenu -->
-      <xs:element name="setMenu" type="buildable-value:buildableValue">
+      <xs:element name="setMenu" type="buildable:value">
         <xs:annotation>
           <xs:documentation>Set the current menu to the provided ID</xs:documentation>
         </xs:annotation>
       </xs:element>
 
       <!-- addDialog -->
-      <xs:element name="addDialog" type="buildable-value:buildableValue"/>
+      <xs:element name="addDialog" type="buildable:value"/>
 
-      <xs:element name="custom" type="buildable-value:buildableValue"/>
+      <xs:element name="custom" type="buildable:value"/>
 
       <xs:element name="closeDialog"/>
 
       <xs:element name="setValue">
         <xs:complexType mixed="true">
           <xs:sequence>
-            <xs:group ref="buildable-value:buildableValue-wrapped" minOccurs="0"/>
+            <xs:group ref="buildable:value" minOccurs="0"/>
           </xs:sequence>
           <xs:attribute name="key" type="text:string" use="required"/>
         </xs:complexType>
@@ -151,7 +151,7 @@
             <xs:group ref="actions:action" maxOccurs="unbounded"/>
             <xs:element name="false" type="actions:action-list" minOccurs="0"/>
           </xs:sequence>
-          <xs:attribute name="cond" type="common:condition" use="required"/>
+          <xs:attribute name="cond" type="text:condition" use="required"/>
         </xs:complexType>
       </xs:element>
   </xs:choice>

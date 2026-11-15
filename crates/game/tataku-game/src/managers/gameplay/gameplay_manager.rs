@@ -155,8 +155,7 @@ pub struct GameplayManager {
 impl GameplayManager {
     fn new(
         beatmap: engine::beatmaps::Beatmap,
-        start_time: Option<f32>,
-        mut gamemode: Box<dyn Gamemode>,
+        gamemode: Box<dyn Gamemode>,
         mut mods: Mods,
         settings: &Settings,
         database: &dyn engine::database::DatabaseProvider,
@@ -204,16 +203,6 @@ impl GameplayManager {
             }
         ).into());
 
-        let mut gameplay_actions = Vec::new();
-
-        if let Some(time) = start_time {
-            trace!("Jumping to time {time}");
-
-            gameplay_actions.push(GameplayAction::JumpToTime { time });
-        }
-
-        // make sure the gamemode has the correct mods applied
-        gamemode.handle_gameplay_event(GameplayEvent::ApplyMods(current_mods.clone()));
 
         Self {
             actions,
@@ -255,7 +244,7 @@ impl GameplayManager {
             #[cfg(feature="graphics")] animation: Box::new(engine::game::beatmap_animation::EmptyAnimation),
             gameplay_type: Box::new(GameplayType::Normal),
             gameplay_type_small: GameplayTypeSmall::Normal,
-            gameplay_actions,
+            gameplay_actions: Vec::new(),
             pending_frames: Vec::new(),
             spectator_info: GameplaySpectatorInfo::default(),
 
@@ -268,7 +257,6 @@ impl GameplayManager {
         infos: &GamemodeInfos,
         incoming_mode: &str,
         beatmap: Beatmap,
-        start_time: Option<f32>,
         mods: Mods,
         settings: &Settings,
         database: &dyn engine::database::DatabaseProvider,
@@ -282,7 +270,6 @@ impl GameplayManager {
 
         Ok(GameplayManager::new(
             beatmap,
-            start_time,
             gamemode,
             mods,
             settings,
@@ -295,7 +282,6 @@ impl GameplayManager {
         incoming_mode: &str,
         map_path: &str,
         map_hash: common::Md5Hash,
-        start_time: Option<f32>,
         mods: Mods,
         settings: &Settings,
         database: &dyn engine::database::DatabaseProvider,
@@ -306,7 +292,6 @@ impl GameplayManager {
             infos,
             incoming_mode,
             beatmap,
-            start_time,
             mods,
             settings,
             database
@@ -318,7 +303,6 @@ impl GameplayManager {
         infos: &GamemodeInfos,
         incoming_mode: &str,
         beatmap: &BeatmapMeta,
-        start_time: Option<f32>,
         mods: Mods,
         settings: &Settings,
         database: &dyn engine::database::DatabaseProvider,
@@ -328,7 +312,6 @@ impl GameplayManager {
             infos,
             incoming_mode,
             beatmap,
-            start_time,
             mods,
             settings,
             database
@@ -342,52 +325,43 @@ impl GameplayManager {
         #[cfg(feature="ui")] font_contexts: &mut TextLayoutContexts,
         actions: &mut actions::ActionQueue,
     ) {
-        match self.gameplay_type_small {
-            GameplayTypeSmall::Simulating => {
-                let time = self.time();
-                // update gamemode
-                self.update_gamemode(time, &values.settings, #[cfg(feature="ui")] font_contexts);
-
-                // update score stuff now that gamemode has been updated
-                self.update_score_values();
-
-                // then a few other things
-                self.check_complete();
-                self.update_gamemode_type(time);
-                self.handle_pending(&values.settings, font_contexts);
-            },
-
-            _ => {
-                self.state.song_time = values.values.song.position;
-
-                self.check_time_jump(&values.settings, font_contexts);
-                self.check_pause_and_restart(actions);
-
-                // get the time with offsets
-                let time = self.time();
-
-                self.state.update_hit_timings(time);
-                #[cfg(feature="ui")] self.update_ui(time, font_contexts);
-                #[cfg(feature="gameplay")] self.check_leadin(&values.settings);
-                #[cfg(feature="gameplay")] self.update_scores(values);
-                #[cfg(feature="gameplay")] self.update_timing_points(time);
-                #[cfg(feature="gameplay")] self.update_spectators(time);
-
-                #[cfg(feature="graphics")] self.animation.update(time);
-
-                // update gamemode
-                self.update_gamemode(time, &values.settings, #[cfg(feature="ui")] font_contexts);
-
-                // update score stuff now that gamemode has been updated
-                self.update_score_values();
-
-                self.check_complete();
-                self.check_failed(time);
-                self.update_gamemode_type(time);
-                self.handle_pending(&values.settings, font_contexts);
-                self.update_values(values);
-            }
+        let song = values.values.song;
+        if song.stopped && self.started() && song.position > 0.0 && !self.state.timing_source.is_internal() {
+            self.state.timing_source.make_internal(song.position);
         }
+
+        self.state.song_time = self.state.timing_source.time(values.values.song.position);
+
+        self.check_pause_and_restart(actions);
+
+        self.handle_pending(&values.settings, font_contexts);
+        self.check_time_jump(&values.settings, font_contexts);
+
+        // get the time with offsets
+        let time = self.time();
+
+        self.state.update_hit_timings(time);
+        #[cfg(feature="ui")] self.update_ui(time, font_contexts);
+        #[cfg(feature="gameplay")] self.check_leadin(&values.settings);
+        #[cfg(feature="gameplay")] self.update_scores(values);
+        #[cfg(feature="gameplay")] self.update_timing_points(time);
+        #[cfg(feature="gameplay")] self.update_spectators(time);
+
+        #[cfg(feature="graphics")] self.animation.update(time);
+
+        self.handle_pending(&values.settings, font_contexts);
+
+        // update gamemode
+        self.update_gamemode(time, &values.settings, #[cfg(feature="ui")] font_contexts);
+
+        // update score stuff now that gamemode has been updated
+        self.update_score_values();
+
+        self.check_complete();
+        self.check_failed(time);
+        self.update_gamemode_type(time);
+        self.handle_pending(&values.settings, font_contexts);
+        self.update_values(values);
 
         actions.extend(self.actions.take());
     }
@@ -404,7 +378,7 @@ impl GameplayManager {
 
         // dont draw score, combo, etc if this is a menu bg
         match self.gameplay_type_small {
-            GameplayTypeSmall::Preview | GameplayTypeSmall::Simulating => {}
+            GameplayTypeSmall::Preview => {}
             _ => self.draw_ui(time, list),
         }
     }
@@ -463,7 +437,7 @@ impl GameplayManager {
                     full_window: true
                 }
             };
-            self.gamemode.handle_gameplay_event(event);
+            self.run_gameplay_event(event);
 
             // set cursor visibility
             self.actions.push(CursorAction::SetVisible(
@@ -481,6 +455,9 @@ impl GameplayManager {
 
         if !self.state.started {
             self.reset();
+
+            // make sure the gamemode has the correct mods applied
+            self.run_gameplay_event(GameplayEvent::ApplyMods(self.mods.clone()));
 
             //TODO: probably want to skip other things as well
             #[cfg(feature="gameplay")]
@@ -513,9 +490,8 @@ impl GameplayManager {
                 SpectatorAction::UnPause
             ));
             self.actions.push(SongAction::Play.into());
-            self.gamemode.handle_gameplay_event(GameplayEvent::UnPaused);
+            self.run_gameplay_event(GameplayEvent::UnPaused);
         }
-
 
         // re init ui
         #[cfg(feature="graphics")] {
@@ -544,17 +520,26 @@ impl GameplayManager {
             |this| SpectatorFrame::new(this.time(), SpectatorAction::Pause),
         );
 
-        self.gamemode.handle_gameplay_event(GameplayEvent::Paused);
+        self.run_gameplay_event(GameplayEvent::Paused);
     }
     pub fn reset(&mut self) {
         self.health.reset();
         self.key_counter.reset();
         self.timing_points.reset();
-        self.gamemode.reset(&self.beatmap);
+
+        self.gamemode.reset(&GameplayCustomShell {
+            gameplay_type: &self.gameplay_type_small,
+            timing_points: &self.timing_points,
+            // settings: &self.settings,
+            // window_size: ,
+            custom: &self.beatmap,
+        });
+
+
         self.state.reset(self.mods.get_speed());
 
         if self.gameplay_type_small.is_preview() {
-            self.gamemode.handle_gameplay_event(GameplayEvent::ApplyMods(
+            self.run_gameplay_event(GameplayEvent::ApplyMods(
                 self.mods.clone()
             ));
         } else {
@@ -655,6 +640,14 @@ impl GameplayManager {
 
 // update fns
 impl GameplayManager {
+
+    fn run_gameplay_event(&mut self, event: GameplayEvent) {
+        self.gamemode.handle_gameplay_event(&mut GameplayCustomShell {
+            gameplay_type: &self.gameplay_type_small,
+            timing_points: &self.timing_points,
+            custom: event
+        });
+    }
 
     #[cfg(feature="gameplay")]
     fn update_scores(&mut self, values: &mut ValueCollection) {
@@ -840,12 +833,12 @@ impl GameplayManager {
         for tp_update in self.timing_points.update(time) {
             match tp_update {
                 TimingPointUpdate::BeatHappened(pulse_length)
-                    => self.gamemode.handle_gameplay_event(GameplayEvent::BeatHappened {
+                    => self.run_gameplay_event(GameplayEvent::BeatHappened {
                         pulse_length
                     }),
 
                 TimingPointUpdate::KiaiChanged(enabled)
-                    => self.gamemode.handle_gameplay_event(GameplayEvent::KiaiChanged {
+                    => self.run_gameplay_event(GameplayEvent::KiaiChanged {
                         enabled
                     }),
             }
@@ -936,10 +929,6 @@ impl GameplayManager {
         match &mut *self.gameplay_type {
             // read inputs from replay if replaying
             GameplayType::Replaying {
-                score,
-                current_frame
-            }
-            | GameplayType::Simulating {
                 score,
                 current_frame
             } => {
@@ -1082,6 +1071,7 @@ impl GameplayManager {
                 last_escape_press: _,
                 score_send_timer,
             } => {
+                #[allow(clippy::collapsible_match, reason="readability")]
                 if score_send_timer.as_millis() >= SCORE_SEND_TIME {
                     score_send_timer.elapsed_and_reset();
                     let score = self.score.score.clone();
@@ -1217,7 +1207,7 @@ impl GameplayManager {
         }
 
         let mut shell = GameplayWidgetDrawShell {
-            transform: tataku::Matrix::identity(),
+            transform: tataku::Matrix::IDENTITY,
             list,
         };
 
@@ -1318,7 +1308,7 @@ impl GameplayManager {
         // this should be fine since we shouldnt be re-using this gamemode at this time anyways
         self.gamemode = Box::new(engine::gameplay::default::NoMode);
         self.gamemode_properties = self.gamemode.properties(&self.timing_points);
-        skin_manager.free_by_usage(graphics::SkinUsage::Beatmap);
+        skin_manager.free_by_usage(graphics::SkinUsage::Beatmap, true);
 
         let path = self.beatmap
             .get_parent_dir()
@@ -1326,7 +1316,7 @@ impl GameplayManager {
             .to_string_lossy()
             .to_string();
 
-        skin_manager.free_by_source(graphics::TextureSource::Beatmap(path));
+        skin_manager.free_by_source(graphics::TextureSource::Beatmap(path), true);
     }
 
 }
@@ -1519,7 +1509,7 @@ impl GameplayManager {
                 }
 
                 self.mods = Arc::new(mods);
-                self.gamemode.handle_gameplay_event(GameplayEvent::ApplyMods(
+                self.run_gameplay_event(GameplayEvent::ApplyMods(
                     self.mods.clone()
                 ));
             },
@@ -1527,7 +1517,7 @@ impl GameplayManager {
             GameplayAction::FitToArea(bounds) => {
                 // info!("fitting to area: {bounds:?}");
                 self.state.fit_to_bounds = Some(bounds);
-                self.gamemode.handle_gameplay_event(GameplayEvent::SetBounds {
+                self.run_gameplay_event(GameplayEvent::SetBounds {
                     bounds,
                     full_window: false
                 });
@@ -1770,12 +1760,14 @@ impl GameplayManager {
     ) {
         match &input.event {
             InputType::KeyPress(key_input) => {
+                if key_input.repeat { return }
+
                 if self.key_down(key_input, input.key_mods, settings, font_contexts) {
                     return
                 }
             }
             InputType::KeyRelease(key_input) => {
-                let Some(key) = key_input.as_key() else { return };
+                let Some(key) = key_input.key else { return };
 
                 // check map restart key
                 if key == self.gameplay_settings.map_restart_key {
@@ -1811,8 +1803,7 @@ impl GameplayManager {
         settings: &Settings,
         #[cfg(feature="ui")] font_contexts: &mut TextLayoutContexts,
     ) -> bool {
-        if key_input.repeat { return false }
-        let Some(key) = key_input.as_key() else { return false };
+        let Some(key) = key_input.key else { return false };
 
         if (self.gameplay_type_small.is_replay() || self.mods.has_autoplay())
             && !self.gameplay_type_small.is_preview()
@@ -1841,120 +1832,115 @@ impl GameplayManager {
         if self.should_skip_input() { return false }
 
 
-        if key == Key::Escape {
-            if self.can_pause() {
-                self.state.should_pause = true;
-            } else if let GameplayType::Multiplayer { last_escape_press, .. } = &mut *self.gameplay_type {
-                if last_escape_press.elapsed_and_reset() < 3_000.0 {
-                    self.actions.push(MultiplayerAction::ExitMultiplayer.into());
-                } else {
-                    self.actions.push(Notification::new_text(
-                        "Press escape again to quit the lobby",
-                        Color::RED,
-                        3_000.0
-                    ).into());
+        match key {
+            Key::Escape => {
+                if self.can_pause() {
+                    self.state.should_pause = true;
+                } else if let GameplayType::Multiplayer { last_escape_press, .. } = &mut *self.gameplay_type {
+                    if last_escape_press.elapsed_and_reset() < 3_000.0 {
+                        self.actions.push(MultiplayerAction::ExitMultiplayer.into());
+                    } else {
+                        self.actions.push(Notification::new_text(
+                            "Press escape again to quit the lobby",
+                            Color::RED,
+                            3_000.0
+                        ).into());
+                    }
+                }
+                true
+            }
+
+            // ui editor toggle
+            #[cfg(feature = "ui")]
+            input::Key::F9 => {
+                if self.editor.is_some() {
+                    self.editor = None;
+                    if !self.gamemode_properties.show_cursor {
+                        self.actions.push(CursorAction::SetVisible(false).into());
+                    }
+                    return true;
                 }
 
-                return true;
-            }
-        }
 
-        // ui editor toggle
-        #[cfg(feature = "ui")]
-        if key == input::Key::F9 {
-            if self.editor.is_some() {
-                self.editor = None;
-                if !self.gamemode_properties.show_cursor {
-                    self.actions.push(CursorAction::SetVisible(false).into());
+                // ensure autoplay is enabled
+                self.state.unrankable = true;
+                if !self.mods.has_autoplay() {
+                    let mut mods = (*self.mods).clone();
+                    mods.add_mod(mods::Autoplay);
+                    self.gameplay_actions.push(GameplayAction::ApplyMods(mods));
                 }
-                return true;
+
+                let (
+                    event_sender,
+                    event_receiver
+                ) = std::sync::mpsc::channel();
+                let (
+                    action_sender,
+                    action_receiver
+                ) = std::sync::mpsc::channel();
+
+                let editor = GameplayWidgetEditor::new(
+                    self.widget_tree.elements(),
+                    action_sender,
+                    event_receiver
+                );
+
+                self.actions.push(actions::menu::MenuAction::AddDialogRaw {
+                    dialog: Box::new(editor),
+                    options: Box::new(actions::menu::DialogCreateOptions {
+                        background: false,
+                        ..Default::default()
+                    })
+                }.into());
+
+                self.editor = Some(EditorChannels {
+                    event_sender,
+                    action_receiver: Arc::new(Mutex::new(action_receiver)),
+                });
+
+                self.actions.push(actions::cursor::CursorAction::SetVisible(true).into());
+                true
             }
 
+            // skip intro
+            input::Key::Space => {
+                self.handle_frame(
+                    ReplayAction::Press(KeyPress::SkipIntro),
+                    false,
+                    None,
+                    true,
+                    settings,
+                    font_contexts,
+                );
 
-            // ensure autoplay is enabled
-            self.state.unrankable = true;
-            if !self.mods.has_autoplay() {
-                let mut mods = (*self.mods).clone();
-                mods.add_mod(mods::Autoplay);
-                self.gameplay_actions.push(GameplayAction::ApplyMods(mods));
+                true
             }
 
-            let (
-                event_sender,
-                event_receiver
-            ) = std::sync::mpsc::channel();
-            let (
-                action_sender,
-                action_receiver
-            ) = std::sync::mpsc::channel();
+            // check for offset changing keys
+            _ => {
+                let mut t = 0.0;
+                if key == self.gameplay_settings.key_offset_up { t = 5.0 }
+                if key == self.gameplay_settings.key_offset_down { t = -5.0 }
+                if t != 0.0 {
+                    if mods.contains(KeyModifiers::SHIFT) {
+                        self.increment_global_offset(t);
+                    } else {
+                        self.increment_offset(t);
+                    }
 
-            let editor = GameplayWidgetEditor::new(
-                self.widget_tree.elements(),
-                action_sender,
-                event_receiver
-            );
+                    return true
+                }
 
-            self.actions.push(actions::menu::MenuAction::AddDialogRaw {
-                dialog: Box::new(editor),
-                options: Box::new(actions::menu::DialogCreateOptions {
-                    background: false,
-                    ..Default::default()
-                })
-            }.into());
-
-            self.editor = Some(EditorChannels {
-                event_sender,
-                action_receiver: Arc::new(Mutex::new(action_receiver)),
-            });
-
-            self.actions.push(actions::cursor::CursorAction::SetVisible(true).into());
-            return true;
+                false
+            }
         }
-
-        // check for offset changing keys
-        if mods.shift {
-            let mut t = 0.0;
-            if key == self.gameplay_settings.key_offset_up { t = 5.0 }
-            if key == self.gameplay_settings.key_offset_down { t = -5.0 }
-
-            if t != 0.0 {
-                self.increment_global_offset(t);
-                return true;
-            }
-        } else {
-            if key == self.gameplay_settings.key_offset_up {
-                self.increment_offset(5.0);
-                return true;
-            }
-            if key == self.gameplay_settings.key_offset_down {
-                self.increment_offset(-5.0);
-                return true;
-            }
-        }
-
-
-        // skip intro
-        if key == input::Key::Space {
-            self.handle_frame(
-                ReplayAction::Press(KeyPress::SkipIntro),
-                false,
-                None,
-                true,
-                settings,
-                font_contexts,
-            );
-
-            return true;
-        }
-
-        false
     }
 
     #[cfg(feature="graphics")]
     pub fn window_size_changed(&mut self, window_size: Vector2) {
         self.state.window_size = window_size;
         if self.state.fit_to_bounds.is_none() {
-            self.gamemode.handle_gameplay_event(GameplayEvent::SetBounds {
+            self.run_gameplay_event(GameplayEvent::SetBounds {
                 bounds: Bounds::new(Vector2::ZERO, window_size),
                 full_window: true
             });
@@ -2051,9 +2037,7 @@ impl GameplayManagerTrait for GameplayManager {
             .collect::<Vec<_>>();
 
         // sort by points
-        list.sort_by(|a, b|
-            b.score.score.cmp(&a.score.score)
-        );
+        list.sort_by_key(|a| a.score.score);
 
         list
     }
@@ -2078,8 +2062,7 @@ impl GameplayManagerTrait for GameplayManager {
                 // dont think there's anything to do for this one, since its the default
             }
 
-            GameplayType::Replaying { score, .. }
-            | GameplayType::Simulating { score, .. } => {
+            GameplayType::Replaying { score, .. } => {
                 // load speed from score
                 self.mods = Arc::new(Mods::new(
                     score.mods.iter(),

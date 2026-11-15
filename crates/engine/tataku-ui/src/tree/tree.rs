@@ -94,8 +94,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
 
         // TODO: refresh layout when scale changes
         let ui_scale = values.reflect_get::<f32>("settings.ui_scale")
-            .map(|i| *i)
-            .unwrap_or(1.0);
+            .map_or(1.0, |i| *i);
 
         let style = node.get_style_str();
         let mut resolver = CssResolver::new(&style, default_css);
@@ -181,12 +180,12 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
 
     pub fn update_contexts(&mut self) {
         // update absolute positions and matrices
-        let matrix = Matrix::identity().trans(self.bounds.pos);
+        let matrix = Matrix::IDENTITY.trans(self.bounds.pos);
         self.recurse_update_context(self.root, matrix);
 
         // update spatial navigation
-        SpatialNagivation::new(self)
-            .run(&NavigateConfig::default());
+        // SpatialNagivation::new(self)
+        //     .run(&NavigateConfig::default());
     }
 
     fn recurse_update_context(
@@ -219,7 +218,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         if context.needs_inverse_transform {
             context.inverse_global_transform = context
                 .global_transform
-                .inverse()
+                .try_inverse()
                 .unwrap_or_else(|| {
                     // eprintln!("could not invert transform: {:#?}", context.global_transform);
                     context.global_transform
@@ -229,7 +228,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
 
         matrix = matrix
             * context.local_transform.matrix()
-            * Matrix::identity().trans(bounds.pos);
+            * Matrix::IDENTITY.trans(bounds.pos);
 
 
         for child in self.children(node).into_owned() {
@@ -241,10 +240,9 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         let our_matrix = self
             .get_context(node)
             .map_or_else(
-                || Matrix::identity().trans(self.bounds.pos),
+                || Matrix::IDENTITY.trans(self.bounds.pos),
                 |p| p.global_transform
             );
-
         self.recurse_update_context(node, our_matrix);
     }
 
@@ -621,7 +619,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
                             let InputType::KeyPress(k) = e
                             else { return true };
 
-                            !k.is_key(key)
+                            k.key != Some(key)
                         });
                     },
                     Self::Controller(btn) => {

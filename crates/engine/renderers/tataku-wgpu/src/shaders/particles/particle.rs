@@ -43,7 +43,7 @@ impl GpuParticle {
 
             scale: p.scale,
             rotation: p.rotation,
-            opacity: p.color.a(),
+            opacity: p.color.a.to_f32(),
 
             info_index: info,
             emitter_index: emitter,

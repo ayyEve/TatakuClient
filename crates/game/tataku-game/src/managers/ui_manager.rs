@@ -239,25 +239,30 @@ impl UiManager {
         }
 
         for event in input_state.events.iter() {
+            let mods = input_state.mods;
+            let control = mods.contains(input::KeyModifiers::CTRL);
+            let alt = mods.contains(input::KeyModifiers::ALT);
+            let shift = mods.contains(input::KeyModifiers::SHIFT);
+
             match event {
-                input::InputType::KeyPress(key) => {
-                    let Some(key) = key.as_key() else { continue };
+                input::InputType::KeyPress(input) => {
+                    let Some(key) = input.key else { continue };
 
                     tataku_events.push((input::TatakuEvent::KeyPress(input::CustomMenuKeyEvent {
                         key,
-                        control: input_state.mods.ctrl,
-                        alt: input_state.mods.alt,
-                        shift: input_state.mods.shift,
+                        control,
+                        alt,
+                        shift,
                     }), None));
                 }
-                input::InputType::KeyRelease(key) => {
-                    let Some(key) = key.as_key() else { continue };
+                input::InputType::KeyRelease(input) => {
+                    let Some(key) = input.key else { continue };
 
                     tataku_events.push((input::TatakuEvent::KeyRelease(input::CustomMenuKeyEvent {
                         key,
-                        control: input_state.mods.ctrl,
-                        alt: input_state.mods.alt,
-                        shift: input_state.mods.shift,
+                        control,
+                        alt,
+                        shift,
                     }), None));
                 }
 

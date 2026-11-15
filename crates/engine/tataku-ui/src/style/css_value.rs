@@ -37,9 +37,7 @@ impl<T> CssValue<T> {
             // }
 
             // value
-            other => value_parser(other)
-                .map(Self::Value)
-                .unwrap_or(default),
+            other => value_parser(other).map_or(default, Self::Value),
         }
     }
 

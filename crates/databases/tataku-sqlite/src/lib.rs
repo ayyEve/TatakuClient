@@ -693,8 +693,8 @@ impl engine::database::ScoreProvider for Database {
         )";
         let params: &[&(dyn rusqlite::ToSql + Send + Sync); 13] = &[
             &s.beatmap_hash.to_string(), &s.hash(),
-            &s.username, &s.playmode, &s.time,
-            &s.score,
+            &s.username, &s.playmode, &(s.time as i64),
+            &(s.score as i64),
             &s.combo, &s.max_combo,
             &s.accuracy,
             // s.x50, s.x100, s.x300, s.xgeki, s.xkatu, s.xmiss,
@@ -846,8 +846,8 @@ mod db_score {
             version: r.get("version").unwrap_or(1), // v1 didnt include version in the table
             username: r.get("username")?,
             playmode: r.get("playmode")?,
-            time: r.get("time").unwrap_or(0),
-            score: r.get("score")?,
+            time: r.get::<_, i64>("time").unwrap_or(0) as u64,
+            score: r.get::<_, i64>("score")? as u64,
             combo: r.get("combo")?,
             max_combo: r.get("max_combo")?,
             accuracy: r.get("accuracy").unwrap_or_default(),

@@ -19,6 +19,7 @@ impl engine::game::diffcalc::DiffCalc for ManiaDifficultyCalculator {
         }
 
         let mut difficulty_hitobjects:Vec<DifficultyHitObject> = Vec::new();
+        #[allow(clippy::needless_range_loop, reason = ".-.")]
         for c in 0..g.columns.len() {
             for n in g.columns[c].iter() {
                 difficulty_hitobjects.push(DifficultyHitObject::new(n.time(), c as u8));

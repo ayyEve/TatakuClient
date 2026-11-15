@@ -24,9 +24,6 @@ pub struct Dropdown {
 
     on_change: DropdownOnChange,
 
-    /// is dropdown visible?
-    active: bool,
-
     width: f32,
     node_id: NodeId,
 }
@@ -51,8 +48,6 @@ impl Dropdown {
 
             on_change,
 
-            active: false,
-
             // theme: DropdownTheme::sane_defaults(),
 
             width: 0.0,
@@ -69,7 +64,7 @@ impl Dropdown {
             unreachable!("dropdown variants are built");
         };
 
-        self.active = false;
+        shell.state_mut(self.node_id).unwrap().set_active(false);
         self.value.set_index(index);
 
         self.main_button.inner.child.text.set(enum_variants[index].clone());
@@ -87,9 +82,9 @@ impl Dropdown {
                 let actions = actions.iter()
                     .cloned()
                     .filter_map(|action| action.resolve(
-                        self.node_id, 
-                        shell.source, 
-                        shell.values, 
+                        self.node_id,
+                        shell.source,
+                        shell.values,
                         passed_in
                     ));
 
@@ -142,14 +137,15 @@ impl Widget<actions::Action> for Dropdown {
         let node_id = shell.tree.new_leaf()?;
         self.node_id = node_id;
 
+        let source = shell.source;
         self.main_button.inner.on_press_left = Some(Box::new(move || Some(Message::new(
-            MessageSource::Menu,
+            source,
             "toggle_dropdown",
             Some(MessageTarget::Node(node_id)),
             Box::new(()),
         ))).into());
 
-        if let Err(e) = self.variants.build(self.node_id, shell.values) {
+        if let Err(e) = self.variants.build(self.node_id, source, shell.values) {
             error!("error building variants: {e:?}");
             self.variants = DropdownVariants::Buttons {
                 buttons: Vec::new(),
@@ -225,31 +221,38 @@ impl Widget<actions::Action> for Dropdown {
             unreachable!("dropdown variants are built");
         };
 
+        let Some(state) = shell.state(self.node_id)
+        else { return };
+        let active = state.active();
+
         self.main_button.input(event, shell);
 
-        if self.active {
+        if active {
             for variant in buttons {
                 if shell.event_consumed { return; }
 
                 variant.input(event, shell);
             }
         }
-
         if shell.event_consumed { return; }
 
+        let state = shell.state_mut(self.node_id).unwrap();
         match &event.event {
-            InputType::KeyPress(input) if self.active => {
-                let Some(key) = input.as_key() else { return };
+            InputType::KeyPress(input) if active => {
+                let Some(key) = input.key else { return };
 
                 if key == input::Key::Escape {
-                    self.active = false;
+                    state.set_active(false);
 
                     shell.event_consumed = true;
                 }
             }
 
-            InputType::MousePress(MouseButton::Left) if self.active => {
-                self.active = false;
+            InputType::MousePress(MouseButton::Left) if active => {
+                state.set_active(false);
+            }
+            InputType::MousePressCancel(MouseButton::Left) if active => {
+                state.set_active(false);
             }
 
             _ => {}
@@ -374,7 +377,10 @@ impl Widget<actions::Action> for Dropdown {
             },
 
             "toggle_dropdown" => {
-                self.active = !self.active;
+                let Some(state) = shell.state_mut(self.node_id)
+                else { return };
+
+                state.toggle(ElementState::Active);
 
                 shell.handled = true;
             },
@@ -388,10 +394,12 @@ impl Widget<actions::Action> for Dropdown {
     }
 
     fn draw_overlay(&self, shell: &mut DrawShell<actions::Action>) {
-        if !self.active { return }
+        let Some(state) = shell.state(self.node_id)
+        else { return };
+        if !state.active() { return }
 
-        let DropdownVariants::Buttons { 
-            buttons, .. 
+        let DropdownVariants::Buttons {
+            buttons, ..
         } = &self.variants else {
             unreachable!("dropdown variants are built");
         };
@@ -444,11 +452,23 @@ pub enum DropdownVariants {
     },
 }
 impl DropdownVariants {
-    fn build(&mut self, dropdown: NodeId, values: &dyn Reflect) -> tataku::Result<()> {
+    fn build(&mut self, dropdown: NodeId, source: MessageSource, values: &dyn Reflect) -> tataku::Result<()> {
         let Self::Variable(var) = self
         else { return Ok(()) };
 
+        // FIXME: for some reason when building settings these can be the wrong type ????
+        // println!("building variants");
+
+        // println!("resolving path: {var}");
+
+        // if var.as_ref().starts_with("::_setting.type.Dropdown") {
+        //     if let Ok(d) = values.reflect_get::<engine::settings::BuildableSetting>("_setting") {
+        //         println!("actual type: {d:?}");
+        //     }
+        // }
+
         let path = var.resolve_path(values)?;
+        // println!("got path: {path}");
 
         let mut buttons = Vec::new();
         let mut enum_variants = Vec::new();
@@ -488,7 +508,7 @@ impl DropdownVariants {
 
             let callback = Box::new(move || {
                 Some(Message::new(
-                    MessageSource::Menu,
+                    source,
                     "select_index",
                     Some(MessageTarget::Node(dropdown)),
                     Box::new(index),
@@ -496,7 +516,7 @@ impl DropdownVariants {
             });
 
             let button = widgets::Button::new(widgets::Text::new(display.into()))
-                .on_press_left(Some(callback))
+                .on_press_left(Some(widgets::ButtonOnClick::Callback(callback)))
                 .into_widget_base();
 
             buttons.push(button);

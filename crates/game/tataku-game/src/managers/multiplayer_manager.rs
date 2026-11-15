@@ -315,7 +315,7 @@ impl MultiplayerManager {
                     actions.push(
                         Notification::default()
                         .text(format!("User with id {user_id} joined the match"))
-                        .duration(3000.0)
+                        .duration(3000.0_f32)
                         .color(Color::PURPLE)
                         .into()
                     );
@@ -326,7 +326,7 @@ impl MultiplayerManager {
                 actions.push(
                     Notification::default()
                     .text(format!("{} joined the match", user.username))
-                    .duration(3000.0)
+                    .duration(3000.0_f32)
                     .color(Color::PURPLE)
                     .into()
                 );
@@ -348,7 +348,7 @@ impl MultiplayerManager {
                     actions.push(
                         Notification::default()
                         .text(format!("{username} left the match"))
-                        .duration(3000.0)
+                        .duration(3000.0_f32)
                         .color(Color::PURPLE)
                         .into()
                     );
@@ -394,7 +394,6 @@ impl MultiplayerManager {
                                 &infos,
                                 &mode,
                                 &map,
-                                None,
                                 mods,
                                 &settings,
                                 database,
@@ -518,7 +517,7 @@ impl MultiplayerManager {
                     manager
                         .score_list
                         .scores
-                        .sort_by(|a, b| b.score.score.cmp(&a.score.score));
+                        .sort_by_key(|a| std::cmp::Reverse(a.score.score));
                 }
             }
 
@@ -539,7 +538,7 @@ impl MultiplayerManager {
                     actions.push(
                         Notification::default()
                         .text("You are now the host!")
-                        .duration(3000.0)
+                        .duration(3000.0_f32)
                         .color(Color::PURPLE_AMETHYST)
                         .into()
                     );
@@ -639,7 +638,7 @@ impl MultiplayerManager {
                             actions.push(
                                 Notification::default()
                                 .text("shit")
-                                .duration(3000.0)
+                                .duration(3000.0_f32)
                                 .color(Color::RED)
                                 .into()
                             );

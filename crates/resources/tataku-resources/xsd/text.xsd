@@ -5,9 +5,6 @@
     targetNamespace="tataku/text"
 >
 
-<xs:complexType name="text" mixed="true">
-    <xs:group ref="text:text-wrapped" />
-</xs:complexType>
 
 <xs:simpleType name="string">
     <xs:restriction base="xs:string">
@@ -15,27 +12,18 @@
     </xs:restriction>
 </xs:simpleType>
 
-<xs:group name="text-wrapped">
-    <xs:choice>
-        <xs:element name="locale" type="text:string"/>
-        <xs:element name="variable" type="text:string"/>
+<xs:simpleType name="variable-path">
+    <xs:restriction base="text:string"> 
+        <!-- <xs:pattern value=""></xs:pattern> -->
+    </xs:restriction>
+</xs:simpleType>
 
-        <xs:element name="display">
-            <xs:complexType mixed="true">
-                <xs:attribute name="precision" type="xs:long"/>
-            </xs:complexType>
-        </xs:element>
 
-        <xs:element name="calc" type="text:string"/>
+<xs:simpleType name="condition">
+  <xs:restriction base="text:string">
+    <xs:minLength value="1"/>
+  </xs:restriction>
+</xs:simpleType>
 
-        <xs:element name="iter">
-            <xs:complexType>
-                <xs:attribute name="variable" type="text:string" use="required"/>
-                <xs:attribute name="property" type="text:string"/>
-                <xs:attribute name="join" type="text:string" use="required"/>
-            </xs:complexType>
-        </xs:element>
-    </xs:choice>
-</xs:group>
 
 </xs:schema>

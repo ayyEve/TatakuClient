@@ -6,7 +6,7 @@ use tataku::{
 };
 
 /// timing bar color
-pub const BAR_COLOR:Color = Color::new(0.0, 0.0, 0.0, 1.0);
+pub const BAR_COLOR:Color = Color::BLACK;
 /// how wide is a timing bar
 const BAR_WIDTH:f32 = 4.0;
 
@@ -40,7 +40,7 @@ impl TimingBar {
         shell.list.push(graphics::Rectangle::new(
             Vector2::new(BAR_WIDTH, shell.playfield.size.y),
             BAR_COLOR,
-        ).with_transform(tataku::Matrix::identity()
+        ).with_transform(tataku::Matrix::IDENTITY
             .trans(Vector2::new(x - BAR_WIDTH / 2.0, shell.playfield.pos.y))
         ));
     }

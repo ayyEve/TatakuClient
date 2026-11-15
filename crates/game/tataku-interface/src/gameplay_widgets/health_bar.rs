@@ -199,7 +199,7 @@ pub const HEALTH_BAR: GameplayWidgetBuilder = GameplayWidgetBuilder {
     default_layout: GameplayWidgetLayout {
         anchor: GameplayWidgetAnchor::Screen,
         align: Alignment::TOP_LEFT,
-        transform: graphics::Transform::identity(),
+        transform: graphics::Transform::IDENTITY,
     },
     build: HealthBarElement::build,
 };

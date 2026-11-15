@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use widgets::context_menus::ContextMenuAction;
 use tataku::{
     Border,
     Bounds,
@@ -9,13 +10,12 @@ use ui::{
     style::*,
     widget::*,
 };
-use input::{ 
+use input::{
     Key,
     InputType,
-    InputEvent, 
-    MouseButton, 
+    InputEvent,
+    MouseButton,
 };
-use widgets::context_menus::ContextMenuAction;
 
 /// NOTE: This doesn't need to be in the taffy tree (probably)
 pub struct ContextMenu {
@@ -84,7 +84,7 @@ impl ContextMenu {
 
         let index = (rel_y / self.item_size.y).floor();
 
-        if index < 0.0 || index >= len { 
+        if index < 0.0 || index >= len {
             None
         } else {
             Some(index as usize)
@@ -93,7 +93,7 @@ impl ContextMenu {
 
     fn try_make_submenu(&mut self, index: usize) -> bool {
         let option = &self.options[index];
-        let ContextMenuOptionType::SubMenu(menu) 
+        let ContextMenuOptionType::SubMenu(menu)
             = &option.option_type
         else { return false };
 
@@ -121,14 +121,14 @@ impl Widget<actions::Action> for ContextMenu {
 
     fn init_style(&mut self, shell: &mut LayoutShell<actions::Action>) {
         shell.tree.update_style(
-            self.node_id, 
+            self.node_id,
             |s| s.position = Position::Absolute.into()
         );
     }
 
     fn input(
-        &mut self, 
-        event: &InputEvent, 
+        &mut self,
+        event: &InputEvent,
         shell: &mut InputShell<actions::Action>,
     ) {
         if let Some(menu) = &mut self.submenu {
@@ -151,8 +151,8 @@ impl Widget<actions::Action> for ContextMenu {
                 }
 
                 self.hover_index = self.index_at(pos.y);
-                if self.active_index.is_some() 
-                    && self.active_index != self.hover_index 
+                if self.active_index.is_some()
+                    && self.active_index != self.hover_index
                 {
                     self.active_index = None;
                     self.submenu = None;
@@ -174,7 +174,7 @@ impl Widget<actions::Action> for ContextMenu {
             InputType::MouseRelease(MouseButton::Left) => {
                 if let Some(active) = self.active_index {
                     shell.event_consumed = true;
-                    if let ContextMenuOptionType::Action(action) 
+                    if let ContextMenuOptionType::Action(action)
                         = &self.options[active].option_type
                     {
                         self.should_close = true;
@@ -192,62 +192,67 @@ impl Widget<actions::Action> for ContextMenu {
             }
 
             InputType::KeyPress(key) => {
-                if key.is_key(Key::Up) {
-                    if let Some(index) = &mut self.active_index {
-                        *index = (*index - 1).clamp(0, self.options.len());
-                    }
-                } else if key.is_key(Key::Down) || key.is_key(Key::Tab) {
-                    if let Some(index) = &mut self.active_index {
-                        *index = (*index + 1).clamp(0, self.options.len());
-                    } else {
-                        self.active_index = Some(0);
-                    }
-                } else if key.is_key(Key::Enter) || key.is_key(Key::Space) {
-                    if let Some(active) = self.active_index {
-                        match &self.options[active].option_type {
-                            ContextMenuOptionType::TextOnly => {}
-                            ContextMenuOptionType::SubMenu(_) => {
-                                self.try_make_submenu(active);
-                            }
+                let Some(k) = key.key else { return };
 
-                            ContextMenuOptionType::Action(action) => {
-                                self.should_close = true;
-                                self.should_close_parent = true;
-                                action.run(
-                                    shell.tree.node.node_id(),
-                                    shell.source,
-                                    None,
-                                    shell.values,
-                                    shell.actions,
-                                    shell.messages
-                                );
+                match k {
+                    Key::Up => {
+                        if let Some(index) = &mut self.active_index {
+                            *index = (*index - 1).clamp(0, self.options.len());
+                        }
+                    }
+                    Key::Down | Key::Tab => {
+                        if let Some(index) = &mut self.active_index {
+                            *index = (*index + 1).clamp(0, self.options.len());
+                        } else {
+                            self.active_index = Some(0);
+                        }
+                    }
+
+                    Key::Enter | Key::Space => {
+                        if let Some(active) = self.active_index {
+                            match &self.options[active].option_type {
+                                ContextMenuOptionType::TextOnly => {}
+                                ContextMenuOptionType::SubMenu(_) => {
+                                    self.try_make_submenu(active);
+                                }
+
+                                ContextMenuOptionType::Action(action) => {
+                                    self.should_close = true;
+                                    self.should_close_parent = true;
+                                    action.run(
+                                        shell.tree.node.node_id(),
+                                        shell.source,
+                                        None,
+                                        shell.values,
+                                        shell.actions,
+                                        shell.messages
+                                    );
+                                }
                             }
                         }
                     }
-                } 
 
-                // TODO: need to vary between left and right depending on which way the context menu opens
-                // ie if the menu opens to the left (non-default) these will need to be reversed
-                else if key.is_key(Key::Left) {
-                    if self.active_index.is_some() {
+
+                    // TODO: need to vary between left and right depending on which way the context menu opens
+                    // ie if the menu opens to the left (non-default) these will need to be reversed
+
+                    Key::Left => if self.active_index.is_some() {
                         self.should_close = true;
                         self.should_close_parent = false;
                     }
-                } else if key.is_key(Key::Right) { 
-                    if let Some(active) = self.active_index {
+                    Key::Right => if let Some(active) = self.active_index {
                         self.try_make_submenu(active);
 
-                        // if a submenu was created, init it with the active index 0 (first), 
+                        // if a submenu was created, init it with the active index 0 (first),
                         // so that its automatically ready for keyboard controls
                         if let Some(menu) = &mut self.submenu {
                             menu.active_index = Some(0);
                         }
                     }
-                } 
-                
-                else {
-                    return;
+
+                    _ => return
                 }
+
                 shell.event_consumed = true;
             }
 
@@ -272,7 +277,7 @@ impl Widget<actions::Action> for ContextMenu {
 
     fn draw(&self, shell: &mut DrawShell<actions::Action>) {
         for (n, i) in self.options.iter().enumerate() {
-            let pos = self.location 
+            let pos = self.location
                 + Vector2::new(0.0, self.item_size.y * n as f32);
 
             shell.list.push(graphics::Rectangle::new(
@@ -280,11 +285,11 @@ impl Widget<actions::Action> for ContextMenu {
                 shell.general_theme.background_color,
             ).border(Border::new(
                 shell.general_theme.get_color(
-                    self.active_index == Some(n), 
+                    self.active_index == Some(n),
                     self.hover_index == Some(n)
                 ),
                 2.0
-            )).with_transform(tataku::Matrix::identity()
+            )).with_transform(tataku::Matrix::IDENTITY
                 .trans(pos)
             ));
 

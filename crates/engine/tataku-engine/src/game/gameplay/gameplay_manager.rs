@@ -56,13 +56,11 @@ pub enum GameplayTypeSmall {
     Replaying,
     Spectator,
     Multiplayer,
-    Simulating,
 }
 impl GameplayTypeSmall {
     pub fn is_preview(&self) -> bool { matches!(self, Self::Preview) }
     pub fn is_multi(&self) -> bool { matches!(self, Self::Multiplayer) }
-    pub fn is_replay(&self) -> bool { matches!(self, Self::Replaying | Self::Simulating) }
-    pub fn is_simulation(&self) -> bool { matches!(self, Self::Simulating) }
+    pub fn is_replay(&self) -> bool { matches!(self, Self::Replaying) }
 }
 impl From<&GameplayType> for GameplayTypeSmall {
     fn from(value: &GameplayType) -> Self {
@@ -74,7 +72,6 @@ impl From<&GameplayType> for GameplayTypeSmall {
             GameplayType::Multiplayer { .. } => Self::Multiplayer,
             #[cfg(feature="graphics")]
             GameplayType::Spectator { .. } => Self::Spectator,
-            GameplayType::Simulating { .. } => Self::Simulating,
         }
     }
 }
@@ -134,15 +131,6 @@ pub enum GameplayType {
         last_escape_press: tataku::Instant,
         score_send_timer: tataku::Instant,
     },
-
-    /// This manager is simulating a replay
-    Simulating {
-        /// What score+replay are we watching?
-        score: Score,
-
-        /// What frame index are we at?
-        current_frame: usize,
-    },
 }
 impl GameplayType {
     // // convenience fns
@@ -155,7 +143,7 @@ impl GameplayType {
     pub fn should_load_scores(&self) -> bool {
         match self {
             Self::Normal | Self::Replaying {..} => true,
-            Self::Preview {..} | Self::Simulating { .. } => false,
+            Self::Preview {..} => false,
 
             #[cfg(feature="gameplay")]
             Self::Spectator {..} => true,
@@ -170,7 +158,7 @@ impl GameplayType {
         match self {
             // send spec frames for normal gameplay and multi, not for anything else
             Self::Normal | Self::Multiplayer {..} => true,
-            Self::Replaying {..} | Self::Spectator {..} | Self::Preview {..} | Self::Simulating { .. } => false,
+            Self::Replaying {..} | Self::Spectator {..} | Self::Preview {..} => false,
         }
     }
 
@@ -226,28 +214,28 @@ pub struct GameplayUpdateShell<'a> {
     /// current map time
     pub time: f32,
 
-    /// current game speed
+    /// Current game speed
     pub game_speed: f32,
 
     /// NOTE: use an action to set this, dont manually set it
     pub completed: bool,
 
-    /// current mods
+    /// Current mods
     pub mods: &'a Mods,
 
-    /// the current timing point
+    /// The current timing point
     pub current_timing_point: &'a beatmaps::TimingPoint,
 
-    /// the current gameplay mode
+    /// The current gameplay mode
     pub gameplay_type: &'a GameplayTypeSmall,
 
-    /// our current score
+    /// Our current score
     pub score: &'a IngameScore,
 
-    // all timing points
+    // All timing points
     pub timing_points: &'a TimingPointProgress,
 
-    /// list of actions to be performed
+    /// List of actions to be performed
     pub actions: Vec<gameplay::Action>,
 
     /// Game settings
@@ -256,8 +244,10 @@ pub struct GameplayUpdateShell<'a> {
     /// Action queue
     pub action_queue: &'a mut ActionQueue,
 
+    /// Font contexts
     pub font_contexts: &'a mut ui::widget::TextLayoutContexts,
 
+    /// Window size
     pub window_size: Vector2,
 }
 impl GameplayUpdateShell<'_> {
@@ -355,6 +345,26 @@ impl GameplayUpdateShell<'_> {
     }
 
 }
+
+
+pub struct GameplayCustomShell<'a, T> {
+    /// The current gameplay mode
+    pub gameplay_type: &'a GameplayTypeSmall,
+
+    // All timing points
+    pub timing_points: &'a TimingPointProgress,
+
+    // /// Game settings
+    // pub settings: &'a Settings,
+
+    // /// Window size
+    // pub window_size: Vector2,
+
+    /// Some custom value
+    pub custom: T,
+}
+
+
 
 
 #[allow(dead_code)]

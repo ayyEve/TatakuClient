@@ -45,30 +45,26 @@ impl<Action: Send + Sync> LayoutTree<'_, Action> {
 
 impl<Action: Send + Sync> taffy::CacheTree for LayoutTree<'_, Action> {
     fn cache_get(
-        &self,
+        &mut self,
         node_id: NodeId,
-        known_dimensions: Size<Option<f32>>,
-        available_space: Size<taffy::AvailableSpace>,
-        run_mode: taffy::RunMode,
+        input: &taffy::LayoutInput,
     ) -> Option<taffy::LayoutOutput> {
         self.tree
             .nodes[node_id.into()]
             .cache
-            .get(known_dimensions, available_space, run_mode)
+            .get(input)
     }
 
     fn cache_store(
         &mut self,
         node_id: NodeId,
-        known_dimensions: Size<Option<f32>>,
-        available_space: Size<taffy::AvailableSpace>,
-        run_mode: taffy::RunMode,
+        input: &taffy::LayoutInput,
         layout_output: taffy::LayoutOutput,
     ) {
         self.tree
             .nodes[node_id.into()]
             .cache
-            .store(known_dimensions, available_space, run_mode, layout_output);
+            .store(input, layout_output);
     }
 
     fn cache_clear(&mut self, node_id: NodeId) {
@@ -110,6 +106,24 @@ impl<Action: Send + Sync> taffy::LayoutFlexboxContainer for LayoutTree<'_, Actio
     }
 }
 
+// FIXME: implement these? seems to be fine without them for now tho
+#[allow(unused)]
+impl<Action: Send + Sync> taffy::LayoutContainingBlock for LayoutTree<'_, Action> {
+    type OofItemStyle<'b> = CssStyleResolver<'b> where Self: 'b;
+
+    fn get_oof_item_style(&self, node_id: NodeId) -> Self::OofItemStyle<'_> {
+        self.get_core_container_style(node_id)
+    }
+
+    fn clear_hoisted_children(&mut self, node_id: NodeId) {
+        // todo!()
+    }
+
+    fn add_hoisted_children(&mut self, node_id: NodeId, hoisted: &[NodeId]) {
+        // todo!()
+    }
+}
+
 impl<Action: Send + Sync> taffy::LayoutBlockContainer for LayoutTree<'_, Action> {
     type BlockContainerStyle<'b> = CssStyleResolver<'b> where Self: 'b;
     type BlockItemStyle<'b> = CssStyleResolver<'b> where Self: 'b;
@@ -124,6 +138,7 @@ impl<Action: Send + Sync> taffy::LayoutBlockContainer for LayoutTree<'_, Action>
         self.get_core_container_style(child_node_id)
     }
 }
+
 
 impl<Action: Send + Sync> taffy::LayoutPartialTree for LayoutTree<'_, Action> {
     type CoreContainerStyle<'b> = CssStyleResolver<'b> where Self: 'b;
@@ -189,10 +204,10 @@ impl<Action: Send + Sync> taffy::LayoutPartialTree for LayoutTree<'_, Action> {
             // Dispatch to a layout algorithm based on the node's display style and whether the node has children or not.
             match (display_mode, has_children) {
                 (DisplayType::None, _) => taffy::compute_hidden_layout(tree, node),
-                (DisplayType::Block, true) => taffy::compute_block_layout(tree, node, inputs),
+                (DisplayType::Block, true) => taffy::compute_block_layout(tree, node, inputs, None),
                 (DisplayType::Flex, true) => taffy::compute_flexbox_layout(tree, node, inputs),
                 // (DisplayType::Grid, true) => todo!(), //taffy::compute_grid_layout(tree, node, inputs),
-                (DisplayType::Table, true) => taffy::compute_block_layout(tree, node, inputs),
+                (DisplayType::Table, true) => taffy::compute_block_layout(tree, node, inputs, None),
                 (_, false) => {
                     let style = tree.get_core_container_style(node);
                     taffy::compute_leaf_layout(
@@ -216,6 +231,32 @@ impl<Action: Send + Sync> taffy::RoundTree for LayoutTree<'_, Action> {
 
     fn set_final_layout(&mut self, node_id: NodeId, layout: &taffy::Layout) {
         self.tree.nodes[node_id.into()].final_layout = *layout;
+    }
+    
+
+    fn is_out_of_flow(&self, node_id: NodeId) -> bool {
+        // let node = self.tree.nodes.get(node_id.into()).unwrap();
+        let ctx = &self
+            .tree
+            .node_context_data[node_id.into()];
+        let style = &ctx.current_style().0;
+
+        let position = style.position.resolve_copied(self.values).unwrap_or_default();
+
+        matches!(position, Position::Absolute)
+    }
+    
+    // FIXME
+    #[allow(unused)]
+    fn hoisted_child_count(&self, node_id: NodeId) -> usize {
+        0
+        // todo!()
+    }
+    
+    // FIXME
+    #[allow(unused)]
+    fn get_hoisted_child_id(&self, node_id: NodeId, index: usize) -> NodeId {
+        todo!()
     }
 }
 

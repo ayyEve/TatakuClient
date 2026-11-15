@@ -6,13 +6,12 @@
   xmlns:actions="tataku/actions"
   xmlns:events="tataku/events"
   xmlns:common="tataku/common"
-  xmlns:buildable-value="tataku/buildable-value"
   xmlns:text="tataku/text"
 >
 
+<xs:import namespace="tataku/elements" schemaLocation="elements/elements.xsd"/>
 <xs:import namespace="tataku/actions" schemaLocation="actions/actions.xsd"/>
 <xs:import namespace="tataku/events" schemaLocation="events.xsd"/>
-<xs:import namespace="tataku/elements" schemaLocation="elements/elements.xsd"/>
 <xs:import namespace="tataku/text" schemaLocation="text.xsd"/>
 
 
@@ -21,13 +20,5 @@
     <xs:group ref="events:event" maxOccurs="unbounded"/>
   </xs:sequence>
 </xs:complexType>
-
-<xs:simpleType name="condition">
-  <xs:restriction base="text:string">
-    <xs:minLength value="1"/>
-  </xs:restriction>
-</xs:simpleType>
-
-
 
 </xs:schema>

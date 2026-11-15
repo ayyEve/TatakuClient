@@ -3,19 +3,19 @@
 <xs:schema 
   targetNamespace="tataku/actions/mod"
   xmlns:xs="http://www.w3.org/2001/XMLSchema"
-  xmlns:buildable-value="tataku/buildable-value"
+  xmlns:buildable="tataku/buildable"
 >
 
-<xs:import namespace="tataku/buildable-value" schemaLocation="../buildable_value.xsd"/>
+<xs:import namespace="tataku/buildable" schemaLocation="../buildable.xsd"/>
 
 
 <xs:group name="mod-action">
   <xs:choice>
-      <xs:element name="addMod" type="buildable-value:buildableValue" minOccurs="1"/>
-      <xs:element name="removeMod" type="buildable-value:buildableValue" minOccurs="1"/>
-      <xs:element name="toggleMod" type="buildable-value:buildableValue" minOccurs="1"/>
-      <xs:element name="setSpeed" type="buildable-value:buildableValue" minOccurs="1"/>
-      <xs:element name="addSpeed" type="buildable-value:buildableValue" minOccurs="1"/>
+      <xs:element name="addMod" type="buildable:value" minOccurs="1"/>
+      <xs:element name="removeMod" type="buildable:value" minOccurs="1"/>
+      <xs:element name="toggleMod" type="buildable:value" minOccurs="1"/>
+      <xs:element name="setSpeed" type="buildable:value" minOccurs="1"/>
+      <xs:element name="addSpeed" type="buildable:value" minOccurs="1"/>
   </xs:choice>
 </xs:group>
 

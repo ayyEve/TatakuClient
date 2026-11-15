@@ -60,7 +60,8 @@ impl JudgementIndicator for ImageJudgementIndicator {
             - (map_time - (self.time + (self.draw_duration - fade_duration)))
             / fade_duration
         ;
-        let alpha = (alpha.clamp(0.0, 1.0) * 255.0) as u8;
+
+        let alpha = tataku::ColorField::new_f32(alpha);
 
         let mut img = self.image.clone();
 
@@ -83,7 +84,7 @@ impl BasicJudgementIndicator {
     /// pos, depth, radius and color are only if image is none.
     /// if image is some, it assumes the values (pos, depth, size, etc) are already set
     pub fn new(
-        color: Color, 
+        color: Color,
         transform: graphics::Transform,
     ) -> Self {
         Self {
@@ -110,14 +111,15 @@ impl JudgementIndicator for BasicJudgementIndicator {
 
     fn draw(&self, map_time: f32, list: &mut graphics::RenderableCollection) {
         let fade_duration = self.draw_duration / 2.0;
-        let alpha = 1.0 
-            - (map_time - (self.time + (self.draw_duration - fade_duration))) 
+        let alpha = 1.0
+            - (map_time - (self.time + (self.draw_duration - fade_duration)))
             / fade_duration
         ;
-        let alpha = (alpha.clamp(0.0, 1.0) * 255.0) as u8;
+
+        let alpha = tataku::ColorField::new_f32(alpha);
 
         list.push(graphics::Circle::new(
-            self.color.alpha8(alpha),
+            self.color.with_alpha(alpha),
         ).with_transform(self.transform.matrix()));
     }
 }

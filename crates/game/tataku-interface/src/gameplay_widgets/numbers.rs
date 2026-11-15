@@ -141,7 +141,7 @@ pub const SCORE:GameplayWidgetBuilder = GameplayWidgetBuilder {
     default_layout: GameplayWidgetLayout {
         anchor: GameplayWidgetAnchor::Screen,
         align: Alignment::TOP_RIGHT,
-        transform: graphics::Transform::identity(),
+        transform: graphics::Transform::IDENTITY,
     },
     build: |_,_| Box::new(Number::new(SCORE_CONF)),
 };
@@ -166,7 +166,7 @@ pub const COMBO:GameplayWidgetBuilder = GameplayWidgetBuilder {
             vertical_side: Side::Outside,
         },
         align: Alignment::TOP_LEFT,
-        transform: graphics::Transform::identity(),
+        transform: graphics::Transform::IDENTITY,
     },
     build: |_,_| Box::new(Number::new(COMBO_CONF)),
 };
@@ -193,7 +193,7 @@ pub const ACCURACY: GameplayWidgetBuilder = GameplayWidgetBuilder {
             vertical_side: Side::Outside,
         },
         align: Alignment::BOTTOM_RIGHT,
-        transform: graphics::Transform::identity(),
+        transform: graphics::Transform::IDENTITY,
     },
 };
 
@@ -219,7 +219,7 @@ pub const PERFORMANCE: GameplayWidgetBuilder = GameplayWidgetBuilder {
             vertical_side: Side::Outside,
         },
         align: Alignment::BOTTOM_RIGHT,
-        transform: graphics::Transform::identity(),
+        transform: graphics::Transform::IDENTITY,
     },
 };
 

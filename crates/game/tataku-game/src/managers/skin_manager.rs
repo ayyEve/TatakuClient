@@ -1,7 +1,5 @@
 use crate::prelude::*;
-use tataku::{
-    Color,
-};
+use tataku::ColorField;
 
 use graphics::{
     SkinUsage,
@@ -11,15 +9,17 @@ use graphics::{
     SkinProvider,
     TextureSource,
 };
-use engine::{
-    SKINS_FOLDER,
-    window::GameWindow as GameWindow,
-};
+use engine::SKINS_FOLDER;
+
+#[cfg(feature="graphics")]
+use tataku_engine::window::TextureManager;
 
 const DEFAULT_SKIN:&str = "default";
 
 #[cfg(feature="graphics")]
 pub struct SkinManager {
+    texture_manager: Box<dyn engine::window::TextureManager>,
+
     skin_name: String,
     current_skin_config: Arc<SkinSettings>,
     textures: HashMap<(PathBuf, bool), HashMap<TextureSource, TextureEntry>>,
@@ -28,13 +28,18 @@ pub struct SkinManager {
 #[cfg(feature="graphics")]
 // static
 impl SkinManager {
-    pub fn new(settings: &engine::Settings) -> Self {
+    pub fn new(
+        texture_manager: Box<dyn engine::window::TextureManager>,
+        settings: &engine::Settings,
+    ) -> Self {
         let current_skin = settings.current_skin.clone();
         let current_skin_config = Arc::new(SkinSettings::from_file(
             &format!("{SKINS_FOLDER}/{current_skin}/skin.ini")
         ).unwrap_or_default());
-        
+
         Self {
+            texture_manager,
+
             skin_name: current_skin,
             current_skin_config,
             textures: HashMap::new()
@@ -49,13 +54,15 @@ impl SkinManager {
 
     pub fn change_skin(&mut self, new_skin: &str) {
         if self.skin_name == new_skin { return }
+        info!("Changing skin to {new_skin}");
+
         self.skin_name = new_skin.to_owned();
         self.current_skin_config = Arc::new(SkinSettings::from_file(
             &format!("{SKINS_FOLDER}/{new_skin}/skin.ini")
         ).unwrap_or_default());
 
         // free up the last skin's images in the atlas for reuse
-        self.free_by_source(TextureSource::Skin);
+        self.free_by_source(TextureSource::Skin, true);
         self.free_all_unused();
     }
 
@@ -63,58 +70,58 @@ impl SkinManager {
 
     // try to load a skin from the provided source. does not try fallbacks
     fn load_texture(
+        texture_manager: &mut dyn TextureManager,
+
         source: &TextureSource,
-        path: &Path,
+        name: &Path,
         grayscale: bool,
 
         skin_name: &str
     ) -> TextureState {
-        let mut path = path.to_owned();
-
-        let Some(mut file_name_2x) = path.file_stem().map(ToOwned::to_owned) else {
-            error!("trying to load directory as texture: {}", path.display());
-            return TextureState::Failed;
-        };
-
-        file_name_2x.push("@2.png");
-
-        if path.extension().is_none() {
-            // skin textures should be png
-            path.set_extension("png");
-        }
+        let mut path = name.to_path_buf();
+        path.pop();
 
         // get paths to check for this source
         // try to load 2x resolution first
         let to_attempt = match source {
-            // raw textures wont have a @2x variant
-            TextureSource::Raw => vec![ (path, 1.0) ],
+            // raw textures wont have a @2x variant, and should include the ext
+            TextureSource::Raw => {
+                let Some(filename) = name.file_name()
+                else { return TextureState::Failed };
 
-            // everything else should
-            _ => vec![ 
-                (
-                    path.with_file_name(file_name_2x),
-                    0.5
-                ),
-                (path, 1.0)
-            ],
+                let filename = filename.to_string_lossy().into_owned();
+                vec![
+                    (filename.clone(), 1.0),
+                ]
+            },
+
+            // everything else could have an @2x variant, and shouldn't include the file ext
+            _ => {
+                let filename = name.file_stem().unwrap().to_string_lossy().into_owned();
+
+                vec![
+                    (filename.clone() + "@2x.png", 0.5),
+                    (filename + ".png", 1.0)
+                ]
+            },
         };
 
-        for (path, scale) in to_attempt {
-            // get the expected path to the texture file 
+        for (tex_name, scale) in to_attempt {
+            // get the expected path to the texture file
             let path = match &source {
-                TextureSource::Raw => path,
-                TextureSource::Beatmap(beatmap_path) => Path::new(beatmap_path).join(&path),
-                TextureSource::Skin => Path::new(SKINS_FOLDER).join(skin_name).join(&path),
-                TextureSource::DefaultSkin => Path::new(SKINS_FOLDER).join(DEFAULT_SKIN).join(&path),
+                TextureSource::Raw => path.join(tex_name),
+                TextureSource::Beatmap(beatmap_path) => Path::new(beatmap_path).join(&path).join(tex_name),
+                TextureSource::Skin => Path::new(SKINS_FOLDER).join(skin_name).join(&path).join(tex_name),
+                TextureSource::DefaultSkin => Path::new(SKINS_FOLDER).join(DEFAULT_SKIN).join(&path).join(tex_name),
             };
 
-            // try loading the bytes. if we cant, try the next source 
+            // try loading the bytes. if we cant, try the next source
             let Ok(buf) = tataku::fs::read_file(&path) else { continue };
 
             // read the file bytes as an image
             match image::load_from_memory(&buf) {
-                Err(e) => error!("Error loading image {path:?}: {e}"), 
-                
+                Err(e) => error!("Error loading image {path:?}: {e}"),
+
                 Ok(img) => {
                     let mut img = img.into_rgba8();
 
@@ -122,13 +129,13 @@ impl SkinManager {
                         for i in img.pixels_mut() {
                             let [r, g, b, _a] = &mut i.0;
 
-                            let rf = Color::to_f32(*r);
-                            let gf = Color::to_f32(*g);
-                            let bf = Color::to_f32(*b);
+                            let rf = ColorField::u8_to_f32(*r);
+                            let gf = ColorField::u8_to_f32(*g);
+                            let bf = ColorField::u8_to_f32(*b);
 
                             let gray = 0.299 * rf + 0.587 * gf + 0.114 * bf;
-                            let n = Color::to_u8(gray);
-                            
+                            let n = ColorField::f32_to_u8(gray);
+
                             *r = n;
                             *g = n;
                             *b = n;
@@ -136,16 +143,16 @@ impl SkinManager {
                     }
 
                     // send the bytes to the gpu to load into the texture atlas
-                    let Ok(tex) = GameWindow::load_texture_data(img) 
+                    let Ok(tex) = texture_manager.load_texture_data(img)
                     else {
-                        // #[cfg(feature="renderdoc")] { 
+                        // #[cfg(feature="renderdoc")] {
                         //     if let Ok(renderdoc) = renderdoc::RenderDoc::<renderdoc::V140>::new() {
                         //         renderdoc.start_frame_capture(dev, win);
                         //     }
                         // }
 
 
-                        GameWindow::dump_atlas();
+                        texture_manager.dump_atlas();
                         error!("No texture!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
                         error!("No texture!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
                         error!("No texture!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
@@ -175,44 +182,45 @@ impl graphics::SkinProvider for SkinManager {
         &self.current_skin_config
     }
 
-    fn free_by_source(&mut self, source: TextureSource) {
+    fn free_by_source(&mut self, source: TextureSource, force: bool) {
         let mut warned = false;
 
         for i in self.textures.values_mut() {
             let Some(a) = i.get_mut(&source) else { continue };
 
             if let TextureState::Success(i) = &a.image {
-                if i.reference_count() > 1 {
+                if i.reference_count() > 1 && !force {
                     if !warned {
                         trace!("Texture(s) still have references, not freeing: {source:?}");
                         warned = true;
                     }
-                    continue
+
+                    continue;
                 }
 
-                GameWindow::free_texture(*i.tex, false);
+                self.texture_manager.free_texture(*i.tex);
             }
 
             a.image = TextureState::Unloaded;
         }
     }
-    fn free_by_usage(&mut self, usage: SkinUsage) {
+    fn free_by_usage(&mut self, usage: SkinUsage, force: bool) {
         let mut warned = false;
 
         for entry in self.textures.values_mut().flat_map(HashMap::values_mut) {
             if entry.usage != usage { continue }
 
             if let TextureState::Success(i) = &entry.image {
-                if i.reference_count() > 1 {
+                if i.reference_count() > 1 && !force {
                     if !warned {
                         debug!("Texture(s) still have references, not freeing: {usage:?}");
                         warned = true;
                     }
 
-                    continue
+                    continue;
                 }
 
-                GameWindow::free_texture(*i.tex, false);
+                self.texture_manager.free_texture(*i.tex);
             }
 
             entry.image = TextureState::Unloaded;
@@ -223,7 +231,7 @@ impl graphics::SkinProvider for SkinManager {
         for i in self.textures.values_mut().flat_map(HashMap::values_mut) {
             if let TextureState::Success(im) = &i.image {
                 if im.reference_count() > 1 { continue }
-                GameWindow::free_texture(*im.tex, false);
+                self.texture_manager.free_texture(*im.tex);
                 i.image = TextureState::Unloaded;
             }
         }
@@ -231,8 +239,8 @@ impl graphics::SkinProvider for SkinManager {
 
 
     fn get_texture(
-        &mut self, 
-        name: &Path, 
+        &mut self,
+        name: &Path,
         source: &TextureSource,
         usage: SkinUsage,
         grayscale: bool,
@@ -242,10 +250,10 @@ impl graphics::SkinProvider for SkinManager {
         if !self.textures.contains_key(&texture_key) {
             self.textures.insert(texture_key.clone(), HashMap::new());
         }
-        
+
         // try to get the exact source if it exists
         let entry = self.textures.get_mut(&texture_key).unwrap();
-        
+
         // try to get the texture with the source, and if that doesnt work, try the fallback, and if that doesnt work, try it's fallback, etc
         let mut try_source = Some(source.clone());
         while let Some(source) = try_source {
@@ -258,7 +266,7 @@ impl graphics::SkinProvider for SkinManager {
                 | Some(TextureEntry { image: TextureState::Unloaded, .. })
                 => {
                     // try to load the texture
-                    let result = Self::load_texture(&source, &name, grayscale, &self.skin_name);
+                    let result = Self::load_texture(&mut *self.texture_manager, &source, &name, grayscale, &self.skin_name);
                     entry.insert(source, TextureEntry { usage, image: result.clone() });
 
                     match result {

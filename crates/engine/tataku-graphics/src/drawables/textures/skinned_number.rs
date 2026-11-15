@@ -11,7 +11,7 @@ pub struct SkinnedNumber {
     pub number: f64,
     pub symbol: Option<char>,
     pub floating_precision: usize,
-    
+
     cache: Arc<RwLock<(f64, String)>>,
 }
 impl SkinnedNumber {
@@ -148,8 +148,8 @@ impl TatakuRenderable for SkinnedNumber {
     fn get_name(&self) -> String { "Skinned number".to_owned() }
 
     fn draw(
-        &self, 
-        options: &DrawOptions, 
+        &self,
+        options: &DrawOptions,
         transform: Matrix,
         g: &mut dyn DrawEngine
     ) {
@@ -164,7 +164,7 @@ impl TatakuRenderable for SkinnedNumber {
             let Some(mut t) = self.get_char_tex(c).cloned() else { continue };
             t.color = color;
 
-            let transform = transform * Matrix::identity()
+            let transform = transform * Matrix::IDENTITY
                 .trans(current_pos);
 
             t.draw(options, transform, g);

@@ -33,6 +33,8 @@ pub enum BuildableGameAction {
         text: Vec<BuildableText>,
     },
 }
+
+#[cfg(feature="graphics")]
 impl BuildableGameAction {
     pub fn resolve(
         &self,

@@ -31,9 +31,6 @@ pub struct TransformableWidget {
 
     node_id: NodeId,
 
-    // FIXME: pressed and hold_start technically do the same thing
-    hover: bool,
-    pressed: bool,
     last_input: Option<f32>,
     hold_start: Option<f32>,
 
@@ -58,9 +55,6 @@ impl TransformableWidget {
             child,
 
             node_id: ui::EMPTY_NODE,
-
-            hover: false,
-            pressed: false,
             last_input: None,
             hold_start: None,
             skip_clickhold_actions: Vec::new(),
@@ -170,6 +164,9 @@ impl Widget<actions::Action> for TransformableWidget {
         self.last_input = Some(game_time);
         self.skip_noinput_actions.clear();
 
+        let Some(state) = shell.state_mut(self.node_id)
+        else { return };
+
         let mut to_trigger = Vec::new();
         let mut clicked = false;
         let mut released = false;
@@ -177,14 +174,14 @@ impl Widget<actions::Action> for TransformableWidget {
         let mut unhovered = false;
 
         match &event.event {
-            InputType::MousePress(_mouse_button) => if self.hover {
+            InputType::MousePress(_mb) => if state.hover() {
                 self.hold_start = Some(game_time);
-                self.pressed = true;
+                state.set_pressed(true);
                 clicked = true;
             }
-            InputType::MouseRelease(_mouse_button) if self.pressed => {
+            InputType::MouseRelease(_mb) if state.pressed() => {
                 self.hold_start = None;
-                self.pressed = false;
+                state.set_pressed(false);
                 released = true;
                 self.skip_clickhold_actions.clear();
             }
@@ -195,14 +192,14 @@ impl Widget<actions::Action> for TransformableWidget {
                     .unwrap();
                 let ctx = shell
                     .tree
-                    .get_context(self.node_id)
+                    .get_context_mut(self.node_id)
                     .unwrap();
 
                 let pos = ctx.inverse_global_transform * *pos;
                 let new_hover = bounds.contains(pos);
 
-                if new_hover != self.hover {
-                    self.hover = new_hover;
+                if new_hover != ctx.element_data.state.hover() {
+                    ctx.element_data.state.set_hover(new_hover);
                     if new_hover {
                         hovered = true;
                     } else {
@@ -277,12 +274,12 @@ impl Widget<actions::Action> for TransformableWidget {
                 .unwrap();
 
             context.local_transform = transform;
-
-            shell.actions.push(actions::ui::UiAction::new(
-                self.node_id,
-                shell.source,
-                actions::ui::UiActionType::ContextChanged
-            ).into());
+            shell.tree.mark_dirty(self.node_id);
+            // shell.actions.push(actions::ui::UiAction::new(
+            //     self.node_id,
+            //     shell.source,
+            //     actions::ui::UiActionType::ContextChanged
+            // ).into());
         }
         self.child.update(shell);
     }

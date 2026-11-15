@@ -7,11 +7,11 @@ use ui::{
     style::*,
     widget::*,
 };
-use input::{ 
+use input::{
     Key,
     InputType,
-    InputEvent, 
-    MouseButton, 
+    InputEvent,
+    MouseButton,
 };
 
 pub trait InputButtonType: Send + Sync {
@@ -28,7 +28,7 @@ impl InputButtonType for input::Key {
         let InputType::KeyPress(key) = &e.event
         else { return None };
 
-        let Some(key) = key.as_key() else {
+        let Some(key) = key.key else {
             error!("couldnt convert KeyInput to Key: {key:?}");
             return None;
         };
@@ -39,7 +39,7 @@ impl InputButtonType for input::Key {
 impl InputButtonType for input::GamepadButton {
     type Output = Self;
     fn press_txt() -> CowStr { "Press a Controller Button".into() }
-    
+
     fn from_event(e: &InputEvent) -> Option<Self::Output> {
         let InputType::ControllerPress(btn, _, _) = &e.event
         else { return None };
@@ -62,7 +62,7 @@ impl<T: InputButtonType> InputButton<T> {
         Self {
             input,
             optional: false,
-            
+
             on_change: None,
             node_id: ui::EMPTY_NODE,
         }
@@ -99,7 +99,7 @@ impl<T: InputButtonType> Widget<actions::Action> for InputButton<T> {
         // let w = f16::from_f32(text_style.measure_text("Press a key", None).x);
         let h = f16::from_f32(text_style.line_height);
         shell.tree.update_style(
-            self.node_id, 
+            self.node_id,
             |style| {
                 // style.min_width = CssUnit::Pixels(w).into();
                 style.min_height = CssUnit::Pixels(h).into();
@@ -108,7 +108,7 @@ impl<T: InputButtonType> Widget<actions::Action> for InputButton<T> {
     }
 
     // fn update_styles(
-    //     &mut self, 
+    //     &mut self,
     //     shell: &mut StyleShell,
     //     _display_override: Option<ui::DisplayType>
     // ) {
@@ -127,8 +127,8 @@ impl<T: InputButtonType> Widget<actions::Action> for InputButton<T> {
     // }
 
     fn input(
-        &mut self, 
-        event: &InputEvent, 
+        &mut self,
+        event: &InputEvent,
         shell: &mut InputShell<actions::Action>,
     ) {
         if shell.event_consumed { return }
@@ -138,12 +138,12 @@ impl<T: InputButtonType> Widget<actions::Action> for InputButton<T> {
 
         let ctx = shell.tree.get_context_mut(self.node_id).unwrap();
         if ctx.element_data.state.contains(ElementState::Active) && event.is_keyboard()
-        && let InputType::KeyPress(key) = &event.event {
+        && let InputType::KeyPress(input) = &event.event {
             ctx.element_data.state.remove(ElementState::Active);
             shell.event_consumed = true;
 
-            if key.is_key(Key::Escape) 
-            && event.key_mods.ctrl && self.optional 
+            if input.key == Some(Key::Escape)
+            && event.key_mods.contains(input::KeyModifiers::CTRL) && self.optional
             {
                 if let InputButtonValue::Static(k) = &mut self.input {
                     *k = None;
@@ -162,7 +162,7 @@ impl<T: InputButtonType> Widget<actions::Action> for InputButton<T> {
             }
         }
 
-        if !shell.event_consumed 
+        if !shell.event_consumed
         && let Some(i) = T::from_event(event)
         {
             if let InputButtonValue::Static(k) = &mut self.input {
@@ -202,7 +202,7 @@ impl<T: InputButtonType> Widget<actions::Action> for InputButton<T> {
 
             _ => {}
         }
-        
+
     }
 
 
@@ -255,10 +255,10 @@ impl<T: InputButtonType> Widget<actions::Action> for InputButton<T> {
             bounds.size,
             shell.general_theme.background_color,
         ).border(Border::new(
-            shell.general_theme.get_color(active, hover), 
+            shell.general_theme.get_color(active, hover),
             1.2
         ))
-        .with_transform(tataku::Matrix::identity()
+        .with_transform(tataku::Matrix::IDENTITY
             .trans(bounds.pos)
         ));
 
@@ -279,33 +279,33 @@ pub enum InputButtonValue<T> {
     Static(Option<T>),
     Variable {
         path: engine::VariablePathResolver,
-        cache: Option<T>, 
+        cache: Option<T>,
         error_logged: bool,
     },
 }
 impl<T:Copy + Reflect + PartialEq> InputButtonValue<T> {
     pub(crate) fn get(&self) -> Option<T> {
         match self {
-            Self::Static(k) 
+            Self::Static(k)
             | Self::Variable { cache: k, .. }
                 => *k,
         }
     }
 
     pub(crate) fn update(
-        &mut self, 
+        &mut self,
         values: &dyn Reflect,
         optional: bool,
     ) -> bool {
         let Self::Variable {
-            path, 
-            cache, 
+            path,
+            cache,
             error_logged
-        } = self 
+        } = self
         else { return false };
 
         let Ok(path) = path
-            .resolve_path(values) 
+            .resolve_path(values)
             .map_err(|e| {
                 if !*error_logged {
                     error!("Error resolving path: {e:?}");
@@ -314,7 +314,7 @@ impl<T:Copy + Reflect + PartialEq> InputButtonValue<T> {
             })
         else { return false };
 
-        let Ok(val) = values.impl_get(ReflectPath::new(&path)) 
+        let Ok(val) = values.impl_get(ReflectPath::new(&path))
         else { return false };
 
         let val = val.as_ref();

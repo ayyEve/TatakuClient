@@ -77,7 +77,7 @@ impl Curve {
     pub fn length(&self) -> f32 {
         self.end_time - self.slider.time
     }
-    
+
     pub fn get_length_required(&self, time: f32) -> f32 {
         let mut pos = (time - self.slider.time)
             / (self.length() / self.slider.slides as f32);
@@ -352,6 +352,6 @@ fn catmull_rom(
 
     result.y = 0.5 * (2.0 * value2.y + (-value1.y + value3.y) * amount + (2.0 * value1.y - 5.0 * value2.y + 4.0 * value3.y - value4.y) * num +
         (-value1.y + 3.0 * value2.y - 3.0 * value3.y + value4.y) * num2);
-    
+
     result
 }

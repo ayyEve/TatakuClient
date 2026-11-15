@@ -13,11 +13,11 @@ use engine::{
 pub struct ManiaNote {
     time: f32, // ms
     column: u8,
-    
+
     hit_time: f32,
     hit: bool,
     missed: bool,
-    
+
     #[cfg(feature="graphics")] pos: Vector2,
     #[cfg(feature="graphics")] color: Color,
     #[cfg(feature="graphics")] sv_mult: f32,
@@ -33,11 +33,11 @@ pub struct ManiaNote {
 impl ManiaNote {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        time: f32, column: u8, 
-        #[cfg(feature="graphics")] color: Color, 
-        #[cfg(feature="graphics")] x: f32, 
+        time: f32, column: u8,
+        #[cfg(feature="graphics")] color: Color,
+        #[cfg(feature="graphics")] x: f32,
         #[cfg(feature="graphics")] sv_mult: f32,
-        #[cfg(feature="graphics")] playfield: Arc<ManiaPlayfield>, 
+        #[cfg(feature="graphics")] playfield: Arc<ManiaPlayfield>,
         #[cfg(feature="graphics")] mania_skin_settings: Option<Arc<graphics::ManiaSkinSettings>>,
         #[cfg(feature="gameplay")] hitsounds: Vec<gameplay::Hitsound>,
     ) -> Self {
@@ -55,7 +55,7 @@ impl ManiaNote {
         }
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn y_at(&mut self, time: f32) -> f32 {
         let speed = self.sv_mult * if self.playfield.upside_down {-1.0} else {1.0};
 
@@ -66,27 +66,27 @@ impl gameplay::HitObject for ManiaNote {
     fn note_type(&self) -> NoteType { NoteType::Note }
     fn time(&self) -> f32 { self.time }
     fn end_time(&self, hw_miss:f32) -> f32 { self.time + hw_miss }
- 
+
     fn update(&mut self, beatmap_time: f32) {
         #[cfg(feature="graphics")] {
             self.pos.y = self.y_at(beatmap_time); // + self.playfield.note_size().y;
         }
     }
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn draw(&mut self, _time: f32, list: &mut graphics::RenderableCollection) {
-        if self.hit || self.pos.y + self.playfield.note_size().y < self.playfield.bounds.pos.y || self.pos.y > self.playfield.bounds.pos.y + self.playfield.bounds.size.y { return } 
-        
+        if self.hit || self.pos.y + self.playfield.note_size().y < self.playfield.bounds.pos.y || self.pos.y > self.playfield.bounds.pos.y + self.playfield.bounds.size.y { return }
+
         if let Some(img) = self.note_image.clone() {
             let transform = graphics::Transform {
                 pos: self.pos,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             list.push(img.with_transform(transform.matrix()));
         } else {
             let transform = graphics::Transform {
                 pos: self.pos,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             list.push(graphics::Rectangle::new(
@@ -109,20 +109,20 @@ impl gameplay::HitObject for ManiaNote {
 
     #[cfg(feature="graphics")]
     fn reload_skin(
-        &mut self, 
-        source: &graphics::TextureSource, 
+        &mut self,
+        source: &graphics::TextureSource,
         skin_manager: &mut dyn graphics::SkinProvider
     ) {
         self.note_image = None;
-        let Some(settings) = &self.mania_skin_settings 
-        else { return }; 
-        let Some(path) = settings.note_image.get(&self.column) 
+        let Some(settings) = &self.mania_skin_settings
+        else { return };
+        let Some(path) = settings.note_image.get(&self.column)
         else { return };
 
         self.note_image = skin_manager.get_texture(
-            Path::new(path), 
-            source, 
-            graphics::SkinUsage::Gamemode, 
+            Path::new(path),
+            source,
+            graphics::SkinUsage::Gamemode,
             true
         );
     }
@@ -136,25 +136,25 @@ impl ManiaHitObject for ManiaNote {
     //     self.missed = true;
     //     self.hit_time = time;
     // }
-    
-    #[cfg(feature="graphics")] 
+
+    #[cfg(feature="graphics")]
     fn set_sv_mult(&mut self, sv: f32) {
         self.sv_mult = sv;
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn set_position_function(&mut self, p: Arc<Vec<PositionPoint>>) {
         self.position_function = p;
 
         self.relative_y = ManiaGame::pos_at(&self.position_function, self.time, &mut 0);
     }
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     fn playfield_changed(&mut self, playfield: Arc<ManiaPlayfield>) {
         self.playfield = playfield;
         self.pos.x = self.playfield.col_pos(self.column);
     }
 
-    #[cfg(feature="gameplay")] 
+    #[cfg(feature="gameplay")]
     fn get_hitsound(&self) -> &Vec<gameplay::Hitsound> {
         &self.hitsounds
     }

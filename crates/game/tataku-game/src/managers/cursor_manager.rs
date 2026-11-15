@@ -34,7 +34,7 @@ pub(crate) struct CursorManager {
     cursor_images: HashMap<CursorMode, graphics::Image>,
 
     /// should the cursor be visible?
-    #[default(true)] 
+    #[default(true)]
     visible: bool,
     cursor_rotation: f32,
 
@@ -85,35 +85,35 @@ impl CursorManager {
     fn fallback_cursor(cursor_mode: CursorMode) -> FallbackCursorInfo {
         match cursor_mode {
             CursorMode::Normal => FallbackCursorInfo::new_offset(
-                FontAwesome::ArrowPointer, 
-                Alignment::TOP_LEFT, 
+                FontAwesome::ArrowPointer,
+                Alignment::TOP_LEFT,
                 Some(Vector2::new(-2.0, 3.0)),
             ),
             CursorMode::HorizontalResize => FallbackCursorInfo::new(
-                FontAwesome::LeftRight, 
+                FontAwesome::LeftRight,
                 Alignment::CENTER
             ),
             CursorMode::VerticalResize => FallbackCursorInfo::new(
-                FontAwesome::UpDown, 
+                FontAwesome::UpDown,
                 Alignment::CENTER
             ),
             CursorMode::Resize => FallbackCursorInfo::new(
-                FontAwesome::UpDownLeftRight, 
+                FontAwesome::UpDownLeftRight,
                 Alignment::CENTER
             ),
             CursorMode::Pointer => FallbackCursorInfo::new(
-                FontAwesome::HandPointer, 
+                FontAwesome::HandPointer,
                 Alignment::TOP_LEFT
             ),
             CursorMode::Text => FallbackCursorInfo::new(
-                FontAwesome::ICursor, 
+                FontAwesome::ICursor,
                 Alignment::CENTER
             ),
         }
     }
 
     pub fn handle_cursor_action(
-        &mut self, 
+        &mut self,
         action: actions::cursor::CursorAction,
         text_layout_contexts: &mut TextLayoutContexts,
     ) {
@@ -121,7 +121,7 @@ impl CursorManager {
         match action {
             CursorAction::OverrideRippleRadius(radius_maybe)
                 => self.ripple_radius_override = radius_maybe,
-            
+
             CursorAction::SetVisible(show) => {
                 // trace!("setting cursor visible = {show}");
                 self.visible = show;
@@ -135,27 +135,27 @@ impl CursorManager {
 
                 let fallback_info = Self::fallback_cursor(self.cursor_mode);
                 let mut layout = text_layout_contexts.simple_text(
-                    &fallback_info.char.to_string(), 
+                    &fallback_info.char.to_string(),
                     &ui::style::TextStyle {
                         font: DefaultFont::FontAwesome,
                         font_size: 32.0,
                         color: self.settings.cursor_color.color,
                         line_height: 32.0,
                         alignment: HorizontalAlign::Left,
-                    }, 
+                    },
                 );
                 layout.break_all_lines(None);
                 self.layout = Arc::new(layout);
 
                 let cursor_size = Vector2::new(
-                    self.layout.width(), 
+                    self.layout.width(),
                     self.layout.height()
                 );
 
                 let pos = fallback_info.align.resolve(
-                    &Bounds::default(), 
+                    &Bounds::default(),
                     cursor_size,
-                    true, 
+                    true,
                     true,
                 );
 
@@ -173,7 +173,7 @@ impl CursorManager {
     }
 
     pub fn update_settings(
-        &mut self, 
+        &mut self,
         settings: engine::settings::cursor::CursorSettings,
         actions: &mut actions::ActionQueue
     ) {
@@ -203,8 +203,8 @@ impl CursorManager {
                 self.time,
                 0.0,
                 self.settings.cursor_ripple_final_radius,
-                self.settings.cursor_ripple_color.alpha(0.2),
-                Some(Border::new(self.settings.cursor_ripple_color.alpha(0.5), 2.0))
+                self.settings.cursor_ripple_color.with_alpha_f32(0.2),
+                Some(Border::new(self.settings.cursor_ripple_color.with_alpha_f32(0.5), 2.0))
             ));
         }
     }
@@ -218,7 +218,7 @@ impl CursorManager {
                 origin: cursor.size() / 2.0,
                 pos: self.pos,
                 rotation: self.cursor_rotation,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             list.push(cursor.with_transform(transform.matrix()));
@@ -226,7 +226,7 @@ impl CursorManager {
             let transform = graphics::Transform {
                 pos: self.pos,
                 rotation: self.cursor_rotation,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             // use font awesome as fallback
@@ -252,7 +252,7 @@ struct FallbackCursorInfo {
     align: Alignment,
 
     /// Extra offset to tweak positioning
-    /// 
+    ///
     /// This is added to the cursor position
     extra_offset: Option<Vector2>,
 }
@@ -261,8 +261,8 @@ impl FallbackCursorInfo {
         Self::new_offset(char, align, None)
     }
     fn new_offset(
-        char: FontAwesome, 
-        align: Alignment, 
+        char: FontAwesome,
+        align: Alignment,
         extra_offset: Option<Vector2>
     ) -> Self {
         Self {

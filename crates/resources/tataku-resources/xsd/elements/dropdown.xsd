@@ -5,11 +5,13 @@
   xmlns:xs="http://www.w3.org/2001/XMLSchema"
   xmlns:elements="tataku/elements"
   xmlns:actions="tataku/actions"
+  xmlns:buildable="tataku/buildable"
   xmlns:text="tataku/text"
 >
 
 <xs:import namespace="tataku/text" schemaLocation="../text.xsd"/>
 <xs:import namespace="tataku/elements" schemaLocation="./elements.xsd"/>
+<xs:import namespace="tataku/buildable" schemaLocation="../buildable.xsd"/>
 <xs:import namespace="tataku/actions" schemaLocation="../actions/actions.xsd"/>
 
 
@@ -18,12 +20,12 @@
     <xs:extension base="elements:generic">
       <xs:all>
         <xs:element name="onSelect" type="actions:action-list"/>
-        <xs:element name="placeholder" minOccurs="0" type="text:text"/>
+        <xs:element name="placeholder" minOccurs="0" type="buildable:text"/>
       </xs:all>
 
-      <xs:attribute name="options_path" type="text:string" use="required"/>
-      <xs:attribute name="options_display_path" type="text:string"/>
-      <xs:attribute name="selected_path" type="text:string" use="required"/>
+      <xs:attribute name="options_path" type="text:variable-path" use="required"/>
+      <xs:attribute name="options_display_path" type="text:variable-path"/>
+      <xs:attribute name="selected_path" type="text:variable-path" use="required"/>
       <xs:attribute name="placeholder" type="text:string"/>
     </xs:extension>
   </xs:complexContent>

@@ -285,5 +285,5 @@ fn test() {
         .reflect_get::<Vec<String>>("Variant.list")
         .unwrap();
 
-    println!("{:?}", &list);
+    println!("{list:?}");
 }

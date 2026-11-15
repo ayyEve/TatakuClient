@@ -110,7 +110,7 @@ impl gameplay::HitObject for ManiaHold {
             if self.pos.y > self.playfield.hit_y() {
                 let transform = graphics::Transform {
                     pos: self.pos,
-                    ..graphics::Transform::identity()
+                    ..graphics::Transform::IDENTITY
                 };
 
                 list.push(graphics::Rectangle::new(
@@ -124,7 +124,7 @@ impl gameplay::HitObject for ManiaHold {
             if self.end_y > self.playfield.hit_y() {
                 let transform = graphics::Transform {
                     pos: Vector2::new(self.pos.x, self.end_y),
-                    ..graphics::Transform::identity()
+                    ..graphics::Transform::IDENTITY
                 };
 
                 list.push(graphics::Rectangle::new(
@@ -142,14 +142,14 @@ impl gameplay::HitObject for ManiaHold {
                 if let Some(img) = self.middle_image.clone() {
                     let transform = graphics::Transform {
                         pos,
-                        ..graphics::Transform::identity()
+                        ..graphics::Transform::IDENTITY
                     };
 
                     list.push(img.with_transform(transform.matrix()));
                 } else {
                     let transform = graphics::Transform {
                         pos,
-                        ..graphics::Transform::identity()
+                        ..graphics::Transform::IDENTITY
                     };
 
                     list.push(graphics::Rectangle::new(
@@ -165,14 +165,14 @@ impl gameplay::HitObject for ManiaHold {
                 if let Some(img) = self.start_image.clone() {
                     let transform = graphics::Transform {
                         pos: self.pos,
-                        ..graphics::Transform::identity()
+                        ..graphics::Transform::IDENTITY
                     };
 
                     list.push(img.with_transform(transform.matrix()));
                 } else {
                     let transform = graphics::Transform {
                         pos: self.pos,
-                        ..graphics::Transform::identity()
+                        ..graphics::Transform::IDENTITY
                     };
 
                     list.push(graphics::Rectangle::new(
@@ -191,14 +191,14 @@ impl gameplay::HitObject for ManiaHold {
                 if let Some(img) = self.end_image.clone() {
                     let transform = graphics::Transform {
                         pos,
-                        ..graphics::Transform::identity()
+                        ..graphics::Transform::IDENTITY
                     };
 
                     list.push(img.with_transform(transform.matrix()));
                 } else {
                     let transform = graphics::Transform {
                         pos,
-                        ..graphics::Transform::identity()
+                        ..graphics::Transform::IDENTITY
                     };
 
                     list.push(graphics::Rectangle::new(
@@ -300,7 +300,7 @@ impl ManiaHitObject for ManiaHold {
         self.start_relative_pos = ManiaGame::pos_at(&self.position_function, self.time, &mut 0);
         self.end_relative_pos = ManiaGame::pos_at(&self.position_function, self.end_time, &mut 0);
     }
-    
+
     #[cfg(feature="graphics")]
     fn playfield_changed(&mut self, playfield: Arc<ManiaPlayfield>) {
         self.playfield = playfield;

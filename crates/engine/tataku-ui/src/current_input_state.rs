@@ -22,7 +22,7 @@ impl CurrentInputState {
         self.events
             .iter()
             .filter_map(|e| if let InputType::KeyPress(k) = e {
-                k.as_key()
+                k.key
             } else { None })
     }
     pub fn controller_down(&self) -> impl Iterator<Item=&GamepadButton> {

@@ -9,6 +9,7 @@ pub struct BuildableMessage {
     pub target: Option<BuildableMessageTarget>,
     pub value: BuildableValue,
 }
+#[cfg(feature="graphics")]
 impl BuildableMessage {
     pub fn build(&mut self) {
         if let Err(e) = self.tag.compute() {
@@ -53,6 +54,7 @@ pub enum BuildableMessageTarget {
     }
 }
 
+#[cfg(feature="graphics")]
 impl BuildableMessageTarget {
     pub fn build(&mut self) {
         let res = match self {

@@ -94,11 +94,11 @@ impl GameplayWidget for SpectatorsElement {
         // draw spectators
         shell.list.push(graphics::Rectangle::new(
             *layout_size,
-            Color::WHITE.alpha(0.8),
+            Color::WHITE.with_alpha_f32(0.8),
         ).with_transform(shell.transform));
 
         shell.list.push(graphics::Text::new(layout.clone())
-            .with_transform(shell.transform * tataku::Matrix::identity()
+            .with_transform(shell.transform * tataku::Matrix::IDENTITY
                 .trans(Vector2::ONE * PADDING)
         ));
 
@@ -129,7 +129,7 @@ pub const SPECTATORS: GameplayWidgetBuilder = GameplayWidgetBuilder {
             vertical_side: Side::Outside,
         },
         align: Alignment::BOTTOM_LEFT,
-        transform: graphics::Transform::identity(),
+        transform: graphics::Transform::IDENTITY,
     },
     build: SpectatorsElement::build,
 };

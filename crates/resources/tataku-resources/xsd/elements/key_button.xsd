@@ -23,7 +23,7 @@
           </xs:complexType>
         </xs:element>
       </xs:all>
-      <xs:attribute name="variable" type="text:string" use="required" />
+      <xs:attribute name="variable" type="text:variable-path" use="required" />
       <xs:attribute name="optional" type="xs:boolean" default="false" />
     </xs:extension>
   </xs:complexContent>

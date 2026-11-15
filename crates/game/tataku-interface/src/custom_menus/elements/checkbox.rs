@@ -11,6 +11,7 @@ pub struct CheckboxElement {
     #[serde(default)] on_click: Wrapped<Vec<BuildableAction>>,
 }
 
+#[cfg(feature="graphics")]
 impl CheckboxElement {
     pub fn build(&self) -> widgets::Checkbox {
         let value = widgets::CheckboxValue::Condition(self.value.clone().into(), false);

@@ -31,8 +31,8 @@ pub struct DownloadManager {
 impl DownloadManager {
     pub fn add_download(&mut self, mut download: Downloadable) {
         // check for duplicate download
-        if self.downloads.iter().any(|i| i.filename == download.filename) { 
-            return 
+        if self.downloads.iter().any(|i| i.filename == download.filename) {
+            return
         }
 
         // TODO: queue things and only download a certain number of things at a time
@@ -45,7 +45,7 @@ impl DownloadManager {
             progress: 0.0,
         });
         self.downloads.push(download);
-        
+
         #[cfg(feature="ui")] self.layouts.push(None);
     }
 
@@ -61,7 +61,7 @@ impl DownloadManager {
             .downloads
             .iter_mut()
             .zip(self.statuses.iter_mut());
-        
+
         #[cfg(feature="ui")]
         let iter = iter
             .zip(self.layouts.iter_mut())
@@ -71,7 +71,7 @@ impl DownloadManager {
         let iter = iter.map(|(dl, status)| (dl, status, ()));
 
         for (
-            n, 
+            n,
             (dl, status, layouts)
         ) in iter.enumerate() {
             status.filename = dl.filename.clone();
@@ -80,7 +80,7 @@ impl DownloadManager {
             let Some(p) = dl
                 .download_progress
                 .as_ref()
-                .map(|i| i.read()) 
+                .map(|i| i.read())
             else { continue };
 
             status.progress = p.progress();
@@ -101,10 +101,10 @@ impl DownloadManager {
                 if !complete {
                     let style = ui::style::TextStyle::default()
                         .alignment(Alignment::CENTER)
-                        .font_size(20.0);
+                        .font_size(20.0_f32);
 
                     let mut new_progress_layout = font_contexts.simple_text(
-                        &format!("{:.2}%", status.progress), 
+                        &format!("{:.2}%", status.progress),
                         &style
                     );
                     new_progress_layout.break_all_lines(None);
@@ -113,7 +113,7 @@ impl DownloadManager {
                         *progress_layout = Arc::new(new_progress_layout);
                     } else {
                         let mut title_layout = font_contexts.simple_text(
-                            &status.filename, 
+                            &status.filename,
                             &style
                         );
                         title_layout.break_all_lines(None);
@@ -135,10 +135,10 @@ impl DownloadManager {
         }
     }
 
-    #[cfg(feature="graphics")] 
+    #[cfg(feature="graphics")]
     pub fn draw(
-        &self, 
-        window_size: Vector2, 
+        &self,
+        window_size: Vector2,
         list: &mut graphics::RenderableCollection,
     ) {
         if self.statuses.is_empty() { return }
@@ -147,7 +147,7 @@ impl DownloadManager {
         for (n, i, title, progress) in self.statuses.iter()
             .zip(self.layouts.iter())
             .enumerate()
-            .filter_map(|(n, (i, layouts))| 
+            .filter_map(|(n, (i, layouts))|
                 layouts.clone()
                     .map(|[t, p]| (n, i, t, p))
             )
@@ -161,7 +161,7 @@ impl DownloadManager {
                     SIZE.y
                 ),
                 Color::TRANSPARENT,
-            ).with_transform(tataku::Matrix::identity()
+            ).with_transform(tataku::Matrix::IDENTITY
                 .trans(pos)
             ));
 
@@ -170,7 +170,7 @@ impl DownloadManager {
                 SIZE,
                 Color::TRANSPARENT,
             ).border(Border::new(Color::BLACK, 2.0))
-            .with_transform(tataku::Matrix::identity()
+            .with_transform(tataku::Matrix::IDENTITY
                 .trans(pos)
             ));
 
@@ -194,7 +194,7 @@ impl DownloadManager {
 
 
             list.push(graphics::Text::new(title)
-                .with_transform(tataku::Matrix::identity()
+                .with_transform(tataku::Matrix::IDENTITY
                     .trans(alignment.resolve(
                         &title_bounds,
                         title_size,
@@ -204,7 +204,7 @@ impl DownloadManager {
             ));
 
             list.push(graphics::Text::new(progress)
-                .with_transform(tataku::Matrix::identity()
+                .with_transform(tataku::Matrix::IDENTITY
                     .trans(alignment.resolve(
                         &progress_bounds,
                         progress_size,

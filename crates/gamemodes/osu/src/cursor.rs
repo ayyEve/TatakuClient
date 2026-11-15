@@ -12,6 +12,7 @@ use tataku::{
     Vector2,
     BlendMode,
     EmitterVal,
+    ColorField,
 };
 
 
@@ -72,7 +73,7 @@ impl OsuCursor {
     ) -> Self {
         let a = PI / 4.0;
         let builder = graphics::EmitterBuilder::default()
-            .spawn_delay(20.0)
+            .spawn_delay(20.0_f32)
             .angle(EmitterVal::init_only(-a..a))
             .speed(EmitterVal::init_only(0.1..0.5))
             .scale(EmitterVal::init_only(0.3..0.6))
@@ -259,15 +260,13 @@ impl OsuCursor {
                 .map(|trail| {
                     let mut image = image.clone();
 
-                    image.color.a = ((1.0 - trail.progress(time))
-                        .clamp(0.0, 1.0) * 255.0)
-                        as u8;
+                    image.color.a = ColorField::new_f32(1.0 - trail.progress(time));
 
                     let transform = graphics::Transform {
                         origin: image.size() / 2.0,
                         pos: trail.position,
                         scale: Vector2::ONE * self.settings.cursor_scale,
-                        ..graphics::Transform::identity()
+                        ..graphics::Transform::IDENTITY
                     };
 
                     image
@@ -309,7 +308,7 @@ impl OsuCursor {
             let transform = graphics::Transform {
                 pos: self.pos,
                 scale: Vector2::ONE * radius * self.settings.cursor_scale,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             list.push(graphics::Circle::new(*self.settings.cursor_color)
@@ -329,7 +328,7 @@ impl OsuCursor {
                 origin: cursor.size() / 2.0,
                 pos: self.pos,
                 scale: Vector2::ONE * self.settings.cursor_scale,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             list.push(cursor.with_transform(transform.matrix()));
@@ -343,8 +342,8 @@ impl OsuCursor {
                 self.time.as_millis(),
                 0.0,
                 self.settings.cursor_ripple_final_radius,
-                self.settings.cursor_ripple_color.alpha(0.2),
-                Some(Border::new(self.settings.cursor_ripple_color.alpha(0.5), 2.0))
+                self.settings.cursor_ripple_color.with_alpha_f32(0.2),
+                Some(Border::new(self.settings.cursor_ripple_color.with_alpha_f32(0.5), 2.0))
             ));
         }
     }

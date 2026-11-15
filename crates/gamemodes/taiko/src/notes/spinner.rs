@@ -75,7 +75,7 @@ impl Spinner {
             let mut transform = graphics::Transform {
                 pos: spinner_position,
                 scale: Vector2::ONE * SPINNER_RADIUS,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             // bg circle
@@ -104,7 +104,7 @@ impl Spinner {
                 let transform = graphics::Transform {
                     origin: image.size() / 2.0, // center
                     pos,
-                    ..graphics::Transform::identity()
+                    ..graphics::Transform::IDENTITY
                 };
 
                 shell.list.push(image.with_transform(transform.matrix()));
@@ -112,7 +112,7 @@ impl Spinner {
                 let transform = graphics::Transform {
                     scale: Vector2::ONE * shell.settings.note_radius,
                     pos,
-                    ..graphics::Transform::identity()
+                    ..graphics::Transform::IDENTITY
                 };
 
                 shell.list.push(graphics::HalfCircle::new(

@@ -116,7 +116,7 @@ impl MenuVisualization {
     pub fn on_click(&self, pos: Vector2) -> bool {
         let circle_pos = self.bounds_center();
 
-        let dist = (pos.x - circle_pos.x).powi(2) 
+        let dist = (pos.x - circle_pos.x).powi(2)
             + (pos.y - circle_pos.y).powi(2);
         let radius = self.current_inner_radius.powi(2);
 
@@ -148,7 +148,7 @@ impl MenuVisualization {
                     time,
                     ripple.start_radius,
                     ripple.start_radius * 2.0,
-                    Color::WHITE.alpha(0.5),
+                    Color::WHITE.with_alpha_f32(0.5),
                     Some(Border::new(Color::WHITE, 2.0)),
                 ).boxed()
             });
@@ -171,15 +171,15 @@ impl MenuVisualization {
         for (i, val) in data
             .iter()
             .map(|a| a.amplitude())
-            .enumerate() 
+            .enumerate()
         {
             if val <= CUTOFF { continue }
 
             let factor = (i as f32 + 2.0).log10();
-            let l = self.current_inner_radius 
-                + val 
-                * factor 
-                * self.bar_height 
+            let l = self.current_inner_radius
+                + val
+                * factor
+                * self.bar_height
                 * BAR_MULT;
 
             let theta = self.rotation + a * i as f32;
@@ -193,11 +193,11 @@ impl MenuVisualization {
                 n,
                 // COLORS[i % COLORS.len()]
                 if i == self.index { Color::RED } else { BAR_COLOR }
-            ).with_transform(tataku::Matrix::identity()
+            ).with_transform(tataku::Matrix::IDENTITY
                 .trans(pos + p1)
             ));
         }
-        
+
     }
 
 
@@ -219,7 +219,7 @@ impl MenuVisualization {
         self.vis_data.update();
 
         let data = &self.vis_data.data;
-        if data.len() > self.index { 
+        if data.len() > self.index {
             // update our inner radius
             let inner_radius = self.inner_radius();
             let min = inner_radius / VISUALIZATION_SIZE_FACTOR;
@@ -245,7 +245,7 @@ impl MenuVisualization {
 
             // has it been long enough since the last ripple? (at the very least, this helps prevent ripple spam)
             let timer_okay = time - self.last_created > 150.0;
-            
+
             // is the amplitude falling?
             let falling = current_bass <= self.last_bass;
 
@@ -264,24 +264,24 @@ impl MenuVisualization {
             self.last_bass = current_bass;
         }
 
-        
+
         let time = self.other_timer.as_millis();
         self.ripples.retain(|ripple| !ripple.trail.complete(time));
     }
 
     pub fn reload_skin(&mut self, skin_manager: &mut dyn graphics::SkinProvider) {
         if let Some(cookie) = skin_manager.get_texture(
-            Path::new("menu-osu"), 
-            &graphics::TextureSource::Skin, 
-            graphics::SkinUsage::Game, 
+            Path::new("menu-osu"),
+            &graphics::TextureSource::Skin,
+            graphics::SkinUsage::Game,
             false
         ) {
             self.cookie = Some(cookie);
         } else {
             self.cookie = skin_manager.get_texture(
-                Path::new("./resources/icon.png"),
-                &graphics::TextureSource::Raw, 
-                graphics::SkinUsage::Game, 
+                Path::new("resources/icon.png"),
+                &graphics::TextureSource::Raw,
+                graphics::SkinUsage::Game,
                 false
             );
         }

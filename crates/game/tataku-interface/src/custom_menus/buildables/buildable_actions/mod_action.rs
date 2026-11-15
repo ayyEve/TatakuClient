@@ -37,6 +37,8 @@ pub enum BuildableModAction {
         value: BuildableValue
     },
 }
+
+#[cfg(feature="graphics")]
 impl BuildableModAction {
     pub fn resolve(
         &self, 

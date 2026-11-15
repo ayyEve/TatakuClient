@@ -6,31 +6,32 @@
   title = "Settings"
 >
   <style>
-        #category-list {
-            flex-direction: row; 
-            align-items: space-between;
-        }
+    #category-list {
+        flex-direction: column; 
+        align-items: space-between;
+    }
 
-        .setting {
-          width: fill;
-          height: 2em;
-        }
-        .setting-text {
-          width: 25%;
-          height: fill;
-        }
-        .setting-inner {
-          width: 75%;
-          height: fill;
-        }
+    .setting {
+        width: fill;
+        min-height: 2em;
+        justify-content: space-between;
+    }
+    .setting-text {
+        width: 50%;
+        height: fill;
+    }
+    .setting-inner {
+        width: 50%;
+        height: fill;
+    }
 
-        .divider {
-          width: fill;
-          margin-top: 10px;
-        }
-        .divider-text {
-          width: fill;
-        }
+    .divider {
+        width: fill;
+        margin-top: 10px;
+    }
+    .divider-text {
+        width: fill;
+    }
   </style>
 
   <events>
@@ -70,9 +71,9 @@
         </action>
       </actions> -->
 
-      <row style="width: 33%; height: fill;">
-        <!-- category list an filter input on the left -->
-        <column style="height: fill; justify-content: space-between;">
+      <row style="width: 66%; height: fill;">
+        <!-- category list and filter input on the left -->
+        <column style="width: 33%; height: fill; justify-content: space-between;">
           <!-- search text -->
           <textInput variable="var.settings.filter">
             <placeholder>Search</placeholder>
@@ -114,7 +115,7 @@
           </row>
         </column>
 
-        <column style="height: fill">
+        <column style="width: 66%; height: fill">
           <!-- current category -->
           <column style="width: fill;">
             <!-- selected category name -->
@@ -129,210 +130,210 @@
               style = "width: fill; flex-direction: column; justify-content: space-between; "
               scroll = "vertical"
             >
-              <!-- <conditional cond="check_filter(var.settings.filter, _setting.name)"> -->
-                <switch style="width: fill; height: 1em;">
+              <switch 
+                on_enum = "_setting.type"
+                style = "width: fill; min-height: 1em; "
+              >
+                <!-- Boolean (Checkbox) -->
+                <case value="Bool">
+                  <row class="setting">
+                    <text class="setting-text">
+                      <variable>_setting.name</variable>
+                    </text>
 
-                  <!-- Boolean (Checkbox) -->
-                  <case cond="display(_setting.type) == 'Bool'">
-                    <row>
-                      <text>
-                        <variable>_setting.name</variable>
-                      </text>
+                    <checkbox class="setting-inner">
+                      <value>(::_setting.path)</value>
+                      <onClick>
+                        <setValue key="::_setting.path">
+                          <passedIn />
+                        </setValue>
+                      </onClick>
+                    </checkbox>
+                  </row>
+                </case>
 
-                      <checkbox class="setting">
-                        <value>(::_setting.path)</value>
-                        <onClick>
-                          <setValue key="::_setting.path">
-                            <passedIn />
-                          </setValue>
-                        </onClick>
-                      </checkbox>
-                    </row>
-                  </case>
+                <!-- Color (TextInput) -->
+                <case value="Color">
+                  <row class="setting">
+                    <text class="setting-text">
+                      <variable>_setting.name</variable>
+                    </text>
 
-                  <!-- Color (TextInput) -->
-                  <case cond="display(_setting.type) == 'Color'">
-                    <row class="setting">
-                      <text class="setting-text">
-                        <variable>_setting.name</variable>
-                      </text>
+                    <textInput variable="::_setting.path" class="setting-inner">
+                      <placeholder>#FFFFFFFF</placeholder>
 
-                      <textInput variable="::_setting.path" class="setting-inner">
-                        <placeholder>#FFFFFFFF</placeholder>
+                      <onInput>
+                        <setValue key="var.settings.temp_color">
+                          <passedIn />
+                        </setValue>
 
+                        <setValue key="::_settings.path">
+                          <calc>color_hex(var.settings.temp_color)</calc>
+                        </setValue>
+                      </onInput>
+                    </textInput>
+                  </row>
+                </case>
+
+                <!-- String (TextInput) -->
+                <case value="String">
+                  <row class="setting">
+                    <text class="setting-text">
+                      <variable>_setting.name</variable>
+                    </text>
+
+                    <conditional cond="_setting.type.String.password" class="setting-inner">
+                      <textInput variable="::_setting.path" password="true" class="setting-inner">
                         <onInput>
-                          <setValue key="var.settings.temp_color">
-                            <passedIn />
-                          </setValue>
-
                           <setValue key="::_settings.path">
-                            <calc>color_hex(var.settings.temp_color)</calc>
+                            <passedIn />
                           </setValue>
                         </onInput>
                       </textInput>
-                    </row>
-                  </case>
 
-                  <!-- String (TextInput) -->
-                  <case cond="display(_setting.type) == 'String'">
-                    <row class="setting">
-                      <text class="setting-text">
-                        <variable>_setting.name</variable>
-                      </text>
-
-                      <conditional cond="_setting.type.String.password" class="setting-inner">
-                        <textInput variable="::_setting.path" password="true" class="setting-inner">
+                      <false>
+                        <textInput variable="::_setting.path" password="false" class="setting-inner">
                           <onInput>
                             <setValue key="::_settings.path">
                               <passedIn />
                             </setValue>
                           </onInput>
                         </textInput>
+                      </false>
+                    </conditional>
+                  </row>
+                </case>
 
-                        <false>
-                          <textInput variable="::_setting.path" password="false" class="setting-inner">
-                            <onInput>
-                              <setValue key="::_settings.path">
-                                <passedIn />
-                              </setValue>
-                            </onInput>
-                          </textInput>
-                        </false>
-                      </conditional>
-                    </row>
-                  </case>
-
-                  <!-- Key (KeyInput) -->
-                  <case cond="display(_setting.type) == 'Key'">
-                    <row class="setting">
-                      <text class="setting-text">
-                        <variable>_setting.name</variable>
-                      </text>
-
-                      <keyButton variable="::_setting.path" class="setting-inner">
-                        <onInput>
-                          <setValue key="::_setting.path">
-                            <passedIn />
-                          </setValue>
-                        </onInput>
-                      </keyButton>
-                    </row>
-                  </case>
-
-                  <!-- Gamepad Button (GamepadButtonInput) -->
-                  <case cond="display(_setting.type) == 'GamepadButton'">
-                    <row class="setting">
-                      <text class="setting-text">
-                        <variable>_setting.name</variable>
-                      </text>
-
-                      <gamepadButton variable="::_setting.path" class="setting-inner">
-                        <onInput>
-                          <setValue key="::_setting.path">
-                            <passedIn />
-                          </setValue>
-                        </onInput>
-                      </gamepadButton>
-                    </row>
-                  </case>
-
-                  <!-- Number (Slider) -->
-                  <case cond="display(_setting.type) == 'Number'">
-                    <row style="width: fill; ">
-                      <text class="setting-text">
-                          <variable>_setting.name</variable>:
-                      </text>
-
-                      <slider
-                        variable = "::_setting.path"
-                        min = "_setting.type.Number.min"
-                        max = "_setting.type.Number.max"
-                        step = "_setting.type.Number.step"
-
-                        style = "width: 30%; height: fill; align-self: center;"
-                      >
-                        <onInput>
-                          <setValue key="var.settings.temp_slider">
-                            <passedIn />
-                          </setValue>
-
-                          <setValue key="::_setting.path">
-                            <calc>cast(var.settings.temp_slider, _setting.type.Number.num_type)</calc>
-                          </setValue>
-                        </onInput>
-                      </slider>
-
-                      <text>
-                        (<display precision="2">::_setting.path</display>)
-                      </text>
-                    </row>
-                  </case>
-
-                  <!-- Dropdown -->
-                  <case cond="display(_setting.type) == 'Dropdown'">
-                    <row style="width: fill; ">
-                      <text class="setting-text">
-                          <variable>_setting.name</variable>:
-                      </text>
-
-                      <switch>
-                        <case cond="display(_setting.type.Dropdown.options) == 'List'">
-                          <text>not yet implemented, sorry!</text>
-                        </case>
-
-                        <case cond="display(_setting.type.Dropdown.options) == 'Variable'">
-                          <dropdown
-                            options_path = "::_setting.type.Dropdown.options.Variable.var"
-                            selected_path = "::_setting.path"
-                          >
-                            <onSelect>
-                              <setValue key = "::_setting.path"> <passedIn /> </setValue>
-                            </onSelect>
-                          </dropdown>
-                        </case>
-
-                        <default>
-                          <text>
-                            Unknown dropdown type: <display>_setting.type.Dropdown.options</display>
-                          </text>
-                        </default>
-                      </switch>
-                    </row>
-                  </case>
-
-                  <!-- Button -->
-                  <case cond="display(_setting.type) == 'Button'">
-                    <button class="setting">
-                      <action>
-                        <internal>_setting.type.Button.action</internal>
-                      </action>
-
-                      <text>
-                        <variable>_setting.name</variable>
-                      </text>
-                    </button>
-                  </case>
-
-                  <!-- Divider -->
-                  <case cond="display(_setting.type) == 'Divider'">
-                    <row class="divider">
-                      <text class="divider-text">
-                        <variable>_setting.name</variable>
-                      </text>
-                    </row>
-                  </case>
-
-                  <!-- unknown?? -->
-                  <!-- <default>
-                    <text>
-                      <list>
-                        <text text="Unhandled Setting type:" />
-                        <display var="_setting.type" />
-                      </list>
+                <!-- Key (KeyInput) -->
+                <case value="Key">
+                  <row class="setting">
+                    <text class="setting-text">
+                      <variable>_setting.name</variable>
                     </text>
-                  </default> -->
-                </switch>
-              <!-- </conditional> -->
+
+                    <keyButton variable="::_setting.path" class="setting-inner">
+                      <onInput>
+                        <setValue key="::_setting.path">
+                          <passedIn />
+                        </setValue>
+                      </onInput>
+                    </keyButton>
+                  </row>
+                </case>
+
+                <!-- Gamepad Button (GamepadButtonInput) -->
+                <case value="GamepadButton">
+                  <row class="setting">
+                    <text class="setting-text">
+                      <variable>_setting.name</variable>
+                    </text>
+
+                    <gamepadButton variable="::_setting.path" class="setting-inner">
+                      <onInput>
+                        <setValue key="::_setting.path">
+                          <passedIn />
+                        </setValue>
+                      </onInput>
+                    </gamepadButton>
+                  </row>
+                </case>
+
+                <!-- Number (Slider) -->
+                <case value="Number">
+                  <row style="width: fill; ">
+                    <text class="setting-text">
+                        <variable>_setting.name</variable>:
+                    </text>
+
+                    <slider
+                      variable = "::_setting.path"
+                      min = "_setting.type.Number.min"
+                      max = "_setting.type.Number.max"
+                      step = "_setting.type.Number.step"
+
+                      style = "width: 30%; height: fill; align-self: center;"
+                    >
+                      <onInput>
+                        <setValue key="var.settings.temp_slider">
+                          <passedIn />
+                        </setValue>
+
+                        <setValue key="::_setting.path">
+                          <calc>cast(var.settings.temp_slider, _setting.type.Number.num_type)</calc>
+                        </setValue>
+                      </onInput>
+                    </slider>
+
+                    <text>
+                      (<display precision="2">::_setting.path</display>)
+                    </text>
+                  </row>
+                </case>
+
+                <!-- Dropdown -->
+                <case value="Dropdown">
+                  <row style="width: fill; ">
+                    <text class="setting-text">
+                        <variable>_setting.name</variable>:
+                    </text>
+
+                    <switch on_enum="_setting.type.Dropdown.options">
+                      <case value="List">
+                        <text>not yet implemented, sorry!</text>
+                      </case>
+
+                      <case value="Variable">
+                        <dropdown
+                          options_path = "::_setting.type.Dropdown.options.Variable.var"
+                          selected_path = "::_setting.path"
+                        >
+                          <onSelect>
+                            <setValue key = "::_setting.path"> <passedIn /> </setValue>
+                          </onSelect>
+                        </dropdown>
+                      </case>
+
+                      <default>
+                        <text>
+                          Unknown dropdown type: <display>_setting.type.Dropdown.options</display>
+                        </text>
+                      </default>
+                    </switch>
+                  </row>
+                </case>
+
+                <!-- Button -->
+                <case value="Button">
+                  <button class="setting">
+                    <action>
+                      <internal>_setting.type.Button.action</internal>
+                    </action>
+
+                    <text>
+                      <variable>_setting.name</variable>
+                    </text>
+                  </button>
+                </case>
+
+                <!-- Divider -->
+                <case value="Divider">
+                  <row class="divider">
+                    <text class="divider-text">
+                      <variable>_setting.name</variable>
+                    </text>
+                  </row>
+                </case>
+
+                <!-- unknown?? -->
+                <!-- <default>
+                  <text>
+                    <list>
+                      <text text="Unhandled Setting type:" />
+                      <display var="_setting.type" />
+                    </list>
+                  </text>
+                </default> -->
+              </switch>
             </list>
           </column>
         </column>

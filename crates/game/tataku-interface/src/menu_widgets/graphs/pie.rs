@@ -23,7 +23,7 @@ impl PieGraph {
         }
 
         Self {
-            sum, 
+            sum,
             data
         }
     }
@@ -37,10 +37,10 @@ impl PieGraph {
         collection.push(
             graphics::Rectangle::new(
                 size,
-                Color::new(0.2, 0.2, 0.2, 0.7),
+                Color::new_f32(0.2, 0.2, 0.2, 0.7),
             )
             .border(Border::new(Color::RED, 1.5))
-            .with_transform(tataku::Matrix::identity()
+            .with_transform(tataku::Matrix::IDENTITY
                 .trans(bounds.pos)
             )
         );
@@ -67,7 +67,7 @@ impl PieGraph {
                 last_theta + theta,
                 i.color,
                 None
-            ).with_transform(tataku::Matrix::identity()
+            ).with_transform(tataku::Matrix::IDENTITY
                 .trans(bounds.pos + center)
             ));
 

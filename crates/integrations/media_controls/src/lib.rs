@@ -215,7 +215,7 @@ impl TatakuIntegration for MediaControlsIntegration {
                 MediaControlEvent::Raise => actions.push(WindowAction::RequestAttention.into()),
                 MediaControlEvent::Quit => {},
 
-                #[cfg(not(feature="graphics"))] _ => {} 
+                _ => {} 
             }
         }
     }

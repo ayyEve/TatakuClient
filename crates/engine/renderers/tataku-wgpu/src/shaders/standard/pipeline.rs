@@ -1,17 +1,12 @@
-use crate::prelude::*;
-use std::collections::HashMap;
-use crate::wgpu_engine::WgpuEngine;
+use crate::{atlas::WgpuAtlas, prelude::*};
 
-pub(crate) fn create_standard_pipeline(
+pub(crate) fn create_standard_pipelines(
     device: &wgpu::Device,
-    projection_matrix_bind_group_layout: &wgpu::BindGroupLayout,
-    texture_bind_group_layout: &wgpu::BindGroupLayout,
-) -> HashMap<tataku::GraphicsPipeline, wgpu::RenderPipeline> {
+    projection_matrix: &crate::ProjectionMatrix,
+    atlas: &WgpuAtlas,
+) -> Vec<(tataku::BlendMode, wgpu::RenderPipeline)> {
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("Standard Shader"),
-        #[cfg(feature="texture_arrays")]
-        source: wgpu::ShaderSource::Wgsl(crate::shader_files::SHADER_TEX_ARRAY.into()),
-        #[cfg(not(feature="texture_arrays"))]
         source: wgpu::ShaderSource::Wgsl(crate::shader_files::SHADER.into()),
     });
 
@@ -19,23 +14,16 @@ pub(crate) fn create_standard_pipeline(
         &wgpu::PipelineLayoutDescriptor {
             label: Some("Standard Render Pipeline Layout"),
             bind_group_layouts: &[
-                projection_matrix_bind_group_layout,
-                texture_bind_group_layout,
+                Some(&projection_matrix.layout),
+                Some(&atlas.layout),
             ],
-            push_constant_ranges: &[],
+            immediate_size: 0,
         }
     );
 
 
-    let mut pipelines = HashMap::new();
-    for blend_mode in [
-        tataku::BlendMode::AlphaBlending,
-        tataku::BlendMode::AlphaOverwrite,
-        tataku::BlendMode::PremultipliedAlpha,
-        tataku::BlendMode::AdditiveBlending,
-        tataku::BlendMode::OsuAdditiveBlending,
-        tataku::BlendMode::SourceAlphaBlending,
-    ] {
+    let mut pipelines = Vec::new();
+    for blend_mode in tataku::BlendMode::ALL.iter().copied() {
         let blend_state = map_blend_mode(blend_mode);
 
         let pipeline = device.create_render_pipeline(
@@ -46,7 +34,7 @@ pub(crate) fn create_standard_pipeline(
                 vertex: wgpu::VertexState {
                     module: &shader,
                     entry_point: Some("vs_main"),
-                    buffers: &[ super::Vertex::layout() ],
+                    buffers: &[ Some(super::Vertex::layout()) ],
                     compilation_options: wgpu::PipelineCompilationOptions::default(),
                 },
                 fragment: Some(wgpu::FragmentState {
@@ -74,15 +62,14 @@ pub(crate) fn create_standard_pipeline(
                     mask: !0,
                     alpha_to_coverage_enabled: false,
                 },
-                multiview: None,
+                multiview_mask: None,
             }
         );
 
-
-        pipelines.insert(
-            tataku::GraphicsPipeline::Standard(blend_mode), 
+        pipelines.push((
+            blend_mode,
             pipeline
-        );
+        ));
     }
 
     pipelines

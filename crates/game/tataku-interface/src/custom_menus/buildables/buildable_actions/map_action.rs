@@ -73,6 +73,8 @@ pub enum BuildableMapAction {
     PreviousMap,
     PreviousSet,
 }
+
+#[cfg(feature="graphics")]
 impl BuildableMapAction {
     pub fn resolve(
         &self, 

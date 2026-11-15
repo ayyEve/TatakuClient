@@ -29,7 +29,7 @@ use engine::{
         GameplayEvent,
         PlayfieldNonsense,
         GamemodeProperties,
-        gameplay_manager::{ GameplayUpdateShell, GameplayDrawShell },
+        gameplay_manager::{ GameplayUpdateShell, GameplayDrawShell, GameplayCustomShell },
     },
 };
 
@@ -256,7 +256,7 @@ impl ManiaGame {
         if let Some(image) = image {
             let transform = graphics::Transform {
                 pos,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             state.add_indicator(ImageJudgementIndicator::new(
@@ -267,7 +267,7 @@ impl ManiaGame {
             let transform = graphics::Transform {
                 pos,
                 scale: Vector2::ONE * playfield.column_width / 2.0 * (2.0 / 3.0),
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             state.add_indicator(BasicJudgementIndicator::new(
@@ -317,9 +317,9 @@ impl ManiaGame {
             // column background
             list.push(graphics::Rectangle::new(
                 Vector2::new(self.playfield.column_width, bounds.size.y),
-                Color::new(0.1, 0.1, 0.1, 0.8),
+                Color::new_f32(0.1, 0.1, 0.1, 0.8),
             ).border(Border::new(Color::GREEN, 1.2))
-            .with_transform(tataku::Matrix::identity()
+            .with_transform(tataku::Matrix::IDENTITY
                 .trans(Vector2::new(x, bounds.pos.y))
             ));
 
@@ -333,7 +333,7 @@ impl ManiaGame {
             if let Some(img) = map.get(&col).cloned() {
                 let transform = graphics::Transform {
                     pos: Vector2::new(x, self.playfield.hit_y()),
-                    ..graphics::Transform::identity()
+                    ..graphics::Transform::IDENTITY
                 };
 
                 list.push(img.with_transform(transform.matrix()));
@@ -350,7 +350,7 @@ impl ManiaGame {
                 ).border(Border::new(
                     Color::RED,
                     self.playfield.note_border_width
-                )).with_transform(tataku::Matrix::identity()
+                )).with_transform(tataku::Matrix::IDENTITY
                     .trans(Vector2::new(x, self.playfield.hit_y()))
                 ));
             }
@@ -798,7 +798,9 @@ impl Gamemode for ManiaGame {
         }
     }
 
-    fn handle_gameplay_event(&mut self, event: GameplayEvent) {
+    fn handle_gameplay_event(&mut self, shell: &mut GameplayCustomShell<'_, GameplayEvent>) {
+        let event = shell.custom.clone();
+
         match event {
             #[cfg(feature="graphics")]
             GameplayEvent::SetBounds { bounds, full_window } => {
@@ -896,11 +898,11 @@ impl Gamemode for ManiaGame {
         // playfield
         list.push(graphics::Rectangle::new(
             Vector2::new(self.playfield.total_width, bounds.size.y),
-            Color::new(0.0, 0.0, 0.0, 0.8),
+                Color::BLACK.with_alpha_f32(0.8)
         ).border(Border::new(
             if state.current_timing_point.kiai { Color::YELLOW } else { Color::BLACK },
             1.2
-        )).with_transform(tataku::Matrix::identity()
+        )).with_transform(tataku::Matrix::IDENTITY
             .trans(Vector2::new(self.playfield.col_pos(0), bounds.pos.y))
         ));
 
@@ -932,13 +934,7 @@ impl Gamemode for ManiaGame {
         Some(time)
     }
 
-    fn reset(&mut self, beatmap: &Beatmap) {
-        #[cfg(feature="graphics")]
-        let timing_points = engine::gameplay::TimingPointProgress::new(
-            beatmap.get_timing_points(),
-            beatmap.slider_velocity()
-        );
-
+    fn reset(&mut self, shell: &GameplayCustomShell<'_, &Beatmap>) {
         for note in self.columns.iter_mut().flatten() {
             note.reset();
         }
@@ -951,14 +947,14 @@ impl Gamemode for ManiaGame {
         #[cfg(feature="graphics")]
         if self.timing_bars.is_empty() {
             // load timing bars
-            let parent_tps = timing_points
+            let parent_tps = shell.timing_points
                 .iter()
                 .filter(|t| !t.is_inherited())
                 .collect::<Vec<&engine::beatmaps::TimingPoint>>();
 
             let mut time = parent_tps[0].time;
             let mut tp_index = 0;
-            let step = timing_points.beat_length_at(time, false);
+            let step = shell.timing_points.beat_length_at(time, false);
             time %= step; // get the earliest bar line possible
 
             let bar_width = (self.playfield.column_width + self.playfield.column_spacing) * self.column_count as f32 - self.playfield.column_spacing;
@@ -966,7 +962,7 @@ impl Gamemode for ManiaGame {
             loop {
                 // if theres a bpm change, adjust the current time to that of the bpm change
                 let measure = if tp_index < parent_tps.len() { parent_tps[tp_index].meter } else { 4 };
-                let next_bar_time = timing_points.beat_length_at(time, false) * measure as f32;
+                let next_bar_time = shell.timing_points.beat_length_at(time, false) * measure as f32;
 
                 // edge case for aspire maps
                 if next_bar_time.is_nan() || next_bar_time == 0.0 {
@@ -1033,7 +1029,7 @@ impl Gamemode for ManiaGame {
         use input::InputType;
         match input.event {
             InputType::KeyPress(press) => {
-                let key = press.as_key()?;
+                let key = press.key?;
 
                 // check sv change keys
                 #[cfg(feature="graphics")]
@@ -1055,7 +1051,7 @@ impl Gamemode for ManiaGame {
 
 
             InputType::KeyRelease(release) => {
-                let key = release.as_key()?;
+                let key = release.key?;
                 let game_key = self.key_2_keypress(key)?;
                 Some(ReplayAction::Release(game_key))
             }
@@ -1080,7 +1076,7 @@ impl Gamemode for ManiaGame {
                     vertical_side: Side::Inside,
                 },
                 align: Alignment::CENTER,
-                transform: graphics::Transform::identity(), // todo: add vertical offset
+                transform: graphics::Transform::IDENTITY, // todo: add vertical offset
             }
         );
     }

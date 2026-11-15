@@ -2,6 +2,7 @@ use crate::prelude::*;
 
 use tataku::{
     Color,
+    ColorField,
     Interpolation,
 };
 
@@ -73,7 +74,7 @@ pub struct DrawShell<'a> {
     pub fade_out_time: f32,
     pub hitwindow_miss: f32,
 
-    pub alpha: u8,
+    pub alpha: ColorField,
 
     pub combo_colors: &'a [Color],
 
@@ -92,14 +93,14 @@ impl DrawShell<'_> {
         self.combo_colors[color_index % self.combo_colors.len()]
     }
 
-    pub fn alpha(&self, note_time: f32, hit_time: f32) -> u8 {
-        let alpha = Color::to_f32(self.alpha);
+    pub fn alpha(&self, note_time: f32, hit_time: f32) -> ColorField {
+        let alpha = self.alpha.to_f32();
 
         let alpha = alpha
             * self.fade_in(note_time)
             * self.fade_out(hit_time);
 
-        Color::to_u8(alpha)
+        ColorField::new_f32(alpha)
     }
 
     pub fn fade_in(&self, note_time: f32) -> f32 {

@@ -9,7 +9,10 @@ use engine::gameplay::gameplay_manager::GameplayDrawShell;
 use engine::gameplay::{
     TimingPointProgress,
     PlayfieldNonsense,
-    gameplay_manager::GameplayUpdateShell,
+    gameplay_manager::{
+        GameplayUpdateShell,
+        GameplayCustomShell,
+    },
 };
 
 
@@ -26,35 +29,21 @@ pub trait Gamemode: Send + Sync {
         state: &mut GameplayUpdateShell
     );
 
-    fn handle_gameplay_event(&mut self, event: gameplay::GameplayEvent);
+    fn handle_gameplay_event(&mut self, shell: &mut GameplayCustomShell<'_, gameplay::GameplayEvent>);
 
-    fn update(
-        &mut self,
-        state: &mut GameplayUpdateShell
-    );
+    fn update(&mut self, shell: &mut GameplayUpdateShell);
 
     #[cfg(feature="graphics")]
     fn draw(
         &mut self,
-        state: GameplayDrawShell,
+        shell: GameplayDrawShell,
         list: &mut graphics::RenderableCollection,
     );
 
     #[cfg(feature="gameplay")]
     fn skip_intro(&mut self, time: f32) -> Option<f32>;
-    fn reset(&mut self, beatmap: &beatmaps::Beatmap);
+    fn reset(&mut self, shell: &GameplayCustomShell<'_, &beatmaps::Beatmap>);
 
-    // fn pause(&mut self) {}
-    // fn unpause(&mut self) {}
-    // #[cfg(feature="graphics")]
-    // fn set_bounds(&mut self, bounds: Bounds, full_window: bool);
-    // fn apply_mods(&mut self, mods: Arc<ModManager>);
-
-    // /// happens right when a beat occurs (or a bit after if theres lag/stutter)
-    // fn beat_happened(&mut self, pulse_length: f32);
-    // /// happens right when kiai changes
-    // fn kiai_changed(&mut self, is_kiai: bool);
-    
     fn force_update_settings(&mut self, settings: &Settings);
 
     #[cfg(feature="graphics")]

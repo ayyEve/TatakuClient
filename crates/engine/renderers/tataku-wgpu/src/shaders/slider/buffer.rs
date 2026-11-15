@@ -1,6 +1,4 @@
 use crate::prelude::*;
-use crate::wgpu_engine::WgpuPipeline;
-use crate::buffer_queue::RenderBufferable;
 
 const QUAD_PER_BUF:u64 = 3000;
 const VTX_PER_BUF:u64 = QUAD_PER_BUF * 4;

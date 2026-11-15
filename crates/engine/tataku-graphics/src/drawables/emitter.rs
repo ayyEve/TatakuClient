@@ -1,7 +1,7 @@
 use crate::*;
 use std::sync::Arc;
 use std::ops::Range;
-use rand::{ rngs::ThreadRng, Rng };
+use rand::{ rngs::ThreadRng, RngExt };
 
 pub struct Emitter {
     /// time of last spawned particle
@@ -27,23 +27,23 @@ pub struct Emitter {
     pub color: Color,
 
     pub image: Arc<TextureReference>,
-    
+
     pool: Arc<RwLock<Pool<Particle>>>,
 }
 impl Emitter {
     pub fn new(
         time: f32,
 
-        spawn_delay: f32, 
-        position: Vector2, 
+        spawn_delay: f32,
+        position: Vector2,
         angle: EmitterVal,
         speed: EmitterVal,
         scale: EmitterVal,
         life: Range<f32>,
-    
+
         opacity: EmitterVal,
         rotation: EmitterVal,
-    
+
         color: Color,
         image: Arc<TextureReference>,
     ) -> Self {
@@ -56,7 +56,7 @@ impl Emitter {
         let pool = Arc::new(RwLock::new(
             Pool::new_cloning(capacity, particle)
         ));
-        
+
         Self {
             should_emit: true,
             spawn_delay,
@@ -78,7 +78,7 @@ impl Emitter {
         if self.last_time + self.spawn_delay < time {
             self.last_time = time;
             if !self.should_emit || self.image.is_empty() { return }
-            
+
             let mut rng = rand::rng();
 
             let mut lock = self.pool.write();
@@ -95,7 +95,7 @@ impl Emitter {
                 particle.lifetime_max = particle.lifetime;
 
                 let opacity = init_val(&self.opacity, &mut rng);
-                particle.color = self.color.alpha(opacity);
+                particle.color = self.color.with_alpha_f32(opacity);
                 particle.image = *self.image;
             }
 
@@ -115,7 +115,7 @@ impl Emitter {
             let transform= Transform {
                 origin: image.size() / 2.0,
                 scale: Vector2::ONE * i.scale,
-                ..Transform::identity()
+                ..Transform::IDENTITY
             };
 
             list.push(image.with_transform(transform.matrix()).merge_draw_options(options));

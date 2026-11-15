@@ -126,7 +126,7 @@ impl HitObject for UTypingNote {
             .with_transform(graphics::Transform {
                 pos: self.pos,
                 scale: Vector2::ONE * self.settings.note_radius,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             }.matrix()));
         }
 
@@ -159,9 +159,9 @@ impl HitObject for UTypingNote {
         const MAX_COUNT: usize = 5;
         let over_max = lines.len() > MAX_COUNT;
 
-        #[allow(clippy::needless_range_loop)]
-        for i in 0..lines.len().min(MAX_COUNT) {
-            let i = &lines[i];
+        // #[allow(clippy::needless_range_loop)]
+        // for i in 0..lines.len().min(MAX_COUNT) {
+            // let i = &lines[i];
             // let len = i.len();
 
             // draw text to hit
@@ -178,7 +178,8 @@ impl HitObject for UTypingNote {
             // t.center_text(&rect);
             // rect.pos.y += t.measure_text().y + 5.0;
             // list.push(t);
-        }
+        // }
+
         if over_max {
             // draw text to hit
             // let mut t = Text::new(
@@ -206,8 +207,8 @@ impl HitObject for UTypingNote {
 
     #[cfg(feature="graphics")]
     fn reload_skin(
-        &mut self, 
-        source: &graphics::TextureSource, 
+        &mut self,
+        source: &graphics::TextureSource,
         skin_manager: &mut dyn graphics::SkinProvider
     ) {
         self.image = HitCircle::new(&self.settings, source, skin_manager);
@@ -267,23 +268,23 @@ struct HitCircle {
 #[cfg(feature="graphics")]
 impl HitCircle {
     fn new(
-        _settings: &Arc<TaikoSettings>, 
-        source: &graphics::TextureSource, 
+        _settings: &Arc<TaikoSettings>,
+        source: &graphics::TextureSource,
         skin_manager: &mut dyn graphics::SkinProvider,
     ) -> Option<Self> {
         use graphics::SkinUsage;
         let hitcircle = "taikohitcircle";
 
         let circle = skin_manager.get_texture(
-            Path::new(hitcircle), 
-            source, 
-            SkinUsage::Gamemode, 
+            Path::new(hitcircle),
+            source,
+            SkinUsage::Gamemode,
             false,
         );
         let overlay = skin_manager.get_texture(
-            Path::new(&format!("{hitcircle}overlay")), 
-            source, 
-            SkinUsage::Gamemode, 
+            Path::new(&format!("{hitcircle}overlay")),
+            source,
+            SkinUsage::Gamemode,
             false,
         );
 
@@ -301,7 +302,7 @@ impl HitCircle {
         self.pos = pos;
     }
     fn draw(&mut self, list: &mut graphics::RenderableCollection) {
-        let transform = tataku::Matrix::identity()
+        let transform = tataku::Matrix::IDENTITY
             .trans(self.pos);
 
         list.push(self.circle.clone().with_transform(transform));

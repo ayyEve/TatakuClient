@@ -10,6 +10,7 @@ use tataku::{
     Color,
     Border,
     Vector2,
+    ColorField,
 };
 
 use engine::{
@@ -450,7 +451,7 @@ impl Slider {
 
             let sliding_ok = shell.holding && distance <= (radius * OK_RADIUS_MULT).powi(2);
 
-            let start_judgement = self.initial_hit.unwrap();
+            let start_judgement = self.initial_hit.unwrap_or(OsuHitJudgments::Miss);
 
             let judge = if start_judgement == OsuHitJudgments::Miss {
                 if self.dot_count == 0 {
@@ -499,7 +500,7 @@ impl Slider {
         // color
         let alpha = shell.alpha(self.time, self.curve.end_time);
         let color = shell.combo_color(self.color_index)
-            .alpha8(alpha);
+            .with_alpha(alpha);
 
         // slider body
         if let Some(mut slider) = self.slider_body.clone() {
@@ -510,23 +511,23 @@ impl Slider {
                 const DARKER:f32 = 2.0/3.0;
                 color * DARKER
             });
-            color.a = Color::to_u8(shell.settings.slider_body_alpha);
+            color.a = ColorField::new_f32(shell.settings.slider_body_alpha);
 
-            let border_color = BORDER_COLOR.alpha(shell.settings.slider_border_alpha);
+            let border_color = BORDER_COLOR.with_alpha_f32(shell.settings.slider_border_alpha);
 
             slider.slider_data.body_color = color;
             slider.slider_data.border_color = border_color;
 
             let transform = graphics::Transform {
                 scale: slider.slider_data.size,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             let transform2 = graphics::Transform {
                 origin: self.pos - self.bounds.pos,
                 scale: Vector2::ONE * shell.coords.scale,
                 pos: shell.coords.to_window(self.pos),
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             slider.slider_data.scale = shell.coords.scale;
@@ -554,7 +555,7 @@ impl Slider {
                         origin: image.size() / 2.0,
                         scale: Vector2::ONE * beat_scale * 0.8,
                         pos,
-                        ..graphics::Transform::identity()
+                        ..graphics::Transform::IDENTITY
                     };
 
                     shell.list.push(image.with_transform(
@@ -564,7 +565,7 @@ impl Slider {
                     let transform = graphics::Transform {
                         scale: Vector2::ONE * SLIDER_DOT_RADIUS * beat_scale,
                         pos,
-                        ..graphics::Transform::identity()
+                        ..graphics::Transform::IDENTITY
                     };
 
                     shell.list.push(graphics::Circle::new(Color::YELLOW)
@@ -591,7 +592,7 @@ impl Slider {
                 origin: end_circle.size() / 2.0, // center
                 scale: Vector2::ONE * shell.coords.cs,
                 pos: visual_end_pos,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             shell.list.push(end_circle.with_transform(
@@ -601,12 +602,12 @@ impl Slider {
             let transform = graphics::Transform {
                 scale: Vector2::ONE * CIRCLE_RADIUS_BASE * shell.coords.cs,
                 pos: visual_end_pos,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             shell.list.push(graphics::Circle::new(color)
                 .border(Border::new(
-                    if end_repeat { Color::YELLOW } else { Color::WHITE }.alpha8(alpha),
+                    if end_repeat { Color::YELLOW } else { Color::WHITE }.with_alpha(alpha),
                     shell.coords.border_width
                 ))
                 .with_transform(base_transform * transform.matrix())
@@ -637,7 +638,7 @@ impl Slider {
             let transform = base_transform * graphics::Transform {
                 scale: Vector2::ONE * shell.coords.cs,
                 pos,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             }.matrix();
 
             let mut shell = DrawShell {
@@ -658,7 +659,7 @@ impl Slider {
                     origin: end_circle.size() / 2.0, // center
                     scale: Vector2::ONE * shell.coords.cs,
                     pos: visual_end_pos,
-                    ..graphics::Transform::identity()
+                    ..graphics::Transform::IDENTITY
                 };
 
                 shell.list.push(end_circle.with_transform(
@@ -668,12 +669,12 @@ impl Slider {
                 let transform = graphics::Transform {
                     scale: Vector2::ONE * CIRCLE_RADIUS_BASE * shell.coords.cs,
                     pos: visual_end_pos,
-                    ..graphics::Transform::identity()
+                    ..graphics::Transform::IDENTITY
                 };
 
                 shell.list.push(graphics::Circle::new(color)
                     .border(Border::new(
-                        if start_repeat { Color::YELLOW } else { Color::WHITE }.alpha8(alpha),
+                        if start_repeat { Color::YELLOW } else { Color::WHITE }.with_alpha(alpha),
                         shell.coords.border_width
                     ))
                     .with_transform(base_transform * transform.matrix())
@@ -716,7 +717,7 @@ impl Slider {
                     origin: ball.size() / 2.0, // center
                     scale: Vector2::ONE * shell.coords.cs,
                     pos: slider_ball_pos,
-                    ..graphics::Transform::identity()
+                    ..graphics::Transform::IDENTITY
                 };
 
                 shell.list.push(ball.with_transform(
@@ -742,11 +743,11 @@ impl Slider {
                 let transform = graphics::Transform {
                     scale: Vector2::ONE * CIRCLE_RADIUS_BASE * shell.coords.cs,
                     pos: slider_ball_pos,
-                    ..graphics::Transform::identity()
+                    ..graphics::Transform::IDENTITY
                 };
 
                 shell.list.push(graphics::Circle::new(color)
-                    .border(Border::new(Color::WHITE.alpha8(alpha), 2.0))
+                    .border(Border::new(Color::WHITE.with_alpha(alpha), 2.0))
                     .with_transform(base_transform * transform.matrix())
                 );
             }
@@ -769,12 +770,12 @@ impl Slider {
                 let transform = graphics::Transform {
                     scale: Vector2::ONE * CIRCLE_RADIUS_BASE * shell.coords.cs * OK_TICK_RADIUS_MULT,
                     pos: slider_ball_pos,
-                    ..graphics::Transform::identity()
+                    ..graphics::Transform::IDENTITY
                 };
 
                 shell.list.push(graphics::Circle::new(Color::TRANSPARENT)
                     .border(Border::new(
-                        if self.sliding_ok {Color::LIME} else {Color::RED}.alpha8(alpha),
+                        if self.sliding_ok {Color::LIME} else {Color::RED}.with_alpha(alpha),
                         2.0
                     ))
                     .with_transform(base_transform * transform.matrix())

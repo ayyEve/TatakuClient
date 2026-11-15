@@ -1,7 +1,6 @@
 use std::fmt::Debug;
 
 use crate::*;
-use style::*;
 use common::reflect::*;
 
 use taffy::Size;
@@ -143,6 +142,18 @@ impl CssStyleResolver<'_> {
             height: self.resolve_lp(height, default),
         }
     }
+    #[inline(always)]
+    fn resolve_lpa_size(
+        &self, 
+        default: LengthPercentageAuto,
+        width: &CssValue<CssUnit>,
+        height: &CssValue<CssUnit>,
+    ) -> Size<LengthPercentageAuto> {
+        Size {
+            width: self.resolve_lpa(width, default),
+            height: self.resolve_lpa(height, default),
+        }
+    }
 
     #[inline(always)]
     fn resolve_lpa(
@@ -234,17 +245,17 @@ impl taffy::CoreStyle for CssStyleResolver<'_> {
         )
     }
 
-    fn min_size(&self) -> Size<Dimension> {
-        self.resolve_dimension_size(
-            Dimension::auto(), 
+    fn min_size(&self) -> Size<LengthPercentageAuto> {
+        self.resolve_lpa_size(
+            LengthPercentageAuto::auto(), 
             &self.style.min_width, 
             &self.style.min_height,
         )
     }
 
-    fn max_size(&self) -> Size<Dimension> {
-        self.resolve_dimension_size(
-            Dimension::auto(), 
+    fn max_size(&self) -> Size<LengthPercentageAuto> {
+        self.resolve_lpa_size(
+            LengthPercentageAuto::auto(), 
             &self.style.max_width, 
             &self.style.max_height,
         )
@@ -289,6 +300,20 @@ impl taffy::BlockContainerStyle for CssStyleResolver<'_> {
     fn text_align(&self) -> TextAlign {
         TextAlign::Auto
     }
+    fn align_content(&self) -> taffy::prelude::AlignContent {
+        self.style
+            .align_content
+            .resolve_copied(self.values)
+            .unwrap_or_default()
+            .into()
+    }
+    fn justify_items(&self) -> taffy::prelude::AlignItems {
+        self.style
+            .align_items
+            .resolve_copied(self.values)
+            .unwrap_or_default()
+            .into()
+    }
 }
 impl taffy::BlockItemStyle for CssStyleResolver<'_> {
     fn is_table(&self) -> bool {
@@ -313,16 +338,16 @@ impl taffy::FlexboxContainerStyle for CssStyleResolver<'_> {
         )
     }
 
-    fn align_content(&self) -> Option<taffy::AlignContent> {
-        self.resolve_maybe(&self.style.align_content)
+    fn align_content(&self) -> taffy::AlignContent {
+        self.resolve_maybe(&self.style.align_content).unwrap_or_default()
     }
 
-    fn align_items(&self) -> Option<taffy::AlignItems> {
-        self.resolve_maybe(&self.style.align_items)
+    fn align_items(&self) -> taffy::AlignItems {
+        self.resolve_maybe(&self.style.align_items).unwrap_or_default()
     }
 
-    fn justify_content(&self) -> Option<taffy::JustifyContent> {
-        self.resolve_maybe(&self.style.justify_content)
+    fn justify_content(&self) -> taffy::JustifyContent {
+        self.resolve_maybe(&self.style.justify_content).unwrap_or_default()
     }
 }
 impl taffy::FlexboxItemStyle for CssStyleResolver<'_> {
@@ -345,6 +370,53 @@ impl taffy::FlexboxItemStyle for CssStyleResolver<'_> {
         self.resolve_maybe(&self.style.align_self)
     }
 }
+
+impl taffy::OofItemStyle for CssStyleResolver<'_> {
+    
+    /// How the box is aligned in the block axis of its inset-modified containing block
+    /// (`align-self`). `None` corresponds to `normal`/`auto`.
+    #[inline(always)]
+    fn align_self(&self) -> Option<taffy::AlignSelf> {
+        self.style
+            .align_self
+            .resolve_copied(self.values)
+            .map(From::from)
+    }
+    /// How the box is aligned in the inline axis of its inset-modified containing block
+    /// (`justify-self`). `None` corresponds to `normal`/`auto`.
+    #[inline(always)]
+    fn justify_self(&self) -> Option<taffy::AlignSelf> {
+        self.style
+            .justify_self
+            .resolve_copied(self.values)
+            .map(From::from)
+    }
+    /// Whether the box is a table wrapper box. A `normal` self-alignment does not stretch
+    /// tables to fill their inset-modified containing block.
+    #[inline(always)]
+    fn is_table(&self) -> bool {
+        self.style
+            .display
+            .resolve_copied(self.values)
+            .unwrap_or_default()
+            == DisplayType::Table
+    }
+
+    // /// Defines which row in the grid the box should start and end at, when the box's containing
+    // /// block is a grid container
+    // #[inline(always)]
+    // fn grid_row(&self) -> Line<GridPlacement<Self::CustomIdent>> {
+    //     Default::default()
+    // }
+
+    // /// Defines which column in the grid the box should start and end at, when the box's
+    // /// containing block is a grid container
+    // #[inline(always)]
+    // fn grid_column(&self) -> Line<GridPlacement<Self::CustomIdent>> {
+    //     Default::default()
+    // }
+}
+
 
 // impl taffy::GridContainerStyle for CssStyleResolver<'_> {
 //     type Repetition<'a>

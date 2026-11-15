@@ -2,7 +2,6 @@ use crate::prelude::*;
 use tataku::{
     Color,
     Border,
-    Bounds,
     Vector2,
 };
 
@@ -134,7 +133,7 @@ impl HitCircle {
         shell: &mut DrawShell
     ) {
         let color = shell.combo_color(color_index)
-            .alpha8(shell.alpha);
+            .with_alpha(shell.alpha);
 
         // hit circle
         if let Some(mut overlay) = self.overlay.clone() {
@@ -142,7 +141,7 @@ impl HitCircle {
 
             let transform = graphics::Transform {
                 origin: overlay.size() / 2.0,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             shell.list.push(overlay.with_transform(
@@ -155,7 +154,7 @@ impl HitCircle {
 
             let transform = graphics::Transform {
                 origin: circle.size() / 2.0,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             shell.list.push(circle.with_transform(
@@ -166,12 +165,12 @@ impl HitCircle {
 
             let transform = graphics::Transform {
                 scale: Vector2::ONE * CIRCLE_RADIUS_BASE,
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             if self.overlay.is_none() {
                 circle.border = Some(Border::new(
-                    Color::WHITE.alpha8(shell.alpha),
+                    Color::WHITE.with_alpha(shell.alpha),
                     shell.coords.border_width
                 ));
             }
@@ -191,7 +190,7 @@ impl HitCircle {
 
                 let transform = graphics::Transform {
                     origin: text_size / 2.0,
-                    ..graphics::Transform::identity()
+                    ..graphics::Transform::IDENTITY
                 };
 
                 shell.list.push(image.with_transform(
@@ -201,7 +200,7 @@ impl HitCircle {
                 let transform = graphics::Transform {
                     origin: self.combo_size / 2.0,
                     scale: Vector2::ONE * shell.coords.cs.recip(),
-                    ..graphics::Transform::identity()
+                    ..graphics::Transform::IDENTITY
                 };
 
                 shell.list.push(graphics::Text::new(layout)

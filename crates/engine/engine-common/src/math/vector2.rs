@@ -1,23 +1,25 @@
 use crate::prelude::common::reflect::*;
 
-pub type Vector3 = cgmath::Vector3<f32>;
+pub type Vector3 = glam::f32::Vec3;
+pub type Vec2Inner = glam::f32::Vec2;
+
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(from = "[f32;2]", into = "[f32;2]")]
-pub struct Vector2(cgmath::Vector2<f32>);
+pub struct Vector2(Vec2Inner);
 impl Vector2 {
-    pub const ZERO: Self = Self(cgmath::Vector2::new(0.0, 0.0));
-    pub const ONE: Self = Self(cgmath::Vector2::new(1.0, 1.0));
+    pub const ZERO: Self = Self(Vec2Inner::new(0.0, 0.0));
+    pub const ONE: Self = Self(Vec2Inner::new(1.0, 1.0));
 
-    pub const fn new(x: f32, y: f32) -> Self { Self(cgmath::Vector2::new(x, y)) }
+    pub const fn new(x: f32, y: f32) -> Self { Self(Vec2Inner::new(x, y)) }
 
     pub const fn x(&self) -> f32 { self.0.x }
     pub const fn y(&self) -> f32 { self.0.y }
-    
+
     pub const fn with_x(x:f32) -> Self { Self::new(x, 0.0) }
     pub const fn with_y(y:f32) -> Self { Self::new(0.0, y) }
 
-    
+
     pub fn atan2(self) -> f32 {
         (-self.y).atan2(self.x)
     }
@@ -28,7 +30,7 @@ impl Vector2 {
     pub fn from_angle(a: f32) -> Self {
         Self::new(a.cos(), a.sin())
     }
-    
+
     pub fn length(self) -> f32 {
         self.length_squared().sqrt()
     }
@@ -53,22 +55,14 @@ impl Vector2 {
         (direction.x / direction.length()).acos()
     }
 
-    // Component-wise abs
-    pub fn abs(self) -> Self {
-        Self::new(
-            self.x.abs(),
-            self.y.abs(),
-        )
-    }
-
     /// Get only this vector's x value
-    /// This is horribly named
+    /// FIXME: This is horribly named
     pub fn x_portion(mut self) -> Self {
         self.y = 0.0;
         self
     }
     /// Get only this vector's y value
-    /// This is horribly named
+    /// FIXME: This is horribly named
     pub fn y_portion(mut self) -> Self {
         self.x = 0.0;
         self
@@ -82,14 +76,14 @@ impl Vector2 {
     }
 
     /// Gets the x or y component, whichever is smaller
-    /// 
+    ///
     /// Can be used for scaling to maintain aspect ratio
     pub fn min_component(self) -> f32 {
         self.x.min(self.y)
     }
 
     /// Gets the x or y component, whichever is bigger
-    /// 
+    ///
     /// Can be used for scaling to maintain aspect ratio
     pub fn max_component(self) -> f32 {
         self.x.max(self.y)
@@ -105,7 +99,7 @@ impl Vector2 {
 }
 
 impl std::ops::Deref for Vector2 {
-    type Target = cgmath::Vector2<f32>;
+    type Target = Vec2Inner;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -142,7 +136,7 @@ impl Reflect for Vector2 {
     fn impl_get<'s, 'v>(&'s self, mut path: ReflectPath<'v>) -> reflect::Result<'v, MaybeOwnedReflect<'s>> {
         let next = path.next()
             .ok_or(ReflectError::entry_not_exist("??????"))?;
-        
+
         match next {
             "x" => Ok(MaybeOwnedReflect::Owned(Box::new(self.x))),
             "y" => Ok(MaybeOwnedReflect::Owned(Box::new(self.y))),
@@ -154,7 +148,7 @@ impl Reflect for Vector2 {
     fn impl_get_mut<'s, 'v>(&'s mut self, mut path: ReflectPath<'v>) -> reflect::Result<'v, &'s mut dyn Reflect> {
         let next = path.next()
             .ok_or(ReflectError::entry_not_exist("??????"))?;
-        
+
         match next {
             "x" => Ok(&mut self.x),
             "y" => Ok(&mut self.y),
@@ -164,8 +158,8 @@ impl Reflect for Vector2 {
     }
 
     fn impl_insert<'v>(
-        &mut self, 
-        mut path: ReflectPath<'v>, 
+        &mut self,
+        mut path: ReflectPath<'v>,
         mut value: Box<dyn Reflect>
     ) -> reflect::Result<'v, ()> {
         let Some(next) = path.next() else {
@@ -173,7 +167,7 @@ impl Reflect for Vector2 {
                 ($self:ident, $t: ty) => {
                     match value.downcast::<$t>() {
                         Ok(v) => {
-                            *$self = (*v).into(); 
+                            *$self = (*v).into();
                             return Ok(())
                         }
                         Err(e) => value = e
@@ -182,13 +176,13 @@ impl Reflect for Vector2 {
             }
             a!(self, [f32; 2]);
             a!(self, Vector2);
-            
-            return Err(ReflectError::wrong_type(value.type_name(), "Vector2"));
+
+            return Err(ReflectError::wrong_type("Vector2", value.type_name()));
         };
-        
+
         let value = *value.downcast::<f32>()
-            .map_err(|e| ReflectError::wrong_type(e.type_name(), "f32"))?;
-        
+            .map_err(|e| ReflectError::wrong_type("f32", e.type_name()))?;
+
         match next {
             "x" => { self.x = value; Ok(()) }
             "y" => { self.x = value; Ok(()) }
@@ -204,7 +198,7 @@ impl Reflect for Vector2 {
         let Some(next) = path.next() else {
             return Ok(self.to_string());
         };
-        
+
         match next {
             "x" => self.x.as_dyn().reflect_display(path, precision),
             "y" => self.y.as_dyn().reflect_display(path, precision),

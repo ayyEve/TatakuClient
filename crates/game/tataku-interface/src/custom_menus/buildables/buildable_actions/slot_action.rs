@@ -27,6 +27,7 @@ impl<'de> Deserialize<'de> for BuildableSlot {
 }
 
 
+#[cfg(feature="graphics")]
 impl BuildableSlot {
     pub fn get_action(
         &self, 
@@ -40,13 +41,10 @@ impl BuildableSlot {
             }
             BuildableValue::Calc { .. } => unreachable!("Calc should be built"),
 
-            BuildableValue::CalcParsed { 
-                calc, 
-                calc_str 
-            } => match calc.resolve(values) {
+            BuildableValue::CalcParsed(calc) => match calc.resolve(values) {
                 Ok(v) => v,
                 Err(e) => {
-                    error!("Error with calc '{calc_str}': {e:?}");
+                    error!("Error with calc '{}': {e:?}", calc.expr);
                     return None;
                 }
             },

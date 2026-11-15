@@ -1,11 +1,10 @@
 use crate::*;
 use tataku::{
+    Color,
     Bounds,
     Vector2,
-
     Easing,
     Animate,
-    AnimatableColor,
     AnimationTimeline,
 };
 use graphics::{
@@ -120,7 +119,7 @@ impl BeatmapAnimation for OsuStoryboard {
                 .translate(self.transform.pos);
 
             let alpha = i.alpha.last_value();
-            let color = i.color.last_value().alpha(alpha).into();
+            let color = i.color.last_value().with_alpha_f32(alpha);
 
             let element: Box<dyn graphics::TatakuRenderable> = match i.element_image.clone() {
                 ElementImage::Sprite(mut image) => {
@@ -214,13 +213,12 @@ struct Element {
     flip_vertical: AnimationTimeline<f32>,
 
     alpha: AnimationTimeline<f32>,
-    color: AnimationTimeline<AnimatableColor>,
+    color: AnimationTimeline<Color>,
 }
 impl Element {
     fn new(
         def: StoryboardEntryDef,
         parent_dir: &Path,
-        // image_cache: &mut HashMap<String, graphics::Image>,
         skin_manager: &mut dyn graphics::SkinProvider
     ) -> tataku::Result<Self> {
         let layer;
@@ -241,11 +239,13 @@ impl Element {
 
         let image = match def.element.clone() {
             StoryboardElementDef::Sprite(sprite) => {
-                let filepath = parent_dir.join(&sprite.filepath);
+                let path = sprite.filepath
+                    .replace("\\\\", "/")
+                    .replace("\\", "/")
+                ;
 
-                let image = try_load_image(
-                    &filepath,
-                    // image_cache,
+                let mut image = try_load_image(
+                    &parent_dir.join(&path),
                     skin_manager
                 )?;
 
@@ -261,27 +261,27 @@ impl Element {
                 }))
             }
             StoryboardElementDef::Animation(anim) => {
-                let filepath = Path::new(&anim.filepath);
+                let path = anim.filepath
+                    .replace("\\\\", "/")
+                    .replace("\\", "/")
+                ;
+                let filepath = parent_dir.join(&path);
                 let Some(ext) = filepath.extension() else {
                     return Err(tataku::Error::String("no extention on anim image".to_owned()));
                 };
 
                 let ext = ext.to_str().unwrap();
-                let filename = filepath.to_str().unwrap().trim_end_matches(&format!(".{ext}"));
+                let filename = filepath.file_stem().unwrap().to_str().unwrap();
+                let parent_dir = filepath.parent().unwrap();
 
                 let mut frames = Vec::new();
                 let mut counter = 0;
                 loop {
                     let filepath = format!("{filename}{counter}.{ext}");
                     let path = parent_dir.join(&filepath);
-                    // let filepath = format!("{parent_dir}/{filename}{counter}.{ext}")
-                    //     .replace("\\\\", "/")
-                    //     .replace("\\", "/")
-                    // ;
 
                     let Ok(image) = try_load_image(
                         &path,
-                        // image_cache,
                         skin_manager
                     ) else {
                         if counter == 0 { error!("image not found: {filepath}"); }
@@ -339,7 +339,7 @@ impl Element {
             flip_vertical: AnimationTimeline::new(Vec::new(), 0.0),
 
             alpha: AnimationTimeline::new(Vec::new(), 1.0),
-            color: AnimationTimeline::new(Vec::new(), tataku::Color::WHITE.into()),
+            color: AnimationTimeline::new(Vec::new(), tataku::Color::WHITE),
         };
         s.apply_commands();
 
@@ -403,7 +403,7 @@ impl Element {
                     alpha.push(Animate::new(i.start_time, duration, i.easing.into(), start, end)),
 
                 StoryboardEvent::Color { start, end } =>
-                    color.push(Animate::new(i.start_time, duration, i.easing.into(), start.into(), end.into())),
+                    color.push(Animate::new(i.start_time, duration, i.easing.into(), start, end)),
 
                 StoryboardEvent::Parameter { param } => match param {
                     Param::FlipHorizontal => {
@@ -434,7 +434,7 @@ impl Element {
         self.flip_vertical = AnimationTimeline::new(flip_vertical, 0.0);
 
         self.alpha = AnimationTimeline::new(alpha, 1.0);
-        self.color = AnimationTimeline::new(color, tataku::Color::WHITE.into());
+        self.color = AnimationTimeline::new(color, tataku::Color::WHITE);
 
 
         self.start_time = earliest_start;
@@ -485,19 +485,14 @@ enum ElementImage {
 
 fn try_load_image(
     file_path: &Path,
-    // image_cache: &mut HashMap<String, graphics::Image>,
     skin_manager: &mut dyn graphics::SkinProvider
 ) -> tataku::Result<graphics::Image> {
-    // if let Some(image) = image_cache.get(filepath).cloned() {
-    //     Ok(image)
-    // } else
     if let Some(i) = skin_manager.get_texture(
         file_path,
         &graphics::TextureSource::Raw,
         graphics::SkinUsage::Beatmap,
         false
     ) {
-        // image_cache.insert(filepath.clone(), i.clone());
         Ok(i)
     } else {
         // try to find a file with the same name but different case

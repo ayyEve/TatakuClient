@@ -1,6 +1,7 @@
 struct VertexInputs {
     @location(0) pos: vec2<f32>,
 
+    @interpolate(flat)
     @location(1) slider_index: u32,
 
     @builtin(vertex_index) vertex_index: u32,
@@ -11,6 +12,7 @@ struct FragmentInputs {
     @builtin(position) position: vec4<f32>,
 
     // Index into the `slider_data` array.
+    @interpolate(flat)
     @location(0) slider_index: u32,
 
     @location(1) uv: vec2<f32>,

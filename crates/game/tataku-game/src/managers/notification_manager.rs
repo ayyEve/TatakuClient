@@ -27,7 +27,7 @@ const NOTIF_BORDER_ROUNDING:f32 = 5.0;
 const NOTIF_PADDING:Vector2 = Vector2::new(4.0, 4.0);
 
 /// what background color should the notifs have?
-const NOTIF_BG_COLOR:Color = Color::new(0.0, 0.0, 0.0, 0.6);
+const NOTIF_BG_COLOR:Color = Color::BLACK.with_alpha_f32(0.6);
 
 #[derive(Default)]
 pub struct NotificationManager {
@@ -36,7 +36,7 @@ pub struct NotificationManager {
 }
 impl NotificationManager {
     pub fn update(
-        &mut self, 
+        &mut self,
         font_contexts: &mut ui::widget::TextLayoutContexts,
     ) {
         self.notifications.retain_mut(|n| {
@@ -132,11 +132,11 @@ impl ProcessedNotif {
     }
 
     fn init_font(
-        &mut self, 
+        &mut self,
         font_contexts: &mut ui::widget::TextLayoutContexts,
     ) {
         let mut layout = font_contexts.simple_text(
-            &self.notification.text, 
+            &self.notification.text,
             &ui::style::TextStyle {
                 color: Color::WHITE,
                 font_size: NOTIF_TEXT_SIZE,
@@ -178,7 +178,7 @@ impl ProcessedNotif {
             let transform = graphics::Transform {
                 pos,
                 scale: stretch.fit_to(image.size(), self.size),
-                ..graphics::Transform::identity()
+                ..graphics::Transform::IDENTITY
             };
 
             image.color = self.notification.color;
@@ -191,7 +191,7 @@ impl ProcessedNotif {
                 1.2
             ))
             .shape(graphics::Shape::Round(NOTIF_BORDER_ROUNDING))
-            .with_transform(tataku::Matrix::identity()
+            .with_transform(tataku::Matrix::IDENTITY
                 .trans(pos)
             ));
         }
@@ -200,12 +200,12 @@ impl ProcessedNotif {
             let centered = Alignment::CENTER.resolve(
                 &Bounds::new(pos, self.size),
                 Vector2::new(layout.width(), layout.height()),
-                true, 
+                true,
                 true
             );
 
             list.push(graphics::Text::new(layout.clone())
-                .with_transform(tataku::Matrix::identity()
+                .with_transform(tataku::Matrix::IDENTITY
                     .trans(centered)
             ));
         }

@@ -16,14 +16,11 @@ debug_perf_rating = []
 debug_custom_menus = []
 
 storyboards = []
-texture_arrays = []
 ui = [ "taffy", "triple_buffer", "simplecss" ]
 
 # removes as much graphics-side stuff as possible
 graphics = [ 
-    "winit", 
     "ui", 
-    "clipboard", 
     "raw-window-handle", 
     "image", 
     "tataku-graphics/graphics", 
@@ -41,7 +38,13 @@ tataku-engine-common.workspace = true
 tataku-null-renderer.workspace = true
 tataku-client-proc-macros.workspace = true
 
+shunting-yard.workspace = true
+path-shunting-yard.workspace = true
+buildable-shunting-yard.workspace = true
+
+
 # framework stuff
+raw-window-handle = { workspace = true, optional = true }
 parking_lot.workspace = true
 async-trait.workspace = true
 bitflags.workspace = true
@@ -52,11 +55,6 @@ libloading = { workspace = true, optional = true }
 
 # image stuff
 image = { workspace = true, optional = true }
-
-# windowing
-winit = { workspace = true, features = ["serde"], optional = true }
-raw-window-handle = { workspace = true, optional = true }
-clipboard = { workspace = true, optional = true }
 
 # gui
 taffy = { workspace = true, optional = true }
@@ -76,7 +74,7 @@ quick-xml.workspace = true
 # decoding/encoding/zip stuff
 zip.workspace = true
 lzma-rs.workspace = true
-encoding_rs = "0.8.35"
+encoding_rs.workspace = true
 
 
 # other stuff

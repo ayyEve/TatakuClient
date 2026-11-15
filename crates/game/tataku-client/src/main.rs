@@ -1,8 +1,8 @@
 mod game;
 
-use tataku_game::prelude::*;
-use import_common::*;
 use tataku::Vector2;
+use import_common::*;
+use tataku_game::prelude::*;
 
 const DOWNLOAD_URL_BASE:&str = "https://cdn.ayyeve.dev/tataku";
 
@@ -49,40 +49,16 @@ fn start_game() {
     let window_side_barrier = window_load_barrier.clone();
     let window_counters2 = window_counters.clone();
 
-    let e = winit::event_loop::EventLoop::with_user_event()
-        .build()
-        .unwrap();
-    let proxy = e.create_proxy();
-
-    // start game
-    let game = std::thread::spawn(move || {
-        // wait for the window side to be ready
-        // window_load_barrier.wait().await;
-        window_load_barrier.wait();
-        trace!("window ready");
-
-        game::run_game(
-            engine::window::WindowData {
-                event_receiver: game_event_receiver,
-                mouse_position_receiver,
-                proxy,
-            },
-            window_counters2,
-        );
-    });
-
-    static WINDOW: tokio::sync::OnceCell<winit::window::Window> = tokio::sync::OnceCell::const_new();
-
     // setup window
     info!("creating window");
     let settings = engine::Settings::load();
-    let game_window = engine::window::GameWindow::new(
-        game_event_sender,
+
+    let values = engine::window::WindowCreateValues {
+        event_sender: game_event_sender,
         mouse_position_sender,
-        &WINDOW,
-        &settings,
-        window_counters,
-        engine::window::WindowInitializers {
+        settings: &settings,
+        counters: window_counters,
+        init: engine::window::WindowInitializers {
             window_creation_barrier: window_side_barrier,
             integrations: vec![
                 #[cfg(feature="discord")] integration_discord::Discord::builder(),
@@ -93,11 +69,39 @@ fn start_game() {
                 Box::new(tataku_wgpu::WgpuInit)
             ],
         },
+    };
+
+    let (
+        game_window, 
+        mut data
+    ) = (tataku_winit::WINIT_CREATOR.create)(
+        values
     );
 
+    let tex_manager = game_window.get_texture_manager();
+    let action_sender = game_window.get_action_sender();
+
+    // start game
+    let game = std::thread::spawn(move || {
+        // wait for the window side to be ready
+        // window_load_barrier.wait().await;
+        window_load_barrier.wait();
+        trace!("window ready");
+
+        game::run_game(
+            settings, 
+            engine::window::WindowData {
+                event_receiver: game_event_receiver,
+                mouse_position_receiver,
+                action_sender,
+            },
+            window_counters2,
+            tex_manager,
+        );
+    });
 
     trace!("window running");
-    game_window.run(e);
+    game_window.run(&mut *data);
 
     // wait for game to finish
     game.join().unwrap();

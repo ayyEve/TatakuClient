@@ -21,7 +21,7 @@ impl ImageFlip {
             (false, false) => Self::None,
         }
     }
-    
+
     pub const fn flip_h(self) -> bool {
         matches!(self, Self::Horizontal | Self::Both)
     }
@@ -63,7 +63,7 @@ pub struct Image {
 }
 impl Image {
     pub fn new(
-        tex: Arc<TextureReference>, 
+        tex: Arc<TextureReference>,
         base_scale: f32
     ) -> Self {
         Self {
@@ -77,7 +77,7 @@ impl Image {
 
     fn tex_size(&self) -> Vector2 {
         Vector2::new(
-            self.tex.width as f32, 
+            self.tex.width as f32,
             self.tex.height as f32,
         )
     }
@@ -95,14 +95,14 @@ impl TatakuRenderable for Image {
     fn get_name(&self) -> String { "Texture".to_owned() }
 
     fn draw(
-        &self, 
-        options: &DrawOptions, 
+        &self,
+        options: &DrawOptions,
         transform: Matrix,
         g: &mut dyn DrawEngine,
     ) {
         let color = options.color_with_alpha(self.color);
 
-        let transform = transform * tataku::Matrix::identity()
+        let transform = transform * tataku::Matrix::IDENTITY
             .scale(Vector2::ONE * self.base_scale);
 
         let flip = self.flip.xor(options.image_flip);
@@ -111,10 +111,10 @@ impl TatakuRenderable for Image {
 
         g.draw_tex(
             TextureDraw::new(
-                &self.tex, 
+                &self.tex,
                 color,
             ).with_flip(flip),
-            transform, 
+            transform,
             blend_mode
         );
 
@@ -125,11 +125,11 @@ impl TatakuRenderable for Image {
         //     let size = self.size();
 
         //     g.draw_rect(
-        //         [self.pos.x, self.pos.y, size.x, size.y], 
-        //         Some(Border::new(Color::RED, 5.0)), 
-        //         Shape::Square, 
-        //         Color::TRANSPARENT_WHITE, 
-        //         transform, 
+        //         [self.pos.x, self.pos.y, size.x, size.y],
+        //         Some(Border::new(Color::RED, 5.0)),
+        //         Shape::Square,
+        //         Color::TRANSPARENT_WHITE,
+        //         transform,
         //         BlendMode::AlphaBlending
         //     )
         // }
@@ -142,11 +142,11 @@ impl TatakuRenderable for Image {
 #[derive(common::macros::Reflect)]
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub enum ImageStretch {
-    /// The image is resized to fill the given dimension. 
-    /// 
+    /// The image is resized to fill the given dimension.
+    ///
     /// If necessary, the image will be stretched or squished to fit
     #[default] Fill,
-    
+
     /// The image keeps its aspect ratio, but is resized to fit within the given dimension
     Contain,
 
